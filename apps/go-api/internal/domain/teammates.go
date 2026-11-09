@@ -70,6 +70,9 @@ type MapSquadStats struct {
 	Wins    int
 	Total   int
 	PerfAvg *float64 // nil si aucun match n'a de performance_score
+	// PerfCount : nombre de matchs qui fondent PerfAvg — le poids de la moyenne quand des cartes
+	// d'un même groupe sont repliées (squadagg.FoldMapStats). 0 : poids inconnu.
+	PerfCount int
 }
 
 // MapBreakdownRow est la performance par carte pour la heatmap.
@@ -436,9 +439,8 @@ type SessionLabelsList struct {
 // filtre a écarté le match sans pouvoir nommer un fautif ; le web affiche alors le
 // repli « coéquipier inconnu ». Revue adversariale vague 1, 2026-09-09.
 //
-// Nommage CompositionExcludedMatch (et non ExcludedMatch) pour éviter la
-// collision avec domain.ExcludedMatch (match_exclusion.go), qui couvre un
-// concept sans rapport : l'exclusion MANUELLE d'un match par l'utilisateur.
+// Nommage CompositionExcludedMatch : à ne pas confondre avec l'exclusion MANUELLE
+// d'un match par l'utilisateur (match_exclusion.go), concept sans rapport.
 type CompositionExcludedMatch struct {
 	MatchID        string    `json:"match_id"`
 	StartTime      time.Time `json:"start_time"`
@@ -499,7 +501,7 @@ type MedalDigestEntry struct {
 //
 // Le champ historique `solo_reference` a été retiré : la page Solo a son
 // propre endpoint dédié, et la page Escouade ne compare plus contre une
-// baseline solo (cf. .ai/thought_log.md 2026-04-26 refonte UX Escouade).
+// baseline solo (refonte UX Escouade du 2026-04-26).
 type TeammatesPageResponse struct {
 	Options       []TeammateOption  `json:"options"`
 	Teammates     []TeammateRow     `json:"teammates"`

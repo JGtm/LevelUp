@@ -4,7 +4,11 @@
 // agrège les deux en types réponse (voir achievements_response.go).
 package domain
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // PlayerAchievementRow représente une ligne de player_achievements (stats.duckdb).
 // Progression et statut de déverrouillage par joueur (données dynamiques).
@@ -17,15 +21,12 @@ type PlayerAchievementRow struct {
 }
 
 // AchievementDefinitionRow représente une ligne de xbox_achievement_definitions
-// (metadata.duckdb). Référentiel bilingue EN/FR statique, partagé entre joueurs.
+// (metadata.duckdb) et de ses textes par langue (asset_translations). Référentiel statique, partagé entre joueurs.
 type AchievementDefinitionRow struct {
 	AchievementID  string
-	NameEN         string
-	NameFR         string
-	DescriptionEN  string
-	DescriptionFR  string
-	LockedDescEN   string
-	LockedDescFR   string
+	Name           i18n.Text
+	Description    i18n.Text
+	LockedDesc     i18n.Text
 	Gamerscore     int
 	ImageURL       string
 	IsSecret       bool

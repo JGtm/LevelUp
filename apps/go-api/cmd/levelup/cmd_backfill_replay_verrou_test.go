@@ -18,14 +18,14 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/filmrun"
 )
 
 // TestEnfantDePasse_AttendSonTourPuisPasse : l'enfant ne rend pas la main tant que le verrou est
 // tenu, et il repart des qu'il est rendu.
 func TestEnfantDePasse_AttendSonTourPuisPasse(t *testing.T) {
 	cacheRoot := t.TempDir()
-	tenu, err := filmproc.AcquireSolo(cacheRoot, "post-sync", "un-autre-film")
+	tenu, err := filmrun.AcquireSolo(cacheRoot, "post-sync", "un-autre-film")
 	if err != nil {
 		t.Fatalf("verrou temoin : %v", err)
 	}
@@ -52,9 +52,9 @@ func TestEnfantDePasse_AttendSonTourPuisPasse(t *testing.T) {
 	case code := <-fini:
 		// LE VERROU OBTENU, L'ENFANT AVANCE : il echoue plus loin, sur le catalogue de bornes
 		// absent de cette racine temporaire — donc APRES le verrou, ce qui prouve le passage.
-		if code != filmproc.CodePreparation {
+		if code != filmrun.CodePreparation {
 			t.Fatalf("code = %d, attendu %d (echec de preparation : racine sans catalogue)",
-				code, filmproc.CodePreparation)
+				code, filmrun.CodePreparation)
 		}
 	case <-time.After(30 * time.Second):
 		t.Fatal("le verrou a ete rendu mais l'enfant ne repart pas")

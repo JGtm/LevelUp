@@ -1,8 +1,7 @@
 /**
  * Helper E2E — construction centralisée des URLs de ROUTE FRONT.
  *
- * POURQUOI. Depuis le chantier « titre dans l'URL » (feat/title-slug-in-url,
- * .ai/PLAN_TITLE_SLUG_URL_2026-07.md), les routes joueur vivent sous
+ * POURQUOI. Depuis le chantier « titre dans l'URL » (feat/title-slug-in-url), les routes joueur vivent sous
  * `/t/{titleSlug}/players/{playerSlug}/…` : le titre actif est un SEGMENT d'URL,
  * plus un état de session implicite. Les specs tournent contre la session serveur
  * dont le titre par défaut est `halo_infinite` (cf. bootstrap). Centraliser la

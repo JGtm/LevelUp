@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // TestReglementDuScorePoseLaGardeDeMode — la barre de garde ne s'ouvre que sur un mode a colline,

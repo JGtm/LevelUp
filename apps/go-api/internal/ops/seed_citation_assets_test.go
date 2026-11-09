@@ -34,14 +34,14 @@ func TestCitationNorms_Unique(t *testing.T) {
 	seen := make(map[string]string)
 	for _, m := range defaultCitationMappings() {
 		if m.Norm == "" {
-			t.Errorf("citation %q: Norm vide", m.Display)
+			t.Errorf("citation %q: Norm vide", m.ImagePath)
 			continue
 		}
 		if prev, dup := seen[m.Norm]; dup {
-			t.Errorf("norm %q dupliqué: %q et %q — la seconde écraserait la première au seed", m.Norm, prev, m.Display)
+			t.Errorf("norm %q dupliqué: %q et %q — la seconde écraserait la première au seed", m.Norm, prev, m.ImagePath)
 			continue
 		}
-		seen[m.Norm] = m.Display
+		seen[m.Norm] = m.ImagePath
 	}
 }
 
@@ -70,7 +70,7 @@ func TestCitationImagePaths_ExistOnDisk(t *testing.T) {
 		}
 		full := filepath.Join(citationRepoRoot, filepath.FromSlash(m.ImagePath))
 		if _, err := os.Stat(full); err != nil {
-			t.Errorf("citation %q (%q): image_path %q introuvable sur disque (%v)", m.Norm, m.Display, m.ImagePath, err)
+			t.Errorf("citation %q: image_path %q introuvable sur disque (%v)", m.Norm, m.ImagePath, err)
 		}
 	}
 }
@@ -81,7 +81,7 @@ func TestCitationImagePaths_ExistOnDisk(t *testing.T) {
 func TestCitationEnabled_HasImagePath(t *testing.T) {
 	for _, m := range defaultCitationMappings() {
 		if m.Enabled && m.ImagePath == "" {
-			t.Errorf("citation %q (%q) est active mais n'a aucun image_path", m.Norm, m.Display)
+			t.Errorf("citation %q est active mais n'a aucun image_path", m.Norm)
 		}
 	}
 }

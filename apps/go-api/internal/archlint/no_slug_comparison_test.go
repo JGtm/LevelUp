@@ -24,7 +24,7 @@ import (
 	"testing"
 )
 
-// slugCompareAllowlist : fichiers (chemin relatif depuis internal/) où une
+// slugCompareAllowlist : fichiers (chemin relatif depuis internal/, ou "cmd/..." pour cmd/) où une
 // comparaison de slug au titre par défaut est TOLÉRÉE — gardes de PARITÉ de base
 // (défaut = comportement/layout HINF byte-identique ; autres titres divergent),
 // PAS des feature-gates. Grandfathered le 2026-07-03 (F10) quand la regex a été
@@ -38,6 +38,8 @@ var slugCompareAllowlist = map[string]bool{
 	"api/server.go":               true, // :461 skip HINF déjà chargé (le vrai gate suivant est par capability career.rank_catalog)
 	"ops/seed_demo_multititle.go": true, // layout FS démo (défaut = layout legacy byte-identique)
 	"ops/seed_demo.go":            true, // :391 extraction média démo du titre par défaut
+	// cmd/ : balayé depuis le 2026-11-08 (chemins préfixés "cmd/").
+	"cmd/levelup/cmd_title.go": true, // :42 refus d'enregistrer le slug réservé du titre par défaut (validation d'entrée de `levelup title`, pas un feature-gate)
 }
 
 // slugCompareRE matche un gating de titre : une variable/appel *Slug (ou le
@@ -54,17 +56,34 @@ func TestNoNewSlugComparison(t *testing.T) {
 		t.Fatal("runtime.Caller a échoué")
 	}
 	internalRoot := filepath.Dir(filepath.Dir(thisFile)) // .../internal
+	cmdRoot := filepath.Join(filepath.Dir(internalRoot), "cmd")
 
+	// Les chemins de l'allowlist sont relatifs à internal/ ; ceux de cmd/ portent le préfixe "cmd/".
 	var violations []string
-	err := filepath.WalkDir(internalRoot, func(path string, d os.DirEntry, err error) error {
+	violations = append(violations, scanSlugComparisons(t, internalRoot, "")...)
+	violations = append(violations, scanSlugComparisons(t, cmdRoot, "cmd/")...)
+	if len(violations) > 0 {
+		t.Errorf("gating de titre par slug interdit (ADR 0025) — passer par une capability "+
+			"(HasCapability / FeatureChecker) ou allowlister un hard-gate transitoire :\n  %s",
+			strings.Join(violations, "\n  "))
+	}
+}
+
+// scanSlugComparisons parcourt les fichiers Go hors tests sous root et rend les lignes qui
+// comparent un slug au titre par défaut, hors allowlist. Le chemin relatif à root, préfixé par
+// prefix, est la clé de l'allowlist et le début de chaque ligne rapportée.
+func scanSlugComparisons(t *testing.T, root, prefix string) []string {
+	t.Helper()
+	var violations []string
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		rel, _ := filepath.Rel(internalRoot, path)
-		rel = filepath.ToSlash(rel)
+		rel, _ := filepath.Rel(root, path)
+		rel = prefix + filepath.ToSlash(rel)
 		if slugCompareAllowlist[rel] {
 			return nil
 		}
@@ -84,13 +103,9 @@ func TestNoNewSlugComparison(t *testing.T) {
 		return nil
 	})
 	if err != nil {
-		t.Fatalf("walk internal/: %v", err)
+		t.Fatalf("walk %s: %v", root, err)
 	}
-	if len(violations) > 0 {
-		t.Errorf("gating de titre par slug interdit (ADR 0025) — passer par une capability "+
-			"(HasCapability / FeatureChecker) ou allowlister un hard-gate transitoire :\n  %s",
-			strings.Join(violations, "\n  "))
-	}
+	return violations
 }
 
 // TestSlugCompareRE_CatchesBroadenedForms verrouille l'élargissement F10 : la

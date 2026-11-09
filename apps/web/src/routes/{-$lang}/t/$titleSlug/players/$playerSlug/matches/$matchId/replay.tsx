@@ -48,6 +48,7 @@ import {
   useReplayMapImage,
 } from '@/lib/replay/queries'
 import { ReplayCanvas } from '@/features/match-replay/ui/ReplayCanvas'
+import { ReplayRegenBanner } from '@/components/replay-regen/ReplayRegenBanner'
 import { ReplayKillFeed } from '@/features/match-replay/ui/ReplayKillFeed'
 import { ReplayMatchRecall } from '@/features/match-replay/ui/ReplayMatchRecall'
 import { frameToMs, resolveTacticalOpenAtFrame } from '@/lib/replay/replayLogic'
@@ -261,6 +262,9 @@ function ReplayPage() {
         }
       />
       <div className="space-y-4 px-6 pb-3">
+      {/* Rejeux en retard après une mise à jour : sous la capacité de l'application de bureau seulement ; le rejeu
+          ouvert ci-dessous s'affiche comme avant, bandeau ou non. */}
+      <ReplayRegenBanner />
       {(loadState === 'loading' || (loadState === 'error' && isFetching)) && (
         <p className="text-sm text-muted-foreground">{t.loading}</p>
       )}

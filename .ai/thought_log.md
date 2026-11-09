@@ -1,3 +1,1133 @@
+## [2026-11-09] Rejeu - recalcul complet au schéma 107, rebase sur la release, fusion - En cours
+
+**Décision technique principale** : recalcul de tout le parc local avec la branche (1 442 rejeux reconstruits, 0 erreur de décodage), puis `backfill-usage-summary`, `backfill-pad-tiers --force`, `backfill-vehicle-takes --force`. `backfill-killsource` volontairement non joué (décodage complet, ces correctifs n'y touchent pas). Rebase sur la release après la fin du découplage : fixtures, graines et empreinte `grammar-2026-11-08` régénérées depuis les entrées fictives ; le témoin de recherche qui portait un xuid réel est retiré. La grenade garde un chiffre décalé de 3 px hors de la vignette.
+
+**Résultats observés** : le journal du recalcul porte des erreurs sur 33 films, aucune liée à la branche (code inchangé ; 20 films comparables à la sauvegarde identiques ; 5 films sans section d'identification, limite connue). L'écart `replay-equiv` de `11de8353` (0 -> 54 points d'apparition) vient de l'overlay local non versionné `reference/generated/map_weapon_pads.json`, pas du décodeur.
+
+**Conclusion / prochaine étape** : re-figer les références, gate, CI, squash dans la release. Découverte laissée à la revue globale : le harnais dépend d'un fichier local.
+
+## [2026-11-08] Fin du découplage — lot 4 clos, PR #155 fusionnée dans release/v8.1.0 — Complété
+
+**Décision** : squash de la PR #155 (`5842e16cad`) après fusion de la release dans la branche (deux conflits : CI union, ADR 0045 ; fichier `cmd_decode_verrou.go` de la release rebranché de `filmproc` sur `filmrun`) et CI verte (28 jobs). Montée `klauspost/compress` 1.20.2 pour Govulncheck (avis GO-2026-6865 du 2026-11-05).
+**Résultats** : lots 0 à 4 clos, 4.0 à 4.9 `[x]` ; revue adversariale 2 rondes (4 constats corrigés, ronde 2 vide) ; caches du lot purgés (4,73 Go).
+**Prochaine étape** : tag `libs/film/v0.1.0` posé par le user (recommandé : quand la release est sur `main`) ; lot 5 (jeton Spartan sur redirection, NOTICE gamefiles) après la clôture du bureau ; lot 6 (quatre dépôts dédiés) après `main`.
+## [2026-11-08] Desktop L24.7 : corrections de la revue adversariale (moteur / paquet de ressources) - Complété
+
+**Décision technique principale** : 17 constats recevables sur 17 (A1-A4 bascule, B1-B4 démarrage et état, C1-C3 outillage, D six contrôles de sécurité sans test), aucun jeté ; A à C reproduits avant correction (test vu rouge, puis vert), D prouvés par mutation du contrôle. Bascule : le journal porte un état `committed` écrit d'un bloc et forcé sur le disque entre la dernière unité basculée et la première suppression ; `Recover` finit en avant une bascule validée, ne défait que l'autre ; un ménage en échec après validation est un WARN repris au démarrage suivant ; un retour arrière incomplet garde le journal et bloque toute nouvelle bascule ; `Sync` de chaque fichier écrit. Démarrage : `Manager.Settle` relit le paquet installé après l'activation ; `Start` réserve et pose la phase avant de rendre la main ; une demande pour un autre paquet annule la préparation en cours et se lance à sa suite ; la coquille réarme la minuterie de démarrage (120 s) sur chaque événement `resources` dont la phase ou le pourcentage avance (avant `ready` seulement). Outillage : une seule voie de clé dans `build-installer.ps1`, `cat |` retiré, le job docker-build exige une copie de l'empreinte hors des paramètres de compilation.
+
+**Résultats observés** : A1 vu rouge sur la coupure avant l'opération 15 (arbre mélangé, paquet « absent » alors qu'un paquet complet était sur le disque), vert sur toute la séquence ; B1 vu rouge dans l'ordre réel du démarrage (`active` = ancien paquet ; `active` vide avec `restart_needed`), vert ; B2 vu rouge au niveau de la machine d'états puis en contrat avec le faux serveur (4,5 s de téléchargement pour 2 s de délai : le serveur n'est plus tué ; un téléchargement qui s'arrête finit par le délai) ; C1 : `tauri signer sign -f` avec la variable d'environnement refusé comme annoncé, la forme corrigée signe ; C2 : SC2002 1 avant, 0 après. D : chaque test vu échouer avec son contrôle retiré (mutation temporaire restaurée : somme, fichier absent, commentaire de confiance, retour arrière, hôtes de redirection, appel de `bootResourcePack`). Gates (sorties dans le scratchpad `l24/gates2`) : voir le compte rendu du lot.
+
+**Conclusion / prochaine étape** : 24.7 coché. Reste ouvert : C3 partiel `[!]` (le binaire ne relit pas sa valeur : il faudrait un mode serveur qui affiche l'empreinte, hors périmètre) ; `e2e-install.ps1`, l'installeur complet et le job docker non rejoués ici ; découvertes (a) à (f) au plan §10 (dont : `check-version.sh` a la même faiblesse que l'ancien `grep`, `Downloader` sans délai d'inactivité sur le corps). Suite : 24.z (gate utilisateur) puis tag `v8.1.0` par l'utilisateur.
+
+## [2026-11-08] Fin du découplage — 4.9 : montée klauspost/compress 1.20.2 (govulncheck) — Complété
+
+**Décision technique principale** : le job CI Govulncheck de la PR échouait sur GO-2026-6865 (`klauspost/compress` 1.19.0, corrigé en 1.20.2, atteint par `compressResponseWriter.Flush` de `internal/api/middleware/session.go`) ; avis du 2026-11-05, indépendant de la branche. Montée de version dans `libs/film` (`go get` puis `go mod tidy`, seule ligne `require` changée) et dans `apps/go-api` (`go get`, sans `go mod tidy`) ; `libs/himap`, `libs/gamefiles` et `libs/haloapi` ne portent pas ce module.
+
+**Résultats observés** : `govulncheck ./...` dans `apps/go-api` et `libs/film` : 0 vulnérabilité atteinte ; `go build` et `go vet` verts dans les deux modules ; tests de `libs/film`, du middleware, de `filmarchive` et de `filmrun` verts, aucun golden modifié.
+
+**Conclusion / prochaine étape** : CI à relancer sur la PR ; 4.9 reste à squash-merger puis tag par le user.
+
+## [2026-11-08] Fin du découplage — 4.7 revue adversariale, ronde 1 corrigée — Complété
+
+**Décision technique principale** : ronde 1 de la revue adversariale (2 relecteurs, 4 constats recevables : 1 P1, 3 P2, 0 jeté ; 25 conditions vérifiées qui tiennent), corrigée sans autre changement. C1 (P1) : la graine de fuzz `seed_01` du fichier de faits portait 8 xuids réels en entiers variables du codec, invisibles au balayage de texte ; les quatre graines sont régénérées depuis la fixture fictive, un test de la brique les décode et exige plage fictive ET registre, et le ratchet de l'hôte refuse tout fichier de `libs/film` ni texte ni listé dans une liste fermée de binaires couverts. C2 : le ratchet lit aussi l'hexadécimal à 16 chiffres (avec ou sans `0x`, octets inversés). C3 : les quatre tests du parc qui promettaient le verrou de décodage le prennent. C4 : référence `filmproc` périmée du service systemd corrigée.
+
+**Résultats observés** : C1 : la graine à schéma 5 était illisible (le binaire lit le 18) donc le fuzz ne rejouait que le refus de version ; balayage binaire local des 420 originaux : 8 xuids dans `seed_01`, 0 ailleurs sous `libs` ; après régénération 0, graines lues par le codec, fuzz vert. C2 : test rouge avec les appels hexadécimaux neutralisés, vert après, aucun faux positif sur `libs/film`. C3 : sans la ligne, aucun `film_decode.lock` ne se crée sous la racine donnée, avec elle il se crée. C4 : grep du motif 1 ligne puis 0. Gates : `go vet` des deux modules, `replay` et `grammar` (libs/film), `revision`, `cmd/anonymise-gamertags`, `golangci-lint` (config go-api) 0 issue sur les fichiers touchés, archlint seul ok en 325 s.
+
+**Conclusion / prochaine étape** : 4.7 corrigé, case laissée au pilote. Découverte D-L4-14 : une montée de `SchemaDesFaits` oblige désormais à régénérer les graines (règle à confirmer). Restent 4.8 (backlog, registre, carte du projet) et 4.9 (PR vers `release/v8.1.0`).
+
+**Ronde 2** : aucun constat recevable, 14 conditions tiennent ; 4.8 fait ; prochaine étape 4.9 PR vers `release/v8.1.0` puis tag par le user.
+
+## [2026-11-08] Fin du découplage — 4.6b (corpus objectifs fictif, erreurs typées de la façade) — Complété
+
+**Décision technique principale** : (A) le corpus `libs/film/testdata/corpus_objectifs/minibobine_objectifs/` (D-L4-12), passé à l'outil `anonymise-gamertags` en inventaire, ne porte aucun identifiant de joueur : chacun de ses 16 chunks contient deux paquets (type 1 puis type 2) et s'arrête avant le premier paquet de type 8, le seul qui porte xuids et gamertags dans un chunk de réplication (témoin positif sur la bobine `minibobine_000d5950` : 96 occurrences de xuids et les noms, tous à partir du premier type 8) ; il n'y a donc rien à réécrire, le corpus est conservé tel quel, ni la liste locale ni `IDENTITES.tsv` ne reçoivent de ligne. (B) D-L4-10 : `decfilm.ErrUnknownBuild` et `decfilm.ErrUnknownFormat` sont exposés par la façade en constantes (même valeur que `profile.*`, `errors.Is` vrai), prouvés depuis un paquet externe par `replay.CleDeChunk0` sur un `chunk_00` au build et au format hors table ; ratchet `plafondSurfaceFacade` 179 -> 181 et famille `profile` 8 -> 10 (décision du pilote du 2026-11-08).
+
+**Résultats observés** : outil en inventaire sur le dossier : 23 fichiers, 0 occurrence, 0 xuid sur 420, 0 nom sur 3 ; aucun octet du corpus modifié ; goldens du dossier sans xuid ni gamertag ; `git grep -F` des 420 originaux dans `libs/film` : 0 ; `go vet` et `go test ./... -count=1` dans `libs/film` verts (5 `Rev` inchangées, aucun golden modifié, `decfilm` hors de toute fermeture hachée) ; `archlint` complet vert (241 s) avec les plafonds à 181 et 10 ; `go test ./cmd/anonymise-gamertags/...` vert (ratchet `TestLesXuidsDesFixturesSontFictifs` compris) ; `golangci-lint` 0 issue. README du module : deux phrases sur les erreurs typées ; README du corpus et `NOTICE.md` : la mesure remplace « gamertag lisible ».
+
+**Conclusion / prochaine étape** : 4.6b `[x]`, D-L4-10 et D-L4-12 soldées. Écart au texte de l'item A : mesure sans réécriture (pas de table, rien à ajouter au registre). Restent 4.7 (revue adversariale), 4.8 (backlog, registre, carte du projet), 4.9 (PR vers `release/v8.1.0`, commande de tag).
+
+## [2026-11-08] Fin du découplage — 4.1 à 4.6 (require, README, exemple, NOTICE, go get, ADR) — Complété
+
+**Décision technique principale** : `libs/film` devient la quatrième brique publiable. (4.1) `go.mod` requiert `libs/gamefiles` et `libs/himap` à `v0.1.0` (tags présents sur `origin`), `go.work` résout toujours les copies locales. (4.2) README EN sur le modèle des trois autres, prose périmée de `testdata` reprise là où aucun test ne la lit (les PROVENANCE des minifilms avec leurs deux générateurs, pied de film, vue A, README de la table ECS, ligne de régénération du banc), en-têtes de goldens laissés (D-6). (4.3) `decfilm/example_test.go` exécuté (`93 deaths, 8 distinct victims`) et un test de fraîcheur README <-> exemple (les autres briques n'en avaient pas). (4.4) `NOTICE.md` : tables embarquées (468 / 468 / 58 lignes), films de test, règle des identifiants fictifs. (4.6) ADR 0043 amendée (quatre briques, AGPL-3.0, dépôt `JGtm/halo-infinite-film-decoder`), renvois 0041 et 0034, `CLAUDE.md`, CHANGELOG EN/FR.
+
+**Résultats observés** : `go vet` et `go test ./... -count=1` dans `libs/film` verts (29 paquets, 85 s), aucun golden modifié ; archlint complet vert (604 s) ; `golangci-lint` 0 issue ; `make libs-test` vert (245 s, quatre modules). 4.5 : la branche poussée (sha `cf133667f7`) se récupère par `go get` hors dépôt avec `GOWORK=off`, `libs/gamefiles` et `libs/himap` résolus à leurs tags, `go build` et `go run` d'un `main.go` repris de l'exemple affichent `93 deaths, 8 distinct victims` ; `CGO_ENABLED=0` aussi. Découvertes D-L4-8 à D-L4-13 (aucun `LICENSE` par module, `ErrUnknownBuild` inaccessible hors module, deux citations `.ai/` dans des sources hachées, `corpus_objectifs` sans lecteur et hors de 4.0, commandes périmées des générateurs de goldens).
+
+**Conclusion / prochaine étape** : 4.1 à 4.6 `[x]`. Restent 4.7 (revue adversariale du diff des lots 1 à 4), 4.8 (backlog, registre, carte du projet), 4.9 (PR vers `release/v8.1.0`, commande de tag `libs/film/v0.1.0` pour l'utilisateur). Les tags `libs/film/v0.1.0` restent un geste de l'utilisateur ; ordre des tags : gamefiles, himap (déjà posés), puis film.
+
+## [2026-11-08] Fin du découplage — 4.0 complément (liste locale des identifiants, tests weaponv3, fixtures web) — Complété
+
+**Décision technique principale** : la liste des xuids d'origine se lit par défaut dans `data/film_identites/xuids_originaux.txt` sous la racine du dépôt (dossier ignoré par git, à côté du parc de films ; un worktree le monte par jonction comme `film_chunks`), `-originaux` et `LEVELUP_IDENTITES_ORIGINALES` restant prioritaires ; les trois tests de résolution de `weaponv3` lisent la mini-bobine fictive versionnée au lieu du cache du parc (la brique ne lit aucune variable de l'hôte).
+
+**Résultats observés** : avec le parc monté, `weaponv3` et `replay` verts ; sans parc, mêmes paquets verts, les tests de résolution ne se sautent plus ; `go vet` des deux modules, `cmd/replay-equiv`, `archlint` (244 s) verts, `golangci-lint` 0 issue ; `vitest run` complet sous `apps/web` : 1 062 fichiers, 10 942 tests passés, 0 échec, aucun littéral à corriger ; `replay-equiv` sans option : 20 identiques en 590 s, liste trouvée par défaut.
+
+**Conclusion / prochaine étape** : D-L4-5 soldée, `vitest` joué (D-L4-6). 4.1 (`go.mod` aux tags) suivant. Dossier `data/film_identites/` à garder (remplace `hors_depot4`).
+
+## [2026-11-08] Fin du découplage — 4.0 identités fictives des fixtures — Complété
+
+**Décision technique principale** : les films de test de `libs/film` ne portent plus aucun xuid réel (420 xuids, option A du 2026-11-04) ni les trois gamertags restants. Le xuid fictif se tire par une fonction pure (`internal/identitefictive`, SHA-256 d'une graine publique et du xuid, 48 bits ajoutés à `0x0009000000000000` : la plage que le décodeur exige, D-L1-8), `cmd/anonymise-gamertags` est étendu aux xuids (64 bits petit- et gros-boutiste à chaque décalage de bit, décimal, hexadécimal), et les fixtures encodées par le codec des faits (`inputs_*.bin.gz`, que la mesure 1.6 croyait vides) se réécrivent par décodage et réencodage. La table originaux-fictifs n'est pas versionnée (elle remettrait les xuids réels dans le dépôt) : le registre versionné `libs/film/testdata/IDENTITES.tsv` ne porte que les fictifs et son garde-rail refuse tout xuid de la plage hors registre. `replay-equiv` retraduit les faits figés (fictifs) en xuids du parc avant de cuire.
+
+**Résultats observés** : 4 128 occurrences petit-boutiste, 150 gros-boutiste, 822 décimales, 715 noms, 1 379 xuids réécrits par le codec ; mêmes comptes que la mesure 1.6 pour les 10 dossiers (sauf `a521164d` +4, un xuid ni siège ni victime). Témoin du décodeur sur les 10 films : mêmes 150 sièges, 1 402 morts, index et temps identiques, 133 xuids transformés exactement selon la dérivation, 0 écart. T1 `libs/film` : 3 813 lignes à l'identique plus 10 neuves, 0 fail ; T1 go-api (15 jeux de paquets lisant ces fixtures) 0 fail ; T2 : cinq `Rev` et 10 goldens de révision inchangés (17 sources de production modifiées en commentaire seulement) ; T3 : 20 identiques, MD5 identique, références NON re-figées (la retraduction rend les entrées d'avant) ; les 8 goldens d'assemblage régénérés par leurs tests égalent la réécriture de l'outil à l'octet ; archlint vert (340 s). Écarts et découvertes au plan (D-L4-1 à D-L4-7) : mesure 1.6 incomplète (préfixes 26 à 28, codec, hexadécimal seul), borne de plage et sept xuids inventés laissés, deux tests dépendants du parc (`weaponv3`) échouent avec le parc monté, xuids réels restants dans go-api (104 fichiers), web, docs.
+
+**Conclusion / prochaine étape** : 4.0 `[x]`. La liste des xuids d'origine et la table des trois noms vivent hors dépôt (scratchpad `hors_depot4`), à garder : sans elles `replay-equiv` refuse les faits figés. Lot 4 : 4.1 (`go.mod` aux tags) suivant. Décision à prendre par le user : graine publique (actuelle) ou secrète (D-L4-4).
+
+## [2026-11-08] Fin du découplage — lot 3 clos (ratchets de la brique) — Complété
+
+**Décision technique principale** : les garde-rails de la brique tiennent désormais sans dépendre du dossier de go-api. (3.1) L'ordre des imports des 398 sources hachées par les cinq couches est gardé par `libs/film/revision/ordre_imports_test.go` : ordre standard pour 383, suite exacte figée (`ordresFiges`) pour les quinze sources en ordre historique, message qui nomme le fichier, l'import et le geste qui évite une régénération d'empreinte. (3.2) Racines étendues à l'espace de travail pour `decode_lock_interdit` ; aux briques pour `no_discarded_remove` (allowlist datée pour `atomicfile`, 49 sites de go-api laissés hors racine : garde-rail de chemins de requête) ; baselines gelées et datées pour `film_exported_vars` (9 variables de `himap`), `film_file_size` (6 fichiers) et `film_function_length` (1 fonction) ; `server_stdout_internal` statuée `[~]` D-L2-8. (3.3) Nouveau ratchet `film_sans_hote` : aucun `LEVELUP_`, `apps/go-api`, `internal/games/halo_infinite/film` ni chemin absolu dans la production de `libs/film`, commentaires compris ; allowlist par fichier et par littéral, plus large que celle du plan (`porte.go` seul) parce que le cadre historique du hachage (`cadre.go`, `couches.go`, `perimetre.go`, ADR 0041 D8) porte l'ancienne adresse par construction.
+
+**Résultats observés** : aucune production modifiée. 16 mutations jouées sur fichiers réels ou jetables, toutes vues rouges avec le message attendu puis vertes (tableau du plan). La mesure de 3.1 a trouvé quinze sources en ordre historique et non quatorze (`deaths_source.go` sans marqueur). `go vet` (deux modules), lint des fichiers neufs (0 issue, aucun `//nolint`), archlint seul 299 s vert, `libs/film` `go test ./...` 28 paquets verts, `filmrun` / `filmarchive` / `platform/filelock` verts ; cinq `Rev` et goldens inchangés. Six découvertes D-L3-1 à D-L3-6 notées, non traitées. D2-L3-a du registre soldé.
+
+**Conclusion / prochaine étape** : lot 3 clos (3.1 à 3.4 `[x]`). Lot 4 (publication de la brique : identités des fixtures, `go.mod`, README, exemple, ADR 0043) suivant ; le README reprendra D-L3-5.
+
+## [2026-11-08] Fin du découplage — lot 2 clos (gate 2.9) — Complété
+
+**Décision technique principale** : lot 2 (la brique film ne lance rien, ne lit ni env ni disque hors de ses entrées, n'écrit qu'à ses dépôts) clos par le gate 2.9, joué sans rien ajuster : tous les témoins du lot 0 rejoués sur `12896aaa9f`, un seul gros processus à la fois, caches `go-build-film` / `golangci-film`.
+
+**Résultats observés** : build, vet, vet `research` verts (deux modules). T1 21 581 lignes, 21 206 pass, 375 skip, 0 fail (lot 0 : 21 556, 380 skip) ; 97 lignes du lot 0 absentes, 96 retrouvées nom pour nom à leur nouvelle adresse (`internal/digest` et `analysis/digest`, `filmarchive`, `filmrun`, `memguard`), 1 supprimée avec son sujet (`TestChaqueEnfantDuPaquetPasseParSansFenetre`) ; 5 verdicts `skip` -> `pass` (film `000d5950` visible par les jonctions du parc montées pendant le T1), aucun autre changement. T2 : cinq `Rev` inchangées ; 34 goldens sur 35 identiques, seul `grammar_rev.golden` change (régénéré au 2.4, chronique `rev_chronique.go:403`) ; `revision` vert. T3 : 20 identiques, MD5 de la liste `e35052a1...` = lot 0, octet-identiques aux références. T4 (`--base 421107998f`, `--allow-missing`) : 18 ok, 1 absent, 0 gain/perte/changement, code 0. T5 : 0 `go-api` dans les quatre briques. T7 : code 0, 2 321 tests (2 289 pass, 32 skip, 0 fail). Lint : `libs/film` 0 issue, `apps/go-api` (`--new-from-merge-base=origin/release/v8.1.0`) 0 issue, aucun `//nolint` ajouté. `filmproc` absent de `apps/desktop`. Ratchet du lot vert (le motif du gate ne retient qu'un test sur six, rejoué avec les noms réels). Registre : D2-L0-b, D2-L2-d, D2-L2-e barrés et soldés. Durées : T1 536 s, T3 1 275 s, T4 599 s, T7 829 s.
+
+**Conclusion / prochaine étape** : lot 2 clos (2.1 à 2.9 `[x]`), les huit découvertes D-L2-1 à D-L2-8 restent notées, non traitées. Lot 3 (ratchets de la brique) suivant.
+
+## [2026-11-04] Fin du découplage — lot 2 (2.1 à 2.3b) : lanceur, écriture de l'archive et sites des replis chez l'hôte ; arrêt sur 2.4 — En cours
+
+**Décision technique principale** : la brique décode et publie ; ce qui décide quand, où et à quelle priorité part dans LevelUp. `filmproc` coupé en deux : la sentinelle mémoire reste (`libs/film/memguard`), le lanceur parent/enfant, le verrou « un décodage à la fois » et la priorité partent dans `apps/go-api/internal/filmrun` (lancement par `platform/childproc`, verrou noyau par la copie jumelle `platform/filelock`) ; les tests et instruments de la brique prennent le même verrou par `libs/film/internal/decodelock` (parité du protocole tenue par un garde-rail). `filmcache` réduit à la lecture : écriture, recompression, déplacement et retrait partent dans `apps/go-api/internal/filmarchive`, qui compose ses chemins et sa forme zstd par la brique. `digest` passe en `libs/film/internal/digest`, copie jumelle `apps/go-api/internal/analysis/digest` pour `replay-equiv` ; sept remontées vers la racine du dépôt fondues dans `libs/film/internal/depottest` (garde-rail règle 6). Registre des replis : entrées et noms restent dans la brique (ils se comptent sur son `Compteur`), ses sites deviennent relatifs au module, les 33 sites et les appelants de l'hôte vivent dans `apps/go-api/internal/filmreplis`, lu par les six gardes. 2.4 (`filmshell` en accesseurs) n'est pas fait : il réécrit l'empreinte de `grammar_rev.golden`, un golden de révision, hors de l'invariant du lot.
+
+**Résultats observés** : témoin 2.1 (commande de l'enfant, 341 lignes) identique avant/après à deux variables du harnais près ; registre des replis vu par les gardes identique avant/après (125 entrées, 292 sites) ; T1 21 580 lignes, 0 fail, 380 skip, 0 verdict changé, 97 lignes déplacées retrouvées nom pour nom, un seul nom supprimé avec son sujet (`TestChaqueEnfantDuPaquetPasseParSansFenetre`) ; T2 cinq `Rev` et 34 goldens identiques ; T3 20 identiques, MD5 identiques ; T5 0 ; lint 0. Trois mutations jouées (parité du verrou, remontée unique, part de l'hôte du registre). T4 18 ok, 0 gain, 0 perte, rapport identique au lot 0 hors durées. Mesure 2.4 : une retouche de `filmshell` rougit `TestGrammarRevSuitLaGrammaire`.
+
+**Conclusion / prochaine étape** : 2.1 à 2.3b commités ; le pilote tranche 2.4 (régénérer l'empreinte de `grammar` à révision constante, ou garder les variables) avant 2.5 à 2.9. Huit découvertes notées (D-L2-1 à D-L2-8), aucune traitée.
+
+## [2026-11-04] Fin du découplage — lot 1 : la brique ne nomme plus son hôte (commentaires, chemins absolus, instruments), mesure des identités — Complété
+
+**Décision technique principale** : réécriture déterministe des SEULS commentaires `//` de `libs/film` (script Go à deux passes, hors `testdata/` et hors `revision/`, dont le chemin historique est la clé du cadre de hachage) ; chemins absolus remplacés par une variable propre ou par `racineDepot(t)` ; les 9 instruments `research` reçoivent leurs dossiers par `L1_BORNES`, `L1_FAITS`, `L1_ARTEFACTS` (côté go-api : `PathResolver`) ; l'item 1.3 (registre des replis) est statué `[!]` : `Site.Fichier` est un chemin relatif au dépôt hôte que six gardes de go-api ouvrent, le changer casse ces gardes (D-L1-2, à trancher avec la façade au lot 2). D-6 et D-7 appliquées telles quelles : aucun golden ni fixture touché ; 1.6 est une mesure.
+
+**Résultats observés** : 561 fichiers réécrits par le script (796 lignes) + 11 à la main ; T1 identique au lot 0 (21 556 lignes, MD5 `f1f0ed84c7592b8a14f75a6b067a4aed`, 0 fail, 0 disparition) ; T2 : cinq `Rev` inchangées, SHA-256 des 34 goldens identiques ; T5 : `levelup/go-api` = 0 dans les quatre briques ; lint de `libs/film` = 0 issue. Le ratchet de taille a rougi une fois (`vehicules_v13_deadstate_test.go` doit rester à 580 lignes, plafond non montant et non périmé). Mesure des identités : 133 xuids pour 133 gamertags dans les octets des 10 dossiers de film, 130 gamertags déjà pseudonymisés (v8.0.2), xuids jamais ; formes 64 bits fixes (LE à décalage de bit quelconque, MSB dans la table du registre dont le repérage exige la plage `0x0009…`–`0x000A…`) ; réécriture à longueur constante validée en mémoire ; les octets des films ne sont dans aucune empreinte (révisions inchangées) ; estimation 12 à 14 h (réécriture) contre 25 à 40 h + parties (nouveaux films, perd 7 builds).
+
+**Conclusion / prochaine étape** : lot 1 clos, huit découvertes notées au plan (D-L1-1 à D-L1-8), aucune traitée. La décision sur l'option A ou B des xuids (item 4.0) et sur le registre des replis (D-L1-2) revient au pilote.
+
+## [2026-11-04] Fin du découplage — lot 0 : relevé, témoins, inventaire des ratchets — Complété
+
+**Décision technique principale** : hypothèses D-1 à D-12 = recommandations du tableau du plan, aucune décision prise par l'exécutant. Relevé des « Preuves de départ » rejoué sur `421107998f` (= `origin/release/v8.1.0`, CI verte), sept témoins capturés hors dépôt (scratchpad, 39 Mo), inventaire des 206 ratchets d'archlint et de 36 ratchets hors archlint, essai de compilation de `libs/film` contre `gamefiles` et `himap` à `v0.1.0`. Aucun fichier de code modifié. Le worktree est monté sur le parc par jonctions sur `film_chunks` et `film_manifests` et copie des deux bases, rien n'est écrit dans le checkout principal.
+
+**Résultats observés** : T1 21 556 lignes (paquet, test, verdict), 0 fail, 380 skip (le paquet `archlint` dépasse `-timeout 10m` dans le `./...` complet de go-api, rejoué seul : 487 tests verts en 286 s). T2 : cinq `Rev` inchangées, 34 goldens copiés avec SHA-256. T3 : `replay-equiv` 20 identiques, digests octet-identiques aux références. T4 : gate avec base = HEAD 18 identiques, 0 gain, 0 perte, `f75e7053` absent ; avec la base par défaut `origin/main` (v8.0.7), 13 témoins sur 18 en PERTE ou FAUX (dérive de couverture entre deux versions, pas un écart du lot). T5 : 0 `levelup/go-api` dans les quatre briques. T6 : façade 179, `replay.X` 316. T7 : intégration sync et persist, code 0, 2 321 tests, 0 fail. Relevé 0.2 : aucune dérive des surfaces et des révisions ; écarts de comptage mineurs (importeurs, goldens à l'ancien chemin 21 au lieu de 33, xuids non reproductibles). Inventaire 0.5 : 3 lignes « oui » à racine go-api seul (`decode_lock_interdit`, `no_discarded_remove`, `server_stdout_internal`), 3 « racine partielle » (`film_exported_vars`, `film_file_size`, `film_function_length` : sujet aussi dans `libs/himap`). 0.6 : `go build`, `go vet` et `go vet -tags research` verts avec `gamefiles` et `himap` `v0.1.0` : aucun tag `v0.1.1` à demander. Registre : D2-L0-a soldé, 21e `.tsv` = référence de `equivalence_minifilm_test.go`, D2-L5-b toujours absent.
+
+**Conclusion / prochaine étape** : lot 0 clos, six découvertes notées au plan (D-L0-1 à D-L0-6), aucune traitée. Les gates suivants rejouent T1 (archlint à part), T2, T3, T4 avec `--base` sur le commit du lot 0, T5, T6 (T7 au lot 2).
+## [2026-11-08] Rejeu - le stock des grenades en surimpression sur la vignette, type équipé à l'encre seule (web seul) - Complété (non commité, relecture demandée)
+
+**Décision technique principale** : le chiffre du compte de charges de la capacité devient un composant partagé, `ui/ReplayIconCount.tsx` (pastille `bg-background/75`, `text-foreground`, coin bas droit, hors du flux, `fade` optionnel), posé par `ReplayAbilityCell` (qui garde son estompage de lecture) et par la puce de grenade. `GrenadeChip` quitte `ReplayInventoryRow.tsx` pour `ui/ReplayGrenadeChip.tsx` (la rangée dépassait 500 lignes), `grenadeMaskOf` pour `ui/grenadeMask.ts` (un export non composant dans le fichier de la puce déclenchait `react-refresh/only-export-components`). La puce n'écrit plus « ×N » : la vignette est enveloppée dans une boîte `relative inline-flex` qui porte le chiffre ; la boîte de grenades garde `grenadesBoxW` et le chiffre, dans la vignette, ne déborde jamais. Sans vignette : libellé suivi du compte à plat (`text-foreground`). Le type équipé ne garde que l'encre `warning` (plus de fond `color-mix`, plus de `rounded-sm px-0.5`, `font-semibold` conservé pour le repli texte) ; le chiffre garde le rendu de l'équipement. Estompage : celui de la boîte (inchangé). Tuile compacte et `GrenadeThrowBadge` inchangés.
+
+**Résultats observés** : fixations `replayTeams.{4v4,6v6}.html` régénérées par `vitest -u` sur `ReplayTeams.dom4v4.test.tsx` seul ; le diff mot à mot ne montre que le contenu et le style des puces de grenade (en-tête du test : septième et huitième mises à jour, avec décomptes). Tests `ReplayTeams.test.tsx` (lecture du chiffre en surimpression, repli texte, encre warning sans fond) et `ReplayPlayerCard.compact.test.tsx` (aucun compte sur la tuile compacte). Mutation : retirer le chiffre de la puce rougit 6 tests (2 fixations, 4 de `ReplayTeams.test.tsx`), vert après rétablissement.
+
+**Conclusion / suite** : rien n'est commité.
+
+## [2026-11-08] Rejeu - le détecteur de menaces : un seul actif par joueur, fin lue plafonnée (web seul) - Complété (non commité, relecture demandée)
+
+**Décision technique principale** : `spawnedObjectPlacements` borne la fin de la pose `sensor` par deux règles (`model/spawnedObjects.ts`). (1) Le lancer suivant du même joueur met fin au précédent : fin = au plus `tracked.t0` de l'objet suivant. Le joueur se lit par la vie qui occupe le slot à l'instant du lancer (`buildLivesBySlot` / `lifeOfSlotAt`, canoniques de `livesPosition.ts`) : clé `xuid:` quand la vie en porte un, sinon `slot:`, espace de clés distinct ; sans vie qui couvre l'image, le slot seul. Tous les capteurs du joueur comptent, de n'importe quel objet porté, situés ou non (le geste a eu lieu) ; deux lancers à la même image ne se coupent pas. (2) La fin lue ne dépasse pas `land` + `SENSOR_READ_END_MAX_MS` (20 600 ms, `threatSensor.ts`, distincte de `SENSOR_DURATION_MS` qui reste le repli sans fin lue) : la clé (slot, génération) se réutilise, une suppression lue tardive peut être celle d'un objet ultérieur. Un capteur sans fin lue garde le repli de 15 s, que le lancer suivant coupe aussi ; une fin coupée ou plafonnée est marquée `endRead` (fin affirmée). Jamais avant le repos. `SpawnedSource` et `drawablePlacements` gagnent `tracks` et `frameIntervalMs` (appelants : `useReplayPlacements`, `ReplayTeams`, tests, tous passent le document entier) ; `spawnedObjectDeployments`, les sons et les autres familles ne changent pas. Aucun changement Go ni de schéma.
+
+**Résultats observés** : 12 tests neufs dans `spawnedObjects.test.ts` ; 5 mutations jouées (retirer la coupure, retirer le plafond, joueur = slot seul, première vie du slot sans fenêtre, vies sans xuid toutes confondues) : chacune rougit au moins un test, vert après rétablissement. Témoin réel `bc4bde17` (schéma 107, normalisé) : 31 poses `sensor` avant comme après ; JGtm (slot 518) 0:09, 0:32, 0:56, 1:16 inchangées sur l'horloge affichée, la dernière finit à 1:28 (lancer suivant, après la mort) au lieu de 1:36 ; le détecteur de StarScreammZ posé à 3:30 finit à 3:51 (20,6 s) au lieu de 7:34.
+
+**Conclusion / suite** : rien n'est commité. Le plafond ne s'applique qu'avec un `frameIntervalMs` au document (sans pas de temps, pas d'horloge non plus).
+
+## [2026-11-08] Rejeu - le joueur qui n a pas quitte la partie reste affiche jusqu au bout du film (schema 107) - Complete (non commite, relecture demandee)
+
+**Decision technique principale** : la fin de la DERNIERE vie d un joueur, quand aucune mort ecrite ne la clot et que l API le declare present a la fin (`match_participants.present_at_completion` vrai, `left_in_progress` faux), est la derniere frame du film, bornee STRICTEMENT avant l ouverture de la vie suivante du slot ; aucun point fabrique (`libs/film/replay/tracks_fin_de_vie_presence.go`, regle de `tracks_fin_de_vie.go`). « A quitte » se lit sur l API, jamais sur l arret des positions. `replay.Participant` gagne `PresentAtCompletion`, `LeftInProgress`, `Deaths` (tous nil = non declare, aucun defaut qui affirme la presence) ; `domain.MatchPlayerFact` : `LeftInProgress` devient `*bool` (plus de COALESCE FALSE), `PresentAtCompletion *bool`, `DeathsDeclared bool`, remplis par la lecture existante `ReplayFactsRepo.playerFacts` (colonnes ajoutees a la meme requete, pas de seconde) puis `replaybuild.participantsDuTableau` ; le collecteur de sync (`killcollector/roster.go`, seconde copie de la meme projection) la porte aussi, par `colonnesDuTableau.participant`, pour que le document interne des porteurs au sync suive la meme regle que la cuisson. Cas qui n etendent pas et se comptent (replis nommes, registre `facts/fallback`) : `repli_fin_de_vie_sans_tableau_api` (participant introuvable, drapeau ou morts NULL, vie sans xuid de cause `film_end`), `repli_fin_de_vie_mort_manquante` (API compte plus de morts que `types.Death` du joueur, aucune tolerance). Une mort ecrite apres l ouverture decide seule (regle existante) ; sans calage, un joueur sans aucune mort ecrite est prolonge, un joueur avec des morts non datables ne se decide pas. Web : aucun changement de code (`lifeEndsOf` lit `endFrame` : une fin a l horizon n est plus une fin close, donc plus de mort neutre) ; deux tests dans `killFeedLogic.test.ts`.
+
+**Resultats observes** : temoins reels (film decode une fois en memoire, documents avant/apres rejoues depuis les faits, base copiee en lecture seule, rien ecrit) : `008e1bba` SloppyTopp8812 dernier point 636, fin 636 -> 1700 (derniere frame 1700) ; `1e26f641` xPIPExGODx 2096, 2096 -> 3092 (3092) ; `15d8d850` JGtm 5620, 5620 -> 5772 (5772). Sur 26 films : 3 245 vies publiees, 113 vies changees (3 %), delta de fin min 1 / mediane 17 / p90 60 / max 1 064 frames, 23 cas sans tableau (vies sans xuid), 0 cas mort manquante, 0 chevauchement de vies (par slot et par joueur). `UsageSummaryRev` NON montee : la regle d attribution est inchangee ; sur ces 26 films seul `CamoMS` change, pour 6 joueurs (+0,3 s a +3 s : un episode de camo ouvert au dernier point court jusqu a la fin prolongee), et la cle de reprise (rev, schema 107 non publie) refait deja tout resume. Goldens d assemblage, fixtures de contrat web et manifeste regeneres par leur procedure ; schema reste 107, chronique v107 completee.
+
+**Conclusion / suite** : instrument `apps/go-api/internal/replaybuild/fin_de_vie_presence_research_test.go` (tag research). A trancher par l utilisateur : le sync (porteurs) suit desormais la regle ; ses lignes deja ecrites ne se refont qu au prochain passage. Le seuil de 0 « mort manquante » sur 26 films n est pas une preuve que la garde ne sert jamais : elle est testee en unitaire.
+
+## [2026-11-08] Rejeu - l'identité d'un équipement porté se lit sur l'objet, plus sur l'annonce du porteur (schéma 107, faits 19) - Complété (non commité, relecture demandée)
+
+**Décision technique principale** : la famille d'un objet ti=37 porté se joignait au rang de l'annonce i48 du porteur dans le MÊME paquet ; le jeu crée deux objets attachés à la réapparition (`ambiguousRank`) et l'équipement de départ avant l'origine du film (`beforeOrigin`) : rien n'était publié, ni dessin, ni son, ni compte. Désormais le record de création porte le GlobalID du tag `eqip` (mot de 32 bits inconditionnel du bloc `object-multiplayer-properties`, relu par `grammar/equipement_porte_identite.go` avec `consumeDefaultStateTI37`, posé dans `CarriedEquipmentRead.GlobalID`). `replay/document_equipement_porte_identite.go` en tire la famille (catalogue de l'énergie : objet porté -> ramassables dont les familles du manifeste doivent s'accorder, puis manifeste direct ; grenade, inconnu, désaccord = jamais publié, compté, aucun repli sur le rang) et le coût (fiche du catalogue dont `carried` est l'identifiant : un seul coût par objet porté au catalogue actuel). `rangsParPaquet`, `nouveauxParPaquet`, `indexDesRangs`, `choisirLeCout`, `coutsParFamille` supprimés ; compteurs `withoutRank`, `ambiguousRank`, `unnamed` supprimés, `noGlobalId`, `grenades`, `unresolved`, `conflicting`, `endedBeforeOrigin`, `readsBeforeOrigin` ajoutés, `beforeOrigin` compte désormais des objets publiés. `carriedEquipment[].family` publié ; `r` = rang de palette de la famille (`AbilityPalette.RankOf`), -1 si le film n'en nomme aucun. Un objet créé avant l'origine est publié, `t0` = 0 (`frame()` rend 0 pour un instant antérieur : la soustraction non signée débordait) ; ses lectures d'avant l'origine ne se publient pas (l'énergie de la frame 0 est la dernière lue avant elle ; activation, pose de faille, objet engendré : comptés). Montée : `grammar.Rev` -> `grammar-2026-11-08`, `SchemaDesFaits` 18 -> 19 (identité dans les lectures), `killsource` et `objectives` à révision constante (empreinte recopiée), `source` à révision constante (`film/types` gagne deux champs), `SchemaVersion` RESTE 107 (jamais commité nulle part : `git log --all -S` vide), entrée de chronique v107 complétée, `UsageSummaryRev` inchangée (le résumé ne lit pas `carriedEquipment`). Le golden de forme du document a été régénéré depuis le golden COMMITÉ (106) pour que le refus « forme changée sans montée » juge contre la dernière version publiée, sans rien assouplir. Web : `carriedFamilyOf` / `carriedIsAbilityRank` (`model/carriedFamily.ts`) lus par `spawnedObjects`, `carriedUseSound`, `carriedUsesLogic` ; un artefact sans `family` garde sa famille par le rang.
+
+**Résultats observés** : 25 films cuits en mémoire par le chemin de production (`BuildBytes`, faits non écrits, un film à la fois, avant puis après), builds 1.4.1 à 1.13.0, Super Fiesta et Arena : objets publiés 1 096 -> 1 339, activations 339 -> 831, objets engendrés 189 -> 656 (situés 99 -> 413), `withCost` 537 -> 1 339, `noCatalog` 468 -> 0, `ambiguousCost` 91 -> 0. Par famille et origine (réapparition ou autre / départ) : capteur 0 -> 233 / 0 -> 8, mur 1 -> 241 / 0 -> 6, champ de réparation 0 -> 78 / 0 -> 1, écran 0 -> 59 / 0 -> 1, répulseur 2 -> 86 / 0 -> 1 ; ramassés inchangés. Non-régression : sur les 628 objets déjà publiés hors grappin et propulseur, famille, rang, `t0`, `t1`, activations, objets engendrés et valeurs d'énergie sont identiques ; seuls changent 80 `n` qui apparaissent (coût désormais établi) et 23 énergies de prise lues au catalogue ; AUCUN désaccord entre rang annoncé et famille lue. Les 468 objets qui disparaissent sont tous grappin ou propulseur (identifiant `0xa53cd143`, l'objet toujours inactif, partagé par les deux) et ne portaient ni énergie, ni activation, ni objet engendré (413 avaient une fin) : décision écrite du brief (ce qui ne se résout pas ne se publie jamais). Identifiants non résolus sur les 25 films : 3 169 (sur les huit builds figés, tous `0xa53cd143`) ; 1 165 grenades écartées. `equipmentChanges`, `equipmentPlacements`, `abilityCharges`, `abilityImpulses`, `equipmentEpisodes`, `knockbacks`, `weaponChanges`, `pickups`, `projectiles`, `tracks`, `identity` : identiques sur les 25 films ; `riftPoses` : 7 -> 7, identiques. Témoin nominal `bc4bde17`, slot 518 : un objet (capteur, rang 22, `t0` 0), 4 activations (76, 324, 552, 755), 4 objets engendrés situés (repos 96, 328, 572, 764). Garde-rail famille x origine sur données réelles : `TestGoldenEquipementOrigines` (8 builds + le film de garde `bc4bde17`), table figée `testdata/equipement_origines.golden`, combinaisons attendues, témoin nominal ; mutation jouée (refuser les objets d'avant l'origine) : rouge sur 4 lignes et 2 combinaisons, vert après retrait. Côté web, témoin réel `RESPAWN_WITNESSES.sensor` : 4 poses fabriquées, 4 déploiements, 4 sons `sensor_activate` (aucun doublon dans la frise entière), usages restants 4 -> 3 -> 1.
+
+**Conclusion / prochaine étape** : rien n'est commité. Un artefact 106 ou 107 déjà cuit est à redécoder (révision de grammaire et numéro des faits changés). Cas hors périmètre non traité : le rendu d'un joueur figé sans position. `go test` complet de go-api : deux échecs sous charge, `mapcatalog` et `duckdbbackup`, verts isolés ; `archlint` dépasse les 10 minutes quand la machine est occupée, vert en 417 s seul.
+
+## [2026-11-08] Rejeu - une vie finit à la mort écrite dans le film (schéma 107) ; chiffre des charges en surimpression - Complété (non commité, relecture demandée)
+
+**Décision technique principale** : (1) `Track.EndFrame` vaut la frame de la mort écrite du joueur quand elle suit le dernier point publié (`libs/film/replay/tracks_fin_de_vie.go`) : première mort du fil du même joueur postérieure à l'ouverture de la vie, dans une frame STRICTEMENT antérieure à l'ouverture de la vie suivante du joueur ou du slot, et dans le film ; placée sur l'axe par le calage déjà résolu (`IdentityRegistry.CalageSiConnu`), sans fenêtre de tolérance, aucun point fabriqué. Calage non résolu (fil non vide) : la fin reste le dernier point et le repli `repli_fin_de_vie_au_dernier_point` se compte, une fois par vie nommée. Montée : `SchemaVersion` 106 -> 107, donc `publication-107` (assemblage seul, verdict « a republier ») ; aucune révision de couche de faits, `SchemaDesFaits` inchangé. `UsageSummaryRev` NON montée : la règle d'attribution du résumé (un geste appartient à la vie qui le couvre) est la même, seule la fenêtre s'allonge, et la clé de reprise du backfill est (`UsageSummaryRev`, `SchemaVersion`). (2) La cellule de capacité écrit le chiffre des charges en surimpression sur le coin bas droit de la vignette (aucune largeur ajoutée) ; « plein » ne s'écrit plus, il est dans l'infobulle ; `abilityChargesFull` supprimée dans chaque langue. Côté web, la croix de mort ne se pose plus à la position de montée d'un bipède dont la vie finit à bord.
+
+**Résultats observés** : témoin `20c703a7` slot 579 : dernier point 3920, fin 3920 -> 3957 ; la ligne fantôme du fil (6:09) disparaît (test `killFeedLogic.test.ts`, `KILL_MATCH_TOL_MS` inchangée). Échantillon de 21 films (faits locaux, un à la fois, rien sous `data/`) : 54 vies sur 1 997 changent de fin (30 de 1 frame, 11 de 2 à 9, 3 de 1 à 5 s, 4 de 5 à 15 s, 6 de 15 s ou plus), aucun chevauchement de vies d'un slot. Les 6 prolongations de 15 s et plus sont des trajets en véhicule dont la fin publiée est exactement la frame de la mort ; sur les huit films de contrat, 8 prolongations longues n'ont aucun trajet publié (5 ont un véhicule à moins de 8 m du dernier point, 3 non) mais chaque vie y a sa mort 1 pour 1. Autres calques qui bougent : épisodes d'équipement et états de mouvement se ferment à la nouvelle fin. Mutations jouées sur le code neuf (3), goldens et fixtures de contrat régénérés par leur procédure.
+
+**Conclusion / prochaine étape** : rien n'est commité. Un artefact 106 est à republier (assemblage seul, depuis les faits). À juger par l'utilisateur : une vie de 15 s et plus sans trajet de véhicule publié montre le joueur figé vivant à sa dernière position jusqu'à sa mort.
+
+## [2026-11-04] Desktop - L23.3 : mise en oeuvre des options retenues (f serveur sans symboles, e images Halo 5 en WebP) - Complété (gate visuel de (e) à l'utilisateur)
+
+**Décision technique principale** : décisions de l'utilisateur du 2026-11-04 : (f) OUI, (e) WebP qualité 85 OUI sous gate visuel, (a)(b)(c) NON (D-9 maintenue), (g) NON.
+(f) : `-s -w` ajouté aux `-ldflags` de `release.yml` (jobs `build-go` et `desktop-build`) et de `build-installer.ps1`, `-X main.version` conservé ; `Makefile` et `desktop-dev.ps1`
+(builds de développement) gardent leurs symboles. (e) : `scripts/convert-halo5-images.mjs` (ffmpeg libwebp), 1 257 PNG remplacés par des WebP ; ECART à la décision, justifié par mesure : seules les plaques
+(308) et le fond sont en qualité 85 ; les emblèmes et les vignettes sont SANS PERTE, car `recolor.ts` lit R, V, B comme trois zones de couleur et le sous-échantillonnage des chrominances d'un WebP avec perte les fait baver
+(pixels écartés de plus de 16 niveaux après recoloration : plaques 2,0 % en moyenne et 13,5 % la pire, emblèmes 3,5 %, vignettes d'emblème 16 %, sans perte 0 %). `teams/` reste en PNG (chemin partagé avec Halo Infinite).
+
+**Résultats observés** : serveur 163 138 322 octets vers 98 608 640 ; images 39,67 Mo vers 8,97 Mo ; installeur 202 663 134 octets (193,3 Mo) vers 159 348 542 octets (152,0 Mo), -21 %. `check-version.sh` vert sur le
+binaire sans symboles (et rouge sur une mauvaise version) ; un panic d'un binaire `-s -w` garde noms, fichiers et lignes (pclntab). `TestE2E` (`e2e_windows`) vert avec le serveur en `-s -w` ; `e2e-install.ps1` code 0
+(installation, deux lancements, arrêt propre, désinstallation). Web : typecheck 0, lint 0 erreur, vitest 1063 fichiers passés ; garde-rail `halo5Images.guard.test.ts` et test Go `TestSPAHandler_ImagesWebPDeLaPage` (image/webp).
+Aucun navigateur ni application lancés hors du test d'installation prescrit : le rendu réel des WebP dans le canvas n'a été vérifié que par décodage libwebp et par les tests.
+
+**Conclusion / prochaine étape** : gate visuel de l'utilisateur sur `C:\Users\Guillaume\Downloads\webp-halo5-avant-apres\comparer.html` (douze paires, brut et recolorié) ; s'il refuse, retirer le commit des images (le commit de (f) reste ; repli = plaques sans perte, environ 22 Mo au lieu de 4). Rapport : `.ai/V8/L23_POIDS_MISES_A_JOUR_2026-11-04.md` §11. Non traité, noté au plan §10 : PNG de `halo_infinite/` (6,6 Mo), logos `teams/`.
+
+## [2026-11-04] Desktop - L23 : mesure du poids des mises à jour et options - Complété (23.1) ; décision 23.2 à l'utilisateur
+
+**Décision technique principale** : aucune décision produit ; mesure et propositions seulement. Composition de l'installeur par famille mesurée sur
+l'installeur du run 41816350092 (extraction 7-Zip, recompression par famille en LZMA dictionnaire 8 Mo mise à l'échelle du flux NSIS solide), diff SHA-256 de
+quatre installeurs 8.1.0 successifs de la CI (runs 41586437921, 41722766811, 41816350092, 41825436589), build réel du serveur avec `-ldflags "-s -w"` (non lancé).
+
+**Résultats observés** : installeur 193,3 Mo (443 Mo décompressés). ffmpeg pèse 47 Mo compressés (158 décompressés), pas 80 ; les images Halo 5 du front 41 Mo (21 %), le serveur Go
+33 Mo (17 %, dont 39 Mo de DWARF décompressés), les fonds de carte 29 Mo. D'une version à l'autre seuls changent le serveur, la coquille et `web/assets` (35 Mo, 18 %) ;
+82 % du téléchargement sont identiques à l'octet près (un commit de documentation seul change quand même serveur et coquille). Le plugin d'updater 2.12.0 ne connaît aucun delta.
+Gains mesurés : serveur `-s -w` -11 Mo ; plaques Halo 5 en WebP qualité 85 -27 Mo (échantillon de 21) ; ffmpeg à côté -47 Mo (contredit D-9). Ffmpeg réduit (-30 à -40 Mo) non mesuré.
+
+**Conclusion / prochaine étape** : rapport `.ai/V8/L23_POIDS_MISES_A_JOUR_2026-11-04.md`. Recommandation : (f) `-s -w` avant le tag, (e) recompression des images si le rendu
+convient, pas de ffmpeg réduit, (a)/(c) seulement après un retour réel et une réouverture de D-9 par l'utilisateur. 23.2 (U) et 23.3 restent ouverts. `cargo audit` déjà livré (22c.2).
+
+## [2026-11-04] Desktop - L22c : revue adversariale V (3 P1 + 6 P2 + 1 P1 doc) - Complété côté code (22c.z gate de l'utilisateur)
+
+**Décision technique principale** : (V1) le modèle NSIS de Tauri exécute `DeleteRegValue HKCU ...\Run "${PRODUCTNAME}"` hors mise à jour sans regarder la commande : le crochet de début lit la valeur dans `$LevelUpRunValue` avant d'appeler le serveur, le crochet de fin la réécrit si elle ne visait pas `$INSTDIR\` (début de chaîne, guillemet initial retiré, casse ignorée : la règle de `startupentry.CommandTargets`). (V2) `CheckIfAppIsRunning` passe en tête du crochet (le second appel du modèle ne trouve plus rien à fermer). (V3) la garde `$UpdateMode` ne couvre que le flux de l'updater : une mise à jour manuelle ou `/P` retire puis repose au prochain lancement, documenté (ADR D-28, runbook, COMMANDS EN+FR), garde conservée. (V4) `schedtask.Manager.RemoveIfTargets` lit la définition (`/Query /TN /XML`, UTF-16 ou page de code, entités XML) et n'agit que si l'action lance le serveur du dossier désinstallé, sinon `tache=foreign` ; définition illisible = erreur, jamais de suppression à l'aveugle. (V5) le témoin porte `exit=` ; l'e2e asserte `exit=0`, `ok=true`, `demarrage=absent|foreign`, `tache=absent` et le nom de la tâche de la racine jetable ; la branche `SetEnvironmentVariable` n'est pas jouée (vraie racine de données), tenue par un garde de texte. (V6) `startupentry` ajouté au job Windows CGO. (V7) garde Rust sur l'ordre des lignes, test Go du câblage (`newUninstallCleanupDeps`). (V8) le verrou solo est par racine de données, pas par machine : documenté avec sa limite. (V9) `CodeSortieVerrouTenu = 3`. (V10) `replayregen/service.go` 579 -> 476 lignes par extraction du décompte vers `count.go`.
+
+**Résultats observés** : voir le rapport de clôture (gates Go, Rust, installeur et e2e avec exit codes). `archlint` avec `-race` dépasse le délai de 10 minutes (le test `TestNoLocalPorteeComparison` seul y passe plus d'une minute) : joué sans `-race`, délai de 30 minutes. L'essai de bout en bout ne joue ni la branche « `LEVELUP_DATA_DIR` absente » du désinstalleur ni la réécriture d'une valeur `Run` étrangère (vraie racine de données, vraie clé `Run`).
+
+**Conclusion / prochaine étape** : 22c.1 à 22c.6 restent `[x]` ; 22c.z (désinstallation réelle avec démarrage Windows et tâche planifiée actifs, y compris une entrée d'une autre copie qui doit survivre) à l'utilisateur, puis le tag. Non traité, noté : les barres obliques de la commande `Run` ne sont pas normalisées côté NSIS (la coquille écrit la forme Windows).
+
+## [2026-11-04] Desktop - L22c : finitions avant le tag (désinstallation propre, cargo audit, verrou solo du CLI, décompte des refus par règle) - Complété côté code (22c.z gate de l'utilisateur)
+
+**Décision technique principale** : (22c.1) le nettoyage de désinstallation est un mode du serveur livré, `levelup-server.exe -mode uninstall-cleanup`, en Go : le désinstalleur NSIS n'a sous la main que cet exécutable. Il retire l'entrée de démarrage de l'utilisateur (`HKCU\...\Run` et `StartupApproved`, nouveau paquet `internal/platform/startupentry` derrière une interface) seulement si sa commande vise le dossier du programme désinstallé, et la tâche planifiée de la racine de données (`schedtask`, nom par racine) ; il n'ouvre aucune base, ne prend aucun verrou, ne touche jamais à la racine de données. Le crochet `NSIS_HOOK_PREUNINSTALL` l'appelle (`nsExec::ExecToLog`, délai 60 s) hors du flux de mise à jour (`$UpdateMode <> 1`) ; la preuve de bout en bout est un fichier témoin (`LEVELUP_UNINSTALL_WITNESS`), l'e2e ne pose aucune entrée ni tâche réelle. (22c.2) job `desktop-audit` (Linux, `cargo-audit` 0.22.2 épinglé, vulnérabilités bloquantes, avis d'entretien en avertissement). (22c.4) `backfill-killsource` prend le verrou solo en refus immédiat (sortie 3, détenteur nommé), sauf `--dry-run` et `--credit-only`. (22c.5) le panneau d'archive des films passe au badge partagé. (22c.6) le décompte de régénération écarte d'emblée les matchs que la cuisson refuse par règle (`Deps.RefusedByRule`, prédicat `analysis.SQLModeNonGere`). (22c.3) la condition `feat/desktop-*` du job Windows CGO est retirée (commit en dernier).
+## [2026-11-04] Desktop - L22c : finitions avant le tag (désinstallation propre, cargo audit, verrou solo du CLI, décompte des refus par règle) - Complété côté code (22c.z gate de l'utilisateur)
+
+**Décision technique principale** : (22c.1) le nettoyage de désinstallation est un mode du serveur livré, `levelup-server.exe -mode uninstall-cleanup`, en Go : le désinstalleur NSIS n'a sous la main que cet exécutable. Il retire l'entrée de démarrage de l'utilisateur (`HKCU\...\Run` et `StartupApproved`, nouveau paquet `internal/platform/startupentry` derrière une interface) seulement si sa commande vise le dossier du programme désinstallé, et la tâche planifiée de la racine de données (`schedtask`, nom par racine) ; il n'ouvre aucune base, ne prend aucun verrou, ne touche jamais à la racine de données. Le crochet `NSIS_HOOK_PREUNINSTALL` l'appelle (`nsExec::ExecToLog`, délai 60 s) hors du flux de mise à jour (`$UpdateMode <> 1`) ; la preuve de bout en bout est un fichier témoin (`LEVELUP_UNINSTALL_WITNESS`), l'e2e ne pose aucune entrée ni tâche réelle. (22c.2) job `desktop-audit` (Linux, `cargo-audit` 0.22.2 épinglé, vulnérabilités bloquantes, avis d'entretien en avertissement). (22c.4) `backfill-killsource` prend le verrou solo en refus immédiat (sortie 2, détenteur nommé), sauf `--dry-run` et `--credit-only`. (22c.5) le panneau d'archive des films passe au badge partagé. (22c.6) le décompte de régénération écarte d'emblée les matchs que la cuisson refuse par règle (`Deps.RefusedByRule`, prédicat `analysis.SQLModeNonGere`). (22c.3) la condition `feat/desktop-*` du job Windows CGO est retirée (commit en dernier).
+
+**Résultats observés** : voir le rapport de clôture (gates Go, Rust, web, installeur et e2e avec exit codes). `cargo audit` local : 0 vulnérabilité, 11 avertissements (arbre transitif tauri), sortie 0. Le registre est exercé sur une clé privée aléatoire de HKCU, jamais la vraie clé Run.
+
+**Conclusion / prochaine étape** : 22c.1 à 22c.6 `[x]` ; 22c.z (désinstallation réelle avec démarrage Windows et tâche planifiée actifs) à l'utilisateur, puis le tag. Non traité, noté au plan §10 : `cmd/killsource` (outil de diagnostic) sans verrou solo ; flux de mise à jour réel du désinstalleur non joué ; désinstallation non jouée contre un vrai registre `Run` / un vrai planificateur.
+
+## [2026-11-03] Desktop - L22b : revue adversariale U (1 P0 + 1 P1 + 6 P2) - Complété côté code (22b.z gate de l'utilisateur)
+
+**Décision technique principale** : un relecteur Opus a trouvé 1 P0 (deux décodages de film en même temps : l'étape kill source du post-sync décode DANS le serveur sans le verrou solo pendant que l'enfant de la file de régénération décode), 1 P1 (les nouveaux essais d'un film occupé contournent la porte du mode jeu et la pause) et 6 P2. Décisions du pilote : verrou solo (`filmproc.AcquireSolo`, refus immédiat) pour TOUT décodage dans le processus (`RunPostSync` avant `CollectMatches` ; occupé = passe reportée, compteur `killsource_postsync_reportee_verrou_decodage`) ; la cuisson après synchro qui trouve le verrou tenu REPORTE (`reportes_verrou`, une ligne INFO par cycle, jamais un échec : l'ancien test « verrou tenu = échec » est réécrit) ; la file cède la place à la synchro (`Deps.SyncRunning` = `Coordinator.SyncRunning`, consulté par `waitTurn` entre deux films ET à chaque nouvel essai) ; décompte par fichiers `.meta` voisins des artefacts (schéma, couches, taille, version de l'application productrice ; fait foi s'il n'est pas plus ancien que l'artefact et déclare sa taille, sinon lecture unique et réécriture), décompte seulement au démarrage / fin de file / `POST .../rescan`, sous la porte du mode jeu ; un seul verrou d'écriture de `app_settings.json` (`Store.Update`, garde-rail `store_update_guard_test.go`) ; fin de file = `running=false` AVANT le décompte final (`checked=false` pendant), drapeau écrit sous le verrou du service ; décompte numéroté, un décompte plus ancien que le dernier publié est jeté ; artefact produit par une version plus récente que le binaire jamais « en retard » (semver). Corrigé à part, sur demande du coordinateur : `Registry.GameProcessNames` déterministe (commit séparé).
+
+**Résultats observés** : voir le rapport de clôture (gates, exit codes). Mesure (test) : 2 000 artefacts de 16 Ko, premier décompte 33 Mo lus, second 108 Ko.
+
+**Conclusion / prochaine étape** : gate utilisateur 22b.z. Non traité : `levelup backfill-killsource` (processus à part, serveur arrêté) ne prend pas le verrou solo ; le garde `wouldDowngrade` ne refuse pas l'écrasement d'un artefact de version plus récente (le retour arrière en réécrit encore à l'ouverture ; seule la file ne les refait pas) ; sans watcher, `SyncRunning` est nul et seul le verrou solo arbitre.
+
+## [2026-11-03] Desktop - L22b : retours du gate (22b.1 retour d'enregistrement, 22b.2 régénération des rejeux) - Complété côté code (22b.z gate de l'utilisateur)
+
+**Décision technique principale** : (22b.1) le site n'a pas un motif unique de confirmation ; retenu celui du plus grand nombre d'onglets, le badge flottant de `SettingsPage` (« Enregistré » 2 s, « Erreur » 4 s), extrait en module partagé (`saveFeedbackStore.ts`, `SaveStatusBadge.tsx`) et appelé par les cartes de l'onglet Application ; le texte « Enregistré. » sous les formulaires et ses clés sont supprimés, le refus rédigé reste sous le champ. (22b.2) la source de vérité du « en retard » est le FICHIER rangé (`replaybuild.ArtifactDigest`), pas `match_usage_films_latest.artifact_schema` (absente tant que la dérivation n'a pas tourné, aveugle aux révisions de couche) ; la file rejoue `RunReplayBuild` + dérivations, un film à la fois, sous la porte du mode jeu, ne part que sur `POST start` (ou reprise d'une file lancée : `replay_regen_pending` laissé par un arrêt du serveur) ; capacité `ReplayRegen`.
+
+**Résultats observés** : Go build, vet, tests ciblés (replayregen sous `-race`, settings, api, wire, config, archlint complet, cmd/server, service) et golangci-lint `--new-from-merge-base` verts ; web typecheck, lint (0 erreur), lints d'outils, suite vitest complète, manifests et fraîcheur des types verts. Deux gardes de clés de requête (`keys.locale`, `keys.title-slug`) ont demandé de classer `replayRegen`. Le ratchet cross-feature (P8.5, plafond 7) a refusé la première implantation (3 imports de plus) : le composant partagé vit sous `components/replay-regen/`. Le ratchet `RepoRoot` a refusé une lecture de `cfg.RepoRoot` (corrigé : `cfg.Roots().Resources`). Aucune cuisson réelle, aucun lancement de l'application, aucune donnée réelle touchée.
+
+**Conclusion / prochaine étape** : 22b.1 et 22b.2 `[x]` ; 22b.z (confirmation d'enregistrement, bandeau et file de régénération sur les vraies données, dont le temps du décompte) à l'utilisateur. Constats non traités au plan §10 (Firefight d'avant le 2026-10-15 comptés jusqu'au premier refus, panneau d'archive des films qui garde son « Enregistré. », coût du décompte à mesurer).
+
+## [2026-11-03] CI Go - grammar en trois lots - Complété (commit local, pas de push)
+
+**Décision technique principale** : le lot `film-grammar-reste` (module `libs/film`, `./internal/grammar`) a dépassé `-timeout 600s` deux fois en 24 h (runs 41505008653 et 41581739310) et pris 440 s sur un run vert (41572711824) ; le lot lourd du même run pesait 417 s, soit 856 s pour le paquet. Trois lots de ~285 s plutôt que deux moitiés : `film-grammar-lourd` (`run:grammar-lourds`, 4 tests), `film-grammar-moyen` (`run:grammar-moyens`, 15 tests), `film-grammar-reste` (`skip:grammar-lourds,grammar-moyens`). `scripts/ci_go_shard.sh` admet désormais une partition complémentaire (n lots `run:` de listes distinctes et sans test commun, un seul `skip:L1,...,Ln`) ; archlint étendu (listes multiples, six refus de plus). Les tests qui partagent un décodage mémoïsé du paquet (`fermetureMemo`, `equipesMemo`, `etatsDeLaBobine`, `bilanDeLaBobine`) restent dans le même lot.
+
+**Résultats observés** : rejeu de la partition sur les JSONL des runs verts (script jetable) : 943 tests de premier niveau, chacun dans exactement un lot ; poids 289,6 / 285,8 / 280,9 s (avant : 416,5 et 439,9 s), soit 405 / 400 / 393 s à 1,4 fois plus lent. L'objectif de 250 s par lot n'est pas atteignable à trois lots (856 / 3 = 285 s) : il faudrait quatre lots (~215 s).
+
+**Conclusion / prochaine étape** : relever les durées du résumé de la CI au prochain run ; un quatrième lot ne se justifie qu'après un nouveau dépassement. Les durées par test viennent d'un run, le partage du décodage mémoïsé est tenu par construction, mais un coût partagé non mémoïsé qu'on n'aurait pas vu se payerait deux fois.
+
+## [2026-11-03] Desktop - L22 : revues adversariales S (transfert, sauvegarde) et T (diagnostic, web) - Complété côté code (commits locaux, pas de push)
+
+**Décision technique principale** : deux relecteurs Opus ont trouvé S 2 P1 + 4 P2 et T 4 P1 + 5 P2 ; tous corrigés, chacun avec un test. Décisions du pilote : (D-a) la restauration se lance par `levelup-server.exe -mode restore` (l'installeur ne livre pas levelup.exe), la commande `levelup backup restore` en est l'alias de la même fonction (`parquetbackup.RunRestoreCommand`, drapeaux compris) ; (D-b) l'export emporte les matchs du joueur ENTIERS (tous les participants, événements, journal des morts, rangs, stats d'objectif) parce qu'un match importé à moitié restait incomplet pour toujours (`knownset` le range parmi les connus, `SharedPersister` ne réécrit pas un registre existant) ; l'import est borné aux matchs où le xuid attendu figure parmi les participants de l'archive, et une colonne `id` que la table locale remplit n'est pas reprise (les vues `_latest` départagent par `(written_at, id)`). Verrou d'instance pris par TOUS les profils au démarrage (la restauration ne passe jamais outre, `--force` compris). Bail de sauvegarde pris et rendu par table, échéance de 2 minutes par table. Diagnostic : clés interdites ancrées sur des noms de secrets (jamais un mot dans un nom plus long : `players_with_token`, `scheduled_refresh`, `TokenVault` restent), expurgation consciente du JSON ligne à ligne (`ScrubLog`), valeur bornée au guillemet.
+
+**Résultats observés** : voir le rapport de clôture (gates Go, web, exit codes). Preuves : test d'intégration export -> import -> `knownset` sur le vrai schéma des migrations ; mutations vérifiées du paquet diagnostic (inverser chacun des huit filtres fait rougir un test). NON FAIT, et dit : T5 (faire entrer les routes sous capacité dans openapi.yaml) a été essayé puis abandonné : le routeur de contrat est comparé au contrat dans les deux sens par six garde-rails, il faudrait séparer routeur de contrat et routeur de démonstration ; les quatre types web restent écrits à la main, commentaires rendus vrais et liste datée `MANUAL_CAPABILITY_TYPES` dans `lib/api/response-types.guard.test.ts`.
+
+**Conclusion / prochaine étape** : relecture par le pilote puis PR. Constats non traités : `weapon_kills` n'est pas exporté (absent du schéma Halo Infinite, pas d'export Halo 5) ; les tables dérivées d'un film (vies, usages, tirs) ne voyagent pas, elles se recalculent depuis le film que l'application charge elle-même ; un test de bail réel entre deux tables (écrivain concurrent) reste à mesurer au gate 22.z sur de vraies données.
+
+## [2026-11-03] Desktop - L22 : données et diagnostic (22.a à 22.d) - Complété côté code (22.z gate de l'utilisateur)
+
+**Décision technique principale** : (a) la sauvegarde périodique est un jeu de Parquet zstd + schéma + configuration + manifeste SHA-256 dans un dossier choisi, construit dans un `.partial-*` renommé à la fin, lu par `duckdb.WithHeldRead` (bail d'écriture à attente bornée, même porte que le CHECKPOINT périodique : base occupée = sautée puis reprise, sinon jeu partiel ; aucune instruction d'écriture dans le paquet, garde-rail testé) et restaurée par `levelup backup restore` (verrou d'instance, sommes vérifiées, importeur existant) ; (b) l'export hébergé est une liste fermée de tables filtrées sur le joueur désigné par le jeton (256 bits, 15 min, usage unique) ou la session, un export par heure, l'import est un persister INSERT-only dédié (`persist.ImportPersister`, intersection des colonnes, clé déjà présente jamais réécrite, une transaction par base) après vérification de l'archive (https, aucune redirection, entrées contre la liste fermée, sommes, xuid = joueur suivi) ; (c) le rapport de diagnostic est un zip dont tout passe par deux barrières (clés interdites retirées, `Scrub` sur le texte des journaux) ; (d) le plafond mémoire est le `memory_limit` de DuckDB (connexion, démarrage, bases ouvertes), en MiB, 0 = défaut du serveur (512 Mo). Choix : dossier = champ texte validé par le serveur (pas de sélecteur natif, la page n'a aucun canal vers la coquille), titre par défaut seulement pour l'export/import, lignes des autres joueurs d'un match non exportées. Web délégué à un agent Sonnet (carte « Données », import, export du site, bouton de diagnostic), relu sur pièces.
+
+**Résultats observés** : `go build ./...` 0, `go vet ./...` 0, `go test` des paquets du lot 0 (ops, duckdb, settings, config, api, scheduler, archlint, cmd/server, cmd/levelup, transfer, persist, service, domain), `-tags=integration -p 1` ops + duckdb + persist + transfer 0, golangci-lint (`--new-from-merge-base=origin/release/v8.1.0`) 0 issue, `openapi-gen -check` 0 ; web `typecheck` 0, `lint` 0 (27 avertissements préexistants), vitest 1057 fichiers / 10 901 tests verts ; témoins (jeu de sauvegarde Parquet, archive d'export, rapport de diagnostic) dans le scratchpad `l22/`. Ratchets archlint rencontrés puis tenus : littéraux FR, `users.json` par `userstore.FilePathIn`, `os.Remove` journalisé, lectures de profil hors résolveur ; allowlist datée ajoutée pour le writer de `service/site_import.go`.
+
+**Conclusion / prochaine étape** : 22.a à 22.d `[x]` ; 22.z (sauvegarde vers un dossier réel, rapport de diagnostic, import depuis le site) à l'utilisateur. Constats non traités (plan §10) : l'installeur ne livre pas l'outil `levelup` (restauration sur PC neuf depuis un dépôt), clé `backup_interval` partagée avec restic, durée du bail pendant l'export à mesurer sur les vraies données, filtre xuid de l'export à constater sur la base hébergée.
+
+## [2026-11-03] Desktop - L21b : revues adversariales Q (coquille) et R (serveur) - Complété côté code (commit local, pas de push)
+
+**Décision technique principale** : deux relecteurs Opus ont trouvé Q 2 P1 + 5 P2 et R 1 P0 + 3 P1 + 2 P2 ; tous corrigés, chacun avec un test. Décisions du pilote : auto-sync ACTIVE par défaut en desktop (capacité `AutoSyncByDefault`, clé absente seulement, valeur écrite jamais écrasée), nom de tâche planifiée par racine de données. R1 : le sondage du jeu fait son premier relevé SYNCHRONE avant toute tâche lourde (`armGameWatch`) et la porte reste fermée tant qu'aucun relevé n'a eu lieu (`Mode.ExpectFirstPoll`). R2 : l'étape kill source de l'après-synchro passe par la même porte (reportée, rattrapée par le backlog relu à chaque cycle). R3 : `OnGameClosed` rend une issue (`SyncRequested`, `SyncCovered`, `SyncDisabled`), « déclenchée » ne se compte que si une synchro est demandée (`game_mode_sync_skipped_total` sinon). R4 : `buildAll` ramenée à 76 lignes. R5 : réglage actif au démarrage = `Ensure /F` toujours. R6 : `LevelUp\Refresh-<8 hex>` (empreinte de la racine). Q1 : tout changement d'icône par `run_on_main_thread`, langue comparée RÉSOLUE (un démarrage réduit ne recrée plus l'icône). Q2 : démarrage réduit sans MAXIMIZED au lancement, restauré à la première montre. Q3 : gestionnaire du menu global enregistré une fois. Q4 : présence et approbation du démarrage lues dans le registre, une désactivation de l'utilisateur est respectée. Q5 : `outcome=requested`. Q6 : relais natif limité au joueur local (jeton de rafraîchissement). Q7 : serveur mort fenêtre cachée = fenêtre montrée, `sync_skipped phase=` journalisé. Corrigé en passant (CI Linux) : les tests de `schedtask` construisent des chemins absolus de l'OS courant.
+
+**Résultats observés** : voir le rapport de clôture (gates Go, Rust, web). Non fait : exécution Linux de `schedtask` (le build Linux de go-api exige CGO/DuckDB, `GOOS=linux go vet` impossible depuis Windows).
+
+**Conclusion / prochaine étape** : relecture par le pilote puis PR. Constat non traité : une panne de démarrage (`failed`) fenêtre cachée n'est pas non plus montrée (seul le serveur MORT l'est, comme demandé) ; l'ancienne tâche `LevelUp\Refresh` posée par un lot L21.e non publié n'est pas migrée.
+
+## [2026-11-02] Desktop - L21b : vivre avec le jeu (21.a à 21.e) - Complété côté code (21.y gate de l'utilisateur)
+
+**Décision technique principale** : la coquille ne peut pas appeler l'API du serveur (cookie `HttpOnly`, aucune commande exposée à la page) ; les deux sens passent donc par les tubes privés : serveur vers coquille par deux événements stdout (`notification`, `shell_settings`, même écrivain unique, ADR 0045 D-2), coquille vers serveur par des commandes sur stdin (`sync`), dont l'EOF reste l'ordre d'arrêt (D-4). Mode jeu = énumération ToolHelp32 des noms de processus seule (`gameproc`), porte `HeavyWorkAllowed` consultée AVANT chaque lancement (cuisson des rejeux, quatre boucles lourdes), jamais un kill ; fin de partie = `RequestCatchUp` avec anti-rebond de 60 s. Toute la logique de la coquille (icône, croix, menu, démarrage réduit, entrée de démarrage) est pure et testée dans la bibliothèque (`shell_settings`, `autostart`, `launch`, `native_notice`), `main.rs` ne fait qu'exécuter. Tâche planifiée : définition XML UTF-16 (`/XML`) et non `/TR` (limite de 261 caractères, réglages de reprise après veille et de batterie), existence lue par la liste CSV des tâches (le code de sortie de `/Query /TN` ne distingue pas l'absence d'un refus).
+
+**Résultats observés** : réglages (b) à (e) coupés par défaut, détection du jeu active ; Go (gameproc, scheduler, replayartifacts, native, schedtask, cmd/server, handlers, archlint, e2e_windows) et Rust (143 tests de bibliothèque, 18 de contrat contre le faux serveur, gardes de texte) verts, clippy `-D warnings` propre ; le vrai `schtasks.exe` accepte la définition (test à étiquette `e2e_windows`, tâche `LevelUp-test-<aléa>` jamais déclenchée et supprimée) ; aucune entrée de démarrage ni tâche réelle de LevelUp créée sur ce poste. Écarts : `HaloInfinite.exe` posé dans le descripteur built-in (son `title.toml` est ignoré, ADR 0025) ; clic sur une notification = seconde ouverture interceptée par l'instance unique (le plugin n'a pas de rappel de clic sur le bureau).
+
+**Conclusion / prochaine étape** : 21.a à 21.e `[x]` ; 21.y (zone de notification, démarrage avec Windows, tâche planifiée, notification native, mode jeu pendant une partie) à l'utilisateur. À constater au gate : le clic sur une notification, une éventuelle console brève au passage de la tâche planifiée, l'arrêt de la cuisson pendant une vraie partie. Non traité (§10) : la désinstallation laisse l'entrée de démarrage et la tâche.
+
+## [2026-11-02] Desktop - L21a : revues adversariales O (authentification) et P (web, médias) - Complété (commit local, pas de push)
+
+**Décision technique principale** : la connexion par le navigateur échange son code avec un client Azure PUBLIC explicite (identifiant fixe de l'application partagée, aucun secret, jamais lu dans l'environnement), et `AuthCompletion` purge le cache process des HaloTokens après chaque écriture réussie, comme le SSO du site. Côté web, l'état et le sondage de la connexion par le navigateur remontent dans l'étape de connexion pour survivre à la bascule vers le code d'appareil ; la barre latérale publie sa largeur réelle (le volet des référentiels la lit) et tient l'état de « À propos » au-dessus du basculement replié / déplié ; décision du pilote : un choix manuel qui coïncide avec `auto` remet la préférence à `auto`.
+
+**Résultats observés** : chaque correction porte un test vu échouer sans elle (Échap sur menu épinglé, `Ctrl+B` en saisie, focus rendu, branchement `media_h264_missing` retiré) ; la requête `/token` capturée ne porte jamais `client_secret`, même avec `SPNKR_AZURE_CLIENT_SECRET` posé ; le garde-rail du lien de la marque réunit trois copies en un composant.
+
+**Conclusion / prochaine étape** : O 1 P1 + 1 P2, P 2 P1 + 7 P2 corrigés ; 21.z (flux Azure réel) reste le gate de l'utilisateur.
+
+## [2026-11-02] Desktop - L21a : connexion par le navigateur, barre repliable, communauté et message sans encodeur (21.00, 21.0, 21.0b, 21.0d) - Complété côté code (21.z gate de l'utilisateur)
+
+**Décision technique principale** : (21.00) la connexion par le navigateur réutilise le registre des tentatives et le sondage du code d'appareil : le démarrage (`GET /api/v1/auth/xbox/login`, Huma) ouvre une tentative liée à la session de la coquille (state de 256 bits, PKCE S256, langue de la page), le retour (`GET /auth/xbox/callback`, sans cookie, `Host` localhost ou 127.0.0.1 du port lié, derrière `LoopbackOnly`, state à usage unique de 10 minutes) échange le code et met la tentative au statut authorized ; le sondage existant la remet à la session et passe par la même stratégie post-flux, donc par le point d'arrivée unique `AuthCompletion` (ex-`DeviceCodeCompletion`, renommé). Le garde de la coquille n'ouvre QU'UNE route sans cookie (`AllowBrowserCallback`, capacité `LoginViaBrowser`). (21.0) trois états de préférence pour la barre latérale (auto, replié manuel, déplié manuel), `matchMedia` sous 1 100 px, Ctrl+B, `localStorage` sous `try/catch`, barre d'icônes de 56 px avec infobulles et menu volant en `position: fixed` (la zone des sections défile), 16 glyphes Lucide copiés. (21.0b) capacité `CompareAccounts` lue par `L1Tab.deploymentCapability`. (21.0d) verdict définitif de la sonde média publié par `/bootstrap` (`media_h264_missing`) et `/admin/health`, bloc sur la page Médias.
+
+**Résultats observés** : flux complet joué en Go avec un Azure simulé qui vérifie le PKCE et l'adresse de retour (state faux, rejoué, expiré, refus Microsoft, échec d'échange, point d'arrivée appelé une fois, jeton écrit pour le profil suivi) ; garde de la coquille testé méthode par méthode et chemin par chemin ; Playwright headless sur `vite preview` (12 tests, témoins `scratchpad/l21a/temoins/`) ; le gate web complet a trouvé un garde-rail que les tests ciblés ne voyaient pas (types de réponse écrits à la main : entrée datée ajoutée, la route étant hors du document généré).
+
+**Conclusion / prochaine étape** : 21.00, 21.0, 21.0b et 21.0d `[x]` ; 21.z (flux Azure réel, barre repliée, classements, message média) à l'utilisateur. Risque principal au gate : l'échange du code sans secret client (voir §10 du plan). Les items (a) à (e) de L21 restent à l'autre session.
+## [2026-11-08] Plan médias et KPI : clôture de l'implémentation — En cours (fusion à venir)
+
+**Décision technique principale** : les étapes M0 à M8 et K1 à K3 sont closes sur `feat/replay-vitesse-1-5`. Deux revues indépendantes de la partie médias (9 constats, 8 corrigés, 1 consigné) et une de la partie KPI (2 constats corrigés).
+
+**Résultats observés** : lint, tests de briques, types, 10 810 tests web, 202 paquets Go et 204 en intégration verts. `make gate-push` rouge sur `replay-equiv`, film `11de8353` : écart identique reproduit sur le commit d'avant le chantier, aucun fichier de rejeu modifié.
+
+**Conclusion / prochaine étape** : vérification visuelle de l'utilisateur (après la recuisson locale en cours), accord de fusion, tour donné par la session de coordination, rebase sur `origin/release/v8.1.0`, CHANGELOG, CI, PR.
+
+## [2026-11-08] Plan médias K2 (revue) : un match en échec empêche de noter la révision — Complété
+
+**Décision technique principale** : revue de la partie K, 2 constats recevables, tous corrigés. P1 : le rejeu LUSR journalise un match en échec sans le rendre ; `skill.WithMatchFailureCounter` le compte, `recompute` rend `ErrPartialRecompute` (via `Do`, à tous les demandeurs) et `ApplyScoringRevision` ne note alors rien. Arbitrage de l'utilisateur : l'exclusion d'un match ne doit pas échouer pour l'utilisateur, `RecomputeAfterExclusion` journalise l'erreur partielle et rend `nil` (`RecomputePending` reste vrai, une demande répétée recalcule). P2 : tests du saut d'un profil sans base joueur et de l'invalidation des caches de lecture.
+
+**Résultats observés** : trois mutations vérifiées (erreur sur compteur non nul, invalidation des caches, filtrage de `ErrPartialRecompute`), chacune fait échouer son test. `skill_v2_shadow.go` +7 lignes. Gate rendu à l'utilisateur dans le message de clôture.
+
+**Conclusion / prochaine étape** : K3 (ADR 0047, discipline de révision dans la checklist de livraison ; la case K3.4 reste à statuer par le pilote).
+
+## [2026-11-08] Plan médias K2 : recalcul automatique des KPI au démarrage — Complété
+
+**Décision technique principale** : `MatchRecomputer.ApplyScoringRevision` (dans `match_recomputer.go`) compare la révision rangée dans `sync_meta` à `skill.ScoringRevision()`, rejoue notes de performance et LUSR par la coalescence des exclusions, et ne range la révision qu'après succès, sous lease d'écriture (D14). Service `scoringrevision` (port `ScoringRevisionApplier`, titres portant `CapLUSR`, profils `AuthOnly` ignorés, une erreur ne retient pas les autres joueurs), câblage `NewScoringRevision`, tâche de démarrage `exceptDemo` suivie. K2.0 : `batchComputePerformanceScores` rend l'erreur d'écriture des notes après nettoyage et résumé ; aucun appelant (post-sync, backfill, import, outil) ne devient bloquant.
+
+**Résultats observés** : gate passé (sorties dans le message de clôture). Mutation vérifiée : retirer l'erreur de K2.0 fait échouer les deux tests d'écriture des notes. Écarts : un profil sans fichier de base joueur est sauté sans création de base ; l'échec d'écriture est simulé par un changement de type de colonne (renommer ou retirer une colonne est réparé à l'ouverture de la base). Un profil sans xuid recalcule à vide, noté en section 8.
+
+**Conclusion / prochaine étape** : K3 (ADR 0047, discipline de révision dans la checklist de livraison, revue adversariale de la partie K).
+
+## [2026-11-08] Plan médias K1 : révisions des formules et garde-rail — Complété
+
+**Décision technique principale** : deux constantes de révision (`PerformanceScoreRev`, `LUSRRev`) composées par `ScoringRevision()` (D14), placées dans `internal/sync/skill/scoring_revision.go` (le ratchet `TestSyncRootPackageFrozen` interdit un nouveau fichier à la racine de `sync/` ; K2.1 s'écrira dans `match_recomputer.go`). Garde-rail `TestScoringParametersMatchRevision`, resté dans `sync` pour lire `perfWindowSize` : deux empreintes SHA-256, une par révision, chacune comparée à sa table `{révision -> empreinte}`. Périmètre ouvert au-delà de `skill_config.go` : `perfWindowSize` et `perfFallbackDurationSeconds` (littéral 600 promu en constante), `QuitSecondaryFactor`, `games.DefaultEffectiveHpToKill`, valeurs par défaut exportées de `skill_v2` et du solveur `ep`.
+
+**Résultats observés** : gate passé (sorties dans le message de clôture). K1.3 : trois mutations temporaires (poids KPM du score relatif, poids du score composite, `perfWindowSize`), chacune fait échouer le bon sous-test et lui seul, toutes annulées. Limite assumée, consignée en section 8 du plan : les littéraux en ligne illisibles hors du paquet `skill` et les changements de logique sans changement de nombre ne sont pas détectés ; la révision se change alors à la main.
+
+**Conclusion / prochaine étape** : K2 (recalcul automatique au démarrage) ; K3.2 documente la discipline de révision.
+
+## [2026-11-08] Plan médias M8.2 et M8.3 : ADR 0046 et schéma des médias — Complété
+
+**Décision technique principale** : ADR 0046 (anglais, court) couvre D1 à D13, D16 et D17 tels qu'écrits dans le plan (D4 et D9 suivent le tableau). Ligne `0046` ajoutée à la liste des ADR de `CLAUDE.md`. Skill `db-schema` : section `media_files` (identité, `source_*`, `status` `missing`/`deleted`, `file_stem` figé).
+
+**Résultats observés** : gate passé, sorties réelles : `make go-api-lint` sortie 0, « 0 issues » pour chaque module ; `make libs-test` sortie 0 ; `go test ./... -count=1` sortie 0 ; `go test -tags=integration ./internal/persist/... ./internal/sync/... -count=1` sortie 0, aucun FAIL. Aucune correction du code.
+
+**Conclusion / prochaine étape** : partie M documentée ; reste M7.11 (gate visuel utilisateur), puis la partie K.
+
+## [2026-11-08] Plan médias M8.1 : corrections de la revue adversariale — Complété
+
+**Décision technique principale** : 2 relecteurs Sonnet, une ronde, 9 constats recevables : 8 corrigés (C1 à C8), 1 consigné. Une fiche `missing` n'est plus retenue par la recherche du même nom, et la reprise d'une fiche par un fichier d'un autre format transfère ses likes dans la même transaction. La résurrection d'une fiche supprimée dont la version convertie manque la remet en lecture directe (D17). Supprimer depuis l'app avec une Corbeille envoie les originaux AVANT le masquage : un échec de la Corbeille n'écrit rien en base, rejouer fonctionne. La fusion reprend le rattachement courant de la fiche introuvable (manuel ou automatique) en manuel, sauf si la cible en a déjà un. Textes et toast du bureau (« Envoyer à la Corbeille », « Média supprimé définitivement »).
+
+**Résultats observés** : un test par correction, mutation vérifiée sur C1 (garde `missing`, transfert des likes), C2, C3 (chacun des sept gardes de la passe sur une fiche supprimée), C4 et C7. Gate rendu à l'utilisateur dans le message de clôture. Écarts : le second de deux fichiers de même nom reste écarté par la règle des fichiers de même nom qui coexistent (comportement d'avant, section 8) ; trois tests de conversion reçoivent les tables de likes ; le test « un rattachement automatique ne se reprend pas » est remplacé (C7 change ce comportement).
+
+**Conclusion / prochaine étape** : reste ouvert : renommage suivi d'une suppression depuis l'app avant toute passe (section 8, non traité), M7.11 (gate visuel utilisateur), M8.2 (ADR 0046) et M8.3 (skill db-schema), puis K1 à K3 et Z.
+
+## [2026-11-08] Plan médias M7 : écran des fichiers introuvables, Corbeille et explorateur — Complété (gate visuel M7.11 à l'utilisateur)
+
+**Décision technique principale** : la fenêtre « Fichiers introuvables » (`MediaMissingDialog`) n'a aucune coquille propre : elle monte les quatre briques de `MediaPickerDialog` (liste, vue des fiches candidates, pieds de confirmation en deux temps pour la fusion et l'oubli). Logique pure dans `mediaMissing.logic.ts`, hooks dans `missingQueries.ts` (`queries.ts` aurait passé 500 L), bandeau du dossier dans `MediaFolderNotice` qui porte sa mutation. Sur le bureau : réglage des originaux masqué (`can_keep_media_sources`), bouton « Afficher dans l'explorateur » (`can_reveal_files_in_explorer`), confirmation et toast de suppression propres à la Corbeille (`can_trash_media_sources`).
+
+**Résultats observés** : gate vert (vitest `features/media`, `features/settings` et `lib/capabilities` : 32 fichiers, 314 tests ; `npm run typecheck` sans erreur ; eslint 0 erreur, le seul avertissement est celui, antérieur, de `MediaAudioConfigButton.tsx`). Suite web complète : les deux garde-rails de clés de requête (`keys.title-slug.guard`, `keys.locale`) exigeaient de classer les deux clés neuves, fait ; reste un échec antérieur à M7 (`detail-section.guard.test.ts`, titre passé dans `MediaPickerDialog.tsx` par M6), consigné en section 8 sans correction. Écarts consignés au plan : prop optionnelle `action` sur `MediaPickerRow` (bouton par ligne hors du bouton de sélection, rendu inchangé sans elle, snapshot de M0.3 intact), pas de toast de succès pour la confirmation d'un retrait massif (aucune clé prévue).
+
+**Conclusion / prochaine étape** : M7.11 (gate visuel) est `[!]` jusqu'à la réponse de l'utilisateur ; les témoins sont listés dans le plan. Prochaine étape : M8 (revue adversariale, ADR 0046, skill db-schema).
+
+## [2026-11-08] Plan médias M6 : coquille réutilisable de la fenêtre de réassociation — Complété
+
+**Décision technique principale** : `MediaPickerDialog.tsx` porte quatre briques sans logique (coquille, état de liste, ligne, barre de confirmation) avec les classes d'origine ; `MediaMatchPicker.tsx` est réécrit dessus sans changer ses props ni sa logique. `subtitle` et `detail` sont des `ReactNode` pour que les nœuds texte du DOM restent identiques.
+
+**Résultats observés** : vitest `src/features/media/` vert (13 fichiers, 124 tests), `npm run typecheck` sortie 0, eslint sans erreur (un avertissement antérieur sur `MediaAudioConfigButton.tsx`, consigné en section 8). Le snapshot témoin de M0.3 passe sans régénération ; aucun fichier `.snap` modifié.
+
+**Conclusion / prochaine étape** : coquille prête pour l'écran « Fichiers introuvables ». Prochaine étape : M7.
+
+## [2026-11-08] Plan médias M5 : API des fichiers introuvables — Complété
+
+**Décision technique principale** : six routes sous `/players/{player_slug}` (liste, candidats, fusion, oubli, confirmation d'une disparition massive, ouverture de l'explorateur). La fusion ne manipule que des fiches en base : likes transférés par `TransferMediaLikes`, rattachement manuel repris par INSERT, fiche introuvable masquée (`status='deleted'`), jamais de DELETE. Oubli et fusion ne retirent que la miniature et la version convertie, jamais l'original. Le handler détecte `port.MediaMissingService` par type-assertion (aucune doublure de `port.MediaService` à toucher) ; `resolveMediaWriteRequester` est la seule copie de la résolution du demandeur. Qui atteint les routes : en propriété appliquée le middleware refuse déjà le co-membre sur toute écriture (le like est la seule action du visiteur) mais le laisse lire le profil ; le service (`CanModifyMedia`) refuse donc aussi les deux GET au co-membre.
+
+**Résultats observés** : gate du plan vert (service, api, platform/duckdb avec `Media|OpenAPI`, vet ops, archlint, `make check-types`). Tests : refus sans écriture ni retrait de fichier, WAL vide après fusion et oubli, original intact, fichiers de la cible conservés, 403 du co-membre sur merge, forget, confirm-bulk et reveal avant le handler, 403 du service sur les GET, 404 de reveal sans capacité. Écarts consignés au plan (M5.5 `HideWindow` remis à faux pour la fenêtre de l'explorateur, M5.6 autorisation des GET, état du dossier lu par le service, confirmation sans objet = rien d'enregistré, 401 de suppression sans session en anglais). `openapi.yaml` et `generated.ts` régénérés ; les trois capacités de M4 ajoutées à `DEPLOYMENT_CAPABILITY_DEFAULTS` (seule table qui bloquait `tsc`), ce qui couvre M7.6 sur ce point. Plafond du ratchet des littéraux accentués abaissé pour `media_delete.go`.
+
+**Conclusion / prochaine étape** : l'API est complète et générée, aucun écran ne l'appelle encore. Prochaine étape : M6 (extraction de la coquille du picker, sans changement visuel).
+
+## [2026-11-08] Plan médias M4 : tâche de démarrage, règles du bureau, Corbeille — Complété
+
+**Décision technique principale** : trois capacités de profil (`KeepMediaSources`, `RevealFilesInExplorer`, `TrashMediaSources`, desktop seul) publiées au bootstrap. `AppConfig.MediaDeleteSource` est le seul chemin de résolution de la rétention de l'original (faux sous `KeepMediaSources`, variable d'environnement ignorée) ; `NewLiveMediaScanHook` remplace les trois blocs recopiés. Une tâche de démarrage (hors démo) lance une passe d'indexation par joueur de chaque titre média. Suppression depuis l'app : `OSMediaFileTrasher` (`SHFileOperationW`, lecteur fixe seulement) envoie l'original à la Corbeille ; un échec arrête tout et ne devient jamais une suppression définitive, un support sans Corbeille rejoint la suppression définitive annoncée par `Trashed`.
+
+**Résultats observés** : gate du plan vert (build, config, service, cmd/server, handlers, archlint). Aucun test n'envoie de fichier réel à la Corbeille (appels système injectés, Corbeille factice qui déplace dans un dossier de test). Écarts : `MediaDeleteSource` dans `config_media.go` (config.go dépasse 500 lignes) ; ratchet `RepoRoot` abaissé de 2 à 1 pour trois fichiers migrés. Risque consigné en section 8 : `SHFileOperationW` avec `FOF_NOCONFIRMATION` supprime sans question un fichier trop gros pour la Corbeille ; à valider à la main avant livraison.
+
+**Conclusion / prochaine étape** : le comportement du bureau est en place côté serveur ; `openapi.yaml` et `generated.ts` ne sont pas régénérés (M5.8). Prochaine étape : M5 (API des fichiers introuvables).
+
+## [2026-11-08] Plan médias M3 : indexation alignée sur le disque — Complété
+
+**Décision technique principale** : `IndexMedia` aligne d'abord les fiches sur le disque (`ReconcileMediaWithDisk`, erreur fatale pour l'indexation) puis insère avec les empreintes déjà lues, sans second hachage. `MissingPolicy` et `SkipFreshFiles` viennent des trois appelants du service (`resolveMediaBase` : racine fiable = marquage, repli ou dossier absent = rien n'est marqué). L'état de la racine (indisponible, disparition massive en attente) et la confirmation sont tenus en mémoire par (titre, joueur). Miniatures par `EnsureVideoThumbnails` (une par fiche, jamais partagée, régénérée si absente, miniature historique reliée), dossier HLS distinct par sous-dossier, original détaché de la fiche avant sa suppression par la conversion.
+
+**Résultats observés** : gate du plan vert (ops, service, platform/duckdb, archlint ; `media.go` à 547 lignes). Nouveaux tests : renommage sans doublon ni perte de miniature, deux sous-dossiers de même nom, `ForceRescan`, garde-fou massif et confirmation, racine indisponible, échec de la passe fatal, cycle `DeleteMedia` puis `IndexMedia` d'une vidéo convertie (retour avec likes et miniature). Écart au plan : la recherche du « même nom » écarte la fiche qui désigne déjà le fichier, sinon un média supprimé remis au même endroit ne revenait jamais (mutation vérifiée). Fixture à table manuelle de `media_hls_integration_test.go` complétée des colonnes d'original.
+
+**Conclusion / prochaine étape** : l'indexation suit le disque ; aucun écran ne change encore. Prochaine étape : M4 (tâche de démarrage et règle du bureau).
+
+## [2026-11-08] Plan médias M2 : passe de réconciliation avec le disque — Complété
+
+**Décision technique principale** : `ReconcileMediaWithDisk` remplace `ReconcileOrphanedMediaFiles` selon l'algorithme du plan (inventaire, lignes, empreintes réutilisées sans relecture, présence, relocalisation par empreinte puis par changement de format, original perdu, complément, garde-fou de disparition massive, écritures en une transaction sans écriture quand rien ne change). Transfert de likes par INSERT dans `duckdb.TransferMediaLikes`, qui ne fait rien pour des chemins identiques. `IndexMedia` branché au minimum sur `MissingIgnore` ; M3 fait le reste.
+
+**Résultats observés** : gate du plan vert (R1 à R25 avec R12b, R12c, R15b, R15c, six cas migrés, `pathKey` ; garde-rails `media_files` de platform/duckdb). Retirer le garde « ligne non supprimée » de la relocalisation fait échouer R25. Découvertes consignées en section 8 du plan (fichier référencé par une ligne supprimée, tables de likes requises).
+
+**Conclusion / prochaine étape** : le noyau est en place, aucun écran ne change encore. Prochaine étape : M3 (branchement complet dans l'indexation).
+
+## [2026-11-08] Plan médias M1 : colonnes, état « introuvable », prédicats — Complété
+
+**Décision technique principale** : étape M1 seule. `domain.MediaStatusMissing`, `MediaDeletionTarget.SourcePath`, `ForgetPaths()` (miniature + HLS, jamais l'original) et `OriginalPaths()`. Colonnes non indexées `source_path`, `source_size`, `source_mtime_ns` ajoutées à `mediaFilesAddedColumns`. `MediaVisiblePredicate` exclut désormais `deleted` et `missing` ; `MediaNotDeletedPredicate` (ancienne forme) remplace l'ancien prédicat uniquement dans `loadKnownHashes`, `LoadMediaForDeletion` et `MarkMediaDeleted`. `source_path` est chargé par `loadMediaSourcePath`, requête séparée où seul « Binder Error » (colonne absente) donne une chaîne vide, toute autre erreur fait échouer la suppression.
+
+**Résultats observés** : gate du plan vert (domain, platform/duckdb, ops, service avec le filtre `Media|StoredPaths|ForgetPaths|LoadKnownHashes`, puis archlint). Nouveaux tests : formes des deux prédicats (dont `'missing'`), `ForgetPaths`, `OriginalPaths`, cas élargis de `StoredPaths`, chargement de `source_path` (colonne absente, présente, erreur autre), visibilité d'une ligne `missing` ou `deleted` à la suppression. Aucun écart au plan.
+
+**Conclusion / prochaine étape** : socle posé, aucune lecture écran ne change pour l'instant (aucune ligne n'est encore `missing`). Prochaine étape : M2 (passe de réconciliation avec le disque).
+
+## [2026-11-08] Plan médias M0 : témoins avant modification — Complété
+
+**Décision technique principale** : étape M0 du plan médias exécutée seule, sans toucher au code de production. Témoin Go = sortie brute de `go test` sur les paquets ops, platform/duckdb, service, api/handlers (filtre `Media|Reconcile`), capturée dans `.ai/temoins_medias_avant.txt` (non commité). Témoin web = test `toMatchSnapshot()` du `MediaMatchPicker` avec un candidat sélectionné (barre de confirmation visible), `start_time` et `capture_utc` à null.
+
+**Résultats observés** : Go, 4 paquets `ok`, `EXIT=0`, aucun échec. Web, `MediaMatchPicker.test.tsx` 6 tests verts, snapshot écrit une fois puis stable à la relance. Le test clique le candidat par son texte « 2 - 1 » et vérifie le bouton « Confirmer ».
+
+**Conclusion / prochaine étape** : témoins posés, rien de cassé avant modification. Prochaine étape : M1 (colonnes, état « introuvable », prédicats), après validation du point d'étape.
+
+
+**Décision technique principale** : plan `.ai/PLAN_MEDIAS_DISQUE_ET_REVISION_KPI_2026-11-08.md`, écrit pour des exécutants Sonnet et Haiku. Médias : identité par empreinte de contenu, chemin de l'original dans de nouvelles colonnes non indexées, état `status='missing'` (aucune colonne lue hors de l'indexation), passe unique de réconciliation, écran « Fichiers introuvables » construit sur la coquille extraite de `MediaMatchPicker`. KPI : révision en constantes, valeur notée par joueur dans `sync_meta` seulement après un recalcul réussi, passage au démarrage réutilisant `MatchRecomputer`.
+
+**Résultats observés** (lecture du code, rien d'exécuté) : `file_stem` appartient à un index, il ne doit jamais être réécrit ; les likes sont indexés par `file_path`, tout changement de chemin doit les transférer ; une vidéo convertie supprimée depuis l'app revient au scan suivant quand l'original est conservé ; `GenerateThumbnails` ne descend pas dans les sous-dossiers ; l'indicateur « Analyse en cours » est par match et ne convient pas au recalcul des KPI.
+
+**Relecture indépendante** : deux relecteurs Sonnet aveugles, une ronde. 19 constats recevables et 3 précisions, vérifiés sur le code ; aucun constat jeté, un seul consigné sans correction (clips partagés entre titres). Changements principaux : la recherche manuelle devient une fusion de fiches (un scan indexe déjà tout fichier inconnu), garde-fou corrigé (les lignes déjà introuvables le faisaient rester actif à tort) et doté d'une confirmation, dossier de conversion distinct pour les sous-dossiers, capacité inversée en `KeepMediaSources`, échec d'écriture des notes de performance désormais rendu en erreur avant de noter la révision.
+
+**Décisions de l'utilisateur (2026-11-08)** : une vidéo convertie dont l'original manque reste visible, ne garder qu'un des deux formats étant un nettoyage légitime ; suppression depuis l'app avec message explicite et envoi de l'original à la Corbeille de Windows si le disque en a une.
+
+**Conclusion / prochaine étape** : go de l'utilisateur, puis lancement de l'étape M0 dans le worktree `../LevelUp-wt-medias`.
+
+## [2026-11-02] Rejeu — vitesse 1.5× au menu de vitesse — Complété
+
+**Décision technique principale** : `SPEED_MULTIPLIERS` passe à `[0.5, 1, 1.5, 2, 4]` ; le format du déclencheur garde une décimale seulement pour les vitesses non entières (l ancien format arrondissait 1.5 à « 2× »). Le son reste actif à 1.5× (borne `SOUND_MAX_SPEED` = 2).
+
+**Résultats observés** : tests du menu et des réglages verts (33/33), dont un test qui affiche « 1.5× ». Pas de vérification visuelle.
+
+**Conclusion / prochaine étape** : aucune ; une vitesse 1.5× déjà stockée dans le navigateur est désormais acceptée.
+
+## [2026-11-02] Desktop — L20 : revue adversariale M (DuckDB, configuration, release) et N (web, encodeur) — Complété (commit local, pas de push)
+
+**Décision technique principale** : un seul point de vérité pour la langue et le fuseau (`config.DeclaredString`, `SystemLocale.LangOr/TimezoneOr`) lu par la configuration, le magasin de réglages et `/bootstrap` ; la ligne d'onglets des en-têtes de page est réservée partout (même hauteur Médias et Carrière) et collante quand elle porte des onglets, les bandeaux collants qui la suivent se décalent de sa hauteur ; le ratchet CHECKPOINT compte les instructions SQL réelles, un compte exact et daté par fichier ; `subtitle` et `actions` de `PageHeader` retirés ; `shared_social` de tous les titres sort de la tâche périodique et entre dans la tâche sociale pour ne perdre aucun CHECKPOINT.
+
+**Résultats observés** : témoin `vite preview` headless (bootstrap absent, harnais temporaire supprimé) : premier bloc de contenu à 116 px sur Carrière, Carrière/Citations, Solo, Ascension, Médias et Explorer, ligne d'onglets collée à 0 après défilement ; `/bootstrap` et magasin d'accord pour `en-US` + Pacifique, `pt-BR`, fuseau vide ; ancien ratchet : 4 CHECKPOINT du `wal_forensic_compare` et 1 de la migration `drop_weapon_kills` non comptés, 3 entrées d'allowlist ne comptaient pas du SQL ; handle fermé pendant l'attente du bail : `skipped_closed`, plus un échec.
+
+**Conclusion / prochaine étape** : 2 P1 + 3 P2 (M) et 2 P1 + 7 P2 (N) corrigés, chacun avec un test qui échoue sans la correction ; relevé : le `shared_social` de Halo 5 est désormais aussi checkpointé toutes les 5 minutes (site compris). 20.i reste le gate visuel de l'utilisateur.
+
+## [2026-11-02] Desktop — L20 : prêt pour la première release (20.a à 20.h) — Complété côté code (20.i gate visuel à l'utilisateur)
+
+**Décision technique principale** : (a) encodeur H.264 choisi parmi `libx264`, `h264_mf`, `libopenh264` par une liste lue une fois puis un essai sur une image, transcodage refusé par `ErrNoH264Encoder` ; (b) fuseau et langue du système sous la capacité `AdoptSystemLocale` comme défaut des clés absentes d'app_settings.json, table CLDR de 139 clés Windows, `time/tzdata` embarqué ; (c) `latest.json` porte `notes` et `notes_en`, la coquille choisit selon sa langue ; (d) chien de garde d'inactivité sur le téléchargement de l'installeur ; (e) barre de progression dans la colonne du contenu, toasts décalés de la largeur du volet ; (f) route finale de Carrière ; (g) CHECKPOINT périodique des bases tenues en RW sous le bail d'écriture, ratchet du site unique ; (h) `PageHeader` et `SectionHeader`, `NavL2` réduit à `SoloFiltersBar`.
+
+**Résultats observés** : transcodage réel avec le ffmpeg LGPL du lot par `h264_mf` puis `libopenh264`, sortie lue par ffprobe ; `desktop` lu sur ce poste : `Romance Standard Time` -> `Europe/Paris`, `fr-FR` -> `fr` ; `time.LoadLocation` échoue sans `time/tzdata` hors installation de Go ; après écriture et CHECKPOINT aucun `.wal` ; premier bloc de contenu à 152 px identique sur cinq sections. Gates : voir le rapport du lot.
+
+**Conclusion / prochaine étape** : 20.a à 20.h `[x]`, 20.i à l'utilisateur. Relevés au plan §10 (Windows N sans Media Foundation non dit à l'utilisateur, `PageHeader.actions` sans appelant).
+
+## [2026-11-02] Desktop — L19 : revue adversariale (un relecteur Opus), trois constats corrigés — Complété (commit local, pas de push)
+
+**Décision technique principale** : les commentaires de `childproc` (et de ses trois échos) disent le contrat mesuré : le helper garantit qu'aucun enfant n'ouvre de fenêtre quel que soit le mode de lancement du serveur ; un serveur `CREATE_NO_WINDOW` partage une console cachée avec ses enfants, seul un parent sans aucune console donne une fenêtre par enfant, et le helper n'explique pas, à lui seul, une fenêtre vue sur l'application installée. Le pied de la barre latérale vit dans `SidebarFooter.tsx` (`SidebarNav` 131 -> 79 lignes). Le lien d'exemple de match de l'admin qualité des données navigue dans la même fenêtre sous `can_use_compact_chrome`. Les règles que seul un texte tient (crochet NSIS `SetAutoClose`, plugin opener, `on_new_window` -> `Deny`, `sansFenetre` sur chaque enfant de `filmproc`) ont chacune un test de texte ou de source.
+
+**Résultats observés** : Vitest ciblé shell + data-quality + i18n 394 verts (dont 2 tests par capacité pour le lien) ; typecheck, eslint (0 erreur), lint cross-feature ; `cargo fmt --check`, clippy `-D warnings`, `cargo test` 89 + 13 + 3 + 11 + 9 ; `go vet` childproc, archlint `Childproc|Chemins|Suffixe`, `libs/film` `filmproc` verts ; le test de source de `filmproc` échoue quand l'appel `sansFenetre` de `runner.go` est retiré.
+
+**Conclusion / prochaine étape** : constats C1 à C4 corrigés (§10 du plan) ; 19.5 reste le gate visuel de l'utilisateur sur l'installeur issu de la fusion.
+
+## [2026-11-02] Desktop — L19 : confort bureau (installeur, liens externes, référentiels ancrés, signalement) — Complété côté code (19.5 gate visuel à l'utilisateur)
+
+**Décision technique principale** : (1) l'installeur passe seul à la page finale par `NSIS_HOOK_POSTINSTALL` = `SetAutoClose true` : le modèle de Tauri (extrait du CLI) pose `MUI_FINISHPAGE_NOAUTOCLOSE` et ne referme seul qu'en mode passif ; (2) les liens `target="_blank"` étaient avalés par le script que `tauri-plugin-opener` injecte par défaut (commande IPC `open_url` refusée à la page) : plugin construit avec `open_js_links_on_click(false)`, puis `on_new_window` qui refuse toujours la seconde fenêtre et envoie l'externe au navigateur (`decide_new_window`, journal à l'origine seule) ; (3) en bureau les référentiels deviennent un volet ancré qui pousse le contenu (grille de l'`AppShell`), redimensionnable (souris, clavier, 280 à 640 px), mémorisé, rouvert au bouton de la barre latérale ou à `Ctrl+Maj+L` (`Ctrl+Maj+R` = rechargement du moteur), contenu partagé avec le panneau du site (`AssetPanelContent`), le site hébergé inchangé ; (4) « Signaler un problème » dans la barre latérale ; le formulaire ouvre GitHub par un lien cliqué (`window.open` avec `noopener` rend toujours `null`, ce qui déclenchait à tort le repli « fenêtre bloquée »).
+
+**Résultats observés** : `.nsi` généré : crochet appelé en fin de `Section Install` ; `e2e-install.ps1` sur l'installeur local (192,8 Mio) : exit 0, deux lancements, `clean=true`, 0 WAL. Application de développement pilotée par DevTools (clics et touches de confiance) : clic sur `microsoft.com/link` -> `event=new_window decision=open` puis `open_external` (avant la correction, aucune ligne), liens locaux et `javascript:` -> `deny`, code de connexion absent du journal ; volet : ouverture au bouton et au raccourci, 360 -> 552 -> 536 -> 640 -> 280 px au clavier, glisser de 140 px, largeur mémorisée, volet conservé de page en page et au rechargement ; formulaire : `new_window url=https://github.com decision=open`. `cargo test` 89 + 13 + 11 + 9, fmt, clippy `-D warnings` ; typecheck, eslint (0 erreur), lints cross-feature / couleurs / champs / knip / contrat, Vitest, archlint Chemins|Suffixe.
+
+**Conclusion / prochaine étape** : 19.1 à 19.4 `[x]`, 19.5 à l'utilisateur (clic réel sur l'installeur issu de la fusion). Relevés au plan §10 : toasts et barre de progression au-dessus du volet, raccourci non essayé nativement, une capture non expliquée au premier lancement.
+
+## [2026-11-02] Desktop — L18 : revue adversariale (un relecteur Opus), six constats corrigés — Complété (commit local, pas de push)
+
+**Décision technique principale** : la fenêtre « À propos » tient le clavier au niveau de `window` (Échap, boucle de Tab, focus ramené dedans) au lieu du conteneur, qui ne recevait plus rien quand le focus tombait sur `body` ; l'onglet Carrière de Halo 5 vise la route finale `career/commendations` (plus la redirection), source unique de l'état actif ; la vérification de mise à jour a une échéance de 30 s (`CHECK_TIMEOUT`) et ses décisions (verrou du lancement, build sans updater, fil séparé, aiguillage du protocole embarqué) vivent dans la bibliothèque Rust testable (`update_manual`, `render::reply`) ; `main.rs` et `updater.rs` repassent sous 500 lignes (`update_setup.rs`, `updater_tests.rs`, `updater_decision.rs`).
+
+**Résultats observés** : les quatre tests clavier de « À propos » échouent sur l'ancien composant ; les tests `SidebarNav` (Halo 5), `NavL2` (filtres Stats, Communauté) et Rust (verrou, `ensure_available`, `reply`) échouent condition inversée ; `cargo test` 81 + 13 + 7 + 9 avant les tests ajoutés, 84 + 13 + 11 + 9 après ; fmt, clippy `-D warnings`, typecheck, eslint (0 erreur), lints cross-feature / couleurs / champs / knip, Vitest ciblé 450 verts.
+
+**Conclusion / prochaine étape** : constats C1 à C6 corrigés (§10 du plan) ; 17.6 coché (premier run Release vert, clé hors PC, secret en place), 17.7 reste à l'utilisateur avec 18.4. Relevés non traités : `HomeCitationsNearCompletion` passe encore par la redirection `commendations` ; le téléchargement de l'installeur n'a pas d'échéance d'inactivité ; jeton de voile de modale à créer (dette commune).
+
+## [2026-11-02] Desktop — L18 : interface bureau (barre latérale, « À propos », recherche de mise à jour) — Complété côté code (18.4 gate visuel à l'utilisateur)
+
+**Décision technique principale** : le chrome de bureau se branche sur UNE capacité de `/bootstrap`, `can_use_compact_chrome` (`DeploymentCapabilities.CompactChrome`, vraie en `desktop` seulement ; ADR 0044 D-4, jamais le nom du profil) ; `/bootstrap` porte `app_info` (version, racine des données) sous cette seule capacité. Côté web, `AppShell` rend `SidebarNav` à la place de `NavL1` et sans `AppFooter` ; le rendu des sections est `NavSectionList`, partagé avec le tiroir mobile (migré, pas dupliqué). La barre d'onglets Carrière / Communauté de `NavL2` est retirée en bureau (la barre latérale montre déjà les onglets de la section active), les filtres Stats restent. La recherche de mise à jour passe par `fetch(..., no-cors)` vers `http://levelup-shell.localhost/check-update` : le protocole embarqué répond 204 et la coquille lance la même séquence que la vérification du lancement (`updater::run_flow`), avec boîtes natives pour « à jour », « échec », « indisponible » et « déjà en cours » ; la page ne quitte jamais l'application (pas de navigation ni de redirection `?back=`).
+
+**Résultats observés** : gates verts (Vitest ciblés shell/home/stores/capacités/appLinks 409 puis nouveaux tests ; typecheck, eslint 0 erreur, lints cross-feature / couleurs / champs / knip / contract ; Go `config`, `api/...`, `archlint`, `service`, `i18n` + `go vet ./...` ; `cargo fmt --check`, clippy `-D warnings`, `cargo test` 81 + 13 + 7 + 9 ; Playwright `desktop-chrome` 4 cas). Application construite, DevTools WebView2 : titre « LevelUp - Accueil » et URL identiques avant et après le clic, `desktop.log` `update_check_unavailable`, boîte native lue (« La recherche de mise à jour n'est pas disponible dans ce build de développement. »), fermeture `clean=true`, 0 WAL.
+
+**Conclusion / prochaine étape** : 18.1 à 18.3 `[x]`, 18.4 (gate visuel sur l'application installée) à l'utilisateur. Relevés au plan §10 : `target="_blank"` du lien Microsoft sans `on_new_window`, version `dev` sur le binaire de développement, issues « à jour » / « échec » / « proposée » jouées par les tests seulement (réponse réelle de `latest.json` = pilote 17.6).
+
+## [2026-11-02] Desktop — L17 : revue adversariale (deux relecteurs Opus), six constats corrigés — Complété (commit local, pas de push)
+
+**Décision technique principale** : l'installeur de mise à jour est décidé par une fonction pure `updater::install_allowed` sur l'issue du superviseur (`stopped` avec `clean=true`, serveur non tué, kill non échoué) ; `Host::exit_app` reçoit cette issue. Sinon : événement `update_skipped_unclean_stop reason=...`, boîte native (catalogue de repli, clés `update_skipped_unclean` et `update_install_failed`, fr et en, aussi servies par `/desktop/strings`), sortie sans installer. `e2e-install.ps1` refuse avant tout nettoyage toute installation ou tout LevelUp existant et ne retire que ce qu'il a créé ; sentinelle dans `%LOCALAPPDATA%\LevelUp`. `cmd/updater-verify` vérifie le `.sig` contre la clé publique embarquée, étape de `release.yml`.
+
+**Résultats observés** : `cargo test` / clippy / fmt verts ; les deux tests d'arrêt non propre et de serveur tué échouent quand `install_allowed` est neutralisé ; script e2e refusé (code 1, rien tué ni retiré) sur dossier factice, clé de désinstallation factice et faux `levelup-server.exe` en cours ; `updater-verify` : succès sur l'installeur et le `.sig` du lot, échec avec un octet modifié.
+
+**Conclusion / prochaine étape** : constats C1 à C6 corrigés (voir §10 du plan). Relevé non traité : le `.sig` Tauri est le base64 du fichier minisign entier ; une clé `HKCU\Software\lvelup\LevelUp` périmée subsistait sur le poste.
+
+## [2026-11-02] Desktop — L17 : CI Desktop, installeur NSIS par utilisateur, updater signé, page de téléchargement — Complété côté code (17.6 pilote et 17.7 utilisateur à suivre)
+
+**Décision technique principale** : un seul workflow `release.yml` (tag : publication signée ; `release/**` : installeur sans signature + test de bout en bout) construit l'installeur avec les mêmes scripts que le poste (`apps/desktop/scripts/` : ffmpeg LGPL épinglé par URL et SHA-256, ressources assemblées depuis `git ls-files`, version unique vérifiée jusque dans les `-ldflags` du binaire). Tauri 2 installait le programme dans `%LOCALAPPDATA%\LevelUp`, la racine de DONNÉES par défaut : un crochet NSIS ramène ce seul défaut sous `Programs\LevelUp`. La mise à jour est un module Rust sans tauri (machine d'états, porte d'installation, hôte qui installe à la sortie) : proposée une fois par lancement quand le serveur est prêt, jamais imposée, installeur lancé seulement après la sortie du serveur. `LEVELUP_WEB_DIST` vaut `<ResourcesRoot>/web` par défaut en desktop.
+
+**Résultats observés** : installeur 202 211 522 octets (192,84 Mio), build local en 3 min 20 ; `e2e-install.ps1` sur cet installeur : installation, deux lancements sur le même port, `/health` 200, fermeture par WM_CLOSE, `arrêt: terminé` `clean=true` deux fois, 0 WAL, désinstallation qui conserve la racine de données (exit 0, 28 s) ; build signé local : `.sig` produit ; `cargo test` 73 + 13 + 7 (updater contre le faux sidecar), clippy et fmt propres ; Vitest 1031+ fichiers verts, archlint (dont `ci_workflows_security`), config, media, i18n verts. Page `/telecharger` (capacité `can_offer_windows_download`, SmartScreen expliqué, mention Microsoft imposée aussi dans le pied de page).
+
+**Conclusion / prochaine étape** : 17.1 à 17.5 `[x]` ; 17.6 (pilote : runs CI verts, clé de production protégée, sauvegardes, première mise à jour réelle) et 17.7 (utilisateur : machine vierge) restent ouverts. Reports consignés au registre : libx264 absent du build LGPL, mise à jour réelle non jouée, clé du gate sans mot de passe, notes en français seulement.
+
+## [2026-11-02] Desktop — L16 coquille Tauri : revue H corrigée, cookie `Lax`, gate visuel tenu — Complété (PR à suivre)
+
+**Décision technique principale** : secret d'entrée à usage unique (serveur) + chargement unique (coquille) ; `SameSite=Lax` pour le cookie de session desktop (la navigation d'entrée est initiée depuis la page embarquée, cross-site pour Chromium ; `Strict` perdait le cookie sur la redirection vers `/`) ; rotation du journal de la coquille sans perte. Méthode de vérification du pilote figée : lancer `target/debug/levelup-desktop.exe` avec `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333` et lire `http://127.0.0.1:9333/json` (titre et URL de la page réellement affichée), fermer par `CloseMainWindow`, lire `desktop.log` et compter les WAL : plus de témoin demandé à l'utilisateur pour ce qu'un outil peut lire.
+
+**Résultats observés** : deux lancements consécutifs → « LevelUp - Accueil » (`/fr/t/halo_infinite/players/JGtm/home`), `stopped{clean:true}`, 0 WAL, 0 processus ; l'utilisateur a vu l'assistant puis ses matchs au premier lancement ; CI du commit L16 verte (job `desktop-test` + voie Windows). Le secret consommé reste dans l'historique WebView2 (résidu documenté).
+
+**Conclusion / prochaine étape** : 16.1-16.5 `[x]`, gate (U) tenu. Push, CI, PR L16, fusion. Puis L17 : job `desktop-build`, NSIS par utilisateur, ffmpeg LGPL livré, mentions Microsoft, `release.yml` (version check, `latest.json` signé), job `desktop-e2e`, updater, page de téléchargement, emplacement du front installé (`LEVELUP_WEB_DIST`).
+
+## [2026-11-02] Desktop — L16 : coquille Tauri 2 (`apps/desktop/`), faux sidecar Go, `cargo test` contre lui, hygiène Rust (ADR 0045 D-13 à D-18) — Complété côté code (revue adversariale et témoins visuels à suivre par le pilote)
+
+**Décision technique principale** : un paquet Cargo, deux crates. La bibliothèque `levelup_desktop` ne dépend PAS de tauri et porte tout ce qui se décide sans fenêtre : machine d'états pure (`lifecycle` : entrées = événements du serveur, sortie du processus, demande de fermeture, minuteries ; sorties = actions), superviseur (`supervisor` : quatre fils, hôte injecté par le trait `Host`), sidecar par `std::process::Command` (tube stdin tenu, stdout vidé ligne à ligne et borné, stderr relayé vers `desktop.log`, environnement du contrat, `LEVELUP_*`/`SPNKR_*` hérités retirés, secret de 32 octets jamais en argument ni journalisé). Le binaire (`main.rs`) ne fait que brancher la fenêtre. Écrans embarqués servis par un protocole personnalisé (`levelup-shell`) depuis un gabarit HTML, libellés d'un catalogue généré par `build.rs` depuis `desktop.toml` pour TOUTES les langues de `locales.toml` (une langue incomplète refuse la compilation). Aucune capacité Tauri accordée : la page du serveur n'a aucune commande. Navigation filtrée (le web part dans le navigateur par défaut).
+
+**Résultats observés** : `cargo test` 60 tests de bibliothèque + 13 tests de contrat contre le vrai faux serveur (compilé par `go build`) : nominal, jamais prêt (délai puis kill), échecs avec et sans port, crash avant et après `ready`, arrêt tardif tué après le budget, fermeture pendant le démarrage, bavard de 10 Mo, port repris, secret absent des arguments et du journal. Clippy `-D warnings`, `fmt --check`, `cargo audit` (exit 0) verts ; faux serveur : `go vet` + `go test` verts ; archlint complet vert. Lancement réel (serveur Go réel, racine de données vide) : fenêtre « LevelUp », assistant de premier lancement affiché, `listening` puis `ready` en 7 s, seconde instance sortie en 0,4 s, fermeture par la croix en 0,1 s : `arrêt: terminé clean=true reason=stdin duration=49ms`, aucun `*.wal`, aucun serveur restant ; serveur réel déjà vivant sur la même racine : `failed locked`, la page d'échec du serveur s'affiche.
+
+**Conclusion / prochaine étape** : écarts et découvertes au compte rendu (fonctionnalité `zip` de l'updater retirée pour trois avis RUSTSEC, `failed_timeout` ajouté au catalogue, `LEVELUP_WEB_DIST` transmis seulement s'il vient de l'environnement de la coquille : l'emplacement du front installé reste à décider en L17). Reste : revue adversariale, témoins visuels (démarrage, fermeture, échec) nommés par l'utilisateur, puis L17 (CI `desktop-build`, NSIS, clé d'updater).
+
+## [2026-11-02] Desktop — P0 CLOS : vague 4 fusionnée (PR #131), le serveur est prêt pour le bureau — Complété ; P1 (coquille Tauri) démarre
+
+**Décision technique principale** : P0 = 15 lots (L0 à L15, L13b compris) livrés en quatre vagues et quatre PR squashées dans `release/v8.1.0` (#125, #128, #129, #130, #131 ; correctif #127), chaque vague contrôlée sur pièces par le pilote, relue par 2 à 3 relecteurs Opus en contexte frais (revues 2r, 3r, 4r : 22 constats recevables, tous corrigés avec test, 0 P0), témoins avant/après sur les données du poste (T2 journal, T3 bootstrap, T4 chemins, T6 WAL), gates locaux et CI (dont la voie Windows CGO avec trois scénarios de bout en bout). Le binaire serveur porte désormais le contrat complet de la coquille (ADR 0045) : `-mode desktop -arret-sur-stdin`, événements stdout, port stable, verrou d'instance, entrée par secret et cookie lié au port, `Host` strict, coffre DPAPI, trois racines, profil de déploiement, archive zstd, réveil, `-mode refresh-only`.
+
+**Résultats observés** : témoin final en `-mode desktop` sur les données du poste : `listening` 26 ms, `ready` 10 s, arrêt 1 s après `ready` → `stopped{clean:true}`, même port au relancement, 0 WAL. Dette consignée (§10) : bannière « jetons illisibles sur ce poste » ; `pool.refresherLoop` hors contexte ; CLI `token-import`/`token-capture` en `plain` sur un dossier desktop ; `weapon_burst_research_test.go` mort ; ordre d'`available_titles` non déterministe ; nettoyage des citations `.ai/` (BACKLOG) ; squash des migrations = version explicite à décider avant.
+
+**Conclusion / prochaine étape** : P1 = L16 coquille Tauri (`apps/desktop/`, faux sidecar Go, `cargo test`, revue Opus, témoins vidéo de l'utilisateur) puis L17 (CI `desktop-build`, NSIS par utilisateur, updater signé par sa clé, page de téléchargement, mentions Microsoft) ; décisions en attente de l'utilisateur : écoute des sons 8.4, témoins visuels L16/L17.
+
+## [2026-11-02] Desktop — vague 4 : L12 port/événements/verrou, L13 mode desktop HTTP, L13b coffre DPAPI, L14 archive + zstd, L15 réveil, revue 4r — Complété côté code (PR et fusion à suivre)
+
+**Décision technique principale** : cinq lots en parallèle dans trois worktrees, intégrés sur `feat/desktop-p0` (un conflit sur les capacités du profil, résolu : `ShellEntryGate`, `PoolGrantedToLocalUser`, `WakeSequence`, `TokenVault` coexistent) ; `-mode desktop` et `-mode refresh-only` activés ; contrat coquille ↔ serveur complet (`listening`/`ready`/`failed`/`stopping`/`stopped`, `/desktop/enter`, cookie `levelup_session_<port>` HMAC signé par le secret de session généré, `Host` strict 421, CORS/CSRF sur le port lié, `/api/v1/desktop/strings`) ; verrou d'instance noyau ; chiffreur de processus `tokencipher.Process()` choisi par le profil (57 constructeurs inchangés) ; archive des films à racine réglable, chunks zstd-3 à la réception, CLI `film recompress` / `archive-move` jamais automatiques ; séquence de réveil sous capacité. Revue 4r : 10 constats corrigés (1 P1, 9 P2), 58 conditions tiennent.
+
+**Résultats observés** : témoin du pilote en `-mode desktop` sur les données du poste : `listening` 26 ms, `ready` 10 s, arrêt 1 s après `ready` → `stopped{clean:true}`, même port au relancement, 0 WAL ; gates Go et web de la branche intégrée verts (10 608 tests web, Playwright `desktop-enter` 2/2 avec Vite) ; L9.1 confirmé : 96 % de chunks bruts, zstd-3 −74 % sur 3 films copiés. Deux agents interrompus par la limite horaire (reset 1 h 40) et repris sans perte.
+
+**Conclusion / prochaine étape** : 12.1-12.6, 13.1-13.4, 13b.1-13b.3, 14.1-14.7, 15.1-15.4 `[x]`. Gates complets, push, CI, PR vague 4, fusion (go permanent). P0 sera alors clos : P1 = L16 coquille Tauri (`apps/desktop`), L17 CI/NSIS/updater, gate visuel de l'utilisateur. Dette consignée : bannière « jetons illisibles sur ce poste » ; `pool.refresherLoop` hors contexte ; CLI `token-import`/`token-capture` en `plain` sur un dossier desktop.
+
+## [2026-11-02] Desktop - L13b : coffre Windows (DPAPI) pour les fichiers de jetons, derriere le port `TokenCipher` (ADR 0045 D-11, amende ADR 0023) - Complete cote code (revue et voie Windows CI a suivre par le pilote)
+
+**Decision technique principale** : le choix du chiffrement est une capacite de profil, `TokenVault` (vraie en `desktop` seulement), jamais `GOOS`. Le chargement de la configuration (`config_token_vault.go`, seul appelant de `tokencipher.InstallForProfile`) pose le chiffreur du PROCESSUS ; `NewMultiUserTokenStore(dir)` le lit a sa construction, ce qui couvre sans les toucher les ~57 constructeurs (serveur, `refresh-only`, `token-import`, `token-capture`, `levelup pool-sharing`, `identity purge`, tous les diag/backfill) ; `NewMultiUserTokenStoreWithCipher` sert aux tests. Le port est la feuille `platform/auth/tokencipher` (`Plain`, `NewDPAPI` = `CryptProtectData` portee utilisateur, entropie fixe `levelup.watcher_tokens.v1`, `ErrUnavailable` hors Windows). Fichier : champ `cipher` ecrit pour `dpapi` seulement (un fichier plain reste identique a l'octet, donc aucun changement sur le VPS) ; `OAuthRefreshToken`, `AccessToken`, `XSTSToken`, `XSTSUserHash` en base64 du scelle, le reste en clair. Lecture : plain accepte et migre a la premiere ECRITURE (jamais au chargement) ; scelle sous un magasin plain, chiffreur inconnu ou `Open` en echec = `ErrTokenFileSealed` (Warn une fois par fichier, compteur `levelup.auth.token_file_unreadable_total`), `LoadAll` l'ignore et sert les autres. Un `Upsert` partiel sur un fichier scelle illisible est refuse (il detruirait un credential peut-etre recuperable) ; un `Upsert` portant un RT neuf le remplace. `cmd/server` refuse de demarrer (`tokenVaultRefusal`, `refresh-only` compris) si le profil exige le coffre et que le systeme ne l'offre pas ; le chargement de la configuration, lui, n'echoue jamais sur le coffre (les tests du profil desktop tournent sur Linux).
+
+**Resultats observes** : `go test` sur auth/config/cmd/wakeup/service/api verts (59 paquets), archlint vert, `internal/sync -run Legacy|Sentinel` vert, `go vet` vert, lint 0 issue. DPAPI reel teste sous Windows : scelle different du clair, aller-retour, scelle altere/vide/arbitraire refuse, autre entropie refusee. Tests portables : double de chiffreur `dpapi` (aller-retour, champs sensibles seuls scelles, champs vides, migration a l'ecriture sans ecriture au chargement, refus type, `LoadAll` non bloquant, ecritures sur fichier scelle, JSON invalide). Garde-rails : toute chaine de `UserTokens` est classee scellee ou non sensible (test par reflexion), `archlint/token_cipher_single_decision_test.go` (un seul decideur), `dpapi_windows.go` inscrit au ratchet GOOS. `sentinel_test.go` et `no_legacy_source_used_test.go` inchanges.
+
+**Conclusion / prochaine etape** : 13b.1 a 13b.3 `[x]`. Limite assumee : un outil lance hors du binaire serveur resout un profil non desktop donc `plain` : sur un dossier de donnees d'une installation desktop il ecrirait un fichier plain (que le serveur migre a sa prochaine ecriture) et refuserait de lire un fichier deja scelle. Pas de `-mode desktop` pour les outils : le coffre est un geste de l'application. Decouvertes hors perimetre : l'ecriture des fichiers de jetons n'utilise pas `atomicfile.WriteFileStrict` (pas de fsync avant le renommage) ; le commentaire d'en-tete d'`no_accidental_goos_suffix_test.go` dit « cinq » adaptateurs alors que l'allowlist en compte davantage.
+
+**Revue adversariale (2 constats P2, corriges)** : (1) l'etat mono-utilisateur du watcher `data/auth/watcher_tokens.json` (`TokenStore` : access_token, xsts_token, xsts_user_hash) restait en clair a cote des fichiers scelles ; il passe maintenant par le MEME codec, le meme chiffreur de processus (`NewTokenStore` le lit comme `NewMultiUserTokenStore`), le meme champ `cipher` et les memes regles (plain identique a l'octet, migration a la premiere ecriture, refus type) ; le test par reflexion couvre `StoredTokens`. (2) La deduplication du Warn « fichier scelle illisible » etait par instance de magasin, donc rejouee a chaque passe (magasins reconstruits) : elle est au niveau du PROCESSUS (cle = chemin) ; les trois autres sites qui journalisaient a chaque lecture (`LoadAll`, `LoadByGamertag`, `ResolveMSAccessTokenStoreFirst` en ERROR, `lookupRefreshToken` en ERROR) descendent en Debug pour un fichier scelle, le compteur continue de compter chaque refus. Hors perimetre consigne : un fichier scelle illisible = joueur sans jeton sans aucune banniere ; un utilisateur qui deplace son dossier de donnees vers un autre PC voit la synchronisation s'arreter sans message.
+
+## [2026-11-02] Desktop - L13 : entrée de la coquille, secret de session, libellés, mise en commun accordée (ADR 0045) - Complété côté code (revue adversariale et voie Windows CI à suivre par le pilote)
+
+**Décision technique principale** : tout tient sur une capacité, `ShellEntryGate` (profil desktop), jamais sur le nom du profil. `middleware.DesktopGate` est monté juste après `PreserveRemoteAddr` : Host strict (421, sondes comprises, coupe le rebond DNS), puis cookie exigé (401 `desktop_unauthorized`, `retryable:false`), `/health` et `/desktop/enter` exceptés. Le cookie `levelup_session_<port>` n'est pas une session : `<échéance>.<HMAC-SHA256(port, échéance)>` avec le secret de session du fichier, vérifié sans état, 30 jours, renouvelé à chaque entrée (`HttpOnly`, `SameSite=Strict`, sans `Secure`). `GET /desktop/enter?secret=` (`LoopbackOnly`, secret comparé en temps constant sur des empreintes, jamais journalisé) pose le cookie et redirige en 302. CORS et CSRF reçoivent l'origine exacte du port lié (`AppConfig.SetBoundPort`, appelé par `openBootGate` au lieu de `cfg.APIPort = ...`), `LEVELUP_CORS_ORIGINS` ignoré. Secret de session A12 : `<DataRoot>/auth/session_secret`, généré au premier lancement (32 octets hex, `0600`), `LEVELUP_SESSION_SECRET` ignoré avec un avertissement, `validateStartup` refuse le défaut public et un secret court en desktop. `GET /api/v1/desktop/strings` (Huma, monté sous la capacité) rend huit libellés de `messages/desktop.toml` dans la langue de `X-LevelUp-Locale`. Mise en commun : capacité `PoolGrantedToLocalUser`, `DeviceCodeCompletion.WithLocalPoolGrant` pose `granted` avec la base `desktop_single_user` à l'écriture du jeton, sans jamais écraser une décision ni agir sur un fichier illisible ; la bannière est déjà masquée (`PoolTokens` faux en desktop depuis L10, `can_pool_tokens` lu par `PoolSharingBanner`) : aucun libellé neuf. Web : le 401 `desktop_unauthorized` n'est pas rejoué et affiche « L'accès à LevelUp a expiré. Fermez cette fenêtre, puis rouvrez LevelUp. » (fr + en).
+
+**Résultats observés** : tests sur la pile réelle (`desktop_entry_cgo_test.go`) : sans cookie 401 sur `/`, `/api/v1/*`, `/static/*`, `/healthz` ; `/health` 200 ; Host étranger (7 variantes) 421 sur trois routes, aucun cookie posé ; entrée refusée 403 (secret absent, vide, faux, tronqué, trop long, pair hors boucle IPv4 et IPv6) ; succès 302 vers `/` avec le bon nom et les bons attributs ; CORS rendu pour l'origine du port seule, POST d'origine étrangère 403 `csrf_rejected` ; libellés fr et en distincts ; rien monté hors du profil. Garde : échéance, signature, renouvellement, entrée fermée sans secret. `TestE2ELanceurDesktop` étendu sur le vrai binaire : `GET /` 401, entrée 302 + cookie, bootstrap 200 avec le cookie et 401 sans, secret de session écrit (64 caractères). Playwright `desktop-enter` : 2 scénarios (serveur simulé), le second échoue bien quand `can_pool_tokens` passe à vrai (mutation vérifiée).
+
+**Conclusion / prochaine étape** : 13.1 à 13.4 `[x]`. Écarts à l'ADR notés dedans : pas d'entrée d'allowlist des routes nues (`/desktop/enter` gardée par `LoopbackOnly`, `/health` déjà listée ; une entrée serait signalée inutile ou morte par l'auto-contrôle du ratchet) : `TestBareRoutesRatchet_DesktopEntryRoutes` prouve à la place que les deux routes n'existent que sous la capacité et que toute route du routeur desktop est derrière le garde. Découvertes hors périmètre : (1) le test web « chaque état déclaré par le serveur Go a un libellé » échouait depuis L12 (état `port` sans libellé web) : libellé `common.root.server_failed.port` ajouté (fr + en), nécessaire à la barrière web ; (2) le cookie de session ordinaire `levelup_session` n'est pas lié au port : un serveur de développement sur `127.0.0.1:8000` et l'application desktop se l'envoient et se l'écrasent (sessions anonymes seulement en desktop, sans conséquence de sécurité, mais à traiter si les deux tournent côte à côte) ; (3) un jeton écrit par la CLI (`token-import`, `token-capture`) ne reçoit pas l'accord local, et le pool en mémoire apprend l'accord au rescan suivant (15 min au plus).
+## [2026-11-02] Desktop — L15 : séquence de réveil (rattrapage, jetons au démarrage, sortie de veille) et `-mode refresh-only` (ADR 0045 D-10) — Complété côté code (revue et gate-push à suivre par le pilote)
+
+**Décision technique principale** : une capacité fine `WakeSequence` (vraie en `desktop` seulement) arme `internal/wakeup` une fois le routeur ouvert (`cmd/server/boot_wake.go`) : un seul chemin `Sequence.Wake` pour deux déclencheurs (lancement ; sortie de veille détectée par `SleepDetector`, tic de 30 s, écart horloge murale moins avance monotone > 2 min, horloges injectables). La vérification des jetons réutilise `deadtoken.Gate.Resolve` (rafraîchissement OAuth du RT du magasin, RT tourné écrit atomiquement, `reauth_required` posé sur `invalid_grant` seulement, levé sur un succès, rien sur une erreur de transport) sans échange Halo ; un joueur à la fois, un xuid une fois, porte `SyncablePlayers`. Réseau absent (aucune réponse pour personne) : rien n'est marqué, le rattrapage attend et la vérification est reprise aux tics avec un délai doublé (jusqu'à 10 min). Rattrapage : `AutoSyncScheduler.CatchUpDue(now)` (dernier cycle relu du disque par `RehydrateFromDisk`, comparé à l'intervalle, mesuré à l'horloge MURALE : un horodatage du processus porte une lecture monotone qui ne compte pas la veille) puis `RequestCatchUp` (le tick part dans la boucle de `Run`, jamais en parallèle d'un tick périodique ; trigger journalisé `tick`, contrat du journal d'actions inchangé). `-mode refresh-only` (`refresh_only.go`) : même profil `desktop` (`LaunchModeRefreshOnly`), verrou d'instance avant tout, aucune base ni port ni stdout, même vérification, sortie 0 quel que soit l'état des jetons ; verrou tenu = sortie 0 sans échange.
+
+**Résultats observés** : tests de `wakeup` (sleep, tokens, séquence), `scheduler` (rattrapage, horloge injectée, dernier cycle relu du disque), `cmd/server` (refresh-only contre un faux serveur OAuth à jeton à usage unique : rotation écrite, verrou tenu, jeton mort, réseau absent ; capacité) et `TestE2ERefreshOnly` sur le binaire compilé (stdout vide, aucune base, journal sous la racine, verrou rendu, verrou tenu = rien fait). Le binaire ne peut pas être joué contre le faux serveur : les URL de `/token` sont des variables non exportées de `platform/auth` et l'ouverture d'un réglage d'environnement pour les rediriger affaiblirait la chaîne d'authentification ; la rotation est donc prouvée en processus sur le code exact du mode.
+
+**Conclusion / prochaine étape** : 15.1 à 15.4 `[x]`. Point d'attention pour la revue : la vérification tourne le RT à côté du pool (qui tient une copie du RT de sa source jusqu'au prochain scan) ; le chemin des succès Xbox (`deadtoken`) fait déjà de même en prod, mais un pool qui rafraîchirait avec un RT déjà tourné par la séquence serait à surveiller en usage réel (aucun faux `reauth_required` attendu tant que Microsoft laisse l'ancien RT valable un temps). Décision de l'utilisateur à prendre plus tard : enregistrer la tâche planifiée `refresh-only` (côté coquille/installeur, hors de ce lot).
+
+## [2026-11-01] Desktop — L12 : port stable, événements stdout, verrou d'instance, arrêt dans les premières secondes (ADR 0045) — Complété côté code (voie Windows CI et revue à suivre par le pilote)
+
+**Décision technique principale** : `-mode desktop` est accepté (`refresh-only` reste refusé jusqu'à L15). Le port est lié AVANT les migrations par `bindBootListener` (`boot_listen.go`) : hors desktop, le port configuré comme avant (`os.Exit(1)` s'il est occupé) ; en desktop, verrou d'instance d'abord (`internal/platform/instancelock`, verrou noyau recopié de `libs/film/internal/filelock`, `<DataRoot>/levelup.lock`), puis port de `<DataRoot>/desktop/port` s'il est libre, sinon port libre écrit atomiquement (Warn « port de repli » ; une instance qui n'a PAS le verrou ne réécrit pas le fichier). Écrivain d'événements unique `desktop_events.go` (nil hors desktop) : `listening` au port lié, `ready` à `openRouter`, `failed` dans `refuseStart` (états `locked`, `migration_failed`, `schema_newer`, plus `port` quand rien n'a pu être lié), `stopping` au début de `runShutdown`, `stopped` en toute fin de `awaitShutdown` APRÈS fermeture du pool et rendu du verrou. Le verrou refusé passe par `refuseIfInstanceLockFailed` -> `exitAfterRefusal` (helper aussi utilisé par les migrations). 12.6 : la résolution eager de `worldenrich` n'utilisait que `context.Background()` (boucle sur les comptes, ~1 s par échange, dans une goroutine suivie par `schedulerWG`) : `ctx` traverse `BuildEnricher/BuildMultiHaloSource/BuildHaloSource`, la boucle contrôle `ctx` entre deux comptes ; la boucle de rafraîchissement du watcher tournait sous le contexte du processus, hors groupe d'attente : elle est sous `schedulerCtx` et dans `schedulerWG`. Une requête HTTP interrompue n'a rien reçu (le refresh_token stocké reste valable) ; une fois la réponse lue, les écritures de jeton ne dépendent d'aucun contexte et la goroutine suivie les finit avant la fermeture des bases. `taskAppRelease` (écrit les bases joueur) est désormais suivie.
+
+**Résultats observés** : `TestE2ELanceurDesktop` (faux lanceur, tag `e2e_windows`) : `listening` en 78 ms, `ready` en 7,8 s sur racines vides, `stopped{clean:true}` 54 ms après l'EOF, port du fichier = port annoncé, second lancement pendant le premier `failed{locked}` puis sortie non nulle sans toucher au fichier de port, relancement sur le MÊME port, aucun WAL, stderr sans ligne d'événement, stdout sans autre ligne ; `TestE2EArretPropre` toujours vert. Tests : `instancelock` à deux processus, `desktop_events`, `desktop_port` (repli, contenu invalide, sans persistance), garde-rail `stdout_guard_test.go`, `refresh_loop_stop_test.go` (échange lent interrompu, jeton obtenu écrit), `wiring_ctx_test.go`, `filmproc/runner_annulation_test.go` (contexte annulé = enfant tué).
+
+**Conclusion / prochaine étape** : 12.1 à 12.6 `[x]`. Reste au pilote : voie Windows CI (le test entre dans `-run TestE2E`), mesure de l'arrêt rapide sur les données du poste avec jetons (non rejouable ici : un lancement sur les vrais jetons tournerait leurs refresh_tokens). Découvertes hors périmètre : refresh du pool de jetons (`pool.go` `refresherLoop`) détaché sous `context.Background()` et hors groupe d'attente ; arrêt demandé PENDANT l'initialisation attend la fin de l'initialisation (jetons du boot compris) ; `CORS`/cookie dérivés du port 8000 de la configuration chargée avant la liaison (L13).
+## [2026-11-02] Desktop — L14 : archive des films (emplacement, occupation, choix) et chunks en zstd-3 (D-18) — Complété côté code (mesure réelle `du -sh` = utilisateur)
+
+**Décision technique principale** : l'archive a sa racine (`Roots.FilmArchive`, lue une fois par `config.ResolveRoots` dans `app_settings.json:film_archive_dir`, `PathResolver.FilmArchiveDir()`, défaut `data/cache` donc aucun chemin ne change sans réglage) ; les appelants qui bâtissaient le chemin des films depuis `CacheRootDir()` passent à `FilmArchiveDir()` (les verrous, variantes de carte, faits et artefacts restent sous le cache). Le POINT UNIQUE d'écriture des chunks est `filmcache.Write` (tous les téléchargeurs y passent) : zstd-3 quand c'est plus court, brut sinon ; `size_bytes` garde le sens « taille de ce que le writer a reçu » et le contrôle de troncature compare la taille logique (taille du contenu dans l'en-tête de trame), de sorte qu'un manifeste d'avant reste valide après recompression d'un chunk brut. La couche `source` lit brut/zlib/zstd à l'en-tête et seule importe `klauspost/compress/zstd` (ratchet étendu). `levelup film recompress` (`--dry-run`, `--films`) et `levelup film archive-move` sont des gestes de l'utilisateur (ratchet `no_auto_film_recompress`). « Ne pas archiver » : chunks retirés après cuisson réussie (`retirerFilmNonArchive`), combinaison avec une rétention finie refusée au PATCH (400, fr + en) et repliée sur illimité à la lecture.
+
+**Résultats observés** : `replay-equiv` sur le film 51101d1d (copie dans le bac à sable, jamais le dépôt principal) : identique avant et après recompression (67 étapes, 668605 octets d'artefact des deux côtés), chunks 11 199 884 -> 2 444 947 octets ; simulation sur copie de 3 films (000d5950, 9f57c612, bcb6d393) : 57,3 Mio -> 14,9 Mio (-74 %), 76 chunks dont 5 zlib, rien écrit ; deuxième passe : 13 chunks déjà zstd sautés. Empreinte de la couche `source` re-figée à révision CONSTANTE (la sortie d'un chunk brut ou zlib est identique à l'octet).
+
+**Conclusion / prochaine étape** : 14.1 à 14.7 `[x]`. Écarts : le déplacement est la commande `film archive-move` (le réglage refuse tant que l'archive contient des films ou que la cible n'est pas vide) ; écriture atomique par `atomicfile.WriteFileStrict`. Reste à l'utilisateur : `du -sh data/cache/film_chunks` avant/après `levelup film recompress` (serveur arrêté), puis le même `--dry-run` en premier. Hors périmètre relevé : les films téléchargés par le sync killsource en mode « sans archive » et jamais cuits (carte hors catalogue) restent sur disque ; `go mod tidy` dans `libs/film` ajoute à tort `libs/gamefiles` et `libs/himap` en `require` (ADR 0041) : `go.mod` édité à la main.
+
+## [2026-11-01] Desktop — vague 3 : L10 profil de déploiement, L11 trois racines, L8 sons Opus, revue 3r — Complété côté code (PR et fusion à suivre)
+
+**Décision technique principale** : L10 (ADR 0044) et L11 (ADR 0008 amendée) menés en parallèle dans deux worktrees puis fusionnés (un conflit `config.load`, résolu : signature `launchMode` + `ResolveRoots()`) ; L8 (D-6 Opus) en troisième worktree. Écarts acceptés : pont transitoire `title.InstallProcessRoots` avec ratchet `RepoRoot` (149 lectures) qui ne descend que ; `reference/generated/*` sous `DataRoot` ; compose prod pose `LEVELUP_DB_PROFILES` / `LEVELUP_APP_SETTINGS` (à relire avant déploiement) ; trois capacités de plus que l'ADR 0044 ; `can_use_admin=false` en desktop ; seul le classement mondial coupé en desktop. Revue 3r : 2 constats C corrigés (enfant de cuisson sans racines, healthcheck sur les mauvais chemins), 0 constat D.
+
+**Résultats observés** : T3 `xbox` et `none` identiques hors champs neufs (ordre d'`available_titles` non déterministe, préexistant) ; démarrage réel à trois racines distinctes sur les données du poste : santé, bootstrap, `/api/v1/players` 200, 14 journaux sous `LogsRoot`, rien d'écrit sous les ressources, arrêt propre ; T4 identique par défaut (+ 5 accesseurs neufs) et invariants des racines distinctes testés ; sons : 84 Mo → 4,9 Mo, 184/184 à l'échantillon près ; gates verts, lint 0.
+
+**Conclusion / prochaine étape** : 8.1-8.3, 10.1-10.6, 11.1-11.5 `[x]` ; 8.4 (écoute) à l'utilisateur. Push, CI, PR vague 3, fusion (go permanent). Vague 4 : L12 port + événements + verrou (avec 12.6), L13 mode desktop, L13b coffre DPAPI, L14 archive (+ zstd 14.5-14.7), L15 réveil.
+
+## [2026-11-01] Desktop — L10 : profil de déploiement (ADR 0044) — Complété côté code (fusion avec L11 par le pilote)
+
+**Décision technique principale** : `internal/config/deployment.go` résout UNE fois (dans `load`, donc `LoadServer(launchMode)` et `Load()`) le profil `hosted` / `desktop` / `demo` / `dev` à partir de `-mode`, `LEVELUP_DEMO_MODE`, `LEVELUP_ENV`, et en dérive `AuthMode` (`desktop` interne, publié `none` : le contrat d'API garde `none, password, xbox`), l'hôte (boucle locale forcée, Warn si `LEVELUP_API_HOST` contredit, `LEVELUP_AUTH_MODE` ignoré avec Warn) et 13 capacités (10 familles de l'ADR + `can_sign_in_with_xbox`, `can_edit_settings`, `can_upload_media`, nécessaires pour que chaque lecteur web de `demo_mode` / `auth_mode` garde son sens). `/bootstrap` : `capabilities.deployment` + 13 `can_*` ; `feature_flags.demo_mode`, `demo_mode` et `auth_mode` conservés. `authz.AuthDisabled` : `desktop` suit le chemin de `none` dans `RequireAuth` / `RequireAdmin` / `IsAuthenticatedCtx`. `demoPolicies` devient `taskPolicies` (tâche x profil) : colonnes hosted/dev/demo identiques à l'ancien, desktop coupe la capture du classement mondial seulement. Ratchet `deployment_single_resolver_test.go` : allowlist datée 83 + 52 + 3 lectures (AST, commentaires exclus) et interdiction de comparer un `config.Deployment` hors résolveur. Web : 9 fichiers de production lisent `useDeploymentCapability` / `deploymentCapabilityOf` au lieu du store `authMode` / `demoMode`, supprimés du store.
+
+**Résultats observés** : voir les gates du compte rendu de lot ; `openapi.yaml` et `generated.ts` ne diffèrent que sur `CapabilityMap` (+31 lignes TS). `config.go` reste à 629 lignes (champ embarqué compensé par `environmentDeclared`).
+
+**Conclusion / prochaine étape** : 10.1 à 10.6 faits. Le pilote fusionne avec L11 (`config.go`, allowlists du ratchet et de `demo_state_guard_test.go` à recompter après fusion) ; les valeurs desktop des capacités et la colonne desktop de la table des tâches sont des propositions à confirmer. Témoin T3 à jouer par le pilote.
+## [2026-11-01] Desktop - L8 : sons du rejeu en Opus (D-6), outil `sounds-encode` - Complete cote code (8.4 ecoute = utilisateur)
+
+**Decision technique principale** : Opus 96 kbit/s en Ogg, recette unique dans `internal/media/sound_encode.go` (`EncodeSound`, `CheckSameFrames`), appelee par `cmd/sounds-encode` (idempotent, `-check`, `-remove-sources`) ET par la livraison des armes de `cmd/weapon-sounds` (mixage et troncature restent en PCM, seul le fichier publie est encode). Encodage reproductible (bitexact, sans metadonnees). Cote web : `soundUrlOf` demande `.ogg` ; les garde-rails lisaient des en-tetes RIFF et du PCM : remplaces par `test/oggOpusFile.ts` (en-tetes Ogg : duree exacte = granule finale moins pre-skip ; decodeur WASM `opus-decoder`, dependance de developpement MIT, pour le garde-rail de niveau). Goldens de `livrer` : les `hinf_*.wav` Python restent la preuve du PCM (encodeur identite injecte), un second test encode pour de vrai et compare les echantillons decodes.
+
+**Resultats observes** : 184 WAV -> 184 OGG, `static/sounds` 87 207 226 o -> 4 560 797 o ; `-check` : 184 controles, 0 echec, second passage 184 deja a jour ; niveaux des fanfares et voix (decodes) = releves du WAV (-16,1 a -18,7 dBFS) ; durees identiques a l'echantillon.
+
+**Conclusion / prochaine etape** : 8.1 a 8.3 faits ; 8.4 : ecoute comparee par l'utilisateur (navigateur reel, boucles moteur). Hors perimetre releve : l'instrument `libs/film/replay/weapon_burst_research_test.go` (tag `research`) lit des `hinf_*.wav` qui n'existent plus.
+## [2026-11-01] Desktop — L11 trois racines de chemins (ADR 0008, amendement « two roots ») — En cours (sous-lot a livré)
+## [2026-11-01] Desktop — L11 trois racines de chemins (ADR 0008, amendement « two roots ») — Complété (revue adversariale et démarrage réel à trois racines à suivre par le pilote)
+
+**Décision technique principale** : `title.Roots{Resources, Data, Logs, DataSet}` + `NewPathResolverRoots` (racines explicites) ; `NewPathResolver(racine)` garde sa signature et rend les racines par défaut (`data/`, `logs/` sous la racine), ou les racines du PROCESSUS quand la racine passée est la racine de ressources installée par `config` (pont transitoire `title.InstallProcessRoots`, nécessaire parce qu'une centaine de services reçoivent une racine nue et bâtissent leur propre résolveur ; retrait quand l'allowlist du ratchet RepoRoot est vide). Résolution UNE fois dans `internal/config` (`ResolveRoots` : `LEVELUP_RESOURCES_DIR`, puis `LEVELUP_REPO_ROOT`, puis détection ; `LEVELUP_DATA_DIR` défaut `<Resources>/data` ; `LEVELUP_LOGS_DIR` défaut `<Resources>/logs`) ; un `.env.local` ne pose pas les racines (clés ignorées, journalisées) ; `db_profiles.json`, `app_settings.json`, `.env.local` en tête de Data seulement si `LEVELUP_DATA_DIR` est posé (A-3).
+
+**Résultats observés** : T4 par défaut identique au témoin d'avant, aux ajouts près (`MigrationBackupsDir` de la vague 1, accesseurs `DataRoot`/`LogsRoot`/`ResourcesRoot`/`Roots`) ; trois racines distinctes : chaque chemin de donnée sous Data. Les trois joins de `"data"` de `config` ont disparu (sortis de l'allowlist de `no_data_path_join_test`).
+
+**Sous-lot b** : le référentiel du rejeu `data/titles/{slug}/reference/` et `metadata-prebuilt.zip` (nouvel accesseur `PrebuiltMetadataZipPath`) sous la racine de ressources, forme relative conservée ; les overlays `reference/generated/` sont ÉCRITS à l'exécution (rattrapage des cartes Forge) : ils vivent sous la racine de données, même chemin relatif (affinement de A-2, T4 identique). 152 `NewPathResolver(<cfg>.RepoRoot)` deviennent `cfg.PathResolver()` ; les enfants de cuisson reçoivent les trois racines (`filmproc.NewRunnerRoots`, `replaychild.NewRunner` ; la racine de données n'est imposée que si elle a été posée) ; le dossier des journaux est créé avant la capture des plantages (plus de `WARN crash_output` sur une racine neuve, test rouge sans l'appel). T4 par défaut : aucune ligne modifiée, ajouts seuls ; trois racines distinctes : test versionné (aucune ressource sous Data, aucune donnée sous Resources).
+
+**Sous-lot c** : `Dockerfile` et compose : `LEVELUP_ROOT` / `LEVELUP_DATA` (lues par rien) retirées, `LEVELUP_RESOURCES_DIR`, `LEVELUP_DATA_DIR`, `LEVELUP_LOGS_DIR` posées ; `LEVELUP_DATA_DIR` posé déplaçant `db_profiles.json` / `app_settings.json` en tête de Data (A-3), le service de production garde ses fichiers montés sous `/app` par `LEVELUP_DB_PROFILES` / `LEVELUP_APP_SETTINGS` (disposition de l'hôte inchangée) ; la démo pose ses journaux à `<démo>/runtime/logs`. Pas de montage en lecture seule du référentiel sur la production : `reference/generated/` (overlays écrits à l'exécution) y vit. `scripts/deploy.sh` relu sans changement (`git clean` exclut `data/`, `.env.local`, `app_settings.json`, `db_profiles.json` ; rien de nouveau à la racine du dépôt). Ratchet `archlint/repo_root_readers_test.go` : 149 lectures de `RepoRoot` dans 91 fichiers (allowlist figée, ne descend que). Documentation EN + FR (INSTALL, CONFIGURATION) et notes d'implémentation dans l'ADR 0008.
+
+**Conclusion / prochaine étape** : gates verts (suite `./internal/... ./cmd/server/...` 151 paquets ok, archlint, lint 0, e2e Windows, libs). Reste au pilote : démarrage réel à trois racines distinctes (`/health`, page de match) et revue adversariale. Le pont `title.InstallProcessRoots` s'éteint quand l'allowlist est vide.
+
+## [2026-11-01] Desktop — revue adversariale 2r (L1 + L5 + L7) et corrections — Complété
+
+**Décision technique principale** : deux relecteurs Opus en parallèle, aveugles l'un à l'autre, contrat écrit (objectif, périmètre, invariants, décisions tranchées, dette assumée), lentilles L1+auth et L3+L6. Constats recevables : 4 (2 P1, 2 P2), 1 écarté (P2 : `-mode` réservé = D-15). Corrections dans le lot : ratchet `order_floor_test.go` (plancher 236 : la garde de version repose sur `len(canonicalOrder)`, qu'un squash abaisserait → `schema_newer` partout ; décision à prendre avant tout squash) ; porte des jetons hors SSO = `HasDeclaredProfile` (tout titre, pause et auth_only compris) au lieu de la porte du suivi live ; copie de sauvegarde une fois par base/version/démarrage sous reprise du verrou ; copie écrite en `.part` puis renommée, restes retirés par la rétention. Quatre tests de non-régression ajoutés. CI vague 2 : rouge sur `TestNoUnauthorizedSharedSocialMention` (fichiers `boot_*.go` nés de l'extraction) → whitelist mise à jour avec la justification datée (déplacement pur depuis `main.go`).
+
+**Résultats observés** : gates verts (migration, cmd/server, config, api, service, duckdb ratchet), lint `--new-from-merge-base` 0. Ronde 2 non lancée (corrections de quelques lignes testées).
+
+**Conclusion / prochaine étape** : push, CI, PR vague 2 (fusion sur CI verte, go permanent de l'utilisateur), puis vague 3 (L10 profil, L11 racines). En attente de l'utilisateur : D-6 sons (Opus / FLAC), D-18 zstd de l'archive ; squash du registre de migrations = décision de versionnage à écrire avant.
+
+## [2026-11-01] Desktop — vague 2 : L7 extraction de `main.go` (déplacement pur), L9 mesures — Complété côté code (revue adversariale 2r à suivre, D-6 et D-18 en attente de l'utilisateur)
+
+**Décision technique principale** : L7 en trois commits (`9a6a14981a` L7a configuration + migrations, `778b5796d8` L7b fournisseurs/auth/persist, `fd033bd660` L7c tâches de fond, routeur, arrêt) commités par l'agent (exception accordée pour ce lot : trois commits de déplacement pur), `main()` = 33 appels sur une struct `bootState`, huit fichiers `boot_*.go` (deux de plus que la cible pour tenir 500 L : `boot_watcher.go`, `boot_crons.go`), aucune fonction neuve > 80 L, lint `--new-from-merge-base` 0. L9 : les chunks de film sont stockés BRUTS à 96 % (zstd-3 = −75 %, 3 s pour 20 films) ; sons : Opus 5 % du WAV et boucles exactes, AAC ajoute 128 à 960 échantillons, FLAC 35 % sans perte.
+
+**Résultats observés** : T2 avant/après L7 sur les données du poste : migration 92/92 identiques, général 114/111 (écarts = purge du cache de fetch au premier lancement, repli OAuth selon Azure, ordre d'une goroutine), T3 identique ; e2e Windows vert après L7c. L9 : tables au §10 du plan. Deux décisions posées à l'utilisateur : D-6 format des sons (reco Opus, FLAC si Safari compte), D-18 stockage zstd-3 de l'archive + recompression manuelle.
+
+**Conclusion / prochaine étape** : 7.1 à 7.3, 9.1 et 9.2 `[x]`. Revue adversariale Opus (2r) sur L1 + L5 + L7 (diff `8f0b512c58..HEAD` restreint à `cmd/server/`, `internal/migration/`, `internal/service/devicecode_completion.go`, `internal/api/server_apiv1.go`, `playerdirectory/`). Puis PR vague 2, et vague 3 (L10 profil, L11 racines) sur les ADR 0044 / 0008.
+
+## [2026-11-01] Desktop — vague 1b : L5 jeton longue durée en mode `none`, L6 bout en bout de l'arrêt — Complété côté code (6.2 run CI au push)
+
+**Décision technique principale** : un seul magasin de jetons (`authStore`) construit hors de toute branche de mode ; service `service.DeviceCodeCompletion` = point unique d'écriture après une connexion par code d'appareil (la stratégie SSO délègue, plus de copie) ; hors SSO, la stratégie historique (mot de passe / `none`) est DÉCORÉE (`NewDeviceCodeLinkStrategy`) et n'écrit que pour un profil SUIVI (porte ADR 0035). Ordre réel du wizard relevé : connexion AVANT déclaration du profil → les jetons d'une connexion sans profil restent en MÉMOIRE (2 h, 16 identités max, jamais sur disque) et sont rejoués par `Onboard` juste après la création du profil, avant le suivi live (`CredentialSeeder`). Mise en commun : aucune décision écrite (D-4, ADR 0038). Changement assumé en mode `xbox` : un RT sans XSTS RTA est désormais persisté (c'est lui qui est durable). L6 : test `cmd/server/e2e_arret_windows_test.go` (tag `e2e_windows`) : compile, lance sur racine vide (`config/` copié, variables posées, environnement du poste purgé), stdin fermé, `clean=true reason=stdin`, 0 WAL, relance ; étape ajoutée au job Windows CGO.
+
+**Résultats observés** : L5 gates verts (service, api, platform/auth, sync ; archlint) ; contrôle du pilote : double journalisation d'un échec d'écriture retirée dans `persistRTATokens`. L6 : 3 passes vertes (démarrage 4 à 10 s, arrêt 70 ms, test 18 à 22 s), mutation `reason=signal` → rouge. Découverte : `crash_output` ouvre `logs/server.crash.log` avant la création de `logs/` sur une racine neuve (capture perdue au premier démarrage), notée §10 pour L11. Limite documentée (INSTALL fr/en) : un redémarrage entre la connexion et la déclaration du profil perd les jetons en attente, le joueur se reconnecte.
+
+**Conclusion / prochaine étape** : 5.1 à 5.4 et 6.1 `[x]` ; 6.2 = run vert de la voie Windows au push (PR vague 1b). L5 touche l'auth : à inclure dans la revue adversariale Opus de la vague 2r (avec L1 et L7). Ensuite vague 2 : L7 extraction de `main.go` (3 sous-lots), L9 mesures (Haiku) puis L8 sons, ADR 0044/0008/0045 (pilote).
+
+## [2026-11-01] Desktop — vague 1 close côté code : gate, rebase, PR #125, voie Windows prouvée (4.3 rouge, 4.4 vert) — Complété (fusion de la PR = décision de l'utilisateur)
+
+**Décision technique principale** : la CI du dépôt ne reçoit les `pull_request` que vers `main` (`on.pull_request.branches: [main]`) ; une PR vers une branche de release ne déclenche rien et le verdict d'une branche de travail vient de son push. Le job `go-test-windows-cgo` tourne donc aussi sur les pushs `feat/desktop-*` (condition datée 2026-11-01, retrait à la clôture de P1) ; D-7 corrigée dans le plan (ma « précision » de l'après-midi était fausse). Mutation 4.3 = test `_windows_test.go` en échec plutôt qu'un `_windows.go` cassé : le hook pre-push `go-vet-cgo` arrête ce dernier avant le push (et un test prouve que la voie JOUE les tests, pas seulement la compilation). Branche rebasée sur `release/v8.1.0` après la fusion du chantier publication (`e2c449b38c`, `5c37ca56a3`, `1628f75fff`) : aucun conflit.
+
+**Résultats observés** : `make gate-push` dans le worktree : lint Go, libs-test, typecheck, lint web, baseline (18 534 tests, 0 échec) verts ; `replay-equiv` doit être joué avec `-repo-root <dépôt principal>` (pas de `data/` dans le worktree) : 19/20 identiques, l'écart `11de8353` (spawnPoints 0 → 54) est REPRODUIT à l'identique sur le checkout `release/v8.1.0` : préexistant, dépendant des données de carte. `TestCheminsAiCitesDansLeCodeExistent` rouge sur la release (chemins `.ai/` déplacés par « Archivage »), pas de cette branche. Run `41330468268` : job Windows CGO vert en 3 min 54 s ; branche jetable `feat/desktop-mutation-win` : job rouge en 3 min 13 s, branche supprimée. PR brouillon #125 vers `release/v8.1.0`.
+
+**Conclusion / prochaine étape** : L0 à L4 entièrement `[x]`. Vague 1b (L5 jeton longue durée en mode `none`, L6 test de bout en bout de l'arrêt) : le plan dit « après fusion » ; proposition à l'utilisateur de l'empiler sur la branche sans attendre. À traiter avant L12 : l'arrêt dans les premières secondes du démarrage (`clean=false`, OAuth du démarrage non annulable).
+
+## [2026-11-01] Desktop — L2 arrêt propre sous Windows — Complété (branche `feat/desktop-p0` ; vague 1 codée, reste témoins, gate-push, PR)
+
+**Décision technique principale** : parseur unique des arguments (`cmd/server/flags.go` : `-health-check`, `-arret-sur-stdin`, `-mode` refusé jusqu'à L12/L15), demande d'arrêt unique `bootServer.requestShutdown` (signal, EOF stdin, `POST /api/v1/internal/shutdown` sous `LoopbackOnly` + secret `LEVELUP_DESKTOP_SECRET` comparé en temps constant, route montée seulement si le secret est posé), ligne `arrêt: terminé` avec `clean` (phases dans leur délai, vidage persist sans erreur, budget tenu). D-17 RÉVISÉE : le `pre_cmd` d'air est inopérant (air 1.65.1, `engine.go` : `stopBin` = `TASKKILL /F /T` PUIS `buildRun` → `runPreCmd`) ; remplacé par `cmd/devlaunch`, lanceur que air exécute à la place du serveur : il tient le bout écrivain du stdin du serveur (lancé `-arret-sur-stdin`), le serveur est détaché de son arbre (double lancement, le parent sort aussitôt) ; air tue le lanceur, le serveur lit EOF et s'arrête seul ; le lanceur suivant attend le port (45 s). C'est le contrat de la coquille, joué par le poste à chaque rechargement.
+
+**Résultats observés** (données du poste, `logs/general.log`) : stdin fermé → `arrêt: terminé clean=true reason=stdin` en 156 ms, 0 WAL hors `data/backups/` (T6 « avant » : 7 WAL) ; route HTTP 202 → arrêt propre ; air réel : rechargement par modification d'un `.go` → serveur 1 sorti en 1 s, `clean=true reason=stdin`, serveur 2 prêt 10 s après, parent du serveur absent (TASKKILL /T ne l'atteint pas), kill de l'arbre d'air → serveur 2 `clean=true`, 0 WAL. DÉCOUVERTE : arrêt demandé dans les ~5 s qui suivent le démarrage → phase `scheduler` hors budget (3 s) à cause des échanges OAuth du démarrage qui ignorent l'annulation → `clean=false` (bases fermées quand même) ; à traiter avant L12. L'agent avait d'abord livré le `pre_cmd` en affirmant l'avoir testé : le gate du pilote (air réel, 6 WAL) l'a invalidé.
+
+**Conclusion / prochaine étape** : 2.1 à 2.5 `[x]`. Fin de vague 1 : témoins T2/T3 « après » (recette T2 corrigée : filtre sur la date), `make gate-push`, push, PR vers `release/v8.1.0` (4.4 run Windows vert), branche jetable pour la mutation 4.3.
+
+## [2026-11-01] Desktop — vague 1 : L1 (migrations), L3 (horloge, police, ffmpeg), L4 (voie CI Windows CGO) — Complété (branche `feat/desktop-p0` ; L2 lancé)
+
+**Décision technique principale** : trois agents en parallèle (L1 Sonnet dans `../LevelUp-wt-desktop`, L3 Haiku dans `../LevelUp-wt-desktop-l3`, L4 Sonnet dans `../LevelUp-wt-desktop-l4`), sans droit de commit ; contrôle sur pièces par le pilote puis commit par lot, les branches `-l3` / `-l4` rapatriées par cherry-pick. L1 : échec de migration = porte de démarrage en 503 `server_start_failed` non réessayable (états `locked` / `migration_failed` / `schema_newer`), reprise du verrou unique (`retryOnFileLock`, 12 × 500 ms) partagée par les migrations et metadata, garde de version en lecture seule (`migration.InspectSchema`), copie avant montée (`migration.BackupBeforeUpgrade`, `PathResolver.MigrationBackupsDir`, rétention 2, refus sans espace), écran web par état (fr + en). L3 : le résolveur ffmpeg/ffprobe NE met PAS son résultat en cache (un test d'`ops` devenait dépendant de l'ordre ; la résolution coûte quelques `stat`) ; Roboto embarquée sous SIL OFL 1.1 (pas Apache), police variable, deux fichiers ; 7 expirations gardées en mémoire passent en `Round(0)`, 7 écrites en JSON laissées (la sérialisation retire le monotone). L4 : job `go-test-windows-cgo` sans `needs: changes` (le ratchet des contournements l'exigerait sur `main`), `if` = pull requests + `release/**` ; précision D-7 : la CI se déclenche sur toute PR, pas seulement vers `main`.
+
+**Résultats observés** : gates L1 verts (migration, cmd/server, title ; intégration `-p 1` ; serverStartup 17 tests ; typecheck) ; L3 verts après retouches (8 paquets Go, archlint, fonts, build web) ; L4 rejoué localement (serveur, diskfree, levelup, filmproc, filelock, himodule) vert. CORRECTION d'une découverte du lot 0 : le témoin T2 « avant » filtrait `migration.log` sur l'heure sans la date et a ramené des lignes ERROR de mai 2026 ; `purge_data_health_warning_notifs` a échoué en mai (C2 réel à l'époque) puis a été appliquée le 2026-06-25 ; la base locale est à jour (v236, 0 étape en attente) et le serveur L1 démarre en 12 s sur les données du poste. Aucune réparation locale ni vérification VPS nécessaires. Découvertes : `himodule` et `diskfree` n'ont aucun test joué (compilation seule sous Windows) ; le `cache-dependency-path` de `go-build` oublie `libs/himap/go.sum`.
+
+**Conclusion / prochaine étape** : L1, L3, L4 `[x]` (4.3 mutation et 4.4 run vert à l'ouverture de la PR, fin de vague). L2 (arrêt propre : drapeaux, EOF stdin, point d'arrêt secret, air) lancé dans `../LevelUp-wt-desktop`. T2 « avant » à recapturer avec filtre sur la date (binaire `C:\t\lvl-temoin.exe`, commit `8f0b512c58`) à la comparaison de fin de vague.
+
+## [2026-11-01] Desktop — lot 0 (relevé et témoins) — Complété (branche `feat/desktop-p0`, worktree `../LevelUp-wt-desktop`, aucun code modifié ; commit du plan en attente d'accord)
+
+**Décision technique principale** : témoins « avant » capturés sur le commit `8f0b512c58` (même HEAD que la release et le worktree) et conservés dans le scratchpad de la session ; T2 se lit dans les journaux par catégorie en JSON (console au niveau WARN seulement), recette figée : `time`, `source` et durées retirés, pour que l'extraction de `main.go` (C6) se compare sur le fond. Pour T3 démo, pas de mode démo sur les données réelles (verrou de régénération) : bootstrap de `demo.lvelup.info` (v8.0.7) comme témoin de forme.
+
+**Résultats observés** : T1 194 paquets `ok`, 1 échec `mapcatalog` (verrou de fichier sous charge) vert seul 3 fois ; T2 107 + 135 lignes (general, migration) ; T3 xbox / none / démo ; T4 67 méthodes de `PathResolver` par réflexion ; T5 36 Go de films, 63 Go de `data/`, 108 Mo de `static/`, chunk zlib ; T6 après arrêt forcé (seul arrêt possible aujourd'hui sous Windows) : WAL laissés sur `metadata`, `monitoring` (4,8 Mo, jamais résorbé), `shared_social` et 4 bases joueur. 0.3 : la cuisson post-sync suit `schedulerCtx`, l'enfant est tué à l'annulation sans rien écrire. DÉCOUVERTE : à chaque démarrage depuis le 2026-05-20, l'étape `purge_data_health_warning_notifs` sur `shared_social` échoue (ART #23645, `Only deleted 0 out of 198 rows`, `FATAL`) et le serveur démarre quand même : C2 observé en direct sur le poste ; index corrompu local à réparer hors plan (ADR 0026) ; prod à vérifier en lecture.
+
+**Conclusion / prochaine étape** : lot 0 clos (0.1 à 0.5 `[x]`). Vague 1 : L1 (C2) puis L2 (C1) en séquence, L3 (Haiku) et L4 (CI Windows) en parallèle ; briefs à écrire par le pilote après le commit du plan sur `feat/desktop-p0`.
+
+## [2026-11-01] Desktop (Tauri) — décisions prises par l'utilisateur, C3 et lien de dons vérifiés par le pilote — Complété (aucun code modifié ; plan `.ai/V8/PLAN_DESKTOP_2026-11-01.md`)
+
+**Décision technique principale** : les 17 décisions du plan ont été prises par l'utilisateur sur une page de décisions (artefact avec stockage, lu directement par le pilote) : 14 suivent la recommandation ; trois s'en écartent et modifient le plan : D-8 chiffrement des jetons dès la v1 (nouveau lot L13b : port `TokenCipher`, `plain` sur l'hébergé, DPAPI sur Desktop, ADR 0023 amendée), D-9 ffmpeg livré dans l'installeur (L17.1 : build LGPL épinglé, mentions), D-10 aucune signature de code (avertissement SmartScreen documenté sur la page de téléchargement). Les deux gestes prévus pour l'utilisateur ont été faits par le pilote à sa demande, sur pièces.
+
+**Résultats observés** : C3 confirmé sans exécution, chaîne fermée : en mode `none` le handler du device-flow n'a pas de stratégie (`server_apiv1.go:392` seul appel de `WithLinkStrategy`, dans la branche `xbox`), `completeLogin` ne pose que la session ; les seuls écrivains du magasin après connexion sont `xbox_auth_service.go:311` et `auth_xbox_oauth.go:338`, tous deux montés en mode `xbox` seulement. Règles d'usage du contenu de jeu Microsoft (page officielle, janvier 2015) : lien de dons explicitement permis, app gratuite sans publicité conforme, mention d'attribution au texte imposé OBLIGATOIRE avec lien vers les règles (absente sous cette forme du pied de page actuel → L17.1), sons du jeu NON couverts (effets audio sous licence tierce) : risque à trancher par l'utilisateur, consigné en A19.
+
+**Conclusion / prochaine étape** : lot 0 items 0.4 et 0.5 cochés ; reste une décision utilisateur (sons du jeu) et le nom de branche ; lancement du lot 0 (témoins) puis vague 1 sur accord, en parallèle de la publication des briques.
+
+## [2026-11-01] Desktop (Tauri) — plan écrit et contre-vérifié — Complété (aucun code modifié ; plan `.ai/V8/PLAN_DESKTOP_2026-11-01.md`)
+
+**Décision technique principale** : un plan en trois phases (P0 serveur, P1 coquille, P2 expérience) bâti sur l'étude du 26/10 et l'audit du 27/10, dont chaque constat a été rouvert sur pièces (deux passes : pilote puis relecteur Sonnet en contexte frais, lecture seule). Contrat coquille/serveur fixé par écrit (événements stdout `listening`/`ready`/`failed`/`stopping`/`stopped`, arrêt par EOF stdin ou point d'arrêt sous secret, observable d'arrêt propre = ligne nommée + aucun `*.wal`) pour que chaque côté se teste contre un faux de l'autre (développeur seul). 17 décisions tranchées par le pilote, à confirmer au lancement ; lots attribués Sonnet par défaut, Haiku pour le mécanique, Opus pour trois revues adversariales.
+
+**Résultats observés** : les constats C1 à C12 tiennent, avec des écarts corrigés dans le plan : C4 déplacé sous `platform/auth/tokencache` (D3) et prouvé aussi sous Windows (`nanotime1` lit `_INTERRUPT_TIME`) ; C5 : 36 Go aujourd'hui, pas 104 ; C9 : Windows joue déjà des tests sans CGO et `release.yml` compile déjà le serveur Windows avec CGO sans action mingw ; `filmproc/solo.go` existe sous `libs/film`. Trois constats graves du relecteur intégrés : un port `127.0.0.1:0` viderait `localStorage`/IndexedDB à chaque lancement (297 occurrences) → port stable mémorisé ; C2 tel que l'audit le proposait aurait rendu fatal le verrou DuckDB réel après un arrêt forcé (`main.go:563-583`) → reprise déplacée avant les migrations, état d'échec non réessayable servi par la porte de démarrage et côté web ; les marqueurs « arrêt propre » / « replaying WAL » n'existent pas dans le journal. Oublis ajoutés : tâches de fond par profil (`demoPolicies`), purge des rejeux × non-archivage, verrou d'instance Go, journaux et fichiers écrits à la racine, licence/NOTICE, app Azure partagée, clé d'updater, désinstallation, hygiène Rust, ADR 0043 déjà réservé par la publication.
+
+**Conclusion / prochaine étape** : l'utilisateur confirme ou amende D-1 à D-17 (§5) et le nom de branche ; lancement du lot 0 ensuite. Ordre vis-à-vis de la publication des briques (02/11) : vague 1 en parallèle, L5 et L7 après son lot 3. Coût de la contre-vérification : 1 agent Sonnet, 16 min, lecture seule.
+
+## [2026-10-30] Harnais replay-equiv — références re-figées
+
+**Statut** : Complété (branche `chore/harnais-references`, PR vers `release/v8.1.0`).
+
+**Décision technique principale** : les 20 références `libs/film/replay/testdata/equivalence/<short8>.tsv` sont re-figées par `replay-equiv -update` au comportement courant, après preuve que ce comportement est celui d'avant le découplage D2 ; `minifilm.tsv` et les `.facts.json` ne bougent pas. `make replay-equiv` est ajouté et joué par `make gate-push` juste après `make libs-test` (la ligne `libs-test` n'est pas touchée), car `gate-push` ne jouait pas le harnais, d'où la dérive silencieuse.
+
+**Résultats observés** : références périmées depuis la v8.0.0 (64 étapes figées, 67 attendues : `knockbacks` insérée ; `# digest-grammar: 2` avant et après). AVANT : code 1, « 20 different », 20 digests obtenus de MD5 identiques aux témoins D2 (`temoins_d2_lot5_apres`, donc lots 0, 2.12, 3, 5), 1 360 lignes. `-update` : 20 `.tsv` réécrits à 67 étapes, aucun autre fichier du dépôt modifié, contenu égal aux digests obtenus. APRÈS : code 0, « 20 identical » ; `go test ./replay/ -run Equivalence` et `go test ./replay/` verts dans `libs/film`. Poste : racine de jonctions (`data`, `config` du dépôt principal ; `libs`, `apps` du worktree) retirée par `rmdir`.
+
+**Conclusion / prochaine étape** : PR vers `release/v8.1.0`, CI, fusion squash par le pilote. Le harnais coûte environ 12 min dans `gate-push` et exige le parc local.
+
+## [2026-10-30] Suites du découplage — outillage, ratchets muets, robustesse de la brique API, backlog
+
+**Statut** : Complété (branche `chore/suites-decouplage`, plan `.ai/V8/PLAN_SUITES_DECOUPLAGE_2026-10-30.md`, tous les items `[x]`).
+
+**Décision technique principale** : (A) gates locaux du poste Windows réparés : `"$(MAKE)"` entre guillemets dans `gate-push` ; délai de 600s dans `go-api-test` (valeur CI ; `grammar` dépassait 60s, cible rouge avant) ; `gate-push.ps1` écrit le JSONL par la redirection de `cmd.exe` (`Invoke-GoTestJson`) ; `air` surveille `libs/film`, `libs/gamefiles`, `libs/himap` (`include_dir` hors racine, `testdata`/`research` exclus par motif) ; `replay-corpus-gate` compile puis lance le binaire (`go run` écrasait le code du gate en 1). (B) `racineDeclaree(t, rel)` : une racine déclarée absente échoue en `t.Fatalf` dans cinq ratchets, garde-rail AST `no_racine_absente_toleree` ; sept ratchets de compte rougissent sous leur plafond (« baisse le plafond à N »), plafonds remis à la mesure (libellés FR, 18 fichiers et 8 fonctions du film). (C) `haloapi/infinite` : `FetchMatchStats` refuse un non-UUID avant l'appel, gamertag (service record), xuid (opérations, decks, confidentialité), saison et playlist (classement) échappés, forme `xuid(NNN)` inchangée ; `xblauth` : erreur de lecture du polling rendue ; `oauth_error.go` conforme à l'ADR 0023. (D) deux entrées de backlog (famille de jeton OAuth, reportée par le user ; publication des briques).
+
+**Résultats observés** : preuves avant/après pour chaque item : `make go-api-test` rouge (`grammar` FAIL à 61 s) puis code 0 ; capture d'origine sous page OEM 850 : 58 faux absents dans `internal/service` (le compte du registre), 0 après ; faux témoin du gate : `go run` 1, binaire 2 ; mutations de racine : silencieuses avant (3 PASS, 1 SKIP), rouges après ; plafonds montés d'une marge : 7 PASS avant, 7 FAIL après ; cibles de requête saines identiques octet pour octet, 8 cas réservés et `FetchMatchStats("../x")` rouges avant, verts après ; corps tronqué du polling : erreur JSON avant, `io.ErrUnexpectedEOF` après. Gate final : build, vet, gofmt, lint (base release) 0 issue, `go test ./...` 195 paquets 0 FAIL, `make go-api-test` code 0, `bash -n`, syntaxe PowerShell. Aucun appel réseau réel, aucun jeton lu.
+
+**Découvertes non traitées** : S-1 `make -n` inutilisable avec une recette récursive (GnuWin32) ; S-2 D2-L3-c (ratchets qui balaient `internal/` sans le décodeur) reste au registre ; S-3 chemins CMS non échappés (`appearance`, `nameplate`, préfixe de blob) ; S-4 lecture écartée sur le chemin d'erreur de `peoplehub_resolver` et `xbox_profile_resolver`. Inscrites au registre des reports (section du lot).
+
+**Conclusion / prochaine étape** : PR vers `release/v8.1.0` ; au pilote : CI, fusion squash, `scripts/disk-hygiene.ps1 -Lot suites -Apply`, suppression du worktree.
+
+
+## [2026-10-30] Rejeu 2D — l'écran occultant passe au bleu nuit, bord électrique et éclairs — Complété (branche `feat/rejeu-ecran-occultant-bleu`, gate visuel au user)
+
+**Décision** : demande utilisateur du 2026-10-30 (« bleu nuit/électrique avec des éclairs dedans ») : la bulle de la carte quitte l'encre neutre du verdict du 2026-08-27 et reprend l'électricité de la fiche. Opaque et pions au-dessus inchangés. Cœur = `info` assombri de 60 % (`shiftLightness`), fondu du bord par `info`, 3 éclairs qui battent sur la courbe de `@keyframes replay-zone-bolt` (cycle 2,6 s, décalages partagés avec la fiche via `SHROUD_BOLT_OFFSETS_S`, horloge de la pose), éteints sous mouvement réduit. `heatmap-freq-low` écarté : le garde-rail de la rampe heatmap le réserve à `heatmapRampTokens()`.
+
+**Code** : la bulle sort de `placementShapes.ts` vers `layers/placementShroud.ts` (rayon, durée de repli, encres, éclairs) ; `PlacementInk.shroud` et `ReplayInks.shroud` neufs.
+
+**Gates** : `tsc -b --force` 0, eslint 0 erreur (warnings préexistants), `lint:colors` 0, vitest complet 10 577 verts. Tests neufs : encre bleu nuit, arrêts du dégradé, un éclair allumé à son battement, éteints sous mouvement réduit, courbe identique à la feuille CSS.
+
+**Prochaine étape** : vérification visuelle par le user (vite du worktree sur :5174), puis commit et fusion dans `release/v8.1.0` sur accord.
+
+## [2026-10-29] Découplage D3 — clôture (6.3)
+
+**Statut** : Complété (D3 CLOS ; audit des trois briques CLOS). PR #114 vers `release/v8.1.0`, contrôles verts, fusion squash par le pilote ; caches `go-build-d3` / `golangci-d3` supprimés après la fusion ; worktree `LevelUp-wt-decouplage-d3` et branche supprimés. **Décision** : aucune nouvelle (D3-L6-e : le mécanisme de tolérances de `briques_internes_test` est conservé, table vide, par symétrie avec `briques_imports_test`). **Prochaine étape** : aucune dans ce chantier ; les reports sont au registre.
+
+## [2026-10-29] Découplage D3 — lot 6 (preuve et clôture) — Complété pour 6.1 et 6.2 ; 6.3 au pilote (branche `refactor/decouplage-d3-api-halo`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`)
+
+**Décision technique principale** : la seconde ronde de revue (corrections seules : 0 P0, 0 P1, 3 P2) est consignée et traitée : la garde consultée AVANT le limiteur est dite dans `haloapi/doc.go` et `infinite/doc.go`, le seuil `essais > 1` de `compterReprise` a son test (mutation `> 0` vue rouge), l'effet de course sur le compteur de reprise est consigné (D3-L6-a), la coquille `// /` est corrigée. L'histoire que la règle 17 a sortie du code (en-têtes « Copié de », « d'avant la brique », citations de `platform/halo` et `sync/haloclient`) est dans l'ADR 0042 (EN), qui énonce le critère de coupe protocole / exploitation, les deux paquets `haloapi/xblauth` et `haloapi/infinite`, ce qui est injecté (`Doer` gardé par surface, `Garde` avant le limiteur, `Retry` en valeur, `Endpoints`, `Descriptor`, `ClientAzure`, jetons et langue en paramètres), ce qui reste, les trois politiques conservées, les ratchets et le hors-périmètre. ADR 0023 (paragraphe daté), 0031 (amendement : D3 réalise D-1 pour Halo Infinite), 0041 (D3 n'est pas un module), `CLAUDE.md` et `ARCHITECTURE_V6` EN et FR mis à jour.
+
+**Résultats observés** : commit `5ed3aff79` (6.1) puis le commit de docs. T3 LIVE (une exécution par surface, sept rotations canoniques, aucune re-capture) : historique, stats, skill, manifeste, actif et service record rendent les MÊMES octets (MD5) que le témoin d'avant tout déplacement ; calendrier 403 comme avant. T1 : 336 paquets, 16 531 tests et sous-tests ; 447 paires portées sous leur nom vers `xblauth`, `infinite`, `haloadapter`, `filmfetch`, `tokencache`, `duration` ; aucun nom disparu, aucun pass -> skip ; un échec sporadique de `mapcatalog` (verrou de fichier Windows, paquet non touché, vert en relance : D3-L6-d). Intégration `-tags=integration -p 1 ./...` : code 0, 18 454 tests, 0 fail ; baseline de présence : 8 114 tests tous présents. T4 : dix noms de compteurs identiques. Lint des quatre modules et de `--new-from-merge-base` : 0 issue ; `libs-test` code 0 ; `apps/web` inchangé (typecheck et lint non rejoués). Aucun jeton dans un fichier ou un journal.
+
+**Découvertes non traitées** : D3-L6-a à f (plan) et 27 entrées au registre des reports (section « découplage D3 »), dont : convergence des politiques de reprise, quatre autres clients HTTP Halo, calendrier de saisons en 403, gardes `netguard` des surfaces d'authentification, anti-motifs recopiés dans l'adaptateur, secret en commentaire de `.env.local` (au user).
+
+**Conclusion / prochaine étape** : 6.1 et 6.2 `[x]` ; aucun `[!]`, sept `[~]` couverts ailleurs (listés au plan). Les trois axes D1, D2, D3 et le garde-fou G sont exécutés : audit CLOS. Pas de push. Au pilote : 6.3 (PR, CI, fusion squash, caches `-Lot d3`, suppression de la branche et du worktree), mémoire de l'assistant.
+
+## [2026-10-29] Découplage D3 — lot 5 (revue adversariale et corrections) — Complété (branche `refactor/decouplage-d3-api-halo`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`)
+
+**Décision technique principale** : les suites de la revue (une ronde, trois relecteurs aveugles : 0 P0, 4 P1, 11 P2 recevables, 74 conditions qui tiennent) sont corrigées chacune avec un test vu rouge. Comportement rétabli : un 200 au corps vide sur le skill live est une erreur (seul le décodage hors ligne lit « vide = map vide ») ; la garde démo est consultée AVANT le limiteur par une interface optionnelle `haloapi.Garde` (`Verifie`) pour les trois politiques et les blobs ; la reprise réussie d'un blob est comptée après la décompression (`DownloadBlob` rend le nombre d'essais, crochet retiré). Règles : `blobRecu`, `GetMatchHistory`, `FetchAsset` de la brique <= 5 paramètres (structs), `WithRetry` supprimé. Gardes neuves : huit surfaces netguard prouvées muettes en démo ; ratchets AST (Doer gardé à l'appel de `infinite.New`/`NewClassement`, <= 5 paramètres, `xblauth` sans variable de paquet, brique sans env ni fichier, tiers par sous-paquet, `http.Client`/`Transport`/`DefaultTransport`/`.RoundTrip(` interdits en production de la brique) ; façade XBL de bout en bout (identité, provenance, créneau <= 2) ; politique de reprise par chemin ; absence = vide ; étiquettes JSON ; TTL de repli. Commentaires en contrat (règle 17), en-tête de `duration` corrigé.
+
+**Résultats observés** : commits `2c0d56abe` (P1), `ff3541b46` (P2), `398301dbb` (commentaires), puis la clôture. 19 tests neufs (38 noms avec sous-tests), chacun rouge sous sa mutation ou écrit d'abord. Gate : build, vet, gofmt vide, lint 0 issue, tests ciblés verts, `go list -deps` de la brique propre ; T1 : 16 530 tests et sous-tests, 0 fail, 68 skip, aucun nom disparu ni verdict changé contre le témoin du lot 4 (13 sous-tests de `TestParseRetryAfter` présents au HEAD du lot 4 mais absents de son témoin) ; T3 LIVE skill et stats : MD5 identiques au lot 1, deux rotations canoniques, aucune re-capture.
+
+**Découvertes non traitées** : D3-L5-a à k (plan) : double littéral du tenant MSAL ; test d'auth réseau ; corps de `ExchangeAuthorizationCode` non testé ; ordre garde/limiteur de Discovery à la base ; « D3-03 » d'une revue de juin dans `refresh_loop.go` ; histoire restante (« Copié de », « d'avant la brique ») pour l'ADR ; `GetMatchPrivacy` hors du test des politiques ; `Provider.FetchAsset` à 6 paramètres ; garde consultée deux fois par requête.
+
+**Conclusion / prochaine étape** : 5.1 à 5.3 `[x]`. Pas de push. Au pilote : relecture des seules corrections (il y a eu des P1), CI. Lot 6 : preuve et clôture (T3 complet, docs, ADR 0042 avec l'histoire retirée du code, registre des reports).
+
+## [2026-10-29] Découplage D3 — lot 4 (exploitation et rebranchement) — Complété (branche `refactor/decouplage-d3-api-halo`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`)
+
+**Décision technique principale** : l'exploitation de l'API Halo vit dans LevelUp au-dessus de la brique, et les deux anciens clients sont supprimés. `internal/sync/filmfetch` lit les films sur les octets compressés de `haloapi/infinite` (cache disque d'abord, décompression zlib, règle de finalisation, version de film du registre, compteurs posés en crochets ; deux clients de la brique pour garder les surfaces `halo_api.get` et `halo_api.download_blob`). `internal/games/halo_infinite/haloadapter` porte `Provider` et `Client` avec les méthodes et `With*` d'avant (appelants : import et constructeur seulement), un `netguardDoer` par surface (les huit), une politique de reprise par ancien consommateur (`RetryProvider`, `RetryDiscovery`, `RetryHaloClient`, celle-ci aussi pour les films), les adresses construites depuis le résolveur de titre (`EndpointsDepuisResolveur`), les absences 404/410 rendues en résultat vide là où l'ancien code le faisait, les conversions DTO -> `domain`, les caches (emblèmes 6 h, confidentialité), la langue des pages du classement et les noms de saison tirés de `config/locales.toml` (`FrenchName()` et son « fr-FR » en dur remplacés, mêmes valeurs). Cache de jetons et filet -> `platform/auth/tokencache` (`git mv`), `duration` -> `internal/duration` (`git mv`). `platform/halo` et `sync/haloclient` : `git rm -r`.
+
+**Résultats observés** : commits `a1f744e97` (4.1), `7f3830ef5` (4.2), `394c34f70` (4.3), `79db7bf3e` (4.4), puis la clôture. 53 fichiers de 15 paquets rebranchés au 4.4 (le funnel `sync/haloclient_reexport.go` re-pointé : les 29 fichiers de 21 paquets qui passent par `sync.X` inchangés) ; 67 fichiers supprimés au 4.4. Tests portés sous leur nom : `filmfetch` 37, `haloadapter` 132, `tokencache` 16, `duration` 9, brique +18 ; seuls disparus les 6 tests de parité du lot 3 (avec leurs paquets). T1 : 16 479 tests, 0 fail, 68 skip, aucun pass->skip, aucun nom disparu (hors échappement à barre oblique inverse déjà connu). Baseline : 767 lignes / 186 paires retirées avec bloc RETRAIT daté, chaque paire retrouvée dans le run. T3 LIVE (six surfaces, une exécution chacune, six rotations canoniques, aucune re-capture) : les six MD5 identiques au témoin du lot 1. T4 : cinq noms de compteurs et de clé anti-rafale identiques. Ratchets : `briques_internes` réduite à `internal/haloapi` sans tolérance ; `no_halowaypoint` -10 ; `no_request_scoped_halo_provider` sur `haloadapter` ; une entrée déplacée dans `no_french_label_literal` ; `.gitleaks.toml`, `coverage_filter.sh` (clé renommée) ; sentinel, netguard, `no_legacy_source_used` inchangés et verts. Règle 6 : aucune fonction copiée au lot 3 ne survit hors de la brique. Gate : build, vet, archlint, lint 0 issue, gofmt, shards, `go list -deps` de la brique et du domaine propres, intégration complète (`-tags=integration -p 1 ./...`) : 18 415 tests, 0 fail ; contrôle de baseline vert ; `-race` vert sur les trois paquets neufs.
+
+**Découvertes non traitées** : D3-L4-a à o (plan) : garde démo après le limiteur ; compteur de reprise des blobs avant la décompression ; journaux et textes qui changent (aperçu du corps de la carrière, double préfixe de la vue publique) ; Accept-Language vide non émis ; hôtes du résolveur normalisés ; journal d'adresse avant validation ; commentaires de `constants.toml` périmés ; helper de test `isNotFoundErr` en copie ; anti-motifs du code déplacé (goroutines `context.Background()`, `os.Getenv` échu, « en-GB ») ; en-têtes « Copié de » de la brique ; `duration` et `tokencache` entrent dans la couverture ; « Défi actif » servi dans toutes les langues ; test qui sort sur le réseau ; nom du funnel ; fixtures lues par chemin relatif.
+
+**Conclusion / prochaine étape** : 4.1 à 4.5 `[x]`. Pas de push (pilote). Lot 5 : revue adversariale à trois relecteurs (auth x2, `infinite` + adaptateur + `filmfetch`), avec D3-L4-a à f comme points d'entrée du relecteur C.
+
+## [2026-10-29] Découplage D3 — lot 3 (haloapi/infinite) — Complété (branche `refactor/decouplage-d3-api-halo`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`)
+
+**Décision technique principale** : le client des services Halo Infinite existe dans `internal/haloapi/infinite`, COPIÉ de `platform/halo` et `sync/haloclient` et dépouillé de leur exploitation : un `Client` immuable (`Doer` reçu, `Endpoints`, `Retry`, `Limiter`, `Crochets`), un transport unique dont la politique de reprise est une valeur (trois politiques nommées qui reproduisent les trois boucles d'avant : `RetryProvider` 3 essais / tout non-200 retenté ; `RetryDiscovery` 3 essais / 5xx seuls, sans attente finale, arrêt sur contexte, limiteur unique ; `RetryHaloClient` 4 essais / 429 rendu aussitôt avec `RetryAfter`, Retry-After honoré, plafond 10 s), des erreurs typées (`HTTPError`+`Body`, `ErrAuth`, `ErrFilmGone`, `BlobHTTPError`, `ErrChunkIncomplet`), jetons (`Auth`, masqués) et `Accept-Language` passés à chaque appel, un fichier par service avec DTO bruts, octets de film COMPRESSÉS (ni zlib, ni finalisation, ni cache). Le classement est un type à part (`Classement`, deux `Doer` dont un sans redirection). La duplication est TEMPORAIRE : le lot 4 rebranche, supprime les anciens paquets et vérifie la règle 6.
+
+**Résultats observés** : commits `65c4d2f6e` (transport, politiques, erreurs, adresses), `4e3473f28` (services, tests `httptest`, fixtures), `59adf332c` (parité), puis la clôture. 39 tests de la brique verts (aussi sous `-race`) ; parité par réflexion de 29 structures DTO <-> origine, des valeurs (hôtes, essais, délais, tables) et des fonctions pures, dans les deux paquets d'origine ; mutations (politique 429, deux étiquettes de DTO) rouges puis rétablies. Aucun DTO ne recopie un type `domain` (aucun client ne décode dans `domain`). Ratchets : `briques_internes` vert sans changer une tolérance, `haloapi_sans_client_http`, octets de film, i18n verts ; clé `internal/haloapi/infinite/endpoints.go` ajoutée à `no_halowaypoint_literal` et chemin de la fixture copiée à `.gitleaks.toml` (à solder au lot 4) ; texte du guard 5 du sentinel corrigé (D3-L2-d, texte seul). Gate : build, vet, `go list -deps -test` de la brique sans `internal/` hors `haloapi`, gofmt vide, lint 0 issue, `go test ./...` : 16 426 pass, 68 skip, 0 fail, aucun nom disparu ni verdict changé contre T1.
+
+**Découvertes non traitées** : D3-L3-a à n (plan) : table DTO <-> domaine vide ; comparateur de forme en deux copies ; textes d'erreur et journaux du fournisseur et de Discovery qui changent au rebranchement ; en-têtes de jeton vides non émis ; ordre statut / corps coupé de Discovery ; blobs sur la politique du client ; tables d'actifs devenues fonctions ; langue du classement à tirer de `locales.toml` ; huit surfaces `netguard` à recréer en `Doer` ; entrées non échappées ; journal sans contexte de la carrière ; deux `decodeLocalizedName` ; tests d'origine à porter au lot 4 ; `FetchMvarForMap` sans part HTTP.
+
+**Conclusion / prochaine étape** : 3.1 à 3.6 `[x]` (3.3 avec `FetchMvarForMap` `[~]`). Pas de push (pilote). Lot 4 : adaptateur (`Endpoints` depuis `games.DefaultEndpointResolver`, `Doer` par surface, une politique par ancien consommateur), `filmfetch` (client `RetryHaloClient`), rebranchement, suppression et fin de la duplication.
+
+## [2026-10-29] Découplage D3 — lot 2 (xblauth) — Complété (branche `refactor/decouplage-d3-api-halo`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`)
+
+**Décision technique principale** : la chaîne d'authentification Xbox Live (XBL -> XSTS -> Spartan -> Clearance, XSTS RTA, rafraîchissement et code d'autorisation OAuth v2, device code du client Xbox natif, résolveurs profil/PeopleHub) vit dans `internal/haloapi/xblauth`, sans état ni politique : elle reçoit un `haloapi.Doer` (jamais de client construit), un `Descriptor`, un `ClientAzure`, une `Chaine` (créneau de concurrence, provenance connue, observateur de la provenance mesurée) et rend une issue typée (`RefreshOutcome`) au lieu de tenir des compteurs. `platform/auth` garde ses 239 symboles exportés par des façades (`xbl_*.go`) qui assemblent ces valeurs (descripteur Halo par défaut, client Azure de l'environnement, sémaphore process-wide, provenance du `ctx`, identifiant d'événement), passent un `netguardDoer` aux seules surfaces gardées avant le déplacement (rafraîchissement, device code) et comptent les issues dans `metrics.go`. Délais inchangés (20 s, 15 s, sans délai pour le device code par `http.DefaultClient`). Une sortie refusée en démo est rendue `haloapi.NonRetryable` : même erreur, même message.
+
+**Résultats observés** : commits `7de69eaf3` (squelette) et `61795015b` (déplacements, façades, ratchets). 53 tests passés de `platform/auth` à `haloapi/xblauth` sous le même nom et le même verdict ; aucun nom disparu ni pass->skip sur `platform/auth`, `haloapi`, `netguard`, `sync`, `api`, `archlint` ; 13 tests neufs (parités par réflexion, issue typée, garde démo du rafraîchissement, compteurs). Intégration verte (joignabilité du device code : skip opt-in comme avant). T3 LIVE `servicerecord` : MD5 identique au témoin du lot 1, journal identique (repli MSA natif puis succès, une rotation), mêmes 16 clés JSON dans le fichier de jetons. Ratchets : netguard (exemption par préfixe `haloapi/`, 4 clés renommées une pour une, le `Doer` gardé est vu), `no_halowaypoint` (1 entrée retirée), `briques_internes` (liste `platform/auth` retirée, domain 21, domain/title 3, netguard 6, logging retirée) ; sentinel et `no_legacy_source_used` inchangés et verts. `go list -deps -test` de la brique : rien hors `haloapi`. Lint 0 issue, gofmt vide.
+
+**Découvertes non traitées** : D3-L2-a à i (plan) : test placeholder du code d'autorisation désormais activable ; historique git de `halo_exchange.go` scindé ; surfaces d'authentification toujours sans garde démo (décision) ; justification périmée du guard 5 du sentinel (non touché) ; lecture avalée du polling ; champs du descripteur non lus ; mécanisme `fichiers` de la table sans usage ; tests réseau de `xsts_provenance` ; texte « re-capture » d'`oauth_error.go`.
+
+**Conclusion / prochaine étape** : 2.1 à 2.6 `[x]`. CI et push au pilote. Lot 3 (`haloapi/infinite`) : réutiliser `haloapi.Doer` / `ErrDefinitif` et l'exemption netguard par préfixe déjà posées.
+
+
+## [2026-10-29] Découplage D3 — lot 1 (garde-fou et outil témoin) — Complété (branche `refactor/decouplage-d3-api-halo`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`)
+
+**Décision technique principale** : poser le garde-fou G de la brique « API Halo » AVANT tout déplacement, sous la forme d'une table des briques INTERNES (`archlint/briques_internes_test.go`, seconde table à côté de `briques_imports_test.go`) dont la ligne `haloapi` désigne les dossiers ACTUELS des coupes (`platform/halo`, `sync/haloclient`, 10 fichiers de `platform/auth` et leurs 15 tests jumeaux) plus le dossier cible `internal/haloapi`, avec 20 tolérances datées par import visé qui ne font que descendre (mêmes règles que D2). La règle « la brique ne possède aucun client HTTP » est jugée sur l'AST dans `archlint` et non dans le ratchet netguard textuel (qui lit des chaînes par fichier).
+
+**Résultats observés** : 105 franchissements mesurés (domain 22, games 16, ctxkeys 14, domain/title 9, platform/netguard 9, observability 6, assets 5, film 9 dont filmcache 4, finalise 3, decfilm 2, etc. ; tableau dans le plan). Fermeture de `domain`, `analysis`, `games/canonical` : 299 paquets, aucun de la brique ni de ses deux sources, donc pas d'allowlist. Sept mutations rouges puis annulées (tolérance -1 et +1, import `domain` dans `internal/haloapi`, `http.Get(` dans `haloapi/infinite`, `compress/zlib` dans `haloapi`, fermeture par `analysis`, dossier de table absent) ; `racinesOctetsBruts` += `internal/haloapi` (`doc.go` créé : le ratchet échoue sur une racine absente). Outil `cmd/diag_api_lecture` (sept sous-commandes, lecture seule, jetons par le chemin canonique) : cinq surfaces lues (historique, stats, skill, manifeste, actif), `stats` identique octet pour octet au témoin du lot 0 ; `calendrier` rend HTTP 403 de `gamecms-hacs` avec des jetons frais, repli sur `servicerecord` (code 0). Sept rotations de la chaîne de JGtm en 51 s, serveur en marche, aucune re-capture. Gate : build, vet, `go test ./internal/archlint/ ./internal/platform/netguard/`, gofmt, lint 0 issue.
+
+**Découvertes non traitées** : D3-L1-a à g (plan) : 403 du calendrier ; exemption netguard des fichiers de la brique à poser au lot 2 ou 3 avec le renommage des clés `platform/auth/*` ; cinq témoins sur sept sont des valeurs de domaine et non des octets ; `doc.go` imposé par le ratchet des octets ; `singleflight` hors liste des tiers ; bruit `invalid_grant` Azure à chaque exécution ; tolérances agrégées sur trois origines.
+
+**Conclusion / prochaine étape** : 1.1 à 1.6 `[x]`. Lot 2 (`haloapi/xblauth`, lot à risque) : poser d'abord l'exemption netguard par préfixe et le renommage des clés de chemin, puis déplacer les fichiers de la liste en abaissant les tolérances `domain` (1), `domain/title` (6), `platform/netguard` (3), `observability/logging` (2).
+
+## [2026-10-29] Découplage D3 — lot 0 (témoins et relevé) — Complété (branche `refactor/decouplage-d3-api-halo`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`, non commité)
+
+**Décision technique principale** : capturer les témoins « avant » sur `b92916328` (release + D2) et relever fichier par fichier les trois paquets avant tout déplacement ; aucun code touché. T3 lancé depuis le worktree avec `LEVELUP_REPO_ROOT` pointant le dépôt principal (même mode au lot 6), uniquement par des commandes existantes, jetons du magasin rafraîchis par le chemin canonique, aucune re-capture.
+
+**Résultats observés** : T1 `go test -json ./... -count=1` code 0 : 331 paquets (191 ok, 140 sans test, 0 rouge), 16 422 tests (16 354 pass, 68 skip, 0 fail). T3 : stats d'un match (JSON brut), manifeste et chunk des temps forts (version de film 41), disponibilité d'un film, `match_id` du dernier match ; skill, actif de catalogue, calendrier/service record/carrière sans commande de lecture seule existante (rien codé). Quatre rotations de la chaîne de JGtm en 48 s pendant que le serveur local tournait. Chiffres de départ retrouvés, écarts mineurs consignés (40 `cmd/` importeurs de `platform/auth` et non 44 ; `PersistSink` = commentaire). Relevé : 43 fichiers (15 `platform/halo`, 16 `sync/haloclient`, 12 `platform/auth`) classés protocole / exploitation / mixte avec destination. Trois hypothèses du plan infirmées sur pièces : les 12 fichiers d'auth ne sont pas tous du protocole (`refresh_user_xsts.go` = exploitation, `xsts.go` et `azure_credentials.go` couplés au magasin et à l'environnement) ; un `RoundTripper` ne satisfait pas le ratchet netguard (textuel, par fichier) et masquerait `ErrOffline` dans la boucle de reprise ; « allowlists inchangées » est inapplicable à des tables à clés de chemin. 29 fichiers de 21 paquets consomment le client par `sync/haloclient_reexport.go`. Témoins et MD5 : `%TEMP%\claude\...\scratchpad\temoins_d3_lot0_avant\` (`md5s.txt`).
+
+**Découvertes non traitées** : D3-L0-a à q dans la section « Découvertes » du plan (dont D3-L0-q : un secret client Azure en commentaire de `.env.local` a été affiché en sortie d'outil par mégarde ; non reproduit nulle part, à purger par l'utilisateur).
+
+**Conclusion / prochaine étape** : 0.1 à 0.6 `[x]`. Avant le lot 1, trancher D3-L0-b (outil de témoin jetable ou fixtures pour skill/actif/calendrier) et D3-L0-g (transport unique et sémantique des 429) ; le pilote commite le plan avec le lot 1.
+
+## [2026-10-29] Découplage D2 — clôture (5.6, 5.7)
+
+**Statut** : Complété (D2 CLOS). PR #113 vers `release/v8.1.0`, 36 contrôles verts, fusion squash par le pilote ; caches `go-build-d2` / `golangci-d2` supprimés après la fusion ; worktree `LevelUp-wt-decouplage-d2` et branche supprimés. **Décision** : aucune nouvelle. **Résultats** : voir entrée du lot 5 (T1..T4). **Prochaine étape** : D3 (API Halo), plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D3_2026-10-29.md`, branche `refactor/decouplage-d3-api-halo` depuis la release.
+
+## [2026-10-29] Découplage D2 — lot 5 (preuve de non-régression) — Complété pour 5.1 à 5.5 ; 5.6 et 5.7 au pilote (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`)
+
+**Décision technique principale** : aucun code touché ; les quatre témoins (T1 à T4), l'intégration `sync`/`persist`, les gates web et `gate-push` rejoués commande par commande sur `32f118cd9`, puis docs et registres (registre des reports, addendum « D2 exécuté » de l'audit, plan).
+
+**Résultats observés** : T4 `replay-corpus-gate --reference=base --base=a5bae50b4` : 18 témoins sur 19 identiques (0 gain, 0 perte, 0 changement, banc de vérité `ok`) ; le 19e, `f75e7053` (`koth_collines`), est ABSENT du parc local (code 4 sans `-allow-missing`, code 0 avec) ; 11 min 31 s à froid puis 5 min 44 s (base en cache). T1 : 20 264 verdicts, 0 fail, 218 paquets `ok` ; un couple de plus que le lot 3 (test du lot 4) ; contre le lot 0 les 70 disparus du 2.12, 0 nom disparu, 0 changement de verdict. T2 : 202/202 fichiers de témoin identiques au lot 3, 6 de différence avec le lot 0 = les 6 régénérés au 2.12, `revision` 46 PASS. T3 : « 20 different » comme à la base (références périmées), 20 digests obtenus aux MD5 du lot 0 (1 360 lignes). Intégration `sync`/`persist` : code 0. Web : typecheck 0, lint 0 (27 avertissements préexistants), Vitest 10 570 tests passés. `gate-push` : lint des quatre modules 0 issue, `make libs-test` 0, baseline de présence verte pour `apps/go-api` et `libs/film`. Piège de méthode : la capture PowerShell 5.1 du JSONL abîme les sous-tests non ASCII (faux « 58 absents ») ; redirection binaire de `cmd` exacte (D2-L5-a). Autres découvertes : D2-L5-b (témoin absent du parc), D2-L5-c (`go run` rend 1 pour le code 4).
+
+**Conclusion / prochaine étape** : 5.1 à 5.5 `[x]`, aucun `[!]` ni `[~]` au plan. Au pilote : 5.6 (`disk-hygiene -Lot d2 -Apply` après la CI) et 5.7 (PR vers `release/v8.1.0`, CI, fusion squash). Ensuite D3 (plan à écrire depuis l'audit, ses découvertes D2-L3-b/c/e/f/h comprises).
+
+## [2026-10-29] Découplage D2 — lot 4 (revue adversariale) — Complété (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`)
+
+**Décision technique principale** : une ronde de revue par trois relecteurs Sonnet aveugles (anti-patterns et frontière de module ; ce que les tests ne couvrent pas ; fil JSON et empreintes), triage du pilote sur pièces, corrections limitées aux P2 recevables.
+
+**Résultats observés** : 0 P0, 0 P1, 3 P2 dont 2 corrigés (test de non-régression du branchement du puits des compteurs du film par `NewServiceRegistry`, prouvé par mutation : appel remplacé par `_ = 0` -> rouge « observability a reçu 0, attendu 3 », remis -> vert ; commentaire d'ordre des imports faux retiré de `facts/fallback/compteur.go`) + 1 remarque de doc corrigée (`textLabel`) ; 49 conditions qui tiennent (24 + 11 + 14). Quatre découvertes consignées sans correction (D2-L4-a à D2-L4-d). Gate : build, vet, `wire`, `replaylabels`, `libs/film` `revision` et `facts`, `archlint`, `gofmt`, lint `--new-from-merge-base` à 0 issue (go-api et libs/film).
+
+**Conclusion / prochaine étape** : plan 4.1 à 4.3 `[x]`. Prochaine étape = lot 5 (preuve de non-régression et clôture : T4, T1 à T3 recapturés, intégration `sync`/`persist`, web typecheck/lint/Vitest).
+
+## [2026-10-29] Découplage D2 — lot 3 (module libs/film) — Complété (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`)
+
+**Décision technique principale** : le décodeur de film devient le module `github.com/JGtm/LevelUp/libs/film` (`git mv` de tout `film/`,
+`go.mod` écrit à la main, `go.work`), imports réécrits par analyse des `ImportSpec`, puis tout ce qui nommait l'ancien dossier rerooté :
+archlint sur une constante unique `racineBriqueFilm` et un double repère `surDisque` / `cheminDeGardeRail` (sous `libs/` relatif au
+dépôt, sinon à `apps/go-api`), CI à lots PAR MODULE (directive `module` de `go-shards.txt`, partition prouvée module par module),
+baseline de présence par module (`tests_libs_film.jsonl` = les 1 050 lignes du décodeur, préfixe réécrit, RETRAIT daté), Dockerfile,
+Makefile, gate-push, docs (ADR 0041 D8, ADR 0034 amendement bis). Le cadre historique de l'empreinte tient : AUCUN golden régénéré.
+
+**Résultats observés** : un défaut du cadre trouvé au 3.3 — l'ordre des imports est haché et `goimports` le change avec le chemin du
+module — corrigé dans 15 sources hachées (ordre historique en groupes, commentaire), pas dans les goldens ; une quinzaine de ratchets
+archlint rendus MUETS par le déplacement (Stat+continue, Skip, préfixe `levelup/go-api/` pour « import du dépôt », baisses seulement
+journalisées) rebranchés ; 7 mutations jouées rouge puis vert. Licence : `cmd/server` ne tire ni `himap` ni `ooz`, et la production du
+module non plus (seuls des tests tirent `himap`) : pas de P0. T1 : 20 263 verdicts, 0 fail, = 2.12 modulo le préfixe + 1 test neuf ; T2 :
+202/202 fichiers de témoin au MD5 du 2.12 ; T3 : 20 digests obtenus identiques au lot 0 (même verdict « 20 different », références
+périmées D2-L0-a). Lint des quatre modules à 0 issue (`--new-from-merge-base`) après exemption sur sa ligne `func` de la seule dette déplacée
+que le ratchet ne reconnaissait plus (D2-L3-e). Des tests Vitest lisaient des sources du décodeur : 4 fichiers web touchés (D2-L3-d).
+Commits `dab11f773`, `4d8cb2728`, `443bf1f8d`, `e36f1483b`, `d46cf951a` et la clôture ; PR #112 (npm audit) embarquée par fusion de la
+release avant le push.
+
+**Conclusion / prochaine étape** : lot 3 clos côté local (3.1 à 3.8 `[x]`, découvertes D2-L3-a à j consignées sans traitement) ; CI de la
+branche lancée au push ; prochaine étape = lot 4, revue adversariale (une ronde, trois relecteurs Sonnet).
+
+## [2026-10-29] Découplage D2 — lot 2 clos (2.12) — Complété (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`)
+
+**Décision technique principale** : régénération unique des goldens à révision constante (décision D2-F amendée, découverte D2-L2-a), par la porte à deux verrous, pour les seules couches dont le gate rougissait (`grammar`, `killsource`, `objectives`) ; `source` et `profile` intacts. Une entrée de chronique « COMPLEMENT DU 2026-10-29 ... REVISION CONSTANTE » par couche, écrite avant la régénération. Les révisions ne bougent pas (`grammar-2026-10-28`, `killsource-2026-10-18`, `objectives-2026-10-17`) : aucune recuisson, aucun backlog killsource.
+
+**Résultats observés** : diff de 8 lignes dans 6 goldens : trois lignes `revision` à empreinte neuve et même révision ; cinq lignes `paquet` de périmètre (les paquets déplacés sous `film/` : `highlightevent`, `playerposition`, `filmshell`, `objectiveevent`). Autonomie : plus aucun import de `levelup/go-api` hors du film sous `film/` (reste un littéral de chaîne de test du cadre historique). T1 : 20 262 verdicts, 19 896 pass, 366 skip, 0 fail, aucun nom disparu, 70 couples déplacés (noms retrouvés), 0 changement de verdict, 0 pass vers skip, 218 paquets ok. T3 : 20 digests aux MD5 identiques à ceux du lot 0 (code 1 comme à la base, références périmées D2-L0-a). T2 : 196 fichiers sur 202 identiques, les 6 autres sont les goldens régénérés. `vet` et `vet -tags research` propres ; `-tags 'research campagne_overlay'` rouge comme à la base (mêmes erreurs `bis2*`). archlint vert, `gofmt` vide, lint : ratchet CI à 0 issue, 396 issues au total (dette gelée).
+
+**Conclusion / prochaine étape** : lot 2 clos côté local ; reste la CI de la branche verte et le point d'étape à l'utilisateur. Prochaine étape : lot 3 (module `libs/film`, espace de travail, infrastructure).
+
+## [2026-10-29] Découplage D2 — lot 2.10 et 2.11 (reliquats de production, tests couplés du décodeur) — Complété pour 2.10 et 2.11, lot 2 En cours (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`)
+
+**Décision technique principale** : 2.10 : les trois « reliquats » étaient des mentions en commentaire (lot 0), aucun import ; quatre commentaires réécrits pour dire la notion (commit `05bbbf8cf`). 2.11 : les 43 fichiers de test couplés (les « 51 » de la table sont des couples fichier x import) restent tous dans la brique (R2) derrière un `racineDepot(t)` par paquet (remontée jusqu'au `go.work`, `t.Skip` hors dépôt) ; 5 tests qui ont besoin de CODE de LevelUp et n'exercent que la surface exportée passent en R1 dans `internal/filmcorpus/` (noms conservés) ; la pièce centrale est un INSTANTANÉ versionné du catalogue de libellés du titre (`replay/testdata/golden_catalogue_titre.json`) que les ~30 tests de goldens lisent à la place des chargeurs de LevelUp, avec une garde de fraîcheur côté hôte (octets égaux et relecture `DeepEqual`, porte à deux verrous) : aucun golden n'est touché. `analysis/digest` déménage sous `film/digest` (la brique et son outil d'équivalence en sont les seuls utilisateurs ; trois `sort.Slice` convertis pour le ratchet DT-9, sortie inchangée). `tolerancesFilm` est vide puis retirée du test avec son mécanisme.
+
+**Résultats observés** : comptes : 43 fichiers R2 (replay 32, grammar 8, killsource 1, profile 1, killicon 1), 5 tests R1 extraits de 4 fichiers (TestCatalogueDuTitreNommeLesArmesDuFilmDeReference, TestLeManifesteNommeSesObjetsDObjectifDansLesDeuxLangues, TestArmesDesChassisAuRegistre, TestDocumentShapeTwinsAgree, TestDocumentShapeSchemaHasChronicleEntry), 1 instrument `research` créé (TestRRM4AGatesG4, la gate G4 sortie de `TestRRM4AGates`), 2 gardes neuves (instantané frais, rendu de forme jumeau), 1 export (`replay.ContinuousWeaponKeys`, plafond de surface 316), 6 helpers `depot_test.go`, 19 chemins `Projects\LevelUp` retirés (18 hors des 43). `go test ./... -count=1` (193 s) : seuls rouges les attendus (D2-L2-a : `grammar`, `killsource`, `objectives` `Rev...`, `revision` x6 sous-tests) ; 214 paquets `ok` ; comparaison au témoin T1 du lot 0 : 70 couples (paquet, test) ont quitté leur paquet, leurs 70 noms existent tous ailleurs (filmproc 39, digest 15, replay 5 -> filmcorpus, filelock 3, equipenergy 3, canonical 3, filmshell 2), aucun passage pass -> skip, seuls changements de verdict les 11 attendus. `go build`, `go vet ./...`, `go vet -tags research` (film et filmcorpus), `go test -tags research -run XXX`, `gofmt`, `golangci-lint --new-from-rev=0bfe57feb` propres ; `go test ./internal/archlint/` vert. Baseline de présence : 2 lignes relocalisées (`film/replay` -> `filmcorpus`). Aucune entrée d'allowlist à ajouter pour les helpers (ni échelle `../..`, ni `title.FindRepoRoot`, ni littéral `.ai`) ; l'entrée `ctf_research_test.go` de `repoRootInTestsAllowlist` est retirée.
+
+**Découvertes non traitées** : D2-L2-m (« 51 fichiers » = 43 fichiers), D2-L2-n (deux `racineDepot` homonymes à corps différents dans `facts/objectives`), D2-L2-o (`F0_LABELS` et les instruments `eqUses*` lisent l'instantané), D2-L2-p (trois chemins de `filmcorpus` / `testutil` à reraciner au lot 3), D2-L2-q (un déménagement vers `film/` hérite des ratchets du dossier), D2-L2-r (séparateur Windows en dur dans `vehicules_v2_deaths`) ; D2-L2-i tranchée par le pilote (le type d'événement reste dans `film/highlightevent`).
+
+**Conclusion / prochaine étape** : 2.10 et 2.11 clos, `tolerancesFilm` vide, `TestBriquesImports` vert pour `film` ; item suivant 2.12 (gate du lot 2 : régénération unique des goldens de `grammar`, `killsource`, `objectives` à révision constante, T3, CI), par le pilote.
+
+## [2026-10-29] Découplage D2 — lot 2.7 à 2.9 (temps forts, familles d'équipement, libellés par langue) — Complété pour 2.7 à 2.9, lot 2 En cours (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`)
+
+**Décision technique principale** : trois coupes, un commit par item. 2.7 : le décodeur porte sa forme de l'événement de temps fort dans une feuille `film/highlightevent` (et non `film/types`, haché dans l'empreinte de `source` : D2-L2-i) ; LevelUp garde `domain/highlightevent` et convertit dans l'adaptateur de titre (`halo_infinite.ParseHighlightEvents`, `HighlightEventDepuisFilm`), seul chemin des quatre appelants (`sync` x3, `ops`). 2.8 : copie jumelle bornée du périmètre du bilan d'équipement dans `replay/usage_summary_bilan.go`, garde-rail `domain/equipmentusage/jumeau_film_test.go`, exports devenus morts retirés de `domain/equipmentusage`. 2.9 : `replay.Text` (code de langue -> libellé, sans liste ni repli) et `film/internal/flatjson`, copie du codec à plat qui écrit les clés du texte et reconnaît une langue par sa forme ; conversions `TexteVersFilm` (chaque langue de la liste, vide comprise) / `TexteDepuisFilm` (langues de la liste) dans `replaylabels`, 13 fichiers de production et 15 tests LevelUp convertis.
+
+**Résultats observés** : tolérances `domain/highlightevent` (21), `domain/equipmentusage` (4), `i18n` (7) retirées ; restent 8 imports, 51 fichiers (2.10 / 2.11). Garde-rails neufs verts et vus rouges sous mutation : forme et aller-retour de l'événement par réflexion, jumeau des familles, fil jumeau des libellés (100 sous-cas : mêmes octets qu'`i18n.MarshalFlat` dans les cinq dispositions, relecture croisée). T3 : `replay-equiv` (437 s) rend les 20 fichiers de digests IDENTIQUES au témoin du lot 0 (MD5), étape `artifact` comprise. `go test ./... -count=1` : seuls rouges les attendus (D2-L2-a ; `killsource` s'y ajoute depuis 2.7 comme annoncé) ; `source`, `profile` et le golden des formes de `types` verts ; aucun golden régénéré. `go vet` (défaut, `research`, `integration`, `gamefiles`), `gofmt`, `golangci-lint --new-from-rev` propres ; plafond de surface de `replay` 312 -> 315 avec justifications datées.
+
+**Découvertes non traitées** : D2-L2-i (écart `film/types` -> `film/highlightevent`, à confirmer), D2-L2-j (la complétude des langues passe du codec au producteur ; `replayview/parity_test` remplit comme le producteur), D2-L2-k (hausse mécanique du ratchet de surface pour chaque copie jumelle), D2-L2-l (trois tests du film couplés à `mappings` lisent `Pick("en"/"fr")`, à traiter au 2.11) — voir le plan.
+
+**Conclusion / prochaine étape** : 2.7 à 2.9 clos ; item suivant 2.10 (reliquats de production). Régénération unique des goldens de `grammar`, `killsource`, `objectives` (révision et périmètre) au 2.12 par le pilote, révisions inchangées.
+
+## [2026-10-29] Découplage D2 — lot 2.2 à 2.6 (coupes du décodeur de film) — Complété pour 2.2 à 2.6, lot 2 En cours (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`)
+
+**Décision technique principale** : cinq coupes, un commit par item, chacune fait descendre une tolérance de `tolerancesFilm` jusqu'à la retirer. 2.2 `observability` : paquet `film/filmobs` (compte local + puits optionnel `SetSink`, câblé sur `observability.AddInt` à la construction du registre de services, seul démarrage du serveur). 2.3 : `playerposition` et `objectiveevent` déménagent de `domain/` sous `film/`. 2.4 : le contrat d'identité des entités (`canonical/film_identity.go`) devient `film/identity` ; ADR 0034 amendé. 2.5 : `filmshell` et `equipenergy` sous `film/`. 2.6 : `filmproc` sous `film/filmproc` ; `platform/filelock` DÉPLACÉ sous `film/internal/filelock` (seul importeur : `filmproc`), `platform/atomicfile` COPIÉ sous `film/internal/atomicfile` (onze autres fichiers importeurs) avec le test neuf `archlint/copies_identiques_test.go` (identité octet pour octet après la clause `package`).
+
+**Résultats observés** : tolérances retirées : `observability`, `domain/playerposition`, `domain/objectiveevent`, `games/canonical`, `filmproc`, `platform/atomicfile` ; restent 11 imports, 83 fichiers (`highlightevent` 21, `testutil` 21, `domain/title` 14, `i18n` 7, `games/mappings` 7, `equipmentusage` 4, `games/weapons` 3, `testfixtures` 2, `replaydoc` 2, `domain` 1, `analysis/digest` 1). Comptes de réécriture : 13 (+2 +2 tests LevelUp) pour `filmobs`, 19 pour 2.3, 16 pour 2.4, 29 pour 2.5, 98 (+23 commentaires) pour 2.6. Fermeture d'`analysis` re-mesurée au 2.5 : ni `games/weapons` ni `filmshell` ; `fuitesTransitivesAnalysis` reste vide. Dernier `go test ./... -count=1` : 212 paquets `ok` ; seuls rouges, ATTENDUS (D2-L2-a, régénération unique au 2.12, aucun golden touché) : `grammar` `TestGrammarRevSuitLaGrammaire`, `facts/objectives` `TestObjectivesRevSuitLaSortie`, `revision` `TestChaqueRevisionEgaleSonGolden/{grammar,objectives}` et `TestPerimetreDeChaqueCoucheEgaleSonGolden/{grammar,objectives}` ; `source`, `profile`, `killsource` verts. `go vet` (défaut et `-tags research`), `gofmt`, `golangci-lint --new-from-rev` propres, `go test ./internal/archlint/` vert à chaque item.
+
+**Découvertes non traitées** : D2-L2-d (`filmproc` et la copie d'`atomicfile` journalisent sans contexte : exclusion datée du ratchet J12.3), D2-L2-e (15 variables exportées modifiables dans `filmshell` : exclusion datée de deux ratchets), D2-L2-f (chemin relatif en dur dans `equipenergy_test`, à reprendre au 2.11), D2-L2-g (11 appels `observability` et non 14), D2-L2-h (compilation croisée linux impossible depuis ce poste, sans lien) — voir le plan.
+
+**Conclusion / prochaine étape** : 2.2 à 2.6 clos ; item suivant 2.7 (`types.HighlightEvent`). Les goldens de `grammar` et `objectives` (et le périmètre) restent à régénérer UNE FOIS au 2.12 par le pilote, révisions inchangées.
+
+## [2026-10-29] Découplage D2 — lot 2.1 (cadre historique de l'empreinte) — Complété pour 2.1, lot 2 En cours (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`)
+
+**Décision technique principale** (D2-F) : le cadre de hachage de `film/revision` devient explicitement HISTORIQUE. Nouveau `cadre.go` : `cadreHistorique = "levelup/go-api/internal/games/halo_infinite/film"` ; `cheminModuleCourant` lu par `reflect` (chemin d'import du paquet moins `/revision`) plutôt qu'écrit, pour que le passage en module `libs/film` n'ait aucune constante à changer. Les littéraux chaîne qui commencent par le chemin courant de la brique (frontière de chemin) sont hachés sous le préfixe historique ; les racines de couche et les lignes `paquet` des goldens restent en noms historiques, résolus sur disque par `Module.SurDisque`, et ce que le disque et les imports donnent est ramené au nom historique par `Module.historique`. Identité aujourd'hui.
+
+**Résultats observés** : trois dépendances au chemin confirmées sur pièces (littéraux d'import, racines de `couches.go`, préfixe des paquets importés et des fichiers embarqués) ; aucune autre (les 783 lignes de production du film qui citent le module sont des imports). Tests neufs : `TestCadreHistoriqueDesImports` (3 sous-cas), `TestCadreHistorique_LaBriqueDeplaceeRendLaMemeEmpreinte` (même brique dans les deux modules : même empreinte, même périmètre), `TestCheminModuleCourantEstLaRacineDeLaBrique` ; trois mutations vues rouges. Gates : 40 verdicts de `revision` identiques au témoin + 6 neufs, cinq empreintes identiques, `film/...` vert (18 paquets, 73 s), aucun `testdata/` touché, 202 MD5 identiques, vet/gofmt/golangci-lint propres, archlint vert (99 s).
+
+**Découvertes non traitées** : D2-L2-a (les items 2.3, 2.5, 2.7 déplacent des paquets qui sont DANS le périmètre de `grammar`, `killsource`, `objectives` : leurs empreintes et goldens bougeront, en conflit avec le critère (3) ; décision du pilote), D2-L2-b (chemins de tests à reraciner au lot 3), D2-L2-c (durée du gate film).
+
+**Conclusion / prochaine étape** : 2.1 clos ; avant 2.3/2.5/2.7, le pilote tranche D2-L2-a. Item suivant : 2.2 (`filmobs`).
+
+## [2026-10-29] Découplage D2 — lot 1 (garde-fou G) — Complété (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`)
+
+**Décision technique principale** : poser le garde-fou d'autonomie du décodeur de film AVANT tout déplacement, dans la table `briques` d'`archlint` : ligne `film` à parcours RÉCURSIF (champ `recursif`) sur les trois arbres encore dans `apps/go-api` (`film`, `games/weapons/filmshell`, `games/halo_infinite/equipenergy`), table de tolérances `tolerancesFilm` (import visé -> nombre de fichiers, tests compris) qui ne peut que descendre (compte qui monte, qui baisse sans que la table suive, entrée à zéro, import absent : rouge), exhaustivité des dossiers Go de `libs/**`, interdit direct de `libs/film` et de la brique depuis `internal/analysis`, test de fermeture `go list -deps -test` d'`internal/analysis/...` avec allowlist datée de fuites, `-test` ajouté aux gardes d'autonomie de `ci.yml` et de `make libs-test`.
+
+**Résultats observés** : 189 franchissements mesurés sur 17 imports visés, égaux au relevé du lot 0 (`filmproc` 71, `testutil` 21, `highlightevent` 21, `canonical` 15, `domain/title` 14, `observability` 13, `i18n` 7, `mappings` 7, `equipmentusage` 4, `weapons` 3, `playerposition` 3, `objectiveevent` 3, `testfixtures` 2, `replaydoc` 2, `atomicfile` 1, `domain` 1, `digest` 1) ; `filmshell` et `equipenergy` n'importent rien du dépôt. Fermeture d'`analysis` : 312 lignes, aucun paquet du décodeur, allowlist de fuites vide. Mutations vues rouges puis remises : tolérance `equipmentusage` 4 -> 3 (fichier -> import, « compte 4 > tolérance 3 ») et 4 -> 5 (« baisse la tolérance à 4 »), dossier fictif `libs/himap/nouveau`, import de `filmshell` dans `games/mappings`. Gate : `go test ./internal/archlint/` complet vert (100 s), vet, gofmt, golangci-lint propres. Un commentaire du garde-rail citant `replay.Text` avait fait monter le ratchet de surface de `replay` : reformulé.
+
+**Découvertes non traitées** : voir la section « Découvertes » du plan (D2-L1-a à c : deux pas CI et non trois, ratchet de surface sensible aux commentaires, fermeture d'`analysis` déjà propre).
+
+**Conclusion / prochaine étape** : lot 2 (coupes dans le module actuel, chaque item fait descendre une tolérance), en commençant par 2.1 (cadre historique de l'empreinte).
+
+## [2026-10-28] Découplage D2 — lot 0 (témoins) — Complété (branche `refactor/decouplage-d2-decodeur-film`, plan `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md`, non commité)
+
+**Décision technique principale** : capturer les témoins « avant » sur `a5bae50b4` (CI de la release verte) avant tout déplacement du dossier `film/` ; aucun fichier de code touché. T3 (`replay-equiv`) ne pouvant pas rendre « 0 écart » sur la base, le témoin retenu est l'ensemble des digests OBTENUS (`-out-dir`), pas le verdict contre les références.
+
+**Résultats observés** : T1 `go test -json ./...` code 0 en 351 s : 358 paquets (212 ok, 146 sans test, 0 rouge), 19 748 pass / 366 skip / 0 fail. Compilation des instruments : `-tags research` sortie vide, code 0 ; `-tags 'research campagne_overlay'` code 1 sur la base (symboles `bis2*` absents, recouvrement de campagne non versionné). T2 : `film/revision` 40 tests PASS ; 202 fichiers `testdata` hachés ; révisions source-2026-09-16.2, profile-2026-10-16, grammar-2026-10-28, killsource-2026-10-18, objectives-2026-10-17, `SchemaVersion` 106, `SchemaDesFaits` 18. T3 : code 1, « 0 identique, 20 different » : références `equivalence/*.tsv` périmées depuis la v8.0.0 (64 étapes figées pour 67 attendues) ; digests obtenus identiques d'une exécution à l'autre (1 047 lignes comparées). Chiffres de départ identiques, sauf trois écarts consignés dans `chiffres.txt` (couplages de production « testutil / title / mappings » = commentaires, agrégat des importeurs 179/178 contre 198/188, archlint 51 contre 52). Témoins et MD5 : `%TEMP%\claude\...\scratchpad\temoins_d2_lot0_avant\` (`md5s.txt`).
+
+**Découvertes non traitées** : voir la section « Découvertes » du plan (références `replay-equiv` périmées, overlay de campagne non compilable, 21e tsv d'équivalence sans film au corpus).
+
+**Conclusion / prochaine étape** : lot 1 (garde-fou G posé avant tout déplacement) ; le pilote commite le plan avec le lot 1.
+
+## [2026-10-28] Rejeu : fins du mur et de l'écran occultant lues dans le film, étape B (schéma 106) — Complété (branche `feat/rejeu-durees-effets`, plan `.ai/PLAN_REJEU_DUREES_EFFETS_2026-10-28.md`, non commité)
+
+**Décision technique principale** : mur : LIEN STRUCTUREL (la vie du panneau que le 103 désigne est celle que la pile i28 de l'objet porté nomme 16 à 45 ms plus tard ; clé + nommage à 200 ms au plus), `equipmentPlacements[].lifeEnd` ; repli web 12 480 ms (médiane mesurée) au lieu de 10 s. Écran occultant : AUCUN lien structurel (la création de la ti=38 de la bulle ne porte que i0, i2, i14, i15) ; association bornée et comptée (candidates nées 100 à 700 ms avant la suppression de la grenade, retenue à 3 m du repos publié ; repli nommé `repli_effet_d_ecran_par_la_fin_de_la_grenade`), `tracked[].effect {t0, t1, x, y, z}` ; web : l'écran se dessine de la naissance à la suppression de la bulle, même sans trajectoire de grenade. `grammar.Rev` -> `grammar-2026-10-28` (deux genres de lecture neufs dans le canal, déclarés dans `grammar` et non dans `types`, périmètre de la couche `source`), `SchemaDesFaits` 18 inchangé, `SchemaVersion` 106.
+
+**Résultats observés** : 5 films, témoins avant/après (T-Go identique hors champs neufs : 0 écart ; T-Web : faille, sons, usage identiques à l'octet, début et tracé du mur identiques sur 68 murs). Murs : 62 sur 68 à fin lue, fenêtre 10 s fixe -> 2,4 à 20 s (médianes 13,3 / 17,2 / 5,4 s). Écrans : 34 bulles lues sur 35 grenades, 0 ambigu, 7,5 s à +-0,1 s, deux écrans sans trajectoire désormais dessinés. Gates : voir le journal du plan. Le rayon d'association a dû passer de 1,5 à 3 m (repos PUBLIÉ sur grille de 100 ms, jusqu'à 1,96 m de la bulle) ; trois corrections de lecture ont coûté 3 séries de décodages APRÈS en plus de la prévue (25 au total, à dire au user).
+
+**Découvertes non traitées** : voir la section « Découvertes » du plan (ratchet de taille de l'instrument de l'étape A, quanta de position par clé seule, `film/types` dans la couche `source`).
+
+**Revue adversariale (même jour)** : 5 P2 corrigés sans décodage (compte `SpawnedPositioned` hors effets, première attribution d'une candidate conservée et fins d'effet jointes par la vie de l'effet, candidate bornée à la suppression de CET objet suivi, quanta de candidate verrouillés par tests, commentaire de `layers.go`) ; mutations vérifiées ; documents attendus identiques mais non prouvés sans décodage.
+
+**Conclusion / prochaine étape** : le superviseur commite ; recuisson du parc à DEMANDER au user (artefacts 105 : verdict « redécoder », la grammaire change) ; retirer les jonctions du worktree (journal du plan).
+
+## [2026-10-28] Rejeu : durées et positions des effets d'équipement lues dans le film, étape A (recherche) — Complété (branche `feat/rejeu-durees-effets`, plan `.ai/PLAN_REJEU_DUREES_EFFETS_2026-10-28.md`, non commité)
+
+**Décision technique principale** : un seul instrument `//go:build research` (`durees_effets_research_test.go`, réutilise `cfCanal`, `epContexte`, le canal de production, `ScanProjectiles`) : pour chaque usage d'équipement porté, les vies nées dans la fenêtre de l'effet que la pile i28 ne nomme pas, aux instants réels et à +/-37 s (témoins), avec durée, décalages et position à la création. Aucun code de production.
+
+**Résultats observés** : 9 films, un à la fois, 5 à 26 s et 251 à 767 Mo. FIABLE : écran occultant (ti=38 de 7 492 à 7 512 ms, 38/39, position 38/38, à 0,03 m du repos de la grenade, témoins propres 1/59) ; mur (ti=38 née 1,0 s après l'usage et finissant avec l'objet suivi, 97/104 quand la fin du suivi est lue, 83 % de tous les usages, barrière 12,4 à 12,5 s ou 16,7 s selon le film, témoins 0/28). ABSENT comme objet distinct : capteur, champ de réparation (l'objet suivi EST l'effet), translocateur, surbouclier, camouflage. PARTIEL : traqueur (marqueur de cible ti=12 de 4,49 s, 23 %). Contrôle répulseur : rafale de 32 vies ti=41 à chaque usage (43/43). Les ti=12 de 5,0 s : bruit (27 % près d'un lancer pour 26 % attendu).
+
+**Découvertes non traitées** : voir la section « Découvertes » du plan (artefacts en cache sans position de repos, 5 capteurs à fin lue après 124 à 447 s, `52fc79ef` aux durées longues, `WALL_DURATION_MS` de 10 s hors de toute mesure).
+
+**Conclusion / prochaine étape** : le superviseur lit le tableau « Résultats A » et rédige l'étape B (familles FIABLES seulement : écran occultant, mur) ; la recuisson du parc est à demander au user.
+
+## [2026-10-28] Rejeu 2D : capteur, traqueur, écran occultant et champ de réparation de nouveau dessinés — Complété (branche `fix/rejeu-objets-engendres`, plan `.ai/PLAN_REJEU_OBJETS_ENGENDRES_2026-10-28.md`)
+
+**Décision technique principale** : suite du diagnostic du même jour. Le décodeur publie pour chaque objet engendré (`carriedEquipment[].tracked[]`) sa position de repos `land`/`x`/`y`/`z`, lue sur la trajectoire de projectile de la même vie (`LifeKey`), née à 3 images au plus de la pile i28 qui nomme l'objet (la génération seule revient dans le match) ; dernier point PUBLIÉ, aucun repli (le porteur est réfuté : vol médian 1,3 à 15 m). Schéma 104 → 105, calculé à la publication depuis les faits existants (aucune révision de faits ni de grammaire). Web : `model/spawnedObjects.ts` fabrique des poses pour les seules familles capteur, traqueur, écran, champ (mur et faille exclus par garde-rail : leurs `tracked` existent aussi) ; fin LUE (`endRead`) pour le capteur et le champ, impulsion à `land` pour le traqueur, règle existante pour l'écran (`SHROUD_DURATION_MS` laissée vide : durée en jeu demandée au user, le `t1` lu est la fin du projectile). Branchés : calque, révélation du capteur, zones, survol, compte « déployé » des usages ; JAMAIS les sons (déjà joués par `uses`). Exigence du user : aucune régression du mur et de la faille.
+
+**Résultats observés** : 14 décodages autorisés par le user (7 témoins avant/après, un à la fois, 6 à 18 s, pic 0,63 Gio). Situés sur les témoins : capteur 26/32, traqueur 24/24, écran 14/17, champ 14/16 (seuil de 90 % du superviseur levé, justifié au plan). T-Go : documents identiques hors champs neufs sur 7/7, `equipmentPlacements`/`riftPoses`/`projectiles` identiques. T-Web : faille, sons (calendrier complet) et poses d'origine identiques à l'octet sur 7/7 ; seuls s'ajoutent les poses des quatre familles. Vie lue après repos : capteur 15,2 s médiane, champ 11,2 s. Revue adversariale (un relecteur Sonnet neuf, une ronde) : 0 P0/P1 au sens strict, 4 P2 dont 3 traités dans le lot comme P1 (doc inversée de la durée du capteur + `SENSOR_PINGS_DECLARED` mort supprimé ; câblage non couvert → garde-rail de source + tests du hook, 4 mutations rougissent ; tolérance de naissance non tenue → tests de bord, 3 mutations rougissent) et le 4e (journal, changelog, notes de version) fait ici. Gates : `go vet ./...` et `go test ./...` (voir plan), `tsc -b --force`, eslint 0 erreur, vitest match-replay + lib/replay + lib/api 3 819 verts, knip 0.
+
+**Objets non situés, diagnostic sur les faits persistés** (sonde de recherche jetable, aucun décodage) : sur les 4 témoins qui en ont, 95 objets engendres ti=41 ; 88 ont une trajectoire sous leur clé, née 15 à 60 ms après la pile (tolérance tenue partout). Les 11 non situés : 7 n'ont AUCUNE trajectoire écrite par le film (seule la création, position i0 = la main) ; 4 n'ont que 3 ou 4 échantillons (environ 0,1 s de vol, sans repos), soit un seul point de la grille, donc pas de trajectoire publiée. Limite du film, pas de la jointure ; aucun repli honnête (point de lancer réfuté). Durée de l'écran occultant : le film n'en dit pas plus que pour le traqueur (fin de l'objet 0,1 à 0,4 s après le repos pour les deux, le traqueur est dessiné comme une impulsion fixe) ; aucune source publiée trouvée (Halopedia, notes de bac à sable de la saison 3) ; avant ce lot l'écran n'a jamais eu de durée (`OFFICIAL_DURATION_MS` ne portait que capteur et mur).
+
+
+**Suite (même jour)** : sonde sur f59c9332 (accord du user) : à l impact de chacun des 11 écrans naît une vie ti=38 non nommée par la pile i28, supprimée 7,51 s plus tard (11 sur 11, aucune aux instants témoins), avec une position à la création. Décision du user : durée de l écran = 7,5 s, celle du film (il mesure 10 s à l écran en jeu). `SHROUD_DURATION_MS = 7_500`. Lecture de cette vie dans la grammaire (durée et position par match, lancers sans trajectoire) : lot à part. CI de la branche : le déplacement de `.ai/PLAN_I18N_MULTILANGUE.md` vers `.ai/V8/` (commit « Archivage » de la release) rougissait `TestCheminsAiCitesDansLeCodeExistent` ; quatre citations corrigées. Govulncheck rouge = téléchargement du proxy Go en échec (relancé).
+**Découvertes non traitées** : texte d'aide qui parle encore de « balise » du translocateur ; `t1` du capteur égal au `t0` du suivant du même objet porté (10/11 sur `2ba491cf`), compatible avec un capteur actif par joueur ; le mur a aussi une fin lue (`tracked[].t1`) mais garde sa durée officielle (consigne du user).
+
+**Prochaine étape** : accord du user pour commit et fusion dans `release/v8.1.0`, puis demande de recuisson du parc local, puis gate visuel en lecture ; durée de l'écran occultant à trancher par le user.
+## [2026-10-28] CI rouge depuis la fusion i18n : délai des garde-rails de langue — Complété (branche `fix/ci-gardes-delai`)
+**Décision technique principale** : les garde-rails de `lib/i18n/` qui lisent tout `src/` (balayage, analyse TypeScript) prennent un délai unique `TREE_SCAN_TIMEOUT_MS` (120 s, `localeScan.testutil.ts`) ; `guardTimeout.guard.test.ts` interdit un délai écrit en chiffres dans ces fichiers (il a trouvé la 2e copie de `120_000`, `replay-label-access`).
+**Résultats observés** : CI rouge sur les 3 derniers pushs de `release/v8.1.0` (dc0a049ea, b2431f0a4, 14eee03f2), lots vitest 2 et 3 seulement : 2 à 4 garde-rails de langue en « Test timed out in 5000ms » (8 à 12 s en CI, 0,6 à 2 s en local). `gate-push` local ne joue pas vitest, d où le trou. Après correction : `vitest src/lib/i18n` 19 fichiers / 120 tests verts, eslint et `tsc -b` propres.
+**Conclusion / prochaine étape** : vérifier la CI du push sur `release/v8.1.0`.
+
+## [2026-10-28] i18n, démo : arcs et objectifs adossés au catalogue réel — Complété (branche `fix/i18n-revue-ui`, non commité)
+**Décision technique principale** : le plan Prestige de la démo (`internal/ops/seed_demo_prestige_{plan,objectives,catalog}.go`) écrivait 2 arcs et 9 objectifs en littéraux français sans origine (`template_id` NULL, `preset_id = "ascension"` inexistant) : le serveur ne sert un texte dans la langue de la requête que s'il a une origine et que le texte stocké est la copie de départ (ADR 0040 D-3). Chaque objectif porte désormais le `template_id` d'un modèle de `challenges/templates.toml` et, comme `AdoptPresetArc`, sa mesure, sa fenêtre, sa cadence, son évaluation et `Template.StoredLabel()` ; chaque arc porte le `preset_id` d'un preset de `arcs/presets.toml` (Le Slayer en cours, Le Tireur d'élite complété), titre et description de `StoredTitle` / `StoredDescription`. Catalogue lu par les chargeurs TOML du serveur (`LoadTemplatesFromTOML` / `LoadPresetArcsFromTOML`, dépôts de capture sans base). Un titre sans catalogue (Halo 5) ou un modèle absent retombe sur l'ancien texte, sans origine ni preset inventé.
+**Résultats observés** : tests `seed_demo_prestige_origin_test.go` (origine, copie de départ, lecture `en` puis `fr` par `ServedLabel` / `ServedTitle` / `ServedDescription`) ; mutation (origines coupées) : 9 objectifs et 2 arcs signalés, soit les libellés vus en anglais. Cibles dérivées du corpus conservées pour les mesures cumulatives (une seule : parties jouées, objectif abandonné) ; les autres reprennent la cible du palier du modèle, comme une création réelle.
+**Découvertes (non traitées)** : trois étapes de presets pointent des modèles absents du catalogue (`daily.kda_session`, `daily.power_weapon_session`, `daily.accuracy_session`) : `AdoptPresetArc` les saute ; le défi d'escouade de démo (`template_id` NULL) et le nom d'escouade « Escouade de démonstration » restent en français.
+**Conclusion / prochaine étape** : régénérer les données de démo (commande au rapport) ; Halo 5 n'expose pas les défis (`challenges.surface = not_exposed`).
+
+## [2026-10-28] i18n, revue de l'interface : libellés de palier de rang et textes d'Accueil en anglais — Complété (branche `fix/i18n-revue-ui`, non commité)
+**Décision technique principale** : (A) le libellé d'un palier ne se lit plus jamais de `match_skill_rank.tier_label` (écrit dans la langue du moment : « Diamond 4 » Halo 5, « Or VI » Halo Infinite) : il se déduit du code (`tier` + `sub_tier`) dans la langue de la requête, par `analysis.SkillTierDisplayLabel` (palier sans sous-palier valide = nom seul ; placement = aucun libellé) et `SkillTierLabelOrPlacementMarker` (marqueur `Placement` que le web reconnaît). Six lecteurs convertis : Explorateur (lignes, « Pic rang », module « Classement »), Accueil (pic de rang dont le pic CSR all-time figé en langue par défaut, playlists récentes), Carrière (checkpoints LUSR / CSR), vue d'un match (en-tête, tableau des scores, CSR des participants, rangs des amis), classement local ; la page session passe au helper commun. Aucun type servi ne porte plus la colonne stockée (`MatchHistoryRawRow.SkillStoredLabel` ne sert qu'à lire les matchs restants d'un placement ; `HomeSkillPeakRow.TierLabel` et `canonical.LUSRCheckpoint.TierLabel` supprimés ; `tier_label` retiré des requêtes Q22a, Q30, Q8 et du classement) ; garde-rail `archlint/i18n_tier_label_stored_not_served_test.go`. (B) `ServedLabel` / `ServedTitle` / `ServedDescription` reconnaissent la copie du modèle dans n'importe laquelle de ses langues (`isStoredCopy`) : le formulaire web poste le `label` localisé reçu, donc dans la langue de la requête de création ; la résolution se fait aussi sous la langue par défaut.
+**Résultats observés** : bases de démo et bases réelles (copies) : 0 ligne à `tier` vide et `tier_label` rempli ; 9 lignes Infinite (Madina97294) en CSR « Diamant » à `sub_tier` 0, servies en nom seul. Les quatre textes de l'Accueil de la démo (« Précision létale — tirs à la tête », « Série victorieuse — victoires », « Ascension du Spartan » et sa description) n'ont pas d'origine enregistrée : `template_id` NULL sur les 9 défis des deux titres, labels littéraux de `internal/ops/seed_demo_prestige_plan.go` absents du catalogue (27 modèles) ; `preset_id = 'ascension'` absent du catalogue (`halo_infinite.slayer|support|consistent|explorer`, aucun preset Halo 5) : la résolution les sert tels quels par construction. Données de démo et générateur non touchés.
+**Découvertes (non traitées)** : `HomeRepo.LoadHomeMatches` (et ses requêtes) sans appelant hors tests ; `fillRankedMSRItem` / `fillPlacementItem` / `buildHomePlaylistRankItem` sous `nolint:unused` à péremption 2026-06-22 dépassée ; `service/compare_service.go` `csrRankLabel` et `match_history_explorer_options.go` `skillTierLabel` dérivent du code mais en français figé (le web relocalise le premier) ; le générateur de démo écrit des défis libres et un arc preset d'identifiant inconnu du catalogue.
+**Vérification pilote (2026-10-28)** : `gate-push` complet vert (lint Go, intégration + baseline, typecheck et lint web) ; Chrome sur une copie de la démo (ports 8010 / 5180) : Explorateur Halo 5 « Diamant IV / Platine VI / Or III » en fr, « Diamond IV / Platinum VI / Gold III » en en, placements « 5 matchs restants / 5 matches left » ; Accueil et Carrière Infinite en en : « Gold VI », « Platinum I » ; vue d un match Halo 5 en fr : « Or III ». Découverte : le serveur en mode démo ne lance aucun cycle de migration Halo 5 (base metadata Halo 5 de la démo locale non migrée : médailles servies en identifiants, tables de résumés des morts absentes) ; la démo de prod est régénérée au déploiement depuis des bases migrées.
+**Conclusion / prochaine étape** : gate Go (vet, tests, `integration`, lint) vert ; contrat OpenAPI inchangé (champs `json:"-"`). À décider : faire écrire au générateur de démo des défis issus de vrais modèles (ou accepter des textes français sur la démo `/en`).
+
+## [2026-10-27] i18n, compléments après intégration (11.C) — Complété (branche `fix/i18n-complements` depuis `release/v8.1.0`, non poussée, non fusionnée)
+**Décision technique principale** : quatre compléments, un commit chacun, un test qui échoue sans la correction. (1) Cinq textes de manifest non compilables en ICU : échappement des accolades et chevrons littéraux ; le jeton `{{HP}}` reste un littéral (`'{{HP}}'`) car `substituteHpToken` est le mécanisme commun (aide, Escouade, séries temporelles) ; le générateur (`scripts/manifests.mjs`) refuse désormais tout texte non compilable et un test compile chaque feuille sans passer par lui. (2) `aria-label` de `SessionPill` et d'`ExplorerCombatProfile` par manifest, plafond du garde-rail 107 -> 105. (3) Graphiques par carte de l'Escouade (lollipop, bullet, écart de performance, heatmap : les quatre builders du fichier) dans la langue de la requête, clé de regroupement inchangée. (4) Changelog et notes de version de la v8.1.0, EN et FR.
+**Résultats observés** : avant correction, le garde-rail liste exactement les dix feuilles (cinq clés x fr/en). Découvert et corrigé en (1) : le chemin rapide de `formatMessage` (sans variable, sans accolade) renvoyait le texte brut, donc une forme échappée sans accolade (`'<ton-xuid>'`) s'affichait avec ses apostrophes ; il passe maintenant par MessageFormat dès qu'un chevron ouvrant ou une apostrophe devant `{ } < > '` est présent (mesuré : sur 6 811 textes sans accolade, seuls les deux textes d'import changent de sortie). Mutation de (3) : les quatre tests échouent en revenant à la langue de repli. Gate : `go test -p 2` `internal/service`, `internal/archlint/...`, `internal/api/...` verts ; `-tags=integration -p 1` `internal/service` vert ; `go vet -tags "gamefiles integration"` propre ; `golangci-lint --new-from-merge-base=origin/main` 0 ; générateur de manifests et types générés sans écart ; `tsc -b --force` propre ; vitest complet (--maxWorkers=2) 1 022 fichiers, 10 516 tests verts ; eslint 0 erreur ; `lint:fields` et `lint:colors` propres. Aucun test Go supprimé ni renommé : baseline inchangée.
+**Découvertes (plan §6, non traitées)** : `Session : ${currentLabel}` et `· escouade` restent en dur dans `SessionPill` ; `DefaultLabel` rendu tel quel par quelques services non relus ; le garde-rail ICU ne contrôle pas la correspondance des variables d'appel.
+**Conclusion / prochaine étape** : fusion dans `release/v8.1.0` par le pilote (rien n'est poussé) ; `make gate-push` non lancé dans ce lot.
+
+## [2026-10-27] i18n à N langues, étape 11 (rejeu du lot sur `release/v8.1.0`) — En cours (branche `feat/i18n-multilangue-v810`, non poussée)
+**Décision technique principale** : `feat/i18n-multilangue` part de `06531b561` (ancienne `release/v8.0.7`, non ancêtre de `release/v8.1.0` : la v8.0.7 est arrivée sur `main` par squash). Pas de fusion de la branche : le diff `06531b561..9821d4902` est rejoué sur `release/v8.1.0` (`git apply -3 --index`, un seul passage de conflits, un commit unique) ; `feat/i18n-multilangue` reste intacte comme référence.
+**Résultats observés** : 29 fichiers en conflit, tous résolus en gardant les deux côtés. Lot « modes de Halo 5 » conservé (le mode d'un match est `Summary.PairMode` fourni par la source du titre, aucun repli sur `GameVariant` ; `ModeAssetReference`, `normalizeGameVariantMode`, `canonicalAssetRefs` reportés dans la résolution des noms par langue) ; groupes de cartes (`domain.GroupesDeCartes`) convertis aux règles du lot (`AvecLibelles(map[string]i18n.Text)`, `Libelle(id, loc)`, `Noms(id)`, plus de `LocaleLibelleParDefaut` ni de `libellesDeCartesFR`) ; briefing de l'Explorateur, Synthèse, Séries temporelles, Tactique, Escouade et Accueil : libellés dans la langue de la requête, clés de regroupement dans la langue par défaut. Baseline : 59 481 lignes avant, 59 188 après (46 paires retirées, les 3 paires `TestModeLabels_*` retirées par la release sont comprises dans les 46 du lot : aucune paire retirée deux fois). `.ai/ETAT_DES_LIEUX_I18N_...` déplacé par la release sous `.ai/V8/` : citations repointées.
+**Conclusion / prochaine étape** : gate (vet, tests Go sans tag et `integration`, tsc, vitest, eslint, lint:fields, lint:colors, types générés) vert ; `make gate-push` puis fusion dans `release/v8.1.0` par le pilote (demander avant push).
+
+## [2026-10-27] Plan positions de force v3 — En cours (projet de plan, aucune exécution ; `release/v8.1.0`)
+**Décision technique principale** : `.ai/PLAN_POSITIONS_DE_FORCE_V3_2026-10-27.md`, plan de RECHERCHE (verdict, pas de production) : unités monde partout (D2), niveau des joueurs en covariable du duel (D3), largeur de zone par reproductibilité entre moitiés de matchs (D4), trois signaux classés relativement (duel corrigé, occupation des bons joueurs, géométrie en unités), familles de mode séparées, calibrage Recharge / Aquarius / Streets, critères écrits avant mesure (rappel ≥ 0,70 et précision ≥ 0,60 sur 4 cartes de validation, témoin géographique, reproductibilité, tenue sans Nuzzles). Acquisition recommandée : instance de recherche isolée par `LEVELUP_REPO_ROOT` et CLI existantes (`sync-full`, `archive-films`, `backfill-killsource`, `backfill-replay`), jetons en jonction jamais copiés, serveur local arrêté.
+**Résultats observés** : inventaire du code (agent Sonnet, lecture seule) : pas de `--data-root` global ; aucune CLI n'insère l'historique d'un joueur sans profil ; `archive-films` exige le match au registre ; `match_player_positions` sans joueur (inutile pour l'occupation) ; rejeu ~800 fois la taille du film en mémoire, un décodage à la fois par instance ; ~29 % des films absents côté serveur. Réservoir : 2 991 matchs classés jamais décodés dans la sauvegarde.
+**Conclusion / prochaine étape** : décisions user du 27/10 versées au plan (D10 instance isolée avec jetons du dépôt principal en jonction, D11 matchs ≥ 2023, D12 plafond 100 Go puis redemander, D13 branche `research/positions-de-force-v3`) ; reste le go d exécution, rien lancé.
+
+## [2026-10-27] Audit de reprise des positions de force — Complété (registre, aucun code ; `release/v8.1.0`)
+**Décision technique principale** : registre `.ai/AUDIT_POSITIONS_DE_FORCE_2026-10-27.md`, lecture seule (sauvegarde `shared_matches_v2.duckdb.avant-purge-20261026` en `read_only`, cache de films, VPS par `ls`/`du`/`df`). Pas de plan ni d'exécution (consigne user).
+**Résultats observés** : 375 096 kills positionnés sur 3 399 matchs dans la sauvegarde (x5 vs v1) ; 1 798 matchs avec le CSR de tout le lobby, 782 lobbys à moyenne ≥ 1500 ; 51 % des matchs sont de Nuzzles, dont 0 film local et 11 au VPS depuis la purge du 26/10 ; le VPS re-télécharge des films de 2024 ; décalage Live Fire - Ranked résolu. Doute d'échelle : mêlée médiane 0,3, Live Fire 34 × 30 : coordonnées probablement en unités Halo (~3 m) et non en mètres, ce qui touche la géométrie (yeux à 1,7) et les largeurs de zone v1 ; contre-indice : saut à 0,85.
+**Conclusion / prochaine étape** : décisions user du jour au registre §7 : dossier de recherche autonome créé (`../LevelUp-recherche-positions/`, copie vérifiée de la sauvegarde) ; échelle TRANCHÉE = unités monde ×3,048 (collision entre Spartans p0,1 0,26-0,48 sur 5 rejeux, palette Forge, mêlée) ; élargir calloussss (CSR médian 1 686) et Brooks au-delà de 2026, re-télécharger et cuire les films Onyx. Suite : plan (voie de re-téléchargement sans profil suivi, branche/worktree, budget disque et mémoire).
+
+## [2026-10-27] Audit de découplage : images de carte, décodeur de film, API Halo — Complété (registre, aucun code ; `release/v8.1.0`)
+**Décision technique principale** : registre `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md`. Critère d'autonomie d'une brique : elle n'importe rien de LevelUp hors d'elle (ou d'une brique de rang inférieur). Pour l'API Halo, coupe « API » (sans état ni politique : chaîne d'auth, transport, adresses, DTO bruts, octets de film) / « exploitation » (stockage et mise en commun des jetons, boucles, budget, caches, traduction vers le domaine, décodage des films). Question du dépôt séparé laissée ouverte ; ordre recommandé D1 (cartes), D2 (décodeur), D3 (API), garde-fou d'imports posé avant chaque déplacement.
+**Résultats observés** : D1 : `himap` ne dépend que de `mapvar` (lecteur `.mvar` rangé sous `film/replay/`, sans import interne). D2 : décodeur sans DuckDB (l'affirmation contraire, faite en conversation, était fausse : deux commentaires), +4 945/−871 lignes depuis la v8.0.0 sur ~155 000 ; il importe ses types de sortie depuis `domain/` (5 paquets partagés avec 3 à 7 lecteurs) plus `filmshell`, `canonical`, `equipenergy`, `observability`. D3 : `sync/haloclient` décode et met en cache les films (`decfilm.Inflate`, `finalise.Finalise`, `filmcache`), interprète le MMR et choisit la variante de carte ; `platform/halo` importe l'adaptateur `games/halo_infinite` (51 paquets internes tirés, dont DuckDB et `analysis`) ; deux clients HTTP et deux résolveurs d'adresses. Aucun ratchet ne ferme la liste des imports sortants d'une brique.
+**Décisions user (2026-10-27)** : modules Go dans le même dépôt (`libs/<brique>/`, `go.work`) ; `filmshell` et `equipenergy` (feuilles, connaissance du jeu) partent avec le décodeur ; `canonical/film_identity.go` devient le contrat de sortie du décodeur (un seul producteur, un seul lecteur : `service/replayview` ; amendement ADR 0034 au plan D2) ; noms `internal/haloapi/{xblauth,infinite}` + `internal/sync/filmfetch`, traductions sous `games/halo_infinite/`.
+**Embarqué dans le même commit** : archivage par le user de cinq plans clos du 26/10 sous `.ai/V8/` (déplacements purs, contenus identiques) ; chemins cités mis à jour dans `archlint/mode_gamevariant_fallback_test.go`, `archlint/title_slug_literal_test.go`, `REGISTRE_REPORTS.md`, `V8/NOTE_CARTES_VARIANTES_STATS_2026-10-23.md`.
+**Découverte (non traitée)** : `TestCheminsAiCitesDansLeCodeExistent` rouge avant ce commit : 714 citations `.ai/V7.5/` dans 561 fichiers, cassées par le commit « Archivage » (324847a05, 26/10) qui a déplacé le dossier sous `.ai/archive/V7.5/` ; CLAUDE.md cite aussi l'ancien chemin. Aucune citation nouvelle cassée par ce commit.
+**Conclusion / prochaine étape** : implémentation reportée par le user ; un plan par axe (D1, D2, D3) le moment venu. Vérification adverse par contexte frais non faite.
+## [2026-10-27] Fixtures de test sorties de .ai, citations repointées vers l'archive — Complété (branche `fix/fixtures-hors-ai`)
+**Décision technique principale** : décision user (27/10) : un test ne dépend pas de `.ai` (espace de travail). Les 5 fixtures de cartes suivies (découpage de Ridgeline, carte de référence, 3 `.mvar`) passent sous `internal/testfixtures/testdata/cartes/`, lues par `testfixtures.Carte(...)` ; les entrées de deux outils ponctuels (inventaire UGC, liste des écarts de score d'équipe) dans le dossier `donnees/` de leur outil. Les citations `.ai/V7.5/` sont repointées vers `.ai/archive/V7.5/` partout hors archive (CLAUDE.md, skills, docs, code, `.gitignore`, `.gitleaks.toml`). Garde-rail `archlint/pas_de_lecture_sous_ai_test.go` : aucun littéral Go ne construit un chemin sous `.ai`, hors 27 sites listés au compte exact (dumps locaux `re_dump`, sorties de recherche, contrôles de documents ; une dette nommée : `objectives/named_test.go` lit `.ai/refs/`).
+**Résultats observés** : les 12 tests rouges de la CI de `release/v8.1.0` passent (deux oracles de mapdecoupe se déclarent absents faute de cache de rejeu, comme en CI) ; `go vet` des paquets touchés et `-tags gamefiles` de himap, `go test` de 11 paquets, `gofmt`, `golangci-lint --new-from-rev` 0 issue. Aucun reste `.ai/V7.5` hors archive. L'agent a été coupé par la fin de session (mémoire du poste saturée, cause externe) ; vérifications finales rejouées par le pilote, une commande à la fois.
+**Conclusion / prochaine étape** : fusion dans `release/v8.1.0` et push sur accord du user. Hors périmètre : tests de recherche à chemins absolus d'un ancien poste (`C:/Users/Guillaume/Projects/LevelUp/.ai/re_dump`), fixture `.ai/refs/TABLE_STATS_STATBORG.tsv`.
+
+## [2026-10-27] Cartes : variantes, republications et versions Forge regroupées — vérification à l'écran et clôture — Complété (`release/v8.1.0`, poussée)
+**Décision technique principale** : décision user (26/10) « Go pour Houseki et Shogun » : les versions successives d'une carte Forge (même nom, sans clé de module) forment un groupe, comme les republications d'une carte intégrée (`analysis.republiees`, 36044d56f) ; seule exception gardée, un nom qui couvre plusieurs clés de module (un groupe par clé, les identifiants sans clé restent seuls). Les versions Forge réunies par la règle de variante restent telles quelles (décision user du 26/10, risque de tracé jugé acceptable).
+**Résultats observés** : vérification à l'écran faite par le pilote dans Chrome (JGtm), serveur de la copie principale sur `release/v8.1.0` (config 8.1.0) : vignettes Tactique Bazaar 53, Recharge 48, Houseki 15, Solitude 13, Shogun 10 ; rasters alignés (Live Fire, Solitude, Shogun) ; Synthèse (cartes les plus jouées, filtre de carte), séries temporelles, Coéquipiers, carte favorite de l'Accueil cohérents ; Synthèse Halo 5 : filtre Modes peuplé. Hooks de push verts, `release/v8.1.0` poussée (1b0154a8c..a208d0375) sur go du user.
+**Conclusion / prochaine étape** : plans `PLAN_CARTES_VARIANTES_STATS` et `PLAN_CARTES_REPUBLIEES` clos ; worktrees `LevelUp-wt-cartes-variantes` et `LevelUp-wt-cartes-republiees`, branches locales `feat/cartes-*` et caches de lot supprimés. CI de la release suivie par la session `levelup-db`.
+
+## [2026-10-27] Audit complémentaire Desktop : 12 chantiers cadrés — Complété (registre, aucun code ; branche `docs/audit-desktop-complementaire`)
+**Décision technique principale** : registre `.ai/AUDIT_COMPLEMENTAIRE_DESKTOP_2026-10-27.md`, référencé en tête de l'étude Desktop du 26/10. Douze chantiers C1-C12, chacun avec gravité aujourd'hui / Desktop, preuve `fichier:ligne`, commande de reproduction, traitement, tests et décision requise. Ordre recommandé : C2, C1, C3, C4 (défauts actuels), puis C9, C6, C7, C8, puis C5, C12, C11, C10.
+**Résultats observés** : vérifié sur pièces par le pilote (vérification adverse par contexte frais non faite, coût en quota). C2 P0 dès aujourd'hui : `main.go:467-468` jette l'erreur de `runMigrations` et écrit en Debug « DB verrouillée » quelle que soit la cause ; seul l'échec d'une étape de schéma est journalisé (runner), ouverture RW, réconciliations et contrôles fail-fast des classificateurs disparaissent en silence ; `title_schema_version` jamais relue. C1 : air tue le serveur sous Windows à chaque rechargement. `main()` = 1 210 lignes. Profil de déploiement éparpillé (DemoMode 89, production 30, AuthMode 55 occurrences). `LEVELUP_ROOT`/`LEVELUP_DATA` lues par 0 code Go. CI Windows sans CGO ni test. `static/sounds` 84 Mo de WAV. Littéral ffmpeg en 4 endroits. Correction de l'étude : la purge automatique des films est écartée (archive irremplaçable, chunks déjà en zlib, +1,4 % mesuré à la recompression).
+**Conclusion / prochaine étape** : décisions user C3-a, C5-a, C11-a et budget C9 ; vérification adverse optionnelle de C1-C3 ; premier plan C2+C1+C3+C4.
+
+## [2026-10-26] Étude d'une version Desktop (Tauri) — Complété (étude, aucun code ; branche `docs/etude-desktop-tauri`)
+**Décision technique principale** : recommandation Tauri 2 en coquille + serveur Go en sidecar, la webview chargeant `http://127.0.0.1:<port>` servi par le Go (même origine : cookie, CSRF, `/static` et repli SPA inchangés ; un seul binaire serveur pour l'hébergé et le Desktop). Windows d'abord, Desktop autonome mono-utilisateur. Étude complète : `.ai/ETUDE_DESKTOP_TAURI_2026-10-26.md`.
+**Résultats observés** : quatre explorations en lecture seule + vérification sur pièces par le pilote. Défaut vérifié en lecture (non exécuté) : en `AuthMode=none` le device-flow ne persiste pas le refresh token dans le store (`PasswordLinkStrategy` + `completeLogin` ne posent que le jeton Spartan en session ; seul le mode `xbox` écrit `watcher_tokens/{xuid}.json`) ; `docs/INSTALL.md` dit le contraire. Prérequis serveur relevés : racines ressources/données confondues dans `PathResolver`, port non dynamique, pas d'arrêt propre sous Windows (SIGTERM absent, risque WAL DuckDB), API locale sans protection en `none` (secret de session public par défaut), migrations en échec qui laissent booter et version de schéma jamais relue, aucun verrou d'instance inter-process. Jetons au réveil : pas de sync de rattrapage au lancement (premier tick après 6 h), pas de vérification des jetons de sync au boot, repli 50 min du cache Spartan sur horloge monotone (veille non comptée sous macOS/Linux). Disque : `film_chunks` 104 Go mesurés sur le poste (4 046 films).
+**Conclusion / prochaine étape** : six décisions ouvertes au user (§11 de l'étude : Tauri/Wails, Windows seul, autonome, rétention des films, chiffrement des jetons, signature de code et ffmpeg) ; ensuite plan de la phase P0 sous `plan-review`.
+
+## [2026-10-26] Briefing de l'Explorateur : tuiles équilibrées, avertissement d'échantillon faible — Complété (branche `feat/briefing-socle-equilibre`)
+**Décision technique principale** : socle en grille à colonnes égales décidée par container queries (CSS seul, aucune mesure du DOM) : une ligne si les tuiles tiennent à 150 px, sinon deux lignes équilibrées, plancher 2 colonnes ; table de classes littérale (exigée par Tailwind) recalculée par un test depuis la règle. Retours du user : « Séries marquantes » → « Séries » (infobulle explicite) ; en échantillon faible plus rien n'est retiré, un triangle d'avertissement (icône de `Notice`, extraite en `NoticeIcon`) remplace la ligne à part.
+**Résultats observés** : Chrome (vite du worktree sur :5174) : 8 tuiles sur une ligne à 1 600 px, 4+4 à 1 250 px, 2 colonnes à 500 px ; avertissement présent sur PVP classé. Le palier intermédiaire à 3 colonnes proposé par l'agent (3+3+1 à 7 tuiles) et le minimum de 168 px (8 tuiles jamais sur une ligne, socle plafonné à 1 272 px) ont été écartés à la relecture. Gates Go, contrat, vitest (350), tsc et eslint verts.
+**Conclusion / prochaine étape** : à fusionner dans `release/v8.1.0` ; vérifier en échantillon faible les cartes « Par… » une fois le serveur reconstruit sur la release.
+## [2026-10-26] Cartes republiées regroupées quand elles désignent le même terrain — E0 et E1 closes — Complété hors vérification à l'écran (branche `feat/cartes-republiees`, worktree `LevelUp-wt-cartes-republiees`)
+**Décision technique principale** : la clé de module d'un map_id est l'essai 1 de `mapcatalog/callouts_resolution.go` (catalogue des bornes par map_id puis par nom retenu, ET le module a une entrée `maps` au catalogue versionné des zones, ce qui écarte les canevas `fo*`). Elle sera injectée dans la lecture du registre ; l'analyse reste pure. Le repli par nom de l'index des fonds n'est pas utilisé.
+**Résultats observés** : E0 sur l'instantané parquet 263 (9 594 matchs, 304 map_id) et la sauvegarde du 16/10 pour les positions : 56 noms portent plusieurs map_id ; 20 sont des cartes intégrées à clé de module unique (Bazaar, Chasm, Cliffhanger, Launch Site, Behemoth, Catalyst, Live Fire, Recharge, Streets, ...), 36 sont des cartes Forge sans clé (dont Shogun et Houseki : elles resteront séparées par la règle). Recouvrement mesuré sur 2 paires seulement (Behemoth 100,0 %, Deadlock 98,2 %) : les 31 autres paires de même clé ont un côté sans film. Aucune paire sous 90 %.
+**Conclusion / prochaine étape** : E1 (clé de module dans `MapNameCount`, regroupement par nom + module sans variante, câblage du résolveur, tests, commentaires). Écart signalé : le plan prévoyait l'arrêt si la mesure était impossible ; elle l'est pour 31 paires sur 33 faute de film, l'exécution se fonde sur la clé de module.
+**E1 clos (2026-10-26)** : `analysis.GroupMapsByBase` réunit en plus, pour un nom sans variante, les identifiants de même clé de module ; `MapNameCount.Module`, `MapGroupRules` (suffixes + résolveur) remplacent les suffixes nus dans les 5 lecteurs de groupes (`WithMapGroupRules`) ; `mapcatalog.SourcesDeZones.CleDeModule` extrait de l'essai 1 (une copie), `service.MapModuleResolverFor` sur les catalogues déjà décodés ; `wire.mapGroupRulesFor` source unique. Sur le registre réel : 40 -> 46 groupes (Bazaar, Behemoth, Chasm, Cliffhanger, Launch Site, Prism), aucune carte Forge touchée. Gate : go test analysis, platform/duckdb, service, archlint, mapcatalog, wire, mappings verts ; golangci `--new-from-merge-base=origin/main` 0 issue. Découvertes (plan) : Shogun et Houseki restent séparées (Forge) ; la règle de variante réunit déjà les versions Forge d'un nom de base (Argyle, Exiled, Kusini Bay, Vallaheim).
+**E2 clos (2026-10-26)** : `go test ./internal/...` 169 paquets ok (EXIT 0) ; golangci `--new-from-merge-base=origin/main` 0 issue ; plan statué, liste « À vérifier à l'écran » écrite (Bazaar passe à une carte de 53 parties ; Shogun et Houseki inchangées car Forge). Rien n'est poussé. Statut : Complété côté code, vérification à l'écran par le user.
+**Complément (2026-10-27)** : états vides du briefing raccourcis à la demande du user (« ça mange beaucoup de place ») : variante compacte de `EmptyStateNotice` (titre « Pas assez de matchs », une ligne courte : « Moins de 2 cartes à 5 matchs. », « 3 en solo, 64 en escouade (5 requis de chaque côté). »). Chrome sur la release : cadres de 51 px au lieu d'environ 145 (PVP classé, Bases). tsc et vitest (explorer + composants UI, 483 tests) verts. Reste : push de `release/v8.1.0` et CI.
+
+## [2026-10-27] Le mode d'un match fourni par le titre : E4 close — Complété (`release/v8.1.0`, non poussé)
+**Décision technique principale** : la copie principale passe sur `release/v8.1.0` (le worktree des variantes est détaché) pour que le serveur de dev lise le `config/` de la v8.1.0 ; `feat/modes-par-titre` (log `mode_source` au boot) fusionnée ; les deux commits post-release de `release/v8.0.7` repris sans la sauvegarde DuckDB de 2,5 Go ni l'outil jetable (ajouté puis retiré).
+**Résultats observés** : Synthèse Halo 5 « Par mode » : 12 modes (Chocoboflor), 13 (JGtm), courbe de performance présente ; filtre Modes 12 options ; Accueil H5 nomme les modes ; Infinite (JGtm) 21 modes, inchangé. Changelog `[8.1.0]` Fixed et bloc v8.1 des notes de version (EN/FR).
+**Conclusion / prochaine étape** : rien à pousser sans accord du user ; `release/v8.0.7` porte toujours la sauvegarde de 2,5 Go dans son commit « Archivage » (à ne jamais pousser). Caches `modes-titre` et `notes-v810` à purger.
+
+## [2026-10-26] Le mode d'un match fourni par le titre, une fois, pour toutes les pages — E0 à E3 faites, E4 (écran, changelog, livraison) à venir — En cours (branche `feat/modes-par-titre`, depuis `release/v8.1.0`)
+**Décision technique principale** : la règle « où est le mode » est une donnée par titre déclarée au manifeste (`[title].mode_source` de `title.toml`, validée par le loader, `TitleDescriptor.ModeSource`, injectée par `PlayerPoolConfig` -> `PlayerDB.ModeSource` ; D4 du plan) lue UNE fois par la source de lecture qui sert réellement les pages (`PlayerMatchesRepo`, générique ; `projectH5MatchSummary` n'en sert aucune, D2 amendée) via `duckdb.ModeAssetReference` : pour Halo 5, `PairMode` = copie de la référence du type de jeu (`Kind` game_variant), traduite par l'enrichissement existant (dictionnaires des types de jeu choisis par `Kind`, nom normalisé une fois). Replis supprimés : `modeLabels` (Accueil), `modeLabelForFilter` et `buildSharedMatch` (Escouade). Garde-rails `archlint/mode_gamevariant_fallback_test.go` (AST, allowlist de 6 fichiers à compte exact) et `archlint/title_slug_literal_test.go` (aucun littéral de slug dans `analysis/` et `platform/duckdb/`, 7 sites existants allowlistés, dont `campaign_exclusion.go` à migrer plus tard).
+**Résultats observés** : Infinite identique à l'octet sur 16 sections sur 17 (lignes canoniques, Accueil, Synthèse, formes, Tactique, filtre Escouade ; JGtm, 1 182 matchs, copies sauvegardées du 02 et 07/10), faits marquants non déterministes dans les deux arbres ; Halo 5 réel : 1 706 matchs avec un mode, noms NON MESURÉS (métadonnée H5 tenue par le serveur, aucune sauvegarde). `go test ./internal/...` vert sauf `TestReleaseNotesDocs_NewestBlockMatchesChangelog` (rouge sur la base, docs non touchées), `golangci-lint` 0 issue, openapi à jour, web 10 383 tests verts.
+**Conclusion / prochaine étape** : le user mesure la couverture des noms H5 (requête en Mesures du plan) AVANT E4, puis gate visuel Halo 5 (Chocoboflor puis JGtm) et Infinite, changelog `[8.1.0]`, entrée Complété, `delivery-checklist`, commit sur accord ; découvertes en fin de plan (source H5 sans appelant, famille « ligne brute » à repli centralisé, `squad_service_v2_history`).
+## [2026-10-26] Score de performance par carte et par mode dans la Synthèse — E0 à E2 faites, fusionné dans release/v8.1.0, gate visuel à venir — En cours (branche `feat/synthese-performance-carte-mode`)
+**Décision technique principale** : les deux graphes « Par carte » et « Par mode » gagnent une grille du haut (barre du score moyen, couleur `perf-tier-N`, pointillé si aucun match noté) sur le même axe que les issues empilées ; côté Go, comptage d'une ligne extrait dans `tallyBreakdown` / `breakdownTally`, `performance_avg` et `perf_tier` ajoutés aux entrées ; clé de regroupement des cartes non touchée (lot variantes).
+**Résultats observés** : E0 sur copies : 91,5 % des matchs Halo Infinite (sauvegarde du 16/10, la base live est verrouillée) et 89,5 % des matchs Halo 5 ont un score ; aucun match non terminé n'en a. E1 : tests service/domain/api verts, `golangci-lint` 0 issue, contrat et types régénérés. E2 : typecheck, 10 376 tests web, lint (0 erreur) et garde-rails couleurs/libellés verts.
+**Conclusion / prochaine étape** : fusionné dans `release/v8.1.0` à la demande du user avant le gate visuel ; reste E3 (rendu à l'écran FR/EN, clair/sombre, cividis ; hauteur 450 px calculée, non mesurée ; profil Halo 5 sans nom de carte au registre) puis commit sur accord du user ; prévenir la session du lot variantes avant fusion.
+## [2026-10-26] Briefing de l'Explorateur : vérification à l'écran et clôture — Complété (`release/v8.1.0`)
+**Décision technique principale** : gate visuel E4 fait par le pilote dans Chrome MCP (connexion par le user), sur les serveurs déjà lancés sur `release/v8.1.0` par une autre session, en lecture seule ; briefing lu par `matches-query` sur les 8 filtres du plan, rendu vérifié sur Bases et PVP classé.
+**Résultats observés** : les 8 filtres conformes aux attendus (seuls écarts : CTF 134 matchs au lieu de 138 et Illusion « Par mode » à 5 lignes au lieu de 4, dus aux libellés de mode approchés dans la mesure SQL). États vides dans leur carte ; « Par contexte » vide empilé avec l'arme favorite à bonne hauteur. `make gate-push` vert sur 1b0154a8c, CI 40370415086 verte. Découvertes non traitées : « Pic MMR » seul sur sa ligne à ~1 250 px (antérieur au lot), Classement « Placement → Placement » en PVP classé.
+**Conclusion / prochaine étape** : plan clos ; les deux découvertes attendent une décision du user.
+
+## [2026-10-26] Briefing de l'Explorateur : cartes qui disparaissent selon les filtres — Complété hors gate visuel (branche `feat/briefing-seuils`, fusionnée dans `release/v8.1.0`)
+**Décision technique principale** : relevé sur pièces (règles du service `match_history_service_briefing*.go` et des composants `ExplorerBriefing*`, rejouées en SQL sur une copie des bases de JGtm, 1 181 matchs, 20 filtres) : aucune absence n'était un bug ; les trous venaient des seuils fixes à 10 et de l'omission pure, contraire à la règle du user du 17/10 sur les états vides. Plan `.ai/PLAN_BRIEFING_EXPLORER_SEUILS_2026-10-26.md` validé (D1-D7, D2 confirmé) et exécuté par un agent Sonnet piloté : seuil par groupe 10 → 5, au moins deux groupes sinon état vide (titre « Pas assez de matchs pour comparer »), « Par contexte » à 5 de chaque côté avec les deux comptes, échantillon faible ne masque plus que ce qui compare, seuil des chaînes du Classement découplé et gardé à 10. Contrat : `insufficient` (dimension, contexte), `min_group_matches`.
+**Résultats observés** : avant, CTF (138 matchs, 37 cartes) sans « Par carte », « Par sélection » à une ligne dans 10 filtres sur 20, « PVP classé » (8 matchs) sans Classement ; au seuil 5, CTF 0 → 14 cartes éligibles, année 2025 2 → 26. Gates relancés par le pilote : `go test ./internal/service/ ./internal/domain/`, `./internal/api/handlers/ -run Explorer`, `make openapi-check`, `make check-types`, vitest `src/features/explorer src/lib/i18n` (335 tests) verts ; rebasé sur `main` (v8.0.7 fusionnée par squash).
+**Conclusion / prochaine étape** : gate visuel E4 par le user sur `release/v8.1.0` (8 filtres attendus dans le plan), puis `make gate-push` et CI. À juger à l'écran : hauteur de « Par contexte » en état vide empilé avec l'arme favorite ; « Par sélection » souvent en état vide (Partie rapide quasi exclusive).
+## [2026-10-26] Statistiques par carte : regrouper les variantes (Heavies, - Ranked) — En cours (branche `feat/cartes-variantes-stats`, worktree `LevelUp-wt-cartes-variantes`)
+**Décision technique principale** : relecture sur pièces de la note du 2026-10-23. La « version légère » est incohérente pour la Tactique (vignette regroupée, lecture par un seul map_id) ; la version complète est moins risquée qu'annoncé car toute la Tactique passe par la clause carte de l'univers (`tactical_repo_univers.go`). Plan `.ai/PLAN_CARTES_VARIANTES_STATS_2026-10-26.md` : un résolveur unique map_id -> groupe (table, pas nom par ligne), `breakdown.ByMap` paramétré par le regroupement (garde-rail à la compilation), repli « - Ranked » des miniatures migré sur le TOML (3e copie, règle n°6). Décisions user (26/10) : les deux suffixes, toutes les surfaces dont la Synthèse, aucune mention de variante à l'écran.
+**Résultats observés** : surfaces manquées par la note : briefing Explorateur, Escouade (3 points), synergies v2, séries temporelles, Synthèse (« cartes les plus jouées » par libellé) ; `computeMapWinRates` regroupe sur le nom EN brut du registre. Tendances, citations, carrière, engagement : aucun agrégat par carte. Doute à établir en E0 : le filtre de cartes en cascade (Synthèse, Escouade) compare le libellé propre de la ligne.
+**E0 clos (2026-10-26)** : mesures dans le plan (section Mesures, M1-M6). 42 groupes (32 en « - Ranked », 11 en « Heavies »). Catalogue incomplet (un seul map_id par nom, variantes manquantes) : la table de groupes se construira sur le nom retenu du registre, pas sur le catalogue. Bases à plusieurs map_id (jusqu'à 4) : le groupe prend tous les identifiants. Repère spatial : 22 paires >= 90,3 % (boîtes p1-p99 ; Highpower Heavies à la limite, expliqué par l'emprise des véhicules). Filtre en cascade (Synthèse, Escouade, briefing coéquipiers) : défaut confirmé par test, corrigé en E2. Quatre copies des suffixes de variante (2 dans le décodeur de film) : à statuer en E1. Voie de lecture : instantané parquet + sauvegarde (le serveur tient les bases, l'API exige une session).
+**E1 clos (2026-10-26)** : `domain.GroupesDeCartes` (Groupe, Membres, Regroupe), calcul pur `analysis.GroupMapsByBase`, port `MapGroupReader`, `duckdb.MapGroupsRepo` (lecture du registre par map_id, nom retenu), `rattacherCartesDeBase*` réécrits dessus (plus de lecture du catalogue ; le libellé FR de la base vient des traductions d'asset, repli sur un autre identifiant de même nom). Adaptateur d'URLs : le repli de miniature « - Ranked » passe par `BaseMapName` + suffixes du TOML (option `WithMapVariantSuffixes`, câblée dans `buildTitleRuntime`). Garde-rail `archlint/no_map_variant_suffix_literal_test.go` (appels, constantes, listes ; 3 exceptions datées dont les 2 copies du décodeur de film). Gate vert : domain, analysis, platform/duckdb, archlint, games/... ; vet ; golangci-lint ratchet.
+**E2 clos (2026-10-26)** : l'Explorateur, la Synthèse et le filtre de cartes en cascade comptent une variante sous sa carte de base. `port.MapGroupReader` injecté dans MatchHistory, Synthèse, SquadServiceV2 et TeammatesService (`WithMapGroups`, `wire.mapGroupsFor`), lu une fois par requête (`service/mapgroups.Load`, échec dégradé et journalisé). `GroupesDeCartes` porte le libellé de la base par locale (EN, FR) : aucune ligne regroupée n'affiche le nom d'une variante. `breakdown.ByMap(rows, groups, locale)`, `FilterRowsByCascade(rows, CascadeFilter, groups)` (le défaut M6 est corrigé pour Synthèse, Escouade, coéquipiers), clé du taux par carte = groupe du map_id. `buildBreakdownsFromCanonical` refactorée sous 80 lignes (type `outcomeTally`). Les synergies (E4) passent la valeur zéro à `ByMap` en attendant E4. Gate vert : `go test ./internal/analysis/... ./internal/service/...`, archlint, vet, golangci-lint ratchet.
+**E3 tests automatisés verts, vérification écran en attente (2026-10-26)** : la Tactique lit un groupe de cartes. `TacticalQuery.MapIDs` (jeton `%CARTES%` dans l'univers, `IN`), résolution du groupe en un seul endroit du service (`cartesDe`, table lue une fois par requête), `MapsPlayed` somme les rangées par groupe (id et libellés de la base, plancher recalculé), vignette = morts de tous les membres. Fonds, zones et callouts inchangés : la carte porte l'identifiant de base. Gate automatisé vert (service, duckdb, handlers, wire ; archlint ; lint). RESTE : vérification à l'écran par le user sur Live Fire (témoin à nommer) avant de clore E3 ; E4 non commencée.
+**Décision user (2026-10-26)** : la vérification à l'écran de E3 est reportée à la vérification finale, en une fois (section « À vérifier à l'écran » du plan). E3 close sur son gate automatisé.
+**E4 clos (2026-10-26)** : Escouade (synergies, historique « avec l'escouade » replié par groupe avec performance pondérée, heatmaps), page Coéquipiers, motifs (`PatternsRepo.regrouperLesCartes`) et Séries temporelles (découpage par carte, Emprise par carte) comptent une variante sous sa carte de base ; mécanisme commun `service/mapgroups` + `squadagg.FoldMapStats`. Re-grep de clôture statué ligne par ligne dans le plan. Gate : `go test ./internal/...` vert (169 paquets), lint ratchet 0 issue.
+**E4 bis (2026-10-26, décision du coordinateur : D2 = toutes les surfaces)** : la tuile « carte favorite » de l'Accueil compte une variante sous sa carte de base. `BuildHighlightsFromCanonical(rows, locale, groups)` -> `sliceFavoriteMapCanonical(window, locale, groups)` (clé = groupe, libellé de la base EN/FR), `HomeService.WithMapGroups` câblé sur `HomeCtxWithAuth` et `HomeCtx` (le garde de parité des deux factories a rougi sur le premier câblage, corrigé). Test : base + variante = une carte favorite, cumul des parties et victoires. Le `[!]` du plan passe à `[x]`, l'entrée du REGISTRE_REPORTS est retirée. Gate : `go test ./internal/analysis/... ./internal/service/... ./internal/api/...` vert (34 paquets), archlint vert, golangci-lint ratchet 0 issue.
+**E5 clos (2026-10-26)** : contrat OpenAPI et web inchangés (diff vide vs la base) ; `make check-types` vert, `make test-web` vert (10 364 tests) ; `make gate-push` EXIT 0 (lint ratchet, typecheck, eslint 0 erreur, baseline 9 330 -> 21 720 tests, aucun échec). Playwright Tactique `[!]` non lancé (le serveur de `:8000` est celui de la copie principale) ; remplacé par la vérification finale à l'écran. Note du 23/10 close, en-tête de `map_variants.toml` corrigé, REGISTRE_REPORTS alimenté. Caches `go-build-cartes-variantes` et `golangci-cartes-variantes` NON nettoyés (consigne du coordinateur : la vérification finale reconstruira).
+**Conclusion / prochaine étape** : le user fait la vérification finale à l'écran (section « À vérifier à l'écran » du plan), puis fusion par la voie habituelle ; nettoyage des caches sur son ordre (`scripts/disk-hygiene.ps1 -Lot cartes-variantes -Apply`).
+## [2026-10-26] Score de performance par carte et par mode dans la Synthèse — E0 à E2 faites, courbe sur axe de droite validée par le user — Complété (branche `feat/synthese-performance-carte-mode`)
+**Décision technique principale** : les deux graphes « Par carte » et « Par mode » gagnent une courbe du score moyen sur un second axe vertical à droite (0..100), dans la grille unique des issues empilées (D6, 2026-10-26 : la première forme, une seconde grille de barres au-dessus, a été rejetée par le user au gate visuel) ; points colorés `perf-tier-N`, trou de courbe si aucun match noté, valeur dans l'infobulle seulement ; côté Go, comptage d'une ligne extrait dans `tallyBreakdown` / `breakdownTally`, `performance_avg` et `perf_tier` ajoutés aux entrées ; clé de regroupement des cartes non touchée (lot variantes).
+**Résultats observés** : E0 sur copies : 91,5 % des matchs Halo Infinite (sauvegarde du 16/10, la base live est verrouillée) et 89,5 % des matchs Halo 5 ont un score ; aucun match non terminé n'en a. E1 : tests service/domain/api verts, `golangci-lint` 0 issue, contrat et types régénérés. E2 (refaite en forme D6) : typecheck, 10 377 tests web, lint (0 erreur) et garde-rails couleurs/libellés verts.
+**Conclusion / prochaine étape** : rendu en bande refusé par le user, refait en courbe sur axe secondaire (D6), validé le 2026-10-26 ; à fusionner dans `release/v8.1.0` ; ligne de changelog avec les notes de la v8.1.0. Contexte de la première version : E3 (rendu à l'écran FR/EN, clair/sombre, cividis ; hauteur revenue à 360 px, courbe non vue à l'écran ; profil Halo 5 sans nom de carte au registre) puis commit sur accord du user ; prévenir la session du lot variantes avant fusion.
+
+## [2026-10-26] Suppression locale de Nuzzles, calloussss et Brooks SVP (bases, matchs partagés, films) — Complété (branche `release/v8.0.7`)
+**Décision technique principale** : `levelup identity purge --yes` pour les trois profils (ni compte ni jeton) ; matchs retirés de la base partagée par un outil jetable (une transaction, toutes les tables de base portant `match_id`, plus `player_skill_state_v2` des trois xuid), puis `compact-passes --rewrite-file`. Caches film (morceaux, manifestes, rejeux, rasters, faits) supprimés par clé courte, après contrôle d'absence de collision avec les matchs gardés. L'outil jetable, embarqué par le commit « Archivage » (778f67fa6), est retiré dans ce commit.
+**Résultats observés** : 8 024 matchs retirés, aucun partagé avec un joueur restant ; `match_registry` 10 026 -> 2 002 ; fichier partagé 2,5 Go -> 230 Mo ; 2 624 films (morceaux + manifestes), 2 137 fichiers de rejeu, 150 rasters, 2 013 faits supprimés. Sauvegarde gardée : `shared_matches_v2.duckdb.avant-purge-20261026`.
+**Conclusion / prochaine étape** : vérifier l'appli puis supprimer la sauvegarde. Local seulement, rien sur le VPS.
+## [2026-10-27] i18n à N langues, étape 10 (preuve par la pseudo-langue `xx` : gestes réels, fuites des 8 pages témoins, poids du bundle) — Complété (branche `feat/i18n-multilangue`, branche jetable supprimée)
+**Décision technique principale** : `xx` (texte `⟦en⟧`) fabriquée sur une branche jetable avec les mêmes fichiers qu'une vraie langue (manifests, catalogue Go, tables curées, dictionnaires de feature par script, contrat OpenAPI régénéré), puis les 8 pages témoins de l'utilisateur parcourues en `/xx/` sur une instance de démo (copie de `data/demo`, ports 8010 et 5180). Chaque texte hors crochets classé : fuite (b) corrigée sur `feat/i18n-multilangue` par manifest, dictionnaire ou catalogue (FR, EN, toute langue listée) ou donnée légitime (a). `xx` a `required = true` et `intl = "xx-GB"` : une étiquette Intl qui se relit comme `en` masquait des fuites (`normalizeLocale(intl)`).
+**Résultats observés** : fuites (b) trouvées et corrigées : aide et notifications (toutes pages), nom de niveau Prestige français même en anglais (`tuning.toml`), palier tronqué en octets (`ToUpper(s[:1])`, U+FFFD), « Analyser », « (moi) », libellés de palier du verdict, titre et libellés par défaut de la courbe d'engagement, « Saison 13 » et « Saison inconnue » en français pour toute langue, texte d'accessibilité anglais d'ECharts, légendes de l'aperçu de palette, unité « pts », « kills · morts » du nemesis, `alt` de l'emblème. Tests : 31 fichiers Go et 5 fichiers web employaient `xx` comme langue inconnue (passés à `zz`), 3 tests Go supposaient deux langues. Garde-rail `no-short-jsx-literal.guard.test.ts` (plafond 107) : la règle ESLint ne voit pas les littéraux de moins de 3 mots / 15 caractères. Gates : vitest 1 019 fichiers / 10 475 tests verts, Go `-p 2` des paquets touchés vert, golangci-lint 0 issue, eslint 0 erreur (27 avertissements d'origine), generate-types sans écart. **Bundle gzip (JS + CSS), fr/en → fr/en/xx** : bundle entier 1 792 105 → 1 810 723 octets (+1,04 %), premier chargement de l'Accueil 935 178 → 941 407 octets (+0,67 %) ; seuil 15 % tenu, découpe par langue inutile (réserve : `xx` est une copie de `en`, mieux compressée qu'une vraie traduction).
+**Conclusion / prochaine étape** : étape 10 close (10.1 à 10.5 `[x]`). Guide d'ajout d'une langue corrigé (EN et FR) : sous-étiquette de `intl`, `required = true`, `make openapi-gen`, fixtures typées, sons par langue, sélecteur de langue des Réglages. Étape 11 : revue adversariale, `make gate-push`, fusion. Découvertes consignées au §6 du plan (code mort `getPerfColorLevel`, infobulle par défaut de la carte de chaleur, typographie française figée, 107 littéraux courts, `tsbuildinfo` partagé par la jonction).
+
+## [2026-10-27] i18n à N langues, item 11.R (corrections de la revue adversariale : clés de cache, repli des filtres média, Vary de l'Accueil, export CSV, nom du rang, outil repair-metadata) — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : 6 constats recevables, 1 écarté par le relecteur ; chacun rouvert sur pièces, corrigé avec un test qui échoue sans la correction. (1) La locale entre dans `progressionPatterns`, `media`, `mediaRail` ; `keys.locale.test.ts` classe TOUTES les fabriques de `keys.ts` (dépend / ne dépend pas, raison courte) et échoue sur une fabrique non classée ou dont le paramètre `locale` / `lang` contredit le classement ; l'inventaire a révélé trois autres clés au même défaut, corrigées (`careerCSRs`, `teammatesTop`, `mediaMatchCandidates`). (2) Repli des options de filtre du média : valeur = clé indépendante de la langue (`MapID`, nouveau `ModeFilterKey`), libellé en langue de la requête. (3) `Vary: X-LevelUp-Locale` (champ de sortie `[]string`, sans écraser le `Vary: Origin` de CORS) sur `/pages/home` et `/pages/home/matches`, seul site du dépôt concerné ; garde-rail grep ; `openapi.yaml` régénéré. (4) Export CSV : `?lang=` posé par le lien web, lu par `i18n.Lookup` (le jeton ne change pas de format). (5) Nom du rang de carrière : `rank_name_<code>` par langue, `rank_name` résolu à la lecture ; les lignes déjà stockées restent lisibles. (6) `cmd/repair-metadata` : table recréée depuis sa définition stockée par DuckDB (jamais périmée), réinsertion par liste de colonnes, comptes de lignes vérifiés avant le `DROP` et après la réinsertion, données remises sous le nom d'origine après un échec tardif.
+**Résultats observés** : l'ancien outil, rejoué sur une base d'avant le lot, échoue après le `DROP` (« table challenge_template has 14 columns but 22 values were supplied ») ; le nouveau conserve les lignes, les colonnes de texte, la clé primaire et l'index. Sans la correction, `keys.locale.test.ts` échoue sur six fabriques. Gate : intégration `-p 1` (domain, service, platform/duckdb, api, notifications, migration, repair-metadata) 27 paquets `ok` ; tests sans tag de ces paquets et de archlint (dont `TestOpenAPIYAMLIsUpToDate`) 0 échec ; `go vet -tags "gamefiles integration"` propre ; `golangci-lint --new-from-merge-base=origin/main` 0 issue ; web : generate-types régénéré (`Vary`), `tsc -b --force` 0, vitest 1 017 fichiers / 10 471 tests verts, eslint 0 erreur (27 avertissements d origine), `lint:fields` et `lint:colors` propres.
+**Conclusion / prochaine étape** : item 11.R clos. Changements visibles : changer de langue recharge les patterns, les médias, le rail média, les CSR de carrière, l'Escouade (sélecteur de composition) et les suggestions de match d'un média dans la nouvelle langue ; l'Accueil n'est plus resservi dans l'ancienne langue par un cache HTTP ; l'export CSV de l'historique sort dans la langue de la page ; la notification de rang de carrière s'affiche dans la langue de la page (nouvelles notifications) ; les options de carte et de mode du filtre média gardent leur valeur quand le dépôt est indisponible. Découvertes au §6 du plan. Reste 11.1 (relecture du diff global), 11.2 (`make gate-push`) et 11.3 (fusion, sur demande).
+
+## [2026-10-27] i18n à N langues, étape 9 (documentation : règle n°1 de CLAUDE.md, guide « ajouter une langue », skills, schéma, carte du projet) — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : la documentation décrit le contrat de l'ADR 0040 tel que le code le tient, sans historique : `CLAUDE.md` (règle n°1 « chaque langue de `config/locales.toml`, fr et en obligatoires » et section « i18n — N langues »), `FOUNDATIONS_GUIDE` § 3.5 et `COMMANDS` (EN et FR, mêmes changements des deux côtés), skills `frontend-patterns` et `arch-rules` (`normalizeLocale`, `pickText`, `intlLocale` / `INTL_TAG`, query keys avec locale, `i18n.Text`, `Pick`, `FromContext`, catalogue `Msg`, `ResolveParams`, garde-rails, libellé séparé de la clé), skill `db-schema` et documents de schéma (colonnes `_fr` / `_en` remplacées par les tables par langue), `.ai/project_map.md` (îlot daté).
+**Résultats observés** : chemins, symboles, tests et commandes cités vérifiés (script sur `git ls-files`, grep, `build_i18n_manifests.mjs --pseudo xx` et `check-generated-types-fresh.mjs` exécutés) ; `v_match_full` est un `SELECT mr.*` (la description « 8 LEFT JOIN » d'`ARCHITECTURE_V6` était périmée) ; un nom de test périmé de `WEAPONS.md` corrigé ; aucun test ne lit `CLAUDE.md`, `docs/` ou les skills ; `npx vitest run` 10 459 tests verts.
+**Conclusion / prochaine étape** : étape 9 close (9.1 à 9.5 statués). Cohérence ajoutée : `CONTRIBUTING` (EN, FR), tableau de `FOUNDATIONS_GUIDE`, trois cases de skills (« FR + EN » devenu « chaque langue listée »). Étape 10 (preuve par la pseudo-langue `xx`) à suivre.
+
+## [2026-10-27] i18n à N langues, item 8.8.f (restes de 8.8.e : Halo 5 sous `en`, `map_name` de la Tactique, code mort de `career/top-matches`, libellés du filtre global dans le descripteur de retour) — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : `fillUntranslated` pose la langue de repli depuis `asset_translations` quand le registre n'en porte aucune (Halo 5 : le registre ne nomme ni carte ni playlist), sans jamais écraser un nom de registre ; `TacticalMapCard.map_name` suit la langue de la requête (`Pick`, la clé reste `map_filter_key`) ; suppression des 18 clés `career.top_matches.*` et du réglage `career_top_exclude_btb` (aucun lecteur, vérifié par grep ; la bascule de la page Réglages n'agissait sur rien) ; `ExplorerMatchesTable` et `SquadLayout` fournissent à `filterContextToMatchFilterSpec` les libellés des options du filtre global.
+**Résultats observés** : sur les copies (Infinite 68 matchs, Halo 5 133) : noms vides `fr` / `en`, carte Halo 5 0 / 133 puis 0 / 0, playlist Halo 5 1 / 133 puis 1 / 1 (une playlist sans nom dans aucune langue de la source), Infinite 0 / 0 avant et après. Gate : intégration `-p 1` 89 paquets `ok`, tests sans tag 109 paquets `ok` (dont `TestOpenAPIYAMLIsUpToDate`), `go vet -tags "gamefiles integration"` propre, `golangci-lint --new-from-merge-base=origin/main` 0 issue ; web : generate-types sans écart, `tsc -b --force` 0, vitest 10 459 tests verts (+2), eslint 0 erreur (27 avertissements d'origine), `lint:fields` / `lint:colors` propres, knip sans reste ; boot de contrôle port 8010 : migrations `applied=0`, `/healthz` et field-mappings fr / en : 200.
+**Conclusion / prochaine étape** : item 8.8.f clos, étape 8 close. Changements visibles : Halo 5 en anglais affiche cartes et playlists ; la recherche de la Tactique en français ne trouve plus une carte par son nom anglais ; la page Réglages perd une bascule inopérante ; le compteur de navigation de la vue du match porte la playlist ou le mode dans la langue de la page aussi depuis le filtre global et la page Escouade. Découverte au §6 : `map_name` et `map_label` de la Tactique sont désormais identiques (retrait du contrat non fait). Étape 9 (documentation) à suivre.
+
+## [2026-10-27] i18n à N langues, item 8.8.e (noms bruts du registre servis dans la langue de la requête ; route `career/top-matches`, liste des matchs exclus et code mort de 8.8.d supprimés ; descripteur de retour de la vue du match en libellé / clé) — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : décision du pilote (2026-10-27), D2 et la règle n°1 de CLAUDE.md l'emportent sur la consigne « fr identique » de 8.8.d : les noms de jeu servis en nom BRUT du registre suivent la langue de la requête, un client `fr` les voit donc en français. Aide commune `duckdb.PairNamesIn` (`mode_name_tr`, puis nom d'actif de la paire, puis registre) pour les lectures qui ne portent que le nom brut d'une paire (mode des duels, playlist des trous LUSR) ; `Text.Pick(loc)` ailleurs (historique Escouade v2, `map_name` / `playlist_name` des séries, `pair_name` de session) ; la carte des duels est nommée dans toutes les langues (`nameDuels`). Deux chaînes sans consommateur sont supprimées au lieu d'être converties (règle n°7) : `GET .../pages/career/top-matches` (route, service, dépôt, requête, adaptateur `LoadTopMatches` et ses trois implémentations, types, contrat, `generated.ts`, stub MSW, filtres e2e) et la liste des matchs exclus (`ListExcluded`, qu'aucune route ne servait). Descripteur de retour de la vue du match : `label` à côté de `name` / `category` (`ContextDescriptor`), `playlist_labels` / `mode_labels` à côté des clés (`MatchFilterSpec`), jamais dans l'URL ; clés inchangées.
+**Résultats observés** : sur les copies (Infinite 68 matchs, Halo 5 133) : en 0 écart partout ; fr, écarts voulus : Infinite carte (séries, duels) 32 matchs / 16 noms, playlist 68 / 6, paire (session, duels, LUSR) 29 / 26, mode de l'Escouade 65 / 10 ; Halo 5 carte 133 / 18 et playlist 132 / 6 (de vide à français : le registre Halo 5 ne nomme rien), mode de l'Escouade 133 / 5. Gate : intégration `-p 1` 66 paquets `ok` (premier passage : fixture des duels sans `pair_id` et trois tests de handlers visant encore `top-matches`, corrigés, tout rejoué), tests sans tag 109 paquets `ok` (archlint, i18n, api dont `TestOpenAPIYAMLIsUpToDate`), `go vet -tags "gamefiles integration"` propre, `golangci-lint --new-from-merge-base` 0 issue ; web : generate-types sans écart, tsc 0, vitest 1 016 fichiers / 10 457 tests verts, eslint 0 erreur et 27 avertissements (un 28e dans `FilterOmnibar` corrigé), lint:fields et lint:colors propres, knip sans nouvelle indication ; boot de contrôle port 8010 : migrations `applied=0`, 1 ERROR d'environnement, `field-mappings` fr / en 200.
+**Conclusion / prochaine étape** : item 8.8.e clos, étape 8 close. Changements visibles : en français, nom de carte des séries temporelles, repli du mode de la page de session et carte et mode des duels des rivalités en français au lieu de l'anglais (Halo 5 : un nom au lieu d'une valeur vide) ; en anglais, le compteur de navigation de la vue du match nomme la playlist ou le mode filtré dans la langue de la page. Découvertes au §6 : Halo 5 sous `en` n'a aucun nom de carte ni de playlist (`fillUntranslated` ne pose jamais la langue de repli, déjà vide avant), `MapName` brut de la tactique, 18 clés `career.top_matches.*` et le réglage `career_top_exclude_btb` sans lecteur, libellé du descripteur figé à l'ouverture du match. À confirmer par le pilote : la suppression de `ListExcluded` (aucune route ne la servait). Étape 9 (documentation) suivante, non commencée.
+
+## [2026-10-27] i18n à N langues, item 8.8.d (noms de jeu servis en langue par défaut : Explorateur, historique, séries temporelles et pages voisines suivent la langue de la requête ; garde-rail des index par littéral de langue) — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : D2 appliquée aux réponses qui servaient encore cartes, modes, playlists, variantes et saisons en langue par défaut (`Pick(i18n.Default)`) : le libellé affiché est `Text.Pick(i18n.FromContext(ctx))`, toute valeur réutilisée comme clé de filtre, d'URL, de regroupement, de tri ou de cache reste le nom de la langue par défaut. Champs séparés libellé / clé : `available_playlists|maps|modes` de l'Explorateur (`[]string` -> `[]LabelValue`), `label` ajouté aux listes de modes et de playlists des matchs marquants, options du filtre global relabellisées (`localizeCascadeOptions`, `value` inchangé), `map_id` / `map_ui` des séries. Aides : `ResolveModeUIWithVariantIn`, `PlaylistLabelConfig.DisplayIn` (retrait du préfixe de catégorie et overrides pour la langue par défaut seule), `optionLabels`, `nomsDeCarte`. Ex aequo des classements de la synthèse, du briefing et des séries départagés sur la clé (nom par défaut), pas sur le libellé. Caches : aucun cache serveur ne tient ces libellés ; web, la locale entre dans neuf fabriques de clés (`filtersResolve`, `filtersPreview`, `matchHistory`, `explorer`, `careerHighlightMatches`, `engagementMatch`, `engagementTimeseries`, `engagementSquadSession`, `palmaresRelations`). Garde-rail `archlint/i18n_locale_constant_test.go` : compte aussi les index par littéral de langue (`m["fr"]`, `t[i18n.Locale("en")]`), plafond 7 -> **0** (squadagg 1, synthesis 4, notify 2 convertis). ADR 0040 D-16.
+**Résultats observés** : sur les copies (Infinite 68 matchs, Halo 5 133 matchs) : fr **0 écart** (carte, mode, playlist) ; en, écarts voulus : Infinite carte 32 / 68 matchs, mode 25, playlist 68 ; Halo 5 carte 133 / 133, mode 133, playlist 132. Valeurs des options identiques en fr et en en ; tests explicites fr et en du filtre pour chaque champ séparé. Gate : intégration `-p 1` (migration, persist, platform/duckdb, service, api, analysis, notify, domain) `ok` après correction d'une fixture (`map_id` des duels), tests sans tag (archlint, i18n, api dont `TestOpenAPIYAMLIsUpToDate`, service, platform, analysis, domain, notify) 0 échec, `go vet -tags "gamefiles integration"` propre, `golangci-lint --new-from-merge-base` 0 issue ; web : generate-types sans écart, tsc 0, vitest 1 016 fichiers / 10 447 tests verts, eslint 0 erreur, lint:fields et lint:colors propres ; boot de contrôle port 8010 : migrations `applied=0`, 1 ERROR d'environnement (pas de jeton), field-mappings 200 en fr et en.
+**Conclusion / prochaine étape** : item 8.8.d clos, étape 8 close. Un client `en` voit désormais les mêmes noms de jeu sur l'Explorateur, l'historique, le filtre global, les matchs marquants, les séries temporelles, la page de session, la synthèse, le média, l'engagement et les duels que sur l'Escouade ; aucun changement en français. Reste, à trancher par le pilote (§6) : les noms bruts du registre servis en anglais à tout client (top matchs de la Carrière, matchs exclus, mode des duels, Escouade v2, `map_name` / `playlist_name` des séries), dont la conversion changerait l'affichage en français ; le descripteur de retour de la vue du match qui rejoue les clés du filtre. Étape 9 (documentation) suivante, non commencée.
+
+## [2026-10-27] i18n à N langues, item 8.8.c (résidus de 8.8.b : tuiles de l'Accueil, Escouade, source des textes des citations par langue, inventaire des constantes de langue et garde-rail) — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : les derniers lecteurs qui complétaient `fr` et `en` seulement lisent le nom de CHAQUE langue de `config/locales.toml` (recette de 8.8.b : `assetNameTexts`, `modeTextsByLocale`, `fillUntranslated`, `pickAcrossChain`). Accueil : tuiles legacy et lignes canoniques (`Labels` posé pour toute langue connue, indépendant de la langue de la requête donc sans risque de cache), clés de mode centralisées dans `modeKeySet`. Escouade : le port prend `LoadAssetTexts` (un `Text` par actif) et le tableau est servi dans la langue de la requête (`SquadMatchRow.UILocale`) ; aucun cache ne tient ces lignes. Citations : les 110 noms et descriptions quittent le code Go (`citationDisplayEN`, `citationDescriptionEN`, champs `Display` / `Description`) pour `internal/ops/citation_texts.toml`, une table par langue et par entrée, embarqué dans le paquet (le seed de démonstration tourne sans arborescence de configuration), validé par `Text.Validate` avant toute écriture. Inventaire des 217 emplois de `i18n.LocaleFR` / `LocaleEN` : (B) langue codée -> `i18n.Default` / `i18n.Fallback` / boucle sur `i18n.Locales()` / `i18n.Known` (178 emplois, plus les constantes `mappings.LocaleFR` / `LocaleEN`, supprimées) ; (A) sources à deux colonnes fr / en conservées : 39 emplois dans 13 fichiers. Garde-rail `archlint/i18n_locale_constant_test.go` : cliquet à 39, parcours AST, auto-preuve. ADR 0040 D-15 complété.
+**Résultats observés** : étape 0 (dette de 8.8.b) verte avant tout code. Sur les copies de `LevelUp/data/demo` (Infinite 68 matchs, Halo 5 133), comparaison ancien / nouveau code sur 4 scénarios de registre : tuiles de l'Accueil 0 écart (164 et 216 textes), références canoniques 0 écart, Escouade en `fr` 0 écart (carte, sélection, mode, textes) ; citations : 110 / 110 identiques avant suppression, seed relancé sur une copie = 220 lignes identiques à l'octet (md5) ; saisons 14 / 14. Gate : intégration `-p 1` 105 paquets ok, tests sans tag (archlint, i18n, api dont `TestOpenAPIYAMLIsUpToDate`, service, analysis, ops, platform, games, sync...) 0 échec après retrait de deux entrées gelées de `map_label_single_resolution_test.go`, `go vet -tags "gamefiles integration"` propre, `golangci-lint --new-from-merge-base` 0 issue ; boot de contrôle port 8010 : 1 ERROR d'environnement (pas de jeton Halo dans la copie), field-mappings 200 en `fr` et `en`.
+**Conclusion / prochaine étape** : item 8.8.c clos, étape 8 close. Changement visible en anglais : le tableau des matchs de l'Escouade sert cartes, sélections et modes dans la langue de la page (avant : français) ; aucun changement en français. Découvertes consignées au §6 du plan : `LoadHomeMatches` sans appelant de production, formes littérales `["fr"]` hors garde-rail (squadagg, synthesis, notify), seed Go des armes `weaponLabelSeeds`, libellés d'affichage de l'Explorateur / historique / séries toujours dans la langue par défaut (décision de produit). Reste au §5 : les colonnes `*_fr` de la base partagée (décision) et les 39 emplois (A). Étape 9 (documentation) suivante, non commencée.
+
+## [2026-10-27] i18n à N langues, item 8.8 (D4 jusqu'au bout : textes curés en tables par langue, lecteurs de noms sans langue codée, garde-rail des littéraux Halo) — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : les textes curés des citations (`citation_mappings`), des modèles de défi (`challenge_template`) et des arcs préréglés (`preset_arc`) quittent leurs colonnes `_fr` / `_en` pour `asset_translations` (types `citation`, `challenge_template`, `preset_arc`) par la migration `metadata_curated_texts_to_translations_v1` (recette de 8.3 : copie sans perte, garde de couverture, rebuild CTAS-swap, idempotente ; `textPair` accepte des colonnes explicites par langue). `career_ranks` (source anglaise unique d'un nom composé et stocké), `mode_name_tr.mode_en` et `mode_prefix_names.prefix_en` (clés de tables déjà `(clé, lang, nom)`) restent : ce ne sont pas des paires de langues. Les lecteurs de noms de cartes / playlists / paires / variantes (historique, filtres, média, vue d'un match, catalogue de cartes, Explorateur, tactique, passe de saison, traductions GameCMS) rassemblent les noms de TOUTES les langues de `config/locales.toml` (`assetNameTexts`, `modeTextsByLocale`, `fillUntranslated`, `pickName`) et la langue de la requête est choisie en aval ; une clé stable (libellé de carte de `?maps=`, lien motif vers solo) est le nom de `i18n.Default`. Colonnes `*_fr` de la base partagée : non migrées, lues comme valeur de registre qui complète les noms par langue. Garde-rail `archlint/i18n_halo_literal_test.go` : aucune étiquette Halo en littéral ni `PreferredLangsForLocale("fr"|"en")` dans `platform/duckdb` et `service`, liste d'exceptions vide. ADR 0040 D-15.
+**Résultats observés** : sur les copies de `LevelUp/data/demo` (boot de l'exécutable compilé, port 8010) la migration passe `citation_mappings` 110 lignes en 220 lignes de traduction, `challenge_template` 27 en 54, `preset_arc` 4 en 8 ; 2e boot sans effet ; tables absentes de la metadata Halo 5. Parité ancien / nouveau chemin par un test jetable (ancien code du commit `0ba27079d`) : 0 écart en fr et en pour les noms par identifiant (carte 298 / 48, paire 1 057, playlist 83 / 73, variante 183 / 18), l'historique de matchs (68 lignes Infinite, 133 Halo 5), le libellé canonique de carte, `ListMapsByTitle` (271 cartes), 103 citations, 27 modèles de défi, 4 arcs. Deux écarts trouvés par la parité et corrigés : ordre des homonymes de `ListMapsByTitle` (déterministe par identifiant) et nom anglais posé en plus sur l'historique Halo 5 (la langue de repli n'est plus posée par les cascades). Gate : `go test -tags=integration -p 1` de migration, persist, platform/duckdb, games/halo_infinite/migrations, ops, progression : `ok` ; tests sans tag de archlint (141 s), migration, platform, api (dont `TestOpenAPIYAMLIsUpToDate`), i18n, contracttest, service, analysis, domain, ops, sync, progression, cmd/levelup : 0 échec ; `go vet -tags "gamefiles integration"` propre ; `golangci-lint run --new-from-merge-base=origin/main` : 0 issue ; web non touché. Le gel `resolutionsGelees` (libellé de carte) perd cinq entrées.
+**Conclusion / prochaine étape** : item 8.8 clos, étape 8 close (8.1 à 8.8). Changements visibles en anglais : options de filtre et suggestions du média, cartes et modes des matchs récents de la cible dans l'Explorateur, nom de citation en repli de nom de médaille, tous dans la langue de la page (avant : français) ; aucun changement en français. Résidu au §5 du plan : tuiles de l'Accueil (44 emplois de `LocaleFR` / `LocaleEN`), enrichissement du tableau de l'Escouade, seed des citations écrit en Go (français + anglais), colonnes `*_fr` partagées. Découvertes au §6 (table `mode_prefix_names` morte, DDL périmé de `cmd/repair-metadata`, cache des matchs récents partagé et modifié en place, docs et skill `db-schema` à mettre à jour avec l'étape 9).
+
+## [2026-10-27] i18n à N langues, étape 8 close (données : noms de jeu et définitions par langue, `tier_fr` inerte, corps admin par langue, dernières paires de colonnes lues par `Pick`) — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : les noms et descriptions de définitions (médailles, commendations, couleurs d'équipe, succès et leur texte verrouillé, jalons) quittent les colonnes appariées `_fr` / `_en` pour les tables par langue existantes (`medal_translations`, `asset_translations`), pour les DEUX titres : les lecteurs étant partagés, une migration limitée à Halo 5 aurait imposé des lecteurs à deux formes. Même chose pour les noms d'armes : `weapon_name_labels(title_slug, weapon_key, lang, name)` et `weapon_label_names(weapon_id, lang, name)` (clé de langue = code, ce sont des noms curés ou posés par Accept-Language). Deux migrations idempotentes (`metadata_definition_texts_to_translations_v1`, `metadata_weapon_names_to_translations_v1`) : copie sans perte (une ligne de traduction déjà présente l'emporte, comme la chaîne de lecture d'avant), garde de couverture qui annule la transaction, rebuild CTAS-swap qui recopie types, défauts, NOT NULL et clé primaire depuis le catalogue ; les steps historiques de création restent inchangés et tournent avant. Lecture : `DefinitionTexts` / `Text` choisis par `Pick` (langue, puis `en`, jamais d'invention) ; plus aucun COALESCE croisé fr/en en SQL. `match_skill_rank.tier_fr` n'est plus ni lue ni écrite (libellé déduit du code, catalogue `skill.tier.*`), le libellé stocké de placement ne porte plus de mot français (`Placement (N)`, anciennes lignes relues). `AssetReference.Text()`, `i18n.Chain`, `labelForLocale` et `i18n.UsesFallbackColumn` : la dernière binarité fr/en des lecteurs est remplacée par une règle unique. `Challenge.Label` et `Arc.Title` / `Arc.Description` : l'origine est enregistrée (`TemplateID`, `PresetID`), résolution à la lecture si le texte stocké est la copie de départ.
+**Résultats observés** : sur copies de bases (celles de `LevelUp/data/demo`, mêmes tailles que les bases vivantes, verrouillées par le serveur de l'autre session) les deux migrations prennent 187 ms (Halo 5) et 145 ms (Infinite), 2e passe sans effet ; Halo 5 : +3 304 lignes de succès (dont 1 652 de texte verrouillé), +242 commendations, +16 couleurs, +28 jalons, +430 médailles, +136 noms d'armes ; Infinite : +576 lignes de succès (dont 288 verrouillés), +66 jalons, +4 médailles, +84 noms d'armes, +106 `weapon_name_labels` ; 2 366 puis 684 noms comparés avant / après : identiques (sauf un espace final retiré), 0 manquant ; médailles, armes, succès, jalons lus en fr et en : 0 écart. Gate : go vet propre, intégration `-p 1` verte sur tous les paquets touchés (`migration`, `persist`, `platform/duckdb`, `games`, `sync`, `service`, `ops`, `prestige`, `progression`, `analysis`, `domain`, `api`, `cmd`), tests sans tag verts, archlint vert, `TestOpenAPIYAMLIsUpToDate` vert, `golangci-lint --new-from-merge-base=origin/main` 0 issue ; web : generate-types sans écart, tsc, vitest 1 015 fichiers / 10 434 tests, eslint 0 erreur, `lint:fields`, `lint:colors` propres ; `suffixeContratPlafond` 4 -> 0. Boot du serveur sur copie (`LEVELUP_REPO_ROOT` et port 8010 du scratchpad, aucun fichier de `LevelUp/data` ouvert) : migrations appliquées sur les deux titres et sur la base neuve du titre interne, 1 seul ERROR (aucun jeton Halo dans la copie : cause d'environnement). Méthode : les lots lecteurs / écrivains ont été confiés à des relecteurs Sonnet, un par famille (corps admin, commendations et fetch H5, succès et jalons, médailles, armes, lecteurs à deux langues et textes stockés), relus sur pièces ; un agent s'est arrêté avec une commande de fond en cours (non réveillé) et a dû être relancé.
+**Conclusion / prochaine étape** : étape 8 close (8.1 à 8.7 statués). Changements visibles : le formulaire d'administration des traductions propose une saisie par langue de `config/locales.toml` (FR et EN), un défi ou un arc issu d'un modèle ou d'un preset non modifié s'affiche dans la langue de la page, le tiroir d'actifs des armes Halo 5 sert toutes les langues, sous `en` un nom sans valeur anglaise n'est plus remplacé par le français (vide) et sous `fr` une description de citation ou de passe de saison sans valeur française est servie en anglais ; sans objet sur les données connues. En production au déploiement : les deux migrations s'appliquent au boot (durée de l'ordre de 0,2 s sur la copie), rien d'autre à lancer ; pas de re-cuisson ; au prochain `h5-metadata-fetch` et à la prochaine synchro des succès, les textes sont écrits par langue. Découvertes en §5 / §6 du plan (paires de colonnes restantes, chargeurs de noms de cartes codés sur le français, `weapons.name_fr` inerte en Halo 5, docs à mettre à jour à l'étape 9). Suite : étape 9 (documentation).
+
+## [2026-10-26] i18n à N langues, étape 7 close (textes rédigés par le serveur : catalogue de messages Go, comparaisons de langue à 0, textes stockés résolus à la lecture) — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : tout texte composé par le serveur passe par un catalogue embarqué `internal/i18n/messages/*.toml` (82 messages, 11 fichiers ; une feuille par message, une valeur par langue de `config/locales.toml`, variables `{nom}` ; `Msg`, `MsgText`, `MsgTextWith`, `MsgAll`). Complétude refusée par test (`TestCatalogueComplet` : chaque langue de la liste, mêmes variables) ; garde-rail `archlint/i18n_messages_test.go` (clé littérale existante, aucune clé sans appelant). Les 26 comparaisons de langue de la regex d'entrée étaient en fait 45 avec les formes qu'elle ne voyait pas (`ctxkeys.Locale(ctx) == "en"`, `EqualFold`, `HasPrefix`) : la regex est élargie et `localeLiteralPlafond` passe à 0. Les paires de colonnes à deux langues restent lues par `i18n.UsesFallbackColumn` (toute langue hors défaut lit l'anglais, D3) jusqu'à l'étape 8. 7.9 : le stockage ne change pas ; les libellés stockés une fois par langue (`title_<code>`, `medal_name_<code>`, `label_<code>`, `description_<code>`) sont résolus à la lecture par le serveur en une seule clé (`i18n.ResolveParams`), sans migration ni repli de lecture daté, parce que l'ancien format est le format courant (ADR 0040 D-11). Documents : un fichier par langue, repli sur la langue de repli avec mention dans la langue demandée, compté (D-12).
+**Résultats observés** : 72 paquets de tests Go verts (archlint entier compris), 25 paquets verts en `-tags=integration -p 1`, `go vet -tags "gamefiles integration"` propre, `golangci-lint --new-from-merge-base=origin/main` 0 issue, `TestOpenAPIYAMLIsUpToDate` vert (contrat inchangé) ; web : types sans écart, `tsc -b --force` exit 0, vitest 1 012 fichiers / 10 421 tests verts, eslint 0 erreur (27 avertissements d'origine), `lint:fields`, `lint:colors` propres. Le gate a révélé un piège : mes réécritures par `str.replace` sans assertion ont laissé deux remplacements muets (`assembleReleaseBlocks`, un littéral `"
+
+"` devenu retour à la ligne) : repérés par le compilateur et par la regex relancée, corrigés ; leçon : asserter chaque remplacement scripté.
+**Conclusion / prochaine étape** : étape 7 close (7.1 à 7.9 statués). Changements visibles : badges d'impact de la vue d'un match en anglais (avant : français), monnaies et palier du passe de saison en anglais, arme sans nom de l'Accueil inchangée (une arme au seul nom anglais s'affiche en anglais en français) ; fr et en identiques pour la démo, le bandeau d'un match, les notes de version, les aperçus de lien ; notifications de jalon / médaille et motif des propositions du coach suivent la langue de la page, lignes déjà stockées comprises. Pluriels de messages non implémentés (aucun besoin, code mort). Découvertes en §6 du plan (données à deux langues, `ResolveModeUI` hors des deux sites traités, étiquette de palier stockée « Placement (N restants) », métriques anglaises en français, dette de taille gelée). Suite : étape 8 (noms de jeu par langue, tables `asset_translations`, `UsesFallbackColumn` à remplacer).
+
+## [2026-10-26] i18n à N langues, étape 6 close (lot C : armes, tactique, séries temporelles, carrière en libellé résolu ; plafond web à 0) — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : D2 appliquée aux 23 propriétés du lot C de 7.F : une paire `x_fr` / `x_en` (ou `label` FR d'abord + `label_en`) devient UN champ résolu dans la langue de la requête par le service ou le dépôt qui a le `ctx` (`i18n.FromContext` + `Pick` / `PickOptional`, repli `en`). `port.WeaponKillRow.Label` et `port.WeaponLabel` portent un `i18n.Text` (chaque langue garde sa chaîne de repli interne) ; la langue est passée en paramètre aux constructeurs purs (`fragdist.Build`, `squadagg`, `buildTopWeapons`...). Cas à part : `map_name_fr` de la vignette tactique servait AUSSI de valeur `?maps=` du lien vers l'Explorateur (libellé canonique indépendant de la langue) : il devient `map_filter_key`, le libellé suit la langue dans `map_label`. `SkillSnapshot.TierCodeFR` quitte le contrat (aucun lecteur), les 7 champs de classe (b) hors contrat d'API sont renommés ou portés par un `Text`, et les corps de requête admin de traduction restent seuls au compteur Go (item 8.6 ajouté au plan).
+**Résultats observés** : `openapi.yaml` et `generated.ts` régénérés (sans écart ensuite) ; 16 lignes `i18n-contrat` retirées côté web, `CONTRACT_FIELD_CEILING` 16 -> 0 (le garde-rail est une interdiction, message citant `pickText` et le libellé résolu) ; `suffixeContratPlafond` 34 -> 4, `localeLiteralPlafond` 28 -> 26 ; 9 query keys portent la locale ; aucun cache serveur ne porte de réponse du lot C (rasters et séquences tactiques sans cache, carrière en direct sans libellé résolu). Tests fr / en / inconnue : httptest (carrière, cartes tactiques) et niveau service et dépôt. Le gate a révélé trois garde-rails à adapter : golden du sunburst de Halo 5 (`label_en` retiré, changement de contrat voulu), comparateur du top armes (`Label.Pick(loc)`), inventaire des champs référence du clonage des lignes (`TierLabel`).
+**Conclusion / prochaine étape** : étape 6 close (6.1 à 6.6 statués). Effet visible : les noms d'armes des graphiques « frags par arme », du top des séries temporelles et du tableau d'armes de l'Escouade, et le nom de carte des séries temporelles, suivent désormais la langue de l'interface (ils étaient français d'abord). Découvertes en §6 (paramètres de notification stockés, doublon `displayLabel`, `AssetReference.Labels`, placeholder tactique). Suite : étape 7 (textes rédigés par le serveur : `reason_params`, notifications).
+
+## [2026-10-26] i18n à N langues, étape 6 lot B : jalons, coach, défis suggérés et modèles de défi, rang du profil, succès, actifs, admin en libellé résolu — En cours (branche `feat/i18n-multilangue`, l'étape 6 reste ouverte : lot C)
+**Décision technique principale** : D2 appliquée aux 25 propriétés du lot B de 7.F : une paire `x_fr` / `x_en` devient UN champ `x` résolu par le service (ou le dépôt, ou le handler qui a le `ctx`) avec `i18n.FromContext(ctx)` + `Text.Pick` (repli `en`) ; les textes par langue restent en donnée (`Names`, `Labels`, `Titles`... en `json:"-"`) et sont posés en réponse par des méthodes de copie (`AssetMeta.Localized`, `Template.Localized`, `LocalizeTemplates`), jamais en place. Hors OpenAPI mais indissociables du lot : `PresetArc`, `SquadChallengeView`, `milestones.CatalogEntry` (35 champs Go au total). Textes stockés (`Challenge.Label`, titre d'arc adopté) : langue par défaut, comme avant. Ajout à `i18n.Text` : `PickOptional`.
+**Résultats observés** : `openapi.yaml` et `generated.ts` régénérés (les propriétés suffixées disparaissent, `label` / `name` / `title` / `condition` / `reason_key` / `mode_key` apparaissent) ; 12 lignes `i18n-contrat` retirées côté web ; 11 query keys portent la locale ; plafonds `CONTRACT_FIELD_CEILING` 28 -> 16 et `suffixeContratPlafond` 69 -> 34 ; tests fr / en / inconnue / absente sur succès, actifs, jalons, coach (httptest derrière le vrai middleware), modèles, presets, pool, mode pilote, défis d'escouade (services). Aucun cache serveur ne porte une réponse du lot B (le dépôt d'actifs en mémoire garde toutes les langues et résout à la réponse).
+**Conclusion / prochaine étape** : lot C (armes, tactique, séries temporelles, carrière : 23 propriétés, caches tactiques et carrière en direct). Cas douteux consignés au plan (§4 étape 6, lot B) : `CreateChallengeForm` affichait toujours le français ; représentant d'un visuel du tiroir choisi dans la langue de la requête ; corps de requête admin `mode_en` / `name_*` conservés ; `reason_params` lu français d'abord par `CoachProposalsCard`.
+
+## [2026-10-26] i18n à N langues, étape 6 lot A : inventaire 7.F, partition B / C, libellés du rejeu en `i18n.Text` à plat — En cours (branche `feat/i18n-multilangue`, l'étape 6 reste ouverte : lots B et C)
+**Décision technique principale** : le document de rejeu garde un libellé par langue DANS le document (décision du pilote, exception écrite à D2 : gros document mis en cache côté client, artefacts cuits à ne pas re-cuire), sous une forme extensible. Les six types de libellé (`Label`, `WeaponLabel`, `VehicleLabel`, `CalloutZone`, `ObjectiveObjectLife`, `VehicleWeapon`), dans le stocké (`film/replay`) et le servi (`domain/replaydoc`), portent un `i18n.Text` ; leur JSON reste PLAT (`i18n.MarshalFlat` / `UnmarshalFlat` : un membre par langue au même niveau que les autres champs, à la place des anciens `en` / `fr`, pas de sous-objet). Le contrat est dérivé de la liste des langues par `openapigen` (repère `i18n_text` remplacé par une propriété par langue). Côté web, `pickText(texte, locale)` (`lib/i18n/pickText.ts`) est le seul lecteur ; garde-rail par le compilateur `replay-label-access.guard.test.ts`.
+**Résultats observés** : forme de fil identique octet pour octet pour fr/en (12 types face à leur jumeau d'avant, 5 cas de langue chacun ; 3 314 artefacts du cache de films du poste décodés et ré-écrits sans un octet d'écart ; fixture réduite d'un artefact réel versionnée) ; `openapi.yaml` et `generated.ts` sans écart ; `GrammarRev`, `SchemaVersion` (104) et les empreintes des cinq couches inchangés ; seule l'empreinte de FORME RÉFLÉCHIE du document (`document_shape.golden`) change (le type Go passe de deux champs à un), par le mécanisme prévu (numéro de règle de l'empreinte cuite 2 -> 3), sans montée de `SchemaVersion` donc sans re-cuisson. Inventaire 7.F : 26 schémas, 48 propriétés, 26 noms (47 `_fr/_en` + `TierCodeFR`), 12 structs à clés `en` / `fr` (tous convertis), 10 caches serveur passés en revue ; partition en lot B (25 propriétés, 8 schémas : Ascension, défis, succès, actifs, administration) et lot C (23 propriétés, 18 schémas : armes, tactique, séries, carrière). Compteurs : web `i18n-contrat` 32 -> 28 ; Go classe (b) 93 -> 69 ; Go comparaisons littérales 29 -> 28.
+**Conclusion / prochaine étape** : lots B et C de l'étape 6 selon la partition de 7.F (D2 : libellé résolu, `Vary: X-LevelUp-Locale`, query keys, tests `httptest`). Cas douteux : (1) empreinte de forme du document re-figée (règle 3) ; (2) repli web sur l'anglais là où `catalogText` repliait sur « l'autre » langue (sans objet sur les données actuelles) ; (3) aucun `Vary` n'est posé aujourd'hui sur les réponses localisées.
+
+## [2026-10-26] i18n à N langues, étape 5 lot C (item 5.7) : garde-rail typé `i18n.Text` jamais argument SQL — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : `internal/archlint/i18n_text_sql_test.go` charge le module avec ses types (`golang.org/x/tools/go/packages`, désormais dépendance directe) sous les tags par défaut puis `integration`, tests compris, et signale tout `i18n.Text` / `*i18n.Text` passé à `Scan`, `Exec*`, `Query*`, `QueryRow*`, `AppendRow` (tout le module), à une fonction `...any` déclarée sous `platform/duckdb`, `persist`, `migration`, `sync`, `ops`, `cmd`, ou rangé dans un `[]any` (littéral, `append`, affectation d'élément) de ces dossiers. Allowlist vide. Les dépendances hors module sont typées sans corps de fonction pour tenir la durée.
+**Résultats observés** : 0 cas sur le module (le seul connu, `stats_repo.go`, était déjà corrigé au lot B ; une extension d'essai des règles `[]any` au module entier n'a rien trouvé de plus). Durée 9 s à chaud, 38 s à froid ; archlint entier 111 s. Preuve d'échec : `Scan(&m.PlaylistName)` réintroduit dans `stats_repo.go:75` et sonde jetable `ops/zz_probe_i18n.go` (5 formes d'appel, 5 signalements), puis retirés. `go test ./internal/archlint/` vert, `go vet` propre, `golangci-lint --new-from-merge-base=origin/main` 0 issue, `go mod tidy -diff` vide. Aucun fichier de production touché.
+**Conclusion / prochaine étape** : étape 5 reste close (5.1 à 5.7). Limite : un `Text` converti d'abord en `any` n'est pas vu. Étape 6 (contrat d'API) à suivre.
+
+## [2026-10-26] i18n à N langues, étape 5 close (lot B : champs de données en `i18n.Text`, garde-rail des suffixes de langue) — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : classe (a) de 7.E (121 champs sans balise json) : 115 passent à `i18n.Text` (`FromColumns(en, fr)` pour les colonnes `_en`/`_fr`, qui ne bougent pas : étape 8), 5 sont renommés ou retirés parce qu'ils ne portent pas un libellé par langue (`canonicalName`, `subModes`, `modeKey`, `tierFR` jamais lu), 1 est un faux positif (`vivantEn`). La classe (b) (champs sérialisés) ne bouge pas : alimentée par l'index direct `t[i18n.LocaleFR]` (et non `Pick`, qui aurait servi l'anglais à la place d'une traduction absente : JSON identique à l'octet). Les fonctions à suffixe perdent le suffixe ou prennent une `i18n.Locale` (`LoadModeTranslations(ctx, loc, ...)`, `queryModeNameTr` : `lang = ?`). Garde-rail 5.6 : `archlint/i18n_langue_suffixe_test.go` (parcours AST), plafond de contrat 93 (cible 0 à l'étape 6), allowlist de 4 entrées datées ; plafond du garde-rail 2.3 abaissé de 32 à 29.
+**Résultats observés** : `TestOpenAPIYAMLIsUpToDate` a révélé que `canonical.SkillSnapshot.TierCodeFR` (sans balise json) est sérialisé sous son nom Go : champ rendu à sa forme, balise `json:"TierCodeFR"`, compté en classe (b). Les tests d'intégration ont révélé un `Scan(&m.PlaylistName)` vers un `*i18n.Text` (`stats_repo.go`), invisible au compilateur (`Scan` prend `any`) : corrigé ; leçon : après un changement de type de champ, chercher aussi les `Scan(&x.Champ)` et les arguments d'`Exec`. Écritures touchées en Go seulement (SQL identique) : `persist.LUSRRatingInsert` (le `Tier` de l'INSERT append-only lit `Tier.Ptr(en/fr)`), `sync/csr_writes.go`, `sync/achievements.go`, `ops/season_catalog_refresh.go`, `coach_proposal_repo.go`. Preuves du JSON inchangé : `service/i18n_json_inchange_test.go` et `api/handlers/i18n_json_inchange_test.go` (succès, rang maximal de la carrière, badges et en-tête de la vue du match, propositions du coach, libellé de saison) + `TestOpenAPIYAMLIsUpToDate` ; `openapi.yaml` et `generated.ts` identiques à `76c5eef85`. Gate : voir le plan (§4, lot B). `TestBackfillRegistryNames_BaseTenueParUnAutreProcessus` (cmd/levelup) échoue dans un gate complet parallèle et passe seul (flake sous charge, non lié).
+**Conclusion / prochaine étape** : étape 5 close (5.1 à 5.6 statués). Étape 6 : contrat d'API (liste figée 7.F, `label` résolu, suppression des 93 champs de classe (b), plafond à 0). Découvertes en §6 du plan : champs `en`/`fr` en minuscules hors du périmètre du garde-rail, `bpPrefersEnglish`, `h5-metadata-fetch` en `name_fr`.
+
+## [2026-10-26] i18n à N langues, étape 5 lot A : `i18n.Text`, chargeurs de mappings, TOML à tables par langue — En cours (branche `feat/i18n-multilangue`, étape 5 close par le lot B, voir l'entrée précédente)
+**Décision technique principale** : `i18n.Text` (`map[Locale]string`) avec `Pick`/`Resolve`/`Validate`/`CheckKnown` ; le repli sur `Fallback` est compté par deux compteurs `expvar` atomiques (`levelup.i18n.text_fallback_total`, `…text_empty_total`, ADR 0009) et `Resolve` rend le drapeau pour l'appelant qui journalise (ADR 0040 D-4 mis à jour : `Pick` n'a pas de contexte). Les 6 chargeurs de `internal/games/mappings` (champs, assets, issues, noms d'armes, libellés de rejeu, armes de véhicule) lisent des `i18n.Text` et valident la complétude par `Validate` (plus de « EN et FR » en dur) ; les entrées à `en`/`fr` à plat passent à `label = { en, fr }` (`replay_labels.toml`, `vehicle_weapons.toml`). Jalons (2 titres), défis et arcs : `X_fr`/`X_en` -> `X = { en, fr }` (`condition_text` pour la condition dite aux joueurs) ; `asset_labels_fr.toml` -> `asset_labels.toml` (`"nom EN" = { fr = … }`), chargeur de `h5-metadata-fetch` qui échoue désormais au lieu d'avaler l'erreur de lecture. Aucun contrat d'API ne bouge : les réponses gardent `_fr`/`_en`, alimentées par `Pick(mappings.LocaleEN|LocaleFR)`.
+**Résultats observés** : valeurs TOML reprises à l'octet, vérifiées avant/après par scripts jetables (structures aplaties égales, ensemble des chaînes identique ; 23+15, 26+14+56+12, 184+194+1 entrées), scripts supprimés ; `go test` des gates (i18n, games, domain, progression, service) et des 29 paquets dépendants vert ; `go vet` propre (tags `gamefiles integration` compris) ; `golangci-lint --new-from-merge-base=origin/main` 0 issue ; `tsc -b --force` exit 0 ; `openapi.yaml` et `generated.ts` identiques à `ef0291732`. Inventaire 7.E figé (213 champs, 82 fichiers : 121 données internes, 92 structs JSON) et 7.D (6 chargeurs) dans le plan.
+**Conclusion / prochaine étape** : lot B = 5.5 (types canonical/domain/repos : champs de la liste 7.E (a) -> `i18n.Text`, (b) résolus à l'étape 6) et 5.6 (garde-rail d'identifiants) ; l'étape 5 reste ouverte. Cas douteux et découvertes en §6 du plan (`condition_text`, `h5-metadata-fetch/main.go` > 500 lignes, chargeur prestige en double).
+
+## [2026-10-26] i18n à N langues, étape 4 close (manifests et dictionnaires prêts pour N langues, formats, anglais britannique) — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : le générateur de manifests (`scripts/manifests.mjs`) exige de chaque feuille TOUTES les langues de `config/locales.toml` et rien d'autre (erreur : fichier, clé, langue) ; `--pseudo xx [--out]` fabrique `xx` depuis `en` (`⟦…⟧`, hors syntaxe ICU) sans toucher aux fichiers versionnés. 8 dictionnaires de feature > 400 lignes découpés en `contract.ts` (type, une fois) + `fr.ts` / `en.ts` (`satisfies`) + index qui garde l'API ; `i18nContract.ts` et `palmares/i18n.ts` non découpés (aucun contenu par langue). 75 objets `{ fr, en }` typés `Record<Locale, …>` ; garde-rail 4.5 par le compilateur (type contextuel de chaque objet), plafond 0, allowlist vide. Ajouts pilote : 11 appels de formatage sans étiquette → `intlLocale` (garde-rail 2.4 étendu), défauts `locale = 'fr'` → `DEFAULT_LOCALE` (garde-rail 2.2 étendu), `ComparePage` et `SquadFdaGapCumulativeCard` reçoivent la `Locale` du store ; décision user : l'anglais est `en-GB` partout (`intl` de `en`, `halo` inchangé).
+**Résultats observés** : `tsc -b --force` vert ; vitest 1 010 fichiers / 10 402 tests verts ; eslint 0 erreur (27 avertissements d'origine) ; `lint:colors`, `lint:fields`, knip propres ; manifests régénérés sans écart ; build vert, poids gzip +0,045 % (1 791 060 -> 1 791 866 octets) ; `go test ./internal/i18n/` vert. Équivalence des 8 dictionnaires découpés vérifiée avant/après (valeurs et fonctions, test jeté). Test du mode `--pseudo` sur les 3 661 clés (même sortie entre délimiteurs pour les mêmes variables) ; il a révélé 5 clés de manifest en ICU invalide (découvertes, §6).
+**Conclusion / prochaine étape** : étape 5 (Go : `i18n.Text`, chargeurs, TOML à tables). Cas douteux : `'en-CA'` du calendrier conservé (clé technique, `Intl` indispensable pour le fuseau) ; exemption de nom `i18n/<langue>.ts` ajoutée à 4 outils de lint/garde-rails.
+
+## [2026-10-26] i18n à N langues, étape 3 close (lot B : texte inline, formats, compteurs à 0, invariant du store) — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : regex du garde-rail 2.2 étendue à `isEN`/`isFR` (hausse mesurée 112 -> 125 : 13 lignes de `matchNotices.logic.ts` et `MatchViewPage.tsx`), puis les 93 lignes non balisées converties (23 type 3 formats, 57 + 13 type 4 textes) en clés de manifest ou en dictionnaires `Record<Locale, T>` de la feature, textes FR et EN à l'identique ; les 40 littéraux Intl passent par `intlLocale` (décision pilote : l'anglais suit `en-US` partout, dont la clé de manifest `palmares.intl_locale`) ; `hydrateFromBootstrap` passe par `normalizeLocale`. Garde-rail 2.2 : principal 0 (interdiction), second compteur `i18n-contrat` 32 (retiré à l'étape 6) ; garde-rail 2.4 : 0.
+**Résultats observés** : `make check-types` et `tsc -b --force` verts ; `npm run test:run` 1 008 fichiers / 10 378 tests verts ; `npx eslint src` 0 erreur et aucun avertissement nouveau dans les fichiers touchés ; `lint:colors`, `lint:fields`, knip propres ; manifests régénérés sans écart ; les deux garde-rails échouent bien sur une occurrence ajoutée (sonde jetable). Seul changement visible : les sites en `en-GB` passent à `en-US` (liste en §4 étape 3 du plan), dont l'horloge de 12 h là où le cycle n'est pas forcé.
+**Conclusion / prochaine étape** : étape 3 close ; étape 4 (manifests et dictionnaires prêts pour N langues, découpe des dictionnaires > 500 lignes). Découvertes en §6 du plan : formats sans étiquette (langue du navigateur), `'en-CA'` du calendrier, 6 défauts `locale = 'fr'` en paramètre, déduction de la langue par l'étiquette Intl dans `ComparePage` et `SquadFdaGapCumulativeCard`.
+
+## [2026-10-26] i18n à N langues, étape 3 lot A : normaliseurs supprimés, choix de dictionnaire indexés, champs d'API balisés — En cours (branche `feat/i18n-multilangue`)
+**Décision technique principale** : liste figée 7.A produite par le garde-rail 2.2 (154 lignes, 86 fichiers : 42 type 1, 32 type 2, 23 type 3, 57 type 4) ; les 9 normaliseurs `normalize*Locale` de feature sont supprimés (les `get*Text` reçoivent une `Locale` typée du store), les 42 lignes de type 1 passent en `TABLE[locale]` (`Record<Locale, T>`), les 32 de type 2 portent `// i18n-contrat` (`{/* i18n-contrat */}` au-dessus pour le texte JSX). 5 replis `startsWith('en') ? 'en' : 'fr'` que la regex ne compte pas (`settings/queries`, `ComparePage`, `SquadFdaGapCumulativeCard`, `palmares/rarity`, `notifications/toastBridge`) sont traités avec (item 3.1).
+**Résultats observés** : plafond du garde-rail 2.2 abaissé de 154 à 112 (recoupé à `rg -c` : 112 lignes, 55 fichiers) ; `tsc -b --force` sans erreur ; `npm run test:run` 1008 fichiers verts + 5 skippés d'origine, 10 373 tests ; `npx eslint src` 0 erreur, 26 avertissements dont aucun nouveau (3 dans des fichiers touchés, identiques sur la version `HEAD`) ; `knip`, `lint:fields`, `lint:colors` verts. Deux tests de repli binaire (locale inconnue -> fr) retirés avec le comportement qu'ils testaient.
+**Conclusion / prochaine étape** : lot B (items 3.3 texte inline, 3.4 formats, 3.6 compteurs à 0 avec décompte à part des lignes `i18n-contrat`) ; l'étape 3 n'est pas close. Découvertes en §6 du plan : `isEN` non compté par la regex, écart `en-GB` / `en-US`, `hydrateFromBootstrap` sans `normalizeLocale`.
+
+## [2026-10-26] i18n à N langues, étape 2 : noyaux et garde-rails à compteur gelé — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : `normalizeLocale()` unique dans `lib/i18n/locale.ts` (sous-étiquette primaire, inconnu ou vide → `DEFAULT_LOCALE`) et `intlLocale()` lisant `INTL_TAG` (code livré avec l'étape 1, mêmes fichiers). Trois garde-rails qui échouent au-dessus d'un plafond gelé à la valeur mesurée après les étapes 1-2 : web comparaisons de langue littérales **154** (`lib/i18n/no-locale-literal-comparison.guard.test.ts`, cible 0 à l'étape 3), Go **32** (`internal/archlint/no_locale_literal_test.go`, cible 0 à l'étape 7), web étiquettes Intl littérales **40** (`lib/i18n/no-intl-tag-literal.guard.test.ts`, cible 0 à l'étape 3.4). Balayage web commun `localeScan.testutil.ts` (≤ 2 copies, règle n°6) ; regex de l'état des lieux (sections A, E, F) ; comptes en lignes comme `rg -c`.
+**Résultats observés** : plafonds recoupés à `rg` (154 / 32 / 40) et vérifiés exacts (échec à plafond - 1) ; `make check-types` vert ; `vitest run src/lib/i18n src/lib/formatters` 21 fichiers / 148 tests verts ; `go test ./internal/archlint/ ./internal/i18n/` vert ; `npx eslint src` 0 erreur (26 avertissements, aucun dans les fichiers touchés) ; `golangci-lint run --new-from-merge-base=origin/main` 0 issue ; knip sans nouvelle remontée.
+**Conclusion / prochaine étape** : étape 3 (web : fin des comparaisons de langue, liste figée 7.A à produire à l'entrée) — hors de cette exécution. Écart d'ordre : le code de 2.1 (`normalizeLocale`, `intlLocale`) a été commité avec l'étape 1 ; l'item est statué à l'étape 2.
+
+## [2026-10-26] i18n à N langues, étape 1 : source unique des langues — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : `config/locales.toml` (`default`, `fallback`, `[[locale]]` : `code`, `intl`, `halo`, `required`) lu par `apps/web/scripts/locales.mjs` (validation + rendu), appelé par le générateur de manifests, qui émet `lib/i18n/generated/locales.ts` (`KNOWN_LOCALES`, `DEFAULT_LOCALE`, `FALLBACK_LOCALE`, `INTL_TAG`) et `internal/i18n/locales_gen.go` ; le Go ne lit pas le TOML. Package Go `internal/i18n` (couche domaine, sans dépendance) : `Locale`, `Locales`, `Known`, `Required`, `Parse`, `Lookup`, `IntlTag`, `HaloTags`, `WithContext`/`FromContext`. Sens sans cycle : la clé de contexte vit dans `i18n`, `ctxkeys.WithLocale`/`Locale` délèguent (ctxkeys importe domain, qui importe désormais i18n). `resolveLocale`, `ogmeta.ParseLocale`/`LocaleFromParams`, `medalLangCode` (fr → code FR, toute autre langue → EN), `domain.SessionData`/`Store.New` et `resolveBootLocale` passent par `i18n`/`DEFAULT_LOCALE`. Fraîcheur : `checkGeneratedLocalesFresh` ajouté à `tools/check-generated-types-fresh.mjs` (module web ET fichier Go comparés au rendu du générateur), joué par `generatedLocalesFresh.guard.test.ts` ; `locales_gen_test.go` relit le TOML côté Go.
+**Résultats observés** : `make check-types` vert ; vitest 1006 fichiers / 10 371 tests verts ; `go test` des 5 paquets du gate verts ; dérive volontaire du module généré détectée (exit 1) puis réparée par le générateur ; manifests régénérés identiques (3 650 clés).
+**Conclusion / prochaine étape** : étape 2 (`normalizeLocale`, compteurs gelés). Découvertes consignées en §6 du plan : listes de langues en dur `sessionLocales` et `defaultDQLocale` ; entrées `en-GB`/`EN` désormais normalisées.
+
+## [2026-10-26] i18n à N langues, étape 0.3 : ADR 0040 — Complété (branche `feat/i18n-multilangue`)
+**Décision technique principale** : `docs/adr/0040-i18n-n-locales.md` (EN-only, amende ADR 0003) consigne les décisions D1-D6 validées et l'architecture du §3 du plan : source unique `config/locales.toml` (`[[locale]]` : `code`, `intl`, `halo`, `required` ; `default`, `fallback`), deux artefacts générés (module TS et constantes Go, le Go ne lit pas le TOML), un normaliseur par côté, clé de contexte dans `internal/i18n` (ctxkeys importe domain, qui importera i18n : la clé ne peut pas vivre dans ctxkeys sans cycle), libellé résolu par le serveur, langue complète ou refusée avec repli `en` pour les noms de jeu, exception D6, compteurs gelés puis preuve `xx`. Ligne `0040` ajoutée à la liste des ADR de `CLAUDE.md`.
+**Résultats observés** : relecture ADR contre §2 et §3 du plan : aucune décision omise ni ajoutée.
+**Conclusion / prochaine étape** : étape 1 (source unique des langues). Relecture du user à l'étape 11.
+
 ## [2026-10-26] Plan i18n à N langues (revue de l'état des lieux du 23/10) — En cours (branche `fix/medailles-vide-legitime`, aucun code, non commité)
 **Décision technique principale** : plan `.ai/PLAN_I18N_MULTILANGUE.md` (11 étapes, gates par commande). Ordre corrigé : liste unique des langues (`config/locales.toml`, partagée Go + web) → noyaux et garde-rails à compteur gelé → web → manifests → types Go `i18n.Text` → contrat « un libellé résolu » → textes rédigés côté Go → données → preuve par pseudo-langue `xx`. Les dictionnaires TS typés `Record<Locale, T>` ne migrent pas vers les manifests (déjà sûrs) ; la fuite muette est dans les `normalize*Locale` (`=== 'en' ? 'en' : 'fr'`).
 **Résultats observés** : re-mesure du doc du 23/10 : A, B (openapi), D, E exacts ; C inexact (les `mappings/` sont déjà en tables par langue, les suffixes sont dans jalons, défis et `arcs/presets.toml`) ; G non reproductible (51 à 71 fichiers, ~12 900 lignes, pas 91). Manques : `asset_translations (lang)` + 14 langues Halo déjà récupérables, colonnes `_fr/_en` Halo 5 et `match_skill_rank.tier_fr`, texte rédigé par le Go (coach, impact, rangs, aide, notes de version), défauts incohérents (fr partout, en pour les médailles).
@@ -300,8 +1430,8 @@
 
 **Résultats observés** : l'archlint du fond tactique garde un objet (en démo, le fond de carte ne doit pas passer sous `ReplayGate`, qui ne sert que les matchs figés) : renommé `tactical_background_demo_gate_test.go`, commentaires et identifiants réécrits. Trois tests « appelant distant refusé » de `replay_test.go`, le test « aucun garde d'adresse dans le handler » du fond tactique et le champ `peer` de `ambReq` (devenu inutile) sont supprimés ; `doReplayGet`/`doReplayPath` ne posent plus d'adresse. Descriptions openapi (deux YAML) et `generated.ts` corrigées (régénération vérifiée à l'identique) ; runbook de l'ouvrier : l'ancienne étape 4 disparaît ; CHANGELOG EN/FR 8.0.1 ; ADR 0036 (I7, plus de variable connue). Gate : vet, `go test ./internal/api/... ./internal/archlint/...`, `contracttest`, `openapi-gen -check`, golangci-lint (nouveaux constats = 0).
 
-**Conclusion** : la variable peut être retirée du `.env.local` de production au prochain passage (ignorée en attendant). Le critère « 88 % de couverture des tirs » n'a plus d'objet de garde ; la couverture reste une mesure de recherche (`closures.go`, `.ai/V7.5/`).
-## [2026-10-20] Rejeu : contexte de match allégé (GET .../replay/context) — Complété (fusionné dans `feat/v75` en `6eb8ffae8`, part avec la 8.0.1 ; mesure et revue : cf. plan, journal 5.1-5.2 ; plan `.ai/V7.5/PLAN_REJEU_CONTEXTE_ALLEGE_2026-10-20.md`, branche `feat/replay-contexte`)
+**Conclusion** : la variable peut être retirée du `.env.local` de production au prochain passage (ignorée en attendant). Le critère « 88 % de couverture des tirs » n'a plus d'objet de garde ; la couverture reste une mesure de recherche (`closures.go`, `.ai/archive/V7.5/`).
+## [2026-10-20] Rejeu : contexte de match allégé (GET .../replay/context) — Complété (fusionné dans `feat/v75` en `6eb8ffae8`, part avec la 8.0.1 ; mesure et revue : cf. plan, journal 5.1-5.2 ; plan `.ai/archive/V7.5/PLAN_REJEU_CONTEXTE_ALLEGE_2026-10-20.md`, branche `feat/replay-contexte`)
 
 **Décision technique principale** : la page de rejeu ne demande plus la vue complète du match. Une route dédiée, montée sous les gardes du rejeu (`CapReplay`, `ReplayGate`, participation), sert quatre morceaux (en-tête, lignes du tableau de score, événements du fil, médias), chacun du type exact de son homologue dans `MatchViewResponse`. Le service ne charge que leurs sources (liste fermée D4 : méta, stats joueur, enrichissement, tableau de score, events, paires killer→victim, sources et assistances des kills, médailles et armes de tous les joueurs, rangs, médias) et assemble le tout par des fonctions extraites de `buildMatchViewFromData` (`loadMatchMeta`, `prepareMatchViewEvents`, `assembleMatchHeader`, `decorateHighlightEvents`, `highlightEventList`), que la vue complète appelle aussi. Rencontres, historique, attendus, citations, Emprise, Isolement, radar, events canoniques et extras des amis ne sont ni lus ni calculés. Côté web, `ReplayMatchContext` type le modèle du rejeu ; `useMatchReplayContext` remplace `useMatchView` sur la page.
 
@@ -623,7 +1753,7 @@
 
 ## [2026-10-16] CI des branches licence et mise en commun : deux rouges réparés — Complété
 
-**Décision technique principale** : `chore/licence-agpl` : `TestCheminsAiCitesDansLeCodeExistent` signalait un commentaire Go (`film/internal/grammar/doc.go`) qui citait `.ai/V7.5/dumps/m1_funcs.c`, retiré avec les sorties de décompilation ; le commentaire renvoie désormais au plan et à NOTICE. `feat/pool-consentement` : golangci-lint (errcheck sur `fmt.Fprintf`, goconst sur « grandfather ») — sortie de la CLI par l'écrivain `sortie` déjà utilisé par `identity`, constante `subcmdGrandfather` ; et `upsertLocked` repassé sous le seuil de complexité (la préservation du consentement l'avait porté à 16, extraite dans `preservePoolSharing`).
+**Décision technique principale** : `chore/licence-agpl` : `TestCheminsAiCitesDansLeCodeExistent` signalait un commentaire Go (`film/internal/grammar/doc.go`) qui citait `.ai/archive/V7.5/dumps/m1_funcs.c`, retiré avec les sorties de décompilation ; le commentaire renvoie désormais au plan et à NOTICE. `feat/pool-consentement` : golangci-lint (errcheck sur `fmt.Fprintf`, goconst sur « grandfather ») — sortie de la CLI par l'écrivain `sortie` déjà utilisé par `identity`, constante `subcmdGrandfather` ; et `upsertLocked` repassé sous le seuil de complexité (la préservation du consentement l'avait porté à 16, extraite dans `preservePoolSharing`).
 
 **Résultats observés** : archlint vert en local sur la branche licence (aucun test Go n'y avait été lancé avant le premier push, alors que le retrait des `.c` cassait un renvoi de commentaire : erreur de méthode). Pool : golangci-lint sans nouveau constat depuis feat/v75, `go test ./...` vert (`TestCareerLive_NilAPIResponse_NotCached` rouge une fois sous charge, vert seul et 5 fois de suite).
 
@@ -720,7 +1850,7 @@
 **Conclusion** : fusion prête à pousser (geste du superviseur). Découverte non traitée : l'admin qui met en file le rejeu d'un match Firefight reçoit désormais `replay_enqueue_failed` au message fixe (le motif « mode non géré » de feat/v75 ne part plus qu'au journal, effet de L9-5).
 ## [2026-10-16] Plan citations Halo 5 clos : fusion de `feat/citations-film` dans `feat/v75` — Complété (branche `feat/v75`)
 
-**Décision technique principale** : fusion `--no-ff` (`9f377373e`) après CI verte de la branche et intégration Go complète verte en local ; plan rangé sous `.ai/V7.5/`.
+**Décision technique principale** : fusion `--no-ff` (`9f377373e`) après CI verte de la branche et intégration Go complète verte en local ; plan rangé sous `.ai/archive/V7.5/`.
 
 **Résultats observés** : quatre citations actives, calculées au post-sync et rattrapées en local ; citations existantes inchangées.
 
@@ -783,17 +1913,17 @@
 **Conclusion** : plan `.ai/PLAN_CITATIONS_FILM_2026-10-16.md` (Tick Tick Boom, Premier coup, Jouets éducatifs, Presque ça ne compte pas ; calcul post-sync après dérivation du film + rattrapage), décisions D1-D6 tranchées, à exécuter sur `feat/citations-film`. Local : relancer `levelup seed citation-mappings` serveur arrêté.
 ## [2026-10-16] Sorties de décompilation Ghidra retirées de l'arbre — Complété (branche `chore/licence-agpl`)
 
-**Décision technique principale** : décision de l'utilisateur du 2026-10-16. Les 273 fichiers `.c` de `.ai/V7.5/` sont copiés (octet pour octet, vérifié par `cmp`) vers `Downloads/LevelUp_decompilation_Ghidra/` puis retirés de l'arbre ; `.gitignore` ignore `.ai/**/*.c`. Les relevés écrits (Markdown) restent ; deux commentaires Go y renvoient seulement par chemin, aucun code ne lit ces fichiers. L'audio du jeu est conservé (le rejeu l'utilise). `NOTICE` et l'audit sont mis à jour.
+**Décision technique principale** : décision de l'utilisateur du 2026-10-16. Les 273 fichiers `.c` de `.ai/archive/V7.5/` sont copiés (octet pour octet, vérifié par `cmp`) vers `Downloads/LevelUp_decompilation_Ghidra/` puis retirés de l'arbre ; `.gitignore` ignore `.ai/**/*.c`. Les relevés écrits (Markdown) restent ; deux commentaires Go y renvoient seulement par chemin, aucun code ne lit ces fichiers. L'audio du jeu est conservé (le rejeu l'utilise). `NOTICE` et l'audit sont mis à jour.
 
 **Résultats observés** : aucun test ni build ne dépendait de ces fichiers.
 
-**Conclusion** : les fichiers restent dans l'historique git tant qu'il n'est pas réécrit. Restent à trancher : captures mémoire (`.ai/V7.5/dumps/`, `tools/ce/`) et gamertags des fixtures de films.
+**Conclusion** : les fichiers restent dans l'historique git tant qu'il n'est pas réécrit. Restent à trancher : captures mémoire (`.ai/archive/V7.5/dumps/`, `tools/ce/`) et gamertags des fixtures de films.
 
 ## [2026-10-16] Licence : MIT vers AGPL-3.0-only (code) + CC BY 4.0 (docs) + audit du contenu tiers — Complété (branche `chore/licence-agpl`, non commitée)
 
 **Décision technique principale** : `LICENSE` = texte AGPL-3.0 officiel ; `NOTICE` porte les termes additionnels du §7 (conservation de la ligne « © JGtm — LevelUp » + lien dépôt, marquage des versions modifiées, pas de droit sur le nom), la licence CC BY 4.0 des docs (`LICENSE-DOCS`) et la liste de ce que la licence ne couvre PAS (contenu Microsoft, sorties de décompilation, captures mémoire, films de matchs). `-only` et non `-or-later` pour garder la main sur les versions futures. README EN/FR, `CITATION.cff`, `CONTRIBUTING` EN/FR (clause de licence + interdiction de soumettre du contenu du jeu), pied de page (`common.footer.license`, TOML + généré à la main à l'identique faute de node_modules dans le worktree) et page confidentialité (intro FR/EN, date de révision) alignés. Le lien « Code source » du pied de page remplit déjà l'obligation AGPL §13.
 
-**Résultats observés** : aucune dépendance GPL/AGPL/SSPL (161 modules Go, 121 paquets npm de production) ; deux MPL-2.0 compatibles. Audit `.ai/AUDIT_CONTENU_TIERS_2026-10-16.md` : 273 fichiers `.c` Ghidra et ~55 Mo de captures mémoire suivis dans `.ai/V7.5/` et `tools/ce/`, 83 Mo d'audio du jeu, ~2 000 images du jeu, ~100 films de matchs réels en fixtures (gamertags de tiers). Rien supprimé.
+**Résultats observés** : aucune dépendance GPL/AGPL/SSPL (161 modules Go, 121 paquets npm de production) ; deux MPL-2.0 compatibles. Audit `.ai/AUDIT_CONTENU_TIERS_2026-10-16.md` : 273 fichiers `.c` Ghidra et ~55 Mo de captures mémoire suivis dans `.ai/archive/V7.5/` et `tools/ce/`, 83 Mo d'audio du jeu, ~2 000 images du jeu, ~100 films de matchs réels en fixtures (gamertags de tiers). Rien supprimé.
 
 **Conclusion** : décisions de l'utilisateur en attente — retrait des `.c`/captures de l'arbre (recommandé), anonymisation des fixtures, purge d'historique (non recommandée sans sauvegarde). Typecheck/vitest non rejoués (worktree sans node_modules, aucune logique touchée : chaînes seulement).
 
@@ -897,14 +2027,14 @@
 
 ## [2026-09-23] Reprise post-serie 5 du decodeur : lot 5.26 (residu film dense, arret ecrit), docs de release v7.5, archivage `.ai` — Complete (trois lots Opus en parallele, fusionnes dans `feat/recherche-decodeur-film` avancee sur feat/v75, CI puis fast-forward de feat/v75)
 
-**Statut** : Complete cote code et documents ; push + CI + fast-forward de feat/v75 dans la foulee ; 13 documents `.ai` A ARBITRER par l utilisateur (liste dans `.ai/V7.5/README.md`).
+**Statut** : Complete cote code et documents ; push + CI + fast-forward de feat/v75 dans la foulee ; 13 documents `.ai` A ARBITRER par l utilisateur (liste dans `.ai/archive/V7.5/README.md`).
 
 **Decision technique principale** : reprise sur `.ai/HANDOFF_DECODEUR_FILM_SERIE5_2026-09-22.md`. Le fast-forward de feat/v75 etait deja fait (43a01721e, CI verte au niveau job) ; l integration a ete avancee dessus et sert de point de fusion aux trois lots, un worktree et un agent Opus chacun, briefs a perimetre ferme ; fusion par script (merge --no-ff, gates par regime : docs = perimetre + commentaires seuls sous apps/ + build/vet ; decodeur = openapi, gofmt, build, vet +research, tests des paquets film/replay/api/contrats, lint 0 issue). Aucun gate de corpus ni re-figeage : aucune revision de grammaire ni de faits n a bouge.
 
 **Resultats observes** :
 - **Lot 5.26** (`feat/decfilm-76`, 3 commits) : les deux dernieres pistes du quart de trames abandonne sur film dense sont FERMEES chez l ecrivain puis par la mesure. (a) Handlers de paquets 6 / 0xb / 0xc : type 6 = indice de joueur range en `session+0x114` (`DAT_144c2328c`), lu par la seule vue Theater `FUN_142e2e104` (verifie par xrefs : un WRITE, un READ) ; 0xb lu et jete ; 0xc = table de bots ; aucun n atteint la garde d eid `FUN_1406caad8` ni la table de datums ; sur `bfecd02b` 27 paquets de type 6 et 28 de type 0xc, tous 4 octets a 0, en tete de chunk. (b) Le record de tir 36 (`FUN_14080c1f8`) n a aucun champ dans l espace d identifiants des trames (domaine 7) ni d archetype de projectile ; `TestTir526` : eid rejete present dans le record 36 du meme paquet **0 / 44** (`bfecd02b`) et **0 / 143** (`4f77afc1`), balayage bit a bit a 0. Verdict : 5.26.3 non faite, `grammar-2026-09-22.12` / `facts.Rev` / schema 68 inchanges, gate 3 940 / 30 387 et perte de ticks 35,4 % inchanges. **Le sujet est CLOS** (decision utilisateur du 22/09 : dernier lot, pas de troisieme suspect). Corrections consignees : la trame delta est le type 0 (le brief disait 7) ; l ecart D4 (5.19) n existe pas ; commentaire `FUN_1406cd5b8` de `fire_aim_modal.go` faux (le rejeu appelle `FUN_140c9e4d8`).
 - **Docs de release** (`feat/docs-release-v75`, 4 commits) : changelogs 7.5.0 EN + FR (40/40 Added, 25/25 Changed, 20/20 Fixed, 8/8 Ops ; Ops en quatre passes serveur arrete : recuisson des artefacts, usage-summary, pad-tiers --force APRES la recuisson car il lit les artefacts, killsource), notes de version EN + FR (68 / 68 puces dans le bloc v7.5, verifie au parseur `parseReleaseNotes.ts`), `docs/FR/README.md` resynchronise sur la revision EN 8ee9cc760 (32 / 32 sections ; `docs/README_FR.md` n est qu une redirection). Trois erreurs factuelles du README EN signalees, non corrigees : « 34 » ADR (35), `LEVELUP_CLIENT_ID` (aucun code ne le lit, la variable est `SPNKR_AZURE_CLIENT_ID`), coquille « manageemnt ». Le paragraphe « Halo 5 » des notes de version n est pas lu par le parseur in-app (pre-existant).
-- **Archivage `.ai`** (`feat/ai-archivage-v75`, 3 commits) : 21 documents clos deplaces par `git mv` (14 vers `.ai/V7.5/chantiers/` cree, 3 `film_re/`, 2 `killweapon/`, 2 `replay2d/`), racine 73 -> 52 fichiers suivis, references reecrites (5 plans vivants, 3 commentaires Go, 2 commentaires TS, CLAUDE.md, ADR 0035 annote « moved to »), index `V7.5/README.md` et `project_map.md` (table de 26 chemins morts remplacee), gates : 0 ancien chemin, 0 chemin cite manquant ; `CLAUDE.md` citait `.ai/V7/` (dossier disparu) : corrige.
+- **Archivage `.ai`** (`feat/ai-archivage-v75`, 3 commits) : 21 documents clos deplaces par `git mv` (14 vers `.ai/archive/V7.5/chantiers/` cree, 3 `film_re/`, 2 `killweapon/`, 2 `replay2d/`), racine 73 -> 52 fichiers suivis, references reecrites (5 plans vivants, 3 commentaires Go, 2 commentaires TS, CLAUDE.md, ADR 0035 annote « moved to »), index `V7.5/README.md` et `project_map.md` (table de 26 chemins morts remplacee), gates : 0 ancien chemin, 0 chemin cite manquant ; `CLAUDE.md` citait `.ai/V7/` (dossier disparu) : corrige.
 
 **Conclusion / prochaine etape** : push de l integration, CI au niveau job, fast-forward de feat/v75, suppression des branches et worktrees de lot (jonctions retirees d abord), page Notion « Backlog LevelUp » (backfills locaux du 22/09 notes, archivage et docs coches). Reste a l utilisateur : les 13 documents A ARBITRER (dont : `PLAN_DECODEUR_FILM` + `HANDOFF` serie 5 + `HANDOFF_DECODEUR_FILM_2026-09-13` + `PREPARATION_M2` / `M4_ORDRE` vers `film_re/` maintenant que 5.26 est statue ?), les trois erreurs du README EN, la sequence prod/VPS (PREVENIR avant : recuisson, usage-summary, pad-tiers --force, killsource, serveur arrete).
 
@@ -1055,7 +2185,7 @@ pas de tirage SQL des vrais records sans programme jetable — maquette sur donn
 La route de vue de match n'accepte que `tab`, pas d'horodatage : le « saut au frag » dans le
 rejeu est une extension à prévoir.
 
-**Décision technique de la maquette** (`.ai/V7.5/MAQUETTE_REGLE_RECORDS_2026-09-20.html`,
+**Décision technique de la maquette** (`.ai/archive/V7.5/MAQUETTE_REGLE_RECORDS_2026-09-20.html`,
 SVG vanille, jetons de l'app repris à l'identique dont la famille `frag-*` par classe d'arme,
 thème clair/sombre, infobulle et clic vers le match) — cinq rendus : A règle à une ligne
 (losange par arme, couleur par classe, libellés étagés par placement glouton) ; B haltères
@@ -1081,7 +2211,7 @@ paramètre d'horodatage sur la route de match pour ouvrir le rejeu au frag.
 rendu A — une ligne graduée, un losange par arme à son record, couleur par classe — avec deux
 exigences : la légende EN DESSOUS et CENTRÉE, et le même chrome de bloc que le reste de la
 page. Décisions fermes : grain par arme, tous les frags mesurés (aucun seuil), Halo 5 non
-couvert. Plan : `.ai/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md`.
+couvert. Plan : `.ai/archive/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md`.
 
 **Décision technique** : le record est un OBJET, pas une statistique — `analysis.WeaponDistanceRecords`
 (pur) garde la clé du frag (match, tueur, instant) là où `WeaponRangeAggregate` ne rend qu'un
@@ -2056,7 +3186,7 @@ désynchronisé pour JGtm (2 clés) — préexistant, hors périmètre.
 
 **Le point du triage que personne ne relirait autrement : l unique RETENUE de la cloture M3 n est tenue QUE POUR UN TIERS.** `D3 (3.3.1)` — les compteurs de couverture des balayages de M3 — devait entrer dans la montee unique 61 -> 62. Des trois familles que la note M4 retenait nommement, **une seule est publiee** : la voie des morts (`coverage.deathsPaths`, `walk` / `directScan` x `population` / `matched` / `published`). Les cinq compteurs des lancers de grenade ne le sont pas — les exporter change des octets de `grammar`, donc `grammar.Rev`, donc `facts.Rev`, c est-a-dire le backlog que V24 a repousse — et les compteurs de positions de 3.4.1 **n existent pas en production** (`NewFilmContextForMap` n attache aucune `Observation`). Ces deux familles attendent desormais le prochain signal `facts.Rev`, pas une montee de schema.
 
-**Ce que le chantier laisse DEHORS, nomme plutot que promis.** (1) **Le backfill killsource** (V24) : le backlog ouvert par la montee `facts.Rev` de M3 dort jusqu a un signal explicite de l utilisateur, et il sera groupe avec toute montee ulterieure pour ne passer qu une fois sur la base ; les deux familles de compteurs ci-dessus voyageront avec lui. (2) **La reapparition des objectifs et des vehicules** (V23) : le lot 3.7 a fait la RECHERCHE et son verdict est ecrit (`.ai/V7.5/film_re/NOTE_3_7_REAPPARITION_2026-09-17.md`) — le bassin de 64 minuteurs du moteur est LU par instrument, mais aucune fente n est branchee sur les 446 records CTF / Oddball mesures, le navpoint `ti=12 i11`/`i12` reste la seule forme identifiee pour les objectifs, et pour les vehicules le film n ecrit AUCUN minuteur (negatif prouve sur 294 noms), la deduction par `T0`/`TEnd` n etant pas faisable aujourd hui (`TEnd` renseigne 1 fois sur 100). Le PORT est un lot post-chantier, a ecrire depuis la note. (3) **Le lot 4.3**, un seul type publie (V16). (4) **Les minuteurs et machines** (V21 (2), suspendu par V22 et corrige par V22 bis) : les cycles de reapparition des armes et de l equipement sont DEJA lus et affiches (`PadCycle` sur `ti=42` et `ti=37`) ; ce qui resterait est huit composants nommes (`ti=43 i31..i33, i36, i37` et `ti=12 i10..i12`), et la decision appartient a l utilisateur, hors chantier. (5) **Les composants non lus** : aucun port au-dela de `ti=9` (V22, l inventaire sous les yeux de l utilisateur) — « preparer sans porter » est ce qui existe deja et qui est tenu par ratchet (`ecs_table.tsv` avec l adresse de l ecrivain et la grammaire relevee, le golden de fermeture qui nomme le bloquant de chaque archetype, le `default` de chaque maillon de dispatch qui compte l inconnu). (6) **La regression de M3 assumee**, inchangee et toujours ecrite : `vehicles.tEnd/presents` et `vehicles/par-end/destroyed`, sur deux temoins.
+**Ce que le chantier laisse DEHORS, nomme plutot que promis.** (1) **Le backfill killsource** (V24) : le backlog ouvert par la montee `facts.Rev` de M3 dort jusqu a un signal explicite de l utilisateur, et il sera groupe avec toute montee ulterieure pour ne passer qu une fois sur la base ; les deux familles de compteurs ci-dessus voyageront avec lui. (2) **La reapparition des objectifs et des vehicules** (V23) : le lot 3.7 a fait la RECHERCHE et son verdict est ecrit (`.ai/archive/V7.5/film_re/NOTE_3_7_REAPPARITION_2026-09-17.md`) — le bassin de 64 minuteurs du moteur est LU par instrument, mais aucune fente n est branchee sur les 446 records CTF / Oddball mesures, le navpoint `ti=12 i11`/`i12` reste la seule forme identifiee pour les objectifs, et pour les vehicules le film n ecrit AUCUN minuteur (negatif prouve sur 294 noms), la deduction par `T0`/`TEnd` n etant pas faisable aujourd hui (`TEnd` renseigne 1 fois sur 100). Le PORT est un lot post-chantier, a ecrire depuis la note. (3) **Le lot 4.3**, un seul type publie (V16). (4) **Les minuteurs et machines** (V21 (2), suspendu par V22 et corrige par V22 bis) : les cycles de reapparition des armes et de l equipement sont DEJA lus et affiches (`PadCycle` sur `ti=42` et `ti=37`) ; ce qui resterait est huit composants nommes (`ti=43 i31..i33, i36, i37` et `ti=12 i10..i12`), et la decision appartient a l utilisateur, hors chantier. (5) **Les composants non lus** : aucun port au-dela de `ti=9` (V22, l inventaire sous les yeux de l utilisateur) — « preparer sans porter » est ce qui existe deja et qui est tenu par ratchet (`ecs_table.tsv` avec l adresse de l ecrivain et la grammaire relevee, le golden de fermeture qui nomme le bloquant de chaque archetype, le `default` de chaque maillon de dispatch qui compte l inconnu). (6) **La regression de M3 assumee**, inchangee et toujours ecrite : `vehicles.tEnd/presents` et `vehicles/par-end/destroyed`, sur deux temoins.
 
 **Passe de republication de cloture (M4-P4)** : `levelup backfill-replay --only-existing` sur le checkout principal, code c0b65b371 : **87 construits, 0 republié, 87 redécodés** — attendu, le parc n avait encore aucun fichier de faits ; cette passe les écrit (87 fichiers), la prochaine montée de schéma sera une republication en secondes ; 0 erreur, 27 min 47 s, pic mémoire 784 MiB contre 3,30 GiB à la recuisson de M3 ; 87/87 artefacts au schéma 62 avec `layers`
 
@@ -2159,7 +3289,7 @@ désynchronisé pour JGtm (2 clés) — préexistant, hors périmètre.
 
 **Découvertes hors périmètre (NON traitées, §4 du plan)** : D1 `ecs_table.tsv` mélange `+0x28` (sérialiseur) et `+0x40` (désérialiseur) dans `deser_addr` ; D2 deux transpositions de chiffres dans la signature de `NOTE_3_6_METHODE_DESCRIPTEURS` §2 ; D3 `ti=29` ferme à 100 % et personne ne le lit ; D4 le recensement par masque sur image-clé ; D5 `ti=40` — 777 records bornés, marche complète, zéro fermé : une LARGEUR fausse, pas une couverture manquante.
 
-**Conclusion / prochaine étape.** La note `.ai/V7.5/film_re/NOTE_3_7_REAPPARITION_2026-09-17.md` porte la grammaire complète, les unités, les adresses, le chemin de port (§8 : porter `ti=0/2 i11` puis `i15` en RÉUTILISANT `decodeGameEngineRoundTimer` ; la voie courte parallèle est `ti=12 i1..i12` ; le préalable NON NÉGOCIABLE avant d'exploiter un index de `ti=11 i0` est l'épreuve de CONTIGUÏTÉ — le quantum est toujours PAIR sur 1 149 lectures, un index faux d'un rang désignerait la mauvaise fente) et les **quatre mesures qui demandent des films entiers** (§9) : le bassin porte-t-il le minuteur du drapeau ; le navpoint d'un drapeau lâché porte-t-il un minuteur manuel ; un générateur de véhicule est-il un `device` (confronter positions `ti=43` aux pads mesurés à 0,00 m) ; le cycle de réapparition des véhicules maintenant que la destruction est datée. Films souhaités : 2 CTF, 1 Oddball, 2 BTB à véhicules — un par un, jamais un balayage. Le PORT est un lot post-M4, brief à écrire par le pilote depuis §8.
+**Conclusion / prochaine étape.** La note `.ai/archive/V7.5/film_re/NOTE_3_7_REAPPARITION_2026-09-17.md` porte la grammaire complète, les unités, les adresses, le chemin de port (§8 : porter `ti=0/2 i11` puis `i15` en RÉUTILISANT `decodeGameEngineRoundTimer` ; la voie courte parallèle est `ti=12 i1..i12` ; le préalable NON NÉGOCIABLE avant d'exploiter un index de `ti=11 i0` est l'épreuve de CONTIGUÏTÉ — le quantum est toujours PAIR sur 1 149 lectures, un index faux d'un rang désignerait la mauvaise fente) et les **quatre mesures qui demandent des films entiers** (§9) : le bassin porte-t-il le minuteur du drapeau ; le navpoint d'un drapeau lâché porte-t-il un minuteur manuel ; un générateur de véhicule est-il un `device` (confronter positions `ti=43` aux pads mesurés à 0,00 m) ; le cycle de réapparition des véhicules maintenant que la destruction est datée. Films souhaités : 2 CTF, 1 Oddball, 2 BTB à véhicules — un par un, jamais un balayage. Le PORT est un lot post-M4, brief à écrire par le pilote depuis §8.
 
 ## [2026-09-17] Chantier décodeur — fusion du lot 2.6 (quatre révisions, types de contrat, schéma 61) : le code de M2 est complet
 
@@ -2327,7 +3457,7 @@ relevees ; 2.3 en cours (seul muteur) ; tranche 4 killsource des que la base est
 deterministe (sonde de concurrence du pont Ghidra -> six lecteurs par groupe de composants, une note
 par lecteur -> un sceptique par note qui re-derive trois grammaires SANS lire la note d abord -> une
 synthese qui tranche les discordances et commet une fois). Frontiere de fichiers : notes
-`.ai/V7.5/film_re/` et plan seulement, Ghidra en lecture seule, aucun decodage de film. Le pont HTTP
+`.ai/archive/V7.5/film_re/` et plan seulement, Ghidra en lecture seule, aucun decodage de film. Le pont HTTP
 Ghidra supporte la lecture concurrente (deux decompilations en ~280 ms chacune ; 12 agents l ont
 sollicite en parallele sans erreur).
 
@@ -3758,7 +4888,7 @@ session sur le designateur de manche ; vie d'un seul echantillon.
 
 **Demande** : mettre à jour les sections « What's new » / « Dernières nouveautés » des deux README, les deux changelogs, et le fichier qui alimente les notes de version dans l'application, avec tout ce qui a été fait depuis la `v7.3.0`. Public différent selon la cible : les notes de version et les README sont orientés utilisateur final, les changelogs restent techniques.
 
-**Périmètre mesuré** : `v7.3.0` = tag `a2719a68c` (2026-08-04), pas la date de l'entrée `[7.3.0] - 2026-07-26` du changelog. Depuis ce tag : 2 791 commits sans fusion, 453 fusions, 6 773 fichiers, +3 197 394 / −48 255. Sources de la synthèse : la liste des 453 messages de fusion, les titres d'entrées de `.ai/thought_log.md` du 04/08 au 14/09, `.ai/V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` pour le cadrage, et les libellés FR/EN lus **à leur source** (`features/match-replay/i18n`, `features/_shared/usage/usageI18n.ts`, `lib/i18n/manifests/tactical.toml`, `model/weaponTier.ts`) plutôt que reformulés.
+**Périmètre mesuré** : `v7.3.0` = tag `a2719a68c` (2026-08-04), pas la date de l'entrée `[7.3.0] - 2026-07-26` du changelog. Depuis ce tag : 2 791 commits sans fusion, 453 fusions, 6 773 fichiers, +3 197 394 / −48 255. Sources de la synthèse : la liste des 453 messages de fusion, les titres d'entrées de `.ai/thought_log.md` du 04/08 au 14/09, `.ai/archive/V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` pour le cadrage, et les libellés FR/EN lus **à leur source** (`features/match-replay/i18n`, `features/_shared/usage/usageI18n.ts`, `lib/i18n/manifests/tactical.toml`, `model/weaponTier.ts`) plutôt que reformulés.
 
 **Numéro de version retenu : 7.5.0**, conformément au régime « branche unique `feat/v75`, un seul merge final + tag v7.5.0 ». L'entrée de changelog est datée `Unreleased` / `Non publié` — la branche n'est pas fusionnée, et inventer une date aurait été faux. Précédent dans le dépôt : `## [5.3.0] - Non publié` côté FR.
 
@@ -3848,7 +4978,7 @@ bump par bump), 0.D.1 bis, 0.D.3, 0.D.4.
 **Decision technique principale.** Audit (skill adversarial-audit, 6 auditeurs en fan-out,
 verification adverse par l'auditeur principal) : 528 sites de decision LUS dans replay, killsource,
 objectiveevents, replaybuild, killcollector et les inferences de filmdec ; registre
-`.ai/V7.5/AUDIT_HEURISTIQUES_DECODEUR_2026-09-13.md` (864 l., 133 lignes, 241 `fichier:ligne`
+`.ai/archive/V7.5/AUDIT_HEURISTIQUES_DECODEUR_2026-09-13.md` (864 l., 133 lignes, 241 `fichier:ligne`
 tous resolus). Tables : (A) le film l'ecrit et le lecteur existe = 8 conversions courtes ->
 famille 1.9 ordonnee (1.9.2 decoupage i0 du catalogue, 27 faux records/267 400 sur Live Fire ;
 1.9.3 couple tueur/victime lu au kill-event 85, 64/372 ; 1.9.4 carte par le nom de match, 6
@@ -4137,7 +5267,7 @@ Sessions, Escouade, Citations, Médailles, Tactique, Match view, Médias) avec t
 porter « fond et forme » (Les formes retenues 2ec1b8eb, L'échange sur la page Escouade 4c520da6,
 Onglet Tactique 034b1915) et la consigne « attention aux rendus, plus d'improvisation ». Plan :
 `.ai/PLAN_AJUSTEMENTS_PRE_V75_2026-09-13.md` (tous items statués) ; briefs archivés sous
-`.ai/V7.5/briefs_ajustements_2026-09-13/`.
+`.ai/archive/V7.5/briefs_ajustements_2026-09-13/`.
 
 **Décision technique principale.** Orchestration : 4 reconnaissances Explore (fichiers:lignes,
 causes localisées) → 8 exécuteurs Opus en parallèle, un worktree `LevelUp-wt-ajust-<lot>` chacun
@@ -4475,7 +5605,7 @@ selectivite de l'en-tete NEW `ti=37` sur les films BTB (71 % de records hors man
 **Decision technique principale.** Trois sous-lots du `PLAN_FINITIONS_2026-09-13.md`, un commit
 chacun plus le merge PSA. **B.1** : fusion de `wt/psa-index-cause` (garde data-health de l'index
 PSA, alerte seule, 5 reproducteurs derriere le build tag `psarepro` donc hors de tous les gates),
-rapport du volet 2 date et range sous `.ai/V7.5/`, et rectification du numero d'issue amont —
+rapport du volet 2 date et range sous `.ai/archive/V7.5/`, et rectification du numero d'issue amont —
 le bug « Failed to delete all rows from index » est **duckdb/duckdb#23645**, pas #23046 (qui est
 une corruption de tas en 1.5.0, symptome sans rapport) : 196 occurrences sur 133 fichiers Go,
 6 documents et CLAUDE.md. Les rapports dates, `.ai/archive/` et `.ai/migrations/squashed/` ne sont
@@ -4713,7 +5843,7 @@ composant web, que je n'avais pas ouvert.
 **Decision technique principale.** Le lot C du `.ai/PLAN_FINITIONS_2026-09-13.md` ferme la CLASSE
 de defaut derriere la corruption LUSR du 2026-06-26 (2 461 lignes `h5_arena` ecrites dans les
 player DB halo_infinite de 4 joueurs), pas seulement son chemin. La cause, prouvee par l'enquete
-d'aout (rapport versionne en `.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md`), est une DOUBLE
+d'aout (rapport versionne en `.ai/archive/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md`), est une DOUBLE
 SOURCE DE TITRE : handles DB depuis le titre du cycle, moteur depuis le titre du profil. Trois
 gardes, dans cet ordre de portee : (C.2) au cablage V2, le moteur est desormais construit sur
 `deps.TitleSlug` — la double source n'existe plus, elle est COMPAREE, et un profil de titre
@@ -4954,7 +6084,7 @@ compte pas).
 `openapi-gen -check` a jour, tsc 0, vitest match-replay 2 711 verts, eslint 0). **9 des 12 films
 CTF sont a recuire**, aucune montee de `SchemaVersion`. Reste : ronde 2 sur les corrections,
 `make gate-push` depuis `LevelUp-wt-v75`, push = CI de vague. Rapport complet :
-`.ai/V7.5/REVUE_VAGUE6_2026-09-11.md`.
+`.ai/archive/V7.5/REVUE_VAGUE6_2026-09-11.md`.
 
 ## [2026-09-11] Lot 6.13 — la ZONE AVEUGLE des socles : `b8a44fe8` 1,234 -> 1,037, parc CTF 1,066 -> 1,028 — Complete (worktree LevelUp-wt-couverture-objectifs)
 
@@ -5020,7 +6150,7 @@ consignees et non traitees : le socle CENTRAL d'Illusion etiquete equipe 0 au ca
 dont ce lot mesure le second effet — il creait la plus grande zone aveugle du parc, en plein milieu
 de carte) ; `cde26226` garde 1,040 pour une AUTRE cause ; et les 258 images muettes de `b8a44fe8`
 sont **rigoureusement inchangees** par le correctif, ce qui refute l'idee qu'elles suivaient les
-portages fantomes. Rapport : `.ai/V7.5/RAPPORT_FILM_B8A44FE8_2026-09-11.md`.
+portages fantomes. Rapport : `.ai/archive/V7.5/RAPPORT_FILM_B8A44FE8_2026-09-11.md`.
 
 ## [2026-09-11] Lot 6.10 bis — i9 desassemble, la reserve des munitions levee, i14 mesure — Complete (worktree LevelUp-wt-munitions-objet)
 
@@ -5096,7 +6226,7 @@ identique), les deux lignes qui changent expliquees champ par champ dans l'en-te
 touche.** Quatre fichiers d'instrument supprimes, recette au rapport §B8.
 
 **Conclusion / prochaine etape.** Rapport : section « 6.10 bis » de
-`.ai/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md` (l'en-tete du rapport porte desormais un bandeau
+`.ai/archive/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md` (l'en-tete du rapport porte desormais un bandeau
 disant lesquelles de ses conclusions sont superseedees). Ligne 6.10 du plan maitre mise a jour.
 **RECUISSON DU PARC TOUJOURS NECESSAIRE** (`ammo` est cuit, sa couverture quadruple) -> lot 6.8, la
 recuisson unique deja prevue apres 6.10 et 6.11. Contrat, schema et web inchanges : aucun bump de
@@ -5172,7 +6302,7 @@ sa decomposition. Le residu tient a 67 % dans `b8a44fe8` (sans lui, les dix autr
 un drapeau qui ne rentre pas chez lui et dont l'objet ne replique pas sa naissance — les trois
 chaines de datation y sont muettes. La quatrieme, le marqueur d'image-cle, n'a **pas** ete utilisee
 et c'est un choix argumente : elle est le CONTROLE INDEPENDANT du calque, et en faire une source le
-rendrait tautologique. Rapport `.ai/V7.5/RAPPORT_PASSAGES_DRAPEAU_2026-09-11.md`, sorties APRES
+rendrait tautologique. Rapport `.ai/archive/V7.5/RAPPORT_PASSAGES_DRAPEAU_2026-09-11.md`, sorties APRES
 `replay2d/registre_film/vague6_611_*`. Suite au superviseur : gate corpus d'equivalence, puis 6.8
 (recuisson des 17 films, qui rejoint le parc complet deja prevu).
 
@@ -5242,7 +6372,7 @@ publie 10 prises de drapeau pour 0 a l'oracle sur un joueur (sous la borne de B1
 rend aucun pont d'identite par le triplet ; le temps en zone par joueur reste a 0 sur les six films
 KOTH (cause C8, escalade L9 deja renvoyee au lot 6.9).
 
-**Conclusion / prochaine etape.** Rapport `.ai/V7.5/RAPPORT_COUVERTURE_OBJECTIFS_B2_2026-09-11.md`,
+**Conclusion / prochaine etape.** Rapport `.ai/archive/V7.5/RAPPORT_COUVERTURE_OBJECTIFS_B2_2026-09-11.md`,
 sorties `replay2d/registre_film/vague6_b2_*`, ligne 6.7 du plan maitre a jour. Rien n'est pousse,
 rien n'est fusionne. Au superviseur : la recuisson des 8 films neufs (lot 6.8), le corpus
 d'equivalence (dont la decision sur l'ecart `score`), et l'arbitrage de l'item 2 statue `[!]`.
@@ -5313,7 +6443,7 @@ verts ; eslint sur les fichiers touches 0 erreur (9 avertissements pre-existants
 treize instruments de mesure `zz_mun*_research_test.go` sont SUPPRIMES ; leur recette est au
 rapport §7.
 
-**Conclusion / prochaine etape.** Rapport `.ai/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`, ligne
+**Conclusion / prochaine etape.** Rapport `.ai/archive/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md`, ligne
 6.10 au plan maitre. **RECUISSON DU PARC NECESSAIRE** (`ammo` est un champ cuit) — elle tombe dans
 la coupure unique prevue au lot 6.8, apres 6.11. Deux `[!]` : la voie longue n'a pas ete ouverte
 (motive : elle viserait une grandeur moins bonne que celle qui est prouvee) et i9 n'est pas corrige
@@ -5366,7 +6496,7 @@ ce qui ferme aussi la decouverte 12.1 de l'audit.
 
 **Conclusion / prochaine etape.** Six commits (`1e32db6c4`, `7ad82ea13`, `bb06cce5a`,
 `ebd012e3b`, `f22474816` plus les docs), rapport complet dans
-`.ai/V7.5/RAPPORT_COUVERTURE_OBJECTIFS_B1_2026-09-11.md`, sorties APRES sous
+`.ai/archive/V7.5/RAPPORT_COUVERTURE_OBJECTIFS_B1_2026-09-11.md`, sorties APRES sous
 `replay2d/registre_film/vague6_b1_*`. **26 films sur 68 sont a recuire** (liste exacte au §8 du
 rapport ; les 4 Oddball sont une PREMIERE cuisson), aucune montee de `SchemaVersion` — le seul
 champ neuf est `omitempty`. Gates joues : tests des quatre paquets verts, `internal/service`
@@ -5382,7 +6512,7 @@ KOTH, `flag_secures`).
 (`analysis/replay/`, `analysis/objectiveevents/`, `replaybuild/`, `features/match-replay/`).
 Contrat de reference : l'ORACLE OFFICIEL de l'API (`match_objective_stats_latest`, export du
 jour serveur arrete, 328 lignes joueur x match), committe au premier commit. Instrument Go
-hors ligne (`.ai/V7.5/outillage/couverture_objectifs/`, 5 fichiers, `go vet` propre) : il lit
+hors ligne (`.ai/archive/V7.5/outillage/couverture_objectifs/`, 5 fichiers, `go vet` propre) : il lit
 les 64 artefacts deja cuits et les trois TSV, **n'ouvre aucune base, ne recuit rien**. Ses huit
 sorties brutes sont committees sous `replay2d/registre_film/vague6_*` — chaque chiffre du
 registre s'y relit. Calibrage joue AVANT toute affirmation, sur les deux moities : lecture de
@@ -5414,7 +6544,7 @@ stopgap « rendre l'objet LIBRE » ne se transpose PAS au drapeau (il se fige a 
 perimee, `flagCarriesLayer.ts:237-241`, au lieu de disparaitre).
 
 **Conclusion / prochaine etape.** Registre :
-`.ai/V7.5/AUDIT_COUVERTURE_OBJECTIFS_2026-09-10.md` — 10 causes prouvees avec `fichier:ligne`,
+`.ai/archive/V7.5/AUDIT_COUVERTURE_OBJECTIFS_2026-09-10.md` — 10 causes prouvees avec `fichier:ligne`,
 declenchement et effectif ; 3 hypotheses rangees a part (dont « le plafond de 8 slots CAUSE les
 compteurs faux du BTB », dont seuls la constante, l'effectif et le desaccord sont etablis) ;
 6 decouvertes hors perimetre ; 7 questions declarees non prouvables avec ce qu'il faudrait pour
@@ -5462,7 +6592,7 @@ neufs (9 sur la jointure, 3 sur le survol, 3 sur l'assemblage de l'infobulle), l
 
 **Conclusion / prochaine etape.** Aucune recuisson du parc n'est necessaire : la jointure se fait
 a la lecture depuis `inventory` / `loadouts` / `groundWeapons`, tous les trois deja servis.
-Rapport `.ai/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md`. Trois decouvertes consignees et NON
+Rapport `.ai/archive/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md`. Trois decouvertes consignees et NON
 traitees : (1) le commentaire de `GroundWeapon.W` (`document_ground_weapon_items.go:78`) affirme
 « MEME espace d'identifiants que `Loadout.W` » alors que l'intersection brute des deux ensembles
 est VIDE (doc inversee, cote serveur, non corrigee au lot 6.5) ; (2) le point 6 permettrait de
@@ -5554,7 +6684,7 @@ ont TOUTE l'attribution de proximite a zero (dropperNamed 0, pickupLinked 0, pla
 withOwner 0 alors que `lives` vaut 342 et 317) — pas propre aux armes au sol, a rapprocher du
 lot 6.1.
 
-**Conclusion / prochaine etape.** Rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md` avec les
+**Conclusion / prochaine etape.** Rapport `.ai/archive/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md` avec les
 sept options chiffrees. Ordre recommande : (0) reparer la jointure de vignette + garde-rail sur la
 forme des cles + corriger le commentaire de `Dropper` (XS, aucune recuisson) — sans quoi tout le
 reste est invisible ; (A) infobulle « lachee par X / reprise par Y » sur le calque (S, aucune
@@ -5719,7 +6849,7 @@ backfill en urgence (une frame de 100 ms de gain contre un redecodage complet du
 recuisson d'artefacts non plus, 13 films sur 14 sont identiques. `make replay-corpus-gate
 --reference=base` reste `[!]` : il ouvre la base partagee, ce que la consigne du lot interdit — sa
 METHODE a ete jouee sans base sur les 7 temoins. Rapport chiffre :
-`.ai/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`. Quatre decouvertes consignees non traitees (siege
+`.ai/archive/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`. Quatre decouvertes consignees non traitees (siege
 partage bot/humain que `XUIDAt` ne corrige pas non plus, ramassages publies au-dela de l'axe de
 frames, trois films du corpus d'equivalence absents du cache, et l'oracle
 `internal/mapdecoupe/oracle_positions_test.go` qui echoue sur un parc PARTIEL la ou il skippe sur
@@ -6015,7 +7145,7 @@ equipement qui engendre une piece distincte (`kind = deployed`) ; ailleurs, une 
 un `spent` (0/31 sur l'appareil de mur contre 149/242 sur ses panneaux) — elle mesure un
 lacher volontaire a mi-vie, pas un deploiement.
 
-**Conclusion / prochaine etape.** Rapport livre : `.ai/V7.5/RAPPORT_E0_2026-09-10.md` (methode,
+**Conclusion / prochaine etape.** Rapport livre : `.ai/archive/V7.5/RAPPORT_E0_2026-09-10.md` (methode,
 mesures, cause, correctif fichier:ligne, effort, impact ecran, besoin de recuisson par
 question ; tableau recapitulatif et ordre recommande). Ordre propose : (5) d'abord —
 `usageUsedOf` sur `SpentByFamily` pour les deployables sans piece engendree, effort M, seul
@@ -6296,7 +7426,7 @@ retire le correctif). Le relecteur du lot WebP avait ete lance par l'executant h
 ses constats ont ete retenus parce que recevables, la consigne (une revue par vague, par le
 superviseur) est rappelee au journal.
 
-**Resultats observes.** Registre `.ai/V7.5/REVUE_VAGUE3_2026-09-10.md`. Recette export en
+**Resultats observes.** Registre `.ai/archive/V7.5/REVUE_VAGUE3_2026-09-10.md`. Recette export en
 navigateur 13/13 (fond de carte 71 % hors couleur dominante, clip 4,95 Mo en 2,2 s) ;
 Tactique servie en `image/webp` avec ETag ; rejeu d'Isolement avec son fond.
 
@@ -6445,7 +7575,7 @@ la table. Un P2 consigne (regex du garde-rail anti-copie contournable par renomm
 4 assertions de tests, commentaire du persister (colonne nullable, pas NOT NULL), commentaire
 obsolete de `SquadSynergiesPage` (page et test, doc inversee). Gates rejoues : vitest 3 396
 verts, tsc 0, eslint 0 sur les fichiers touches. Registre de revue :
-`.ai/V7.5/REVUE_VAGUE2_2026-09-09.md`.
+`.ai/archive/V7.5/REVUE_VAGUE2_2026-09-09.md`.
 
 **Conclusion / prochaine etape.** Push de `feat/v75` = la CI de la vague 2 (une par vague).
 Puis vague 3 : 3.1 escouade hors cadre, 3.2 grille tactique + canvas + recuisson des 7 bornes,
@@ -8139,7 +9269,7 @@ joueur ↔ slot de STATBORG, à sonder par la même voie (le default-state de `t
 un index de joueur, en `R(6)`) — c'est lui qui tient les écarts K/D/A de `64e8adfa` et `c75f33b8`.
 
 Branche `feat/v2-decodeur-e2`, poussée, **non fusionnée**. Journal complet :
-`.ai/V7.5/v2/RESTES_E2_2026-09-08.md`.
+`.ai/archive/V7.5/v2/RESTES_E2_2026-09-08.md`.
 
 ## [2026-09-08] Sondage E2 — le film NOMME le proprietaire d'un bipede — Complété
 
@@ -8191,7 +9321,7 @@ H2 (flux `ti=5` complet) et H3 (propriétés gérées) restent fermées, statut 
 ligne de `filmdec` / `himap` / `analysis/replay` touchée, aucune sonde committée (elles
 déclencheraient `no_film_reread`, `no_rewritten_slot_band` et `no_unbounded_film_loop` — les
 garde-rails qui existent pour ça) ; la source de la sonde de mesure et les cinq TSV sont archivés
-sous `.ai/V7.5/film_re/mesures_e2_2026-09-08/`. Le plan d'intégration ADDITIF est écrit en cinq
+sous `.ai/archive/V7.5/film_re/mesures_e2_2026-09-08/`. Le plan d'intégration ADDITIF est écrit en cinq
 items (§4 du sondage, ~420 L Go + tests + recuisson des goldens), avec un préalable non
 négociable : trancher le cas des bots — sur `c75f33b8`, la lecture rend un index (8) que
 `identity.players` ne publie pas, et l'index 11 du bot déclaré n'apparaît jamais. Trois entrées
@@ -8335,7 +9465,7 @@ intégration `-p 1` 11 paquets `ok`, parité `replayview`, `openapi-gen -check`,
 `51ebbc0f` écart 9 → 0, `fb1a1a72` sans perte, `bf15f7ab` identique hors numéro) et
 `make replay-corpus-gate` sont `[!]` — **à jouer par le superviseur** : ce worktree n'a aucun film,
 c'est une dépendance externe et non un report de commodité. Commandes exactes et chiffres attendus
-au §7 du journal `.ai/V7.5/v2/RESTES_P2_2026-09-08.md`. `64e8adfa` reste à 16 d'écart et il faut le
+au §7 du journal `.ai/archive/V7.5/v2/RESTES_P2_2026-09-08.md`. `64e8adfa` reste à 16 d'écart et il faut le
 dire : 5 couples sans unicité, cas général qui appartient au lien direct index ↔ slot de statborg
 que le film ne porte pas (plan décodeur d'après v7.5.0). Suite : P3 (registre des objets
 d'objectif), qui n'ouvre qu'après la clôture de P2. Branche `feat/v2-p2-registre-joueurs` poussée,
@@ -8572,7 +9702,7 @@ baseline du 26/06).
 **Conclusion / prochaine étape.** M1b coché dans `.ai/PLAN_ORCHESTRATION_2026-09-07.md` (§3,
 nouvelle ligne après M3) ; découverte M1 marquée TRAITÉE dans `DECOUVERTES_TACTIQUE`
 (`.ai/DECOUVERTES_TACTIQUE_2026-09-07.md`) ; chronique dédiée
-`.ai/V7.5/v2/CHRONIQUE_49_2026-09-08.md` ; nouvelle entrée de registre (parc < 49, recuisson
+`.ai/archive/V7.5/v2/CHRONIQUE_49_2026-09-08.md` ; nouvelle entrée de registre (parc < 49, recuisson
 nécessaire). Reste au SUPERVISEUR (aucun film dans ce worktree) : recuire le parc
 (`backfill-replay`, seuil < 49) et rejouer `make replay-corpus-gate` — commandes exactes dans
 le rapport du lot. Commits par chemins explicites, push `feat/tactique-lien-rejeu-exact`,
@@ -8868,7 +9998,7 @@ la fusion des lots du domaine rejeu (regle §0.6, un seul lot par domaine). Lot 
 Opus, brief ferme, worktree dedie `LevelUp-wt-p1-inventaire`, branche `feat/p1-inventaire` depuis
 `feat/v75` @ `22d76a738`.
 
-**Resultats observes.** Livrable `.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md` (569 L, commit
+**Resultats observes.** Livrable `.ai/archive/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md` (569 L, commit
 `7cbec66f4`, pousse) : 9 entites inventoriees, axes (a) a (j) tous statues, 18 liens directs contre
 23 replis, sequencage P2-P5, questions ouvertes assorties de leur temoin. Trois verdicts qui engagent
 la suite :
@@ -8904,7 +10034,7 @@ fusionnes ; il devra budgeter la reecriture de `match_lives` / `match_death_cont
 **Nature du lot.** DIAGNOSTIC : aucun fichier de code n'a ete modifie. Worktree dedie
 `LevelUp-wt-m4-diag`, branche `feat/v2-restes-r4r5-diag` depuis `feat/v2-restes-r7` @ `52adb276a`.
 Perimetre FERME a R4 et R5 de `.ai/PLAN_V2_RESTES_2026-09-07.md`. Journal complet :
-`.ai/V7.5/v2/RESTES_R4_R5_2026-09-08.md`.
+`.ai/archive/V7.5/v2/RESTES_R4_R5_2026-09-08.md`.
 
 **Decision technique principale — la racine de travail se fait par COPIE, pas par jonction.**
 L'instruction prevoyait des jonctions NTFS (`mklink /J`) vers `film_chunks`, `film_manifests` et
@@ -8973,7 +10103,7 @@ Le constat D3 de la revue PONT-R2 etait fige par un test de DOCUMENTATION
 morts distinctes plus nombreux que le vrai calage remplissait le budget de 3 candidats de
 `bestDeathOffset` ; l'alarme de marge se declenchait, mais le calage rendu etait FAUX.
 
-**Diagnostic, ecrit avant tout code** (journal `.ai/V7.5/v2/RESTES_R7_2026-09-07.md` §1, mesure
+**Diagnostic, ecrit avant tout code** (journal `.ai/archive/V7.5/v2/RESTES_R7_2026-09-07.md` §1, mesure
 par instrumentation jetable de `voteDeathOffsets`) : DEUX GRANDEURS DIFFERENTES. Ce qui VOTE est
 le nombre de MORTS DISTINCTES appariables — le dedoublonnage de PONT-R1/C1 etait fait par mort
 et SEULEMENT par mort. Ce qui COMPTE (`refineDeathOffset` -> `countDeathMatches`) est un
@@ -9156,7 +10286,7 @@ des deux côtés).
 
 **Décision technique principale.** Fermer la phase 8 en traitant EXACTEMENT les items du
 brief (périmètre fermé), rien de plus :
-1. Web — les trois constats de la revue Phase 5/7B (`.ai/V7.5/REVUE_TACTIQUE_PHASES_5_7B_
+1. Web — les trois constats de la revue Phase 5/7B (`.ai/archive/V7.5/REVUE_TACTIQUE_PHASES_5_7B_
    2026-09-07.md`, P0=0/P1=2/P2=1) : réserve `echantillon_faible` accolée au `secondary` des
    tuiles KPI Tactique « Échange »/« Isolement » (même forme que `SquadEchangeKpi.tsx`, clé
    `tactical.kpi.low_sample`) ; réserve rendue dans le tooltip du nuage
@@ -9269,7 +10399,7 @@ sans validation.
 ## [2026-09-07] P1 — Inventaire des entites du film et de leurs liens (lot P du plan v2) — Complete
 
 **Decision technique principale.** Lot de JOURNAL, zero code : le livrable est
-`.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md`, contrat des phases P2 a P5. Il inventorie les
+`.ai/archive/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md`, contrat des phases P2 a P5. Il inventorie les
 neuf entites que le decodeur expose deja (index de joueur, slot de bipede, slot de statborg joueur
 et equipe, objet d objectif, zone, vehicule, arme au sol / equipement, bot), avec pour chacune son
 identifiant dans le film, sa duree de vie, ses liens DIRECTS, ses liens par REPLI (calque et ligne
@@ -9687,7 +10817,7 @@ obligatoire pour les cinq films. Trois BTB sont repares a la sonde mais NON cuit
 Reste ouvert au registre, hors de ce lot : le pont STATBORG, qui exige trois progressions du
 compteur de morts et laisse donc 35 actions d objectif ecartees sur `3372e7eb` — les deux joueurs
 a 0 mort y sont desormais VISIBLES au roster, mais leurs actions ne sont toujours pas publiees.
-Detail : `.ai/V7.5/v2/PONT_MUET_2026-09-07.md`.
+Detail : `.ai/archive/V7.5/v2/PONT_MUET_2026-09-07.md`.
 
 **Piege de conduite a retenir** : `ln -s` COPIE au lieu de lier dans ce shell MSYS — une racine de
 travail montee ainsi a recopie 29 Go de `film_chunks` et sature le disque C:. Les jonctions
@@ -9740,7 +10870,7 @@ C3) et UNE observation ouverte, qui n'appartient pas a ce lot : sur `bcb6d393`, 
 par le PONT n'est pas localisable dans le document servi (vie ANONYME dans `tracks`, le client
 joint par XUID et fige le drapeau au point de prise) — preexistant, non aggrave en position, a
 traiter par le lot des vies anonymes. Detail :
-`.ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md` §8 quater.
+`.ai/archive/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md` §8 quater.
 
 ## [2026-09-07] Drapeaux, complement : une lecture vraie n'est ni perdue ni masquee — Complete
 
@@ -9791,7 +10921,7 @@ camp, les deux drapeaux dehors, la troisieme regle se tait). La regle qui la rep
 prise au socle S ne porte pas sur le drapeau de S ») reste REFUTEE par la faute de 6 569 sur le
 meme film. Reprise : faire PARTAGER a l'attribution la machine a etats de `assembleFlagLives`
 plutot que d'en ecrire une seconde copie. Detail :
-`.ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md` §8 ter.
+`.ai/archive/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md` §8 ter.
 
 ## [2026-09-06] Un joueur portait son propre drapeau — DEFAUT du calque, corrige a la source (schema 46) — Complete
 
@@ -9848,7 +10978,7 @@ est porte (10 sur 16 sur `bcb6d393`, avant comme apres — la fin est datee une 
 l ouverture suivante), defaut preexistant dont ce lot subit une consequence mesuree : la duree
 publiee de `2533274858283686` passe de 358 a 282 frames, le portage etant desormais au milieu du
 trafic du bon drapeau ; (c) aucun compteur de couverture ne publie ce que la troisieme regle a
-decide. Detail : `.ai/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md`.
+decide. Detail : `.ai/archive/V7.5/v2/INSTRUCTION_DRAPEAUX_2026-09-06.md`.
 ## [2026-09-07] Lot « vies anonymes » — decision produit, nommage a la source, 9 constats corriges (schema 47) — Complete
 
 **Le mandat.** Corriger cote Go les 9 constats Go de l audit adversarial des lecteurs de vies
@@ -9917,7 +11047,7 @@ durees et drapeaux). Sept champs de contrat ajoutes, `openapi.yaml` et `generate
 `UsageSummaryRev` us2 -> us3. Trois entrees au registre des reports : le pont GLOBALEMENT MUET
 sur certains films (73 vies sans nom sur 86 pour `51ebbc0f` — defaut EN AMONT, pas de la passe),
 les cinq P2 non traites, et la re-cuisson du parc a < 47. Journal complet :
-`.ai/V7.5/v2/VIES_ANONYMES_2026-09-06.md`.
+`.ai/archive/V7.5/v2/VIES_ANONYMES_2026-09-06.md`.
 
 ## [2026-09-06] Audit adversarial — les lecteurs qui supposent encore « un slot = une piste nommee » — Complete
 
@@ -10005,7 +11135,7 @@ redondante et se supprime.
 ## [2026-09-06] Instruction des deux pertes de DUREE du corpus temoin — les deux sont des regressions, corrigees (schema 45) — Complete
 
 **Le mandat.** Instruire les deux faits nouveaux isoles par la premiere execution de
-`cmd/replay-corpus-gate` (`.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md` §3.3), tous deux detectes par
+`cmd/replay-corpus-gate` (`.ai/archive/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md` §3.3), tous deux detectes par
 le NOUVEL axe « somme des durees » et par lui seul : (A) `bcb6d393` perd 86 frames de portage de
 drapeau sur 2 joueurs ; (B) `084a804d` perd 68 frames d episodes d equipement SANS perdre
 d episode. Worktree dedie `LevelUp-wt-v2-durees`, branche `feat/v2-durees` basee sur
@@ -10047,7 +11177,7 @@ Les deux entrees du registre passent a CLOS avec leur verdict. Quatre decouverte
 traitees, dont deux qui meritent une decision : l attribution du drapeau a une EQUIPE ne se
 recoupe pas avec la feuille de match sur `bcb6d393` (parc comme HEAD — ce n est pas une
 regression), et aucun inventaire systematique des lecteurs qui supposent encore « un slot = une
-piste nommee » n existe. Journal complet : `.ai/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md`.
+piste nommee » n existe. Journal complet : `.ai/archive/V7.5/v2/INSTRUCTION_DUREES_2026-09-06.md`.
 
 ## [2026-09-07] Chantier duels/portee — gate visuel valide, livraison (6.4, 6.5) — Complete ; 6.6 push + CI en cours
 
@@ -10563,7 +11693,7 @@ avait le LIEN (le degat nomme son auteur) sans le RAPPEL (0,8 a 4,8 evenements p
 a le RAPPEL sans le LIEN (une chute de bouclier est anonyme). Les deux canaux du film sont
 exactement complementaires dans ce qui leur manque — aucune combinaison ne referme l ecart, il n y
 a pas de troisieme reglage a essayer sur ces deux canaux. Note
-`.ai/V7.5/film_re/SONDE_DUELS_BOUCLIER_2026-09-06.md` ; report inscrit au
+`.ai/archive/V7.5/film_re/SONDE_DUELS_BOUCLIER_2026-09-06.md` ; report inscrit au
 `.ai/REGISTRE_REPORTS.md` avec sa condition de reprise (un canal portant l AUTEUR du degat a
 la densite du bouclier : flux de degats dense — refute par mesure ; compteur d etat ECS replique —
 piste ouverte, aucune sonde faite ; source hors film — aucune connue). Les lots 2 a 6 du plan (la
@@ -10610,7 +11740,7 @@ CONSERVE, donc la table `kill_openings` du lot 3 (3.8 a 3.12) reste au programme
 `go test ./internal/analysis/` et `./internal/analysis/replay/` (suites entieres), `go vet` sur les
 deux paquets, `gofmt -l` vide, et `TestSondeDuelsOuverture` sur les quatre films, un par process.
 Aucune base ouverte, aucune cuisson d'artefact, aucun reseau. Section « Validation du proxy
-d'entame » ajoutee a `.ai/V7.5/film_re/SONDE_DUELS_2026-09-06.md`, avec ses trois reserves ecrites
+d'entame » ajoutee a `.ai/archive/V7.5/film_re/SONDE_DUELS_2026-09-06.md`, avec ses trois reserves ecrites
 (sous-ensemble non representatif et biais optimiste, queue longue a p90 3,28 m, Catalyst tient a
 n=8). Suite pour le pilote : lot 3, en respectant la convention de signe ci-dessus.
 
@@ -10643,7 +11773,7 @@ corrigee le meme jour). Voie bouclier (M5) : deux a dix fois plus dense mais ora
 44-76 % et discrimination degradee la ou la densite est bonne.
 
 **Conclusion / prochaine etape.** Plan `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`, note de mesure
-`.ai/V7.5/film_re/SONDE_DUELS_2026-09-06.md`, branche `feat/duels` (worktree dedie). Le comptage
+`.ai/archive/V7.5/film_re/SONDE_DUELS_2026-09-06.md`, branche `feat/duels` (worktree dedie). Le comptage
 de duels n'est pas livrable sur le flux de degats ; UNE mesure peut le rouvrir et fait le lot 1 du
 plan (gate chiffre) : le bouclier DU TUEUR chute-t-il pendant la fenetre, le tueur etant connu par
 le kill-feed a 97,6 % et non par le film. Livrable inconditionnel : l'agregat multi-matchs de la
@@ -11524,7 +12654,7 @@ scripts/check_test_baseline.sh tests` : exit 0 (voir sortie jointe au commit).
 **Decouverte hors perimetre (notee, non traitee ici) : le filet local d'integration ne couvrait
 que `./internal/sync/` en tags `integration/cgo` — l'epreuve ouvrier d'`internal/api/wire` n'y
 etait pas, ce qui a laisse cette regression invisible jusqu'a ce constat.** Consignee en N-15,
-`.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md` §4, avec la correction a apporter a l'etape
+`.ai/archive/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md` §4, avec la correction a apporter a l'etape
 E.1 du meme plan (et a `delivery-checklist`).
 
 **Conclusion / prochaine etape.** Gate vert ; retour au pilote de `wt/cuisson-perf` pour la
@@ -11607,7 +12737,7 @@ baseline exacte, 0 sur un fichier touche), lint:fields 0, vitest 0 (588 fichiers
 build 0, knip 0/0/0. `ReplayCanvas.tsx` INTACT a 664 L, aucun fichier au-dessus de 500 L.
 
 **Conclusion / prochaine etape.** Livre dans `wt/integ-glyphes`, a fusionner par le pilote de
-l'integration (plan `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, item E.2 « I-1 », detail
+l'integration (plan `.ai/archive/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, item E.2 « I-1 », detail
 au paragraphe « E.2 / I-1 » du journal du plan). Consigne et NON traite (hors decision produit) :
 `objectivesLayer.ts` (pulses) et `killFx.ts` (effets de mort) restent sur la position de bipede —
 la correction, si elle est voulue, est un appel de plus au meme resolveur.
@@ -11801,7 +12931,7 @@ inscrire au carnet Notion, et aucune des deux n'a ete lancee.
 
 ## [2026-09-05] Integration — ETAPES G.2/G.3/G.4 : les stats d'Assaut, de la cuisson a la fiche de match — Complete
 
-**Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etapes G.2 (E4 : crochet au
+**Le geste.** `.ai/archive/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etapes G.2 (E4 : crochet au
 sync), G.3 (E5 serveur) et G.4 (E5 web) du plan d'Assaut. La fonctionnalite passe de
 « bibliotheque non cablee » a « ecrite en base a chaque sync, servie par l'API, affichee sur la
 fiche de match ».
@@ -11864,7 +12994,7 @@ la RELEASE est ecrit dans l'en-tete de la commande et n'est pas interchangeable 
 
 ## [2026-09-05] Integration — ETAPE G.1 : merge de `wt/assaut-stats`, un seul bloc de schema 39 — Complete
 
-**Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape G.1 (D13 : la decision
+**Le geste.** `.ai/archive/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape G.1 (D13 : la decision
 D5 « branche non integree » est RENVERSEE par l'utilisateur). Worktree dedie
 `LevelUp-wt-integ-assaut`, branche `wt/integ-assaut`, HEAD de depart `b1827d9a2` (A+D+C+B
 fusionnees). D8bis mesure AVANT le merge : `origin/feat/v75` toujours `7fb4b60a1`,
@@ -11908,7 +13038,7 @@ que l'artefact range porte.
 
 ## [2026-09-05] Integration des branches — ETAPE D : merge `wt/game-changers` dans `wt/integ-gamechangers`, zero conflit, gates web D12 completes au vert — Complete
 
-**Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape D (web uniquement).
+**Le geste.** `.ai/archive/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape D (web uniquement).
 Worktree DEDIE `LevelUp-wt-integ-gamechangers`, branche `wt/integ-gamechangers`, HEAD de depart
 `eb80a4f0a` (l'etape A deja mergee). D.0 : `git fetch origin` — **0 commit** d'ecart
 `eb80a4f0a..origin/feat/v75`, l'amont reste gele. `git merge --no-ff --no-commit
@@ -11949,7 +13079,7 @@ etape : etape E (filet complet + revue de branche) puis F (merge final feat/v75,
 pilote.
 ## [2026-09-05] Integration des branches — ETAPE C : l'usage de session rejoue dans l'orchestration du lot 5, harnais 13/13 SANS refigeage — Complete
 
-**Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape C, worktree DEDIE
+**Le geste.** `.ai/archive/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape C, worktree DEDIE
 `LevelUp-wt-integ-usage` (branche `wt/integ-usage`, HEAD de depart `eb80a4f0a` = le merge de
 l'etape A). `git merge --no-ff --no-commit wt/session-usage` (`c4f7d5417`, 10 commits, base
 `da616828f`) : **67 fichiers** (+8 737 / −87), **3 conflits seulement**. D8bis mesure avant le
@@ -12007,7 +13137,7 @@ parc deja cuit n'a PAS ete lance.
 
 **Statut** : Complete. Branche `wt/integ-vehicules` (worktree dedie), un seul commit de merge a
 DEUX parents : `origin/feat/v75-vehicules-sons` (28 commits) et `wt/vehicule-deadstate`
-(`0b5141b8a`, dead-state v13). Plan : `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape B.
+(`0b5141b8a`, dead-state v13). Plan : `.ai/archive/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape B.
 
 **Contexte.** La branche vehicules etait basee 339 commits en arriere et portait son propre bump
 de schema (31) ; le refacto de cuisson avait entre-temps sorti le decodage de `build.go`, fait
@@ -12055,7 +13185,7 @@ a statuer par leur auteur, et les trois entrees mortes signalees ci-dessus.
 
 ## [2026-09-05] Integration des branches — ETAPE A : reconciliation avec `feat/v75` `7fb4b60a1`, 5 conflits, 3 balayages amont migres, sorties re-figees en changement declare AMONT — Complete
 
-**Le geste.** `.ai/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape A. `git merge --no-ff
+**Le geste.** `.ai/archive/V7.5/PLAN_INTEGRATION_BRANCHES_2026-09-05.md`, etape A. `git merge --no-ff
 --no-commit origin/feat/v75` (`7fb4b60a1`, 65 commits amont, base de merge `ceabaad67`) dans le
 worktree `LevelUp-wt-cuisson-perf` (branche `wt/cuisson-perf`, HEAD `31b754363`). **324 fichiers,
 5 conflits. Rien n'est commite** : l'arbre est resolu, l'index pret, le pilote verifie et commite.
@@ -12199,7 +13329,7 @@ reports), et la baseline lint qui passe de 273 a 324 par l'amont.
 
 ## [2026-09-03] Cuisson perf, lot 4b — les bornes du deroulage sont posees : les quatre films-bombes cuisent, le report RAM est leve — Complete (4/4 items)
 
-Reprise du lot 4b de `.ai/V7.5/PLAN_CUISSON_PERF.md` apres l'arbitrage utilisateur du meme jour
+Reprise du lot 4b de `.ai/archive/V7.5/PLAN_CUISSON_PERF.md` apres l'arbitrage utilisateur du meme jour
 (worktree `LevelUp-wt-cuisson-perf`, branche `wt/cuisson-perf`, base `2f930743d`, aucun commit).
 
 **Decision technique principale.** La mesure 4b.1 avait arrete le lot : la borne de 10 000 ecrite
@@ -12241,7 +13371,7 @@ ete commis.
 
 ## [2026-09-03] Cuisson perf — CHANTIER LIVRE : 3 min 30 -> 15-19 s (-89 %), branche mergeable — Complete
 
-Fin des lots 0/1/2/4/5/6 de `.ai/V7.5/PLAN_CUISSON_PERF.md` (12 commits sur `wt/cuisson-perf`).
+Fin des lots 0/1/2/4/5/6 de `.ai/archive/V7.5/PLAN_CUISSON_PERF.md` (12 commits sur `wt/cuisson-perf`).
 
 **Resultats** : temoins a 15,7 / 18,6 / 18,2 s (references 2 min 24 - 2 min 49) ; BTB 26 joueurs
 19 min 54 -> 1 min 40 ; identite prouvee a CHAQUE lot par le harnais (45 empreintes x 9 films) ;
@@ -12260,7 +13390,7 @@ main de l'utilisateur.
 
 ## [2026-09-03] Cuisson perf, lot 6.3 — les sept constats de la revue de branche sont corriges : plancher de cuisson, code mort supprime, gardes rendus discriminants — Complete (7/7)
 
-Item 6.3 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
+Item 6.3 de `.ai/archive/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
 (`wt/cuisson-perf`, base `d3af3f3bf`). **Aucun commit** (demande du pilote), aucune cuisson lancee,
 `tmp/` et `CORPUS.txt` intacts.
 
@@ -12321,7 +13451,7 @@ et la decouverte N-V ouverte depuis le 6.2 (`GUIDE_KILLSOURCE.md` cite encore
 
 ## [2026-09-03] Cuisson perf, lot 5 — orchestration et protections : le cycle ne peut plus etre pris en otage, et un seul processus decode a la fois — Complete (7/7 items)
 
-Lot 5 (items 5.1 a 5.7) de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
+Lot 5 (items 5.1 a 5.7) de `.ai/archive/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
 (`wt/cuisson-perf`, base `5b9e9bca3`). **Aucun commit** (demande du pilote), aucune cuisson lancee,
 `tmp/` intact.
 
@@ -12370,7 +13500,7 @@ attente du lot 4b (escalade utilisateur D13 toujours ouverte).
 
 ## [2026-09-03] Cuisson perf, lot 4b — la mesure prealable a arrete le lot : la borne ecrite passe SOUS le pire cas sain — En cours (escalade utilisateur ouverte)
 
-Item 4b.1 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
+Item 4b.1 de `.ai/archive/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
 (`wt/cuisson-perf`, HEAD `7d0af4440`). Aucun commit, **aucune ligne de code de production
 modifiee** (`git status` vide) : la decision D13 imposait de MESURER avant de poser la borne, et
 la mesure interdit de la poser telle qu'elle est ecrite.
@@ -12432,7 +13562,7 @@ harnais complet **9 identiques / 0 different**.
 
 ## [2026-09-03] Cuisson perf, lot 4 — la lecture de bits par mot : le profil designait d'autres primitives que le plan — En cours (equivalence a la charge du pilote)
 
-Items 4.1 a 4.4 (+ 4.6, ajoute par le pilote) de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree
+Items 4.1 a 4.4 (+ 4.6, ajoute par le pilote) de `.ai/archive/V7.5/PLAN_CUISSON_PERF.md`, worktree
 `LevelUp-wt-cuisson-perf` (`wt/cuisson-perf`). Aucun commit, aucune cuisson : le pilote lance le
 harnais 11 films et les temoins §6. L'item 4.5 (mesure) est statue `[!]` pour cette raison.
 
@@ -12504,7 +13634,7 @@ glissante de `kfScanNext` (N-AQ). Le lot 3 reste apres le 4b, par decision anter
 
 ## [2026-09-03] Cuisson perf, lot 2 — le film ne se derive plus qu'une fois (bande, decoupage i0, registre) — En cours (equivalence a la charge du pilote)
 
-Items 2.1 a 2.4 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
+Items 2.1 a 2.4 de `.ai/archive/V7.5/PLAN_CUISSON_PERF.md`, worktree `LevelUp-wt-cuisson-perf`
 (`wt/cuisson-perf`). Aucun commit, aucune cuisson : le pilote lance le harnais 9 films et les
 temoins.
 
@@ -12548,7 +13678,7 @@ restante entre les poses et les socles.
 
 ## [2026-09-03] Cuisson perf, lot 1 CLOS — une seule lecture du film, identite 9/9, aucun gain de vitesse (assume) — Complete
 
-Cloture du lot 1 de `.ai/V7.5/PLAN_CUISSON_PERF.md` (4 agents, gates et commits par le pilote).
+Cloture du lot 1 de `.ai/archive/V7.5/PLAN_CUISSON_PERF.md` (4 agents, gates et commits par le pilote).
 
 **Decision technique principale** : la chaine de cuisson entiere consomme un `*filmsource.Film`
 charge et decompresse UNE fois (grammaire D3 mesuree) — filmdec (31 balayages), replay (4),
@@ -12578,7 +13708,7 @@ archetypes partages) puis lot 3 sous decision D13/lot 4b (temoin Live Fire = bom
 
 ## [2026-09-02] Cuisson lot 1 (item 1.4 + moitie killcollector de 1.6) — le decodeur de la source de degat ne lit plus le disque — Complete
 
-Item 1.4 de `.ai/V7.5/PLAN_CUISSON_PERF.md`, plus la moitie `killcollector` de l'item 1.6.
+Item 1.4 de `.ai/archive/V7.5/PLAN_CUISSON_PERF.md`, plus la moitie `killcollector` de l'item 1.6.
 Branche `wt/cuisson-perf`, rien committe.
 
 **Decision technique principale** : `killsource.Decode` prend un `*filmsource.Film` deja charge.
@@ -12621,7 +13751,7 @@ appartient au meme agent.
 
 ## [2026-09-02] Cuisson perf, lot 0 CLOS — harnais d'equivalence, determinisme prouve, reference HEAD — Complete
 
-Cloture du lot 0 de `.ai/V7.5/PLAN_CUISSON_PERF.md` (pilotage : agents pour le code et les
+Cloture du lot 0 de `.ai/archive/V7.5/PLAN_CUISSON_PERF.md` (pilotage : agents pour le code et les
 revues, pilote pour gates/statuts/journal/commit — demande utilisateur).
 
 **Decision technique principale** : l'equivalence se prouve desormais par outillage —
@@ -12756,7 +13886,7 @@ worktree). Go utilisateur pour cadrer le chantier avec revue de plan avant execu
 dedie `LevelUp-wt-cuisson-perf`, branche `wt/cuisson-perf` (base `feat/v75` `900384f50`), cache
 film partage monte par jonctions (`data/cache/{film_chunks,film_manifests,mvar,replays}`).
 
-**Decision technique principale** : `.ai/V7.5/PLAN_CUISSON_PERF.md` — trois responsabilites
+**Decision technique principale** : `.ai/archive/V7.5/PLAN_CUISSON_PERF.md` — trois responsabilites
 (source du film / contexte du film / balayages purs), la source dans un paquet FEUILLE
 `internal/analysis/filmsource` (toute autre place cree un cycle d'import, demontre par
 `go list -deps` et cinq tests internes de `filmdec`), equivalence prouvee par digests figes
@@ -13601,7 +14731,7 @@ s'etait deja revele absent une fois). Rejoue le 2026-09-02 :
 `TestSondeUslgTexteDansLesRessources` rend exactement ce qu'il annoncait — 488 tags `uslg`,
 tag de 1 184 octets, un bloc de 18 langues, blob de ressources de 520 385 octets avec du texte
 ASCII lisible. En revanche le corpus `.mvar` etait **de nouveau absent** (3 fichiers dans
-`.ai/V7.5/dumps/mapvar/`) : re-telecharge par `--forge-fetch`, qui a reproduit la mesure de
+`.ai/archive/V7.5/dumps/mapvar/`) : re-telecharge par `--forge-fetch`, qui a reproduit la mesure de
 reference au chiffre pres (61 cartes / 2 392 zones / 869 nommees / 66 sur 266).
 
 **Decision technique principale — le blob n'est pas une soupe d'octets, c'est une CHAINE DE
@@ -13710,7 +14840,7 @@ etait entierement backend + donnees. L'extraction, elle, existait DEJA en produc
 exactement comme l'annoncaient les en-tetes corriges le 2026-08-27.
 
 **Un point de l'etat de l'art s'est revele faux sur pieces** : le corpus de `.mvar` (« 96
-fichiers, 257 variantes ») N'EST PLUS SUR LE DISQUE — `.ai/V7.5/dumps/mapvar/` ne portait que
+fichiers, 257 variantes ») N'EST PLUS SUR LE DISQUE — `.ai/archive/V7.5/dumps/mapvar/` ne portait que
 3 fichiers, et `C:\Users\Guillaume\Projects\LevelUp\.ai\re_dump\mapvar` (chemin en dur dans
 `sonde_locs_gamefiles_test.go`) n'existe pas. La matiere premiere a ete re-telechargee.
 
@@ -13723,7 +14853,7 @@ qui exige le jeu ET les fonds publies pour une modif qui ne touche aucune de ses
 
 **Alimentation.** `mapcallouts-build` gagne une passe Forge (`--forge-only [--forge-fetch]`)
 qui N'EXIGE PAS le jeu : elle lit l'inventaire UGC VERSIONNE
-(`.ai/V7.5/cartes/inventaire_rotation_ugc_2026-08-27.json`) et telecharge les `map.mvar`
+(`.ai/archive/V7.5/cartes/inventaire_rotation_ugc_2026-08-27.json`) et telecharge les `map.mvar`
 depuis le stockage blob, **sans jeton** (seul le Discovery en exige un ;
 `mapcatalog.Client.FetchFileAt` factorise le GET, netguard conserve). Les deux passes ne
 s'ecrasent jamais : une reconstruction native conserve la section Forge et reciproquement.
@@ -13762,11 +14892,11 @@ texte (root 64 o, un bloc de 778 entrees de 4 o) ; les 488 tags `uslg` ne porten
 ASCII lisible), table d'index vers `0x150` — reste a la decoder. Secondaire : l'inventaire UGC
 est date du 2026-08-27 (une carte jouee depuis n'y est pas) ; et **aucun gate visuel n'a ete
 fait** — le rendu d'une carte Forge dont deux zones sur trois sont muettes n'a jamais ete
-regarde a l'ecran. Detail complet : `.ai/V7.5/cartes/CALLOUTS_FORGE_2026-08-27.md` section 7.
+regarde a l'ecran. Detail complet : `.ai/archive/V7.5/cartes/CALLOUTS_FORGE_2026-08-27.md` section 7.
 
 ## [2026-09-02] T0 film — CLOTURE : merge sur feat/v75, schema renumerote 37, CI verte hors dette lint externe — Complete
 
-Chantier clos sous `.ai/V7.5/PLAN_T0_FILM_2026-09-02.md`. **D3** : gate visuel VALIDE par
+Chantier clos sous `.ai/archive/V7.5/PLAN_T0_FILM_2026-09-02.md`. **D3** : gate visuel VALIDE par
 le user (« ok c'est bon »). **Merge** : collision de schema arbitree par renumerotation
 36 -> 37 (l'identite des vies garde le 36 pris sur feat/v75 ; constante, chroniques,
 replaySchemaLogic, goldens et regenerations rejoues sur l'etat merge) ; fixture
@@ -13785,7 +14915,7 @@ candidat au housekeeping apres tag v7.5.0.
 
 ## [2026-09-02] T0 film — LOT D (D1/D2/D4/D5) : la base locale est reparee, la suite est sequencee — En cours (reste D3 gate visuel + D6 cloture)
 
-Sous le plan `.ai/V7.5/PLAN_T0_FILM_2026-09-02.md`. **Decision technique** : execution du
+Sous le plan `.ai/archive/V7.5/PLAN_T0_FILM_2026-09-02.md`. **Decision technique** : execution du
 `--commit` sans arret de serveur (port 8000 verifie LIBRE avant — rien a arreter, rien
 redemarre). **Resultats** : 101 lignes `match_registry` reparees (`film_movement`),
 partition sans reste (106 = 101 + 5 refus artefactSansOrigine + 0 + 0), controle en base
@@ -13801,7 +14931,7 @@ user (`1b2d9e08`, `72b0a25e`, un match sain) puis D6 (delivery-checklist + CI de
 
 ## [2026-09-02] T0 film — LOT C : le coup d envoi mesure entre en base, et rien ne l ecrase — Complete
 
-Reprise du lot C sous le plan `.ai/V7.5/PLAN_T0_FILM_2026-09-02.md` (decisions D1-D6 fermes),
+Reprise du lot C sous le plan `.ai/archive/V7.5/PLAN_T0_FILM_2026-09-02.md` (decisions D1-D6 fermes),
 apres la mort en plein vol de l executant precedent : du travail non commite, non verifie,
 potentiellement incomplet. Premiere action : INVENTAIRE avant toute ecriture, fichier par
 fichier, verdict ecrit. Douze fichiers examines, douze juges sains, UNE correction —
@@ -13883,7 +15013,7 @@ revient a l orchestrateur.
 
 ## [2026-09-02] T0 film — LOT B : le lecteur web prefere le T0 mesure, et se pose une seconde avant — Complete
 
-Suite du lot A sous le plan `.ai/V7.5/PLAN_T0_FILM_2026-09-02.md` (decisions D1-D6 fermes).
+Suite du lot A sous le plan `.ai/archive/V7.5/PLAN_T0_FILM_2026-09-02.md` (decisions D1-D6 fermes).
 Perimetre : B1-B4, TypeScript sous `apps/web/src/features/match-replay/`. Aucun ecrit en base,
 aucune route touchee, aucun lot C/D entame.
 
@@ -13940,7 +15070,7 @@ l'orchestrateur.
 ## [2026-09-02] T0 film — LOT A : detecteur de production, champ d'artefact, schema 36 — Complete
 
 Portage de la mesure du matin (research test `a5a468a16`) en code servi, sous le plan
-`.ai/V7.5/PLAN_T0_FILM_2026-09-02.md` (decisions D1-D6 fermes). Perimetre : A1-A8, Go +
+`.ai/archive/V7.5/PLAN_T0_FILM_2026-09-02.md` (decisions D1-D6 fermes). Perimetre : A1-A8, Go +
 regenerations. Aucun ecrit en base, aucun lot B/C/D entame.
 
 **Decision technique principale** : le detecteur (`internal/analysis/replay/t0_film.go`, 324 L)
@@ -14053,7 +15183,7 @@ Reste : CI de branche a verifier au niveau JOB apres push ; gate visuel user (te
 
 ## [2026-09-02] Lots A (victimes/bots) et B (glyphe ami) executes et merges — Complete ; lot C (medailles) lance
 
-Plan `.ai/V7.5/PLAN_KILLFEED_VICTIMES_MEDAILLES_GLYPHE_2026-09-02.md`, execution par
+Plan `.ai/archive/V7.5/PLAN_KILLFEED_VICTIMES_MEDAILLES_GLYPHE_2026-09-02.md`, execution par
 executeurs pilotes (Opus lot A, Sonnet lot B), worktrees dedies, CR verifies sur pieces.
 
 **Lot A merge** (`wt/killfeed-bots`, commit 2cb5a1dce) : complement du fix partiel
@@ -14452,8 +15582,8 @@ pose faisait apparaitre un gigaoctet en non-suivi, avec le risque de l'aspirer d
 `git add -A`. Regle posee en glob — `.gocache*/` — dans la section « Build artifacts Go »,
 pour couvrir les variantes a venir sans y revenir.
 
-**`.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`** — document de chantier de 40 Ko qui
-n'avait jamais ete commite ; `.ai/V7.5/` est versionne (927 fichiers suivis), sa place est ici.
+**`.ai/archive/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`** — document de chantier de 40 Ko qui
+n'avait jamais ete commite ; `.ai/archive/V7.5/` est versionne (927 fichiers suivis), sa place est ici.
 Il porte les 13 decisions tranchees du chantier en cours (suppression du producteur
 `weapon_kills` Halo Infinite, migration title-owned qui fait disparaitre table et vue du seul
 fichier `halo_infinite`, resolution de l'arme a la lecture depuis `source_tag`, fusion des deux
@@ -14472,7 +15602,7 @@ il faut le supprimer a la main. Celui-ci est conserve (demande utilisateur), des
 ## [2026-09-01] Volet B — le rejeu 2D au fil de l'eau : une étape installée partout, muette, et sans rattrapage — Complété
 
 Worktree dédié `LevelUp-wt-rejeu-fil`, branche `wt/rejeu-fil-de-l-eau` (base `55d6c7ee5`).
-Étapes B1, B2, B3 du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`. Le volet A est
+Étapes B1, B2, B3 du plan `.ai/archive/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`. Le volet A est
 exécuté en parallèle par une autre session ; seul `convergence.go` est partagé, et l'édit est
 confiné à `runReplayArtifacts`.
 
@@ -14625,7 +15755,7 @@ candidate ; note datée dans l'en-tête de bombe_desamorcage_research_test.go).
 33/34 visibles en app) reste INTERDITE jusqu'à levée explicite par l'utilisateur.
 ## [2026-09-01] Arme du kill — volet A, étape A6 : véhicules, tourelles, et l'épée qui n'était pas de la mêlée — Complété
 
-**Périmètre** : étape A6 du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
+**Périmètre** : étape A6 du plan `.ai/archive/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
 dédié `LevelUp-wt-arme-source`, branche `wt/arme-source-unique`. A0 à A4 et A6 closes ;
 A5 (livraison, migration sur les bases réelles) reste à l'orchestrateur et à l'utilisateur.
 
@@ -14659,7 +15789,7 @@ de cadrage. Invariant tenu aux trois passes : Σ classes = 18 752 = total de fra
 aucune classe ne perd un frag. Le résidu de 7,0 % dépasse le plancher mesuré de 4-6 % par
 la composition de l'échantillon (le décodeur s'effondre en BTB, chantier séparé) — non
 instruit, c'est la consigne. Détail complet dans
-`.ai/V7.5/MESURE_BASCULE_ARME_2026-09-01.md`. L'allowlist du garde-rail de concordance
+`.ai/archive/V7.5/MESURE_BASCULE_ARME_2026-09-01.md`. L'allowlist du garde-rail de concordance
 passe de 19 à **exactement 5** entrées, et la classe `VEHICULE` sort des classes tolérées
 sans clé : un tag véhicule sans clé de registre est désormais une régression.
 
@@ -14680,7 +15810,7 @@ gate-push` et CI verte. **Aucune migration n'a été exécutée sur `data/titles
 
 ## [2026-09-01] Arme du kill — volet A, étape A4 : la table meurt côté Halo Infinite, et Halo 5 a failli mourir avec — Complété
 
-**Périmètre** : étape A4 du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
+**Périmètre** : étape A4 du plan `.ai/archive/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
 dédié `LevelUp-wt-arme-source`, branche `wt/arme-source-unique`. A0-A3 closes ; reste A6
 (et A5, hors de mon périmètre).
 
@@ -14728,7 +15858,7 @@ consigne de l'orchestrateur, elle se lance avec l'utilisateur après sauvegarde 
 
 ## [2026-09-01] Arme du kill — volet A, étape A3 : le producteur de corrélation est mort — Complété
 
-**Périmètre** : étape A3 du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
+**Périmètre** : étape A3 du plan `.ai/archive/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
 dédié `LevelUp-wt-arme-source`, branche `wt/arme-source-unique`. A0-A2 étaient closes ; A4 et
 A6 restent à faire.
 
@@ -14773,7 +15903,7 @@ tourelles, plus la reclassification de l'épée et du marteau en arme lourde).
 
 ## [2026-09-01] Arme du kill — volet A, étapes A0 à A2 : la source de dégât devient la source unique — En cours
 
-**Périmètre** : volet A du plan `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
+**Périmètre** : volet A du plan `.ai/archive/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md`, worktree
 dédié `LevelUp-wt-arme-source`, branche `wt/arme-source-unique`. Étapes A0, A1 et A2 closes ;
 A3, A4 et A6 **non commencées**.
 
@@ -15072,7 +16202,7 @@ arbitrage au merge par renumérotation, comme au 29->30. Un artefact 30 se lit s
 LÉVITATION (un objet sur socle flotte, un objet lâché repose) étalonnée sur les socles d'armes
 CONNUS, plus la récurrence des positions de naissance pour construire le catalogue de points
 d'apparition d'équipement qui manquait à O3. Note :
-`.ai/V7.5/film_re/NOTE_NOMMAGE_ORIGINE_2026-09-01.md`. Ne pas merger : une revue adversariale
+`.ai/archive/V7.5/film_re/NOTE_NOMMAGE_ORIGINE_2026-09-01.md`. Ne pas merger : une revue adversariale
 relit avant.
 
 ## [2026-09-01] Ramassage non-arme — nommé à 100 % par les fichiers du jeu, classes tranchées, origine non résolue — Complété
@@ -15124,7 +16254,7 @@ ne connaît que power / rack / powerup) ; manque de données, pas un résultat.
 consignés — le manifeste indexe en `0x` + MAJUSCULES alors que `pickups[].w` s'écrit en `%08x`
 (le même piège de format que le P0 de la ronde 1 du lot 3 : normaliser AU POINT DE JOINTURE), et
 le manifeste porte la famille, pas de libellé FR/EN. Recherche pure : aucun fichier de production
-touché, aucune cuisson. Note : `.ai/V7.5/film_re/NOTE_NOMMAGE_ORIGINE_2026-09-01.md`.
+touché, aucune cuisson. Note : `.ai/archive/V7.5/film_re/NOTE_NOMMAGE_ORIGINE_2026-09-01.md`.
 ## [2026-08-30] Sons — cloture CI : feat/v75 VERT au niveau job — Complété
 
 Run du head `656b6d9ce` (rattrapage de contrat, schémas 25-28) : **succès**, tous jobs verts —
@@ -15336,7 +16466,7 @@ BIPÈDE ; (2) le jonglage (jets-reprises en cycles de ~700 ms) est visible et fr
 obligatoire ; (4) l'anneau ti=12 One Bomb ne date PAS l'armement (D2 0/11 sur les 3 films
 One Bomb) alors qu'il est exact à ~5 s sur Neutral et Husky.
 
-**Pièces** : logs figés `.ai/V7.5/replay2d/registre_film/B2_bombe_chronologie_v1v2.log`,
+**Pièces** : logs figés `.ai/archive/V7.5/replay2d/registre_film/B2_bombe_chronologie_v1v2.log`,
 `B3_bombe_desaccords_positions.log`, `B4_bombe_desamorcage.log`. Sentinelles mémoire armées
 partout (pics 0,01-0,09 Gio), verrou process, un décodage à la fois.
 
@@ -16376,7 +17506,7 @@ recuire (`cmd/replay-build` ou `levelup backfill-replay`).
 
 **Prochaine étape** : le SON de l'explosion — l'événement existe désormais, les sons sont extraits
 et rendus, il ne manque que la DÉSIGNATION du stem par l'utilisateur (une ligne dans
-`OBJECTIVE_SOUND_STEMS`). État complet : `.ai/V7.5/ETAT_ASSAUT_2026-08-31.md`.
+`OBJECTIVE_SOUND_STEMS`). État complet : `.ai/archive/V7.5/ETAT_ASSAUT_2026-08-31.md`.
 
 ## [2026-08-31] Véhicules — la voie `.mvar` est tranchée par la négative pour les cartes officielles — Complété
 
@@ -16410,7 +17540,7 @@ réapparition. **C'est un réglage d'auteur, pas une constante de classe** : `un
 
 **Prochaine étape** : lire le scénario (`scnr`) des `.module` — `internal/himap` lit déjà index,
 BSP, géométrie et callouts, mais pas les placements d'objets de scénario. État complet :
-`.ai/V7.5/ETAT_VEHICULES_2026-08-31.md`.
+`.ai/archive/V7.5/ETAT_VEHICULES_2026-08-31.md`.
 ## [2026-08-31] CTF — la CONTESTATION est retirée : la mesure donne raison à l'observation du joueur — Complété
 
 L'utilisateur avait demandé la contestation le matin ; il a corrigé le tir en la voyant décrite :
@@ -16545,7 +17675,7 @@ La sonde `cmd/tmp_ctflua` est SUPPRIMÉE du dépôt et archivée hors dépôt (r
 
 **Reste** : le taux de recul de la contestation (bytecode à décoder, pas seulement le pool) et le
 retour au contact (`flagTouchReturnEnabled`, illisible pour la même raison) sont au registre des
-reports. Plan : `.ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md` §4 ter et §4 quater.
+reports. Plan : `.ai/archive/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md` §4 ter et §4 quater.
 
 ## [2026-08-31] CTF — la zone de retour du drapeau : retour automatique daté, zone et jauge publiées — Complété
 
@@ -16631,7 +17761,7 @@ au catalogue, donc aucune rentrée n'y apparaît). Instrument de recherche sous 
 **Reste** : la CONTESTATION n'est ni mesurée ni dessinée ; `outerAreaMonitorRadius` et
 `timeToRespawnFlag` restent NON LUS (dédupliqués dans le pool de constantes) ; le corpus de mesure
 se réduit à deux films faute de socles au catalogue. Les quatre reports sont au registre. Plan et
-protocole : `.ai/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md`.
+protocole : `.ai/archive/V7.5/PLAN_CTF_ZONE_RETOUR_2026-08-30.md`.
 
 ---
 
@@ -16647,7 +17777,7 @@ corrigee (variantes -dynamic-precision-) n'existe que la.
 **Decision technique.** Porter la MARCHE de `killsource` (timeline chronologique + localisateur
 d'events + 8 vues + snapshot/restore) dans `filmdec` sur la branche vehicules, SANS filtre de
 bande : recolte de tous les dead-states, rangement par ARCHETYPE apres coup. Gate ecrit avant la
-mesure : `.ai/V7.5/GATE_V13_DEADSTATE_MARCHE_2026-09-05.md`.
+mesure : `.ai/archive/V7.5/GATE_V13_DEADSTATE_MARCHE_2026-09-05.md`.
 
 **Resultats.** (1) VERROU 1, connu : la marche bat l'ancre **353 dead-states bipedes contre 1**
 sur 6 films (l'ancre en trouve 0 sur 5 films). Le diagnostic §7.2 est valide sur pieces.
@@ -16685,7 +17815,7 @@ les 2 candidates Theater deja datees du handoff §3.1 qui sont dans l'echantillo
 (`0d76e8f1` Wasp 6:51, `b232e02d` Banshee 6:09) — piege du decalage d'horloge ~1 870 s documente.
 Si le recoupement tient, le Go publie `end="destroyed"` + `tEnd` et l'explosion + les sons deja
 cables (ad811de64, f4c3ed417) s'allument sans re-livraison. Note complete :
-`.ai/V7.5/film_re/NOTE_V13_DEADSTATE_VEHICULE_2026-09-05.md`.
+`.ai/archive/V7.5/film_re/NOTE_V13_DEADSTATE_VEHICULE_2026-09-05.md`.
 
 ---
 
@@ -16720,7 +17850,7 @@ reconstructibles depuis les banques.
 
 Execute le report n° 1 du lot V11. Aucun commit, aucun `git add`. GOCACHE isole
 (`scratchpad/gocache_v12`), avant-plan, `CGO_ENABLED=0` pour l'analyse et `CGO_ENABLED=1` pour le
-service. Rapport : `.ai/V7.5/film_re/V12_VISEE_OCCUPANTS_PROD_2026-09-03.md`.
+service. Rapport : `.ai/archive/V7.5/film_re/V12_VISEE_OCCUPANTS_PROD_2026-09-03.md`.
 
 **DECISION TECHNIQUE PRINCIPALE — LA VISEE VIT SUR L'EPISODE D'OCCUPATION, ET NULLE PART AILLEURS.**
 `Point.H` ne pouvait pas la porter (un occupant attache n'a PAS de position : il n'y a aucun point
@@ -16789,7 +17919,7 @@ de l'artilleur ou du passager ? C'est pour le cone de visee. » **REPONSE : la t
 avec temoin), l'occupant OUI — conducteur, artilleur et passager, en continu, pendant tout
 l'episode.** Aucun commit, `CGO_ENABLED=0`, GOCACHE isole, avant-plan. Contrat INCHANGE
 (`SchemaVersion` reste 30, aucun artefact reconstruit). Rapport :
-`.ai/V7.5/film_re/V11_ORIENTATION_TOURELLE_2026-09-03.md`.
+`.ai/archive/V7.5/film_re/V11_ORIENTATION_TOURELLE_2026-09-03.md`.
 
 **DECISION TECHNIQUE PRINCIPALE — LE POINT AVEUGLE DU DECODEUR, ET IL DEPASSE CE LOT.**
 `ScanBipedRecords` n'accepte un record que s'il porte un `i0` ABSOLU **et** si le premier index de
@@ -16848,7 +17978,7 @@ l'oracle du tir en vehicule (piste 5, non pose), et le cas ARTILLEUR sur un epis
 corrige en cours de lot par l'utilisateur — par la VITALITE EFFONDREE EN FIN DE VIE. **REPONSE :
 les deux signaux EXISTENT, aucun n'est publiable en l'etat, et rien n'a ete publie.** Aucun commit,
 `CGO_ENABLED=0`, GOCACHE isole, avant-plan, Ghidra en lecture seule. Contrat INCHANGE
-(`SchemaVersion` reste 30). Rapport : `.ai/V7.5/film_re/V10_DEADSTATE_TI40_2026-09-03.md`.
+(`SchemaVersion` reste 30). Rapport : `.ai/archive/V7.5/film_re/V10_DEADSTATE_TI40_2026-09-03.md`.
 
 **GHIDRA — i11 EST DEJA JUSTE, ET LE PIEGE DU LOT V9 N'A PAS D'EQUIVALENT ICI.** `/search_strings`
 sur `dead-state` rend **UNE seule chaine** (`0x143c99320`) : il n'existe AUCUN
@@ -17008,7 +18138,7 @@ Tous les avant/apres sont calcules dans un seul processus avec un seul parametre
 insensibles a l'autre lot ; seule la comparaison d'artefacts sur disque ne l'est pas, et le rapport
 le dit en tete.
 
-**PROCHAINE ETAPE** : rapport `.ai/V7.5/film_re/V8_VEHICULE_PAR_EVENEMENT_2026-09-02.md` § 9 —
+**PROCHAINE ETAPE** : rapport `.ai/archive/V7.5/film_re/V8_VEHICULE_PAR_EVENEMENT_2026-09-02.md` § 9 —
 l'item 1 (la tourelle nommee = le marqueur d'ARTILLEUR) est la voie pour resoudre les 7
 chevauchements d'episodes conducteur/passager, et il demande un champ publie donc un bump de
 contrat ; l'item 5 rappelle que le corpus n'a qu'une generation, donc que la resolution
@@ -17021,7 +18151,7 @@ contrat ; l'item 5 rappelle que le corpus n'a qu'une generation, donc que la res
 **Question** : etablir la consommation de bits d'i2/i3 pour `ti=40` (Ghidra) pour debloquer la
 lecture de la vitalite i4, donc la destruction datee. **La grammaire est ETABLIE et portee, la
 vitalite est LISIBLE ; la destruction par `i4 -> 0` est REFUTEE — et pour la raison inverse de
-V2b.** Rapport : `.ai/V7.5/film_re/V9_GRAMMAIRE_I2I3_VITALITE_2026-09-03.md`. Aucun commit,
+V2b.** Rapport : `.ai/archive/V7.5/film_re/V9_GRAMMAIRE_I2I3_VITALITE_2026-09-03.md`. Aucun commit,
 Ghidra en lecture seule (HTTP direct, le pont MCP est mort), `CGO_ENABLED=0`, GOCACHE isole.
 
 **LA CAUSE RACINE N'ETAIT PAS UNE LARGEUR INCONNUE — C'ETAIT UNE ERREUR DE MAPPING.** `ti=40` ne
@@ -17139,7 +18269,7 @@ production touche**, `SchemaVersion` reste 30, pas d'OpenAPI, pas de golden, pas
 reconstruit (rien a reconstruire). gofmt vide, vet exit 0, `go test filmdec + replay` sans env :
 `grep -c '^--- FAIL:'` = **0**.
 
-**PROCHAINE ETAPE** : rapport `.ai/V7.5/film_re/V7_DESTRUCTION_EVENEMENT_2026-09-02.md` § 14 —
+**PROCHAINE ETAPE** : rapport `.ai/archive/V7.5/film_re/V7_DESTRUCTION_EVENEMENT_2026-09-02.md` § 14 —
 l'item 1 (la sortie nomme son vehicule) est le seul gain de production immediat et il demande son
 propre lot avec ses gates avant/apres ; l'item 5 rappelle que la destruction n'est peut-etre pas
 dans la liste du tout, auquel cas la voie est la grammaire d'`i2`/`i3` pour `ti=40`.
@@ -17215,7 +18345,7 @@ la liste d'evenements ici). La seule piste restante pour gagner des episodes est
 VEHICULE comme SOURCE (et non plus comme consommateur) : un tir d'arme de vehicule nomme son
 tireur et prouve son occupation, mais aucune methode justifiable ne resout le vehicule a cet
 instant — 180 orphelins hors episode sur `0d76e8f1`. Rapport :
-`.ai/V7.5/film_re/V6_LISTE_COMPLETE_2026-09-02.md`
+`.ai/archive/V7.5/film_re/V6_LISTE_COMPLETE_2026-09-02.md`
 
 ## [2026-09-03] Rejeu vehicules — V5B : le bloc de 89 bits OUVERT — c'est du MOUVEMENT, pas de l'occupation — Complété
 
@@ -17255,7 +18385,7 @@ AVEC les chiffres de la refutation : ce n'est PAS un oracle d'occupation.
 ailleurs et il est mecanique : marcher la liste ENTIERE d'evenements (aujourd'hui seul
 l'evenement de TETE de chaque paquet est decode) pour redresser le ratio board:exit de 1:15, puis
 machine d'etats [board -> exit] par occupant, vehicule resolu par la position (appariement 12/12
-sur les films-demo). Rapport : `.ai/V7.5/film_re/V5B_BLOC_OCCUPATION_2026-09-02.md`.
+sur les films-demo). Rapport : `.ai/archive/V7.5/film_re/V5B_BLOC_OCCUPATION_2026-09-02.md`.
 
 ## [2026-09-03] Rejeu vehicules — V5 : ou est l'ETAT D'OCCUPATION courant ? (4 pistes refutees, 1 signal trouve) — Complété
 
@@ -17289,7 +18419,7 @@ decale PASSE. Victoire PARTIELLE : occupation d'un vehicule, pas identite de l'o
 (SetUnitRefHook), avec 2 garde-rails SANS environnement. gofmt/vet/tests filmdec+replay verts.
 **Prochaine etape** : LIRE le bloc de +89 bits (diff bit a bit du meme vehicule occupe/libre) et
 tester l'hypothese « un bloc par occupant » — s'il porte le siege et l'occupant, (a) et (c)
-tombent d'un coup. Rapport : .ai/V7.5/film_re/V5_ETAT_OCCUPATION_2026-09-02.md
+tombent d'un coup. Rapport : .ai/archive/V7.5/film_re/V5_ETAT_OCCUPATION_2026-09-02.md
 
 ## [2026-09-02] Rejeu vehicules — V4 : tirs en vehicule, plafond de couverture MESURE, fusion des fantomes (schema 30) — Complété
 
@@ -17345,7 +18475,7 @@ tags `lsnd`/`snd!` -> `sbnk` + mots du corps. La chaine `lot`/`lot-tir` ne balay
 **Livre** : `sons_v3_reconstruits/{Ghost,Banshee,Wraith,Chopper}/tir/` (29 WAV a la racine + 40 stems, non
 commites), convention de nommage des 5 dossiers `tir/` valides ; pas de rafale pour le Wraith
 (mortier one-shot) ni la Banshee M2. Manifeste `rev12` (section `tir_covenant_v3f` +
-`alerte_v3f_deplacement`). Rapport `.ai/V7.5/film_re/V3F_TIRS_COVENANT_2026-09-02.md`.
+`alerte_v3f_deplacement`). Rapport `.ai/archive/V7.5/film_re/V3F_TIRS_COVENANT_2026-09-02.md`.
 Gates verts : `gofmt`, `go vet`, `go test ./cmd/weapon-sounds/`, `go build`. Decodage vgmstream
 verifie identique au dossier utilisateur (434 fichiers, ecart de duree max 0,0000 s).
 
@@ -17358,7 +18488,7 @@ sons de tir sous des noms de moteur — rien supprime ni renomme, l'utilisateur 
 
 ## [2026-09-02] Rejeu 2D — INTEGRATION DES VEHICULES (lots A/B/C/D du plan) + revue adversariale corrigee — Complété (preuve visuelle utilisateur en attente)
 
-**Plan** : .ai/V7.5/PLAN_INTEGRATION_REJEU_VEHICULES.md (grille plan-review, decisions tranchees :
+**Plan** : .ai/archive/V7.5/PLAN_INTEGRATION_REJEU_VEHICULES.md (grille plan-review, decisions tranchees :
 un document, pas de capability replay, taille ancree au pion, pion embarque multi-passagers,
 tourelles = vehicules sans translation, end=unknown seul).
 
@@ -17545,7 +18675,7 @@ deux effets partages par les 13 vehicules). J'ai donc lu la chaine A L'ENVERS : 
 
 **Conclusion / prochaine etape** : les sons de destruction sont livres pour les 8 vehicules du
 corpus, avec la chaine de tags complete et la mesure spectrale pour chacun. Rapport
-`.ai/V7.5/film_re/V3D_DESTRUCTION_SONS_2026-09-02.md`, manifeste `sons_v3_reconstruits/
+`.ai/archive/V7.5/film_re/V3D_DESTRUCTION_SONS_2026-09-02.md`, manifeste `sons_v3_reconstruits/
 manifeste_v3.json` passe en **rev10** (section `destruction` + champ `correction_ghost`).
 Le juge reste l'utilisateur : ces WAV n'ont pas ete compares a une capture en jeu. Suite
 naturelle, dans un lot dedie : re-mesurer les boucles de DEPLACEMENT covenant/bannis sur les
@@ -17602,7 +18732,7 @@ different). Restent ouverts : (a) la largeur runtime par film (lecture de `DAT_1
 l'execution, debogueur), (b) le SENS des refs 1 et 2 (la ref 2, domaine 7, est le candidat
 vehicule mais elle est gardee-absente presque partout), (c) marcher la liste ENTIERE pour
 retrouver les sorties manquantes. Rapport :
-`.ai/V7.5/film_re/V3_EMBARQUEMENT_2026-09-02.md`.
+`.ai/archive/V7.5/film_re/V3_EMBARQUEMENT_2026-09-02.md`.
 
 ## [2026-09-02] Vehicules V3 item A — dater la destruction par la mort du conducteur : REFUTE (0/460 vies), mais la fin de trajectoire n'est PAS la destruction et l'episode d'occupation est valide a 100 % — Complété
 
@@ -17645,7 +18775,7 @@ a trancher par le superviseur. Deux voies restent ouvertes pour DATER la destruc
 (a) la grammaire de bits d'i2/i3 pour `ti=40` (Ghidra), sans quoi i4 reste du bruit — reprise
 deja posee par V2b ; (b) **le type 0 « degats » de la liste d'evenements (1 313 occurrences sur
 `0d76e8f1`, jamais decode)**, moins cher car le cadrage de la liste est deja porte et prouve
-bit-exact. Rapport : `.ai/V7.5/film_re/V3_DESTRUCTION_DATEE_2026-09-02.md`.
+bit-exact. Rapport : `.ai/archive/V7.5/film_re/V3_DESTRUCTION_DATEE_2026-09-02.md`.
 
 ## [2026-09-02] Vehicules — Gungoose : la permutation 0x02c9ed0a etait un JEU DE PNEUS ; la vraie arme est un objet `scen` attache par la meme `sofa` que le weap `veh_un_wargoose` — Complété
 
@@ -17906,7 +19036,7 @@ relocatés = 0xcc statique) -> grammaire du siege fixee par oracle empirique, pa
 - **Garde-fou ECS/kill** : `traverse/frame_records/fire_events` non touches ;
   `go test ./internal/analysis/filmdec/` vert ; recoupement fire_events bit-exact.
 
-**Livrable** : `.ai/V7.5/film_re/PORT_LISTE_EVENEMENTS_2026-09-01.md`. Instruments gardes :
+**Livrable** : `.ai/archive/V7.5/film_re/PORT_LISTE_EVENEMENTS_2026-09-01.md`. Instruments gardes :
 `event_list_test.go` (EVT_CHUNK_DIR/EVT_CACHE/EVT_FILMS).
 
 **Prochaine etape** : resoudre l'occupant d'embarquement (probable ref0=vehicule) ; marcher la
@@ -17935,7 +19065,7 @@ reutilise le gate durci V1.5 et le pont `buildOwners`/`bestDeathOffset`.
   dans le TROU de position embarque (recoupe V1a.4). Classer detruit/ejection/despawn = BLOQUE sur
   l'attribution du conducteur (V1a.4 non porte) + un signal de destruction date.
 
-**Livrable** : `.ai/V7.5/film_re/V2_SPAWNS_COOLDOWNS_2026-09-01.md`. Point d'entree prod a creer :
+**Livrable** : `.ai/archive/V7.5/film_re/V2_SPAWNS_COOLDOWNS_2026-09-01.md`. Point d'entree prod a creer :
 `vehicle_placements.go` (modele `equipment_placements.go`) -> catalogue de pads par carte + vies
 bornees. NON exploitable : datation de destruction ; confrontation .mvar.
 
@@ -18234,7 +19364,7 @@ pas X » pour dire « X ne sonne pas dans le rejeu ». **Ce sont deux choses dis
 Pour ces deux-là le SON est acquis (`c73036e4` ramassage, `4093f3c4` spawn) et c'est l'INSTANT
 qui manque. **Règle d'écriture désormais : nommer lequel des deux manque.**
 
-**Livré** : sections 14.1 et 14.2 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md` ;
+**Livré** : sections 14.1 et 14.2 de `.ai/archive/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md` ;
 `padSound.ts` + test supprimés ; `objective_pad_pickup.wav` retiré. Rien de commité.
 
 ---
@@ -18321,7 +19451,7 @@ leur média n'est pas embarqué dans la banque, il vit dans un `.pck`. Ils sont 
 plutôt que servis silencieux, et le nombre est écrit en pied de page — un rendu manquant qui ne
 se voit pas est pire qu'un trou déclaré.
 
-**Livré** : sections 14 et 15 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, nouvelle
+**Livré** : sections 14 et 15 de `.ai/archive/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, nouvelle
 planche publiée, 135 rendus archivés hors dépôt. Aucun code de production touché ce jour au-delà
 du lot de câblage déjà consigné.
 
@@ -18360,7 +19490,7 @@ Deux conséquences assumées y sont déjà écrites : une arme jamais tirée ne 
 de la même famille ramassée ailleurs sonne aussi. **Fichier non touché ce jour** : le lot du
 ramassage d'arme est confié à un autre agent.
 
-**Livré** : section 13.5 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`. Aucune mesure
+**Livré** : section 13.5 de `.ai/archive/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`. Aucune mesure
 neuve à rendre, aucun code touché.
 
 ---
@@ -18473,7 +19603,7 @@ lot confié à un autre agent, je n'ai pas touché ce fichier ; (b) le déclench
 ou du surbouclier ; aucun ne dit « untel a pris l'équipement du socle ». Travail de DÉCODEUR.
 Même situation pour le spawn d'équipement sur socle et pour le lâcher d'arme.
 
-**Livré** : section 13 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, 3 `.wav` dans
+**Livré** : section 13 de `.ai/archive/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, 3 `.wav` dans
 `static/sounds/halo_infinite/`, `padSpawnSound.ts` + son test, `zoneSound.ts` étendu. Rien de
 commité.
 
@@ -18512,7 +19642,7 @@ spawn d'équipement (pas de canal de socle d'équipement), lâcher (pas de canal
 Deux sont câblables tout de suite : la sécurisation (`zoneStates[].gauge` + `owner`) et le spawn
 d'arme sur socle (`weaponPads[].spawns` publie les instants).
 
-**Livré** : sections 12.4 à 12.6 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche
+**Livré** : sections 12.4 à 12.6 de `.ai/archive/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche
 `226618d1` republiée (200 cartes, six gestes en tête). Aucun code de production touché.
 
 ---
@@ -18552,7 +19682,7 @@ croissante. Le hachage y est épuisé, l'oreille est la seule voie restante.
 son. **RÈGLE DE CÂBLAGE à ne pas perdre** : la sécurisation s'ÉTIRE sur la durée de la garde,
 elle ne se boucle pas (une boucle relancerait la montée — « c'est comme une sirène »).
 
-**Livré** : sections 10 à 12 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche
+**Livré** : sections 10 à 12 de `.ai/archive/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche
 `226618d1` republiée (199 cartes). Aucun code de production touché.
 
 ---
@@ -18592,7 +19722,7 @@ nommés seulement. **Les 15 sont rendus et servis** sous cette question ; les 13
 à 53 gabarits sur dictionnaire complet (espérance 0,0257). Les gains de chemin sont affichés carte
 par carte — plusieurs sont à -22 / -26 dB, ce que la normalisation masque (leçon de §9.9).
 
-**Livré** : sections 10 et 11 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche
+**Livré** : sections 10 et 11 de `.ai/archive/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche
 `226618d1` republiée (94 cartes, sections « DÉSIGNÉ » en tête et « Socle d'équipement » neuve).
 Aucun code de production touché.
 
@@ -18664,7 +19794,7 @@ Les dix sons sont rendus et servis côte à côte en tête de la planche courte 
 NÉGATIFS. Une absence dans un pool dédupliqué n'est pas un dénominateur — contrairement à un
 balayage de hachage, où le dénominateur est comptable.
 
-**Livré** : section 9.8 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche republiée
+**Livré** : section 9.8 de `.ai/archive/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`, planche republiée
 (79 cartes). Aucun code de production touché.
 
 ---
@@ -19026,7 +20156,7 @@ pas si l exception connue subsiste.
 **Conclusion / prochaine étape** : le canal est porte en production et verifie contre
 l instrument. Reste a le publier dans le document de rejeu (champ + version de schema +
 couverture), avec la fenetre d affichage bornee par les durees de despawn du jeu
-(`.ai/V7.5/reference/DESPAWN_ARMES_HALO_INFINITE.md`) ET par l image-cle — la plus courte des
+(`.ai/archive/V7.5/reference/DESPAWN_ARMES_HALO_INFINITE.md`) ET par l image-cle — la plus courte des
 deux, aucune n inventant de donnee. Puis l equipement, dont le canal cote bipede est i26
 `unit-equipment-component`, jamais decode en valeurs.
 
@@ -19207,7 +20337,7 @@ films re-cuits, et les ~40 films KOTH restants à cuire.
 > desassemblage le 2026-09-11 (`723b3b61a`). **Les munitions d'une arme au sol SONT fiables** sur
 > les records qui portent le composant i20 — 16 218 sur 27 155 creations (59,7 %) — et elles sont
 > publiees (`groundWeapons[].ammo`, infobulle exacte). Voir
-> `.ai/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md` et sa section « 6.10 bis ».
+> `.ai/archive/V7.5/RAPPORT_MUNITIONS_EXACTES_2026-09-11.md` et sa section « 6.10 bis ».
 
 **Demande** : note utilisateur — verifier si les armes speciales NON VIDES s affichent jusqu au
 despawn ou au ramassage, avec une source Steam a valider.
@@ -19293,7 +20423,7 @@ plus à jouer.
 `__OnWeaponRack{Ready,PickedUp}Sound` et le callback `EVENTS.onItemPickedUp` — le ramassage sur
 socle est un événement de jeu NOMMÉ, avec un son dédié par famille.
 
-**Livré** : section 9 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`. Sonde jetable
+**Livré** : section 9 de `.ai/archive/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`. Sonde jetable
 `cmd/tmp_tagdump` créée, utilisée, **supprimée du dépôt** ; source et vidages archivés hors
 dépôt (`Halo Infinite - Sons v75\_outils\tagdump\`, `_donnees\lua\`). Aucun code de production
 touché.
@@ -19346,7 +20476,7 @@ qui reste pour le point marqué, puisque c'est là que vivent les stingers d'int
 **Livré** : une planche NEUVE et courte, adresse propre `226618d1-d351-45ee-bbbb-6f64162a155c`
 — **68 sons**, un par question (Socle 5, Râtelier 4, Capsule 10, Lâcher 1, Interface globale 21,
 banque `bts` 18, Marqueurs 6, Repères 3). L'ancienne (`6aadf3d5`) reste le catalogue complet.
-Section 8 de `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`. Aucun code de production touché.
+Section 8 de `.ai/archive/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md`. Aucun code de production touché.
 
 **Prochaine étape** : l'écoute des 45 candidats du point marqué. Si aucun ne colle, les voies
 restantes sont S1 (`hsc*`) et S4 (tag de mode), toujours non lancées, plus les six grosses
@@ -19431,7 +20561,7 @@ espérance par banque 0,0004 à 0,0171) casse **20 noms de plus**, dont les quat
 (`vip_kill_team/_enemy`, `vip_killed_team/_enemy`) — directement utiles au chantier des modes
 porteurs, dont la couronne est livrée sans ses sons.
 
-**Livré** : `.ai/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md` (mesures, négatifs et dénominateurs)
+**Livré** : `.ai/archive/V7.5/RE_SONS_RATELIER_ET_KOTH_2026-08-30.md` (mesures, négatifs et dénominateurs)
 et la planche republiée EN PLACE (`6aadf3d5`, une seule adresse) avec deux sections neuves —
 « À DÉSIGNER — le point marqué en Roi de la colline » (14 candidats servis côte à côte) et
 « Râteliers d'armes et lâcher » (11 rendus neufs). Aucun code de production touché.
@@ -19596,7 +20726,7 @@ profit d'un compte lu.
 ## [2026-08-30] KOTH — la GARDE de la colline : mesurée (43 s), publiée, affichée — Complété (E0→E4)
 
 **Statut** : E0 à E4 closes, gates passés. Plan et journal des mesures :
-`.ai/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`, `replay2d/registre_film/E1_seuil_garde*.log`,
+`.ai/archive/V7.5/PLAN_KOTH_GARDE_VIVANTE_2026-08-30.md`, `replay2d/registre_film/E1_seuil_garde*.log`,
 `E4_cuisson_koth.log`. Reste E5 (CI de branche, gate visuel utilisateur). Aucun commit.
 
 **Demande utilisateur** : « en KOTH il n'y a pas vraiment de capture ; c'est le temps de
@@ -19932,7 +21062,7 @@ DI, UI — précédés d'un recalage film vs API obligatoire avant tout câblage
 **Résultats observés** : gate baseline vert — `go build ./internal/...` OK ;
 `go test ./internal/service/ ./internal/platform/duckdb/ ./internal/games/halo_infinite/ -count=1`
 OK (aucun changement de code Go). Note complète :
-`.ai/V7.5/film_re/RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01.md`.
+`.ai/archive/V7.5/film_re/RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01.md`.
 
 **Conclusion / prochaine étape** : recalage ABERRANT au grain qui alimente la vue → UI NON câblée
 (`[!]` au plan, report au REGISTRE_REPORTS). Deux verrous en zone WRITE/filmdec (interdite Lot 4a,
@@ -20130,7 +21260,7 @@ résolvent réf1 à un slot ti=41 vivant (projectile transitoire).
 Le projectile VIVANT ne porte pas d'owner dans le film → touches explosives NON FATALES non
 attribuables par lien de champ ; la jointure temporelle tir↔impact reste la seule voie. Réf. réf0
 dom5 (owner vs entité) = tranchée : c'est l'entité projectile, pas l'owner. Note :
-`.ai/V7.5/film_re/NOTE_PROJECTILE_OWNER_2026-09-01.md`. gofmt + go vet + tests composants verts.
+`.ai/archive/V7.5/film_re/NOTE_PROJECTILE_OWNER_2026-09-01.md`. gofmt + go vet + tests composants verts.
 Prochaine étape : si feature accuracy explosifs, assumer la jointure-au-tir (pas de champ à espérer).
 
 ## [2026-09-01] Touches explosives — présentes dans le film, attribuables tireur+arme par jointure au tir — Complété
@@ -20159,7 +21289,7 @@ KILLS explosifs sont déjà attribués par le dead-state i11 (TUEUR + tag source
 par JOINTURE probabiliste au tir (fenêtre de vol), l'arme venant du WeaponID du tir (pas du tag
 source). Réserve : lien de CHAMP non fatal exigerait de résoudre projectile→owner (réf0 dom5 des
 événements 0xC2/0xC3, sens non tranché) — piste vivante. Note :
-`.ai/V7.5/film_re/NOTE_TOUCHES_EXPLOSIVES_2026-09-01.md`. gofmt + go vet verts. Prochaine étape :
+`.ai/archive/V7.5/film_re/NOTE_TOUCHES_EXPLOSIVES_2026-09-01.md`. gofmt + go vet verts. Prochaine étape :
 si feature accuracy explosifs, décider jointure-au-tir vs creuser projectile-owner.
 
 ## [2026-08-31] Attribution PAR LE TIR de la précision/distance par arme — lien réel, viable sous conditions — Complété
@@ -20489,7 +21619,7 @@ CONCLUANT (plus de chunks/films), puis décoder les records après le transitoir
 
 ## [2026-08-30] Percer la trame — lot 1 ouvert : DEL de tête sur 0xD2/0xD3, vues 2/3, et l'amorce qui varie par famille — En cours
 
-**Contexte** : plan `.ai/V7.5/PLAN_PERCER_TRAME_FILM_2026-08-30.md`, lot 1 (les 528 262
+**Contexte** : plan `.ai/archive/V7.5/PLAN_PERCER_TRAME_FILM_2026-08-30.md`, lot 1 (les 528 262
 paquets 0xD3 écartés). Branche `wt/trame-film`. Trois instruments sous garde `LOT1_TRAME_FILM`
 (`lot1_familles_trame_research_test.go`), témoin calibré `000d5950`, 12 chunks.
 
@@ -20519,7 +21649,7 @@ golden killsource (garde-fou du plan). Lot 2 non ouvert (ordre du plan respecté
 
 ## [2026-08-30] Percer la trame — lot 3 : le registre fait 50 blocs, pas 118 — Complété
 
-**Contexte** : plan `.ai/V7.5/PLAN_PERCER_TRAME_FILM_2026-08-30.md`, lot 3 (à faire en premier).
+**Contexte** : plan `.ai/archive/V7.5/PLAN_PERCER_TRAME_FILM_2026-08-30.md`, lot 3 (à faire en premier).
 Conflit : le dossier tenait 118 blocs d'archétype, le lot D en trouvait 50. Branche
 `wt/trame-film`, worktree dédié `LevelUp-wt-trame-film` (wt-visee occupé par une autre session,
 restitué intact après une bascule de branche malencontreuse de ma part, annulée).
@@ -20697,7 +21827,7 @@ reste à recompiler ici quand l'autre session aura fini.
 
 **Non traité** : rendre le cône plus étroit quand le joueur est à la lunette. AUCUNE donnée
 d'ADS n'existe aujourd'hui — ni dans l'artefact (`Point` ne porte que `h`, `p`, `sh`, `hp`),
-ni dans le décodeur (`grep -iw zoom|scoped` = 0 sur `filmdec/` et sur `.ai/V7.5/`). La seule
+ni dans le décodeur (`grep -iw zoom|scoped` = 0 sur `filmdec/` et sur `.ai/archive/V7.5/`). La seule
 piste connue : le composant i21 consomme 25 bits mesurés alors que ses deux scalaires en
 utilisent 23 (R(12) cap + R(11) élévation, `offline_aim.go`) — 2 bits inexpliqués, à
 caractériser par RE avec un oracle avant toute promesse d'affichage.
@@ -21234,7 +22364,7 @@ un arc. D1 est rouverte, trois options ecrites au §10 du plan (recommandee : ga
 cout marginal, comptee automatiquement le jour ou un kill arrive). Le lot garde tout son sens pour les
 950 kills bobines + chute, aujourd hui invisibles dans « Non attribue ».
 
-**Conclusion / prochaine etape** : plan `.ai/V7.5/PLAN_KILLS_HORS_ARME.md` (6 etapes, 10 sections),
+**Conclusion / prochaine etape** : plan `.ai/archive/V7.5/PLAN_KILLS_HORS_ARME.md` (6 etapes, 10 sections),
 etape 0 close, items 0.1-0.3 coches, mesures ecrites au §9. Trois matchs candidats a la verification
 Theater poses dans Notion (Backlog LevelUp, section « Pour la v7.5 ») : le kill de repulseur unique
 (leve la reserve SOUS_RESERVE) et deux matchs de bobines de nos propres joueurs, dont un couvrant les
@@ -21686,7 +22816,7 @@ trois recettes utilisateur restent a prononcer.
 
 ## [2026-08-28] Export video hors temps reel (E6) : cloture du chantier — Complete
 
-**Contexte** : cloture du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`, six etapes, cinq
+**Contexte** : cloture du plan `.ai/archive/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`, six etapes, cinq
 commits `export-video` sur `feat/v75`. Demande d'origine : « je parlais davantage d'un export que
 de cliquer sur un bouton qui enregistre et qu'on attende toute la duree du match ».
 
@@ -21722,7 +22852,7 @@ trois recettes, et la decision de pousser.
 
 ## [2026-08-28] Export video hors temps reel (E5) : l'UI, l'i18n, et le repli — Complete
 
-**Contexte** : etape E5 du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Toute la
+**Contexte** : etape E5 du plan `.ai/archive/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Toute la
 mecanique existait depuis E4 mais n'etait declenchable par personne : c'est cette etape qui rend
 l'export utilisable, et qui debloque les trois recettes utilisateur en attente.
 
@@ -21756,7 +22886,7 @@ a le navigateur connecte.
 
 ## [2026-08-28] Export video hors temps reel (E4) : la piste sonore mixee hors du temps reel — Complete
 
-**Contexte** : etape E4 du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Le rejeu sonore
+**Contexte** : etape E4 du plan `.ai/archive/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Le rejeu sonore
 de la page est un LECTEUR : un curseur avance avec la lecture et declenche les sons au passage.
 L'export n'a pas de lecture a suivre — il connait la piste entiere d'avance et peut donc la POSER
 d'un coup dans un `OfflineAudioContext`, qui rend le mixage complet bien plus vite que sa duree.
@@ -21803,7 +22933,7 @@ visuelle, E4 ecoute).
 
 ## [2026-08-28] Export video hors temps reel (E3) : la boucle qui recalcule le film — Complete
 
-**Contexte** : etape E3 du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. C'est la piece
+**Contexte** : etape E3 du plan `.ai/archive/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. C'est la piece
 qui assemble tout : poser une image, appeler `draw()`, peindre la surimpression, encoder, passer
 a la suivante — aussi vite que la machine suit.
 
@@ -21852,7 +22982,7 @@ celle d'E2.
 
 ## [2026-08-28] Export video hors temps reel (E2) : les surimpressions repeintes dans la toile — Complete
 
-**Contexte** : etape E2 du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Un encodeur ne
+**Contexte** : etape E2 du plan `.ai/archive/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Un encodeur ne
 voit QUE la toile ; or l'ecran de fin de match et le message inter-manche sont du DOM pose
 par-dessus. Sans peintre canvas, un export s'arreterait sur un terrain muet, sans jamais dire
 comment le match s'est termine — ce que l'utilisateur regarde en dernier.
@@ -21892,7 +23022,7 @@ E3 pour ne pas se perdre). Suite : E3 — le pilote d'export.
 
 ## [2026-08-28] Export video hors temps reel (E1) : l'encodeur WebCodecs, et le piege du minuteur bride — Complete
 
-**Contexte** : etape E1 du plan `.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Objectif : un
+**Contexte** : etape E1 du plan `.ai/archive/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`. Objectif : un
 encodeur qui produise un MP4 a partir d'images poussees a la main, et surtout LEVER le risque
 bloquant du plan (canvas teinte -> `new VideoFrame(canvas)` leve -> tout le chantier tombe).
 
@@ -21937,7 +23067,7 @@ inter-manche.
 je parlais davantage d'un export que de cliquer sur un bouton qui enregistre et qu'on attende toute
 la duree du match ». Deux sujets distincts, traites separement : un bug de livraison de fichier
 (ici), et un chantier d'export hors temps reel (plan
-`.ai/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`, valide par l'utilisateur le meme jour).
+`.ai/archive/V7.5/PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`, valide par l'utilisateur le meme jour).
 
 **Decision technique** : `triggerDownload` (`replayCapture.ts`) revoquait l'URL d'objet DANS LE
 `finally`, c'est-a-dire au retour de `a.click()`, et cliquait une ancre jamais attachee au document.
@@ -22238,7 +23368,7 @@ manche gagnee au-dessus du score + message/son « manche terminee » — data pa
 ## [2026-08-28] Lecteur du rejeu (planche 2a) : frise a pistes, sauts, menu vitesse, raccourcis — Complete
 
 **Contexte** : design valide par l'utilisateur (Claude Design, planche 2a) ; handoff recupere
-(7 fichiers + canvas) et copie dans `.ai/V7.5/replay2d/planche2a_impl/`. Execution Opus
+(7 fichiers + canvas) et copie dans `.ai/archive/V7.5/replay2d/planche2a_impl/`. Execution Opus
 pilotee sur worktree dedie `wt/lecteur` (base feat/v75 86b9087c9), plan
 `PLAN_LECTEUR_PLANCHE2A_2026-08-28.md`, spec annotee des decisions utilisateur (police de
 l'app conservee, kill feed conserve, donnee medias en phase 2).
@@ -22466,7 +23596,7 @@ lieux verifie par sondes API du jour (corpus Oddball = 7 films DEFINITIF, les 19
 sont EXPIRES 404/410 — la note « 19 recuperables » du journal sons etait fausse ; Assaut n'a
 AUCUN bloc AssaultStats dans l'API, verifie sur les 9 payloads bruts ; VIP a un VipStats riche
 au 1/10 s ; Land Grab utilise ZonesStats), plan de chantier ecrit
-(.ai/V7.5/PLAN_MODES_PORTEURS_2026-08-27.md), lot O execute par un agent dedie sur
+(.ai/archive/V7.5/PLAN_MODES_PORTEURS_2026-08-27.md), lot O execute par un agent dedie sur
 wt/oddball-porteur, fusion 42d553fc0.
 
 **Decision technique principale** : protocole D10 commite avant toute mesure (5f5cd0305, un
@@ -22610,7 +23740,7 @@ l'effet UI de faille et le renommage `translocator_beacon` -> faille restent a f
 ## [2026-08-27] Encadre Notion « REPLAY 2D » — CLOTURE du chantier — Complete
 
 **Contexte** : pilotage complet de l'encadre Notion 11 points (plan
-`.ai/V7.5/PLAN_REPLAY2D_NOTION_2026-08-25.md`), 3 executeurs Opus sur worktrees freres,
+`.ai/archive/V7.5/PLAN_REPLAY2D_NOTION_2026-08-25.md`), 3 executeurs Opus sur worktrees freres,
 ~25 lots fusionnes en 3 jours.
 
 **Livre** : pts 3-9 (UI rejeu : fiches, kill feed, volume, fin de rejeu, cone, zones
@@ -22778,7 +23908,7 @@ pre-existants), vitest `src/features/match-replay` **77 fichiers / 1 160 tests, 
 **Conclusion / prochaine etape** : l'utilisateur ecoute la reference video face aux 14 candidats
 et donne un numero. Cote modes, restent : la table de slots statborg d'Oddball (7 sons prets),
 puis celles d'Assaut et d'Extraction (23 sons prets). Detail :
-`.ai/V7.5/RE_GESTES_SONORES_2026-08-27.md` §10.
+`.ai/archive/V7.5/RE_GESTES_SONORES_2026-08-27.md` §10.
 
 ## [2026-08-27] Sons : l'inventaire par MODE, trois banques qui manquaient dont ODDBALL, 22 noms de plus — Complete
 
@@ -22826,7 +23956,7 @@ applique cette fois aux NOMS DE BANQUES et non aux noms d'evenements.
 `zoneStates` et `scoreTimeline` dans le moteur sonore, trois sons qui sonnent sans toucher au
 Go ; (2) une ecoute pour designer la capture de zone ADVERSE, qui ferme la paire ;
 (3) la table de slots statborg d'Assaut et d'Extraction, qui rendrait sonores 23 sons deja
-nommes. Detail complet : `.ai/V7.5/RE_GESTES_SONORES_2026-08-27.md` §9.
+nommes. Detail complet : `.ai/archive/V7.5/RE_GESTES_SONORES_2026-08-27.md` §9.
 
 ## [2026-08-27] Sons, seconde passe : la planche etait inutilisable, sept noms de plus, champ de reparation corrige — Complete
 
@@ -22946,7 +24076,7 @@ lot.
 Restent ouverts : S1 (le `hsc*` qui reference un son de la banque des zones — seule piste de
 NOMMAGE encore vivante), S4 (le tag de mode), le nommage de l'etat de commutation des bobines,
 et le RAMASSAGE SUR SOCLE qui reste non datable (`padPickups` publie un intervalle, pas un
-instant — travail de decodeur). Detail complet : `.ai/V7.5/RE_GESTES_SONORES_2026-08-27.md`.
+instant — travail de decodeur). Detail complet : `.ai/archive/V7.5/RE_GESTES_SONORES_2026-08-27.md`.
 
 ## [2026-08-27] Handoff sons : la reconstitution devient la priorite, et deux erreurs de methode sont corrigees — Complete
 
@@ -22959,7 +24089,7 @@ Priorite NORMALE : le ramassage sur socle. EN ATTENTE : le branchement des sons 
 **Decision technique principale** : ecrire un handoff qui porte les trois categories separement
 — ETABLI, REFUTE (avec denominateur, pour ne pas le refaire), VIVANT — et y inscrire les
 sondes deja redigees plutot que de les lancer a court de budget.
-`.ai/V7.5/HANDOFF_SONS_RECONSTITUTION_2026-08-27.md`.
+`.ai/archive/V7.5/HANDOFF_SONS_RECONSTITUTION_2026-08-27.md`.
 
 **Resultats observes** :
 - **Le probleme est nomme** : la recette des armes produisait UN fichier par GESTE ; la planche
@@ -23180,8 +24310,8 @@ OK, `golangci-lint` 0 issue.
 
 **Conclusion / prochaine etape** : la planche d identification porte desormais 135 sons en cinq sections (zones, balise du translocateur, objets poses, sons communs d equipement, appareil du translocateur). EN ATTENTE de la designation par l utilisateur. A traiter ensuite : les 237 conteneurs en SEQUENCE que le rendu traite encore comme des variantes ; nommer la famille `shroud_screen` au manifeste ; publier la flaveur d energie des objets explosifs au contrat.
 
-Document : `.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md` ; fiches de rendu :
-`.ai/V7.5/RE_FICHES_RENDU_SONS_2026-08-26.txt`.
+Document : `.ai/archive/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md` ; fiches de rendu :
+`.ai/archive/V7.5/RE_FICHES_RENDU_SONS_2026-08-26.txt`.
 ## [2026-08-27] Rejeu 2D — lot C : sons de fin de partie (annonceur + fanfare) — Complete
 
 **Contexte** : extension du plan PLAN_REPLAY_CADRAGE_VICTOIRE (lots A/B clos la veille),
@@ -23214,7 +24344,7 @@ de wt/replay-cadrage-victoire dans feat/v75.
 
 ## [2026-08-26] Rejeu 2D — cadrage T0/fin reelle + ecran de victoire : cloture du plan — Complete
 
-**Contexte** : plan .ai/V7.5/PLAN_REPLAY_CADRAGE_VICTOIRE.md sur wt/replay-cadrage-victoire
+**Contexte** : plan .ai/archive/V7.5/PLAN_REPLAY_CADRAGE_VICTOIRE.md sur wt/replay-cadrage-victoire
 (worktree dedie depuis feat/v75). Deux lots, deux commits (3a29f2e2f, 50d24e848), pilote
 Fable / executeur Opus. Aucun push, aucun merge.
 
@@ -23271,7 +24401,7 @@ GitHub Actions ; gate visuel utilisateur de la capture/enregistrement (5 temoins
 
 ## [2026-08-26] Rejeu 2D — capture et enregistrement : cloture du plan (lot 4/4) — Complete
 
-**Contexte** : cloture du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md sur
+**Contexte** : cloture du plan .ai/archive/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md sur
 wt/rejeu-capture-image-video. Quatre lots, quatre commits, aucun push, aucun merge.
 
 **Decision technique principale** : la relecture de seuils a trouve un depassement DANS le
@@ -23302,7 +24432,7 @@ sombre et clair). Rien ne part vers main avant ce gate.
 
 ## [2026-08-26] Rejeu 2D — le son rejoint la video enregistree (lot 3/4) — Complete
 
-**Contexte** : suite du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, apres l'image (lot 1) et la
+**Contexte** : suite du plan .ai/archive/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, apres l'image (lot 1) et la
 video muette (lot 2). Le clip doit porter le son du rejeu quand celui-ci est actif.
 
 **Decision technique principale** : le lecteur Web Audio ouvre un ROBINET — un
@@ -23334,7 +24464,7 @@ c'est lui qui a la main sur le navigateur, jamais un agent.
 
 ## [2026-08-26] Rejeu 2D — enregistrement video du canvas (lot 2/4) — Complete
 
-**Contexte** : suite du plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, apres le lot 1 (image PNG).
+**Contexte** : suite du plan .ai/archive/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, apres le lot 1 (image PNG).
 Un bouton REC dans la barre de lecture filme la toile via captureStream + MediaRecorder et
 depose le clip a l'arret.
 
@@ -23364,7 +24494,7 @@ DEMARRAGE de l'enregistrement et seulement si le son est alors actif (decision 6
 
 ## [2026-08-26] Rejeu 2D — capture d'image PNG du canvas (lot 1/4) — Complete
 
-**Contexte** : plan .ai/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, branche wt/rejeu-capture-image-video
+**Contexte** : plan .ai/archive/V7.5/PLAN_CAPTURE_EXPORT_REJEU.md, branche wt/rejeu-capture-image-video
 (worktree dedie, base f4fcbfa72). Deux commandes nouvelles sur la page de rejeu : capturer
 l'image, enregistrer la video. Lot 1 = l'image seule.
 
@@ -23559,8 +24689,8 @@ la capture de base et la pose du translocateur.
 
 **Conclusion / prochaine etape** : la suite est l'entree du meme jour ci-dessus (branchement
 sur le rejeu, mode de lecture des conteneurs, banque de la balise).
-Document : `.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md` ; fiches de rendu :
-`.ai/V7.5/RE_FICHES_RENDU_SONS_2026-08-26.txt`.
+Document : `.ai/archive/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md` ; fiches de rendu :
+`.ai/archive/V7.5/RE_FICHES_RENDU_SONS_2026-08-26.txt`.
 **Conclusion / prochaine etape** : **BLOCAGE POUR L'ECOUTE** — les `.wem` sont en Wwise Vorbis
 (`fmt` = `0xFFFF`, verifie sur piece) ; `ffmpeg` 8.0.1 ne les decode pas
 (`unknown codec`), et `vgmstream-cli.exe` n'est plus sur cette machine (le dossier
@@ -23569,7 +24699,7 @@ Suites, dans l'ordre : (1) retrouver ou reinstaller vgmstream ; (2) rendre les 3
 (somme des couches aux gains releves) ; (3) trancher la banque du bastion par la chaine de
 tags du mode ; (4) designer le geste de pose du translocateur (23 evenements, un seul nomme
 et au second rang) par l'ecoute, comme le lot du 18/08 le prevoyait deja.
-Document : `.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md`.
+Document : `.ai/archive/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md`.
 ## [2026-09-05] Classements — la garantie « collections jamais nulles » remonte des repos au service — Complété
 
 **Revue adversariale (après clôture, contexte frais, lentille « ce que les tests ne
@@ -24067,7 +25197,7 @@ fusionner dans feat/v75 avec le train v7.5.
 
 **Contexte** : demande utilisateur : planifier puis piloter l'encadre Notion « REPLAY 2D »
 (page Backlog LevelUp, callout jaune, 11 points) avec des executeurs Opus. Plan :
-`.ai/V7.5/PLAN_REPLAY2D_NOTION_2026-08-25.md`. Triage : points 1 (barre dans Notion) et
+`.ai/archive/V7.5/PLAN_REPLAY2D_NOTION_2026-08-25.md`. Triage : points 1 (barre dans Notion) et
 2 (reporte au registre le 24/08) deja clos ; 9 points actifs repartis en 4 lots.
 
 **Decision technique principale** : 4 lots paralleles sur worktrees freres, base
@@ -24238,7 +25368,7 @@ Boucle close en ronde 1 (rien a corriger, pas de ronde 2).
 FICHIERS VERSIONNES du deploiement de `cmd/replay-worker` vers le second VPS (machine de
 calcul « csstat »). Le provisionnement machine est tenu par le superviseur en parallele ;
 cette session n'a touche que le depot (aucun SSH, aucun `gh secret`, aucun push).
-Plan : `.ai/V7.5/PLAN_OUVRIER_VPS_DEPLOY.md`.
+Plan : `.ai/archive/V7.5/PLAN_OUVRIER_VPS_DEPLOY.md`.
 
 **Decision technique principale — deux amendements ecrits AVANT de coder, sur pieces** :
 
@@ -24399,7 +25529,7 @@ regeneres — fixture d'entrees porte v9 -> v10 pour EMBARQUER les lectures delt
 golden n'aurait jamais exerce le second canal.
 
 **Conclusion / prochaine etape** : rapport complet dans
-`.ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md` (statut des 5 sous-lots, tous les chiffres,
+`.ai/archive/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md` (statut des 5 sous-lots, tous les chiffres,
 decisions de contrat, decouvertes). AUCUN COMMIT — working tree, en attente du superviseur.
 Points a trancher avec l'utilisateur : (a) lever le `[!]` des munitions suppose de comprendre
 pourquoi 22 films sur 70 ont une distribution de chargeurs contaminee ALORS QUE les grenades du
@@ -24434,7 +25564,7 @@ mort), et ecrire « degainee ? » a cote de « Mort » poserait une lacune la ou
 `ScanFilmKeyframeInventory` a 2 retours alors que le lot 2 lui en a donne 3 : le paquet `replay`
 ne compilait plus. Corrige. Verifications : `rosterLogic.ts` n'exporte plus les 3 fonctions
 extraites et aucun appelant ne les y cherche ; cles i18n des deux lots presentes FR et EN ;
-aucun doublon de rapport dans `.ai/V7.5/replay2d/` (2 fichiers ajoutes, 0 collision) ; journal
+aucun doublon de rapport dans `.ai/archive/V7.5/replay2d/` (2 fichiers ajoutes, 0 collision) ; journal
 fusionne sans perte (1987 entrees HEAD + 2 du lot = 1989). Gates : `tsc -b --force` 0 ; vitest
 `src/features/match-replay/` 76 fichiers / 1107 tests verts ; `go test
 ./internal/analysis/replay/ ./contracttest/...` ok ; `go build ./...` ok ; golangci-lint
@@ -24456,7 +25586,7 @@ derniere colonne des fiches sur les equipes larges (BTB).
 ## [2026-08-25] Lot 2 rejeu 2D — télémétrie de couverture inventaire + garde SchemaVersion web — Complete
 
 **Contexte** : suite directe du lot 1 (entrée ci-dessous), sur les deux manques restants de
-l'audit `.ai/V7.5/replay2d/AUDIT_AVAL_INVENTAIRE_2026-08-24.md` : point 3 (erreurs de chunk
+l'audit `.ai/archive/V7.5/replay2d/AUDIT_AVAL_INVENTAIRE_2026-08-24.md` : point 3 (erreurs de chunk
 avalées sans télémétrie dans `ScanFilmKeyframeInventory`) et point 5 (l'inventaire est le seul
 des quatre calques filtrés par `keepOfPublishedTracks` à ne publier aucune couverture) côté Go ;
 point 1 (le client ne lit jamais `schemaVersion`, le plus grave de l'audit) côté web. Hors
@@ -24583,7 +25713,7 @@ rapport §8 avec sa piste. Revue close : P0+P1 de 6 (ronde 1) a 1 (ronde 2) a 0.
 
 ## [2026-08-25] Lot 1 rejeu 2D — une lecture d'inventaire VIDE n'efface plus la fiche — Complete
 
-**Contexte** : defaut mesure le 2026-08-24 (`.ai/V7.5/replay2d/MESURE_TROUS_INVENTAIRE_2026-08-24.md`,
+**Contexte** : defaut mesure le 2026-08-24 (`.ai/archive/V7.5/replay2d/MESURE_TROUS_INVENTAIRE_2026-08-24.md`,
 piste 2) : 17,4 % des lectures d'inventaire publiees ne rendent rien, `buildInventory` les publiait
 NUES (`{"t":N,"slot":S}`), `nearestReading` les retenait comme la plus recente <= T, et
 `ReplayInventoryRow` faisait `return null` — la fiche du joueur disparaissait ~20 s alors qu'une
@@ -24681,7 +25811,7 @@ est necessaire (SchemaVersion 19).
 
 ## [2026-08-25] Compteur « amis en jeu » = le cercle du user dans l'app (corrige D-P4) — Complété et FUSIONNÉ (9a803277f)
 
-**Contexte** : après livraison du chantier notion5, l'utilisateur corrige la sémantique du point 4 en deux temps : (1) pas de PeopleHub — « mes amis inscrits dans l'app » ; (2) précision décisive : l'instance héberge aussi des users qui ne sont PAS ses amis → « amis » = le CERCLE ADR 0029 (ses joueurs + ceux de ses co-membres de groupe), pas tous les inscrits. Lot piloté sur worktree dédié `wt/amis-app` (plan `.ai/V7.5/PLAN_AMIS_INSCRITS_APP.md`), correction produit transmise à l'exécuteur EN VOL avant toute écriture de code.
+**Contexte** : après livraison du chantier notion5, l'utilisateur corrige la sémantique du point 4 en deux temps : (1) pas de PeopleHub — « mes amis inscrits dans l'app » ; (2) précision décisive : l'instance héberge aussi des users qui ne sont PAS ses amis → « amis » = le CERCLE ADR 0029 (ses joueurs + ceux de ses co-membres de groupe), pas tous les inscrits. Lot piloté sur worktree dédié `wt/amis-app` (plan `.ai/archive/V7.5/PLAN_AMIS_INSCRITS_APP.md`), correction produit transmise à l'exécuteur EN VOL avant toute écriture de code.
 
 **Décision technique principale** : `friends_in_game` = joueurs VISIBLES par l'utilisateur (même chokepoint que la liste `players`, titre courant) MOINS les possédés en propre, EN JEU (même prédicat titre+fraîcheur que la manette — une seule boucle, une seule définition). Prédicat de propriété via fabrique `BootstrapService.DirectOwnerFor(sess)` (identité résolue UNE fois par requête). Sans auth appliquée (AuthMode none, le DÉFAUT) : personne n'est possédé en propre → tous les visibles en jeu comptent (H1 — sinon pastille morte en silence sur la config par défaut, le pattern feature-OFF). ZÉRO appel Xbox : chaîne friend_gamertags→batch supprimée (-837 L, batch_client, presence_friends, résolveur, câblage, tests) ; `friend_gamertags` des Réglages intact (« avec amis »).
 
@@ -24729,7 +25859,7 @@ est necessaire (SchemaVersion 19).
 
 **Contexte** : demande user du 24/08 — planifier et piloter les 5 points de la page Notion « Backlog LevelUp » dans UN worktree unique, agents pilotés, puis barrer les items. Recherche préalable : 5 agents d'exploration (un par point) ; 3 décisions produit tranchées par questionnaire (3 onglets Général/Chronologie/Joueurs ; amis = friend_gamertags ; assistances = assistant→tueur + « éliminations volées »).
 
-**Décision technique principale** : plan fermé `.ai/V7.5/PLAN_BACKLOG_NOTION_CINQ.md`, branche `wt/notion-cinq` (worktree `../LevelUp-wt-notion-cinq`, base `a995cf45d`), 5 lots séquentiels exécutés par agents Opus + 1 lot correctif de revue. (A) `has_replay` par UN `os.ReadDir` du dossier d'artefacts (type `port.ReplayAvailability`, jamais de table), colonne Rejeu dans `ExplorerMatchesTable` (sert 5 pages) + tableau escouade, filtre 3 états patron `squadScope`. (B) page match 3 onglets, alias `?tab=details`→chronology au décodage, `MatchViewPage` 523→403 L, requêtes objective-events/positions conditionnées à l'onglet. (C) paires d'assistances depuis `match_kill_events_latest` (Q21d/Q32d, doctrine 3 états `assist_known` jusque dans l'UI, dénominateurs par `LEFT JOIN ON TRUE`), bloc `combat_tab.assist_pairs`, graphe onglet Joueurs, tableau Synergies escouade avec bandeau de couverture. (D) usages d'équipement 100 % web depuis le document de rejeu (schéma 18 INCHANGÉ) — piège attrapé sur artefacts réels : `Grenade.slot` n'est pas le lanceur, jointure par `roster[].filmIndex`. (E) présence : titre courant capté AVANT le test de slug du daemon (piège multi-titre), `GET /api/v1/presence` non-admin (ADR 0029 fail-closed), batch Xbox + netguard + singleflight + backoff, dropdown `PlayerSwitcher` avec manette SVG + compteur d'amis.
+**Décision technique principale** : plan fermé `.ai/archive/V7.5/PLAN_BACKLOG_NOTION_CINQ.md`, branche `wt/notion-cinq` (worktree `../LevelUp-wt-notion-cinq`, base `a995cf45d`), 5 lots séquentiels exécutés par agents Opus + 1 lot correctif de revue. (A) `has_replay` par UN `os.ReadDir` du dossier d'artefacts (type `port.ReplayAvailability`, jamais de table), colonne Rejeu dans `ExplorerMatchesTable` (sert 5 pages) + tableau escouade, filtre 3 états patron `squadScope`. (B) page match 3 onglets, alias `?tab=details`→chronology au décodage, `MatchViewPage` 523→403 L, requêtes objective-events/positions conditionnées à l'onglet. (C) paires d'assistances depuis `match_kill_events_latest` (Q21d/Q32d, doctrine 3 états `assist_known` jusque dans l'UI, dénominateurs par `LEFT JOIN ON TRUE`), bloc `combat_tab.assist_pairs`, graphe onglet Joueurs, tableau Synergies escouade avec bandeau de couverture. (D) usages d'équipement 100 % web depuis le document de rejeu (schéma 18 INCHANGÉ) — piège attrapé sur artefacts réels : `Grenade.slot` n'est pas le lanceur, jointure par `roster[].filmIndex`. (E) présence : titre courant capté AVANT le test de slug du daemon (piège multi-titre), `GET /api/v1/presence` non-admin (ADR 0029 fail-closed), batch Xbox + netguard + singleflight + backoff, dropdown `PlayerSwitcher` avec manette SVG + compteur d'amis.
 
 **Résultats observés** : 124 fichiers, ~+9,1k lignes, 20 commits `e8400dcfb..b6360a261`. Gate global vert (vet 0, go test complet hors himap, tsc 0, vitest 476 fichiers / 4592 tests). Revue adversariale : ronde 1 = 4 relecteurs aveugles + gate → 0 P0, 4 P1 (~15 P2) tous corrigés au lot F (dont : clé de cache React Query du filtre rejeu qui ne changeait pas — le filtre ne refetchait JAMAIS ; singleflight/backoff manquants sur le batch Xbox ; 2 ratchets archlint/netguard) ; ronde 2 sur les seuls correctifs → 0 P0/P1, 4 P2 consignés au plan. Décroissance stricte, boucle close.
 
@@ -24887,7 +26017,7 @@ est necessaire (SchemaVersion 19).
 
 **Resultats observes** : 0.3 gate PASSE largement (repulseur 14/28/31 vies sur trois films, propulseur 9/19/16 ; `i48` lu a 100 % de ses annonces, 759/759). 0.4 ECHOUE pour les deux : les chutes d'`i56` suivent le GRAPPIN (0,59 / 0,83 / 1,15 chute par vie-lue) et non les cibles (repulseur 0,17 / 0,16 / 0,27 ; propulseur famille A 0,30 / 0,14 / 0,27), et en famille B le rang 21 mene (0,69 / 1,25 / 2,42) mais le TEMOIN « vies sans identite `i48` » l'egale ou le depasse sur deux films sur trois — le bar etait celui du camo (39 transitions sur la cible, 0 sur 574 autres vies). 0.5 ECHOUE net : `masque∋i51 = 0` sur 1 427 763 records delta cumules, six films. Gate phase 0 PASSE (un verdict publie par capacite, meme negatif, EST le livrable — decision D5) : `go vet` exit 0, `go test filmdec + replay` verts. Phases 1 et 2 NON EXECUTEES, 12 items statues `[!]`, zero case vide, zero ligne de production hors une ligne neutre de `traverse.go`, aucun son telecharge, `SchemaVersion` reste a 18 (identique a `origin/feat/v75`). Cout machine : 20 decodages, un processus par film, pic RSS 23 Mio pour un plafond de 3 072 surveille, film-bombe `51101d1d` jamais ouvert.
 
-**Conclusion / prochaine etape** : arbitrage ecrit pour le superviseur (`.ai/V7.5/replay2d/ARBITRAGE_USAGES_EQUIPEMENT_2026-08-25.md`), trois lignes au registre, plan a jour. La recommandation n'est PAS de classer : la mesure de disponibilite faite pendant l'arbitrage montre que les TAGS 0 et 2 d'`i59` n'ont jamais ete croises aux rangs (l'instrument ne croise que le tag 3, le grappin) et pesent 3 234 lectures a 98,8 % de couverture sur `00ba2e1c`, soit 12,7x `i56`, avec le patron exact qui a livre camo, surbouclier et grappin. Reserve honnete : tags 0+2 = 97 % des lectures, risque d'etat generique (le defaut qui a tue `i57`). Ouvrir ce lot est une decision du superviseur — non fait ici (hors perimetre, regle 7). Branche NON poussee, 3 commits.
+**Conclusion / prochaine etape** : arbitrage ecrit pour le superviseur (`.ai/archive/V7.5/replay2d/ARBITRAGE_USAGES_EQUIPEMENT_2026-08-25.md`), trois lignes au registre, plan a jour. La recommandation n'est PAS de classer : la mesure de disponibilite faite pendant l'arbitrage montre que les TAGS 0 et 2 d'`i59` n'ont jamais ete croises aux rangs (l'instrument ne croise que le tag 3, le grappin) et pesent 3 234 lectures a 98,8 % de couverture sur `00ba2e1c`, soit 12,7x `i56`, avec le patron exact qui a livre camo, surbouclier et grappin. Reserve honnete : tags 0+2 = 97 % des lectures, risque d'etat generique (le defaut qui a tue `i57`). Ouvrir ce lot est une decision du superviseur — non fait ici (hors perimetre, regle 7). Branche NON poussee, 3 commits.
 
 ## [2026-08-24] Backlog Notion REPLAY 2D / Rejeu 2D — etat des lieux + lancement de 3 lots (qualite score, ti=47, temps mort) — En cours
 
@@ -24949,10 +26079,10 @@ est necessaire (SchemaVersion 19).
 
 **Resultats observes** : 0.3 gate PASSE largement (repulseur 14/28/31 vies sur trois films, propulseur 9/19/16 ; `i48` lu a 100 % de ses annonces, 759/759). 0.4 ECHOUE pour les deux : les chutes d'`i56` suivent le GRAPPIN (0,59 / 0,83 / 1,15 chute par vie-lue) et non les cibles (repulseur 0,17 / 0,16 / 0,27 ; propulseur famille A 0,30 / 0,14 / 0,27), et en famille B le rang 21 mene (0,69 / 1,25 / 2,42) mais le TEMOIN « vies sans identite `i48` » l'egale ou le depasse sur deux films sur trois — le bar etait celui du camo (39 transitions sur la cible, 0 sur 574 autres vies). 0.5 ECHOUE net : `masque∋i51 = 0` sur 1 427 763 records delta cumules, six films. Gate phase 0 PASSE (un verdict publie par capacite, meme negatif, EST le livrable — decision D5) : `go vet` exit 0, `go test filmdec + replay` verts. Phases 1 et 2 NON EXECUTEES, 12 items statues `[!]`, zero case vide, zero ligne de production hors une ligne neutre de `traverse.go`, aucun son telecharge, `SchemaVersion` reste a 18 (identique a `origin/feat/v75`). Cout machine : 20 decodages, un processus par film, pic RSS 23 Mio pour un plafond de 3 072 surveille, film-bombe `51101d1d` jamais ouvert.
 
-**Conclusion / prochaine etape** : arbitrage ecrit pour le superviseur (`.ai/V7.5/replay2d/ARBITRAGE_USAGES_EQUIPEMENT_2026-08-25.md`), trois lignes au registre, plan a jour. La recommandation n'est PAS de classer : la mesure de disponibilite faite pendant l'arbitrage montre que les TAGS 0 et 2 d'`i59` n'ont jamais ete croises aux rangs (l'instrument ne croise que le tag 3, le grappin) et pesent 3 234 lectures a 98,8 % de couverture sur `00ba2e1c`, soit 12,7x `i56`, avec le patron exact qui a livre camo, surbouclier et grappin. Reserve honnete : tags 0+2 = 97 % des lectures, risque d'etat generique (le defaut qui a tue `i57`). Ouvrir ce lot est une decision du superviseur — non fait ici (hors perimetre, regle 7). Branche NON poussee, 3 commits.
+**Conclusion / prochaine etape** : arbitrage ecrit pour le superviseur (`.ai/archive/V7.5/replay2d/ARBITRAGE_USAGES_EQUIPEMENT_2026-08-25.md`), trois lignes au registre, plan a jour. La recommandation n'est PAS de classer : la mesure de disponibilite faite pendant l'arbitrage montre que les TAGS 0 et 2 d'`i59` n'ont jamais ete croises aux rangs (l'instrument ne croise que le tag 3, le grappin) et pesent 3 234 lectures a 98,8 % de couverture sur `00ba2e1c`, soit 12,7x `i56`, avec le patron exact qui a livre camo, surbouclier et grappin. Reserve honnete : tags 0+2 = 97 % des lectures, risque d'etat generique (le defaut qui a tue `i57`). Ouvrir ce lot est une decision du superviseur — non fait ici (hors perimetre, regle 7). Branche NON poussee, 3 commits.
 ## [2026-08-25] Ouvrier distant — les FAITS voyagent dans le job, et la fraicheur cesse de figer un artefact appauvri — Complete (activation NON faite, arbitrage user)
 
-**Contexte** : chantier « delocaliser les cuissons de rejeu + file durable + heartbeat, jusqu'a l'activation prod », worktree exclusif `wt/ouvrier-distant`, base `b16ba17e5`. Plan : `.ai/V7.5/PLAN_OUVRIER_DISTANT.md`.
+**Contexte** : chantier « delocaliser les cuissons de rejeu + file durable + heartbeat, jusqu'a l'activation prod », worktree exclusif `wt/ouvrier-distant`, base `b16ba17e5`. Plan : `.ai/archive/V7.5/PLAN_OUVRIER_DISTANT.md`.
 
 **Decision technique principale** : l'inventaire sur pieces a REDUIT le chantier a un seul trou. File durable (DuckDB `monitoring`, evenements append-only + vues `_latest`, conforme ADR 0026), heartbeat, bail, reclaim, transport de l'artefact, verification d'integrite et jeton constant-time sont LIVRES et prouves depuis le 2026-08-14 (`PLAN_TRANSPORT_ARTEFACT.md`, tous items `[x]`). `jobs.json` n'est PAS cette file (c'est le `JobStore` d'admin). Le trou reel tenait en une ligne : `cmd/replay-worker/job.go:137` passait `port.MatchFacts{}` vide au constructeur. Trois lots : (1) `MatchFacts`/`MatchPlayerFact` descendus dans `internal/domain` avec ALIAS conserve dans `port` — `domain` n'importe jamais `port`, donc les laisser la rendait le payload impossible a typer sans cycle ; l'alias garde les ~30 sites d'appel inchanges. (2) `BuildQueuePayload.Facts` : les faits sont resolus a la mise en file (`EnqueueReplayBuild`, sous les memes handles que l'identite du match, relaches avant la resolution du manifeste) et consommes par l'ouvrier. Transport choisi contre re-derivation (exigerait de donner une base a l'ouvrier) et contre rattrapage au retour (ferait re-cuire le VPS web, interdit). (3) `ArtifactHasMatchFacts` : `ArtifactUpToDate` ne comparant que `schemaVersion`, un artefact cuit sans faits etait declare « a jour » et plus rien ne le re-cuisait — un ouvrier active sans faits aurait empoisonne le cache A DEMEURE. Signal retenu `scoreTimeline.players`, adosse au contrat du document (`document_score.go:147-148`), PAS un champ dedie (qui aurait force un bump de schema, donc une re-cuisson de masse aujourd'hui bloquee par la bombe RAM `NamedEventsFrom`).
 
@@ -24994,7 +26124,7 @@ est necessaire (SchemaVersion 19).
 
 ## [2026-08-24] Faisabilite du suivi DELTA de l'inventaire (grenades, munitions, selecteurs) — Complete (etude, aucune implementation)
 
-**Contexte** : le rejeu 2D ne lit l'inventaire qu'aux images-cles (~1 / 20 s, age median 8,4 s). Question posee : le moteur suivant l'etat en continu via les paquets delta, peut-on les exploiter alors que les grammaires du `HANDOFF_INVENTAIRE_2026-07-27` ont ete mesurees par capture Cheat Engine (curseur moteur journalise) ? Rapport : `.ai/V7.5/replay2d/FAISABILITE_SUIVI_DELTA_INVENTAIRE_2026-08-24.md`.
+**Contexte** : le rejeu 2D ne lit l'inventaire qu'aux images-cles (~1 / 20 s, age median 8,4 s). Question posee : le moteur suivant l'etat en continu via les paquets delta, peut-on les exploiter alors que les grammaires du `HANDOFF_INVENTAIRE_2026-07-27` ont ete mesurees par capture Cheat Engine (curseur moteur journalise) ? Rapport : `.ai/archive/V7.5/replay2d/FAISABILITE_SUIVI_DELTA_INVENTAIRE_2026-08-24.md`.
 
 **Decision technique principale** : la capture CE n'est PAS le chemin de lecture, seulement le juge de calibration. Le depot possede deja une reconstruction OFFLINE du curseur moteur — ancre bit a bit `matchBipedHeader` (offline_biped.go:305) + marche des desers de PRODUCTION `walkRecordTo` (ability_rank.go:188, `consumeByName`) — celle qui fait marcher `ScanFilmAbilityRanks` (i48) en prod. Le prototype applique ce chemin, cible i22, i30/i31/i33/i34, i42, i47. Sondes jetables gatees par `I22_FILM` : `filmdec/i22_delta_research_test.go` (3 tests) et `replay/i22_confrontation_research_test.go`.
 
@@ -25170,7 +26300,7 @@ complete sur les ~25 films restants du cache du depot principal).
 
 ## [2026-08-20] Supervision reprise v7.5 — fusions L2 (KOTH UGC negatif), L6 (balayage sons), L1 (hygiene CI) ; decisions D7/R3-1/garde Fiesta — En cours
 
-**Contexte** : reprise du pilotage sur demande utilisateur (handoffs 18-20/08 + liste de retours produit) ; 5 explorations paralleles puis lots executes en worktrees freres (Sonnet/Opus), CR verifies sur pieces (gates rejoues : archlint, diff structurel du catalogue objectives). Plan : `.ai/V7.5/PLAN_SUPERVISION_2026-08-20.md`.
+**Contexte** : reprise du pilotage sur demande utilisateur (handoffs 18-20/08 + liste de retours produit) ; 5 explorations paralleles puis lots executes en worktrees freres (Sonnet/Opus), CR verifies sur pieces (gates rejoues : archlint, diff structurel du catalogue objectives). Plan : `.ai/archive/V7.5/PLAN_SUPERVISION_2026-08-20.md`.
 **Decision technique principale** : D7 CLOS — l'arrondi de `p` RESTE 0,1 deg (un arrondi 0,5/entier cree une classe « zero exact » qui heurte la convention d'absence omitempty que le demi-pas garantissait vide ; le gain ~3-4 % ne paie pas la redefinition + goldens + re-cuisson). R3-1 : croix de mort 1,5 -> 2,5 s. Garde Fiesta des lachers -> simple reglage (elle masquait 26 lachers reels sur `000d5950`). Murs portatifs : duree officielle a l'ecran (le film ne date AUCUN despawn ; `t1` = fin de suivi, mediane 0,6 s). `cmd/variant-probe` SUPPRIME (session proprietaire close, voie API fermee).
 **Resultats observes** : L2 — re-tirage UGC execute, 4 cartes KOTH toujours a 0 colline (CT.2.1 a rouvrir CIBLE), Empyrean = probable faux negatif d'`isParkedPalette` (paire de hash correcte presente dans `map.mvar`, ecartee sur grand canevas) ; L6 — 1305 banques balayees en 24 s, 2 674 candidats 0,3-2 s hors banques deja ecoutees, grappin : `grappleLines` deja publie ET dessine, seul le declencheur sonore n'a jamais ete cable, aucun asset audio distinctif dans les tags ; L1 — CI gitleaks reparee (exception ciblee `grenade_kills=1`), allowlists variant-probe retirees, 2 tests repo-root migres vers `testutil.RepoRoot()+Fatalf`, 3 lignes du registre reparees (dont la recette faux-vert L201), doc killsource remise d'accord. Publies pour l'utilisateur : artefact « Equipement 0x4396db42 » (104 occ / 9 matchs, points de controle Theater) et page « Ecoute balise v3 » (121 sons decodes via vgmstream autorise et telecharge).
 **Conclusion / prochaine etape** : L3 UI en vol (U1-U3 committes : killfeed Dominance retire, bug bascule persistee corrige, parite fiche morte/compacte) ; puis L4 bandeau score au-dessus du canvas, re-cuisson des temoins, gate visuel en app, re-cuisson de masse (954 manifests) + backfill-killsource, docs de cloture.
@@ -25649,7 +26779,7 @@ P0 ni P1. Le volet 3 reste a fusionner dans `feat/v75` avec le reste de la branc
 
 **Statut** : Complete (CT.3.1, CT.3.2, CT.3.3 ; branche `wt/jauge-live`, `97bab1ccc`..HEAD, NON fusionnee —
 un seul merge final dans `feat/v75`, regime branche unique). Journal detaille :
-`.ai/V7.5/replay2d/registre_film/LOTCTER_VOLET3.md`. Gates : `registre_film/LOTCTER_volet3_gates.log`
+`.ai/archive/V7.5/replay2d/registre_film/LOTCTER_VOLET3.md`. Gates : `registre_film/LOTCTER_volet3_gates.log`
 (tous les EXIT_* a 0). Reprise d'un executeur mort en plein recadrage : 8 fichiers non commites repris,
 verifies sur pieces, termines.
 **Decision technique** : trois decisions, chacune tenue par une mesure. (1) LA SERIE `zoneStates[].gauge`
@@ -26002,7 +27132,7 @@ identifier avant tout nouveau balayage de seuil. Decouverte hors perimetre : `Te
 
 **Decision technique principale** : renommage pur, sans changement de comportement — `ManagedPropertyRead.PlayerIndex` -> `FilmIndex` (`zone_state_scan.go` : champ avec commentaire de statut + ecriture dans le hook ; litteral de `replay/zone_states_test.go`) et le convertisseur exporte `ManagedPropertyPlayerIndex` -> `ManagedPropertyFilmIndex` (`components_managed_property.go` + 3 appelants + 2 commentaires qui le nomment). Les `PlayerIndex` de `weaponv3`, `skill_v2`, `persist`, `cmd/diag_*` restent : hors perimetre du garde-rail (il ne couvre que `filmdec` et `replay`).
 
-**Resultats observes** : `grep -P '\bPlayerIndex\b'` sur `filmdec`+`replay` = 0 ligne de code (seuls des commentaires, autorises) ; gates 6/6 EXIT 0 (`gofmt -l` vide, `go vet` filmdec+replay, `go test ./internal/archlint/` — `TestNoPlayerIndexInFilmScope` PASS —, `go test` filmdec+replay no-CGO, `go build ./...` CGO, `go test ./internal/replaybuild/` CGO), log `.ai/V7.5/replay2d/registre_film/LOTCBIS_fix_filmindex_gates.log` ; journal du lot §12.
+**Resultats observes** : `grep -P '\bPlayerIndex\b'` sur `filmdec`+`replay` = 0 ligne de code (seuls des commentaires, autorises) ; gates 6/6 EXIT 0 (`gofmt -l` vide, `go vet` filmdec+replay, `go test ./internal/archlint/` — `TestNoPlayerIndexInFilmScope` PASS —, `go test` filmdec+replay no-CGO, `go build ./...` CGO, `go test ./internal/replaybuild/` CGO), log `.ai/archive/V7.5/replay2d/registre_film/LOTCBIS_fix_filmindex_gates.log` ; journal du lot §12.
 
 **Conclusion / prochaine etape** : la lecon est ecrite en §12 du journal — les gates locaux du lot ne lancaient pas `./internal/archlint/` (~10 s) ; ce paquet entre dans la liste des gates de tout lot qui touche `filmdec`/`replay`. Superviseur : fusion de `wt/fix-filmindex-zones` dans `feat/v75`, push, CI verte au niveau job.
 
@@ -26014,7 +27144,7 @@ identifier avant tout nouveau balayage de seuil. Decouverte hors perimetre : `Te
 
 **Resultats observes** : gates tous EXIT 0 (build, vet, analysis no-CGO 16 paquets, replaybuild + contracttest, integration `TestReplayFacts` 4/4 — la CI de feat/v75 etait rouge sur eux depuis `b0fb3e10f` —, golangci 0, tsc --force, vitest 1 777, eslint 19 + 1 hors perimetre `ReplayFeedName.tsx:50` (lot R3), cross-feature 7/7, cliquet ReplayCanvas 812) ; temoins schema 16 : `7344d24f` 57/59 = 96,6 % (239 s, 187 Mo), `696a9d7c` 64/66 = 97,0 % (230 s, 145 Mo), `01e1f945` 20 periodes 4 975/5 343 = 93,1 %, 0 chevauchement (208 s, 97 Mo) — identiques a la mesure d'avant la ronde : aucune correction n'a deplace une capture ni une periode ; ronde 2 (relecteur frais, 31 conditions verifiees) : 0 P0, 1 P1 (fichier de tests 572 L > 500, introduit par les corrections) corrige par R2-1 (`32d1839e0`, scission par volet, 18 tests identiques), 2 P2 hors perimetre consignes en §6 (balayage ti=13 paye en CTF/Extraction ; `drawProgressArc` 6 parametres), R1-1..R1-9 + fusion FERMES avec preuve ; fusion `--no-ff` dans `feat/v75` = `bbbc0f92d`, poussee.
 
-**Conclusion / prochaine etape** : gate visuel utilisateur sur la planche (artefact cb1f0981, section « zones » Z1-Z5 ; temoins 7344d24f/696a9d7c/01e1f945 schema 16 poses dans le cache du principal, anciens sauvegardes sous `_backup_gate_registre_film/`) ; decision utilisateur sur le role « colline » du catalogue (l'artefact porte la colline active, l'ecran ne la montre pas sans ce role) ; hygiene de cloture (registre) ; nettoyage des worktrees du chantier apres CI verte. Reprise : `.ai/V7.5/HANDOFF_SUPERVISEUR_REGISTRE_FILM_2026-08-18.md`.
+**Conclusion / prochaine etape** : gate visuel utilisateur sur la planche (artefact cb1f0981, section « zones » Z1-Z5 ; temoins 7344d24f/696a9d7c/01e1f945 schema 16 poses dans le cache du principal, anciens sauvegardes sous `_backup_gate_registre_film/`) ; decision utilisateur sur le role « colline » du catalogue (l'artefact porte la colline active, l'ecran ne la montre pas sans ce role) ; hygiene de cloture (registre) ; nettoyage des worktrees du chantier apres CI verte. Reprise : `.ai/archive/V7.5/HANDOFF_SUPERVISEUR_REGISTRE_FILM_2026-08-18.md`.
 
 ## [2026-08-18] v7.5 rejeu 2D — exploitation du Registre du film : fusion dans feat/v75, lot C-bis (ti=13) phases 0-2a closes, phase 2b en revue, handoff superviseur — En cours
 
@@ -26024,7 +27154,7 @@ identifier avant tout nouveau balayage de seuil. Decouverte hors perimetre : `Te
 
 **Resultats observes** : fusion `104f468c6` POUSSEE (score dans le temps schema 12, elevation schema 13, ratchet cross-feature repare par `lib/replay/scoreTimeline.ts`) ; C-bis phase 0 : variant de ti=13 RESOLU (index de champ `contexte+0x10`, deux moities, 33 vecteurs) ; phase 1 (fusion `9b959de28`) : PORTE (DesyncAt : les 12 films progressent), tag 3 = jauge (97,2 / 94,8 % vs hasard 57-61 %), tag 4 enumerable, tag 5 = cle de nommage stable, KOTH une zone active ; phase 2a (fusion `2753e8ee2`) : slot -> zone 93,1 / 98,4 % (temoins 41-57 %), **tag 4 = PROPRIETAIRE 100 / 91 %**, KOTH 91/84/82 % ; phase 2b (`wt/zones-ti13-p2b`) : captures -> intervalle du capteur **96,6 % et 97,0 %** (seuil 90), KOTH **93,1 %** (seuil 80), +0,22 % de l'artefact ; revue adversariale : 2 P1 (repli colline sur `len(pairs)==0` ; `objectivesLayer.ts` retranchait l'origine deux fois — bug du lot A), 5 P2, code mort scanner ; ronde 1 : R1-1..R1-6 commitees (`7843433d0`), R1-7..R1-9 en cours apres deux coupures API (529). CI `feat/v75` : un job rouge (`TestReplayFacts*`, DDL de test sans `map_id` depuis `b0fb3e10f` de l'item 4) — repare par R1-9 a la fusion. Lecons : un canal DENSE se juge contre son niveau de hasard (une clause « temoin sous la moitie du reel » est inatteignable par construction) ; le CLI de cuisson (`replay-build --facts`) etait bloque par un composant voisin (`attachFlagCarries`, 19-22 Go) — signale, corrige par l'autre session (`f41fd362c`).
 
-**Conclusion / prochaine etape** : finir la ronde 1 (R1-7 garde client, R1-8 code mort, R1-9 DDL) + fusion de `origin/feat/v75` avec re-numerotation schema 16 ; ronde 2 par un relecteur frais sur les seules corrections ; fusion `--no-ff` dans `feat/v75`, push, CI verte au niveau job, SHA a l'utilisateur ; section « zones » de la planche ; puis gate visuel utilisateur et hygiene de cloture (liste dans le handoff). Point d'entree de reprise : `.ai/V7.5/HANDOFF_SUPERVISEUR_REGISTRE_FILM_2026-08-18.md`.
+**Conclusion / prochaine etape** : finir la ronde 1 (R1-7 garde client, R1-8 code mort, R1-9 DDL) + fusion de `origin/feat/v75` avec re-numerotation schema 16 ; ronde 2 par un relecteur frais sur les seules corrections ; fusion `--no-ff` dans `feat/v75`, push, CI verte au niveau job, SHA a l'utilisateur ; section « zones » de la planche ; puis gate visuel utilisateur et hygiene de cloture (liste dans le handoff). Point d'entree de reprise : `.ai/archive/V7.5/HANDOFF_SUPERVISEUR_REGISTRE_FILM_2026-08-18.md`.
 
 ## [2026-08-18] Drapeau OBJET — le manifeste le nomme, son controle refuse sa piste ; corrections flagCarries (schema 15) ; FIX bloquant deathProgressions — Complete
 
@@ -26316,14 +27446,14 @@ FERMES (seuil 90 % inchange) ; la simultaneite > 2 (12 sur `64e8adfa`) est porte
 
 ## [2026-08-18] v7.5 rejeu 2D — exploitation du Registre du film : vague 2 close, le score dans le temps est publie (schema 12) et revu
 
-**Statut** : En cours (plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`, integration `wt/registre-film` = f4ba22e40 ; reste : E.1/E.2, A.2 web, hygiene de cloture, fusion dans feat/v75).
+**Statut** : En cours (plan `.ai/archive/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`, integration `wt/registre-film` = f4ba22e40 ; reste : E.1/E.2, A.2 web, hygiene de cloture, fusion dans feat/v75).
 **Decision technique principale** : la phase 1 du lot A ne s'est ouverte qu'apres trois passes de mesure (gate strict non atteint : l'API `team_score` n'est pas le score affiche en Strongholds — ticks — ni sur deux KOTH — secondes ; sur l'oracle « score affiche » : 16/16, 5 modes) et l'en-tete de 5 bits du statborg s'est revele etre le NUMERO DE MANCHE (Oddball 4/4 exact, y compris un match a 3 manches ; tous les consommateurs de `StatRecords` ne voyaient que la manche 1). Publication : `scoreTimeline` (equipes par manche + total, joueurs aux changements), `objectives[]` enfin peuple en production avec l'origine retranchee, faits du match par port + lecteur DuckDB lecture seule ; `filmdec/statborg.go` supprime ; revue adversariale a 3 lentilles puis ronde 2 : 0 P0/P1 restant, 4 P2 consignes.
 **Resultats observes (vague 2)** : (1) ti=0 (moteur de partie) n'est PAS replique dans le film (1 record / 1 269 000, image-cle vide, Cheat Engine concordant) : pas d'horloge officielle, pas de mort subite, pas de manches par ti=0 — lots B et P clos `[!]` ; ti=5 present mais epars (i43-i46 0-4 fois/film : `HeldWeapon` inexploitable en delta — vaut pour le plan item 4) ; le temps mort se mesure par les trajectoires (mediane 8-10 s, 865-1 136 s/match) ; (2) les charges d'equipement (i27) ne datent rien (0/501 vs oracle grappin, temoin 0/501 ; les 16 125 annonces etaient du bruit d'ancrage : 368 reelles / 12 954 fantomes) — lot D clos `[!]`, i27 hors reserve ; (3) l'etat des zones n'est porte par aucun canal enumerable de ti=10/12 (couleur ANIMEE, drapeaux fins, rtpc = progression) ; `radial-progress` = jauge de capture (95 % des captures precedees d'une rampe a son max, hasard 40-46 %) ; 3 canaux portes en production ; ti=13 STOP maintenu (F5 : noms muets) — lot C clos `[!]` sur l'etat, jauge tracee ; (4) l'elevation de visee est etablie (`360 x (raw+0,5)/2048 - 180`, positif = haut, r = 0,93-0,97 sur 164 kills, oeil a 5-30 cm) — lot E gate tenu, E.1/E.2 en file ; ti=4 = tic de simulation 60 Hz (temoin d'ancrage pur) ; tacmap = campagne ; (5) lecons : temoin d'un canal DENSE vs son niveau de hasard ; `MaskCensus` seul ne classe rien ; lint sous CGO actif ; un scanner sans consommateur devient un instrument de test.
 **Conclusion / prochaine etape** : E.1/E.2 (Point.p schema 13 + cone web) puis A.2 (web : score vivant en-tete/fiches, courbe dans Dominance, `normalizeReplayDocument` etendu, masquage si `originResolved` faux), hygiene de cloture (P2 : `RealRounds` manche du trou, `OriginResolved *bool`, `components_hooks_test.go` 600 L, lignes registre mal formees, leviers absAxis), puis fusion `wt/registre-film` -> `feat/v75` (principal libre, CI verte au niveau job). Decisions utilisateur en attente : jauge de capture, temps mort par trajectoires, RE de ti=13, regle « camp absent = 0 » pour le rendu.
 
 ## [2026-08-18] v7.5 rejeu 2D — exploitation du Registre du film : vague 1 close (lot 0, A.0, C.0/C.1a), vague 2 lancee
 
-**Statut** : En cours (plan `.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`, branche
+**Statut** : En cours (plan `.ai/archive/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md`, branche
 d'integration `wt/registre-film`).
 **Decision technique principale** : deux gates 0 NON ATTEINTS tels qu'ecrits (lot A : 7/12 accords
 de score final ; lot C : concentration 2,37x pour 3x) et AUCUN seuil rebaisse — mais dans les deux
@@ -26359,7 +27489,7 @@ cours. Publications (phases 1) toujours SERIALISEES et apres l'item 6 phase 3.
 **Statut** : En cours — plan VALIDE par l utilisateur le 17/08 (soir) : D1/D2/D3/D6/D12 confirmes apres explications, lot P (ti=5, inventaire du joueur) ajoute, item 0.6 (plomberie des hooks, D15) et D16/D17 (publications serialisees, machine bornee) ajoutes ; GO donne (« piloter ca avec des agents et workflow sur des worktrees dedies, paralleliser ») ; vague 1 lancee : lot 0 (`wt/registre-film`), A.0 (`wt/score-film`), C.0.1/0.3 (`wt/zones-film`) — un executeur Opus par worktree, films lus par chemin absolu, un film par processus, avant-plan, plafond RAM.
 **Decision technique principale** : ne pas prendre l'artefact au mot. Trois lectures independantes du
 depot ont confronte chaque piste au code du 17/08 (fusion `66e867b80` posee) ; le plan
-`.ai/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md` (worktree `../LevelUp-wt-registre-film`,
+`.ai/archive/V7.5/replay2d/PLAN_EXPLOITATION_REGISTRE_FILM.md` (worktree `../LevelUp-wt-registre-film`,
 branche `wt/registre-film`, base `253226852`) est ecrit sur l'etat VERIFIE, pas sur l'inventaire.
 Deux decisions structurantes : (D1) le score dans le temps est un lot de BRANCHEMENT — le decodeur
 statborg complet et mesure existe (`objectiveevents/statborg.go`, `ScoreCurve` 283/284 vs Cheat
@@ -26945,7 +28075,7 @@ superviseur (le present lot ne fusionne pas), CI verte au niveau job, puis gate 
 ## [2026-08-18] Correctif de la revue adversariale du lot poses — `t1` est une borne inferieure, pas une disparition — Complete
 
 **Statut** : Complete. Branche `wt/poses-revue-fix`, 5 commits. Plan :
-`.ai/V7.5/replay2d/PLAN_CORRECTIF_REVUE_POSES.md` (findings F1-F5 + mineurs de la revue du
+`.ai/archive/V7.5/replay2d/PLAN_CORRECTIF_REVUE_POSES.md` (findings F1-F5 + mineurs de la revue du
 2026-08-17).
 
 **Decision technique** : F1 etait le bloquant — `t1` etait publie et affiche comme la
@@ -27021,7 +28151,7 @@ Pas une anomalie de fusion : le fichier n'a subi AUCUNE resolution manuelle, con
 (hors des deux hunks de conflit des fichiers `.ai/`, tout le reste vient d'un auto-merge git).
 `apps/web/` absent du diff `feat/v75...wt/fusion-lots-go` : gates web non applicables, non joues.
 
-**Anomalie hors perimetre, non traitee** : `.ai/V7.5/replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md`
+**Anomalie hors perimetre, non traitee** : `.ai/archive/V7.5/replay2d/PLAN_ARMES_AU_SOL_2E_LECTURE.md`
 porte une modification de 14 lignes NON INDEXEE, apparue en cours de session (absente du
 `git status` de depart de cette fusion), mentionnant les branches `wt/fusion-finale` et
 `wt/poses-revue-fix` — signe qu'une autre session travaille en parallele dans ce meme worktree
@@ -27045,7 +28175,7 @@ cette fusion (docs + instruments). Fusion CLOSE.
 
 ## [2026-08-18] Handoff superviseur — fin de contexte de la session de pilotage
 
-**Statut** : Complete (handoff ecrit). `.ai/V7.5/HANDOFF_SUPERVISEUR_v75_2026-08-18.md`.
+**Statut** : Complete (handoff ecrit). `.ai/archive/V7.5/HANDOFF_SUPERVISEUR_v75_2026-08-18.md`.
 
 **Decision** : ecrire l'etat exact (HEAD `5ab07d67b`, rien pousse, aucun agent actif, worktrees de
 la session tous supprimes), la table des lots livres depuis le 15/08 avec leurs SHA, ce qui est
@@ -27125,7 +28255,7 @@ suffi, la voie de repli (`"sc" + "an"` litteral compose) n'a pas ete necessaire.
 ## [2026-08-18] Rejeu 2D — l'origine d'une pose se lit a la FIN de la vie du poseur : `equipmentPlacements` est, a 88,6 %, ce qu'un mort laisse tomber — Complete
 
 **Statut** : Complete (branche `feat/v75`, phase G du plan
-`.ai/V7.5/replay2d/PLAN_ORIGINE_POSES_ET_FAMILLES.md`). Phase W (web) = lot separe.
+`.ai/archive/V7.5/replay2d/PLAN_ORIGINE_POSES_ET_FAMILLES.md`). Phase W (web) = lot separe.
 
 **Decision technique.** Le plan cherchait a separer, par mesure, la DOTATION AU SPAWN des
 objets DEPLOYES dans `equipmentPlacements` — critere ecrit avant mesure : creation dans les
@@ -27209,7 +28339,7 @@ largeur de bloc sera tranchee — sans jamais prolonger une pose).
 ## [2026-08-17] Lot R7-e — La boucle d'etat complet portee : le cadre n'etait pas la cause
 
 **Statut** : Complete (C1 echoue a 0,51 %, borne d'arret atteinte, negatif chiffre). Branche
-`wt/kf-boucle-etat-complet`. Plan : `.ai/V7.5/replay2d/PLAN_R7E_BOUCLE_ETAT_COMPLET.md`.
+`wt/kf-boucle-etat-complet`. Plan : `.ai/archive/V7.5/replay2d/PLAN_R7E_BOUCLE_ETAT_COMPLET.md`.
 
 **Decision technique** : R7-d avait TROUVE la boucle d'etat complet du jeu sans la PORTER. Ce lot
 la porte entierement et mesure ses cinq variables une a la fois, sur les memes 591 records ti=35
@@ -27246,7 +28376,7 @@ verte (20 paquets, zero FAIL). RE image-cle ARRETEE (decision utilisateur).
 ## [2026-08-17] Lot R7-d — L'ecrivain est la case `+0x18` de la vtable ; et la boucle d'etat complet n'a pas de masque
 
 **Statut** : Complete (C1a atteint, C1b echoue a 0,85 % pour un palier a 50 %). Branche
-`wt/kf-ecrivain-vtable`. Plan : `.ai/V7.5/replay2d/PLAN_R7D_ECRIVAIN_VTABLE.md`.
+`wt/kf-ecrivain-vtable`. Plan : `.ai/archive/V7.5/replay2d/PLAN_R7D_ECRIVAIN_VTABLE.md`.
 
 **Decision technique** : hypothese du lot — les cases voisines de la vtable d'un descripteur de
 composant portent la SERIALISATION. Verifiee, et refermee : la vtable a dix cases et EXACTEMENT
@@ -27280,7 +28410,7 @@ source — R7-e tranche. Aucun fichier partage du decodeur modifie ; filmdec et 
 
 **Statut** : Complete (C1 echoue, negatif chiffre ; un bug de port corrige, un modele separe).
 Branche `wt/kf-encodage-drapeau`. Plan :
-`.ai/V7.5/replay2d/PLAN_R7C_ENCODAGE_DRAPEAU_IMAGE_CLE.md`.
+`.ai/archive/V7.5/replay2d/PLAN_R7C_ENCODAGE_DRAPEAU_IMAGE_CLE.md`.
 
 **Decision technique** : R7-b laissait un residu DISPERSE (0,54 % bit-exact, p10 46 bits, p90 a
 quatre ordres de grandeur) : ni bloc manquant ni deser casse. Hypothese testee : les memes
@@ -27312,7 +28442,7 @@ en image-cle, sa largeur suit la carte.
 
 **Statut** : Complete (C1 echoue, mais trois deserialiseurs corriges/portes et deux pistes closes).
 Branche `wt/kf-biped-bit-exact`. Plan :
-`.ai/V7.5/replay2d/PLAN_R7B_BIPEDE_IMAGE_CLE_BIT_EXACT.md`.
+`.ai/archive/V7.5/replay2d/PLAN_R7B_BIPEDE_IMAGE_CLE_BIT_EXACT.md`.
 
 **Decision technique** : R7-a designait trois desers bloquants pour l'image-cle du bipede (i60,
 i57, i59). Decompile Ghidra en LECTURE SEULE : (1) i60 `simulation-state` est ENTIEREMENT resolu —
@@ -27341,7 +28471,7 @@ uniforme 14 qui n'est la largeur d'aucune carte.
 
 **Statut** : Complete (experience bornee, negatif mesure + resultat quantitatif neuf). Branche
 `wt/kf-biped-etat-complet`. Plan :
-`.ai/V7.5/replay2d/PLAN_R7A_IMAGE_CLE_BIPEDE_ETAT_COMPLET.md`.
+`.ai/archive/V7.5/replay2d/PLAN_R7A_IMAGE_CLE_BIPEDE_ETAT_COMPLET.md`.
 
 **Decision technique** : probe sur le BIPEDE (ti=35, 64 composants, 63 portes) l'hypothese « le
 corps d'un record d'image-cle est l'etat complet, 64 deserialiseurs leaf concatenes dans l'ordre
@@ -27400,12 +28530,12 @@ n'existe donc aucun consommateur a decompiler ; et le tampon « keyframe » capt
 juillet portait en realite sur le PREMIER PAQUET DELTA. Les trois lots convergent sur un seul
 verrou, qui reprend son vrai nom : **l'etat par defaut par archetype, bit-exact**. Levier
 disponible et jamais consomme : les **400 frontieres de records EXACTES** de
-`.ai/V7.5/dumps/kf_capture_sample.txt` (266 NEW + 134 DELTA, avec leur bit de depart) et son
+`.ai/archive/V7.5/dumps/kf_capture_sample.txt` (266 NEW + 134 DELTA, avec leur bit de depart) et son
 tampon `kf_slot0_live.bin` — un oracle de LARGEUR par archetype.
 
 **Prochaine etape** : la fusion dans `feat/v75` revient au superviseur. `SchemaVersion` reste a
 **9** (celle de la production) : aucun des quatre lots ne publie quoi que ce soit. Registre et
-README de `.ai/V7.5/` a jour. Le seul code de production que la fusion aurait ajoute — l'entree
+README de `.ai/archive/V7.5/` a jour. Le seul code de production que la fusion aurait ajoute — l'entree
 `ti=42` de `defaultStateDeserByTI` — a ete RETIRE sur decision superviseur : sans oracle, il
 change le decodage sans le prouver. Ce que la reprise devra fournir pour le rebrancher (un
 oracle de position d'arme au sol, ou une calibration a la maniere des poses `ti=37`) est au
@@ -27415,7 +28545,7 @@ registre.
 
 **Statut** : Complete (negatif mesure sur les deux fronts, livrable). Branche
 `wt/kf-file-entite`, 3 commits, fusionnee dans `wt/fusion-lots-go`.
-Plan : `.ai/V7.5/replay2d/PLAN_R6_FILE_PAR_ENTITE.md`.
+Plan : `.ai/archive/V7.5/replay2d/PLAN_R6_FILE_PAR_ENTITE.md`.
 
 **Decision technique** : R5 avait laisse une condition de reprise precise — « decompiler le
 consommateur du payload type-2, qui alimenterait une file par-entite ». R6 l'a executee par
@@ -27452,7 +28582,7 @@ depart, sur un vrai paquet et avec son tampon. Rien n'est publie.
 
 **Statut** : Complete (negatif mesure, livrable). Branche `wt/kf-grammaire`, 4 commits,
 fusionnee dans `wt/fusion-lots-go`.
-Plan : `.ai/V7.5/replay2d/PLAN_R5_GRAMMAIRE_IMAGE_CLE.md`.
+Plan : `.ai/archive/V7.5/replay2d/PLAN_R5_GRAMMAIRE_IMAGE_CLE.md`.
 
 **Decision technique** : deux lots du meme jour (R3 sur `ti=37`, R4 sur `ti=11`) avaient conclu
 que « la grammaire du corps d'un record d'image-cle n'est resolue nulle part ». R5 l'a attaquee
@@ -27486,7 +28616,7 @@ consomme qu'environ 40 %. Rien n'est publie.
 
 **Statut** : Complete (negatif mesure, livrable). Branche `wt/ti11-objectifs`, 3 commits,
 fusionnee dans `wt/fusion-lots-go`.
-Plan : `.ai/V7.5/replay2d/PLAN_R4_OBJECTIFS_VIVANTS_TI11.md`.
+Plan : `.ai/archive/V7.5/replay2d/PLAN_R4_OBJECTIFS_VIVANTS_TI11.md`.
 
 **Decision technique** : la demande produit (« la position du drapeau par image, son porteur, ou
 en est une capture ») supposait que `ti=11` etait l'objet d'objectif. La sonde a commence par
@@ -27518,7 +28648,7 @@ moitie de la demande utilisateur.
 
 **Statut** : Complete pour les phases 1 a 3 ; phase 4 (publication) NON OUVERTE et statuee `[!]`
 avec decision d'arret argumentee. Branche `wt/ti37-identite`, 3 commits.
-Plan : `.ai/V7.5/replay2d/PLAN_R3_IDENTITE_TI37.md`. **Le code de ce lot n'a PAS ete fusionne** :
+Plan : `.ai/archive/V7.5/replay2d/PLAN_R3_IDENTITE_TI37.md`. **Le code de ce lot n'a PAS ete fusionne** :
 la production porte deja le meme lecteur (`filmdec/equipment_creation*.go`, lot R3 bis d'une
 autre session), et deux lecteurs du meme deserialiseur sont interdits.
 
@@ -27583,7 +28713,7 @@ planifier.
 
 ## [2026-08-18] v7.5 rejeu 2D — les POSES d'equipement sont publiees (schema 9), et la largeur qui bloquait etait un DOUBLE champ
 
-**Statut** : Plan `.ai/V7.5/replay2d/PLAN_POSES_EQUIPEMENT_PUBLICATION.md` COMPLET (phases 0, 1,
+**Statut** : Plan `.ai/archive/V7.5/replay2d/PLAN_POSES_EQUIPEMENT_PUBLICATION.md` COMPLET (phases 0, 1,
 2 closes ; phase 3 = proposition UI, a trancher par l'utilisateur). Branche `feat/v75`.
 
 **Decision technique principale — le diagnostic du 17/08 etait incomplet, et c'est lui qui
@@ -27649,7 +28779,7 @@ BTB), et la correlation decoupage/liste est consignee sans etre erigee en regle.
 
 ## [2026-08-17] v7.5 rejeu 2D — l'identite des objets d'equipement (ti=37) est un tag `eqip`
 
-**Statut** : Phases 0, 1 et 3 du plan `.ai/V7.5/replay2d/PLAN_IDENTITE_TI37.md` COMPLETES ;
+**Statut** : Phases 0, 1 et 3 du plan `.ai/archive/V7.5/replay2d/PLAN_IDENTITE_TI37.md` COMPLETES ;
 phase 2 (publication schema 9) `[!]` avec son blocage mesure. Branche `feat/v75`.
 
 **Decision technique principale** : le plan pariait sur `ability-enabled-id`, le champ 32 bits
@@ -27782,7 +28912,7 @@ et le compteur.
 réalignement sur `feat/v75` local), poussé. Reste : merge `--no-ff` dans `feat/v75` (confirmation
 user demandée — point de non-retour pour le lot R1 qui touche le même tiroir) puis GATE VISUEL
 USER après merge (décision user : validation après fusion, « pas l'idéal mais le plus simple »).
-Plan : `.ai/V7.5/replay2d/PLAN_HABILLAGE_REJEU_2D.md` (toutes cases 0-5 statuées, journal
+Plan : `.ai/archive/V7.5/replay2d/PLAN_HABILLAGE_REJEU_2D.md` (toutes cases 0-5 statuées, journal
 superviseur §7).
 **Décision technique** : (1) D1 AMENDÉE par le user — couleur des marqueurs = tokens
 d'accessibilité `team-ally`/`team-enemy` (PAR JOUEUR ; l'ancien code colorait PAR VIE via
@@ -27892,7 +29022,7 @@ calque hors ecran » dans `ReplayCanvas.tsx` (candidat `useOffscreenLayer` + gar
 
 ## [2026-08-16] v7.5 callouts — decouper les zones sur le decor reel : le masque publie suffisait, mais il fallait mesurer ce qui lui manque
 
-**Statut** : Complete — phase A du plan `.ai/V7.5/replay2d/PLAN_CALLOUTS_HEATMAP.md`, cinq
+**Statut** : Complete — phase A du plan `.ai/archive/V7.5/replay2d/PLAN_CALLOUTS_HEATMAP.md`, cinq
 items statues, gate A passe. Phase B (heatmap) menee en parallele par un autre agent sur un
 worktree frere, non touchee ici.
 
@@ -27987,7 +29117,7 @@ RANGED et distance portees dans le moteur (reglages admin) ; lecteur parallele s
 feat/v75-sons-fusion -> feat/v75 (rapide, meme base), publication a sa main.
 
 ## [2026-08-16] v7.5 rejeu 2D — les bornes des canevas Forge : le BSP de déquantification est la région 0, pas le plus gros tag
-**Statut** : Complété — plan `.ai/V7.5/replay2d/PLAN_BORNES_CANEVAS_FORGE.md`, quatre phases, quatre gates passés.
+**Statut** : Complété — plan `.ai/archive/V7.5/replay2d/PLAN_BORNES_CANEVAS_FORGE.md`, quatre phases, quatre gates passés.
 **Décision technique principale** : `cmd/mapquant-build` retenait `himap.ReadModuleBSPBounds(...)[0]`,
 c'est-à-dire le tag sbsp le plus GROS du module. La taille d'un tag mesure sa géométrie compilée,
 pas son rôle — et sur les canevas Forge le tag le plus lourd est le DÉCOR LOINTAIN (3 867 x 3 662
@@ -28040,7 +29170,7 @@ déclaré hors de ce plan et NON lancé ; son préalable est levé. Recette de c
 au-dessus de 1 000 m dans l'emprise d'un artefact signe un artefact périmé.
 
 ## [2026-08-16] v7.5 rejeu 2D — fusion des deux worktrees dans feat/v75, revue de fusion, ratification du golden minibobine
-**Statut** : Complété — procédure `.ai/V7.5/replay2d/FUSION_WT_2026-08-16.md`, cinq étapes.
+**Statut** : Complété — procédure `.ai/archive/V7.5/replay2d/FUSION_WT_2026-08-16.md`, cinq étapes.
 **Décision technique principale** : les deux lots ont été fusionnés en `--no-ff` dans l'ordre
 prescrit (recouvrement le plus faible d'abord). Les trois recouvrements annoncés ont fusionné
 sans conflit textuel, mais chacun a été VÉRIFIÉ SUR PIÈCES plutôt que cru sur parole — c'est là
@@ -28151,7 +29281,7 @@ par-dessus le `backdrop-filter: blur(6px)` — le flou est un no-op mesuré, l'e
 visible est le voile seul. Décision de rendu : elle appartient au gate visuel utilisateur.
 
 ## [2026-08-16] v7.5 rejeu — bornes : 8 cartes entrent, 14 sont REFUSEES, et 276 matchs deja servis sont faux (plan alertes, phase 3)
-**Statut** : Complété — phase 3 de `.ai/V7.5/replay2d/PLAN_ALERTES_REPLAY_PARTOUT.md`.
+**Statut** : Complété — phase 3 de `.ai/archive/V7.5/replay2d/PLAN_ALERTES_REPLAY_PARTOUT.md`.
 Item 3.4 statué `[!]` : `06dfe6d9` (Threshold) N'EST PAS débloquée, témoin de remplacement
 `11de8353` (Thunderhead).
 **Décision technique** : n'ajouter au catalogue que les cartes dont le contrôle
@@ -28211,7 +29341,7 @@ Le golden `minibobine` reste ROUGE — préexistant (`020b95eab`), au registre, 
 masse re-cuit 276 artefacts faux. Trois lignes ajoutées au registre des reports.
 
 ## [2026-08-16] v7.5 rejeu 2D — PLAN d'habillage écrit (marqueurs, noms, amis, logo, rangée fil | carte | fiches)
-**Statut** : En cours — plan `.ai/V7.5/replay2d/PLAN_HABILLAGE_REJEU_2D.md` écrit, AUCUN
+**Statut** : En cours — plan `.ai/archive/V7.5/replay2d/PLAN_HABILLAGE_REJEU_2D.md` écrit, AUCUN
 code touché ; exécution après validation des décisions D1-D8 par le user.
 **Décision technique** : porter la RANGÉE du POC (`carte | fil | équipes`, colonnes latérales
 `absolute inset-0` pour que la carte impose la hauteur) plutôt qu'un `items-stretch` naïf ;
@@ -28235,7 +29365,7 @@ moi sur la carte, glyphe dans fiches et fil), D6 (paire PNG noir/blanc dérivée
 SVG redessiné) ; puis exécution phases 0→6 sous `plan-execution`, gate visuel user en phase 5.
 
 ## [2026-08-16] v7.5 rejeu — killsource aux largeurs de carte : le NÉGATIF est mesuré (plan alertes, phases 0-2)
-**Statut** : Complété — phases 0, 1 et 2 de `.ai/V7.5/replay2d/PLAN_ALERTES_REPLAY_PARTOUT.md`.
+**Statut** : Complété — phases 0, 1 et 2 de `.ai/archive/V7.5/replay2d/PLAN_ALERTES_REPLAY_PARTOUT.md`.
 Phase 2 NON OUVERTE, ses 4 items statués `[!]` par décision du gate 1. Phase 3 (catalogue de
 bornes) en cours dans la même session.
 **Décision technique** : ne PAS câbler l'entrée de catalogue jusqu'à `killsource.Decode`.
@@ -28403,7 +29533,7 @@ camo/surbouclier SORTIE, ligne effet plein-fiche LIVREE pour 2 familles, ligne N
 « filtre des sons par categorie » (decision user au gate d'ecoute). Le re-build de masse
 des artefacts (pendant au registre) portera le schema 7 partout.
 ## [2026-08-16] v7.5 rejeu 2D — l'etat ACTIF d'un equipement : 5 verdicts par famille, 2 canaux gagnants
-**Statut** : Complete — plan `.ai/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md` CLOS,
+**Statut** : Complete — plan `.ai/archive/V7.5/replay2d/PLAN_ETAT_ACTIF_EQUIPEMENT.md` CLOS,
 5 gates passes (A camo, B surbouclier, C deployables, D mobilite, E i59). Lot de MESURE :
 zero rendu, zero son, zero champ de document. Les hooks `i27 charges-remaining` et le corps
 d'`i59` n'ont PAS ete executes (decisions n°1 et E du plan).
@@ -28451,7 +29581,7 @@ document). Gates techniques verts : go build/vet ./..., go test filmdec+replay (
 SKIP sans variables), golangci-lint new-from-merge-base 0 issue.
 ## [2026-08-16] v7.5 rejeu 2D — le type d'une grenade par le LANCER : NEGATIF MESURE, les deux gates tombent
 **Statut** : Complete — plan CLOS sur un negatif
-(`.ai/V7.5/replay2d/PLAN_TYPE_GRENADE_PAR_LANCER.md`). **Aucune ligne de production ecrite**,
+(`.ai/archive/V7.5/replay2d/PLAN_TYPE_GRENADE_PAR_LANCER.md`). **Aucune ligne de production ecrite**,
 aucun fichier web touche, aucune base ouverte.
 **La question** : `damagetag/data/labels.tsv` marque AMBIGU deux effets de grenade generiques
 (`31e8d17e` entrees `gggl` 0+1, `88f1034c` 0+1+3). Une etiquette non publiable n'obtient jamais
@@ -28519,7 +29649,7 @@ Gates : `go build ./...`, `go vet ./...`, `go test ./internal/analysis/replay/`
 2026-08-15 — le silence des deux tags AMBIGU ne coute rien d'observable.
 
 ## [2026-08-15] v7.5 rejeu 2D — les objets du monde etaient dequantifies aux largeurs de Cliffhanger sur TOUTES les autres cartes
-**Statut** : Complete (`.ai/V7.5/replay2d/PLAN_PRECISION_OBJETS_MONDE.md`, 3 phases, 3 gates).
+**Statut** : Complete (`.ai/archive/V7.5/replay2d/PLAN_PRECISION_OBJETS_MONDE.md`, 3 phases, 3 gates).
 **Decision technique** : `filmdec.WorldObjectPrecision` est un GLOBAL de paquet dont le defaut
 `{13,13,14}` EST l'entree `cliffhanger`/`ridgeline` du catalogue `map_quant_bounds.json` — pas un
 repli neutre, UNE carte. Aucun chemin de production ne l'ecrasait : projectiles ti=41, equipement
@@ -28885,7 +30015,7 @@ et `hinf_ma5k_avenger` absents de `[shot_effects]` » est FAUSSE — les deux y 
 ## [2026-08-15] v7.5 rejeu 2D — l explosion de grenade en particules (etape 3, plan cloture)
 
 **Statut** : Complete. Les trois etapes du plan
-`.ai/V7.5/replay2d/PLAN_EFFETS_TIRS_EXPLOSIONS.md` sont livrees et statuees ; il ne reste que
+`.ai/archive/V7.5/replay2d/PLAN_EFFETS_TIRS_EXPLOSIONS.md` sont livrees et statuees ; il ne reste que
 les gates A L OEIL de l utilisateur.
 
 **Decision technique principale**. `ExplosionFx.tsx` de Csstat a ete lu avant d etre porte :
@@ -28924,7 +30054,7 @@ duree et lisibilite de l eclair (item 2.4), et le rendu des explosions dont le c
 
 ## [2026-08-15] v7.5 rejeu 2D — l eclair de bouche, oriente par le REGARD et teinte par l ARME (etape 2)
 
-**Statut** : Complete pour l etape 2 du plan `.ai/V7.5/replay2d/PLAN_EFFETS_TIRS_EXPLOSIONS.md`
+**Statut** : Complete pour l etape 2 du plan `.ai/archive/V7.5/replay2d/PLAN_EFFETS_TIRS_EXPLOSIONS.md`
 (etape 3, les explosions de grenade, a suivre sur la meme branche).
 
 **Decision technique principale — l orientation.** Le calque des tirs orientait par le champ
@@ -28973,7 +30103,7 @@ temoin portent cle ET teinte.
 
 ## [2026-08-15] v7.5 rejeu 2D — le son sur TOUS les tirs (etape 1, plan effets de tirs)
 
-**Statut** : Complete pour l etape 1 du plan `.ai/V7.5/replay2d/PLAN_EFFETS_TIRS_EXPLOSIONS.md`
+**Statut** : Complete pour l etape 1 du plan `.ai/archive/V7.5/replay2d/PLAN_EFFETS_TIRS_EXPLOSIONS.md`
 (etapes 2 et 3 a suivre sur la meme branche `feat/v75`).
 
 **Decision technique principale**. Un tir du film porte un identifiant d arme 64 bits ; la
@@ -29013,7 +30143,7 @@ la couleur par famille d arme, en tokens dedies.
 
 ## [2026-08-14] v7.5 rang de capacite — le deserialiseur cesse de JETER l identite (etape 1.1)
 
-**Statut** : En cours — etape 1.1 du plan `.ai/V7.5/replay2d/PLAN_RANG_CAPACITE_I48.md`.
+**Statut** : En cours — etape 1.1 du plan `.ai/archive/V7.5/replay2d/PLAN_RANG_CAPACITE_I48.md`.
 
 **Decision technique principale**. `consumeBipedDesiredAbilitySet` (i48) reproduisait
 `FUN_1406d0ff0` bit pour bit — R(3) compteur, R(1) porte, R(6) identite — mais consommait
@@ -29994,7 +31124,7 @@ job. Gates visuels utilisateur pendants : toits (12 paires) + Vagabond lot B (1 
 artefacts sous Desktop/gate_cartes_v75/.
 
 **Addendum 4 (13/08 soir, demande user)** : tri de la racine `.ai/` — 21 plans/handoffs
-TRAITES de la campagne film/killfeed/rejeu deplaces vers `.ai/V7.5/` (replay2d 8, film_re 8,
+TRAITES de la campagne film/killfeed/rejeu deplaces vers `.ai/archive/V7.5/` (replay2d 8, film_re 8,
 cartes 1, killweapon 1, icones 1, racine V7.5 4 dont dette-avant-merge et superviseur 03/08).
 RESTENT en racine : le chantier vivant (PLAN_MASTER piste F, PLAN_FINALISATION_REJEU_2D,
 PLAN_OBJECTIFS_TEMPS_REEL, containment, precision projectiles), les etats de l'art et les
@@ -30072,7 +31202,7 @@ matiere creee ni supprimee. Une carte non couverte n'est pas touchee : PNG ident
 Trois constantes universelles, zero reglage par carte.
 
 **Ce que la sonde a refute** (`TestSondeToits`, 8 cartes jugees, detail
-`.ai/V7.5/cartes/INVESTIGATION_TOITS_2026-08-13.md`) : le seuil PAR PIXEL (Cliffhanger garde
+`.ai/archive/V7.5/cartes/INVESTIGATION_TOITS_2026-08-13.md`) : le seuil PAR PIXEL (Cliffhanger garde
 4,7 % de cellules plafond a 20 m — ses rochers valides) et la part d'ANCRES couvertes
 (Catalyst validee 17/24 > Aquarius defectueuse 9/22). Ce qui separe : la part de matiere
 cachant un sol praticable — validees 19,2/25,5/28,4 %, defectueuses 35,1 a 66,7 %, seuil 1/3
@@ -30400,7 +31530,7 @@ killsource en base locale pour le match affiche.
 
 ## [2026-08-12] v7.5 — les fiches du rejeu etaient une REINVENTION du POC : plan de portage ecrit
 
-**Statut** : Plan ecrit (`.ai/V7.5/replay2d/PLAN_PORTAGE_POC_FICHES_KILLFEED.md`), a confier a un
+**Statut** : Plan ecrit (`.ai/archive/V7.5/replay2d/PLAN_PORTAGE_POC_FICHES_KILLFEED.md`), a confier a un
 executeur.
 
 **Decision technique principale** : l'utilisateur a signale (a juste titre, artefact a l'appui) que
@@ -30468,7 +31598,7 @@ branche `feat/sons-rejeu-inapp` avant merge.
 
 ## [2026-08-16] Sons du rejeu in-app — cloture du plan (etapes 1 a 5)
 
-**Statut** : Plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE. Branche
+**Statut** : Plan `.ai/archive/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE. Branche
 `feat/sons-rejeu-inapp` (4 commits, depuis `feat/extraction-sons-armes`), poussee sur
 origin. Jamais de travail ni de push sur main.
 
@@ -30497,7 +31627,7 @@ les tirs via `Shot.w`, traitement du scrub et du `restart()`).
 
 ## [2026-08-16] Sons du rejeu in-app — etape 4 : deux curseurs sur la page d'admin
 
-**Statut** : Etape 4 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+**Statut** : Etape 4 du plan `.ai/archive/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
 Branche `feat/sons-rejeu-inapp`. Gates : `go build ./...` et `go vet ./...` rc=0, `go test`
 vert sur les cinq paquets touches (dont `internal/api`, qui porte le contrat OpenAPI),
 `make check-types` vert, `eslint` vert, `make test-web` 412 fichiers / 3640 tests / 0 echec.
@@ -30535,7 +31665,7 @@ branche. Reste hors perimetre jusqu'a la livraison des `.wav` : brancher le lect
 
 ## [2026-08-16] Sons du rejeu in-app — etape 3 : le lecteur, et le noeud qu'on n'ajoute pas
 
-**Statut** : Etape 3 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+**Statut** : Etape 3 du plan `.ai/archive/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
 Branche `feat/sons-rejeu-inapp`. Gates : `make check-types` vert, `make test-web` 411
 fichiers / 3633 tests passes / 0 echec, `eslint` vert sur les fichiers neufs.
 
@@ -30566,7 +31696,7 @@ sens de la regle 3. Etape 4 : les deux curseurs sur la page d'admin.
 
 ## [2026-08-16] Sons du rejeu in-app — etape 2 : la fourchette RANGED enfin exportee
 
-**Statut** : Etape 2 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+**Statut** : Etape 2 du plan `.ai/archive/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
 Branche `feat/sons-rejeu-inapp`. Gates : `gofmt -l` vide, `go build ./...` rc=0,
 `go vet ./...` rc=0, `go test ./cmd/weapon-sounds/` ok. Module de 7,24 Go jamais ouvert.
 
@@ -30598,7 +31728,7 @@ testables sans navigateur.
 
 ## [2026-08-16] Sons du rejeu in-app — etape 1 : decouverte avant tout code
 
-**Statut** : Etape 1 du plan `.ai/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
+**Statut** : Etape 1 du plan `.ai/archive/V7.5/PLAN_SONS_REJEU_INAPP.md` COMPLETE.
 Branche `feat/sons-rejeu-inapp`, creee depuis `feat/extraction-sons-armes`.
 
 **Decision technique principale** : ne rien inventer, se conformer a trois patterns
@@ -30789,7 +31919,7 @@ le Needler, puis mesurer l'ecart arme par arme. Les 18 votes de 1re personne ser
 
 ## [2026-08-15] Sons d'armes — les conteneurs `Switch` lus comme de l'aleatoire
 
-**Statut** : Etape 11 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` complete (enquete,
+**Statut** : Etape 11 du plan `.ai/archive/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` complete (enquete,
 pas de correctif). Defauts 9 et 10 ouverts au handoff, le 9 passe en tete de l'ordre suggere.
 Branche `feat/extraction-sons-armes`, rien n'est merge.
 
@@ -30822,7 +31952,7 @@ troisieme fois que l'oreille de l'utilisateur precede les controles automatiques
 
 ## [2026-08-15] Sons d'armes — un seuil recalibre sur les votes, et les faux modes de tir
 
-**Statut** : Etape 10 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` complete. Handoff mis
+**Statut** : Etape 10 du plan `.ai/archive/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` complete. Handoff mis
 a jour (defaut 5 corrige, defaut 8 ouvert). Branche `feat/extraction-sons-armes`, rien n'est
 merge.
 
@@ -30863,8 +31993,8 @@ que sa matiere premiere.
 
 ## [2026-08-15] Sons d'armes — audit du format, gains appliques, et un handoff
 
-**Statut** : Etapes 8 et 9 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` completes.
-Handoff ecrit : `.ai/V7.5/HANDOFF_SONS_ARMES_2026-08-15.md`. Branche
+**Statut** : Etapes 8 et 9 du plan `.ai/archive/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` completes.
+Handoff ecrit : `.ai/archive/V7.5/HANDOFF_SONS_ARMES_2026-08-15.md`. Branche
 `feat/extraction-sons-armes`, rien n'est merge.
 
 **Decision technique principale** : l'utilisateur a releve que deux specificites du format
@@ -30900,7 +32030,7 @@ du Mutilator, perspective du Needler) : ses retours valent une mesure.
 
 ## [2026-08-15] Sons d'armes — un tir est un empilement, et la moitie des sons manquait
 
-**Statut** : Etape 5 ajoutee au plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` et complete.
+**Statut** : Etape 5 ajoutee au plan `.ai/archive/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` et complete.
 Branche `feat/extraction-sons-armes`.
 
 **Decision technique principale** : deux defauts de conception corriges, tous deux revelés
@@ -30941,7 +32071,7 @@ l'identite d'une arme ne se deduit JAMAIS du nom de son pack audio.
 
 ## [2026-08-15] Sons d'armes — etape 4 : 33 armes prouvees, cadence lue dans le tag
 
-**Statut** : Etape 4 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` COMPLETE sauf l'export
+**Statut** : Etape 4 du plan `.ai/archive/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` COMPLETE sauf l'export
 audio (non demarre). Branche `feat/extraction-sons-armes`.
 
 **Decision technique principale** : generaliser sans multiplier les lectures du module de
@@ -30974,7 +32104,7 @@ joints par le global tag id du `weap` — la cle etablie par `weapon-icons-build
 
 ## [2026-08-15] Sons d'armes — la chaine arme -> son de tir est fermee (etapes 1 a 3)
 
-**Statut** : Etapes 1, 2 et 3 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` CLOSES.
+**Statut** : Etapes 1, 2 et 3 du plan `.ai/archive/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` CLOSES.
 Branche `feat/extraction-sons-armes`, 4 commits pousses. Etape 4 (export audio) ouverte.
 
 **Decision technique principale** : la preuve ne repose sur AUCUN nom (le jeu n'en livre
@@ -31014,7 +32144,7 @@ un fichier de donnees duplique derive a chaque mise a jour du jeu, a promouvoir 
 
 ## [2026-08-15] Sons d'armes — les banks Wwise sont des tags `sbnk` (etape 1 close)
 
-**Statut** : Etape 1 du plan `.ai/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` COMPLETE (gate passe).
+**Statut** : Etape 1 du plan `.ai/archive/V7.5/PLAN_EXTRACTION_SONS_ARMES.md` COMPLETE (gate passe).
 Branche `feat/extraction-sons-armes`. Etapes 2 a 4 non demarrees.
 
 **Decision technique principale** : besoin initial hors LevelUp (extraire les sons de tir
@@ -31085,7 +32215,7 @@ d'inclusion utilisateur ; Phase 3 reste au registre (RE, hors v7.5).
 
 ## [2026-08-12] v7.5 — fiches enrichies du rejeu 2D : la frontiere offline-pur, et un plan en 3 phases
 
-**Statut** : Plan ecrit (`.ai/V7.5/replay2d/PLAN_FICHES_ENRICHIES_REJEU2D.md`), a confier a un
+**Statut** : Plan ecrit (`.ai/archive/V7.5/replay2d/PLAN_FICHES_ENRICHIES_REJEU2D.md`), a confier a un
 executeur. Investigation close.
 
 **Decision technique principale** : investigation 7 agents sur pieces (le doc ETAT_DU_POC.md du
@@ -31169,7 +32299,7 @@ de degat. Elle est effectivement hors d'atteinte (11 lignes sur 114 de classe AR
 `[effet weap ...]` dans `damagetag/labels.tsv` ; les autres portent un `proj`, un `hlmt` ou un
 `weme`). Mais designer une VIGNETTE ne demande pas le tag : le NOM suffit, et `jpt! -> nom`
 est deja resolu a 97,6 %. Le maillon manquant etait donc `nom -> vignette`, et il etait deja
-versionne dans le depot — la passe humaine `.ai/V7.5/icones/NOMMAGE_GATE_2026-08-09.tsv`
+versionne dans le depot — la passe humaine `.ai/archive/V7.5/icones/NOMMAGE_GATE_2026-08-09.tsv`
 (`index kill feed -> weapon_key` pour 26 vignettes, libelle humain pour les autres).
 
 Le pont vit dans `internal/games/halo_infinite/film/killicon` : `data/rules.tsv`, 36 regles
@@ -31238,7 +32368,7 @@ apparaitre en permanence plutot qu'au survol.
 ## [2026-08-11] v7.5 — integration des icones d'armes : la cle devient le tag `weap`, et deux etapes du plan tombent sous la mesure
 
 **Statut** : Complete pour ce qui etait mesurable ; deux etapes REFUTEES et consignees.
-Plan : `.ai/V7.5/icones/PLAN_INTEGRATION_ICONES.md` (etapes 1, 2 et 4 statuees ; etape 3 `[!]`).
+Plan : `.ai/archive/V7.5/icones/PLAN_INTEGRATION_ICONES.md` (etapes 1, 2 et 4 statuees ; etape 3 `[!]`).
 Registre des reports : 4 entrees.
 
 **Decision technique principale : la resolution arme -> icone quitte le NOM pour le TAG `weap`.**
@@ -31321,8 +32451,8 @@ les grandes images.
 ## [2026-08-10] v7.5 — cartes lot A : les fonds de carte sont PRODUITS, et la cuisson revele ce que les tests taisaient
 
 **Statut** : Complete. 21 assets. Gate visuel TENU, deux defauts de rendu ouverts par lui,
-portes au registre. Plan : `.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md` §3 et §7 (D3).
-Rapport : `.ai/V7.5/cartes/RAPPORT_CUISSON_FONDS_2026-08-10.md`.
+portes au registre. Plan : `.ai/archive/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md` §3 et §7 (D3).
+Rapport : `.ai/archive/V7.5/cartes/RAPPORT_CUISSON_FONDS_2026-08-10.md`.
 
 **Decision technique principale : sortir la chaine des tests SANS la modifier.** Chaque etape
 de `cuisson.go` est le portage litteral d'un helper de test, avec ses chiffres d'origine ; les
@@ -31409,7 +32539,7 @@ couvertes (Illusion, Prism, Aquarius) et le « rudimentaire » de Streets/Bazaar
 ## [2026-08-10] v7.5 — cartes : fin de contexte, handoff pose ; AUCUN asset n'est encore produit
 
 **Statut** : chaine de rendu COMPLETE et validee, LIVRAISON NON COMMENCEE. Handoff et prompt de
-reprise : `.ai/V7.5/cartes/HANDOFF_CARTES_2026-08-10.md`.
+reprise : `.ai/archive/V7.5/cartes/HANDOFF_CARTES_2026-08-10.md`.
 
 **Le constat qui compte, souleve par l'utilisateur** : j'ai ecrit « les cartes sont livrees »,
 c'etait faux. Les PNG existants sont des ARTEFACTS DE REVUE ecrits par des TESTS a des chemins
@@ -31474,7 +32604,7 @@ lieu de faire `t.Fatal`. Signaler n'est pas avaler.
 ## [2026-08-10] v7.5 — cartes : le gate de la coquille attrape 4 cartes, et la regle devient auto-verifiee
 
 **Statut** : Complete. Detail : §14.4 et §14.5 du handoff
-`.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
+`.ai/archive/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
 
 **Decision technique principale : la coquille ne s'applique QUE si elle garde toutes les ancres
 d'objectifs.** Ce n'est pas une precaution ajoutee apres coup, c'est l'oracle faible applique a
@@ -31511,7 +32641,7 @@ aux quatre cartes refusees. Puis la suite Forge (1 139 objets sans modele `rtgo`
 ## [2026-08-10] v7.5 — cartes : la zone jouable est RESOLUE, et j'avais ferme deux verdicts trop vite
 
 **Statut** : Complete pour la regle ; gate du balayage des 27 cartes en cours. Detail : §14 du
-handoff `.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
+handoff `.ai/archive/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
 
 **Decision technique principale : ce n'etait pas le critere qui bloquait, c'etait L'ALTITUDE A
 LAQUELLE ON LE TESTAIT.** La coquille de mort du tag `sddt` etait testee au z DESSINE de chaque
@@ -31552,7 +32682,7 @@ sous la coquille est disqualifiante et doit se voir avant livraison.
 
 ## [2026-08-10] v7.5 — cartes : les volumes de mort TROUVES dans les .mvar (cartes Forge), type_id resolu
 
-**Statut** : Complete. Detail : `.ai/V7.5/cartes/INVESTIGATION_VOLUMES_MORT_MVAR_2026-08-10.md`.
+**Statut** : Complete. Detail : `.ai/archive/V7.5/cartes/INVESTIGATION_VOLUMES_MORT_MVAR_2026-08-10.md`.
 
 **Decision technique principale : le `type_id` des objets .mvar est le GlobalID d'un tag
 `food` (Forge object definition) de `forge_objects-rtx-new.module` — 20/20 resolus.** Les
@@ -31580,7 +32710,7 @@ Catalyst, le verdict de la phase 1 tient : grain 0,005, coquille sddt en cadrage
 ## [2026-08-10] v7.5 — cartes : sddt et pfnd decodes, et NO-GO pour la zone jouable (sixieme et septieme criteres)
 
 **Statut** : Complete. Verdict negatif chiffre. Detail :
-`.ai/V7.5/cartes/INVESTIGATION_SDDT_PFND_2026-08-10.md` (sondes non commitees dans
+`.ai/archive/V7.5/cartes/INVESTIGATION_SDDT_PFND_2026-08-10.md` (sondes non commitees dans
 `internal/himap/sonde_sddt_*.go`).
 
 **Decision technique principale : les deux tags se DECODENT (acquis), mais aucun ne porte la
@@ -31615,7 +32745,7 @@ disque restant identifie. Le grain 0,005 (66,7 % d'accord) reste la meilleure re
 ## [2026-08-10] v7.5 — cartes : l'accessibilite ne delimite pas la zone jouable (NO-GO), deux cibles nommees pour la suite
 
 **Statut** : Complete. Cinquieme critere de zone jouable refute par la mesure. Detail :
-`.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md` et le registre des reports.
+`.ai/archive/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md` et le registre des reports.
 
 **Decision technique principale : la connexite pietonne ne separe pas l'arene du decor, et la
 raison est structurelle.** Le rendu est un CHAMP D'ALTITUDE — la surface la plus haute par
@@ -31658,7 +32788,7 @@ pas la qualite des idees, c'est l'existence du banc qui les tue en une minute.
 ## [2026-08-09] v7.5 — cartes : la nettete tient a trois leviers, pas a un reglage d'eclairage
 
 **Statut** : Complete cote outillage ; le CHOIX DU STYLE revient a l'utilisateur (gate visuel).
-Detail : §10.12 de `.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
+Detail : §10.12 de `.ai/archive/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
 
 **Decision technique principale : l'ombrage ne peut PAS tout montrer, et aucun reglage ne l'y
 amenera.** Deux dalles horizontales a deux hauteurs ont exactement le meme eclairement — le
@@ -31693,7 +32823,7 @@ condamner du code juste.
 ## [2026-08-09] v7.5 — cartes : la zone jouable se lit dans la FINESSE du maillage (carte B validee)
 
 **Statut** : Complete. Carte de Cliffhanger validee par l'utilisateur (« je valide carte B
-finesse »). Detail : §10.11 de `.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
+finesse »). Detail : §10.11 de `.ai/archive/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
 
 **Decision technique principale : le decor se separe de l'aire de jeu par le GRAIN DU
 MAILLAGE, pas par sa provenance ni par sa position.** L'observation vient du rendu lui-meme —
@@ -31736,7 +32866,7 @@ ambiante hemispherique (`0,25 + 0,75 x d`), qui tasse les valeurs vers le blanc.
 ## [2026-08-09] v7.5 — cartes : le PLANCHER manquait ; rendu VALIDE par l'utilisateur
 
 **Statut** : Complete pour le rendu (gate visuel PASSE). Reste la zone jouable, cf. §10.10 de
-`.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
+`.ai/archive/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
 
 **Decision technique principale : construire l'INSTRUMENT avant de chercher la cause.** Le
 premier gate visuel a ete refuse (« toujours pas ce putain de pont »). Au lieu d'enchainer les
@@ -31783,7 +32913,7 @@ effet du semis de points du prototype avant d'inventer une regle de tri.
 ## [2026-08-09] v7.5 — cartes : la dette de lecture Reclaimer est soldee, l'echelle d'instance etait fausse
 
 **Statut** : En cours — gate visuel du a l'utilisateur. Detail chiffre : §10 de
-`.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
+`.ai/archive/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
 
 **Decision technique principale : LIRE la source avant de supposer, comme l'ordonnait le
 §9.4.** Les cinq hypotheses du §9.2 avaient toutes ete mesurees et honnetement refutees,
@@ -31827,7 +32957,7 @@ pas la couverture en pixels : elle BAISSE de A a C alors que la geometrie est pl
 ## [2026-08-08] v7.5 — triangles : la primitive de rendu est trouvee (HANDOFF)
 
 **Statut** : En cours, fin de session sur avancee critique. Handoff complet :
-`.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
+`.ai/archive/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md`.
 
 **Decision technique principale : la carte est une COUPE d'un VOLUME, pas une vue de dessus.**
 Lu dans le prototype (`s31_raster.py`, `s37_all.py`, `s40_render.py`) au lieu d'etre
@@ -31858,7 +32988,7 @@ la carte validee, cf. `ETAT_DU_POC.md`) — il tranche T4 et juge le rendu d'un 
 ## [2026-08-08] v7.5 — triangles : LA CARTE APPARAIT, et le blocage etait le rendu
 
 **Statut** : En cours, mais l'etape visuelle est franchie. Plan
-`.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
+`.ai/archive/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
 
 **Correction utilisateur, et c'est elle qui a debloque.** Je cherchais quel ETAGE
 cartographier, avec trois essais de plafond tous illisibles, et je m'appretais a brancher
@@ -31887,7 +33017,7 @@ sonde), puis C1 — comparaison cote a cote avec `carte_validee_v1.png` et gate 
 
 ## [2026-08-08] v7.5 — triangles, T6 : la surface marchable est batie, l'etage reste a choisir
 
-**Statut** : En cours. Plan `.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
+**Statut** : En cours. Plan `.ai/archive/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
 
 **Fait** : `himap.HeightField` rasterise les 46,6 M de triangles PAR TRIANGLE et ne retient
 que les faces marchables (normale a moins de 45 degres de la verticale). Rasteriser par
@@ -31909,7 +33039,7 @@ de plafond serait un ajustement sur le resultat qu'il doit prouver.
 
 ## [2026-08-08] v7.5 — portage des triangles, etapes T2 a T4 : 46,6 M de triangles
 
-**Statut** : En cours. Plan `.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
+**Statut** : En cours. Plan `.ai/archive/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
 
 **La chaine est portee de bout en bout.** `Sections` @64 est le tableau des maillages
 (60 o), ses enfants a `foff = meshIndex x 60` sont les LOD render data (148 o) — 1 195
@@ -31942,7 +33072,7 @@ tranchera T4 par la meme occasion.
 
 ## [2026-08-08] v7.5 — portage des triangles, etapes E et T1
 
-**Statut** : En cours. Branche `feat/v75`, plan `.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
+**Statut** : En cours. Branche `feat/v75`, plan `.ai/archive/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
 
 **Etape E — le lecteur de module est sain, et un garde-rail dormait.** Regeneration de
 `ridgeline.json` et `sgh_streets.json` depuis les modules, comparees aux versions figees :
@@ -31977,7 +33107,7 @@ couples (globalID, meshIndex) resolus.
 
 **Statut** : Complété, périmètre fermé, chaque item statué. Série de commits sur `feat/v75`
 (mode branche unique) — pas de merge. Worktree `LevelUp-wt-replay2d`. Rapport complet :
-`.ai/V7.5/cartes/RAPPORT_LOT5_CARTES_2026-08-08.md`.
+`.ai/archive/V7.5/cartes/RAPPORT_LOT5_CARTES_2026-08-08.md`.
 
 **Décision technique principale — le rack du canevas.** En vérifiant sur pièces ce que
 `cmd/mapobj-build` allait publier pour Vagabond, la sortie s'est révélée fausse : trois
@@ -32036,7 +33166,7 @@ aussi : la vraie différence n'est pas Forge/pas Forge — Cliffhanger a été c
 elle aussi, mais 343 l'a CUITE dans un module dédié (ridgeline : 10 223 instances / 443
 objets, contre fo08_wetland : 788 / 4 709). Rendre Vagabond demande une étape 2
 (`type_id` -> tag de modèle), pas un miracle. Décision utilisateur : le portage en Go de la
-chaîne des triangles est PRIORITAIRE — plan `.ai/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
+chaîne des triangles est PRIORITAIRE — plan `.ai/archive/V7.5/cartes/PLAN_PORT_TRIANGLES_GO.md`.
 
 **Conclusion / prochaine étape.** Le containment peut être re-statué : son oracle existe
 maintenant (3 matchs Strongholds sur Vagabond). Les deux fonds de carte refusés renvoient au
@@ -32138,7 +33268,7 @@ verdict.
 
 ## [2026-08-08] Piste E — la prémisse de la voie trajectoire est MESURÉE : elle sépare les armes en trois
 
-**Statut** : Complété. Addendum §9 de `.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md`. Branche
+**Statut** : Complété. Addendum §9 de `.ai/archive/V7.5/VERDICT_PRECISION_PROJECTILES.md`. Branche
 `research/v75-precision`. Test demandé par l'utilisateur (« teste cette dernière voie juste
 pour voir et être sûr »). Aucun fichier de production touché, aucune écriture en base.
 
@@ -32179,12 +33309,12 @@ intuition. Appeler la production directement a inversé le résultat.
 
 **Prochaine étape** : aucune de ma part. La poursuite est une décision produit (« veut-on la
 précision du lance-roquettes ? »), pas une question de recherche ouverte. Outillage archivé :
-`.ai/V7.5/outillage/precision_projectiles/tmp_projorig/`.
+`.ai/archive/V7.5/outillage/precision_projectiles/tmp_projorig/`.
 
 ## [2026-08-08] filmdec i0 `ti=41` — les dumps sont lus : ils CONFIRMENT la production, ils ne la débloquent pas
 
 **Statut** : Complété pour cette session (reprise depuis le handoff). Note §11 :
-`.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
+`.ai/archive/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
 Rien de porté dans `traverse.go`, aucune écriture en base, aucune action prod.
 
 **Décision technique principale** : le « prochain geste » que mon propre handoff annonçait —
@@ -32242,13 +33372,13 @@ vérification indépendante, c'est une dégradation.**
 décodé avec les bornes de SA carte, deux régimes — coordonnée monde si la plage est fixe,
 normalisée si elle suit la carte). Si aucun ne mord sur un échantillon dix fois plus grand, le
 négatif est solide et la branche opaque se documente comme non décodée, à 6,2 % des records.
-Outillage archivé sous `.ai/V7.5/outillage/precision_projectiles/` (`tmp_precdump`, `tmp_i0hi`),
+Outillage archivé sous `.ai/archive/V7.5/outillage/precision_projectiles/` (`tmp_precdump`, `tmp_i0hi`),
 avec un bandeau de réfutation sur `tmp_i0w`.
 
 ## [2026-08-08] filmdec i0 `ti=41` — T2 et T3 : deux instruments qui ne mordent pas, et les deux échecs sont instrumentaux
 
 **Statut** : Complété pour cette session. Note §8 :
-`.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
+`.ai/archive/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
 Rien de porté dans `traverse.go`.
 
 **Acquis chiffré, et il compte pour la suite** : sur 8 films, les échantillons i0 de `ti=41` se
@@ -32292,7 +33422,7 @@ ses preuves. Le prochain geste utile est **d'exporter le localisateur de boucle 
 
 ## [2026-08-08] filmdec i0 `ti=41` — T1' : le flux delta rend des trajectoires, et ma conclusion de la veille était fausse
 
-**Statut** : Complété. Note : `.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md` §7.
+**Statut** : Complété. Note : `.ai/archive/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md` §7.
 Branche `research/v75-precision`. Rien de porté dans `traverse.go`.
 
 **Correction, sur objection de l'utilisateur.** J'avais conclu (§6) que la voie trajectoire
@@ -32332,7 +33462,7 @@ seulement le portage.
 ## [2026-08-08] filmdec i0 `ti=41` — fin de la phase RE, T1 positif, et le vrai périmètre
 
 **Statut** : Complété pour ce que je peux conclure seul. Note :
-`.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
+`.ai/archive/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
 Rien de porté dans `traverse.go`, aucun fichier de production touché.
 
 **Bilan de la phase RE, et il est humiliant dans le bon sens : sur 4 écarts que j'avais annoncés
@@ -32379,7 +33509,7 @@ archétypes qui le portent, une régression y serait silencieuse.
 ## [2026-08-08] filmdec — i0 de `ti=41` (position du projectile) : ouverture, et une règle de lecture du binaire
 
 **Statut** : En cours. Note de travail tenue au fil de l'eau :
-`.ai/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
+`.ai/archive/V7.5/film_re/NOTE_I0_TI41_POSITION_PROJECTILE.md`. Branche `research/v75-precision`.
 **Travail de DÉCODEUR**, hors piste E (close, verdict négatif) — feu vert utilisateur explicite.
 Aucun fichier de production touché, rien de porté dans `traverse.go`.
 
@@ -32484,7 +33614,7 @@ bit-exact, au registre du décodeur.
 ## [2026-08-08] v7.5 piste E — session 2/2 : voie de la réplication reformulée, déconvolution ratée de peu, timebox CLOS
 
 **Statut** : Complété. **Le timebox de la décision #6 est consommé, le verdict est NÉGATIF et
-il est écrit** (`.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md`, §0bis + §5). Branche
+il est écrit** (`.ai/archive/V7.5/VERDICT_PRECISION_PROJECTILES.md`, §0bis + §5). Branche
 `research/v75-precision`. Aucun fichier de production touché, aucun merge, aucune écriture en
 base.
 
@@ -32651,7 +33781,7 @@ l'étape A du §6 du verdict, avec son critère d'arrêt dé-risqué.
 **Statut** : Complété pour la session 1/2 (timebox décision #6 : 2 sessions, verdict écrit).
 Branche `research/v75-precision`, worktree `LevelUp-wt-precision`. Mesure pure : aucun fichier
 de production touché, le cache de films du dépôt principal lu en LECTURE SEULE, tout balayage
-plafonné par `-limit`. Livrable : `.ai/V7.5/VERDICT_PRECISION_PROJECTILES.md`.
+plafonné par `-limit`. Livrable : `.ai/archive/V7.5/VERDICT_PRECISION_PROJECTILES.md`.
 
 **Décision technique principale — un instrument neuf, et un gate joué avant toute conclusion.**
 Le nouvel outil `cmd/tmp_pjcnt` lit les records type 105 par balayage de PAQUETS
@@ -32811,7 +33941,7 @@ icônes ».
 
 **Ce qui est écrit, et pourquoi là** :
 
-- **`.ai/V7.5/icones/ETAT_DE_L_ART_ICONES.md`** (266 lignes) — le document de référence, à la
+- **`.ai/archive/V7.5/icones/ETAT_DE_L_ART_ICONES.md`** (266 lignes) — le document de référence, à la
   convention du dossier (les états de l'art font foi sur ce qui est prouvé / assumé / réfuté).
   Il porte la chaîne maillon par maillon avec son contrôle, **les deux tables de correspondance
   complètes** (index → weapon_key → nom interne, générées depuis `index.json`), un tableau des
@@ -32821,7 +33951,7 @@ icônes ».
   passé avec la nuance qui compte : le critère demandait une vérification à l'oeil sur 10 armes,
   le résultat est plus fort (lecture dans le jeu, 29/29) — et la réserve « BR75 / Bandit
   visuellement proches » était fondée, je les avais interverties.
-- **`.ai/V7.5/README.md`** — `icones/` ajouté à la table des dossiers et aux points d'entrée.
+- **`.ai/archive/V7.5/README.md`** — `icones/` ajouté à la table des dossiers et aux points d'entrée.
 - **`.ai/README_KILLWEAPON_INDEX.md`** — entrée §1.11. C'est sa place : la table `bitd` est le
   nommage que la chaîne sonore n'avait pas su donner, et **le Falcon y figure sous son vrai nom**
   là où la banque Wwise disait « Pelican » (le piège documenté en tête du plan icônes).
@@ -33026,7 +34156,7 @@ DISPOSITION DE CHAMPS, c'est-à-dire exactement ce qu'un schéma est. Ne pas rel
 comme une fin de non-recevoir.
 
 **Ce que le dépôt avait déjà** : `internal/himap/sbsp.xml` (le field-walker éprouvé) et quatre
-définitions Forge copiées sous `.ai/V7.5/dumps/forge_zones/`, toutes de la même source
+définitions Forge copiées sous `.ai/archive/V7.5/dumps/forge_zones/`, toutes de la même source
 publique — `Gamergotten/Infinite-runtime-tagviewer`, 479 définitions dumpées par Lord Zedd et
 Exhibit. L'opération était donc précédentée ; `weap.xml`, lui, n'était nulle part sur le poste.
 
@@ -33061,7 +34191,7 @@ validation est gratuite et exacte.
 StringID — donc en murmur3. Le dépôt a déjà craqué des noms par murmur3 direct côté Forge
 (§Q1.0-septies). Les NOMS d'armes pourraient donc tomber par la même voie que les icônes.
 
-**Versé au dépôt** : `.ai/V7.5/icones/reference_weap_tag_definition.xml`, même convention que
+**Versé au dépôt** : `.ai/archive/V7.5/icones/reference_weap_tag_definition.xml`, même convention que
 `reference_food_tag_definition.xml`.
 
 **Conséquence pratique, à dire avant que l'utilisateur ne nomme à la main** : si le walker
@@ -33115,7 +34245,7 @@ mécanisme qui ne marque plus rien est du code mort.
   d'icône dans le tag `weap`. Ma recherche précédente (petit entier à offset constant) était
   trop naïve : le corps d'un tag est un arbre de structures dont les offsets bougent. Le dépôt
   possède DÉJÀ la bonne machinerie — `internal/himap` marche les champs d'un `sbsp` avec le
-  plugin `sbsp.xml`, et `.ai/V7.5/dumps/forge_zones/` montre que d'autres définitions de tags
+  plugin `sbsp.xml`, et `.ai/archive/V7.5/dumps/forge_zones/` montre que d'autres définitions de tags
   ont déjà été obtenues. Il faut `weap.xml`, pas Ghidra.
 
 **Gates** : `go build ./...` vert, `golangci-lint` 0 issue, `go test ./internal/archlint/...`
@@ -33253,7 +34383,7 @@ d'opacité par pixel. Elle ne sépare pas : l'icône d'explosion (légitime, hé
 bornée dans le code (73 sur 88 déclarées), avec sa justification écrite — pas un seuil qui
 donnerait l'illusion d'un critère.
 
-**La page de nommage.** `.ai/V7.5/icones/NOMMAGE_ICONES.html` remplace la page en lecture :
+**La page de nommage.** `.ai/archive/V7.5/icones/NOMMAGE_ICONES.html` remplace la page en lecture :
 une carte par icône (les deux styles côte à côte pour l'atlas des armes, un seul nom à donner
 par index), une liste déroulante des 29 armes du registre plus les catégories hors registre
 (objectif, véhicule, tourelle, pictogramme, équipement), un champ libre, **sauvegarde
@@ -33279,7 +34409,7 @@ l'API de métadonnées officielle H5).
 `extract.go` dépassait 500 lignes après ces ajouts : scindé en `align.go` (l'appariement, là
 où le risque d'erreur silencieuse est le plus élevé) et `extract.go`.
 
-**Conclusion / prochaine étape** : ouvrir `.ai/V7.5/icones/NOMMAGE_ICONES.html`, nommer, puis
+**Conclusion / prochaine étape** : ouvrir `.ai/archive/V7.5/icones/NOMMAGE_ICONES.html`, nommer, puis
 me remettre le bloc TSV — c'est lui qui débloque l'écriture de la table de correspondance et
 l'intégration web.
 
@@ -33362,12 +34492,12 @@ crâne, drapeau, sandwich).
 
 **Livrables** : `apps/go-api/cmd/weapon-icons-build/` (le binaire reste : il régénère un
 artefact versionné, critère de la purge J3 lot A), les 78 PNG + `index.json`, et l'artefact
-de revue `.ai/V7.5/icones/REVUE_ICONES_ARMES.html` (+ trois planches jointes).
+de revue `.ai/archive/V7.5/icones/REVUE_ICONES_ARMES.html` (+ trois planches jointes).
 
 **Gates joués** : `go build ./...` vert, `golangci-lint run ./cmd/weapon-icons-build/...`
 0 issue, `go test ./internal/archlint/... ./internal/games/weapons/...` vert.
 
-**Conclusion / prochaine étape** : ouvrir `.ai/V7.5/icones/REVUE_ICONES_ARMES.html` et
+**Conclusion / prochaine étape** : ouvrir `.ai/archive/V7.5/icones/REVUE_ICONES_ARMES.html` et
 nommer les icônes arme par arme. Sans ce passage, rien ne se branche : la table
 `weaponImageFiles` de `adapter_asset_urls.go` ne peut être écrite qu'après.
 ## [2026-08-11] v7.5 voie B — ronde P1-1-bis : le DUAL, et le plancher du corpus passe sous 88 %
@@ -33755,7 +34885,7 @@ levier sur la colonne ①, sous réserve qu'il date ses tirs.
 ## [2026-08-08] v7.5 voie B — le lot d'implementation : pont ferme, positions de mort, garde reecrit
 
 **Statut** : Étapes 1 et 3 **Complétées**, étape 2 **partielle et arrêtée proprement**. Branche
-`research/v75-ctf`. Plan : `.ai/V7.5/PLAN_LOT_PONT_ET_KILLPOSITIONS.md`, chaque item statué.
+`research/v75-ctf`. Plan : `.ai/archive/V7.5/PLAN_LOT_PONT_ET_KILLPOSITIONS.md`, chaque item statué.
 Aucun merge — le rattachement à `feat/v75` est une décision du superviseur.
 
 **ÉTAPE 1 — les deux fermetures en production (`closures.go`).** Ce qui distingue une fermeture
@@ -33972,8 +35102,8 @@ négocier. Exécuter ce lot dans v7.5 ou plus tard est une décision utilisateur
 ## [2026-08-08] Recherche v7.5 voie B — les tirs perdus du CTF ne sont pas un probleme de CTF
 
 **Statut** : Complété (recherche, aucune feature). Branche `research/v75-ctf`, worktree
-`LevelUp-wt-ctf`. Verdict écrit : `.ai/V7.5/RECHERCHE_CTF_TIRS_PERDUS.md`, sorties brutes
-versionnées sous `.ai/V7.5/replay2d/mesures_ctf_2026-08-08/`. Répond à la décision #2 du master
+`LevelUp-wt-ctf`. Verdict écrit : `.ai/archive/V7.5/RECHERCHE_CTF_TIRS_PERDUS.md`, sorties brutes
+versionnées sous `.ai/archive/V7.5/replay2d/mesures_ctf_2026-08-08/`. Répond à la décision #2 du master
 plan, qui conditionne le lot rejeu 2D public (piste F). **La décision finale reste à
 l'utilisateur.**
 
@@ -36425,7 +37555,7 @@ leurs versions du 2026-08-02 21:54 sont perdues (`data/cache` est gitignoré). *
 ce lot** : `cmd/replay-build` n'importe aucun paquet modifié ici, et les tailles obtenues
 correspondent aux copies de référence du worktree `filmdec-continuation` (1 638 531 / 2 621 908).
 Les versions écrasées portaient ~650 Ko de plus que ce que ce dépôt sait produire aujourd'hui, sous
-toutes les combinaisons de drapeaux essayées (`--geometry .ai/V7.5/dumps` → geometry=0 ; build
+toutes les combinaisons de drapeaux essayées (`--geometry .ai/archive/V7.5/dumps` → geometry=0 ; build
 depuis le worktree `re-mode-score` → idem). Leur provenance reste inexpliquée. **À décider par
 l'utilisateur** : les regénérer depuis la branche/les drapeaux qui les ont produites, ou accepter
 la forme courante. Leçon : sauvegarder AVANT de rejouer un gate qui écrit.
@@ -37194,7 +38324,7 @@ d'identité non identifié (offsets 688/732).
 ## [2026-08-02] Le protocole d'observation corrigé — on n'observe pas le socle, on observe ce qui y apparaît
 
 **Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q1.0-decies**.
-Sortie : `.ai/V7.5/dumps/forge_zones/emplacements_a_observer.txt`.
+Sortie : `.ai/archive/V7.5/dumps/forge_zones/emplacements_a_observer.txt`.
 
 **Décision technique principale** : l'utilisateur corrige le protocole que j'avais proposé —
 « le Representation Name c'est un emplacement ; je peux te confirmer ce qu'il fait spawn et à
@@ -37320,7 +38450,7 @@ tag `food`.
 ## [2026-08-02] Reconnaitre un emplacement sans liste en dur — c'est l'emprise, pas le type_id
 
 **Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q1.0-octies**.
-Sortie : `.ai/V7.5/dumps/forge_zones/emplacements_predicats.txt`.
+Sortie : `.ai/archive/V7.5/dumps/forge_zones/emplacements_predicats.txt`.
 
 **Décision technique principale** : question posée en cours de session — au rejeu, on ne
 sait pas quels types d'emplacement une carte emploie, et selon le thème graphique les
@@ -37362,7 +38492,7 @@ Suite : les 5 labels craqués dans `objectives.go`, puis le contrat des formes d
 
 **Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : sections
 **Q1.0-septies** et **Q1.0-septies-bis**. Handoff mis à jour (piste 1 close, deux pistes
-restantes). Outillage ré-archivé sous `.ai/V7.5/outillage/forge_palette/`.
+restantes). Outillage ré-archivé sous `.ai/archive/V7.5/outillage/forge_palette/`.
 
 **Décision technique principale** : jouer la piste 1 du handoff jusqu'au bout — lire le
 champ `Crate Variant` PAR OBJET (`/#3[]/#8/#1[]/#0[]/#0`) sur les 199 cartes, puis passer
@@ -37410,7 +38540,7 @@ puis implémenter le contrat de données des formes de zone.
 ## [2026-08-02] Le témoin de Q2 est joué — la lecture « tailles pleines » confirmée par l'oracle
 
 **Statut** : Complété. Branche `feat/re-mode-score`. État de l'art : section **Q2 — LE TÉMOIN
-EST JOUÉ**. Outillage archivé sous `.ai/V7.5/outillage/forge_palette/`.
+EST JOUÉ**. Outillage archivé sous `.ai/archive/V7.5/outillage/forge_palette/`.
 
 **Décision technique** : produire enfin le témoin que la première passe avait laissé ouvert,
 en acceptant d'écrire dans une donnée livrée — sur accord du superviseur. Ajout de
@@ -37443,7 +38573,7 @@ occurrence sur les 88 modules (groupe `levl`), preuve établie hors de toute mes
 mesures indépendantes et concordantes (les 11 coïncidences cylindre/boîte, et cet oracle
 d'exécution). Reste ouvert : le nommage des quatre entrées « emplacement », qui demande de
 parser le bloc « Strings » de `fosp`. L'outillage (4 commandes, une douzaine de sous-commandes)
-est archivé sous `.ai/V7.5/outillage/forge_palette/` avec sa procédure de restauration —
+est archivé sous `.ai/archive/V7.5/outillage/forge_palette/` avec sa procédure de restauration —
 `cmd/tmp_*` reste gitignoré, la convention du dépôt n'est pas forcée.
 
 ---
@@ -37633,7 +38763,7 @@ simplement parce que préparer la revue oblige à parcourir le chemin réel de l
   inverse l'ordre MA40/Sidekick — avec son critère de bascule. Aucune surface produit ouverte.
 - **4 copies de `keep*OfPublishedTracks`** factorisées, garde-rail posé et **témoin de
   détection joué** (fichier fautif temporaire → échec nommant le fichier ; retiré → vert).
-- **Géométrie** via `PathResolver.MapGeometryDir` : les 2 CSV quittent `.ai/V7.5/dumps` pour
+- **Géométrie** via `PathResolver.MapGeometryDir` : les 2 CSV quittent `.ai/archive/V7.5/dumps` pour
   `data/titles/halo_infinite/reference/map_geometry/`.
 
 **Résultats observés** : `go test ./...` exit 0 (130 paquets) · `TestGoldenFilms` et
@@ -38740,7 +39870,7 @@ avec relevé terrain). Décisions utilisateur en attente listées au §8 du mast
 
 **Décision technique** : les 69 fichiers importés des deux worktrees (`filmdec-*` décodage
 film / arme par kill, `replay2d-*` rejeu 2D) encombraient la racine de `.ai/`. Ils sont
-triés en deux tas : **archive de recherche** sous `.ai/V7.5/` (5 sous-dossiers thématiques :
+triés en deux tas : **archive de recherche** sous `.ai/archive/V7.5/` (5 sous-dossiers thématiques :
 `film_re/` 15, `killweapon/` 21, `replay2d/` 6, `cartes/` 3, `dumps/` = ex-`re_dump`,
 69 Mo, resté versionné) et **chantier vivant** à la racine (24 documents).
 
@@ -38764,7 +39894,7 @@ donc racine), les 53 autres s'étalent du 3 juin au 28 juillet. Sans cette véri
   vers `.claude/worktrees/filmdec-continuation/.ai/re_dump/` (ce worktree garde son
   ancienne arborescence).
 
-**Conclusion / prochaine étape** : index déposé dans `.ai/V7.5/README.md` (organisation,
+**Conclusion / prochaine étape** : index déposé dans `.ai/archive/V7.5/README.md` (organisation,
 points d'entrée par sujet, liste de ce qui reste à la racine, pièges). Rien n'est committé —
 en attente du feu vert utilisateur.
 
@@ -94447,7 +95577,7 @@ geometrie elle-meme, qui avaient toutes echoue.
 praticable la plus haute » ramene le decor par-dessus l'arene, la coupe a altitude fixe perd
 les autres etages. Piste : filtrer les bandes affichees par le voisinage des positions
 observees. Puis le gate visuel cote a cote avec `carte_validee_v1.png`. Detail complet :
-`.ai/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md` §1 bis.
+`.ai/archive/V7.5/cartes/HANDOFF_PORT_TRIANGLES_2026-08-08.md` §1 bis.
 
 ## [2026-08-09] Cartes v7.5 — supprimer la calibration : les regles se DEDUISENT des ancres
 
@@ -94636,7 +95766,7 @@ positions perdues. Sur Catalyst, Play garde 88 % des instances — sans effet su
 
 **Conclusion** : la collision dit « le joueur se cogne ici », pas « le joueur marche ici » —
 porte fermée, chiffres et portes annexes consignés dans
-`.ai/V7.5/cartes/INVESTIGATION_PHYSIQUE_ZONE_JOUABLE_2026-08-09.md`. Le décodage du bloc
+`.ai/archive/V7.5/cartes/INVESTIGATION_PHYSIQUE_ZONE_JOUABLE_2026-08-09.md`. Le décodage du bloc
 (structure complète vérifiée) est un acquis réutilisable ; sondes non commitées dans
 `physique_sonde_gamefiles_test.go`. Prochaine piste restante : l'ACCESSIBILITÉ (composante
 connexe depuis les ancres), renforcée par ce négatif.
@@ -95013,7 +96143,7 @@ ECharts NE PEUT PAS etre teinte. Trois issues chiffrees dans le plan ; la pre-te
 (les couleurs d equipe sont configurables, le produit cartesien n existe pas). A trancher avec
 l utilisateur : le kill feed reste-t-il un chart, ou devient-il une liste DOM ?
 
-**Livrable**. `.ai/V7.5/icones/PLAN_INTEGRATION_ICONES.md` — 4 etapes, chacune avec son gate,
+**Livrable**. `.ai/archive/V7.5/icones/PLAN_INTEGRATION_ICONES.md` — 4 etapes, chacune avec son gate,
 plus un §5 « ce qui n est PAS dans ce plan » (le rejeu 2D refuse deliberement les couleurs
 d equipe, `ReplayTeams.tsx:102-110` ; Halo 5 sert des URL CDN ; la licence de redistribution
 reste une decision utilisateur).
@@ -95170,7 +96300,7 @@ Match View — le serveur doit tourner sur la racine de donnees du depot princip
 report inscrit au registre avec sa condition de reprise.
 
 **Decision technique principale**. Le plan
-`.ai/V7.5/replay2d/PLAN_FICHES_ENRICHIES_REJEU2D.md` posait la Phase 2 comme un cablage :
+`.ai/archive/V7.5/replay2d/PLAN_FICHES_ENRICHIES_REJEU2D.md` posait la Phase 2 comme un cablage :
 « l'identite ET la position des armes au sol (ti=42) sont decodables, il ne reste qu'a lever le
 filtre et a recolter ». La mesure separe les deux grandeurs et elles ne se comportent pas pareil.
 Le decodage d'identite est factorise plutot que duplique : le balayage bit a bit de familles
@@ -95252,7 +96382,7 @@ documentes : plafonds < 6 m conserves (surplomb residuel aux ancres 2,7-6,0 m ; 
 mesurable 6 -> 4), Smallhalla (sculpt organique dans la bande) = cause distincte non couverte.
 
 **Conclusion / prochaine etape**. Doc complet + diff prototype en annexe :
-`.ai/V7.5/cartes/INVESTIGATION_BOUILLIE_FORGE_2026-08-13.md` (seul commit, docs). Temoins du gate :
+`.ai/archive/V7.5/cartes/INVESTIGATION_BOUILLIE_FORGE_2026-08-13.md` (seul commit, docs). Temoins du gate :
 `Desktop/gate_cartes_v75/bouillie_proto/` (7 paires actuel/proto). Code du prototype REVERTE de
 l'arbre (le diff vit dans le doc) ; sonde `sonde_bouillie_gamefiles_test.go` en brouillon non
 versionne. Suite : gate visuel utilisateur, puis lot de production (appliquer le diff, re-cuire les
@@ -95404,7 +96534,7 @@ consigne : si ces films sont trop anciens pour Theater, jouer un BTB Fiesta et r
 l'instrument dessus.
 
 ## [2026-08-14] Equipement actif — etape 1 : la table des capacites cesse d'affirmer ce qu'elle ne sait pas
-**Statut** : Complété (etape 1 du `.ai/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md`)
+**Statut** : Complété (etape 1 du `.ai/archive/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md`)
 **Decision technique** : mesurer d'abord l'impact du nommage conteste, puis RETIRER les noms
 des index 3 et 6 de `config/titles/halo_infinite/mappings/replay_labels.toml` au lieu de les
 renumeroter selon la palette `sofd`. Motif : la palette ne s'applique PAS a ce champ, et le
@@ -95425,7 +96555,7 @@ film. Ligne au REGISTRE_REPORTS : un second releve Theater sur un film autre que
 restaure les deux noms d'un coup (films riches : `00502e52`, `07aa428d`, `0762ae7c`).
 
 ## [2026-08-14] Equipement actif — etape 2 : le rang de palette etait dans le film, jete par le deserialiseur
-**Statut** : Complété (etape 2 du `.ai/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md`)
+**Statut** : Complété (etape 2 du `.ai/archive/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md`)
 **Decision technique** : chercher la designation de palette en LECTURE DE CODE avant toute
 mesure, comme le plan l'imposait. Trouvee dans le depot meme : `consumeBipedDesiredAbilitySet`
 (i48) reproduit `FUN_1406d0ff0` et consomme `R(6)` = le rang de palette pour rester aligne,
@@ -95450,7 +96580,7 @@ deux entrees : nommer 3, 6 et 7 exige un lecteur `i48` de PRODUCTION — ligne a
 REGISTRE_REPORTS, avec son perimetre. Etape 3 : l'echec du saut vers i56/i57.
 
 ## [2026-08-14] Equipement actif — etape 3 : le saut n'echouait pas, il n'avait pas lieu d'etre
-**Statut** : Complété (etapes 3 et 4 du `.ai/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md`)
+**Statut** : Complété (etapes 3 et 4 du `.ai/archive/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md`)
 **Decision technique** : instrumenter avant de conclure, en SEPARANT les trois causes
 possibles de la rarete d'i56/i57 (record non reconnu / marche cassee / composant non annonce)
 au lieu d'en presumer une. Instrument versionne `internal/analysis/filmdec/i57_reach_test.go`
@@ -95473,7 +96603,7 @@ lignes au REGISTRE_REPORTS : le lecteur i48 de production, et le releve Theater 
 nommerait la valeur active d'i57.
 
 ## [2026-08-14] Transport de l'artefact — etape 1 : l'ouvrier livre enfin ce qu'il construit
-**Statut** : Complété (etape 1 du `.ai/V7.5/PLAN_TRANSPORT_ARTEFACT.md`)
+**Statut** : Complété (etape 1 du `.ai/archive/V7.5/PLAN_TRANSPORT_ARTEFACT.md`)
 **Decision technique** : `POST /api/v1/internal/build-queue/artifact?job_id=&worker_id=`, corps =
 l'artefact BRUT (pas d'enveloppe : ré-encoder 2 Mo de JSON dans une chaine JSON couterait le
 double des deux cotes). Trois refus avant la moindre ecriture — 413 (plafond `MaxBuildArtifactBytes`
@@ -95498,7 +96628,7 @@ donc que si `--work` designe un dossier a lui.
 worker / off), un seul point de decision, refus explicite de `local` en production.
 
 ## [2026-08-14] Transport de l'artefact — etapes 2 et 3 : ou se construit un rejeu, et la file au fil de l'eau
-**Statut** : Complété (etapes 2 et 3 du `.ai/V7.5/PLAN_TRANSPORT_ARTEFACT.md`)
+**Statut** : Complété (etapes 2 et 3 du `.ai/archive/V7.5/PLAN_TRANSPORT_ARTEFACT.md`)
 **Decision technique** : reglage `replay_build_location` a trois valeurs (local / worker / off,
 vide = defaut de l'instance) et UN SEUL point de decision, `replaybuild.DecidePlacement`. Les
 trois appelants de service le CONSULTENT : le fil de l'eau post-sync (`Hook.Placement()`,
@@ -95523,7 +96653,7 @@ perimetre et note au registre : deploiement du 2e VPS, purge locale de l'ouvrier
 plusieurs ouvriers en parallele.
 
 ## [2026-08-14] Transport de l'artefact — gate final : un VRAI ouvrier, un VRAI film, l'artefact qui arrive
-**Statut** : Complété (gate final du `.ai/V7.5/PLAN_TRANSPORT_ARTEFACT.md`)
+**Statut** : Complété (gate final du `.ai/archive/V7.5/PLAN_TRANSPORT_ARTEFACT.md`)
 **Decision technique** : la preuve du protocole (artefact fabrique a la main) ne suffisait pas —
 le gate demandait « un ouvrier lance a la main qui construit ». Test `integration && cgo` qui
 COMPILE `cmd/replay-worker`, le LANCE en `--once` contre les vraies routes montees, avec un faux
@@ -95544,7 +96674,7 @@ Quatre lignes au REGISTRE_REPORTS (2e VPS, jeton d'ouvrier en prod, purge locale
 distant, plusieurs ouvriers en parallele jamais mesures).
 
 ## [2026-08-15] Equipement : l'entite ti=37 et l'energie i56 mesurees — on sait OU, pas QUAND ni QUI
-**Statut** : Complété (etape 5 de `.ai/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md`) — MESURE seule,
+**Statut** : Complété (etape 5 de `.ai/archive/V7.5/replay2d/PLAN_EQUIPEMENT_ACTIF.md`) — MESURE seule,
 aucun rendu, aucun effet, aucun son branche.
 **Decision technique** : appliquer aux quatre composants de l'archetype ti=37
 (`equipment-deployed` i20, `-activated` i21, `-creator` i23, `-energy` i24) et a i56
@@ -95594,7 +96724,7 @@ ont des largeurs d'axe autres que le defaut `{13,13,14}`).
 
 ### [2026-08-18] Nommer les objets d'equipement `ti=37` par la structure du jeu, et le translocateur — Complete
 
-**Statut** : Complete (plan `.ai/V7.5/replay2d/PLAN_NOMMAGE_EQIP_TRANSLOCATEUR.md`, gates 0, 1 et
+**Statut** : Complete (plan `.ai/archive/V7.5/replay2d/PLAN_NOMMAGE_EQIP_TRANSLOCATEUR.md`, gates 0, 1 et
 2 passes ; gate 2 en NEGATIF chiffre). Branche `feat/v75`, worktree principal.
 
 **Decision technique principale** : le nom d'un objet d'equipement ne vient plus d'une
@@ -95777,7 +96907,7 @@ ne la suit JAMAIS dans les 60 bits ; (3) le prefixe 17 bits + 6 bits de rang —
 ou i48 donne une reference, 328 « bons rangs » contre **443 pour le temoin rang+1** : le hasard
 depasse le signal. La capacite aux images-cles ne se rattrape pas par motif.
 
-**Conclusion / prochaine etape** : rapport `.ai/V7.5/replay2d/MESURE_TROUS_INVENTAIRE_2026-08-24.md`,
+**Conclusion / prochaine etape** : rapport `.ai/archive/V7.5/replay2d/MESURE_TROUS_INVENTAIRE_2026-08-24.md`,
 6 pistes classees par gain. Les deux premieres : **decoupler R2 de R1** (les grenades sans passer
 par l'ancre de capacite — 4 278 records armes, 63,7 %, a valider par l'oracle des lancers) et
 **empecher une lecture vide d'effacer la fiche** (17,4 % des lectures ; prerequis : croiser les
@@ -95796,7 +96926,7 @@ preuve que les voies par motif sont epuisees.
 au-dela de -10 s (registre `REGISTRE_REPORTS.md` L13, lot 4 2026-08-08 : « 3 films sur 8
 piquent a la borne du balayage ; ~1 h de calcul ; DECISION USER en attente »), avec un GO
 utilisateur donne le 24-25/08. **Verification sur pieces AVANT tout calcul** (regle
-`plan-execution` n°4) : `.ai/V7.5/PLAN_CONTAINMENT_ZONES.md` etape 1 (2026-08-14) et
+`plan-execution` n°4) : `.ai/archive/V7.5/PLAN_CONTAINMENT_ZONES.md` etape 1 (2026-08-14) et
 l'entree thought_log de la meme date avaient DEJA traite cette question — en mieux. Au lieu
 de chercher un decalage par balayage, le lot applique la correction EXACTE LUE sur
 l'artefact (`originMs`, mesure 3,6-50,8 s/film) via `correctedActions`/
@@ -95998,7 +97128,7 @@ aucun bump de SchemaVersion**. Gates : `go vet` propre, `go test ./internal/anal
 ./internal/analysis/filmdec/` vert, `./contracttest/...` vert, `golangci-lint` 0 issue.
 
 **Conclusion / prochaine etape** : la piste 1 du rapport du 24/08 est fermee et livree ; rapport
-detaille dans `.ai/V7.5/replay2d/LOT3_GRENADES_SANS_ANCRE_2026-08-25.md`. Restent ouvertes, et
+detaille dans `.ai/archive/V7.5/replay2d/LOT3_GRENADES_SANS_ANCRE_2026-08-25.md`. Restent ouvertes, et
 notees hors perimetre : le fixture d'entrees fige n'est pas sensible au decodage (le golden
 assemble a porte `120` alors que le decodeur rendait `150` — seul le cran de rendement l'a
 attrape) ; le canal des LANCERS a son propre trou (4 films sur 24 n'en rendent aucun, tous a
@@ -96044,7 +97174,7 @@ propre, `golangci-lint run --allow-parallel-runners ./internal/analysis/replay/.
 `wc -l inventory_decode.go` = 360 (seuil 500 respecte).
 
 **Conclusion / prochaine etape** : les 4 constats de la revue sont clos ; rapport reconcilie dans
-`.ai/V7.5/replay2d/LOT3_GRENADES_SANS_ANCRE_2026-08-25.md` (§4, nouvelle sous-section) et §8
+`.ai/archive/V7.5/replay2d/LOT3_GRENADES_SANS_ANCRE_2026-08-25.md` (§4, nouvelle sous-section) et §8
 (gates + recapitulatif de la revue). Rien de nouveau ouvert par cette passe : les limites deja
 notees hors perimetre (fixture fige non sensible au decodage, trou du canal des lancers,
 coherence par vie non mesuree, capacite dependante de l'ancre) restent telles quelles.
@@ -96100,7 +97230,7 @@ couverts ailleurs portes sur `grenadesCarriedFrom`) — regle « 0 code mort ».
 
 **Conclusion / prochaine etape** : les 5 constats sont clos, rien d autre n a ete touche ; les
 decouvertes hors perimetre du §8 du rapport de lot restent ouvertes. Detail par constat :
-`.ai/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md` §9. Aucun commit (consigne).
+`.ai/archive/V7.5/replay2d/LOT4_SUIVI_DELTA_2026-08-25.md` §9. Aucun commit (consigne).
 
 ## [2026-08-27] Rejeu 2D — plan des retours utilisateur (socles, drapeau, MA40, page)
 
@@ -96108,7 +97238,7 @@ decouvertes hors perimetre du §8 du rapport de lot restent ouvertes. Detail par
 le lot sons en cours).
 
 **Decision technique principale** : les 5 retours du 2026-08-27 sont cadres dans
-`.ai/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md`, 4 lots (D page -> A socles ->
+`.ai/archive/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md`, 4 lots (D page -> A socles ->
 B drapeau -> C rafale MA40), TOUT cote web, zero changement d'artefact/SchemaVersion (pas de
 re-cuisson du cache). Points saillants : etat « incertain » des socles raffine par PROXIMITE
 des joueurs (mesure Go de recherche d'abord, seuil contradiction <= 5 %, calcul client pur) ;
@@ -96500,7 +97630,7 @@ La chaine `himap` ne gagne toujours aucune branche par carte — six entrees de 
 
 Recette de traitement ECRITE a la demande de l'utilisateur (« quand on sera arrives au bout de
 ton contexte ca va etre la misere de continuer s'il n'y a pas de recette ») :
-`.ai/V7.5/cartes/RECETTE_TRAITEMENT_CARTE.md` — boucle en 8 etapes, les six axes avec leur
+`.ai/archive/V7.5/cartes/RECETTE_TRAITEMENT_CARTE.md` — boucle en 8 etapes, les six axes avec leur
 champ JSON, ce qui reste ouvert, les cartes a NE PAS ecreter, et les pieges deja payes.
 
 **Resultats observes** : Bazaar VALIDEE (621 x 567 -> 2 032 x 1 462 px ; masque a 39,5 %,
@@ -96745,7 +97875,7 @@ boucle. Deux relances avaient donc laisse trois boucles vivantes sur la meme fil
 battaient pour la memoire (0,4 Go libre, la machine paginait) et deux ecrivaient le meme PNG.
 Une heure pour une seule carte. Correctif : verrou par `mkdir` (atomique), refus de demarrer
 si un `mapfond-build` tourne deja, `trap` qui tue l'enfant et libere le verrou en sortant.
-Le script est desormais versionne : `.ai/V7.5/cartes/outils/cuisson_par_lots.sh`.
+Le script est desormais versionne : `.ai/archive/V7.5/cartes/outils/cuisson_par_lots.sh`.
 
 **Ce qui a bien tenu** : la reprise. L'etat est relu sur le disque a chaque tour (sidecar plus
 recent que le jalon de campagne, jamais un compteur) — a travers trois arrets brutaux, aucune
@@ -97577,7 +98707,7 @@ bulle).
 
 **Statut** : Complete (worktree `replay-retours-0827`, branche `feat/replay-retours-0827`,
 AUCUN commit — autorisation utilisateur attendue). Plan :
-`.ai/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md` (cases D-1..D-4 statuees).
+`.ai/archive/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md` (cases D-1..D-4 statuees).
 
 **Decision technique principale** : le scroll fantome est un DEPASSEMENT PLUS PETIT QUE LA
 MARGE BASSE d'une pile rigide de 678 px — il ne peut que retrecir tant que la carte a une
@@ -97602,7 +98732,7 @@ seule une hauteur de carte adaptative supprime le scroll restant (D8). Suite : L
 
 **Statut** : Complete pour A-1/A-2/A-4 ; A-3 NON IMPLANTE (refus mesure, statut au superviseur).
 Worktree `replay-retours-0827`, AUCUN commit (consigne). Plan :
-`.ai/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md`.
+`.ai/archive/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md`.
 
 **Decision technique principale** : trois choses, et la deuxieme est un NEGATIF.
 1. *Visuel (D1)* — la pile devient `compteur / vignette / losange` de haut en bas, la vignette
@@ -97701,7 +98831,7 @@ Suite : LOT C (rafale MA40 a la lecture).
 
 **Statut** : Complete (worktree `replay-retours-0827`, branche `feat/replay-retours-0827`,
 AUCUN commit — autorisation utilisateur demandee). Les 4 lots du plan
-`.ai/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md` sont clos et statues.
+`.ai/archive/V7.5/replay2d/PLAN_RETOURS_REJEU_2026-08-27.md` sont clos et statues.
 
 **Decision technique principale (lot C)** : rafale MA40 A LA LECTURE — `play` accepte un
 `burst` (N sources sur UNE enveloppe/voix, GainNode + tirage RANGED par balle, refus total
@@ -98371,7 +99501,7 @@ score API sur 1 942/1 942 (le backfill du 2026-08-24 tient).
 **Conclusion / prochaine etape** : perimetre initial de `[rounds_decide]` reduit aux 3
 variantes Oddball — les autres modes a manches affichent deja leur compte de manches comme
 score, les declarer ne changerait rien a l'ecran et risquerait de casser les cas a manche
-nulle. Rapport : `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`. Suite : E1 (colonnes
+nulle. Rapport : `.ai/archive/V7.5/RAPPORT_MANCHES_2026-08-29.md`. Suite : E1 (colonnes
 `team_{0,1}_rounds_won` + `rounds_total`, extraction sync jumelle de `ExtractTeamScoresByID`).
 
 ---
@@ -98646,7 +99776,7 @@ besoin de plus, la table n'a même pas de colonne `victim_xuid`).
   `id="-post-rtjson-content"` SANS préfixe existe mais sert le flair de l'auteur, pas le
   corps du post — le bon conteneur est `id="t3_xfcz4n-post-rtjson-content"`) via un script
   Node jetable en scratchpad, jamais commité, zéro dépendance npm, zéro accès réseau.
-  Document produit : `.ai/V7.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT.md` — 22
+  Document produit : `.ai/archive/V7.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT.md` — 22
   variantes sourcées, rapprochées du registre par nom (22/22 déductibles, 0 UNKNOWN, vérifié
   sur pièces contre `registry.go`/`rules.tsv`). Réserve méthodologique consignée en tête de
   section dédiée : nos `source_tag` identifient l'ARME, pas le TUNING de mode Fiesta/
@@ -99171,7 +100301,7 @@ huit secondes d'un centième, la mesure si.
 
 **Statut** : Complété côté code, **les deux P0 de la revue corrigés et vérifiés par mutation**.
 Rattrapage non joué (serveur arrêté requis). Registre :
-`.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md` (version 2 — la v1 a été réfutée sur 12 points).
+`.ai/archive/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md` (version 2 — la v1 a été réfutée sur 12 points).
 
 **Contexte** : suite de la découverte §9 du plan « score par manches ». `assist_known`
 s'effondre à partir d'avril 2026 : 12 730 lignes en mars, 806 en avril, 0 en juin et en août.
@@ -99842,7 +100972,7 @@ montre PAS d'epaulement chez le tueur, la premisse tombe ; s'il le montre, c'est
 cote client et les deux pistes parkees deviennent le prochain fil.
 
 **Gates** : go vet OK ; `go test filmdec+replay` 0 echec ; fichiers de recherche sous garde
-d'env (sautes en CI). Artefacts : `.ai/V7.5/film_re/visee_tir_differentiel.tsv` (taux par bit).
+d'env (sautes en CI). Artefacts : `.ai/archive/V7.5/film_re/visee_tir_differentiel.tsv` (taux par bit).
 Aucun code de production modifie dans cette phase (les 3 tests sont autonomes, parallelises
 sans verrou car ils ne touchent aucun global de decodage — justifie en tete de fichier).
 
@@ -100200,7 +101330,7 @@ correlee bit a bit aux positions fixes [7..512] des payloads (toutes tetes / tet
 depuis la fin), seuils declares avant mesure + controle par translation obligatoire,
 contre-verification sur l'onde de Madina.
 
-**Integration** : la note du lot B (.ai/V7.5/film_re/NOTE_ENVELOPPE_EVENTS_2026-08-30.md,
+**Integration** : la note du lot B (.ai/archive/V7.5/film_re/NOTE_ENVELOPPE_EVENTS_2026-08-30.md,
 561 lignes — table 0x1451f98d0, largeurs par domaine, handle generation<<30|base+index, sonde
 domaine 1 seulement, catalogue des types 50..127) est versionnee par ce commit. Note lot B2
 (emetteurs) attendue.
@@ -100439,7 +101569,7 @@ type, valeurs entre 1 et 6, cardinal croissant avec le build — et surtout **le
 cardinal CONSTANT entre `HI_1_8_0` et `HI_1_9_0`** (memes 121 types, tables `e6ea0f9d` contre
 `190fffd3`), ce que fait une version par entree et pas un compteur. Ce n'est pas une preuve : la
 fonction qui consomme ce champ n'a pas ete lue. Artefact versionne :
-`.ai/V7.5/film_re/chunk00_table_par_type.tsv`.
+`.ai/archive/V7.5/film_re/chunk00_table_par_type.tsv`.
 
 **Corollaire lourd, et il vaut pour tout le chantier** : l'espace des numeros de type **n'est pas
 stable entre builds**, et le film en declare 123 la ou la table statique de l'exe en nomme 128.
@@ -100505,7 +101635,7 @@ divise le fichier entier par la taille d'un bloc et ramasse un faux positif dans
 borner a 50 blocs · le modele de trame n'a pas de confirmation POSITIVE, il faudrait rejouer le
 decodeur de production sur les paquets `0xD2`/`0xE5` et verifier que la chaine de records s'y ferme.
 
-**Note** : `.ai/V7.5/film_re/NOTE_CARTE_CHUNK00_2026-08-30.md`. **Gates** : `gofmt` propre,
+**Note** : `.ai/archive/V7.5/film_re/NOTE_CARTE_CHUNK00_2026-08-30.md`. **Gates** : `gofmt` propre,
 `CGO_ENABLED=0 go vet ./internal/analysis/filmdec/ ./internal/analysis/replay/` propre, suites
 filmdec (11,1 s) et replay (20,3 s) **0 echec**, six fichiers de recherche sous garde
 d'environnement (444, 328, 239, 253, 68, 479 lignes), aucun code de production modifie.
@@ -100603,7 +101733,7 @@ INCHANGE et desormais adosse a deux structures independantes.
    UTF-16LE. Puis 602 ko de zeros.
 2. *Le film declare sa grammaire PAR TYPE et PAR BUILD* (123 u32, valeurs 1..6, contenu qui change
    a cardinal constant entre HI_1_8_0 et HI_1_9_0 = une version par entree). Artefact :
-   .ai/V7.5/film_re/chunk00_table_par_type.tsv.
+   .ai/archive/V7.5/film_re/chunk00_table_par_type.tsv.
 3. *Le film ne NOMME aucun type d'evenement* : negatif net (13 noms cherches en ASCII et UTF-16,
    3 orthographes, tous chunks ; temoin positif OK sur les noms de composants ; hachage exclu par
    821 169 u32 indexes, 0 touche, faux positifs mesures nuls).
@@ -100813,7 +101943,7 @@ chronologie pendant le rejeu, l'etat existe par joueur et vient donc du film ; s
 que l'observe varie, le zoom n'existe que pour l'unite observee et la question est definitivement
 close.
 
-**Protocole ecrit, clef en main** : `.ai/V7.5/PROTOCOLE_CE_ZOOM_2026-08-31.md` (4 etapes, pieges,
+**Protocole ecrit, clef en main** : `.ai/archive/V7.5/PROTOCOLE_CE_ZOOM_2026-08-31.md` (4 etapes, pieges,
 suites selon chacun des trois verdicts). Precedent d'usage de CE dans ce chantier : la mesure du
 cout en bits du composant de position (« total i0 = 47 bits », cf. `filmdec/offline_aim.go`).
 
@@ -101333,7 +102463,7 @@ qui manque pour publier, c'est l'attribution au JOUEUR. Prochaine étape : ident
 domaine 2 (corréler `ref0` aux fils de vie, aux slots bipèdes du même paquet, et au pont
 slot -> xuid de `killsource`), sur le modèle de ce qui a résolu la référence du domaine 1 de
 `damage_aftermath` par l'ajout de la base de plage. Détail complet et mesures :
-`.ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.
+`.ai/archive/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.
 
 ---
 
@@ -101389,7 +102519,7 @@ l'événement ne porte pas de handle monde. Ce lien reste l'affaire du canal spa
 ./internal/analysis/filmdec/` vert sans les gardes. Fichiers 222 L et 243 L.
 
 **Prochaine étape** : si le chantier veut publier, exercer la traversée slot → xuid sur ces
-événements et décider du contrat. Détail et mesures : `.ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.
+événements et décider du contrat. Détail et mesures : `.ai/archive/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.
 
 ---
 
@@ -101455,7 +102585,7 @@ d'étendre le codec du fixture et de le régénérer — à décider hors de ce 
 pré-existants), `vitest match-replay` 1940/1940. Golden régénéré : une ligne, expliquée.
 
 **Prochaine étape** : cuire un film à socles pour exercer la datation des `padPickups`, seule
-promesse non vérifiée. Détail complet : `.ai/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.
+promesse non vérifiée. Détail complet : `.ai/archive/V7.5/film_re/NOTE_BIPED_PICKUP_2026-08-31.md`.
 
 ---
 
@@ -101613,7 +102743,7 @@ que ce lot s'interdit. Et le croisement inter-film de l'étape 1 est fait à la 
 « un film par process » interdisant de le faire dans un seul test.
 
 **Rien n'est publiable de ce lot** : aucune des trois étapes n'atteint son seuil. Détail complet
-et chiffres : `.ai/V7.5/film_re/NOTE_EQUIPEMENT_PICKUP_2026-09-01.md`.
+et chiffres : `.ai/archive/V7.5/film_re/NOTE_EQUIPEMENT_PICKUP_2026-09-01.md`.
 
 **Prochaine étape** : un film à carte connue pour croiser l'étape 3 ; élargir la fenêtre
 d'appariement de l'étape 1 en mesurant ce que le témoin y perd ; pour la classe 2, le pool Lua
@@ -103243,7 +104373,7 @@ carte) a la main de l'utilisateur.
 ## [2026-08-31] Recherche : vitalite du film (i4/i5) et « MODAL = RATE ? » — Complete
 
 **Statut : Complete.** Deux questions utilisateur tranchees sur pieces, deux instruments
-`_test.go` (garde `LOT1_TRAME_FILM`) + NOTE `.ai/V7.5/film_re/NOTE_VITALITE_ET_MODAL_2026-08-31.md`.
+`_test.go` (garde `LOT1_TRAME_FILM`) + NOTE `.ai/archive/V7.5/film_re/NOTE_VITALITE_ET_MODAL_2026-08-31.md`.
 Perimetre `internal/analysis/filmdec`. Corpus 000d5950 / 01e1f945 / 00502e52. gofmt + go vet verts.
 
 **Q1 — la vitalite du film est-elle une decouverte, ou ce que le rejeu affiche deja ?** VERDICT :
@@ -103291,7 +104421,7 @@ COMPOSITION pure des decodeurs existants (aucune reimplementation) : `ScanFilmFi
 grammaire de reference type 36 (`variant_name`) cote tir, `lot1DecodeDamageAftermath` +
 `lot1RefDom1` cote degat, `ScanFilmBipedPositions` cote positions. 7 mesures sur 000d5950
 (Cliffhanger), 01e1f945 (Catalyst), 00502e52 (Bazaar). NOTE :
-`.ai/V7.5/film_re/NOTE_SONDE_PRECISION_DISTANCE_2026-08-31.md`.
+`.ai/archive/V7.5/film_re/NOTE_SONDE_PRECISION_DISTANCE_2026-08-31.md`.
 
 **Resultats observes.** M1 arme (variant_name) categorielle (11-30 distinctes), FilmIndex=8
 (plausible). M2 source presente 100 %, tag `399949091` commun Cliffhanger+Bazaar. M3 JOIN
@@ -103314,7 +104444,7 @@ caracteriser les sources sans refs (`3655071589`, `95`).
 
 ## [2026-08-31] Plan precision + distance par arme (film) — REDIGE
 
-**Statut.** Complete (plan, pas de code de prod). `.ai/V7.5/PLAN_PRECISION_ARME_DISTANCE_2026-08-31.md`,
+**Statut.** Complete (plan, pas de code de prod). `.ai/archive/V7.5/PLAN_PRECISION_ARME_DISTANCE_2026-08-31.md`,
 revu grille `plan-review`. Cible d'execution : feat/v75.
 
 **Mesure tranchee (detente vs balle).** Instrument neuf
@@ -103368,7 +104498,7 @@ autoritaire, ne porte que la victime. Le trou de précision des armes lourdes RE
 (ni type 0 ni type 1 exploitable ; piste ECS projectile/détonation hors périmètre). Garde-fou
 respecté : négatif chiffré, rien survendu. Gate : gofmt clean, `go vet
 ./internal/analysis/filmdec/` vert (GOCACHE privé). NOTE :
-`.ai/V7.5/film_re/NOTE_DAMAGE_SECTION_RESPONSE_2026-08-31.md`.
+`.ai/archive/V7.5/film_re/NOTE_DAMAGE_SECTION_RESPONSE_2026-08-31.md`.
 
 ## [2026-09-01] Événements projectile : détonate/impact NE portent PAS le tireur — Complété
 
@@ -103393,7 +104523,7 @@ d'origine) NON franchissable hors ligne (table runtime absente). Trou de précis
 projectile RESTE OUVERT. Garde-fou respecté : négatif chiffré, rien survendu. Instrument :
 `internal/analysis/filmdec/lot1_projectiles_research_test.go` (+ `_helpers_test.go`), garde
 `LOT1_TRAME_FILM`, borné 12 chunks. Gate : gofmt propre, `go vet ./internal/analysis/filmdec/`
-vert (GOCACHE privé). NOTE : `.ai/V7.5/film_re/NOTE_PROJECTILES_2026-08-31.md`.
+vert (GOCACHE privé). NOTE : `.ai/archive/V7.5/film_re/NOTE_PROJECTILES_2026-08-31.md`.
 
 ## [2026-09-01] Côté VICTIME : aucun champ répliqué « dernier attaquant » non-fatal — Complété
 
@@ -103422,7 +104552,7 @@ explosive reste couverte (i11/killsource 97,6 %). Garde-fou respecté : négatif
 distinction composant-répliqué vs valeur-runtime explicite, rien survendu. Instrument :
 `internal/analysis/filmdec/victime_degat_recu_research_test.go` (garde LOT1_TRAME_FILM, borné 12
 chunks, lecture seule). Gate : gofmt propre, `go vet ./internal/analysis/filmdec/` vert (GOCACHE
-privé). NOTE : `.ai/V7.5/film_re/NOTE_VICTIME_DEGAT_RECU_2026-09-01.md`.
+privé). NOTE : `.ai/archive/V7.5/film_re/NOTE_VICTIME_DEGAT_RECU_2026-09-01.md`.
 
 ## [2026-09-01] PlayerGameEventSmall (0xE9, type 82) DECODE — pas de touche arme (Complété)
 
@@ -103445,7 +104575,7 @@ Prochaine étape : trou touches explosives non fatales RESTE OUVERT (jointure de
 Piste hors sujet : nommer l'enum du champ A (signal médailles/score) = chantier séparé.
 Instrument : `internal/analysis/filmdec/playergameevent_0xe9_research_test.go` (+ `_helpers_test.go`),
 garde `LOT1_TRAME_FILM`, borné 12 chunks. Gate : gofmt propre, `go vet ./internal/analysis/filmdec/`
-vert (GOCACHE privé). NOTE : `.ai/V7.5/film_re/NOTE_PLAYERGAMEEVENT_0XE9_2026-09-01.md`.
+vert (GOCACHE privé). NOTE : `.ai/archive/V7.5/film_re/NOTE_PLAYERGAMEEVENT_0XE9_2026-09-01.md`.
 
 ## [2026-09-01] Jointure geometrique pour les touches explosives — Complete (resultat honnete, negatif sur le splash)
 
@@ -103481,7 +104611,7 @@ attributeur de splash. Attribuer l'explosif demande le POINT DE DETONATION (even
 tireur du projectile non resolu) — piste vivante, l'aim-join ne la remplace pas. Rien survendu :
 negatif chiffre. Instrument : `geo_explosifs_*_test.go` (garde LOT1_TRAME_FILM / LOT1_CORPUS,
 borne 16 chunks). Gate : gofmt propre, go vet vert (GOCACHE prive). NOTE :
-`.ai/V7.5/film_re/NOTE_JOINTURE_GEOMETRIQUE_EXPLOSIFS_2026-09-01.md`.
+`.ai/archive/V7.5/film_re/NOTE_JOINTURE_GEOMETRIQUE_EXPLOSIFS_2026-09-01.md`.
 
 ## [2026-09-01] Attribution des touches explosives par la PISTE DE DETONATION — Complété
 
@@ -103504,7 +104634,7 @@ Réserves : fiable pour projectiles DIRECTS seulement (grenades/cloche : réplic
 mèche) ; geoIsDirect sur-classe (Stalker, Bulldog = hitscan) ; 00502e52 sans lanceur, 01e1f945 base
 bipède 29 % -> inconclusifs. Instrument : deto_attribution_{research,helpers}_test.go (garde
 LOT1_TRAME_FILM, borne 16). Gate : gofmt propre, go vet vert (GOCACHE privé). NOTE :
-.ai/V7.5/film_re/NOTE_DETONATION_ATTRIBUTION_2026-09-01.md. Prochaine étape possible : lier la ref1
+.ai/archive/V7.5/film_re/NOTE_DETONATION_ATTRIBUTION_2026-09-01.md. Prochaine étape possible : lier la ref1
 non-bipède d'une touche au SLOT du projectile ti=41 (lien exact, non géométrique).
 
 ## [2026-09-01] Verification adverse — attribution detonation->tireur->splash — Complété
@@ -103574,7 +104704,7 @@ Statut : Complété (remise).
 
 Contexte : décision FERME du pilote/user. La précision PAR ARME dérivée du film est NON FIABLE
 (recalage aberrant : le pairing tir↔dégât rate ~40 %+ des touches, armes automatiques à 0,9-3,3 %
-vs ~40 % côté API — cf. `.ai/V7.5/film_re/RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01.md`, commit
+vs ~40 % côté API — cf. `.ai/archive/V7.5/film_re/RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01.md`, commit
 `945c9fdb7`). On remise : garder les acquis backend, retirer l'exposition. La précision GLOBALE
 reste servie par l'API.
 
@@ -104989,7 +106119,7 @@ lit que la tete, limite `zoom_events.go`). Semantique etablie : VA-ET-VIENT (la 
 echange sa position avec le joueur).
 
 **Conclusion / prochaine etape** : rapport complet avec commandes rejouables dans
-`.ai/V7.5/replay2d/RAPPORT_R1_FAILLE_ACTIVATION_2026-09-03.md`. Brique de production
+`.ai/archive/V7.5/replay2d/RAPPORT_R1_FAILLE_ACTIVATION_2026-09-03.md`. Brique de production
 candidate (hors R1, decision superviseur) : lecteur type `ScanFilmTranslocatorTeleports` sur
 le modele de `zoom_events.go` — datation exacte sans heuristique. Reserves ouvertes : liste
 d'evenements complete (au-dela de la tete), charge utile de `FUN_140f04fb8` (position de la
@@ -105041,7 +106171,7 @@ est REFUTEE (+800 fausses acceptations sur 10 films, sauts 14->310, repetitions 
 correctif propose est la recuperation gatee par la fermeture des chaines de compteur (rapport §6,
 decision D1 user).
 **Livrables** : apps/go-api/internal/analysis/filmdec/i48_manques_research_test.go,
-i48_manques_parc_research_test.go (env-gates I48M_*), .ai/V7.5/replay2d/RAPPORT_R2_I48_MANQUES_2026-09-03.md.
+i48_manques_parc_research_test.go (env-gates I48M_*), .ai/archive/V7.5/replay2d/RAPPORT_R2_I48_MANQUES_2026-09-03.md.
 **Prochaine etape** : decision D1 (appliquer la recuperation gatee) ; R4 (marqueur gap) pour les
 manques FILM residuels ; figer l'ordre de bits dense sur plus de temoins avant application.
 
@@ -105073,7 +106203,7 @@ profondeur arrivees 8/8 vs aberration 0) couvre autant mais MODIFIE les films sa
 translocateur (5 points sur 7344d24f) — exclu par le cahier des charges.
 **Livrables** : apps/go-api/internal/analysis/filmdec/vitesse_filtre_research_test.go,
 vitesse_filtre_outils_research_test.go, vitesse_filtre_artefact_research_test.go (env-gates
-VITESSE_*), .ai/V7.5/replay2d/RAPPORT_R3_FILTRE_VITESSE_2026-09-03.md. go vet vert.
+VITESSE_*), .ai/archive/V7.5/replay2d/RAPPORT_R3_FILTRE_VITESSE_2026-09-03.md. go vet vert.
 **Prochaine etape** : decision D2 user (proposition : option A, via la brique
 ScanFilmTranslocatorTeleports deja cadree R1 §6) ; noter que le benefice visible artefact est
 minime (<= 0,20 m) — le vrai gain est en amont (positions brutes exactes pour D4 et les
@@ -105131,7 +106261,7 @@ placements de prod. Type 100 (camo/OS) : 7/17 precision, rappel episodes 7/31 et
 biped_equipment_activation. Sonde liste : 80/347 paquets a tete 103 portent >= 2 evenements
 (23 %), distribution des types suivants = census (auto-validation des largeurs).
 
-**Conclusion / suite** : rapport `.ai/V7.5/replay2d/RAPPORT_R5_EVENTS_EQUIPEMENTS_2026-09-03.md`
+**Conclusion / suite** : rapport `.ai/archive/V7.5/replay2d/RAPPORT_R5_EVENTS_EQUIPEMENTS_2026-09-03.md`
 + instruments `filmdec/equipements_events_{research,sondes_research}_test.go` (env-gates,
 skip par defaut). La liste complete (PLAN_PERCER_TRAME_FILM) reste le seul levier pour les
 deficits de rappel ; aucun equipement hors translocateur ne gagne une lecture fiable en tete.
@@ -105345,7 +106475,7 @@ d evenements lisibles), a exploiter quand un besoin le justifiera.
 ## [2026-09-03] R8 — L'usage du PROPULSEUR est dans le film : i57/i59, tag 1 — Complete
 
 **Statut** : Complete (retro-ingenierie, lecture seule, aucun commit, aucune DuckDB ouverte).
-Rapport : `.ai/V7.5/replay2d/RAPPORT_R8_USAGE_REPULSEUR_PROPULSEUR_2026-09-03.md`.
+Rapport : `.ai/archive/V7.5/replay2d/RAPPORT_R8_USAGE_REPULSEUR_PROPULSEUR_2026-09-03.md`.
 Instruments : 9 fichiers `apps/go-api/internal/analysis/filmdec/r8_*_research_test.go`, gardes
 par `R8_ARTIFACTS` / `R8_FILMS` / `R8_BOUNDS` / `R8_IDS`, sautes par defaut.
 
@@ -105430,7 +106560,7 @@ ouvert pour lire l'heure affichee a l'ecran ; s'il affichait le chrono du match 
 temps d'enregistrement, tout le tableau serait decale d'un bloc constant par film — la colonne
 « coup d'envoi » permet a l'utilisateur de le trancher au premier creneau.
 
-**Livrables.** `.ai/V7.5/replay2d/CRENEAUX_VERIFICATION_EQUIPEMENT_2026-09-03.md` (document
+**Livrables.** `.ai/archive/V7.5/replay2d/CRENEAUX_VERIFICATION_EQUIPEMENT_2026-09-03.md` (document
 destine a l'utilisateur : les 11 creneaux mesures, les 14 candidats, le mode d'emploi et le
 formulaire de releve) et l'instrument
 `apps/go-api/internal/analysis/filmdec/r9_creneaux_research_test.go` (`TestR9Horloge`,
@@ -105448,7 +106578,7 @@ chemin vers un verdict sur son enregistrement.
 
 **Statut** : Complete (retro-ingenierie STATIQUE, lecture seule, aucun commit, aucune DuckDB
 ouverte, Ghidra headless arrete en fin de lot). Branche `wt/r9-repulseur` (depuis
-`wt/lecture-equipement`). Rapport : `.ai/V7.5/replay2d/RAPPORT_R9_REPULSEUR_2026-09-03.md`.
+`wt/lecture-equipement`). Rapport : `.ai/archive/V7.5/replay2d/RAPPORT_R9_REPULSEUR_2026-09-03.md`.
 Instruments : 6 fichiers `apps/go-api/internal/analysis/filmdec/r9_*_research_test.go`, gardes
 par `R8_FILMS` / `R8_BOUNDS` / `R8_IDS`, sautes par defaut, `gofmt`/`go vet` verts.
 
@@ -105654,7 +106784,7 @@ que les capacités qui déplacent leur porteur (grappin `e2`, propulseur `e0`). 
 le type d'événement 14 `PlayEffectOnObject` (grammaire non portée). Acquis livrable au
 passage : i56 date les usages de grappin et de propulseur avec un meilleur rappel que
 `grappleLines[]`. Détail complet et commandes rejouables :
-`.ai/V7.5/replay2d/RAPPORT_R11_REPULSEUR_CHARGES_2026-09-03.md`.
+`.ai/archive/V7.5/replay2d/RAPPORT_R11_REPULSEUR_CHARGES_2026-09-03.md`.
 
 ---
 
@@ -105982,7 +107112,7 @@ passes, 14 skippes ; `npx eslint` exit 0. Zero couleur en dur, aucun cliquet de 
 
 **Conclusion / prochaine etape** : le calque du grappin rejoint les quatre autres au patron par
 vie ; le rejeu 2D n'a plus de jointure `slot -> points` ecrasante. Rapport detaille :
-`.ai/V7.5/replay2d/RAPPORT_D1_GRAPPIN_VIES_2026-09-04.md`. La RE-CUISSON DU PARC peut
+`.ai/archive/V7.5/replay2d/RAPPORT_D1_GRAPPIN_VIES_2026-09-04.md`. La RE-CUISSON DU PARC peut
 desormais se faire sans reintroduire ce trou — c'est elle qui aurait rendu le defaut visible.
 
 ---
@@ -105991,7 +107121,7 @@ desormais se faire sans reintroduire ce trou — c'est elle qui aurait rendu le 
 
 **Statut** : Complete (retro-ingenierie statique, aucun code de production touche, aucun commit,
 aucune DuckDB ouverte, Ghidra non lance). Rapport :
-`.ai/V7.5/replay2d/RAPPORT_R12_REPULSEUR_ANCRES_2026-09-04.md`. Branche `wt/r12-repulseur`,
+`.ai/archive/V7.5/replay2d/RAPPORT_R12_REPULSEUR_ANCRES_2026-09-04.md`. Branche `wt/r12-repulseur`,
 creee depuis `wt/grappin-vies`. Huit `*_research_test.go` env-gates, NON commites.
 
 **Decision technique principale.** Neuf canaux avaient ete fermes par R8/R9/R11 sans un seul
@@ -106320,7 +107450,7 @@ flex (pattern MatchPadControlSection) + libelle ecrit seulement si le segment po
 
 **Contexte** : ouverture du chantier vehicules (worktree dedie LevelUp-wt-vehicules, branche
 wt/vehicules-tourelles, base feat/v75 14a115bb1). Trois agents en parallele : cadrage Opus,
-scout sons, scout sprites. Plan du chantier : `.ai/V7.5/PLAN_VEHICULES_TOURELLES.md`.
+scout sons, scout sprites. Plan du chantier : `.ai/archive/V7.5/PLAN_VEHICULES_TOURELLES.md`.
 
 **Decision technique principale — LA GRAMMAIRE BIPEDE DU VEHICULE.** `ti=40` porte a `i0` la
 forme dynamic-precision du BIPEDE (porte 5 bits), pas la forme objet du monde (3 bits) que
@@ -106377,7 +107507,7 @@ du cap i2/i3, rejeu de l'oracle geometrique du 18/08). Puis V1b (Ghidra : portag
 ## [2026-08-31] Vehicules lot V1a — positions par la grammaire bipede, cap i2 refute, conducteur par les trous — Complete
 
 **Contexte** : lot V1a du chantier vehicules (worktree LevelUp-wt-vehicules). Pilote un agent Opus,
-CR verifie sur pieces. Rapport : `.ai/V7.5/film_re/V1A_RAPPORT_2026-08-31.md`.
+CR verifie sur pieces. Rapport : `.ai/archive/V7.5/film_re/V1A_RAPPORT_2026-08-31.md`.
 
 **Decisions et resultats** :
 - V1.1 corpus : 46 films mesures, 41 retenus (min 2 637 records, seuil 1 000), les 5 temoins
@@ -106419,7 +107549,7 @@ son entree a venir) => renvoye en RE. Prochaines etapes : identite V1b, puis i21
 
 **Contexte** : lot V1b (identite du chassis dans le film). Pilote un agent Opus, RE de
 `FUN_1410a5a74` par Ghidra en HTTP direct (pont MCP mort, curl sur 8089). Rapport RE :
-`.ai/V7.5/film_re/RE_DEFAULTSTATE_TI40_2026-08-31.md`. Instrument : `vehicle_creation_test.go`.
+`.ai/archive/V7.5/film_re/RE_DEFAULTSTATE_TI40_2026-08-31.md`. Instrument : `vehicle_creation_test.go`.
 
 **Piege evite (deux fois)** : le PREMIER CR de l'agent surestimait (« MPPWord32 debloquee et
 bit-exacte ») alors que ses propres gates ECHOUAIENT a la mesure — atterrissage 7 %, 450 valeurs
@@ -106463,7 +107593,7 @@ s'appuie sur la position de naissance du record de creation, desormais lisible).
 ## [2026-08-31] Vehicules lot V4 — sprites vue de dessus rendus depuis les modeles 3D — Complete
 
 **Contexte** : lot V4 (le plus long), sprites vue de dessus teintables pour le rejeu 2D. Agent
-Opus, rapport `.ai/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md`. Cache Go DEDIE (gocache_v4),
+Opus, rapport `.ai/archive/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md`. Cache Go DEDIE (gocache_v4),
 CC winlibs.
 
 **Decision technique principale** : rendu maison, cha\u00eene `vehi -> hlmt -> mode (render_model)
@@ -106484,7 +107614,7 @@ complementaires (himodule charge par os.ReadFile complet). (3) faux positif du b
 `minTagIDVehicule = 0x10000` + resolveur RECURSIF dans les hlmt composites (Ghost = hlmt parent
 -> 12 hlmt enfants).
 
-**Resultats observes** : 13 sprites livres dans `.ai/V7.5/film_re/sprites_v4/`, format
+**Resultats observes** : 13 sprites livres dans `.ai/archive/V7.5/film_re/sprites_v4/`, format
 teintable (blanc + alpha) compatible du pipeline web existant (`tintedIconCanvas`). Code :
 `internal/himap/vehicules.go` (RefModeleVehicule recursif + filtre, GroupeVehi, EntreesDuGroupe),
 `internal/himap/objet_isole.go` (RenduObjetIsole, SpriteObjetPNG), `cmd/vehicle-sprite/`
@@ -106504,7 +107634,7 @@ ce commit, ne pas republier le catalogue sonore depuis un dossier en cours de mo
 ## [2026-08-31] Vehicules lot V3 — sons reconstruits (tir + moteur par la chaine Wwise), identite de banque corrigee — Complete (en attente d'ecoute)
 
 **Contexte** : lot V3 (sons des vehicules pilotables ; tourelles deja validees le 16/08). Agent
-Opus rejouant la RECETTE_SONS_ARMES. Rapport `.ai/V7.5/film_re/V3_RAPPORT_SONS_2026-08-31.md`,
+Opus rejouant la RECETTE_SONS_ARMES. Rapport `.ai/archive/V7.5/film_re/V3_RAPPORT_SONS_2026-08-31.md`,
 manifeste `sons_v3_reconstruits/manifeste_v3.json` (revision 3). WAV NON commites (37 Mo,
 transitoires, regenerables depuis les chaines du manifeste).
 
@@ -107241,7 +108371,7 @@ defaut, anterieur au lot — cible de retrait 2026-11-01, critere mesurable ecri
 decouverte : le « 100 schemas » du registre en vaut 99, `Vec3` venant de `games/canonical`.
 
 **Conclusion / prochaine etape.** Lot B clos, 4 items sur 4 statues `[x]`, journal
-`.ai/V7.5/v2/LOT_B.md`. Ajouter un calque a la cuisson ne touche plus le contrat public.
+`.ai/archive/V7.5/v2/LOT_B.md`. Ajouter un calque a la cuisson ne touche plus le contrat public.
 Prochaine etape : revue adversariale du diff par le superviseur, puis integration dans
 `feat/v75` selon l'ordre du plan (C -> A -> B -> F -> G -> E -> D).
 
@@ -107294,7 +108424,7 @@ worktree et se sont pollues mutuellement (une mutation concurrente ne peut produ
 echec, jamais un faux succes, donc les verdicts restent surs — mais deux revues simultanees
 demandent deux worktrees).
 
-**Conclusion / prochaine etape.** Lot B clos apres revue, journal `.ai/V7.5/v2/LOT_B.md`
+**Conclusion / prochaine etape.** Lot B clos apres revue, journal `.ai/archive/V7.5/v2/LOT_B.md`
 complete d'une section « Corrections apres revue » avec les six points, les huit mutations et
 les gates. Prochaine etape : integration dans `feat/v75` par le superviseur, selon l'ordre du
 plan (C -> A -> B -> F -> G -> E -> D).
@@ -107347,7 +108477,7 @@ web sans erreur.
 **Conclusion / prochaine etape.** Six commits `v2(F.n)` pousses sur `feat/v2-tests-ci`. La CI
 n'a PAS ete surveillee (consigne utilisateur en cours de lot, quota) : elle sera verifiee par
 le superviseur a l'integration. Trois points a trancher par lui, tous consignes au journal du
-lot `.ai/V7.5/v2/LOT_F.md` : la ligne de `CLAUDE.md` qui cite le fichier supprime
+lot `.ai/archive/V7.5/v2/LOT_F.md` : la ligne de `CLAUDE.md` qui cite le fichier supprime
 `internal/himap/corpus_tag_test.go` (je n'ai pas le droit de modifier `CLAUDE.md`), les deux
 exemptions fines de `.golangci.yml` supprimees alors que leur premisse a change sous l'effet du
 meme commit, et le fait que le lot E devra rejouer la baseline de presence dans le meme commit
@@ -107448,7 +108578,7 @@ autre ; `-tags=integration -p 1` + le ratchet golangci-lint sont desormais au jo
 halo_infinite n'a PAS de `title.toml` (descripteur built-in, un manifeste y serait ignore),
 et les manifestes « heatmap » vivent sous `apps/web/src/lib/i18n/manifests/`, pas sous
 `config/titles/`. Trois decouvertes hors perimetre au journal du lot
-(`.ai/V7.5/v2/LOT_C.md`), dont la carte de chaleur des positions de la Match View, seule
+(`.ai/archive/V7.5/v2/LOT_C.md`), dont la carte de chaleur des positions de la Match View, seule
 surface `film.*` non nommee au lot et qui affichera un etat vide sur un titre sans film.
 Surveillance CI ARRETEE sur consigne du superviseur (quota API) avant la fin du dernier run :
 6 jobs verts au dernier releve dont le lint repare, 2 encore en cours (Frontend, Coverage).
@@ -107536,7 +108666,7 @@ script Python echouent au meme point avec le meme message. Gate G au complet : `
 commits (un correctif de staging git sur G.2, decouverte consignee : `git add` multi-chemins
 avorte en bloc sur un pathspec deja supprime).
 
-**Conclusion / prochaine etape.** Lot G ferme, journal `.ai/V7.5/v2/LOT_G.md`. Push de
+**Conclusion / prochaine etape.** Lot G ferme, journal `.ai/archive/V7.5/v2/LOT_G.md`. Push de
 `feat/v2-outils` et surveillance CI a suivre. Integration dans `feat/v75` par le superviseur
 apres revue adversariale, dans l'ordre prevu par le plan (C, A, B, F, G, E, D).
 
@@ -107546,7 +108676,7 @@ apres revue adversariale, dans l'ordre prevu par le plan (C, A, B, F, G, E, D).
 (contrainte de quota) : abandonner la surveillance CI, ne pas reparer de job rouge (le
 superviseur verifie la CI a l'integration), rendre le rapport immediatement. Un fichier hors
 perimetre avait deja ete detecte et corrige avant cette consigne (voir entree precedente et
-`.ai/V7.5/v2/LOT_G.md`, section Decouvertes) : `internal/domain/build_queue.go` (reserve aux
+`.ai/archive/V7.5/v2/LOT_G.md`, section Decouvertes) : `internal/domain/build_queue.go` (reserve aux
 lots B/C) avait ete touche par erreur dans le commit G.1, reverte dans un commit dedie
 (`132967520`) des que l'exécuteur l'a repere en relisant le diff complet du lot.
 
@@ -107614,7 +108744,7 @@ réessayer. Deux autres modes de `weapon-sounds` (`pck-dump`, `mesurer-wav`) pai
 résolution de la racine `deploy` sans en avoir besoin.
 
 **Conclusion / prochaine étape.** Les dix constats sont statués `[x]` avec preuve écrite dans
-`.ai/V7.5/v2/LOT_G.md`, section « Corrections après revue ». Ronde 2 de la revue (sur les
+`.ai/archive/V7.5/v2/LOT_G.md`, section « Corrections après revue ». Ronde 2 de la revue (sur les
 corrections seules) à la main du superviseur, puis intégration dans `feat/v75`.
 ## [2026-09-06] Lot E-I du plan v2 — le decodeur de film refondu a comportement identique — Complete
 
@@ -107675,7 +108805,7 @@ est le golden des familles (E.6, qui n'existait pas encore quand E.4 a ete clotu
 rougissent quand le marcheur est neutralise) plus le temoin synthetique de l'avance ajoute le
 2026-09-06. Le temoin de marche delta reste un temoin d'INVARIANCE du paquet, pas la preuve de cet
 item. Le fait que l'item E.4 soit lui-meme bon n'a pas change : c'est sa PREUVE qui etait mal
-designee. Correction ecrite au journal du lot (`.ai/V7.5/v2/LOT_E.md`, gate E.4). L'entree
+designee. Correction ecrite au journal du lot (`.ai/archive/V7.5/v2/LOT_E.md`, gate E.4). L'entree
 ci-dessus n'est pas reecrite : elle est datee, ce correctif l'est aussi.
 
 Decouverte de methode a retenir : `golangci-lint` tient son cache de RESULTATS globalement a la
@@ -107686,8 +108816,8 @@ PAQUET. La premiere mesure de reference annoncait « 0 issues. » sur `filmdec` 
 les six memes.
 
 **Conclusion / prochaine etape.** Tache E-I close : cinq items `[x]`, aucun `[!]`, aucun test
-desactive, aucun golden regenere. Journal `.ai/V7.5/v2/LOT_E.md`, reference
-`.ai/V7.5/v2/LOT_E_digests_avant.md`. Sept decouvertes consignees et non traitees, dont la cloture
+desactive, aucun golden regenere. Journal `.ai/archive/V7.5/v2/LOT_E.md`, reference
+`.ai/archive/V7.5/v2/LOT_E_digests_avant.md`. Sept decouvertes consignees et non traitees, dont la cloture
 morte laissee par les reglages supprimes (14 variables sans ecrivain, plusieurs portant une largeur
 MESUREE d'un chemin non nominal — a trancher par le superviseur) et le skip de
 `TestKillSourcePositionsFilmReelEtRelitParLaVue`, seul test de bout en bout de `buildPositionRows`
@@ -107751,7 +108881,7 @@ killsource sur 4 films reels, temoin de marche delta sur 3 films, table ECS, int
 killcollector) sont IDENTIQUES sur les trois items.
 
 **Conclusion / prochaine etape.** Lot E complet : E-I (E.1 a E.5) et E-II (E.6 a E.8), huit items
-`[x]`, aucun `[!]`. Journal `.ai/V7.5/v2/LOT_E.md`, reference `.ai/V7.5/v2/LOT_E_digests_avant.md`.
+`[x]`, aucun `[!]`. Journal `.ai/archive/V7.5/v2/LOT_E.md`, reference `.ai/archive/V7.5/v2/LOT_E_digests_avant.md`.
 Quatre decouvertes consignees et non traitees, dont `ti=43 i=0 object-position-component` (la table
 dit 15 bits, le code en consomme 45 ou 60 — aucune des trois mesures) et les deux interrupteurs de
 mecanisme restes sans ecrivain (`accumWorld`, `inferResyncTargets`), dont le retrait est une
@@ -107846,7 +108976,7 @@ deux allowlists retrecissent (`ecsEcartsAdmis` 3 -> 2, exemption du preambule pa
 fonction) et la liste fermee du verrou devient derivee.
 
 **Conclusion / prochaine etape.** Les sept points sont `[x]`, aucun `[~]`, aucun `[!]`. Journal
-`.ai/V7.5/v2/LOT_E.md`, section « Corrections apres revue adversariale (E-R1) + item E.9 ». Quatre
+`.ai/archive/V7.5/v2/LOT_E.md`, section « Corrections apres revue adversariale (E-R1) + item E.9 ». Quatre
 decouvertes consignees et non traitees, dont deux qui appellent un successeur : le golden des
 familles jette tous les denominateurs des balayages, et `ScanEquipmentState` ancre par un marcheur
 d'objets du monde qui n'a jamais eu son item E.4. Prochaine etape : ronde 2 de la revue sur ces
@@ -107899,7 +109029,7 @@ L'artefact E2E passe de 262 535 a 283 260 octets — les calques a archetype son
 **Conclusion / prochaine etape.** Aucun bump de `SchemaVersion` : la sortie de production ne change
 pas, et aucun artefact du parc n'a ete cuit sans registre (les trois autres mini-bobines
 versionnees sont saines, leurs goldens passent avec le refus actif). Journal detaille :
-`.ai/V7.5/v2/INSTRUCTION_CTF_DRAPEAUX.md`. A remonter : la branche `feat/v2-tests-ci`
+`.ai/archive/V7.5/v2/INSTRUCTION_CTF_DRAPEAUX.md`. A remonter : la branche `feat/v2-tests-ci`
 (`4cf807d64`, lot F.1) a fige comme oracle les valeurs du fixture CASSE — elle doit etre re-mesuree
 sur le fixture corrige avant merge, et sa decouverte « 92 que le decodeur ne rend plus » requalifiee.
 Le seul chemin vers `flagCarries > 0` sur ce match est le pont d'identite par manche, hors perimetre.
@@ -107925,7 +109055,7 @@ tampon compresse au lieu de rendre un registre vide en silence — la detection 
 faux positif sur les 1 378 registres du cache. Ce qui etait faux, c'est la GRAVITE que je lui
 attribuais, pas la reparation.
 
-**Corrections portees** : ERRATUM date en tete de `.ai/V7.5/v2/INSTRUCTION_CTF_DRAPEAUX.md` (le
+**Corrections portees** : ERRATUM date en tete de `.ai/archive/V7.5/v2/INSTRUCTION_CTF_DRAPEAUX.md` (le
 corps est conserve tel quel) ; commentaires faux retires de `filmdec/registry.go` (« premier
 octet 0x29 » — vrai sur 1 117 films seulement, 204 sont en `0x28` et passent la condition CM=8),
 de `registry_compressed_test.go` et de `film_fixture_integrite_cgo_test.go` (« le SEUL film que
@@ -108078,7 +109208,7 @@ lue nulle part, la troisieme n'en a pas. Gates joues en avant-plan : `go build .
 `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...`, ratchet
 `golangci-lint --new-from-merge-base=origin/main` — tous verts, zero test skippe.
 
-**Conclusion / prochaine etape.** Trois items statues `[x]`, journal `.ai/V7.5/v2/LOT_A.md`.
+**Conclusion / prochaine etape.** Trois items statues `[x]`, journal `.ai/archive/V7.5/v2/LOT_A.md`.
 La tache A-II (A.4 point d'entree unique des derivations, A.5 rattrapage par digest, A.6
 `match_player_positions` en projection persist) NE DEMARRE PAS : le plan prescrit une revue
 adversariale entre les deux taches. Une question ouverte pour le superviseur : le bump de
@@ -108121,7 +109251,7 @@ joues en avant-plan : build, tests des sept familles de paquets, integration `-p
 persist, migration et api, ratchet `golangci-lint --new-from-merge-base` — tous verts.
 
 **Conclusion / prochaine etape.** Six items du lot A statues `[x]`, journal
-`.ai/V7.5/v2/LOT_A.md` (mesures, preuves, gates, sept decouvertes, trois questions). Surveillance
+`.ai/archive/V7.5/v2/LOT_A.md` (mesures, preuves, gates, sept decouvertes, trois questions). Surveillance
 CI abandonnee sur consigne utilisateur (quota) : le superviseur verifiera a l integration. Trois
 questions lui reviennent : le bump de revision rouvre le backlog de redecodage sur tout le parc ;
 la cadence des positions (`GrainPositionsMS`) est le seul parametre produit tranche par
@@ -108172,7 +109302,7 @@ Gates joues en avant-plan : build, tests unitaires des neuf familles de paquets,
 vides), ratchet `golangci-lint --new-from-merge-base=origin/main ./...` a 0 issue.
 
 **Conclusion / prochaine etape.** Sept points statues `[x]`, section « Corrections apres revue »
-au journal `.ai/V7.5/v2/LOT_A.md` avec les mesures du rouge et les gates. Sept commits
+au journal `.ai/archive/V7.5/v2/LOT_A.md` avec les mesures du rouge et les gates. Sept commits
 `v2(A.fix-1..7)` sur `feat/v2-faits`, pousses. Trois decouvertes nouvelles consignees et NON
 traitees : deux directives `//nolint:gosec —` preexistantes (tiret cadratin au lieu de `//`) qui
 ne suppriment rien et font avertir le lint global ; un verrou `%TEMP%\golangci-lint.lock` qui
@@ -108391,7 +109521,7 @@ tests : 9 avant, 4 apres, chacun nomme avec sa raison.
 **Conclusion / prochaine etape.** Le lot D est clos cote items : D.1 a D.14 statues, deux
 reports connus et documentes (D.10 « faux hooks », bloque sur une question au superviseur —
 le NOM ou la STRUCTURE ; D.15 differe hors chantier). Quatre decouvertes hors perimetre au
-journal du lot (`.ai/V7.5/v2/LOT_D.md`), dont l'absence de tout lint de frontiere
+journal du lot (`.ai/archive/V7.5/v2/LOT_D.md`), dont l'absence de tout lint de frontiere
 `lib/ -> features/` : la fermeture des sept modules descendus a du etre verifiee a la main.
 Ecart assume et argumente au perimetre litteral : les quatre assertions de couleur sur le
 RENDU restent (un lint statique ne voit pas une couleur qui arrive par la donnee), et l'etat
@@ -108550,7 +109680,7 @@ score en silence (journal INFO). Sur ce poste, tout chemin Windows passe par `cy
 
 **Conclusion / prochaine etape.** Outil `cmd/replay-diff` (6 fichiers, 1 049 L, 6 tests dont la
 morsure est prouvee par mutation, `golangci-lint 0 issues`) et rapport
-`.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md` livres. Le parc de reference n'a pas bouge (temoins
+`.ai/archive/V7.5/v2/BALAYAGE_PARC_2026-09-06.md` livres. Le parc de reference n'a pas bouge (temoins
 mtime avant/apres sur `replays`, `reference`, `film_chunks` du checkout principal). A trancher
 par le superviseur : reparer le pont d'identite des actions d'objectif (candidate n° 1) AVANT la
 re-cuisson du parc, sans quoi la re-cuisson gravera la perte dans les 951 artefacts.
@@ -108593,7 +109723,7 @@ confort : le delta ne touche que deux fichiers `.ai/` (plan et baseline de tests
 a cuit les 119 films. La mesure vaut donc pour `beeb6f3ee` sans re-cuisson.
 
 **Conclusion / prochaine etape.** Section « Balayage APRES » ajoutee a
-`.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md` (renvoi pose en tete : les sections 1 a 9 sont le
+`.ai/archive/V7.5/v2/BALAYAGE_PARC_2026-09-06.md` (renvoi pose en tete : les sections 1 a 9 sont le
 diagnostic AVANT et restent au passe). Residu unique a nommer : `bcb6d393` perd 3 actions
 `kills` sur deux joueurs alors que le match gagne sur toutes les familles (67 -> 76) — une
 re-attribution dans un gain, a fermer si l'instruction des candidates veut le zero. Le parc peut
@@ -108756,7 +109886,7 @@ poses, drapeau neutre du schema 35, scores d'equipe echanges a somme constante) 
 faits residuels nommes un a un dans le rapport, tous anterieurs au chantier v2**.
 
 **Conclusion / prochaine etape.** Section « Balayage FINAL (schema 41) » ajoutee a
-`.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`, avec le recapitulatif par axe des trois passes et le
+`.ai/archive/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`, avec le recapitulatif par axe des trois passes et le
 verdict en tete du document. **Le parc peut etre re-cuit au schema 41 sans rien perdre.** Un
 residu non instruit merite son propre examen si l'utilisateur veut fermer a zero : `d9781168`
 (s23) perd 6 portages de crane d'Oddball (36 -> 30) — il n'entrait dans aucune des quatre
@@ -108778,7 +109908,7 @@ comme a re-cuire) ; Notion mis a jour (re-cuisson au schema 41).
 **Resultats.** Pertes distinctes 1 783 -> 1 483 -> 1 160, ZERO perte nouvelle sur les trois
 passes ; candidates 1, 2, 4 a zero, candidate 3 a deux residus ; +438 actions d'objectif,
 +52 tractions, +28 vies nommees, +15 episodes, +12 intervalles de drapeau retrouves. Quinze
-faits anterieurs restent listes match par match (`.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`),
+faits anterieurs restent listes match par match (`.ai/archive/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`),
 dont `d9781168` -6 portages de crane d'Oddball. `feat/v75` = tout integre.
 
 **Conclusion / prochaine etape.** Le parc peut etre re-cuit au schema 41 (etape de release
@@ -108828,7 +109958,7 @@ place : les CTF MULTI-MANCHE (`fb1a1a72` : 46 prises, 0 portage, 3 actions ident
 c'est le pont par manche qui ne tient pas, pas la completion) et les calques VIP / CRANE, qui
 subissent le meme plafond et pour lesquels le patron est desormais pose. Le seuil de re-cuisson
 de la release passe de `< 40` a `< 42`. Detail :
-`.ai/V7.5/v2/FLAGCARRIES_COMPLEMENT_2026-09-06.md`.
+`.ai/archive/V7.5/v2/FLAGCARRIES_COMPLEMENT_2026-09-06.md`.
 
 ## [2026-09-06] Intégration feat/v2-flagcarries (schéma 42) — Complété
 
@@ -108927,7 +110057,7 @@ témoin à rejouer à chaque bump de schéma.
 ## [2026-09-06] Découpe par manche des compteurs — la manche déclarée confrontée au temps (schéma 44)
 
 **Statut.** Complété — branche `feat/v2-manches`, journal
-`.ai/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md`.
+`.ai/archive/V7.5/v2/MANCHES_COMPTEURS_2026-09-06.md`.
 
 **Le défaut, confirmé sur pièces.** `51ebbc0f` (Oddball, 2 manches) publiait **63 assistances**
 pour un joueur qui en a **5** à la feuille. Diagnostic du relecteur vérifié à la milliseconde :
@@ -109239,7 +110369,7 @@ verts. Commit `61fb96a60`.
 d'emplacement) mais n'est ni nommé par l'audit ni un « report de dernière lecture » au même
 sens — impact visuel mineur (animation), à signaler si un futur audit du même axe l'atteint.
 P1-9 (dessin des vies anonymes) reste en attente d'une décision utilisateur, non traité. Détail
-complet : `.ai/V7.5/v2/WEB_VIES_2026-09-06.md`. Registre d'audit mis à jour (ligne d'état P0-2).
+complet : `.ai/archive/V7.5/v2/WEB_VIES_2026-09-06.md`. Registre d'audit mis à jour (ligne d'état P0-2).
 
 ## [2026-09-07] P0-2 — revue adversariale WEB-R1, deux trous de test comblés — Complété
 
@@ -109281,7 +110411,7 @@ warnings préexistants hors périmètre), `vitest run src/lib/replay src/feature
 uniquement — aucune régression de comportement, le code de production livré était déjà correct
 (vérifié par la revue elle-même : mutations rejouées sur le code AVANT R1 confirmaient déjà le
 comportement correct, seule la COUVERTURE de test avait un trou). Détail complet :
-`.ai/V7.5/v2/WEB_VIES_2026-09-06.md`, section « Corrections R1 ».
+`.ai/archive/V7.5/v2/WEB_VIES_2026-09-06.md`, section « Corrections R1 ».
 
 ## [2026-09-07] Intégration déportée feat/v2-integ : manches, durées, corpus, web-vies, vies-anonymes, pont, drapeaux — Complété
 
@@ -109802,7 +110932,7 @@ contrats et paradigme ; un lot par domaine en vol ; worktree dedie + branche `fe
 - Tactique : phases Haiku (7C.9, 5, 7B, 8) toutes DANS le plan d'origine (pas d'extension). 7C.9
   verifie propre (retrait, biais conservateur documente) ; reliquat : `EtatParti` mort. Phase 8
   NON close (cases vides, revue du diff integral jamais faite). Phases 5 + 7B (~3 100 L) jamais
-  relues -> revue adversariale Sonnet faite : P0 = 0, P1 = 2 (reserve `echantillon_faible` non affichee sur les tuiles KPI Tactique et sur le nuage Escouade), P2 = 1 (4 cles i18n mortes) ; rapport `.ai/V7.5/REVUE_TACTIQUE_PHASES_5_7B_2026-09-07.md` ; correctifs dans le lot de cloture Tactique (Q8).
+  relues -> revue adversariale Sonnet faite : P0 = 0, P1 = 2 (reserve `echantillon_faible` non affichee sur les tuiles KPI Tactique et sur le nuage Escouade), P2 = 1 (4 cles i18n mortes) ; rapport `.ai/archive/V7.5/REVUE_TACTIQUE_PHASES_5_7B_2026-09-07.md` ; correctifs dans le lot de cloture Tactique (Q8).
 - Compatibilite avec le lot P : 7C consomme le pont par morts du paquet `replay` (pas un pont
   maison) -> lecteur a migrer en P2 ; le registre d'identite doit vivre en PUR dans
   `analysis/replay` (le collecteur ne cuit pas) ; S.3 (participation par horloge API) GELE
@@ -110034,7 +111164,7 @@ recents).
   web : npm ci, typecheck, lint 0 erreur, vitest 654 fichiers / 6 986 tests, couleurs, libelles,
   `generated.ts` a jour.
 - Revue adversariale UNIQUE (Sonnet, contexte frais, diff cumule 163 fichiers) :
-  `.ai/V7.5/REVUE_VAGUE1_2026-09-07.md` — P0 0, P1 1, P2 7. Le P1 (trois copies du motif
+  `.ai/archive/V7.5/REVUE_VAGUE1_2026-09-07.md` — P0 0, P1 1, P2 7. Le P1 (trois copies du motif
   « texte — echantillon faible », deux separateurs) est corrige dans la meme branche :
   `lib/formatters/lowSampleNote.ts` (`withLowSampleNote`), trois sites migres, garde-rail
   `lowSampleNote.guard.test.ts` (mutation jouee : une copie dans features/ -> rouge). Les P2
@@ -110172,7 +111302,7 @@ verts, 1 fichier / 17 tests skip preexistants).
 `.ai/PLAN_ORCHESTRATION_2026-09-07.md` M2 coche, `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`
 (tableau Decision/etat, une ligne par P2-N) et `.ai/REGISTRE_REPORTS.md` (entree barree et
 fermee, nouvelle entree ouverte pour P2-1/P2-2 avec condition de reprise = plan decodeur
-post-v7.5.0) mis a jour. Journal detaille : `.ai/V7.5/v2/RESTES_R6_2026-09-07.md`. Decouverte
+post-v7.5.0) mis a jour. Journal detaille : `.ai/archive/V7.5/v2/RESTES_R6_2026-09-07.md`. Decouverte
 notee au registre, non traitee : `seatLogic.filmIndexByIdentity` porte une 3e copie inline de la
 derivation « cle de roster pour un bot » depuis la creation de `rosterEntryKey` — factorisation
 future, pas un defaut. Le gate corpus (`make replay-corpus-gate`) et les temoins chiffres du plan
@@ -110250,7 +111380,7 @@ directement le code touche). Commit sur `feat/raster-document-unique` (worktree
   gains = version + `deathOffsetMs`.
 - Revue adversariale UNIQUE (Sonnet, sans sous-agent) : P0 0, P1 0, P2 1 (calage : cas
   theorique des fins de vie rares, non reproduit — reserve pour le plan decodeur) ;
-  `.ai/V7.5/REVUE_VAGUE2_2026-09-08.md`.
+  `.ai/archive/V7.5/REVUE_VAGUE2_2026-09-08.md`.
 - Prochaine etape : avance rapide de `feat/v75`, push, UN controle de CI. POINTS PROD au
   deploiement : migration `purge_weapon_families_labels_columns` au boot ; parc d'artefacts < 49
   a recuire (`backfill-replay --only-existing`, un film a la fois) pour le lien exact ;
@@ -110988,7 +112118,7 @@ SUPPRIMER la regle `BANQUE veh_un_scorpion`, inerte, dans le meme commit.
 
 **Statut** : Complete cote code et tests ; etape « voir a l ecran » et livraison ouvertes.
 Worktree `LevelUp-wt-killfeed-porteur`, branche `wt/killfeed-porteur` depuis `feat/v75`.
-Plan : `.ai/V7.5/PLAN_ICONE_PORTEUR_KILLFEED_2026-09-10.md`.
+Plan : `.ai/archive/V7.5/PLAN_ICONE_PORTEUR_KILLFEED_2026-09-10.md`.
 
 **Point de depart** : question utilisateur — pourquoi le fil du rejeu n affiche ni Gungoose ni
 Warthog a mitrailleuse. Ce n etait pas un probleme d assets : les vignettes 26 et 29 sont
@@ -111808,7 +112938,7 @@ defaut inchange) : l'outil canonique ne savait servir qu'une variante par couche
 declarer `thruster_activate` plus ses deux variantes via `SOUND_VARIANTS`. **Avertissement :
 le garde-rail `replaySoundAssets.guard.test.ts` interdit l'asset mort — les trois fichiers
 sont rouges tant que les stems ne sont pas declares ; les deux lots doivent atterrir
-ensemble.** Rapport complet : `.ai/V7.5/RE_SON_PROPULSEUR_2026-09-03.md`.
+ensemble.** Rapport complet : `.ai/archive/V7.5/RE_SON_PROPULSEUR_2026-09-03.md`.
 
 
 ---
@@ -111899,8 +113029,8 @@ taille d'un bloc, la borne exacte est 50 ; (c) le cache local ne contient plus q
 (1 123 `HI_1_13_0`, 146 `HI_1_12_0` sur 1 351 répertoires) — les builds `HI_1_5_1` à `HI_1_11_0`
 du recensement du 30/08 ont disparu, donc la vérification a porté sur deux builds et non trois.
 
-**Livrables** : `.ai/V7.5/film_re/NOTE_SECTION3_CHUNK00_2026-09-12.md` (carte complète, contrôles
-chiffrés, commandes de rejeu), section 8 de `.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md` (tableau
+**Livrables** : `.ai/archive/V7.5/film_re/NOTE_SECTION3_CHUNK00_2026-09-12.md` (carte complète, contrôles
+chiffrés, commandes de rejeu), section 8 de `.ai/archive/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md` (tableau
 des fonctions avec preuve), instruments
 `apps/go-api/internal/analysis/filmdec/section3_ecrivain_research_test.go` et
 `section3_roster_research_test.go` (garde `CHUNK00_FILMS`).
@@ -111989,9 +113119,9 @@ ecrit 123 (heuristique de `lireEntete`), les ecarts RELATIFS entre builds resten
 (c) le lecteur chaine perd la tete de la table sur 4 films sur 76 ; (d) 5 films du cache n'ont pas de
 section d'identification et se comportent comme `HI_1_4_1`.
 
-**Livrables** : `.ai/V7.5/film_re/NOTE_SECTION3_SLOTS_2026-09-12.md` (verdict, grammaire champ par
+**Livrables** : `.ai/archive/V7.5/film_re/NOTE_SECTION3_SLOTS_2026-09-12.md` (verdict, grammaire champ par
 champ, controles chiffres, profil par build, commandes de rejeu), section **8.2** de
-`.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md` (+ correction de la conclusion de 8.1, devenue fausse
+`.ai/archive/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md` (+ correction de la conclusion de 8.1, devenue fausse
 pour le gamertag), instruments
 `apps/go-api/internal/analysis/filmdec/section3_slot_{grammar,ordre,perso,builds}_research_test.go`.
 
@@ -112053,9 +113183,9 @@ PREMIER paquet de type 2 (`chunk_01`), cause non établie ; (d) le lecteur de la
 `chunk_00` casse sur les gros rosters (contourné par un repli documenté, cause non traitée) ;
 (e) la réattribution de slot en cours de match, qui impose d'indexer par SLOT et non par rang.
 
-**Livrables** : `.ai/V7.5/film_re/NOTE_EQUIPE_FILM_2026-09-12.md` (verdict, chaîne de
+**Livrables** : `.ai/archive/V7.5/film_re/NOTE_EQUIPE_FILM_2026-09-12.md` (verdict, chaîne de
 l'exécutable, six contrôles chiffrés, chemin actuel de la production et ses pertes, commandes de
-rejeu), section **8.3** de `.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md`, instruments
+rejeu), section **8.3** de `.ai/archive/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md`, instruments
 `apps/go-api/internal/analysis/filmdec/equipe_film_{recon,designateur,oracle}_research_test.go`.
 Gates : `gofmt -l` net, `go vet ./internal/analysis/filmdec/` net,
 `go test ./internal/analysis/filmdec/` sans garde ok, `go test ./internal/archlint/` ok.
@@ -112138,9 +113268,9 @@ d'état par défaut fausse (constant sur les 13 archétypes à état fixe, dispe
 réattribution de slot ne se voit PAS dans `chunk_00` — c'est un phénomène de la trame, et un
 décodeur doit indexer le désignateur par SLOT.
 
-**Livrables** : `.ai/V7.5/film_re/NOTE_PROFIL_PAR_BUILD_2026-09-12.md` (dérivation de 186, table
+**Livrables** : `.ai/archive/V7.5/film_re/NOTE_PROFIL_PAR_BUILD_2026-09-12.md` (dérivation de 186, table
 de profil par build, cause et correction du lecteur, prouvé/hypothèse/réfuté, commandes de rejeu),
-section **8.4** de `.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md`, instruments
+section **8.4** de `.ai/archive/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md`, instruments
 `apps/go-api/internal/analysis/filmdec/profil_{entete,fermeture,builds,roster,roster_bilan}_research_test.go`.
 Gates : `gofmt -l` net, `go vet ./internal/analysis/filmdec/` net,
 `go test ./internal/analysis/filmdec/` sans garde ok, `go test ./internal/archlint/` ok — le
@@ -112220,10 +113350,10 @@ premier ou deuxième composant (1 176 records) ; (d) `ti=13` reste muet alors qu
 portée est bit-exacte avec le décompilé ; (e) deux films de `HI_1_12_0` déclenchent
 l'avertissement « empreinte du registre ECS INCONNUE ».
 
-**Livrables** : `.ai/V7.5/film_re/NOTE_IMAGECLE_ETAT_COMPLET_2026-09-13.md` (tableau archétype ×
+**Livrables** : `.ai/archive/V7.5/film_re/NOTE_IMAGECLE_ETAT_COMPLET_2026-09-13.md` (tableau archétype ×
 modèle par build et par film, liste des états par défaut à corriger avec la largeur impliquée,
 estimation de ce que la production déraille, prouvé/hypothèse/réfuté, commandes de rejeu),
-section **8.5** de `.ai/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md`, instruments
+section **8.5** de `.ai/archive/V7.5/film_re/RE_EXE_GHIDRA_FINDINGS.md`, instruments
 `apps/go-api/internal/analysis/filmdec/imagecle_{fermeture,oracle_n2,production}_research_test.go`.
 Gates : `gofmt -l` net, `go vet ./internal/analysis/filmdec/` net,
 `go test ./internal/analysis/filmdec/` sans garde **ok**, `go test ./internal/archlint/` **ok** —
@@ -112278,7 +113408,7 @@ lit) vaut **0 sur les 665**, plancher de bruit 4 lectures parfaites sur 180 essa
 
 **Livrables.** Quatre instruments sous garde `CHUNK00_FILMS` (`residus_vacants`, `residus_slots`,
 `residus_trame`, `residus_pied` `_research_test.go`), la note
-`.ai/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md`, la section 8.6 de
+`.ai/archive/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md`, la section 8.6 de
 `RE_EXE_GHIDRA_FINDINGS.md`. Gates : `gofmt -l` net, `go vet` net, `go test
 ./internal/analysis/filmdec/` sans garde ok, `go test ./internal/archlint/` ok.
 
@@ -112374,7 +113504,7 @@ intactes, 0 écart après) ; `purge_foreign_lusr_chain -db … -commit` sur les 
 reposés, vue `_latest` présente. Serveur relancé (200). Défaut d'outil trouvé après coup (une
 seule vue recréée) -> C.9 ; sans effet ici, la vue par type n'était pas encore posée sur ces bases.
 
-**E.3 revue adversariale** (`.ai/V7.5/REVUE_FINITIONS_2026-09-13.md`) : 1 P0, 0 P1, 14 P2.
+**E.3 revue adversariale** (`.ai/archive/V7.5/REVUE_FINITIONS_2026-09-13.md`) : 1 P0, 0 P1, 14 P2.
 R1 (P0) : `match_skill_rank_latest_by_type` n'était créée que par la migration player ; une base
 créée par `EnsurePlayerSchema` seul (onboarding entre deux boots, Halo 5 hors boucle de migration
 du boot) faisait tomber la page Carrière en Catalog Error. Corrigé : vue posée aussi dans
@@ -113402,7 +114532,7 @@ sur son signal, CI de `feat/v75` = verdict d'autorité.
 trois lots exécutés en parallèle par des exécuteurs Opus sur trois worktrees
 (`wt/ajustements-matchview` 12cd9466e, `wt/ajustements-heatmap` cec988525, lot 1 95e392b89),
 fusionnés sans conflit (56de738db, 34dd0c9be). Plan statué :
-`.ai/V7.5/PLAN_AJUSTEMENTS_PRE_V75_2026-09-19.md`. Reste : gate visuel de l'utilisateur, puis
+`.ai/archive/V7.5/PLAN_AJUSTEMENTS_PRE_V75_2026-09-19.md`. Reste : gate visuel de l'utilisateur, puis
 fusion dans `feat/v75` et CI au niveau job.
 
 **Décision technique principale** : le nuage « Pourquoi la vengeance ne vient pas » passe d'un
@@ -113507,7 +114637,7 @@ fusion dans `feat/v75` (CI = verdict d'autorité), suppression des trois worktre
 ## [2026-09-21] Ajustements supplementaires pre-v7.5 (deuxieme vague + vagues 3 et 4) — Complete (branche `feat/ajustements-supp-v75`, 27 lots Opus fusionnes, CI verte au niveau job sur 0c520e12d, fusionnee dans `feat/v75` par avance rapide le 2026-09-22)
 
 **Demande** : `Ajustements-supp-prev75.txt` (7 pages, ~45 items) + 17 arbitrages utilisateur
-consignes dans `.ai/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md`. Base : `origin/feat/v75`
+consignes dans `.ai/archive/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md`. Base : `origin/feat/v75`
 (28b93cca5, lot 5.2) — le checkout local etait en retard de 23 commits.
 
 **Decision technique principale** : un prealable transverse avant les lots (prop `frameless`
@@ -113623,7 +114753,7 @@ feature, sections partagees), pas de memoire ni de doc. Constats structurants :
   porte deja `damage_dealt` / `damage_taken` et que `netLives` + `cumulativeSigned` +
   `divergentZeroGradient` sont ecrits : c'est la proposition a cout front-seul.
 
-**Resultats observes** : maquette `.ai/V7.5/MAQUETTE_SECTIONS_TRANSVERSES_2026-09-21.html`
+**Resultats observes** : maquette `.ai/archive/V7.5/MAQUETTE_SECTIONS_TRANSVERSES_2026-09-21.html`
 (jetons de l'app repris a l'identique, SVG interactif, bascule clair/sombre). Dix propositions
 chiffrees en backend / front / reserve, triees du moins cher au plus cher. Aucune forme neuve
 n'est inventee quand une forme en service repond deja a la question (jauges a parite des usages,
@@ -113837,9 +114967,9 @@ page Tactique qui recharge tout ; ab526724 sans drapeau, score ni frise, avec de
 aucun serveur, aucun navigateur, aucun décodage de film ; bases lues sur COPIES ; commandes `go`
 sérialisées par un verrou machine dans des worktrees détachés, retirés en fin d'enquête) ; trois sondes
 Go `research` sur faits persistés seulement. Affirmations structurantes revérifiées par le superviseur
-sur le code et les documents avant d'être retenues. Livrable : `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
+sur le code et les documents avant d'être retenues. Livrable : `.ai/archive/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
 (verdicts, causes, 27 décisions utilisateur avec recommandation, quatre vagues de lots, gates sur
-documents réels) et annexes `.ai/V7.5/retours_rejeu_2026-09-23/` (six rapports, instruments).
+documents réels) et annexes `.ai/archive/V7.5/retours_rejeu_2026-09-23/` (six rapports, instruments).
 
 **Résultats observés (causes prouvées).**
 - Ghost : le décodeur des tirs (`grammar/fire_events.go` `ScanFireEvents`) ne lit que l'événement de tête
@@ -113881,7 +115011,7 @@ sur demande).
 
 **Décision technique principale.** Quatre sondes de décodage menées par le superviseur, un film à la
 fois sous verrou, en tests `research` du paquet `grammar` / `replay` (aucun code de production, aucun
-artefact écrit) ; une note par sonde sous `.ai/V7.5/retours_rejeu_2026-09-23/SONDE_P*.md`.
+artefact écrit) ; une note par sonde sous `.ai/archive/V7.5/retours_rejeu_2026-09-23/SONDE_P*.md`.
 
 **Résultats observés.** P1 : le tir continu (Ghost) n'est dans aucun canal lisible du film par tir ; ses
 touches et son compteur le sont (S3 Ghidra, branche `feat/rr-ghidra` : il est dans la vue de contrôle).
@@ -114114,9 +115244,9 @@ eslint 0 erreur, lint:colors, vitest 8 510 tests, knip, manifestes i18n) verts.
 
 ## [2026-09-23] CI de feat/v75 rouge depuis l'archivage des docs (fe2106f4b) : chemin du plan du decodeur dans le ratchet des cibles de repli — Complete
 
-**Contexte** : apres la fusion de la campagne perf (4693062d5), le job « Go Coverage + Baseline non-regression » de feat/v75 echoue sur `archlint.TestAucuneCibleDeRepliNeNommeUnLotClos` : `open .ai/PLAN_DECODEUR_FILM_2026-09-13.md: no such file`. Le commit d'archivage fe2106f4b (avant la fusion, CI deja rouge sur ce commit) a deplace le plan clos sous `.ai/V7.5/` sans mettre a jour le chemin code en dur dans le test. Aucun lien avec la campagne perf (le meme test etait vert sur sa branche, basee avant l'archivage).
+**Contexte** : apres la fusion de la campagne perf (4693062d5), le job « Go Coverage + Baseline non-regression » de feat/v75 echoue sur `archlint.TestAucuneCibleDeRepliNeNommeUnLotClos` : `open .ai/PLAN_DECODEUR_FILM_2026-09-13.md: no such file`. Le commit d'archivage fe2106f4b (avant la fusion, CI deja rouge sur ce commit) a deplace le plan clos sous `.ai/archive/V7.5/` sans mettre a jour le chemin code en dur dans le test. Aucun lien avec la campagne perf (le meme test etait vert sur sa branche, basee avant l'archivage).
 
-**Decision technique principale** : `cheminDuPlanDecodeur` pointe sur `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md` (commentaire date) ; aucune autre modification — le plancher de 60 items et la table `decfilm.Table()` sont inchanges, le ratchet garde sa semantique.
+**Decision technique principale** : `cheminDuPlanDecodeur` pointe sur `.ai/archive/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md` (commentaire date) ; aucune autre modification — le plancher de 60 items et la table `decfilm.Table()` sont inchanges, le ratchet garde sa semantique.
 
 **Resultats observes** : `go test -count=1 ./internal/archlint/` vert en local sur l'arbre fusionne ; le reste du run CI (8 jobs) etait deja vert. Push de feat/v75, CI a re-surveiller.
 
@@ -114285,7 +115415,7 @@ défaut : le garde rougit (180 000 > 90), code restauré. Gates : voir le compte
 
 ## [2026-09-24] Retours rejeu : rattrapage de feat/v75 (campagne perf) avant la fusion — Complété (feat/retours-rejeu, rien de poussé)
 
-**Décision technique principale.** `git merge --no-ff origin/feat/v75` (9d335ea43, 103 commits depuis fe2106f4b : campagne perf 12 lots + C4, correctif archlint 6d8644181, PlayerLayout 46aec098c, docs) dans feat/retours-rejeu (e1dc73433) -> ea986960b. Un seul conflit : `internal/archlint/no_stale_fallback_target_test.go` (les deux côtés avaient corrigé le chemin `.ai/V7.5/` du plan du décodeur) — version de feat/v75 gardée, en-tête de fichier remis au bon chemin. Auto-fusionnés : openapi.yaml, generated.ts, types.ts (aucun hunk commun). Seuls ces 5 fichiers étaient touchés des deux côtés ; paquets partagés (service, replaylabels, asset-drawer, sync, wire) relus : fichiers disjoints, le cache `replaylabels.Catalogue` de la perf ne sert que squadagg, le tiroir L4 de la campagne (`assetDrawerLogic`) et le `isOpen` de la perf coexistent. thought_log : 17 + 17 entrées gardées, remises en ordre chronologique (09-23 perf avant les 09-24 de la campagne).
+**Décision technique principale.** `git merge --no-ff origin/feat/v75` (9d335ea43, 103 commits depuis fe2106f4b : campagne perf 12 lots + C4, correctif archlint 6d8644181, PlayerLayout 46aec098c, docs) dans feat/retours-rejeu (e1dc73433) -> ea986960b. Un seul conflit : `internal/archlint/no_stale_fallback_target_test.go` (les deux côtés avaient corrigé le chemin `.ai/archive/V7.5/` du plan du décodeur) — version de feat/v75 gardée, en-tête de fichier remis au bon chemin. Auto-fusionnés : openapi.yaml, generated.ts, types.ts (aucun hunk commun). Seuls ces 5 fichiers étaient touchés des deux côtés ; paquets partagés (service, replaylabels, asset-drawer, sync, wire) relus : fichiers disjoints, le cache `replaylabels.Catalogue` de la perf ne sert que squadagg, le tiroir L4 de la campagne (`assetDrawerLogic`) et le `isOpen` de la perf coexistent. thought_log : 17 + 17 entrées gardées, remises en ordre chronologique (09-23 perf avant les 09-24 de la campagne).
 
 **Résultats observés.** Fichiers générés frais : `openapi-gen -check` à jour, `check-generated-types-fresh` OK, `build_i18n_manifests` 22 manifestes sans écart. Gates : go build / go vet / vet -tags research (film/... + himodule, replaybuild, service, replayartifacts, tools/film_re) verts ; `go test ./...` exit 0 (190 paquets ok, 0 FAIL) ; intégration `-p 1 -json` exit 0, 18 258 tests, baseline OK ; golangci-lint --new-from-merge-base=origin/main 0 issue ; web : tsc, eslint (0 erreur), lint:colors, lint:fields, vitest 8600 verts, knip + ratchet 0/0/0, build Vite, rastérisation Playwright 3/3. Parc : 107 documents reconstruits depuis les faits (base e1dc73433 contre tête ea986960b, mêmes 4 faits au schéma 4 sautés des deux côtés), 107/107 identiques à l'octet, replay-diff 0 écart ; `data/cache` du checkout principal intact (find -newer vide avant/après).
 
@@ -114303,7 +115433,7 @@ défaut : le garde rougit (180 000 > 90), code restauré. Gates : voir le compte
 
 ## [2026-09-25] Plan de suite de l'audit du decodeur de film (perimetre ferme) — En cours (plan PROPOSE, rien lance, rien commite)
 
-**Contexte** : demande utilisateur « plan detaille, au perimetre ferme, pour ce que l'audit recommande ; worktree dedie ; tests en TDD ; couches, responsabilites, non-redondance ». Skills `plan-review`, `plan-execution`, `arch-rules`, `delivery-checklist` appliques. Plan : `.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`.
+**Contexte** : demande utilisateur « plan detaille, au perimetre ferme, pour ce que l'audit recommande ; worktree dedie ; tests en TDD ; couches, responsabilites, non-redondance ». Skills `plan-review`, `plan-execution`, `arch-rules`, `delivery-checklist` appliques. Plan : `.ai/archive/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`.
 
 **Decision technique principale** : douze jalons ordonnes par dependance — J1 OPS-3 (exclusivite par processus et par titre, fusion AVANT v7.5 -> main), J2 robustesse E/S sans sortie modifiee (ecriture atomique stricte, tailles de chunk, verrou OS par `x/sys`, lecteurs bornes + fuzz, refus types de l'enfant de cuisson), J3 modele de revision (empreinte sans commentaires, perimetre = fermeture des imports, revision par consommateur de faits, gardes de l'appelant et cle de cuisson complete dans les faits), J4 etage de balayage unique, J5 identite (slot, generation) + GB-1, J6 portage unique (conditionnel), J7 killsource, J8 replis D-10 + 81 compteurs, J9 drapeau, J10 determinisme, J11 vague unique de re-decodage, J12 modernisation neutre / docs / CI. Matrice de tracabilite : les 64 identifiants du registre ont chacun un statut. Sept decisions utilisateur (DU-1 a DU-7) avec recommandation ; onze decisions techniques (DT-1 a DT-11) dont la reutilisation de `EquipmentLifeKey` (renomme `LifeKey`), d'`atomicfile`, de `contexteDArret`, du protocole `EmitPeak`, de `SpawnBuildOne` + `StoreArtifact`.
 
@@ -114377,7 +115507,7 @@ défaut : le garde rougit (180 000 > 90), code restauré. Gates : voir le compte
 
 **Statut** : Complete. Reste : suppression du dossier `LevelUp-go-migration` apres fermeture des sessions qui y sont ouvertes.
 
-**Decision technique principale** : procedure `.ai/V7.5/PROCEDURE_BASCULE_LEVELUP_2026-09-13.md`
+**Decision technique principale** : procedure `.ai/archive/V7.5/PROCEDURE_BASCULE_LEVELUP_2026-09-13.md`
 re-verifiee puis jouee sur le signal de l utilisateur apres fin confirmee des 6 sessions. Deplacement
 des fichiers non suivis par RENOMMAGE (Move-Item, meme disque) des 81 entrees ignorees utiles, et non
 `robocopy /MOVE` (copie + suppression de 45 Gio). Dechets de build (`.gocache-*`, `.exe` de diag,
@@ -114389,7 +115519,7 @@ logs, coverage, `.tanstack/tmp`) laisses dans l ancien dossier.
   rouvertes dans `LevelUp`).
 - Branches locales 154 -> 4 (feat/v75, main, wt/power-positions GARDEE sur decision user,
   wt/livefire-killpos en attente de decision) ; origin 24 -> 3 (+ main, feat/v75, wt/power-positions) ;
-  `wt/lusr-h5-cause` supprimee (rapport deja archive a l identique dans `.ai/V7.5/`). Remote `fork`
+  `wt/lusr-h5-cause` supprimee (rapport deja archive a l identique dans `.ai/archive/V7.5/`). Remote `fork`
   (tiers) non touche.
 - ~23 Gio de dossiers temporaires hors depot supprimes (rr-tmp-*, rr-integ-*-parc, rr-voies,
   _tmp_livefire_recuisson).
@@ -114408,7 +115538,7 @@ logs, coverage, `.tanstack/tmp`) laisses dans l ancien dossier.
 sautes (reprise decidee en base, ligne « deja a jour au demarrage »).
 
 **Decouvertes non traitees** : ~10 outils `apps/go-api/cmd/diag_*` et 2 instruments de recherche sous
-`.ai/V7.5/retours_rejeu_2026-09-23/` codent en dur `LevelUp-go-migration` dans un chemin.
+`.ai/archive/V7.5/retours_rejeu_2026-09-23/` codent en dur `LevelUp-go-migration` dans un chemin.
 
 **Prochaine etape** : fin du backfill (verif `--status` : 0 erreur), redemarrage du serveur,
 suppression du dossier `LevelUp-go-migration` apres fermeture des sessions qui y sont ouvertes.
@@ -114654,7 +115784,7 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 **Découvertes non traitées** : (1) la projection au fil de l'eau des niveaux d'armes n'écrit rien : WARN « identités de match illisibles, lot NON projeté » (`sync/replayartifacts/padtiers.go:327`, 30 occurrences dans `logs/general.log` du 17 au 19/09) ; aucune ligne `match_pad_pickups_by_tier` pour les matchs synchronisés après le dernier `backfill-pad-tiers` (22/09 13:08), soirée du 22/09 comprise ; cause non diagnostiquée (`identitesDuLot` : `WithRead` nil ou lecture en échec). (2) `REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §4, dernière puce (« Escouade : aucun bloc d'usage ») contredite par le code (`domain/teammates.go:625,632`) : à corriger au prochain commit qui touche ce document. (3) `match_weapon_shots` n'a aucun lecteur ; sa clé d'arme se relie aux familles de socle par les 32 bits hauts (vérifié sur le 22/09) ; l'Épée à énergie et le Rayon de Sentinelle n'y ont jamais de tir. (4) `camo_ms`, `camo_kills`, `overshield_ms`, `overshield_kills` persistés, jamais lus. (5) `powerup_pickups_json` : 33 socles de bonus vidés le 22/09 pour 20 prises attribuées à un joueur.
 
-**Livrables** : artefact https://claude.ai/artifact/6ZKxrug6cLzkxpYs2VWYaP ; copie `.ai/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html` (non commitée).
+**Livrables** : artefact https://claude.ai/artifact/6ZKxrug6cLzkxpYs2VWYaP ; copie `.ai/archive/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html` (non commitée).
 
 **Prochaine étape** : verdict utilisateur sur la liste « Ce que j'ai tranché, à valider » ; au « ok », plan d'implémentation sous `plan-execution` (lots du plus léger au plus lourd, cf. tableau des données de la maquette) et pilotage d'un exécuteur Opus dans un worktree dédié.
 
@@ -114696,7 +115826,7 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 **Demande** : livrable du §6 du handoff `.ai/HANDOFF_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.md` : pour chaque page d'arrivée, l'existant et une proposition avec chiffres réels, et un tri carte par carte (garder / changer la forme / fusionner / retirer), questions des pages à confirmer en tête.
 
-**Décision technique principale** : trois relevés Opus en lecture seule (Contributions ; Dynamique + Synergies ; pages solo), serveur arrêté, `duckdb -readonly`, vues `_latest`. Maquette : https://claude.ai/artifact/C3EWYk6cNEhNzhqnWqPo45, copie `.ai/V7.5/MAQUETTE_TRI_CARTES_DEPLACEES_2026-09-26.html`. Tri proposé : Synergies (Appui et « Qui riposte pour qui » côte à côte, même forme ; anneau, histogramme et frise de riposte retirés au profit de Tactique, sous réserve de la validation du bas de Tactique ; portée + hauteur fusionnées ; « Taux de victoire session vs historique », « Performance par carte » et la carte de chaleur joueur × carte fusionnés en « Ce soir, et d'habitude sur la même carte » ; « Performance d'escouade par session » sans double axe). Contributions (« Avec quoi on frague » = Répartition des frags + Outils de destruction + Mécaniques H5 ; « Qui prend l'objectif » = Ce que mon camp prend + Rapport de force déplié ; Radar et les 9 graphes de Performance retirés, le rang part sur Dynamique ; Impact sans score ni rang ; Médailles en fiches alignées). Dynamique (4 cumuls même grammaire : écart FDA, balance des dégâts, rang, engagement ; Rendement/Résistance et Engagement par match retirés ; Intensité en un graphe). Séries temporelles › Usages (11 cartes → 3 : usages en main, match par match, mes prises d'armes).
+**Décision technique principale** : trois relevés Opus en lecture seule (Contributions ; Dynamique + Synergies ; pages solo), serveur arrêté, `duckdb -readonly`, vues `_latest`. Maquette : https://claude.ai/artifact/C3EWYk6cNEhNzhqnWqPo45, copie `.ai/archive/V7.5/MAQUETTE_TRI_CARTES_DEPLACEES_2026-09-26.html`. Tri proposé : Synergies (Appui et « Qui riposte pour qui » côte à côte, même forme ; anneau, histogramme et frise de riposte retirés au profit de Tactique, sous réserve de la validation du bas de Tactique ; portée + hauteur fusionnées ; « Taux de victoire session vs historique », « Performance par carte » et la carte de chaleur joueur × carte fusionnés en « Ce soir, et d'habitude sur la même carte » ; « Performance d'escouade par session » sans double axe). Contributions (« Avec quoi on frague » = Répartition des frags + Outils de destruction + Mécaniques H5 ; « Qui prend l'objectif » = Ce que mon camp prend + Rapport de force déplié ; Radar et les 9 graphes de Performance retirés, le rang part sur Dynamique ; Impact sans score ni rang ; Médailles en fiches alignées). Dynamique (4 cumuls même grammaire : écart FDA, balance des dégâts, rang, engagement ; Rendement/Résistance et Engagement par match retirés ; Intensité en un graphe). Séries temporelles › Usages (11 cartes → 3 : usages en main, match par match, mes prises d'armes).
 
 **Résultats observés (corrections au handoff)** : (1) Synthèse n'a plus de bloc d'usage depuis le 13/09 (`synthesis_service_usage.go:5-8`) : tout est dans Séries temporelles › Usages, qui ne lit que les matchs sans ami ; aucune session solo avec socles ET bonus depuis le 27/12/2025. (2) Les 9 tuiles « Objectifs de l'escouade » ne s'affichent jamais : `header.objective_stats_by_xuid` n'est rempli que par `squad_service_v2.go:142`, route non appelée par le web (code mort) ; le constat du 21/09 sur deux dénominateurs est sans objet à l'écran. (3) Le violet des bonus vient de `usageMetricKinds.ts:120-121` (Séries temporelles, Sessions), pas de Synthèse ; le nom de jeton `bonus` est déjà pris (#A855F7, cœur de faille).
 
@@ -114747,7 +115877,7 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 **Prochaine étape** : compte rendu de A1, vérifié sur pièces, puis A2 (ou B1 selon le serveur).
 
-**Complément 8 (clôture de la revue des cartes déplacées)** : « L'objectif, soirée après soirée » VALIDÉ. Toutes les cartes qui quittent Tactique sont tranchées et validées : Écart cumulé au FDA attendu (Dynamique) ; Répartition des frags et Outils de destruction (Contributions, séparées, formes revues, armes toutes nommées par le film) ; section objectif de Contributions en quatre cartes (Rapport de force par famille de mode, L'objectif au fil de la session, Qui prend quoi à l'objectif chez nous, L'objectif soirée après soirée) qui remplacent Rapport de force + Ce que mon camp prend. Maquette de référence : artefact C3EWYk6c v8, copie `.ai/V7.5/MAQUETTE_TRI_CARTES_DEPLACEES_2026-09-26.html`. Reste avant tout plan : le bas de l'onglet Tactique (maquette 6ZKxrug6 v18) n'est pas revu ; couleurs de rôle Prendre / Défendre / Tenir à passer au contrôle de palette.
+**Complément 8 (clôture de la revue des cartes déplacées)** : « L'objectif, soirée après soirée » VALIDÉ. Toutes les cartes qui quittent Tactique sont tranchées et validées : Écart cumulé au FDA attendu (Dynamique) ; Répartition des frags et Outils de destruction (Contributions, séparées, formes revues, armes toutes nommées par le film) ; section objectif de Contributions en quatre cartes (Rapport de force par famille de mode, L'objectif au fil de la session, Qui prend quoi à l'objectif chez nous, L'objectif soirée après soirée) qui remplacent Rapport de force + Ce que mon camp prend. Maquette de référence : artefact C3EWYk6c v8, copie `.ai/archive/V7.5/MAQUETTE_TRI_CARTES_DEPLACEES_2026-09-26.html`. Reste avant tout plan : le bas de l'onglet Tactique (maquette 6ZKxrug6 v18) n'est pas revu ; couleurs de rôle Prendre / Défendre / Tenir à passer au contrôle de palette.
 
 **Complément 9 (retours utilisateur, les deux maquettes)** : VALIDÉS dans le bas de l'onglet : « Ce que chaque camp en tire » et « Rendement face à l'adversaire ». NON validé : le nuage « Nos morts, groupés ou isolés, ripostées ou non » (« ce concept me donne du fil à retordre ») → proposé en v19 de 6ZKxrug6 : deux cartes à barres sur les mêmes 259 morts, « Isolement et riposte à la mort » (une barre par rang groupés 185 / isolés 33 / hors de vue 41, découpée ripostée en 5 s / plus tard / jamais : 58 · 31 %, 7 · 21 %, 8 · 20 %) et « Isolement à la mort, par joueur » (JGtm 59 / 17 / 10, Chocoboflor 60 / 8 / 17, Madina97294 66 / 8 / 14) ; nuage gardé dessous pour comparer. Fiches « Répartition des prises dans l'escouade » passées au style des fiches de médailles (contenu inchangé, pastille « Ressource dominante »). Demandes transverses appliquées aux deux maquettes : titres factuels (Contrôle des ressources ; … au fil de la session ; … match par match ; … soirée après soirée ; Frags obtenus avec les ressources ; Répartition des prises dans l'escouade ; Rapport de force au fil de la session ; Répartition de l'objectif dans l'escouade ; Rapport de force, soirée après soirée ; Isolement et riposte, soirée après soirée) ; onglet renommé « Emprise » (« Tactique » est déjà une page, `features/tactical`) ; légendes en bas et centrées partout ; graphes centrés verticalement dans leur carte (cartes voisines à hauteur égale). Couleurs de rôle validées au contrôle de palette (`validate_palette.js`, toutes paires) : clair Prendre #4F46E5, Défendre #0891B2, Tenir #A21CAF (pire ΔE daltonisme 9,5) ; sombre #7B80F7 / #0891B2 / #A924BD (8,5) ; l'ancien trio échouait (6,5).
 
@@ -114825,7 +115955,7 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 **Prochaine étape** : écoutes de l'utilisateur (musique de fin à 1× et 2×, son au rechargement et en changeant de rejeu dans Firefox, intro) ; au moindre écart, un lot correctif sur une nouvelle branche. Découvertes versées au backlog en 6 entrées : player DB Halo 5 hors de la boucle de migration, routes de mutation ouvertes en démo, lecteurs de campagne hors garde, autres index ART, vues match sans tableau des scores, petites dettes Go.
 ## [2026-09-28] Emprise, lot L6.6 : référence équipement §4 mise à jour — Complété (`wt/emprise`, non commité)
 
-**Décision technique principale** : le §4 « Qui lit quoi aujourd'hui » de `.ai/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` est réécrit sur le code du worktree, en deux familles de lecteurs : le document de rejeu (vue match, rejeu 2D) et la base (Sessions, Séries temporelles, Escouade). Chaque ligne porte son fichier:ligne. Seules les phrases des §3, §5 et §6 CONTREDITES par le chantier Emprise sont corrigées ; les inexactitudes antérieures ou d'un autre sujet vont en découverte.
+**Décision technique principale** : le §4 « Qui lit quoi aujourd'hui » de `.ai/archive/V7.5/REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` est réécrit sur le code du worktree, en deux familles de lecteurs : le document de rejeu (vue match, rejeu 2D) et la base (Sessions, Séries temporelles, Escouade). Chaque ligne porte son fichier:ligne. Seules les phrases des §3, §5 et §6 CONTREDITES par le chantier Emprise sont corrigées ; les inexactitudes antérieures ou d'un autre sujet vont en découverte.
 
 **Résultats observés** : l'Escouade lit l'équipement par le seul bloc `squad_emprise` (onglet Emprise : bonus camouflage / surbouclier sur `match_usage_players_latest` et `match_usage_films_latest`, armes spéciales et râteliers sur `match_pad_pickups_by_tier_latest`, frags aux armes spéciales sur `match_participants.power_weapon_kills`) ; Contributions lit `formes_retenues` pour sa seule partie objectif ; Dynamique et Synthèse ne lisent aucun canal d'équipement ; `equipment_usage` n'est plus servi qu'aux Séries temporelles ; Sessions garde son propre bloc `usage`. §6 : « même bloc partout » corrigé. §3 et §5 : rien de contredit par le chantier.
 
@@ -114992,7 +116122,7 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 ## [2026-10-01] Représentation intermédiaire du film : analyse de mise en œuvre, port Rust, ordre des sujets restants — Complété (analyse ; rien lancé)
 
-**Décision technique principale** : analyse en lecture seule à la tête `8b894a677`, par deux agents Opus (cartographie du décodeur Go vers la spec ; port Rust de S. Imbleau, cloné et exécuté sur nos films dans le scratchpad), synthèse dans `.ai/ANALYSE_MISE_EN_OEUVRE_REPRESENTATION_INTERMEDIAIRE_2026-10-01.md`, rapports détaillés copiés sous `.ai/V7.5/film_re/RAPPORT_IR_CARTOGRAPHIE_GO_2026-10-01.md` et `RAPPORT_PORT_RUST_2026-10-01.md`, renvoi ajouté en tête de la spec. Huit corrections de la spec sur pièces (une seule table d'entités, deux phases images-clés puis trames, fermeture refusée distincte de la queue opaque, récupération présente dans la marche, ordre de migration corrigé, types dans `grammar/lecture`, origine réelle du « 7,9 Go », étape 1 = marche de production refactorée et consommée, pas un second marcheur).
+**Décision technique principale** : analyse en lecture seule à la tête `8b894a677`, par deux agents Opus (cartographie du décodeur Go vers la spec ; port Rust de S. Imbleau, cloné et exécuté sur nos films dans le scratchpad), synthèse dans `.ai/ANALYSE_MISE_EN_OEUVRE_REPRESENTATION_INTERMEDIAIRE_2026-10-01.md`, rapports détaillés copiés sous `.ai/archive/V7.5/film_re/RAPPORT_IR_CARTOGRAPHIE_GO_2026-10-01.md` et `RAPPORT_PORT_RUST_2026-10-01.md`, renvoi ajouté en tête de la spec. Huit corrections de la spec sur pièces (une seule table d'entités, deux phases images-clés puis trames, fermeture refusée distincte de la queue opaque, récupération présente dans la marche, ordre de migration corrigé, types dans `grammar/lecture`, origine réelle du « 7,9 Go », étape 1 = marche de production refactorée et consommée, pas un second marcheur).
 
 **Résultats observés** : port Rust = architecture de la spec presque à la lettre, mais 5,5 % des trames fermées sur nos 10 témoins v41 contre 66,9 % pour notre tête (même dénominateur, 335 960) : sans récupération, il perd le contexte des entités ; son oracle est notre propre code de `d61443ef5`. Déclencheur de la spec : « terminateur hors cadre » = 92,5 % des records utiles non fermés sur HI_1_13_0, plafond 81,3 % si toutes les autres causes ferment ; cette cause est surtout une fin de vue B fausse (résidu de film dense, clos par l'utilisateur le 23/09). ~37 parcours des trames delta par cuisson, 3 marcheurs grammaticaux incompatibles (deux provenances d'`IDLowBits`), marcheur ancré bipède ×10 ; J4 S1 a unifié l'implémentation, pas la passe. `product_use` sous-compte l'utile (36 lignes contre 44). 66 replis nuls : 9 grammaire/profil, 16 objectifs, 30 rejeu, 11 killsource/collecteur. Véhicules : `ti=40` (12 composants), `+0x818` et `ti=43 i20-i22` relèvent de la campagne de grammaire ; Falcon de Behemoth indépendant.
 
@@ -115002,7 +116132,7 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 **Décision technique** : `grammar.FrameClosureDetaillee` (instrument neuf, `frame_closure_detail*.go`) rend la carte de `FrameClosure` (identité champ à champ testée) plus le détail de chaque paquet (sortie de vue B lue aux compteurs `RejetsHorsDatum` / `RejetsDeVue`, eid rejeté, flux de la vue C, reste, dernier composant, lectures au-delà du payload) ; `cmd_fermeture -mode v2` ventile, confronte les rejets au bloc de type 1 du chunk et du suivant, estime le dénominateur des entrées utiles, lit le compte déclaré du chunk 3. `product_use` corrigé sur pièces (36 -> 73 lignes ; ti=11 et ti=37 i20-i24 SORTENT, sans appelant de production). `grammar.Rev` inchangé, empreinte régénérée à révision constante ; golden de fermeture régénéré (seuls les utiles bougent).
 
-**Résultats** : colonnes anciennes identiques à J11 §2 (20/20). Hors cadre 264 757 paquets : 95,3 % sortent de la vue B par rejet hors datum (0 rejet de vue), vue C vide 96,1 %, reste >= 64 bits 99,8 % ; 84,4 % de ces rejets visent un eid alloué pendant le chunk selon le bloc de type 1 suivant, sans NEW lu (91,7 % des utiles en jeu). HI_1_13_0 : 80,6 % d'utiles fermés (table corrigée). Chunk 3 : déclaré = trouvé sur 20/20. Mode borné : 658 records sur 7,6 M. Rapport : `.ai/V7.5/film_re/CARTE_FERMETURE_V2_2026-10-01.md`.
+**Résultats** : colonnes anciennes identiques à J11 §2 (20/20). Hors cadre 264 757 paquets : 95,3 % sortent de la vue B par rejet hors datum (0 rejet de vue), vue C vide 96,1 %, reste >= 64 bits 99,8 % ; 84,4 % de ces rejets visent un eid alloué pendant le chunk selon le bloc de type 1 suivant, sans NEW lu (91,7 % des utiles en jeu). HI_1_13_0 : 80,6 % d'utiles fermés (table corrigée). Chunk 3 : déclaré = trouvé sur 20/20. Mode borné : 658 records sur 7,6 M. Rapport : `.ai/archive/V7.5/film_re/CARTE_FERMETURE_V2_2026-10-01.md`.
 
 **Prochaine étape** : confronter ces mesures aux constats Ghidra de l'étape 2 (T1, T3, T8) — étape 4 du plan.
 
@@ -115010,7 +116140,7 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 **Décision technique** : une sonde `research` (six fichiers `campagne_*_research_test.go` sous `film/internal/grammar/`, aucun fichier de production touché, `grammar.Rev` inchangé) rejoue la marche de la carte v2 en gardant les records de la vue B, et joue cinq marches par film : référence, oracle-NEW (la naissance retrouvée par la sonde M1 à ≤ 3 paquets dans une région non lue est liée après son paquet), oracle-bloc (pont masque -> archétype du bloc suivant), tête-bloc (A/B du filtre de candidats de T1-3), et la combinaison. M1 est contrôlée par un eid témoin par rejet (slot jamais alloué) : le discriminant est la distance au premier rejet (≤ 3 paquets : 30,2 % des rejetés contre 1,4 % des témoins).
 
-**Résultats** : référence identique à la carte v2. Oracle-NEW (5 170 liaisons, ≈ 4,7 % fausses estimées) : corpus 284 704 -> 312 315 paquets fermés (+29 769 / −2 158), utiles fermés +344 129 ; HI_1_13_0 66,9 -> 71,8 % des paquets, 80,6 -> 86,2 % des utiles, hors cadre 86 921 -> 58 517. Tête-bloc : gain net sur HI_1_13_0 (+12 193) et HI_1_12_0, perte nette sur HI_1_8_0 à HI_1_11_0. Oracle-bloc : 266 liaisons seulement, 5 714 des 6 033 « naissances non lues » ont un masque vide au bloc suivant (entités nées et mortes dans le chunk). Régions des NEW non lus : (i) tête de paquet à événements et (ii) paquet non localisé dominent, (iii') « après un rejet antérieur » est une troisième région réelle non prévue (contre l'ordre de l'écrivain, non tranché). 8 388 paquets fermés (2,9 %, 22 % des fermés de HI_1_10_0) contredisent un invariant de l'écrivain (NEW à masque impossible) : fermetures factices. T1-4/C5, T1-6, T7-5, T8-C4 : effets mesurés négligeables. Rapport : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_CIBLEES.md`, TSV dans `mesures_ciblees_tsv/`.
+**Résultats** : référence identique à la carte v2. Oracle-NEW (5 170 liaisons, ≈ 4,7 % fausses estimées) : corpus 284 704 -> 312 315 paquets fermés (+29 769 / −2 158), utiles fermés +344 129 ; HI_1_13_0 66,9 -> 71,8 % des paquets, 80,6 -> 86,2 % des utiles, hors cadre 86 921 -> 58 517. Tête-bloc : gain net sur HI_1_13_0 (+12 193) et HI_1_12_0, perte nette sur HI_1_8_0 à HI_1_11_0. Oracle-bloc : 266 liaisons seulement, 5 714 des 6 033 « naissances non lues » ont un masque vide au bloc suivant (entités nées et mortes dans le chunk). Régions des NEW non lus : (i) tête de paquet à événements et (ii) paquet non localisé dominent, (iii') « après un rejet antérieur » est une troisième région réelle non prévue (contre l'ordre de l'écrivain, non tranché). 8 388 paquets fermés (2,9 %, 22 % des fermés de HI_1_10_0) contredisent un invariant de l'écrivain (NEW à masque impossible) : fermetures factices. T1-4/C5, T1-6, T7-5, T8-C4 : effets mesurés négligeables. Rapport : `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_CIBLEES.md`, TSV dans `mesures_ciblees_tsv/`.
 
 **Prochaine étape** : étape 5 (synthèse et plan de la phase 2, classés par gain mesuré) ; à statuer avant tout correctif : les 4 598 paquets fermés après un rejet, la région (iii'), les fermetures factices de HI_1_10_0.
 
@@ -115022,7 +116152,7 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 **Résultats observés** : oracle des naissances = borne +27 611 paquets nets, +344 129 utiles ; HI_1_13_0 80,6 -> 86,2 % ; déclencheur 95 % non atteint sur aucun build. Fermetures factices : 8 388 paquets (HI_1_10_0 22 % de ses fermés).
 
-**Conclusion / prochaine étape** : rapport `.ai/V7.5/film_re/RAPPORT_CAMPAGNE_GRAMMAIRE_PHASE1_2026-10-01.md` ; plan de la phase 2 au §6 du plan de campagne (lots R-L1, L1 à L7, L0 ; décisions D1 à D9) ; découvertes au §5. Attendre le GO de l'utilisateur par lot ; développement possible avant J12, preuve et fusion post-J12.
+**Conclusion / prochaine étape** : rapport `.ai/archive/V7.5/film_re/RAPPORT_CAMPAGNE_GRAMMAIRE_PHASE1_2026-10-01.md` ; plan de la phase 2 au §6 du plan de campagne (lots R-L1, L1 à L7, L0 ; décisions D1 à D9) ; découvertes au §5. Attendre le GO de l'utilisateur par lot ; développement possible avant J12, preuve et fusion post-J12.
 
 ## [2026-10-01] Campagne de grammaire — mesures bis 1 (critique de complétude, points 10-13, 21-23, 29)
 
@@ -115032,24 +116162,24 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 
 **Résultats observés** : item 1.3 — estimateur CARTE §5 tautologique (= part des paquets fermés) ; dénominateur indépendant = borne basse seulement (HI_1_13_0 >= 45,0 %, corpus >= 24,2 %). L1a filtré : +16 407 / −8 925 dont 7 004 factices retirées, mais pertes saines sur HI_1_8_0 à HI_1_11_0 (le filtre ne les annule pas). Borne de L1 portée par (i) +16 383 et (ii) +11 540 ; (iii') rejet −522 et (iii) −65 nuisibles ; (i)+(ii) +28 168 > oracle complet +27 611. Gains factices : oracle 1,5 %, tete-bloc 17,4 %. Liaisons 5 081 + 89 = 5 170, témoins 239 ; (iii) liée = 511 eid tous `ti=3 i0`, tous HI_1_13_0.
 
-**Conclusion / prochaine étape** : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_BIS_1.md` + `mesures_bis_tsv/`. À reporter dans le PLAN §6.1 et le RAPPORT §1/§3 (non fait ici) ; dénominateur exact des entrées = lecture Ghidra de l'appelant de `FUN_14076b0e8`.
+**Conclusion / prochaine étape** : `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_BIS_1.md` + `mesures_bis_tsv/`. À reporter dans le PLAN §6.1 et le RAPPORT §1/§3 (non fait ici) ; dénominateur exact des entrées = lecture Ghidra de l'appelant de `FUN_14076b0e8`.
 
 ## [2026-10-01] Campagne de grammaire — mesures bis 2 (critique de complétude, points 24, 25, 26 et T6-C2)
 
 **Statut** : Complété (mesures ; aucune décision de lot prise ici ; rien de commité).
 
-**Décision technique principale** : les A/B que la phase 1 disait « non mesurables sans toucher la production » passent par une SURCOUCHE de recherche (`go test -overlay`) : copies de `capture.go`, `lecteur_position.go`, `lecteur_position_exceptions.go` sous `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/mesures_bis2_overlay/`, substituées à la seule compilation des tests `research,campagne_overlay` ; aucun fichier de production modifié sur disque, `grammar.Rev` inchangé. Sondes : `campagne_bis2_*_research_test.go` (grammar), `himodule/campagne_bis2_vehi_research_test.go`, `cmd_fermeture/bis2_regions_research_test.go`.
+**Décision technique principale** : les A/B que la phase 1 disait « non mesurables sans toucher la production » passent par une SURCOUCHE de recherche (`go test -overlay`) : copies de `capture.go`, `lecteur_position.go`, `lecteur_position_exceptions.go` sous `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/mesures_bis2_overlay/`, substituées à la seule compilation des tests `research,campagne_overlay` ; aucun fichier de production modifié sur disque, `grammar.Rev` inchangé. Sondes : `campagne_bis2_*_research_test.go` (grammar), `himodule/campagne_bis2_vehi_research_test.go`, `cmd_fermeture/bis2_regions_research_test.go`.
 
 **Résultats observés** : (24) fourche `+0x74` du bloc 0xbc non tranchable : sur 1 570 paquets arrêtés par le bloc, R(96) ferme 6, e420 9, témoins à un bit 11 et 10 — le bloc n'est jamais lu au bon bit, borne T5-3 réfutée. (25) A/B par site : `flock-position` +416/−10, `tacmap-displayasset` +77/−16, `world-object-i0` +12 338 records d'image-clé pour +31 paquets net, `ti38-i18` et `unit-actor-state` en perte ; T4-C3 établi sur Live Fire en contexte de production avec les bornes des 4 plages lues dans les modules : +3 269 paquets (`0797ce72`), +1 806 (`60ae07c4`). (T6-C2) type de physique lu dans les tags `vehi` : Falcon et Wasp = vtol, toutes familles cohérentes ; images-clés `ti=40` : porte levée 136 fermés, posée 26, par châssis 137 sur 7 059 — 98 % restent non fermés pour une autre cause ; `77ef810a`/`4118381d`/`d0b40d0a` absents des modules installés, non identifiés. (26) `81c02726` : les 71 NEW `ti=43` désynchronisent sur `i19` (pas i20/i21/i22), leurs DELTA sont rejetés hors datum ; la grammaire T7 ferme +3 580 paquets (fenêtre de la 3e montée 181 → 218/222) ; sur le corpus +18 105/−12 paquets, HI_1_13_0 « hors cadre » 86 921 → 81 049 : T7-5/T7-6 réfutés.
 
-**Conclusion / prochaine étape** : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_BIS_2.md` + `mesures_bis2_tsv/`. À reporter dans le PLAN §6 et le RAPPORT (non fait ici) : reclasser L2 (`ti=43`) comme levier de la cause n°1 sur HI_1_13_0, L5 (bloc 0xbc) sans gain, ajouter la lecture par index de plage (catalogue des plages) ; la carte v2 range les NEW lus-désynchronisés en « naissance non lue » (à corriger avant de s'appuyer sur la région (iii)).
+**Conclusion / prochaine étape** : `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_BIS_2.md` + `mesures_bis2_tsv/`. À reporter dans le PLAN §6 et le RAPPORT (non fait ici) : reclasser L2 (`ti=43`) comme levier de la cause n°1 sur HI_1_13_0, L5 (bloc 0xbc) sans gain, ajouter la lecture par index de plage (catalogue des plages) ; la carte v2 range les NEW lus-désynchronisés en « naissance non lue » (à corriger avant de s'appuyer sur la région (iii)).
 
 ## [2026-10-02] Campagne de grammaire — mesures bis 3 : populations sans lot (critique points 27, 28, D-24)
 
 **Statut** : Complété (mesures ; aucun code de production, rien de commité).
 **Décision technique** : sondes `campagne_bis3_*_research_test.go` (tag research ; `ti=3`, sites, Live Fire et filtre sous la surcouche bis 2) ; Ghidra lecture seule.
 **Résultats observés** : P1 (87 eid) = marche d'image-clé qui rejette la génération 0 et limite voisin/recalage à la génération 1 (en-tête exact présent 87/87 ; oracle +1 784/−1) ; P2 = naissances de génération 0 mal classées (couvert par L1) ; P3/P4 = décalages de curseur (Live Fire par index −81 %/−91 %, `flock-position` −77 %) ; P5 = P1 + P3 ; P6 = recherche (filtres non discriminants sauf pont, 72 eid) ; région (iii) = `ti=3 i0` non porté (`FUN_142ed4aec`) + `ti=3 i1` homonyme 26 bits (`FUN_142ed4880`) : +30 618/−10 paquets, +234 454 utiles, témoin `ti=4` −256 370 ; D-24 : cardinal 8 191 partout, calibrage 13 sur 20/20, autres largeurs ≤ 30 040 fermés.
-**Conclusion / suite** : deux lots proposés (`ti=3`, marche d'image-clé toutes générations), une recherche (coupables résiduels de P3), P6 en recherche préalable. Rapport : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_BIS_3_POPULATIONS.md`.
+**Conclusion / suite** : deux lots proposés (`ti=3`, marche d'image-clé toutes générations), une recherche (coupables résiduels de P3), P6 en recherche préalable. Rapport : `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_BIS_3_POPULATIONS.md`.
 
 ## [2026-10-02] Campagne de grammaire — correction des documents de la phase 1 d'après la critique de complétude
 
@@ -115087,7 +116217,7 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 **Résultats observés** :
 - 1.3 `[!]` prouvé : la présence d'une entrée dépend d'états d'exécution du réseau absents du film. Corroboration mesurée sur 20 films : 1 124 cas (joueur × triplet sain) où la vue C du paquet du milieu est entièrement vide entre deux présences ; 1 462 absences isolées dans une vue C non vide ; à écart d'horodatage égal (12-20 ms), 15 628 vues vides contre 216 573 non vides. Contrôles : 284 704 fermés, 8 388 contredits, 2 301 082 entrées utiles.
 - Point 25 (net sain, corpus) : `flock-position` +391, `tacmap-displayasset` +64 (aucune perte saine), `world-object-i0` +123, neuf sites neutres (0/0 sain), `ti38-i18` −7, `unit-actor-state` −17, `i0-bipede-prechigh` −1 ; les treize ensemble +614. Fermés, gagnés, perdus identiques à `mb2_positions.tsv` sur 340 lignes.
-**Conclusion / suite** : statuts et tables à reporter par le superviseur. Rapport : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_BIS_4.md` (TSV `mesures_bis4_tsv/`, extraits Ghidra `ghidra_13/`). Découvertes D-B4-1 à D-B4-5 consignées (dont : le relais serveur ne pose jamais le bloc `0xbc`).
+**Conclusion / suite** : statuts et tables à reporter par le superviseur. Rapport : `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/MESURES_BIS_4.md` (TSV `mesures_bis4_tsv/`, extraits Ghidra `ghidra_13/`). Découvertes D-B4-1 à D-B4-5 consignées (dont : le relais serveur ne pose jamais le bloc `0xbc`).
 
 ## [2026-10-02] Campagne de grammaire du jeu, phase 1 — recherche Ghidra, vérification adverse et clôture (superviseur) — Complété
 
@@ -115121,7 +116251,7 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 de l'utilisateur (J11.5) après fusion.
 
 **Décision technique principale** : registre d'audit du 2026-09-24 traité en douze jalons
-(`.ai/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`). En fin de J11, méthode changée à la
+(`.ai/archive/V7.5/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`). En fin de J11, méthode changée à la
 demande de l'utilisateur : comparaison au dernier état accepté, critères décisifs « lecture
 (fermeture) + données publiées », cache des cuissons de base, et **banc de vérité**
 (`internal/replayverite`) qui juge contre des oracles (K/D/A et score officiels hors cas
@@ -115151,7 +116281,7 @@ décodeur ».
 **Conclusion / prochaine étape** : la campagne est à jour de `feat/v75` ; intégrer les recherches préalables à la fin du workflow en cours, puis vague 1 sur GO daté de l'utilisateur. Push de la branche (première CI Linux) à proposer à l'utilisateur.
 ## [2026-10-02] Registre des reports — déplacé à la racine de `.ai/` et nettoyé — Complété
 
-**Décision technique principale** : le registre passe de `.ai/V7.5/REGISTRE_REPORTS.md` à
+**Décision technique principale** : le registre passe de `.ai/archive/V7.5/REGISTRE_REPORTS.md` à
 `.ai/REGISTRE_REPORTS.md` (déplacement voulu par l'utilisateur : il sert au-delà de v7.5) ; les
 lignes déjà traitées sont retirées (git en garde l'historique), les lignes douteuses (fermeture
 partielle, « reste », `[!]`, contradiction entre cellules) sont gardées. Les 162 citations du
@@ -115286,7 +116416,7 @@ sur HI_1_10_0, L6b, R-COMB-2 sous le juge de L0).
 ## [2026-10-02] Campagne de grammaire : lot L0, la fermeture d'un paquet suit les règles de l'écrivain (D2) — Complété (non commité)
 
 **Statut** : Complété, rien de commité (`feat/campagne-grammaire`, tête `ff42fcf40`). Détail :
-`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L0.md` ; statuts au §6.2 L0 du plan.
+`.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L0.md` ; statuts au §6.2 L0 du plan.
 
 **Décision technique principale** : `LectureVueC` porte `FermeeAuBit`, la première règle de
 l'écrivain contredite (`Invariant`) et `Fermee = FermeeAuBit && aucune règle` (`ecrivain_invariants.go`) :
@@ -115322,7 +116452,7 @@ lot suivant de la vague 1 jugé sous ce juge. Découvertes D-L0-1 à D-L0-4 cons
 
 **Statut** : Complété, rien de commité (`feat/campagne-grammaire`, tête `ff42fcf40`). Contrôleur :
 « non conforme en l'état, corrigeable » ; corrections D-A à D-E du pilote. Détail :
-`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L0.md` §3, §5, §7.1, §9.
+`.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L0.md` §3, §5, §7.1, §9.
 
 **Décision technique principale** : le second rang de `debutParFermeture` est gardé comme repli nommé
 et compté (ADR 0034 D-10) : `repli_debut_de_liste_ferme_au_bit` (`registre_filmdec_marche.go`, lecture
@@ -115823,7 +116953,7 @@ l'utilisateur sur 2.2.2 toujours attendue.
 
 **Statut** : Complété. Commit du lot `9e02dabbb` puis commit des corrections du contrôle indépendant
 (« campagne(grammaire) L4a: corrections du controle »). Détail :
-`.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L4a.md` (§12 pour les corrections).
+`.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L4a.md` (§12 pour les corrections).
 
 **Décision technique principale** : dernier maillon de la chaîne de dispatch,
 `composants_vehicule_ti40.go` : les seize composants propres au véhicule (`i30`-`i47` hors `i43`,
@@ -115867,7 +116997,7 @@ slot 736 lié à `ti=45` par un faux NEW lu dans une liste contredite prise au s
 `debutParFermeture` (tête : faux NEW `ti=43`) — chemin que la réparation (`debutParChaine`) ne vise
 pas. C4 : sur `bcb6d393` et `4f77afc1`, toutes les valeurs de contenu changées viennent de paquets
 sains ; sur HI_1_10_0, des listes contredites du second rang (états) et de paquets non localisés
-(dotations, non publiées). Détail : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L2.md` §9.
+(dotations, non publiées). Détail : `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_L2.md` §9.
 
 **Conclusion / prochaine étape** : L2 non retenu ; le code du lot est retiré par un commit de
 retrait (l'arbre de code revient à `af6e93e23`). Reprise : fonder une règle générale sur ce que le
@@ -116493,7 +117623,7 @@ au checkout principal (travail d'une autre session en cours).
 
 **Résultats observés** : carte v2 au découpage par défaut +259 sains au corpus mais 14 films en baisse ; `e5adf7b2` perd 23 sains vrais par (2) (têtes `ti=41` mal lues à 9/5, cas LT §4.2) : gate 2 rouge. Mesure de recherche sous 8/3 (`LT_MPP`, sonde contrôlée à l'unité contre la carte) : +1 311 sains, toutes les pertes des films en baisse passent par un NEW illisible pour le jeu. Cas réels `1c4c63c2` 17:52 / 17:172 et 61:42 corrigés sous 8/3. killsource identique hors diagnostic `calibration` ; `objectives` identique (replay-equiv) ; gate de corpus rc 1 = la même baisse de `P-1`.
 
-**Conclusion / prochaine étape** : rejouer le gate 2 officiel sous `-mpp-declare` quand 2.7.a0 est poussé, puis intégrer LR avec ou après 2.7.a0. Détail : `.ai/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_LR.md`.
+**Conclusion / prochaine étape** : rejouer le gate 2 officiel sous `-mpp-declare` quand 2.7.a0 est poussé, puis intégrer LR avec ou après 2.7.a0. Détail : `.ai/archive/V7.5/film_re/campagne_grammaire_2026-10-01/LOT_LR.md`.
 
 ## [2026-10-06] Campagne de grammaire — lot LR repris sur `8dfadd07e` (découpage MPP déclaré) : gate 2 officiel tenu sous D2
 
@@ -116827,7 +117957,7 @@ E6.7 (livraison) — aucune fonction allongée au-delà de sa dette (`MatchEquip
 
 **Complément (2026-10-05, retours utilisateur)** : (1) « soirée après soirée » rejeté pour les Séries temporelles — la page est le miroir solo de l'Escouade sur le périmètre filtré (période ou sessions, `match_context` solo), lue match par match ; l'onglet Usages doit être l'Emprise appliquée aux matchs solo du périmètre (9 cartes, grille par CARTE jouée plutôt que par match, pas d'habitude). (2) Décision utilisateur : sur Escouade › Synergies, retirer « Rôles de hauteur », « Riposte », « Temps de riposte », « Morts ripostées » (confusion du chantier Emprise vies) ; « Appui » et « Rôles de portée » restent — lot à part, non lancé. Conséquence sur les pages solo : riposte retirée partout, appui gardé. (3) Travail page par page, Séries temporelles d'abord : maquette avant / après à interrupteur, chiffres réels (JGtm solo, 1er juillet → 5 octobre : 90 matchs, 19 filmés, 0 placement de vies sur le solo), confiée à un agent Opus sur une COPIE de `shared_matches_v2.duckdb` dans le scratchpad (serveur local en marche, bases tenues), brief `BRIEF_MAQUETTE_TIMESERIES_USAGES.md` (scratchpad).
 
-**Complément 2 (2026-10-05, maquette publiée)** : https://claude.ai/artifact/BR8veZfoaQrbhqNKuU8Uk2 , copies `.ai/V7.5/MAQUETTE_TIMESERIES_USAGES_2026-10-05.html` et `MESURES_TIMESERIES_USAGES_2026-10-05.md` (non commitées). Deux interrupteurs : Avant / Après, et périmètre « Illustration : tous mes matchs depuis le 1er juillet » (189 matchs, 83 filmés) / « Solo réel ». Constats de mesure : (1) le solo de JGtm depuis le 1er juillet = 90 matchs de Super Fiesta Assassin, sans socle, sans bonus au sol, sans objectif — l'onglet y est presque vide quelle que soit la forme, d'où le périmètre d'illustration ; (2) `match_life_placement` et `match_vehicle_takes` ont 0 ligne dans la copie de la base locale du 05/10 18 h 26, alors que le journal note leur rattrapage local les 30/09 et 01/10 — cause non instruite (base en écriture par une autre session), rien touché ; (3) l'avant affiche deux comptes différents des mêmes prises de socle (141 par le résumé d'usage, 116 + 6 non classées par la table des niveaux) ; (4) grappin et propulseur n'ont ni prise ni usage publiés dans le bilan d'issues, seulement des lâchers. Chiffres recoupés par le superviseur : armes spéciales 229 contre 231, râteliers 350 contre 507. Prochaine étape : verdict utilisateur carte par carte sur la maquette.
+**Complément 2 (2026-10-05, maquette publiée)** : https://claude.ai/artifact/BR8veZfoaQrbhqNKuU8Uk2 , copies `.ai/archive/V7.5/MAQUETTE_TIMESERIES_USAGES_2026-10-05.html` et `MESURES_TIMESERIES_USAGES_2026-10-05.md` (non commitées). Deux interrupteurs : Avant / Après, et périmètre « Illustration : tous mes matchs depuis le 1er juillet » (189 matchs, 83 filmés) / « Solo réel ». Constats de mesure : (1) le solo de JGtm depuis le 1er juillet = 90 matchs de Super Fiesta Assassin, sans socle, sans bonus au sol, sans objectif — l'onglet y est presque vide quelle que soit la forme, d'où le périmètre d'illustration ; (2) `match_life_placement` et `match_vehicle_takes` ont 0 ligne dans la copie de la base locale du 05/10 18 h 26, alors que le journal note leur rattrapage local les 30/09 et 01/10 — cause non instruite (base en écriture par une autre session), rien touché ; (3) l'avant affiche deux comptes différents des mêmes prises de socle (141 par le résumé d'usage, 116 + 6 non classées par la table des niveaux) ; (4) grappin et propulseur n'ont ni prise ni usage publiés dans le bilan d'issues, seulement des lâchers. Chiffres recoupés par le superviseur : armes spéciales 229 contre 231, râteliers 350 contre 507. Prochaine étape : verdict utilisateur carte par carte sur la maquette.
 
 **Complément 3 (2026-10-05, retours utilisateur sur la maquette, v3 publiée à la même adresse)** : tout l'après est VALIDÉ sauf deux cartes. (1) « Placement et rendement de chaque vie » : une variante plus simple est demandée pour le solo (coéquipiers inconnus, jamais les mêmes). Proposée : UNE carte « Mes vies : près d'un coéquipier ou seul », barre épaisse = part de mes vies selon la distance au coéquipier le plus proche À L'INSTANT DE LA MORT (moins d'une portée de radar / au-delà), barre fine = part de mes frags pendant ces vies, frags par vie au bout ; elle remplace le nuage et « Part des vies par placement ». Source : `match_death_context_latest` (147 140 morts, 1 520 matchs, déjà écrite au sync) jointe à `match_lives_latest` et `match_kill_events_latest` — aucun rattrapage, contrairement à `match_life_placement`. Mesuré (seuil 18 m, vies de JGtm terminées par une mort depuis le 1er juillet) : solo 721 vies près / 152 seul, 0,8 contre 1,1 frag par vie ; tous matchs 1 558 / 301, 0,8 contre 0,9. En attente de validation. (2) « Ma part à l'objectif » : validée, avec la seule fiche du joueur actif (la fiche « Reste de mon camp » sort ; la barre devient sa part du total de son camp).
 
@@ -117077,7 +118207,7 @@ et relecture par levelup-57 des fichiers de la RI touchés ; poussée et CI à d
 
 ## [2026-10-06] Campagne de grammaire : V2 et V3 de la vue A fusionnées, parc recuit, campagne close — Complété
 
-**Statut** : Complété (plan déplacé sous `.ai/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, §7).
+**Statut** : Complété (plan déplacé sous `.ai/archive/V7.5/PLAN_CAMPAGNE_GRAMMAIRE_2026-10-01.md`, §7).
 
 **Décision technique principale** : V2 et V3 de la vue A entrent dans `feat/v75` (`2707fdb31`, avance
 rapide, CI verte, relecture de levelup-57 sans P0) ; la campagne est close sur décision de
@@ -117128,7 +118258,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 ## [2026-10-06] Sessions : maquette avant / après publiée ; Séries temporelles : plan d'implémentation en cours dans son worktree — En cours
 
-**Décision technique principale** : la maquette Sessions (https://claude.ai/artifact/23K7pYangJFArbkCBLGaTu , copies `.ai/V7.5/MAQUETTE_SESSIONS_2026-10-06.html` + `MESURES_SESSIONS_2026-10-06.md`, non commitées) reprend la grammaire validée sur les Séries temporelles, sur trois soirées réelles (22/09 escouade 7 matchs dont 6 filmés — Detachment sans film ; 07/09 escouade à objectifs 7 matchs ; solo du 22/09 en début de soirée, 6 Super Fiesta). Après : Riposte retirée, Appui reçu et Portée inchangés ; Répartition des frags et Outils de destruction aux formes de Contributions (une barre empilée par joueur suivi) ; Contrôle des ressources, au fil de la session, grille match par match (une colonne par match), Mes prises dans mon camp (moi / coéquipiers suivis / reste du camp), Frags obtenus + Rendement, Mes vies près d'un coéquipier ou seul, Rapport de force par famille (prises nettes de drapeau en ligne propre sous Prendre), fiche d'objectif du joueur seul, Équipement.
+**Décision technique principale** : la maquette Sessions (https://claude.ai/artifact/23K7pYangJFArbkCBLGaTu , copies `.ai/archive/V7.5/MAQUETTE_SESSIONS_2026-10-06.html` + `MESURES_SESSIONS_2026-10-06.md`, non commitées) reprend la grammaire validée sur les Séries temporelles, sur trois soirées réelles (22/09 escouade 7 matchs dont 6 filmés — Detachment sans film ; 07/09 escouade à objectifs 7 matchs ; solo du 22/09 en début de soirée, 6 Super Fiesta). Après : Riposte retirée, Appui reçu et Portée inchangés ; Répartition des frags et Outils de destruction aux formes de Contributions (une barre empilée par joueur suivi) ; Contrôle des ressources, au fil de la session, grille match par match (une colonne par match), Mes prises dans mon camp (moi / coéquipiers suivis / reste du camp), Frags obtenus + Rendement, Mes vies près d'un coéquipier ou seul, Rapport de force par famille (prises nettes de drapeau en ligne propre sous Prendre), fiche d'objectif du joueur seul, Équipement.
 
 **Résultats observés** : témoins de l'Emprise du 22/09 retrouvés (bonus 12 contre 8, frags d'effet 8 contre 5, temps 2 min 39 contre 1 min 53, bonus perdus 2 sur 12 et 2 sur 8) SAUF les armes spéciales : 13 contre 21 prises de niveau puissance sur les 6 matchs filmés (plus 5 non classées à Curfew), au lieu des 23 contre 29 du journal du 27/09 — niveaux écrits le 25/09 dans la copie ; à instruire (projection des niveaux refaite depuis ?). Avant le plus parlant : « Je riposte 4,7 % (16/338) » face à une parité de 25 %. Vies : 22/09 56 près / 18 seul (0,7 contre 0,2 frag par vie) ; solo 53 / 5 (0,9 contre 2,2). L'agent du plan Timeseries a été coupé par le chien de garde (600 s sans progression) puis relancé par message.
 
@@ -117144,7 +118274,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Complément (2026-10-06, soir)** : Séries temporelles L5 clos et vérifié (commit `cd3145ec2`, 91 fichiers dont 39 supprimés : onglet Usages reconstruit, Hauteur d'engagement et Riposte retirées, `squad/formes` réduit aux survivants de l'objectif, `_shared/usage` réduit au seul périmètre Timeseries ; gate web complet vert). L6 lancé. Worktree `LevelUp-wt-sessions` créé sur `cd3145ec2`, branche `feat/sessions-emprise` ; plan Sessions (phase 1) confié à un second agent Opus, avec frontière de fichiers explicite entre les deux lots (Sessions : `features/session-detail/`, `service/session_page*`, `domain/session_*`). Maquette Vue match en cours chez un troisième agent.
 
-**Complément (2026-10-06, maquette Vue match rendue)** : copies `.ai/V7.5/MAQUETTE_MATCHVIEW_2026-10-06.html` + `MESURES_MATCHVIEW_2026-10-06.md` (non commitées). Constats de mesure : (1) `ab526724` (Starboard) : journal des morts publiable 145/145, bonus 5–2, armes spéciales 0–2, râteliers 4–3, aucun rendement calculable (adversaire sans temps d'effet, mon camp sans arme spéciale) ; (2) `4f77afc1` (Flood Gulch BTB) : 0 ligne publiable sur 294 dans `match_kill_events_latest` et `taken_json` vide pour les 25 joueurs du résumé — classes de frags, distances, assistances, bonus non mesurés en base (l'app lit l'artefact de rejeu pour ces cartes : le témoin BTB ne juge que les formes) ; 31 prises de socle non classées ; (3) la Riposte de l'app (requête Q20, `match_view_data_loaders.go`) lit le journal SANS filtre `publishable` : elle affiche 32 morts vengées sur 294 lignes non publiables là où les Assistances du même match se disent indisponibles — sans objet après le retrait de la carte, consigné. Carte « Qui a pris quoi chez nous » (fiches par joueur de mon camp) laissée À SOUMETTRE.
+**Complément (2026-10-06, maquette Vue match rendue)** : copies `.ai/archive/V7.5/MAQUETTE_MATCHVIEW_2026-10-06.html` + `MESURES_MATCHVIEW_2026-10-06.md` (non commitées). Constats de mesure : (1) `ab526724` (Starboard) : journal des morts publiable 145/145, bonus 5–2, armes spéciales 0–2, râteliers 4–3, aucun rendement calculable (adversaire sans temps d'effet, mon camp sans arme spéciale) ; (2) `4f77afc1` (Flood Gulch BTB) : 0 ligne publiable sur 294 dans `match_kill_events_latest` et `taken_json` vide pour les 25 joueurs du résumé — classes de frags, distances, assistances, bonus non mesurés en base (l'app lit l'artefact de rejeu pour ces cartes : le témoin BTB ne juge que les formes) ; 31 prises de socle non classées ; (3) la Riposte de l'app (requête Q20, `match_view_data_loaders.go`) lit le journal SANS filtre `publishable` : elle affiche 32 morts vengées sur 294 lignes non publiables là où les Assistances du même match se disent indisponibles — sans objet après le retrait de la carte, consigné. Carte « Qui a pris quoi chez nous » (fiches par joueur de mon camp) laissée À SOUMETTRE.
 
 **Complément (2026-10-06, décisions utilisateur sur la Vue match, v2 publiée à la même adresse)** : (1) « Qui a pris quoi chez nous » (fiches par joueur de mon camp) GARDÉE sur la Vue match ; (2) « Répartition des frags » garde l'ANNEAU (sunburst) sur cette page — pas de barre empilée ; (3) « Distance par arme » : taille des gamertags à réduire (la maquette étirait le SVG), et la MÊLÉE n'y est plus affichée ; (4) « Faits marquants » : on n'y touche pas ; (5) « Assistances » : graphe gardé, l'axe « Assistances par patron » devient « a assisté… ». Le reste de l'après (Contrôle des ressources du match, grille d'équipement par joueur, Frags obtenus + Rendement, Vies par joueur de mon camp, Riposte et Hauteur retirées) est accepté. Maquette patchée en conséquence et revalidée (jsdom 0 erreur).
 
@@ -117174,21 +118304,21 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Conclusion / prochaine étape** : maquette avant / après (Avant / Après, Carte, Largeur, thème), verdict utilisateur carte par carte, puis plan sous `plan-execution` dans un worktree dédié.
 
-**Complément (2026-10-06, maquette rendue)** : `.ai/V7.5/MAQUETTE_TACTIQUE_2026-10-06.html` (fonds de carte embarqués) + `MESURES_TACTIQUE_2026-10-06.md` (non commités). Mesures : Illusion 53 matchs mesurés sur 54, 594 morts localisées sur 619 (JGtm), zone la plus chaude 11 morts dans 11 matchs (0,21 par match, 7 V / 4 D), Morts seul 107 sur 594 mais 3 zones seulement au-dessus du plancher ; Bazaar 48 sur 50, 440 morts sur 483, zone la plus chaude 9 morts dans 6 matchs dont 4 dans un seul. Budget de hauteur 1920x1080 (950 utiles) : chrome partagé 311 px (nav 48, en-tête, bandeau de conseils, onglets, écarts), barre 40 + 24, colonnes 551, marge 0 ; avant : premier pixel du plan à 760 px. Avis par filtre dans la maquette (Saison -> Période, Playlists -> Modes, Vue -> Coéquipiers, Sessions à retirer : 99 % des couples soirée x carte ont au plus 2 matchs). Écarts : 3 matchs du 27/04 sans nom de carte exclus ; aucune carte sous le plancher ; Temps de présence / Trajets / grappes non calculés (artefact non lu). jsdom : 8 vues, 0 erreur, aucun débordement du cadre 1080 (contrôle de structure, pas de mesure écran). Verdict utilisateur attendu carte par carte.
+**Complément (2026-10-06, maquette rendue)** : `.ai/archive/V7.5/MAQUETTE_TACTIQUE_2026-10-06.html` (fonds de carte embarqués) + `MESURES_TACTIQUE_2026-10-06.md` (non commités). Mesures : Illusion 53 matchs mesurés sur 54, 594 morts localisées sur 619 (JGtm), zone la plus chaude 11 morts dans 11 matchs (0,21 par match, 7 V / 4 D), Morts seul 107 sur 594 mais 3 zones seulement au-dessus du plancher ; Bazaar 48 sur 50, 440 morts sur 483, zone la plus chaude 9 morts dans 6 matchs dont 4 dans un seul. Budget de hauteur 1920x1080 (950 utiles) : chrome partagé 311 px (nav 48, en-tête, bandeau de conseils, onglets, écarts), barre 40 + 24, colonnes 551, marge 0 ; avant : premier pixel du plan à 760 px. Avis par filtre dans la maquette (Saison -> Période, Playlists -> Modes, Vue -> Coéquipiers, Sessions à retirer : 99 % des couples soirée x carte ont au plus 2 matchs). Écarts : 3 matchs du 27/04 sans nom de carte exclus ; aucune carte sous le plancher ; Temps de présence / Trajets / grappes non calculés (artefact non lu). jsdom : 8 vues, 0 erreur, aucun débordement du cadre 1080 (contrôle de structure, pas de mesure écran). Verdict utilisateur attendu carte par carte.
 
 **Complément (2026-10-06, Sessions S3 clos ; CI TS verte)** : CI du lot Séries temporelles verte au niveau job sur `554457c31` (runs 37476083031 et 37478145236 : Go build + test Linux/Windows, lint, couverture + baseline, contrat, lease, Frontend dont knip, gitleaks, Deploy Pre-Check ; E2E sautée hors PR main). Fusion dans `feat/v75` SOUMISE à l'utilisateur, en attente de son go. Sessions : rebase sur `554457c31` (`296a95a55`, un conflit résolu dans `timeseries_service_lives.go`), S3 `f0a6c1b3c` (41 fichiers : prop `compact` sur onze cartes sans effet par défaut, `empriseObjectName` centralisé avec garde-rail dans `objectName.ts`, 17 mutations rouges, vitest 8 904 verts) ; S4 lancé.
 
-**Complément (2026-10-06, maquette v2 après retours utilisateur)** : retours : cockpit et mini-vignettes acceptés ; barre de filtres GARDÉE identique aux autres pages (cohérence, ligne « Avis » retirée, +54 px aux colonnes) ; « Zone sélectionnée » embellie avec le bouton de rejeu de l'app (`MatchHeader.replayLink.tsx`, icônes `public/icons/replay-*.png`) ; noms de zones (callouts) rendus visibles : source `reference/map_callouts.json` (polygones + tranches z), règle polygone + z médian des événements, sinon bord le plus proche < 2 m, sinon « Zone sans nom ». Résolu : Illusion Morts (−13, 5) = Nid blindé (bord à 0,81 m) ; Bazaar Morts (−7, −1) = Grande cour ouest par fréquence (9 contre 7 pour Pont du marché ouest ; la tranche la plus étroite donnerait l'autre, le rejeu 2D donne « Porte ouest » : règle à trancher au plan). Points ouverts : tolérance de z au rez-de-chaussée (positions à 0,00 m contre tranches à partir de 0,10 m) ; registre 103 rangées pour 77 cartes (23 coupées, 20 rangées sans nom). Liste de cartes : recherche en tête + repli « 61 cartes sous le plancher ». Même artefact, version 2 ; copie `.ai/V7.5` rafraîchie.
+**Complément (2026-10-06, maquette v2 après retours utilisateur)** : retours : cockpit et mini-vignettes acceptés ; barre de filtres GARDÉE identique aux autres pages (cohérence, ligne « Avis » retirée, +54 px aux colonnes) ; « Zone sélectionnée » embellie avec le bouton de rejeu de l'app (`MatchHeader.replayLink.tsx`, icônes `public/icons/replay-*.png`) ; noms de zones (callouts) rendus visibles : source `reference/map_callouts.json` (polygones + tranches z), règle polygone + z médian des événements, sinon bord le plus proche < 2 m, sinon « Zone sans nom ». Résolu : Illusion Morts (−13, 5) = Nid blindé (bord à 0,81 m) ; Bazaar Morts (−7, −1) = Grande cour ouest par fréquence (9 contre 7 pour Pont du marché ouest ; la tranche la plus étroite donnerait l'autre, le rejeu 2D donne « Porte ouest » : règle à trancher au plan). Points ouverts : tolérance de z au rez-de-chaussée (positions à 0,00 m contre tranches à partir de 0,10 m) ; registre 103 rangées pour 77 cartes (23 coupées, 20 rangées sans nom). Liste de cartes : recherche en tête + repli « 61 cartes sous le plancher ». Même artefact, version 2 ; copie `.ai/archive/V7.5` rafraîchie.
 
 **Complément (2026-10-06, fusion Séries temporelles)** : sur accord de l'utilisateur, `feat/ts-usages-emprise` (`554457c31`) fusionnée `--no-ff` dans `feat/v75` depuis une tête détachée sur `origin/feat/v75` (`f8a14b3b9`, avancé de trois lots : Tendances, campagne de grammaire LR, rejeu des équipes) : AUCUN conflit, merge `b033d30f0` (188 fichiers, +9 750 / −10 555). Gate rejoué sur le résultat avant le push : Go build 0, `openapi-gen -check` 0, 37 paquets touchés ok ; web `generate-types` sans écart, `tsc -b --force` 0, vitest ciblé 112 fichiers / 1 052 tests verts, couleurs 0, imports croisés 7 ≤ 7. Poussé (`f8a14b3b9..b033d30f0`), CI de `feat/v75` en cours (run 37487854312). Dossier principal avancé en avance rapide, entrées de journal non commitées réappliquées en fin de fichier (21 blocs), copies locales de la maquette TS identiques aux fichiers désormais suivis. Reste à l'utilisateur : gate visuel de l'onglet Usages (`/t/halo_infinite/players/JGtm/stats/timeseries?tab=usages`) après redémarrage local ; rattrapage `backfill-vehicle-takes` pour sortir les véhicules du « non mesuré ».
 
-**Complément (2026-10-06, maquette v3)** : retours : « j'aime bien » la v2 ; le plan est trop petit, doubler la hauteur de la rangée SANS toucher à « Cartes jouées » (551 px, défilement interne) ; rampe de légende déplacée sur le côté droit du plan, à la verticale ; cockpit sans défilement assoupli sur ce point. v3 : boîte du plan 800 px (Illusion 615 x 800 px en pleine largeur, x1,8 ; Bazaar en paysage borné par la largeur de la colonne, 624 x 449 px) ; « Zone sélectionnée » à la hauteur du plan ; page 1 283 px sur Illusion = 333 px de défilement en 1920x1080, 513 px en 1440x900 ; Bazaar 950 px sans défilement en 1080. Choix de l'agent : colonne de droite 300 px, trois colonnes dès 1 400 px de fenêtre (l'app est plafonnée à 1 320 px). Artefact version 3, copie `.ai/V7.5` rafraîchie. Règles de nommage des zones (tranche la plus étroite ; tolérance z 0,25 m) toujours à trancher par l'utilisateur.
+**Complément (2026-10-06, maquette v3)** : retours : « j'aime bien » la v2 ; le plan est trop petit, doubler la hauteur de la rangée SANS toucher à « Cartes jouées » (551 px, défilement interne) ; rampe de légende déplacée sur le côté droit du plan, à la verticale ; cockpit sans défilement assoupli sur ce point. v3 : boîte du plan 800 px (Illusion 615 x 800 px en pleine largeur, x1,8 ; Bazaar en paysage borné par la largeur de la colonne, 624 x 449 px) ; « Zone sélectionnée » à la hauteur du plan ; page 1 283 px sur Illusion = 333 px de défilement en 1920x1080, 513 px en 1440x900 ; Bazaar 950 px sans défilement en 1080. Choix de l'agent : colonne de droite 300 px, trois colonnes dès 1 400 px de fenêtre (l'app est plafonnée à 1 320 px). Artefact version 3, copie `.ai/archive/V7.5` rafraîchie. Règles de nommage des zones (tranche la plus étroite ; tolérance z 0,25 m) toujours à trancher par l'utilisateur.
 
-**Complément (2026-10-06, maquette v4)** : v3 « presque parfaite » ; les lignes « Rejeu » de « Zone sélectionnée » jugées « hyper basiques » -> mini-tuiles de match sur deux lignes (bande d'issue 3 px, mode · score mon camp d'abord · issue · date ; pastille d'instant · « Tué par <gamertag> · <arme> » ou « A tué … » · badge « seul / près · N m » depuis `match_death_context_latest` à ± 1,5 s ; bouton de rejeu). Données réelles : 11 lignes Illusion et 9 Bazaar complètes ; sur toutes les morts localisées, 17 par carte sans arme ni catégorie, 4 sans contexte sur Illusion ; `pair_name_fr` / `playlist_name_fr` vides sur les 107 matchs, playlist « Quick Play » partout (mode lu sur `pair_name`). Colonne de la zone 300 -> 360 px (v4b) : Illusion 564 x 733 px, page 1 252 px (défilement 302 px en 1080, 482 px en 900) ; ligne 2 encore tronquée avec ellipse sur l'arme pour 5 lignes sur 11 (calcul Roboto, non mesuré à l'écran). Artefact version 4, copie `.ai/V7.5` rafraîchie.
+**Complément (2026-10-06, maquette v4)** : v3 « presque parfaite » ; les lignes « Rejeu » de « Zone sélectionnée » jugées « hyper basiques » -> mini-tuiles de match sur deux lignes (bande d'issue 3 px, mode · score mon camp d'abord · issue · date ; pastille d'instant · « Tué par <gamertag> · <arme> » ou « A tué … » · badge « seul / près · N m » depuis `match_death_context_latest` à ± 1,5 s ; bouton de rejeu). Données réelles : 11 lignes Illusion et 9 Bazaar complètes ; sur toutes les morts localisées, 17 par carte sans arme ni catégorie, 4 sans contexte sur Illusion ; `pair_name_fr` / `playlist_name_fr` vides sur les 107 matchs, playlist « Quick Play » partout (mode lu sur `pair_name`). Colonne de la zone 300 -> 360 px (v4b) : Illusion 564 x 733 px, page 1 252 px (défilement 302 px en 1080, 482 px en 900) ; ligne 2 encore tronquée avec ellipse sur l'arme pour 5 lignes sur 11 (calcul Roboto, non mesuré à l'écran). Artefact version 4, copie `.ai/archive/V7.5` rafraîchie.
 
 **Complément (2026-10-06, maquette v4c / v4d)** : (1) clic sur une zone remontait en haut de l'artefact : défaut de maquette seule (rendu qui reconstruit le cadre), position de défilement conservée désormais ; (2) retour utilisateur : cellules peu denses trop transparentes pour un malvoyant. Cause côté app : `lib/replay/heatPaint.ts` `HEAT_ALPHA_MIN = 0.12`, `HEAT_ALPHA_MAX = 0.75`, noyau PARTAGÉ avec la carte de chaleur du rejeu 2D. Maquette passée à 0,45 → 0,85 (une cellule peinte est déjà au-dessus du plancher de mesure, l'intensité reste portée par la teinte). À porter dans le plan sur le noyau partagé (rejeu compris). Artefact version 6.
 
-**Complément (2026-10-06, maquette v4e)** : opacité 0,45 → 0,85 jugée « nickel » ; rampe de légende déplacée au bord DROIT du bloc du plan, hauteur propre (220 px) centrée verticalement, indépendante de la hauteur du fond. Artefact version 7, copie `.ai/V7.5` rafraîchie. Restent à trancher : règles de nommage des zones (tranche la plus étroite ; tolérance z 0,25 m).
+**Complément (2026-10-06, maquette v4e)** : opacité 0,45 → 0,85 jugée « nickel » ; rampe de légende déplacée au bord DROIT du bloc du plan, hauteur propre (220 px) centrée verticalement, indépendante de la hauteur du fond. Artefact version 7, copie `.ai/archive/V7.5` rafraîchie. Restent à trancher : règles de nommage des zones (tranche la plus étroite ; tolérance z 0,25 m).
 
 **Complément (2026-10-06, Sessions S4 clos)** : `548a0b30d` (66 fichiers, +2 472 / −5 045) — page Sessions reconstruite : une clé de section par carte (A-L + B' Halo 5), cinq intertitres de sous-groupe, paires A|B, C|D, G|H en pleine page, prédicat unique `sessionCardsPresence` pour les rangées du tiroir, les intertitres et les cartes ; tiroir de comparaison en vue compacte des deux côtés avec marqueur quand une carte manque (témoin 22/09 face au solo) ; textes en deux jeux dans `sessionEmpriseText.ts` ; Riposte retirée ; `_shared/usage` réduit à ce que Sessions lit encore (`UsageForms.tsx` 399 → 160 L, `usageI18n.ts` 518 → 124 L) ; garde-rail `formesFields.guard` ; 22 mutations rouges ; vitest 8 871 verts. S5 lancé.
 
@@ -117507,7 +118637,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Décision technique principale** : exécution du handoff `.ai/HANDOFF_COMPOSANTS_BLOQUANTS_VUE_B_2026-10-06.md` (GO du user le 07/10) par un agent Opus dans `LevelUp-wt-grammaire-arrets-vue-b` (base feat/v75 `879f31bbf`). Cinq désérialiseurs lus dans le jeu (Ghidra, lecture seule) et portés, un commit et un gate 2 chacun : `ti=43 i18..i40` (reprise de L2), `ti=12 i16` (`R(5)`), `ti=45 i0` (`R(4)` + quatre `R(32)`), `ti=10 i2..i17` (seize descripteurs, `R(32)`), `ti=12 i18` (position au niveau 0x10 par le lecteur de position unique). `grammar.Rev` -> `grammar-2026-10-07.5` ; killsource, objectives, SchemaVersion (82) constants.
 
-**Résultats observés** : carte v2, 20 films, base contre tête : +22 282 paquets sains (452 139 -> 474 421), +216 058 records utiles sains, 0 perdu, aucun film en baisse ; la cause qui avait fait retirer L2 (`1c4c63c2`) ne se reproduit pas. killsource json : 17/20 à l'octet, 3 diffèrent sur la seule ligne de diagnostic `calibration` (non persistée). TestGoldenFilms vert. Gate de corpus rc 1, admis par le pilote : 1 FAUX (`d9781168`, un repli remplace l'autre pour le même dead-state, aucune mort publiée ne change) et des PERTE de filet (durées d'état, trous de tir continu, un trajet de proximité remplacé par une lecture du film). `c75f33b8` t = 3600 : sept « lâchers » simultanés = mise en place réelle d'une manche d'Assaut ; défaut de qualification ANTÉRIEUR (D9 : emplacement annoncé vide jugé contre la dotation « mains nues » -> « lâche mains nues »). Gates de code, mutations 28/28, gate-push EXIT 0, CI verte sur `90d74c8e8`. Rapport : `.ai/V7.5/film_re/arrets_vue_b_2026-10-07/RAPPORT.md`.
+**Résultats observés** : carte v2, 20 films, base contre tête : +22 282 paquets sains (452 139 -> 474 421), +216 058 records utiles sains, 0 perdu, aucun film en baisse ; la cause qui avait fait retirer L2 (`1c4c63c2`) ne se reproduit pas. killsource json : 17/20 à l'octet, 3 diffèrent sur la seule ligne de diagnostic `calibration` (non persistée). TestGoldenFilms vert. Gate de corpus rc 1, admis par le pilote : 1 FAUX (`d9781168`, un repli remplace l'autre pour le même dead-state, aucune mort publiée ne change) et des PERTE de filet (durées d'état, trous de tir continu, un trajet de proximité remplacé par une lecture du film). `c75f33b8` t = 3600 : sept « lâchers » simultanés = mise en place réelle d'une manche d'Assaut ; défaut de qualification ANTÉRIEUR (D9 : emplacement annoncé vide jugé contre la dotation « mains nues » -> « lâche mains nues »). Gates de code, mutations 28/28, gate-push EXIT 0, CI verte sur `90d74c8e8`. Rapport : `.ai/archive/V7.5/film_re/arrets_vue_b_2026-10-07/RAPPORT.md`.
 
 **Conclusion / prochaine étape** : décisions du user : correctif D9 recommandé AVANT fusion ; fusion dans feat/v75 APRÈS la RI 2.7.c de levelup-57 (ordre convenu ; elle prend grammar .2 / schéma 85 / faits 10) : refusion, renumérotation des cinq rangs (le rang C1 porte le même littéral que feat/v75 `292ef56a5`), carte v2 et gate 2 refaits sur la tête combinée ; puis recuisson du parc. Suites possibles : `ti=12 visual-state-groups` (1 640 arrêts), `ti=10 i22` (291), `ti=35 i59` (250), `ti=11 i4` (141).
 
@@ -117517,7 +118647,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Résultats observés** : parc (126 artefacts, schéma 86, lecture seule) : 14 faux événements dans 6 films (1 lâcher, 13 échanges depuis les mains nues). 19 témoins : 18 -> 0 ; le reste des changements d'arme est identique (−13 lâchers, −5 échanges, +5 prises). Banc de vérité 19/19 ok, 0 FAUX, 0 MANQUE ; mutations 5/5 ; CI verte sur `20a52831c`. Le gate-push local a fini en EXIT 2 sur des dépassements de délai de paquets non touchés (passent rejoués seuls), sous une charge machine anormale : deux processus `sed` / `awk` orphelins depuis le 03/10 et le 06/10 (D11).
 
-**Conclusion / prochaine étape** : à la fusion (décision du user, après la RI 2.7.c déjà dans feat/v75 312073cd3) : refusion, renumérotation (grammar après .2, SchemaVersion après 87, probablement 88), carte v2 et gate 2 refaits, puis recuisson du parc. Rapport : `.ai/V7.5/film_re/arrets_vue_b_2026-10-07/RAPPORT.md` §7.
+**Conclusion / prochaine étape** : à la fusion (décision du user, après la RI 2.7.c déjà dans feat/v75 312073cd3) : refusion, renumérotation (grammar après .2, SchemaVersion après 87, probablement 88), carte v2 et gate 2 refaits, puis recuisson du parc. Rapport : `.ai/archive/V7.5/film_re/arrets_vue_b_2026-10-07/RAPPORT.md` §7.
 ## [2026-10-07] Représentation intermédiaire, étape 2 — killsource sur la marche unique : lectures déplacées, marche des trames et découpage déclaré — En cours (2.7.c1 à c3 clos, `feat/ri-etape2`)
 
 **Statut** : En cours (2.7.c1, c2 et c3 clos ; c4, les kill-events par la vue A, et c5, la clôture, à suivre).
@@ -117804,7 +118934,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 - Tests du script : simulation sur l'état réel (1,5 Go libérables, rapport des worktrees) ; arbre jetable avec jonctions : dossier de gate et session inactive REFUSÉS, cible intacte ; garde de processus active (rapport seul pendant les compilations des autres sessions) ; `-Lot` : refus d'un cache écrit depuis moins de 10 min, suppression d'un cache inactif, refus d'un cache contenant une jonction, nom de lot invalide rejeté.
 
 **Conclusion / prochaine étape** : fusion de `feat/disk-hygiene` dans feat/v75 par le pilote ; la tâche planifiée pointe sur `scripts/disk-hygiene.ps1` du checkout principal et devient effective dès que la fusion y est. Convention à suivre par les lots : `GOCACHE=%LOCALAPPDATA%\go-build-<lot>`, clôture par `-Lot <lot> -Apply` (skill `plan-execution` §5).
-**Complément (2026-10-08, levelup-5c, séquences et outil de mai)** : `feat/sequences-et-outil-mai` fusionnée dans feat/v75. `migration/sequence_alignment.go` appelé par `EnsurePlayerSchema` : toute séquence servant de DEFAULT à une colonne entière est avancée à max(colonne)+1 par `SELECT max(nextval(?)) FROM range(k)` (compteur réel lu dans le `START n` de `duckdb_sequences().sql`, `last_value` non fiable après rejeu du WAL), refus au-delà de 10 M / MAXVALUE / pas ≤ 0 / CYCLE, échec non bloquant (ERROR + `duckdb_sequence_align_failed_total`), passe continuée après une erreur (`errors.Join`). Seule séquence en retard du parc : `msr_seq` de Chocoboflor (prochaine 56, max 516) — LUSR bloqué depuis le 13/09 (CTAS de `purge_foreign_lusr_chain` qui a recréé la séquence à 1 ; 511 échecs « watermark tenu » au journal). `cmd/repair_data_consistency` supprimé (renvois vers `/admin/actions/lying-bits/reset` et `/admin/actions/registry-names/backfill`). Revue adversariale 1 relecteur (L1+L6) : 0 défaut fonctionnel, 1 P2 de couverture (refus et non-blocage sans test) corrigé par 5 tests vus rouges sous mutation. Découvertes non traitées : doublons d'ids dans des PK déclarées (`player_match_enrichment` Chocoboflor 5 / Madina 5, `player_csr_snapshots` Madina 147 / XxDaemon 147, 13-23/09, famille #23645) ; 17 192 ids NULL de `match_skill_rank` chez Chocoboflor ; `player_csr_snapshots` de Chocoboflor jamais convertie ; `cmd/recompute_perfnote` et `cmd/h5-lusr-backfill` écrivent sans passer par `OpenPlayerDB`. Archivage du user (`e3384ec3b`, 34 documents vers `.ai/V7.5/`) : références de code et de docs repointées (garde `TestCheminsAiCitesDansLeCodeExistent`).
+**Complément (2026-10-08, levelup-5c, séquences et outil de mai)** : `feat/sequences-et-outil-mai` fusionnée dans feat/v75. `migration/sequence_alignment.go` appelé par `EnsurePlayerSchema` : toute séquence servant de DEFAULT à une colonne entière est avancée à max(colonne)+1 par `SELECT max(nextval(?)) FROM range(k)` (compteur réel lu dans le `START n` de `duckdb_sequences().sql`, `last_value` non fiable après rejeu du WAL), refus au-delà de 10 M / MAXVALUE / pas ≤ 0 / CYCLE, échec non bloquant (ERROR + `duckdb_sequence_align_failed_total`), passe continuée après une erreur (`errors.Join`). Seule séquence en retard du parc : `msr_seq` de Chocoboflor (prochaine 56, max 516) — LUSR bloqué depuis le 13/09 (CTAS de `purge_foreign_lusr_chain` qui a recréé la séquence à 1 ; 511 échecs « watermark tenu » au journal). `cmd/repair_data_consistency` supprimé (renvois vers `/admin/actions/lying-bits/reset` et `/admin/actions/registry-names/backfill`). Revue adversariale 1 relecteur (L1+L6) : 0 défaut fonctionnel, 1 P2 de couverture (refus et non-blocage sans test) corrigé par 5 tests vus rouges sous mutation. Découvertes non traitées : doublons d'ids dans des PK déclarées (`player_match_enrichment` Chocoboflor 5 / Madina 5, `player_csr_snapshots` Madina 147 / XxDaemon 147, 13-23/09, famille #23645) ; 17 192 ids NULL de `match_skill_rank` chez Chocoboflor ; `player_csr_snapshots` de Chocoboflor jamais convertie ; `cmd/recompute_perfnote` et `cmd/h5-lusr-backfill` écrivent sans passer par `OpenPlayerDB`. Archivage du user (`e3384ec3b`, 34 documents vers `.ai/archive/V7.5/`) : références de code et de docs repointées (garde `TestCheminsAiCitesDansLeCodeExistent`).
 
 **Complément (2026-10-08, levelup-5c, séquences sur le chemin serveur)** : après redémarrage, le cycle auto_sync a de nouveau écrit le LUSR de Chocoboflor en « Duplicate key id: 66 » sans aucune ligne d'alignement : le post-sync V2 (`cmd/server/sync_v2_wiring.go` `playerDBOpenerRW`), le pool HTTP et les persisteurs ouvrent la base joueur par `duckdb.OpenReadWrite` sans `EnsurePlayerSchema`. Réparation immédiate : coupure de :8000 (20:06-20:10), `levelup sync-delta --gamertag Chocoboflor` (alignement `msr_seq` 68 -> 517, 15 LUSR écrits), serveur relancé. Correctif durable `feat/sequences-chemin-v2` fusionné : porte unique d'ouverture physique `platform/duckdb/physical_open.go` (première ouverture, remplacement après ping, `Reopen`) qui aligne les séquences des bases joueur (`title.IsPlayerDBPath`) ouvertes en écriture, une fois par ouverture physique, jamais bloquante ; `EnsurePlayerSchema` ne réaligne plus qu'après avoir créé une séquence (`schemadrift.SequenceCreated`) ; ratchet `archlint/no_bare_duckdb_rw_open_test.go` (100 ouvertures RW directes hors `platform/duckdb`, allowlist datée décroissante) ; préfixes de clés de cache `rw:`/`ro:` en constantes. Revue : 1 relecteur (L1+L3+L6), 0 P0/P1, 2 P2 corrigés (branche `players/players` qui excluait un gamertag « players » ; littéraux `rw:` non migrés), 12 conditions tenues, 10 mutations (7 rouges, 3 replis de prudence). Gates : title, platform/duckdb, sync, sync/skill, migration, archlint, cmd/server ok sur l'arbre fusionné. Découvertes : écrivains LUSR CLI directs (`recompute_perfnote`, `h5-lusr-backfill`, `lusr_v2_canonical_backfill`) non alignés ; `purge_foreign_lusr_chain` recrée `msr_seq` à 1.
 
@@ -117822,7 +118952,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 **Décision technique principale** : GO du user (« ok pour les 3 points »). Agent Opus, worktree dédié, base feat/v75 `a4515e66c`, rangs `grammar-2026-10-08.2` à `.13`, chronique rotée (`rev_chronique_archive_8.go`, de `grammar-2026-10-03` à `10-08`). (1) Dix composants lus dans le jeu (lecteur et écrivain) : `ti=12 i20..i27` (groupes d'états visuels), `ti=10 i22`, `ti=35 i59` (relu entier), `ti=11 i4`, `ti=10 i23`, `ti=12 i17`, `ti=10 i18..i21`, `ti=45 i1`, `ti=12 i13/i15`. (2) Découverte 34 de levelup-57 : le message de dégâts (genre 0) est bien lu ; la cause des trames perdues est l'i0 des objets du monde, porte posée, qui lisait les largeurs de la carte au lieu de la table DÉFAUT (FUN_14076e524, niveau immédiat 0x10) ; correctif hors portée, accordé par levelup-57 (fichier de son lot LK) et par le user. (3) Découverte 45 : le NEW de `bf15f7ab` est lu dans une trame FERMÉE et refusé contre un `ti=20` d'image-clé dont la suppression n'est jamais lue ; un NEW refusé est lié en fin de trame quand la fermeture prouve son en-tête (`neufs_prouves.go`). `killsource.Rev` -> `killsource-2026-10-08` (81 morts passent du balayage à la marche, contenu identique). `SchemaVersion` 89 constant.
 
-**Résultats observés** : carte v2, 20 films : +19 440 paquets sains (487 188 -> 506 628), +349 211 records utiles, 0 perdu, aucun film en baisse ; `fccc61cd` +10 949 sains (599 des 635 trames à genre 0 se ferment) ; `bf15f7ab` 69/69 trames fermées sur 14:1094-1230. Admissions : deux baisses `ti=37` du golden des images-clés et le MANQUE `0797ce72` (quatre objets au sol vus 5,6 à 7,1 s de plus) par le user (images-clés lues hors portée, remplacées par LK) ; le FAUX `084a804d` par le pilote. Mutations 16/16, gate-push vert, CI verte. Refusion de feat/v75 `5f7511e88` : conflit de chronique seulement (chemins `.ai/V7.5` reportés dans l'archive 8).
+**Résultats observés** : carte v2, 20 films : +19 440 paquets sains (487 188 -> 506 628), +349 211 records utiles, 0 perdu, aucun film en baisse ; `fccc61cd` +10 949 sains (599 des 635 trames à genre 0 se ferment) ; `bf15f7ab` 69/69 trames fermées sur 14:1094-1230. Admissions : deux baisses `ti=37` du golden des images-clés et le MANQUE `0797ce72` (quatre objets au sol vus 5,6 à 7,1 s de plus) par le user (images-clés lues hors portée, remplacées par LK) ; le FAUX `084a804d` par le pilote. Mutations 16/16, gate-push vert, CI verte. Refusion de feat/v75 `5f7511e88` : conflit de chronique seulement (chemins `.ai/archive/V7.5` reportés dans l'archive 8).
 
 **Conclusion / prochaine étape** : ordre convenu : levelup-2c (feat/aj-film, killsource .2, schéma 90) puis levelup-57 (LK) refusionnent après ; une seule recuisson et des backfills groupés (dont killsource) à proposer au user après leurs fusions. Restent : arrêts `ti=0 i18`, `ti=48 i0/i1`, `ti=0 i19` ; échecs après le moteur de partie sur `78919882` ; NEW refusés hors trames prouvées.
 ## [2026-10-08] Connexion Xbox locale (P0 du user) : `sisu: HTTP 400 complete` — Complété (`fix/sisu-complete-400` fusionnée dans feat/v75)
@@ -118581,7 +119711,7 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 ## [2026-10-21] Contrôles v8, suite du lot rejeu : places par équipe à la taille de la playlist (BTB `4f77afc1`) — Complété (branche `fix/controles-v8-rejeu`)
 
-**Décision technique principale** : décisions de l'utilisateur du 2026-10-21 : (1) voix « manche terminée » hors plafond validée, D-1 du 26/09 amendé dans `.ai/V7.5/PLAN_BACKLOG_2026-09-26.md` ; (2) recuisson unique plus tard, par le superviseur ; (3) taille d'équipe lue dans le film si le film la porte, sinon taille officielle du mode en donnée. Recherche bornée (`variante_taille_equipe_research_test.go`) : options de partie et variante Bond de `chunk_00` vidées en entier sur 18 films (2v2, 4v4, 8v8, 12v12), aucun champ ne sépare les tailles ; un 4v4 et un 8v8 de la même variante ne diffèrent que par 4 champs (session, deux graines, cible de score 50/75). Négatif mesuré : la taille vient de `regulation.toml [team_size]` (jeton de playlist : Arena 4, Ranked 4, Doubles 2, Squad 8, BTB et BTB Heavies 12), repli nommé et compté `repli_taille_d_equipe_du_mode`. Règle des places (`sieges_a_la_taille.go`, repli `repli_place_ramenee_a_la_taille_d_equipe`, provenance `taille`) : les places d'une équipe en surnombre se départagent par leur première occupation certaine, leurs occupants passent sur une place gardée libre, relèvent un bot aux vies finies ou déplacent un occupant arrivé après eux ; un partant d'avant le coup d'envoi n'est plus affiché. Un bot qui joue encore n'est jamais relevé.
+**Décision technique principale** : décisions de l'utilisateur du 2026-10-21 : (1) voix « manche terminée » hors plafond validée, D-1 du 26/09 amendé dans `.ai/archive/V7.5/PLAN_BACKLOG_2026-09-26.md` ; (2) recuisson unique plus tard, par le superviseur ; (3) taille d'équipe lue dans le film si le film la porte, sinon taille officielle du mode en donnée. Recherche bornée (`variante_taille_equipe_research_test.go`) : options de partie et variante Bond de `chunk_00` vidées en entier sur 18 films (2v2, 4v4, 8v8, 12v12), aucun champ ne sépare les tailles ; un 4v4 et un 8v8 de la même variante ne diffèrent que par 4 champs (session, deux graines, cible de score 50/75). Négatif mesuré : la taille vient de `regulation.toml [team_size]` (jeton de playlist : Arena 4, Ranked 4, Doubles 2, Squad 8, BTB et BTB Heavies 12), repli nommé et compté `repli_taille_d_equipe_du_mode`. Règle des places (`sieges_a_la_taille.go`, repli `repli_place_ramenee_a_la_taille_d_equipe`, provenance `taille`) : les places d'une équipe en surnombre se départagent par leur première occupation certaine, leurs occupants passent sur une place gardée libre, relèvent un bot aux vies finies ou déplacent un occupant arrivé après eux ; un partant d'avant le coup d'envoi n'est plus affiché. Un bot qui joue encore n'est jamais relevé.
 
 **Résultats observés** : `4f77afc1` recuit (BTB:CTF, worktree) : Eagle 13 -> 12 places, Cobra 12, 0 dépassement ; `bcb6d393` (CTF:Arena) inchangé 4/4. Banc sur artefacts (`sieges_a_la_taille_parc_research_test.go`, sans recuisson) sur les 13 films comptés : seul `4f77afc1` se ramène ; onze montent à cinq (ou six) présences certaines simultanées dans une équipe (un bot qui continue de jouer à côté d'une équipe complète : le film montre l'équipe au-delà de sa taille), `400bb628` a un joueur revenu sur une autre place que la sienne (une place par entrée ne le suit pas). Ils restent comptés (`placesEnTrop`). Révisions : `SchemaVersion` 100 -> 101 (chronique v101, golden des formes, goldens d'assemblage, fixtures de contrat, openapi.yaml, generated.ts) ; aucune révision de couche de plus que `grammar-2026-10-21` (lot précédent). Gates : `go test` film/..., archlint, replaybuild, replayview, mappings, killcollector, api verts ; golangci-lint des paquets touchés : 0 issue sur le code neuf ; web tsc (cache purgé), vitest match-replay + lib (3 689 verts).
 
@@ -118681,11 +119811,11 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 
 ## [2026-10-22] Retrait des captures mémoire du jeu de l'arbre (option C de l'audit du contenu tiers) — Complété (branche `chore/retrait-captures-memoire`)
 
-**Décision technique principale** : retirer de l'arbre les captures mémoire (`ce_*`, `kf_*`, `keyframe_buffer_live.bin`, `crack/`, `allbipeds_*`, `killevents_*`, `loadout_*`, `life_attribution.json`, `tools/ce/*.bin`) et les extraits du jeu / images / sorties d'outils que aucun test ne lit (`forge_zones/`, `map_structure_*.csv`, PNG, `offline_trajectories*`, `rosetta_groundtruth.csv`, `replay_demo_data.json`, `plafonds_c0/`...). Sont gardés : les 3 `.mvar` de `mapvar/`, `callout_zones_ridgeline_clipped.json` (lus en CI par 5 tests, `Fatal` si absents), `carte_validee_v1.png` (lu par les tests `gamefiles` de `himap`) et les 12 `tools/ce/filmdec_*.lua` (notre code). `.gitignore` nomme ces 5 fixtures en exception du motif `.ai/V7.5/dumps/*` et ignore `tools/ce/*.bin`.
+**Décision technique principale** : retirer de l'arbre les captures mémoire (`ce_*`, `kf_*`, `keyframe_buffer_live.bin`, `crack/`, `allbipeds_*`, `killevents_*`, `loadout_*`, `life_attribution.json`, `tools/ce/*.bin`) et les extraits du jeu / images / sorties d'outils que aucun test ne lit (`forge_zones/`, `map_structure_*.csv`, PNG, `offline_trajectories*`, `rosetta_groundtruth.csv`, `replay_demo_data.json`, `plafonds_c0/`...). Sont gardés : les 3 `.mvar` de `mapvar/`, `callout_zones_ridgeline_clipped.json` (lus en CI par 5 tests, `Fatal` si absents), `carte_validee_v1.png` (lu par les tests `gamefiles` de `himap`) et les 12 `tools/ce/filmdec_*.lua` (notre code). `.gitignore` nomme ces 5 fixtures en exception du motif `.ai/archive/V7.5/dumps/*` et ignore `tools/ce/*.bin`.
 
-**Résultats observés** : copie préalable hors dépôt (`Downloads/LevelUp_captures_memoire_jeu`) : 95 fichiers, tailles et SHA-256 identiques. 78 fichiers retirés. `TestCheminsAiCitesDansLeCodeExistent` rougissait sur 8 commentaires Go qui citaient un fichier retiré : reformulés pour pointer la copie hors dépôt (aucun code modifié). Vet (dont `-tags gamefiles` sur `himap` et `grammar`) et tests des paquets concernés verts ; les skips restants sont des gardes d'environnement ou de corpus absent sans lien avec les fichiers retirés. `NOTICE` §4, l'audit du 2026-10-16 et `.ai/V7.5/README.md` mis à jour.
+**Résultats observés** : copie préalable hors dépôt (`Downloads/LevelUp_captures_memoire_jeu`) : 95 fichiers, tailles et SHA-256 identiques. 78 fichiers retirés. `TestCheminsAiCitesDansLeCodeExistent` rougissait sur 8 commentaires Go qui citaient un fichier retiré : reformulés pour pointer la copie hors dépôt (aucun code modifié). Vet (dont `-tags gamefiles` sur `himap` et `grammar`) et tests des paquets concernés verts ; les skips restants sont des gardes d'environnement ou de corpus absent sans lien avec les fichiers retirés. `NOTICE` §4, l'audit du 2026-10-16 et `.ai/archive/V7.5/README.md` mis à jour.
 
-**Conclusion / prochaine étape** : les fichiers restent dans l'historique git ; une purge reste la décision distincte (option C complète de l'audit). Les documents de recherche de `.ai/V7.5/` qui citent les fichiers retirés ne sont pas réécrits (archives).
+**Conclusion / prochaine étape** : les fichiers restent dans l'historique git ; une purge reste la décision distincte (option C complète de l'audit). Les documents de recherche de `.ai/archive/V7.5/` qui citent les fichiers retirés ne sont pas réécrits (archives).
 ## [2026-10-22] Anonymisation des gamertags tiers dans les fixtures de films — Complété (branche `chore/anonymisation-gamertags`)
 
 **Statut** : Complété (non poussé, non fusionné).
@@ -118877,3 +120007,491 @@ bute, lots non engagés, découvertes de la vue A) ; levelup-57 poursuit la RI (
 **Resultats observes** : `go test ./internal/service/ ./internal/games/halo_infinite/film/replay/` vert ; ce sont les deux seuls tests en echec des runs CI `0339476b8` et `3e55cb337`.
 
 **Prochaine etape** : fusion dans `release/v8.0.7`, CI de la PR #109.
+
+## [2026-10-28] Découplage des briques — vérification de l'audit et plan D1 — Complété (branche `release/v8.1.0`, documents seuls, aucun code modifié)
+
+**Contexte** : demande utilisateur du 2026-10-28 d'attaquer le plan issu de `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md` après vérification que rien ne manque.
+
+**Décision technique principale** : l'audit est confirmé dans son fond (trois briques, ordre D1 → D2 → D3) mais complété par huit constats sur pièces (addendum ajouté au fichier d'audit) : `himap` importe `internal/i18n` (coupe oubliée) ; `film/replay` importe `i18n` (5 fichiers, absent du tableau D2) ; le traitement D2 des types de sortie heurte `no_title_package_in_analysis_test` (analysis lit `highlightevent` et `equipmentusage`) ; les fichiers protocole de `platform/auth` importent `logging` et `netguard` ; un module séparé ne peut pas importer `go-api/internal` même en test (dix tests gamefiles de `himap` lisent des données LevelUp) ; Dockerfile, ci.yml, Makefile, release.yml et les ratchets archlint racinés sur `apps/go-api` doivent suivre ; le chemin de module doit être résolvable pour l'import externe ; le ratchet `doc_chemins_ai` est rouge dans l'arbre local (déplacement non commité de `PLAN_I18N_MULTILANGUE.md`) et la CI de `release/v8.1.0` est rouge côté web (garde-rails i18n). Plan D1 écrit : `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D1_2026-10-28.md` (lot 0 préalable CI, lot 1 garde-fou G avant tout déplacement, lot 2 coupes dans le module, lot 3 module `libs/gamefiles` + go.work + infra + ADR 0041, lot 4 module `libs/himap`, lot 5 preuve par recuisson à l'octet). Huit décisions D1-A à D1-H proposées, à confirmer par l'utilisateur.
+
+**Résultats observés** : `go list -deps ./internal/himap/...` = himap, himodule, hinavmesh, ooz, mapvar, i18n ; `go test -run TestCheminsAiCitesDansLeCodeExistent` ROUGE (2 citations de `.ai/PLAN_I18N_MULTILANGUE.md`, déplacé sous `.ai/V8/`). Effort D1 revu de ~1 jour à ~3 jours.
+
+**Conclusion / prochaine étape** : confirmation des décisions D1-A à D1-H par l'utilisateur, puis lot 0 sur `fix/ratchet-chemins-ai` et lot 1 sur `refactor/decouplage-d1-fichiers-du-jeu` (worktree dédié).
+
+## [2026-10-28] Découplage D1 — lot 0 (préalable CI) et lot 1 (garde-fou des briques) — En cours (branches `fix/ratchet-chemins-ai` et `refactor/decouplage-d1-fichiers-du-jeu`, non commitées)
+
+**Contexte** : l'utilisateur a corrigé D1-A (dépôt de référence = `origin` https://github.com/JGtm/LevelUp, pas le remote `fork`) et délégué les décisions D1-B à D1-H au pilote (message du 2026-10-28). Elles sont fermes et consignées dans le plan.
+
+**Lot 0** (worktree `LevelUp-wt-chemins-ai`) : déplacement de `.ai/PLAN_I18N_MULTILANGUE.md` vers `.ai/V8/` commis à l'index (il était fait dans l'arbre de travail principal sans commit) et sept citations corrigées (2 Go, 2 TS web, ADR 0040, FOUNDATIONS_GUIDE EN et FR). `TestCheminsAiCitesDansLeCodeExistent` vert. Item 0.5 `[!]` : la CI de `release/v8.1.0` est rouge côté web (garde-rails i18n `no-locale-literal-comparison`, `no-intl-tag-literal`, dépassements 5 s) — chantier i18n, hors D1 ; D1 ne pousse rien tant que la base n'est pas verte.
+
+**Lot 1** (worktree `LevelUp-wt-decouplage-d1`) : `internal/archlint/briques_imports_test.go` — table brique → paquets + imports permis (`gamefiles` = himodule, ooz, hinavmesh, mapvar, rien de permis ; `himap` → gamefiles), imports PARSÉS tests compris (un module séparé ne peut pas importer `go-api/internal` même en test), allowlist datée de 17 entrées (1 de production : `uslg.go` → `i18n` ; 16 tests → `film/replay`, `i18n`, `testfixtures`, `testutil`), entrée morte = rouge, auto-preuve sur extrait synthétique, cohérence de rang de la table. Vert ; `go vet` vert ; mutation (entrée `uslg.go` retirée) rouge comme attendu.
+
+**Découverte (plan amendé, non traitée)** : l'inventaire D1-D de l'audit (dix tests) était incomplet — seize fichiers de test importent LevelUp, dont deux de `mapvar` et un de `hinavmesh` ; les fixtures `.mvar` de `testfixtures/testdata/cartes` sont aussi lues par `mapcatalog`, `mapdecoupe`, `cmd/levelup`, `cmd/mapobj-build` et restent côté LevelUp (lot 2 : copie unique dans le `testdata/` de la brique pour les tests du lecteur).
+
+**Prochaine étape** : accord de l'utilisateur pour les deux commits ; PR lot 0 vers `release/v8.1.0` ; puis lot 2 (coupes dans le module).
+
+## [2026-10-28] Découplage D1 — lot 2 : coupe i18n de `himap` et tests couplés à LevelUp sortis de la brique — Complété (branche `refactor/decouplage-d1-fichiers-du-jeu`, non commité)
+
+**Décision technique principale** : (1) `himap.LexiqueLieux` rend `map[uint32]map[string]string` (codes du jeu `CodeLangueEN` = `en-US`, `CodeLangueFR` = `fr-FR`), `cmd/mapcallouts-build` convertit par `i18n.FromHaloTag` (`versTextes`, code inconnu compté et journalisé) ; `himap` n'importe plus `internal/i18n`. (2) Tests couplés à LevelUp : le relevé du plan (16+3) était très sous-estimé — le banc Cliffhanger forme une grappe de helpers de données (catalogue d'objectifs, rejeu) qui entraînait 39 fichiers. Règle appliquée : tout test qui importe LevelUp ou lit ses données et se compile sur l'API exportée déménage dans le nouveau paquet de tests `internal/gamefilescorpus/` (22 fichiers déplacés par `git mv`, 3 scindés : `uslg_gamefiles`, `cloture_gamefiles`, `hinavmesh/oracle_ancres`) ; les sondes qui exercent ~35 internes non exportés (tags sbsp/instances/forge, champs `Rendu.z/n`) ne sont PAS réécrites ni leurs internes exportés : elles restent dans la brique, sans import, avec des oracles lus par un parseur local (`himap/oracles_depot_gamefiles_test.go`) et la carte de référence PNG copiée dans `himap/testdata/`. Un seul export ajouté : `himap.PeupleDepuisModule` (première étape de `CuitCarteNative`). `mapvar` et `hinavmesh` n'importent plus rien (copie des 3 `.mvar`, 195 869 octets, dans `mapvar/testdata/`). Helpers dupliqués une fois, pas de paquet d'aides commun. `importsToleres` vidée. Makefile, ci.yml, COMMANDS (EN+FR) mis à jour ; ratchets `no_repo_root_walk` (clé déplacée) et `i18n_locale_constant` (plafond 39 -> 37) ajustés, datés.
+
+**Résultats observés** :
+- gofmt (cinq dossiers) vide ; `go vet` sans tag (himap, gamefilescorpus, hinavmesh, mapvar, mapcallouts-build, archlint) et `go vet -tags=gamefiles ./internal/himap/ ./internal/gamefilescorpus/` verts.
+- `go test ./internal/archlint/ ./internal/himap/ ./internal/hinavmesh/ ./internal/games/halo_infinite/film/replay/mapvar/ ./cmd/mapcallouts-build/ ./internal/gamefilescorpus/ -count=1` : tous `ok` (archlint 108 s).
+- `go list -deps ./internal/himap/...` : mapvar, ooz, himodule, hinavmesh, himap (rien d'autre, tests compris) ; grep des quatre imports interdits : vide.
+- Corpus gamefiles (paquets joués un à un avec les options de la cible, `make` non lancé tel quel : plafond de 10 min du poste) : base (HEAD, extraite du commit) `himap` 158 PASS / 24 SKIP / 9 FAIL ; après : `himap` 132/16/8 + `gamefilescorpus` 29/8/1 = 161/24/9 ; comparaison test par test sur les 191 issues de la base : IDENTIQUE, seuls trois `TestOracle*` s'ajoutent (venus de `hinavmesh`, passent). Les 9 échecs sont communs à la base : 7 par `.ai/re_dump/mapvar` absent du poste (Fatal voulu), `TestPreuveLevelIDCartes` idem, `TestBancCliffhanger` = rouge connu (accord 64,4 %). `cmd/film-profiles-build`, `cmd/mapfond-build`, `cmd/mapstruct-build` : 8 PASS, 0 SKIP, 0 FAIL.
+- TÉMOINS AVANT/APRÈS du lexique : `callouts_lexique.csv` md5 `5c835edd4fa2715b051dd2df1d485ab0` avant et après ; `map_callouts.json` md5 `988fd140d2d33808dc7a546cd69b7bdb` avant et après (cartes_natives=22, zones_natives=816, cartes_forge=0) : IDENTIQUE. Tests du lexique : « 778 entrées, 777 StringId distincts », « 810 entrées, les 778 noms de lieu ... nommés en EN et FR », « 810 entrées reproduites à l'identique » (comptes d'avant). `git status --short data/titles/halo_infinite/reference/` vide ; `callouts_i18n.csv` md5 `cb36bdd205b68fb30a00d03a7f6cb648`.
+
+**Conclusion / prochaine étape** : lot 2 clos sous réserve du résidu consigné (plan, « Découvertes » 2 à 4 : sondes qui lisent encore le dépôt hôte, chemins relatifs entre paquets à reprendre au lot 3/4, copies de fixtures). Prochaine étape : lot 3 (module `libs/gamefiles`, `go.work`, infra) après accord de l'utilisateur sur le commit du lot 2 et sur le sort du résidu.
+
+## [2026-10-28] Découplage D1 — lot 2b : une seule copie des fixtures binaires, possédée par la brique — Complété (branche `refactor/decouplage-d1-fichiers-du-jeu`, non commité)
+
+**Décision technique principale** : le lot 2 avait dupliqué six fichiers binaires (découverte 5 du plan) alors que le commentaire d'origine de `mapvar_test.go` refusait de dupliquer ces actifs 343/Microsoft. Décision du pilote : une copie par fichier, dans le `testdata/` de la brique qui le LIT (`mapvar` : 3 `.mvar` ; `hinavmesh` : 2 blobs navmesh ; `himap` : `carte_validee_v1.png`), lue par LevelUp par chemin depuis la racine du dépôt. `internal/testfixtures/cartes.go` porte trois constantes (`MapvarFixturesDir`, `NavmeshFixturesDir`, `CarteValideeFixturesDir`, chemins slash depuis la racine ; au lot 3 : une ligne chacune) et les résolveurs `Carte("mapvar", ...)`, `CarteValidee()`, `Navmesh(assetID)`. Six `git rm` (3 `.mvar` et le PNG de `testfixtures`, 2 blobs de `gamefilescorpus`). Lecteurs migrés : `gamefilescorpus` (`cuisson_navmesh`, `navmesh_ancres`, `carte_gate`, `coquille_xy`, `rendu`), défaut de `-forge-cache` de `cmd/mapcallouts-build` (chemin de la brique, sans importer `testfixtures`) ; `cmd/levelup`, `cmd/mapobj-build`, `mapcatalog` lisaient déjà par `testfixtures.Carte("mapvar", ...)` (résolu par la constante). `.gitignore` (cache local des variantes `mapvar/testdata/*.mvar`, 3 témoins suivis) et `NOTICE` (chemins) suivent le déplacement. Commentaires devenus faux corrigés (`mapvar_test.go`, `himap/chemin_depot_test.go`, `testfixtures/doc.go`, `mapobj-build`, `replayartifacts/mvar_rattrapage.go`).
+
+**Résultats observés** :
+- gofmt (dossiers touchés) vide ; `go vet` (dix paquets) et `go vet -tags=gamefiles ./internal/himap/ ./internal/gamefilescorpus/` verts.
+- `go test -count=1` : `archlint` (102 s), `testfixtures`, `himap`, `hinavmesh`, `mapvar`, `mapcatalog`, `mapdecoupe`, `cmd/mapcallouts-build`, `cmd/mapobj-build` tous `ok` ; `cmd/levelup` en entier `ok` (28 s). Les ratchets `no_repo_root_walk`, `no_data_path_join`, `pas_de_lecture_sous_ai`, `briques_imports` restent verts sans modification. Les seuls SKIP restants des paquets touchés concernent des données non versionnées (`.ai/re_dump`, `vagabond_map.mvar`, `LEVELUP_UGC_BLOBS`, `data/cache/replays`), pas les fixtures déplacées.
+- Corpus gamefiles : `gamefilescorpus` entier 29 PASS / 8 SKIP / 1 FAIL (identique au lot 2 ; l'échec est `TestRenduForgeVagabond`, `.ai/re_dump/mapvar` absent du poste, Fatal voulu) ; filtre `Navmesh|Cuisson|Rendu|Coquille|CarteGate|Gate` : mêmes verdicts ; `TestCuitIsolationDepuisSonNavmesh`, trois `TestOracle*` (navmesh), `TestGateVisuelCliffhanger`, `TestCoquilleEnXYCatalyst`, `TestRenduCliffhanger` PASS (les blobs et le PNG sont bien lus au nouvel emplacement). `himap -run 'Calage|Banc'` : 3 PASS, `TestBancCliffhanger` rouge connu (accord 64,4 %, identique à la base).
+- TÉMOINS md5 avant = après, copie restante : `cliffhanger_map.mvar` `66d06d7be92847c5ff137a3f52c6424e`, `cliffhanger_ridgeline.mvar` `278c4e9e196774c941e3053c9bbe852e`, `vagabond_fo08_wetland.mvar` `659e35845c2fab7fb4f1a5d82bc9692b`, `01af558d-...navmesh.blob` `aee118d183ef4107d60aa2a8e3921f16`, `df7dbf08-...navmesh.blob` `5261e8c36f80389a9cdb16643620ac59`, `carte_validee_v1.png` `4bb575ed09ff4fb6f8e7675d0224e193`. `git status --short data/` vide.
+
+**Conclusion / prochaine étape** : découverte 5 close. Reste hors périmètre, en attente de la décision de l'utilisateur : sondes de recherche de la brique, `sonde_locs` et lecteurs de `.ai/re_dump` (découvertes 2, 3, 6). Ensuite lot 3 (module `libs/gamefiles`, `go.work`) ; les trois constantes de `testfixtures` sont les seules lignes à retoucher pour les fixtures.
+
+## [2026-10-28] Découplage D1 — lot 2c : sondes de recherche des briques sous le tag research (décision utilisateur option 2) — Complété (branche `refactor/decouplage-d1-fichiers-du-jeu`, non commité)
+
+**Décision technique principale** : les sondes de rétro-ingénierie de `himap`, `hinavmesh` et `mapvar` qui lisent `.ai/re_dump` ou les données du dépôt hôte sont CONSERVÉES comme instruments `*_research_test.go` (jamais supprimées), hors du build par défaut ET de la suite `gamefiles`. Convention : `//go:build research` si l'instrument n'ouvre pas le jeu, `//go:build gamefiles && research` s'il l'ouvre (`DeployRoot(`, `LevelsDir(`, `ChercheModuleInstalle(`) ; helpers communs aux seuls instruments = compagnons `research`. Tri test par test : lit le dump ou une donnée du dépôt hôte => instrument ; le jeu seul suffit => reste sous `gamefiles` (une garde n'est jamais taguée ; `TestPluginDrapeauxDeFiltre` en est une). Fichiers mixtes scindés (`sddt`, `physique_sonde`, `filtres_reclaimer`). Les chemins absolus périmés (`C:\Users\...\Projects\LevelUp\.ai\re_dump`, 7 dans `sonde_locs`, 8 dans `hinavmesh`, 4 dans `mapvar`) et les `..` relatifs sont remplacés par UN helper de remontée par paquet (`dossierDeVariantes`/`cheminCalloutsI18n`, `racineDumpNavmesh`, `cheminDump`). Ratchet `gamefiles_tag_test.go` : un `*_research_test.go` dont la contrainte porte `gamefiles` ET `research` en conjonction est accepté (pas un assouplissement : aucun build automatique ne le compile ; règle écrite en doc de tête, datée), avec auto-preuve sur sources synthétiques et mutation réelle vue rouge.
+
+**Résultats observés** :
+- 24 fichiers renommés par `git mv` (12 `himap`, 8 `hinavmesh`, 4 `mapvar`) et 6 créés (`sddt_`, `physique_sonde_`, `filtres_reclaimer_research_test.go` issus des scissions ; `fixture_carte_validee_test.go` ; deux `depot_research_test.go`) ; plancher research 383 -> 412 (+29, `find` : 525 -> 554) ; plafond `sitesAiAutorises` 27 -> 16 ; clé `film_file_size` renommée.
+- Gate : `gofmt -l` vide, aucun CRLF ; `go vet` des quatre combinaisons de tags (aucun tag, `gamefiles`, `gamefiles,research`, `research`) verts ; `go test -count=1` `archlint` (109 s, tous les `ci_*` compris), `himap` (4,0 s), `hinavmesh` (2,1 s), `mapvar` (0,3 s) `ok`.
+- Témoins (scratchpad `temoins_lot2c_*`) : sur `-tags=gamefiles ./internal/himap/`, mêmes verdicts pour tous les tests restés ; 28 tests sortis de la suite, exactement ceux des fichiers déplacés (8 FAIL du rouge connu « dépôt de variantes absent », 8 PASS, 12 SKIP) ; le paquet passe de FAIL à ok. `hinavmesh` : 8 sortis ; `mapvar` : 10 sortis. Sous `-tags=gamefiles,research` les instruments compilent et tournent : mêmes 8 FAIL, mêmes SKIP ; trois PASS d'avant étaient vides (l'ancien chemin absolu périmé faisait `continue` partout) et deviennent des SKIP honnêtes.
+- CI : ligne `go vet -tags=gamefiles,research` des trois briques ajoutée au pas du corpus `gamefiles` (le vet `-tags=research ./...` les exclut, voulu) ; `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` mis à jour.
+- Hors périmètre, noté au plan : 20 fichiers du décodeur de film portent encore `Projects/LevelUp` (le gate 5 « vide sur tout `internal/` » n'est pas atteignable ; les trois briques sont à 0) ; relevé du pilote inexact (deux fichiers listés ne lisent rien du dépôt, quatre non listés le font) ; deux preuves « durables » (`TestPreuveLevelIDCartes`, `TestZonesNommeesDIsolation`) deviennent à la demande ; trois copies de la remontée de chemin à centraliser au lot 3.
+
+**Conclusion / prochaine étape** : plan 2.12 à 2.15 statués, découvertes 2, 3, 6 traitées (4 partiellement), nouvelles découvertes 9 à 16 notées. Lot 3 : module `libs/gamefiles` (la découverte 12 y trouve son helper commun ; `himap/deploy_root_test.go` reste à traiter, découverte 4).
+
+## [2026-10-28] Découplage D1 — lot 3 : module libs/gamefiles, go.work et infrastructure — Complété (commit 3d579bfd0 + fusion release 07a77fe7b ; CI verte run 40737136591)
+
+**Décision technique principale** : `libs/gamefiles` (`github.com/JGtm/LevelUp/libs/gamefiles`, paquets `himodule`, `ooz`, `hinavmesh`, `mapvar` au premier niveau, seule dépendance externe `golang.org/x/sys` v0.49.0 comme go-api) relié à `apps/go-api` par un `go.work` racine (`go 1.26.10`, `go.work.sum` versionné) ; ADR 0041. ÉCART au plan D1-E, mesuré : `go mod tidy` dans `apps/go-api` ne pose PAS le `require ...@v0.0.0-00010101000000-...`, il échoue (il résout le module voisin sur le réseau) ; la ligne écrite à la main casse `go mod download` et `go list -deps` même en mode espace de travail. Donc ni `require` ni `replace` ; `go.mod` de go-api inchangé ; `go mod tidy` devient inutilisable dans go-api (cible `make tidy` réécrite, documenté ADR 0041 D2 et `COMMANDS.md`). Les ratchets `archlint` à règle générale sont racinés sur l'espace de travail par `workspaceGoSources` (chemins relatifs à la racine du dépôt, clés d'allowlist migrées) ; ceux propres au film/SQL/go-api restent sur `apiModuleRoot` / `apiRootDepuisIci` (verdict de chaque appelant au plan, 3.5). Le garde-rail de licence `cmd/server/licence_gplv3_test.go` aurait cessé de voir `ooz` (GPLv3) : parcours étendu au module `libs/gamefiles` + témoin que le parcours franchit la frontière (mutation jouée).
+
+**Résultats observés** :
+- 141 fichiers d'imports réécrits (diff = imports seuls), 4 paquets déplacés par `git mv` (64 `.go`, sources C++, `NOTICE.md`, `testdata/`), aucun fichier extrait du jeu ; `go list -deps` du module sans `levelup/go-api`.
+- Infra : `Dockerfile` (go.work + go.mod/go.sum des 2 modules avant `go mod download`, puis `apps/go-api/` et `libs/`, build depuis `/build/apps/go-api`) ; `ci.yml` (filtre `libs/**` + `go.work*`, pas `libs/gamefiles` vet+test+`go list -deps`, pas sans CGo des paquets `hinavmesh`/`mapvar` sur les deux OS, lint et `govulncheck` du module, `cache-dependency-path` à deux `go.sum`) ; `release.yml`, `shared-social-gate.yml` (cache) ; `dependabot.yml` ; `Makefile` (`libs-test`, lint et `gate-push`, `go-api-test`) ; `lefthook.yml` + `go-vet-cgo.sh` ; `scripts/ci_go_shard.sh` (`go list -m` rend tous les modules d'un espace de travail : `TestCIGoShardsPartitionIsExact` était rouge avant correction ; partition exacte 360 paquets / 6 lots) ; baseline JSONL : 48 paires de `mapvar` retirées (`RETRAIT DU 2026-10-28`, 38 relocalisées + 10 passées research au lot 2c, aucun paquet de la baseline absent du module) ; `docs/COMMANDS.md` + FR, `ARCHITECTURE_V6.md` + FR, `CLAUDE.md`, `NOTICE`, `.gitignore`.
+- Gates locaux (GOCACHE `go-build-d1`) : `gofmt -l apps/go-api libs` vide, aucun CRLF ; `libs/gamefiles` : `go vet ./...`, `-tags=research`, `-tags=gamefiles,research` verts, `go test ./... -count=1` ok (hinavmesh 2,0 s, mapvar 0,3 s) ; go-api : `go vet` de la liste du brief, `-tags=gamefiles`, `-tags=research ./...` (13 s) et `-tags=integration ./...` (12 s) verts ; `go test -count=1` : `archlint` (99 à 112 s, suite complète), `himap`, `film/replay/...`, `mapcatalog`, `replaybuild`, `sync/...` (15 paquets), `testfixtures`, `games/mappings`, `cmd/server` ok ; `go test -tags=integration -p 1 ./internal/sync/...` ok (341 s) ; `golangci-lint run --new-from-merge-base=origin/release/v8.1.0` 0 issue dans `apps/go-api` ET `libs/gamefiles` (un `unused` hérité du lot 2c corrigé, mutation du lint jouée dans `libs/`) ; `lefthook validate` ok.
+- Témoins : fonds publiés (228 fichiers) MD5 avant = après, `git status data/` vide ; recuisson des 5 fonds (Dredge, Arrival, Beaver Canyon, Perdition, Timberland Evolved) par le binaire de la base (`8e7601ad7`) et par celui du lot : PNG identiques à l'octet 5/5, et au fond publié (WebP) par les pixels (MD5 RGBA) 5/5 et par les octets du WebP ré-encodé 5/5 ; `go test ./...` go-api 359 paquets contre 363, 0 FAIL, seules `hinavmesh` et `film/replay/mapvar` sorties de la liste (et présentes côté `libs/gamefiles`) ; corpus `-tags=gamefiles` (himap, gamefilescorpus, mapfond-build, mapstruct-build) identique test par test (160 PASS, 12 SKIP, 1 FAIL préexistant `TestRenduForgeVagabond` avant et après) ; instruments de `libs/gamefiles` 56 PASS / 41 SKIP / 0 FAIL, tous les verdicts du lot 2c retrouvés.
+- NON FAIT, et pourquoi : `docker build` (docker absent du poste ; simulation de l'arborescence de l'image : `go mod download` hors réseau, `vet` et `go build ./cmd/server/` OK) => job CI `Deploy Pre-Check` ; push et CI sur tous les jobs (lot non commité) ; mesure du ratchet de couverture (job `go-coverage-merge`).
+
+**Conclusion / prochaine étape** : plan 3.1 à 3.13 `[x]`, 3.14 `[!]` (docker + CI), découverte 4 annotée pour le lot 4, nouvelles découvertes 17 à 23 (dont : défaut `unused` du lot 2c, retraits de baseline oubliés au lot 2c, Dependabot et `go mod tidy`, rechargement à chaud `air` aveugle à `libs/`). Lot 4 : module `libs/himap` (infra du lot 3 = des entrées à ajouter : `go.work`, `Dockerfile` COPY, `ci.yml`, `racinesEspaceDeTravail`, table `briques`, dependabot) ; porter `deploy_root_test` dans `archlint`.
+## [2026-10-28] Découplage D1 — lot 4 : module libs/himap — Complété (commit 19dcb9e1b ; CI verte run 40752659187, Deploy Pre-Check vert, couverture 84,0 %)
+
+**Décision technique principale** : `libs/himap` (`github.com/JGtm/LevelUp/libs/himap`, paquet `himap` à `libs/himap/himap`, 117 fichiers déplacés par `git mv`) relié à go-api et à `libs/gamefiles` par le `go.work` ; AUCUN `require` du frère (correction du libellé 4.1 du plan, ADR 0041 D2), seule ligne `golang.org/x/sys v0.49.0 // indirect` (atteinte via `himodule`), `go.sum` = ses deux lignes. Découverte 4 traitée : `TestAucuneAutreCopieDuCheminDuJeu` quitte la brique pour `archlint/deploy_root_copie_unique_test.go` (enraciné sur l'espace de travail ; le contrat s'élargit à `libs/gamefiles`). Infra par entrées dans les mécanismes du lot 3, avec trois boucles `libs/*/go.mod` (`libs-test`, `go-api-lint`, `gate-push`) à la place d'un bloc par module (règle 6). Le garde-rail de licence `cmd/server/licence_gplv3_test.go` suit désormais tous les modules de `libs/` (la chaîne GPL `himap -> himodule -> ooz` en traverse deux) : témoin `TestLaChaineDeHimapAtteintOoz`, trois parcours en largeur ramenés à un helper.
+
+**Résultats observés** :
+- 56 fichiers d'imports réécrits (diff = imports seuls), chemins `internal/himap` corrigés dans 20 `.go`, `CLAUDE.md`, `COMMANDS.md` + FR, `ARCHITECTURE_V6.md` + FR, `ACKNOWLEDGMENTS.md` + FR, ADR 0041, `.gitignore`, `NOTICE`, `Makefile`, `ci.yml` ; la brique n'a aucun `../` de chemin (2 occurrences, dans du texte).
+- Infra : `ci.yml` (pas `libs/himap` vet x4 + test + `go list -deps`, lint, `govulncheck` ; `cache-dependency-path` : 10 occurrences), `release.yml`, `shared-social-gate.yml`, `dependabot.yml`, `Dockerfile` (COPY), `Makefile` (`go-api-test-gamefiles` depuis `libs/himap`, boucles), `apps/go-api/Makefile` `tidy` (saute un module qui importe un frère : il aurait échoué sur himap).
+- Mutations jouées puis retirées : entrée morte et import `levelup/go-api` dans la brique (table `briques`) ; littéral du chemin du jeu dans un `cmd/` et dans `libs/gamefiles` ; import de `libs/himap` par `cmd/server` (chaîne GPL vue) ; `./...` au lieu de `./himap/` dans la cible gamefiles ; bloc dependabot retiré ; fonction inutilisée dans la brique (lint).
+- Gates locaux (GOCACHE `go-build-d1`) : `gofmt` vide, aucun CRLF ; 4 `go vet` et `go test ./...` verts dans `libs/himap` ; `go list -deps` sans `levelup/go-api` (himap) et sans `levelup/go-api|libs/himap` (gamefiles) ; go-api : vet de la liste, `-tags=gamefiles`, `-tags=research`, `-tags=integration` verts, archlint (118 s) / `cmd/server` / `testfixtures` / `profile` / commandes ok, `go build ./cmd/server/` ok, `make libs-test` ok ; `golangci-lint --new-from-merge-base=origin/release/v8.1.0` 0 issue dans `apps/go-api` ET `libs/himap` ; `lefthook validate` ok.
+- Témoins : `go test ./...` go-api 359 -> 358 paquets, 0 FAIL, seule différence la ligne `internal/himap` (et `ok .../libs/himap/himap` dans le module) ; corpus `-tags=gamefiles` 348 -> 347 lignes (330 PASS / 12 SKIP / 1 FAIL préexistant `TestRenduForgeVagabond`), seule différence le test porté dans archlint ; instruments himap 117 fail / 153 pass / 20 skip identiques (même unique différence) ; 5 fonds recuits par le binaire de HEAD et par celui du lot : PNG identiques à l'octet 5/5 entre eux et aux captures du lot 3, sidecars identiques hors `generatedAt` ; lexique des lieux MD5 identique (`988fd140…` / `5c835edd…`), `callouts_i18n.csv` inchangé, `git status data/` vide.
+- NON FAIT, et pourquoi : `docker build` (docker absent ; simulation `go mod download` hors réseau sur l'arborescence de l'image, et échec attendu sans le COPY de `libs/himap/go.mod`) => job CI `Deploy Pre-Check` ; push et CI sur tous les jobs ; ratchet de couverture (découverte 26) ; `make go-api-test-gamefiles` lancé en trois morceaux équivalents plutôt que d'un bloc.
+
+**Conclusion / prochaine étape** : plan 4.1 à 4.4 `[x]`, 4.5 `[x]` (clôture par le pilote : commit 19dcb9e1b, CI verte sur les 4 workflows, découverte 26 close à 84,0 %), découvertes 25 à 30 notées (`sourceCuisson` qui cite encore `internal/himap` dans les sidecars publiés, couverture, Dependabot sur un module à frère, `$(MAKE)` GnuWin32, commentaires de la brique qui citent l'hôte, version de `x/sys` tenue à la main). Lot 5 : recuisson des cinq fonds (déjà prouvée identique ici), `make go-api-test-gamefiles` complet, `go test ./...` complet et `-tags=integration -p 1 ./internal/sync/...`, `make gate-push`, addendum d'audit, PR et revue adversariale des lots 3 et 4.
+
+## [2026-10-28] Découplage D1 — lot 5 : preuve de non-régression — Complété (commit docs à suivre ; revue adversariale faite, 5.6 et 5.7 par le pilote)
+
+**Décision technique principale** : le lot ne change AUCUN code ; il prouve que les lots 3 et 4 n'ont rien déplacé de ce que fait la brique. Cinq preuves rejouées sur HEAD `4236f8867` (GOCACHE `go-build-d1`), chaque sortie complète conservée dans le scratchpad (`temoins_lot5_*`) : recuisson des cinq fonds par `mapfond-build` de HEAD, corpus `gamefiles` d'un bloc, `go test ./...` du module go-api, intégration `sync` en `-p 1`, tests des deux modules `libs/`, puis le gate de poussée. La preuve des fonds a deux étages parce que les fonds publiés sont des `.webp` (découverte 31) : PNG recuit contre le témoin PNG du lot 4, puis WebP produit par l'outil de production `mapfond-webp -convertir` contre le fichier publié. `make gate-push` ne peut pas se lancer sur ce poste (le sous-make GnuWin32 à chemin avec espace et parenthèses, découvertes 28 et 33) : ses lignes ont été jouées une à une, statut `[~]`.
+
+**Résultats observés** :
+- Fonds (35 s, exit 0, 5 cartes, 0 échec, ancres avec sol 173/175) : PNG recuits identiques à l'octet aux témoins du lot 4, 5/5 (MD5 Dredge `0576b82f…`, Arrival `a77d7fdb…`, Beaver Canyon `cda739f4…`, Perdition `601bf65a…`, Timberland Evolved `9c508b6a…`) ; WebP recuits identiques à l'octet aux fichiers publiés, 5/5 (`739e3842…`, `2b9b3de4…`, `96f7f61a…`, `d218f350…`, `8a83c600…`) ; sidecars identiques hors `generatedAt` ; `git status` de l'arbre entier vide avant et après (rien publié).
+- `make go-api-test-gamefiles` : 449 s, exit 2 ; cinq paquets joués d'un bloc, un seul `^--- FAIL:`, `TestRenduForgeVagabond`, même cause que la base (dépôt `.ai/re_dump/mapvar` absent du poste). 344 verdicts (331 PASS / 12 SKIP / 1 FAIL) ; différence avec le témoin « après » du lot 4 : le seul test de `cmd/film-profiles-build` (paquet absent des témoins des lots 3 et 4, découverte 32).
+- `go test ./... -count=1` (go-api) : exit 0, 224 s, 358 paquets, 212 `ok` (même ensemble que `temoins_lot4_apres_go.txt`), 0 FAIL. `-tags=integration -p 1 ./internal/sync/...` : exit 0, 373 s, 15 `ok`. `libs/himap` : ok (4 s) ; `libs/gamefiles` : ok (3 s, `hinavmesh` et `mapvar`).
+- Gate de poussée joué en commandes : trois `golangci-lint --new-from-merge-base=origin/main` = 0 issue (31 s), `make libs-test` 9 s, `npm run typecheck` 16 s, `npm run lint` 44 s (0 erreur, 27 avertissements préexistants), `check_test_baseline.sh tests` 1 787 s (baseline 9 236 tests, courant 21 984, rien d'absent, rien en échec).
+- CI de la branche : `19dcb9e1b` (dernier commit de code) vert sur `CI`, `Deploy Pre-Check`, `ADR 0021 Gate`, `Secrets` ; `922ef941a` et `4236f8867` (docs `.ai/**.md` seuls) : `paths-ignore` de `ci.yml`, seul `Secrets (gitleaks)` s'est lancé (success).
+- Documents : addendum « D1 exécuté le 2026-10-28 » dans l'audit ; 20 entrées au registre des reports (item `[~]` 5.4 et découvertes non traitées) ; découvertes 31 à 37 au plan.
+
+**Conclusion / prochaine étape** : 5.1 à 5.3 et 5.5 `[x]`, 5.4 `[~]`, 5.6 et 5.7 laissés au pilote. Aucune preuve de lot ne contredit les lots 3 et 4. À faire par le pilote : 5.6 (`scripts/disk-hygiene.ps1 -Lot d1 -Apply` après le commit), 5.7 (PR vers `release/v8.1.0`, revue adversariale `adversarial-review` sur les lots 3 et 4 : infra CI/Docker, fusion squash sur accord de l'utilisateur) ; décisions neuves en attente : Dependabot (découvertes 19 et 27) et la ligne `$(MAKE)` du `Makefile` (28 et 33).
+
+**Clôture par le pilote (2026-10-28, soir).** Revue adversariale des lots 3 et 4 (1 relecteur en contexte frais, 1 ronde) : 3 constats recevables, 0 jeté, 18 conditions tiennent ; deux P1 corrigés dans le lot (`no_mojibake_test` sur `racinesEspaceDeTravail`, `.gitignore` de `gate.png` vers `internal/gamefilescorpus/` + PNG versionné par erreur au lot 2 sorti de l'index), un P2 consigné (découverte 38, table `briques` non exhaustive) — commit `7b1bb0840`. Lot 0 clos : PR #110 fusionnée en squash (`2f033c36c`) après mise à jour sur la release, branche et worktree supprimés. Décisions de l'utilisateur consignées au plan : les deux preuves restent instruments `research` ; feu vert d'avance pour la fusion squash de la PR finale.
+
+## [2026-10-28] Rejeu 2D : capteur, traqueur, écran occultant et champ de réparation plus dessinés sur la carte — diagnostic Complété, correctif En attente du go (branche `release/v8.1.0`, aucun code modifié)
+
+**Décision technique principale** : diagnostic seul. Le calque des poses ne dessine qu'une pose `deployed` (`placementKind`), or depuis la règle du 103 (décision du 2026-09-15) seules les poses de panneau de mur le sont ; les quatre familles engendrées (capteur, traqueur, écran, champ) ne sortent plus jamais `deployed`. Leur son a été rebranché le 15/10 sur `carriedEquipment[].uses`, leur dessin non : régression muette, comme celle de la faille du translocateur corrigée le 14/10 par `riftPoses`.
+
+**Résultats observés** (parc local, 1 402 artefacts, lecture seule) : `deployed` = mur seul (7 528) ; capteur, traqueur, écran, champ : 0. Le document porte pourtant l'objet engendré de chacun avec sa vie réelle (`carriedEquipment[].tracked`, t0/t1 lus) : 1 656 capteurs, 489 traqueurs, 1 005 écrans, 116 champs, sans position. Sur le témoin regardé, chaque lancer de capteur coïncide à 1-2 images avec une trajectoire de `projectiles[]` qui se pose (l'objet ti=41). Sont aussi muets pour ces familles : révélation des adversaires du capteur, présence en zone, survol, compte « déployé » des usages ; l'aide promet toujours leur dessin (doc inversée).
+
+**Conclusion / prochaine étape** : proposer au user (a) décodeur : publier la position de l'objet engendré (même entité ti=41, jointure par la pile i28) + recuisson à demander, (b) web : rebrancher le dessin sur ce canal avec sa fin lue, (c) garde-rail sur artefact réel : toute famille dessinable a au moins une source publiée.
+
+**Clôture par le pilote (2026-10-28, soir)** : vérification sur pièces du CR (anciens chemins : 0 import restant ; `go list -deps` de la brique sans `levelup/go-api` ; archlint, `cmd/server`, `testfixtures` verts ; serveur compilé ; 5 fonds recuits identiques à l'octet base/lot ; listes de tests avant/après ne différant que par les deux paquets déménagés). Commit 3d579bfd0. Première CI rouge sur deux garde-rails Vitest de langue (délai 5 s) : défaut déjà corrigé sur `release/v8.1.0` (0c2f665f1), absent de la branche -> fusion de la release (07a77fe7b). Deuxième CI : lot de couverture `film-grammar-reste` à 702 s pour 600 s de délai (lenteur de runner, paquet non touché par le lot, 5 min sur les runs voisins) ; relance partielle -> la fusion relit l'artefact périmé (découverte 24) ; artefact supprimé par l'API, job de fusion relancé : VERT. Couverture 82,0 % >= plancher 69,0 %. Lot 3 clos ; suite : lot 4 (`libs/himap`).
+
+## [2026-11-01] Publication des briques — lot 0 (branche, relevé, témoins) — Complété
+
+**Décision technique principale** : lancement du plan `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md` sur le go du user (message du 2026-11-01 ; décisions P-A à P-F tenues pour confirmées). Worktree `../LevelUp-wt-publication`, branche `refactor/publication-briques` depuis `release/v8.1.0` (`8f0b512c58`, PR #116 et #117 fusionnées, CI verte). Relevé des quatre clients HTTP hors brique délégué à un agent Sonnet en lecture seule, vérifié sur pièces par le pilote (reprise Halo 5, `tokens, _ :=` de GameCMS, URL Xbox, URL UGC, tables `tiersHaloapi` et `argumentsDoerDesConstructeurs`).
+
+**Résultats observés** : chiffres de départ du plan exacts (tailles, imports internes). Amendements du plan issus du relevé : UGC-cartes et GameCMS-actifs ne sont PAS des doublons des services d'`infinite` (URL `Maps` majuscule, préfixe `hi` en dur, octets sans `Accept`) → nouveaux services à côté, avec un chemin GET sans `Accept` ni reprise ; `xbox_client.go` ne fait que les succès (le plan disait « profils, présence ») ; aucun compteur expvar dans les quatre fichiers → T4 = les cinq surfaces netguard ; `rate` à permettre sous `haloapi/halo5`. T1 : `go test -json ./...` code 0 en 206 s, 336 paquets (195 `ok`), 16 469 pass / 68 skip / 0 fail. Première capture rouge : `gcc` absent du PATH PowerShell (lien DuckDB) ; recette msys64 ucrt64 en tête du PATH. Découvertes PUB-0-a à g notées (dont `GetMatchDetail` sans appelant, erreur de `TokenProvider` avalée, `DefaultClient` sans délai).
+
+**Conclusion / prochaine étape** : lot 1 — tolérances datées dans `briques_internes_test` pour les quatre fichiers, tests « URL figées » (T2) sur les clients ACTUELS, quatre sous-commandes de `diag_api_lecture` (T3), captures « avant ».
+
+## [2026-11-01] Publication des briques — lot 1 (garde-fou et témoins) — Complété
+
+**Décision technique principale** : exécution par un agent Sonnet (brief fermé), CR vérifié sur pièces et gates rejoués par le pilote. Le garde-fou `briques_internes_test` reçoit un champ `fichiers` (fichiers nommés jugés comme le périmètre, puisque les quatre clients vivent dans des paquets d'exploitation) avec les tolérances mesurées (`platform/netguard` 4, `domain` 2, `ctxkeys` 1, `games` 1, `platform/auth` 1, `golang.org/x/time/rate` 1). Témoins T2 « URL figées » = quatre tests internes à littéraux (19 tests, 29 sous-tests) sur un enregistreur `http.RoundTripper` ; l'agent en avait écrit quatre copies, renvoyé centraliser (règle 6) dans `internal/haloapi/haloapitest` (stdlib seule, accepté par les ratchets de la brique) avec garde-rail `enregistreur_http_unique_test.go` (allowlist datée des 9 copies préexistantes, ne descend que). T3 : quatre sous-commandes de `diag_api_lecture` sur les clients actuels.
+
+**Résultats observés** : captures « avant » prises (compte Chocoboflor, une rotation de RT par exécution via le magasin, deux pour `xbox-succes`) : 5 surfaces sur 6 nouvelles ou existantes servies, `calendrier` 403 comme depuis D3. Faits figés : redirection 302 Halo 5 → la seconde requête part sans `auth=st` mais avec le jeton Spartan, `Accept`, `User-Agent` et un `Referer` ; GameCMS ne pose ni `Accept` ni `User-Agent` ; Xbox encode `skipItems` avant `titleId`. Gates (pilote) : 9 paquets `ok`, vet 0, lint 0 issue nouvelle ; mutations rouges constatées (tolérance -1, `RoundTrip` hors allowlist). Découvertes PUB-1-a (GameCMS `Progression/file` 403 vs `Waypoint/file` 200), PUB-1-b, PUB-1-c notées.
+
+**Conclusion / prochaine étape** : lot 2.1 — coupe Halo 5 (`internal/haloapi/halo5` + adaptateur dans `games/halo_5`), Opus (parité de reprise), T2 vert sans modification des attendus ; décision pilote : `GetMatchDetail` sans appelant n'est pas porté (PUB-0-a), à confirmer par l'utilisateur au point d'étape.
+
+## [2026-11-01] Publication des briques — lot 2.1 (coupe Halo 5) — Complété
+
+**Décision technique principale** : coupe protocole / exploitation du client Halo 5 par un agent Opus sur décisions d'interface tranchées d'avance : `Retry`, `Limiter` et `ParseRetryAfter` montent à la racine de la brique `haloapi` (alias dans `infinite`, aucun appelant hors brique touché) ; nouveau paquet `internal/haloapi/halo5` (deux `Doer` reçus, un par surface netguard d'aujourd'hui ; `Auth` par appel ; `RetryHalo5()` = la politique actuelle en valeur ; une seule boucle de reprise pour JSON et binaire) ; `netguard.Doer` centralisé dans `platform/netguard` (l'adaptateur Infinite perd sa copie, ratchet du Doer gardé réécrit par paquet) ; l'adaptateur `games/halo_5/client.go` garde l'API des appelants ; les DTO déménagent sans alias (27 fichiers réécrits par `gofmt -r`). `GetMatchDetail` (aucun appelant) n'est pas porté.
+
+**Résultats observés** : messages d'erreur et en-têtes identiques à l'octet (vérifié contre l'ancien fichier : `token invalide/expire`, `ressource absente`, `corps vide`, `HTTP %d: %s`, `%d tentatives echouees`) ; T2 Halo 5 vert sans qu'aucune URL attendue ait changé ; 14 paquets `ok` + livesync en intégration ; `go list -deps -test` de la brique sans paquet d'exploitation ; archlint vert, mutations rouges (tolérance -1, `halo5.New` sans `netguard.Doer`) ; lint 0 issue. Deux différences de forme assumées et documentées : garde avant limiteur ; `Retry-After` en date HTTP lu. Découvertes PUB-2.1-a (ratchet de couverture netguard sur chaîne), b (copie du Doer gardé dans `platform/auth`), c notées. CI du lot 1 verte.
+
+**Conclusion / prochaine étape** : lot 2.2 (UGC-cartes : service dans `infinite`, `mapcatalog` appelle la brique) en Sonnet.
+
+## [2026-11-01] Publication des briques — lot 2.2 (coupe UGC cartes) — Complété
+
+**Décision technique principale** : le client Discovery UGC des cartes devient deux GET uniques d'un service d'`infinite` (`FetchCarteUGC`, `TelechargerFichierUGC`) sur un `getUnique` paramétré (Accept, en-têtes d'identité de l'appelant, échéance, borne de lecture) qui remplace celui du résolveur de nameplate et servira GameCMS au 2.3 ; `mapcatalog` garde façade, choix `.mvar`, validation, journaux, et reforme les messages d'erreur d'aujourd'hui depuis les erreurs typées (`HTTPError.Body`, `ErreurTransport`) ; `Asset` supprimé sans alias.
+
+**Résultats observés** : témoin UGC vert sans qu'aucune URL attendue ait bougé (0 ligne `https://` dans le diff) ; brique toujours sans import d'exploitation ; `service`, `haloadapter`, `replayartifacts`, archlint verts ; lint 0. Tolérances netguard 2, domain 1 ; mutation rouge vérifiée. Deux différences de forme assumées : plus de `WarnContext` de fermeture ; message d'un corps coupé dans le résolveur de nameplate.
+
+**Conclusion / prochaine étape** : lot 2.3 GameCMS (Opus) : service d'actifs dans `infinite` sur le même GET unique (ajout du `Content-Type`), `assets` garde résolution d'hôte par titre, cache, erreurs.
+
+## [2026-11-01] Publication des briques — lot 2.3 (coupe GameCMS actifs) — Complété
+
+**Décision technique principale** : le GET des actifs GameCMS passe dans `infinite` (`gamecmsfichiers.go` : deux fonctions pures d'URL dont l'ancienne `buildGameCMSImageFetchURL` à l'identique, un GET unique sans `Accept`, garde consultée d'abord) ; `assets` garde la résolution d'hôte par titre (singleton + `ctxkeys`), le choix des jetons, le classement des erreurs et ses messages ; `defaultGameCMSBase` disparaît au profit de l'hôte par défaut de la brique (allowlist `halowaypoint` réduite d'une entrée). Pas de `Content-Type` rendu par le GET unique : aucun lecteur (report du 2.2 clos). Dettes PUB-0-b et PUB-0-c conservées hors périmètre.
+
+**Résultats observés** : témoin GameCMS vert sans qu'aucune URL attendue ait bougé ; 18 tests existants et test de mode démo inchangés ; brique sans import d'exploitation ; archlint vert (tolérances netguard 1, auth 1 ; domain/ctxkeys/games retirées ; mutation rouge) ; lint 0. Cas dégénérés non figés consignés (en-tête Spartan vide, hôte vide). Découvertes PUB-2.3-a à c. CI du lot 2.1 verte.
+
+**Conclusion / prochaine étape** : lot 2.4 Xbox (Sonnet) : `internal/haloapi/xboxlive` (succès, pagination), `sync` garde conversion et interface, en-tête d'autorisation en paramètre.
+
+## [2026-11-01] Publication des briques — lot 2.4 (coupe Xbox succès) — Complété
+
+**Décision technique principale** : dernier des quatre clients : nouveau paquet `internal/haloapi/xboxlive` (succès Xbox Live v2 : une page par appel, DTO bruts exportés, en-tête `Authorization` complet passé en `Auth`, garde d'abord, corps lu puis statut) ; `sync` garde l'interface de test, la conversion `parseAchievementItem`, la pagination et ses journaux, la signature `NewXboxHTTPClient` (ni `engine_postsync_csr` ni `diag_api_lecture` ne changent) et recompose les messages d'erreur à l'octet depuis les erreurs typées (test dédié). Les tables `fichiers` et tolérances du garde-fou sont vides : les quatre clients ont quitté LevelUp ; le mécanisme part au 3.3 comme prévu.
+
+**Résultats observés** : témoin Xbox vert sans qu'aucune URL attendue ait bougé ; 14 tests de succès aux mêmes noms ; `haloapi/...`, `sync` (108 s), archlint verts ; brique sans import d'exploitation ; lint 0. Différence de forme : garde avant la construction d'URL (visible seulement en mode démo avec un xuid invalide). CI des lots 2.1 et 2.2 vertes.
+
+**Conclusion / prochaine étape** : lot 2.5 — T1 complet (noms et verdicts contre le lot 0), T3 live rejoué (6 surfaces, octets identiques), T4 (cinq surfaces netguard), puis revue adversariale une ronde (deux relecteurs, parité de sortie + mutation) et corrections.
+
+## [2026-11-01] Publication des briques — lot 2.5 (témoins, revue adversariale, corrections) — Complété
+
+**Décision technique principale** : clôture du lot 2 par les témoins avant/après et une ronde de revue à deux relecteurs Sonnet (parité de sortie en lecture seule ; mutations avec droit d'exécution). Les deux défauts « à corriger avant fusion » de la revue A sont corrigés sans toucher aux URL figées : `haloapi.Masque` unique avec garde-rail AST (quatre copies dont `xblauth`), trois tests de mode démo sur les constructeurs de production (le ratchet de couverture netguard n'exige plus rien des fichiers coupés) ; plus cinq retouches (garde en tête du blob UGC, `NewClient(int)`, commentaire `HTTPError.Body`, doc des quatre différences de forme, cas de date future). La revue B a trouvé 25 mutations vertes sur 54 : 12 observables, toutes couvertes par de nouveaux tests prouvés rouges sous leur mutation ; aucun écart entre le code et ce qui est annoncé.
+
+**Résultats observés** : T1 0 nom disparu (hors `TestParseRetryAfter` déplacé), 1 flake Windows de verrou dans `mapcatalog` (PUB-2.5-a) ; T3 six surfaces live identiques à l'octet ; T4 cinq surfaces netguard inchangées ; brique sans import d'exploitation ; gates vet 0, 11 paquets `ok`, archlint vert, lint 0. Découvertes PUB-2.5-a à f notées (dont la réémission du jeton Spartan sur la redirection CDN de Halo 5, préexistante, à garder en tête pour la publication).
+
+**Conclusion / prochaine étape** : lot 3 — `git mv apps/go-api/internal/haloapi libs/haloapi`, `go.mod`, `go.work`, imports réécrits, infrastructure CI/lint/Dockerfile (recette D2 lot 3), ratchets rerootés, retrait du mécanisme `fichiers`/tolérances de `briques_internes_test` devenu vide.
+
+## [2026-11-01] Publication des briques — lot 3 (module `libs/haloapi` + infrastructure) — Complété
+
+**Décision technique principale** : la brique quitte `apps/go-api/internal/haloapi` pour le module `github.com/JGtm/LevelUp/libs/haloapi` (ADR 0041 : `go.mod` à la main avec les deux seuls tiers `x/sync` et `x/time`, `go.work` `use`, aucun `require` de brique ni de l'application), par un agent Opus sur la recette du lot 3 de D2 : 123 imports réécrits par analyse des `ImportSpec` (109 fichiers), CI à lots par module (`go-shards.txt` `module libs/haloapi`, baseline `tests_libs_haloapi.jsonl` exigée par la CI), pas go-build sans CGO sur les deux OS, lint, govulncheck, dependabot, Dockerfile, `.air.toml`, `.gitleaks.toml`. Ratchets rerootés à double repère avec compteurs « aucun fichier → rouge » ; le mécanisme de briques internes (tables vides depuis le 2.4) est SUPPRIMÉ, son contrôle des tiers par sous-arbre porté dans `briques_imports_test`. Une règle de lint bornée aux trois fichiers de DTO Halo 5 et au motif `Id` (dette gelée que le renommage inter-module faisait réapparaître). Docs de chemin corrigées dans le même commit (CLAUDE.md, ADR 0042 amendé, ARCHITECTURE_V6 et COMMANDS EN+FR).
+
+**Résultats observés** (gates rejoués par le pilote) : brique sans `levelup/go-api` dans `go list -deps -test`, compile `GOWORK=off`, `go mod tidy -diff` vide ; vet des deux modules 0, `cmd/server` compilé ; archlint vert ; lint brique 0 (config du dépôt), go-api 0 nouvelle ; `make libs-test` vert sur les quatre modules ; partition CI prouvée (373 paquets, 3 modules, 8 lots). T1 : 0 nom disparu hors les 6 tests de la table interne supprimée ; T3 : six surfaces live identiques à l'octet au lot 2 ; T2 : seules les lignes d'import. Découvertes PUB-3-a à f.
+
+**Conclusion / prochaine étape** : push, CI du lot 3 ; puis lot 4 — README EN des trois briques (modèle unique), `go get` depuis un module jetable hors dépôt, commande de tag préparée pour l'utilisateur, ADR 0043, mise à jour ADR 0041/0042, CLAUDE.md, registre des reports, backlog, mémoire, caches `-Lot pub`, PR.
+
+## [2026-11-01] Publication des briques — lot 4 (README, go get, ADR 0043, clôture) — Complété (fusion en attente)
+
+**Décision technique principale** : README EN sur un modèle unique pour `libs/gamefiles`, `libs/himap`, `libs/haloapi`, exemple copié d'un `example_test.go` qui compile (agent Sonnet) ; ADR 0043 « Publishing the bricks » (D-1 à D-8 : trois modules depuis le monodépôt, tags `libs/<brique>/vX.Y.Z` posés par le mainteneur en `v0.x`, licences GPL-3.0 pour `gamefiles` à cause d'`ooz` et AGPL-3.0-only pour les deux autres, critère de séparation P-E dont la décision revient à l'utilisateur en tout dernier et s'exécute ensemble, `haloapitest` public, différences de forme acceptées), ADR 0041 et 0042 amendés, CLAUDE.md corrigé (agent Sonnet). Vérification `go get` par le pilote depuis des modules jetables hors dépôt : `haloapi`, `gamefiles`, `himap` résolus au sha du lot 3 ; `himap` ne se construit hors espace de travail qu'avec `go get` des deux modules (son `go.mod` ne requiert pas `gamefiles`, ADR 0041) : forme propre = `require` de la version taguée de `gamefiles` avant le tag de `himap`, en deux temps avec l'utilisateur. Forme d'installation : `@v0.1.0` (Go résout le tag de sous-répertoire).
+
+**Résultats observés** : `go vet` des trois modules 0 avec les exemples, lint 0 ; archlint vert ; registre des reports (section du plan, ligne D3-L6-e soldée), backlog (addendum `[archi]`), mémoire mis à jour. Découvertes PUB-4-a à d (fixtures `testdata` de `gamefiles` d'origine non documentée ; racine du dépôt non zippable comme module ; `docs/CONFIGURATION.md` périmé ; `doc.go` manquants).
+
+**Conclusion / prochaine étape** : tous les items du plan statués `[x]`. Push, CI, PR vers `release/v8.1.0` ; fusion squash et nettoyage (worktree, caches `-Lot pub`) sur l'accord de l'utilisateur ; tags = geste de l'utilisateur après passage sur `main` ; dépôts séparés = sa décision finale, à faire ensemble.
+
+## [2026-11-01] Publication des briques — tags v0.1.0 et `require` de `himap` — En cours
+
+**Décision technique principale** : sur validation de l'utilisateur (message du 2026-11-01 après la fusion de la PR #118), les tags sont posés par le pilote sur le commit de fusion de la release `e2c449b38c` : `libs/gamefiles/v0.1.0` et `libs/haloapi/v0.1.0` poussés ; `go get ...@v0.1.0` vérifié depuis un module hors dépôt (les deux résolus, `go run` vert). `himap` suit l'ordre de l'ADR 0041 (amendement 2026-11-01) : `require github.com/JGtm/LevelUp/libs/gamefiles v0.1.0` dans `libs/himap/go.mod` (+ `go.sum` par `GOWORK=off go mod tidy`), fusion, puis tag `libs/himap/v0.1.0` sur ce commit. Vérifié : `go vet` de `himap` dans et hors espace de travail, `go vet` de `film`, ratchets archlint des modules.
+
+**Résultats observés** : tags sur un commit de la branche de release (pas encore sur `main` : le squash de la release y créera un autre commit ; le tag garde son commit vivant et la version servie est celle de son arbre). Décision de l'utilisateur sur les dépôts dédiés : validée pour les trois briques, à exécuter ensemble APRÈS le chantier « application de bureau ».
+
+**Conclusion / prochaine étape** : PR `chore/himap-require-gamefiles` → `release/v8.1.0`, CI, fusion, tag `libs/himap/v0.1.0`, vérification `go get`, mémoire.
+
+## [2026-11-01] Publication des briques — clôture et handoff — Complété
+
+**Décision technique principale** : le chantier est clos (PR #118 et #119 fusionnées dans `release/v8.1.0`, tags `libs/{gamefiles,haloapi,himap}/v0.1.0` posés et vérifiés par `go get` hors dépôt, worktree et caches `-pub` supprimés). Le handoff `.ai/HANDOFF_PUBLICATION_BRIQUES_2026-11-01.md` fixe l'ordre des suites : chantier desktop d'abord, puis `release/v8.1.0` -> `main`, puis PUB-2.5-e et PUB-4-a à trancher, puis les trois dépôts dédiés ensemble (ADR 0043 D-5). Convention rappelée par l'utilisateur : la racine de `.ai/` porte le vivant (handoffs, plans actifs), `.ai/V8/` est l'archive des chantiers finis.
+
+**Résultats observés** : plan et relevé restent dans `.ai/V8/` (archive) ; checkout principal propre sur `origin/release/v8.1.0` avant ce commit.
+
+**Conclusion / prochaine étape** : aucune action sur ce chantier avant la fin du desktop ; les dettes sont au `.ai/REGISTRE_REPORTS.md` (section du 2026-11-01).
+## [2026-10-28] Rejeu Bazaar CTF : socle du surbouclier « invisible » et ramassage attribué à Madina97294 — diagnostic En cours (aucun code modifié)
+
+**Décision technique principale** : diagnostic seul, sur l'artefact de prod copié en lecture (schéma 104). Le ramassage de Madina97294 est un FAIT lu, pas une erreur : trois signaux indépendants concordent — l'événement natif de ramassage (14,5 s), sa position (0,8 m du point où YaMaMasFlaps est mort avec le surbouclier non activé à 11,4 s) et la pose `dropped` du surbouclier tombée de son corps à sa mort (15,3 s), reprise 0,1 s plus tard par Kronos9737 sur ce corps. Jamais activé (énergie restée pleine sur les trois porteurs) ; Madina l'a tenu 0,8 s.
+
+**Résultats observés** : le socle est publié (`weaponPads[3]`, `powerup_overshield`, croisé à l'emplacement `powerup` du catalogue Bazaar à 4 mm) ; la chaîne web (normalisation, croisement, datation native, raffinement, état, compte à rebours) rejouée sur l'artefact de prod le rend plein / vide / compte à rebours selon l'instant. Cause de l'invisibilité NON trouvée dans le code : vérification visuelle nécessaire. Découverte annexe : chaque apparition « majeure » du socle (0, 90, 210, 330 s) est suivie 30 s plus tard d'une seconde (1,2, 120, 240, 360 s) ; seule la seconde est ramassée ou activée. Le calque montre donc le socle plein ~30 s trop tôt et un compte à rebours faux de 30 s. Hypothèse non vérifiée : le premier objet n'est pas le surbouclier ramassable.
+
+**Conclusion / prochaine étape** : attendre du user ce qu'il voit (calque des socles allumé, autres socles visibles, instant regardé) ou son accord pour ouvrir le navigateur ; décider s'il faut instruire la découverte des apparitions doublées.
+
+## [2026-11-01] Publication des briques — noms des dépôts dédiés et décodeur de film au backlog — Complété
+
+**Décision technique principale** : sur demande de l'utilisateur (messages du 2026-11-01, soir), les noms et descriptions des trois dépôts dédiés sont fixés dans l'ADR 0043 D-5 : `JGtm/halo-api` (« Halo API »), `JGtm/halo-infinite-map-images` (« Halo Infinite Map Images »), `JGtm/halo-infinite-files-reader` (« Halo Infinite Files Reader »). Slugs parce que GitHub refuse les espaces et que le nom du dépôt devient le chemin d'import Go ; les noms de paquets ne changent pas. Le décodeur de film reste hors de cette vague (ADR 0043 D-1) : l'utilisateur veut le même traitement plus tard, entrée `[archi]` ajoutée au `.ai/BACKLOG.md` (gel de la façade `decfilm`, témoins, README, tag, dépôt).
+
+**Résultats observés** : ADR 0043, handoff et backlog alignés ; aucun code touché.
+
+**Conclusion / prochaine étape** : création des dépôts après le chantier desktop, sous ces noms ; décodeur de film = chantier à part, après.
+
+## [2026-11-02] QoL : citations `.ai/` retirées du code, tuile seule des sessions récentes, moteur des véhicules au mouvement — Complété (PR vers la release)
+
+**Contexte.** Trois demandes du user, branche `chore/qol-commentaires-son-sessions` depuis `release/v8.1.0`
+(worktree `LevelUp-wt-qol`) : (1) dette [dette/commentaires] du BACKLOG ; (2) moteur du Warthog qui « roule »
+à l'arrêt ; (3) accueil, « Sessions récentes » : la tuile restante doit occuper la largeur du bloc.
+
+**Décision technique.**
+- (1) 1 074 citations `.ai/` dans 828 fichiers de `apps/` et `libs/`. Cinq agents Sonnet en parallèle, périmètres
+  disjoints, même brief (retirer la référence, garder le contrat ; ADR seulement si vérifié ; ne pas toucher
+  aux chaînes ni à `.ai/re_dump/`). `archlint/doc_chemins_ai_test.go` supprimé, remplacé par
+  `archlint/commentaires_references_test.go` : plafond 0 dans les commentaires Go de l'espace de travail
+  (exception : `.ai/re_dump/`, dossier de données) et dans tout source web (`src`, `e2e`, `scripts`),
+  commentaires et chaînes. `balayerGo` déplacé dans `go_source_walk_test.go`. `pas_de_lecture_sous_ai`
+  perd l'entrée de l'ancien ratchet (plafond 16 -> 15). Skill `arch-rules` et ADR 0041 mis à jour.
+  Messages de test citant un plan nettoyés à la main (5). Restent volontairement des CHAÎNES : chemins réels
+  d'outils (`weapon-icons-build`, `engagement-calibrate`, `diag_perfsim`, `no_stale_fallback_target`), la
+  description d'une migration, le `_doc` d'une fixture JSON, et deux chaînes des couches du décodeur
+  (`profile_table.go`, `registre_replay_equipement.go`) : les changer bougerait une empreinte de révision.
+- (3) `HomePage.tsx` : grille à deux colonnes seulement quand solo ET escouade existent ; deux tests.
+- (2) Cause : seul le Scorpion avait un clip `idle` ; tout autre véhicule occupé jouait sa boucle de course,
+  immobile compris. Décision du user (2026-11-02, après proposition de clips de ralenti dérivés) : AUCUN
+  ralenti, le moteur ne sonne que si le véhicule bouge vraiment, un petit arrêt bien fondu. Mesure sur 500
+  rejeux (608 trajets conducteurs terrestres) : à l'arrêt vitesse <= 0,05, croisière 3 à 12 ; 16 trajets ne
+  bougent jamais. Règle : mouvement = vitesse > 1 ; arrêts < 1,5 s fusionnés (la boucle continue) ;
+  mouvement < 0,5 s ignoré ; épisode = premier -> dernier mouvement (`enter` / `exit` à ses bornes) ; arrêt
+  long = boucle éteinte en fondu de 0,6 s, rallumée en 0,3 s, sans rejouer enter/exit. Même règle en lecture
+  (`vehicleEnginePlayer.ts`, phase `arret` sans voix) et à l'export (`vehicleEngineMix.ts`).
+  `vehicle_scorpion_idle.ogg` supprimé (plus aucun lecteur).
+
+**Résultats.** gofmt propre ; `go vet` go-api (sans tag, `integration`, `research`, `gamefiles`) et vet des 4 briques
+(4 jeux de tags) propres ; `go test ./...` go-api et tests des briques verts ; web : typecheck forcé 0, lint 0,
+vitest 10 619 verts, puis rejeu (3 401) vert après le changement du moteur. Mutation vérifiée : une citation ajoutée à
+`internal/sync/scope.go` et à `web/src/main.tsx` rougit les deux tests. Plafonds de taille du décodeur
+abaissés (4 fichiers, lignes de commentaire retirées).
+
+**Conclusion / prochaine étape.** Commit puis PR vers `release/v8.1.0` sur accord du user ; écoute du moteur
+au rejeu par le user (Warthog arrêté puis reparti).
+
+## [2026-11-02] Rejeu : le drapeau pris par notre équipe sonne une fois — Complété (PR vers la release)
+
+**Contexte.** Retour du user : quand notre équipe prend le drapeau ennemi, le rejeu sonne trois fois, le jeu
+une seule.
+
+**Décision technique.** L'événement `fefed142` (`play_004_mod_mp_ctf_flag_taken_team`, banque CTF
+`61007dcf`) a deux couches : `411873637` à 0 s, et `226438283` à +400 ms, +3 dB, déclarée répétée 3 fois
+toutes les 850 ms (`sLoopCount` = 3, mode 5). Le rendu du 2026-08-27 suivait cette déclaration (4,59 s, trois
+alertes) ; le user, à l'écoute du jeu, n'en entend qu'une. Rendu refait avec UNE lecture de la couche répétée :
+médias extraits de la banque (`weapon-sounds -mode embarques -sbnk 61007dcf`), décodés vgmstream, sommés en
+flottant aux gains et délai déclarés, crête à -1 dBFS, stéréo 48 kHz, encodés par `sounds-encode -check`
+(Opus 96k). Nouveau fichier : 2,89 s. Le côté adverse (`objective_flag_stolen_enemy`) reste tel quel : ses
+trois impulsions sont dans le média `145749690` lui-même, pas dans une répétition déclarée.
+
+**Résultats.** Enveloppe vérifiée : une seule alerte. Tests du rejeu (garde-rails d'assets compris) verts.
+
+**Conclusion / prochaine étape.** Écoute du user au rejeu.
+
+## [2026-11-02] Backlog : entrées faites retirées, section « Récemment complété » mise à jour — Complété (branche `release/v8.1.0`, non commité)
+
+**Décision.** Vérification sur pièces de chaque entrée avant retrait. Retirées : « Analyse en cours » (livré le
+2026-10-17, composants `analysis-pending-*`), « Cible desktop Tauri V9 » (chantier en cours, plan
+`.ai/V8/PLAN_DESKTOP_2026-11-01.md` fait foi, cité en tête du backlog), étapes 1-2 de la publication des briques
+(l'entrée ne garde que les dépôts dédiés, après le desktop), sous-item `gate-push` en série (deux voies depuis E1).
+Restent ouvertes après contrôle : 15 vies sans nom, découvertes E8 (châssis `b857fb95` toujours sans règle),
+découvertes du 2026-10-16 (Q8 sans `is_excluded`, `continue` de `weapon_resolver`, `research` en
+`filepath.Join(depot, "data")` : 9 fichiers au lieu de ~31), famille de jeton OAuth (non faite).
+
+**Résultats.** « Récemment complété » : 5 lignes ajoutées (Analyse en cours, i18n N langues, découplage D1-D3,
+publication des briques, citations `.ai/` du code) ; 75 lignes antérieures à 2026-07 (ère Python) déplacées vers
+`.ai/archive/BACKLOG_COMPLETE_avant_2026-07.md` ; chemins `.ai/` périmés réalignés sur l'archive (0 lien mort).
+
+**Conclusion / prochaine étape.** Rien à exécuter ; commit au choix du user.
+
+## [2026-11-04] Citation Prise du crâne : visuel chevrons + crâne gris — Complété (branche `feat/citation-prise-du-crane-v2`, non commité)
+
+**Décision technique principale** : `HI_citation_Prise_du_crane.png` remplacé par le visuel final de l'utilisateur (trois chevrons blancs qui rognent un crâne gris clair, ombre douce, découpe parallèle au chevron). Même chemin d'image : aucun changement de code ni de seed, pas de re-seed nécessaire.
+
+**Résultats observés** : contrôle visuel de l'image sur fond gris et blanc ; branche créée depuis `origin/release/v8.1.0` dans un worktree dédié.
+
+**Conclusion / prochaine étape** : commit et PR vers `release/v8.1.0` sur accord.
+## [2026-11-02] Plan « Fin du découplage : brique décodeur publiée, dépôts dédiés des quatre briques » — En cours (proposé, attend le go)
+
+**Décision.** Plan sur preuves `.ai/PLAN_FIN_DECOUPLAGE_BRIQUE_FILM_2026-11-02.md` : phase A (couplages à l'hôte,
+dette d'API avant tag, ratchets), phase B (README, exemple, `require`, tag `libs/film/v0.1.0`), phase C (quatre dépôts
+dédiés ensemble). Pilotage : Sonnet par défaut, Opus pour `filmshell` en accesseurs (sources hachées) et le changement
+de chemin de module du décodeur, Haiku pour quatre micro-tâches contrôlées par grep ; deux relecteurs Sonnet, une ronde,
+en fin de phase B et C.
+
+**Résultats observés (mesures du 2026-11-02, `792d2a0ee9`).** Révisions inchangées depuis D2 (grammaire 2026-10-28) ;
+façade 179 et compagnon 316 = plafonds ; `libs/film` sans `require` de `gamefiles` (28 fichiers) ni `himap` (2) ;
+`filmproc` nomme quatre `LEVELUP_*` (trois ajoutées par le desktop) ; ancien chemin cité dans 559 fichiers (24 de
+production) ; 15 variables exportées modifiables dans `filmshell`, 12 `slog` sans contexte ; 21 fichiers
+`campagne_overlay` morts ; dépôt public, fixtures à 202 xuids déjà publiées. Le desktop (L21) touche encore
+`filmproc` / `filmcache` : lots 2 à 4 après sa fusion.
+
+**Conclusion / prochaine étape.** Douze décisions (D-1 à D-12) à trancher par le user, puis go.
+
+## [2026-11-08] Rejeu : mort sans icône, compteur d'usages rogné, capteur de réapparition invisible — diagnostic En cours (aucun code modifié)
+
+**Décision technique principale.** Diagnostic seul, sur artefacts (schéma 106) et faits de film locaux, sonde `research` injectée par `-overlay` (rien dans le dépôt).
+1. `20c703a7`, ligne sans icône à 6:09 : la piste de Like15Ninjaz s'arrête à la frame 3920 (`EndFrame` = dernier point, immobile depuis ~3908), son kill réel (M41 SPNKr, Pwr opps) est 3,8 s plus tard, au-delà de `KILL_MATCH_TOL_MS` : `alignFeedByOrigin` produit une mort neutre à 6:09 EN PLUS du kill à 6:13.
+2. Fiche normale : 213 px utiles, 204 px de cellules fixes + 5 de gap = 4 px pour « ×N » (~12 px) ou « plein » ; la rangée clippe. Indépendant de la longueur des icônes (cellule fixe 40 px). Calcul sur les cotes, non mesuré au navigateur.
+3. `bc4bde17`, JGtm : rang 22 = détecteur de menaces (pas traqueur), kit de réapparition, 4 activations (frames 75, 323, 552, 755), 4 objets situés. Écarté par `rangDe` : création avant l'origine (première vie) et `AmbiguousRank` (la réapparition crée DEUX ti=37 attachés dans le paquet). Publication absente = ni dessin ni son ni compte.
+
+**Résultats observés.** Parc local, 1 339 films de faits : 45 137 paquets à deux objets, 12 821 avec un seul objet actif, le DERNIER créé dans 12 817 cas (4 contraires, 2 paquets à deux actifs) ; 12 771 objets actifs perdus (rang 22 : 6 730, rang 19 : 5 332), 20 265 activations. Rang 12 (traqueur) absent des pertes. Vies dont le kill suit la fin de piste au-delà de 2 s et avant la vie suivante : 1 218 sur 121 416.
+
+**Conclusion / prochaine étape.** Proposé au user, attend son accord : (1) un kill consomme la dernière fin de vie de sa victime tant que la vie suivante n'a pas commencé ; (2) compte sur la vignette de capacité, sans mot ; (3) publier le dernier objet créé du paquet et borner à 0 les créations d'avant l'origine, témoins famille × origine sur faits réels, puis réassemblage demandé au user (pas de relecture des films).
+
+## [2026-11-08] Rejeu : les deux causes reprises à la racine après relecture du user — diagnostic En cours (aucun code modifié)
+
+**Décision technique principale.** Deux propositions du diagnostic précédent retirées, sur remarque du user. (1) Fin de vie : `EndFrame` = dernier point écrit ; la règle pérenne est qu'une vie s'arrête à la mort que le film écrit (le dernier point seulement faute de mort), `trackWindow` lisant déjà `endFrame`. (3) « Dernier objet créé » abandonné : chaque objet ti=37 créé porte son propre identifiant `eqip` (mot 32 bits du bloc MPP de l'état par défaut), lisible sur 100 % des objets attachés ; le catalogue `equipment_energy.json` (carried -> pickup) puis le manifeste donnent la famille. Plus aucune jointure par l'annonce i48 du paquet, donc plus aucune différence ramassé / réapparition.
+
+**Résultats observés.** Sonde sur 11 films (Super Fiesta et Arena) : 0 objet sans identifiant. Les huit identifiants d'objets actifs absents du manifeste se résolvent tous par le catalogue (détecteur, mur, translocateur, répulseur, écran, camouflage, surbouclier). L'objet voisin toujours inactif est `0xa53cd143`, absent du catalogue, ou une grenade.
+
+**Conclusion / prochaine étape.** Attend le go du user. L'identifiant n'est pas dans les faits persistés : ajout au canal et aux faits, révision de la grammaire, recuisson depuis les films à demander au user.
+
+## [2026-11-08] Rejeu : joueurs dont la position cesse sans mort, croisés avec les départs API — diagnostic En cours (aucun code modifié)
+
+**Décision technique principale.** Mesure seule, sur 1 331 artefacts, la participation API et les faits de film ; « a quitté » se lit sur `left_in_progress`, pas sur l'arrêt des positions. Décision du user : un joueur présent reste affiché, figé si besoin.
+
+**Résultats observés.** Vies finales arrêtées au moins 5 s avant la fin, sans kill lu ensuite : 667 départs selon l'API (637 avec un autre joueur sur la même place, aucun bot ; 15 immobiles depuis au moins 20 s), dépôt API 35 s en médiane après le dernier point (p10 4 s, p90 63 s, après retrait du décalage horaire entier). 1 124 joueurs présents à la fin selon l'API, dont 132 arrêtés au moins 15 s avant la fin : 25 ont une mort écrite après le dernier point (couverts par la fin de vie à la mort), 107 n'en ont aucune, et aucun des 132 n'était immobile depuis 20 s.
+
+**Conclusion / prochaine étape.** Proposer au user de garder affichés jusqu'à la fin ces 107 joueurs présents sans mort écrite ; la cause de l'arrêt des positions reste inconnue. À traiter après l'identification des objets portés.
+
+## [2026-11-08] Desktop L24 : moteur et paquet de ressources séparés — Complété côté code (branche `feat/desktop-p0`, non poussé)
+
+**Décision technique principale.** Deux unités : le moteur (coquille, serveur, front compilé sans `web/titles`, `config/`) et le paquet de
+ressources (`static`, `web/titles`, référentiel, `metadata-prebuilt.zip`, ffmpeg), identifié par l'EMPREINTE de son manifeste (SHA-256 trié,
+calculée au build, embarquée dans le serveur par `-X main.resourcesFingerprint`, relue par `check-version.sh`) : aucune version à incrémenter.
+Point à vérifier 24.3 tranché sur le modèle NSIS réel : en `/UPDATE` un installeur sans ressources laisse les installées intactes (pas de
+désinstallation rejouée), donc deux installeurs, D-9 tenue, pas de téléchargement au premier lancement. Le désinstalleur réécrit par l'installeur
+moteur seul oublie le paquet : `-mode uninstall-cleanup` le retire (`resourcepack.Remove`). Le SERVEUR télécharge (hôtes GitHub, mode jeu, reprise,
+SHA-256, minisign `ED` relu en Go, extraction vérifiée), la coquille Rust lit `resources` de `latest.json` (`Update::raw_json`), le demande par la
+stdin et attend `ready` AVANT d'armer l'installeur du moteur. Activation au démarrage suivant par renommage journalisé (écart au `resources-<v>/` + pointeur :
+295 lecteurs de `RepoRoot` auraient dû apprendre une seconde racine). Hébergé : démarrage refusé si l'empreinte diffère (`resources_incompatible`) ;
+bureau : démarre sur le paquet présent et télécharge le bon.
+
+**Résultats observés.** Installeur complet 159 512 252 o (152,1 Mo), moteur seul 31 675 133 o (30,2 Mo), paquet 152 545 053 o (145,5 Mo).
+`e2e-install.ps1 -EngineInstaller` code 0 : paquet conforme (2 526 fichiers), 3 lancements à arrêt propre, mise à jour moteur seul qui rend le fichier
+du moteur et pas celui du paquet, désinstallation qui retire 2 525 fichiers du paquet et tout le dossier du programme. Signature réelle de
+`tauri signer sign` vérifiée par le code Go. Gates : voir le rapport de clôture. Non jouables ici : Docker (job CI `test-deploy-precheck`), le
+téléchargement contre les vrais hôtes GitHub (gate 24.z).
+
+**Conclusion / prochaine étape.** Reste : revue adversariale 24.7 et gate utilisateur 24.z (hors de cette tâche) ; `[!]` bouton de réessai de
+l'écran `resources_incompatible` de la coquille (relance de la coquille non testable sans la lancer) ; découverte : les `web/assets/*-<hash>.js` d'une
+version restent après chaque mise à jour NSIS (antérieur à L24).
+## [2026-11-08] Plan du backlog exécutable — En cours (aucun code modifié)
+
+**Décision technique principale.** Plan `.ai/PLAN_BACKLOG_2026-11-08.md` : entrées du backlog vérifiées une à une sur `origin/release/v8.1.0`, exécution Haiku / Sonnet, aucun correctif de rejeu (mesure en lecture seule), nettoyage du backlog en dernière étape.
+
+**Résultats observés.** Douze entrées closes sans code, dont trois déjà faites. Prémisse fausse sur le rafraîchissement OAuth : la famille enregistrée vient du ticket XBL (`azure` pour JGtm), pas du client qui rafraîchit. Corpus `gamefiles` joué : un seul échec, un instrument de recherche sans son dépôt. Revue indépendante Sonnet, une ronde : 3 P0 (dont un faux défaut, `cmd/levelup` déjà câblé par `titleseams.RegisterAll`) et 11 P1, intégrés après vérification.
+
+**Conclusion / prochaine étape.** Attend le go du user et ses réponses sur la barre de filtres des citations, la réconciliation des citations au démarrage et les deux réglages Discord.
+
+## [2026-11-08] Plan du backlog : réponses du user, rafraîchissement OAuth ajouté — En cours (aucun code modifié)
+
+**Décision technique principale.** Barre de filtres des citations retirée, citations réconciliées au démarrage, deux réglages Discord abandonnés. Le rafraîchissement OAuth entre dans le plan : retenir en mémoire du processus le client qui a réussi, sans toucher aux fichiers de jetons. Rejeu et relecture finale confiés à Opus.
+
+**Résultats observés.** Le client gagnant est déjà rendu par l'échange ; la famille enregistrée ne le donne pas. Essai du client natif en tête : un échec réseau n'interroge plus Azure, dont le refus serait lu comme un jeton révoqué.
+
+**Conclusion / prochaine étape.** Attend le go du user.
+
+## [2026-11-08] Backlog E1 : micro-corrections — Complété
+
+**Décision technique principale.** Constantes recopiées de `reset-bitmasks` remplacées par les sources, relance de connexion gardée après succès, erreur de règles de citations remontée, noms de tuiles sur deux lignes, deux instruments de recherche sortis du corpus `gamefiles`.
+
+**Résultats observés.** Gate E1 vert ; relance prouvée rouge puis verte par test ; plancher du corpus à 60.
+
+**Conclusion / prochaine étape.** E2 multi-titre.
+
+## [2026-11-08] Backlog E2 : multi-titre — Complété
+
+**Décision technique principale.** Le moteur reçoit le provider de son titre (`SharedProviderForTitle`) sur les chemins du planificateur et du handler ; le recalcul des sessions écarte les profils `auth_only` ; le ratchet de comparaison de slug couvre `cmd/`.
+
+**Résultats observés.** Tests rouges puis verts ; gate vert, intégration `sync`, `scheduler`, `api/wire` sous `-p 1`. Une seule comparaison dans `cmd/`, allowlistée : validation de saisie.
+
+**Conclusion / prochaine étape.** E3 LUSR.
+
+## [2026-11-08] Backlog E3 : LUSR et matchs exclus — Complété
+
+**Décision technique principale.** Un match exclu sort du graphe de carrière (avant le calcul des écarts) et de la moyenne des composantes, par liste de paramètres lue d'abord (ADR 0036). Le rejeu complet rend `ErrCanonicalWriteHeld` si une écriture échoue, option posée par le seul rejeu : le post-sync garde son retry au cycle suivant.
+
+**Résultats observés.** Tests rouges puis verts ; gate vert. Une exclusion dont l'écriture échoue n'est plus annoncée comme terminée et se recalcule à la demande suivante.
+
+**Conclusion / prochaine étape.** E4 citations.
+
+## [2026-11-08] Backlog E4 : citations — Complété
+
+**Décision technique principale.** Barre de filtres de la page Citations retirée avec ses clés, types et tests. Réconciliation des citations à chaque démarrage sur le handle de metadata : comparaison colonne par colonne, écriture des seules différences, échec journalisé et démarrage poursuivi.
+
+**Résultats observés.** Tests rouges puis verts par cinq mutations ; second passage à zéro écriture ; gate vert ; le ratchet d'ouverture DuckDB a imposé de garder le seul `sql.Open` dans le CLI.
+
+**Conclusion / prochaine étape.** E5 rafraîchissement OAuth.
+
+## [2026-11-08] Backlog E5 : rafraîchissement OAuth — Complété
+
+**Décision technique principale.** Le rafraîchissement commence par le dernier client ayant réussi pour ce joueur (table en mémoire du processus, champ `NatifDabord` dans la brique, sans état). Un échec transitoire du natif est rendu sans interroger Azure ; révoqué ou configuration déroulent le chemin Azure.
+
+**Résultats observés.** Relecture Sonnet : 1 P1 recevable (compte reconnecté en web bloqué sur une erreur de configuration), corrigé avec test rouge puis vert ; 11 conditions tenues, dont la persistance de la rotation. Gate vert.
+
+**Conclusion / prochaine étape.** Relecture finale Opus, mesure du rejeu après la recuisson.
+
+## [2026-11-08] Backlog E7.1 : relecture adversariale Opus — Complété
+
+**Décision technique principale.** Quatre constats corrigés plutôt que consignés : invalidation du cache de carrière et de profil après une exclusion, lecture des exclus réutilisée, plancher du corpus daté, tests des chemins d'échec.
+
+**Résultats observés.** Aucun défaut sur les écritures DuckDB, la rotation des jetons, le multi-titre ou la propagation LUSR ; 25 conditions vérifiées. Pas de ronde 2, aucun P0.
+
+**Conclusion / prochaine étape.** Gates finaux, mesure du rejeu après la recuisson.
+
+## [2026-11-08] Backlog : clôture du plan, mesure du rejeu — Complété
+
+**Décision technique principale.** Aucune correction du rejeu. La mesure, en lecture seule sur les rejeux recuits, reste consignée au backlog avec sa date.
+
+**Résultats observés.** Lot fusionné dans `release/v8.1.0` (`c93e210968`, PR #160). Vies sans nom : 8 sur 2 films, un 3e film sans données. Châssis neutre `b857fb95` : 117 films, 455 vies. Second corps non mesurable tant que le code lu n'accepte pas les faits au schéma 19 ; entame et parent non véhicule en attente d'une copie froide de la base partagée.
+
+**Conclusion / prochaine étape.** Après la fusion de `fix/rejeu-vies-equipement`, relancer la mesure du second corps. Contrôle visuel du user sur Citations et sur l'exclusion d'un match.
+
+## [2026-11-08] Rejeu : revue adversariale du lot fin de vie, compteur et identité des objets portés — Complété (commit sur la branche, non poussé)
+
+**Décision technique principale.** Une ronde de revue par un contexte frais (lentilles décodage et publication, anti-patterns, couverture de test). Triage : les trois constats sont corrigés dans le lot ; recuisson depuis les films à décider par le user.
+
+**Résultats observés.** 0 P0, 3 constats recevables, 31 conditions vérifiées qui tiennent. Corrigés : `finParPresence` scindée (règle des complexités), commentaire v107 aligné sur la chronique, test synthétique de la lecture d'identité (cinq mutations détectées). Après correction : `go vet` et `go test ./...` de `libs/film` à 0, archlint de `apps/go-api` à 0, lint neuf `--new-from-rev=HEAD` à 0.
+
+**Conclusion / prochaine étape.** Vérification visuelle du user après recuisson ; CI et `make gate-push` restent à passer avant fusion.
+
+## [2026-11-09] Release v8.1.0 : gel du code et lignes « What's new » — En cours
+
+**Décision technique principale.** Code gelé sur `9f70f24bb6` (rejeu fusionné, PR #162). Revue globale indépendante confiée à trois relecteurs Opus sans contexte, par zone (données et démarrage, bureau et publication, décodeur et affichage), concentrés sur les interactions entre lots. Seules les corrections issues de cette revue entrent encore en code.
+
+**Résultats observés.** README et notes de version (EN et FR) complétés : médiathèque, rejeu, carrière, mises à jour Windows.
+
+**Conclusion / prochaine étape.** Tri des constats, gate 24.z et récapitulatif à l'utilisateur avant le tag `v8.1.0`.
+
+## [2026-11-09] Tag `libs/film/v0.1.0` délégué à la session du découplage (ADR 0043) — En cours
+
+**Décision technique principale.** Confirmation directe de l'utilisateur le 2026-11-09 (« Oui pour le tag j'autorise ») : note de délégation ajoutée sous D-2 de l'amendement film, un seul geste, la règle reste. La PR #157 entrait en conflit sur le journal : son contenu ADR passe par la PR des notes de version, #157 est fermée.
+
+**Résultats observés.** Le tag sera posé sur le commit de `main` portant la release, après la vérification `go get` hors dépôt.
+
+**Conclusion / prochaine étape.** Transmettre le sha de `main` à la session du découplage après la fusion par l'utilisateur.
+
+## [2026-11-09] Revue globale v8.1.0 : tri des constats — Complété
+
+**Décision technique principale.** Trois relecteurs Opus sans contexte sur le commit gelé `9f70f24bb6`. Corrigés : un profil sans xuid n'entre plus dans le rejeu des notes (il aurait vu toutes ses notes effacées), et le fond codé en dur de la fenêtre À propos passe sur un token. Rejeu au premier démarrage conservé, conforme à l'ADR 0047. Une seule ronde, la correction tenant en une garde couverte par un test.
+
+**Résultats observés.** 7 constats recevables, 65 conditions vérifiées qui tiennent. En production, en lecture seule : base média configurée (`/app/data/media`). Reste au backlog (.ai/BACKLOG.md) : FDA d'Ascension, formule de l'Aide, alertes en français, badge d'analyse, fichiers laissés par une mise à jour moteur, harnais `replay-equiv`.
+
+**Conclusion / prochaine étape.** CI de la branche, fusion dans `release/v8.1.0`, gate 24.z, puis tag par l'utilisateur.
+
+## [2026-11-09] Release v8.1.0 : gate 24.z validé, journaux datés — En cours
+
+**Décision technique principale.** L'utilisateur valide le gate 24.z (« j'ai testé tout est bon »). Les deux journaux de version portent la date du 2026-11-09. En production, seuls les rejeux recuits sur le poste seront copiés, sans suppression et sans aucune base ; les trois passes de résumés y seront rejouées avec le binaire v8.1.0, site arrêté.
+
+**Résultats observés.** Versions concordantes (`Cargo.toml`, `tauri.conf.json` : 8.1.0).
+
+**Conclusion / prochaine étape.** Tag `v8.1.0`, fusion vers `main`, copie des rejeux, passes de résumés, puis sha de `main` transmis pour le tag `libs/film/v0.1.0`.
+
+## [2026-11-09] Release v8.1.0 : publiée, test de la barre latérale ajusté — En cours
+
+**Décision technique principale.** Le tag `v8.1.0` est publié (run 42602864404, installeurs, paquet et `latest.json`). Le job E2E, qui ne tourne que sur une PR, a échoué sur la PR vers `main` : le bouton de repli garde le focus et son infobulle coexiste avec celle de la section survolée. L'assertion vise désormais l'infobulle par son nom ; le produit publié ne change pas, le comportement part au backlog.
+
+**Résultats observés.** Un seul test rouge sur 107, sur les trois essais.
+
+**Conclusion / prochaine étape.** E2E verte sur la PR #165, puis fusion vers `main`.
+
+## [2026-11-09] Release v8.1.0 : texte de publication court — Complété
+
+**Décision technique principale.** Le corps de la release et les notes de l'updater viennent de la première section des notes de version, écrites pour les joueurs, et non plus du journal technique. La liste automatique des PR est retirée ; la publication refuse une première section qui ne porte pas le numéro majeur.mineur du tag. Corps de la v8.1.0 réécrit à la main.
+
+**Résultats observés.** 47 273 caractères ramenés à 5 582 ; extraction essayée à sec, y compris le refus d'un numéro différent. Les fichiers restent séparés : la mise à jour télécharge chacun à son adresse, et le fichier de signature du paquet sert au repli du serveur.
+
+**Conclusion / prochaine étape.** E2E verte sur la PR #165, fusion vers `main`.

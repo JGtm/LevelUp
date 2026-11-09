@@ -7,7 +7,7 @@
  * calcule aucun : il retient la lecture la plus récente de l'objet que la vignette montre.
  *
  * DEUX JOINTURES : l'objet est celui du PORTEUR à cette image (prise passée, fin non atteinte) et de
- * MÊME RANG que la capacité affichée ; la lecture retenue est la plus récente de cet objet qui porte un
+ * MÊME RANG de palette (ou de même famille, [carriedIsAbilityRank]) que la capacité affichée ; la lecture retenue est la plus récente de cet objet qui porte un
  * compte. Sans compte (famille dont le coût n'est pas établi, grappin et propulseur que le canal i56
  * compte déjà), rien n'est affirmé.
  *
@@ -15,6 +15,7 @@
  */
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { AbilityChargeDisplay } from './abilityChargeLogic'
+import { carriedIsAbilityRank } from './carriedFamily'
 
 /**
  * carriedUsesAt — les usages restants de l'équipement de rang `rank` que porte `slot` à l'image `frame`,
@@ -28,7 +29,7 @@ export function carriedUsesAt(
 ): AbilityChargeDisplay | null {
   let objet: ReplayDocumentReady['carriedEquipment'][number] | null = null
   for (const c of doc.carriedEquipment) {
-    if (c.slot !== slot || c.r !== rank || c.t0 > frame) continue
+    if (c.slot !== slot || !carriedIsAbilityRank(doc.abilityLabels, c, rank) || c.t0 > frame) continue
     if (c.t1 !== undefined && c.t1 <= frame) continue
     if (!objet || c.t0 > objet.t0) objet = c
   }

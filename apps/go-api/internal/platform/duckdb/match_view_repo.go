@@ -29,6 +29,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 )
@@ -131,12 +132,11 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchMeta: %w", err)
 	}
-	// Résolution unifiée des noms d'asset via MetadataRepo.ResolveAssetName.
-	// Cascade FR-FR → fr → en-US → en (PreferredLangsForLocale("fr")), une seule
-	// requête SQL par asset, source unique de vérité (asset_translations).
+	// Noms d'asset par langue (asset_translations, assetNameTexts) : une seule requête SQL par
+	// asset, source unique de vérité, toutes les langues de config/locales.toml. Le choix de la
+	// langue de la requête se fait en aval (Text.Pick / Has).
 	if row.MapAssetID != nil {
-		row.MapNameFR = r.resolveAssetName(ctx, "map", *row.MapAssetID)
-		row.MapNameEN = r.resolveAssetNameEN(ctx, "map", *row.MapAssetID)
+		row.MapNames = r.assetNames(ctx, assetTypeMap, *row.MapAssetID)
 		row.MapImageURL = r.lookupMapImageURL(ctx, *row.MapAssetID)
 		// Pas d'image locale curée + version connue → endpoint framework KindMapImage
 		// (DiscoveryUGC, lazy + cache). ?v = version requise par DiscoveryUGC. UUIDs
@@ -149,77 +149,28 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		}
 	}
 	if row.PlaylistAssetID != nil {
-		row.PlaylistNameFR = r.resolveAssetName(ctx, "playlist", *row.PlaylistAssetID)
+		row.PlaylistNames = r.assetNames(ctx, assetTypePlaylist, *row.PlaylistAssetID)
 		// Libellé d'affichage via le CHOKEPOINT UNIQUE partagé (strip de catégorie
 		// title-aware + override data-driven playlist_labels.toml) — même résolution
-		// que les tuiles home / sessions / Explorer (analysis.DisplayPlaylistLabel).
-		// Halo 5 « Super Fiesta Fête » → « Super Fiesta » ; Infinite « Arène delta :
-		// Héritage » → « Delta : Héritage ». No-op si nom absent.
-		if row.PlaylistNameFR != nil {
-			disp := analysis.DisplayPlaylistLabel(*row.PlaylistNameFR, r.stripPlaylistCategory, r.playlistLabelOverrides)
-			row.PlaylistNameFR = &disp
+		// que les tuiles home / sessions / Explorer (analysis.DisplayPlaylistLabel), appliquée à la
+		// langue par défaut. Halo 5 « Super Fiesta Fête » → « Super Fiesta » ; Infinite
+		// « Arène delta : Héritage » → « Delta : Héritage ». No-op si nom absent.
+		if row.PlaylistNames.Has(i18n.Default) {
+			disp := analysis.DisplayPlaylistLabel(row.PlaylistNames[i18n.Default], r.stripPlaylistCategory, r.playlistLabelOverrides)
+			row.PlaylistNames[i18n.Default] = disp
 		}
 	}
-	// Résolution du libellé de mode — même cascade que applyMatchHistoryFRTranslations :
-	// ResolveAssetNamesBulk(pair) → loadModeFRBatch(mode_name_tr) → ResolvePairNameFR.
-	// pair_name_fr est toujours NULL en DB (non écrit par sync) : seul ce chemin
-	// produit "Capture du drapeau" au lieu de l'EN normalisé.
-	{
-		var pairAssetName string
-		if r.pdb.Metadata != nil && row.PairAssetID != nil {
-			metaRepo := NewMetadataRepoFromDB(r.pdb.Metadata)
-			langs := PreferredLangsForLocale("fr")
-			pairNames, pairErr := metaRepo.ResolveAssetNamesBulk(ctx, "pair", []string{*row.PairAssetID}, langs)
-			if pairErr != nil {
-				slog.Log(ctx, degradedLookupLevel(ctx, pairErr), "match_view: nom du mode indisponible (résolution de la paire en échec)",
-					"match_id", matchID, "pair_asset_id", *row.PairAssetID, "err", pairErr)
-			}
-			pairAssetName = strings.TrimSpace(pairNames[*row.PairAssetID])
-		}
-
-		rawPairName := derefString(row.PairName)
-		normRaw := analysis.NormalizeModeLabel(rawPairName)
-		normAsset := analysis.NormalizeModeLabel(pairAssetName)
-
-		// Rattrapage des variantes non canoniques ("Legacy Slayer BR" → "Slayer")
-		// via extraction du mode connu (liste mode_en de mode_name_tr). Appliqué
-		// APRÈS NormalizeModeLabel pour préserver les préfixes d'identité de
-		// playlist (Super Fiesta…). Cf. analysis.ExtractKnownMode.
-		knownModes := loadKnownModesEN(ctx, r.pdb.Metadata)
-		extracted := analysis.ExtractKnownMode(normRaw, knownModes)
-		if extracted == "" {
-			extracted = analysis.ExtractKnownMode(normAsset, knownModes)
-		}
-
-		modeENSet := make(map[string]struct{})
-		for _, en := range []string{normRaw, normAsset, extracted} {
-			if en != "" {
-				modeENSet[en] = struct{}{}
-			}
-		}
-		modeFR := loadModeFRBatch(ctx, r.pdb, modeENSet)
-
-		// Priorité au mode canonique extrait + traduit (variante → mode connu FR),
-		// sinon cascade historique ResolvePairNameFR (modes standards / cas limites).
-		if extracted != "" && modeFR[extracted] != "" {
-			fr := modeFR[extracted]
-			row.ModeNameFR = &fr
-		} else if fr := analysis.ResolvePairNameFR(rawPairName, derefString(row.PairNameFR), pairAssetName, modeFR); fr != "" {
-			row.ModeNameFR = &fr
-		}
-	}
+	r.resolveModeNames(ctx, &row)
 	// Fallback mode data-driven (title-agnostic) : quand le titre n'a PAS de pair
 	// (ni ID ni nom — cas Halo 5, PairMode nil dans l'adapter) mais porte un
 	// game_variant, le mode est résolu via asset_translations type "game_variant"
-	// (même cascade FR-FR→fr→en-US→en). Sans ça mode_ui reste vide sur 100 % des
+	// (toutes les langues). Sans ça mode_ui reste vide sur 100 % des
 	// matchs H5. N'affecte pas les titres à pair (Infinite : PairAssetID présent →
 	// condition fausse, comportement inchangé).
-	if (row.ModeNameFR == nil || strings.TrimSpace(*row.ModeNameFR) == "") &&
+	if row.ModeNames.Empty() &&
 		row.PairAssetID == nil && strings.TrimSpace(derefString(row.PairName)) == "" &&
 		row.GameVariantAssetID != nil && strings.TrimSpace(*row.GameVariantAssetID) != "" {
-		if gv := r.resolveAssetName(ctx, "game_variant", *row.GameVariantAssetID); gv != nil {
-			row.ModeNameFR = gv
-		}
+		row.ModeNames = r.assetNames(ctx, assetTypeGameVariant, *row.GameVariantAssetID)
 	}
 	// Durée de jeu observée (socle du flag « Prolongation »). Lecture SÉPARÉE de
 	// Q13 et best-effort : elle dépend de colonnes de participation qui peuvent
@@ -254,6 +205,7 @@ func (r *MatchViewRepo) attachElapsedSeconds(ctx context.Context, row *domain.Ma
 // handle), le release anticipé est donc sûr.
 func (r *MatchViewRepo) scanMatchMeta(ctx context.Context, reader SharedReader, matchID string) (domain.MatchMetaRaw, error) {
 	var row domain.MatchMetaRaw
+	var pairNameFR *string
 	sharedDB, release, err := reader.Get(ctx)
 	if err != nil {
 		return row, fmt.Errorf("shared reader: %w", err)
@@ -278,54 +230,77 @@ func (r *MatchViewRepo) scanMatchMeta(ctx context.Context, reader SharedReader, 
 		&row.Team0RoundsWon,
 		&row.Team1RoundsWon,
 		&row.RoundsTotal,
-		&row.PairNameFR,
+		&pairNameFR,
 		&row.PairAssetID,
 		&row.GameVariantAssetID,
 		&row.T0Ms,
 		&row.MapVersionID,
 	)
+	setTextPtr(&row.PairNames, i18n.LocaleFR, pairNameFR)
 	return row, err
 }
 
-// resolveAssetName est un helper qui appelle MetadataRepo.ResolveAssetName avec
-// les préférences locale=FR par défaut. Retourne nil si la métadonnée DB n'est
-// pas disponible ou si l'asset n'a aucune traduction.
-func (r *MatchViewRepo) resolveAssetName(ctx context.Context, assetType, assetID string) *string {
+// assetNames retourne le nom d'un actif dans chaque langue qui en porte un (assetNameTexts). Texte
+// vide si la métadonnée DB n'est pas disponible ou si l'asset n'a aucune traduction. Pour les lookups
+// d'image qui dépendent du nom EN canonique (l'adapter `AssetURLAdapter` indexe
+// `static/maps/{titleSlug}/{name}.{ext}` par nom EN, pas par nom localisé), lire la langue de repli.
+func (r *MatchViewRepo) assetNames(ctx context.Context, assetType, assetID string) i18n.Text {
 	if r.pdb.Metadata == nil {
-		return nil
+		return i18n.Text{}
 	}
-	meta := NewMetadataRepoFromDB(r.pdb.Metadata)
-	name, _, ok, err := meta.ResolveAssetName(ctx, assetType, assetID, PreferredLangsForLocale("fr"))
-	if err != nil {
-		slog.Log(ctx, degradedLookupLevel(ctx, err), "match_view: nom d'actif indisponible (résolution en échec)",
-			"asset_type", assetType, "asset_id", assetID, "err", err)
-		return nil
-	}
-	if !ok || strings.TrimSpace(name) == "" {
-		return nil
-	}
-	return &name
+	return assetNameTexts(ctx, r.pdb.Metadata, assetType, []string{assetID})[assetID]
 }
 
-// resolveAssetNameEN retourne le nom EN canonique d'un asset (sans cascade
-// FR) — utilisé pour les lookups d'image qui dépendent du nom EN canonique
-// (l'adapter `AssetURLAdapter` indexe `static/maps/{titleSlug}/{name}.{ext}`
-// par nom EN, pas par nom localisé).
-func (r *MatchViewRepo) resolveAssetNameEN(ctx context.Context, assetType, assetID string) *string {
-	if r.pdb.Metadata == nil {
-		return nil
+// resolveModeNames pose ModeNames : le libellé du mode dans chaque langue autre que la langue de
+// repli, par la même cascade que l'historique (applyMatchHistoryFRTranslations) : nom de la paire
+// (asset_translations) → mode_name_tr → analysis.ResolvePairName. pair_name_fr est NULL en DB (non
+// écrit par sync) : seul ce chemin produit « Capture du drapeau » au lieu de l'EN normalisé.
+func (r *MatchViewRepo) resolveModeNames(ctx context.Context, row *domain.MatchMetaRaw) {
+	var pair i18n.Text
+	if r.pdb.Metadata != nil && row.PairAssetID != nil {
+		pair = r.assetNames(ctx, assetTypePair, *row.PairAssetID)
 	}
-	meta := NewMetadataRepoFromDB(r.pdb.Metadata)
-	name, _, ok, err := meta.ResolveAssetName(ctx, assetType, assetID, PreferredLangsForLocale("en"))
-	if err != nil {
-		slog.Log(ctx, degradedLookupLevel(ctx, err), "match_view: nom d'actif indisponible (résolution en échec)",
-			"asset_type", assetType, "asset_id", assetID, "err", err)
-		return nil
+	rawPairName := derefString(row.PairName)
+	normRaw := analysis.NormalizeModeLabel(rawPairName)
+
+	// Rattrapage des variantes non canoniques ("Legacy Slayer BR" → "Slayer") via extraction du
+	// mode connu (liste mode_en de mode_name_tr). Appliqué APRÈS NormalizeModeLabel pour préserver
+	// les préfixes d'identité de playlist (Super Fiesta…). Cf. analysis.ExtractKnownMode.
+	knownModes := loadKnownModes(ctx, r.pdb.Metadata)
+	type perLocale struct{ asset, extracted string }
+	byLocale := map[i18n.Locale]perLocale{}
+	keys := map[string]struct{}{}
+	for _, l := range i18n.Locales() {
+		if l == i18n.Fallback {
+			continue
+		}
+		asset := strings.TrimSpace(pickAcrossChain(l, pair))
+		normAsset := analysis.NormalizeModeLabel(asset)
+		extracted := analysis.ExtractKnownMode(normRaw, knownModes)
+		if extracted == "" {
+			extracted = analysis.ExtractKnownMode(normAsset, knownModes)
+		}
+		byLocale[l] = perLocale{asset: asset, extracted: extracted}
+		for _, k := range []string{normRaw, normAsset, extracted} {
+			if k != "" {
+				keys[k] = struct{}{}
+			}
+		}
 	}
-	if !ok || strings.TrimSpace(name) == "" {
-		return nil
+	modes := modeTextsByLocale(ctx, r.pdb.Metadata, setKeys(keys))
+
+	// Priorité au mode canonique extrait + traduit (variante → mode connu), sinon cascade
+	// historique ResolvePairName (modes standards / cas limites).
+	for l, p := range byLocale {
+		switch {
+		case p.extracted != "" && modes[l][p.extracted] != "":
+			row.ModeNames.Set(l, modes[l][p.extracted])
+		default:
+			if name := analysis.ResolvePairName(rawPairName, row.PairNames[l], p.asset, modes[l]); name != "" {
+				row.ModeNames.Set(l, name)
+			}
+		}
 	}
-	return &name
 }
 
 // lookupMapImageURL retourne l'URL de l'image de map depuis map_images_registry

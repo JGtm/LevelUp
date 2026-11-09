@@ -1,6 +1,5 @@
 // Package service — session_page_range.go : le bloc « portée des engagements » de la page
-// détail de session (plan .ai/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md, lots N2 et
-// U, décisions D22-4 et D23-4).
+// détail de session.
 //
 // PATRON D'ATTACHEMENT identique au bloc usage : repo OPTIONNEL injecté à la DI, attaché à
 // la réponse existante de POST .../pages/sessions/detail — pas d'endpoint dédié, pas de clé
@@ -40,6 +39,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
@@ -86,7 +86,7 @@ func (s *SessionPageService) buildSessionRange(
 	return buildMatchRangeBlock(ctx, matchRangeQuery{
 		Repo:         s.matchRangeRepo,
 		TitleSlug:    s.titleSlug,
-		Matches:      sessionRangeScope(matches),
+		Matches:      sessionRangeScope(matches, i18n.FromContext(ctx)),
 		Publish:      map[string]string{s.matchRangeXUID: s.gamertag},
 		PublishOrder: []string{s.matchRangeXUID},
 		Scope:        scope,
@@ -112,7 +112,7 @@ func (s *SessionPageService) buildRangeReference(
 	bloc := buildMatchRangeBlock(ctx, matchRangeQuery{
 		Repo:         s.matchRangeRepo,
 		TitleSlug:    s.titleSlug,
-		Matches:      sessionRangeScope(fenetre),
+		Matches:      sessionRangeScope(fenetre, i18n.FromContext(ctx)),
 		Publish:      map[string]string{s.matchRangeXUID: s.gamertag},
 		PublishOrder: []string{s.matchRangeXUID},
 		Scope:        "reference",
@@ -169,23 +169,20 @@ func rangeReferenceMatches(sc sessionBlocksScope) []legacymatch.StatsMatchRow {
 }
 
 // sessionRangeScope projette des lignes de match en scope de portée, dans leur ordre.
-func sessionRangeScope(matches []legacymatch.StatsMatchRow) []analysis.MatchRangeMatch {
+func sessionRangeScope(matches []legacymatch.StatsMatchRow, loc i18n.Locale) []analysis.MatchRangeMatch {
 	out := make([]analysis.MatchRangeMatch, 0, len(matches))
 	for i := range matches {
 		out = append(out, analysis.MatchRangeMatch{
 			MatchID:  matches[i].MatchID,
 			PlayedAt: matches[i].StartTime,
-			MapName:  sessionRangeMapName(matches[i]),
+			MapName:  sessionRangeMapName(matches[i], loc),
 		})
 	}
 	return out
 }
 
-// sessionRangeMapName rend le nom de carte de l'étiquette, en préférant la traduction FR
-// quand la base la porte — la MÊME préférence que les lignes du tableau de session.
-func sessionRangeMapName(row legacymatch.StatsMatchRow) string {
-	if row.MapNameFR != "" {
-		return row.MapNameFR
-	}
-	return row.MapName
+// sessionRangeMapName rend le nom de carte de l'étiquette dans la langue de la requête (repli sur la langue
+// de repli) — la MÊME langue que les lignes du tableau de session.
+func sessionRangeMapName(row legacymatch.StatsMatchRow, loc i18n.Locale) string {
+	return row.MapName.Pick(loc)
 }

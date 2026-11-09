@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // ---------------------------------------------------------------------------
@@ -40,23 +41,23 @@ func mkFilterRow(matchID string, opts ...func(*domain.FilterMatchRow)) domain.Fi
 }
 
 func fWithPlaylist(pl string) func(*domain.FilterMatchRow) {
-	return func(r *domain.FilterMatchRow) { r.PlaylistName = strPtr(pl) }
+	return func(r *domain.FilterMatchRow) { r.PlaylistName.Set(i18n.LocaleFR, pl) }
 }
 
 func fWithMode(m string) func(*domain.FilterMatchRow) {
-	return func(r *domain.FilterMatchRow) { r.PairName = strPtr(m) }
+	return func(r *domain.FilterMatchRow) { r.PairName.Set(i18n.LocaleEN, m) }
 }
 
 func fWithMap(m string) func(*domain.FilterMatchRow) {
-	return func(r *domain.FilterMatchRow) { r.MapName = strPtr(m) }
+	return func(r *domain.FilterMatchRow) { r.MapName.Set(i18n.LocaleEN, m) }
 }
 
 // fWithVariant renseigne le game_variant (EN + FR) SANS pair_name : reproduit le
 // modèle Halo 5 où le mode vient du game_variant (pair_id/pair_name NULL).
 func fWithVariant(en, fr string) func(*domain.FilterMatchRow) {
 	return func(r *domain.FilterMatchRow) {
-		r.GameVariantName = strPtr(en)
-		r.GameVariantNameFR = strPtr(fr)
+		r.GameVariantName.Set(i18n.LocaleEN, en)
+		r.GameVariantName.Set(i18n.LocaleFR, fr)
 	}
 }
 

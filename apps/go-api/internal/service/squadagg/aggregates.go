@@ -11,6 +11,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 func BuildSquadHeader(
@@ -323,39 +324,37 @@ func canonicalRowExperienceLabel(r canonical.PlayerMatchRow) string {
 	return ExpTypePVPUnranked
 }
 
-// modeLabelForFilter : PairMode prioritaire ; sinon game_variant normalisé —
-// aligné sur la convention centralisée analysis.ResolveModeUIWithVariant (les
-// types canonical n'exposent pas de *string, d'où ce miroir local minimal).
-// Couvre les titres sans pair (Halo 5, PairMode nil) dont le mode vient du
-// game_variant, tout en restant iso-comportement pour les rows avec pair.
+// modeLabelForFilter : libellé du mode comparé au filtre de modes — Summary.PairMode, fourni par la
+// source de lecture du titre (partie ou type de jeu). Aucun repli sur GameVariant.
 func modeLabelForFilter(r canonical.PlayerMatchRow) string {
-	if lbl := assetLabelForFilter(r.Summary.PairMode); lbl != "" {
-		return lbl
-	}
-	return analysis.NormalizeModeLabel(assetLabelForFilter(r.Summary.GameVariant))
+	return assetLabelForFilter(r.Summary.PairMode)
 }
 
 // FilterRowsByCascade filtre une slice de PlayerMatchRow selon les critères
-// experience_types, playlists, maps et modes. Slices vides = pas de filtre sur ce critère.
+// experience_types, playlists, maps et modes de `c`. Slices vides = pas de filtre sur ce critère.
 //
-// Modes : PairMode prioritaire (pair_name_fr COALESCE pair_name), sinon game_variant
-// normalisé pour les titres sans pair (Halo 5) — via modeLabelForFilter, même
-// convention que filtersResolve. Fallback sur DefaultLabel (EN) si Labels["fr"] absent.
-func FilterRowsByCascade(rows []canonical.PlayerMatchRow, expTypes, playlists, maps, modes []string) []canonical.PlayerMatchRow {
-	expSet := make(map[string]struct{}, len(expTypes))
-	for _, e := range expTypes {
+// Cartes : une carte de groupe (variante de carte, domain.GroupesDeCartes) est comparée par le libellé
+// de sa carte de BASE, le même que celui des options du filtre : choisir « Thunderhead » retient aussi
+// les parties jouées sur « Thunderhead Heavies ». `groups` est obligatoire pour que chaque appelant
+// décide du regroupement ; la valeur zéro laisse chaque carte seule.
+//
+// Modes : le mode du match (PairMode, via modeLabelForFilter). Repli sur DefaultLabel (EN) si
+// le nom de la langue par défaut est absent.
+func FilterRowsByCascade(rows []canonical.PlayerMatchRow, c domain.CascadeFilter, groups domain.GroupesDeCartes) []canonical.PlayerMatchRow {
+	expSet := make(map[string]struct{}, len(c.ExperienceTypes))
+	for _, e := range c.ExperienceTypes {
 		expSet[e] = struct{}{}
 	}
-	plSet := make(map[string]struct{}, len(playlists))
-	for _, p := range playlists {
+	plSet := make(map[string]struct{}, len(c.Playlists))
+	for _, p := range c.Playlists {
 		plSet[p] = struct{}{}
 	}
-	mapSet := make(map[string]struct{}, len(maps))
-	for _, m := range maps {
+	mapSet := make(map[string]struct{}, len(c.Maps))
+	for _, m := range c.Maps {
 		mapSet[m] = struct{}{}
 	}
-	modeSet := make(map[string]struct{}, len(modes))
-	for _, m := range modes {
+	modeSet := make(map[string]struct{}, len(c.Modes))
+	for _, m := range c.Modes {
 		modeSet[m] = struct{}{}
 	}
 	out := rows[:0:0]
@@ -371,7 +370,7 @@ func FilterRowsByCascade(rows []canonical.PlayerMatchRow, expTypes, playlists, m
 			}
 		}
 		if len(mapSet) > 0 {
-			if _, ok := mapSet[assetLabelForFilter(r.Summary.Map)]; !ok {
+			if _, ok := mapSet[mapLabelForFilter(r.Summary.Map, groups)]; !ok {
 				continue
 			}
 		}
@@ -386,17 +385,29 @@ func FilterRowsByCascade(rows []canonical.PlayerMatchRow, expTypes, playlists, m
 }
 
 // assetLabelForFilter retourne le label d'un AssetReference utilisé comme clé de filtre.
-// Préfère Labels["fr"] (COALESCE(name_fr, name) — même source que filtersResolve)
-// sur DefaultLabel (anglais pur) pour alignement avec les valeurs du frontend.
+// Clé de filtre : le nom de la langue par défaut (Labels[i18n.Default], même source que filtersResolve)
+// plutôt que DefaultLabel (anglais pur), pour s'aligner sur les valeurs des options du frontend.
 func assetLabelForFilter(ref *canonical.AssetReference) string {
 	if ref == nil {
 		return ""
 	}
-	if fr, ok := ref.Labels["fr"]; ok && fr != "" {
-		return fr
+	if v, ok := ref.Labels[string(i18n.Default)]; ok && v != "" {
+		return v
 	}
 	return ref.DefaultLabel
 }
 
 // loadAllPlayers charge les matchs du joueur principal + des coéquipiers en
 // parallèle. Capability absente -> exclu de perPlayer + ajouté à capGaps.
+
+// mapLabelForFilter est le libellé de carte comparé au filtre de cartes : celui de la carte de BASE
+// pour une carte de groupe (groups.Libelle, mêmes valeurs que les options du filtre), sinon le libellé
+// propre de la carte (assetLabelForFilter).
+func mapLabelForFilter(ref *canonical.AssetReference, groups domain.GroupesDeCartes) string {
+	if ref != nil {
+		if base, ok := groups.Libelle(ref.ID, i18n.Default); ok {
+			return base
+		}
+	}
+	return assetLabelForFilter(ref)
+}

@@ -17,13 +17,13 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
+	mediapkg "levelup/go-api/internal/media"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -35,6 +35,11 @@ import (
 type HealthcheckOptions struct {
 	RepoRoot string
 	Verbose  bool
+	// DBProfilesPath et AppSettingsPath : chemins RÉSOLUS par la configuration (LEVELUP_DB_PROFILES /
+	// LEVELUP_APP_SETTINGS, ou la tête de DataRoot / du dépôt). Vides : ceux du PathResolver, ce
+	// qui ignore une variable explicite et rend un faux « introuvable » (Docker prod).
+	DBProfilesPath  string
+	AppSettingsPath string
 }
 
 // HealthReport résume le résultat du diagnostic.
@@ -71,7 +76,14 @@ func RunHealthcheck(ctx context.Context, opts HealthcheckOptions) HealthReport {
 	checks = append(checks, checkDirExists("repo_root", opts.RepoRoot))
 
 	// 3. Fichiers de configuration
-	for _, cfg := range []string{pr.DBProfilesPath(), pr.AppSettingsPath()} {
+	dbProfiles, appSettings := opts.DBProfilesPath, opts.AppSettingsPath
+	if dbProfiles == "" {
+		dbProfiles = pr.DBProfilesPath()
+	}
+	if appSettings == "" {
+		appSettings = pr.AppSettingsPath()
+	}
+	for _, cfg := range []string{dbProfiles, appSettings} {
 		checks = append(checks, checkFileExists(filepath.Base(cfg), cfg))
 	}
 
@@ -90,7 +102,9 @@ func RunHealthcheck(ctx context.Context, opts HealthcheckOptions) HealthReport {
 	// Leur absence n'empêche pas le serveur de tourner mais désactive le
 	// transcoding des MKV multipistes (rendu visible ici plutôt qu'en échec
 	// silencieux au premier upload).
-	checks = append(checks, checkBinary("ffmpeg"), checkBinary("ffprobe"))
+	checks = append(checks,
+		checkBinary(mediapkg.FFmpegBinary, mediapkg.ResolveFFmpeg),
+		checkBinary(mediapkg.FFprobeBinary, mediapkg.ResolveFFprobe))
 
 	ok := true
 	for _, c := range checks {
@@ -192,24 +206,23 @@ func checkFileExists(name, path string) HealthCheck {
 	return HealthCheck{Name: name, OK: true, Message: "présent"}
 }
 
-// lookupBinary résout un exécutable dans le PATH. Point de vérité unique de la
-// détection binaire, partagé entre le healthcheck (checkBinary) et l'inspection
-// de l'outillage média (media_tooling.go) — évite de dupliquer exec.LookPath
-// (CLAUDE.md règle ≤2 copies).
-func lookupBinary(name string) (path string, ok bool) {
-	p, err := exec.LookPath(name)
+// lookupBinary rend le chemin d'un binaire média par son résolveur unique (media.ResolveFFmpeg /
+// media.ResolveFFprobe). Point de vérité partagé entre le healthcheck (checkBinary) et l'inspection
+// de l'outillage média (media_tooling.go) — pas de second chemin de recherche.
+func lookupBinary(resolve func() (string, error)) (path string, ok bool) {
+	p, err := resolve()
 	if err != nil {
 		return "", false
 	}
 	return p, true
 }
 
-// checkBinary vérifie qu'un exécutable est présent dans le PATH. ffmpeg/ffprobe
-// sont requis pour le transcoding média HLS et la génération des miniatures.
-func checkBinary(name string) HealthCheck {
-	path, ok := lookupBinary(name)
+// checkBinary vérifie qu'un binaire média est résolu. ffmpeg/ffprobe sont requis pour le
+// transcoding média HLS et la génération des miniatures.
+func checkBinary(name string, resolve func() (string, error)) HealthCheck {
+	path, ok := lookupBinary(resolve)
 	if !ok {
-		return HealthCheck{Name: name, OK: false, Message: "introuvable dans le PATH — transcoding média désactivé"}
+		return HealthCheck{Name: name, OK: false, Message: "introuvable (LEVELUP_FFMPEG_DIR, dossier de l'exécutable, PATH) — transcoding média désactivé"}
 	}
 	return HealthCheck{Name: name, OK: true, Message: path}
 }

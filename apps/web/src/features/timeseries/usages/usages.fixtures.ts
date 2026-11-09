@@ -1,7 +1,6 @@
 /**
  * usages.fixtures.ts — un périmètre solo témoin au format du contrat, tiré des chiffres
- * d'illustration de la maquette v4 (`.ai/V7.5/MAQUETTE_TIMESERIES_USAGES_2026-10-05.html` ; relevés
- * `.ai/V7.5/MESURES_TIMESERIES_USAGES_2026-10-05.md`) : bilan 111 / 87 bonus et 229 / 231 armes
+ * d'illustration de la maquette v4 : bilan 111 / 87 bonus et 229 / 231 armes
  * spéciales, vies 1 558 près / 301 seul (1 250 / 262 frags, 59 écartées), mur 52 · 0 · 32 pour moi et
  * 146 · 7 · 151 pour le reste de mon camp, capteur 6 · 1 · 54, grappin 84 et propulseur 65 lâchés.
  * Quatre matchs suffisent à porter ces comptes (le bloc publie des totaux) ; les cartes sont trois
@@ -12,10 +11,10 @@ import type { SoloEmpriseBlock, TimeseriesLivesNearTeammate, TimeseriesMatchRow 
 export const ME = 'xj'
 
 export const MATCH_ROWS = [
-  { match_id: 'm1', start_time: '2026-07-03T19:00:00Z', map_name: 'Carte Alpha', map_name_fr: 'Carte Alpha', outcome: 2, playlist_name: 'Liste témoin', dominance_flag: 1 },
-  { match_id: 'm2', start_time: '2026-07-11T19:10:00Z', map_name: 'Carte Alpha', outcome: 3, playlist_name: 'Liste témoin' },
-  { match_id: 'm3', start_time: '2026-08-27T20:00:00Z', map_name: 'Carte Bravo', map_name_fr: 'Carte Bravo', outcome: 2, playlist_name: 'Liste témoin' },
-  { match_id: 'm4', start_time: '2026-09-22T21:00:00Z', map_name: 'Carte Charlie', map_name_fr: 'Carte Charlie (fr)', outcome: 4, playlist_name: 'Liste témoin' },
+  { match_id: 'm1', start_time: '2026-07-03T19:00:00Z', map_name: 'Carte Alpha', map_label: 'Carte Alpha', outcome: 2, playlist_name: 'Liste témoin', dominance_flag: 1 },
+  { match_id: 'm2', start_time: '2026-07-11T19:10:00Z', map_name: 'Carte Alpha', map_label: 'Carte Alpha', outcome: 3, playlist_name: 'Liste témoin' },
+  { match_id: 'm3', start_time: '2026-08-27T20:00:00Z', map_name: 'Carte Bravo', map_label: 'Carte Bravo', outcome: 2, playlist_name: 'Liste témoin' },
+  { match_id: 'm4', start_time: '2026-09-22T21:00:00Z', map_name: 'Carte Charlie', map_label: 'Carte Charlie (fr)', outcome: 4, playlist_name: 'Liste témoin' },
 ] as unknown as TimeseriesMatchRow[]
 
 const count = (us: number, them: number) => ({ us, them })

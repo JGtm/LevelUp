@@ -18,7 +18,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // teinteCoupe : le rouge des pixels que la coupe emporterait. Opaque — une transparence les

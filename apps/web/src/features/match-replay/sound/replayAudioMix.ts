@@ -57,14 +57,21 @@ export const MIX_SAMPLE_RATE = 48_000
 export const MIX_CHANNELS = 2
 
 /**
+ * L'extension des sons livrés : Opus en conteneur Ogg (encodés par `cmd/sounds-encode`). Les URL
+ * de son ne se composent qu'ici ; le garde-rail `replaySoundAssets.guard.test.ts` rejoue ce chemin
+ * contre le dossier d'assets.
+ */
+const SOUND_FILE_EXT = '.ogg'
+
+/**
  * soundUrlOf — L'URL d'un stem de son, et LE SEUL ENDROIT qui la fabrique.
  *
- * Le littéral `staticAssetURL('sound', stem, '.wav')` en était à sa TROISIÈME copie (deux dans
+ * Le littéral `staticAssetURL('sound', stem, <extension>)` en était à sa TROISIÈME copie (deux dans
  * `soundURLsFor`, une ici) : la règle CLAUDE.md n° 6 impose alors de centraliser. Les deux
  * copies du lecteur consomment desormais cette fonction.
  */
 export function soundUrlOf(stem: string): string {
-  return staticAssetURL('sound', stem, '.wav')
+  return staticAssetURL('sound', stem, SOUND_FILE_EXT)
 }
 
 /**

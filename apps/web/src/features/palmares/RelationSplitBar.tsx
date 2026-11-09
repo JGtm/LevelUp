@@ -8,7 +8,7 @@
  */
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
-import type { Locale } from '@/lib/i18n/locale'
+import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n/locale'
 
 interface RelationSplitBarProps {
   leftValue: number
@@ -29,7 +29,7 @@ export function RelationSplitBar({
   rightToken,
   leftLabel,
   rightLabel,
-  locale = 'fr',
+  locale = DEFAULT_LOCALE,
 }: RelationSplitBarProps) {
   const total = leftValue + rightValue
   const leftPct = total > 0 ? Math.round((leftValue / total) * 100) : 50

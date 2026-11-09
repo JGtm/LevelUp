@@ -19,7 +19,7 @@ import (
 	"runtime"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // relier resout arme -> `snd!` -> evenements a partir du rapport JSON du mode `map`.

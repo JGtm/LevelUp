@@ -47,7 +47,7 @@ func TestBuildPoolConfig_HaloInfinite(t *testing.T) {
 	}
 }
 
-// ── ResolveMediaDeleteSource ─────────────────────────────────────────────────
+// ── resolveMediaDeleteSource ─────────────────────────────────────────────────
 
 // TestResolveMediaDeleteSource couvre la matrice env{unset,"1","0"} ×
 // store{nil,true,false} × isProd{true,false} : env prime, sinon store, sinon isProd.
@@ -75,9 +75,9 @@ func TestResolveMediaDeleteSource(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := ResolveMediaDeleteSource(tc.envRaw, tc.storeV, tc.isProd)
+			got := resolveMediaDeleteSource(tc.envRaw, tc.storeV, tc.isProd)
 			if got != tc.want {
-				t.Fatalf("ResolveMediaDeleteSource(%q, %v, %v) = %v, want %v",
+				t.Fatalf("resolveMediaDeleteSource(%q, %v, %v) = %v, want %v",
 					tc.envRaw, tc.storeV, tc.isProd, got, tc.want)
 			}
 		})

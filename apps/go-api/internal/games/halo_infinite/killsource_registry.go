@@ -28,8 +28,9 @@ package halo_infinite
 
 import (
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
-	"levelup/go-api/internal/games/halo_infinite/film/killicon"
+
+	"github.com/JGtm/LevelUp/libs/film/damagetag"
+	"github.com/JGtm/LevelUp/libs/film/killicon"
 )
 
 // keyEnvironment est l'entree de registre qui porte la chute et l'environnement. Une

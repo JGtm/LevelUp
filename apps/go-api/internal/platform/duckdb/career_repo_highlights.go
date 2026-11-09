@@ -13,6 +13,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // buildHighlightFilterClause traduit `domain.CareerHighlightFilters` en
@@ -104,7 +105,7 @@ func (r *CareerRepo) loadHighlightCandidates(
 	ctx context.Context, extraClause string, extraArgs []any,
 ) ([]highlightSharedRow, map[string]highlightPMEEntry, error) {
 	pmes := make(map[string]highlightPMEEntry)
-	pmeRows, err := r.pdb.Player.QueryRecovered(ctx, Q9TopMatchesPlayer)
+	pmeRows, err := r.pdb.Player.QueryRecovered(ctx, Q9bHighlightPlayer)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loadHighlightCandidates: phase A: %w", err)
 	}
@@ -284,33 +285,44 @@ func (r *CareerRepo) GetHighlightPool(ctx context.Context) ([]domain.HighlightMa
 	return results, nil
 }
 
-// LoadModeTranslationsFR retourne le mapping EN→FR depuis metadata.mode_name_tr
-// (lang='fr'). Best-effort : silencieusement vide si Metadata absent ou table
+// LoadModeTranslations retourne le mapping EN→langue loc depuis metadata.mode_name_tr. Best-effort : silencieusement vide si Metadata absent ou table
 // non trouvée. Le SQL vit dans mode_name_tr.go, source unique du littéral
 // (garde-rail no_mode_name_tr_literal_test.go).
-func (r *CareerRepo) LoadModeTranslationsFR(ctx context.Context, modeENs []string) (map[string]string, error) {
+func (r *CareerRepo) LoadModeTranslations(ctx context.Context, loc i18n.Locale, modeENs []string) (map[string]string, error) {
 	if len(modeENs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return nil, nil
 	}
-	out, err := queryModeNameTrFR(ctx, r.pdb.Metadata, modeENs)
+	out, err := queryModeNameTr(ctx, r.pdb.Metadata, loc, modeENs)
 	if err != nil {
-		return nil, fmt.Errorf("CareerRepo.LoadModeTranslationsFR: %w", err)
+		return nil, fmt.Errorf("CareerRepo.LoadModeTranslations: %w", err)
 	}
 	return out, nil
 }
 
-// LoadPlaylistAssetTranslationsFR retourne le mapping playlist_id→nom FR via
+// LoadPlaylistAssetTranslations retourne le mapping playlist_id→nom dans la langue loc via
 // metadata.asset_translations. Best-effort : nil silencieux si absent.
-// Calqué sur enrichLUSRPlaylistNames + SquadRepo.LoadAssetTranslationsFR.
-func (r *CareerRepo) LoadPlaylistAssetTranslationsFR(ctx context.Context, playlistIDs []string) (map[string]string, error) {
+// Calqué sur enrichLUSRPlaylistNames + SquadRepo.LoadAssetTranslations.
+func (r *CareerRepo) LoadPlaylistAssetTranslations(ctx context.Context, loc i18n.Locale, playlistIDs []string) (map[string]string, error) {
 	if len(playlistIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return nil, nil
 	}
 	out, err := NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(
-		ctx, "playlist", playlistIDs, PreferredLangsForLocale("fr"),
+		ctx, "playlist", playlistIDs, PreferredLangsForLocale(string(loc)),
 	)
 	if err != nil && isTableNotFoundErr(err) {
 		return nil, nil
 	}
 	return out, err
+}
+
+// topMatchDominancePriority retourne la valeur du dominance_flag si présent
+// dans le set prioritaire, sinon 0 : la priorité d'un badge dans le tri des
+// matchs marquants (WIN : 5, 3, 1 ; LOSS : 4, 2).
+func topMatchDominancePriority(flag int, priorities []int) int {
+	for _, p := range priorities {
+		if flag == p {
+			return flag
+		}
+	}
+	return 0
 }

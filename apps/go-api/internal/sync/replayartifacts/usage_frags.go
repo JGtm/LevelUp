@@ -15,7 +15,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // LireFragsDuFilDesMorts lit, pour un lot de matchs, les frags de `match_kill_events_latest`. Rend

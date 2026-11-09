@@ -40,8 +40,8 @@ export interface EngagementSnapshot {
 // ─── Section B ──────────────────────────────────────────────────────────────
 
 export interface SkillRatingSnapshot {
+  /** Nom du tier dans la langue de la requête ("Diamond", "Diamant"). */
   tier_name: string
-  tier_name_fr: string
   sub_tier: number
   label: string
   mu: number
@@ -101,10 +101,9 @@ export interface SuggestedChallenge {
   arc_id?: string
   // V2 §3 : hydratés côté backend depuis le template prestige. Permettent
   // à l'UI d'afficher un libellé humain sans charger le catalogue séparément.
-  label_fr?: string
-  label_en?: string
-  description_fr?: string
-  description_en?: string
+  /** Libellé et description du template, dans la langue de la requête. */
+  label?: string
+  description?: string
 }
 
 // ─── PlayerProfile complet ──────────────────────────────────────────────────

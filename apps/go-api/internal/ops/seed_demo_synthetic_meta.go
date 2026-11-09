@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -80,30 +81,33 @@ func writeSyntheticMetadata(ctx context.Context, metaPath string) error {
 	return nil
 }
 
-// insertSyntheticMedals peuple medal_definitions pour les medal_name_id du corpus
-// (le seed migration ne pose que la médaille custom Vengeur). INSERT-or-ignore sur
-// la PK medal_name_id (table fraîche → pas de surface ART concurrente).
+// insertSyntheticMedals peuple medal_definitions (colonnes non textuelles) et medal_translations
+// (noms par langue, UpsertMedalTexts) pour les medal_name_id du corpus (le seed migration ne pose
+// que la médaille custom Vengeur). INSERT-or-ignore sur la PK medal_name_id (table fraîche → pas
+// de surface ART concurrente).
 func insertSyntheticMedals(ctx context.Context, db *sql.DB) error {
 	type med struct {
 		id              int64
-		fr, en          string
+		name            i18n.Text
 		diffIdx, typIdx int
 	}
 	meds := []med{
-		{synthMedalIDs[0], "Double meurtre", "Double Kill", 0, 2},
-		{synthMedalIDs[1], "Triple meurtre", "Triple Kill", 1, 2},
-		{synthMedalIDs[2], "Série de meurtres", "Killing Spree", 0, 0},
-		{synthMedalIDs[3], "Tir à la tête", "Headshot", 0, 4},
+		{synthMedalIDs[0], i18n.Text{i18n.LocaleFR: "Double meurtre", i18n.LocaleEN: "Double Kill"}, 0, 2},
+		{synthMedalIDs[1], i18n.Text{i18n.LocaleFR: "Triple meurtre", i18n.LocaleEN: "Triple Kill"}, 1, 2},
+		{synthMedalIDs[2], i18n.Text{i18n.LocaleFR: "Série de meurtres", i18n.LocaleEN: "Killing Spree"}, 0, 0},
+		{synthMedalIDs[3], i18n.Text{i18n.LocaleFR: "Tir à la tête", i18n.LocaleEN: "Headshot"}, 0, 4},
 	}
 	for _, m := range meds {
 		if _, err := db.ExecContext(ctx, `
 			INSERT INTO medal_definitions
-				(medal_name_id, name_fr, name_en, description_fr, description_en,
-				 is_custom, difficulty_index, type_index, personal_score)
-			VALUES (?, ?, ?, '', '', FALSE, ?, ?, 0)
+				(medal_name_id, is_custom, difficulty_index, type_index, personal_score)
+			VALUES (?, FALSE, ?, ?, 0)
 			ON CONFLICT (medal_name_id) DO NOTHING`,
-			m.id, m.fr, m.en, m.diffIdx, m.typIdx); err != nil {
+			m.id, m.diffIdx, m.typIdx); err != nil {
 			return fmt.Errorf("insert medal %d: %w", m.id, err)
+		}
+		if err := UpsertMedalTexts(ctx, db, m.id, m.name, nil); err != nil {
+			return fmt.Errorf("medal %d texts: %w", m.id, err)
 		}
 	}
 	// Renseigner difficulty/medal_type (colonnes ajoutées par enrich_medal_definitions_v2)
@@ -133,24 +137,24 @@ func insertSyntheticCareerRanks(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("create career_ranks: %w", err)
 	}
 	type rk struct {
-		id      int
-		titleEN string
-		tier    string
-		grade   int
-		xp      int
+		id    int
+		title i18n.Text // colonne title_en : seule l'anglais est seedée
+		tier  string
+		grade int
+		xp    int
 	}
 	ranks := []rk{
-		{40, "Corporal", tierNameBronze, 3, 400000},
-		{120, "Sergeant", "Silver", 1, 1200000},
-		{200, "Lieutenant", "Gold", 2, 2400000},
-		{272, "Hero", "Onyx", 1, 8000000},
+		{40, i18n.FromColumns("Corporal", ""), tierNameBronze, 3, 400000},
+		{120, i18n.FromColumns("Sergeant", ""), "Silver", 1, 1200000},
+		{200, i18n.FromColumns("Lieutenant", ""), "Gold", 2, 2400000},
+		{272, i18n.FromColumns("Hero", ""), "Onyx", 1, 8000000},
 	}
 	for _, r := range ranks {
 		icon := fmt.Sprintf("career_rank/rank_%d.png", r.id)
 		if _, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO career_ranks
 			(rank_id, title_en, subtitle_en, tier, tier_type, grade, xp_required, icon_path, large_icon_path, adornment_icon_path)
 			VALUES (?, ?, '', ?, 'Normal', ?, ?, ?, ?, '')`,
-			r.id, r.titleEN, r.tier, r.grade, r.xp, icon, icon); err != nil {
+			r.id, r.title[i18n.LocaleEN], r.tier, r.grade, r.xp, icon, icon); err != nil {
 			return fmt.Errorf("insert rank %d: %w", r.id, err)
 		}
 	}

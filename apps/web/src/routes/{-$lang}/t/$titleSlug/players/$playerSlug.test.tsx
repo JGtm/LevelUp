@@ -3,9 +3,9 @@
  * de la dernière session solo ne tournent que là où la barre solo est rendue
  * (lot perf L4a, D4.4, 2026-09-23).
  *
- * Mesure d'origine (`.ai/V7.5/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md` C6) : un
+ * Mesure d'origine : un
  * POST /filters/resolve solo sur TOUTES les pages joueur, alors que seules les
- * pages Stats le lisent. Oracle : les POST reçus par MSW. NavL2 est neutralisée —
+ * pages Stats le lisent. Oracle : les POST reçus par MSW. SoloFiltersBar et SectionHeader sont neutralisées —
  * elle monte FilterOmnibar et son propre aperçu, hors sujet : on ne compte ici que
  * les résolutions de PlayerLayout.
  */
@@ -44,7 +44,8 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   }
 })
 
-vi.mock('@/components/shell/NavL2', () => ({ NavL2: () => null }))
+vi.mock('@/components/shell/SoloFiltersBar', () => ({ SoloFiltersBar: () => null }))
+vi.mock('@/components/shell/SectionHeader', () => ({ SectionHeader: () => null }))
 
 // Import APRÈS les mocks (le module lit createFileRoute au chargement).
 import { Route } from './$playerSlug'

@@ -14,7 +14,7 @@ type AchievementsRepository interface {
 	GetPlayerAchievements(ctx context.Context) ([]domain.PlayerAchievementRow, error)
 }
 
-// MetadataAchievementsRepository fournit le référentiel bilingue d'achievements.
+// MetadataAchievementsRepository fournit le référentiel d'achievements (textes par langue).
 // Interface séparée de MetadataRepository (interface segregation) : le service
 // achievements ne dépend que des méthodes dont il a besoin, pas du référentiel
 // saisons/waypoint complet. Implémenté par platform/duckdb.MetadataRepo

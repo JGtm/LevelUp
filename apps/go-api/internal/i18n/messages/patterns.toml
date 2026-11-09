@@ -1,0 +1,6 @@
+# Détection de motifs (patterns) : libellés de repli composés par le serveur.
+
+# Carte non résolue dans le référentiel : l'identifiant tronqué aux 8 premiers caractères.
+[patterns.unknown_map]
+fr = "Carte inconnue ({id})"
+en = "Unknown map ({id})"

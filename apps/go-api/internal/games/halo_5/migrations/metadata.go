@@ -47,7 +47,6 @@ func metadataStepNames() []string {
 		"h5_add_xbox_achievement_definitions",
 		"h5_create_milestone_catalog",
 		"h5_milestone_catalog_add_condition_locales",
-		"h5_seed_milestone_catalog",
 		"h5_add_asset_translations",
 		"h5_add_medal_definitions",
 		"h5_add_weapon_labels",
@@ -64,6 +63,15 @@ func metadataStepNames() []string {
 		// doit suivre h5_add_weapon_registry, créateur de la table.
 		purgeWeaponFamiliesLabelsName,
 		"h5_add_team_colors",
+		// Il retire les colonnes _fr/_en que tous les steps ci-dessus ont pu créer ou remplir
+		// (ADR 0040 D-5, plan i18n 8.3).
+		migration.DefinitionTextsStepName,
+		// Dernier : le seed des jalons écrit titre et condition lisible dans asset_translations
+		// (créée plus haut) sur une table dont le step précédent a retiré les colonnes appariées.
+		"h5_seed_milestone_catalog",
+		// Noms d'armes par langue (ADR 0040 D-5, plan i18n 8.4) : après h5_add_weapon_labels et
+		// h5_weapon_labels_add_icon, dont il reconstruit la table.
+		migration.WeaponNamesStepName,
 	}
 }
 
@@ -90,6 +98,35 @@ func purgeWeaponFamiliesLabelsStep() []migration.Migration {
 		slog.ErrorContext(migration.BootCtx(),
 			"migration h5: step du registre global introuvable, metadata halo_5 incomplète",
 			"name", purgeWeaponFamiliesLabelsName, "titleSlug", halo5.TitleSlug)
+		return nil
+	}
+	return []migration.Migration{m}
+}
+
+// definitionTextsStep rend LE MÊME step que celui du registre global (colonnes _fr/_en des
+// définitions -> tables par langue), à placer après tous les steps qui créent ou remplissent ces
+// colonnes : le set possède le target metadata, aucun step du registre global ne s'y applique de
+// lui-même.
+func definitionTextsStep() []migration.Migration {
+	m, ok := migration.ByName(migration.DefinitionTextsStepName)
+	if !ok {
+		slog.ErrorContext(migration.BootCtx(),
+			"migration h5: step du registre global introuvable, textes de définitions non migrés",
+			"name", migration.DefinitionTextsStepName, "titleSlug", halo5.TitleSlug)
+		return nil
+	}
+	return []migration.Migration{m}
+}
+
+// weaponNamesStep rend LE MÊME step que celui du registre global (noms d'armes par langue,
+// colonnes name_en/name_fr de weapon_labels retirées), pour la même raison que
+// definitionTextsStep : le set possède le target metadata.
+func weaponNamesStep() []migration.Migration {
+	m, ok := migration.ByName(migration.WeaponNamesStepName)
+	if !ok {
+		slog.ErrorContext(migration.BootCtx(),
+			"migration h5: step du registre global introuvable, noms d'armes non migrés",
+			"name", migration.WeaponNamesStepName, "titleSlug", halo5.TitleSlug)
 		return nil
 	}
 	return []migration.Migration{m}
@@ -339,7 +376,7 @@ func MetadataSteps() []migration.Migration {
 				`)
 			},
 		},
-	}, purgeWeaponFamiliesLabelsStep()...)
+	}, append(append(purgeWeaponFamiliesLabelsStep(), definitionTextsStep()...), weaponNamesStep()...)...)
 }
 
 // Set construit le TitleMigrationSet d'Halo 5 : isolation PARTIELLE via OwnsTarget.

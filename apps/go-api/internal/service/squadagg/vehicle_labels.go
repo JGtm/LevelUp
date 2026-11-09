@@ -1,7 +1,7 @@
 package squadagg
 
 // vehicle_labels.go — LE NOM DES FAMILLES DE VEHICULE QUE LE TITRE QUALIFIE (ressource véhicules de
-// l'Emprise, plan `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3).
+// l'Emprise).
 //
 // Un nom de famille de véhicule est un NOM PROPRE du jeu (Warthog, Banshee) : il ne se traduit pas
 // et la clé publiée par le calque EST ce nom ; le client l'affiche depuis la clé. Seules les
@@ -14,6 +14,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/i18n"
 )
 
 // VehicleFamilyLabels — famille de véhicule qualifiée -> libellé dans la langue de la requête. Map
@@ -29,12 +30,9 @@ func VehicleFamilyLabels(ctx context.Context, repoRoot, titleSlug, locale string
 			"err", err, "titleSlug", titleSlug)
 		return out
 	}
-	frPreferred := locale != "en"
+	labelLocale := i18n.Parse(locale)
 	for family, info := range cat.VehicleFamilies {
-		label := info.En
-		if frPreferred && info.Fr != "" {
-			label = info.Fr
-		}
+		label := replaylabels.TexteDepuisFilm(info.Label).Pick(labelLocale)
 		if label != "" {
 			out[family] = label
 		}

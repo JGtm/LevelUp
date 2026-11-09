@@ -20,15 +20,18 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/domain/objectiveevent"
-	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
+	"github.com/JGtm/LevelUp/libs/film/playerposition"
 )
 
 // outcomeColors : couleur hex par code d'outcome Halo Infinite.
@@ -492,32 +495,19 @@ func perfColor(score float64) string {
 	}
 }
 
-// formatDateFRLong formate une date en "JJ mois AAAA, HH:MM" (FR long).
-// Distinct de formatDateFR (match_history) qui utilise le format court.
-func formatDateFRLong(t time.Time) string {
-	return formatDateLong(t, "fr")
-}
-
-// formatDateLong formate une date en "JJ mois AAAA, HH:MM", locale-aware (mois
-// abrégés FR ou EN). Le header Match View figeait la date en FR sous UI EN (GH-9).
-// Sortie FR strictement identique à l'ancienne formatDateFRLong.
+// formatDateLong formate une date en "JJ mois AAAA, HH:MM", locale-aware (mois abrégés du
+// catalogue des messages, format.toml). Le header Match View figeait la date en FR sous UI EN
+// (GH-9).
 func formatDateLong(t time.Time, locale string) string {
-	monthsFR := [...]string{
-		"janv.", "févr.", "mars", "avr.", "mai", "juin",
-		"juil.", "août", "sept.", "oct.", "nov.", "déc.",
-	}
-	monthsEN := [...]string{
-		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-	}
-	months := monthsFR
-	if locale == "en" {
-		months = monthsEN
-	}
+	loc := i18n.Parse(locale)
 	local := t.Local()
-	return fmt.Sprintf("%02d %s %d, %02d:%02d",
-		local.Day(), months[local.Month()-1], local.Year(),
-		local.Hour(), local.Minute())
+	return i18n.Msg(loc, "format.date_long", i18n.Params{
+		"day":    fmt.Sprintf("%02d", local.Day()),
+		"mon":    i18n.Msg(loc, "format.month_short."+strconv.Itoa(int(local.Month())), nil),
+		"year":   local.Year(),
+		"hour":   fmt.Sprintf("%02d", local.Hour()),
+		"minute": fmt.Sprintf("%02d", local.Minute()),
+	})
 }
 
 func sortInts(s []int) {

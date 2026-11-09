@@ -21,7 +21,7 @@ import (
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
 	auth_platform "levelup/go-api/internal/platform/auth"
-	"levelup/go-api/internal/platform/halo"
+	"levelup/go-api/internal/platform/auth/tokencache"
 	"levelup/go-api/internal/platform/session"
 )
 
@@ -346,7 +346,7 @@ func (h *XboxOAuthHandler) persistRefreshTokenToStore(r *http.Request, xuid, gam
 	// (Spartan/Clearance, TTL 50min) pour que les fetchs live (career, challenges,
 	// battle pass, identité Explorer) repartent IMMÉDIATEMENT sur les tokens frais,
 	// sans attendre l'expiration du cache. Cf. onRotated (même invalidation).
-	halo.InvalidateCachedPlayerTokens(xuid)
+	tokencache.InvalidateCachedPlayerTokens(xuid)
 }
 
 // tryAcquireXSTSForRTA best-effort, retourne nil si l'acquisition échoue (non bloquant).

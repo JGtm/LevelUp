@@ -57,9 +57,10 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/atomicfile"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 
 	"context"
 )
@@ -306,7 +307,7 @@ func EcrireSidecarRaster(path string, s domain.TacticalRasterSidecar) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("creation du dossier des rasters: %w", err)
 	}
-	if err := atomicfile.WriteFile(path, raw, permSidecarRaster); err != nil {
+	if err := atomicfile.WriteFile(context.Background(), path, raw, permSidecarRaster); err != nil {
 		return fmt.Errorf("ecriture du sidecar: %w", err)
 	}
 	return nil

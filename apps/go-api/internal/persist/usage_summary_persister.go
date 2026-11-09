@@ -37,7 +37,7 @@ import (
 	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // UsageSummaryPersister ecrit une passe de resume d usage dans shared_matches_v2.duckdb.

@@ -128,7 +128,6 @@ type CommendationsPageRequest struct {
 // Chargée depuis metadata.citation_mappings (Q39).
 type CitationMedalMapping struct {
 	NameNorm    string
-	NameDisplay string
 	MedalID     int64
 	MappingType string // medal | composite | pve
 }
@@ -137,7 +136,6 @@ type CitationMedalMapping struct {
 // Chargée depuis metadata.citation_mappings (Q40).
 type CitationFullMapping struct {
 	NameNorm          string
-	NameDisplay       string
 	MappingType       string  // medal|stat|pve_stat|weapon_stat|award|custom|composite
 	MedalID           *int64  // medal_id simple (type medal)
 	MedalIDs          *string // CSV de medal_ids (type medal multi)

@@ -10,6 +10,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 )
 
@@ -130,20 +131,62 @@ func (r *CareerRepo) GetRivalTimeline(ctx context.Context, rivalXUID string, sco
 	defer rows.Close()
 
 	var out []domain.RelationDuelRawRow
+	var names []duelNames
 	for rows.Next() {
 		var (
 			row       domain.RelationDuelRawRow
 			startTime sql.NullTime
+			nm        duelNames
 		)
-		if err := rows.Scan(&row.MatchID, &startTime, &row.Result, &row.KillsOnRival, &row.DeathsByRival, &row.Mode, &row.MapName); err != nil {
+		if err := rows.Scan(&row.MatchID, &startTime, &row.Result, &row.KillsOnRival, &row.DeathsByRival, &row.Mode, &row.MapName, &nm.en, &nm.fr, &nm.id, &nm.pairID); err != nil {
 			return nil, fmt.Errorf("CareerRepo.GetRivalTimeline scan: %w", err)
 		}
 		if startTime.Valid {
 			row.StartTime = startTime.Time
 		}
 		out = append(out, row)
+		names = append(names, nm)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	r.nameDuels(ctx, out, names)
+	return out, nil
+}
+
+// duelNames porte, pour une ligne de duel, ce qui nomme sa carte (nom au registre EN et FR, identifiant) et
+// son mode (identifiant de la paire).
+type duelNames struct{ en, fr, id, pairID string }
+
+// nameDuels nomme la carte et le mode de chaque duel dans la langue de la requête : la carte par nomsDeCarte
+// (map_labels.go), le mode par PairNamesIn (pair_names_locale.go). Le nom lu par la requête (registre FR, à
+// défaut EN pour la carte ; pair_name EN pour le mode) est le repli d'un nom sans traduction. Best-effort :
+// sans metadata la ligne garde son nom du registre.
+func (r *CareerRepo) nameDuels(ctx context.Context, rows []domain.RelationDuelRawRow, names []duelNames) {
+	if r.pdb == nil || len(rows) == 0 {
+		return
+	}
+	loc := i18n.FromContext(ctx)
+	ids := make([]string, 0, len(rows))
+	seen := make(map[string]struct{}, len(rows))
+	for _, n := range names {
+		if _, ok := seen[n.id]; !ok && n.id != "" {
+			seen[n.id] = struct{}{}
+			ids = append(ids, n.id)
+		}
+	}
+	translations := traductionsDeCartes(ctx, r.pdb.Metadata, ids)
+	pairs := make([]PairRef, len(rows))
+	for i := range rows {
+		registre := i18n.FromColumns(names[i].en, names[i].fr)
+		if name := nomsDeCarte(registre, translations[names[i].id]).Pick(loc); name != "" {
+			rows[i].MapName = name
+		}
+		pairs[i] = PairRef{ID: names[i].pairID, Name: rows[i].Mode}
+	}
+	for i, mode := range PairNamesIn(ctx, r.pdb.Metadata, pairs) {
+		rows[i].Mode = mode
+	}
 }
 
 // buildRivalTimelineQuery assemble Q30 + args selon le scope.

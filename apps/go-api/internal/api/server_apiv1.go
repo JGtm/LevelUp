@@ -38,14 +38,15 @@ import (
 	"levelup/go-api/internal/games"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
-	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -107,6 +108,9 @@ type apiV1Deps struct {
 	jobStore              *jobs_platform.Store
 	titleRegistry         *titlePkg.Registry
 	backupScheduler       *duckdbbackup.Scheduler
+	// browserLogin : connexion par le navigateur (profil desktop, nil ailleurs) ; ses deux routes se
+	// montent l'une sous /api/v1, l'autre à la racine (server_desktop.go).
+	browserLogin *handlers.BrowserLoginHandler
 	// healthHandler : sonde publique (racine) ET détail admin (/admin/health).
 	healthHandler *handlers.HealthHandler
 	// humaSharedConfig : LE document OpenAPI PARTAGÉ (V72-01 / H1). Toutes les routes
@@ -353,13 +357,39 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// est XboxSSOLinkStrategy (login direct via XUID + création user si nouveau).
 	// Hors mode xbox, c'est PasswordLinkStrategy (LinkIdentity sur user déjà connecté).
 	authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, tokenProvider)
+	// Un SEUL magasin de jetons par chemin (authStore, ADR 0023), construit hors de
+	// toute branche de mode : toute connexion par code d'appareil, en mode "xbox" comme
+	// en mode "none" ou mot de passe, y persiste son jeton de rafraîchissement.
+	// Porte « profil suivi » (ADR 0035 D3) : le login SSO crée le compte et
+	// persiste les tokens, mais ne met le joueur sous surveillance que s'il a
+	// un profil déclaré ; hors SSO, les tokens eux-mêmes attendent le profil.
+	// Erreur de lecture ⇒ refus journalisé.
+	deviceCodeProfileGate := func(gctx context.Context, titleSlug, xuid string) bool {
+		ok, err := cfg.HasTrackedProfile(titleSlug, xuid)
+		if err != nil {
+			slog.ErrorContext(gctx, "auth_completion: lecture de db_profiles.json échouée — profil réputé non suivi",
+				"err", err, "title_slug", titleSlug, "xuid", xuid)
+			return false
+		}
+		return ok
+	}
+	// Porte des JETONS (distincte de la porte du suivi live) : tout profil DÉCLARÉ, synchro en
+	// pause, auth_only ou autre titre compris, a droit à son jeton de rafraîchissement (ADR 0023) ;
+	// sinon le jeton attend la création du profil. Erreur de lecture => refus journalisé.
+	deviceCodeTokenGate := func(gctx context.Context, _ string, xuid string) bool {
+		ok, err := cfg.HasDeclaredProfile(xuid)
+		if err != nil {
+			slog.ErrorContext(gctx, "auth_completion: lecture de db_profiles.json échouée — profil réputé non déclaré",
+				"err", err, "xuid", xuid)
+			return false
+		}
+		return ok
+	}
+	// Installation desktop à utilisateur unique : l'accord de mise en commun est posé d'office (ADR 0045 D-8).
+	deviceCodeCompletion := service.NewAuthCompletion(authStore, deviceCodeTokenGate).
+		WithLocalPoolGrant(cfg.Capabilities.PoolGrantedToLocalUser)
 	var xboxLinkStrategy auth_platform.LinkStrategy
 	if cfg.AuthMode == "xbox" {
-		// PR 2.5a : injection du MultiUserTokenStore pour persister les tokens RTA
-		// après login (data/auth/watcher_tokens/{xuid}.json).
-		watcherTokensDir := cfg.WatcherTokensDir()
-		multiUserTokens := auth_platform.NewMultiUserTokenStore(watcherTokensDir)
-
 		// PR 2.5b : daemonGetter retourne le daemon courant (capturé par closure).
 		// Nil si le watcher n'est pas démarré (watcher_presence_enabled=false ou
 		// pas de tokens initiaux). XboxSSOLinkStrategy résout lazy à chaque login.
@@ -369,30 +399,23 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			}
 			return daemon
 		}
-		// Porte « profil suivi » (ADR 0035 D3) : le login SSO crée le compte et
-		// persiste les tokens, mais ne met le joueur sous surveillance que s'il a
-		// un profil déclaré. Erreur de lecture ⇒ refus journalisé.
-		ssoProfileGate := func(gctx context.Context, titleSlug, xuid string) bool {
-			ok, err := cfg.HasTrackedProfile(titleSlug, xuid)
-			if err != nil {
-				slog.ErrorContext(gctx, "xbox_sso: lecture de db_profiles.json échouée — watcher non notifié",
-					"err", err, "title_slug", titleSlug, "xuid", xuid)
-				return false
-			}
-			return ok
-		}
 		xboxLinkStrategy = service.NewXboxSSOLinkStrategy(users).
-			WithTokenStore(multiUserTokens).
+			WithTokenStore(authStore).
 			WithDaemonGetter(daemonGetter).
 			WithInstanceLock(instanceLockedFn).
-			WithProfileGate(ssoProfileGate).
+			WithProfileGate(deviceCodeProfileGate).
 			WithInviteStore(invites).
 			WithGroupStore(groupStore)
 		authHandler.WithLinkStrategy(xboxLinkStrategy)
 	} else {
-		authHandler.WithUserStore(users)
+		// Mode "none" / mot de passe : la stratégie historique lie l'identité Halo à
+		// un compte déjà connecté ; la connexion réussie persiste en plus le jeton
+		// (profil suivi) ou le garde jusqu'à la création du profil.
+		authHandler.WithLinkStrategy(service.NewAuthLinkStrategy(
+			auth_platform.NewPasswordLinkStrategy(users), deviceCodeCompletion))
 	}
 	authHandler.MountDeviceFlow(r, apiOpt) // POST /auth/device-flow/start + GET /auth/device-flow/{attempt_id} (Huma)
+	mountBrowserLoginStart(r, d.browserLogin, apiOpt)
 
 	// PR 4 — Authorization Code Flow SSO Xbox (UX redirect, plus aboutie que
 	// le Device Code). Enregistré uniquement en mode "xbox" + redirect URI
@@ -448,7 +471,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// que le créateur de profil qu'elle porte est le writer unique ci-dessus.
 	playerDirectory := buildPlayerDirectory(playerDirectoryDeps{
 		cfg: cfg, users: users, tokens: authStore, groups: groupStore, daemon: daemon,
-		profiles: profileService,
+		profiles: profileService, credentials: deviceCodeCompletion,
 	})
 
 	// Admin : gestion utilisateurs + invitations (protégé par RequireAuth + RequireAdmin).
@@ -458,8 +481,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode, users))
 		adminHandler.Mount(r, adminOpt) // users/invites (Huma, sous RequireAuth+RequireAdmin)
-		// Intégrité des données : invariants du pipeline sync par joueur
-		// (Phase 4 du plan .ai/archive/V7/PLAN_SYNC_INVARIANTS_GATE.md). NoStore : le
+		// Intégrité des données : invariants du pipeline sync par joueur.
+		// NoStore : le
 		// résultat reflète l'état courant des DBs, jamais de cache.
 		invariantsHandler := handlers.NewAdminInvariantsHandler(reg.RunDataInvariants)
 		invariantsHandler.Mount(r.With(middleware.NoStore), adminOpt)
@@ -518,7 +541,22 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	r.Route(apiV1InternalSegment, func(r chi.Router) {
 		wire.MountBuildWorkerRoutes(r, reg,
 			humacore.WithSharedDoc(d.humaSharedConfig, apiV1InternalBasePath))
+		// Arrêt propre demandé par le lanceur du serveur (desktop, air) : montée
+		// seulement si LEVELUP_DESKTOP_SECRET est posé, boucle locale + secret en
+		// en-tête. Hors du contrat OpenAPI (route interne). Cf. handlers/internal_shutdown.go.
+		if cfg.DesktopSecret != "" {
+			r.With(middleware.NoStore, middleware.LoopbackOnly).Post("/shutdown",
+				handlers.NewInternalShutdownHandler(cfg.DesktopSecret, cfg.ShutdownRequester).Handle)
+		}
 	})
+
+	// Libellés de la coquille desktop (profil desktop seulement), cf. server_desktop.go.
+	mountDesktopStrings(r, cfg, apiOpt)
+	mountDesktopDiagnostic(r, cfg, apiOpt)
+	mountDesktopReplayRegen(r, cfg, apiOpt)
+	mountDesktopResources(r, cfg, apiOpt)
+	mountSiteImport(r, cfg, apiOpt)
+	mountExportDesktop(r, cfg, apiOpt)
 
 	// Diagnostic — loopback (127.0.0.1) uniquement, ET admin (S5, lot S :
 	// défense en profondeur). /probe résout des tokens (sensibles) → n'est plus
@@ -657,7 +695,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			ImportService:     osImportSvc,
 			PostImportService: osPostImportSvc,
 			JobStore:          jobStore,
-			StashDir:          filepath.Join(cfg.RepoRoot, "data", "players"),
+			StashDir:          filepath.Join(cfg.Roots().Data, "players"),
 		}
 		// Trigger de convergence events immédiat post-import (réutilise le pool
 		// d'auth du scheduler). Conditionnel : éviter un typed-nil dans l'interface
@@ -936,7 +974,12 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// P6.3 : guard de capability — media routes nécessitent CapMedia.
 		media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload, cfg.RepoRoot).
 			WithSettingsStore(settingsStore).
-			WithProduction(cfg.IsProduction()).
+			WithMediaDeleteSource(cfg.MediaDeleteSource).
+			// Confirmation d'une disparition massive : la passe d'indexation du joueur est relancée
+			// sur les réglages vivants, comme après une synchronisation.
+			WithMediaRescan(func(ctx context.Context, gamertag string) {
+				service.NewLiveMediaScanHook(cfg, settingsStore, gamertag)(ctx)
+			}).
 			// Multi-user authentifié : un like sans joueur courant en session est
 			// refusé (401) au lieu d'être écrit comme like anonyme non attribuable.
 			WithAuthEnforced(authz.Enforced(cfg.DemoMode, cfg.AuthMode)).
@@ -990,8 +1033,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		notifH := handlers.NewNotificationsHandler(reg.Notifications)
 		notifH.Mount(r.With(middleware.RequirePlayerOwner(playerAccess)), playerOpt)
 
-		// Couche progression V2 (Ascension) — streaks / records / milestones.
-		// Cf. .ai/archive/V7/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
+		// Couche progression V2 (Ascension) — streaks / records / milestones (ADR 0014).
 		progressionResolve := func(ctx context.Context, slug string) (*platform_duckdb.PlayerDB, error) {
 			return reg.Resolve()(ctx, slug)
 		}
@@ -1047,7 +1089,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			if err != nil {
 				return nil, err
 			}
-			return platform_duckdb.NewPatternsRepo(pdb), nil
+			return reg.PatternsRepo(pdb), nil
 		}
 		patternsH := handlers.NewPatternsHandler(patternsRepoResolve, titlePkg.DefaultSlug)
 		patternsH.Mount(r, playerOpt)
@@ -1164,6 +1206,10 @@ type apiV1Inputs struct {
 	humaSharedConfig  huma.Config
 }
 
+// inspectMediaTooling : la sonde de l'outillage média du démarrage ; variable pour qu'un test pose un
+// verdict (ex. sans encodeur H.264) sans dépendre du ffmpeg du poste.
+var inspectMediaTooling = ops.InspectMediaTooling
+
 //nolint:funlen,gocyclo // phase de construction DI + montage diag racine : séquentiel.
 func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	serverCtx := in.serverCtx
@@ -1197,7 +1243,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	}
 
 	// PMT-1 / MT-01 : câble le resolver d'hosts d'ingestion title-aware partagé.
-	// Les clients d'ingestion (sync HaloAPIClient, platform/halo HaloProvider,
+	// Les clients d'ingestion (sync HaloAPIClient, haloadapter.Provider,
 	// assets) routent désormais via [endpoints] de constants.toml (fallback const
 	// Halo byte-identique pour halo_infinite).
 	games.SetDefaultEndpointResolver(games.NewMappingsEndpointResolver(fieldMappingsRegistry, titlePkg.DefaultSlug))
@@ -1326,18 +1372,18 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		WithRadarRange(radarRange).
 		WithScoreTimelineKind(scoreTimelineKind)
 
-	// V72-27 : câble le résolveur de libellé de rang FR consommé par les
+	// V72-27 : câble le résolveur de libellé de rang (une langue à la fois) consommé par les
 	// notifications post-sync (career_rank) — même RankCatalog HI que
 	// CareerService ci-dessus. hiRanks.TitleSlug() == "" quand le catalog n'a
 	// pas pu être chargé (démo sans metadata, échec I/O) : FullLabel renvoie
 	// alors toujours ok=false, dégradation gracieuse vers le fallback EN déjà
 	// en place. Comparaison slug↔slug (catalog vs paramètre), pas un gate
 	// littéral — cf. archlint no_slug_comparison (pattern explicitement toléré).
-	wire.SetRankLabelResolver(func(titleSlug string, rankID int) (string, bool) {
+	wire.SetRankLabelResolver(func(titleSlug string, rankID int, loc i18n.Locale) (string, bool) {
 		if hiRanks == nil || hiRanks.TitleSlug() != titleSlug {
 			return "", false
 		}
-		return hiRanks.FullLabel(rankID, mappings.LocaleFR)
+		return hiRanks.FullLabel(rankID, string(loc))
 	})
 
 	// MT-09 (PMT-12) : factory player-scoped de Halo enregistrée par SLUG (clé de
@@ -1442,9 +1488,9 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// le cache/fetch des définitions BP/challenges au resolver (P4/P5).
 	// Fournisseur des images de carte : UNE instance pour la vie du process. Son limiteur
 	// sortant est partagé par tous les clones (WithTokens), jamais recréé par requête.
-	mapImageProvider := halo.NewHaloProvider()
+	mapImageProvider := haloadapter.NewHaloProvider()
 	assetCfg := assets.AssetConfig{
-		CacheRootDir:  titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir(),
+		CacheRootDir:  cfg.PathResolver().CacheRootDir(),
 		MetaDBPath:    metadataDBPathFor(cfg),
 		TokenProvider: reg.AnyPlayerTokens,
 		TitleKnown:    titleRegistry.Exists,
@@ -1455,7 +1501,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		},
 		// Résolution d'image de carte inconnue (KindMapImage) via DiscoveryUGC.
 		// Injectée ici (et non dans internal/assets) pour éviter le cycle
-		// assets→halo : réutilise halo.FetchAsset (→ DiscoveryAsset.ImageURL).
+		// assets→halo : réutilise haloadapter.FetchAsset (→ DiscoveryAsset.ImageURL).
 		// Tokens Spartan+clearance via reg.AnyPlayerTokens. Résultat caché par le
 		// resolver → fetch ~1×/carte inconnue.
 		MapImageURLFetcher: func(ctx context.Context, titleID, mapID, versionID string) (string, error) {
@@ -1464,7 +1510,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 				return "", terr
 			}
 			a, ferr := mapImageProvider.WithTokens(tokens).FetchAsset(
-				ctx, halo.AssetTypeMap, titleID, mapID, versionID, "en-US")
+				ctx, haloadapter.AssetTypeMap, titleID, mapID, versionID, "en-US")
 			if ferr != nil {
 				return "", ferr
 			}
@@ -1525,7 +1571,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		}
 		// Toujours câbler le catalogue : repo nil ⇒ TOML-seul. db_wired distingue le
 		// mode complet (DB fraîche + lazy fetch) du mode dégradé (TOML-seul) en prod.
-		catalog := service.NewSeasonsCatalog(seasonsAssets, seasonsRepo, halo.DefaultHaloProvider, slog.Default())
+		catalog := service.NewSeasonsCatalog(seasonsAssets, seasonsRepo, haloadapter.DefaultHaloProvider, slog.Default())
 		reg.WithSeasonsCatalog(catalog)
 		slog.Info("seasons_catalog_ready",
 			"title_slug", titlePkg.DefaultSlug,
@@ -1575,8 +1621,11 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// disponibilité observable en prod malgré LEVELUP_LOG_LEVEL=warn qui masque
 	// la ligne INFO du démarrage.
 	mediaCtx, mediaCancel := context.WithTimeout(serverCtx, 5*time.Second)
-	mediaStatus := ops.InspectMediaTooling(mediaCtx).ToHealthStatus()
+	mediaStatus := inspectMediaTooling(mediaCtx).ToHealthStatus()
 	mediaCancel()
+	if bootSvc != nil {
+		bootSvc.WithMediaH264Missing(mediaStatus.H264EncoderMissing)
+	}
 	healthH := handlers.NewHealthHandlerWithVersion(bootRepo, cfg.AppVersion).
 		WithMediaTooling(mediaStatus)
 	// Racine (r = routeur racine, pas /api/v1) → préfixe de document "" : les chemins

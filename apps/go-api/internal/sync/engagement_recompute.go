@@ -1,9 +1,6 @@
 // Package sync — engagement_recompute.go : recompute des coefficients
 // d'engagement personnels (mediane glissante des paces).
 //
-// Reference plan : .ai/archive/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md §4.4 + thought_log
-// 2026-05-05 "Engagement long-term".
-//
 // Pipeline :
 //   - Pour chaque mode_category PvP supporte
 //   - Charge les paces des N derniers matchs (loadRatioSamples)

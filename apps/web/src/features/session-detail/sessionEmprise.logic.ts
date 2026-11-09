@@ -283,7 +283,7 @@ export function sessionScopeEmpties(
 export function drawnCards(col: SessionColumnBlocks, m: SessionEmpriseModels): SessionCardsPresence {
   const entry = col.entry
   const classes = entry?.frag_distribution?.classes ?? []
-  const tools = buildSquadToolRows(entry?.weapon_tools, { locale: 'fr', labels: COUNT_ONLY_TOOL_LABELS, top: SESSION_TOOLS_TOP })
+  const tools = buildSquadToolRows(entry?.weapon_tools, { labels: COUNT_ONLY_TOOL_LABELS, top: SESSION_TOOLS_TOP })
   return {
     frag_donut: (entry?.frag_distribution?.total_kills ?? 0) > 0 && classes.some((c) => c.kills > 0),
     tools: tools != null,

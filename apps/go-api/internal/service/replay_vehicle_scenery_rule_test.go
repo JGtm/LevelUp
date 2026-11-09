@@ -4,8 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/filmreplis"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // replay_vehicle_scenery_rule_test.go — LA REGLE DU DECOR, PURE (lot M7 des retours du rejeu,
@@ -190,8 +192,8 @@ func TestDecor_ReplisInscritsAuRegistre(t *testing.T) {
 			t.Errorf("%s : absent du registre facts/fallback", nom)
 			continue
 		}
-		if len(r.Sites) != 1 || !strings.HasSuffix(r.Sites[0].Fichier, "service/replay_vehicle_scenery_rule.go") {
-			t.Errorf("%s : site %+v, attendu la regle du decor", nom, r.Sites)
+		if sites := filmreplis.Sites(r.Nom, r.Sites); len(sites) != 1 || !strings.HasSuffix(sites[0].Fichier, "service/replay_vehicle_scenery_rule.go") {
+			t.Errorf("%s : site %+v, attendu la regle du decor", nom, sites)
 		}
 		if !r.CompteurBranche || r.CritereRetrait == "" || r.DatePose != "2026-09-24" {
 			t.Errorf("%s : compteur %v, critere %q, date %q", nom, r.CompteurBranche, r.CritereRetrait, r.DatePose)

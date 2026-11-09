@@ -9,6 +9,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // fieldsTOML est la projection brute du fichier fields.toml avant validation.
@@ -28,14 +29,14 @@ type metaSection struct {
 }
 
 type fieldEntryTOML struct {
-	Labels       map[string]string `toml:"labels"`
-	Description  map[string]string `toml:"description"`
-	StorageUnit  string            `toml:"storage_unit"`
-	DisplayUnit  string            `toml:"display_unit"`
-	Format       string            `toml:"format"`
-	DisplayOrder int               `toml:"display_order"`
-	Group        string            `toml:"group"`
-	Icon         string            `toml:"icon"`
+	Labels       i18n.Text `toml:"labels"`
+	Description  i18n.Text `toml:"description"`
+	StorageUnit  string    `toml:"storage_unit"`
+	DisplayUnit  string    `toml:"display_unit"`
+	Format       string    `toml:"format"`
+	DisplayOrder int       `toml:"display_order"`
+	Group        string    `toml:"group"`
+	Icon         string    `toml:"icon"`
 }
 
 // LoadFieldsFromFile lit et valide un fields.toml à un chemin donné.
@@ -85,8 +86,8 @@ func LoadFieldsFromBytes(path string, raw []byte) (*FieldMappingSet, error) {
 
 		mapping := FieldMapping{
 			Key:          key,
-			Labels:       cloneStringMap(entry.Labels),
-			Descriptions: cloneStringMap(entry.Description),
+			Labels:       entry.Labels.Clone(),
+			Descriptions: entry.Description.Clone(),
 			StorageUnit:  Unit(entry.StorageUnit),
 			DisplayUnit:  Unit(entry.DisplayUnit),
 			Format:       Format(entry.Format),
@@ -143,18 +144,15 @@ func validateField(key canonical.FieldKey, e fieldEntryTOML) []error {
 		errs = append(errs, fmt.Errorf("FieldKey %q absent du canonique central (canonical.AllFieldKeys)", key))
 	}
 
-	if e.Labels[LocaleEN] == "" {
-		errs = append(errs, errors.New("labels.en manquant ou vide"))
-	}
-	if e.Labels[LocaleFR] == "" {
-		errs = append(errs, errors.New("labels.fr manquant ou vide"))
+	if err := e.Labels.Trimmed().Validate(); err != nil {
+		errs = append(errs, fmt.Errorf("labels: %w", err))
 	}
 
-	// Description optionnelle, mais si l'une des deux locales est présente, l'autre l'est aussi.
-	hasDescEN := e.Description[LocaleEN] != ""
-	hasDescFR := e.Description[LocaleFR] != ""
-	if hasDescEN != hasDescFR {
-		errs = append(errs, errors.New("description.en et description.fr doivent être tous les deux présents ou tous les deux absents"))
+	// Description optionnelle, mais dès qu'elle existe elle couvre chaque langue required.
+	if len(e.Description) > 0 {
+		if err := e.Description.Trimmed().Validate(); err != nil {
+			errs = append(errs, fmt.Errorf("description: %w", err))
+		}
 	}
 
 	if !IsKnownUnit(Unit(e.StorageUnit)) {
@@ -174,17 +172,6 @@ func validateField(key canonical.FieldKey, e fieldEntryTOML) []error {
 	}
 
 	return errs
-}
-
-func cloneStringMap(in map[string]string) map[string]string {
-	if in == nil {
-		return nil
-	}
-	out := make(map[string]string, len(in))
-	for k, v := range in {
-		out[k] = v
-	}
-	return out
 }
 
 func joinSorted(msgs []string) string {

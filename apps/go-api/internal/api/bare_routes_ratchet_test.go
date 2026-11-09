@@ -20,7 +20,8 @@
 //
 // PÉRIMÈTRE. Routes montées sous le routeur assemblé (`/api/v1`, `/health*`,
 // `/static/*`). Le catch-all SPA `/*` (handler NotFound, non walkable) et les
-// routes racine /auth/xbox/{login,callback} (mode "xbox" only) sont publics par
+// routes racine /auth/xbox/{login,callback} (mode "xbox", ou profil desktop sous la capacité
+// LoginViaBrowser : cf. TestBareRoutesRatchet_DesktopEntryRoutes) sont publics par
 // conception, hors surface, couverts par LOT_S_ROUTE_GUARD_TABLE.
 //
 // MAINTENANCE. Route publique légitime = 1 ligne d'allowlist AVEC justification.
@@ -31,6 +32,8 @@ package api_test
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"sort"
@@ -38,6 +41,8 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+
+	"levelup/go-api/internal/api/openapigen"
 )
 
 // guardMarkers — sous-chaînes de nom de fonction des middlewares qui constituent
@@ -218,6 +223,154 @@ func TestBareRoutesRatchet_NoUnguardedRouteOutsideAllowlist(t *testing.T) {
 		}
 		if !hitAllow[key] {
 			t.Errorf("entrée d'allowlist INUTILE (route %q est en réalité gardée) — la retirer", key)
+		}
+	}
+}
+
+// TestBareRoutesRatchet_DesktopShutdownRouteIsGuarded : la route d'arrêt propre n'existe que
+// si un secret d'arrêt est configuré, et alors elle est gardée par LoopbackOnly (garde reconnue
+// par le ratchet : aucune entrée d'allowlist, qui serait signalée INUTILE). Absente sans secret.
+func TestBareRoutesRatchet_DesktopShutdownRouteIsGuarded(t *testing.T) {
+	const key = "POST /api/v1/internal/shutdown"
+	walk := func(t *testing.T, secret string) (guarded, found bool) {
+		t.Helper()
+		router, _, err := openapigen.BuildDemoRouter(t.Context(), openapigen.Options{
+			Root:           t.TempDir(),
+			GroupStorePath: filepath.Join(os.TempDir(), "levelup_contract_groups.json"),
+			Prestige:       true,
+			DesktopSecret:  secret,
+		})
+		if err != nil {
+			t.Fatalf("BuildDemoRouter: %v", err)
+		}
+		r, ok := router.(chi.Router)
+		if !ok {
+			t.Fatalf("le routeur n'est pas un chi.Router (%T)", router)
+		}
+		err = chi.Walk(r, func(method, route string, _ http.Handler, mws ...func(http.Handler) http.Handler) error {
+			if method+" "+route == key {
+				found, guarded = true, routeIsGuarded(mws)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("chi.Walk: %v", err)
+		}
+		return guarded, found
+	}
+
+	if _, found := walk(t, ""); found {
+		t.Errorf("%s montée sans secret d'arrêt : un serveur hébergé ne doit pas l'exposer", key)
+	}
+	guarded, found := walk(t, "secret-de-test") // pragma: allowlist secret
+	if !found {
+		t.Fatalf("%s absente avec un secret d'arrêt configuré", key)
+	}
+	if !guarded {
+		t.Errorf("%s montée sans garde reconnue (LoopbackOnly attendue)", key)
+	}
+	if _, listed := publicRoutesAllowlist[key]; listed {
+		t.Errorf("%s ne doit pas figurer dans l'allowlist : elle est gardée", key)
+	}
+}
+
+// TestBareRoutesRatchet_DesktopEntryRoutes : sous l'entrée de la coquille desktop (ADR 0045 D-3),
+//
+//   - GET /desktop/enter n'existe que là, et y est gardée par LoopbackOnly (garde reconnue : aucune
+//     entrée d'allowlist, qui serait signalée INUTILE) ;
+//
+//   - GET /api/v1/desktop/strings n'existe que là ;
+//
+//   - TOUTE route du routeur y est derrière le garde de la coquille (Host strict, cookie exigé),
+//     monté sur la racine : /health reste ouvert par exception DU GARDE, pas par route nue.
+//
+//   - GET /auth/xbox/callback et GET /api/v1/auth/xbox/login (connexion par le navigateur, L21,
+//     2026-11-02) n'existent que sous la capacité LoginViaBrowser, le retour derrière LoopbackOnly.
+//
+// Hors de cette capacité, aucune de ces routes n'est montée (le routeur du ratchet principal,
+// en démo, ne les voit pas).
+func TestBareRoutesRatchet_DesktopEntryRoutes(t *testing.T) {
+	const enterKey, stringsKey = "GET /desktop/enter", "GET /api/v1/desktop/strings"
+	const loginKey, callbackKey = "GET /api/v1/auth/xbox/login", "GET /auth/xbox/callback"
+	walk := func(t *testing.T, desktop bool) (found map[string]bool, guarded map[string]bool, behindGate map[string]bool) {
+		t.Helper()
+		opts := openapigen.Options{
+			Root:           t.TempDir(),
+			GroupStorePath: filepath.Join(os.TempDir(), "levelup_contract_groups.json"),
+			Prestige:       true,
+		}
+		if desktop {
+			opts.DesktopSecret = "secret-du-lanceur" // pragma: allowlist secret
+			opts.ShellEntryPort = 49555
+			opts.ShellCookieKey = "cle-de-cookie-de-test-de-trente-deux-octets" // pragma: allowlist secret
+		}
+		router, _, err := openapigen.BuildDemoRouter(t.Context(), opts)
+		if err != nil {
+			t.Fatalf("BuildDemoRouter: %v", err)
+		}
+		r, ok := router.(chi.Router)
+		if !ok {
+			t.Fatalf("le routeur n'est pas un chi.Router (%T)", router)
+		}
+		found, guarded, behindGate = map[string]bool{}, map[string]bool{}, map[string]bool{}
+		err = chi.Walk(r, func(method, route string, _ http.Handler, mws ...func(http.Handler) http.Handler) error {
+			key := method + " " + route
+			found[key], guarded[key] = true, routeIsGuarded(mws)
+			behindGate[key] = false
+			for _, mw := range mws {
+				if strings.Contains(runtime.FuncForPC(reflect.ValueOf(mw).Pointer()).Name(), "DesktopGate") {
+					behindGate[key] = true
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("chi.Walk: %v", err)
+		}
+		return found, guarded, behindGate
+	}
+
+	foundHosted, _, gateHosted := walk(t, false)
+	if foundHosted[enterKey] || foundHosted[stringsKey] || foundHosted[loginKey] || foundHosted[callbackKey] {
+		t.Errorf("%s, %s, %s ou %s montée hors du profil desktop", enterKey, stringsKey, loginKey, callbackKey)
+	}
+	for key, behind := range gateHosted {
+		if behind {
+			t.Errorf("%s est derrière le garde de la coquille hors du profil desktop", key)
+		}
+	}
+
+	found, guarded, behindGate := walk(t, true)
+	if !found[enterKey] || !found[stringsKey] {
+		t.Fatalf("routes absentes sous l'entrée de la coquille : %s=%v %s=%v", enterKey, found[enterKey], stringsKey, found[stringsKey])
+	}
+	if !guarded[enterKey] {
+		t.Errorf("%s montée sans garde reconnue (LoopbackOnly attendue)", enterKey)
+	}
+	for _, key := range []string{enterKey, stringsKey} {
+		if _, listed := publicRoutesAllowlist[key]; listed {
+			t.Errorf("%s ne doit pas figurer dans l'allowlist : elle n'existe que sous le garde de la coquille", key)
+		}
+	}
+	for key, behind := range behindGate {
+		if !behind {
+			t.Errorf("%s n'est pas derrière le garde de la coquille (Host strict, cookie exigé)", key)
+		}
+	}
+	// Connexion par le navigateur (L21, 2026-11-02) : le retour de Microsoft est la seule route racine
+	// que le garde laisse passer sans cookie (AllowBrowserCallback, Host localhost ou 127.0.0.1 du
+	// port lié) ; il est monté derrière LoopbackOnly et protégé par le state à usage unique de la
+	// tentative. Le démarrage reste derrière le cookie. Ni l'un ni l'autre ne figure dans l'allowlist
+	// des routes publiques : ils n'existent que sous le garde de la coquille.
+	if !found[loginKey] || !found[callbackKey] {
+		t.Fatalf("routes de connexion par le navigateur absentes : %s=%v %s=%v", loginKey, found[loginKey], callbackKey, found[callbackKey])
+	}
+	if !guarded[callbackKey] {
+		t.Errorf("%s montée sans garde reconnue (LoopbackOnly attendue)", callbackKey)
+	}
+	for _, key := range []string{loginKey, callbackKey} {
+		if _, listed := publicRoutesAllowlist[key]; listed {
+			t.Errorf("%s ne doit pas figurer dans l'allowlist : elle n'existe que sous le garde de la coquille", key)
 		}
 	}
 }

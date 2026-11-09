@@ -166,7 +166,7 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 	var src service.WorldMatchSource
 	var tokenGamertags []string // comptes utilisés pour le fetch ET la résolution xuid
 	if f.allTokens {
-		s, gts, e := worldenrich.BuildMultiHaloSource(cfg, f.rps, true)
+		s, gts, e := worldenrich.BuildMultiHaloSource(ctx, cfg, f.rps, true)
 		if e != nil {
 			return e
 		}
@@ -174,7 +174,7 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 		tokenGamertags = gts
 		fmt.Printf("tokens: %d comptes résolus (round-robin) — %v\n", len(gts), gts)
 	} else {
-		s, e := worldenrich.BuildHaloSource(cfg, f.tokenGamertag, f.rps, true)
+		s, e := worldenrich.BuildHaloSource(ctx, cfg, f.tokenGamertag, f.rps, true)
 		if e != nil {
 			return e
 		}
@@ -188,7 +188,7 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 	// 3. Shared DB en RW (serveur stoppé) + migrations.
 	sharedPath := f.sharedDB
 	if strings.TrimSpace(sharedPath) == "" {
-		sharedPath = titlepkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(f.title)
+		sharedPath = cfg.PathResolver().SharedDBPath(f.title)
 	}
 	f.sharedDB = sharedPath // propagé aux flush ultérieurs
 	fmt.Printf("shared DB: %s\n", sharedPath)
@@ -215,7 +215,7 @@ func run(ctx context.Context, cfg *config.AppConfig, f cliFlags) error {
 	// 5. Checkpoint (reprise). Défaut dérivé de RepoRoot (dossier garanti existant
 	// après MkdirAll au save), pas relatif au CWD.
 	if strings.TrimSpace(f.checkpoint) == "" {
-		f.checkpoint = filepath.Join(cfg.RepoRoot, "data", "world_backfill_checkpoint.json")
+		f.checkpoint = filepath.Join(cfg.Roots().Data, "world_backfill_checkpoint.json")
 	}
 	cp := loadCheckpoint(f.checkpoint, f.force)
 	fmt.Printf("checkpoint: %s\n", f.checkpoint)

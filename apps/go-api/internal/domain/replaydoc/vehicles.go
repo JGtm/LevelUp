@@ -1,5 +1,7 @@
 package replaydoc
 
+import "levelup/go-api/internal/i18n"
+
 // vehicles.go — LES VEHICULES : la vie d'un chassis, ses positions, et qui l'occupe.
 
 // VehicleTrack est LA VIE D UN VEHICULE, de sa naissance a la derniere preuve de sa presence.
@@ -35,8 +37,7 @@ type VehicleLifeRef struct {
 // `replay.VehicleWeapon`), resolue a la requete.
 type VehicleWeapon struct {
 	Vehicle     string              `json:"vehicle"`
-	En          string              `json:"en"`
-	Fr          string              `json:"fr"`
+	Text        i18n.Text           `json:"i18n_text,omitempty" required:"true"`
 	Fire        string              `json:"fire"`
 	Fx          string              `json:"fx"`
 	Tint        string              `json:"tint"`

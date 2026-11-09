@@ -46,7 +46,7 @@ import (
 const (
 	// paquetCanoniqueEmpreinte : LE mecanisme, relatif a `apps/go-api`. Tout ce qui vit dessous
 	// est par definition hors de portee — c est l implementation.
-	paquetCanoniqueEmpreinte = "internal/games/halo_infinite/film/revision"
+	paquetCanoniqueEmpreinte = racineBriqueFilm + "/revision"
 	// plancherFichiersEmpreinte : LE PLANCHER CONTRE UN BALAYAGE MUET. 5 553 fichiers `.go`
 	// mesures le 2026-09-17 dans `internal/` + `cmd/` (`find internal cmd -name '*.go' | wc -l`) ;
 	// un balayage qui en rend nettement moins n a pas trouve l arborescence et ne garde plus rien.
@@ -138,7 +138,7 @@ func porteUneEmpreinteDeSources(source string) bool {
 	return true
 }
 
-// balayerPorteursDEmpreinte rend les fichiers porteurs (chemin relatif a `apps/go-api`, en
+// balayerPorteursDEmpreinte rend les fichiers porteurs (chemin de garde-rail, [surDisque], en
 // slash, tries) et le nombre total de fichiers `.go` parcourus.
 //
 // Les `_test.go` sont PARCOURUS : les deux mecanismes d aujourd hui sont des tests, et c est la
@@ -161,19 +161,15 @@ func balayerPorteursDEmpreinte(t *testing.T) ([]string, int) {
 	ceFichierRel = filepath.ToSlash(ceFichierRel)
 	var porteurs []string
 	total := 0
-	for _, sous := range []string{"internal", "cmd"} {
-		err := filepath.WalkDir(filepath.Join(racine, sous), func(chemin string, d fs.DirEntry, errMarche error) error {
+	for _, sous := range []string{"internal", "cmd", racineBriqueFilm} {
+		err := filepath.WalkDir(surDisque(t, sous), func(chemin string, d fs.DirEntry, errMarche error) error {
 			if errMarche != nil {
 				return errMarche
 			}
 			if d.IsDir() || !strings.HasSuffix(d.Name(), ".go") {
 				return nil
 			}
-			rel, errRel := filepath.Rel(racine, chemin)
-			if errRel != nil {
-				return errRel
-			}
-			rel = filepath.ToSlash(rel)
+			rel := cheminDeGardeRail(t, chemin)
 			total++
 			if rel == ceFichierRel {
 				return nil

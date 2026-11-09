@@ -28,8 +28,9 @@ import type {
  */
 export function useCoachProposals(playerSlug: string, status: ProposalStatus | undefined) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.coachProposals(playerSlug, titleSlug, status),
+    queryKey: queryKeys.coachProposals(playerSlug, titleSlug, locale, status),
     queryFn: () => {
       const qs = status ? `?status=${status}` : ''
       return api.get<ProposalsListResponse>(`/players/${playerSlug}/coach/proposals${qs}`)

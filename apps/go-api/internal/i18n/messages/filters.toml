@@ -1,0 +1,14 @@
+# Filtres de l'application : libellés d'affichage composés par le serveur. La VALEUR d'un filtre reste
+# la chaîne canonique française (contrat de la cascade du web) ; seul le libellé suit la langue.
+
+[filters.experience.pvp_ranked]
+fr = "PVP classé"
+en = "Ranked PvP"
+
+[filters.experience.pvp_unranked]
+fr = "PVP non classé"
+en = "Unranked PvP"
+
+[filters.experience.pve]
+fr = "PVE"
+en = "PvE"

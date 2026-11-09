@@ -96,7 +96,7 @@ function TierBlock({ rating }: { rating: SkillRatingSnapshot }) {
     return <p className="text-sm text-muted-foreground">{t('profile.performance.empty')}</p>
   }
   const progressPct = Math.round((rating.progress_ratio ?? 0) * 100)
-  // tier_name (EN) / tier_name_fr (FR) portés par le DTO ; label/next_tier_label
+  // tier_name est déjà dans la langue de la requête (le serveur choisit) ; label/next_tier_label
   // sont composés en EN côté backend (package profile locale-agnostic) → localisés ici.
   // DEC-6 : on affiche les points LUSR (échelle connue du joueur), pas μ/σ bruts.
   // `mu` est la valeur de rating LUSR ; l'écart au palier (points) est rendu sur
@@ -104,7 +104,7 @@ function TierBlock({ rating }: { rating: SkillRatingSnapshot }) {
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <span className="text-2xl font-bold">{(locale === 'en' ? rating.tier_name : rating.tier_name_fr) || rating.label}</span>
+        <span className="text-2xl font-bold">{rating.tier_name || rating.label}</span>
         <span className="text-xs font-semibold tabular-nums text-muted-foreground">
           {t('profile.performance.lusr_points', { points: rating.mu.toFixed(0) })}
         </span>

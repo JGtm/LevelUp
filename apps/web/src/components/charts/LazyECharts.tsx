@@ -9,9 +9,10 @@
  *
  * `echartsReactSingleMount.guard.test.ts` interdit tout autre import de `echarts-for-react`.
  */
-import { lazy, useCallback, useEffect, useRef } from 'react'
+import { lazy, useCallback, useEffect, useMemo, useRef } from 'react'
 import type { EChartsReactProps } from 'echarts-for-react'
 
+import { sansTexteAriaAnglais } from '@/lib/echarts/ariaSansAnglais'
 import { followContainerSize, type ResizableChart } from '@/lib/echarts/followContainerSize'
 
 const ReactECharts = lazy(() =>
@@ -20,7 +21,8 @@ const ReactECharts = lazy(() =>
 
 export type LazyEChartsProps = Omit<EChartsReactProps, 'autoResize'>
 
-export function LazyECharts({ onChartReady, ...props }: LazyEChartsProps) {
+export function LazyECharts({ onChartReady, option, ...props }: LazyEChartsProps) {
+  const safeOption = useMemo(() => sansTexteAriaAnglais(option), [option])
   const unfollow = useRef<(() => void) | null>(null)
   useEffect(() => () => unfollow.current?.(), [])
 
@@ -35,5 +37,5 @@ export function LazyECharts({ onChartReady, ...props }: LazyEChartsProps) {
     [onChartReady],
   )
 
-  return <ReactECharts {...props} autoResize={false} onChartReady={handleReady} />
+  return <ReactECharts {...props} option={safeOption} autoResize={false} onChartReady={handleReady} />
 }

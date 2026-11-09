@@ -15,7 +15,7 @@ package main
 // # ELLE EST 100 % HORS LIGNE — NI RESEAU, NI TOKENS, NI CDN
 //
 // La seule source est le cache de films sur disque (`film_manifests/` +
-// `film_chunks/`), lu par [haloclient.LocalFilmCache]. Un match dont le film n est
+// `film_chunks/`), lu par [filmfetch.LocalFilmCache]. Un match dont le film n est
 // pas en cache est CONSIGNE ET SAUTE : il n y a aucun chemin qui parte sur le
 // reseau, donc aucune facon pour cette passe d echouer sur une authentification.
 //
@@ -49,11 +49,12 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/medalname"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/medalname"
 )
 
 // medaillesFeedOptions : les reglages de la passe.
@@ -77,14 +78,14 @@ func runBackfillMedaillesFeed(cfg *config.AppConfig, args []string) error {
 	}
 
 	ctx := context.Background()
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	sharedPath := pr.SharedDBPath(o.titleSlug)
 	if _, err := os.Stat(sharedPath); err != nil {
 		return fmt.Errorf("shared_matches introuvable (%s): %w", sharedPath, err)
 	}
 
 	cacheRoot := resoudreCacheFilms(cfg, o.cacheDir)
-	cache := haloclient.NewLocalFilmCache(cacheRoot)
+	cache := filmfetch.NewLocalFilmCache(cacheRoot)
 	if cache == nil {
 		return fmt.Errorf("cache de films introuvable sous %s — cette passe est HORS LIGNE, "+
 			"elle n a pas d autre source", cacheRoot)
@@ -127,7 +128,7 @@ func runBackfillMedaillesFeed(cfg *config.AppConfig, args []string) error {
 // l identite des medailles tient dans le seul chunk highlight. Charger le reste
 // serait payer un ordre de grandeur de memoire pour rien.
 type chunksHighlightDuCache struct {
-	cache *haloclient.LocalFilmCache
+	cache *filmfetch.LocalFilmCache
 }
 
 // ChunkHighlight rend le chunk de type highlight (3) du film en cache, et la version du film lue
@@ -137,8 +138,7 @@ type chunksHighlightDuCache struct {
 // manquant — dans les trois cas le match n a pas de film exploitable ici.
 //
 // LE REGISTRE EST LU EN PLUS, et c est le SEUL chunk supplementaire charge : il pese ~2 Mio
-// contre les dizaines de Mio du film entier, et sans lui le decoupage du gamertag se devine
-// (cf. .ai/V7.5/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). Registre absent : la version reste
+// contre les dizaines de Mio du film entier, et sans lui le decoupage du gamertag se devine. Registre absent : la version reste
 // inconnue, `ops` le consigne et le decoupage historique s applique.
 func (c chunksHighlightDuCache) ChunkHighlight(_ context.Context, matchID string) (ops.FilmHighlight, bool, error) {
 	manifest, err := c.cache.LoadManifest(matchID)
@@ -149,7 +149,7 @@ func (c chunksHighlightDuCache) ChunkHighlight(_ context.Context, matchID string
 		return ops.FilmHighlight{}, false, nil
 	}
 	for _, chunk := range manifest.Chunks {
-		if chunk.ChunkType != haloclient.FilmChunkTypeHighlightEvents {
+		if chunk.ChunkType != filmfetch.FilmChunkTypeHighlightEvents {
 			continue
 		}
 		data, err := c.cache.LoadChunk(matchID, chunk.Index)

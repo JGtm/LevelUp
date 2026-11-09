@@ -178,6 +178,12 @@ go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--ma
 **100 % hors ligne** (films du cache local : ni réseau, ni jetons, ni CDN), **serveur arrêté**
 (elle tient la base partagée en écriture — un seul writer, ADR 0013). Elle joue deux passes dans
 cet ordre : les FILMS (décodage), puis le CRÉDIT (transformation SQL → SQL, quelques minutes).
+Une exécution qui décode (ni `--dry-run` ni `--credit-only`) prend le verrou solo de décodage de sa racine de données en refus
+immédiat, avant d'ouvrir la base : quand un autre décodage tient cette racine (un serveur qui cuit un rejeu, la file de
+régénération des rejeux, une autre passe), elle nomme le détenteur et sort avec le code **3** (2 reste le code d'une ligne de
+commande refusée). Le verrou est le fichier `<racine de données>/cache/film_decode.lock` : il est par racine de données, pas par
+machine. Une commande lancée depuis le dépôt (`data/` de la copie de travail) et l'application installée (`%LOCALAPPDATA%\LevelUp`, ou
+`LEVELUP_DATA_DIR`) tiennent deux verrous différents et ne se voient pas ; pointer `LEVELUP_DATA_DIR` sur la même racine pour n'en partager qu'un.
 
 ```bash
 go run ./cmd/levelup backfill-killsource --dry-run      # bilan : total, déjà à jour, chunks, ETA
@@ -377,7 +383,40 @@ go run ./cmd/levelup backfill-match-summaries --title halo_5
 go run ./cmd/levelup backup  --gamertag X [--output-dir D] [--compression-level 9]
 go run ./cmd/levelup restore --gamertag X --backup-dir D [--replace] [--dry-run] [--tables T1,T2]
 go run ./cmd/levelup restore-csr --gamertag X --backup PATH [--dry-run]
+go run ./cmd/levelup backup restore --from D:\Sauvegardes\levelup-20261103-0930 --to D:\DonneesLevelUp [--dry-run] [--force]
+levelup-server.exe -mode restore --from D:\Sauvegardes\levelup-20261103-0930 --to "%LOCALAPPDATA%\LevelUp" [--dry-run] [--force]
 ```
+
+`backup restore` restaure un jeu écrit par la sauvegarde périodique en Parquet de l'application de bureau (Réglages > Application,
+`backup_dir` ; voir `docs/RUNBOOK_DESKTOP.md`). **`levelup-server.exe -mode restore` est la même commande** (mêmes drapeaux, même fonction) :
+l'installeur livre `levelup-server.exe` et non `levelup.exe`, un PC neuf restaure donc avec le serveur qu'il a déjà (aucune configuration chargée,
+aucun port lié, aucune base ouverte hors de la restauration) ; `levelup backup restore` en est l'alias depuis un dépôt. **Serveur arrêté** : la
+commande prend le verrou d'instance de la racine de données cible (`--to`, le dossier qui contient `titles/` et `auth/`) et refuse tant qu'il est
+tenu ; **tout serveur, quel que soit son profil, le tient pendant qu'il tourne, et `--force` ne le contourne jamais** (il autorise seulement le
+remplacement de bases qui existent). Un `<base>.wal` résiduel dans la cible est refusé sans `--force` (lancer l'application une fois pour un arrêt
+propre, ou supprimer le WAL si perdre les dernières écritures est acceptable) ; un jeu dont le dossier `db/` contient un fichier que le manifeste
+ne déclare pas est refusé. Elle vérifie d'abord chaque somme SHA-256 du manifeste, recrée
+chaque base depuis ses Parquet dans l'état de son époque (le démarrage suivant applique les migrations manquantes), puis remet en place les
+fichiers de configuration et d'authentification. Une cible qui contient déjà une base du jeu est refusée sans `--force` ; `--dry-run` vérifie le jeu
+et liste ce qui serait restauré, sans rien écrire. Les films archivés ne font pas partie d'un jeu.
+
+```bash
+levelup-server.exe -mode uninstall-cleanup      # appelé par le désinstalleur ; aucun drapeau
+```
+
+`-mode uninstall-cleanup` retire ce que l'application a posé HORS de son dossier, puis sort : l'entrée de démarrage de l'utilisateur (la valeur `LevelUp` de
+`HKCU\...\Run` et sa valeur `StartupApproved`, seulement si sa commande vise le dossier du programme désinstallé) et la tâche planifiée
+`LevelUp\Refresh-<8 hex>` de la racine de données de `LEVELUP_DATA_DIR` (seulement si son action lance le serveur de ce même dossier : deux installations
+d'un même utilisateur partagent la racine par défaut, donc le nom de la tâche, et la tâche de l'autre reste en place, `tache=foreign`). Il n'ouvre aucune
+base, ne lie aucun port, ne prend aucun verrou et ne touche jamais à la racine de données. Sortie 0 quand rien n'existait ou que tout était étranger, 1 quand
+une lecture ou une suppression a échoué (le crochet NSIS ignore le code : la désinstallation n'en dépend jamais) ; le bilan va sur stderr
+(`demarrage=… tache=… ok=… exit=…`). `LEVELUP_UNINSTALL_WITNESS` posée à un chemin écrit aussi la ligne de bilan dans un fichier (ce que vérifie
+`e2e-install.ps1`, code de sortie compris). Le `NSIS_HOOK_PREUNINSTALL` de l'installeur vérifie d'abord que l'application ne tourne pas (« Annuler » à
+« LevelUp est en cours d'exécution » ne retire rien), puis le lance avant l'effacement des fichiers. Il ne tourne pas dans le flux de l'updater
+(`/UPDATE` : l'updater n'appelle jamais l'ancien désinstalleur), mais une mise à jour MANUELLE (installeur lancé à la main, case « désinstaller avant »
+cochée par défaut) ou une réinstallation passive (`/P`) appelle l'ancien désinstalleur sans `/UPDATE` : l'entrée et la tâche sont alors retirées, puis
+reposées au prochain lancement si le réglage est actif. Après le nettoyage, le modèle de Tauri supprime la valeur `Run` du produit sans la regarder ; le
+crochet la lit avant et la réécrit quand elle ne visait pas le dossier désinstallé.
 
 ### Identités joueur (annuaire et purge — ADR 0035)
 
@@ -433,6 +472,39 @@ go run ./cmd/levelup pool-sharing grandfather --all [--yes]            # tous le
   La lancer en `appuser` (`-u appuser`) : le conteneur durci retire à root les capacités qui lui
   permettaient d'écrire les fichiers de l'application, et la commande échoue sinon en `permission denied`.
 
+### Archive des films (recompression et déplacement — ADR 0045 D-12, décision D-18)
+
+L'archive contient chaque film téléchargé (`film_chunks/` et `film_manifests/`, sous
+`film_archive_dir` ou `<données>/cache` par défaut). Un film expire côté Halo et ne se retélécharge
+jamais : les deux opérations ci-dessous sont **à lancer soi-même, serveur arrêté** ; rien ne les
+lance seul (ni cron, ni tâche au démarrage).
+
+Les nouveaux chunks s'écrivent en zstd niveau 3 (environ 75 % plus petits). Les chunks bruts et zlib
+existants se recompressent par `film recompress`, un film à la fois : chaque chunk est compressé,
+redécodé et comparé à l'original avant que le fichier ne soit remplacé atomiquement. Un chunk déjà en
+zstd est sauté : une passe interrompue reprend en relançant la commande. Les lecteurs acceptent les
+chunks bruts, zlib et zstd à leur en-tête, et les faits décodés d'un film ne dépendent pas de la forme
+de stockage.
+
+```bash
+go run ./cmd/levelup film recompress --dry-run               # lit et compresse en mémoire, affiche le gain, n'écrit rien
+go run ./cmd/levelup film recompress                         # convertit toute l'archive
+go run ./cmd/levelup film recompress --films 000d5950,01e1f945   # seulement ces films (courts)
+go run ./cmd/levelup film archive-move --to D:\Films          # range l'archive dans un dossier vide, puis enregistre film_archive_dir
+go run ./cmd/levelup film archive-move --default             # la ramène sous <données>/cache
+go run ./cmd/levelup film archive-move --to D:\Films --resume   # reprend un déplacement interrompu
+```
+
+- L'écran des réglages (Réglages, onglet Données) affiche la taille de l'archive et l'espace libre, et
+  l'assistant de premier lancement propose de conserver les films ou non. Y changer le dossier est
+  refusé tant que l'archive contient des films ou que la cible n'est pas vide ; `archive-move` fait le
+  déplacement (serveur arrêté ; le dossier enregistré sert au démarrage suivant). Sur une archive vide
+  (assistant de premier lancement), le nouveau dossier sert tout de suite.
+- Sans archive (`archive_films` désactivé), les rejeux sont construits et les faits persistés, les
+  chunks sont retirés une fois cuits, et la rétention des rejeux doit rester illimitée (la purge suppose
+  une reconstruction depuis l'archive).
+- Pour mesurer le gain sur son poste : `du -sh data/cache/film_chunks` avant et après `film recompress`.
+
 ### Référentiels / seed / migration
 
 ```bash
@@ -472,11 +544,35 @@ ne liste pas : le JSON reste la référence, `--pin` est la porte de sortie, et 
 `internal/games/halo_infinite/medal_icons_test.go` échoue dès qu'une médaille de la taxonomie
 n'a pas d'icône.
 
+### Langues et traductions (ADR 0040)
+
+Les langues de l'application sont listées dans `config/locales.toml` (source unique). Ajouter une langue,
+pas à pas : [Guide des fondations § 3.5](FOUNDATIONS_GUIDE.md).
+
+```bash
+# régénère apps/web/src/lib/i18n/generated/locales.ts, apps/go-api/internal/i18n/locales_gen.go et les
+# modules de manifests depuis config/locales.toml ; s'arrête à la première feuille de manifest qui n'a pas
+# une langue listée
+node apps/web/scripts/build_i18n_manifests.mjs
+# langue de preuve : fabrique `xx` depuis `en` (texte entre ⟦ et ⟧) dans --out (un dossier temporaire par
+# défaut) ; ne touche ni config/locales.toml ni aucun fichier versionné
+node apps/web/scripts/build_i18n_manifests.mjs --pseudo xx [--out DOSSIER]
+# les types TypeScript générés ET les listes de langues générées sont à jour (aussi lancé par les tests web)
+node tools/check-generated-types-fresh.mjs
+# noms Halo des cartes, playlists, paires et variantes dans asset_translations (API Discovery UGC)
+cd apps/go-api
+go run ./cmd/levelup populate-assets [--types map,playlist,pair,game_variant] [--langs es-ES,es-MX] \
+    [--dry-run] [--force] [--concurrency N] [--freshness JOURS] [--title-id halo_infinite]
+```
+
+Défauts de `populate-assets` : les quatre types, les 14 étiquettes de `domain.TargetLanguages`, concurrence
+10, fraîcheur 30 jours ; `--langs` ignore (avec un avertissement) une étiquette hors de cette liste.
+
 ### Chaînes de fabrication des assets versionnés
 
 Onze chaînes hors ligne, toutes sous `apps/go-api/cmd/`, produisent des fichiers commités
 (`data/titles/{slug}/reference/`, `static/`, ou un fichier Go généré). Aucune n'est câblée
-dans `cmd/server` — le décodage du jeu et le code GPLv3 (`internal/himap`, `internal/ooz`,
+dans `cmd/server` — le décodage du jeu et le code GPLv3 (`libs/himap/himap`, `libs/gamefiles/ooz`,
 Kraken/Oodle) restent isolés dans ces binaires. Lancées depuis `apps/go-api` sauf mention
 contraire. `--title`/`-title` vaut `halo_infinite` par défaut partout.
 
@@ -498,7 +594,7 @@ go run ./cmd/weapon-icons-table                      # derive la table Go depuis
 - À rejouer : après une mise à jour de contenu qui fait grandir les tables (build) ; après
   chaque exécution de `weapon-icons-build`, pour garder la table à jour (table).
 - Chaîne complète, tables de correspondance et pistes réfutées :
-  `.ai/V7.5/icones/ETAT_DE_L_ART_ICONES.md`.
+  `.ai/archive/V7.5/icones/ETAT_DE_L_ART_ICONES.md`.
 
 #### mapquant-build
 
@@ -570,7 +666,7 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--titl
 - Sortie : `data/titles/{slug}/reference/map_backgrounds/{cle}.png` + `{cle}.json` (sidecar de
   calage) par carte — 218 fichiers aujourd'hui.
 - Prérequis : jeu installé — TOUJOURS, aucun flag ne permet de l'éviter, même en Forge seul ;
-  chaîne cgo/GPLv3 (`internal/himap` -> `internal/himodule` -> `internal/ooz`, jamais liée
+  chaîne cgo/GPLv3 (`libs/himap/himap` -> `libs/gamefiles/himodule` -> `libs/gamefiles/ooz`, jamais liée
   dans `cmd/server`) ; exige `map_objectives.json` déjà construit (dépendance dure, échoue
   sans lui) ; utilise `map_quant_bounds.json` / `map_callouts.json` / `map_positions_jouees.json`
   / `map_fond_reglages.json` s'ils existent, dégrade avec un avertissement sinon.
@@ -609,7 +705,7 @@ go run ./cmd/mapopads-build --from <dossier> --refresh-drifted   # re-valide con
 - Sortie : `data/titles/{slug}/reference/map_weapon_pads.json` (socles d'arme et de
   power-up), écriture atomique via le même helper `mapcatalog.WriteAtomic` que le chemin de
   rattrapage Forge de la synchro écrit dans ce même fichier
-  (`.ai/V7.5/v2/PLAN_V2_REJEU_FILM_2026-09-05.md` item A.3 — suivi séparément, hors de cette chaîne).
+  (`.ai/archive/V7.5/v2/PLAN_V2_REJEU_FILM_2026-09-05.md` item A.3 — suivi séparément, hors de cette chaîne).
 - Prérequis : ni jeu installé, ni réseau, ni cgo ; exige `map_objectives.json` (lien map_id ->
   nom de fichier) et un dépôt local de `.mvar` (`--from`).
 - À rejouer : `--refresh-drifted` — le `.mvar` d'une carte UGC ne concorde plus avec le
@@ -669,7 +765,7 @@ go run ./cmd/mapnav-fetch -map-id <uuid> [-map-id <uuid>...] [-dry-run]
 CLI à sous-commandes (`inventaire`/`render`/`variantes`/`diag`/`assemble`/`compose2d`), pas
 une invocation unique. Fragment vérifié de la recette derrière le jeu actuel (couvre 13 des
 18 véhicules ; des passes ultérieures ont ajouté le reste — vérifier
-`.ai/V7.5/film_re/*.md` pour l'état courant avant de rejouer) :
+`.ai/archive/V7.5/film_re/*.md` pour l'état courant avant de rejouer) :
 
 ```bash
 go build -o v4tool.exe ./cmd/vehicle-sprite
@@ -683,7 +779,7 @@ v4tool.exe render -variant=any -cote=256 -out=<dir> \
   le `PathResolver` — les chemins sont de simples flags `-out`/`-curate`.
 - Prérequis : jeu installé, cgo/GPLv3 (jamais lié dans `cmd/server`) ; aucun réseau.
 - À rejouer : un nouveau véhicule pilotable sort. Recette complète :
-  `.ai/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md` §9 et les notes suivantes du même
+  `.ai/archive/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md` §9 et les notes suivantes du même
   dossier.
 
 #### weapon-sounds (mode `livrer`, dernière étape d'une recette plus large)
@@ -692,16 +788,33 @@ v4tool.exe render -variant=any -cote=256 -out=<dir> \
 go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <chantier>] [-depot <depot>]
 ```
 
-- Sortie : `static/sounds/halo_infinite/hinf_*.wav` (26 fichiers) +
+- Sortie : `static/sounds/halo_infinite/hinf_*.ogg` (26 fichiers, Opus 96 kbit/s en Ogg, encodés à la livraison par
+  le même code que `sounds-encode` ; mixage et troncature restent en PCM) +
   `apps/web/src/features/match-replay/weaponSoundVariations.ts`.
 - Prérequis : les étapes antérieures de la recette, encore hors dépôt (extraction, analyse
   des banks, vote humain), doivent déjà avoir produit `_donnees/*.json` et l'arborescence de
   `.wav` sources/rendus par arme. Aucun jeu installé n'est nécessaire pour cette étape finale
   (le mode n'ouvre aucun module du jeu), mais cgo EST requis pour COMPILER le binaire :
-  `cmd/weapon-sounds` importe `internal/himap` -> `internal/himodule` -> `internal/ooz`
+  `cmd/weapon-sounds` importe `libs/himap/himap` -> `libs/gamefiles/himodule` -> `libs/gamefiles/ooz`
   (décompression Kraken) pour ses autres modes.
 - À rejouer : un vote d'arme est finalisé, ou la recette complète est rejouée (mise à jour du
-  jeu, nouvelle arme). Recette complète : `.ai/V7.5/RECETTE_SONS_ARMES.md`.
+  jeu, nouvelle arme). Recette complète : `.ai/archive/V7.5/RECETTE_SONS_ARMES.md`.
+
+#### sounds-encode (sons du rejeu, WAV -> Opus)
+
+```bash
+go run ./cmd/sounds-encode [-src static/sounds] [-dst <src>] [-check] [-remove-sources]
+```
+
+- Convertit chaque `.wav` sous `-src` en Opus 96 kbit/s dans un conteneur Ogg (`.ogg`, même arborescence ; nombre de
+  canaux conservé). ffmpeg et ffprobe sont requis (résolus par `internal/media` : `LEVELUP_FFMPEG_DIR`, puis le
+  dossier de l'exécutable, puis le PATH). Idempotent : un `.ogg` au moins aussi récent que son `.wav` est sauté.
+  Sortie reproductible.
+- `-check` vérifie, pour chaque son (ceux déjà à jour compris), que le `.ogg` se décode en exactement le nombre
+  d'échantillons du `.wav` ; `-remove-sources` supprime chaque `.wav` dont le `.ogg` est en place (et contrôlé avec
+  `-check`). Code de sortie 1 si un son a échoué (chaque échec est journalisé).
+- À utiliser quand : un son est déposé à la main (véhicules, fin de partie...). L'arbre ne garde jamais de `.wav`
+  (`replaySoundAssets.guard.test.ts`) : lancer `-check -remove-sources`.
 
 ### Médias
 
@@ -967,13 +1080,13 @@ celui qui la tape a déjà décidé où il construit, sur sa machine, avec ses f
 ### Rejeu 2D — outillage de construction (faits, équivalence, profils)
 
 Outils d'opérateur de la chaîne de construction des artefacts (« cuisson » dans le plan
-`.ai/V7.5/PLAN_CUISSON_PERF.md`). Ils lisent le cache local de films ; les deux outils hors ligne
+`.ai/archive/V7.5/PLAN_CUISSON_PERF.md`). Ils lisent le cache local de films ; les deux outils hors ligne
 n'ont besoin d'aucune base et décodent un film par processus enfant borné (plafond mémoire dur,
 priorité CPU basse, verrou solo).
 
 ```bash
 cd apps/go-api
-go run ./cmd/levelup replay-facts-export --out internal/games/halo_infinite/film/replay/testdata/equivalence \
+go run ./cmd/levelup replay-facts-export --out ../../libs/film/replay/testdata/equivalence \
   [--title slug] [--oracle] <short8|match_id>...
 ```
 
@@ -989,6 +1102,7 @@ SÉPARÉ, exprès : les entrées de la cuisson restent identiques à l'octet. Un
 comme des faits vides.
 
 ```bash
+make replay-equiv                                  # idem, depuis la racine ; joué aussi par `make gate-push` (exige le parc local de films, ~12 min, code 1 = écart)
 go run ./cmd/replay-equiv                          # tout le corpus (CORPUS.txt), comparaison seule
 go run ./cmd/replay-equiv -films 000d5950 -update  # (re)fige les références d'un seul film
 # flags : -corpus F  -films a,b (remplace le corpus)  -update  -mem-gib N (défaut 3, 0 = désarmé)
@@ -1006,14 +1120,14 @@ d'effacer un temporaire, pour comparer les digests obtenus aux références sans
 `-update` et le format des TSV de référence sont inchangés. Parent et enfant vivent
 dans le même binaire — le parent planifie et ne décode rien, chaque film naît dans un enfant borné
 (verrou solo en attente bornée, sentinelle) et meurt avec sa RAM. Les références vivent dans
-`internal/games/halo_infinite/film/replay/testdata/equivalence/<short8>.tsv`, chacune ouverte par son marqueur
+`libs/film/replay/testdata/equivalence/<short8>.tsv`, chacune ouverte par son marqueur
 `# digest-grammar: N` : une référence figée sous une autre grammaire est une panne
 d'infrastructure (« re-figer par `-update` »), jamais un écart de décodage. `-update` réécrit ces
 références au lieu de les comparer — pour une correction déclarée seulement. Le mode `-walkers`
 (divergence des grammaires de découpage sur tout le cache de films) a été **retiré** en 2026-09 :
 il portait en copie trois marcheurs de paquets historiques dont les originaux n'existent plus, il
 ne se comparait donc plus qu'à lui-même. Sa mesure reste figée au §2 de
-`.ai/V7.5/MESURES_CUISSON_PERF.md` et rejouée en CI par le test de la mini-bobine de
+`.ai/archive/V7.5/MESURES_CUISSON_PERF.md` et rejouée en CI par le test de la mini-bobine de
 `internal/analysis/filmsource`.
 
 ```bash
@@ -1062,14 +1176,14 @@ ne s'exécute PAS sur une mini-bobine — il dérive sa bande de slots bipède d
 refuse une bobine dont les images sont concaténées hors de leur continuité.)
 
 ```bash
-cd apps/go-api
+cd libs/film
 # la ligne de base commise (à régénérer seulement sur un changement déclaré)
-go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/ \
-  > internal/games/halo_infinite/film/internal/grammar/testdata/bench_baseline.txt
+go test -bench . -run '^$' -count 10 ./internal/grammar/ \
+  > internal/grammar/testdata/bench_baseline.txt
 
 # comparer après un changement, sur la MÉDIANE (ce que benchstat rapporte)
-go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/ > /tmp/apres.txt
-benchstat internal/games/halo_infinite/film/internal/grammar/testdata/bench_baseline.txt /tmp/apres.txt
+go test -bench . -run '^$' -count 10 ./internal/grammar/ > /tmp/apres.txt
+benchstat internal/grammar/testdata/bench_baseline.txt /tmp/apres.txt
 # benchstat n'est pas vendorisé : go install golang.org/x/perf/cmd/benchstat@latest
 ```
 
@@ -1099,6 +1213,83 @@ Liste complète : `go run ./cmd/levelup help`.
 
 ---
 
+## Coquille desktop (Tauri 2, Rust)
+
+L'application Windows vit dans `apps/desktop` (ADR 0045). C'est une fenêtre autour du même serveur Go,
+lancé comme processus fils avec `-mode desktop -arret-sur-stdin` ; Rust n'est admis qu'ici, sans aucune
+logique métier (D-18). Prérequis : `cargo` et `rustc` (stable, 1.88 ou plus), Node 24, Go avec CGO (gcc de
+msys64) pour le vrai serveur.
+
+```bash
+make desktop-build   # vrai serveur (scripts/desktop-dev.ps1) -> src-tauri/binaries/, puis cargo build
+make desktop-test    # cargo test + clippy -D warnings + fmt --check, puis vet et tests du faux serveur
+make desktop-dev     # compile le serveur, puis `npx tauri dev` sur la racine du dépôt et une racine de données de développement
+make desktop-installer  # installeur NSIS (front, serveur, ffmpeg LGPL, ressources), sans clé de signature
+make desktop-e2e        # installe, lance, ferme, relance et désinstalle cet installeur sur une racine de données jetable
+```
+
+CI : le job `desktop-test` (Windows) joue les tests de la coquille, clippy et le format ; le job `desktop-audit` (Linux) lance `cargo audit` sur
+`apps/desktop/src-tauri/Cargo.lock` avec un `cargo-audit` épinglé : une **vulnérabilité** connue le rougit, les avis « non maintenu », « unsound » et « yanked »
+de l'arbre transitif restent des avertissements. Les deux suivent le filtre de chemins `desktop`.
+
+`desktop-dev` prend `%LOCALAPPDATA%\LevelUp-dev` pour racine de données (`-DataDir` pour la changer), jamais
+celle de l'application installée. La coquille lit trois surcharges facultatives dans son propre environnement,
+`LEVELUP_RESOURCES_DIR`, `LEVELUP_DATA_DIR` et `LEVELUP_WEB_DIST` (chemins absolus ; le dernier est le front
+compilé que le serveur sert, `scripts/desktop-dev.ps1 -BuildWeb` le construit) ; toute autre variable `LEVELUP_*` ou `SPNKR_*`
+est retirée avant le lancement du serveur. Le journal de la coquille est `<racine des données>\logs\desktop.log`
+(5 Mo, un fichier `.1`) : la sortie d'erreur du serveur relayée ligne à ligne, et les lignes propres de la coquille.
+
+`cargo test` tourne sans fenêtre. Ses tests de contrat (`src-tauri/tests/contract.rs`) compilent le faux serveur
+`apps/desktop/testdata/fake-sidecar` (son propre module, `GOWORK=off`, aucun import de `levelup/go-api`) par
+`go build` dans un dossier temporaire et jouent contre lui chaque cas du contrat : `FAKE_VARIANT`
+(`never_ready`, `failed`, `failed_no_port`, `late_stopped`, `crash`, `crash_after_ready`),
+`FAKE_CHATTY_BYTES`, `FAKE_*_DELAY_MS`. `cargo audit` (`cargo install cargo-audit --locked`) contrôle les
+dépendances de `Cargo.lock`. Une compilation de release (`--release`) refuse une clé publique d'updater vide et
+un binaire serveur absent.
+
+### Installeur, updater et test de bout en bout (L17)
+
+`apps/desktop/scripts/` (PowerShell et bash, les mêmes scripts que les jobs `desktop-build` et `desktop-e2e` de
+`.github/workflows/release.yml`) :
+
+```powershell
+powershell -File apps/desktop/scripts/build-installer.ps1 [-SkipWeb] [-SigningKey <fichier> [-SigningPassword <mdp>]] [-OutDir <dossier>]
+powershell -File apps/desktop/scripts/stage-bundle.ps1 -WebDist <apps/web/dist> -FfmpegDir <dossier> [-ArchiveDir <dossier>] [-Version <X.Y.Z>]
+powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <LevelUp_X.Y.Z_x64-setup.exe> [-EngineInstaller <LevelUp_X.Y.Z_x64-engine-setup.exe>]
+bash apps/desktop/scripts/check-version.sh <X.Y.Z> [<serveur.exe> [<empreinte du paquet>]]
+cd apps/go-api && go run ./cmd/resources-manifest -dir <dossier du paquet> [-version <X.Y.Z>] [-zip <archive.zip>]
+```
+
+- L'installation est faite de deux unités (ADR 0045 D-30) : le **moteur** (coquille, serveur, front compilé sans `web/titles`, `config/`) et le **paquet de
+  ressources** (`static/`, `web/titles/`, référentiel du rejeu, ffmpeg, `resources.manifest.json`), identifié par son **empreinte** (SHA-256 du manifeste trié, calculée au build, aucune
+  version à incrémenter). `stage-bundle.ps1` assemble les deux (`src-tauri/bundle-staging` et `src-tauri/pack-staging`, ignorés par git), lance
+  `cmd/resources-manifest` (le seul générateur de manifeste, aussi utilisé par le Dockerfile), écrit l'empreinte dans `pack-staging.fingerprint` et, avec
+  `-ArchiveDir`, l'archive `levelup-resources-<empreinte>.zip`.
+- `build-installer.ps1` compile le front, télécharge le ffmpeg LGPL épinglé (`fetch-ffmpeg.ps1` : l'URL et la somme SHA-256 sont des constantes du script, une somme
+  différente arrête tout), assemble moteur et paquet, compile le serveur (`-ldflags "-s -w -X main.version=<version de Cargo.toml> -X main.resourcesFingerprint=<empreinte>"` : ni table des
+  symboles ni DWARF, traces de panique conservées, et l'empreinte de SON paquet) et lance `npx tauri build` deux fois : `tauri.bundle.conf.json` (moteur + paquet) puis
+  `tauri.engine.conf.json` (moteur seul). Trois fichiers sortent sous `-OutDir` (défaut `src-tauri/target/release/installers`) :
+  `LevelUp_<version>_x64-setup.exe` (installeur **complet** : première installation et page de téléchargement), `LevelUp_<version>_x64-engine-setup.exe` (**moteur seul** : celui que
+  `latest.json` désigne à l'updater) et `levelup-resources-<empreinte>.zip`. Sans `-SigningKey` aucun secret n'est nécessaire (`createUpdaterArtifacts` reste
+  faux) ; avec, l'installeur moteur seul et le paquet sont aussi signés (fichiers `.sig`, même clé). L'installation est par utilisateur : programme sous `%LOCALAPPDATA%ProgramsLevelUp`, données sous
+  `%LOCALAPPDATA%LevelUp`, jamais supprimées par le désinstalleur.
+- `e2e-install.ps1` refuse de s'exécuter si LevelUp est déjà installé. Il installe en silencieux (`/S`), vérifie le paquet installé contre son manifeste, lance
+  l'application avec un `LEVELUP_DATA_DIR` jetable, attend `<données>desktopport` et `GET /health` = 200, la ferme
+  par `WM_CLOSE`, vérifie la ligne de journal `arrêt: terminé` avec `clean=true` et l'absence de fichier `*.wal`,
+  relance (même port), ferme de nouveau. Avec `-EngineInstaller` il joue ensuite une **mise à jour moteur seul** (`/S /UPDATE`) après avoir supprimé un fichier du moteur et un fichier du
+  paquet (celui du moteur revient, celui du paquet ne doit pas revenir, tous les autres fichiers du paquet gardent leur SHA-256) et lance l'application une troisième fois ; il désinstalle enfin en silencieux, vérifie
+  que le dossier du programme disparaît entièrement (le serveur livré retire le paquet, que le désinstalleur réécrit ne connaît plus) et que la racine de données existe encore.
+  Code de sortie 0 ou 1 ; en cas d'échec les journaux sont copiés sous `-ArtifactsDir`.
+- `check-version.sh` refuse tout écart entre la version attendue (le tag git sans `v`), `Cargo.toml`,
+  `tauri.conf.json` et les `-ldflags` embarqués dans le binaire serveur (`go version -m`) ; avec un troisième argument il refuse aussi un serveur qui n'embarque pas
+  `-X main.resourcesFingerprint=<cette empreinte>`.
+- Workflow de release : un tag `vX.Y.Z` compile et signe l'installeur (secrets `TAURI_SIGNING_PRIVATE_KEY` et, si la
+  clé a un mot de passe, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` ; sans la clé le job échoue avant de compiler), joue le
+  test de bout en bout, puis publie l'installeur complet, l'installeur moteur, le paquet (`levelup-resources-<empreinte>.zip`), leurs signatures et `latest.json` (le fichier que lit l'updater : il
+  désigne l'installeur moteur et porte un bloc `resources` avec l'empreinte, l'URL, la somme SHA-256, la taille et la signature du paquet) avec la release. Un push sur `release/**` compile l'installeur sans signature et ne joue que le test de bout en bout.
+
+---
+
 ## Tests
 
 ### Go (voir [../testing.md](../testing.md))
@@ -1113,24 +1304,69 @@ cd apps/go-api && CGO_ENABLED=0 go test ./internal/domain/... ./internal/analysi
 cd apps/go-api && CGO_ENABLED=1 LEVELUP_DEMO_MODE=true go test ./... -timeout 5m -count=1
 
 make go-api-coverage   # rapport de couverture
-make go-api-lint       # go vet
+make go-api-lint       # golangci-lint ratchet (apps/go-api + chaque module libs/) ; go vet en repli
 ```
+
+#### Modules Go sous `libs/` et espace de travail (ADR 0041)
+
+Quatre briques vivent dans leur propre module Go : « fichiers du jeu », `libs/gamefiles` (chemin de module
+`github.com/JGtm/LevelUp/libs/gamefiles` : paquets `himodule`, `ooz`, `hinavmesh`, `mapvar`), « images de
+carte », `libs/himap` (`github.com/JGtm/LevelUp/libs/himap` : paquet `himap`, qui n'importe que `libs/gamefiles`),
+et le « décodeur de film », `libs/film` (`github.com/JGtm/LevelUp/libs/film` : la façade `decfilm`, la couche de
+publication `replay`, les couches fermées sous `internal/`, ses catalogues ; n'importe que `libs/gamefiles` et
+`libs/himap`, ADR 0034), et l'« API Halo », `libs/haloapi` (`github.com/JGtm/LevelUp/libs/haloapi` : paquets
+`xblauth`, `infinite`, `halo5`, `xboxlive` ; n'importe aucune autre brique, ADR 0042). Toutes quatre sont reliées à
+`apps/go-api` par le `go.work` de la racine du dépôt (aucune directive
+`replace` ; `go.work.sum` est versionné). Deux conséquences pour toute commande :
+
+- `./...` ne franchit jamais la frontière d'un module. `cd apps/go-api && go test ./...` ne teste **pas**
+  `libs/`, et `go mod tidy` ne peut plus tourner dans `apps/go-api` (il cherche le module voisin sur le
+  réseau ; l'espace de travail le résout, donc `go.mod` ne porte aucun `require` pour lui). Une montée
+  de dépendance d'une brique se fait dans son propre `go.mod` (`cd libs/gamefiles && go get ...`) ; `go mod
+  tidy` ne marche pas non plus dans `libs/himap` ni `libs/film` (elles importent une autre brique) : `make tidy`
+  dans `apps/go-api` les nomme et les saute, et leur `go.mod` s'édite à la main.
+- La ligne de version Go est la même dans `apps/go-api/go.mod`, `go.work`, chaque `libs/*/go.mod` et l'image
+  du `Dockerfile` (`internal/archlint/dockerfile_go_version_test.go`).
+
+```bash
+make libs-test                       # vet (défaut, tags research, gamefiles, gamefiles+research) + tests de chaque module libs/, CGO actif
+cd libs/gamefiles && go test ./... -count=1
+cd libs/gamefiles && go vet -tags=gamefiles,research ./...     # compile les instruments de recherche
+cd libs/gamefiles && go list -deps ./... | grep levelup/go-api  # ne doit rien afficher : le module est autonome
+cd libs/himap && go test ./... -count=1                         # la brique images de carte, sans le jeu : son corpus est sous le tag
+cd libs/himap && go list -deps ./... | grep levelup/go-api      # ne doit rien afficher non plus
+cd libs/film && go test ./... -count=1                          # le décodeur de film (gates de couche et goldens compris)
+cd libs/film && go vet -tags=research ./...                     # compile ses instruments de recherche
+cd libs/film && go test -tags research ./internal/grammar/ -run TestE191   # joue des instruments de recherche à la demande
+cd libs/haloapi && go test ./... -count=1                       # le protocole de l'API Halo (httptest seulement, sans CGo)
+cd libs/film && go list -deps -test ./... | grep levelup/go-api # ne doit rien afficher non plus
+go test ./libs/gamefiles/mapvar/ -run TestLabel -count=1       # depuis la racine du dépôt fonctionne aussi (espace de travail)
+```
+
+`make go-api-lint` et `make gate-push` passent aussi le lint sur chaque module `libs/` (même `.golangci.yml`, donné par
+`--config ../../apps/go-api/.golangci.yml`). Le job CI `go-build` joue les mêmes vet et tests dans un pas dédié.
+Une brique n'a ni base de données ni donnée de LevelUp : ses tests ne lisent que leur `testdata/` et le jeu installé ;
+les tests qui exigent des données de LevelUp vivent dans `apps/go-api` (`internal/gamefilescorpus/`, `internal/filmcorpus/`
+pour le décodeur de film). Un test du film qui lit les données versionnées du dépôt hôte trouve sa racine par le marqueur
+`go.work` (`racineDepot`, un helper par paquet) et se saute hors du dépôt.
 
 #### Corpus du tag de build `gamefiles` (cartes **et** catalogues commis)
 
 Deux familles de tests lisent le **jeu installé**, toutes deux derrière `//go:build gamefiles` :
 
-- les 59 fichiers `*_gamefiles_test.go` de `internal/himap/` décodent les modules du jeu et
-  balaient les 26 cartes du catalogue. Ils sont longs par nature — mesuré le 2026-09-05,
+- les fichiers `*_gamefiles_test.go` de `libs/himap/himap/` (34 au 2026-10-28, après le lot 2c) décodent les
+  modules du jeu, et ceux de `internal/gamefilescorpus/` (25, un paquet de tests seuls : depuis
+  le plan de découplage D1, les tests de `himap` qui lisent des données de LevelUp y vivent et
+  appellent `himap` par son API exportée) balaient les 26 cartes du catalogue. Ils sont longs par nature — mesuré le 2026-09-05,
   `TestBalayageCoquille` prend à lui seul **203 s** pour 26 cartes (1 246 s avant le passage du
   lecteur de modules en projection mémoire, le même jour). Le tag garde un `go test
-  ./internal/himap/` nu utilisable (2,8 s) ;
+  ./himap/` nu (depuis `libs/himap`) utilisable (2,8 s) ;
 - trois fabricants de catalogues sous `cmd/` re-dérivent leur catalogue **commis** depuis le jeu
   installé et le comparent à l'octet : `cmd/film-profiles-build/`, `cmd/mapfond-build/`,
   `cmd/mapstruct-build/` (9,0 s à eux trois, mesuré le 2026-09-17).
 
-`make go-api-test-gamefiles` joue **les quatre paquets**. Jusqu'au 2026-09-17 la cible ne jouait
-que `./internal/himap/` : les trois tests `cmd/` n'étaient joués par AUCUNE commande du dépôt
+`make go-api-test-gamefiles` joue **les cinq paquets** (la brique depuis `libs/himap`, les quatre autres depuis
+`apps/go-api`). Jusqu'au 2026-09-17 la cible ne jouait que la brique : les trois tests `cmd/` n'étaient joués par AUCUNE commande du dépôt
 (découverte D1 (3.1.2) ; le plus ancien est tagué depuis le 2026-09-05). La liste des paquets est
 explicite et non `./cmd/...` : sous le tag, un paquet sans fichier `gamefiles` n'apporte que du
 temps de compilation. `archlint.TestCibleMakefileGamefilesCouvreLeCorpus` rougit si un paquet
@@ -1138,8 +1374,9 @@ entre au corpus sans entrer dans la cible.
 
 ```bash
 make go-api-test-gamefiles                       # corpus entier (~6 min, exige le jeu)
+cd libs/himap && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s ./himap/ -v
 cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
-  ./internal/himap/ \
+  ./internal/gamefilescorpus/ \
   ./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
 
 # Les catalogues commis seuls (des secondes, pas des minutes) :
@@ -1148,30 +1385,47 @@ cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 \
 
 # Une seule carte (beaucoup plus rapide) :
 BALAYAGE_CARTES=aquarius_map go test -tags=gamefiles -timeout 300s \
-  ./internal/himap/ -run TestBalayageCoquille -v
+  ./internal/gamefilescorpus/ -run TestBalayageCoquille -v
 
 # Jeu installé ailleurs :
-LEVELUP_HALO_DEPLOY=/chemin/vers/Halo Infinite/deploy go test -tags=gamefiles ./internal/himap/
+cd libs/himap && LEVELUP_HALO_DEPLOY=/chemin/vers/Halo Infinite/deploy go test -tags=gamefiles ./himap/
 ```
 
 Sans installation du jeu, chaque test prend son `t.Skip` et le corpus est vide en une
 seconde — c'est exactement ce qui se passe en CI. La CI se contente donc de le **compiler**
-(`go vet -tags=gamefiles ./internal/himap/`, job `go-test`) ; elle ne l'exécute jamais. Le
-tag lui-même est tenu sur tout le module par `internal/archlint/gamefiles_tag_test.go`, qui
+(`go vet -tags=gamefiles ./...` dans `libs/himap` et `go vet -tags=gamefiles ./internal/gamefilescorpus/` dans `apps/go-api`, job `go-build`) ; elle ne l'exécute jamais. Le
+tag lui-même est tenu sur tout l'espace de travail par `internal/archlint/gamefiles_tag_test.go`, qui
 tourne dans le build par défaut.
 
-**Test rouge connu** : `TestBancCliffhanger` échoue (accord 64,4 % contre une référence
+**Test rouge connu** (devenu un instrument de recherche depuis le lot 2c de D1 : `sddt_research_test.go`, joué avec `-tags=gamefiles,research`) : `TestBancCliffhanger` échoue (accord 64,4 % contre une référence
 re-basée à 64,7 %). Il est *préexistant*, pas une régression — vérifié le 2026-09-05 en le
 rejouant sur le commit précédent, qui rend des chiffres identiques au bit près. Personne ne
 pouvait le voir : le corpus ne terminait jamais, et la CI ne l’exécute pas. Consigné dans
 `.ai/REGISTRE_REPORTS.md`.
+
+**Instruments de recherche des briques (D1 lot 2c, 2026-10-28).** Les sondes de rétro-ingénierie des briques
+`himap`, `hinavmesh` et `mapvar` qui lisent `.ai/re_dump` (le dump de rétro-ingénierie non versionné) ou des
+données du dépôt hôte (`data/...`) sont *conservées* comme instruments de recherche, hors du build par défaut
+ET de la suite `gamefiles` ci-dessus. Ce sont des fichiers `*_research_test.go` ; ceux qui ouvrent aussi le jeu
+portent `//go:build gamefiles && research` (les autres `//go:build research`). Ils tournent à la demande et
+exigent le jeu installé et, pour certains, `.ai/re_dump` :
+
+```bash
+cd libs/himap && CGO_ENABLED=1 go test -tags=gamefiles,research -count=1 ./himap/ -run <Sonde>   # un instrument ; sans -run, toute la suite gamefiles plus les instruments
+cd libs/gamefiles && go test -tags=research -count=1 ./hinavmesh/ ./mapvar/
+```
+
+La CI les compile (`go vet -tags=gamefiles,research ./...` dans `libs/himap` et dans `libs/gamefiles`) ;
+le `go vet -tags=research ./...` de tout le module laisse de côté, volontairement, ceux en `gamefiles && research`
+(les deux tags sont requis). La règle est tenue par `internal/archlint/gamefiles_tag_test.go` (« un instrument qui
+ouvre le jeu déclare `gamefiles` ») et `research_tag_test.go`.
 
 #### Gate de non-régression du rejeu sur corpus témoin (`cmd/replay-corpus-gate`)
 
 Trois régressions de données (28/08, 30/08, 02/09 — pont d'identité par manche, actions de
 drapeau non attribuées, « une piste = une vie ») ont traversé des goldens SYNTHÉTIQUES verts
 pendant dix-neuf schémas, faute d'un différentiel sur des films réels. `cmd/replay-diff` (déjà
-utilisé pour le balayage ponctuel du parc, `.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`) devient ici
+utilisé pour le balayage ponctuel du parc, `.ai/archive/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`) devient ici
 un gate répétable : `config/replay_corpus.toml` fige un film témoin par famille de mode (CTF
 mono- et multi-manche, Oddball, Assaut, Slayer, un match à deux manches, un match riche en
 véhicules), chacun choisi parce qu'il porte déjà un calque ou un défaut mesuré (portages de
@@ -1299,7 +1553,7 @@ jour) :
 | `--allow-missing` | `false` | tolérer un témoin ABSENT (avertissement seul) au lieu de sortir en code 4 |
 | `--manifest` | `<source-root>/config/replay_corpus.toml` | chemin du manifeste |
 | `--temoins` | (aucun) | rejouer les SEULS témoins nommés (ids séparés par des virgules) — le manifeste versionné reste le corpus, aucun manifeste réduit à écrire. Un id inconnu est une erreur (code 2), jamais une exécution tronquée en silence. |
-| `--mem-gib` | `4` | plafond mémoire souple (Gio) armé sur CHAQUE cuisson enfant, HEAD et base (`0` désarme). Le défaut du gate est volontairement AU-DESSUS de celui de production (`filmproc.DefaultLimitGiB` = 3) : D6 a mesuré deux témoins BTB à 3,779 et 3,807 Gio côté base, soit juste au-dessus du plafond dur de 3,75 Gio — ils échouaient au hasard d'un run à l'autre. |
+| `--mem-gib` | `4` | plafond mémoire souple (Gio) armé sur CHAQUE cuisson enfant, HEAD et base (`0` désarme). Le défaut du gate est volontairement AU-DESSUS de celui de production (`memguard.DefaultLimitGiB` = 3) : D6 a mesuré deux témoins BTB à 3,779 et 3,807 Gio côté base, soit juste au-dessus du plafond dur de 3,75 Gio — ils échouaient au hasard d'un run à l'autre. |
 | `--source-root` | `git rev-parse --show-toplevel` | dépôt dont le code/la config AU HEAD est testé — **pas** basé sur `db_profiles.json` : fonctionne depuis n'importe quel worktree, y compris un sans copie locale de ce fichier |
 | `--parc-root` | `source-root` s'il porte déjà la base partagée du titre, sinon auto-détecté via le `.git` commun | le parc de développement (chunks de film, artefacts `--reference=parc`) |
 | `--lock-root` | `CacheRootDir()` du parc | où vit le verrou de décodage partagé |
@@ -1307,7 +1561,7 @@ jour) :
 | `--keep-work` | `false` | conserver la racine de travail après l'exécution (débogage) |
 | `--json` | (aucun) | chemin où écrire aussi le rapport complet en JSON |
 
-**À exécuter avant tout merge qui touche** `games/halo_infinite/film/replay`, `replaybuild`, `film/internal/grammar`, ou qui
+**À exécuter avant tout merge qui touche** `libs/film/replay`, `replaybuild`, `libs/film/internal/grammar`, ou qui
 bumpe `SchemaVersion`. **Exige** : le parc local de développement (chunks de film ; + artefacts
 déjà cuits sous `data/cache/replays` en mode `--reference=parc`) et l'accès en lecture à la base
 partagée du titre (pour les faits du match, via `levelup replay-facts-export` lancé en
@@ -1318,7 +1572,7 @@ de base) ne lit que des catalogues versionnés (`data/titles/{slug}/reference`),
 corpus `gamefiles` ci-dessus — le gate n'en partage que l'ESPRIT (une ressource locale
 volumineuse, absente en CI, qui dégrade proprement plutôt que d'échouer). Mesuré le
 2026-09-06/07 sur le manifeste à 7 témoins, dans les deux modes : **cf.
-`.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`** pour l'exécution exacte et sa durée.
+`.ai/archive/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`** pour l'exécution exacte et sa durée.
 
 Si le parc local est plus ancien que le HEAD, les écarts attendus en `--reference=parc` sont des
 GAINS (calques neufs, correctifs documentés) ; toute PERTE est un fait à rapporter, jamais à
@@ -1330,7 +1584,7 @@ masquer en resserrant le manifeste ou en filtrant le rapport.
 Juge un artefact de rejeu APRÈS contre un artefact AVANT du même témoin, contre des ORACLES (les
 vérités officielles du match) et par des COMPTES DE VIOLATIONS (ce qu'aucun match réel ne peut
 contenir), au lieu d'attribuer à la main des centaines de métriques de couverture. Conception :
-`.ai/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md` ; bibliothèque : `internal/replayverite`.
+`.ai/archive/V7.5/film_re/BANC_DE_VERITE_CONCEPTION_2026-09-30.md` ; bibliothèque : `internal/replayverite`.
 Il ne cuit rien, ne décode aucun film et n'ouvre aucune base.
 
 ```bash
@@ -1373,17 +1627,36 @@ npm run test:coverage
 npm run lint
 ```
 
+Les images Halo 5 (`apps/web/public/titles/halo_5`) sont en WebP. Pour en ajouter ou en rafraîchir une à partir d'un PNG
+(ffmpeg avec `libwebp` dans le `PATH`, ou `LEVELUP_FFMPEG_DIR`) :
+
+```bash
+node scripts/convert-halo5-images.mjs [--keep] [--dir <racine>] [--jobs <n>]
+```
+
+Le script convertit par famille (plaques et fond : avec perte, qualité 85 ; emblèmes et vignettes : sans perte, car le
+personnalisateur Spartan lit leurs canaux R/V/B comme des zones de couleur et le sous-échantillonnage des chrominances
+d'un codage avec perte fait baver une zone sur la suivante), supprime chaque PNG converti (`--keep` les garde), est idempotent
+et affiche le poids avant et après. `teams/` et tout `halo_infinite/` restent en PNG. Un garde-rail vitest
+(`halo5Images.guard.test.ts`) échoue si un PNG revient.
+
 ### Gate local avant merge (`gate-push`)
 
 ```bash
-make gate-push               # ratchet lint Go + typecheck/lint web + baseline de tests, voies film et DuckDB en parallèle (~25 min)
+make gate-push               # ratchet lint Go + harnais replay-equiv + typecheck/lint web + baseline de tests, voies film et DuckDB en parallèle (~25 min + ~12 min)
 ```
 
-La baseline de tests joue deux voies en parallèle : la voie film
-(`./internal/games/halo_infinite/film/...`, sans dépendance à DuckDB — garde-rail
-`internal/archlint/film_lane_duckdb_free_test.go`) et la voie DuckDB (tous les autres paquets,
-`-p 1`). La voie DuckDB fixe la durée ; `scripts/gate-push.ps1` ci-dessous exécute toujours une
-seule suite en série.
+`make gate-push` joue `make replay-equiv` (le harnais d'équivalence du rejeu, juste après `make libs-test`) :
+les références de `libs/film/replay/testdata/equivalence` ont dérivé sans bruit de la v8.0.0 au re-figeage
+du 2026-10-30 faute de gate qui les joue. Il exige le parc local de films ; pour re-figer après une
+preuve d'équivalence : `cd apps/go-api && go run ./cmd/replay-equiv -update`.
+
+La baseline de tests joue deux voies en parallèle, une par module Go (ADR 0041) : la voie film (le
+module `libs/film`, sans dépendance à DuckDB — garde-rail
+`internal/archlint/film_lane_duckdb_free_test.go` — jugée contre
+`.ai/baselines/tests_libs_film.jsonl`) et la voie DuckDB (tout `apps/go-api`, `-p 1`, jugée contre
+`.ai/baselines/tests_pre_migration.jsonl`). La voie DuckDB fixe la durée ; `scripts/gate-push.ps1`
+ci-dessous exécute les deux suites l'une après l'autre.
 
 Sur certains postes Windows, l'environnement git-bash casse le lien des
 binaires de test Go embarquant `libduckdb_static` (`undefined reference
@@ -1401,6 +1674,20 @@ particularité d'environnement.
 ```powershell
 powershell -File scripts/gate-push.ps1
 ```
+
+### Voie CI Windows avec CGO (`go-test-windows-cgo`)
+
+Le job CI `go-test-windows-cgo` (`.github/workflows/ci.yml`) tourne sur `windows-latest` avec `CGO_ENABLED=1` (le runner
+fournit gcc, pas d'action MinGW). Il compile `./cmd/server` (DuckDB lié), puis joue `./cmd/server/...`,
+`./internal/platform/diskfree/...`, `./internal/platform/filelock/...`, `./internal/filmrun/...` et `./cmd/levelup/...` depuis `apps/go-api`, `./internal/decodelock/` et `./internal/filelock/`
+depuis `libs/film`, et `./himodule/` depuis `libs/gamefiles` : les paquets qui portent les fichiers `*_windows.go` /
+`*_win.go` (arrêt propre, verrous de fichiers, espace disque libre, priorité de processus, projection mémoire des
+modules). Aucun test sous les tags `gamefiles` ou `research` n'y est joué : le jeu n'est pas installé sur le runner.
+Il se déclenche sur les pushs `release/**`, les pull requests vers `main` (les seules que ce workflow reçoit). Les runners Windows coûtent
+cher : les branches de travail et les pushs sur `main` le sautent. Le budget est de 15 minutes. C'est le gate
+d'autorité des comportements propres à Windows ; les jobs Linux ne compilent jamais ces fichiers. Pour le rejouer en
+local (PowerShell, depuis `apps/go-api`, gcc dans le `PATH`) : `go build ./cmd/server`, puis les trois appels
+`go test -count=1` ci-dessus.
 
 ### Hygiène du disque (`disk-hygiene.ps1`)
 

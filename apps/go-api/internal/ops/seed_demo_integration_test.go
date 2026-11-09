@@ -299,6 +299,15 @@ func verifyPrestigeSeeded(t *testing.T, outDir string, res SeedDemoResult) {
 	} else if statuses < 3 {
 		t.Errorf("challenge : %d statut(s) distinct(s), want >= 3 (actif/complété/terminé)", statuses)
 	}
+	// Origine : un objectif ou un arc sans template_id / preset_id n'est jamais servi dans la
+	// langue de la requête (ADR 0040 D-3) — sur la démo anglaise, il resterait en français.
+	var noOrigin int
+	if err := playerDB.QueryRow(`SELECT (SELECT COUNT(*) FROM challenge WHERE template_id IS NULL) +
+		(SELECT COUNT(*) FROM arc WHERE preset_id IS NULL)`).Scan(&noOrigin); err != nil {
+		t.Errorf("origine des objectifs/arcs illisible: %v", err)
+	} else if noOrigin != 0 {
+		t.Errorf("%d objectif(s)/arc(s) démo sans origine du catalogue (texte servi en une seule langue)", noOrigin)
+	}
 
 	socialDB, err := sql.Open("duckdb", filepath.Join(outDir, "warehouse", "shared_social.duckdb")+"?access_mode=READ_ONLY")
 	if err != nil {

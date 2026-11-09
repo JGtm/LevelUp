@@ -66,6 +66,16 @@ C'est tout — LevelUp récupère votre XUID, complète votre profil et persiste
 OAuth dans le store de tokens unique (`data/auth/watcher_tokens/{xuid}.json`,
 voir [ADR 0023](../adr/0023-auth-tokens-single-source.md)), puis lance le smoke test.
 
+Cela vaut dans **tous les modes d'authentification**, y compris le mode poste seul (`none`) : le
+refresh token est écrit dans le store dès que le profil est suivi. Quand vous vous connectez avant
+que le profil existe (premier lancement : le wizard connecte, puis déclare le profil), LevelUp
+garde le token en mémoire seulement — jamais sur disque — et l'écrit à l'instant où le wizard crée
+le profil ; si le serveur redémarre entre les deux étapes, reconnectez-vous. Ensuite le serveur
+rafraîchit le token tout seul (Microsoft le renouvelle à chaque usage) : la synchronisation continue
+tant que le token est valide, sans nouvelle capture. Le token n'est jamais proposé aux
+synchronisations des autres joueurs sans l'accord de son propriétaire
+([ADR 0038](../adr/0038-token-pooling-consent.md)).
+
 #### Onboarding avancé (headless / CLI)
 
 Utilisez ce parcours quand le wizard interactif n'est pas accessible (serveur, headless, reverse proxy).
@@ -262,6 +272,22 @@ docker compose down
 | `./data` | `/app/data` | Données DuckDB (lecture/écriture) |
 | `./db_profiles.json` | `/app/db_profiles.json` | Profils joueurs |
 | `./app_settings.json` | `/app/app_settings.json` | Paramètres applicatifs |
+
+### Les trois racines
+
+Le programme lit et écrit à trois endroits, chacun fixé par une variable d'environnement (ADR 0008, amendement
+« two roots »). Sur un checkout, sans variable posée, ce sont les dossiers habituels et rien ne change.
+
+| Racine | Variable | Défaut | Contient |
+|--------|----------|--------|----------|
+| Ressources | `LEVELUP_RESOURCES_DIR` (puis `LEVELUP_REPO_ROOT`) | le checkout, auto-détecté | ce qui est livré avec le programme : `config/`, `static/`, le build web, `data/titles/{slug}/reference/`, `metadata-prebuilt.zip` |
+| Données | `LEVELUP_DATA_DIR` | `<ressources>/data` | bases, sessions, auth, caches, sauvegardes ; variable posée, aussi `db_profiles.json`, `app_settings.json` et `.env.local` |
+| Journaux | `LEVELUP_LOGS_DIR` | `<ressources>/logs` | fichiers de log et capture des plantages |
+
+L'image Docker pose les trois (`/app`, `/app/data`, `/app/data/logs`) ; le compose garde `db_profiles.json` et
+`app_settings.json` montés sous `/app` par `LEVELUP_DB_PROFILES` et `LEVELUP_APP_SETTINGS`, donc la disposition
+sur l'hôte ne change pas. Ne jamais pointer `LEVELUP_DATA_DIR` sur un dossier de la racine des ressources d'un
+programme installé (en lecture seule).
 
 ---
 

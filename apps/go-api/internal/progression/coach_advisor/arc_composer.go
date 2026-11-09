@@ -3,6 +3,7 @@ package coach_advisor
 import (
 	"sort"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/prestige"
 )
 
@@ -19,10 +20,8 @@ import (
 // Aucune information de palier absolu — les SuggestedTier des Steps sont
 // indicatifs (cf. invariant I1 ADR 0020).
 type ArcSpec struct {
-	TitleEN         string
-	TitleFR         string
-	DescriptionEN   string
-	DescriptionFR   string
+	Title           i18n.Text
+	Description     i18n.Text
 	RadarAxis       string  // l'axis pivot
 	AverageStrength float64 // moyenne des strength des signaux retenus
 	Steps           []ArcStep
@@ -128,8 +127,8 @@ func TryCompose(signals []Signal, cfg ArcComposerConfig) (ArcSpec, bool) {
 	}
 
 	// 7. Build ArcSpec
-	titleEN, titleFR := arcTitleForAxis(pivotAxis)
-	descEN, descFR := arcDescriptionForAxis(pivotAxis, len(pivotSignals))
+	title := arcTitleForAxis(pivotAxis)
+	desc := arcDescriptionForAxis(pivotAxis, len(pivotSignals))
 	tiers := suggestedTierProgression(len(pivotSignals))
 
 	steps := make([]ArcStep, len(pivotSignals))
@@ -145,10 +144,8 @@ func TryCompose(signals []Signal, cfg ArcComposerConfig) (ArcSpec, bool) {
 	avgStrength /= float64(len(pivotSignals))
 
 	return ArcSpec{
-		TitleEN:         titleEN,
-		TitleFR:         titleFR,
-		DescriptionEN:   descEN,
-		DescriptionFR:   descFR,
+		Title:           title,
+		Description:     desc,
 		RadarAxis:       pivotAxis,
 		AverageStrength: avgStrength,
 		Steps:           steps,

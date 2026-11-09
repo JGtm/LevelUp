@@ -22,12 +22,12 @@ package replayartifacts
 //
 // La règle « un film n'est archivé que finalisé » a un coût si elle se trompe : rien n'est
 // archivé, et un film EXPIRE côté serveur. Mais il vit des SEMAINES (« pas d'expiration en 2
-// semaines vérifiée empiriquement », `.ai/archive/V7/MATCH_DURATION_RESEARCH.md`), et
+// semaines vérifiée empiriquement »), et
 // `levelup archive-films` rattrape TOUT match sans film au cache, hors de la borne du rattrapage
 // ([BacklogHorizon]). La perte n'est donc réelle que si la dérive reste INVISIBLE des semaines :
 // c'est ce que le compteur hors délai et son WARN empêchent, au bout d'un quart d'heure.
 // Archiver les morceaux d'un film non finalisé « en quarantaine » demanderait de les télécharger
-// malgré le refus du client (`haloclient.fetchFilmChunks`) et une disposition de cache que
+// malgré le refus du client (`filmfetch.Films.fetchFilmChunks`) et une disposition de cache que
 // personne ne lirait — pour protéger une donnée qui ne court aucun risque à cette échelle.
 //
 // # LA MÉMOIRE EST CELLE DU PROCESSUS, ET C'EST ASSEZ
@@ -47,8 +47,9 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
+
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // CompteurFilmsNonFinalises : films dont l'archivage et la cuisson sont REPORTÉS au cycle suivant

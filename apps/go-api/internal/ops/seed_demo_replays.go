@@ -33,9 +33,10 @@ import (
 
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/atomicfile"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // Issues d'un rejeu figé au bilan du seed.
@@ -78,7 +79,7 @@ func seedDemoReplays(ctx context.Context, opts SeedDemoOptions, layout titlePkg.
 			continue // un match qui représente deux familles (ex. « véhicules » et son mode) : rangé et indexé une fois
 		}
 		keep[short] = true
-		filmOK := embedDemoFilm(ctx, titlePkg.NewPathResolver(opts.cacheRepoRoot()).CacheRootDir(), films, short)
+		filmOK := embedDemoFilm(ctx, titlePkg.NewPathResolver(opts.cacheRepoRoot()).FilmArchiveDir(), films, short)
 		if filmOK {
 			rep.Films++
 		}
@@ -180,7 +181,7 @@ func copyArtifact(src, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err
 	}
-	return atomicfile.WriteFile(dst, raw, 0o644)
+	return atomicfile.WriteFile(context.Background(), dst, raw, 0o644)
 }
 
 // embedDemoFilm copie le film `short` du cache source vers le magasin persistant des films de

@@ -1,6 +1,4 @@
 # Profile + Campaign i18n manifest — strings du PlayerProfile V1 (Ascension).
-#
-# Reference : .ai/PLAN_PLAYER_PROFILE_ASCENSION.md §4-§5
 # Format ICU MessageFormat. Regenerer via :
 #   node apps/web/scripts/build_i18n_manifests.mjs
 

@@ -9,6 +9,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // buildMaitriseHighlightCanonical : tuile Maîtrise (3 slides : HS sum,
@@ -96,7 +97,7 @@ func buildPerMinuteHighlightCanonical(window []canonical.PlayerMatchRow) *domain
 }
 
 // buildSerieHighlightCanonical : tuile Série.
-func buildSerieHighlightCanonical(window []canonical.PlayerMatchRow, locale string) *domain.HighlightItem {
+func buildSerieHighlightCanonical(window []canonical.PlayerMatchRow, locale string, groups domain.GroupesDeCartes) *domain.HighlightItem {
 	var slides []domain.HighlightSlide
 	if s := sliceBestKillingSpreeCanonical(window, locale); s != nil {
 		slides = append(slides, *s)
@@ -104,7 +105,7 @@ func buildSerieHighlightCanonical(window []canonical.PlayerMatchRow, locale stri
 	if s := sliceBestWinStreakCanonical(window); s != nil {
 		slides = append(slides, *s)
 	}
-	if s := sliceFavoriteMapCanonical(window, locale); s != nil {
+	if s := sliceFavoriteMapCanonical(window, locale, groups); s != nil {
 		slides = append(slides, *s)
 	}
 	if len(slides) == 0 {
@@ -133,12 +134,11 @@ func sliceBestKillingSpreeCanonical(window []canonical.PlayerMatchRow, locale st
 	if best == nil {
 		return nil
 	}
-	mapEN, mapFR := assetLabels(best.Summary.Map)
-	modeEN, modeFR := modeLabels(*best)
+	detail := homeMapModeDetail(locale, assetText(best.Summary.Map), modeText(*best))
 	return &domain.HighlightSlide{
 		LabelKey:   "highlight.slide.killing_spree_max",
 		Value:      fmt.Sprintf("%d", bestVal),
-		Detail:     fmt.Sprintf("%s · %s", labelForLocale(locale, mapFR, mapEN), normalizeHomeModeLabel(labelForLocale(locale, modeFR, modeEN), mapFR, mapEN)),
+		Detail:     detail,
 		ValueColor: homeColorPositive,
 	}
 }
@@ -167,23 +167,28 @@ func sliceBestWinStreakCanonical(window []canonical.PlayerMatchRow) *domain.High
 	}
 }
 
-func sliceFavoriteMapCanonical(window []canonical.PlayerMatchRow, locale string) *domain.HighlightSlide {
+// sliceFavoriteMapCanonical : la carte la mieux gagnée (>= 2 parties). Une variante de carte compte sous sa
+// carte de BASE (domain.GroupesDeCartes) : parties et victoires cumulées, libellé de la base.
+func sliceFavoriteMapCanonical(window []canonical.PlayerMatchRow, locale string, groups domain.GroupesDeCartes) *domain.HighlightSlide {
 	type stat struct {
-		name   string
-		nameFR string
-		plays  int
-		wins   int
+		name  i18n.Text
+		plays int
+		wins  int
 	}
 	byMap := map[string]*stat{}
 	for _, r := range window {
 		if r.Summary.Map == nil || r.Summary.Map.ID == "" {
 			continue
 		}
-		mapEN, mapFR := assetLabels(r.Summary.Map)
-		s, ok := byMap[r.Summary.Map.ID]
+		key := groups.Groupe(r.Summary.Map.ID)
+		s, ok := byMap[key]
 		if !ok {
-			s = &stat{name: mapEN, nameFR: mapFR}
-			byMap[r.Summary.Map.ID] = s
+			name := assetText(r.Summary.Map)
+			if base, found := groups.Noms(r.Summary.Map.ID); found {
+				name = base
+			}
+			s = &stat{name: name}
+			byMap[key] = s
 		}
 		s.plays++
 		if r.Self.Outcome == canonical.OutcomeWin {
@@ -213,7 +218,7 @@ func sliceFavoriteMapCanonical(window []canonical.PlayerMatchRow, locale string)
 	}
 	return &domain.HighlightSlide{
 		LabelKey:  "highlight.slide.favorite_map",
-		Value:     labelForLocale(locale, best.nameFR, best.name),
+		Value:     best.name.PickOptional(normalizeHomeLocale(locale)),
 		DetailKey: "highlight.detail.favorite_map",
 		DetailParams: map[string]any{
 			"wins":   best.wins,

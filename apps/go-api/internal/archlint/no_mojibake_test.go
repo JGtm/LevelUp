@@ -1,7 +1,7 @@
 // no_mojibake_test.go : interdit toute séquence UTF-8-doublement-encodé (« mojibake »)
 // dans les .go du module et les .toml de config/titles/. Allowlist VIDE — c'est le
-// point : la correction Q3 (2026-09-07, plan .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md
-// §4 L0) a réencodé les 64 fichiers touchés (61 trouvés au premier balayage + 3 trouvés
+// point : la correction Q3 (2026-09-07)
+// a réencodé les 64 fichiers touchés (61 trouvés au premier balayage + 3 trouvés
 // en écrivant CE garde-rail — voir le journal), aucun ne doit revenir en arrière. Note
 // délibérée : ce fichier ne contient AUCUNE séquence mojibake littérale dans son propre
 // source (même en commentaire) — les fixtures de TestMojibakeRE_CatchesKnownPatterns la
@@ -77,8 +77,8 @@ var mojibakeRE = regexp.MustCompile(
 		`|\x{00E2}[` + mojibakeThirdCharClass + `]`,
 )
 
-// mojibakeAllowlist : fichiers (chemin relatif depuis le point de départ du walk —
-// apps/go-api/ pour le Go, la racine du dépôt pour les TOML) tolérés. VIDE
+// mojibakeAllowlist : fichiers (chemin relatif à la racine du dépôt, pour le Go de l'espace de
+// travail comme pour les TOML) tolérés. VIDE
 // délibérément : la correction Q3 a traité tous les sites connus (y compris ceux
 // trouvés en écrivant ce garde-rail) et aucun fichier ne teste intentionnellement le
 // mojibake dans son propre SOURCE littéral (voir la note en tête de fichier :
@@ -88,36 +88,16 @@ var mojibakeRE = regexp.MustCompile(
 var mojibakeAllowlist = map[string]bool{}
 
 func TestNoMojibakeInGoModule(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile))) // .../apps/go-api
-
 	var violations []string
-	for _, sub := range []string{"cmd", "internal"} {
-		err := filepath.WalkDir(filepath.Join(goAPIRoot, sub), func(path string, d os.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if d.IsDir() || !strings.HasSuffix(path, ".go") {
-				return nil
-			}
-			rel, _ := filepath.Rel(goAPIRoot, path)
-			rel = filepath.ToSlash(rel)
-			if mojibakeAllowlist[rel] {
-				return nil
-			}
-			data, readErr := os.ReadFile(path)
-			if readErr != nil {
-				return readErr
-			}
-			violations = append(violations, findMojibakeLines(rel, string(data))...)
-			return nil
-		})
-		if err != nil {
-			t.Fatalf("walk %s/%s: %v", goAPIRoot, sub, err)
+	for _, f := range workspaceGoSources(t, racinesEspaceDeTravail...) {
+		if mojibakeAllowlist[f.Rel] {
+			continue
 		}
+		data, err := os.ReadFile(f.Chemin) //nolint:gosec // chemin de test, lecture seule
+		if err != nil {
+			t.Fatalf("lecture de %s : %v", f.Rel, err)
+		}
+		violations = append(violations, findMojibakeLines(f.Rel, string(data))...)
 	}
 	if len(violations) > 0 {
 		t.Errorf("mojibake (UTF-8 doublement encodé, roundtrip PowerShell 5.1 sans "+

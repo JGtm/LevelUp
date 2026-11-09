@@ -91,10 +91,10 @@ func livraisonVariationDeEvenement(dossier, evHex string, lot1 map[string]livrai
 // APRES l'arme de base dans l'ordre de livraison.
 func livraisonEstVariante(dossier string, manifeste map[string]livraisonManifesteArme) bool {
 	a, ok := manifeste[dossier]
-	if !ok || a.NomFr == nil {
+	if !ok || a.Nom == nil {
 		return false
 	}
-	return strings.Contains(*a.NomFr, "(")
+	return strings.Contains(*a.Nom, "(")
 }
 
 // livraisonCandidats rend les dossiers eligibles a la livraison : une cle canonique non vide,

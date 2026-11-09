@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/platform/auth/pool"
-	"levelup/go-api/internal/sync/haloclient"
 )
 
 // historyretry_test.go — rejeu borné d'une page d'historique (D1, plan robustesse
@@ -47,7 +47,7 @@ func fetchScripte(appels *int, script ...reponse) func() ([]string, error) {
 }
 
 func httpErr(status int) error {
-	return &haloclient.HTTPError{
+	return &haloadapter.HTTPError{
 		StatusCode: status,
 		URL:        "https://halostats/matches",
 		Err:        fmt.Errorf("HTTP %d", status),
@@ -133,7 +133,7 @@ func TestPage_Erreur503_NonRejoueeIci(t *testing.T) {
 	appels := 0
 	_, err := Page(context.Background(), "Nuzzles", 75, fetchScripte(&appels,
 		reponse{err: httpErr(503)}, reponse{entrees: []string{"jamais"}}))
-	var he *haloclient.HTTPError
+	var he *haloadapter.HTTPError
 	if !errors.As(err, &he) || he.StatusCode != 503 {
 		t.Fatalf("attendu le 503 tel quel, obtenu %v", err)
 	}

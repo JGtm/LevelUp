@@ -23,7 +23,7 @@ import {
 } from '../monitoring/queries'
 import { useRecomputeLusrGaps } from '../monitoring/mutations'
 import { useAdminTitles } from '../titles/queries'
-import { useAdminT, type TAdmin } from '../useAdminText'
+import { useAdminT, useDateLocale, type TAdmin } from '../useAdminText'
 import type { Locale } from '@/lib/i18n/locale'
 
 export function LusrGapsSection() {
@@ -118,6 +118,7 @@ function LusrCoverageBar({ data }: { data: AdminLusrGaps }) {
 }
 
 function Stat({ label, value, accent }: { label: string; value: number; accent?: SemanticToken }) {
+  const dateLocale = useDateLocale()
   return (
     <div>
       <div className="text-xs text-muted-foreground">{label}</div>
@@ -125,7 +126,7 @@ function Stat({ label, value, accent }: { label: string; value: number; accent?:
         className="text-lg font-semibold tabular-nums"
         style={accent ? { color: tokenCssVar(accent) } : undefined}
       >
-        {value.toLocaleString()}
+        {value.toLocaleString(dateLocale)}
       </div>
     </div>
   )

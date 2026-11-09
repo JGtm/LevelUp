@@ -288,8 +288,13 @@ function drawDeathMark(
   view: CanvasView,
   style: MarkerStyle,
 ): void {
-  const age = style.frame - trackWindow(track).end
+  const end = trackWindow(track).end
+  const age = style.frame - end
   if (age < 0 || age > style.timing.death) return
+  // MORT À BORD : la vie finit à la mort écrite, que le film date jusqu'à des dizaines de secondes
+  // après le dernier point du bipède. La croix se poserait alors à la position où il est monté,
+  // pas là où il est mort : le véhicule qui l'a porté jusqu'à sa mort la dit à sa place.
+  if (style.embarkedAtSlot?.(track.slot, end)) return
   const last = track.points[track.points.length - 1]
   if (!last) return
   const fade = 1 - age / style.timing.death

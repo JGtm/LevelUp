@@ -24,6 +24,7 @@ import (
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
 	"levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
 )

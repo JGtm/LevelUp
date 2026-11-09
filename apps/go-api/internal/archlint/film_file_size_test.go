@@ -38,7 +38,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -47,21 +46,27 @@ import (
 // seuilLignesParFichier : le seuil du depot (CLAUDE.md regle 5).
 const seuilLignesParFichier = 500
 
-// racinesSurveilleesTaille : les arborescences que ce ratchet couvre, relatives a `apps/go-api`.
-// Ce sont celles du chantier du decodeur de film — le perimetre du lot 2.7.
+// racinesSurveilleesTaille : les arborescences que ce ratchet couvre, au double repere de
+// [surDisque] (go-api, puis les briques sous `libs/`). Ce sont celles du chantier du decodeur de
+// film — le perimetre du lot 2.7 — et, depuis le 2026-11-08 (ADR 0041 D7), les trois autres
+// briques : le seuil est celui du depot, la regle ne s arrete pas au dossier d un module. Le
+// ratchet `film_function_length_test.go` lit la meme liste.
 //
 // LA QUATRIEME RACINE A DISPARU LE 2026-09-16 (lot 2.5.d.2) : `internal/analysis/objectiveevents`
-// est descendu sous `internal/games/halo_infinite/film/internal/facts/objectives`, donc SOUS la premiere
+// est descendu sous `libs/film/internal/facts/objectives`, donc SOUS la premiere
 // racine. La garder aurait fait compter ses fichiers DEUX FOIS dans le plancher — un plancher
 // qu on gonfle est un plancher qui ne mesure plus rien.
 var racinesSurveilleesTaille = []string{
-	"internal/games/halo_infinite/film",
+	racineBriqueFilm,
 	"internal/replaybuild",
 	"internal/sync/killcollector",
+	"libs/gamefiles",
+	"libs/haloapi",
+	"libs/himap",
 }
 
 // plancherFichiersBalayesTaille : LE PLANCHER CONTRE UN BALAYAGE MUET. 1 298 fichiers `.go`
-// mesures le 2026-09-16 dans les racines ci-dessus ; un balayage qui en rend nettement
+// mesures le 2026-09-16 dans les trois premieres racines ci-dessus ; un balayage qui en rend nettement
 // moins n a pas trouve l arborescence (racine renommee, chemin relatif casse) et ne garde plus
 // rien. Il doit ECHOUER bruyamment, pas rendre vert sur du vide.
 const plancherFichiersBalayesTaille = 1200
@@ -309,7 +314,14 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 103 -> 104 (2026-10-25), +49 : les deux entrees v104 (le
 	// lien tir -> projectile `projectiles[].shot` et ses compteurs ; les images-cles sans vehicule
 	// et leur preuve d absence). Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 3613,
+	// SCHEMA 104 -> 105 (2026-10-28), +20 : l entree v105 (position de repos des objets engendres par
+	// un equipement porte). Exception ecrite, dans le commit qui monte `SchemaVersion`.
+	// SCHEMA 105 -> 106 (2026-10-28), +26 : l entree v106 (fin lue du mur, objet d effet de l ecran occultant).
+	// Exception ecrite, dans le commit qui monte `SchemaVersion`.
+	// SCHEMA 106 -> 107 (2026-11-08), +81 : l entree v107 (fin de vie a la mort ecrite et au bout du film pour un
+	// joueur present a la fin, puis equipement porte : l identite se lit sur l objet). Exception ecrite, dans le
+	// commit qui monte `SchemaVersion`.
+	"libs/film/replay/document_chronicle.go": 3720,
 	// `film_scan.go` N ENTRE PAS EN TABLE (2026-10-22, lot detonations, correction CI) : l appel a
 	// `grammar.ScanProjectileDetonations` (item 1) l avait fait passer de 500 a 504 lignes, mais
 	// « mettre le fichier dans plafondsParFichier n est pas une reponse » (cette table est close au
@@ -328,10 +340,9 @@ var plafondsParFichier = map[string]int{
 	// vague 2 de la famille 1.9 et le schema 60, avant que le ratchet n existe ici. Meme regle :
 	// chaque valeur ne peut que descendre. `document_vehicles.go` et `score_timeline.go` sont dans
 	// le perimetre du volet 2.7p (scission en cours) et sortiront de la table a sa fusion.
-	"internal/games/halo_infinite/film/replay/document_shape_test.go":                                          511,
-	"internal/games/halo_infinite/film/internal/facts/killsource/e197_identite_paquet_mesure_research_test.go": 654,
-	"internal/games/halo_infinite/film/internal/facts/objectives/e1911_manches_mesure_research_test.go":        524,
-	"internal/replaybuild/replaybuild.go":                                                                      577,
+	"libs/film/internal/facts/killsource/e197_identite_paquet_mesure_research_test.go": 649,
+	"libs/film/internal/facts/objectives/e1911_manches_mesure_research_test.go":        523,
+	"internal/replaybuild/replaybuild.go":                                              562,
 	// `equipment_creation.go` EST SORTI DE CETTE TABLE LE 2026-09-17 (lot 2.6.2, volet grammaire /
 	// rejeu), pour la meme raison qu `assist.go` au volet facts : `EquipmentCreation` et
 	// `EquipmentCreationStats` ont descendu dans `film/types`, le fichier est passe de 508 a 434
@@ -346,8 +357,8 @@ var plafondsParFichier = map[string]int{
 	// de la seule exception nommee en tete (document_chronicle.go, structure_test.go) — « un
 	// plafond ne monte pas ». `countShotsWithAim`/`countShotsWithWeapon` en sont sortis par
 	// DEPLACEMENT PUR vers `golden_assembly_counts_test.go` pour compenser.
-	"internal/games/halo_infinite/film/replay/golden_assembly_test.go":      1202,
-	"internal/games/halo_infinite/film/internal/grammar/i59_anchor_test.go": 1152,
+	"libs/film/replay/golden_assembly_test.go":      1184,
+	"libs/film/internal/grammar/i59_anchor_test.go": 1141,
 	// SCHEMA 61 -> 62 (2026-09-17, lot 4.2.1-b) : 1168 -> 1183, la raison ecrite de v62 que
 	// `TestStructureIsOptionalInDocument` exige au-dessus de son epinglage dur.
 	// SCHEMA 62 -> 63 (2026-09-19, post-chantier lot 5.1) : 1183 -> 1200, la raison ECRITE de la
@@ -450,29 +461,43 @@ var plafondsParFichier = map[string]int{
 	// (le ramassage de power-up date par le meme mecanisme que les socles d arme).
 	// SCHEMA 103 -> 104 (2026-10-25) : 1476 -> 1482, la
 	// justification de la montee (lien tir -> projectile, images-cles sans vehicule).
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1482,
-	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
+	// SCHEMA 104 -> 105 (2026-10-28) : 1482 -> 1486, la justification de la montee (objets engendres).
+	// SCHEMA 105 -> 106 (2026-10-28) : 1486 -> 1491, la justification de la montee (durees d effets).
+	// SCHEMA 106 -> 107 (2026-11-08) : +4, la justification de la montee (fin de vie a la mort ecrite).
+	"libs/film/replay/structure_test.go":             1483,
+	"libs/film/replay/t0_mouvement_research_test.go": 866,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).
-	"internal/games/halo_infinite/film/internal/grammar/inventory_position_i22_test.go":           833,
-	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,
-	"internal/games/halo_infinite/film/replay/ctf_retour_zone_research_test.go":                   812,
-	"internal/games/halo_infinite/film/replay/assaut_manches_research_test.go":                    656,
-	"internal/games/halo_infinite/film/replay/mapvar/noms_lieux_hunt_test.go":                     627,
-	"internal/games/halo_infinite/film/killicon/killicon_test.go":                                 610,
-	"internal/games/halo_infinite/film/internal/grammar/components_hooks_test.go":                 600,
-	"internal/games/halo_infinite/film/replay/closures_test.go":                                   598,
-	"internal/games/halo_infinite/film/replay/vehicules_v1a_test.go":                              587,
-	"internal/games/halo_infinite/film/internal/grammar/vehicules_v13_deadstate_test.go":          583,
-	"internal/games/halo_infinite/film/replay/minifilm_test.go":                                   581,
-	"internal/games/halo_infinite/film/internal/grammar/ground_weapon_lifecycle_research_test.go": 574,
-	"internal/games/halo_infinite/film/replay/equipment_uses_join_test.go":                        571,
-	"internal/games/halo_infinite/film/internal/facts/objectives/assaut_pied_ancre_test.go":       558,
-	"internal/sync/killcollector/positions_test.go":                                               557,
-	"internal/games/halo_infinite/film/internal/grammar/golden_minibobine_test.go":                553,
-	"internal/games/halo_infinite/film/internal/grammar/vehicules_v2_items_test.go":               533,
-	"internal/games/halo_infinite/film/replay/attachement_phase0_bord_test.go":                    529,
-	"internal/sync/killcollector/collector_test.go":                                               527,
+	"libs/film/internal/grammar/inventory_position_i22_test.go":           824,
+	"libs/film/replay/ground_link_research_test.go":                       813,
+	"libs/film/replay/ctf_retour_zone_research_test.go":                   804,
+	"libs/film/replay/assaut_manches_research_test.go":                    633,
+	"libs/film/killicon/killicon_test.go":                                 610,
+	"libs/film/internal/grammar/components_hooks_test.go":                 600,
+	"libs/film/replay/closures_test.go":                                   598,
+	"libs/film/replay/vehicules_v1a_test.go":                              577,
+	"libs/film/internal/grammar/vehicules_v13_deadstate_test.go":          580,
+	"libs/film/replay/minifilm_test.go":                                   579,
+	"libs/film/internal/grammar/ground_weapon_lifecycle_research_test.go": 564,
+	"libs/film/replay/equipment_uses_join_test.go":                        571,
+	"libs/film/internal/facts/objectives/assaut_pied_ancre_test.go":       556,
+	"internal/sync/killcollector/positions_test.go":                       557,
+	"libs/film/internal/grammar/golden_minibobine_test.go":                549,
+	"libs/film/internal/grammar/vehicules_v2_items_test.go":               533,
+	"libs/film/replay/attachement_phase0_bord_test.go":                    522,
+	"internal/sync/killcollector/collector_test.go":                       524,
+
+	// --- BRIQUES VOISINES, ENTREES EN TABLE LE 2026-11-08 (lot 3.2 de la fin du decouplage, ADR 0041
+	// D7) : la racine du ratchet est passee a l espace de travail, ces six fichiers etaient deja au-dela
+	// du seuil dans `himap` et `gamefiles`. Taille du jour, qui ne peut que descendre ; aucune autre
+	// entree ne s ajoute (la regle de la table, ecrite plus haut, vaut pour elles). Retrait : la
+	// scission du fichier, ou la sortie du fichier de recherche du depot.
+	"libs/himap/himap/cuisson_forge.go":                      1048,
+	"libs/himap/himap/cartes_forge.go":                       719,
+	"libs/himap/himap/cuisson.go":                            619,
+	"libs/himap/himap/sonde_locs_research_test.go":           818,
+	"libs/himap/himap/physique_sonde_gamefiles_test.go":      530,
+	"libs/gamefiles/mapvar/noms_lieux_hunt_research_test.go": 622,
 }
 
 // TestTailleDesFichiersDuFilmNeCroitPas : aucun fichier des racines surveillees ne depasse son
@@ -500,7 +525,7 @@ func TestTailleDesFichiersDuFilmNeCroitPas(t *testing.T) {
 			continue
 		}
 		if fige {
-			t.Errorf("%s : %d lignes, plafond fige a %d (2026-09-16, lot 2.7).\n"+
+			t.Errorf("%s : %d lignes, plafond fige a %d (date de la table : voir plafondsParFichier).\n"+
 				"UN PLAFOND NE MONTE PAS. Sortir autant de lignes ailleurs dans le fichier, "+
 				"ou le scinder par deplacement pur avec sa preuve d equivalence.\n"+
 				"Seule exception ecrite, et elle couvre DEUX fichiers (cf. l en-tete de "+
@@ -538,23 +563,25 @@ func TestPlafondsDeTailleNeSontPasPerimes(t *testing.T) {
 			t.Errorf("%s : %d lignes, soit sous le seuil de %d — retirer son entree de "+
 				"plafondsParFichier. Le fichier est rentre dans la regle, la table n a plus "+
 				"a le connaitre.", rel, n, seuilLignesParFichier)
+			continue
+		}
+		if plafond := plafondsParFichier[rel]; n < plafond {
+			t.Errorf("%s : %d lignes sous le plafond fige a %d — baisse le plafond a %d dans "+
+				"plafondsParFichier, dans le commit qui a retire les lignes (une marge laissee "+
+				"au-dessus de la mesure se reconsommerait en silence).", rel, n, plafond, n)
 		}
 	}
 }
 
-// balayerTaillesFilm rend, par chemin relatif a `apps/go-api` (en slash), le nombre de lignes de
+// balayerTaillesFilm rend, par chemin de garde-rail ([surDisque], en slash), le nombre de lignes de
 // chaque `.go` des racines surveillees. Le compte est celui de `wc -l` : le nombre de fins de
 // ligne, la derniere ligne comprise si le fichier finit par un saut.
 func balayerTaillesFilm(t *testing.T) map[string]int {
 	t.Helper()
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici))) // .../apps/go-api
 	out := map[string]int{}
 	for _, racine := range racinesSurveilleesTaille {
-		base := filepath.Join(goAPIRoot, filepath.FromSlash(racine))
+		base := surDisque(t, racine)
+		avant := len(out)
 		err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -573,18 +600,18 @@ func balayerTaillesFilm(t *testing.T) map[string]int {
 			if err != nil {
 				return err
 			}
-			rel, err := filepath.Rel(goAPIRoot, chemin)
-			if err != nil {
-				return err
-			}
 			// J12.7 (2026-09-30) : l'en-tete `//go:build research` + ligne vide (2 lignes) n'est
 			// pas du contenu : le tag ne doit pas faire monter un plafond fige. Il est retire du compte.
 			blob = bytes.TrimPrefix(blob, []byte("//go:build research\n\n"))
-			out[filepath.ToSlash(rel)] = bytes.Count(blob, []byte("\n"))
+			out[cheminDeGardeRail(t, chemin)] = bytes.Count(blob, []byte("\n"))
 			return nil
 		})
 		if err != nil {
 			t.Fatalf("balayage de %s : %v", base, err)
+		}
+		if len(out) == avant {
+			t.Fatalf("aucun fichier .go sous %s : le plancher global ne voit pas une racine qui se vide, "+
+				"ce ratchet ne la garderait plus", racine)
 		}
 	}
 	if len(out) == 0 {

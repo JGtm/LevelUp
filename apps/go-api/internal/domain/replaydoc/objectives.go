@@ -1,5 +1,7 @@
 package replaydoc
 
+import "levelup/go-api/internal/i18n"
+
 // objectives.go — LES OBJECTIFS VIVANTS DU MATCH : score dans le temps, drapeaux, zones,
 // couronne, crane, bombe — tout ce dont l'etat evolue pendant la partie.
 
@@ -93,8 +95,7 @@ type FlagReturnZone struct {
 // position, puis se tait — parce qu'on l'a ramassé, ou parce qu'il s'est immobilisé.
 type ObjectiveObjectLife struct {
 	Family string                 `json:"family"`
-	En     string                 `json:"en"`
-	Fr     string                 `json:"fr"`
+	Text   i18n.Text              `json:"i18n_text,omitempty" required:"true"`
 	T0     int                    `json:"t0"`
 	T1     int                    `json:"t1"`
 	Pts    []ObjectiveObjectPoint `json:"pts"`

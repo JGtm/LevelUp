@@ -24,7 +24,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 )
 
 // chunkDeTirsSynthetique : un chunk de RÉPLICATION portant des fire-events lisibles.
@@ -32,16 +32,16 @@ import (
 // Le type compte : `ReplicationChunks` ne retient que `FilmChunkTypeReplicationData`. Un chunk du
 // mauvais type produirait zéro tir, et le test passerait alors au vert pour la mauvaise raison —
 // « aucune ligne écrite » est justement ce qu'il doit distinguer d'« aucune ligne autorisée ».
-func chunkDeTirsSynthetique(t *testing.T) []haloclient.FilmChunk {
+func chunkDeTirsSynthetique(t *testing.T) []filmfetch.FilmChunk {
 	t.Helper()
 	a1, a2 := deuxArmes(t)
 	var b bitBuf
 	ecrireFireEvent(&b, 3, a1)
 	ecrireFireEvent(&b, 3, a1)
 	ecrireFireEvent(&b, 7, a2)
-	return []haloclient.FilmChunk{{
+	return []filmfetch.FilmChunk{{
 		Index:     0,
-		ChunkType: haloclient.FilmChunkTypeReplicationData,
+		ChunkType: filmfetch.FilmChunkTypeReplicationData,
 		Data:      b.bytes(),
 	}}
 }

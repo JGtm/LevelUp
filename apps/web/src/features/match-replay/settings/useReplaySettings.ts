@@ -74,7 +74,7 @@ export const AUTOPLAY_KEY = 'replay-autoplay'
 export const AUTOPLAY_DEFAULT = false
 
 /** Multiplicateurs de vitesse proposés (repris du POC, réglés à l'écran). */
-export const SPEED_MULTIPLIERS: readonly number[] = [0.5, 1, 2, 4]
+export const SPEED_MULTIPLIERS: readonly number[] = [0.5, 1, 1.5, 2, 4]
 
 const SPEED_DEFAULT = 1
 
@@ -172,8 +172,7 @@ const SHOW_WEAPON_PADS_DEFAULT = true
 const SHOW_GROUND_WEAPONS_DEFAULT = true
 
 /**
- * LE FILTRE « ARMES SPÉCIALES SEULEMENT » EST ÉTEINT PAR DÉFAUT (lot 6.5, 2026-09-10, rapport
- * `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`). C'est un RESSERREMENT du calque des armes au
+ * LE FILTRE « ARMES SPÉCIALES SEULEMENT » EST ÉTEINT PAR DÉFAUT. C'est un RESSERREMENT du calque des armes au
  * sol, pas son remplacement : le comportement d'avant ce lot (tout afficher) reste le défaut,
  * et l'utilisateur choisit d'affiner sur les matchs denses (204 objets/film en moyenne, dont
  * 82 % sans intérêt tactique).

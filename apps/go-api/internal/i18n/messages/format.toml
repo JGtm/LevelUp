@@ -1,0 +1,54 @@
+# Dates et libellés composés par le serveur.
+
+# Date longue du bandeau d'un match : « 26 oct. 2026, 14:05 ».
+[format.date_long]
+fr = "{day} {mon} {year}, {hour}:{minute}"
+en = "{day} {mon} {year}, {hour}:{minute}"
+
+[format.month_short.1]
+fr = "janv."
+en = "Jan"
+
+[format.month_short.2]
+fr = "févr."
+en = "Feb"
+
+[format.month_short.3]
+fr = "mars"
+en = "Mar"
+
+[format.month_short.4]
+fr = "avr."
+en = "Apr"
+
+[format.month_short.5]
+fr = "mai"
+en = "May"
+
+[format.month_short.6]
+fr = "juin"
+en = "Jun"
+
+[format.month_short.7]
+fr = "juil."
+en = "Jul"
+
+[format.month_short.8]
+fr = "août"
+en = "Aug"
+
+[format.month_short.9]
+fr = "sept."
+en = "Sep"
+
+[format.month_short.10]
+fr = "oct."
+en = "Oct"
+
+[format.month_short.11]
+fr = "nov."
+en = "Nov"
+
+[format.month_short.12]
+fr = "déc."
+en = "Dec"

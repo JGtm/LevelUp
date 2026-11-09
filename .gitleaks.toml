@@ -130,7 +130,7 @@ regexes = ['''^eyJmaWx0ZXJz[A-Za-z0-9_=/+-]+$''']
 
 [[allowlists]]
 # 2026-07-31 — empreinte
-#   .ai/V7.5/killweapon/RE_LOG_KILLWEAPON.md:generic-api-key:17478
+#   .ai/archive/V7.5/killweapon/RE_LOG_KILLWEAPON.md:generic-api-key:17478
 # Journal de rétro-ingénierie du chantier « arme du kill ». La ligne compare le
 # kill-feed décodé au kill-feed de l'API officielle et aligne les deux tableaux de
 # frags : « API : HizaroMne4262 16 ; FireKoreT7 15 ; ... ». Le mot-clé « API » suivi
@@ -143,7 +143,7 @@ regexes = ['''^eyJmaWx0ZXJz[A-Za-z0-9_=/+-]+$''']
 description = "Gamertag lu comme une clé dans les tableaux de confrontation du RE_LOG killweapon"
 targetRules = ["generic-api-key"]
 condition = "AND"
-paths = ['''(^|/)\.ai/V7\.5/killweapon/RE_LOG_KILLWEAPON\.md$''']
+paths = ['''(^|/)\.ai/archive/V7\.5/killweapon/RE_LOG_KILLWEAPON\.md$''']
 regexTarget = "secret"
 regexes = ['''^HizaroMne4262$''']
 
@@ -166,10 +166,16 @@ regexes = ['''^h5_(vehicle|turret)_[a-z_]+$''']
 # site, appartient à l'éditeur du jeu, n'ouvre aucun accès en lecture, et n'est pas
 # rotable de notre côté. Ciblé sur le mot-clé InstrumentationKey : un autre type de
 # secret dans cette même fixture resterait détecté.
+# 2026-10-29 (plan D3) : la fixture a été copiée dans la brique haloapi/infinite au lot 3 ; l'ancien
+# chemin (platform/halo/testdata) est parti au lot 4 avec son dossier (une clé retirée pour une ajoutée).
+# 2026-11-01 (plan PUBLICATION, lot 3) : la brique est devenue le module libs/haloapi ; la fixture a
+# suivi son paquet (même règle : une clé retirée pour une ajoutée, le scan porte sur l'arbre de travail).
 description = "InstrumentationKey Application Insights de la fixture Halo Waypoint"
 targetRules = ["generic-api-key"]
 condition = "AND"
-paths = ['''(^|/)apps/go-api/internal/platform/halo/testdata/leaderboard_sample\.html$''']
+paths = [
+  '''(^|/)libs/haloapi/infinite/testdata/leaderboard_sample\.html$''',
+]
 regexTarget = "match"
 regexes = ['''(?i)instrumentationkey''']
 
@@ -193,7 +199,7 @@ regexes = ['''^grenade_kills=1$''']
 
 [[allowlists]]
 # 2026-08-30 — empreinte
-#   .ai/V7.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT.md:generic-api-key:135
+#   .ai/archive/V7.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT.md:generic-api-key:135
 # Document de référence des variantes d'armes (guide Reddit croisé avec notre
 # registre). La phrase « partagent tous les deux `weapon_key = hinf_m41_spnkr` »
 # fait lire le mot-clé « key » + l'identifiant d'arme comme une assignation
@@ -204,6 +210,21 @@ regexes = ['''^grenade_kills=1$''']
 description = "WeaponKey hinf_* du document de référence des variantes (registre public)"
 targetRules = ["generic-api-key"]
 condition = "AND"
-paths = ['''(^|/)\.ai/V7\.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT\.md$''']
+paths = ['''(^|/)\.ai/archive/V7\.5/killweapon/REFERENCE_VARIANTES_ARMES_REDDIT\.md$''']
 regexTarget = "secret"
 regexes = ['''^hinf_[a-z0-9_]+$''']
+
+[[allowlists]]
+# 2026-11-02 — clé PUBLIQUE de l'updater de l'application desktop (ADR 0045 D-16, plan A21).
+# Une clé publique minisign encodée en base64 (elle commence par dW50cnVzdGVk, soit
+# « untrusted comment » en base64) : elle sert à VÉRIFIER les mises à jour, elle ne signe rien et
+# doit être publique, versionnée dans tauri.conf.json. La clé PRIVÉE n'est jamais dans le dépôt
+# (secrets du dépôt GitHub, deux sauvegardes hors dépôt). Exception sur la valeur exacte et le
+# fichier : une autre valeur, ou la même hors de ce fichier, resterait détectée. Rotation :
+# remplacer la valeur ici dans le même commit que tauri.conf.json.
+description = "Clé publique de l'updater Tauri (tauri.conf.json)"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)apps/desktop/src-tauri/tauri\.conf\.json$''']
+regexTarget = "secret"
+regexes = ['''^dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNGNDNDQzE5QTk5RTE0OEIKUldTTEZKNnBHY3hEUDhIQ053NUdoeDRRcGdWTE4zOExtZTRHRVBUY3doZXhtM25IenkvRlg0d0EK$''']

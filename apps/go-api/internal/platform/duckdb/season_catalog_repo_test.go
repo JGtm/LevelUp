@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"testing"
 
+	"levelup/go-api/internal/i18n"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -36,7 +38,7 @@ func TestLoadSeasonCatalogNames_RoundTripAndCase(t *testing.T) {
 		t.Fatalf("LoadSeasonCatalogNames: %v", err)
 	}
 	sn, ok := names["csrseason12-1"] // clé minuscule
-	if !ok || sn.NameFR != "Ombres" || sn.Major != 12 {
+	if !ok || sn.Name[i18n.LocaleFR] != "Ombres" || sn.Major != 12 {
 		t.Errorf("entrée = %+v (ok=%v), attendu {Shadows,Ombres,12,1}", sn, ok)
 	}
 	// Table absente → map vide, pas d'erreur (dégradation gracieuse).
@@ -49,9 +51,9 @@ func TestLoadSeasonCatalogNames_RoundTripAndCase(t *testing.T) {
 
 func TestSeasonSelectorLabel(t *testing.T) {
 	names := map[string]SeasonName{
-		"csrseason13-2": {DisplayName: "Infinite", NameFR: "", Major: 13, Minor: 2},
-		"csrseason12-1": {DisplayName: "Shadows", NameFR: "Ombres", Major: 12, Minor: 1},
-		"csrseason0-0":  {DisplayName: "Bootstrap", NameFR: "Amorce", Major: 0, Minor: 0},
+		"csrseason13-2": {Name: i18n.FromColumns("Infinite", ""), Major: 13, Minor: 2},
+		"csrseason12-1": {Name: i18n.FromColumns("Shadows", "Ombres"), Major: 12, Minor: 1},
+		"csrseason0-0":  {Name: i18n.FromColumns("Bootstrap", "Amorce"), Major: 0, Minor: 0},
 	}
 	cases := []struct {
 		name, locale, seasonID, fallback, want string
@@ -83,7 +85,7 @@ func TestFallbackSeasonLabel(t *testing.T) {
 		{"fr", "garbage", "garbage"},
 	}
 	for _, c := range cases {
-		if got := fallbackSeasonLabel(c.locale, c.id); got != c.want {
+		if got := fallbackSeasonLabel(i18n.Parse(c.locale), c.id); got != c.want {
 			t.Errorf("fallbackSeasonLabel(%q,%q) = %q, want %q", c.locale, c.id, got, c.want)
 		}
 	}

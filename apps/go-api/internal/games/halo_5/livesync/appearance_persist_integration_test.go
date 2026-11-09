@@ -21,16 +21,18 @@ import (
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/platform/dblease"
 	syncpkg "levelup/go-api/internal/sync"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 type fakeAppearanceSource struct {
-	app        *halo5.H5Appearance
+	app        *h5api.H5Appearance
 	spartanPNG []byte
 	emblemPNG  []byte
 	appErr     error
 }
 
-func (f *fakeAppearanceSource) GetAppearance(_ context.Context, _ string) (*halo5.H5Appearance, error) {
+func (f *fakeAppearanceSource) GetAppearance(_ context.Context, _ string) (*h5api.H5Appearance, error) {
 	return f.app, f.appErr
 }
 func (f *fakeAppearanceSource) GetSpartanRenderPNG(_ context.Context, _ string) ([]byte, string, error) {
@@ -49,7 +51,7 @@ func TestPersistAppearance_RoundTrip(t *testing.T) {
 	cacheRoot := filepath.Join(tmp, "cache")
 
 	src := &fakeAppearanceSource{
-		app:        &halo5.H5Appearance{Gamertag: "JGtm", ServiceTag: "OKLM", Emblem: halo5.H5AppearanceEmblem{EmblemId: 264}},
+		app:        &h5api.H5Appearance{Gamertag: "JGtm", ServiceTag: "OKLM", Emblem: h5api.H5AppearanceEmblem{EmblemId: 264}},
 		spartanPNG: testPNG,
 		emblemPNG:  testPNG,
 	}
@@ -102,7 +104,7 @@ func TestPersistAppearance_DelaiCourt(t *testing.T) {
 	playerPath := filepath.Join(tmp, "player", "stats.duckdb")
 	cacheRoot := filepath.Join(tmp, "cache")
 	src := &fakeAppearanceSource{
-		app:       &halo5.H5Appearance{Gamertag: "Chocoboflor", ServiceTag: "OKLM"},
+		app:       &h5api.H5Appearance{Gamertag: "Chocoboflor", ServiceTag: "OKLM"},
 		emblemPNG: testPNG,
 	}
 

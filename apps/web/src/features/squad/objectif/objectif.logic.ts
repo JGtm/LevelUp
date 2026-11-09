@@ -40,6 +40,7 @@ import {
   objectiveMatches,
   type ObjectiveRole,
 } from '../formes/model/objectives'
+import { intlLocale } from '@/lib/formatters/intlLocale'
 
 /** Le minimum de matchs à objectif pour tracer une courbe (D6, `min_objective_matches`). */
 export const OBJECTIVE_MIN_MATCHES = 3
@@ -469,5 +470,5 @@ export function familyMix(families: { family: string; matches: number }[], abbr:
 export function eveningDate(iso: string, locale: Locale): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-GB', { day: '2-digit', month: '2-digit' })
+  return d.toLocaleDateString(intlLocale(locale), { day: '2-digit', month: '2-digit' })
 }

@@ -275,3 +275,72 @@ func TestOnboard_XUIDChangeOnlyForAdmin(t *testing.T) {
 		}
 	}
 }
+
+// fakeSeeder : le rejeu des jetons en attente. Il note si le profil existait déjà
+// et si le watcher avait déjà été notifié au moment du rejeu.
+type fakeSeeder struct {
+	xuids         []string
+	creator       *fakeCreator
+	watcher       *fakeWatcher
+	profileExists bool
+	watcherCalled bool
+}
+
+func (f *fakeSeeder) SeedCredentials(_ context.Context, xuid string) {
+	f.xuids = append(f.xuids, xuid)
+	f.profileExists = len(f.creator.created) > 0
+	f.watcherCalled = f.watcher != nil && f.watcher.calls > 0
+}
+
+// Les jetons d'une connexion antérieure au profil sont rejoués APRÈS la création du
+// profil et AVANT le suivi live (le watcher les lit).
+func TestOnboard_RejoueLesJetonsEnAttenteEntreProfilEtWatcher(t *testing.T) {
+	creator := newFakeCreator("Spartan")
+	watcher := &fakeWatcher{running: true}
+	seeder := &fakeSeeder{creator: creator, watcher: watcher}
+	d := newTestDirectory(t, Deps{Profiles: &fakeProfiles{}, Creator: creator, Watcher: watcher, Credentials: seeder})
+
+	if _, err := d.Onboard(context.Background(), onboardRequest()); err != nil {
+		t.Fatalf("Onboard: %v", err)
+	}
+	if len(seeder.xuids) != 1 || seeder.xuids[0] != "111" {
+		t.Fatalf("rejeu attendu pour le xuid 111, reçu %v", seeder.xuids)
+	}
+	if !seeder.profileExists {
+		t.Error("les jetons doivent être rejoués APRÈS la création du profil")
+	}
+	if seeder.watcherCalled {
+		t.Error("les jetons doivent être rejoués AVANT la notification du watcher")
+	}
+}
+
+// Création échouée : aucun jeton n'est écrit pour un profil qui n'existe pas.
+func TestOnboard_CreationEchoueeNeRejouePas(t *testing.T) {
+	creator := newFakeCreator("Spartan")
+	creator.err = errors.New("boom")
+	seeder := &fakeSeeder{creator: creator}
+	d := newTestDirectory(t, Deps{Profiles: &fakeProfiles{}, Creator: creator, Credentials: seeder})
+
+	if _, err := d.Onboard(context.Background(), onboardRequest()); err == nil {
+		t.Fatal("la création échouée doit remonter")
+	}
+	if len(seeder.xuids) != 0 {
+		t.Errorf("aucun rejeu sans profil créé, reçu %v", seeder.xuids)
+	}
+}
+
+// Profil manuel sans xuid : rien à rejouer (le magasin est indexé par xuid).
+func TestOnboard_SansXUIDNeRejouePas(t *testing.T) {
+	creator := newFakeCreator("Spartan")
+	seeder := &fakeSeeder{creator: creator}
+	d := newTestDirectory(t, Deps{Profiles: &fakeProfiles{}, Creator: creator, Credentials: seeder})
+
+	req := onboardRequest()
+	req.XUID = ""
+	if _, err := d.Onboard(context.Background(), req); err != nil {
+		t.Fatalf("Onboard: %v", err)
+	}
+	if len(seeder.xuids) != 0 {
+		t.Errorf("aucun rejeu sans xuid, reçu %v", seeder.xuids)
+	}
+}

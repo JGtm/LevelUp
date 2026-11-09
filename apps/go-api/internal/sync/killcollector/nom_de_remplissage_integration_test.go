@@ -19,9 +19,8 @@ package killcollector
 
 import (
 	"context"
+	"levelup/go-api/internal/sync/filmfetch"
 	"testing"
-
-	"levelup/go-api/internal/sync/haloclient"
 )
 
 // TestCollecteur_NEcritJamaisUnNomDeRemplissage — LA CHAINE ENTIERE, sur le film qui publiait `?10`.
@@ -31,7 +30,7 @@ func TestCollecteur_NEcritJamaisUnNomDeRemplissage(t *testing.T) {
 	chunks := chargerFilmDeFixture(t, film)
 
 	db := openSharedTestDB(t)
-	client := &fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{film: chunks}}
+	client := &fakeFilmClient{chunks: map[string][]filmfetch.FilmChunk{film: chunks}}
 	col := sousLaCarte(t, NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0), carte)
 	outcome, _, err := col.CollectMatch(context.Background(), film)
 	if err != nil {

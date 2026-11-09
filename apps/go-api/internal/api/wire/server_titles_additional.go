@@ -119,9 +119,8 @@ func registerHalo5Adapters(
 	// seul consommateur était le header LoadMatchDetail (fallback LIVE du Match
 	// view, retiré le 2026-07-25 — BACKLOG "Retirer le fallback LIVE du Match
 	// view"). La classification ranked/PvE de l'historique PERSISTÉ (ingest,
-	// CaptureOptions.Classifier) reste un point d'extension distinct et non câblé
-	// (cf. .ai/archive/V7/HANDOFF_H5_RANKED_CLASSIFICATION.md §5), à raccorder séparément si
-	// besoin.
+	// CaptureOptions.Classifier) reste un point d'extension distinct et non câblé,
+	// à raccorder séparément si besoin.
 	buildLiveData := func() games.TitleDataAdapter {
 		a := halo5.NewDataAdapter(halo5.NewSpartanTokenSource, slog.Default()).
 			WithPlacementTotal(td.PlacementMatches)
@@ -170,7 +169,7 @@ func registerHalo5Adapters(
 			return a
 		}
 		if pdb != nil {
-			src := halo5db.NewHalo5MatchHistorySource(pdb.SharedReadDB(), pdb.Gamertag)
+			src := halo5db.NewHalo5MatchHistorySource(pdb.SharedReadDB(), pdb.Gamertag, td.ModeSource)
 			da = da.WithMatchHistorySource(src)
 			// Totaux à vie des commendations : keyés par XUID (≠ historique keyé
 			// gamertag) — match_commendations.xuid = l'xuid Xbox résolu au sync.

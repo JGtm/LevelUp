@@ -6,7 +6,7 @@
 // `strings.Contains(err.Error(), ErrX.Error())`. Le texte d'une erreur n'est pas un contrat : un
 // refus non reconnu (`ErrFilmNonFinalise` dans l'enfant) tombait en echec, et le parent rangeait
 // tout refus sous « carte hors catalogue ». La raison traverse desormais le tube en JETON
-// (`filmproc.EmitRaison`), et chaque cote classe par `errors.Is`. Ce ratchet interdit le retour
+// (`filmrun.EmitRaison`), et chaque cote classe par `errors.Is`. Ce ratchet interdit le retour
 // du motif dans les deux paquets.
 package archlint
 
@@ -54,7 +54,7 @@ func TestAucunClassementDErreurParSonTexteDansLaCuisson(t *testing.T) {
 				// Un commentaire peut CITER l ancien motif : seul le code est tenu.
 				if !strings.HasPrefix(strings.TrimSpace(ligne), "//") && classementParTexteRE.MatchString(ligne) {
 					t.Errorf("%s:%d : erreur classee par son TEXTE — classer par errors.Is "+
-						"(raison du refus : jeton filmproc.EmitRaison, cf. replaychild/raison.go)",
+						"(raison du refus : jeton filmrun.EmitRaison, cf. replaychild/raison.go)",
 						filepath.ToSlash(f), i+1)
 				}
 			}

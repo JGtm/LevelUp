@@ -23,7 +23,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // servirZlib rend un handler qui compresse en zlib ce que fabrique produce(nom-de-fichier) —

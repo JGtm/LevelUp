@@ -8,11 +8,14 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // ReleaseNotesService lit docs/RELEASE_NOTES.md (source unique des notes user-facing).
@@ -25,14 +28,30 @@ func NewReleaseNotesService(repoRoot string) *ReleaseNotesService {
 	return &ReleaseNotesService{repoRoot: repoRoot}
 }
 
-// Build retourne le markdown complet des release notes pour `lang` (fr|en).
-func (s *ReleaseNotesService) Build(_ context.Context, lang string) (string, error) {
-	return s.buildFromDisk(lang)
+// Build retourne le markdown complet des release notes pour `lang` (une langue de
+// config/locales.toml ; inconnue ou vide : la langue par défaut). Une langue sans fichier de
+// notes reçoit la version de la langue de repli précédée d'une mention dans SA langue (D-6) ; le
+// repli est compté.
+func (s *ReleaseNotesService) Build(ctx context.Context, lang string) (string, error) {
+	loc := i18n.Parse(lang)
+	relPath, fileLoc := s.releaseNotesFile(loc)
+	if fileLoc != loc {
+		i18n.CountDocumentFallback()
+		slog.InfoContext(ctx, "release notes : pas de fichier dans cette langue, version de repli servie",
+			"locale", loc, "served", fileLoc, "path", relPath)
+	}
+	body, err := s.buildFromDisk(relPath, fileLoc)
+	if err != nil {
+		return "", err
+	}
+	if fileLoc != loc {
+		body = i18n.Msg(loc, "release_notes.english_only", nil) + "\n\n" + body
+	}
+	return body, nil
 }
 
-// buildFromDisk est le fallback : lit le README depuis le disque sans git.
-func (s *ReleaseNotesService) buildFromDisk(lang string) (string, error) {
-	relPath := releaseNotesRelPath(lang)
+// buildFromDisk lit le fichier de notes depuis le disque, sans git.
+func (s *ReleaseNotesService) buildFromDisk(relPath string, lang i18n.Locale) (string, error) {
 	absPath := filepath.Join(s.repoRoot, filepath.FromSlash(relPath))
 	data, err := os.ReadFile(absPath)
 	if err != nil {
@@ -45,16 +64,22 @@ func (s *ReleaseNotesService) buildFromDisk(lang string) (string, error) {
 	return assembleReleaseBlocks(blocks, lang), nil
 }
 
-func releaseNotesRelPath(lang string) string {
-	if lang == "fr" {
-		return "docs/FR/RELEASE_NOTES.md"
+// releaseNotesFile choisit le fichier de notes de la langue : la langue de repli lit
+// docs/RELEASE_NOTES.md, toute autre docs/<CODE>/RELEASE_NOTES.md (docs/FR/…) quand il existe ;
+// sinon le fichier de la langue de repli. Ajouter une langue = déposer son fichier, sans code.
+func (s *ReleaseNotesService) releaseNotesFile(l i18n.Locale) (relPath string, served i18n.Locale) {
+	if l != i18n.Fallback {
+		rel := "docs/" + strings.ToUpper(string(l)) + "/RELEASE_NOTES.md"
+		if _, err := os.Stat(filepath.Join(s.repoRoot, filepath.FromSlash(rel))); err == nil {
+			return rel, l
+		}
 	}
-	return "docs/RELEASE_NOTES.md"
+	return "docs/RELEASE_NOTES.md", i18n.Fallback
 }
 
 // assembleReleaseBlocks trie les blocs de version (descendant) et les
 // concatène en markdown.
-func assembleReleaseBlocks(blocks map[string]string, lang string) string {
+func assembleReleaseBlocks(blocks map[string]string, lang i18n.Locale) string {
 	keys := make([]string, 0, len(blocks))
 	for k := range blocks {
 		keys = append(keys, k)
@@ -64,11 +89,7 @@ func assembleReleaseBlocks(blocks map[string]string, lang string) string {
 	})
 
 	var sb strings.Builder
-	if lang == "fr" {
-		sb.WriteString("## Dernières nouveautés\n\n")
-	} else {
-		sb.WriteString("## What's new\n\n")
-	}
+	sb.WriteString("## " + i18n.Msg(lang, "release_notes.heading", nil) + "\n\n")
 	for i, k := range keys {
 		block := blocks[k]
 		sb.WriteString(block)
@@ -108,7 +129,7 @@ func extractWhatsNewBlocks(content string) map[string]string {
 		stripped := strings.TrimSpace(line)
 
 		if !inSection {
-			if stripped == "## What's new" || stripped == "## Dernières nouveautés" {
+			if isWhatsNewHeading(stripped) {
 				inSection = true
 			}
 			continue
@@ -139,6 +160,16 @@ func extractWhatsNewBlocks(content string) map[string]string {
 	}
 	flushCurrent()
 	return blocks
+}
+
+// isWhatsNewHeading reconnaît le titre de la section des nouveautés dans n'importe quelle langue.
+func isWhatsNewHeading(line string) bool {
+	for _, h := range i18n.MsgAll("release_notes.heading") {
+		if line == "## "+h {
+			return true
+		}
+	}
+	return false
 }
 
 func isVersionLine(line string) bool {

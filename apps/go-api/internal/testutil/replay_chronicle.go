@@ -52,8 +52,7 @@ import (
 
 // ReplayChroniclePath : le fichier qui porte la chronique, depuis la racine du depot.
 func ReplayChroniclePath(repoRoot string) string {
-	return filepath.Join(repoRoot, "apps", "go-api", "internal", "games", "halo_infinite",
-		"film", "replay", "document_chronicle.go")
+	return filepath.Join(repoRoot, "libs", "film", "replay", "document_chronicle.go")
 }
 
 // chronicleHeaders : les trois formes d'en-tete attestees (cf. en-tete du fichier). Chacune

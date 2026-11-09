@@ -478,7 +478,7 @@ describe('loadoutAt', () => {
 })
 
 describe('loadoutAt — borné à la VIE EN COURS du slot (correctif P0-2, 2026-09-06)', () => {
-  // Constat P0-2 (.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md) : `nearestReading` ne
+  // Constat : `nearestReading` ne
   // regardait pas la frontière de vie — sur un slot RECYCLÉ, la lecture passée la plus proche
   // gagnait TOUJOURS, quelle que soit sa vie. Vie 1 (slot 512, joueur A, frames 0-50) ; vie 2
   // (MÊME SLOT, joueur B, frames 60-150).

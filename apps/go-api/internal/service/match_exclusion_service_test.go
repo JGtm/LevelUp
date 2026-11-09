@@ -24,16 +24,6 @@ func (m *mockExclusionRepo) SetExclusion(_ context.Context, matchID string, excl
 	return true, nil
 }
 
-func (m *mockExclusionRepo) ListExcluded(_ context.Context) ([]domain.ExcludedMatch, error) {
-	var result []domain.ExcludedMatch
-	for id, excl := range m.excluded {
-		if excl {
-			result = append(result, domain.ExcludedMatch{MatchID: id})
-		}
-	}
-	return result, nil
-}
-
 func (m *mockExclusionRepo) GetMatchRegistryInfo(_ context.Context, matchID string) (domain.MatchRegistryInfo, error) {
 	info, ok := m.registry[matchID]
 	if !ok {
@@ -70,8 +60,8 @@ func newSvc(t *testing.T) (*MatchExclusionService, *mockExclusionRepo, *mockReco
 	return NewMatchExclusionService(repo, rec), repo, rec
 }
 
-func TestMatchExclusionService_SetAndList(t *testing.T) {
-	svc, _, rec := newSvc(t)
+func TestMatchExclusionService_SetAndUnset(t *testing.T) {
+	svc, repo, rec := newSvc(t)
 	if err := svc.SetExclusion(context.Background(), "m1", true); err != nil {
 		t.Fatal(err)
 	}
@@ -81,15 +71,8 @@ func TestMatchExclusionService_SetAndList(t *testing.T) {
 	if err := svc.SetExclusion(context.Background(), "m2", false); err != nil {
 		t.Fatal(err)
 	}
-	list, err := svc.ListExcluded(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(list) != 1 {
-		t.Fatalf("expected 1 excluded, got %d", len(list))
-	}
-	if list[0].MatchID != "m1" {
-		t.Fatalf("expected m1, got %s", list[0].MatchID)
+	if !repo.excluded["m1"] || repo.excluded["m2"] {
+		t.Fatalf("expected only m1 excluded, got %v", repo.excluded)
 	}
 	if rec.calls != 3 {
 		t.Fatalf("expected 3 recompute calls (m1 set, m2 set, m2 unset), got %d", rec.calls)

@@ -3,7 +3,7 @@
 package killcollector
 
 // placement_des_vies_integration_test.go — LE PLACEMENT DES VIES ECRIT PAR LE COLLECTEUR, sur une
-// vraie base migree (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V2).
+// vraie base migree.
 //
 //	TestProjeterPlacementDesVies_*   synthetique, tourne partout : la ligne ecrite, la revision,
 //	                                 la portee, la passe qui remplace la precedente.
@@ -29,8 +29,6 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/games/mappings"
@@ -39,6 +37,9 @@ import (
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // writerSur : un writer qui rend toujours la meme base (le test est seul a l'ecrire).
@@ -393,8 +394,9 @@ func TestSharedRoster_LitVarianteCarteEtFeuille(t *testing.T) {
 		VALUES ('m1', 'CTF:Arena', ' carte-1 ')`); err != nil {
 		t.Fatalf("registre : %v", err)
 	}
-	if _, err := db.Exec(`INSERT INTO match_participants (match_id, xuid, team_id, kills, deaths, assists)
-		VALUES ('m1', '111', 0, 3, 1, 2), ('m1', '222', 1, NULL, NULL, NULL)`); err != nil {
+	if _, err := db.Exec(`INSERT INTO match_participants
+		(match_id, xuid, team_id, kills, deaths, assists, left_in_progress, present_at_completion)
+		VALUES ('m1', '111', 0, 3, 1, 2, FALSE, TRUE), ('m1', '222', 1, NULL, NULL, NULL, NULL, NULL)`); err != nil {
 		t.Fatalf("participants : %v", err)
 	}
 	ids, err := NewSharedRoster(db).IdentitiesForMatch(context.Background(), "m1")
@@ -407,5 +409,23 @@ func TestSharedRoster_LitVarianteCarteEtFeuille(t *testing.T) {
 	attendu := []decfilm.PlayerLine{{XUID: "111", Kills: 3, Deaths: 1, Assists: 2}, {XUID: "222"}}
 	if len(ids.Feuille) != 2 || ids.Feuille[0] != attendu[0] || ids.Feuille[1] != attendu[1] {
 		t.Fatalf("feuille = %+v, attendu %+v", ids.Feuille, attendu)
+	}
+	// LA PRESENCE A LA FIN voyage telle que la base la porte : declaree pour 111, nil pour 222 (colonnes
+	// NULL : ni present, ni parti, et un nombre de morts non declare n entre pas).
+	var p111, p222 replay.Participant
+	for _, p := range ids.Participants {
+		switch p.ID {
+		case "111":
+			p111 = p
+		case "222":
+			p222 = p
+		}
+	}
+	if p111.PresentAtCompletion == nil || !*p111.PresentAtCompletion || p111.LeftInProgress == nil ||
+		*p111.LeftInProgress || p111.Deaths == nil || *p111.Deaths != 1 {
+		t.Errorf("participant 111 : %+v, attendu present, non parti, 1 mort", p111)
+	}
+	if p222.PresentAtCompletion != nil || p222.LeftInProgress != nil || p222.Deaths != nil {
+		t.Errorf("participant 222 : %+v, attendu aucune presence ni nombre de morts declares", p222)
 	}
 }

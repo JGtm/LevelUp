@@ -18,13 +18,14 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
 // zlibCompressForTest compresse b, pour verifier qu'un chunk COMPRESSE (la forme du cache
@@ -50,7 +51,7 @@ func zlibCompressForTest(t *testing.T, b []byte) []byte {
 // refus d'une séquence trouée — est conservé tel quel, en mémoire.
 
 func TestFilmOf_ChargeLesChunksALeurIndex(t *testing.T) {
-	chunks := []haloclient.FilmChunk{
+	chunks := []filmfetch.FilmChunk{
 		{Index: 1, ChunkType: 2, StartMS: 100, Data: []byte("chunk-un-donnees")},
 		{Index: 2, ChunkType: 2, StartMS: 200, Data: []byte("chunk-deux-donnees")},
 	}
@@ -88,7 +89,7 @@ func TestFilmOf_ChargeLesChunksALeurIndex(t *testing.T) {
 // (avant, chacune des quatre lectures repayait cette décompression).
 func TestFilmOf_ZlibRoundTrip(t *testing.T) {
 	compressed := zlibCompressForTest(t, []byte("payload-compresse"))
-	film, err := FilmOf([]haloclient.FilmChunk{{Index: 1, Data: compressed}})
+	film, err := FilmOf([]filmfetch.FilmChunk{{Index: 1, Data: compressed}})
 	if err != nil {
 		t.Fatalf("FilmOf: %v", err)
 	}
@@ -104,7 +105,7 @@ func TestFilmOf_ZlibRoundTrip(t *testing.T) {
 // `ScanDeaths` (qui prend le DERNIER numéro comme chunk du kill-feed) et `ScanClockOrigin` (qui
 // lit le numéro 1) changeraient de cible sans rien signaler.
 func TestFilmOf_NumerosDeChunksVusParLesBalayages(t *testing.T) {
-	film, err := FilmOf([]haloclient.FilmChunk{
+	film, err := FilmOf([]filmfetch.FilmChunk{
 		{Index: 0, ChunkType: 1, Data: []byte("entete")},
 		{Index: 1, ChunkType: 2, Data: []byte("replication-1")},
 		{Index: 2, ChunkType: 2, Data: []byte("replication-2")},
@@ -128,7 +129,7 @@ func TestFilmOf_NumerosDeChunksVusParLesBalayages(t *testing.T) {
 // balayages sur un film AMPUTÉ, en silence (un chunk vide ne rend aucun paquet) : le contrôle
 // refuse plutôt que de laisser passer une lecture partielle plausible.
 func TestRefuserSequenceTrouee_RefuseUnTrouDeSequence(t *testing.T) {
-	film, err := FilmOf([]haloclient.FilmChunk{
+	film, err := FilmOf([]filmfetch.FilmChunk{
 		{Index: 1, Data: []byte("a")},
 		{Index: 3, Data: []byte("c")}, // 2 absent
 	})
@@ -143,7 +144,7 @@ func TestRefuserSequenceTrouee_RefuseUnTrouDeSequence(t *testing.T) {
 // TestRefuserSequenceTrouee_ChunkVideEstUnTrou — un chunk DÉCLARÉ mais sans octets (Data vide)
 // est un trou au même titre qu'un index manquant : il ne rend aucun paquet.
 func TestRefuserSequenceTrouee_ChunkVideEstUnTrou(t *testing.T) {
-	film, err := FilmOf([]haloclient.FilmChunk{
+	film, err := FilmOf([]filmfetch.FilmChunk{
 		{Index: 1, Data: []byte("a")},
 		{Index: 2, Data: nil},
 	})
@@ -433,7 +434,6 @@ func TestToKillOpeningRows_PorteLInstantDuKillSansArithmetique(t *testing.T) {
 func TestEntreeDuRegistrePorteLeRosterDeLaFeuille(t *testing.T) {
 	ids := MatchIdentities{XUIDs: []string{"111", "222", "bid(7.0)"}}
 	in := entreeDuRegistre(lecturesDuFilm{}, ids, nil, "m1")
-
 	if len(in.RosterXUIDs) != 2 {
 		t.Fatalf("roster transmis = %v, attendu les deux xuids humains — sans lui, "+
 			"l'identite par elimination n'a aucun candidat", in.RosterXUIDs)

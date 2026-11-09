@@ -8,7 +8,7 @@ package main
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // TestCollecteurRetientLaValeurDesEtapesChaine — LE COMPTE NE DIT RIEN D'UNE CHAINE :

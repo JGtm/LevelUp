@@ -2,8 +2,8 @@ package persist
 
 // kill_events_merge_test.go — CE QUE LA FUSION DOIT TENIR, ET CE QU ELLE NE DOIT JAMAIS FABRIQUER.
 //
-// Chaque test correspond a une propriete du document de conception
-// (`.ai/V7.5/replay2d/CONCEPTION_INVERSION_PRESEANCE.md`, §2 a §4) et a une MUTATION qui doit le faire rougir :
+// Chaque test correspond a une propriete de la conception de la fusion
+// et a une MUTATION qui doit le faire rougir :
 //
 //	la base ne perd jamais une mort            retirer l ajout de la mort de base
 //	l enrichissement est recopie               retirer la recopie de `source_tag`

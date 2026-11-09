@@ -12,6 +12,7 @@ import { isCommunityPath, type RouteTo } from './shellNavigation'
 import { playerRelativePath } from '@/lib/title-routing'
 import type { TitleCapability } from '@/lib/capabilities/capabilities'
 import type { CommonManifestKey } from '@/lib/i18n/generated/common'
+import type { DeploymentCapabilityKey } from '@/lib/capabilities/deploymentCapabilities'
 
 // Matcher de section : `re` s'applique au SUFFIXE relatif au joueur (playerRelativePath),
 // jamais au pathname brut — aucun littéral `/players/` (garde-rail D-10). Retourne false
@@ -54,12 +55,28 @@ export interface L1Tab {
    * Absente ⇒ onglet toujours visible. NO-OP pour `halo_infinite`.
    */
   capability?: TitleCapability
+  /**
+   * Capacité du profil de déploiement requise pour afficher cet onglet (ADR 0044) : une instance qui
+   * ne l'offre pas ne le montre pas (ex. « Classements » sans `can_compare_accounts`, application de
+   * bureau). Absente ⇒ onglet visible quel que soit le profil.
+   */
+  deploymentCapability?: DeploymentCapabilityKey
 }
 
 export interface L1Section {
   key: string
   /** Clé i18n du libellé (résolue par le consommateur via `t()`). */
   labelKey: CommonManifestKey
+  /**
+   * Clé i18n du chapeau de l'en-tête de page de la section (`PageHeader`). Absente pour l'accueil :
+   * sa bannière d'identité porte déjà le titre de la page.
+   */
+  leadKey?: CommonManifestKey
+  /**
+   * Vrai quand le LAYOUT de la section rend lui-même son en-tête (ses onglets dépendent de ses
+   * données) : `SectionHeader` n'en pose pas.
+   */
+  headerInLayout?: boolean
   /** Icône optionnelle affichée avant le label (ex: flamme pour Ascension). */
   icon?: ReactNode
   /** Route par défaut (template typé) lors du clic sur le label. */
@@ -93,6 +110,7 @@ export const L1_SECTIONS: L1Section[] = [
   {
     key: 'stats',
     labelKey: 'common.nav.section_solo',
+    leadKey: 'common.page_lead.solo',
     defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/stats/timeseries',
     matchPathname: (p) => under(p, /^\/(stats\/|synthesis)/),
     tabs: [
@@ -107,6 +125,9 @@ export const L1_SECTIONS: L1Section[] = [
   {
     key: 'squad',
     labelKey: 'common.nav.section_squad',
+    leadKey: 'common.page_lead.squad',
+    // L'onglet Emprise n'existe que si les données de l'escouade en portent : le layout rend son en-tête.
+    headerInLayout: true,
     defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies',
     matchPathname: (p) => under(p, /^\/squad/),
     tabs: [
@@ -118,6 +139,7 @@ export const L1_SECTIONS: L1Section[] = [
   {
     key: 'career',
     labelKey: 'common.nav.section_career',
+    leadKey: 'common.page_lead.career',
     capability: 'career',
     defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/career',
     matchPathname: (p) => under(p, /^\/(career|citations|medals|profile)/),
@@ -136,6 +158,7 @@ export const L1_SECTIONS: L1Section[] = [
   {
     key: 'ascension',
     labelKey: 'common.nav.section_ascension',
+    leadKey: 'common.page_lead.ascension',
     icon: flameIcon,
     // Ascension (profil LUSR + leviers + coaching) dérive entièrement du rating
     // LUSR ⇒ gatée sur `lusr`. (Reste aussi conditionnée par le réglage
@@ -164,16 +187,18 @@ export const L1_SECTIONS: L1Section[] = [
   {
     key: 'community',
     labelKey: 'common.nav.section_community',
+    leadKey: 'common.page_lead.community',
     defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/community',
     matchPathname: isCommunityPath,
     // Section transverse non gatée (Relations / Face-à-face dérivent des matchs) ;
-    // seul l'onglet « Classements » dépend de `world.leaderboard`.
+    // seul l'onglet « Classements » dépend de `world.leaderboard` et de la comparaison de comptes.
     tabs: [
       {
         key: 'leaderboard',
         labelKey: 'common.nav.tab_leaderboard',
         path: '/{-$lang}/t/$titleSlug/players/$playerSlug/community',
         capability: 'world.leaderboard',
+        deploymentCapability: 'can_compare_accounts',
       },
       { key: 'relations', labelKey: 'common.nav.tab_relations', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/relations' },
       { key: 'compare', labelKey: 'common.nav.tab_compare', path: '/{-$lang}/t/$titleSlug/players/$playerSlug/community/compare' },
@@ -182,6 +207,7 @@ export const L1_SECTIONS: L1Section[] = [
   {
     key: 'media',
     labelKey: 'common.nav.section_media',
+    leadKey: 'common.page_lead.media',
     capability: 'media',
     defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/media',
     matchPathname: (p) => under(p, /^\/media/),
@@ -189,6 +215,7 @@ export const L1_SECTIONS: L1Section[] = [
   {
     key: 'explorer',
     labelKey: 'common.nav.section_explorer',
+    leadKey: 'common.page_lead.explorer',
     defaultPath: '/{-$lang}/t/$titleSlug/players/$playerSlug/explorer',
     matchPathname: (p) => under(p, /^\/explorer/),
   },

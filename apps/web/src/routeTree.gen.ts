@@ -19,6 +19,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SetupRouteImport } from './routes/setup'
+import { Route as TelechargerRouteImport } from './routes/telecharger'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAccessRouteImport } from './routes/admin/access'
@@ -130,6 +131,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
   path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TelechargerRoute = TelechargerRouteImport.update({
+  id: '/telecharger',
+  path: '/telecharger',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -563,6 +569,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/telecharger': typeof TelechargerRoute
   '/terms': typeof TermsRoute
   '/admin/access': typeof AdminAccessRoute
   '/admin/convergence': typeof AdminConvergenceRoute
@@ -636,6 +643,7 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/telecharger': typeof TelechargerRoute
   '/terms': typeof TermsRoute
   '/admin/access': typeof AdminAccessRoute
   '/admin/convergence': typeof AdminConvergenceRoute
@@ -708,6 +716,7 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/telecharger': typeof TelechargerRoute
   '/terms': typeof TermsRoute
   '/admin/access': typeof AdminAccessRoute
   '/admin/convergence': typeof AdminConvergenceRoute
@@ -784,6 +793,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/settings'
     | '/setup'
+    | '/telecharger'
     | '/terms'
     | '/admin/access'
     | '/admin/convergence'
@@ -857,6 +867,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/settings'
     | '/setup'
+    | '/telecharger'
     | '/terms'
     | '/admin/access'
     | '/admin/convergence'
@@ -928,6 +939,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/settings'
     | '/setup'
+    | '/telecharger'
     | '/terms'
     | '/admin/access'
     | '/admin/convergence'
@@ -1003,6 +1015,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
+  TelechargerRoute: typeof TelechargerRoute
   TermsRoute: typeof TermsRoute
   LabChartsRoute: typeof LabChartsRoute
   OnboardingOpenspartanRoute: typeof OnboardingOpenspartanRoute
@@ -1081,6 +1094,13 @@ declare module '@tanstack/react-router' {
       path: '/setup'
       fullPath: '/setup'
       preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/telecharger': {
+      id: '/telecharger'
+      path: '/telecharger'
+      fullPath: '/telecharger'
+      preLoaderRoute: typeof TelechargerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -1755,6 +1775,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
+  TelechargerRoute: TelechargerRoute,
   TermsRoute: TermsRoute,
   LabChartsRoute: LabChartsRoute,
   OnboardingOpenspartanRoute: OnboardingOpenspartanRoute,

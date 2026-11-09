@@ -60,7 +60,7 @@ var MatchParticipantsColumns = []string{
 // chemin CSR). Append-only (ADR 0026) : written_at posé par DEFAULT côté DB.
 var MatchSkillRankColumns = []string{
 	"match_id", "rating_type", "rating_value", "rating_deviation",
-	"tier", "tier_fr", "sub_tier", "tier_label", "rating_delta", "playlist_group",
+	"tier", "sub_tier", "tier_label", "rating_delta", "playlist_group",
 }
 
 // MatchCSRColumns — colonnes de l'INSERT persistMatchCSRs (shared_persister.go).

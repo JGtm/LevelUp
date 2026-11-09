@@ -10,9 +10,11 @@ import (
 	"context"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/domain/objectiveevent"
-	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
+
+	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
+	"github.com/JGtm/LevelUp/libs/film/playerposition"
 )
 
 type SquadRepository interface {
@@ -73,14 +75,16 @@ type SquadRepository interface {
 	// l'équipe alliée complète au lieu du squad sélectionné uniquement.
 	LoadMainTeamParticipants(ctx context.Context, mainXUID string, matchIDs []string) ([]domain.AllyParticipant, error)
 
-	// LoadAssetTranslationsFR retourne les traductions FR depuis metadata.asset_translations.
-	// assetType : "map" | "playlist". Retourne nil sans erreur si table absente ou IDs vides.
-	LoadAssetTranslationsFR(ctx context.Context, assetType string, assetIDs []string) (map[string]string, error)
+	// LoadAssetTexts retourne le nom de chaque actif dans chaque langue qui en porte un, depuis
+	// metadata.asset_translations (le choix de la langue se fait en aval, Text.Pick).
+	// assetType : "map" | "playlist" | "pair" | "game_variant". Retourne nil sans erreur si table
+	// absente ou IDs vides.
+	LoadAssetTexts(ctx context.Context, assetType string, assetIDs []string) (map[string]i18n.Text, error)
 
-	// LoadModeTranslationsFR retourne les traductions FR des modes EN (depuis metadata.mode_name_tr).
-	// Les clés sont les noms EN normalisés (ex: "Slayer"), les valeurs les noms FR (ex: "Tueur").
+	// LoadModeTranslations retourne les traductions des modes EN dans la langue loc (depuis metadata.mode_name_tr).
+	// Les clés sont les noms EN normalisés (ex: "Slayer"), les valeurs les noms traduits (ex: "Tueur").
 	// Retourne nil sans erreur si la table est absente ou si modeENs est vide.
-	LoadModeTranslationsFR(ctx context.Context, modeENs []string) (map[string]string, error)
+	LoadModeTranslations(ctx context.Context, loc i18n.Locale, modeENs []string) (map[string]string, error)
 
 	// LoadMapStatsForSquad retourne par map_id les stats historiques (wins,
 	// total, perf moyenne) du joueur principal sur les matchs où TOUS les xuids
@@ -102,10 +106,10 @@ type SquadRepository interface {
 //
 // P4.3 finale : LoadSynthesisMatches retiré.
 type SynthesisRepository interface {
-	// EnrichCanonicalAssetTranslations remplit Labels["fr"] sur les AssetReference
-	// (Map, Playlist, GameVariant, PairMode) des rows canoniques depuis
-	// metadata.asset_translations + mode_name_tr quand match_registry.{...}_name_fr
-	// est NULL en DB. Même helper que HomeRepo — réutilisé pour cohérence cross-page.
+	// EnrichCanonicalAssetTranslations remplit Labels de chaque langue connue sur les
+	// AssetReference (Map, Playlist, GameVariant, PairMode) des rows canoniques depuis
+	// metadata.asset_translations + mode_name_tr quand match_registry.{...}_name
+	// est absent en DB. Même helper que HomeRepo — réutilisé pour cohérence cross-page.
 	// Best-effort : erreurs loggées, rows mutées en place.
 	EnrichCanonicalAssetTranslations(ctx context.Context, rows []canonical.PlayerMatchRow) error
 }
@@ -157,8 +161,7 @@ type ObjectiveEventsRepository interface {
 	LoadMatch(ctx context.Context, matchID string) ([]objectiveevent.Event, error)
 }
 
-// PlayerPositionsRepository relit les positions joueurs keyframe v3 (match-level,
-// §N de .ai/archive/V7/RESEARCH_THEATER_RE.md) d'un match. Implémenté par
+// PlayerPositionsRepository relit les positions joueurs keyframe v3 (match-level) d'un match. Implémenté par
 // platform/duckdb.PlayerPositionsRepo.
 //
 // Capability gating : retourne games.ErrCapabilityNotSupported si la table
@@ -194,9 +197,6 @@ type MatchExclusionRepository interface {
 	// dit s'il l'a écrit. Lecture de l'état, décision et écriture se font sous le verrou
 	// d'écriture de la base joueur : deux demandes qui se chevauchent se sérialisent.
 	SetExclusion(ctx context.Context, matchID string, excluded bool) (changed bool, err error)
-
-	// ListExcluded retourne les matchs marqués is_excluded = TRUE.
-	ListExcluded(ctx context.Context) ([]domain.ExcludedMatch, error)
 
 	// GetMatchRegistryInfo retourne les métadonnées du match depuis
 	// shared.match_registry. Utilisé pour la garde "match classé" et la
@@ -284,6 +284,22 @@ type MediaFileRemover interface {
 	RemoveMediaFiles(ctx context.Context, storedPaths []string) (int, error)
 }
 
+// MediaFileTrasher envoie l'original d'un média à la Corbeille du système plutôt que de
+// l'effacer.
+//
+// Port distinct de MediaFileRemover : l'envoi à la Corbeille est réversible, la suppression non, et
+// seul le profil desktop en dispose. Un échec n'est JAMAIS rattrapé par une suppression
+// définitive côté implémentation : c'est le service qui décide de ce qui suit.
+//
+// Implémenté par ops.OSMediaFileTrasher.
+type MediaFileTrasher interface {
+	// TrashMediaFile envoie le fichier désigné par le chemin STOCKÉ à la Corbeille. Rend true quand
+	// il y est parti. Rend false, nil quand il n'y a rien à envoyer : fichier absent, chemin non
+	// résolvable, ou support sans Corbeille (clé USB, disque réseau). Une erreur dit que
+	// l'envoi a échoué et que le fichier est resté en place.
+	TrashMediaFile(ctx context.Context, storedPath string) (bool, error)
+}
+
 // SocialRepository gère les données sociales (favoris) dans shared_social.duckdb.
 // Implémenté par platform/duckdb.SocialRepo.
 type SocialRepository interface {
@@ -339,10 +355,10 @@ func (n *noopSquadRepo) LoadSquadKillLog(_ context.Context, _, _ []string) ([]do
 func (n *noopSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
 	return nil, nil
 }
-func (n *noopSquadRepo) LoadAssetTranslationsFR(_ context.Context, _ string, _ []string) (map[string]string, error) {
+func (n *noopSquadRepo) LoadAssetTexts(_ context.Context, _ string, _ []string) (map[string]i18n.Text, error) {
 	return nil, nil
 }
-func (n *noopSquadRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
+func (n *noopSquadRepo) LoadModeTranslations(_ context.Context, _ i18n.Locale, _ []string) (map[string]string, error) {
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadMapStatsForSquad(_ context.Context, _ string, _, _ []string) (map[string]domain.MapSquadStats, error) {
@@ -461,7 +477,7 @@ type MetadataRepository interface {
 }
 
 // SeasonProvider fournit le calendrier des saisons depuis une source externe
-// (Waypoint pour Halo Infinite). Implémenté par platform/halo.HaloProvider.
+// (Waypoint pour Halo Infinite). Implémenté par haloadapter.Provider.
 //
 // Le contrat : retourne la liste des saisons + le payload brut (pour archive
 // snapshot via UpsertSnapshot) + erreur. Les tokens d'auth sont lus depuis
@@ -496,8 +512,7 @@ type CompareRepository interface {
 	// dans la base partagée (campagne exclue, mêmes clauses que GetLocalStats) et ses
 	// totaux sur cet ensemble.
 	//
-	// C'EST LE SEUL SCOPE, POUR LES DEUX JOUEURS (plan
-	// .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, D2 amendé au lot 3-bis, 2026-09-17). Un
+	// C'EST LE SEUL SCOPE, POUR LES DEUX JOUEURS. Un
 	// second scope « croisé » (les matchs communs à A et B) a été retiré : il lisait la
 	// même table avec la même exclusion et n'y ajoutait qu'un EXISTS, donc son résultat
 	// était un SOUS-ENSEMBLE de celui-ci et la branche qui l'appelait était morte.

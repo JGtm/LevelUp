@@ -16,8 +16,10 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // mockReplayService implémente port.ReplayService.
@@ -159,7 +161,7 @@ func TestReplayHandler_LatestSchemaVersionHeader(t *testing.T) {
 	got := w.Header().Get(middleware.ReplayLatestSchemaHeader)
 	want := strconv.Itoa(replay.SchemaVersion)
 	if got != want {
-		t.Errorf("X-Replay-Latest-Schema-Version = %q, attendu %q (games/halo_infinite/film/replay.SchemaVersion)",
+		t.Errorf("X-Replay-Latest-Schema-Version = %q, attendu %q (libs/film/replay.SchemaVersion)",
 			got, want)
 	}
 	var body replaydoc.ReplayDocument
@@ -304,7 +306,7 @@ func calloutsMock() *mockReplayService {
 			Module:     "ridgeline",
 			Provenance: replay.CalloutsProvenanceDecoupe,
 			Zones: []replaydoc.CalloutZone{{
-				VolumeIndex: 10, Name: "ridgeline horses", EN: "Horseshoe", FR: "Fer à cheval",
+				VolumeIndex: 10, Name: "ridgeline horses", Text: i18n.Text{i18n.LocaleEN: "Horseshoe", i18n.LocaleFR: "Fer à cheval"},
 				X: 19, Y: 10, Z: 1, ZBottom: -0.2, ZTop: 11,
 				Polygon: [][2]float64{{14.8, 7.5}, {23.8, 7.5}, {23.8, 15.3}},
 			}},
@@ -323,7 +325,7 @@ func TestReplayCallouts_OK(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("réponse illisible: %v", err)
 	}
-	if got.Module != "ridgeline" || len(got.Zones) != 1 || got.Zones[0].FR != "Fer à cheval" ||
+	if got.Module != "ridgeline" || len(got.Zones) != 1 || got.Zones[0].Text[i18n.LocaleFR] != "Fer à cheval" ||
 		len(got.Zones[0].Polygon) != 3 {
 		t.Errorf("entrée incomplète: %+v", got)
 	}

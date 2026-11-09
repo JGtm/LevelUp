@@ -3,6 +3,8 @@ package mappings
 import (
 	"sort"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // AssetMapping est la projection d'une section [assets.{kind}.{id}] du TOML.
@@ -12,12 +14,12 @@ import (
 // statuts de défi, saisons. Pas les médailles elles-mêmes (cf. plan §6.7 :
 // restent en DB).
 type AssetMapping struct {
-	Kind         string            // "mode" | "playlist" | "medal_tier" | "challenge_tier" | "cadence" | "challenge_status" | "season"
-	ID           string            // identifiant stable au sein du Kind (ex : "ranked", "heroic", "daily")
-	Labels       map[string]string // locale → libellé
-	ColorToken   string            // token de design system (optionnel — vide si non applicable)
-	Icon         string            // chemin SVG/PNG (optionnel)
-	DisplayOrder int               // ordre stable dans le Kind
+	Kind         string    // "mode" | "playlist" | "medal_tier" | "challenge_tier" | "cadence" | "challenge_status" | "season"
+	ID           string    // identifiant stable au sein du Kind (ex : "ranked", "heroic", "daily")
+	Labels       i18n.Text // locale → libellé
+	ColorToken   string    // token de design system (optionnel — vide si non applicable)
+	Icon         string    // chemin SVG/PNG (optionnel)
+	DisplayOrder int       // ordre stable dans le Kind
 
 	// Champs optionnels pour les kinds time-bounded (ex: "season").
 	// nil pour les kinds non-temporels.
@@ -28,15 +30,13 @@ type AssetMapping struct {
 
 // Label retourne le libellé pour la locale demandée + fallback.
 //
-// Chaîne de fallback : locale → en → ID brut.
+// Chaîne de fallback : locale → i18n.Fallback → ID brut.
 func (a AssetMapping) Label(locale string) (label string, usedFallback bool) {
-	if v, ok := a.Labels[locale]; ok && v != "" {
-		return v, false
+	v, fell := a.Labels.Resolve(i18n.Locale(locale))
+	if v == "" {
+		return a.ID, true
 	}
-	if v, ok := a.Labels[LocaleEN]; ok && v != "" {
-		return v, true
-	}
-	return a.ID, true
+	return v, fell
 }
 
 // AssetMappingSet est l'ensemble des AssetMapping d'un titre, construit par

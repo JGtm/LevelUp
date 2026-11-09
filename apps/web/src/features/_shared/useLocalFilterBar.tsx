@@ -5,10 +5,9 @@
  * cascade locale (expérience, playlists, modes), barre période/saison, et
  * useFiltersPreview pour les counts cascade-aware.
  *
- * Consommé par `UnifiedCitationsPage` (features/citations), `PalmaresRelationsPage`
- * (features/palmares) et `TacticalPage` (features/tactical) — liste vérifiée le
- * 2026-09-06 ; celle d'avant nommait trois pages qui ne l'appellent pas. Chaque page
- * consomme le hook, l'utilise pour ses requêtes et rend `bar` au sommet de son layout.
+ * Consommé par `PalmaresRelationsPage` (features/palmares) et `TacticalFilterBar`
+ * (features/tactical). Chaque page consomme le hook, l'utilise pour ses requêtes et
+ * rend `bar` au sommet de son layout.
  *
  * Le hook n'écrit dans AUCUN store global — l'état reste 100% local à la page,
  * cohérent avec le pattern « 1 page = 1 scope de filtres ».
@@ -28,6 +27,7 @@
  * Une copie initialisée au montage serait restée figée sur l'état d'arrivée.
  */
 import { useMemo, useState, type ReactNode } from 'react'
+import { STICKY_BELOW_TABS_CLASS } from '@/components/foundations/pageHeaderLogic'
 import { useFiltersPreview } from '@/features/filters/queries'
 import { PeriodePill, SaisonPill, DEFAULT_PERIOD } from '@/components/shell/FilterOmnibar'
 import { ViewDropdown } from '@/features/_shared/ViewDropdown'
@@ -336,7 +336,7 @@ export function useLocalFilterBar({
   }
 
   const bar = (
-    <div className={gouttiere ? 'sticky top-0 z-20 px-6' : 'sticky top-0 z-20'} style={{ background: 'var(--background)' }}>
+    <div className={gouttiere ? `sticky ${STICKY_BELOW_TABS_CLASS} z-20 px-6` : `sticky ${STICKY_BELOW_TABS_CLASS} z-20`} style={{ background: 'var(--background)' }}>
       <div className="flex min-h-10 items-center gap-1.5 border-b border-border py-1.5 flex-wrap">
         <ExperienceDropdown
           value={pendingExperience}

@@ -13,31 +13,22 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
 
-// balayerLaProduction rend a `visiter` chaque source Go de production sous les `racines` (relatives
-// a apps/go-api) : son chemin relatif a apps/go-api, a barres obliques, et son chemin sur le disque.
+// balayerLaProduction rend a `visiter` chaque source Go de production sous les `racines` (chemins
+// de garde-rail, [surDisque] : `libs/...` relatif a la racine du depot, sinon relatif a apps/go-api) :
+// son chemin dans le meme repere, a barres obliques, et son chemin sur le disque.
 func balayerLaProduction(t *testing.T, racines []string, visiter func(rel, chemin string) error) {
 	t.Helper()
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici))) // .../apps/go-api
 	for _, racine := range racines {
-		base := filepath.Join(goAPIRoot, filepath.FromSlash(racine))
+		base := surDisque(t, racine)
 		err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-			rel, err := filepath.Rel(goAPIRoot, chemin)
-			if err != nil {
-				return err
-			}
-			rel = filepath.ToSlash(rel)
+			rel := cheminDeGardeRail(t, chemin)
 			if d.IsDir() {
 				if chemin != base && repertoireExcluDuTriTotal(d.Name(), rel) {
 					return fs.SkipDir

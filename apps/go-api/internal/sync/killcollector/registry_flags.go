@@ -38,10 +38,11 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/ctxkeys"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/debrief"
 	"levelup/go-api/internal/sync/matchflags"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // marquerRegistre pose UN bit sur `match_registry.backfill_completed`.

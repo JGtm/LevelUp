@@ -35,13 +35,15 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/util/pointers"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // AppearanceSource est la surface live minimale consommée par le hook appearance.
 // *halo5.Client la satisfait. Définie côté consommateur (livesync) pour rester
 // mockable en test sans réseau, sans élargir CaptureSource/h5Source de l'adapter.
 type AppearanceSource interface {
-	GetAppearance(ctx context.Context, gamertag string) (*halo5.H5Appearance, error)
+	GetAppearance(ctx context.Context, gamertag string) (*h5api.H5Appearance, error)
 	GetSpartanRenderPNG(ctx context.Context, gamertag string) ([]byte, string, error)
 	GetEmblemPNG(ctx context.Context, gamertag string) ([]byte, string, error)
 }

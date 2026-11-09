@@ -22,7 +22,7 @@ package replayartifacts
 //
 // Meme doctrine que `flaggrabsnet.go` : la source est l'artefact DEJA RANGE. Aucune recuisson
 // n'est necessaire — et aucune n'est declenchee : cuire des artefacts en lot est INTERDIT
-// (bombe RAM, verrou `filmproc.AcquireSolo`).
+// (bombe RAM, verrou `filmrun.AcquireSolo`).
 //
 // # LA FORME, ET LA SEULE DIFFERENCE AVEC LES PRISES NETTES
 //
@@ -65,10 +65,11 @@ import (
 	"levelup/go-api/internal/analysis/weapontier"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // PadTiersMinSchema est le schema d'artefact minimal exploitable : `padPickups[].xuid` — le

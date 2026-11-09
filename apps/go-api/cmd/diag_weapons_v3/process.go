@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/domain/objectiveevent"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
 )
 
 // processMatch décode + résume (et persiste si cfg.write) un match.

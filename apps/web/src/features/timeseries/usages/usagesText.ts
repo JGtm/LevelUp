@@ -1,7 +1,5 @@
 /**
- * usagesText.ts — LES TEXTES de l'onglet « Usages » des Séries temporelles (plan
- * PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05, décision D10 ; maquette v4
- * `.ai/V7.5/MAQUETTE_TIMESERIES_USAGES_2026-10-05.html`, vue « Après »).
+ * usagesText.ts — LES TEXTES de l'onglet « Usages » des Séries temporelles.
  *
  * L'onglet monte les cartes de l'Emprise et de l'Objectif de l'Escouade : leurs textes sont ceux de
  * l'Escouade SURCHARGÉS pour une page solo (`EMPRISE_TEXT_SOLO`, `OBJECTIF_TEXT_SOLO`) — « matchs du
@@ -118,9 +116,11 @@ function empriseEn(base: EmpriseText): EmpriseText {
   }
 }
 
+const EMPRISE_OVERRIDES: Record<Locale, (base: EmpriseText) => EmpriseText> = { fr: empriseFr, en: empriseEn }
+
 function emprise(locale: Locale): EmpriseText {
   const base = EMPRISE_TEXT[locale]
-  return locale === 'fr' ? empriseFr(base) : empriseEn(base)
+  return EMPRISE_OVERRIDES[locale](base)
 }
 
 const FR: UsagesText = {

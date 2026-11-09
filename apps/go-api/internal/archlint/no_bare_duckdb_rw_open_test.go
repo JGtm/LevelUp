@@ -129,10 +129,7 @@ func TestAucuneOuvertureDuckDBEnEcritureHorsDuPointUnique(t *testing.T) {
 
 	found := map[string][]string{} // fichier -> sites "ligne  texte"
 	for _, root := range bareDuckDBRWRoots {
-		dir := filepath.Join(goAPIRoot, root)
-		if _, err := os.Stat(dir); err != nil {
-			continue
-		}
+		dir := racineDeclaree(t, root)
 		err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err

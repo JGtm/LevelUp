@@ -20,7 +20,7 @@ const FOLDER: Record<StaticKind, string> = {
   weapon: 'weapons-assets',
   commendation: 'commendations',
   vehicle: 'vehicles-assets',
-  // Sons du rejeu 2D (WAV, lot 5 parité rejeu). Composé UNIQUEMENT côté front
+  // Sons du rejeu 2D (Opus en conteneur Ogg, lot 5 parité rejeu). Composé UNIQUEMENT côté front
   // (le backend Go n'émet aucune URL de son dans ses payloads — pas de miroir
   // dans internal/assets/static/layout.go tant que c'est vrai).
   sound: 'sounds',

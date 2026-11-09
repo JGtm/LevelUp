@@ -265,9 +265,6 @@ func (r *HomeRepo) assemblePeak(ctx context.Context, playerRows []peakRow, regis
 	// Tier+subTier bruts conservés pour la bande ordinale (analysis.SkillTierBand).
 	peak.Tier = chosen.row.tier
 	peak.SubTier = chosen.row.subTier
-	if strings.TrimSpace(chosen.row.tierLabel) != "" {
-		peak.TierLabel = stringPtr(chosen.row.tierLabel)
-	}
 	// Date d'obtention du pic : start_time canonique du match retenu (Phase B).
 	// Dégradation gracieuse si le match est absent du registry (ex. m2 legacy
 	// sans ligne registry) : champ laissé nil + trace Debug, jamais d'erreur.
@@ -339,21 +336,6 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 		peak.Tier = bestTier
 		peak.SubTier = bestSub
 		peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(bestTier, "", bestSub, r.titleSlug(), 0, threshold)
-		// Palier all-time CSR : libellé FR + sous-palier romain ("Diamant III"),
-		// au lieu du tier brut anglais sans sous-palier. FR-first comme tous les
-		// libellés CSR (sync.formatCSRTierLabel). Partagé Home + Explorer.
-		if bestTier != "" {
-			var subPtr *int
-			if bestSub >= 1 && bestSub <= 6 {
-				s := bestSub
-				subPtr = &s
-			}
-			if lbl := analysis.BuildCSRTierLabelFromEN(bestTier, subPtr, true); lbl != nil {
-				peak.TierLabel = lbl
-			} else {
-				peak.TierLabel = stringPtr(bestTier)
-			}
-		}
 		zero := 0
 		peak.MeasurementMatchesRemaining = &zero
 		totalCopy := threshold

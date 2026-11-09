@@ -68,6 +68,7 @@ export function SquadEngagementSection(props: SquadEngagementSectionProps) {
   return (
     <SquadEngagementView
       session={session}
+      title={formatMessage(engagementManifest, 'engagement.squad.section_title', locale)}
       state={query.isLoading ? 'loading' : query.isError ? 'error' : 'ready'}
       seriesLabels={{
         lobby: formatMessage(engagementManifest, 'engagement.squad.trace.lobby', locale),

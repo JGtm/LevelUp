@@ -74,6 +74,7 @@ describe('buildDescriptorLabel', () => {
         { kind: 'session', startTimeUtc: '2026-05-07T21:30:00Z' },
         'en',
       )
+      // L'anglais suit le format britannique (INTL_TAG.en) : jour/mois/année et horloge de 24 h.
       expect(got).toMatch(/^from session of \d{2}\/\d{2}\/\d{2} at \d{2}:\d{2}$/)
     })
     it('startTimeUtc absent → chaîne vide', () => {
@@ -137,6 +138,13 @@ describe('buildDescriptorLabel', () => {
     it('name vide → chaîne vide', () => {
       expect(buildDescriptorLabel({ kind: 'playlist', name: '' }, 'fr')).toBe('')
     })
+    // La clé (name) est le nom de la langue par défaut ; le libellé affiché suit la langue de la page.
+    it('libellé affiché dans la langue de la page, clé inchangée', () => {
+      const d: ContextDescriptor = { kind: 'playlist', name: 'Partie rapide', label: 'Quick Play' }
+      expect(buildDescriptorLabel(d, 'en')).toBe('in Quick Play')
+      expect(buildDescriptorLabel({ ...d, label: 'Partie rapide' }, 'fr')).toBe('en Partie rapide')
+      expect(d.name).toBe('Partie rapide')
+    })
   })
 
   describe('kind = mode', () => {
@@ -148,6 +156,11 @@ describe('buildDescriptorLabel', () => {
     })
     it('category vide → chaîne vide', () => {
       expect(buildDescriptorLabel({ kind: 'mode', category: '' }, 'fr')).toBe('')
+    })
+    it('libellé affiché dans la langue de la page, clé inchangée', () => {
+      const d: ContextDescriptor = { kind: 'mode', category: 'Assassin', label: 'Slayer' }
+      expect(buildDescriptorLabel(d, 'en')).toBe('in Slayer')
+      expect(buildDescriptorLabel({ ...d, label: 'Assassin' }, 'fr')).toBe('en Assassin')
     })
   })
 })

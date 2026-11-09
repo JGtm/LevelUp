@@ -5,7 +5,7 @@
 //
 // Couvre spécifiquement le cas où pair_name brut est vide en DB et
 // asset_translations[pair_id, fr-FR] retourne l'EN raw "Arena:CTF on X" — le
-// helper analysis.ResolvePairNameFR doit re-normaliser et re-lookup mode_name_tr.
+// helper analysis.ResolvePairName doit re-normaliser et re-lookup mode_name_tr.
 package duckdb
 
 import (
@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -81,26 +82,24 @@ func TestApplyMatchHistoryFRTranslations_HandlesCorruptedAssetTranslations(t *te
 	rows := []domain.MatchHistoryRawRow{
 		// Cas A : pair_name brut renseigné, traduction directe via mode_name_tr.
 		{
-			MatchID:    "match-A",
-			PairName:   &pairNameOK,
-			PairNameFR: &pairNameFROK,
+			MatchID:  "match-A",
+			PairName: i18n.FromColumns(pairNameOK, pairNameFROK),
 		},
 		// Cas B (root cause P2) : pair_name vide, asset_translations a l'EN raw,
 		// le helper doit re-normaliser et trouver "CTF" → "Capture du drapeau".
 		{
-			MatchID:    "match-B",
-			PairName:   &emptyPairName,
-			PairNameFR: &pairNameFRPlaceholder,
-			PairID:     &corruptedID,
+			MatchID:  "match-B",
+			PairName: i18n.FromColumns(emptyPairName, pairNameFRPlaceholder),
+			PairID:   &corruptedID,
 		},
 	}
 
 	applyMatchHistoryFRTranslations(ctx, pdb, rows)
 
-	if got := derefString(rows[0].PairNameFR); got != "Capture du drapeau" {
+	if got := rows[0].PairName[i18n.LocaleFR]; got != "Capture du drapeau" {
 		t.Errorf("Cas A (pair_name OK): PairNameFR = %q, want %q", got, "Capture du drapeau")
 	}
-	if got := derefString(rows[1].PairNameFR); got != "Capture du drapeau" {
+	if got := rows[1].PairName[i18n.LocaleFR]; got != "Capture du drapeau" {
 		t.Errorf("Cas B (asset corrompu): PairNameFR = %q, want %q", got, "Capture du drapeau")
 	}
 }
@@ -120,31 +119,28 @@ func TestFiltersRepo_applyModeFRTranslations_HandlesCorruptedAssetTranslations(t
 
 	rows := []domain.FilterMatchRow{
 		{
-			MatchID:    "match-A",
-			PairName:   &pairNameOK,
-			PairNameFR: &pairNameFROK,
+			MatchID:  "match-A",
+			PairName: i18n.FromColumns(pairNameOK, pairNameFROK),
 		},
 		{
-			MatchID:    "match-B",
-			PairName:   &emptyPairName,
-			PairNameFR: &pairNameFRPlaceholder,
-			PairID:     &corruptedID,
+			MatchID:  "match-B",
+			PairName: i18n.FromColumns(emptyPairName, pairNameFRPlaceholder),
+			PairID:   &corruptedID,
 		},
 		{
-			MatchID:    "match-C",
-			PairName:   &emptyPairName,
-			PairNameFR: &pairNameFRPlaceholder,
-			PairID:     &pairIDOther,
+			MatchID:  "match-C",
+			PairName: i18n.FromColumns(emptyPairName, pairNameFRPlaceholder),
+			PairID:   &pairIDOther,
 		},
 	}
 	r.applyModeFRTranslations(ctx, rows)
 
-	if got := derefString(rows[0].PairNameFR); got != "Bases" {
+	if got := rows[0].PairName[i18n.LocaleFR]; got != "Bases" {
 		t.Errorf("Cas A: PairNameFR = %q, want %q", got, "Bases")
 	}
 	// Cas B et C : tous deux corrompus → re-normaliser puis re-lookup.
 	for i, want := range map[int]string{1: "Capture du drapeau", 2: "Assassin en équipe"} {
-		if got := derefString(rows[i].PairNameFR); got != want {
+		if got := rows[i].PairName[i18n.LocaleFR]; got != want {
 			t.Errorf("Cas %s: PairNameFR = %q, want %q", rows[i].MatchID, got, want)
 		}
 	}

@@ -2,8 +2,7 @@
 
 package killcollector
 
-// emprise_v1_temoin_research_test.go — LOT V1.3 DU PLAN `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md` :
-// LE TÉMOIN DU CALCUL PUR `replay.PlacementDesVies` SUR DE VRAIS FILMS.
+// emprise_v1_temoin_research_test.go — LE TÉMOIN DU CALCUL PUR `replay.PlacementDesVies` SUR DE VRAIS FILMS.
 //
 // # NOURRI COMME LE COLLECTEUR LE NOURRIRA
 //
@@ -46,7 +45,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // Les seuils du plan (V1.3), et la fenêtre de jointure des contextes de mort.

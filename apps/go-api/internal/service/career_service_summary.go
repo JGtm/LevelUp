@@ -12,6 +12,8 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 )
 
 // buildCareerSummary construit le résumé de rang à partir des données brutes
@@ -85,10 +87,7 @@ func (s *CareerService) buildCareerSummaryEnriched(ctx context.Context, rank *do
 	}
 	if !rank.IsMaxRank && s.rankCatalog != nil {
 		if next, ok := s.rankCatalog.Next(rank.RankNumber); ok {
-			fr, _ := next.FullLabel("fr")
-			en, _ := next.FullLabel("en")
-			summary.NextRankNameFR = rankSubRoman(strings.TrimSpace(fr))
-			summary.NextRankNameEN = rankSubRoman(strings.TrimSpace(en))
+			summary.NextRankName = rankLabelTexts(next).PickOptional(i18n.FromContext(ctx))
 		}
 		if img, ok := s.rankImageURLs[rank.RankNumber+1]; ok {
 			summary.NextRankImageURL = img
@@ -194,32 +193,57 @@ func heroRankMax(rank *domain.CareerRankData) int {
 	return rankMax
 }
 
-// resolveMaxRankNames résout le libellé localisé (fr, en) du rang MAXIMUM du titre,
+// resolveMaxRankName résout le libellé localisé du rang MAXIMUM du titre,
 // title-agnostic, pour le gauge « progression vers le rang max » de la page Carrière.
 // Ordre de résolution :
-//  1. Libellé fourni par la source (CareerRankData.MaxRankName*) — l'adapter du
+//  1. Libellé fourni par la source (CareerRankData.MaxRankName) — l'adapter du
 //     titre le connaît (Halo 5 : « SR 152 »).
 //  2. Catalogue de rangs DU titre s'il s'applique (Halo Infinite : entrée sommet
 //     du career_ranks = « Héros » / « Hero »).
-//  3. ("", "") — dégradation : le front affiche alors un libellé générique. Aucun
+//  3. Text vide — dégradation : le front affiche alors un libellé générique. Aucun
 //     vocabulaire de jeu (« Héros ») n'est jamais codé en dur.
-func (s *CareerService) resolveMaxRankNames(rank *domain.CareerRankData) (string, string) {
-	if rank != nil && rank.MaxRankNameFR != nil && *rank.MaxRankNameFR != "" {
-		fr := *rank.MaxRankNameFR
-		en := fr
-		if rank.MaxRankNameEN != nil && *rank.MaxRankNameEN != "" {
-			en = *rank.MaxRankNameEN
-		}
-		return fr, en
+func (s *CareerService) resolveMaxRankName(rank *domain.CareerRankData) i18n.Text {
+	if rank != nil && rank.MaxRankName.Has(i18n.Default) {
+		return maxRankNameInEveryLanguage(rank.MaxRankName)
 	}
 	if s.rankCatalogApplies() && s.rankCatalog != nil {
 		if e, ok := s.rankCatalog.MaxRank(); ok {
-			fr, _ := e.FullLabel("fr")
-			en, _ := e.FullLabel("en")
-			return rankSubRoman(strings.TrimSpace(fr)), rankSubRoman(strings.TrimSpace(en))
+			return rankLabelTexts(e)
 		}
 	}
-	return "", ""
+	return nil
+}
+
+// maxRankNameInEveryLanguage complète le libellé du rang maximum porté par la source : une langue
+// sans libellé propre prend celui de la langue de repli, sinon celui de la langue par défaut (le
+// libellé de la source, « SR 152 », est le même code dans toutes les langues).
+func maxRankNameInEveryLanguage(src i18n.Text) i18n.Text {
+	out := make(i18n.Text, len(i18n.Locales()))
+	for _, l := range i18n.Locales() {
+		switch {
+		case src.Has(l):
+			out[l] = src[l]
+		case src.Has(i18n.Fallback):
+			out[l] = src[i18n.Fallback]
+		default:
+			out[l] = src[i18n.Default]
+		}
+	}
+	return out
+}
+
+// rankLabelTexts rend le libellé complet d'une entrée du catalogue de rangs dans chaque langue
+// connue (FullLabel replie sur la langue de repli par segment), numéro de sous-rang en chiffres
+// romains ; une langue sans libellé est absente.
+func rankLabelTexts(e mappings.RankEntry) i18n.Text {
+	out := make(i18n.Text, len(i18n.Locales()))
+	for _, l := range i18n.Locales() {
+		label, _ := e.FullLabel(string(l))
+		if v := rankSubRoman(strings.TrimSpace(label)); v != "" {
+			out[l] = v
+		}
+	}
+	return out
 }
 
 func buildHeroProgress(xpTotal, currentRank, xpHeroMax, totalRanks int) domain.HeroProgress {

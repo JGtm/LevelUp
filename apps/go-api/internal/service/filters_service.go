@@ -14,6 +14,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
@@ -22,27 +23,22 @@ import (
 // Constantes expérience (ordre affiché dans l'UI).
 var experienceLabels = []string{expTypePVPUnranked, expTypePVPRanked, expTypePVE}
 
-// expTypeLabelEN mappe la VALUE canonique FR d'un type d'expérience vers son
-// libellé d'affichage EN. La VALUE reste FR par contrat : la cascade front
-// (EXPERIENCE_TO_CASCADE) et les matchers substring (applyExperienceFilter ici,
-// experienceCounts dans useLocalFilterBar.tsx) matchent sur la VALUE FR — seul le
-// LABEL est localisé (GH5-2, miroir de GH3-1 saisons). Libellés EN alignés sur le
-// vocabulaire « Ranked »/« Unranked » des manifests (session/synthesis/career),
-// en conservant la distinction PvP/PvE des 3 options.
-var expTypeLabelEN = map[string]string{
-	expTypePVPRanked:   "Ranked PvP",
-	expTypePVPUnranked: "Unranked PvP",
-	expTypePVE:         "PvE",
-}
-
-// experienceLabelForLocale retourne le libellé d'affichage d'une VALUE
-// d'expérience dans la locale de requête. FR (défaut) = la value elle-même
-// (canonique) ; EN = le libellé mappé (fallback sur la value si non mappée).
+// experienceLabelForLocale retourne le libellé d'affichage d'une VALUE d'expérience dans la locale
+// de requête (catalogue des messages, filters.toml). La VALUE reste FR par contrat : la cascade
+// front (EXPERIENCE_TO_CASCADE) et les matchers substring (applyExperienceFilter ici,
+// experienceCounts dans useLocalFilterBar.tsx) matchent sur la VALUE FR — seul le LABEL est
+// localisé (GH5-2, miroir de GH3-1 saisons). Les libellés anglais suivent le vocabulaire
+// « Ranked »/« Unranked » des manifests (session/synthesis/career), en conservant la distinction
+// PvP/PvE des 3 options. Une value hors catalogue est rendue telle quelle.
 func experienceLabelForLocale(value, locale string) string {
-	if strings.EqualFold(locale, "en") {
-		if en, ok := expTypeLabelEN[value]; ok {
-			return en
-		}
+	loc := i18n.Parse(locale)
+	switch value {
+	case expTypePVPRanked:
+		return i18n.Msg(loc, "filters.experience.pvp_ranked", nil)
+	case expTypePVPUnranked:
+		return i18n.Msg(loc, "filters.experience.pvp_unranked", nil)
+	case expTypePVE:
+		return i18n.Msg(loc, "filters.experience.pve", nil)
 	}
 	return value
 }
@@ -124,6 +120,7 @@ func (s *FiltersService) Resolve(
 	// (Value FR conservée — contrat cascade/substring). C'est le seul chemin prod
 	// qui surface ces options à l'UI ; la couche pure reste canonique FR. GH5-2.
 	localizeExperienceOptions(resolved.AvailableOptions.ExperienceTypes, ctxkeys.Locale(ctx))
+	localizeCascadeOptions(&resolved.AvailableOptions, rows, i18n.FromContext(ctx))
 	if s.catalog != nil && s.titleSlug != "" {
 		// Le match_context a déjà été appliqué dans ResolveFiltersFromRowsAt.
 		// Pour les SeasonCounts on veut le même périmètre : on ré-applique
@@ -343,22 +340,18 @@ func applyMatchContextFilter(rows []domain.FilterMatchRow, matchContext string) 
 // Pair prioritaire, sinon fallback game_variant pour les titres sans pair_name
 // (Halo 5) — via la convention centralisée analysis.ResolveModeUIWithVariant.
 func modeUI(row domain.FilterMatchRow) string {
-	if v := analysis.ResolveModeUIWithVariant(row.PairName, row.PairNameFR,
-		row.GameVariantName, row.GameVariantNameFR); v != nil {
+	if v := analysis.ResolveModeUIWithVariant(row.PairName, row.GameVariantName); v != nil {
 		return *v
 	}
 	return ""
 }
 
 func mapUI(row domain.FilterMatchRow) string {
-	if v := derefStr(row.MapNameFR); v != "" {
-		return v
-	}
-	return derefStr(row.MapName)
+	return row.MapName.Pick(i18n.Default)
 }
 
 func playlistUI(row domain.FilterMatchRow) string {
-	return derefStr(row.PlaylistName)
+	return row.PlaylistName.Pick(i18n.Default)
 }
 
 func derefStr(s *string) string {
@@ -571,13 +564,13 @@ func migrateCascadeValues(values []string, tr map[string]string) []string {
 }
 
 // buildModeTranslationMap construit une map EN→FR depuis les FilterMatchRows déjà enrichis.
-// Si applyModeFRTranslations a tournée, PairNameFR contient un nom FR pur ("Assassin")
-// tandis que PairName contient encore le nom brut ("Arena:Slayer").
+// Si applyModeFRTranslations a tournée, PairName[fr] contient un nom FR pur ("Assassin")
+// tandis que PairName[en] contient encore le nom brut ("Arena:Slayer").
 func buildModeTranslationMap(rows []domain.FilterMatchRow) map[string]string {
 	tr := make(map[string]string, 8)
 	for _, row := range rows {
-		en := analysis.NormalizeModeLabel(derefStr(row.PairName))
-		fr := analysis.NormalizeModeLabel(derefStr(row.PairNameFR))
+		en := analysis.NormalizeModeLabel(row.PairName[i18n.Fallback])
+		fr := analysis.NormalizeModeLabel(row.PairName[i18n.Default])
 		if en != "" && fr != "" && en != fr {
 			tr[en] = fr
 		}
@@ -586,12 +579,12 @@ func buildModeTranslationMap(rows []domain.FilterMatchRow) map[string]string {
 }
 
 // buildMapTranslationMap construit une map EN→FR pour les cartes.
-// MapName = nom brut EN, MapNameFR = nom enrichi par applyMapFRTranslations.
+// MapName[en] = nom brut, MapName[fr] = nom enrichi par applyMapFRTranslations.
 func buildMapTranslationMap(rows []domain.FilterMatchRow) map[string]string {
 	tr := make(map[string]string, 8)
 	for _, row := range rows {
-		en := derefStr(row.MapName)
-		fr := derefStr(row.MapNameFR)
+		en := row.MapName[i18n.Fallback]
+		fr := row.MapName[i18n.Default]
 		if en != "" && fr != "" && en != fr {
 			tr[en] = fr
 		}
@@ -600,12 +593,12 @@ func buildMapTranslationMap(rows []domain.FilterMatchRow) map[string]string {
 }
 
 // buildPlaylistTranslationMap construit une map EN→FR pour les playlists.
-// PlaylistNameEN = nom brut EN, PlaylistName = nom enrichi par applyPlaylistFRTranslations.
+// PlaylistName[en] = nom brut, PlaylistName[fr] = nom enrichi par applyPlaylistFRTranslations.
 func buildPlaylistTranslationMap(rows []domain.FilterMatchRow) map[string]string {
 	tr := make(map[string]string, 8)
 	for _, row := range rows {
-		en := derefStr(row.PlaylistNameEN)
-		fr := derefStr(row.PlaylistName)
+		en := row.PlaylistName[i18n.Fallback]
+		fr := row.PlaylistName[i18n.Default]
 		if en != "" && fr != "" && en != fr {
 			tr[en] = fr
 		}

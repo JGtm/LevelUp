@@ -56,7 +56,7 @@ type MatchViewHeader struct {
 	// ou "rounds" (des MANCHES gagnées). Sur les variantes déclarées dans
 	// regulation.toml [rounds_decide], le cumul de points peut donner la victoire au
 	// perdant — c'est le compte de manches qui tranche (mesure du 2026-08-29,
-	// `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`). Vide = aucun score affiché.
+	// ADR 0032). Vide = aucun score affiché.
 	// Le client s'en sert pour LOCALISER la mention « manches » : le serveur ne met aucun
 	// mot de langue dans le libellé.
 	ScoreKind string `json:"score_kind,omitempty"`
@@ -498,8 +498,7 @@ type MatchCombatTab struct {
 	// FragDistribution : répartition hiérarchique des frags v2 (sunburst classe→rôle)
 	// du VIEWER (is_me) pour ce match. Classes gun = bulk weapon kills du viewer
 	// (registre) ; melee/grenade/spartan + total = compteurs natifs de sa ligne
-	// scoreboard. Nil si le viewer n'a aucun kill (le front rend null). Cf.
-	// .ai/archive/V7/PLAN_FRAG_DISTRIBUTION_V2.md P3.
+	// scoreboard. Nil si le viewer n'a aucun kill (le front rend null).
 	FragDistribution *FragDistribution `json:"frag_distribution,omitempty"`
 	// WeaponTools : « Outils de destruction » du joueur de la page (squadagg.BuildWeaponTools).
 	WeaponTools *SquadWeaponTools `json:"weapon_tools,omitempty"`

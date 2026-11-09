@@ -1,5 +1,8 @@
 /**
- * StepDeviceCode — étape 1 du wizard SetupPage : Device Code Flow Microsoft.
+ * StepDeviceCode — étape 1 du wizard SetupPage : connexion Microsoft.
+ *
+ * Application de bureau (capacité `can_login_via_browser`) : le navigateur par défaut, sans code
+ * (BrowserLoginPanel) ; le Device Code Flow reste le secours, et le chemin unique ailleurs.
  *
  * P8.4 (revue 2026-04-29) : extrait de SetupPage.tsx (~145L).
  */
@@ -10,13 +13,16 @@ import { Spinner } from '@/components/ui/spinner'
 import { useSetupFlowStore } from '@/stores/setupFlowStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
-import { useStartDeviceFlow, useDeviceFlowStatus } from './queries'
+import { useStartDeviceFlow, useDeviceFlowStatus, isDeviceFlowSucceeded } from './queries'
 import { apiErrorCode, type ApiError } from '@/lib/api/client'
 import { verificationLinkLabel } from '@/lib/formatters'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { isDemoRefusal } from '@/lib/api/demoReadOnly'
 import { deviceFlowFailureKey } from '@/features/auth/loginError'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
+import { BrowserLoginPanel } from './BrowserLoginPanel'
+import { useBrowserLogin } from './useBrowserLogin'
 
 /** Statut d'un démarrage refusé par le plafond de connexions en cours (serveur ou nginx). */
 const HTTP_TOO_MANY_REQUESTS = 429
@@ -27,6 +33,19 @@ const HTTP_TOO_MANY_REQUESTS = 429
 const MAX_AUTO_RECOVERY = 3
 
 export function StepDeviceCode() {
+  const canLoginViaBrowser = useDeploymentCapability('can_login_via_browser')
+  const [useCode, setUseCode] = useState(false)
+  // Tenu ICI et non dans le panneau : la connexion ouverte dans le navigateur reste sondée (donc
+  // réclamée par le serveur) même quand l'utilisateur a basculé vers le code d'appareil.
+  const browserLogin = useBrowserLogin()
+  if (canLoginViaBrowser && !useCode) {
+    return <BrowserLoginPanel login={browserLogin} onUseDeviceCode={() => setUseCode(true)} />
+  }
+  return <DeviceCodePanel />
+}
+
+/** Connexion par code d'appareil : le code à recopier sur la page Microsoft. */
+function DeviceCodePanel() {
   const currentAttemptId = useSetupFlowStore((s) => s.currentAttemptId)
   const setCurrentAttemptId = useSetupFlowStore((s) => s.setCurrentAttemptId)
   const deviceFlowUserCode = useSetupFlowStore((s) => s.deviceFlowUserCode)
@@ -110,6 +129,9 @@ export function StepDeviceCode() {
   // rester bloqué jusqu'à l'expiration du compte à rebours.
   useEffect(() => {
     if (!currentAttemptId || apiErrorCode(error) !== 'attempt_not_found') return
+    // Jamais une fois la tentative aboutie : la rotation de session au succès rend l'ancienne
+    // tentative introuvable, et chaque relance consommerait une tentative simultanée autorisée.
+    if (isDeviceFlowSucceeded(status?.status)) return
     if (recoveryCountRef.current >= MAX_AUTO_RECOVERY) {
       setRecoveryExhausted(true)
       return
@@ -117,7 +139,7 @@ export function StepDeviceCode() {
     recoveryCountRef.current += 1
     setCurrentAttemptId(null)
     startDeviceFlow()
-  }, [error, currentAttemptId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [error, currentAttemptId, status?.status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Quand le flow réussit : invalider le bootstrap pour que setupState avance
   useEffect(() => {

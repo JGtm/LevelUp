@@ -26,7 +26,7 @@ import { useFieldLabel } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useRelationsPrefsStore } from '@/stores/relationsPrefsStore'
 
-import { getPalmaresText, normalizePalmaresLocale, type PalmaresText } from './i18n'
+import { getPalmaresText, type PalmaresText } from './i18n'
 import type { Locale } from '@/lib/i18n/locale'
 import { useRelationsMoments, useRelationsPage } from './queries'
 import { assistVolumeMax as computeAssistVolumeMax } from '@/features/_shared/assists/assistExchange'
@@ -480,7 +480,7 @@ function SegmentedFilter({
 
 export function PalmaresRelationsPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
-  const locale = normalizePalmaresLocale(useAppShellStore((state) => state.locale))
+  const locale = useAppShellStore((state) => state.locale)
   const text = getPalmaresText(locale)
   const rel = text.relations
   const navigate = useNavigate()

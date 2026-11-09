@@ -1,8 +1,7 @@
 /**
  * WeaponRecordsRuler — « la règle » des records de distance de frag par arme (Synthèse).
  *
- * Plan : .ai/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md, rendu A de la maquette
- * MAQUETTE_REGLE_RECORDS_2026-09-20.html (choix utilisateur du 2026-09-20). Une seule ligne
+ * Choix utilisateur du 2026-09-20 : une seule ligne
  * graduée du contact vers la longue portée, un losange par arme à son record, couleur par
  * CLASSE d'arme (la même famille `frag-*` que le sunburst voisin), libellés étagés au-dessus,
  * légende EN DESSOUS ET CENTRÉE. La géométrie vit dans `weaponRecords_logic.ts` (pur, testé).
@@ -123,7 +122,7 @@ export function WeaponRecordsRuler({ records, playerSlug }: WeaponRecordsRulerPr
   // retirée à la demande de l'utilisateur (2026-09-20) ; la couverture reste dans le (i).
   const count = t('synthesis.weapon_records.count', { weapons: weapons.length })
   const excludedList = (records.excluded ?? [])
-    .map((w) => t('synthesis.weapon_records.excluded_item', { label: resolveRecordLabel(w, locale), measured: w.measured }))
+    .map((w) => t('synthesis.weapon_records.excluded_item', { label: resolveRecordLabel(w), measured: w.measured }))
     .join(' · ')
   const legend = legendItems(weapons, locale)
   // Les armes écartées et la réserve de couverture vivent dans le (i) du titre, pas sous
@@ -255,7 +254,7 @@ interface RecordTooltipProps {
 /** L'infobulle : l'arme, le record, la médiane et l'effectif, le match, l'invite au clic. */
 function RecordTooltip({ hover, locale, t }: RecordTooltipProps) {
   const { row } = hover.item
-  const map = (locale === 'en' ? row.record.map_label_en : row.record.map_label) || row.record.map_label_en || ''
+  const map = row.record.map_label ?? ''
   const date = row.record.started_at ? formatDate(row.record.started_at, intlLocale(locale)) : ''
   const where = [map, date].filter(Boolean).join(' · ')
   return (

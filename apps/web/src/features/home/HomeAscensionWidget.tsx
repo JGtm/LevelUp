@@ -12,7 +12,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useStreaks } from '@/features/ascension/queries'
 import { getAscensionText } from '@/features/ascension/i18n'
 import { StreakCard } from '@/features/ascension/StreakCard'
-import type { ManifestLocale } from '@/lib/i18n/format'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
+import { homeManifest } from '@/lib/i18n/generated/home'
 
 interface HomeAscensionWidgetProps {
   playerSlug: string
@@ -91,7 +92,7 @@ export function HomeAscensionWidget({ playerSlug, locale }: HomeAscensionWidgetP
           params={{ titleSlug, playerSlug }}
           className="mt-auto text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
-          {locale === 'en' ? 'View all →' : 'Voir tout →'}
+          {formatMessage(homeManifest, 'home.ascension.view_all', locale)}
         </Link>
       </CardContent>
       </Card>

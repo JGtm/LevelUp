@@ -19,6 +19,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { queryKeys } from '@/lib/query/keys'
+import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n/locale'
 import { Card, CardContent } from '@/components/ui/card'
 import { usePlayerFriends, useUpdatePlayerFriends } from './queries'
 import { friendsErrorMessage } from './errors'
@@ -36,24 +37,30 @@ interface Texts {
   alreadyFriend: string
 }
 
-function getTexts(locale: string): Texts {
-  const isFr = locale === 'fr'
-  return {
-    title: (gt) => isFr ? `Ajouter ${gt} comme ami ?` : `Add ${gt} as a friend?`,
-    confirmDescription: isFr
-      ? 'Le coéquipier sera ajouté à la liste d\'amis et apparaîtra dans le sélecteur Escouade.'
-      : 'The teammate will be added to the friends list and shown in the Squad selector.',
-    syncWarning: isFr
-      ? 'Les matchs historiques joués ensemble seront re-classés en escouade en arrière-plan (peut prendre plusieurs minutes selon la taille du corpus).'
-      : 'Historical matches played together will be reclassified as squad in the background (may take a few minutes for large corpora).',
-    cancel:  isFr ? 'Annuler' : 'Cancel',
-    confirm: isFr ? 'Ajouter' : 'Add',
-    successToast: (gt) => isFr
-      ? `${gt} ajouté aux amis. Recalcul des sessions en cours…`
-      : `${gt} added to friends. Recomputing sessions…`,
-    errorToast:  (gt, msg) => isFr ? `Impossible d'ajouter ${gt} : ${msg}` : `Failed to add ${gt}: ${msg}`,
-    alreadyFriend: isFr ? 'Déjà en amis' : 'Already friends',
-  }
+/** Textes du flux, par langue (`Record<Locale, …>` : une langue manquante ne compile pas). */
+const TEXTS: Record<Locale, Texts> = {
+  fr: {
+    title: (gt) => `Ajouter ${gt} comme ami ?`,
+    confirmDescription: "Le coéquipier sera ajouté à la liste d'amis et apparaîtra dans le sélecteur Escouade.",
+    syncWarning:
+      'Les matchs historiques joués ensemble seront re-classés en escouade en arrière-plan (peut prendre plusieurs minutes selon la taille du corpus).',
+    cancel: 'Annuler',
+    confirm: 'Ajouter',
+    successToast: (gt) => `${gt} ajouté aux amis. Recalcul des sessions en cours…`,
+    errorToast: (gt, msg) => `Impossible d'ajouter ${gt} : ${msg}`,
+    alreadyFriend: 'Déjà en amis',
+  },
+  en: {
+    title: (gt) => `Add ${gt} as a friend?`,
+    confirmDescription: 'The teammate will be added to the friends list and shown in the Squad selector.',
+    syncWarning:
+      'Historical matches played together will be reclassified as squad in the background (may take a few minutes for large corpora).',
+    cancel: 'Cancel',
+    confirm: 'Add',
+    successToast: (gt) => `${gt} added to friends. Recomputing sessions…`,
+    errorToast: (gt, msg) => `Failed to add ${gt}: ${msg}`,
+    alreadyFriend: 'Already friends',
+  },
 }
 
 // ─── Hook : useAddFriend ─────────────────────────────────────────────────────
@@ -64,8 +71,8 @@ function getTexts(locale: string): Texts {
  * automatiquement (§4). Invalide les queries Squad pour rafraîchir le dropdown.
  */
 // eslint-disable-next-line react-refresh/only-export-components
-export function useAddFriend(playerSlug: string, locale: string = 'fr') {
-  const t = getTexts(locale)
+export function useAddFriend(playerSlug: string, locale: Locale = DEFAULT_LOCALE) {
+  const t = TEXTS[locale]
   const { data: friends } = usePlayerFriends(playerSlug)
   const update = useUpdatePlayerFriends(playerSlug)
   const qc = useQueryClient()
@@ -110,13 +117,13 @@ export interface AddFriendModalProps {
   /** Appelé après confirmation OK ou annulation. */
   onClose: () => void
   /** Locale UI (fr | en). */
-  locale: string
+  locale: Locale
   /** Callback optionnel après ajout réussi. */
   onSuccess?: (gamertag: string) => void
 }
 
 export function AddFriendModal({ playerSlug, gamertag, open, onClose, locale, onSuccess }: AddFriendModalProps) {
-  const t = getTexts(locale)
+  const t = TEXTS[locale]
   const { addFriend, isAdding } = useAddFriend(playerSlug, locale)
   const [submitted, setSubmitted] = useState(false)
 

@@ -107,6 +107,10 @@ describe('deviceFlowFailureKey', () => {
     ['identité absente', 'failed', 'identity_missing', 'common.device_code.err_identity'],
     ['instance verrouillée', 'failed', 'instance_locked', 'common.auth.register_instance_closed'],
     ['invitation périmée', 'failed', 'invite_invalid', 'common.auth.oauth_invite_invalid'],
+    ['navigateur : refus Microsoft', 'failed', 'oauth_denied', 'common.auth.oauth_denied'],
+    ['navigateur : state rejoué', 'failed', 'state_invalid', 'common.auth.oauth_interrupted'],
+    ['navigateur : state expiré', 'failed', 'state_expired', 'common.auth.oauth_interrupted'],
+    ['navigateur : échange du code', 'failed', 'code_exchange_failed', 'common.auth.oauth_exchange_failed'],
     ['code inconnu', 'failed', 'code_inconnu', 'common.device_code.err_generic'],
     ['aucun code', 'failed', null, 'common.device_code.err_generic'],
   ])('%s', (_label, status, code, expected) => {

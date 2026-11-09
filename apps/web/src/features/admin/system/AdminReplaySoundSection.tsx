@@ -13,7 +13,7 @@
  */
 import { useState } from 'react'
 
-import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
+import { getSettingsText } from '@/features/settings/i18n'
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { SettingsResponse } from '@/lib/api/types'
@@ -27,7 +27,7 @@ const DEFAUT_DISTANCE = 0
 export function AdminReplaySoundSection() {
   const { data: settings, isLoading } = useSettings()
   const mutation = useUpdateSettings()
-  const locale = normalizeSettingsLocale(useAppShellStore((s) => s.locale))
+  const locale = useAppShellStore((s) => s.locale)
   const t = getSettingsText(locale)
 
   // Copie éditable des réglages serveur, réalignée à chaque objet servi.

@@ -26,22 +26,22 @@ func metaSansColonnes(t *testing.T, tables ...string) *DB {
 
 func TestResolveWeaponLabelsOnly_LectureEnEchec_EstJournalisee(t *testing.T) {
 	buf := captureSlog(t)
-	got := resolveWeaponLabelsOnly(context.Background(), metaSansColonnes(t, "weapon_labels"), []int64{1, 2})
+	got := resolveWeaponLabelsOnly(context.Background(), metaSansColonnes(t, "weapon_label_names"), []int64{1, 2})
 	if len(got) != 0 {
 		t.Errorf("aucun libellé attendu, obtenu %v", got)
 	}
-	if !hasWarnContaining(t, buf, "weapon_labels", "lecture") {
-		t.Errorf("WARN attendu sur la lecture de weapon_labels ; logs=%s", buf.String())
+	if !hasWarnContaining(t, buf, "weapon_label_names", "lecture") {
+		t.Errorf("WARN attendu sur la lecture de weapon_label_names ; logs=%s", buf.String())
 	}
 }
 
 func TestResolveWeaponLabelsOnly_TableAbsente_RestePrudente(t *testing.T) {
 	buf := captureSlog(t)
 	_ = resolveWeaponLabelsOnly(context.Background(), openMemDB(t), []int64{1})
-	if hasWarnContaining(t, buf, "weapon_labels") || hasLogLevelContaining(t, buf, "ERROR", "weapon_labels") {
+	if hasWarnContaining(t, buf, "weapon_label_names") || hasLogLevelContaining(t, buf, "ERROR", "weapon_label_names") {
 		t.Errorf("une table absente n'est pas une panne (DEBUG) ; logs=%s", buf.String())
 	}
-	if !hasLogLevelContaining(t, buf, "DEBUG", "weapon_labels") {
+	if !hasLogLevelContaining(t, buf, "DEBUG", "weapon_label_names") {
 		t.Errorf("la dégradation doit laisser une trace DEBUG ; logs=%s", buf.String())
 	}
 }
@@ -59,21 +59,21 @@ func TestLookupMapImageURL_LectureEnEchec_EstJournalisee(t *testing.T) {
 
 func TestLoadKnownModesEN_LectureEnEchec_EstJournalisee(t *testing.T) {
 	buf := captureSlog(t)
-	if got := loadKnownModesEN(context.Background(), metaSansColonnes(t, "mode_name_tr")); got != nil {
+	if got := loadKnownModes(context.Background(), metaSansColonnes(t, "mode_name_tr")); got != nil {
 		t.Errorf("aucun mode attendu, obtenu %v", got)
 	}
-	if !hasWarnContaining(t, buf, "loadKnownModesEN") {
+	if !hasWarnContaining(t, buf, "loadKnownModes") {
 		t.Errorf("WARN attendu ; logs=%s", buf.String())
 	}
 }
 
 func TestLoadKnownModesEN_TableAbsente_RestePrudente(t *testing.T) {
 	buf := captureSlog(t)
-	_ = loadKnownModesEN(context.Background(), openMemDB(t))
-	if hasWarnContaining(t, buf, "loadKnownModesEN") {
+	_ = loadKnownModes(context.Background(), openMemDB(t))
+	if hasWarnContaining(t, buf, "loadKnownModes") {
 		t.Errorf("une table absente n'est pas une panne ; logs=%s", buf.String())
 	}
-	if !hasLogLevelContaining(t, buf, "DEBUG", "loadKnownModesEN") {
+	if !hasLogLevelContaining(t, buf, "DEBUG", "loadKnownModes") {
 		t.Errorf("la dégradation doit laisser une trace DEBUG ; logs=%s", buf.String())
 	}
 }

@@ -20,12 +20,13 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/filmarchive"
+	"levelup/go-api/internal/sync/filmfetch"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
-	"levelup/go-api/internal/sync/haloclient"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // decodeurSansKill : le decodeur rend `ErrNoKillFeed`, l issue des films du constat.
@@ -45,7 +46,7 @@ func decodeurSansKill(t *testing.T) {
 
 // bobineSansKill : la mini-bobine de reference (cle connue, carte du catalogue), morceau des
 // temps forts compris.
-func bobineSansKill(t *testing.T) []haloclient.FilmChunk {
+func bobineSansKill(t *testing.T) []filmfetch.FilmChunk {
 	t.Helper()
 	chunks := bobineEnChunks(t, bobineCleConnue, false)
 	if dernier := chunks[len(chunks)-1]; !finalise.EstTempsForts(dernier.ChunkType) {
@@ -56,11 +57,11 @@ func bobineSansKill(t *testing.T) []haloclient.FilmChunk {
 
 // filmsServis : une source qui sert les MEMES chunks a tout match, et compte les demandes.
 type filmsServis struct {
-	chunks   []haloclient.FilmChunk
+	chunks   []filmfetch.FilmChunk
 	demandes []string
 }
 
-func (f *filmsServis) GetFilmChunks(_ context.Context, matchID string) ([]haloclient.FilmChunk, bool, error) {
+func (f *filmsServis) GetFilmChunks(_ context.Context, matchID string) ([]filmfetch.FilmChunk, bool, error) {
 	f.demandes = append(f.demandes, matchID)
 	return f.chunks, true, nil
 }
@@ -70,13 +71,13 @@ func (f *filmsServis) GetFilmChunks(_ context.Context, matchID string) ([]halocl
 func depsSansKill(t *testing.T, db *sql.DB, films *filmsServis) PostSyncDeps {
 	t.Helper()
 	racine := t.TempDir()
-	if err := filmcache.EnsureDirs(racine); err != nil {
+	if err := filmarchive.EnsureDirs(racine); err != nil {
 		t.Fatalf("cache temporaire : %v", err)
 	}
 	oublierLesMatchsSansCarte()
 	return PostSyncDeps{
 		Fetcher:       films,
-		LocalCache:    haloclient.NewLocalFilmCache(racine),
+		LocalCache:    filmfetch.NewLocalFilmCache(racine),
 		WithRead:      func(ctx context.Context, _ string, fn func(*sql.DB)) { fn(db) },
 		AcquireWriter: func(context.Context) (*sql.DB, func(), error) { return db, func() {}, nil },
 		TitleSlug:     "halo_infinite",

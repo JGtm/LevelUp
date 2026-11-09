@@ -20,7 +20,7 @@ package archlint
 //
 // # PERIMETRE
 //
-// `internal/games/halo_infinite/film/` (hors `research/`), `internal/replaybuild/`,
+// `libs/film/` (hors `research/`), `internal/replaybuild/`,
 // `internal/sync/killcollector/`, `cmd/replay-*`. Fichiers non-test, hors `//go:build research`.
 // `grammar` et `facts` n ont en outre AUCUN journal : `film_no_slog_in_layers_test.go`.
 //
@@ -60,17 +60,15 @@ type fichierDuPerimetreFilm struct {
 // echoue sur un balayage vide : un ratchet qui ne mesure rien ne garde rien.
 func fichiersDuPerimetreFilm(t *testing.T, racines ...string) []fichierDuPerimetreFilm {
 	t.Helper()
-	racine := apiRootDepuisIci(t)
 	var out []fichierDuPerimetreFilm
 	for _, r := range racines {
-		err := filepath.WalkDir(filepath.Join(racine, filepath.FromSlash(r)), func(p string, d fs.DirEntry, err error) error {
+		err := filepath.WalkDir(surDisque(t, r), func(p string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-			rel, _ := filepath.Rel(racine, p)
-			rel = filepath.ToSlash(rel)
+			rel := cheminDeGardeRail(t, p)
 			if d.IsDir() {
-				if rel == "internal/games/halo_infinite/film/research" {
+				if rel == racineBriqueFilm+"/research" {
 					return filepath.SkipDir
 				}
 				return nil
@@ -107,7 +105,7 @@ func fichiersDuPerimetreFilm(t *testing.T, racines ...string) []fichierDuPerimet
 func racinesDuPerimetreFilm(t *testing.T) []string {
 	t.Helper()
 	racines := []string{
-		"internal/games/halo_infinite/film",
+		racineBriqueFilm,
 		"internal/replaybuild",
 		"internal/sync/killcollector",
 	}

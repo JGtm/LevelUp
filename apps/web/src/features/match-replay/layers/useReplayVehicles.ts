@@ -13,7 +13,7 @@
  * en plus du `scale_mm_per_px` par famille, qui n'existe que dans ce fichier statique. Il est
  * donc lu ICI, par un `fetch` brut — PAS DE QUERY KEY NOUVELLE (contrainte du plan) : un asset
  * statique n'est pas une donnée de l'API, exactement le même choix que les sons du rejeu
- * (`replayAudio.ts`, qui charge ses WAV hors TanStack Query).
+ * (`replayAudio.ts`, qui charge ses sons hors TanStack Query).
  *
  * TOUT CE QUI EST ASYNCHRONE EST LU DANS DES RÉFÉRENCES, jamais dans un état React (même règle
  * et même conséquence assumée que `useReplayWeaponPads`) : un chargement qui aboutit sous un
@@ -30,6 +30,7 @@ import {
   type RefObject,
 } from 'react'
 
+import { pickText } from '@/lib/i18n/pickText'
 import { staticAssetURL } from '@/lib/staticAssets'
 import { useTitleSlug } from '@/lib/title-routing'
 
@@ -232,7 +233,7 @@ export function useReplayVehicles({
   const labelOfFamily = useCallback(
     (family: string): string | null => {
       const lbl = labels?.[family]
-      return (locale === 'fr' ? lbl?.fr : lbl?.en) ?? null
+      return pickText(lbl, locale) || null
     },
     [labels, locale],
   )

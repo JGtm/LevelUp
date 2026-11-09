@@ -2,7 +2,7 @@ package ops
 
 // seed_demo_replays_test.go — rejeux figés de la démo : choix d'un match par famille de mode,
 // installation des artefacts (copie, conservation, périmé, absent), films embarqués, index et
-// élagage. La recuisson elle-même (enfant borné) est couverte par replaychild/filmproc ; ici
+// élagage. La recuisson elle-même (enfant borné) est couverte par replaychild/filmrun ; ici
 // aucun film n'est décodé.
 
 import (
@@ -16,8 +16,9 @@ import (
 
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func TestDemoReplayFamilyOf(t *testing.T) {

@@ -71,7 +71,7 @@ func TestLoad_DemoMode_CheminsDEtatDuDepot(t *testing.T) {
 func TestLoadServer_DemoMode_Redirige(t *testing.T) {
 	depot, demo := t.TempDir(), t.TempDir()
 	poserEnvDemo(t, depot, demo, true)
-	cfg, err := LoadServer()
+	cfg, err := LoadServer(LaunchModeDefault)
 	if err != nil {
 		t.Fatalf("LoadServer : %v", err)
 	}

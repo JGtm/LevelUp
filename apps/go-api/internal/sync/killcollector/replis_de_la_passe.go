@@ -30,9 +30,10 @@ import (
 	"log/slog"
 	"sync"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // prefixeReplisDeLaPasse : le prefixe des compteurs expvar par repli (ADR 0009). Celui du paquet.

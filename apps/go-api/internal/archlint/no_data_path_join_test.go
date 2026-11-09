@@ -23,14 +23,12 @@ import (
 )
 
 var dataPathJoinAllowlist = map[string]bool{
-	// PathResolver = LA source des chemins data.
+	// PathResolver = LA source des chemins data (registry.go) et de ses racines (roots.go :
+	// la disposition par défaut <ressources>/data, ADR 0008 amendement « two roots »).
 	"internal/domain/title/registry.go": true,
-	// Config : défauts du data-root (amont du resolver, bootstrap).
-	"internal/config/config.go":          true,
-	"internal/config/config_settings.go": true,
-	// 2026-09-27 (backlog, lot B-C4) : défaut de LEVELUP_DEMO_FIXTURES_DIR (`<repo>/data/demo`),
-	// DÉPLACÉ de config.go (gel de taille à 629 lignes) — même site, pas un nouveau.
-	"internal/config/config_demo.go": true,
+	"internal/domain/title/roots.go":    true,
+	// Config : le défaut du data-root n'y est plus écrit à la main depuis le lot L11a (2026-11-01) :
+	// config.go, config_settings.go et config_demo.go sont sortis de l'allowlist.
 	// Wiring DI (racine api/, hors handlers) : chemins cache/jobs/stash au boot.
 	"internal/api/server.go":       true,
 	"internal/api/server_apiv1.go": true, // K2a : construction DI extraite de NewRouter

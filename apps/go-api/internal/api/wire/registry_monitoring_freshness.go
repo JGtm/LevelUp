@@ -152,7 +152,7 @@ func (r *ServiceRegistry) lastMatchByXUID(ctx context.Context, titleSlug string,
 	if len(xuids) == 0 {
 		return out, ""
 	}
-	sharedPath := titlePkg.NewPathResolver(r.cfg.RepoRoot).SharedDBPath(titleSlug)
+	sharedPath := r.cfg.PathResolver().SharedDBPath(titleSlug)
 	sqlDB, release, err := duckdb.OpenReadForQuery(sharedPath)
 	if err != nil {
 		monitoringLog.WarnContext(ctx, "admin_freshness: shared reader indisponible",

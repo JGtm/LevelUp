@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"math"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // Reglages de la reconnaissance — VALEURS DE `internal/mapdecoupe`, ne pas les re-regler ici.

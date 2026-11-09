@@ -41,9 +41,10 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/atomicfile"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // StoredArtifact décrit ce qui a été rangé, tel qu'on le rend à l'ouvrier.
@@ -226,10 +227,13 @@ func writeArtifactBytes(ctx context.Context, outPath, titleSlug, matchID string,
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return Digest{}, err
 	}
-	if err := atomicfile.WriteFile(outPath, blob, 0o644); err != nil {
+	if err := atomicfile.WriteFile(ctx, outPath, blob, 0o644); err != nil {
 		return Digest{}, err
 	}
 	ecrit, _ := digestFromBytes(blob)
+	// L'en-tete voisin, APRES l'artefact : un fichier .meta plus recent que l'artefact fait foi (cf. artifact_meta.go),
+	// un .meta absent ou plus ancien (arret entre les deux ecritures) fait relire l'artefact.
+	ecrireEntete(ctx, outPath, ecrit, AppVersion())
 	publishArtifactStored(ctx, ArtifactStored{
 		TitleSlug: titleSlug, MatchID: matchID, Path: outPath,
 		Bytes: ecrit.Bytes, Tracks: ecrit.Tracks, SchemaVersion: ecrit.SchemaVersion,

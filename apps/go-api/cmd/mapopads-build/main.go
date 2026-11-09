@@ -40,8 +40,9 @@ import (
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/mapcatalog"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func main() {

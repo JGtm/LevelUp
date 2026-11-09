@@ -83,7 +83,7 @@ en = "Loading…"
 fr = "Erreur de chargement"
 en = "Loading error"
 
-# ─── Shell : navigation et sync status (NavL1, NavL2, AppShellHeader) ───────
+# ─── Shell : navigation et sync status (NavL1, SectionHeader, AppShellHeader) ───────
 
 [common.shell.sync_running_title]
 fr = "Synchronisation en cours…"
@@ -206,17 +206,9 @@ en = "Game"
 fr = "Bientôt disponible"
 en = "Coming soon"
 
-[common.shell.nav_career_aria]
-fr = "Navigation carrière"
-en = "Career navigation"
-
 [common.shell.nav_analytics_aria]
 fr = "Navigation analytique"
 en = "Analytics navigation"
-
-[common.shell.nav_community_aria]
-fr = "Navigation communauté"
-en = "Community navigation"
 
 [common.shell.nav_player_aria]
 fr = "Navigation joueur"
@@ -473,6 +465,18 @@ en = "Sign-in could not be completed. Please try again."
 [common.help.glossary]
 fr = "Glossaire & Concepts"
 en = "Glossary & Concepts"
+
+[common.units.points_short]
+fr = "pts"
+en = "pts"
+
+[common.help.button_label]
+fr = "Aide"
+en = "Help"
+
+[common.help.tabs_label]
+fr = "Onglets Aide"
+en = "Help tabs"
 
 [common.help.release_notes]
 fr = "Notes de version"
@@ -1028,6 +1032,42 @@ en = "Connecting accounts"
 fr = "Lancement des services"
 en = "Starting services"
 
+# Démarrage échoué : réponse 503 server_start_failed, non réessayable (details.state ;
+# codes : apps/go-api/cmd/server/boot_gate.go).
+[common.root.server_failed.title]
+fr = "Le serveur n'a pas pu démarrer."
+en = "The server could not start."
+
+[common.root.server_failed.locked]
+fr = "Une base de données est utilisée par un autre processus. Fermez l'autre instance de LevelUp, puis relancez."
+en = "A database is in use by another process. Close the other LevelUp instance, then restart."
+
+[common.root.server_failed.migration_failed]
+fr = "La mise à jour des bases a échoué. Vos données n'ont pas été servies ; consultez le journal des migrations."
+en = "Updating the databases failed. Your data was not served; check the migration log."
+
+[common.root.server_failed.schema_newer]
+fr = "Les bases ont été mises à jour par une version plus récente de LevelUp. Installez cette version ou restaurez une copie."
+en = "The databases were upgraded by a newer version of LevelUp. Install that version or restore a backup."
+
+[common.root.server_failed.port]
+fr = "Aucun port local n'a pu être ouvert. Vérifiez qu'aucun logiciel de sécurité ne le bloque, puis relancez."
+en = "No local port could be opened. Check that no security software is blocking it, then start again."
+
+[common.root.server_failed.resources_incompatible]
+fr = "Les ressources de LevelUp (images, sons, données de référence) ne correspondent pas à ce moteur. Sur un serveur hébergé, l'image est mal assemblée : reconstruisez-la. Sur l'application de bureau, relancez LevelUp pour télécharger les ressources."
+en = "LevelUp's resources (images, sounds, reference data) do not match this engine. On a hosted server the image is badly assembled: rebuild it. On the desktop app, start LevelUp again to download the resources."
+
+# Application desktop : la requête n'a pas (ou plus) le cookie d'entrée posé par la coquille
+# (401 desktop_unauthorized, ADR 0045 D-3). Seule la coquille le repose, en rouvrant l'application.
+[common.root.desktop_entry_required.title]
+fr = "L'accès à LevelUp a expiré."
+en = "Access to LevelUp has expired."
+
+[common.root.desktop_entry_required.body]
+fr = "Fermez cette fenêtre, puis rouvrez LevelUp."
+en = "Close this window, then open LevelUp again."
+
 # ─── Reauth banner (refresh_token Xbox mort) ────────────────────────────
 
 [common.reauth.message]
@@ -1138,6 +1178,10 @@ en = "All sessions"
 fr = "Aucune session ne correspond."
 en = "No session matches."
 
+[common.filters.session_list_label]
+fr = "Sessions"
+en = "Sessions"
+
 # ─── Gamertag combobox (sectioned dropdown) ─────────────────────────────
 
 [common.gamertag.players_configured]
@@ -1184,6 +1228,10 @@ en = "More information"
 [common.match_card.placement_prefix]
 fr = "Placement : #"
 en = "Placement: #"
+
+[common.match_card.heading_connector]
+fr = "sur"
+en = "on"
 
 [common.match_card.map_unknown]
 fr = "Map inconnue"
@@ -1379,6 +1427,35 @@ en = "Microsoft Sign-In"
 [common.setup.go_to]
 fr = "Rends-toi sur"
 en = "Go to"
+
+# Connexion Microsoft par le navigateur par défaut (application de bureau, BrowserLoginPanel).
+[common.setup.browser_login_lead]
+fr = "Une fenêtre de votre navigateur s'ouvre pour vous connecter à Microsoft. Revenez ensuite ici : LevelUp continue seul."
+en = "A window of your browser opens so you can sign in to Microsoft. Then come back here: LevelUp carries on by itself."
+
+[common.setup.browser_login_button]
+fr = "Se connecter avec Microsoft"
+en = "Sign in with Microsoft"
+
+[common.setup.browser_login_opening]
+fr = "Ouverture du navigateur…"
+en = "Opening your browser…"
+
+[common.setup.browser_login_waiting]
+fr = "En attente de la connexion dans votre navigateur…"
+en = "Waiting for the sign-in in your browser…"
+
+[common.setup.browser_login_reopen_hint]
+fr = "Rien ne s'est ouvert ?"
+en = "Nothing opened?"
+
+[common.setup.browser_login_reopen_link]
+fr = "Ouvrir la page Microsoft"
+en = "Open the Microsoft page"
+
+[common.setup.browser_login_use_code]
+fr = "Impossible d'ouvrir le navigateur ? Utiliser un code"
+en = "Can't open the browser? Use a code instead"
 
 [common.setup.enter_this_code]
 fr = "et entrez ce code :"
@@ -1646,6 +1723,10 @@ en = "Combat details (cadence, dominance, duels) are retrieved in the background
 
 # ─── Notifications page ─────────────────────────────────────────────────
 
+[common.notifications.container_aria]
+fr = "Notifications"
+en = "Notifications"
+
 [common.notifications.bulk_actions_aria]
 fr = "Actions groupées"
 en = "Bulk actions"
@@ -1677,6 +1758,16 @@ en = "Prestige leaderboard with friends derived from the squad and relations."
 [common.prestige.select_player_for_leaderboard]
 fr = "Sélectionne un joueur pour voir le classement."
 en = "Select a player to see the leaderboard."
+
+# Page de la communauté qui confronte plusieurs comptes, ouverte sur une instance qui n'en suit qu'un
+# (application de bureau).
+[common.community.accounts_only_title]
+fr = "Pas de comparaison entre comptes"
+en = "No comparison between accounts"
+
+[common.community.accounts_only_body]
+fr = "Cette page compare plusieurs comptes ; l'application de bureau n'en suit qu'un."
+en = "This page compares several accounts; the desktop application follows only one."
 
 [common.prestige.select_player_for_objectives]
 fr = "Sélectionne un joueur pour voir les objectifs."
@@ -1889,8 +1980,8 @@ fr = "Aucun match trouvé dans cette fenêtre. Élargis la recherche."
 en = "No match found in this window. Broaden your search."
 
 [common.charts.efficiency_tooltip]
-fr = "Rendement = efficacité offensive : à quel point les dégâts sont convertis en éliminations. Résistance = solidité défensive : combien de dégâts sont encaissés avant de mourir. Les deux courbes sont exprimées en pourcentage d'une vie : 100 % correspond à une vie complète, soit environ {{HP}} points de dégâts dans le titre affiché — la ligne de référence de chaque graphe marque ce repère. Au-dessus de 100 %, la performance dépasse une vie (rendement : élimination obtenue avec moins d'une vie de dégâts ; résistance : plus d'une vie encaissée avant la mort) ; en dessous, elle reste sous ce niveau. Le survol d'un point affiche la valeur brute en dégâts derrière le pourcentage."
-en = "Output = offensive efficiency: how well damage is turned into kills. Resistance = defensive resilience: how much damage is absorbed before dying. Both curves are expressed as a percentage of one life: 100% equals one full life, about {{HP}} points of damage in the displayed title — each chart's reference line marks that level. Above 100%, performance exceeds one life (output: a kill costs less than one life of damage; resistance: more than one life is absorbed before death); below it, performance stays under that level. Hovering over a point reveals the raw damage value behind the percentage."
+fr = "Rendement = efficacité offensive : à quel point les dégâts sont convertis en éliminations. Résistance = solidité défensive : combien de dégâts sont encaissés avant de mourir. Les deux courbes sont exprimées en pourcentage d'une vie : 100 % correspond à une vie complète, soit environ '{{HP}}' points de dégâts dans le titre affiché — la ligne de référence de chaque graphe marque ce repère. Au-dessus de 100 %, la performance dépasse une vie (rendement : élimination obtenue avec moins d'une vie de dégâts ; résistance : plus d'une vie encaissée avant la mort) ; en dessous, elle reste sous ce niveau. Le survol d'un point affiche la valeur brute en dégâts derrière le pourcentage."
+en = "Output = offensive efficiency: how well damage is turned into kills. Resistance = defensive resilience: how much damage is absorbed before dying. Both curves are expressed as a percentage of one life: 100% equals one full life, about '{{HP}}' points of damage in the displayed title — each chart's reference line marks that level. Above 100%, performance exceeds one life (output: a kill costs less than one life of damage; resistance: more than one life is absorbed before death); below it, performance stays under that level. Hovering over a point reveals the raw damage value behind the percentage."
 
 # Aide pédagogique UNIQUE du graphe « Écart cumulé au FDA attendu » (Séries
 # temporelles + Sessions) : le graphe n'en avait aucune. Langage simple, pas de
@@ -2224,8 +2315,8 @@ fr = "Cette base OpenSpartan n'appartient pas au compte Xbox connecté."
 en = "This OpenSpartan database does not belong to the connected Xbox account."
 
 [common.onboarding.import_err_low_confidence]
-fr = "Impossible de vérifier que cette base est bien la tienne. Renomme le fichier en <ton-xuid>.db et réessaye."
-en = "Unable to verify this database is yours. Rename the file to <your-xuid>.db and try again."
+fr = "Impossible de vérifier que cette base est bien la tienne. Renomme le fichier en '<ton-xuid>'.db et réessaye."
+en = "Unable to verify this database is yours. Rename the file to '<your-xuid>'.db and try again."
 
 [common.onboarding.import_err_not_openspartan]
 fr = "Ce fichier ne ressemble pas à une base OpenSpartan reconnaissable."
@@ -2250,7 +2341,7 @@ en = "✓ Applied"
 
 # ─── Nav L1 / L2 — sections et onglets (GH-4, 2026-07-08) ───────────────────
 # Libellés de navigation rendus par NavL1/NavL1MobileMenu (via navL1Sections) et
-# NavL2. Auparavant en dur FR ; passés bilingues (parité FR/EN typée).
+# SectionHeader. Auparavant en dur FR ; passés bilingues (parité FR/EN typée).
 
 [common.nav.section_home]
 fr = "Accueil"
@@ -2283,6 +2374,37 @@ en = "Media"
 [common.nav.section_explorer]
 fr = "Explorer"
 en = "Explorer"
+
+# Chapeau de l'en-tête de page de chaque section L1 (PageHeader). Phrases factuelles, sans possessif
+# ni pronom ; l'accueil n'en a pas (sa bannière d'identité fait office d'en-tête).
+
+[common.page_lead.solo]
+fr = "Statistiques du joueur par période, par mode et par carte."
+en = "Player statistics by period, mode and map."
+
+[common.page_lead.squad]
+fr = "Synergies, contributions et dynamique de l'escouade sur les matchs joués ensemble."
+en = "Synergies, contributions and dynamics of the squad across matches played together."
+
+[common.page_lead.career]
+fr = "Progression de rang, citations, médailles et pass saisonnier."
+en = "Rank progression, citations, medals and season pass."
+
+[common.page_lead.ascension]
+fr = "Profil de performance, objectifs, entraînement et réalisations."
+en = "Performance profile, objectives, training and achievements."
+
+[common.page_lead.community]
+fr = "Classements, relations entre joueurs et comparaisons en face-à-face."
+en = "Leaderboards, relations between players and head-to-head comparisons."
+
+[common.page_lead.media]
+fr = "Captures vidéo et images associées aux matchs."
+en = "Video captures and screenshots linked to matches."
+
+[common.page_lead.explorer]
+fr = "Exploration libre des matchs par filtre, avec synthèse et tableau détaillé."
+en = "Free exploration of matches by filter, with a summary and a detailed table."
 
 [common.nav.tab_synthesis]
 fr = "Synthèse"
@@ -2520,9 +2642,16 @@ en = "GitHub Sponsors"
 fr = "PayPal"
 en = "PayPal"
 
-[common.footer.disclaimer]
-fr = "Projet indépendant, sans lien avec Microsoft ni Halo Studios."
-en = "Independent project, not affiliated with Microsoft or Halo Studios."
+# Mention imposée par Microsoft (règles d'usage du contenu de jeu) : le texte lui-même est en anglais
+# dans toutes les langues (lib/appLinks, MICROSOFT_CONTENT_NOTICE) ; seules l'introduction et l'étiquette
+# du lien vers les règles se traduisent.
+[common.footer.microsoft_notice_intro]
+fr = "Mention exigée par Microsoft pour le contenu du jeu :"
+en = "Notice required by Microsoft for the game content:"
+
+[common.footer.microsoft_rules_link]
+fr = "Règles d'usage du contenu de jeu de Microsoft"
+en = "Microsoft Game Content Usage Rules"
 
 [common.footer.copyright]
 fr = "© JGtm — LevelUp"
@@ -2536,6 +2665,10 @@ en = "Elsewhere"
 fr = "Développeur"
 en = "Developer"
 
+[common.footer.download]
+fr = "Application Windows"
+en = "Windows app"
+
 [common.footer.csinsight]
 fr = "CSinsight — stats CS2"
 en = "CSinsight — CS2 stats"
@@ -2547,6 +2680,119 @@ en = "Privacy"
 [common.footer.terms]
 fr = "Conditions d'utilisation"
 en = "Terms of use"
+
+# ── Application de bureau : barre latérale et fenêtre « À propos » (remplace le pied de page) ──
+[common.shell.nav_about]
+fr = "À propos"
+en = "About"
+
+[common.shell.nav_feedback]
+fr = "Signaler un problème"
+en = "Report a problem"
+
+[common.shell.sidebar_footer_aria]
+fr = "Aide, paramètres et informations sur l'application"
+en = "Help, settings and application information"
+
+[common.shell.sidebar_version]
+fr = "Version {version}"
+en = "Version {version}"
+
+[common.shell.sidebar_collapse]
+fr = "Replier la barre latérale"
+en = "Collapse the sidebar"
+
+[common.shell.sidebar_expand]
+fr = "Déplier la barre latérale"
+en = "Expand the sidebar"
+
+[common.about.close]
+fr = "Fermer"
+en = "Close"
+
+[common.about.version]
+fr = "Version {version} · Windows"
+en = "Version {version} · Windows"
+
+[common.about.check_update]
+fr = "Rechercher une mise à jour"
+en = "Check for updates"
+
+[common.about.update_hint]
+fr = "Vérifiée au lancement. Le résultat s'affiche dans une boîte de dialogue."
+en = "Checked at launch. The result appears in a dialog box."
+
+[common.about.update_requested]
+fr = "Recherche lancée : le résultat s'affiche dans une boîte de dialogue."
+en = "Check started: the result appears in a dialog box."
+
+[common.about.update_unreachable]
+fr = "La recherche n'a pas pu être lancée depuis cette fenêtre."
+en = "The check could not be started from this window."
+
+[common.about.third_party]
+fr = "Mentions tierces"
+en = "Third-party notices"
+
+[common.about.data_heading]
+fr = "Données"
+en = "Data"
+
+[common.about.data_folder]
+fr = "Dossier des données"
+en = "Data folder"
+
+[common.about.copy]
+fr = "Copier"
+en = "Copy"
+
+[common.about.copied]
+fr = "Copié"
+en = "Copied"
+
+[common.about.ffmpeg_notice]
+fr = "ffmpeg et ffprobe sont livrés sous licence LGPL."
+en = "ffmpeg and ffprobe are shipped under the LGPL licence."
+
+[common.about.sounds_notice]
+fr = "Sons du jeu retirés sur simple demande."
+en = "Game sounds removed on simple request."
+
+[common.about.diagnostic_button]
+fr = "Rapport de diagnostic"
+en = "Diagnostic report"
+
+[common.about.diagnostic_hint]
+fr = "Crée une archive des journaux et de l'état de l'application, sans mot de passe ni jeton."
+en = "Creates an archive of the logs and application state, with no password or token."
+
+[common.about.diagnostic_running]
+fr = "Création du rapport…"
+en = "Creating the report…"
+
+[common.about.diagnostic_done]
+fr = "Rapport créé."
+en = "Report created."
+
+[common.about.diagnostic_attach]
+fr = "Joignez ce fichier à votre signalement."
+en = "Attach this file to your report."
+
+[common.about.diagnostic_copy_path]
+fr = "Copier le chemin"
+en = "Copy the path"
+
+[common.about.diagnostic_copied_path]
+fr = "Chemin copié"
+en = "Path copied"
+
+[common.about.diagnostic_already_running]
+fr = "Un rapport est déjà en cours de création."
+en = "A report is already being created."
+
+[common.about.diagnostic_failed]
+fr = "Le rapport n'a pas pu être créé."
+en = "The report could not be created."
 
 # ── Amis d'un joueur (liste par profil, remplace l'ancien réglage d'instance) ──
 [common.friends.page_title]
@@ -2647,3 +2893,21 @@ en = "Lobby"
 [common.charts.axis_matches]
 fr = "Matchs"
 en = "Matches"
+
+# ─── Barres de répartition des rencontres (infobulles) ──────────────────
+
+[common.encounter_split.matches_ally]
+fr = "{count} matchs en allié"
+en = "{count} matches as ally"
+
+[common.encounter_split.matches_enemy]
+fr = "{count} matchs en ennemi"
+en = "{count} matches as enemy"
+
+[common.encounter_split.kills_dealt]
+fr = "{count} frags infligés"
+en = "{count} kills dealt"
+
+[common.encounter_split.deaths_suffered]
+fr = "{count} morts subies"
+en = "{count} deaths suffered"

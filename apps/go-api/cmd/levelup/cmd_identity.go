@@ -46,7 +46,6 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	titlePkg "levelup/go-api/internal/domain/title"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/userstore"
@@ -75,7 +74,7 @@ func runIdentity(cfg *config.AppConfig, args []string) error {
 // l'annuaire n'a pas de cas particulier a traiter pour autant (tous ses lecteurs
 // sont nil-safe).
 func buildCLIDirectory(cfg *config.AppConfig) port.PlayerDirectory {
-	paths := titlePkg.NewPathResolver(cfg.RepoRoot)
+	paths := cfg.PathResolver()
 	users := userstore.NewStore(cfg.UsersFilePath())
 	groups := groupstore.NewGroupStore(filepath.Join(cfg.AuthDir, "groups.json"))
 	tokens := auth_platform.NewMultiUserTokenStore(paths.WatcherTokensDir())

@@ -14,7 +14,9 @@
  *   - `equipmentEpisodes[]`      — les épisodes d'ÉTAT ACTIF (camouflage, surbouclier) : leur
  *                                  nombre et leur durée cumulée. C'est un PROXY, et sa réserve
  *                                  est affichée à l'écran (cf. `EquipmentUsageEpisode`) ;
- *   - `equipmentPlacements[]` `deployed` — les DÉPLOIEMENTS, par famille ;
+ *   - `equipmentPlacements[]` `deployed` — les DÉPLOIEMENTS, par famille, auxquels s'ajoutent les
+ *                                  objets engendrés du capteur, du traqueur, de l'écran et du champ
+ *                                  (`carriedEquipment[].tracked`, `spawnedObjects.ts`) ;
  *   - `equipmentPlacements[]` `dropped`  — ce qu'on LÂCHE en mourant, par famille ;
  *   - `grenades[]`               — les lancers, par type. ATTENTION, LA CLÉ N'EST PAS LA MÊME :
  *                                  `Grenade.slot` est « le biped lanceur QUAND IL EST CONNU
@@ -64,6 +66,7 @@ import { EQUIP_FAMILY_CAMO, EQUIP_FAMILY_OVERSHIELD } from './equipmentFx'
 import { deriveKeptFromTaken, familyHasAnyTrace, KEPT_FAMILIES } from './equipmentKeptLogic'
 import { PLACEMENT_RENDER, placementIsDeployedObject } from '../layers/equipmentPlacementsLayer'
 import { placementIsDroppedPower, PLACEMENT_DROPPED_FAMILIES } from './placementDropped'
+import { spawnedObjectDeployments } from './spawnedObjects'
 import type { ReplayCamp } from '../../../lib/replay/replayCamps'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { frameToMs } from '../../../lib/replay/replayLogic'
@@ -317,6 +320,11 @@ export function buildEquipmentUsage(
     if (placementIsDeployedObject(p) && isDeployableFamily(p.family)) bump(t.deployed, p.family)
     else if (placementIsDroppedPower(p)) bump(t.dropped, p.family)
   }
+
+  // UN OBJET ENGENDRÉ (capteur, traqueur, écran, champ) EST UN DÉPLOIEMENT de sa famille, situé ou
+  // non : le geste a eu lieu même quand son lieu n'a pas été lu (`spawnedObjects.ts`). Il se date à
+  // l'apparition de l'objet et revient au propriétaire de la vie du porteur à cet instant.
+  for (const d of spawnedObjectDeployments(doc)) bump(tallyOfSlotAt(d.owner, d.t0).deployed, d.family)
 
   // LE LANCER PORTE SON AUTEUR : `i`, l'index de joueur du film — jamais `slot` (cf. en-tête).
   for (const g of doc.grenades) bump(tallyOfFilmIndex(g.i).grenades, g.rank)

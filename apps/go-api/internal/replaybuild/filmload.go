@@ -31,9 +31,9 @@ import (
 	"context"
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
 // ouvrirManifeste ouvre le manifeste du film et JOURNALISE ce qu'il en est.

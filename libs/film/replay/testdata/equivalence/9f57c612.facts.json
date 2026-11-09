@@ -1,0 +1,98 @@
+{
+  "players": [
+    {
+      "xuid": "2587791501845346",
+      "kills": 0,
+      "deaths": 1,
+      "assists": 0,
+      "teamId": 0
+    },
+    {
+      "xuid": "2699643407830755",
+      "kills": 5,
+      "deaths": 14,
+      "assists": 7,
+      "teamId": 0
+    },
+    {
+      "xuid": "2603225103667623",
+      "kills": 14,
+      "deaths": 7,
+      "assists": 2,
+      "teamId": 1
+    },
+    {
+      "xuid": "2703759445483507",
+      "kills": 2,
+      "deaths": 2,
+      "assists": 0,
+      "teamId": 0
+    },
+    {
+      "xuid": "2573225322239947",
+      "kills": 10,
+      "deaths": 11,
+      "assists": 4,
+      "teamId": 1
+    },
+    {
+      "xuid": "2718388560365789",
+      "kills": 3,
+      "deaths": 7,
+      "assists": 11,
+      "teamId": 1
+    },
+    {
+      "xuid": "2774982841694965",
+      "kills": 6,
+      "deaths": 7,
+      "assists": 3,
+      "teamId": 0
+    },
+    {
+      "xuid": "2667774381241558",
+      "kills": 14,
+      "deaths": 8,
+      "assists": 6,
+      "teamId": 1
+    },
+    {
+      "xuid": "2745944050550218",
+      "kills": 7,
+      "deaths": 12,
+      "assists": 2,
+      "teamId": 0
+    },
+    {
+      "xuid": "2806693292111299",
+      "kills": 11,
+      "deaths": 6,
+      "assists": 2,
+      "teamId": 0
+    },
+    {
+      "xuid": "bid(21.0)",
+      "kills": 0,
+      "deaths": 0,
+      "assists": 0,
+      "teamId": 0
+    },
+    {
+      "xuid": "bid(27.0)",
+      "kills": 0,
+      "deaths": 0,
+      "assists": 0,
+      "teamId": 0
+    }
+  ],
+  "teamScores": [
+    2,
+    2
+  ],
+  "gameVariantName": "Assault:One Bomb",
+  "mapId": "63d634be-0319-489d-8c21-9c4e012f664f",
+  "matchId": "9f57c612-0a93-4c6e-8955-c1caf0a23833",
+  "mapNames": [
+    "Curfew"
+  ]
+}

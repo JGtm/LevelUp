@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // dumperBlend est le mode `blend`. `cibles` vide = tous les conteneurs `Blend` de la banque.

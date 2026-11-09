@@ -1,8 +1,7 @@
 // cmd/mapfond-inventaire — quelles cartes JOUEES n'ont pas de fond, et dans quelles playlists.
 //
 // POURQUOI CETTE COMMANDE EXISTE. Compter les cartes sans fond en regardant le repertoire
-// `map_backgrounds/` donne un resultat FAUX, et l'erreur a deja ete commise deux fois
-// (`.ai/V7.5/cartes/HANDOFF_FONDS_CARTE_2026-09-03.md`, section 7). Le fond se resout par TROIS
+// `map_backgrounds/` donne un resultat FAUX, et l'erreur a deja ete commise deux fois. Le fond se resout par TROIS
 // chemins — la cle map_id, l'index par NOM des sidecars, puis l'heritage variante vers base — et
 // seul le code qui sert le fond dit lequel s'applique. Cette commande appelle donc EXACTEMENT la
 // meme resolution que `replayService.resolveBackgroundKey` : stat du sidecar sous map_id d'abord,
@@ -42,7 +41,8 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // voieResolution nomme le chemin par lequel le fond a ete trouve — la distinction qui manquait

@@ -1,7 +1,7 @@
 package killcollector
 
 // positions_openings.go — LA PASSE D ENTAMES : `shared.kill_openings`, la table sœur des
-// positions (D5 du plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md).
+// positions.
 //
 // POURQUOI UN FICHIER SEPARE DE positions.go : les deux passes sortent de LA MEME lecture du
 // film (cf. composerPassePositions) mais elles n ont ni la meme couverture, ni les memes
@@ -19,9 +19,10 @@ import (
 	"log/slog"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // Compteurs de sante de la passe d ENTAMES (D5). Famille distincte de celle des positions, et

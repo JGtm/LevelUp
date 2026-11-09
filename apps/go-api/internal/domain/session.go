@@ -5,6 +5,8 @@
 //	POST /session/context → SessionContextResponse
 package domain
 
+import "levelup/go-api/internal/i18n"
+
 // HaloIdentity est l'identité Halo liée à une session après Device Code Flow.
 // Stockée côté serveur uniquement, jamais exposée au navigateur.
 type HaloIdentity struct {
@@ -66,7 +68,7 @@ type SessionData struct {
 
 // IsMeaningful indique si la session porte un état qui mérite d'être persisté sur
 // disque. Une session anonyme « vierge » (telle que créée par Store.New : locale
-// "fr", hints visibles, auth_ready false, rien d'autre) ne vaut pas un fichier :
+// i18n.Default, hints visibles, auth_ready false, rien d'autre) ne vaut pas un fichier :
 // la persister à chaque requête sans cookie (bots, sondes, chargements d'assets)
 // sature data/sessions/. On ne persiste qu'à partir du moment où elle porte de
 // l'auth, un flow OAuth en cours, une identité/des tokens Halo, un joueur/titre
@@ -85,7 +87,7 @@ func (s *SessionData) IsMeaningful() bool {
 		s.ActiveSyncJobID != nil ||
 		s.AuthReady ||
 		s.CurrentTitleSlug != "" ||
-		s.Locale != "fr" ||
+		s.Locale != string(i18n.Default) ||
 		!s.HintsVisible
 }
 

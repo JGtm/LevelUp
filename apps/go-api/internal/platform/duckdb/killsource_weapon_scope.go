@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -30,9 +31,8 @@ import (
 type weaponScopeRow struct {
 	weaponID  int64 // 0 = cle sans identifiant numerique au registre
 	weaponKey string
-	class     string // classe du registre : c est elle qui ecarte un objet hors arsenal
-	label     string // FR-first (repli EN)
-	labelEN   string // EN-first (repli FR) — 2026-09-17 : sert le lecteur EN des trois surfaces
+	class     string    // classe du registre : c est elle qui ecarte un objet hors arsenal
+	label     i18n.Text // fr : FR-first (repli EN) ; en : EN-first (repli FR) — 2026-09-17 : sert le lecteur EN des trois surfaces
 	kills     int
 }
 
@@ -74,7 +74,7 @@ func weaponKillsFromSourceForPlayer(
 			continue
 		}
 		out = append(out, weaponScopeRow{
-			weaponID: m.numericID, weaponKey: k, class: m.class, label: m.label, labelEN: m.labelEN,
+			weaponID: m.numericID, weaponKey: k, class: m.class, label: m.label,
 			kills: kills,
 		})
 	}
@@ -169,18 +169,23 @@ func (r *ExplorerRepo) topWeaponsFromSource(
 		slog.DebugContext(ctx, "ExplorerRepo.topWeaponsFromSource: lecture (best-effort)", "err", err)
 		return nil
 	}
+	loc := i18n.FromContext(ctx)
 	out := make([]domain.WeaponHighlight, 0, limit)
 	for _, w := range armesDeLArsenal(rows, limit) {
-		// Avant le 2026-09-17, LabelEN recevait le libelle FR : « Apparition » sous UI EN.
-		label, labelEN := w.label, w.labelEN
-		if label == "" {
-			label = strconv.FormatUint(uint64(w.weaponID), 10) //nolint:gosec
+		// Le nom suit la langue de la requete ; une arme sans nom porte son identifiant, dans
+		// toutes les langues.
+		names := w.label.Clone()
+		if names == nil {
+			names = i18n.Text{}
 		}
-		if labelEN == "" {
-			labelEN = label
+		if names[i18n.Default] == "" {
+			names[i18n.Default] = strconv.FormatUint(uint64(w.weaponID), 10) //nolint:gosec
+		}
+		if names[i18n.Fallback] == "" {
+			names[i18n.Fallback] = names[i18n.Default]
 		}
 		out = append(out, domain.WeaponHighlight{
-			WeaponID: w.weaponID, Kills: w.kills, LabelFR: label, LabelEN: labelEN,
+			WeaponID: w.weaponID, Kills: w.kills, Label: names.Pick(loc),
 		})
 	}
 	if len(out) == 0 {
@@ -243,15 +248,10 @@ func (r *HomeRepo) favoriteWeaponFromDamageSource(ctx context.Context, locale st
 	}
 	// Les deux libelles viennent de la MEME passe registre (weapon_name_labels) et voyagent
 	// dans weaponScopeRow depuis le 2026-09-17 : plus de seconde requete pour l'EN.
-	nom := w.label
-	if locale == "en" && w.labelEN != "" {
-		nom = w.labelEN
-	}
+	loc := i18n.Parse(locale)
+	nom := w.label.Pick(loc)
 	if nom == "" {
-		nom = "Inconnue"
-		if locale == "en" {
-			nom = "Unknown"
-		}
+		nom = i18n.Msg(loc, "common.unknown_weapon", nil)
 	}
 	return nom, w.kills, nil
 }

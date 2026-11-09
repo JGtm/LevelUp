@@ -53,3 +53,16 @@ en = "Open visual reference"
 [asset_drawer.toggle.close]
 fr = "Fermer le référentiel visuel"
 en = "Close visual reference"
+
+# ── Application de bureau : volet ancré à droite du contenu ──
+[asset_drawer.docked.aria]
+fr = "Référentiels"
+en = "References"
+
+[asset_drawer.docked.resize_aria]
+fr = "Redimensionner le volet des référentiels"
+en = "Resize the references pane"
+
+[asset_drawer.trigger.title]
+fr = "Référentiels (Ctrl+Maj+L)"
+en = "References (Ctrl+Shift+L)"

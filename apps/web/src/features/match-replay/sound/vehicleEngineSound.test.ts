@@ -1,6 +1,6 @@
 /**
  * Tests du PLAN moteur des véhicules (vehicleEngineSound.ts) : fusion des épisodes
- * d'occupation, ralenti du Scorpion, refus du décor, table des stems, et le fondu croisé à
+ * d'occupation, moteur qui suit le mouvement, refus du décor, table des stems, et le fondu croisé à
  * puissance constante — les règles du cadrage du 2026-09-04 et du contrat de la banque.
  */
 import { describe, expect, it } from 'vitest'
@@ -10,11 +10,14 @@ import {
   ENGINE_RIDE_GAP_MERGE_MS,
   enginePhaseAt,
   equalPowerCurves,
-  idleSpansOf,
+  ENGINE_MOVE_MIN_MS,
+  ENGINE_STOP_MERGE_MS,
+  episodeOfMoves,
   mergeRideSpans,
+  movingSpansOf,
   planVehicleEngines,
-  SCORPION_IDLE_MIN_MS,
   VEHICLE_ENGINE_BUS_GAIN,
+  VEHICLE_MOVE_SPEED,
   VEHICLE_ENGINE_STEMS,
   allEngineStems,
 } from './vehicleEngineSound'
@@ -59,88 +62,119 @@ describe('mergeRideSpans — l union des épisodes d occupation', () => {
   })
 })
 
-describe('idleSpansOf — le ralenti du Scorpion', () => {
-  // Un véhicule immobile 3 s (frames 10-40), puis en mouvement.
-  const samples = [
-    ...Array.from({ length: 41 }, (_, i) => ({ t: i, x: i < 10 ? i * 2 : 20, y: 0 })),
-    ...Array.from({ length: 20 }, (_, i) => ({ t: 41 + i, x: 20 + (i + 1) * 2, y: 0 })),
-  ]
+/**
+ * Une trajectoire : en mouvement (5 unités/s, soit 0,5 par frame) sur les plages de frames
+ * `roule`, immobile ailleurs.
+ */
+function trajet(nFrames: number, roule: [number, number][]): { t: number; x: number; y: number }[] {
+  const out = [{ t: 0, x: 0, y: 0 }]
+  for (let t = 1; t <= nFrames; t++) {
+    const bouge = roule.some(([a, b]) => t > a && t <= b)
+    out.push({ t, x: out[t - 1].x + (bouge ? 0.5 : 0), y: 0 })
+  }
+  return out
+}
 
-  it('détecte la période immobile, bornée à l épisode', () => {
-    const spans = idleSpansOf(samples, { t0Ms: 0, t1Ms: 6_000 }, FRAME_MS)
-    expect(spans).toHaveLength(1)
-    expect(spans[0].t0Ms).toBeGreaterThanOrEqual(900)
-    expect(spans[0].t1Ms).toBe(4_000)
+describe('movingSpansOf et episodeOfMoves — le moteur suit le mouvement', () => {
+  const span = { t0Ms: 0, t1Ms: 10_000 }
+
+  it('immobile du début à la fin : aucun mouvement, aucun épisode', () => {
+    expect(movingSpansOf(trajet(100, []), span, FRAME_MS)).toEqual([])
+    expect(episodeOfMoves([])).toBeNull()
   })
 
-  it('absorbe un arrêt plus court que l hystérésis', () => {
-    const court = [
-      { t: 0, x: 0, y: 0 },
-      { t: 5, x: 10, y: 0 },
-      { t: 9, x: 10, y: 0 }, // 0,4 s d arrêt < SCORPION_IDLE_MIN_MS
-      { t: 14, x: 20, y: 0 },
-    ]
-    expect(idleSpansOf(court, { t0Ms: 0, t1Ms: 2_000 }, FRAME_MS)).toEqual([])
-    expect(SCORPION_IDLE_MIN_MS).toBe(1_000)
+  it('monte, attend 2 s, roule 3 s, s arrête : l épisode tient le seul mouvement', () => {
+    const moves = movingSpansOf(trajet(100, [[20, 50]]), span, FRAME_MS)
+    expect(moves).toEqual([{ t0Ms: 2_000, t1Ms: 5_000 }])
+    expect(episodeOfMoves(moves)).toEqual({ t0Ms: 2_000, t1Ms: 5_000, arrets: [] })
+  })
+
+  it('un arrêt court (1 s < 1,5 s) ne coupe rien', () => {
+    const moves = movingSpansOf(trajet(100, [[0, 30], [40, 70]]), span, FRAME_MS)
+    expect(moves).toEqual([{ t0Ms: 0, t1Ms: 7_000 }])
+    expect(ENGINE_STOP_MERGE_MS).toBe(1_500)
+  })
+
+  it('un arrêt long (3 s) devient un arrêt intérieur de l épisode', () => {
+    const moves = movingSpansOf(trajet(100, [[0, 30], [60, 90]]), span, FRAME_MS)
+    expect(episodeOfMoves(moves)).toEqual({
+      t0Ms: 0,
+      t1Ms: 9_000,
+      arrets: [{ t0Ms: 3_000, t1Ms: 6_000 }],
+    })
+  })
+
+  it('une secousse (0,3 s de mouvement) n allume rien ; la dérive lente non plus', () => {
+    expect(movingSpansOf(trajet(100, [[20, 23]]), span, FRAME_MS)).toEqual([])
+    const derive = Array.from({ length: 101 }, (_, t) => ({ t, x: t * 0.05, y: 0 })) // 0,5 unité/s
+    expect(movingSpansOf(derive, span, FRAME_MS)).toEqual([])
+    expect(VEHICLE_MOVE_SPEED).toBe(1)
+    expect(ENGINE_MOVE_MIN_MS).toBe(500)
+  })
+
+  it('borne les mouvements à l occupation', () => {
+    const moves = movingSpansOf(trajet(100, [[0, 100]]), { t0Ms: 2_000, t1Ms: 4_000 }, FRAME_MS)
+    expect(moves).toEqual([{ t0Ms: 2_000, t1Ms: 4_000 }])
   })
 })
 
 describe('planVehicleEngines — quoi sonne, quoi se tait', () => {
+  const roule = trajet(60, [[0, 60]])
+
   it('refuse le décor (pelican), la famille inconnue, et le véhicule jamais occupé', () => {
     const plans = planVehicleEngines(
       [
-        track('pelican', [{ t0: 0, t1: 100 }]), // décor : jamais de son (cadrage n° 1)
-        track('shade_turret', [{ t0: 0, t1: 100 }]), // sans banque : silence propre (n° 2)
-        track('warthog', []), // jamais occupé : pas de moteur
-        track('ghost', [{ t0: 10, t1: 50 }]),
+        track('pelican', [{ t0: 0, t1: 100 }], roule), // décor : jamais de son (cadrage n° 1)
+        track('shade_turret', [{ t0: 0, t1: 100 }], roule), // sans banque : silence propre (n° 2)
+        track('warthog', [], roule), // jamais occupé : pas de moteur
+        track('ghost', [{ t0: 10, t1: 50 }], roule),
       ],
       FRAME_MS,
     )
     expect(plans).toEqual([
-      { family: 'ghost', episodes: [{ t0Ms: 1_000, t1Ms: 5_000, idle: [] }] },
+      { family: 'ghost', episodes: [{ t0Ms: 1_000, t1Ms: 5_000, arrets: [] }] },
     ])
   })
 
   it('un Falcon OCCUPÉ sonne : il n’est plus une famille de décor (décision du 2026-09-24)', () => {
-    const plans = planVehicleEngines([track('falcon', [{ t0: 10, t1: 50 }])], FRAME_MS)
+    const plans = planVehicleEngines([track('falcon', [{ t0: 10, t1: 50 }], roule)], FRAME_MS)
     expect(plans).toEqual([
-      { family: 'falcon', episodes: [{ t0Ms: 1_000, t1Ms: 5_000, idle: [] }] },
+      { family: 'falcon', episodes: [{ t0Ms: 1_000, t1Ms: 5_000, arrets: [] }] },
     ])
   })
 
-  it('ne calcule le ralenti que pour les familles qui ont un clip idle (Scorpion)', () => {
-    const still = Array.from({ length: 60 }, (_, i) => ({ t: i, x: 0, y: 0 }))
+  it('un véhicule occupé qui ne bouge pas se tait (décision du 2026-11-02)', () => {
+    const immobile = trajet(60, [])
     const plans = planVehicleEngines(
-      [track('scorpion', [{ t0: 0, t1: 50 }], still), track('warthog', [{ t0: 0, t1: 50 }], still)],
+      [track('warthog', [{ t0: 0, t1: 50 }], immobile), track('scorpion', [{ t0: 0, t1: 50 }], immobile)],
       FRAME_MS,
     )
-    expect(plans[0].episodes[0].idle.length).toBeGreaterThan(0)
-    expect(plans[1].episodes[0].idle).toEqual([])
+    expect(plans).toEqual([])
   })
 })
 
 describe('enginePhaseAt — l état nominal d un épisode', () => {
-  const ep = { t0Ms: 1_000, t1Ms: 5_000, idle: [{ t0Ms: 2_000, t1Ms: 3_000 }] }
-  it('course dedans, ralenti sur ses périodes, rien dehors', () => {
+  const ep = { t0Ms: 1_000, t1Ms: 5_000, arrets: [{ t0Ms: 2_000, t1Ms: 3_000 }] }
+  it('course dedans, arrêt sur ses périodes, rien dehors', () => {
     expect(enginePhaseAt(ep, 500)).toBeNull()
     expect(enginePhaseAt(ep, 1_000)).toBe('loop')
-    expect(enginePhaseAt(ep, 2_500)).toBe('idle')
+    expect(enginePhaseAt(ep, 2_500)).toBe('arret')
     expect(enginePhaseAt(ep, 3_000)).toBe('loop')
     expect(enginePhaseAt(ep, 5_000)).toBeNull()
   })
 })
 
 describe('la table des stems et le bus', () => {
-  it('les neuf familles de la banque, l idle du Scorpion seul, AUCUN boost référencé', () => {
+  it('les neuf familles de la banque, trois clips chacune, AUCUN boost référencé', () => {
     expect(Object.keys(VEHICLE_ENGINE_STEMS).sort()).toEqual([
       'banshee', 'chopper', 'falcon', 'ghost', 'mongoose', 'scorpion', 'warthog', 'wasp', 'wraith',
     ])
     for (const [famille, stems] of Object.entries(VEHICLE_ENGINE_STEMS)) {
-      expect(stems.idle !== undefined, famille).toBe(famille === 'scorpion')
+      expect(Object.keys(stems).sort(), famille).toEqual(['enter', 'exit', 'loop'])
       // Le boost est RÉFUTÉ au témoin (mesure du 2026-09-04) : aucune clé ne doit y mener.
       expect(JSON.stringify(stems), famille).not.toContain('boost')
     }
-    expect(allEngineStems()).toHaveLength(9 * 3 + 1)
+    expect(allEngineStems()).toHaveLength(9 * 3)
   })
 
   it('le bus moteur est à 0,85 x le maître (décision utilisateur du 2026-09-04)', () => {

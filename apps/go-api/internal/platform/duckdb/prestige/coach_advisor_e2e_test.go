@@ -23,6 +23,8 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/progression/coach_advisor"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // stubBaselineProvider retourne une baseline constante — suffit pour valider
@@ -136,10 +138,8 @@ func (e *e2eEnv) seedCatalogTemplateAccuracy(t *testing.T) {
 		Cadence:         prestige.Cadence("weekly"),
 		EvalType:        prestige.EvalType("threshold"),
 		ModeFilter:      "universal",
-		LabelEN:         "Improve accuracy",
-		LabelFR:         "Améliore la précision",
-		DescriptionEN:   "Push accuracy over 14 days",
-		DescriptionFR:   "Pousse la précision sur 14 jours",
+		Labels:          i18n.FromColumns("Improve accuracy", "Améliore la précision"),
+		Descriptions:    i18n.FromColumns("Push accuracy over 14 days", "Pousse la précision sur 14 jours"),
 		NormalTarget:    0.45,
 		HeroicTarget:    0.50,
 		LegendaryTarget: 0.55,

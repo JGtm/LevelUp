@@ -6,14 +6,16 @@
  * Fichier à part de `usagesText.ts` (surcharges des textes de l'Escouade) pour rester sous le seuil.
  */
 
+import { intlLocale } from '@/lib/formatters/intlLocale'
+
 const plural = (n: number, one: string, many: string) => (n > 1 ? many : one)
 
-const frPct = (v: number): string => `${(Math.round(v * 10) / 10).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`
-const enPct = (v: number): string => `${(Math.round(v * 10) / 10).toLocaleString('en-GB', { maximumFractionDigits: 1 })}%`
-const frDec1 = (v: number) => v.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-const enDec1 = (v: number) => v.toLocaleString('en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-const frInt = (v: number) => v.toLocaleString('fr-FR')
-const enInt = (v: number) => v.toLocaleString('en-GB')
+const frPct = (v: number): string => `${(Math.round(v * 10) / 10).toLocaleString(intlLocale('fr'), { maximumFractionDigits: 1 })} %`
+const enPct = (v: number): string => `${(Math.round(v * 10) / 10).toLocaleString(intlLocale('en'), { maximumFractionDigits: 1 })}%`
+const frDec1 = (v: number) => v.toLocaleString(intlLocale('fr'), { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+const enDec1 = (v: number) => v.toLocaleString(intlLocale('en'), { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+const frInt = (v: number) => v.toLocaleString(intlLocale('fr'))
+const enInt = (v: number) => v.toLocaleString(intlLocale('en'))
 
 export interface UsagesCardsText {
   /** « 60 % », « 44,2 % » (une décimale au plus) ; `pctIntFmt` : « 17 % ». */
@@ -86,7 +88,7 @@ export const USAGES_CARDS_TEXT_FR: UsagesCardsText = {
   intFmt: frInt,
   dayFmt: (iso) => {
     const d = new Date(iso)
-    return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(intlLocale('fr'), { day: '2-digit', month: '2-digit' })
   },
   maps: {
     others: 'Autres cartes',
@@ -149,7 +151,7 @@ export const USAGES_CARDS_TEXT_EN: UsagesCardsText = {
   intFmt: enInt,
   dayFmt: (iso) => {
     const d = new Date(iso)
-    return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(intlLocale('en'), { day: '2-digit', month: '2-digit' })
   },
   maps: {
     others: 'Other maps',

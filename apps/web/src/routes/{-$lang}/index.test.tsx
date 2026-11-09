@@ -27,6 +27,7 @@ import type { RouterContext } from '@/app/router'
 import { routeTree } from '@/routeTree.gen'
 import { queryClient } from '@/app/queryClient'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { testCapabilities, accountsCapabilities } from '@/test/capabilities'
 import { Route as IndexRoute } from './index'
 
 const INDEX_ID = '/{-$lang}/'
@@ -60,8 +61,8 @@ describe('résolution de l’index sous {-$lang} (arbre réel)', () => {
     expect(root.state.matches[root.state.matches.length - 1].params).toEqual({})
   })
 
-  it('une langue inconnue (/xx/) reste « introuvable », comme avant le déplacement', async () => {
-    for (const pathname of ['/xx/', '/xx']) {
+  it('une langue inconnue (/zz/) reste « introuvable », comme avant le déplacement', async () => {
+    for (const pathname of ['/zz/', '/zz']) {
       const router = await loadAt(pathname)
       expect(router.state.matches.some((m) => m.status === 'notFound')).toBe(true)
     }
@@ -139,7 +140,7 @@ describe('comportement de l’index (options réelles de la route)', () => {
     act(() => {
       useAppShellStore.setState({
         isBootstrapped: true,
-        authMode: 'xbox',
+        capabilities: testCapabilities(accountsCapabilities('xbox')),
         currentUsername: 'alice',
         currentPlayer: PLAYER,
         availablePlayers: [PLAYER],
@@ -177,8 +178,8 @@ describe('comportement de l’index (options réelles de la route)', () => {
     expect(screen.queryByTestId('home')).toBeNull()
   })
 
-  it('langue inconnue (/xx/) : ni accueil ni /login — page introuvable', async () => {
-    const router = renderAt('/xx/')
+  it('langue inconnue (/zz/) : ni accueil ni /login — page introuvable', async () => {
+    const router = renderAt('/zz/')
     await waitFor(() => expect(router.state.matches.some((m) => m.status === 'notFound')).toBe(true))
     expect(screen.getByText('Not Found')).toBeTruthy()
     expect(screen.queryByTestId('home')).toBeNull()

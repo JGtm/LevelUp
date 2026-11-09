@@ -12,6 +12,7 @@ import type {
   AsyncJobStatus,
   CatalogRefreshResult,
   LyingBitsResetResult,
+  ModeTranslationRequest,
   RegistryNamesBackfillResult,
   ResolveResult,
 } from '@/lib/api/types'
@@ -39,7 +40,7 @@ export function useRunRegistryNamesBackfill() {
 export function useResolveModeTranslation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (req: { mode_en: string; name_fr: string }) =>
+    mutationFn: (req: ModeTranslationRequest) =>
       api.post<ResolveResult>('/admin/actions/translations/mode', req),
     onSuccess: () => invalidateDataQuality(queryClient),
   })

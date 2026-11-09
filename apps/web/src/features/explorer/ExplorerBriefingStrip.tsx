@@ -1,32 +1,41 @@
 /**
  * ExplorerBriefingStrip — bandeau de briefing au-dessus du tableau (mode Matchs).
  *
- * Lecture compacte du RÉSULTAT DE RECHERCHE : rangée socle de 4 à 8 tuiles KPI —
+ * Lecture compacte du RÉSULTAT DE RECHERCHE : socle de 5 à 8 tuiles KPI —
  * base (5) : Matchs, Taux de victoire (ruban V-D-N + tooltip), FDA et Perf en
  * triptyques « min · moyenne · max » (DP-1), Durée totale ; puis en cascade par
- * priorité, les 3 tiennent (DP-2) : Séries marquantes, Pic rang, Pic MMR — avec
- * deltas vs baseline personnelle. Les modules « Par… » (dimensions, « Par contexte »,
- * Classement par chaîne) sont rendus par ExplorerBriefingModules sous le socle. En
- * low_sample : seules Matchs / Taux de victoire / FDA / Perf.
+ * priorité, les 3 tiennent (DP-2) : Séries, Pic rang, Pic MMR — avec
+ * deltas vs baseline personnelle.
  *
- * Dégradation : briefing absent → rien ; low_sample → socle réduit + mention
- * échantillon faible, aucun module. Aucune couleur hex : tokens sémantiques.
+ * Disposition du socle : grille à colonnes ÉGALES. Toutes les tuiles sur une ligne quand
+ * elles tiennent (150 px minimum chacune), sinon des lignes équilibrées aux colonnes
+ * alignées (8 -> 4+4, 7 -> 4+3, 6 -> 3+3, 5 -> 3+2), plancher 2 colonnes. Le choix se fait
+ * en CSS pur, par container queries sur la largeur du bandeau (`socleGridClass`) : aucune
+ * lecture du DOM. Les modules « Par… » (dimensions, « Par contexte »,
+ * Classement par chaîne), l'arme favorite et les moments forts sont rendus par
+ * ExplorerBriefingModules sous le socle.
+ *
+ * Dégradation : briefing absent → rien. L'échantillon faible (low_sample) ne retire rien :
+ * socle, écarts « vs habituel » (dès qu'une baseline est servie) et modules sont rendus
+ * comme au-delà du seuil. Il est signalé seulement par une icône d'avertissement, avec
+ * infobulle, sur la tuile Matchs. Aucune couleur hex : tokens sémantiques.
  */
 import type { ReactNode } from 'react'
 
 import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { NoticeIcon } from '@/components/ui/notice'
 import { tokenCssVar } from '@/lib/accessibility'
 import { perfScale } from '@/lib/accessibility/scales'
 import { kdaNetColor } from '@/lib/colors/outcomePalette'
 import { getPerfColor } from '@/lib/perf-color'
-import { formatDateRange, formatSignedFixed } from '@/lib/formatters'
+import { formatDateRange, formatSignedFixed, intlLocale } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useExplorerPrefsStore } from '@/stores/explorerPrefsStore'
 import type { ExplorerBriefing } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { BriefingTile } from './BriefingTile'
 import { isFullHistoryScope } from '@/lib/baseline'
-import { deltaToken } from './ExplorerBriefing.logic'
+import { deltaToken, socleGridClass } from './ExplorerBriefing.logic'
 import { ExplorerBriefingModules } from './ExplorerBriefingModules'
 import {
   DurationTile,
@@ -36,17 +45,14 @@ import {
   StreaksTile,
   WinRateTile,
 } from './ExplorerBriefingTiles'
+import type { Locale } from '@/lib/i18n/locale'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
 
-// Largeurs socle (DP-4/DEC-WIDTHS) : chaque tuile est un flex-item. SOCLE_TILE réplique
-// l'ancien minmax(150px,1fr) (largeur cible 150px, grandit pour remplir la ligne ; min-w-0
-// évite l'overflow des tabular-nums). « Séries marquantes » ~+10 % (WIDE), « Pic MMR »
-// ~−10 % (NARROW) ; flex-wrap + grow absorbent l'absence des conditionnelles sans trou.
-// Valeurs basis/grow ajustables en revue visuelle (comme MIN_DECILE_SAMPLE).
-const SOCLE_TILE = 'grow basis-[150px] min-w-0'
-const SOCLE_TILE_WIDE = 'grow-[1.15] basis-[168px] min-w-0'
-const SOCLE_TILE_NARROW = 'grow-[0.9] basis-[136px] min-w-0'
+// Wrapper de tuile du socle : la largeur vient de la grille (colonnes égales, voir
+// socleGridClass), jamais de la tuile ; min-w-0 évite que les tabular-nums élargissent
+// une colonne `minmax(0,1fr)`.
+const SOCLE_TILE = 'min-w-0'
 
 interface Props {
   briefing: ExplorerBriefing | null | undefined
@@ -74,15 +80,32 @@ function BriefingToggleChevron({ collapsed }: { collapsed: boolean }) {
   )
 }
 
+// Avertissement d'échantillon faible, posé à la place de l'icône (i) sur la tuile Matchs :
+// même gabarit (InfoTooltip, 14 px), triangle teinté par le jeton `warning` de Notice. Le
+// texte sert à la fois d'infobulle et de libellé accessible de l'icône.
+function LowSampleWarning({ text }: { text: string }) {
+  return (
+    <InfoTooltip
+      content={text}
+      triggerFocusable
+      trigger={
+        <span role="img" aria-label={text} data-testid="briefing-low-sample" className="inline-flex">
+          <NoticeIcon tone="warning" className="h-3.5 w-3.5" />
+        </span>
+      }
+    />
+  )
+}
+
 function formatPeriod(
   start: string | null | undefined,
   end: string | null | undefined,
-  locale: string,
+  locale: Locale,
 ): string | undefined {
   if (!start) return undefined
   // Intervalle daté COMPLET (année incluse) via le helper canonique formatDateRange —
   // factorise mois/année (« 3–12 mars 2025 ») ; date simple si end absent/égal.
-  return formatDateRange(start, end, locale === 'en' ? 'en-US' : 'fr-FR')
+  return formatDateRange(start, end, intlLocale(locale))
 }
 
 export function ExplorerBriefingStrip({ briefing, t }: Props) {
@@ -109,18 +132,18 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
     streaks != null && ((streaks.best_win_streak ?? 0) > 0 || (streaks.worst_loss_streak ?? 0) > 0)
 
   const lowSample = !!briefing.low_sample
+  const lowSampleText = t('explorer.briefing.low_sample', { n: matchesCount })
   const peakRanks = scope?.peak_ranks ?? []
   const peakMmr = scope?.peak_team_mmr ?? null
 
   // Cascade des tuiles conditionnelles (DP-2) : collectées par PRIORITÉ décroissante
-  // (Séries marquantes > Pic rang > Pic MMR) et TOUTES rendues si présentes → socle
-  // plafonné à 8 (5 base hors low_sample + 3 ; le retrait du Pic FDA libère le slot,
-  // Pic MMR redevient visible). Omises entièrement en low_sample.
+  // (Séries > Pic rang > Pic MMR) et TOUTES rendues si présentes → socle plafonné à 8
+  // (5 base + 3).
   const conditionalTiles: ReactNode[] = []
-  if (scope && !lowSample) {
+  if (scope) {
     if (showStreaks && streaks != null) {
       conditionalTiles.push(
-        <div key="streaks" className={SOCLE_TILE_WIDE}>
+        <div key="streaks" className={SOCLE_TILE}>
           <StreaksTile streaks={streaks} t={t} />
         </div>,
       )
@@ -134,19 +157,22 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
     }
     if (peakMmr != null) {
       conditionalTiles.push(
-        <div key="peak-mmr" className={SOCLE_TILE_NARROW}>
+        <div key="peak-mmr" className={SOCLE_TILE}>
           <PeakMmrTile value={peakMmr} t={t} />
         </div>,
       )
     }
   }
 
+  // Tuiles effectivement rendues : Matchs, puis quatre tuiles de base quand le scope existe,
+  // puis les conditionnelles. Le nombre de colonnes de la grille en découle.
+  const socleTileCount = 1 + (scope ? 4 : 0) + conditionalTiles.length
+
   return (
     <div className="space-y-2">
       {/* En-tête discret : bascule réduire/afficher de la synthèse (choix mémorisé
           par explorerPrefsStore → localStorage). Aligné à droite pour ne pas
-          concurrencer le socle de tuiles ; jamais en flex-wrap (le socle reste le
-          premier flex-wrap du bandeau). whitespace-nowrap + flex-shrink-0 sur le
+          concurrencer le socle de tuiles. whitespace-nowrap + flex-shrink-0 sur le
           bouton : le libellé "Afficher le résumé"/"Show briefing" (expand) est
           nettement plus long que "Réduire"/"Collapse" (collapse) — sans ces
           classes le texte peut passer sur 2 lignes sous contrainte de largeur, ce
@@ -172,11 +198,18 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
 
       {!collapsed && (
         <>
-          <div className="flex flex-wrap gap-2">
+          {/* @container : les paliers de la grille se mesurent sur la largeur du bandeau,
+              pas sur celle de la fenêtre. */}
+          <div className="@container">
+          <div
+            data-testid="briefing-socle"
+            className={`grid gap-2 ${socleGridClass(socleTileCount)}`}
+          >
             {/* Matchs + période */}
         <div className={SOCLE_TILE}>
           <BriefingTile
             label={t('explorer.briefing.matches_label')}
+            info={lowSample ? <LowSampleWarning text={lowSampleText} /> : undefined}
             value={String(matchesCount)}
             sub={period}
             accent="outcome-draw"
@@ -256,25 +289,19 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
           </div>
         )}
 
-        {/* Durée totale : tuile de base hors low_sample (Pic FDA fusionné dans le triptyque FDA) */}
-        {scope && !lowSample && (
+        {/* Durée totale : tuile de base, aussi en échantillon faible (Pic FDA fusionné dans le triptyque FDA) */}
+        {scope && (
           <div className={SOCLE_TILE}>
             <DurationTile seconds={scope.total_duration_seconds} t={t} />
           </div>
         )}
 
-            {/* Conditionnelles en cascade (Séries marquantes > Pic rang > Pic MMR ; les 3 tiennent) */}
+            {/* Conditionnelles en cascade (Séries > Pic rang > Pic MMR ; les 3 tiennent) */}
             {conditionalTiles}
           </div>
+          </div>
 
-          {/* Échantillon faible : socle seul + mention ; sinon modules conditionnels. */}
-          {briefing.low_sample ? (
-            <p className="text-2xs text-muted-foreground">
-              {t('explorer.briefing.low_sample', { n: matchesCount })}
-            </p>
-          ) : (
-            <ExplorerBriefingModules briefing={briefing} t={t} hideDelta={fullHistory} />
-          )}
+          <ExplorerBriefingModules briefing={briefing} t={t} hideDelta={fullHistory} />
         </>
       )}
     </div>

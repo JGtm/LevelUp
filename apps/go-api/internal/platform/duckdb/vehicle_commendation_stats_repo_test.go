@@ -12,7 +12,7 @@ import (
 )
 
 // seedVehicleCommendationFixture peuple les deux DB in-memory :
-//   - metadata.commendation_definitions : 2 destructeurs de véhicule, 1 « Grand
+//   - metadata.asset_translations (type commendation) : 2 destructeurs de véhicule, 1 « Grand
 //     Theft » DÉCOY (ne doit PLUS être compté — hijack vient des médailles
 //     maintenant, cf. package doc), + 2 autres leurres qui NE doivent PAS être
 //     comptés (agrégat « Vehicle Mastery », splatter).
@@ -23,22 +23,20 @@ func seedVehicleCommendationFixture(t *testing.T, meta, shared *DB) {
 	ctx := context.Background()
 
 	metaDDL := []string{
-		`CREATE TABLE commendation_definitions (
-			commendation_id VARCHAR PRIMARY KEY,
-			name_en VARCHAR,
-			name_fr VARCHAR
+		`CREATE TABLE asset_translations (
+			asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR, name VARCHAR, description VARCHAR
 		)`,
-		`INSERT INTO commendation_definitions VALUES ('u-banshee','Banshee Destroyer','Destructeur de banshees')`,
+		`INSERT INTO asset_translations VALUES ('u-banshee','commendation','en-US','Banshee Destroyer',NULL),('u-banshee','commendation','fr-FR','Destructeur de banshees',NULL)`,
 		// Forme apostrophe : « Destructeur d'apparitions » doit matcher LIKE 'Destructeur %'.
-		`INSERT INTO commendation_definitions VALUES ('u-wraith','Wraith Destroyer','Destructeur d''apparitions')`,
+		`INSERT INTO asset_translations VALUES ('u-wraith','commendation','en-US','Wraith Destroyer',NULL),('u-wraith','commendation','fr-FR','Destructeur d''apparitions',NULL)`,
 		// DÉCOY : cette commendation n'existe PAS réellement dans le référentiel H5
 		// prod (fact-check corpus 2026-07-23) — conservée ici pour PROUVER qu'elle
 		// n'est plus résolue comme hijack (ni comme véhicule détruit, son nom ne
 		// matche aucun motif « Destructeur »/« Destroyer »).
-		`INSERT INTO commendation_definitions VALUES ('u-hijack','Grand Theft','Vol à la tire')`,
+		`INSERT INTO asset_translations VALUES ('u-hijack','commendation','en-US','Grand Theft',NULL),('u-hijack','commendation','fr-FR','Vol à la tire',NULL)`,
 		// Leurres : agrégat véhicule (exclu explicitement) + splatter (ne matche aucun motif).
-		`INSERT INTO commendation_definitions VALUES ('u-mastery','Vehicle Mastery','Maîtrise de véhicule')`,
-		`INSERT INTO commendation_definitions VALUES ('u-splatter','Splatter','Écrasement')`,
+		`INSERT INTO asset_translations VALUES ('u-mastery','commendation','en-US','Vehicle Mastery',NULL),('u-mastery','commendation','fr-FR','Maîtrise de véhicule',NULL)`,
+		`INSERT INTO asset_translations VALUES ('u-splatter','commendation','en-US','Splatter',NULL),('u-splatter','commendation','fr-FR','Écrasement',NULL)`,
 	}
 	for _, s := range metaDDL {
 		if _, err := meta.Exec(ctx, s); err != nil {
@@ -72,7 +70,7 @@ func seedVehicleCommendationFixture(t *testing.T, meta, shared *DB) {
 	}
 }
 
-// seedHijackMedalFixture peuple metadata.medal_definitions (résolution PAR NOM,
+// seedHijackMedalFixture peuple metadata.medal_definitions + medal_translations (résolution PAR NOM,
 // avec des ids VOLONTAIREMENT différents des constantes documentées — prouve que
 // la résolution par nom prime, pas un simple passthrough) + shared.medals_earned
 // (counts scopés + leurres hors scope/autre joueur/autre médaille).
@@ -82,13 +80,18 @@ func seedHijackMedalFixture(t *testing.T, meta, shared *DB) {
 
 	metaDDL := []string{
 		`CREATE TABLE medal_definitions (
-			medal_name_id BIGINT PRIMARY KEY,
-			name_en VARCHAR
+			medal_name_id BIGINT PRIMARY KEY
 		)`,
-		`INSERT INTO medal_definitions VALUES (777001, 'Hijack')`,
-		`INSERT INTO medal_definitions VALUES (777002, 'Skyjack')`,
+		`CREATE TABLE medal_translations (
+			medal_name_id BIGINT NOT NULL, lang VARCHAR NOT NULL, name VARCHAR, description VARCHAR
+		)`,
+		`INSERT INTO medal_definitions VALUES (777001), (777002), (777003)`,
+		`INSERT INTO medal_translations VALUES (777001, 'en-US', 'Hijack', NULL)`,
+		`INSERT INTO medal_translations VALUES (777002, 'en-US', 'Skyjack', NULL)`,
+		// Le nom français ne résout rien : seule la langue de repli est la clé du référentiel.
+		`INSERT INTO medal_translations VALUES (777002, 'fr-FR', 'Hijack', NULL)`,
 		// Leurre : autre médaille, ne doit pas être résolue en hijack.
-		`INSERT INTO medal_definitions VALUES (777003, 'Killjoy')`,
+		`INSERT INTO medal_translations VALUES (777003, 'en-US', 'Killjoy', NULL)`,
 	}
 	for _, s := range metaDDL {
 		if _, err := meta.Exec(ctx, s); err != nil {
@@ -171,7 +174,7 @@ func TestVehicleCommendationStats_ReferentialEmpty(t *testing.T) {
 	meta := openVehicleTestMemDB(t)
 	// Table présente mais VIDE (aucun nom ne matche) → 0/0 sans erreur.
 	if _, err := meta.Exec(context.Background(),
-		`CREATE TABLE commendation_definitions (commendation_id VARCHAR, name_en VARCHAR, name_fr VARCHAR)`); err != nil {
+		`CREATE TABLE asset_translations (asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR, name VARCHAR, description VARCHAR)`); err != nil {
 		t.Fatalf("ddl: %v", err)
 	}
 	repo := NewVehicleCommendationStatsRepo(&PlayerDB{Shared: shared, Metadata: meta, XUID: "xA"})

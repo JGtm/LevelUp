@@ -58,6 +58,7 @@ var requestPathWriterAllowlist = map[string]struct {
 	// validé avant la prise du writer (L5-4).
 	"internal/service/openspartan_import_service.go":      {1, "import OpenSpartan : writer pris après validation du fichier"},
 	"internal/service/openspartan_post_import_service.go": {6, "suite de l'import OpenSpartan : un import à la fois par compte"},
+	"internal/service/site_import.go":                     {1, "import depuis le site (lot L22.b, 2026-11-03) : writer pris après la vérification de l'archive, un import à la fois, lancé par l'utilisateur de l'application de bureau (capacité ImportFromSite, profil desktop seul)"},
 	// 2026-10-17 : exclusion de match (PATCH …/matches/{id}/exclusion, RequireAuth). Le rejeu
 	// LUSR v2 écrit l'état du joueur côté shared : décision D-6 du plan backlog 2026-10-16
 	// (utilisateur) — le recalcul prend l'écrivain par RAFALES COURTES (sentinelle de reset, puis

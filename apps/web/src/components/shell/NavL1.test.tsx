@@ -46,7 +46,6 @@ describe('NavL1', () => {
       currentPlayer: { player_slug: 'test-player', gamertag: 'TestPlayer' } as unknown as ReturnType<typeof useAppShellStore.getState>['currentPlayer'],
       availablePlayers: [{ player_slug: 'test-player', gamertag: 'TestPlayer' }] as unknown as ReturnType<typeof useAppShellStore.getState>['availablePlayers'],
       locale: 'fr',
-      authMode: 'none',
       isAdmin: false,
       // Baseline fail-open : titre courant introuvable dans availableTitles → toutes
       // les sections visibles. Les tests de gating posent un titre partiel explicite.
@@ -214,7 +213,7 @@ describe('NavL1', () => {
 
     expect(screen.getByRole('menuitem', { name: 'Citations' })).toHaveAttribute(
       'href',
-      '/t/partial/players/test-player/commendations',
+      '/t/partial/players/test-player/career/commendations',
     )
   })
 

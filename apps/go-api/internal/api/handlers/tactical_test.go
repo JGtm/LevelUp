@@ -463,7 +463,7 @@ func TestTacticalHandler_GrappesEtVentilationTraversent(t *testing.T) {
 		MapID: "streets", Question: domain.TacticalQuestionRoutes, Qui: domain.TacticalQuiMoi,
 		MatchsFiltres: 5, MatchsRetenus: 2, MatchsEnAttente: 1, MatchsNonCuisables: 2,
 		Grappes: []domain.TacticalGrappe{{
-			ID: "s+1+1+c03", NomFR: "Base rouge", NomEN: "Red base", X: 1, Y: 1, Matchs: 4,
+			ID: "s+1+1+c03", Nom: "Base rouge", X: 1, Y: 1, Matchs: 4,
 		}},
 	}}
 	r := newTacticalRouter(tacticalFactory(svc, nil))
@@ -476,10 +476,8 @@ func TestTacticalHandler_GrappesEtVentilationTraversent(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	// LES DEUX LANGUES TRAVERSENT : un nom de lieu vient du catalogue du JEU, et le client
-	// ne peut pas le traduire — n'en servir qu'une figerait la moitie des joueurs sur
-	// l'autre.
-	if len(got.Grappes) != 1 || got.Grappes[0].NomFR != "Base rouge" || got.Grappes[0].NomEN != "Red base" {
+	// LE NOM DE LIEU TRAVERSE DANS LA LANGUE DE LA REQUETE (resolue par le service).
+	if len(got.Grappes) != 1 || got.Grappes[0].Nom != "Base rouge" {
 		t.Fatalf("grappes = %+v", got.Grappes)
 	}
 	// « En attente » traverse (traitement en cours) ; le non cuisable reste au journal de la

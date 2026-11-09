@@ -6,8 +6,7 @@ package killcollector
 //
 // Jusqu ici, le decodage de kill-source n avait qu UNE source : [LocalCacheFilms], le cache
 // disque. Or ce cache etait herite du projet Python supprime a la migration, et AUCUN code Go
-// ne creait de nouveau manifeste. Mesure du 2026-08-29 (registre
-// `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`) : le cache s arrete le 2026-04-07, et depuis
+// ne creait de nouveau manifeste. Mesure du 2026-08-29 : le cache s arrete le 2026-04-07, et depuis
 // cette date `assist_known` vaut FALSE sur 100 % des matchs synchronises — parce que
 // l assistant ne se lit QUE dans le kill-feed du film. Deux blocs de l app (« qui assiste
 // qui » de la page Escouade, assistances de la vue match) se sont retires en silence pendant
@@ -20,7 +19,7 @@ package killcollector
 //
 // Les films EXPIRENT cote serveur Halo. Un film telecharge puis jete devrait etre
 // re-telecharge a chaque re-decodage, et le jour ou il expire il serait perdu alors qu on l a
-// EU. Chaque film lu est donc ecrit au cache par [filmcache.Write] (chunks d abord, manifeste
+// EU. Chaque film lu est donc ecrit au cache par [filmarchive.Write] (chunks d abord, manifeste
 // en dernier : le manifeste est le marqueur de commit). Une passe suivante — decodeur revise,
 // nouvelle mesure — retombe alors sur [LocalCacheFilms] et ne paie plus le reseau.
 //
@@ -41,10 +40,12 @@ import (
 	"log/slog"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
+	"levelup/go-api/internal/filmarchive"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // Compteurs de la source en ligne, publies en expvar (ADR 0009).
@@ -83,7 +84,7 @@ func NewRemoteFilms(local *LocalCacheFilms, distant filmChunkFetcher, cacheRoot 
 // `killsource_films_absents`.
 func (r *RemoteFilms) GetFilmChunks(
 	ctx context.Context, matchID string,
-) ([]haloclient.FilmChunk, bool, error) {
+) ([]filmfetch.FilmChunk, bool, error) {
 	if r == nil {
 		return nil, false, nil
 	}
@@ -94,14 +95,14 @@ func (r *RemoteFilms) GetFilmChunks(
 	} else if errors.Is(err, finalise.ErrFilmNonFinalise) {
 		// UN MANIFESTE LOCAL NON FINALISE N EST PAS UN CACHE CASSE (lot L3, constat L3-R2) : il a
 		// ete valide avant que le serveur publie les temps forts. Le reseau le complete, et
-		// l archivage ci-dessous remplace le manifeste partiel (`filmcache.Write`). Un etat a
+		// l archivage ci-dessous remplace le manifeste partiel (`filmarchive.Write`). Un etat a
 		// reparer, pas une panne : INFO, deja compte par `LocalCacheFilms`.
 		slog.InfoContext(ctx, "killsource_cache_non_finalise_repli_reseau",
 			"match_id", matchID, "err", err)
 	} else if estChunkTronque(err) {
 		// UN CHUNK TRONQUE VAUT UN FILM ABSENT DU DISQUE (J2.3, 2026-09-26) : ecrit en place par
 		// un writer d avant l ecriture atomique puis interrompu. Le reseau sert le film, et
-		// l archivage ci-dessous remplace le chunk (`filmcache.Write` ne garde un chunk present
+		// l archivage ci-dessous remplace le chunk (`filmarchive.Write` ne garde un chunk present
 		// qu a la bonne taille). Un etat a reparer, pas une panne : INFO.
 		slog.InfoContext(ctx, "killsource_cache_chunk_tronque_repli_reseau",
 			"match_id", matchID, "err", err)
@@ -127,21 +128,21 @@ func (r *RemoteFilms) GetFilmChunks(
 // archiver ecrit le film au cache. Best-effort SIGNALE : l echec n empeche pas le decodage
 // (les octets sont en memoire) mais il est logge ET compte — sans quoi un disque plein
 // ferait payer le reseau a chaque passe sans que personne ne le sache.
-func (r *RemoteFilms) archiver(ctx context.Context, matchID string, chunks []haloclient.FilmChunk) {
+func (r *RemoteFilms) archiver(ctx context.Context, matchID string, chunks []filmfetch.FilmChunk) {
 	if r.cacheRoot == "" {
 		slog.WarnContext(ctx, "killsource_film_non_archive_faute_de_cache",
 			"match_id", matchID,
 			"consequence", "film irremplacable non conserve — la passe suivante repaiera le reseau")
 		return
 	}
-	wc := make([]filmcache.WriteChunk, 0, len(chunks))
+	wc := make([]filmarchive.WriteChunk, 0, len(chunks))
 	for _, c := range chunks {
-		wc = append(wc, filmcache.WriteChunk{
+		wc = append(wc, filmarchive.WriteChunk{
 			Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS, DurationMS: c.DurationMS,
 			Data: c.Data,
 		})
 	}
-	if err := filmcache.Write(ctx, r.cacheRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
+	if err := filmarchive.Write(ctx, r.cacheRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
 		observability.IncCounter(CompteurArchiveErreurs)
 		slog.ErrorContext(ctx, "killsource_film_archive_echec", "match_id", matchID, "err", err)
 		return

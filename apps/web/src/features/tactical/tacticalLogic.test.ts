@@ -20,6 +20,7 @@ import type { TacticalMapCard } from '@/lib/api/types'
 import {
   barreResultats,
   estOuvrable,
+  libelleExplorateur,
   nomCarte,
   trierCartes,
   contexteFiltre,
@@ -32,7 +33,8 @@ function carte(over: Partial<TacticalMapCard> = {}): TacticalMapCard {
   return {
     map_id: 'm',
     map_name: 'Map',
-    map_name_fr: '',
+    map_label: 'Map',
+    map_filter_key: 'Map',
     matchs: 10,
     victoires: 5,
     defaites: 5,
@@ -123,22 +125,21 @@ describe('barreResultats', () => {
 })
 
 describe('nomCarte', () => {
-  it('le français vient du contrat', () => {
-    expect(nomCarte(carte({ map_name: 'Streets', map_name_fr: 'Ruelles' }), 'fr')).toBe('Ruelles')
+  it('le nom affiché est le libellé servi, déjà dans la langue de la requête', () => {
+    expect(nomCarte(carte({ map_name: 'Streets', map_label: 'Ruelles' }))).toBe('Ruelles')
+    expect(nomCarte(carte({ map_name: 'Streets', map_label: 'Streets' }))).toBe('Streets')
   })
 
-  it('nom FR vide : on retombe sur le nom canonique plutôt que sur du blanc', () => {
-    expect(nomCarte(carte({ map_name: 'Streets', map_name_fr: '   ' }), 'fr')).toBe('Streets')
+  it('libellé blanc : le map_id plutôt qu’une vignette anonyme', () => {
+    expect(nomCarte(carte({ map_id: 'asset-42', map_name: '', map_label: '   ' }))).toBe('asset-42')
   })
+})
 
-  it('en anglais, le nom canonique', () => {
-    expect(nomCarte(carte({ map_name: 'Streets', map_name_fr: 'Ruelles' }), 'en')).toBe('Streets')
-  })
-
-  it('aucun nom : le map_id plutôt qu’une vignette anonyme', () => {
-    expect(nomCarte(carte({ map_id: 'asset-42', map_name: '', map_name_fr: '' }), 'fr')).toBe(
-      'asset-42',
-    )
+describe('libelleExplorateur', () => {
+  it('la valeur de filtre de l’Explorateur ne suit pas la langue du libellé', () => {
+    const c = carte({ map_name: 'Streets', map_label: 'Streets', map_filter_key: 'Ruelles' })
+    expect(libelleExplorateur(c)).toBe('Ruelles')
+    expect(nomCarte(c)).toBe('Streets')
   })
 })
 

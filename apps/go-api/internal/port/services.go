@@ -10,10 +10,11 @@ import (
 
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/domain/objectiveevent"
-	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/canonical"
+
+	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
+	"github.com/JGtm/LevelUp/libs/film/playerposition"
 )
 
 // ---------------------------------------------------------------------------
@@ -23,7 +24,6 @@ import (
 // CareerService construit les réponses de la page Carrière.
 type CareerService interface {
 	GetCareerPage(ctx context.Context) (domain.CareerPageResponse, error)
-	GetTopMatches(ctx context.Context) (domain.CareerTopMatchesResponse, error)
 	GetEncounters(ctx context.Context) (domain.CareerEncountersResponse, error)
 	// GetHighlightMatchIDs : 15 best + 15 worst match_ids (split par section)
 	// + cascade counts (available_experience, available_seasons) pour les
@@ -348,15 +348,12 @@ type GamertagResolver interface {
 	ResolveGamertags(ctx context.Context, matchID string, xuids []string) (map[string]string, error)
 }
 
-// MatchExclusionService gère le marquage et la liste des matchs non pertinents.
+// MatchExclusionService gère le marquage des matchs non pertinents.
 type MatchExclusionService interface {
 	// SetExclusion marque ou démarque un match comme non pertinent.
 	// Retourne ErrRankedMatchNotExcludable si excluded=true sur un match classé.
 	// Retourne ErrMatchNotFound si le match_id n'existe pas dans shared.match_registry.
 	SetExclusion(ctx context.Context, matchID string, excluded bool) error
-
-	// ListExcluded retourne les matchs exclus du joueur.
-	ListExcluded(ctx context.Context) ([]domain.ExcludedMatch, error)
 }
 
 // MatchRecomputer relance les batches perf_score + LUSR pour propager l'effet
@@ -509,14 +506,14 @@ type LeaderboardService interface {
 }
 
 // PlayerStatsProvider fournit les stats d'un joueur distant via Waypoint.
-// Implémenté par platform/halo.CompareProvider.
+// Implémenté par haloadapter.Provider.
 type PlayerStatsProvider interface {
 	FetchRemoteStats(ctx context.Context, gamertag, titleSlug string) (*domain.NormalizedPlayerStats, error)
 }
 
 // ServiceRecordProvider fournit le service record complet d'un joueur distant
 // (stats + temps de jeu + médailles lifetime) en un seul appel Waypoint.
-// Implémenté par platform/halo.HaloProvider et décoré par service.CachedStatsProvider.
+// Implémenté par haloadapter.Provider et décoré par service.CachedStatsProvider.
 type ServiceRecordProvider interface {
 	FetchServiceRecord(ctx context.Context, gamertag, titleSlug string) (*domain.RemoteServiceRecord, error)
 }
@@ -524,13 +521,13 @@ type ServiceRecordProvider interface {
 // SeasonStatsProvider fournit le nombre de matchs matchmade complétés par un
 // joueur sur UNE saison donnée (service record Waypoint filtré par seasonId,
 // optionnellement par isRanked). isRanked=nil → total de la saison. Implémenté
-// par platform/halo.HaloProvider et décoré (cache) par service.CachedStatsProvider.
+// par haloadapter.Provider et décoré (cache) par service.CachedStatsProvider.
 type SeasonStatsProvider interface {
 	FetchSeasonServiceRecord(ctx context.Context, gamertag, seasonID string, isRanked *bool) (int, error)
 }
 
 // PrivacyProvider interroge la privacy d'un compte Halo via Waypoint.
-// Implémenté par platform/halo.HaloProvider.
+// Implémenté par haloadapter.Provider.
 type PrivacyProvider interface {
 	GetMatchPrivacy(ctx context.Context, xuid string) (*domain.MatchPrivacyInfo, error)
 }

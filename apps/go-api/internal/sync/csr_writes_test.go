@@ -6,6 +6,8 @@ package sync
 import (
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 func makeRankedRegistry(matchID string) *MatchRegistryRow {
@@ -53,9 +55,6 @@ func TestExtractCSRRowIfRanked_RankedStable(t *testing.T) {
 	if row.Tier != "Gold" {
 		t.Errorf("Tier: want Gold, got %q", row.Tier)
 	}
-	if row.TierFR != "Or" {
-		t.Errorf("TierFR: want Or, got %q", row.TierFR)
-	}
 	if row.SubTier != 5 {
 		t.Errorf("SubTier: want 5, got %d", row.SubTier)
 	}
@@ -94,11 +93,8 @@ func TestExtractCSRRowIfRanked_PlacementSingular(t *testing.T) {
 	if row.Tier != "Placement" {
 		t.Errorf("Tier: want Placement, got %q", row.Tier)
 	}
-	if row.TierFR != "Placement" {
-		t.Errorf("TierFR: want Placement, got %q", row.TierFR)
-	}
-	if row.TierLabel != "Placement (1 restant)" {
-		t.Errorf("TierLabel: want %q, got %q", "Placement (1 restant)", row.TierLabel)
+	if row.TierLabel != "Placement (1)" {
+		t.Errorf("TierLabel: want %q, got %q", "Placement (1)", row.TierLabel)
 	}
 	if row.MeasurementMatchesRemaining != 1 {
 		t.Errorf("MeasurementMatchesRemaining: want 1, got %d", row.MeasurementMatchesRemaining)
@@ -113,8 +109,8 @@ func TestExtractCSRRowIfRanked_PlacementPlural(t *testing.T) {
 	if row == nil {
 		t.Fatal("expected non-nil row for placement match")
 	}
-	if row.TierLabel != "Placement (4 restants)" {
-		t.Errorf("TierLabel: want pluriel %q, got %q", "Placement (4 restants)", row.TierLabel)
+	if row.TierLabel != "Placement (4)" {
+		t.Errorf("TierLabel: want pluriel %q, got %q", "Placement (4)", row.TierLabel)
 	}
 }
 
@@ -129,9 +125,6 @@ func TestExtractCSRRowIfRanked_OnyxNoSubTier(t *testing.T) {
 	}
 	if row.TierLabel != "Onyx 1850" {
 		t.Errorf("TierLabel: want %q, got %q", "Onyx 1850", row.TierLabel)
-	}
-	if row.TierFR != "Onyx" {
-		t.Errorf("TierFR for Onyx should remain 'Onyx', got %q", row.TierFR)
 	}
 	if row.RatingDelta == nil || *row.RatingDelta != 30 {
 		t.Errorf("RatingDelta: want +30, got %v", row.RatingDelta)
@@ -226,8 +219,8 @@ func TestTranslateTierFR_UnknownTier(t *testing.T) {
 		"":         "",         // vide → vide (placement géré ailleurs)
 	}
 	for in, want := range cases {
-		if got := translateTierFR(in); got != want {
-			t.Errorf("translateTierFR(%q) = %q, want %q", in, got, want)
+		if got := translateTier(in)[i18n.LocaleFR]; got != want {
+			t.Errorf("translateTier(%q) = %q, want %q", in, got, want)
 		}
 	}
 }
@@ -268,8 +261,5 @@ func TestExtractCSRRowIfRanked_DeltaNilWhenNoPreMatchCSR(t *testing.T) {
 	}
 	if row.RatingDelta != nil {
 		t.Errorf("RatingDelta: want nil when no PreMatchCSR, got %v", *row.RatingDelta)
-	}
-	if row.TierFR != "Platine" {
-		t.Errorf("TierFR: want Platine, got %q", row.TierFR)
 	}
 }

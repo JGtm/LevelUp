@@ -6,9 +6,17 @@ import type { ComponentPropsWithoutRef } from 'react'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
+import type { CapabilityMap } from '@/lib/api/types'
 import { useFeedbackDrawerStore } from '@/features/feedback-drawer/feedbackDrawer.store'
 import { AppFooter } from './AppFooter'
-import { GITHUB_URL, GITHUB_PROFILE_URL, SPONSORS_URL, PAYPAL_URL } from '@/lib/appLinks'
+import {
+  GITHUB_URL,
+  GITHUB_PROFILE_URL,
+  SPONSORS_URL,
+  PAYPAL_URL,
+  MICROSOFT_CONTENT_NOTICE,
+  XBOX_GAME_CONTENT_RULES_URL,
+} from '@/lib/appLinks'
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
@@ -28,7 +36,7 @@ function hrefOf(name: RegExp): string | null {
 
 describe('AppFooter', () => {
   afterEach(() => {
-    useAppShellStore.setState({ locale: 'fr' })
+    useAppShellStore.setState({ locale: 'fr', capabilities: null })
     useFeedbackDrawerStore.setState({ isOpen: false })
   })
 
@@ -40,7 +48,8 @@ describe('AppFooter', () => {
     expect(hrefOf(/Nouveautés/i)).toBe('/changelog')
     expect(hrefOf(/Confidentialité/i)).toBe('/privacy')
     expect(hrefOf(/Développeur/i)).toBe(GITHUB_PROFILE_URL)
-    expect(screen.getByText(/sans lien avec Microsoft/i)).toBeInTheDocument()
+    expect(screen.getByTestId('microsoft-notice')).toHaveTextContent(MICROSOFT_CONTENT_NOTICE)
+    expect(hrefOf(/Règles d'usage du contenu de jeu de Microsoft/i)).toBe(XBOX_GAME_CONTENT_RULES_URL)
   })
 
   it('le lien CSinsight suit la locale de l’app', () => {
@@ -86,10 +95,31 @@ describe('AppFooter', () => {
     expect(PAYPAL_URL).toBeTruthy()
   })
 
+  it('le lien vers la page de téléchargement suit la capacité du serveur, dans les deux variantes', () => {
+    const { unmount } = renderWithProviders(<AppFooter />)
+    expect(hrefOf(/Application Windows/i)).toBe('/telecharger')
+    unmount()
+    const minimal = renderWithProviders(<AppFooter variant="minimal" />)
+    expect(hrefOf(/Application Windows/i)).toBe('/telecharger')
+    minimal.unmount()
+
+    useAppShellStore.setState({
+      capabilities: { can_offer_windows_download: false } as CapabilityMap,
+    })
+    for (const variant of ['full', 'minimal'] as const) {
+      const view = renderWithProviders(<AppFooter variant={variant} />)
+      expect(screen.queryByRole('link', { name: /Application Windows/i })).toBeNull()
+      view.unmount()
+    }
+  })
+
   it('rend les libellés en anglais quand locale=en', () => {
     useAppShellStore.setState({ locale: 'en' })
     renderWithProviders(<AppFooter />)
-    expect(screen.getByText(/not affiliated with Microsoft/i)).toBeInTheDocument()
+    // Le texte imposé reste en anglais mot pour mot ; l'introduction et le lien suivent la langue.
+    expect(screen.getByTestId('microsoft-notice')).toHaveTextContent(MICROSOFT_CONTENT_NOTICE)
+    expect(screen.getByText(/Notice required by Microsoft/i)).toBeInTheDocument()
+    expect(hrefOf(/Microsoft Game Content Usage Rules/i)).toBe(XBOX_GAME_CONTENT_RULES_URL)
     expect(screen.getByRole('link', { name: /Source code/i })).toBeInTheDocument()
   })
 })

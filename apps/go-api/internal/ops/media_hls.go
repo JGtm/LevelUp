@@ -9,7 +9,9 @@ package ops
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"os"
@@ -74,7 +76,7 @@ type HLSTranscodeParams struct {
 	// DeleteSource : supprimer le fichier source après un transcodage HLS prouvé
 	// lisible (4e garde anti-perte). false = conserver le source (défaut sûr en
 	// local ; le HLS reste servi, le source reste la copie maître). Résolu en amont
-	// par config.ResolveMediaDeleteSource (env > store > isProd).
+	// par config.AppConfig.MediaDeleteSource (env > store > isProd).
 	DeleteSource bool
 	// ManualAudioRoles : rôle déclaré de chaque piste audio source (voix/jeu/autres),
 	// chargé par l'appelant depuis le réglage média du joueur AVANT BuildHLS. Non
@@ -99,21 +101,38 @@ func DetectHLSNeeded(ctx context.Context, srcAbs string) (bool, error) {
 // Pure : aucune IO. En mode legacy (capturesBase vide), hlsRel retombe sur le
 // chemin absolu du master.
 //
-// Limite connue (collision de stem) : le dossier de sortie ne dépend que du stem
-// (nom sans extension). Deux sources au même stem dans un même dossier joueur
-// (clip.mkv et clip.mp4) résolvent vers le MÊME hls/{stem} — la seconde
-// transcodée écrase l'arbre de la première. Pas de correctif structurel ici :
-// désambiguïser le nom (inclure l'extension) casserait les arbres HLS déjà
-// produits et référencés en DB. En pratique une capture porte une extension
-// stable ; la collision suppose deux conteneurs jumeaux, cas non observé.
+// Une source directement dans capturesDir sort dans hls/{stem} (les arbres déjà
+// produits et référencés en DB restent valides). Une source en sous-dossier sort
+// dans hls/{stem}_{8 premiers hex du SHA-256 du dossier relatif}, calculé sur le
+// chemin en minuscules et séparateur « / » : deux sous-dossiers qui contiennent un
+// clip de même nom ont chacun leur arbre.
+//
+// Limite connue (collision de stem) : à dossier égal, le dossier de sortie ne
+// dépend que du stem (nom sans extension). Deux sources au même stem dans un même
+// dossier (clip.mkv et clip.mp4) résolvent vers le MÊME arbre — la seconde
+// transcodée écrase l'arbre de la première. Désambiguïser avec l'extension
+// casserait les arbres déjà produits ; la collision suppose deux conteneurs
+// jumeaux, cas non observé.
 func HLSPathsFor(capturesDir, capturesBase, gamertag, sourceAbs string) (outDir, hlsRel string) {
 	stem := strings.TrimSuffix(filepath.Base(sourceAbs), filepath.Ext(sourceAbs))
-	outDir = filepath.Join(capturesDir, "hls", stem)
+	outDir = filepath.Join(capturesDir, "hls", stem+hlsFolderSuffix(capturesDir, sourceAbs))
 	master := filepath.Join(outDir, "master.m3u8")
 	if rel := (MediaPathStore{CapturesBase: capturesBase}).ToRel(master, gamertag); rel != "" {
 		return outDir, rel
 	}
 	return outDir, master
+}
+
+// hlsFolderSuffix rend le suffixe qui distingue le dossier HLS d'une source placée
+// en sous-dossier de capturesDir ; vide pour une source à la racine (ou hors de
+// capturesDir).
+func hlsFolderSuffix(capturesDir, sourceAbs string) string {
+	rel, err := filepath.Rel(capturesDir, filepath.Dir(sourceAbs))
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(strings.ToLower(filepath.ToSlash(rel))))
+	return "_" + hex.EncodeToString(sum[:])[:8]
 }
 
 // withSharedSocialDB ouvre la DB cible (handle pool si présent, sinon sql.Open)
@@ -280,6 +299,13 @@ func RunHLSTranscode(ctx context.Context, p HLSTranscodeParams) error {
 		return nil
 	}
 
+	// L'original va disparaître : la fiche cesse de l'attendre (source_path NULL), sinon
+	// la passe de réconciliation le chercherait. Échec : l'original reste sur le disque.
+	if err := clearMediaSource(ctx, p.DBPath, p.HLSRel); err != nil {
+		log.ErrorContext(ctx, "RunHLSTranscode: original non détaché de la fiche — source conservé",
+			"source", p.SourceAbs, "hls", p.HLSRel, "err", err)
+		return nil
+	}
 	if err := os.Remove(p.SourceAbs); err != nil {
 		log.WarnContext(ctx, "RunHLSTranscode: suppression source échouée (non bloquant)",
 			"source", p.SourceAbs, "err", err)
@@ -289,6 +315,22 @@ func RunHLSTranscode(ctx context.Context, p HLSTranscodeParams) error {
 		"audio_tracks", res.AudioTracks, "segments", res.Segments,
 		"renditions", res.Renditions)
 	return nil
+}
+
+// clearMediaSource détache l'original de la fiche convertie : source_path, taille et
+// date repassent à NULL. La fiche est désignée par son file_path courant (le master).
+func clearMediaSource(ctx context.Context, dbPath, hlsRel string) error {
+	return withSharedSocialDB(ctx, dbPath, func(db *sql.DB) error {
+		if _, err := db.ExecContext(ctx, `
+			UPDATE media_files
+			SET source_path = NULL, source_size = NULL, source_mtime_ns = NULL
+			WHERE file_path = ?
+		`, hlsRel); err != nil {
+			return fmt.Errorf("clearMediaSource: %w", err)
+		}
+		checkpointBestEffort(ctx, db, "clearMediaSource")
+		return nil
+	})
 }
 
 // mediaHasThumbnail indique si la ligne média identifiée par son file_path

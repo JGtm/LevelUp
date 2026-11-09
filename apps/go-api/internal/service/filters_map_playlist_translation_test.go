@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // ---------------------------------------------------------------------------
@@ -18,18 +19,16 @@ func makeMapRows() []domain.FilterMatchRow {
 		en := "Aquarius"
 		fr := "Aquarius Bord de mer"
 		rows = append(rows, domain.FilterMatchRow{
-			MatchID:   "m" + string(rune('0'+i)),
-			MapName:   strPtr(en),
-			MapNameFR: strPtr(fr), // applyMapFRTranslations enriched this
+			MatchID: "m" + string(rune('0'+i)),
+			MapName: i18n.FromColumns(en, fr), // applyMapFRTranslations enriched this
 		})
 	}
 	for i := 0; i < 3; i++ {
 		en := "Recharge"
 		fr := "Station de Recharge"
 		rows = append(rows, domain.FilterMatchRow{
-			MatchID:   "n" + string(rune('0'+i)),
-			MapName:   strPtr(en),
-			MapNameFR: strPtr(fr),
+			MatchID: "n" + string(rune('0'+i)),
+			MapName: i18n.FromColumns(en, fr),
 		})
 	}
 	return rows
@@ -41,18 +40,16 @@ func makePlaylistRows() []domain.FilterMatchRow {
 		en := "Ranked Arena"
 		fr := "Arène classée"
 		rows = append(rows, domain.FilterMatchRow{
-			MatchID:        "p" + string(rune('0'+i)),
-			PlaylistNameEN: strPtr(en),
-			PlaylistName:   strPtr(fr),
+			MatchID:      "p" + string(rune('0'+i)),
+			PlaylistName: i18n.FromColumns(en, fr),
 		})
 	}
 	for i := 0; i < 3; i++ {
 		en := "Quick Play"
 		fr := "Jeu rapide"
 		rows = append(rows, domain.FilterMatchRow{
-			MatchID:        "q" + string(rune('0'+i)),
-			PlaylistNameEN: strPtr(en),
-			PlaylistName:   strPtr(fr),
+			MatchID:      "q" + string(rune('0'+i)),
+			PlaylistName: i18n.FromColumns(en, fr),
 		})
 	}
 	return rows
@@ -78,7 +75,7 @@ func TestBuildMapTranslationMap_WithTranslations(t *testing.T) {
 
 func TestBuildMapTranslationMap_SameName_NotIncluded(t *testing.T) {
 	rows := []domain.FilterMatchRow{
-		{MatchID: "x1", MapName: strPtr("Catalyst"), MapNameFR: strPtr("Catalyst")},
+		{MatchID: "x1", MapName: i18n.FromColumns("Catalyst", "Catalyst")},
 	}
 	tr := buildMapTranslationMap(rows)
 	if len(tr) != 0 {
@@ -88,7 +85,7 @@ func TestBuildMapTranslationMap_SameName_NotIncluded(t *testing.T) {
 
 func TestBuildMapTranslationMap_NilMapName(t *testing.T) {
 	rows := []domain.FilterMatchRow{
-		{MatchID: "x1", MapName: nil, MapNameFR: strPtr("Aquarius Bord de mer")},
+		{MatchID: "x1", MapName: i18n.FromColumns("", "Aquarius Bord de mer")},
 	}
 	tr := buildMapTranslationMap(rows)
 	if len(tr) != 0 {
@@ -116,7 +113,7 @@ func TestBuildPlaylistTranslationMap_WithTranslations(t *testing.T) {
 
 func TestBuildPlaylistTranslationMap_SameName_NotIncluded(t *testing.T) {
 	rows := []domain.FilterMatchRow{
-		{MatchID: "x1", PlaylistNameEN: strPtr("Ranked Arena"), PlaylistName: strPtr("Ranked Arena")},
+		{MatchID: "x1", PlaylistName: i18n.FromColumns("Ranked Arena", "Ranked Arena")},
 	}
 	tr := buildPlaylistTranslationMap(rows)
 	if len(tr) != 0 {
@@ -126,7 +123,7 @@ func TestBuildPlaylistTranslationMap_SameName_NotIncluded(t *testing.T) {
 
 func TestBuildPlaylistTranslationMap_NilEN(t *testing.T) {
 	rows := []domain.FilterMatchRow{
-		{MatchID: "x1", PlaylistNameEN: nil, PlaylistName: strPtr("Arène classée")},
+		{MatchID: "x1", PlaylistName: i18n.FromColumns("", "Arène classée")},
 	}
 	tr := buildPlaylistTranslationMap(rows)
 	if len(tr) != 0 {
@@ -171,16 +168,14 @@ func makeMapFilterRows() []domain.FilterMatchRow {
 	rows := make([]domain.FilterMatchRow, 0, 8)
 	for i := 0; i < 5; i++ {
 		rows = append(rows, domain.FilterMatchRow{
-			MatchID:   "a" + string(rune('0'+i)),
-			MapName:   strPtr("Aquarius"),
-			MapNameFR: strPtr("Aquarius Bord de mer"),
+			MatchID: "a" + string(rune('0'+i)),
+			MapName: i18n.FromColumns("Aquarius", "Aquarius Bord de mer"),
 		})
 	}
 	for i := 0; i < 3; i++ {
 		rows = append(rows, domain.FilterMatchRow{
-			MatchID:   "r" + string(rune('0'+i)),
-			MapName:   strPtr("Recharge"),
-			MapNameFR: strPtr("Station de Recharge"),
+			MatchID: "r" + string(rune('0'+i)),
+			MapName: i18n.FromColumns("Recharge", "Station de Recharge"),
 		})
 	}
 	return rows
@@ -240,16 +235,14 @@ func makePlaylistFilterRows() []domain.FilterMatchRow {
 	rows := make([]domain.FilterMatchRow, 0, 8)
 	for i := 0; i < 5; i++ {
 		rows = append(rows, domain.FilterMatchRow{
-			MatchID:        "p" + string(rune('0'+i)),
-			PlaylistNameEN: strPtr("Ranked Arena"),
-			PlaylistName:   strPtr("Arène classée"),
+			MatchID:      "p" + string(rune('0'+i)),
+			PlaylistName: i18n.FromColumns("Ranked Arena", "Arène classée"),
 		})
 	}
 	for i := 0; i < 3; i++ {
 		rows = append(rows, domain.FilterMatchRow{
-			MatchID:        "q" + string(rune('0'+i)),
-			PlaylistNameEN: strPtr("Quick Play"),
-			PlaylistName:   strPtr("Jeu rapide"),
+			MatchID:      "q" + string(rune('0'+i)),
+			PlaylistName: i18n.FromColumns("Quick Play", "Jeu rapide"),
 		})
 	}
 	return rows

@@ -12,8 +12,9 @@ import type { AchievementsPageResponse } from '@/lib/api/types'
 
 export function useAchievementsPage(playerSlug: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.achievements(playerSlug, titleSlug),
+    queryKey: queryKeys.achievements(playerSlug, titleSlug, locale),
     queryFn: () =>
       api.get<AchievementsPageResponse>(`/players/${playerSlug}/pages/achievements`),
     enabled: !!playerSlug,

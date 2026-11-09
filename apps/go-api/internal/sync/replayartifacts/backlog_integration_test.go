@@ -31,13 +31,14 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/matchflags"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func baseRegistre(t *testing.T) *sql.DB {
@@ -280,7 +281,7 @@ func TestBuildAll_BudgetEpuiseArreteEntreDeuxMatchs(t *testing.T) {
 // fetcherComptant : un ChunksFetcher qui compte ses appels et ne rend jamais de film.
 type fetcherComptant struct{ n *int }
 
-func (f fetcherComptant) GetFilmChunks(context.Context, string) ([]haloclient.FilmChunk, bool, error) {
+func (f fetcherComptant) GetFilmChunks(context.Context, string) ([]filmfetch.FilmChunk, bool, error) {
 	*f.n++
 	return nil, false, nil
 }

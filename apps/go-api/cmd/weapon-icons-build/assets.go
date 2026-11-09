@@ -24,7 +24,7 @@ import (
 	"regexp"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
+	"github.com/JGtm/LevelUp/libs/film/damagetag"
 )
 
 var reAssetName = regexp.MustCompile(`[a-z][a-z0-9_]{4,}`)

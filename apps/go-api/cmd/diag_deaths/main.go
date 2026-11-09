@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 func main() {

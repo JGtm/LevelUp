@@ -118,7 +118,7 @@ export function schedulerOutcomeToAdminStatus(outcome: SchedulerOutcome | string
  * type brut (mono côté UI) : repérable sans crash quand un nouveau type
  * apparaît côté Go.
  */
-const JOB_TYPE_LABELS: Record<string, { fr: string; en: string }> = {
+const JOB_TYPE_LABELS: Record<string, Record<AdminLocale, string>> = {
   setup_smoke_test: { fr: 'Test de configuration', en: 'Setup smoke test' },
   initial_sync: { fr: 'Sync initiale', en: 'Initial sync' },
   delta_sync_all: { fr: 'Sync delta (tous)', en: 'Delta sync (all)' },

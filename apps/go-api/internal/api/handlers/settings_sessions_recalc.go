@@ -38,7 +38,9 @@ func (h *SettingsHandler) handlePostRecalculateSessions(ctx context.Context, _ *
 
 		total, joueurs, echecs := 0, 0, 0
 		for _, p := range players {
-			if p.XUID == "" {
+			// Un profil auth_only ne porte qu'un jeton : pas de base joueur à recalculer,
+			// et l'ouvrir la créerait.
+			if p.XUID == "" || p.AuthOnly {
 				continue
 			}
 			joueurs++

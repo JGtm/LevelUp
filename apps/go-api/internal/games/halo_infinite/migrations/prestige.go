@@ -19,6 +19,7 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 )
 
@@ -58,21 +59,19 @@ type seedCatalogMeta struct {
 }
 
 type seedTemplateEntry struct {
-	ID              string  `toml:"id"`
-	Metric          string  `toml:"metric"`
-	WindowType      string  `toml:"window_type"`
-	WindowValue     string  `toml:"window_value"`
-	Cadence         string  `toml:"cadence"`
-	EvalType        string  `toml:"eval_type"`
-	ModeFilter      string  `toml:"mode_filter"`
-	LabelEN         string  `toml:"label_en"`
-	LabelFR         string  `toml:"label_fr"`
-	DescriptionEN   string  `toml:"description_en"`
-	DescriptionFR   string  `toml:"description_fr"`
-	NormalTarget    float64 `toml:"normal_target"`
-	HeroicTarget    float64 `toml:"heroic_target"`
-	LegendaryTarget float64 `toml:"legendary_target"`
-	MythicTarget    float64 `toml:"mythic_target"`
+	ID              string    `toml:"id"`
+	Metric          string    `toml:"metric"`
+	WindowType      string    `toml:"window_type"`
+	WindowValue     string    `toml:"window_value"`
+	Cadence         string    `toml:"cadence"`
+	EvalType        string    `toml:"eval_type"`
+	ModeFilter      string    `toml:"mode_filter"`
+	Label           i18n.Text `toml:"label"`
+	Description     i18n.Text `toml:"description"`
+	NormalTarget    float64   `toml:"normal_target"`
+	HeroicTarget    float64   `toml:"heroic_target"`
+	LegendaryTarget float64   `toml:"legendary_target"`
+	MythicTarget    float64   `toml:"mythic_target"`
 }
 
 type seedTemplatesTOML struct {
@@ -87,12 +86,10 @@ type seedArcStep struct {
 }
 
 type seedArcEntry struct {
-	ID            string        `toml:"id"`
-	TitleEN       string        `toml:"title_en"`
-	TitleFR       string        `toml:"title_fr"`
-	DescriptionEN string        `toml:"description_en"`
-	DescriptionFR string        `toml:"description_fr"`
-	Steps         []seedArcStep `toml:"steps"`
+	ID          string        `toml:"id"`
+	Title       i18n.Text     `toml:"title"`
+	Description i18n.Text     `toml:"description"`
+	Steps       []seedArcStep `toml:"steps"`
 }
 
 type seedPresetsTOML struct {
@@ -123,10 +120,10 @@ func seedTemplates(db *sql.DB, path string) error {
 		_, err := db.ExecContext(migration.BootCtx(), `
 			INSERT INTO challenge_template (
 				id, title_slug, metric, window_type, window_value, cadence, eval_type,
-				mode_filter, label_en, label_fr, description_en, description_fr,
+				mode_filter,
 				normal_target, heroic_target, legendary_target, mythic_target,
 				schema_version, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
 			ON CONFLICT (id) DO UPDATE SET
 				title_slug       = excluded.title_slug,
 				metric           = excluded.metric,
@@ -135,10 +132,6 @@ func seedTemplates(db *sql.DB, path string) error {
 				cadence          = excluded.cadence,
 				eval_type        = excluded.eval_type,
 				mode_filter      = excluded.mode_filter,
-				label_en         = excluded.label_en,
-				label_fr         = excluded.label_fr,
-				description_en   = excluded.description_en,
-				description_fr   = excluded.description_fr,
 				normal_target    = excluded.normal_target,
 				heroic_target    = excluded.heroic_target,
 				legendary_target = excluded.legendary_target,
@@ -147,12 +140,14 @@ func seedTemplates(db *sql.DB, path string) error {
 				updated_at       = excluded.updated_at`,
 			t.ID, doc.Meta.TitleSlug, t.Metric, t.WindowType, t.WindowValue,
 			t.Cadence, t.EvalType, modeFilter,
-			t.LabelEN, t.LabelFR, t.DescriptionEN, t.DescriptionFR,
 			t.NormalTarget, t.HeroicTarget, t.LegendaryTarget, t.MythicTarget,
 			now,
 		)
 		if err != nil {
 			return fmt.Errorf("seed templates: upsert %s: %w", t.ID, err)
+		}
+		if err := migration.UpsertAssetTexts(migration.BootCtx(), db, migration.AssetTypeChallengeTemplate, t.ID, t.Label, t.Description); err != nil {
+			return fmt.Errorf("seed templates: textes de %s: %w", t.ID, err)
 		}
 	}
 	return nil
@@ -173,22 +168,19 @@ func seedPresets(db *sql.DB, path string) error {
 	now := time.Now().UTC()
 	for _, a := range doc.Arcs {
 		_, err := db.ExecContext(migration.BootCtx(), `
-			INSERT INTO preset_arc (id, title_slug, title_en, title_fr,
-			                       description_en, description_fr, schema_version, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+			INSERT INTO preset_arc (id, title_slug, schema_version, updated_at)
+			VALUES (?, ?, 1, ?)
 			ON CONFLICT (id) DO UPDATE SET
 				title_slug     = excluded.title_slug,
-				title_en       = excluded.title_en,
-				title_fr       = excluded.title_fr,
-				description_en = excluded.description_en,
-				description_fr = excluded.description_fr,
 				schema_version = excluded.schema_version,
 				updated_at     = excluded.updated_at`,
-			a.ID, doc.Meta.TitleSlug, a.TitleEN, a.TitleFR,
-			a.DescriptionEN, a.DescriptionFR, now,
+			a.ID, doc.Meta.TitleSlug, now,
 		)
 		if err != nil {
 			return fmt.Errorf("seed presets: upsert arc %s: %w", a.ID, err)
+		}
+		if err := migration.UpsertAssetTexts(migration.BootCtx(), db, migration.AssetTypePresetArc, a.ID, a.Title, a.Description); err != nil {
+			return fmt.Errorf("seed presets: textes de l'arc %s: %w", a.ID, err)
 		}
 		for _, s := range a.Steps {
 			_, err := db.ExecContext(migration.BootCtx(), `

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { resolveBootLocale } from './bootLocale'
+import { DEFAULT_LOCALE } from './locale'
 
 describe('resolveBootLocale', () => {
   it('le segment de langue de l’URL prime sur tout', () => {
@@ -18,8 +19,8 @@ describe('resolveBootLocale', () => {
     expect(resolveBootLocale('/', null, ['de-DE', 'EN-us', 'fr'])).toBe('en')
   })
 
-  it('rien de connu → français', () => {
-    expect(resolveBootLocale('/', null, ['de-DE'])).toBe('fr')
-    expect(resolveBootLocale('/', null, [])).toBe('fr')
+  it('rien de connu → DEFAULT_LOCALE', () => {
+    expect(resolveBootLocale('/', null, ['de-DE'])).toBe(DEFAULT_LOCALE)
+    expect(resolveBootLocale('/', null, [])).toBe(DEFAULT_LOCALE)
   })
 })

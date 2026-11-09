@@ -4,8 +4,8 @@ package main
 // job.
 //
 // La sentinelle elle-même (armement, échantillonnage, plafond dur, Disarm) est
-// internal/filmproc.Arm depuis le lot v2 G.1 (2026-09-05) — ses propres tests vivent dans
-// internal/filmproc (filmproc_test.go) et ne sont pas dupliqués ici. ATTENTION : aucun test
+// libs/film/memguard.Arm depuis le lot v2 G.1 (2026-09-05) — ses propres tests vivent dans
+// libs/film/memguard (memguard_test.go) et ne sont pas dupliqués ici. ATTENTION : aucun test
 // ci-dessous n'appelle reportMemoryExceeded (qui se termine par os.Exit) — l'appeler pour de
 // bon donnerait à un test le pouvoir de tuer le binaire de test. On teste donc les pièces
 // LOCALES à ce paquet : le motif explicite (memoryExceededRequest/memoryExceededMessage) et
@@ -21,7 +21,8 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/filmproc"
+
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 func TestMemoryExceededMessage_ContientMatchIDPicEtMention(t *testing.T) {
@@ -138,7 +139,7 @@ func TestProcessJob_EchecOrdinaire_GardeSonMotif(t *testing.T) {
 	w := &worker{
 		identity:    workerIdentity{workerID: "worker-test"},
 		client:      newProtocolClient(srv.URL, "test-token"),
-		memLimitGiB: filmproc.DefaultLimitGiB, // plafond réel, jamais approché par cet échec instantané
+		memLimitGiB: memguard.DefaultLimitGiB, // plafond réel, jamais approché par cet échec instantané
 	}
 	// Payload nil : buildAndSend échoue IMMÉDIATEMENT ("job sans travail résolu"), avant
 	// tout téléchargement ou décodage — un échec ordinaire, réel, pas simulé.

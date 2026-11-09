@@ -570,7 +570,7 @@ Capture : [`06-portee-engagements-implementee.png`](captures/06-portee-engagemen
 
 `features/synthesis/SynthesisWeaponRangeSection.tsx` porte en en-tête : « Transposition de la
 maquette validée par l'utilisateur le 2026-09-06
-(`.ai/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`, lot 5) ».
+(`.ai/archive/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`, lot 5) ».
 
 Rendu vérifié à l'écran, **il reprend la maquette élément pour élément** :
 4 tuiles de tête (5,4 m / 5,3 m / 7,3 m / −1,7 m) · une carte « Portée par arme — mes frags et mes

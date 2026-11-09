@@ -24,6 +24,7 @@ import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import type { SquadText } from './i18n'
 import { buildFdaGapCumulativeOption } from './charts/squadFdaGapChart'
 
+import type { Locale } from '@/lib/i18n/locale'
 const SUBCHART_HEIGHT = 280
 
 interface Props {
@@ -33,6 +34,8 @@ interface Props {
   /** gamertag → couleur hex (getSquadPlayerColors). */
   colorByPlayer: Record<string, string>
   t: SquadText
+  /** Langue de l'interface (store) : celle du texte d'aide, jamais déduite de l'étiquette Intl. */
+  locale: Locale
   emptyMessage?: string
   height?: number
 }
@@ -42,6 +45,7 @@ export function SquadFdaGapCumulativeCard({
   playerOrder,
   colorByPlayer,
   t,
+  locale,
   emptyMessage,
   height = SUBCHART_HEIGHT,
 }: Props) {
@@ -80,7 +84,7 @@ export function SquadFdaGapCumulativeCard({
         <span className="flex items-center gap-1.5">
           {t.fdaGap.title}
           <InfoTooltip
-            content={<FdaGapTooltipText locale={intlLocale.startsWith('en') ? 'en' : 'fr'} />}
+            content={<FdaGapTooltipText locale={locale} />}
           />
         </span>
       }

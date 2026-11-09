@@ -7,6 +7,7 @@
  */
 import type { Locale } from '@/lib/i18n/locale'
 import { intlLocale } from '@/lib/formatters'
+import { substitute } from '@/lib/i18n/template'
 
 /**
  * Substitue les placeholders `{key}` par la valeur correspondante.
@@ -16,7 +17,7 @@ export function interpolate(
   template: string,
   params: Record<string, string | number>,
 ): string {
-  return template.replace(/\{(\w+)\}/g, (_, key) => {
+  return substitute(template, (key) => {
     if (key === 'plural') {
       const n = typeof params.n === 'number' ? params.n : Number(params.count ?? 0)
       return n > 1 ? 's' : ''
@@ -100,8 +101,8 @@ export function formatMetricValue(metric: string, value: number): string {
     'accuracy_threshold_days',
   ])
   if (intMetrics.has(metric)) {
-    // Locale fixée à en-US pour produire un séparateur déterministe.
-    return Math.round(value).toLocaleString('en-US')
+    // Étiquette de l'anglais fixée (pas celle de l'interface) : séparateur déterministe.
+    return Math.round(value).toLocaleString(intlLocale('en'))
   }
   if (metric === 'accuracy') {
     return `${(value * 100).toFixed(1)} %`

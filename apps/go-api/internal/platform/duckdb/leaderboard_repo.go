@@ -50,7 +50,6 @@ func (r *LeaderboardRepo) GetLocalLeaderboard(ctx context.Context, titleSlug, se
 		matchID       string
 		ratingValue   float64
 		tier          *string
-		tierLabel     *string
 		subTier       int
 		ratingType    string
 		playlistGroup string
@@ -59,7 +58,7 @@ func (r *LeaderboardRepo) GetLocalLeaderboard(ctx context.Context, titleSlug, se
 		createdAt     *time.Time
 	}
 	const qMSR = `
-		SELECT match_id, rating_value, tier, tier_label, COALESCE(sub_tier, 0),
+		SELECT match_id, rating_value, tier, COALESCE(sub_tier, 0),
 		       COALESCE(rating_type, ''), COALESCE(playlist_group, ''),
 		       start_time, updated_at, created_at
 		FROM match_skill_rank_latest
@@ -73,8 +72,8 @@ func (r *LeaderboardRepo) GetLocalLeaderboard(ctx context.Context, titleSlug, se
 	for rows.Next() {
 		var m msrRow
 		var startT, updatedT, createdT sql.NullTime
-		var tier, tierLabel sql.NullString
-		if err := rows.Scan(&m.matchID, &m.ratingValue, &tier, &tierLabel, &m.subTier,
+		var tier sql.NullString
+		if err := rows.Scan(&m.matchID, &m.ratingValue, &tier, &m.subTier,
 			&m.ratingType, &m.playlistGroup, &startT, &updatedT, &createdT); err != nil {
 			rows.Close()
 			return nil, fmt.Errorf("LeaderboardRepo.GetLocalLeaderboard scan A: %w", err)
@@ -82,10 +81,6 @@ func (r *LeaderboardRepo) GetLocalLeaderboard(ctx context.Context, titleSlug, se
 		if tier.Valid {
 			s := tier.String
 			m.tier = &s
-		}
-		if tierLabel.Valid {
-			s := tierLabel.String
-			m.tierLabel = &s
 		}
 		if startT.Valid {
 			t := startT.Time
@@ -208,12 +203,11 @@ func (r *LeaderboardRepo) GetLocalLeaderboard(ctx context.Context, titleSlug, se
 			sortTime = m.createdAt
 		}
 
-		// tier = COALESCE(NULLIF(tier,''), NULLIF(tier_label,''), '—').
+		// tier = code anglais du palier (colonne `tier`), '—' sans palier. La colonne stockée `tier_label`
+		// n'est pas un repli : écrite dans la langue du moment de l'écriture, elle ne se sert jamais telle quelle.
 		tier := "—"
 		if m.tier != nil && strings.TrimSpace(*m.tier) != "" {
 			tier = *m.tier
-		} else if m.tierLabel != nil && strings.TrimSpace(*m.tierLabel) != "" {
-			tier = *m.tierLabel
 		}
 
 		cands = append(cands, candidateRow{

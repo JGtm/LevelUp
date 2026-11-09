@@ -1,10 +1,9 @@
 // Package duckdb — kill_distance_repo.go : implémentation DuckDB du loader
-// « distance par arme, par joueur » pour UN match (POC LOT G.3, 2026-08-30,
-// plan .ai/V7.5/chantiers/PLAN_RETOURS_UTILISATEUR_2026-08-29.md §3bis DEC-8).
+// « distance par arme, par joueur » pour UN match.
 //
 // Source : la jointure « mort mesurée » — `match_kill_events_latest` × la table
-// de positions — qui ne s'écrit plus ici : elle vit dans kill_measured.go depuis
-// le lot 3 du plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md (règle n°6 du dépôt : à la
+// de positions — qui ne s'écrit plus ici : elle vit dans kill_measured.go
+// (règle n°6 du dépôt : à la
 // troisième copie on centralise ET on migre les copies). Ce fichier n'apporte
 // donc plus que SA clause de portée (`killDistanceWhere`) et sa résolution
 // d'armes. Les gardes (règle ART n°2 — vues `_latest` jamais les tables brutes,
@@ -37,6 +36,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -110,7 +110,7 @@ func (r *KillDistanceRepo) LoadMatch(ctx context.Context, matchID string) ([]dom
 // mesurait avant, sur une position arbitraire, faute de savoir laquelle des
 // deux victimes la ligne de positions plaçait. Impact mesuré sur le corpus :
 // NUL (0 groupe multi-victimes sur 138 293 événements). Changement statué et
-// accepté au résidu 4.0c du plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md.
+// accepté.
 const killDistanceWhere = `e.match_id = ?`
 
 // killDistanceFragScope : le MÊME match, borné dans la sous-requête `fragSolo`.
@@ -198,13 +198,13 @@ func (r *KillDistanceRepo) resolveRows(ctx context.Context, measured []killMeasu
 		return nil
 	}
 
+	loc := i18n.FromContext(ctx)
 	byPlayer := map[string][]domain.MatchKillDistanceWeapon{}
 	for k, a := range agg {
 		m := meta[k.weaponKey]
 		byPlayer[k.xuid] = append(byPlayer[k.xuid], domain.MatchKillDistanceWeapon{
 			WeaponKey:     k.weaponKey,
-			Label:         m.label,
-			LabelEN:       m.labelEN,
+			Label:         m.label.PickOptional(loc),
 			MeasuredKills: a.kills,
 			AvgDistanceM:  a.sum / float64(a.kills),
 			MinDistanceM:  a.min,

@@ -3,24 +3,17 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { assetDrawerManifest } from '@/lib/i18n/generated/asset_drawer'
 import { useAssetDrawerStore } from './assetDrawer.store'
-import { useAssetMaps, useAssetWeapons, useAssetMedals } from './useAssetDrawer'
-import { dedupeAssetsById } from './assetDrawerLogic'
-import { AssetSearch } from './AssetSearch'
-import { AssetGrid } from './AssetGrid'
+import { AssetPanelContent } from './AssetPanelContent'
 
+/**
+ * Panneau coulissant des référentiels du site : mini-onglet fixe sur le bord droit, voile, panneau
+ * qui se superpose à la page. L'application de bureau lui préfère le volet ancré (`AssetDockedPanel`).
+ */
 export function AssetDrawer() {
   const locale = useAppShellStore((s) => s.locale)
-  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-
-  const { isOpen, activeTab, search, close, toggle, setTab, setSearch } =
-    useAssetDrawerStore()
+  const { isOpen, close, toggle } = useAssetDrawerStore()
 
   const t = (key: keyof typeof assetDrawerManifest) => formatMessage(assetDrawerManifest, key, locale)
-
-  // Tiroir fermé : aucune requête (il est monté sur toutes les pages).
-  const mapsQuery = useAssetMaps(titleSlug, activeTab === 'maps' ? search : '', isOpen)
-  const weaponsQuery = useAssetWeapons(titleSlug, activeTab === 'weapons' ? search : '', isOpen)
-  const medalsQuery = useAssetMedals(titleSlug, activeTab === 'medals' ? search : '', isOpen)
 
   // Phase 3 — fermeture au clavier Escape
   useEffect(() => {
@@ -31,20 +24,6 @@ export function AssetDrawer() {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [isOpen, close])
-
-  const currentQuery =
-    activeTab === 'maps' ? mapsQuery : activeTab === 'weapons' ? weaponsQuery : medalsQuery
-  // dedupeAssetsById — dernier rempart avant rendu (cf. assetDrawerLogic.ts) : un
-  // catalogue avec deux libellés pour le même `id` fait crier React sur `key={asset.id}`
-  // dans `AssetGrid` (constat 2026-09-10, page de rejeu). Le tri serveur est déterministe,
-  // donc le dédoublonnage l'est aussi.
-  const items = dedupeAssetsById(currentQuery.data ?? [])
-  const emptyKey =
-    activeTab === 'maps'
-      ? 'asset_drawer.empty.maps'
-      : activeTab === 'weapons'
-        ? 'asset_drawer.empty.weapons'
-        : 'asset_drawer.empty.medals'
 
   return (
     <>
@@ -60,13 +39,7 @@ export function AssetDrawer() {
         {t('asset_drawer.mini_tab')}
       </button>
 
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-[49]"
-          onClick={close}
-          aria-hidden="true"
-        />
-      )}
+      {isOpen && <div className="fixed inset-0 z-[49]" onClick={close} aria-hidden="true" />}
 
       {/* Panneau drawer — mobile : sheet pleine hauteur ; desktop (sm:) : carte
           flottante centrée verticalement (rendu desktop inchangé). */}
@@ -76,102 +49,8 @@ export function AssetDrawer() {
         aria-hidden={!isOpen}
         className={`fixed right-0 top-0 z-50 flex h-full w-[88vw] max-w-sm flex-col rounded-l-lg border border-r-0 border-border bg-popover shadow-xl transition-transform duration-200 ease-out sm:top-1/2 sm:h-[min(600px,80vh)] sm:w-[290px] sm:max-w-none sm:-translate-y-1/2 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
-        {/* Header : onglets + bouton fermer */}
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2">
-          <div className="flex gap-1" role="tablist">
-            <TabButton
-              active={activeTab === 'maps'}
-              onClick={() => setTab('maps')}
-              label={t('asset_drawer.tab.maps')}
-            />
-            <TabButton
-              active={activeTab === 'weapons'}
-              onClick={() => setTab('weapons')}
-              label={t('asset_drawer.tab.weapons')}
-            />
-            <TabButton
-              active={activeTab === 'medals'}
-              onClick={() => setTab('medals')}
-              label={t('asset_drawer.tab.medals')}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={close}
-            aria-label={t('asset_drawer.toggle.close')}
-            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-          >
-            <CloseIcon />
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="shrink-0 border-b border-border px-3 py-2">
-          <AssetSearch
-            value={search}
-            placeholder={t('asset_drawer.search.placeholder')}
-            onChange={setSearch}
-          />
-        </div>
-
-        {/* Grid scrollable */}
-        <div className="flex-1 overflow-y-auto">
-          <AssetGrid
-            items={items}
-            locale={locale}
-            kind={activeTab}
-            emptyMessage={t(emptyKey)}
-            isLoading={currentQuery.isLoading}
-            isError={currentQuery.isError}
-            errorMessage={t('asset_drawer.empty.error')}
-            loadingMessage={t('asset_drawer.empty.loading')}
-          />
-        </div>
+        <AssetPanelContent onClose={close} />
       </div>
     </>
-  )
-}
-
-function TabButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
-        active
-          ? 'bg-accent text-accent-foreground'
-          : 'text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground'
-      }`}
-    >
-      {label}
-    </button>
-  )
-}
-
-function CloseIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className="h-4 w-4"
-      viewBox="0 0 20 20"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path
-        fillRule="evenodd"
-        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-        clipRule="evenodd"
-      />
-    </svg>
   )
 }

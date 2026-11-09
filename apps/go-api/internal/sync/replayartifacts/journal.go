@@ -45,6 +45,9 @@ const (
 	// CompteurFilmsPersistes : films archivés au cache disque. Ils EXPIRENT côté serveur
 	// Halo (~29 % du corpus déjà perdu) : cette valeur-là est irremplaçable.
 	CompteurFilmsPersistes = "postsync_replay_films_persisted_total"
+	// CompteurFilmsRetiresSansArchive : films dont les chunks ont été retirés après leur
+	// cuisson parce que l'archive est désactivée (ADR 0045 D-12).
+	CompteurFilmsRetiresSansArchive = "postsync_replay_films_removed_no_archive_total"
 	// CompteurDejaAJour : matchs sautés parce que leur artefact est déjà courant ET complet.
 	CompteurDejaAJour = "postsync_replay_deja_a_jour_total"
 	// CompteurEnfiles : matchs mis dans la file durable (placement « worker »).

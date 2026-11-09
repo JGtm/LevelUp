@@ -24,7 +24,6 @@ package archlint
 
 import (
 	"go/ast"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -32,10 +31,10 @@ import (
 
 // paquetsDeLaMarche : les paquets de la chaine de cuisson qui marchent des images-cles.
 var paquetsDeLaMarche = []string{
-	"internal/games/halo_infinite/film/internal/grammar",
-	"internal/games/halo_infinite/film/internal/facts/killsource",
-	"internal/games/halo_infinite/film/internal/facts/objectives",
-	"internal/games/halo_infinite/film/replay",
+	"libs/film/internal/grammar",
+	"libs/film/internal/facts/killsource",
+	"libs/film/internal/facts/objectives",
+	"libs/film/replay",
 }
 
 // formesSansPreuve : les entrees qui marchent une image-cle SANS la preuve du film.
@@ -87,10 +86,9 @@ var appelsSansPreuveAutorises = map[string]string{
 var marchesZeroAutorisees = map[string]bool{}
 
 func TestMarcheDImageCleDeProductionEstCelleDuFilm(t *testing.T) {
-	racine := apiRootDepuisIci(t)
 	vus, zeros := map[string]bool{}, map[string]bool{}
 	for _, pkg := range paquetsDeLaMarche {
-		for nom, f := range fichiersGoNonTest(t, filepath.Join(racine, filepath.FromSlash(pkg))) {
+		for nom, f := range fichiersGoNonTest(t, surDisque(t, pkg)) {
 			for _, d := range f.Decls {
 				fn, ok := d.(*ast.FuncDecl)
 				if !ok || fn.Body == nil {

@@ -10,6 +10,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { CareerPageResponse } from '@/lib/api/types'
 import { CareerHubPage } from '@/features/career/CareerHubPage'
 import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
@@ -17,7 +18,7 @@ import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
 export const Route = createFileRoute('/{-$lang}/t/$titleSlug/players/$playerSlug/career_')({
   loader: ({ params, context }) => {
     void context.queryClient.prefetchQuery({
-      queryKey: queryKeys.career(params.playerSlug, params.titleSlug),
+      queryKey: queryKeys.career(params.playerSlug, params.titleSlug, useAppShellStore.getState().locale),
       queryFn: () =>
         api.get<CareerPageResponse>(`/players/${params.playerSlug}/pages/career`),
     })

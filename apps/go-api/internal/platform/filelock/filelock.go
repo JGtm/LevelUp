@@ -1,5 +1,10 @@
-// Package filelock — un verrou EXCLUSIF entre processus, tenu par le NOYAU (DT-2 du plan de
-// suite de l'audit du decodeur de film, 2026-09-26).
+// Package filelock — un verrou EXCLUSIF entre processus, tenu par le NOYAU.
+//
+// COPIE JUMELLE de `libs/film/internal/filelock`, que go-api ne peut pas importer (ADR 0041). Les
+// deux copies sont tenues identiques, fichier par fichier, apres la clause `package`
+// (`archlint/copies_identiques_test.go`). Elle sert le verrou « un decodage de film a la fois sur
+// cette machine » du lanceur de films (`internal/filmrun`), dont les tests et instruments de la
+// brique prennent le meme verrou par leur propre copie.
 //
 // POURQUOI LE NOYAU. Un verrou « fichier present = verrou tenu » ne sait pas si son detenteur vit
 // encore : il lui faut un battement de coeur et une regle de reprise d'un verrou perime, et cette
@@ -15,9 +20,6 @@
 //   - le FICHIER de verrou n'est jamais supprime : l'effacer pendant qu'un candidat l'a ouvert
 //     laisserait deux detenteurs sur deux inodes differents. Il reste, vide, a cote des donnees
 //     qu'il protege.
-//
-// `gofrs/flock` ecarte : une dependance pour la quarantaine de lignes ci-dessous, au-dessus de
-// `golang.org/x/sys`, deja dependance directe du module.
 package filelock
 
 import (

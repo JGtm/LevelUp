@@ -8,9 +8,9 @@ import (
 	"time"
 )
 
-func loadBackupConfig(repoRoot, settingsPath string) BackupConfig {
+func loadBackupConfig(dataRoot, settingsPath string) BackupConfig {
 	cfg := BackupConfig{
-		BackupDir:   getEnvOrDefault("LEVELUP_BACKUP_DIR", filepath.Join(repoRoot, "data", "backups")),
+		BackupDir:   getEnvOrDefault("LEVELUP_BACKUP_DIR", filepath.Join(dataRoot, "backups")),
 		ResticRepo:  os.Getenv("RESTIC_REPOSITORY"),
 		Interval:    6 * time.Hour,
 		KeepDaily:   7,

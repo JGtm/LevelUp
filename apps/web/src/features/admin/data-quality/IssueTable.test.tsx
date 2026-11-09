@@ -6,7 +6,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 
-import type { AdminDataQualityIssue, PlayerSummary } from '@/lib/api/types'
+import type { AdminDataQualityIssue, CapabilityMap, PlayerSummary } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { IssueTable, type IssueColumn } from './IssueTable'
 
@@ -33,7 +33,7 @@ function issue(exampleMatchIDs: string[]): AdminDataQualityIssue {
 }
 
 afterEach(() => {
-  useAppShellStore.setState({ currentPlayer: null, availablePlayers: [], locale: 'fr' })
+  useAppShellStore.setState({ currentPlayer: null, availablePlayers: [], locale: 'fr', capabilities: null })
 })
 
 describe('IssueTable — colonne Exemples (C7b)', () => {
@@ -51,6 +51,32 @@ describe('IssueTable — colonne Exemples (C7b)', () => {
     expect(links[0]).toHaveAttribute('href', '/t/halo_5/players/JGtm/matches/m-1')
     expect(links[0]).toHaveAttribute('target', '_blank')
     expect(links[0]).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('dans la fenêtre de bureau (can_use_compact_chrome) : même fenêtre, sans target ni rel', () => {
+    useAppShellStore.setState({
+      currentPlayer: player('JGtm'),
+      availablePlayers: [],
+      locale: 'fr',
+      capabilities: { can_use_compact_chrome: true } as CapabilityMap,
+    })
+    render(<IssueTable issues={[issue(['m-1'])]} columns={columns} matchLinkTitleSlug="halo_5" />)
+    const link = screen.getByRole('link')
+    expect(link).toHaveAttribute('href', '/t/halo_5/players/JGtm/matches/m-1')
+    expect(link).not.toHaveAttribute('target')
+    expect(link).not.toHaveAttribute('rel')
+    expect(link).toHaveAttribute('aria-label', 'Ouvrir le match')
+  })
+
+  it('sans la capacité : le nouvel onglet est conservé', () => {
+    useAppShellStore.setState({
+      currentPlayer: player('JGtm'),
+      availablePlayers: [],
+      locale: 'fr',
+      capabilities: { can_use_compact_chrome: false } as CapabilityMap,
+    })
+    render(<IssueTable issues={[issue(['m-1'])]} columns={columns} matchLinkTitleSlug="halo_5" />)
+    expect(screen.getByRole('link')).toHaveAttribute('target', '_blank')
   })
 
   it('utilise le premier profil disponible si aucun joueur courant', () => {

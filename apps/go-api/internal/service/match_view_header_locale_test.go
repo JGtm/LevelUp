@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // TestBuildMatchHeader_LocaleAwareLabels — GH-9 : le header Match View servait des
@@ -17,16 +18,15 @@ import (
 func TestBuildMatchHeader_LocaleAwareLabels(t *testing.T) {
 	start := time.Date(2026, 4, 6, 23, 40, 0, 0, time.UTC)
 	meta := &domain.MatchMetaRaw{
-		MatchID:        "m1",
-		StartTime:      &start,
-		MapName:        strPtr("Bazaar"),
-		MapNameFR:      strPtr("Bazar"),
-		MapNameEN:      strPtr("Bazaar"),
-		PairName:       strPtr("Arena:Team Slayer on Bazaar"),
-		PairNameFR:     strPtr("Arene : Assassin en equipe"),
-		ModeNameFR:     strPtr("Assassin en equipe"),
-		PlaylistName:   strPtr("Quick Play"),
-		PlaylistNameFR: strPtr("Partie rapide"),
+		MatchID:       "m1",
+		StartTime:     &start,
+		MapName:       strPtr("Bazaar"),
+		MapNames:      i18n.FromColumns("Bazaar", "Bazar"),
+		PairName:      strPtr("Arena:Team Slayer on Bazaar"),
+		PairNames:     i18n.FromColumns("", "Arene : Assassin en equipe"),
+		ModeNames:     i18n.FromColumns("", "Assassin en equipe"),
+		PlaylistName:  strPtr("Quick Play"),
+		PlaylistNames: i18n.FromColumns("", "Partie rapide"),
 	}
 
 	// UI EN → libellés canoniques EN + date EN.

@@ -111,7 +111,7 @@ func TestSquadUsualContexts_PlaylistFRByID(t *testing.T) {
 	}
 
 	p := NewPrestigeSquadMatchProvider(&squadTestSharedReader{db: db}).
-		WithPlaylistTranslatorFR(translatePlaylists)
+		WithPlaylistTranslator(translatePlaylists)
 
 	playlists, _, err := p.SquadUsualContexts(context.Background(), roster, "halo_infinite", 60)
 	if err != nil {
@@ -123,7 +123,7 @@ func TestSquadUsualContexts_PlaylistFRByID(t *testing.T) {
 }
 
 // TestSquadUsualContexts_PlaylistFallbackWithoutTranslator vérifie la
-// dégradation gracieuse : sans traducteur de playlists injecté (WithPlaylistTranslatorFR
+// dégradation gracieuse : sans traducteur de playlists injecté (WithPlaylistTranslator
 // non appelé, comme avant V72-10 suite), le libellé COALESCE(playlist_name_fr,
 // playlist_name) existant est servi tel quel (jamais vide).
 func TestSquadUsualContexts_PlaylistFallbackWithoutTranslator(t *testing.T) {
@@ -162,7 +162,7 @@ func TestSquadUsualContexts_PlaylistNameFRAlreadyPresent(t *testing.T) {
 	}
 
 	p := NewPrestigeSquadMatchProvider(&squadTestSharedReader{db: db}).
-		WithPlaylistTranslatorFR(translatePlaylists)
+		WithPlaylistTranslator(translatePlaylists)
 
 	playlists, _, err := p.SquadUsualContexts(context.Background(), roster, "halo_infinite", 60)
 	if err != nil {

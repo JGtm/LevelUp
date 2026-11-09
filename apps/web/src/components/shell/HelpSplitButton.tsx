@@ -36,8 +36,8 @@ export function HelpSplitButton({ isActive }: HelpSplitButtonProps) {
           to="/help"
           search={{ tab: 'glossary' }}
           className="px-2 py-1.5"
-          aria-label="Aide"
-          title="Aide"
+          aria-label={t('common.help.button_label')}
+          title={t('common.help.button_label')}
           aria-current={isActive ? 'page' : undefined}
         >
           <svg
@@ -59,7 +59,7 @@ export function HelpSplitButton({ isActive }: HelpSplitButtonProps) {
           type="button"
           onClick={() => setOpen((v) => !v)}
           className="px-1.5 py-1.5 cursor-pointer"
-          aria-label="Onglets Aide"
+          aria-label={t('common.help.tabs_label')}
           aria-expanded={open}
           aria-haspopup="menu"
         >

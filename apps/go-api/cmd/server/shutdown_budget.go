@@ -90,11 +90,16 @@ func (c *shutdownClock) runPhase(ctx context.Context, p shutdownPhase) bool {
 }
 
 // runAll exécute les phases dans l'ordre. Une phase qui dépasse ne retient pas les suivantes :
-// quand le budget est épuisé, chacune reçoit une durée nulle et rend la main aussitôt.
-func (c *shutdownClock) runAll(ctx context.Context, phases []shutdownPhase) {
+// quand le budget est épuisé, chacune reçoit une durée nulle et rend la main aussitôt. Rend vrai
+// quand toutes les phases sont allées à leur terme dans leur délai.
+func (c *shutdownClock) runAll(ctx context.Context, phases []shutdownPhase) bool {
+	allOK := true
 	for _, p := range phases {
-		c.runPhase(ctx, p)
+		if !c.runPhase(ctx, p) {
+			allOK = false
+		}
 	}
+	return allOK
 }
 
 // blocking adapte une attente qui ne prend pas de contexte (WaitGroup, Close) : elle

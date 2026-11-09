@@ -26,7 +26,6 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
-	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/games/titleseams"
@@ -91,7 +90,7 @@ func main() {
 		fatal("xuid introuvable (cible=%q auth=%q)", gt, authGT)
 	}
 
-	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT)
 	if err != nil || res == nil || res.Tokens == nil {
 		fatal("refresh tokens (auth_as=%s): %v", authGT, err)
@@ -102,7 +101,7 @@ func main() {
 		fatal("NewCaptureSource: %v", err)
 	}
 
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	shared, err := sql.Open("duckdb", pr.SharedDBPath(halo5.TitleSlug)+"?access_mode=read_only")
 	if err != nil {
 		fatal("open shared RO: %v", err)

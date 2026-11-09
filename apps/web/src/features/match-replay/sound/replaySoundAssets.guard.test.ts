@@ -27,7 +27,7 @@
  * test ne bouge. Ici, elle devient rouge.
  */
 import { describe, expect, it } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { resolve } from 'node:path'
 
@@ -40,6 +40,7 @@ import { EXPLOSION_SOUND_STEMS, THROW_SOUND_STEMS } from './grenadeSound'
 import { IMPACT_SOUND_STEMS } from './impactSound'
 import { INTRO_MUSIC_STEM } from './introSound'
 import { SOUND_CUT_MAX_S } from './replayAudio'
+import { soundUrlOf } from './replayAudioMix'
 import {
   EQUIPMENT_PLACEMENT_SOUND_STEMS,
   EQUIPMENT_SOUND_STEMS,
@@ -71,7 +72,7 @@ import { allEngineStems, VEHICLE_ENGINE_STEMS } from './vehicleEngineSound'
 import { VEHICLE_SHOT_LOOPS, VEHICLE_SHOT_SOUND_VARIANTS } from './vehicleShotSound'
 
 import { racineDuDepot } from '../test/featureFiles'
-import { wavFormat } from '../test/wavFile'
+import { opusInfo } from '../test/oggOpusFile'
 
 /**
  * Les stems de TIR DE VÉHICULE (lot du 2026-09-04) : des ARMES au sens de la règle de durée
@@ -98,14 +99,20 @@ const REPO_ROOT = racineDuDepot()
 const SOUNDS_DIR = resolve(REPO_ROOT, 'static', 'sounds', 'halo_infinite')
 const KILLICON_RULES = resolve(
   REPO_ROOT,
-  'apps/go-api/internal/games/halo_infinite/film/killicon/data/rules.tsv',
+  'libs/film/killicon/data/rules.tsv',
 )
+
+/** L'extension des sons livrés : celle que l'URL de production demande (`soundUrlOf`), pas un littéral de plus. */
+const SOUND_EXT = soundUrlOf('x').slice('/static/sounds/halo_infinite/x'.length)
+
+/** Le fichier d'un stem, sur disque, déduit de l'URL que le client demande au serveur. */
+const fichierDe = (stem: string) => resolve(REPO_ROOT, soundUrlOf(stem).slice(1))
 
 /** Les stems EFFECTIVEMENT présents dans le dossier d'assets. */
 const shipped = new Set(
   readdirSync(SOUNDS_DIR)
-    .filter((f) => f.endsWith('.wav'))
-    .map((f) => f.slice(0, -'.wav'.length)),
+    .filter((f) => f.endsWith(SOUND_EXT))
+    .map((f) => f.slice(0, -SOUND_EXT.length)),
 )
 
 /**
@@ -186,7 +193,7 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // SOUND_VARIANTS ci-dessus, comme celles du grappin.
     ...Object.values(SKULL_SOUND_STEMS),
     // Les MOTEURS DE VÉHICULES (lot du 2026-09-04) : une NOUVELLE catégorie — des BOUCLES
-    // continues (enter/loop/exit + idle du Scorpion), pas des one-shots. Elles ont leur propre
+    // continues (enter/loop/exit), pas des one-shots. Elles ont leur propre
     // garde-rail de durée et de format plus bas ; ici, seulement manifeste <-> dossier.
     ...allEngineStems(),
     // Les BOUCLES DE TIR TENU (lot M6.1, câblées au lot M4b, schéma 71) : la table de production
@@ -194,47 +201,35 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     ...Object.values(VEHICLE_SHOT_LOOPS),
   ])
 
-  it('chaque stem du manifeste a son fichier .wav', () => {
-    const missing = [...referenced].filter((s) => !shipped.has(s))
+  it('chaque stem du manifeste pointe, par son URL de production, un fichier .ogg existant', () => {
+    expect(SOUND_EXT).toBe('.ogg')
+    const missing = [...referenced].filter((s) => !existsSync(fichierDe(s)))
     expect(missing).toEqual([])
+    expect([...referenced].filter((s) => !shipped.has(s))).toEqual([])
   })
 
-  it('chaque fichier .wav livré est joué par un stem (0 asset mort)', () => {
+  it('chaque fichier .ogg livré est joué par un stem (0 asset mort)', () => {
     const orphans = [...shipped].filter((s) => !referenced.has(s))
     expect(orphans).toEqual([])
   })
 })
 
 /**
- * Durée d'un WAV, lue dans ses en-têtes RIFF (aucune dépendance : les fichiers livrés sont
- * du PCM produit par une recette fixe — `.ai/V7.5/RECETTE_SONS_ARMES.md` §7 et le lot R2 —
- * et un fichier qui ne serait plus du PCM canonique doit faire ÉCHOUER ce test, pas être
- * deviné). `data` / `byteRate` : les deux seules quantités nécessaires.
+ * Durée d'un son livré, lue dans ses en-têtes Ogg (`test/oggOpusFile.ts`) : la position granulaire
+ * finale moins le pré-décalage du codec, c'est-à-dire exactement ce que dure le son décodé. Un
+ * fichier qui ne serait pas un Ogg Opus bien formé fait ÉCHOUER ce test, il n'est pas deviné.
  */
-function wavDurationS(file: string): number {
-  const buf = readFileSync(file)
-  expect(buf.toString('latin1', 0, 4), file).toBe('RIFF')
-  expect(buf.toString('latin1', 8, 12), file).toBe('WAVE')
-  let byteRate = 0
-  let dataSize = 0
-  for (let at = 12; at + 8 <= buf.length; ) {
-    const id = buf.toString('latin1', at, at + 4)
-    const size = buf.readUInt32LE(at + 4)
-    if (id === 'fmt ') byteRate = buf.readUInt32LE(at + 16)
-    if (id === 'data') dataSize = size
-    at += 8 + size + (size % 2)
-  }
-  expect(byteRate, `${file} : en-tete fmt illisible`).toBeGreaterThan(0)
-  return dataSize / byteRate
+function dureeS(stem: string): number {
+  return opusInfo(fichierDe(stem)).dureeS
 }
 
 /**
- * Le chunk fmt complet d'un WAV : cadence, canaux, profondeur. Né dans le garde-rail des
- * moteurs ; remonté au niveau du module le 2026-09-27 (item 7) pour servir aussi la musique
- * d'intro, plutôt que d'en écrire une troisième lecture du chunk `fmt `.
+ * Le format d'un son livré : canaux et cadence d'origine, lus dans `OpusHead`. La profondeur de
+ * 16 bits du WAV n'existe plus : Opus n'a pas de profondeur, le décodeur rend du flottant.
  */
-function fmtDe(stem: string): { canaux: number; cadence: number; bits: number } {
-  return wavFormat(resolve(SOUNDS_DIR, `${stem}.wav`))
+function fmtDe(stem: string): { canaux: number; cadence: number } {
+  const { canaux, cadence } = opusInfo(fichierDe(stem))
+  return { canaux, cadence }
 }
 
 describe('garde-rail : durée livrée par catégorie', () => {
@@ -255,7 +250,7 @@ describe('garde-rail : durée livrée par catégorie', () => {
   // EVENEMENTS jusqu'a 5,15 s (flag_taken_team 4,588 s, objective_zone_new 5,15 s) — la regle
   // « plafond = plus longue source livree, arrondie au-dessus » vaut aussi pour cette famille.
   const LONG_MAX_S = 6.0
-  const dureeDe = (stem: string) => wavDurationS(resolve(SOUNDS_DIR, `${stem}.wav`))
+  const dureeDe = dureeS
 
   // Les catégories, reconstruites depuis le manifeste lui-même : la mêlée partage la table
   // des vignettes avec les explosions, et c'est son STEM qui l'en distingue (une seule
@@ -587,37 +582,32 @@ describe('garde-rail : le son du répulseur (résolu, lot R6 2026-08-25)', () =>
  * longue, l'egalite, fait 11,67 s » — quelqu'un avait donc MESURE ces fichiers hors navigateur,
  * sans voir qu'ils n'y jouaient jamais.
  *
- * Ce que ce test verifie est exactement ce que `decodeAudioData` exige d'un WAV : de la MIC-P
- * (format 1) ou du flottant (format 3), et au plus deux canaux.
+ * Depuis le passage a l'Opus (lot L8 du chantier Desktop), les fichiers sont des Ogg Opus :
+ * ce test verifie ce que `decodeAudioData` exige d'eux — un conteneur Ogg dont la premiere page
+ * porte `OpusHead` (famille de canaux 0) et au plus deux canaux — et qu'AUCUN `.wav` ne reste
+ * sous `static/sounds/` : un WAV depose sans passer par `cmd/sounds-encode` ne serait joue par
+ * aucun stem (l'URL de production demande l'`.ogg`) et alourdirait l'installeur pour rien.
  */
-describe('garde-rail : tout WAV livre est decodable par un navigateur', () => {
-  /** Rend `{ format, canaux }` du chunk `fmt ` d'un WAV, ou `null` si ce n'est pas un RIFF. */
-  function formatWav(bytes: Buffer): { format: number; canaux: number } | null {
-    if (bytes.subarray(0, 4).toString('ascii') !== 'RIFF') return null
-    let i = 12
-    while (i + 8 <= bytes.length) {
-      const id = bytes.subarray(i, i + 4).toString('ascii')
-      const taille = bytes.readUInt32LE(i + 4)
-      if (id === 'fmt ') return { format: bytes.readUInt16LE(i + 8), canaux: bytes.readUInt16LE(i + 10) }
-      i += 8 + taille + (taille % 2)
-    }
-    return null
-  }
-
-  it('aucun fichier en format exotique ni au-dela de la stereo', () => {
+describe('garde-rail : tout son livre est un Ogg Opus decodable par un navigateur', () => {
+  it('aucun fichier hors Ogg Opus ni au-dela de la stereo', () => {
     const fautifs: string[] = []
-    for (const nom of readdirSync(SOUNDS_DIR).filter((f) => f.endsWith('.wav'))) {
-      const f = formatWav(readFileSync(resolve(SOUNDS_DIR, nom)))
-      if (!f) {
-        fautifs.push(`${nom} : ce n'est pas un WAV RIFF`)
-        continue
+    for (const nom of readdirSync(SOUNDS_DIR).filter((f) => f.endsWith(SOUND_EXT))) {
+      try {
+        const { canaux, cadence } = opusInfo(resolve(SOUNDS_DIR, nom))
+        if (canaux < 1 || canaux > 2) fautifs.push(`${nom} : ${canaux} canaux`)
+        if (cadence !== 48_000) fautifs.push(`${nom} : cadence d'origine ${cadence}`)
+      } catch (e) {
+        fautifs.push(String(e instanceof Error ? e.message : e))
       }
-      // 1 = MIC-P entier, 3 = flottant. Tout le reste (0xFFFE extensible, ADPCM...) est refuse
-      // par `decodeAudioData`, silencieusement.
-      if (f.format !== 1 && f.format !== 3) fautifs.push(`${nom} : format ${f.format}`)
-      else if (f.canaux > 2) fautifs.push(`${nom} : ${f.canaux} canaux`)
     }
-    expect(fautifs, `WAV indecodables par un navigateur :\n  ${fautifs.join('\n  ')}`).toEqual([])
+    expect(fautifs, `sons indecodables par un navigateur : ${fautifs.join(' ; ')}`).toEqual([])
+  })
+
+  it('aucun .wav sous static/sounds (les sons se deposent via cmd/sounds-encode)', () => {
+    const wavs = readdirSync(resolve(REPO_ROOT, 'static', 'sounds'), { recursive: true })
+      .map(String)
+      .filter((f) => f.toLowerCase().endsWith('.wav'))
+    expect(wavs).toEqual([])
   })
 })
 
@@ -625,17 +615,16 @@ describe('garde-rail : tout WAV livre est decodable par un navigateur', () => {
  * CINQUIEME GARDE-RAIL : LES MOTEURS DE VEHICULES (lot du 2026-09-04) — une categorie a part.
  *
  * Ce ne sont PAS des sons d'evenement : ce sont des BOUCLES continues (enter -> loop x N ->
- * exit, + idle du Scorpion), produites par la banque SFX_vehicules validee par l'utilisateur
+ * exit), produites par la banque SFX_vehicules validee par l'utilisateur
  * le 2026-09-04. Trois proprietes du CONTRAT de la banque se verifient sur fichiers :
  *
- *  - FORMAT CANONIQUE 48 kHz / 16 bits / STEREO : le rebouclage sans clic suppose que le
+ *  - FORMAT CANONIQUE 48 kHz / STEREO : le rebouclage sans clic suppose que le
  *    fondu grave DANS le fichier tombe a l'echantillon pres — un re-encodage qui changerait
- *    la cadence ou la profondeur le casserait en silence ;
+ *    la cadence ou les canaux le casserait en silence ;
  *  - DUREES DE LA BANQUE (1,45 a 6,70 s livrees) : elles ne sont PAS soumises a la coupe de
  *    1,2 s des armes — une re-livraison qui retronquerait un moteur a la coupe des armes
  *    transformerait sa boucle en hoquet. La borne haute est le plafond de surete du lecteur ;
- *  - COMPLETUDE PAR FAMILLE : chaque famille de la table a ses trois clips (l'idle du
- *    Scorpion en plus), dans les deux sens (le manifeste <-> dossier est deja rejoue par le
+ *  - COMPLETUDE PAR FAMILLE : chaque famille de la table a ses trois clips, dans les deux sens (le manifeste <-> dossier est deja rejoue par le
  *    premier garde-rail, `allEngineStems` etant dans `referenced`).
  *
  * LES BOOSTS NE SONT PAS LIVRES, et c'est une mesure : la detection par vitesse a echoue au
@@ -647,24 +636,21 @@ describe('garde-rail : tout WAV livre est decodable par un navigateur', () => {
 describe('garde-rail : moteurs de vehicules (categorie boucles, banque du 2026-09-04)', () => {
   it('chaque famille de la table a ses clips, et chaque clip son fichier', () => {
     for (const [famille, stems] of Object.entries(VEHICLE_ENGINE_STEMS)) {
-      const clips = stems.idle
-        ? [stems.enter, stems.loop, stems.idle, stems.exit]
-        : [stems.enter, stems.loop, stems.exit]
-      for (const stem of clips) {
+      for (const stem of [stems.enter, stems.loop, stems.exit]) {
         expect(shipped.has(stem), `${famille} : ${stem}`).toBe(true)
       }
     }
   })
 
-  it('format canonique de la banque : 48 kHz, 16 bits, stereo', () => {
+  it('format canonique de la banque : 48 kHz, stereo', () => {
     for (const stem of allEngineStems()) {
-      expect(fmtDe(stem), stem).toEqual({ canaux: 2, cadence: 48_000, bits: 16 })
+      expect(fmtDe(stem), stem).toEqual({ canaux: 2, cadence: 48_000 })
     }
   })
 
   it('jamais retronques a la coupe des armes, jamais au-dela du plafond du lecteur', () => {
     for (const stem of allEngineStems()) {
-      const s = wavDurationS(resolve(SOUNDS_DIR, `${stem}.wav`))
+      const s = dureeS(stem)
       expect(s, `${stem} : retronque a la coupe des armes`).toBeGreaterThan(1.2)
       expect(s, `${stem} : au-dela du plafond de surete`).toBeLessThanOrEqual(SOUND_CUT_MAX_S)
     }
@@ -713,7 +699,7 @@ function sonDuRegistre(tag: string): string | undefined {
  *  - CHAQUE ARME DU REGISTRE A SES VARIANTES : un son nomme par le registre du titre dont le
  *    stem n'aurait pas d'entree de variantes jouerait un seul fichier nomme `_1` — le signe
  *    d'une table editee a moitie ;
- *  - FORMAT CANONIQUE 48 kHz / 16 bits / STEREO, la meme livraison que les moteurs ;
+ *  - FORMAT CANONIQUE 48 kHz / STEREO, la meme livraison que les moteurs ;
  *  - LA BANSHEE MODE 1 SONNE DEPUIS LE 2026-09-05 : l'utilisateur a reecoute et VALIDE la
  *    reconstruction originale (0,125 s — la piste cadence-du-tag, v2 a 240 cpm, est
  *    abandonnee). L'entree du tag 0000AA68 et ses deux prises font partie du manifeste.
@@ -762,16 +748,16 @@ describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
    */
   it('livraison du 2026-09-24 : missiles et LMG du Wasp, fichiers figes', () => {
     const figes: Readonly<Record<string, string>> = {
-      vehicle_shot_wasp_1: '92318e459dee1e98f66660e51697c980f2c56339b989f94cc1c9c42fa323ad11',
-      vehicle_shot_wasp_2: '73d3001a777d1e3a78e55fcdb98d8ae5116a1e5906fbebea7cf862cb8ceb4f43',
-      vehicle_shot_wasp_lmg_1: '3227a9d46c79904c837b6ddcdfb3dd8190fab76642e7d695e66bb7c9db3a2601',
-      vehicle_shot_wasp_lmg_2: 'e8ca76b9cee232aaecd0bbe935d503344a8aa14b4176465eafa82baabdeb8b1a',
-      vehicle_shot_wasp_lmg_loop: '683b2ce57924a47f54c2c1fe2feb41e91dfb67d9fa4c364e0a9703d27dc7b7bb',
+      vehicle_shot_wasp_1: '90b9942e0d9b6e45686f2df36c12855a659e8703f380453313691912912f4f98',
+      vehicle_shot_wasp_2: '6b7b0c02bbca98477558c3651f0918df7b1798f60893e014bfcf9dc476fc8e92',
+      vehicle_shot_wasp_lmg_1: '85c3d2d601066895e05e56a9bcf187353a7cf198ca009fb4fa914feb9fef59e6',
+      vehicle_shot_wasp_lmg_2: 'b979a866b8910cbf530e227ac693316439a1692a4be3229ba0b03c908cb4acea',
+      vehicle_shot_wasp_lmg_loop: '48b21818801669c7d2fa110e47e0e39e1ffe3a94f8f90d4e06d03168338722e7',
     }
     for (const [stem, sha] of Object.entries(figes)) {
       expect(shipped.has(stem), stem).toBe(true)
       if (!shipped.has(stem)) continue
-      const h = createHash('sha256').update(readFileSync(resolve(SOUNDS_DIR, `${stem}.wav`)))
+      const h = createHash('sha256').update(readFileSync(fichierDe(stem)))
       expect(h.digest('hex'), stem).toBe(sha)
     }
   })
@@ -787,34 +773,19 @@ describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
     for (const [coup, boucle] of Object.entries(VEHICLE_SHOT_LOOPS)) {
       expect(VEHICLE_SHOT_SOUND_VARIANTS[coup]?.[0], coup).toBe(coup)
       expect(coups.has(boucle), `${boucle} : une boucle n est pas une variante de coup`).toBe(false)
-      const s = wavDurationS(resolve(SOUNDS_DIR, `${boucle}.wav`))
+      const s = dureeS(boucle)
       expect(s, `${boucle} : retronquee a la coupe des armes`).toBeGreaterThan(1.2)
       expect(s, `${boucle} : au-dela du plafond de surete`).toBeLessThanOrEqual(SOUND_CUT_MAX_S)
     }
   })
 
-  it('format canonique de la livraison : 48 kHz, 16 bits, stereo', () => {
+  it('format canonique de la livraison : 48 kHz, stereo', () => {
     const livres = [
       ...Object.values(VEHICLE_SHOT_SOUND_VARIANTS).flat(),
       ...Object.values(VEHICLE_SHOT_LOOPS),
     ]
     for (const stem of livres) {
-      const buf = readFileSync(resolve(SOUNDS_DIR, `${stem}.wav`))
-      let fmt: { canaux: number; cadence: number; bits: number } | null = null
-      for (let at = 12; at + 8 <= buf.length; ) {
-        const id = buf.toString('latin1', at, at + 4)
-        const size = buf.readUInt32LE(at + 4)
-        if (id === 'fmt ') {
-          fmt = {
-            canaux: buf.readUInt16LE(at + 10),
-            cadence: buf.readUInt32LE(at + 12),
-            bits: buf.readUInt16LE(at + 22),
-          }
-          break
-        }
-        at += 8 + size + (size % 2)
-      }
-      expect(fmt, stem).toEqual({ canaux: 2, cadence: 48_000, bits: 16 })
+      expect(fmtDe(stem), stem).toEqual({ canaux: 2, cadence: 48_000 })
     }
   })
 
@@ -839,7 +810,7 @@ describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
  *  - la DEDUPLICATION MESUREE (md5 des banques sources, 2026-09-05) est ecrite : wasp partage
  *    la banque du warthog, wraith celle de la banshee — si la jointure divergeait, deux
  *    familles a banque identique livreraient deux copies ;
- *  - FORMAT CANONIQUE 48 kHz / 16 bits / STEREO, meme livraison que moteurs et tirs ;
+ *  - FORMAT CANONIQUE 48 kHz / STEREO, meme livraison que moteurs et tirs ;
  *  - DUREES : jamais retronquees a la coupe des armes (ce sont des explosions), jamais
  *    au-dela du plafond de surete du lecteur (12 s — les sources livrees en restent loin,
  *    la troncature au fondu n'a pas eu a servir).
@@ -859,30 +830,15 @@ describe('garde-rail : destructions de vehicule (lot du 2026-09-05)', () => {
     expect(VEHICLE_BOOM_FAMILY_SET.wraith).toBe(VEHICLE_BOOM_FAMILY_SET.banshee)
   })
 
-  it('format canonique de la livraison : 48 kHz, 16 bits, stereo', () => {
+  it('format canonique de la livraison : 48 kHz, stereo', () => {
     for (const stem of allVehicleBoomStems()) {
-      const buf = readFileSync(resolve(SOUNDS_DIR, `${stem}.wav`))
-      let fmt: { canaux: number; cadence: number; bits: number } | null = null
-      for (let at = 12; at + 8 <= buf.length; ) {
-        const id = buf.toString('latin1', at, at + 4)
-        const size = buf.readUInt32LE(at + 4)
-        if (id === 'fmt ') {
-          fmt = {
-            canaux: buf.readUInt16LE(at + 10),
-            cadence: buf.readUInt32LE(at + 12),
-            bits: buf.readUInt16LE(at + 22),
-          }
-          break
-        }
-        at += 8 + size + (size % 2)
-      }
-      expect(fmt, stem).toEqual({ canaux: 2, cadence: 48_000, bits: 16 })
+      expect(fmtDe(stem), stem).toEqual({ canaux: 2, cadence: 48_000 })
     }
   })
 
   it('des explosions entieres : jamais la coupe des armes, jamais au-dela du plafond', () => {
     for (const stem of allVehicleBoomStems()) {
-      const s = wavDurationS(resolve(SOUNDS_DIR, `${stem}.wav`))
+      const s = dureeS(stem)
       expect(s, `${stem} : retronque a la coupe des armes`).toBeGreaterThan(1.2)
       expect(s, `${stem} : au-dela du plafond de surete`).toBeLessThanOrEqual(SOUND_CUT_MAX_S)
     }
@@ -897,12 +853,12 @@ describe('garde-rail : destructions de vehicule (lot du 2026-09-05)', () => {
  * garde-rail « décodable » ci-dessus, qui ne regarde que le format et le nombre de canaux.
  */
 describe('garde-rail : la musique d intro (item 7, décision D-8)', () => {
-  it('format canonique : 48 kHz, 16 bits, stéréo', () => {
-    expect(fmtDe(INTRO_MUSIC_STEM)).toEqual({ canaux: 2, cadence: 48_000, bits: 16 })
+  it('format canonique : 48 kHz, stéréo', () => {
+    expect(fmtDe(INTRO_MUSIC_STEM)).toEqual({ canaux: 2, cadence: 48_000 })
   })
 
   it('un extrait de trois secondes au plus, qui porte la seconde d avant la résolution', () => {
-    const s = wavDurationS(resolve(SOUNDS_DIR, `${INTRO_MUSIC_STEM}.wav`))
+    const s = dureeS(INTRO_MUSIC_STEM)
     expect(s).toBeGreaterThan(1)
     expect(s).toBeLessThanOrEqual(3 + 0.001)
     expect(s).toBeLessThanOrEqual(SOUND_CUT_MAX_S)

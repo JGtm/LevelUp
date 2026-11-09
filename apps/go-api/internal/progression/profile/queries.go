@@ -383,6 +383,10 @@ type componentRow struct {
 // LUSR v2 (sync/skill, componentTracker) et, au rattrapage, par son rejeu complet
 // (RecomputeLUSRCanonicalForPlayer).
 //
+// Les matchs exclus (is_excluded) ne pèsent pas : leurs identifiants sont lus d'abord
+// (loadExcludedMatchIDs), puis écartés par paramètres constants (lusrComponentsQuery).
+// Une erreur de lecture des exclusions est remontée.
+//
 // Une seule query CTE batchée groupe AVG / QUANTILE / trend pour les 8
 // composantes (V2 §1 polish — évite les 8 round-trips initiaux). Si la table
 // est vide ou la query échoue, retourne map vide silencieusement (UI dégrade
@@ -392,26 +396,12 @@ func (s *Service) loadLUSRComponentsBreakdown(ctx context.Context, _userID strin
 	defer cancel()
 
 	out := make(map[string]componentRow, 8)
-	rows, err := s.db.Query(ctx, `
-		WITH ranked AS (
-			SELECT
-				component_name,
-				value,
-				ROW_NUMBER() OVER (PARTITION BY component_name ORDER BY computed_at DESC) AS rk_desc,
-				ROW_NUMBER() OVER (PARTITION BY component_name ORDER BY computed_at ASC)  AS rk_asc,
-				COUNT(*)    OVER (PARTITION BY component_name)                            AS n
-			FROM lusr_component_history_latest
-		)
-		SELECT
-			component_name,
-			AVG(value)                                         AS current_avg,
-			QUANTILE_CONT(value, 0.8)                          AS top20,
-			AVG(CASE WHEN n >= 20 AND rk_desc <= 10 THEN value END) AS last_avg,
-			AVG(CASE WHEN n >= 20 AND rk_asc  <= 10 THEN value END) AS first_avg,
-			MAX(n)                                             AS n
-		FROM ranked
-		GROUP BY component_name
-	`)
+	excluded, err := s.loadExcludedMatchIDs(ctx)
+	if err != nil {
+		return out, err
+	}
+	query, args := lusrComponentsQuery(excluded)
+	rows, err := s.db.Query(ctx, query, args...)
 	if err != nil {
 		return out, nil
 	}
@@ -457,7 +447,6 @@ func (r *duckdbRepo) listTemplatesByLUSRComponents(ctx context.Context, titleSlu
 	rows, err := r.db.Query(ctx, `
 		SELECT id, title_slug, metric, window_type, COALESCE(window_value, ''),
 		       cadence, eval_type, COALESCE(mode_filter, 'universal'),
-		       label_en, label_fr, COALESCE(description_en, ''), COALESCE(description_fr, ''),
 		       normal_target, heroic_target, legendary_target, mythic_target,
 		       COALESCE(lusr_components, ''), COALESCE(radar_axes, ''),
 		       COALESCE(is_long_term, FALSE),
@@ -488,7 +477,31 @@ func (r *duckdbRepo) listTemplatesByLUSRComponents(ctx context.Context, titleSlu
 			out = append(out, t)
 		}
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, r.attachTemplateTexts(ctx, out)
+}
+
+// attachTemplateTexts pose sur chaque modèle son libellé et sa description dans chaque langue qui
+// en porte un (asset_translations, type challenge_template ; ADR 0040 D-15).
+func (r *duckdbRepo) attachTemplateTexts(ctx context.Context, ts []prestige.Template) error {
+	if len(ts) == 0 {
+		return nil
+	}
+	ids := make([]string, len(ts))
+	for i := range ts {
+		ids[i] = ts[i].ID
+	}
+	texts, err := duckdb.LoadAssetTexts(ctx, r.db, duckdb.AssetTypeChallengeTemplate, ids)
+	if err != nil {
+		return fmt.Errorf("listTemplatesByLUSRComponents: %w", err)
+	}
+	for i := range ts {
+		ts[i].Labels = texts[ts[i].ID].Name
+		ts[i].Descriptions = texts[ts[i].ID].Description
+	}
+	return nil
 }
 
 // scanTemplateRow scanne une ligne challenge_template depuis un *sql.Rows.
@@ -501,7 +514,6 @@ func scanTemplateRow(row *sql.Rows) (prestige.Template, error) {
 	err := row.Scan(
 		&t.ID, &t.TitleSlug, &t.Metric, &windowType, &t.WindowValue,
 		&cadence, &evalType, &t.ModeFilter,
-		&t.LabelEN, &t.LabelFR, &t.DescriptionEN, &t.DescriptionFR,
 		&t.NormalTarget, &t.HeroicTarget, &t.LegendaryTarget, &t.MythicTarget,
 		&lusrJSON, &radarJSON, &t.IsLongTerm,
 		&t.SchemaVersion, &t.UpdatedAt,

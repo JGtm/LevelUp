@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { useCopyToClipboard } from '@/lib/clipboard/useCopyToClipboard'
 import { ToggleRow } from '@/features/settings/_settingsShared'
 import type { SettingsText } from '@/features/settings/i18n'
@@ -43,6 +44,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 
 export function WatcherTokenStatus({ t, onStartAuth }: { t: SettingsText; onStartAuth: () => void }) {
   const { data, isLoading } = useWatcherStatus()
+  const locale = useAppShellStore((s) => s.locale)
 
   // Pendant le premier chargement, afficher un placeholder discret
   if (isLoading && !data) {
@@ -60,7 +62,7 @@ export function WatcherTokenStatus({ t, onStartAuth }: { t: SettingsText; onStar
   }
 
   if (data.token_valid && data.token_expires_at) {
-    const date = new Date(data.token_expires_at).toLocaleDateString()
+    const date = new Date(data.token_expires_at).toLocaleDateString(intlLocale(locale))
     return (
       <p className="text-xs text-success">
         ✅ {t.watcherTokenValid.replace('{date}', date).replace('{gamertag}', data.token_gamertag ?? '')}

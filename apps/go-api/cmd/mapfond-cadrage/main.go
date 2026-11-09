@@ -2,7 +2,7 @@
 //
 // CE QU'ELLE REPOND. Le cadre d'un fond n'est pas derive de l'aire de jeu : c'est la boite des
 // ancres d'objectifs elargie d'une CONSTANTE (`himap.MargeCadre` = 2 x `PorteeAncre` = 50 m,
-// `internal/himap/cuisson.go`). La coquille de mort, elle, efface ensuite tout ce qui tombe
+// `libs/himap/himap/cuisson.go`). La coquille de mort, elle, efface ensuite tout ce qui tombe
 // hors de la frontiere — sans que le cadre soit recalcule. Resultat possible : une image dont
 // la matiere n'occupe qu'une fraction de la largeur, le reste etant transparent.
 //

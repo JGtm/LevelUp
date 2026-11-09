@@ -22,11 +22,13 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/teammates"
@@ -222,7 +224,8 @@ func (s *CareerService) GetCareerPage(ctx context.Context) (domain.CareerPageRes
 	hero := buildHeroProgress(xpTotal, rankIDFromData(rank), xpHeroMax, heroRankMax(rank))
 	// Libellé du rang max (« Héros » / « SR 152 ») title-agnostic : source-fournie
 	// (Halo 5) ou catalogue du titre (Halo Infinite). Vide → libellé générique front.
-	hero.MaxRankNameFR, hero.MaxRankNameEN = s.resolveMaxRankNames(rank)
+	maxRankName := s.resolveMaxRankName(rank)
+	hero.MaxRankName = maxRankName.PickOptional(i18n.FromContext(ctx))
 	projs := buildProjections(xpHistory, xpTotal, xpHeroMax)
 	lusr := buildLUSRSummary(lusrHistory)
 
@@ -317,14 +320,15 @@ func rankDataFromCanonical(snap *canonical.CareerSnapshot) *domain.CareerRankDat
 	}
 	// Libellé du rang max porté par la source (Halo 5 : « SR 152 »). Le service le
 	// recopie tel quel dans HeroProgress ; Halo Infinite laisse MaxRank nil et le
-	// service résout depuis son catalogue de rangs (cf. resolveMaxRankNames).
+	// service résout depuis son catalogue de rangs (cf. resolveMaxRankName).
 	if snap.MaxRank != nil {
-		if fr := assetRefLabel(snap.MaxRank, "fr"); fr != "" {
-			row.MaxRankNameFR = &fr
+		names := make(i18n.Text, len(i18n.Locales()))
+		for _, l := range i18n.Locales() {
+			if v := assetRefLabel(snap.MaxRank, string(l)); v != "" {
+				names[l] = v
+			}
 		}
-		if en := assetRefLabel(snap.MaxRank, "en"); en != "" {
-			row.MaxRankNameEN = &en
-		}
+		row.MaxRankName = names
 	}
 	return row
 }
@@ -387,6 +391,17 @@ func xpHistoryFromCanonical(entries []canonical.CareerHistoryEntry) []domain.XPH
 // (HIGH-C). Adapter-first via LoadLUSRHistory + reconstitution byte-identique ;
 // fallback repo.GetLUSRHistory sur capability absente.
 func (s *CareerService) loadLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpointDTO, error) {
+	history, err := s.loadLUSRHistoryCodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	applyLUSRTierLabels(history, i18n.FromContext(ctx))
+	return history, nil
+}
+
+// loadLUSRHistoryCodes lit les checkpoints avec leur code de palier (Tier, SubTier) : voie adaptateur
+// d'abord, repo en repli. TierLabel n'est pas encore posé.
+func (s *CareerService) loadLUSRHistoryCodes(ctx context.Context) ([]domain.LUSRCheckpointDTO, error) {
 	if s.dataAdapter != nil {
 		checkpoints, err := s.dataAdapter.LoadLUSRHistory(ctx, "")
 		if err == nil {
@@ -397,6 +412,15 @@ func (s *CareerService) loadLUSRHistory(ctx context.Context) ([]domain.LUSRCheck
 		}
 	}
 	return s.repo.GetLUSRHistory(ctx)
+}
+
+// applyLUSRTierLabels pose le libellé de palier de chaque checkpoint, DÉDUIT de son code (Tier, SubTier)
+// dans la langue `loc` : la colonne stockée `tier_label` n'est jamais servie. Un checkpoint en placement
+// porte le marqueur machine domain.TierPlacement (le web écarte ces points du graphe).
+func applyLUSRTierLabels(history []domain.LUSRCheckpointDTO, loc i18n.Locale) {
+	for i := range history {
+		history[i].TierLabel = analysis.SkillTierLabelOrPlacementMarker(history[i].Tier, history[i].SubTier, loc)
+	}
 }
 
 // lusrCheckpointsFromCanonical projette []canonical.LUSRCheckpoint →
@@ -412,12 +436,13 @@ func lusrCheckpointsFromCanonical(cs []canonical.LUSRCheckpoint) []domain.LUSRCh
 			MatchID:      c.MatchID,
 			RatingType:   c.RatingType,
 			RatingValue:  c.RatingValue,
+			Tier:         c.Tier,
 			PlaylistName: c.PlaylistName,
 			PlaylistID:   c.PlaylistID,
 		}
-		if c.TierLabel != nil {
-			v := *c.TierLabel
-			d.TierLabel = &v
+		if c.SubTier != nil {
+			v := *c.SubTier
+			d.SubTier = &v
 		}
 		if c.PlaylistGroup != nil {
 			v := *c.PlaylistGroup
@@ -447,7 +472,7 @@ func lusrCheckpointsFromCanonical(cs []canonical.LUSRCheckpoint) []domain.LUSRCh
 // avec Synthetic non-nil (fallback S54-A8).
 func (s *CareerService) resolveCurrentSeason(ctx context.Context) *domain.CurrentSeasonResult {
 	if s.metaRepo == nil {
-		return syntheticSeasonResult()
+		return syntheticSeasonResult(ctx)
 	}
 	titleID := s.titleSlug
 	if titleID == "" {
@@ -456,17 +481,17 @@ func (s *CareerService) resolveCurrentSeason(ctx context.Context) *domain.Curren
 	slog.DebugContext(ctx, "resolveCurrentSeason", "titleSlug", titleID)
 	season, err := s.metaRepo.GetCurrentSeason(ctx, titleID)
 	if err != nil || season == nil {
-		return syntheticSeasonResult()
+		return syntheticSeasonResult(ctx)
 	}
 	return &domain.CurrentSeasonResult{Season: season}
 }
 
 // syntheticSeasonResult retourne un fallback synthétique (0 date hardcodée).
-func syntheticSeasonResult() *domain.CurrentSeasonResult {
+func syntheticSeasonResult(ctx context.Context) *domain.CurrentSeasonResult {
 	return &domain.CurrentSeasonResult{
 		Synthetic: &domain.SeasonSynthetic{
 			SeasonID:   "unknown",
-			Name:       "Saison inconnue",
+			Name:       i18n.Msg(i18n.FromContext(ctx), "common.season.unknown", nil),
 			StartDate:  time.Time{},
 			IsFallback: true,
 		},

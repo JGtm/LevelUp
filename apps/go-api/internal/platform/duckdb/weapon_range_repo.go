@@ -1,5 +1,5 @@
 // Package duckdb — weapon_range_repo.go : implémentation DuckDB de
-// port.WeaponRangeRepository (plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md, lot 3).
+// port.WeaponRangeRepository.
 //
 // # DEUX CÔTÉS, UNE SEULE JOINTURE — ET UNE SEULE LECTURE
 //
@@ -322,10 +322,10 @@ func (r *WeaponRangeRepo) ResolveWeaponLabels(
 	for key, meta := range resolveWeaponKeyLabelsAny(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponKeys) {
 		// Une entrée sans aucun nom n'en est pas une : la laisser passer ferait publier un
 		// libellé vide là où l'appelant sait retomber sur la clé.
-		if meta.label == "" && meta.labelEN == "" {
+		if meta.label.Empty() {
 			continue
 		}
-		out[key] = port.WeaponLabel{Label: meta.label, LabelEN: meta.labelEN}
+		out[key] = port.WeaponLabel{Name: meta.label}
 	}
 	slog.DebugContext(ctx, "WeaponRangeRepo: weapon labels resolved",
 		"slug", r.pdb.TitleSlug, "demandees", len(weaponKeys), "resolues", len(out))

@@ -23,7 +23,7 @@ import { useDebounced } from '@/lib/hooks/useDebounced'
 import { useExplorerMatches, useExplorerPlayer } from './queries'
 import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
-import type { ContextDescriptor } from '@/lib/match-nav/navContext'
+import { labelsOfOptions, type ContextDescriptor } from '@/lib/match-nav/navContext'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -301,30 +301,6 @@ export function ExplorerPage() {
 
   const summary = matchesQuery.data?.summary
 
-  // Descriptor du contexte de navigation pour les matchs ouverts depuis le
-  // tableau mode Matchs. Priorité au filtre le plus spécifique : 1 playlist >
-  // 1 mode > période active > undefined (Q25 fallback générique côté match-view).
-  const matchesContextDescriptor: ContextDescriptor | undefined = (() => {
-    if (playlists.size === 1) {
-      const [name] = [...playlists]
-      return name ? { kind: 'playlist', name } : undefined
-    }
-    if (modeNames.size === 1) {
-      const [category] = [...modeNames]
-      return category ? { kind: 'mode', category } : undefined
-    }
-    if (startDate || endDate) {
-      const toIso = (d: string) => (d ? new Date(d).toISOString() : undefined)
-      return { kind: 'period', from: toIso(startDate), to: toIso(endDate) }
-    }
-    return undefined
-  })()
-
-  // Phase 4 : filterSpec dérivé des filtres Explorer locaux (scope) pour piloter
-  // la nav contextuelle prev/next depuis Explorer (multi-playlist/mode supportés
-  // par le backend Q25 depuis la Phase 3). Remplace la dérivation soloFilterStore.
-  const matchesFilterSpec = explorerScopeToFilterSpec(scope)
-
   // ─── Options pour les MultiSelectFilter (extrait dans helper) ────────────
   const {
     expTypeOptions,
@@ -336,6 +312,34 @@ export function ExplorerPage() {
     skillTierOptions,
     squadCountByValue,
   } = buildExplorerFilterOptions(summary, t)
+
+  // Descriptor du contexte de navigation pour les matchs ouverts depuis le
+  // tableau mode Matchs. Priorité au filtre le plus spécifique : 1 playlist >
+  // 1 mode > période active > undefined (Q25 fallback générique côté match-view).
+  // `name` / `category` = clé du filtre (nom de la langue par défaut) ; `label` = nom affiché dans la
+  // langue de la page, pris aux options du filtre.
+  const playlistLabels = labelsOfOptions(playlistOptions)
+  const modeLabels = labelsOfOptions(modeOptions)
+  const matchesContextDescriptor: ContextDescriptor | undefined = (() => {
+    if (playlists.size === 1) {
+      const [name] = [...playlists]
+      return name ? { kind: 'playlist', name, label: playlistLabels[name] } : undefined
+    }
+    if (modeNames.size === 1) {
+      const [category] = [...modeNames]
+      return category ? { kind: 'mode', category, label: modeLabels[category] } : undefined
+    }
+    if (startDate || endDate) {
+      const toIso = (d: string) => (d ? new Date(d).toISOString() : undefined)
+      return { kind: 'period', from: toIso(startDate), to: toIso(endDate) }
+    }
+    return undefined
+  })()
+
+  // Phase 4 : filterSpec dérivé des filtres Explorer locaux (scope) pour piloter
+  // la nav contextuelle prev/next depuis Explorer (multi-playlist/mode supportés
+  // par le backend Q25 depuis la Phase 3). Remplace la dérivation soloFilterStore.
+  const matchesFilterSpec = explorerScopeToFilterSpec(scope, { playlists: playlistLabels, modes: modeLabels })
 
   const hasActiveFilter =
     !!startDate ||

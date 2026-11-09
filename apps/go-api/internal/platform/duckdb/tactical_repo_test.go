@@ -221,7 +221,11 @@ func seedTacticalCorpus(t *testing.T, pdb *PlayerDB) {
 // matchs des fixtures de ces tests (le lecteur refuse une demande sans liste). Un test qui
 // eprouve le perimetre pose sa propre liste.
 func tacQuery(mapID string) domain.TacticalQuery {
-	return domain.TacticalQuery{PlayerXUID: tacXUIDMoi, MapID: mapID, Matchs: domain.RestreindreAux(tacTousLesMatchs())}
+	var cartes []string
+	if mapID != "" {
+		cartes = []string{mapID}
+	}
+	return domain.TacticalQuery{PlayerXUID: tacXUIDMoi, MapIDs: cartes, Matchs: domain.RestreindreAux(tacTousLesMatchs())}
 }
 
 // tacTousLesMatchs : les match_id des fixtures tactiques, ceux ecrits en clair et ceux generes

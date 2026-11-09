@@ -217,12 +217,12 @@ func TestSentinel_TokenCaptureNoTxtFile(t *testing.T) {
 // ─── Guard 5 : pas de nouveau lecteur de SPNKR_AZURE_CLIENT_SECRET ────────
 
 // Anti-pattern : si quelqu'un introduit un Getenv("SPNKR_AZURE_CLIENT_SECRET") dans
-// un chemin de prod (hors oauth_refresh.go qui en a besoin pour Microsoft auth),
+// un chemin de prod (hors azure_credentials.go, source unique du client Azure),
 // c'est probablement un bug ou une fuite de secret.
 var clientSecretPattern = regexp.MustCompile(`SPNKR_AZURE_CLIENT_SECRET`)
 
 var allowedClientSecretReaders = map[string]string{
-	"internal/platform/auth/azure_credentials.go":           "SOURCE UNIQUE des credentials Azure (seam, Phase 1) : seul lecteur prod de SPNKR_AZURE_CLIENT_SECRET. auth_code.go / oauth_refresh.go délèguent désormais à ResolveAzureOAuthClient.",
+	"internal/platform/auth/azure_credentials.go":           "SOURCE UNIQUE des credentials Azure (seam, Phase 1) : seul lecteur prod de SPNKR_AZURE_CLIENT_SECRET. La façade xbl_oauth.go délègue à ResolveAzureOAuthClient ; la chaîne OAuth (haloapi/xblauth depuis le plan D3, lot 2) reçoit le ClientAzure en paramètre et ne lit rien.",
 	"internal/platform/auth/azure_credentials_test.go":      "Golden tests du seam : t.Setenv pour caractériser la résolution client/secret (public vs confidentiel).",
 	"internal/platform/auth/oauth_refresh_internal_test.go": "Tests du module canonique OAuth : t.Setenv pour exercer le retry public AADSTS90023 (plan anti-bruit 2026-06-11).",
 	"internal/platform/auth/sentinel_test.go":               "Ce fichier.",

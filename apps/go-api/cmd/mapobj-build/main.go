@@ -31,8 +31,9 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/mapcatalog"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 type mapIDList []string
@@ -71,7 +72,7 @@ func main() {
 	if err != nil {
 		fail(ctx, "config.Load", err)
 	}
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 	outPath := resolver.MapObjectivesPath(*titleSlug)
 
 	// Chemin hors ligne complet : re-parse du catalogue entier, aucune requête.
@@ -153,7 +154,7 @@ func resolveTargets(ctx context.Context, cfg *config.AppConfig, explicit []strin
 		}
 		return out, nil
 	}
-	sharedPath := titlePkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(titlePkg.DefaultSlug)
+	sharedPath := cfg.PathResolver().SharedDBPath(titlePkg.DefaultSlug)
 	db, err := sql.Open("duckdb", "")
 	if err != nil {
 		return nil, err
@@ -193,7 +194,7 @@ func ingestRemote(ctx context.Context, cat *catalog, c *mapcatalog.Client, t tar
 	if err != nil {
 		return err
 	}
-	files := asset.MvarPaths()
+	files := mapcatalog.MvarPaths(asset)
 	if len(files) == 0 {
 		return fmt.Errorf("aucun fichier .mvar dans l'asset (fichiers: %v)",
 			asset.Files.FileRelativePaths)

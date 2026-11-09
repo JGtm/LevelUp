@@ -1,0 +1,23 @@
+# Battle Pass (passe de saison) : libellés composés par le serveur quand GameCMS n'en fournit pas.
+
+# Palier sans récompense nommée.
+[season_pass.tier_fallback]
+fr = "Palier {n}"
+en = "Tier {n}"
+
+# Récompenses en monnaie : nom de la monnaie, par identifiant GameCMS en minuscules.
+[season_pass.currency.cr]
+fr = "Crédits"
+en = "Credits"
+
+[season_pass.currency.softcurrency]
+fr = "Crédits Spartan"
+en = "Spartan Credits"
+
+[season_pass.currency.xpboost]
+fr = "Boost XP"
+en = "XP Boost"
+
+[season_pass.currency.rerollcurrency]
+fr = "Relance défi"
+en = "Challenge Reroll"

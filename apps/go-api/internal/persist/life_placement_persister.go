@@ -1,6 +1,5 @@
 // Package persist — life_placement_persister.go : ecriture INSERT-ONLY de `match_life_placement`,
-// le placement et le rendement de chaque vie nommee (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`,
-// lot V2).
+// le placement et le rendement de chaque vie nommee.
 //
 // MEME PATRON QUE [LivesPersister], ET POUR LA MEME RAISON : la table nait d'une passe de
 // decodage d'un film, sur un match DEJA insere au registre. Le chemin builder serait un no-op.

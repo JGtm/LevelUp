@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -314,10 +315,10 @@ func TestBuildMatchRows_Basic(t *testing.T) {
 			Outcome:           &win,
 			PersonalScore:     &score,
 			TimePlayedSeconds: &dur,
-			PlaylistName:      "Ranked Arena",
+			PlaylistName:      i18n.FromColumns("Ranked Arena", ""),
 		},
 	}
-	rows := buildMatchRows(matches, true, nil, nil)
+	rows := buildMatchRows(i18n.LocaleFR, matches, true, nil, nil)
 	if len(rows) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(rows))
 	}
@@ -355,7 +356,7 @@ func TestBuildMatchRows_CareerXPEstimated(t *testing.T) {
 		{MatchID: "nops", StartTime: post, PersonalScore: nil},                    // exclu (score nil)
 	}
 
-	rows := buildMatchRows(matches, true, nil, eras)
+	rows := buildMatchRows(i18n.LocaleFR, matches, true, nil, eras)
 	if rows[0].CareerXPEstimated == nil || *rows[0].CareerXPEstimated != 2400 {
 		t.Errorf("post-cutover XP = %v, want 2400 (1200×2)", rows[0].CareerXPEstimated)
 	}
@@ -370,7 +371,7 @@ func TestBuildMatchRows_CareerXPEstimated(t *testing.T) {
 	}
 
 	// Capability absente (éras nil) → aucune ligne ne porte d'XP estimée.
-	noEras := buildMatchRows(matches, true, nil, nil)
+	noEras := buildMatchRows(i18n.LocaleFR, matches, true, nil, nil)
 	for i, r := range noEras {
 		if r.CareerXPEstimated != nil {
 			t.Errorf("row[%d] CareerXPEstimated = %v sans éras, want nil", i, *r.CareerXPEstimated)
@@ -390,7 +391,7 @@ func TestBuildMatchRows_ExpectedFDA(t *testing.T) {
 		{MatchID: "with-exp", StartTime: now, Kills: 12, Deaths: 5, KillsExpected: &ke, DeathsExpected: &de},
 		{MatchID: "no-exp", StartTime: now.Add(time.Minute), Kills: 3, Deaths: 3},
 	}
-	rows := buildMatchRows(matches, true, map[string]*float64{"with-exp": &assistsExp}, nil)
+	rows := buildMatchRows(i18n.LocaleFR, matches, true, map[string]*float64{"with-exp": &assistsExp}, nil)
 	if len(rows) != 2 {
 		t.Fatalf("expected 2 rows, got %d", len(rows))
 	}
@@ -462,8 +463,8 @@ func TestFilterStatsMatchRows_Empty(t *testing.T) {
 func TestFilterStatsMatchRows_NoFilter(t *testing.T) {
 	now := time.Now()
 	rows := []legacymatch.StatsMatchRow{
-		{MatchID: "m1", StartTime: now, PlaylistName: "Arena"},
-		{MatchID: "m2", StartTime: now, PlaylistName: "BTB"},
+		{MatchID: "m1", StartTime: now, PlaylistName: i18n.FromColumns("Arena", "")},
+		{MatchID: "m2", StartTime: now, PlaylistName: i18n.FromColumns("BTB", "")},
 	}
 	out := filterStatsMatchRows(rows, domain.FilterContextInput{})
 	if len(out) != 2 {
@@ -511,8 +512,8 @@ func TestFilterStatsMatchRows_MatchContextSquad(t *testing.T) {
 func TestFilterStatsMatchRows_PlaylistFRPreferred(t *testing.T) {
 	now := time.Now()
 	rows := []legacymatch.StatsMatchRow{
-		{MatchID: "m1", StartTime: now, PlaylistName: "Ranked Arena", PlaylistNameFR: "Arène classée"},
-		{MatchID: "m2", StartTime: now, PlaylistName: "Big Team Battle", PlaylistNameFR: "Bataille en équipe"},
+		{MatchID: "m1", StartTime: now, PlaylistName: i18n.FromColumns("Ranked Arena", "Arène classée")},
+		{MatchID: "m2", StartTime: now, PlaylistName: i18n.FromColumns("Big Team Battle", "Bataille en équipe")},
 	}
 	f := domain.FilterContextInput{Cascade: domain.CascadeFilter{Playlists: []string{"Arène classée"}}}
 	out := filterStatsMatchRows(rows, f)
@@ -527,8 +528,8 @@ func TestFilterStatsMatchRows_PlaylistFRPreferred(t *testing.T) {
 func TestFilterStatsMatchRows_ModeGameVariantFallback(t *testing.T) {
 	now := time.Now()
 	rows := []legacymatch.StatsMatchRow{
-		{MatchID: "h5", StartTime: now, GameVariantNameFR: "Assassin"},                       // pair vide → variant
-		{MatchID: "inf", StartTime: now, PairName: "Strongholds", GameVariantName: "Slayer"}, // pair présent
+		{MatchID: "h5", StartTime: now, GameVariantName: i18n.FromColumns("", "Assassin")},                                               // pair vide → variant
+		{MatchID: "inf", StartTime: now, PairName: i18n.FromColumns("Strongholds", ""), GameVariantName: i18n.FromColumns("Slayer", "")}, // pair présent
 	}
 	f := domain.FilterContextInput{Cascade: domain.CascadeFilter{Modes: []string{"Assassin"}}}
 	out := filterStatsMatchRows(rows, f)

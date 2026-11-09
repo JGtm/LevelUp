@@ -1,6 +1,6 @@
 /**
  * i18n du module Prestige (dictionnaire local FR/EN, même pattern que
- * features/ascension/i18n.ts). Les composants Prestige étaient historiquement
+ * features/ascension/i18n). Les composants Prestige étaient historiquement
  * français-only (strings hardcodées) ; ce module centralise les libellés pour
  * les rendre i18n-compatibles et lever les warnings `no-hardcoded-strings`.
  *
@@ -210,6 +210,8 @@ const EN: PrestigeText = {
   momentMatches: 'matches',
 }
 
+const TEXT: Record<ManifestLocale, PrestigeText> = { fr: FR, en: EN }
+
 export function getPrestigeText(locale: ManifestLocale): PrestigeText {
-  return locale === 'en' ? EN : FR
+  return TEXT[locale]
 }

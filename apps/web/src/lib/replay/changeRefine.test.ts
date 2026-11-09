@@ -258,8 +258,7 @@ describe('refineAbilityReading — `gap` ne change rien : la vignette lit `r`, j
 })
 
 /**
- * refineAbilityReading — BORNÉE À LA VIE EN COURS (correctif P0-2, 2026-09-06,
- * `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md`) — SITE FRÈRE DE `nearestReading`.
+ * refineAbilityReading — BORNÉE À LA VIE EN COURS (correctif du 2026-09-06) — SITE FRÈRE DE `nearestReading`.
  *
  * Avant ce correctif, seul `c.t <= frame` bornait la recherche du dernier changement : un
  * `spent` de la vie PRÉCÉDENTE du même slot (recyclé) restait « le dernier changement » et

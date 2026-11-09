@@ -18,7 +18,7 @@ export interface VehicleText {
   unknown: string
 }
 
-/** `duration` : le format « 2 min 39 » de `empriseStrings.ts` (un seul exemplaire). */
+/** `duration` : le format « 2 min 39 » de `i18n/format.ts` (un seul exemplaire). */
 export function buildVehicleText(duration: (ms: number) => string): Record<Locale, VehicleText> {
   return {
     fr: {

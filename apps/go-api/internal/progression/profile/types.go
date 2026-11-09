@@ -16,6 +16,8 @@ package profile
 
 import (
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // PlayerProfile rassemble l'état de progression d'un joueur sur un titre.
@@ -113,10 +115,9 @@ type EngagementSnapshot struct {
 
 // SkillRatingSnapshot capture le tier LUSR + progression vers le suivant.
 type SkillRatingSnapshot struct {
-	TierName      string  `json:"tier_name"`    // "Diamond"
-	TierNameFR    string  `json:"tier_name_fr"` // "Diamant"
-	SubTier       int     `json:"sub_tier"`     // 1..6
-	Label         string  `json:"label"`        // "Diamond III"
+	TierName      string  `json:"tier_name"` // nom du tier dans la langue de la requête : "Diamond", "Diamant"
+	SubTier       int     `json:"sub_tier"`  // 1..6
+	Label         string  `json:"label"`     // "Diamond III"
 	Mu            float64 `json:"mu"`
 	Sigma         float64 `json:"sigma"`
 	NextTierLabel string  `json:"next_tier_label,omitempty"`
@@ -145,9 +146,9 @@ type ProgressionLeverage struct {
 
 // SuggestedChallenge est un template recommandé par le coach.
 //
-// LabelFR / LabelEN / DescriptionFR / DescriptionEN sont hydratés depuis
-// prestige.Template à la sélection (V2 §3). Permettent à l'UI d'afficher
-// un libellé humain sans avoir à charger le catalogue séparément.
+// Label / Description sont hydratés depuis prestige.Template à la sélection (V2 §3), dans la
+// langue de la requête (ADR 0040 D-3). Permettent à l'UI d'afficher un libellé humain sans avoir à
+// charger le catalogue séparément.
 type SuggestedChallenge struct {
 	TemplateID       string `json:"template_id"`
 	TargetTier       string `json:"target_tier"`       // "normal" | "heroic" | "legendary"
@@ -158,10 +159,8 @@ type SuggestedChallenge struct {
 	// Hydratés depuis le template prestige (V2 §3). Vides si template
 	// introuvable (ne devrait pas arriver — selectSuggestedChallenges les
 	// récupère depuis le même catalogue).
-	LabelFR       string `json:"label_fr,omitempty"`
-	LabelEN       string `json:"label_en,omitempty"`
-	DescriptionFR string `json:"description_fr,omitempty"`
-	DescriptionEN string `json:"description_en,omitempty"`
+	Label       string `json:"label,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 // MinMatchesForProfile est le seuil sous lequel on considère que le profil
@@ -182,12 +181,12 @@ type LUSRState struct {
 
 // TierState décrit un tier + sub-tier LUSR.
 type TierState struct {
-	Name    string  // "Diamond"
-	NameFR  string  // "Diamant"
-	SubTier int     // 1..6 (0 si tier sans sub-tier comme Onyx)
-	Label   string  // "Diamond III"
-	LowerMu float64 // entrée du sub-tier (inclusive)
-	UpperMu float64 // sortie du sub-tier (= entrée du sub-tier suivant, exclusive)
+	Name    string    // "Diamond" (identifiant canonique)
+	Names   i18n.Text // nom du tier par langue (en : "Diamond", fr : "Diamant")
+	SubTier int       // 1..6 (0 si tier sans sub-tier comme Onyx)
+	Label   string    // "Diamond III"
+	LowerMu float64   // entrée du sub-tier (inclusive)
+	UpperMu float64   // sortie du sub-tier (= entrée du sub-tier suivant, exclusive)
 }
 
 // IsEmpty retourne true si le TierState n'est pas renseigné.

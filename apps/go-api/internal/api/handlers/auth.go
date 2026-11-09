@@ -224,6 +224,8 @@ func (h *AuthHandler) handleGetDeviceFlowStatus(ctx context.Context, in *deviceF
 		return nil, humacore.NewError(http.StatusInternalServerError, "no_session", "session non initialisée")
 	}
 
+	// Une connexion par le navigateur jamais terminée expire d'elle-même (sans effet pour le code d'appareil).
+	h.attempts.ExpireStaleBrowser(in.AttemptID)
 	snapshot := h.attempts.Snapshot(in.AttemptID)
 	if snapshot == nil || snapshot.SessionID != sess.SessionID {
 		return nil, humacore.NewError(http.StatusNotFound, "attempt_not_found", "tentative introuvable")

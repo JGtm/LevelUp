@@ -14,8 +14,9 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
+	"levelup/go-api/internal/platform/auth/tokencache"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
 )
 
@@ -36,7 +37,7 @@ type PlayerLiveRefresher struct {
 	xuid           string
 	titleSlug      string // titre configuré du joueur ("" ⇒ halo_infinite). Source du gating capability.
 	interval       time.Duration
-	provider       *halo.HaloProvider
+	provider       *haloadapter.Provider
 	sink           *duckdb.PersistSink
 	notifier       port.SessionNotifier // nil si non configuré
 	tokenRefresher func(ctx context.Context, xuid string) (*domain.HaloTokens, error)
@@ -49,7 +50,7 @@ type PlayerLiveRefresher struct {
 // sink est le PersistSink fire-and-forget pour persister les résultats.
 // resolver, si non nil, délègue le cache/fetch au resolver unifié.
 func NewPlayerLiveRefresher(gamertag, xuid string, sink *duckdb.PersistSink, resolver assets.Resolver) *PlayerLiveRefresher {
-	provider := halo.DefaultHaloProvider
+	provider := haloadapter.DefaultHaloProvider
 	if resolver != nil {
 		provider = provider.WithAssetResolver(resolver)
 	}
@@ -175,7 +176,7 @@ func (r *PlayerLiveRefresher) runTicker(ctx context.Context) {
 // fetchée que si le titre du joueur la déclare (capability) — un titre sans BP ni
 // Challenges (Halo 5) n'atteint jamais ce point (ticker non démarré, cf. OnPresenceActive).
 func (r *PlayerLiveRefresher) refresh(ctx context.Context) {
-	tokens := halo.GetCachedPlayerTokens(r.xuid)
+	tokens := tokencache.GetCachedPlayerTokens(r.xuid)
 	if tokens == nil && r.tokenRefresher != nil {
 		refreshed, err := r.tokenRefresher(ctx, r.xuid)
 		if err != nil {

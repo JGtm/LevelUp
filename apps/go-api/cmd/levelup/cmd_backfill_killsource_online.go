@@ -11,8 +11,7 @@ package main
 // projet Python supprime a la migration : aucun code Go ne creait de nouveau manifeste, et le
 // cache s est arrete le 2026-04-07. Depuis cette date, aucun match synchronise n a de passe de
 // film, donc `assist_known` y vaut FALSE — « on ne sait pas » — sur 100 % des morts, et les
-// deux blocs d assistances de l app se retirent. Mesure complete et datee :
-// `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`.
+// deux blocs d assistances de l app se retirent.
 //
 // # CE QU ELLE FAIT DE PLUS, ET RIEN D AUTRE
 //
@@ -43,8 +42,8 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/filmarchive"
+	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/matchflags"
 )
@@ -113,11 +112,11 @@ func passeDesFilmsEnLigne(
 	// `film_manifests/` est absent, et ce nil vaut pour TOUT le process : sur une machine
 	// neuve, la passe archiverait sans jamais relire, et la passe SUIVANTE repaierait le
 	// reseau en entier. Creer les deux dossiers d abord supprime le piege.
-	if err := filmcache.EnsureDirs(cacheRoot); err != nil {
+	if err := filmarchive.EnsureDirs(cacheRoot); err != nil {
 		return nil, err
 	}
 	source := killcollector.NewRemoteFilms(
-		killcollector.NewLocalCacheFilms(haloclient.NewLocalFilmCache(cacheRoot)),
+		killcollector.NewLocalCacheFilms(filmfetch.NewLocalFilmCache(cacheRoot)),
 		client,
 		cacheRoot,
 	)

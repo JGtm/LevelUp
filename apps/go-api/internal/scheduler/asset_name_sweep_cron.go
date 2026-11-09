@@ -105,7 +105,7 @@ func (c *AssetNameSweepCron) Run(ctx context.Context) {
 	case <-ctx.Done():
 		return
 	case <-time.After(c.bootDelay):
-		c.RunOnce(ctx)
+		runHeavy(ctx, "asset_name_sweep", c.RunOnce)
 	}
 
 	ticker := time.NewTicker(c.interval)
@@ -116,7 +116,7 @@ func (c *AssetNameSweepCron) Run(ctx context.Context) {
 			c.log.InfoContext(ctx, "asset_name_sweep_cron: stopped (ctx done)")
 			return
 		case <-ticker.C:
-			c.RunOnce(ctx)
+			runHeavy(ctx, "asset_name_sweep", c.RunOnce)
 		}
 	}
 }

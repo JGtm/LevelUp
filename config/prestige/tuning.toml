@@ -83,7 +83,15 @@ tracking  = 0.0
 # Paliers Prestige : seuils PP pour atteindre chaque niveau.
 # Index 0 = Recrue (départ), niveau max = Légendaire.
 thresholds = [0, 500, 1500, 3000, 6000, 12000]
-names      = ["Recrue", "Soldat", "Vétéran", "Spécialiste", "Élite", "Légendaire"]
+# Un nom par langue ; toute langue `required` de config/locales.toml est obligatoire.
+names = [
+  { en = "Recruit", fr = "Recrue" },
+  { en = "Soldier", fr = "Soldat" },
+  { en = "Veteran", fr = "Vétéran" },
+  { en = "Specialist", fr = "Spécialiste" },
+  { en = "Elite", fr = "Élite" },
+  { en = "Legendary", fr = "Légendaire" },
+]
 
 [baseline]
 # Fenêtre glissante pour calculer la baseline d'une métrique.

@@ -213,7 +213,7 @@ func ComputeDominanceFlag(
 // FINAUX d'équipe (sans timeline de kills), pour les titres dont les events ne
 // portent pas de kill-feed exploitable (ex. Halo 5 : highlight_events = médailles
 // seules → pas de courbe). Reproduit le seuil de la formule Steaktacular
-// (cf. .ai/STEAKTACULAR.md : Slayer écart ≥ 20 sur 50 = loser ≤ 60% du winner) en
+// (Slayer écart ≥ 20 sur 50 = loser ≤ 60% du winner) en
 // le rendant title-agnostic : marge = winner − loser ≥ leadPct × winner.
 //
 // myScore/enemyScore : scores finaux (kills d'équipe ou score objectif). outcome :

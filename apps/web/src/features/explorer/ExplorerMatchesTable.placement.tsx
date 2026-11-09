@@ -34,7 +34,7 @@
  * masque pas un défaut de fraîcheur derrière un état inventé.
  *
  * Libellé court réutilisé de `common.home.rank_placement` (déjà servi par les
- * cards Accueil + `match-view/i18n.ts` `rankPlacement`, même sentinelle
+ * cards Accueil + `match-view/i18n` `rankPlacement`, même sentinelle
  * "Placement" côté back) : FR "En placement" / EN "In placement" — cohérence
  * inter-écrans plutôt qu'un 3e libellé légèrement différent pour cette seule
  * table (CLAUDE.md §6, ≤2 copies avant centralisation — ici on RÉUTILISE la

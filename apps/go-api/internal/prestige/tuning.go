@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // tuning.go — chargement et exposition des paramètres de calage du système.
@@ -79,9 +81,12 @@ type DataTierMultiplier struct {
 	Tracking  float64 `toml:"tracking"`
 }
 
+// LevelsTuning : seuils PP et nom de chaque niveau. Le nom est un texte par langue
+// (`{ en = "...", fr = "..." }` dans tuning.toml) : toute langue `required` de config/locales.toml
+// doit y figurer (Validate).
 type LevelsTuning struct {
-	Thresholds []int    `toml:"thresholds"`
-	Names      []string `toml:"names"`
+	Thresholds []int       `toml:"thresholds"`
+	Names      []i18n.Text `toml:"names"`
 }
 
 type BaselineTuning struct {
@@ -178,7 +183,14 @@ func DefaultTuning() Tuning {
 		},
 		Levels: LevelsTuning{
 			Thresholds: []int{0, 500, 1500, 3000, 6000, 12000},
-			Names:      []string{"Recrue", "Soldat", "Vétéran", "Spécialiste", "Élite", "Légendaire"},
+			Names: []i18n.Text{
+				i18n.FromColumns("Recruit", "Recrue"),
+				i18n.FromColumns("Soldier", "Soldat"),
+				i18n.FromColumns("Veteran", "Vétéran"),
+				i18n.FromColumns("Specialist", "Spécialiste"),
+				i18n.FromColumns("Elite", "Élite"),
+				i18n.FromColumns("Legendary", "Légendaire"),
+			},
 		},
 		Baseline: BaselineTuning{
 			WindowMatches: 20, MatchesFull: 10, MatchesEstimated: 5,
@@ -279,6 +291,11 @@ func (t Tuning) validatePPAndLevels() error {
 	}
 	if len(t.Levels.Thresholds) == 0 {
 		return fmt.Errorf("levels.thresholds vide")
+	}
+	for i, name := range t.Levels.Names {
+		if err := name.Validate(); err != nil {
+			return fmt.Errorf("levels.names[%d] : %w", i, err)
+		}
 	}
 	if t.Levels.Thresholds[0] != 0 {
 		return fmt.Errorf("levels.thresholds[0] doit être 0")

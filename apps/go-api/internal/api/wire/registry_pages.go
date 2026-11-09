@@ -37,7 +37,7 @@ func (r *ServiceRegistry) Filters(ctx context.Context, slug string) (port.Filter
 	if err != nil {
 		return nil, err
 	}
-	svc := service.NewFiltersService(duckdb.NewCachedFiltersRepo(pdb).WithMapVariantSuffixes(r.mapVariantSuffixesFor(pdb)))
+	svc := service.NewFiltersService(duckdb.NewCachedFiltersRepo(pdb).WithMapGroupRules(r.mapGroupRulesFor(pdb)))
 	if r.seasonsCatalog != nil {
 		// Bug fix 2026-05-08 : passer pdb.TitleSlug (le titre du joueur, ex
 		// "halo_infinite") et NON le `slug` paramètre qui est le **player
@@ -67,7 +67,7 @@ func (r *ServiceRegistry) matchViewSharedReader(pdb *duckdb.PlayerDB) duckdb.Sha
 	if v, ok := r.snapReaders.Load(slug); ok {
 		return v.(duckdb.SharedReader)
 	}
-	paths := title.NewPathResolver(r.cfg.RepoRoot)
+	paths := r.cfg.PathResolver()
 	sr := duckdb.SharedReader(snapshot.NewSnapshotPreferredSharedReader(paths, slug, pdb.SharedReadDB()))
 	actual, _ := r.snapReaders.LoadOrStore(slug, sr)
 	return actual.(duckdb.SharedReader)
@@ -352,7 +352,9 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)), pdb.XUID).
 		// « Analyse du film en cours » de l'Emprise (onglet Usages) : MÊME règle et MÊME porte de titre que
 		// l'accueil, la vue match et l'Escouade (film.kill_source) ; nil pour un titre sans elle.
-		WithAnalysisPending(r.analysisPendingFor(pdb))
+		WithAnalysisPending(r.analysisPendingFor(pdb)).
+		// Une variante de carte compte sous sa carte de base : découpage par carte et Emprise par carte.
+		WithMapGroups(r.mapGroupsFor(pdb))
 	svc = r.cablerUsagesTimeseries(svc, pdb) // onglet « Usages » : registry_pages_timeseries.go
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
@@ -528,8 +530,7 @@ func (r *ServiceRegistry) killDistanceRepoFor(pdb *duckdb.PlayerDB) port.KillDis
 // WeaponImageURLFromAdapter rend LA fonction canonique « identifiant d'arme -> icône » du
 // dépôt : son URL, et si cette icône est un MASQUE à teinter plutôt qu'un dessin fini.
 //
-// # POURQUOI UNE FONCTION EXPORTÉE, ET NON UNE CLOSURE RECOPIÉE (D11 du plan
-// # .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md)
+// # POURQUOI UNE FONCTION EXPORTÉE, ET NON UNE CLOSURE RECOPIÉE
 //
 // Elle vivait INLINE dans `api/server.go` (drawer d'assets). Le profil d'armes du Face-à-face
 // en aurait été la deuxième écriture, et la règle du dépôt veut une définition unique dès

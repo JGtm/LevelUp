@@ -10,9 +10,10 @@ package killcollector
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // materiauDuSilence : la victime 111 (slot 1) est immobile en (5, 0) jusqu'a 9,2 s puis se tait ;

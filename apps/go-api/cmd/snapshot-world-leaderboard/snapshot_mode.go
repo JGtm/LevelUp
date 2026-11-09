@@ -14,9 +14,9 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/platform/halo"
 )
 
 // snapshotOptions rassemble les réglages du mode capture. Une struct plutôt qu'une
@@ -39,7 +39,7 @@ func runSnapshotMode(ctx context.Context, log *slog.Logger, opt snapshotOptions)
 	if len(playlists) == 0 {
 		fatal("aucune playlist à traiter")
 	}
-	scraper := halo.NewLeaderboardScraper(time.Duration(opt.politeMs) * time.Millisecond)
+	scraper := haloadapter.NewLeaderboardScraper(time.Duration(opt.politeMs) * time.Millisecond)
 
 	// 'all' → snapshot TOUTES les saisons exposées par Halo Waypoint (csrseason3-1
 	// jusqu'à l'active), pas seulement la courante. Miroir du -season all du backfill.
@@ -89,7 +89,7 @@ func runSnapshotMode(ctx context.Context, log *slog.Logger, opt snapshotOptions)
 type snapshotRunner struct {
 	log       *slog.Logger
 	db        *sql.DB
-	scraper   *halo.LeaderboardScraper
+	scraper   *haloadapter.LeaderboardScraper
 	playlists []string
 	opt       snapshotOptions
 }
@@ -110,7 +110,7 @@ func (r *snapshotRunner) season(ctx context.Context, s string) (rows, inserted i
 			// 404 = playlist non classée cette saison : skip NOMINAL d'un backfill
 			// multi-saisons × toutes playlists (pas une erreur). Les vraies erreurs
 			// (429, 5xx, réseau) restent en ERROR.
-			if errors.Is(ferr, halo.ErrLeaderboardPageNotFound) {
+			if errors.Is(ferr, haloadapter.ErrLeaderboardPageNotFound) {
 				fmt.Printf("  %s : —  (non classée cette saison)\n", pl)
 				r.log.InfoContext(ctx, "playlist non classée cette saison — ignorée", "season", s, "playlist", pl)
 			} else {

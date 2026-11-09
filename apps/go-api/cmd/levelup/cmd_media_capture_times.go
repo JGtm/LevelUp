@@ -37,7 +37,7 @@ func runMediaCaptureTimes(cfg *config.AppConfig, args []string) error {
 	}
 	path := *dbPath
 	if path == "" {
-		path = title.NewPathResolver(cfg.RepoRoot).SharedSocialDBPath(*titleSlug)
+		path = cfg.PathResolver().SharedSocialDBPath(*titleSlug)
 	}
 	report, err := ops.RecalcMediaCaptureTimes(context.Background(), ops.CaptureRecalcOptions{
 		DBPath:   path,

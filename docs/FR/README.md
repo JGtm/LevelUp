@@ -14,47 +14,26 @@
 
 ## Dernières nouveautés
 
-**v8.0 — Le rejeu 2D, le film Theater décodé & un onglet Tactique**
+**v8.1 — LevelUp pour Windows**
 
-La plus grosse version à ce jour. Halo Infinite enregistre un film de chaque match ; jusqu'ici, personne n'était vraiment parvenu à le décoder. LevelUp y parvient désormais — un match se revoit vu du dessus, seconde par seconde, avec tout ce que le film sait écrit autour : qui a tué qui et avec quoi, à quelle distance, qui portait le drapeau, qui a raflé l'arme de puissance, qui est mort avec un équipement qu'il n'a jamais utilisé.
+LevelUp s'installe désormais sur ton PC comme n'importe quelle application : tes statistiques, le rejeu 2D et les films de tes matchs, sans rien à monter ni à héberger.
 
-**Rejeu 2D**
-- **Chaque match, revu du dessus** — tous les joueurs se déplacent sur le vrai fond de la carte, sous leur nom, avec une barre de lecture, quatre pistes sur la frise (Toi, Alliés, Dominance, Médias), le réglage de vitesse et les sauts de 10 secondes
-- **Un fil des éliminations qui suit le curseur** — tueur, arme, victime, médaille et assistance avec sa part de dégâts
-- **Des calques à cocher** — visée, traînées, effets de tirs et de mort, carte de chaleur, emplacements d'armes, armes au sol, équipements posés, véhicules, zones nommées, et les objectifs vivants (drapeau, crâne, colline, bastions, bombe, couronne du VIP)
-- **Le son du jeu**, coupé par défaut et filtrable par catégorie, plus une capture PNG et un enregistrement vidéo du rejeu avec sa bande-son
+- **Installe et joue** — un installeur ordinaire, la connexion Microsoft dans ton navigateur, et tes matchs se chargent. Les mises à jour sont proposées, jamais imposées.
+- **Respecte ta partie** — rien de lourd ne tourne pendant que tu joues, et tes matchs se synchronisent dès que tu quittes le jeu.
+- **Une vraie application de bureau** — une barre latérale repliable, les cartes et les armes à portée de main à côté de la page, des notifications Windows et une icône près de l'horloge si tu le souhaites.
+- **Tes données restent à toi** — des sauvegardes automatiques dans le dossier de ton choix, et tu peux rapatrier ton compte depuis le site.
+- **Des rejeux toujours à jour** — après une mise à jour, LevelUp te propose de régénérer tes anciens rejeux en arrière-plan.
 
-**Ce que le film sait, et que l'API n'a jamais dit**
-- **L'arme de chaque élimination**, y compris les morts sans arme à feu (répulseur, chute, environnement), et l'endroit de la carte où l'on tue et où l'on meurt
-- **La portée des engagements** — basse (p10), médiane et haute (p90) par arme, avec le dénivelé signé
-- **Le niveau des armes** — les prises de socle ventilées en armes de base, de terrain et de puissance ; ce que vaut un emplacement vient de la carte, jamais du nom de l'arme
-- **Les prises de drapeau**, les statistiques d'Assaut, et l'équipement lu comme utilisé, gardé ou lâché en mourant
-- **Les manches comptent comme des manches** — sur les modes à manches, le score affiché est le nombre de manches gagnées et perdues, parce que le score en points de l'API peut donner l'avantage au camp qui a perdu
+**Aussi nouveau, sur le site comme dans l'application** : le même en-tête clair sur toutes les sections, la performance par carte et par mode dans la Synthèse, les modes de Halo 5 et des corrections du rejeu.
 
-**Onglet Tactique**
-- **Un seul écran en cockpit** : les cartes que tu joues avec leur bilan, le plan de la carte et ses sept lectures (où tu meurs, où tu tues, ton solde frags − morts, où les victoires et les défaites se séparent, où tu passes ton temps, tes trajets après réapparition, où tu meurs seul), et la zone que tu choisis, nommée comme dans le jeu, avec des mini-tuiles qui ouvrent le rejeu à la seconde près
+- **La médiathèque suit le disque** — renommer, déplacer ou supprimer une capture dans l'explorateur ne casse plus la galerie, et supprimer depuis l'application envoie l'original à la Corbeille.
+- **Rejeu** — l'équipement reçu à la réapparition s'affiche enfin (effets, sons, compteurs), et les joueurs immobiles restent visibles jusqu'à leur mort.
+- **Carrière** — un match exclu disparaît aussitôt du graphe de carrière, et les nouvelles citations arrivent toutes seules au démarrage.
+- **Des mises à jour Windows plus légères** — l'application et ses ressources se mettent à jour séparément : une nouvelle version ne télécharge le plus souvent qu'environ 30 Mo.
 
-**Escouade, sessions et fiche de match**
-- **« Les formes retenues »** — six lectures d'une escouade sur dix-neuf cartes, et le bloc équipement utilisé / gardé / gâché sur l'Escouade et les Sessions
-- **La cadence par match** partout, la distance par arme, la répartition des frags en deux niveaux, et une courbe de score dans le temps qui respecte le mode
+**À savoir** : Windows 10 ou 11 (64 bits) uniquement. L'installeur n'est pas signé par un certificat payant : Windows affiche un avertissement à l'installation (« Informations complémentaires », puis « Exécuter quand même ») ; la page de téléchargement t'explique tout.
 
-**Cartes, médias et réparations**
-- **109 fonds de carte** avec les zones Forge nommées à 100 %, les repères officiels
-
-**Un débrief plus rapide**
-- **Le match que tu viens de jouer est analysé en premier** — il passe devant l'historique ; « Analyse en cours » dit quelle partie est en traitement, et un bloc sans rien à montrer dit désormais pourquoi
-- **Quatre nouvelles citations**, dont trois lues dans le film — « Tick Tick Boom », « Premier coup », « Jouets éducatifs » et « Presque, ça ne compte pas » (tuer un adversaire sans bouclier, et survivre)
-
-**Tactique et rejeu, affinés**
-- **Tactique** : écarter la zone sélectionnée d'un clic ou d'Échap, voir l'état de chaque mort et regarder sa séquence se jouer seule ; l'onglet s'ouvre avec bien moins de requêtes
-- **Rejeu** : les premiers VIP dès la première seconde avec une couronne redessinée, l'équipement porté lu plus loin, les armes de départ lâchées au sol masquées par défaut, et des zones nommées sur 78 cartes de plus
-- **Une démo plus riche** — un rejeu pour chaque mode et un 4v4 avec plusieurs véhicules, conservés d'une version à l'autre
-
-**Tes jetons, ton choix, et une licence libre**
-- **La mise en commun des jetons est un choix, joueur par joueur** — ta connexion ne sert les autres joueurs de l'instance que si tu es d'accord, et tu peux la retirer à tout moment ; conditions d'utilisation et texte de confidentialité corrigé
-- **GNU AGPL-3.0 pour le code, CC BY 4.0 pour la documentation**, et un audit de sécurité qui a fermé 29 constats
-
-Tout ce qui se lit dans un film est réservé à Halo Infinite — Halo 5 garde ses propres pages et n'emprunte jamais les données d'un autre titre.
+Tous les détails dans le [journal des modifications](CHANGELOG.md).
 
 ## Fonctionnalités
 
@@ -286,6 +265,8 @@ Tout ce qui se lit dans un film est réservé à Halo Infinite — Halo 5 garde 
 ---
 
 ## Démarrage rapide
+
+**Application Windows** : télécharge l'installeur (`LevelUp_X.Y.Z_x64-setup.exe`) depuis la [page des releases GitHub](https://github.com/JGtm/LevelUp/releases/latest) ou depuis la page « Télécharger LevelUp pour Windows » du site hébergé, puis lance-le. L'installeur n'est pas signé par un certificat de code : Windows SmartScreen avertit une fois (« Informations complémentaires », puis « Exécuter quand même »). Tes données vivent dans `%LOCALAPPDATA%\LevelUp` et y restent après une désinstallation. Détails : [docs/RUNBOOK_DESKTOP.md](../RUNBOOK_DESKTOP.md) (en anglais). Le reste de cette section sert à lancer LevelUp depuis les sources.
 
 **Prérequis** : Go 1.26+, Node.js + npm, GNU Make, Air pour le rechargement à chaud du Go, et une **chaîne C** — le pilote DuckDB est en CGO, et sous Windows un `gcc` absent du `PATH` fait servir à Air un binaire périmé sans le dire (MinGW/UCRT64 ; voir [INSTALL.md](INSTALL.md)).
 

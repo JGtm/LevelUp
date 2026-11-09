@@ -67,7 +67,7 @@ func run(titleID string, dryRun bool) error {
 		return fmt.Errorf("LEVELUP_REPO_ROOT non défini")
 	}
 
-	metaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titleID)
+	metaPath := cfg.PathResolver().MetadataDBPath(titleID)
 	if _, err := os.Stat(metaPath); err != nil {
 		return fmt.Errorf("metadata.duckdb introuvable (%s): %w", metaPath, err)
 	}

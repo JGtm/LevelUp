@@ -126,7 +126,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -136,7 +135,7 @@ import (
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/killcollector"
 )
 
@@ -214,7 +213,7 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 	// de TRAVAIL en est derive par `context.WithoutCancel` la ou il faut aller au bout.
 	ctx, arreterLeReleveur := contexteDArret()
 	defer arreterLeReleveur()
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	// `--status` SORT AVANT TOUT LE RESTE, et avant meme la validation des autres drapeaux :
 	// c est une LECTURE de fichier, elle n a rien a valider et surtout rien a ouvrir. La passe
 	// qu on interroge tient le shared en ecriture (ADR 0013) — une sous-commande d etat qui
@@ -225,6 +224,14 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 	if err := validerLesOptions(o); err != nil {
 		return err
 	}
+	// LE VERROU SOLO DE DECODAGE, EN REFUS IMMEDIAT, AVANT D OUVRIR LA BASE (cmd_decode_verrou.go) : cette passe
+	// decode des films dans CE processus, et un serveur qui cuit un rejeu (ou une file de regeneration) tient
+	// deja la machine. `--dry-run` et `--credit-only` ne decodent rien : ils n en ont pas besoin.
+	relacher, err := verrouDeLaPasse(cfg, o)
+	if err != nil {
+		return err
+	}
+	defer relacher()
 
 	sharedPath := pr.SharedDBPath(o.titleSlug)
 	if _, err := os.Stat(sharedPath); err != nil {
@@ -326,7 +333,7 @@ func passeDesFilms(
 	ctx context.Context, cfg *config.AppConfig, db *sql.DB, o killsourceOptions, cheminEtat string,
 ) (*suiviDeLaPasse, error) {
 	cacheRoot := resoudreCacheFilms(cfg, o.cacheDir)
-	cache := haloclient.NewLocalFilmCache(cacheRoot)
+	cache := filmfetch.NewLocalFilmCache(cacheRoot)
 	if cache == nil {
 		return nil, fmt.Errorf("cache de films introuvable sous %s — cette passe est HORS LIGNE, "+
 			"elle n a pas d autre source", cacheRoot)
@@ -456,7 +463,7 @@ func resoudreCacheFilms(cfg *config.AppConfig, flagValue string) string {
 	if v := strings.TrimSpace(os.Getenv("LEVELUP_LEGACY_FILM_CACHE_DIR")); v != "" {
 		return v
 	}
-	return filepath.Join(cfg.RepoRoot, "data", "cache")
+	return cfg.PathResolver().FilmArchiveDir()
 }
 
 // capabilitesDuTitre : les capabilities lues dans `capabilities.toml`.

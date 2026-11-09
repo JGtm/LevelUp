@@ -1,5 +1,5 @@
 // Package domain — synthesis_weapon_range.go : LA PORTÉE ET LE DÉNIVELÉ DES ENGAGEMENTS,
-// contrat de la section Synthèse (plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md, lot 4).
+// contrat de la section Synthèse.
 //
 // # CE QUE LA SECTION RÉPOND
 //
@@ -77,11 +77,10 @@ type WeaponRangeRow struct {
 	// WeaponKey est la clé canonique du registre ("hinf_br75"). TOUJOURS renseignée : elle
 	// est le repli d'affichage quand le libellé n'a pas pu être résolu.
 	WeaponKey string `json:"weapon_key"`
-	// Label / LabelEN : le nom d'affichage FR-first et EN-first, résolus depuis la metadata
-	// du titre (jamais un libellé en dur côté Go). Vides si la metadata ne connaît pas la
-	// clé — le front retombe alors sur WeaponKey.
-	Label   string `json:"label,omitempty"`
-	LabelEN string `json:"label_en,omitempty"`
+	// Label : le nom d affichage dans la langue de la requête (repli en), résolu depuis la
+	// metadata du titre (jamais un libellé en dur côté Go). Vide si la metadata ne connaît pas
+	// la clé — le front retombe alors sur WeaponKey.
+	Label string `json:"label,omitempty"`
 
 	// Kills : « où je frague avec cette arme ». Nil si aucun frag mesuré au-dessus du seuil.
 	Kills *WeaponRangeSide `json:"kills,omitempty"`
@@ -101,10 +100,10 @@ type WeaponRangeSide struct {
 	Median float64 `json:"median"`
 	P90    float64 `json:"p90"`
 
-	// MinM / MaxM : les distances EXTRÊMES observées, en mètres — POUR L'INFOBULLE SEULE
-	// (D5 du plan .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md). Elles répondent à « jusqu'où
+	// MinM / MaxM : les distances EXTRÊMES observées, en mètres — POUR L'INFOBULLE SEULE.
+	// Elles répondent à « jusqu'où
 	// est-il allé », que p10 -> p90 ne dit pas. Elles NE SE TRACENT JAMAIS : les porter dans
-	// la géométrie du bâton ferait exactement ce que D6 refuse — décrire deux accidents.
+	// la géométrie du bâton ferait exactement ce que ce bâton refuse — décrire deux accidents.
 	// Sur une ligne d'une seule mesure, min == max == médiane, et c'est exact.
 	//
 	// La Synthèse les IGNORE : la section existante n'affiche rien de plus qu'avant.
@@ -126,7 +125,6 @@ type WeaponRangeSide struct {
 type WeaponBelowThreshold struct {
 	WeaponKey string `json:"weapon_key"`
 	Label     string `json:"label,omitempty"`
-	LabelEN   string `json:"label_en,omitempty"`
 	Measured  int    `json:"measured"`
 }
 

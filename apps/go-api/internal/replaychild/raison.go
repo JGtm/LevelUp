@@ -12,17 +12,18 @@ package replaychild
 //
 // # LA REGLE
 //
-// L'enfant classe par `errors.Is` et rend un JETON par la ligne de protocole de `filmproc`
-// ([filmproc.EmitRaison]) ; le parent traduit le jeton en l'erreur typee ENVELOPPEE, que ses
+// L'enfant classe par `errors.Is` et rend un JETON par la ligne de protocole de `filmrun`
+// ([filmrun.EmitRaison]) ; le parent traduit le jeton en l'erreur typee ENVELOPPEE, que ses
 // appelants classent a leur tour par `errors.Is`. Le vocabulaire vit ICI, des deux cotes du
-// tube, en UNE table : `filmproc` ne connait que des jetons opaques.
+// tube, en UNE table : `filmrun` ne connait que des jetons opaques.
 
 import (
 	"errors"
 	"fmt"
 
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // refusVoulus : les refus VOULUS de la cuisson, jeton et erreur typee. L'ordre est celui du

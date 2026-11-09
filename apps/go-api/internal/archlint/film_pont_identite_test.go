@@ -32,7 +32,6 @@ package archlint
 
 import (
 	"go/ast"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -55,15 +54,14 @@ var lecturesDuPontDIdentite = map[string]bool{
 // appelantsDuPontDIdentite : les deux producteurs du pont d identite, relatifs a `apps/go-api`.
 var appelantsDuPontDIdentite = []string{
 	"internal/sync/killcollector",
-	"internal/games/halo_infinite/film/replay",
+	"libs/film/replay",
 }
 
 // TestCollecteurEtCuissonAppellentLeMemeEtage — LE RATCHET.
 func TestCollecteurEtCuissonAppellentLeMemeEtage(t *testing.T) {
-	racine := apiRootDepuisIci(t)
 	var violations []string
 	for _, pkg := range appelantsDuPontDIdentite {
-		fichiers := fichiersGoNonTest(t, filepath.Join(racine, filepath.FromSlash(pkg)))
+		fichiers := fichiersGoNonTest(t, surDisque(t, pkg))
 		if len(fichiers) == 0 {
 			t.Fatalf("%s : aucun fichier de production lu — le ratchet ne garde plus rien", pkg)
 		}

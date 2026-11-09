@@ -22,13 +22,14 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
 // RefreshSeasonCatalog upsert (ART-safe) chaque saison dans shared.season_catalog.
 // Idempotent : re-jouable à chaque cycle cron. Retourne le nombre de lignes traitées.
-// db = writer shared acquis par l'appelant (fenêtre RW). NameFR est déjà résolu par
-// le scraper (fallback DisplayName) ; ici on ne fait que persister + parser le n°.
+// db = writer shared acquis par l'appelant (fenêtre RW). Name[fr] est déjà résolu par
+// le scraper (fallback sur le nom EN) ; ici on ne fait que persister + parser le n°.
 func RefreshSeasonCatalog(ctx context.Context, db *sql.DB, titleSlug string, seasons []domain.WorldSeasonRef) (int, error) {
 	if db == nil {
 		return 0, fmt.Errorf("RefreshSeasonCatalog: db nil")
@@ -39,9 +40,10 @@ func RefreshSeasonCatalog(ctx context.Context, db *sql.DB, titleSlug string, sea
 		if id == "" {
 			continue
 		}
-		nameFR := strings.TrimSpace(s.NameFR)
+		nameEN := s.Name[i18n.LocaleEN]
+		nameFR := strings.TrimSpace(s.Name[i18n.LocaleFR])
 		if nameFR == "" {
-			nameFR = s.DisplayName
+			nameFR = nameEN
 		}
 		major, minor := parseWaypointSeasonNumber(id)
 		if err := duckdb.UpsertRowNoConflict(ctx, db,
@@ -51,11 +53,11 @@ func RefreshSeasonCatalog(ctx context.Context, db *sql.DB, titleSlug string, sea
 				display_name = ?, name_fr = ?, season_major = ?, season_minor = ?,
 				last_fetched_at = CURRENT_TIMESTAMP
 			 WHERE title_slug = ? AND season_id = ?`,
-			[]any{s.DisplayName, nameFR, major, minor, titleSlug, id},
+			[]any{nameEN, nameFR, major, minor, titleSlug, id},
 			`INSERT INTO season_catalog
 				(title_slug, season_id, display_name, name_fr, season_major, season_minor, first_seen_at, last_fetched_at)
 			 VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-			[]any{titleSlug, id, s.DisplayName, nameFR, major, minor},
+			[]any{titleSlug, id, nameEN, nameFR, major, minor},
 		); err != nil {
 			slog.WarnContext(ctx, "upsert season_catalog", "season_id", id, "err", err)
 			continue

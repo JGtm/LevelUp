@@ -133,7 +133,8 @@ func loadOneFriendExtras(
 	if rank, err := repo.GetMatchSkillRank(ctx, matchID); err != nil {
 		fail("skill rank", err)
 	} else if rank != nil {
-		iconURL := resolveSkillIconURL(rank.Tier, rank.SubTier, rank.TierLabel, assetURL)
+		labelSkillRank(ctx, rank)
+		iconURL := resolveSkillIconURL(rank.Tier, rank.SubTier, assetURL)
 		var iconURLPtr *string
 		if iconURL != "" {
 			iconURLPtr = &iconURL

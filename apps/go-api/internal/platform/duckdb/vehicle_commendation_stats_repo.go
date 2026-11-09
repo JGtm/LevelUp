@@ -51,6 +51,7 @@ import (
 	"sync"
 	"time"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -65,7 +66,7 @@ type VehicleCommendationStatsRepo struct {
 	pdb *PlayerDB
 
 	// Résolution des UUID véhicules par NOM, faite UNE FOIS (au premier appel) puis
-	// mémoïsée : le référentiel commendation_definitions est immuable au runtime
+	// mémoïsée : le référentiel des commendations (asset_translations) est immuable au runtime
 	// (seedé au boot par cmd/h5-metadata-fetch, versionné). ~10 lignes retenues sur
 	// ~88 → scan LIKE négligeable.
 	resolveOnce sync.Once
@@ -87,25 +88,26 @@ func NewVehicleCommendationStatsRepo(pdb *PlayerDB) *VehicleCommendationStatsRep
 }
 
 // vehicleCommendationResolveQuery résout les UUID des commendations « véhicule
-// détruit » par NOM (locale-agnostic : matche name_en OU name_fr, robuste au seed
-// FR/EN). Le motif FR « Destructeur % » (espace) capture aussi « Destructeur
-// d'apparitions » (wraith) ; le motif EN « % Destroyer » capture « Banshee
-// Destroyer », etc. Le garde-fou NOT exclut un éventuel badge agrégé.
+// détruit » par NOM dans asset_translations (type « commendation »), toutes langues
+// confondues (locale-agnostic : robuste au seed FR/EN). Le motif FR « Destructeur % »
+// (espace) capture aussi « Destructeur d'apparitions » (wraith) ; le motif EN « % Destroyer »
+// capture « Banshee Destroyer », etc. Le garde-fou NOT EXISTS exclut un éventuel badge agrégé
+// (un nom « Vehicle Destroyer » ou « Vehicle Mastery » dans une langue quelconque). Un UUID
+// n'est rendu qu'une fois, avec un de ses noms (MIN) pour le journal.
 //
 // Ne résout PLUS « Grand Theft »/« Vol à la tire » (hijack) : cette commendation
 // n'existe pas dans le référentiel Halo 5 (cf. package doc) — le hijack est résolu
 // séparément depuis medal_definitions/medals_earned (resolveHijackMedalIDs).
 const vehicleCommendationResolveQuery = `
-SELECT commendation_id,
-       COALESCE(name_en, '') AS name_en,
-       COALESCE(name_fr, '') AS name_fr
-FROM commendation_definitions
-WHERE (
-        name_en LIKE '% Destroyer'
-     OR name_fr LIKE 'Destructeur %'
-      )
-  AND name_en <> 'Vehicle Destroyer'
-  AND name_en <> 'Vehicle Mastery'`
+SELECT t.asset_id, MIN(t.name) AS name
+FROM asset_translations t
+WHERE t.asset_type = 'commendation'
+  AND (t.name LIKE '% Destroyer' OR t.name LIKE 'Destructeur %')
+  AND NOT EXISTS (
+        SELECT 1 FROM asset_translations x
+        WHERE x.asset_type = 'commendation' AND x.asset_id = t.asset_id
+          AND x.name IN ('Vehicle Destroyer', 'Vehicle Mastery'))
+GROUP BY t.asset_id`
 
 // resolve renseigne (une seule fois) le set d'UUID commendation « véhicule détruit »
 // depuis la metadata. Dégradation gracieuse : metadata nil, table absente, ou 0 UUID
@@ -119,18 +121,18 @@ func (r *VehicleCommendationStatsRepo) resolve(ctx context.Context) map[string]s
 		}
 		rows, err := r.pdb.Metadata.Query(ctx, vehicleCommendationResolveQuery)
 		if err != nil {
-			slog.WarnContext(ctx, "vehicle commendations: référentiel commendation_definitions illisible (non seedé ?), carte masquée", "err", err)
+			slog.WarnContext(ctx, "vehicle commendations: noms de commendations (asset_translations) illisibles (non seedés ?), carte masquée", "err", err)
 			return
 		}
 		defer rows.Close()
 		var vehicleNames []string
 		for rows.Next() {
-			var id, nameEN, nameFR string
-			if err := rows.Scan(&id, &nameEN, &nameFR); err != nil {
+			var id, name string
+			if err := rows.Scan(&id, &name); err != nil {
 				continue
 			}
 			r.vehicleIDs[id] = struct{}{}
-			vehicleNames = append(vehicleNames, pickName(nameFR, nameEN))
+			vehicleNames = append(vehicleNames, name)
 		}
 		if err := rows.Err(); err != nil {
 			slog.WarnContext(ctx, "vehicle commendations: itération référentiel", "err", err)
@@ -160,12 +162,24 @@ var hijackMedalNamesToConstantIDs = map[string]int64{
 	"Skyjack": 1801925525,
 }
 
-// hijackMedalResolveQuery résout les medal_name_id par name_en (langue de seed
-// canonique du référentiel content-hacs, cf. medal_definitions_repo.go).
-const hijackMedalResolveQuery = `
-SELECT medal_name_id, name_en
-FROM medal_definitions
-WHERE name_en IN ('Hijack', 'Skyjack')`
+// hijackMedalResolveQuery résout les medal_name_id par leur nom anglais (langue de repli, clé du
+// référentiel content-hacs) dans medal_translations, parmi les médailles de medal_definitions.
+// Les noms sont ceux de hijackMedalNamesToConstantIDs ; le résultat est (requête, arguments).
+func hijackMedalResolveQuery() (string, []any) {
+	tags := i18n.HaloTags(i18n.Fallback)
+	args := make([]any, 0, len(tags)+len(hijackMedalNamesToConstantIDs))
+	for _, tag := range tags {
+		args = append(args, tag)
+	}
+	for name := range hijackMedalNamesToConstantIDs {
+		args = append(args, name)
+	}
+	return `SELECT mt.medal_name_id, mt.name
+		FROM medal_translations mt
+		WHERE mt.lang IN (` + Placeholders(len(tags)) + `)
+		  AND mt.name IN (` + Placeholders(len(hijackMedalNamesToConstantIDs)) + `)
+		  AND EXISTS (SELECT 1 FROM medal_definitions md WHERE md.medal_name_id = mt.medal_name_id)`, args
+}
 
 // resolveHijackMedalIDs renseigne (une seule fois) le set des medal_name_id « vol à
 // la tire », résolus PAR NOM en priorité (cohérent avec resolve() ci-dessus, robuste
@@ -181,7 +195,7 @@ func (r *VehicleCommendationStatsRepo) resolveHijackMedalIDs(ctx context.Context
 
 		if r.pdb == nil || r.pdb.Metadata == nil {
 			slog.WarnContext(ctx, "hijack medals: metadata absente, repli sur les ids constants documentés")
-		} else if rows, err := r.pdb.Metadata.Query(ctx, hijackMedalResolveQuery); err != nil {
+		} else if rows, err := queryHijackMedals(ctx, r.pdb.Metadata); err != nil {
 			slog.WarnContext(ctx, "hijack medals: référentiel medal_definitions illisible (non seedé ?), repli sur les ids constants", "err", err)
 		} else {
 			defer rows.Close()
@@ -330,10 +344,8 @@ WHERE xuid = ?
   AND medal_name_id IN (` + Placeholders(nIDs) + `)`
 }
 
-// pickName retourne le nom FR s'il est non vide, sinon l'EN (log auditable lisible).
-func pickName(nameFR, nameEN string) string {
-	if strings.TrimSpace(nameFR) != "" {
-		return nameFR
-	}
-	return nameEN
+// queryHijackMedals exécute hijackMedalResolveQuery sur la base metadata.
+func queryHijackMedals(ctx context.Context, db *DB) (*sql.Rows, error) {
+	q, args := hijackMedalResolveQuery()
+	return db.Query(ctx, q, args...)
 }

@@ -90,10 +90,6 @@ export interface MediaText {
   }
 }
 
-export function normalizeMediaLocale(locale?: string | null): Locale {
-  return locale === 'en' ? 'en' : 'fr'
-}
-
 function t(locale: Locale, key: MediaManifestKey, values?: Record<string, string | number>): string {
   return formatMessage(mediaManifest, key, locale, values)
 }
@@ -127,8 +123,7 @@ function formatLikers(loc: Locale, names: string[], totalLikers: number): string
   return `${names.slice(0, -1).join(', ')} ${and} ${names[names.length - 1]}`
 }
 
-export function getMediaText(locale?: string | null): MediaText {
-  const loc = normalizeMediaLocale(locale)
+export function getMediaText(loc: Locale): MediaText {
   return {
     title: t(loc, 'media.page.title'),
     emptyState: t(loc, 'media.page.empty_state'),

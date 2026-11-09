@@ -14,16 +14,14 @@ import { AssetCard } from './AssetCard'
 
 const MEDAL: AssetMeta = {
   id: '1',
-  name_en: 'Double Kill',
-  name_fr: 'Double élimination',
+  name: 'Double Kill', // nom et description servis dans la langue de la requête
   description: 'Kill 2 enemies within 4 seconds.',
-  description_fr: 'Éliminez 2 ennemis en moins de 4 secondes.',
   image_url: '/static/medals/halo_infinite/1.png',
 } as AssetMeta
 
 describe('AssetCard — description médaille (GH-6)', () => {
   it('ne rend PAS la description tronquée sous une carte médaille', () => {
-    render(<AssetCard asset={MEDAL} locale="en" kind="medals" />)
+    render(<AssetCard asset={MEDAL} kind="medals" />)
     // Le nom reste affiché…
     expect(screen.getByText('Double Kill')).toBeInTheDocument()
     // …mais la description n'est PAS rendue comme texte sous la carte.
@@ -31,13 +29,13 @@ describe('AssetCard — description médaille (GH-6)', () => {
   })
 
   it('conserve la description complète au survol (title du conteneur)', () => {
-    const { container } = render(<AssetCard asset={MEDAL} locale="en" kind="medals" />)
+    const { container } = render(<AssetCard asset={MEDAL} kind="medals" />)
     const card = container.querySelector('div[title]') as HTMLElement
     expect(card.getAttribute('title')).toContain('Kill 2 enemies within 4 seconds.')
   })
 
   it('rend toujours la description sous une carte NON-médaille (map)', () => {
-    render(<AssetCard asset={MEDAL} locale="en" kind="maps" />)
+    render(<AssetCard asset={MEDAL} kind="maps" />)
     expect(screen.getAllByText('Kill 2 enemies within 4 seconds.').length).toBeGreaterThan(0)
   })
 })

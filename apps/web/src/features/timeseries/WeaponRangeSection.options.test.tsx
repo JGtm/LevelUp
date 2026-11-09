@@ -76,14 +76,12 @@ const RANGE: SynthesisWeaponRange = {
     {
       weapon_key: 'hinf_br75',
       label: 'Fusil de combat BR75',
-      label_en: 'BR75 Battle Rifle',
       kills: side({ measured: 281, p10: 7.1, median: 13.6, p90: 24.9 }),
       deaths: side({ measured: 402, p10: 8.9, median: 16.4, p90: 29.7 }),
     },
     {
       weapon_key: 'hinf_commando',
       label: 'Commando VK78',
-      label_en: 'VK78 Commando',
       kills: side({ measured: 64 }),
     },
   ],

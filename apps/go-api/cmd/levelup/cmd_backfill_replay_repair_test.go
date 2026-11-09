@@ -12,9 +12,10 @@ import (
 
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // ecrireArtefactAvecJoueurs pose un artefact portant une version de schema ET un nombre donne de

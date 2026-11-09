@@ -7,7 +7,7 @@ package killcollector
 //
 // DEPUIS LE 2026-09-06, IL EN PRODUIT DEUX : la même lecture du film rend AUSSI
 // `shared.kill_openings` — les positions un temps-pour-tuer AVANT le coup fatal (proxy
-// d'entame, D5 du plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md). Pas un second décodeur : la
+// d'entame). Pas un second décodeur : la
 // fonction pure `replay.BuildKillOpenings`, qui décale par `replay.ShiftKillRefs`, place par LA
 // fonction de placement du paquet et n'accepte un côté que si l'instant décalé tombe dans la
 // MÊME VIE que le coup fatal. Voir composerPassePositions.
@@ -45,7 +45,7 @@ package killcollector
 // LE PONT APLATI A DISPARU DU CHEMIN (lot 6.1, 2026-09-10) : ce fichier passait
 // `reg.PontParSlot()` — le PREMIER occupant de chaque siège, quel que soit l'instant — et la
 // position d'un autre corps pouvait donc être écrite sous le nom du premier. Il passe désormais le
-// registre entier, qui répond à l'instant. Voir `.ai/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`.
+// registre entier, qui répond à l'instant.
 //
 // # LA CAPABILITY, ET CE QU'ELLE NE GARANTIT PAS SEULE
 //
@@ -55,7 +55,7 @@ package killcollector
 // fréquent et non pathologique — pas la donnée que le titre offre). Un titre qui l'a mais dont
 // le collecteur n'a pas reçu WithPositionCapture (CLI qui ne l'appelle pas, mauvaise DI en prod)
 // est, LUI, une régression de câblage : la table `kill_positions` resterait vide en silence,
-// invisible sans relire le code (constat Q8, .ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md) — journalisé
+// invisible sans relire le code — journalisé
 // en WARN et compté (`metricPositionsNotWired`) depuis la clôture Q8, pas Debug.
 //
 // # BEST-EFFORT ASSUMÉ, MÊME DOCTRINE QUE shots.go
@@ -73,12 +73,13 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
 // Compteurs de sante de la passe de positions (ADR 0009 : entiers, snake_case, aucun ratio).
@@ -97,7 +98,7 @@ const (
 	metricPositionsKillsDropped = "killsource_positions_morts_sans_position"
 	// metricPositionsNotWired : la capability est là, mais WithPositionCapture n'a pas été
 	// fourni au collecteur — régression de câblage, la table reste vide en silence si ce
-	// compteur n'est pas observé (Q8, .ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md).
+	// compteur n'est pas observé.
 	metricPositionsNotWired = "killsource_positions_non_cablees"
 	// metricPositionsSilencesSansLieu : cotes a bord d un vehicule sans echantillon ou debarques (D-16).
 	metricPositionsSilencesSansLieu = "killsource_positions_silences_sans_lieu"
@@ -266,9 +267,11 @@ func optionsDeBalayageDesPositions(
 // FATALES pour la passe (sauf les creations), dans l ordre d avant (ratchet
 // `archlint/film_pont_identite_test.go`).
 //
-// PLUS AUCUN VERROU DE DECODAGE (lot 2.3) : chaque balayage porte son profil et son observation,
-// donc son propre etat. Le verrou INTER-PROCESSUS `filmproc.AcquireSolo`, lui, borne la memoire
-// de la machine et n est pas concerne.
+// AUCUN VERROU DE DECODAGE DANS LE DECODEUR (lot 2.3) : chaque balayage porte son profil et son
+// observation, donc son propre etat. LE VERROU INTER-PROCESSUS `filmrun.AcquireSolo` BORNE LA MEMOIRE DE LA
+// MACHINE ET EST PRIS PAR L APPELANT DE LA PASSE, jamais ici : l etape 1.57 du serveur le prend en refus
+// immediat avant `CollectMatches` et se reporte au cycle suivant s il est tenu (postsync_verrou_decodage.go) ;
+// le backfill hors ligne est un processus a part qu un operateur lance serveur arrete.
 //
 // ELLE NE COMPOSE RIEN ELLE-MEME : ce qui suit les lectures — les deux jeux de lignes — vit dans
 // `composerPassePositions`, PURE et testable sans film (revue adversariale du 2026-09-06, constat

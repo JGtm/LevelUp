@@ -45,18 +45,11 @@ export function buildExplorerFilterOptions(
     expTypeOptions: (summary?.available_experience_types ?? []).map(
       (o) => ({ value: o.value, label: o.label }),
     ),
-    playlistOptions: (summary?.available_playlists ?? []).map((v) => ({
-      value: v,
-      label: v,
-    })),
-    modeOptions: (summary?.available_modes ?? []).map((v) => ({
-      value: v,
-      label: v,
-    })),
-    mapOptions: (summary?.available_maps ?? []).map((v) => ({
-      value: v,
-      label: v,
-    })),
+    // Playlists, modes, cartes : le label suit la langue de la requête, la value (nom de la langue par
+    // défaut) est la clé de filtre renvoyée telle quelle dans `playlists` / `modes` / `maps`.
+    playlistOptions: (summary?.available_playlists ?? []).map((o) => ({ value: o.value, label: o.label })),
+    modeOptions: (summary?.available_modes ?? []).map((o) => ({ value: o.value, label: o.label })),
+    mapOptions: (summary?.available_maps ?? []).map((o) => ({ value: o.value, label: o.label })),
 
     perfTierOptions: withCounts(
       [

@@ -89,7 +89,7 @@ func runSyncDeltaAll(
 	}
 
 	provider := auth_platform.NewSISUProvider()
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 	opts := buildSyncOptions(maxMatches, matchType, rps)
 
 	// ─── Création du pool de tokens (Discovery + Resolver + Pool) ───
@@ -224,7 +224,7 @@ func runSyncFullAll(
 	}
 
 	provider := auth_platform.NewSISUProvider()
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 	opts := buildSyncOptions(maxMatches, matchType, rps)
 
 	pool, poolErr := buildCLITokenPool(ctx, cfg, provider, players, tokenPoolSize, rps)

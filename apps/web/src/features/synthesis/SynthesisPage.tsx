@@ -4,6 +4,7 @@
  * Types ref: SynthesisPageResponse, SynthesisKPIs, ComparisonMetricItem, HeatmapCell, TopWeekItem
  */
 import { useMemo, useState } from 'react'
+import { STICKY_BELOW_TABS_CLASS } from '@/components/foundations/pageHeaderLogic'
 import { useParams } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
@@ -37,7 +38,8 @@ import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeaso
 import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/MultiSelectFilter'
 import { ExperienceDropdown, type Experience } from '@/features/_shared/ExperienceDropdown'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
-import type { ManifestLocale } from '@/lib/i18n/format'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import type {
   BestMatchRef,
@@ -694,7 +696,7 @@ export function SynthesisPage() {
       {/* ─── Barre filtres (cascade locale) ─────────────────────────────────── */}
       {/* Ordre : Expérience → Saison → Période → Playlist → Mode. Counts cascade-aware
           calculés via /filters/resolve (useFiltersPreview). Commit atomique au clic Analyser. */}
-      <div className="sticky top-0 z-20 px-6" style={{ background: 'var(--background)' }}>
+      <div className={`sticky ${STICKY_BELOW_TABS_CLASS} z-20 px-6`} style={{ background: 'var(--background)' }}>
         <div className="flex min-h-10 items-center gap-1.5 border-b border-border py-1.5 flex-wrap">
           <ExperienceDropdown
             value={pendingExperience}
@@ -766,7 +768,7 @@ export function SynthesisPage() {
                 : 'border border-input bg-background text-muted-foreground hover:bg-muted',
             ].join(' ')}
           >
-            Analyser
+            {formatMessage(commonManifest, 'common.filter.analyser', locale)}
           </button>
           {hasActiveFilters && (
             <button
@@ -826,23 +828,29 @@ export function SynthesisPage() {
         <div className="flex flex-col gap-4">
           <SynthesisOutcomesByGroupChart
             title={t('synthesis.breakdown.by_map')}
+            info={t('synthesis.breakdown.performance_info')}
             entries={(data.breakdowns?.top_maps ?? []).map((m) => ({
               name: m.map_name,
               wins: m.wins,
               losses: m.losses,
               ties: m.ties,
               unfinished: m.unfinished,
+              performance_avg: m.performance_avg,
+              perf_tier: m.perf_tier,
             }))}
             height={360}
           />
           <SynthesisOutcomesByGroupChart
             title={t('synthesis.breakdown.by_mode')}
+            info={t('synthesis.breakdown.performance_info')}
             entries={(data.breakdowns?.top_modes ?? []).map((m) => ({
               name: m.mode_name,
               wins: m.wins,
               losses: m.losses,
               ties: m.ties,
               unfinished: m.unfinished,
+              performance_avg: m.performance_avg,
+              perf_tier: m.perf_tier,
             }))}
             height={360}
           />

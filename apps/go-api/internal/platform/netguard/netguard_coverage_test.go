@@ -7,6 +7,23 @@
 // test, elle ralentit juste la démo jusqu'à l'affamer, cf. l'incident qui a motivé
 // le package). Ce test scanne donc `internal/` et échoue sur tout fichier
 // contenant un appel sortant sans `netguard.Check`, hors allowlist justifiée.
+//
+// BRIQUE `libs/haloapi` : ses fichiers émettent par un `haloapi.Doer` reçu et n'ont jamais
+// `netguard.Check` à côté de `.Do(req)`. Depuis qu'elle est un module à part (lot 3 du plan
+// PUBLICATION, 2026-11-01), elle est hors du parcours (`apps/go-api/internal/`) : l'exemption par
+// préfixe qu'elle portait sous `internal/haloapi/` est retirée avec son objet.
+// Côté exploitation, ce ratchet VOIT les fichiers qui définissent un `Doer` gardé
+// (`platform/auth/xbl_doer.go`, `platform/netguard/doer.go` : `netguard.Check` puis
+// `Next.Do(req)`) ; il ne voit PAS si chaque client de la brique reçoit bien ce `Doer`. Ce qui tient
+// l'hermétisme de la brique : (1) elle ne construit ni n'atteint aucun client HTTP
+// (`archlint/haloapi_sans_client_http_test.go`) ; (2) tout client de `haloapi/infinite`, de
+// `haloapi/halo5` et de `haloapi/xboxlive` construit par go-api reçoit un littéral `netguard.Doer{...}` écrit à l'appel
+// (`archlint/haloapi_doer_garde_test.go`) ; (3) les huit surfaces de l'adaptateur Halo Infinite sont
+// prouvées muettes en mode démo
+// (`haloadapter/netguard_surfaces_test.go`). Les jambes d'authentification de `haloapi/xblauth` à
+// qui la façade `platform/auth` passe un client nu (échanges XBL/XSTS/Spartan, code d'autorisation,
+// résolveurs de profil) ne sont pas gardées : elles exigent un jeton frais, que le rafraîchissement
+// gardé ne produit pas en démo.
 package netguard_test
 
 import (
@@ -34,25 +51,23 @@ var outboundCallMarkers = []string{
 // de la démo peut déclencher — et on laisse hors garde la POIGNÉE DE MAIN
 // d'authentification interactive et les canaux désactivés en démo.
 var allowlist = map[string]string{
-	// Poignée de main d'auth INTERACTIVE (login SSO, capture de token en CLI).
-	// Jamais atteinte en démo : LEVELUP_AUTH_MODE=none, aucun flux de login monté
-	// (cf. docker-compose service levelup-demo). La porte d'entrée réellement
-	// atteignable depuis un boot démo — le rafraîchissement OAuth — EST gardée
-	// (oauth_refresh.go) : sans token frais, ces échanges ne partent pas.
-	"platform/auth/auth_code.go": "login interactif — non monté en démo",
-	// halo_exchange.go porte aussi le helper `postJSON` par lequel passent
-	// xsts.go et sisu_provider.go : ces deux-là n'émettent rien en propre et
-	// n'ont donc pas à figurer ici.
-	"platform/auth/halo_exchange.go":         "échange Spartan (+ helper postJSON) — dépend d'un token frais, coupé en amont",
-	"platform/auth/peoplehub_resolver.go":    "résolution gamertag — dépend d'un token frais, coupé en amont",
-	"platform/auth/xbox_profile_resolver.go": "résolution profil — dépend d'un token frais, coupé en amont",
-
+	// Les fichiers de la brique `libs/haloapi` n'y figurent pas : ils sont hors du parcours (voir
+	// l'en-tête). La poignée de main d'auth INTERACTIVE (code d'autorisation, échanges XBL/XSTS/
+	// Spartan, résolveurs de profil), à qui la façade passe un client nu, n'est jamais atteinte en
+	// démo : LEVELUP_AUTH_MODE=none, aucun flux de login monté, et le rafraîchissement OAuth — seule
+	// porte d'entrée atteignable depuis un boot démo — EST gardé (`platform/auth/xbl_oauth.go`, par
+	// le Doer gardé de `xbl_doer.go`) : sans jeton frais, ces échanges ne partent pas.
+	//
 	// Canaux sortants NON liés aux données de jeu, désactivés par la config démo
 	// (app_settings émis par le seed : discord_notifications_enabled=false,
 	// watcher_presence_enabled=false).
 	"notify/discord.go":        "webhook Discord — désactivé par app_settings en démo",
 	"presence/rest_client.go":  "présence Xbox — daemon watcher désactivé en démo",
 	"presence/steam_poller.go": "présence Steam — daemon watcher désactivé en démo",
+	// Ajout du 2026-11-08. Le paquet n'importe que la bibliothèque standard, car l'étage `pack-builder` du
+	// Dockerfile le compile seul, sans go.work ni briques : il ne peut pas importer netguard. La garde est
+	// posée à l'injection (`netguard.Doer`, tenu par TestNewResourcesDownloaderPasseParLaGarde dans cmd/server).
+	"resourcepack/download.go": "paquet de ressources — Doer gardé injecté par cmd/server, jamais construit en démo",
 }
 
 func TestOutboundCallsAreNetguarded(t *testing.T) {

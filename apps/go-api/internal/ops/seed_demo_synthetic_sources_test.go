@@ -38,7 +38,7 @@ func TestDemoSourceTagsResolventAuRegistre(t *testing.T) {
 			if !ok {
 				t.Fatalf("tag 0x%08x (%s) ne resout AUCUNE cle de registre — la table embarquee "+
 					"du titre a change : relever un tag courant dans "+
-					"games/halo_infinite/film/damagetag/data/labels.tsv et corriger la constante",
+					"libs/film/damagetag/data/labels.tsv et corriger la constante",
 					cas.tag, cas.nom)
 			}
 			if cle != cas.cleVoue {

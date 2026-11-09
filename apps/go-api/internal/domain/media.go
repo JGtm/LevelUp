@@ -107,8 +107,13 @@ type MediaFileRow struct {
 	MatchStartTime *time.Time
 	Liked          bool
 	MapName        *string
-	ModeName       *string // catégorie custom inférée côté Go depuis PairNameRaw
-	MapID          *string
+	ModeName       *string // catégorie custom inférée côté Go depuis PairNameRaw, ou libellé dans la langue de la requête
+	// ModeFilterKey est la valeur de filtre du mode, indépendante de la langue de la requête : la catégorie
+	// (la valeur des options nominales) quand elle est inférée, sinon le libellé en langue par défaut (celui
+	// que compare le filtre). ModeName porte l'affichage et peut être traduit.
+	ModeFilterKey *string
+	// MapID est la valeur de filtre de la carte (la valeur des options nominales) ; MapName porte l'affichage.
+	MapID *string
 	// PairNameRaw : valeur brute (EN) de match_registry.pair_name. Sert à inférer
 	// la mode_category custom (Assassin/Fiesta/BTB/Ranked/Firefight/Other) côté Go.
 	PairNameRaw *string
@@ -230,7 +235,7 @@ type UploadRequest struct {
 	Tolerance           int    // buffer association match (minutes, défaut 2)
 	TitleSlug           string // titre de l'upload — routage de l'indexeur média (DEC-8)
 	// DeleteSource : politique de rétention du source après transcodage HLS, résolue
-	// par le handler (config.ResolveMediaDeleteSource : env > store > isProd). Propagée
+	// par le handler (config.AppConfig.MediaDeleteSource : env > store > isProd). Propagée
 	// à HLSTranscodeParams.DeleteSource. false = conserver (défaut sûr en local).
 	DeleteSource bool
 	// ManualAudioRoles : rôles de piste audio manuels du joueur (voix/jeu/autres),

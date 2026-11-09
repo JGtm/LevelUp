@@ -4,12 +4,12 @@ package domain
 // CONTRIBUTIONS : le nom en jeu de la zone et le placement d'une mort (seul ou près d'un
 // coéquipier) ; et le contexte de mort que la lecture lit pour ce placement.
 
-// TacticalZoneNom est le nom en JEU d'une zone (catalogue des callouts), dans les deux langues :
-// un nom de lieu du jeu, que l'i18n du produit ne connaît pas et ne peut pas traduire. Absent de
-// la réponse (nil) quand aucune zone ne nomme la cellule — le web écrit alors « Zone sans nom ».
+// TacticalZoneNom est le nom en JEU d une zone (catalogue des callouts), dans la langue de la
+// requête (repli en) : un nom de lieu du jeu, que l i18n du produit ne connaît pas, le catalogue de
+// la carte le porte par langue. Absent de la réponse (nil) quand aucune zone ne nomme la cellule —
+// le web écrit alors « Zone sans nom ».
 type TacticalZoneNom struct {
-	NomFR string `json:"nom_fr"`
-	NomEN string `json:"nom_en"`
+	Nom string `json:"nom"`
 }
 
 // TacticalPlacement dit, pour une MORT, si la victime était près d'un coéquipier ou seule, à

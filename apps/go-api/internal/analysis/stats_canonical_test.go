@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // TestStatsMatchRowFromCanonical_RoundtripFields garantit que les champs clés
@@ -77,8 +78,8 @@ func TestStatsMatchRowFromCanonical_RoundtripFields(t *testing.T) {
 	if !out.IsRanked {
 		t.Errorf("IsRanked: got false, want true")
 	}
-	if out.PlaylistName != "Ranked Arena" {
-		t.Errorf("PlaylistName: got %q", out.PlaylistName)
+	if out.PlaylistName[i18n.LocaleEN] != "Ranked Arena" {
+		t.Errorf("PlaylistName: got %q", out.PlaylistName[i18n.LocaleEN])
 	}
 	if out.KDA == nil || *out.KDA != kda {
 		t.Errorf("KDA: got %v, want %v", out.KDA, kda)

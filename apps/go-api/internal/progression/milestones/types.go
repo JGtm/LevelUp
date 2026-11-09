@@ -10,7 +10,11 @@
 //   - `milestone_earned` dans stats.duckdb (paliers débloqués par joueur)
 package milestones
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // NearMissRatio est la distance relative au seuil considérée comme "proche".
 // Si valeur courante >= seuil × (1 - NearMissRatio), on émet une notif near-miss.
@@ -25,21 +29,19 @@ const NearMissRatio = 0.02
 // Stocké dans `milestone_catalog` (metadata.duckdb). Chargé du TOML au boot
 // ou via reload admin. Indépendant des joueurs.
 type CatalogEntry struct {
-	ID        string  `json:"id"`
-	TitleSlug string  `json:"title_slug"`
-	Metric    string  `json:"metric"`
-	Threshold float64 `json:"threshold"`
-	TitleEN   string  `json:"title_en"`
-	TitleFR   string  `json:"title_fr"`
-	Icon      string  `json:"icon,omitempty"`
+	ID        string    `json:"id"`
+	TitleSlug string    `json:"title_slug"`
+	Metric    string    `json:"metric"`
+	Threshold float64   `json:"threshold"`
+	Title     i18n.Text `json:"title"` // titre par langue (donnée : le contrat sert le titre de la langue de la requête)
+	Icon      string    `json:"icon,omitempty"`
 	// Condition est la description TECHNIQUE (formule) du milestone, non localisée
 	// (ex : "accuracy >= 0.50 on 30 distinct days"). Référence interne — n'est PLUS
 	// servie à l'UI (A9). Non évaluée.
 	Condition string `json:"condition,omitempty"`
-	// ConditionFR / ConditionEN : description lisible localisée servie à l'UI (A9).
-	// Vide si le milestone n'a pas de condition explicite → le front n'affiche rien.
-	ConditionFR string `json:"condition_fr,omitempty"`
-	ConditionEN string `json:"condition_en,omitempty"`
+	// ConditionText : description lisible par langue servie à l'UI (A9), dans la langue de la
+	// requête. Vide si le milestone n'a pas de condition explicite → le front n'affiche rien.
+	ConditionText i18n.Text `json:"condition_text,omitempty"`
 }
 
 // Earned représente un milestone débloqué par un joueur.

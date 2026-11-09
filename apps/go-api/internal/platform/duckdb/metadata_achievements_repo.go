@@ -1,8 +1,12 @@
-// Package duckdb — metadata_achievements_repo.go : référentiel bilingue d'achievements.
+// Package duckdb — metadata_achievements_repo.go : référentiel multi-langue d'achievements.
 //
 // Étend MetadataRepo (même pattern que medal_cache_repo.go, map_cache_repo.go).
 // Lit xbox_achievement_definitions dans metadata.duckdb. Cette table est peuplée
 // par sync.SyncAchievements (sync engine ou CLI levelup sync-achievements).
+//
+// Les noms et descriptions vivent dans asset_translations, une ligne par langue : type
+// `achievement` (nom dans `name`, description dans `description`) et `achievement_locked` (texte
+// de succès verrouillé dans `name`), `asset_id` = achievement_id (ADR 0040 D-5).
 package duckdb
 
 import (
@@ -16,8 +20,9 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 )
 
-// GetAchievementDefinitions retourne toutes les définitions bilingues d'achievements
-// du titre `titleSlug` (filtre title_id), triées par achievement_id (tri stable).
+// GetAchievementDefinitions retourne toutes les définitions d'achievements du titre `titleSlug`
+// (filtre title_id), triées par achievement_id (tri stable), avec leurs textes dans chaque langue
+// pour laquelle une traduction existe (le choix de la langue se fait en aval, `Text.Pick`).
 // titleSlug == "" → titre par défaut (halo_infinite), préservant le comportement
 // historique. Slice vide si la table est encore vide (backfill jamais lancé).
 // Implémente port.MetadataAchievementsRepository (PMT-6 : lecture title-aware).
@@ -28,9 +33,23 @@ func (r *MetadataRepo) GetAchievementDefinitions(ctx context.Context, titleSlug 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	out, err := r.achievementBaseRows(ctx, titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	if len(out) > 0 {
+		if err := r.attachAchievementTexts(ctx, out); err != nil {
+			return nil, err
+		}
+	}
+	slog.DebugContext(ctx, "GetAchievementDefinitions", "title", titleSlug, "count", len(out))
+	return out, nil
+}
+
+// achievementBaseRows lit les champs non localisés des définitions d'un titre.
+func (r *MetadataRepo) achievementBaseRows(ctx context.Context, titleSlug string) ([]domain.AchievementDefinitionRow, error) {
 	rows, err := r.meta.Query(ctx, `
-		SELECT achievement_id, name_en, name_fr, description_en, description_fr,
-		       locked_desc_en, locked_desc_fr, gamerscore, image_url, is_secret,
+		SELECT achievement_id, gamerscore, image_url, is_secret,
 		       rarity_category, rarity_percent, xbox_title_id, service_config_id
 		FROM xbox_achievement_definitions
 		WHERE title_id = ?
@@ -44,8 +63,6 @@ func (r *MetadataRepo) GetAchievementDefinitions(ctx context.Context, titleSlug 
 	for rows.Next() {
 		var (
 			row             domain.AchievementDefinitionRow
-			descEN, descFR  sql.NullString
-			lockEN, lockFR  sql.NullString
 			imageURL        sql.NullString
 			rarityCat       sql.NullString
 			rarityPct       sql.NullFloat64
@@ -54,9 +71,6 @@ func (r *MetadataRepo) GetAchievementDefinitions(ctx context.Context, titleSlug 
 		)
 		if err := rows.Scan(
 			&row.AchievementID,
-			&row.NameEN, &row.NameFR,
-			&descEN, &descFR,
-			&lockEN, &lockFR,
 			&row.Gamerscore,
 			&imageURL,
 			&row.IsSecret,
@@ -67,10 +81,6 @@ func (r *MetadataRepo) GetAchievementDefinitions(ctx context.Context, titleSlug 
 		); err != nil {
 			return nil, fmt.Errorf("GetAchievementDefinitions scan: %w", err)
 		}
-		row.DescriptionEN = descEN.String
-		row.DescriptionFR = descFR.String
-		row.LockedDescEN = lockEN.String
-		row.LockedDescFR = lockFR.String
 		row.ImageURL = imageURL.String
 		row.RarityCategory = rarityCat.String
 		if rarityPct.Valid {
@@ -83,6 +93,29 @@ func (r *MetadataRepo) GetAchievementDefinitions(ctx context.Context, titleSlug 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("GetAchievementDefinitions rows: %w", err)
 	}
-	slog.DebugContext(ctx, "GetAchievementDefinitions", "title", titleSlug, "count", len(out))
 	return out, nil
+}
+
+// attachAchievementTexts renseigne Name, Description (type `achievement`) et LockedDesc (type
+// `achievement_locked`) de chaque définition depuis asset_translations.
+func (r *MetadataRepo) attachAchievementTexts(ctx context.Context, defs []domain.AchievementDefinitionRow) error {
+	ids := make([]string, len(defs))
+	for i, d := range defs {
+		ids[i] = d.AchievementID
+	}
+	texts, err := LoadAssetTexts(ctx, r.meta, AssetTypeAchievement, ids)
+	if err != nil {
+		return fmt.Errorf("GetAchievementDefinitions texts: %w", err)
+	}
+	locked, err := LoadAssetTexts(ctx, r.meta, AssetTypeAchievementLocked, ids)
+	if err != nil {
+		return fmt.Errorf("GetAchievementDefinitions locked texts: %w", err)
+	}
+	for i := range defs {
+		t := texts[defs[i].AchievementID]
+		defs[i].Name = textOrEmpty(t.Name)
+		defs[i].Description = textOrEmpty(t.Description)
+		defs[i].LockedDesc = textOrEmpty(locked[defs[i].AchievementID].Name)
+	}
+	return nil
 }

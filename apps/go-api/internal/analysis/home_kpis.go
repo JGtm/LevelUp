@@ -4,11 +4,11 @@
 package analysis
 
 import (
-	"fmt"
 	"strings"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 )
 
 // ---------------------------------------------------------------------------
@@ -81,12 +81,16 @@ func buildHomeSkillPeak(raw *domain.HomeSkillPeakRow, locale string) *domain.Hom
 	if raw == nil {
 		return nil
 	}
-	if raw.RatingValue <= 0 && raw.BadgeImageURL == nil && raw.TierLabel == nil {
+	loc := normalizeHomeLocale(locale)
+	// Libellé du palier : déduit du code (Tier + SubTier) dans la langue de la requête, jamais lu de la
+	// colonne stockée.
+	tierLabel := SkillTierDisplayLabel(raw.Tier, &raw.SubTier, loc)
+	if raw.RatingValue <= 0 && raw.BadgeImageURL == nil && tierLabel == nil {
 		return nil
 	}
 	summary := &domain.HomeSkillPeakSummary{
 		RatingValue:   raw.RatingValue,
-		TierLabel:     copyOptionalString(raw.TierLabel),
+		TierLabel:     tierLabel,
 		BadgeImageURL: copyOptionalString(raw.BadgeImageURL),
 	}
 	if raw.MeasurementMatchesRemaining != nil {
@@ -111,7 +115,7 @@ func buildHomeSkillPeak(raw *domain.HomeSkillPeakRow, locale string) *domain.Hom
 		if pct, ok := SkillTierBand(raw.Tier, raw.SubTier); ok {
 			summary.TierProgressPct = &pct
 			// Extrémité droite de la barre : sous-palier suivant (nil pour Onyx).
-			summary.NextTierLabel = NextSubTierLabel(raw.Tier, raw.SubTier, normalizeHomeLocale(locale) != "en")
+			summary.NextTierLabel = NextSubTierLabel(raw.Tier, raw.SubTier, loc)
 		}
 	}
 	return summary
@@ -128,7 +132,7 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 	// pré-build côté player DB) > RankTier > "Rang N". Le fallback player-DB
 	// couvre les cas où le SemanticAdapter n'est pas injecté dans le HomeService
 	// (tests, mode dégradé).
-	title := rankSubRoman(lookupRankLabel(ranks, raw.RankNumber, loc))
+	title := rankSubRoman(lookupRankLabel(ranks, raw.RankNumber, string(loc)))
 	if title == "" {
 		title = rankSubRoman(strings.TrimSpace(optionalStringValue(raw.RankName)))
 	}
@@ -136,11 +140,7 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 		title = strings.TrimSpace(optionalStringValue(raw.RankTier))
 	}
 	if title == "" {
-		if loc == "en" {
-			title = fmt.Sprintf("Rank %d", raw.RankNumber)
-		} else {
-			title = fmt.Sprintf("Rang %d", raw.RankNumber)
-		}
+		title = i18n.Msg(loc, "home.rank.fallback", i18n.Params{"n": raw.RankNumber})
 	}
 
 	// is_max_rank fiable : l'API Halo (RewardTrack.IsMaxRank) ne marque pas
@@ -160,7 +160,7 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 	var nextTitle string
 	if !isMax && ranks != nil {
 		if next, ok := ranks.Next(raw.RankNumber); ok {
-			label, _ := next.FullLabel(loc)
+			label, _ := next.FullLabel(string(loc))
 			nextTitle = rankSubRoman(strings.TrimSpace(label))
 		}
 	}

@@ -224,6 +224,12 @@ type SynthesisMapEntry struct {
 	Ties       int     `json:"ties"`
 	Unfinished int     `json:"unfinished"`
 	WinRate    float64 `json:"win_rate"`
+	// PerformanceAvg : score de performance moyen (0..100) des seuls matchs notés de
+	// la ligne ; absent si aucun match de la ligne n'a de score.
+	PerformanceAvg *float64 `json:"performance_avg,omitempty"`
+	// PerfTier : palier canonique (analysis.PerfTier, 1=Excellent .. 5=Mauvais) de
+	// PerformanceAvg ; 0 (omis) si aucun match noté.
+	PerfTier int `json:"perf_tier,omitempty"`
 }
 
 // SynthesisModeEntry est une ligne agrégée par mode de jeu dans la Synthèse.
@@ -235,6 +241,12 @@ type SynthesisModeEntry struct {
 	Ties       int     `json:"ties"`
 	Unfinished int     `json:"unfinished"`
 	WinRate    float64 `json:"win_rate"`
+	// PerformanceAvg : score de performance moyen (0..100) des seuls matchs notés de
+	// la ligne ; absent si aucun match de la ligne n'a de score.
+	PerformanceAvg *float64 `json:"performance_avg,omitempty"`
+	// PerfTier : palier canonique (analysis.PerfTier, 1=Excellent .. 5=Mauvais) de
+	// PerformanceAvg ; 0 (omis) si aucun match noté.
+	PerfTier int `json:"perf_tier,omitempty"`
 }
 
 // SynthesisBreakdowns contient les breakdowns carte et mode du scope.

@@ -1,6 +1,10 @@
 package rankedplaylists
 
-import "testing"
+import (
+	"testing"
+
+	"levelup/go-api/internal/i18n"
+)
 
 func TestActiveCount(t *testing.T) {
 	active := Active()
@@ -9,7 +13,7 @@ func TestActiveCount(t *testing.T) {
 	}
 	// Toutes les actives doivent avoir un nom EN et FR (affichées sur la page Carrière).
 	for _, p := range active {
-		if p.NameEN() == "" || p.NameFR() == "" {
+		if p.Name(i18n.LocaleEN) == "" || p.Name(i18n.LocaleFR) == "" {
 			t.Errorf("playlist active %s sans nom EN/FR", p.AssetID)
 		}
 	}

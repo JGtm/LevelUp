@@ -5,7 +5,8 @@ package replayview
 
 import (
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func toEquipmentPlacementCoverage(v replay.EquipmentPlacementCoverage) replaydoc.EquipmentPlacementCoverage {
@@ -31,6 +32,9 @@ func toEquipmentPlacementCoverage(v replay.EquipmentPlacementCoverage) replaydoc
 		SpawnEvents:    v.SpawnEvents,
 		SpawnLists:     v.SpawnLists,
 		ByCause:        v.ByCause,
+		LifeLinked:     v.LifeLinked,
+		LifeAmbiguous:  v.LifeAmbiguous,
+		LifeEnds:       v.LifeEnds,
 	}
 }
 

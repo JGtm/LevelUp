@@ -40,7 +40,7 @@ func TestBuildAll_CarteHorsCatalogue_UnWarnParCarteEtParCycle(t *testing.T) {
 		return fmt.Errorf("%w (candidats: %v)", replaybuild.ErrMapNotInCatalog, noms)
 	}
 	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: &fetcherFilms{}, Budget: time.Minute, Gamertag: "JGtm",
 		BuildOne: func(_ context.Context, req BuildOneRequest) (BuildOneResult, error) {
 			if req.MatchID == "0000d0a1" {
@@ -87,7 +87,7 @@ func TestBuildAll_CarteHorsCatalogue_UnWarnParCarteEtParCycle(t *testing.T) {
 func TestBuildAll_SansCarteHorsCatalogue_AucunWarnDeCarte(t *testing.T) {
 	buf := capturerJournal(t)
 	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: &fetcherFilms{}, Budget: time.Minute,
 		BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
 			return BuildOneResult{}, errors.New("echec ordinaire")

@@ -30,7 +30,7 @@
  *                      Mongoose armé, même châssis : parenté écrite, pas un emprunt arbitraire,
  *                      même règle que le traqueur qui prend le son du capteur)
  *
- * LES TROIS PRISES PROCHES de chaque banque (`explosion.wav`, `_v2`, `_v3`) sont les trois
+ * LES TROIS PRISES PROCHES de chaque banque (`explosion.ogg`, `_v2`, `_v3`) sont les trois
  * variantes tirées à chaque destruction (`SOUND_VARIANTS`, même mécanique que le grappin) ;
  * les prises LOINTAINES (`explosion_lointaine_*`) sont IGNORÉES — le rejeu n'a pas de notion
  * de distance de caméra. Durées livrées : 2,58 à 5,36 s, toutes ENTIÈRES (aucune n'atteint le

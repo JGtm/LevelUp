@@ -131,7 +131,7 @@ func TestBuildSquadMapHeatmap_TeammateCoversSamePopulationAsMain(t *testing.T) {
 	}
 	svc := &TeammatesService{squadLoader: loader, titleSlug: "halo_infinite", gamertag: "main"}
 
-	heatmap := svc.buildSquadMapHeatmap(context.Background(), mainSquadRows, []string{"friend1"}, &dataIssues{})
+	heatmap := svc.buildSquadMapHeatmap(context.Background(), mainSquadRows, []string{"friend1"}, &dataIssues{}, domain.GroupesDeCartes{})
 	if heatmap == nil {
 		t.Fatal("heatmap should be non-nil")
 	}
@@ -164,7 +164,7 @@ func TestBuildSquadMapHeatmap_LoadFailureIsReported(t *testing.T) {
 	svc := &TeammatesService{squadLoader: loader, titleSlug: "halo_infinite", gamertag: "main"}
 
 	issues := &dataIssues{}
-	if heatmap := svc.buildSquadMapHeatmap(context.Background(), mainSquadRows, []string{"friend1"}, issues); heatmap == nil {
+	if heatmap := svc.buildSquadMapHeatmap(context.Background(), mainSquadRows, []string{"friend1"}, issues, domain.GroupesDeCartes{}); heatmap == nil {
 		t.Fatal("heatmap should be non-nil")
 	}
 	detail, ok := issueCodes(issues.list())[domain.DataIssueHeatmapTeammate]

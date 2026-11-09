@@ -131,7 +131,7 @@ func buildTeamTabFull(
 				// header.had_bot_teammate qui est rempli ailleurs (page card).
 			}
 			if mySkillRank != nil {
-				iconURL := resolveSkillIconURL(mySkillRank.Tier, mySkillRank.SubTier, mySkillRank.TierLabel, assetURL)
+				iconURL := resolveSkillIconURL(mySkillRank.Tier, mySkillRank.SubTier, assetURL)
 				var iconURLPtr *string
 				if iconURL != "" {
 					iconURLPtr = &iconURL
@@ -211,7 +211,7 @@ func sharedCSRToScoreboardRank(raw *domain.SkillRankRaw, assetURL games.TitleAss
 	if raw == nil {
 		return nil
 	}
-	iconURL := resolveSkillIconURL(raw.Tier, raw.SubTier, raw.TierLabel, assetURL)
+	iconURL := resolveSkillIconURL(raw.Tier, raw.SubTier, assetURL)
 	var iconURLPtr *string
 	if iconURL != "" {
 		iconURLPtr = &iconURL

@@ -22,6 +22,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { placementIsDeployedObject } from '../layers/equipmentPlacementsLayer'
+import { carriedFamilyOf } from '../model/carriedFamily'
 import { documentsTemoinsDeLEquipementPorte } from '../test/carriedUseWitnesses'
 import { goFixtureEntries, loadGoFixture } from '../test/goFixtures'
 import { testReplayDoc } from '../test/testDoc'
@@ -45,7 +46,7 @@ function famillesUtilisees(docs: ReplayDocumentReady[]): Set<string> {
   const vues = new Set<string>()
   for (const doc of docs) {
     for (const c of doc.carriedEquipment) {
-      const family = doc.abilityLabels?.[String(c.r)]?.family
+      const family = carriedFamilyOf(doc.abilityLabels, c)
       if (family && c.uses.length > 0) vues.add(family)
     }
   }
@@ -56,7 +57,7 @@ function famillesFinies(docs: ReplayDocumentReady[]): Set<string> {
   const vues = new Set<string>()
   for (const doc of docs) {
     for (const c of doc.carriedEquipment) {
-      const family = doc.abilityLabels?.[String(c.r)]?.family
+      const family = carriedFamilyOf(doc.abilityLabels, c)
       if (family && c.tracked.some((s) => s.t1 !== undefined)) vues.add(family)
     }
   }

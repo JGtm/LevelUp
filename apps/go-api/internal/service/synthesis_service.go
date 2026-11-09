@@ -36,9 +36,11 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
+	"levelup/go-api/internal/service/mapgroups"
 )
 
 // SynthesisService orchestre les données de la page Synthèse.
@@ -84,6 +86,8 @@ type SynthesisService struct {
 	// analysisPending : l'avancement de l'analyse du film, pour dire « en cours » quand les records de
 	// distance manquent faute de frag mesuré. nil = « non analysé ».
 	analysisPending port.AnalysisPendingMatches
+	// mapGroups : groupes de cartes (variantes comptées sous leur base). nil : cartes seules.
+	mapGroups port.MapGroupReader
 	// titleSlug est nécessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
 	// Si "" et playerMatchesRepo != nil, fallback sur le repo legacy.
 	titleSlug  string
@@ -200,8 +204,8 @@ func (s *SynthesisService) GetSynthesisPage(
 		return nil, err
 	}
 	filteredCanon, filtersApplied, filtersIgnored := filterSynthesisByPeriodCanonical(canonicalRows, period, req.StartDate, req.EndDate)
-	c := req.Filters.Cascade
-	filteredCanon = filterRowsByCascade(filteredCanon, c.ExperienceTypes, c.Playlists, c.Maps, c.Modes)
+	groups := mapgroups.Load(ctx, s.mapGroups)
+	filteredCanon = filterRowsByCascade(filteredCanon, req.Filters.Cascade, groups)
 
 	hp := games.EffectiveHpToKill(s.titleSlug)
 	soloKPIs := analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, false, hp)
@@ -229,10 +233,10 @@ func (s *SynthesisService) GetSynthesisPage(
 	comparison := analysis.ComputeComparisonMetrics(soloKPIs, squadKPIs)
 
 	// D7 : breakdowns map/mode depuis les rows canoniques filtrés (period-aware).
-	// Les Labels["fr"] des AssetReference ont été hydratés par
+	// Les Labels des AssetReference (une entrée par langue) ont été hydratés par
 	// EnrichCanonicalAssetTranslations en amont, donc buildBreakdownsFromCanonical
-	// lit directement les noms FR.
-	breakdowns := buildBreakdownsFromCanonical(filteredCanon)
+	// lit directement le nom de chaque langue.
+	breakdowns := buildBreakdownsFromCanonical(filteredCanon, groups, i18n.FromContext(ctx))
 
 	// P9 : stats détaillées (combat, tir, dégâts, fun)
 	detailedStats := buildSynthesisDetailedStatsFromCanonical(filteredCanon, provideSpree)
@@ -322,10 +326,10 @@ func (s *SynthesisService) loadAndEnrichCanonicalRows(ctx context.Context) ([]ca
 	}
 	mapFR, pairFR := 0, 0
 	for _, r := range canonicalRows {
-		if r.Summary.Map != nil && r.Summary.Map.Labels["fr"] != "" {
+		if r.Summary.Map != nil && r.Summary.Map.Labels[string(i18n.Default)] != "" {
 			mapFR++
 		}
-		if r.Summary.PairMode != nil && r.Summary.PairMode.Labels["fr"] != "" {
+		if r.Summary.PairMode != nil && r.Summary.PairMode.Labels[string(i18n.Default)] != "" {
 			pairFR++
 		}
 	}
@@ -405,9 +409,9 @@ func (s *SynthesisService) loadTopWeaponKills(
 		ShoulderBash:  detailedStats.TotalShoulderBashKills,
 		Total:         totalKills,
 	}
-	fd := fragdist.Build(rows, counts, hasMechanics)
+	fd := fragdist.Build(i18n.FromContext(ctx), rows, counts, hasMechanics)
 	logFragDistribution(ctx, "synthesis", s.titleSlug, s.gamertag, fd)
-	return buildTopWeaponKills(rows, synthesisWeaponChartTopN), &fd
+	return buildTopWeaponKills(i18n.FromContext(ctx), rows, synthesisWeaponChartTopN), &fd
 }
 
 // loadWeaponKillRows charge les rows agrégées d'armes (ResolveRoles=true → Role+Class).

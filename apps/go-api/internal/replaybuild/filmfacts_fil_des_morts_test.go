@@ -16,22 +16,22 @@ package replaybuild
 
 import (
 	"fmt"
+	"levelup/go-api/internal/testutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // bobineV40 : les trois morceaux BRUTS de la bobine v40, dans l ordre des numeros.
 func bobineV40(t *testing.T) [][]byte {
 	t.Helper()
-	dir := filepath.Join("..", "games", "halo_infinite", "film", "internal", "facts", "killsource",
-		"testdata", "minibobine_e5adf7b2")
+	dir := testutil.CheminBriqueFilm(t, "internal", "facts", "killsource", "testdata", "minibobine_e5adf7b2")
 	out := make([][]byte, 0, 3)
 	for k := range 3 {
 		b, err := os.ReadFile(filepath.Join(dir, fmt.Sprintf("chunk_%02d.bin", k)))

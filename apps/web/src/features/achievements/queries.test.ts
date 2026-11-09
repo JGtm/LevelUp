@@ -32,10 +32,8 @@ const mockResponse: AchievementsPageResponse = {
   achievements: [
     {
       achievement_id: 'a',
-      name_en: 'First',
-      name_fr: 'Premier',
-      description_en: 'Desc',
-      description_fr: 'Description',
+      name: 'Premier',
+      description: 'Description',
       gamerscore: 10,
       is_secret: false,
       unlocked: true,
@@ -68,9 +66,9 @@ describe('useAchievementsPage', () => {
     expect(result.current.data).toEqual(mockResponse)
   })
 
-  it('utilise le query key queryKeys.achievements(slug, titleSlug)', () => {
-    const key = queryKeys.achievements('test-player', 'halo_infinite')
-    expect(key).toEqual(['achievements', 'test-player', 'halo_infinite'])
+  it('utilise le query key queryKeys.achievements(slug, titleSlug, locale)', () => {
+    const key = queryKeys.achievements('test-player', 'halo_infinite', 'fr')
+    expect(key).toEqual(['achievements', 'test-player', 'halo_infinite', 'fr'])
   })
 
   it('désactivé quand le slug est vide', () => {

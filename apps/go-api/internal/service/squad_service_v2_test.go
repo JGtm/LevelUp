@@ -26,8 +26,7 @@ type fakeSquadLoader struct {
 
 	// active/maxActive : PREUVE DE CONCURRENCE par compteur de chevauchement, pas par
 	// horloge murale. Un seuil temporel (« elapsed < 130ms ») rougit sous charge CI sans
-	// que le comportement testé ait changé (registre .ai/REGISTRE_REPORTS.md, lot
-	// hygiène 5.3, L603) — maxActive>=2 est vrai dès que deux appels LoadFor se sont
+	// que le comportement testé ait changé — maxActive>=2 est vrai dès que deux appels LoadFor se sont
 	// réellement recouverts dans le temps, quelle que soit la lenteur de la machine.
 	active    int32
 	maxActive int32
@@ -540,7 +539,7 @@ func TestFilterRowsByCascade_PlaylistFRLabel(t *testing.T) {
 		rowWithPlaylist("m3", "Quick Play", "Partie rapide"),
 	}
 
-	got := filterRowsByCascade(rows, nil, []string{"Partie rapide"}, nil, nil)
+	got := filtrerCascade(rows, nil, []string{"Partie rapide"}, nil, nil)
 	if len(got) != 2 {
 		t.Fatalf("want 2 rows for 'Partie rapide', got %d", len(got))
 	}
@@ -560,7 +559,7 @@ func TestFilterRowsByCascade_PlaylistENFallback(t *testing.T) {
 		rowWithPlaylist("m2", "Big Team Battle", "Big Team Battle"),
 	}
 
-	got := filterRowsByCascade(rows, nil, []string{"Social Slayer"}, nil, nil)
+	got := filtrerCascade(rows, nil, []string{"Social Slayer"}, nil, nil)
 	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
 		t.Errorf("want only m1, got %v", matchIDs(got))
 	}
@@ -574,7 +573,7 @@ func TestFilterRowsByCascade_NilPlaylistExcluded(t *testing.T) {
 		row("m2", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), canonical.OutcomeWin), // Playlist nil
 	}
 
-	got := filterRowsByCascade(rows, nil, []string{"Partie rapide"}, nil, nil)
+	got := filtrerCascade(rows, nil, []string{"Partie rapide"}, nil, nil)
 	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
 		t.Errorf("want only m1, got %v", matchIDs(got))
 	}
@@ -588,12 +587,12 @@ func TestFilterRowsByCascade_ExperienceFilter(t *testing.T) {
 		rowWithExperience("pve", false, true),     // PVE
 	}
 
-	got := filterRowsByCascade(rows, []string{"PVP non classé"}, nil, nil, nil)
+	got := filtrerCascade(rows, []string{"PVP non classé"}, nil, nil, nil)
 	if len(got) != 1 || got[0].Summary.MatchID != "pvp-nc" {
 		t.Errorf("want only pvp-nc, got %v", matchIDs(got))
 	}
 
-	got2 := filterRowsByCascade(rows, []string{"PVE", "PVP classé"}, nil, nil, nil)
+	got2 := filtrerCascade(rows, []string{"PVE", "PVP classé"}, nil, nil, nil)
 	if len(got2) != 2 {
 		t.Errorf("want 2 rows (PVE+ranked), got %d", len(got2))
 	}
@@ -623,7 +622,7 @@ func TestFilterRowsByCascade_CombinedFilters(t *testing.T) {
 		}(),
 	}
 
-	got := filterRowsByCascade(rows, []string{"PVP classé"}, []string{"Arène classée"}, nil, nil)
+	got := filtrerCascade(rows, []string{"PVP classé"}, []string{"Arène classée"}, nil, nil)
 	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
 		t.Errorf("only m1 is ranked + Arène classée, got %v", matchIDs(got))
 	}
@@ -636,7 +635,7 @@ func TestFilterRowsByCascade_EmptyFilters(t *testing.T) {
 		rowWithPlaylist("m2", "Ranked Arena", "Arène classée"),
 	}
 
-	got := filterRowsByCascade(rows, nil, nil, nil, nil)
+	got := filtrerCascade(rows, nil, nil, nil, nil)
 	if len(got) != 2 {
 		t.Errorf("no filter = all rows pass, got %d", len(got))
 	}
@@ -662,7 +661,7 @@ func TestFilterRowsByCascade_MapFilter(t *testing.T) {
 		makeRowWithMap("m3", "Recharge", "Décharge"),
 	}
 
-	got := filterRowsByCascade(rows, nil, nil, []string{"Décharge"}, nil)
+	got := filtrerCascade(rows, nil, nil, []string{"Décharge"}, nil)
 	if len(got) != 2 {
 		t.Fatalf("want 2 rows for 'Décharge', got %d", len(got))
 	}
@@ -710,7 +709,7 @@ func TestFilterRowsByCascade_ModeFRLabel(t *testing.T) {
 		rowWithMode("m3", "Slayer", "Slayer"),
 	}
 
-	got := filterRowsByCascade(rows, nil, nil, nil, []string{"Slayer"})
+	got := filtrerCascade(rows, nil, nil, nil, []string{"Slayer"})
 	if len(got) != 2 {
 		t.Fatalf("want 2 rows for mode 'Slayer', got %d", len(got))
 	}
@@ -730,7 +729,7 @@ func TestFilterRowsByCascade_ModeENFallback(t *testing.T) {
 		rowWithMode("m2", "Oddball", "Oddball"),
 	}
 
-	got := filterRowsByCascade(rows, nil, nil, nil, []string{"Extraction"})
+	got := filtrerCascade(rows, nil, nil, nil, []string{"Extraction"})
 	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
 		t.Errorf("want only m1, got %v", matchIDs(got))
 	}
@@ -744,40 +743,55 @@ func TestFilterRowsByCascade_NilModeExcluded(t *testing.T) {
 		row("m2", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), canonical.OutcomeWin), // PairMode + GameVariant nil
 	}
 
-	got := filterRowsByCascade(rows, nil, nil, nil, []string{"Slayer"})
+	got := filtrerCascade(rows, nil, nil, nil, []string{"Slayer"})
 	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
 		t.Errorf("want only m1 (m2 has nil PairMode/GameVariant), got %v", matchIDs(got))
 	}
 }
 
-// rowWithGameVariant construit une row SANS PairMode dont Summary.GameVariant
-// porte les labels EN/FR — modèle Halo 5 (pas de pair, mode dérivé du game_variant).
+// rowWithGameVariant construit une row d'un titre dont le mode est le type de jeu (Halo 5) : la source
+// de lecture pose Summary.PairMode comme copie de Summary.GameVariant (Kind game_variant).
 func rowWithGameVariant(matchID, variantEN, variantFR string) canonical.PlayerMatchRow {
 	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	r := row(matchID, t0, canonical.OutcomeWin)
-	r.Summary.GameVariant = &canonical.AssetReference{
-		Kind:         "game_variant",
-		ID:           "gv-" + matchID,
-		DefaultLabel: variantEN,
-		Labels:       map[string]string{"en": variantEN, "fr": variantFR},
+	ref := func() *canonical.AssetReference {
+		return &canonical.AssetReference{
+			Kind:         "game_variant",
+			ID:           "gv-" + matchID,
+			DefaultLabel: variantEN,
+			Labels:       map[string]string{"en": variantEN, "fr": variantFR},
+		}
 	}
+	r.Summary.GameVariant = ref()
+	r.Summary.PairMode = ref()
 	return r
 }
 
-// TestFilterRowsByCascade_ModeGameVariantFallback : titre sans pair (Halo 5) — le
-// filtre modes matche sur le game_variant NORMALISÉ, parité avec le chokepoint
-// filters_service.modeUI (Value d'option = NormalizeModeLabel(game_variant_fr)).
-func TestFilterRowsByCascade_ModeGameVariantFallback(t *testing.T) {
+// TestFilterRowsByCascade_ModeFourniParLeTypeDeJeu : titre dont le mode est le type de jeu (Halo 5) — le
+// filtre modes matche sur le libellé FR de ce mode, comme pour une partie. La normalisation d'un nom de
+// type de jeu (préfixe technique) est faite UNE fois à l'enrichissement des libellés
+// (TestEnrichCanonicalAssetTranslations_ModeFromGameVariantNormalise), pas par le filtre.
+func TestFilterRowsByCascade_ModeFourniParLeTypeDeJeu(t *testing.T) {
 	t.Parallel()
-	// Variant FR porteur d'un préfixe technique → normalisé en "Assassin".
 	rows := []canonical.PlayerMatchRow{
-		rowWithGameVariant("m1", "HaloMultiplayer:Slayer", "HaloMultiplayer:Assassin"),
-		rowWithGameVariant("m2", "HaloMultiplayer:CTF", "HaloMultiplayer:Capture du drapeau"),
+		rowWithGameVariant("m1", "Slayer", "Assassin"),
+		rowWithGameVariant("m2", "CTF", "Capture du drapeau"),
 	}
 
-	got := filterRowsByCascade(rows, nil, nil, nil, []string{"Assassin"})
+	got := filtrerCascade(rows, nil, nil, nil, []string{"Assassin"})
 	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
-		t.Errorf("want only m1 (game_variant → Assassin), got %v", matchIDs(got))
+		t.Errorf("want only m1 (mode type de jeu → Assassin), got %v", matchIDs(got))
+	}
+}
+
+// TestFilterRowsByCascade_SansModeNeRepliePasSurGameVariant : un match sans mode (PairMode nil) ne
+// ressort pas sous le nom de son type de jeu, même quand ce nom est celui d'une option.
+func TestFilterRowsByCascade_SansModeNeRepliePasSurGameVariant(t *testing.T) {
+	t.Parallel()
+	r := rowWithGameVariant("m1", "Slayer", "Assassin")
+	r.Summary.PairMode = nil
+	if got := filtrerCascade([]canonical.PlayerMatchRow{r}, nil, nil, nil, []string{"Assassin"}); len(got) != 0 {
+		t.Errorf("aucun repli sur GameVariant attendu, got %v", matchIDs(got))
 	}
 }
 
@@ -794,10 +808,10 @@ func TestFilterRowsByCascade_ModePairPrimesOverGameVariant(t *testing.T) {
 	}
 	rows := []canonical.PlayerMatchRow{r}
 
-	if got := filterRowsByCascade(rows, nil, nil, nil, []string{"Slayer"}); len(got) != 1 {
+	if got := filtrerCascade(rows, nil, nil, nil, []string{"Slayer"}); len(got) != 1 {
 		t.Errorf("pair 'Slayer' doit matcher, got %v", matchIDs(got))
 	}
-	if got := filterRowsByCascade(rows, nil, nil, nil, []string{"Assassin"}); len(got) != 0 {
+	if got := filtrerCascade(rows, nil, nil, nil, []string{"Assassin"}); len(got) != 0 {
 		t.Errorf("game_variant ignoré quand pair présent, got %v", matchIDs(got))
 	}
 }
@@ -884,4 +898,11 @@ func TestSquadServiceV2_GetSquadPage_KPIsByXUIDEmptyWhenNoXUIDs(t *testing.T) {
 			t.Errorf("PlayerScoreCard for %q: XUID should be empty when no xuid in rows, got %q", card.Gamertag, card.XUID)
 		}
 	}
+}
+
+// filtrerCascade : le filtre en cascade sans regroupement de cartes, forme positionnelle des tests.
+func filtrerCascade(rows []canonical.PlayerMatchRow, exp, playlists, maps, modes []string) []canonical.PlayerMatchRow {
+	return filterRowsByCascade(rows, domain.CascadeFilter{
+		ExperienceTypes: exp, Playlists: playlists, Maps: maps, Modes: modes,
+	}, domain.GroupesDeCartes{})
 }

@@ -11,6 +11,8 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { composeTierLabel } from '@/lib/skillTiers'
 import { unrankedBadgeURL } from '@/lib/staticAssets'
 import type { CareerPlaylistCSR, ExplorerLiveSectionStatus } from '@/lib/api/types'
+import { formatMessage } from '@/lib/i18n/format'
+import { explorerManifest } from '@/lib/i18n/generated/explorer'
 import type { Locale } from '@/lib/i18n/locale'
 import { ExplorerLiveStatusBadge } from './ExplorerLiveStatusBadge'
 
@@ -77,9 +79,7 @@ export function ExplorerTargetSeasonCSR({ csrs, title, emptyMessage, liveStatus 
             // des playlists avec données → pas de cas « irrécupérable » ici.
             const unranked = c.current.tier.trim() === ''
             const label = unranked
-              ? locale === 'en'
-                ? 'Unranked'
-                : 'Non classé'
+              ? formatMessage(explorerManifest, 'explorer.target_profile.csr_unranked', locale)
               : tierLabel(c.current.tier, c.current.sub_tier, locale)
             // Badge tout à DROITE (après le label). Unranked → unranked_0.png ;
             // classé → badge de rang (fallback unranked_0 si l'image manque).

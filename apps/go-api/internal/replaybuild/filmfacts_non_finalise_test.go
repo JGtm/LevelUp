@@ -27,16 +27,18 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
+	"levelup/go-api/internal/filmarchive"
+	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // temoinPartiel rend les entrees du manifeste partiel d'`ab526724`.
-func temoinPartiel(t *testing.T) []filmcache.WriteChunk {
+func temoinPartiel(t *testing.T) []filmarchive.WriteChunk {
 	t.Helper()
-	blob, err := os.ReadFile(filepath.Join("..", "games", "halo_infinite", "film", "filmcache",
-		"testdata", "manifeste_partiel_34.json"))
+	blob, err := os.ReadFile(testutil.CheminBriqueFilm(t, "filmcache", "testdata", "manifeste_partiel_34.json"))
 	if err != nil {
 		t.Fatalf("temoin : %v", err)
 	}
@@ -51,9 +53,9 @@ func temoinPartiel(t *testing.T) []filmcache.WriteChunk {
 	if err := json.Unmarshal(blob, &mf); err != nil || len(mf.Chunks) != 34 {
 		t.Fatalf("temoin illisible ou inattendu (%d entrees) : %v", len(mf.Chunks), err)
 	}
-	out := make([]filmcache.WriteChunk, 0, len(mf.Chunks))
+	out := make([]filmarchive.WriteChunk, 0, len(mf.Chunks))
 	for _, c := range mf.Chunks {
-		out = append(out, filmcache.WriteChunk{Index: c.Index, ChunkType: c.ChunkType,
+		out = append(out, filmarchive.WriteChunk{Index: c.Index, ChunkType: c.ChunkType,
 			StartMS: c.StartMS, DurationMS: c.DurationMS, Data: fmt.Appendf(nil, "c%d", c.Index)})
 	}
 	return out
@@ -62,17 +64,17 @@ func temoinPartiel(t *testing.T) []filmcache.WriteChunk {
 // repertoireDuTemoin archive le film COMPLET (37 morceaux) puis remplace son manifeste par
 // `entrees` : c est l etat « manifeste valide trop tot, morceaux arrives ensuite ». Rend la racine
 // du cache, le repertoire de morceaux et la source du manifeste.
-func repertoireDuTemoin(t *testing.T, entrees []filmcache.WriteChunk) (string, *filmcache.Source) {
+func repertoireDuTemoin(t *testing.T, entrees []filmarchive.WriteChunk) (string, *filmcache.Source) {
 	t.Helper()
 	racine := t.TempDir()
 	partiel := temoinPartiel(t)
-	complet := append(append([]filmcache.WriteChunk(nil), partiel...),
-		filmcache.WriteChunk{Index: 34, ChunkType: 2, StartMS: 660116, DurationMS: 20000, Data: []byte("c34")},
-		filmcache.WriteChunk{Index: 35, ChunkType: 2, StartMS: 680117, DurationMS: 1791, Data: []byte("c35")},
-		filmcache.WriteChunk{Index: 36, ChunkType: finalise.ChunkTypeTempsForts, StartMS: 681909,
+	complet := append(append([]filmarchive.WriteChunk(nil), partiel...),
+		filmarchive.WriteChunk{Index: 34, ChunkType: 2, StartMS: 660116, DurationMS: 20000, Data: []byte("c34")},
+		filmarchive.WriteChunk{Index: 35, ChunkType: 2, StartMS: 680117, DurationMS: 1791, Data: []byte("c35")},
+		filmarchive.WriteChunk{Index: 36, ChunkType: finalise.ChunkTypeTempsForts, StartMS: 681909,
 			DurationMS: 3, Data: []byte("c36")},
 	)
-	if err := filmcache.Write(t.Context(), racine, "ab526724", complet); err != nil {
+	if err := filmarchive.Write(t.Context(), racine, "ab526724", complet); err != nil {
 		t.Fatalf("archivage du film complet : %v", err)
 	}
 	type entree struct {
@@ -123,7 +125,7 @@ func TestCuisson_RefuseLeTemoinPartiel(t *testing.T) {
 // TestCuisson_RefuseDesMorceauxHorsManifeste : le manifeste porte ses temps forts, mais deux
 // morceaux du repertoire n y sont pas decrits — le manifeste ne dit pas le film entier.
 func TestCuisson_RefuseDesMorceauxHorsManifeste(t *testing.T) {
-	entrees := append(temoinPartiel(t), filmcache.WriteChunk{Index: 36,
+	entrees := append(temoinPartiel(t), filmarchive.WriteChunk{Index: 36,
 		ChunkType: finalise.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3})
 	dir, src := repertoireDuTemoin(t, entrees)
 	if err := refuserManifesteNonFinalise(context.Background(), "ab526724", dir, src); err != nil {
@@ -144,9 +146,9 @@ func TestCuisson_RefuseDesMorceauxHorsManifeste(t *testing.T) {
 // entrees, comme O1 l a reecrit), passe les deux gardes. Et un film SANS manifeste n est pas juge.
 func TestCuisson_AccepteLeFilmFinalise(t *testing.T) {
 	entrees := append(temoinPartiel(t),
-		filmcache.WriteChunk{Index: 34, ChunkType: 2, StartMS: 660116, DurationMS: 20000},
-		filmcache.WriteChunk{Index: 35, ChunkType: 2, StartMS: 680117, DurationMS: 1791},
-		filmcache.WriteChunk{Index: 36, ChunkType: finalise.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3})
+		filmarchive.WriteChunk{Index: 34, ChunkType: 2, StartMS: 660116, DurationMS: 20000},
+		filmarchive.WriteChunk{Index: 35, ChunkType: 2, StartMS: 680117, DurationMS: 1791},
+		filmarchive.WriteChunk{Index: 36, ChunkType: finalise.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3})
 	dir, src := repertoireDuTemoin(t, entrees)
 	ctx := context.Background()
 	if err := refuserManifesteNonFinalise(ctx, "ab526724", dir, src); err != nil {
@@ -196,7 +198,7 @@ func TestEntreesDeLaCuisson_RefuseLeTemoinPartiel(t *testing.T) {
 // TestEntreesDeLaCuisson_RefuseDesMorceauxHorsManifeste : LE BRANCHEMENT de la garde apres
 // chargement. Manifeste finalise, mais deux morceaux du repertoire n y sont pas decrits.
 func TestEntreesDeLaCuisson_RefuseDesMorceauxHorsManifeste(t *testing.T) {
-	entrees := append(temoinPartiel(t), filmcache.WriteChunk{Index: 36,
+	entrees := append(temoinPartiel(t), filmarchive.WriteChunk{Index: 36,
 		ChunkType: finalise.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3})
 	dir, _ := repertoireDuTemoin(t, entrees)
 	e, err := constructeurSansFaits(t).entreesDeLaCuisson(context.Background(), "ab526724",

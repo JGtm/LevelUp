@@ -10,6 +10,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, act, waitFor } from '@testing-library/react'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { testCapabilities, accountsCapabilities } from '@/test/capabilities'
 import { log } from '@/components/shell/_logger'
 import type { BootstrapResponse } from '@/lib/api/types'
 import { AUTH_RELOAD_STORAGE_KEY } from '@/components/shell/authRequiredGuard'
@@ -66,7 +67,7 @@ const { RootLayout } = await import('./__root')
 function anonBootstrap(): BootstrapResponse {
   return {
     current_username: null,
-    auth_mode: 'xbox',
+    capabilities: testCapabilities(accountsCapabilities('xbox')),
     current_player: null,
     available_players: [],
     hints_visible_default: true,
@@ -84,7 +85,7 @@ describe('RootLayout — garde anti-éjection transitoire', () => {
     useAppShellStore.setState({
       currentUsername: null,
       isBootstrapped: false,
-      authMode: 'none',
+      capabilities: testCapabilities(accountsCapabilities('none')),
       firstLaunch: false,
       setupRequired: false,
     })
@@ -99,7 +100,7 @@ describe('RootLayout — garde anti-éjection transitoire', () => {
     useAppShellStore.setState({
       currentUsername: 'alice',
       isBootstrapped: true,
-      authMode: 'xbox',
+      capabilities: testCapabilities(accountsCapabilities('xbox')),
     })
     queryData = anonBootstrap()
 
@@ -160,7 +161,7 @@ describe("RootLayout — refus de reconnexion Xbox d'un utilisateur connecté", 
     useAppShellStore.setState({
       currentUsername: null,
       isBootstrapped: false,
-      authMode: 'none',
+      capabilities: testCapabilities(accountsCapabilities('none')),
       firstLaunch: false,
       setupRequired: false,
       oauthRefusal: null,
@@ -230,7 +231,7 @@ describe('RootLayout — listener levelup:auth-required (Fix A)', () => {
     useAppShellStore.setState({
       currentUsername: null,
       isBootstrapped: false,
-      authMode: 'none',
+      capabilities: testCapabilities(accountsCapabilities('none')),
       firstLaunch: false,
       setupRequired: false,
     })
@@ -242,7 +243,7 @@ describe('RootLayout — listener levelup:auth-required (Fix A)', () => {
   })
 
   it('store authentifié + 401 + /bootstrap anonyme → reload plein vers /', async () => {
-    useAppShellStore.setState({ currentUsername: 'alice', isBootstrapped: true, authMode: 'xbox' })
+    useAppShellStore.setState({ currentUsername: 'alice', isBootstrapped: true, capabilities: testCapabilities(accountsCapabilities('xbox')) })
     apiGetMock.mockResolvedValue(anonBootstrap())
 
     render(<RootLayout />)
@@ -253,7 +254,7 @@ describe('RootLayout — listener levelup:auth-required (Fix A)', () => {
   })
 
   it('401 d’une route secondaire + /bootstrap connecté → aucune éjection', async () => {
-    useAppShellStore.setState({ currentUsername: 'alice', isBootstrapped: true, authMode: 'xbox' })
+    useAppShellStore.setState({ currentUsername: 'alice', isBootstrapped: true, capabilities: testCapabilities(accountsCapabilities('xbox')) })
     apiGetMock.mockResolvedValue({ ...anonBootstrap(), current_username: 'alice' })
 
     render(<RootLayout />)
@@ -267,7 +268,7 @@ describe('RootLayout — listener levelup:auth-required (Fix A)', () => {
   })
 
   it('plafond de rechargements atteint (survit au rechargement) → /login sans recharger', async () => {
-    useAppShellStore.setState({ currentUsername: 'alice', isBootstrapped: true, authMode: 'xbox' })
+    useAppShellStore.setState({ currentUsername: 'alice', isBootstrapped: true, capabilities: testCapabilities(accountsCapabilities('xbox')) })
     apiGetMock.mockResolvedValue(anonBootstrap())
     const now = Date.now()
     window.sessionStorage.setItem(AUTH_RELOAD_STORAGE_KEY, JSON.stringify([now - 2, now - 1]))
@@ -300,7 +301,7 @@ describe('RootLayout — titre d’onglet locale-aware (I18)', () => {
     useAppShellStore.setState({
       currentUsername: null,
       isBootstrapped: false,
-      authMode: 'none',
+      capabilities: testCapabilities(accountsCapabilities('none')),
       firstLaunch: false,
       setupRequired: false,
       locale: 'fr',

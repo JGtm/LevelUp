@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		fatalf("config: %v", err)
 	}
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	path := pr.SharedSocialDBPath(title.DefaultSlug)
 
 	if _, err := os.Stat(path); err != nil {

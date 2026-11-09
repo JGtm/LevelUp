@@ -5,12 +5,15 @@ package mapcatalog
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
-	"levelup/go-api/internal/testutil"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/testfixtures"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // zoneForge fabrique une zone déjà extraite : un carré de côté c centré en (x, y).
@@ -29,7 +32,7 @@ func zoneForge(index int, sid uint32, x, y, c float64) mapvar.ZoneNommee {
 // TestEntreeForgeJointLesLibellesParStringID — la SEULE clé de jointure possible pour une
 // carte Forge (elle n'a ni module ni indice de volume levl).
 func TestEntreeForgeJointLesLibellesParStringID(t *testing.T) {
-	lex := Lexique{0x11111111: {EN: "Cave", FR: "Grotte"}}
+	lex := Lexique{0x11111111: i18n.FromColumns("Cave", "Grotte")}
 	zs := []mapvar.ZoneNommee{
 		zoneForge(312, 0x11111111, 0, 0, 20),
 		zoneForge(101, 0x22222222, 60, 60, 12), // string_id sans texte joueur
@@ -48,11 +51,11 @@ func TestEntreeForgeJointLesLibellesParStringID(t *testing.T) {
 	}
 	// LA ZONE MUETTE EST PUBLIÉE, SANS NOM INVENTÉ : sa géométrie est mesurée.
 	muette := entry.Zones[0]
-	if muette.EN != "" || muette.FR != "" || muette.Name != "" || len(muette.Polygon) != 4 {
-		t.Errorf("zone muette : en=%q fr=%q nom=%q polygone=%d sommets", muette.EN, muette.FR, muette.Name, len(muette.Polygon))
+	if replaylabels.TexteDepuisFilm(muette.Text)[i18n.LocaleEN] != "" || replaylabels.TexteDepuisFilm(muette.Text)[i18n.LocaleFR] != "" || muette.Name != "" || len(muette.Polygon) != 4 {
+		t.Errorf("zone muette : en=%q fr=%q nom=%q polygone=%d sommets", replaylabels.TexteDepuisFilm(muette.Text)[i18n.LocaleEN], replaylabels.TexteDepuisFilm(muette.Text)[i18n.LocaleFR], muette.Name, len(muette.Polygon))
 	}
 	nommee := entry.Zones[1]
-	if nommee.EN != "Cave" || nommee.FR != "Grotte" || nommee.Z != 2 || nommee.ZTop != 5 {
+	if replaylabels.TexteDepuisFilm(nommee.Text)[i18n.LocaleEN] != "Cave" || replaylabels.TexteDepuisFilm(nommee.Text)[i18n.LocaleFR] != "Grotte" || nommee.Z != 2 || nommee.ZTop != 5 {
 		t.Errorf("zone nommée : %+v", nommee)
 	}
 	if couv.Verdict() != VerdictPubliable || couv.SansLibelle() != 1 {
@@ -63,7 +66,7 @@ func TestEntreeForgeJointLesLibellesParStringID(t *testing.T) {
 // TestEntreeForgeCompteLesStringIDPourLaMesure — la couverture des libellés se MESURE : deux
 // volumes d'un même lieu ne comptent qu'un string_id.
 func TestEntreeForgeCompteLesStringIDPourLaMesure(t *testing.T) {
-	lex := Lexique{0xAAAA: {EN: "Base", FR: "Base"}}
+	lex := Lexique{0xAAAA: i18n.FromColumns("Base", "Base")}
 	zs := []mapvar.ZoneNommee{
 		zoneForge(1, 0xAAAA, 0, 0, 10),
 		zoneForge(2, 0xAAAA, 40, 0, 10), // même lieu, deux volumes
@@ -102,7 +105,7 @@ func TestZoneSansLibelleResteUneZone(t *testing.T) {
 		t.Fatalf("zones = %d dont %d nommées, verdict %q ; attendu 1 dont 0, sans libellé",
 			len(entry.Zones), couv.Nommees, couv.Verdict())
 	}
-	if z := entry.Zones[0]; z.EN != "" || z.FR != "" || z.Name != "" || len(z.Polygon) != 4 {
+	if z := entry.Zones[0]; replaylabels.TexteDepuisFilm(z.Text)[i18n.LocaleEN] != "" || replaylabels.TexteDepuisFilm(z.Text)[i18n.LocaleFR] != "" || z.Name != "" || len(z.Polygon) != 4 {
 		t.Errorf("libellé inventé ou géométrie perdue sur une zone muette : %+v", z)
 	}
 }
@@ -127,11 +130,7 @@ func TestPasDeClassementSeDesserreSurLesGrandesEmprises(t *testing.T) {
 // vers son CANEVAS : il décode, et ne pose aucune zone nommée — le verdict doit le dire, sans
 // erreur. Des octets qui ne sont pas une variante, eux, échouent.
 func TestEntreeForgeSurUneVarianteSansZone(t *testing.T) {
-	root, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du dépôt : %v", err)
-	}
-	blob, err := os.ReadFile(filepath.Join(root, ".ai", "V7.5", "dumps", "mapvar", "vagabond_fo08_wetland.mvar"))
+	blob, err := os.ReadFile(testfixtures.Carte("mapvar", "vagabond_fo08_wetland.mvar"))
 	if err != nil {
 		t.Fatalf("variante versionnée illisible : %v", err)
 	}

@@ -5,120 +5,117 @@
  *
  * Utilisation :
  *   node apps/web/scripts/build_i18n_manifests.mjs
+ *   node apps/web/scripts/build_i18n_manifests.mjs --pseudo xx [--out <dossier>]
  *
  * Conformement au PLAN_META_FOUNDATIONS_GO § 3.4 : chaque manifest produit un
  * objet `as const` qui sert de source de verite pour les types TypeScript des
  * cles. Le runtime `lib/i18n/format.ts` consomme ces modules pour resoudre les
  * strings via intl-messageformat.
  *
+ * Les langues viennent de config/locales.toml (ADR 0040, scripts/locales.mjs) : le script emet
+ * generated/locales.ts (web) et apps/go-api/internal/i18n/locales_gen.go (Go), et exige que
+ * TOUTE feuille de manifest porte TOUTES les langues listees (D-4 : une langue est complete ou
+ * refusee ; la regle vit dans scripts/manifests.mjs). Erreur : fichier, cle, langue.
+ *
+ * Mode --pseudo <code> : fabrique la langue <code> depuis `en` (texte entre `⟦` et `⟧`,
+ * placeholders ICU intacts) pour rendre visible toute chaine qui n'en passe pas par un manifest.
+ * C'est l'outil de la preuve de l'etape 10 du plan, jamais une langue livree : il n'ecrit NI
+ * config/locales.toml, NI les fichiers versionnes ; les modules vont dans --out (par defaut un
+ * dossier temporaire, affiche), avec locales.ts et locales_gen.go rendus pour les memes langues ;
+ * <code> s'ajoute aux langues listees s'il n'y figure pas.
+ *
  * Ce script ne valide pas les placeholders ICU : la validation runtime est
  * faite par intl-messageformat lors du t(). Le script verifie seulement :
- *   - Toute cle a `fr` ET `en` (echec sinon)
+ *   - Toute feuille a toutes les langues listees, et rien d'autre (echec sinon)
  *   - Pas de cle vide
  */
-import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises'
+import { writeFile, mkdir, mkdtemp } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import { dirname, join, basename } from 'node:path'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import TOML from '@iarna/toml'
+import {
+  LOCALES_GO_PATH,
+  LOCALES_TS_PATH,
+  loadLocalesConfig,
+  renderLocalesGo,
+  renderLocalesTS,
+} from './locales.mjs'
+import { listManifestDomains, loadManifest, renderManifestModule, withPseudoLocale } from './manifests.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const MANIFESTS_DIR = join(__dirname, '..', 'src', 'lib', 'i18n', 'manifests')
 const OUTPUT_DIR = join(__dirname, '..', 'src', 'lib', 'i18n', 'generated')
 
-const REQUIRED_LOCALES = ['fr', 'en']
+/** Langue source de la pseudo-langue. */
+const PSEUDO_SOURCE = 'en'
 
-/**
- * Aplatit un objet TOML imbrique en map<dotted_key, {fr, en}>.
- * Ex: {common: {period: {all: {fr, en}}}} -> {"common.period.all": {fr, en}}.
- */
-function flattenManifest(obj, prefix = '') {
-  const out = {}
-  for (const [k, v] of Object.entries(obj)) {
-    const path = prefix ? `${prefix}.${k}` : k
-    if (v && typeof v === 'object' && !Array.isArray(v)) {
-      const isLeaf = REQUIRED_LOCALES.every((l) => typeof v[l] === 'string')
-      if (isLeaf) {
-        for (const required of REQUIRED_LOCALES) {
-          if (typeof v[required] !== 'string' || v[required].trim() === '') {
-            throw new Error(`manifest leaf "${path}" missing locale "${required}"`)
-          }
-        }
-        const extras = Object.keys(v).filter((k2) => !REQUIRED_LOCALES.includes(k2))
-        if (extras.length > 0) {
-          throw new Error(`manifest leaf "${path}" has unsupported locales: ${extras.join(', ')}`)
-        }
-        out[path] = { fr: v.fr, en: v.en }
-      } else {
-        Object.assign(out, flattenManifest(v, path))
-      }
+/** Entree de langue d'une pseudo-langue absente de config/locales.toml : memes etiquettes que la source. */
+function pseudoEntry(code) {
+  const src = loadLocalesConfig().locales.find((l) => l.code === PSEUDO_SOURCE)
+  return { code, intl: src.intl, halo: [...src.halo], required: false }
+}
+
+/** Lit `--pseudo <code>` et `--out <dossier>` ; toute autre option est une erreur. */
+function parseArgs(argv) {
+  const opts = { pseudo: null, out: null }
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if (arg === '--pseudo' || arg === '--out') {
+      const value = argv[++i]
+      if (!value || value.startsWith('--')) throw new Error(`${arg} attend une valeur`)
+      opts[arg.slice(2)] = value
     } else {
-      throw new Error(`manifest key "${path}" must be a [section] table, got ${typeof v}`)
+      throw new Error(`option inconnue : ${arg}`)
     }
   }
-  return out
+  if (opts.out && !opts.pseudo) throw new Error("--out n'a de sens qu'avec --pseudo (le mode normal ecrit generated/)")
+  if (opts.pseudo && !/^[a-z]{2,3}$/.test(opts.pseudo)) throw new Error('--pseudo attend un code de langue en minuscules (ex. xx)')
+  return opts
 }
 
-function generateTSModule(domainName, flat) {
-  const sortedKeys = Object.keys(flat).sort()
-  const constName = `${toCamelCase(domainName)}Manifest`
-  const typeName = `${toPascalCase(domainName)}ManifestKey`
-  const lines = []
-  lines.push('// Auto-genere par scripts/build_i18n_manifests.mjs - NE PAS EDITER A LA MAIN.')
-  lines.push(`// Source : apps/web/src/lib/i18n/manifests/${domainName}.toml`)
-  lines.push('')
-  lines.push(`export const ${constName} = {`)
-  for (const key of sortedKeys) {
-    const v = flat[key]
-    const fr = JSON.stringify(v.fr)
-    const en = JSON.stringify(v.en)
-    lines.push(`  ${JSON.stringify(key)}: { fr: ${fr}, en: ${en} },`)
+/** Ecrit un module par manifest dans `outDir` pour les langues `codes` ; retourne le nombre de cles. */
+async function writeManifests(outDir, codes, pseudo) {
+  if (!existsSync(outDir)) await mkdir(outDir, { recursive: true })
+  const domains = listManifestDomains(MANIFESTS_DIR)
+  if (domains.length === 0) throw new Error('aucun manifest .toml')
+  const real = codes.filter((c) => c !== pseudo)
+  let totalKeys = 0
+  for (const domain of domains) {
+    let flat = loadManifest(MANIFESTS_DIR, domain, real, { fabricated: pseudo ? [pseudo] : [] })
+    if (pseudo) flat = withPseudoLocale(flat, pseudo, PSEUDO_SOURCE)
+    const outPath = join(outDir, `${domain}.ts`)
+    await writeFile(outPath, renderManifestModule(domain, flat, codes), 'utf8')
+    console.log(`  ${domain}.toml -> ${Object.keys(flat).length} cles -> ${outPath}`)
+    totalKeys += Object.keys(flat).length
   }
-  lines.push('} as const')
-  lines.push('')
-  lines.push(`export type ${typeName} = keyof typeof ${constName}`)
-  lines.push('')
-  return lines.join('\n')
-}
-
-function toCamelCase(s) {
-  return s.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase())
-}
-
-function toPascalCase(s) {
-  const camel = toCamelCase(s)
-  return camel.charAt(0).toUpperCase() + camel.slice(1)
+  console.log(`OK: ${domains.length} manifests, ${totalKeys} cles totales, langues : ${codes.join(', ')}.`)
 }
 
 async function main() {
-  if (!existsSync(MANIFESTS_DIR)) {
-    console.error(`manifests directory not found: ${MANIFESTS_DIR}`)
-    process.exit(1)
-  }
-  if (!existsSync(OUTPUT_DIR)) {
-    await mkdir(OUTPUT_DIR, { recursive: true })
+  const opts = parseArgs(process.argv.slice(2))
+  const localesCfg = loadLocalesConfig()
+  const listed = localesCfg.locales.map((l) => l.code)
+
+  if (opts.pseudo) {
+    if (opts.pseudo === PSEUDO_SOURCE) throw new Error(`--pseudo ne peut pas remplacer la langue source "${PSEUDO_SOURCE}"`)
+    const codes = listed.includes(opts.pseudo) ? listed : [...listed, opts.pseudo]
+    const outDir = opts.out ? resolve(opts.out) : await mkdtemp(join(tmpdir(), 'levelup-i18n-pseudo-'))
+    const withPseudo = { ...localesCfg, locales: codes.map((c) => localesCfg.locales.find((l) => l.code === c) ?? pseudoEntry(c)) }
+    console.log(`pseudo-langue "${opts.pseudo}" fabriquee depuis "${PSEUDO_SOURCE}" -> ${outDir} (config/locales.toml et fichiers versionnes intacts)`)
+    await mkdir(outDir, { recursive: true })
+    await writeFile(join(outDir, 'locales.ts'), renderLocalesTS(withPseudo), 'utf8')
+    await writeFile(join(outDir, 'locales_gen.go'), renderLocalesGo(withPseudo), 'utf8')
+    await writeManifests(outDir, codes, opts.pseudo)
+    return
   }
 
-  const files = (await readdir(MANIFESTS_DIR)).filter((f) => f.endsWith('.toml'))
-  if (files.length === 0) {
-    console.error('no .toml manifests found')
-    process.exit(1)
-  }
-
-  let totalKeys = 0
-  for (const f of files) {
-    const domain = basename(f, '.toml')
-    const raw = await readFile(join(MANIFESTS_DIR, f), 'utf8')
-    const parsed = TOML.parse(raw)
-    const flat = flattenManifest(parsed)
-    const ts = generateTSModule(domain, flat)
-    const outPath = join(OUTPUT_DIR, `${domain}.ts`)
-    await writeFile(outPath, ts, 'utf8')
-    console.log(`  ${f} -> ${Object.keys(flat).length} cles -> ${outPath}`)
-    totalKeys += Object.keys(flat).length
-  }
-  console.log(`OK: ${files.length} manifests, ${totalKeys} cles totales.`)
+  await mkdir(OUTPUT_DIR, { recursive: true })
+  await writeFile(LOCALES_TS_PATH, renderLocalesTS(localesCfg), 'utf8')
+  await writeFile(LOCALES_GO_PATH, renderLocalesGo(localesCfg), 'utf8')
+  console.log(`  config/locales.toml -> ${localesCfg.locales.length} langues -> ${LOCALES_TS_PATH}, ${LOCALES_GO_PATH}`)
+  await writeManifests(OUTPUT_DIR, listed, null)
 }
 
 main().catch((err) => {

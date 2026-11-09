@@ -187,7 +187,6 @@ func TestGroupCommendationsByCategory_GroupAndTotal(t *testing.T) {
 func makeMedalMapping(norm, mappingType string, medalID int64) domain.CitationFullMapping {
 	return domain.CitationFullMapping{
 		NameNorm:    norm,
-		NameDisplay: norm,
 		MappingType: mappingType,
 		MedalID:     &medalID,
 	}
@@ -197,7 +196,6 @@ func makeStatMapping(norm, stat string) domain.CitationFullMapping {
 	s := stat
 	return domain.CitationFullMapping{
 		NameNorm:    norm,
-		NameDisplay: norm,
 		MappingType: "stat",
 		StatName:    &s,
 	}
@@ -207,7 +205,6 @@ func makeAwardMapping(norm, award string) domain.CitationFullMapping {
 	a := award
 	return domain.CitationFullMapping{
 		NameNorm:    norm,
-		NameDisplay: norm,
 		MappingType: "award",
 		AwardName:   &a,
 	}
@@ -250,7 +247,6 @@ func makeObjectiveStatMapping(norm, stat string) domain.CitationFullMapping {
 	s := stat
 	return domain.CitationFullMapping{
 		NameNorm:    norm,
-		NameDisplay: norm,
 		MappingType: domain.CitationMappingTypeObjectiveStat,
 		StatName:    &s,
 	}

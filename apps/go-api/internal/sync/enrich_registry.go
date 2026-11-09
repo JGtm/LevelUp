@@ -12,7 +12,7 @@
 // Best-effort : si metadata est indisponible ou si l'asset n'a pas de
 // traduction en-US, on retombe sur le comportement historique (UUID brut comme
 // nom) sans casser la sync. Les UI consumers ont leur propre cascade de
-// résolution (cf. analysis.ResolvePairNameFR + applyXxxFRTranslations).
+// résolution (cf. analysis.ResolvePairName + applyXxxFRTranslations).
 //
 // Cf. thought_log 2026-05-09 — root cause des UUIDs bruts visibles dans
 // available_playlists.
@@ -63,7 +63,7 @@ func EnrichRegistryFromMetadata(ctx context.Context, metadataDB *sql.DB, row *Ma
 		if !needsRegistryNameOverride(*f.namePtr, assetID) {
 			continue
 		}
-		canonical, err := lookupAssetCanonicalEN(ctx, metadataDB, f.assetType, assetID)
+		canonical, err := lookupAssetCanonicalName(ctx, metadataDB, f.assetType, assetID)
 		if err != nil {
 			slog.WarnContext(ctx, "EnrichRegistryFromMetadata: lookup failed",
 				"asset_type", f.assetType, "asset_id", assetID, "err", err)
@@ -148,11 +148,11 @@ func needsRegistryNameOverride(name *string, assetID string) bool {
 	return strings.EqualFold(trimmed, assetID)
 }
 
-// lookupAssetCanonicalEN charge le nom canonique en-US depuis
+// lookupAssetCanonicalName charge le nom canonique en-US depuis
 // metadata.asset_translations pour un (asset_type, asset_id) donné.
 // Retourne "" si absent — utile pour distinguer "pas de traduction" de
 // "erreur DB".
-func lookupAssetCanonicalEN(ctx context.Context, db *sql.DB, assetType, assetID string) (string, error) {
+func lookupAssetCanonicalName(ctx context.Context, db *sql.DB, assetType, assetID string) (string, error) {
 	var name sql.NullString
 	err := db.QueryRowContext(ctx, `
 		SELECT name FROM asset_translations

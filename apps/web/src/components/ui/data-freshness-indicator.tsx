@@ -23,7 +23,7 @@ export function DataFreshnessIndicator({
   snapshotAt: string | null | undefined
   /** Construit le texte du tooltip à partir de la date formatée. */
   buildLabel: (formattedDate: string) => string
-  /** Locale BCP-47 pour le formatage de la date (ex. 'fr-FR'). */
+  /** Locale BCP-47 pour le formatage de la date (ex. `fr-FR`). */
   locale: string
   /**
    * Classes de couleur Tailwind appliquées à l'icône (override). Doit inclure

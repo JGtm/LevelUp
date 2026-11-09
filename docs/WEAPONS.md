@@ -57,8 +57,9 @@ chunks for weapon-fire and weapon-held events, correlates each kill (from
 `highlight_events`) to a weapon, reconciles the result against the API kill
 counts, and writes one row per kill into the shared `weapon_kills` table.
 
-The aggregated result (kills per weapon, with EN/FR labels) is read back
-through the `v_weapon_kills` view and the `metadata.weapon_labels` table, and
+The aggregated result (kills per weapon, with the label in the request language) is read back
+through the `v_weapon_kills` view and the `metadata.weapon_name_labels` / `weapon_label_names`
+tables, and
 surfaced in the match view and the favorite-weapon home KPI.
 
 ---
@@ -69,8 +70,8 @@ surfaced in the match view and the favorite-weapon home KPI.
 |---------|----------|
 | Pipeline orchestration (per match / all participants / batch) | `internal/sync/backfill_weapons.go` |
 | DB write (append-only INSERT) | `internal/sync/writes.go` — `InsertWeaponKills`, `MarkWeaponKillsDone` |
-| Chunk scan (fire events, held-weapon timeline) | `internal/games/halo_infinite/film/internal/grammar/weaponscan/scanner.go`, `internal/analysis/weapon_parser.go` |
-| Weapon ID map, timings, fusions, sentinels | `internal/games/weapons/filmshell/catalogue.go` |
+| Chunk scan (fire events, held-weapon timeline) | `libs/film/internal/grammar/weaponscan/scanner.go`, `internal/analysis/weapon_parser.go` |
+| Weapon ID map, timings, fusions, sentinels | `libs/film/filmshell/catalogue.go` |
 | Kill -> weapon correlation | `internal/analysis/weapon_correlation.go` |
 | API reconciliation | `internal/analysis/weapon_reconciliation.go` |
 | Attribution result struct | `internal/analysis/kill_attribution.go` |
@@ -162,7 +163,7 @@ totals.
 ## Weapon ID (WID) Structure
 
 A WID is the 8 filmshell weapon bytes read as a **big-endian `uint64`**
-(`hexToUint64` in `internal/games/weapons/filmshell/catalogue.go`). DuckDB stores it as
+(`hexToUint64` in `libs/film/filmshell/catalogue.go`). DuckDB stores it as
 `UBIGINT` — some real WIDs (e.g. `f408190f42c9679f`) have bit 63 set and exceed
 `2^63`, which is why the write path casts a decimal string to `UBIGINT` rather
 than binding a Go `uint64` (the duckdb-go driver rejects high-bit-set uint64s).
@@ -274,20 +275,23 @@ view **`v_weapon_kills`**, which:
 UNION-ALLs the `grenade_kills` / `melee_kills` totals from `match_participants`
 under the sentinel IDs `0` and `1`.
 
-Labels (EN/FR) and roles are attached in Go via `weapon_resolver.go` — the
+Labels (one per language) and roles are attached in Go via `weapon_resolver.go` — the
 metadata DB is separate, so it cannot be SQL-joined to the shared DB.
 
 **Display name — single source keyed by `weapon_key` (V72-06).** The display name
-is resolved `weapon_id → weapon_ids → weapon_key → {en, fr}` from
-`metadata.weapon_name_labels` (`title_slug`, `weapon_key`, `name_en`, `name_fr`),
-seeded at boot from `config/titles/{slug}/mappings/weapon_names.toml`
+is resolved `weapon_id → weapon_ids → weapon_key → names per language` from
+`metadata.weapon_name_labels` (`title_slug`, `weapon_key`, `lang`, `name`: one row per
+language of `config/locales.toml`, ADR 0040 D-13), seeded at boot from `config/titles/{slug}/mappings/weapon_names.toml`
 (`ReconcileWeaponNameLabels`). All raw id variants of one weapon collapse to a
-single translation (kills the `FRAG GRENADE` vs `Frag Grenade` mismatch). Label
-priority: `weapon_name_labels.name_fr > .name_en > weapon_labels.name_fr >
-weapon_labels.name_en` — the last two only cover ids **without** a `weapon_key`
-(sentinels `0/1/2`, unknowns). The `weapons` registry no longer carries a display
-name (`name_fr` removed); it provides only the dimensions (role/class/family/faction).
-`weapon_labels.name_en` still drives the image URL (`AssetURLAdapter`).
+single translation (kills the `FRAG GRENADE` vs `Frag Grenade` mismatch). Per
+language, the curated name of `weapon_name_labels` wins over the name of
+`weapon_label_names` (`weapon_id`, `lang`, `name`) — the latter alone covers ids
+**without** a `weapon_key` (sentinels `0/1/2`, unknowns). The language of the request is
+then chosen with `Text.Pick` (requested language, else `en`), never by a cross-language
+SQL `COALESCE`. The `weapons` registry no longer carries a display name (`name_fr`
+removed); it provides only the dimensions (role/class/family/faction). The English
+name of `weapon_label_names` still drives the image URL (`AssetURLAdapter`); `weapon_labels`
+keeps only its non-text columns.
 
 If `weapon_kills` / `v_weapon_kills` is absent (e.g. a title that does not
 support it), the repo returns `games.ErrCapabilityNotSupported`.
@@ -315,7 +319,7 @@ matches that already have either bit set are skipped
 > `findMissingWeaponMatches`) and does not loop. Re-run the command until it
 > reports `matches=0` to drain a large backlog.
 
-If `metadata.weapon_labels` is empty (some prebuilt DBs), repair it (stop the
+If `metadata.weapon_label_names` is empty (some prebuilt DBs), repair it (stop the
 API server first — it holds metadata.duckdb RW):
 
 ```bash
@@ -329,7 +333,7 @@ go run -tags cgo ./cmd/seed-weapon-labels
 When a new weapon ships, or an unresolved WID is positively identified:
 
 1. Add the entry to `weaponEntries` in
-   `apps/go-api/internal/games/weapons/filmshell/catalogue.go` (hex -> name). Place it in the
+   `libs/film/filmshell/catalogue.go` (hex -> name). Place it in the
    right group (standard / Energy Sword family / Gravity Hammer family /
    grenade). If the weapon class is new, add a `WeaponTimingByName` entry.
 2. Add the weapon to the canonical registry (`weaponRegistryWeapons` +
@@ -337,8 +341,8 @@ When a new weapon ships, or an unresolved WID is positively identified:
    so the raw id resolves to a `weapon_key`, **and** add the display name (en/fr)
    keyed by that `weapon_key` in `config/titles/{slug}/mappings/weapon_names.toml`.
    A registry `weapon_key` without a `weapon_names.toml` entry (or vice versa) fails
-   the completeness guard (`weapon_names_completeness_test.go`). `weapon_labels` is
-   still seeded (EN name for the image URL), but no longer carries the display name.
+   the completeness guard (`internal/games/weapons/names_completeness_test.go`). `weapon_label_names` is
+   still seeded (the `en` name for the image URL, and the name of ids without a `weapon_key`).
 3. Re-run `go run ./cmd/levelup backfill --weapons --force` for affected
    matches if you want existing rows re-attributed; new matches pick up the
    mapping automatically.

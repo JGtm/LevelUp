@@ -34,10 +34,11 @@ import (
 	"slices"
 	"strconv"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/weapons/filmshell"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmshell"
 )
 
 // WeaponShotsDecoderRev — la version du producteur de tirs, ecrite sur CHAQUE ligne.
@@ -95,7 +96,7 @@ func BuildWeaponShotsBatch(
 			// `metadata.weapon_labels`. Le persister les refuse — mais il refuse la PASSE
 			// ENTIERE, alors qu ici une sentinelle isolee ne doit couter que sa propre ligne.
 			// On lit la liste chez son proprietaire plutot que d en recopier la borne.
-			if filmshell.SentinelIDs[id] {
+			if filmshell.EstSentinelle(id) {
 				continue
 			}
 			if counts[pi] == nil {

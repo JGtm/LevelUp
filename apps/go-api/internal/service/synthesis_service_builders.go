@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -223,21 +224,20 @@ const synthesisWeaponChartTopN = 20
 // permutaient d'une réponse à l'autre — classement non déterministe visible sur
 // le harnais de régression visuelle (e2e/visual/app-pages, canvas « classement
 // des armes » de la page Session).
-func buildTopWeaponKills(rows []port.WeaponKillRow, n int) []domain.SynthesisWeaponKillEntry {
-	resolved := topWeaponKillRows(rows, n)
+func buildTopWeaponKills(loc i18n.Locale, rows []port.WeaponKillRow, n int) []domain.SynthesisWeaponKillEntry {
+	resolved := topWeaponKillRows(loc, rows, n)
 	out := make([]domain.SynthesisWeaponKillEntry, len(resolved))
 	for i, r := range resolved {
 		// Class/Role portés depuis le registre (résolus dans la même passe
 		// ResolveRoles) pour recolorer le breakdown par arme par classe (P1.5).
-		out[i] = domain.SynthesisWeaponKillEntry{Label: r.Label, Kills: r.Kills, Class: r.Class, Role: r.Role}
+		out[i] = domain.SynthesisWeaponKillEntry{Label: r.Label.Pick(loc), Kills: r.Kills, Class: r.Class, Role: r.Role}
 	}
 	return out
 }
 
 // topWeaponKillRows rend les N lignes d'arme les plus meurtrières, filtrées et triées.
 //
-// # LA DÉFINITION CANONIQUE DU « TOP ARMES » DU DÉPÔT (D11 du plan
-// # .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md)
+// # LA DÉFINITION CANONIQUE DU « TOP ARMES » DU DÉPÔT
 //
 // Elle vivait INLINE dans `buildTopWeaponKills`, et `buildWeaponAccuracy` en porte déjà une
 // variante sur sa propre métrique : le profil d'armes du Face-à-face en aurait été la
@@ -258,11 +258,12 @@ func buildTopWeaponKills(rows []port.WeaponKillRow, n int) []domain.SynthesisWea
 // déterministe, constaté sur le harnais de régression visuelle (canvas « classement des
 // armes » de la page Session). `SliceStable` conserve en plus l'ordre d'entrée à clés égales.
 //
-// PUR : l'entrée n'est ni triée ni mutée (le tri porte sur la tranche filtrée, qui est neuve).
-func topWeaponKillRows(rows []port.WeaponKillRow, n int) []port.WeaponKillRow {
+// loc est la langue de la requête : le départage alphabétique porte sur le libellé dans cette
+// langue. PUR : l entrée n est ni triée ni mutée (le tri porte sur la tranche filtrée, qui est neuve).
+func topWeaponKillRows(loc i18n.Locale, rows []port.WeaponKillRow, n int) []port.WeaponKillRow {
 	resolved := make([]port.WeaponKillRow, 0, len(rows))
 	for _, r := range rows {
-		if r.Label != "" && !r.IsGrenadeMelee {
+		if !r.Label.Empty() && !r.IsGrenadeMelee {
 			resolved = append(resolved, r)
 		}
 	}
@@ -270,7 +271,7 @@ func topWeaponKillRows(rows []port.WeaponKillRow, n int) []port.WeaponKillRow {
 		if resolved[i].Kills != resolved[j].Kills {
 			return resolved[i].Kills > resolved[j].Kills
 		}
-		return resolved[i].Label < resolved[j].Label
+		return resolved[i].Label.Pick(loc) < resolved[j].Label.Pick(loc)
 	})
 	if len(resolved) > n {
 		resolved = resolved[:n]

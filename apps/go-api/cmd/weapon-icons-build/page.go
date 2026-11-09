@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	pageRelPath  = ".ai/V7.5/icones/NOMMAGE_ICONES.html"
+	pageRelPath  = ".ai/archive/V7.5/icones/NOMMAGE_ICONES.html"
 	docBaseName  = "ETAT_DE_L_ART_ICONES.md"
 	pageLineWrap = 92
 )

@@ -2,7 +2,6 @@ package service
 
 import (
 	"testing"
-	"time"
 )
 
 // ---------------------------------------------------------------------------
@@ -88,18 +87,6 @@ func TestPerfColor(t *testing.T) {
 		if got != c.want {
 			t.Errorf("perfColor(%g) = %s, want %s", c.score, got, c.want)
 		}
-	}
-}
-
-// ---------------------------------------------------------------------------
-// formatDateFRLong / sortInts
-// ---------------------------------------------------------------------------
-
-func TestFormatDateFRLong(t *testing.T) {
-	dt := time.Date(2024, 3, 15, 14, 30, 0, 0, time.UTC)
-	got := formatDateFRLong(dt)
-	if got == "" {
-		t.Error("expected non-empty formatted date")
 	}
 }
 

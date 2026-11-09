@@ -18,6 +18,12 @@ interface EmptyStateNoticeProps extends EmptyStateBaseProps {
    * coup d'œil plutôt qu'un gris atone.
    */
   tone?: 'neutral' | 'success'
+  /**
+   * Gabarit. `default` : bloc de page. `compact` : bloc logé dans une carte étroite (états
+   * vides des cartes du briefing) — marges, titre et description réduits, même pointillé et
+   * mêmes jetons.
+   */
+  size?: 'default' | 'compact'
 }
 
 export function EmptyStateNotice({
@@ -27,11 +33,13 @@ export function EmptyStateNotice({
   onAction,
   className = '',
   tone = 'neutral',
+  size = 'default',
 }: EmptyStateNoticeProps) {
   const success = tone === 'success'
+  const compact = size === 'compact'
   return (
     <div
-      className={`rounded-xl border px-4 py-5 text-center ${
+      className={`rounded-xl border text-center ${compact ? 'px-3 py-2' : 'px-4 py-5'} ${
         success ? '' : 'border-dashed border-placeholder-border bg-muted/80'
       } ${className}`}
       style={success ? { borderColor: tokenCssVar('success') } : undefined}
@@ -57,12 +65,14 @@ export function EmptyStateNotice({
         </span>
       )}
       <p
-        className="text-sm font-semibold text-foreground"
+        className={`${compact ? 'text-xs' : 'text-sm'} font-semibold text-foreground`}
         style={success ? { color: tokenCssVar('success') } : undefined}
       >
         {title}
       </p>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      <p className={`${compact ? 'mt-0.5 text-2xs' : 'mt-1 text-sm'} text-muted-foreground`}>
+        {description}
+      </p>
       {actionLabel && onAction && (
         <div className="mt-4">
           <Button variant="outline" size="sm" onClick={onAction}>

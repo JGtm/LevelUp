@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -13,10 +14,37 @@ import (
 
 // goSource est un fichier Go non-test du module, déjà analysé.
 type goSource struct {
-	Rel  string // chemin relatif à apps/go-api, séparateurs "/"
+	Rel  string // chemin de garde-rail ([cheminDeGardeRail]), séparateurs "/"
 	Src  []byte
 	Fset *token.FileSet
 	File *ast.File
+}
+
+// racineDeclaree rend le chemin sur disque d'une racine qu'un garde-rail déclare balayer (chemin de
+// garde-rail, [surDisque]) et échoue si elle n'existe pas. Un garde-rail dont la racine a disparu ne
+// garde plus rien : il rougit, il ne saute pas et ne passe pas à la racine suivante. Le garde-rail
+// [TestAucuneRacineAbsenteToleree] interdit l'ancienne forme (`os.Stat` suivi de `continue` ou d'un
+// `t.Skip`).
+func racineDeclaree(t *testing.T, rel string) string {
+	t.Helper()
+	abs := surDisque(t, rel)
+	if err := exigerDossier(abs); err != nil {
+		t.Fatalf("racine déclarée %s : %v — le garde-rail ne garderait rien. La déplacer avec le code ; "+
+			"si le code a disparu, retirer le garde-rail avec lui (CLAUDE.md règle 7)", rel, err)
+	}
+	return abs
+}
+
+// exigerDossier rend une erreur si abs n'existe pas ou n'est pas un dossier.
+func exigerDossier(abs string) error {
+	st, err := os.Stat(abs)
+	if err != nil {
+		return err
+	}
+	if !st.IsDir() {
+		return &fs.PathError{Op: "racine", Path: abs, Err: fs.ErrInvalid}
+	}
+	return nil
 }
 
 // apiModuleRoot rend la racine du module apps/go-api.
@@ -29,15 +57,15 @@ func apiModuleRoot(t *testing.T) string {
 	return filepath.Dir(filepath.Dir(filepath.Dir(thisFile)))
 }
 
-// goSourcesUnder analyse les fichiers Go non-test sous les racines données (relatives à
-// apps/go-api, séparateurs "/"). Échoue si une racine n'existe pas ou ne contient rien :
-// un garde-rail qui ne voit aucun fichier ne garde rien.
+// goSourcesUnder analyse les fichiers Go non-test sous les racines données (chemins de garde-rail,
+// [surDisque] : relatives à apps/go-api, ou à la racine du dépôt sous `libs/` ; séparateurs "/").
+// Échoue si une racine n'existe pas ou ne contient rien : un garde-rail qui ne voit aucun fichier
+// ne garde rien.
 func goSourcesUnder(t *testing.T, roots ...string) []goSource {
 	t.Helper()
-	base := apiModuleRoot(t)
 	var out []goSource
 	for _, root := range roots {
-		dir := filepath.Join(base, filepath.FromSlash(root))
+		dir := surDisque(t, root)
 		before := len(out)
 		err := filepath.WalkDir(dir, func(path string, d os.DirEntry, walkErr error) error {
 			if walkErr != nil {
@@ -55,8 +83,7 @@ func goSourcesUnder(t *testing.T, roots ...string) []goSource {
 			if err != nil {
 				return err
 			}
-			rel, _ := filepath.Rel(base, path)
-			out = append(out, goSource{Rel: filepath.ToSlash(rel), Src: src, Fset: fset, File: file})
+			out = append(out, goSource{Rel: cheminDeGardeRail(t, path), Src: src, Fset: fset, File: file})
 			return nil
 		})
 		if err != nil {
@@ -78,4 +105,114 @@ func parseGoSnippet(t *testing.T, rel, src string) goSource {
 		t.Fatalf("source de test invalide : %v", err)
 	}
 	return goSource{Rel: rel, Src: []byte(src), Fset: fset, File: file}
+}
+
+// racinesEspaceDeTravail : les racines des modules Go du dépôt (ADR 0041), relatives à la racine
+// du dépôt. Une brique de `libs/` y entre le jour où son `go.mod` est créé.
+var racinesEspaceDeTravail = []string{"apps/go-api", "libs/film", "libs/gamefiles", "libs/haloapi", "libs/himap"}
+
+// workspaceRoot rend la racine du dépôt (celle du `go.work`).
+func workspaceRoot(t *testing.T) string {
+	t.Helper()
+	return filepath.Dir(filepath.Dir(apiModuleRoot(t)))
+}
+
+// fichierGo est un fichier `.go` de l'espace de travail, localisé sans être lu.
+type fichierGo struct {
+	Rel    string // relatif à la racine du dépôt, séparateurs "/" (ex. apps/go-api/internal/x/y.go)
+	Chemin string // chemin absolu
+}
+
+// workspaceGoSources liste TOUS les fichiers `.go` (tests compris) sous les racines données,
+// relatives à la racine du dépôt (`racinesEspaceDeTravail` pour « tout le Go du dépôt »). C'est le
+// parcours des garde-rails à règle GÉNÉRALE : leur racine est l'espace de travail, pas un module,
+// sinon une brique sous `libs/` sortirait de leur vue. Les garde-rails propres à `go-api` restent
+// sur `goSourcesUnder` / `apiModuleRoot`.
+//
+// Les répertoires que l'outil Go n'ouvre jamais sont sautés (`dossiersInvisiblesAuGo`, `.foo`,
+// `_foo`) : un fichier posé là n'est ni compilé ni testé. Échoue si une racine n'existe pas ou ne
+// porte aucun fichier Go : un garde-rail qui ne voit rien ne garde rien.
+func workspaceGoSources(t *testing.T, roots ...string) []fichierGo {
+	t.Helper()
+	depot := workspaceRoot(t)
+	var out []fichierGo
+	for _, root := range roots {
+		base := filepath.Join(depot, filepath.FromSlash(root))
+		avant := len(out)
+		err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				nom := d.Name()
+				if chemin != base && (dossiersInvisiblesAuGo[nom] ||
+					strings.HasPrefix(nom, ".") || strings.HasPrefix(nom, "_")) {
+					return fs.SkipDir
+				}
+				return nil
+			}
+			if !strings.HasSuffix(chemin, ".go") {
+				return nil
+			}
+			rel, _ := filepath.Rel(depot, chemin)
+			out = append(out, fichierGo{Rel: filepath.ToSlash(rel), Chemin: chemin})
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("parcours de %s : %v", root, err)
+		}
+		if len(out) == avant {
+			t.Fatalf("aucun fichier Go sous %s : le garde-rail ne couvre rien", root)
+		}
+	}
+	return out
+}
+
+// surDisque rend le chemin absolu d'un chemin de garde-rail. Les tables des garde-rails propres à
+// go-api parlent deux repères qui ne se recouvrent pas : un chemin sous `libs/` (une brique, ADR
+// 0041 : `libs/film/...`) est relatif à la racine du dépôt et se lit depuis `workspaceRoot` ; tout
+// autre chemin (`internal/...`, `cmd/...`) est relatif à `apps/go-api`. `apps/go-api` ne porte
+// aucun dossier `libs/`.
+func surDisque(t *testing.T, rel string) string {
+	t.Helper()
+	if strings.HasPrefix(rel, "libs/") {
+		return filepath.Join(workspaceRoot(t), filepath.FromSlash(rel))
+	}
+	return filepath.Join(apiModuleRoot(t), filepath.FromSlash(rel))
+}
+
+// cheminDeGardeRail est l'inverse de [surDisque] : le chemin, dans le même double repère, d'un
+// fichier ou d'un dossier absolu (séparateurs "/").
+func cheminDeGardeRail(t *testing.T, abs string) string {
+	t.Helper()
+	if rel, err := filepath.Rel(filepath.Join(workspaceRoot(t), "libs"), abs); err == nil &&
+		rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "libs/" + filepath.ToSlash(rel)
+	}
+	rel, _ := filepath.Rel(apiModuleRoot(t), abs)
+	return filepath.ToSlash(rel)
+}
+
+// marcherAPIEtBriqueFilm applique `fn` à `apps/go-api` puis à la brique du décodeur de film
+// (`libs/film`). Un garde-rail qui balayait tout go-api couvrait le décodeur tant qu'il y vivait :
+// il le couvre encore depuis que le décodeur est un module (ADR 0041). `fn` situe un fichier par
+// [cheminDeGardeRail].
+func marcherAPIEtBriqueFilm(t *testing.T, fn fs.WalkDirFunc) error {
+	t.Helper()
+	for _, base := range []string{apiModuleRoot(t), surDisque(t, racineBriqueFilm)} {
+		if err := filepath.WalkDir(base, fn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// balayerGo appelle `visiter` pour chaque fichier `.go` de l'espace de travail (tests compris), avec
+// son chemin relatif à la RACINE DU DÉPÔT en slash (`apps/go-api/…`, `libs/gamefiles/…`). Mêmes
+// répertoires sautés que `workspaceGoSources`, le parcours unique des garde-rails à règle générale.
+func balayerGo(t *testing.T, visiter func(rel, chemin string)) {
+	t.Helper()
+	for _, f := range workspaceGoSources(t, racinesEspaceDeTravail...) {
+		visiter(f.Rel, f.Chemin)
+	}
 }

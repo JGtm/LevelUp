@@ -1,5 +1,5 @@
 // Package service — synthesis_weapon_range_test.go : la section « Portée par arme » vue du
-// service (lot 4 du plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md).
+// service.
 //
 // PÉRIMÈTRE : `loadWeaponRange` et son entourage — le port mocké, les dégradations, le régime
 // de journalisation. Les tests des DEUX FONCTIONS PURES qu'il appelle (`mergeWeaponSides` et
@@ -34,6 +34,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -47,8 +48,7 @@ type mockWeaponRangeRepo struct {
 	openErr   error
 	labels    map[string]port.WeaponLabel
 	labelsErr error
-	// dims / dimsErr : la résolution clé d'arme -> class/role/family (lot 2 du plan
-	// .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md). Nil = registre muet, ce qui est un
+	// dims / dimsErr : la résolution clé d'arme -> class/role/family. Nil = registre muet, ce qui est un
 	// état réel (metadata non migrée) et non une panne.
 	dims    map[string]port.WeaponDimensions
 	dimsErr error
@@ -159,7 +159,7 @@ func TestLoadWeaponRange_Nominal_DeuxCotesEtEntame(t *testing.T) {
 	repo := &mockWeaponRangeRepo{
 		kills: kills, openings: openings,
 		labels: map[string]port.WeaponLabel{
-			"hinf_br75": {Label: "Fusil de combat BR75", LabelEN: "BR75 Battle Rifle"},
+			"hinf_br75": {Name: i18n.Text{i18n.LocaleFR: "Fusil de combat BR75", i18n.LocaleEN: "BR75 Battle Rifle"}},
 		},
 	}
 
@@ -181,7 +181,7 @@ func TestLoadWeaponRange_Nominal_DeuxCotesEtEntame(t *testing.T) {
 			len(block.Weapons), block.Weapons)
 	}
 	w := block.Weapons[0]
-	if w.WeaponKey != "hinf_br75" || w.Label != "Fusil de combat BR75" || w.LabelEN != "BR75 Battle Rifle" {
+	if w.WeaponKey != "hinf_br75" || w.Label != "Fusil de combat BR75" {
 		t.Errorf("ligne = %+v, libellés non hydratés", w)
 	}
 	if w.Kills == nil || w.Deaths == nil {
@@ -259,8 +259,8 @@ func TestLoadWeaponRange_SousLeSeuil_ArmesNommeesParCote(t *testing.T) {
 	kills = append(kills, wrKills("hinf_hydra", analysis.SideKiller, 6, 20, 0)...)
 	kills = append(kills, wrKills("hinf_ravager", analysis.SideVictim, 5, 25, 0)...)
 	repo := &mockWeaponRangeRepo{kills: kills, labels: map[string]port.WeaponLabel{
-		"hinf_hydra":   {Label: "Hydra", LabelEN: "Hydra"},
-		"hinf_ravager": {Label: "Ravageur", LabelEN: "Ravager"},
+		"hinf_hydra":   {Name: i18n.Text{i18n.LocaleFR: "Hydra", i18n.LocaleEN: "Hydra"}},
+		"hinf_ravager": {Name: i18n.Text{i18n.LocaleFR: "Ravageur", i18n.LocaleEN: "Ravager"}},
 	}}
 
 	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 20, 10)))
@@ -482,5 +482,33 @@ func TestLogWeaponRangeFailure_RegimeDesNiveaux(t *testing.T) {
 					"pas alerter, une panne SQL doit alerter :\n%s", aWarn, c.veutWarn, out)
 			}
 		})
+	}
+}
+
+// TestBuildWeaponRangeSection_NomsDansLaLangueDeLaRequete : les libellés des lignes ET des armes
+// écartées suivent la langue de la requête (repli en).
+func TestBuildWeaponRangeSection_NomsDansLaLangueDeLaRequete(t *testing.T) {
+	kills := wrKills("hinf_br75", analysis.SideKiller, analysis.WeaponRangeMinMeasured, 12, 0)
+	kills = append(kills, wrKills("hinf_hydra", analysis.SideKiller, 6, 20, 0)...)
+	repo := &mockWeaponRangeRepo{kills: kills, labels: map[string]port.WeaponLabel{
+		"hinf_br75":  {Name: i18n.Text{i18n.LocaleFR: "Fusil de combat BR75", i18n.LocaleEN: "BR75 Battle Rifle"}},
+		"hinf_hydra": {Name: i18n.Text{i18n.LocaleFR: "Hydre", i18n.LocaleEN: "Hydra"}},
+	}}
+	for _, c := range []struct {
+		loc          i18n.Locale
+		arme, ecarte string
+	}{
+		{i18n.LocaleFR, "Fusil de combat BR75", "Hydre"},
+		{i18n.LocaleEN, "BR75 Battle Rifle", "Hydra"},
+		{i18n.Locale("zz"), "Fusil de combat BR75", "Hydre"}, // locale inconnue : défaut fr dès le contexte
+	} {
+		ctx := i18n.WithContext(context.Background(), c.loc)
+		block := buildWeaponRangeSection(ctx, wrQuery(repo, wrCanonRows(1, 20, 10)))
+		if block == nil || len(block.Weapons) != 1 || block.Weapons[0].Label != c.arme {
+			t.Fatalf("locale %q : bloc = %+v, want la ligne %q", c.loc, block, c.arme)
+		}
+		if len(block.BelowThresholdKills) != 1 || block.BelowThresholdKills[0].Label != c.ecarte {
+			t.Errorf("locale %q : armes écartées = %+v, want %q", c.loc, block.BelowThresholdKills, c.ecarte)
+		}
 	}
 }

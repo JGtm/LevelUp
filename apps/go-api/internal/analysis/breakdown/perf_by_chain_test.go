@@ -3,6 +3,7 @@ package breakdown
 import (
 	"testing"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -76,7 +77,7 @@ func TestByMap_PerfByChain_Populated(t *testing.T) {
 		{MapID: "behemoth", MapLabel: "Behemoth", Outcome: canonical.OutcomeWin,
 			PerformanceScore: ptrF(60), PerformanceChain: "ranked"},
 	}
-	got := ByMap(rows)
+	got := ByMap(rows, domain.GroupesDeCartes{}, "")
 	if len(got) != 1 {
 		t.Fatalf("expected 1 map aggregate, got %d", len(got))
 	}
@@ -102,7 +103,7 @@ func TestByMap_PerfByChain_NilWhenNoChain(t *testing.T) {
 		{MapID: "m1", MapLabel: "Bazaar", Outcome: canonical.OutcomeWin,
 			PerformanceScore: ptrF(70)},
 	}
-	got := ByMap(rows)
+	got := ByMap(rows, domain.GroupesDeCartes{}, "")
 	if got[0].PerfByChain != nil {
 		t.Errorf("PerfByChain should be nil when no row has a chain, got %v", got[0].PerfByChain)
 	}

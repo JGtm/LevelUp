@@ -1,5 +1,5 @@
 // Package duckdb — player_db_recovery_routing_test.go : garde-rail anti-régression
-// du sweep recovery des lectures player-DB (Lot D — .ai/archive/V7/PLAN_PLAYER_DB_RECOVERY_SWEEP_2026-07.md).
+// du sweep recovery des lectures player-DB.
 //
 // **Contexte.** `pdb.Player` est l'UNIQUE handle RW du `stats.duckdb` joueur (renvoyé
 // aussi par `pdb.ReadDB()`), partagé par tous les repos player. Un writer concurrent
@@ -120,7 +120,7 @@ func TestNoPlainPlayerHandleReads(t *testing.T) {
 	t.Errorf("  .Query(ctx, ...)            -> .QueryRecovered(ctx, ...)")
 	t.Errorf("  .QueryRow(ctx, ...).Scan()  -> rows, err := .QueryRowRecovered(ctx, ...) ; defer rows.Close() ; rows.Scan(...)")
 	t.Errorf("  .Exec(ctx, ...)             -> .ExecRecovered(ctx, ...)")
-	t.Errorf("Cf. .ai/PLAN_PLAYER_DB_RECOVERY_SWEEP_2026-07.md (forme de référence : prestige/prestige_player_repo.go).")
+	t.Errorf("Forme de référence : prestige/prestige_player_repo.go.")
 	t.Errorf("Si l'accès est HORS périmètre (table sync_meta / metadata / shared / shared_social — DC-3), " +
 		"ajouter une entrée DATÉE à plainPlayerReadAllowlist avec justification.")
 }

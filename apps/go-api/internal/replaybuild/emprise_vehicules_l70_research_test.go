@@ -2,8 +2,7 @@
 
 package replaybuild
 
-// emprise_vehicules_l70_research_test.go — LOT L7.0 DU PLAN
-// `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md` : LES MESURES DE LA RESSOURCE « VEHICULES » sur les
+// emprise_vehicules_l70_research_test.go — LES MESURES DE LA RESSOURCE « VEHICULES » sur les
 // huit soirees temoins, sur un document construit EN MEMOIRE par le code actuel.
 //
 // # CE QUE CE FICHIER MESURE
@@ -44,10 +43,11 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // Les seuils du plan, ecrits avant la mesure.
@@ -104,7 +104,7 @@ func TestEmpriseL70(t *testing.T) {
 		t.Fatalf("racine du depot : %v", err)
 	}
 	// LA SENTINELLE DU DEPOT (comme `TestEmpriseV0Reference`) : une cuisson BTB monte a plusieurs Gio.
-	garde := filmproc.Arm("emprise-l70", 8, func(pic uint64) {
+	garde := memguard.Arm(t.Context(), "emprise-l70", 8, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "EMPRISE L70 : empreinte %.2f Gio > plafond — arret\n", float64(pic)/(1<<30))
 		os.Exit(3)
 	})

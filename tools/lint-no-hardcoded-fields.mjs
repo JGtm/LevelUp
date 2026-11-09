@@ -17,6 +17,7 @@
  * Whitelist (fichiers autorisés à hardcoder pendant la transition Phase D) :
  *   - apps/web/src/features/* /i18n.ts                 (dicts FR/EN locaux)
  *   - apps/web/src/features/* /*.i18n.ts                (dicts FR/EN locaux)
+ *   - apps/web/src/features/ ... /i18n/<langue>.ts     (un fichier par langue d un dict de feature)
  *   - apps/web/src/lib/i18n/fieldMappings.test.ts       (fixtures de test)
  *   - apps/web/src/components/ui/timeseries-scatter.tsx (fallback FR explicite)
  *   - apps/web/src/components/ui/timeseries-kda-bars.tsx (fallback FR explicite)
@@ -76,6 +77,7 @@ const WHITELIST_PATTERNS = [
   /\.test\.tsx?$/,                         // tous les tests
   /\/i18n\.ts$/,                           // dicts FR/EN locaux par feature
   /\.i18n\.ts$/,                           // dicts FR/EN locaux suffixés (ex: kpi.i18n.ts)
+  /\/i18n\/[a-z]{2,3}\.ts$/,               // un fichier par langue d'un dict de feature (i18n/fr.ts, i18n/en.ts, ...)
   /\/lib\/i18n\/fieldMappings\.ts$/,       // le hook lui-même
   /\/lib\/i18n\/fieldMappings\.test\.ts$/, // le test du hook
   /\/test\/handlers\.ts$/,                  // fixtures MSW (mocks API, pas un libellé UI)

@@ -154,7 +154,7 @@ function SchedulerSummary({
         value={adminRelativeTime(snap.last_cycle_at, locale)}
         title={adminAbsoluteTime(snap.last_cycle_at, locale)}
       />
-      <AdminKpi size="sm" label={tA('admin.sync.interval')} value={formatIntervalMinutes(snap.interval_minutes, locale)} />
+      <AdminKpi size="sm" label={tA('admin.sync.interval')} value={formatIntervalMinutes(snap.interval_minutes)} />
       <AdminKpi size="sm" label={tA('admin.sync.pool')} value={String(snap.pool_size)} />
       <AdminKpi size="sm" label={tA('admin.sync.summary_synced')} value={String(res?.synced ?? 0)} accent={(res?.synced ?? 0) > 0 ? 'success' : undefined} />
       <AdminKpi size="sm" label={tA('admin.sync.summary_skipped')} value={String(res?.skipped ?? 0)} />

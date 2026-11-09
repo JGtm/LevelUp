@@ -25,7 +25,7 @@ const nameOf = (o: { key: string; label?: string }) => o.label ?? o.key
 describe('timeseriesMatchIndex — les matchs de la page, par match_id', () => {
   const index = timeseriesMatchIndex(MATCH_ROWS)
 
-  it('date, carte (nom FR d’abord), résultat ; ni score ni dominance (pas d’encoche sur une période)', () => {
+  it('date, carte (nom servi dans la langue de la requête), résultat ; ni score ni dominance (pas d’encoche sur une période)', () => {
     expect(index.get('m1')).toEqual({
       matchId: 'm1',
       startTime: '2026-07-03T19:00:00Z',

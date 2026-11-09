@@ -19,23 +19,24 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // fetcherNonFinalise : le client Halo face a un film en cours de publication. `liste` choisit la
-// forme du refus : l'erreur typee du client reel (`haloclient.fetchFilmChunks`), ou une liste
+// forme du refus : l'erreur typee du client reel (`filmfetch.Films.fetchFilmChunks`), ou une liste
 // sans temps forts rendue par un client qui ne l'aurait pas verifiee — le writer la refuse alors.
 type fetcherNonFinalise struct{ liste bool }
 
-func (f fetcherNonFinalise) GetFilmChunks(context.Context, string) ([]haloclient.FilmChunk, bool, error) {
+func (f fetcherNonFinalise) GetFilmChunks(context.Context, string) ([]filmfetch.FilmChunk, bool, error) {
 	if f.liste {
-		return []haloclient.FilmChunk{
-			{Index: 0, ChunkType: haloclient.FilmChunkTypeHeader, Data: []byte("h")},
-			{Index: 1, ChunkType: haloclient.FilmChunkTypeReplicationData, Data: []byte("r")},
+		return []filmfetch.FilmChunk{
+			{Index: 0, ChunkType: filmfetch.FilmChunkTypeHeader, Data: []byte("h")},
+			{Index: 1, ChunkType: filmfetch.FilmChunkTypeReplicationData, Data: []byte("r")},
 		}, true, nil
 	}
 	return nil, false, fmt.Errorf("GetFilmChunks(m) : %w", finalise.ErrFilmNonFinalise)
@@ -66,7 +67,7 @@ func TestPersistFilmToCache_NonFinalise_ReporteEtCompte(t *testing.T) {
 	for _, liste := range []bool{false, true} {
 		t.Run(fmt.Sprintf("liste=%v", liste), func(t *testing.T) {
 			racine := t.TempDir()
-			d := Deps{Gamertag: "g", TitleSlug: titlePkg.DefaultSlug, CacheRoot: racine,
+			d := Deps{Gamertag: "g", TitleSlug: titlePkg.DefaultSlug, FilmRoot: racine,
 				Fetcher: fetcherNonFinalise{liste: liste}}
 			avant := compteur(CompteurFilmsNonFinalises)
 
@@ -95,7 +96,7 @@ func TestBuildAll_NonFinalise_ReporteSansCuisson(t *testing.T) {
 	horlogeDeTest(t)
 	var appels int
 	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: fetcherNonFinalise{}, Budget: time.Minute,
 		BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
 			appels++
@@ -167,7 +168,7 @@ func TestPersistFilmToCache_FilmArchive_CloreLAttente(t *testing.T) {
 	reporterNonFinalise(ctx, Deps{}, "0000a001", finalise.ErrFilmNonFinalise)
 	*instant = instant.Add(time.Minute)
 
-	d := Deps{Gamertag: "g", TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+	d := Deps{Gamertag: "g", TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: fetcherFinalise{}}
 	if r := persistFilmToCache(ctx, d, "0000a001"); r != (resultatFilm{sauve: true, dispo: true}) {
 		t.Fatalf("film finalise : %+v, attendu {sauve, dispo}", r)
@@ -183,11 +184,11 @@ func TestPersistFilmToCache_FilmArchive_CloreLAttente(t *testing.T) {
 // fetcherFinalise : le client Halo face a un film finalise (un morceau de chaque type).
 type fetcherFinalise struct{}
 
-func (fetcherFinalise) GetFilmChunks(context.Context, string) ([]haloclient.FilmChunk, bool, error) {
-	return []haloclient.FilmChunk{
-		{Index: 0, ChunkType: haloclient.FilmChunkTypeHeader, Data: []byte("h")},
-		{Index: 1, ChunkType: haloclient.FilmChunkTypeReplicationData, Data: []byte("r")},
-		{Index: 2, ChunkType: haloclient.FilmChunkTypeHighlightEvents, Data: []byte("t")},
+func (fetcherFinalise) GetFilmChunks(context.Context, string) ([]filmfetch.FilmChunk, bool, error) {
+	return []filmfetch.FilmChunk{
+		{Index: 0, ChunkType: filmfetch.FilmChunkTypeHeader, Data: []byte("h")},
+		{Index: 1, ChunkType: filmfetch.FilmChunkTypeReplicationData, Data: []byte("r")},
+		{Index: 2, ChunkType: filmfetch.FilmChunkTypeHighlightEvents, Data: []byte("t")},
 	}, true, nil
 }
 
@@ -207,7 +208,7 @@ func (r refusDontLeTexteNeDitRien) Is(target error) bool { return target == r.ci
 func TestReplayArtifacts_FilmNonFinaliseReporteSansEchec(t *testing.T) {
 	for _, cible := range []error{finalise.ErrFilmNonFinalise, replaybuild.ErrUnknownFilmKey} {
 		d := Deps{
-			RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+			RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 			BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
 				return BuildOneResult{}, fmt.Errorf("cuisson m1 : %w", refusDontLeTexteNeDitRien{cible})
 			},

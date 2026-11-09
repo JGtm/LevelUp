@@ -67,7 +67,7 @@ export function NotificationsToastBridge() {
     let emitted = 0
     for (const n of fresh) {
       if (!shouldToast(n, prefsByCat)) continue
-      emitToast(n, t, playerSlug, titleSlug, navigate, () => markRead.mutate([n.id]))
+      emitToast(n, { t, locale }, playerSlug, titleSlug, navigate, () => markRead.mutate([n.id]))
       emitted++
     }
 
@@ -84,7 +84,7 @@ export function NotificationsToastBridge() {
       (m, n) => (n.id > m ? n.id : m),
       lastSeen,
     )
-  }, [data, prefsData, t, playerSlug, titleSlug, navigate, markRead])
+  }, [data, prefsData, t, locale, playerSlug, titleSlug, navigate, markRead])
 
   // Reset quand on switche de joueur
   useEffect(() => {
@@ -113,14 +113,15 @@ function shouldToast(
 
 function emitToast(
   n: Notification,
-  t: ReturnType<typeof getNotificationsText>,
+  text: { t: ReturnType<typeof getNotificationsText>; locale: Locale },
   playerSlug: string,
   titleSlug: string,
   navigate: ReturnType<typeof useNavigate>,
   onView: () => void,
 ) {
-  const title = resolveTitle(n, currentLocale(t))
-  const body = resolveBody(n, currentLocale(t))
+  const { t, locale } = text
+  const title = resolveTitle(n, locale)
+  const body = resolveBody(n, locale)
   const target = resolveTarget(n, playerSlug, titleSlug)
   const action = target
     ? {
@@ -150,9 +151,4 @@ function emitToast(
     default:
       toast.info(title, { description: body, action })
   }
-}
-
-/** Hack typé : i18n.ts n'expose pas la locale, on la déduit du dict. */
-function currentLocale(t: ReturnType<typeof getNotificationsText>): Locale {
-  return t.dropdownEmpty.includes('caught up') ? 'en' : 'fr'
 }

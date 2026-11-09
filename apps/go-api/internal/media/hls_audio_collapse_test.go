@@ -203,7 +203,7 @@ func buildLegacyHLSTree(t *testing.T, dir, name, src string) string {
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	args := buildHLSArgs(plan, src, outDir, 1)
+	args := buildHLSArgs(plan, src, outDir, 1, EncoderLibx264)
 	if o, err := exec.Command("ffmpeg", args...).CombinedOutput(); err != nil {
 		t.Fatalf("ffmpeg legacy HLS: %v\n%s", err, o)
 	}

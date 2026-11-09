@@ -1,9 +1,10 @@
 package skill
 
 import (
+	"math"
+
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
-	"math"
 )
 
 type compositeMatchRow struct {

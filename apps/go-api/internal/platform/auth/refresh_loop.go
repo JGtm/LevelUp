@@ -82,7 +82,10 @@ func (r *RefreshLoop) WithReauthNotify(fn func(xuid, gamertag string)) *RefreshL
 }
 
 // Run démarre la boucle de refresh. Bloquant — à lancer dans une goroutine.
-// S'arrête quand ctx est annulé.
+// S'arrête quand ctx est annulé. L'annulation interrompt un échange HTTP en cours (les requêtes
+// portent ctx) mais jamais une écriture de jeton : une fois la réponse lue, le refresh_token
+// tourné et l'access_token sont persistés (écritures atomiques, sans ctx) avant que check ne
+// rende la main, donc avant que l'appelant qui attend Run ne ferme les bases.
 func (r *RefreshLoop) Run(ctx context.Context) {
 	// Sprint B1 commit 17 : event_id sur la loop globale (un id pour toute
 	// la vie du process). Chaque check() crée son propre sous-event_id pour
@@ -133,6 +136,12 @@ func (r *RefreshLoop) check(ctx context.Context) {
 	if !tokens.IsOAuthValid(oauthRefreshMargin) {
 		slog.InfoContext(ctx, "refresh_loop: access_token expiré ou proche expiration, refresh...")
 		if err := r.refreshOAuth(ctx, tokens, refreshToken); err != nil {
+			if ctx.Err() != nil {
+				// Arrêt demandé : l'échange a été interrompu AVANT toute réponse, le refresh_token
+				// stocké reste celui qui était valide ; rien n'a été écrit.
+				slog.InfoContext(ctx, "refresh_loop: refresh OAuth interrompu par l'arrêt", "err", err)
+				return
+			}
 			slog.ErrorContext(ctx, "refresh_loop: échec refresh OAuth", "err", err)
 			return
 		}
@@ -170,7 +179,8 @@ func (r *RefreshLoop) refreshOAuth(ctx context.Context, tokens *StoredTokens, re
 	// refresh_token à CHAQUE usage ; l'ancienne ExchangeRefreshToken (sans rotation)
 	// jetait le RT rotaté → l'ancien RT stocké finissait par devenir invalide
 	// (classe incident invalid_grant, ADR 0023). On propage le RT rotaté au store.
-	accessToken, rotatedRT, _, err := ExchangeRefreshTokenWithRotation(ctx, refreshToken)
+	accessToken, rotatedRT, _, err := ExchangeRefreshTokenWithRotation(
+		WithRefreshXUID(ctx, tokens.XSTSXUID), refreshToken)
 	if err != nil {
 		return err
 	}
@@ -241,6 +251,10 @@ func (r *RefreshLoop) refreshXSTS(ctx context.Context, tokens *StoredTokens) {
 	}
 	result, err := acquireFn(ctx, tokens.AccessToken)
 	if err != nil {
+		if ctx.Err() != nil {
+			slog.InfoContext(ctx, "refresh_loop: acquisition XSTS interrompue par l'arrêt", "err", err)
+			return
+		}
 		slog.ErrorContext(ctx, "refresh_loop: échec acquisition XSTS", "err", err)
 		return
 	}

@@ -17,7 +17,6 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/service"
 )
@@ -29,7 +28,7 @@ func runRecomputeFriends(cfg *config.AppConfig, args []string) error {
 		return err
 	}
 
-	friendStore := friendstore.NewFriendStore(title.NewPathResolver(cfg.RepoRoot).PlayerFriendsPath())
+	friendStore := friendstore.NewFriendStore(cfg.PathResolver().PlayerFriendsPath())
 	loadFriends := friendStore.Get
 
 	if *dryRun {

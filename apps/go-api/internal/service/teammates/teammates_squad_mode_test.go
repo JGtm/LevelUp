@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // TestSquadModeResolution_ResolvesUUIDViaAssetAndModeNameTr : un pair_name brut
@@ -17,13 +18,13 @@ func TestSquadModeResolution_ResolvesUUIDViaAssetAndModeNameTr(t *testing.T) {
 		{
 			MatchID:  "m1",
 			MapUI:    "Aquarius",
-			PairName: pairUUID, // EN brut non traduit (UUID)
+			PairName: i18n.FromColumns(pairUUID, ""), // EN brut non traduit (UUID)
 			PairID:   "pair-1",
 		},
 	}
 	repo := &mockSquadRepo{
-		assetFR: map[string]map[string]string{
-			"pair": {"pair-1": "Arena:Slayer on Aquarius"},
+		assetTexts: map[string]map[string]i18n.Text{
+			"pair": {"pair-1": {i18n.Default: "Arena:Slayer on Aquarius"}},
 		},
 		modeFR: map[string]string{"Slayer": "Assassin"},
 	}
@@ -51,7 +52,7 @@ func TestSquadModeResolution_GuardsResidualUUID(t *testing.T) {
 		{
 			MatchID:  "m1",
 			MapUI:    "Aquarius",
-			PairName: "b08a915b-c862-4ef2-9247-2c3865919a6f",
+			PairName: i18n.FromColumns("b08a915b-c862-4ef2-9247-2c3865919a6f", ""),
 			PairID:   "pair-unknown",
 		},
 	}
@@ -76,15 +77,15 @@ func TestSquadModeResolution_GameVariantFallbackWhenNoPairName(t *testing.T) {
 		{
 			MatchID:       "5d16ff8d",
 			MapUI:         "Truth",
-			PairName:      "", // Halo 5 : pas de pair_name
+			PairName:      i18n.FromColumns("", ""), // Halo 5 : pas de pair_name
 			PairID:        "",
 			GameVariantID: gvID,
 		},
 	}
 	repo := &mockSquadRepo{
-		assetFR: map[string]map[string]string{
-			// Résolution game_variant_id → nom FR (asset_translations).
-			"game_variant": {gvID: "Capture du drapeau"},
+		assetTexts: map[string]map[string]i18n.Text{
+			// Résolution game_variant_id → nom de la langue par défaut (asset_translations).
+			"game_variant": {gvID: {i18n.Default: "Capture du drapeau"}},
 		},
 	}
 
@@ -107,15 +108,15 @@ func TestSquadModeResolution_PairNamePreferredOverGameVariant(t *testing.T) {
 		{
 			MatchID:       "m1",
 			MapUI:         "Streets",
-			PairName:      "Arena:CTF on Streets",
+			PairName:      i18n.FromColumns("Arena:CTF on Streets", ""),
 			PairID:        "pair-2",
 			GameVariantID: "gv-ignored",
 		},
 	}
 	repo := &mockSquadRepo{
-		assetFR: map[string]map[string]string{
+		assetTexts: map[string]map[string]i18n.Text{
 			// Un nom de game_variant divergent : NE DOIT PAS être utilisé.
-			"game_variant": {"gv-ignored": "Mode Variante Technique"},
+			"game_variant": {"gv-ignored": {i18n.Default: "Mode Variante Technique"}},
 		},
 	}
 
@@ -135,7 +136,7 @@ func TestSquadModeResolution_FallsBackToNormalizedEN(t *testing.T) {
 		{
 			MatchID:  "m1",
 			MapUI:    "Streets",
-			PairName: "Arena:CTF on Streets",
+			PairName: i18n.FromColumns("Arena:CTF on Streets", ""),
 			PairID:   "pair-2",
 		},
 	}
@@ -146,5 +147,43 @@ func TestSquadModeResolution_FallsBackToNormalizedEN(t *testing.T) {
 
 	if hist[0].ModeUI != "CTF" {
 		t.Errorf("ModeUI = %q, want \"CTF\" (EN normalisé)", hist[0].ModeUI)
+	}
+}
+
+// TestSquadAssetNames_SuiventLaLangueDeLaRequete : la carte, la sélection et le mode de la ligne
+// sont servis dans la langue de la requête ; une langue sans nom retombe sur la langue de repli.
+func TestSquadAssetNames_SuiventLaLangueDeLaRequete(t *testing.T) {
+	newRows := func() []domain.SquadMatchRow {
+		return []domain.SquadMatchRow{{
+			MatchID: "m1", MapID: "map-1", MapUI: "Forêt (registre)", PlaylistID: "pl-1", PlaylistName: "Partie rapide (registre)",
+			PairName: i18n.FromColumns("Arena:CTF on Forest", ""), PairID: "pair-1",
+		}}
+	}
+	repo := &mockSquadRepo{
+		assetTexts: map[string]map[string]i18n.Text{
+			"map":      {"map-1": {i18n.Default: "Forêt", i18n.Fallback: "Forest"}},
+			"playlist": {"pl-1": {i18n.Fallback: "Quick Play"}},
+		},
+		modeFR: map[string]string{"CTF": "Capture du drapeau"},
+	}
+	for _, tc := range []struct {
+		loc                         i18n.Locale
+		wantMap, wantPlaylist, mode string
+	}{
+		// fr : le nom de la langue, sinon celui de la langue de repli (la sélection n'a pas de nom fr).
+		{i18n.Default, "Forêt", "Quick Play", "Capture du drapeau"},
+		// en : la langue de la requête (avant : toujours le français).
+		{i18n.Fallback, "Forest", "Quick Play", "Capture du drapeau"},
+	} {
+		rows := newRows()
+		ctx := i18n.WithContext(context.Background(), tc.loc)
+		enrichSquadMatchAssets(ctx, repo, rows)
+		hist := buildSquadMatchHistory(rows, nil, "halo_infinite", nil, nil)
+		if rows[0].MapUI != tc.wantMap || rows[0].PlaylistName != tc.wantPlaylist {
+			t.Errorf("%s : carte %q, sélection %q, want %q, %q", tc.loc, rows[0].MapUI, rows[0].PlaylistName, tc.wantMap, tc.wantPlaylist)
+		}
+		if got := hist[0].ModeUI; tc.loc == i18n.Default && got != tc.mode {
+			t.Errorf("%s : ModeUI = %q, want %q", tc.loc, got, tc.mode)
+		}
 	}
 }

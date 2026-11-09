@@ -23,7 +23,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -35,20 +34,15 @@ var record36OffsetsFixes = regexp.MustCompile(
 // record36Allowlist : les fichiers de production qui lisent encore un tir a offsets fixes, avec
 // leur date et leur critere de retrait (cf. l en-tete). Aucun ne nomme les identifiants interdits.
 var record36Allowlist = map[string]string{
-	"internal/games/halo_infinite/film/internal/grammar/weaponscan/scanner.go": "2026-09-24 — " +
+	"libs/film/internal/grammar/weaponscan/scanner.go": "2026-09-24 — " +
 		"denominateur de la precision par arme ; retrait quand la precision lit ses tirs par " +
 		"grammar.ScanFireEvents",
 }
 
 // TestRecord36SeLitParSaGrammaire refuse tout retour de l ancienne API a offsets fixes.
 func TestRecord36SeLitParSaGrammaire(t *testing.T) {
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	racine := filepath.Dir(filepath.Dir(filepath.Dir(ici))) // apps/go-api
 	var trouves []string
-	err := filepath.WalkDir(racine, func(p string, d os.DirEntry, err error) error {
+	err := marcherAPIEtBriqueFilm(t, func(p string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -61,8 +55,7 @@ func TestRecord36SeLitParSaGrammaire(t *testing.T) {
 		if !strings.HasSuffix(p, ".go") || strings.HasSuffix(p, "_test.go") {
 			return nil
 		}
-		rel, _ := filepath.Rel(racine, p)
-		rel = filepath.ToSlash(rel)
+		rel := cheminDeGardeRail(t, p)
 		if _, autorise := record36Allowlist[rel]; autorise {
 			return nil
 		}
@@ -86,7 +79,7 @@ func TestRecord36SeLitParSaGrammaire(t *testing.T) {
 			"champ s y ajoute, jamais a cote.", len(trouves), strings.Join(trouves, "\n  "))
 	}
 	for f := range record36Allowlist {
-		if _, err := os.Stat(filepath.Join(racine, filepath.FromSlash(f))); err != nil {
+		if _, err := os.Stat(surDisque(t, f)); err != nil {
 			t.Errorf("allowlist : %s n existe plus — retirer son entree (%v)", f, err)
 		}
 	}

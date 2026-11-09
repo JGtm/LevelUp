@@ -23,7 +23,7 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // Bornes de plausibilite d'une cadence, en coups par seconde. Larges a dessein : un lance-

@@ -1,7 +1,6 @@
 /**
  * squadCompositionGapHint — contenu de l'info-bulle qui EXPLIQUE l'écart
- * "composition exacte" publié sur la L2 (ADR 0033, D1 : phase A3 du plan
- * `.ai/PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`).
+ * "composition exacte" publié sur la L2 (ADR 0033, D1).
  *
  * La L2 (`PeriodSessionRail`) affiche déjà « 4 sur 7 matchs » quand la
  * composition exacte écarte des matchs d'une session (chantier A2). Ce module
@@ -23,13 +22,13 @@ import type { SquadSessionExcludedMatch } from './squadSessionCounts'
 /** Joint les coéquipiers responsables d'UN match écarté en un libellé unique
  *  ("Nilton410" / "Nilton410 et passivemarquise") ; repli textuel quand aucun
  *  coéquipier connu n'est identifiable (jamais une ligne muette). */
-function culpritsLabelFor(match: SquadSessionExcludedMatch, t: SquadText['compositionGap'], locale: Locale): {
+function culpritsLabelFor(match: SquadSessionExcludedMatch, t: SquadText['compositionGap']): {
   label: string
   count: number
 } {
   const names = match.extra_gamertags
   if (names && names.length > 0) {
-    return { label: names.join(locale === 'fr' ? ' et ' : ' and '), count: names.length }
+    return { label: names.join(t.culpritJoiner), count: names.length }
   }
   return { label: t.culpritUnknown, count: 1 }
 }
@@ -52,7 +51,7 @@ export function buildCompositionGapHint(
       <ul className="space-y-1">
         {excluded.map((match) => {
           const dateLabel = formatDate(match.start_time, dateLocale, { day: 'numeric', month: 'short' })
-          const culprits = culpritsLabelFor(match, t, locale)
+          const culprits = culpritsLabelFor(match, t)
           return (
             <li key={match.match_id}>{t.excludedLine(dateLabel, match.map_ui, culprits.label, culprits.count)}</li>
           )

@@ -48,7 +48,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -56,7 +55,7 @@ import (
 )
 
 // fichierDuLecteurDeHandle : le seul fichier autorise a lire un handle bit a bit.
-const fichierDuLecteurDeHandle = "internal/games/halo_infinite/film/internal/grammar/handle.go"
+const fichierDuLecteurDeHandle = racineBriqueFilm + "/internal/grammar/handle.go"
 
 // Les largeurs du handle, telles que le ratchet les reconnait.
 const (
@@ -100,8 +99,7 @@ func TestLeHandleSeLitParLeLecteurUnique(t *testing.T) {
 // handle, plus le nombre de fichiers parcourus (plancher).
 func balayerLecturesDeHandle(t *testing.T) ([]lectureDeHandle, int) {
 	t.Helper()
-	racineAPI := apiRootDepuisIci(t)
-	paquets := paquetsSurveillesOctets(t, racineAPI)
+	paquets := paquetsSurveillesOctets(t)
 	var sites []lectureDeHandle
 	fichiers := 0
 	for _, dir := range clesTrieesOctets(paquets) {
@@ -112,8 +110,7 @@ func balayerLecturesDeHandle(t *testing.T) ([]lectureDeHandle, int) {
 			if err != nil {
 				t.Fatalf("parse de %s : %v", chemin, err)
 			}
-			rel, _ := filepath.Rel(racineAPI, chemin)
-			asts[filepath.ToSlash(rel)] = f
+			asts[cheminDeGardeRail(t, chemin)] = f
 			fichiers++
 		}
 		consts := valeursDesConstantes(asts)

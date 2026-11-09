@@ -20,6 +20,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useSquadContext } from './SquadContext'
 import { useSquadPlayerPalette } from './useSquadPlayerPalette'
 import { getSquadText, type SquadText } from './i18n'
+import type { Locale } from '@/lib/i18n/locale'
 import { SquadIntensityProfileChart } from './SquadIntensityProfileChart'
 import { SquadEfficiencyChart } from './SquadEfficiencyChart'
 import { SquadNetLivesChart } from './SquadNetLivesChart'
@@ -126,6 +127,7 @@ export function SquadDynamiquePage() {
         playerOrder={playerOrder}
         colorByPlayer={playerColors}
         t={t}
+        locale={locale}
       />
 
       <EngagementRow
@@ -151,11 +153,13 @@ function CumulativeRow({
   playerOrder,
   colorByPlayer,
   t,
+  locale,
 }: {
   rowsByPlayer: Record<string, SquadPerformanceSeriesPoint[]>
   playerOrder: string[]
   colorByPlayer: Record<string, string>
   t: SquadText
+  locale: Locale
 }) {
   return (
     <div
@@ -174,6 +178,7 @@ function CumulativeRow({
         playerOrder={playerOrder}
         colorByPlayer={colorByPlayer}
         t={t}
+        locale={locale}
         emptyMessage={t.empty.noBlockData}
       />
     </div>

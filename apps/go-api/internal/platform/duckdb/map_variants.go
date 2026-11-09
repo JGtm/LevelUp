@@ -1,160 +1,176 @@
 package duckdb
 
-// map_variants.go — le rattachement d'une carte VARIANTE à sa carte de base, pour les filtres.
+// map_variants.go — le regroupement des identifiants de carte qui désignent un même terrain (variantes
+// d'une carte, republications d'une carte intégrée) sous leur carte de base : la lecture de la table
+// `GroupesDeCartes` et son application aux lignes des filtres et de l'historique.
 //
-// « Thunderhead Heavies » et « Live Fire - Ranked » sont des cartes distinctes au registre des matchs
-// (identifiant propre) alors que c'est le même terrain que « Thunderhead » et « Live Fire ». Les
-// filtres de cartes (le pipeline de filtres et l'Explorateur) les regroupent sous la carte de base :
-// la recherche d'un nom ramène aussi les parties jouées sur ses variantes. Les identifiants ne
-// bougent pas, et les agrégats par carte restent par identifiant.
+// « Thunderhead Heavies » et « Live Fire - Ranked » sont des cartes distinctes au registre des
+// matchs (identifiant propre) alors que c'est le même terrain que « Thunderhead » et « Live Fire ».
+// Une carte intégrée republiée sous un nouvel asset a plusieurs identifiants du même nom. Toute
+// statistique par carte les lit comme UN groupe ; la table est construite ICI, une seule fois, et
+// consommée partout par `domain.GroupesDeCartes`.
 //
-// La règle de rattachement est analysis.BaseMapName, nourrie des suffixes du titre
-// (mappings/map_variants.toml) ; la carte de base est cherchée au catalogue (maps_catalog) par son
-// nom EN, son libellé FR est celui de libelleDeCarte (map_labels.go). Une variante sans carte de
-// base au catalogue reste seule : rien n'est deviné.
+// LA TABLE SE CONSTRUIT SUR LE NOM RETENU DU REGISTRE (nomDeCarteRetenuSQL), PAS SUR LE CATALOGUE :
+// le catalogue (maps_catalog) ne porte qu'un identifiant par nom et ignore des variantes que le
+// registre a jouées, alors qu'une carte republiée a plusieurs identifiants au registre. La règle de
+// rattachement est analysis.GroupMapsByBase (analysis.BaseMapName + suffixes du titre,
+// mappings/map_variants.toml, et la clé de module que pose analysis.MapGroupRules.Modules) ; le
+// libellé de la base dans chaque langue est celui de nomsDeCarte (map_labels.go), lu sur les traductions d'asset.
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
-	"strings"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/port"
 )
 
-// carteDeBase : la carte de base d'une variante, avec son nom EN et son libellé de filtre.
-type carteDeBase struct {
-	EN string
-	FR string
+// qCartesDuRegistre : une ligne par carte jouée, avec son nom retenu et son nombre de matchs. La
+// clé de regroupement est le seul map_id (garde-rail archlint/no_group_by_registry_name_test.go).
+var qCartesDuRegistre = `
+SELECT mr.map_id,
+       ` + nomDeCarteRetenuSQL("map_name") + ` AS map_name,
+       COUNT(*)                          AS matchs
+FROM match_registry mr
+WHERE mr.map_id IS NOT NULL AND mr.map_id <> ''
+GROUP BY mr.map_id`
+
+// MapGroupsRepo implémente port.MapGroupReader pour le titre d'un PlayerDB.
+type MapGroupsRepo struct {
+	pdb   *PlayerDB
+	rules analysis.MapGroupRules
 }
 
-// basesDeCartes rend, pour chaque carte de `nomsEN` (map_id -> nom EN du registre) qui est la
-// variante d'une carte présente au catalogue, sa carte de base (map_id de la variante -> base).
-// Les cartes qui ne sont pas des variantes, ou dont la base est absente du catalogue, n'y figurent
-// pas. Sans suffixe, sans metadata ou sans variante : nil. Un échec de lecture est journalisé puis
-// dégradé : les variantes restent alors seules dans les filtres.
-func basesDeCartes(ctx context.Context, pdb *PlayerDB, nomsEN map[string]string, suffixes []string) map[string]carteDeBase {
-	if len(suffixes) == 0 || pdb == nil || pdb.Metadata == nil || len(nomsEN) == 0 {
-		return nil
-	}
-	baseENParVariante := make(map[string]string)
-	nomsDeBase := make(map[string]struct{})
-	for id, en := range nomsEN {
-		if base, ok := analysis.BaseMapName(en, suffixes); ok {
-			baseENParVariante[id] = base
-			nomsDeBase[base] = struct{}{}
-		}
-	}
-	if len(nomsDeBase) == 0 {
-		return nil
-	}
+var _ port.MapGroupReader = (*MapGroupsRepo)(nil)
 
-	idParNomDeBase := idsDeCartesParNom(ctx, pdb, nomsDeBase)
-	if len(idParNomDeBase) == 0 {
-		slog.DebugContext(ctx, "cartes : variantes sans carte de base au catalogue", "variantes", len(baseENParVariante))
-		return nil
-	}
-	idsDeBase := make([]string, 0, len(idParNomDeBase))
-	for _, id := range idParNomDeBase {
-		idsDeBase = append(idsDeBase, id)
-	}
-	traductions := traductionsDeCartes(ctx, pdb.Metadata, idsDeBase)
-
-	bases := make(map[string]carteDeBase, len(baseENParVariante))
-	for id, baseEN := range baseENParVariante {
-		baseID, ok := idParNomDeBase[baseEN]
-		if !ok {
-			continue
-		}
-		bases[id] = carteDeBase{EN: baseEN, FR: libelleDeCarte("", baseEN, traductions[baseID])}
-	}
-	return bases
+// NewMapGroupsRepo crée un MapGroupsRepo depuis un PlayerDB.
+func NewMapGroupsRepo(pdb *PlayerDB) *MapGroupsRepo {
+	return &MapGroupsRepo{pdb: pdb}
 }
 
-// idsDeCartesParNom lit au catalogue (maps_catalog) l'identifiant de chaque carte de `noms` (nom EN
-// canonique -> map_asset_id). À nom égal, l'identifiant le plus petit l'emporte, pour un résultat
-// stable. Table absente ou échec : le second cas est journalisé et consigné (bestEffortFailed) ; rend
-// nil.
-func idsDeCartesParNom(ctx context.Context, pdb *PlayerDB, noms map[string]struct{}) map[string]string {
-	args := make([]any, 0, len(noms)+1)
-	args = append(args, resolveMediaTitleSlug(pdb.TitleSlug))
-	for nom := range noms {
-		args = append(args, nom)
+// WithMapGroupRules injecte les règles de regroupement des cartes du titre : suffixes de variante
+// (mappings/map_variants.toml) et résolveur de clé de module. Sans règle, aucune carte n'est regroupée.
+// Retourne le repo.
+func (r *MapGroupsRepo) WithMapGroupRules(rules analysis.MapGroupRules) *MapGroupsRepo {
+	r.rules = rules
+	return r
+}
+
+// MapGroups rend la table des groupes de cartes du titre, avec le libellé de chaque carte de base dans
+// chaque langue (libellesDesBases).
+func (r *MapGroupsRepo) MapGroups(ctx context.Context) (domain.GroupesDeCartes, error) {
+	lecture, err := lireGroupesDeCartes(ctx, r.pdb, r.rules)
+	if err != nil || lecture.Groups.Vide() {
+		return lecture.Groups, err
 	}
-	q := `SELECT name_canonical, map_asset_id FROM maps_catalog
-		WHERE title_slug = ? AND name_canonical IN (` + Placeholders(len(noms)) + `)
-		ORDER BY name_canonical, map_asset_id`
-	rows, err := pdb.Metadata.QueryRecovered(ctx, q, args...)
+	return lecture.Groups.AvecLibelles(libellesDesBases(ctx, r.pdb, lecture)), nil
+}
+
+// lireGroupesDeCartes lit le registre des matchs et construit les groupes. Sans règle ou sans base
+// partagée : aucun groupe, sans lecture.
+func lireGroupesDeCartes(ctx context.Context, pdb *PlayerDB, rules analysis.MapGroupRules) (analysis.MapGroups, error) {
+	if !rules.Active() || pdb == nil {
+		return analysis.MapGroups{}, nil
+	}
+	db, release, err := pdb.SharedReadDB().Get(ctx)
 	if err != nil {
-		bestEffortFailed(ctx, "map_bases", err)
-		return nil
+		return analysis.MapGroups{}, fmt.Errorf("groupes de cartes: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, qCartesDuRegistre)
+	if err != nil {
+		return analysis.MapGroups{}, fmt.Errorf("groupes de cartes: lecture du registre: %w", err)
 	}
 	defer rows.Close()
 
-	ids := make(map[string]string, len(noms))
+	var cartes []analysis.MapNameCount
 	for rows.Next() {
-		var nom, id string
-		if err := rows.Scan(&nom, &id); err != nil {
-			bestEffortFailed(ctx, "map_bases", err)
-			return nil
+		var c analysis.MapNameCount
+		if err := rows.Scan(&c.MapID, &c.Name, &c.Matches); err != nil {
+			return analysis.MapGroups{}, fmt.Errorf("groupes de cartes: scan: %w", err)
 		}
-		if _, deja := ids[nom]; !deja && strings.TrimSpace(id) != "" {
-			ids[nom] = id
-		}
+		cartes = append(cartes, c)
 	}
 	if err := rows.Err(); err != nil {
-		bestEffortFailed(ctx, "map_bases", err)
+		return analysis.MapGroups{}, fmt.Errorf("groupes de cartes: lecture: %w", err)
 	}
-	return ids
+	return analysis.GroupMapsByBase(rules.WithModules(ctx, cartes), rules.Suffixes), nil
 }
 
-// rattacherCartesDeBase réécrit le nom de carte (EN et FR) des lignes de filtres dont la carte est la
-// variante d'une carte de base : les options et le filtrage, qui lisent ces noms, ne voient plus que
-// la carte de base. Le MapID reste celui de la variante.
-func rattacherCartesDeBase(ctx context.Context, pdb *PlayerDB, suffixes []string, rows []domain.FilterMatchRow) {
-	noms := make(map[string]string)
-	for _, row := range rows {
-		if row.MapID != nil && row.MapName != nil && *row.MapID != "" {
-			noms[*row.MapID] = *row.MapName
-		}
+// libellesDesBases rend, par identifiant représentatif, le nom de la base de chaque groupe dans chaque
+// langue (nomsDeCarte). Les traductions sont celles d'asset du représentant, à défaut celles d'un autre
+// identifiant portant le nom de base ; le nom du registre (langue de repli) est le nom de la base.
+func libellesDesBases(ctx context.Context, pdb *PlayerDB, groupes analysis.MapGroups) map[string]i18n.Text {
+	var ids []string
+	for _, base := range groupes.Bases {
+		ids = append(ids, base.IDs...)
 	}
-	bases := basesDeCartes(ctx, pdb, noms, suffixes)
-	if len(bases) == 0 {
+	var traductions map[string]i18n.Text
+	if pdb != nil {
+		traductions = traductionsDeCartes(ctx, pdb.Metadata, ids)
+	}
+	out := make(map[string]i18n.Text, len(groupes.Bases))
+	for rep, base := range groupes.Bases {
+		traduction := traductions[rep]
+		for _, id := range base.IDs {
+			if !traduction.Empty() {
+				break
+			}
+			traduction = traductions[id]
+		}
+		out[rep] = nomsDeCarte(i18n.Text{i18n.Fallback: base.Name}, traduction)
+	}
+	return out
+}
+
+// groupesEtLibelles lit les groupes et les libellés de leurs bases. Un échec de lecture est
+// journalisé et consigné (bestEffortFailed : les lignes ne sont alors pas mises en cache), puis
+// dégradé : aucune variante n'est rattachée, ok = false.
+func groupesEtLibelles(ctx context.Context, pdb *PlayerDB, rules analysis.MapGroupRules) (analysis.MapGroups, map[string]i18n.Text, bool) {
+	groupes, err := lireGroupesDeCartes(ctx, pdb, rules)
+	if err != nil {
+		slog.WarnContext(ctx, "cartes : groupes de variantes illisibles, variantes laissées seules", "err", err)
+		bestEffortFailed(ctx, "map_groups", err)
+		return analysis.MapGroups{}, nil, false
+	}
+	if groupes.Groups.Vide() {
+		return groupes, nil, false
+	}
+	return groupes, libellesDesBases(ctx, pdb, groupes), true
+}
+
+// rattacherCartesDeBase réécrit le nom de carte (dans chaque langue) des lignes de filtres dont la carte
+// appartient à un groupe : les options et le filtrage, qui lisent ces noms, ne voient plus que la
+// carte de base. Le MapID reste celui de la ligne.
+func rattacherCartesDeBase(ctx context.Context, pdb *PlayerDB, rules analysis.MapGroupRules, rows []domain.FilterMatchRow) {
+	groupes, bases, ok := groupesEtLibelles(ctx, pdb, rules)
+	if !ok {
 		return
 	}
 	for i := range rows {
-		if rows[i].MapID == nil {
+		if rows[i].MapID == nil || !groupes.Groups.Regroupe(*rows[i].MapID) {
 			continue
 		}
-		if base, ok := bases[*rows[i].MapID]; ok {
-			en, fr := base.EN, base.FR
-			rows[i].MapName = &en
-			rows[i].MapNameFR = &fr
-		}
+		rows[i].MapName = bases[groupes.Groups.Groupe(*rows[i].MapID)].Clone()
 	}
 }
 
-// rattacherCartesDeBaseHistorique pose MapFilterLabel (le libellé de la carte de base) sur les lignes
-// d'historique dont la carte est une variante. Le nom affiché (MapNameFR) ne change pas : seul le
-// filtre de cartes de l'Explorateur lit MapFilterLabel.
-func rattacherCartesDeBaseHistorique(ctx context.Context, pdb *PlayerDB, suffixes []string, rows []domain.MatchHistoryRawRow) {
-	noms := make(map[string]string)
-	for _, row := range rows {
-		if row.MapID != nil && row.MapName != nil && *row.MapID != "" {
-			noms[*row.MapID] = *row.MapName
-		}
-	}
-	bases := basesDeCartes(ctx, pdb, noms, suffixes)
-	if len(bases) == 0 {
+// rattacherCartesDeBaseHistorique pose MapFilterNames (les noms de la carte de base) sur les lignes
+// d'historique dont la carte appartient à un groupe. Le nom affiché (MapName) ne change pas : seul
+// le filtre de cartes de l'Explorateur lit MapFilterNames.
+func rattacherCartesDeBaseHistorique(ctx context.Context, pdb *PlayerDB, rules analysis.MapGroupRules, rows []domain.MatchHistoryRawRow) {
+	groupes, bases, ok := groupesEtLibelles(ctx, pdb, rules)
+	if !ok {
 		return
 	}
 	for i := range rows {
-		if rows[i].MapID == nil {
+		if rows[i].MapID == nil || !groupes.Groups.Regroupe(*rows[i].MapID) {
 			continue
 		}
-		if base, ok := bases[*rows[i].MapID]; ok {
-			libelle := base.FR
-			rows[i].MapFilterLabel = &libelle
-		}
+		rows[i].MapFilterNames = bases[groupes.Groups.Groupe(*rows[i].MapID)].Clone()
 	}
 }

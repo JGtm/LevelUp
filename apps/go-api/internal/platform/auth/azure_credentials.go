@@ -3,7 +3,7 @@
 //
 // Seam introduit pour centraliser des lectures d'environnement auparavant
 // DUPLIQUÉES dans auth_code.go (Authorization Code Flow SSO) et oauth_refresh.go
-// (refresh token). Cf. .ai/archive/V7/PLAN_AUTH_HARDENING_OPTIONAL.md.
+// (refresh token).
 //
 // Phase 3 (uniformisation) : SSO + refresh + token-capture sont consolidés sur
 // l'app canonique e1cb35ab (« LevelUp Halo ») via LEVELUP_OAUTH_CLIENT_ID. Son
@@ -16,6 +16,8 @@ import (
 	"os"
 
 	"levelup/go-api/internal/domain/title"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
 )
 
 // Constantes de l'app Azure (rapatriées de msal_client.go lors du retrait de
@@ -71,6 +73,13 @@ func ResolveAzureOAuthClient() AzureOAuthClient {
 // secret (AADSTS90023) — l'appelant oauth_refresh retente alors sans secret.
 func (c AzureOAuthClient) SecretToSend() string {
 	return c.rawSecret
+}
+
+// versXBL rend le client tel que la brique `haloapi/xblauth` le reçoit : identifiant, secret à
+// envoyer, autorité (MSALAuthority) et scopes (XboxScopes). La brique ne lit aucune variable
+// d'environnement : tout ce qui vient de l'environnement passe par ici.
+func (c AzureOAuthClient) versXBL() xblauth.ClientAzure {
+	return xblauth.ClientAzure{ID: c.ClientID, Secret: c.SecretToSend(), Autorite: MSALAuthority, Scopes: XboxScopes}
 }
 
 // DeviceFlowClientID est le client_id du Device Code Flow (app « LevelUp Halo »,

@@ -21,6 +21,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
@@ -32,7 +33,7 @@ func srrRows(prefixe string, n int, debut time.Time) []legacymatch.StatsMatchRow
 		out = append(out, legacymatch.StatsMatchRow{
 			MatchID:   fmt.Sprintf("%s_%02d", prefixe, i),
 			StartTime: debut.Add(time.Duration(i) * time.Hour),
-			MapName:   "Live Fire",
+			MapName:   i18n.FromColumns("Live Fire", ""),
 		})
 	}
 	return out

@@ -56,8 +56,9 @@ export function useRecords(
 /** Profil de jeu complet (sections A1/A2/B/C). */
 export function useProfile(playerSlug: string, windowDays = 30, enabled = true) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery<PlayerProfile>({
-    queryKey: queryKeys.progressionProfile(playerSlug, titleSlug, windowDays),
+    queryKey: queryKeys.progressionProfile(playerSlug, titleSlug, locale, windowDays),
     queryFn: () =>
       api.get<PlayerProfile>(`/players/${playerSlug}/profile?window_days=${windowDays}`),
     enabled: !!playerSlug && enabled,
@@ -70,8 +71,9 @@ export function useProfile(playerSlug: string, windowDays = 30, enabled = true) 
 /** Rapport patterns contextuels + comportementaux + leviers. */
 export function usePatterns(playerSlug: string, n = 50, enabled = true) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery<PatternReport>({
-    queryKey: queryKeys.progressionPatterns(playerSlug, titleSlug, n),
+    queryKey: queryKeys.progressionPatterns(playerSlug, titleSlug, locale, n),
     queryFn: () =>
       api.get<PatternReport>(`/players/${playerSlug}/patterns?n=${n}`),
     enabled: !!playerSlug && enabled,
@@ -98,8 +100,9 @@ export function useActivityCalendar(playerSlug: string, days = 90, enabled = tru
 /** Catalogue de milestones avec statut Earned joint serveur. */
 export function useMilestones(playerSlug: string, enabled = true) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery<MilestonesResponse>({
-    queryKey: queryKeys.progressionMilestones(playerSlug, titleSlug),
+    queryKey: queryKeys.progressionMilestones(playerSlug, titleSlug, locale),
     queryFn: () =>
       api.get<MilestonesResponse>(`/players/${playerSlug}/milestones`),
     enabled: !!playerSlug && enabled,

@@ -46,7 +46,7 @@ function wrAccent(wr: number | null | undefined): SemanticToken {
 interface Props {
   stats: ExplorerEncounterStats
   /** Locale UI ('fr' | 'en') — défaut 'fr' si autre valeur. */
-  locale: string
+  locale: Locale
 }
 
 // SplitBar / AllyEnemySplitBar / KDSplitBar : extraits vers
@@ -82,10 +82,9 @@ function KpiCard({ label, value, detail, accent }: KpiCardProps) {
 // ─── Composant principal ─────────────────────────────────────────────────────
 
 export function ExplorerEncounterBriefing({ stats, locale }: Props) {
-  const manifestLocale: Locale = locale === 'en' ? 'en' : 'fr'
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
-    formatMessage(explorerManifest, key, manifestLocale, values)
-  const formatRelative = formatRelativeFor(manifestLocale)
+    formatMessage(explorerManifest, key, locale, values)
+  const formatRelative = formatRelativeFor(locale)
 
   const ally = stats.ally_count ?? null
   const enemy = stats.enemy_count ?? null
@@ -102,7 +101,7 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
             label={t('explorer.encounter.encounters')}
             value={
               ally != null && enemy != null
-                ? <AllyEnemySplitBar allyCount={ally} enemyCount={enemy} locale={manifestLocale} />
+                ? <AllyEnemySplitBar allyCount={ally} enemyCount={enemy} locale={locale} />
                 : stats.count_together
             }
             accent="outcome-draw"
@@ -117,7 +116,7 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
                 </span>
                 {ally != null && (
                   <span className="text-xs font-normal text-muted-foreground">
-                    {ally} {manifestLocale === 'en' ? 'matches' : 'matchs'}
+                    {ally} {t('explorer.encounter.matches_unit')}
                   </span>
                 )}
               </span>
@@ -134,7 +133,7 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
                 </span>
                 {enemy != null && (
                   <span className="text-xs font-normal text-muted-foreground">
-                    {enemy} {manifestLocale === 'en' ? 'matches' : 'matchs'}
+                    {enemy} {t('explorer.encounter.matches_unit')}
                   </span>
                 )}
               </span>
@@ -146,7 +145,7 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
             label={t('explorer.encounter.kd_cross')}
             value={
               stats.kills_dealt != null && stats.deaths_suffered != null
-                ? <KDSplitBar kills={stats.kills_dealt} deaths={stats.deaths_suffered} locale={manifestLocale} />
+                ? <KDSplitBar kills={stats.kills_dealt} deaths={stats.deaths_suffered} locale={locale} />
                 : <span className="font-mono">{formatKDCross(stats.kills_dealt, stats.deaths_suffered)}</span>
             }
             accent={cmpAccent(stats.kills_dealt, stats.deaths_suffered)}

@@ -25,16 +25,20 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/himap"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/i18n"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // cheminDumpPOC : le decoupage du POC pour Ridgeline. Le catalogue de callouts ne conserve
 // PAS le pave brut de cette carte (son decoupage vient du POC, pas de la chaine universelle,
 // cf. `MapCalloutsCatalog.Brut`) — sans ce dump, Ridgeline se reconnait sur ses contours
 // DECOUPES, plus petits, donc avec un score plus severe. Fichier versionne.
-var cheminDumpPOC = filepath.Join(".ai", "V7.5", "dumps", "callout_zones_ridgeline_clipped.json")
+var cheminDumpPOC = filepath.Join("apps", "go-api", "internal", "testfixtures", "testdata", "cartes", "callout_zones_ridgeline_clipped.json")
 
 // moduleRidgeline : la carte dont les paves bruts vivent dans le dump du POC.
 const moduleRidgeline = "ridgeline"
@@ -221,11 +225,15 @@ func moduleDeLEntree(e replay.MapObjectivesEntry, bornes *decfilm.MapQuantCatalo
 	return ""
 }
 
-// nomZone rend le nom JOUEUR d'une zone : le libelle francais quand il existe, l'anglais
-// sinon, et en dernier recours le nom de CONCEPTION. Jamais vide — une zone sans nom dans le
-// rapport serait indiscernable d'une absence de zone.
+// nomZone rend le nom JOUEUR d'une zone : le libelle de la langue par defaut quand il existe, celui
+// de la langue de repli sinon, et en dernier recours le nom de CONCEPTION. Jamais vide — une zone
+// sans nom dans le rapport serait indiscernable d'une absence de zone.
 func nomZone(z replay.CalloutZone) string {
-	for _, n := range []string{z.FR, z.EN, z.Name} {
+	var noms []string
+	for _, l := range i18n.Chain(i18n.Default) {
+		noms = append(noms, replaylabels.TexteDepuisFilm(z.Text)[l])
+	}
+	for _, n := range append(noms, z.Name) {
 		if s := strings.TrimSpace(n); s != "" {
 			return s
 		}

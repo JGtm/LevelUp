@@ -24,15 +24,15 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 const records: SynthesisWeaponRecords = {
   weapons: [
     {
-      weapon_key: 'hinf_br75', label: 'BR75', label_en: 'BR75', class: 'shoulder',
+      weapon_key: 'hinf_br75', label: 'BR75', class: 'shoulder',
       measured: 281, median_m: 13.6, record_m: 52.7,
       record: {
         match_id: 'm-br', time_ms: 77000, started_at: '2026-08-28T20:00:00Z',
-        map_label: 'Fragmentation', map_label_en: 'Fragmentation',
+        map_label: 'Fragmentation',
       },
     },
     {
-      weapon_key: 'hinf_s7_sniper', label: 'S7 Sniper', label_en: 'S7 Sniper', class: 'heavy',
+      weapon_key: 'hinf_s7_sniper', label: 'S7 Sniper', class: 'heavy',
       measured: 43, median_m: 28.3, record_m: 96.4,
       record: { match_id: 'm-s7', time_ms: 12345 },
     },
@@ -40,7 +40,7 @@ const records: SynthesisWeaponRecords = {
   measured_kills: 324,
   total_kills: 400,
   excluded: [
-    { weapon_key: 'hinf_environment', label: 'Chute et environnement', label_en: 'Environment', class: 'environmental', measured: 11 },
+    { weapon_key: 'hinf_environment', label: 'Chute et environnement', class: 'environmental', measured: 11 },
   ],
 }
 

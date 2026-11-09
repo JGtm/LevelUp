@@ -28,6 +28,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/i18n"
 )
 
 // helpDiskCache est la structure sérialisée sur disque.
@@ -76,7 +77,7 @@ func (h *HelpHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
 
-// helpReleaseNotesInput : ?lang=fr|en optionnel (défaut fr, normalisé côté handler).
+// helpReleaseNotesInput : ?lang= optionnel (langue de config/locales.toml, défaut fr, normalisée côté handler).
 type helpReleaseNotesInput struct {
 	Lang string `query:"lang"`
 }
@@ -87,12 +88,11 @@ type helpReleaseNotesOutput struct {
 }
 
 // handleGetReleaseNotes retourne le markdown des notes de version.
-// Query param : lang=fr|en (défaut : fr).
+// Query param : lang (langue de config/locales.toml ; défaut : fr).
 func (h *HelpHandler) handleGetReleaseNotes(ctx context.Context, in *helpReleaseNotesInput) (*helpReleaseNotesOutput, error) {
-	lang := in.Lang
-	if lang != "en" {
-		lang = "fr"
-	}
+	// Une langue de config/locales.toml ; inconnue ou vide : la langue par défaut. Le code sert aussi de
+	// clé de cache, il ne peut donc pas porter autre chose qu'un code de la liste.
+	lang := string(i18n.Parse(in.Lang))
 
 	content, err := h.loadCached(ctx, lang)
 	if err != nil {

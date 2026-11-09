@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/timing"
+	"levelup/go-api/internal/service/mapgroups"
 	"levelup/go-api/internal/sync"
 )
 
@@ -120,7 +121,7 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	hp := games.EffectiveHpToKill(ctxkeys.TitleSlug(ctx))
 	hasRankedHistory, hasUnrankedHistory := analysis.InferHomeSkillHistoryFromCanonical(d.canonicalRows)
 	hero := analysis.BuildHeroCardFromCanonical(d.canonicalRows, gamertag, d.totalMatches, locale, hp)
-	highlights := analysis.BuildHighlightsFromCanonical(d.canonicalRows, locale)
+	highlights := analysis.BuildHighlightsFromCanonical(d.canonicalRows, locale, mapgroups.Load(ctx, s.mapGroups))
 	stop()
 	if d.favWeaponName != "" {
 		hero.KPIs.FavoriteWeaponName = d.favWeaponName

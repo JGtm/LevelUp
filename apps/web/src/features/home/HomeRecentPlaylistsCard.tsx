@@ -110,7 +110,7 @@ export function HomeRecentPlaylistsCard({
               const ratingValueStr =
                 item.rating_value != null
                   ? item.rating_type === 'LUSR'
-                    ? `${Math.round(item.rating_value)} pts`
+                    ? `${Math.round(item.rating_value)} ${t('common.units.points_short')}`
                     : `${Math.round(item.rating_value)} CSR`
                   : null
 

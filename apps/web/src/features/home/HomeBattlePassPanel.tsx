@@ -14,7 +14,8 @@ import { BattlePassRewardCarousel } from '@/features/palmares/BattlePassRewardCa
 import { buildTierGroups, type RewardCard } from '@/features/palmares/battlePassTierGroups'
 import { PassContentSummary } from '@/features/palmares/PassContentSummary'
 import { SeasonPassBadge } from '@/features/palmares/SeasonPassBadge'
-import { getPalmaresText, normalizePalmaresLocale } from '@/features/palmares/i18n'
+import { getPalmaresText } from '@/features/palmares/i18n'
+import { intlLocale } from '@/lib/formatters/intlLocale'
 
 function pickFeaturedPass(passes: SeasonPassTrackSummary[]) {
   return passes.find((pass) => pass.is_active)
@@ -33,10 +34,10 @@ export function HomeBattlePassPanel({
   errorHint?: string | null
 }) {
   const locale = useAppShellStore((state) => state.locale)
-  const intlLocale = locale === 'en' ? 'en-GB' : 'fr-FR'
+  const numLocale = intlLocale(locale)
   const t = useCallback((key: HomeManifestKey) => formatMessage(homeManifest, key, locale), [locale])
   // Labels du contenu de pass (paliers, cR, raretés…) — réutilise l'i18n palmares.
-  const palmaresText = getPalmaresText(normalizePalmaresLocale(locale))
+  const palmaresText = getPalmaresText(locale)
   const passContentLabels = palmaresText.seasonPass.content
   const { carousel: carouselLabels, freeLabel } = palmaresText.seasonPass
   const buildFreshnessLabel = useCallback(
@@ -86,7 +87,7 @@ export function HomeBattlePassPanel({
         <DataFreshnessIndicator
           snapshotAt={featuredPass?.snapshot_at}
           buildLabel={buildFreshnessLabel}
-          locale={intlLocale}
+          locale={numLocale}
         />
       </header>
       {card}
@@ -133,7 +134,7 @@ export function HomeBattlePassPanel({
     partialProgress: featuredPass.partial_progress,
     xpPerRank: featuredPass.xp_per_rank,
     progressPercent: tierProgress,
-    locale: intlLocale,
+    locale: numLocale,
   })
   const hasTiers = (featuredPass.tiers?.length ?? 0) > 0
 
@@ -178,7 +179,7 @@ export function HomeBattlePassPanel({
                   content={featuredPass.content}
                   remaining={featuredPass.remaining_content ?? null}
                   labels={passContentLabels}
-                  locale={intlLocale}
+                  locale={numLocale}
                   compact
                 />
               </div>

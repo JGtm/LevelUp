@@ -147,8 +147,8 @@ describe('drawWall — l’arc, son halo, et le cercle des poses sans cap', () =
    */
   it('le mur survit à `t1` mais s’efface au terme de sa durée officielle', () => {
     const mur = pose({ h: 45 }) // t0 = 10, t1 = 100
-    const fin = 10 + WALL_DURATION_MS / TIME.frameMs
-    expect(fin).toBe(110)
+    const fin = 10 + Math.round(WALL_DURATION_MS / TIME.frameMs)
+    expect(fin).toBe(135)
     // Avant la pose : rien.
     expect(painted([mur], { ...TIME, frame: 9 })).toBe(0)
     // Après `t1` (100) : le mur est TOUJOURS là — la mise au repos n'est pas la disparition.

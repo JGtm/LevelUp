@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/testutil"
 )
@@ -55,7 +56,7 @@ func TestMapCallouts_ChaineComplete(t *testing.T) {
 		t.Fatalf("entrée inattendue: %+v", entry)
 	}
 	z := entry.Zones[0]
-	if z.FR != "Fer à cheval" || z.EN != "Horseshoe" || len(z.Polygon) != 3 || z.ZTop != 11 {
+	if z.Text[i18n.LocaleFR] != "Fer à cheval" || z.Text[i18n.LocaleEN] != "Horseshoe" || len(z.Polygon) != 3 || z.ZTop != 11 {
 		t.Errorf("zone incomplète: %+v", z)
 	}
 	if len(repo.vu) == 0 || repo.vu[0] != "m1" {
@@ -93,12 +94,12 @@ func TestMapCallouts_ForgeParMapID(t *testing.T) {
 	if entry.Module != "" || entry.Provenance != "mvar" || len(entry.Zones) != 2 {
 		t.Fatalf("entrée inattendue: %+v", entry)
 	}
-	if entry.Zones[0].FR != "Grotte" || entry.Zones[0].VolumeIndex != 312 {
+	if entry.Zones[0].Text[i18n.LocaleFR] != "Grotte" || entry.Zones[0].VolumeIndex != 312 {
 		t.Errorf("première zone: %+v", entry.Zones[0])
 	}
 	// LA ZONE MUETTE EST SERVIE, PAS OMISE : sa géométrie est mesurée, seul son texte
 	// manque — et le rendu saute un libellé vide sans rien inventer.
-	if entry.Zones[1].EN != "" || len(entry.Zones[1].Polygon) != 4 {
+	if entry.Zones[1].Text[i18n.LocaleEN] != "" || len(entry.Zones[1].Polygon) != 4 {
 		t.Errorf("zone sans libellé: %+v", entry.Zones[1])
 	}
 }
@@ -171,7 +172,7 @@ func TestMapCallouts_ForgeDonneesReelles(t *testing.T) {
 	}
 	nommees := 0
 	for _, z := range entry.Zones {
-		if z.FR != "" {
+		if z.Text[i18n.LocaleFR] != "" {
 			nommees++
 		}
 	}
@@ -258,7 +259,7 @@ func TestMapCallouts_DonneesReelles(t *testing.T) {
 		if z.Big {
 			grandes++
 		}
-		if z.FR == "" || z.EN == "" {
+		if z.Text[i18n.LocaleFR] == "" || z.Text[i18n.LocaleEN] == "" {
 			t.Errorf("vi=%d : libellé vide", z.VolumeIndex)
 		}
 	}

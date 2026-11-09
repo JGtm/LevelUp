@@ -16,9 +16,10 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
 // TestLaResolutionDesFragsCompteSesReplis : un gamertag vu avec deux xuids ne resout rien (il est
@@ -52,6 +53,27 @@ func TestLaFeuilleDeMatchEcarteLesLignesSansIdentite(t *testing.T) {
 	}
 	if camps := teamByXUID(facts); len(camps) != 2 {
 		t.Errorf("camps %v — attendu 2 camps", camps)
+	}
+}
+
+// TestLaPresenceALaFinVoyageTelleQueLaBaseLaPorte : un drapeau NULL reste nil, un nombre de morts non
+// declare n entre pas — ni vrai, ni faux, ni zero. Un tableau complet voyage intact.
+func TestLaPresenceALaFinVoyageTelleQueLaBaseLaPorte(t *testing.T) {
+	vrai, faux := true, false
+	facts := port.MatchFacts{Players: []port.MatchPlayerFact{
+		{XUID: "1", PresentAtCompletion: &vrai, LeftInProgress: &faux, Deaths: 4, DeathsDeclared: true},
+		{XUID: "2", Deaths: 0},
+	}}
+	got := participantsDuTableau(facts)
+	if len(got) != 2 {
+		t.Fatalf("participants : %d, attendu 2", len(got))
+	}
+	if got[0].PresentAtCompletion == nil || !*got[0].PresentAtCompletion || got[0].LeftInProgress == nil ||
+		*got[0].LeftInProgress || got[0].Deaths == nil || *got[0].Deaths != 4 {
+		t.Errorf("ligne declaree alteree : %+v", got[0])
+	}
+	if got[1].PresentAtCompletion != nil || got[1].LeftInProgress != nil || got[1].Deaths != nil {
+		t.Errorf("ligne non declaree : %+v — attendu aucun drapeau et aucun nombre de morts", got[1])
 	}
 }
 

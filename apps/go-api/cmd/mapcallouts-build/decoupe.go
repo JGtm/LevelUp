@@ -3,7 +3,7 @@ package main
 // decoupe.go — l'ingestion du DUMP DÉCOUPÉ de Ridgeline.
 //
 // RIDGELINE SEULE est découpée sur le sol praticable : le dump versionné
-// .ai/V7.5/dumps/callout_zones_ridgeline_clipped.json (produit par les scripts de
+// apps/go-api/internal/testfixtures/testdata/cartes/callout_zones_ridgeline_clipped.json (produit par les scripts de
 // recherche, confronté aux positions de joueurs : réduction d'aire 21 % à rétention
 // 98,2 %, quarante écarts-types au-dessus du hasard) est LA source de ses polygones —
 // on le CONSERVE, on ne le refait pas. Les 21 autres cartes livrent le polygone
@@ -19,7 +19,10 @@ import (
 	"fmt"
 	"os"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/i18n"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // decoupeDump est la partie du dump que l'ingestion consomme.
@@ -31,7 +34,7 @@ type decoupeDump struct {
 
 type decoupeZone struct {
 	VolumeIndex int    `json:"volumeIndex"`
-	LibelleEN   string `json:"libelle_en"`
+	Libelle     string `json:"libelle_en"`          // clé du dump : le libellé SOURCE (anglais) de la zone, format d entrée d un outil externe
 	Utiliser    string `json:"polygone_a_utiliser"` // "decoupe" | "brut"
 	Brut        struct {
 		Polygone [][2]float64 `json:"polygone"`
@@ -70,10 +73,10 @@ func appliqueDecoupe(e *replay.MapCalloutsEntry, zones map[int]decoupeZone) erro
 		z := &e.Zones[i]
 		d, ok := zones[z.VolumeIndex]
 		if !ok {
-			return fmt.Errorf("volume %d (%s) absent du dump découpé", z.VolumeIndex, z.EN)
+			return fmt.Errorf("volume %d (%s) absent du dump découpé", z.VolumeIndex, replaylabels.TexteDepuisFilm(z.Text)[i18n.Fallback])
 		}
-		if d.LibelleEN != z.EN {
-			return fmt.Errorf("volume %d : libellé du dump %q != tag %q", z.VolumeIndex, d.LibelleEN, z.EN)
+		if d.Libelle != replaylabels.TexteDepuisFilm(z.Text)[i18n.Fallback] {
+			return fmt.Errorf("volume %d : libellé du dump %q != tag %q", z.VolumeIndex, d.Libelle, replaylabels.TexteDepuisFilm(z.Text)[i18n.Fallback])
 		}
 		if d.Utiliser == "decoupe" && len(d.Decoupe.Parties) > 0 {
 			z.Polygon = d.Decoupe.Parties[0].Contour

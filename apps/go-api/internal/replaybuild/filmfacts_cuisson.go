@@ -22,7 +22,7 @@ package replaybuild
 //
 // # CE QUE LA BRANCHE « RELIRE » NE CHANGE PAS
 //
-//	LE VERROU SOLO       `filmproc.AcquireSolo` est pris par les points d entree (`cmd/*`,
+//	LE VERROU SOLO       `filmrun.AcquireSolo` est pris par les points d entree (`cmd/*`,
 //	                     `internal/replaychild`), jamais par ce paquet. Un rejeu
 //	                     depuis les faits ne decompresse aucun chunk et ne le
 //	                     merite pas, mais le sortir du verrou deplacerait une garantie MEMOIRE
@@ -61,10 +61,11 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // EtapeRejeuDepuisLesFaits est le NOM de l etape que l observateur recoit pour dire QUELLE BRANCHE

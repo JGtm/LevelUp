@@ -5,20 +5,18 @@ package duckdb
 import (
 	"context"
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // seedMedalsCatalogSchema crée medal_definitions (avec difficulty_index, interrogé
-// par MedalsRepo.ListAllMedals) + medal_translations (LEFT JOIN toléré vide).
+// par MedalsRepo.ListAllMedals) + medal_translations (les textes, une ligne par langue).
 func seedMedalsCatalogSchema(t *testing.T, db *DB) {
 	t.Helper()
 	ctx := context.Background()
 	stmts := []string{
 		`CREATE TABLE medal_definitions (
 			medal_name_id    BIGINT PRIMARY KEY,
-			name_en          VARCHAR DEFAULT '',
-			name_fr          VARCHAR DEFAULT '',
-			description_en   VARCHAR DEFAULT '',
-			description_fr   VARCHAR DEFAULT '',
 			difficulty       VARCHAR DEFAULT '',
 			medal_type       VARCHAR DEFAULT '',
 			difficulty_index TINYINT,
@@ -42,20 +40,23 @@ func TestMedalsRepo_ListAllMedals(t *testing.T) {
 
 	if _, err := db.Exec(ctx,
 		`INSERT INTO medal_definitions
-		    (medal_name_id, name_en, difficulty, medal_type, difficulty_index, personal_score)
+		    (medal_name_id, difficulty, medal_type, difficulty_index, personal_score)
 		 VALUES
-		    (100, 'Killjoy', 'Normal', 'skill', 0, 5),
-		    (200, 'Double Kill', 'Heroic', 'multikill', 1, 0)`,
+		    (100, 'Normal', 'skill', 0, 5),
+		    (200, 'Heroic', 'multikill', 1, 0)`,
 	); err != nil {
 		t.Fatalf("insert medals: %v", err)
 	}
+	insertMedalTexts(t, db, 100, frEn("Rabat-joie", "Killjoy"), frEn("Fin d'une série", "Ended a spree"))
+	insertMedalTexts(t, db, 200, frEn("Double meurtre", "Double Kill"), nil)
 	// Médaille custom : difficulty vide (→ COALESCE 'Normal'), medal_type vide,
 	// difficulty_index NULL (→ 0). Doit rester dans le catalogue (aucune perdue).
 	if _, err := db.Exec(ctx,
-		`INSERT INTO medal_definitions (medal_name_id, name_en) VALUES (9000000001, 'Avenger')`,
+		`INSERT INTO medal_definitions (medal_name_id) VALUES (9000000001)`,
 	); err != nil {
 		t.Fatalf("insert custom medal: %v", err)
 	}
+	insertMedalTexts(t, db, 9000000001, i18n.Text{i18n.LocaleEN: "Avenger"}, nil)
 
 	rows, err := NewMedalsRepo(&PlayerDB{Metadata: db}).ListAllMedals(ctx, "en")
 	if err != nil {
@@ -75,6 +76,26 @@ func TestMedalsRepo_ListAllMedals(t *testing.T) {
 	// Custom : difficulty coalescé 'Normal', medal_type vide, difficulty_index 0.
 	if rows[2].MedalID != 9000000001 || rows[2].Difficulty != "Normal" || rows[2].MedalType != "" || rows[2].DifficultyIndex != 0 {
 		t.Errorf("médaille custom mal résolue : %+v", rows[2])
+	}
+	if rows[0].Description != "Ended a spree" || rows[2].Label != "Avenger" {
+		t.Errorf("textes en : %+v / %+v", rows[0], rows[2])
+	}
+
+	// Langue française, puis langue inconnue (repli en) : la description absente en français
+	// (médaille 200) reste vide, le nom custom (en seul) se replie sur l'anglais.
+	fr, err := NewMedalsRepo(&PlayerDB{Metadata: db}).ListAllMedals(ctx, "fr")
+	if err != nil {
+		t.Fatalf("ListAllMedals(fr): %v", err)
+	}
+	if fr[0].Label != "Rabat-joie" || fr[0].Description != "Fin d'une série" || fr[1].Label != "Double meurtre" || fr[2].Label != "Avenger" {
+		t.Errorf("textes fr : %+v", fr)
+	}
+	de, err := NewMedalsRepo(&PlayerDB{Metadata: db}).ListAllMedals(ctx, "de")
+	if err != nil {
+		t.Fatalf("ListAllMedals(de): %v", err)
+	}
+	if de[0].Label != "Killjoy" || de[0].Description != "Ended a spree" || de[1].Label != "Double Kill" {
+		t.Errorf("langue inconnue : repli en attendu, obtenu %+v", de)
 	}
 }
 

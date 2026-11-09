@@ -8,8 +8,9 @@
 //     l'inverse (un job qui échouerait sur un lot inconnu) ;
 //  2. un test « lourd » renommé ou supprimé : la liste nommée qui sert à la fois de `-run` et de
 //     `-skip` vieillirait sans bruit et le découpage de `grammar` se déséquilibrerait ;
-//  3. une définition qui perd ou duplique un paquet : le script la refuse (partition exacte contre
-//     `go list -tags=integration ./...`) — ce test exécute le script sur la définition réelle ;
+//  3. une définition qui perd ou duplique un paquet : le script la refuse (partition exacte, module
+//     par module, contre `go list -tags=integration ./...` de chaque module) — ce test exécute le
+//     script sur la définition réelle ;
 //  4. un script qui ne sait plus refuser : il est exécuté sur une définition défectueuse.
 //
 // PARSING : textuel, sans parseur YAML (cf. ci_deploy_triggers_test.go). Les tests d'exécution
@@ -32,6 +33,7 @@ import (
 // shardLot — une ligne `lot` de go-shards.txt.
 type shardLot struct {
 	name     string
+	module   string // dossier du module Go du lot, relatif à la racine du dépôt (directive `module`)
 	filter   string // "-", "run:<liste>" ou "skip:<liste>"
 	patterns []string
 }
@@ -45,8 +47,12 @@ type shardDefinition struct {
 var heavyTestNameRe = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
 
 // parseShardDefinition lit la syntaxe documentée en tête de .github/ci/go-shards.txt.
+// moduleDeShardParDefaut : le module des lots écrits avant toute directive `module`.
+const moduleDeShardParDefaut = "apps/go-api"
+
 func parseShardDefinition(text string) (shardDefinition, error) {
 	def := shardDefinition{heavy: map[string][]string{}}
+	module := moduleDeShardParDefaut
 	for n, raw := range strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {
 		line := raw
 		if i := strings.Index(line, "#"); i >= 0 {
@@ -67,11 +73,16 @@ func parseShardDefinition(text string) (shardDefinition, error) {
 				}
 			}
 			def.heavy[f[1]] = f[2:]
+		case "module":
+			if len(f) != 2 {
+				return def, fmt.Errorf("ligne %d : module attend un dossier", n+1)
+			}
+			module = f[1]
 		case "lot":
 			if len(f) < 4 {
 				return def, fmt.Errorf("ligne %d : lot incomplet", n+1)
 			}
-			def.lots = append(def.lots, shardLot{name: f[1], filter: f[2], patterns: f[3:]})
+			def.lots = append(def.lots, shardLot{name: f[1], module: module, filter: f[2], patterns: f[3:]})
 		case "timeout-defaut", "timeout":
 			// Budgets : jugés par le script (durée valide, lots connus).
 		default:
@@ -86,8 +97,14 @@ func parseShardDefinition(text string) (shardDefinition, error) {
 		if !ok || (kind != "run" && kind != "skip") {
 			return def, fmt.Errorf("lot %s : filtre %q inconnu", lot.name, lot.filter)
 		}
-		if _, known := def.heavy[list]; !known {
-			return def, fmt.Errorf("lot %s : liste %q non déclarée par heavy", lot.name, list)
+		lists := strings.Split(list, ",")
+		if kind == "run" && len(lists) != 1 {
+			return def, fmt.Errorf("lot %s : run: attend une seule liste (%q)", lot.name, lot.filter)
+		}
+		for _, name := range lists {
+			if _, known := def.heavy[name]; !known {
+				return def, fmt.Errorf("lot %s : liste %q non déclarée par heavy", lot.name, name)
+			}
 		}
 	}
 	return def, nil
@@ -170,16 +187,15 @@ func TestCIGoShardsDefinitionAndMatrixAgree(t *testing.T) {
 	}
 }
 
-// TestCIGoShardsHeavyTestsExist — chaque test de la liste lourde existe encore, dans le paquet
-// que filtre un lot `run:` / `skip:` de cette liste.
+// TestCIGoShardsHeavyTestsExist — chaque test d'une liste lourde existe encore, dans le paquet
+// que filtre un lot `run:` / `skip:` (une ou plusieurs listes, séparées par des virgules).
 func TestCIGoShardsHeavyTestsExist(t *testing.T) {
 	root := repoRootForWorkflows(t)
 	def := readShardDefinition(t, root)
-	goAPI := filepath.Join(root, "apps", "go-api")
 
 	checked := 0
 	for _, lot := range def.lots {
-		_, list, ok := strings.Cut(lot.filter, ":")
+		_, filterLists, ok := strings.Cut(lot.filter, ":")
 		if !ok {
 			continue
 		}
@@ -187,23 +203,32 @@ func TestCIGoShardsHeavyTestsExist(t *testing.T) {
 			if strings.HasPrefix(pat, "!") || strings.HasSuffix(pat, "...") {
 				continue
 			}
-			dir := filepath.Join(goAPI, filepath.FromSlash(strings.TrimPrefix(pat, "./")))
+			dir := filepath.Join(root, filepath.FromSlash(lot.module), filepath.FromSlash(strings.TrimPrefix(pat, "./")))
 			src := packageTestSources(t, dir)
-			for _, name := range def.heavy[list] {
-				checked++
-				if !regexp.MustCompile(`(?m)^func ` + regexp.QuoteMeta(name) + `\(t \*testing\.T\)`).MatchString(src) {
-					t.Errorf(`liste lourde %q : le test %s n'existe plus dans %s
-
-  Les lots qui l'utilisent (-run / -skip) se déséquilibreraient sans bruit. CORRECTION : mettre à
-  jour la ligne « heavy %s » de .github/ci/go-shards.txt (nom renommé, ou test supprimé).`,
-						list, name, pat, list)
-				}
+			for _, list := range strings.Split(filterLists, ",") {
+				checked += checkHeavyListExists(t, def, list, pat, src)
 			}
 		}
 	}
 	if checked == 0 {
 		t.Fatal("aucun test lourd vérifié : le garde-rail a perdu sa cible (ni lot run:/skip:, ni liste heavy)")
 	}
+}
+
+// checkHeavyListExists signale chaque test de la liste `list` absent des sources `src` du paquet
+// `pat` et rend le nombre de tests vérifiés.
+func checkHeavyListExists(t *testing.T, def shardDefinition, list, pat, src string) int {
+	t.Helper()
+	for _, name := range def.heavy[list] {
+		if !regexp.MustCompile(`(?m)^func ` + regexp.QuoteMeta(name) + `\(t \*testing\.T\)`).MatchString(src) {
+			t.Errorf(`liste lourde %q : le test %s n'existe plus dans %s
+
+  Les lots qui l'utilisent (-run / -skip) se déséquilibreraient sans bruit. CORRECTION : mettre à
+  jour la ligne « heavy %s » de .github/ci/go-shards.txt (nom renommé, ou test supprimé).`,
+				list, name, pat, list)
+		}
+	}
+	return len(def.heavy[list])
 }
 
 // packageTestSources — concaténation des fichiers *_test.go du dossier (sans le tag `research`).
@@ -286,18 +311,34 @@ func TestCIGoShardScriptRefusesBrokenDefinitions(t *testing.T) {
 		return path
 	}
 	const head = "timeout-defaut 600s\nheavy h TestA\n"
+	const headDeux = head + "heavy g TestB\n"
 
 	if _, stderr, err := runShardScript(t, root, write(head+"lot a - ./internal/archlint\nlot r - @reste\n"), "--verifier"); err != nil {
 		t.Fatalf("définition valide refusée (le harnais est faux) : %v\n%s", err, stderr)
 	}
+	trois := headDeux + "lot a run:h ./internal/archlint\nlot b run:g ./internal/archlint\nlot c skip:h,g ./internal/archlint\nlot r - @reste\n"
+	if _, stderr, err := runShardScript(t, root, write(trois), "--verifier"); err != nil {
+		t.Fatalf("partition en trois lots valide refusée : %v\n%s", err, stderr)
+	}
+	if args, stderr, err := runShardScript(t, root, write(trois), "c"); err != nil || !strings.Contains(args, "-skip\n^(TestA|TestB)$\n") {
+		t.Fatalf("le lot skip: de deux listes doit exclure leur union : err=%v\n%s%s", err, args, stderr)
+	}
 
 	for name, tc := range map[string]struct{ def, want string }{
-		"paquet dans deux lots":  {head + "lot a - ./internal/archlint\nlot b - ./internal/archlint\nlot r - @reste\n", "paire complémentaire"},
+		"paquet dans deux lots":  {head + "lot a - ./internal/archlint\nlot b - ./internal/archlint\nlot r - @reste\n", "partition complémentaire"},
 		"motif périmé":           {head + "lot a - ./internal/n_existe_pas/...\nlot r - @reste\n", "ne désigne aucun paquet"},
 		"filtre sans paire":      {head + "lot a run:h ./internal/archlint\nlot r - @reste\n", "sans lot complémentaire"},
+		"skip incomplet":         {headDeux + "lot a run:h ./internal/archlint\nlot b run:g ./internal/archlint\nlot c skip:h ./internal/archlint\nlot r - @reste\n", "complément exact"},
+		"skip en trop":           {headDeux + "lot a run:h ./internal/archlint\nlot c skip:h,g ./internal/archlint\nlot r - @reste\n", "complément exact"},
+		"deux skip":              {headDeux + "lot a run:h ./internal/archlint\nlot b skip:h ./internal/archlint\nlot c skip:h ./internal/archlint\nlot r - @reste\n", "partition complémentaire"},
+		"même liste en run":      {head + "lot a run:h ./internal/archlint\nlot b run:h ./internal/archlint\nlot c skip:h ./internal/archlint\nlot r - @reste\n", "même liste"},
+		"listes non disjointes":  {head + "heavy g TestA\nlot a run:h ./internal/archlint\nlot b run:g ./internal/archlint\nlot c skip:h,g ./internal/archlint\nlot r - @reste\n", "tournerait deux fois"},
+		"lot sans filtre mêlé":   {head + "lot a - ./internal/archlint\nlot b run:h ./internal/archlint\nlot c skip:h ./internal/archlint\nlot r - @reste\n", "partition complémentaire"},
 		"complément vide":        {head + "lot a - ./...\nlot r - @reste\n", "complément"},
 		"pas de complément":      {head + "lot a - ./internal/archlint\n", "complément"},
 		"complément pas dernier": {head + "lot r - @reste\nlot a - ./internal/archlint\n", "dernier lot"},
+		"module sans complément": {head + "lot a - ./internal/archlint\nlot r - @reste\nmodule libs/film\nlot f - ./replay\n", "pas de complément"},
+		"motif hors module":      {head + "lot r - @reste\nmodule libs/film\nlot f - ./internal/archlint\nlot g - @reste\n", "ne désigne aucun paquet du module libs/film"},
 	} {
 		_, stderr, err := runShardScript(t, root, write(tc.def), "--verifier")
 		if err == nil {
@@ -317,12 +358,19 @@ func TestCIGoShardsAnalysisDetectsDefects(t *testing.T) {
 	if err != nil || len(def.lots) != 3 || len(def.heavy["h"]) != 2 {
 		t.Fatalf("définition conforme mal lue : lots=%d heavy=%v err=%v", len(def.lots), def.heavy, err)
 	}
+	if mod, err := parseShardDefinition("lot a - ./x\nmodule libs/film\nlot b - ./y\n"); err != nil ||
+		mod.lots[0].module != moduleDeShardParDefaut || mod.lots[1].module != "libs/film" {
+		t.Fatalf("modules des lots mal lus : %+v err=%v", mod.lots, err)
+	}
 
 	for name, text := range map[string]string{
+		"module sans dossier":  "module\nlot r - @reste\n",
 		"nom de test invalide": "heavy h Test-A\nlot r - @reste\n",
 		"directive inconnue":   "lots a - ./x\n",
 		"liste non déclarée":   "lot a run:zz ./x\nlot r - @reste\n",
 		"filtre inconnu":       "lot a only:h ./x\nlot r - @reste\n",
+		"run de deux listes":   "heavy h TestA\nheavy g TestB\nlot a run:h,g ./x\nlot r - @reste\n",
+		"skip liste inconnue":  "heavy h TestA\nlot a skip:h,zz ./x\nlot r - @reste\n",
 		"heavy sans test":      "heavy h\n",
 		"lot incomplet":        "lot a -\n",
 	} {

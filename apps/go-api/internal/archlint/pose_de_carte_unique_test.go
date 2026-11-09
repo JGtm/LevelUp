@@ -35,12 +35,12 @@ const nomDeLaPoseDeCarte = "PoserLargeursObjetDuMondeDepuisDecoupage"
 // posesDeCarteAutorisees — LISTE FERMEE ET DATEE des fichiers de production qui appellent la pose.
 // Chemin relatif a apps/go-api.
 var posesDeCarteAutorisees = map[string]string{
-	"internal/games/halo_infinite/film/internal/grammar/contexte_de_carte.go": "2026-10-08 — LE geste " +
+	"libs/film/internal/grammar/contexte_de_carte.go": "2026-10-08 — LE geste " +
 		"unique du contexte de carte de la cuisson, du sync et du ratchet de fermeture en contexte de cuisson",
-	"internal/games/halo_infinite/film/internal/grammar/film_context.go": "2026-10-08 — la methode du " +
+	"libs/film/internal/grammar/film_context.go": "2026-10-08 — la methode du " +
 		"contexte qui pose un decoupage DONNE, et l enveloppe D2 `contexteDeBobine`, qui y pose celui LU DANS " +
 		"LE FILM (hors cuisson : la cuisson prend le catalogue de la carte)",
-	"internal/games/halo_infinite/film/internal/facts/killsource/decode.go": "2026-10-08 — EXCEPTION : " +
+	"libs/film/internal/facts/killsource/decode.go": "2026-10-08 — EXCEPTION : " +
 		"killsource pose la carte sur son PROFIL DE DEPART, avant la calibration (`ProfilDeDepartPourCarte`), " +
 		"pas sur un contexte ; la faire passer par le geste unique changerait l ordre de ses gestes et son " +
 		"perimetre hache (`killsource.Rev`), hors du lot qui a pose ce ratchet (plan LK, decision E-5)",

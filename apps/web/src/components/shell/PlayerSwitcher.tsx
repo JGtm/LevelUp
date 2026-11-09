@@ -29,6 +29,8 @@ export interface PlayerSwitcherProps {
   currentPlayer: PlayerSummary | null
   locale: Locale
   onPlayerChange: (playerSlug: string) => void
+  /** Côté d'ancrage du menu : `end` (défaut, barre haute, menu qui s'ouvre vers la gauche) ou `start` (barre latérale). */
+  menuAlign?: 'start' | 'end'
 }
 
 /** Manette — marqueur « ce joueur est en partie ». SVG inline (aucune dépendance d'icônes). */
@@ -65,7 +67,13 @@ function FriendsBadge({ count, label }: { count: number; label: string }) {
   )
 }
 
-export function PlayerSwitcher({ players, currentPlayer, locale, onPlayerChange }: PlayerSwitcherProps) {
+export function PlayerSwitcher({
+  players,
+  currentPlayer,
+  locale,
+  onPlayerChange,
+  menuAlign = 'end',
+}: PlayerSwitcherProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -224,7 +232,7 @@ export function PlayerSwitcher({ players, currentPlayer, locale, onPlayerChange 
           ref={menuRef}
           role="menu"
           onKeyDown={handleMenuKeyDown}
-          className="absolute right-0 top-full z-50 mt-1 min-w-[12rem] rounded-md border border-border bg-popover py-1 shadow-lg"
+          className={`absolute ${menuAlign === 'start' ? 'left-0' : 'right-0'} top-full z-50 mt-1 min-w-[12rem] rounded-md border border-border bg-popover py-1 shadow-lg`}
         >
           {players.map((p) => (
             <button

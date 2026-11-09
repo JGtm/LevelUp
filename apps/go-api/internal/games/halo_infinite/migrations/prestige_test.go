@@ -37,10 +37,6 @@ func setupPrestigeSchema(t *testing.T) *sql.DB {
 			cadence             VARCHAR NOT NULL,
 			eval_type           VARCHAR NOT NULL,
 			mode_filter         VARCHAR NOT NULL DEFAULT 'universal',
-			label_en            VARCHAR NOT NULL,
-			label_fr            VARCHAR NOT NULL,
-			description_en      VARCHAR,
-			description_fr      VARCHAR,
 			normal_target       DOUBLE NOT NULL,
 			heroic_target       DOUBLE NOT NULL,
 			legendary_target    DOUBLE NOT NULL,
@@ -51,13 +47,11 @@ func setupPrestigeSchema(t *testing.T) *sql.DB {
 		CREATE TABLE preset_arc (
 			id              VARCHAR PRIMARY KEY,
 			title_slug      VARCHAR NOT NULL,
-			title_en        VARCHAR NOT NULL,
-			title_fr        VARCHAR NOT NULL,
-			description_en  VARCHAR,
-			description_fr  VARCHAR,
 			schema_version  INTEGER NOT NULL DEFAULT 1,
 			updated_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 		);
+		CREATE TABLE asset_translations (asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR, name VARCHAR NOT NULL,
+			description VARCHAR, fetched_at TIMESTAMP, PRIMARY KEY (asset_id, asset_type, lang));
 		CREATE TABLE preset_arc_step (
 			preset_arc_id   VARCHAR NOT NULL,
 			position        INTEGER NOT NULL,
@@ -83,10 +77,8 @@ window_value = "7d"
 cadence = "weekly"
 eval_type = "sum"
 mode_filter = "universal"
-label_en = "Weekly Kills"
-label_fr = "Eliminations hebdo"
-description_en = "Kills over a week"
-description_fr = "Eliminations sur une semaine"
+label    = { en = "Weekly Kills", fr = "Eliminations hebdo" }
+description    = { en = "Kills over a week", fr = "Eliminations sur une semaine" }
 normal_target = 50.0
 heroic_target = 100.0
 legendary_target = 200.0
@@ -99,10 +91,8 @@ window_type = "season"
 window_value = ""
 cadence = "season"
 eval_type = "sum"
-label_en = "Ranked Wins"
-label_fr = "Victoires classees"
-description_en = "Wins in ranked"
-description_fr = "Victoires en classe"
+label    = { en = "Ranked Wins", fr = "Victoires classees" }
+description    = { en = "Wins in ranked", fr = "Victoires en classe" }
 normal_target = 10.0
 heroic_target = 25.0
 legendary_target = 50.0
@@ -115,10 +105,8 @@ title_slug = "halo_infinite"
 
 [[arcs]]
 id = "arc_slayer"
-title_en = "Slayer Arc"
-title_fr = "Arc Slayer"
-description_en = "Climb via slayer"
-description_fr = "Grimper via slayer"
+title    = { en = "Slayer Arc", fr = "Arc Slayer" }
+description    = { en = "Climb via slayer", fr = "Grimper via slayer" }
 
   [[arcs.steps]]
   position = 1
@@ -162,13 +150,21 @@ func TestSeedPrestigeFromTOML_Populates(t *testing.T) {
 	assertCount(t, db, "preset_arc", 1)
 	assertCount(t, db, "preset_arc_step", 2)
 
-	var labelFR, modeFilter string
-	if err := db.QueryRow(`SELECT label_fr, mode_filter FROM challenge_template WHERE id = 'kills_weekly'`).
-		Scan(&labelFR, &modeFilter); err != nil {
+	var labelFR, labelEN, arcFR, modeFilter string
+	if err := db.QueryRow(`SELECT mode_filter FROM challenge_template WHERE id = 'kills_weekly'`).Scan(&modeFilter); err != nil {
 		t.Fatalf("query template: %v", err)
 	}
+	if err := db.QueryRow(`SELECT name FROM asset_translations WHERE asset_id = 'kills_weekly' AND asset_type = 'challenge_template' AND lang = 'fr-FR'`).Scan(&labelFR); err != nil {
+		t.Fatalf("query libellé fr: %v", err)
+	}
 	if labelFR != "Eliminations hebdo" {
-		t.Errorf("label_fr = %q", labelFR)
+		t.Errorf("libellé fr = %q", labelFR)
+	}
+	if err := db.QueryRow(`SELECT name FROM asset_translations WHERE asset_id = 'kills_weekly' AND asset_type = 'challenge_template' AND lang = 'en-US'`).Scan(&labelEN); err != nil || labelEN != "Weekly Kills" {
+		t.Errorf("libellé en = %q (%v)", labelEN, err)
+	}
+	if err := db.QueryRow(`SELECT name FROM asset_translations WHERE asset_id = 'arc_slayer' AND asset_type = 'preset_arc' AND lang = 'fr-FR'`).Scan(&arcFR); err != nil || arcFR != "Arc Slayer" {
+		t.Errorf("titre d'arc fr = %q (%v)", arcFR, err)
 	}
 	// mode_filter vide dans le TOML (wins_ranked) → défaut 'universal'.
 	var winsMode string

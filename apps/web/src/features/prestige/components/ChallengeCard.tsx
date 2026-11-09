@@ -5,7 +5,7 @@
  * Cohérent visuellement avec les tuiles de matchs existantes.
  */
 import type { Challenge } from '@/lib/prestige'
-import { TIER_COLORS, TIER_LABELS_FR, TIER_LABELS_EN } from '@/lib/prestige'
+import { TIER_COLORS, TIER_LABELS } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -24,7 +24,7 @@ export function ChallengeCard({ challenge, currentValue, onClick }: ChallengeCar
   // Fallback localisé si le manifest n'a pas le libellé (cas courant hors test) :
   // FR = "Héroïque", EN = "Heroic". Sans le fallback localisé, "Heroic" en français.
   const tierLabelFromTOML = useAssetLabel('challenge_tier', tier)
-  const tierLabelFallback = locale === 'en' ? TIER_LABELS_EN[tier] : TIER_LABELS_FR[tier]
+  const tierLabelFallback = TIER_LABELS[locale][tier]
   const tierLabel = tierLabelFromTOML !== tier ? tierLabelFromTOML : tierLabelFallback
   // Valeur courante : prop explicite (éval) sinon current_value de la réponse
   // backend (aligné sur ObjectiveRow). Sans ça la barre reste à 0 quand le parent

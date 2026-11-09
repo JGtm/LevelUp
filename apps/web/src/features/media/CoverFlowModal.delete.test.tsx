@@ -14,6 +14,7 @@ import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { CoverFlowModal } from './CoverFlowModal'
 import type { MediaItemRow } from '@/lib/api/types'
+import { testCapabilities } from '@/test/capabilities'
 
 function makeItem(overrides: Partial<MediaItemRow> = {}): MediaItemRow {
   return {
@@ -223,5 +224,105 @@ describe('CoverFlowModal — suppression définitive', () => {
     expect(screen.getByText(/Delete this media\?/)).toBeInTheDocument()
     expect(screen.getByText(/cannot be recovered/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete permanently' })).toBeInTheDocument()
+  })
+})
+
+describe('CoverFlowModal — explorateur de fichiers et Corbeille', () => {
+  afterEach(() => {
+    setStore({ locale: 'fr', isAdmin: false })
+    act(() => {
+      useAppShellStore.setState({ capabilities: null })
+    })
+  })
+
+  function setCapabilities(overrides: Parameters<typeof testCapabilities>[0]) {
+    act(() => {
+      useAppShellStore.setState({ capabilities: testCapabilities(overrides) })
+    })
+  }
+
+  function renderModal(props: { onReveal?: (item: MediaItemRow) => void; onDelete?: () => void } = {}) {
+    return renderWithProviders(
+      <CoverFlowModal
+        items={[OWN_ITEM]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        currentPlayerGamertag="JGtm"
+        {...props}
+      />,
+    )
+  }
+
+  it('aucun bouton « Afficher dans l’explorateur » sans onReveal', () => {
+    setStore({})
+    renderModal()
+    expect(screen.queryByRole('button', { name: "Afficher dans l'explorateur" })).not.toBeInTheDocument()
+  })
+
+  it('avec onReveal : le bouton existe pour le propriétaire et ouvre l’explorateur sur le média', () => {
+    setStore({})
+    const onReveal = vi.fn()
+    renderModal({ onReveal })
+    fireEvent.click(screen.getByRole('button', { name: "Afficher dans l'explorateur" }))
+    expect(onReveal).toHaveBeenCalledWith(expect.objectContaining({ file_path: '/media/clip.mp4' }))
+  })
+
+  it('le bouton est masqué sur le média d’un autre joueur (non-admin)', () => {
+    setStore({})
+    renderWithProviders(
+      <CoverFlowModal
+        items={[FOREIGN_ITEM]}
+        startIndex={0}
+        onClose={vi.fn()}
+        onToggleLike={vi.fn()}
+        onReveal={vi.fn()}
+        currentPlayerGamertag="JGtm"
+      />,
+    )
+    expect(screen.queryByRole('button', { name: "Afficher dans l'explorateur" })).not.toBeInTheDocument()
+  })
+
+  it('bouton en anglais', () => {
+    setStore({ locale: 'en' })
+    renderModal({ onReveal: vi.fn() })
+    expect(screen.getByRole('button', { name: 'Show in file explorer' })).toBeInTheDocument()
+  })
+
+  it('sans la capacité Corbeille : le texte de confirmation actuel', () => {
+    setStore({})
+    setCapabilities({})
+    renderModal({ onDelete: vi.fn() })
+    fireEvent.click(screen.getByRole('button', { name: /Supprimer définitivement ce média/ }))
+    expect(screen.getByText(/ne pourra pas être récupéré/)).toBeInTheDocument()
+    expect(screen.queryByText(/Corbeille de Windows/)).not.toBeInTheDocument()
+  })
+
+  it('avec la capacité Corbeille : le texte dit où va l’original et ce qui reste définitif', () => {
+    setStore({})
+    setCapabilities({ can_trash_media_sources: true })
+    renderModal({ onDelete: vi.fn() })
+    expect(screen.queryByRole('button', { name: /Supprimer définitivement ce média/ })).not.toBeInTheDocument()
+    const trigger = screen.getByRole('button', { name: 'Envoyer à la Corbeille' })
+    expect(trigger).toHaveAttribute('title', 'Envoyer à la Corbeille')
+    fireEvent.click(trigger)
+    expect(screen.getByText(/envoyé à la Corbeille de Windows, d'où il pourra être restauré/)).toBeInTheDocument()
+    expect(screen.getByText(/clé USB, disque réseau/)).toBeInTheDocument()
+    expect(screen.queryByText(/ne pourra pas être récupéré/)).not.toBeInTheDocument()
+    // Le bouton de confirmation ne promet pas une suppression définitive.
+    expect(screen.queryByRole('button', { name: 'Supprimer définitivement' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Envoyer à la Corbeille' }).length).toBeGreaterThan(1)
+  })
+
+  it('texte Corbeille en anglais', () => {
+    setStore({ locale: 'en' })
+    setCapabilities({ can_trash_media_sources: true })
+    renderModal({ onDelete: vi.fn() })
+    expect(screen.queryByRole('button', { name: /Permanently delete this media/ })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Move to Recycle Bin' }))
+    expect(screen.getByText(/sent to the Windows Recycle Bin/)).toBeInTheDocument()
+    expect(screen.queryByText(/cannot be recovered/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete permanently' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Move to Recycle Bin' }).length).toBeGreaterThan(1)
   })
 })

@@ -26,8 +26,8 @@ export interface CoachProposal {
   radar_axis?: string
   strength: number
   origin: ProposalOrigin
-  reason_key_en?: string
-  reason_key_fr?: string
+  /** Clé d'i18n du motif, dans la langue de la requête. */
+  reason_key?: string
   reason_params?: string // JSON-encoded
   status: ProposalStatus
   created_at: string

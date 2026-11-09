@@ -11,6 +11,7 @@ import (
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -24,8 +25,12 @@ type buildSquadChartsInput struct {
 	squadXUIDs      map[string]string
 	rowsByPlayer    map[string][]canonical.PlayerMatchRow
 	squadHistorical map[string]domain.MapSquadStats
-	events          []canonical.HighlightEvent
-	sharedMatches   []domain.SquadSharedMatch
+	// mapGroups : groupes de cartes des charts par carte (une variante compte sous sa carte de base).
+	mapGroups     domain.GroupesDeCartes
+	events        []canonical.HighlightEvent
+	sharedMatches []domain.SquadSharedMatch
+	// locale : la langue de la requete (noms de carte des charts par carte).
+	locale i18n.Locale
 	// provideSpree : false quand le titre ne porte pas le max killing spree (Halo 5)
 	// → la série KillingSpreeMax est omise (nil) plutôt que fabriquée. Cf.
 	// games.ProvidesMaxKillingSpree.
@@ -41,17 +46,17 @@ func buildSquadCharts(in buildSquadChartsInput) *domain.SquadCharts {
 	// pour la reference historique.
 	mainSharedRows := in.rowsByPlayer[in.mainGT]
 	if len(mainSharedRows) > 0 {
-		lollipop := BuildMapBreakdownLollipop(mainSharedRows, MapBreakdownLimit)
+		lollipop := BuildMapBreakdownLollipop(mainSharedRows, MapBreakdownLimit, in.mapGroups, in.locale)
 		out.MapBreakdownLollipop = &lollipop
 
-		bullet := BuildBulletWinrate(mainSharedRows, in.squadHistorical, MapBreakdownLimit)
+		bullet := BuildBulletWinrate(mainSharedRows, in.squadHistorical, MapBreakdownLimit, in.mapGroups, in.locale)
 		out.BulletWinrate = &bullet
 
-		perfDelta := BuildPerfVsHistorical(mainSharedRows, in.squadHistorical, MapBreakdownLimit)
+		perfDelta := BuildPerfVsHistorical(mainSharedRows, in.squadHistorical, MapBreakdownLimit, in.mapGroups, in.locale)
 		out.PerfVsHistorical = &perfDelta
 	}
 	if len(in.rowsByPlayer) > 0 {
-		heatmap := BuildHeatmapPlayerMap(in.rowsByPlayer, MapBreakdownLimit)
+		heatmap := BuildHeatmapPlayerMap(in.rowsByPlayer, MapBreakdownLimit, in.mapGroups, in.locale)
 		out.HeatmapPlayerMap = &heatmap
 	}
 
@@ -125,6 +130,8 @@ type buildSquadTablesInput struct {
 	squadXUIDs    map[string]string
 	weapons       []port.WeaponKillRow
 	medals        []port.MedalRow
+	// locale : la langue de la requête (nom des armes du tableau).
+	locale i18n.Locale
 }
 
 // buildSquadTables assemble les 3 tableaux (history, weapons, medals).
@@ -132,7 +139,7 @@ func buildSquadTables(in buildSquadTablesInput) *domain.SquadTables {
 	out := &domain.SquadTables{}
 
 	// History : toujours buildable depuis les SharedMatches + rowsByPlayer.
-	historyRows := BuildHistoryTable(in.sharedMatches, in.rowsByPlayer, in.squadOrder)
+	historyRows := BuildHistoryTable(in.sharedMatches, in.rowsByPlayer, in.squadOrder, in.locale)
 	if len(historyRows) > 0 {
 		out.History = make([]any, 0, len(historyRows))
 		for _, r := range historyRows {
@@ -147,7 +154,7 @@ func buildSquadTables(in buildSquadTablesInput) *domain.SquadTables {
 	}
 
 	if len(in.weapons) > 0 {
-		weaponsTable := BuildWeaponsTable(in.weapons, xuidToGT, 0)
+		weaponsTable := BuildWeaponsTable(in.locale, in.weapons, xuidToGT, 0)
 		out.Weapons = make([]any, 0, len(weaponsTable))
 		for _, r := range weaponsTable {
 			out.Weapons = append(out.Weapons, r)

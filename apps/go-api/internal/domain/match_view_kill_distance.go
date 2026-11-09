@@ -1,7 +1,6 @@
 package domain
 
-// match_view_kill_distance.go — LOT G.3-POC (2026-08-30, plan
-// .ai/V7.5/chantiers/PLAN_RETOURS_UTILISATEUR_2026-08-29.md §3bis, DEC-8) : kills mesurés et
+// match_view_kill_distance.go — LOT G.3-POC (2026-08-30) : kills mesurés et
 // distance tueur-victime moyenne PAR ARME, PAR JOUEUR, pour UN match. Périmètre
 // fermé par décision utilisateur (cadrage mot pour mot) : « mettre le nombre de
 // kills par armes sur la distance et indiquer la distance moyenne pour chaque
@@ -21,11 +20,10 @@ type MatchKillDistanceWeapon struct {
 	// WeaponKey : clé canonique du registre (résolue depuis source_tag via
 	// port.KillSourceClassifier, même chaîne que le breakdown kills-hors-arme).
 	WeaponKey string `json:"weapon_key"`
-	// Label / LabelEN : FR-first / EN-first, même chaîne de résolution que
-	// weapon_kills (weapon_resolver.go, table weapon_name_labels, lot V2.1).
-	// Vide si la metadata n'est pas seedée — le front replie sur WeaponKey.
-	Label   string `json:"label,omitempty"`
-	LabelEN string `json:"label_en,omitempty"`
+	// Label : le nom de l arme dans la langue de la requête (repli en), même chaîne de
+	// résolution que weapon_kills (weapon_resolver.go, table weapon_name_labels).
+	// Vide si la metadata n est pas seedée — le front replie sur WeaponKey.
+	Label string `json:"label,omitempty"`
 	// MeasuredKills : kills DE CETTE ARME dont la position tueur ET victime sont
 	// TOUTES LES DEUX mesurées pour ce joueur sur ce match. Jamais le total de
 	// kills à l'arme (weapon_kills) : la couverture positions est mesurée à

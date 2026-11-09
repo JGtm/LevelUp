@@ -16,8 +16,9 @@ package livesync
 import (
 	"strings"
 
-	halo5 "levelup/go-api/internal/games/halo_5"
 	syncpkg "levelup/go-api/internal/sync"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // h5LifetimeSeasonID — saison CSR « lifetime » FIXE de Halo 5 (Phase 1). Le service
@@ -43,9 +44,9 @@ var h5DesignationTiersEN = []string{
 	"Champion",
 }
 
-// h5DesignationTierEN retourne le libellé EN capitalisé d'un DesignationId, ""
+// h5DesignationTier retourne le libellé EN capitalisé d'un DesignationId, ""
 // si hors borne (jamais classé / palier inconnu).
-func h5DesignationTierEN(designationID int) string {
+func h5DesignationTier(designationID int) string {
 	if designationID < 0 || designationID >= len(h5DesignationTiersEN) {
 		return ""
 	}
@@ -61,7 +62,7 @@ func h5DesignationTierEN(designationID int) string {
 //
 // Mapping palier : DesignationId → tier EN (Bronze..Onyx) ; sous-palier = Tier
 // (1..6), forcé à 0 pour Onyx (palier unique, sans sous-palier).
-func mapH5ArenaToPlaylistCSRs(resp *halo5.H5ServiceRecordResponse) []syncpkg.PlayerPlaylistCSR {
+func mapH5ArenaToPlaylistCSRs(resp *h5api.H5ServiceRecordResponse) []syncpkg.PlayerPlaylistCSR {
 	arena := firstArenaStats(resp)
 	if arena == nil {
 		return nil
@@ -99,7 +100,7 @@ func mapH5ArenaToPlaylistCSRs(resp *halo5.H5ServiceRecordResponse) []syncpkg.Pla
 // nil ET qu'il reste des matchs de mesure (> 0), la playlist est EN PLACEMENT :
 // tier vide + MeasurementMatchesRemaining renseigné (cohérent avec le pattern
 // Infinite, cf. csr_writes.go : tier vide ou remaining>0 = placement).
-func h5CurrentSnapshot(p *halo5.H5ArenaPlaylistStat) syncpkg.CSRRankSnapshot {
+func h5CurrentSnapshot(p *h5api.H5ArenaPlaylistStat) syncpkg.CSRRankSnapshot {
 	if p.Csr == nil {
 		// Placement (ou jamais classé) : exposer les matchs restants.
 		return syncpkg.CSRRankSnapshot{
@@ -111,11 +112,11 @@ func h5CurrentSnapshot(p *halo5.H5ArenaPlaylistStat) syncpkg.CSRRankSnapshot {
 
 // h5CsrSnapshot convertit un *H5Csr natif en CSRRankSnapshot canonique. nil → zéro.
 // tier = libellé EN du DesignationId ; sous-palier = Tier (0 pour Onyx).
-func h5CsrSnapshot(c *halo5.H5Csr) syncpkg.CSRRankSnapshot {
+func h5CsrSnapshot(c *h5api.H5Csr) syncpkg.CSRRankSnapshot {
 	if c == nil {
 		return syncpkg.CSRRankSnapshot{}
 	}
-	tier := h5DesignationTierEN(c.DesignationId)
+	tier := h5DesignationTier(c.DesignationId)
 	subTier := c.Tier
 	if strings.EqualFold(tier, "Onyx") || strings.EqualFold(tier, "Champion") {
 		subTier = 0 // Onyx/Champion = paliers uniques, sans sous-palier.
@@ -129,7 +130,7 @@ func h5CsrSnapshot(c *halo5.H5Csr) syncpkg.CSRRankSnapshot {
 
 // firstArenaStats retourne le corps arena du premier résultat OK (ResultCode 0)
 // portant des ArenaStats, ou nil. Miroir de halo_5.firstArenaResult (non exporté).
-func firstArenaStats(resp *halo5.H5ServiceRecordResponse) *halo5.H5ArenaStats {
+func firstArenaStats(resp *h5api.H5ServiceRecordResponse) *h5api.H5ArenaStats {
 	if resp == nil {
 		return nil
 	}

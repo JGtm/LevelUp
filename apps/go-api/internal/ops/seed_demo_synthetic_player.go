@@ -17,6 +17,7 @@ import (
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -209,13 +210,13 @@ func insertEnrichment(ctx context.Context, db *sql.DB, m synthMatch, p synthPart
 // Lecture pics home via match_skill_rank_latest (classification is_ranked côté repo).
 func insertPlayerSkillRank(ctx context.Context, db *sql.DB, m synthMatch) error {
 	if m.pl.ranked {
-		label := fmt.Sprintf("%s %d", m.csrTierFR, m.csrSubTier)
+		label := fmt.Sprintf("%s %d", m.csrTier[i18n.Default], m.csrSubTier)
 		_, err := db.ExecContext(ctx, `
 			INSERT INTO match_skill_rank
-				(match_id, rating_type, rating_value, tier, tier_fr, sub_tier, tier_label,
+				(match_id, rating_type, rating_value, tier, sub_tier, tier_label,
 				 rating_delta, playlist_group, start_time, written_at)
-			VALUES (?, 'CSR', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			m.matchID, m.csrValue, m.csrTier, m.csrTierFR, m.csrSubTier, label,
+			VALUES (?, 'CSR', ?, ?, ?, ?, ?, ?, ?, ?)`,
+			m.matchID, m.csrValue, m.csrTier[i18n.Fallback], m.csrSubTier, label,
 			m.csrDelta, m.pl.group, m.start, m.end)
 		return err
 	}

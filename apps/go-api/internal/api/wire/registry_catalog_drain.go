@@ -17,15 +17,14 @@ import (
 	gosync "sync"
 
 	"levelup/go-api/internal/domain"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/service"
 )
 
@@ -72,8 +71,8 @@ func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug stri
 	}
 
 	// 3. Chaîne de résolution (fidèle au CLI populate-playlists-catalog).
-	provider := halo.NewHaloProvider().WithRateLimit(catalogDrainRateLimit).WithTokens(tokens)
-	fetcher := halo.NewCatalogFetcher(provider)
+	provider := haloadapter.NewHaloProvider().WithRateLimit(catalogDrainRateLimit).WithTokens(tokens)
+	fetcher := haloadapter.NewCatalogFetcher(provider)
 	rulesPath := r.catalogExperienceRulesPath(titleSlug)
 	adapter, err := halo_games.NewCatalogAdapter(fetcher, rulesPath)
 	if err != nil {
@@ -127,7 +126,7 @@ func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug stri
 // (FATAL ART), le Reopen in-place pour rétablir toute l'app sans restart.
 // Best-effort : emprunt non-possédant du cache (pas de Close).
 func (r *ServiceRegistry) reopenMetadataIfInvalidated(ctx context.Context, titleSlug string) {
-	pr := titlePkg.NewPathResolver(r.cfg.RepoRoot)
+	pr := r.cfg.PathResolver()
 	metaPath := pr.MetadataDBPath(titleSlug)
 	wrapper, ok := duckdb.LookupCachedDB(metaPath)
 	if !ok || wrapper == nil {
@@ -151,7 +150,7 @@ func (r *ServiceRegistry) reopenMetadataIfInvalidated(ctx context.Context, title
 // joueur authentifié). L'API DiscoveryUGC est par-asset, pas par-joueur — tout
 // joueur valide convient.
 func (r *ServiceRegistry) haloTokensForDrain(ctx context.Context, titleSlug string) (*domain.HaloTokens, error) {
-	pr := titlePkg.NewPathResolver(r.cfg.RepoRoot)
+	pr := r.cfg.PathResolver()
 	store := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
 	provider := auth.NewSISUProvider()
 

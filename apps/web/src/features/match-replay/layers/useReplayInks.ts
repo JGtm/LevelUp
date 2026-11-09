@@ -21,12 +21,14 @@
 import { useMemo } from 'react'
 
 import { resolveToken } from '@/lib/accessibility/resolveToken'
+import { shiftLightness } from '@/lib/accessibility/scales'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
 import { readInk } from './canvasInk'
 import { useExportActive } from '../export/exportLayoutStore'
 import { readFxInk, type FxInk } from './fxInk'
 import type { RiftInk } from './placementRift'
+import type { ShroudInk } from './placementShroud'
 import type { PadFamily } from '../model/weaponPadFamilies'
 
 /** Fond de carte : token neutre, sans connotation directionnelle (le sujet = les joueurs). */
@@ -109,6 +111,14 @@ const WALL_TOKEN: SemanticToken = 'warning'
  */
 const RIFT_RIM_TOKEN: SemanticToken = 'extreme'
 const RIFT_CORE_TOKEN: SemanticToken = 'bonus'
+/**
+ * L'encre FIXE de l'écran occultant (décision utilisateur du 2026-10-30) : le BLEU ÉLECTRIQUE
+ * du bord et des éclairs, celui des éclairs de la fiche (`replay-zone-bolt`, globals.css), pour
+ * que carte et fiche parlent de la même électricité. Le BLEU NUIT du cœur en est la même teinte
+ * assombrie (`SHROUD_CORE_DARKEN`) : un seul token, donc la bulle suit la palette choisie.
+ */
+const SHROUD_GLOW_TOKEN: SemanticToken = 'info'
+const SHROUD_CORE_DARKEN = -0.6
 
 
 /**
@@ -180,6 +190,8 @@ export interface ReplayInks {
   wall: string
   /** Les deux encres FIXES de la faille du translocateur (cf. RIFT_RIM_TOKEN). */
   rift: RiftInk
+  /** Les deux encres FIXES de l'écran occultant (cf. SHROUD_GLOW_TOKEN). */
+  shroud: ShroudInk
   /**
    * LE MARQUAGE DES SOCLES : ce qui est REMPLI, et ce qui le CERNE. Ce sont les deux encres du
    * THÈME, pas des tokens de données : en sombre le remplissage est clair et le liseré sombre,
@@ -191,6 +203,11 @@ export interface ReplayInks {
    * NATURE (`pad`), la même que leur losange.
    */
   mark: { fill: string; outline: string }
+}
+
+/** shroudInk — le bleu électrique, et le bleu nuit qui en est la même teinte assombrie. */
+function shroudInk(glow: string): ShroudInk {
+  return { core: shiftLightness(glow, SHROUD_CORE_DARKEN), glow }
 }
 
 /**
@@ -229,6 +246,7 @@ export function useReplayInks(paletteVersion: number): ReplayInks {
       self: resolveToken(SELF_TOKEN),
       wall: resolveToken(WALL_TOKEN),
       rift: { rim: resolveToken(RIFT_RIM_TOKEN), core: resolveToken(RIFT_CORE_TOKEN) },
+      shroud: shroudInk(resolveToken(SHROUD_GLOW_TOKEN)),
       mark: { fill: readInk('--foreground'), outline: readInk('--background') },
     }
   }, [paletteVersion, exporting])

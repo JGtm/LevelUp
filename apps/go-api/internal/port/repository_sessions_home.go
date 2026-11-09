@@ -129,7 +129,7 @@ type HomeRepository interface {
 	// Dégradation silencieuse : retourne ("", 0, nil) si aucune donnée.
 	LoadFavoriteWeapon(ctx context.Context, locale string) (string, int, error)
 
-	// EnrichCanonicalAssetTranslations remplit Labels["fr"] des AssetReference
+	// EnrichCanonicalAssetTranslations remplit Labels de chaque langue connue des AssetReference
 	// (Map, Playlist, GameVariant, PairMode) depuis metadata.asset_translations
 	// + mode_name_tr quand absent. Mute les rows en place. Bug #2/#7 cascade.
 	EnrichCanonicalAssetTranslations(ctx context.Context, rows []canonical.PlayerMatchRow) error

@@ -36,7 +36,7 @@ import (
 	"context"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // bornesDeLaCarte rend les bornes du catalogue VERSIONNE pour un nom, ou echoue.

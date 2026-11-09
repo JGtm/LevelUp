@@ -1,5 +1,4 @@
-// Package service — session_page_tools.go : « OUTILS DE DESTRUCTION » DE LA PAGE SESSIONS (plan
-// `.ai/V7.5/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, D6) — chaque frag du joueur de la page nommé, par le
+// Package service — session_page_tools.go : « OUTILS DE DESTRUCTION » DE LA PAGE SESSIONS — chaque frag du joueur de la page nommé, par le
 // builder de l'Escouade (squadagg.BuildWeaponTools) sur un seul joueur.
 //
 // Lignes d'arme : celles que la répartition des frags vient de lire. Feuille de match : les compteurs
@@ -15,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
 )
@@ -34,6 +34,7 @@ func (s *SessionPageService) sessionWeaponTools(
 		}
 	}
 	tools := squadagg.BuildWeaponTools(squadagg.WeaponToolInputs{
+		Locale:         i18n.FromContext(ctx),
 		Rows:           rows,
 		Categories:     s.loadSessionToolCategories(ctx, matchIDs),
 		PlayersOrdered: []string{s.gamertag},

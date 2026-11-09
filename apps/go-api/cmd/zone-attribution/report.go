@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // thresholdsM : les seuils de distance balayes, en metres. Zero = appartenance stricte ;

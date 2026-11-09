@@ -106,7 +106,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -144,14 +143,19 @@ const plancherFonctionsBalayees = 2300
 //     d equivalence (zero difference au corpus gate), jamais au fil de l eau ;
 //   - `tableProfilInvariants`, qui est une table litterale d invariants par build.
 var plafondsParFonction = map[string]int{
-	"internal/games/halo_infinite/film/internal/grammar/dispatch_player.go:consumeCrewFlockAndMusicComponent":       146,
-	"internal/games/halo_infinite/film/internal/grammar/dispatch_biped.go:consumeManagedAndObjectiveComponent":      143,
-	"internal/games/halo_infinite/film/internal/grammar/dispatch_item.go:consumeItemAndTacmapComponent":             139,
-	"internal/games/halo_infinite/film/internal/grammar/dispatch_player.go:consumePlayerTailAndGameEngineComponent": 122,
-	"internal/games/halo_infinite/film/internal/grammar/dispatch_object.go:consumeByName":                           118,
-	"internal/games/halo_infinite/film/internal/grammar/frame_infer.go:decodeInferLoop":                             114,
-	"internal/games/halo_infinite/film/internal/grammar/dispatch_biped.go:consumeCaptureAndBipedComponent":          112,
-	"internal/games/halo_infinite/film/internal/profile/profile_table.go:tableProfilInvariants":                     89,
+	"libs/film/internal/grammar/dispatch_player.go:consumeCrewFlockAndMusicComponent":       123,
+	"libs/film/internal/grammar/dispatch_biped.go:consumeManagedAndObjectiveComponent":      132,
+	"libs/film/internal/grammar/dispatch_item.go:consumeItemAndTacmapComponent":             132,
+	"libs/film/internal/grammar/dispatch_player.go:consumePlayerTailAndGameEngineComponent": 96,
+	"libs/film/internal/grammar/dispatch_object.go:consumeByName":                           110,
+	"libs/film/internal/grammar/frame_infer.go:decodeInferLoop":                             109,
+	"libs/film/internal/grammar/dispatch_biped.go:consumeCaptureAndBipedComponent":          111,
+	"libs/film/internal/profile/profile_table.go:tableProfilInvariants":                     87,
+
+	// 2026-11-08 (lot 3.2 de la fin du decouplage, ADR 0041 D7) : la racine du ratchet est passee a
+	// l espace de travail ; la seule fonction de production de `himap`, `gamefiles` et `haloapi` au-dela
+	// du seuil. Longueur du jour, qui ne peut que descendre ; aucune autre entree ne s ajoute.
+	"libs/himap/himap/cuisson_forge.go:CuitCarteForge": 84,
 }
 
 // TestLongueurDesFonctionsDuFilmNeCroitPas : aucune fonction des racines surveillees ne depasse
@@ -179,7 +183,7 @@ func TestLongueurDesFonctionsDuFilmNeCroitPas(t *testing.T) {
 			continue
 		}
 		if fige {
-			t.Errorf("%s : %d lignes physiques, plafond fige a %d (2026-09-16, item 2.10.5).\n"+
+			t.Errorf("%s : %d lignes physiques, plafond fige a %d (date de la table : voir plafondsParFonction).\n"+
 				"UN PLAFOND NE MONTE PAS. Sortir autant de lignes ailleurs dans la fonction, "+
 				"ou l extraire — la scission d un aiguillage se fait dans un lot qui porte sa "+
 				"preuve d equivalence, pas au fil de l eau.", cle, n, plafond)
@@ -217,6 +221,11 @@ func TestPlafondsDeFonctionNeSontPasPerimes(t *testing.T) {
 			t.Errorf("%s : %d lignes physiques, soit sous le seuil de %d — retirer son entree "+
 				"de plafondsParFonction. La fonction est rentree dans la regle, la table n a "+
 				"plus de raison de la porter.", cle, n, seuilLignesParFonction)
+			continue
+		}
+		if plafond := plafondsParFonction[cle]; n < plafond {
+			t.Errorf("%s : %d lignes physiques sous le plafond fige a %d — baisse le plafond a %d "+
+				"dans plafondsParFonction, dans le commit qui a retire les lignes.", cle, n, plafond, n)
 		}
 	}
 }
@@ -257,14 +266,10 @@ func TestExclusionDuTagResearch(t *testing.T) {
 //   - les declarations sans corps (`func` externes, assembleur) : rien a mesurer.
 func balayerLongueursFonctionsFilm(t *testing.T) map[string]int {
 	t.Helper()
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue")
-	}
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(ici))) // .../apps/go-api
 	out := map[string]int{}
 	for _, racine := range racinesSurveilleesTaille {
-		base := filepath.Join(goAPIRoot, filepath.FromSlash(racine))
+		base := surDisque(t, racine)
+		avant := len(out)
 		err := filepath.WalkDir(base, func(chemin string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -279,10 +284,14 @@ func balayerLongueursFonctionsFilm(t *testing.T) map[string]int {
 			if !strings.HasSuffix(chemin, ".go") || strings.HasSuffix(chemin, "_test.go") {
 				return nil
 			}
-			return releverFonctionsDuFichier(goAPIRoot, chemin, out)
+			return releverFonctionsDuFichier(cheminDeGardeRail(t, chemin), chemin, out)
 		})
 		if err != nil {
 			t.Fatalf("balayage de %s : %v", base, err)
+		}
+		if len(out) == avant {
+			t.Fatalf("aucune fonction de production sous %s : le plancher global ne voit pas une racine "+
+				"qui se vide, ce ratchet ne la garderait plus", racine)
 		}
 	}
 	return out
@@ -291,7 +300,7 @@ func balayerLongueursFonctionsFilm(t *testing.T) map[string]int {
 // releverFonctionsDuFichier ajoute a `out` les fonctions d un fichier. Le fichier est lu une
 // seule fois : ses octets servent d abord au tag de build, puis au parseur (mode 0, sans les
 // commentaires — `fd.Pos()` reste le mot-cle `func`, ce qui est bien la borne voulue).
-func releverFonctionsDuFichier(goAPIRoot, chemin string, out map[string]int) error {
+func releverFonctionsDuFichier(rel, chemin string, out map[string]int) error {
 	blob, err := os.ReadFile(chemin) //nolint:gosec // chemin derive du paquet
 	if err != nil {
 		return err
@@ -304,11 +313,7 @@ func releverFonctionsDuFichier(goAPIRoot, chemin string, out map[string]int) err
 	if err != nil {
 		return err
 	}
-	rel, err := filepath.Rel(goAPIRoot, chemin)
-	if err != nil {
-		return err
-	}
-	prefixe := filepath.ToSlash(rel) + ":"
+	prefixe := rel + ":"
 	for _, decl := range f.Decls {
 		fd, ok := decl.(*ast.FuncDecl)
 		if !ok || fd.Body == nil {

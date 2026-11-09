@@ -33,7 +33,6 @@ package archlint
 import (
 	"go/ast"
 	"go/token"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -42,7 +41,7 @@ import (
 
 const (
 	// paquetKillsourceRemplissage : le paquet garde, relatif a `apps/go-api`.
-	paquetKillsourceRemplissage = "internal/games/halo_infinite/film/internal/facts/killsource"
+	paquetKillsourceRemplissage = racineBriqueFilm + "/internal/facts/killsource"
 	// predicatDeRemplissage : le seul endroit ou le paquet compare un nom a `?`.
 	predicatDeRemplissage = "estNomDeRemplissage"
 	// fichierDuPredicatDeRemplissage : la ou le nom de remplissage est fabrique (DT-6).
@@ -51,7 +50,7 @@ const (
 
 // TestKillsourceUnSeulPredicatDuNomDeRemplissage — LE RATCHET.
 func TestKillsourceUnSeulPredicatDuNomDeRemplissage(t *testing.T) {
-	dir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash(paquetKillsourceRemplissage))
+	dir := surDisque(t, paquetKillsourceRemplissage)
 	violations, predicatVu := violationsDeRemplissage(fichiersGoNonTest(t, dir))
 	if !predicatVu {
 		violations = append(violations, fichierDuPredicatDeRemplissage+" : `"+predicatDeRemplissage+

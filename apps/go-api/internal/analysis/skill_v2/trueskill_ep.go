@@ -56,8 +56,8 @@ const DefaultQuitDeltaRelated = 1.0
 // Calibré pour ≈ β en unités v2.
 const DefaultQuitDeltaUnrelated = 2.5
 
-// QuitPenaltyMuCap borne l'impact d'un quit sur μ (étude volatilité
-// .ai/thought_log.md [2026-05-31]). Sur la grille tier, une pénalité brute de
+// QuitPenaltyMuCap borne l'impact d'un quit sur μ (étude de volatilité
+// du 2026-05-31). Sur la grille tier, une pénalité brute de
 // −2.5 μ représente plusieurs sous-paliers d'un seul coup (jusqu'à ~6 sur le
 // Platine étroit). On plafonne à 1.5 μ : la distinction related (1.0) / unrelated
 // (capé 1.5) reste, mais le pire cas ne peut plus éjecter un joueur d'un tier

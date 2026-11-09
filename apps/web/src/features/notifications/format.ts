@@ -11,6 +11,7 @@ import type { Notification } from './types'
 import { localizeTierLabel, subTierRoman } from '@/lib/skillTiers'
 import { getNotificationsText } from './i18n'
 import type { Locale } from '@/lib/i18n/locale'
+import { fillTemplate } from '@/lib/i18n/template'
 
 export function resolveTitle(
   notif: Pick<Notification, 'title_key' | 'params'>,
@@ -38,7 +39,7 @@ function resolveTemplate(
     // Fallback : retourne la clé brute (utile pour repérer les clés manquantes)
     return key
   }
-  return interpolate(template, enrichParams(params, locale))
+  return fillTemplate(template, enrichParams(params, locale))
 }
 
 // subTierToRoman garde le contrat « unknown → '' si non-numérique ou ≤0 », puis
@@ -126,12 +127,4 @@ export function enrichParams(
     }
   }
   return out
-}
-
-function interpolate(template: string, params?: Record<string, unknown>): string {
-  if (!params) return template
-  return template.replace(/\{(\w+)\}/g, (_, name: string) => {
-    const v = params[name]
-    return v == null ? `{${name}}` : String(v)
-  })
 }

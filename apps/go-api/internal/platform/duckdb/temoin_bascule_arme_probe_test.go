@@ -1,5 +1,5 @@
 // Package duckdb — temoin_bascule_arme_probe_test.go : LE TEMOIN DE BASCULE de l'arme
-// du kill (etape A0 du plan .ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md).
+// du kill.
 //
 // # Pourquoi cette sonde existe
 //
@@ -48,6 +48,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
 )
@@ -267,7 +268,7 @@ func ventilationAncienneChaine(t *testing.T, b *temoinBase, s temoinScope,
 	if err != nil {
 		t.Fatalf("ancienne chaine (weapon_kills) : %v", err)
 	}
-	return fragdist.Build(rows, counts, false)
+	return fragdist.Build(i18n.Default, rows, counts, false)
 }
 
 // ventilationServie : le sunburst tel que le CABLAGE le sert desormais sur les six
@@ -285,7 +286,7 @@ func ventilationServie(t *testing.T, b *temoinBase, s temoinScope,
 	if err != nil {
 		t.Fatalf("nouvelle chaine (source de degat) : %v", err)
 	}
-	return fragdist.Build(rows, counts, false)
+	return fragdist.Build(i18n.Default, rows, counts, false)
 }
 
 // classesTriees rend les classes d'une distribution indexees par nom.

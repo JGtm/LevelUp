@@ -11,7 +11,7 @@
  * Whitelist (heuristique simple, pas de scope analysis complète) :
  *   - Tests et fichiers de fixtures
  *   - Manifests i18n et runtime format.ts
- *   - Composants i18n locaux *.i18n.ts ou features/X/i18n.ts
+ *   - Composants i18n locaux *.i18n.ts, features/X/i18n.ts ou features/X/i18n/<langue>.ts
  *   - Attributs techniques : className, data-*, key, id, role, name, type,
  *     for, htmlFor, form, list, target, rel, src, href, alt si chemin (URL)
  *   - Strings importées via templates literals avec variables (concat)
@@ -77,6 +77,7 @@ const FILE_WHITELIST = [
   /\/__tests__\//,
   /\/i18n\.ts$/,
   /\.i18n\.ts$/,
+  /\/i18n\/[a-z]{2,3}\.ts$/,
   /\/lib\/i18n\/manifests\//,
   /\/lib\/i18n\/generated\//,
   /\/lib\/i18n\/format\.tsx?$/,

@@ -61,3 +61,36 @@ const PRIVACY_CONTACT_PARTS = ['contact', 'lvelup.info'] as const
 export function privacyContactEmail(): string {
   return PRIVACY_CONTACT_PARTS.join('@')
 }
+
+/**
+ * Règles d'usage du contenu de jeu de Microsoft (« Game Content Usage Rules »). La mention
+ * ci-dessous est IMPOSÉE par ces règles : visible de quiconque voit le contenu (pied de page,
+ * page de téléchargement, installeur). Son texte reste en anglais dans toutes les langues de
+ * l'application — c'est le libellé de Microsoft, pas une chaîne d'interface.
+ */
+export const XBOX_GAME_CONTENT_RULES_URL = 'https://www.xbox.com/en-US/developers/rules'
+
+export const MICROSOFT_CONTENT_NOTICE =
+  'Halo Infinite © Microsoft Corporation. LevelUp was created under Microsoft\'s "Game Content Usage Rules" using assets from Halo Infinite, and it is not endorsed by or affiliated with Microsoft.'
+
+/**
+ * Liste des « Media Feature Pack » de Microsoft : les éditions Windows N ou KN n'embarquent pas
+ * Media Foundation, d'où l'absence d'encodeur H.264 (message de la page Médias).
+ */
+export const MEDIA_FEATURE_PACK_URL =
+  'https://support.microsoft.com/topic/media-feature-pack-list-for-windows-n-editions-c1c6fffa-d052-8338-7a79-a4bb980a700a'
+
+/** Dernière version publiée de l'application Windows (page de téléchargement). */
+export const GITHUB_LATEST_RELEASE_URL = `${GITHUB_URL}/releases/latest`
+
+/**
+ * Mentions tierces de l'application de bureau (licences des composants livrés : ffmpeg LGPL, mentions
+ * Microsoft). Le fichier suit la version installée : `v<version>` est le tag de la release ; une version
+ * de développement (« dev », ou tout ce qui n'est pas X.Y.Z) retombe sur la branche principale.
+ */
+const THIRD_PARTY_NOTICES_PATH = 'apps/desktop/THIRD_PARTY_NOTICES.md'
+
+export function thirdPartyNoticesUrl(version: string | null | undefined): string {
+  const ref = version && /^\d+\.\d+\.\d+$/.test(version) ? `v${version}` : 'main'
+  return `${GITHUB_URL}/blob/${ref}/${THIRD_PARTY_NOTICES_PATH}`
+}

@@ -6,7 +6,7 @@
  * compilation de l'autre.
  *
  * LES LIBELLÉS DE COLONNE D'OBJECTIF sont une DEUXIÈME copie assumée de ceux de la vue match
- * (`features/match-view/i18n.ts`, table `objectives.cols`) : l'import croisé entre features est
+ * (`features/match-view/i18n`, table `objectives.cols`) : l'import croisé entre features est
  * interdit par le ratchet. À la troisième copie, centraliser et poser le garde-rail (règle
  * CLAUDE.md n°6).
  */

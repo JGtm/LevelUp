@@ -19,6 +19,8 @@ package wire
 import (
 	"context"
 	"log/slog"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -41,10 +43,26 @@ const diskWatchInterval = 15 * time.Minute
 // au boot : sans persistance, un redémarrage du conteneur en warn/critical (deploy
 // à chaque push main, crash-loop disque plein) re-notifiait via le chemin « boot »
 // à CHAQUE boot → rafale d'alertes Discord identiques observée en prod.
+//
+// L'ARCHIVE DES FILMS, quand elle vit sur un AUTRE VOLUME que les données (réglage `film_archive_dir`,
+// lot L14), est surveillée par la MÊME boucle, aux mêmes seuils, avec son propre état anti-spam :
+// un disque d'archive qui se remplit ne doit ni masquer ni être masqué par celui des données.
 func (r *ServiceRegistry) RunDiskWatchLoop(ctx context.Context) {
-	store := adminstate.NewFileStore(titlePkg.NewPathResolver(r.cfg.RepoRoot).DiskWatchStatePath())
-	state := loadDiskWatchState(ctx, store)
-	state = r.diskWatchTick(ctx, state, store)
+	pr := r.cfg.PathResolver()
+	data := &volumeWatch{
+		name: "data", store: adminstate.NewFileStore(pr.DiskWatchStatePath()),
+		measure: r.resourceDisk, gauge: "disk_data",
+		msgCritical: "disk_watch: espace disque CRITIQUE sur le volume data",
+		msgWarn:     "disk_watch: espace disque faible sur le volume data",
+	}
+	watches := []*volumeWatch{data}
+	if archive := r.filmArchiveWatch(); archive != nil {
+		watches = append(watches, archive)
+	}
+	for _, w := range watches {
+		w.state = loadDiskWatchState(ctx, w.store)
+		w.state = r.diskWatchTick(ctx, w)
+	}
 	t := time.NewTicker(diskWatchInterval)
 	defer t.Stop()
 	for {
@@ -52,9 +70,62 @@ func (r *ServiceRegistry) RunDiskWatchLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			state = r.diskWatchTick(ctx, state, store)
+			for _, w := range watches {
+				w.state = r.diskWatchTick(ctx, w)
+			}
 		}
 	}
+}
+
+// volumeWatch : un volume surveillé, avec son état anti-spam persisté et ses messages (STABLES :
+// ils forment l'empreinte de détection).
+type volumeWatch struct {
+	name        string
+	store       *adminstate.FileStore
+	state       ops.DiskWatchState
+	measure     func() domain.ResourceDisk
+	gauge       string // préfixe des gauges expvar : <gauge>_free_bytes, <gauge>_used_percent
+	msgCritical string
+	msgWarn     string
+}
+
+// filmArchiveWatch rend la surveillance du volume de l'archive des films, ou nil quand elle vit
+// sur le même volume que les données (déjà surveillé, une seule surveillance par volume).
+func (r *ServiceRegistry) filmArchiveWatch() *volumeWatch {
+	return filmArchiveWatchFor(r.cfg.PathResolver())
+}
+
+// filmArchiveWatchFor est filmArchiveWatch pour un résolveur donné.
+func filmArchiveWatchFor(pr *titlePkg.PathResolver) *volumeWatch {
+	dir := pr.FilmArchiveDir()
+	// UN VOLUME, UNE SURVEILLANCE : on compare les volumes et non les chemins. Une archive hors de
+	// la racine des donnees mais sur le meme disque doublerait journaux et notifications.
+	if same, err := ops.SameVolume(dir, pr.DataRoot()); err == nil && same {
+		return nil
+	}
+	return &volumeWatch{
+		name:  "film_archive",
+		store: adminstate.NewFileStore(filmArchiveWatchStatePath(pr.DiskWatchStatePath())),
+		measure: func() domain.ResourceDisk {
+			out := domain.ResourceDisk{Path: dir}
+			vol, err := ops.MeasureVolume(dir)
+			if err != nil {
+				out.Status, out.Error = domain.FreshnessStatusUnknown, err.Error()
+				return out
+			}
+			out.FreeBytes, out.TotalBytes, out.Status = vol.FreeBytes, vol.TotalBytes, vol.Status
+			return out
+		},
+		gauge:       "disk_film_archive",
+		msgCritical: "disk_watch: espace disque CRITIQUE sur le volume de l'archive des films",
+		msgWarn:     "disk_watch: espace disque faible sur le volume de l'archive des films",
+	}
+}
+
+// filmArchiveWatchStatePath : l'état anti-spam de l'archive, à côté de celui des données.
+func filmArchiveWatchStatePath(dataStatePath string) string {
+	ext := filepath.Ext(dataStatePath)
+	return strings.TrimSuffix(dataStatePath, ext) + "_film_archive" + ext
 }
 
 // loadDiskWatchState réhydrate l'état persisté. Fichier absent (premier boot) →
@@ -89,51 +160,51 @@ func saveDiskWatchState(ctx context.Context, store *adminstate.FileStore, state 
 // diskWatchTick mesure, logge, met à jour les gauges et notifie si la politique
 // le décide. Persiste le nouvel état (anti-spam à travers les restarts) et le
 // retourne.
-func (r *ServiceRegistry) diskWatchTick(ctx context.Context, state ops.DiskWatchState, store *adminstate.FileStore) ops.DiskWatchState {
-	disk := r.resourceDisk()
+func (r *ServiceRegistry) diskWatchTick(ctx context.Context, w *volumeWatch) ops.DiskWatchState {
+	disk := w.measure()
 	usedPct := ops.DiskUsedPercent(disk.FreeBytes, disk.TotalBytes)
 
-	observability.SetInt("disk_data_free_bytes", int64(disk.FreeBytes))
-	observability.SetInt("disk_data_used_percent", int64(usedPct))
+	observability.SetInt(w.gauge+"_free_bytes", int64(disk.FreeBytes))
+	observability.SetInt(w.gauge+"_used_percent", int64(usedPct))
 
 	// Log à message STABLE (fingerprint de détection = title+level+module+message,
 	// les valeurs vivent dans les attributs). warn/critical = niveaux distincts →
 	// deux détections distinctes, chacune avec son cycle de vie.
 	attrs := []any{
-		"module", "monitoring", "path", disk.Path, "status", disk.Status,
+		"module", "monitoring", "volume", w.name, "path", disk.Path, "status", disk.Status,
 		"free_bytes", disk.FreeBytes, "total_bytes", disk.TotalBytes,
 		"used_percent", int64(usedPct),
 	}
 	switch disk.Status {
 	case domain.FreshnessStatusCritical:
-		slog.ErrorContext(ctx, "disk_watch: espace disque CRITIQUE sur le volume data", attrs...)
+		slog.ErrorContext(ctx, w.msgCritical, attrs...)
 	case domain.FreshnessStatusWarn:
-		slog.WarnContext(ctx, "disk_watch: espace disque faible sur le volume data", attrs...)
+		slog.WarnContext(ctx, w.msgWarn, attrs...)
 	case domain.FreshnessStatusUnknown:
 		// Mesure indisponible : visible mais pas une alerte (pas de détection ERROR).
-		slog.WarnContext(ctx, "disk_watch: mesure disque indisponible", "module", "monitoring", "err", disk.Error)
+		slog.WarnContext(ctx, "disk_watch: mesure disque indisponible", "module", "monitoring", "volume", w.name, "err", disk.Error)
 	default:
 		slog.DebugContext(ctx, "disk_watch: disque ok", attrs...)
 	}
 
-	shouldNotify, next := ops.ShouldNotifyDisk(state, disk.Status, time.Now())
+	shouldNotify, next := ops.ShouldNotifyDisk(w.state, disk.Status, time.Now())
 	if shouldNotify {
 		observability.IncCounter("disk_watch_notifications_total")
 		cfg := notify.LoadNotifyConfig(r.cfg.AppSettingsPath)
 		if sent := notify.NotifyDiskAlert(cfg, disk.Status, disk.Path, disk.FreeBytes, disk.TotalBytes, usedPct); sent {
-			monitoringLog.InfoContext(ctx, "disk_watch: notification Discord envoyée", "status", disk.Status)
+			monitoringLog.InfoContext(ctx, "disk_watch: notification Discord envoyée", "status", disk.Status, "volume", w.name)
 		} else if cfg.WebhookURL == "" {
 			// Pas de webhook configuré : l'alerte reste visible via la détection
 			// persistée + le badge admin. Log une info pour la traçabilité.
 			monitoringLog.InfoContext(ctx, "disk_watch: alerte sans notification (webhook Discord non configuré)",
-				"status", disk.Status)
+				"status", disk.Status, "volume", w.name)
 		}
 	}
 	// Persister l'état APRÈS la décision (statut confirmé + timestamp de dernière
 	// notification + débounce) pour que l'anti-spam et la garantie « rétablissement
 	// notifié une seule fois » survivent aux redémarrages du conteneur.
-	if next != state {
-		saveDiskWatchState(ctx, store, next)
+	if next != w.state {
+		saveDiskWatchState(ctx, w.store, next)
 	}
 	return next
 }

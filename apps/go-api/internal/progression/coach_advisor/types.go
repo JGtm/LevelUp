@@ -21,6 +21,7 @@ package coach_advisor
 import (
 	"time"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/prestige"
 )
 
@@ -173,8 +174,7 @@ type Proposal struct {
 	Origin       ProposalOrigin
 
 	// I18n
-	ReasonKeyEN  string
-	ReasonKeyFR  string
+	ReasonKey    i18n.Text
 	ReasonParams string // JSON
 
 	Status ProposalStatus

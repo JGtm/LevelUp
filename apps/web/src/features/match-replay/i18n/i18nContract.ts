@@ -63,7 +63,7 @@ export interface EquipmentUsageText {
    * LE BADGE « TEMPS FORT » (`features/match-view/equipmentKillBadges.ts`, LOT F.3) : « N frags
    * sous camouflage » / « N frags sous surbouclier », le nombre RÉEL du meilleur épisode du
    * match — jamais arrondi, jamais une somme sur le joueur. Vit ici (et pas dans
-   * `match-view/i18n.ts`) pour la même raison que le reste du vocabulaire d'équipement : les
+   * `match-view/i18n`) pour la même raison que le reste du vocabulaire d'équipement : les
    * noms de famille appartiennent au dictionnaire du rejeu, `match-view` l'importe (même sens
    * que `MatchEquipmentUsageSection`, réutilisé tel quel par `MatchViewTabChronology`).
    */
@@ -446,8 +446,7 @@ export interface ReplayText {
   layerGroundWeapons: string
   layerGroundWeaponsHint: string
   /**
-   * LE FILTRE « ARMES SPÉCIALES SEULEMENT » du calque des armes au sol (lot 6.5, 2026-09-10,
-   * rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md` §1 et §5 option B). Sniper, power,
+   * LE FILTRE « ARMES SPÉCIALES SEULEMENT » du calque des armes au sol. Sniper, power,
    * special : ce qu'un socle distribue et qu'un adversaire a intérêt à ramasser — 17,4 % des
    * objets au sol, mais 65,3 % des reprises OBSERVÉES. Une bascule fille du calque, comme les
    * objets non identifiés des poses d'équipement : elle ne s'affiche qu'avec son calque.
@@ -480,7 +479,7 @@ export interface ReplayText {
    * LES MUNITIONS DE L'ARME LÂCHÉE (lot 6.6, 2026-09-10) — ET POURQUOI ELLES SONT DATÉES.
    *
    * Le chiffre n'est PAS celui du lâcher : les munitions ne sont pas sur l'objet (mesure du
-   * lot, `.ai/V7.5/RAPPORT_MUNITIONS_OBJET_2026-09-10.md` — 0 égalité sur 1 524 comparaisons
+   * lot : 0 égalité sur 1 524 comparaisons
    * pour la liste de chargeurs du record de création, 10 sur 6 477 pour le R(7) voisin). Ce
    * qui s'affiche est la dernière lecture d'inventaire du LÂCHEUR avant le lâcher, prise aux
    * images-clés, en retard de 9,0 s en médiane et de 18,0 s au neuvième décile.
@@ -861,10 +860,10 @@ export interface ReplayText {
    * LES CHARGES DE LA CAPACITÉ PORTÉE (schéma 38 enrichi, lot P6) : le compte de la lecture
    * la plus récente de la même vie et du même équipement — et « PLEIN » QUALITATIF avant la
    * première lecture (décision utilisateur du 04/09) : le film ne transmet RIEN au ramassage,
-   * un chiffre serait inventé. Une famille que le canal ne mesure pas n'affiche rien du tout
+   * un chiffre serait inventé. « Plein » ne se lit que dans l'infobulle de la vignette
+   * (`abilityChargesFullHint`). Une famille que le canal ne mesure pas n'affiche rien du tout
    * — ni compte, ni « plein » (cf. `abilityChargeLogic.ts`).
    */
-  abilityChargesFull: string
   abilityChargesFullHint: string
   abilityChargesCount: (n: number) => string
   abilityChargesAge: string

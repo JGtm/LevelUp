@@ -1,5 +1,11 @@
 // Package digest — L'EMPREINTE D'UNE VALEUR GO : STABLE, SANS NOM DE TYPE, SANS CHAMP INVISIBLE.
 //
+// COPIE JUMELLE de `libs/film/internal/digest`, que go-api ne peut pas importer (ADR 0041) : le
+// harnais `cmd/replay-equiv` compare ses digests aux references que les tests de la brique figent
+// avec l'autre copie, et les deux rendus doivent etre les memes octets. Les deux copies sont
+// tenues identiques, fichier par fichier, apres la clause `package`
+// (`archlint/copies_identiques_test.go`).
+//
 // # POURQUOI PAS `encoding/json`
 //
 // Le harnais d'equivalence de la cuisson (PLAN_CUISSON_PERF §3 D4) hache la sortie de CHAQUE
@@ -73,12 +79,14 @@ package digest
 
 import (
 	"bytes"
+	"cmp"
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
 	"reflect"
-	"sort"
+	"slices"
 	"strconv"
+	"strings"
 )
 
 // profondeurMax borne la traversee des pointeurs par le comptage. Un type auto-referent
@@ -257,8 +265,9 @@ func (e *encodeur) structure(v reflect.Value, prof int) {
 	for i := range rangs {
 		rangs[i] = i
 	}
-	sort.Slice(rangs, func(a, b int) bool {
-		return t.Field(rangs[a]).Name < t.Field(rangs[b]).Name
+	// Comparateur TOTAL : le nom, puis le rang (deux champs `_` portent le meme nom).
+	slices.SortFunc(rangs, func(a, b int) int {
+		return cmp.Or(strings.Compare(t.Field(a).Name, t.Field(b).Name), cmp.Compare(a, b))
 	})
 	e.ecrire("{")
 	for n, i := range rangs {
@@ -299,7 +308,9 @@ func (e *encodeur) table(v reflect.Value, prof int) {
 	for _, k := range cles {
 		paires = append(paires, paire{cle: e.rendu(k, prof+1), val: v.MapIndex(k)})
 	}
-	sort.Slice(paires, func(i, j int) bool { return paires[i].cle < paires[j].cle })
+	// Tri STABLE sur la seule cle rendue : les entrees a cle egale sont departagees ensuite, par
+	// `departager`, sur le rendu de leur valeur.
+	slices.SortStableFunc(paires, func(a, b paire) int { return strings.Compare(a.cle, b.cle) })
 	e.departager(paires, prof+1)
 	e.ecrire("{")
 	for i, p := range paires {
@@ -344,7 +355,7 @@ func (e *encodeur) departager(paires []paire, prof int) {
 			}
 			// Deux entrees dont la cle ET la valeur rendent les memes octets restent
 			// indiscernables : l'ordre entre elles ne change pas le flux.
-			sort.Slice(groupe, func(a, b int) bool { return groupe[a].valRendu < groupe[b].valRendu })
+			slices.SortStableFunc(groupe, func(a, b paire) int { return strings.Compare(a.valRendu, b.valRendu) })
 		}
 		i = j
 	}

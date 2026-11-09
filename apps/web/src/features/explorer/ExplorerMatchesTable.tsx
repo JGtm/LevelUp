@@ -56,7 +56,7 @@ import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
 import { formatDate, formatDurationMMSS, displayRatingLabel, intlLocale as toIntlLocale } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
-import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navContext'
+import { labelsOfOptions, type ContextDescriptor, type MatchFilterSpec } from '@/lib/match-nav/navContext'
 import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
 import { MatchReplayLink } from '@/lib/match-nav/MatchReplayLink'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
@@ -248,9 +248,9 @@ function columnIdOf(c: ColumnDef<ExplorerMatchRow>): string | undefined {
   return (c as { id?: string }).id ?? (c as { accessorKey?: string }).accessorKey
 }
 
-function fmtMmr(v: number | null | undefined): string {
+function fmtMmr(v: number | null | undefined, intlTag: string): string {
   if (v === undefined || v === null) return '-'
-  return Math.round(v).toLocaleString()
+  return Math.round(v).toLocaleString(intlTag)
 }
 
 function fmtDeltaMMR(v: number | null | undefined): ReactNode {
@@ -369,6 +369,9 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
 
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const filterContext = useSoloFilterStore((s) => s.filterContext)
+  // Options du filtre global (clé -> libellé dans la langue de la page) : le descripteur de retour du
+  // match affiche le libellé, pas la clé (nom de la langue par défaut).
+  const availableOptions = useSoloFilterStore((s) => s.resolvedContext?.available_options)
   const allMatchIds = useMemo(() => rows.map((r) => r.match_id), [rows])
   // Seuils de décile (p10/p90) MVP/LVP par colonne, calculés sur TOUT le scope
   // chargé (`rows`, pas la page visible) → indépendants du tri et de la
@@ -382,7 +385,12 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       // Phase 4 : filterSpecOverride (filtres Explorer locaux) prime sur la
       // dérivation soloFilterStore (vide en contexte Explorer).
       const filterSpec =
-        filterSpecOverride ?? filterContextToMatchFilterSpec(filterContext) ?? undefined
+        filterSpecOverride ??
+        filterContextToMatchFilterSpec(filterContext, {
+          playlistLabels: labelsOfOptions(availableOptions?.playlists),
+          modeLabels: labelsOfOptions(availableOptions?.modes),
+        }) ??
+        undefined
       navigateToMatch(matchId, {
         source: 'explorer',
         matchIds: allMatchIds,
@@ -390,7 +398,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         contextDescriptor,
       })
     },
-    [navigateToMatch, allMatchIds, filterContext, contextDescriptor, filterSpecOverride],
+    [navigateToMatch, allMatchIds, filterContext, availableOptions, contextDescriptor, filterSpecOverride],
   )
 
   // Labels outcome (pas de Badge, juste texte coloré comme Squad)
@@ -879,7 +887,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
               ...NUMERIC_SORT,
               cell: (ctx) => (
                 <span className="text-muted-foreground font-mono tabular-nums">
-                  {fmtMmr(ctx.getValue<number | null | undefined>())}
+                  {fmtMmr(ctx.getValue<number | null | undefined>(), intlLocale)}
                 </span>
               ),
             } as ColumnDef<ExplorerMatchRow>,
@@ -891,7 +899,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
               ...NUMERIC_SORT,
               cell: (ctx) => (
                 <span className="text-muted-foreground font-mono tabular-nums">
-                  {fmtMmr(ctx.getValue<number | null | undefined>())}
+                  {fmtMmr(ctx.getValue<number | null | undefined>(), intlLocale)}
                 </span>
               ),
             } as ColumnDef<ExplorerMatchRow>,

@@ -112,6 +112,8 @@ data/refresh*.json
 data/*.db
 data/*.db-journal
 data/investigation/
+# Identifiants Xbox reels des films de test (liste d'origine du harnais replay-equiv) : jamais versionnes.
+data/film_identites/
 data/cache/*
 # Exception : images de rang carrière bundlées au repo pour éviter
 # 272 appels Halo upstream à chaque déploiement (cf. populate-career-rank-images CLI).
@@ -166,6 +168,8 @@ apps/go-api/token_*.txt
 # diagnostic conservée localement, uploadée en artefact par la CI si le gate échoue.
 # NB : la baseline de RÉFÉRENCE (.ai/baselines/tests_pre_migration.jsonl) reste versionnée.
 apps/go-api/baseline_current.jsonl
+# Idem pour la voie film (module libs/film, baseline .ai/baselines/tests_libs_film.jsonl).
+apps/go-api/baseline_current_libs_film.jsonl
 # stderr du run PowerShell natif de scripts/gate-push.ps1 (contournement git-bash/emutls,
 # cf. docs/COMMANDS.md) — même statut que le JSONL ci-dessus, diagnostic local only.
 apps/go-api/baseline_current.stderr.log
@@ -353,29 +357,39 @@ apps/go-api/backfill.log
 tools/ce/*.bin
 tools/ce/*.csv
 
-# .ai/V7.5/dumps/ : seules restent les fixtures lues par des tests (NOTICE par. 4), nommees
-# une a une ; tout le reste est une sortie de recherche ou un extrait du jeu, hors du depot.
-# Les variantes de carte (.mvar) re-telechargeables ne sont pas versionnees : seules trois
-# sont suivies, comme temoins de test. Le resultat extrait est versionne dans
+# .ai/archive/V7.5/dumps/ : sorties de recherche et extraits du jeu, hors du depot (NOTICE par. 4).
+# Les fixtures de test des cartes vivent hors de .ai : les .mvar dans le testdata/ de la brique
+# mapvar (qui les possede ; une seule copie), le reste sous internal/testfixtures/testdata/cartes/.
+# Le testdata/ de mapvar sert aussi de cache local des variantes (.mvar) re-telechargeables, dont
+# seules trois sont suivies, comme temoins de test. Le resultat extrait est versionne dans
 # data/titles/{slug}/reference/map_objectives.json — c'est lui qui fait foi.
-.ai/V7.5/dumps/*
-!.ai/V7.5/dumps/callout_zones_ridgeline_clipped.json
-!.ai/V7.5/dumps/carte_validee_v1.png
-!.ai/V7.5/dumps/mapvar/
-.ai/V7.5/dumps/mapvar/*
-!.ai/V7.5/dumps/mapvar/cliffhanger_map.mvar
-!.ai/V7.5/dumps/mapvar/cliffhanger_ridgeline.mvar
-!.ai/V7.5/dumps/mapvar/vagabond_fo08_wetland.mvar
+.ai/archive/V7.5/dumps/*
+libs/gamefiles/mapvar/testdata/*.mvar
+!libs/gamefiles/mapvar/testdata/cliffhanger_map.mvar
+!libs/gamefiles/mapvar/testdata/cliffhanger_ridgeline.mvar
+!libs/gamefiles/mapvar/testdata/vagabond_fo08_wetland.mvar
 
 # Caches Go de build des agents (scratch, jamais versionnes)
 .gocache-*/
 
-# Artefacts ecrits par le corpus gamefiles de internal/himap (gate visuel, planches de
-# revue). Ils sont REGENERES a chaque run et ne doivent pas entrer dans le depot ; le seul
-# PNG versionne de ce dossier est `coupe.png`, qui est une reference, pas une sortie.
-apps/go-api/internal/himap/gate.png
+# Artefact ecrit par le gate visuel du corpus gamefiles (`internal/gamefilescorpus`),
+# regenere a chaque run, ne doit pas entrer dans le depot.
+apps/go-api/internal/gamefilescorpus/gate.png
 data/global/player_friends.json
 
 # Sorties de decompilation du jeu (Ghidra) : propriete de Microsoft, jamais versionnees
 # (NOTICE par. 4). Elles vivent hors du depot ; les releves ecrits (Markdown) restent.
 .ai/**/*.c
+data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb.avant-purge-20261026
+
+# Coquille desktop (Rust, ADR 0045 D-18) : sorties de compilation, schemas generes par tauri-build,
+# dependances npm du CLI Tauri et serveur Go copie sous le nom du sidecar (scripts/desktop-dev.ps1).
+# Cargo.lock reste VERSIONNE (inventaire des dependances Rust, NOTICE par. 6).
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+apps/desktop/node_modules/
+apps/desktop/src-tauri/binaries/*.exe
+# Ressources assemblees pour l'installeur (apps/desktop/scripts/stage-bundle.ps1) et sorties locales du lot L17.
+apps/desktop/src-tauri/bundle-staging/
+apps/desktop/src-tauri/pack-staging/
+apps/desktop/src-tauri/pack-staging.fingerprint

@@ -104,8 +104,7 @@ func TestTemplate_JSONRoundtrip(t *testing.T) {
 		Cadence:         CadenceDaily,
 		EvalType:        EvalThreshold,
 		ModeFilter:      "universal",
-		LabelEN:         "Stay sharp",
-		LabelFR:         "Reste affûté",
+		Label:           "Stay sharp", // forme servie : les textes par langue (Labels) ne sont pas sérialisés
 		NormalTarget:    1.10,
 		HeroicTarget:    1.35,
 		LegendaryTarget: 1.60,
@@ -120,10 +119,8 @@ func TestPresetArc_JSONRoundtrip(t *testing.T) {
 	original := PresetArc{
 		ID:            "halo_infinite.slayer",
 		TitleSlug:     "halo_infinite",
-		TitleEN:       "The Slayer",
-		TitleFR:       "Le Slayer",
-		DescriptionEN: "Become the force",
-		DescriptionFR: "Deviens la force",
+		Title:         "The Slayer", // forme servie : les textes par langue (Titles) ne sont pas sérialisés
+		Description:   "Become the force",
 		SchemaVersion: 1,
 		UpdatedAt:     time.Now().UTC().Truncate(time.Second),
 		Steps: []PresetArcStep{

@@ -1,6 +1,6 @@
 # Manifest i18n PARTAGÉ « Répartition des frags » v2 (sunburst classe→rôle +
 # breakdown par arme). Réutilisé par 4 surfaces : Synthesis, Match view,
-# Timeseries, Sessions. Cf. .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P1.6.
+# Timeseries, Sessions.
 # Chaque clé DOIT porter fr ET en (contrôlé par build_i18n_manifests.mjs).
 
 # ── Titres de cartes ──────────────────────────────────────────────────────────

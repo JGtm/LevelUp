@@ -31,10 +31,9 @@ function isEncounterSemanticToken(s: string): s is SemanticToken {
   return s.startsWith('narrative-') || s.startsWith('outcome-') || s.startsWith('perf-')
 }
 
-function renderEncounterBadges(badges: MatchEncounterBadge[], locale: string) {
-  const manifestLocale: Locale = locale === 'en' ? 'en' : 'fr'
+function renderEncounterBadges(badges: MatchEncounterBadge[], locale: Locale) {
   const sqT = (key: SquadManifestKey, values?: Record<string, string | number>) =>
-    formatMessage(squadManifest, key, manifestLocale, values)
+    formatMessage(squadManifest, key, locale, values)
   return badges.map((badge, i) => {
     const labelKey = badge.label_key as SquadManifestKey
     const ordinal =
@@ -52,7 +51,7 @@ function renderEncounterBadges(badges: MatchEncounterBadge[], locale: string) {
 export interface ExplorerPlayerModeProps {
   playerSlug: string
   targetGamertag: string
-  locale: string
+  locale: Locale
   t: (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
   playerQuery: {
     data: ExplorerPlayerQueryResponse | undefined

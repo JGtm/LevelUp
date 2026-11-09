@@ -284,7 +284,7 @@ func kindsOf(writes []persist.RegistryNameWrite) []string {
 	return out
 }
 
-// translationCache mémoïse lookupAssetCanonicalEN par (genre, identifiant) : un même asset
+// translationCache mémoïse lookupAssetCanonicalName par (genre, identifiant) : un même asset
 // revient sur des centaines de matchs. Une lecture en échec est journalisée et vaut « pas de
 // traduction » (l'asset reste compté sans source).
 type translationCache struct {
@@ -301,7 +301,7 @@ func (c *translationCache) lookup(ctx context.Context, kind, id string) string {
 	if n, ok := c.names[key]; ok {
 		return n
 	}
-	n, err := lookupAssetCanonicalEN(ctx, c.db, kind, id)
+	n, err := lookupAssetCanonicalName(ctx, c.db, kind, id)
 	if err != nil {
 		slog.WarnContext(ctx, "BackfillRegistryNames: lecture de traduction échouée",
 			"asset_type", kind, "asset_id", id, "err", err)

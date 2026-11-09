@@ -30,7 +30,6 @@ const LABELS: FragSunburstLabels = {
   formatValue: (n) => String(n),
   formatShare: (n) => `${n}%`,
   othersLabel: (n) => `autres:${n}`,
-  locale: 'fr',
 }
 
 const DIST: FragDistribution = {

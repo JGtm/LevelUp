@@ -20,6 +20,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
@@ -54,8 +55,7 @@ func sprMatches() []legacymatch.StatsMatchRow {
 	return []legacymatch.StatsMatchRow{{
 		MatchID:   sprMatch,
 		StartTime: time.Date(2026, 9, 21, 21, 0, 0, 0, time.UTC),
-		MapName:   "Live Fire",
-		MapNameFR: "Tir réel",
+		MapName:   i18n.FromColumns("Live Fire", "Tir réel"),
 	}}
 }
 

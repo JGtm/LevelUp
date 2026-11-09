@@ -13,12 +13,17 @@ import { MediaLightbox, MediaThumbnailCard } from './MediaViewer'
 import { buildOwnerColorMap } from './mediaOwnerColors'
 import { MediaToolbar } from './MediaToolbar'
 import { MediaMatchPicker } from './MediaMatchPicker'
+import { MediaNoEncoderNotice } from './MediaNoEncoderNotice'
+import { MediaMissingDialog } from './MediaMissingDialog'
+import { MediaFolderNotice } from './MediaFolderNotice'
 import { useMediaPicker } from './useMediaPicker'
 import { usePlayerGamertag } from './usePlayerGamertag'
 import { UploadButton } from './UploadButton'
 import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { getMediaText, type MediaText } from './i18n'
 import { useDeleteMedia, useMediaAuthors, useMediaPage, useToggleMediaLike, useFeedVersion } from './queries'
+import { useMissingMedia, useRevealMedia } from './missingQueries'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query/keys'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
@@ -179,6 +184,7 @@ export function MediaPage() {
   const [unassignedOnly, setUnassignedOnly] = useState(false)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
   const picker = useMediaPicker()
+  const [missingOpen, setMissingOpen] = useState(false)
   const [autoChain, setAutoChain] = useState(false)
 
   const request: MediaQueryRequest = {
@@ -204,6 +210,11 @@ export function MediaPage() {
   // actif : le like est l'action du visiteur, attribuée à son propre profil (ADR 0029).
   const canWrite = useCanWritePlayer(playerSlug)
   const likeDisabled = toggleMediaLike.isPending
+  // Fichiers introuvables : écran réservé à qui peut écrire sur ce profil.
+  const missing = useMissingMedia(playerSlug, canWrite)
+  const missingCount = missing.data?.items?.length ?? 0
+  const canReveal = useDeploymentCapability('can_reveal_files_in_explorer')
+  const reveal = useRevealMedia(playerSlug)
   // Mémoïsé pour stabiliser les useMemo/useCallback consommateurs (indexByPath,
   // groups, handleOpenMatch) — sinon `[] ?? data` change de référence à chaque render.
   const mediaItems = useMemo<MediaItemRow[]>(() => data?.items?.items ?? [], [data])
@@ -333,6 +344,7 @@ export function MediaPage() {
           autoChain={autoChain}
           onToggleAutoChain={() => setAutoChain((prev) => !prev)}
           onDelete={canWrite ? (item) => deleteMedia.mutate(item.file_path) : undefined}
+          onReveal={canWrite && canReveal ? (item) => reveal.mutate({ file_path: item.file_path }) : undefined}
           deleteBusy={deleteMedia.isPending}
         />
       )}
@@ -345,6 +357,9 @@ export function MediaPage() {
           onClose={picker.close}
         />
       )}
+
+      <MediaNoEncoderNotice />
+      {missingOpen && <MediaMissingDialog playerSlug={playerSlug} onClose={() => setMissingOpen(false)} />}
 
       {/* Zone d'upload pleine largeur (vient en premier pour rapprocher les filtres de la grille) */}
       {canWrite && <UploadButton playerSlug={playerSlug} fullWidth />}
@@ -364,6 +379,8 @@ export function MediaPage() {
           likedOnly={likedOnly}
           unassignedOnly={unassignedOnly}
           totalUnassigned={data?.total_unassigned ?? 0}
+          missingCount={missingCount}
+          onOpenMissing={() => setMissingOpen(true)}
           playlistOptions={playlistOptions}
           mapOptions={mapOptions}
           modeOptions={modeOptions}
@@ -378,6 +395,14 @@ export function MediaPage() {
           onUnassignedOnlyChange={handleUnassignedOnlyChange}
         />
       </div>
+
+      {canWrite && missing.data && (
+        <MediaFolderNotice
+          playerSlug={playerSlug}
+          rootUnavailable={missing.data.root_unavailable}
+          bulkPending={missing.data.bulk_missing_pending}
+        />
+      )}
 
       {isLoading ? null : isError ? (
         <div className="p-8 text-center text-destructive">{text.errorPrefix} {extractErrorMessage(error)}</div>

@@ -16,8 +16,9 @@ import (
 	"sync"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"github.com/JGtm/LevelUp/libs/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 func mcEntree(id string) replay.MapWeaponPadsEntry {

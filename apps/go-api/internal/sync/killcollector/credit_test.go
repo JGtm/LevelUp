@@ -20,12 +20,14 @@ package killcollector
 import (
 	"context"
 	"database/sql"
-	_ "github.com/duckdb/duckdb-go/v2"
 	"testing"
 
+	_ "github.com/duckdb/duckdb-go/v2"
+
 	"levelup/go-api/internal/domain/killscope"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // ─── Harnais ───────────────────────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 //go:build cgo
 
-// cmd/seed-weapon-labels — repare metadata.weapon_labels quand la table est
-// vide alors que la migration `add_weapon_labels` est marquee done dans
+// cmd/seed-weapon-labels — repare metadata.weapon_labels et ses noms par langue
+// (weapon_label_names) quand la table est vide alors que la migration `add_weapon_labels` est marquee done dans
 // schema_migrations (cas observe sur les .duckdb prebuilts ou apres reset
 // partiel de la metadata).
 //
@@ -38,12 +38,12 @@ func main() {
 	defer db.Close()
 
 	var before int
-	if err := db.QueryRow("SELECT COUNT(*) FROM weapon_labels").Scan(&before); err != nil {
+	if err := db.QueryRow("SELECT COUNT(*) FROM weapon_label_names").Scan(&before); err != nil {
 		// Table absente — on continue, ApplyLabels la cree.
 		fmt.Printf("Avant : table absente ou erreur (%v)\n", err)
 		before = -1
 	} else {
-		fmt.Printf("Avant : %d rows dans weapon_labels\n", before)
+		fmt.Printf("Avant : %d noms (arme x langue) dans weapon_label_names\n", before)
 	}
 
 	if err := weapons.ApplyLabels(db); err != nil {
@@ -51,11 +51,11 @@ func main() {
 	}
 
 	var after int
-	if err := db.QueryRow("SELECT COUNT(*) FROM weapon_labels").Scan(&after); err != nil {
+	if err := db.QueryRow("SELECT COUNT(*) FROM weapon_label_names").Scan(&after); err != nil {
 		log.Fatalf("count after: %v", err)
 	}
 	fmt.Printf("Apres : %d rows\n", after)
 	if before >= 0 && after > before {
-		fmt.Printf("Inserees : %d nouvelles entrees\n", after-before)
+		fmt.Printf("Inserees : %d nouveaux noms\n", after-before)
 	}
 }

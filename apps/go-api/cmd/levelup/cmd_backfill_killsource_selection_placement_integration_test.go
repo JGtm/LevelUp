@@ -3,7 +3,7 @@
 package main
 
 // cmd_backfill_killsource_selection_placement_integration_test.go — LA FRAICHEUR DU PLACEMENT DES
-// VIES DANS LA SELECTION DU RATTRAPAGE (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, decision V12).
+// VIES DANS LA SELECTION DU RATTRAPAGE.
 //
 // `matchsAJour` exige, pour tout match qui a des vies, une passe de `match_life_placement_latest`
 // a `killcollector.PlacementRev`. La requete tourne ici sur une vraie base migree : les quatre
@@ -19,13 +19,14 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/domain/killscope"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/types"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/killcollector"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
 // baseDeSelection ouvre un shared migre par les VRAIES migrations.

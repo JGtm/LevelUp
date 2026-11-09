@@ -9,7 +9,7 @@ package archlint
 // des valeurs deja lues. A la pose de ce ratchet c etait faux — SEPT lecteurs de bits distincts
 // vivaient dans NEUF paquets, et chacun reposait sur sa propre idee du bourrage, du
 // debordement et de l ordre des bits. Le lot 2.4 les a ramenes a une facade unique
-// (`film.Source`, nee dans `internal/games/halo_infinite/film/internal/source/`, decision V15 (1)).
+// (`film.Source`, nee dans `libs/film/internal/source/`, decision V15 (1)).
 //
 // # L ALLOWLIST N EXISTE PLUS (lot 2.5.e, 2026-09-16)
 //
@@ -54,7 +54,7 @@ package archlint
 //	                  position EN BITS (`bp`, `bitPos`, `bitOff`, ...). C est le motif
 //	                  structurel : un septieme lecteur invente demain sous un nom neuf rougit
 //	                  quand meme. Une position en OCTETS (`pos`) ne compte pas — sinon tout
-//	                  decodeur d octets du depot (`replay/mapvar/cb2.go`) rougirait.
+//	                  decodeur d octets du depot (`libs/gamefiles/mapvar/cb2.go`, hors perimetre) rougirait.
 //	motifChunk        indexation ou tranchage d une valeur nommee `chunk` / `chunks` /
 //	                  `chunk0` DONT LE TYPE DECLARE dans le paquet est `[]byte` ou
 //	                  `[][]byte`. Le controle de type evite les faux positifs reels :
@@ -64,12 +64,13 @@ package archlint
 //	                  les racines ci-dessous, les seuls octets qu on lit sont ceux d un film ;
 //	                  les fichiers d installation du jeu sont declares hors racines. Mesure du
 //	                  2026-09-17 : aucun usage non lie au film dans le perimetre.
-//	motifInflate      import de `compress/zlib` ou `compress/flate`. La decompression est au
-//	                  source, et rien qu a lui (`source.Inflate`).
+//	motifInflate      import de `compress/zlib`, `compress/flate` ou (D-18) de
+//	                  `klauspost/compress/zstd`. La decompression est au source, et rien qu a
+//	                  lui (`source.Inflate`, `source.CompresserZstd`).
 //
 // # LA CIBLE
 //
-// La couche `source` — aujourd hui `internal/games/halo_infinite/film/internal/source/`, demain
+// La couche `source` — aujourd hui `libs/film/internal/source/`, demain
 // `film/internal/source` (lot 2.5.a) — est le SEUL lieu autorise. Elle est exclue du balayage.
 // Tout autre site des racines surveillees est une violation, sans exception : l allowlist
 // datee a ete supprimee avec sa derniere entree au lot 2.5.e.
@@ -88,7 +89,7 @@ package archlint
 //
 // # L INVENTAIRE RE-MESURE, ET L ECART AVEC LA NOTE DE PREPARATION
 //
-// `.ai/V7.5/PREPARATION_M2_PAS_4_A_6_2026-09-17.md` §1.1 annonce 6 lecteurs de bits, 9 paquets et
+// La note de preparation de l etape M2 annonce 6 lecteurs de bits, 9 paquets et
 // environ 120 sites. Re-mesure du 2026-09-17 sur `24b67e339`, par ce balayage : **77 couples
 // (fichier, motif) de production**, tous mis en allowlist ce jour-la. Les deux comptes ne mesurent
 // pas la meme chose (la note compte les SITES, ce ratchet compte les couples fichier x motif,
@@ -121,7 +122,7 @@ package archlint
 //	            par appel sur 109 168 positions reelles des dix bobines versionnees
 //	            (`killsource/equivalence_lecteur_test.go`) et de bout en bout par le golden des
 //	            triplets fige AVANT l absorption (`chaines_evenements_test.go`).
-//	2.4.2 (63)  VIDEE le 2026-09-18. La facade EST `internal/games/halo_infinite/film/internal/source` (V15 (1)), et
+//	2.4.2 (63)  VIDEE le 2026-09-18. La facade EST `libs/film/internal/source` (V15 (1)), et
 //	            elle porte desormais TOUT ce qui touche un octet de film :
 //	              - le lecteur canonique [source.Bits] et ses quatre conventions de bord
 //	                nommees (`BitsAt`, `BitAt`, `BitsTolerants`, `BitsTronques`) ;
@@ -197,11 +198,18 @@ const plancherFichiersOctets = 850
 // racinesOctetsBruts : les racines surveillees, relatives a `apps/go-api`. Ce sont les
 // arborescences ou un octet de film peut apparaitre — mesure du 2026-09-17, aucun paquet hors
 // de la ne lit d octets de film.
+//
+// La brique API Halo (plan D3) rejoint les racines le 2026-10-29, AVANT que `infinite` n y rende
+// les octets COMPRIMES des films : sans cela ils circuleraient hors de toute racine surveillee
+// (decouverte D3-L0-n). Module `libs/haloapi` depuis le 2026-11-01 (plan PUBLICATION, lot 3) : la
+// racine suit le module (chemin de garde-rail sous `libs/`, comme `libs/film`). La racine doit exister
+// (`doc.go` du paquet parent).
 var racinesOctetsBruts = []string{
-	"internal/games/halo_infinite/film",
+	"libs/film",
 	"internal/analysis",
 	"internal/sync",
 	"internal/replaybuild",
+	racineBriqueHaloapi,
 	"cmd",
 }
 
@@ -211,18 +219,20 @@ var racinesOctetsBruts = []string{
 type exclusionOctets struct{ chemin, raison string }
 
 var exclusionsOctetsBruts = []exclusionOctets{
-	{chemin: "internal/games/halo_infinite/film/internal/source", raison: "LA COUCHE SOURCE : le seul lieu " +
+	{chemin: "libs/film/internal/source", raison: "LA COUCHE SOURCE : le seul lieu " +
 		"autorise (ADR 0034 D-2). Passe sous `film/internal/source` au lot 2.5.a ; ce " +
 		"deplacement se repercute ICI, sur cette ligne."},
+	{chemin: "libs/film/filmshell", raison: "le CATALOGUE D ARMES (hex -> nom, " +
+		"timings, sentinelles) : il NOMME les armes et decode leurs identifiants (`hexToUint64`, " +
+		"`IDFromBytes` sur huit octets deja extraits), il ne lit aucun octet d un film. Etait hors " +
+		"des racines sous `games/weapons/filmshell` (lot 2.5.e) ; entre sous `film/` le " +
+		"2026-10-29 (plan D2, item 2.5) sans changer de nature."},
 	{chemin: "cmd/weapon-sounds", raison: "lit les banques Wwise de l INSTALLATION DU JEU, " +
 		"jamais un film."},
 	{chemin: "cmd/weapon-icons-build", raison: "lit les modules et les textures BC7 de " +
 		"l INSTALLATION DU JEU (son propre `bitReader` de `bc7.go` decode un bloc de " +
 		"texture), jamais un film."},
-	{chemin: "internal/games/halo_infinite/film/replay/mapvar", raison: "lit les VARIANTES " +
-		"DE CARTE `.mvar` (Bond CompactBinary v2, stockage UGC), jamais les chunks d un " +
-		"film. Le paquet vit sous `film/` par proximite d usage, pas par format."},
-	{chemin: "internal/games/halo_infinite/film/research/reapparition", raison: "lit " +
+	{chemin: "libs/film/research/reapparition", raison: "lit " +
 		"`HaloInfinite.exe` — l EXECUTABLE DE L INSTALLATION DU JEU (en-tetes PE, sections, " +
 		"repertoire d exceptions `.pdata`), jamais un film. Meme nature que `cmd/weapon-sounds` " +
 		"et `cmd/weapon-icons-build` ci-dessus. Pose au lot 3.7 (2026-09-17) : l instrument y " +
@@ -271,7 +281,11 @@ var nomsDeChunk = map[string]bool{"chunk": true, "chunks": true, "chunk0": true}
 
 var ordresDOctets = map[string]bool{"LittleEndian": true, "BigEndian": true}
 
-var paquetsDeDecompression = map[string]bool{"compress/zlib": true, "compress/flate": true}
+// paquetsDeDecompression : zlib et flate, et zstd depuis D-18 (2026-11-01, stockage des chunks du
+// cache en zstd-3) — `source/zstd.go` est le seul fichier du depot qui importe la bibliotheque.
+var paquetsDeDecompression = map[string]bool{
+	"compress/zlib": true, "compress/flate": true, "github.com/klauspost/compress/zstd": true,
+}
 
 // TestAucuneLectureDOctetsBrutsHorsDeLaSource : hors de la couche `source`, aucun site des
 // racines surveillees ne lit d octets de film — sauf les couples dates ci-dessus.

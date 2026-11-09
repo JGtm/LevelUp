@@ -12,8 +12,9 @@ package replayidentity
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // ajouter rend la tranche agrandie d un element nul et un pointeur vers lui. Le type des entrees

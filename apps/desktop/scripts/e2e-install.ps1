@@ -1,0 +1,373 @@
+<#
+.SYNOPSIS
+    Test de bout en bout de l'installeur NSIS (ADR 0045 D-21, plan L17.3) : installation silencieuse,
+    deux lancements, fermeture par WM_CLOSE, desinstallation qui conserve les donnees.
+
+.DESCRIPTION
+    Sequence, chaque etape est une assertion (la premiere qui echoue arrete le script, code 1) :
+
+      1. installation silencieuse (/S) sous %LOCALAPPDATA%\Programs\LevelUp ; programme, serveur,
+         ffmpeg, front et mentions tierces presents ; le dossier du programme n'est PAS la racine de
+         donnees par defaut (%LOCALAPPDATA%\LevelUp) ;
+      2. lancement avec LEVELUP_DATA_DIR sur une racine JETABLE (les donnees de l'utilisateur ne
+         sont jamais touchees), attente de <DataRoot>\desktop\port, GET /health = 200 (le routeur
+         est ouvert : le serveur a annonce `ready`) ;
+      3. fermeture par WM_CLOSE (CloseMainWindow), attente de la sortie de l'application ; le
+         journal porte une ligne `arret: termine` de plus avec clean=true, et AUCUN fichier *.wal
+         ne reste sous la racine de donnees (hors backups) : l'observable d'un arret propre
+         (contrat coquille/serveur, plan section 6, point 5) ;
+      4. relancement (meme port memorise, /health 200) puis nouvelle fermeture propre ;
+      4b. (avec -EngineInstaller) MISE A JOUR MOTEUR SEUL (ADR 0045, amendement L24) : l'installeur du moteur
+         est lance par-dessus l'installation complete avec /S /UPDATE, comme le fait l'updater. Deux fichiers
+         sont supprimes avant : un fichier du MOTEUR (config\locales.toml), qui doit revenir, et un fichier du
+         PAQUET (LICENSE.LGPL, livre avec ffmpeg), qui ne doit PAS revenir : preuve que l'installeur moteur seul
+         ne reinstalle pas les ressources, alors que le complet l'aurait fait. Tous les autres fichiers du paquet
+         (manifeste compris) gardent leur somme SHA-256 ; l'application demarre et ferme proprement une
+         troisieme fois (le serveur y verifie l'empreinte de son paquet contre le manifeste) ;
+      5. desinstallation silencieuse : le programme disparait ; la racine de donnees par defaut
+         (%LOCALAPPDATA%\LevelUp), ou le script a pose une sentinelle avant l'installation, existe
+         encore avec sa sentinelle (le desinstalleur ne la supprime jamais), comme la racine jetable ;
+         le desinstalleur a lance `levelup-server.exe -mode uninstall-cleanup` (crochet NSIS, ADR 0045
+         D-28) : le serveur ecrit son bilan dans le fichier temoin LEVELUP_UNINSTALL_WITNESS (racine
+         jetable, dossier du programme, `exit=0`, `ok=true`, tache de la racine jetable nommee et absente,
+         paquet de ressources retire : `ressources=<n>-fichiers`). Apres une mise a jour moteur seul, le
+         desinstalleur ne connait plus les fichiers du paquet : c'est ce nettoyage qui les retire, et le dossier
+         du programme doit disparaitre ENTIEREMENT.
+         Le test ne pose aucune entree de demarrage ni tache planifiee (trop risque sur le poste) : le
+         bilan attendu est `demarrage=absent` (ou `foreign` : une entree d'un autre dossier sur le poste) et
+         `tache=absent`, jamais `removed`. La branche du desinstalleur "LEVELUP_DATA_DIR absente" n'est PAS
+         jouee (elle viserait la vraie racine de donnees) : elle est tenue par le garde de texte Rust.
+
+    Verifications prealables, AVANT tout lancement et sans aucun nettoyage : le script refuse (code 1)
+    si LevelUp est deja installe (dossier du programme, cle de registre NSIS du produit ou de
+    desinstallation) ou si levelup-desktop.exe / levelup-server.exe tourne. Il ne tue que les
+    processus qu'il a lui-meme lances et ne desinstalle que ce qu'il a lui-meme installe. Il rend la
+    main avec le code 0 ou 1 ; en cas d'echec il copie les journaux sous -ArtifactsDir.
+
+.PARAMETER Installer
+    L'installeur NSIS COMPLET (LevelUp_X.Y.Z_x64-setup.exe).
+
+.PARAMETER EngineInstaller
+    L'installeur NSIS MOTEUR SEUL (LevelUp_X.Y.Z_x64-engine-setup.exe) : active l'etape de mise a jour (4b).
+
+.PARAMETER DataDir
+    Racine de donnees jetable (defaut : un dossier neuf sous %TEMP%).
+
+.PARAMETER ArtifactsDir
+    Ou copier les journaux en cas d'echec (defaut : %TEMP%\levelup-e2e-artifacts).
+
+.PARAMETER TimeoutSec
+    Delai de chaque attente (port, /health), en secondes. Le premier demarrage migre des bases
+    vides : defaut 240.
+
+.EXAMPLE
+    powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer .\LevelUp_8.1.0_x64-setup.exe
+#>
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory = $true)][string]$Installer,
+    [string]$EngineInstaller = '',
+    [string]$DataDir = '',
+    [string]$ArtifactsDir = '',
+    [int]$TimeoutSec = 240
+)
+
+$ErrorActionPreference = 'Stop'
+$InstallDir = Join-Path $env:LOCALAPPDATA 'Programs\LevelUp'
+$DefaultDataRoot = Join-Path $env:LOCALAPPDATA 'LevelUp'
+$Sentinel = Join-Path $DefaultDataRoot 'e2e-sentinelle.txt'
+# Editeur de la cle de registre NSIS (HKCU:\Software\<editeur>\LevelUp) : deduit par Tauri de `identifier`
+# (info.lvelup.desktop) dans tauri.conf.json.
+$Manufacturer = 'lvelup'
+$MainExe = Join-Path $InstallDir 'levelup-desktop.exe'
+# Ligne de journal du serveur a l'arret, construite sans caracteres non ASCII dans ce fichier.
+$StopMessage = 'arr' + [char]0xEA + 't: termin' + [char]0xE9
+$CloseBudgetSec = 90
+# Fichier temoin du nettoyage de desinstallation (LEVELUP_UNINSTALL_WITNESS), nom aleatoire sous %TEMP%.
+$Witness = Join-Path $env:TEMP ('levelup-e2e-uninstall-' + [Guid]::NewGuid().ToString('N') + '.txt')
+
+if (-not $DataDir) { $DataDir = Join-Path $env:TEMP ('levelup-e2e-data-' + [Guid]::NewGuid().ToString('N')) }
+if (-not $ArtifactsDir) { $ArtifactsDir = Join-Path $env:TEMP 'levelup-e2e-artifacts' }
+$Installer = (Resolve-Path $Installer).Path
+if ($EngineInstaller) { $EngineInstaller = (Resolve-Path $EngineInstaller).Path }
+
+function Step([string]$text) { Write-Host ('[e2e] ' + $text) }
+function Fail([string]$text) { throw ('ECHEC : ' + $text) }
+
+# Nom de la tache planifiee d'une racine de donnees : schedtask.TaskNameFor (prefixe, puis 4 octets de SHA-256 du
+# chemin nettoye en minuscules, en hexadecimal).
+function Get-ExpectedTaskName([string]$Root) {
+    # Pas de GetFullPath : il developpe les noms courts 8.3 (GUILLA~1), que filepath.Clean de Go laisse tels quels.
+    $clean = $Root.Replace('/', '\').TrimEnd('\').ToLowerInvariant()
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $bytes = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($clean))
+    return 'LevelUp\Refresh-' + (($bytes[0..3] | ForEach-Object { $_.ToString('x2') }) -join '')
+}
+
+function Wait-Until {
+    param([scriptblock]$Condition, [string]$What, [int]$Seconds = $TimeoutSec)
+    $deadline = (Get-Date).AddSeconds($Seconds)
+    while ((Get-Date) -lt $deadline) {
+        $value = & $Condition
+        if ($value) { return $value }
+        Start-Sleep -Milliseconds 250
+    }
+    Fail "delai depasse ($Seconds s) : $What"
+}
+
+function Get-Health([int]$Port) {
+    try {
+        $response = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/health" -UseBasicParsing -TimeoutSec 5
+        return [int]$response.StatusCode
+    }
+    catch {
+        return 0
+    }
+}
+
+function Get-StopLines {
+    $logs = Join-Path $DataDir 'logs'
+    if (-not (Test-Path $logs)) { return @() }
+    # Seul le journal du serveur porte la ligne ; desktop.log relaie sa sortie d'erreur et la
+    # dupliquerait : le compte se fait sur les journaux JSON, hors desktop.log.
+    $lines = foreach ($file in Get-ChildItem -Path $logs -Filter '*.log' -File -Recurse | Where-Object { $_.Name -ne 'desktop.log' }) {
+        Get-Content -Path $file.FullName -Encoding UTF8 | Where-Object { $_ -like "*$StopMessage*" }
+    }
+    return @($lines)
+}
+
+function Assert-NoWal {
+    $backups = Join-Path $DataDir 'data\backups'
+    $wal = Get-ChildItem -Path $DataDir -Recurse -File -Filter '*.wal' -ErrorAction SilentlyContinue |
+        Where-Object { -not $_.FullName.StartsWith($backups, [StringComparison]::OrdinalIgnoreCase) }
+    if ($wal) { Fail ("fichier WAL residuel apres l'arret : " + (($wal | ForEach-Object FullName) -join ', ')) }
+}
+
+function Invoke-Run([int]$Number) {
+    $portFile = Join-Path $DataDir 'desktop\port'
+    Step "lancement $Number"
+    $process = Start-Process -FilePath $MainExe -PassThru
+    $script:Launched += $process
+    try {
+        $port = Wait-Until { if (Test-Path $portFile) { $text = (Get-Content $portFile -Raw).Trim(); if ($text -match '^\d+$') { [int]$text } } } "le fichier $portFile"
+        Step "port $port"
+        Wait-Until { (Get-Health $port) -eq 200 } "GET /health = 200 sur le port $port" | Out-Null
+        Step '/health = 200'
+        if ($Number -gt 1 -and $port -ne $script:FirstPort) { Fail "le port n'est pas stable : $script:FirstPort puis $port" }
+        if ($Number -eq 1) { $script:FirstPort = $port }
+
+        Wait-Until { $process.Refresh(); $process.MainWindowHandle -ne [IntPtr]::Zero } 'la fenetre principale' 60 | Out-Null
+        Step 'fermeture par WM_CLOSE'
+        if (-not $process.CloseMainWindow()) { Fail 'CloseMainWindow a refuse le message' }
+        if (-not $process.WaitForExit($CloseBudgetSec * 1000)) { Fail "l'application ne s'est pas fermee dans les $CloseBudgetSec s apres WM_CLOSE" }
+    }
+    catch {
+        if (-not $process.HasExited) { $process.Kill() }
+        throw
+    }
+    Step ('application sortie, code ' + $process.ExitCode)
+
+    $stops = @(Get-StopLines)
+    if ($stops.Count -ne $Number) { Fail ("$($stops.Count) ligne(s) '$StopMessage' dans les journaux, attendu $Number") }
+    $last = $stops[-1]
+    if ($last -notmatch '"clean"\s*:\s*true') { Fail "arret non propre : $last" }
+    Assert-NoWal
+    Step "arret propre ($StopMessage, clean=true), aucun *.wal"
+}
+
+# Les fichiers du paquet et leur somme SHA-256, lus dans le manifeste INSTALLE (le serveur n'est pas lance).
+function Get-PackFiles {
+    $manifest = Join-Path $InstallDir 'resources.manifest.json'
+    if (-not (Test-Path $manifest)) { Fail "resources.manifest.json absent de $InstallDir" }
+    return @((Get-Content -Raw -Encoding UTF8 $manifest | ConvertFrom-Json).files)
+}
+
+function Assert-PackIntact([string[]]$Except) {
+    $bad = @()
+    foreach ($file in Get-PackFiles) {
+        if ($Except -contains $file.path) { continue }
+        $path = Join-Path $InstallDir ($file.path -replace '/', '\')
+        if (-not (Test-Path $path)) { $bad += "$($file.path) (absent)"; continue }
+        if ((Get-FileHash -Algorithm SHA256 -Path $path).Hash.ToLowerInvariant() -ne $file.sha256) { $bad += "$($file.path) (somme differente)" }
+    }
+    if ($bad.Count -gt 0) { Fail ('fichiers du paquet alteres : ' + (($bad | Select-Object -First 5) -join ', ')) }
+}
+
+function Copy-Failure {
+    New-Item -ItemType Directory -Force -Path $ArtifactsDir | Out-Null
+    $logs = Join-Path $DataDir 'logs'
+    if (Test-Path $logs) { Copy-Item -Path $logs -Destination (Join-Path $ArtifactsDir 'logs') -Recurse -Force }
+    Write-Host "[e2e] journaux copies sous $ArtifactsDir"
+}
+
+# Les emplacements ou NSIS note une installation : la cle du produit (valeur par defaut = dossier,
+# relue par RestorePreviousInstallLocation) et les cles de desinstallation (HKCU et HKLM).
+function Get-Registrations {
+    $sources = @(
+        @{ Path = "HKCU:\Software\$Manufacturer\LevelUp"; Name = ''; Uninstall = $false },
+        @{ Path = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\LevelUp'; Name = 'InstallLocation'; Uninstall = $true },
+        @{ Path = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\LevelUp'; Name = 'InstallLocation'; Uninstall = $true }
+    )
+    foreach ($source in $sources) {
+        if (-not (Test-Path $source.Path)) { continue }
+        $value = [string](Get-Item $source.Path).GetValue($source.Name)
+        [pscustomobject]@{ Path = $source.Path; Location = $value.Trim().Trim('"'); Uninstall = $source.Uninstall }
+    }
+}
+
+# Verifications prealables : tout ce qui ressemble a une installation ou a un LevelUp en cours refuse
+# le test, SANS aucun nettoyage (ce script ne desinstalle et ne tue que ce qu'il a lui-meme cree).
+function Test-Preconditions {
+    $problems = @()
+    if (Test-Path $InstallDir) { $problems += "$InstallDir existe deja" }
+    foreach ($registration in @(Get-Registrations)) {
+        $where = $registration.Location
+        if ($registration.Uninstall) {
+            $problems += "installation enregistree sous $($registration.Path) ($where)"
+        }
+        elseif ($where -and (Test-Path $where)) {
+            $problems += "installation enregistree sous $($registration.Path) : $where existe"
+        }
+        elseif ($where -and $where -ne $InstallDir) {
+            # Cle perimee vers un autre dossier : l'installeur la relirait et installerait ailleurs.
+            $problems += "cle $($registration.Path) vers $where : l'installeur s'y installerait"
+        }
+    }
+    $running = @(Get-Process -Name 'levelup-desktop', 'levelup-server' -ErrorAction SilentlyContinue)
+    if ($running.Count -gt 0) { $problems += 'LevelUp est deja lance (pid ' + (($running | ForEach-Object Id) -join ', ') + ')' }
+    return $problems
+}
+
+# Sentinelle posee dans la racine de donnees PAR DEFAUT : le desinstalleur ne doit jamais la supprimer.
+function Remove-Sentinel {
+    if (-not $script:SentinelPlaced) { return }
+    Remove-Item -Path $Sentinel -Force -ErrorAction SilentlyContinue
+    $script:SentinelPlaced = $false
+    if ($script:CreatedDefaultRoot -and (Test-Path $DefaultDataRoot) -and -not (Get-ChildItem -Path $DefaultDataRoot -Force)) {
+        Remove-Item -Path $DefaultDataRoot -Force -ErrorAction SilentlyContinue
+    }
+}
+
+$script:FirstPort = 0
+$script:Launched = @()
+$script:SentinelPlaced = $false
+$script:CreatedDefaultRoot = $false
+$problems = @(Test-Preconditions)
+if ($problems.Count -gt 0) {
+    foreach ($problem in $problems) { Write-Host "[e2e] REFUS : $problem" }
+    Write-Host "[e2e] le test ne touche pas a une installation reelle ni a un LevelUp en cours : rien n'a ete lance, installe ni retire"
+    exit 1
+}
+
+$installedByScript = $false
+$uninstalledByScript = $false
+try {
+    # Environnement du test : racine de donnees jetable, aucun reglage herite de la session.
+    foreach ($name in (Get-ChildItem Env: | Where-Object { $_.Name -like 'LEVELUP_*' -or $_.Name -like 'SPNKR_*' }).Name) {
+        Remove-Item "Env:$name"
+    }
+    New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
+    $env:LEVELUP_DATA_DIR = $DataDir
+
+    if (-not (Test-Path $DefaultDataRoot)) {
+        New-Item -ItemType Directory -Force -Path $DefaultDataRoot | Out-Null
+        $script:CreatedDefaultRoot = $true
+    }
+    Set-Content -Path $Sentinel -Value 'sentinelle e2e : le desinstalleur ne doit jamais la supprimer' -Encoding ASCII
+    $script:SentinelPlaced = $true
+
+    Step "installation silencieuse de $Installer"
+    # Des ici, ce qui se trouve sous $InstallDir est du fait de ce script (les verifications ont garanti qu'il n'y avait rien).
+    $installedByScript = $true
+    $setup = Start-Process -FilePath $Installer -ArgumentList '/S' -Wait -PassThru
+    if ($setup.ExitCode -ne 0) { Fail "l'installeur a rendu le code $($setup.ExitCode)" }
+    foreach ($relative in 'levelup-desktop.exe', 'levelup-server.exe', 'ffmpeg.exe', 'ffprobe.exe', 'LICENSE.LGPL',
+        'THIRD_PARTY_NOTICES.md', 'web\index.html', 'config\locales.toml', 'uninstall.exe') {
+        if (-not (Test-Path (Join-Path $InstallDir $relative))) { Fail "$relative absent de $InstallDir" }
+    }
+    if (Test-Path (Join-Path $DefaultDataRoot 'levelup-desktop.exe')) { Fail "le programme est installe dans la racine de donnees par defaut $DefaultDataRoot" }
+    Step "installe sous $InstallDir"
+
+    $manifestPath = Join-Path $InstallDir 'resources.manifest.json'
+    if (-not (Test-Path (Join-Path $InstallDir 'web\titles'))) { Fail 'web\titles (paquet) absent de l''installation complete' }
+    $packCount = @(Get-PackFiles).Count
+    Assert-PackIntact @()
+    Step "paquet de ressources installe : $packCount fichiers, sommes conformes au manifeste"
+
+    Invoke-Run 1
+    Invoke-Run 2
+
+    if ($EngineInstaller) {
+        Step 'mise a jour moteur seul : un fichier du moteur et un fichier du paquet sont supprimes avant'
+        $engineProbe = Join-Path $InstallDir 'config\locales.toml'
+        $packProbe = Join-Path $InstallDir 'LICENSE.LGPL'
+        foreach ($probe in $engineProbe, $packProbe) { if (-not (Test-Path $probe)) { Fail "$probe absent avant la mise a jour" } }
+        $manifestBefore = (Get-FileHash -Algorithm SHA256 -Path $manifestPath).Hash
+        Remove-Item -Force $engineProbe, $packProbe
+        $update = Start-Process -FilePath $EngineInstaller -ArgumentList '/S', '/UPDATE' -Wait -PassThru
+        if ($update.ExitCode -ne 0) { Fail "l'installeur moteur seul a rendu le code $($update.ExitCode)" }
+        if (-not (Test-Path $engineProbe)) { Fail 'le fichier du moteur supprime n''a pas ete reinstalle par l''installeur moteur seul' }
+        if (Test-Path $packProbe) { Fail 'l''installeur moteur seul a reinstalle un fichier du PAQUET : il ne devrait embarquer que le moteur' }
+        if ((Get-FileHash -Algorithm SHA256 -Path $manifestPath).Hash -ne $manifestBefore) { Fail 'le manifeste du paquet a change pendant une mise a jour moteur seul' }
+        Assert-PackIntact @('LICENSE.LGPL')
+        Step 'moteur reinstalle, paquet conserve (fichier supprime non reinstalle, autres sommes intactes)'
+        Invoke-Run 3
+    }
+
+    Step 'desinstallation silencieuse'
+    $marker = Join-Path $DataDir 'desktop\port'
+    $env:LEVELUP_UNINSTALL_WITNESS = $Witness
+    $uninstaller = Start-Process -FilePath (Join-Path $InstallDir 'uninstall.exe') -ArgumentList '/S' -Wait -PassThru
+    if ($uninstaller.ExitCode -ne 0) { Fail "le desinstalleur a rendu le code $($uninstaller.ExitCode)" }
+    $uninstalledByScript = $true
+    # Le desinstalleur NSIS se recopie et rend la main avant la fin : on attend la disparition du programme.
+    Wait-Until { -not (Test-Path $MainExe) } "la disparition de $MainExe" 120 | Out-Null
+    Wait-Until { -not (Test-Path $InstallDir) } "la disparition de $InstallDir" 60 | Out-Null
+    # Le crochet de desinstallation a lance le nettoyage du serveur livre : son temoin porte le bilan (les
+    # chemins y sont ecrits entre guillemets Go, antislash doubles).
+    if (-not (Test-Path $Witness)) { Fail "le desinstalleur n'a pas lance -mode uninstall-cleanup : aucun fichier temoin $Witness" }
+    $report = (Get-Content -Path $Witness -Raw -Encoding UTF8).Replace('\\', '\')
+    if ($report -notmatch '^uninstall-cleanup:') { Fail "temoin inattendu : $report" }
+    # Le bilan COMPLET : code de sortie du mode, entree de demarrage (absente, ou d'un autre dossier : jamais retiree,
+    # l'installation du test n'en a pose aucune), tache de la racine jetable (absente), ok.
+    if ($report -notmatch ' exit=0\s*$') { Fail "le nettoyage n'a pas rendu le code de sortie 0 : $report" }
+    if ($report -notmatch ' ok=true ') { Fail "le nettoyage n'a pas rendu ok=true : $report" }
+    if ($report -notmatch 'demarrage=(absent|foreign) ') { Fail "bilan de l'entree de demarrage inattendu (absent ou foreign attendu, jamais removed) : $report" }
+    if ($report -notmatch ' ressources=\d+-fichiers ') { Fail "le nettoyage n'a pas retire le paquet de ressources (ressources=<n>-fichiers attendu) : $report" }
+    if ($EngineInstaller -and $report -match ' ressources=0-fichiers ') { Fail "apres une mise a jour moteur seul, le nettoyage doit retirer les fichiers du paquet : $report" }
+    if ($report -notmatch ' tache=absent ') { Fail "bilan de la tache inattendu (tache=absent attendu : la racine jetable n'en a pas) : $report" }
+    if (-not $report.Contains('nom_tache="' + (Get-ExpectedTaskName $DataDir) + '"')) { Fail "la tache visee n'est pas celle de la racine $DataDir : $report" }
+    if (-not $report.Contains('data_root="' + $DataDir + '"')) { Fail "le nettoyage a vise une autre racine de donnees que $DataDir : $report" }
+    if (-not $report.Contains('install_dir="' + $InstallDir + '"')) { Fail "le nettoyage a vise un autre dossier de programme que $InstallDir : $report" }
+    Step ('desinstalleur : nettoyage lance (-mode uninstall-cleanup) : ' + $report.Trim())
+    # L'invariant reel : le desinstalleur ne supprime JAMAIS la racine de donnees par defaut de l'utilisateur.
+    if (-not (Test-Path $Sentinel)) { Fail "le desinstalleur a supprime la sentinelle de $DefaultDataRoot : la racine de donnees par defaut n'est pas conservee" }
+    if (-not (Test-Path $marker)) { Fail "la racine de donnees $DataDir a perdu $marker a la desinstallation" }
+    if (-not (Test-Path (Join-Path $DataDir 'logs'))) { Fail 'la racine de donnees a perdu ses journaux a la desinstallation' }
+    Step 'programme retire, racine de donnees par defaut (sentinelle) et racine jetable conservees'
+
+    Write-Host '[e2e] OK'
+    $exitCode = 0
+}
+catch {
+    Write-Host ('[e2e] ' + $_.Exception.Message)
+    Copy-Failure
+    $exitCode = 1
+}
+finally {
+    # Seulement ce que ce script a cree : les processus qu'il a lances (arbre compris), jamais un LevelUp d'ailleurs.
+    foreach ($launched in $script:Launched) {
+        if (-not $launched.HasExited) {
+            & taskkill.exe /PID $launched.Id /T /F | Out-Null
+        }
+    }
+    # Un echec laisse l'installation du test en place : la retirer pour qu'un nouvel essai reparte propre.
+    $leftover = Join-Path $InstallDir 'uninstall.exe'
+    if ($installedByScript -and -not $uninstalledByScript -and (Test-Path $leftover)) {
+        Start-Process -FilePath $leftover -ArgumentList '/S' -Wait | Out-Null
+        Write-Host '[e2e] installation du test retiree apres l''echec'
+    }
+    Remove-Sentinel
+    Remove-Item -Path $Witness -Force -ErrorAction SilentlyContinue
+}
+exit $exitCode

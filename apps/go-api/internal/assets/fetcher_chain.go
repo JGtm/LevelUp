@@ -64,7 +64,7 @@ type SpritesheetFallbackFetcher struct {
 // NewSpritesheetFallbackFetcher crée un fetcher avec fallback spritesheet.
 func NewSpritesheetFallbackFetcher(primary Fetcher, gamecmsBaseURL string) *SpritesheetFallbackFetcher {
 	if gamecmsBaseURL == "" {
-		gamecmsBaseURL = defaultGameCMSBase
+		gamecmsBaseURL = hoteGameCMSParDefaut()
 	}
 	return &SpritesheetFallbackFetcher{primary: primary, baseURL: gamecmsBaseURL}
 }

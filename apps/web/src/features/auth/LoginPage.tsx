@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { AppFooter } from '@/components/shell/AppFooter'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { useLogin } from '@/features/auth/queries'
 import { storePasswordCredential } from '@/features/auth/credentials'
 import { isTooManyLoginAttempts } from '@/features/auth/loginError'
@@ -26,7 +27,8 @@ export function LoginPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
-  const authMode = useAppShellStore((s) => s.authMode)
+  const canUseAccounts = useDeploymentCapability('can_use_accounts')
+  const canSignInWithXbox = useDeploymentCapability('can_sign_in_with_xbox')
   const registrationMode = useAppShellStore((s) => s.registrationMode)
   const firstLaunch = useAppShellStore((s) => s.firstLaunch)
   const locale = useAppShellStore((s) => s.locale)
@@ -40,8 +42,8 @@ export function LoginPage() {
   // Refus du callback de connexion Xbox : le serveur renvoie ici avec ?oauth_error=<code>.
   const { oauth_error: oauthError } = useSearch({ strict: false }) as { oauth_error?: unknown }
 
-  // Tant que le store n'est pas hydraté depuis /bootstrap, authMode vaut sa
-  // valeur par défaut 'none'. Rediriger ici (vers '/') AVANT hydratation faisait
+  // Tant que le store n'est pas hydraté depuis /bootstrap, can_use_accounts vaut sa
+  // valeur par défaut (faux, comme l'ancien auth_mode 'none'). Rediriger ici (vers '/') AVANT hydratation faisait
   // rebondir /login -> / pendant la fenêtre pré-hydratation (race avec le gate de
   // __root), d'où l'écran "Aucun joueur configuré" et la disparition du SSO Xbox.
   // On attend donc l'hydratation avant toute décision de routage.
@@ -49,14 +51,14 @@ export function LoginPage() {
     return null
   }
 
-  // En mode none, pas de login nécessaire
-  if (authMode === 'none') {
+  // Sans comptes (mode none, desktop), pas de login nécessaire
+  if (!canUseAccounts) {
     navigate({ to: '/{-$lang}' })
     return null
   }
 
-  // En mode xbox, déléguer au composant SSO (toggle admin password intégré).
-  if (authMode === 'xbox') {
+  // Avec le SSO Xbox, déléguer au composant SSO (toggle admin password intégré).
+  if (canSignInWithXbox) {
     return <XboxLoginPage oauthError={oauthError} />
   }
 

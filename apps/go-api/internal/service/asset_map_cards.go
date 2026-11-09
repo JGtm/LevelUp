@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // oneCardPerImage réduit une liste de cartes (image déjà résolue) à UNE entrée par
@@ -21,20 +22,23 @@ import (
 // dans le dépôt (grain de données) ni dans le client (qui garde son filet par id).
 // Aucune règle propre à un titre : seule l'URL rendue par l'adapter du titre compte.
 //
-// Représentant d'un visuel, par ordre TOTAL (résultat indépendant de l'ordre reçu) :
-//  1. un libellé FR TRADUIT (NameFR non vide et différent de NameEN) — décision
-//     utilisateur Q27 du 2026-09-23 : Starboard/Tribord s'affiche « Tribord » ;
-//  2. puis un libellé FR non vide ;
-//  3. puis le plus petit ID (puis NameFR, puis NameEN, pour un départage complet).
+// Représentant d'un visuel, par ordre TOTAL (résultat indépendant de l'ordre reçu), dans la
+// langue `loc` de la requête :
+//  1. un libellé TRADUIT (non vide et différent du nom canonique) — décision utilisateur Q27
+//     du 2026-09-23 : Starboard/Tribord s'affiche « Tribord » en français ;
+//  2. puis un libellé non vide dans la langue ;
+//  3. puis le plus petit ID (puis les textes de toutes les langues, pour un départage complet).
 //
 // Une entrée sans image (URL vide) n'a pas d'identité visuelle : elle n'est jamais
 // fusionnée avec une autre (ListMaps n'en produit pas ; la garde protège un appelant
 // futur contre la fusion silencieuse de cartes sans rapport).
 //
-// Tri de sortie : NameEN sans casse, puis NameEN, puis ID. La fonction ne réordonne ni
-// ne modifie la tranche reçue : elle rend une tranche neuve. (Cela ne rend pas
-// immuable la tranche du dépôt en amont : c'est l'affaire de l'appelant.)
-func oneCardPerImage(items []canonical.AssetMeta) []canonical.AssetMeta {
+// Le nom CANONIQUE est le nom du jeu dans la langue de repli (`i18n.Fallback`) : clé de
+// l'image et de l'ordre. Tri de sortie : nom canonique sans casse, puis nom canonique, puis
+// ID (ordre identique dans toutes les langues). La fonction ne réordonne ni ne modifie la
+// tranche reçue : elle rend une tranche neuve. (Cela ne rend pas immuable la tranche du
+// dépôt en amont : c'est l'affaire de l'appelant.)
+func oneCardPerImage(items []canonical.AssetMeta, loc i18n.Locale) []canonical.AssetMeta {
 	bestByImage := make(map[string]int, len(items))
 	out := make([]canonical.AssetMeta, 0, len(items))
 	for _, item := range items {
@@ -48,7 +52,7 @@ func oneCardPerImage(items []canonical.AssetMeta) []canonical.AssetMeta {
 			out = append(out, item)
 			continue
 		}
-		if representsBetter(item, out[idx]) {
+		if representsBetter(item, out[idx], loc) {
 			out[idx] = item
 		}
 	}
@@ -56,41 +60,40 @@ func oneCardPerImage(items []canonical.AssetMeta) []canonical.AssetMeta {
 	return out
 }
 
-// frLabelRank classe le libellé FR d'une carte : 0 = traduit, 1 = présent mais égal au
-// nom anglais, 2 = absent.
-func frLabelRank(m canonical.AssetMeta) int {
+// labelRank classe le libellé d'une carte dans la langue `loc` : 0 = traduit, 1 = présent mais
+// égal au nom canonique, 2 = absent.
+func labelRank(m canonical.AssetMeta, loc i18n.Locale) int {
 	switch {
-	case m.NameFR != "" && m.NameFR != m.NameEN:
+	case m.Names[loc] != "" && m.Names[loc] != m.CanonicalName():
 		return 0
-	case m.NameFR != "":
+	case m.Names[loc] != "":
 		return 1
 	default:
 		return 2
 	}
 }
 
-// representsBetter dit si a doit remplacer b comme représentant d'un même visuel.
-func representsBetter(a, b canonical.AssetMeta) bool {
-	if ra, rb := frLabelRank(a), frLabelRank(b); ra != rb {
+// representsBetter dit si a doit remplacer b comme représentant d'un même visuel, dans la
+// langue `loc`.
+func representsBetter(a, b canonical.AssetMeta, loc i18n.Locale) bool {
+	if ra, rb := labelRank(a, loc), labelRank(b, loc); ra != rb {
 		return ra < rb
 	}
 	if a.ID != b.ID {
 		return a.ID < b.ID
 	}
-	if a.NameFR != b.NameFR {
-		return a.NameFR < b.NameFR
-	}
-	return a.NameEN < b.NameEN
+	return a.Names.Compare(b.Names) < 0
 }
 
-// displayedBefore est l'ordre d'affichage du tiroir : nom anglais sans casse, puis nom
-// anglais exact, puis ID.
+// displayedBefore est l'ordre d'affichage du tiroir : nom canonique sans casse, puis nom
+// canonique exact, puis ID.
 func displayedBefore(a, b canonical.AssetMeta) bool {
-	if la, lb := strings.ToLower(a.NameEN), strings.ToLower(b.NameEN); la != lb {
+	ca, cb := a.CanonicalName(), b.CanonicalName()
+	if la, lb := strings.ToLower(ca), strings.ToLower(cb); la != lb {
 		return la < lb
 	}
-	if a.NameEN != b.NameEN {
-		return a.NameEN < b.NameEN
+	if ca != cb {
+		return ca < cb
 	}
 	return a.ID < b.ID
 }

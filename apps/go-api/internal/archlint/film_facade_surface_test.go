@@ -23,7 +23,7 @@ package archlint
 //
 // « Laisser les deux facades telles quelles, avec un ratchet. » La reduction de la facade (166) et
 // de la surface compagnon (257) est NON RETENUE — ce n est plus un report, c est une decision, et
-// elle est consignee au §1.4 du plan `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md` ainsi qu a l ADR 0034
+// elle est consignee a l ADR 0034
 // (annexe `docs/adr/0034-annex-history.md`, section « State reached at M4 », D-1). CONSEQUENCE POUR CE FICHIER : il n est plus la mesure
 // d entree d un lot a venir, il est LA SEULE CHOSE qui tient la ligne — d ou la phrase
 // [exigenceDeJustificationDatee] dans ses trois messages d erreur.
@@ -41,7 +41,7 @@ package archlint
 //
 //	# (a) surface de la facade
 //	grep -cE '^(const|type|var|func) [A-Z]' \
-//	  apps/go-api/internal/games/halo_infinite/film/decfilm/decfilm.go
+//	  libs/film/decfilm/decfilm.go
 //	#   -> 166 sur a5d15e634
 //
 //	# (b) plafond compagnon : IDENTIFIANTS DISTINCTS cites hors de film/, tests compris
@@ -95,8 +95,8 @@ import (
 	"testing"
 )
 
-// cheminDeLaFacade — le fichier mesure par (a), relatif a `apps/go-api`.
-const cheminDeLaFacade = "internal/games/halo_infinite/film/decfilm/decfilm.go"
+// cheminDeLaFacade — le fichier mesure par (a), relatif a la racine du depot.
+const cheminDeLaFacade = racineBriqueFilm + "/decfilm/decfilm.go"
 
 // exigenceDeJustificationDatee — LA PHRASE QUE LES TROIS MESSAGES D ERREUR DOIVENT DIRE.
 //
@@ -152,7 +152,11 @@ const exigenceDeJustificationDatee = "UNE HAUSSE EXIGE UNE JUSTIFICATION DATEE D
 // (`replaybuild`) le cree — ses propres lectures (actions nommees, signaux du drapeau, pont par manche) y
 // notent deja — et le passe aux options du rejeu : elle doit NOMMER le type. Aucune constante `Nom*` n entre
 // dans la facade (les trois noms neufs sont verses par `replay`).
-const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7) sur 430cdd7b4 : 186 - 7 (NomGamertagPremierXuidGagne, NomMortNeutreSansXuidAbandonnee, NomParticipantSansXuidRetire, NomCampInconnuRetireDeLaTable, NomHomonymesSansXuid, NomIdentitePontParMorts, XUIDNamePrefix)
+// 181 LE 2026-11-08 (decouplage de la brique film, item 4.6b, base `7eb05c19e6` : 179) : DEUX constantes neuves,
+// `ErrUnknownBuild` et `ErrUnknownFormat` — le contrat d erreurs typees de l ADR 0034 D-4 rendu nommable
+// (`errors.Is`) par un consommateur hors du module, qui ne peut pas importer la couche `profile` ; decision
+// du pilote du 2026-11-08.
+const plafondSurfaceFacade = 181 // 2026-11-08 — item 4.6b : 179 + 2 (ErrUnknownBuild, ErrUnknownFormat) ; cf. l historique ci-dessus
 
 // plafondSurfaceReplay — identifiants `replay.<Symbole>` DISTINCTS cites hors de `film/`.
 //
@@ -318,7 +322,7 @@ const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7
 //	                                           UN symbole neuf, re-mesure sur la base `e3e322b74` :
 //	                                           277.
 //	291  emprise-vies V1 (2026-09-28)           +13, le placement des vies et les porteurs lus au
-//	                                           sync (plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`).
+//	                                           sync.
 //	                                           HUIT par `replaybuild`, qui appelle desormais le pont
 //	                                           par manche, les gardes de mode et les entrees des
 //	                                           calques de porteur DEPLACES dans `replay` pour que
@@ -400,7 +404,26 @@ const plafondSurfaceFacade = 179 // 2026-10-02 — retrait des replis nuls (DU-7
 //	                                           nuage, decision D-16) et `replay.PositionsDesVehicules`
 //	                                           (le nuage `ti=40` lu comme la cuisson le lit), que la passe
 //	                                           des positions du collecteur fournit. Aucun retrait.
-const plafondSurfaceReplay = 312 // 2026-10-18 — base 9d8879471 re-mesuree a 310 + 2 (LectureDuBord, PositionsDesVehicules) ; cf. l historique ci-dessus
+//	314  decouplage D2, item 2.8 (2026-10-29)  base `86b7924a1` re-mesuree a 312. +2 :
+//	                                           `replay.EquipmentOutcomeFamilies` et `replay.UsageFamilySpawnsPiece`,
+//	                                           la copie jumelle du perimetre du bilan d equipement que le
+//	                                           decodeur porte depuis qu il n importe plus
+//	                                           `domain/equipmentusage` ; le garde-rail de LevelUp
+//	                                           (`domain/equipmentusage/jumeau_film_test.go`) les compare a
+//	                                           l original (regle 6). Aucun retrait.
+//	315  decouplage D2, item 2.9 (2026-10-29)  base `464f7feb8` re-mesuree a 314. +1 :
+//	                                           `replay.Text`, le libelle par langue propre au decodeur
+//	                                           (il n importe plus `internal/i18n`) ; LevelUp le convertit
+//	                                           dans `replaylabels` (`TexteVersFilm`, `TexteDepuisFilm`) et
+//	                                           son garde-rail de fil (`fil_jumeau_test.go`) le nomme.
+//	                                           Aucun retrait.
+//	316  decouplage D2, item 2.11 (2026-10-29)  base `0bfe57feb` re-mesuree a 315. +1 :
+//	                                           `replay.ContinuousWeaponKeys`, les cles d arme que la table
+//	                                           des chassis declare a tir continu ; la garde de LevelUp
+//	                                           (`internal/filmcorpus/armes_continues_registre_test.go`) la
+//	                                           confronte au registre du titre, que la brique ne charge plus.
+//	                                           Aucun retrait.
+const plafondSurfaceReplay = 316 // 2026-10-29 — base 0bfe57feb re-mesuree a 315 + 1 (ContinuousWeaponKeys) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //
@@ -417,8 +440,8 @@ var plafondsParFamilleFacade = map[string]int{
 	"killsource": 36, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange) ; 2026-09-27 — carte obligatoire (J7) : +1 (`ErrCarteAbsente`) ; 2026-10-02 — retrait des replis nuls (DU-7) : -1 (`XUIDNamePrefix`)
 	"fallback":   23, // 2026-09-27 — J8.7 : +18 (noms des replis declenches par replaybuild, sync/replayartifacts et sync/killcollector) ; 2026-10-02 — retrait des replis nuls (DU-7) : -6 (noms des replis retires)
 	"types":      10,
-	"profile":    8,
-	"source":     6, // 2026-09-26 — J4.5 : -1 (Paquets)
+	"profile":    10, // 2026-11-08 — item 4.6b : +2 (ErrUnknownBuild, ErrUnknownFormat)
+	"source":     6,  // 2026-09-26 — J4.5 : -1 (Paquets)
 	"weaponscan": 5,
 	"weaponv3":   4,
 	"positions":  2,
@@ -504,7 +527,7 @@ func racineAPIDuCompteur(t *testing.T) string {
 // donc en famille inconnue, donc en rouge.
 func surfaceDeLaFacade(t *testing.T) (map[string]int, int) {
 	t.Helper()
-	chemin := filepath.Join(racineAPIDuCompteur(t), filepath.FromSlash(cheminDeLaFacade))
+	chemin := surDisque(t, cheminDeLaFacade)
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, chemin, nil, 0)
 	if err != nil {

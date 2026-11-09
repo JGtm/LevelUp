@@ -12,7 +12,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/ogmeta"
+	"levelup/go-api/internal/i18n"
 )
 
 const testIndexHTML = `<!doctype html>
@@ -181,7 +181,7 @@ func TestOGMetaFromHome_NoContextXUID_PinsPageXUID(t *testing.T) {
 	svc := &ctxCapturingHomeService{page: &domain.HomePageResponse{Hero: domain.HomeHeroCard{PlayerName: "JGtm"}}}
 
 	meta, ok := ogMetaFromHome(context.Background(), svc, pageXUID, "JGtm",
-		"https://lvelup.info", "/players/jgtm/home", ogmeta.LocaleFR)
+		"https://lvelup.info", "/players/jgtm/home", i18n.LocaleFR)
 
 	if !ok {
 		t.Fatal("ogMetaFromHome doit réussir avec un HomeService qui rend une page")
@@ -203,7 +203,7 @@ func TestOGMetaFromHome_ForeignContextXUID_OverriddenByPage(t *testing.T) {
 	ctx := ctxkeys.WithHaloXUID(context.Background(), ambientXUID)
 
 	if _, ok := ogMetaFromHome(ctx, svc, pageXUID, "JGtm",
-		"https://lvelup.info", "/players/jgtm/home", ogmeta.LocaleFR); !ok {
+		"https://lvelup.info", "/players/jgtm/home", i18n.LocaleFR); !ok {
 		t.Fatal("ogMetaFromHome doit réussir")
 	}
 	if svc.seenXUID != pageXUID {

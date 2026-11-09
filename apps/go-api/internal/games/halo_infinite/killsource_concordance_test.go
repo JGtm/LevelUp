@@ -1,6 +1,5 @@
 // Package halo_infinite — killsource_concordance_test.go : LE GARDE-RAIL DE CONCORDANCE
-// entre le kill feed du rejeu 2D et le graphe de répartition des frags (décision D13 du
-// plan .ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md).
+// entre le kill feed du rejeu 2D et le graphe de répartition des frags.
 //
 // # Le problème qu'il tient
 //
@@ -31,8 +30,8 @@ package halo_infinite
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
-	"levelup/go-api/internal/games/halo_infinite/film/killicon"
+	"github.com/JGtm/LevelUp/libs/film/damagetag"
+	"github.com/JGtm/LevelUp/libs/film/killicon"
 )
 
 // dispenseConcordance : une règle autorisée à donner une image sans donner de clé.

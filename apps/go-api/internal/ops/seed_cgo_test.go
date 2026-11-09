@@ -15,6 +15,8 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // openTempDB crée une DuckDB temporaire sur disque et retourne son chemin.
@@ -33,6 +35,29 @@ func openTempDB(t *testing.T) string {
 	}
 	db.Close()
 	return dbPath
+}
+
+// openTempDBWithAssetTranslations crée une base dotée de asset_translations (créée par les migrations
+// en production), où les seeds de citations écrivent leurs textes par langue.
+func openTempDBWithAssetTranslations(t *testing.T) string {
+	t.Helper()
+	dbPath := openTempDB(t)
+	db, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`CREATE TABLE asset_translations (asset_id VARCHAR, asset_type VARCHAR, lang VARCHAR, name VARCHAR NOT NULL,
+		description VARCHAR, fetched_at TIMESTAMP, PRIMARY KEY (asset_id, asset_type, lang))`); err != nil {
+		t.Fatalf("asset_translations: %v", err)
+	}
+	return dbPath
+}
+
+func TestSeedCitationMappings_SansAssetTranslations(t *testing.T) {
+	if _, err := SeedCitationMappings(context.Background(), SeedOptions{MetaDBPath: openTempDB(t)}); err == nil {
+		t.Fatal("attendu : refus explicite quand asset_translations est absente")
+	}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -219,7 +244,7 @@ func TestSeedCareerRanks_SchemaCompatibleWithEnrichment(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestSeedCitationMappings_Valid(t *testing.T) {
-	dbPath := openTempDB(t)
+	dbPath := openTempDBWithAssetTranslations(t)
 
 	result, err := SeedCitationMappings(context.Background(), SeedOptions{MetaDBPath: dbPath})
 	if err != nil {
@@ -233,8 +258,42 @@ func TestSeedCitationMappings_Valid(t *testing.T) {
 	}
 }
 
+// TestSeedCitationMappings_UneLignePartLangue : le seed écrit, pour chaque citation, une ligne de
+// asset_translations par langue (première étiquette Halo), à partir de citation_texts.toml.
+func TestSeedCitationMappings_UneLignePartLangue(t *testing.T) {
+	dbPath := openTempDBWithAssetTranslations(t)
+	if _, err := SeedCitationMappings(context.Background(), SeedOptions{MetaDBPath: dbPath}); err != nil {
+		t.Fatalf("inattendu: %v", err)
+	}
+	db, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	total := len(defaultCitationMappings())
+	for _, l := range i18n.Locales() {
+		tag := i18n.HaloTags(l)[0]
+		var n int
+		if err := db.QueryRow(`SELECT COUNT(*) FROM asset_translations WHERE asset_type = 'citation' AND lang = ? AND name <> '' AND description <> ''`, tag).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		if n != total {
+			t.Errorf("langue %s (%s) : %d citations avec nom et description, want %d", l, tag, n, total)
+		}
+	}
+	names, _, err := citationTextsFor(citationNormCharge)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fr string
+	if err := db.QueryRow(`SELECT name FROM asset_translations WHERE asset_type = 'citation' AND asset_id = ? AND lang = ?`,
+		citationNormCharge, i18n.HaloTags(i18n.Default)[0]).Scan(&fr); err != nil || fr != names[i18n.Default] {
+		t.Errorf("nom de %s en %s = %q (%v), want %q", citationNormCharge, i18n.Default, fr, err, names[i18n.Default])
+	}
+}
+
 func TestSeedCitationMappings_Idempotent(t *testing.T) {
-	dbPath := openTempDB(t)
+	dbPath := openTempDBWithAssetTranslations(t)
 
 	opts := SeedOptions{MetaDBPath: dbPath}
 	r1, err := SeedCitationMappings(context.Background(), opts)

@@ -11,8 +11,8 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/auth/tokencache"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/platform/halo"
 )
 
 // stubPoolSource : pooledTokenSource contrôlé pour tester l'ordre de résolution
@@ -42,10 +42,10 @@ func freshTokens(spartan string) *domain.HaloTokens {
 // uniques pour éviter le partage de cache/singleflight.
 func resetRefresher(t *testing.T) {
 	t.Helper()
-	halo.SetPlayerTokenRefresher(func(_ context.Context, xuid string) (*domain.HaloTokens, error) {
+	tokencache.SetPlayerTokenRefresher(func(_ context.Context, xuid string) (*domain.HaloTokens, error) {
 		return nil, errors.New("test: profil sans token (RT mort)")
 	})
-	t.Cleanup(func() { halo.SetPlayerTokenRefresher(nil) })
+	t.Cleanup(func() { tokencache.SetPlayerTokenRefresher(nil) })
 }
 
 // TestEnrichPublicRead_SessionFresh : un token de session frais strict est
@@ -72,8 +72,8 @@ func TestEnrichPublicRead_SessionFresh(t *testing.T) {
 func TestEnrichPublicRead_ProfileAlive(t *testing.T) {
 	resetRefresher(t)
 	const xuid = "profile-alive"
-	halo.SetCachedPlayerTokens(xuid, freshTokens("sp-profile"))
-	t.Cleanup(func() { halo.InvalidateCachedPlayerTokens(xuid) })
+	tokencache.SetCachedPlayerTokens(xuid, freshTokens("sp-profile"))
+	t.Cleanup(func() { tokencache.InvalidateCachedPlayerTokens(xuid) })
 
 	stub := &stubPoolSource{tokens: freshTokens("sp-pool"), gamertag: "PoolGuy"}
 	reg := &ServiceRegistry{publicReadTokenSrc: stub}
@@ -94,7 +94,7 @@ func TestEnrichPublicRead_ProfileAlive(t *testing.T) {
 func TestEnrichPublicRead_ProfileDeadPoolHealthy(t *testing.T) {
 	resetRefresher(t)
 	const xuid = "profile-dead-pool-ok"
-	halo.InvalidateCachedPlayerTokens(xuid)
+	tokencache.InvalidateCachedPlayerTokens(xuid)
 
 	stub := &stubPoolSource{tokens: freshTokens("sp-pool"), gamertag: "PoolGuy"}
 	reg := &ServiceRegistry{publicReadTokenSrc: stub}
@@ -117,7 +117,7 @@ func TestEnrichPublicRead_ProfileDeadPoolHealthy(t *testing.T) {
 func TestEnrichPublicRead_AllDead(t *testing.T) {
 	resetRefresher(t)
 	const xuid = "profile-all-dead"
-	halo.InvalidateCachedPlayerTokens(xuid)
+	tokencache.InvalidateCachedPlayerTokens(xuid)
 
 	stub := &stubPoolSource{err: errors.New("pool: aucun slot sain disponible")}
 	reg := &ServiceRegistry{publicReadTokenSrc: stub}
@@ -137,7 +137,7 @@ func TestEnrichPublicRead_AllDead(t *testing.T) {
 func TestEnrichPublicRead_NoPoolSource(t *testing.T) {
 	resetRefresher(t)
 	const xuid = "profile-no-pool"
-	halo.InvalidateCachedPlayerTokens(xuid)
+	tokencache.InvalidateCachedPlayerTokens(xuid)
 
 	reg := &ServiceRegistry{} // publicReadTokenSrc nil
 	got := reg.enrichWithHaloTokensPublicRead(context.Background(), &duckdb.PlayerDB{XUID: xuid})

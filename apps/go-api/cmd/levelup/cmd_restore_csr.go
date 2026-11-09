@@ -61,7 +61,7 @@ func runRestoreCSR(cfg *config.AppConfig, args []string) error {
 	if err != nil {
 		return err
 	}
-	playerDBPath := titlePkg.NewPathResolver(cfg.RepoRoot).PlayerDBPath(o.titleSlug, o.gamertag)
+	playerDBPath := cfg.PathResolver().PlayerDBPath(o.titleSlug, o.gamertag)
 	if _, err := os.Stat(playerDBPath); err != nil {
 		return fmt.Errorf("player DB introuvable %s: %w", playerDBPath, err)
 	}

@@ -66,12 +66,10 @@ function formatSessionDate(startedAt: string | null, locale: ManifestLocale): st
       ? { day: 'numeric', month: 'short', year: 'numeric' }
       : { day: 'numeric', month: 'short' }
   const loc = intlLocale(locale)
-  const sep = locale === 'en' ? ' at ' : ' à '
-  return (
-    d.toLocaleDateString(loc, dateOpts) +
-    sep +
-    d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })
-  )
+  return formatMessage(homeManifest, 'home.sessions.date_time_join', locale, {
+    date: d.toLocaleDateString(loc, dateOpts),
+    time: d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' }),
+  })
 }
 
 function formatSessionDuration(startedAt: string | null, endedAt: string | null): string {
@@ -291,7 +289,7 @@ export function HomeSessionCarousel({
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {formatSessionDate(session.started_at, locale)}
                 {session.ended_at
-                  ? ` · ${th('home.sessions.duration_prefix')}${locale === 'en' ? ': ' : ' : '}${formatSessionDuration(session.started_at, session.ended_at)}`
+                  ? ` · ${th('home.sessions.duration_line', { duration: formatSessionDuration(session.started_at, session.ended_at) })}`
                   : null}
               </p>
             )}

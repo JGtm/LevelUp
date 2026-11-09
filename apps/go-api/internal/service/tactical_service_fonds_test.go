@@ -18,6 +18,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -44,9 +45,9 @@ func (r *rejeuAvecFonds) MapBackgroundForMap(_ context.Context, mapID string) (*
 
 func repoDeTroisCartes() *mockTacticalRepo {
 	return &mockTacticalRepo{maps: []domain.TacticalMapRow{
-		{MapID: "a", MapName: "Aquarius", Matchs: domain.PlancherMatchsParCarte, Victoires: 6, Defaites: 4},
-		{MapID: "b", MapName: "Bazaar", Matchs: domain.PlancherMatchsParCarte + 2, Victoires: 5, Defaites: 5},
-		{MapID: "petite", MapName: "Petite", Matchs: domain.PlancherMatchsParCarte - 1, Victoires: 3, Defaites: 3},
+		{MapID: "a", MapName: i18n.FromColumns("Aquarius", ""), Matchs: domain.PlancherMatchsParCarte, Victoires: 6, Defaites: 4},
+		{MapID: "b", MapName: i18n.FromColumns("Bazaar", ""), Matchs: domain.PlancherMatchsParCarte + 2, Victoires: 5, Defaites: 5},
+		{MapID: "petite", MapName: i18n.FromColumns("Petite", ""), Matchs: domain.PlancherMatchsParCarte - 1, Victoires: 3, Defaites: 3},
 	}}
 }
 

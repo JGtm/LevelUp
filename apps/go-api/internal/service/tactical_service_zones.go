@@ -29,7 +29,7 @@ func (s *TacticalService) zonesDuPlan(ctx context.Context, carte string) []repla
 	out := make([]replaydoc.CalloutZone, 0, len(zones))
 	for _, z := range zones {
 		out = append(out, replaydoc.CalloutZone{
-			VolumeIndex: z.VolumeIndex, EN: z.NomEN, FR: z.NomFR,
+			VolumeIndex: z.VolumeIndex, Text: z.Nom.Clone(),
 			X: z.X, Y: z.Y, Z: z.Z, ZBottom: z.ZBas, ZTop: z.ZHaut, Big: z.Big,
 			Polygon: z.Polygone, Parts: z.Parties, Holes: z.Trous,
 		})

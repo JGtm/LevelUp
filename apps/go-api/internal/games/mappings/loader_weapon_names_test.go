@@ -27,11 +27,11 @@ h5_railgun      = { en = "Railgun", fr = "Railgun" }
 	if len(names) != 3 {
 		t.Fatalf("names count: got %d, want 3", len(names))
 	}
-	if got := names["h5_frag_grenade"]; got.En != "Frag Grenade" || got.Fr != "Grenade à fragmentation" {
+	if got := names["h5_frag_grenade"]; got.Pick("en") != "Frag Grenade" || got.Pick("fr") != "Grenade à fragmentation" {
 		t.Errorf("h5_frag_grenade: got %+v", got)
 	}
 	// EN == FR autorisé (aucun FR officiel connu → EN dans les deux).
-	if got := names["h5_railgun"]; got.En != "Railgun" || got.Fr != "Railgun" {
+	if got := names["h5_railgun"]; got.Pick("en") != "Railgun" || got.Pick("fr") != "Railgun" {
 		t.Errorf("h5_railgun: got %+v", got)
 	}
 }

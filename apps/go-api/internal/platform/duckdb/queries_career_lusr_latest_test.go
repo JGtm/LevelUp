@@ -7,8 +7,7 @@ package duckdb
 // table BRUTE match_skill_rank. Sur une table append-only, le brut sert AUSSI les
 // lignes des passes précédentes : une chaîne fausse écrite une fois y restait tracée
 // À VIE, même après un replay correct — c'est ce qui maintenait la série « Arène »
-// fantôme des 4 joueurs Infinite après la réparation d'août
-// (.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §6.2).
+// fantôme des 4 joueurs Infinite après la réparation d'août.
 //
 // DEUX contrats, indissociables — c'est tout l'objet de la vue par TYPE :
 //  1. une ligne périmée d'un match rejoué n'est plus servie ;
@@ -154,9 +153,9 @@ func serveQ8(t *testing.T, ctx context.Context, db *sql.DB) map[q8Key]string {
 	for rows.Next() {
 		var matchID, ratingType string
 		var ratingValue float64
-		var tierLabel, playlistGroup, tier sql.NullString
+		var playlistGroup, tier sql.NullString
 		var subTier sql.NullInt16
-		if err := rows.Scan(&matchID, &ratingType, &ratingValue, &tierLabel,
+		if err := rows.Scan(&matchID, &ratingType, &ratingValue,
 			&playlistGroup, &tier, &subTier); err != nil {
 			t.Fatalf("scan: %v", err)
 		}

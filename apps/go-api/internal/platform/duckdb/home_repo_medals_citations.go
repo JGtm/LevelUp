@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // LoadFavoriteWeapon retourne le nom localisé et le nombre de kills de l'arme la plus
@@ -64,17 +65,14 @@ func (r *HomeRepo) LoadFavoriteWeapon(ctx context.Context, locale string) (strin
 		weaponName = m.displayLabel(locale)
 	}
 	if weaponName == "" {
-		weaponName = "Inconnue"
-		if locale == "en" {
-			weaponName = "Unknown"
-		}
+		weaponName = i18n.Msg(i18n.Parse(locale), "common.unknown_weapon", nil)
 	}
 	return weaponName, totalKills, nil
 }
 
 // LoadMatchMedals charge les médailles d'un joueur pour un lot de matchs (Q26h).
 // Retourne un map match_id → []domain.RecentMatchMedal, trié par count DESC.
-// Labels résolus via medal_definitions (name_fr) en priorité, citation_mappings en fallback.
+// Labels résolus via medal_translations (langue de la requête, repli `en`), citation_mappings en fallback.
 func (r *HomeRepo) LoadMatchMedals(ctx context.Context, matchIDs []string) (map[string][]domain.RecentMatchMedal, error) {
 	result := make(map[string][]domain.RecentMatchMedal)
 	if len(matchIDs) == 0 {
@@ -162,42 +160,24 @@ type medalLabel struct {
 	difficulty  string
 }
 
-// resolveMedalLabels résout les labels de médailles locale-aware (GH2-B6). La
-// chaîne de priorité label/description vient de la source unique
-// medalLabelDescCoalesceSQL(locale) + medalTranslationJoinsSQL(locale) —
-// partagée avec la vue Match (GH-5b) et l'Explorer : sous UI EN, ne jamais
-// injecter les colonnes FR (sinon la tuile Home affiche du FR sous EN).
+// resolveMedalLabels résout les labels de médailles dans la langue de la requête (GH2-B6) : la
+// difficulté vient de medal_definitions, label et description de medal_translations par la source
+// unique loadMedalLabels (langue demandée, sinon `en`) — partagée avec la vue Match (GH-5b) et
+// l'Explorer : sous UI EN, la tuile Home n'affiche jamais de français.
 func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64, locale string) map[int64]medalLabel {
 	result := make(map[int64]medalLabel, len(medalIDs))
 	if len(medalIDs) == 0 || db == nil {
 		return result
 	}
 
-	labelExpr, descExpr := medalLabelDescCoalesceSQL(locale)
-	// Chaîne locale-aware : medal_translations[locale, en-US] > medal_definitions.
-	q, mArgs, ok := buildLookupQuery(
-		`SELECT md.medal_name_id,
-		        `+labelExpr+` AS label,
-		        `+descExpr+` AS description,
-		        COALESCE(NULLIF(TRIM(md.difficulty),''), 'Normal') AS difficulty
-		 FROM medal_definitions md
-		 `+medalTranslationJoinsSQL(locale)+`
-		 WHERE md.medal_name_id IN (%s)`,
-		medalIDs,
-	)
-	if !ok {
-		return result
-	}
-	mRows, err := db.Query(ctx, q, mArgs...)
+	difficulties := loadMedalDifficulties(ctx, db, medalIDs)
+	labels, err := loadMedalLabels(ctx, db, medalIDs, locale)
 	if err != nil {
-		return result
+		slog.ErrorContext(ctx, "home: textes des médailles illisibles, libellés repliés", "err", err)
 	}
-	defer mRows.Close()
-	for mRows.Next() {
-		var id int64
-		var name, desc, diff string
-		if err := mRows.Scan(&id, &name, &desc, &diff); err == nil && name != "" {
-			result[id] = medalLabel{label: name, description: desc, difficulty: diff}
+	for id, diff := range difficulties {
+		if t := labels[id]; t.label != "" {
+			result[id] = medalLabel{label: t.label, description: t.description, difficulty: diff}
 		}
 	}
 
@@ -214,6 +194,41 @@ func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64, locale st
 		result[id] = medalLabel{label: label, difficulty: "Normal"}
 	}
 	return result
+}
+
+// loadMedalDifficulties lit la difficulté (colonne non textuelle de medal_definitions) des médailles
+// `medalIDs`. Une lecture en échec est journalisée et rend ce qui a été lu : les libellés se replient
+// alors sur citation_mappings.
+func loadMedalDifficulties(ctx context.Context, db *DB, medalIDs []int64) map[int64]string {
+	out := make(map[int64]string, len(medalIDs))
+	q, args, ok := buildLookupQuery(
+		`SELECT md.medal_name_id, COALESCE(NULLIF(TRIM(md.difficulty),''), 'Normal') AS difficulty
+		 FROM medal_definitions md
+		 WHERE md.medal_name_id IN (%s)`,
+		medalIDs,
+	)
+	if !ok {
+		return out
+	}
+	rows, err := db.Query(ctx, q, args...)
+	if err != nil {
+		slog.ErrorContext(ctx, "home: medal_definitions illisible, libellés repliés", "err", err)
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var diff string
+		if err := rows.Scan(&id, &diff); err != nil {
+			slog.ErrorContext(ctx, "home: medal_definitions, ligne illisible", "err", err)
+			continue
+		}
+		out[id] = diff
+	}
+	if err := rows.Err(); err != nil {
+		slog.ErrorContext(ctx, "home: medal_definitions, lecture interrompue", "err", err)
+	}
+	return out
 }
 
 // loadMatchCitationRows lit sur la base joueur le gain de chaque citation à chacun des matchs
@@ -276,7 +291,7 @@ func (r *HomeRepo) LoadMatchCitations(ctx context.Context, matchIDs []string) (m
 
 	// Étape 2 : charger les métadonnées (display, image_path, tier_targets) depuis metadata,
 	// et le cumul de chaque citation arrêté à chacun de ces matchs (citations_cumul.go).
-	metaMap := r.loadCitationMappingMeta(ctx, norms)
+	metaMap := loadCitationMetaOrLog(ctx, r.pdb.Metadata, norms)
 	cumul, err := loadCitationCumulAfterMatch(ctx, r.pdb, norms)
 	if err != nil {
 		// Sans cumul arrêté au match, l'anneau et le palier seraient faux : pas de citation.
@@ -424,143 +439,4 @@ func (r *HomeRepo) LoadMatchCommendations(ctx context.Context, matchIDs []string
 		})
 	}
 	return result, nil
-}
-
-// commendationDef contient nom localisé + icône + paliers d'une commendation native
-// par UUID.
-type commendationDef struct {
-	name        string
-	iconURL     string
-	tierTargets string // CSV croissant des seuils de paliers (vide si Meta/Daily ou non seedé)
-}
-
-// loadCommendationDefs résout nom (FR > EN) + icône CDN + tier_targets pour un ensemble
-// d'UUID de commendations depuis commendation_definitions (metadata h5). IDs inconnus
-// absents de la map. Dégradation : metadata nil / table absente → map vide.
-//
-// tier_targets est COALESCE'é vide : nullable + colonne possiblement absente sur une
-// DB pré-migration. Pour absorber le cas « colonne absente » (metadata h5 provisionnée
-// avant l'ajout de tier_targets), on retombe sur une requête sans tier_targets si le
-// SELECT échoue (table présente, colonne manquante).
-func (r *HomeRepo) loadCommendationDefs(ctx context.Context, ids []string) map[string]commendationDef {
-	if r.pdb == nil {
-		return map[string]commendationDef{}
-	}
-	return loadCommendationDefsFromMetadata(ctx, r.pdb.Metadata, ids)
-}
-
-// loadCommendationDefsFromMetadata résout nom (locale-aware, GH2-B6 : EN
-// privilégie name_en, FR name_fr, repli croisé — parité avec
-// halo5_commendation_defs.go) + icône CDN + tier_targets pour un ensemble
-// d'UUID de commendations depuis commendation_definitions (metadata h5).
-// Fonction libre partagée par HomeRepo (slot TopCitations de la MatchCard) et
-// CitationsRepo (onglet citations de la Match View). IDs inconnus absents de la
-// map. Dégradation : metadata nil / table absente → map vide.
-//
-// tier_targets est COALESCE'é vide : nullable + colonne possiblement absente sur une
-// DB pré-migration. Pour absorber le cas « colonne absente » (metadata h5 provisionnée
-// avant l'ajout de tier_targets), on retombe sur une requête sans tier_targets si le
-// SELECT échoue (table présente, colonne manquante).
-func loadCommendationDefsFromMetadata(ctx context.Context, metadata *DB, ids []string) map[string]commendationDef {
-	out := make(map[string]commendationDef, len(ids))
-	if len(ids) == 0 || metadata == nil {
-		return out
-	}
-	placeholders := make([]string, len(ids))
-	args := make([]interface{}, len(ids))
-	for i, id := range ids {
-		placeholders[i] = "?"
-		args[i] = id
-	}
-	in := strings.Join(placeholders, ", ")
-	// Nom locale-aware : EN privilégie name_en, FR (défaut) name_fr, repli croisé.
-	nameExpr := `COALESCE(NULLIF(TRIM(name_fr), ''), name_en)`
-	if ctxkeys.Locale(ctx) == "en" {
-		nameExpr = `COALESCE(NULLIF(TRIM(name_en), ''), name_fr)`
-	}
-	query := `SELECT commendation_id,
-	                 ` + nameExpr + ` AS name,
-	                 COALESCE(icon_url, '') AS icon_url,
-	                 COALESCE(tier_targets, '') AS tier_targets
-	          FROM commendation_definitions
-	          WHERE commendation_id IN (` + in + `)`
-	rows, err := metadata.Query(ctx, query, args...)
-	if err != nil {
-		// Colonne tier_targets absente (DB pré-migration) → retry sans elle (le
-		// progrès dégradera proprement en anneau vide).
-		queryNoTiers := `SELECT commendation_id,
-		                        ` + nameExpr + ` AS name,
-		                        COALESCE(icon_url, '') AS icon_url
-		                 FROM commendation_definitions
-		                 WHERE commendation_id IN (` + in + `)`
-		rows, err = metadata.Query(ctx, queryNoTiers, args...)
-		if err != nil {
-			return out // dégradation : titre sans table commendation_definitions
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var id, name, icon string
-			if err := rows.Scan(&id, &name, &icon); err != nil {
-				continue
-			}
-			out[id] = commendationDef{name: name, iconURL: icon}
-		}
-		return out
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id, name, icon, tiers string
-		if err := rows.Scan(&id, &name, &icon, &tiers); err != nil {
-			continue
-		}
-		out[id] = commendationDef{name: name, iconURL: icon, tierTargets: tiers}
-	}
-	return out
-}
-
-type citationMeta struct {
-	display     string
-	imagePath   string
-	tierTargets string
-	description string
-}
-
-// loadCitationMappingMeta interroge citation_mappings sur pdb.Metadata pour un ensemble de norms.
-func (r *HomeRepo) loadCitationMappingMeta(ctx context.Context, norms []string) map[string]citationMeta {
-	result := make(map[string]citationMeta, len(norms))
-	if len(norms) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
-		return result
-	}
-
-	placeholders := make([]string, len(norms))
-	args := make([]interface{}, len(norms))
-	for i, n := range norms {
-		placeholders[i] = "?"
-		args[i] = n
-	}
-	query := fmt.Sprintf(Q26jCitationMappingsForNormsTemplate, strings.Join(placeholders, ", "))
-
-	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
-	if err != nil {
-		return result
-	}
-	defer rows.Close()
-	enLocale := ctxkeys.Locale(ctx) == "en"
-	for rows.Next() {
-		var norm, display, displayEN, imagePath, tierTargets, description, descriptionEN string
-		if err := rows.Scan(&norm, &display, &displayEN, &imagePath, &tierTargets, &description, &descriptionEN); err != nil {
-			continue
-		}
-		// Locale-aware (GH2-B6 + GH4) : sous UI EN, le nom anglais prime (fallback FR)
-		// et la description EN (description_en) prime. Si description_en est absente →
-		// nom seul (masquée) : principe GH-5b « EN n'injecte jamais de FR ».
-		if enLocale {
-			if displayEN != "" {
-				display = displayEN
-			}
-			description = descriptionEN
-		}
-		result[norm] = citationMeta{display: display, imagePath: imagePath, tierTargets: tierTargets, description: description}
-	}
-	return result
 }

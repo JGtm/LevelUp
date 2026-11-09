@@ -11,7 +11,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func artefactValidePourFaits(t *testing.T) []byte {

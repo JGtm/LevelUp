@@ -12,8 +12,8 @@ import (
 	"sort"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // duelsBChute : une baisse de bouclier, datee, rattachee a un JOUEUR (et plus a un slot).
@@ -151,7 +151,7 @@ func duelsBPublier(t *testing.T, b duelsBBilan) {
 }
 
 // duelsBVerdict confronte les mesures au gate du plan. IL NE MODIFIE AUCUN SEUIL : les quatre
-// valeurs sont celles ecrites dans `.ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md` avant la mesure.
+// valeurs sont celles ecrites avant la mesure.
 //
 // Il n'echoue PAS le test sur un NO-GO : une sonde qui plante ne rend pas ses nombres, et ce
 // sont les nombres qui decident. Le verdict est JOURNALISE, statue dans la note, et le plan

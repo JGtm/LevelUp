@@ -8,6 +8,8 @@ package duckdb
 import (
 	"context"
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 func metaDesTraductions(t *testing.T) *DB {
@@ -65,8 +67,8 @@ func TestResolveMapNameFR(t *testing.T) {
 			if ok != tc.wantFound {
 				t.Fatalf("found = %v, want %v (got %q)", ok, tc.wantFound, got)
 			}
-			if ok && got != tc.wantFR {
-				t.Errorf("FR = %q, want %q", got, tc.wantFR)
+			if ok && got[i18n.LocaleFR] != tc.wantFR {
+				t.Errorf("FR = %q, want %q", got[i18n.LocaleFR], tc.wantFR)
 			}
 		})
 	}
@@ -94,7 +96,11 @@ func TestLibelleDeCarte_Regle(t *testing.T) {
 		{"rien", "", "", "", ""},
 	}
 	for _, c := range cases {
-		if got := libelleDeCarte(c.registreFR, c.registreEN, c.traduction); got != c.want {
+		var traductions i18n.Text
+		if c.traduction != "" {
+			traductions = i18n.Text{i18n.LocaleFR: c.traduction}
+		}
+		if got := libelleDeCarte(i18n.FromColumns(c.registreEN, c.registreFR), traductions); got != c.want {
 			t.Errorf("%s : %q, want %q", c.nom, got, c.want)
 		}
 	}

@@ -65,7 +65,7 @@ var killScopeRE = regexp.MustCompile(
 // verrouillée par un test, pas par ce ratchet.
 var killScopeOwners = []string{
 	"internal/domain/killscope/",
-	"internal/games/halo_infinite/film/internal/facts/killsource/",
+	"libs/film/internal/facts/killsource/",
 }
 
 func TestNoRawKillScopeLiteral(t *testing.T) {
@@ -77,7 +77,7 @@ func TestNoRawKillScopeLiteral(t *testing.T) {
 	apiRoot := filepath.Dir(internalRoot)                // .../apps/go-api
 
 	var violations []string
-	for _, racine := range []string{internalRoot, filepath.Join(apiRoot, "cmd")} {
+	for _, racine := range []string{internalRoot, filepath.Join(apiRoot, "cmd"), surDisque(t, racineBriqueFilm)} {
 		err := filepath.WalkDir(racine, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -85,8 +85,7 @@ func TestNoRawKillScopeLiteral(t *testing.T) {
 			if d.IsDir() || !strings.HasSuffix(path, ".go") {
 				return nil
 			}
-			rel, _ := filepath.Rel(apiRoot, path)
-			rel = filepath.ToSlash(rel)
+			rel := cheminDeGardeRail(t, path)
 			// Les propriétaires des valeurs, et eux seuls, ont le droit de les écrire.
 			for _, owner := range killScopeOwners {
 				if strings.HasPrefix(rel, owner) {
@@ -136,14 +135,8 @@ func TestNoRawKillScopeLiteral(t *testing.T) {
 // chemin pourrait écrire une vraie valeur de portée sans déclencher le ratchet. C'est ce test
 // qui garantit que l'exception du 2026-08-20 s'efface d'elle-même le jour où sa cause s'en va.
 func TestKillScopeAllowlistEntriesStayJustified(t *testing.T) {
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	apiRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile))) // .../apps/go-api
-
 	for rel := range killScopeAllowlist {
-		data, err := os.ReadFile(filepath.Join(apiRoot, filepath.FromSlash(rel)))
+		data, err := os.ReadFile(surDisque(t, rel))
 		if err != nil {
 			t.Errorf("killScopeAllowlist : entrée %q pointe un fichier inexistant (%v) — sa cause "+
 				"a disparu, retirer l'entrée (un fichier recréé à ce chemin échapperait au "+

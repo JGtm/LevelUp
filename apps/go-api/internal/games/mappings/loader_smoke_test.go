@@ -51,7 +51,7 @@ func TestLoadHaloInfiniteFieldsTOML(t *testing.T) {
 	}
 
 	// Locale inconnue → fallback EN.
-	_, fallback = kills.Label("xx")
+	_, fallback = kills.Label("zz")
 	if !fallback {
 		t.Errorf("locale inconnue devrait déclencher fallback")
 	}

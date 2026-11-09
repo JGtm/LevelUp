@@ -8,7 +8,7 @@ package main
 // sentinelle memoire. Le verrou est celui a ATTENTE BORNEE : ce harnais est le gate de chaque
 // lot, et un refus sec sur un simple chevauchement avec une cuisson en cours ferait echouer un
 // lot entier. Aucune base n'est ouverte ici — la sentinelle a donc le droit de TUER le
-// processus (cf. l'en-tete de `internal/filmproc`).
+// processus (cf. l'en-tete de `internal/filmrun`).
 //
 // # POURQUOI L'ENFANT ECRIT LE TSV LUI-MEME
 //
@@ -32,10 +32,12 @@ import (
 
 	"levelup/go-api/internal/analysis/digest"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // attenteVerrouMax : combien de temps un enfant attend son tour de decodage avant de refuser
@@ -80,51 +82,56 @@ func (c *collecteur) etape(step string, v any) {
 	}
 }
 
-// enfantEquivalence cuit UN film et ecrit ses digests. Rend un code du protocole filmproc.
+// enfantEquivalence cuit UN film et ecrit ses digests. Rend un code du protocole filmrun.
 func enfantEquivalence(ctx context.Context, o options) int {
-	cacheRoot := title.NewPathResolver(o.repoRoot).CacheRootDir()
-	filmproc.LowerOwnPriority(outilNom)
-	lock, err := filmproc.AcquireSoloWait(ctx, cacheRoot, outilNom, o.film, attenteVerrouMax)
+	pr := title.NewPathResolver(o.repoRoot)
+	cacheRoot := pr.CacheRootDir() // le verrou machine de décodage vit sous le cache applicatif
+	filmrun.LowerOwnPriority(outilNom)
+	lock, err := filmrun.AcquireSoloWait(ctx, cacheRoot, outilNom, o.film, attenteVerrouMax)
 	if err != nil {
 		slog.ErrorContext(ctx, "decodage refuse", "err", err, "film", o.film)
-		return filmproc.CodePreparation
+		return filmrun.CodePreparation
 	}
 	defer lock.Release()
-	g := filmproc.Arm(outilNom, o.memGiB, func(peak uint64) {
+	g := memguard.Arm(ctx, outilNom, o.memGiB, func(peak uint64) {
 		slog.ErrorContext(ctx, "plafond memoire depasse — equivalence abandonnee",
 			"pic_octets", peak, "pic_gio", gio(peak), "film", o.film)
-		filmproc.EmitPeak(peak)
+		filmrun.EmitPeak(peak)
 		lock.Release()
-		os.Exit(filmproc.CodeMemory)
+		os.Exit(filmrun.CodeMemory)
 	})
 	defer func() {
 		g.Disarm()
-		filmproc.EmitPeak(g.Peak())
+		filmrun.EmitPeak(g.Peak())
 	}()
 
-	lignes, err := digestsDuFilm(ctx, o, cacheRoot)
+	lignes, err := digestsDuFilm(ctx, o, pr.FilmArchiveDir())
 	if err != nil {
 		if errors.Is(err, replaybuild.ErrMapNotInCatalog) {
 			slog.WarnContext(ctx, "film ecarte — carte hors catalogue de bornes", "err", err, "film", o.film)
-			return filmproc.CodeSkipped
+			return filmrun.CodeSkipped
 		}
 		slog.ErrorContext(ctx, "equivalence impossible", "err", err, "film", o.film)
-		return filmproc.CodeFailed
+		return filmrun.CodeFailed
 	}
 	// LA LIGNE DE GRAMMAIRE OUVRE LE FICHIER : sans elle, un changement du RENDU de `digest`
 	// se lirait chez le parent comme une regression du decodeur (cf. digest/grammar.go).
 	if err := ecrireLignes(o.out, append([]string{digest.GrammarLine()}, lignes...)); err != nil {
 		slog.ErrorContext(ctx, "ecriture des digests", "err", err, "path", o.out, "film", o.film)
-		return filmproc.CodeFailed
+		return filmrun.CodeFailed
 	}
 	slog.InfoContext(ctx, "digests ecrits", "film", o.film, "etapes", len(lignes), "path", o.out)
-	return filmproc.CodeOK
+	return filmrun.CodeOK
 }
 
 // digestsDuFilm cuit le film et rend une ligne `etape\tcompte\tsha` par etape observee.
-func digestsDuFilm(ctx context.Context, o options, cacheRoot string) ([]string, error) {
+func digestsDuFilm(ctx context.Context, o options, archiveRoot string) ([]string, error) {
 	factsPath := filepath.Join(dossierEquivalence(o.repoRoot), o.film+".facts.json")
 	faits, err := replaybuild.ReadFactsFile(factsPath)
+	if err != nil {
+		return nil, err
+	}
+	nXuids, err := retraduireLesFaits(&faits, o)
 	if err != nil {
 		return nil, err
 	}
@@ -151,10 +158,10 @@ func digestsDuFilm(ctx context.Context, o options, cacheRoot string) ([]string, 
 		b.SansFaitsPersistes()
 	}
 	slog.InfoContext(ctx, "cuisson d equivalence", "film", o.film, "match", faits.MatchID,
-		"cartes", faits.MapNames, "joueurs", len(faits.Players), "variante", faits.GameVariantName,
-		"passe", o.passe)
+		"cartes", faits.MapNames, "joueurs", len(faits.Players), "xuids_retraduits", nXuids,
+		"variante", faits.GameVariantName, "passe", o.passe)
 	if _, err := b.BuildBytes(ctx, faits.MatchID, faits.MapNames,
-		filmcache.ChunkDir(cacheRoot, o.film), faits.MatchFacts); err != nil {
+		filmcache.ChunkDir(archiveRoot, o.film), faits.MatchFacts); err != nil {
 		return nil, err
 	}
 	if err := verifierLaBrancheServie(o.passe, col.booleens); err != nil {

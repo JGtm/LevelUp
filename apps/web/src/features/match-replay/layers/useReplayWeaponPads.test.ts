@@ -153,11 +153,10 @@ describe('weaponLabelKeyOf — la clé canonique, quelle que soit la forme reçu
 })
 
 /**
- * LA JOINTURE RÉELLE, SUR UN EXTRAIT DE L'ARTEFACT `9ffce8ef` (schéma 51, corpus du rapport
- * `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`) : UN objet de `groundWeapons` et SON libellé
+ * LA JOINTURE RÉELLE, SUR UN EXTRAIT DE L'ARTEFACT `9ffce8ef` (schéma 51) : UN objet de `groundWeapons` et SON libellé
  * de `weaponLabels`, copiés tels quels du document réel (213 objets `groundWeapons`).
  *
- * CE QUE CE TEST PROUVE, ET C'EST LE DÉFAUT DU RAPPORT §0 : `item.w` vaut `"2b1824d5"`
+ * CE QUE CE TEST PROUVE, ET C'EST LE DÉFAUT MESURÉ : `item.w` vaut `"2b1824d5"`
  * (minuscules, sans préfixe — l'écriture `%08x` de `document_ground_weapon_items.go`) et
  * `weaponLabels` est indexé `"0x2B1824D5"` (l'écriture `0x%08X` du service). AVANT ce lot,
  * `labels?.[item.w]` rendait `undefined` sur cet objet comme sur les 213 du film : aucune

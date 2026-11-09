@@ -4,7 +4,6 @@
  * (react-refresh/only-export-components) et testable sans DOM.
  */
 import type { FragClassEntry } from '@/lib/api/types'
-import type { Locale } from '@/lib/i18n/locale'
 import { fragRoleDisplayLabel } from './fragRoleLabel'
 
 // ── Géométrie du sunburst (reprise fidèle de la maquette validée) ────────────────
@@ -64,8 +63,6 @@ export interface FragSunburstLabels {
    * Reçoit le NOMBRE de tranches regroupées (pluriel porté par le manifeste i18n).
    */
   othersLabel: (count: number) => string
-  /** Locale d'affichage courante — choisit label/label_en pour les rôles OBJET (D2). */
-  locale: Locale
 }
 
 export interface SunArc {
@@ -147,7 +144,7 @@ function regrouperPetitesTranches(
     // l'API pour les classes véhicule/tourelle) — cf. fragRoleDisplayLabel.
     const tranche: TrancheExterne = {
       key: r.role,
-      label: fragRoleDisplayLabel(r, labels.locale, labels.roleLabel),
+      label: fragRoleDisplayLabel(r, labels.roleLabel),
       kills: r.kills,
       regroupees: [],
     }

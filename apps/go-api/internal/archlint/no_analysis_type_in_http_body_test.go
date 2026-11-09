@@ -6,7 +6,7 @@
 // 2026-09-05, lot B du plan v2. Jusqu'a ce jour, `api/handlers/replay.go:68` declarait
 // `type replayOutput struct{ Body replay.ReplayDocument }` — et comme `api/openapi.yaml` est
 // GENERE depuis les types Go, le format du FICHIER d'artefact de rejeu etait, litteralement,
-// le contrat public : 99 des 165 types exportes d'`internal/games/halo_infinite/film/replay` etaient des
+// le contrat public : 99 des 165 types exportes d'`libs/film/replay` etaient des
 // entrees de `components.schemas`, donc autant de types TypeScript. Deux consequences
 // mesurees : `SchemaVersion` a monte 43 fois en cinq semaines, chaque montee regenerant le
 // contrat pour un champ que le client ne lisait pas ; et aucun champ ne pouvait etre renomme

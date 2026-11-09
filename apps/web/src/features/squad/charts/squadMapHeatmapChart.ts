@@ -2,8 +2,6 @@
  * squadMapHeatmapChart — teammates.03 : « Performance par joueur × carte », rangement des
  * cellules du bloc en points de la grille canonique.
  *
- * Spec : .ai/charts_specs/teammates/03_squad_heatmap.yaml
- *
  * RENDU CANONIQUE (2026-09-20, lot 3 des ajustements pré-v7.5) : ce fichier n'écrit plus
  * d'option ECharts. `components/charts/Heatmap2DChart` rend la grille — mêmes cases aérées
  * et même infobulle que « Activité par jour et heure », le rendu de référence — et ce

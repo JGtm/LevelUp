@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/prestige"
 )
 
@@ -184,16 +185,19 @@ func (s *service) buildProposals(in GenerateInput, choices []templateChoice, arc
 }
 
 func (s *service) buildChallengeProposal(in GenerateInput, c templateChoice) Proposal {
-	params, _ := json.Marshal(map[string]any{
+	paramsMap := map[string]any{
 		"metric":        c.template.Metric,
 		"window_type":   string(c.template.WindowType),
 		"window_value":  c.template.WindowValue,
 		"signal_kind":   string(c.signal.Kind),
 		"signal_metric": c.signal.Metric,
 		"signal_axis":   c.signal.RadarAxis,
-		"label_en":      c.template.LabelEN,
-		"label_fr":      c.template.LabelFR,
-	})
+	}
+	// Une clé `label_<langue>` par langue de l'application : le motif est stocké, donc écrit dans toutes
+	// les langues (une langue ajoutée à config/locales.toml y apparaît sans ligne de code). La lecture
+	// (ResolveReasonParams) rend une seule clé `label` dans la langue de la requête.
+	c.template.Labels.AddParams(paramsMap, ReasonParamLabel)
+	params, _ := json.Marshal(paramsMap)
 	return Proposal{
 		ID:            s.deps.IDGen(),
 		UserID:        in.UserID,
@@ -206,8 +210,7 @@ func (s *service) buildChallengeProposal(in GenerateInput, c templateChoice) Pro
 		RadarAxis:     c.signal.RadarAxis,
 		Strength:      c.signal.Strength,
 		Origin:        c.origin,
-		ReasonKeyEN:   "coach.proposal." + string(c.signal.Kind) + ".en",
-		ReasonKeyFR:   "coach.proposal." + string(c.signal.Kind) + ".fr",
+		ReasonKey:     reasonKeys("coach.proposal." + string(c.signal.Kind)),
 		ReasonParams:  string(params),
 		Status:        ProposalPending,
 		CreatedAt:     in.Now,
@@ -243,15 +246,14 @@ func (s *service) buildArcProposal(in GenerateInput, arc ArcSpec) (Proposal, boo
 	}
 	specJSON, _ := json.Marshal(stepSpecs)
 
-	params, _ := json.Marshal(map[string]any{
-		"radar_axis":     arc.RadarAxis,
-		"step_count":     len(arc.Steps),
-		"avg_strength":   arc.AverageStrength,
-		"title_en":       arc.TitleEN,
-		"title_fr":       arc.TitleFR,
-		"description_en": arc.DescriptionEN,
-		"description_fr": arc.DescriptionFR,
-	})
+	paramsMap := map[string]any{
+		"radar_axis":   arc.RadarAxis,
+		"step_count":   len(arc.Steps),
+		"avg_strength": arc.AverageStrength,
+	}
+	arc.Title.AddParams(paramsMap, ReasonParamTitle)
+	arc.Description.AddParams(paramsMap, ReasonParamDescription)
+	params, _ := json.Marshal(paramsMap)
 
 	// Strength globale = moyenne des steps
 	// Origin = "synthesized" si au moins une étape est synthétisée, sinon "catalog"
@@ -275,8 +277,7 @@ func (s *service) buildArcProposal(in GenerateInput, arc ArcSpec) (Proposal, boo
 		RadarAxis:      arc.RadarAxis,
 		Strength:       arc.AverageStrength,
 		Origin:         origin,
-		ReasonKeyEN:    "coach.proposal.arc." + arc.RadarAxis + ".en",
-		ReasonKeyFR:    "coach.proposal.arc." + arc.RadarAxis + ".fr",
+		ReasonKey:      reasonKeys("coach.proposal.arc." + arc.RadarAxis),
 		ReasonParams:   string(params),
 		Status:         ProposalPending,
 		CreatedAt:      in.Now,
@@ -421,14 +422,15 @@ func (s *service) acceptArc(ctx context.Context, prop Proposal) (AcceptResult, e
 		slog.WarnContext(ctx, "coach_advisor: acceptArc reason params decode failed (titre/desc dégradés)",
 			"err", err, "proposal_id", prop.ID)
 	}
-	titleFR := stringFromMap(params, "title_fr")
-	descFR := stringFromMap(params, "description_fr")
+	// L'arc créé porte un titre et une description stockés dans UNE langue : la langue par défaut.
+	title := stringFromMap(params, i18n.ParamKey(ReasonParamTitle, i18n.Default))
+	desc := stringFromMap(params, i18n.ParamKey(ReasonParamDescription, i18n.Default))
 
 	arc, err := s.deps.Prestige.CreateArc(ctx, prestige.CreateArcRequest{
 		UserID:      prop.UserID,
 		TitleSlug:   prop.TitleSlug,
-		Title:       titleFR,
-		Description: descFR,
+		Title:       title,
+		Description: desc,
 		Source:      prestige.ChallengeSourceCoach,
 	})
 	if err != nil {
@@ -477,7 +479,7 @@ func (s *service) challengeRequestFromTemplate(userID, titleSlug string, tmpl pr
 		Cadence:     tmpl.Cadence,
 		EvalType:    tmpl.EvalType,
 		Mode:        prestige.ModePilote,
-		Label:       tmpl.LabelFR,
+		Label:       tmpl.StoredLabel(),
 		Position:    position,
 		Source:      prestige.ChallengeSourceCoach,
 	}

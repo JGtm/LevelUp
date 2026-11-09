@@ -7,7 +7,11 @@
 //	GET /api/v1/players/{slug}/pages/synthesis       → SynthesisPageResponse
 package domain
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // ---------------------------------------------------------------------------
 // Lignes brutes DuckDB — Squad
@@ -30,37 +34,41 @@ type SquadMatchRow struct {
 	MatchID   string
 	StartTime time.Time
 	MapName   string
-	MapUI     string
-	// PairName : libellé EN brut du mode depuis match_registry (peut être un
-	// UUID si la metadata n'a pas de traduction — résolu via la cascade
-	// canonique analysis.ResolvePairNameFR, cf. buildSquadMatchHistory).
-	PairName string
-	// PairNameFR : pair_name_fr depuis match_registry (NULL/'' fréquent → la
-	// cascade FR le re-résout via asset_translations[pair_id] + mode_name_tr).
-	PairNameFR string
+	// MapUI et PlaylistName : noms d'affichage dans la langue UILocale (valeur du registre tant que
+	// l'enrichissement n'a pas tourné).
+	MapUI string
+	// PairName : libellé du mode depuis match_registry. en : libellé brut (peut être un UUID si la
+	// metadata n'a pas de traduction — résolu via la cascade canonique analysis.ResolvePairName,
+	// cf. buildSquadMatchHistory) ; fr : pair_name_fr (NULL/'' fréquent → la cascade FR le
+	// re-résout via asset_translations[pair_id] + mode_name_tr).
+	PairName i18n.Text
 	// PairID : UUID de la paire mode/map (clé de résolution asset_translations).
 	PairID string
 	// GameVariantID : UUID de la variante de jeu (game_variant_id de match_registry).
 	// Source du mode pour les titres SANS pair_name (ex. Halo 5 : pair_name vide
 	// mais game_variant_id peuplé). Résolu read-time via asset_translations
-	// (asset_type='game_variant') → GameVariantNameFR. Title-agnostic : Infinite
+	// (asset_type='game_variant') → GameVariantName. Title-agnostic : Infinite
 	// (qui a pair_name) ignore ce fallback.
 	GameVariantID string
-	// GameVariantNameFR : nom localisé de la variante de jeu, résolu read-time
-	// depuis asset_translations[game_variant_id]. Alimente le fallback de mode
-	// (squadModeUI) quand pair_name/pair_name_fr sont vides.
-	GameVariantNameFR string
-	PlaylistName      string
-	IsFirefight       bool
-	IsRanked          bool
-	Outcome           int
-	Kills             int
-	Deaths            int
-	Assists           int
-	KDA               *float64
-	Accuracy          *float64
-	TimePlayedSecs    int
-	DurationSeconds   int
+	// GameVariantName : nom de la variante de jeu par langue (en : nom brut du registre, clé de la
+	// table des manches ; fr : résolu read-time depuis asset_translations[game_variant_id]).
+	// Alimente le fallback de mode (squadModeUI) quand pair_name/pair_name_fr sont vides.
+	GameVariantName i18n.Text
+	PlaylistName    string
+	// UILocale : langue des libellés enrichis de la ligne (MapUI, PlaylistName, et celle que lisent
+	// les résolveurs de mode). Posée par l'enrichissement des noms (langue de la requête) ; zéro =
+	// i18n.Default.
+	UILocale        i18n.Locale
+	IsFirefight     bool
+	IsRanked        bool
+	Outcome         int
+	Kills           int
+	Deaths          int
+	Assists         int
+	KDA             *float64
+	Accuracy        *float64
+	TimePlayedSecs  int
+	DurationSeconds int
 	// GameplayDurationSeconds : durée réelle de gameplay (countdown retranché).
 	GameplayDurationSeconds int
 	// T0Ms : offset du countdown pré-match en ms (real_start_time − start_time_utc).
@@ -77,15 +85,14 @@ type SquadMatchRow struct {
 	EnemyMMR       *float64
 	MyTeamScore    *int
 	EnemyTeamScore *int
-	// MyRoundsWon / EnemyRoundsWon / RoundsTotal / GameVariantName : les MANCHES du match
-	// et la clé de la table `regulation.toml [rounds_decide]` (ADR 0032). Nil = inconnu →
+	// MyRoundsWon / EnemyRoundsWon / RoundsTotal : les MANCHES du match ; la clé de la table
+	// `regulation.toml [rounds_decide]` (ADR 0032) est GameVariantName[en]. Nil = inconnu →
 	// l'affichage garde les points.
-	MyRoundsWon     *int
-	EnemyRoundsWon  *int
-	RoundsTotal     *int
-	GameVariantName string
-	MapID           string
-	PlaylistID      string
+	MyRoundsWon    *int
+	EnemyRoundsWon *int
+	RoundsTotal    *int
+	MapID          string
+	PlaylistID     string
 	// ExpectedWinProb : proba de victoire pré-match ∈ [0,1] (LUSR v2), chargée
 	// depuis player.match_skill_rank. Nil si pré-v2 / non disponible.
 	ExpectedWinProb *float64

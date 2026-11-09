@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
+	"levelup/go-api/internal/i18n"
 )
 
 // BackfillCSRHistory récupère, pour chaque saison demandée × chaque playlist
@@ -71,7 +72,7 @@ func fetchSeasonRankedCSRs(
 		if res == nil || !hasRealCSR(*res) {
 			continue
 		}
-		res.PlaylistName = pl.NameEN()
+		res.PlaylistName = pl.Name(i18n.Fallback)
 		res.Queue = pl.Queue
 		res.Input = pl.Input
 		csrs = append(csrs, *res)

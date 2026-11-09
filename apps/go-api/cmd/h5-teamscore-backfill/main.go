@@ -24,9 +24,10 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
-	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/platform/auth"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 func main() {
@@ -68,7 +69,7 @@ func main() {
 		fatal("xuid auth introuvable pour %q", authGT)
 	}
 
-	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT)
 	if err != nil || res == nil || res.Tokens == nil {
 		fatal("refresh tokens (auth_as=%s): %v", authGT, err)
@@ -79,7 +80,7 @@ func main() {
 		fatal("NewCaptureSource: %v", err)
 	}
 
-	sharedPath := titlePkg.NewPathResolver(cfg.RepoRoot).SharedDBPath(halo5.TitleSlug)
+	sharedPath := cfg.PathResolver().SharedDBPath(halo5.TitleSlug)
 	shared, err := sql.Open("duckdb", sharedPath)
 	if err != nil {
 		fatal("open shared RW: %v", err)
@@ -146,7 +147,7 @@ func loadMatchesMissingTeamScore(ctx context.Context, shared *sql.DB, maxMatches
 
 // teamScores extrait (team0, team1) depuis le carnage. ok=false si < 2 équipes
 // (FFA / carnage vide) — la dominance 2-équipes ne s'applique pas.
-func teamScores(c *halo5.H5CarnageResponse) (int, int, bool) {
+func teamScores(c *h5api.H5CarnageResponse) (int, int, bool) {
 	if c == nil {
 		return 0, 0, false
 	}

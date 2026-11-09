@@ -20,15 +20,13 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"levelup/go-api/internal/i18n"
 )
 
-// Libelle est le texte joueur d'un nom de lieu, dans les deux langues du dépôt.
-type Libelle struct {
-	EN, FR string
-}
-
-// Lexique indexe les libellés par string_id de lieu.
-type Lexique map[uint32]Libelle
+// Lexique indexe les libellés (le texte joueur d'un nom de lieu, dans les deux langues du dépôt) par
+// string_id de lieu.
+type Lexique map[uint32]i18n.Text
 
 // ColonnesLexique : l'en-tête attendu du fichier (un fichier réordonné doit échouer). Partagé
 // par le lecteur et par l'écrivain de la chaîne de fabrication.
@@ -67,8 +65,8 @@ func ChargerLexique(path string) (Lexique, error) {
 		if row[1] == "" || row[2] == "" {
 			return nil, fmt.Errorf("lexique ligne %d (%s) : libellé vide", n+2, row[0])
 		}
-		l := Libelle{EN: row[1], FR: row[2]}
-		if vu, deja := out[uint32(sid)]; deja && vu != l {
+		l := i18n.FromColumns(row[1], row[2])
+		if vu, deja := out[uint32(sid)]; deja && !vu.Equal(l) {
 			return nil, fmt.Errorf("lexique ligne %d : string_id %08x porte deux libellés", n+2, sid)
 		}
 		out[uint32(sid)] = l

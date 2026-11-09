@@ -1,10 +1,8 @@
 import type { AssetMeta } from '@/lib/api/types'
-import type { ManifestLocale } from '@/lib/i18n/format'
 import { AssetCard } from './AssetCard'
 
 interface AssetGridProps {
   items: AssetMeta[]
-  locale: ManifestLocale
   kind: 'maps' | 'weapons' | 'medals'
   emptyMessage: string
   isLoading: boolean
@@ -15,7 +13,6 @@ interface AssetGridProps {
 
 export function AssetGrid({
   items,
-  locale,
   kind,
   emptyMessage,
   isLoading,
@@ -41,7 +38,7 @@ export function AssetGrid({
   return (
     <div className="grid grid-cols-2 gap-2 p-2">
       {items.map((asset) => (
-        <AssetCard key={asset.id} asset={asset} locale={locale} kind={kind} />
+        <AssetCard key={asset.id} asset={asset} kind={kind} />
       ))}
     </div>
   )

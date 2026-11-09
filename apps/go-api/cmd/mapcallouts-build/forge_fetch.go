@@ -2,7 +2,7 @@ package main
 
 // forge_fetch.go — D'OÙ VIENNENT LES VARIANTES DE CARTE FORGE.
 //
-// LA LISTE EST VERSIONNÉE, PAS DEVINÉE : `.ai/V7.5/cartes/inventaire_rotation_ugc_*.json`
+// LA LISTE EST VERSIONNÉE, PAS DEVINÉE : `apps/go-api/cmd/mapcallouts-build/donnees/inventaire_rotation_ugc_*.json`
 // recense l'univers des cartes atteignables par la rotation matchmaking (104 cartes au
 // 2026-08-27, dont 83 Forge), avec pour chacune son map_id, sa version, ses fichiers et son
 // PRÉFIXE DE STOCKAGE BLOB. Cet inventaire a coûté un balayage authentifié du Discovery

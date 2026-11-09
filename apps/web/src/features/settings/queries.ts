@@ -9,7 +9,9 @@ import { useNavigate } from '@tanstack/react-router'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import { parseRouteSegments } from '@/lib/title-routing'
+import { normalizeLocale } from '@/lib/i18n/locale'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import type {
   AsyncJobStatus,
   BackfillStartRequest,
@@ -26,13 +28,13 @@ export function useSettings() {
   // donc la locale du store appShell sur la réponse : sans cela, le refetch
   // /settings déclenché après un switch écraserait le choix du visiteur dans le
   // sélecteur de langue. Hors démo, la réponse serveur fait autorité (select nop).
-  const demoMode = useAppShellStore((s) => s.demoMode)
+  const settingsFrozen = !useDeploymentCapability('can_edit_settings')
   const demoLocale = useAppShellStore((s) => s.locale)
   return useQuery({
     queryKey: queryKeys.settings,
     queryFn: () => api.get<SettingsResponse>('/settings'),
     staleTime: 5 * 60 * 1000,
-    select: demoMode
+    select: settingsFrozen
       ? (data: SettingsResponse): SettingsResponse => ({ ...data, lang: demoLocale })
       : undefined,
   })
@@ -42,7 +44,7 @@ export function useUpdateSettings() {
   const qc = useQueryClient()
   const setLocale = useAppShellStore((s) => s.setLocale)
   const currentLocale = useAppShellStore((s) => s.locale)
-  const demoMode = useAppShellStore((s) => s.demoMode)
+  const settingsFrozen = !useDeploymentCapability('can_edit_settings')
   const navigate = useNavigate()
   return useMutation({
     mutationFn: async (req: UpdateSettingsRequest) => {
@@ -50,7 +52,7 @@ export function useUpdateSettings() {
       // entre visiteurs). Le seul réglage modifiable est la langue : on l'applique
       // client-side (onSuccess ci-dessous), sans toucher au serveur. Les autres
       // champs sont ignorés (no-op) — l'UI les grise de toute façon.
-      if (demoMode) {
+      if (settingsFrozen) {
         const current =
           qc.getQueryData<SettingsResponse>(queryKeys.settings) ?? ({} as SettingsResponse)
         const lang = (req as Partial<SettingsResponse>).lang
@@ -68,7 +70,7 @@ export function useUpdateSettings() {
       // de useHomePage masquerait le changement.
       const newLang = (variables as Partial<SettingsResponse>).lang
       if (typeof newLang === 'string') {
-        const next = newLang.toLowerCase().startsWith('en') ? 'en' : 'fr'
+        const next = normalizeLocale(newLang)
         if (next !== currentLocale) {
           setLocale(next)
           void qc.invalidateQueries() // toutes les queries — la locale touche

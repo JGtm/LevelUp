@@ -8,7 +8,7 @@
 // Leur en-tete annonce « aucune I/O, aucun SQL, aucun reseau » — et jusqu'a ce fichier, rien ne
 // le verifiait. Trois interdits, chacun pour une raison qui se paie plus tard :
 //
-//   - `internal/games/halo_infinite/film/replay` : le DOCUMENT de rejeu est un artefact, et une lecture
+//   - `libs/film/replay` : le DOCUMENT de rejeu est un artefact, et une lecture
 //     tactique doit rester calculable sans artefact (les positions mesurees de `kill_positions`
 //     suffisent aux trois premieres lectures). L'importer ferait dependre le socle d'un
 //     document qui n'existe que pour les matchs cuits, et l'onglet s'eteindrait pour tous les
@@ -48,7 +48,7 @@ var tacticalPurePkgs = []string{
 
 // tacticalPureInterdits : les imports qui feraient de ces paquets autre chose que des algos.
 var tacticalPureInterdits = []string{
-	"levelup/go-api/internal/games/halo_infinite/film/replay",
+	"github.com/JGtm/LevelUp/libs/film/replay",
 	"levelup/go-api/internal/platform/duckdb",
 	"database/sql",
 }

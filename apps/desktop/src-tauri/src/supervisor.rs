@@ -1,0 +1,478 @@
+//! Le superviseur : relie la machine d'etats ([`crate::lifecycle`]) au serveur reel.
+//!
+//! Quatre fils : un vide la sortie standard du serveur et la decode (A14 : un tube plein bloque
+//! le serveur), un relaie sa sortie d'erreur vers `desktop.log`, un surveille sa sortie, un
+//! execute la machine (entrees par un canal, minuteries par `recv_timeout`). La fenetre n'est
+//! connue que par le trait [`Host`] : les tests branchent un hote qui enregistre, `main.rs` un hote
+//! qui pilote la vraie fenetre.
+
+use std::io::{self, BufReader};
+use std::process::ExitStatus;
+use std::sync::Arc;
+use std::sync::mpsc::{self, RecvTimeoutError, Sender};
+use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant};
+
+use crate::events::{ParseError, SidecarEvent, Toast, parse_line};
+use crate::lifecycle::{Action, Input, Lifecycle, Timeouts, Timer};
+use crate::linereader::read_line_bounded;
+use crate::logfile::{LogSink, Source};
+use crate::resources::{self, PREPARE_TIMEOUT, ResourcePack, ResourcesBoard};
+use crate::screen::Screen;
+use crate::secret::Secret;
+use crate::shell_settings::ShellSettings;
+use crate::sidecar::{self, Sidecar, SidecarSpec, Spawned};
+
+/// Longueur maximale d'une ligne lue sur les sorties du serveur.
+const MAX_LINE_BYTES: usize = 64 * 1024;
+/// Nombre de lignes de stdout non decodables journalisees ; les suivantes sont seulement comptees
+/// (un serveur bavard ne doit pas remplir le journal).
+const LOGGED_IGNORED_LINES: u64 = 20;
+/// Longueur d'une ligne ignoree reproduite dans le journal.
+const LOGGED_LINE_CHARS: usize = 200;
+/// Periode de surveillance de la sortie du processus.
+const WAIT_POLL: Duration = Duration::from_millis(20);
+/// Temps laisse a la sortie standard pour se vider apres la sortie du processus (un petit-fils
+/// qui garderait le tube ouvert ne retient pas la coquille).
+const STDOUT_DRAIN_GRACE: Duration = Duration::from_secs(2);
+
+/// Ce que la machine demande a la fenetre.
+pub trait Host: Send + 'static {
+    /// Montrer un ecran embarque.
+    fn show_screen(&mut self, screen: Screen);
+    /// Charger une URL du serveur local (sa page d'echec). Ne porte aucun secret.
+    fn load_url(&mut self, url: &str);
+    /// Charger l'URL d'entree du serveur, qui PORTE le secret d'entree : ne jamais la journaliser.
+    fn load_entry(&mut self, url: &str);
+    /// Le port du serveur est connu.
+    fn announce_port(&mut self, port: u16);
+    /// Terminer l'application. `outcome` dit comment le serveur s'est arrete : l'hote qui installe une
+    /// mise a jour s'en sert pour decider (voir `updater::install_allowed`).
+    fn exit_app(&mut self, outcome: Outcome);
+    /// Montrer une notification systeme relayee depuis la cloche ; l'hote decide, selon l'etat de la
+    /// fenetre, s'il la montre ou la retient (`native_notice::deliver`).
+    fn notify(&mut self, notice: &Toast);
+    /// Appliquer les reglages annonces par le serveur (icone de la zone de notification, croix) ; l'hote
+    /// execute ce que decide `shell_settings::ShellState`.
+    fn apply_shell_settings(&mut self, settings: &ShellSettings);
+    /// Montrer la fenetre principale si elle est cachee (zone de notification) : l'ecran terminal qui
+    /// suit un serveur mort serait sinon affiche sur une fenetre que personne ne voit.
+    fn reveal_window_if_hidden(&mut self);
+}
+
+pub struct ShellConfig {
+    pub spec: SidecarSpec,
+    pub timeouts: Timeouts,
+    pub log: Arc<LogSink>,
+}
+
+/// Ce que le superviseur sait a la fin.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Outcome {
+    /// `clean` du dernier `stopped` recu.
+    pub stopped_clean: Option<bool>,
+    /// La coquille a du tuer le serveur.
+    pub killed: bool,
+    /// Le kill a echoue : le processus peut vivre encore.
+    pub kill_failed: bool,
+}
+
+/// Poignee de demande de fermeture, copiable entre fils (l'etat de l'application, les gestionnaires
+/// de fenetre).
+#[derive(Clone)]
+pub struct Closer {
+    tx: Sender<Input>,
+    board: ResourcesBoard,
+}
+
+impl Closer {
+    /// Demande la fermeture : ecran, fermeture de stdin, attente de `stopped`, kill si besoin.
+    pub fn request_close(&self) {
+        // Un superviseur deja termine n'a plus rien a fermer.
+        let _ = self.tx.send(Input::CloseRequested);
+    }
+
+    /// Demande un cycle de synchronisation immediat (menu de la zone de notification) : la commande `sync`
+    /// part sur la stdin du serveur s'il est pret, sinon rien.
+    pub fn request_sync(&self) {
+        // Un superviseur deja termine n'a plus rien a synchroniser.
+        let _ = self.tx.send(Input::SyncRequested);
+    }
+
+    /// Demande au serveur de preparer le paquet de ressources de `pack` (commande `resources <json>`) et attend
+    /// qu'il le dise pret : telechargement, signature, somme et rangement sont les siens. Bloquant, a appeler
+    /// depuis un fil de mise a jour, jamais depuis celui de l'interface. L'erreur dit pourquoi le paquet n'est
+    /// pas pret (echec annonce, serveur arrete, commande perdue, delai).
+    pub fn prepare_resources(&self, pack: &ResourcePack) -> Result<(), String> {
+        self.board.reset();
+        self.tx
+            .send(Input::ResourcesRequested(resources::command_line(pack)))
+            .map_err(|_| "supervisor_stopped".to_string())?;
+        self.board.wait_ready(&pack.fingerprint, PREPARE_TIMEOUT)
+    }
+
+    /// Le tableau des evenements `resources` du serveur (diagnostic et tests).
+    pub fn resources_board(&self) -> &ResourcesBoard {
+        &self.board
+    }
+}
+
+pub struct ShellHandle {
+    closer: Closer,
+    join: JoinHandle<Outcome>,
+}
+
+impl ShellHandle {
+    pub fn closer(&self) -> Closer {
+        self.closer.clone()
+    }
+
+    pub fn request_close(&self) {
+        self.closer.request_close();
+    }
+
+    /// Attend la fin du superviseur (sortie de l'application ordonnee).
+    pub fn wait(self) -> Outcome {
+        self.join.join().unwrap_or_default()
+    }
+}
+
+/// Lance le serveur et le superviseur. Une erreur de lancement (binaire absent, refuse) est rendue
+/// a l'appelant, qui montre l'ecran d'arret.
+pub fn start(config: ShellConfig, host: impl Host) -> io::Result<ShellHandle> {
+    let ShellConfig { spec, timeouts, log } = config;
+    let Spawned {
+        sidecar,
+        stdout,
+        stderr,
+    } = sidecar::spawn(&spec)?;
+    let sidecar = Arc::new(sidecar);
+    log_shell(
+        &log,
+        &format!("event=sidecar_spawned pid={} exe={}", sidecar.pid(), spec.exe.display()),
+    );
+
+    let (tx, rx) = mpsc::channel::<Input>();
+    let (drained_tx, drained_rx) = mpsc::channel::<()>();
+    let board = ResourcesBoard::default();
+    {
+        let (tx, log, board) = (tx.clone(), log.clone(), board.clone());
+        thread::spawn(move || pump_stdout(stdout, &tx, &log, &drained_tx, &board));
+    }
+    {
+        let log = log.clone();
+        thread::spawn(move || pump_stderr(stderr, &log));
+    }
+    {
+        let (tx, log, sidecar, board) = (tx.clone(), log.clone(), sidecar.clone(), board.clone());
+        thread::spawn(move || watch_exit(&sidecar, &tx, &drained_rx, &log, &board));
+    }
+
+    let (machine, initial) = Lifecycle::start(timeouts);
+    let wiring = Wiring {
+        secret: spec.secret.clone(),
+        log: log.clone(),
+        board: board.clone(),
+    };
+    let join = thread::spawn(move || run(rx, machine, initial, &sidecar, Box::new(host), &wiring));
+    Ok(ShellHandle {
+        closer: Closer { tx, board },
+        join,
+    })
+}
+
+/// Ce que la boucle du superviseur tient en plus du serveur et de la fenetre : le secret d'entree, le journal
+/// et le tableau des evenements `resources`.
+struct Wiring {
+    secret: Secret,
+    log: Arc<LogSink>,
+    board: ResourcesBoard,
+}
+
+/// La boucle du superviseur : applique les actions, attend la prochaine entree ou minuterie.
+fn run(
+    rx: mpsc::Receiver<Input>,
+    mut machine: Lifecycle,
+    initial: Vec<Action>,
+    sidecar: &Sidecar,
+    host: Box<dyn Host>,
+    wiring: &Wiring,
+) -> Outcome {
+    let log: &LogSink = &wiring.log;
+    let mut effects = Effects {
+        sidecar,
+        host,
+        secret: &wiring.secret,
+        log,
+        board: &wiring.board,
+        timers: Vec::new(),
+        kill_failed: false,
+    };
+    let mut actions = initial;
+    loop {
+        for action in actions.drain(..) {
+            effects.apply(action, &machine);
+        }
+        if machine.is_done() {
+            break;
+        }
+        let wait = effects
+            .timers
+            .iter()
+            .map(|(_, at)| *at)
+            .min()
+            .map(|at| at.saturating_duration_since(Instant::now()));
+        let received = match wait {
+            Some(d) => rx.recv_timeout(d),
+            None => rx.recv().map_err(|_| RecvTimeoutError::Disconnected),
+        };
+        match received {
+            Ok(input) => {
+                if let Input::Event(event) = &input {
+                    log_shell(log, &format!("event=server_event {}", describe(event)));
+                }
+                actions = machine.step(input);
+            }
+            Err(RecvTimeoutError::Timeout) => {
+                let now = Instant::now();
+                let (due, pending): (Vec<_>, Vec<_>) = effects.timers.drain(..).partition(|(_, at)| *at <= now);
+                effects.timers = pending;
+                for (timer, _) in due {
+                    log_shell(log, &format!("event=timer_fired timer={timer:?}"));
+                    actions.extend(machine.step(Input::TimerFired(timer)));
+                }
+            }
+            Err(RecvTimeoutError::Disconnected) => break,
+        }
+    }
+    effects.outcome(&machine)
+}
+
+/// Ce que le superviseur execute pour la machine : la fenetre, le serveur, les minuteries, et ce
+/// qu'il retient de l'execution (un kill echoue) pour dire a l'hote comment l'arret s'est passe.
+struct Effects<'a> {
+    sidecar: &'a Sidecar,
+    host: Box<dyn Host>,
+    secret: &'a Secret,
+    log: &'a LogSink,
+    board: &'a ResourcesBoard,
+    timers: Vec<(Timer, Instant)>,
+    kill_failed: bool,
+}
+
+impl Effects<'_> {
+    fn outcome(&self, machine: &Lifecycle) -> Outcome {
+        Outcome {
+            stopped_clean: machine.stopped_clean(),
+            killed: machine.was_killed(),
+            kill_failed: self.kill_failed,
+        }
+    }
+
+    /// La demande de paquet n'est pas partie : le fil de mise a jour qui l'attend est reveille tout de suite,
+    /// avec la raison, au lieu d'attendre son delai.
+    fn resources_not_sent(&self, reason: &str) {
+        log_shell(self.log, &format!("event=resources_not_sent reason={reason}"));
+        self.board.fail(reason);
+    }
+
+    fn apply(&mut self, action: Action, machine: &Lifecycle) {
+        let log = self.log;
+        match action {
+            Action::ShowScreen(screen) => {
+                log_shell(log, &format!("event=show_screen screen={}", screen.message_key()));
+                self.host.show_screen(screen);
+            }
+            Action::LoadEntry { port } => {
+                log_shell(log, &format!("event=load_entry port={port}"));
+                self.host.load_entry(&format!(
+                    "http://127.0.0.1:{port}/desktop/enter?secret={}",
+                    self.secret.expose()
+                ));
+            }
+            Action::LoadServerPage { port } => {
+                log_shell(log, &format!("event=load_server_page port={port}"));
+                self.host.load_url(&format!("http://127.0.0.1:{port}/"));
+            }
+            Action::AnnouncePort { port } => self.host.announce_port(port),
+            Action::CloseStdin => {
+                log_shell(log, "event=close_stdin");
+                self.sidecar.close_stdin();
+            }
+            Action::Kill => {
+                log_shell(log, "event=kill");
+                if let Err(e) = self.sidecar.kill() {
+                    self.kill_failed = true;
+                    log_shell(log, &format!("event=kill_failed err={e}"));
+                }
+            }
+            Action::Arm(timer, after) => {
+                self.timers.retain(|(t, _)| *t != timer);
+                self.timers.push((timer, Instant::now() + after));
+            }
+            Action::Disarm(timer) => self.timers.retain(|(t, _)| *t != timer),
+            Action::Notify(notice) => self.host.notify(&notice),
+            Action::ApplyShellSettings(settings) => {
+                log_shell(
+                    log,
+                    &format!(
+                        "event=shell_settings close_to_tray={} start_with_windows={} native_notifications={} locale={}",
+                        settings.close_to_tray,
+                        settings.start_with_windows,
+                        settings.native_notifications,
+                        settings.locale
+                    ),
+                );
+                self.host.apply_shell_settings(&settings);
+            }
+            Action::RevealWindow => {
+                log_shell(log, "event=reveal_window reason=server_dead");
+                self.host.reveal_window_if_hidden();
+            }
+            Action::SyncSkipped { phase } => log_shell(log, &format!("event=sync_skipped phase={phase}")),
+            Action::SendSync => match self.sidecar.send_command(sidecar::COMMAND_SYNC) {
+                Ok(true) => log_shell(log, "event=sync_requested"),
+                Ok(false) => log_shell(log, "event=sync_skipped reason=stdin_closed"),
+                Err(e) => log_shell(log, &format!("event=sync_failed err={e}")),
+            },
+            Action::SendResources(command) => match self.sidecar.send_command(&command) {
+                Ok(true) => log_shell(log, "event=resources_requested"),
+                Ok(false) => self.resources_not_sent("stdin_closed"),
+                Err(e) => self.resources_not_sent(&format!("write_failed err={e}")),
+            },
+            Action::ResourcesSkipped { phase } => self.resources_not_sent(&format!("phase={phase}")),
+            Action::ExitApp => {
+                log_shell(log, "event=exit_app");
+                let outcome = self.outcome(machine);
+                self.host.exit_app(outcome);
+            }
+        }
+    }
+}
+
+/// Vide stdout : decode chaque ligne en evenement, journalise ce qui n'en est pas un (borne),
+/// et continue de lire meme si le superviseur n'ecoute plus (le serveur ne doit jamais bloquer).
+fn pump_stdout(
+    stdout: std::process::ChildStdout,
+    tx: &Sender<Input>,
+    log: &LogSink,
+    drained: &Sender<()>,
+    board: &ResourcesBoard,
+) {
+    let mut reader = BufReader::new(stdout);
+    let mut ignored: u64 = 0;
+    loop {
+        match read_line_bounded(&mut reader, MAX_LINE_BYTES) {
+            Ok(Some(line)) => match parse_line(&line.text) {
+                // Un superviseur termine n'ecoute plus : on continue de vider le tube.
+                Ok(event) => {
+                    // L'avancement d'un paquet est lu par le fil de mise a jour, pas par la machine d'etats.
+                    if let SidecarEvent::Resources(resources) = &event {
+                        board.publish(resources.clone());
+                    }
+                    let _ = tx.send(Input::Event(event));
+                }
+                Err(reason) => {
+                    ignored += 1;
+                    if ignored <= LOGGED_IGNORED_LINES {
+                        let text: String = line.text.chars().take(LOGGED_LINE_CHARS).collect();
+                        log_shell(
+                            log,
+                            &format!(
+                                "event=stdout_ignored reason={} truncated={} line={text:?}",
+                                reason_name(&reason),
+                                line.truncated
+                            ),
+                        );
+                    }
+                }
+            },
+            Ok(None) => break,
+            Err(e) => {
+                log_shell(log, &format!("event=stdout_read_failed err={e}"));
+                break;
+            }
+        }
+    }
+    if ignored > LOGGED_IGNORED_LINES {
+        log_shell(log, &format!("event=stdout_ignored_total count={ignored}"));
+    }
+    // Le surveillant attend ce signal ; s'il est deja parti, personne ne l'attend plus.
+    let _ = drained.send(());
+}
+
+/// Relaie la sortie d'erreur du serveur vers `desktop.log`, ligne a ligne.
+fn pump_stderr(stderr: std::process::ChildStderr, log: &LogSink) {
+    let mut reader = BufReader::new(stderr);
+    loop {
+        match read_line_bounded(&mut reader, MAX_LINE_BYTES) {
+            Ok(Some(line)) => log.write_line(Source::Sidecar, &line.text),
+            Ok(None) => break,
+            Err(e) => {
+                log_shell(log, &format!("event=stderr_read_failed err={e}"));
+                break;
+            }
+        }
+    }
+}
+
+/// Surveille la sortie du processus, laisse stdout se vider, puis annonce `Exited`.
+fn watch_exit(
+    sidecar: &Sidecar,
+    tx: &Sender<Input>,
+    drained: &mpsc::Receiver<()>,
+    log: &LogSink,
+    board: &ResourcesBoard,
+) {
+    let status: Option<ExitStatus> = loop {
+        match sidecar.try_wait() {
+            Ok(Some(status)) => break Some(status),
+            Ok(None) => thread::sleep(WAIT_POLL),
+            Err(e) => {
+                log_shell(log, &format!("event=wait_failed err={e}"));
+                break None;
+            }
+        }
+    };
+    match status {
+        Some(status) => log_shell(log, &format!("event=sidecar_exited code={:?}", status.code())),
+        None => log_shell(log, "event=sidecar_exited code=unknown"),
+    }
+    if drained.recv_timeout(STDOUT_DRAIN_GRACE).is_err() {
+        log_shell(log, "event=stdout_drain_timeout");
+    }
+    // Plus aucun evenement ne viendra : une mise a jour qui attendait un paquet apprend l'arret.
+    board.close();
+    // Un superviseur termine n'a plus besoin de cette annonce.
+    let _ = tx.send(Input::Exited);
+}
+
+fn log_shell(log: &LogSink, text: &str) {
+    log.write_line(Source::Shell, text);
+}
+
+fn reason_name(reason: &ParseError) -> String {
+    match reason {
+        ParseError::NotJson => "not_json".into(),
+        ParseError::NotAnEvent => "not_an_event".into(),
+        ParseError::UnknownEvent(name) => format!("unknown_event:{name}"),
+        ParseError::BadField(field) => format!("bad_field:{field}"),
+    }
+}
+
+fn describe(event: &SidecarEvent) -> String {
+    match event {
+        SidecarEvent::Listening { port } => format!("kind=listening port={port}"),
+        SidecarEvent::Ready { port } => format!("kind=ready port={port}"),
+        SidecarEvent::Failed { state } => format!("kind=failed state={state}"),
+        SidecarEvent::Stopping => "kind=stopping".into(),
+        SidecarEvent::Stopped { clean } => format!("kind=stopped clean={clean}"),
+        // Jamais le texte : seulement le type.
+        SidecarEvent::Notification(notice) => format!("kind=notification toast_kind={}", notice.kind),
+        SidecarEvent::ShellSettings(_) => "kind=shell_settings".into(),
+        SidecarEvent::Resources(r) => format!(
+            "kind=resources phase={} fingerprint={} code={}",
+            r.phase, r.fingerprint, r.code
+        ),
+    }
+}

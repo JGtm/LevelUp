@@ -28,8 +28,9 @@ import (
 	"fmt"
 	"time"
 
-	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games"
+
+	"github.com/JGtm/LevelUp/libs/film/playerposition"
 )
 
 // PlayerPositionsRepo persiste et relit les positions keyframe dans shared.

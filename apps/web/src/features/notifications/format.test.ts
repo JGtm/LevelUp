@@ -125,3 +125,28 @@ describe('enrichParams — noms de palier localisés', () => {
     expect(title).not.toContain('Gold')
   })
 })
+
+describe('libellés résolus par le serveur (title, medal_name) — plus de paire par langue', () => {
+  // Le serveur remplace `title_fr` / `title_en` (et `medal_name_*`) par UNE clé dans la langue de la
+  // requête : les gabarits lisent `{title}` et `{medal_name}`, quelle que soit la langue de l'interface.
+  it('jalon débloqué : {title} dans les deux langues', () => {
+    const notif = { title_key: 'notif.milestone_unlocked.title', params: { title: "Tireur d'élite" } }
+    expect(resolveTitle(notif, 'fr')).toBe("Jalon débloqué : Tireur d'élite")
+    expect(resolveTitle({ ...notif, params: { title: 'Sharpshooter' } }, 'en')).toBe(
+      'Milestone unlocked: Sharpshooter',
+    )
+  })
+
+  it('médaille inédite : {medal_name} dans les deux langues', () => {
+    const fr = resolveBody(
+      { body_key: 'notif.medal_first_earned.body', params: { medal_name: 'Tir parfait' } },
+      'fr',
+    )
+    const en = resolveBody(
+      { body_key: 'notif.medal_first_earned.body', params: { medal_name: 'Perfect' } },
+      'en',
+    )
+    expect(fr).toContain('Tir parfait')
+    expect(en).toContain('Perfect')
+  })
+})

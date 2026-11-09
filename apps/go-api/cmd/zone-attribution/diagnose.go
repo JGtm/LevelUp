@@ -19,8 +19,9 @@ import (
 	"math"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"github.com/JGtm/LevelUp/libs/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // distanceBuckets : bornes de la distribution imprimee, en metres. La premiere est de

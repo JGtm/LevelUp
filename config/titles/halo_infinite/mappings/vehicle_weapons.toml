@@ -31,7 +31,7 @@
 #             explosive | bomb | melee | needles
 #   tint      nature de la decharge — liste de [shot_tints] : kinetic | plasma_cool | plasma_hot |
 #             forerunner | electric | needle | blast
-#   sound     stem de la PREMIERE variante du son de tir (fichier `static/sounds/{slug}/<stem>.wav`,
+#   sound     stem de la PREMIERE variante du son de tir (fichier `static/sounds/{slug}/<stem>.ogg`,
 #             les variantes se tirent cote client) — OU `silence`, la raison d un silence DECIDE
 #   mount     ancre sur le sprite, en fractions (repere nez en haut ; ax -0,5 gauche .. +0,5
 #             droite, ay -0,5 nez .. +0,5 arriere) et classe de visee : aim = fixed (solidaire du
@@ -51,8 +51,7 @@ schema_version = 1
 [[weapons]]
 tag      = "121B4009"
 vehicle  = "wraith"
-en       = "Plasma Mortar"
-fr       = "Mortier à plasma"
+label    = { en = "Plasma Mortar", fr = "Mortier à plasma" }
 fire     = "single"
 impact   = true
 impact_sound = "impact_wraith_mortar"
@@ -66,8 +65,7 @@ decision = "teinte ROUGE plasma_hot (utilisateur, Q7, 2026-09-23)"
 [[weapons]]
 tag      = "C7D50912"
 vehicle  = "rockethog"
-en       = "Rocket Launcher"
-fr       = "Lance-roquettes"
+label    = { en = "Rocket Launcher", fr = "Lance-roquettes" }
 fire     = "single"
 impact   = true
 fx       = "explosive"
@@ -80,8 +78,7 @@ decision = "explosions comme le lance-roquettes SPNKR (forme explosive, teinte b
 [[weapons]]
 tag      = "0BB6976B"
 vehicle  = "falcon"
-en       = "Grenade Launcher"
-fr       = "Lance-grenades"
+label    = { en = "Grenade Launcher", fr = "Lance-grenades" }
 fire     = "single"
 fx       = "explosive"
 tint     = "kinetic"
@@ -93,8 +90,7 @@ decision = "lance-grenades du Falcon (Q10, 2026-09-23 : deduit du tir au coup, l
 [[weapons]]
 tag      = "0042678E"
 vehicle  = "gungoose"
-en       = "Forward Machine Guns"
-fr       = "Mitrailleuses avant"
+label    = { en = "Forward Machine Guns", fr = "Mitrailleuses avant" }
 fire     = "single"
 fx       = "ballistic"
 tint     = "kinetic"
@@ -105,8 +101,7 @@ proof    = "40 tirs publies dont 15 en vehicule, 3 documents (4f77afc1, 8a485699
 [[weapons]]
 tag      = "49E40D17"
 vehicle  = "scorpion"
-en       = "Main Cannon"
-fr       = "Canon principal"
+label    = { en = "Main Cannon", fr = "Canon principal" }
 fire     = "single"
 fx       = "explosive"
 tint     = "blast"
@@ -118,8 +113,7 @@ decision = "explosion comme la grenade (utilisateur, 2026-09-23 nuit) : forme ex
 [[weapons]]
 tag      = "11725DC4"
 vehicle  = "wasp"
-en       = "Missile Launcher"
-fr       = "Lance-missiles"
+label    = { en = "Missile Launcher", fr = "Lance-missiles" }
 fire     = "single"
 impact   = true
 fx       = "explosive"
@@ -132,8 +126,7 @@ decision = "le coup par coup est le LANCE-MISSILES, l autre mode (d3c407ed, son 
 [[weapons]]
 tag      = "850902EF"
 vehicle  = "banshee"
-en       = "Fuel Rod Bomb"
-fr       = "Bombe à combustible"
+label    = { en = "Fuel Rod Bomb", fr = "Bombe à combustible" }
 fire     = "single"
 impact   = true
 impact_sound = "impact_banshee_bomb"
@@ -141,14 +134,14 @@ fx       = "bomb"
 tint     = "plasma_hot"
 sound    = "vehicle_shot_banshee_m2_1"
 mount    = { aim = "fixed", ax = 0.0, ay = -0.477 }
-proof    = "25 tirs publies dont 15 en vehicule, un seul document (5676a9ba), porteurs mesures banshee:c6e79dcc 11 / warthog:fe32c0f4 4 ; CONTRADICTION NON RESOLUE (revue adverse du lot M6, constat R7, consignee en decouverte) : les 4 tirs du Warthog 786 viennent de son CONDUCTEUR (slot 515, siege 0, t 554-754, le Warthog se deplace sous les tirs) et 10 tirs n ont aucun porteur (tireurs a pied, aucun vehicule a moins de 8 m ; 3 d entre eux juste avant l embarquement du tireur dans une Banshee ou un Warthog) — la cause (attribution du tireur ou arme reellement tiree hors de la Banshee) exige une sonde du film, BTB exclu des sondes ; le rendu de ces tirs suit le registre comme les autres ; LIBELLE : table de verite des armes de vehicule du plan des retours du rejeu (§5, ligne Banshee « bombe a combustible », validee par l utilisateur le 2026-09-23), nom anglais du jeu « Fuel Rod Bomb » ; IDENTIFIE le 2026-09-24 (lot M6.2, instrument internal/himodule/m6_bombe_banshee_research_test.go, modules installes en lecture seule) : weap du module common dont 6 des 9 dependances declarees sont celles de la bombe 0000aa69 du lot V3F, dont son SON DE TIR snd! dc3d707b (banque c682f736 sb_010_veh_cv_banshee, meme cadence de tag) — 0 sur 6 avec les canons 0000aa68 (temoin) ; porte par la Banshee : weap <- uwfa 77f3599d <- sofa 949f1997 <- sofd 8b4eb575 <- vcdd 0fc8167e, qui declare le vehi 000026ed de la Banshee et que le script Lua global range dans sa table MPVehicleConfigs (configuration MULTIJOUEUR) ; degats du projectile 83189ef3 : 53b1e6c5 / a21bf18a (labels.tsv : vehi 000026ed, sb_010_veh_cv_banshee) + l explosion generique 31e8d17e ; son vehicle_shot_banshee_m2 = le rendu V3F de snd! dc3d707b ; ancre mesuree sur banshee.png le 2026-10-05 (nez du sprite, ay -0,477, axe)"
+proof    = "25 tirs publies dont 15 en vehicule, un seul document (5676a9ba), porteurs mesures banshee:c6e79dcc 11 / warthog:fe32c0f4 4 ; CONTRADICTION NON RESOLUE (revue adverse du lot M6, constat R7, consignee en decouverte) : les 4 tirs du Warthog 786 viennent de son CONDUCTEUR (slot 515, siege 0, t 554-754, le Warthog se deplace sous les tirs) et 10 tirs n ont aucun porteur (tireurs a pied, aucun vehicule a moins de 8 m ; 3 d entre eux juste avant l embarquement du tireur dans une Banshee ou un Warthog) — la cause (attribution du tireur ou arme reellement tiree hors de la Banshee) exige une sonde du film, BTB exclu des sondes ; le rendu de ces tirs suit le registre comme les autres ; LIBELLE : table de verite des armes de vehicule du plan des retours du rejeu (§5, ligne Banshee « bombe a combustible », validee par l utilisateur le 2026-09-23), nom anglais du jeu « Fuel Rod Bomb » ; IDENTIFIE le 2026-09-24 (lot M6.2, instrument libs/gamefiles/himodule/m6_bombe_banshee_research_test.go, modules installes en lecture seule) : weap du module common dont 6 des 9 dependances declarees sont celles de la bombe 0000aa69 du lot V3F, dont son SON DE TIR snd! dc3d707b (banque c682f736 sb_010_veh_cv_banshee, meme cadence de tag) — 0 sur 6 avec les canons 0000aa68 (temoin) ; porte par la Banshee : weap <- uwfa 77f3599d <- sofa 949f1997 <- sofd 8b4eb575 <- vcdd 0fc8167e, qui declare le vehi 000026ed de la Banshee et que le script Lua global range dans sa table MPVehicleConfigs (configuration MULTIJOUEUR) ; degats du projectile 83189ef3 : 53b1e6c5 / a21bf18a (labels.tsv : vehi 000026ed, sb_010_veh_cv_banshee) + l explosion generique 31e8d17e ; son vehicle_shot_banshee_m2 = le rendu V3F de snd! dc3d707b ; ancre mesuree sur banshee.png le 2026-10-05 (nez du sprite, ay -0,477, axe)"
 decision = "bombe de la Banshee ROUGE et PLUS GROSSE, eclair et explosion (utilisateur, 2026-09-23 nuit) : teinte plasma_hot, forme bomb"
 
 # --- LES ARMES A TIR CONTINU (lot M4b, 2026-09-24) -------------------------------------------------
 #
 # ELLES NE SONT OBSERVEES DANS AUCUN TIR, ET C EST LE FAIT QUI LES DEFINIT : leur barillet est de type
 # de prediction 1 a debit d evenements NUL (lu dans le tag, instrument
-# `internal/himodule/m4b_barillets_research_test.go`) — le jeu n emet jamais leur record 36, et leur
+# `libs/gamefiles/himodule/m4b_barillets_research_test.go`) — le jeu n emet jamais leur record 36, et leur
 # tir ne vit que dans la gachette tenue de la vue de controle. La cle est le tag que le CHASSIS (ou
 # la piece montee) DECLARE dans le film (`replay/tir_continu_armes.go`, qui porte aussi la cadence) ;
 # le garde-rail Go exige que chaque entree `continuous` y figure, et reciproquement.
@@ -160,8 +153,7 @@ decision = "bombe de la Banshee ROUGE et PLUS GROSSE, eclair et explosion (utili
 [[weapons]]
 tag      = "00015435"
 vehicle  = "ghost"
-en       = "Plasma Cannons"
-fr       = "Canons à plasma"
+label    = { en = "Plasma Cannons", fr = "Canons à plasma" }
 fire     = "continuous"
 fx       = "plasma"
 tint     = "plasma_hot"
@@ -173,8 +165,7 @@ decision = "tir continu rendu comme Theater, cadence du tag (utilisateur, 2026-0
 [[weapons]]
 tag      = "0000AA68"
 vehicle  = "banshee"
-en       = "Plasma Cannons"
-fr       = "Canons à plasma"
+label    = { en = "Plasma Cannons", fr = "Canons à plasma" }
 fire     = "continuous"
 fx       = "plasma"
 tint     = "plasma_hot"
@@ -186,8 +177,7 @@ decision = "tir continu rendu comme Theater (utilisateur, 2026-09-24) ; teinte R
 [[weapons]]
 tag      = "B40E9618"
 vehicle  = "chopper"
-en       = "Forward Cannons"
-fr       = "Canons avant"
+label    = { en = "Forward Cannons", fr = "Canons avant" }
 fire     = "continuous"
 fx       = "plasma"
 tint     = "plasma_hot"
@@ -199,8 +189,7 @@ decision = "teinte ROUGE plasma_hot, forme plasma (Q8)"
 [[weapons]]
 tag      = "D3C407ED"
 vehicle  = "wasp"
-en       = "Machine Gun"
-fr       = "Mitrailleuse"
+label    = { en = "Machine Gun", fr = "Mitrailleuse" }
 fire     = "continuous"
 fx       = "ballistic"
 tint     = "kinetic"
@@ -213,8 +202,7 @@ decision = "LMG de la Wasp = le mode continu (Q11, 2026-09-23 nuit) ; sons desig
 [[weapons]]
 tag      = "0C6FD911"
 vehicle  = "warthog"
-en       = "LAAG Machine Gun"
-fr       = "Mitrailleuse LAAG"
+label    = { en = "LAAG Machine Gun", fr = "Mitrailleuse LAAG" }
 fire     = "continuous"
 fx       = "ballistic"
 tint     = "kinetic"
@@ -226,8 +214,7 @@ decision = "son de la LAAG = le son de la tourelle LMG deja en place (utilisateu
 [[weapons]]
 tag      = "E2066F44"
 vehicle  = "falcon"
-en       = "Machine Gun Turret"
-fr       = "Tourelle mitrailleuse"
+label    = { en = "Machine Gun Turret", fr = "Tourelle mitrailleuse" }
 fire     = "continuous"
 fx       = "ballistic"
 tint     = "kinetic"
@@ -239,8 +226,7 @@ decision = "le Falcon porte la LMG OU le lance-grenades, le rendu suit la tourel
 [[weapons]]
 tag      = "00015CD3"
 vehicle  = "scorpion"
-en       = "Machine Gun"
-fr       = "Mitrailleuse"
+label    = { en = "Machine Gun", fr = "Mitrailleuse" }
 fire     = "continuous"
 fx       = "ballistic"
 tint     = "kinetic"
@@ -251,8 +237,7 @@ proof    = "tag declare par le collier de tourelle du Scorpion (0000d500) ; 1 ba
 [[weapons]]
 tag      = "001B33E8"
 vehicle  = "wraith"
-en       = "Plasma Turret"
-fr       = "Tourelle à plasma"
+label    = { en = "Plasma Turret", fr = "Tourelle à plasma" }
 fire     = "continuous"
 fx       = "plasma"
 tint     = "plasma_hot"

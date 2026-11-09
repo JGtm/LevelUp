@@ -99,11 +99,11 @@ describe('sousLigneDeZone', () => {
 })
 
 describe('modeleDeTuile — la mini-tuile d’une contribution', () => {
-  it('une mort : tuée par l’autre joueur, l’arme dans la langue de la page', () => {
-    const m = modeleDeTuile(t, contribution({ arme_label: 'Fusil de combat', arme_label_en: 'BR75' }), 'fr', 'UTC', 'Victoire')
+  it('une mort : tuée par l’autre joueur, l’arme servie dans la langue de la page', () => {
+    const m = modeleDeTuile(t, contribution({ arme_label: 'Fusil de combat' }), 'fr', 'UTC', 'Victoire')
     expect(m.fait).toBe('Tué par Rival')
     expect(m.arme).toBe('Fusil de combat')
-    expect(modeleDeTuile(tEn, contribution({ arme_label: 'Fusil de combat', arme_label_en: 'BR75' }), 'en', 'UTC', 'Win').arme).toBe('BR75')
+    expect(modeleDeTuile(tEn, contribution({ arme_label: 'Battle Rifle' }), 'en', 'UTC', 'Win').arme).toBe('Battle Rifle')
   })
 
   it('à défaut d’arme, la catégorie traduite ; une catégorie non traduite ne s’écrit pas', () => {

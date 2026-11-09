@@ -18,7 +18,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
+	"levelup/go-api/internal/i18n"
 )
 
 // logModuleLeaderboard route les logs de lecture du classement vers
@@ -304,10 +304,10 @@ func (r *LeaderboardRepo) GetWorldLeaderboardCatalog(ctx context.Context, titleS
 		return domain.LeaderboardCatalog{}, fmt.Errorf("GetWorldLeaderboardCatalog: playlists: %w", err)
 	}
 	// Phase F : noms via le catalogue metadata mutualisé, locale-aware (header
-	// X-LevelUp-Locale → ctxkeys.Locale). Cascade EN : asset_translations[en] >
-	// rankedplaylists EN > name_canonical (EN) > FR > id ; cascade FR :
-	// asset_translations[fr] > rankedplaylists FR > name_canonical (EN) > EN > id.
+	// X-LevelUp-Locale → ctxkeys.Locale). Cascade (playlistName) : asset_translations[langue]
+	// > rankedplaylists[langue] > name_canonical (EN) > les autres langues > id.
 	locale := ctxkeys.Locale(ctx)
+	loc := i18n.Parse(locale)
 	// C2b : libellé autoritatif "Saison N · Nom" depuis season_catalog (scrape
 	// Waypoint). Best-effort : catalogue vide (pas encore scrapé) → fallback
 	// "Saison N" dérivé du numéro.
@@ -319,19 +319,25 @@ func (r *LeaderboardRepo) GetWorldLeaderboardCatalog(ctx context.Context, titleS
 	}
 	for i := range seasons {
 		seasons[i].DisplayName = SeasonSelectorLabel(locale, seasons[i].ID, seasonNames,
-			fallbackSeasonLabel(locale, seasons[i].ID))
+			fallbackSeasonLabel(loc, seasons[i].ID))
 	}
-	frMap, enMap, canonMap := r.resolvePlaylistNamesFromCatalog(ctx, plIDs)
+	officialNames, canonMap := r.resolvePlaylistNamesFromCatalog(ctx, plIDs)
 	playlists := make([]domain.LeaderboardCatalogRef, 0, len(plIDs))
 	for _, id := range plIDs {
+		official := i18n.Text{}
+		for l, names := range officialNames {
+			if n := names[id]; n != "" {
+				official[l] = n
+			}
+		}
 		playlists = append(playlists, domain.LeaderboardCatalogRef{
-			ID: id, DisplayName: playlistName(id, locale, frMap[id], enMap[id], canonMap[id]),
+			ID: id, DisplayName: playlistName(id, loc, official, canonMap[id]),
 		})
 	}
 	slog.DebugContext(ctx, "catalogue classement mondial lu", "module", logModuleLeaderboard,
 		"titleSlug", titleSlug, "locale", locale,
 		"seasons", len(seasons), "playlists", len(playlists),
-		"noms_fr_catalogue", len(frMap), "noms_en_catalogue", len(enMap))
+		"noms_catalogue_par_langue", countNamesPerLocale(officialNames))
 	return domain.LeaderboardCatalog{Seasons: seasons, Playlists: playlists}, nil
 }
 
@@ -374,15 +380,12 @@ func WorldCSRLatestSeason(ctx context.Context, db *sql.DB) (string, bool, error)
 
 // fallbackSeasonLabel dérive "Saison N" / "Season N" du season_id quand season_catalog
 // ne connaît pas la saison (pas encore scrapée). Format inconnu → id brut.
-func fallbackSeasonLabel(locale, id string) string {
+func fallbackSeasonLabel(loc i18n.Locale, id string) string {
 	major := worldSeasonRank(id) / 100
 	if major <= 0 {
 		return id
 	}
-	if locale == "en" {
-		return fmt.Sprintf("Season %d", major)
-	}
-	return fmt.Sprintf("Saison %d", major)
+	return i18n.Msg(loc, "common.season.label", i18n.Params{"n": major})
 }
 
 // sortSeasonsRecentFirst trie les saisons du plus récent au plus ancien (numérique).
@@ -390,51 +393,6 @@ func sortSeasonsRecentFirst(seasons []domain.LeaderboardCatalogRef) {
 	sort.SliceStable(seasons, func(i, j int) bool {
 		return worldSeasonRank(seasons[i].ID) > worldSeasonRank(seasons[j].ID)
 	})
-}
-
-// playlistName applique la cascade de résolution d'un nom de playlist, selon la
-// locale UI ("en"/"fr"). EN : asset_translations[en] > rankedplaylists EN >
-// name_canonical (EN) > FR (officiel/curé) > id. FR (défaut) : asset_translations[fr]
-// > rankedplaylists FR > name_canonical (EN) > EN (officiel/curé) > id.
-func playlistName(id, locale, frOfficial, enOfficial, canonical string) string {
-	pl, hasPL := rankedplaylists.Lookup(id)
-	if locale == "en" {
-		if enOfficial != "" {
-			return enOfficial
-		}
-		if hasPL {
-			if en := pl.NameEN(); en != "" {
-				return en
-			}
-		}
-		if canonical != "" {
-			return canonical
-		}
-		if frOfficial != "" {
-			return frOfficial
-		}
-		if hasPL {
-			if fr := pl.NameFR(); fr != "" {
-				return fr
-			}
-		}
-		return id
-	}
-	if frOfficial != "" {
-		return frOfficial
-	}
-	if hasPL {
-		if fr := pl.NameFR(); fr != "" {
-			return fr
-		}
-	}
-	if canonical != "" {
-		return canonical
-	}
-	if enOfficial != "" {
-		return enOfficial
-	}
-	return playlistDisplayName(id) // rankedplaylists EN > id brut
 }
 
 // scanIDColumn lit une colonne d'IDs (une seule colonne string) en slice ordonné.
@@ -453,61 +411,6 @@ func scanIDColumn(ctx context.Context, db *sql.DB, q string, args ...any) ([]str
 		out = append(out, id)
 	}
 	return out, rows.Err()
-}
-
-// resolvePlaylistNamesFromCatalog lit le catalogue metadata MUTUALISÉ et retourne
-// trois maps : frMap (asset_translations[fr]) + enMap (asset_translations[en]),
-// noms officiels localisés, et canonMap (playlists_catalog.name_canonical, EN brut).
-// Vides si metadata indisponible (le caller retombe sur rankedplaylists). Ne touche
-// jamais la shared DB.
-func (r *LeaderboardRepo) resolvePlaylistNamesFromCatalog(ctx context.Context, ids []string) (frMap, enMap, canonMap map[string]string) {
-	frMap, enMap, canonMap = map[string]string{}, map[string]string{}, map[string]string{}
-	if len(ids) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
-		return frMap, enMap, canonMap
-	}
-	meta := r.pdb.Metadata
-	scan := func(q string, args []any, dst map[string]string) {
-		rows, err := meta.QueryRecovered(ctx, q, args...)
-		if err != nil {
-			return
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var id, name string
-			if rows.Scan(&id, &name) == nil && strings.TrimSpace(name) != "" {
-				dst[id] = name
-			}
-		}
-	}
-	scan(fmt.Sprintf(
-		`SELECT playlist_asset_id, COALESCE(name_canonical, '') FROM playlists_catalog
-		 WHERE title_slug = ? AND playlist_asset_id IN (%s)`, Placeholders(len(ids))),
-		append([]any{defaultLeaderboardTitleSlug}, ToAnySlice(ids)...), canonMap)
-	// asset_translations fr+en en une requête : on route par la colonne lang.
-	scanByLang := func(q string, args []any) {
-		rows, err := meta.QueryRecovered(ctx, q, args...)
-		if err != nil {
-			return
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var id, name, lang string
-			if rows.Scan(&id, &name, &lang) == nil && strings.TrimSpace(name) != "" {
-				switch lang {
-				case "fr":
-					frMap[id] = name
-				case "en":
-					enMap[id] = name
-				}
-			}
-		}
-	}
-	scanByLang(fmt.Sprintf(
-		`SELECT asset_id, name, lang FROM asset_translations
-		 WHERE asset_type = 'playlist' AND lang IN ('fr','en') AND asset_id IN (%s)
-		   AND name IS NOT NULL AND TRIM(name) <> ''`, Placeholders(len(ids))),
-		ToAnySlice(ids))
-	return frMap, enMap, canonMap
 }
 
 // scanCatalogColumn lit une colonne d'IDs et construit des refs. displayFn
@@ -531,19 +434,6 @@ func scanCatalogColumn(ctx context.Context, db *sql.DB, q string, displayFn func
 		out = append(out, domain.LeaderboardCatalogRef{ID: id, DisplayName: display})
 	}
 	return out, rows.Err()
-}
-
-// playlistDisplayName résout un asset_id de playlist en libellé (FR > EN > id).
-func playlistDisplayName(assetID string) string {
-	if pl, ok := rankedplaylists.Lookup(assetID); ok {
-		if fr := pl.NameFR(); fr != "" {
-			return fr
-		}
-		if en := pl.NameEN(); en != "" {
-			return en
-		}
-	}
-	return assetID
 }
 
 // statMetric décrit l'expression SQL d'agrégation et l'unité d'une catégorie.

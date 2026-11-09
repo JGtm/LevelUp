@@ -1,6 +1,6 @@
 // Package service - match_history_service_enrich.go : toFilterMatchRow +
 // computeMapWinRates + enrichRows/enrichRow + sortItems/compareRows +
-// paginate + helpers de format (formatDateFR,
+// paginate + helpers de format (formatShortDate,
 // formatLifeSeconds, buildPeriodLabel, ptr/cmp helpers).
 // Decoupe de match_history_service.go (god-file split, refactor 2026-05-27).
 package service
@@ -14,31 +14,28 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
 func toFilterMatchRow(r domain.MatchHistoryRawRow) domain.FilterMatchRow {
 	// PlaylistName est déjà FR-préféré (COALESCE(playlist_name_fr, playlist_name),
 	// cf. domain.MatchHistoryRawRow) → cohérent avec la Value FR des options.
-	// GameVariantName/FR + PlaylistNameEN sont remplis pour H5 par
-	// applyMatchHistoryFRTranslations : GameVariant* alimente le fallback mode
-	// (titres sans pair), PlaylistNameEN sert de clé de migration cascade.
+	// GameVariantName et PlaylistName[en] sont remplis pour H5 par
+	// applyMatchHistoryFRTranslations : GameVariantName alimente le fallback mode
+	// (titres sans pair), PlaylistName[en] sert de clé de migration cascade.
 	return domain.FilterMatchRow{
-		MatchID:           r.MatchID,
-		StartTime:         r.StartTime,
-		MapName:           r.MapName,
-		MapNameFR:         r.MapNameFR,
-		PairName:          r.PairName,
-		PairNameFR:        r.PairNameFR,
-		PlaylistName:      r.PlaylistName,
-		PlaylistNameEN:    r.PlaylistNameEN,
-		GameVariantName:   r.GameVariantName,
-		GameVariantNameFR: r.GameVariantNameFR,
-		IsFirefight:       r.IsFirefight,
-		IsRanked:          r.IsRanked,
-		SessionID:         r.SessionID,
-		SessionLabel:      r.SessionLabel,
-		IsWithFriends:     r.IsWithFriends,
+		MatchID:         r.MatchID,
+		StartTime:       r.StartTime,
+		MapName:         r.MapName,
+		PairName:        r.PairName,
+		PlaylistName:    r.PlaylistName,
+		GameVariantName: r.GameVariantName,
+		IsFirefight:     r.IsFirefight,
+		IsRanked:        r.IsRanked,
+		SessionID:       r.SessionID,
+		SessionLabel:    r.SessionLabel,
+		IsWithFriends:   r.IsWithFriends,
 	}
 }
 
@@ -46,19 +43,35 @@ func toFilterMatchRow(r domain.MatchHistoryRawRow) domain.FilterMatchRow {
 // Win rate par carte
 // ---------------------------------------------------------------------------
 
-func computeMapWinRates(rows []domain.MatchHistoryRawRow) map[string][2]int {
+// mapRateKey est la clé du taux de victoire « sur cette carte » d'une ligne : le groupe de sa carte
+// (une variante compte sous sa carte de base), à défaut son nom quand la ligne n'a pas d'identifiant de
+// carte. "" quand la ligne ne désigne aucune carte. La clé est calculée par la même fonction à
+// l'agrégation (computeMapWinRates) et à la lecture (enrichRow) : elles ne peuvent pas diverger.
+func mapRateKey(r domain.MatchHistoryRawRow, groups domain.GroupesDeCartes) string {
+	if id := derefStr(r.MapID); id != "" {
+		return groups.Groupe(id)
+	}
+	if name := r.MapName[i18n.Fallback]; name != "" {
+		return "name:" + name
+	}
+	return ""
+}
+
+// computeMapWinRates compte, par carte (groupe de variantes compris), les victoires et le total des
+// parties de l'historique.
+func computeMapWinRates(rows []domain.MatchHistoryRawRow, groups domain.GroupesDeCartes) map[string][2]int {
 	m := make(map[string][2]int)
 	for _, r := range rows {
-		name := derefStr(r.MapName)
-		if name == "" {
+		key := mapRateKey(r, groups)
+		if key == "" {
 			continue
 		}
-		entry := m[name]
+		entry := m[key]
 		entry[1]++ // total
 		if r.Outcome == domain.OutcomeWin {
 			entry[0]++ // wins
 		}
-		m[name] = entry
+		m[key] = entry
 	}
 	return m
 }
@@ -74,7 +87,7 @@ func computeMapWinRates(rows []domain.MatchHistoryRawRow) map[string][2]int {
 type rowFormatters struct {
 	matchURL      func(matchID string) string
 	outcomeKey    func(code int) string
-	playlistLabel func(rawFR string) string
+	playlistLabel func(loc i18n.Locale, name string) string
 	// regulation : table `game_variant_name → temps réglementaire (s)` du titre
 	// courant (regulation.toml). Nil/vide → aucun flag « Prolongation », jamais
 	// d'erreur. Injectée par MatchHistoryService.WithRegulation.
@@ -86,6 +99,9 @@ type rowFormatters struct {
 	// (même contrat que la home : (tier capitalisé, sous-palier 0=Onyx/1..6) → URL).
 	// Nil → aucune image, le front retombe sur le libellé texte du palier.
 	skillBadgeURL func(tierEN string, subTier int) string
+	// mapGroups : groupes de cartes du titre, pour la clé du taux de victoire par carte (mapRateKey).
+	// Zéro-valeur : aucune variante regroupée.
+	mapGroups domain.GroupesDeCartes
 	// replays : ensemble des matchs ayant un artefact de rejeu 2D, construit UNE FOIS
 	// par requête (un listing de dossier) et consulté en O(1) par ligne. Vide → aucune
 	// ligne ne porte de rejeu, ce qui est l'état d'un titre sans film cuit.
@@ -96,13 +112,13 @@ type rowFormatters struct {
 // chokepoint unique analysis.SkillBadgeURL (normalisation partagée avec la home).
 // nil sans résolveur injecté ou sans palier exploitable → dégradation sur le texte.
 func (f rowFormatters) skillRankImageURLFor(r domain.MatchHistoryRawRow) *string {
-	return analysis.SkillBadgeURL(derefStr(r.SkillTier), r.SubTier, f.skillBadgeURL)
+	return analysis.SkillBadgeURL(r.SkillTier, r.SubTier, f.skillBadgeURL)
 }
 
 // overtimeFor résout le flag « Prolongation » d'une ligne brute via le
 // chokepoint unique analysis.ResolveOvertime (même résolution que la Match View).
 func (f rowFormatters) overtimeFor(r domain.MatchHistoryRawRow) (bool, int) {
-	return analysis.ResolveOvertime(derefStr(r.GameVariantName), r.ElapsedSeconds, f.regulation)
+	return analysis.ResolveOvertime(r.GameVariantName[i18n.Fallback], r.ElapsedSeconds, f.regulation)
 }
 
 func (f rowFormatters) matchURLFor(matchID string) string {
@@ -112,13 +128,14 @@ func (f rowFormatters) matchURLFor(matchID string) string {
 	return f.matchURL(matchID)
 }
 
-// playlistLabelFor résout le libellé d'affichage de la playlist via le chokepoint
-// unique injecté (strip + override). nil → renvoie le brut (dégradation gracieuse).
-func (f rowFormatters) playlistLabelFor(rawFR string) string {
+// playlistLabelFor résout le libellé d'affichage de la playlist, dans la langue `loc`, via le chokepoint
+// unique injecté (strip + override pour la langue par défaut, PlaylistLabelConfig.DisplayIn). nil → renvoie
+// le nom brut (dégradation gracieuse).
+func (f rowFormatters) playlistLabelFor(loc i18n.Locale, name string) string {
 	if f.playlistLabel == nil {
-		return rawFR
+		return name
 	}
-	return f.playlistLabel(rawFR)
+	return f.playlistLabel(loc, name)
 }
 
 // hasReplayFor dit si le match a un artefact de rejeu 2D. Lookup O(1) dans l'ensemble
@@ -138,22 +155,22 @@ func (f rowFormatters) outcomeKeyFor(code int) string {
 	return f.outcomeKey(code)
 }
 
-func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFormatters) []domain.MatchHistoryRow {
+func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFormatters, loc i18n.Locale) []domain.MatchHistoryRow {
 	out := make([]domain.MatchHistoryRow, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, enrichRow(r, mapWR, fmts))
+		out = append(out, enrichRow(r, mapWR, fmts, loc))
 	}
 	return out
 }
 
-// enrichMapWinRate calcule le taux de victoire historique du joueur sur une map
+// enrichMapWinRate calcule le taux de victoire historique du joueur sur une carte (clé mapRateKey)
 // (arrondi 1 déc.) + le total de matchs, depuis la table mapWR pré-agrégée.
 // (nil, nil) si map inconnue ou 0 match. Extrait d'enrichRow (L3 : funlen).
-func enrichMapWinRate(mapName string, mapWR map[string][2]int) (*float64, *int) {
-	if mapName == "" {
+func enrichMapWinRate(mapKey string, mapWR map[string][2]int) (*float64, *int) {
+	if mapKey == "" {
 		return nil, nil
 	}
-	entry, ok := mapWR[mapName]
+	entry, ok := mapWR[mapKey]
 	if !ok || entry[1] <= 0 {
 		return nil, nil
 	}
@@ -162,19 +179,22 @@ func enrichMapWinRate(mapName string, mapWR map[string][2]int) (*float64, *int) 
 	return &v, &total
 }
 
-func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFormatters) domain.MatchHistoryRow {
+// enrichRow projette une ligne brute en ligne d'historique. Les noms de carte, de mode et de playlist
+// affichés (map_ui, mode_ui, playlist_label) sont ceux de la langue `loc` ; les clés (taux de victoire par
+// carte, table des manches) restent celles de la langue de repli.
+func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFormatters, loc i18n.Locale) domain.MatchHistoryRow {
 	// mode_ui : pair prioritaire, sinon fallback game_variant (titres sans pair_name,
 	// ex. Halo 5). Sans ce repli, mode_ui resterait vide sur la liste Explorer/
 	// Historique pour H5. Convention centralisée — cf. analysis.ResolveModeUIWithVariant.
-	modeUI := analysis.ResolveModeUIWithVariant(r.PairName, r.PairNameFR, r.GameVariantName, r.GameVariantNameFR)
-	mapU := coalesceStr(r.MapNameFR, r.MapName)
-	playlist := fmts.playlistLabelFor(coalesceStr(r.PlaylistName))
+	modeUI := analysis.ResolveModeUIWithVariantIn(loc, r.PairName, r.GameVariantName)
+	mapU := r.MapName.Pick(loc)
+	playlist := fmts.playlistLabelFor(loc, r.PlaylistName.Pick(loc))
 
 	var startTime time.Time
 	if r.StartTime != nil {
 		startTime = *r.StartTime
 	}
-	label := formatDateFR(startTime)
+	label := formatShortDate(startTime)
 
 	var deltaMMR *float64
 	if r.TeamMMR != nil && r.EnemyMMR != nil {
@@ -182,7 +202,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		deltaMMR = &v
 	}
 
-	winRate, winRateTotal := enrichMapWinRate(derefStr(r.MapName), mapWR)
+	winRate, winRateTotal := enrichMapWinRate(mapRateKey(r, fmts.mapGroups), mapWR)
 
 	matchURL := fmts.matchURLFor(r.MatchID)
 
@@ -199,19 +219,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		kda = r.KDA
 	}
 
-	// Score de la ligne : points ou MANCHES, tranché par la source unique
-	// (analysis.ReadTeamScore). Variante non déclarée ou manches inconnues → points,
-	// c'est-à-dire le comportement d'avant le 2026-08-29.
-	scoreLabel, scoreKind := "-", ""
-	if d, ok := analysis.ReadTeamScore(analysis.TeamScoreInput{
-		MyPoints: r.MyTeamScore, EnemyPoints: r.EnemyTeamScore,
-		MyRoundsWon: r.MyRoundsWon, EnemyRoundsWon: r.EnemyRoundsWon,
-		RoundsTotal:  r.RoundsTotal,
-		RoundsDecide: fmts.roundsDecide[strings.TrimSpace(derefStr(r.GameVariantName))],
-	}); ok {
-		scoreLabel = analysis.FormatTeamScoreLabel(d)
-		scoreKind = string(d.Kind)
-	}
+	scoreLabel, scoreKind := rowScore(r, fmts)
 
 	isOvertime, overtimeSeconds := fmts.overtimeFor(r)
 
@@ -237,7 +245,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		Kills:                    r.Kills,
 		Deaths:                   r.Deaths,
 		Assists:                  r.Assists,
-		SkillTierLabel:           r.SkillTierLabel,
+		SkillTierLabel:           analysis.SkillTierDisplayLabel(r.SkillTier, r.SubTier, loc),
 		SkillRatingType:          r.SkillRatingType,
 		SkillRankImageURL:        fmts.skillRankImageURLFor(r),
 		PersonalScore:            r.PersonalScore,
@@ -347,7 +355,7 @@ func paginate(items []domain.MatchHistoryRow, req domain.PaginationRequest) (dom
 // outcomeKey / outcomeKeyFromHaloCode vivent dans outcome_label.go : la CLÉ canonique
 // d'issue vient du titre (outcomes.toml), jamais un texte ni une map FR en dur (D5, 2026-09-07).
 
-func formatDateFR(t time.Time) string {
+func formatShortDate(t time.Time) string {
 	if t.IsZero() {
 		return "-"
 	}
@@ -414,4 +422,20 @@ func cmpNullInt(a, b *int) bool {
 		return false
 	}
 	return *a < *b
+}
+
+// rowScore rend le score de la ligne : points ou MANCHES, tranché par la source unique
+// (analysis.ReadTeamScore). Variante non déclarée ou manches inconnues → points, c'est-à-dire le
+// comportement d'avant le 2026-08-29. Sans score lisible : "-" et un genre vide.
+func rowScore(r domain.MatchHistoryRawRow, fmts rowFormatters) (label, kind string) {
+	d, ok := analysis.ReadTeamScore(analysis.TeamScoreInput{
+		MyPoints: r.MyTeamScore, EnemyPoints: r.EnemyTeamScore,
+		MyRoundsWon: r.MyRoundsWon, EnemyRoundsWon: r.EnemyRoundsWon,
+		RoundsTotal:  r.RoundsTotal,
+		RoundsDecide: fmts.roundsDecide[strings.TrimSpace(r.GameVariantName[i18n.Fallback])],
+	})
+	if !ok {
+		return "-", ""
+	}
+	return analysis.FormatTeamScoreLabel(d), string(d.Kind)
 }

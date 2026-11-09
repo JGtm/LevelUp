@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -81,6 +82,17 @@ func (r *StaticAssetMetaRepo) ListMedalsByTitle(_ context.Context, titleID strin
 	return filterAssets(r.setFor(titleID).medals, search), nil
 }
 
+// nameMatches dit si l'un des noms, dans n'importe quelle langue, contient `lower` (déjà en minuscules) :
+// la recherche du tiroir trouve une carte par son nom dans toute langue renseignée.
+func nameMatches(names i18n.Text, lower string) bool {
+	for _, v := range names {
+		if strings.Contains(strings.ToLower(v), lower) {
+			return true
+		}
+	}
+	return false
+}
+
 func filterAssets(items []canonical.AssetMeta, search string) []canonical.AssetMeta {
 	if search == "" {
 		return items
@@ -88,8 +100,7 @@ func filterAssets(items []canonical.AssetMeta, search string) []canonical.AssetM
 	lower := strings.ToLower(search)
 	var out []canonical.AssetMeta
 	for _, m := range items {
-		if strings.Contains(strings.ToLower(m.NameEN), lower) ||
-			strings.Contains(strings.ToLower(m.NameFR), lower) {
+		if nameMatches(m.Names, lower) {
 			out = append(out, m)
 		}
 	}

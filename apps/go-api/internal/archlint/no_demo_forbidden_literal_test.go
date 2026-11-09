@@ -32,10 +32,7 @@ func TestNoDemoForbiddenLiteral(t *testing.T) {
 	var violations []string
 	homeSeen := false
 	for _, sub := range []string{"internal", "cmd", "pkg"} {
-		root := filepath.Join(moduleRoot, sub)
-		if _, err := os.Stat(root); err != nil {
-			continue
-		}
+		root := racineDeclaree(t, sub)
 		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err

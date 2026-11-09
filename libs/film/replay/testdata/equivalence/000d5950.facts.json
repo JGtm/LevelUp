@@ -1,0 +1,70 @@
+{
+  "players": [
+    {
+      "xuid": "2742063072864889",
+      "kills": 12,
+      "deaths": 10,
+      "assists": 6,
+      "teamId": 1
+    },
+    {
+      "xuid": "2603225103667623",
+      "kills": 8,
+      "deaths": 14,
+      "assists": 1,
+      "teamId": 0
+    },
+    {
+      "xuid": "2633090228607708",
+      "kills": 8,
+      "deaths": 14,
+      "assists": 1,
+      "teamId": 0
+    },
+    {
+      "xuid": "2603004317949713",
+      "kills": 14,
+      "deaths": 9,
+      "assists": 2,
+      "teamId": 1
+    },
+    {
+      "xuid": "2543372234349153",
+      "kills": 14,
+      "deaths": 13,
+      "assists": 3,
+      "teamId": 0
+    },
+    {
+      "xuid": "2709083604009238",
+      "kills": 14,
+      "deaths": 13,
+      "assists": 1,
+      "teamId": 1
+    },
+    {
+      "xuid": "2812089420052706",
+      "kills": 10,
+      "deaths": 11,
+      "assists": 2,
+      "teamId": 1
+    },
+    {
+      "xuid": "2667725237021739",
+      "kills": 13,
+      "deaths": 9,
+      "assists": 1,
+      "teamId": 0
+    }
+  ],
+  "teamScores": [
+    43,
+    50
+  ],
+  "gameVariantName": "Slayer:Arena Super Fiesta",
+  "mapId": "5324364b-39a8-4f93-96a6-b80a1f18ce8a",
+  "matchId": "000d5950-83d9-423f-ab55-d068a7237b9f",
+  "mapNames": [
+    "Cliffhanger"
+  ]
+}

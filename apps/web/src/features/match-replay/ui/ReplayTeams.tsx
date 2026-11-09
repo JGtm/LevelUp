@@ -39,6 +39,7 @@ import { ReplayPlayerCard, ReplaySeatWaiting } from './ReplayPlayerCard'
 import { ReplayTeamHeader } from './ReplayTeamHeader'
 import { cardDensity } from '../model/cardDensity'
 import { teleportMoments } from '../model/placementTeleport'
+import { drawablePlacements } from '../model/spawnedObjects'
 import type { CardFxScene } from '../model/playerCardReadings'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
@@ -154,7 +155,7 @@ export function ReplayTeams({
   const fxScene = useMemo<CardFxScene>(
     () => ({
       zones: {
-        placements: doc.equipmentPlacements,
+        placements: drawablePlacements(doc),
         campOfSlot,
       },
       time: { frameMs: frameToMs(1, doc), frames: doc.frameCount },

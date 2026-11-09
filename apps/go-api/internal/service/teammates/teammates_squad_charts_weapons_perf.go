@@ -13,6 +13,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
@@ -140,8 +141,9 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		perf:           perf,
 		mechByGT:       mechByGT,
 		hasMechanics:   hasMechanics,
+		locale:         i18n.FromContext(ctx),
 	})
-	// Traçabilité de l'agrégation frags par joueur (parité logFragDistribution du package
+	// Traçabilité de l agrégation frags par joueur (parité logFragDistribution du package
 	// service, inaccessible ici — teammates ne peut pas importer son parent). Message local
 	// distinct des marqueurs du helper (garde-rail TestFragDistributionLoggingCentralized).
 	slog.DebugContext(ctx, "teammates_frag_distribution_built",
@@ -236,6 +238,7 @@ type squadFragInputs struct {
 	perf           map[string][]domain.SquadPerformanceSeriesPoint
 	mechByGT       map[string]port.KillMechanicsRow
 	hasMechanics   bool
+	locale         i18n.Locale
 }
 
 func squadFragClassesByPlayer(in squadFragInputs) map[string][]domain.FragClassEntry {
@@ -255,7 +258,7 @@ func squadFragClassesByPlayer(in squadFragInputs) map[string][]domain.FragClassE
 	out := make(map[string][]domain.FragClassEntry, len(in.playersOrdered))
 	for _, gt := range in.playersOrdered {
 		m, ok := in.mechByGT[gt]
-		fd := fragdist.Build(rowsByGT[gt], playerFragCounts(in.perf[gt], m, ok), in.hasMechanics)
+		fd := fragdist.Build(in.locale, rowsByGT[gt], playerFragCounts(in.perf[gt], m, ok), in.hasMechanics)
 		if len(fd.Classes) > 0 {
 			out[gt] = fd.Classes
 		}

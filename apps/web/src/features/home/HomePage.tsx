@@ -30,6 +30,7 @@ import { useSettings } from '@/features/settings/queries'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { intlLocale } from '@/lib/formatters'
 import { useCapability, useCapabilityStrict } from '@/lib/capabilities/capabilities'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
@@ -49,6 +50,8 @@ export function HomePage() {
   const { data: fieldMappings } = useFieldMappings()
   const { data: settings } = useSettings()
   const showProgression = settings?.show_progression ?? true
+  // Application de bureau : pas d'image de couverture, la bannière d'identité ouvre la page.
+  const compactChrome = useDeploymentCapability('can_use_compact_chrome')
   const t = (key: HomeManifestKey, values?: Record<string, string | number>) =>
     formatMessage(homeManifest, key, locale, values)
   // Gating multi-titre (Phase 5) : la carte « Playlists récentes » (CSR) dépend de
@@ -198,9 +201,11 @@ export function HomePage() {
 
   return (
     <div className="relative isolate flex flex-col">
-      <div className="sticky top-0 z-0 px-6 pt-0" data-testid="home-hero-banner-sticky">
-        <HomeHeroBanner />
-      </div>
+      {!compactChrome && (
+        <div className="sticky top-0 z-0 px-6 pt-0" data-testid="home-hero-banner-sticky">
+          <HomeHeroBanner />
+        </div>
+      )}
 
       <div className="relative z-10 space-y-6 bg-background px-6 pb-6 pt-6">
         {/* B9 : signal discret si données partielles (compte privé) */}
@@ -268,7 +273,7 @@ export function HomePage() {
               {challengesCompletedLabel && (
                 <p data-testid="home-challenges-completed" className="shrink-0 text-sm text-foreground">
                   <strong className="text-primary">{challengesCompleted}</strong> / {challengesTotal}{' '}
-                  {locale === 'en' ? 'completed' : 'complétés'}
+                  {t('home.challenges.completed_suffix')}
                 </p>
               )}
             </header>
@@ -345,7 +350,15 @@ export function HomePage() {
             <Card className="flex flex-1 flex-col">
             <CardContent className="pt-6 pb-0">
               {soloSessions.length > 0 || squadSessions.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                // Deux colonnes seulement quand les deux carrousels existent : un joueur
+                // qui ne joue que solo (ou qu'en escouade) a une seule tuile, pleine largeur.
+                <div
+                  className={
+                    soloSessions.length > 0 && squadSessions.length > 0
+                      ? 'grid grid-cols-1 gap-4 sm:grid-cols-2'
+                      : 'grid grid-cols-1 gap-4'
+                  }
+                >
                   {soloSessions.length > 0 && (
                     <HomeSessionCarousel
                       sessions={soloSessions}
@@ -412,7 +425,7 @@ export function HomePage() {
           <section className="flex flex-col gap-3">
             <header className="flex items-center gap-1.5">
               <h3 className="text-base font-semibold text-foreground">
-                {locale === 'en' ? 'Last session results' : 'Résultats de la dernière session'}
+                {t('home.last_session.results_title')}
               </h3>
             </header>
             <OutcomeSequenceTape

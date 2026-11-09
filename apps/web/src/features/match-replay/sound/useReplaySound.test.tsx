@@ -122,8 +122,8 @@ describe('useReplaySound — activation', () => {
     expect(ctx.resumed).toBe(1)
     // Le kill du match, et l'extrait d'intro que tout match peut jouer au départ (item 7).
     expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual([
-      '/static/sounds/halo_infinite/hinf_br75.wav',
-      '/static/sounds/halo_infinite/intro_music_01.wav',
+      '/static/sounds/halo_infinite/hinf_br75.ogg',
+      '/static/sounds/halo_infinite/intro_music_01.ogg',
     ])
   })
 
@@ -403,10 +403,10 @@ describe('useReplaySound — la fin de partie', () => {
     act(() => result.current.toggle())
     await act(async () => { await flushAudio() })
     const charges = fetchMock.mock.calls.map((c) => String(c[0]))
-    expect(charges).toContain('/static/sounds/halo_infinite/end_victory_voice_fr_01.wav')
-    expect(charges).toContain('/static/sounds/halo_infinite/end_victory_voice_fr_02.wav')
-    expect(charges).toContain('/static/sounds/halo_infinite/end_victory_music_01.wav')
-    expect(charges).toContain('/static/sounds/halo_infinite/hinf_br75.wav')
+    expect(charges).toContain('/static/sounds/halo_infinite/end_victory_voice_fr_01.ogg')
+    expect(charges).toContain('/static/sounds/halo_infinite/end_victory_voice_fr_02.ogg')
+    expect(charges).toContain('/static/sounds/halo_infinite/end_victory_music_01.ogg')
+    expect(charges).toContain('/static/sounds/halo_infinite/hinf_br75.ogg')
   })
 
   it('à l’arrivée, la voix et la fanfare partent ensemble — deux voix, pas une', async () => {

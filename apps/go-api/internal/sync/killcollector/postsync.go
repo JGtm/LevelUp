@@ -9,8 +9,7 @@ package killcollector
 // cache etait alimente par le projet Python supprime a la migration : il s est arrete le
 // 2026-04-07. Depuis, AUCUN match synchronise n avait de passe de film — donc `assist_known`
 // y valait FALSE (« on ne sait pas ») sur 100 % des morts, et les deux blocs d assistances de
-// l app se retiraient. Cinq mois, sans un log. Mesure complete :
-// `.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`.
+// l app se retiraient. Cinq mois, sans un log.
 //
 // UN RATTRAPAGE MANUEL AURAIT REPRODUIT LE DEFAUT. Une donnee qui ne se remplit que si
 // quelqu un pense a lancer une commande finit toujours par ne plus se remplir. L etape vit
@@ -49,12 +48,12 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmarchive"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 )
 
 // DefaultPostSyncPerCycle borne le nombre de films decodes par cycle.
@@ -118,7 +117,10 @@ type FilmChunkFetcher = filmChunkFetcher
 type PostSyncHook struct {
 	repoRoot  string
 	cacheRoot string
-	perCycle  int
+	// archiveRoot rend la racine de l'archive des films, relue à chaque passe : une archive vide
+	// peut changer d'emplacement à chaud (title.SetFilmArchiveRuntime). Nil : `cacheRoot` seul.
+	archiveRoot func() string
+	perCycle    int
 	// horizon : la taille d une PAGE de backlog lue par cycle ([PostSyncBacklogHorizon]). Un champ
 	// et non la constante en dur, pour que les tests exercent la pagination sans inscrire 64 matchs.
 	horizon int
@@ -127,8 +129,9 @@ type PostSyncHook struct {
 	capsErr error
 	capsOK  bool
 
-	cache       *haloclient.LocalFilmCache
+	cache       *filmfetch.LocalFilmCache
 	cacheRacine string
+	cacheVoulue string
 	cacheOK     bool
 }
 
@@ -141,10 +144,10 @@ func NewPostSyncHook(repoRoot string, perCycle int) *PostSyncHook {
 		perCycle = DefaultPostSyncPerCycle
 	}
 	return &PostSyncHook{
-		repoRoot:  repoRoot,
-		cacheRoot: titlePkg.NewPathResolver(repoRoot).CacheRootDir(),
-		perCycle:  perCycle,
-		horizon:   PostSyncBacklogHorizon,
+		repoRoot:    repoRoot,
+		archiveRoot: titlePkg.NewPathResolver(repoRoot).FilmArchiveDir,
+		perCycle:    perCycle,
+		horizon:     PostSyncBacklogHorizon,
 	}
 }
 
@@ -190,22 +193,27 @@ func (h *PostSyncHook) capture(ctx context.Context, d PostSyncDeps) DepsCapture 
 // lecture ne consulte jamais — le repli disque ne prend plus et chaque cycle repaie le reseau
 // en entier. La racine du moteur gagne, et elle sert aux DEUX sens.
 //
-// Resolue UNE fois : les dossiers sont crees au premier passage (sans quoi
-// `NewLocalFilmCache` rend nil pour toute la vie du process), puis le resultat est memorise.
-func (h *PostSyncHook) racineDuCache(ctx context.Context, duMoteur *haloclient.LocalFilmCache) (string, *haloclient.LocalFilmCache) {
-	if h.cacheOK {
+// Resolue au premier passage : les dossiers sont crees alors (sans quoi `NewLocalFilmCache` rend
+// nil), puis le resultat est memorise TANT QUE LA RACINE VOULUE NE CHANGE PAS — une archive vide
+// qui change d'emplacement a chaud est reprise a la passe suivante.
+func (h *PostSyncHook) racineDuCache(ctx context.Context, duMoteur *filmfetch.LocalFilmCache) (string, *filmfetch.LocalFilmCache) {
+	voulue := duMoteur.RootDir()
+	if voulue == "" {
+		voulue = h.cacheRoot
+		if h.archiveRoot != nil {
+			voulue = h.archiveRoot()
+		}
+	}
+	if h.cacheOK && h.cacheVoulue == voulue {
 		return h.cacheRacine, h.cache
 	}
-	h.cacheOK = true
-	h.cacheRacine = duMoteur.RootDir()
-	if h.cacheRacine == "" {
-		h.cacheRacine = h.cacheRoot
-	}
+	h.cacheOK, h.cacheVoulue, h.cache = true, voulue, nil
+	h.cacheRacine = voulue
 	if h.cacheRacine == "" {
 		slog.WarnContext(ctx, "post-sync: killsource sans racine de cache — aucun film ne sera archive")
 		return "", nil
 	}
-	if err := filmcache.EnsureDirs(h.cacheRacine); err != nil {
+	if err := filmarchive.EnsureDirs(h.cacheRacine); err != nil {
 		slog.WarnContext(ctx, "post-sync: killsource cache film non preparable",
 			"racine", h.cacheRacine, "err", err)
 		h.cacheRacine = ""
@@ -214,7 +222,7 @@ func (h *PostSyncHook) racineDuCache(ctx context.Context, duMoteur *haloclient.L
 	if duMoteur != nil {
 		h.cache = duMoteur
 	} else {
-		h.cache = haloclient.NewLocalFilmCache(h.cacheRacine)
+		h.cache = filmfetch.NewLocalFilmCache(h.cacheRacine)
 	}
 	return h.cacheRacine, h.cache
 }
@@ -228,7 +236,7 @@ type PostSyncDeps struct {
 	// capacite film ne doit pas faire echouer le cycle).
 	Fetcher filmChunkFetcher
 	// LocalCache : le cache disque deja instancie par le moteur. Peut etre nil.
-	LocalCache *haloclient.LocalFilmCache
+	LocalCache *filmfetch.LocalFilmCache
 	// WithRead ouvre un segment de LECTURE shared court (jamais le writer).
 	WithRead func(ctx context.Context, step string, fn func(sharedDB *sql.DB))
 	// AcquireWriter : le burst writer, relache par l appelant du collecteur.
@@ -311,6 +319,12 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 	if len(travail) == 0 {
 		return 0
 	}
+	// LE VERROU SOLO AVANT TOUT DECODAGE (postsync_verrou_decodage.go) : occupe = la passe se reporte au cycle suivant.
+	liberer, ok := h.prendreLeVerrouDeDecodage(ctx, d)
+	if !ok {
+		return 0
+	}
+	defer liberer()
 	sum := col.CollectMatches(ctx, travail)
 	observability.AddInt(CompteurPostSyncTraites, int64(sum.Written))
 

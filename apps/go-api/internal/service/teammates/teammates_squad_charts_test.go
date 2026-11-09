@@ -9,6 +9,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // rowWithPersonalScore construit une PlayerMatchRow avec PersonalScore renseigné.
@@ -544,7 +545,7 @@ func TestBuildSquadFirstBlood_PopulatesMatchMeta(t *testing.T) {
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
 	rows := []domain.SquadMatchRow{
-		{MatchID: "m1", StartTime: start, DurationSeconds: 600, MapUI: "Aquarius", PairNameFR: "Assassin"},
+		{MatchID: "m1", StartTime: start, DurationSeconds: 600, MapUI: "Aquarius", PairName: i18n.FromColumns("", "Assassin")},
 	}
 
 	got := svc.buildSquadFirstBlood(context.Background(), rows, "main", mainXUID, nil)
@@ -654,7 +655,7 @@ func TestBuildSquadMapHeatmap_TeammatePerfsAreDistinctFromMain(t *testing.T) {
 		gamertag:    "main",
 	}
 
-	heatmap := svc.buildSquadMapHeatmap(context.Background(), mainSquadRows, []string{"friend1"}, nil)
+	heatmap := svc.buildSquadMapHeatmap(context.Background(), mainSquadRows, []string{"friend1"}, nil, domain.GroupesDeCartes{})
 	if heatmap == nil {
 		t.Fatal("heatmap should be non-nil")
 	}
@@ -824,7 +825,7 @@ func TestBuildSquadMapHeatmap_NoCapOnMaps(t *testing.T) {
 		})
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main"}
-	heatmap := svc.buildSquadMapHeatmap(context.Background(), rows, nil, nil)
+	heatmap := svc.buildSquadMapHeatmap(context.Background(), rows, nil, nil, domain.GroupesDeCartes{})
 	if heatmap == nil {
 		t.Fatal("heatmap should be non-nil")
 	}
@@ -850,7 +851,7 @@ func TestBuildSquadMapHeatmap_MapsOrderedByFirstAppearance(t *testing.T) {
 		{MatchID: "l3", StartTime: base.Add(3 * time.Hour), MapUI: "Late", PerformanceScore: &perf},
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main"}
-	heatmap := svc.buildSquadMapHeatmap(context.Background(), rows, nil, nil)
+	heatmap := svc.buildSquadMapHeatmap(context.Background(), rows, nil, nil, domain.GroupesDeCartes{})
 	if heatmap == nil {
 		t.Fatal("heatmap should be non-nil")
 	}

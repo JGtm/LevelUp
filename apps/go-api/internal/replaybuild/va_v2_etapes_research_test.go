@@ -23,7 +23,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // TestVAV2Etapes ecrit, par film de VA_FILMS, la valeur de chaque etape de VA_ETAPES.
@@ -37,7 +38,7 @@ func TestVAV2Etapes(t *testing.T) {
 	cacheRoot := title.NewPathResolver(racine).CacheRootDir()
 	repFaits := os.Getenv("VA_FAITS")
 	if repFaits == "" {
-		repFaits = filepath.Join(racine, "apps", "go-api", "internal", "games", "halo_infinite", "film", "replay",
+		repFaits = filepath.Join(racine, "libs", "film", "replay",
 			"testdata", "equivalence")
 	}
 	for _, film := range films {

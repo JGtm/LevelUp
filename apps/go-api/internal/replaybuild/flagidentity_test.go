@@ -10,8 +10,7 @@ import (
 // flagidentity_test.go — LA TABLE DES EQUIPES DE LA FEUILLE N'EST QU'UN CONTROLE.
 //
 // Les tests du pont d'identite du drapeau (`withFlagIdentity`, `pontParManche`) ont DEMENAGE le
-// 2026-09-28 avec le code qu'ils testent : `film/replay/porteurs_drapeau_identite_test.go` (lot V1.4
-// du plan `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`).
+// 2026-09-28 avec le code qu'ils testent : `film/replay/porteurs_drapeau_identite_test.go`.
 
 // TestScoreboardTeamsEstUnControle — LA FEUILLE DE MATCH NE POSE PLUS L EQUIPE DU PORTEUR (lot 1.7).
 //

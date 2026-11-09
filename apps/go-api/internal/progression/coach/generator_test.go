@@ -10,6 +10,8 @@ import (
 	"levelup/go-api/internal/progression/milestones"
 	"levelup/go-api/internal/progression/records"
 	"levelup/go-api/internal/progression/streaks"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // generator_test.go — unit tests du générateur d'alertes coach.
@@ -267,7 +269,7 @@ func TestGenerate_MilestoneUnlocked(t *testing.T) {
 		MilestoneResults: []milestones.DetectionResult{{
 			Milestone: milestones.CatalogEntry{
 				ID: "halo.matches.100", Metric: "matches_played", Threshold: 100,
-				TitleEN: "Centurion", TitleFR: "Centurion",
+				Title: i18n.FromColumns("Centurion", "Centurion"),
 			},
 			Earned: true,
 		}},
@@ -287,7 +289,7 @@ func TestGenerate_MilestoneNearMiss(t *testing.T) {
 	alerts := g.Generate(context.Background(), GenerateInput{
 		UserID: "u1", TitleSlug: "halo_infinite", Now: now,
 		MilestoneResults: []milestones.DetectionResult{{
-			Milestone: milestones.CatalogEntry{ID: "halo.kills.1000", Metric: "kills", Threshold: 1000, TitleEN: "Killer", TitleFR: "Tueur"},
+			Milestone: milestones.CatalogEntry{ID: "halo.kills.1000", Metric: "kills", Threshold: 1000, Title: i18n.FromColumns("Killer", "Tueur")},
 			NearMiss:  true,
 			Progress:  0.92,
 		}},

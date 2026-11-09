@@ -15,6 +15,8 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/prestige"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // mockPrestigeService est l'implémentation in-memory pour tester le handler.
@@ -593,7 +595,7 @@ func TestPrestigeHandler_SquadActorGuard_AllowsOwnActor(t *testing.T) {
 
 func TestPrestigeHandler_ListArcPresets_OK(t *testing.T) {
 	mock := &mockPrestigeService{
-		listPresetsResp: []prestige.PresetArc{{ID: "p1", TitleSlug: "halo_infinite", TitleFR: "Ascension"}},
+		listPresetsResp: []prestige.PresetArc{{ID: "p1", TitleSlug: "halo_infinite", Titles: i18n.FromColumns("", "Ascension")}},
 	}
 	router := newRouter(mock)
 
@@ -1029,7 +1031,7 @@ func TestPrestigeHandler_AbandonChallenge_OK(t *testing.T) {
 func TestPrestigeHandler_SuggestNext(t *testing.T) {
 	mock := &mockPrestigeService{
 		suggestNextResp: []prestige.Template{
-			{ID: "tpl_higher", LabelEN: "Push it"},
+			{ID: "tpl_higher", Labels: i18n.FromColumns("Push it", "")},
 		},
 	}
 	router := newRouter(mock)

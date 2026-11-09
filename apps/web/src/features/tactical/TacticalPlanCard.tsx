@@ -204,7 +204,7 @@ export function TacticalPlanCard({
         title={titre}
         label={titre || undefined}
         titleAdornment={titleWithInfo(lue ? infoDuPlan(t, locale, question, lue, peintes) : null, {
-          trailing: <ReglagesEnPilules t={t} locale={locale} zonesDisponibles={zones.length > 0} {...reglages} />,
+          trailing: <ReglagesEnPilules t={t} zonesDisponibles={zones.length > 0} {...reglages} />,
           testId: 'tactical-plan-title',
         })}
       >
@@ -294,7 +294,6 @@ const QUI_VALEURS: readonly TacticalQui[] = ['moi', 'escouade', 'adv']
  */
 function ReglagesEnPilules({
   t,
-  locale,
   question,
   onQuestionChange,
   onQuestionIntent,
@@ -308,7 +307,7 @@ function ReglagesEnPilules({
   zonesVisibles,
   onZonesVisiblesChange,
   zonesDisponibles,
-}: ReglagesDuPlan & { t: TacticalText; locale: Locale; zonesDisponibles: boolean }) {
+}: ReglagesDuPlan & { t: TacticalText; zonesDisponibles: boolean }) {
   const libelleQui: Record<TacticalQui, string> = { moi: t.whoMe, escouade: t.whoSquad, adv: t.whoOpponents }
   // « Réapparition » n'a rien à choisir sans amas ; un filtre déjà posé reste visible pour pouvoir l'ôter.
   const pilulePresente = grappes.length > 0 || spawn !== ''
@@ -363,7 +362,7 @@ function ReglagesEnPilules({
             <option value="">{t.pillRespawnAll}</option>
             {grappes.map((g) => (
               <option key={g.id} value={g.id}>
-                {locale === 'fr' ? g.nom_fr : g.nom_en}
+                {g.nom}
               </option>
             ))}
           </select>

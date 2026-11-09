@@ -4,6 +4,7 @@ package service
 import (
 	"strings"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -16,7 +17,7 @@ const (
 )
 
 func classifySessionCategory(match legacymatch.StatsMatchRow) string {
-	lower := strings.ToLower(match.PlaylistName + " " + match.PairName)
+	lower := strings.ToLower(match.PlaylistName[i18n.Fallback] + " " + match.PairName[i18n.Fallback])
 	switch {
 	case strings.Contains(lower, "firefight"):
 		return sessionCategoryFirefight

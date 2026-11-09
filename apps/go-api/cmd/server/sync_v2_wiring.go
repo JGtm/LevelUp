@@ -292,8 +292,7 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 		// donnait au moteur les bases d'un titre et la sémantique d'un autre. C'est
 		// la chaîne causale exacte de la corruption LUSR h5_arena du 2026-06-26
 		// (4 joueurs déclarés sous deux titres → passe « profil halo_5 » sur les
-		// bases halo_infinite ; rapport .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md
-		// §3). La partition livesync.HandlesTitle (b30eb9fe5) ferme le CHEMIN de juin,
+		// bases halo_infinite). La partition livesync.HandlesTitle (b30eb9fe5) ferme le CHEMIN de juin,
 		// pas la CLASSE : un titre piloté par le SyncEngine la traverserait.
 		//
 		// Refus bruyant et non destructeur : le profil remonte `failed` dans le
@@ -353,30 +352,7 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 
 		// 5. MediaScanHook (indexation captures post-sync)
 		if deps.Settings != nil {
-			engine.WithMediaScanHook(service.BuildMediaScanHook(deps.Cfg.RepoRoot, p.Gamertag,
-				func() string {
-					cfg, _ := deps.Settings.Load()
-					if cfg != nil {
-						return cfg.MediaCapturesBaseDir
-					}
-					return ""
-				},
-				func() string {
-					cfg, _ := deps.Settings.Load()
-					if cfg != nil {
-						return cfg.UserTimezone
-					}
-					return ""
-				},
-				func() bool {
-					var v *bool
-					if cfg, _ := deps.Settings.Load(); cfg != nil {
-						v = cfg.MediaDeleteSourceAfterTranscode
-					}
-					return config.ResolveMediaDeleteSource(
-						os.Getenv(config.EnvMediaDeleteSource), v, deps.Cfg.IsProduction())
-				},
-			))
+			engine.WithMediaScanHook(service.NewLiveMediaScanHook(deps.Cfg, deps.Settings, p.Gamertag))
 		}
 
 		// 6. BatchQueue async (Phase 4.9 — INSERT-only via WAL + worker). Le batch

@@ -62,7 +62,7 @@ describe('vehicleCycleTime — la maille de l appariement', () => {
     const go = readFileSync(
       resolve(
         racineDuDepot(),
-        'apps/go-api/internal/games/halo_infinite/film/replay/vehicle_cycles.go',
+        'libs/film/replay/vehicle_cycles.go',
       ),
       'utf8',
     )

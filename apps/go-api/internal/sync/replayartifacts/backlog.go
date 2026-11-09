@@ -120,7 +120,7 @@ func candidatsARattraper(
 // catalogue d'abord, nom brut du registre ensuite) — même règle que la sélection des insérés.
 func nomsDeCarte(ctx context.Context, metaDB *sql.DB, c candidatARattraper) []string {
 	var names []string
-	if en := resolveMapNameEN(ctx, metaDB, strings.TrimSpace(c.mapID)); en != "" {
+	if en := resolveMapCanonicalName(ctx, metaDB, strings.TrimSpace(c.mapID)); en != "" {
 		names = append(names, en)
 	}
 	if raw := strings.TrimSpace(c.rawName); raw != "" {
@@ -254,9 +254,9 @@ func selectBuildWork(
 	return out
 }
 
-// resolveMapNameEN résout le nom EN d'une carte par son asset UGC (asset_translations).
+// resolveMapCanonicalName résout le nom EN d'une carte par son asset UGC (asset_translations).
 // Best-effort : metaDB nil ou nom absent → "" (le candidat brut reste).
-func resolveMapNameEN(ctx context.Context, metaDB *sql.DB, mapID string) string {
+func resolveMapCanonicalName(ctx context.Context, metaDB *sql.DB, mapID string) string {
 	if metaDB == nil || mapID == "" {
 		return ""
 	}

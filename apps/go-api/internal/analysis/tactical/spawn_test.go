@@ -3,6 +3,8 @@ package tactical
 import (
 	"math"
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // pointsAutour pose `n` reapparitions d'un match chacune, serrees autour de (x, y) : elles
@@ -79,17 +81,17 @@ func TestGrappes_LePlancherPorteSurLAMAS_PasSurLaCellule(t *testing.T) {
 // barycentre, jamais d'un catalogue manuel.
 func TestGrappes_NommageParLeCalloutLePlusProche(t *testing.T) {
 	zones := []ZoneNommee{
-		{NomFR: "Base rouge", NomEN: "Red base", X: 0, Y: 0},
-		{NomFR: "Rampe", NomEN: "Ramp", X: 40, Y: 40},
-		{NomFR: "Base bleue", NomEN: "Blue base", X: 100, Y: 100},
+		{Nom: i18n.FromColumns("Red base", "Base rouge"), X: 0, Y: 0},
+		{Nom: i18n.FromColumns("Ramp", "Rampe"), X: 40, Y: 40},
+		{Nom: i18n.FromColumns("Blue base", "Base bleue"), X: 100, Y: 100},
 	}
 	out := GrappesDeSpawn(GrilleParDefaut(), pointsAutour(50.25, 50.25, "m1", "m2", "m3"), zones)
 	if len(out) != 1 {
 		t.Fatalf("grappes = %+v, attendu 1", out)
 	}
-	if out[0].NomFR != "Rampe" || out[0].NomEN != "Ramp" {
+	if out[0].Nom[i18n.LocaleFR] != "Rampe" || out[0].Nom[i18n.LocaleEN] != "Ramp" {
 		t.Fatalf("noms = %q / %q, attendu « Rampe » / « Ramp » (le callout le plus proche du "+
-			"barycentre, DANS LES DEUX LANGUES)", out[0].NomFR, out[0].NomEN)
+			"barycentre, DANS LES DEUX LANGUES)", out[0].Nom[i18n.LocaleFR], out[0].Nom[i18n.LocaleEN])
 	}
 }
 
@@ -97,13 +99,13 @@ func TestGrappes_NommageParLeCalloutLePlusProche(t *testing.T) {
 // MUETTES. Un nom de repli afficherait un lieu que le jeu ne prononce pas.
 func TestGrappes_SansCallout_AucunNomInvente(t *testing.T) {
 	out := GrappesDeSpawn(GrilleParDefaut(), pointsAutour(0.25, 0.25, "m1", "m2", "m3"), nil)
-	if len(out) != 1 || out[0].NomFR != "" || out[0].NomEN != "" {
+	if len(out) != 1 || out[0].Nom[i18n.LocaleFR] != "" || out[0].Nom[i18n.LocaleEN] != "" {
 		t.Fatalf("grappes = %+v, attendu une grappe sans nom", out)
 	}
 	// Une zone SANS libelle ne nomme rien non plus (le catalogue en porte : Forge).
 	muettes := []ZoneNommee{{X: 0, Y: 0}}
 	out = GrappesDeSpawn(GrilleParDefaut(), pointsAutour(0.25, 0.25, "m1", "m2", "m3"), muettes)
-	if len(out) != 1 || out[0].NomFR != "" || out[0].NomEN != "" {
+	if len(out) != 1 || out[0].Nom[i18n.LocaleFR] != "" || out[0].Nom[i18n.LocaleEN] != "" {
 		t.Fatalf("grappes = %+v, attendu une grappe sans nom", out)
 	}
 }

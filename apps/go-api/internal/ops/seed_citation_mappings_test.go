@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // seed_citation_mappings_test.go — garde-rails sur l'état DÉCIDÉ des citations, pour
@@ -143,8 +144,8 @@ func TestObjectiveStatCitationsV721_MappedToColumns(t *testing.T) {
 		if m.Enabled != w.enabled {
 			t.Errorf("%s.Enabled = %v, want %v", w.norm, m.Enabled, w.enabled)
 		}
-		if m.Description == "" {
-			t.Errorf("%s.Description vide", w.norm)
+		if _, descriptions, err := citationTextsFor(w.norm); err != nil || descriptions[i18n.Default] == "" {
+			t.Errorf("%s : description absente de citation_texts.toml (%v)", w.norm, err)
 		}
 	}
 }

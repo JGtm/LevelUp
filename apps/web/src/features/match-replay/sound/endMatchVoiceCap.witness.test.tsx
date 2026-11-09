@@ -17,8 +17,8 @@
  * - La piste est la VRAIE : le document produit par Go (chargé par `goFixtures`, jamais par un
  *   nom de fichier), passé par la frontière (`testReplayDoc`, seule porte admise par
  *   `testDoc.guard.test.ts`), puis par `useReplaySound` tel que la page le monte.
- * - Les durées sont les VRAIES : le `fetch` rend les octets des WAV livrés et le décodage lit
- *   leur en-tête RIFF. Une voix tient donc exactement ce qu'elle tient dans un navigateur.
+ * - Les durées sont les VRAIES : le `fetch` rend les octets des sons livrés (Ogg Opus) et le décodage
+ *   lit leurs en-têtes Ogg. Une voix tient donc exactement ce qu'elle tient dans un navigateur.
  * - L'horloge AVANCE : le contexte audio de ce test porte un `currentTime` que la simulation
  *   pousse à 60 images par seconde d'horloge murale (le film avance de `vitesse` fois autant),
  *   et il déclenche la fin (`onended`) de chaque source à l'heure d'arrêt qu'on lui a
@@ -50,6 +50,7 @@ import { replayWindow } from '../model/replayWindow'
 import { FakeContext, FakeSource, flushAudio } from '../test/fakeAudio'
 import { racineDuDepot } from '../test/featureFiles'
 import { goFixtureEntries, loadGoFixture } from '../test/goFixtures'
+import { opusInfoDeOctets } from '../test/oggOpusFile'
 import { testReplayDoc } from '../test/testDoc'
 import type { EndMatchSoundSpec } from './endMatchSound'
 import { SOUND_MAX_VOICES } from './replayAudio'
@@ -83,7 +84,7 @@ class HorlogeContext extends FakeContext {
 
   override decodeAudioData(raw: ArrayBuffer) {
     const bytes = Buffer.from(raw)
-    return Promise.resolve({ duration: dureeWav(bytes), fichier: this.octetsVersFichier.get(raw) ?? '?' } as unknown as AudioBuffer)
+    return Promise.resolve({ duration: opusInfoDeOctets('tampon', bytes).dureeS, fichier: this.octetsVersFichier.get(raw) ?? '?' } as unknown as AudioBuffer)
   }
 
   /** Avance l'horloge et termine chaque source dont l'arrêt programmé est atteint. */
@@ -99,20 +100,6 @@ class HorlogeContext extends FakeContext {
   vivantes(): FakeSource[] {
     return this.sources.filter((s) => s.started !== null && !this.finies.has(s))
   }
-}
-
-/** Durée d'un WAV RIFF : taille du chunk `data` / débit du chunk `fmt `. */
-function dureeWav(bytes: Buffer): number {
-  let debit = 0
-  let i = 12
-  while (i + 8 <= bytes.length) {
-    const id = bytes.subarray(i, i + 4).toString('ascii')
-    const taille = bytes.readUInt32LE(i + 4)
-    if (id === 'fmt ') debit = bytes.readUInt32LE(i + 16)
-    if (id === 'data') return debit > 0 ? taille / debit : 0
-    i += 8 + taille + (taille % 2)
-  }
-  return 0
 }
 
 function fichierDe(s: FakeSource): string {
@@ -205,7 +192,7 @@ describe(`fin de partie sur le témoin réel ${TEMOIN} (item 11)`, () => {
     const b = await jouerJusquALaBorne(SOUND_MAX_SPEED)
     expect(b.occupees, b.releve).toBe(SOUND_MAX_VOICES)
     expect(b.conclusion.some((f) => f.startsWith('end_victory_voice_fr_')), b.releve).toBe(true)
-    expect(b.conclusion, b.releve).toContain('end_victory_music_01.wav')
+    expect(b.conclusion, b.releve).toContain('end_victory_music_01.ogg')
   })
 
   /** À 1×, la fin du témoin laisse de la place : la conclusion jouait déjà entière, et le reste. */
@@ -213,6 +200,6 @@ describe(`fin de partie sur le témoin réel ${TEMOIN} (item 11)`, () => {
     const b = await jouerJusquALaBorne(1)
     expect(b.occupees, b.releve).toBeLessThan(SOUND_MAX_VOICES - 1)
     expect(b.conclusion, b.releve).toHaveLength(2)
-    expect(b.conclusion, b.releve).toContain('end_victory_music_01.wav')
+    expect(b.conclusion, b.releve).toContain('end_victory_music_01.ogg')
   })
 })

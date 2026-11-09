@@ -110,7 +110,7 @@ export const INK = {
   colorOfSlot: () => 'equipe',
   neutral: 'neutre',
   wall: 'mur',
-  rift: { rim: 'faille-bord', core: 'faille-coeur' },
+  rift: { rim: 'faille-bord', core: 'faille-coeur' }, shroud: { core: 'ecran-coeur', glow: 'ecran-eclair' },
 }
 
 /** projected — un point monde dans le repère du canvas de test. */

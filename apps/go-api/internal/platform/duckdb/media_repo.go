@@ -29,6 +29,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // MediaRepo implémente port.MediaRepository.
@@ -143,7 +144,7 @@ func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilt
 		return nil, fmt.Errorf("LoadMediaFiles: %w", err)
 	}
 
-	result := toMediaFileRows(enriched)
+	result := toMediaFileRows(enriched, i18n.FromContext(ctx))
 	r.enrichMediaMapTranslations(ctx, result)
 	r.enrichMediaModeCategories(result)
 	return result, nil
@@ -166,6 +167,8 @@ func (r *MediaRepo) enrichMediaModeCategories(rows []domain.MediaFileRow) {
 		if cat != "" {
 			c := cat
 			rows[i].ModeName = &c
+			k := cat
+			rows[i].ModeFilterKey = &k
 		}
 	}
 }

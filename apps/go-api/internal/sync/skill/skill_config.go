@@ -4,7 +4,12 @@
 // Centralise tous les paramètres numériques de l'algorithme LUSR.
 package skill
 
-import "math"
+import (
+	"math"
+
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
+)
 
 // ── TrueSkill 2 paramètres ─────────────────────────────────────────────────
 
@@ -134,8 +139,7 @@ var RelativeWeights = map[string]float64{
 // objectiveChainWeights — profil de poids des chaînes de FAMILLE OBJECTIF
 // (LUSRChainArenaObjectif, PerfChainRankedObjectif).
 //
-// FIGÉ au gate 0 du 2026-08-27 (décision D-J de .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md,
-// argumentaire chiffré dans RAPPORT_SIM_PERF_NOTE_2026-08.md) : la participation à
+// FIGÉ au gate 0 du 2026-08-27 : la participation à
 // l'objectif entre à 0.12, financée par les quatre métriques de combat pur
 // (kpm 0.14→0.10, kda 0.11→0.09, accuracy 0.04→0.03, pspm 0.10→0.08). TOUTES les
 // autres métriques sont identiques à RelativeWeights. Somme = 1.04, renormalisée
@@ -183,8 +187,7 @@ func WeightsForChain(chain string) map[string]float64 {
 // Remplace PlaylistGroupConfig : le WeightFactor est supprimé — chaque chaîne
 // est homogène par construction, tous les matchs pèsent 1.0.
 type LUSRChainConfig struct {
-	LabelFR string
-	LabelEN string
+	Label i18n.Text
 }
 
 // Clés canoniques des chaînes LUSR (valeur stockée dans match_skill_rank.playlist_group).
@@ -200,8 +203,7 @@ const (
 // performance, lui, doit couvrir tous les matchs joués → ces deux chaînes
 // supplémentaires garantissent qu'aucun match n'est orphelin de score.
 //
-// Le classé est scindé PAR FAMILLE depuis le 2026-08-27 (plan
-// .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md, décision D-A) : comparer un match d'objectif à
+// Le classé est scindé PAR FAMILLE depuis le 2026-08-27 : comparer un match d'objectif à
 // un historique majoritairement slayer décalait sa note (corpus : pspm médian 206
 // en objectif contre 161 en slayer sur le classé). Une note reste « relative aux
 // 50 derniers matchs de la MÊME chaîne » — la scission rend cette population
@@ -230,12 +232,12 @@ const (
 // Ne pas la réintroduire dans une classification de chaîne de performance.
 const PerfChainRanked = "ranked"
 
-// LUSRChains mappe clé interne → labels UI FR/EN.
+// LUSRChains mappe clé interne → libellé par langue (catalogue des messages, skill.toml).
 var LUSRChains = map[string]LUSRChainConfig{
-	LUSRChainArenaSlayer:   {LabelFR: "Social · Slayer", LabelEN: "Social · Slayer"},
-	LUSRChainArenaObjectif: {LabelFR: "Social · Objectif", LabelEN: "Social · Objective"},
-	LUSRChainBTB:           {LabelFR: "Grande Équipe", LabelEN: "Big Team Battle"},
-	LUSRChainChaos:         {LabelFR: "Chaos", LabelEN: "Chaos"},
+	LUSRChainArenaSlayer:   {Label: i18n.MsgText("skill.chain.arena_slayer", nil)},
+	LUSRChainArenaObjectif: {Label: i18n.MsgText("skill.chain.arena_objectif", nil)},
+	LUSRChainBTB:           {Label: i18n.MsgText("skill.chain.btb", nil)},
+	LUSRChainChaos:         {Label: i18n.MsgText("skill.chain.chaos", nil)},
 }
 
 // GetLUSRChain (classification pair_name → chaîne LUSR) est désormais le seam
@@ -286,7 +288,7 @@ func GetPerformanceChain(titleSlug, pairName string, isRanked, isFirefight bool)
 // SkillTier définit un tier du LUSR.
 type SkillTier struct {
 	Name      string
-	NameFR    string
+	Label     i18n.Text
 	MinRating float64
 	MaxRating float64
 	Color     string
@@ -301,25 +303,45 @@ const (
 	TierPlatinum = "Platinum"
 	TierDiamond  = "Diamond"
 	TierOnyx     = "Onyx"
-	// Labels FR pour SkillTiers et UI. Bronze/Onyx coïncident avec EN.
-	TierLabelBronze  = "Bronze"
-	TierLabelArgent  = "Argent"
-	TierLabelOr      = "Or"
-	TierLabelPlatine = "Platine"
-	TierLabelDiamant = "Diamant"
-	TierLabelOnyx    = "Onyx"
-	// Label spécifique CSR placement.
-	TierLabelPlacement = "Placement"
+	// TierLabelPlacement est la valeur STOCKÉE du tier d'une ligne CSR en placement (colonne
+	// `tier`, écrite telle quelle) : une clé de donnée, pas un texte résolu à l'affichage.
+	TierLabelPlacement = domain.TierPlacement
 )
+
+// TierText retourne le nom, dans toutes les langues, du tier de nom canonique EN `tierEN`
+// (TierBronze...) ; ok vaut false pour un tier inconnu (catalogue skill.toml).
+func TierText(tierEN string) (names i18n.Text, ok bool) {
+	switch tierEN {
+	case TierBronze:
+		return i18n.MsgText("skill.tier.bronze", nil), true
+	case TierSilver:
+		return i18n.MsgText("skill.tier.silver", nil), true
+	case TierGold:
+		return i18n.MsgText("skill.tier.gold", nil), true
+	case TierPlatinum:
+		return i18n.MsgText("skill.tier.platinum", nil), true
+	case TierDiamond:
+		return i18n.MsgText("skill.tier.diamond", nil), true
+	case TierOnyx:
+		return i18n.MsgText("skill.tier.onyx", nil), true
+	}
+	return nil, false
+}
+
+// tierNames retourne les noms d'un tier connu ; les tiers de SkillTiers le sont par construction.
+func tierNames(tierEN string) i18n.Text {
+	names, _ := TierText(tierEN)
+	return names
+}
 
 // SkillTiers définit l'échelle LUSR (Bronze → Onyx).
 var SkillTiers = []SkillTier{
-	{TierBronze, TierLabelBronze, 1000.0, 1200.0, "#CD7F32", 6},
-	{TierSilver, TierLabelArgent, 1200.0, 1400.0, "#C0C0C0", 6},
-	{TierGold, TierLabelOr, 1400.0, 1600.0, "#FFD700", 6},
-	{TierPlatinum, TierLabelPlatine, 1600.0, 1800.0, "#00CED1", 6},
-	{TierDiamond, TierLabelDiamant, 1800.0, 2000.0, "#B9F2FF", 6},
-	{TierOnyx, TierLabelOnyx, 2000.0, 9999.0, "#1C1C1C", 1},
+	{TierBronze, tierNames(TierBronze), 1000.0, 1200.0, "#CD7F32", 6},
+	{TierSilver, tierNames(TierSilver), 1200.0, 1400.0, "#C0C0C0", 6},
+	{TierGold, tierNames(TierGold), 1400.0, 1600.0, "#FFD700", 6},
+	{TierPlatinum, tierNames(TierPlatinum), 1600.0, 1800.0, "#00CED1", 6},
+	{TierDiamond, tierNames(TierDiamond), 1800.0, 2000.0, "#B9F2FF", 6},
+	{TierOnyx, tierNames(TierOnyx), 2000.0, 9999.0, "#1C1C1C", 1},
 }
 
 var romanNumerals = map[int]string{1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI"}
@@ -350,13 +372,13 @@ func FormatTierLabel(rating float64) string {
 		return "Non classé"
 	}
 	if sub == 0 {
-		return tier.NameFR
+		return tier.Label.Pick(i18n.Default)
 	}
 	r, ok := romanNumerals[sub]
 	if !ok {
-		return tier.NameFR
+		return tier.Label.Pick(i18n.Default)
 	}
-	return tier.NameFR + " " + r
+	return tier.Label.Pick(i18n.Default) + " " + r
 }
 
 // ── Helpers math ────────────────────────────────────────────────────────────

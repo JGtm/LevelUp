@@ -40,7 +40,6 @@ package archlint
 
 import (
 	"go/ast"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -121,7 +120,7 @@ var appelsAutorisesDuContexte = map[string]string{
 
 // TestContexteFilmCalculeUneFois — REGLE 1.
 func TestContexteFilmCalculeUneFois(t *testing.T) {
-	pkgDir := filepath.Join(apiRootDepuisIci(t), filepath.FromSlash("internal/games/halo_infinite/film/internal/grammar"))
+	pkgDir := surDisque(t, "libs/film/internal/grammar")
 	vus := map[string]bool{}
 	var enTrop []string
 	for nom, f := range fichiersGoNonTest(t, pkgDir) {
@@ -177,10 +176,10 @@ func TestContexteFilmCalculeUneFois(t *testing.T) {
 // paquetsSansAnalyseDeRegistre : les paquets de la chaine de cuisson qui, hors `grammar`, ne
 // doivent pas analyser le registre eux-memes — la cuisson passe par le contexte du film.
 var paquetsSansAnalyseDeRegistre = []string{
-	"internal/games/halo_infinite/film/replay",
+	"libs/film/replay",
 	"internal/replaybuild",
-	"internal/games/halo_infinite/film/internal/facts/objectives",
-	"internal/games/halo_infinite/film/internal/facts/killsource",
+	"libs/film/internal/facts/objectives",
+	"libs/film/internal/facts/killsource",
 	"internal/sync/killcollector",
 	"internal/api/wire",
 }
@@ -192,10 +191,9 @@ var analysesDeRegistreAutorisees = map[string]string{}
 
 // TestRegistreAnalyseParLeContexteSeul — REGLE 2.
 func TestRegistreAnalyseParLeContexteSeul(t *testing.T) {
-	racine := apiRootDepuisIci(t)
 	trouves := map[string]bool{}
 	for _, pkg := range paquetsSansAnalyseDeRegistre {
-		for nom, f := range fichiersGoNonTest(t, filepath.Join(racine, filepath.FromSlash(pkg))) {
+		for nom, f := range fichiersGoNonTest(t, surDisque(t, pkg)) {
 			ast.Inspect(f, func(n ast.Node) bool {
 				call, ok := n.(*ast.CallExpr)
 				if !ok {

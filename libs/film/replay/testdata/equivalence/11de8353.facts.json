@@ -1,0 +1,244 @@
+{
+  "players": [
+    {
+      "xuid": "2769745370848087",
+      "kills": 8,
+      "deaths": 3,
+      "assists": 2,
+      "teamId": 1,
+      "joinMatchMs": 82679
+    },
+    {
+      "xuid": "2555274482597606",
+      "kills": 11,
+      "deaths": 10,
+      "assists": 2,
+      "teamId": 0,
+      "joinMatchMs": 82679
+    },
+    {
+      "xuid": "2556228301812198",
+      "kills": 4,
+      "deaths": 5,
+      "assists": 0,
+      "teamId": 0,
+      "leftInProgress": true,
+      "joinMatchMs": 82672,
+      "leaveMatchMs": 448859
+    },
+    {
+      "xuid": "2670885433928816",
+      "kills": 13,
+      "deaths": 5,
+      "assists": 0,
+      "teamId": 0,
+      "joinedInProgress": true,
+      "joinMatchMs": 344147
+    },
+    {
+      "xuid": "2623439693412443",
+      "kills": 0,
+      "deaths": 6,
+      "assists": 1,
+      "teamId": 0,
+      "leftInProgress": true,
+      "joinMatchMs": 82680,
+      "leaveMatchMs": 417860
+    },
+    {
+      "xuid": "2702481023568130",
+      "kills": 4,
+      "deaths": 7,
+      "assists": 1,
+      "teamId": 1,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2661816997026755",
+      "kills": 8,
+      "deaths": 5,
+      "assists": 1,
+      "teamId": 1,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2702423350400935",
+      "kills": 1,
+      "deaths": 7,
+      "assists": 1,
+      "teamId": 0,
+      "leftInProgress": true,
+      "joinMatchMs": 82681,
+      "leaveMatchMs": 555037
+    },
+    {
+      "xuid": "2706469099639436",
+      "kills": 4,
+      "deaths": 11,
+      "assists": 0,
+      "teamId": 0,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2539909643060628",
+      "kills": 9,
+      "deaths": 6,
+      "assists": 4,
+      "teamId": 1,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2746409228518711",
+      "kills": 9,
+      "deaths": 3,
+      "assists": 2,
+      "teamId": 1,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2728085484769223",
+      "kills": 5,
+      "deaths": 6,
+      "assists": 2,
+      "teamId": 0,
+      "joinedInProgress": true,
+      "joinMatchMs": 418827
+    },
+    {
+      "xuid": "2698413116170421",
+      "kills": 7,
+      "deaths": 6,
+      "assists": 1,
+      "teamId": 0,
+      "leftInProgress": true,
+      "joinMatchMs": 82680,
+      "leaveMatchMs": 563948
+    },
+    {
+      "xuid": "2812024117143317",
+      "kills": 1,
+      "deaths": 9,
+      "assists": 0,
+      "teamId": 0,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2649558580197277",
+      "kills": 5,
+      "deaths": 7,
+      "assists": 1,
+      "teamId": 1,
+      "joinedInProgress": true,
+      "joinMatchMs": 209002
+    },
+    {
+      "xuid": "2560293259909136",
+      "kills": 5,
+      "deaths": 5,
+      "assists": 4,
+      "teamId": 1,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2620267450249348",
+      "kills": 10,
+      "deaths": 5,
+      "assists": 2,
+      "teamId": 1,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2585144786572535",
+      "kills": 13,
+      "deaths": 7,
+      "assists": 5,
+      "teamId": 1,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2778939221499017",
+      "kills": 0,
+      "deaths": 0,
+      "assists": 0,
+      "teamId": 0,
+      "joinedInProgress": true,
+      "joinMatchMs": 449825
+    },
+    {
+      "xuid": "2640966191058275",
+      "kills": 4,
+      "deaths": 9,
+      "assists": 1,
+      "teamId": 0,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2678316781767380",
+      "kills": 0,
+      "deaths": 9,
+      "assists": 0,
+      "teamId": 0,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2649451507849234",
+      "kills": 16,
+      "deaths": 6,
+      "assists": 4,
+      "teamId": 1,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2584494285201958",
+      "kills": 7,
+      "deaths": 6,
+      "assists": 1,
+      "teamId": 0,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2788613520028391",
+      "kills": 7,
+      "deaths": 9,
+      "assists": 2,
+      "teamId": 0,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2765430746281581",
+      "kills": 1,
+      "deaths": 3,
+      "assists": 0,
+      "teamId": 0,
+      "leftInProgress": true,
+      "joinMatchMs": 82680,
+      "leaveMatchMs": 340045
+    },
+    {
+      "xuid": "2795415847885860",
+      "kills": 11,
+      "deaths": 4,
+      "assists": 3,
+      "teamId": 1,
+      "joinMatchMs": 82680
+    },
+    {
+      "xuid": "2659582532226335",
+      "kills": 2,
+      "deaths": 7,
+      "assists": 2,
+      "teamId": 1,
+      "joinMatchMs": 82680
+    }
+  ],
+  "teamScores": [
+    65,
+    100
+  ],
+  "gameVariantName": "BTB:Fiesta Slayer",
+  "mapId": "28a3ac28-f69d-4fa9-9ebf-a0449c89c8da",
+  "matchId": "11de8353-68cf-4621-88df-8f839210778f",
+  "mapNames": [
+    "Thunderhead"
+  ]
+}

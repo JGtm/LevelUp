@@ -7,12 +7,18 @@
 #   make go-api-test   # Lance les tests Go
 #   make go-api-test-gamefiles # Corpus gamefiles : cartes + catalogues commis (exige Halo installe, ~6 min)
 #   make replay-corpus-gate # Non-regression rejeu sur corpus temoin (exige le parc local)
+#   make replay-equiv  # Harnais d equivalence du rejeu : digests par etape (exige le parc local, ~12 min)
 #   make install-web   # Installe les dépendances npm
 #   make test-web      # Tests Vitest frontend
 #   make openapi-gen   # Régénère api/openapi.yaml (Huma + fragment manuel)
 #   make generate-types # Génère les types TypeScript depuis openapi.yaml
 #   make check-types   # Vérifie les types TypeScript
 #   make gate-push     # Filet local avant merge vers main (~25 min, cf. cible)
+#   make desktop-build # Serveur Go + coquille Tauri (profil debug)
+#   make desktop-test  # Tests de la coquille Rust contre le faux serveur + faux serveur Go
+#   make desktop-dev   # Coquille Tauri sur le vrai serveur, donnees de developpement
+#   make desktop-installer # Installeur NSIS (serveur, front, ffmpeg LGPL, ressources), sans secret
+#   make desktop-e2e   # Installe, lance, ferme, relance, desinstalle l installeur construit (donnees jetables)
 # =============================================================================
 
 # Charge .env.local (puis .env) s'ils existent — permet aux worktrees
@@ -24,9 +30,10 @@ LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
 
 .PHONY: help web dev stop restart test-web test-e2e test-e2e-ui demo-visual check-types \
         generate-types install-web \
-        go-api-build go-api-test go-api-test-gamefiles go-api-dev _go-api-run \
-        go-api-test-shared-social-gate install-git-hooks gate-push replay-corpus-gate \
-        go-api-test-coverage-ratchet openapi-gen openapi-check
+        go-api-build go-api-test go-api-test-gamefiles libs-test go-api-dev _go-api-run \
+        go-api-test-shared-social-gate install-git-hooks gate-push replay-corpus-gate replay-equiv \
+        go-api-test-coverage-ratchet openapi-gen openapi-check \
+        desktop-build desktop-test desktop-dev desktop-installer desktop-e2e
 
 ## Affiche cette aide
 help:
@@ -195,38 +202,95 @@ stop:
 restart: stop dev
 
 ## Go API: lance les tests (sans CGo — domain/analysis/contract)
+## Délai par processus de test : 600s, la valeur des pas miroirs du job CI (ci.yml). Le paquet
+## libs/film/internal/grammar dure à lui seul plus de deux minutes sur un poste de développement :
+## un délai plus court fait échouer la cible par dépassement, pas par régression.
 go-api-test:
 	cd $(GO_API_DIR) && CGO_ENABLED=0 LEVELUP_DEMO_MODE=true \
 		go test ./internal/domain/... ./internal/analysis/... \
-			./internal/games/weapons/... ./internal/games/halo_infinite/film/internal/profile/... ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/internal/facts/... ./internal/games/halo_infinite/film/replay/... \
+			./internal/games/weapons/... \
 			./contracttest/... \
-		-v -timeout 60s -count=1
+		-v -timeout 600s -count=1
+	cd libs/gamefiles && CGO_ENABLED=0 go test ./hinavmesh/ ./mapvar/ -timeout 600s -count=1
+	cd libs/film && CGO_ENABLED=0 go test ./internal/profile/... ./internal/grammar/... ./internal/facts/... ./replay/... -timeout 600s -count=1
 
 ## Go API: corpus gamefiles du module — retro-ingenierie des cartes ET catalogues commis
 ## (EXIGE Halo Infinite installe, ~6 min)
 ##
-## Joue TOUS les paquets qui portent des `*_gamefiles_test.go`, pas seulement internal/himap/
+## Joue TOUS les paquets qui portent des `*_gamefiles_test.go`, pas seulement ceux de la brique himap
 ## (decouverte D1 (3.1.2) du 2026-09-16 : les tags hors himap n'etaient joues par AUCUNE
 ## commande du depot). La liste est EXPLICITE et non `./cmd/...` : sous le tag, un paquet sans
 ## fichier gamefiles n'apporte que du temps de compilation. Le ratchet
 ## `archlint.TestCibleMakefileGamefilesCouvreLeCorpus` rougit si un paquet entre au corpus
 ## sans entrer ici.
 ##
-## Les 59 fichiers `*_gamefiles_test.go` de internal/himap/ decodent les modules du JEU
+## Les 45 fichiers `*_gamefiles_test.go` de libs/himap/himap/ (au 2026-10-28) decodent les modules du JEU
 ## et balaient les 26 cartes du catalogue. Mesure du 2026-09-05 : `TestBalayageCoquille`
 ## seul prend 1 246 s (20 min 47 s) et passe — ce n'est pas un blocage, c'est le prix du
-## balayage. Ils sont derriere `//go:build gamefiles` pour que `go test ./internal/himap/`
-## reste utilisable (22 s au lieu d'interminable). Les trois paquets `cmd/` verifient qu'un
+## balayage. Ils sont derriere `//go:build gamefiles` pour que `go test ./himap/`
+## (depuis libs/himap) reste utilisable (22 s au lieu d'interminable). Les trois paquets `cmd/` verifient qu'un
 ## catalogue COMMIS est bien celui que son outil regenere depuis l'installation (mesure du
-## 2026-09-17 : 9,0 s a eux trois).
+## 2026-09-17 : 9,0 s a eux trois). Depuis le 2026-10-28 (plan D1, lot 2), les tests de la brique
+## `himap` qui lisent des donnees de LevelUp (catalogue d'objectifs, caches de rejeu, config)
+## vivent dans `internal/gamefilescorpus/` (tests seuls, 25 fichiers `*_gamefiles_test.go`) et
+## appellent `himap` par son API exportee. Depuis le lot 4 (module libs/himap, ADR 0041) la brique est
+## un module a part : la cible joue le corpus de la brique depuis libs/himap, puis celui de go-api.
 ##
 ## Sans installation du jeu, chaque test prend son `t.Skip` et la cible est vide en 1 s.
 ## Cibler une carte : BALAYAGE_CARTES=aquarius_map ; installation ailleurs :
 ## LEVELUP_HALO_DEPLOY=<chemin>.
 go-api-test-gamefiles:
+	cd libs/himap && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s ./himap/ -v
 	cd $(GO_API_DIR) && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
-		./internal/himap/ \
+		./internal/gamefilescorpus/ \
 		./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
+
+## Briques Go sous libs/ (ADR 0041) : vet + tests de chaque module. `./...` ne franchit jamais la
+## frontiere d'un module (le go.work les relie a apps/go-api) : ni go-api-test ni go-api-lint
+## ne voient libs/, d'ou cette cible, aussi appelee par `make gate-push`. Miroir des pas
+## « brique ... » du job CI go-build. CGO actif : libs/gamefiles/ooz est un paquet C++ et
+## libs/himap l'importe. UNE boucle sur libs/*/go.mod : un module de plus n'ajoute pas de bloc ici.
+## Le corpus `gamefiles` d'une brique se joue par go-api-test-gamefiles (archlint.
+## TestCibleMakefileGamefilesCouvreLeCorpus exige sa ligne) ; les quatre vet couvrent le build par
+## defaut et les combinaisons de tags (compilation seule, jamais d'execution sans le jeu).
+## Autonomie : `go list -deps -test` (tests compris) d'un module ne doit montrer aucun paquet levelup/go-api.
+libs-test:
+	@set -e; for m in libs/*/go.mod; do d=$$(dirname $$m); echo "== $$d"; \
+		(cd $$d && CGO_ENABLED=1 go vet ./... && CGO_ENABLED=1 go vet -tags=research ./... \
+			&& CGO_ENABLED=1 go vet -tags=gamefiles ./... && CGO_ENABLED=1 go vet -tags=gamefiles,research ./... \
+			&& CGO_ENABLED=1 go test ./... -timeout 600s -count=1); \
+		if (cd $$d && go list -deps -test ./... | grep -E 'levelup/go-api'); then \
+			echo "$$d importe le module levelup/go-api"; exit 1; \
+		fi; \
+	done
+
+## Coquille desktop (Tauri 2, ADR 0045) : compile le vrai serveur Go sous le nom du sidecar, puis la
+## coquille en profil debug. L installeur NSIS est la cible desktop-installer.
+desktop-build:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-dev.ps1
+	cd apps/desktop/src-tauri && cargo build
+
+## Coquille desktop : cargo test (contrat contre le faux serveur Go, compile par go build), clippy
+## sans avertissement, format, puis vet et tests du faux serveur (GOWORK=off : module a part).
+desktop-test:
+	cd apps/desktop/src-tauri && cargo test && cargo clippy --all-targets -- -D warnings && cargo fmt --check
+	cd apps/desktop/testdata/fake-sidecar && GOWORK=off go vet ./... && GOWORK=off go test -count=1 ./...
+
+## Coquille desktop en developpement : compile le serveur, lance `tauri dev` sur la racine du
+## depot et sur %LOCALAPPDATA%\LevelUp-dev (jamais les donnees de l application installee).
+desktop-dev:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-dev.ps1 -Tauri
+
+## Installeur NSIS de LevelUp : memes etapes que le job desktop-build de release.yml (front, serveur Go,
+## ffmpeg et ffprobe LGPL a somme de controle epinglee, ressources, tauri build), sans cle de signature.
+## Pour signer aussi l updater : powershell -File apps/desktop/scripts/build-installer.ps1 -SigningKey <cle>.
+desktop-installer:
+	powershell -NoProfile -ExecutionPolicy Bypass -File apps/desktop/scripts/build-installer.ps1
+
+## Test de bout en bout de l installeur construit par desktop-installer : installation silencieuse, deux
+## lancements, fermeture par WM_CLOSE, arret propre, desinstallation qui conserve les donnees (racine jetable).
+desktop-e2e:
+	powershell -NoProfile -ExecutionPolicy Bypass -File apps/desktop/scripts/e2e-install.ps1 -Installer "$$(ls apps/desktop/src-tauri/target/release/bundle/nsis/LevelUp_*_x64-setup.exe | head -n 1)"
 
 ## Go API: gate de non-regression des artefacts de rejeu sur corpus temoin. DEFAUT
 ## (--reference=base) : cuit chaque temoin DEUX FOIS (code du HEAD, code d'une revision de
@@ -236,18 +300,33 @@ go-api-test-gamefiles:
 ## venir que du diff en cours de revue. Mode --reference=parc (balayage de release, contre
 ## l'artefact deja cuit) disponible mais INFORMATIF sauf --strict — cf. docs/COMMANDS.md.
 ##
-## A LANCER AVANT tout merge qui touche games/halo_infinite/film/replay, replaybuild, filmdec, ou qui bumpe
+## A LANCER AVANT tout merge qui touche libs/film/replay, replaybuild, filmdec, ou qui bumpe
 ## SchemaVersion. EXIGE le parc local de developpement (chunks de film) ET l'acces en lecture
 ## a la base partagee du titre pour les faits du match ; PAS le jeu installe. Marche SANS FLAG
 ## depuis un depot qui porte sa propre base partagee (le cas courant, cf. docs/COMMANDS.md pour
 ## le detail des 10 options si votre topologie l'exige) ; duree mesuree (7 temoins, 2026-09-07,
-## les deux modes) : cf. .ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md.
+## les deux modes) : cf. .ai/archive/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md.
 ##
-## Par defaut, un SEUL temoin absent (cache de film purge ou partiel) fait sortir en code 2 —
-## un gate qui ne compare rien ne doit jamais sortir en 0 (`--allow-missing` restaure l'ancien
-## avertissement seul, pour un usage delibere).
+## Par defaut, un SEUL temoin absent (cache de film purge ou partiel) fait sortir en code 4
+## (couverture incomplete) — un gate qui ne compare rien ne doit jamais sortir en 0
+## (`--allow-missing` restaure l'ancien avertissement seul, pour un usage delibere).
+##
+## Codes du gate : 0 ok, 1 perte, 2 usage, 3 erreur de cuisson, 4 couverture incomplete
+## (cmd/replay-corpus-gate/report.go). Le binaire est COMPILE puis lance, jamais `go run` : `go run`
+## rend 1 pour tout code non nul de son programme. make, lui, sort en 2 sur toute recette en echec et
+## imprime le code du gate dans sa ligne `*** [replay-corpus-gate] Erreur N` ; un script qui doit
+## distinguer 1 et 4 lance directement apps/go-api/bin/replay-corpus-gate (ignore par git).
+## Options du gate : make replay-corpus-gate ARGS="--temoins <id>".
 replay-corpus-gate:
-	cd $(GO_API_DIR) && CGO_ENABLED=0 go run ./cmd/replay-corpus-gate
+	cd $(GO_API_DIR) && CGO_ENABLED=0 go build -o bin/replay-corpus-gate$$(go env GOEXE) ./cmd/replay-corpus-gate \
+		&& ./bin/replay-corpus-gate$$(go env GOEXE) $(ARGS)
+
+## Harnais d equivalence du rejeu (cmd/replay-equiv) : compare les digests par etape de 20 films aux
+## references figees (libs/film/replay/testdata/equivalence). EXIGE le parc local, ~12 min ; code 1 =
+## ecart. Liste des xuids d origine : data/film_identites/xuids_originaux.txt (local, hors depot ; sinon
+## -originaux ou LEVELUP_IDENTITES_ORIGINALES). Apres une preuve d equivalence : `cd apps/go-api && go run ./cmd/replay-equiv -update`.
+replay-equiv:
+	cd $(GO_API_DIR) && go run ./cmd/replay-equiv
 
 ## Go API: lance les tests avec rapport de couverture
 go-api-coverage:
@@ -259,7 +338,7 @@ go-api-coverage:
 ## Go API: lint (2026-07-22, F8 — aligné sur la CI)
 ##
 ## Le lint qui FAIT FOI est le job CI `go-lint` (.github/workflows/ci.yml) :
-## golangci-lint v2.12.2 sur TOUT apps/go-api, config apps/go-api/.golangci.yml,
+## golangci-lint v2.12.2 sur TOUT apps/go-api ET sur chaque module de libs/ (ADR 0041), config apps/go-api/.golangci.yml,
 ## avec RATCHET `--new-from-merge-base=origin/main` — seules les issues AJOUTÉES
 ## rougissent ; la dette baseline (~479 issues gelées) reste invisible.
 ##
@@ -274,10 +353,14 @@ go-api-lint:
 	cd $(GO_API_DIR) && \
 	if command -v golangci-lint >/dev/null 2>&1; then \
 		echo "golangci-lint présent — lint complet (ratchet CI, dette gelée exclue)."; \
-		golangci-lint run --timeout 5m --new-from-merge-base=origin/main; \
+		golangci-lint run --timeout 5m --new-from-merge-base=origin/main && \
+		for m in ../../libs/*/go.mod; do \
+			(cd $$(dirname $$m) && golangci-lint run --config ../../apps/go-api/.golangci.yml --timeout 5m --new-from-merge-base=origin/main) || exit 1; \
+		done; \
 	else \
 		echo "golangci-lint absent — REPLI go vet (domain+analysis). Le lint complet FAIT FOI en CI (job go-lint, .github/workflows/ci.yml)."; \
-		go vet ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/... ./internal/games/halo_infinite/film/internal/profile/... ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/internal/facts/... ./internal/games/halo_infinite/film/replay/...; \
+		go vet ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/... && \
+		(cd ../../libs/film && go vet ./internal/profile/... ./internal/grammar/... ./internal/facts/... ./replay/...); \
 	fi
 
 ## Installe les hooks git du projet (lefthook — seul système de hooks).
@@ -329,11 +412,12 @@ go-api-test-shared-social-gate:
 ## Contenu, dans l'ordre du plus rapide au plus lent (feedback utile d'abord) :
 ##   1. ratchet golangci-lint — MÊME commande que le job CI go-lint
 ##      (--new-from-merge-base=origin/main : la dette gelée reste invisible) ;
-##   2. typecheck + lint web — mêmes scripts npm que le job CI Frontend ;
-##   3. baseline de tests Go — scripts/check_test_baseline.sh tests (le plus long) :
+##   2. harnais d'equivalence du rejeu (make replay-equiv, ~12 min, exige le parc local) ;
+##   3. typecheck + lint web — mêmes scripts npm que le job CI Frontend ;
+##   4. baseline de tests Go — scripts/check_test_baseline.sh tests (le plus long) :
 ##      suite complète avec -tags=integration, en DEUX voies parallèles — la voie film
-##      (./internal/games/halo_infinite/film/..., sans DuckDB) et la voie DuckDB (tout le
-##      reste, en -p 1). La durée est celle de la voie DuckDB ; voir le script.
+##      (le module libs/film, sans DuckDB, jugé contre .ai/baselines/tests_libs_film.jsonl) et la
+##      voie DuckDB (tout apps/go-api, en -p 1). La durée est celle de la voie DuckDB ; voir le script.
 ## NON reproduit : le ratchet de COUVERTURE (il rejouerait toute la suite une 2e
 ## fois avec -coverprofile, doublant la durée) — il reste au job CI go-coverage.
 ##
@@ -347,6 +431,11 @@ gate-push:
 		exit 1; \
 	}
 	cd $(GO_API_DIR) && golangci-lint run --timeout 5m --new-from-merge-base=origin/main
+	@for m in libs/*/go.mod; do \
+		(cd $$(dirname $$m) && golangci-lint run --config ../../apps/go-api/.golangci.yml --timeout 5m --new-from-merge-base=origin/main) || exit 1; \
+	done
+	"$(MAKE)" libs-test
+	"$(MAKE)" replay-equiv
 	cd apps/web && npm run typecheck
 	cd apps/web && npm run lint
 	bash scripts/check_test_baseline.sh tests

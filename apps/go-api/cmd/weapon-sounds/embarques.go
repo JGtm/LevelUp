@@ -16,7 +16,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // extraireEmbarques ecrit les medias embarques d'une bank dans un dossier.

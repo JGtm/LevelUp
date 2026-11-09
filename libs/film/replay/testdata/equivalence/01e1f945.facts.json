@@ -1,0 +1,70 @@
+{
+  "players": [
+    {
+      "xuid": "2561509825159198",
+      "kills": 18,
+      "deaths": 13,
+      "assists": 4,
+      "teamId": 1
+    },
+    {
+      "xuid": "2668191463923697",
+      "kills": 11,
+      "deaths": 18,
+      "assists": 7,
+      "teamId": 0
+    },
+    {
+      "xuid": "2686803061848660",
+      "kills": 13,
+      "deaths": 15,
+      "assists": 7,
+      "teamId": 0
+    },
+    {
+      "xuid": "2581425573506704",
+      "kills": 14,
+      "deaths": 15,
+      "assists": 8,
+      "teamId": 0
+    },
+    {
+      "xuid": "2716501986668322",
+      "kills": 11,
+      "deaths": 10,
+      "assists": 7,
+      "teamId": 0
+    },
+    {
+      "xuid": "2758073455829681",
+      "kills": 9,
+      "deaths": 11,
+      "assists": 8,
+      "teamId": 1
+    },
+    {
+      "xuid": "2705281959365014",
+      "kills": 23,
+      "deaths": 9,
+      "assists": 6,
+      "teamId": 1
+    },
+    {
+      "xuid": "2547408409520575",
+      "kills": 7,
+      "deaths": 14,
+      "assists": 3,
+      "teamId": 1
+    }
+  ],
+  "teamScores": [
+    3,
+    2
+  ],
+  "gameVariantName": "KOTH:Arena",
+  "mapId": "f7e8cde9-0c0a-487c-94a3-61bfa0f20465",
+  "matchId": "01e1f945-7cd0-428e-ade5-759c810b1224",
+  "mapNames": [
+    "Catalyst"
+  ]
+}

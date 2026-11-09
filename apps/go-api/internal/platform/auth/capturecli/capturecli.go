@@ -4,7 +4,7 @@
 // Extrait pour permettre les tests unitaires sans dépendance cgo (DuckDB) :
 // le caller passe la liste des joueurs déjà chargée via cfg.LoadPlayers() et
 // un CacheInvalidator pour l'invalidation cache process (typiquement
-// halo.InvalidateCachedPlayerTokens). Ce package n'importe ni config ni duckdb
+// tokencache.InvalidateCachedPlayerTokens). Ce package n'importe ni config ni duckdb
 // ni halo — uniquement domain + auth.
 //
 // Toutes les fonctions sont thread-safe (le store l'est).
@@ -23,7 +23,7 @@ import (
 )
 
 // CacheInvalidator est le type du callback d'invalidation du cache process
-// des HaloTokens. En production, le caller passe `halo.InvalidateCachedPlayerTokens`.
+// des HaloTokens. En production, le caller passe `tokencache.InvalidateCachedPlayerTokens`.
 // Dans les tests, un mock qui track les xuid invalidés.
 //
 // Nil-safe : si l'invalidator est nil, l'invalidation est skipped (utile pour

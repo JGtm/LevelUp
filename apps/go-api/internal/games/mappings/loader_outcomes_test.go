@@ -154,8 +154,8 @@ color_token = "outcome.positive"
 	if err == nil {
 		t.Fatal("expected error for missing FR label")
 	}
-	if !strings.Contains(err.Error(), "label FR manquant") {
-		t.Errorf("error = %v, want label FR manquant", err)
+	if !strings.Contains(err.Error(), `labels: langue(s) manquante(s) ["fr"]`) {
+		t.Errorf("error = %v, want langue fr manquante", err)
 	}
 }
 

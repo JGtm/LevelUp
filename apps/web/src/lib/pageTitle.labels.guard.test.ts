@@ -50,13 +50,13 @@ const SQUAD_TAB_SOURCES = [
   { suffix: '/squad/emprise', navKey: 'emprise' },
 ] as const
 
-describe('garde-rail : les titres de page des onglets Escouade suivent features/squad/i18n.ts', () => {
+describe('garde-rail : les titres de page des onglets Escouade suivent features/squad/i18n', () => {
   it.each(SQUAD_TAB_SOURCES)('$suffix === nav.$navKey (FR + EN)', ({ suffix, navKey }) => {
     for (const locale of LOCALES) {
       const expected = getSquadText(locale).nav[navKey]
       expect(
         resolvePageTitle(`/t/halo_infinite/players/x${suffix}`, locale),
-        `locale=${locale} suffix=${suffix} : la TABLE pageTitle.ts doit s'aligner sur features/squad/i18n.ts (nav.${navKey} = "${expected}"), jamais l'inverse`,
+        `locale=${locale} suffix=${suffix} : la TABLE pageTitle.ts doit s'aligner sur features/squad/i18n (nav.${navKey} = "${expected}"), jamais l'inverse`,
       ).toBe(`LevelUp - ${expected}`)
     }
   })

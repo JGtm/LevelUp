@@ -16,11 +16,13 @@ import (
 
 // demoModeReadAllowlist : les seules lectures brutes admises, avec leur raison.
 //
-//   - config.go (1) : Validate lit la valeur DÉCLARÉE du mode (garde-fou de production,
-//     SecurityWarnings), pas un choix de source de données ; le mode déclaré est celui de
-//     l'environnement, y compris pour un binaire opérateur (2026-10-16).
+//   - deployment.go (2) : le résolveur du profil de déploiement lit la valeur DÉCLARÉE du mode
+//     (profil demo, refus avec -mode desktop) et refusesUnsafeConfig le garde-fou de production
+//     de Validate, pas un choix de source de données ; le mode déclaré est celui de
+//     l'environnement, y compris pour un binaire opérateur (2026-10-16, déplacé de config.go le
+//     2026-11-01 avec le garde-fou, ADR 0044).
 var demoModeReadAllowlist = map[string]int{
-	"config.go": 1,
+	"deployment.go": 2,
 }
 
 var demoModeRead = regexp.MustCompile(`\.DemoMode\b`)

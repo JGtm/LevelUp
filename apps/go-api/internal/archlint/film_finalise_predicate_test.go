@@ -37,7 +37,7 @@ package archlint
 //   - ecrire `if c.ChunkType == 3 {` dans un fichier de production hors allowlist (jouee le
 //     2026-09-23 dans `sync/killcollector/cache_films.go`, et figee par
 //     [TestDetecteurDeComparaisonAuTypeTempsForts]) ;
-//   - remettre `chunk.ChunkType != FilmChunkTypeHighlightEvents` dans `haloclient` ;
+//   - remettre `chunk.ChunkType != FilmChunkTypeHighlightEvents` dans `filmfetch` ;
 //   - ecrire `if m.ChunkType >= 3 {` a la place de `finalise.EstTempsForts` (mutation R-b de la
 //     revue adverse du lot, invisible avant que l ordre entre dans le detecteur) ;
 //   - ajouter une SECONDE comparaison dans un fichier tolere (compte gele, constat L3-R7) ;
@@ -65,7 +65,7 @@ import (
 )
 
 // fichierDuPredicatFinalise : le SEUL fichier qui compare au type des temps forts.
-const fichierDuPredicatFinalise = "internal/games/halo_infinite/film/finalise/finalise.go"
+const fichierDuPredicatFinalise = racineBriqueFilm + "/finalise/finalise.go"
 
 // operateursDeComparaison : egalite ET ordre. L ORDRE EN FAIT PARTIE depuis la reprise du lot
 // (constat L3-R7 de la revue adverse, mutation R-b : `m.ChunkType >= 3` a la place de
@@ -107,7 +107,7 @@ type comparaisonAuTypeTempsFortsToleree struct {
 var comparaisonsAuTypeTempsFortsTolerees = []comparaisonAuTypeTempsFortsToleree{
 	{
 		fichier: "cmd/levelup/cmd_backfill_medailles_feed.go", sites: 1, pose: "2026-09-23",
-		retrait: "remplacer `chunk.ChunkType != haloclient.FilmChunkTypeHighlightEvents` par " +
+		retrait: "remplacer `chunk.ChunkType != filmfetch.FilmChunkTypeHighlightEvents` par " +
 			"`!finalise.EstTempsForts(chunk.ChunkType)`",
 	},
 	{
@@ -215,17 +215,16 @@ func TestDetecteurDeComparaisonAuTypeTempsForts(t *testing.T) {
 
 // sitesDeComparaisonAuTypeTempsForts rend, par fichier de production, les lignes qui comparent au
 // type des temps forts. Parcours propre (aucune exception de repertoire heritee d un autre
-// ratchet) : `cmd/` et `internal/`, hors `_test.go` et `testdata/`. Les constantes locales se
+// ratchet) : `cmd/` et `internal/` de go-api et la brique `libs/film`, hors `_test.go` et `testdata/`. Les constantes locales se
 // cherchent PAR PAQUET (repertoire) : `objectives` declare `chunkTypePied` dans `film.go` et le
 // compare dans `extract.go`.
 func sitesDeComparaisonAuTypeTempsForts(t *testing.T) map[string][]int {
 	t.Helper()
-	racine := racineGoAPI(t)
 	parDossier := map[string][]*ast.File{}
 	noms := map[*ast.File]string{}
 	fset := token.NewFileSet()
-	for _, sous := range []string{"cmd", "internal"} {
-		err := filepath.WalkDir(filepath.Join(racine, sous), func(chemin string, d os.DirEntry, e error) error {
+	for _, sous := range []string{"cmd", "internal", racineBriqueFilm} {
+		err := filepath.WalkDir(surDisque(t, sous), func(chemin string, d os.DirEntry, e error) error {
 			if e != nil {
 				return e
 			}
@@ -242,8 +241,7 @@ func sitesDeComparaisonAuTypeTempsForts(t *testing.T) map[string][]int {
 			if err != nil {
 				return err
 			}
-			rel, _ := filepath.Rel(racine, chemin)
-			noms[f] = filepath.ToSlash(rel)
+			noms[f] = cheminDeGardeRail(t, chemin)
 			parDossier[filepath.Dir(chemin)] = append(parDossier[filepath.Dir(chemin)], f)
 			return nil
 		})

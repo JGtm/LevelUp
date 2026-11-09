@@ -11,7 +11,7 @@ package main
 // string_id : ce sont des mots du dictionnaire du jeu, pas des zones d'une carte donnée.
 //
 // SA SOURCE : les listes de chaînes localisées du jeu (`uslg`), décodées par
-// internal/himap.LexiqueLieux — voir uslg.go pour le format. Il se régénère par
+// libs/himap/himap.LexiqueLieux — voir uslg.go pour le format. Il se régénère par
 // `mapcallouts-build --lexique` et EXIGE le jeu installé. Sa LECTURE est dans
 // `mapcatalog.ChargerLexique`, partagée avec le serveur : elle n'exige rien.
 //
@@ -28,7 +28,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"levelup/go-api/internal/himap"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapcatalog"
 )
 
@@ -43,11 +43,11 @@ func cheminLexique(outPath string) string {
 // ecritLexique sérialise le lexique, trié par string_id (diff stable d'une extraction à
 // l'autre). Une entrée dont un des deux textes manque est ÉCARTÉE : publier une moitié de
 // couple ferait une zone nommée dans une langue et muette dans l'autre.
-func ecritLexique(path string, lex map[uint32]himap.LibelleLieu) (int, int, error) {
+func ecritLexique(path string, lex map[uint32]i18n.Text) (int, int, error) {
 	ids := make([]uint32, 0, len(lex))
 	ecartes := 0
 	for id, l := range lex {
-		if l.EN == "" || l.FR == "" {
+		if l[i18n.LocaleEN] == "" || l[i18n.LocaleFR] == "" {
 			ecartes++
 			continue
 		}
@@ -70,7 +70,7 @@ func ecritLexique(path string, lex map[uint32]himap.LibelleLieu) (int, int, erro
 	}
 	for _, id := range ids {
 		l := lex[id]
-		if err := w.Write([]string{fmt.Sprintf("0x%08X", id), l.EN, l.FR}); err != nil {
+		if err := w.Write([]string{fmt.Sprintf("0x%08X", id), l[i18n.LocaleEN], l[i18n.LocaleFR]}); err != nil {
 			return 0, 0, err
 		}
 	}
@@ -97,10 +97,33 @@ func fusionneLexique(base, lex mapcatalog.Lexique) (mapcatalog.Lexique, int, err
 			ajouts++
 			continue
 		}
-		if vu != l {
+		if !vu.Equal(l) {
 			return nil, 0, fmt.Errorf("string_id %08x : le CSV dit (%q, %q), le lexique dit (%q, %q) — "+
-				"lexique périmé ou décodeur cassé, rien n'est publié", id, vu.EN, vu.FR, l.EN, l.FR)
+				"lexique périmé ou décodeur cassé, rien n'est publié", id,
+				vu[i18n.LocaleEN], vu[i18n.LocaleFR], l[i18n.LocaleEN], l[i18n.LocaleFR])
 		}
 	}
 	return out, ajouts, nil
+}
+
+// versTextes convertit le lexique rendu par himap.LexiqueLieux (code de langue du jeu -> texte)
+// en textes de l'application. La traduction d'un code passe par i18n.FromHaloTag, seule
+// autorité sur la liste des langues (config/locales.toml). Un code que l'application ne connaît
+// pas n'est pas converti : il est compté et rendu pour que l'appelant le journalise.
+func versTextes(brut map[uint32]map[string]string) (map[uint32]i18n.Text, int) {
+	out := make(map[uint32]i18n.Text, len(brut))
+	inconnus := 0
+	for id, parLangue := range brut {
+		var t i18n.Text
+		for code, s := range parLangue {
+			l, ok := i18n.FromHaloTag(code)
+			if !ok {
+				inconnus++
+				continue
+			}
+			t.Set(l, s)
+		}
+		out[id] = t
+	}
+	return out, inconnus
 }

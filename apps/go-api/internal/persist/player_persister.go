@@ -264,10 +264,10 @@ func persistSkillRank(ctx context.Context, tx *sql.Tx, row *SkillRankInsert) err
 	_, err := tx.ExecContext(ctx, `
 		INSERT INTO match_skill_rank (
 			match_id, rating_type, rating_value, rating_deviation,
-			tier, tier_fr, sub_tier, tier_label, rating_delta, playlist_group
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			tier, sub_tier, tier_label, rating_delta, playlist_group
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		row.MatchID, row.RatingType, row.RatingValue, row.RatingDeviation,
-		row.Tier, row.TierFR, row.SubTier, row.TierLabel, row.RatingDelta, row.PlaylistGroup,
+		row.Tier, row.SubTier, row.TierLabel, row.RatingDelta, row.PlaylistGroup,
 	)
 	if err != nil {
 		return fmt.Errorf("persist: INSERT match_skill_rank %s: %w", row.MatchID, err)

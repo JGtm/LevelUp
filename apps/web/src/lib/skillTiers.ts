@@ -59,11 +59,9 @@ export function subTierRoman(n: number): string {
  * la métrique. `subTiers` = nombre de sous-paliers de largeur égale (1 = pas de
  * sous-palier, ex. Onyx ouvert).
  */
-export interface SkillTier {
+export interface SkillTier extends Record<Locale, string> {
   min: number
   max: number
-  fr: string
-  en: string
   subTiers: number
 }
 
@@ -162,10 +160,7 @@ export function subTierPosition(grid: SkillTierGrid, ratingValue: number): SubTi
 // chiffre (romain ou arabe) préservé tel quel. Toute entrée non reconnue
 // (sentinelle « Placement », valeur brute, vide) est renvoyée inchangée.
 
-interface TierNamePair {
-  fr: string
-  en: string
-}
+type TierNamePair = Record<Locale, string>
 
 // Index des noms de palier connus (toute casse FR ou EN) → paire localisée.
 // Dérivé de LUSR_TIER_GRID (porte les 6 paires fr/en) + Champion (apex Halo 5,
@@ -194,7 +189,7 @@ const TIER_NAME_BY_KEY: Record<string, TierNamePair> = (() => {
 export function localizeTierName(name: string, locale: Locale): string {
   const pair = TIER_NAME_BY_KEY[name.trim().toLowerCase()]
   if (!pair) return name
-  return locale === 'en' ? pair.en : pair.fr
+  return pair[locale]
 }
 
 /**
@@ -216,7 +211,7 @@ export function localizeTierLabel(
   const namePart = (m ? m[1] : trimmed).trim()
   const pair = TIER_NAME_BY_KEY[namePart.toLowerCase()]
   if (!pair) return label // nom inconnu → inchangé (placement, brut…)
-  const localized = locale === 'en' ? pair.en : pair.fr
+  const localized = pair[locale]
   return m ? `${localized} ${m[2]}` : localized
 }
 

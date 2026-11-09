@@ -70,7 +70,7 @@ type PlayerMatchSetStats struct {
 // (Explorer), dans le canonique. Porteur 1:1 de domain.ExplorerTargetRecentMatch
 // SAUF ModePairAssetID (indice de source LIVE transient, json:"-", hors surface
 // byte-identique — vide sur le chemin local). Outcome reste le code BRUT (2/3/1/4)
-// comme CareerTopMatch (canonical.Outcome string serait lossy pour 0/unknown).
+// (canonical.Outcome string serait lossy pour 0/unknown).
 type RecentMatchRow struct {
 	MatchID         string
 	StartTime       time.Time

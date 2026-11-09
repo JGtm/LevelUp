@@ -8,7 +8,9 @@
 
 package persist
 
-import "time"
+import (
+	"time"
+)
 
 // EnrichmentRow — UNE row complète pour player.player_match_enrichment.
 //
@@ -175,8 +177,7 @@ type KillPositionInsert struct {
 }
 
 // KillOpeningInsert — row pour shared.kill_openings : les positions monde des deux
-// joueurs UN TEMPS-POUR-TUER AVANT le coup fatal (proxy d'entame, D5 du plan
-// .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md, validé le 2026-09-06 à 1,24 m d'écart médian).
+// joueurs UN TEMPS-POUR-TUER AVANT le coup fatal (proxy d'entame, validé le 2026-09-06 à 1,24 m d'écart médian).
 //
 // MÊME FORME QUE KillPositionInsert, ET POURTANT UN TYPE DISTINCT : les deux rows
 // ne visent pas la même table et ne portent PAS la même mesure. Un type partagé
@@ -233,7 +234,6 @@ type SkillRankInsert struct {
 	RatingValue     *float64 `json:"rating_value,omitempty"`
 	RatingDeviation *float64 `json:"rating_deviation,omitempty"`
 	Tier            *string  `json:"tier,omitempty"`
-	TierFR          *string  `json:"tier_fr,omitempty"`
 	SubTier         *int     `json:"sub_tier,omitempty"`
 	TierLabel       *string  `json:"tier_label,omitempty"`
 	RatingDelta     *float64 `json:"rating_delta,omitempty"`
@@ -410,10 +410,10 @@ type MatchCSRInsert struct {
 // ModeNameTranslationInsert — row pour metadata.mode_name_tr.
 //
 // Schema cf. internal/migration/steps_metadata.go : (mode_en, lang, name)
-// avec PK (mode_en, lang). INSERT OR IGNORE pour préserver les traductions
-// existantes (l'edition manuelle n'est pas écrasée par les seeds automatiques).
+// avec PK (mode_en, lang) ; ModeKey est la valeur de la colonne `mode_en` (clé canonique du
+// mode). INSERT OR IGNORE pour préserver les traductions existantes (l'edition manuelle n'est pas écrasée par les seeds automatiques).
 type ModeNameTranslationInsert struct {
-	ModeEN string `json:"mode_en"`
-	Lang   string `json:"lang"`
-	Name   string `json:"name"`
+	ModeKey string `json:"mode_key"`
+	Lang    string `json:"lang"`
+	Name    string `json:"name"`
 }

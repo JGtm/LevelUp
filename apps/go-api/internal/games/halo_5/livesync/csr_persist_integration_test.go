@@ -16,8 +16,9 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	halo5 "levelup/go-api/internal/games/halo_5"
 	syncpkg "levelup/go-api/internal/sync"
+
+	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 func TestPersistAndReadH5CSR_RoundTrip(t *testing.T) {
@@ -34,7 +35,7 @@ func TestPersistAndReadH5CSR_RoundTrip(t *testing.T) {
 	}
 
 	// Service record arena : 2 playlists (une classée Onyx, une en placement).
-	resp := arenaResp([]halo5.H5ArenaPlaylistStat{
+	resp := arenaResp([]h5api.H5ArenaPlaylistStat{
 		{
 			PlaylistId: "pl-onyx",
 			Csr:        csrPtr(5, 2, 1700), // Onyx (sub ignoré)

@@ -140,7 +140,7 @@ export function TacticalAnalysisView({
         lecture={lecture}
         etat={etatPlan}
         inconnus={coequipiersInconnus}
-        etiquette={zone.cellule && zone.detail.data ? titreDeZone(t, locale, true, zone.detail.data) : null}
+        etiquette={zone.cellule && zone.detail.data ? titreDeZone(t, true, zone.detail.data) : null}
         reglages={{
           ...reglages,
           onQuestionIntent: etatPlan === 'pret' ? precharger : undefined,

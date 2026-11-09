@@ -12,12 +12,14 @@ import {
   type UpdateChallengeBody,
 } from '@/lib/prestige'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 // ─── Queries ───
 
 export function useChallenges(userId: string, titleSlug: string) {
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.challenge.list(userId, titleSlug),
+    queryKey: queryKeys.challenge.list(userId, titleSlug, locale),
     queryFn: () => prestigeApi.listActiveChallenges(userId, titleSlug),
     retry: false,
     enabled: !!userId && !!titleSlug,
@@ -38,8 +40,9 @@ const TERMINAL_CHALLENGE_STATUSES: ChallengeStatus[] = [
  * `useChallenges` (actifs).
  */
 export function useChallengeHistory(userId: string, titleSlug: string) {
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.challenge.history(userId, titleSlug),
+    queryKey: queryKeys.challenge.history(userId, titleSlug, locale),
     queryFn: () => prestigeApi.listChallenges(userId, titleSlug, TERMINAL_CHALLENGE_STATUSES),
     retry: false,
     enabled: !!userId && !!titleSlug,
@@ -53,7 +56,7 @@ export function useCreateChallenge(userId: string, titleSlug: string) {
   return useMutation({
     mutationFn: (body: CreateChallengeBody) => prestigeApi.createChallenge(body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.challenge.list(userId, titleSlug) })
+      qc.invalidateQueries({ queryKey: queryKeys.challenge.listAll(userId, titleSlug) })
       qc.invalidateQueries({ queryKey: queryKeys.prestige.meAll(userId) })
     },
   })
@@ -65,7 +68,7 @@ export function useUpdateChallenge(userId: string, titleSlug: string) {
     mutationFn: ({ id, body }: { id: string; body: UpdateChallengeBody }) =>
       prestigeApi.updateChallenge(id, body, userId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.challenge.list(userId, titleSlug) })
+      qc.invalidateQueries({ queryKey: queryKeys.challenge.listAll(userId, titleSlug) })
     },
   })
 }
@@ -75,7 +78,7 @@ export function useAbandonChallenge(userId: string, titleSlug: string) {
   return useMutation({
     mutationFn: (id: string) => prestigeApi.abandonChallenge(id, userId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.challenge.list(userId, titleSlug) })
+      qc.invalidateQueries({ queryKey: queryKeys.challenge.listAll(userId, titleSlug) })
     },
   })
 }
@@ -91,7 +94,7 @@ export function useAbandonChallenge(userId: string, titleSlug: string) {
 export function usePilotMode(userId: string, titleSlug: string) {
   const qc = useQueryClient()
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: queryKeys.challenge.list(userId, titleSlug) })
+    qc.invalidateQueries({ queryKey: queryKeys.challenge.listAll(userId, titleSlug) })
     qc.invalidateQueries({ queryKey: queryKeys.prestige.meAll(userId) })
   }
   const enable = useMutation({

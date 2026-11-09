@@ -33,7 +33,6 @@ See `internal/ops/seed.go` (`SeedCitationMappings`):
 ```sql
 CREATE TABLE citation_mappings (
     citation_name_norm    VARCHAR PRIMARY KEY,
-    citation_name_display VARCHAR NOT NULL,
     mapping_type          VARCHAR NOT NULL DEFAULT 'medal',  -- medal|stat|pve_stat|weapon_stat|award|custom|composite
     medal_id              UBIGINT,
     medal_ids             VARCHAR,
@@ -45,11 +44,12 @@ CREATE TABLE citation_mappings (
     enabled               BOOLEAN NOT NULL DEFAULT TRUE,
     image_path            VARCHAR,
     category              VARCHAR,
-    description           VARCHAR,
     tier_targets          VARCHAR,
     subcategory           VARCHAR
 );
 ```
+
+The display name and the description are not columns: they are rows of `metadata.asset_translations` (`asset_type = 'citation'`, `asset_id = citation_name_norm`, one row per language, texts from `internal/ops/citation_texts.toml`; ADR 0040 D-15).
 
 ---
 

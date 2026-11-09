@@ -1,0 +1,264 @@
+package fallback
+
+// registre_replay_places.go — les replis des PLACES et des PRÉSENCES du roster du rejeu
+// (`replay/sieges.go`, `successions.go`), posés par le lot M2.3
+// de la campagne « retours rejeu » (2026-09-23) sur la RÈGLE DES PLACES de l'utilisateur.
+//
+// UN FICHIER NEUF, ET C'EST LA LIMITE DE 500 LIGNES : `registre_replay_identites.go` y était à
+// trois lignes près. L'entrée `repli_siege_du_remplacant_par_appariement_ordinal` (lot 1.9.14) en
+// sort : le chaînage par équipe la REMPLACE — il la généralise à tout arrivant (bots compris) et
+// ne passe plus qu'après les deux lectures de la place (l'index de la table, les tirs).
+
+// dateM2RetoursRejeu : le jour du lot M2.3 — quatre entrées y naissent, et `goconst` refuse à juste
+// titre une troisième occurrence du littéral. Une DATE, pas un lot (cf. [dateVague2]).
+const dateM2RetoursRejeu = "2026-09-23"
+
+// dateM2RevueRetoursRejeu : le jour de la reprise du lot M2 apres sa revue adverse.
+const dateM2RevueRetoursRejeu = "2026-09-24"
+
+var registreReplayPlaces = []Repli{
+	{
+		Nom: "repli_place_du_remplacant_par_chainage_d_equipe",
+		Fait: "quelle place de la table du debut (quelle fiche) un arrivant tient quand ni son " +
+			"index ni ses tirs ne la disent",
+		Mecanisme: "chainage PAR EQUIPE a presences certaines disjointes : la place de son equipe " +
+			"liberee le plus tot avant son arrivee, puis une place de son equipe sans occupant " +
+			"anterieur, puis une place de la table jamais tenue tant que l'equipe n'a pas sa " +
+			"capacite estimee (cf. `repli_place_ouverte_sous_la_capacite_estimee`) ; sinon le repli " +
+			"suivant, ou aucune place et le siege reste l'index (compte `coverage.seats.sansPlace`)",
+		// FILM MUET, ET LE NEGATIF EST MESURE (sonde P4, `b1ad85eb`) : les bots n'ecrivent AUCUN
+		// tir long (record 105) — 0 tir d'index >= 8, 0 tir de la place 5 pendant les presences
+		// de 343 Hundy et 343 PardonMy, 0 tir de la place 1 pendant les 170 s de 343 Brew Dog. La
+		// place d'un bot, et celle d'un arrivant qui ne tire pas, ne se LIT donc nulle part.
+		Condition: CondFilmMuet,
+		// APRES LES DEUX LECTURES : l'index de la table (`lu`) puis les tirs (`tirs`) posent leurs
+		// places d'abord ; le chainage ne se sert que de ce qui reste libre.
+		Ordre: OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "sieges.go",
+			Ancre:   "in.horloge.fb.DeclencheN(fallback.NomPlaceDuRemplacantParChainageDEquipe, cov.Apparies)",
+		}, {
+			Fichier: pkgReplay + "sieges_places.go",
+			Ancre:   "pp.asseoir(i, p, SeatSourceApparie)",
+		}},
+		DatePose: dateM2RetoursRejeu,
+		CibleRetrait: "le lot qui lira la place d'un bot dans le film (le canal de ses tirs — la " +
+			"variante courte du record 105, a instruire — ou un autre champ de place)",
+		CritereRetrait: "coverage.seats.apparies a 0 sur `b1ad85eb`, `43e96765` et `0d265ab0` " +
+			"(bots et arrivants sans tir) : chaque place y est `lu` ou `tirs`",
+		CompteurBranche: true,
+	},
+	{
+		Nom: "repli_place_ouverte_sous_la_capacite_estimee",
+		Fait: "combien de places (de fiches) une equipe peut tenir, quand un arrivant ne trouve " +
+			"aucune place libre de la table du debut",
+		Mecanisme: "capacite ESTIMEE de l'equipe = la plus haute de trois bornes basses : les " +
+			"sieges de la table repartis entre les equipes lues, la plus grande equipe de la table " +
+			"apres la pose des origines (equipes d'un mode de meme taille), le plus grand nombre de " +
+			"ses entites ti=9 lues a une meme image-cle (chacune lue a au moins deux images-cles : " +
+			"une entite d'une seule est un relais transitoire) ; sous cette capacite, l'arrivant OUVRE une " +
+			"place (son index, ou un numero au-dela des 64 index) ; a la capacite, aucune place",
+		// LA LECTURE A TOURNE ET N'A PAS TRANCHE : l'index (`lu`), les tirs (`tirs`) et le chainage
+		// n'ont trouve aucune place libre pour cet arrivant. La TAILLE D'EQUIPE n'est pas dans le film
+		// (negatif mesure le 2026-10-21, cf. `repli_taille_d_equipe_du_mode`) : cette estimation ne sert
+		// plus que les matchs dont la playlist n'est pas declaree dans `regulation.toml [team_size]`.
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "sieges.go",
+			Ancre:   "in.horloge.fb.DeclencheN(fallback.NomPlaceOuverteSousLaCapaciteEstimee, cov.PlacesOuvertes)",
+		}, {
+			Fichier: pkgReplay + "sieges_places.go",
+			Ancre:   "pp.asseoir(i, pp.ouvrirUnePlace(i), SeatSourceOuverte)",
+		}},
+		DatePose: dateM2RetoursRejeu,
+		CibleRetrait: "le lot qui lira la taille d'equipe du mode dans le film (proprietes de la " +
+			"variante de jeu), si le film l'ecrit — sinon le negatif mesure fait passer ce repli en " +
+			"`film_muet`",
+		CritereRetrait: "sur le parc republie, la capacite lue egale la capacite estimee sur chaque " +
+			"document (111), et `coverage.seats.placesOuvertes` ne compte que des arrivants dont " +
+			"l'equipe etait incomplete a la table du debut",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_presence_par_enveloppe_des_vies",
+		Fait: "de quand a quand un joueur tient sa place quand le film n'a pas ete lu par entite ti=9",
+		Mecanisme: "presence = enveloppe de ses vies publiees (premiere vie -> fin de la derniere), " +
+			"et le DERNIER occupant de chaque place reste affiche jusqu'a la fin du film — la regle " +
+			"d'avant, « mourir n'est pas partir », que sans entite rien ne permet de trancher",
+		// LECTURE NON PORTEE : les entites ti=9 se lisent (lot M2.1), mais pas sur un registre sans
+		// ti=9 ou sans designateur en i0, ni sur un chemin qui assemble depuis des positions deja
+		// decodees (`BuildFromPositions`, collecteur de sync) ou depuis des faits anterieurs au
+		// schema de faits 4 (qui se redecodent).
+		Condition: CondLectureNonPortee,
+		Ordre:     OrdreSansLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "sieges.go",
+			Ancre:   "in.horloge.fb.DeclencheN(fallback.NomPresenceParEnveloppeDesVies, pp.tenirLesDerniersJusquALaFin())",
+		}},
+		DatePose: dateM2RetoursRejeu,
+		CibleRetrait: "chaque chemin qui publie un roster porte les entites ti=9 (le collecteur de " +
+			"sync y compris) ; ce qui reste est un film sans ti=9, a mesurer",
+		CritereRetrait: "0 declenchement sur le parc republie apres re-decodage (111 documents) : " +
+			"`coverage.seats.presences` vaut `film` partout",
+		CompteurBranche: true,
+	},
+	{
+		Nom: "repli_presence_d_une_entree_par_ses_vies",
+		Fait: "de quand a quand un joueur tient sa place quand le film a ete lu par entite ti=9 " +
+			"mais qu'aucune entite ni declaration BOT_METADATA n'est liee a son entree",
+		Mecanisme: "presence = enveloppe de ses vies publiees ; son AFFICHAGE court jusqu'a la veille " +
+			"de la premiere image-cle porteuse qui suit sa derniere vie (l'instant ou son entite " +
+			"aurait dit son depart, Q22), jusqu'au bout s'il n'y en a plus ; l'occupant qu'un siege " +
+			"de la table nomme par son xuid la tient des la frame 0 (la table l'assoit au coup " +
+			"d'envoi)",
+		// LA LECTURE A TOURNE ET N'A PAS TRANCHE : le balayage ti=9 a eu lieu, mais l'entite de
+		// cette entree est contestee (deux entrees la revendiquent), instable, ou absente (occupant
+		// present moins d'une image-cle) — compte a part (`coverage.seats.entitesNonLiees`,
+		// `entitesContestees`).
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "sieges.go",
+			Ancre:   "in.horloge.fb.DeclencheN(fallback.NomPresenceDUneEntreeParSesVies, cov.PresencesParLesVies)",
+		}, {
+			Fichier: pkgReplay + "occupants_presence.go",
+			Ancre:   "return jusquALImageCleSuivante(enveloppeDesVies(occ.vies), in.scan, in.horloge), false",
+		}},
+		DatePose: dateM2RevueRetoursRejeu,
+		CibleRetrait: "le lot qui liera toute entree a son entite (entite d'un occupant de moins " +
+			"d'une image-cle lue par sa creation de corps, revendications departagees)",
+		CritereRetrait: "coverage.seats.presencesParLesVies a 0 sur le parc re-decode (111 " +
+			"documents), `entitesNonLiees` et `entitesContestees` a 0",
+		CompteurBranche: true,
+	},
+	{
+		Nom: "repli_borne_de_presence_differee_sur_doute",
+		Fait: "quand un occupant ARRIVE ou PART, quand l'image-cle voisine de sa fenetre de lecture " +
+			"porte l'en-tete exact de son record ti=9 sans que la marche d'image-cle l'ait lu",
+		Mecanisme: "la borne ne se pose pas sur cette image-cle : l'arrivee recule a la premiere " +
+			"image-cle anterieure qui PROUVE son absence (au coup d'envoi s'il n'y en a aucune), le " +
+			"depart a la premiere posterieure qui la prouve ; a defaut, l'affichage court jusqu'a " +
+			"l'arrivee de son successeur sur la place (regle des places), jusqu'au bout du film s'il " +
+			"n'en a pas",
+		// LA LECTURE A TOURNE ET N'A PAS TRANCHE : l'en-tete est dans le payload (le record y est
+		// peut-etre), la marche ne l'a pas lu (record perdu, ou illisible). Mesure au lot D-fix :
+		// 0 image-cle douteuse sur les sept bobines, les cinq temoins et les onze temoins du gate.
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "sieges.go",
+			Ancre:   "in.horloge.fb.DeclencheN(fallback.NomBorneDePresenceDiffereeSurDoute, cov.BornesDifferees)",
+		}, {
+			Fichier: pkgReplay + "occupants_presence.go",
+			Ancre:   "rang, prouvee := scan.AbsenceProuveeApres(e)",
+		}},
+		DatePose: dateM2RevueRetoursRejeu,
+		CibleRetrait: "le lot qui rendra la marche d'image-cle deterministe (cadre exact de " +
+			"l'ecrivain, `WalkKeyframeRecords`, fermeture a 100 %) : plus aucun record present n'y " +
+			"reste non lu",
+		CritereRetrait: "marche deterministe en production ET coverage.seats.bornesDifferees a 0 sur " +
+			"le parc re-decode (111 documents)",
+		CompteurBranche: true,
+	},
+	{
+		Nom: "repli_vie_de_bot_par_relais_de_la_base",
+		Fait: "a quel bot appartient une vie restee anonyme apres la lecture des corps, des " +
+			"entites et des sieges de bot",
+		Mecanisme: "chaine de fenetres autour de l'heure d'arrivee que la BASE donne a un bot arrive " +
+			"en cours (`joined_in_progress`) : l'unique vie anonyme nee dans [arrivee - 2 s, " +
+			"arrivee + 20 s], puis l'unique vie nee dans [fin de la precedente + 2 s, fin + 25 s] ; " +
+			"deux candidates se departagent par un tir de l'index du bot, sinon la chaine s'arrete",
+		// FILM MUET : le relais n'est lu nulle part pour une vie que le lien corps -> entite n'a pas
+		// nommee (bot present moins d'une image-cle, corps sans record de creation). La base est
+		// en RETARD d'environ 20 s sur le film (mediane -22,3 s sur 45 relais, rapport equipes) :
+		// ce repli manque la premiere vie d'un bot remplacant, et c'est ce que le lien par entite
+		// ferme en amont.
+		Condition: CondFilmMuet,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "successions.go",
+			Ancre:   "fb.DeclencheN(fallback.NomVieDeBotParRelaisDeLaBase, claimed)",
+		}},
+		DatePose: dateM2RetoursRejeu,
+		CibleRetrait: "le lot qui datera la presence d'un bot de moins d'une image-cle par le film " +
+			"(BOT_METADATA + creation du corps) sans passer par la base",
+		CritereRetrait: "0 vie attribuee par relais sur le parc republie : toute vie de bot est " +
+			"nommee par son corps (creation dans la fenetre de son entite)",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_index_de_tireur_hors_place",
+		Fait: "sur quel film l index de tireur du record 36 (champ d, cinq bits) est lu comme la PLACE du tireur : pour la lecture des places par les tirs et pour le rattachement des tirs",
+		Mecanisme: "accord, tir par tir, entre l index de tireur et l index du joueur dont le bipede est l unite tireuse (reference 0) ; " +
+			"sous 50 % (seuilAccordIndexUnite, MESURE du 2026-09-24 sur les huit fixtures de build : 88,4 a 100 % quand l index est la place, 0 % sur HI_1_4_1), " +
+			"l index est ecarte et seule la reference 0 pose les tirs ; compte = les tirs mesures du film ecarte, drapeau coverage.seats.tirsIndexNonPlace",
+		// CONTRADICTION : deux designations du tireur ecrites par le film se contredisent sur ce
+		// film ; la reference 0 est la lecture qui reste.
+		Condition: CondContradiction,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{
+			{Fichier: pkgReplay + "tirs_index_fiable.go", Ancre: "const seuilAccordIndexUnite = 0.5"},
+			{Fichier: pkgReplay + "build_pistes.go", Ancre: "a.opt.Fallbacks.DeclencheN(fallback.NomIndexDeTireurHorsPlace, a.indexTireur.total)"},
+		},
+		DatePose:        "2026-09-25",
+		CibleRetrait:    "la lecture de l index de tireur des builds anciennes (le champ d de HI_1_4_1 n est pas identifie)",
+		CritereRetrait:  "le champ d lu sur HI_1_4_1 ET 0 declenchement sur le corpus du gate de rejeu (un temoin par build)",
+		CompteurBranche: true,
+	}, {
+		Nom:  "repli_taille_d_equipe_du_mode",
+		Fait: "combien de places (de fiches) une equipe tient : sa taille",
+		Mecanisme: "la taille OFFICIELLE de la playlist du match, lue dans `regulation.toml [team_size]` " +
+			"par le jeton de playlist du nom de variante (a gauche du « : », sinon en tete de la droite) ; " +
+			"elle remplace la capacite estimee de la pose des places",
+		// FILM MUET, ET LE NEGATIF EST MESURE (2026-10-21, `variante_taille_equipe_research_test.go`,
+		// 18 films 2v2 / 4v4 / 8v8 / 12v12) : les options de partie et la variante de `chunk_00` se
+		// lisent en entier, aucun champ ne separe les tailles ; un 4v4 et un 8v8 de la meme variante ne
+		// different que par quatre champs (session, deux graines, cible de score). La table des joueurs
+		// a 32 places dans tous les modes.
+		Condition: CondFilmMuet,
+		Ordre:     OrdreSansLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "sieges.go",
+			Ancre:   "in.horloge.fb.Declenche(fallback.NomTailleDEquipeDuMode)",
+		}},
+		DatePose: dateControlesV8,
+		CibleRetrait: "le lot qui lira la taille d'equipe dans le film, si un build l'y ecrit (ou les " +
+			"reglages de la session de matchmaking, s'ils entrent dans le film)",
+		CritereRetrait:  "la taille lue egale celle de la table sur chaque document du parc republie",
+		CompteurBranche: true,
+	},
+	{
+		Nom: "repli_place_ramenee_a_la_taille_d_equipe",
+		Fait: "quelle fiche un occupant tient quand son equipe a vu passer plus d'index de joueur que " +
+			"sa taille",
+		Mecanisme: "les places gardees d'une equipe en surnombre sont les premieres tenues ; chaque " +
+			"intervalle de presence, dans l'ordre de son debut, prend la sienne si elle est gardee et libre, " +
+			"sinon une place gardee libre (la quittee le plus tard : le remplacant, humain ou bot, prend la " +
+			"fiche du partant), sinon pour un humain la place de bots deja la (s'il joue pendant leur " +
+			"presence, ils quittent la partie a son arrivee ; sinon il les attend, ou n'est plus affiche " +
+			"s'il part avant eux), sinon pour un bot la place d'un humain qui a joue avant lui et sans vie " +
+			"pendant sa presence (absence tenue, presence de l'humain coupee) ; les arrivants que le " +
+			"chainage laissait sans place y entrent ; place publiee par intervalle ; un intervalle sans " +
+			"presence certaine sur une place en trop n'est plus affiche",
+		// CONTRADICTION : les index que le film ecrit (table du debut, tirs) font plus de places que
+		// la taille de l'equipe ; la regle des places de l'utilisateur tranche la fiche.
+		Condition: CondContradiction,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "sieges.go",
+			Ancre:   "in.horloge.fb.DeclencheN(fallback.NomPlaceRameneeALaTailleDEquipe, cov.RameneesALaTaille)",
+		}, {
+			Fichier: pkgReplay + "sieges_a_la_taille.go",
+			Ancre:   "pp.roster[oc.entree].SeatSource = SeatSourceTaille",
+		}},
+		DatePose: dateControlesV8,
+		CibleRetrait: "le lot qui lira dans le film la place d'equipe d'un joueur (et non son index), " +
+			"si le film l'ecrit",
+		CritereRetrait:  "coverage.seats.rameneesALaTaille a 0 sur le parc republie, `4f77afc1` compris",
+		CompteurBranche: true,
+	},
+}
+
+// dateControlesV8 : le jour des controles de la v8 ou naissent les deux replis de la taille d'equipe.
+const dateControlesV8 = "2026-10-21"

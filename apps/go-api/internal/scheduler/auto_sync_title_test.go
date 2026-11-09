@@ -5,10 +5,13 @@ package scheduler_test
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"testing"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
 func TestBuildEngine_TitleSlugFromCtx(t *testing.T) {
@@ -31,5 +34,31 @@ func TestBuildEngine_TitleSlugFromCtx(t *testing.T) {
 	}
 	if eSyn.PlayerDBPathForTest() == eHalo.PlayerDBPathForTest() {
 		t.Errorf("playerDBPath synthetic == halo : routing non effectif (%q)", eSyn.PlayerDBPathForTest())
+	}
+}
+
+// TestBuildEngine_SharedProviderIsTitleScoped : le titre par défaut (ou sans titre) reçoit le
+// provider du boot ; un autre titre n'en reçoit JAMAIS le provider du boot (il écrirait et
+// lirait la base partagée du mauvais titre). Sans Manager pour le servir, il reste sans provider.
+func TestBuildEngine_SharedProviderIsTitleScoped(t *testing.T) {
+	s, cfg := newFullyWiredScheduler(t)
+	boot := sharedprovider.FromInMemoryDB((*sql.DB)(nil), ":memory:")
+	cfg.SharedProvider = boot
+
+	if got := s.BuildEngine(context.Background(), "JGtm", "123").SharedProviderForTest(); got != boot {
+		t.Errorf("ctx sans titre : attendu le provider du boot, got %v", got)
+	}
+	ctxDefault := ctxkeys.WithTitleSlug(context.Background(), title.DefaultSlug)
+	if got := s.BuildEngine(ctxDefault, "JGtm", "123").SharedProviderForTest(); got != boot {
+		t.Errorf("titre par défaut : attendu le provider du boot, got %v", got)
+	}
+
+	ctxOther := ctxkeys.WithTitleSlug(context.Background(), "synthetic_test_title")
+	eOther := s.BuildEngine(ctxOther, "JGtm", "123")
+	if got := eOther.SharedProviderForTest(); got == boot {
+		t.Fatal("autre titre : le provider du boot (titre par défaut) a été câblé sur le moteur")
+	}
+	if eOther.HasSharedProvider() {
+		t.Error("autre titre sans Manager : le moteur doit rester sans provider (mode legacy)")
 	}
 }

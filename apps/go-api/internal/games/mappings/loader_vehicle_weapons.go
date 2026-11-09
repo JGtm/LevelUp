@@ -19,6 +19,8 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // Les deux regimes de tir, publies tels quels (valeurs ANGLAISES comme toute enumeration du
@@ -58,20 +60,19 @@ type VehicleWeaponMount struct {
 
 // VehicleWeapon — une entree du registre.
 type VehicleWeapon struct {
-	Tag     string `toml:"tag"`
-	Vehicle string `toml:"vehicle"`
-	En      string `toml:"en"`
-	Fr      string `toml:"fr"`
-	Fire    string `toml:"fire"`
-	Fx      string `toml:"fx"`
-	Tint    string `toml:"tint"`
-	Sound   string `toml:"sound"`
-	Loop    string `toml:"loop"`
+	Tag     string    `toml:"tag"`
+	Vehicle string    `toml:"vehicle"`
+	Label   i18n.Text `toml:"label"`
+	Fire    string    `toml:"fire"`
+	Fx      string    `toml:"fx"`
+	Tint    string    `toml:"tint"`
+	Sound   string    `toml:"sound"`
+	Loop    string    `toml:"loop"`
 	// Impact : le projectile explose a l impact (le rejeu dessine une explosion a sa detonation).
 	// Fait declare, jamais deduit de `fx` (le mortier est `plasma`, le canon du Scorpion
 	// `explosive` sans projectile publie).
 	Impact bool `toml:"impact"`
-	// ImpactSound : stem du son de la detonation (static/sounds/{slug}/<stem>.wav), choisi A L OREILLE
+	// ImpactSound : stem du son de la detonation (static/sounds/{slug}/<stem>.ogg), choisi A L OREILLE
 	// sur les rendus extraits du jeu. Vide = explosion muette. N existe qu avec Impact.
 	ImpactSound string              `toml:"impact_sound"`
 	Silence     string              `toml:"silence"`
@@ -147,8 +148,8 @@ func validateVehicleWeapon(w VehicleWeapon) error {
 		return fmt.Errorf("tag : 8 chiffres hexadecimaux MAJUSCULES attendus")
 	case strings.TrimSpace(w.Vehicle) == "":
 		return fmt.Errorf("vehicle vide")
-	case strings.TrimSpace(w.En) == "" || strings.TrimSpace(w.Fr) == "":
-		return fmt.Errorf("libelle en/fr incomplet")
+	case w.Label.Trimmed().Validate() != nil:
+		return fmt.Errorf("label : %w", w.Label.Trimmed().Validate())
 	case !vehicleWeaponFires[w.Fire]:
 		return fmt.Errorf("fire %q inconnu (admis : single, continuous)", w.Fire)
 	case !shotEffectFamilies[w.Fx]:

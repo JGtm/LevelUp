@@ -99,10 +99,10 @@ export function squadTotalsColumns(
   ]
 }
 
-/** MMR arrondi, séparateurs de la langue du navigateur ; tiret quand le titre n'en fournit pas. */
-export function fmtMmr(v: number | undefined): string {
+/** MMR arrondi, séparateurs de la langue de l'interface (`intlTag`, étiquette BCP-47) ; tiret quand le titre n'en fournit pas. */
+export function fmtMmr(v: number | undefined, intlTag: string): string {
   if (v === undefined || v === null) return '-'
-  return Math.round(v).toLocaleString()
+  return Math.round(v).toLocaleString(intlTag)
 }
 
 /** Écart de MMR signé, coloré par le sens (gain / perte). */

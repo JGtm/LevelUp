@@ -7,22 +7,32 @@
  * _settingsShared.tsx. Ce fichier ne porte que l'orchestrateur. La Sauvegarde
  * (ops d'instance) vit désormais dans Admin · Système.
  */
-import { useState, useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
-import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
+import { getSettingsText } from '@/features/settings/i18n'
 import { AccessibilityTab } from '@/features/settings/AccessibilityTab'
 import { SetPasswordCard } from '@/features/auth/SetPasswordCard'
 import { NotificationsSettingsTab } from '@/features/notifications/NotificationsSettingsTab'
 import type { SettingsResponse } from '@/lib/api/types'
 import { useServerDraft } from '@/lib/hooks/useServerDraft'
 import { AnalyseTab } from './AnalyseTab'
+import { DataCard } from './DataCard'
+import { DesktopIntegrationCard } from './DesktopIntegrationCard'
+import { ExportForDesktopCard } from './ExportForDesktopCard'
+import { FilmArchivePanel } from './FilmArchivePanel'
 import { PoolSharingCard } from './PoolSharingCard'
+import { ReplayRegenCard } from '@/components/replay-regen/ReplayRegenCard'
+import { ResourcePackCard } from './ResourcePackCard'
+import { SiteImportPanel } from './SiteImportPanel'
 import { TitlesTab } from './TitlesTab'
 import { InterfaceCard, DiscordCard, MediaCard } from './_settingsCards'
 import { resolveSettingsTab, type SettingsTab } from './tabs'
+import { SaveStatusBadge } from './SaveStatusBadge'
+import { flashSaveStatus, useSaveFeedbackStore } from './saveFeedbackStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -31,15 +41,24 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 export function SettingsPage() {
   const { data: settings, isLoading } = useSettings()
   const mutation = useUpdateSettings()
-  const demoMode = useAppShellStore((s) => s.demoMode)
-  const locale = normalizeSettingsLocale(useAppShellStore((s) => s.locale))
+  const settingsFrozen = !useDeploymentCapability('can_edit_settings')
+  const watchGame = useDeploymentCapability('can_watch_game_process')
+  const integrateShell = useDeploymentCapability('can_integrate_shell')
+  const scheduleRefresh = useDeploymentCapability('can_schedule_refresh')
+  const backupToFolder = useDeploymentCapability('can_backup_to_folder')
+  const limitMemory = useDeploymentCapability('can_limit_memory')
+  const importFromSite = useDeploymentCapability('can_import_from_site')
+  const regenReplays = useDeploymentCapability('can_regenerate_replays')
+  const updateApp = useDeploymentCapability('can_update_app')
+  // L'onglet « Application » n'existe que là où une intégration au poste est offerte (bureau).
+  const hasDesktopIntegration = watchGame || integrateShell || scheduleRefresh
+  const hasDesktopTab = hasDesktopIntegration || backupToFolder || limitMemory || importFromSite || regenReplays || updateApp
+  const locale = useAppShellStore((s) => s.locale)
   const t = getSettingsText(locale)
   const tc = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   // Copie éditable des réglages serveur, réalignée à chaque objet servi.
   const [localSettings, setLocalSettings] = useServerDraft(settings)
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'error' | null>(null)
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const routerState = useRouterState()
   const navigate = useNavigate()
@@ -52,25 +71,14 @@ export function SettingsPage() {
   }
 
 
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    }
-  }, [])
+  // Un badge encore affiché ne survit pas à la page.
+  useEffect(() => () => useSaveFeedbackStore.getState().clear(), [])
 
   function handleChange<K extends keyof SettingsResponse>(field: K, value: SettingsResponse[K]) {
     setLocalSettings((prev) => ({ ...prev, [field]: value }))
     mutation.mutate({ [field]: value } as Partial<SettingsResponse>, {
-      onSuccess: () => {
-        setSaveStatus('saved')
-        if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-        saveTimerRef.current = setTimeout(() => setSaveStatus(null), 2000)
-      },
-      onError: () => {
-        setSaveStatus('error')
-        if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-        saveTimerRef.current = setTimeout(() => setSaveStatus(null), 4000)
-      },
+      onSuccess: () => flashSaveStatus('saved'),
+      onError: () => flashSaveStatus('error'),
     })
   }
 
@@ -80,29 +88,15 @@ export function SettingsPage() {
 
   return (
     <div className="relative flex flex-col">
-      {demoMode && (
+      {settingsFrozen && (
         <div
           className="mx-6 mt-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
           role="note"
         >
-          {locale === 'en'
-            ? 'Demo mode: settings are frozen. Only language and accessibility can be changed (this session only).'
-            : 'Mode démo : les paramètres sont figés. Seules la langue et l’accessibilité sont modifiables (le temps de la session).'}
+          {t.demoModeNotice}
         </div>
       )}
-      {saveStatus && (
-        <div className="pointer-events-none absolute right-6 top-4 z-10">
-          {saveStatus === 'saved' ? (
-            <span className="rounded-md bg-success/10 px-2 py-1 text-sm text-success shadow-sm" role="status" aria-live="polite">
-              {t.savedStatus}
-            </span>
-          ) : (
-            <span className="rounded-md bg-destructive/10 px-2 py-1 text-sm text-destructive shadow-sm" role="alert">
-              {t.errorStatus}
-            </span>
-          )}
-        </div>
-      )}
+      <SaveStatusBadge />
 
       {/* Onglets */}
       <div className="border-b border-border px-6">
@@ -115,6 +109,7 @@ export function SettingsPage() {
               { id: 'notifications', label: t.tabNotifications },
               { id: 'data', label: t.tabData },
               { id: 'account', label: t.tabAccount },
+              ...(hasDesktopTab ? [{ id: 'desktop' as SettingsTab, label: t.tabDesktop }] : []),
               // « Sauvegarde » a migré vers Admin · Système ; « Synchronisation » et
               // « Utilisateurs » vers Admin · Sync & Jobs / Accès.
             ] as { id: SettingsTab; label: string }[]
@@ -140,23 +135,35 @@ export function SettingsPage() {
       <div className="space-y-6 p-6">
         {activeTab === 'appearance' && (
           <>
-            <InterfaceCard merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
+            <InterfaceCard merged={merged} handleChange={handleChange} t={t} frozen={settingsFrozen} />
             <AccessibilityTab t={t} locale={locale} />
           </>
         )}
-        {activeTab === 'titles' && <TitlesTab t={t} frozen={demoMode} />}
+        {activeTab === 'titles' && <TitlesTab t={t} frozen={settingsFrozen} />}
         {activeTab === 'analyse' && (
-          <AnalyseTab merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
+          <AnalyseTab merged={merged} handleChange={handleChange} t={t} frozen={settingsFrozen} />
         )}
         {activeTab === 'notifications' && (
           <>
             <NotificationsSettingsTab />
             {/* Discord = canal d'alerte externe, regroupé avec les notifications. */}
-            <DiscordCard merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
+            <DiscordCard merged={merged} handleChange={handleChange} t={t} frozen={settingsFrozen} />
           </>
         )}
         {activeTab === 'data' && (
-          <MediaCard merged={merged} handleChange={handleChange} t={t} frozen={demoMode} />
+          <>
+            <MediaCard merged={merged} handleChange={handleChange} t={t} frozen={settingsFrozen} />
+            <FilmArchivePanel />
+          </>
+        )}
+        {activeTab === 'desktop' && hasDesktopTab && (
+          <>
+            {hasDesktopIntegration && <DesktopIntegrationCard />}
+            <DataCard />
+            <ReplayRegenCard />
+            <ResourcePackCard />
+            <SiteImportPanel />
+          </>
         )}
         {/* Compte — mise en commun du jeton (accord et retrait, lieu promis par /privacy
             et /terms), mot de passe opt-in (re-login rapide sans Microsoft) +
@@ -166,6 +173,7 @@ export function SettingsPage() {
           <>
             <PoolSharingCard />
             <SetPasswordCard />
+            <ExportForDesktopCard />
             <div className="rounded-lg border border-border bg-card p-4">
               <h3 className="text-sm font-semibold text-foreground">{t.groupsCardTitle}</h3>
               <p className="mt-1 text-xs text-muted-foreground">{t.groupsCardDescription}</p>

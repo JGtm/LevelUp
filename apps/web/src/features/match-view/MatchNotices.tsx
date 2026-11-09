@@ -8,6 +8,7 @@
  */
 import { Notice, NoticeLiveStatus } from '@/components/ui/notice'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
+import type { Locale } from '@/lib/i18n/locale'
 import type { MatchViewText } from './i18n'
 import {
   analysisNoticeBody,
@@ -21,10 +22,10 @@ import {
 type Props = {
   data: MatchNoticesInput
   t: MatchViewText
-  locale: string
+  locale: Locale
 }
 
-function NoticeItem({ notice, t, locale }: { notice: MatchNotice; t: MatchViewText; locale: string }) {
+function NoticeItem({ notice, t, locale }: { notice: MatchNotice; t: MatchViewText; locale: Locale }) {
   switch (notice.kind) {
     case 'unavailable':
       return (

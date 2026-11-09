@@ -6,9 +6,7 @@ package scheduler
 
 import (
 	"context"
-	"os"
 
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -52,8 +50,10 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	// Commit 8i : en mode B-swap (LEVELUP_USE_SHARED_PROVIDER=1), router les
 	// ouvertures RW de shared via Provider.AcquireWriter au lieu d'OpenSharedDB
 	// direct (le provider arbitre seul lectures et écriture, ADR 0016).
-	if s.cfg.SharedProvider != nil {
-		engine.WithSharedProvider(s.cfg.SharedProvider)
+	// Le provider est celui du titre du moteur (SharedProviderForTitle) : le provider du
+	// boot ne sert que le titre par défaut. nil = moteur sans provider (mode legacy).
+	if p := s.cfg.SharedProviderForTitle(titleSlug); p != nil {
+		engine.WithSharedProvider(p)
 	}
 	// Amis DU JOUEUR synchronisé (fermeture sur son xuid) : la liste n'est plus
 	// celle de l'instance, donc deux joueurs auto-syncés n'héritent plus des amis
@@ -85,30 +85,7 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	// Sans timezone, captureInstantFromName retourne nil → 0 associations
 	// (bug observé 2026-05-25, cf. thought_log).
 	if s.settings != nil {
-		engine.WithMediaScanHook(service.BuildMediaScanHook(s.cfg.RepoRoot, gamertag,
-			func() string {
-				cfg, _ := s.settings.Load()
-				if cfg != nil {
-					return cfg.MediaCapturesBaseDir
-				}
-				return ""
-			},
-			func() string {
-				cfg, _ := s.settings.Load()
-				if cfg != nil {
-					return cfg.UserTimezone
-				}
-				return ""
-			},
-			func() bool {
-				var v *bool
-				if cfg, _ := s.settings.Load(); cfg != nil {
-					v = cfg.MediaDeleteSourceAfterTranscode
-				}
-				return config.ResolveMediaDeleteSource(
-					os.Getenv(config.EnvMediaDeleteSource), v, s.cfg.IsProduction())
-			},
-		))
+		engine.WithMediaScanHook(service.NewLiveMediaScanHook(s.cfg, s.settings, gamertag))
 	}
 	// Le batch INSERT-only est le seul chemin d'écriture depuis D1b. Phase 4.9 :
 	// le layer async reste optionnel. Set LEVELUP_PERSIST_BATCH_ASYNC=0 pour un

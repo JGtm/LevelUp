@@ -23,8 +23,15 @@
  *    de 3 dB pile au raccord, mesuré sur le Warthog et le Chopper pendant la production).
  *  - Les FINS SONT GRAVÉES : chaque `exit` finit à zéro tout seul. AUCUNE enveloppe de sortie
  *    à ajouter — c'est l'inverse exact de la règle des sons d'événement.
- *  - `scorpion_idle` est le moteur au ralenti, véhicule occupé et immobile : il REMPLACE la
- *    boucle de course, fondu croisé de 150 ms dans les deux sens.
+ *
+ * # LE MOTEUR NE SONNE QUE SI LE VÉHICULE BOUGE VRAIMENT (décision utilisateur du 2026-11-02)
+ *
+ * Un véhicule occupé mais immobile est SILENCIEUX : aucun clip de ralenti (« on va pas en
+ * mettre, ça simplifie »). L'épisode commence au premier mouvement réel et finit au dernier ;
+ * un arrêt plus court que `ENGINE_STOP_MERGE_MS` ne change rien (la course continue), un arrêt
+ * plus long éteint la boucle par un fondu (`ENGINE_STOP_FADE_S`) et la rallume par un fondu
+ * (`ENGINE_RESTART_FADE_S`), sans rejouer `enter` ni `exit` (2 à 7 s chacun : les rejouer à
+ * chaque arrêt raconterait un moteur qu'on coupe et relance).
  *
  * # LE BOOST N'EST PAS CÂBLÉ, ET C'EST UNE MESURE, PAS UN OUBLI (premiere CI du chantier : 2026-09-05)
  *
@@ -77,32 +84,41 @@ export const ENGINE_STOP_RAMP_S = 0.02
 export const ENGINE_RIDE_GAP_MERGE_MS = 2_000
 
 /**
- * SCORPION AU RALENTI : sous cette vitesse (unités monde/s — les coordonnées du film sont
- * métriques, cf. les mesures de `vehiclesLayer.ts`), un Scorpion occupé joue `idle` au lieu
- * de `loop`. RÉSERVE ÉCRITE : aucun Scorpion dans les artefacts de démo du 2026-09-04 — le
- * seuil vient du raisonnement physique (un tank « quasi immobile » avance sous 0,5 m/s, la
- * moitié d'un pas humain) et non d'une mesure ; à recaler à la première écoute réelle.
+ * Au-dessus de cette vitesse horizontale (unités du film par seconde, distance entre deux
+ * échantillons / dt), le véhicule BOUGE. Mesure sur 500 rejeux (2026-11-02, conducteurs de
+ * véhicules terrestres) : à l'arrêt la vitesse reste sous 0,05 ; la croisière va de 3 à 12. Le
+ * seuil de 1 écarte la dérive d'un véhicule posé ou poussé sans compter comme un mouvement.
  */
-export const SCORPION_IDLE_SPEED = 0.5
+export const VEHICLE_MOVE_SPEED = 1
 
 /**
- * Durée minimale d'un état ralenti/course avant d'en changer, en millisecondes : sans cette
- * hystérésis, un Scorpion qui manœuvre ferait clignoter idle/loop plus vite que le fondu de
- * 150 ms qui les raccorde.
+ * Un arrêt plus court que ceci (ms) ne coupe pas la boucle : un conducteur qui freine puis
+ * repart ne fait pas clignoter le moteur. Plus long, la boucle s'éteint en fondu.
  */
-export const SCORPION_IDLE_MIN_MS = 1_000
+export const ENGINE_STOP_MERGE_MS = 1_500
 
-/** Les clips d'une famille. `idle` n'existe que pour le Scorpion (contrat de la banque). */
+/**
+ * Un mouvement (après fusion des arrêts courts) plus court que ceci (ms) n'allume rien : un
+ * véhicule bousculé par une explosion n'a pas démarré.
+ */
+export const ENGINE_MOVE_MIN_MS = 500
+
+/** Fondu d'extinction de la boucle quand le véhicule s'arrête, en secondes. */
+export const ENGINE_STOP_FADE_S = 0.6
+
+/** Fondu de reprise de la boucle quand le véhicule repart, en secondes. */
+export const ENGINE_RESTART_FADE_S = 0.3
+
+/** Les clips d'une famille. */
 export interface EngineStems {
   enter: string
   loop: string
   exit: string
-  idle?: string
 }
 
 /**
  * LA TABLE FAMILLE -> STEMS, alignée sur `family` du document (`VehicleTrack.family`) et sur
- * les fichiers `static/sounds/halo_infinite/vehicle_<famille>_<clip>.wav` (garde-rail
+ * les fichiers `static/sounds/halo_infinite/vehicle_<famille>_<clip>.ogg` (garde-rail
  * `replaySoundAssets.guard.test.ts` : manifeste et dossier sont la même liste). Une famille
  * absente de cette table (tourelles, châssis non résolu) est un SILENCE PROPRE.
  *
@@ -113,12 +129,7 @@ export interface EngineStems {
  */
 export const VEHICLE_ENGINE_STEMS: Readonly<Record<string, EngineStems>> = {
   warthog: { enter: 'vehicle_warthog_enter', loop: 'vehicle_warthog_loop', exit: 'vehicle_warthog_exit' },
-  scorpion: {
-    enter: 'vehicle_scorpion_enter',
-    loop: 'vehicle_scorpion_loop',
-    exit: 'vehicle_scorpion_exit',
-    idle: 'vehicle_scorpion_idle',
-  },
+  scorpion: { enter: 'vehicle_scorpion_enter', loop: 'vehicle_scorpion_loop', exit: 'vehicle_scorpion_exit' },
   mongoose: { enter: 'vehicle_mongoose_enter', loop: 'vehicle_mongoose_loop', exit: 'vehicle_mongoose_exit' },
   chopper: { enter: 'vehicle_chopper_enter', loop: 'vehicle_chopper_loop', exit: 'vehicle_chopper_exit' },
   falcon: { enter: 'vehicle_falcon_enter', loop: 'vehicle_falcon_loop', exit: 'vehicle_falcon_exit' },
@@ -130,9 +141,7 @@ export const VEHICLE_ENGINE_STEMS: Readonly<Record<string, EngineStems>> = {
 
 /** Tous les stems moteur, pour le préchargement et le garde-rail d'assets. */
 export function allEngineStems(): string[] {
-  return Object.values(VEHICLE_ENGINE_STEMS).flatMap((s) =>
-    s.idle ? [s.enter, s.loop, s.idle, s.exit] : [s.enter, s.loop, s.exit],
-  )
+  return Object.values(VEHICLE_ENGINE_STEMS).flatMap((s) => [s.enter, s.loop, s.exit])
 }
 
 /** Une période fermée sur l'axe du rejeu, en millisecondes. */
@@ -141,10 +150,13 @@ export interface EngineSpan {
   t1Ms: number
 }
 
-/** Un épisode moteur : le véhicule sonne de `t0Ms` à `t1Ms`, ralenti sur `idle`. */
+/**
+ * Un épisode moteur : du premier mouvement (`t0Ms`, `enter`) au dernier (`t1Ms`, `exit`),
+ * silencieux pendant ses `arrets`.
+ */
 export interface EngineEpisode extends EngineSpan {
-  /** Les périodes RALENTI (Scorpion seul aujourd'hui), déjà bornées à l'épisode, triées. */
-  idle: EngineSpan[]
+  /** Les arrêts longs, strictement intérieurs à l'épisode, triés : la boucle s'y tait. */
+  arrets: EngineSpan[]
 }
 
 /** Le plan moteur d'UN véhicule : sa famille (clé de `VEHICLE_ENGINE_STEMS`) et ses épisodes. */
@@ -180,45 +192,52 @@ export function mergeRideSpans(
 }
 
 /**
- * idleSpansOf — les périodes où un véhicule OCCUPÉ est quasi immobile, bornées à l'épisode.
+ * movingSpansOf — les périodes où le véhicule BOUGE VRAIMENT, bornées à `span`, triées.
  *
- * La vitesse se dérive des échantillons de trajectoire (distance / dt — la seule cinématique
- * que le film publie). Un état plus court que `minMs` est absorbé par son voisin : l'hystérésis
- * qui empêche le clignotement idle/loop.
+ * La vitesse se dérive des échantillons de trajectoire (distance horizontale / dt — la seule
+ * cinématique que le film publie) : un intervalle entre deux échantillons compte s'il dépasse
+ * `VEHICLE_MOVE_SPEED`. Les intervalles séparés de moins de `ENGINE_STOP_MERGE_MS` se fusionnent
+ * (un arrêt court ne coupe rien) ; un mouvement fusionné plus court que `ENGINE_MOVE_MIN_MS` est
+ * écarté. Sans échantillon qui bouge, la liste est vide : un véhicule immobile se tait.
  */
-export function idleSpansOf(
+export function movingSpansOf(
   samples: readonly { t: number; x: number; y: number }[],
-  episode: EngineSpan,
+  span: EngineSpan,
   frameMs: number,
-  speedMax = SCORPION_IDLE_SPEED,
-  minMs = SCORPION_IDLE_MIN_MS,
 ): EngineSpan[] {
-  const raw: EngineSpan[] = []
-  let cur: EngineSpan | null = null
+  const merged: EngineSpan[] = []
   for (let i = 1; i < samples.length; i++) {
-    const tMs = samples[i].t * frameMs
-    if (tMs < episode.t0Ms || tMs > episode.t1Ms) continue
+    const t0Ms = Math.max(samples[i - 1].t * frameMs, span.t0Ms)
+    const t1Ms = Math.min(samples[i].t * frameMs, span.t1Ms)
+    if (t1Ms <= t0Ms) continue
     const dtS = ((samples[i].t - samples[i - 1].t) * frameMs) / 1000
-    if (dtS <= 0) continue
     const v = Math.hypot(samples[i].x - samples[i - 1].x, samples[i].y - samples[i - 1].y) / dtS
-    if (v <= speedMax) {
-      if (cur) cur.t1Ms = tMs
-      else cur = { t0Ms: Math.max(samples[i - 1].t * frameMs, episode.t0Ms), t1Ms: tMs }
-    } else if (cur) {
-      raw.push(cur)
-      cur = null
-    }
+    if (v <= VEHICLE_MOVE_SPEED) continue
+    const last = merged[merged.length - 1]
+    if (last && t0Ms - last.t1Ms < ENGINE_STOP_MERGE_MS) last.t1Ms = Math.max(last.t1Ms, t1Ms)
+    else merged.push({ t0Ms, t1Ms })
   }
-  if (cur) raw.push(cur)
-  return raw.filter((s) => s.t1Ms - s.t0Ms >= minMs)
+  return merged.filter((s) => s.t1Ms - s.t0Ms >= ENGINE_MOVE_MIN_MS)
+}
+
+/**
+ * episodeOfMoves — l'épisode moteur d'une occupation : du premier mouvement au dernier, les
+ * trous entre mouvements devenant des arrêts. `null` si le véhicule n'a pas bougé.
+ */
+export function episodeOfMoves(moves: readonly EngineSpan[]): EngineEpisode | null {
+  if (moves.length === 0) return null
+  const arrets: EngineSpan[] = []
+  for (let i = 1; i < moves.length; i++) arrets.push({ t0Ms: moves[i - 1].t1Ms, t1Ms: moves[i].t0Ms })
+  return { t0Ms: moves[0].t0Ms, t1Ms: moves[moves.length - 1].t1Ms, arrets }
 }
 
 /**
  * planVehicleEngines — LE PLAN COMPLET d'un document : un plan par véhicule qui sonne.
  *
- * TROIS REFUS, dans l'ordre : le DÉCOR (jamais de son — décision de cadrage n° 1, même
- * ensemble que le calque), la famille SANS BANQUE (silence propre — n° 2), et le véhicule
- * JAMAIS OCCUPÉ (un moteur ne tourne que pendant l'union des rides).
+ * QUATRE REFUS, dans l'ordre : le DÉCOR (jamais de son — décision de cadrage n° 1, même
+ * ensemble que le calque), la famille SANS BANQUE (silence propre — n° 2), le véhicule
+ * JAMAIS OCCUPÉ (un moteur ne tourne que pendant l'union des rides), et l'occupation SANS
+ * MOUVEMENT (un véhicule immobile se tait, décision utilisateur du 2026-11-02).
  */
 export function planVehicleEngines(
   vehicles: readonly ReplayVehicleTrackReady[],
@@ -227,27 +246,25 @@ export function planVehicleEngines(
   const out: EnginePlan[] = []
   for (const v of vehicles) {
     if (!v.family || vehicleIsDecor(v.family)) continue
-    const stems = VEHICLE_ENGINE_STEMS[v.family]
-    if (!stems) continue
-    const spans = mergeRideSpans(v.rides, frameMs)
-    if (spans.length === 0) continue
-    const episodes: EngineEpisode[] = spans.map((span) => ({
-      ...span,
-      idle: stems.idle ? idleSpansOf(v.samples, span, frameMs) : [],
-    }))
-    out.push({ family: v.family, episodes })
+    if (!VEHICLE_ENGINE_STEMS[v.family]) continue
+    const episodes: EngineEpisode[] = []
+    for (const span of mergeRideSpans(v.rides, frameMs)) {
+      const ep = episodeOfMoves(movingSpansOf(v.samples, span, frameMs))
+      if (ep) episodes.push(ep)
+    }
+    if (episodes.length > 0) out.push({ family: v.family, episodes })
   }
   return out
 }
 
 /** Ce qu'un moteur DOIT jouer à un instant donné, hors transitions (le lecteur pose celles-ci). */
-export type EnginePhase = 'loop' | 'idle' | null
+export type EnginePhase = 'loop' | 'arret' | null
 
-/** enginePhaseAt — l'état nominal d'un épisode à `ms` : course, ralenti, ou rien. */
+/** enginePhaseAt — l'état nominal d'un épisode à `ms` : course, arrêt (silence), ou rien. */
 export function enginePhaseAt(episode: EngineEpisode, ms: number): EnginePhase {
   if (ms < episode.t0Ms || ms >= episode.t1Ms) return null
-  for (const s of episode.idle) {
-    if (ms >= s.t0Ms && ms < s.t1Ms) return 'idle'
+  for (const s of episode.arrets) {
+    if (ms >= s.t0Ms && ms < s.t1Ms) return 'arret'
   }
   return 'loop'
 }

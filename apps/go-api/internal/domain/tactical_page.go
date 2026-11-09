@@ -14,11 +14,19 @@ import "levelup/go-api/internal/domain/replaydoc"
 // TacticalMapCard est une carte de l'ecran d'entree : la ligne du lecteur, plus
 // le verdict de lisibilite.
 type TacticalMapCard struct {
-	MapID   string `json:"map_id"`
+	MapID string `json:"map_id"`
+	// MapName : le nom de la carte dans la langue de la requête, replié sur la langue de repli (D2,
+	// D3) : jamais le nom brut du registre pour une langue qui a le sien (même valeur que MapLabel).
+	// Sert de clé de tri et de recherche côté client.
 	MapName string `json:"map_name"`
-	// MapNameFR : le LIBELLÉ CANONIQUE de la carte (platform/duckdb/map_labels.go), celui que
-	// l'Explorateur affiche et compare à `?maps=` — le lien d'une vignette vers l'Explorateur le porte.
-	MapNameFR string `json:"map_name_fr"`
+	// MapLabel : le nom de la carte dans la langue de la requête (repli sur la langue de repli
+	// comme MapName), résolu depuis `asset_translations` ; sert à l affichage.
+	MapLabel string `json:"map_label"`
+	// MapFilterKey : le LIBELLÉ CANONIQUE de la carte (platform/duckdb/map_labels.go), celui que
+	// l Explorateur affiche et compare à `?maps=` — le lien d une vignette vers l Explorateur le
+	// porte. Il ne dépend PAS de la langue de la requête : c est une valeur de filtre, pas un
+	// libellé (le nom de la langue par défaut, à défaut le nom du registre).
+	MapFilterKey string `json:"map_filter_key"`
 
 	Matchs    int `json:"matchs"`
 	Victoires int `json:"victoires"`

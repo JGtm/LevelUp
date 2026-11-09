@@ -5,7 +5,8 @@ package replayview
 
 import (
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 func toInventory(v replay.Inventory) replaydoc.Inventory {
@@ -120,6 +121,7 @@ func toEquipmentPlacement(v replay.EquipmentPlacement) replaydoc.EquipmentPlacem
 		Until:    v.Until,
 		UntilMax: v.UntilMax,
 		End:      v.End,
+		LifeEnd:  v.LifeEnd,
 	}
 }
 
@@ -165,7 +167,7 @@ func toPickup(v replay.Pickup) replaydoc.Pickup {
 }
 
 func toCarriedEquipment(v replay.CarriedEquipment) replaydoc.CarriedEquipment {
-	return replaydoc.CarriedEquipment{Slot: v.Slot, R: v.R, T0: v.T0, T1: v.T1,
+	return replaydoc.CarriedEquipment{Slot: v.Slot, R: v.R, Family: v.Family, T0: v.T0, T1: v.T1,
 		Energy: sliceOf(v.Energy, toCarriedEnergy), Uses: v.Uses, Tracked: sliceOf(v.Tracked, toCarriedTracked)}
 }
 
@@ -174,7 +176,12 @@ func toCarriedEnergy(v replay.CarriedEnergy) replaydoc.CarriedEnergy {
 }
 
 func toCarriedTracked(v replay.CarriedTracked) replaydoc.CarriedTracked {
-	return replaydoc.CarriedTracked(v)
+	out := replaydoc.CarriedTracked{T0: v.T0, T1: v.T1, Land: v.Land, X: v.X, Y: v.Y, Z: v.Z}
+	if v.Effect != nil {
+		e := replaydoc.CarriedEffect(*v.Effect)
+		out.Effect = &e
+	}
+	return out
 }
 
 func toRiftPose(v replay.RiftPose) replaydoc.RiftPose {

@@ -7,17 +7,17 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// ---------- formatDateFR ----------
+// ---------- formatShortDate ----------
 
 func TestFormatDateFR_Zero(t *testing.T) {
-	if got := formatDateFR(time.Time{}); got != "-" {
+	if got := formatShortDate(time.Time{}); got != "-" {
 		t.Errorf("expected '-', got %s", got)
 	}
 }
 
 func TestFormatDateFR_Valid(t *testing.T) {
 	d := time.Date(2025, 3, 15, 14, 30, 0, 0, time.UTC)
-	if got := formatDateFR(d); got != "15/03/2025 14:30" {
+	if got := formatShortDate(d); got != "15/03/2025 14:30" {
 		t.Errorf("expected '15/03/2025 14:30', got %s", got)
 	}
 }

@@ -183,7 +183,7 @@ func (r *WeaponAccuracyRepo) attachWeaponLabels(ctx context.Context, slug string
 		if !ok {
 			continue
 		}
-		if m.label != "" {
+		if !m.label.Empty() {
 			rows[i].Label = m.displayLabel(locale)
 		}
 		rows[i].Class = m.class

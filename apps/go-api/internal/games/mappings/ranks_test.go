@@ -3,6 +3,8 @@ package mappings
 import (
 	"reflect"
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 func TestNormalizeLang(t *testing.T) {
@@ -173,5 +175,24 @@ func TestRankCatalog_NilReceiverBehavesAsEmpty(t *testing.T) {
 	}
 	if got := c.IDs(); got != nil {
 		t.Errorf("IDs() sur nil = %v, want nil", got)
+	}
+}
+
+// TestSameInEveryLocale : un libellé identique dans chaque langue connue (code de rang non traduit).
+func TestSameInEveryLocale(t *testing.T) {
+	got := SameInEveryLocale("SR 152")
+	if len(got) != len(i18n.Locales()) {
+		t.Fatalf("%d langues, want %d : %v", len(got), len(i18n.Locales()), got)
+	}
+	for _, l := range i18n.Locales() {
+		if got[string(l)] != "SR 152" {
+			t.Errorf("langue %s : %q", l, got[string(l)])
+		}
+	}
+	e := RankEntry{ID: 1, Title: got}
+	for _, l := range i18n.Locales() {
+		if label, fellBack := e.FullLabel(string(l)); label != "SR 152" || fellBack {
+			t.Errorf("FullLabel(%s) = %q, repli %v", l, label, fellBack)
+		}
 	}
 }

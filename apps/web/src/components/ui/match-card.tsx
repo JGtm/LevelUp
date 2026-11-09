@@ -25,10 +25,10 @@ import { skillDeltaScale, kdaDivergentScale, mmrDeltaScale } from '@/lib/accessi
 import { tokenCssVar } from '@/lib/accessibility'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import { formatMessage } from '@/lib/i18n/format'
-import { effectiveDmgPerFrag } from '@/lib/formatters'
+import { effectiveDmgPerFrag, intlLocale } from '@/lib/formatters'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { normalizeModeLabel } from '@/lib/halo/modeLabel'
-import type { Locale } from '@/lib/i18n/locale'
+import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n/locale'
 
 export interface MatchCardProps {
   match: RecentMatchItem
@@ -51,8 +51,7 @@ function formatMatchDuration(secs: number): string {
 function formatMatchDateTime(isoDate: string, timezone: string, locale: Locale): string {
   const date = new Date(isoDate)
   if (isNaN(date.getTime())) return ''
-  const intlLocale = locale === 'en' ? 'en-GB' : 'fr-FR'
-  return new Intl.DateTimeFormat(intlLocale, {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
     timeZone: timezone,
     day: 'numeric',
     month: 'short',
@@ -64,7 +63,7 @@ function formatMatchDateTime(isoDate: string, timezone: string, locale: Locale):
 
 function buildMatchHeading(match: RecentMatchItem, locale: Locale): string {
   const normalizedMode = normalizeModeLabel(match.mode_ui, match.map_ui)
-  const connector = locale === 'en' ? 'on' : 'sur'
+  const connector = formatMessage(commonManifest, 'common.match_card.heading_connector', locale)
 
   if (normalizedMode && match.map_ui) {
     return `${normalizedMode} ${connector} ${match.map_ui}`
@@ -76,7 +75,7 @@ function buildMatchHeading(match: RecentMatchItem, locale: Locale): string {
   return normalizedMode ?? match.map_ui ?? formatMessage(commonManifest, 'common.match_card.map_unknown', locale)
 }
 
-export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlug, onClick, onToggleFavorite, favoriteDisabled }: MatchCardProps) {
+export function MatchCard({ match: m, locale = DEFAULT_LOCALE, timezone = 'UTC', playerSlug, onClick, onToggleFavorite, favoriteDisabled }: MatchCardProps) {
   const heading = buildMatchHeading(m, locale)
   // Analyse du film en cours (serveur : analysis_pending) : pastille + emplacements en attente
   // à la place des trous. Jamais sur une tuile dont l'analyse est finie.
@@ -363,7 +362,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', playerSlu
                           className="text-xs font-semibold leading-none"
                           style={{ color: tokenCssVar(skillDeltaScale(skillDelta)) }}
                         >
-                          {skillDelta >= 0 ? `+${skillDelta.toFixed(1)}` : skillDelta.toFixed(1)} pts
+                          {skillDelta >= 0 ? `+${skillDelta.toFixed(1)}` : skillDelta.toFixed(1)} {t('common.units.points_short')}
                         </span>
                       )}
                     </div>

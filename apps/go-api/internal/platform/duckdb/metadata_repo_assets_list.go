@@ -4,20 +4,25 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
 // Compile-time check : MetadataRepo implémente port.AssetMetaRepository.
 var _ port.AssetMetaRepository = (*MetadataRepo)(nil)
 
-// ListMapsByTitle retourne les maps d'un titre avec leurs traductions EN/FR.
-// Source primaire : maps_catalog (toujours peuplé via populate-playlists-catalog).
-// Enrichissement optionnel : asset_translations (peuplé via populate-assets).
-// Si asset_translations est vide, name_canonical de maps_catalog est utilisé comme
-// name_en — le drawer affiche les noms même sans populate-assets.
-// search filtre par nom EN ou FR (case-insensitive, LIKE %search%). Vide = tout.
+// ListMapsByTitle retourne les maps d'un titre avec leurs noms dans chaque langue qui en porte un.
+// Source primaire : maps_catalog (toujours peuplé via populate-playlists-catalog), dont le nom canonique
+// tient la langue de repli quand asset_translations n'en porte pas. Enrichissement : asset_translations
+// (peuplé via populate-assets), lu par LoadAssetTexts pour toutes les langues de config/locales.toml.
+// Si asset_translations est vide, name_canonical de maps_catalog sert de nom dans la langue de repli —
+// le drawer affiche les noms même sans populate-assets.
+// search filtre sur le nom dans N'IMPORTE QUELLE langue (case-insensitive, sous-chaîne). Vide = tout.
 //
 // LA DÉDUPLICATION SE FAIT PAR `map_asset_id`, PAS PAR NOM (corrigé le 2026-09-13, D15).
 // Le `DISTINCT ON (m.name_canonical)` d'origine ne gardait qu'UNE ligne par nom canonique :
@@ -26,64 +31,90 @@ var _ port.AssetMetaRepository = (*MetadataRepo)(nil)
 // laquelle le web identifie une carte — qui était choisi arbitrairement par l'ordre de tri.
 // Le grain de sortie voulu est UNE LIGNE PAR ASSET : c'est donc sur `map_asset_id` que le
 // DISTINCT ON doit porter. Sur les schémas courants il n'y déduplique rien — `maps_catalog`
-// a pour PK (title_slug, map_asset_id) et `asset_translations` (asset_id, asset_type, lang),
-// donc les deux LEFT JOIN sont 1:1 — et c'est bien ainsi : il exprime le grain au lieu de
+// a pour PK (title_slug, map_asset_id) — et c'est bien ainsi : il exprime le grain au lieu de
 // le laisser dépendre de contraintes qu'une base legacy peut ne pas porter.
 //
-// Le tri d'affichage reste celui d'avant (nom canonique, puis nom EN) : DuckDB impose que
-// l'ORDER BY d'un DISTINCT ON commence par ses propres expressions, d'où la requête
-// enveloppante qui rétablit l'ordre du drawer.
+// Le tri d'affichage reste celui d'avant : nom canonique, puis nom dans la langue de repli ; les
+// ex aequo se rangent par identifiant (l'ancienne requête ne les ordonnait pas).
 func (r *MetadataRepo) ListMapsByTitle(
 	ctx context.Context,
 	titleID string,
 	search string,
 ) ([]canonical.AssetMeta, error) {
-	query := `
-		SELECT asset_id, name_en, name_fr
-		FROM (
-			SELECT DISTINCT ON (m.map_asset_id)
-			       m.map_asset_id                                     AS asset_id,
-			       COALESCE(at_en.name, m.name_canonical, '')         AS name_en,
-			       COALESCE(at_fr.name, '')                           AS name_fr,
-			       COALESCE(m.name_canonical, '')                     AS name_canonical
-			FROM maps_catalog m
-			LEFT JOIN asset_translations at_en
-			    ON at_en.asset_id   = m.map_asset_id
-			   AND at_en.asset_type = 'map'
-			   AND at_en.lang       = 'en-US'
-			LEFT JOIN asset_translations at_fr
-			    ON at_fr.asset_id   = m.map_asset_id
-			   AND at_fr.asset_type = 'map'
-			   AND at_fr.lang       = 'fr-FR'
-			WHERE m.title_slug = ?
-			  AND COALESCE(m.name_canonical, '') NOT LIKE '% - %'
-			  AND (? = ''
-			       OR lower(COALESCE(at_en.name, m.name_canonical, '')) LIKE lower('%' || ? || '%')
-			       OR lower(COALESCE(at_fr.name, ''))                    LIKE lower('%' || ? || '%'))
-			ORDER BY m.map_asset_id, at_en.name
-		)
-		ORDER BY name_canonical, name_en
-	`
-
-	rows, err := r.meta.Query(ctx, query, titleID, search, search, search)
+	rows, err := r.meta.Query(ctx, `
+		SELECT DISTINCT ON (m.map_asset_id) m.map_asset_id, COALESCE(m.name_canonical, '') AS name_canonical
+		FROM maps_catalog m
+		WHERE m.title_slug = ?
+		  AND COALESCE(m.name_canonical, '') NOT LIKE '% - %'
+		ORDER BY m.map_asset_id`, titleID)
 	if err != nil {
 		return nil, fmt.Errorf("ListMapsByTitle: %w", err)
 	}
 	defer rows.Close()
 
-	var out []canonical.AssetMeta
+	var ids []string
+	canonicalByID := map[string]string{}
 	for rows.Next() {
-		var m canonical.AssetMeta
-		if err := rows.Scan(&m.ID, &m.NameEN, &m.NameFR); err != nil {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
 			return nil, fmt.Errorf("ListMapsByTitle scan: %w", err)
 		}
-		out = append(out, m)
+		ids = append(ids, id)
+		canonicalByID[id] = name
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	texts, err := LoadAssetNames(ctx, r.meta, assetTypeMap, ids)
+	if err != nil {
+		return nil, fmt.Errorf("ListMapsByTitle: %w", err)
+	}
+	out := make([]canonical.AssetMeta, 0, len(ids))
+	for _, id := range ids {
+		names := texts[id].Name.Clone()
+		if names == nil {
+			names = i18n.Text{}
+		}
+		if !names.Has(i18n.Fallback) && canonicalByID[id] != "" {
+			names[i18n.Fallback] = canonicalByID[id]
+		}
+		if !mapNameMatches(names, search) {
+			continue
+		}
+		out = append(out, canonical.AssetMeta{ID: id, Names: names})
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		ci, cj := canonicalByID[out[i].ID], canonicalByID[out[j].ID]
+		if ci != cj {
+			return ci < cj
+		}
+		if ni, nj := out[i].Names[i18n.Fallback], out[j].Names[i18n.Fallback]; ni != nj {
+			return ni < nj
+		}
+		return out[i].ID < out[j].ID
+	})
+	return out, nil
 }
 
-// ListWeaponsByTitle retourne les armes avec leurs traductions EN/FR.
-// search filtre par nom EN ou FR (case-insensitive, LIKE %search%). Vide = tout.
+// mapNameMatches indique si `search` (vide = tout) est contenu, sans tenir compte de la casse, dans
+// le nom de la carte dans l'une quelconque de ses langues.
+func mapNameMatches(names i18n.Text, search string) bool {
+	if search == "" {
+		return true
+	}
+	needle := strings.ToLower(search)
+	for _, n := range names {
+		if strings.Contains(strings.ToLower(n), needle) {
+			return true
+		}
+	}
+	return false
+}
+
+// ListWeaponsByTitle retourne les armes avec leurs noms dans chaque langue qui en porte un
+// (weapon_label_names : une ligne par arme et par langue). search filtre sur le nom dans
+// N'IMPORTE QUELLE langue (case-insensitive, LIKE %search%). Vide = tout. Tri : nom dans la langue
+// de repli, puis identifiant ; le choix de la langue servie est fait par AssetService.
 // titleID est accepté pour respecter l'interface — weapon_labels n'est pas segmenté par titre en V1.
 func (r *MetadataRepo) ListWeaponsByTitle(
 	ctx context.Context,
@@ -91,80 +122,109 @@ func (r *MetadataRepo) ListWeaponsByTitle(
 	search string,
 ) ([]canonical.AssetMeta, error) {
 	query := `
-		SELECT weapon_id::VARCHAR           AS id,
-		       name_en,
-		       COALESCE(name_fr, '')        AS name_fr
-		FROM weapon_labels
+		SELECT n.weapon_id::VARCHAR, n.lang, n.name
+		FROM weapon_label_names n
 		WHERE ? = ''
-		   OR lower(name_en)                LIKE lower('%' || ? || '%')
-		   OR lower(COALESCE(name_fr, ''))  LIKE lower('%' || ? || '%')
-		ORDER BY name_en
+		   OR n.weapon_id IN (SELECT m.weapon_id FROM weapon_label_names m
+		                      WHERE lower(m.name) LIKE lower('%' || ? || '%'))
+		ORDER BY n.weapon_id, n.lang
 	`
-
-	rows, err := r.meta.Query(ctx, query, search, search, search)
+	rows, err := r.meta.Query(ctx, query, search, search)
 	if err != nil {
 		return nil, fmt.Errorf("ListWeaponsByTitle: %w", err)
 	}
 	defer rows.Close()
 
-	var out []canonical.AssetMeta
+	byID := map[string]*canonical.AssetMeta{}
+	var order []string
 	for rows.Next() {
-		var m canonical.AssetMeta
-		if err := rows.Scan(&m.ID, &m.NameEN, &m.NameFR); err != nil {
+		var id, lang, name string
+		if err := rows.Scan(&id, &lang, &name); err != nil {
 			return nil, fmt.Errorf("ListWeaponsByTitle scan: %w", err)
 		}
-		out = append(out, m)
+		loc, ok := i18n.Lookup(lang)
+		if !ok || name == "" {
+			continue
+		}
+		m := byID[id]
+		if m == nil {
+			m = &canonical.AssetMeta{ID: id, Names: i18n.Text{}}
+			byID[id] = m
+			order = append(order, id)
+		}
+		m.Names[loc] = name
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make([]canonical.AssetMeta, 0, len(order))
+	for _, id := range order {
+		out = append(out, *byID[id])
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return out[i].Names[i18n.Fallback] < out[j].Names[i18n.Fallback]
+	})
+	return out, nil
 }
 
-// ListMedalsByTitle retourne les médailles (nom + description EN/FR — le sprite h5
-// est chargé à part par le boot loader de l'Asset Drawer). Sans colonnes sprite ici
-// → sûr pour TOUTE metadata.duckdb (HINF n'a pas ces colonnes). search filtre par
-// nom EN/FR.
+// ListMedalsByTitle retourne les médailles (nom + description dans chaque langue qui en porte
+// une — le sprite h5 est chargé à part par le boot loader de l'Asset Drawer). Sans colonnes
+// sprite ici → sûr pour TOUTE metadata.duckdb (HINF n'a pas ces colonnes). search filtre par
+// nom, dans n'importe quelle langue de medal_translations (insensible à la casse).
 //
-// Le tab Assets est locale-neutre (le front choisit EN ou FR) : on expose donc les
-// quatre colonnes name_en/name_fr/description/description_fr. La résolution FR
-// (label + description) passe par le helper centralisé medalLabelDescCoalesceSQL
-// (source unique partagée avec LookupByIDs) pour ne pas redériver une 5e fois le
-// COALESCE FR qui avait dérivé (médailles non traduites). Les colonnes EN restent
-// les colonnes brutes EN (mt_en > md.name_en) — pas de risque de dérive FR.
-// LEFT JOIN medal_translations toléré vide (table jamais peuplée côté Go → on
-// retombe sur medal_definitions.name_fr/description_fr).
+// Les textes viennent de medal_translations (une ligne par langue, LoadMedalTexts) : le tab
+// Assets est locale-neutre côté repo, AssetService choisit la langue de la requête (repli `en`).
+// Tri par nom anglais ; les médailles sans nom anglais suivent, par identifiant.
 func (r *MetadataRepo) ListMedalsByTitle(
 	ctx context.Context,
 	_ string,
 	search string,
 ) ([]canonical.AssetMeta, error) {
-	// mt_loc lié à fr-FR via medalTranslationJoinsSQL("fr") ; les expressions FR
-	// proviennent du helper, les expressions EN n'utilisent que mt_en + md.*.
-	labelFR, descFR := medalLabelDescCoalesceSQL("fr")
-	query := `
-		SELECT md.medal_name_id::VARCHAR AS id,
-		       COALESCE(NULLIF(TRIM(mt_en.name),''), NULLIF(TRIM(md.name_en),''), '')        AS name_en,
-		       ` + labelFR + `                                                              AS name_fr,
-		       COALESCE(NULLIF(TRIM(mt_en.description),''), NULLIF(TRIM(md.description_en),''), '') AS description_en,
-		       ` + descFR + `                                                               AS description_fr
+	rows, err := r.meta.Query(ctx, `
+		SELECT md.medal_name_id
 		FROM medal_definitions md
-		` + medalTranslationJoinsSQL("fr") + `
 		WHERE ? = ''
-		   OR lower(COALESCE(md.name_en, ''))               LIKE lower('%' || ? || '%')
-		   OR lower(COALESCE(md.name_fr, ''))               LIKE lower('%' || ? || '%')
-		ORDER BY md.name_en
-	`
-	rows, err := r.meta.Query(ctx, query, search, search, search)
+		   OR EXISTS (SELECT 1 FROM medal_translations mt
+		              WHERE mt.medal_name_id = md.medal_name_id
+		                AND lower(mt.name) LIKE lower('%' || ? || '%'))
+		ORDER BY md.medal_name_id
+	`, search, search)
 	if err != nil {
 		return nil, fmt.Errorf("ListMedalsByTitle: %w", err)
 	}
 	defer rows.Close()
-
-	var out []canonical.AssetMeta
+	var ids []int64
 	for rows.Next() {
-		var m canonical.AssetMeta
-		if err := rows.Scan(&m.ID, &m.NameEN, &m.NameFR, &m.Description, &m.DescriptionFR); err != nil {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
 			return nil, fmt.Errorf("ListMedalsByTitle scan: %w", err)
 		}
-		out = append(out, m)
+		ids = append(ids, id)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("ListMedalsByTitle rows: %w", err)
+	}
+	texts, err := LoadMedalTexts(ctx, r.meta, ids)
+	if err != nil {
+		return nil, fmt.Errorf("ListMedalsByTitle: textes: %w", err)
+	}
+	out := make([]canonical.AssetMeta, 0, len(ids))
+	for _, id := range ids {
+		t := texts[id]
+		out = append(out, canonical.AssetMeta{ID: strconv.FormatInt(id, 10), Names: t.Name, Descriptions: t.Description})
+	}
+	sortMedalsByEnglishName(out)
+	return out, nil
+}
+
+// sortMedalsByEnglishName trie par nom anglais (ordre des octets) ; les médailles sans nom anglais
+// passent après, dans l'ordre reçu (identifiant croissant).
+func sortMedalsByEnglishName(medals []canonical.AssetMeta) {
+	sort.SliceStable(medals, func(i, j int) bool {
+		a, b := medals[i].Names[i18n.Fallback], medals[j].Names[i18n.Fallback]
+		if a == "" || b == "" {
+			return a != "" && b == ""
+		}
+		return a < b
+	})
 }

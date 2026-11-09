@@ -12,8 +12,8 @@
 //   - GET  /admin/monitoring/data-quality              : compteurs (NoStore)
 //   - GET  /admin/monitoring/data-quality/issues       : listes (kind, limit) (NoStore)
 //   - POST /admin/actions/registry-names/backfill      : {dry_run} (body optionnel)
-//   - POST /admin/actions/translations/mode            : {mode_en, name_fr}
-//   - POST /admin/actions/translations/asset           : {asset_kind, asset_id, name_en?, name_fr?}
+//   - POST /admin/actions/translations/mode            : {mode_key, names: {langue: texte}}
+//   - POST /admin/actions/translations/asset           : {asset_kind, asset_id, names: {langue: texte}}
 //   - POST /admin/actions/catalog/refresh              : (sans corps)
 //   - POST /admin/actions/lying-bits/reset             : {dry_run} (body optionnel)
 package handlers
@@ -32,6 +32,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // Runners injectés (implémentés par ServiceRegistry).
@@ -39,7 +40,7 @@ type (
 	DataQualityCountsRunner func(ctx context.Context, titleSlug, locale string) (domain.AdminDataQualityCounts, error)
 	DataQualityIssuesRunner func(ctx context.Context, titleSlug, kind, locale string, limit, offset int) (domain.AdminDataQualityIssues, error)
 	RegistryNamesRunner     func(ctx context.Context, titleSlug string, dryRun bool) (domain.RegistryNamesBackfillResult, error)
-	ModeTranslationRunner   func(ctx context.Context, titleSlug, modeEN, nameFR string) (domain.ResolveResult, error)
+	ModeTranslationRunner   func(ctx context.Context, titleSlug string, req domain.ModeTranslationRequest) (domain.ResolveResult, error)
 	AssetTranslationRunner  func(ctx context.Context, titleSlug string, req domain.AssetTranslationRequest) (domain.ResolveResult, error)
 	CatalogRefreshRunner    func(ctx context.Context, titleSlug string) (domain.CatalogRefreshResult, error)
 	LyingBitsResetRunner    func(ctx context.Context, titleSlug string, dryRun bool) (domain.LyingBitsResetResult, error)
@@ -106,11 +107,11 @@ func (h *AdminDataQualityHandler) Mount(r chi.Router, opts ...humacore.MountOpti
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/actions/registry-names/backfill")
 	huma.Post(api, "/actions/translations/mode", h.handleResolveModeTranslation, humacore.Op(
 		"postAdminActionModeTranslation",
-		"Action admin — upsert mode_name_tr[fr] pour un mode normalisé (résout un mode non traduit, effet immédiat) (auth admin requis)",
+		"Action admin — upsert mode_name_tr (une ligne par langue saisie) pour un mode normalisé (résout un mode non traduit, effet immédiat) (auth admin requis)",
 		"admin"))
 	huma.Post(api, "/actions/translations/asset", h.handleResolveAssetTranslation, humacore.Op(
 		"postAdminActionAssetTranslation",
-		"Action admin — upsert asset_translations (en-US et/ou fr-FR) pour un asset playlist/map/pair/game_variant (résolution effective des UUID inconnus) "+
+		"Action admin — upsert asset_translations (une ligne par langue saisie) pour un asset playlist/map/pair/game_variant (résolution effective des UUID inconnus) "+
 			"(auth admin requis)",
 		"admin"))
 	huma.Post(api, "/actions/catalog/refresh", h.handleRunCatalogRefresh, humacore.Op(
@@ -160,14 +161,14 @@ type dqDryRunInput struct {
 	RawBody []byte
 }
 
-// dqModeTranslationInput : ?title= + corps {mode_en, name_fr} (décodage maison →
+// dqModeTranslationInput : ?title= + corps {mode_key, names} (décodage maison →
 // 400 invalid_body si JSON malformé).
 type dqModeTranslationInput struct {
 	Title   string `query:"title"`
 	RawBody []byte
 }
 
-// dqAssetTranslationInput : ?title= + corps {asset_kind, asset_id, name_en?, name_fr?}.
+// dqAssetTranslationInput : ?title= + corps {asset_kind, asset_id, names}.
 type dqAssetTranslationInput struct {
 	Title   string `query:"title"`
 	RawBody []byte
@@ -216,15 +217,12 @@ func noStoreError(err huma.StatusError) error {
 
 // ─── Endpoints ───────────────────────────────────────────────────────────────
 
-// defaultDQLocale : locale de traduction par défaut (untranslated_modes).
-const defaultDQLocale = "fr"
-
-// normalizeDQLocale : trim + minuscule, défaut « fr » si vide. Le back n'accepte
+// normalizeDQLocale : trim + minuscule, langue par défaut (i18n.Default) si vide. Le back n'accepte
 // aujourd'hui que le paramétrage (pas de construction d'une autre locale).
 func normalizeDQLocale(raw string) string {
 	s := strings.ToLower(strings.TrimSpace(raw))
 	if s == "" {
-		return defaultDQLocale
+		return string(i18n.Default)
 	}
 	return s
 }
@@ -341,40 +339,41 @@ func (h *AdminDataQualityHandler) handleRunCatalogRefresh(ctx context.Context, i
 	return &dqCatalogRefreshOutput{Body: resp}, nil
 }
 
-// handleResolveModeTranslation écrit une traduction FR de mode.
-// POST /admin/actions/translations/mode {mode_en, name_fr}.
+// handleResolveModeTranslation écrit les traductions d'un mode, une par langue saisie.
+// POST /admin/actions/translations/mode {mode_key, names: {langue: texte}}.
 func (h *AdminDataQualityHandler) handleResolveModeTranslation(ctx context.Context, in *dqModeTranslationInput) (*dqResolveOutput, error) {
 	var req domain.ModeTranslationRequest
 	if err := json.Unmarshal(in.RawBody, &req); err != nil {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "Corps JSON invalide.")
 	}
-	if !validResolveInput(req.ModeEN) || !validResolveInput(req.NameFR) {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_input",
-			"mode_en et name_fr sont requis (1-128 caractères).")
+	names, code := cleanTranslationNames(req.Names)
+	if code != "" || !validResolveInput(req.ModeKey) {
+		return nil, translationInputError(code, "mode_key requis + au moins un nom (1-128 caractères).")
 	}
+	req.Names = names
 	titleSlug := titleOrDefaultSlug(in.Title)
-	resp, err := h.modeTranslation(ctx, titleSlug, req.ModeEN, req.NameFR)
+	resp, err := h.modeTranslation(ctx, titleSlug, req)
 	if err != nil {
 		slog.ErrorContext(ctx, "admin_data_quality: mode translation failed",
-			"title", titleSlug, "mode_en", req.ModeEN, "err", err)
+			"title", titleSlug, "mode_key", req.ModeKey, "err", err)
 		return nil, humacore.NewError(http.StatusServiceUnavailable, "translation_failed",
 			"Écriture de la traduction impossible.")
 	}
 	return &dqResolveOutput{Body: resp}, nil
 }
 
-// handleResolveAssetTranslation écrit une traduction d'asset (en-US et/ou fr-FR).
-// POST /admin/actions/translations/asset {asset_kind, asset_id, name_en?, name_fr?}.
+// handleResolveAssetTranslation écrit les traductions d'un asset, une par langue saisie.
+// POST /admin/actions/translations/asset {asset_kind, asset_id, names: {langue: texte}}.
 func (h *AdminDataQualityHandler) handleResolveAssetTranslation(ctx context.Context, in *dqAssetTranslationInput) (*dqResolveOutput, error) {
 	var req domain.AssetTranslationRequest
 	if err := json.Unmarshal(in.RawBody, &req); err != nil {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "Corps JSON invalide.")
 	}
-	if !validResolveInput(req.AssetID) || (req.NameEN == "" && req.NameFR == "") ||
-		!optionalResolveInput(req.NameEN) || !optionalResolveInput(req.NameFR) {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_input",
-			"asset_id requis + au moins un nom (1-128 caractères).")
+	names, code := cleanTranslationNames(req.Names)
+	if code != "" || !validResolveInput(req.AssetID) {
+		return nil, translationInputError(code, "asset_id requis + au moins un nom (1-128 caractères).")
 	}
+	req.Names = names
 	titleSlug := titleOrDefaultSlug(in.Title)
 	resp, err := h.assetTranslation(ctx, titleSlug, req)
 	if err != nil {
@@ -385,8 +384,46 @@ func (h *AdminDataQualityHandler) handleResolveAssetTranslation(ctx context.Cont
 	return &dqResolveOutput{Body: resp}, nil
 }
 
+// Codes d'erreur d'une saisie de traductions invalide.
+const (
+	translationCodeInvalidInput  = "invalid_input"
+	translationCodeUnknownLocale = "unknown_locale"
+)
+
+// cleanTranslationNames valide la saisie `{ langue: texte }` d'une traduction et la normalise :
+// chaque clé doit être exactement le code d'une langue de config/locales.toml, un nom est rogné
+// puis borné (1-128 caractères) et les noms vides sont retirés. Retourne le code d'erreur
+// (translationCodeUnknownLocale ou translationCodeInvalidInput) quand la saisie est refusée, y
+// compris quand aucun nom n'est renseigné.
+func cleanTranslationNames(in map[string]string) (map[string]string, string) {
+	out := make(map[string]string, len(in))
+	for lang, name := range in {
+		if !i18n.Known(i18n.Locale(lang)) {
+			return nil, translationCodeUnknownLocale
+		}
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if !validResolveInput(name) {
+			return nil, translationCodeInvalidInput
+		}
+		out[lang] = name
+	}
+	if len(out) == 0 {
+		return nil, translationCodeInvalidInput
+	}
+	return out, ""
+}
+
+// translationInputError construit le 400 d'une saisie de traduction refusée ; `invalidMsg` est le
+// message du cas générique (code invalid_input).
+func translationInputError(code, invalidMsg string) error {
+	if code == translationCodeUnknownLocale {
+		return humacore.NewError(http.StatusBadRequest, code, "Langue inconnue dans names.")
+	}
+	return humacore.NewError(http.StatusBadRequest, translationCodeInvalidInput, invalidMsg)
+}
+
 // validResolveInput : champ requis, borné (anti-payload abusif).
 func validResolveInput(s string) bool { return len(s) >= 1 && len(s) <= 128 }
-
-// optionalResolveInput : champ optionnel mais borné si fourni.
-func optionalResolveInput(s string) bool { return len(s) <= 128 }

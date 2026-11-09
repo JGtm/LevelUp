@@ -18,6 +18,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
@@ -167,8 +168,8 @@ func pairNamesOf(rows []canonical.PlayerMatchRow, squadRows []domain.SquadMatchR
 		}
 	}
 	for _, r := range squadRows {
-		if _, ok := out[r.MatchID]; !ok && r.PairName != "" {
-			out[r.MatchID] = r.PairName
+		if _, ok := out[r.MatchID]; !ok && r.PairName[i18n.Fallback] != "" {
+			out[r.MatchID] = r.PairName[i18n.Fallback]
 		}
 	}
 	return out

@@ -13,6 +13,8 @@ export function useSynthesisPage(
   request: SynthesisQueryRequest,
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  // Les noms d armes et de cartes sont servis dans la langue de la requête : la locale scope la clé.
+  const locale = useAppShellStore((s) => s.locale)
   // Le scopeHash doit refléter TOUS les filtres locaux (période ET cascade) pour
   // que React Query refetch après un clic sur "Analyser" qui modifie la cascade.
   const c = request.filters?.cascade
@@ -24,7 +26,7 @@ export function useSynthesisPage(
   ].join('|')
   const scopeHash = `${period?.start_date ?? ''}_${period?.end_date ?? ''}_${cascadeHash}`
   return useQuery({
-    queryKey: queryKeys.synthesis(playerSlug, titleSlug, scopeHash),
+    queryKey: queryKeys.synthesis(playerSlug, titleSlug, scopeHash, locale),
     queryFn: ({ signal }) =>
       api.post<SynthesisPageResponse>(
         `/players/${playerSlug}/pages/synthesis`,

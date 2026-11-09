@@ -21,6 +21,13 @@
  * Exit code  : 0 = à jour · 1 = drift (ou générateur absent / en échec)
  * Réparation : cd apps/web && npm run generate-types
  *
+ * Second contrôle, même script : `checkGeneratedLocalesFresh()` — les deux fichiers générés depuis
+ * `config/locales.toml` (ADR 0040 : `apps/web/src/lib/i18n/generated/locales.ts` et
+ * `apps/go-api/internal/i18n/locales_gen.go`) sont-ils À JOUR ? Le texte attendu est produit par
+ * `apps/web/scripts/locales.mjs`, le même module que l'écrivain
+ * (`build_i18n_manifests.mjs`) : pas de seconde implémentation. Réparation :
+ * node apps/web/scripts/build_i18n_manifests.mjs
+ *
  * Appelé par : `make openapi-check` (gate manuelle du contrat) ET
  * `apps/web/src/lib/api/generated-types-fresh.guard.test.ts` (CI, job Frontend).
  */
@@ -30,6 +37,15 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import {
+  LOCALES_GO_PATH,
+  LOCALES_TOML_PATH,
+  LOCALES_TS_PATH,
+  loadLocalesConfig,
+  renderLocalesGo,
+  renderLocalesTS,
+} from '../apps/web/scripts/locales.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '..')
@@ -90,6 +106,34 @@ export function checkGeneratedTypesFresh() {
   }
 }
 
+const LOCALES_FIX_HINT = 'Réparation : node apps/web/scripts/build_i18n_manifests.mjs'
+
+/**
+ * Retourne null si les deux fichiers générés depuis config/locales.toml sont à jour, sinon le
+ * message d'erreur (drift, fichier absent, TOML invalide). Comparaison octet à octet avec le
+ * texte que produirait le générateur.
+ */
+export function checkGeneratedLocalesFresh() {
+  let cfg
+  try {
+    cfg = loadLocalesConfig()
+  } catch (err) {
+    return `${LOCALES_TOML_PATH} invalide : ${err?.message ?? err}`
+  }
+  for (const [path, expected] of [
+    [LOCALES_TS_PATH, renderLocalesTS(cfg)],
+    [LOCALES_GO_PATH, renderLocalesGo(cfg)],
+  ]) {
+    if (!existsSync(path)) return `fichier généré introuvable : ${path}
+  ${LOCALES_FIX_HINT}`
+    if (readFileSync(path, 'utf8') !== expected) {
+      return `DRIFT — ${path} ne correspond pas à config/locales.toml.
+  ${LOCALES_FIX_HINT}`
+    }
+  }
+  return null
+}
+
 // Exécution directe (make openapi-check) : import en tant que module = pas d'effet.
 if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
   const problem = checkGeneratedTypesFresh()
@@ -98,4 +142,10 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import
     process.exit(1)
   }
   console.log('[generated-types] OK — generated.ts dérive bien de openapi.yaml.')
+  const localesProblem = checkGeneratedLocalesFresh()
+  if (localesProblem) {
+    console.error(`[generated-locales] ${localesProblem}`)
+    process.exit(1)
+  }
+  console.log('[generated-locales] OK — locales.ts et locales_gen.go dérivent de config/locales.toml.')
 }

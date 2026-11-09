@@ -2,8 +2,7 @@
 
 package replaybuild
 
-// emprise_v0_reference_research_test.go — LOT V0 DU PLAN `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`,
-// VOLET CUISSON : la REFERENCE des mesures V0.1 et V0.2.
+// emprise_v0_reference_research_test.go — VOLET CUISSON : la REFERENCE des mesures V0.1 et V0.2.
 //
 // # CE QU'IL REND
 //
@@ -44,12 +43,13 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // v0Identite : ce que le volet collecteur a lu en base (noms de carte, faits du match).
@@ -107,7 +107,7 @@ func TestEmpriseV0Reference(t *testing.T) {
 	}
 	// LA SENTINELLE DU DEPOT : une cuisson BTB monte a plusieurs Gio ; au-dela du plafond dur, le
 	// processus s'arrete plutot que de faire suffoquer la machine de travail.
-	garde := filmproc.Arm("emprise-v0-reference", 8, func(pic uint64) {
+	garde := memguard.Arm(t.Context(), "emprise-v0-reference", 8, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "EMPRISE V0 : empreinte %.2f Gio > plafond — arret\n", float64(pic)/(1<<30))
 		os.Exit(3)
 	})

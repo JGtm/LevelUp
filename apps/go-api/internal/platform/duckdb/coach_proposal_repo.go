@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"time"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/progression/coach_advisor"
 )
@@ -61,7 +62,7 @@ func (r *CoachProposalRepo) Create(ctx context.Context, p coach_advisor.Proposal
 		p.ID, p.UserID, p.TitleSlug, string(p.Kind),
 		nullableString(p.TemplateID), nullableString(p.ChallengesSpec), nullableString(string(p.SuggestedTier)),
 		string(p.SourceSignal), nullableString(p.SourceMetric), nullableString(p.RadarAxis), p.Strength, string(p.Origin),
-		nullableString(p.ReasonKeyEN), nullableString(p.ReasonKeyFR), nullableString(p.ReasonParams),
+		nullableString(p.ReasonKey[i18n.LocaleEN]), nullableString(p.ReasonKey[i18n.LocaleFR]), nullableString(p.ReasonParams),
 		string(p.Status), createdAt, nullableExpiresAt(p.ExpiresAt),
 	)
 	if err != nil {
@@ -248,8 +249,7 @@ func scanCoachProposal(s RowScanner) (coach_advisor.Proposal, error) {
 	p.SourceMetric = sourceMetric.String
 	p.RadarAxis = radarAxis.String
 	p.Origin = coach_advisor.ProposalOrigin(origin)
-	p.ReasonKeyEN = reasonKeyEN.String
-	p.ReasonKeyFR = reasonKeyFR.String
+	p.ReasonKey = i18n.FromColumns(reasonKeyEN.String, reasonKeyFR.String)
 	p.ReasonParams = reasonParams.String
 	p.Status = coach_advisor.ProposalStatus(status)
 	if expiresAt.Valid {

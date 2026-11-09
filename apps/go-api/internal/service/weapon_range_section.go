@@ -1,5 +1,4 @@
-// Package service — weapon_range_section.go : LA SECTION « PORTÉE PAR ARME »
-// (plan .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md, lot 4).
+// Package service — weapon_range_section.go : LA SECTION « PORTÉE PAR ARME ».
 //
 // SECTION MIGRÉE : elle a quitté la Synthèse pour les Séries temporelles (onglet Usages
 // aujourd'hui), sans changer de producteur. Le chargement vit dans une FONCTION LIBRE
@@ -28,6 +27,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/weapons"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -149,21 +149,20 @@ func hydrateLabels(ctx context.Context, q weaponRangeQuery, block *domain.Synthe
 			"title", q.TitleSlug, "armes", len(keys), "err", err)
 		return
 	}
+	loc := i18n.FromContext(ctx)
 	for i := range block.Weapons {
-		l := labels[block.Weapons[i].WeaponKey]
-		block.Weapons[i].Label, block.Weapons[i].LabelEN = l.Label, l.LabelEN
+		block.Weapons[i].Label = labels[block.Weapons[i].WeaponKey].Name.PickOptional(loc)
 	}
-	hydrateBelowThreshold(block.BelowThresholdKills, labels)
-	hydrateBelowThreshold(block.BelowThresholdDeaths, labels)
+	hydrateBelowThreshold(loc, block.BelowThresholdKills, labels)
+	hydrateBelowThreshold(loc, block.BelowThresholdDeaths, labels)
 }
 
 // hydrateBelowThreshold pose le libellé de chaque arme écartée. L'ORDRE N'EST PAS TOUCHÉ : il
 // vient de l'agrégat (effectif décroissant), et le rejouer ici en ferait une seconde doctrine
 // de tri qui divergerait au premier changement.
-func hydrateBelowThreshold(rows []domain.WeaponBelowThreshold, labels map[string]port.WeaponLabel) {
+func hydrateBelowThreshold(loc i18n.Locale, rows []domain.WeaponBelowThreshold, labels map[string]port.WeaponLabel) {
 	for i := range rows {
-		l := labels[rows[i].WeaponKey]
-		rows[i].Label, rows[i].LabelEN = l.Label, l.LabelEN
+		rows[i].Label = labels[rows[i].WeaponKey].Name.PickOptional(loc)
 	}
 }
 

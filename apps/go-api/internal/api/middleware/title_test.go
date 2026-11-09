@@ -149,6 +149,9 @@ func TestTitleExtractor_LocaleFromHeader(t *testing.T) {
 	}{
 		{"en", "en"},
 		{"en-US", "en"},
+		{"en_us", "en"},
+		{"EN", "en"},
+		{"en-GB", "en"}, // sous-étiquette primaire
 		{"fr", "fr"},
 		{"fr-FR", "fr"},
 		{"", "fr"},   // absent → défaut fr

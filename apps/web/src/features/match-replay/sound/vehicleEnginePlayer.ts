@@ -12,6 +12,10 @@
  *    jamais de re-enter — un démarrage de moteur qui n'a pas eu lieu serait un mensonge).
  *  - SORTIE (la lecture franchit T1) : fondu croisé vers `exit`, qui se joue ENTIER et finit à
  *    zéro tout seul (fins gravées — AUCUNE enveloppe ajoutée, contrat de la banque).
+ *  - ARRÊT LONG en cours d'épisode (phase `arret`) : la boucle s'éteint en fondu
+ *    (`ENGINE_STOP_FADE_S`) et la chaîne reste ouverte SANS voix ; à la reprise, une boucle
+ *    neuve monte en fondu (`ENGINE_RESTART_FADE_S`). Ni `enter` ni `exit` : le moteur n'a
+ *    pas été coupé.
  *  - PAUSE / COUPURE / DÉMONTAGE : rampe courte (`ENGINE_STOP_RAMP_S`, 20 ms) — l'anti-clic
  *    d'un arrêt que la timeline ne raconte pas, pas une enveloppe musicale.
  *  - VITESSE DE LECTURE ≠ 1 : les BORNES suivent la timeline (T0/T1 sont détectés sur les ms
@@ -27,6 +31,8 @@
  */
 import {
   ENGINE_CROSSFADE_S,
+  ENGINE_RESTART_FADE_S,
+  ENGINE_STOP_FADE_S,
   ENGINE_STOP_RAMP_S,
   enginePhaseAt,
   equalPowerCurves,
@@ -62,7 +68,10 @@ interface EngineVoice {
 /** L'état d'un épisode en train de sonner. `holdUntil` protège le fondu enter->loop programmé. */
 interface EngineChain {
   phase: EnginePhase
-  /** La voix TENUE (loop ou idle). L'enter et l'exit sont des one-shots qui s'éteignent seuls. */
+  /**
+   * La voix TENUE (la boucle), `null` pendant un arrêt. L'enter et l'exit sont des one-shots
+   * qui s'éteignent seuls.
+   */
   held: EngineVoice | null
   /** Temps de contexte avant lequel aucun swap idle/loop n'est permis (fondu d'enter en cours). */
   holdUntil: number
@@ -120,7 +129,7 @@ export class VehicleEnginePlayer {
         this.startExit(key, plan, chain)
         return
       }
-      // COURSE <-> RALENTI en cours d'épisode, une fois le fondu d'enter retombé.
+      // COURSE <-> ARRÊT en cours d'épisode, une fois le fondu d'enter retombé.
       if (chain && phase !== null && chain.phase !== phase && this.port.ctx.currentTime >= chain.holdUntil) {
         this.swapHeld(plan, chain, phase)
         return
@@ -165,9 +174,16 @@ export class VehicleEnginePlayer {
     if (phase !== null && (!chain || chain.phase !== phase)) this.startHeld(key, plan, phase)
   }
 
-  /** startHeld démarre la voix tenue (loop/idle) SANS enter : le chemin du seek. */
+  /**
+   * startHeld ouvre la chaîne SANS enter (le chemin du seek) : la boucle directe en course,
+   * aucune voix pendant un arrêt.
+   */
   private startHeld(key: string, plan: EnginePlan, phase: Exclude<EnginePhase, null>): void {
-    const held = this.spawnLoop(plan, phase, this.port.ctx.currentTime, 0)
+    if (phase === 'arret') {
+      this.chains.set(key, { phase, held: null, holdUntil: 0 })
+      return
+    }
+    const held = this.spawnLoop(plan, this.port.ctx.currentTime, 0)
     if (!held) return
     this.chains.set(key, { phase, held, holdUntil: 0 })
   }
@@ -190,9 +206,9 @@ export class VehicleEnginePlayer {
     this.trackTail(voice)
     voice.gain.gain.setValueCurveAtTime(CURVES.fadeOut, fadeAt, ENGINE_CROSSFADE_S)
     voice.src.stop(fadeAt + ENGINE_CROSSFADE_S)
-    const held = this.spawnLoop(plan, phase, fadeAt, ENGINE_CROSSFADE_S)
+    const held = this.spawnLoop(plan, fadeAt, ENGINE_CROSSFADE_S)
     if (!held) return
-    this.chains.set(key, { phase, held, holdUntil: fadeAt + ENGINE_CROSSFADE_S })
+    this.chains.set(key, { phase: 'loop', held, holdUntil: fadeAt + ENGINE_CROSSFADE_S })
   }
 
   /** startExit fond la voix tenue vers `exit`, qui se joue ENTIER (fins gravées). */
@@ -237,25 +253,22 @@ export class VehicleEnginePlayer {
     voice.src.stop(at + fadeS)
   }
 
-  /** swapHeld — fondu croisé loop <-> idle, 150 ms à puissance constante. */
+  /** swapHeld — course -> arrêt : la boucle s'éteint en fondu ; arrêt -> course : elle remonte. */
   private swapHeld(plan: EnginePlan, chain: EngineChain, phase: Exclude<EnginePhase, null>): void {
     const t0 = this.port.ctx.currentTime
-    const next = this.spawnLoop(plan, phase, t0, ENGINE_CROSSFADE_S)
-    if (!next) return
-    this.fadeOutHeld(chain, t0, ENGINE_CROSSFADE_S)
-    chain.held = next
+    if (phase === 'arret') {
+      this.fadeOutHeld(chain, t0, ENGINE_STOP_FADE_S)
+    } else {
+      const next = this.spawnLoop(plan, t0, ENGINE_RESTART_FADE_S)
+      if (!next) return
+      chain.held = next
+    }
     chain.phase = phase
   }
 
-  /** spawnLoop crée la voix TENUE d'une phase : source bouclée, fondu d'entrée optionnel. */
-  private spawnLoop(
-    plan: EnginePlan,
-    phase: Exclude<EnginePhase, null>,
-    at: number,
-    fadeS: number,
-  ): EngineVoice | null {
-    const stems = VEHICLE_ENGINE_STEMS[plan.family]
-    const stem = phase === 'idle' ? stems?.idle : stems?.loop
+  /** spawnLoop crée la voix TENUE : la boucle de la famille, fondu d'entrée optionnel. */
+  private spawnLoop(plan: EnginePlan, at: number, fadeS: number): EngineVoice | null {
+    const stem = VEHICLE_ENGINE_STEMS[plan.family]?.loop
     const buf = stem ? this.port.bufferOf(stem) : null
     if (!buf) return null
     const voice = this.spawnVoice(buf, true, at, fadeS > 0 ? 0 : 1)

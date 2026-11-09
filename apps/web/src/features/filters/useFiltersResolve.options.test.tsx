@@ -52,8 +52,8 @@ describe('useFiltersResolve — matchContext et enabled', () => {
     expect(corps[0].match_context).toBe('squad')
     expect(store.getState().filterContext.match_context).toBeUndefined()
     const hash = store.getState().filterContextHash
-    expect(qc.getQueryData(queryKeys.filtersResolve('p', 'halo_infinite', hash, 'squad'))).toBeTruthy()
-    expect(qc.getQueryData(queryKeys.filtersResolve('p', 'halo_infinite', hash, 'all'))).toBeUndefined()
+    expect(qc.getQueryData(queryKeys.filtersResolve('p', 'halo_infinite', hash, 'squad', 'fr'))).toBeTruthy()
+    expect(qc.getQueryData(queryKeys.filtersResolve('p', 'halo_infinite', hash, 'all', 'fr'))).toBeUndefined()
   })
 
   it('sans matchContext (solo) : corps tel quel, clé « all » — distincte de celle de l escouade', async () => {
@@ -64,7 +64,7 @@ describe('useFiltersResolve — matchContext et enabled', () => {
 
     expect('match_context' in corps[0]).toBe(false)
     const hash = store.getState().filterContextHash
-    expect(qc.getQueryData(queryKeys.filtersResolve('p', 'halo_infinite', hash, 'all'))).toBeTruthy()
+    expect(qc.getQueryData(queryKeys.filtersResolve('p', 'halo_infinite', hash, 'all', 'fr'))).toBeTruthy()
     expect(store.getState().resolvedContext).toBeTruthy()
   })
 

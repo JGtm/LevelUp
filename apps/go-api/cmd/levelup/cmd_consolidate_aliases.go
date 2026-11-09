@@ -38,7 +38,7 @@ func runConsolidateAliases(cfg *config.AppConfig, args []string) error {
 		return err
 	}
 
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 	globalPath := *globalDB
 	if globalPath == "" {
 		globalPath = resolver.GlobalXuidAliasesDBPath()

@@ -22,10 +22,10 @@
 #     l'inclusion. Couverture cible : >= 70% sur handlers métier.
 #   - internal/api/middleware/ : middleware testable via httptest. P3.6
 #     ou phase dédiée.
-#   - internal/platform/halo/ : provider HTTP — testable via httptest mock
-#     server. P3.6 « tests platform/halo » est explicitement programmé
-#     pour combler ce gap (6 sources : medal_provider, season_provider,
-#     discovery_client, etc.).
+#   - internal/games/halo_infinite/haloadapter/ : adaptateur de l'API Halo (ex
+#     internal/platform/halo/, clé renommée le 2026-10-29, plan D3 lot 4 ; son sous-paquet
+#     duration et son cache de jetons, devenus internal/duration et
+#     internal/platform/auth/tokencache, sortent de l'exclusion).
 #
 # Sprint 49 — Phase 11 Clôture. Annotations 2026-04-29 P3.1.
 set -euo pipefail
@@ -58,7 +58,7 @@ EXCLUDE_LEGITIMATE=(
 # documenté ici pour audit. Re-enable progressivement quand les tests
 # correspondants sont écrits.
 EXCLUDE_DETTE=(
-  'go-api/internal/platform/halo/'  # P3.6 (cible)
+  'go-api/internal/games/halo_infinite/haloadapter/'  # P3.6 (cible), ex internal/platform/halo/
   'go-api/internal/api/handlers/'    # P4 / P3.7 (cible)
   'go-api/internal/api/middleware/'  # phase dédiée (cible)
 )

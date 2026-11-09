@@ -27,10 +27,10 @@ func NewMedalsRepo(pdb *PlayerDB) *MedalsRepo {
 }
 
 // ListAllMedals retourne TOUT le catalogue medal_definitions du titre, labels et
-// descriptions résolus locale-aware. Calqué sur MetadataRepo.ListMedalsByTitle mais
-// expose en plus difficulty / medal_type / difficulty_index / personal_score (source
-// de la catégorie baseline + rareté). Réutilise les helpers COALESCE partagés
-// (medal_label_resolve.go) — pas de nouvelle copie de la chaîne FR.
+// descriptions résolus dans la langue demandée (medal_translations, repli `en` : source
+// unique loadMedalLabels). Calqué sur MetadataRepo.ListMedalsByTitle mais expose en plus
+// difficulty / medal_type / difficulty_index / personal_score (source de la catégorie
+// baseline + rareté).
 func (r *MedalsRepo) ListAllMedals(ctx context.Context, locale string) ([]domain.MedalCatalogRow, error) {
 	if r.pdb == nil || r.pdb.Metadata == nil {
 		return nil, fmt.Errorf("ListAllMedals: metadata db indisponible")
@@ -38,20 +38,34 @@ func (r *MedalsRepo) ListAllMedals(ctx context.Context, locale string) ([]domain
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	labelExpr, descExpr := medalLabelDescCoalesceSQL(locale)
-	query := `
+	out, err := r.listCatalogRows(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]int64, len(out))
+	for i, row := range out {
+		ids[i] = row.MedalID
+	}
+	labels, err := loadMedalLabels(ctx, r.pdb.Metadata, ids, locale)
+	if err != nil {
+		return nil, fmt.Errorf("ListAllMedals: textes: %w", err)
+	}
+	for i := range out {
+		out[i].Label, out[i].Description = labels[out[i].MedalID].label, labels[out[i].MedalID].description
+	}
+	return out, nil
+}
+
+// listCatalogRows lit les colonnes non textuelles de tout le catalogue, par identifiant.
+func (r *MedalsRepo) listCatalogRows(ctx context.Context) ([]domain.MedalCatalogRow, error) {
+	rows, err := r.pdb.Metadata.Query(ctx, `
 		SELECT md.medal_name_id,
-		       ` + labelExpr + ` AS label,
-		       ` + descExpr + ` AS description,
 		       COALESCE(NULLIF(TRIM(md.difficulty),''), 'Normal') AS difficulty,
 		       COALESCE(NULLIF(TRIM(md.medal_type),''), '')       AS medal_type,
 		       COALESCE(md.difficulty_index, 0)                   AS difficulty_index,
 		       COALESCE(md.personal_score, 0)                     AS personal_score
 		FROM medal_definitions md
-		` + medalTranslationJoinsSQL(locale) + `
-		ORDER BY md.medal_name_id`
-
-	rows, err := r.pdb.Metadata.Query(ctx, query)
+		ORDER BY md.medal_name_id`)
 	if err != nil {
 		return nil, fmt.Errorf("ListAllMedals: %w", err)
 	}
@@ -62,8 +76,6 @@ func (r *MedalsRepo) ListAllMedals(ctx context.Context, locale string) ([]domain
 		var row domain.MedalCatalogRow
 		if err := rows.Scan(
 			&row.MedalID,
-			&row.Label,
-			&row.Description,
 			&row.Difficulty,
 			&row.MedalType,
 			&row.DifficultyIndex,

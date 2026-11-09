@@ -8,46 +8,48 @@ package duckdb
 // ne filtrerait plus rien.
 //
 // LA RÈGLE (celle que l'Explorateur appliquait déjà) :
-//  1. le nom FR du registre, quand il existe et diffère du nom EN ;
-//  2. sinon la traduction de l'asset de la carte (`metadata.asset_translations`, par map_id), en
-//     cascade fr-FR, fr, en-US, en puis toute langue (PreferredLangsForLocale), rognée ;
-//  3. sinon le nom du registre.
+//  1. le nom du registre dans la langue par défaut, quand il existe et diffère du nom de la langue
+//     de repli ;
+//  2. sinon la traduction de l'asset de la carte (`metadata.asset_translations`, par map_id) dans
+//     cette langue, rognée ;
+//  3. sinon le nom du registre (langue par défaut, puis langue de repli).
 //
 // Garde-rail : archlint/map_label_single_resolution_test.go.
 
 import (
 	"context"
-	"log/slog"
 	"strings"
+
+	"levelup/go-api/internal/i18n"
 )
 
-// traductionsDeCartes lit en UNE requête la traduction de chaque carte (map_id → libellé). Metadata
-// absente ou aucune carte : nil. Un échec est journalisé puis dégradé — le registre nomme alors la
-// carte.
-func traductionsDeCartes(ctx context.Context, meta *DB, mapIDs []string) map[string]string {
+// traductionsDeCartes lit en UNE requête les noms de chaque carte dans toutes les langues (map_id →
+// noms par langue). Metadata absente ou aucune carte : nil. Un échec est journalisé et consigné
+// (assetNameTexts) puis dégradé — le registre nomme alors la carte.
+func traductionsDeCartes(ctx context.Context, meta *DB, mapIDs []string) map[string]i18n.Text {
 	if meta == nil || len(mapIDs) == 0 {
 		return nil
 	}
-	noms, err := NewMetadataRepoFromDB(meta).ResolveAssetNamesBulk(ctx, "map", mapIDs, PreferredLangsForLocale("fr"))
-	if err != nil {
-		slog.WarnContext(ctx, "cartes : traductions illisibles — libellés du registre",
-			"cartes", len(mapIDs), "err", err)
-		return nil
-	}
-	return noms
+	return assetNameTexts(ctx, meta, assetTypeMap, mapIDs)
 }
 
-// libelleDeCarte applique la règle à une carte : ses noms FR et EN au registre ("" si absents) et
-// sa traduction d'asset ("" si aucune).
-func libelleDeCarte(registreFR, registreEN, traduction string) string {
-	if !needsHomeAssetTranslation(registreFR, registreEN) {
-		return registreFR
+// nomsDeCarte applique la règle à une carte et rend ses noms dans chaque langue : ses noms au registre
+// (une entrée par langue lue) complétés par ses traductions d'asset (vides si aucune). Le nom de la
+// langue par défaut est toujours posé (à défaut celui de la langue de repli) : c'est la clé des filtres.
+func nomsDeCarte(registre, traductions i18n.Text) i18n.Text {
+	t := registre.Clone()
+	if t == nil {
+		t = i18n.Text{}
 	}
-	if t := strings.TrimSpace(traduction); t != "" {
-		return t
+	fillUntranslated(&t, traductions)
+	if strings.TrimSpace(t[i18n.Default]) == "" {
+		t[i18n.Default] = t[i18n.Fallback]
 	}
-	if registreFR != "" {
-		return registreFR
-	}
-	return registreEN
+	return t
+}
+
+// libelleDeCarte rend le libellé de la carte dans la langue par défaut (la clé des filtres), à défaut
+// celui de la langue de repli : nomsDeCarte[i18n.Default].
+func libelleDeCarte(registre, traductions i18n.Text) string {
+	return nomsDeCarte(registre, traductions)[i18n.Default]
 }

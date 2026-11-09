@@ -1,5 +1,5 @@
 // Package wire — registry_appearance_diag.go : runner du diagnostic apparence
-// Spartan ID (volet 2 du plan .ai/archive/V7.1/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md, Lot F).
+// Spartan ID.
 //
 // Assemble le service à la demande : profils db_profiles.json, lecteur de valeurs
 // servies via le pool player DB, tokens du PROFIL via le store multi-user
@@ -37,7 +37,7 @@ func (r *ServiceRegistry) DiagnoseAppearance(ctx context.Context, playerSlug str
 
 // newAppearanceDiagService câble le service avec les dépendances PROD.
 func (r *ServiceRegistry) newAppearanceDiagService() *service.AppearanceDiagService {
-	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(r.cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(r.cfg.PathResolver().WatcherTokensDir())
 	return service.NewAppearanceDiagService(service.AppearanceDiagDeps{
 		LoadPlayers: func(ts string) ([]domain.PlayerSummary, error) {
 			return r.cfg.LoadPlayers(ts)

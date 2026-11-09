@@ -6,7 +6,7 @@
 // PASSE NATIVE (cartes intégrées, clé = module installé). EXIGE LE JEU INSTALLÉ :
 //
 //	deploy/ds/levels/multi/<carte>/<carte>-rtx-new.module
-//	  -> tag levl (internal/himap.ReadModuleCallouts : offsets documentés au champ près)
+//	  -> tag levl (libs/himap/himap.ReadModuleCallouts : offsets documentés au champ près)
 //	  -> jointure des libellés FR/EN par (carte, volume_index) sur callouts_i18n.csv
 //	     (copie VERSIONNÉE — data/titles/{slug}/reference/callouts_i18n.csv : 816/816
 //	     résolus par string_id)
@@ -25,7 +25,7 @@
 // LE LEXIQUE (`--lexique`, EXIGE LE JEU) est la troisième production de ce binaire, et la
 // seule qui n'écrit pas dans le catalogue : il régénère
 // data/titles/{slug}/reference/callouts_lexique.csv depuis les listes de chaînes `uslg`
-// (internal/himap.LexiqueLieux). Il ne se rejoue qu'à une mise à jour du jeu.
+// (libs/himap/himap.LexiqueLieux). Il ne se rejoue qu'à une mise à jour du jeu.
 //
 // LES DEUX PASSES SONT INDÉPENDANTES ET NE S'ÉCRASENT PAS : une reconstruction native
 // CONSERVE la section Forge du catalogue existant, et `--forge-only` conserve la section
@@ -54,9 +54,13 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/himap"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapcatalog"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // deployVariant : la variante sur laquelle la table levl a été établie et mesurée
@@ -69,11 +73,15 @@ const (
 	attenduZones  = 816
 )
 
-// inventaireParDefaut : l'inventaire UGC versionné dont la passe Forge tire sa liste.
-var inventaireParDefaut = []string{".ai", "V7.5", "cartes", "inventaire_rotation_ugc_2026-08-27.json"}
+// inventaireParDefaut : l'inventaire UGC versionné dont la passe Forge tire sa liste. Il vit avec
+// l'outil (donnees/) : c'est son entrée, lue à chaque passe Forge, pas une pièce de travail.
+var inventaireParDefaut = []string{"apps", "go-api", "cmd", "mapcallouts-build", "donnees", "inventaire_rotation_ugc_2026-08-27.json"}
 
-// cacheVariantesParDefaut : le cache local des `.mvar`, HORS DÉPÔT (.gitignore).
-var cacheVariantesParDefaut = []string{".ai", "V7.5", "dumps", "mapvar"}
+// cacheVariantesParDefaut : le cache local des `.mvar`, HORS DÉPÔT (.gitignore) hormis les trois
+// témoins versionnés. Il vit dans le `testdata/` de la brique mapvar, qui possède ces fichiers
+// (même chemin que `testfixtures.MapvarFixturesDir`, qu'un binaire de production n'importe pas :
+// une seule ligne à toucher aux deux endroits quand la brique change de place).
+var cacheVariantesParDefaut = []string{"libs", "gamefiles", "mapvar", "testdata"}
 
 // options porte les chemins et les bascules résolus, pour ne pas promener dix paramètres.
 type options struct {
@@ -120,10 +128,10 @@ func lisOptions() options {
 	flag.StringVar(&o.levels, "levels", "", "racine des dossiers de cartes (.module) ; vide = installation détectée")
 	flag.StringVar(&o.titleSlug, "title", title.DefaultSlug, "slug du titre")
 	flag.StringVar(&o.i18nPath, "i18n", "", "CSV des libellés (défaut : reference/callouts_i18n.csv du titre)")
-	flag.StringVar(&o.decoupePath, "decoupe", "", "dump découpé de Ridgeline (défaut : .ai/V7.5/dumps/callout_zones_ridgeline_clipped.json)")
+	flag.StringVar(&o.decoupePath, "decoupe", "", "dump découpé de Ridgeline (défaut : apps/go-api/internal/testfixtures/testdata/cartes/callout_zones_ridgeline_clipped.json)")
 	flag.StringVar(&o.outPath, "out", "", "fichier de sortie (défaut : PathResolver.MapCalloutsPath)")
-	flag.StringVar(&o.inventaire, "forge-inventaire", "", "inventaire UGC versionné (défaut : .ai/V7.5/cartes/inventaire_rotation_ugc_2026-08-27.json)")
-	flag.StringVar(&o.cacheForge, "forge-cache", "", "cache local des .mvar (défaut : .ai/V7.5/dumps/mapvar)")
+	flag.StringVar(&o.inventaire, "forge-inventaire", "", "inventaire UGC versionné (défaut : apps/go-api/cmd/mapcallouts-build/donnees/inventaire_rotation_ugc_2026-08-27.json)")
+	flag.StringVar(&o.cacheForge, "forge-cache", "", "cache local des .mvar (défaut : libs/gamefiles/mapvar/testdata)")
 	flag.BoolVar(&o.forgeOnly, "forge-only", false, "ne pas reconstruire la partie native (n'exige pas le jeu installé)")
 	flag.BoolVar(&o.forgeFetch, "forge-fetch", false, "télécharger les map.mvar manquants (stockage blob UGC, sans jeton)")
 	flag.BoolVar(&o.lexique, "lexique", false, "régénérer callouts_lexique.csv depuis les listes de chaînes du jeu (exige l'installation)")
@@ -155,7 +163,7 @@ func lisOptions() options {
 		o.i18nPath = filepath.Join(filepath.Dir(o.res.MapCalloutsPath(o.titleSlug)), "callouts_i18n.csv")
 	}
 	if o.decoupePath == "" {
-		o.decoupePath = filepath.Join(root, ".ai", "V7.5", "dumps", "callout_zones_ridgeline_clipped.json")
+		o.decoupePath = filepath.Join(root, "apps", "go-api", "internal", "testfixtures", "testdata", "cartes", "callout_zones_ridgeline_clipped.json")
 	}
 	if o.inventaire == "" {
 		o.inventaire = filepath.Join(append([]string{root}, inventaireParDefaut...)...)
@@ -175,10 +183,14 @@ func construitLexique(opts options) {
 		slog.Error("lexique : installation du jeu", "err", err)
 		os.Exit(1)
 	}
-	lex, err := himap.LexiqueLieux(racine)
+	brut, err := himap.LexiqueLieux(racine)
 	if err != nil {
 		slog.Error("lexique : extraction", "err", err)
 		os.Exit(1)
+	}
+	lex, inconnus := versTextes(brut)
+	if inconnus > 0 {
+		slog.Warn("lexique : textes dans une langue absente de config/locales.toml, ignorés", "textes", inconnus)
 	}
 	path := cheminLexique(opts.outPath)
 	n, ecartes, err := ecritLexique(path, lex)
@@ -437,8 +449,7 @@ func construitEntree(module string, cs []himap.Callout, labels libelles) (replay
 		z := replay.CalloutZone{
 			VolumeIndex: c.VolumeIndex,
 			Name:        c.Name,
-			EN:          lbl.en,
-			FR:          lbl.fr,
+			Text:        replaylabels.TexteVersFilm(i18n.Text{i18n.LocaleEN: lbl.en, i18n.LocaleFR: lbl.fr}),
 			X:           c.Pos[0],
 			Y:           c.Pos[1],
 			Z:           c.Pos[2],

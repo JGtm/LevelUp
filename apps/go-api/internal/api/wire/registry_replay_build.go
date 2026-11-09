@@ -4,7 +4,7 @@
 // LE DÉCODAGE PART HORS DU PROCESSUS SERVEUR (lot J2.13, constat OPS-2, 2026-09-26), par le
 // chemin de l'étape 1.58 du post-sync : `replayartifacts.ConstruireEtRanger` avec la stratégie
 // `replayartifacts.SpawnBuildOne` — un ENFANT borne (sentinelle mémoire, priorité basse) qui
-// prend le verrou solo `filmproc.AcquireSolo` en refus immédiat et rend les octets, que
+// prend le verrou solo `filmrun.AcquireSolo` en refus immédiat et rend les octets, que
 // `replaybuild.StoreArtifact` range ICI (garde anti-régression, notification). L'action
 // décodait auparavant dans le serveur, hors verrou et sans plafond : le septième point
 // d'entrée du décodage, que l'ADR 0034 ne comptait pas. Les faits du match sont lus en base par
@@ -23,12 +23,13 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/replayartifacts"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // replayBuildMu sérialise l'action replay-build (single-flight, pattern registryNamesMu).
@@ -59,7 +60,7 @@ func (r *ServiceRegistry) RunReplayBuild(ctx context.Context, titleSlug, matchID
 		return nil, err
 	}
 
-	cacheRoot := titlePkg.NewPathResolver(r.cfg.RepoRoot).CacheRootDir()
+	cacheRoot := r.cfg.PathResolver().FilmArchiveDir()
 	short := titlePkg.FilmShortMatchID(fullID)
 	if _, found, ferr := filmcache.Open(cacheRoot, short); ferr != nil {
 		return nil, fmt.Errorf("cache film illisible: %w", ferr)

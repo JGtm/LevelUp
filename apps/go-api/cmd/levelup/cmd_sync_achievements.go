@@ -54,7 +54,7 @@ func runSyncAchievements(cfg *config.AppConfig, args []string) error {
 }
 
 func runSyncAchievementsForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary, titleSlug string, dryRun bool) error {
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 	dbPath := resolver.PlayerDBPath(titleSlug, player.Gamertag)
 	if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
 		return fmt.Errorf("player DB introuvable pour %s (%s)", player.Gamertag, dbPath)
@@ -116,7 +116,7 @@ func runSyncAchievementsAll(ctx context.Context, cfg *config.AppConfig, titleSlu
 		return fmt.Errorf("aucun joueur configuré")
 	}
 
-	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	resolver := cfg.PathResolver()
 
 	// Migrations metadata une seule fois pour tout le batch.
 	if !dryRun {

@@ -3,10 +3,9 @@ package mapcatalog
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/testutil"
+	"levelup/go-api/internal/testfixtures"
 )
 
 // zoneDuDumpRidgeline : la partie du dump découpé de Ridgeline que l'étalonnage lit.
@@ -22,11 +21,7 @@ type zoneDuDumpRidgeline struct {
 // fichier versionné, son absence sur un checkout propre est une anomalie).
 func dumpRidgeline(t *testing.T) map[int]zoneDuDumpRidgeline {
 	t.Helper()
-	root, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du dépôt introuvable : %v", err)
-	}
-	blob, err := os.ReadFile(filepath.Join(root, ".ai", "V7.5", "dumps", "callout_zones_ridgeline_clipped.json"))
+	blob, err := os.ReadFile(testfixtures.Carte("callout_zones_ridgeline_clipped.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

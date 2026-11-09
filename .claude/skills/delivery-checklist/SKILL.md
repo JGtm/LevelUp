@@ -113,11 +113,18 @@ Critères :
       sur les tables critiques) ; lectures de tables append-only via les vues `_latest`
 - [ ] Si un défaut de flag a basculé dans ce diff : les commentaires/doc du flag sont mis
       à jour dans le MÊME commit (une doc inversée sur un kill-switch = risque opérationnel)
+- [ ] Si le diff change une formule ou un paramètre du LUSR ou de la note de performance
+      (`internal/sync/skill/`, `skill_config.go`, `internal/analysis/skill_v2`, `performance.go`) :
+      la constante de révision correspondante (`PerformanceScoreRev` ou `LUSRRev`, ADR 0047) est
+      changée dans le MÊME commit, l'empreinte de `sync/scoring_revision_test.go` est ajoutée pour
+      la nouvelle révision, et une ligne est ajoutée aux notes de version (un recalcul de tous les
+      joueurs au premier démarrage en dépend). Un changement de logique sans changement de nombre
+      n'est pas détecté par le garde-rail : la révision se change quand même à la main.
 
 ## 6. Frontend — règles couleurs et i18n
 
 - [ ] Pas de hex `#RRGGBB` ni classe Tailwind couleur dans `features/` ou `components/`
-- [ ] Nouvelles strings UI ajoutées dans `i18n.ts` pour **FR et EN**
+- [ ] Nouvelles strings UI ajoutées dans le dictionnaire de la feature ou le manifest, dans **chaque langue de `config/locales.toml`** (fr + en obligatoires)
 - [ ] Nouvelles query keys ajoutées dans `apps/web/src/lib/query/keys.ts`
 - [ ] `routeTree.gen.ts` non édité manuellement
 

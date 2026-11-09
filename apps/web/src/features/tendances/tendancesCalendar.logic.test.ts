@@ -194,7 +194,7 @@ describe('formatCalendarTooltip', () => {
 
   it('anglais', () => {
     const html = formatCalendarTooltip(played(), 'en')
-    expect(html).toContain('October 5, 2026')
+    expect(html).toContain('5 October 2026')
     expect(html).toContain('Wins: 3')
   })
 })

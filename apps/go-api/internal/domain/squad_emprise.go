@@ -1,8 +1,6 @@
 package domain
 
-// squad_emprise.go — LE BLOC « EMPRISE » de /pages/teammates (lot L4 du plan
-// PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 ; maquette de l'onglet, copie
-// `.ai/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html`).
+// squad_emprise.go — LE BLOC « EMPRISE » de /pages/teammates.
 //
 // Il répond, sur le périmètre D2 de la page (composition exacte ∩ filtres), à « qui a tenu la
 // carte » : les prises de chaque RESSOURCE par notre camp et par l'adversaire, match par match

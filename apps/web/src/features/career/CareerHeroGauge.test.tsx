@@ -33,20 +33,19 @@ function setTitle(capabilities: string[]) {
 }
 
 describe('heroMaxRankName (résolution title-agnostic)', () => {
-  it('Halo Infinite : « Héros » (fr) / « Hero » (en) depuis le payload', () => {
-    const h = hero({ max_rank_name_fr: 'Héros', max_rank_name_en: 'Hero' })
-    expect(heroMaxRankName(h, 'fr')).toBe('Héros')
-    expect(heroMaxRankName(h, 'en')).toBe('Hero')
+  it('Halo Infinite : le nom du rang max servi (déjà dans la langue de la requête)', () => {
+    expect(heroMaxRankName(hero({ max_rank_name: 'Héros' }), 'fr')).toBe('Héros')
+    expect(heroMaxRankName(hero({ max_rank_name: 'Hero' }), 'en')).toBe('Hero')
   })
 
   it('Halo 5 : « SR 152 » depuis le payload (aucun littéral Infinite)', () => {
-    const h = hero({ total_ranks: 152, max_rank_name_fr: 'SR 152', max_rank_name_en: 'SR152' })
+    const h = hero({ total_ranks: 152, max_rank_name: 'SR 152' })
     expect(heroMaxRankName(h, 'fr')).toBe('SR 152')
-    expect(heroMaxRankName(h, 'en')).toBe('SR152')
+    expect(heroMaxRankName(h, 'en')).toBe('SR 152')
   })
 
   it('repli générique quand la source ne fournit pas le nom du rang max', () => {
-    const h = hero({ max_rank_name_fr: undefined, max_rank_name_en: undefined })
+    const h = hero({ max_rank_name: undefined })
     expect(heroMaxRankName(h, 'fr')).toBe('le rang max')
     expect(heroMaxRankName(h, 'en')).toBe('max rank')
   })
@@ -60,7 +59,7 @@ describe('CareerHeroGaugeChart', () => {
   it('rendu Infinite : titre interpolé « Progression vers Héros » + compteur X/272', () => {
     renderWithProviders(
       <CareerHeroGaugeChart
-        heroProgress={hero({ current_rank: 122, total_ranks: 272, max_rank_name_fr: 'Héros' })}
+        heroProgress={hero({ current_rank: 122, total_ranks: 272, max_rank_name: 'Héros' })}
         locale="fr"
         intlLocale="fr-FR"
       />,
@@ -72,7 +71,7 @@ describe('CareerHeroGaugeChart', () => {
   it('rendu Halo 5 : compteur X/152 (borne du titre, pas le fallback 272)', () => {
     renderWithProviders(
       <CareerHeroGaugeChart
-        heroProgress={hero({ current_rank: 111, total_ranks: 152, max_rank_name_fr: 'SR 152' })}
+        heroProgress={hero({ current_rank: 111, total_ranks: 152, max_rank_name: 'SR 152' })}
         locale="fr"
         intlLocale="fr-FR"
       />,

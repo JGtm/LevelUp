@@ -60,30 +60,15 @@ func HomeMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.HomeMatch
 	}
 	if r.Summary.Map != nil {
 		out.MapID = r.Summary.Map.ID
-		out.MapName = r.Summary.Map.DefaultLabel
-		if v, ok := r.Summary.Map.Labels["fr"]; ok && v != "" {
-			out.MapNameFR = v
-		} else {
-			out.MapNameFR = r.Summary.Map.DefaultLabel
-		}
+		out.MapName = r.Summary.Map.Text()
 	}
 	if r.Summary.Playlist != nil {
 		out.PlaylistID = r.Summary.Playlist.ID
-		out.PlaylistName = r.Summary.Playlist.DefaultLabel
-		if v, ok := r.Summary.Playlist.Labels["fr"]; ok && v != "" {
-			out.PlaylistNameFR = v
-		} else {
-			out.PlaylistNameFR = r.Summary.Playlist.DefaultLabel
-		}
+		out.PlaylistName = r.Summary.Playlist.Text()
 	}
 	if r.Summary.GameVariant != nil {
 		out.GameVariantID = r.Summary.GameVariant.ID
-		out.GameVariantName = r.Summary.GameVariant.DefaultLabel
-		if v, ok := r.Summary.GameVariant.Labels["fr"]; ok && v != "" {
-			out.GameVariantNameFR = v
-		} else {
-			out.GameVariantNameFR = r.Summary.GameVariant.DefaultLabel
-		}
+		out.GameVariantName = r.Summary.GameVariant.Text()
 	}
 	if r.Summary.IsRanked != nil {
 		out.IsRanked = *r.Summary.IsRanked

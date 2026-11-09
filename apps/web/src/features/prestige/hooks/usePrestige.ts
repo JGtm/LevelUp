@@ -4,6 +4,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { prestigeApi, type Tier } from '@/lib/prestige'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 export function useMyPrestige(userId: string, titleSlug?: string) {
   return useQuery({
@@ -15,8 +16,9 @@ export function useMyPrestige(userId: string, titleSlug?: string) {
 }
 
 export function useSuggestedTemplates(userId: string, titleSlug: string, count = 3) {
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.prestige.templates(userId, titleSlug),
+    queryKey: queryKeys.prestige.templates(userId, titleSlug, locale),
     queryFn: () => prestigeApi.suggestTemplates(userId, titleSlug, count),
     retry: false,
     enabled: !!userId && !!titleSlug,
@@ -46,7 +48,7 @@ export function useJoinSquadChallenge() {
         is_private: isPrivate,
       }),
     onSuccess: (_data, { squadId }) => {
-      qc.invalidateQueries({ queryKey: queryKeys.squad.challenges(squadId) })
+      qc.invalidateQueries({ queryKey: queryKeys.squad.challengesAll(squadId) })
     },
   })
 }

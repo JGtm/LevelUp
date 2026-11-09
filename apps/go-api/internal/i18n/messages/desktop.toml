@@ -1,0 +1,194 @@
+# Libellés de la coquille desktop (ADR 0045 D-13, A4). Servis par GET /api/v1/desktop/strings
+# dans la langue de la requête. Les états où le serveur ne répond pas (démarrage, arrêt, mort)
+# tirent un catalogue de repli de ce même fichier à la compilation de la coquille : aucun
+# libellé de langue n'est écrit dans le code Rust.
+
+# Écran embarqué, tant que le serveur n'a pas annoncé qu'il est prêt.
+[desktop.starting]
+fr = "LevelUp démarre…"
+en = "LevelUp is starting…"
+
+# Le démarrage est refusé : une autre instance tient les données (verrou d'instance ou fichier
+# de base tenu par un autre processus).
+[desktop.failed.locked]
+fr = "LevelUp est déjà ouvert, ou ses données sont encore utilisées par un autre processus. Fermez l'autre fenêtre puis relancez."
+en = "LevelUp is already open, or its data is still in use by another process. Close the other window and start again."
+
+# Une migration de base a échoué ; la copie faite avant la montée de version reste disponible.
+[desktop.failed.migration_failed]
+fr = "La mise à niveau des données a échoué. Vos données n'ont pas été modifiées ; une copie d'avant la mise à niveau est conservée."
+en = "The data upgrade failed. Your data has not been changed; a copy made before the upgrade is kept."
+
+# Les données sont d'une version plus récente que l'application.
+[desktop.failed.schema_newer]
+fr = "Vos données viennent d'une version plus récente de LevelUp. Installez la dernière version pour les ouvrir."
+en = "Your data comes from a newer version of LevelUp. Install the latest version to open it."
+
+# Aucun port local n'a pu être ouvert.
+[desktop.failed.port]
+fr = "LevelUp n'a pas pu ouvrir de port local. Vérifiez qu'aucun logiciel de sécurité ne le bloque, puis relancez."
+en = "LevelUp could not open a local port. Check that no security software is blocking it, then start again."
+
+# Le paquet de ressources (images, sons, référentiel, ffmpeg) n'est pas celui de ce moteur ou manque, et son
+# téléchargement a échoué. Relancer l'application réessaie le téléchargement.
+[desktop.failed.resources_incompatible]
+fr = "Les ressources de LevelUp (images, sons, données de référence) manquent ou ne correspondent pas à cette version, et n'ont pas pu être téléchargées. Vérifiez votre connexion, puis relancez LevelUp pour réessayer."
+en = "LevelUp's resources (images, sounds, reference data) are missing or do not match this version, and could not be downloaded. Check your connection, then start LevelUp again to retry."
+
+# Le serveur n'a pas annoncé qu'il était prêt dans le délai de la coquille : il est arrêté.
+[desktop.failed.timeout]
+fr = "LevelUp a mis trop de temps à démarrer et a été arrêté. Relancez l'application ; si cela se reproduit, les journaux du dossier des données en donnent la cause."
+en = "LevelUp took too long to start and was stopped. Start it again; if it happens again, the logs in the data folder explain why."
+
+# Fermeture demandée : le serveur termine ses écritures avant de s'arrêter.
+[desktop.stopping]
+fr = "LevelUp se ferme…"
+en = "LevelUp is closing…"
+
+# Le serveur s'est arrêté (fermeture terminée ou arrêt inattendu).
+[desktop.stopped]
+fr = "LevelUp est arrêté."
+en = "LevelUp has stopped."
+
+# Mise à jour signée disponible ; {version} est le numéro de la nouvelle version.
+[desktop.update_available]
+fr = "La version {version} de LevelUp est disponible."
+en = "LevelUp version {version} is available."
+
+# Boîte de dialogue de mise à jour, affichée par la coquille une fois le serveur prêt. Jamais imposée :
+# « Plus tard » la ferme et rien ne se télécharge. Ces textes sont servis par GET /api/v1/desktop/strings ET
+# présents dans le catalogue de repli que la coquille compile depuis ce fichier : la boîte peut s'afficher
+# quand le serveur est déjà arrêté (messages de fin de mise à jour ci-dessous), donc sans route à interroger.
+[desktop.update_title]
+fr = "Mise à jour de LevelUp"
+en = "LevelUp update"
+
+[desktop.update_install]
+fr = "Installer et redémarrer"
+en = "Install and restart"
+
+[desktop.update_later]
+fr = "Plus tard"
+en = "Later"
+
+# Introduit les notes de version (section du journal des modifications de la version proposée).
+[desktop.update_notes_heading]
+fr = "Nouveautés :"
+en = "What's new:"
+
+# Fin de mise à jour sans installation, affichée par la coquille après l'arrêt du serveur : l'arrêt n'a pas été
+# propre (le serveur a dû être tué, ou a annoncé un arrêt non propre), la mise à jour est reproposée au lancement suivant.
+[desktop.update_skipped_unclean]
+fr = "Le serveur ne s'est pas arrêté proprement : la mise à jour sera proposée au prochain lancement."
+en = "The server did not stop cleanly: the update will be offered again at the next launch."
+
+# Fin de mise à jour sans installation : l'installeur a échoué (disque plein, antivirus). L'application se ferme.
+[desktop.update_install_failed]
+fr = "L'installation de la mise à jour a échoué. Relancez LevelUp : la mise à jour sera proposée de nouveau."
+en = "The update could not be installed. Relaunch LevelUp: the update will be offered again."
+
+# Verification de mise a jour demandee par l'utilisateur (bouton « Rechercher une mise à jour » de « À propos ») :
+# boîtes natives de la coquille, montrées depuis son catalogue de repli. {version} est la version installée.
+[desktop.update_none]
+fr = "Vous avez la dernière version de LevelUp ({version})."
+en = "You have the latest version of LevelUp ({version})."
+
+# Le serveur de mises à jour n'a pas répondu (pas de connexion, service indisponible) : rien n'est modifié.
+[desktop.update_check_failed]
+fr = "La recherche de mise à jour a échoué. Vérifiez votre connexion et réessayez plus tard."
+en = "The update check failed. Check your connection and try again later."
+
+# Build de développement (ou clé de signature absente) : la mise à jour n'est pas branchée.
+[desktop.update_unavailable_debug]
+fr = "La recherche de mise à jour n'est pas disponible dans ce build de développement."
+en = "Update checking is not available in this development build."
+
+# Une recherche est déjà en cours (celle du lancement, ou une demande précédente).
+[desktop.update_busy]
+fr = "Une recherche de mise à jour est déjà en cours."
+en = "An update check is already in progress."
+
+# Page de retour de la connexion Microsoft par le navigateur (GET /auth/xbox/callback), affichée dans
+# le navigateur par défaut, dans la langue de la page qui a lancé la connexion.
+[desktop.browser_login.ok_title]
+fr = "Connexion réussie"
+en = "Signed in"
+
+[desktop.browser_login.ok_body]
+fr = "Vous pouvez fermer cet onglet et revenir à LevelUp."
+en = "You can close this tab and go back to LevelUp."
+
+[desktop.browser_login.error_title]
+fr = "La connexion a échoué"
+en = "Sign-in failed"
+
+# Le code est un identifiant fixe du serveur (state_expired, oauth_denied...), jamais un détail.
+[desktop.browser_login.error_body]
+fr = "Fermez cet onglet, puis réessayez depuis LevelUp. Code d'erreur : {code}"
+en = "Close this tab, then try again from LevelUp. Error code: {code}"
+
+# Notifications Windows relayées depuis la cloche (réglage native_notifications, application de bureau).
+# Le serveur compose le texte dans la langue du joueur (internal/notifications/native) : la coquille
+# l'affiche tel quel et n'en connaît aucun. Un titre et un corps par type de notification.
+[desktop.notify.sync_title]
+fr = "Synchronisation terminée"
+en = "Sync complete"
+
+[desktop.notify.sync_body]
+fr = "Tes dernières parties sont à jour."
+en = "Your latest matches are up to date."
+
+[desktop.notify.sync_error_title]
+fr = "Synchronisation en échec"
+en = "Sync failed"
+
+[desktop.notify.sync_error_body]
+fr = "Ouvre LevelUp pour en voir la cause."
+en = "Open LevelUp to see why."
+
+[desktop.notify.challenge_title]
+fr = "Défi mis à jour"
+en = "Challenge update"
+
+[desktop.notify.challenge_body]
+fr = "Un défi a avancé ou vient d'être relevé."
+en = "A challenge moved forward or was just completed."
+
+[desktop.notify.streak_title]
+fr = "Nouvelle série"
+en = "New streak"
+
+[desktop.notify.streak_body]
+fr = "Tu viens d'atteindre une série."
+en = "You just reached a streak."
+
+[desktop.notify.record_title]
+fr = "Nouveau record"
+en = "New record"
+
+[desktop.notify.record_body]
+fr = "Un record personnel vient d'être battu."
+en = "A personal record was just broken."
+
+[desktop.notify.rank_title]
+fr = "Nouveau rang"
+en = "New rank"
+
+[desktop.notify.rank_body]
+fr = "Ton rang ou ton niveau vient de changer."
+en = "Your rank or tier just changed."
+
+# Menu de l'icône de la zone de notification (réglage close_to_tray). La coquille affiche ces libellés
+# depuis son catalogue de repli compilé, dans la langue que le serveur lui annonce (événement shell_settings) ;
+# ils sont aussi servis par GET /api/v1/desktop/strings.
+[desktop.tray.open]
+fr = "Ouvrir LevelUp"
+en = "Open LevelUp"
+
+[desktop.tray.sync]
+fr = "Synchroniser maintenant"
+en = "Sync now"
+
+[desktop.tray.quit]
+fr = "Quitter"
+en = "Quit"

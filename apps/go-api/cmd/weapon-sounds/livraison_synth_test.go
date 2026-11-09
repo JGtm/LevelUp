@@ -205,18 +205,17 @@ func livraisonEcrireJeuSynthetique(racine string) error {
 }
 
 // livraisonEcrireDepotSynthetique prepare le depot cible : le dossier des sons avec ses DEUX
-// temoins — un `hinf_*.wav` perime que le miroir doit effacer, et un son d'evenement du pack
+// temoins — un `hinf_*.ogg` perime que le miroir doit effacer, et un son d'evenement du pack
 // utilisateur que le miroir ne doit JAMAIS toucher.
 func livraisonEcrireDepotSynthetique(depot string) error {
 	sons := filepath.Join(depot, "static", "sounds", "halo_infinite")
 	if err := os.MkdirAll(sons, 0o755); err != nil {
 		return err
 	}
-	if err := livraisonSynthWav(filepath.Join(sons, "hinf_perime.wav"), 2, 48000, 480, 1); err != nil {
-		return err
-	}
-	if err := livraisonSynthWav(filepath.Join(sons, "melee_kill.wav"), 2, 48000, 480, 2); err != nil {
-		return err
+	for _, nom := range []string{"hinf_perime.ogg", "melee_kill.ogg"} {
+		if err := os.WriteFile(filepath.Join(sons, nom), []byte("OggS "+nom), 0o644); err != nil {
+			return err
+		}
 	}
 	return os.MkdirAll(filepath.Join(depot, "apps", "web", "src", "features", "match-replay"), 0o755)
 }

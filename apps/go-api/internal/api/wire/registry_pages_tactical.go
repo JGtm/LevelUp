@@ -62,5 +62,8 @@ func (r *ServiceRegistry) Tactical(ctx context.Context, slug string) (port.Tacti
 		// « ANALYSE EN COURS » d une sequence sans artefact : le resolveur partage de l indicateur (nil sur
 		// un titre sans film.kill_source, la porte de titre est dans analysisPendingFor).
 		WithAnalysisPending(r.analysisPendingFor(pdb)).
-		WithSequenceStore(service.NewTacticalSequenceStore(r.cfg.RuntimePaths().RepoRoot(), pdb.TitleSlug)), nil
+		WithSequenceStore(service.NewTacticalSequenceStore(r.cfg.RuntimePaths().RepoRoot(), pdb.TitleSlug)).
+		// UNE CARTE PAR GROUPE : base et variantes (« - Ranked », « Heavies ») sont une vignette, une lecture
+		// de placement, un « N sur M » (tactical_service_groupes.go).
+		WithMapGroups(r.mapGroupsFor(pdb)), nil
 }

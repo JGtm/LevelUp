@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // construitImageSynthetique batit une image NRGBA 64x64 qui couvre les quatre profils de pixel

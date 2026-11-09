@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // openAssetMemDB ouvre une DB DuckDB in-memory pour les tests de l'Asset Drawer.
@@ -53,8 +55,8 @@ func TestListMapsByTitle_Search(t *testing.T) {
 	if maps[0].ID != "map-001" {
 		t.Errorf("ID=%q, attendu map-001", maps[0].ID)
 	}
-	if maps[0].NameEN != "Aquarius" {
-		t.Errorf("NameEN=%q, attendu Aquarius", maps[0].NameEN)
+	if maps[0].Names[i18n.LocaleEN] != "Aquarius" {
+		t.Errorf("NameEN=%q, attendu Aquarius", maps[0].Names[i18n.LocaleEN])
 	}
 }
 
@@ -85,7 +87,7 @@ func TestListMapsByTitle_NoTranslations_FallsBackToNameCanonical(t *testing.T) {
 			fetched_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
 			PRIMARY KEY (asset_id, asset_type, lang)
 		)`,
-		`CREATE TABLE weapon_labels (weapon_id UBIGINT PRIMARY KEY, name_en VARCHAR, name_fr VARCHAR)`,
+		`CREATE TABLE weapon_labels (weapon_id UBIGINT PRIMARY KEY)`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {
@@ -110,8 +112,8 @@ func TestListMapsByTitle_NoTranslations_FallsBackToNameCanonical(t *testing.T) {
 	if len(maps) != 2 {
 		t.Errorf("sans traductions: attendu 2 maps via name_canonical, obtenu %d", len(maps))
 	}
-	if maps[0].NameEN != "Aquarius" {
-		t.Errorf("NameEN=%q, attendu Aquarius (fallback name_canonical)", maps[0].NameEN)
+	if maps[0].Names[i18n.LocaleEN] != "Aquarius" {
+		t.Errorf("NameEN=%q, attendu Aquarius (fallback name_canonical)", maps[0].Names[i18n.LocaleEN])
 	}
 }
 
@@ -145,8 +147,8 @@ func TestListWeaponsByTitle_Search(t *testing.T) {
 	if len(weapons) != 1 {
 		t.Errorf("ListWeaponsByTitle(BR75): attendu 1, obtenu %d", len(weapons))
 	}
-	if weapons[0].NameEN != "BR75 Battle Rifle" {
-		t.Errorf("NameEN=%q", weapons[0].NameEN)
+	if weapons[0].Names[i18n.LocaleEN] != "BR75 Battle Rifle" {
+		t.Errorf("NameEN=%q", weapons[0].Names[i18n.LocaleEN])
 	}
 }
 
@@ -174,11 +176,7 @@ func setupAssetDrawerFixtures(t *testing.T, db *DB, ctx context.Context) {
 			fetched_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
 			PRIMARY KEY (asset_id, asset_type, lang)
 		)`,
-		`CREATE TABLE weapon_labels (
-			weapon_id UBIGINT PRIMARY KEY,
-			name_en   VARCHAR,
-			name_fr   VARCHAR
-		)`,
+		`CREATE TABLE weapon_labels (weapon_id UBIGINT PRIMARY KEY)`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {
@@ -196,14 +194,17 @@ func setupAssetDrawerFixtures(t *testing.T, db *DB, ctx context.Context) {
 		`INSERT INTO asset_translations VALUES ('map-001','map','fr-FR','Aquarius','',now())`,
 		`INSERT INTO asset_translations VALUES ('map-002','map','en-US','Breaker','',now())`,
 		// map-003 n'a pas de traduction → nom vient de name_canonical
-		`INSERT INTO weapon_labels VALUES (100,'BR75 Battle Rifle','Fusil BR75')`,
-		`INSERT INTO weapon_labels VALUES (200,'Skewer','Brochette')`,
+		`INSERT INTO weapon_labels VALUES (100)`,
+		`INSERT INTO weapon_labels VALUES (200)`,
 	}
 	for _, q := range fixtures {
 		if _, err := db.Exec(ctx, q); err != nil {
 			t.Fatalf("fixture: %v", err)
 		}
 	}
+	createWeaponNameTables(t, db)
+	putWeaponLabelNames(t, db, 100, frEn("Fusil BR75", "BR75 Battle Rifle"))
+	putWeaponLabelNames(t, db, 200, frEn("Brochette", "Skewer"))
 }
 
 // TestListMapsByTitle_DedupeParAssetIDPasParNom fige la correction D15 (2026-09-13).

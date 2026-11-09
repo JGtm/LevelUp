@@ -19,14 +19,14 @@ Related files:
   a build.
 - `apps/go-api/cmd/film-profiles-build/` — the fabrication chain for the **derived** block, and
   its `gamefiles` gate.
-- `apps/go-api/internal/games/halo_infinite/film/internal/profile/profile_table.go` — the lot 2.1
+- `libs/film/internal/profile/profile_table.go` — the lot 2.1
   table, the source of truth for the **content** of `entries`.
   `TestCatalogueConformeALaTableDuLot21` keeps the two equal, line for line.
-- `apps/go-api/internal/games/halo_infinite/film/internal/profile/registre_empreintes.go` — since
+- `libs/film/internal/profile/registre_empreintes.go` — since
   lot 3.1.1, the decoder's **copy** of `registryFingerprints` (nine keys), kept equal by
   `TestCatalogueConformeALaTableDesEmpreintes`. The decoder copies rather than reads: importing a
   catalogue package from a layer is what the one-way rule forbids (ADR 0034, D-1).
-- `apps/go-api/internal/games/halo_infinite/film/internal/profile/classement_registre.go` — the
+- `libs/film/internal/profile/classement_registre.go` — the
   three runtime states of a registry fingerprint, defined in one place (§6).
 - `config/replay_corpus.toml` — the witness corpus (one `[[temoin]]` per grammar family, and
   since lot 3.2.3 at least one per registry key).
@@ -265,7 +265,7 @@ returns its own diagnostic.
 | `/debug/vars` per key | `filmdec_unknown_build_<build>` (`sans_section` for an empty build) and `filmdec_unknown_format_<n>` — the counters `grammar` already named |
 | `/debug/vars` per pass | `killsource_ecartes_cle_inconnue` — how many passes the policy stopped, not which key |
 | Kill-source outcome | `ecarte-cle-inconnue` (`KillSourceOutcome`), its own column in `KillSourceSummary` |
-| Cooking | `replaybuild.ErrUnknownFilmKey`; the child exits `filmproc.CodeSkipped`, the post-sync counts it under `ecartes_cle_inconnue` |
+| Cooking | `replaybuild.ErrUnknownFilmKey`; the child exits `filmrun.CodeSkipped`, the post-sync counts it under `ecartes_cle_inconnue` |
 | Match registry | **nothing.** No `MBitFilmAbsent`: that marker is terminal, and the film comes back on its own the day the table learns to read it |
 
 The match therefore stays a backlog candidate and is retried each cycle until the key is added.

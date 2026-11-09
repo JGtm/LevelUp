@@ -369,12 +369,7 @@ func (r *WeaponKillsRepo) attachWeaponMeta(ctx context.Context, slug string, row
 		if !ok {
 			continue
 		}
-		if m.label != "" {
-			rows[i].Label = m.label
-		}
-		if m.labelEN != "" {
-			rows[i].LabelEN = m.labelEN
-		}
+		rows[i].Label = m.label
 		if withRoles {
 			// Role, Class ET Family dans la même passe (resolveWeaponMeta les peuple
 			// ensemble). Sentinels grenade/melee (0/1) : absents du registre → ""

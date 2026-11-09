@@ -1,8 +1,14 @@
 // Package auth — metrics.go : compteurs expvar des échanges OAuth v2
 // (namespace levelup.auth.*, pattern identique à pool/metrics.go — ADR 0009).
+// La brique `haloapi/xblauth` ne compte rien : elle rend une issue typée
+// (`xblauth.RefreshOutcome`) que la façade comptabilise ici.
 package auth
 
-import "expvar"
+import (
+	"expvar"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
+)
 
 var (
 	oauthRefreshTotal            = expvar.NewInt("levelup.auth.oauth_refresh_total")
@@ -11,6 +17,18 @@ var (
 	oauthRefreshRetryPublicTotal = expvar.NewInt("levelup.auth.oauth_refresh_retry_public_total")
 	oauthRefreshRetryMSATotal    = expvar.NewInt("levelup.auth.oauth_refresh_retry_msa_total")
 )
+
+// recordOAuthRefreshIssue comptabilise un rafraîchissement : les reprises tentées (retry public
+// AADSTS90023, repli MSA natif) puis l'issue.
+func recordOAuthRefreshIssue(out xblauth.RefreshOutcome, err error) {
+	if out.RetentePublique {
+		oauthRefreshRetryPublicTotal.Add(1)
+	}
+	if out.RetenteNatif {
+		oauthRefreshRetryMSATotal.Add(1)
+	}
+	recordOAuthRefreshOutcome(err)
+}
 
 // recordOAuthRefreshOutcome incrémente les compteurs d'issue d'un échange.
 func recordOAuthRefreshOutcome(err error) {
@@ -21,3 +39,13 @@ func recordOAuthRefreshOutcome(err error) {
 	oauthRefreshFailTotal.Add(1)
 	oauthRefreshFailByClass.Add(string(ClassifyAuthError(err)), 1)
 }
+
+// Fichiers de jetons que le magasin n'a pas pu lire, par raison (jamais un jeton dans une clé).
+var tokenFileUnreadable = expvar.NewMap("levelup.auth.token_file_unreadable_total")
+
+const (
+	// unreadableDecode : JSON invalide.
+	unreadableDecode = "decode"
+	// unreadableSealed : fichier scellé que le chiffreur du magasin n'ouvre pas (ErrTokenFileSealed).
+	unreadableSealed = "sealed"
+)

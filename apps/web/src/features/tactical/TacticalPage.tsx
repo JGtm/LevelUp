@@ -73,7 +73,7 @@ export function TacticalPage() {
   else if (p.grilleEnEchec) listeDesCartes = null
   const effective = useMemo(() => carteEffective(scope.carte, listeDesCartes), [scope.carte, listeDesCartes])
   const connues = useCartesConnues(p.cartes)
-  const nom = titreDeLaCarte(effective, p.cartes, connues, locale, t.planTitleOutsideFilter)
+  const nom = titreDeLaCarte(effective, p.cartes, connues, t.planTitleOutsideFilter)
   const demande = useDemandeDeComposition(effective.mapId)
 
   return (
@@ -97,7 +97,6 @@ export function TacticalPage() {
           plancher={p.plancher}
           carteActive={etatColonne ? '' : effective.mapId}
           playerSlug={playerSlug}
-          locale={locale}
           t={t}
           onSelect={(mapId) => setScope({ carte: mapId })}
           enRelecture={p.enRelecture}

@@ -1,8 +1,7 @@
 package analysis
 
-// weapon_range_regroup_test.go — LES DEUX AJOUTS DU PROFIL D'ARMES DU FACE-À-FACE
-// (plan .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 1) : les extrêmes observés (D5) et
-// le rekeyage vers le grain RÔLE (D1/D8).
+// weapon_range_regroup_test.go — LES DEUX AJOUTS DU PROFIL D'ARMES DU FACE-À-FACE :
+// les extrêmes observés et le rekeyage vers le grain RÔLE.
 //
 // CE QUE CES TESTS ÉPINGLENT, ET QUI SE TROMPE EN SILENCE SANS EUX :
 //

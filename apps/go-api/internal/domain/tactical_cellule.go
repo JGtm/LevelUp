@@ -137,11 +137,10 @@ type TacticalContribution struct {
 	// jamais (0, 0) de repli.
 	Point      *TacticalPoint `json:"point,omitempty"`
 	AutrePoint *TacticalPoint `json:"autre_point,omitempty"`
-	// ArmeLabel / ArmeLabelEN : le nom de l'arme de l'événement dans les deux langues, par le
-	// registre d'armes du titre ; CategorieSource : la catégorie brute de la source de dégât du
-	// film, publiée quand l'arme n'est pas nommée (le web la traduit, ou ne l'écrit pas).
+	// ArmeLabel : le nom de l arme de l événement dans la langue de la requête (repli en), par
+	// le registre d armes du titre ; CategorieSource : la catégorie brute de la source de dégât
+	// du film, publiée quand l arme n est pas nommée (le web la traduit, ou ne l écrit pas).
 	ArmeLabel       string `json:"arme_label,omitempty"`
-	ArmeLabelEN     string `json:"arme_label_en,omitempty"`
 	CategorieSource string `json:"categorie_source,omitempty"`
 	// ArmeImageURL / ArmeImageTinted : l'icône de la source de dégât, par l'adapter d'assets du titre
 	// (même source que le fil de frags du rejeu). Tinted = masque à teindre, pas un visuel fini.

@@ -57,10 +57,10 @@ func TestClassifyLUSRChain_Golden(t *testing.T) {
 		// pair_name vide → arena_slayer (fallback safe)
 		{"", chainArenaSlayer},
 
-		// ── Corpus D-I corrigé (lot 1bis, plan .ai/V7.5/PLAN_PERF_NOTE_OBJECTIFS.md) ──
+		// ── Corpus D-I corrigé ──
 		// Les 25 matchs SOCIAUX qui tombaient en arena_slayer : Assaut, VIP, et les
-		// pair_name INVERSÉS (mode à gauche du deux-points). Fixtures issues des
-		// exemples réels de l'annexe du rapport de lot 0.
+		// pair_name INVERSÉS (mode à gauche du deux-points). Fixtures issues
+		// d'exemples réels.
 		{"Assault:Neutral Bomb on Origin", chainArenaObjectif},
 		{"Assault:One Bomb on Curfew", chainArenaObjectif},
 		{"Assault:Neutral Bomb Squad on Rat's Nest", chainArenaObjectif},

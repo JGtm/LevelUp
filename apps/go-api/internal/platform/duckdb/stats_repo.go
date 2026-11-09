@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -51,6 +52,7 @@ func (r *StatsRepo) LoadStatsMatches(ctx context.Context) ([]legacymatch.StatsMa
 	matchIDs := make([]string, 0)
 	for rows.Next() {
 		var m legacymatch.StatsMatchRow
+		var playlistEN, pairEN string
 		if err := rows.Scan(
 			&m.MatchID,
 			&m.StartTime,
@@ -70,14 +72,16 @@ func (r *StatsRepo) LoadStatsMatches(ctx context.Context) ([]legacymatch.StatsMa
 			&m.DeathsExpected,
 			&m.Rank,
 			&m.IsRanked,
-			&m.PlaylistName,
-			&m.PairName,
+			&playlistEN,
+			&pairEN,
 			&m.TeamID,
 			&m.OffensiveConversion,
 			&m.DefensiveResistance,
 		); err != nil {
 			return nil, fmt.Errorf("StatsRepo.LoadStatsMatches scan: %w", err)
 		}
+		m.PlaylistName = i18n.FromColumns(playlistEN, "")
+		m.PairName = i18n.FromColumns(pairEN, "")
 		results = append(results, m)
 		matchIDs = append(matchIDs, m.MatchID)
 	}

@@ -32,7 +32,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // tailleDuBalayage lit `FILM_SWEEP`, ou saute le test.

@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // assetsTOML est la projection brute du fichier assets.toml avant validation.
@@ -18,10 +20,10 @@ type assetsTOML struct {
 }
 
 type assetEntryTOML struct {
-	Labels       map[string]string `toml:"labels"`
-	ColorToken   string            `toml:"color_token"`
-	Icon         string            `toml:"icon"`
-	DisplayOrder int               `toml:"display_order"`
+	Labels       i18n.Text `toml:"labels"`
+	ColorToken   string    `toml:"color_token"`
+	Icon         string    `toml:"icon"`
+	DisplayOrder int       `toml:"display_order"`
 
 	// Champs optionnels pour les kinds time-bounded (ex: "season").
 	// Format strict RFC 3339 (ex: "2021-12-08T00:00:00Z").
@@ -98,7 +100,7 @@ func LoadAssetsFromBytes(path string, raw []byte) (*AssetMappingSet, error) {
 			bucket[id] = AssetMapping{
 				Kind:         kind,
 				ID:           id,
-				Labels:       copyStringMap(entry.Labels),
+				Labels:       entry.Labels.Clone(),
 				ColorToken:   entry.ColorToken,
 				Icon:         entry.Icon,
 				DisplayOrder: entry.DisplayOrder,
@@ -120,11 +122,8 @@ func LoadAssetsFromBytes(path string, raw []byte) (*AssetMappingSet, error) {
 
 func validateAsset(kind, id string, e assetEntryTOML) []error {
 	var errs []error
-	if _, ok := e.Labels[LocaleEN]; !ok || strings.TrimSpace(e.Labels[LocaleEN]) == "" {
-		errs = append(errs, fmt.Errorf("label EN manquant"))
-	}
-	if _, ok := e.Labels[LocaleFR]; !ok || strings.TrimSpace(e.Labels[LocaleFR]) == "" {
-		errs = append(errs, fmt.Errorf("label FR manquant"))
+	if err := e.Labels.Trimmed().Validate(); err != nil {
+		errs = append(errs, fmt.Errorf("labels: %w", err))
 	}
 	if e.DisplayOrder < 0 {
 		errs = append(errs, fmt.Errorf("display_order doit être >= 0 (reçu %d)", e.DisplayOrder))

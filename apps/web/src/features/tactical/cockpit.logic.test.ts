@@ -23,7 +23,8 @@ function carte(map_id: string, matchs: number, sous_plancher: boolean, noms: Par
   return {
     map_id,
     map_name: map_id,
-    map_name_fr: '',
+    map_label: map_id,
+    map_filter_key: map_id,
     matchs,
     victoires: Math.floor(matchs / 2),
     defaites: matchs - Math.floor(matchs / 2),
@@ -32,10 +33,10 @@ function carte(map_id: string, matchs: number, sous_plancher: boolean, noms: Par
   }
 }
 
-const RUELLES = carte('streets', 24, false, { map_name: 'Streets', map_name_fr: 'Ruelles' })
-const ECLUSE = carte('lock', 18, false, { map_name: 'Lock', map_name_fr: 'Écluse' })
-const AQUARIUS = carte('aquarius', 9, true, { map_name: 'Aquarius', map_name_fr: 'Aquarius' })
-const BEHEMOTH = carte('behemoth', 4, true, { map_name: 'Behemoth', map_name_fr: 'Béhémoth' })
+const RUELLES = carte('streets', 24, false, { map_name: 'Streets', map_label: 'Ruelles', map_filter_key: 'Ruelles' })
+const ECLUSE = carte('lock', 18, false, { map_name: 'Lock', map_label: 'Écluse', map_filter_key: 'Écluse' })
+const AQUARIUS = carte('aquarius', 9, true, { map_name: 'Aquarius', map_label: 'Aquarius', map_filter_key: 'Aquarius' })
+const BEHEMOTH = carte('behemoth', 4, true, { map_name: 'Behemoth', map_label: 'Béhémoth', map_filter_key: 'Béhémoth' })
 
 describe('normaliserRecherche', () => {
   it('minuscules, sans accents, sans blancs autour', () => {
@@ -48,18 +49,18 @@ describe('filtrerCartes', () => {
   const cartes = [RUELLES, ECLUSE, AQUARIUS]
 
   it('recherche vide : toutes les cartes', () => {
-    expect(filtrerCartes(cartes, '   ', 'fr')).toEqual(cartes)
+    expect(filtrerCartes(cartes, '   ')).toEqual(cartes)
   })
 
   it('sur le nom affiché, sans casse ni accents', () => {
-    expect(filtrerCartes(cartes, 'ECL', 'fr').map((c) => c.map_id)).toEqual(['lock'])
-    expect(filtrerCartes(cartes, 'écl', 'fr').map((c) => c.map_id)).toEqual(['lock'])
+    expect(filtrerCartes(cartes, 'ECL').map((c) => c.map_id)).toEqual(['lock'])
+    expect(filtrerCartes(cartes, 'écl').map((c) => c.map_id)).toEqual(['lock'])
   })
 
-  it('sur le nom canonique aussi (en anglais, le nom affiché EST le canonique)', () => {
-    expect(filtrerCartes(cartes, 'stree', 'fr').map((c) => c.map_id)).toEqual(['streets'])
-    expect(filtrerCartes(cartes, 'stree', 'en').map((c) => c.map_id)).toEqual(['streets'])
-    expect(filtrerCartes(cartes, 'ruel', 'en')).toEqual([])
+  it('sur le nom canonique aussi (un nom affiché traduit ne masque pas le nom du registre)', () => {
+    expect(filtrerCartes(cartes, 'stree').map((c) => c.map_id)).toEqual(['streets'])
+    expect(filtrerCartes(cartes, 'ruel').map((c) => c.map_id)).toEqual(['streets'])
+    expect(filtrerCartes(cartes, 'zzz')).toEqual([])
   })
 })
 
@@ -103,7 +104,7 @@ describe('colonneDesCartes', () => {
   const cartes = [AQUARIUS, ECLUSE, BEHEMOTH, RUELLES]
 
   it('sans recherche : ouvrables par matchs décroissants, sous le plancher à part, repli fermé', () => {
-    const c = colonneDesCartes(cartes, '', 'fr')
+    const c = colonneDesCartes(cartes, '')
     expect(c.ouvrables.map((x) => x.map_id)).toEqual(['streets', 'lock'])
     expect(c.sousPlancher.map((x) => x.map_id)).toEqual(['aquarius', 'behemoth'])
     expect(c.totalSousPlancher).toBe(2)
@@ -113,7 +114,7 @@ describe('colonneDesCartes', () => {
   })
 
   it('seules des cartes sous le plancher correspondent : repli ouvert, liste vide dite', () => {
-    const c = colonneDesCartes(cartes, 'behem', 'fr')
+    const c = colonneDesCartes(cartes, 'behem')
     expect(c.ouvrables).toEqual([])
     expect(c.sousPlancher.map((x) => x.map_id)).toEqual(['behemoth'])
     expect(c.totalSousPlancher).toBe(2)
@@ -123,20 +124,20 @@ describe('colonneDesCartes', () => {
   })
 
   it('une ouvrable correspond : le repli reste fermé', () => {
-    const c = colonneDesCartes(cartes, 'u', 'fr')
+    const c = colonneDesCartes(cartes, 'u')
     expect(c.ouvrables.length).toBeGreaterThan(0)
     expect(c.repliOuvert).toBe(false)
     expect(c.listeVide).toBeNull()
   })
 
   it('aucune carte ouvrable du tout : la liste le dit et le repli s’ouvre', () => {
-    const c = colonneDesCartes([AQUARIUS, BEHEMOTH], '', 'fr')
+    const c = colonneDesCartes([AQUARIUS, BEHEMOTH], '')
     expect(c.listeVide).toBe('aucune_ouvrable')
     expect(c.repliOuvert).toBe(true)
   })
 
   it('aucune carte : ni repli ni message de liste (l’état vide de la page le dit)', () => {
-    const c = colonneDesCartes([], '', 'fr')
+    const c = colonneDesCartes([], '')
     expect(c.totalSousPlancher).toBe(0)
     expect(c.listeVide).toBeNull()
     expect(c.repliOuvert).toBe(false)

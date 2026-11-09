@@ -533,8 +533,7 @@ func (s postSyncFilmSteps) runEventsConvergence(ctx context.Context) {
 // POURQUOI ICI, ET PAS DANS UN OUTIL SÉPARÉ. Cette donnée n'avait qu'un producteur : une
 // sous-commande manuelle qui ne lisait que les films déjà en cache. Le cache a cessé d'être
 // alimenté le 2026-04-07 et personne ne l'a vu pendant cinq mois — `assist_known` est resté
-// FALSE sur tout match synchronisé depuis, et deux blocs de l'app se sont retirés sans un log
-// (`.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`). Une donnée qui ne se remplit que si
+// FALSE sur tout match synchronisé depuis, et deux blocs de l'app se sont retirés sans un log. Une donnée qui ne se remplit que si
 // quelqu'un lance une commande finit toujours par ne plus se remplir.
 //
 // Elle vient APRÈS la convergence events, pour la même raison que l'étape 1.55 (weapon
@@ -548,6 +547,9 @@ func (s postSyncFilmSteps) runEventsConvergence(ctx context.Context) {
 func (s postSyncFilmSteps) runKillSource(ctx context.Context, insertedIDs []string) int {
 	e := s.engine
 	if e.killSource == nil {
+		return 0
+	}
+	if killcollector.ReporteeEnModeJeu(ctx, e.gamertag, len(insertedIDs)) {
 		return 0
 	}
 	// GetFilmChunks est une capacité OPTIONNELLE du client (assertion, pas extension de
@@ -655,6 +657,8 @@ func (s postSyncFilmSteps) runReplayArtifacts(ctx context.Context, insertedIDs [
 		TitleSlug:       e.titleSlug,
 		Gamertag:        e.gamertag,
 		CacheRoot:       e.replayArtifacts.CacheRoot,
+		FilmRoot:        e.replayArtifacts.Film(),
+		SansArchive:     !e.replayArtifacts.Archive(),
 		RetentionMonths: e.replayArtifacts.Months(),
 		Placement:       placement,
 		Enqueue:         e.replayArtifacts.Enqueue,

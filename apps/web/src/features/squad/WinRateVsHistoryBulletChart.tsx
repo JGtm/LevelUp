@@ -1,7 +1,6 @@
 /**
  * WinRateVsHistoryBulletChart — wrapper squad pour le bullet chart teammates.02.
  *
- * Spec : .ai/charts_specs/teammates/02_map_winrate_bullet.yaml
  * Builder : ./charts/winRateVsHistoryBulletChart.ts
  */
 import { useCallback, useMemo, type ReactNode } from 'react'

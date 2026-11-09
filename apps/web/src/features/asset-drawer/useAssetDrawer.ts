@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { AssetMeta } from '@/lib/api/types'
 
 const STALE_MS = 5 * 60 * 1000
@@ -10,8 +11,9 @@ const STALE_MS = 5 * 60 * 1000
 // comportent comme avant (les trois onglets chargés, la recherche sur l'onglet actif).
 
 export function useAssetMaps(titleSlug: string, search: string, isOpen: boolean) {
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.assetMaps(titleSlug, search),
+    queryKey: queryKeys.assetMaps(titleSlug, search, locale),
     queryFn: () => {
       const params = search ? `?q=${encodeURIComponent(search)}` : ''
       return api.get<AssetMeta[]>(`/assets/${titleSlug}/maps${params}`)
@@ -22,8 +24,9 @@ export function useAssetMaps(titleSlug: string, search: string, isOpen: boolean)
 }
 
 export function useAssetWeapons(titleSlug: string, search: string, isOpen: boolean) {
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.assetWeapons(titleSlug, search),
+    queryKey: queryKeys.assetWeapons(titleSlug, search, locale),
     queryFn: () => {
       const params = search ? `?q=${encodeURIComponent(search)}` : ''
       return api.get<AssetMeta[]>(`/assets/${titleSlug}/weapons${params}`)
@@ -34,8 +37,9 @@ export function useAssetWeapons(titleSlug: string, search: string, isOpen: boole
 }
 
 export function useAssetMedals(titleSlug: string, search: string, isOpen: boolean) {
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.assetMedals(titleSlug, search),
+    queryKey: queryKeys.assetMedals(titleSlug, search, locale),
     queryFn: () => {
       const params = search ? `?q=${encodeURIComponent(search)}` : ''
       return api.get<AssetMeta[]>(`/assets/${titleSlug}/medals${params}`)

@@ -10,8 +10,9 @@ package killcollector
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // TestProvenanceDeLaBijectionEstPubliee — la passe nominale : ce qui est LU, ce qui est INFERE,

@@ -18,9 +18,10 @@ package migrations
 // la description « Sauvez la vie de votre VIP. » sont une traduction LevelUp, validée par
 // l'utilisateur le 2026-10-17.
 //
-// medal_translations est purgée pour cet identifiant : la chaîne FR de lecture commence par
-// `mt_loc.name` (platform/duckdb/medal_label_resolve.go), une traduction héritée y masquerait
-// medal_definitions. INSERT … WHERE NOT EXISTS et non ON CONFLICT : medal_definitions n'a pas de
+// medal_translations est purgée pour cet identifiant : une ligne de traduction déjà présente
+// l'emporte sur les colonnes à la migration des textes
+// (metadata_definition_texts_to_translations_v1), une traduction héritée y masquerait le texte
+// corrigé. INSERT … WHERE NOT EXISTS et non ON CONFLICT : medal_definitions n'a pas de
 // clé primaire sur les bases héritées (cf. TestMedalDefinitions_PasDOnConflict).
 
 import (

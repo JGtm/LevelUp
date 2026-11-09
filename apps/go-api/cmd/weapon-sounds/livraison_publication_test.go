@@ -2,7 +2,7 @@ package main
 
 // livraison_publication_test.go — LA CIBLE N'EST TOUCHEE QU'APRES UN LOT COMPLET.
 //
-// Le script Python vidait `static/sounds/halo_infinite` de ses `hinf_*.wav` AVANT de produire
+// Le script Python vidait `static/sounds/halo_infinite` de ses `hinf_*` AVANT de produire
 // quoi que ce soit. Toute erreur en cours de route — source illisible, vote mal forme, disque
 // plein — laissait donc le depot avec une partie seulement des armes et un
 // `weaponSoundVariations.ts` jamais reecrit (constat C7 de la revue R1, ou un simple exemple
@@ -33,7 +33,7 @@ func TestLivrerNEffaceRienQuandLaProductionEchoue(t *testing.T) {
 		t.Fatalf("corruption de la source: %v", err)
 	}
 
-	if err := livrer(filepath.Join(racine, "_donnees"), racine, depot); err == nil {
+	if err := livrerAvec(livraisonEncodeurIdentite, filepath.Join(racine, "_donnees"), racine, depot); err == nil {
 		t.Fatal("livrer a reussi sur une source illisible — il devait rendre l'erreur")
 	}
 
@@ -48,13 +48,13 @@ func TestLivrerNEffaceRienQuandLaProductionEchoue(t *testing.T) {
 	}
 	// LES DEUX TEMOINS : l'arme perimee (que seul un lot COMPLET a le droit d'effacer) et le
 	// son d'evenement du pack utilisateur, hors perimetre du miroir.
-	for _, n := range []string{"hinf_perime.wav", "melee_kill.wav"} {
+	for _, n := range []string{"hinf_perime.ogg", "melee_kill.ogg"} {
 		if !presents[n] {
 			t.Errorf("%s a disparu alors que la production a echoue : la cible ne doit etre "+
 				"touchee qu'apres un lot complet", n)
 		}
 	}
-	if presents["hinf_ravager.wav"] {
+	if presents["hinf_ravager.ogg"] {
 		t.Error("une arme du lot avorte est arrivee dans la cible : la publication doit etre " +
 			"tout ou rien")
 	}

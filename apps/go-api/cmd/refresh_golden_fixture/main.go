@@ -26,15 +26,14 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/titleseams"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	go_sync "levelup/go-api/internal/sync"
 )
 
 const (
-	defaultFixturePath  = "internal/games/halo_infinite/film/internal/grammar/testdata/v41_chunk_he.bin"
-	manifestFixturePath = "internal/games/halo_infinite/film/internal/grammar/testdata/v41_film_manifest.json"
+	defaultFixturePath  = "../../libs/film/internal/grammar/testdata/v41_chunk_he.bin"
+	manifestFixturePath = "../../libs/film/internal/grammar/testdata/v41_film_manifest.json"
 )
 
 func main() {
@@ -73,7 +72,7 @@ func run(gamertag, matchID, outPath, manifestPath string) error {
 	if err != nil {
 		return fmt.Errorf("config.Load: %w", err)
 	}
-	storeDir := titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
+	storeDir := cfg.PathResolver().WatcherTokensDir()
 	store := auth_platform.NewMultiUserTokenStore(storeDir)
 	user, err := store.LoadByGamertag(gamertag)
 	if err != nil || user == nil || user.OAuthRefreshToken == "" {

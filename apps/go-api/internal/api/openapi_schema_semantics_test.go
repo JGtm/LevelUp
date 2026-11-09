@@ -18,7 +18,7 @@
 //     devenue caduque font échouer le test.
 //
 // Inventaire fermé des sémantiques NON portables (destination = fragment manuel
-// H6, sauf mention) — cf. .ai/archive/V7.2/PLAN_V72_HUMA_OPENAPI.md, section H3 :
+// H6, sauf mention) :
 //   - descriptions de SCHÉMA RACINE (Huma n'a pas de tag type-level ; seul
 //     SchemaProvider/SchemaTransformer, hors périmètre tag) : cf. rootDescAllowlist.
 //   - schémas SANS type Go huma-généré (chi-brut / décodage manuel RawBody /
@@ -31,8 +31,7 @@
 //     par Huma : CompareRequest, MatchHistoryQueryRequest, PaginationRequest,
 //     MediaPageRequest, SessionContextRequest, ExplorerMatchesQueryRequest.
 //   - dérives de NOM yaml↔Go (ExplorerMatchRow↔ExplorerMatchesRow,
-//     GamertagSuggestion↔GamertagSearchResult, CascadeInput↔CascadeFilter,
-//     CareerTopMatch sans équivalent DTO) : la sémantique portable a été posée
+//     GamertagSuggestion↔GamertagSearchResult, CascadeInput↔CascadeFilter) : la sémantique portable a été posée
 //     sur le type Go réel ; le nom yaml diverge (H6/H7).
 //   - defaults triviaux (valeur zéro : bool false / int 0) NON posés (no-op).
 //   - sémantique de PARAMÈTRE (enum/default de query/path) et exemples de RÉPONSE

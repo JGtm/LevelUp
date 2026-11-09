@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -36,9 +37,9 @@ func TestRefreshSeasonCatalog_UpsertAndIdempotent(t *testing.T) {
 	db := openSeasonCatalogTestDB(t)
 	ctx := context.Background()
 	seasons := []domain.WorldSeasonRef{
-		{SeasonID: "csrseason12-1", DisplayName: "Shadows", NameFR: "Ombres"},
-		{SeasonID: "csrseason13-2", DisplayName: "Infinite", NameFR: ""}, // FR vide → fallback EN
-		{SeasonID: "", DisplayName: "ignorée"},                           // id vide → skip
+		{SeasonID: "csrseason12-1", Name: i18n.FromColumns("Shadows", "Ombres")},
+		{SeasonID: "csrseason13-2", Name: i18n.FromColumns("Infinite", "")}, // FR vide → fallback EN
+		{SeasonID: "", Name: i18n.FromColumns("ignorée", "")},               // id vide → skip
 	}
 
 	n, err := RefreshSeasonCatalog(ctx, db, "halo_infinite", seasons)
@@ -71,7 +72,7 @@ func TestRefreshSeasonCatalog_UpsertAndIdempotent(t *testing.T) {
 	}
 
 	// Idempotence : 2e passage (chemin UPDATE), nom FR corrigé, aucun doublon.
-	seasons[0].NameFR = "Ténèbres"
+	seasons[0].Name[i18n.LocaleFR] = "Ténèbres"
 	if _, err := RefreshSeasonCatalog(ctx, db, "halo_infinite", seasons); err != nil {
 		t.Fatalf("RefreshSeasonCatalog (2e): %v", err)
 	}

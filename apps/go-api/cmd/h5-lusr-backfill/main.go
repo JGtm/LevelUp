@@ -80,7 +80,7 @@ func main() {
 	// Classifier LUSR title-aware (défaut Infinite + h5).
 	// Famille de la chaîne de perf classée (ranked_slayer / ranked_objectif).
 
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	sharedPath := pr.SharedDBPath(halo5.TitleSlug)
 	playerPath := pr.PlayerDBPath(halo5.TitleSlug, gt)
 

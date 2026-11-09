@@ -412,8 +412,7 @@ var replaySchemas = []struct {
 //	                      meme lot et n a quitte ni le poste ni les temoins locaux — aucun
 //	                      artefact 21 n existe ailleurs, le bump unique reste unique.
 //
-//	39 -> 40  2026-08-27  `vipCrown` (lot VIP COURONNE, `.ai/V7.5/replay2d/registre_film/
-//	                      VIP_COURONNE_PROTOCOLE.md`) : LES PERIODES DE PORT DE LA COURONNE VIP,
+//	39 -> 40  2026-08-27  `vipCrown` : LES PERIODES DE PORT DE LA COURONNE VIP,
 //	                      en intervalles de frames nommes par le xuid du VIP. Un champ de
 //	                      document, un schema de plus (`VipPeriod`) et un bloc de couverture
 //	                      (`VipCrownCoverage`). Source, toute dans le film : les SELECTIONS
@@ -430,8 +429,7 @@ var replaySchemas = []struct {
 //	                      `Coverage` gagne son bloc `vipCrown` : un film non-VIP (bloc absent) et
 //	                      un film VIP sans periode publiee se distinguent par lui.
 //
-//	40 -> 41  2026-08-28  `skullCarries` (lot PORTEUR ODDBALL, `.ai/V7.5/replay2d/registre_film/
-//	                      ODDBALL_PORTEUR_PROTOCOLE.md`) : LES PERIODES DE PORTAGE DU CRANE, en
+//	40 -> 41  2026-08-28  `skullCarries` : LES PERIODES DE PORTAGE DU CRANE, en
 //	                      intervalles de frames nommes par le xuid du porteur. Un champ de
 //	                      document, un schema de plus (`SkullCarry`) et un bloc de couverture
 //	                      (`SkullCarriesCoverage`). Source, toute dans le film : le porteur est le

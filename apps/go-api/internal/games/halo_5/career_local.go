@@ -56,7 +56,7 @@ func (a *DataAdapter) localCareerSnapshot(ctx context.Context, gamertag string) 
 // applyLocalCSR pose RankTier/RankName/HighestCSR depuis le meilleur CSR local, en
 // réutilisant le référentiel de paliers h5Designations (parité mapCareerSnapshot).
 func applyLocalCSR(snap *canonical.CareerSnapshot, d *domain.H5CareerLocal) {
-	en, fr := designationFromTierEN(d.CSRTier)
+	en, fr := designationFromTier(d.CSRTier)
 	if fr == "" {
 		return
 	}
@@ -74,9 +74,9 @@ func applyLocalCSR(snap *canonical.CareerSnapshot, d *domain.H5CareerLocal) {
 	}
 }
 
-// designationFromTierEN mappe un palier EN stocké (Bronze..Onyx, casse libre) vers
+// designationFromTier mappe un palier EN stocké (Bronze..Onyx, casse libre) vers
 // (en normalisé, fr). ("","") si inconnu. Source unique : h5Designations.
-func designationFromTierEN(tier string) (en, fr string) {
+func designationFromTier(tier string) (en, fr string) {
 	t := strings.ToLower(strings.TrimSpace(tier))
 	for i := range h5Designations {
 		if h5Designations[i].en == t {

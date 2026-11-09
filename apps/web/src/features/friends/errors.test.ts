@@ -26,8 +26,4 @@ describe('friendsErrorMessage', () => {
       expect(fr).toMatch(/liste d'amis/i)
     }
   })
-
-  it('locale inconnue retombe sur le français', () => {
-    expect(friendsErrorMessage({ code: 'player_not_found' }, 'de')).toMatch(/introuvable/i)
-  })
 })

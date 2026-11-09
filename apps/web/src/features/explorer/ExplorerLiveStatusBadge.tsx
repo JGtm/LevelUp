@@ -1,8 +1,7 @@
 /**
  * ExplorerLiveStatusBadge — badge discret expliquant pourquoi une section live
  * de l'encart "Profil joueur cible" (Explorer mode Joueur) est vide ou
- * partielle, au lieu de ne rien dire (Lot A3, fin de la dégradation muette —
- * .ai/V7.1/PLAN_EXPLORER_LIVE_REPAIR_2026-07.md).
+ * partielle, au lieu de ne rien dire (fin de la dégradation muette).
  *
  * Statuts (ExplorerLiveSectionStatus, miroir domain.ExplorerLiveSectionStatus
  * côté Go) :

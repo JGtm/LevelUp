@@ -69,6 +69,30 @@ describe('SetupPage', () => {
     })
   })
 
+  it('propose le choix de l’archive des films au premier lancement, avant la connexion', async () => {
+    useAppShellStore.setState({
+      isBootstrapped: true,
+      setupRequired: true,
+      setupState: 'no_halo_link',
+    })
+
+    renderWithProviders(<SetupPage />)
+    expect(await screen.findByText(/Conserver les films/i)).toBeInTheDocument()
+    expect(screen.getByLabelText("Dossier de l'archive")).toBeInTheDocument()
+  })
+
+  it('ne propose pas l’archive des films une fois la connexion faite', async () => {
+    useAppShellStore.setState({
+      isBootstrapped: true,
+      setupRequired: true,
+      setupState: 'halo_linked_no_profile',
+      linkedHaloIdentity: { gamertag: 'GT', xuid: '1' } as never,
+    })
+
+    renderWithProviders(<SetupPage />)
+    await waitFor(() => expect(screen.queryByText(/Conserver les films/i)).not.toBeInTheDocument())
+  })
+
   it('affiche le code renvoyé par le Device Code Flow', async () => {
     useAppShellStore.setState({
       isBootstrapped: true,

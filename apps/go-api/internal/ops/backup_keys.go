@@ -82,3 +82,42 @@ func FinalizeRestoredDB(ctx context.Context, _ string, db *sql.DB) error {
 	_, err := migration.AlignSequencesToColumns(ctx, db)
 	return err
 }
+
+// BackupAliasesKey : la clé de la base globale des alias Xbox (hors des bases par titre).
+const BackupAliasesKey = "xbox_aliases"
+
+// BackupDB : une base DuckDB que la sauvegarde en dossier protège, sa clé et son chemin de production.
+type BackupDB struct {
+	Key  string
+	Path string
+}
+
+// BackupDatabases liste les bases à protéger, toutes celles que le PathResolver désigne et qui existent :
+// les quatre bases d'entrepôt de chaque titre présent sous la racine des titres, une base par joueur, puis
+// la base globale des alias quand elle existe. Aucun chemin n'est écrit à la main : la restauration
+// retrouve chaque chemin par la clé ([ParseBackupKey], [BackupDBPath]).
+func BackupDatabases(pr *title.PathResolver) ([]BackupDB, error) {
+	targets, err := discoverLevelUpDBs(pr)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]BackupDB, 0, len(targets)+1)
+	for _, t := range targets {
+		out = append(out, BackupDB{Key: t.Key, Path: t.Path})
+	}
+	if p := pr.GlobalXuidAliasesDBPath(); fileExists(p) {
+		out = append(out, BackupDB{Key: BackupAliasesKey, Path: p})
+	}
+	return out, nil
+}
+
+// BackupDBPath rend le chemin de production de la base d'une clé de sauvegarde, "" pour une clé inconnue.
+func BackupDBPath(pr *title.PathResolver, key string) string {
+	if key == BackupAliasesKey {
+		return pr.GlobalXuidAliasesDBPath()
+	}
+	if k, ok := ParseBackupKey(key); ok {
+		return k.LivePath(pr)
+	}
+	return ""
+}

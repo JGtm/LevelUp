@@ -1,12 +1,8 @@
 /**
- * LA PREMIÈRE DES DEUX PORTES : la barre d'onglets d'Ascension.
- *
- * Ces tests cadenassent le 5e onglet « Tactique » (2026-09-06) :
- *   - il apparaît, en FR comme en EN, quand le titre déclare `replay` ;
- *   - il DISPARAÎT quand le titre ne le déclare pas — un onglet qui mène à une page
- *     « indisponible » est un onglet qui ment ;
- *   - les quatre onglets historiques ne bougent pas ;
- *   - « Tendances » n'est PLUS un onglet d'Ascension : la page vit sous Solo.
+ * AscensionLayout : le layout ne rend plus ni en-tête ni barre d'onglets (posés au-dessus par
+ * `SectionHeader`, voir `components/shell/SectionHeader.test.tsx` pour les onglets, dont
+ * « Tactique » derrière la capacité `replay`). Il garde le bandeau d'astuces, sous l'en-tête, puis
+ * le contenu de l'onglet.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
@@ -16,91 +12,37 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { AscensionLayout } from './AscensionLayout'
 
-// `routeCourante` pilote le double de `useMatchRoute` : la barre d'onglets deduit l'onglet
-// actif de ce hook, et un double qui repond TOUJOURS faux rend l'assertion « un seul onglet
-// selectionne » vacante (defaut W3 de la revue R1).
-let routeCourante = ''
-
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
   return {
     ...actual,
-    useParams: () => ({ playerSlug: 'JGtm' }),
-    useMatchRoute:
-      () =>
-      ({ to }: { to: string }) =>
-        routeCourante !== '' && to.endsWith(routeCourante),
-    Link: ({ children, ...rest }: { children: React.ReactNode }) => (
-      <a {...(rest as Record<string, unknown>)}>{children}</a>
-    ),
-    Outlet: () => null,
+    Outlet: () => <div data-testid="contenu-onglet" />,
   }
 })
 
-function poserTitre(capabilities: string[], locale: 'fr' | 'en' = 'fr') {
-  useAppShellStore.setState({
-    locale,
-    currentTitleSlug: 'un_titre',
-    availableTitles: [{ slug: 'un_titre', name: 'Un titre', capabilities }] as never,
-  })
-}
+beforeEach(() => useAppShellStore.setState({ locale: 'fr' }))
+afterEach(() => useAppShellStore.setState({ locale: 'fr' }))
 
-beforeEach(() => {
-  routeCourante = ''
-  poserTitre(['replay'])
-})
-afterEach(() => useAppShellStore.setState({ locale: 'fr', availableTitles: [] }))
-
-describe('AscensionLayout — la rangée d’onglets', () => {
-  it('titre AVEC `replay` : les cinq onglets, Tactique en dernier', () => {
+describe('AscensionLayout — le contenu sous l’en-tête de section', () => {
+  it('rend le contenu de l’onglet et aucun titre ni onglet de son cru', () => {
     renderWithProviders(<AscensionLayout />)
-    const onglets = screen.getAllByRole('tab').map((n) => n.textContent)
-    expect(onglets).toEqual([
-      'Profil',
-      'Objectifs',
-      'Entraînement',
-      'Réalisations',
-      'Tactique',
-    ])
+    expect(screen.getByTestId('contenu-onglet')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
+    expect(screen.queryAllByRole('tab')).toHaveLength(0)
+    expect(screen.queryByRole('navigation')).toBeNull()
   })
 
-  it('titre SANS `replay` : pas d’onglet Tactique — un onglet mort ment', () => {
-    poserTitre(['matchmaking'])
-    renderWithProviders(<AscensionLayout />)
-    expect(screen.queryByText('Tactique')).toBeNull()
-    expect(screen.getAllByRole('tab')).toHaveLength(4)
-  })
-
-  // W3 — UN SEUL ONGLET SELECTIONNE. `isProfile` se calcule par exclusion des quatre
-  // autres : oublier `&& !isTactical` faisait briller « Profil » EN MEME TEMPS que
-  // « Tactique ». Le double de `useMatchRoute` doit donc repondre vrai quelque part, sans
-  // quoi le test ne dit rien.
-  it('sur la route Tactique : exactement un onglet selectionne, et c’est le bon', () => {
-    routeCourante = '/ascension/tactique'
-    renderWithProviders(<AscensionLayout />)
-    const actifs = screen
-      .getAllByRole('tab')
-      .filter((n) => n.getAttribute('aria-selected') === 'true')
-    expect(actifs.map((n) => n.textContent)).toEqual(['Tactique'])
-  })
-
-  it('sur la route Profil (aucune sous-route) : « Profil » seul est selectionne', () => {
-    renderWithProviders(<AscensionLayout />)
-    const actifs = screen
-      .getAllByRole('tab')
-      .filter((n) => n.getAttribute('aria-selected') === 'true')
-    expect(actifs.map((n) => n.textContent)).toEqual(['Profil'])
-  })
-
-  it('en anglais, l’onglet s’appelle « Tactics »', () => {
-    poserTitre(['replay'], 'en')
-    renderWithProviders(<AscensionLayout />)
-    expect(screen.getByText('Tactics')).toBeInTheDocument()
+  it('le bandeau d’astuces précède le contenu de l’onglet', () => {
+    const { container } = renderWithProviders(<AscensionLayout />)
+    const main = container.querySelector('main')
+    const contenu = screen.getByTestId('contenu-onglet')
+    expect(main?.firstElementChild).not.toBe(contenu)
+    expect(main?.contains(contenu)).toBe(true)
   })
 })
 
-// LA LARGEUR (plan Tactique v2, L4.1) : les onglets d'Ascension occupent toute la largeur de la
-// fenêtre, avec la marge de 24 px des pages pleine largeur — plus de conteneur centré borné à 6xl.
+// LA LARGEUR (plan Tactique v2, L4.1) : la page occupe toute la largeur de la fenêtre, avec la
+// marge de 24 px des pages pleine largeur — plus de conteneur centré borné à 6xl.
 describe('AscensionLayout — la largeur de la page', () => {
   it('pleine largeur : ni conteneur centré ni borne 6xl, marge p-6', () => {
     const { container } = renderWithProviders(<AscensionLayout />)

@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
-	title "levelup/go-api/internal/domain/title"
 	auth "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/ratebudget"
 	"levelup/go-api/internal/service"
@@ -85,14 +84,15 @@ func (s *refreshingHaloSource) GetMatchStats(ctx context.Context, matchID string
 // BuildHaloSource résout le compte gamertag (store-first) et retourne un client Halo
 // single-token auto-rafraîchi pour le fetch des matchs. Si eager, échoue tôt si le
 // token est KO (avant d'ouvrir la base) ; sinon la résolution est différée au 1er
-// usage (boot lazy du serveur — pas d'I/O token au démarrage).
-func BuildHaloSource(cfg *config.AppConfig, gamertag string, rps int, eager bool) (service.WorldMatchSource, error) {
+// usage (boot lazy du serveur — pas d'I/O token au démarrage). ctx borne la résolution
+// eager : une annulation (arrêt du serveur) interrompt l'échange en cours.
+func BuildHaloSource(ctx context.Context, cfg *config.AppConfig, gamertag string, rps int, eager bool) (service.WorldMatchSource, error) {
 	xuid, err := xuidForGamertag(cfg, gamertag)
 	if err != nil {
 		return nil, err
 	}
 	provider := auth.NewSISUProvider()
-	store := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 
 	src := &refreshingHaloSource{
 		ttl: 3 * time.Hour, // Spartan ~4h, marge
@@ -120,7 +120,7 @@ func BuildHaloSource(cfg *config.AppConfig, gamertag string, rps int, eager bool
 		},
 	}
 	if eager {
-		if _, err := src.get(context.Background()); err != nil {
+		if _, err := src.get(ctx); err != nil {
 			return nil, fmt.Errorf("résolution token %s: %w", gamertag, err)
 		}
 	}
@@ -151,8 +151,11 @@ func (m *multiHaloSource) GetMatchStats(ctx context.Context, matchID string) (ma
 
 // BuildMultiHaloSource résout TOUS les comptes db_profiles via le chemin prouvé et
 // round-robine sur ceux qui réussissent (les autres — RT mintés par un autre client,
-// ex. env-var .env.local — sont skippés avec un warn). Retourne les gamertags actifs.
-func BuildMultiHaloSource(cfg *config.AppConfig, rps int, eager bool) (service.WorldMatchSource, []string, error) {
+// ex. env-var .env.local — sont skippés avec un warn). Retourne les gamertags actifs. ctx est
+// consulté AVANT chaque compte et passé à sa résolution : un arrêt demandé pendant la boucle
+// (un échange Microsoft d'environ une seconde par compte) l'interrompt au lieu de la laisser
+// finir tous les comptes.
+func BuildMultiHaloSource(ctx context.Context, cfg *config.AppConfig, rps int, eager bool) (service.WorldMatchSource, []string, error) {
 	players, err := cfg.LoadPlayers()
 	if err != nil {
 		return nil, nil, fmt.Errorf("chargement db_profiles.json: %w", err)
@@ -160,9 +163,15 @@ func BuildMultiHaloSource(cfg *config.AppConfig, rps int, eager bool) (service.W
 	var sources []service.WorldMatchSource
 	var ok []string
 	for _, p := range players {
-		s, e := BuildHaloSource(cfg, p.Gamertag, rps, eager)
+		if err := ctx.Err(); err != nil {
+			return nil, nil, fmt.Errorf("résolution des comptes interrompue: %w", err)
+		}
+		s, e := BuildHaloSource(ctx, cfg, p.Gamertag, rps, eager)
 		if e != nil {
-			slog.WarnContext(context.Background(), "world-enrich: compte skippé (token non résolu)",
+			if ctx.Err() != nil {
+				return nil, nil, fmt.Errorf("résolution des comptes interrompue: %w", ctx.Err())
+			}
+			slog.WarnContext(ctx, "world-enrich: compte skippé (token non résolu)",
 				"gamertag", p.Gamertag, "err", e)
 			continue
 		}
@@ -184,7 +193,7 @@ func BuildResolver(cfg *config.AppConfig, tokenGamertag string) (XUIDResolver, e
 		return nil, err
 	}
 	provider := auth.NewSISUProvider()
-	store := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	store := auth.NewMultiUserTokenStore(cfg.PathResolver().WatcherTokensDir())
 
 	hp := auth.NewCachedHeaderProvider(0, func(ctx context.Context) (string, error) {
 		at, e := resolveAccessToken(ctx, provider, store, xuid)
@@ -255,7 +264,7 @@ type EnricherOptions struct {
 // RankedPlaylistSet). Convenience pour le cron in-process : en mode multi-token, le
 // header PeopleHub est dérivé du 1er compte résolu (sauf TokenGamertag explicite).
 // Retourne aussi la liste des gamertags de tokens actifs (pour le log de boot).
-func BuildEnricher(cfg *config.AppConfig, opts EnricherOptions) (*service.WorldStatsEnricher, []string, error) {
+func BuildEnricher(ctx context.Context, cfg *config.AppConfig, opts EnricherOptions) (*service.WorldStatsEnricher, []string, error) {
 	rps := opts.RPS
 	if rps <= 0 {
 		rps = 5
@@ -266,9 +275,9 @@ func BuildEnricher(cfg *config.AppConfig, opts EnricherOptions) (*service.WorldS
 		err error
 	)
 	if strings.TrimSpace(opts.TokenGamertag) == "" {
-		src, gts, err = BuildMultiHaloSource(cfg, rps, opts.Eager)
+		src, gts, err = BuildMultiHaloSource(ctx, cfg, rps, opts.Eager)
 	} else {
-		src, err = BuildHaloSource(cfg, opts.TokenGamertag, rps, opts.Eager)
+		src, err = BuildHaloSource(ctx, cfg, opts.TokenGamertag, rps, opts.Eager)
 		gts = []string{opts.TokenGamertag}
 	}
 	if err != nil {

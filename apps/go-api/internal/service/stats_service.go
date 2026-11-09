@@ -341,7 +341,7 @@ func computeBucketInfoFromMatches(matches []legacymatch.StatsMatchRow) domain.Bu
 // resolveCurrentSeason retourne la saison courante ou un fallback synthétique.
 func (s *StatsService) resolveCurrentSeason(ctx context.Context) *domain.CurrentSeasonResult {
 	if s.metaRepo == nil {
-		return syntheticSeasonResult()
+		return syntheticSeasonResult(ctx)
 	}
 	titleID := s.titleSlug
 	if titleID == "" {
@@ -350,7 +350,7 @@ func (s *StatsService) resolveCurrentSeason(ctx context.Context) *domain.Current
 	slog.DebugContext(ctx, "resolveCurrentSeason", "titleSlug", titleID)
 	season, err := s.metaRepo.GetCurrentSeason(ctx, titleID)
 	if err != nil || season == nil {
-		return syntheticSeasonResult()
+		return syntheticSeasonResult(ctx)
 	}
 	return &domain.CurrentSeasonResult{Season: season}
 }

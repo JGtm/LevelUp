@@ -7,6 +7,7 @@
  */
 
 import type { Locale } from '@/lib/i18n/locale'
+import type { TierKey } from './tier'
 
 export interface BriefingTexts {
   /** Libellé "Résultats" + helper pluralisation outcomes — utilisés dans la
@@ -18,6 +19,10 @@ export interface BriefingTexts {
     teamScore: string
     deltaBonusPositive: (delta: number) => string
     deltaBonusNegative: (delta: number) => string
+    /** Marque du joueur principal sur sa carte (« (moi) »). */
+    you: string
+    /** Libellé qualitatif d'un score par palier (excellent..bad). */
+    tiers: Record<TierKey, string>
   }
   drill: {
     activeView: (gamertag: string) => string
@@ -55,6 +60,8 @@ const FR: BriefingTexts = {
     teamScore: "Score d'équipe",
     deltaBonusPositive: (d) => `Bonus équipe +${d}`,
     deltaBonusNegative: (d) => `Malus équipe ${d}`,
+    you: '(moi)',
+    tiers: { excellent: 'Excellent', good: 'Solide', average: 'Correct', poor: 'Mauvais', bad: 'Pourri' },
   },
   drill: {
     activeView: (gt) => `Vue active : ${gt}`,
@@ -92,6 +99,8 @@ const EN: BriefingTexts = {
     teamScore: 'Team score',
     deltaBonusPositive: (d) => `Team bonus +${d}`,
     deltaBonusNegative: (d) => `Team penalty ${d}`,
+    you: '(me)',
+    tiers: { excellent: 'Excellent', good: 'Solid', average: 'Average', poor: 'Poor', bad: 'Bad' },
   },
   drill: {
     activeView: (gt) => `Viewing: ${gt}`,
@@ -125,6 +134,8 @@ const EN: BriefingTexts = {
   },
 }
 
+const TEXTS: Record<Locale, BriefingTexts> = { fr: FR, en: EN }
+
 export function getBriefingTexts(locale: Locale): BriefingTexts {
-  return locale === 'en' ? EN : FR
+  return TEXTS[locale]
 }

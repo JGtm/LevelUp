@@ -2,8 +2,7 @@
  * Labels FR/EN des descripteurs du profil de combat (3 axes × 5 bandes).
  *
  * Source unique consommée par Synthesis, Escouade (et référencée par le glossaire).
- * Vocabulaire et bornes calibrés sur la distribution des world leaders
- * (cf. .ai/PLAN_COMBAT_PROFILE_RECALIBRATION.md). Bornes backend dans
+ * Vocabulaire et bornes calibrés sur la distribution des world leaders. Bornes backend dans
  * apps/go-api/internal/analysis/combat_yield.go.
  *
  * Localisé : chaque fonction prend la locale active (ManifestLocale) — un utilisateur

@@ -5,8 +5,7 @@ package sync
 // POURQUOI IL EXISTE, ET IL FAUT LE LIRE AVANT DE LE TOUCHER. `assist_known` n a qu UNE
 // origine — le kill-feed du film — et son seul producteur etait une commande manuelle. Le
 // jour ou plus personne ne l a lancee (cache de films gele le 2026-04-07), la donnee s est
-// arretee sans un log : cinq mois, deux blocs de l app disparus en silence
-// (`.ai/V7.5/REGISTRE_ASSISTANCES_2026-08-29.md`).
+// arretee sans un log : cinq mois, deux blocs de l app disparus en silence.
 //
 // La revue du meme jour avait par ailleurs montre qu un cablage pose sur UNE factory et pas
 // sur sa jumelle ne prend jamais, et que rien ne le dit. Les deux lecons se rejoignent ici :
@@ -19,6 +18,8 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/platform/gameproc"
 	"levelup/go-api/internal/sync/killcollector"
 )
 
@@ -123,5 +124,38 @@ func TestKillSourceAppeleeParLePipeline(t *testing.T) {
 	if posKill < 0 || posReplay < 0 || posKill > posReplay {
 		t.Error("l etape 1.57 doit passer AVANT les artefacts de rejeu : elle archive le film au " +
 			"cache, que l etape 1.58 retrouve alors sur disque au lieu de le retelecharger")
+	}
+}
+
+// TestKillSourceReporteePendantLaPartie : l'étape 1.57 décode des films dans le processus ; tant que
+// Halo tourne elle est reportée comme la cuisson des rejeux (rien n'est téléchargé, le compteur de
+// travail différé monte, le backlog se rattrape au cycle suivant hors partie).
+func TestKillSourceReporteePendantLaPartie(t *testing.T) {
+	m := gameproc.NewMode()
+	prev := gameproc.SetDefault(m)
+	t.Cleanup(func() { gameproc.SetDefault(prev) })
+	(&gameproc.Watcher{
+		Lister: gameproc.ListerFunc(func() ([]string, error) { return []string{"HaloInfinite.exe"}, nil }),
+		Mode:   m,
+		Names:  func() []string { return []string{"HaloInfinite.exe"} },
+	}).Poll(context.Background())
+	if m.HeavyWorkAllowed() {
+		t.Fatal("précondition : le jeu tourne")
+	}
+
+	interne := &filmFetcherTemoin{chunks: []FilmChunk{{Index: 0, ChunkType: 1, Data: []byte("x")}}}
+	steps := postSyncFilmSteps{
+		engine: NewSyncEngine(t.TempDir(), "GT", "123", nil, nil),
+		client: interne,
+	}
+	before := observability.LoadCounter(gameproc.MetricHeavyDeferred)
+	if got := steps.runKillSource(context.Background(), []string{"m1"}); got != 0 {
+		t.Fatalf("runKillSource = %d, attendu 0 (reportée)", got)
+	}
+	if got := observability.LoadCounter(gameproc.MetricHeavyDeferred) - before; got != 1 {
+		t.Fatalf("travail différé compté %d fois, attendu 1", got)
+	}
+	if interne.appels != 0 {
+		t.Fatalf("aucun film ne doit être téléchargé pendant la partie (appels=%d)", interne.appels)
 	}
 }

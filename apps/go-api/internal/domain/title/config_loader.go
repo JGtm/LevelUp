@@ -83,9 +83,14 @@ type titleManifestSection struct {
 	SteamAppID       string   `toml:"steam_app_id"`
 	PlacementMatches int      `toml:"placement_matches"`
 	CSRSeasonID      string   `toml:"csr_season_id"`
+	// ModeSource : où le registre porte le mode d'un match ("pair" par défaut, "game_variant").
+	ModeSource string `toml:"mode_source"`
 	// MediaFilenamePrefixes : préfixes de nom de fichier de capture appartenant au
 	// titre (routage de l'indexeur média, DEC-8 — cf. TitleDescriptor).
 	MediaFilenamePrefixes []string `toml:"media_filename_prefixes"`
+	// ProcessNames : noms d'exécutables du client PC du titre (détection du jeu en cours, cf.
+	// TitleDescriptor.ProcessNames). Vide ou absent : le titre n'a pas de client PC.
+	ProcessNames []string `toml:"process_names"`
 }
 
 // LoadTitleManifest charge le descripteur d'un titre depuis
@@ -131,9 +136,19 @@ func LoadTitleManifestFromBytes(path, slug string, raw []byte) (*TitleDescriptor
 		PlacementMatches: doc.Title.PlacementMatches,
 		CSRSeasonID:      strings.TrimSpace(doc.Title.CSRSeasonID),
 	}
+	modeSource, modeErr := ParseModeSource(strings.TrimSpace(doc.Title.ModeSource))
+	if modeErr != nil {
+		errs = append(errs, modeErr)
+	}
+	desc.ModeSource = modeSource
 	for _, p := range doc.Title.MediaFilenamePrefixes {
 		if trimmed := strings.TrimSpace(p); trimmed != "" {
 			desc.MediaFilenamePrefixes = append(desc.MediaFilenamePrefixes, trimmed)
+		}
+	}
+	for _, p := range doc.Title.ProcessNames {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			desc.ProcessNames = append(desc.ProcessNames, trimmed)
 		}
 	}
 	if desc.Name == "" {
@@ -223,6 +238,7 @@ func LoadTitlesIntoRegistry(reg *Registry, repoRoot string, logger *slog.Logger)
 			"status", string(desc.Status),
 			"provider", desc.Provider,
 			"capabilities", len(desc.Capabilities),
+			"mode_source", string(desc.ModeSource), // un manifeste d'un autre dépôt (sans la clé) rend « pair » : visible au boot
 			"internal", desc.IsInternal, // fixture de test (exclue du switcher utilisateur)
 		)
 	}

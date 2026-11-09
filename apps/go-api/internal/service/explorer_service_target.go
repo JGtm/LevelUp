@@ -5,12 +5,14 @@ import (
 	"errors"
 	"hash/fnv"
 	"log/slog"
+	"slices"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 )
 
@@ -138,9 +140,11 @@ func (s *ExplorerService) computeTargetCombatProfileLive(liveCtx context.Context
 		slog.WarnContext(liveCtx, "explorer_target_combat_profile_live_failed", "xuid", targetXUID, "err", err)
 		return nil, domain.ExplorerLiveFailed
 	}
-	// Traduit les sous-modes EN normalisés en FR (mode_name_tr) — MÊME résolution
-	// que la source locale, pour un donut "Répartition des modes" homogène.
-	s.repo.TranslateModeUIsFR(liveCtx, live)
+	// Traduit les sous-modes EN normalisés dans la langue de la requête (mode_name_tr) — MÊME
+	// résolution que la source locale, pour un donut "Répartition des modes" homogène. Le cache
+	// de 20 min rend la tranche partagée entre langues : la traduction travaille sur une copie.
+	live = slices.Clone(live)
+	s.repo.TranslateModeUIs(liveCtx, i18n.FromContext(liveCtx), live)
 	slog.DebugContext(liveCtx, "explorer_target_combat_profile", "xuid", targetXUID, "matches", len(live), "source", "live")
 	return live, domain.ExplorerLiveOK
 }
@@ -157,7 +161,7 @@ func (s *ExplorerService) computeMatchesPerSeason(ctx context.Context, targetXUI
 		slog.WarnContext(ctx, "explorer_target_matches_per_season_failed", "xuid", targetXUID, "err", err)
 		return nil
 	}
-	return buildMatchesPerSeason(starts, s.deps.Seasons)
+	return buildMatchesPerSeason(starts, s.deps.Seasons, i18n.FromContext(ctx))
 }
 
 // fetchTargetIdentityRaw résout l'identité Spartan BRUTE du target : DB locale

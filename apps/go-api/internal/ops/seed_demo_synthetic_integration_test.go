@@ -109,6 +109,18 @@ func TestSeedDemoSynthetic_Structure(t *testing.T) {
 		  AND TRY_CAST(wi.id_value AS UBIGINT) IS NOT NULL
 		  AND TRY_CAST(wi.id_value AS UBIGINT) <> 0`, 4) // le Bandit porte 2 identifiants
 	assertCountAtLeast(t, meta, "SELECT COUNT(*) FROM medal_definitions", 4)
+	// Les noms des médailles synthétiques sont dans medal_translations, une ligne par langue
+	// (étiquette Halo principale) : medal_definitions ne porte plus de colonne de texte.
+	assertCount(t, meta, fmt.Sprintf(`
+		SELECT COUNT(*) FROM medal_translations
+		WHERE medal_name_id IN (%d, %d, %d, %d) AND lang IN ('fr-FR', 'en-US')`,
+		synthMedalIDs[0], synthMedalIDs[1], synthMedalIDs[2], synthMedalIDs[3]), 8)
+	assertCount(t, meta, fmt.Sprintf(
+		`SELECT COUNT(*) FROM medal_translations WHERE medal_name_id = %d AND lang = 'fr-FR' AND name = 'Double meurtre'`,
+		synthMedalIDs[0]), 1)
+	assertCount(t, meta, fmt.Sprintf(
+		`SELECT COUNT(*) FROM medal_translations WHERE medal_name_id = %d AND lang = 'en-US' AND name = 'Double Kill'`,
+		synthMedalIDs[0]), 1)
 	assertCountAtLeast(t, meta, "SELECT COUNT(*) FROM career_ranks", 4)
 	assertCountAtLeast(t, meta, "SELECT COUNT(*) FROM citation_mappings", 10)
 }
@@ -166,6 +178,7 @@ var detSeededTables = map[string]bool{
 	"match_registry":          true,
 	"match_skill_rank":        true,
 	"medal_definitions":       true,
+	"medal_translations":      true,
 	"medals_earned":           true,
 	"player_csr_snapshots":    true,
 	"player_match_enrichment": true,

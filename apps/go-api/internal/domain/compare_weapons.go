@@ -1,5 +1,4 @@
-// Package domain — compare_weapons.go : LE PROFIL D'ARMES DU FACE-À-FACE
-// (plan .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md).
+// Package domain — compare_weapons.go : LE PROFIL D'ARMES DU FACE-À-FACE.
 //
 // # DEUX FAMILLES DE TYPES, ET ELLES NE SE CONFONDENT PAS
 //
@@ -91,8 +90,8 @@ type CompareWeaponSide struct {
 	// le front itère sans garde.
 	FragClasses []CompareFragClass `json:"frag_classes"`
 	// Range : la portée par RÔLE (D1/D8). `WeaponRangeRow.weapon_key` porte une clé de
-	// RÔLE (`precision`, `automatic`, ...) et non une clé d'arme ; `label`/`label_en`
-	// restent VIDES, le front résolvant le libellé depuis son manifeste. `Opening` est
+	// RÔLE (`precision`, `automatic`, ...) et non une clé d'arme ; `label`
+	// reste VIDE, le front résolvant le libellé depuis son manifeste. `Opening` est
 	// toujours nil : l'entame est une lecture de la Synthèse, hors du périmètre de la page.
 	// Nil si le titre ne produit pas de positions par kill, ou si aucun frag n'est mesuré.
 	Range *SynthesisWeaponRange `json:"range,omitempty"`
@@ -116,12 +115,12 @@ type CompareFragClass struct {
 // CompareTopWeapon est UNE arme du top 3 : son nom, ses frags, son icône.
 //
 // LE NOM VIENT DE LA CHAÎNE weapon_names.toml DU TITRE (porté jusqu'ici par
-// `port.WeaponKillRow.Label/LabelEN`), jamais d'un libellé écrit en Go : ces noms sont propres
+// `port.WeaponKillRow.Label`), jamais d'un libellé écrit en Go : ces noms sont propres
 // à chaque titre, et les recopier côté serveur dupliquerait le TOML du titre.
 type CompareTopWeapon struct {
-	Label   string `json:"label"`
-	LabelEN string `json:"label_en,omitempty"`
-	Kills   int    `json:"kills"`
+	// Label : le nom de l arme dans la langue de la requete (repli en).
+	Label string `json:"label"`
+	Kills int    `json:"kills"`
 	// Class / Role : les dimensions registre de l'arme, pour que le front puisse la
 	// colorer comme le reste de la page. Vides si le registre ne les connaît pas.
 	Class string `json:"class,omitempty"`

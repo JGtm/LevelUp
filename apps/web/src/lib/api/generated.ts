@@ -350,7 +350,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Action admin — upsert asset_translations (en-US et/ou fr-FR) pour un asset playlist/map/pair/game_variant (résolution effective des UUID inconnus) (auth admin requis) */
+        /** Action admin — upsert asset_translations (une ligne par langue saisie) pour un asset playlist/map/pair/game_variant (résolution effective des UUID inconnus) (auth admin requis) */
         post: operations["postAdminActionAssetTranslation"];
         delete?: never;
         options?: never;
@@ -367,7 +367,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Action admin — upsert mode_name_tr[fr] pour un mode normalisé (résout un mode non traduit, effet immédiat) (auth admin requis) */
+        /** Action admin — upsert mode_name_tr (une ligne par langue saisie) pour un mode normalisé (résout un mode non traduit, effet immédiat) (auth admin requis) */
         post: operations["postAdminActionModeTranslation"];
         delete?: never;
         options?: never;
@@ -2372,6 +2372,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/media/missing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Media whose file is missing from disk */
+        get: operations["getMissingMedia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/missing/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Entries a missing media can be merged into */
+        get: operations["getMissingMediaCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/missing/confirm-bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirms a bulk disappearance of media */
+        post: operations["postMissingMediaConfirmBulk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/missing/forget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Forgets a missing media */
+        post: operations["postMissingMediaForget"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/missing/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Merges a missing media into another entry */
+        post: operations["postMissingMediaMerge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Opens the file explorer on a media file */
+        post: operations["postMediaReveal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/media/upload": {
         parameters: {
             query?: never;
@@ -2724,26 +2826,6 @@ export interface paths {
          *     badges narratifs ally_plus / tough_enemy / ordinal.
          */
         get: operations["getCareerTopEncounters"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/players/{player_slug}/pages/career/top-matches": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Top matchs du joueur
-         * @description Retourne les meilleurs et pires matchs du joueur (tous critères confondus).
-         */
-        get: operations["getCareerTopMatches"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3917,6 +3999,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Etat des sauvegardes et de la memoire (application de bureau) */
+        get: operations["getDataStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/data/backup/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lance une sauvegarde en dossier maintenant (application de bureau) */
+        post: operations["postDataBackupRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/desktop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Etat vivant de l'integration au poste (application de bureau) */
+        get: operations["getDesktopStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/film-archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Occupation et emplacement de l'archive des films */
+        get: operations["getFilmArchive"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings/media/reset-index": {
         parameters: {
             query?: never;
@@ -4343,16 +4493,13 @@ export interface components {
             category?: string;
             /** Format: int64 */
             current_progress?: number;
-            description_en: string;
-            description_fr: string;
+            description: string;
             /** Format: int64 */
             gamerscore: number;
             image_url?: string;
             is_secret: boolean;
-            locked_desc_en?: string;
-            locked_desc_fr?: string;
-            name_en: string;
-            name_fr: string;
+            locked_desc?: string;
+            name: string;
             rarity_category?: string;
             /** Format: double */
             rarity_percent?: number;
@@ -4740,6 +4887,12 @@ export interface components {
             /** @description Vrai si l'appelant peut réessayer (5xx / indisponibilité transitoire) */
             retryable: boolean;
         };
+        AppInfo: {
+            /** @description Dossier des données de l'utilisateur (bases, jetons, archive des films). */
+            data_root: string;
+            /** @description Version de l'application (celle du serveur). */
+            version: string;
+        };
         AppearanceComponentDiagnosis: {
             component: string;
             detail: string;
@@ -4775,12 +4928,10 @@ export interface components {
         };
         AssetMeta: {
             description?: string;
-            description_fr?: string;
             id: string;
             image_tinted?: boolean;
             image_url: string;
-            name_en: string;
-            name_fr: string;
+            name: string;
             /** Format: int64 */
             sprite_height?: number;
             /** Format: int64 */
@@ -5077,6 +5228,8 @@ export interface components {
         };
         BootstrapResponse: {
             active_sync_job_id?: string;
+            /** @description Version de l'application et racine des données, pour la fenêtre À propos (chrome de bureau seulement). */
+            app_info?: components["schemas"]["AppInfo"];
             /** @enum {string} */
             auth_mode: "none" | "password" | "xbox";
             /** @enum {string} */
@@ -5100,6 +5253,8 @@ export interface components {
             linked_halo_identity?: components["schemas"]["HaloIdentitySummary"] | null;
             /** @default fr */
             locale: string;
+            /** @description Aucun encodeur H.264 utilisable : le transcodage vidéo des clips est refusé. */
+            media_h264_missing?: boolean;
             oauth_code_flow_enabled: boolean;
             /** @enum {string} */
             pool_sharing: "granted" | "declined" | "undecided" | "unavailable";
@@ -5392,15 +5547,76 @@ export interface components {
             Severity: string;
         };
         CapabilityMap: {
+            /** @description Sauvegarde périodique des données en Parquet vers un dossier choisi, et restauration. */
+            can_backup_to_folder: boolean;
+            /** @description L'instance suit plusieurs comptes : les pages qui les confrontent (classements de la communauté) sont offertes. */
+            can_compare_accounts: boolean;
+            /** @description Réglages de l'instance modifiables (figés en démo). */
+            can_edit_settings: boolean;
+            /** @description L'instance livre au joueur connecté ses données pour l'application de bureau. */
+            can_export_for_desktop: boolean;
+            /** @description Import des données d'un joueur depuis une instance hébergée (jeton d'export à usage unique). */
+            can_import_from_site: boolean;
+            /** @description Intégration de la coquille avec le poste : notifications Windows, zone de notification, démarrage avec Windows. */
+            can_integrate_shell: boolean;
+            /** @description L'original d'une vidéo convertie n'est jamais supprimé par l'application (réglage de rétention masqué). */
+            can_keep_media_sources: boolean;
+            /** @description Plafond mémoire des bases réglable, mémoire du processus affichée. */
+            can_limit_memory: boolean;
+            /** @description Connexion Microsoft dans le navigateur par défaut, sans code à recopier (application de bureau). */
+            can_login_via_browser: boolean;
             can_manage_instance: boolean;
             can_manage_settings: boolean;
+            /** @description Téléchargement de l'application Windows proposé. */
+            can_offer_windows_download: boolean;
+            /** @description Mise en commun des jetons proposée à l'utilisateur. */
+            can_pool_tokens: boolean;
             can_read_local_data: boolean;
+            /** @description Régénération des rejeux en retard sur la version de l'application, sur demande (file de fond, un film à la fois). */
+            can_regenerate_replays: boolean;
+            /** @description Rapport de diagnostic (archive de journaux et d'état, sans secret) à joindre à un signalement. */
+            can_report_diagnostic: boolean;
             can_reset_media_index: boolean;
+            /** @description Ouverture de l'explorateur de fichiers du système sur un média. */
+            can_reveal_files_in_explorer: boolean;
             can_run_sync: boolean;
+            /** @description Tâche planifiée Windows qui rafraîchit les jetons quand l'application est fermée. */
+            can_schedule_refresh: boolean;
             can_self_provision: boolean;
+            /** @description Connexion par le SSO Xbox (mode xbox). */
+            can_sign_in_with_xbox: boolean;
             can_start_initial_sync: boolean;
+            /** @description Suppression d'un média : l'original part à la Corbeille du système quand le support en a une. */
+            can_trash_media_sources: boolean;
+            /** @description Mise à jour de l'application par la coquille desktop. */
+            can_update_app: boolean;
+            /** @description Dépôt de captures (refusé en démo). */
+            can_upload_media: boolean;
+            /** @description Comptes et inscriptions (authentification password ou xbox). */
+            can_use_accounts: boolean;
+            /** @description Espace d'administration de l'instance. */
+            can_use_admin: boolean;
+            /** @description Chrome d'application de bureau : barre latérale, fenêtre À propos, accueil sans image de couverture. */
+            can_use_compact_chrome: boolean;
+            /** @description Relais d'alertes Discord. */
+            can_use_discord: boolean;
+            /** @description Groupes (accès mutuel entre comptes). */
+            can_use_groups: boolean;
+            /** @description Codes d'invitation entre comptes et groupes. */
+            can_use_invitations: boolean;
             can_use_live_halo: boolean;
+            /** @description Sortie du serveur vers les services tiers (API Halo, Microsoft). */
+            can_use_outbound_network: boolean;
+            /** @description Sauvegarde restic des bases. */
+            can_use_restic: boolean;
             can_view_media: boolean;
+            /** @description Détection du jeu en cours (mode jeu : cuisson et tâches lourdes suspendues pendant la partie, synchronisation à sa fermeture). */
+            can_watch_game_process: boolean;
+            /**
+             * @description Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus).
+             * @enum {string}
+             */
+            deployment: "hosted" | "desktop" | "demo" | "dev";
         };
         CareerCSRRank: {
             badge_image_url?: string;
@@ -5496,8 +5712,7 @@ export interface components {
             current_xp: number;
             is_max_rank: boolean;
             next_rank_image_url?: string;
-            next_rank_name_en?: string;
-            next_rank_name_fr?: string;
+            next_rank_name?: string;
             /** Format: double */
             progress_pct: number;
             rank_image_url?: string;
@@ -5545,33 +5760,17 @@ export interface components {
         CareerTopEncountersResponse: {
             items: components["schemas"]["MatchEncounterRow"][] | null;
         };
-        CareerTopMatch: {
-            assists?: number | null;
-            badge_type?: string | null;
-            deaths?: number | null;
-            /** Format: float */
-            kd_ratio?: number | null;
-            kills?: number | null;
-            map_ui?: string | null;
-            /** Format: uuid */
-            match_id: string;
-            mode_ui?: string | null;
-            /** @enum {string|null} */
-            outcome?: "win" | "loss" | "tie" | "dnf" | null;
+        CarriedEffect: {
             /** Format: int64 */
-            outcome_code?: number | null;
+            t0: number;
+            /** Format: int64 */
+            t1?: number;
             /** Format: float */
-            performance_score?: number | null;
-            playlist_label?: string | null;
-            score_label?: string | null;
-            /** Format: date-time */
-            start_time?: string | null;
-            /** @enum {string|null} */
-            variant?: "best" | "worst" | null;
-        };
-        CareerTopMatchesResponse: {
-            best_matches: components["schemas"]["TopMatchDTO"][] | null;
-            worst_matches: components["schemas"]["TopMatchDTO"][] | null;
+            x?: number;
+            /** Format: float */
+            y?: number;
+            /** Format: float */
+            z?: number;
         };
         CarriedEnergy: {
             /** Format: float */
@@ -5584,6 +5783,7 @@ export interface components {
         };
         CarriedEquipment: {
             energy?: components["schemas"]["CarriedEnergy"][] | null;
+            family?: string;
             /** Format: int64 */
             r: number;
             /** Format: int32 */
@@ -5599,17 +5799,23 @@ export interface components {
             /** Format: int64 */
             ambiguousCost: number;
             /** Format: int64 */
-            ambiguousRank: number;
-            /** Format: int64 */
             attached: number;
             /** Format: int64 */
             beforeOrigin: number;
             /** Format: int64 */
+            conflicting: number;
+            /** Format: int64 */
             created: number;
+            /** Format: int64 */
+            endedBeforeOrigin: number;
             /** Format: int64 */
             energyReads: number;
             /** Format: int64 */
+            grenades: number;
+            /** Format: int64 */
             noCatalog: number;
+            /** Format: int64 */
+            noGlobalId: number;
             /** Format: int64 */
             noIdentity: number;
             /** Format: int64 */
@@ -5619,6 +5825,8 @@ export interface components {
             /** Format: int64 */
             published: number;
             /** Format: int64 */
+            readsBeforeOrigin: number;
+            /** Format: int64 */
             riftEndsRead: number;
             /** Format: int64 */
             riftEndsUnread: number;
@@ -5627,25 +5835,44 @@ export interface components {
             /** Format: int64 */
             teleportsWithoutPose: number;
             /** Format: int64 */
+            trackedEffectEnds: number;
+            /** Format: int64 */
+            trackedEffects: number;
+            /** Format: int64 */
+            trackedEffectsAmbiguous: number;
+            /** Format: int64 */
+            trackedEffectsUnlinked: number;
+            /** Format: int64 */
             trackedEnds: number;
             /** Format: int64 */
             trackedObjects: number;
             /** Format: int64 */
-            unnamed: number;
+            trackedPositioned: number;
+            /** Format: int64 */
+            trackedUnpositioned: number;
             /** Format: int64 */
             unpositioned: number;
+            /** Format: int64 */
+            unresolved: number;
             /** Format: int64 */
             uses: number;
             /** Format: int64 */
             withCost: number;
-            /** Format: int64 */
-            withoutRank: number;
         };
         CarriedTracked: {
+            effect?: components["schemas"]["CarriedEffect"];
+            /** Format: int64 */
+            land?: number;
             /** Format: int64 */
             t0: number;
             /** Format: int64 */
             t1?: number;
+            /** Format: float */
+            x?: number;
+            /** Format: float */
+            y?: number;
+            /** Format: float */
+            z?: number;
         };
         CascadeFilter: {
             experience_types: string[] | null;
@@ -5992,7 +6219,6 @@ export interface components {
             /** Format: int64 */
             kills: number;
             label: string;
-            label_en?: string;
             role?: string;
         };
         CompareWeaponProfile: {
@@ -6363,9 +6589,70 @@ export interface components {
             /** Format: int64 */
             watchdog_fired: number;
         };
+        DataBackupAttempt: {
+            /**
+             * Format: date-time
+             * @description Instant du passage.
+             */
+            at: string;
+            /** @description Code fixe de l'échec (nothing_exported, backup_failed). */
+            error_code?: string;
+            /** @description Le passage a réussi. */
+            ok: boolean;
+        };
+        DataBackupRunResponse: {
+            /** @description La sauvegarde a été lancée. */
+            started: boolean;
+        };
+        DataBackupStatus: {
+            /** @description Un dossier de sauvegarde est choisi. */
+            enabled: boolean;
+            /** @description Jeu de sauvegarde complet le plus récent du dossier choisi. */
+            last?: components["schemas"]["DataBackupSummary"];
+            /** @description Dernier passage depuis le démarrage de l'application. */
+            last_attempt?: components["schemas"]["DataBackupAttempt"];
+            /** @description Une sauvegarde est en cours d'écriture. */
+            running: boolean;
+            /** @description Le dossier choisi est sur le même volume que les données. */
+            same_volume: boolean;
+        };
+        DataBackupSummary: {
+            /** @description Version de l'application qui a écrit le jeu. */
+            app_version: string;
+            /**
+             * Format: int64
+             * @description Taille du jeu, en octets.
+             */
+            bytes: number;
+            /**
+             * Format: date-time
+             * @description Instant de la sauvegarde.
+             */
+            created_at: string;
+            /**
+             * Format: int64
+             * @description Nombre de bases du jeu.
+             */
+            databases: number;
+            /**
+             * Format: int64
+             * @description Durée de la sauvegarde, en millisecondes.
+             */
+            duration_ms: number;
+            /** @description Nom du dossier du jeu. */
+            name: string;
+            /** @description Vrai quand une base est restée occupée ou a échoué : le jeu est incomplet. */
+            partial: boolean;
+        };
         DataIssue: {
             code: string;
             detail?: string;
+        };
+        DataStatus: {
+            /** @description État de la sauvegarde périodique en Parquet (absent hors de l'application de bureau). */
+            backup?: components["schemas"]["DataBackupStatus"];
+            /** @description Mémoire du processus et plafond effectif des bases (absent hors de l'application de bureau). */
+            memory?: components["schemas"]["MemoryStatus"];
         };
         DatabaseStatus: {
             error?: string;
@@ -6393,6 +6680,12 @@ export interface components {
             profileRev: string;
             registry?: components["schemas"]["RegistryCoverage"];
             sourceRev: string;
+        };
+        DesktopStatus: {
+            /** @description Le jeu tourne en ce moment : la cuisson des rejeux et les tâches lourdes sont suspendues. */
+            game_running: boolean;
+            /** @description État de la tâche planifiée de rafraîchissement des jetons (absent hors de l'application de bureau). */
+            scheduled_refresh?: components["schemas"]["ScheduledRefreshStatus"];
         };
         DetectionPatchInputBody: {
             note?: string;
@@ -6699,6 +6992,8 @@ export interface components {
             /** Format: float */
             h?: number;
             id: string;
+            /** Format: int64 */
+            lifeEnd?: number;
             origin?: string;
             /** Format: int64 */
             owner: number;
@@ -6741,6 +7036,12 @@ export interface components {
             /** Format: int64 */
             endSeen: number;
             /** Format: int64 */
+            lifeAmbiguous: number;
+            /** Format: int64 */
+            lifeEnds: number;
+            /** Format: int64 */
+            lifeLinked: number;
+            /** Format: int64 */
             lives: number;
             /** Format: int64 */
             named: number;
@@ -6767,6 +7068,8 @@ export interface components {
             dimensions?: components["schemas"]["ExplorerBriefingDimension"][] | null;
             dominance?: components["schemas"]["ExplorerBriefingDominance"];
             low_sample?: boolean;
+            /** Format: int64 */
+            min_group_matches?: number;
             /** Format: date-time */
             period_end?: string;
             /** Format: date-time */
@@ -6803,12 +7106,14 @@ export interface components {
             win_rate: number;
         };
         ExplorerBriefingContextSplit: {
+            insufficient?: boolean;
             solo: components["schemas"]["ExplorerBriefingContextGroup"];
             squad: components["schemas"]["ExplorerBriefingContextGroup"];
         };
         ExplorerBriefingDimension: {
             dimension: string;
             entries: components["schemas"]["ExplorerBriefingDimensionEntry"][] | null;
+            insufficient?: boolean;
         };
         ExplorerBriefingDimensionEntry: {
             /** Format: double */
@@ -7050,11 +7355,11 @@ export interface components {
         };
         ExplorerMatchesSummary: {
             available_experience_types?: components["schemas"]["LabelValue"][] | null;
-            available_maps?: string[] | null;
-            available_modes?: string[] | null;
+            available_maps?: components["schemas"]["LabelValue"][] | null;
+            available_modes?: components["schemas"]["LabelValue"][] | null;
             available_outcomes?: components["schemas"]["LabelValue"][] | null;
             available_perf_tiers?: components["schemas"]["LabelValue"][] | null;
-            available_playlists?: string[] | null;
+            available_playlists?: components["schemas"]["LabelValue"][] | null;
             available_ranked_contexts?: components["schemas"]["LabelValue"][] | null;
             available_skill_tiers?: components["schemas"]["LabelValue"][] | null;
             available_squad_scopes?: components["schemas"]["LabelValue"][] | null;
@@ -7249,6 +7554,44 @@ export interface components {
             expires_at: string;
             file_name: string;
             file_token: string;
+        };
+        FilmArchiveStatus: {
+            /** @description Réglage « archiver les films ». */
+            archive_films: boolean;
+            /**
+             * Format: int64
+             * @description Taille occupée par l'archive, en octets.
+             */
+            bytes: number;
+            /** @description Valeur enregistrée du réglage ; vide = emplacement par défaut. */
+            configured_dir: string;
+            /** @description Dossier effectif de l'archive des films. */
+            dir: string;
+            /**
+             * Format: int64
+             * @description Nombre de films dans l'archive.
+             */
+            films: number;
+            /**
+             * Format: date-time
+             * @description Instant de la mesure (mise en cache).
+             */
+            measured_at: string;
+            /** @description Vrai si la mesure a été interrompue : les totaux sont des minorants. */
+            partial: boolean;
+            /** @description Vrai quand le dossier enregistré diffère du dossier effectif (redémarrage nécessaire). */
+            restart_required: boolean;
+            volume?: components["schemas"]["FilmArchiveVolume"];
+        };
+        FilmArchiveVolume: {
+            /** Format: int64 */
+            free_bytes: number;
+            /** @enum {string} */
+            status: "ok" | "warn" | "critical" | "unknown";
+            /** Format: int64 */
+            total_bytes: number;
+            /** Format: int64 */
+            used_percent: number;
         };
         FilmTableCounts: {
             /** Format: int64 */
@@ -7470,7 +7813,6 @@ export interface components {
             /** Format: int64 */
             kills: number;
             label?: string;
-            label_en?: string;
             role: string;
         };
         FreshnessBackupInfo: {
@@ -7745,8 +8087,7 @@ export interface components {
         HeroProgress: {
             /** Format: int64 */
             current_rank: number;
-            max_rank_name_en?: string;
-            max_rank_name_fr?: string;
+            max_rank_name?: string;
             /** Format: double */
             percentage: number;
             /** Format: int64 */
@@ -7765,11 +8106,13 @@ export interface components {
         HighlightModeCount: {
             /** Format: int64 */
             count: number;
+            label: string;
             value: string;
         };
         HighlightPlaylistCount: {
             /** Format: int64 */
             count: number;
+            label: string;
             value: string;
         };
         HighlightSeasonCount: {
@@ -8844,11 +9187,11 @@ export interface components {
         MatchHistoryQuerySummary: {
             active_filter_mode: string;
             available_experience_types?: components["schemas"]["LabelValue"][] | null;
-            available_maps?: string[] | null;
-            available_modes?: string[] | null;
+            available_maps?: components["schemas"]["LabelValue"][] | null;
+            available_modes?: components["schemas"]["LabelValue"][] | null;
             available_outcomes?: components["schemas"]["LabelValue"][] | null;
             available_perf_tiers?: components["schemas"]["LabelValue"][] | null;
-            available_playlists?: string[] | null;
+            available_playlists?: components["schemas"]["LabelValue"][] | null;
             available_ranked_contexts?: components["schemas"]["LabelValue"][] | null;
             available_skill_tiers?: components["schemas"]["LabelValue"][] | null;
             available_squad_scopes?: components["schemas"]["LabelValue"][] | null;
@@ -8952,7 +9295,6 @@ export interface components {
             /** Format: double */
             avg_distance_m: number;
             label?: string;
-            label_en?: string;
             /** Format: double */
             max_distance_m: number;
             /** Format: int64 */
@@ -9111,6 +9453,7 @@ export interface components {
             assists: number;
             /** Format: int64 */
             deaths: number;
+            deathsDeclared?: boolean;
             /** Format: int64 */
             joinMatchMs?: number;
             joinedInProgress?: boolean;
@@ -9119,6 +9462,7 @@ export interface components {
             /** Format: int64 */
             leaveMatchMs?: number;
             leftInProgress?: boolean;
+            presentAtCompletion?: boolean;
             /** Format: int64 */
             teamId: number;
             xuid: string;
@@ -9655,16 +9999,29 @@ export interface components {
         MediaAuthorsResponse: {
             authors: components["schemas"]["MediaAuthor"][] | null;
         };
+        MediaConfirmBulkResponse: {
+            /** Format: int64 */
+            bulk_missing_pending: number;
+            confirmed: boolean;
+        };
         MediaDeleteResponse: {
             deleted: boolean;
             file_path: string;
             /** Format: int64 */
             files_removed: number;
+            /** @description Au moins un original est parti à la Corbeille du système. */
+            trashed: boolean;
         };
         MediaFilterOptions: {
             maps: components["schemas"]["LabelValue"][] | null;
             modes: components["schemas"]["LabelValue"][] | null;
             playlists: components["schemas"]["LabelValue"][] | null;
+        };
+        MediaForgetResponse: {
+            file_path: string;
+            /** Format: int64 */
+            files_removed: number;
+            forgotten: boolean;
         };
         MediaItem: {
             basename: string;
@@ -9758,6 +10115,44 @@ export interface components {
             /** Format: int64 */
             team_id?: number;
         };
+        MediaMergeCandidate: {
+            basename: string;
+            /** Format: date-time */
+            capture_end_utc?: string;
+            /** Format: int64 */
+            delta_seconds?: number;
+            file_path: string;
+            kind: string;
+            thumbnail_path?: string;
+        };
+        MediaMergeCandidatesResponse: {
+            candidates: components["schemas"]["MediaMergeCandidate"][] | null;
+            /** Format: date-time */
+            capture_utc?: string;
+            file_path: string;
+        };
+        MediaMergeResponse: {
+            file_path: string;
+            /** Format: int64 */
+            files_removed: number;
+            merged: boolean;
+            target_file_path: string;
+        };
+        MediaMissingItem: {
+            basename: string;
+            /** Format: date-time */
+            capture_end_utc?: string;
+            file_path: string;
+            kind: string;
+            match_id?: string;
+            thumbnail_path?: string;
+        };
+        MediaMissingResponse: {
+            /** Format: int64 */
+            bulk_missing_pending: number;
+            items: components["schemas"]["MediaMissingItem"][] | null;
+            root_unavailable: boolean;
+        };
         MediaPageRequest: {
             group_by?: string | null;
             kind?: string | null;
@@ -9782,14 +10177,31 @@ export interface components {
             /** Format: int64 */
             total_unassigned: number;
         };
+        MediaRevealResponse: {
+            revealed: boolean;
+        };
         MediaToolingStatus: {
             ffmpeg: boolean;
             ffmpeg_version?: string;
             ffprobe: boolean;
+            h264_encoder_missing: boolean;
+        };
+        MemoryStatus: {
+            /** @description Plafond mémoire effectivement appliqué à chaque base (par exemple 4096MiB). */
+            effective_limit: string;
+            /**
+             * Format: int64
+             * @description Plafond réglé pour chaque base, en Mo (0 = valeur par défaut du serveur).
+             */
+            limit_mb: number;
+            /**
+             * Format: int64
+             * @description Mémoire résidente du processus, en Mo (0 quand la mesure est indisponible).
+             */
+            rss_mb: number;
         };
         MilestoneDTO: {
-            condition_en?: string;
-            condition_fr?: string;
+            condition?: string;
             earned: boolean;
             /** Format: date-time */
             earned_at?: string;
@@ -9798,8 +10210,7 @@ export interface components {
             metric: string;
             /** Format: double */
             threshold: number;
-            title_en: string;
-            title_fr: string;
+            title: string;
         };
         MilestonesResponse: {
             items: components["schemas"]["MilestoneDTO"][] | null;
@@ -10826,8 +11237,7 @@ export interface components {
             kind: string;
             origin: string;
             radar_axis?: string;
-            reason_key_en?: string;
-            reason_key_fr?: string;
+            reason_key?: string;
             reason_params?: string;
             /** Format: date-time */
             resolved_at?: string;
@@ -11156,7 +11566,7 @@ export interface components {
         ResolveResult: {
             action: string;
             langs?: string[] | null;
-            mode_en?: string;
+            mode_key?: string;
         };
         ResourceDBFile: {
             name: string;
@@ -11239,6 +11649,15 @@ export interface components {
             synced: number;
             /** Format: int64 */
             total: number;
+        };
+        ScheduledRefreshStatus: {
+            /** @description Code de l'erreur quand l'état est error. */
+            error_code?: string;
+            /**
+             * @description Tâche présente, absente, en erreur, ou pas encore vérifiée.
+             * @enum {string}
+             */
+            state: "present" | "absent" | "error" | "unknown";
         };
         SchedulerSnapshot: {
             gate: components["schemas"]["GateSnapshotData"];
@@ -11812,7 +12231,6 @@ export interface components {
         };
         /** @description Configuration de l'application (GET/PATCH /settings) */
         SettingsResponse: {
-            career_top_exclude_btb?: boolean;
             /** @enum {string} */
             discord_lang?: "fr" | "en";
             discord_notifications_enabled?: boolean;
@@ -11879,7 +12297,6 @@ export interface components {
             /** Format: int64 */
             sub_tier: number;
             tier_name: string;
-            tier_name_fr: string;
         };
         SkillSnapshot: {
             /** Format: double */
@@ -11900,7 +12317,6 @@ export interface components {
             /** Format: int64 */
             SubTier: number | null;
             TierCode: string | null;
-            TierCodeFR: string | null;
         };
         SkillTrendPoint: {
             date: string;
@@ -12685,7 +13101,6 @@ export interface components {
             };
             kind: string;
             label?: string;
-            label_en?: string;
             /** Format: int64 */
             total_squad: number;
             weapon_key?: string;
@@ -12793,13 +13208,11 @@ export interface components {
         };
         SuggestedChallenge: {
             arc_id?: string;
-            description_en?: string;
-            description_fr?: string;
+            description?: string;
             /** Format: int64 */
             historical_streak: number;
             is_arc_step: boolean;
-            label_en?: string;
-            label_fr?: string;
+            label?: string;
             target_tier: string;
             template_id: string;
         };
@@ -12912,6 +13325,10 @@ export interface components {
             /** Format: int64 */
             match_count: number;
             /** Format: int64 */
+            perf_tier?: number;
+            /** Format: double */
+            performance_avg?: number;
+            /** Format: int64 */
             ties: number;
             /** Format: int64 */
             unfinished: number;
@@ -12939,6 +13356,10 @@ export interface components {
             /** Format: int64 */
             match_count: number;
             mode_name: string;
+            /** Format: int64 */
+            perf_tier?: number;
+            /** Format: double */
+            performance_avg?: number;
             /** Format: int64 */
             ties: number;
             /** Format: int64 */
@@ -13172,7 +13593,6 @@ export interface components {
             arme_image_tinted?: boolean;
             arme_image_url?: string;
             arme_label?: string;
-            arme_label_en?: string;
             autre_gamertag?: string;
             autre_point?: components["schemas"]["TacticalPoint"];
             categorie_source?: string;
@@ -13205,8 +13625,7 @@ export interface components {
             id: string;
             /** Format: int64 */
             matchs: number;
-            nom_en: string;
-            nom_fr: string;
+            nom: string;
             /** Format: double */
             x: number;
             /** Format: double */
@@ -13220,9 +13639,10 @@ export interface components {
             /** Format: int64 */
             defaites: number;
             echelle?: components["schemas"]["EchelleTactique"];
+            map_filter_key: string;
             map_id: string;
+            map_label: string;
             map_name: string;
-            map_name_fr: string;
             /** Format: int64 */
             matchs: number;
             /** Format: double */
@@ -13343,8 +13763,7 @@ export interface components {
             y: number;
         };
         TacticalZoneNom: {
-            nom_en: string;
-            nom_fr: string;
+            nom: string;
         };
         TeamCoverage: {
             /** Format: int64 */
@@ -13517,15 +13936,13 @@ export interface components {
             cadence: string;
             /** Format: date-time */
             cooldown_ends_at?: string;
-            description_en?: string;
-            description_fr?: string;
+            description?: string;
             eval_type: string;
             /** Format: double */
             heroic_target: number;
             id: string;
             is_long_term: boolean;
-            label_en: string;
-            label_fr: string;
+            label: string;
             /** Format: double */
             legendary_target: number;
             lusr_components?: string[] | null;
@@ -13637,8 +14054,8 @@ export interface components {
             kills: number;
             /** Format: double */
             kills_expected?: number;
+            map_label?: string;
             map_name?: string;
-            map_name_fr?: string;
             match_id: string;
             /** Format: int64 */
             max_killing_spree?: number;
@@ -13785,24 +14202,6 @@ export interface components {
             last_auth_error?: string;
             reauth_required: boolean;
             updated_at?: string;
-        };
-        TopMatchDTO: {
-            /** Format: int64 */
-            deaths: number;
-            /** Format: double */
-            kda: number | null;
-            /** Format: int64 */
-            kills: number;
-            map_ui: string | null;
-            match_id: string;
-            mode_ui: string | null;
-            /** @enum {string} */
-            outcome?: "win" | "loss" | "tie" | "dnf";
-            /** Format: int64 */
-            outcome_code: number;
-            /** Format: double */
-            performance_score: number;
-            start_time: string | null;
         };
         TopTeammate: {
             /** Format: double */
@@ -14397,7 +14796,6 @@ export interface components {
         };
         WeaponBelowThreshold: {
             label?: string;
-            label_en?: string;
             /** Format: int64 */
             measured: number;
             weapon_key: string;
@@ -14434,7 +14832,6 @@ export interface components {
         WeaponDistanceRecordRow: {
             class?: string;
             label?: string;
-            label_en?: string;
             /** Format: int64 */
             measured: number;
             /** Format: double */
@@ -14447,7 +14844,6 @@ export interface components {
         WeaponExcludedFromRecords: {
             class: string;
             label?: string;
-            label_en?: string;
             /** Format: int64 */
             measured: number;
             weapon_key: string;
@@ -14455,8 +14851,7 @@ export interface components {
         WeaponHighlight: {
             /** Format: int64 */
             kills: number;
-            label_en: string;
-            label_fr: string;
+            label: string;
             /** Format: int64 */
             weapon_id: number;
         };
@@ -14487,7 +14882,6 @@ export interface components {
             deaths?: components["schemas"]["WeaponRangeSide"];
             kills?: components["schemas"]["WeaponRangeSide"];
             label?: string;
-            label_en?: string;
             weapon_key: string;
         };
         WeaponRangeSide: {
@@ -14512,7 +14906,6 @@ export interface components {
         };
         WeaponRecordFrag: {
             map_label?: string;
-            map_label_en?: string;
             match_id: string;
             /** Format: date-time */
             started_at?: string;
@@ -19615,6 +20008,194 @@ export interface operations {
             };
         };
     };
+    getMissingMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaMissingResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getMissingMediaCandidates: {
+        parameters: {
+            query?: {
+                file_path?: string;
+            };
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaMergeCandidatesResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postMissingMediaConfirmBulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaConfirmBulkResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postMissingMediaForget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaForgetResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postMissingMediaMerge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaMergeResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postMediaReveal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaRevealResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     postUploadMedia: {
         parameters: {
             query?: never;
@@ -20232,42 +20813,6 @@ export interface operations {
             };
         };
     };
-    getCareerTopMatches: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
-                player_slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Top matchs */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CareerTopMatchesResponse"];
-                };
-            };
-            404: components["responses"]["NotFound"];
-            499: components["responses"]["ClientClosed"];
-            500: components["responses"]["InternalError"];
-            503: components["responses"]["DbBusy"];
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
     postCitations: {
         parameters: {
             query?: never;
@@ -20475,6 +21020,7 @@ export interface operations {
                     "Cache-Control"?: string;
                     "Content-Type"?: string;
                     ETag?: string;
+                    Vary?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -20542,6 +21088,7 @@ export interface operations {
                     "Cache-Control"?: string;
                     "Content-Type"?: string;
                     ETag?: string;
+                    Vary?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -22703,6 +23250,122 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalError"];
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getDataStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataStatus"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postDataBackupRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataBackupRunResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getDesktopStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopStatus"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getFilmArchive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilmArchiveStatus"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {

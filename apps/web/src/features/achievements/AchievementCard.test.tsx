@@ -1,6 +1,6 @@
 /**
- * Tests AchievementCard — couvre la sélection bilingue (avec fallback),
- * le rendering du gamerscore, de la barre de progression et de la date d'unlock.
+ * Tests AchievementCard — couvre l'affichage du nom et de la description servis dans la
+ * langue de la requête (ADR 0040 D-3), le rendering du gamerscore, de la barre de progression et de la date d'unlock.
  */
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -9,38 +9,25 @@ import type { AchievementEntry } from '@/lib/api/types'
 
 const baseAchievement: AchievementEntry = {
   achievement_id: 'a',
-  name_en: 'First Blood',
-  name_fr: 'Premier sang',
-  description_en: 'Score your first kill',
-  description_fr: 'Réalise ta première élimination',
+  name: 'Premier sang',
+  description: 'Réalise ta première élimination',
   gamerscore: 10,
   is_secret: false,
   unlocked: false,
 }
 
 describe('AchievementCard', () => {
-  it('affiche le nom FR quand locale=fr', () => {
+  it('affiche le nom et la description servis par le serveur', () => {
     render(<AchievementCard achievement={baseAchievement} locale="fr" />)
     expect(screen.getByText('Premier sang')).toBeInTheDocument()
-    expect(screen.queryByText('First Blood')).not.toBeInTheDocument()
+    expect(screen.getByText('Réalise ta première élimination')).toBeInTheDocument()
   })
 
-  it('affiche le nom EN quand locale=en', () => {
-    render(<AchievementCard achievement={baseAchievement} locale="en" />)
+  it('l\x27anglais affiche le nom anglais servi, sans lire d\x27autre langue', () => {
+    const a = { ...baseAchievement, name: 'First Blood', description: 'Score your first kill' }
+    render(<AchievementCard achievement={a} locale="en" />)
     expect(screen.getByText('First Blood')).toBeInTheDocument()
     expect(screen.queryByText('Premier sang')).not.toBeInTheDocument()
-  })
-
-  it('fallback EN→FR quand locale=fr et name_fr vide', () => {
-    const a = { ...baseAchievement, name_fr: '' }
-    render(<AchievementCard achievement={a} locale="fr" />)
-    expect(screen.getByText('First Blood')).toBeInTheDocument()
-  })
-
-  it('fallback FR→EN quand locale=en et name_en vide', () => {
-    const a = { ...baseAchievement, name_en: '' }
-    render(<AchievementCard achievement={a} locale="en" />)
-    expect(screen.getByText('Premier sang')).toBeInTheDocument()
   })
 
   it('affiche le gamerscore', () => {
@@ -78,34 +65,31 @@ describe('AchievementCard', () => {
     const lockedFR = 'Pas encore débloqué'
     const a: AchievementEntry = {
       ...baseAchievement,
-      locked_desc_en: 'Not yet earned',
-      locked_desc_fr: lockedFR,
+      locked_desc: lockedFR,
     }
     render(<AchievementCard achievement={a} locale="fr" />)
     expect(screen.getByText(lockedFR)).toBeInTheDocument()
-    expect(screen.queryByText(baseAchievement.description_fr)).not.toBeInTheDocument()
+    expect(screen.queryByText(baseAchievement.description)).not.toBeInTheDocument()
   })
 
   it('utilise description quand unlocked (pas locked_desc)', () => {
     const a: AchievementEntry = {
       ...baseAchievement,
       unlocked: true,
-      locked_desc_en: 'Not yet earned',
-      locked_desc_fr: 'Pas encore débloqué',
+      locked_desc: 'Pas encore débloqué',
     }
     render(<AchievementCard achievement={a} locale="fr" />)
-    expect(screen.getByText(baseAchievement.description_fr)).toBeInTheDocument()
+    expect(screen.getByText(baseAchievement.description)).toBeInTheDocument()
     expect(screen.queryByText('Pas encore débloqué')).not.toBeInTheDocument()
   })
 
   it('fallback locked_desc → description quand locked et locked_desc vide', () => {
     const a: AchievementEntry = {
       ...baseAchievement,
-      locked_desc_en: '',
-      locked_desc_fr: '',
+      locked_desc: '',
     }
     render(<AchievementCard achievement={a} locale="fr" />)
     // Doit afficher la description normale comme fallback
-    expect(screen.getByText(baseAchievement.description_fr)).toBeInTheDocument()
+    expect(screen.getByText(baseAchievement.description)).toBeInTheDocument()
   })
 })

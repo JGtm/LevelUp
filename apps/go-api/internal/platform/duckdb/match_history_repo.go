@@ -7,15 +7,17 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // MatchHistoryRepo implémente port.MatchHistoryRepository.
 type MatchHistoryRepo struct {
 	pdb *PlayerDB
-	// mapVariantSuffixes : suffixes de nom du titre qui font d'une carte la variante d'une autre
-	// (map_variants.toml). Vide : aucune variante, MapFilterLabel reste nil.
-	mapVariantSuffixes []string
+	// mapGroupRules : ce qui réunit plusieurs identifiants de carte (variantes de map_variants.toml,
+	// republications d'une carte intégrée). Valeur zéro : MapFilterNames reste nil.
+	mapGroupRules analysis.MapGroupRules
 }
 
 // NewMatchHistoryRepo crée un MatchHistoryRepo depuis un PlayerDB.
@@ -23,9 +25,9 @@ func NewMatchHistoryRepo(pdb *PlayerDB) *MatchHistoryRepo {
 	return &MatchHistoryRepo{pdb: pdb}
 }
 
-// WithMapVariantSuffixes injecte les suffixes de variante de carte du titre. Retourne le repo.
-func (r *MatchHistoryRepo) WithMapVariantSuffixes(suffixes []string) *MatchHistoryRepo {
-	r.mapVariantSuffixes = suffixes
+// WithMapGroupRules injecte les règles de regroupement des cartes du titre. Retourne le repo.
+func (r *MatchHistoryRepo) WithMapGroupRules(rules analysis.MapGroupRules) *MatchHistoryRepo {
+	r.mapGroupRules = rules
 	return r
 }
 
@@ -74,7 +76,7 @@ func (r *MatchHistoryRepo) LoadAll(ctx context.Context) ([]domain.MatchHistoryRa
 	// FiltersRepo (filters_repo.go applyXxxFRTranslations), nécessaire car
 	// match_registry.{map,pair,playlist}_name_fr peut être NULL.
 	applyMatchHistoryFRTranslations(ctx, r.pdb, results)
-	rattacherCartesDeBaseHistorique(ctx, r.pdb, r.mapVariantSuffixes, results)
+	rattacherCartesDeBaseHistorique(ctx, r.pdb, r.mapGroupRules, results)
 
 	return results, nil
 }
@@ -118,23 +120,24 @@ func (r *MatchHistoryRepo) loadSharedHistory(ctx context.Context) ([]domain.Matc
 	)
 	for rows.Next() {
 		var (
-			m       domain.MatchHistoryRawRow
-			teamID  *int
-			team0   *int
-			team1   *int
-			rounds0 *int
-			rounds1 *int
-			total   *int
+			m                                                               domain.MatchHistoryRawRow
+			mapEN, mapFR, pairEN, pairFR, playlistEN, playlistFR, variantEN *string
+			teamID                                                          *int
+			team0                                                           *int
+			team1                                                           *int
+			rounds0                                                         *int
+			rounds1                                                         *int
+			total                                                           *int
 		)
 		if err := rows.Scan(
 			&m.MatchID,
 			&m.StartTime,
-			&m.MapName,
-			&m.MapNameFR,
-			&m.PairName,
-			&m.PairNameFR,
-			&m.PlaylistNameEN,
-			&m.PlaylistName,
+			&mapEN,
+			&mapFR,
+			&pairEN,
+			&pairFR,
+			&playlistEN,
+			&playlistFR,
 			&m.MapID,
 			&m.PairID,
 			&m.PlaylistID,
@@ -159,11 +162,15 @@ func (r *MatchHistoryRepo) loadSharedHistory(ctx context.Context) ([]domain.Matc
 			&rounds1,
 			&total,
 			&m.GameVariantID,
-			&m.GameVariantName,
+			&variantEN,
 			&m.DurationSeconds,
 		); err != nil {
 			return nil, nil, nil, fmt.Errorf("scan: %w", err)
 		}
+		m.MapName = i18n.FromColumns(derefString(mapEN), derefString(mapFR))
+		m.PairName = i18n.FromColumns(derefString(pairEN), derefString(pairFR))
+		m.PlaylistName = i18n.FromColumns(derefString(playlistEN), derefString(playlistFR))
+		m.GameVariantName = i18n.FromColumns(derefString(variantEN), "")
 		results = append(results, m)
 		teamIDs = append(teamIDs, teamID)
 		teamScores = append(teamScores, teamScorePair{
@@ -246,8 +253,7 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 	defer dbRows.Close()
 
 	type skill struct {
-		tier          *string
-		tierFR        *string
+		tier          string
 		rating        *string
 		tierLabel     *string
 		winProb       *float64
@@ -260,9 +266,11 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 	for dbRows.Next() {
 		var mid string
 		var s skill
-		if err := dbRows.Scan(&mid, &s.tier, &s.tierFR, &s.rating, &s.tierLabel, &s.winProb, &s.playlistGroup, &s.ratingValue, &s.ratingDelta, &s.subTier); err != nil {
+		var tierEN *string
+		if err := dbRows.Scan(&mid, &tierEN, &s.rating, &s.tierLabel, &s.winProb, &s.playlistGroup, &s.ratingValue, &s.ratingDelta, &s.subTier); err != nil {
 			return fmt.Errorf("skill_rank scan: %w", err)
 		}
+		s.tier = derefString(tierEN)
 		// Q5 lit désormais match_skill_rank_latest : 1 ligne/match (priorité
 		// CSR>LUSR), plus de N versions à fusionner. Sur un match ranked la ligne
 		// gagnante est CSR → expected_win_prob NULL (convention _latest déjà en
@@ -279,9 +287,8 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 			continue
 		}
 		rows[i].SkillTier = s.tier
-		rows[i].SkillTierFR = s.tierFR
 		rows[i].SkillRatingType = s.rating
-		rows[i].SkillTierLabel = s.tierLabel
+		rows[i].SkillStoredLabel = s.tierLabel
 		rows[i].SkillExpectedWinProb = s.winProb
 		rows[i].PlaylistGroup = s.playlistGroup
 		rows[i].RatingValue = s.ratingValue

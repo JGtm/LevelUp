@@ -16,6 +16,8 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // SharedMatchCSRRow représente une ligne shared.match_csrs prête à écrire.
@@ -82,7 +84,7 @@ func ExtractAllSharedCSRRows(reg *MatchRegistryRow, skillByXUID map[string]*Matc
 			// Rang stable.
 			v := post.Value
 			row.RatingValue = &v
-			row.TierLabel = formatCSRTierLabel(post.Tier, translateTierFR(post.Tier), post.SubTier, int(post.Value), 0)
+			row.TierLabel = formatCSRTierLabel(post.Tier, translateTier(post.Tier).Pick(i18n.Default), post.SubTier, int(post.Value), 0)
 			if skill.PreMatchCSR != nil {
 				delta := post.Value - skill.PreMatchCSR.Value
 				row.RatingDelta = &delta

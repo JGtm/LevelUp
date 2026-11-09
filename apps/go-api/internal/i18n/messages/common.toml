@@ -1,0 +1,21 @@
+# Libellés communs composés par le serveur.
+
+# Arme introuvable dans le registre (arme favorite de l'Accueil).
+[common.unknown_weapon]
+fr = "Inconnue"
+en = "Unknown"
+
+# « Saison N » dérivé de l'identifiant d'une saison absente du catalogue.
+[common.season.label]
+fr = "Saison {n}"
+en = "Season {n}"
+
+# Saison courante introuvable : repli synthétique.
+[common.season.unknown]
+fr = "Saison inconnue"
+en = "Unknown season"
+
+# « Saison N · Nom » d'une saison du catalogue.
+[common.season.label_named]
+fr = "Saison {n} · {name}"
+en = "Season {n} · {name}"

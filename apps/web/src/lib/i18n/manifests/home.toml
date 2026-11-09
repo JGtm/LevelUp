@@ -70,6 +70,10 @@ en = "Spartan customization"
 fr = "Choisis un emblème et une bannière (onglets), avec des couleurs propres à chacun. L'aperçu et les vignettes se mettent à jour en direct."
 en = "Pick an emblem and a banner (tabs), each with its own colors. The preview and thumbnails update live."
 
+[home.spartan_customizer.emblem_alt]
+fr = "Emblème {name}"
+en = "{name} emblem"
+
 [home.spartan_customizer.choose_emblem]
 fr = "Emblème"
 en = "Emblem"
@@ -127,6 +131,11 @@ en = "Active challenges"
 [home.challenges.completed_count]
 fr = "{n} / {total} complétés"
 en = "{n} / {total} completed"
+
+# Suffixe qui suit le compte « <b>3</b> / 7 » rendu en JSX (le compte est mis en forme à part).
+[home.challenges.completed_suffix]
+fr = "complétés"
+en = "completed"
 
 [home.challenges.loading]
 fr = "Chargement des défis…"
@@ -213,13 +222,26 @@ en = "{n, plural, one {# Defeat} other {# Defeats}}"
 fr = "{n, plural, one {# Égalité} other {# Égalités}}"
 en = "{n, plural, one {# Draw} other {# Draws}}"
 
+[home.last_session.results_title]
+fr = "Résultats de la dernière session"
+en = "Last session results"
+
+[home.ascension.view_all]
+fr = "Voir tout →"
+en = "View all →"
+
 [home.sessions.dnfs_count]
 fr = "{n, plural, one {# Non terminé} other {# Non terminés}}"
 en = "{n, plural, one {# Not finished} other {# Not finished}}"
 
-[home.sessions.duration_prefix]
-fr = "Durée de la session"
-en = "Session duration"
+[home.sessions.duration_line]
+fr = "Durée de la session : {duration}"
+en = "Session duration: {duration}"
+
+# Jonction de la date et de l'heure de début d'une session (« 3 mars à 21:30 »).
+[home.sessions.date_time_join]
+fr = "{date} à {time}"
+en = "{date} at {time}"
 
 [home.sessions.dominant_tooltip]
 fr = "Sélection et mode les plus joués lors de cette session"

@@ -2,8 +2,7 @@
 
 package killcollector
 
-// porteurs_au_sync_bench_research_test.go — LE BANC DU COUT DE LA LECTURE DES PORTEURS AU SYNC
-// (`.ai/V7.5/PLAN_RI_ETAT_COMPLET_IMAGES_CLES_2026-10-08.md`, item 0.6, critere 4 et commande G-perf).
+// porteurs_au_sync_bench_research_test.go — LE BANC DU COUT DE LA LECTURE DES PORTEURS AU SYNC.
 //
 // # CE QU'IL CHRONOMETRE, ET RIEN D'AUTRE
 //
@@ -28,7 +27,7 @@ package killcollector
 //
 // # LE PIC
 //
-// L'empreinte du processus (`filmproc.Footprint`, la mesure de la sentinelle du depot et de
+// L'empreinte du processus (`memguard.Footprint`, la mesure de la sentinelle du depot et de
 // `replay-equiv`), echantillonnee toutes les 10 ms pendant l'appel ; metrique `pic-Mio`, le plus
 // haut des tours. Elle porte aussi ce que la passe de positions tient encore en memoire : c'est le
 // niveau du collecteur au moment de l'appel.
@@ -42,23 +41,20 @@ package killcollector
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/testutil"
-)
 
-// dossierDesFaitsDEquivalence : les faits versionnes de `replay-equiv`, relatifs au paquet.
-const dossierDesFaitsDEquivalence = "../../games/halo_infinite/film/replay/testdata/equivalence"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/replay"
+)
 
 func BenchmarkPorteursAuSync(b *testing.B) {
 	films, cache := strings.TrimSpace(os.Getenv("PORTEURS_BENCH_FILMS")), os.Getenv("PORTEURS_BENCH_CACHE")
@@ -112,7 +108,7 @@ type bancDuFilm struct {
 // (`Builder.ResolveMapEntry`) et decode killsource comme le collecteur (`decoderSousLaCarte`).
 func preparerLeBanc(b *testing.B, constructeur *replaybuild.Builder, cache, court string) bancDuFilm {
 	b.Helper()
-	faits, err := replaybuild.ReadFactsFile(filepath.Join(dossierDesFaitsDEquivalence, court+".facts.json"))
+	faits, err := replaybuild.ReadFactsFile(testutil.CheminBriqueFilm(b, "replay", "testdata", "equivalence", court+".facts.json"))
 	if err != nil {
 		b.Fatalf("%s : %v", court, err)
 	}

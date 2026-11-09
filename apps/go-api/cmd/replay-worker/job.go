@@ -2,7 +2,7 @@ package main
 
 // job.go — le TRAVAIL de l'ouvrier : télécharger, décoder, rendre.
 //
-// Le pont disque (filmcache.Write) est réutilisé tel quel : le décodeur lit un
+// Le pont disque (filmarchive.Write) est réutilisé tel quel : le décodeur lit un
 // dossier de morceaux, et il n'existe qu'UNE disposition de cache film dans le
 // dépôt (garde-rail filmcache_guard_test.go). L'ouvrier écrit donc dans cette
 // disposition-là, pas dans une mise en page à lui.
@@ -25,11 +25,14 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/filmarchive"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // heartbeatInterval : cadence des signes de vie pendant un travail long. Trois
@@ -41,7 +44,7 @@ const chunkDownloadTimeout = 60 * time.Second
 
 // chunkParallelism : nombre maximal de téléchargements CDN simultanés pour UN film.
 //
-// MÊME VALEUR ET MÊME RAISON QUE `haloclient.filmChunkParallelism` : le CDN Azure sert des
+// MÊME VALEUR ET MÊME RAISON QUE `infinite.FilmChunkParallelism` : le CDN Azure sert des
 // blobs indépendants, la latence domine, et huit connexions saturent la bande passante d'une
 // liaison ordinaire sans jamais faire de l'ouvrier un client abusif. Les monter n'achète plus
 // de temps (la limite devient le débit) et multiplie la mémoire tenue simultanément —
@@ -55,7 +58,7 @@ const chunkParallelism = 8
 const genericBuildFailedErrorCode = "replay_build_failed"
 
 // outilOuvrier : le nom sous lequel l'ouvrier tient le verrou de décodage de la machine. C'est
-// ce mot que lira l'opérateur à qui le verrou est refusé (cf. internal/filmproc/solo.go).
+// ce mot que lira l'opérateur à qui le verrou est refusé (cf. internal/filmrun/solo.go).
 const outilOuvrier = "replay-worker"
 
 // attenteVerrouOuvrier : combien de temps l'ouvrier attend son tour avant de rendre le job en
@@ -64,7 +67,7 @@ const outilOuvrier = "replay-worker"
 // non un chevauchement ordinaire.
 const attenteVerrouOuvrier = 10 * time.Minute
 
-// exitCodeMemoryExceeded : code de sortie quand la sentinelle mémoire (internal/filmproc.Arm,
+// exitCodeMemoryExceeded : code de sortie quand la sentinelle mémoire (libs/film/memguard.Arm,
 // armée ci-dessous dans processJob) a isolé le job en cours. Distinct de 1 (arrêt sur erreur
 // de la boucle) et 2 (configuration manquante, cf. main.go) : un opérateur qui lit les
 // journaux du superviseur du processus doit pouvoir distinguer un dépassement mémoire
@@ -81,7 +84,7 @@ type worker struct {
 	// keepsFilms : le dossier de travail EST le cache film du dépôt (archive
 	// perpétuelle) — les morceaux ne sont alors jamais supprimés. Cf. cleanupFilm.
 	keepsFilms bool
-	// memLimitGiB : le plafond mémoire dur de CHAQUE job (0 = désarmé). Cf. internal/filmproc.Arm,
+	// memLimitGiB : le plafond mémoire dur de CHAQUE job (0 = désarmé). Cf. libs/film/memguard.Arm,
 	// armé ci-dessous dans processJob.
 	memLimitGiB int
 	jobsDone    int64
@@ -105,7 +108,7 @@ func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 	go w.beatUntil(beatCtx, job.JobID)
 
 	// LA SENTINELLE EST ARMÉE POUR CE JOB SEUL, via la sentinelle canonique
-	// internal/filmproc.Arm (memes deux plafonds : 3 GiB souple, +25 % dur, échantillonnage
+	// libs/film/memguard.Arm (memes deux plafonds : 3 GiB souple, +25 % dur, échantillonnage
 	// 250 ms — le calcul vit desormais dans un seul endroit, memguard.go) : un pic mesuré
 	// depuis le démarrage de l'ouvrier confondrait plusieurs films. onExceeded RAPPORTE
 	// l'échec au serveur PUIS arrête ce processus — l'OS récupère la RAM par construction,
@@ -113,9 +116,9 @@ func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 	// LE TEXTE DE LA LIGNE D'ARMEMENT EST CELUI D'AVANT LA CENTRALISATION, mot pour mot
 	// (constat C5 de la revue R1) : un filtre de journal cale sur « replay-worker: plafond
 	// memoire arme pour ce job » ne matchait plus le libelle unifie.
-	guard := filmproc.Arm(outilOuvrier, w.memLimitGiB, func(peakBytes uint64) {
+	guard := memguard.Arm(ctx, outilOuvrier, w.memLimitGiB, func(peakBytes uint64) {
 		w.reportMemoryExceeded(ctx, job, peakBytes)
-	}, filmproc.WithArmMessage("replay-worker: plafond memoire arme pour ce job"))
+	}, memguard.WithArmMessage("replay-worker: plafond memoire arme pour ce job"))
 	result, err := w.buildAndSend(ctx, job)
 	guard.Disarm()
 	stopBeat()
@@ -156,8 +159,8 @@ func (w *worker) processJob(ctx context.Context, job *domain.BuildQueueJob) {
 }
 
 // reportMemoryExceeded rend compte au serveur d'un dépassement du plafond mémoire dur PUIS
-// arrête ce processus (le plafond lui-même est armé par internal/filmproc.Arm dans
-// processJob ; le pourquoi des deux plafonds vit dans filmproc/doc.go). Le compte rendu est
+// arrête ce processus (le plafond lui-même est armé par libs/film/memguard.Arm dans
+// processJob ; le pourquoi des deux plafonds vit dans libs/film/memguard/doc.go). Le compte rendu est
 // ISOLÉ dans completeMemoryExceeded (testable) : seule la ligne os.Exit ne l'est pas — même
 // parti pris que memlimit_test.go (on teste les pièces, jamais la coupure elle-même, pour ne
 // pas donner à un test le pouvoir de tuer le binaire de test).
@@ -212,7 +215,7 @@ func memoryExceededMessage(matchID string, peakBytes uint64) string {
 
 // memGuardOctetsParGiB : la conversion, nommée pour ne pas semer des 1<<30 dans le code. Sert
 // uniquement à la mise en forme humaine (formatMemGuardBytes, ci-dessous) — la sentinelle
-// mémoire elle-même est armée par internal/filmproc.Arm (cf. processJob), qui porte sa propre
+// mémoire elle-même est armée par libs/film/memguard.Arm (cf. processJob), qui porte sa propre
 // constante interne.
 const memGuardOctetsParGiB = 1 << 30
 
@@ -244,7 +247,7 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 	if err != nil {
 		return "", err
 	}
-	if err := filmcache.Write(ctx, w.workDir, p.ShortID, chunks); err != nil {
+	if err := filmarchive.Write(ctx, w.workDir, p.ShortID, chunks); err != nil {
 		return "", fmt.Errorf("écriture du cache film : %w", err)
 	}
 
@@ -277,7 +280,7 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 	// à la fois, mais RIEN n'empêche de le lancer sur une machine qui décode déjà — un poste de
 	// développement qui fait tourner le serveur (post-sync), une passe `backfill-replay`, ou
 	// simplement deux ouvriers. C'est exactement le trou par lequel le quatrième sinistre est
-	// passé (cf. internal/filmproc/solo.go) : « un film à la fois DANS ce processus » ne dit
+	// passé (cf. internal/filmrun/solo.go) : « un film à la fois DANS ce processus » ne dit
 	// rien du nombre de processus. Il ATTEND son tour plutôt que d'échouer (le job est déjà pris,
 	// son bail court, et le rendre en échec pour un chevauchement gâcherait le téléchargement
 	// qu'on vient de payer) ; passé la borne, c'est un échec ordinaire, détenteur nommé.
@@ -286,14 +289,14 @@ func (w *worker) buildAndSend(ctx context.Context, job *domain.BuildQueueJob) (s
 	// DÉCODAGE, pas le réseau. L'étendre au transfert immobiliserait la machine pour rien.
 	//
 	// ENRACINÉ SUR LE CACHE DU DÉPÔT, PAS SUR `w.workDir` (lot 6, constat 7). Le verrou vit à
-	// `<racine>/data/cache/film_decode.lock` : c'est le contrat de `filmproc.AcquireSolo`, et
+	// `<racine>/data/cache/film_decode.lock` : c'est le contrat de `filmrun.AcquireSolo`, et
 	// c'est là que le prennent les TROIS autres points d'entrée (post-sync, passe de backfill,
 	// `replay-build`). Tant que `--work` n'est pas passé, `w.workDir` VAUT ce cache et l'exclusion
 	// tenait par coïncidence ; dès qu'un ouvrier distant passe `--work`, il posait son verrou dans
 	// un dossier que personne d'autre ne regarde — et l'exclusion annoncée juste au-dessus
 	// n'existait plus. `w.repoRoot` est garanti non vide (le binaire sort en 2 sans `--repo`).
 	verrouRoot := titlePkg.NewPathResolver(w.repoRoot).CacheRootDir()
-	lock, err := filmproc.AcquireSoloWait(ctx, verrouRoot, outilOuvrier, p.MatchID, attenteVerrouOuvrier)
+	lock, err := filmrun.AcquireSoloWait(ctx, verrouRoot, outilOuvrier, p.MatchID, attenteVerrouOuvrier)
 	if err != nil {
 		return "", fmt.Errorf("decodage refuse : %w", err)
 	}
@@ -388,14 +391,14 @@ func (w *worker) cleanupFilm(ctx context.Context, job *domain.BuildQueueJob) {
 // n'avoir aucun secret Halo.
 //
 // LES TÉLÉCHARGEMENTS SONT PARALLÈLES, BORNÉS À [chunkParallelism], SUR LE MODÈLE EXACT DU
-// CLIENT DE SYNC (`haloclient.fetchFilmChunks`) : errgroup.WithContext + SetLimit, chaque
+// CLIENT DE SYNC (`filmfetch.Films.fetchFilmChunks`) : errgroup.WithContext + SetLimit, chaque
 // goroutine écrivant dans un SLOT PRÉ-ALLOUÉ. Aucun mutex, aucun tri après coup —
 // l'assemblage est fait par l'indice de boucle, donc L'ORDRE DU JOB EST L'ORDRE RENDU, et il
 // l'est par construction plutôt que par une convention que la prochaine relecture pourrait
 // perdre. Un film de 30 morceaux tenait la latence CDN trente fois de suite ; il la tient
 // désormais quatre fois. Une erreur annule le contexte du groupe : les téléchargements en vol
 // s'arrêtent, et le JOB ÉCHOUE — un film à trous ne se cuit pas.
-func (w *worker) fetchChunks(ctx context.Context, p *domain.BuildQueuePayload) ([]filmcache.WriteChunk, error) {
+func (w *worker) fetchChunks(ctx context.Context, p *domain.BuildQueuePayload) ([]filmarchive.WriteChunk, error) {
 	// LE CONTEXTE DÉJÀ ANNULÉ NE LANCE RIEN. errgroup exécuterait quand même chaque tâche
 	// (pour la voir échouer sur son propre contexte) : le dire ici garde la propriété
 	// « annulé = aucun appel réseau », que le protocole d'arrêt de l'ouvrier suppose.
@@ -403,7 +406,7 @@ func (w *worker) fetchChunks(ctx context.Context, p *domain.BuildQueuePayload) (
 		return nil, err
 	}
 	client := &http.Client{Timeout: chunkDownloadTimeout}
-	out := make([]filmcache.WriteChunk, len(p.Chunks))
+	out := make([]filmarchive.WriteChunk, len(p.Chunks))
 	eg, egCtx := errgroup.WithContext(ctx)
 	eg.SetLimit(chunkParallelism)
 	for i, c := range p.Chunks {
@@ -412,7 +415,7 @@ func (w *worker) fetchChunks(ctx context.Context, p *domain.BuildQueuePayload) (
 			if err != nil {
 				return fmt.Errorf("morceau %d : %w", c.Index, err)
 			}
-			out[i] = filmcache.WriteChunk{
+			out[i] = filmarchive.WriteChunk{
 				Index: c.Index, ChunkType: c.ChunkType,
 				StartMS: c.StartMS, DurationMS: c.DurationMS, Data: data,
 			}

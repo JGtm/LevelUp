@@ -43,7 +43,7 @@ type CoachEmbedInput struct {
 func BuildCoachEmbed(in CoachEmbedInput, labels NotifyLabels) Embed {
 	lang := in.Lang
 	if lang == "" {
-		lang = "fr"
+		lang = defaultLang
 	}
 	embed := Embed{
 		Title:       T("discord_coach_title", lang),
@@ -139,13 +139,13 @@ func coachColor(severity string) int {
 // brute si la catégorie n'est pas connue (dégradation propre, jamais de panic).
 func coachCategoryLabel(category, lang string) string {
 	if lang == "" {
-		lang = "fr"
+		lang = defaultLang
 	}
 	if m, ok := coachCategoryLabels[category]; ok {
 		if lbl, ok := m[lang]; ok && lbl != "" {
 			return lbl
 		}
-		if lbl := m["fr"]; lbl != "" {
+		if lbl := m[defaultLang]; lbl != "" {
 			return lbl
 		}
 	}

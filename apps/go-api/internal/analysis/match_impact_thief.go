@@ -17,6 +17,8 @@
 // : le seuil porte sur une borne haute côté tueur, une valeur > 100 n'est jamais volée.
 package analysis
 
+import "levelup/go-api/internal/i18n"
+
 // thiefMaxKillerDamagePct : part de dégâts maximale (incluse) du tueur crédité.
 const thiefMaxKillerDamagePct = 10
 
@@ -86,7 +88,7 @@ func ComputeThiefBadge(entries []KillLogEntry, friends map[string]bool) *ImpactB
 	if bestXUID == "" {
 		return nil
 	}
-	return &ImpactBadge{BadgeKey: BadgeKeyThief, BadgeFR: "Voleur", PlayerXUID: bestXUID, TimeMS: best.last}
+	return &ImpactBadge{BadgeKey: BadgeKeyThief, Badge: i18n.MsgText("impact.badge.thief", nil), PlayerXUID: bestXUID, TimeMS: best.last}
 }
 
 // isStolenKill applique le critère « élimination volée » à une mort.

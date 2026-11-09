@@ -20,7 +20,18 @@ const (
 	AuthModeNone     = "none"
 	AuthModePassword = "password"
 	AuthModeXbox     = "xbox"
+	// AuthModeDesktop : mode DÉRIVÉ du profil desktop (config.DeploymentProfile) — un seul
+	// utilisateur, aucun compte ; jamais une valeur de LEVELUP_AUTH_MODE. Se comporte comme none.
+	AuthModeDesktop = "desktop"
 )
+
+// AuthDisabled indique que le mode d'authentification déclaré n'exige aucune session : none ou
+// le mode desktop dérivé. Une chaîne vide (configuration construite à la main) n'est PAS un
+// mode déclaré : à chaque appelant de décider. Prédicat partagé par les middlewares
+// (RequireAuth, RequireAdmin) pour que desktop suive exactement le chemin de none.
+func AuthDisabled(authMode string) bool {
+	return authMode == AuthModeNone || authMode == AuthModeDesktop
+}
 
 // UserLookup résout un utilisateur enregistré. Satisfait par *userstore.Store.
 type UserLookup interface {

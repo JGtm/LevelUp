@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"time"
 
+	"levelup/go-api/internal/platform/childproc"
 	"levelup/go-api/internal/platform/slots"
 )
 
@@ -122,7 +123,11 @@ type FFmpegJob struct {
 // ffmpegCommand construit la commande ffmpeg ; seul point du module qui lance ce binaire
 // (garde-rail archlint/ffmpeg_single_launcher_test.go). Les tests le substituent.
 var ffmpegCommand = func(ctx context.Context, args []string) *exec.Cmd {
-	return exec.CommandContext(ctx, "ffmpeg", args...)
+	ffmpegBin, err := ResolveFFmpeg()
+	if err != nil {
+		return failedCommand(err)
+	}
+	return childproc.Command(ctx, ffmpegBin, args...)
 }
 
 // RunFFmpeg lance ffmpeg et attend sa fin en tenant une place du pool demandé, avec le délai

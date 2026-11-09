@@ -61,7 +61,7 @@ func (cfg *AppConfig) sharedReaderForTitle(titleSlug string) duckdb.SharedReader
 		}
 		return cfg.sharedProviderForPath(titleSlug, cfg.DemoLayout().SharedDBPath(titleSlug))
 	}
-	return cfg.sharedProviderForPath(titleSlug, title.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug))
+	return cfg.sharedProviderForPath(titleSlug, cfg.PathResolver().SharedDBPath(titleSlug))
 }
 
 // sharedProviderForPath résout (via le Manager, caché par path) le SharedReader d'un
@@ -89,7 +89,7 @@ func (cfg *AppConfig) PrestigeBundleDBPaths() (sharedSocialPath, metadataPath st
 	if cfg.demoState() && cfg.DemoFixturesDir != "" {
 		return cfg.DemoLayout().SharedSocialDBPath(slug), cfg.DemoLayout().MetadataDBPath(slug)
 	}
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	return pr.SharedSocialDBPath(slug), pr.MetadataDBPath(slug)
 }
 
@@ -196,6 +196,7 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 		Gamertag:           gamertag,
 		XUID:               xuidBytes,
 		TitleSlug:          titleSlug,
+		ModeSource:         title.DefaultRegistry().ModeSourceFor(titleSlug),
 		PlayerDBPath:       statsPath,
 		SharedDBPath:       sharedPath,
 		MetaDBPath:         metaPath,
@@ -233,11 +234,12 @@ func resolveRealPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 // buildPoolConfig construit un PlayerPoolConfig depuis un PlayerSummary.
 // Utilise le PathResolver pour résoudre les chemins title-aware.
 func buildPoolConfig(cfg *AppConfig, p *domain.PlayerSummary, titleSlug string) duckdb.PlayerPoolConfig {
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	return duckdb.PlayerPoolConfig{
 		Gamertag:           p.Gamertag,
 		XUID:               p.XUID,
 		TitleSlug:          titleSlug,
+		ModeSource:         title.DefaultRegistry().ModeSourceFor(titleSlug),
 		PlayerDBPath:       pr.PlayerDBPath(titleSlug, p.Gamertag),
 		SharedDBPath:       pr.SharedDBPath(titleSlug),
 		MetaDBPath:         pr.MetadataDBPath(titleSlug),
@@ -260,7 +262,7 @@ func SharedDBPath(cfg *AppConfig, titleSlug string) string {
 	if cfg.demoState() {
 		return cfg.DemoLayout().SharedDBPath(titleSlug)
 	}
-	return title.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug)
+	return cfg.PathResolver().SharedDBPath(titleSlug)
 }
 
 // MetadataDBPath retourne le chemin vers la metadata.duckdb d'un titre. En démo,
@@ -272,7 +274,7 @@ func MetadataDBPath(cfg *AppConfig, titleSlug string) string {
 	if cfg.demoState() && cfg.DemoFixturesDir != "" {
 		return cfg.DemoLayout().MetadataDBPath(titleSlug)
 	}
-	return title.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titleSlug)
+	return cfg.PathResolver().MetadataDBPath(titleSlug)
 }
 
 // PlayerDBPath retourne le chemin vers la base DuckDB stats d'un joueur.
@@ -281,7 +283,7 @@ func PlayerDBPath(cfg *AppConfig, titleSlug, gamertag string) string {
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
-	return title.NewPathResolver(cfg.RepoRoot).PlayerDBPath(titleSlug, gamertag)
+	return cfg.PathResolver().PlayerDBPath(titleSlug, gamertag)
 }
 
 // readXUIDFile lit le XUID depuis un fichier texte (1 ligne).

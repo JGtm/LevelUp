@@ -82,10 +82,11 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/atomicfile"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replaydiff"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 const (
@@ -333,7 +334,7 @@ func empreinteFaits(facts replaybuild.FactsFile) (string, error) {
 // empreinteFilm rend le SHA-256 du manifeste et de tous les chunks du film `short`, tels que
 // la cuisson les lit sous `workRoot` (nom relatif + taille + contenu, dans l'ordre lexical).
 func empreinteFilm(workRoot, short string) (string, error) {
-	cacheRoot := title.NewPathResolver(workRoot).CacheRootDir()
+	cacheRoot := title.NewPathResolver(workRoot).FilmArchiveDir()
 	h := sha256.New()
 	if err := hacherFichier(h, "manifeste", filmcache.ManifestPath(cacheRoot, short)); err != nil {
 		return "", err

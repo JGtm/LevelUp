@@ -39,7 +39,7 @@ type LUSRGapPlayer struct {
 type LUSRGapItem struct {
 	MatchID   string `json:"match_id"`
 	Group     string `json:"group"`      // chaîne LUSR (playlist_group)
-	Playlist  string `json:"playlist"`   // libellé playlist source (pair_name)
+	Playlist  string `json:"playlist"`   // libellé de la paire source, dans la langue de la requête
 	StartTime string `json:"start_time"` // RFC3339 UTC
 }
 

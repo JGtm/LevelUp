@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -155,11 +156,13 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	d.failures.goLoadSection(gctx, g, matchID, "skill_rank", func() error {
 		var e error
 		d.skillRank, e = s.repo.GetMatchSkillRank(gctx, matchID)
+		labelSkillRank(gctx, d.skillRank)
 		return e
 	})
 	d.failures.goLoadSection(gctx, g, matchID, "shared_csrs", func() error {
 		var e error
 		d.sharedCSRs, e = s.repo.GetMatchSharedCSRs(gctx, matchID)
+		labelSkillRanks(gctx, d.sharedCSRs)
 		return e
 	})
 	d.failures.goLoadSection(gctx, g, matchID, "encounters", func() error {
@@ -323,7 +326,8 @@ func (s *MatchViewService) buildMatchViewFromData(
 			}
 		}
 	}
-	combat := buildCombatTabFull(matchID, d.events, d.canonicalEvents, d.kvPairs, d.scoreboard, s.xuid, durationMS)
+	combat := buildCombatTabFull(combatTabScope{matchID: matchID, myXUID: s.xuid, durationMS: durationMS, locale: i18n.FromContext(ctx)},
+		d.events, d.canonicalEvents, d.kvPairs, d.scoreboard)
 	// L'arme du kill, l'équipe du tueur et l'identité des médailles se posent APRÈS
 	// l'assemblage : décorations du feed, pas des entrées du calcul de dominance.
 	s.decorateHighlightEvents(ctx, combat.HighlightEvents, d)
@@ -346,7 +350,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// weapon kills du viewer (classes gun). hasMechanics via capability (jamais slug==).
 	combat.FragDistribution = buildViewerFragDistribution(
 		findViewerScoreboardRow(team.Scoreboard), d.bulkWeapons,
-		titleHasNativeKillMechanics(s.titleSlug),
+		titleHasNativeKillMechanics(s.titleSlug), i18n.FromContext(ctx),
 	)
 	if combat.FragDistribution != nil {
 		logFragDistribution(ctx, "match view", s.titleSlug, s.xuid, *combat.FragDistribution)

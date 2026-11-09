@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -34,8 +35,9 @@ func (s *CareerService) GetHighlightMatchIDs(ctx context.Context, input domain.H
 		slog.WarnContext(ctx, "career.highlight.pool_load_failed", "err", perr)
 	}
 
-	// Override des labels EN → FR depuis les tables metadata (best-effort).
-	applyHighlightPoolFRTranslations(ctx, s.repo, pool)
+	// Noms depuis les tables metadata (best-effort) : clés de filtre dans la langue par défaut, libellés
+	// affichés dans la langue de la requête.
+	localizeHighlightPool(ctx, s.repo, pool, i18n.FromContext(ctx))
 
 	filters := domain.CareerHighlightFilters{
 		Experience:       experience,
@@ -58,76 +60,107 @@ func (s *CareerService) GetHighlightMatchIDs(ctx context.Context, input domain.H
 	}, nil
 }
 
-// applyHighlightPoolFRTranslations enrichit en place les labels FR du pool :
-//   - ModeUI : si la valeur normalisée a une traduction dans mode_name_tr (lang='fr'),
-//     remplace la valeur EN par la FR.
-//   - PlaylistName : si playlist_id a un nom FR dans asset_translations, le préfère
-//     à la valeur brute (qui peut être EN si playlist_name_fr était NULL en DB).
+// localizeHighlightPool nomme en place les modes et les playlists du pool, de deux façons :
+//   - ModeUI et PlaylistName deviennent la CLÉ de filtre (`mode_uis`, `playlist_names`) : le nom dans la
+//     langue par défaut (mode_name_tr, asset_translations), qui ne dépend pas de la langue de la requête ;
+//   - ModeLabel et PlaylistLabel sont le libellé AFFICHÉ, dans la langue `loc` (le nom de la clé quand la
+//     langue n'a pas de traduction, donc la langue de repli).
 //
-// Best-effort : silencieux si Metadata absent. Pattern aligné sur home_repo.
-func applyHighlightPoolFRTranslations(ctx context.Context, repo port.CareerRepository, pool []domain.HighlightMatchPoolRow) {
+// Best-effort : un échec de lecture est journalisé et les noms bruts restent. Pattern aligné sur home_repo.
+func localizeHighlightPool(ctx context.Context, repo port.CareerRepository, pool []domain.HighlightMatchPoolRow, loc i18n.Locale) {
 	if len(pool) == 0 {
 		return
 	}
+	localizeHighlightModes(ctx, repo, pool, loc)
+	localizeHighlightPlaylists(ctx, repo, pool, loc)
+}
 
-	// Modes : collecter les ModeUI distincts (post-NormalizeModeLabel), charger
-	// les traductions FR, override en place.
-	modeENSet := make(map[string]struct{})
-	for _, m := range pool {
-		if m.ModeUI != "" {
-			modeENSet[m.ModeUI] = struct{}{}
-		}
+// loadHighlightModeNames lit mode_name_tr dans la langue `lang` pour les modes distincts de `pool`.
+func loadHighlightModeNames(ctx context.Context, repo port.CareerRepository, lang i18n.Locale, keys []string) map[string]string {
+	names, err := repo.LoadModeTranslations(ctx, lang, keys)
+	if err != nil {
+		slog.WarnContext(ctx, "career.highlight.mode_names_load_failed", "locale", lang, "err", err)
+		return nil
 	}
-	if len(modeENSet) > 0 {
-		modeENs := make([]string, 0, len(modeENSet))
-		for k := range modeENSet {
-			modeENs = append(modeENs, k)
-		}
-		if modeFR, err := repo.LoadModeTranslationsFR(ctx, modeENs); err == nil && len(modeFR) > 0 {
-			for i := range pool {
-				if fr, ok := modeFR[pool[i].ModeUI]; ok && fr != "" {
-					pool[i].ModeUI = fr
-				}
-			}
-		} else if err != nil {
-			slog.WarnContext(ctx, "career.highlight.mode_fr_load_failed", "err", err)
-		}
-	}
+	return names
+}
 
-	// Playlists : collecter les playlist_ids distincts, charger les traductions
-	// asset_translations FR, override le label si la valeur brute est manquante
-	// ou identique à l'EN (placeholder COALESCE).
-	playlistIDSet := make(map[string]struct{})
+// localizeHighlightModes pose ModeUI (clé, langue par défaut) et ModeLabel (langue `loc`).
+func localizeHighlightModes(ctx context.Context, repo port.CareerRepository, pool []domain.HighlightMatchPoolRow, loc i18n.Locale) {
+	seen := make(map[string]struct{})
+	keys := make([]string, 0, 16)
 	for _, m := range pool {
-		if m.PlaylistID != "" {
-			playlistIDSet[m.PlaylistID] = struct{}{}
+		if _, ok := seen[m.ModeUI]; ok || m.ModeUI == "" {
+			continue
+		}
+		seen[m.ModeUI] = struct{}{}
+		keys = append(keys, m.ModeUI)
+	}
+	if len(keys) == 0 {
+		return
+	}
+	byDefault := loadHighlightModeNames(ctx, repo, i18n.Default, keys)
+	byLoc := byDefault
+	if loc != i18n.Default {
+		byLoc = loadHighlightModeNames(ctx, repo, loc, keys)
+	}
+	for i := range pool {
+		raw := pool[i].ModeUI
+		pool[i].ModeLabel = raw
+		if v := byLoc[raw]; v != "" {
+			pool[i].ModeLabel = v
+		}
+		if v := byDefault[raw]; v != "" {
+			pool[i].ModeUI = v
+		}
+		if loc == i18n.Default {
+			pool[i].ModeLabel = pool[i].ModeUI
 		}
 	}
-	if len(playlistIDSet) > 0 {
-		ids := make([]string, 0, len(playlistIDSet))
-		for k := range playlistIDSet {
-			ids = append(ids, k)
+}
+
+// loadHighlightPlaylistNames lit le nom des playlists `ids` dans la langue `lang`.
+func loadHighlightPlaylistNames(ctx context.Context, repo port.CareerRepository, lang i18n.Locale, ids []string) map[string]string {
+	names, err := repo.LoadPlaylistAssetTranslations(ctx, lang, ids)
+	if err != nil {
+		slog.WarnContext(ctx, "career.highlight.playlist_names_load_failed", "locale", lang, "err", err)
+		return nil
+	}
+	return names
+}
+
+// localizeHighlightPlaylists pose PlaylistName (clé, langue par défaut) et PlaylistLabel (langue `loc`).
+// Le nom d'actif de la langue par défaut l'emporte sur le nom brut du registre (source de vérité côté
+// metadata) ; sans nom d'actif dans la langue `loc`, le libellé est le nom brut du registre.
+func localizeHighlightPlaylists(ctx context.Context, repo port.CareerRepository, pool []domain.HighlightMatchPoolRow, loc i18n.Locale) {
+	seen := make(map[string]struct{})
+	ids := make([]string, 0, 16)
+	for _, m := range pool {
+		if _, ok := seen[m.PlaylistID]; ok || m.PlaylistID == "" {
+			continue
 		}
-		if plFR, err := repo.LoadPlaylistAssetTranslationsFR(ctx, ids); err == nil && len(plFR) > 0 {
-			for i := range pool {
-				fr := strings.TrimSpace(plFR[pool[i].PlaylistID])
-				if fr == "" {
-					continue
-				}
-				// Override si raw est vide OU identique au FR (donc l'EN n'a pas
-				// vraiment de FR distinct).
-				if pool[i].PlaylistName == "" || strings.EqualFold(pool[i].PlaylistName, fr) {
-					pool[i].PlaylistName = fr
-					continue
-				}
-				// Override aussi si la valeur brute est l'EN (heuristique : la
-				// valeur brute est en EN si elle n'est pas déjà la FR de l'asset).
-				// Comme on n'a pas l'EN séparément ici, on force le FR par asset
-				// (source de vérité côté metadata).
-				pool[i].PlaylistName = fr
+		seen[m.PlaylistID] = struct{}{}
+		ids = append(ids, m.PlaylistID)
+	}
+	var byDefault, byLoc map[string]string
+	if len(ids) > 0 {
+		byDefault = loadHighlightPlaylistNames(ctx, repo, i18n.Default, ids)
+		byLoc = byDefault
+		if loc != i18n.Default {
+			byLoc = loadHighlightPlaylistNames(ctx, repo, loc, ids)
+		}
+	}
+	for i := range pool {
+		raw := pool[i].PlaylistName
+		if v := strings.TrimSpace(byDefault[pool[i].PlaylistID]); v != "" {
+			pool[i].PlaylistName = v
+		}
+		pool[i].PlaylistLabel = pool[i].PlaylistName
+		if loc != i18n.Default {
+			pool[i].PlaylistLabel = raw
+			if v := strings.TrimSpace(byLoc[pool[i].PlaylistID]); v != "" {
+				pool[i].PlaylistLabel = v
 			}
-		} else if err != nil {
-			slog.WarnContext(ctx, "career.highlight.playlist_fr_load_failed", "err", err)
 		}
 	}
 }
@@ -339,8 +372,12 @@ func computeHighlightAvailableModes(pool []domain.HighlightMatchPoolRow, experie
 		counts[m.ModeUI]++
 	}
 	out := make([]domain.HighlightModeCount, 0, len(counts))
+	labels := optionLabels{}
+	for _, m := range pool {
+		labels.add(m.ModeUI, m.ModeLabel)
+	}
 	for mode, c := range counts {
-		out = append(out, domain.HighlightModeCount{Value: mode, Count: c})
+		out = append(out, domain.HighlightModeCount{Value: mode, Label: labels.labelOr(mode), Count: c})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Count > out[j].Count })
 	return out
@@ -367,8 +404,12 @@ func computeHighlightAvailablePlaylists(pool []domain.HighlightMatchPoolRow, exp
 		counts[m.PlaylistName]++
 	}
 	out := make([]domain.HighlightPlaylistCount, 0, len(counts))
+	labels := optionLabels{}
+	for _, m := range pool {
+		labels.add(m.PlaylistName, m.PlaylistLabel)
+	}
 	for pl, c := range counts {
-		out = append(out, domain.HighlightPlaylistCount{Value: pl, Count: c})
+		out = append(out, domain.HighlightPlaylistCount{Value: pl, Label: labels.labelOr(pl), Count: c})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Count > out[j].Count })
 	return out

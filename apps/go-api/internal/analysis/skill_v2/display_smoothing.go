@@ -1,5 +1,7 @@
 package skill_v2
 
+import "levelup/go-api/internal/i18n"
+
 // display_smoothing.go — lissage de l'AFFICHAGE du palier LUSR v2.
 //
 // Sépare la vérité interne (μ honnête, jamais bridé) de la présentation : le
@@ -8,7 +10,7 @@ package skill_v2
 // éviter les "grosses chutes en un match" sans corrompre la convergence du
 // modèle bayésien.
 //
-// Justification chiffrée : étude .ai/thought_log.md [2026-05-31]. Sur les 3
+// Justification chiffrée : étude de volatilité du 2026-05-31. Sur les 3
 // joueurs trackés (full history, σ convergé ~0.67), la volatilité résiduelle
 // est un problème de QUEUE (matchs rares à fort Δμ : btb max 2.13 μ, quits).
 // L'hystérésis élimine 100 % des chutes abruptes (−≥2 sous-paliers) avec un lag
@@ -97,7 +99,7 @@ func SmoothDisplayedOrdinal(prevOrd, targetOrd, experience int) int {
 	return prevOrd - 1
 }
 
-// FormatTierSubLabel retourne le libellé FR ("Or III", "Onyx", "Non classé")
+// FormatTierSubLabel retourne le libellé français ("Or III", "Onyx", "Non classé")
 // pour un (tier, sub) déjà résolu — utilisé par le chemin lissé qui dispose
 // directement de la cible affichée, sans repasser par μ.
 func FormatTierSubLabel(tier TierBoundary, sub int) string {
@@ -105,13 +107,13 @@ func FormatTierSubLabel(tier TierBoundary, sub int) string {
 		return "Non classé"
 	}
 	if sub == 0 || tier.SubTiers <= 1 {
-		return tier.NameFR
+		return tier.Label.Pick(i18n.Default)
 	}
 	r, ok := romanSubTier[sub]
 	if !ok {
-		return tier.NameFR
+		return tier.Label.Pick(i18n.Default)
 	}
-	return tier.NameFR + " " + r
+	return tier.Label.Pick(i18n.Default) + " " + r
 }
 
 // mapTierSubToLegacyRating mappe un (tier, sub) résolu vers le rating_value

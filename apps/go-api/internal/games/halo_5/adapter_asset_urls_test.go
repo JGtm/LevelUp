@@ -5,6 +5,8 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // Vérifie statiquement que AssetURLAdapter satisfait l'interface.
@@ -13,13 +15,13 @@ var _ games.TitleAssetURLAdapter = (*AssetURLAdapter)(nil)
 func newTestAdapter() *AssetURLAdapter {
 	return NewAssetURLAdapter().
 		WithMaps([]canonical.AssetMeta{
-			{ID: "guid-truth", NameEN: "The Rig", ImageURL: "https://cdn/maps/the-rig.png"},
-			{ID: "guid-noimg", NameEN: "NoImage", ImageURL: ""},
+			{ID: "guid-truth", Names: i18n.FromColumns("The Rig", ""), ImageURL: "https://cdn/maps/the-rig.png"},
+			{ID: "guid-noimg", Names: i18n.FromColumns("NoImage", ""), ImageURL: ""},
 		}).
 		WithWeapons([]canonical.AssetMeta{
-			{ID: "11", NameEN: "Battle Rifle", ImageURL: "https://cdn/weapons/br.png"},
-			{ID: "12", NameEN: "NoIconWeapon", ImageURL: ""},
-			{ID: "pas-un-entier", NameEN: "Broken ID", ImageURL: "https://cdn/weapons/x.png"},
+			{ID: "11", Names: i18n.FromColumns("Battle Rifle", ""), ImageURL: "https://cdn/weapons/br.png"},
+			{ID: "12", Names: i18n.FromColumns("NoIconWeapon", ""), ImageURL: ""},
+			{ID: "pas-un-entier", Names: i18n.FromColumns("Broken ID", ""), ImageURL: "https://cdn/weapons/x.png"},
 		}).
 		WithCSRResolver(func(designation string, subTier int) string {
 			switch {

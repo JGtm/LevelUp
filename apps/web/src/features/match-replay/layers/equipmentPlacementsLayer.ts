@@ -49,14 +49,13 @@ import {
   drawRepairField,
   drawRevealMark,
   drawSeekerImpulse,
-  drawShroud,
   drawUnnamedDot,
   type PlacementView,
   project,
   REPAIR_FIELD_RADIUS_M,
-  SHROUD_RADIUS_M,
   viewScale,
 } from './placementShapes'
+import { drawShroud, SHROUD_RADIUS_M, type ShroudInk } from './placementShroud'
 import { drawWall, wallHeading, WALL_PANEL_IDS } from './placementWall'
 // La FENÊTRE d'une pose vit à part (cf. le réexport plus haut) : elle est aussi LUE ici, et un
 // réexport ne met rien dans la portée locale. L'import inverse, lui, ne porte que des TYPES —
@@ -304,6 +303,11 @@ export interface PlacementInk {
    * interdimensionnel », et une teinte d'équipe la ferait lire comme un marqueur de camp.
    */
   rift: RiftInk
+  /**
+   * Encres FIXES de l'écran occultant (2026-10-30) : bleu nuit et bleu électrique. Comme la
+   * faille, elles disent ce qu'EST l'objet, pas qui l'a posé — elles ne passent pas par `inkOf`.
+   */
+  shroud: ShroudInk
   /** Encre neutre du thème (`--muted-foreground`), servie aux poses sans poseur. */
   neutral: string
 }
@@ -435,7 +439,7 @@ function drawPlacement(
   const pxParM = viewScale(view)
   if (kind === 'dropped') drawDroppedObject(ctx, c, time, color)
   else if (kind === 'rift') drawRift(ctx, c, time, ink.rift)
-  else if (kind === 'shroud') drawShroud(ctx, c, SHROUD_RADIUS_M * pxParM, ink.neutral)
+  else if (kind === 'shroud') drawShroud(ctx, { c, radiusPx: SHROUD_RADIUS_M * pxParM, ageMs }, time, ink.shroud)
   else if (kind === 'seeker') drawSeekerImpulse(ctx, c, ageMs, time, color)
   else if (kind === 'field')
     drawRepairField(ctx, { c, radiusPx: REPAIR_FIELD_RADIUS_M * pxParM, ageMs }, time, color)
@@ -446,9 +450,10 @@ function drawPlacement(
  * drawEquipmentPlacementsLayer trace les poses ACTIVES à l'image courante, puis les marques de
  * révélation que les pings de capteur produisent à cet instant.
  *
- * La fenêtre dessinée n'est PAS [t0, t1] : `t1` date la mise au repos de l'objet, pas sa
- * disparition, que le film ne porte pas (cf. placementEndFrame). Le capteur se tient à sa durée
- * officielle, les autres poses restent jusqu'à la fin du rejeu.
+ * La fenêtre dessinée est celle de `placementEndFrame` : une pose à fin lue (`endRead`, capteur
+ * et champ engendrés) va de son repos à cette fin ; sinon `t1` n'est qu'une borne inférieure et
+ * la famille se tient à sa durée officielle quand elle en a une (capteur, mur), ou reste jusqu'à
+ * la fin du rejeu.
  *
  * LES MARQUES PASSENT APRÈS TOUTES LES POSES, et jamais dans la boucle : une marque est un
  * signe posé sur un JOUEUR, elle doit se lire par-dessus les zones — y compris celle d'un

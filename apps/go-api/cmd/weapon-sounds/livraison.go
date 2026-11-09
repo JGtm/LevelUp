@@ -1,19 +1,20 @@
 package main
 
 // livraison.go — mode `livrer` : LIVRAISON des sons d'armes du rejeu 2D, fusion avec le
-// moteur sonore de feat/v75 (etape 7 de `.ai/V7.5/RECETTE_SONS_ARMES.md`).
+// moteur sonore de feat/v75.
 //
 // PORTAGE FIDELE de `_outils/livraison.py` (archive Desktop du chantier sons-armes, HORS
-// DEPOT, lecture seule), au meme titre que pck_dump.go a ferme le maillon `akpk_unpack.py`
-// (constat H2 du registre `.ai/V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md`). MEME ALGORITHME,
+// DEPOT, lecture seule), au meme titre que pck_dump.go a ferme le maillon `akpk_unpack.py`. MEME ALGORITHME,
 // MEMES STRUCTURES DE DONNEES (lot1.json, lot2.json, manifeste.json, coups.json,
 // votes-final.json, produits par les etapes 2/3/5/6 de la recette — hors depot, non portes
 // par ce lot), MEME GENERATEUR PSEUDO-ALEATOIRE (livraison_mt19937.go, verifie bit a bit
 // contre CPython) pour l'unique arme rendue par evenement plutot que copiee depuis un
 // fichier vote (Covenant_provoker -> hinf_ravager).
 //
-// CE QUE CE MODE REMPLACE, ET RIEN D'AUTRE : les fichiers d'ARMES (`hinf_*.wav`) de
-// `static/sounds/halo_infinite/`. Les sons d'evenements du pack utilisateur (lancers,
+// CE QUE CE MODE REMPLACE, ET RIEN D'AUTRE : les fichiers d'ARMES (`hinf_*.ogg`) de
+// `static/sounds/halo_infinite/`. Le mixage et la troncature restent en PCM (WAV, repertoire
+// d'attente) ; seul le fichier publie est encode en Opus/Ogg, par media.EncodeSound — le code
+// de cmd/sounds-encode. Les sons d'evenements du pack utilisateur (lancers,
 // explosions, melee_kill, camo_*, overshield_*) ne sont JAMAIS touches. Il GENERE AUSSI
 // `weaponSoundVariations.ts` : les fourchettes RANGED (volume, hauteur) par stem, extraites
 // des banks du jeu.
@@ -123,7 +124,7 @@ type livraisonManifesteRoot struct {
 type livraisonManifesteArme struct {
 	Dossier string  `json:"dossier"`
 	Cle     *string `json:"cle"`
-	NomFr   *string `json:"nom_fr"`
+	Nom     *string `json:"nom_fr"` // clé du manifeste : le nom français de l arme (format d entrée figé)
 }
 
 // --- coups.json (objet racine : dossier -> entree) ---
@@ -167,7 +168,14 @@ type livraisonChemins struct {
 	SonsRacine string
 	Cible      string
 	Tmp        string
+	// Encodeur transforme le WAV tronque d une arme en son livre (Opus/Ogg) : le moteur de mixage
+	// et la troncature restent en PCM, seul le fichier publie est encode.
+	Encodeur livraisonEncodeur
 }
+
+// livraisonEncodeur encode le WAV `wav` vers le fichier livre `ogg`. En production c est
+// media.EncodeSound, le meme code que cmd/sounds-encode ; un test peut le remplacer.
+type livraisonEncodeur func(wav, ogg string) error
 
 type livraisonEtat struct {
 	Livres     map[string]string // cle canonique -> dossier qui l'a livree
@@ -305,7 +313,7 @@ func livraisonVotesDe(dossier string, votes []livraisonVote) []livraisonVote {
 // appelants qui l'ecartent : le vote est saute, et l'on passe au SUIVANT (jamais un repli
 // sur `exemples_proposes` du meme vote). Rendre `("", true)` faisait construire une source
 // `"<dossier>/"`, que `os.Stat` accepte (c'est un repertoire) et que la troncature refuse :
-// le run entier avortait — apres que le miroir avait deja efface les `hinf_*.wav` (constat
+// le run entier avortait — apres que le miroir avait deja efface les `hinf_*.ogg` (constat
 // C7 de la revue R1).
 func livraisonFichierDuVote(v livraisonVote) (string, bool) {
 	f := ""

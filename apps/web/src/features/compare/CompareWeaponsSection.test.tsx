@@ -60,7 +60,7 @@ const profil = (o: Partial<CompareWeaponSide>): CompareWeaponSide => ({
     { class: 'grenade', kills: 40, share_pct: 40 },
   ],
   top_weapons: [
-    { label: 'BR75', label_en: 'BR75', kills: 30, image_url: 'https://cdn/br75.png', image_tinted: true },
+    { label: 'BR75', kills: 30, image_url: 'https://cdn/br75.png', image_tinted: true },
     { label: 'Sidekick', kills: 20 },
   ],
   ...o,

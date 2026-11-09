@@ -55,9 +55,10 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // echantillonParDefaut : L ECHANTILLON DU LOT — des films PRODUCTIFS du bas du cout, deux films
@@ -125,7 +126,7 @@ func (c coutDUnFilm) total() time.Duration {
 
 // collecteurDeMesure construit un collecteur cable comme la commande de production : capture des
 // positions active, catalogue de bornes REEL, roster REEL branche sur la base du banc.
-func collecteurDeMesure(t *testing.T, db *sql.DB, chunks map[string][]haloclient.FilmChunk,
+func collecteurDeMesure(t *testing.T, db *sql.DB, chunks map[string][]filmfetch.FilmChunk,
 ) *KillSourceCollector {
 	t.Helper()
 	cat := realMapQuantCatalog(t)
@@ -216,7 +217,7 @@ func mesurerUnFilm(t *testing.T, ctx context.Context, db *sql.DB, film string) *
 	if len(chunksDisque) == 0 {
 		return nil
 	}
-	col := collecteurDeMesure(t, db, map[string][]haloclient.FilmChunk{film: chunksDisque})
+	col := collecteurDeMesure(t, db, map[string][]filmfetch.FilmChunk{film: chunksDisque})
 
 	c := coutDUnFilm{film: film, chunks: len(chunksDisque)}
 	for _, ch := range chunksDisque {

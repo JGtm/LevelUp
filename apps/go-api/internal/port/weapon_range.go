@@ -1,7 +1,6 @@
 package port
 
-// weapon_range.go — LE PORT DE LA PORTÉE MESURÉE PAR ARME (plan
-// .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md, lot 3).
+// weapon_range.go — LE PORT DE LA PORTÉE MESURÉE PAR ARME.
 //
 // # CE QUE LE REPO REND, ET CE QU'IL NE FAIT PAS
 //
@@ -22,6 +21,7 @@ import (
 	"errors"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/i18n"
 )
 
 // WeaponRangeFilters paramètre la lecture des frags mesurés.
@@ -74,15 +74,15 @@ func (f WeaponRangeFilters) Validate() error {
 	return nil
 }
 
-// WeaponLabel est le nom d'affichage d'une clé d'arme, dans les deux ordres de langue.
+// WeaponLabel est le nom d'affichage d'une clé d'arme, dans chaque langue connue de la metadata.
 //
-// Deux champs et non un, pour la même raison que `MatchKillDistanceWeapon` : la réponse sert
-// les deux locales et la résolution est UNE seule requête. Vides tous les deux quand la
-// metadata du titre ne connaît pas la clé — l'appelant retombe alors sur la clé elle-même,
-// jamais sur un libellé inventé côté Go.
+// Un Text et non une chaîne : la résolution est UNE seule requête, quelle que soit la langue
+// demandée, et l'appelant en choisit une avec Pick(locale de la requête). Chaque langue porte sa
+// propre chaîne de repli interne (fr = FR d'abord, en = EN d'abord). Vide quand la metadata du
+// titre ne connaît pas la clé — l'appelant retombe alors sur la clé elle-même, jamais sur un
+// libellé inventé côté Go.
 type WeaponLabel struct {
-	Label   string `json:"label,omitempty"`
-	LabelEN string `json:"label_en,omitempty"`
+	Name i18n.Text `json:"-"`
 }
 
 // WeaponLabelResolver traduit des clés de registre en noms d'affichage.
@@ -106,8 +106,7 @@ type WeaponLabelResolver interface {
 //
 // POURQUOI CE TYPE EXISTE ALORS QUE `WeaponKillRow` PORTE DÉJÀ LES TROIS CHAMPS. Les frags
 // MESURÉS (`analysis.MeasuredKill`) ne passent pas par `WeaponKillRow` : ils portent une clé
-// de registre et rien d'autre. Publier la portée par RÔLE (D1 du plan
-// .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md) demande donc de traduire des clés en
+// de registre et rien d'autre. Publier la portée par RÔLE demande donc de traduire des clés en
 // dimensions, sans requête neuve — la résolution canonique existe déjà chez l'implémenteur.
 //
 // Les trois champs sont des CLÉS, jamais des libellés : le nom affichable passe par

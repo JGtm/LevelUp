@@ -61,22 +61,6 @@ func TestZeroMMR_StatsEtAccueil(t *testing.T) {
 	}
 }
 
-func TestZeroMMR_CarriereEtMeilleursMatchs(t *testing.T) {
-	pdb := seedZeroMMRMatch(t)
-	ctx := context.Background()
-	execOnSharedDBs(t, pdb, ctx, `UPDATE shared.match_participants SET time_played_seconds = 600`)
-
-	top, err := NewCareerRepo(pdb).GetTopMatches(ctx)
-	if err != nil {
-		t.Fatalf("GetTopMatches: %v", err)
-	}
-	for _, m := range top {
-		if m.TeamMMR != nil || m.EnemyMMR != nil {
-			t.Errorf("meilleurs matchs : MMR à 0 attendu absent, got team=%v enemy=%v", m.TeamMMR, m.EnemyMMR)
-		}
-	}
-}
-
 func TestZeroMMR_VueDuMatch(t *testing.T) {
 	pdb := seedZeroMMRMatch(t)
 	ctx := context.Background()

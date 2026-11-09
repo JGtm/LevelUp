@@ -3,7 +3,7 @@ package main
 // positions.go — mode POSITIONS du CLI diag_weapons_v3.
 //
 // Pour chaque match (cache film présent), décode les positions joueurs keyframe
-// (decfilm.DecodeKeyframePositions, §N de .ai/archive/V7/RESEARCH_THEATER_RE.md) depuis le
+// (decfilm.DecodeKeyframePositions) depuis le
 // cache disque (chunks BRUTS → décompressés zlib ici), affiche un résumé par
 // match (nb positions, bornes x/y/z, split équipe best-effort). INSPECTION SEULE depuis le
 // 2026-09-06 : `match_player_positions` est PROJETEE de l artefact de rejeu (decision 1),
@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"math"
 
-	"levelup/go-api/internal/domain/playerposition"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/playerposition"
 )
 
 // runPositions traite le panel en mode POSITIONS, match par match.

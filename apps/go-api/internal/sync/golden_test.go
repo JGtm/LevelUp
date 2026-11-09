@@ -1,8 +1,6 @@
 // Package sync — golden_test.go : test E2E "golden fixture" pour la chaîne
 // sync highlight events.
 //
-// Phase 4 du plan .ai/archive/V7/PLAN_HIGHLIGHT_EVENTS_BACKFILL.md (mai 2026).
-//
 // CE TEST AURAIT CAPTURÉ LES BUGS RÉCENTS :
 //   - Parser bit-aligné cassé : highlight_events resterait à 0 alors qu'on
 //     attend ≥ 100 events sur la fixture v41 réelle (4v4).
@@ -28,13 +26,13 @@ import (
 	"database/sql"
 	"io"
 	"os"
-	"path/filepath"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/testutil"
 )
 
 // openGoldenShared ouvre une DB DuckDB in-memory avec le schéma prod aligné
@@ -103,7 +101,7 @@ func openGoldenShared(t *testing.T) *sql.DB {
 // loadGoldenChunk lit le fixture v41 réel (chemin relatif au package sync).
 func loadGoldenChunk(t *testing.T) []byte {
 	t.Helper()
-	path := filepath.Join("..", "games", "halo_infinite", "film", "internal", "grammar", "testdata", "v41_chunk_he.bin")
+	path := testutil.CheminBriqueFilm(t, "internal", "grammar", "testdata", "v41_chunk_he.bin")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("fixture introuvable %s: %v\n  → re-capturer via : go run ./cmd/refresh_golden_fixture --gamertag JGtm", path, err)

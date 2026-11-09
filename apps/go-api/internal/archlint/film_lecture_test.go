@@ -33,16 +33,16 @@ import (
 
 const (
 	// paquetLectureDuFilm : le paquet gardé, relatif à `apps/go-api`.
-	paquetLectureDuFilm = "internal/games/halo_infinite/film/internal/grammar/lecture"
+	paquetLectureDuFilm = racineBriqueFilm + "/internal/grammar/lecture"
 	// paquetTypesDuFilm : le seul import du dépôt que L1 admet.
-	paquetTypesDuFilm = "internal/games/halo_infinite/film/types"
+	paquetTypesDuFilm = racineBriqueFilm + "/types"
 	// facadeDuFilm : la façade, que L3 garde avec la couche de publication.
-	facadeDuFilm = "internal/games/halo_infinite/film/decfilm"
+	facadeDuFilm = racineBriqueFilm + "/decfilm"
 )
 
 // TestLectureEstUneFeuilleSansLogique : L1 et L2.
 func TestLectureEstUneFeuilleSansLogique(t *testing.T) {
-	racineAPI := apiRootDepuisIci(t)
+	racineAPI := workspaceRoot(t)
 	imports, fichiers := importsDeProductionDuPaquet(t, racineAPI, paquetLectureDuFilm)
 	if fichiers == 0 {
 		t.Fatalf("balayage muet : aucun fichier de production dans %s", paquetLectureDuFilm)

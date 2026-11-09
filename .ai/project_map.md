@@ -11,14 +11,32 @@
 > anciennes URLs redirigent via un splat). Ne pas s'appuyer
 > sur les sections ci-dessous sans re-vérifier dans le code.
 >
-> **Dernière mise à jour : 2026-09-23** — section « Documentation IA (.ai/) » réécrite sur l'état
-> final de la racine après le lot d'archivage (îlot du décodeur de film : 2026-09-18).
+> **Dernière mise à jour : 2026-11-08** — îlot « i18n à N langues » ajouté (ci-dessous) ; section « Documentation IA
+> (.ai/) » réécrite le 2026-09-23 sur l'état final de la racine après le lot d'archivage (îlot du décodeur de film :
+> 2026-09-18).
 
 > 📋 **Tâches et TODO centralisés** : voir `.ai/BACKLOG.md` et `.ai/PUNCHLIST.md` (handover GS↔OP, sources de vérité courtes).
 
 > 🧭 **Chantier Go — corpus restructuré** : point d'entrée dans `.ai/go_migration_v2/README.md` ; le corpus historique détaillé reste dans `.ai/go_migration/`.
 
 > 📘 **Onboarding nouveau dev** : `docs/FOUNDATIONS_GUIDE.md` (EN) + `docs/FR/FOUNDATIONS_GUIDE.md` — guide consolidé sur les 4 fondations transverses (canonical types + adapters + i18n manifests + ECharts wrappers). 4 ADRs dans `docs/adr/000{1,2,3,4}.md`.
+
+## i18n à N langues — cartographie À JOUR AU 2026-10-27 (îlot de fraîcheur)
+
+> Mesurée sur l'arbre de la branche `feat/i18n-multilangue` à la clôture de l'étape 8 du plan
+> `.ai/PLAN_I18N_MULTILANGUE.md`. Les décisions vivent dans l'ADR 0040 (`docs/adr/0040-i18n-n-locales.md`),
+> le mode d'emploi dans `docs/FOUNDATIONS_GUIDE.md` § 3.5. Le code fait foi.
+
+| Rôle | Chemin réel |
+|---|---|
+| SOURCE UNIQUE des langues (`default`, `fallback`, une entrée `[[locale]]` : `code`, `intl`, `halo`, `required`) | `config/locales.toml` |
+| Générateur (listes dérivées + modules de manifests ; `--pseudo xx` = langue de preuve) | `apps/web/scripts/build_i18n_manifests.mjs` (`locales.mjs`, `manifests.mjs`) |
+| Listes dérivées, versionnées, tenues par un test de fraîcheur | `apps/web/src/lib/i18n/generated/locales.ts` ; `apps/go-api/internal/i18n/locales_gen.go` |
+| Noyau Go (couche domaine, sans dépendance interne) : `Locale`, `Parse`, `FromContext`, `Text` (`Pick`), catalogue `Msg`, `ResolveParams` | `apps/go-api/internal/i18n/` |
+| Catalogue des messages écrits par le serveur (une feuille par message, une valeur par langue) | `apps/go-api/internal/i18n/messages/*.toml` |
+| Noyau web : `normalizeLocale`, `pickText`, `intlLocale` (table `INTL_TAG`) ; manifests TOML et modules générés | `apps/web/src/lib/i18n/` (`locale.ts`, `pickText.ts`, `manifests/`, `generated/`) ; `apps/web/src/lib/formatters/intlLocale.ts` |
+| Noms par langue en base (une ligne par identifiant et langue) | `metadata.duckdb` : `asset_translations`, `medal_translations`, `weapon_name_labels`, `weapon_label_names`, `mode_name_tr`, `career_rank_translations` (skill `db-schema`) |
+| Garde-rails | web : `apps/web/src/lib/i18n/*.guard.test.ts`, `locale.ratchet.test.ts` ; Go : `apps/go-api/internal/archlint/i18n_*_test.go`, `no_locale_literal_test.go` |
 
 ## Décodeur de film — cartographie À JOUR AU 2026-09-18 (îlot de fraîcheur)
 
@@ -60,6 +78,19 @@ Chemins sous `apps/go-api/` sauf mention contraire.
 `KillSourceDecoderRev` (devenue `facts.Rev`), `GrammarRev` (devenue `grammar.Rev`),
 `LockProcessDecode` et `decode_gate.go` (supprimés, et leur retour est interdit par un ratchet).
 `internal/analysis/` n'importe plus AUCUN paquet de titre, production et test comprises.
+
+## Décodeur de film : brique et exploitation (2026-11-08)
+
+Chemins depuis la racine du dépôt. Complète la cartographie ci-dessus, dont les chemins
+sous `internal/games/halo_infinite/film/` ont été déplacés vers `libs/film/`.
+
+| Rôle | Chemin |
+|---|---|
+| Brique publiable : module (README, NOTICE, exemple ; façade `decfilm` ; `memguard` ; `filmcache` en lecture seule) | `libs/film/` (`decfilm/`, `memguard/`, `filmcache/`) |
+| Lanceur de décodage enfant et priorité | `apps/go-api/internal/filmrun/` |
+| Archive, recompression et déplacement des films | `apps/go-api/internal/filmarchive/` |
+| Replis complétés par l'hôte | `apps/go-api/internal/filmreplis/` |
+| Verrou de fichier : copie jumelle de `libs/film/internal/filelock` (tenue identique par `archlint/copies_identiques_test.go`) | `apps/go-api/internal/platform/filelock/` |
 
 ## ⚠️ Limitations Connues
 
@@ -379,8 +410,8 @@ data/
 > Réécrite par le lot d'archivage du 2026-09-23 : l'ancienne table énumérait 26 chemins qui
 > n'existaient plus (corpus `go_migration*`, `migration/`, `sprints/`, monde Python). Règle
 > (CLAUDE.md, « Workflow Agentique ») : la racine de `.ai/` ne garde que le chantier vivant ;
-> les archives de chantier v7.5 sont indexées par `.ai/V7.5/README.md`, ce qui précède v7.5
-> vit sous `.ai/archive/`. Verdict et preuve de chaque document : `.ai/V7.5/README.md`,
+> les archives de chantier v7.5 sont indexées par `.ai/archive/V7.5/README.md`, ce qui précède v7.5
+> vit sous `.ai/archive/`. Verdict et preuve de chaque document : `.ai/archive/V7.5/README.md`,
 > section « Ce qui est resté à la racine ».
 
 | Racine de `.ai/` | Rôle |
@@ -394,7 +425,7 @@ data/
 | `REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` | Équipement : à lire avant toute affirmation (CLAUDE.md) |
 | `ETAT_DE_L_ART_KILLWEAPON.md`, `ADDENDUM_ETAT_DE_L_ART_2026-07-26.md`, `README_KILLWEAPON_INDEX.md`, `GUIDE_WEAPON_SHOTS.md`, `ETAT_DE_L_ART_FORGE_PALETTE_ZONES.md`, `ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md`, `AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md` | Références du film et des armes, citées par du code, un ADR ou un plan vivant |
 | `REFERENCE_WEAPON_IDS.md`, `I18N_REFERENCE.md`, `ENRICHMENTS_CATALOG.md`, `CHARTS_AND_TABLES.md`, `MCC_UNOFFICIAL_API_REFERENCE.md`, `STEAKTACULAR.md`, `duckdb_7659_upstream_report.md` | Références transverses (armes, i18n, enrichissements, graphes, API MCC, comeback, rapport DuckDB amont) |
-| `HANDOFF_DECODEUR_FILM_2026-09-13.md`, `PREPARATION_M2_PAS_4_A_6_2026-09-17.md`, `PREPARATION_M4_ORDRE_ET_FRONTIERES_2026-09-17.md`, `PLAN_ARME_FAVORITE_BRIEFING_EXPLORER_2026-09-17.md`, `PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md`, `PLAN_EXPLORER_PORTEE_FRAGS_2026-09-17.md`, `PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, `PLAN_FINALISATION_REJEU_2D.md`, `PLAN_MASTER_FILM_KILLFEED_REJEU.md`, `PLAN_OBJECTIFS_TEMPS_REEL.md`, `PLAN_DEPS_ECHARTS_TS7_2026-07-27.md`, `PLAN_REVUE_ANALYTIQUE_TIMESERIES_SQUAD_2026-07.md` | À ARBITRER (le 2026-09-23) : restés en place faute de preuve nette de clôture, ou parce que `PLAN_DECODEUR_FILM_2026-09-13.md` les cite ; la question posée pour chacun est dans `.ai/V7.5/README.md` |
+| `HANDOFF_DECODEUR_FILM_2026-09-13.md`, `PREPARATION_M2_PAS_4_A_6_2026-09-17.md`, `PREPARATION_M4_ORDRE_ET_FRONTIERES_2026-09-17.md`, `PLAN_ARME_FAVORITE_BRIEFING_EXPLORER_2026-09-17.md`, `PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md`, `PLAN_EXPLORER_PORTEE_FRAGS_2026-09-17.md`, `PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, `PLAN_FINALISATION_REJEU_2D.md`, `PLAN_MASTER_FILM_KILLFEED_REJEU.md`, `PLAN_OBJECTIFS_TEMPS_REEL.md`, `PLAN_DEPS_ECHARTS_TS7_2026-07-27.md`, `PLAN_REVUE_ANALYTIQUE_TIMESERIES_SQUAD_2026-07.md` | À ARBITRER (le 2026-09-23) : restés en place faute de preuve nette de clôture, ou parce que `PLAN_DECODEUR_FILM_2026-09-13.md` les cite ; la question posée pour chacun est dans `.ai/archive/V7.5/README.md` |
 
 | Sous-dossier de `.ai/` | Contenu |
 |---|---|

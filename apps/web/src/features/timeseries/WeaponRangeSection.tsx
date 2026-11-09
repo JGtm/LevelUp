@@ -9,8 +9,7 @@
  * Elle ouvre l'onglet « Usages » (cf. `TimeseriesPage.usages.tsx`), sous le titre de section
  * commun (`SectionTitle`).
  *
- * Transposition de la maquette validée par l'utilisateur le 2026-09-06
- * (`.ai/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`) : quatre tuiles de tête, puis la carte
+ * Transposition de la maquette validée par l'utilisateur le 2026-09-06 : quatre tuiles de tête, puis la carte
  * « Portée par arme » — deux bâtons p10→p90 par arme, frags au-dessus, morts en dessous. Elle reste
  * en DEMI-LARGEUR (maquette v4 des Usages, décision D11 du plan PLAN_TIMESERIES_USAGES_EMPRISE_2026-10-05),
  * et partage sa rangée avec la carte passée en `aside` (« Rôles de portée »).
@@ -290,7 +289,7 @@ export function WeaponRangeSection({ range, aside }: WeaponRangeSectionProps) {
   )
   const f = useRangeFormats(locale)
   const weapons = range?.weapons
-  const lines = useMemo(() => weaponRangeLines(weapons, locale), [weapons, locale])
+  const lines = useMemo(() => weaponRangeLines(weapons), [weapons])
   const series = useMemo(() => [{ key: 'weapon-range', datapoints: lines }], [lines])
 
   const buildRange = useWeaponRangeOption(lines, f, t)

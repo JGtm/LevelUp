@@ -24,6 +24,7 @@
 //	levelup backfill-is-ranked [--dry-run] [--title slug]
 //	levelup identity       list | purge <xuid> [--yes]
 //	levelup pool-sharing   list | grandfather --players GT1,GT2 | --all [--yes]
+//	levelup film           recompress [--dry-run] [--films ID,ID] | archive-move (--to DIR | --default) [--resume]
 //
 // Variables d'environnement : LEVELUP_REPO_ROOT (auto-detecte si absent).
 //
@@ -68,6 +69,7 @@ func main() {
 	// Enfant de cuisson d'un film (protocole replaychild) : `seed-demo` recuit les rejeux
 	// figés de la démo en relançant CE binaire avec ce drapeau, un film par processus.
 	if replaychild.IsChild(os.Args) {
+		config.InstallProcessRootsFromEnv() // racines du parent, transmises par l'environnement (sans Load)
 		os.Exit(replaychild.RunChild(context.Background(), os.Args))
 	}
 	if len(os.Args) < 2 {
@@ -188,6 +190,8 @@ func main() {
 		exitErr = runIdentity(cfg, args)
 	case "pool-sharing":
 		exitErr = runPoolSharing(cfg, args)
+	case "film":
+		exitErr = runFilm(cfg, args)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -212,7 +216,8 @@ Usage:
   levelup <commande> [options]
 
 Commandes:
-  backup          Sauvegarder une DB joueur en Parquet Zstd
+  backup          Sauvegarder une DB joueur en Parquet Zstd ; « backup restore --from <jeu> --to <racine> » restaure un jeu de
+                  sauvegarde periodique de l application de bureau (--dry-run, --force, serveur arrete)
   restore         Restaurer une DB joueur depuis un backup Parquet
   healthcheck     Diagnostic d'integrite des bases DuckDB
   diagnose        Inspecter le schema d'une DB DuckDB
@@ -320,6 +325,10 @@ Commandes:
   pool-sharing    Mise en commun des jetons : pool-sharing list (etat par joueur) et pool-sharing grandfather
                   --players GT1,GT2 | --all [--yes] (enregistre l accord des joueurs designes qui l ont donne
                   hors de l application ; SANS --yes c est une simulation ; n ecrase jamais une decision)
+  film            Archive des films, gestes de l utilisateur (serveur arrete, jamais lances automatiquement) :
+                  film recompress [--dry-run] [--films ID,ID] (passe en zstd-3 les chunks bruts et zlib, un film a la fois,
+                  ecriture atomique, reprenable ; --dry-run chiffre le gain sans ecrire) et film archive-move
+                  (--to DIR | --default) [--resume] (range les films dans un autre dossier puis enregistre film_archive_dir)
 
 Options globales:
   LEVELUP_REPO_ROOT        Racine du repo (auto-detecte si absent)

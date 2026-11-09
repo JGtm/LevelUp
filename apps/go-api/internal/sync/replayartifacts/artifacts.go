@@ -26,7 +26,7 @@
 // unique à l'instant de l'insertion ne rattrape jamais rien (cf. backlog.go) :
 //
 //  1. LE PONT DISQUE — les chunks COMPLETS du film (en-tête + réplication + kill-feed)
-//     sont téléchargés et persistés au cache via filmcache.Write. C'est plus qu'un
+//     sont téléchargés et persistés au cache via filmarchive.Write. C'est plus qu'un
 //     préalable au décodage : les films EXPIRENT côté serveur Halo (~29 % du corpus déjà
 //     perdus), et un film persisté est une archive IRREMPLAÇABLE.
 //  2. L'ARTEFACT — replaybuild.BuildMatch décode le film du disque et écrit
@@ -47,13 +47,12 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	settingsPkg "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 )
 
 // maxPerCycle borne le nombre d'artefacts construits par cycle : un sync initial insère
@@ -84,8 +83,16 @@ type Hook struct {
 	// Enqueue : la mise en file, pour le placement « worker ». Nil = pas de file
 	// câblée sur ce chemin (le placement dégrade alors en « off », journalisé).
 	Enqueue EnqueueFunc
-	// CacheRoot : racine du cache film (PathResolver.CacheRootDir).
+	// CacheRoot : racine du cache applicatif (PathResolver.CacheRootDir) : variantes de carte,
+	// zones. Les films n'y vivent plus (FilmRoot).
 	CacheRoot string
+	// FilmRoot rend la racine de l'ARCHIVE des films (PathResolver.FilmArchiveDir), celle que
+	// `filmcache` lit et écrit. Une FONCTION, relue à chaque cycle : une archive vide peut changer
+	// d'emplacement à chaud (title.SetFilmArchiveRuntime).
+	FilmRoot func() string
+	// ArchiveFilms relit à CHAQUE cycle le réglage « archiver les films ». Nil = oui (le défaut
+	// d'ADR 0045 D-12 : un film expire côté serveur, on ne le jette pas sans l'avoir demandé).
+	ArchiveFilms func() bool
 	// BuildOne : la strategie de cuisson, cablee par NewHook (cf. buildone.go). Elle voyage
 	// avec le hook pour que les DEUX sites de wiring la recoivent sans la redeclarer.
 	BuildOne BuildOneFunc
@@ -119,6 +126,10 @@ func NewHook(cfg *config.AppConfig, store SettingsReader, enqueue EnqueueFunc) *
 			}
 			return 0
 		},
+		ArchiveFilms: func() bool {
+			s := load()
+			return s == nil || s.ArchiveFilms
+		},
 		Location: func() string {
 			if s := load(); s != nil {
 				return s.ReplayBuildLocation
@@ -130,11 +141,29 @@ func NewHook(cfg *config.AppConfig, store SettingsReader, enqueue EnqueueFunc) *
 			WorkerConfigured: strings.TrimSpace(cfg.BuildWorkerToken) != "",
 		},
 		Enqueue:   enqueue,
-		CacheRoot: titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir(),
+		CacheRoot: cfg.PathResolver().CacheRootDir(),
+		FilmRoot:  cfg.PathResolver().FilmArchiveDir,
 		// LA CUISSON PART DANS UN ENFANT BORNE, TOUJOURS (lot BUILDALL) : le serveur ne
 		// decode plus un film dans son propre processus.
 		BuildOne: SpawnBuildOne,
 	}
+}
+
+// Film rend la racine de l'archive des films du cycle courant ("" si le hook n'en porte pas).
+func (h *Hook) Film() string {
+	if h == nil || h.FilmRoot == nil {
+		return ""
+	}
+	return h.FilmRoot()
+}
+
+// Archive dit si le cycle courant conserve les films après cuisson, hook ou closure nils compris
+// (oui par défaut).
+func (h *Hook) Archive() bool {
+	if h == nil || h.ArchiveFilms == nil {
+		return true
+	}
+	return h.ArchiveFilms()
 }
 
 // Months rend la fenêtre de rétention du cycle courant (0 = illimité), hook ou closure nils
@@ -169,7 +198,7 @@ func (h *Hook) Placement(ctx context.Context) replaybuild.Placement {
 // ChunksFetcher : capacité OPTIONNELLE du client de sync (assertion côté appelant, pas
 // extension de l'interface HaloClient — les mocks des autres étapes n'ont pas à la porter).
 type ChunksFetcher interface {
-	GetFilmChunks(ctx context.Context, matchID string) ([]haloclient.FilmChunk, bool, error)
+	GetFilmChunks(ctx context.Context, matchID string) ([]filmfetch.FilmChunk, bool, error)
 }
 
 // Deps : tout ce dont l'étape a besoin, passé à plat par le paquet sync (le sous-package ne
@@ -200,8 +229,13 @@ type Deps struct {
 	TitleSlug string
 	// Gamertag : identité journalisée (aucun rôle fonctionnel).
 	Gamertag string
-	// CacheRoot : racine du cache film (Hook.CacheRoot).
+	// CacheRoot : racine du cache applicatif (Hook.CacheRoot).
 	CacheRoot string
+	// FilmRoot : racine de l'archive des films (Hook.FilmRoot).
+	FilmRoot string
+	// SansArchive : les chunks d'un film sont retirés une fois sa cuisson réussie (ADR 0045
+	// D-12 : archive désactivée). Le zéro conserve les films : un oubli ne détruit rien.
+	SansArchive bool
 	// RetentionMonths : fenêtre de sélection, <= 0 = illimitée (Hook.Months()).
 	RetentionMonths int
 	// Placement : la décision du cycle (Hook.Placement()).
@@ -472,7 +506,7 @@ func publierBilan(ctx context.Context, d Deps, b bilanCuisson, selectionnes int)
 	slog.InfoContext(ctx, "post-sync: rejeu 2D",
 		"gamertag", d.Gamertag, "built", b.construits, "films_persisted", b.filmsSauves,
 		"deja_a_jour", b.dejaAJour, "sans_film", b.sansFilm, "reportes_non_finalises", b.reportes,
-		"echecs", b.echecs,
+		"reportes_mode_jeu", b.reportesModeJeu, "reportes_verrou", b.reportesVerrou, "echecs", b.echecs,
 		"ecartes", b.ecartes,
 		"budget_epuise", b.budgetEpuise, "selected", selectionnes)
 }

@@ -1,9 +1,6 @@
 /**
  * SquadPerformanceCharts — wrapper teammates.16 : 8 sous-charts performance.
  *
- * Spec : .ai/charts_specs/teammates/16_trio_performance_charts.yaml (étendue
- *        à 8 charts par demande utilisateur).
- *
  * Sous-charts dans l'ordre :
  *   1+2. Frags / Morts (butterfly) + Assistances (paire)
  *   3.   Précision (pleine largeur)

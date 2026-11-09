@@ -86,7 +86,7 @@ export class FakeContext {
   createBufferSource() { const s = new FakeSource(); this.sources.push(s); return s }
   decodeAudioData(raw: ArrayBuffer) {
     // La « durée » du buffer est encodée dans la taille du tampon (1 octet = 0,1 s) : le
-    // test choisit ainsi des sons longs ou courts sans embarquer de vrai WAV.
+    // test choisit ainsi des sons longs ou courts sans embarquer de vrai fichier son.
     return Promise.resolve({ duration: raw.byteLength / 10 } as AudioBuffer)
   }
   close() { this.closed++; return Promise.resolve() }

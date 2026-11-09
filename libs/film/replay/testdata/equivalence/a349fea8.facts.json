@@ -1,0 +1,189 @@
+{
+  "players": [
+    {
+      "xuid": "2801170889403478",
+      "kills": 24,
+      "deaths": 9,
+      "assists": 7,
+      "teamId": 1
+    },
+    {
+      "xuid": "2567589438817455",
+      "kills": 12,
+      "deaths": 13,
+      "assists": 8,
+      "teamId": 1
+    },
+    {
+      "xuid": "2709661728990109",
+      "kills": 16,
+      "deaths": 9,
+      "assists": 6,
+      "teamId": 1
+    },
+    {
+      "xuid": "2551531087567969",
+      "kills": 10,
+      "deaths": 10,
+      "assists": 3,
+      "teamId": 1
+    },
+    {
+      "xuid": "2623439693412443",
+      "kills": 16,
+      "deaths": 14,
+      "assists": 1,
+      "teamId": 1
+    },
+    {
+      "xuid": "2708087487970851",
+      "kills": 16,
+      "deaths": 7,
+      "assists": 0,
+      "teamId": 1
+    },
+    {
+      "xuid": "2561020081883240",
+      "kills": 8,
+      "deaths": 20,
+      "assists": 5,
+      "teamId": 0
+    },
+    {
+      "xuid": "2757420090849917",
+      "kills": 18,
+      "deaths": 13,
+      "assists": 6,
+      "teamId": 0
+    },
+    {
+      "xuid": "2786110438233894",
+      "kills": 1,
+      "deaths": 9,
+      "assists": 0,
+      "teamId": 1
+    },
+    {
+      "xuid": "2777280310112055",
+      "kills": 19,
+      "deaths": 14,
+      "assists": 6,
+      "teamId": 1
+    },
+    {
+      "xuid": "2602757789183844",
+      "kills": 13,
+      "deaths": 11,
+      "assists": 5,
+      "teamId": 1
+    },
+    {
+      "xuid": "2685215110128939",
+      "kills": 13,
+      "deaths": 17,
+      "assists": 7,
+      "teamId": 0
+    },
+    {
+      "xuid": "2715589668296284",
+      "kills": 14,
+      "deaths": 9,
+      "assists": 7,
+      "teamId": 0
+    },
+    {
+      "xuid": "2643476564020999",
+      "kills": 4,
+      "deaths": 16,
+      "assists": 4,
+      "teamId": 0
+    },
+    {
+      "xuid": "2629246163203311",
+      "kills": 5,
+      "deaths": 10,
+      "assists": 3,
+      "teamId": 1
+    },
+    {
+      "xuid": "2588437148447766",
+      "kills": 4,
+      "deaths": 21,
+      "assists": 8,
+      "teamId": 0
+    },
+    {
+      "xuid": "2598296381800616",
+      "kills": 9,
+      "deaths": 12,
+      "assists": 7,
+      "teamId": 1
+    },
+    {
+      "xuid": "2614560627949198",
+      "kills": 1,
+      "deaths": 5,
+      "assists": 3,
+      "teamId": 0
+    },
+    {
+      "xuid": "2623770571233970",
+      "kills": 3,
+      "deaths": 6,
+      "assists": 5,
+      "teamId": 1
+    },
+    {
+      "xuid": "2561103847853634",
+      "kills": 8,
+      "deaths": 15,
+      "assists": 5,
+      "teamId": 0
+    },
+    {
+      "xuid": "2733003740599094",
+      "kills": 15,
+      "deaths": 5,
+      "assists": 9,
+      "teamId": 0
+    },
+    {
+      "xuid": "2569827578688229",
+      "kills": 8,
+      "deaths": 14,
+      "assists": 3,
+      "teamId": 1
+    },
+    {
+      "xuid": "2579990567056011",
+      "kills": 22,
+      "deaths": 11,
+      "assists": 5,
+      "teamId": 0
+    },
+    {
+      "xuid": "2731797518851096",
+      "kills": 22,
+      "deaths": 12,
+      "assists": 5,
+      "teamId": 0
+    },
+    {
+      "xuid": "2569436415689127",
+      "kills": 9,
+      "deaths": 11,
+      "assists": 1,
+      "teamId": 0
+    }
+  ],
+  "teamScores": [
+    1,
+    2
+  ],
+  "gameVariantName": "BTB Heavies:Total Control",
+  "mapId": "0d849a52-fedb-4aea-b5a3-caee268f1f49",
+  "matchId": "a349fea8-6570-4be2-bf9d-e4e52807929e",
+  "mapNames": [
+    "Fragmentation Heavies"
+  ]
+}

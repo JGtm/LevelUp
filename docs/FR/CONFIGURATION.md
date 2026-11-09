@@ -148,7 +148,7 @@ avant `token-capture` / `token-import` — sans le XUID, le store ne peut pas
 adresser l'entrée.
 
 > Après une rotation externe injectant un nouveau RT, le cache process des tokens
-> Halo (~50 min) est invalidé pour ce XUID (`halo.InvalidateCachedPlayerTokens`),
+> Halo (~50 min) est invalidé pour ce XUID (`tokencache.InvalidateCachedPlayerTokens`),
 > pour que le serveur re-dérive les Spartan tokens depuis la chaîne fraîche.
 > `token-capture` et `token-import` le font automatiquement.
 
@@ -199,7 +199,9 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 
 | Variable | Description | Défaut |
 |----------|-------------|--------|
-| `LEVELUP_REPO_ROOT` | Racine du repo (résout `db_profiles.json`, `app_settings.json`, `data/`). | Auto-détecté |
+| `LEVELUP_RESOURCES_DIR` | Racine des ressources : ce qui est livré avec le programme, en lecture seule par convention (`config/`, `static/`, le build web, le référentiel du rejeu `data/titles/{slug}/reference/`, `metadata-prebuilt.zip`). L'emporte sur `LEVELUP_REPO_ROOT`. Environnement seul (un `.env.local` ne la pose pas). | `LEVELUP_REPO_ROOT`, sinon auto-détecté |
+| `LEVELUP_REPO_ROOT` | Nom compatible de `LEVELUP_RESOURCES_DIR` (un checkout est à la fois la racine des ressources et, par défaut, celle des données). | Auto-détecté |
+| `LEVELUP_DATA_DIR` | Racine des données : tout ce que le programme crée ou modifie (bases, sessions, auth, caches, sauvegardes, overlays de cartes générés). Posée, elle accueille `db_profiles.json`, `app_settings.json` et `.env.local` en tête, au lieu de la tête de la racine des ressources. Environnement seul. | `<ressources>/data` |
 | `LEVELUP_API_HOST` | Host de bind HTTP. | `127.0.0.1` |
 | `LEVELUP_API_PORT` | Port d'écoute HTTP. | `8000` |
 | `LEVELUP_DB_PROFILES` | Chemin de `db_profiles.json`. | `<root>/db_profiles.json` |
@@ -228,7 +230,7 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 |----------|-------------|--------|
 | `LEVELUP_LOG_LEVEL` | Niveau de log (`debug`/`info`/`warn`/`error`). | `info` |
 | `LEVELUP_LOG_FORMAT` | Format console. | texte |
-| `LEVELUP_LOGS_DIR` | Répertoire des fichiers de log par catégorie. | `<root>/logs` |
+| `LEVELUP_LOGS_DIR` | Racine des journaux : fichiers de log par catégorie et capture des plantages. Créée au démarrage avant tout écrivain. Environnement seul. | `<ressources>/logs` |
 | `LEVELUP_LOGS_ENABLED` | Mettre `false` pour désactiver les logs fichiers. | activé |
 | `LEVELUP_LOGS_MAX_SIZE_MB` | Taille max de chaque `{catégorie}.log` avant rotation. `0` désactive la rotation (croissance illimitée). | `100` |
 | `LEVELUP_LOGS_MAX_BACKUPS` | Archives conservées par catégorie (`{catégorie}.log.1..N`). `0` = aucune. | `3` |
@@ -258,7 +260,7 @@ Les tâches de fond qui écriraient ou supprimeraient hors de la racine démo (j
 persist asynchrone et reprise du WAL, santé données, purge des rejeux, surveillance disque,
 crons catalogue, noms d'assets, Spartan et classement mondial, watcher, pool de tokens,
 migrations des amis et du groupe au boot) ne sont pas lancées ; une ligne de log
-`demo_mode: tâches de fond coupées` les liste au boot. `seed-demo` génère dans
+`tâches de fond coupées par le profil de déploiement` les liste au boot. `seed-demo` génère dans
 `<démo>.generation` et ne publie qu'une fois son contrôle d'anonymisation passé : une
 régénération en échec laisse la démo précédente intacte. La démo est en LECTURE SEULE : toute
 requête qui écrit (POST, PUT, PATCH, DELETE) répond 403 `demo_mode_forbidden`, sauf les lectures
@@ -326,7 +328,7 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `spnkr_refresh_backfill_performance_scores` | bool | `true` | Calcule les performance scores. |
 | `spnkr_refresh_backfill_aliases` | bool | `false` | Backfill des alias XUID→gamertag. |
 | `spnkr_refresh_backfill_lusr` | bool | `true` | Backfill du rating LUSR. |
-| `lang` | string | `"fr"` | Langue de l'UI (`fr`, `en`). |
+| `lang` | string | `"fr"` | Langue de l'UI (`fr`, `en`). Application de bureau : tant que la clé est absente, la langue d'interface du système (si l'application la propose). |
 | `discord_lang` | string | `"fr"` | Langue des notifications Discord. |
 | `discord_notifications_enabled` | bool | `false` | Active les notifications de sync Discord (interrupteur maître de tout le canal Discord). |
 | `discord_notify_coach` | bool | `false` | Relaie les proposals coach les plus fortes (signaux de progression) vers le webhook Discord. **OFF par défaut — opt-in** : requiert `discord_notifications_enabled` + un webhook. Émettre vers un service externe est une décision vie privée volontaire, jamais activée par défaut. Catégories relayées = catégories coach uniquement. |
@@ -335,12 +337,21 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `discord_notify_replay` | bool | `true` | Notification groupée « rejeux 2D prêts ». Un message par fenêtre de 10 minutes et par titre, jamais un par artefact : le premier artefact rangé arme la fenêtre, le message énumère les matchs à l'échéance. Couvre tous les chemins d'écriture du serveur — construction locale post-sync, livraison d'un ouvrier distant et action admin. Le backfill CLI tourne dans un autre process et ne notifie jamais. |
 | `discord_webhook_url` | string | `""` | URL webhook Discord (les vars d'env priment). |
 | `tailscale_enabled` | bool | `false` | Active l'accès distant Tailscale Funnel. |
-| `user_timezone` | string | `"Europe/Paris"` | Timezone IANA pour l'affichage. |
+| `user_timezone` | string | `"Europe/Paris"` | Timezone IANA pour l'affichage. Application de bureau : tant que la clé est absente, le fuseau du système. |
+| `desktop_checkpoint_interval` | string | `"5m"` | Application de bureau seulement : intervalle du `CHECKPOINT` périodique des bases que le serveur tient en lecture-écriture (durée Go, de `30s` à `1h` ; hors bornes, la borne la plus proche s'applique). Lu au démarrage. |
+| `spnkr_auto_sync_enabled` | bool | `false` | Synchronisation automatique périodique des joueurs suivis (et synchronisation demandée à la fermeture du jeu, voir `game_process_watch`). **Application de bureau : `true` tant que la clé est absente** (une valeur écrite dans `app_settings.json`, `true` ou `false`, gagne toujours ; le fichier n'est pas réécrit). Relu à chaque tic. |
+| `game_process_watch` | bool | `true` | Application de bureau seulement : chercher le jeu dans la liste des processus de Windows (noms d'exécutables déclarés par `process_names` dans chaque `title.toml`, énumération seule : jamais la mémoire du jeu), toutes les 15 s. Tant que le jeu tourne (« mode jeu »), la cuisson des rejeux et les tâches lourdes de fond (audits de santé des données, balayages du catalogue et des noms d'assets, classement mondial) attendent la fin de la partie ; à la fermeture du jeu, une synchronisation est demandée (anti-rebond de 60 s) si `spnkr_auto_sync_enabled` est actif (sinon le journal dit « fin de partie : auto-sync désactivée, rien à faire » et `game_mode_sync_skipped_total` le compte). Les audits de santé des données et le rafraîchissement du catalogue attendent aussi le premier relevé au démarrage : un jeu déjà ouvert quand LevelUp démarre ne les voit jamais tourner ; le décodage des films de l'après-synchro (source du kill) attend aussi la fin de la partie. Relu à chaque sondage. |
+| `native_notifications` | bool | `false` | Application de bureau seulement : relayer les notifications de la cloche (synchronisation finie, erreur de synchronisation, défi, série, record, rang) en notifications Windows quand la fenêtre est masquée ou n'est pas au premier plan. Désactivé par défaut. |
+| `close_to_tray` | bool | `false` | Application de bureau seulement : la croix de la fenêtre réduit l'application dans la zone de notification (icône : Ouvrir / Synchroniser maintenant / Quitter) et le serveur continue ; désactivé, la croix quitte. L'icône n'existe que tant que ce réglage est actif (ou après un démarrage réduit). |
+| `start_with_windows` | bool | `false` | Application de bureau seulement : lancer l'application, réduite dans la zone de notification (`--minimized`), à l'ouverture de la session Windows (entrée par utilisateur, jamais pour toute la machine). Désactivé par défaut ; appliquer le réglage ajoute ou retire l'entrée. |
+| `scheduled_refresh` | bool | `false` | Application de bureau seulement : créer une tâche planifiée Windows par utilisateur `LevelUp\Refresh-<8 hex>` (le suffixe identifie le dossier de données ; toutes les 6 heures, sans élévation) qui lance `levelup-server.exe -mode refresh-only` pour garder les jetons vivants quand l'application est fermée ; elle ne fait rien quand l'application est ouverte (verrou d'instance). Désactivé par défaut ; le désactiver supprime la tâche. |
+| `backup_dir` | string | `""` | Application de bureau seulement : dossier de la sauvegarde périodique en Parquet (chemin absolu, existant, accessible en écriture, **hors du dossier des données** ; le même disque que les données est accepté avec un avertissement). Vide = pas de sauvegarde. Chaque passage écrit un jeu `levelup-<AAAAMMJJ-HHMM>/` (un Parquet zstd par table de chaque base, le schéma, les fichiers de configuration et d'authentification, `manifest.json` avec les sommes SHA-256) ; les films archivés ne sont pas copiés. Restauration : `levelup-server.exe -mode restore` (alias `levelup backup restore`, voir `COMMANDS.md`). Une suite de jeux partiels n'évince jamais le dernier jeu complet. |
+| `backup_keep` | int | `7` | Application de bureau seulement : nombre de jeux de sauvegarde conservés dans `backup_dir` (1 à 60) ; les jeux `levelup-*` plus anciens sont supprimés, rien d'autre. |
+| `memory_limit_mb` | int | `0` | Application de bureau seulement : plafond mémoire de **chaque base DuckDB ouverte**, en Mio (`0`, ou `1024` à `32768`) : le plafond vaut par base, pas pour le processus, donc N bases ouvertes en même temps peuvent consommer jusqu'à N fois sa valeur. `0` = la valeur par défaut du serveur (`LEVELUP_DUCKDB_MEMORY_LIMIT`, sinon 512 Mo). Appliqué à chaque ouverture de connexion et à chaud sur les bases ouvertes ; aucun arrêt forcé, aucune limite du système. La mémoire résidente actuelle est affichée dans les Réglages et publiée sous `levelup.process.rss_mb`. |
 | `watcher_presence_enabled` | bool | `true` | Active le watcher de présence. |
-| `career_top_exclude_btb` | bool | `false` | Exclut le Big Team Battle des tops carrière. |
 | `csr_season_id` | string | `"CsrSeason13-1"` | Id de saison CSR (surchargeable via `LEVELUP_CSR_SEASON_ID`). |
 | `backup_enabled` | bool | `false` | Active les backups DuckDB planifiés. |
-| `backup_interval` | string | `"6h"` | Intervalle de backup (durée Go). |
+| `backup_interval` | string | `"6h"` | Hébergé : intervalle de la sauvegarde restic (durée Go). **Application de bureau : intervalle de la sauvegarde périodique en Parquet, un nombre entier d'heures (`1h` à `168h`) ; vide = `24h`** (la clé est partagée, la validation de bureau porte sur les valeurs qu'un PATCH écrit et rien ne réécrit la valeur enregistrée). |
 | `backup_keep_daily` | int | `7` | Backups quotidiens conservés. |
 | `backup_keep_weekly` | int | `4` | Backups hebdomadaires conservés. |
 | `backup_keep_monthly` | int | `12` | Backups mensuels conservés. |

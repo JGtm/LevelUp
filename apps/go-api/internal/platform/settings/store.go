@@ -3,7 +3,9 @@
 package settings
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,18 +20,23 @@ import (
 // Seuls les champs exposés par l'API sont typés — les champs inconnus sont
 // préservés dans Extra pour ne pas les effacer lors d'un PATCH.
 type AppSettings struct {
+	// FilmArchiveSettings : archive des films (lot L14) ; règles dans film_archive.go.
+	domain.FilmArchiveSettings
+	// DesktopSettings : intégration au poste de l'application de bureau (lot L21).
+	domain.DesktopSettings
+	// DataSettings : sauvegarde et plafond mémoire de l'application de bureau (lot L22).
+	domain.DataSettings
 	Lang                 string `json:"lang"`
 	DiscordLang          string `json:"discord_lang"`
 	UserTimezone         string `json:"user_timezone"`
 	NormalizeModeLabels  bool   `json:"normalize_mode_labels"`
 	ShowRecords          bool   `json:"show_records"`
 	RefreshClearsCaches  bool   `json:"refresh_clears_caches"`
-	CareerTopExcludeBTB  bool   `json:"career_top_exclude_btb"`
 	MediaCapturesBaseDir string `json:"media_captures_base_dir"`
 	// MediaDeleteSourceAfterTranscode pilote la suppression du fichier source
 	// (.mkv/.avi…) après un transcodage HLS réussi. *bool : nil = « auto » (défaut
 	// résolu par environnement — supprime en prod, conserve en local). La résolution
-	// effective se fait au déclenchement via config.ResolveMediaDeleteSource
+	// effective se fait au déclenchement via config.AppConfig.MediaDeleteSource
 	// (env > store > isProd), jamais figée ici.
 	MediaDeleteSourceAfterTranscode    *bool    `json:"media_delete_source_after_transcode,omitempty"`
 	MediaBufferMinutes                 int      `json:"media_buffer_minutes"`
@@ -120,19 +127,25 @@ type AppSettings struct {
 	// Valeurs : "msal" (défaut, Azure app) | "sisu" (Xbox natif, sans Azure app).
 	AuthProvider string `json:"auth_provider"`
 
+	// ReplayRegenPending : la file de régénération des rejeux était active (état interne du serveur, jamais un
+	// réglage de l'utilisateur ; cf. replay_regen.go).
+	ReplayRegenPending bool `json:"replay_regen_pending"`
+
 	// raw conserve tous les autres champs pour ne pas les perdre au Save
 	raw map[string]json.RawMessage
 }
 
 // Store gère la lecture/écriture de app_settings.json.
 type Store struct {
-	mu   sync.RWMutex
-	path string
-	// enforcedDefaults bascule les défauts des DEUX clés de sécurité
-	// (`instance_locked`, `can_self_provision`) sur leur valeur sûre quand
-	// l'instance applique la propriété des joueurs (ADR 0035, D5). Cf.
-	// WithEnforcedDefaults.
-	enforcedDefaults bool
+	mu sync.RWMutex
+	// writeMu : LE verrou d'écriture de app_settings.json, partagé par tous les écrivains du serveur (PATCH
+	// /settings, abonnements du watcher, drapeau de la file de régénération) par [Store.Update] : le couple Load
+	// puis Save ne tient pas mu entre ses deux temps, et deux lectures-modifications-écritures entrelacées
+	// perdraient la première écriture.
+	writeMu sync.Mutex
+	path    string
+	// absent : défauts des clés absentes du fichier (WithEnforcedDefaults, WithSystemDefaults).
+	absent absentDefaults
 }
 
 // NewStore crée un Store pour le fichier donné.
@@ -152,7 +165,7 @@ func (s *Store) Load() (*AppSettings, error) {
 			// Fichier absent = TOUTES les clés absentes : mêmes défauts que pour un
 			// fichier présent mais muet (dont les défauts sûrs en mode appliqué).
 			cfg := defaultSettings()
-			applyAbsentDefaults(cfg, nil, s.enforcedDefaults)
+			applyAbsentDefaults(cfg, nil, s.absent)
 			return cfg, nil
 		}
 		return nil, fmt.Errorf("settings.Load: %w", err)
@@ -170,7 +183,9 @@ func (s *Store) Load() (*AppSettings, error) {
 		return nil, fmt.Errorf("settings.Load typed: %w", err)
 	}
 	cfg.raw = raw
-	applyAbsentDefaults(cfg, raw, s.enforcedDefaults)
+	applyAbsentDefaults(cfg, raw, s.absent)
+	enforceFilmArchiveInvariant(cfg)
+	normalizeData(cfg)
 	return cfg, nil
 }
 
@@ -222,7 +237,8 @@ func (s *Store) ResolveForTitle(overlayPath string) (*AppSettings, error) {
 		return nil, fmt.Errorf("settings.ResolveForTitle unmarshal merged: %w", err)
 	}
 	out.raw = merged
-	applyAbsentDefaults(out, merged, s.enforcedDefaults)
+	applyAbsentDefaults(out, merged, s.absent)
+	enforceFilmArchiveInvariant(out)
 	return out, nil
 }
 
@@ -256,10 +272,40 @@ func (s *Store) SaveTitleOverlay(overlayPath string, fields map[string]json.RawM
 	if err := os.MkdirAll(filepath.Dir(overlayPath), 0o755); err != nil {
 		return fmt.Errorf("settings.SaveTitleOverlay mkdir: %w", err)
 	}
-	if err := atomicfile.WriteFile(overlayPath, out, 0o644); err != nil {
+	if err := atomicfile.WriteFile(context.Background(), overlayPath, out, 0o644); err != nil {
 		return fmt.Errorf("settings.SaveTitleOverlay write: %w", err)
 	}
 	return nil
+}
+
+// ErrNoChange : rendue par la fonction de [Store.Update] quand rien n'est à écrire ; le fichier reste intact.
+var ErrNoChange = errors.New("settings: aucun changement")
+
+// Update est la SEULE façon, pour un écrivain du serveur, de modifier app_settings.json : il tient le verrou
+// d'écriture du fichier pendant tout le cycle Load, fn, Save. fn reçoit les réglages lus et les modifie en
+// place ; une erreur de fn n'écrit rien et remonte telle quelle. Rend les réglages écrits.
+//
+// POURQUOI : un PATCH qui lit, valide puis écrit sans ce verrou réécrit par-dessus une clé qu'un autre
+// écrivain a posée entre-temps (le drapeau de la file de régénération perdu, ou ressuscité). Save reste exporté
+// pour les outils à processus unique (CLI, tests) ; un écrivain du serveur ne l'appelle jamais directement
+// (garde-rail : store_update_guard_test.go).
+func (s *Store) Update(fn func(cfg *AppSettings) error) (*AppSettings, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	cfg, err := s.Load()
+	if err != nil {
+		return nil, fmt.Errorf("settings.Update load: %w", err)
+	}
+	if err := fn(cfg); err != nil {
+		if errors.Is(err, ErrNoChange) {
+			return cfg, nil
+		}
+		return nil, err
+	}
+	if err := s.Save(cfg); err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }
 
 // Save persiste app_settings.json en préservant les champs inconnus.
@@ -297,7 +343,7 @@ func (s *Store) Save(cfg *AppSettings) error {
 		return fmt.Errorf("settings.Save indent: %w", err)
 	}
 
-	if err := atomicfile.WriteFile(s.path, data, 0o644); err != nil {
+	if err := atomicfile.WriteFile(context.Background(), s.path, data, 0o644); err != nil {
 		return fmt.Errorf("settings.Save write: %w", err)
 	}
 	return nil
@@ -324,9 +370,6 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	}
 	if req.RefreshClearsCaches != nil {
 		cfg.RefreshClearsCaches = *req.RefreshClearsCaches
-	}
-	if req.CareerTopExcludeBTB != nil {
-		cfg.CareerTopExcludeBTB = *req.CareerTopExcludeBTB
 	}
 	if req.MediaCapturesBaseDir != nil {
 		cfg.MediaCapturesBaseDir = *req.MediaCapturesBaseDir
@@ -446,21 +489,26 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.ReplaySoundDistancePercent != nil {
 		cfg.ReplaySoundDistancePercent = *req.ReplaySoundDistancePercent
 	}
+	applyFilmArchive(cfg, &req.FilmArchiveUpdate)
+	applyDesktop(cfg, &req.DesktopUpdate)
+	applyData(cfg, &req.DataUpdate)
 }
 
 // ToResponse convertit AppSettings en SettingsResponse (sans discord_webhook_url).
 func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 	return &domain.SettingsResponse{
+		FilmArchiveSettings:  cfg.FilmArchiveSettings,
+		DesktopSettings:      cfg.DesktopSettings,
+		DataSettings:         cfg.DataSettings,
 		Lang:                 cfg.Lang,
 		DiscordLang:          cfg.DiscordLang,
 		UserTimezone:         cfg.UserTimezone,
 		NormalizeModeLabels:  cfg.NormalizeModeLabels,
 		ShowRecords:          cfg.ShowRecords,
 		RefreshClearsCaches:  cfg.RefreshClearsCaches,
-		CareerTopExcludeBTB:  cfg.CareerTopExcludeBTB,
 		MediaCapturesBaseDir: cfg.MediaCapturesBaseDir,
 		// Placeholder : nil (*bool auto) → false ici ; le handler GET /settings écrase
-		// ce champ par la valeur RÉSOLUE (config.ResolveMediaDeleteSource). Le *bool
+		// ce champ par la valeur RÉSOLUE (config.AppConfig.MediaDeleteSource). Le *bool
 		// brut du store n'est JAMAIS exposé tel quel dans la réponse (cf. handleGetSettings).
 		MediaDeleteSourceAfterTranscode: cfg.MediaDeleteSourceAfterTranscode != nil && *cfg.MediaDeleteSourceAfterTranscode,
 		MediaToleranceMinutes:           cfg.MediaBufferMinutes,

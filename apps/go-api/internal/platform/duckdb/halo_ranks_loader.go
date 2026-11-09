@@ -51,7 +51,7 @@ func LoadCareerRankImageURLs(ctx context.Context, metaDB *DB, titleSlug string) 
 // home utilisera alors un libellé minimal (rank_id seul).
 //
 // Les codes lang Waypoint ("fr-FR", "de-DE") sont normalisés en codes courts
-// ("fr", "de") au moment de la lecture, en cohérence avec mappings.LocaleEN/FR.
+// ("fr", "de") au moment de la lecture, en cohérence avec la liste des langues (config/locales.toml).
 // rankAcc accumule l'entrée de rang en cours de construction (une par rank_id) le
 // temps d'agréger les traductions puis le seuil XP.
 type rankAcc struct {

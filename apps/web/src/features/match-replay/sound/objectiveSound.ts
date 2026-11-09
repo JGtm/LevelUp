@@ -6,8 +6,7 @@
  * son fichier. Ici la clé n'est ni une arme ni une vignette : c'est le NOM CANONIQUE DE
  * STATISTIQUE que `doc.objectives` publie.
  *
- * D'OÙ VIENNENT CES SONS. De la RE du 2026-08-26
- * (`.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md`) : l'identifiant Wwise d'une banque est
+ * D'OÙ VIENNENT CES SONS. De la RE du 2026-08-26 : l'identifiant Wwise d'une banque est
  * le FNV-1 de son nom de fichier en minuscules, ce qui a permis de NOMMER la banque du mode
  * (`sb_004_mod_mp_ctf`), puis ses événements par la même voie
  * (`play_004_mod_mp_ctf_flag_scored_team`), puis de reconstruire chaque geste couche par
@@ -80,6 +79,10 @@ export const OBJECTIVE_SOUND_STEMS: Readonly<
   Record<string, { ally?: string; enemy?: string } | { any: string }>
 > = {
   flag_captures: { ally: 'objective_flag_scored_team', enemy: 'objective_flag_scored_enemy' },
+  // LE DRAPEAU PRIS PAR NOTRE ÉQUIPE SONNE UNE FOIS (verdict utilisateur du 2026-11-02, à
+  // l'écoute du jeu). L'événement déclare sa seconde couche (alerte à +400 ms, +3 dB) répétée
+  // trois fois toutes les 850 ms ; le fichier n'en garde qu'une lecture, superposée à la première
+  // couche. Le côté adverse n'est pas concerné : ses trois impulsions sont DANS son média.
   flag_steals: { ally: 'objective_flag_stolen_team', enemy: 'objective_flag_stolen_enemy' },
   flag_grabs: { ally: 'objective_flag_grabbed_team', enemy: 'objective_flag_grabbed_enemy' },
   flag_returns: { any: 'objective_flag_returned' },

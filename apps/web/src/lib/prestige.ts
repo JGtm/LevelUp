@@ -10,6 +10,7 @@
  * gérer gracieusement (skeleton + message de feature désactivée).
  */
 import { api } from './api/client'
+import type { Locale } from '@/lib/i18n/locale'
 
 // ──────────────────────── Enums ────────────────────────
 
@@ -69,6 +70,8 @@ export const TIER_LABELS_EN: Record<Tier, string> = {
   legendary: 'Legendary',
   mythic: 'Mythic',
 }
+
+export const TIER_LABELS: Record<Locale, Record<Tier, string>> = { fr: TIER_LABELS_FR, en: TIER_LABELS_EN }
 
 // ──────────────────────── Domaine ────────────────────────
 
@@ -135,10 +138,9 @@ interface PresetArcStep {
 export interface PresetArc {
   id: string
   title_slug: string
-  title_en: string
-  title_fr: string
-  description_en?: string
-  description_fr?: string
+  /** Titre et description dans la langue de la requête (le serveur choisit, repli anglais). */
+  title: string
+  description?: string
   schema_version: number
   updated_at: string
   /** Étapes hydratées par le backend (aperçu du picker). */
@@ -186,10 +188,9 @@ export interface Template {
   cadence: Cadence
   eval_type: EvalType
   mode_filter: string
-  label_en: string
-  label_fr: string
-  description_en?: string
-  description_fr?: string
+  /** Libellé et description dans la langue de la requête (le serveur choisit, repli anglais). */
+  label: string
+  description?: string
   normal_target: number
   heroic_target: number
   legendary_target: number
@@ -230,11 +231,10 @@ export interface SquadChallengeParticipant {
 }
 
 /** Défi d'escouade enrichi pour l'affichage : libellés localisés (depuis le
- *  template, vides si défi sans template) + participants courants. Sur-ensemble
+ *  template, dans la langue de la requête ; vide si défi sans template) + participants courants. Sur-ensemble
  *  strict de SquadChallenge (le backend aplatit le défi de base dans la vue). */
 export interface SquadChallengeView extends SquadChallenge {
-  label_fr?: string
-  label_en?: string
+  label?: string
   /** true si expires_at est dépassé (le défi reste listé mais non rejoignable). */
   expired: boolean
   participants: SquadChallengeParticipant[]

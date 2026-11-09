@@ -19,7 +19,7 @@ package migration
 // Meme doctrine que `match_flag_grabs_net` : la mesure se fait A LA LECTURE d un artefact DEJA
 // RANGE (positions de `weaponPads`, canal `loadouts`), croise a la reference versionnee des
 // cartes et au registre (map_id, pair_name). Aucun artefact n est re-cuit, et aucun ne doit
-// l etre — la cuisson en lot est INTERDITE (bombe RAM, verrou `filmproc.AcquireSolo`).
+// l etre — la cuisson en lot est INTERDITE (bombe RAM, verrou `filmrun.AcquireSolo`).
 //
 // # ANTI-ART (ADR 0019/0026/0030)
 //

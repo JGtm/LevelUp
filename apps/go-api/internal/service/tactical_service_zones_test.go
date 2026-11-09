@@ -10,13 +10,14 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 )
 
 func zonesDeDeuxEtages() *mockCallouts {
 	return &mockCallouts{zones: []domain.ZoneNommee{
-		{NomFR: "Rez", NomEN: "Ground", X: 2.5, Y: 2.5, Z: 1, Big: true, Polygone: carre(0, 5),
+		{Nom: i18n.FromColumns("Ground", "Rez"), X: 2.5, Y: 2.5, Z: 1, Big: true, Polygone: carre(0, 5),
 			Parties: [][][2]float64{carre(6, 8)}, Trous: [][][2]float64{carre(1, 2)}, ZBas: 0, ZHaut: 2, VolumeIndex: 1},
-		{NomFR: "Étage", NomEN: "Upper", X: 2.5, Y: 2.5, Z: 4, Polygone: carre(0, 5), ZBas: 3, ZHaut: 6, VolumeIndex: 2},
+		{Nom: i18n.FromColumns("Upper", "Étage"), X: 2.5, Y: 2.5, Z: 4, Polygone: carre(0, 5), ZBas: 3, ZHaut: 6, VolumeIndex: 2},
 	}}
 }
 
@@ -32,11 +33,11 @@ func TestRaster_ZonesDuPlan_Servies(t *testing.T) {
 		t.Fatalf("zones = %+v, want les deux zones de la carte", got.Zones)
 	}
 	z := got.Zones[0]
-	if z.FR != "Rez" || z.EN != "Ground" || z.X != 2.5 || z.Y != 2.5 || z.Z != 1 || !z.Big ||
+	if z.Text[i18n.LocaleFR] != "Rez" || z.Text[i18n.LocaleEN] != "Ground" || z.X != 2.5 || z.Y != 2.5 || z.Z != 1 || !z.Big ||
 		len(z.Polygon) != 4 || len(z.Parts) != 1 || len(z.Holes) != 1 || z.ZBottom != 0 || z.ZTop != 2 || z.VolumeIndex != 1 {
 		t.Errorf("zone = %+v, want la zone « Rez » telle que le catalogue la porte", z)
 	}
-	if got.Zones[1].FR != "Étage" || got.Zones[1].Big {
+	if got.Zones[1].Text[i18n.LocaleFR] != "Étage" || got.Zones[1].Big {
 		t.Errorf("seconde zone = %+v, want « Étage », fine", got.Zones[1])
 	}
 }

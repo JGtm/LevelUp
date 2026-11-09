@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // tacMatchNomme pose un match au registre avec un map_name EXPLICITE (nil = NULL).
@@ -52,9 +53,9 @@ func TestTacticalRepo_MapsPlayed_VariantesDeNomFusionnees(t *testing.T) {
 	if got.MapID != tacCarteB || got.Matchs != 4 || got.Victoires != 2 || got.Defaites != 2 {
 		t.Errorf("rangee = %+v, want %s a 4 matchs, 2 V / 2 D (compte fusionne)", got, tacCarteB)
 	}
-	if got.MapName != "Recharge" {
+	if got.MapName[i18n.LocaleEN] != "Recharge" {
 		t.Errorf("nom = %q, want %q (vrai nom du match nomme le plus recent, ni NULL ni map_id)",
-			got.MapName, "Recharge")
+			got.MapName[i18n.LocaleEN], "Recharge")
 	}
 }
 
@@ -77,10 +78,10 @@ func TestTacticalRepo_MapsPlayed_SansVraiNom_LibelleDeLaTraduction(t *testing.T)
 	if len(rows) != 1 || rows[0].Matchs != 2 {
 		t.Fatalf("rangees = %+v, want 1 carte a 2 matchs", rows)
 	}
-	if rows[0].MapName != "" {
-		t.Errorf("nom = %q, want vide (ni NULL ni map_id ne sont un nom)", rows[0].MapName)
+	if rows[0].MapName[i18n.LocaleEN] != "" {
+		t.Errorf("nom = %q, want vide (ni NULL ni map_id ne sont un nom)", rows[0].MapName[i18n.LocaleEN])
 	}
-	if rows[0].MapNameFR != "Les Rues" {
-		t.Errorf("libelle = %q, want %q (traduction de l'asset)", rows[0].MapNameFR, "Les Rues")
+	if rows[0].MapName[i18n.LocaleFR] != "Les Rues" {
+		t.Errorf("libelle = %q, want %q (traduction de l'asset)", rows[0].MapName[i18n.LocaleFR], "Les Rues")
 	}
 }

@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 )
 
@@ -49,6 +50,9 @@ type BootstrapService struct {
 	// privacyLive borne l'appel live de privacy et mémorise ses échecs
 	// (bootstrap_privacy.go, plan perf 2026-09-23 D5b.7).
 	privacyLive *privacyLiveFetch
+	// mediaH264Missing : aucun encodeur H.264 utilisable dans le ffmpeg de l'instance, sondé une fois au
+	// démarrage (WithMediaH264Missing).
+	mediaH264Missing bool
 }
 
 // setupCountBudget borne le temps d'attente du décompte des matchs servant à
@@ -86,6 +90,14 @@ func (s *BootstrapService) WithUserStoreEmpty(fn func() (bool, error)) *Bootstra
 // mort (reauth_required). Sans elle, reauth_required est toujours false. PR-B.
 func (s *BootstrapService) WithReauthChecker(fn func(xuid string) bool) *BootstrapService {
 	s.reauthCheck = fn
+	return s
+}
+
+// WithMediaH264Missing pose le verdict de la sonde de l'outillage média faite au démarrage : aucun
+// encodeur H.264 utilisable (ops.MediaToolingReport.ToHealthStatus). L'interface l'explique sur la page
+// Médias au lieu de laisser un clip refusé sans raison.
+func (s *BootstrapService) WithMediaH264Missing(missing bool) *BootstrapService {
+	s.mediaH264Missing = missing
 	return s
 }
 
@@ -241,7 +253,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		SettingsExcerpt:      settingsExcerpt,
 		Privacy:              privacy,
 		DemoMode:             s.cfg.DemoMode,
-		AuthMode:             s.cfg.AuthMode,
+		AuthMode:             s.cfg.PublishedAuthMode(),
 		RegistrationMode:     s.cfg.RegistrationMode,
 		InstanceLocked:       s.instanceLocked != nil && s.instanceLocked(),
 		ReauthRequired:       s.resolveReauthRequired(ctx, sess),
@@ -251,6 +263,8 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		CurrentUsername:      resolveUsername(sess),
 		FirstLaunch:          s.isFirstLaunch(),
 		OAuthCodeFlowEnabled: s.cfg.AuthMode == "xbox" && s.cfg.OAuthRedirectURI != "",
+		AppInfo:              buildAppInfo(s.cfg),
+		MediaH264Missing:     s.mediaH264Missing,
 	}, nil
 }
 
@@ -394,6 +408,7 @@ func excludeAuthOnly(players []domain.PlayerSummary) []domain.PlayerSummary {
 
 func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) domain.CapabilityMap {
 	mediaEnabled := getBoolSetting(settings, "media_enabled", true)
+	dc := cfg.Capabilities
 	return domain.CapabilityMap{
 		CanReadLocalData:   true,
 		CanRunSync:         !cfg.DemoMode,
@@ -408,14 +423,63 @@ func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) d
 		CanSelfProvision:    getBoolSetting(settings, "can_self_provision", !authz.Enforced(cfg.DemoMode, cfg.AuthMode)),
 		CanStartInitialSync: getBoolSetting(settings, "can_start_initial_sync", !cfg.DemoMode),
 		CanManageInstance:   true,
+
+		// Capacités du profil de déploiement : décidées par config (ADR 0044), recopiées ici.
+		CanUseAccounts:           dc.UseAccounts,
+		CanSignInWithXbox:        dc.SignInWithXbox,
+		CanUseInvitations:        dc.UseInvitations,
+		CanUseGroups:             dc.UseGroups,
+		CanPoolTokens:            dc.PoolTokens,
+		CanUseAdmin:              dc.UseAdmin,
+		CanUseRestic:             dc.UseResticBackup,
+		CanUseDiscord:            dc.UseDiscord,
+		CanUseOutboundNetwork:    dc.UseOutboundNetwork,
+		CanUpdateApp:             dc.UpdateApp,
+		CanOfferWindowsDownload:  dc.OfferWindowsDownload,
+		CanEditSettings:          dc.EditSettings,
+		CanUploadMedia:           dc.UploadMedia,
+		CanUseCompactChrome:      dc.CompactChrome,
+		CanLoginViaBrowser:       dc.LoginViaBrowser,
+		CanCompareAccounts:       dc.CompareAccounts,
+		CanWatchGameProcess:      dc.GameProcessWatch,
+		CanIntegrateShell:        dc.ShellIntegration,
+		CanScheduleRefresh:       dc.ScheduledRefresh,
+		CanBackupToFolder:        dc.ParquetBackup,
+		CanImportFromSite:        dc.ImportFromSite,
+		CanExportForDesktop:      dc.ExportForDesktop,
+		CanReportDiagnostic:      dc.DiagnosticReport,
+		CanLimitMemory:           dc.MemoryLimit,
+		CanRegenerateReplays:     dc.ReplayRegen,
+		CanKeepMediaSources:      dc.KeepMediaSources,
+		CanRevealFilesInExplorer: dc.RevealFilesInExplorer,
+		CanTrashMediaSources:     dc.TrashMediaSources,
+		Deployment:               string(cfg.Deployment),
 	}
 }
 
+// buildSettingsExcerpt : langue et fuseau servis à l'interface. Une clé écrite gagne ; une clé non
+// écrite (absente ou vide, config.DeclaredString) prend le défaut, qui est celui du magasin de
+// réglages (le serveur et l'interface voient la même valeur) : sous la capacité AdoptSystemLocale,
+// la langue et le fuseau du système, et « en » tant que le système ne désigne aucune langue de
+// l'application (l'interface choisit alors la sienne) ; hors capacité, LEVELUP_LANG et le fuseau
+// historique.
 func buildSettingsExcerpt(cfg *config.AppConfig, settings map[string]interface{}) domain.SettingsExcerpt {
-	lang := getStringSetting(settings, "lang", cfg.Lang)
+	defaults := settings_platform.Defaults()
+	fallbackLang := cfg.Lang
+	if cfg.Capabilities.AdoptSystemLocale {
+		fallbackLang = defaults.Lang
+	}
+	lang, ok := config.DeclaredString(settings["lang"])
+	if !ok {
+		lang = cfg.SystemLocale.LangOr(fallbackLang)
+	}
+	tz, ok := config.DeclaredString(settings["user_timezone"])
+	if !ok {
+		tz = cfg.SystemLocale.TimezoneOr(defaults.UserTimezone)
+	}
 	return domain.SettingsExcerpt{
 		Lang:                lang,
-		UserTimezone:        getStringSetting(settings, "user_timezone", "Europe/Paris"),
+		UserTimezone:        tz,
 		ShowRecords:         getBoolSetting(settings, "show_records", true),
 		NormalizeModeLabels: getBoolSetting(settings, "normalize_mode_labels", true),
 	}

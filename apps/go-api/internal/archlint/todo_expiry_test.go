@@ -2,8 +2,8 @@
 //
 // Convention (DETTE reco 7) : toute dette technique assumée sous forme de TODO
 // dont on connaît l'échéance porte le marqueur `TODO(expiry:YYYY-MM-DD)` suivi
-// d'une justification. Ce test scanne les sources Go de apps/go-api et ÉCHOUE dès
-// qu'un tel marqueur a dépassé sa date (ou porte une date malformée) — la dette
+// d'une justification. Ce test scanne les sources Go de l'espace de travail (apps/go-api
+// et libs/**) et ÉCHOUE dès qu'un tel marqueur a dépassé sa date (ou porte une date malformée) — la dette
 // datée devient alors une action à traiter, pas un commentaire oublié.
 //
 // Les TODO/FIXME nus (sans expiry) restent tolérés : la convention est opt-in, le
@@ -16,9 +16,8 @@ package archlint
 
 import (
 	"os"
-	"path/filepath"
+	"path"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -37,41 +36,22 @@ const expiryLayout = "2006-01-02"
 func TestNoExpiredTODO(t *testing.T) {
 	now := todoExpiryNow(t)
 
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a échoué")
-	}
-	// .../internal/archlint/todo_expiry_test.go → remonter à la racine go-api.
-	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile)))
-
 	var violations []string
-	err := filepath.WalkDir(goAPIRoot, func(path string, d os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
+	for _, f := range workspaceGoSources(t, racinesEspaceDeTravail...) {
+		if path.Base(f.Rel) == scannerBasename {
+			continue
 		}
-		if d.IsDir() {
-			switch d.Name() {
-			case "vendor", ".git", "node_modules", "tmp":
-				return filepath.SkipDir
-			}
-			return nil
+		data, err := os.ReadFile(f.Chemin) //nolint:gosec // chemin de test, lecture seule
+		if err != nil {
+			t.Fatalf("lecture de %s : %v", f.Rel, err)
 		}
-		if !strings.HasSuffix(path, ".go") || filepath.Base(path) == scannerBasename {
-			return nil
-		}
-		data, readErr := os.ReadFile(path)
-		if readErr != nil {
-			return readErr
-		}
-		rel, _ := filepath.Rel(goAPIRoot, path)
-		rel = filepath.ToSlash(rel)
 		for i, line := range strings.Split(string(data), "\n") {
 			m := todoExpiryRE.FindStringSubmatch(line)
 			if m == nil {
 				continue
 			}
 			exp, parseErr := time.Parse(expiryLayout, m[1]+"-"+m[2]+"-"+m[3])
-			loc := rel + ":" + strconv.Itoa(i+1)
+			loc := f.Rel + ":" + strconv.Itoa(i+1)
 			if parseErr != nil {
 				violations = append(violations, loc+"  date malformée: "+m[0])
 				continue
@@ -80,10 +60,6 @@ func TestNoExpiredTODO(t *testing.T) {
 				violations = append(violations, loc+"  échu le "+m[1]+"-"+m[2]+"-"+m[3]+": "+strings.TrimSpace(line))
 			}
 		}
-		return nil
-	})
-	if err != nil {
-		t.Fatalf("walk go-api: %v", err)
 	}
 	if len(violations) > 0 {
 		t.Errorf("%d TODO(expiry:...) échu(s)/malformé(s) — traiter la dette ou repousser l'échéance "+

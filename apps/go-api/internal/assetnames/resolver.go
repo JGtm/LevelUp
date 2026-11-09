@@ -20,12 +20,25 @@ package assetnames
 import (
 	"context"
 	"strings"
+
+	"levelup/go-api/internal/i18n"
 )
 
-// DefaultLangs : langues résolues par défaut. Seules fr-FR et en-US sont lues par
-// le read-path (cf. PreferredLangsForLocale → [fr-FR,fr,en-US,en]) ; les résoudre
-// suffit et borne le coût réseau hot-path.
-var DefaultLangs = []string{"fr-FR", "en-US"}
+// DefaultLangs retourne les étiquettes Halo résolues par défaut : la première étiquette de chaque
+// langue de config/locales.toml, dans l'ordre de la liste. La lecture (PreferredLangsForLocale)
+// essaie les étiquettes d'une langue dans l'ordre de préférence : la première suffit à la servir,
+// et n'en prendre qu'une borne le coût réseau du chemin chaud (un appel par langue et par asset).
+// Une langue ajoutée à la liste est résolue sans modifier ce code.
+func DefaultLangs() []string {
+	locales := i18n.Locales()
+	out := make([]string, 0, len(locales))
+	for _, l := range locales {
+		if tags := i18n.HaloTags(l); len(tags) > 0 {
+			out = append(out, tags[0])
+		}
+	}
+	return out
+}
 
 // AssetRef identifie un asset à résoudre. VersionID peut être "" → l'API prend
 // la dernière version.
@@ -56,7 +69,7 @@ type Store interface {
 // Config paramètre une résolution.
 type Config struct {
 	TitleID   string   // titleID DiscoveryUGC (ex "hi" pour Halo Infinite) — fourni par le titre
-	Langs     []string // défaut DefaultLangs
+	Langs     []string // défaut DefaultLangs()
 	MaxAssets int      // plafond d'assets traités par appel ; 0 = aucun plafond
 }
 
@@ -80,7 +93,7 @@ func Resolve(ctx context.Context, f Fetcher, s Store, refs []AssetRef, cfg Confi
 	}
 	langs := cfg.Langs
 	if len(langs) == 0 {
-		langs = DefaultLangs
+		langs = DefaultLangs()
 	}
 
 	deduped := dedup(refs)

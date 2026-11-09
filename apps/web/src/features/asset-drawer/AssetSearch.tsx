@@ -1,13 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type Ref } from 'react'
 
 interface AssetSearchProps {
   value: string
   placeholder: string
   onChange: (q: string) => void
   debounceMs?: number
+  /** Accès au champ (focus programmatique du volet ancré). */
+  inputRef?: Ref<HTMLInputElement>
 }
 
-export function AssetSearch({ value, placeholder, onChange, debounceMs = 300 }: AssetSearchProps) {
+export function AssetSearch({ value, placeholder, onChange, debounceMs = 300, inputRef }: AssetSearchProps) {
   const [draft, setDraft] = useState(value)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -31,6 +33,7 @@ export function AssetSearch({ value, placeholder, onChange, debounceMs = 300 }: 
 
   return (
     <input
+      ref={inputRef}
       type="search"
       value={draft}
       placeholder={placeholder}

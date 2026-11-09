@@ -6,7 +6,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/platform/halo"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/teammates"
 )
@@ -15,7 +15,7 @@ import (
 type HomeService struct {
 	repo       port.HomeRepository
 	cacheRepo  port.BattlePassCacheRepository
-	provider   *halo.HaloProvider
+	provider   *haloadapter.Provider
 	sink       port.HomePersistSink // nil → pas de persistance (tests, joueurs sans auth)
 	socialRepo port.SocialRepository
 	playerSlug string
@@ -43,6 +43,8 @@ type HomeService struct {
 	// Si nil, le service retombe sur l'ancien chemin (repo.LoadSpartanIdentity)
 	// — utilisé par les tests et les bootstraps minimaux sans auth.
 	careerLive homeSpartanIdentityProvider
+	// mapGroups (optionnel) : groupes de cartes (la carte favorite compte une variante sous sa base). nil : cartes seules.
+	mapGroups port.MapGroupReader
 	// demoMode : en démo, certaines sections sans source réelle (défis : pas d'API
 	// live + cache TTL 24h) sont servies depuis des fixtures embarquées au lieu de
 	// renvoyer vide. Cf. home_service_demo.go.
@@ -80,7 +82,7 @@ type HomeService struct {
 func NewHomeService(repo port.HomeRepository) *HomeService {
 	return &HomeService{
 		repo:     repo,
-		provider: halo.DefaultHaloProvider,
+		provider: haloadapter.DefaultHaloProvider,
 	}
 }
 
@@ -112,7 +114,7 @@ func (s *HomeService) WithRoundsDecide(roundsDecide map[string]bool) *HomeServic
 
 // WithHaloProvider remplace le provider Halo utilisé par le service.
 // Utile pour injecter un provider configuré par joueur (cache local, tests).
-func (s *HomeService) WithHaloProvider(provider *halo.HaloProvider) *HomeService {
+func (s *HomeService) WithHaloProvider(provider *haloadapter.Provider) *HomeService {
 	if provider != nil {
 		s.provider = provider
 	}

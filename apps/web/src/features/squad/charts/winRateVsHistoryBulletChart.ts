@@ -1,8 +1,6 @@
 /**
  * winRateVsHistoryBulletChart — bullet chart « Winrate session vs historique » (teammates.02).
  *
- * Spec : .ai/charts_specs/teammates/02_map_winrate_bullet.yaml
- *
  * Deux barres horizontales superposées (`barGap: '-100%'`) :
  *   - Historique → token chart-series-1 (rose Okabe-Ito), opacity 0.85
  *   - Session   → couleur conditionnelle divergent-pos / -neg / -neutral selon Δ ±5 pp

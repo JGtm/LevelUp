@@ -1,0 +1,28 @@
+package instancelock
+
+// instancelock_windows.go : le verrou par `LockFileEx` (Win32). Un octet verrouillé suffit : le
+// fichier ne porte aucune donnée, le verrou n'est qu'un jeton d'exclusion.
+
+import (
+	"errors"
+	"os"
+
+	"golang.org/x/sys/windows"
+)
+
+// verrouiller prend le verrou exclusif sans attendre ; errVerrouTenu s'il est tenu ailleurs.
+func verrouiller(f *os.File) error {
+	var ov windows.Overlapped
+	err := windows.LockFileEx(windows.Handle(f.Fd()),
+		windows.LOCKFILE_EXCLUSIVE_LOCK|windows.LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, &ov)
+	if errors.Is(err, windows.ERROR_LOCK_VIOLATION) {
+		return errVerrouTenu
+	}
+	return err
+}
+
+// deverrouiller rend le verrou posé par verrouiller.
+func deverrouiller(f *os.File) error {
+	var ov windows.Overlapped
+	return windows.UnlockFileEx(windows.Handle(f.Fd()), 0, 1, 0, &ov)
+}

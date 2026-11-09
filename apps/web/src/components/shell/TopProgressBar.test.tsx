@@ -71,6 +71,17 @@ describe('TopProgressBar', () => {
     expect(fill!.style.opacity).toBe('1')
   })
 
+  it('position : fixe sous la barre haute par défaut, celle donnée sinon (colonne du contenu en bureau)', () => {
+    mockIsFetching = 1
+    const site = renderWithProviders(<TopProgressBar />)
+    expect(site.container.querySelector('div[aria-hidden]')?.className).toContain('fixed left-0 right-0 top-12')
+    site.unmount()
+    const bureau = renderWithProviders(<TopProgressBar placement="absolute inset-x-0 top-0" />)
+    const cls = bureau.container.querySelector('div[aria-hidden]')?.className ?? ''
+    expect(cls).toContain('absolute inset-x-0 top-0')
+    expect(cls).not.toContain('fixed')
+  })
+
   it('apparaît immédiatement sur changement de pathname (sans query en cours)', () => {
     const { container, rerender } = renderWithProviders(<TopProgressBar />)
     expect(container.firstChild).toBeNull()

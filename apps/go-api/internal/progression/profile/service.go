@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 	syncpkg "levelup/go-api/internal/sync"
@@ -185,7 +186,7 @@ func (s *Service) fillSectionB(ctx context.Context, profile *PlayerProfile, lowe
 	}
 	profile.Tier = TierFromMu(lusr.Mu)
 	profile.NextTier = NextTierFromMu(lusr.Mu)
-	profile.SkillRating = buildSkillRatingSnapshot(lusr, profile.Tier, profile.NextTier)
+	profile.SkillRating = buildSkillRatingSnapshot(lusr, profile.Tier, profile.NextTier, i18n.FromContext(ctx))
 
 	muSeries, err := s.loadMuSeries(ctx, now.AddDate(0, 0, -lowessWindowDays), now)
 	if err != nil {
@@ -390,24 +391,27 @@ func (s *Service) selectSuggestedChallenges(ctx context.Context, profile *Player
 	if len(templates) < maxN {
 		maxN = len(templates)
 	}
+	loc := i18n.FromContext(ctx)
 	out := make([]SuggestedChallenge, 0, maxN)
 	for i := 0; i < maxN; i++ {
-		t := templates[i]
-		out = append(out, SuggestedChallenge{
-			TemplateID:       t.ID,
-			TargetTier:       defaultTargetTierForTemplate(t),
-			HistoricalStreak: 0, // V1 placeholder ; V2 lira l'historique de complétions
-			IsArcStep:        false,
-			// V2 §3 : hydrate les labels depuis le template pour que l'UI
-			// affiche un libellé humain sans round-trip au catalogue.
-			LabelFR:       t.LabelFR,
-			LabelEN:       t.LabelEN,
-			DescriptionFR: t.DescriptionFR,
-			DescriptionEN: t.DescriptionEN,
-		})
+		out = append(out, suggestedChallengeFromTemplate(templates[i], loc))
 	}
 	profile.SuggestedChallenges = out
 	return nil
+}
+
+// suggestedChallengeFromTemplate construit la suggestion d'un template. V2 §3 : hydrate le libellé et la
+// description depuis le template, dans la langue `loc` de la requête (repli `en`, ADR 0040 D-3), pour
+// que l'UI affiche un libellé humain sans round-trip au catalogue.
+func suggestedChallengeFromTemplate(t prestige.Template, loc i18n.Locale) SuggestedChallenge {
+	return SuggestedChallenge{
+		TemplateID:       t.ID,
+		TargetTier:       defaultTargetTierForTemplate(t),
+		HistoricalStreak: 0, // V1 placeholder ; V2 lira l'historique de complétions
+		IsArcStep:        false,
+		Label:            t.Labels.Pick(loc),
+		Description:      t.Descriptions.PickOptional(loc),
+	}
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -444,15 +448,19 @@ func narrativeAxesForComponent(comp string) []string {
 	return nil
 }
 
-// buildSkillRatingSnapshot construit le SkillRatingSnapshot d'affichage UI.
-func buildSkillRatingSnapshot(lusr LUSRState, tier, nextTier TierState) SkillRatingSnapshot {
+// buildSkillRatingSnapshot construit le SkillRatingSnapshot d'affichage UI. `TierName` est le nom du
+// tier dans la langue `loc` (repli `en`), à défaut le nom canonique du tier.
+func buildSkillRatingSnapshot(lusr LUSRState, tier, nextTier TierState, loc i18n.Locale) SkillRatingSnapshot {
+	tierName := tier.Names.PickOptional(loc)
+	if tierName == "" {
+		tierName = tier.Name
+	}
 	out := SkillRatingSnapshot{
-		TierName:   tier.Name,
-		TierNameFR: tier.NameFR,
-		SubTier:    tier.SubTier,
-		Label:      tier.Label,
-		Mu:         lusr.Mu,
-		Sigma:      lusr.Sigma,
+		TierName: tierName,
+		SubTier:  tier.SubTier,
+		Label:    tier.Label,
+		Mu:       lusr.Mu,
+		Sigma:    lusr.Sigma,
 	}
 	if !nextTier.IsEmpty() {
 		out.NextTierLabel = nextTier.Label

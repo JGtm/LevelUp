@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -54,9 +55,9 @@ func lignesNonTraduites(rows []domain.FilterMatchRow) bool {
 		return false
 	}
 	m := rows[0]
-	return m.MapNameFR == nil || *m.MapNameFR != "Vérité" ||
-		m.GameVariantNameFR == nil || *m.GameVariantNameFR != "Assassin" ||
-		m.PlaylistName == nil || *m.PlaylistName != "Arène en équipe"
+	return !m.MapName.Has(i18n.LocaleFR) || m.MapName[i18n.LocaleFR] != "Vérité" ||
+		!m.GameVariantName.Has(i18n.LocaleFR) || m.GameVariantName[i18n.LocaleFR] != "Assassin" ||
+		m.PlaylistName[i18n.LocaleFR] != "Arène en équipe"
 }
 
 // filtresCachesIsoles : le VRAI FiltersRepo derrière un cache neuf (pas le cache
@@ -87,9 +88,9 @@ func TestCachedFiltersRepo_PanneMetadataNonMiseEnCache(t *testing.T) {
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("après réparation : err=%v, %d ligne(s)", err, len(rows))
 	}
-	assertFilterName(t, "MapNameFR", rows[0].MapNameFR, "Vérité")
-	assertFilterName(t, "GameVariantNameFR", rows[0].GameVariantNameFR, "Assassin")
-	assertFilterName(t, "PlaylistName", rows[0].PlaylistName, "Arène en équipe")
+	assertFilterName(t, "MapNameFR", rows[0].MapName[i18n.LocaleFR], "Vérité")
+	assertFilterName(t, "GameVariantNameFR", rows[0].GameVariantName[i18n.LocaleFR], "Assassin")
+	assertFilterName(t, "PlaylistName", rows[0].PlaylistName[i18n.LocaleFR], "Arène en équipe")
 }
 
 // TestCachedPlayerMatchesRepo_PanneMetadataNonMiseEnCache : même garde sur l'historique

@@ -127,8 +127,7 @@ func TestWorker_Run_PersistFailure_NoACK(t *testing.T) {
 	w := NewWorker("test-fail", q, TargetShared, persister)
 
 	// Synchronisation explicite sur OnPersistError (même patron que le correctif du
-	// flake TestWorker_Run_PersistsAndACKs ci-dessus, registre .ai/REGISTRE_REPORTS.md
-	// lot hygiène 5.3, L590) : un `time.Sleep` fixe pour « laisser le temps au worker de
+	// flake TestWorker_Run_PersistsAndACKs ci-dessus) : un `time.Sleep` fixe pour « laisser le temps au worker de
 	// processer » est une attente implicite sur une durée devinée, pas sur l'événement
 	// réel — le hook se déclenche exactement quand Persist a échoué, avant toute tentative
 	// d'ACK.

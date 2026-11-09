@@ -18,7 +18,6 @@ import (
 
 	"levelup/go-api/internal/assetnames"
 	"levelup/go-api/internal/ctxkeys"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
@@ -91,7 +90,7 @@ func (r *ServiceRegistry) convergeRegistryNames(ctx context.Context, titleSlug, 
 	if r.cfg.SharedProvider == nil {
 		return stats, fmt.Errorf("shared provider non câblé (mode legacy) — convergence des noms indisponible")
 	}
-	pr := titlePkg.NewPathResolver(r.cfg.RepoRoot)
+	pr := r.cfg.PathResolver()
 	if r.cfg.SharedProvider.Path() != pr.SharedDBPath(titleSlug) {
 		return stats, fmt.Errorf("base partagée de %s non tenue par le provider — convergence des noms indisponible", titleSlug)
 	}

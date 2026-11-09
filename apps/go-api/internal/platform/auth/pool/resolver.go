@@ -256,7 +256,7 @@ func (r *resolverImpl) recordPermanentFailure(ctx context.Context, src Credentia
 	if class == auth.AuthErrorRevoked {
 		ttl = negativeTTLRevoked
 	}
-	until := time.Now().Add(ttl)
+	until := time.Now().Round(0).Add(ttl) // horloge murale, voir tokencache.cacheExpiryFor
 	r.mu.Lock()
 	r.negative[src.Gamertag] = &negativeEntry{
 		class:        class,
@@ -335,7 +335,10 @@ func (r *resolverImpl) acquireAccessToken(ctx context.Context, src *CredentialSo
 // tryOAuthRefreshAndPropagateRotation appelle TryOAuthRefreshWithRotation et
 // propage le RT rotaté (mutation in-place de src + callback onRotated).
 func (r *resolverImpl) tryOAuthRefreshAndPropagateRotation(ctx context.Context, src *CredentialSource) (string, error) {
-	token, rotatedRT, err := r.provider.TryOAuthRefreshWithRotation(ctx, src.RefreshToken)
+	// Le xuid de la source suit le contexte jusqu'à l'échange OAuth : le client qui a réussi le
+	// dernier rafraîchissement de ce joueur répond en premier (auth.WithRefreshXUID).
+	token, rotatedRT, err := r.provider.TryOAuthRefreshWithRotation(
+		auth.WithRefreshXUID(ctx, src.XUID), src.RefreshToken)
 	if err != nil {
 		// WARN unique de la chaîne : les logs intermédiaires (oauth_refresh,
 		// sisu_provider) sont en Debug ; les occurrences suivantes d'un échec
@@ -398,7 +401,7 @@ func (r *resolverImpl) exchangeAndCache(ctx context.Context, src CredentialSourc
 		Gamertag:  src.Gamertag,
 		XUID:      src.XUID,
 		Tokens:    result.Tokens,
-		ExpiresAt: time.Now().Add(r.cacheTTL),
+		ExpiresAt: time.Now().Round(0).Add(r.cacheTTL), // horloge murale, voir tokencache.cacheExpiryFor
 		Source:    src.Source,
 	}
 

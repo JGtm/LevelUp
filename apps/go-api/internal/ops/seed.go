@@ -30,9 +30,13 @@ type SeedOptions struct {
 }
 
 // SeedResult résume le résultat d'un seed.
+//
+// Pour citation_mappings : Inserted = citations nouvelles, Skipped = citations déjà présentes,
+// Updated = citations déjà présentes dont une colonne ou un texte différait et a été réécrit.
 type SeedResult struct {
 	Component string
 	Inserted  int
+	Updated   int
 	Skipped   int
 	Message   string
 }
@@ -170,7 +174,7 @@ const (
 // colonnes, l'enrichissement carrière (page + home) plante en Binder Error.
 type careerRankJSON struct {
 	RankID        int    `json:"rank_id"`
-	TitleEN       string `json:"title_en"`
+	Title         string `json:"title_en"` // clé du fichier source : le titre ANGLAIS du rang (format d entrée figé)
 	Subtitle      string `json:"subtitle"`
 	Tier          string `json:"tier"`
 	TierType      string `json:"tier_type"`
@@ -219,7 +223,7 @@ func SeedCareerRanks(ctx context.Context, opts SeedOptions) (SeedResult, error) 
 			(rank_id, title_en, subtitle_en, tier, tier_type, grade,
 			 xp_required, icon_path, large_icon_path, adornment_icon_path)
 			VALUES (?,?,?,?,?,?,?,?,?,?)`,
-			r.RankID, r.TitleEN, r.Subtitle, r.Tier, r.TierType, r.Grade,
+			r.RankID, r.Title, r.Subtitle, r.Tier, r.TierType, r.Grade,
 			r.XPRequired, r.IconPath, r.LargeIconPath, r.AdornmentPath)
 		if err != nil {
 			return SeedResult{Component: componentCareerRanks}, fmt.Errorf("insert rank %d: %w", r.RankID, err)
@@ -302,7 +306,6 @@ func SeedRankTranslations(ctx context.Context, opts SeedOptions) (SeedResult, er
 // chargement SQL convertit en NULL avant INSERT.
 type CitationMapping struct {
 	Norm              string
-	Display           string
 	MappingType       string // medal|composite|stat|pve_stat|weapon_stat|award|custom
 	MedalID           int64  // 0 = NULL (medal_id simple)
 	MedalIDs          string // CSV, "" = NULL (medal_ids multi)
@@ -314,167 +317,25 @@ type CitationMapping struct {
 	Enabled           bool
 	ImagePath         string // "" = NULL
 	Category          string
-	Description       string
 	TierTargets       string // CSV de seuils, "" = NULL
 	Subcategory       string // "" = NULL
 }
 
-// SeedCitationMappings insère/met à jour les règles citation_mappings.
-// UPSERT sur citation_name_norm (PK depuis migration add_citation_mappings_pk),
-// donc relancer le seed met à jour les colonnes ajoutées par la migration v2.
-//
-// Compte distinctement Inserted (nouvelles citations) et Skipped (citations
-// déjà présentes — leurs colonnes sont quand même rafraîchies via DO UPDATE).
+// SeedCitationMappings insère ou met à jour les règles citation_mappings et leurs textes par
+// langue dans la base MetaDBPath (commande `levelup seed citation-mappings`). Les noms et
+// descriptions de chaque langue viennent de citation_texts.toml (validé : toutes les langues
+// `required`) : le seed n'a ni colonne de texte ni texte en Go.
 func SeedCitationMappings(ctx context.Context, opts SeedOptions) (SeedResult, error) {
+	// Validé AVANT l'ouverture : un fichier incomplet ne crée pas la base.
+	if err := validateCitationTexts(); err != nil {
+		return SeedResult{Component: componentCitationMappings}, err
+	}
 	db, err := sql.Open("duckdb", opts.MetaDBPath)
 	if err != nil {
 		return SeedResult{Component: componentCitationMappings}, fmt.Errorf("ouverture metadata: %w", err)
 	}
 	defer db.Close()
-
-	// Schéma v2 complet : compatible migrations add_citation_mappings +
-	// add_citation_mappings_pk + add_citation_mappings_v2_fields.
-	if _, err := db.ExecContext(ctx, `
-		CREATE TABLE IF NOT EXISTS citation_mappings (
-			citation_name_norm    VARCHAR PRIMARY KEY,
-			citation_name_display VARCHAR NOT NULL,
-			mapping_type          VARCHAR NOT NULL DEFAULT 'medal',
-			medal_id              UBIGINT,
-			medal_ids             VARCHAR,
-			stat_name             VARCHAR,
-			award_name            VARCHAR,
-			award_category        VARCHAR,
-			custom_function       VARCHAR,
-			composite_children    VARCHAR,
-			enabled               BOOLEAN NOT NULL DEFAULT TRUE,
-			image_path            VARCHAR,
-			category              VARCHAR,
-			description           VARCHAR,
-			tier_targets          VARCHAR,
-			subcategory           VARCHAR
-		);
-		-- PAS d'index sur medal_id/mapping_type : mutés par SeedCitationMappings
-		-- (SELECT-then-write) → surface ART. Drop DBs existantes : drop_metadata_art_surface_indexes_v4.
-		CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
-			-- Nom anglais des citations (Infinite = copies de commendations H5 ; seul le
-			-- calcul diffère). Locale-aware au read via ctxkeys.Locale. NULL → fallback FR.
-			ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS citation_name_display_en VARCHAR;
-			-- Description anglaise des citations (source : commendations H5 officielles +
-			-- trad fidèle Infinite). Locale-aware au read ; NULL → tooltip = nom seul (GH4).
-			ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS description_en VARCHAR;
-	`); err != nil {
-		return SeedResult{Component: componentCitationMappings}, fmt.Errorf("create schema: %w", err)
-	}
-
-	existing := make(map[string]struct{})
-	rows, err := db.QueryContext(ctx, `SELECT citation_name_norm FROM citation_mappings`)
-	if err != nil {
-		return SeedResult{Component: componentCitationMappings}, fmt.Errorf("scan existing: %w", err)
-	}
-	for rows.Next() {
-		var n string
-		if err := rows.Scan(&n); err != nil {
-			rows.Close()
-			return SeedResult{Component: componentCitationMappings}, err
-		}
-		existing[n] = struct{}{}
-	}
-	rows.Close()
-
-	// ART-safe : SELECT-then-INSERT-or-UPDATE (pas d'ON CONFLICT, qui réécrit via les
-	// index ART). La map `existing` (déjà construite ci-dessus) donne la décision
-	// insert/update sans SELECT par ligne. L'UPDATE mute medal_id/mapping_type, indexés
-	// (idx_citation_mappings_medal/type) → ces index sont droppés par
-	// drop_metadata_art_surface_indexes_v4. metadata.duckdb = blast-radius MAX même au seed.
-	const insertQ = `
-		INSERT INTO citation_mappings (
-			citation_name_norm, citation_name_display, citation_name_display_en, mapping_type,
-			medal_id, medal_ids, stat_name, award_name, award_category,
-			custom_function, composite_children, enabled,
-			image_path, category, description, description_en, tier_targets, subcategory
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	const updateQ = `
-		UPDATE citation_mappings SET
-			citation_name_display = ?, citation_name_display_en = ?, mapping_type = ?, medal_id = ?, medal_ids = ?,
-			stat_name = ?, award_name = ?, award_category = ?, custom_function = ?,
-			composite_children = ?, enabled = ?, image_path = ?, category = ?,
-			description = ?, description_en = ?, tier_targets = ?, subcategory = ?
-		WHERE citation_name_norm = ?`
-
-	mappings := defaultCitationMappings()
-	inserted, skipped := 0, 0
-	for _, m := range mappings {
-		var medalArg interface{}
-		if m.MedalID > 0 {
-			medalArg = uint64(m.MedalID) //nolint:gosec
-		}
-		_, present := existing[m.Norm]
-		var execErr error
-		if present {
-			_, execErr = db.ExecContext(ctx, updateQ,
-				m.Display, citationDisplayENOr(m.Norm, m.Display), m.MappingType, medalArg, nullStr(m.MedalIDs),
-				nullStr(m.StatName), nullStr(m.AwardName), nullStr(m.AwardCategory),
-				nullStr(m.CustomFunction), nullStr(m.CompositeChildren), m.Enabled,
-				nullStr(m.ImagePath), m.Category, m.Description, citationDescriptionENOr(m.Norm),
-				nullStr(m.TierTargets), nullStr(m.Subcategory), m.Norm)
-		} else {
-			_, execErr = db.ExecContext(ctx, insertQ,
-				m.Norm, m.Display, citationDisplayENOr(m.Norm, m.Display), m.MappingType,
-				medalArg, nullStr(m.MedalIDs), nullStr(m.StatName),
-				nullStr(m.AwardName), nullStr(m.AwardCategory),
-				nullStr(m.CustomFunction), nullStr(m.CompositeChildren), m.Enabled,
-				nullStr(m.ImagePath), m.Category, m.Description, citationDescriptionENOr(m.Norm),
-				nullStr(m.TierTargets), nullStr(m.Subcategory))
-		}
-		if execErr != nil {
-			return SeedResult{Component: componentCitationMappings}, fmt.Errorf("upsert %s: %w", m.Norm, execErr)
-		}
-		if present {
-			skipped++
-		} else {
-			inserted++
-		}
-	}
-	return SeedResult{
-		Component: componentCitationMappings,
-		Inserted:  inserted,
-		Skipped:   skipped,
-		Message:   fmt.Sprintf("%d insérées, %d mises à jour", inserted, skipped),
-	}, nil
-}
-
-func nullStr(s string) interface{} {
-	if s == "" {
-		return nil
-	}
-	return s
-}
-
-// citationDisplayENOr retourne le nom EN d'une citation (map citationDisplayEN, clé =
-// norm) ou, à défaut, le libellé FR fourni — on ne stocke jamais de NULL/vide pour
-// citation_name_display_en quand un FR existe, afin que la cascade locale-aware
-// retombe proprement sur le FR plutôt que sur du vide.
-func citationDisplayENOr(norm, fallbackFR string) interface{} {
-	if en, ok := citationDisplayEN[norm]; ok && en != "" {
-		return en
-	}
-	if fallbackFR == "" {
-		return nil
-	}
-	return fallbackFR
-}
-
-// citationDescriptionENOr retourne la description EN d'une citation (map
-// citationDescriptionEN, clé = norm) ou nil si absente. Contrairement à
-// citationDisplayENOr, on NE retombe PAS sur le FR : description_en reste NULL et le read
-// locale-aware sert alors le nom seul sous UI EN (principe GH-5b « EN n'injecte jamais de
-// FR »). La map couvre les 98 citations → nil en pratique = citation ajoutée sans EN
-// (interdit par TestCitationDescriptionEN_CoversAllCitations).
-func citationDescriptionENOr(norm string) interface{} {
-	if en, ok := citationDescriptionEN[norm]; ok && en != "" {
-		return en
-	}
-	return nil
+	return seedCitationMappingsOn(ctx, db)
 }
 
 // SeedMedalDefinitions ne peuple PLUS rien : medal_definitions est désormais

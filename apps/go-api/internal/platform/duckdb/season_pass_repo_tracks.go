@@ -11,33 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
-
-// bpPreferEN indique si la locale de requête (header X-LevelUp-Locale → ctxkeys)
-// privilégie l'anglais pour les libellés de contenu Battle Pass. GameCMS stocke
-// les traductions fr-FR ET en-US (battlepass_{track,item}_translations) : on
-// ordonne le COALESCE selon la locale, au lieu du FR-first figé historique
-// (« Rewards des battlepass pas traduits en ENG »).
-func bpPreferEN(ctx context.Context) bool {
-	return strings.EqualFold(ctxkeys.Locale(ctx), "en")
-}
-
-// bpLocaleOrderedCoalesce ordonne un COALESCE par préférence de locale : les sources
-// de la langue préférée d'abord, puis les fallbacks de l'autre langue. enExprs = sources
-// ANGLAISES (dont value = chaîne canonique en-US Waypoint), frExprs = sources françaises.
-// Centralise l'ordre locale-aware des libellés d'items Battle Pass (loadItemMetadataMap
-// + fillItemsFromAssetIndex) — évite une 3e copie divergente de l'ordonnancement.
-func bpLocaleOrderedCoalesce(preferEN bool, enExprs, frExprs []string) string {
-	ordered := make([]string, 0, len(enExprs)+len(frExprs))
-	if preferEN {
-		ordered = append(append(ordered, enExprs...), frExprs...)
-	} else {
-		ordered = append(append(ordered, frExprs...), enExprs...)
-	}
-	return "COALESCE(" + strings.Join(ordered, ", ") + ")"
-}
 
 // bpItemFieldCoalesce construit un COALESCE ordonné par locale pour un champ textuel
 // d'item Battle Pass : traduction dénormalisée puis fallbacks JSON du payload brut, la
@@ -49,12 +25,7 @@ func bpLocaleOrderedCoalesce(preferEN bool, enExprs, frExprs []string) string {
 // doit précéder les traductions étrangères en préférence EN — sinon EN retombe sur
 // `.translations.fr-FR` (bug « récompenses Battle Pass restent en FR quand l'UI passe EN »).
 func bpItemFieldCoalesce(ctx context.Context, jsonKey, col string) string {
-	frJSON := fmt.Sprintf("json_extract_string(d.raw_payload_json, '$.CommonData.%s.translations.fr-FR')", jsonKey)
-	enJSON := fmt.Sprintf("json_extract_string(d.raw_payload_json, '$.CommonData.%s.translations.en-US')", jsonKey)
-	val := fmt.Sprintf("json_extract_string(d.raw_payload_json, '$.CommonData.%s.value')", jsonKey)
-	en := []string{"t_en." + col, enJSON, val}
-	fr := []string{"t_fr." + col, frJSON}
-	return bpLocaleOrderedCoalesce(bpPreferEN(ctx), en, fr)
+	return bpLocaleOrderedCoalesce(i18n.FromContext(ctx), bpJSONSources("d.raw_payload_json", jsonKey, col, true))
 }
 
 func (r *SeasonPassRepo) LoadSeasonPassTracks(ctx context.Context, _, _ string) ([]domain.SeasonPassTrackSummary, error) {
@@ -68,10 +39,11 @@ func (r *SeasonPassRepo) LoadSeasonPassTracks(ctx context.Context, _, _ string) 
 
 	// Récupère la définition la plus récente par track + traduction dans la locale
 	// de requête (fallback sur l'autre langue).
-	trackNameExpr := "COALESCE(t_fr.track_name, t_en.track_name)"
-	if bpPreferEN(ctx) {
-		trackNameExpr = "COALESCE(t_en.track_name, t_fr.track_name)"
+	trackSources := bpLangSources{}
+	for _, l := range i18n.Locales() {
+		trackSources[l] = []string{bpAlias(l) + ".track_name"}
 	}
+	trackNameExpr := bpLocaleOrderedCoalesce(i18n.FromContext(ctx), trackSources)
 	query := fmt.Sprintf(`
 		WITH latest AS (
 			SELECT reward_track_path, content_hash, xp_per_rank, is_current, last_seen_at,
@@ -82,17 +54,9 @@ func (r *SeasonPassRepo) LoadSeasonPassTracks(ctx context.Context, _, _ string) 
 		SELECT d.reward_track_path, d.xp_per_rank,
 		       %s AS track_name
 		       , d.battlepass_image_path, d.background_image_path, d.raw_payload_json
-		FROM latest d
-		LEFT JOIN battlepass_track_translations t_fr
-		       ON t_fr.reward_track_path = d.reward_track_path
-		      AND t_fr.content_hash = d.content_hash
-		      AND t_fr.lang = 'fr-FR'
-		LEFT JOIN battlepass_track_translations t_en
-		       ON t_en.reward_track_path = d.reward_track_path
-		      AND t_en.content_hash = d.content_hash
-		      AND t_en.lang = 'en-US'
+		FROM latest d%s
 		WHERE d.rn = 1
-		ORDER BY d.is_current DESC, d.last_seen_at DESC`, trackNameExpr)
+		ORDER BY d.is_current DESC, d.last_seen_at DESC`, trackNameExpr, bpTranslationJoins("battlepass_track_translations", "reward_track_path"))
 
 	rows, err := r.pdb.Metadata.Query(ctx, query)
 	if err != nil {
@@ -132,11 +96,11 @@ func (r *SeasonPassRepo) LoadSeasonPassTracks(ctx context.Context, _, _ string) 
 		return nil, err
 	}
 
-	preferEN := bpPreferEN(ctx)
+	loc := i18n.FromContext(ctx)
 	for _, row := range trackRows {
 		prog := progressMap[row.rewardTrackPath]
 		prog.IsActive = row.rewardTrackPath == activeTrackPath
-		summary := buildTrackSummary(row, prog, itemMap, preferEN)
+		summary := buildTrackSummary(row, prog, itemMap, loc)
 		tracks = append(tracks, summary)
 	}
 
@@ -223,16 +187,8 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 		       %s AS description,
 		       d.quality,
 		       d.item_type
-		FROM latest d
-		LEFT JOIN battlepass_item_translations t_fr
-		       ON t_fr.inventory_item_path = d.inventory_item_path
-		      AND t_fr.content_hash = d.content_hash
-		      AND t_fr.lang = 'fr-FR'
-		LEFT JOIN battlepass_item_translations t_en
-		       ON t_en.inventory_item_path = d.inventory_item_path
-		      AND t_en.content_hash = d.content_hash
-		      AND t_en.lang = 'en-US'
-		WHERE d.rn = 1 AND d.inventory_item_path IN (%s)`, titleExpr, descExpr, placeholders)
+		FROM latest d%s
+		WHERE d.rn = 1 AND d.inventory_item_path IN (%s)`, titleExpr, descExpr, bpTranslationJoins("battlepass_item_translations", "inventory_item_path"), placeholders)
 
 	args := make([]any, 0, len(itemPaths))
 	for _, itemPath := range itemPaths {
@@ -312,21 +268,9 @@ func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 	// Resolution locale-aware (cf. bpItemFieldCoalesce) : value = chaine canonique en-US
 	// (source ANGLAISE), translations.{loc} = etranger. asset_index n'a pas de table de
 	// traduction denormalisee -> uniquement les fallbacks JSON du raw_json.
-	preferEN := bpPreferEN(ctx)
-	assetTitle := bpLocaleOrderedCoalesce(preferEN,
-		[]string{
-			"json_extract_string(raw_json, '$.CommonData.Title.translations.en-US')",
-			"json_extract_string(raw_json, '$.CommonData.Title.value')",
-		},
-		[]string{"json_extract_string(raw_json, '$.CommonData.Title.translations.fr-FR')"},
-	)
-	assetDesc := bpLocaleOrderedCoalesce(preferEN,
-		[]string{
-			"json_extract_string(raw_json, '$.CommonData.Description.translations.en-US')",
-			"json_extract_string(raw_json, '$.CommonData.Description.value')",
-		},
-		[]string{"json_extract_string(raw_json, '$.CommonData.Description.translations.fr-FR')"},
-	)
+	loc := i18n.FromContext(ctx)
+	assetTitle := bpLocaleOrderedCoalesce(loc, bpJSONSources("raw_json", "Title", "", false))
+	assetDesc := bpLocaleOrderedCoalesce(loc, bpJSONSources("raw_json", "Description", "", false))
 	query := fmt.Sprintf(`
 		SELECT id,
 		       json_extract_string(raw_json, '$.CommonData.DisplayPath.Media.MediaUrl.Path') AS display_path,

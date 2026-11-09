@@ -79,39 +79,19 @@ type CareerHistoryEntry struct {
 // HighestLUSR = pic scalaire ; SkillSnapshot = skill de scoreboard par match).
 // RatingType reste un string brut (le coercer en enum changerait les octets).
 type LUSRCheckpoint struct {
-	MatchID       string
-	RatingType    string
-	RatingValue   float64
-	TierLabel     *string
+	MatchID     string
+	RatingType  string
+	RatingValue float64
+	// Tier (nom canonique anglais) + SubTier : le code dont le service déduit le libellé du palier
+	// dans la langue de la requête (la colonne stockée `tier_label` n'est pas portée).
+	Tier          string
+	SubTier       *int
 	PlaylistGroup *string
 	PlaylistName  string
 	PlaylistID    string
 	RecordedAt    *time.Time
 	RatingDelta   *float64
 	BadgeImageURL *string
-}
-
-// CareerTopMatch est un match « best/worst » de la page Carrière dans le canonique
-// (Phase 2 HIGH-C). Type d'ENRICHISSEMENT LevelUp (PerformanceScore + DominanceFlag
-// calculés au sync), porteur 1:1 de domain.TopMatchRawRow.
-//
-// OutcomeCode reste le code BRUT (2/3/1/4) : passer par canonical.Outcome (string)
-// serait lossy pour 0/unknown et casserait le split WIN/LOSS aval (splitTopRows
-// compare à domain.OutcomeWin). DominanceFlag reste un int (enrichissement 0..5).
-type CareerTopMatch struct {
-	MatchID          string
-	PerformanceScore float64
-	StartTime        *time.Time
-	MapName          *string
-	PairName         *string
-	PlaylistName     *string
-	OutcomeCode      int
-	Kills            int
-	Deaths           int
-	KDA              *float64
-	TeamMMR          *float64
-	EnemyMMR         *float64
-	DominanceFlag    int
 }
 
 // EncounterRow représente un joueur croisé fréquemment, dans le canonique.

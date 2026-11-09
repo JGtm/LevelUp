@@ -12,7 +12,7 @@ package migrations
 // create_progression_player_schema, drop_notifications_from_player_db.
 // Les 3 helpers alors dédiés au bloc squashé
 // (applyCareerProgressionSequence, *IdentityAssets, applyFixMvSessionStats) sont retirés
-// avec lui (archivés dans .ai/migrations/squashed/player_v1/).
+// avec lui (conservés dans l'historique git).
 
 import (
 	"database/sql"

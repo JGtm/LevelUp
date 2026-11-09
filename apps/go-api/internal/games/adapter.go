@@ -291,7 +291,7 @@ const (
 	// not_exposed — autre format de film, aucun décodeur, donc aucun artefact possible.
 	//
 	// ⚠ ELLE GOUVERNE LA PRODUCTION, ET L'AFFICHAGE SUIT (décision utilisateur du
-	// 2026-09-05, registre `.ai/V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` D1/D2/D3) : sans la
+	// 2026-09-05) : sans la
 	// clé, l'étape post-sync `sync/replayartifacts` ne met RIEN en file et ne cuit RIEN, et
 	// les deux loaders du film de la Match View (`/objective-events`, `/positions`) ne sont
 	// pas câblés — les routes rendent alors un 503 `capability_not_supported` au lieu d'un
@@ -359,8 +359,6 @@ type TitleDataAdapter interface {
 	// LoadLUSRHistory : historique des checkpoints de rating LUSR/CSR (Phase 2
 	// HIGH-C). ErrCapabilityNotSupported si le titre ne porte pas de rating LUSR.
 	LoadLUSRHistory(ctx context.Context, xuid string) ([]canonical.LUSRCheckpoint, error)
-	// LoadTopMatches : meilleurs/pires matchs carrière (Phase 2 HIGH-C).
-	LoadTopMatches(ctx context.Context, xuid string) ([]canonical.CareerTopMatch, error)
 	// LoadTargetRecentMatches : profil de combat récent d'un joueur cible (Explorer,
 	// Phase 2 HIGH-B). ErrCapabilityNotSupported si pas de substrat match local.
 	LoadTargetRecentMatches(ctx context.Context, xuid string, limit int) ([]canonical.RecentMatchRow, error)

@@ -1,7 +1,7 @@
 package service
 
 // compare_weapons_guard_test.go — LE TRI « FRAGS DÉCROISSANTS, DÉPARTAGE SUR LE LIBELLÉ »
-// NE S'ÉCRIT QU'UNE FOIS (D11 du plan .ai/V7.5/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md).
+// NE S'ÉCRIT QU'UNE FOIS.
 //
 // # POURQUOI CE GARDE-RAIL
 //
@@ -61,7 +61,7 @@ const topWeaponSortOwner = "synthesis_service_builders.go"
 // gofmt impose entre les trois instructions.
 var topWeaponSortInline = regexp.MustCompile(
 	`(?s)\[i\]\.Kills\s*!=\s*\w+\[j\]\.Kills.{0,120}?\[i\]\.Kills\s*>\s*\w+\[j\]\.Kills` +
-		`.{0,120}?\[i\]\.Label\s*<\s*\w+\[j\]\.Label`)
+		`.{0,120}?\[i\]\.Label(?:\.Pick\(\w+\))?\s*<\s*\w+\[j\]\.Label`)
 
 // topWeaponSortByIDInline matche la MÊME doctrine départagée sur l'identifiant d'arme —
 // la troisième écriture retirée le 2026-09-19 (`buildTopWeapons`). Aucun propriétaire :

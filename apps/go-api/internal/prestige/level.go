@@ -1,9 +1,12 @@
 package prestige
 
+import "levelup/go-api/internal/i18n"
+
 // level.go — calcul du niveau Prestige d'un joueur depuis son total PP.
 //
 // Référence : Axe 6 du plan conceptuel.
-// Les seuils et noms sont configurables via tuning.Levels.
+// Les seuils et noms sont configurables via tuning.Levels ; le nom est rendu dans la langue `loc`
+// (langue de repli des noms de jeu si absente).
 
 // LevelFromPP retourne le niveau Prestige correspondant au total PP donné.
 //
@@ -13,7 +16,7 @@ package prestige
 //
 // Précondition : tuning.Levels.Thresholds est trié, monotone, commence par 0.
 // (Validé dans tuning.Validate())
-func LevelFromPP(t Tuning, totalPP int) Level {
+func LevelFromPP(t Tuning, totalPP int, loc i18n.Locale) Level {
 	thresholds := t.Levels.Thresholds
 	names := t.Levels.Names
 	if len(thresholds) == 0 || len(names) == 0 {
@@ -51,7 +54,7 @@ func LevelFromPP(t Tuning, totalPP int) Level {
 
 	name := ""
 	if idx < len(names) {
-		name = names[idx]
+		name = names[idx].Pick(loc)
 	}
 
 	return Level{

@@ -25,16 +25,17 @@ import (
 	"fmt"
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
+
+	"github.com/JGtm/LevelUp/libs/film/finalise"
 )
 
 // CompteurCacheNonFinalise : manifestes du cache refuses parce qu'ils ne portent pas le morceau
 // des temps forts (lot L3, 2026-09-23, cf. `film/finalise/finalise.go`). Depuis ce lot le writer ne
 // valide plus de tel manifeste : le compteur ne voit donc que ceux ecrits AVANT lui (un seul au
 // parc du 2026-09-23, `ab526724`, repare le soir meme). Au-dessus de zero en exploitation, un
-// autre chemin d'ecriture contourne `filmcache.Write`.
+// autre chemin d'ecriture contourne `filmarchive.Write`.
 const CompteurCacheNonFinalise = "killsource_cache_manifestes_non_finalises"
 
 // LocalCacheFilms : les films du cache disque, servis comme le ferait le client HTTP.
@@ -43,13 +44,13 @@ const CompteurCacheNonFinalise = "killsource_cache_manifestes_non_finalises"
 // ne sait pas d ou viennent les octets, et c est le but : la meme chaine de decodage et
 // d ecriture sert la passe en ligne et le backfill hors ligne.
 type LocalCacheFilms struct {
-	cache *haloclient.LocalFilmCache
+	cache *filmfetch.LocalFilmCache
 }
 
 // NewLocalCacheFilms construit la source. `cache` nil = aucun film (toutes les lectures rendent
 // `found = false`), ce qui est le comportement correct d une machine sans cache : une passe qui
 // ne trouve aucun film est une passe qui ne fait rien, pas une panne.
-func NewLocalCacheFilms(cache *haloclient.LocalFilmCache) *LocalCacheFilms {
+func NewLocalCacheFilms(cache *filmfetch.LocalFilmCache) *LocalCacheFilms {
 	return &LocalCacheFilms{cache: cache}
 }
 
@@ -73,7 +74,7 @@ func NewLocalCacheFilms(cache *haloclient.LocalFilmCache) *LocalCacheFilms {
 // AUCUN marqueur de registre — la ou un « absent » poserait `MBitFilmAbsent`, terminal.
 func (l *LocalCacheFilms) GetFilmChunks(
 	ctx context.Context, matchID string,
-) ([]haloclient.FilmChunk, bool, error) {
+) ([]filmfetch.FilmChunk, bool, error) {
 	if l == nil || l.cache == nil {
 		return nil, false, nil
 	}
@@ -84,7 +85,7 @@ func (l *LocalCacheFilms) GetFilmChunks(
 	if manifest == nil || len(manifest.Chunks) == 0 {
 		return nil, false, nil
 	}
-	if !finalise.Finalise(manifest.Chunks, func(c haloclient.CachedChunk) int { return c.ChunkType }) {
+	if !finalise.Finalise(manifest.Chunks, func(c filmfetch.CachedChunk) int { return c.ChunkType }) {
 		observability.IncCounter(CompteurCacheNonFinalise)
 		slog.InfoContext(ctx, "killsource: manifeste du cache non finalise (sans temps forts) — "+
 			"film non servi par le disque", "match_id", matchID, "entrees", len(manifest.Chunks))
@@ -92,7 +93,7 @@ func (l *LocalCacheFilms) GetFilmChunks(
 			len(manifest.Chunks), finalise.ErrFilmNonFinalise)
 	}
 
-	out := make([]haloclient.FilmChunk, 0, len(manifest.Chunks))
+	out := make([]filmfetch.FilmChunk, 0, len(manifest.Chunks))
 	for _, ch := range manifest.Chunks {
 		data, cErr := l.cache.LoadChunk(matchID, ch.Index)
 		if cErr != nil {
@@ -101,7 +102,7 @@ func (l *LocalCacheFilms) GetFilmChunks(
 		if len(data) == 0 {
 			continue // declare au manifeste, absent du disque
 		}
-		out = append(out, haloclient.FilmChunk{
+		out = append(out, filmfetch.FilmChunk{
 			Index:      ch.Index,
 			ChunkType:  ch.ChunkType,
 			Data:       data,

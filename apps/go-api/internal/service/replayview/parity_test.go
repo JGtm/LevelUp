@@ -24,8 +24,11 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/service/replayview"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // champsNonServis liste les champs du document STOCKE que l'API ne publie pas, par
@@ -570,6 +573,10 @@ func (r *remplisseur) remplirTranche(v reflect.Value, profondeur int) {
 }
 
 func (r *remplisseur) remplirMap(v reflect.Value, profondeur int) {
+	if v.Type() == reflect.TypeOf(replay.Text{}) {
+		r.remplirTexte(v, profondeur)
+		return
+	}
 	n := r.elements
 	if r.auBord(profondeur) {
 		switch r.bord {
@@ -608,4 +615,34 @@ func (r *remplisseur) remplirStruct(v reflect.Value, profondeur int) {
 			r.remplir(v.Field(i), profondeur+1)
 		}
 	}
+}
+
+// remplirTexte remplit le libellé par langue d'un document STOCKÉ comme le fait son producteur :
+// un i18n.Text (une entrée par LANGUE DE LA LISTE — les clés aléatoires des autres maps seraient
+// écrites à plat par le décodeur et ignorées à la projection, et le filet ne verrait plus une
+// projection qui perdrait un libellé), converti par `replaylabels.TexteVersFilm` (plan D2, item
+// 2.9 : le décodeur écrit les langues que porte le texte, et le producteur y pose chaque langue de
+// la liste, vide comprise). Même règle de bord que les autres conteneurs, appliquée au texte
+// d'origine.
+func (r *remplisseur) remplirTexte(v reflect.Value, profondeur int) {
+	if r.auBord(profondeur) {
+		switch r.bord {
+		case conteneurNul:
+			v.Set(reflect.ValueOf(replaylabels.TexteVersFilm(nil)))
+			return
+		case conteneurVide:
+			v.Set(reflect.ValueOf(replaylabels.TexteVersFilm(i18n.Text{})))
+			return
+		case conteneurPeuple:
+		}
+	}
+	t := i18n.Text{}
+	for _, code := range i18n.FlatCodes() {
+		if r.zero {
+			t[code] = ""
+		} else {
+			t[code] = fmt.Sprintf("v%d", r.suivant())
+		}
+	}
+	v.Set(reflect.ValueOf(replaylabels.TexteVersFilm(t)))
 }

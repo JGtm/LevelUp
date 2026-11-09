@@ -34,6 +34,22 @@ describe('buildContextLabel', () => {
     ).toBe('Classée Arena, Grande bataille')
   })
 
+  // Les clés (noms de la langue par défaut) filtrent ; les libellés posés à côté nomment le filtre dans la
+  // langue de la page. Sans libellé (lien partagé), la clé s'affiche.
+  it('playlists et modes : libellés de la page, clés intactes', () => {
+    const spec: MatchFilterSpec = {
+      playlist_names: ['Partie rapide', 'Grande bataille'],
+      playlist_labels: { 'Partie rapide': 'Quick Play' },
+      mode_categories: ['Assassin'],
+      mode_labels: { Assassin: 'Slayer' },
+    }
+    expect(buildContextLabel(spec, 'en')).toBe('Quick Play, Grande bataille · Slayer')
+    expect(spec.playlist_names).toEqual(['Partie rapide', 'Grande bataille'])
+    expect(
+      buildContextLabel({ playlist_names: ['Partie rapide'], mode_categories: ['Assassin'] }, 'en'),
+    ).toBe('Partie rapide · Assassin')
+  })
+
   it('outcome FR vs EN', () => {
     const spec: MatchFilterSpec = { outcome: 'win' }
     expect(buildContextLabel(spec, 'fr')).toBe('Victoires')

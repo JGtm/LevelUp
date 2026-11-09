@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // service_coverage_test.go — tests ciblés pour ramener la couverture
@@ -627,7 +629,7 @@ func TestService_ListSquadChallenges_EnrichesLabelsAndParticipants(t *testing.T)
 	svc, _, _, scRepo, _, _ := buildCoverageService()
 	svc.deps.Squads.(*fakeSquadRepo).members = []SquadMember{{Xuid: "x1", UserID: "alice"}}
 	svc.deps.Templates = &captureTemplateRepo{byID: map[string]Template{
-		"tpl_head": {ID: "tpl_head", LabelFR: "Têtes brûlées", LabelEN: "Headhunters"},
+		"tpl_head": {ID: "tpl_head", Labels: i18n.FromColumns("Headhunters", "Têtes brûlées")},
 	}}
 	scRepo.listBySquad = []SquadChallenge{
 		{ID: "sc1", TemplateID: "tpl_head", TargetPerMember: 7},
@@ -642,13 +644,21 @@ func TestService_ListSquadChallenges_EnrichesLabelsAndParticipants(t *testing.T)
 	if len(out) != 2 {
 		t.Fatalf("expected 2 views, got %d", len(out))
 	}
-	if out[0].LabelFR != "Têtes brûlées" || out[0].LabelEN != "Headhunters" {
-		t.Errorf("libellés non enrichis: fr=%q en=%q", out[0].LabelFR, out[0].LabelEN)
+	if out[0].Label != "Têtes brûlées" {
+		t.Errorf("libellé non enrichi (langue par défaut) : %q", out[0].Label)
+	}
+	// Même liste dans la langue de la requête : le libellé suit le contexte (ADR 0040 D-3).
+	enOut, err := svc.ListSquadChallenges(i18n.WithContext(context.Background(), i18n.LocaleEN), "sq1", "alice")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if enOut[0].Label != "Headhunters" {
+		t.Errorf("libellé en : %q, attendu Headhunters", enOut[0].Label)
 	}
 	if len(out[0].Participants) != 1 || out[0].Participants[0].UserID != "alice" {
 		t.Errorf("participants non enrichis: %+v", out[0].Participants)
 	}
-	if out[1].LabelFR != "" || out[1].LabelEN != "" {
+	if out[1].Label != "" {
 		t.Errorf("défi sans template ne doit pas avoir de libellé: %+v", out[1])
 	}
 }
@@ -841,10 +851,8 @@ window_value = "1"
 cadence = "daily"
 eval_type = "threshold"
 mode_filter = "pvp"
-label_en = "KDA boost"
-label_fr = "Booste ton KDA"
-description_en = "Average KDA"
-description_fr = "KDA moyen"
+label    = { en = "KDA boost", fr = "Booste ton KDA" }
+description    = { en = "Average KDA", fr = "KDA moyen" }
 normal_target = 1.1
 heroic_target = 1.35
 legendary_target = 1.6
@@ -884,10 +892,8 @@ window_value = "7"
 cadence = "weekly"
 eval_type = "threshold"
 mode_filter = "pvp"
-label_en = "KDA consistency"
-label_fr = "Régularité KDA"
-description_en = "Maintain a strong KDA over 7 days"
-description_fr = "Maintiens un bon KDA sur 7 jours"
+label    = { en = "KDA consistency", fr = "Régularité KDA" }
+description    = { en = "Maintain a strong KDA over 7 days", fr = "Maintiens un bon KDA sur 7 jours" }
 normal_target = 1.1
 heroic_target = 1.4
 legendary_target = 1.7
@@ -904,10 +910,8 @@ window_value = "1"
 cadence = "daily"
 eval_type = "threshold"
 mode_filter = "universal"
-label_en = "Quick kills"
-label_fr = "Tueries rapides"
-description_en = "Get kills in a single session"
-description_fr = "Élimine en une session"
+label    = { en = "Quick kills", fr = "Tueries rapides" }
+description    = { en = "Get kills in a single session", fr = "Élimine en une session" }
 normal_target = 5.0
 heroic_target = 10.0
 legendary_target = 15.0
@@ -960,8 +964,7 @@ metric = "FieldKDA"
 window_type = "session"
 cadence = "daily"
 eval_type = "threshold"
-label_en = "X"
-label_fr = "Y"
+label    = { en = "X", fr = "Y" }
 normal_target = 1.0
 heroic_target = 1.2
 legendary_target = 1.5
@@ -1019,8 +1022,7 @@ metric="FieldKDA"
 window_type="session"
 cadence="hourly"
 eval_type="threshold"
-label_en="A"
-label_fr="B"
+label   = { en = "A", fr = "B" }
 normal_target=1.0
 heroic_target=1.2
 legendary_target=1.5
@@ -1036,8 +1038,7 @@ metric="FieldKDA"
 window_type="session"
 cadence="daily"
 eval_type="threshold"
-label_en="A"
-label_fr="B"
+label   = { en = "A", fr = "B" }
 normal_target=2.0
 heroic_target=1.5
 legendary_target=1.0
@@ -1053,8 +1054,7 @@ metric="FieldKDA"
 window_type="session"
 cadence="daily"
 eval_type="threshold"
-label_en=""
-label_fr=""
+label   = { en = "", fr = "" }
 normal_target=1.0
 heroic_target=1.2
 legendary_target=1.5
@@ -1103,10 +1103,8 @@ title_slug = "halo_infinite"
 
 [[arcs]]
 id = "arc_slayer"
-title_en = "The Slayer"
-title_fr = "Le Tueur"
-description_en = "5 steps to climb the slayer ladder"
-description_fr = "5 étapes pour monter en slayer"
+title    = { en = "The Slayer", fr = "Le Tueur" }
+description    = { en = "5 steps to climb the slayer ladder", fr = "5 étapes pour monter en slayer" }
 
   [[arcs.steps]]
   position = 1
@@ -1140,8 +1138,7 @@ title_slug="halo_infinite"
 
 [[arcs]]
 id="a"
-title_en="A"
-title_fr="A"
+title   = { en = "A", fr = "A" }
 
   [[arcs.steps]]
   position=1
@@ -1181,8 +1178,7 @@ title_slug="halo_infinite"
 
 [[arcs]]
 id="a"
-title_en="A"
-title_fr="A"
+title   = { en = "A", fr = "A" }
 
   [[arcs.steps]]
   position=0
@@ -1205,8 +1201,7 @@ title_slug="halo_infinite"
 
 [[arcs]]
 id="a"
-title_en=""
-title_fr=""
+title   = { en = "", fr = "" }
 `
 	path := writeTempTOML(t, "presets_no_title.toml", body)
 	repo := &capturePresetArcRepo{}

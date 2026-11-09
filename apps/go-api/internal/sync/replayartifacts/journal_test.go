@@ -18,7 +18,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 )
 
 // capturerJournal redirige le logger par defaut vers un tampon JSON pour la duree du test
@@ -147,6 +147,6 @@ func TestSignalerClientSansChunks_NiveauSelonPlacement(t *testing.T) {
 // garde « pas de client film » sans toucher le reseau.
 type fetcherMuet struct{}
 
-func (fetcherMuet) GetFilmChunks(context.Context, string) ([]haloclient.FilmChunk, bool, error) {
+func (fetcherMuet) GetFilmChunks(context.Context, string) ([]filmfetch.FilmChunk, bool, error) {
 	return nil, false, nil
 }

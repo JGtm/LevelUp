@@ -54,8 +54,7 @@ type TacticalService interface {
 	Sequence(ctx context.Context, req domain.TacticalSequenceRequest) (domain.TacticalSequence, error)
 }
 
-// TacticalRepository — onglet Tactique (plan .ai/V7.5/PLAN_TACTIQUE_2026-09-06.md,
-// phase 2) : les trois lectures de base d'une analyse de placement par CARTE.
+// TacticalRepository — onglet Tactique : les trois lectures de base d'une analyse de placement par CARTE.
 // Implémenté par platform/duckdb.TacticalRepo.
 //
 // Source : shared.match_registry × shared.match_participants pour l'UNIVERS
@@ -86,14 +85,14 @@ type TacticalRepository interface {
 	// d'autre. Passer par `KillPositions` pour l'obtenir aurait scanne
 	// `kill_positions` sur toute la carte pour jeter le resultat.
 	//
-	// `filtre.MapID` est OPTIONNEL ici (vide = toutes les cartes) : le bloc de coordination
+	// `filtre.MapIDs` est OPTIONNEL ici (vide = toutes les cartes) : le bloc de coordination
 	// des pages Sessions et Series temporelles lit l'univers d'une liste de matchs, pas
 	// d'une carte.
 	Univers(ctx context.Context, filtre domain.TacticalQuery) (domain.TacticalUnivers, error)
 
 	// MapsPlayed liste les cartes jouées par le joueur dans le périmètre, avec le
 	// nombre de matchs et sa décomposition victoires / défaites. Ordre
-	// déterministe (matchs décroissants, puis map_id). `filtre.MapID` est ignoré :
+	// déterministe (matchs décroissants, puis map_id). `filtre.MapIDs` est ignoré :
 	// cette lecture est l'écran d'entrée, elle porte sur toutes les cartes.
 	MapsPlayed(ctx context.Context, filtre domain.TacticalQuery) ([]domain.TacticalMapRow, error)
 

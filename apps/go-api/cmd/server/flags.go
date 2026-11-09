@@ -1,0 +1,108 @@
+// flags.go — parseur UNIQUE des arguments du serveur.
+//
+// Les racines (données, ressources, journaux) se règlent par variables d'environnement lues
+// dans internal/config ; les drapeaux ne portent que le mode de lancement. Tout nouveau
+// drapeau s'ajoute ICI (jamais un os.Args lu à la main ailleurs).
+//
+// Le mode enfant de cuisson (replaychild.IsChild, -film-child) est intercepté par main AVANT
+// ce parseur, sur la ligne de commande brute : il ne passe pas par ici.
+package main
+
+import (
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+
+	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ops/parquetbackup"
+)
+
+// Valeurs du drapeau -mode.
+const (
+	// serverModeDefault : serveur ordinaire (hébergé ou poste de développement).
+	serverModeDefault = config.LaunchModeDefault
+	// serverModeDesktop : serveur lancé par la coquille desktop.
+	serverModeDesktop = config.LaunchModeDesktop
+	// serverModeRefreshOnly : processus de rafraîchissement des jetons seul (refresh_only.go).
+	serverModeRefreshOnly = config.LaunchModeRefreshOnly
+	// serverModeRestore : restauration d'un jeu de sauvegarde dans une racine de données, puis sortie
+	// (restore_mode.go). Ce n'est pas un profil de déploiement : aucune configuration serveur n'est chargée.
+	serverModeRestore = "restore"
+	// serverModeUninstallCleanup : retrait de l'entrée de démarrage et de la tâche planifiée, appelé par le
+	// désinstalleur (uninstall_cleanup_mode.go). Pas un profil de déploiement : aucune configuration serveur
+	// n'est chargée.
+	serverModeUninstallCleanup = "uninstall-cleanup"
+)
+
+// flagsExitCode : code de sortie d'une ligne de commande refusée (convention du paquet flag).
+const flagsExitCode = 2
+
+// serverUsage : rappel affiché avec toute erreur de ligne de commande.
+const serverUsage = "usage : server [-health-check] [-arret-sur-stdin] [-mode desktop|refresh-only]\n" +
+	"        server -mode uninstall-cleanup\n" +
+	"        server -mode restore --from <dossier du jeu> --to <racine de données> [--dry-run] [--force]"
+
+// serverFlags : les arguments du serveur, validés.
+type serverFlags struct {
+	// HealthCheck : interroger /health du serveur local puis sortir (HEALTHCHECK Docker).
+	HealthCheck bool
+	// StopOnStdin : arrêt propre à la fermeture de stdin (lanceur parent qui meurt ou ferme).
+	StopOnStdin bool // sans effet en refresh-only : ce mode ne sert rien et sort seul
+	// Mode : serverModeDefault, serverModeDesktop, serverModeRefreshOnly, serverModeRestore ou serverModeUninstallCleanup.
+	Mode string
+	// Restore : les arguments de -mode restore (--from, --to, --dry-run, --force), validés dans ce seul mode.
+	Restore parquetbackup.RestoreCommand
+}
+
+// parseServerFlags lit args (os.Args[1:]) et valide les valeurs. Erreurs : drapeau inconnu,
+// argument positionnel, mode inconnu. Une demande d'aide rend flag.ErrHelp. Le parseur n'écrit
+// rien : main affiche l'erreur.
+func parseServerFlags(args []string) (serverFlags, error) {
+	var f serverFlags
+	fs := flag.NewFlagSet("server", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	fs.BoolVar(&f.HealthCheck, "health-check", false, "interroge /health puis sort")
+	fs.BoolVar(&f.StopOnStdin, "arret-sur-stdin", false, "arrêt propre à la fermeture de stdin")
+	fs.StringVar(&f.Mode, "mode", serverModeDefault, "mode de lancement : desktop, refresh-only, restore ou uninstall-cleanup")
+	restore := parquetbackup.RegisterRestoreFlags(fs)
+	if err := fs.Parse(args); err != nil {
+		return serverFlags{}, err
+	}
+	if fs.NArg() > 0 {
+		return serverFlags{}, fmt.Errorf("argument inattendu %q", fs.Arg(0))
+	}
+	switch f.Mode {
+	case serverModeDefault, serverModeDesktop, serverModeRefreshOnly, serverModeUninstallCleanup:
+		if *restore != (parquetbackup.RestoreCommand{}) {
+			return serverFlags{}, fmt.Errorf("--from, --to, --dry-run et --force n'existent qu'avec -mode %s", serverModeRestore)
+		}
+	case serverModeRestore:
+		if err := restore.Validate("server -mode " + serverModeRestore); err != nil {
+			return serverFlags{}, err
+		}
+		f.Restore = *restore
+	default:
+		return serverFlags{}, fmt.Errorf("-mode %q inconnu (valeurs admises : %s, %s, %s, %s)",
+			f.Mode, serverModeDesktop, serverModeRefreshOnly, serverModeRestore, serverModeUninstallCleanup)
+	}
+	return f, nil
+}
+
+// parseServerFlagsOrExit lit os.Args[1:] et sort du processus sur une ligne de commande
+// refusée (code flagsExitCode, message et rappel d'usage sur stderr) ; -h sort en 0.
+func parseServerFlagsOrExit() serverFlags {
+	f, err := parseServerFlags(os.Args[1:])
+	switch {
+	case err == nil:
+		return f
+	case errors.Is(err, flag.ErrHelp):
+		fmt.Fprintln(os.Stderr, serverUsage)
+		os.Exit(0)
+	default:
+		fmt.Fprintf(os.Stderr, "server : %v\n%s\n", err, serverUsage)
+		os.Exit(flagsExitCode)
+	}
+	return serverFlags{}
+}

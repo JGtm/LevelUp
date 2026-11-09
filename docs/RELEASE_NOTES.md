@@ -1,5 +1,35 @@
 ## What's new
 
+**v8.1 — LevelUp for Windows, performance by map and by mode, map variants counted together**
+
+**LevelUp for Windows**
+- **An application you install** — Windows 10 or 11, 64-bit, no administrator rights. Your data, your sign-in and your films stay on your computer; updates are offered, never forced. The installer is not signed with a paid certificate, so Windows SmartScreen warns once at installation ("More info", then "Run anyway"); the download page explains it
+- **Sign in with Microsoft in your browser** — one click, no code to copy; the app moves on by itself
+- **A sidebar you can fold to icons** (`Ctrl+B`), an "About" window with the version, the licences and a button to check for updates, and the maps, weapons and medals open in a pane beside the page
+- **Game mode** — while Halo Infinite is running, nothing heavy runs in the background; your matches are synced when you close the game
+- **Windows notifications, a notification-area icon, start with Windows and a task that keeps your sign-in alive** — in Settings, Application tab, all off by default
+- **An automatic backup to a folder you choose, the move from the site to the app, and a diagnostic report** in one click, with no token or password inside
+- **Your language and your time zone** are taken from Windows at the first start
+- **The same header on every section but the home**, on the site as in the app, a "Download LevelUp for Windows" page and the Microsoft notice in the footer
+
+**Also in this version**
+- **Performance score by map and by mode** — on the Summary, the "By map" and "By mode" charts carry a curve of your average performance score (0 to 100, right-hand axis) over the result bars; each point takes the colour of its tier
+- **Map variants counted with their base map** — "- Ranked" and "Heavies" variants now count under their base map in every per-map statistic: Tactics, Explorer, Summary, Squad, Time series and the home page. The replay and the match view keep the name of the variant actually played
+- **The map filter brings back the variants** — on the Summary, the Squad and Teammates, as it already did in the Explorer
+- **The Explorer briefing keeps its cards** — a filter too narrow to compare now shows the card with the reason instead of dropping it; under 10 matches everything stays, with a warning on the Matches tile; on smaller screens the tiles split into even rows
+- **Halo 5 modes everywhere** — the Summary's "By mode" chart, empty for Halo 5 until now, lists your modes (Slayer, Capture the Flag, Strongholds...)
+- **Names in your language, everywhere** — map, mode, playlist, weapon and medal names and the texts written by the server follow the language of the interface on every page; switching language reloads all data in the new language, and the CSV export is written in the language of the page
+- **Halo 5 names** — in French, some names that used to stay in English now appear in French; in English, the maps and playlists that showed no name now display it
+- **Rank names in your language** — "Gold VI" rather than "Or VI" in English, "Diamant IV" rather than "Diamond 4" in French, on every page; challenges created in English follow the interface language too
+- **Threat sensor, seeker, shroud screen and repair field back on the replay map** — drawn where they land, for as long as the film says they last
+- **Drop wall and shroud screen last as long as the film says** — their end is read from the match instead of a flat duration
+- **Translations in administration** — the form offers one field per language; the application is ready for more languages
+- **"Exclude BTB from the career ranking" removed** — the option had no effect
+- **The media library follows the disk** — renaming, moving or deleting a capture in the file explorer no longer breaks the gallery, and deleting from the app sends the original to the Recycle Bin
+- **Equipment received at respawn shows on the replay** — effects, sounds and counters, and players who stand still stay visible until they die
+- **An excluded match leaves the career graph right away**, and new citations arrive on their own at startup
+- **Smaller Windows updates** — the app and its resources update separately, so a new version usually downloads about 30 MB
+
 **v8.0 — 2D replay, the Theater film decoded & a Tactics tab**
 
 The biggest release so far. Halo records a film of every match; until now the app never opened it. It does now — and a match can be watched again from above, second by second, with everything the film knows written around it: who killed whom with what, at what range, who held the flag, who took the power weapon, who wasted the equipment they were carrying when they died.

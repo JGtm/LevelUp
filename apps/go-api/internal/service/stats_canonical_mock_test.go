@@ -12,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
@@ -57,7 +58,7 @@ func (m *mockStatsPlayerMatches) LoadPlayerMatches(_ context.Context, _ string, 
 				StartedAtUTC: r.StartTime,
 				IsRanked:     &isRanked,
 				Outcome:      outcome,
-				Playlist:     &canonical.AssetReference{Kind: "playlist", DefaultLabel: r.PlaylistName},
+				Playlist:     &canonical.AssetReference{Kind: "playlist", DefaultLabel: r.PlaylistName[i18n.LocaleEN]},
 			},
 			Self: canonical.MatchParticipant{
 				Kills:         &k,

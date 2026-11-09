@@ -42,6 +42,7 @@ import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { EliminatedBox, VitalityBar } from './ReplayVitality'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
 import type { CardGabarit } from '../model/cardGabarit'
+import { SHROUD_BOLT_OFFSETS_S } from '../layers/placementShroud'
 import type { ZonePresence } from '../model/equipmentZones'
 import type { EquippedReading } from '../model/equippedLogic'
 import { handCellHint } from '../model/handCellHint'
@@ -452,16 +453,18 @@ const REPAIR_CROSSES = [
  * `replay-zone-bolt`). Le décalage se SOUSTRAIT à l'horloge de la pose (`shroudSinceMs`) :
  * à la pose, les délais valent exactement 0 / −1,3 / −2,05 s — la composition de la
  * maquette — et après un saut de lecture chaque éclair reprend à son avancement réel,
- * jamais sur un rythme inventé (même contrat que le capteur et les éclats).
+ * jamais sur un rythme inventé (même contrat que le capteur et les éclats). Les décalages sont
+ * ceux des éclairs de la bulle sur la carte (`placementShroud.SHROUD_BOLT_OFFSETS_S`) : la fiche et
+ * la carte s'allument ensemble.
  *
  * LES LARGEURS SONT ABSOLUES (42 / 34 / 28 px) sur des abscisses en % : sur une tuile de
  * 115 px, trois éclairs se chevauchent. Le gabarit dit combien en rendre (`boltCount`) — les
  * deux premiers de la table sur la tuile compacte.
  */
 const SHROUD_BOLTS = [
-  { left: '10%', width: 42, offsetS: 0 },
-  { left: '56%', width: 34, offsetS: 1.3 },
-  { left: '33%', width: 28, offsetS: 2.05 },
+  { left: '10%', width: 42, offsetS: SHROUD_BOLT_OFFSETS_S[0] },
+  { left: '56%', width: 34, offsetS: SHROUD_BOLT_OFFSETS_S[1] },
+  { left: '33%', width: 28, offsetS: SHROUD_BOLT_OFFSETS_S[2] },
 ] as const
 
 /**

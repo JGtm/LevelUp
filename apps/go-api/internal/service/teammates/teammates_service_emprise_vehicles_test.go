@@ -1,7 +1,7 @@
 package teammates
 
 // teammates_service_emprise_vehicles_test.go — la ressource « véhicules » de l'Emprise publiée par
-// GetPage (plan `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.3), avec un dépôt simulé : une
+// GetPage, avec un dépôt simulé : une
 // lecture par requête bornée par les matchs du périmètre (ADR 0036 I4), indépendante du film, et les
 // dégradations (capability absente, dépôt non supporté, lecture en échec) — la page ne tombe jamais.
 
@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/analysis/squademprise"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -167,8 +168,8 @@ func TestGetPage_Vehicules_LaLectureInclutLesSoireesDeLHabitude(t *testing.T) {
 	squad, usage := usageFixture(t0)
 	cur, prev := "soiree-courante", "soiree-precedente"
 	squad.squadRows = []domain.SquadMatchRow{
-		{MatchID: "m1", StartTime: t0, Outcome: domain.OutcomeWin, PairName: "Slayer", SessionLabel: &cur},
-		{MatchID: "h1", StartTime: t0.Add(-48 * time.Hour), Outcome: domain.OutcomeWin, PairName: "Slayer", SessionLabel: &prev},
+		{MatchID: "m1", StartTime: t0, Outcome: domain.OutcomeWin, PairName: i18n.FromColumns("Slayer", ""), SessionLabel: &cur},
+		{MatchID: "h1", StartTime: t0.Add(-48 * time.Hour), Outcome: domain.OutcomeWin, PairName: i18n.FromColumns("Slayer", ""), SessionLabel: &prev},
 	}
 	repo := &fakeVehicules{read: vehiculesM1()}
 	svc := NewTeammatesService(squad, nil).

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // stubPresetArcRepo : PresetArcRepo configurable pour les tests d'adoption.
@@ -51,7 +53,7 @@ func buildPresetService(preset *stubPresetArcRepo) (*service, *fakeChallengeRepo
 
 func TestService_ListArcPresets_HydratesSteps(t *testing.T) {
 	preset := &stubPresetArcRepo{
-		listResult: []PresetArc{{ID: "p1", TitleSlug: "halo_infinite", TitleFR: "Ascension"}},
+		listResult: []PresetArc{{ID: "p1", TitleSlug: "halo_infinite", Titles: i18n.FromColumns("", "Ascension")}},
 		stepsByID: map[string][]PresetArcStep{
 			"p1": {
 				{PresetArcID: "p1", Position: 1, TemplateID: "t-kda", TargetTier: TierNormal},
@@ -84,7 +86,7 @@ func TestService_ListArcPresets_RequiresTitle(t *testing.T) {
 func TestService_AdoptPresetArc_OK(t *testing.T) {
 	preset := &stubPresetArcRepo{
 		byID: map[string]PresetArc{
-			"p1": {ID: "p1", TitleSlug: "halo_infinite", TitleFR: "Ascension du Spartan"},
+			"p1": {ID: "p1", TitleSlug: "halo_infinite", Titles: i18n.FromColumns("", "Ascension du Spartan")},
 		},
 		stepsByID: map[string][]PresetArcStep{
 			"p1": {
@@ -154,7 +156,7 @@ func TestService_AdoptPresetArc_NotFound(t *testing.T) {
 // est tout de même créé avec les objectifs valides.
 func TestService_AdoptPresetArc_SkipsMissingTemplate(t *testing.T) {
 	preset := &stubPresetArcRepo{
-		byID: map[string]PresetArc{"p1": {ID: "p1", TitleSlug: "halo_infinite", TitleFR: "Arc"}},
+		byID: map[string]PresetArc{"p1": {ID: "p1", TitleSlug: "halo_infinite", Titles: i18n.FromColumns("", "Arc")}},
 		stepsByID: map[string][]PresetArcStep{
 			"p1": {
 				{PresetArcID: "p1", Position: 1, TemplateID: "t-kda", TargetTier: TierNormal},

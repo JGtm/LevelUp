@@ -5,7 +5,7 @@
  */
 import { intlLocale } from '@/lib/formatters'
 import type { SettingsText } from '@/features/settings/i18n'
-import type { Locale } from '@/lib/i18n/locale'
+import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n/locale'
 
 /**
  * Mappe les titleNames Xbox spéciaux vers leurs labels UI. Xbox utilise
@@ -37,7 +37,7 @@ export function formatLastSeen(
   timestamp: string,
   titleName: string,
   t: SettingsText,
-  locale: Locale = 'fr',
+  locale: Locale = DEFAULT_LOCALE,
   now: Date = new Date(),
 ): string {
   const past = new Date(timestamp)
@@ -51,13 +51,13 @@ export function formatLastSeen(
 
   let duration: string
   if (diffMin < 1) {
-    duration = locale === 'fr' ? "moins d'1 min" : 'less than 1 min'
+    duration = t.watcherDurationUnderMin
   } else if (diffMin < 60) {
     duration = `${diffMin} min`
   } else if (diffH < 24) {
-    duration = locale === 'fr' ? `${diffH} h` : `${diffH} hr`
+    duration = t.watcherDurationHours.replace('{n}', String(diffH))
   } else if (diffD < 7) {
-    duration = locale === 'fr' ? `${diffD} j` : `${diffD} day${diffD > 1 ? 's' : ''}`
+    duration = (diffD > 1 ? t.watcherDurationDayMany : t.watcherDurationDayOne).replace('{n}', String(diffD))
   } else {
     // Format absolu pour les dates anciennes.
     const date = past.toLocaleDateString(intlLocale(locale), {

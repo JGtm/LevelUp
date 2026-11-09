@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 func dedupCandidatesByFilePath(rows []mediaEnrichedRow) []mediaEnrichedRow {
@@ -203,7 +204,7 @@ func paginateEnrichedRows(rows []mediaEnrichedRow, limit, offset int) []mediaEnr
 
 // toMediaFileRows convertit les enriched rows en domain.MediaFileRow pour la
 // signature publique. Fait l'enrich final (MapName/ModeName/PairNameRaw).
-func toMediaFileRows(rows []mediaEnrichedRow) []domain.MediaFileRow {
+func toMediaFileRows(rows []mediaEnrichedRow, loc i18n.Locale) []domain.MediaFileRow {
 	out := make([]domain.MediaFileRow, 0, len(rows))
 	for _, row := range rows {
 		dest := domain.MediaFileRow{
@@ -218,19 +219,25 @@ func toMediaFileRows(rows []mediaEnrichedRow) []domain.MediaFileRow {
 		}
 		if row.Match != nil {
 			// MapName : label calculé (TRIM + regex strip)
-			if label := row.computedMapLabel(); label != "" {
+			if label := row.computedMapLabelIn(loc); label != "" {
 				s := label
 				dest.MapName = &s
 			}
 			// ModeName : label calculé (préfixe avant ":" ou strip suffixes)
-			if label := row.computedModeLabel(); label != "" {
+			if label := row.computedModeLabelIn(loc); label != "" {
 				s := label
 				dest.ModeName = &s
 			}
+			// ModeFilterKey : le libellé en langue par défaut, celui que compare le filtre (la catégorie la
+			// remplace après classification, enrichMediaModeCategories).
+			if key := row.computedModeLabel(); key != "" {
+				s := key
+				dest.ModeFilterKey = &s
+			}
 			// PairNameRaw : valeur brute (EN ou FR) pour InferModeCategoryFromPairName.
-			pair := row.Match.PairName
+			pair := row.Match.PairName[i18n.Fallback]
 			if pair == "" {
-				pair = row.Match.PairNameFR
+				pair = row.Match.PairName[i18n.Default]
 			}
 			if pair != "" {
 				s := pair
@@ -306,7 +313,7 @@ func extractDistinctMatchIDs(cands []mediaCandidateRow) []string {
 // dont le label est vide (équivalent du WHERE label IS NOT NULL).
 //
 // Trié par label ASC (alignement avec ORDER BY label ASC historique).
-func extractMapPairs(rows []mediaEnrichedRow) []mediaFilterOptionPair {
+func extractMapPairs(rows []mediaEnrichedRow, loc i18n.Locale) []mediaFilterOptionPair {
 	type key struct{ id, label string }
 	seen := make(map[key]struct{}, len(rows))
 	out := make([]mediaFilterOptionPair, 0, len(rows))
@@ -323,7 +330,7 @@ func extractMapPairs(rows []mediaEnrichedRow) []mediaFilterOptionPair {
 			continue
 		}
 		seen[k] = struct{}{}
-		out = append(out, mediaFilterOptionPair(k))
+		out = append(out, mediaFilterOptionPair{id: k.id, label: k.label, display: row.computedMapLabelIn(loc)})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].label < out[j].label })
 	return out
@@ -348,16 +355,16 @@ func extractModePairs(rows []mediaEnrichedRow) []mediaFilterOptionPair {
 			continue
 		}
 		// id : pair_name brut (EN ou FR si EN vide).
-		raw := row.Match.PairName
+		raw := row.Match.PairName[i18n.Fallback]
 		if raw == "" {
-			raw = row.Match.PairNameFR
+			raw = row.Match.PairName[i18n.Default]
 		}
 		k := key{id: raw, label: label}
 		if _, ok := seen[k]; ok {
 			continue
 		}
 		seen[k] = struct{}{}
-		out = append(out, mediaFilterOptionPair(k))
+		out = append(out, mediaFilterOptionPair{id: k.id, label: k.label})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].label < out[j].label })
 	return out
@@ -365,7 +372,7 @@ func extractModePairs(rows []mediaEnrichedRow) []mediaFilterOptionPair {
 
 // extractPlaylistPairs reproduit BuildQ37MediaPlaylistOptionsQuery :
 // DISTINCT (playlist_id, label_raw) avec label non vide.
-func extractPlaylistPairs(rows []mediaEnrichedRow) []mediaFilterOptionPair {
+func extractPlaylistPairs(rows []mediaEnrichedRow, loc i18n.Locale) []mediaFilterOptionPair {
 	type key struct{ id, label string }
 	seen := make(map[key]struct{}, len(rows))
 	out := make([]mediaFilterOptionPair, 0, len(rows))
@@ -382,7 +389,7 @@ func extractPlaylistPairs(rows []mediaEnrichedRow) []mediaFilterOptionPair {
 			continue
 		}
 		seen[k] = struct{}{}
-		out = append(out, mediaFilterOptionPair(k))
+		out = append(out, mediaFilterOptionPair{id: k.id, label: k.label, display: row.computedPlaylistLabelIn(loc)})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].label < out[j].label })
 	return out

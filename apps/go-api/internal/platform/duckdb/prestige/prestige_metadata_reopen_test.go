@@ -38,6 +38,8 @@ import (
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // newPrestigeMetadataReopenDB crée un metadata.duckdb temporaire (fichier réel)
@@ -78,7 +80,7 @@ func seedReopenCatalog(t *testing.T, db *duckdb.DB) {
 			ID: "tpl_reopen_a", TitleSlug: "halo_infinite", Metric: "kills_total",
 			WindowType: prestige.WindowSession, Cadence: prestige.CadenceWeekly,
 			EvalType: prestige.EvalCumulative, ModeFilter: "universal",
-			LabelEN: "A", LabelFR: "A",
+			Labels:       i18n.FromColumns("A", "A"),
 			NormalTarget: 1, HeroicTarget: 2, LegendaryTarget: 3, MythicTarget: 4,
 			SchemaVersion: 1, UpdatedAt: now,
 		},
@@ -86,7 +88,7 @@ func seedReopenCatalog(t *testing.T, db *duckdb.DB) {
 			ID: "tpl_reopen_b", TitleSlug: "halo_infinite", Metric: "assists",
 			WindowType: prestige.WindowSession, Cadence: prestige.CadenceWeekly,
 			EvalType: prestige.EvalCumulative, ModeFilter: "universal",
-			LabelEN: "B", LabelFR: "B",
+			Labels:       i18n.FromColumns("B", "B"),
 			NormalTarget: 1, HeroicTarget: 2, LegendaryTarget: 3, MythicTarget: 4,
 			SchemaVersion: 1, UpdatedAt: now,
 		},
@@ -97,7 +99,7 @@ func seedReopenCatalog(t *testing.T, db *duckdb.DB) {
 
 	arcs := []prestige.PresetArc{{
 		ID: "arc_reopen", TitleSlug: "halo_infinite",
-		TitleEN: "Arc", TitleFR: "Arc", SchemaVersion: 1, UpdatedAt: now,
+		Titles: i18n.FromColumns("Arc", "Arc"), SchemaVersion: 1, UpdatedAt: now,
 	}}
 	steps := []prestige.PresetArcStep{{
 		PresetArcID: "arc_reopen", Position: 1,

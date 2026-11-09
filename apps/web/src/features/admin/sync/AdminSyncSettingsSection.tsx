@@ -9,7 +9,7 @@
  * quel le SyncTab existant.
  */
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
-import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
+import { getSettingsText } from '@/features/settings/i18n'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { SyncTab } from '@/features/settings/SyncTab'
 import type { SettingsResponse } from '@/lib/api/types'
@@ -19,7 +19,7 @@ import { SectionHeader } from '../components/SectionHeader'
 export function AdminSyncSettingsSection() {
   const { data: settings, isLoading } = useSettings()
   const mutation = useUpdateSettings()
-  const locale = normalizeSettingsLocale(useAppShellStore((s) => s.locale))
+  const locale = useAppShellStore((s) => s.locale)
   const t = getSettingsText(locale)
 
   // Copie éditable des réglages serveur, réalignée à chaque objet servi.

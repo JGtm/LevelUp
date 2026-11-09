@@ -34,6 +34,7 @@ func TestTactical_CableChaqueDependanceSansCondition(t *testing.T) {
 		"WithWeaponLabels":         "duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb))",
 		"WithReplay":               "r.replayServiceFor(pdb)",
 		"WithAnalysisPending":      "r.analysisPendingFor(pdb)",
+		"WithMapGroups":            "r.mapGroupsFor(pdb)",
 	}
 	for methode, args := range attendus {
 		appels := appelsDansTactical(t, methode)

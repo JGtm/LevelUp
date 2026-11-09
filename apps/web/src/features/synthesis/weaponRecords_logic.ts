@@ -1,8 +1,7 @@
 /**
  * weaponRecords_logic — la GÉOMÉTRIE de « la règle » des records de distance, sans React.
  *
- * Plan : .ai/V7.5/PLAN_RECORDS_DISTANCE_2026-09-20.md (rendu A de la maquette
- * MAQUETTE_REGLE_RECORDS_2026-09-20.html). Une ligne graduée du contact vers la longue portée,
+ * Une ligne graduée du contact vers la longue portée,
  * un losange par arme à son record, et les libellés ÉTAGÉS au-dessus pour qu'aucun n'en
  * recouvre un autre : c'est ce dernier point qui justifie un module pur et testé — un
  * placement glouton se prouve sur des boîtes, pas en regardant un écran.
@@ -40,12 +39,9 @@ export const RULER_TICK_STEP_M = 10
 /** Largeur de repli quand le conteneur n'est pas encore mesuré (ou sans ResizeObserver). */
 export const RULER_FALLBACK_WIDTH_PX = 960
 
-/** Nom d'affichage d'une arme : libellé de la locale, sinon la clé (jamais un nom inventé). */
-export function resolveRecordLabel(
-  row: { weapon_key: string; label?: string | null; label_en?: string | null },
-  locale: ManifestLocale,
-): string {
-  const label = locale === 'en' ? row.label_en : row.label
+/** Nom d affichage d une arme : le libellé servi (dans la langue de la requête), sinon la clé (jamais un nom inventé). */
+export function resolveRecordLabel(row: { weapon_key: string; label?: string | null }): string {
+  const label = row.label
   return label && label.trim() !== '' ? label : row.weapon_key
 }
 
@@ -171,7 +167,7 @@ export function weaponRecordsLayout(
   const x = (m: number) => RULER_PADDING_X + (m / maxMeters) * (width - 2 * RULER_PADDING_X)
 
   const prepared = rows.map((row) => {
-    const label = resolveRecordLabel(row, locale)
+    const label = resolveRecordLabel(row)
     const valueText = formatMeters(row.record_m, locale)
     const tw = Math.max(label.length, valueText.length) * RULER_CHAR_PX + 12
     const cx = x(row.record_m)

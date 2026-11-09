@@ -100,7 +100,7 @@ func (r *ServiceRegistry) RelationsCtx(ctx context.Context, slug string) (port.R
 	// de match_id (expérience/classé, saison/période, playlist/mode, vue
 	// solo/escouade) via le MÊME pipeline cascade que /filters/resolve, en
 	// réutilisant le FiltersRepo (cross-DB : shared + player DB is_with_friends).
-	filtersSvc := service.NewFiltersService(duckdb.NewFiltersRepo(pdb).WithMapVariantSuffixes(r.mapVariantSuffixesFor(pdb)))
+	filtersSvc := service.NewFiltersService(duckdb.NewFiltersRepo(pdb).WithMapGroupRules(r.mapGroupRulesFor(pdb)))
 	svc = svc.WithFilters(filtersSvc)
 	// Phase 3b (additif, best-effort) : badge cross-jeu. Énumère les autres
 	// titres actifs via le TitleRegistry et lit leur catalogue shared en RO.

@@ -3,6 +3,8 @@ package milestones
 import (
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // catalog_loader_test.go — parsing TOML + validation.
@@ -17,16 +19,14 @@ title_slug = "halo_infinite"
 id = "halo_infinite.matches.100"
 metric = "matches_played"
 threshold = 100
-title_fr = "Centurion"
-title_en = "Centurion"
+title = { en = "Centurion", fr = "Centurion" }
 icon = "milestone_100_matches"
 
 [[milestones]]
 id = "halo_infinite.wins.50"
 metric = "wins"
 threshold = 50
-title_fr = "Vainqueur"
-title_en = "Winner"
+title = { en = "Winner", fr = "Vainqueur" }
 `)
 
 	out, err := parseCatalogBytes(in)
@@ -42,8 +42,8 @@ title_en = "Winner"
 	if out[0].Threshold != 100 {
 		t.Errorf("Threshold = %v, want 100", out[0].Threshold)
 	}
-	if out[1].TitleFR != "Vainqueur" {
-		t.Errorf("TitleFR = %q, want Vainqueur", out[1].TitleFR)
+	if out[1].Title[i18n.LocaleFR] != "Vainqueur" {
+		t.Errorf("TitleFR = %q, want Vainqueur", out[1].Title[i18n.LocaleFR])
 	}
 }
 
@@ -53,8 +53,7 @@ func TestParseCatalog_MissingTitleSlug(t *testing.T) {
 id = "x"
 metric = "m"
 threshold = 1
-title_fr = "fr"
-title_en = "en"
+title = { en = "en", fr = "fr" }
 `)
 	_, err := parseCatalogBytes(in)
 	if err == nil || !strings.Contains(err.Error(), "title_slug") {
@@ -75,8 +74,7 @@ title_slug = "halo_infinite"
 [[milestones]]
 metric = "m"
 threshold = 1
-title_fr = "fr"
-title_en = "en"`,
+title = { en = "en", fr = "fr" }`,
 			"missing id",
 		},
 		{
@@ -86,20 +84,19 @@ title_slug = "halo_infinite"
 [[milestones]]
 id = "x"
 threshold = 1
-title_fr = "fr"
-title_en = "en"`,
+title = { en = "en", fr = "fr" }`,
 			"missing metric",
 		},
 		{
-			"missing title_en",
+			"missing title en",
 			`[meta]
 title_slug = "halo_infinite"
 [[milestones]]
 id = "x"
 metric = "m"
 threshold = 1
-title_fr = "fr"`,
-			"missing title_en or title_fr",
+title = { fr = "fr" }`,
+			`title: langue(s) manquante(s) ["en"]`,
 		},
 		{
 			"zero threshold",
@@ -109,8 +106,7 @@ title_slug = "halo_infinite"
 id = "x"
 metric = "m"
 threshold = 0
-title_fr = "fr"
-title_en = "en"`,
+title = { en = "en", fr = "fr" }`,
 			"threshold must be > 0",
 		},
 	}

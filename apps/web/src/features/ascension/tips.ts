@@ -17,7 +17,7 @@ import type { Tip } from '@/components/ui/tips-ticker'
 import { coachingTipsManifest } from '@/lib/i18n/generated/coaching_tips'
 import type { Locale } from '@/lib/i18n/locale'
 
-const TIPS_MANIFEST = coachingTipsManifest as Record<string, { fr: string; en: string }>
+const TIPS_MANIFEST = coachingTipsManifest as Record<string, Record<Locale, string>>
 
 // Clés qui sont de vrais conseils affichables : on exclut `.title` et
 // `.related_signals` (méta-données de catégorie, pas des tips).
@@ -29,7 +29,6 @@ const TIP_KEY_RE =
 const MAX_TIPS = 14
 
 export function buildAscensionTips(locale: Locale): Tip[] {
-  const lang: Locale = locale === 'en' ? 'en' : 'fr'
   const tips: Tip[] = []
   for (const [key, value] of Object.entries(TIPS_MANIFEST)) {
     const match = key.match(TIP_KEY_RE)
@@ -38,8 +37,8 @@ export function buildAscensionTips(locale: Locale): Tip[] {
     const titleEntry = TIPS_MANIFEST[`coaching_tips.${category}.title`]
     tips.push({
       id: key,
-      term: titleEntry ? titleEntry[lang] : category,
-      shortDef: normalizeWhitespace(value[lang]),
+      term: titleEntry ? titleEntry[locale] : category,
+      shortDef: normalizeWhitespace(value[locale]),
     })
   }
   return shuffleArray(tips).slice(0, MAX_TIPS)

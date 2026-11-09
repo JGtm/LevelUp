@@ -46,8 +46,8 @@ func newAssetMetaRouter(svc *mockAssetService, capEnabled bool) *chi.Mux {
 func TestAssetMetadataHandler_ListMaps_OK(t *testing.T) {
 	svc := &mockAssetService{
 		maps: []canonical.AssetMeta{
-			{ID: "map-001", NameEN: "Aquarius", NameFR: "Aquarius", ImageURL: "/api/v1/assets/maps/halo_infinite/map-001/image"},
-			{ID: "map-002", NameEN: "Breaker", NameFR: "Breaker", ImageURL: "/api/v1/assets/maps/halo_infinite/map-002/image"},
+			{ID: "map-001", Name: "Aquarius", ImageURL: "/api/v1/assets/maps/halo_infinite/map-001/image"},
+			{ID: "map-002", Name: "Breaker", ImageURL: "/api/v1/assets/maps/halo_infinite/map-002/image"},
 		},
 	}
 	r := newAssetMetaRouter(svc, true)
@@ -123,7 +123,7 @@ func TestAssetMetadataHandler_ListMaps_ServiceError_500(t *testing.T) {
 func TestAssetMetadataHandler_ListWeapons_OK(t *testing.T) {
 	svc := &mockAssetService{
 		weapons: []canonical.AssetMeta{
-			{ID: "100", NameEN: "BR75 Battle Rifle", NameFR: "Fusil BR75"},
+			{ID: "100", Name: "Fusil BR75"},
 		},
 	}
 	r := newAssetMetaRouter(svc, true)
@@ -142,8 +142,8 @@ func TestAssetMetadataHandler_ListWeapons_OK(t *testing.T) {
 	if len(items) != 1 {
 		t.Errorf("len=%d, want 1", len(items))
 	}
-	if items[0].NameEN != "BR75 Battle Rifle" {
-		t.Errorf("NameEN=%q", items[0].NameEN)
+	if items[0].Name != "Fusil BR75" {
+		t.Errorf("Name=%q", items[0].Name)
 	}
 }
 
@@ -221,7 +221,7 @@ type captureSearchService struct {
 
 func (c *captureSearchService) ListMaps(_ context.Context, _, search string) ([]canonical.AssetMeta, error) {
 	c.capturedSearch = search
-	return []canonical.AssetMeta{{ID: "map-001", NameEN: "Aquarius"}}, nil
+	return []canonical.AssetMeta{{ID: "map-001", Name: "Aquarius"}}, nil
 }
 
 func (c *captureSearchService) ListWeapons(_ context.Context, _, _ string) ([]canonical.AssetMeta, error) {

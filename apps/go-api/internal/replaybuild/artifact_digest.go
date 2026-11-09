@@ -18,8 +18,9 @@ import (
 	"os"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // ArtifactUpToDate dit si l'artefact au chemin donné existe ET porte la version de schéma

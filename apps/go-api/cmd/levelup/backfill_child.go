@@ -12,16 +12,16 @@ package main
 // trop gros : c'est le PROCESSUS UNIQUE qui empile les pics de tous les films et ne rend jamais
 // rien a l'OS. La regle (doctrine machine D17) : UN FILM = UN PROCESSUS.
 //
-// # LE LANCEUR EST DESORMAIS `internal/filmproc` (PLAN_CUISSON_PERF item 5.4, 2026-09-03)
+// # LE LANCEUR EST DESORMAIS `internal/filmrun` (PLAN_CUISSON_PERF item 5.4, 2026-09-03)
 //
 // Ce fichier portait sa PROPRE copie du motif : codes de sortie, categories d'issue, marqueur
-// de pic memoire, relais de sortie, environnement de l'enfant. `internal/filmproc` porte
+// de pic memoire, relais de sortie, environnement de l'enfant. `internal/filmrun` porte
 // EXACTEMENT le meme protocole, aux memes valeurs (0 / 10 / 11 / 12 / 13, marqueur
 // `__levelup_pic_octets__=`), et il est deja le lanceur du post-sync, du harnais d'equivalence
 // et de la passe d'attribution de zones. Deux copies d'un protocole finissent par diverger sur
 // un code, et la divergence se lit alors comme une « mort subite » — la categorie fourre-tout.
 //
-// LA MIGRATION APPORTE EN PLUS LA PRIORITE CPU BASSE, qui manquait ici : `filmproc.Runner`
+// LA MIGRATION APPORTE EN PLUS LA PRIORITE CPU BASSE, qui manquait ici : `filmrun.Runner`
 // lance ses enfants en priorite basse (lecon du 2026-08-26 — une passe a priorite normale rend
 // la machine de travail inutilisable meme quand sa memoire est bornee). La passe de backfill
 // n'en beneficiait pas ; elle en beneficie maintenant sans qu'on ait rien a regler.

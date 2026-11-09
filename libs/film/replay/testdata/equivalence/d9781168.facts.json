@@ -1,0 +1,70 @@
+{
+  "players": [
+    {
+      "xuid": "2603225103667623",
+      "kills": 18,
+      "deaths": 19,
+      "assists": 11,
+      "teamId": 1
+    },
+    {
+      "xuid": "2573225322239947",
+      "kills": 13,
+      "deaths": 21,
+      "assists": 4,
+      "teamId": 0
+    },
+    {
+      "xuid": "2586124022981975",
+      "kills": 23,
+      "deaths": 13,
+      "assists": 6,
+      "teamId": 1
+    },
+    {
+      "xuid": "2711842160436310",
+      "kills": 5,
+      "deaths": 23,
+      "assists": 15,
+      "teamId": 0
+    },
+    {
+      "xuid": "2808972188417258",
+      "kills": 24,
+      "deaths": 14,
+      "assists": 5,
+      "teamId": 0
+    },
+    {
+      "xuid": "2667774381241558",
+      "kills": 25,
+      "deaths": 19,
+      "assists": 10,
+      "teamId": 0
+    },
+    {
+      "xuid": "2539574356664086",
+      "kills": 15,
+      "deaths": 16,
+      "assists": 13,
+      "teamId": 1
+    },
+    {
+      "xuid": "2663208125445776",
+      "kills": 19,
+      "deaths": 19,
+      "assists": 6,
+      "teamId": 1
+    }
+  ],
+  "teamScores": [
+    191,
+    196
+  ],
+  "gameVariantName": "Oddball:Arena",
+  "mapId": "e4bb06db-065f-4902-b93b-d8dac315eac4",
+  "matchId": "d9781168-5fd6-4b00-a862-56e3a0a1f956",
+  "mapNames": [
+    "Dredge"
+  ]
+}

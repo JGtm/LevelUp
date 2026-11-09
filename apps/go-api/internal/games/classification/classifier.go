@@ -14,8 +14,7 @@
 // Stratégie #1 livrée ici : appartenance à un SET autoritatif d'ids de playlist
 // classées (HopperId pour Halo 5). La plus universelle — tout titre Halo a des
 // playlists + une notion autoritative de « classé ». Réutilisation = DATA seule
-// (un nouveau titre fournit son TOML d'ids) → zéro code. Cf.
-// .ai/archive/V7/HANDOFF_H5_RANKED_CLASSIFICATION.md §7 (extensibilité Halo 7).
+// (un nouveau titre fournit son TOML d'ids) → zéro code.
 package classification
 
 // RankedClassifier détermine, pour une playlist donnée (par son id), si le match

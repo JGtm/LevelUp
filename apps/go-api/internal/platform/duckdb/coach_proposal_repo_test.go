@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/progression/coach_advisor"
@@ -36,8 +37,7 @@ func sampleProposal(id, metric, axis string, strength float64) coach_advisor.Pro
 		RadarAxis:     axis,
 		Strength:      strength,
 		Origin:        coach_advisor.OriginCatalog,
-		ReasonKeyEN:   "coach.proposal.lowess.en",
-		ReasonKeyFR:   "coach.proposal.lowess.fr",
+		ReasonKey:     i18n.FromColumns("coach.proposal.lowess.en", "coach.proposal.lowess.fr"),
 		ReasonParams:  `{"metric":"` + metric + `"}`,
 	}
 }

@@ -9,12 +9,13 @@
  */
 
 import { create } from 'zustand'
-import type { BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary, TitleSummary } from '@/lib/api/types'
+import type { AppInfo, BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary, TitleSummary } from '@/lib/api/types'
 import { api, setApiTitleSlug, setApiLocale } from '@/lib/api/client'
-import type { Locale } from '@/lib/i18n/locale'
+import { DEFAULT_LOCALE, normalizeLocale, type Locale } from '@/lib/i18n/locale'
 import { rememberLocale } from '@/lib/i18n/bootLocale'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
+import { DEPLOYMENT_CAPABILITY_DEFAULTS } from '@/lib/capabilities/deploymentCapabilities'
 
 interface AppShellState {
   // Joueur courant
@@ -38,6 +39,10 @@ interface AppShellState {
   userTimezone: string
   hintsVisible: boolean
   capabilities: CapabilityMap | null
+  /** Version et dossier des données, publiés seulement avec le chrome de bureau (fenêtre « À propos »). */
+  appInfo: AppInfo | null
+  /** Aucun encodeur H.264 utilisable côté serveur : la page Médias le dit et pointe le Media Feature Pack. */
+  mediaH264Missing: boolean
 
   // État app
   setupRequired: boolean
@@ -50,8 +55,8 @@ interface AppShellState {
   /** ID de job de sync initiale actif pour cette session. Null si aucun. */
   activeSyncJobId: string | null
 
-  // Auth locale
-  authMode: 'none' | 'password' | 'xbox'
+  // Auth locale (le mode d'authentification se lit dans les capacités : can_use_accounts,
+  // can_sign_in_with_xbox — useDeploymentCapability)
   registrationMode: 'invite' | 'open' | 'closed'
   /** Instance fermée : aucune nouvelle inscription / identité / BDD. */
   instanceLocked: boolean
@@ -66,9 +71,6 @@ interface AppShellState {
   firstLaunch: boolean
   /** PR 4 — Auth Code Flow OAuth dispo (true si cfg.OAuthRedirectURI configuré). */
   oauthCodeFlowEnabled: boolean
-  /** Instance démo : settings figés (read-only sauf langue/accessibilité), switch
-   * de langue client-side (le PATCH /settings est refusé en démo). */
-  demoMode: boolean
   /**
    * Code de refus (`?oauth_error=`) d'une reconnexion Xbox d'un utilisateur déjà connecté,
    * gardé par la racine quand elle le renvoie à l'accueil : le shell l'affiche
@@ -98,6 +100,8 @@ const DEFAULT_CAPABILITIES: CapabilityMap = {
   can_self_provision: false,
   can_start_initial_sync: false,
   can_manage_instance: false,
+  ...DEPLOYMENT_CAPABILITY_DEFAULTS,
+  deployment: 'dev',
 }
 
 export const useAppShellStore = create<AppShellState>((set) => ({
@@ -107,17 +111,18 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   currentTitleSlug: 'halo_infinite',
   availableTitles: [],
   isTitleSwitching: false,
-  locale: 'fr',
+  locale: DEFAULT_LOCALE,
   userTimezone: 'Europe/Paris',
   hintsVisible: true,
   capabilities: null,
+  appInfo: null,
+  mediaH264Missing: false,
   setupRequired: false,
   authState: 'missing',
   setupState: 'no_halo_link',
   isBootstrapped: false,
   linkedHaloIdentity: null,
   activeSyncJobId: null,
-  authMode: 'none',
   registrationMode: 'invite',
   instanceLocked: false,
   reauthRequired: false,
@@ -127,13 +132,14 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   currentUsername: null,
   firstLaunch: false,
   oauthCodeFlowEnabled: false,
-  demoMode: false,
   oauthRefusal: null,
 
   hydrateFromBootstrap: (data: BootstrapResponse) => {
     const titleSlug = data.current_title_slug ?? 'halo_infinite'
     setApiTitleSlug(titleSlug)
-    const locale: Locale = (data.locale as Locale) ?? 'fr'
+    // Garant de l'invariant « le store ne porte qu'une langue de config/locales.toml » : les
+    // lecteurs indexent `TABLE[locale]` sans défense (valeur inconnue → langue par défaut).
+    const locale = normalizeLocale(data.locale)
     setApiLocale(locale)
     rememberLocale(locale)
     set({
@@ -146,13 +152,14 @@ export const useAppShellStore = create<AppShellState>((set) => ({
       userTimezone: data.settings_excerpt?.user_timezone || 'Europe/Paris',
       hintsVisible: data.hints_visible_default,
       capabilities: data.capabilities ?? DEFAULT_CAPABILITIES,
+      appInfo: data.app_info ?? null,
+      mediaH264Missing: data.media_h264_missing ?? false,
       setupRequired: data.setup_required,
       authState: data.auth_state,
       setupState: data.setup_state ?? 'no_halo_link',
       isBootstrapped: true,
       linkedHaloIdentity: data.linked_halo_identity ?? null,
       activeSyncJobId: data.active_sync_job_id ?? null,
-      authMode: data.auth_mode ?? 'none',
       registrationMode: data.registration_mode ?? 'invite',
       instanceLocked: data.instance_locked ?? false,
       reauthRequired: data.reauth_required ?? false,
@@ -162,7 +169,6 @@ export const useAppShellStore = create<AppShellState>((set) => ({
       currentUsername: data.current_username ?? null,
       firstLaunch: data.first_launch ?? false,
       oauthCodeFlowEnabled: data.oauth_code_flow_enabled ?? false,
-      demoMode: data.demo_mode ?? false,
     })
     // Garde deep-link (fresh-load / bookmark) : si un `?f=` (share-link) a hydraté
     // le store solo avec un filtre généré pour un AUTRE titre, le reset. Le reset

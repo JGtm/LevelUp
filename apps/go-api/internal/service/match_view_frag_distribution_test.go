@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // ptrInt (helper partagé, match_view_helpers_test.go) → pointeur int.
@@ -24,11 +25,11 @@ func fragClassKills(fd *domain.FragDistribution) map[string]int {
 // viewer est absent (pas de ligne is_me) ou n'a aucun frag (total <= 0) — le front rend
 // alors null (pas de sunburst vide).
 func TestBuildViewerFragDistribution_NilOrEmpty(t *testing.T) {
-	if fd := buildViewerFragDistribution(nil, nil, false); fd != nil {
+	if fd := buildViewerFragDistribution(nil, nil, false, i18n.LocaleFR); fd != nil {
 		t.Errorf("viewer absent : want nil, got %+v", fd)
 	}
 	me := &domain.MatchScoreboardRow{XUID: "x1", IsMe: true, Kills: ptrInt(0)}
-	if fd := buildViewerFragDistribution(me, nil, false); fd != nil {
+	if fd := buildViewerFragDistribution(me, nil, false, i18n.LocaleFR); fd != nil {
 		t.Errorf("0 frag : want nil, got %+v", fd)
 	}
 }
@@ -47,7 +48,7 @@ func TestBuildViewerFragDistribution_InfiniteCapOff(t *testing.T) {
 		{XUID: "me", WeaponID: 2, Kills: 2, Class: "sidearm", Role: "sidearm"},
 		{XUID: "other", WeaponID: 1, Kills: 99, Class: "shoulder", Role: "precision"}, // ignoré (pas is_me)
 	}
-	fd := buildViewerFragDistribution(me, bulk, false)
+	fd := buildViewerFragDistribution(me, bulk, false, i18n.LocaleFR)
 	if fd == nil {
 		t.Fatal("want distribution, got nil")
 	}
@@ -87,7 +88,7 @@ func TestBuildViewerFragDistribution_H5CapOn(t *testing.T) {
 	bulk := []domain.BulkWeaponKillRaw{
 		{XUID: "me", WeaponID: 1, Kills: 10, Class: "shoulder", Role: "automatic"},
 	}
-	fd := buildViewerFragDistribution(me, bulk, true)
+	fd := buildViewerFragDistribution(me, bulk, true, i18n.LocaleFR)
 	if fd == nil {
 		t.Fatal("want distribution, got nil")
 	}
@@ -145,7 +146,7 @@ func TestBuildViewerFragDistribution_H5MechanicKillsNoDoubleCount(t *testing.T) 
 		// 9 kills BR dont 2 mêlées attribuées à l'arme tenue (MechanicKills=2).
 		{XUID: "me", WeaponID: 1, Kills: 9, Class: "shoulder", Role: "automatic", MechanicKills: 2},
 	}
-	fd := buildViewerFragDistribution(me, bulk, true)
+	fd := buildViewerFragDistribution(me, bulk, true, i18n.LocaleFR)
 	if fd == nil {
 		t.Fatal("want distribution, got nil")
 	}
@@ -181,7 +182,7 @@ func TestBuildViewerFragDistribution_GrenadeSubLevel(t *testing.T) {
 		{XUID: "me", WeaponID: 20, Kills: 3, Class: "grenade", Role: "grenade", Family: "frag_grenade"},
 		{XUID: "me", WeaponID: 21, Kills: 1, Class: "grenade", Role: "grenade", Family: "plasma_grenade"},
 	}
-	fd := buildViewerFragDistribution(me, bulk, false)
+	fd := buildViewerFragDistribution(me, bulk, false, i18n.LocaleFR)
 	if fd == nil {
 		t.Fatal("want distribution, got nil")
 	}
@@ -230,7 +231,7 @@ func TestBuildViewerFragDistribution_ChuteMesureeAuFilm_ServieEnEnvironnement(t 
 		{XUID: "me", WeaponID: 0, Kills: 1, Class: "environmental", Role: "environmental",
 			WeaponKey: "hinf_environment", FromDamageSource: true},
 	}
-	got := fragClassKills(buildViewerFragDistribution(me, bulk, false))
+	got := fragClassKills(buildViewerFragDistribution(me, bulk, false, i18n.LocaleFR))
 	if got[domain.FragClassEnvironmental] != 1 {
 		t.Errorf("environnement = %d, want 1 (chute mesuree au film) ; classes = %+v",
 			got[domain.FragClassEnvironmental], got)
@@ -242,7 +243,7 @@ func TestBuildViewerFragDistribution_ChuteMesureeAuFilm_ServieEnEnvironnement(t 
 
 	// Meme ligne SANS provenance film : ecartee, le kill retombe au residu.
 	bulk[1].FromDamageSource = false
-	got = fragClassKills(buildViewerFragDistribution(me, bulk, false))
+	got = fragClassKills(buildViewerFragDistribution(me, bulk, false, i18n.LocaleFR))
 	if got[domain.FragClassEnvironmental] != 0 || got[domain.FragClassUnattributed] != 1 {
 		t.Errorf("sans provenance : environnement = %d / non attribue = %d, want 0 / 1",
 			got[domain.FragClassEnvironmental], got[domain.FragClassUnattributed])

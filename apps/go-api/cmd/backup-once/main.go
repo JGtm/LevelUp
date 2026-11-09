@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/ops"
 )
 
@@ -21,7 +20,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	pr := title.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	scheduler := ops.NewLevelUpBackupScheduler(cfg.Backup, pr)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)

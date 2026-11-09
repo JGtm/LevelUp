@@ -10,10 +10,10 @@ package middleware
 import (
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 )
 
 // ResolvedTitleHeader est le header de réponse qui échoie le titre effectivement
@@ -45,15 +45,10 @@ func TitleExtractor(registry *titlePkg.Registry) func(http.Handler) http.Handler
 }
 
 // resolveLocale lit la locale UI depuis le header X-LevelUp-Locale (posé par le
-// front sur toutes les requêtes, cf. setApiLocale). Normalise vers "fr"/"en" ;
-// valeur vide ou inconnue → "fr" (cohérent avec le défaut de ctxkeys.Locale).
+// front sur toutes les requêtes, cf. setApiLocale) et la normalise par i18n.Parse :
+// sous-étiquette primaire ("en-US" donne "en"), valeur vide ou inconnue → i18n.Default.
 func resolveLocale(r *http.Request) string {
-	switch strings.ToLower(strings.TrimSpace(r.Header.Get("X-LevelUp-Locale"))) {
-	case "en", "en-us", "en_us":
-		return "en"
-	default:
-		return "fr"
-	}
+	return string(i18n.Parse(r.Header.Get("X-LevelUp-Locale")))
 }
 
 // resolveTitleSlug détermine le titre courant pour la requête.

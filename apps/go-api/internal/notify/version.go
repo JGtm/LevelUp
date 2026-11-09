@@ -191,7 +191,7 @@ func writeLastNotifiedVersion(settingsPath, version string) error {
 		return fmt.Errorf("marshal app_settings: %w", err)
 	}
 
-	return atomicfile.WriteFile(settingsPath, updated, 0o644)
+	return atomicfile.WriteFile(context.Background(), settingsPath, updated, 0o644)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -60,12 +61,10 @@ func seedWeaponKills(t *testing.T, pdb *PlayerDB) {
 		wkTestXUIDOther, "OtherPlayer")
 
 	// Inserer le label FR pour weapon_id 100 dans metadata (1 seule fois — séparé)
-	if _, err := pdb.Metadata.Exec(ctx,
-		`INSERT INTO weapon_labels (weapon_id,name_en,name_fr) VALUES (?,?,?)`,
-		uint64(100), "Assault Rifle", "AR75",
-	); err != nil {
+	if _, err := pdb.Metadata.Exec(ctx, `INSERT INTO weapon_labels (weapon_id) VALUES (?)`, uint64(100)); err != nil {
 		t.Fatalf("seed weapon_label 100: %v", err)
 	}
+	putWeaponLabelNames(t, pdb.Metadata, 100, frEn("AR75", "Assault Rifle"))
 }
 
 // ---------------------------------------------------------------------------
@@ -169,7 +168,7 @@ func TestWeaponKillsRepo_Load_ByGamertag_AggregatesByWeapon(t *testing.T) {
 			t.Errorf("IsGrenadeMelee=true sans IncludeGrenadeMelee")
 		}
 		got[r.WeaponID] = r.Kills
-		gotLabels[r.WeaponID] = r.Label
+		gotLabels[r.WeaponID] = r.Label.Pick(i18n.LocaleFR)
 	}
 	if got[42] != 5 {
 		t.Errorf("kills[BR=42] = %d, want 5", got[42])

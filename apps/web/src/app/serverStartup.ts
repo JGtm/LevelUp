@@ -9,6 +9,13 @@
  * SERVER_STARTUP_MAX_WAIT_MS ; au-delà, l'écran « API injoignable ». Toute autre erreur
  * du /bootstrap garde quelques rejeux espacés (BOOTSTRAP_OTHER_ERROR_RETRIES). Cf.
  * createBootstrapRetryPolicy.
+ *
+ * Un démarrage qui ne peut pas aboutir (migration en échec, base tenue par un autre
+ * processus, schéma plus récent que le binaire) est annoncé par un 503 `server_start_failed`
+ * NON réessayable (`retryable: false`, état dans `details.state`) : la page cesse
+ * d'interroger et affiche l'état (serverStartFailure). Tant que le serveur annonce l'étape
+ * `migrations`, l'attente maximale repart à zéro à chaque réponse : une migration longue
+ * progresse, elle n'est pas un serveur injoignable.
  */
 import type { CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -23,6 +30,21 @@ export const SERVER_STARTUP_MAX_WAIT_MS = 120_000
 
 /** Code d'erreur de la réponse 503 d'un serveur en cours d'initialisation. */
 export const SERVER_STARTING_CODE = 'server_starting'
+
+/** Code d'erreur de la réponse 503 d'un démarrage qui a échoué (non réessayable). */
+export const SERVER_START_FAILED_CODE = 'server_start_failed'
+
+/**
+ * Code d'erreur du 401 de l'application desktop : la requête ne porte pas le cookie posé par
+ * l'entrée de la coquille (ADR 0045 D-3), par exemple après son expiration. Rejouer n'y change rien.
+ */
+export const DESKTOP_UNAUTHORIZED_CODE = 'desktop_unauthorized'
+
+/** Statut du 401 de l'entrée de la coquille. */
+const DESKTOP_UNAUTHORIZED_STATUS = 401
+
+/** Étape annoncée pendant les migrations : la progression prolonge l'attente maximale. */
+const MIGRATIONS_STEP = 'migrations'
 
 /**
  * Rejeux du /bootstrap sur une autre erreur (500 bootstrap_error, base occupée…) : six,
@@ -44,6 +66,15 @@ const STEP_MESSAGE_KEYS: Readonly<Record<string, CommonManifestKey>> = {
   databases: 'common.root.server_step.databases',
   accounts: 'common.root.server_step.accounts',
   services: 'common.root.server_step.services',
+}
+
+/** Libellé de chaque état d'échec annoncé par le serveur (details.state). */
+const FAILURE_STATE_KEYS: Readonly<Record<string, CommonManifestKey>> = {
+  locked: 'common.root.server_failed.locked',
+  migration_failed: 'common.root.server_failed.migration_failed',
+  schema_newer: 'common.root.server_failed.schema_newer',
+  port: 'common.root.server_failed.port',
+  resources_incompatible: 'common.root.server_failed.resources_incompatible',
 }
 
 interface ErrorShape {
@@ -68,13 +99,58 @@ export function isServerStartingError(error: unknown): boolean {
   return e?.status === SERVER_STARTING_STATUS && e?.code === SERVER_STARTING_CODE
 }
 
-/** Clé du libellé de l'étape annoncée par le serveur ; undefined si absente ou inconnue. */
-export function serverStartingStepKey(error: unknown): CommonManifestKey | undefined {
+/**
+ * Vrai si l'erreur est le 401 `desktop_unauthorized` : l'application desktop n'a plus (ou n'a pas
+ * encore) son cookie d'entrée. Seule la coquille sait le reposer, en rouvrant l'application.
+ */
+export function isDesktopEntryRequiredError(error: unknown): boolean {
+  const e = asErrorShape(error)
+  return e?.status === DESKTOP_UNAUTHORIZED_STATUS && e?.code === DESKTOP_UNAUTHORIZED_CODE
+}
+
+/** Lit un champ texte de `details` (étape, état) ; undefined si absent ou non textuel. */
+function detailString(error: unknown, field: 'step' | 'state'): string | undefined {
   const details = asErrorShape(error)?.details
   if (details == null || typeof details !== 'object') return undefined
-  const step = (details as { step?: unknown }).step
-  if (typeof step !== 'string' || !Object.hasOwn(STEP_MESSAGE_KEYS, step)) return undefined
+  const value = (details as Record<string, unknown>)[field]
+  return typeof value === 'string' ? value : undefined
+}
+
+/** Clé du libellé de l'étape annoncée par le serveur ; undefined si absente ou inconnue. */
+export function serverStartingStepKey(error: unknown): CommonManifestKey | undefined {
+  const step = detailString(error, 'step')
+  if (step === undefined || !Object.hasOwn(STEP_MESSAGE_KEYS, step)) return undefined
   return STEP_MESSAGE_KEYS[step]
+}
+
+/**
+ * Vrai si l'erreur est la réponse 503 `server_start_failed` : le démarrage a échoué et le
+ * serveur le dit (`retryable: false`). Aucun rejeu n'y changera rien.
+ */
+export function isServerStartFailedError(error: unknown): boolean {
+  const e = asErrorShape(error)
+  return (
+    e?.status === SERVER_STARTING_STATUS &&
+    e?.code === SERVER_START_FAILED_CODE &&
+    (e as { retryable?: unknown }).retryable !== true
+  )
+}
+
+/**
+ * Écran d'un démarrage échoué : null si l'erreur n'en est pas un ; sinon `stateKey`, le
+ * libellé de l'état annoncé (undefined si l'état est absent ou inconnu).
+ */
+export function serverStartFailure(error: unknown): { stateKey: CommonManifestKey | undefined } | null {
+  if (!isServerStartFailedError(error)) return null
+  const state = detailString(error, 'state')
+  const stateKey =
+    state !== undefined && Object.hasOwn(FAILURE_STATE_KEYS, state) ? FAILURE_STATE_KEYS[state] : undefined
+  return { stateKey }
+}
+
+/** Vrai si le serveur répond « en démarrage » à l'étape des migrations (progression). */
+function isMigrationProgress(error: unknown): boolean {
+  return isServerStartingError(error) && detailString(error, 'step') === MIGRATIONS_STEP
 }
 
 /** Politique de rejeu du /bootstrap, à brancher sur `retry` et `retryDelay` de useQuery. */
@@ -91,6 +167,8 @@ export interface BootstrapRetryPolicy {
  *   - serveur qui démarre : réinterrogation chaque seconde tant que moins de
  *     SERVER_STARTUP_MAX_WAIT_MS se sont écoulées depuis le premier échec « en
  *     démarrage » de la série (plafond mesuré en temps) ;
+ *   - démarrage échoué (503 server_start_failed, non réessayable) ou entrée de la coquille
+ *     manquante (401 desktop_unauthorized) : aucun rejeu ;
  *   - autre erreur : BOOTSTRAP_OTHER_ERROR_RETRIES rejeux espacés de 0,5 s à 4 s, comptés
  *     à partir de la dernière erreur « en démarrage » (pas sur le compteur cumulé) : un
  *     serveur enfin prêt qui rend une erreur ordinaire obtient tous ses rejeux.
@@ -112,6 +190,8 @@ export function createBootstrapRetryPolicy(now: () => number = Date.now): Bootst
     last = { failureCount, error }
     if (isServerStartingError(error)) {
       startupSince ??= now()
+      // Migrations en cours : l'attente repart de cette réponse (progression, pas blocage).
+      if (isMigrationProgress(error)) startupSince = now()
       ordinaryBase = failureCount + 1
     }
   }
@@ -119,6 +199,8 @@ export function createBootstrapRetryPolicy(now: () => number = Date.now): Bootst
   return {
     retry(failureCount, error) {
       observe(failureCount, error)
+      // Démarrage échoué, ou entrée de la coquille manquante : un rejeu ne changera rien.
+      if (isServerStartFailedError(error) || isDesktopEntryRequiredError(error)) return false
       if (isServerStartingError(error)) {
         return now() - (startupSince ?? now()) < SERVER_STARTUP_MAX_WAIT_MS
       }

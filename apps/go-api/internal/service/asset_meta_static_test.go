@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 func TestStaticAssetMetaRepo_ListMaps_All(t *testing.T) {
@@ -27,8 +28,8 @@ func TestStaticAssetMetaRepo_ListMaps_Search(t *testing.T) {
 	if len(maps) != 1 {
 		t.Errorf("attendu 1, obtenu %d", len(maps))
 	}
-	if maps[0].NameEN != "Aquarius" {
-		t.Errorf("NameEN=%q, attendu Aquarius", maps[0].NameEN)
+	if maps[0].CanonicalName() != "Aquarius" {
+		t.Errorf("nom canonique=%q, attendu Aquarius", maps[0].CanonicalName())
 	}
 }
 
@@ -74,8 +75,8 @@ func TestStaticAssetMetaRepo_ListWeapons_Search(t *testing.T) {
 	if len(weapons) != 1 {
 		t.Errorf("attendu 1, obtenu %d", len(weapons))
 	}
-	if weapons[0].NameEN != "BR75 Battle Rifle" {
-		t.Errorf("NameEN=%q", weapons[0].NameEN)
+	if weapons[0].CanonicalName() != "BR75 Battle Rifle" {
+		t.Errorf("nom canonique=%q", weapons[0].CanonicalName())
 	}
 }
 
@@ -104,46 +105,46 @@ func TestStaticAssetMetaRepo_FallbackMedals(t *testing.T) {
 	ctx := context.Background()
 	repo := NewStaticAssetMetaRepo(testMaps(), testWeapons()).
 		WithFallbackMedals(testMedals()).
-		WithTitle("halo_5", nil, nil, []canonical.AssetMeta{{ID: "9", NameEN: "Killjoy", NameFR: "Rabat-joie"}})
+		WithTitle("halo_5", nil, nil, []canonical.AssetMeta{{ID: "9", Names: i18n.FromColumns("Killjoy", "Rabat-joie")}})
 
 	hinf, _ := repo.ListMedalsByTitle(ctx, "halo_infinite", "")
 	if len(hinf) != 2 {
 		t.Fatalf("Infinite (fallback) : attendu 2 médailles, obtenu %d", len(hinf))
 	}
-	if hinf[0].NameFR != "Vengeur" {
-		t.Errorf("Infinite médaille[0] name_fr = %q, want Vengeur", hinf[0].NameFR)
+	if hinf[0].Names[i18n.LocaleFR] != "Vengeur" {
+		t.Errorf("Infinite médaille[0] name_fr = %q, want Vengeur", hinf[0].Names[i18n.LocaleFR])
 	}
 
 	h5, _ := repo.ListMedalsByTitle(ctx, "halo_5", "")
-	if len(h5) != 1 || h5[0].NameEN != "Killjoy" {
+	if len(h5) != 1 || h5[0].CanonicalName() != "Killjoy" {
 		t.Errorf("h5 (override) : attendu [Killjoy], obtenu %+v", h5)
 	}
 
 	// Recherche locale-aware (name_fr) sur le fallback.
 	found, _ := repo.ListMedalsByTitle(ctx, "halo_infinite", "veng")
-	if len(found) != 1 || found[0].NameEN != "Avenger" {
+	if len(found) != 1 || found[0].CanonicalName() != "Avenger" {
 		t.Errorf("recherche 'veng' : attendu [Avenger], obtenu %+v", found)
 	}
 }
 
 func testMedals() []canonical.AssetMeta {
 	return []canonical.AssetMeta{
-		{ID: "9000000001", NameEN: "Avenger", NameFR: "Vengeur", ImageURL: "/static/medals/halo_infinite/9000000001.png"},
-		{ID: "3565443938", NameEN: "Perfect", NameFR: "Parfait", ImageURL: "/static/medals/halo_infinite/3565443938.png"},
+		{ID: "9000000001", Names: i18n.FromColumns("Avenger", "Vengeur"), ImageURL: "/static/medals/halo_infinite/9000000001.png"},
+		{ID: "3565443938", Names: i18n.FromColumns("Perfect", "Parfait"), ImageURL: "/static/medals/halo_infinite/3565443938.png"},
 	}
 }
 
 func testMaps() []canonical.AssetMeta {
 	return []canonical.AssetMeta{
-		{ID: "map-001", NameEN: "Aquarius", NameFR: "Aquarius"},
-		{ID: "map-002", NameEN: "Breaker", NameFR: "Breaker"},
-		{ID: "map-003", NameEN: "Streets", NameFR: "Streets"},
+		{ID: "map-001", Names: i18n.FromColumns("Aquarius", "Aquarius")},
+		{ID: "map-002", Names: i18n.FromColumns("Breaker", "Breaker")},
+		{ID: "map-003", Names: i18n.FromColumns("Streets", "Streets")},
 	}
 }
 
 func testWeapons() []canonical.AssetMeta {
 	return []canonical.AssetMeta{
-		{ID: "100", NameEN: "BR75 Battle Rifle", NameFR: "Fusil BR75"},
-		{ID: "200", NameEN: "Skewer", NameFR: "Brochette"},
+		{ID: "100", Names: i18n.FromColumns("BR75 Battle Rifle", "Fusil BR75")},
+		{ID: "200", Names: i18n.FromColumns("Skewer", "Brochette")},
 	}
 }

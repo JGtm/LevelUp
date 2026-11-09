@@ -23,15 +23,15 @@ func TestClassifyWeaponCoverage(t *testing.T) {
 	defer db.Close()
 	ctx := context.Background()
 
-	if _, err := db.ExecContext(ctx, `CREATE TABLE weapon_labels (weapon_id UBIGINT PRIMARY KEY, name_en VARCHAR, name_fr VARCHAR)`); err != nil {
+	if _, err := db.ExecContext(ctx, `CREATE TABLE weapon_labels (weapon_id UBIGINT PRIMARY KEY)`); err != nil {
 		t.Fatalf("create: %v", err)
 	}
 	brID := uint64(0x2b1824d542c9679f) // BR75 (registre + label)
 	labelOnly := uint64(999)           // dans weapon_labels seulement
 	unknown := int64(424242)           // nulle part
 	for _, q := range []string{
-		"INSERT INTO weapon_labels VALUES (" + strconv.FormatUint(brID, 10) + ", 'BR75', 'BR75')",
-		"INSERT INTO weapon_labels VALUES (999, 'Sandwich', 'Sandwich')",
+		"INSERT INTO weapon_labels VALUES (" + strconv.FormatUint(brID, 10) + ")",
+		"INSERT INTO weapon_labels VALUES (999)",
 	} {
 		if _, err := db.ExecContext(ctx, q); err != nil {
 			t.Fatalf("seed: %v", err)

@@ -1,7 +1,6 @@
 package replayartifacts
 
-// vehicletakes.go — LA RESSOURCE VEHICULES DE L'EMPRISE, PERSISTEE AU FIL DE L'EAU (plan
-// `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.2, decisions D1, D8, D9, D10).
+// vehicletakes.go — LA RESSOURCE VEHICULES DE L'EMPRISE, PERSISTEE AU FIL DE L'EAU.
 //
 // # CE QUE CE FICHIER FAIT
 //
@@ -55,12 +54,13 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/killcollector"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // Raisons propres a ce paquet d'un appariement non lu (`persist.VehicleTakesBatch.FragsReason`).

@@ -12,7 +12,7 @@ import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 
 import { useAdminTitles } from '../titles/queries'
-import { useAdminT, type TAdmin } from '../useAdminText'
+import { useAdminT, useDateLocale, type TAdmin } from '../useAdminText'
 import { useWeaponCoverage, type AdminWeaponCoverage } from '../monitoring/queries'
 import { SectionHeader } from '../components/SectionHeader'
 
@@ -122,6 +122,7 @@ function CoverageBar({ data }: { data: AdminWeaponCoverage }) {
 }
 
 function UnresolvedList({ data, tA }: { data: AdminWeaponCoverage; tA: TAdmin }) {
+  const dateLocale = useDateLocale()
   return (
     <div className="space-y-1">
       <div className="text-xs font-medium text-muted-foreground">
@@ -134,7 +135,7 @@ function UnresolvedList({ data, tA }: { data: AdminWeaponCoverage; tA: TAdmin })
             className="flex items-center justify-between px-2 py-1 text-xs tabular-nums"
           >
             <span className="font-mono text-foreground">{it.weapon_id}</span>
-            <span className="text-muted-foreground">{it.kills.toLocaleString()}</span>
+            <span className="text-muted-foreground">{it.kills.toLocaleString(dateLocale)}</span>
           </li>
         ))}
       </ul>
@@ -143,6 +144,7 @@ function UnresolvedList({ data, tA }: { data: AdminWeaponCoverage; tA: TAdmin })
 }
 
 function Stat({ label, value, accent }: { label: string; value: number; accent?: SemanticToken }) {
+  const dateLocale = useDateLocale()
   return (
     <div>
       <div className="text-xs text-muted-foreground">{label}</div>
@@ -150,7 +152,7 @@ function Stat({ label, value, accent }: { label: string; value: number; accent?:
         className="text-lg font-semibold tabular-nums"
         style={accent ? { color: tokenCssVar(accent) } : undefined}
       >
-        {value.toLocaleString()}
+        {value.toLocaleString(dateLocale)}
       </div>
     </div>
   )

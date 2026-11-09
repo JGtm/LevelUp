@@ -5,7 +5,7 @@ package main
 // # Pourquoi ce test existe
 //
 // L'objet du portage de `_outils/livraison.py` etait de produire les MEMES OCTETS que le
-// script Python : les `hinf_*.wav` de `static/sounds/halo_infinite/` et
+// script Python : les `hinf_*` de `static/sounds/halo_infinite/` et
 // `weaponSoundVariations.ts`. Cette propriete n'etait gardee par AUCUN test du depot — la
 // seule preuve vivait dans un scratchpad de session, disparu avec elle. Une mutation de
 // l'arrondi du mixage (`int16(v*att)` -> `int16(math.Round(v*att))`) et de la troncature
@@ -25,8 +25,18 @@ package main
 //  2. copier `_outils/livraison.py` ET `_outils/coups_lot.py` (archive Desktop du chantier,
 //     hors depot, JAMAIS modifies) dans `<racine>/_outils/`, verifier les copies au `cmp` ;
 //  3. `python livraison.py <racine>/_depot` depuis `<racine>/_outils` ;
-//  4. recopier les `hinf_*.wav`, le `weaponSoundVariations.ts` et la sortie console (fins de
+//  4. recopier les `hinf_*.wav` (inchanges : le mixage reste en PCM), le `weaponSoundVariations.ts` et la sortie console (fins de
 //     ligne normalisees en LF) dans `testdata/livraison/goldens/`.
+//
+// # Le PCM est prouve, l'encodage ne l'est pas ici
+//
+// Depuis la livraison en Opus (lot L8 du chantier Desktop), `livrer` publie des `.ogg`. Les
+// goldens `hinf_*.wav` restent ceux du script Python : ils prouvent le MIXAGE et la TROUNCATION
+// en PCM. Ce test injecte donc un encodeur identite (`livraisonEncodeurIdentite`) : le fichier
+// publie sous son nom `.ogg` porte les octets du WAV, comparables aux goldens octet pour
+// octet, sans ffmpeg. L'encodage reel est garde ailleurs (TestLivrerEncodeEnOpus : memes
+// echantillons que le golden, apres decodage). Les lignes `-> X.ogg` du golden console sont
+// la seule retouche du releve Python (extension).
 //
 // # La seule divergence VOULUE
 //
@@ -58,7 +68,7 @@ func TestLivrerOctetPourOctet(t *testing.T) {
 	}
 
 	console, err := livraisonCapturerSortie(func() error {
-		return livrer(filepath.Join(racine, "_donnees"), racine, depot)
+		return livrerAvec(livraisonEncodeurIdentite, filepath.Join(racine, "_donnees"), racine, depot)
 	})
 	if err != nil {
 		t.Fatalf("livrer: %v", err)
@@ -71,7 +81,7 @@ func TestLivrerOctetPourOctet(t *testing.T) {
 }
 
 // livraisonComparerArmes verifie que la cible contient EXACTEMENT les armes de reference,
-// octet pour octet, plus le seul temoin hors perimetre du miroir.
+// octet pour octet (apres l'encodeur identite), plus le seul temoin hors perimetre du miroir.
 func livraisonComparerArmes(t *testing.T, cible string) {
 	t.Helper()
 	goldens, err := filepath.Glob(filepath.Join(livraisonGoldensDir, "hinf_*.wav"))
@@ -81,14 +91,15 @@ func livraisonComparerArmes(t *testing.T, cible string) {
 	var attendus []string
 	for _, g := range goldens {
 		nom := filepath.Base(g)
-		attendus = append(attendus, nom)
+		publie := strings.TrimSuffix(nom, ".wav") + ".ogg"
+		attendus = append(attendus, publie)
 		veut, rerr := os.ReadFile(g)
 		if rerr != nil {
 			t.Fatalf("lecture du golden %s: %v", g, rerr)
 		}
-		got, rerr := os.ReadFile(filepath.Join(cible, nom))
+		got, rerr := os.ReadFile(filepath.Join(cible, publie))
 		if rerr != nil {
-			t.Errorf("%s absent de la cible: %v", nom, rerr)
+			t.Errorf("%s absent de la cible: %v", publie, rerr)
 			continue
 		}
 		if !bytes.Equal(got, veut) {
@@ -98,7 +109,7 @@ func livraisonComparerArmes(t *testing.T, cible string) {
 		}
 	}
 	// LE MIROIR : l'arme perimee a disparu, le son d'evenement du pack est intact.
-	attendus = append(attendus, "melee_kill.wav")
+	attendus = append(attendus, "melee_kill.ogg")
 	sort.Strings(attendus)
 	entrees, err := os.ReadDir(cible)
 	if err != nil {
@@ -110,8 +121,8 @@ func livraisonComparerArmes(t *testing.T, cible string) {
 	}
 	sort.Strings(presents)
 	if strings.Join(presents, " ") != strings.Join(attendus, " ") {
-		t.Errorf("contenu de la cible = %v, attendu %v (hinf_perime.wav doit avoir disparu, "+
-			"melee_kill.wav doit etre intact)", presents, attendus)
+		t.Errorf("contenu de la cible = %v, attendu %v (hinf_perime.ogg doit avoir disparu, "+
+			"melee_kill.ogg doit etre intact)", presents, attendus)
 	}
 }
 
@@ -159,6 +170,16 @@ func livraisonComparerConsole(t *testing.T, console string) {
 		t.Errorf("la sortie console differe de celle du script Python.\n--- produite ---\n%s\n"+
 			"--- attendue ---\n%s", console, string(veut))
 	}
+}
+
+// livraisonEncodeurIdentite est l'encodeur des tests de mixage : il copie le WAV tronque sous le
+// nom du fichier livre, sans ffmpeg.
+func livraisonEncodeurIdentite(wav, ogg string) error {
+	octets, err := os.ReadFile(wav)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(ogg, octets, 0o644)
 }
 
 // livraisonCapturerSortie execute `f` en detournant os.Stdout, et rend ce qui y a ete ecrit.

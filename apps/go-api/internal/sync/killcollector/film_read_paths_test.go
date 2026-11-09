@@ -25,15 +25,15 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain/killscope"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/testutil"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 func TestFilmReadPathsEgalesAuDecodeur(t *testing.T) {
@@ -194,21 +194,14 @@ func nomsDe(vs *ast.ValueSpec) []string {
 // voulu — c est une modification qui doit se voir.
 const nomDuTypeVoie = "Path"
 
-// cheminSourceDecodeur : le paquet du decodeur, RELATIF a ce fichier de test.
-const cheminSourceDecodeur = "../../games/halo_infinite/film/internal/facts/killsource"
-
-// sourceDuDecodeur : le repertoire du source de `killsource`, resolu depuis l emplacement de
-// CE fichier — pas depuis le repertoire de travail, qui varie selon l invocation.
+// sourceDuDecodeur : le repertoire du source de `killsource`, dans la brique du decodeur, resolu
+// depuis la racine du depot — pas depuis le repertoire de travail, qui varie selon l invocation.
 func sourceDuDecodeur(t *testing.T) string {
 	t.Helper()
-	_, ici, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller a echoue : impossible de localiser le source du decodeur")
-	}
-	dir := filepath.Join(filepath.Dir(ici), cheminSourceDecodeur)
+	dir := testutil.CheminBriqueFilm(t, "internal", "facts", "killsource")
 	if st, err := os.Stat(dir); err != nil || !st.IsDir() {
 		t.Fatalf("source du decodeur introuvable en %s (%v) — le paquet a demenage : mettre a "+
-			"jour cheminSourceDecodeur, sinon ce verrou ne verrouille plus rien", dir, err)
+			"jour sourceDuDecodeur, sinon ce verrou ne verrouille plus rien", dir, err)
 	}
 	return dir
 }

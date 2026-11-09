@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -22,11 +23,11 @@ func TestBuildSoloFirstBlood_ProjectsMatchPoints(t *testing.T) {
 	}
 	m1Start := time.Date(2026, 4, 21, 20, 0, 0, 0, time.UTC)
 	matches := []legacymatch.StatsMatchRow{
-		{MatchID: "m1", StartTime: m1Start, MapNameFR: "Aquarius FR", MapName: "Aquarius", PairNameFR: "Assassin"},
-		{MatchID: "m2", StartTime: m1Start.Add(time.Hour), MapName: "Bazaar"},
+		{MatchID: "m1", StartTime: m1Start, MapName: i18n.FromColumns("Aquarius", "Aquarius FR"), PairName: i18n.FromColumns("", "Assassin")},
+		{MatchID: "m2", StartTime: m1Start.Add(time.Hour), MapName: i18n.FromColumns("Bazaar", "")},
 		{MatchID: "m3", StartTime: m1Start.Add(2 * time.Hour)},
 	}
-	got := buildSoloFirstBlood("Madina", rows, matches)
+	got := buildSoloFirstBlood("Madina", rows, matches, i18n.Default)
 	if len(got) != 1 || got[0].Player != "Madina" {
 		t.Fatalf("want 1 série pour Madina, got %#v", got)
 	}
@@ -70,13 +71,13 @@ func TestBuildSoloFirstBlood_ProjectsMatchPoints(t *testing.T) {
 // vide plutôt qu'une grille de lanes muettes).
 func TestBuildSoloFirstBlood_NilWhenNoEvent(t *testing.T) {
 	rows := []narrative.FirstEventsRow{{MatchID: "m1"}, {MatchID: "m2"}}
-	if got := buildSoloFirstBlood("Madina", rows, nil); got != nil {
+	if got := buildSoloFirstBlood("Madina", rows, nil, i18n.Default); got != nil {
 		t.Errorf("want nil sans aucun événement, got %#v", got)
 	}
-	if got := buildSoloFirstBlood("", rows, nil); got != nil {
+	if got := buildSoloFirstBlood("", rows, nil, i18n.Default); got != nil {
 		t.Errorf("want nil sans gamertag, got %#v", got)
 	}
-	if got := buildSoloFirstBlood("Madina", nil, nil); got != nil {
+	if got := buildSoloFirstBlood("Madina", nil, nil, i18n.Default); got != nil {
 		t.Errorf("want nil sans row, got %#v", got)
 	}
 }

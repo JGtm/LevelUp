@@ -21,8 +21,8 @@ package archlint
 // # LES EXCEPTIONS, DATEES
 //
 // Aucune : la liste [exceptionsDesFaits] est VIDE, et c est un cliquet. La seule qu elle ait portee,
-// `facts/killsource` (sa propre marche du film), est partie au lot 2.7.c du plan de l etape 2
-// (`.ai/V7.5/PLAN_REPRESENTATION_INTERMEDIAIRE_ETAPE2_2026-10-03.md`) : killsource prend ses morts et
+// `facts/killsource` (sa propre marche du film), est partie a l etape 2 de la representation
+// intermediaire (ADR 0037) : killsource prend ses morts et
 // ses messages de kill dans la marche unique. Une exception ajoutee porte sa date, sa raison et son
 // critere de retrait ; celle qui ne couvre plus aucune lecture ROUGIT
 // (`TestExceptionsDesFaitsSontDateesEtVivantes`).
@@ -46,10 +46,10 @@ import (
 )
 
 const (
-	// racineDesFaits : la couche des faits, relative a `apps/go-api`.
-	racineDesFaits = "internal/games/halo_infinite/film/internal/facts"
+	// racineDesFaits : la couche des faits, relative a la racine du depot.
+	racineDesFaits = racineBriqueFilm + "/internal/facts"
 	// importDeLaSource : la couche `source`, telle qu un fichier l importe.
-	importDeLaSource = "levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	importDeLaSource = importBriqueFilm + "/internal/source"
 	// plancherFichiersDesFaits : LE PLANCHER CONTRE UN BALAYAGE MUET. 81 fichiers de production
 	// mesures le 2026-10-03 (killsource 38, objectives 26, fallback 17).
 	plancherFichiersDesFaits = 60
@@ -78,7 +78,7 @@ type lectureDesFaits struct{ fichier, detail string }
 // la couche des faits, et le nombre de fichiers de production parcourus.
 func lecturesDesFaits(t *testing.T) (map[string][]lectureDesFaits, int) {
 	t.Helper()
-	racine := racineGoAPI(t)
+	racine := workspaceRoot(t)
 	out := map[string][]lectureDesFaits{}
 	fichiers := 0
 	fset := token.NewFileSet()

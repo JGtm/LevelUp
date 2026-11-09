@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 )
 
 // fieldMappingsCacheEntry est un DTO construit, valable tant que sa version est la
@@ -117,7 +118,11 @@ func computeTOMLFingerprint(sets titleMappingSets) (string, error) {
 func seasonsCatalogVersion(catalog []SeasonCatalogEntry) string {
 	var b strings.Builder
 	for _, e := range catalog {
-		b.WriteString(e.ID + "\x1f" + e.Label + "\x1f" + e.LabelEN + "\x1f" + e.Start.UTC().Format(time.RFC3339Nano) + "\x1f")
+		b.WriteString(e.ID + "\x1f")
+		for _, l := range i18n.Locales() {
+			b.WriteString(e.Label[l] + "\x1f")
+		}
+		b.WriteString(e.Start.UTC().Format(time.RFC3339Nano) + "\x1f")
 		if e.End != nil {
 			b.WriteString(e.End.UTC().Format(time.RFC3339Nano))
 		}

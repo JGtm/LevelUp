@@ -50,10 +50,10 @@ describe('formatDurationMs', () => {
 
 describe('formatIntervalMinutes', () => {
   it('gère minutes, heures rondes et mixte', () => {
-    expect(formatIntervalMinutes(undefined, 'fr')).toBe('—')
-    expect(formatIntervalMinutes(0, 'fr')).toBe('—')
-    expect(formatIntervalMinutes(15, 'fr')).toBe('15 min')
-    expect(formatIntervalMinutes(360, 'fr')).toBe('6 h')
-    expect(formatIntervalMinutes(90, 'en')).toBe('1 h 30 min')
+    expect(formatIntervalMinutes(undefined)).toBe('—')
+    expect(formatIntervalMinutes(0)).toBe('—')
+    expect(formatIntervalMinutes(15)).toBe('15 min')
+    expect(formatIntervalMinutes(360)).toBe('6 h')
+    expect(formatIntervalMinutes(90)).toBe('1 h 30 min')
   })
 })

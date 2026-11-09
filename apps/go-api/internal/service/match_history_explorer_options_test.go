@@ -38,13 +38,13 @@ func ptrFloat(v float64) *float64 { return &v }
 //   - nil        → exclu
 func fixtureExplorerRows() []domain.MatchHistoryRawRow {
 	return []domain.MatchHistoryRawRow{
-		{MatchID: "m0", Outcome: 2, PerformanceScore: ptrFloat(90), SkillTier: ptrStr("Diamond"), IsRanked: true, IsWithFriends: true},
-		{MatchID: "m1", Outcome: 2, PerformanceScore: ptrFloat(85), SkillTier: ptrStr("Diamond"), IsRanked: true, IsWithFriends: false},
-		{MatchID: "m2", Outcome: 3, PerformanceScore: ptrFloat(40), SkillTier: ptrStr("Onyx"), IsRanked: true, IsWithFriends: true},
-		{MatchID: "m3", Outcome: 3, PerformanceScore: ptrFloat(60), SkillTier: ptrStr("Gold"), IsRanked: false, IsWithFriends: true},
+		{MatchID: "m0", Outcome: 2, PerformanceScore: ptrFloat(90), SkillTier: "Diamond", IsRanked: true, IsWithFriends: true},
+		{MatchID: "m1", Outcome: 2, PerformanceScore: ptrFloat(85), SkillTier: "Diamond", IsRanked: true, IsWithFriends: false},
+		{MatchID: "m2", Outcome: 3, PerformanceScore: ptrFloat(40), SkillTier: "Onyx", IsRanked: true, IsWithFriends: true},
+		{MatchID: "m3", Outcome: 3, PerformanceScore: ptrFloat(60), SkillTier: "Gold", IsRanked: false, IsWithFriends: true},
 		{MatchID: "m4", Outcome: 1, PerformanceScore: ptrFloat(50), IsRanked: false, IsWithFriends: false},
 		{MatchID: "m5", Outcome: 4, PerformanceScore: nil, IsRanked: false, IsWithFriends: false},
-		{MatchID: "m6", Outcome: 2, PerformanceScore: ptrFloat(95), SkillTier: ptrStr("Onyx"), IsRanked: true, IsWithFriends: true},
+		{MatchID: "m6", Outcome: 2, PerformanceScore: ptrFloat(95), SkillTier: "Onyx", IsRanked: true, IsWithFriends: true},
 		{MatchID: "m7", Outcome: 2, PerformanceScore: ptrFloat(70), IsRanked: false, IsWithFriends: true, IsFirefight: true},
 	}
 }

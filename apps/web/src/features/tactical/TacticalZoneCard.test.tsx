@@ -100,7 +100,7 @@ const DETAIL: TacticalCelluleReponse = {
     contribution(),
     contribution({ match_id: 'm2', instant_ms: 5_000, instant_affiche_ms: 5_000, resultat: 'loss', replay_available: false, match_started_at: '2026-08-30T20:00:00Z' }),
   ],
-  zone: { nom_fr: 'Nid blindé', nom_en: 'Armored Nest' },
+  zone: { nom: 'Nid blindé' },
 }
 
 function rendre(
@@ -157,8 +157,8 @@ describe('TacticalZoneCard — la zone sélectionnée', () => {
     expect(within(carte).getAllByTestId('tactical-rejeu-tile')).toHaveLength(2)
   })
 
-  it('le nom de la zone dans la langue de la page', () => {
-    rendre({ locale: 'en' })
+  it('le nom de la zone est celui que le serveur a résolu dans la langue de la page', () => {
+    rendre({ locale: 'en', detail: { data: { ...DETAIL, zone: { nom: 'Armored Nest' } }, isPending: false, isError: false } })
     expect(screen.getByTestId('tactical-zone-title')).toHaveTextContent('Armored Nest')
   })
 

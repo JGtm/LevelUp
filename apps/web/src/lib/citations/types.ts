@@ -49,6 +49,4 @@ export interface CitationsViewModel {
   /** Dénominateur : Infinite = nb total de citations ; natif = total_count. */
   itemsTotal: number
   source: CitationSource
-  /** Barre de filtres disponible (Infinite seulement). */
-  hasFilters: boolean
 }

@@ -6,6 +6,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 func mkSharedMatchHistory(matchID string, started time.Time, mainOutcome canonical.Outcome) domain.SquadSharedMatch {
@@ -66,7 +67,7 @@ func TestBuildHistoryTable_SortsByDateDesc(t *testing.T) {
 			mkPMRowHistory("main", "m3", t2, 600, 12, 9, 0, "Live Fire", "Strongholds", canonical.OutcomeTie),
 		},
 	}
-	rows := BuildHistoryTable(shared, rowsByPlayer, []string{"main"})
+	rows := BuildHistoryTable(shared, rowsByPlayer, []string{"main"}, i18n.Default)
 	if len(rows) != 3 {
 		t.Fatalf("want 3 rows, got %d", len(rows))
 	}
@@ -84,7 +85,7 @@ func TestBuildHistoryTable_HydratesMapModeFromMain(t *testing.T) {
 	rowsByPlayer := map[string][]canonical.PlayerMatchRow{
 		"main": {mkPMRowHistory("main", "m1", t0, 600, 10, 5, 3, "Aquarius", "Slayer", canonical.OutcomeWin)},
 	}
-	rows := BuildHistoryTable(shared, rowsByPlayer, []string{"main"})
+	rows := BuildHistoryTable(shared, rowsByPlayer, []string{"main"}, i18n.Default)
 	if rows[0].MapLabel != "Aquarius" {
 		t.Errorf("MapLabel want Aquarius, got %s", rows[0].MapLabel)
 	}
@@ -104,7 +105,7 @@ func TestBuildHistoryTable_PlayerCellsByGamertag(t *testing.T) {
 		"main": {mkPMRowHistory("main", "m1", t0, 600, 10, 5, 3, "Aquarius", "Slayer", canonical.OutcomeWin)},
 		"f1":   {mkPMRowHistory("f1", "m1", t0, 600, 5, 8, 2, "Aquarius", "Slayer", canonical.OutcomeWin)},
 	}
-	rows := BuildHistoryTable(shared, rowsByPlayer, []string{"main", "f1"})
+	rows := BuildHistoryTable(shared, rowsByPlayer, []string{"main", "f1"}, i18n.Default)
 	cells := rows[0].PlayerStats
 	if len(cells) != 2 {
 		t.Fatalf("want 2 player cells, got %d", len(cells))
@@ -130,7 +131,7 @@ func TestBuildHistoryTable_PlayerAbsentFromMatchSkipsCell(t *testing.T) {
 		"main": {mkPMRowHistory("main", "m1", t0, 600, 10, 5, 3, "", "", canonical.OutcomeWin)},
 		// f1 n'a pas le match m1
 	}
-	rows := BuildHistoryTable(shared, rowsByPlayer, []string{"main", "f1"})
+	rows := BuildHistoryTable(shared, rowsByPlayer, []string{"main", "f1"}, i18n.Default)
 	if _, hasMain := rows[0].PlayerStats["main"]; !hasMain {
 		t.Errorf("main expected in PlayerStats")
 	}
@@ -141,7 +142,30 @@ func TestBuildHistoryTable_PlayerAbsentFromMatchSkipsCell(t *testing.T) {
 
 func TestBuildHistoryTable_EmptyInput(t *testing.T) {
 	t.Parallel()
-	if got := BuildHistoryTable(nil, nil, []string{"main"}); got != nil {
+	if got := BuildHistoryTable(nil, nil, []string{"main"}, i18n.Default); got != nil {
 		t.Errorf("nil shared: want nil, got %v", got)
+	}
+}
+
+// Les libellés de carte, de mode et de sélection suivent la langue de la requête : le même match
+// donne le nom français sous fr et le nom anglais sous en ; une langue sans nom retombe sur la langue
+// de repli.
+func TestBuildHistoryTable_LibellesDansLaLangueDeLaRequete(t *testing.T) {
+	t.Parallel()
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	shared := []domain.SquadSharedMatch{mkSharedMatchHistory("m1", t0, canonical.OutcomeWin)}
+	row := mkPMRowHistory("main", "m1", t0, 600, 10, 5, 3, "Aquarius", "Slayer", canonical.OutcomeWin)
+	row.Summary.Map.Labels = map[string]string{"fr": "Aquarium", "en": "Aquarius"}
+	row.Summary.GameVariant.Labels = map[string]string{"fr": "Assassin", "en": "Slayer"}
+	row.Summary.Playlist = &canonical.AssetReference{ID: "pl", DefaultLabel: "Quick Play", Labels: map[string]string{"fr": "Partie rapide"}}
+	rowsByPlayer := map[string][]canonical.PlayerMatchRow{"main": {row}}
+
+	fr := BuildHistoryTable(shared, rowsByPlayer, []string{"main"}, i18n.Locale("fr"))[0]
+	if fr.MapLabel != "Aquarium" || fr.ModeLabel != "Assassin" || fr.PlaylistLabel != "Partie rapide" {
+		t.Errorf("fr : carte %q, mode %q, sélection %q", fr.MapLabel, fr.ModeLabel, fr.PlaylistLabel)
+	}
+	en := BuildHistoryTable(shared, rowsByPlayer, []string{"main"}, i18n.Locale("en"))[0]
+	if en.MapLabel != "Aquarius" || en.ModeLabel != "Slayer" || en.PlaylistLabel != "Quick Play" {
+		t.Errorf("en : carte %q, mode %q, sélection %q (la sélection sans nom en retombe sur le nom par défaut)", en.MapLabel, en.ModeLabel, en.PlaylistLabel)
 	}
 }

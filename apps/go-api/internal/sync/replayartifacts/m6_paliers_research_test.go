@@ -27,7 +27,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/weapontier"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 var m6DocRe = regexp.MustCompile(`^[0-9a-f]{8}\.json$`)

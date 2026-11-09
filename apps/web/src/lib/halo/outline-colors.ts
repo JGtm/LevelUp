@@ -9,30 +9,31 @@
  *     il centralise les définitions de couleurs Halo, pas les composants.
  */
 
+import type { Locale } from '@/lib/i18n/locale'
+
 export interface HaloOutlineColor {
   id: string
-  nameEn: string
-  nameFr: string
+  name: Record<Locale, string>
   hex: string
 }
 
 export const HALO_OUTLINE_COLORS: readonly HaloOutlineColor[] = [
-  { id: 'grass',        nameEn: 'Grass',        nameFr: 'Herbe',        hex: '#BEFC77' },
-  { id: 'citron',       nameEn: 'Citron',        nameFr: 'Citron',       hex: '#A8FF3A' },
-  { id: 'jade',         nameEn: 'Jade',          nameFr: 'Jade',         hex: '#96FFC4' },
-  { id: 'mint',         nameEn: 'Mint',          nameFr: 'Menthe',       hex: '#43FF93' },
-  { id: 'sky-blue',     nameEn: 'Sky Blue',      nameFr: 'Bleu ciel',    hex: '#5DD4FF' },
-  { id: 'cerulean',     nameEn: 'Cerulean',      nameFr: 'Céruléen',     hex: '#4DC0FF' },
-  { id: 'sunshine',     nameEn: 'Sunshine',      nameFr: 'Soleil',       hex: '#FFFB6C' },
-  { id: 'pineapple',    nameEn: 'Pineapple',     nameFr: 'Ananas',       hex: '#FFFA2E' },
-  { id: 'carrot',       nameEn: 'Carrot',        nameFr: 'Carotte',      hex: '#FF734D' },
-  { id: 'tangelo',      nameEn: 'Tangelo',       nameFr: 'Tangelo',      hex: '#FF4D0A' },
-  { id: 'salmon',       nameEn: 'Salmon',        nameFr: 'Saumon',       hex: '#FF4C4C' },
-  { id: 'vermilion',    nameEn: 'Vermilion',     nameFr: 'Vermillon',    hex: '#FF5756' },
-  { id: 'cotton-candy', nameEn: 'Cotton Candy',  nameFr: 'Barbe à papa', hex: '#FFB0FF' },
-  { id: 'cherry',       nameEn: 'Cherry',        nameFr: 'Cerise',       hex: '#FC4DDD' },
-  { id: 'lavender',     nameEn: 'Lavender',      nameFr: 'Lavande',      hex: '#B986DA' },
-  { id: 'aubergine',    nameEn: 'Aubergine',     nameFr: 'Aubergine',    hex: '#B64EFB' },
+  { id: 'grass',        name: { en: 'Grass', fr: 'Herbe' },        hex: '#BEFC77' },
+  { id: 'citron',       name: { en: 'Citron', fr: 'Citron' },       hex: '#A8FF3A' },
+  { id: 'jade',         name: { en: 'Jade', fr: 'Jade' },         hex: '#96FFC4' },
+  { id: 'mint',         name: { en: 'Mint', fr: 'Menthe' },       hex: '#43FF93' },
+  { id: 'sky-blue',     name: { en: 'Sky Blue', fr: 'Bleu ciel' },    hex: '#5DD4FF' },
+  { id: 'cerulean',     name: { en: 'Cerulean', fr: 'Céruléen' },     hex: '#4DC0FF' },
+  { id: 'sunshine',     name: { en: 'Sunshine', fr: 'Soleil' },       hex: '#FFFB6C' },
+  { id: 'pineapple',    name: { en: 'Pineapple', fr: 'Ananas' },       hex: '#FFFA2E' },
+  { id: 'carrot',       name: { en: 'Carrot', fr: 'Carotte' },      hex: '#FF734D' },
+  { id: 'tangelo',      name: { en: 'Tangelo', fr: 'Tangelo' },      hex: '#FF4D0A' },
+  { id: 'salmon',       name: { en: 'Salmon', fr: 'Saumon' },       hex: '#FF4C4C' },
+  { id: 'vermilion',    name: { en: 'Vermilion', fr: 'Vermillon' },    hex: '#FF5756' },
+  { id: 'cotton-candy', name: { en: 'Cotton Candy', fr: 'Barbe à papa' }, hex: '#FFB0FF' },
+  { id: 'cherry',       name: { en: 'Cherry', fr: 'Cerise' },       hex: '#FC4DDD' },
+  { id: 'lavender',     name: { en: 'Lavender', fr: 'Lavande' },      hex: '#B986DA' },
+  { id: 'aubergine',    name: { en: 'Aubergine', fr: 'Aubergine' },    hex: '#B64EFB' },
 ]
 
 export function findOutlineColor(id: string | null): HaloOutlineColor | null {

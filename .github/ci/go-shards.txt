@@ -4,41 +4,81 @@
 #
 # Syntaxe (une directive par ligne, champs séparés par des blancs, `#` commence un commentaire) :
 #
+#   module <dossier>
+#       Les lots qui suivent appartiennent au module Go de ce dossier (relatif à la racine du dépôt,
+#       ADR 0041) jusqu'à la directive `module` suivante ; avant toute directive, `apps/go-api`. Un
+#       lot se lance DEPUIS son module (`--module <lot>`) : `./...` ne franchit jamais la frontière
+#       d'un module, la partition se prouve module par module.
+#
 #   heavy <nom> <Test> [<Test> ...]
 #       Liste NOMMÉE de tests de premier niveau. Elle sert à la fois de `-run '^(A|B)$'` et de
 #       `-skip '^(A|B)$'` : deux lots complémentaires, une seule source.
 #
 #   lot <nom> <filtre> <motif> [<motif> ...]
-#       <filtre> : `-` (tous les tests), `run:<liste>` ou `skip:<liste>` (liste déclarée par
-#       `heavy`). <motif> : motif de paquet Go relatif au module (`./a/b/...` ou `./a/b`),
-#       précédé de `!` pour l'exclure du lot, ou `@reste` (le COMPLÉMENT, réservé au dernier lot).
+#       <filtre> : `-` (tous les tests), `run:<liste>` ou `skip:<liste>[,<liste>...]` (listes
+#       déclarées par `heavy` ; `skip:` accepte plusieurs listes, il exclut leur UNION). <motif> : motif de paquet Go relatif à SON module (`./a/b/...` ou `./a/b`),
+#       précédé de `!` pour l'exclure du lot, ou `@reste` (le COMPLÉMENT du module, réservé au
+#       dernier lot de ce module).
 #
 # Règles (vérifiées par `scripts/ci_go_shard.sh --verifier` et par archlint) :
-#   - un paquet appartient à UN SEUL lot, sauf un paquet découpé par `run:`/`skip:` sur la même
-#     liste, qui apparaît dans exactement deux lots complémentaires ;
-#   - le dernier lot est le complément calculé (`go list -tags=integration ./...` moins tous les
-#     motifs explicites) : l'union des lots couvre `./...` par construction, un paquet ajouté au
-#     module tombe dans ce lot sans que personne ait à y penser.
+#   - un paquet appartient à UN SEUL lot, sauf un paquet découpé en partition complémentaire : n lots
+#     `run:L1` ... `run:Ln` (listes distinctes, sans test commun) et UN lot `skip:L1,...,Ln`, le
+#     complément de l'union des listes ;
+#   - le dernier lot de chaque module est son complément calculé (`go list -tags=integration ./...`
+#     du module moins tous ses motifs explicites) : l'union des lots couvre chaque module par
+#     construction, un paquet ajouté tombe dans ce lot sans que personne ait à y penser.
 #
-# DURÉES (run 38938482739 de la CI, couverture atomic + -coverpkg=./..., en secondes de test ;
-# estimation grammar = durée des tests terminés avant la coupure à 900 s, extrapolée aux autres
-# par le rapport des durées locales) : le paquet `grammar` pèse ~1 170 s à lui seul. Un lot vise
-# moins de 600 s de test ; ajouter ~1 s par paquet pour l'édition de liens des binaires de test.
-# Rééquilibrer ici quand un lot dépasse durablement les autres dans le résumé de la CI.
+# DURÉES (couverture atomic + -coverpkg=./..., en secondes de test, somme des durées de paquet du
+# résumé de la CI). Un lot vise moins de 450 s de test sur un runner lent ; ajouter ~1 s par paquet
+# pour l'édition de liens des binaires de test. Rééquilibrer ici quand un lot dépasse durablement
+# les autres dans le résumé de la CI.
+#
+# GRAMMAR EN TROIS LOTS. Le paquet `grammar` pèse 856 s sous couverture (run 41572711824,
+# 2026-11-03, push de feat/desktop-p0 : lot lourd 417 s, lot reste 440 s). Le lot reste a dépassé
+# `-timeout 600s` deux fois en 24 h (runs 41505008653 et 41581739310 : le runner tournait 1,4 fois
+# plus lent) : une moitié du paquet ne tient plus sous 450 s. Répartition par durée mesurée de chaque
+# test de premier niveau au run 41572711824 (la lenteur est uniforme, aucun test bloqué) :
+#   film-grammar-lourd   run:grammar-lourds                    ~290 s
+#   film-grammar-moyen   run:grammar-moyens                    ~286 s
+#   film-grammar-reste   skip:grammar-lourds,grammar-moyens    ~281 s
+# Trois lots plutôt que quatre : 856 s / 3 = 285 s, soit ~400 s à 1,4 fois plus lent, sous les 450 s
+# de la doctrine ; un quatrième lot (~215 s chacun) ne se justifie qu'après un nouveau dépassement.
+# Les tests qui partagent un décodage mémoïsé du paquet (bobines_memo_test.go, `etatsDeLaBobine`,
+# `bilanDeLaBobine`) vont dans le MÊME lot : séparés, chaque lot refairait la marche des sept bobines.
 
-# Tests lourds de `grammar` (233 + ~139 + 78 + 44 + 40 + 39 s sous couverture) : ils pèsent la
-# moitié du paquet. Un nom qui disparaît du paquet fait rougir archlint (liste périmée).
-heavy grammar-lourds TestSuivanteEgaleLaBoucleDAvantSurTamponsSynthetiques TestLaStructureDesBobinesTientSesInvariants TestFrameClosureDetailleeRendLaCarteDeFrameClosure TestGoldenMiniBobineFamilles TestLaFermetureDeLaStructureNeDescendPas TestChaqueLectureCiteUneEtendueDeLaStructure
+# Tests les plus longs de `grammar`, joués seuls (`film-grammar-lourd`). Un nom qui disparaît du
+# paquet fait rougir archlint (liste périmée) ; une liste n'a aucun test en commun avec une autre.
+heavy grammar-lourds TestSuivanteEgaleLaBoucleDAvantSurTamponsSynthetiques TestFrameClosureDetailleeRendLaCarteDeFrameClosure TestGoldenMiniBobineFamilles TestChaqueLectureCiteUneEtendueDeLaStructure
 
-lot film-grammar-lourd run:grammar-lourds ./internal/games/halo_infinite/film/internal/grammar
-lot film-grammar-reste skip:grammar-lourds ./internal/games/halo_infinite/film/internal/grammar
-lot film                - ./internal/games/halo_infinite/film/... !./internal/games/halo_infinite/film/internal/grammar ./internal/persist ./internal/ops
+# Tests moyens de `grammar` (`film-grammar-moyen`) : la structure des bobines et sa fermeture, la marche
+# d'état complet (avec ses lecteurs du même décodage mémoïsé), les équipes et les entités `ti=9`, les
+# corps de génération et les records.
+heavy grammar-moyens TestLaStructureDesBobinesTientSesInvariants TestLaFermetureDeLaStructureNeDescendPas TestFrameClosureRatchet TestLesValeursDeLEtatCompletDesBobines TestLaFenetreNeVoitQueLesRecordsNonAdmis TestLEtatCompletDesBobines TestLesArmesSeulesSontCellesDeLaMarcheComplete TestUnRecordRecupereParLInventairePorteUneValeur TestEntitesTi9SurLesBobines TestScanPlayerTeamsSurLesBobines TestPositions_CorpsDeGenerationDeuxPublieParLeCheminDeProduction TestLesRecordsTi9DeLaMarcheOntUnEnTeteExact TestMarcheurDelta_GenerationPorteeEstCelleDuHandle TestMarcheurDelta_CorpsDeGenerationDeuxVuParLesHuitCanaux TestLeCanalDesMortsRecoitLesRecordsPartisDeLaFinDeLaVueA
+
+# Module apps/go-api. `persist` et `ops` partageaient le lot du décodeur de film (56 + 6 s hors
+# couverture au relevé du 2026-10-28) avant que le décodeur ne devienne le module libs/film.
+module apps/go-api
+lot persist-ops         - ./internal/persist ./internal/ops
 lot platform            - ./internal/platform/duckdb/... ./internal/migration ./internal/games/halo_infinite/migrations ./internal/mapdecoupe ./cmd/levelup
 lot sync                - ./internal/sync/... ./internal/api/wire ./internal/archlint
 lot reste               - @reste
 
+# Module libs/film (le décodeur de film, ADR 0041) : `grammar` coupé en trois tiers, le reste du
+# module (dont `replay`, 72 s hors couverture) dans son complément.
+module libs/film
+lot film-grammar-lourd  run:grammar-lourds ./internal/grammar
+lot film-grammar-moyen  run:grammar-moyens ./internal/grammar
+lot film-grammar-reste  skip:grammar-lourds,grammar-moyens ./internal/grammar
+lot film                - @reste
+
+# Module libs/haloapi (l'API Halo, ADR 0041 et 0042, plan PUBLICATION lot 3) : ses paquets tournaient
+# dans le lot `reste` de go-api ; sans CGo ni DuckDB, quelques secondes de test : un seul lot.
+module libs/haloapi
+lot haloapi             - @reste
+
 # Budget `-timeout` PAR PROCESSUS DE TEST (un paquet = un processus), pas par lot : 600 s partout.
-# Mesures sous couverture (run 38979844734) : moitiés de `grammar` 245 et 248 s, platform/duckdb
-# 301 s, internal/sync 261 s. Le critère de retour à 600 s (une moitié de `grammar` sous 450 s) est
-# tenu ; un lot qui s'approche de 450 s se rééquilibre ici plutôt que d'allonger son délai.
+# Mesures sous couverture (run 38979844734) : platform/duckdb 301 s, internal/sync 261 s ; `grammar`
+# en trois lots, voir plus haut. Le critère de maintien à 600 s (chaque lot de `grammar` sous 450 s sur
+# un runner lent) se juge au résumé de la CI ; un lot qui s'approche de 450 s se rééquilibre ici
+# plutôt que d'allonger son délai.
 timeout-defaut 600s

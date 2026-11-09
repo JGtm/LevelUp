@@ -33,7 +33,6 @@ describe('normalizeInfinitePage', () => {
     }
     const vm = normalizeInfinitePage(resp)
     expect(vm.source).toBe('infinite')
-    expect(vm.hasFilters).toBe(true)
     expect(vm.itemsTotal).toBe(3)
     expect(vm.masteredTotal).toBe(1)
     const [a, b] = vm.categories[0].items
@@ -65,7 +64,6 @@ describe('normalizeNativeTotals', () => {
     }
     const vm = normalizeNativeTotals(resp)
     expect(vm.source).toBe('native')
-    expect(vm.hasFilters).toBe(false)
     expect(vm.itemsTotal).toBe(3)
     expect(vm.categories[0].completed).toBe(1) // derived from isMastered
     expect(vm.masteredTotal).toBe(1)

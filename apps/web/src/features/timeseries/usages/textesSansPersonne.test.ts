@@ -1,7 +1,7 @@
 /**
  * textesSansPersonne.test.ts — GARDE : aucun possessif, pronom de personne ni impératif de la 2e
  * personne (« reviens », « vérifie », « connecte », « choisis » ; « connect it », « pick » en anglais) dans les textes des Séries temporelles › Usages, de toute la
- * page Escouade (`squad/i18n.ts`, les `*Strings.ts` de `features/squad/`, le sélecteur
+ * page Escouade (`squad/i18n`, les `*Strings.ts` de `features/squad/`, le sélecteur
  * `squadPresets.i18n.ts`, les jeux des cartes d'objectif `formes/i18n.ts` et `formes/cardsI18n.ts`,
  * le manifeste `squad.toml`, les textes d'une section dont le film n'est pas lu `_shared/filmGap`, les constats « aucun match concerné » `components/ui/scope-empty-text`), des cartes de la page Sessions et de la Vue match (titres, intertitres, légendes,
  * aides ⓘ, infobulles, messages), en français comme en anglais. Pour la Vue match, s'y ajoutent les

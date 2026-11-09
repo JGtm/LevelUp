@@ -157,8 +157,8 @@ var tablePolarites = []blocPolarites{
 		Neutres: "beforeOrigin items mapCatalogPoints unarmedGrants weapons " +
 			"spawnerByPointKind.*"},
 	{Blocs: []string{"coverage.placements."},
-		Echecs: "endOpen unknown byCause.both byCause.none byCause.no_owner byFamilyOrigin.*/unknown",
-		Succes: "confirmed endSeen lives named placements spawnEvents spawnLists withHeading " +
+		Echecs: "endOpen lifeAmbiguous unknown byCause.both byCause.none byCause.no_owner byFamilyOrigin.*/unknown",
+		Succes: "confirmed endSeen lifeEnds lifeLinked lives named placements spawnEvents spawnLists withHeading " +
 			"withOwner byFamily.* byCause.spawn_event byCause.death_written byCause.taken_written",
 		Neutres: "anchors deployed dropped other byCause.* byCause.manifest_piece byFamilyOrigin.*"},
 	{Blocs: []string{"coverage.projectiles."},
@@ -197,9 +197,9 @@ var tablePolarites = []blocPolarites{
 		Neutres:    "avantCreation slotsArmes viesAvantPremiereCreation",
 		Telemetrie: "minPoints"},
 	{Blocs: []string{"coverage.carriedEquipment."},
-		Echecs:  "ambiguousCost ambiguousRank noCatalog noIdentity riftEndsUnread teleportsWithoutPose unnamed unpositioned withoutRank",
-		Succes:  "attached energyReads positionedByCarrier positionedByObject published riftEndsRead riftPoses trackedEnds trackedObjects uses withCost",
-		Neutres: "beforeOrigin created"},
+		Echecs:  "ambiguousCost conflicting noCatalog noGlobalId noIdentity riftEndsUnread teleportsWithoutPose trackedEffectsAmbiguous trackedEffectsUnlinked trackedUnpositioned unpositioned unresolved",
+		Succes:  "attached energyReads positionedByCarrier positionedByObject published riftEndsRead riftPoses trackedEffectEnds trackedEffects trackedEnds trackedObjects trackedPositioned uses withCost",
+		Neutres: "beforeOrigin created endedBeforeOrigin grenades readsBeforeOrigin"},
 	{Blocs: []string{"coverage.knockbacks."},
 		Echecs:  "noIdentity unpaired withoutAuthor withoutImpulse",
 		Succes:  "paired published read104 read105",

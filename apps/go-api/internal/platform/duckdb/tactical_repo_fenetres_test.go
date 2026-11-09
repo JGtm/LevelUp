@@ -75,7 +75,7 @@ func TestTacticalRepo_PerimetreRestreint_FenetresBornees(t *testing.T) {
 	ctx := context.Background()
 	q := domain.TacticalQuery{PlayerXUID: tacXUIDMoi, Matchs: domain.RestreindreAux(ids[:2])}
 	qCarte := q
-	qCarte.MapID = tacCarteA
+	qCarte.MapIDs = []string{tacCarteA}
 	// Les lignes des deux matchs du perimetre, dans chacune des vues lues.
 	borne := 2 * mortsParMatchFenetres
 	b.carnet.vider()
@@ -170,7 +170,7 @@ func TestTacticalRepo_MortsAvecContexte_GardesSurLePerimetre(t *testing.T) {
 	tacPos(t, pdb, "i2", tacXUIDAdv, 1000, 9.0, 9.0, 9.5, 9.5)
 	tacContexte(t, pdb, "i2", tacXUIDMoi, 1000, 1.0)
 
-	q := domain.TacticalQuery{PlayerXUID: tacXUIDMoi, MapID: tacCarteA, Matchs: domain.RestreindreAux([]string{"i1"})}
+	q := domain.TacticalQuery{PlayerXUID: tacXUIDMoi, MapIDs: []string{tacCarteA}, Matchs: domain.RestreindreAux([]string{"i1"})}
 	got, err := NewTacticalRepo(pdb).MortsAvecContexte(context.Background(), q)
 	if err != nil {
 		t.Fatalf("MortsAvecContexte: %v", err)

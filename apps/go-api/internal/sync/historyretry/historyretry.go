@@ -7,7 +7,7 @@
 // (re-taper l'API sous 10 s quand on est rate-limité n'ajoute que des 429) et compte sur le
 // caller — qui ne retentait pas.
 //
-// POLITIQUE (D1, plan `.ai/V7.5/chantiers/PLAN_ROBUSTESSE_SYNC_2026-09-16.md`) :
+// POLITIQUE :
 //   - 429 : rejeu IMMÉDIAT de la même page. L'acquisition suivante saute le slot en cooldown
 //     et sert un autre token ; avec un seul slot, le rejeu retombe sur le cas suivant.
 //   - `pool.ErrNoHealthySlot` : tout le parc est en pause — attendre le cooldown du pool, borné
@@ -30,8 +30,8 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/platform/auth/pool"
-	"levelup/go-api/internal/sync/haloclient"
 )
 
 // Sleep — seam de paquet pour l'attente entre deux tentatives. Les tests le remplacent par un
@@ -68,7 +68,7 @@ func NoSlotWait() time.Duration {
 
 // IsRateLimited indique si err est un 429 du client Halo, le seul statut rejoué immédiatement.
 func IsRateLimited(err error) bool {
-	var httpErr *haloclient.HTTPError
+	var httpErr *haloadapter.HTTPError
 	return errors.As(err, &httpErr) && httpErr.StatusCode == 429
 }
 

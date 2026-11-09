@@ -1,6 +1,10 @@
 package prestige
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // ---------- Challenge ----------
 
@@ -154,10 +158,13 @@ type Template struct {
 	EvalType    EvalType   `json:"eval_type"`
 	ModeFilter  string     `json:"mode_filter"` // "universal" | "pvp" | "ranked" | "pve"
 
-	LabelEN       string `json:"label_en"`
-	LabelFR       string `json:"label_fr"`
-	DescriptionEN string `json:"description_en,omitempty"`
-	DescriptionFR string `json:"description_fr,omitempty"`
+	// Labels / Descriptions : libellés par langue (donnée, base et TOML). Label / Description : ceux de la
+	// langue de la requête, posés par Localized au moment de servir (ADR 0040 D-3) ; vides sur une valeur
+	// non localisée.
+	Labels       i18n.Text `json:"-"`
+	Descriptions i18n.Text `json:"-"`
+	Label        string    `json:"label"`
+	Description  string    `json:"description,omitempty"`
 
 	NormalTarget    float64 `json:"normal_target"`
 	HeroicTarget    float64 `json:"heroic_target"`
@@ -209,12 +216,14 @@ type Template struct {
 
 // PresetArc décrit un arc preset chargé depuis `config/titles/{slug}/arcs/presets.toml`.
 type PresetArc struct {
-	ID            string          `json:"id"`
-	TitleSlug     string          `json:"title_slug"`
-	TitleEN       string          `json:"title_en"`
-	TitleFR       string          `json:"title_fr"`
-	DescriptionEN string          `json:"description_en,omitempty"`
-	DescriptionFR string          `json:"description_fr,omitempty"`
+	ID        string `json:"id"`
+	TitleSlug string `json:"title_slug"`
+	// Titles / Descriptions : textes par langue (donnée). Title / Description : ceux de la langue de la
+	// requête, posés par Localized au moment de servir (ADR 0040 D-3).
+	Titles        i18n.Text       `json:"-"`
+	Descriptions  i18n.Text       `json:"-"`
+	Title         string          `json:"title"`
+	Description   string          `json:"description,omitempty"`
 	SchemaVersion int             `json:"schema_version"`
 	UpdatedAt     time.Time       `json:"updated_at"`
 	Steps         []PresetArcStep `json:"steps,omitempty"` // hydraté à la demande
@@ -292,14 +301,13 @@ type SquadChallengeParticipant struct {
 	JoinedAt         time.Time  `json:"joined_at"`
 }
 
-// SquadChallengeView enrichit un défi d'escouade pour l'affichage : libellés
-// localisés (résolus depuis le template — vides si le défi n'a pas de template ou
+// SquadChallengeView enrichit un défi d'escouade pour l'affichage : libellé
+// localisé (résolu depuis le template — vide si le défi n'a pas de template ou
 // s'il a été retiré du catalogue) et participants courants. Le défi de base est
 // embarqué (JSON aplati) : la vue est un sur-ensemble strict de SquadChallenge.
 type SquadChallengeView struct {
 	SquadChallenge
-	LabelFR string `json:"label_fr,omitempty"`
-	LabelEN string `json:"label_en,omitempty"`
+	Label string `json:"label,omitempty"` // dans la langue de la requête (repli `en`)
 	// Expired : expires_at dépassé (comparé à l'horloge canonique UTC du service).
 	// Le défi reste listé (le membre peut le voir et le supprimer) mais l'UI le
 	// signale et empêche de le rejoindre.

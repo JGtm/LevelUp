@@ -19,7 +19,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -50,6 +49,7 @@ type SettingsHandler struct {
 	mediaIndexer  service.MediaIndexer
 	backupSched   *duckdbbackup.Scheduler // nil = backup désactivé
 	users         authz.UserLookup        // relecture du rôle admin (settings_admin.go)
+	filmMeter     filmArchiveMeter        // occupation de l'archive des films, en cache (settings_film_archive.go)
 }
 
 // NewSettingsHandler crée un SettingsHandler avec le DirMediaIndexer par défaut.
@@ -103,6 +103,11 @@ func (h *SettingsHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 		humacore.DefaultStatus(http.StatusAccepted))
 	huma.Post(api, "/settings/sessions/recalculate", h.handlePostRecalculateSessions, humacore.Op("postSettingsSessionsRecalculate", "Recalcule les sessions à partir de la base actuelle", "settings"),
 		humacore.DefaultStatus(http.StatusAccepted))
+	huma.Get(api, "/settings/desktop", h.handleGetDesktopStatus, humacore.Op("getDesktopStatus", "Etat vivant de l'integration au poste (application de bureau)", "settings"))
+	huma.Get(api, "/settings/data", h.handleGetDataStatus, humacore.Op("getDataStatus", "Etat des sauvegardes et de la memoire (application de bureau)", "settings"))
+	huma.Post(api, "/settings/data/backup/run", h.handlePostDataBackupRun, humacore.Op("postDataBackupRun", "Lance une sauvegarde en dossier maintenant (application de bureau)", "settings"),
+		humacore.DefaultStatus(http.StatusAccepted))
+	huma.Get(api, "/settings/film-archive", h.handleGetFilmArchive, humacore.Op("getFilmArchive", "Occupation et emplacement de l'archive des films", "settings"))
 	huma.Get(api, "/settings/backup/status", h.handleGetBackupStatus, humacore.Op("getBackupStatus", "Statut du scheduler de sauvegarde", "settings"))
 	huma.Post(api, "/settings/backup/run", h.handlePostBackupRun, humacore.Op("postBackupRun", "Déclenche un cycle de sauvegarde immédiat", "settings"))
 }
@@ -160,16 +165,13 @@ func (h *SettingsHandler) handleGetSettings(ctx context.Context, _ *struct{}) (*
 
 // settingsResponse construit la réponse GET/PATCH à partir d'un AppSettings, en
 // écrasant media_delete_source_after_transcode par sa valeur EFFECTIVE résolue
-// (config.ResolveMediaDeleteSource : env > store > isProd). Le *bool brut du store
-// (nil = auto) n'est jamais exposé tel quel — le toggle UI reflète la réalité du
-// runtime même quand le champ n'est pas défini.
+// (config.AppConfig.MediaDeleteSource : capacité, env, store, défaut de
+// l'environnement). Le *bool brut du store (nil = auto) n'est jamais exposé
+// tel quel : le toggle UI reflète la réalité du runtime même quand le champ
+// n'est pas défini.
 func (h *SettingsHandler) settingsResponse(cfg *settings_platform.AppSettings) *domain.SettingsResponse {
 	resp := settings_platform.ToResponse(cfg)
-	resp.MediaDeleteSourceAfterTranscode = config.ResolveMediaDeleteSource(
-		os.Getenv(config.EnvMediaDeleteSource),
-		cfg.MediaDeleteSourceAfterTranscode,
-		h.cfg.IsProduction(),
-	)
+	resp.MediaDeleteSourceAfterTranscode = h.cfg.MediaDeleteSource(cfg.MediaDeleteSourceAfterTranscode)
 	// Présence webhook Discord : résolue dans settings_platform.ToResponse (env > store,
 	// source unique alignée sur l'envoi réel). Ne pas la ré-évaluer ici.
 	return resp
@@ -241,6 +243,9 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 	if err := h.validateReplayBuildLocation(ctx, req.ReplayBuildLocation); err != nil {
 		return nil, err
 	}
+	if err := h.validateDesktop(ctx, &req); err != nil {
+		return nil, err
+	}
 	if req.SessionTeamChangeMode != nil {
 		switch *req.SessionTeamChangeMode {
 		case "ignore", "group", "friends":
@@ -277,15 +282,36 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 		perTitleOverlay = extractPerTitleOverlay(&req)
 	}
 
-	cfg, err := h.settingsStore.Load()
-	if err != nil {
+	// Lecture, validation et écriture sous le verrou d'écriture du fichier (Store.Update) : un autre écrivain du
+	// serveur (drapeau de la file de régénération, abonnements du watcher) ne peut pas s'intercaler entre la
+	// lecture et l'écriture, et voir sa clé réécrite par ce PATCH.
+	var (
+		prev      settings_platform.AppSettings
+		refus     error // refus de validation (4xx) : rien n'est écrit
+		lectureOK bool
+	)
+	cfg, err := h.settingsStore.Update(func(cfg *settings_platform.AppSettings) error {
+		lectureOK = true
+		prev = *cfg
+		settings_platform.Apply(cfg, &req)
+		if refus = h.validateFilmArchive(ctx, &req, &prev, cfg); refus != nil {
+			return refus
+		}
+		refus = h.validateData(ctx, &req, cfg)
+		return refus
+	})
+	switch {
+	case refus != nil:
+		return nil, refus
+	case err != nil && !lectureOK:
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
-	}
-
-	settings_platform.Apply(cfg, &req)
-
-	if err := h.settingsStore.Save(cfg); err != nil {
+	case err != nil:
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_save_error", "Impossible de sauvegarder la configuration.")
+	}
+	h.applyDataRuntime(ctx, &req, cfg)
+	if cfg.FilmArchiveDir != prev.FilmArchiveDir {
+		// Archive vide (sinon la validation a refusé) : le nouveau dossier sert tout de suite.
+		titlePkg.SetFilmArchiveRuntime(cfg.FilmArchiveDir)
 	}
 
 	// Le rendement combat (OffensiveConversion) est un réglage global process :
@@ -380,8 +406,7 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 	}
 	// Politique de rétention du source résolue LIVE (env > store > isProd) : un
 	// toggle UI prend effet sans redémarrage (le store est relu à chaque déclenchement).
-	deleteSource := config.ResolveMediaDeleteSource(
-		os.Getenv(config.EnvMediaDeleteSource), deleteSourceVal, h.cfg.IsProduction())
+	deleteSource := h.cfg.MediaDeleteSource(deleteSourceVal)
 
 	// Le titre courant (X-LevelUp-Title / session) vit dans le ctx de la REQUÊTE,
 	// mais le job tourne en async sur context.Background() → on capture le slug ICI
@@ -445,8 +470,7 @@ func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) 
 		}
 	}
 	// Politique de rétention résolue LIVE (env > store > isProd), cf. handlePostMediaResetIndex.
-	deleteSource := config.ResolveMediaDeleteSource(
-		os.Getenv(config.EnvMediaDeleteSource), deleteSourceVal, h.cfg.IsProduction())
+	deleteSource := h.cfg.MediaDeleteSource(deleteSourceVal)
 
 	// Cf. handlePostMediaResetIndex : ré-injecter le titre courant dans le job async
 	// (sinon halo_infinite par défaut → médias des autres titres jamais scannés).

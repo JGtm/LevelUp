@@ -13,9 +13,11 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/duration"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/classification"
-	"levelup/go-api/internal/platform/halo/duration"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // h5Identity construit l'identite canonique d'un joueur Halo 5. XUID vide
@@ -32,7 +34,7 @@ func h5Identity(gamertag string) canonical.PlayerIdentity {
 // parseISO8601DurationSeconds convertit "PT12M34.5S" en secondes (arrondi). Nil si
 // vide, non-parsable, sans aucune composante ("PT"), ou hors borne plausible (le
 // canonique distingue "indisponible" de "0"). Délègue à la source UNIQUE
-// (internal/platform/halo/duration), qui gère aussi "P1D" sans marqueur T.
+// (internal/duration), qui gère aussi "P1D" sans marqueur T.
 func parseISO8601DurationSeconds(s string) *int {
 	return duration.SecondsRoundedBoundedPtr(s)
 }
@@ -74,7 +76,7 @@ func deriveOutcome(playerRank int, teamRank *int, isTeamGame bool) canonical.Out
 // caractère classé/PvE depuis le HopperId. nil OU set vide → verdicts nil
 // (INDETERMINE) : comportement conservateur byte-identique tant que la liste
 // autoritative des HopperIds classés Halo 5 n'est pas publiée (handoff §4-5).
-func mapMatchSummaries(resp *H5MatchesResponse, gamertag string, classifier classification.RankedClassifier) []canonical.MatchSummary {
+func mapMatchSummaries(resp *halo5.H5MatchesResponse, gamertag string, classifier classification.RankedClassifier) []canonical.MatchSummary {
 	if resp == nil {
 		return nil
 	}
@@ -85,7 +87,7 @@ func mapMatchSummaries(resp *H5MatchesResponse, gamertag string, classifier clas
 	return out
 }
 
-func mapOneMatchSummary(r *H5MatchResult, gamertag string, classifier classification.RankedClassifier) canonical.MatchSummary {
+func mapOneMatchSummary(r *halo5.H5MatchResult, gamertag string, classifier classification.RankedClassifier) canonical.MatchSummary {
 	dur := parseISO8601DurationSeconds(r.MatchDuration)
 	end := parseISODate(r.MatchCompletedDate.ISO8601Date)
 	started := startedFromEnd(end, dur)
@@ -137,7 +139,7 @@ func classifyPvE(c classification.RankedClassifier, hopperID string) *bool {
 
 // selfPlayer retourne le participant correspondant au gamertag requete (compare
 // insensible a la casse, h5 etant gamertag-keye), ou nil.
-func selfPlayer(r *H5MatchResult, gamertag string) *H5MatchPlayer {
+func selfPlayer(r *halo5.H5MatchResult, gamertag string) *halo5.H5MatchPlayer {
 	norm := strings.ToLower(strings.TrimSpace(gamertag))
 	for i := range r.Players {
 		if strings.ToLower(strings.TrimSpace(r.Players[i].Player.Gamertag)) == norm {
@@ -148,7 +150,7 @@ func selfPlayer(r *H5MatchResult, gamertag string) *H5MatchPlayer {
 }
 
 // teamRankFor retourne le Rank de l'equipe d'id teamID, ou nil si absente.
-func teamRankFor(r *H5MatchResult, teamID int) *int {
+func teamRankFor(r *halo5.H5MatchResult, teamID int) *int {
 	for i := range r.Teams {
 		if r.Teams[i].Id == teamID {
 			rank := r.Teams[i].Rank
@@ -158,7 +160,7 @@ func teamRankFor(r *H5MatchResult, teamID int) *int {
 	return nil
 }
 
-func mapTeams(teams []H5Team) []canonical.TeamSnapshot {
+func mapTeams(teams []halo5.H5Team) []canonical.TeamSnapshot {
 	if len(teams) == 0 {
 		return nil
 	}

@@ -17,6 +17,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
+	"levelup/go-api/internal/i18n"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -224,8 +225,8 @@ func syncPlayerCSRs(
 // l'endpoint par-playlist (Grunt Skill.GetPlaylistCsr). Queue/input viennent de
 // la référence. Best-effort par playlist : une erreur n'interrompt pas.
 //
-// locale sélectionne le libellé de playlist depuis la référence : "fr" → NameFR,
-// "en"/autre → NameEN, "" → ne PAS enrichir le nom (garder celui de l'API).
+// locale sélectionne la langue du libellé de playlist de la référence (i18n.Parse),
+// "" → ne PAS enrichir le nom (garder celui de l'API).
 // activePlaylists = playlists classées actives découvertes dynamiquement (cron
 // catalogue) ; vide → fallback rankedplaylists.Active() (référence statique).
 // Source unique partagée par le sync post-cycle (career.go) et le provider DI
@@ -265,13 +266,9 @@ func AugmentWithActiveRankedCSRs(
 		if res == nil {
 			continue // pas d'entrée → catalogue-first affichera "Non classé"
 		}
-		switch locale {
-		case "fr":
-			res.PlaylistName = pl.NameFR()
-		case "":
-			// skip : garder le PlaylistName renvoyé par l'API.
-		default:
-			res.PlaylistName = pl.NameEN()
+		// locale vide : garder le PlaylistName renvoyé par l'API.
+		if locale != "" {
+			res.PlaylistName = pl.Name(i18n.Parse(locale))
 		}
 		res.Queue = pl.Queue
 		res.Input = pl.Input

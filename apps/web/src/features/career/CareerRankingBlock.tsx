@@ -11,6 +11,7 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { MetricWithTrend, type Trend } from '@/components/ui/metric-trend'
 import type { CareerLusrSection, CareerCSRRank } from '@/lib/api/types'
+import { intlLocale } from '@/lib/formatters'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { careerManifest } from '@/lib/i18n/generated/career'
 import { staticAssetURL } from '@/lib/staticAssets'
@@ -43,9 +44,9 @@ function csrTierLabel(
   return composeTierLabel(rank.tier, rank.sub_tier, locale)
 }
 
-function formatCSRValue(rank: CareerCSRRank): string {
+function formatCSRValue(rank: CareerCSRRank, locale: ManifestLocale): string {
   if (!rank.tier) return ''
-  return rank.value > 0 ? ` · ${Math.round(rank.value).toLocaleString()}` : ''
+  return rank.value > 0 ? ` · ${Math.round(rank.value).toLocaleString(intlLocale(locale))}` : ''
 }
 
 // csrSeasonTrend compare la valeur CSR de la saison sélectionnée à celle de la
@@ -163,10 +164,10 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
                 {playlists.map((pl) => {
                   const prevRank = prevByPlaylist.get(pl.playlist_id)
                   const trend = csrSeasonTrend(pl.current, prevRank)
-                  const csrText = `${csrTierLabel(pl.current, locale, t('career.ranking.placement'), t('career.ranking.unranked'))}${formatCSRValue(pl.current)}`
+                  const csrText = `${csrTierLabel(pl.current, locale, t('career.ranking.placement'), t('career.ranking.unranked'))}${formatCSRValue(pl.current, locale)}`
                   const trendTooltip =
                     trend && prevRank
-                      ? `${t('career.ranking.vs_prev_season')} : ${csrTierLabel(prevRank, locale, t('career.ranking.placement'), t('career.ranking.unranked'))}${formatCSRValue(prevRank)}`
+                      ? `${t('career.ranking.vs_prev_season')} : ${csrTierLabel(prevRank, locale, t('career.ranking.placement'), t('career.ranking.unranked'))}${formatCSRValue(prevRank, locale)}`
                       : undefined
                   return (
                     <li key={pl.playlist_id} className="flex items-center gap-2">
@@ -227,10 +228,10 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
                         {cp
                           ? cpTierLabel
                             ? cp.rating_value > 0
-                              ? `${cpTierLabel} · ${Math.round(cp.rating_value).toLocaleString()}`
+                              ? `${cpTierLabel} · ${Math.round(cp.rating_value).toLocaleString(intlLocale(locale))}`
                               : cpTierLabel
                             : cp.rating_value > 0
-                              ? Math.round(cp.rating_value).toLocaleString()
+                              ? Math.round(cp.rating_value).toLocaleString(intlLocale(locale))
                               : t('career.ranking.unranked')
                           : t('career.ranking.unranked')}
                       </p>

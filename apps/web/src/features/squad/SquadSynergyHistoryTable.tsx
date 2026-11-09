@@ -360,7 +360,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
               ...NUMERIC_SORT,
               cell: (ctx) => (
                 <span className="text-muted-foreground font-mono tabular-nums">
-                  {fmtMmr(ctx.getValue<number>())}
+                  {fmtMmr(ctx.getValue<number>(), intlLocale)}
                 </span>
               ),
             } as ColumnDef<SquadMatchHistoryRow>,
@@ -371,7 +371,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
               ...NUMERIC_SORT,
               cell: (ctx) => (
                 <span className="text-muted-foreground font-mono tabular-nums">
-                  {fmtMmr(ctx.getValue<number | undefined>())}
+                  {fmtMmr(ctx.getValue<number | undefined>(), intlLocale)}
                 </span>
               ),
             } as ColumnDef<SquadMatchHistoryRow>,

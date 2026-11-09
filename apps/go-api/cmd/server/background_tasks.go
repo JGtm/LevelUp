@@ -1,14 +1,16 @@
-// background_tasks.go — lancement des tâches de fond du serveur, et leur sort en mode démo
-// (backlog 2026-09-26, lot B5.3 ; décision D-7 : « mode démo hermétique côté fichiers »).
+// background_tasks.go — lancement des tâches de fond du serveur, et leur sort selon le profil
+// de déploiement (ADR 0044 D-5 ; démo : backlog 2026-09-26, lot B5.3, décision D-7 « mode démo
+// hermétique côté fichiers »).
 //
-// Extrait de main() pour être TESTABLE (cf. background_tasks_test.go) : chaque tâche DÉCLARE
-// son statut démo. Une tâche « coupée » n'est pas lancée en démo : elle écrit, supprime ou lit
-// comme état des fichiers hors de la racine démo (le harnais visuel lance la démo sur le VRAI
-// checkout). Une tâche « gardée » ne touche que la racine démo, la mémoire, ou rien.
-// Inventaire de référence : tableau B5.0 du journal de .ai/V7.5/PLAN_BACKLOG_2026-09-26.md.
+// Extrait de main() pour être TESTABLE (cf. background_tasks_test.go) : chaque tâche DÉCLARE son
+// statut pour chacun des quatre profils (taskPolicies). Une tâche « coupée » n'est pas lancée
+// dans ce profil. En démo, elle écrit, supprime ou lit comme état des fichiers hors de la
+// racine démo (le harnais visuel lance la démo sur le VRAI checkout) ; une tâche « gardée » ne
+// touche que la racine démo, la mémoire, ou rien. En desktop, elle n'a pas de sens pour un
+// utilisateur seul sur son poste.
 //
-// Hors démo, rien ne change : toutes les tâches sont lancées, dans le même ordre, sur les
-// mêmes contextes et groupes d'attente qu'avant l'extraction.
+// Les profils hosted et dev lancent toutes les tâches, dans le même ordre, sur les mêmes
+// contextes et groupes d'attente qu'avant l'extraction.
 package main
 
 import (
@@ -32,19 +34,20 @@ import (
 	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service/citationsrelance"
+	"levelup/go-api/internal/service/scoringrevision"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/replayartifacts"
 )
 
-// demoPolicy : sort d'une tâche de fond en mode démo.
-type demoPolicy int
+// taskPolicy : sort d'une tâche de fond dans un profil de déploiement.
+type taskPolicy int
 
 const (
-	// demoKeep : la tâche tourne en démo (elle n'écrit que sous la racine démo, en mémoire,
-	// ou nulle part).
-	demoKeep demoPolicy = iota
-	// demoCut : la tâche est coupée en démo.
-	demoCut
+	// taskCut : la tâche n'est pas lancée dans ce profil. Valeur ZÉRO : un profil inconnu ou
+	// absent d'une ligne coupe (défaut sûr).
+	taskCut taskPolicy = iota
+	// taskKeep : la tâche tourne dans ce profil.
+	taskKeep
 )
 
 // Noms des tâches de fond et des étapes de boot (log de boot, tests).
@@ -52,6 +55,7 @@ const (
 	taskJanitor          = "janitor (sync_cache, WAL)"
 	taskWALRecovery      = "recovery WAL périodique"
 	taskSocialCkpt       = "checkpoint shared_social"
+	taskPeriodicCkpt     = "checkpoint périodique des bases tenues en RW"
 	taskPoolRescan       = "re-scan du pool de tokens"
 	taskAutoSync         = "scheduler d'auto-sync"
 	taskDataHealth       = "santé données"
@@ -59,6 +63,8 @@ const (
 	taskDiskWatch        = "surveillance disque"
 	taskReplayNotify     = "notification des rejeux prêts"
 	taskCitationsRelance = "relance des citations du film"
+	taskMediaReconcile   = "alignement des médias sur le disque"
+	taskScoringRevision  = "recalcul des KPI après changement de formule"
 	taskCatalogCron      = "cron catalogue"
 	taskAssetNameSweep   = "balayage des noms d'assets"
 	taskSpartanCron      = "cron Spartan"
@@ -71,7 +77,6 @@ const (
 	stepTokenPool        = "pool de tokens (auto-sync)"
 	stepPersistQueue     = "file persist asynchrone (WAL, RecoverPending)"
 	stepWatcher          = "watcher de présence"
-	monitoringInMemory   = "monitoring.duckdb (magasin en mémoire)"
 	heartbeatPeriod      = 30 * time.Second
 	janitorPeriod        = 24 * time.Hour
 	janitorMaxAge        = 7 * 24 * time.Hour
@@ -81,44 +86,79 @@ const (
 	poolRescanPeriod     = 15 * time.Minute
 )
 
-// demoPolicies : LA déclaration du statut démo de chaque tâche de fond et de chaque étape de
-// boot (tableau B5.0 du plan). Une tâche absente de la table est traitée comme coupée en
-// démo (défaut sûr) — background_tasks_test.go exige que chaque nom y figure.
-var demoPolicies = map[string]demoPolicy{
-	taskJanitor:          demoCut,
-	taskWALRecovery:      demoCut,
-	taskSocialCkpt:       demoKeep,
-	taskPoolRescan:       demoCut,
-	taskAutoSync:         demoCut,
-	taskDataHealth:       demoCut,
-	taskDetectionFlush:   demoKeep,
-	taskDiskWatch:        demoCut,
-	taskReplayNotify:     demoCut,
-	taskCitationsRelance: demoCut,
-	taskCatalogCron:      demoCut,
-	taskAssetNameSweep:   demoCut,
-	taskSpartanCron:      demoCut,
-	taskWorldLeaderbd:    demoCut,
-	taskReplayPurge:      demoCut,
-	taskAppRelease:       demoKeep,
-	taskHeartbeat:        demoKeep,
-	stepFriendsMigr:      demoCut,
-	stepGroupMigr:        demoCut,
-	stepTokenPool:        demoCut,
-	stepPersistQueue:     demoCut,
-	stepWatcher:          demoCut,
-}
+// profilePolicies : le sort d'une tâche pour chacun des quatre profils.
+type profilePolicies map[config.Deployment]taskPolicy
 
-// policyOf rend le statut démo déclaré d'une tâche ; inconnue → coupée (défaut sûr).
-func policyOf(name string) demoPolicy {
-	if p, ok := demoPolicies[name]; ok {
-		return p
+// Lignes types de taskPolicies (colonnes hosted, dev, demo, desktop).
+var (
+	// everywhere : la tâche tourne dans les quatre profils.
+	everywhere = profilePolicies{
+		config.DeploymentHosted: taskKeep, config.DeploymentDev: taskKeep,
+		config.DeploymentDemo: taskKeep, config.DeploymentDesktop: taskKeep,
 	}
-	return demoCut
+	// exceptDemo : la tâche tourne partout sauf en démo (elle écrirait hors de la racine démo).
+	exceptDemo = profilePolicies{
+		config.DeploymentHosted: taskKeep, config.DeploymentDev: taskKeep,
+		config.DeploymentDemo: taskCut, config.DeploymentDesktop: taskKeep,
+	}
+	// publicInstances : la tâche collecte des données publiques (classement mondial) pour le
+	// site ; elle n'a pas de sens pour un utilisateur seul et épuiserait son propre jeton.
+	publicInstances = profilePolicies{
+		config.DeploymentHosted: taskKeep, config.DeploymentDev: taskKeep,
+		config.DeploymentDemo: taskCut, config.DeploymentDesktop: taskCut,
+	}
+)
+
+// taskPolicies : LA déclaration du statut de chaque tâche de fond et de chaque étape de boot,
+// par profil (tableau B5.0 du plan de la démo, colonne demo ; ADR 0044 D-5). Les colonnes
+// hosted, dev et demo reproduisent EXACTEMENT le comportement d'avant la généralisation ;
+// background_tasks_test.go exige que chaque nom y figure, avec ses quatre colonnes.
+var taskPolicies = map[string]profilePolicies{
+	taskJanitor:          exceptDemo,
+	taskWALRecovery:      exceptDemo,
+	taskSocialCkpt:       everywhere,
+	taskPeriodicCkpt:     exceptDemo,
+	taskPoolRescan:       exceptDemo,
+	taskAutoSync:         exceptDemo,
+	taskDataHealth:       exceptDemo,
+	taskDetectionFlush:   everywhere,
+	taskDiskWatch:        exceptDemo,
+	taskReplayNotify:     exceptDemo,
+	taskCitationsRelance: exceptDemo,
+	taskMediaReconcile:   exceptDemo,
+	taskScoringRevision:  exceptDemo,
+	taskCatalogCron:      exceptDemo,
+	taskAssetNameSweep:   exceptDemo,
+	taskSpartanCron:      exceptDemo,
+	taskWorldLeaderbd:    publicInstances,
+	taskReplayPurge:      exceptDemo,
+	taskAppRelease:       everywhere,
+	taskHeartbeat:        everywhere,
+	stepFriendsMigr:      exceptDemo,
+	stepGroupMigr:        exceptDemo,
+	stepTokenPool:        exceptDemo,
+	stepPersistQueue:     exceptDemo,
+	stepWatcher:          exceptDemo,
 }
 
-// backgroundTask : une tâche de fond lancée au boot. Son statut démo se lit dans
-// demoPolicies, par son nom.
+// undeclaredPolicy : le sort d'une tâche ABSENTE de taskPolicies. La démo et desktop coupent
+// (défaut sûr : une tâche oubliée n'écrit pas hors de la racine démo et ne tourne pas sur un
+// poste sans que ce soit décidé) ; hosted et dev lancent, comme avant la table.
+var undeclaredPolicy = profilePolicies{
+	config.DeploymentHosted: taskKeep, config.DeploymentDev: taskKeep,
+	config.DeploymentDemo: taskCut, config.DeploymentDesktop: taskCut,
+}
+
+// policyOf rend le sort déclaré d'une tâche pour un profil ; tâche inconnue → undeclaredPolicy.
+func policyOf(name string, profile config.Deployment) taskPolicy {
+	if row, ok := taskPolicies[name]; ok {
+		return row[profile]
+	}
+	return undeclaredPolicy[profile]
+}
+
+// backgroundTask : une tâche de fond lancée au boot. Son statut se lit dans taskPolicies,
+// par son nom.
 type backgroundTask struct {
 	name string
 	// tracked : ajoutée au groupe d'attente du scheduler (drainé avant duckdb.CloseAll).
@@ -126,23 +166,23 @@ type backgroundTask struct {
 	run     func()
 }
 
-// bootTasks lance les tâches de fond et les étapes de boot, et tient la liste de ce qui est
-// coupé en démo (un seul log Info au boot, cf. logCut).
+// bootTasks lance les tâches de fond et les étapes de boot, et tient la liste de ce que le
+// profil coupe (un seul log Info au boot, cf. logCut).
 type bootTasks struct {
-	demo bool
-	wg   *sync.WaitGroup
-	cut  []string
+	profile config.Deployment
+	wg      *sync.WaitGroup
+	cut     []string
 }
 
-func newBootTasks(demo bool, wg *sync.WaitGroup) *bootTasks {
-	return &bootTasks{demo: demo, wg: wg}
+func newBootTasks(profile config.Deployment, wg *sync.WaitGroup) *bootTasks {
+	return &bootTasks{profile: profile, wg: wg}
 }
 
 // launch lance la tâche dans sa goroutine et rend true si elle est lancée (usage :
-// `if b.launch(t) { slog.Info("… scheduled") }`). En démo, une tâche coupée n'est PAS
+// `if b.launch(t) { slog.Info("… scheduled") }`). Une tâche coupée par le profil n'est PAS
 // lancée : elle est ajoutée à la liste du log de boot.
 func (b *bootTasks) launch(t backgroundTask) bool {
-	if b.cutInDemo(t.name) {
+	if b.isCut(t.name) {
 		return false
 	}
 	if t.tracked {
@@ -157,29 +197,36 @@ func (b *bootTasks) launch(t backgroundTask) bool {
 	return true
 }
 
-// cutInDemo rend true si la tâche ou l'étape `name` est coupée : en démo ET déclarée coupée
-// dans demoPolicies. Hors démo, toujours false (rien ne change). Une étape coupée est
-// ajoutée à la liste du log de boot.
-func (b *bootTasks) cutInDemo(name string) bool {
-	if !b.demo || policyOf(name) != demoCut {
+// isCut rend true si la tâche ou l'étape `name` est déclarée coupée pour le profil. Hosted et
+// dev ne coupent rien. Une étape coupée est ajoutée à la liste du log de boot.
+func (b *bootTasks) isCut(name string) bool {
+	if policyOf(name, b.profile) != taskCut {
 		return false
 	}
 	b.cut = append(b.cut, name)
 	return true
 }
 
-// logCut émet, en démo, LE log Info de boot qui liste ce qui est coupé.
+// logCut émet LE log Info de boot qui liste ce que le profil coupe (rien à dire sinon).
 func (b *bootTasks) logCut(ctx context.Context) {
-	if !b.demo {
+	if len(b.cut) == 0 {
 		return
 	}
-	slog.InfoContext(ctx, "demo_mode: tâches de fond coupées (écritures et lectures hors de la racine démo)",
-		"coupees", strings.Join(b.cut, " ; "), "en_memoire", monitoringInMemory)
+	slog.InfoContext(ctx, "tâches de fond coupées par le profil de déploiement",
+		"profil", string(b.profile), "coupees", strings.Join(b.cut, " ; "))
 }
 
 // loopTask : une boucle de fond déjà construite (cron, scheduler, registre).
 func loopTask(name string, tracked bool, ctx context.Context, run func(context.Context)) backgroundTask {
 	return backgroundTask{name: name, tracked: tracked, run: func() { run(ctx) }}
+}
+
+// appReleaseTask : la notification de version, émise une fois par joueur au démarrage. Elle écrit
+// dans les bases joueur : elle tourne sous le contexte des tâches de fond (annulée à l'arrêt) ET
+// dans leur groupe d'attente, pour que la phase scheduler de l'arrêt l'attende avant la fermeture
+// des bases (ADR 0045 D-4).
+func appReleaseTask(ctx context.Context, run func(context.Context)) backgroundTask {
+	return loopTask(taskAppRelease, true, ctx, run)
 }
 
 // citationsRelanceTask : la relance des citations du film (délai du débrief). Branchée comme
@@ -191,6 +238,13 @@ func citationsRelanceTask(ctx context.Context, relance *citationsrelance.Service
 		defer replayartifacts.SetNotifieurDerivations(nil)
 		relance.Run(ctx)
 	}}
+}
+
+// scoringRevisionTask : le rejeu des KPI de chaque joueur dont la révision de formule rangée diffère
+// de celle du binaire, un passage unique au démarrage. Suivie : elle écrit les bases joueurs et
+// partagée, le scheduler l'attend avant de les fermer. Coupée en démo : elle écrit les bases joueurs.
+func scoringRevisionTask(ctx context.Context, rejeu *scoringrevision.Service) backgroundTask {
+	return backgroundTask{name: taskScoringRevision, tracked: true, run: func() { rejeu.Run(ctx) }}
 }
 
 // janitorTask : purge 1× / 24 h `data/sync_cache` > 7 jours et les WAL ACKés > 7 jours,
@@ -254,11 +308,12 @@ func walRecoveryTask(ctx context.Context, queue *persist.BatchQueue) backgroundT
 	}}
 }
 
-// socialCheckpointTask vide le WAL de shared_social toutes les 5 min (ADR 0022) sans ouvrir
-// de connexion propre : il réutilise le handle du pool process-wide (LookupCachedDB) et
-// saute le tick tant que la base n'est pas ouverte. Gardée en démo : la base est celle de la
-// fixture.
-func socialCheckpointTask(ctx context.Context, sharedSocialPath string) backgroundTask {
+// socialCheckpointTask vide le WAL de chaque shared_social de paths (un par titre, ADR 0022) toutes
+// les 5 min, sans ouvrir de connexion propre : il réutilise le handle du pool process-wide
+// (LookupCachedDB) et saute une base tant qu'elle n'est pas ouverte. Gardée en démo : la base est
+// celle de la fixture. C'est le SEUL CHECKPOINT périodique des shared_social : periodicCheckpointTask
+// les saute tous.
+func socialCheckpointTask(ctx context.Context, paths ...string) backgroundTask {
 	return backgroundTask{name: taskSocialCkpt, run: func() {
 		ckptTicker := time.NewTicker(socialCkptPeriod)
 		defer ckptTicker.Stop()
@@ -267,19 +322,49 @@ func socialCheckpointTask(ctx context.Context, sharedSocialPath string) backgrou
 			case <-ctx.Done():
 				return
 			case <-ckptTicker.C:
-				socialDB, ok := duckdb.LookupCachedDB(sharedSocialPath)
-				if !ok {
-					continue // DB pas encore ouverte, skip
+				for _, path := range paths {
+					checkpointSharedSocial(path)
 				}
-				ckptStart := time.Now()
-				ckptCtx, ckptCancel := context.WithTimeout(context.Background(), socialCkptTimeout)
-				if _, err := socialDB.SQLDb().ExecContext(ckptCtx, "CHECKPOINT"); err != nil {
-					slog.WarnContext(ckptCtx, "shared_social: periodic checkpoint failed", "err", err)
-				} else {
-					slog.DebugContext(ckptCtx, "shared_social: periodic checkpoint",
-						"duration_ms", time.Since(ckptStart).Milliseconds())
-				}
-				ckptCancel()
+			}
+		}
+	}}
+}
+
+// checkpointSharedSocial : un CHECKPOINT de la base du pool process-wide, ignoré tant qu'elle n'est
+// pas ouverte.
+func checkpointSharedSocial(sharedSocialPath string) {
+	socialDB, ok := duckdb.LookupCachedDB(sharedSocialPath)
+	if !ok {
+		return // DB pas encore ouverte, skip
+	}
+	ckptStart := time.Now()
+	ckptCtx, ckptCancel := context.WithTimeout(context.Background(), socialCkptTimeout)
+	defer ckptCancel()
+	if _, err := socialDB.SQLDb().ExecContext(ckptCtx, "CHECKPOINT"); err != nil {
+		slog.WarnContext(ckptCtx, "shared_social: periodic checkpoint failed", "path", sharedSocialPath, "err", err)
+		return
+	}
+	slog.DebugContext(ckptCtx, "shared_social: periodic checkpoint",
+		"path", sharedSocialPath, "duration_ms", time.Since(ckptStart).Milliseconds())
+}
+
+// periodicCheckpointTask CHECKPOINT toutes les `interval` les bases que le serveur tient en RW
+// (profil desktop : un poste est coupé sans préavis, cf. duckdb.CheckpointHeld). Suivie : le
+// scheduler l'attend avant de fermer les bases. À l'arrêt le contexte est annulé et la requête en
+// cours avec lui (duckdb_interrupt) : le passage est compté `interrupted`, le CHECKPOINT DuckDB
+// étant atomique (la base et son WAL restent tels qu'ils étaient) et duckdb.CloseAll checkpointant
+// à la fermeture. skip : chemins déjà couverts par un autre CHECKPOINT périodique (les shared_social
+// de tous les titres, cf. socialCheckpointTask).
+func periodicCheckpointTask(ctx context.Context, interval time.Duration, skip map[string]bool) backgroundTask {
+	return backgroundTask{name: taskPeriodicCkpt, tracked: true, run: func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				duckdb.CheckpointHeld(ctx, skip)
 			}
 		}
 	}}
@@ -289,7 +374,7 @@ func socialCheckpointTask(ctx context.Context, sharedSocialPath string) backgrou
 // nouveaux tokens (SSO, token-capture) sans reboot.
 func poolRescanTask(ctx context.Context, cfg *config.AppConfig, p pool.Pool) backgroundTask {
 	runRescan := func() {
-		resolver := title.NewPathResolver(cfg.RepoRoot)
+		resolver := cfg.PathResolver()
 		multiUserStore := auth.NewMultiUserTokenStore(cfg.WatcherTokensDir())
 		discovery := pool.NewDiscoveryWithStore(cfg, resolver, title.DefaultSlug, multiUserStore)
 		sources, err := discovery.Scan(ctx)
@@ -350,10 +435,10 @@ func heartbeatTask(ctx context.Context, startedAt time.Time) backgroundTask {
 // migrations de données d'utilisateurs réels, sans objet pour la fixture.
 func runBootMigrations(ctx context.Context, b *bootTasks, cfg *config.AppConfig,
 	fs *friendstore.FriendStore, gs *groupstore.GroupStore) {
-	if !b.cutInDemo(stepFriendsMigr) {
+	if !b.isCut(stepFriendsMigr) {
 		migratePlayerFriendsAtBoot(ctx, cfg, fs)
 	}
-	if !b.cutInDemo(stepGroupMigr) {
+	if !b.isCut(stepGroupMigr) {
 		migrateDefaultGroupAtBoot(ctx, cfg, fs, gs)
 	}
 }

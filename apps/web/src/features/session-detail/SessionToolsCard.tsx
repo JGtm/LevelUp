@@ -35,7 +35,7 @@ export function SessionToolsCard({ tools, player, locale, texts, compact }: Prop
   // Les natures sans nom de registre : la source unique `toolKindLabels` (manifeste `frags`, textes
   // de l'Escouade pour les deux catégories de source du film).
   const rows = useMemo(
-    () => buildSquadToolRows(tools, { locale, labels: toolKindLabels(locale, t.weaponKills), top: compact ? SESSION_TOOLS_TOP : undefined }),
+    () => buildSquadToolRows(tools, { labels: toolKindLabels(locale, t.weaponKills), top: compact ? SESSION_TOOLS_TOP : undefined }),
     [tools, locale, compact, t.weaponKills],
   )
   const colors = useMemo(() => getSquadPlayerColors(player, []), [player])

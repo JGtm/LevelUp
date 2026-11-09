@@ -5,7 +5,7 @@ package main
 //
 // # POURQUOI UNE COPIE, PAS UNE JONCTION
 //
-// Le balayage du 2026-09-06 (.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md) a proteg le parc par des
+// Le balayage du 2026-09-06 a proteg le parc par des
 // jonctions NTFS EN LECTURE et un dossier `data/cache/replays` REEL pour l'ecriture — sur et
 // mesure, mais VERIFIE apres coup (mtimes compares avant/apres) plutot que garanti par
 // construction : une jonction ne bloque aucune ecriture, elle redirige simplement, et
@@ -40,7 +40,8 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // avertirSiCatalogueModifie logue un AVERTISSEMENT explicite si config/titles/{slug} ou
@@ -107,8 +108,8 @@ func stageReferenceOnce(sourceRoot, workRoot, titleSlug string) error {
 // nommee — l'appelant la traduit en avertissement `slog` et saute le temoin, sans faire
 // echouer les autres.
 func stageFilm(parcRoot, workRoot, short string) error {
-	srcCache := title.NewPathResolver(parcRoot).CacheRootDir()
-	dstCache := title.NewPathResolver(workRoot).CacheRootDir()
+	srcCache := title.NewPathResolver(parcRoot).FilmArchiveDir()
+	dstCache := title.NewPathResolver(workRoot).FilmArchiveDir()
 
 	srcManifest := filmcache.ManifestPath(srcCache, short)
 	if _, statErr := os.Stat(srcManifest); statErr != nil {

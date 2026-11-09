@@ -12,6 +12,7 @@ import { http, HttpResponse } from 'msw'
 import { renderWithProviders, createTestQueryClient } from '@/test/render-utils'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { testCapabilities, accountsCapabilities } from '@/test/capabilities'
 import { queryKeys } from '@/lib/query/keys'
 import type { BootstrapResponse } from '@/lib/api/types'
 import { XboxLoginPage } from './XboxLoginPage'
@@ -38,7 +39,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 describe('XboxLoginPage', () => {
   const resetStores = () => {
     useAppShellStore.setState({
-      authMode: 'xbox',
+      capabilities: testCapabilities(accountsCapabilities('xbox')),
       currentUsername: null,
       firstLaunch: false,
       isBootstrapped: true,
@@ -403,7 +404,7 @@ describe('XboxLoginPage', () => {
       setup_required: false,
       setup_state: 'auth_only',
       current_player: null,
-      auth_mode: 'xbox',
+      capabilities: testCapabilities(accountsCapabilities('xbox')),
     } as unknown as BootstrapResponse)
 
     render(

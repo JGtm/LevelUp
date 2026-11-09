@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/analysis/patterns"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 )
 
 // patternsLoadTimeout borne le chargement des données de patterns (3 queries
@@ -34,11 +35,20 @@ const patternsLoadTimeout = 30 * time.Second
 // Implémente port.PatternsRepository. Construit par joueur (porte un PlayerDB).
 type PatternsRepo struct {
 	pdb *PlayerDB
+	// mapGroupRules : ce qui réunit plusieurs identifiants de carte (variantes de map_variants.toml,
+	// republications d'une carte intégrée). Valeur zéro : les cartes restent seules.
+	mapGroupRules analysis.MapGroupRules
 }
 
 // NewPatternsRepo construit le repo pour un joueur donné.
 func NewPatternsRepo(pdb *PlayerDB) *PatternsRepo {
 	return &PatternsRepo{pdb: pdb}
+}
+
+// WithMapGroupRules injecte les règles de regroupement des cartes du titre. Retourne le repo.
+func (r *PatternsRepo) WithMapGroupRules(rules analysis.MapGroupRules) *PatternsRepo {
+	r.mapGroupRules = rules
+	return r
 }
 
 // LoadRows charge les données nécessaires à l'analyse de patterns.
@@ -75,6 +85,7 @@ func (r *PatternsRepo) LoadRows(ctx context.Context, limit int) ([]patterns.Matc
 
 	rows := mergePatternRows(shared, enrichMap, skillMap, games.EffectiveHpToKill(r.pdb.TitleSlug))
 	computePatternSkillDeltas(rows)
+	r.regrouperLesCartes(ctx, rows)
 	return rows, nil
 }
 
@@ -92,16 +103,16 @@ func (r *PatternsRepo) ResolveMapLabels(ctx context.Context, mapIDs []string) (m
 }
 
 // ResolveMapFilterKeys résout les noms de cartes avec une préférence de langue
-// FIXE fr→en (PreferredLangsForLocale("fr")), INDÉPENDANTE de la locale de la
-// requête — la clé de filtrage stable des liens pattern→Solo (F7). Reproduit la
-// convention du pipeline de filtres (mapUI = FR-first) : en FR la résolution
-// localisée et celle-ci coïncident ; en EN elles diffèrent (le lien doit matcher
-// la clé FR, pas le libellé traduit). Best-effort : nil si metadata non attaché.
+// FIXE, celle de la langue par défaut (PreferredLangsForLocale(i18n.Default)), INDÉPENDANTE de la
+// locale de la requête — la clé de filtrage stable des liens pattern→Solo (F7). Reproduit la
+// convention du pipeline de filtres (mapUI = nom de la langue par défaut d'abord) : dans cette
+// langue la résolution localisée et celle-ci coïncident ; dans une autre elles diffèrent (le lien
+// doit matcher la clé, pas le libellé traduit). Best-effort : nil si metadata non attaché.
 func (r *PatternsRepo) ResolveMapFilterKeys(ctx context.Context, mapIDs []string) (map[string]string, error) {
 	if len(mapIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return nil, nil
 	}
-	langs := PreferredLangsForLocale("fr")
+	langs := PreferredLangsForLocale(string(i18n.Default))
 	return NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(ctx, "map", mapIDs, langs)
 }
 
@@ -183,11 +194,12 @@ LIMIT ?`
 		var row patternSharedRow
 		var playedAt sql.NullTime
 		var src patternModeSource
+		var pairEN, pairFR sql.NullString
 		var accuracy, damageDlt, damageTkn sql.NullFloat64
 		var isRanked sql.NullBool
 		err := sqlRows.Scan(
 			&row.MatchID, &playedAt,
-			&src.pairName, &src.pairNameFR,
+			&pairEN, &pairFR,
 			&src.variantID, &src.variantName,
 			&row.MapID,
 			&row.Outcome, &row.DurationSec,
@@ -198,6 +210,7 @@ LIMIT ?`
 		if err != nil {
 			return nil, err
 		}
+		src.pairName = i18n.FromColumns(pairEN.String, pairFR.String)
 		if playedAt.Valid {
 			row.PlayedAt = playedAt.Time
 		}
@@ -227,8 +240,7 @@ LIMIT ?`
 // le temps de résoudre les noms de game_variant read-side (titres sans pair type
 // Halo 5) avant de dériver le libellé de mode UI.
 type patternModeSource struct {
-	pairName    sql.NullString
-	pairNameFR  sql.NullString
+	pairName    i18n.Text
 	variantID   sql.NullString
 	variantName sql.NullString
 }
@@ -247,9 +259,10 @@ func (r *PatternsRepo) applyPatternModes(ctx context.Context, out []patternShare
 	variantNames := r.resolveVariantModeNames(ctx, collectVariantIDsNeedingName(srcs))
 	for i := range out {
 		s := srcs[i]
+		variantFR := derefString(variantModePreferred(s, variantNames))
 		mode := analysis.ResolveModeUIWithVariant(
-			nullStringPtr(s.pairName), nullStringPtr(s.pairNameFR),
-			nullStringPtr(s.variantName), variantModeFRFirst(s, variantNames),
+			s.pairName,
+			i18n.FromColumns(s.variantName.String, variantFR),
 		)
 		if mode != nil {
 			out[i].Mode = *mode
@@ -265,7 +278,7 @@ func collectVariantIDsNeedingName(srcs []patternModeSource) []string {
 	seen := make(map[string]struct{}, len(srcs))
 	var ids []string
 	for _, s := range srcs {
-		if strings.TrimSpace(s.pairName.String) != "" || strings.TrimSpace(s.pairNameFR.String) != "" {
+		if strings.TrimSpace(s.pairName[i18n.Fallback]) != "" || strings.TrimSpace(s.pairName[i18n.Default]) != "" {
 			continue // pair présent → mode dérivé du pair, pas du variant
 		}
 		if strings.TrimSpace(s.variantName.String) != "" {
@@ -284,8 +297,8 @@ func collectVariantIDsNeedingName(srcs []patternModeSource) []string {
 	return ids
 }
 
-// resolveVariantModeNames résout les noms de game_variant FR-first depuis
-// asset_translations (préférence FIXE fr→en, locale-indépendante — clé de mode
+// resolveVariantModeNames résout les noms de game_variant depuis asset_translations, langue par
+// défaut d'abord (préférence FIXE, locale-indépendante — clé de mode
 // stable, cf. ResolveMapFilterKeys). Best-effort : nil si metadata non attaché ou
 // aucun id ; une erreur est loggée (WarnContext) puis dégrade sans casser (le mode
 // by_mode retombe alors sur la valeur brute — règle logging n°3, pas d'avalage).
@@ -293,7 +306,7 @@ func (r *PatternsRepo) resolveVariantModeNames(ctx context.Context, variantIDs [
 	if len(variantIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
 		return nil
 	}
-	langs := PreferredLangsForLocale("fr")
+	langs := PreferredLangsForLocale(string(i18n.Default))
 	names, err := NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(ctx, "game_variant", variantIDs, langs)
 	if err != nil {
 		slog.WarnContext(ctx, "patterns: résolution des noms de game_variant échouée — mode by_mode dégradé", "err", err)
@@ -302,10 +315,10 @@ func (r *PatternsRepo) resolveVariantModeNames(ctx context.Context, variantIDs [
 	return names
 }
 
-// variantModeFRFirst retourne le nom de game_variant FR-first pour la dérivation
+// variantModePreferred retourne le nom de game_variant FR-first pour la dérivation
 // du mode : le nom du registry s'il est présent, sinon le nom résolu read-side
 // (asset_translations). nil si aucun.
-func variantModeFRFirst(s patternModeSource, resolved map[string]string) *string {
+func variantModePreferred(s patternModeSource, resolved map[string]string) *string {
 	if v := nullStringPtr(s.variantName); v != nil {
 		return v
 	}
@@ -499,4 +512,19 @@ func computePatternSkillDeltas(rows []patterns.MatchRow) {
 	sort.SliceStable(rows, func(i, j int) bool {
 		return rows[i].PlayedAt.After(rows[j].PlayedAt)
 	})
+}
+
+// regrouperLesCartes remplace l'identifiant de carte de chaque ligne par celui de la carte de BASE de son
+// groupe : les motifs « par carte » (patterns.analyzeByMap) comptent une variante sous sa carte de base, et
+// les libellés (ResolveMapLabels) se résolvent sur l'identifiant de base. Une lecture des groupes en échec
+// est journalisée puis dégradée : les variantes restent seules.
+func (r *PatternsRepo) regrouperLesCartes(ctx context.Context, rows []patterns.MatchRow) {
+	groupes, err := lireGroupesDeCartes(ctx, r.pdb, r.mapGroupRules)
+	if err != nil {
+		slog.WarnContext(ctx, "patterns: groupes de cartes illisibles, variantes laissées seules", "err", err)
+		return
+	}
+	for i := range rows {
+		rows[i].MapID = groupes.Groups.Groupe(rows[i].MapID)
+	}
 }

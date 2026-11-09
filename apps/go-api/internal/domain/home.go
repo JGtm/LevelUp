@@ -24,14 +24,14 @@ import "time"
 // et pour LUSR (10 matchs par playlist_group, dérivé de match_skill_rank côté local).
 type HomeSkillPeakRow struct {
 	RatingValue                 float64
-	TierLabel                   *string
 	BadgeImageURL               *string
 	MeasurementMatchesRemaining *int
 	// PlacementTotal = seuil placement (5 ou 10). Propagé vers HomeSkillPeakSummary.PlacementTotal.
 	PlacementTotal *int
-	// Tier (EN, ex. "Gold"/"Diamond"/"Onyx") + SubTier (1..6, 0 pour Onyx) bruts du
-	// peak, pour la bande de progression ORDINALE (analysis.SkillTierBand). Le
-	// sous-palier est renseigné par chaque système (CSR/LUSR) sur sa propre échelle.
+	// Tier (EN, ex. "Gold"/"Diamond"/"Onyx") + SubTier (1..6, 0 pour Onyx) bruts du peak : le code
+	// dont se déduisent le libellé du palier dans la langue de la requête (buildHomeSkillPeak,
+	// analysis.SkillTierDisplayLabel) et la bande de progression ORDINALE (analysis.SkillTierBand). Le
+	// sous-palier est renseigné par chaque système (CSR/LUSR) sur sa propre échelle. Vide en placement.
 	Tier    string
 	SubTier int
 	// PeakAchievedAt = start_time canonique du match où le rating max a été atteint

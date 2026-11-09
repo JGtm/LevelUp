@@ -5,7 +5,7 @@
  * translateX, tokens sémantiques). Décalé verticalement avec un gap visible
  * sous le AssetDrawer.
  *
- * Submit → URL GitHub Issues préremplie via `window.open`. Une GitHub Action
+ * Submit → URL GitHub Issues préremplie, ouverte dans un nouvel onglet (`openInNewTab`). Une GitHub Action
  * post-création déclenche Claude Haiku pour affiner la classification.
  *
  * Toutes les couleurs passent par des tokens sémantiques (`bg-popover`,
@@ -13,9 +13,9 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useDeferredValue } from 'react'
-import { toast } from 'sonner'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
+import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { formatMessage } from '@/lib/i18n/format'
@@ -31,6 +31,7 @@ import {
 } from './classifyFeedback'
 import { collectContext, describeFocusedElement } from './collectContext'
 import { buildIssueUrl } from './buildIssueUrl'
+import { openInNewTab } from './openInNewTab'
 import { useSimilarIssues } from './queries'
 import {
   MAX_SUBMITS_PER_HOUR,
@@ -52,6 +53,8 @@ export function FeedbackDrawer() {
   const soloFilterContext = useSoloFilterStore((s) => s.filterContext)
   const squadFilterContext = useSquadFilterStore((s) => s.filterContext)
   const { isOpen, close, toggle } = useFeedbackDrawerStore()
+  // Application de bureau : l'entrée est au pied de la barre latérale, pas de mini-onglet sur le bord.
+  const compactChrome = useDeploymentCapability('can_use_compact_chrome')
 
   const [pickedType, setPickedType] = useState<UserPickedType>('bug')
   const [title, setTitle] = useState('')
@@ -156,31 +159,10 @@ export function FeedbackDrawer() {
     // Pas de PII : pas de titre, pas de description, pas de gamertag.
     const labels = new URL(builtUrl.url).searchParams.get('labels') ?? ''
     log.info('feedback submitted', { labels, urlLength: builtUrl.url.length })
-    const opened = window.open(
-      builtUrl.url,
-      '_blank',
-      'noopener,noreferrer',
-    )
-    if (!opened) {
-      log.error('clipboard:open_failed', 'window.open returned null (popup blocked)')
-      copyToClipboardWithToast(builtUrl.url, t('feedback_drawer.popup_blocked'))
-      return
-    }
+    openInNewTab(builtUrl.url)
     close()
     setTitle('')
     setDescription('')
-  }
-
-  function copyToClipboardWithToast(url: string, message: string) {
-    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
-      // Contexte non-secure (http://) ou clipboard indisponible : fail visible.
-      toast.error(message)
-      return
-    }
-    navigator.clipboard
-      .writeText(url)
-      .then(() => toast.info(message))
-      .catch(() => toast.error(message))
   }
 
   const submitDisabled = !title.trim() || remaining === 0
@@ -193,7 +175,7 @@ export function FeedbackDrawer() {
         onClick={toggle}
         aria-label={t(isOpen ? 'feedback_drawer.mini_tab.aria_close' : 'feedback_drawer.mini_tab.aria_open')}
         aria-expanded={isOpen}
-        className={`fixed right-0 top-[calc(50%+125px)] z-40 -translate-y-1/2 ${isOpen ? 'hidden' : 'hidden sm:flex'} h-9 w-10 cursor-pointer select-none items-center justify-center rounded-l border border-r-0 border-border bg-popover text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground`}
+        className={`fixed right-0 top-[calc(50%+125px)] z-40 -translate-y-1/2 ${isOpen || compactChrome ? 'hidden' : 'hidden sm:flex'} h-9 w-10 cursor-pointer select-none items-center justify-center rounded-l border border-r-0 border-border bg-popover text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground`}
       >
         <ChatBubbleIcon />
       </button>

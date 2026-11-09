@@ -97,9 +97,9 @@ export function ReplaySpeedMenu({ speed, onSetSpeed, locale }: ReplaySpeedMenuPr
   )
 }
 
-/** Même mise en forme que les anciens boutons : 0.5× garde sa décimale, 1×/2×/4× non. */
+/** Une décimale seulement si la vitesse n'est pas entière : 0.5× et 1.5× la gardent, 1×/2×/4× non. */
 function fmt(m: number): string {
-  return m < 1 ? `${m.toFixed(1)}×` : `${m.toFixed(0)}×`
+  return Number.isInteger(m) ? `${m}×` : `${m.toFixed(1)}×`
 }
 
 /** Chevron du déclencheur. Décoratif. */

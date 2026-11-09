@@ -59,6 +59,13 @@ func ResolveMSAccessTokenStoreFirst(
 		if errors.Is(err, ErrUserTokensNotFound) {
 			return "", nil
 		}
+		// Fichier scellé que ce magasin n'ouvre pas : joueur sans jeton, déjà journalisé (Warn, une fois
+		// par fichier et par processus) et compté par le codec ; pas un ERROR par passe.
+		if errors.Is(err, ErrTokenFileSealed) {
+			slog.DebugContext(ctx, "auth: fichier de jetons scellé illisible — aucun access_token",
+				"xuid", xuid, "gamertag", gamertag)
+			return "", nil
+		}
 		// AU3 (revue 2026-07) : ne jamais AVALER l'échec de lecture du store — un
 		// store illisible/corrompu doit être visible, sinon le skip est opaque.
 		slog.ErrorContext(ctx, "auth: échec lecture store canonique — aucun access_token",
@@ -69,7 +76,8 @@ func ResolveMSAccessTokenStoreFirst(
 		return "", nil
 	}
 
-	at, rotatedRT, rerr := provider.TryOAuthRefreshWithRotation(ctx, user.OAuthRefreshToken)
+	at, rotatedRT, rerr := provider.TryOAuthRefreshWithRotation(
+		WithRefreshXUID(ctx, xuid), user.OAuthRefreshToken)
 	if rerr != nil {
 		return "", fmt.Errorf("auth: aucun access_token frais pour xuid(%s): %w", xuid, rerr)
 	}

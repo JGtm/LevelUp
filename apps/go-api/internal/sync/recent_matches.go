@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // recentMatchesType : seuls les matchs matchmade alimentent les graphes profil de
@@ -150,11 +151,11 @@ func buildRecentMatchesFromStats(
 // normalisation que le chemin local. "" si rien d'exploitable.
 func resolveLiveModeUI(matchInfo map[string]any) string {
 	pair := extractPublicName(matchInfo, "PlaylistMapModePair")
-	if m := analysis.ResolveModeUI(&pair, nil); m != nil && *m != "" {
+	if m := analysis.ResolveModeUI(i18n.FromColumns(pair, "")); m != nil && *m != "" {
 		return *m
 	}
 	gv := extractPublicName(matchInfo, "UgcGameVariant")
-	if m := analysis.ResolveModeUI(&gv, nil); m != nil {
+	if m := analysis.ResolveModeUI(i18n.FromColumns(gv, "")); m != nil {
 		return *m
 	}
 	return ""

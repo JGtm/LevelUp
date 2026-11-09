@@ -10,8 +10,8 @@
  *
  * LES SOURCES (deux, par nature — fusion du 2026-08-16) : les sons d'ARMES sont EXTRAITS
  * DU JEU (chantier sons-armes : banks Wwise decodees, coups reconstitues selon la
- * semantique prouvee, selection VOTEE par l'utilisateur — recette et provenance :
- * `.ai/V7.5/RECETTE_SONS_ARMES.md`) ; les sons d'EVENEMENTS (lancers, explosions, melee
+ * semantique prouvee, selection VOTEE par l'utilisateur — recette et provenance
+ * dans `apps/go-api/cmd/weapon-sounds`) ; les sons d'EVENEMENTS (lancers, explosions, melee
  * fatale, equipements) viennent du pack fourni par l'utilisateur (2026-08-13/15). Tout vit
  * sous `static/sounds/halo_infinite/`, livre par `_outils/livraison.py` (armes seulement,
  * les evenements ne sont jamais touches). DEUX FAMILLES DE NOMS, parce qu'il y a deux
@@ -83,8 +83,7 @@
  *    par NOM CANONIQUE DE STATISTIQUE et DANS LE CAMP DE SON AUTEUR. Détail, périmètre et
  *    silences : `objectiveSound.ts`.
  *
- * UNE TROISIÈME SOURCE, DEPUIS LE 2026-08-26 : la RE des banques Wwise
- * (`.ai/V7.5/RE_BANQUES_SONORES_NOMMEES_2026-08-26.md`) — banques NOMMÉES par hachage FNV-1 de
+ * UNE TROISIÈME SOURCE, DEPUIS LE 2026-08-26 : la RE des banques Wwise — banques NOMMÉES par hachage FNV-1 de
  * leur identifiant, puis leurs événements par la même voie, puis chaque geste reconstruit
  * couche par couche aux gains relevés. Elle apporte les sons d'objectif, et REMPLACE trois
  * fichiers du pack utilisateur À STEM CONSTANT (`grapple_fire`, `repulsor_kill`,

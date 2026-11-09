@@ -22,6 +22,8 @@ import (
 	"levelup/go-api/internal/games/classification"
 	"levelup/go-api/internal/games/halo_5/ingest"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
 )
 
 // CaptureSource = source live enrichie pour la capture sync : ajoute le carnage
@@ -30,7 +32,7 @@ import (
 // élargir l'interface de l'adapter. *Client l'implémente.
 type CaptureSource interface {
 	h5Source
-	GetMatchCarnage(ctx context.Context, matchID, mode string) (*H5CarnageResponse, error)
+	GetMatchCarnage(ctx context.Context, matchID, mode string) (*halo5.H5CarnageResponse, error)
 }
 
 var _ CaptureSource = (*Client)(nil)
@@ -57,7 +59,7 @@ func NewCaptureSource(ctx context.Context) (CaptureSource, error) {
 // l'implémente. Définie ici pour fournir NewAppearanceSource (point d'entrée câblage
 // hors package, miroir de NewCaptureSource).
 type AppearanceCapableSource interface {
-	GetAppearance(ctx context.Context, gamertag string) (*H5Appearance, error)
+	GetAppearance(ctx context.Context, gamertag string) (*halo5.H5Appearance, error)
 	GetSpartanRenderPNG(ctx context.Context, gamertag string) ([]byte, string, error)
 	GetEmblemPNG(ctx context.Context, gamertag string) ([]byte, string, error)
 }
@@ -347,7 +349,7 @@ func captureParticipants(ctx context.Context, src CaptureSource, matchID, mode s
 // du mode, captures de drapeau / zones incluses) en *int (team 0, team 1) pour
 // registry.Team{0,1}Score. nil si < 2 équipes (FFA / carnage vide) — pas de score
 // d'équipe 2-camps à persister.
-func carnageTeamScores(c *H5CarnageResponse) (*int, *int) {
+func carnageTeamScores(c *halo5.H5CarnageResponse) (*int, *int) {
 	if c == nil {
 		return nil, nil
 	}

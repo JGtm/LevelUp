@@ -1,5 +1,5 @@
-// Package archlint — no_french_label_literal_test.go : LE GARDE-RAIL FINAL du plan
-// « libellés en dur » (.ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md, §4 « Garde-rail FINAL »).
+// Package archlint — no_french_label_literal_test.go : LE GARDE-RAIL FINAL du chantier
+// « libellés en dur ».
 //
 // # CE QUI EST COMPTÉ
 //
@@ -28,11 +28,14 @@
 // si :
 //   - un fichier de l'allowlist dépasse SON compte (régression sur un site déjà connu) ;
 //   - un fichier HORS allowlist porte au moins un littéral accentué (nouveau site, ou
-//     fichier qu'une baisse à zéro aurait dû retirer de la liste).
+//     fichier qu'une baisse à zéro aurait dû retirer de la liste) ;
+//   - un fichier de l'allowlist porte MOINS que son compte : la baisse s'inscrit dans
+//     l'allowlist dans le même commit (une marge laissée au-dessus de la mesure se
+//     reconsommerait en silence).
 //
 // Baisser un compte (ou retirer une entrée tombée à zéro) est TOUJOURS accepté — c'est
-// l'objectif des lots L2 à L8 du plan libellés. Le faire monter, ou en ajouter une
-// nouvelle, ne l'est jamais : passer par `TitleSemanticAdapter` + TOML
+// l'objectif des lots L2 à L8 du plan libellés — à condition d'abaisser l'entrée avec.
+// Le faire monter, ou en ajouter une nouvelle, ne l'est jamais : passer par `TitleSemanticAdapter` + TOML
 // (`config/titles/{slug}/mappings/`), ou pour les erreurs un `code` machine (D6) —
 // jamais un mot FR/EN de plus en dur.
 //
@@ -45,7 +48,7 @@
 // fichiers (538 littéraux), très au-delà des ~15 fichiers cités dans l'inventaire §2 —
 // l'essentiel étant des messages d'erreur `api/handlers/*` (famille F) non encore
 // individuellement cités. Conforme à la doctrine RE-VÉRIFIER du plan : la carte du 07/09
-// datait déjà. Reprise consignée : .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §9.
+// datait déjà.
 //
 // Modèle : les autres `no_*_test.go` du dossier (ratchet nommé/daté) et `no_mojibake_test.go`
 // (marche à suivre, allowlist vide visée).
@@ -85,18 +88,17 @@ var accentedLiteralRE = regexp.MustCompile(`[éèêàùçÉÈÊÀÙÇ]`)
 var frenchLabelAllowlist = map[string]int{
 	// L6 — narratif / prestige (D7 : ce sont des PHRASES/contenu, ADR 0028 — hors plan
 	// libellés sauf mojibake, mais comptées ici tant qu'elles restent en dur).
-	"games/halo_infinite/film/internal/grammar/equipment_creation_width.go": 1,
-	"analysis/match_impact.go":                           3,
-	"analysis/patterns/behavioral.go":                    2,
-	"analysis/patterns/behavioral_engagement.go":         3,
-	"analysis/prestigetuning/analyze.go":                 6,
-	"analysis/prestigetuning/render.go":                  16,
-	"games/halo_infinite/film/replay/coverage_bridge.go": 5,
-	"games/halo_infinite/film/replay/neutral_deaths.go":  2,
-	"analysis/skill_v2/display_smoothing.go":             1,
-	"notify/coach.go":                                    5,
-	"service/synthesis_service_builders.go":              1,
-	"service/synthesis_service_legacy.go":                5,
+	"libs/film/internal/grammar/equipment_creation_width.go": 1,
+	"analysis/patterns/behavioral.go":                        2,
+	"analysis/patterns/behavioral_engagement.go":             3,
+	"analysis/prestigetuning/analyze.go":                     6,
+	"analysis/prestigetuning/render.go":                      16,
+	"libs/film/replay/coverage_bridge.go":                    5,
+	"libs/film/replay/neutral_deaths.go":                     2,
+	"analysis/skill_v2/display_smoothing.go":                 1,
+	"notify/coach.go":                                        5,
+	"service/synthesis_service_builders.go":                  1,
+	"service/synthesis_service_legacy.go":                    5,
 
 	// L3 — modes / playlists / catégories (cible : assets.toml). rankedplaylists.go
 	// retiré le 2026-09-08 (lot M5 L3, branche feat/libelles-modes-playlists) :
@@ -108,8 +110,7 @@ var frenchLabelAllowlist = map[string]int{
 	// (GH5-2, ~80 fichiers `apps/web/src` matchent dessus, ex.
 	// features/_shared/experienceCascade.ts, commentaire « NE PAS traduire ces
 	// chaînes ici ») — le LABEL, lui, est déjà localisé FR/EN (expTypeLabelEN).
-	// Migrer la VALUE vers une clé neutre exige un lot dédié coordonné back+front
-	// (cf. .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §11, découverte M5 L3).
+	// Migrer la VALUE vers une clé neutre exige un lot dédié coordonné back+front.
 	"analysis/playlist_label.go":       2,
 	"service/match_history_service.go": 2,
 
@@ -129,7 +130,7 @@ var frenchLabelAllowlist = map[string]int{
 	// lu par platform/duckdb/weapon_resolver.go comme repli de nom pour les sentinelles
 	// (grenade/mêlée/véhicule) et les ids sans weapon_key — migrer ce repli vers un TOML
 	// dupliquerait weapon_names.toml (déjà la SOURCE UNIQUE depuis V72-06) sans rien
-	// résoudre. Cf. .ai/V7.5/PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md §13 (découverte M5 L4).
+	// résoudre.
 	"games/weapons/labels.go": 12,
 
 	// L5 — rangs / CSR. mappings/ranks.go (RankCatalog) est le rang de CARRIÈRE,
@@ -194,7 +195,6 @@ var frenchLabelAllowlist = map[string]int{
 	"api/handlers/match_view.go":                  3,
 	"api/handlers/medals.go":                      1,
 	"api/handlers/media.go":                       9,
-	"api/handlers/media_delete.go":                1,
 	"api/handlers/media_paths.go":                 1,
 	"api/handlers/media_upload.go":                2,
 	"api/handlers/notifications.go":               3,
@@ -239,32 +239,34 @@ var frenchLabelAllowlist = map[string]int{
 	"games/halo_5/livesync/wire.go":                     1,
 	"games/halo_infinite/citations_custom.go":           1,
 	"games/halo_infinite/citations_custom_modes.go":     1,
-	"games/halo_infinite/events.go":                     2,
-	"games/halo_infinite/medal_category_gen.go":         9,
-	"games/mappings/loader.go":                          1,
-	"games/mappings/loader_objective_roles.go":          1,
-	"games/mappings/loader_regulation.go":               2,
-	"games/mappings/loader_replay_labels.go":            3,
-	"games/mappings/loader_replay_labels_equipment.go":  1,
-	"games/mappings/loader_replay_labels_flagzone.go":   2,
-	"games/mappings/registry.go":                        1,
-	"service/backfill_orchestrator.go":                  9,
-	"service/career_live_target.go":                     2,
-	"service/filters_service.go":                        3,
-	"service/match_view_service.go":                     3,
-	"service/media_index_service.go":                    4,
-	"service/media_service_delete.go":                   4,
-	"service/media_service_upload.go":                   7,
-	"service/profile_service.go":                        1,
-	"service/release_notes_service.go":                  2,
-	"service/season_pass_service.go":                    1,
-	"service/seasons_catalog.go":                        3,
-	"service/session_compare_service.go":                2,
-	"service/session_compare_table_helpers.go":          1,
-	"service/session_page_service.go":                   7,
-	"service/skill_v2_service.go":                       1,
-	"service/squad_service_v2_intersect.go":             1,
-	"service/squadagg/consts.go":                        2,
+	// Entrée DÉPLACÉE, pas un littéral neuf (2026-10-29, plan D3 lot 4) : le titre de repli d'un défi
+	// (`titreDefiParDefaut`) vivait dans le client d'avant l'adaptateur, hors des racines
+	// scannées ; le fichier entre dans le périmètre avec l'adaptateur (ADR 0012, ADR 0042).
+	"games/halo_infinite/haloadapter/challenges_details.go": 1,
+	"games/halo_infinite/events.go":                         2,
+	"games/halo_infinite/medal_category_gen.go":             9,
+	"games/mappings/loader_objective_roles.go":              1,
+	"games/mappings/loader_regulation.go":                   2,
+	"games/mappings/loader_replay_labels.go":                3,
+	"games/mappings/loader_replay_labels_equipment.go":      1,
+	"games/mappings/loader_replay_labels_flagzone.go":       2,
+	"games/mappings/registry.go":                            1,
+	"service/backfill_orchestrator.go":                      9,
+	"service/career_live_target.go":                         2,
+	"service/filters_service.go":                            3,
+	"service/match_view_service.go":                         1,
+	"service/media_index_service.go":                        4,
+	"service/media_service_delete.go":                       4,
+	"service/media_service_upload.go":                       7,
+	"service/profile_service.go":                            1,
+	"service/season_pass_service.go":                        1,
+	"service/seasons_catalog.go":                            3,
+	"service/session_compare_service.go":                    2,
+	"service/session_compare_table_helpers.go":              1,
+	"service/session_page_service.go":                       7,
+	"service/skill_v2_service.go":                           1,
+	"service/squad_service_v2_intersect.go":                 1,
+	"service/squadagg/consts.go":                            2,
 	// service/stats_service.go, service/synthesis_service.go et
 	// service/teammates/teammates_service.go sont sortis de l'allowlist le 2026-09-07
 	// (Q4) : leur seul littéral accentué était le repli FR de l'issue de match, supprimé
@@ -280,6 +282,9 @@ func TestNoNewFrenchLabelLiteral(t *testing.T) {
 		dir := filepath.Join(internalRoot, filepath.FromSlash(sub))
 		scanFrenchLabelLiterals(t, internalRoot, dir, compte)
 	}
+	// La brique du decodeur de film vivait sous `games/` : ses fichiers se comptent depuis la racine
+	// du depot (`libs/film/...`).
+	scanFrenchLabelLiterals(t, workspaceRoot(t), surDisque(t, racineBriqueFilm), compte)
 
 	var regressions []string
 	var nouveaux []string
@@ -290,7 +295,7 @@ func TestNoNewFrenchLabelLiteral(t *testing.T) {
 		case got > allowed:
 			regressions = append(regressions, fmt.Sprintf("%s : %d littéraux, alloué %d", rel, got, allowed))
 		case got < allowed:
-			baisses = append(baisses, fmt.Sprintf("%s : %d littéraux (alloué %d) — resserrer frenchLabelAllowlist", rel, got, allowed))
+			baisses = append(baisses, fmt.Sprintf("%s : %d littéraux (alloué %d) — baisse le plafond à %d dans frenchLabelAllowlist", rel, got, allowed, got))
 		}
 	}
 	for rel, got := range compte {
@@ -302,8 +307,9 @@ func TestNoNewFrenchLabelLiteral(t *testing.T) {
 	sort.Strings(nouveaux)
 	sort.Strings(baisses)
 
-	for _, b := range baisses {
-		t.Logf("baisse (à figer) : %s", b)
+	if len(baisses) > 0 {
+		t.Errorf("compte mesuré sous l'allowlist (le ratchet ne fait que descendre, abaisser l'entrée "+
+			"dans le même commit ; une entrée tombée à zéro se retire) :\n  %s", strings.Join(baisses, "\n  "))
 	}
 	if len(regressions) > 0 || len(nouveaux) > 0 {
 		t.Errorf("littéraux FR en dur détectés hors des sites déjà comptés (D5 : la clé "+

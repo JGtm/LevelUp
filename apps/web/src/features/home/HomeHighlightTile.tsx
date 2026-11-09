@@ -9,6 +9,7 @@ import type { HighlightItem, HighlightSlide, HighlightValueColor } from '@/lib/a
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { KpiCard } from '@/components/cards/KpiCard'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import type { Locale } from '@/lib/i18n/locale'
 import { resolveTitle, resolveLabel, resolveDetail, resolveColSpan, resolveUnit } from './highlights.i18n'
 
 // Rangée flex sur lg+ : chaque tuile grandit proportionnellement à son poids
@@ -66,7 +67,7 @@ function highlightAccent(color?: HighlightValueColor): SemanticToken {
 interface SerieTileProps {
   title: string
   slides: HighlightSlide[]
-  locale: string | null | undefined
+  locale: Locale
   className?: string
 }
 
@@ -118,7 +119,7 @@ function SerieTile({ title, slides, locale, className }: SerieTileProps) {
 
 interface HomeHighlightTileProps {
   h: HighlightItem
-  locale: string | null | undefined
+  locale: Locale
 }
 
 export function HomeHighlightTile({ h, locale }: HomeHighlightTileProps) {

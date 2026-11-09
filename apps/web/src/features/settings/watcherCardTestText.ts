@@ -48,4 +48,8 @@ export const WATCHER_TEST_TEXT = {
   watcherLastSeenRelative: 'Vu il y a {duration} sur {title}',
   watcherLastSeenAbsolute: 'Vu le {date} sur {title}',
   watcherNeverSeen: 'Jamais vu en jeu',
+  watcherDurationUnderMin: "moins d'1 min",
+  watcherDurationHours: '{n} h',
+  watcherDurationDayOne: '{n} j',
+  watcherDurationDayMany: '{n} j',
 } as unknown as SettingsText

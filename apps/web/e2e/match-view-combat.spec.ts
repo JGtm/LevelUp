@@ -2,7 +2,7 @@
  * E2E — Validation visuelle onglet Combat (badges + 4 charts du mock).
  *
  * Vérifie que les blocs ajoutés par fix/media-player-ux pour aligner sur
- * .ai/charts_specs/_generated/match_view/mock-echarts.html sont rendus :
+ * le mock sont rendus :
  *   - Bandeau "Faits marquants" (MatchImpactBadgesBar)
  *   - match_view.09 — Frags cumulés par équipe
  *   - match_view.10 — Dominance par tranche de temps

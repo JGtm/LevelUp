@@ -1,6 +1,5 @@
 // cmd/mapplafond-mesure — MESURE ce qu'un plafond deduit des hauteurs jouees couperait sur
-// chaque carte. Phase C0 du lot « plafonds » (`.ai/V7.5/PLAN_REPLAY2D_NOTION_2026-08-25.md`,
-// point 10 de l'encadre Notion REPLAY 2D).
+// chaque carte.
 //
 // LA QUESTION PRODUIT : « pour les cartes non validees, peut-on dataminer les hauteurs ou le
 // joueur ne se rend jamais et virer les toits ou plafonds au-dessus de cette hauteur ».
@@ -15,7 +14,7 @@
 //	                      stabilite du maximum quand on retire un film du corpus
 //
 // LICENCE — CONTRAINTE STRUCTURANTE, la meme que `cmd/mapfond-build` : la mesure de la
-// geometrie passe par internal/himap -> internal/himodule -> internal/ooz, **GPLv3**. C'est de
+// geometrie passe par libs/himap/himap -> libs/gamefiles/himodule -> libs/gamefiles/ooz, **GPLv3**. C'est de
 // l'outillage HORS LIGNE ; l'application ne linke jamais cette chaine. Le drapeau
 // `--sans-jeu` rend la passe corpus seule, sans aucun fichier du jeu.
 //
@@ -37,7 +36,8 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/himap"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 func main() {

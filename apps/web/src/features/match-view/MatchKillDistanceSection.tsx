@@ -39,7 +39,6 @@ import type {
 } from '@/lib/api/types'
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { stripBotSuffix } from '@/lib/players/displayName'
-import { useAppShellStore } from '@/stores/appShellStore'
 
 import { useHasKillDistanceSection } from './blockPredicates'
 import { buildMatchPlayerColors } from './colors'
@@ -70,7 +69,6 @@ export function MatchKillDistanceSection({
   friendGamertags,
   t,
 }: Props) {
-  const locale = useAppShellStore((s) => s.locale)
   const titreMesureLesPositions = useHasKillDistanceSection()
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
   const rawPlayers = useMemo(() => players ?? [], [players])
@@ -98,7 +96,7 @@ export function MatchKillDistanceSection({
     [rawPlayers, board, palette],
   )
 
-  const rows = useMemo(() => killDistanceRows(inputs, locale), [inputs, locale])
+  const rows = useMemo(() => killDistanceRows(inputs), [inputs])
   // La légende ne nomme que les joueurs qui ont au moins une ligne dans le graphe.
   const legendItems = useMemo(() => {
     const shown = new Set(rows.map((r) => r.player))

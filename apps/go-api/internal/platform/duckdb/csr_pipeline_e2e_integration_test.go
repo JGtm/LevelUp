@@ -237,8 +237,8 @@ func TestE2EPipeline_HomeRecentPlaylists_MixedStates(t *testing.T) {
 	}
 	// Gold matured : placement_total exposé (info), pas de measurement_remaining
 	gold := items[byName["Ranked Arena"]]
-	if gold.TierLabel == nil || *gold.TierLabel != "Or 4" {
-		t.Errorf("Ranked Arena tier_label: want Or 4, got %v", gold.TierLabel)
+	if gold.TierLabel == nil || *gold.TierLabel != "Or IV" {
+		t.Errorf("Ranked Arena tier_label: want Or IV, got %v", gold.TierLabel)
 	}
 	if gold.MeasurementMatchesRemaining != nil {
 		t.Errorf("Ranked Arena MeasurementMatchesRemaining: want nil (matured), got %v", *gold.MeasurementMatchesRemaining)

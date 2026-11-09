@@ -84,28 +84,30 @@ type RegistryNamesBackfillResult struct {
 	TotalFixed       int  `json:"total_fixed"`
 }
 
-// ModeTranslationRequest — corps de POST .../translations/mode.
+// ModeTranslationRequest — corps de POST .../translations/mode. ModeKey est la clé technique du
+// mode (nom canonique, normalisé côté serveur), pas un libellé ; Names porte un nom par langue de
+// config/locales.toml (clé = code de langue), une ligne de mode_name_tr par entrée.
 type ModeTranslationRequest struct {
-	ModeEN string `json:"mode_en"`
-	NameFR string `json:"name_fr"`
+	ModeKey string            `json:"mode_key"`
+	Names   map[string]string `json:"names"`
 }
 
-// AssetTranslationRequest — corps de POST .../translations/asset. Au moins un
-// des deux noms doit être fourni ; chaque langue fournie est upsertée
-// (en-US / fr-FR dans asset_translations).
+// AssetTranslationRequest — corps de POST .../translations/asset. Names porte un nom par langue de
+// config/locales.toml (clé = code de langue) ; au moins un nom est requis et chaque langue fournie
+// est écrite dans asset_translations sous sa première étiquette Halo (`fr-FR`, `en-US`).
 type AssetTranslationRequest struct {
-	AssetKind string `json:"asset_kind"` // playlist | map | pair | game_variant
-	AssetID   string `json:"asset_id"`
-	NameEN    string `json:"name_en,omitempty"`
-	NameFR    string `json:"name_fr,omitempty"`
+	AssetKind string            `json:"asset_kind"` // playlist | map | pair | game_variant
+	AssetID   string            `json:"asset_id"`
+	Names     map[string]string `json:"names"`
 }
 
 // ResolveResult — réponse des actions de résolution metadata.
 type ResolveResult struct {
 	// Action : "created" | "updated" (par langue pour les assets).
 	Action string `json:"action"`
-	// ModeEN : clé normalisée effectivement écrite (translations/mode).
-	ModeEN string `json:"mode_en,omitempty"`
+	// ModeKey : clé normalisée effectivement écrite (translations/mode) ; clé technique du mode, pas un
+	// libellé (la requête la nomme `mode_key`).
+	ModeKey string `json:"mode_key,omitempty"`
 	// Langs : langues écrites (translations/asset).
 	Langs []string `json:"langs,omitempty"`
 }

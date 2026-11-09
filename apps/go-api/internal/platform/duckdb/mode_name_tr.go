@@ -12,9 +12,9 @@
 // libellés FR incohérents d'une page à l'autre pour la MÊME donnée (le bug
 // « CTF » + « Capture du drapeau » côte à côte, thought_log 2026-05-09).
 //
-// Le point d'entrée EXPORTÉ de la couche reste SquadRepo.LoadModeTranslationsFR
+// Le point d'entrée EXPORTÉ de la couche reste SquadRepo.LoadModeTranslations
 // (port.SquadRepository / port.CareerRepository) — les callers hors package et
-// l'injection prestige (WithModeTranslatorFR) passent par lui, inchangés.
+// l'injection prestige (WithModeTranslator) passent par lui, inchangés.
 //
 // Garde-rail : no_mode_name_tr_literal_test.go interdit tout accès SQL
 // `FROM mode_name_tr` ailleurs que dans ce fichier, sous internal/platform/duckdb.
@@ -26,12 +26,14 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
-// selectModeNameTrFR — requête canonique de résolution FR des modes. `%s` = liste
-// de placeholders. `lang = 'fr'` est le seul contrat servi par cette couche :
-// l'affichage EN utilise le mode_en canonique tel quel, sans lookup.
-const selectModeNameTrFR = `SELECT mode_en, name FROM mode_name_tr WHERE lang = 'fr' AND mode_en IN (%s)`
+// selectModeNameTr — requête canonique de résolution des noms de mode dans une langue (premier
+// argument : le code de langue, `lang`). `%s` = liste de placeholders. L'affichage EN utilise le
+// mode_en canonique tel quel, sans lookup.
+const selectModeNameTr = `SELECT mode_en, name FROM mode_name_tr WHERE lang = ? AND mode_en IN (%s)`
 
 // selectDistinctModeEN — inventaire des modes canoniques connus (clés mode_en),
 // toutes langues confondues.
@@ -41,7 +43,7 @@ const selectDistinctModeEN = `SELECT DISTINCT mode_en FROM mode_name_tr`
 // traduction d'un libellé ne doit jamais retenir une page (dégradation = EN).
 const modeNameTrQueryTimeout = 3 * time.Second
 
-// queryModeNameTrFR retourne le mapping mode_en → nom FR pour les modes EN
+// queryModeNameTr retourne le mapping mode_en → nom dans la langue loc pour les modes EN
 // NORMALISÉS donnés (via analysis.NormalizeModeLabel côté caller). Une clé
 // absente du résultat = pas de traduction connue : le caller GARDE l'EN, il ne
 // vide jamais le libellé. Les noms FR vides/blancs sont écartés.
@@ -54,16 +56,17 @@ const modeNameTrQueryTimeout = 3 * time.Second
 // FATAL-invalidated (bug ART) — sinon la traduction FR retombe en EN jusqu'au
 // prochain restart du process. C'était déjà le comportement de home_repo et de
 // match_history ; les quatre autres copies l'acquièrent en convergeant ici.
-func queryModeNameTrFR(ctx context.Context, meta *DB, modeENs []string) (map[string]string, error) {
+func queryModeNameTr(ctx context.Context, meta *DB, loc i18n.Locale, modeENs []string) (map[string]string, error) {
 	if meta == nil || len(modeENs) == 0 {
 		return nil, nil
 	}
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(modeENs)), ",")
-	args := make([]any, len(modeENs))
-	for i, n := range modeENs {
-		args[i] = n
+	args := make([]any, 0, len(modeENs)+1)
+	args = append(args, string(loc))
+	for _, n := range modeENs {
+		args = append(args, n)
 	}
-	rows, err := meta.QueryRecovered(ctx, fmt.Sprintf(selectModeNameTrFR, placeholders), args...)
+	rows, err := meta.QueryRecovered(ctx, fmt.Sprintf(selectModeNameTr, placeholders), args...)
 	if err != nil {
 		if isTableNotFoundErr(err) {
 			return nil, nil
@@ -73,29 +76,29 @@ func queryModeNameTrFR(ctx context.Context, meta *DB, modeENs []string) (map[str
 	defer rows.Close()
 	out := make(map[string]string, len(modeENs))
 	for rows.Next() {
-		var modeEN, nameFR string
-		if scanErr := rows.Scan(&modeEN, &nameFR); scanErr != nil {
+		var modeEN, name string
+		if scanErr := rows.Scan(&modeEN, &name); scanErr != nil {
 			continue
 		}
-		if strings.TrimSpace(nameFR) != "" {
-			out[modeEN] = nameFR
+		if strings.TrimSpace(name) != "" {
+			out[modeEN] = name
 		}
 	}
 	return out, rows.Err()
 }
 
-// loadModeNamesFRForKeys — variante BEST-EFFORT de queryModeNameTrFR : plafonne
+// loadModeNamesForKeys — variante BEST-EFFORT de queryModeNameTr : plafonne
 // la requête (modeNameTrQueryTimeout) et absorbe l'erreur en la loguant et en la
 // consignant (noteDegraded : un chargement mis en cache qui l'appelle n'est pas
 // caché), pour les chemins d'enrichissement qui ne doivent jamais échouer
 // (match_history, filters, media). Retourne nil si rien n'est résolu.
-func loadModeNamesFRForKeys(ctx context.Context, meta *DB, enKeys []string) map[string]string {
+func loadModeNamesForKeys(ctx context.Context, meta *DB, loc i18n.Locale, enKeys []string) map[string]string {
 	if meta == nil || len(enKeys) == 0 {
 		return nil
 	}
 	ctx2, cancel := context.WithTimeout(ctx, modeNameTrQueryTimeout)
 	defer cancel()
-	out, err := queryModeNameTrFR(ctx2, meta, enKeys)
+	out, err := queryModeNameTr(ctx2, meta, loc, enKeys)
 	if err != nil {
 		slog.WarnContext(ctx, "fr_translations: loadModeNamesFRForKeys failed", "err", err)
 		noteDegraded(ctx, "mode_names_fr")
@@ -104,11 +107,11 @@ func loadModeNamesFRForKeys(ctx context.Context, meta *DB, enKeys []string) map[
 	return out
 }
 
-// loadKnownModesEN charge la liste DISTINCTE des mode_en de mode_name_tr — les
+// loadKnownModes charge la liste DISTINCTE des mode_en de mode_name_tr — les
 // modes canoniques connus — pour rattraper les variantes non canoniques
 // ("Legacy Slayer BR" → "Slayer") via analysis.ExtractKnownMode. Best-effort :
 // nil si meta absent ou table absente.
-func loadKnownModesEN(ctx context.Context, meta *DB) []string {
+func loadKnownModes(ctx context.Context, meta *DB) []string {
 	if meta == nil {
 		return nil
 	}
@@ -117,7 +120,7 @@ func loadKnownModesEN(ctx context.Context, meta *DB) []string {
 	rows, err := meta.QueryRecovered(ctx2, selectDistinctModeEN)
 	if err != nil {
 		slog.Log(ctx, degradedLookupLevel(ctx, err),
-			"fr_translations: loadKnownModesEN failed, variantes de mode non rattrapées", "err", err)
+			"fr_translations: loadKnownModes failed, variantes de mode non rattrapées", "err", err)
 		return nil
 	}
 	defer rows.Close()
@@ -125,7 +128,7 @@ func loadKnownModesEN(ctx context.Context, meta *DB) []string {
 	for rows.Next() {
 		var m string
 		if err := rows.Scan(&m); err != nil {
-			slog.Log(ctx, degradedLookupLevel(ctx, err), "fr_translations: loadKnownModesEN ligne illisible ignorée", "err", err)
+			slog.Log(ctx, degradedLookupLevel(ctx, err), "fr_translations: loadKnownModes ligne illisible ignorée", "err", err)
 			continue
 		}
 		if strings.TrimSpace(m) != "" {
@@ -134,7 +137,7 @@ func loadKnownModesEN(ctx context.Context, meta *DB) []string {
 	}
 	if err := rows.Err(); err != nil {
 		slog.Log(ctx, degradedLookupLevel(ctx, err),
-			"fr_translations: loadKnownModesEN itération interrompue, liste partielle", "err", err, "modes", len(out))
+			"fr_translations: loadKnownModes itération interrompue, liste partielle", "err", err, "modes", len(out))
 	}
 	return out
 }

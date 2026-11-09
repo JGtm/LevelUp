@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/platform/dblease"
 )
 
@@ -52,7 +53,7 @@ func itemDefLocalizedText(v any, preferLang string) string {
 		return strings.TrimSpace(typed)
 	case map[string]any:
 		if trans, ok := typed["translations"].(map[string]any); ok {
-			for _, lang := range []string{preferLang, LangCodeFR, LangCodeEN, "en"} {
+			for _, lang := range itemDefLangOrder(preferLang) {
 				if s, ok := trans[lang].(string); ok && strings.TrimSpace(s) != "" {
 					return strings.TrimSpace(s)
 				}
@@ -67,7 +68,7 @@ func itemDefLocalizedText(v any, preferLang string) string {
 
 // UpsertItemDefinition implémente halo.ItemDefinitionPersister.
 // Persiste la définition d'un item BP dans battlepass_item_definitions et
-// battlepass_item_translations (fr-FR + en-US) de metadata.duckdb.
+// battlepass_item_translations (une ligne par langue) de metadata.duckdb.
 // Utilise UPDATE-first + INSERT-if-zero (idiome DuckDB) pour garantir l'idempotence.
 func (s *PersistSink) UpsertItemDefinition(ctx context.Context, itemPath string, raw []byte) error {
 	var def itemDefRaw
@@ -140,7 +141,21 @@ func (s *PersistSink) UpsertItemDefinition(ctx context.Context, itemPath string,
 	return s.upsertItemTranslations(ctx, db, itemPath, hash, cd, now)
 }
 
-// upsertItemTranslations persiste les traductions fr-FR et en-US d'un item.
+// itemDefLangOrder retourne l'ordre de lecture des clés de langue d'un texte GameCMS : la clé
+// demandée, puis les étiquettes de la chaîne de lecture de sa langue (PreferredLangsForLocale).
+func itemDefLangOrder(preferLang string) []string {
+	loc, _ := i18n.FromHaloTag(preferLang)
+	order := []string{preferLang}
+	for _, tag := range PreferredLangsForLocale(string(loc)) {
+		if tag != preferLang {
+			order = append(order, tag)
+		}
+	}
+	return order
+}
+
+// upsertItemTranslations persiste les traductions d'un item, une ligne par langue de
+// config/locales.toml (étiquette Halo principale de la langue).
 func (s *PersistSink) upsertItemTranslations(
 	ctx context.Context,
 	db *DB,
@@ -154,17 +169,14 @@ func (s *PersistSink) upsertItemTranslations(
 		description string
 	}
 
-	entries := []langEntry{
-		{
-			lang:        LangCodeFR,
-			title:       itemDefLocalizedText(cd.Title, LangCodeFR),
-			description: itemDefLocalizedText(cd.Description, LangCodeFR),
-		},
-		{
-			lang:        LangCodeEN,
-			title:       itemDefLocalizedText(cd.Title, LangCodeEN),
-			description: itemDefLocalizedText(cd.Description, LangCodeEN),
-		},
+	entries := make([]langEntry, 0, len(i18n.Locales()))
+	for _, l := range i18n.Locales() {
+		tag := i18n.HaloTags(l)[0]
+		entries = append(entries, langEntry{
+			lang:        tag,
+			title:       itemDefLocalizedText(cd.Title, tag),
+			description: itemDefLocalizedText(cd.Description, tag),
+		})
 	}
 
 	for _, e := range entries {

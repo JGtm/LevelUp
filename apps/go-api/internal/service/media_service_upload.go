@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"levelup/go-api/internal/domain"
-	mediapkg "levelup/go-api/internal/media"
-	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/ops"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
+
+	"levelup/go-api/internal/domain"
+	mediapkg "levelup/go-api/internal/media"
+	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/ops"
 )
 
 func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest) (*domain.UploadResult, error) {

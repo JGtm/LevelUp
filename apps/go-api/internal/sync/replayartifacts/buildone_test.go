@@ -19,8 +19,9 @@ import (
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // deps monte des dependances minimales : ni base, ni cache, ni reseau.

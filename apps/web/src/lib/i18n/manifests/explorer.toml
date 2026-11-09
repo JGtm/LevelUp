@@ -263,12 +263,12 @@ en = "Tie"
 # ─── Filtre skill tier ────────────────────────────────────────────────────────
 
 [explorer.filters.skill_tier_label]
-fr = "Tier"
+fr = "Palier"
 en = "Tier"
 
 [explorer.filters.skill_tier_disabled]
 fr = "Sélectionne uniquement 'PVP classé' ou 'PVP non classé' dans Type d'expérience pour activer ce filtre"
-en = "Select only 'PVP classé' or 'PVP non classé' in Experience type to enable this filter"
+en = "Select only 'Ranked PvP' or 'Unranked PvP' in Experience type to enable this filter"
 
 [explorer.filters.skill_tier_bronze]
 fr = "Bronze"
@@ -522,6 +522,11 @@ en = "Kill/Death ratio: kills dealt ÷ deaths suffered across all shared matches
 fr = "Vu pour la dernière fois"
 en = "Last seen"
 
+# Unité qui suit un compte de matchs dans les cartes WR allié / ennemi (toujours au pluriel).
+[explorer.encounter.matches_unit]
+fr = "matchs"
+en = "matches"
+
 [explorer.matches.col_squad]
 fr = "Contexte"
 en = "Context"
@@ -611,6 +616,16 @@ fr = "Exact"
 en = "Exact"
 
 # ─── Encart "Profil joueur cible" (target_profile) ────────────────────────
+
+# Unité de jours du temps de jeu (« 3j 4h »).
+[explorer.target_profile.playtime_day_unit]
+fr = "j"
+en = "d"
+
+# Classement CSR d'une playlist sans niveau cette saison.
+[explorer.target_profile.csr_unranked]
+fr = "Non classé"
+en = "Unranked"
 
 [explorer.target_profile.section_career_title]
 fr = "Carrière complète"
@@ -918,6 +933,10 @@ en = "Collapse (10 rows)"
 fr = "Profil de combat"
 en = "Combat profile"
 
+[explorer.combat.source_group_label]
+fr = "Source"
+en = "Source"
+
 [explorer.combat.fda_title]
 fr = "FDA et Frags / Morts / Assistances"
 en = "KDA and Kills / Deaths / Assists"
@@ -1025,8 +1044,8 @@ fr = "vs habituel"
 en = "vs usual"
 
 [explorer.briefing.low_sample]
-fr = "Échantillon faible ({n} matchs)"
-en = "Small sample ({n} matches)"
+fr = "Échantillon faible : {n} matchs, les comparaisons sont peu fiables."
+en = "Small sample: {n} matches, comparisons are not reliable."
 
 # Bascule réduire/afficher de la synthèse (« briefing ») — libellé + aria explicites.
 [explorer.briefing.collapse]
@@ -1063,6 +1082,30 @@ en = "By playlist"
 fr = "{n, plural, one {# match} other {# matchs}}"
 en = "{n, plural, one {# match} other {# matches}}"
 
+# État vide d'une carte « Par… » : au moins deux valeurs dans le filtre, mais moins de
+# deux groupes à {n} matchs. {n} = seuil servi par le backend (min_group_matches).
+# Le titre est commun aux états vides des cartes « Par… » et de « Par contexte ».
+[explorer.briefing.insufficient_title]
+fr = "Pas assez de matchs"
+en = "Not enough matches"
+
+[explorer.briefing.dim_insufficient_map]
+fr = "Moins de 2 cartes à {n} matchs."
+en = "Fewer than 2 maps with {n} matches."
+
+[explorer.briefing.dim_insufficient_mode]
+fr = "Moins de 2 modes à {n} matchs."
+en = "Fewer than 2 modes with {n} matches."
+
+[explorer.briefing.dim_insufficient_playlist]
+fr = "Moins de 2 sélections à {n} matchs."
+en = "Fewer than 2 playlists with {n} matches."
+
+# État vide de « Par contexte » : les deux contextes existent, l'un est sous le seuil.
+[explorer.briefing.context_insufficient]
+fr = "{solo} en solo, {squad} en escouade ({n} requis de chaque côté)."
+en = "{solo} solo, {squad} in a squad ({n} needed on each side)."
+
 [explorer.briefing.ranked_title]
 fr = "Classement"
 en = "Ranking"
@@ -1093,13 +1136,13 @@ en = "By context"
 fr = "Arme favorite"
 en = "Favorite weapon"
 
-# ─── Bandeau briefing : tuile « Séries marquantes » (socle) et bande « Moments forts » ─
+# ─── Bandeau briefing : tuile « Séries » (socle) et bande « Moments forts » ─
 
 [explorer.briefing.streaks_title]
-fr = "Séries marquantes"
-en = "Notable streaks"
+fr = "Séries"
+en = "Streaks"
 
-# Abréviations V/D (« {n} V » / « {n} D ») de la valeur de la tuile Séries marquantes.
+# Abréviations V/D (« {n} V » / « {n} D ») de la valeur de la tuile Séries.
 [explorer.briefing.streak_wins]
 fr = "{n} V"
 en = "{n} W"
@@ -1154,8 +1197,8 @@ fr = "Palier de classement en fin de sélection, palier de départ, et moyenne d
 en = "Ranking tier at the end of the selection, the starting tier, and the average ranking points gained or lost per match."
 
 [explorer.briefing.tip_streaks]
-fr = "Séries extrêmes dans la sélection : la plus longue suite de victoires et la plus longue suite de défaites."
-en = "Extreme streaks in the selection: the longest run of wins and the longest run of losses."
+fr = "Séries marquantes de la sélection : la plus longue suite de victoires et la plus longue suite de défaites."
+en = "Notable streaks in the selection: the longest run of wins and the longest run of losses."
 
 [explorer.briefing.tip_highlights]
 fr = "Matchs marquants : dominations (large victoire), humiliations (large défaite), remontadas (victoire après avoir été mené), débandades (défaite après avoir mené), contre-remontadas (remontée adverse stoppée après avoir mené)."

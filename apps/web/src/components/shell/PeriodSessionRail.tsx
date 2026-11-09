@@ -52,6 +52,9 @@ interface RailText {
   periodLabel: (start: string, end: string) => string
   periodDuration: (days: number) => string
   seasonRangeLabel: (start: string, end: string) => string
+  /** Libellé d'une session : « Session du 3 mars 2025 à 21:30 » / avec heure de fin. */
+  sessionAtLabel: (date: string, start: string) => string
+  sessionFromToLabel: (date: string, start: string, end: string) => string
   auto: string
   autoTitle: string
 }
@@ -87,6 +90,8 @@ const TEXTS: Record<Locale, RailText> = {
     periodLabel: (start, end) => `Période du ${start} au ${end}`,
     periodDuration: (days) => `${days} jour${days > 1 ? 's' : ''}`,
     seasonRangeLabel: (start, end) => `du ${start} au ${end}`,
+    sessionAtLabel: (date, start) => `Session du ${date} à ${start}`,
+    sessionFromToLabel: (date, start, end) => `Session du ${date} de ${start} à ${end}`,
     auto: 'auto',
     autoTitle: 'Sélection automatique : nouvelle session détectée.',
   },
@@ -117,6 +122,8 @@ const TEXTS: Record<Locale, RailText> = {
     periodLabel: (start, end) => `From ${start} to ${end}`,
     periodDuration: (days) => `${days} day${days > 1 ? 's' : ''}`,
     seasonRangeLabel: (start, end) => `from ${start} to ${end}`,
+    sessionAtLabel: (date, start) => `Session of ${date} at ${start}`,
+    sessionFromToLabel: (date, start, end) => `Session of ${date} from ${start} to ${end}`,
     auto: 'auto',
     autoTitle: 'Auto-selection: new session detected.',
   },
@@ -163,27 +170,22 @@ function formatSessionLabel(
     const timeFmt = new Intl.DateTimeFormat(intlLocale(locale), {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: locale !== 'fr',
     })
     const dateLabel = dateFmt.format(start)
     const startTime = timeFmt.format(start)
     const end = endedAtUTC ? new Date(endedAtUTC) : null
     if (end && !isNaN(end.getTime()) && end.getTime() !== start.getTime()) {
       const endTime = timeFmt.format(end)
-      return locale === 'fr'
-        ? `Session du ${dateLabel} de ${startTime} à ${endTime}`
-        : `Session of ${dateLabel} from ${startTime} to ${endTime}`
+      return TEXTS[locale].sessionFromToLabel(dateLabel, startTime, endTime)
     }
-    return locale === 'fr'
-      ? `Session du ${dateLabel} à ${startTime}`
-      : `Session of ${dateLabel} at ${startTime}`
+    return TEXTS[locale].sessionAtLabel(dateLabel, startTime)
   } catch {
     return sessionLabel
   }
 }
 
 // Layout 3-zones : [◀ Précédente | Label centré | Suivante ▶]
-// Pas de sticky propre — le parent (NavL2 ou SquadLayout) gère sa propre
+// Pas de sticky propre — le parent (SoloFiltersBar ou SquadLayout) gère sa propre
 // barre sticky qui contient le rail. La border-t/-b délimite visuellement
 // le rail des filtres au-dessus et du contenu en dessous.
 const RAIL_BASE_CLASS =
@@ -197,7 +199,7 @@ const NAV_BTN_CLASS =
   'rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30'
 
 interface PeriodSessionRailProps {
-  /** Store à utiliser. Défaut : useSoloFilterStore (rétrocompat NavL2). */
+  /** Store à utiliser. Défaut : useSoloFilterStore (rétrocompat SoloFiltersBar). */
   filterStore?: FilterStore
   /** Total de matchs après filtres — affiché au centre du rail dans les modes qui
    *  n'ont pas déjà leur propre compteur (tous sauf session unique). Côté Escouade,
@@ -233,7 +235,7 @@ export function PeriodSessionRail({
   const resolvedContext = filterStore((s) => s.resolvedContext)
   const seasons = useSeasons()
 
-  const locale = (useAppShellStore((s) => s.locale) as Locale) ?? 'fr'
+  const locale = useAppShellStore((s) => s.locale)
   const t = TEXTS[locale]
 
   const allSessions = resolvedContext?.session_options?.all_sessions ?? []

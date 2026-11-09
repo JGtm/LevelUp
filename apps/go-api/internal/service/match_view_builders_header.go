@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"strconv"
 	"strings"
 
 	"levelup/go-api/internal/analysis"
@@ -20,6 +19,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -95,35 +95,34 @@ func headerGameplayDurationSeconds(meta *domain.MatchMetaRaw) *int64 {
 // applyMatchHeaderMetaLabels renseigne StartTime, MapUI, MapID, ModeUI, PlaylistLabel,
 // LOCALE-AWARE (locale de la requête). Sous UI EN, le header servait des libellés FR
 // (map/mode/playlist) composés avec un joint « on » côté front → « Assassin en équipe
-// on Bazaar » (GH-9). EN = noms canoniques API (MapNameEN, pair_name EN, PlaylistName
+// on Bazaar » (GH-9). EN = noms canoniques API (MapNames[en], pair_name EN, PlaylistName
 // brut) ; FR = traductions (comportement historique préservé à l'octet).
 func applyMatchHeaderMetaLabels(h *domain.MatchViewHeader, meta *domain.MatchMetaRaw, locale string) {
-	isEN := locale == "en"
+	loc := i18n.Parse(locale)
 	h.StartTime = meta.StartTime
 	if meta.StartTime != nil {
 		h.StartTimeLabel = formatDateLong(*meta.StartTime, locale)
 	}
-	// Map : EN canonique (asset_translations en-US) sous UI EN, FR sinon ; fallback brut.
-	if isEN && meta.MapNameEN != nil && *meta.MapNameEN != "" {
-		h.MapUI = *meta.MapNameEN
-	} else if !isEN && meta.MapNameFR != nil && *meta.MapNameFR != "" {
-		h.MapUI = *meta.MapNameFR
+	// Map : nom canonique dans la langue de la requête quand la donnée le porte
+	// (asset_translations), à défaut dans la langue de repli, sinon nom brut du registre.
+	if name := meta.MapNames.PickOptional(loc); name != "" {
+		h.MapUI = name
 	} else if meta.MapName != nil {
 		h.MapUI = *meta.MapName
 	}
 	if meta.MapAssetID != nil {
 		h.MapID = *meta.MapAssetID
 	}
-	// Mode : sous UI EN on dérive du pair_name EN (pas de traduction FR injectée) ;
-	// sinon ModeNameFR pré-résolu par le repo (fallback ResolveModeUI(pair, pairFR)).
-	var modeUI *string
-	if isEN {
-		modeUI = analysis.ResolveModeUI(meta.PairName, nil)
-	} else {
-		modeUI = meta.ModeNameFR
-		if modeUI == nil || *modeUI == "" {
-			modeUI = analysis.ResolveModeUI(meta.PairName, meta.PairNameFR)
+	// Mode : ModeNames[loc] pré-résolu par le repo ; sinon dérivé du pair_name brut (EN canonique) et,
+	// hors langue de repli, du pair_name traduit (fallback ResolveModeUIIn). Sous UI EN aucune
+	// traduction étrangère n'est injectée.
+	modeUI := meta.ModeNames.Ptr(loc)
+	if modeUI == nil {
+		pair := i18n.FromColumns(strDeref(meta.PairName), "")
+		if loc != i18n.Fallback && meta.PairNames.Has(loc) {
+			pair[loc] = meta.PairNames[loc]
 		}
+		modeUI = analysis.ResolveModeUIIn(loc, pair)
 	}
 	if modeUI != nil {
 		// Re-normalise SYSTÉMATIQUEMENT : le libellé peut arriver brut avec un nom de
@@ -131,11 +130,10 @@ func applyMatchHeaderMetaLabels(h *domain.MatchViewHeader, meta *domain.MatchMet
 		// suffixe " on/sur <map>" — sinon le front recompose "Slayer on Forest sur Forêt".
 		h.ModeUI = analysis.NormalizeModeLabel(*modeUI, h.MapUI)
 	}
-	// Playlist : EN brut (PlaylistName) sous UI EN, FR (PlaylistNameFR) sinon.
-	if isEN && meta.PlaylistName != nil && *meta.PlaylistName != "" {
-		h.PlaylistLabel = *meta.PlaylistName
-	} else if !isEN && meta.PlaylistNameFR != nil && *meta.PlaylistNameFR != "" {
-		h.PlaylistLabel = *meta.PlaylistNameFR
+	// Playlist : nom traduit dans la langue de la requête quand la donnée le porte (hors langue de
+	// repli), sinon nom brut (PlaylistName, EN canonique).
+	if loc != i18n.Fallback && meta.PlaylistNames.Has(loc) {
+		h.PlaylistLabel = meta.PlaylistNames[loc]
 	} else if meta.PlaylistName != nil {
 		h.PlaylistLabel = *meta.PlaylistName
 	}
@@ -157,8 +155,8 @@ func applyMatchHeaderMapImage(
 		return
 	}
 	nameForAdapter := ""
-	if meta.MapNameEN != nil && *meta.MapNameEN != "" {
-		nameForAdapter = *meta.MapNameEN
+	if meta.MapNames.Has(i18n.Fallback) {
+		nameForAdapter = meta.MapNames[i18n.Fallback]
 	} else if meta.MapName != nil && *meta.MapName != "" {
 		nameForAdapter = *meta.MapName
 	}
@@ -173,7 +171,7 @@ func applyMatchHeaderMapImage(
 		"match_id", matchID,
 		"map_name_used", nameForAdapter,
 		"map_name_raw", strDeref(meta.MapName),
-		"map_name_en", strDeref(meta.MapNameEN))
+		"map_name_en", meta.MapNames[i18n.Fallback])
 }
 
 // applyMatchHeaderOutcome remplit OutcomeCode/Color. La CLÉ canonique (Outcome), elle, est
@@ -394,7 +392,7 @@ func int16PtrPair(a, b *int16) (*int, *int) { return int16Ptr(a), int16Ptr(b) }
 
 // resolveSkillIconURL retourne l'URL du badge CSR/LUSR depuis tier + sub_tier.
 // Extrait de buildRankBlock pour être réutilisé par le scoreboard (tous joueurs).
-func resolveSkillIconURL(tier *string, subTier *int, tierLabel *string, assetURL games.TitleAssetURLAdapter) string {
+func resolveSkillIconURL(tier *string, subTier *int, assetURL games.TitleAssetURLAdapter) string {
 	if assetURL == nil || tier == nil || *tier == "" {
 		return ""
 	}
@@ -402,14 +400,6 @@ func resolveSkillIconURL(tier *string, subTier *int, tierLabel *string, assetURL
 	st := 0
 	if subTier != nil {
 		st = *subTier
-	}
-	if st <= 0 && tierLabel != nil {
-		parts := strings.Fields(strings.TrimSpace(*tierLabel))
-		if len(parts) > 1 {
-			if n, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
-				st = n
-			}
-		}
 	}
 	if strings.EqualFold(t, "Onyx") {
 		return assetURL.CSRRankImageURLOnyx()
@@ -464,6 +454,6 @@ func buildRankBlock(sr *domain.SkillRankRaw, assetURL games.TitleAssetURLAdapter
 	}
 
 	// Badge image — délégué au helper partagé avec le scoreboard.
-	rank.IconURL = resolveSkillIconURL(sr.Tier, sr.SubTier, sr.TierLabel, assetURL)
+	rank.IconURL = resolveSkillIconURL(sr.Tier, sr.SubTier, assetURL)
 	return rank
 }

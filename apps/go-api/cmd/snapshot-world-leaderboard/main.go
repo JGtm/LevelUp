@@ -36,11 +36,11 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability/logging"
-	"levelup/go-api/internal/platform/halo"
 )
 
 func main() {
@@ -108,7 +108,7 @@ func main() {
 // (csrseason3-1 → active, récentes d'abord) via FetchCatalog ; sinon la saison
 // fournie telle quelle. refPlaylist = une playlist classée valide quelconque (sert
 // juste à rendre la page qui porte le menu des saisons).
-func resolveSeasons(ctx context.Context, scraper *halo.LeaderboardScraper, season, refPlaylist string) ([]string, error) {
+func resolveSeasons(ctx context.Context, scraper *haloadapter.LeaderboardScraper, season, refPlaylist string) ([]string, error) {
 	if s := strings.TrimSpace(season); s != "" && s != "all" {
 		return []string{s}, nil
 	}

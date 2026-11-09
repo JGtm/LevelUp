@@ -20,6 +20,7 @@ import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { sessionMatchAxisLabel } from './_shared'
 import { log } from './_logger'
+import { DEFAULT_LOCALE } from '@/lib/i18n/locale'
 
 interface DamagePoint {
   label: string
@@ -32,7 +33,7 @@ interface DamageOpts {
   takenLabel: string
   /** false (titre sans damage_taken, ex. Halo 5) → segment + légende « subis » retirés. */
   showTaken?: boolean
-  /** Locale BCP-47 pour le formatage des entiers (défaut 'fr-FR' si absent). */
+  /** Locale BCP-47 pour le formatage des entiers (défaut : celle de la langue par défaut). */
   numLoc?: string
 }
 
@@ -42,7 +43,7 @@ export function buildSessionDamageOption(
   opts: DamageOpts,
 ): EChartsCoreOption {
   const showTaken = opts.showTaken ?? true
-  const fmtInt = (n: number) => Math.round(n).toLocaleString(opts.numLoc ?? 'fr-FR')
+  const fmtInt = (n: number) => Math.round(n).toLocaleString(opts.numLoc ?? intlLocale(DEFAULT_LOCALE))
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 

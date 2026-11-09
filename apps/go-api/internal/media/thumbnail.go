@@ -27,11 +27,11 @@ func thumbnailArgs(videoPath, webpPath string, skip, extract float64) []string {
 		"-i", videoPath,
 		"-an",
 		"-vf", "fps=12,scale=480:-1:flags=lanczos",
-		"-c:v", "libwebp",
+		ffArgVideoCodec, "libwebp",
 		"-loop", "0",
 		"-q:v", "75",
 		"-compression_level", "6",
-		"-preset", "picture",
+		ffArgPreset, "picture",
 		webpPath,
 	}
 }

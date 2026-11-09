@@ -59,7 +59,7 @@ export function SquadFragSection({
   // serveur n'écrit aucun libellé) — manifeste `frags` pour la mêlée, les mécaniques et le
   // résidu, i18n Escouade pour les deux catégories de source du film.
   const toolRows = useMemo(
-    () => buildSquadToolRows(weaponTools, { locale, labels: toolKindLabels(locale, t.weaponKills) }),
+    () => buildSquadToolRows(weaponTools, { labels: toolKindLabels(locale, t.weaponKills) }),
     [weaponTools, locale, t.weaponKills],
   )
 

@@ -41,9 +41,11 @@ pre-commit:
     gitleaks:
       run: bash scripts/git-hooks/lefthook/gitleaks.sh
 
-    # gofmt — scoped aux fichiers Go stagés (rapide, local)
+    # gofmt — scoped aux fichiers Go stagés du module go-api et des briques sous libs/ (rapide, local)
     gofmt:
-      glob: "apps/go-api/**/*.go"
+      glob:
+        - "apps/go-api/**/*.go"
+        - "libs/**/*.go"
       run: bash scripts/git-hooks/lefthook/gofmt.sh {staged_files}
 
     # go vet — informatif, non bloquant (|| true dans le script). Aveugle aux
@@ -118,7 +120,9 @@ pre-push:
     # avant le scan de vulns (pre-push sequentiel). Comme tout hook a glob, ne
     # tourne que si le push contient du Go — l'autorite sans condition reste la CI.
     go-vet-cgo:
-      glob: "apps/go-api/**/*.go"
+      glob:
+        - "apps/go-api/**/*.go"
+        - "libs/**/*.go"
       run: bash scripts/git-hooks/lefthook/go-vet-cgo.sh
 
     govulncheck:

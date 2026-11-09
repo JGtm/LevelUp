@@ -10,6 +10,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/testutil"
 )
 
@@ -27,9 +28,6 @@ func (m *mockFiltersRepo) GetMatchCount(_ context.Context) (int, error) { return
 func (m *mockFiltersRepo) GetPlayerMatchCount(_ context.Context) (int, error) {
 	return len(m.rows), nil
 }
-func (m *mockFiltersRepo) GetAvailablePlaylists(_ context.Context) ([]domain.LabelValue, error) {
-	return nil, nil
-}
 
 // --- tests FiltersService ---
 
@@ -37,8 +35,8 @@ func TestFiltersService_Resolve_OK(t *testing.T) {
 	now := time.Now()
 	repo := &mockFiltersRepo{
 		rows: []domain.FilterMatchRow{
-			{MatchID: "m1", StartTime: &now, MapName: strPtr("Aquarius"), PairName: strPtr("Slayer"), PlaylistName: strPtr("Ranked Arena")},
-			{MatchID: "m2", StartTime: &now, MapName: strPtr("Streets"), PairName: strPtr("CTF"), PlaylistName: strPtr("Quick Play")},
+			{MatchID: "m1", StartTime: &now, MapName: i18n.FromColumns("Aquarius", ""), PairName: i18n.FromColumns("Slayer", ""), PlaylistName: i18n.FromColumns("", "Ranked Arena")},
+			{MatchID: "m2", StartTime: &now, MapName: i18n.FromColumns("Streets", ""), PairName: i18n.FromColumns("CTF", ""), PlaylistName: i18n.FromColumns("", "Quick Play")},
 		},
 	}
 	svc := NewFiltersService(repo)

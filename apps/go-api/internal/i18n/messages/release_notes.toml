@@ -1,0 +1,13 @@
+# Notes de version servies par /help/release-notes. Les notes elles-mêmes sont des fichiers
+# Markdown par langue (docs/RELEASE_NOTES.md pour la langue de repli, docs/<CODE>/RELEASE_NOTES.md
+# pour les autres) ; une langue sans fichier reçoit la version anglaise précédée de la mention
+# ci-dessous (ADR 0040, D-6).
+
+# Titre de la section lue dans le fichier de la langue ; le même texte sert à la reconnaître.
+[release_notes.heading]
+fr = "Dernières nouveautés"
+en = "What's new"
+
+[release_notes.english_only]
+fr = "Notes de version disponibles en anglais uniquement."
+en = "Release notes available in English only."

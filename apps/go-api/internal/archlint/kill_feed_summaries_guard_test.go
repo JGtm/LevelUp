@@ -63,8 +63,12 @@ var lecteursDeLignesDuJournal = map[string]string{
 const plafondAllowlistJournal = 16
 
 func TestJournalDesMortsLuSeulementParLesLecteursDeLignes(t *testing.T) {
-	if n := len(lecteursDeLignesDuJournal); n > plafondAllowlistJournal {
+	switch n := len(lecteursDeLignesDuJournal); {
+	case n > plafondAllowlistJournal:
 		t.Errorf("allowlist du journal : %d entrées pour un plafond de %d (ADR 0039, décision 8 : elle ne peut que décroître)", n, plafondAllowlistJournal)
+	case n < plafondAllowlistJournal:
+		t.Errorf("allowlist du journal : %d entrées sous le plafond de %d : baisse le plafond à %d "+
+			"(plafondAllowlistJournal) dans le même commit, la marge se reconsommerait en silence", n, plafondAllowlistJournal, n)
 	}
 	lues := declarationsLisantLeJournal(t)
 	var intrus []string

@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/killcollector"
 )
 
@@ -91,7 +91,7 @@ func candidatsAvecCarte(
 // (lot 5.24.2) et la capture. Sorti de `passeDesFilms` quand le retrait des matchs sans carte l a
 // portee au-dela des 80 lignes du depot : aucune ligne de cablage n a change.
 func collecteurHorsLigne(
-	cache *haloclient.LocalFilmCache, db *sql.DB, porte *killcollector.PorteDeLaBase,
+	cache *filmfetch.LocalFilmCache, db *sql.DB, porte *killcollector.PorteDeLaBase,
 	caps games.CapabilityMap, capture killcollector.DepsCapture,
 ) *killcollector.KillSourceCollector {
 	return killcollector.NewKillSourceCollector(

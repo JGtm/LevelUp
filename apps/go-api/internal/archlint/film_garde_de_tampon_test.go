@@ -17,7 +17,7 @@ import (
 
 const (
 	// hoteGardeDeTampon : le seul fichier qui ecrit la garde.
-	hoteGardeDeTampon = "internal/games/halo_infinite/film/internal/grammar/film_identity.go"
+	hoteGardeDeTampon = racineBriqueFilm + "/internal/grammar/film_identity.go"
 	// plancherFichiersGardeDeTampon : plancher contre un balayage muet.
 	plancherFichiersGardeDeTampon = 500
 )

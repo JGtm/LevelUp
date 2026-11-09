@@ -1,0 +1,32 @@
+# Source unique des langues de l'application (ADR 0040).
+#
+# Ajouter une langue = une entree [[locale]] ici + ses fichiers de traduction ; aucun code a
+# modifier. Les modules generes (apps/web/src/lib/i18n/generated/locales.ts et
+# apps/go-api/internal/i18n/locales_gen.go) se regenerent par
+#   node apps/web/scripts/build_i18n_manifests.mjs
+# et un test de fraicheur refuse tout ecart avec ce fichier.
+#
+# default  : langue servie quand la demande est vide ou inconnue.
+# fallback : langue de repli des noms de jeu (armes, medailles, cartes) sans traduction.
+# L'ordre des entrees est l'ordre d'affichage.
+#
+# Champs d'une entree :
+#   code     sous-etiquette primaire BCP-47 en minuscules (cle de toute table par langue)
+#   intl     etiquette BCP-47 passee a Intl.* (formats de nombres et de dates)
+#   halo     etiquettes Halo (API, asset_translations), par ordre de preference
+#   required la langue doit couvrir 100 % des textes de l'interface
+
+default = "fr"
+fallback = "en"
+
+[[locale]]
+code = "fr"
+intl = "fr-FR"
+halo = ["fr-FR"]
+required = true
+
+[[locale]]
+code = "en"
+intl = "en-GB"
+halo = ["en-US"]
+required = true

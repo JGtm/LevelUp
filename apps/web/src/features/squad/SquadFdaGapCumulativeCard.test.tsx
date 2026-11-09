@@ -81,7 +81,7 @@ describe('SquadFdaGapCumulativeCard', () => {
   it('capability expected_stats présente → titre + graphe, aucune pastille sous le graphe', async () => {
     setTitleCaps(['expected_stats'])
     render(
-      <SquadFdaGapCumulativeCard rowsByPlayer={ROWS} playerOrder={ORDER} colorByPlayer={COLORS} t={T} />,
+      <SquadFdaGapCumulativeCard rowsByPlayer={ROWS} playerOrder={ORDER} colorByPlayer={COLORS} t={T} locale="fr" />,
     )
     expect(await screen.findByTestId('echarts-mock')).toBeInTheDocument()
     expect(screen.getByText(T.fdaGap.title)).toBeInTheDocument()
@@ -94,7 +94,7 @@ describe('SquadFdaGapCumulativeCard', () => {
   it('valeur de fin au bout des courbes, dans la locale de l’interface (FR)', async () => {
     setTitleCaps(['expected_stats'])
     render(
-      <SquadFdaGapCumulativeCard rowsByPlayer={ROWS} playerOrder={ORDER} colorByPlayer={COLORS} t={T} />,
+      <SquadFdaGapCumulativeCard rowsByPlayer={ROWS} playerOrder={ORDER} colorByPlayer={COLORS} t={T} locale="fr" />,
     )
     await screen.findByTestId('echarts-mock')
     const series = options.at(-1)?.series ?? []
@@ -107,7 +107,7 @@ describe('SquadFdaGapCumulativeCard', () => {
   it('capability expected_stats absente → non rendu (null)', () => {
     setTitleCaps(['ranked'])
     const { container } = render(
-      <SquadFdaGapCumulativeCard rowsByPlayer={ROWS} playerOrder={ORDER} colorByPlayer={COLORS} t={T} />,
+      <SquadFdaGapCumulativeCard rowsByPlayer={ROWS} playerOrder={ORDER} colorByPlayer={COLORS} t={T} locale="fr" />,
     )
     expect(container).toBeEmptyDOMElement()
     expect(screen.queryByTestId('echarts-mock')).toBeNull()

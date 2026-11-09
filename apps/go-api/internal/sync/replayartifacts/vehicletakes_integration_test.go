@@ -3,8 +3,7 @@
 package replayartifacts
 
 // vehicletakes_integration_test.go — LA RESSOURCE VEHICULES DE L'EMPRISE, DE L'ARTEFACT A LA VUE
-// `_latest`, sur une VRAIE base migree et un VRAI artefact (plan
-// `.ai/V7.5/PLAN_EMPRISE_VEHICULES_2026-09-28.md`, lot L7.2).
+// `_latest`, sur une VRAIE base migree et un VRAI artefact.
 //
 // Chaque test est rouge sous une mutation nommee au journal du lot ; aucun ne se contente d'un
 // grep sur le source.
@@ -22,10 +21,11 @@ import (
 	"levelup/go-api/internal/domain/killscope"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/killicon"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/killicon"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 const (

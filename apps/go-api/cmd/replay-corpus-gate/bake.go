@@ -36,7 +36,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -46,7 +46,7 @@ const outilNom = "replay-corpus-gate"
 // attenteVerrouGate : combien de temps une cuisson attend son tour avant de renoncer — MEME
 // REGIME que les trois autres enchaineurs de films de ce depot (cmd_backfill_replay_child.go,
 // replay-equiv/child.go, replay-worker/job.go, tous a 10 min). Avant CORPUS-R1 C10,
-// `filmproc.AcquireSolo` refusait IMMEDIATEMENT sur un decodage concurrent (worker, post-sync,
+// `filmrun.AcquireSolo` refusait IMMEDIATEMENT sur un decodage concurrent (worker, post-sync,
 // backfill deja en cours) : un gate qui dure 13 a 25 min sortait alors en erreur pour une
 // raison etrangere au diff sous revue — rouge FAUX, jamais vert faux, mais un bruit que
 // l'attente bornee elimine.
@@ -55,11 +55,11 @@ const attenteVerrouGate = 10 * time.Minute
 // plafondMemoireGate : le plafond SOUPLE, en gibioctets, que ce gate arme sur CHACUNE de ses
 // cuissons enfants (`--mem-gib`, transmis par `cuireUneCarte`).
 //
-// # POURQUOI IL N'EST PAS `filmproc.DefaultLimitGiB` (D6 (1.9.9), 2026-09-16)
+// # POURQUOI IL N'EST PAS `memguard.DefaultLimitGiB` (D6 (1.9.9), 2026-09-16)
 //
 // Avant le 2026-09-17, `bake.go` construisait les arguments de `replay-build` EN DUR (`--map`,
 // `--title`, `--facts`, matchID) : aucun plafond n'etait transmis, l'enfant gardait donc
-// toujours `filmproc.DefaultLimitGiB` = 3 Gio souple, soit 3,75 Gio dur (`hardMargin`, +25 %).
+// toujours `memguard.DefaultLimitGiB` = 3 Gio souple, soit 3,75 Gio dur (`hardMargin`, +25 %).
 // Or le gate a MESURE deux temoins BTB juste au-dessus : `e5adf7b2` culmine a 3,779 Gio et
 // `4f77afc1` a 3,807 Gio COTE BASE. Ils echouent donc par marge de quelques dizaines de
 // mebioctets — de facon INSTABLE d'un run a l'autre (le meme gate les avait conclus la veille).
@@ -68,7 +68,7 @@ const attenteVerrouGate = 10 * time.Minute
 // 4 Gio souple = 5 Gio dur : les deux pics mesures passent avec 1,19 Gio de marge, et un film
 // qui depasserait CE plafond-la reste arrete — ce n'est pas un desarmement, c'est un plafond
 // pose sur la mesure au lieu de l'etre sur une valeur de production. Les passes de PRODUCTION
-// gardent `filmproc.DefaultLimitGiB` ; `--mem-gib 0` desarme, echappatoire de l'operateur.
+// gardent `memguard.DefaultLimitGiB` ; `--mem-gib 0` desarme, echappatoire de l'operateur.
 const plafondMemoireGate = 4
 
 // resultatCuisson porte l'artefact produit et le temps qu'il a coute.
@@ -100,12 +100,12 @@ type cuissonParams struct {
 // sur un gate qui dure 13 a 25 min), il interrompt l'attente proprement au lieu de la laisser
 // courir jusqu'a son terme.
 func bakeTemoin(ctx context.Context, p cuissonParams, facts replaybuild.FactsFile) (resultatCuisson, error) {
-	lock, err := filmproc.AcquireSoloWait(ctx, p.LockRoot, outilNom, facts.MatchID, attenteVerrouGate)
+	lock, err := filmrun.AcquireSoloWait(ctx, p.LockRoot, outilNom, facts.MatchID, attenteVerrouGate)
 	if err != nil {
 		return resultatCuisson{}, fmt.Errorf("verrou de decodage : %w", err)
 	}
 	defer lock.Release()
-	filmproc.LowerOwnPriority(outilNom)
+	filmrun.LowerOwnPriority(outilNom)
 
 	factsPath, err := ecrireFaitsTemp(p.WorkRoot, facts)
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // TestBuildMatchHeader_DominanceBadge verifie le branchement Phase 1 méta-plan
@@ -300,8 +301,8 @@ func TestBuildMatchHeader_MapImageURL_PrefersENNameOverRawUUID(t *testing.T) {
 
 	// Cas critique : MapName=UUID + MapNameEN="Shiro" → adapter reçoit "Shiro"
 	meta := &domain.MatchMetaRaw{
-		MapName:   &rawUUID,
-		MapNameEN: &enName,
+		MapName:  &rawUUID,
+		MapNames: i18n.FromColumns(enName, ""),
 	}
 	h := buildMatchHeader(context.Background(), "m1", meta, nil, nil, nil, stubRejectUUID, false)
 	if h.MapImageURL == nil || *h.MapImageURL != "/static/maps/halo_infinite/Shiro.jpg" {
@@ -421,9 +422,9 @@ func TestBuildMatchHeader_ModeFallbackNormalized(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			meta := &domain.MatchMetaRaw{
-				PairName:   &tc.pairName,
-				ModeNameFR: tc.modeNameFR,
-				MapNameFR:  tc.mapNameFR,
+				PairName:  &tc.pairName,
+				ModeNames: i18n.FromColumns("", derefStr(tc.modeNameFR)),
+				MapNames:  i18n.FromColumns("", derefStr(tc.mapNameFR)),
 			}
 			h := buildMatchHeader(context.Background(), "m1", meta, nil, nil, nil, nil, false)
 			if h.ModeUI != tc.want {
@@ -531,8 +532,8 @@ func TestBuildMatchHeader_PlaylistFR(t *testing.T) {
 	en := "Ranked Arena"
 	fr := "Arène classée"
 	meta := &domain.MatchMetaRaw{
-		PlaylistName:   &en,
-		PlaylistNameFR: &fr,
+		PlaylistName:  &en,
+		PlaylistNames: i18n.FromColumns("", fr),
 	}
 	h := buildMatchHeader(context.Background(), "m1", meta, nil, nil, nil, nil, false)
 	if h.PlaylistLabel != fr {

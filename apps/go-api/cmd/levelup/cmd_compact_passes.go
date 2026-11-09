@@ -77,7 +77,7 @@ func runCompactPasses(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("--rewrite-file écrit : incompatible avec --dry-run")
 	}
 	reg := titlePkg.NewRegistryFromConfig(cfg.RepoRoot, slog.Default())
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot, reg)
+	pr := cfg.PathResolver(reg)
 	slugs, err := titresACompacter(reg, pr, o.title)
 	if err != nil {
 		return err

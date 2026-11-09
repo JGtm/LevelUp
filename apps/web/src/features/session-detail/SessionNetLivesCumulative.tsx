@@ -32,6 +32,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { sessionMatchAxisLabel, useSessionT } from './_shared'
+import { intlLocale } from '@/lib/formatters/intlLocale'
 
 export interface NetLivesPoint {
   /** Étiquette d'axe X du match (`#N` + carte/mode). */
@@ -165,7 +166,7 @@ export function SessionNetLivesCumulative({ title, matches, height = 280, yDomai
   // Titre sans dégâts subis (ex. Halo 5) → masquage silencieux (pas de carte vide).
   if (!providesDamageTaken) return null
 
-  const nf = new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'fr-FR', {
+  const nf = new Intl.NumberFormat(intlLocale(locale), {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
     signDisplay: 'always',

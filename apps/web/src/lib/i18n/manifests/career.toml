@@ -6,7 +6,6 @@
 # Phase 2 meta-plan § 6.2.1 — pilote Career. Couvre :
 #   career.summary.*       Summary card (rang + XP)
 #   career.charts.*        Titres + axes des charts ECharts
-#   career.top_matches.*   Section top matchs
 #   career.encounters.*    Section rencontres frequentes
 #   career.citations.*     Onglet Citations
 #   career.empty.*         Etats vides
@@ -133,40 +132,6 @@ en = "Chart unavailable"
 [career.charts.placeholder_description]
 fr = "La vue carrière n'a renvoyé aucune donnée exploitable pour cette section."
 en = "The career view returned no exploitable data for this section."
-
-# ─── Top matches ────────────────────────────────────────────────────────────
-
-[career.top_matches.section_title]
-fr = "Meilleurs matchs récents"
-en = "Recent best matches"
-
-[career.top_matches.see_all]
-fr = "Voir tous les top matchs"
-en = "View all top matches"
-
-[career.top_matches.empty_title]
-fr = "Top matchs indisponibles"
-en = "Top matches unavailable"
-
-[career.top_matches.empty_description]
-fr = "Aucun match distinctif n'a été calculé pour cette page de carrière."
-en = "No distinctive match was computed for this career page."
-
-[career.top_matches.col_match]
-fr = "Match"
-en = "Match"
-
-[career.top_matches.col_kda]
-fr = "K/D/A"
-en = "K/D/A"
-
-[career.top_matches.col_kd]
-fr = "K/D"
-en = "K/D"
-
-[career.top_matches.col_outcome]
-fr = "Résultat"
-en = "Outcome"
 
 # ─── Encounters (Némésis / Souffre-douleurs) ───────────────────────────────
 
@@ -518,45 +483,3 @@ en = "No encounter recorded."
 [career.actions.compare]
 fr = "Comparer"
 en = "Compare"
-
-# ─── Top matches (table columns) ────────────────────────────────────────────
-
-[career.top_matches.col_index]
-fr = "#"
-en = "#"
-
-[career.top_matches.col_waypoint_aria]
-fr = "Ouvrir sur Halo Waypoint"
-en = "Open on Halo Waypoint"
-
-[career.top_matches.col_date]
-fr = "Date"
-en = "Date"
-
-[career.top_matches.col_map_mode]
-fr = "Carte / Mode"
-en = "Map / Mode"
-
-[career.top_matches.col_kills_short]
-fr = "K"
-en = "K"
-
-[career.top_matches.col_deaths_short]
-fr = "D"
-en = "D"
-
-[career.top_matches.col_score]
-fr = "Score"
-en = "Score"
-
-[career.top_matches.default_title_best]
-fr = "Meilleurs matchs"
-en = "Best matches"
-
-[career.top_matches.default_title_worst]
-fr = "Pires matchs"
-en = "Worst matches"
-
-[career.top_matches.default_title_neutral]
-fr = "Top matchs"
-en = "Top matches"

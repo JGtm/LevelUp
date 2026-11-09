@@ -20,6 +20,7 @@ import (
 	"context"
 	"database/sql"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/killcollector"
 )
@@ -32,7 +33,7 @@ import (
 // `v_weapon_kills`, exactement comme avant la bascule.
 type citationWeaponSource struct {
 	classifier port.KillSourceClassifier
-	keyNames   map[string]string // weapon_key -> name_en
+	keyNames   map[string]string // weapon_key -> nom canonique (langue de repli)
 }
 
 // actif dit si cette source peut servir. Un traducteur sans table de noms ne sert a rien :
@@ -43,19 +44,20 @@ func (s citationWeaponSource) actif() bool {
 
 // loadWeaponKeyNames charge « cle de registre -> nom canonique EN » depuis la metadata.
 //
-// Le nom vient de `weapon_name_labels` (source unique keyee par cle, V72-06) et retombe sur
-// le nom du registre. Best-effort : une metadata non seedee rend une table vide, la source
+// Le nom vient de `weapon_name_labels` (source unique keyee par cle, V72-06), ligne de la langue
+// de repli (canonique EN : c'est la cle des stats `weapon_kills:<nom>`, pas un libelle affiche), et
+// retombe sur le nom du registre. Best-effort : une metadata non seedee rend une table vide, la source
 // est alors inactive et l'appelant garde sa voie historique.
 func loadWeaponKeyNames(ctx context.Context, db *sql.DB, titleSlug string) (map[string]string, error) {
 	const q = `
 SELECT w.weapon_key,
-       COALESCE(NULLIF(MIN(wnl.name_en), ''), NULLIF(MIN(w.name), ''), '') AS name_en
+       COALESCE(NULLIF(MIN(wnl.name), ''), NULLIF(MIN(w.name), ''), '') AS canonical_name
 FROM weapons w
 LEFT JOIN weapon_name_labels wnl
-       ON wnl.title_slug = w.title_slug AND wnl.weapon_key = w.weapon_key
+       ON wnl.title_slug = w.title_slug AND wnl.weapon_key = w.weapon_key AND wnl.lang = ?
 WHERE w.title_slug = ?
 GROUP BY w.weapon_key`
-	rows, err := db.QueryContext(ctx, q, titleSlug)
+	rows, err := db.QueryContext(ctx, q, string(i18n.Fallback), titleSlug)
 	if err != nil {
 		return nil, err
 	}

@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
@@ -64,9 +65,9 @@ func (s *ExplorerService) targetFragDistribution(
 			counts.ShoulderBash = m.ShoulderBash
 		}
 	}
-	fd := fragdist.Build(rows, counts, hasMechanics)
+	fd := fragdist.Build(i18n.FromContext(ctx), rows, counts, hasMechanics)
 	logFragDistribution(ctx, "explorer target", slug, targetXUID, fd)
-	return &fd, buildTopWeaponKills(rows, synthesisWeaponChartTopN)
+	return &fd, buildTopWeaponKills(i18n.FromContext(ctx), rows, synthesisWeaponChartTopN)
 }
 
 // loadTargetWeaponKillRows charge les rows agrégées d'armes de la cible sur les matchs

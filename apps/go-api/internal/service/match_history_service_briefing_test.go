@@ -3,10 +3,13 @@ package service
 import (
 	"context"
 	"math"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // briefingRaw construit une raw row minimale pour les tests du briefing.
@@ -26,13 +29,13 @@ func briefingRaw(id string, daysAgo, outcome, kills, deaths, assists int, perf f
 		r.MapID = &mapID
 	}
 	if mapFR != "" {
-		r.MapNameFR = &mapFR
+		r.MapName.Set(i18n.LocaleFR, mapFR)
 	}
 	if pairFR != "" {
-		r.PairNameFR = &pairFR
+		r.PairName.Set(i18n.LocaleFR, pairFR)
 	}
 	if playlist != "" {
-		r.PlaylistName = &playlist
+		r.PlaylistName.Set(i18n.LocaleFR, playlist)
 	}
 	return r
 }
@@ -41,10 +44,20 @@ func svcWithRanked(ranked bool) *MatchHistoryService {
 	return &MatchHistoryService{rankedCapable: ranked}
 }
 
+// Échantillon faible (< MinBriefingModulesMatches) : LowSample est posé, mais Baseline,
+// Dimensions et ContextSplit suivent les MÊMES règles qu'au-delà du seuil (D3/D4/D5) et
+// MinGroupMatches est servi.
 func TestBuildExplorerBriefing_LowSample(t *testing.T) {
+	// 8 matchs : deux cartes (4 + 4) et deux contextes (4 solo + 4 escouade).
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 8; i++ {
-		filtered = append(filtered, briefingRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène classée"))
+		mapID, label := "map1", "Aquarius"
+		if i%2 == 1 {
+			mapID, label = "map2", "Recharge"
+		}
+		r := briefingRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, 10, 5, 2, 60, mapID, label, "Slayer", "Arène classée")
+		r.IsWithFriends = (i/2)%2 == 1
+		filtered = append(filtered, r)
 	}
 	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered)
 	if b == nil {
@@ -61,8 +74,34 @@ func TestBuildExplorerBriefing_LowSample(t *testing.T) {
 	if b.PeriodStart == nil || b.PeriodEnd == nil {
 		t.Error("period should be set")
 	}
-	if b.Baseline != nil || b.Dimensions != nil || b.Ranked != nil {
-		t.Error("low sample: modules must be nil")
+	if b.MinGroupMatches != 5 {
+		t.Errorf("MinGroupMatches = %d, want 5", b.MinGroupMatches)
+	}
+	if b.Baseline == nil {
+		t.Fatal("low sample: Baseline doit être servie")
+	}
+	if want := buildBriefingBaseline(filtered, filtered); !reflect.DeepEqual(b.Baseline, want) {
+		t.Errorf("Baseline = %+v, want mêmes règles que hors échantillon faible : %+v", b.Baseline, want)
+	}
+	// 4 + 4 matchs par carte : sous le seuil de 5, la carte est servie en état vide (D3).
+	var mapDim *domain.ExplorerBriefingDimension
+	for i := range b.Dimensions {
+		if b.Dimensions[i].Dimension == "map" {
+			mapDim = &b.Dimensions[i]
+		}
+	}
+	if mapDim == nil || !mapDim.Insufficient {
+		t.Errorf("low sample: dimension carte attendue en état vide (Insufficient), got %+v", b.Dimensions)
+	}
+	if want := buildBriefingDimensions(filtered, filtered, domain.GroupesDeCartes{}, i18n.Default); !reflect.DeepEqual(b.Dimensions, want) {
+		t.Errorf("Dimensions = %+v, want mêmes règles que hors échantillon faible : %+v", b.Dimensions, want)
+	}
+	// 4 solo + 4 escouade : les deux côtés existent mais sont sous le seuil → état vide (D5).
+	if b.ContextSplit == nil || !b.ContextSplit.Insufficient {
+		t.Errorf("low sample: ContextSplit attendu en état vide (Insufficient), got %+v", b.ContextSplit)
+	}
+	if want := buildBriefingContextSplit(filtered); !reflect.DeepEqual(b.ContextSplit, want) {
+		t.Errorf("ContextSplit = %+v, want mêmes règles que hors échantillon faible : %+v", b.ContextSplit, want)
 	}
 }
 
@@ -104,12 +143,16 @@ func TestBuildExplorerBriefing_SingleValueDimensionNotEmitted(t *testing.T) {
 }
 
 func TestBuildExplorerBriefing_SubThresholdGroupExcluded(t *testing.T) {
-	// map1 : 12 matchs (qualifié) ; map2 : 5 matchs (< 10, exclu du top/flop).
+	// map1 : 12 matchs et map3 : 6 matchs (qualifiés) ; map2 : 4 matchs (< 5, exclu
+	// du top/flop). Deux groupes qualifiés au moins : la carte reste une comparaison.
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 12; i++ {
 		filtered = append(filtered, briefingRaw("a"+string(rune('a'+i)), i, domain.OutcomeWin, 10, 5, 2, 70, "map1", "Aquarius", "Slayer", "Arène"))
 	}
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 6; i++ {
+		filtered = append(filtered, briefingRaw("c"+string(rune('a'+i)), 40+i, domain.OutcomeWin, 8, 6, 2, 55, "map3", "Recharge", "Slayer", "Arène"))
+	}
+	for i := 0; i < MinDimensionGroupMatches-1; i++ {
 		filtered = append(filtered, briefingRaw("b"+string(rune('a'+i)), 20+i, domain.OutcomeLoss, 5, 10, 1, 40, "map2", "Bazaar", "Slayer", "Arène"))
 	}
 	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered)
@@ -124,7 +167,7 @@ func TestBuildExplorerBriefing_SubThresholdGroupExcluded(t *testing.T) {
 	}
 	for _, e := range mapDim.Entries {
 		if e.Label == "Bazaar" {
-			t.Error("Bazaar (5 matchs < 10) must not appear in entries")
+			t.Error("Bazaar (4 matchs < 5) must not appear in entries")
 		}
 		if e.Label == "Aquarius" && e.NoteTier == nil {
 			t.Error("Aquarius (12 matchs, perf 70) should have a note")
@@ -155,7 +198,12 @@ func briefingRankedRaw(o rankedRawOpts) domain.MatchHistoryRawRow {
 		g := o.group
 		r.PlaylistGroup = &g
 	}
-	r.SkillTierLabel = o.tierLabel
+	r.SkillStoredLabel = o.tierLabel
+	if o.tierLabel != nil {
+		var sub int
+		r.SkillTier, sub = rankCodeFromFRLabel(*o.tierLabel)
+		r.SubTier = &sub
+	}
 	r.RatingValue = o.ratingValue
 	r.PlacementDone = o.placementDone
 	r.PlacementTotal = o.placementTotal
@@ -633,9 +681,9 @@ func TestBuildDimension_FilteredSortsByDelta(t *testing.T) {
 func peakRankRaw(id string, daysAgo int, ratingType, tierEN string, subTier int, tierLabel string) domain.MatchHistoryRawRow {
 	r := briefingRaw(id, daysAgo, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène")
 	r.SkillRatingType = strPtr(ratingType)
-	r.SkillTier = strPtr(tierEN)
+	r.SkillTier = tierEN
 	r.SubTier = intPtr(subTier)
-	r.SkillTierLabel = strPtr(tierLabel)
+	r.SkillStoredLabel = strPtr(tierLabel)
 	return r
 }
 
@@ -650,7 +698,7 @@ func TestBuildBriefingScope_DurationAndPeaks(t *testing.T) {
 		mk("b", 1, intPtr(900), float64Ptr(3.0), float64Ptr(1600)),
 		mk("c", 0, nil, float64Ptr(2.0), nil), // durée + mmr absents sur ce match
 	}
-	s := buildBriefingScope(rows)
+	s := buildBriefingScope(rows, i18n.Default)
 	if s.TotalDurationSeconds == nil || *s.TotalDurationSeconds != 1500 {
 		t.Errorf("TotalDurationSeconds want 1500 (600+900), got %v", s.TotalDurationSeconds)
 	}
@@ -668,7 +716,7 @@ func TestBuildBriefingScope_DurationAndMMRNilWhenAbsent(t *testing.T) {
 		briefingRaw("a", 1, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène"),
 		briefingRaw("b", 0, domain.OutcomeLoss, 5, 10, 1, 40, "map1", "Aquarius", "Slayer", "Arène"),
 	}
-	s := buildBriefingScope(rows)
+	s := buildBriefingScope(rows, i18n.Default)
 	if s.TotalDurationSeconds != nil {
 		t.Errorf("TotalDurationSeconds want nil (aucune durée), got %v", s.TotalDurationSeconds)
 	}
@@ -684,7 +732,7 @@ func TestBuildBriefingScope_PeakRankLUSROnly(t *testing.T) {
 		peakRankRaw("b", 2, "LUSR", "Diamond", 4, "Diamant IV"),
 		peakRankRaw("c", 1, "LUSR", "Diamond", 1, "Diamant I"),
 	}
-	s := buildBriefingScope(rows)
+	s := buildBriefingScope(rows, i18n.Default)
 	if len(s.PeakRanks) != 1 {
 		t.Fatalf("want 1 peak rank (LUSR seul), got %+v", s.PeakRanks)
 	}
@@ -700,7 +748,7 @@ func TestBuildBriefingScope_PeakRankBothSystems(t *testing.T) {
 		peakRankRaw("l1", 2, "LUSR", "Gold", 5, "Or V"), // pic LUSR
 		peakRankRaw("l2", 1, "LUSR", "Silver", 2, "Argent II"),
 	}
-	s := buildBriefingScope(rows)
+	s := buildBriefingScope(rows, i18n.Default)
 	if len(s.PeakRanks) != 2 {
 		t.Fatalf("want 2 peak ranks (lusr + csr), got %+v", s.PeakRanks)
 	}
@@ -717,7 +765,7 @@ func TestBuildBriefingScope_PeakRankNilWhenNoTier(t *testing.T) {
 	rows := []domain.MatchHistoryRawRow{
 		briefingRaw("a", 0, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène"),
 	}
-	s := buildBriefingScope(rows)
+	s := buildBriefingScope(rows, i18n.Default)
 	if s.PeakRanks != nil {
 		t.Errorf("PeakRanks want nil (aucun palier), got %+v", s.PeakRanks)
 	}
@@ -738,7 +786,7 @@ func TestBuildBriefingScope_MinMaxTriptych(t *testing.T) {
 		mk("b", 1, 16, 4, 3, 90), // net 13.0
 		mk("c", 0, 6, 9, 9, 62),  // net 0.0
 	}
-	s := buildBriefingScope(rows)
+	s := buildBriefingScope(rows, i18n.Default)
 	// FDA : min = plus bas net (0.0) ; max (peak) = plus haut net (13.0).
 	if s.MinKDA == nil || *s.MinKDA != 0.0 {
 		t.Errorf("MinKDA want 0.0 (min r.KDA), got %v", s.MinKDA)
@@ -773,11 +821,28 @@ func TestBuildBriefingScope_MinMaxNilWhenAbsent(t *testing.T) {
 		{MatchID: "a", Outcome: domain.OutcomeWin, Kills: 10, Deaths: 5, Assists: 2},
 		{MatchID: "b", Outcome: domain.OutcomeLoss, Kills: 5, Deaths: 10, Assists: 1},
 	}
-	s := buildBriefingScope(rows)
+	s := buildBriefingScope(rows, i18n.Default)
 	if s.MinKDA != nil || s.PeakKDA != nil {
 		t.Errorf("MinKDA/PeakKDA want nil (aucun r.KDA), got %v / %v", s.MinKDA, s.PeakKDA)
 	}
 	if s.MinPerf != nil || s.MaxPerf != nil || s.AvgPerf != nil {
 		t.Errorf("MinPerf/MaxPerf/AvgPerf want nil (aucun score), got %v / %v / %v", s.MinPerf, s.MaxPerf, s.AvgPerf)
 	}
+}
+
+// rankCodeFromFRLabel retrouve le code (palier anglais, sous-palier) d'un libellé français de test
+// (« Platine VI », « Placement (7 restants) ») : les raw rows portent le code, le service en déduit
+// le libellé servi.
+func rankCodeFromFRLabel(label string) (string, int) {
+	names := map[string]string{
+		"Bronze": "Bronze", "Argent": "Silver", "Or": "Gold",
+		"Platine": "Platinum", "Diamant": "Diamond", "Onyx": "Onyx", "Placement": "Placement",
+	}
+	romans := map[string]int{"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6}
+	parts := strings.Fields(label)
+	tier := names[parts[0]]
+	if len(parts) > 1 {
+		return tier, romans[parts[1]]
+	}
+	return tier, 0
 }

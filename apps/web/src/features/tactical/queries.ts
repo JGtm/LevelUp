@@ -136,9 +136,10 @@ export function useTacticalMaps(
   coequipiers: string[],
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   const corps: TacticalMapsBody = { match_ids: matchIDs ?? [], coequipiers }
   return useQuery({
-    queryKey: queryKeys.tacticalMaps(playerSlug, titleSlug, hashFiltre(corps)),
+    queryKey: queryKeys.tacticalMaps(playerSlug, titleSlug, hashFiltre(corps), locale),
     queryFn: () => api.post<TacticalMapsPage>(`/players/${playerSlug}/tactical/maps`, corps),
     enabled: !!playerSlug && matchIDs !== null,
     staleTime: 2 * 60 * 1000,
@@ -249,20 +250,27 @@ function corpsDuRaster(params: ParamsDuRaster) {
  * pour sa question (même corps, seule la question change), avec les zones de la carte, servies une
  * fois : changer de lecture vers une voisine lit le cache, sans requête et sans « Mise à jour… ».
  */
+/** L adresse d une lecture dans le cache : joueur, titre, carte et langue (les noms de lieux sont servis dans la langue de la requête). */
+interface CleDeLecture {
+  playerSlug: string
+  titleSlug: string
+  mapId: string
+  locale: string
+}
+
 async function lireLeRaster(
   queryClient: QueryClient,
-  playerSlug: string,
-  titleSlug: string,
-  mapId: string,
+  cle: CleDeLecture,
   corps: ReturnType<typeof corpsDuRaster>,
 ): Promise<TacticalRaster> {
+  const { playerSlug, titleSlug, mapId, locale } = cle
   const reponse = await api.post<TacticalRaster>(
     `/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/raster`,
     corps,
   )
   for (const voisine of reponse.voisines ?? []) {
     queryClient.setQueryData<TacticalRaster>(
-      queryKeys.tacticalRaster(playerSlug, titleSlug, mapId, hashFiltre({ ...corps, question: voisine.question })),
+      queryKeys.tacticalRaster(playerSlug, titleSlug, mapId, hashFiltre({ ...corps, question: voisine.question }), locale),
       { ...voisine, zones: reponse.zones },
     )
   }
@@ -284,11 +292,12 @@ async function lireLeRaster(
  */
 export function useTacticalRaster(playerSlug: string, mapId: string, params: ParamsDuRaster) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   const queryClient = useQueryClient()
   const corps = corpsDuRaster(params)
   return useQuery({
-    queryKey: queryKeys.tacticalRaster(playerSlug, titleSlug, mapId, hashFiltre(corps)),
-    queryFn: () => lireLeRaster(queryClient, playerSlug, titleSlug, mapId, corps),
+    queryKey: queryKeys.tacticalRaster(playerSlug, titleSlug, mapId, hashFiltre(corps), locale),
+    queryFn: () => lireLeRaster(queryClient, { playerSlug, titleSlug, mapId, locale }, corps),
     enabled: !!playerSlug && !!mapId && params.match_ids !== null,
     staleTime: RASTER_FRAIS_MS,
     // La réponse précédente reste servie pendant la relecture (`isPlaceholderData`) : la
@@ -321,6 +330,7 @@ export function usePrechargementDesLectures(
   questions: readonly string[],
 ): () => void {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   const queryClient = useQueryClient()
   const enCours = useRef<string | null>(null)
   return () => {
@@ -331,12 +341,12 @@ export function usePrechargementDesLectures(
     void (async () => {
       for (const question of questions) {
         const corps = corpsDuRaster({ ...params, question })
-        const queryKey = queryKeys.tacticalRaster(playerSlug, titleSlug, mapId, hashFiltre(corps))
+        const queryKey = queryKeys.tacticalRaster(playerSlug, titleSlug, mapId, hashFiltre(corps), locale)
         if (queryClient.getQueryData(queryKey) !== undefined) continue
         try {
           await queryClient.fetchQuery({
             queryKey,
-            queryFn: () => lireLeRaster(queryClient, playerSlug, titleSlug, mapId, corps),
+            queryFn: () => lireLeRaster(queryClient, { playerSlug, titleSlug, mapId, locale }, corps),
             staleTime: RASTER_FRAIS_MS,
             meta: SANS_BARRE_META,
           })
@@ -378,9 +388,10 @@ export function useTacticalCellule(
   },
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   const corps = cellule ? { ...params, match_ids: params.match_ids ?? [], cellule } : null
   return useQuery({
-    queryKey: queryKeys.tacticalCellule(playerSlug, titleSlug, mapId, hashFiltre(corps)),
+    queryKey: queryKeys.tacticalCellule(playerSlug, titleSlug, mapId, hashFiltre(corps), locale),
     queryFn: () =>
       api.post<TacticalCelluleReponse>(
         `/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/cellule`,

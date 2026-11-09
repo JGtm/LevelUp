@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/pkg/duckdbkeys"
 )
@@ -32,7 +33,7 @@ import (
 const rankedSeedTitleSlug = "halo_infinite"
 
 // applyRankedPlaylistSeeds force, pour chaque playlist classée de référence, sa
-// présence dans playlists_catalog avec is_ranked=TRUE + sa traduction FR dans
+// présence dans playlists_catalog avec is_ranked=TRUE + ses traductions (une par langue connue hors langue de repli) dans
 // asset_translations. Idempotent.
 func applyRankedPlaylistSeeds(db *sql.DB) error {
 	ctx := migration.BootCtx()
@@ -46,17 +47,23 @@ func applyRankedPlaylistSeeds(db *sql.DB) error {
 			   name_canonical = ?, experience = 'ranked', is_ranked = TRUE,
 			   is_active = ?, last_fetched_at = ?
 			 WHERE title_slug = ? AND playlist_asset_id = ?`,
-			UpdateArgs: []any{p.NameEN(), p.Active, now, rankedSeedTitleSlug, p.AssetID},
+			UpdateArgs: []any{p.Name(i18n.Fallback), p.Active, now, rankedSeedTitleSlug, p.AssetID},
 			InsertSQL: `INSERT INTO playlists_catalog
 			  (title_slug, playlist_asset_id, current_version_id, name_canonical,
 			   experience, is_ranked, is_active, first_seen_at, last_seen_at, last_fetched_at)
 			 VALUES (?, ?, '', ?, 'ranked', TRUE, ?, ?, ?, ?)`,
-			InsertArgs: []any{rankedSeedTitleSlug, p.AssetID, p.NameEN(), p.Active, now, now, now},
+			InsertArgs: []any{rankedSeedTitleSlug, p.AssetID, p.Name(i18n.Fallback), p.Active, now, now, now},
 		}).Exec(ctx, db); err != nil {
 			return fmt.Errorf("seed ranked playlist %s: %w", p.AssetID, err)
 		}
-		if err := seedRankedPlaylistFR(ctx, db, p); err != nil {
-			return err
+		for _, l := range i18n.Locales() {
+			// Le nom de la langue de repli est le nom canonique (name_canonical ci-dessus).
+			if l == i18n.Fallback {
+				continue
+			}
+			if err := seedRankedPlaylistTranslation(ctx, db, p, l); err != nil {
+				return err
+			}
 		}
 	}
 	slog.InfoContext(ctx, "migration: playlists classées seedées (is_ranked autoritatif)",
@@ -64,23 +71,23 @@ func applyRankedPlaylistSeeds(db *sql.DB) error {
 	return nil
 }
 
-// seedRankedPlaylistFR écrit la traduction FR (fr + fr-FR) de la playlist dans
-// asset_translations si NameFR est renseigné.
-func seedRankedPlaylistFR(ctx context.Context, db *sql.DB, p rankedplaylists.Playlist) error {
-	nameFR := p.NameFR()
-	if nameFR == "" {
+// seedRankedPlaylistTranslation écrit la traduction de la playlist dans la langue l (code de la
+// langue + balises Halo de la langue) dans asset_translations si le nom est renseigné.
+func seedRankedPlaylistTranslation(ctx context.Context, db *sql.DB, p rankedplaylists.Playlist, l i18n.Locale) error {
+	name := p.Name(l)
+	if name == "" {
 		return nil
 	}
-	for _, lang := range []string{"fr", "fr-FR"} {
+	for _, lang := range append([]string{string(l)}, i18n.HaloTags(l)...) {
 		if err := (duckdbkeys.Upsert{
 			ExistsSQL:  `SELECT 1 FROM asset_translations WHERE asset_id = ? AND asset_type = 'playlist' AND lang = ?`,
 			ExistsArgs: []any{p.AssetID, lang},
 			UpdateSQL:  `UPDATE asset_translations SET name = ? WHERE asset_id = ? AND asset_type = 'playlist' AND lang = ?`,
-			UpdateArgs: []any{nameFR, p.AssetID, lang},
+			UpdateArgs: []any{name, p.AssetID, lang},
 			InsertSQL:  `INSERT INTO asset_translations (asset_id, asset_type, lang, name) VALUES (?, 'playlist', ?, ?)`,
-			InsertArgs: []any{p.AssetID, lang, nameFR},
+			InsertArgs: []any{p.AssetID, lang, name},
 		}).Exec(ctx, db); err != nil {
-			return fmt.Errorf("seed FR playlist %s [%s]: %w", p.AssetID, lang, err)
+			return fmt.Errorf("seed playlist name %s [%s]: %w", p.AssetID, lang, err)
 		}
 	}
 	return nil

@@ -1,0 +1,105 @@
+{
+  "players": [
+    {
+      "xuid": "2603225103667623",
+      "kills": 0,
+      "deaths": 0,
+      "assists": 0,
+      "teamId": 0
+    },
+    {
+      "xuid": "2768751951931730",
+      "kills": 4,
+      "deaths": 1,
+      "assists": 3,
+      "teamId": 1
+    },
+    {
+      "xuid": "2534026679052315",
+      "kills": 3,
+      "deaths": 6,
+      "assists": 1,
+      "teamId": 0
+    },
+    {
+      "xuid": "2717132392151067",
+      "kills": 6,
+      "deaths": 2,
+      "assists": 2,
+      "teamId": 1
+    },
+    {
+      "xuid": "2653838668920347",
+      "kills": 4,
+      "deaths": 5,
+      "assists": 1,
+      "teamId": 0
+    },
+    {
+      "xuid": "2574151532363094",
+      "kills": 0,
+      "deaths": 1,
+      "assists": 0,
+      "teamId": 0
+    },
+    {
+      "xuid": "2780410181063951",
+      "kills": 2,
+      "deaths": 4,
+      "assists": 3,
+      "teamId": 1
+    },
+    {
+      "xuid": "2804765054468648",
+      "kills": 2,
+      "deaths": 4,
+      "assists": 0,
+      "teamId": 0
+    },
+    {
+      "xuid": "2564434701881749",
+      "kills": 1,
+      "deaths": 2,
+      "assists": 0,
+      "teamId": 0
+    },
+    {
+      "xuid": "2812233260773951",
+      "kills": 6,
+      "deaths": 3,
+      "assists": 3,
+      "teamId": 1
+    },
+    {
+      "xuid": "bid(31.0)",
+      "kills": 0,
+      "deaths": 0,
+      "assists": 0,
+      "teamId": 0
+    },
+    {
+      "xuid": "bid(5.0)",
+      "kills": 0,
+      "deaths": 0,
+      "assists": 0,
+      "teamId": 0
+    },
+    {
+      "xuid": "bid(51.0)",
+      "kills": 0,
+      "deaths": 0,
+      "assists": 0,
+      "teamId": 0
+    }
+  ],
+  "teamScores": [
+    2,
+    5
+  ],
+  "gameVariantName": "CTF:Arena Neutral Flag",
+  "mapId": "0d1c9255-d912-416c-befc-5f3e5e176df2",
+  "matchId": "51101d1d-aca8-4c95-a431-2012114b87be",
+  "mapNames": [
+    "Fortress"
+  ]
+}

@@ -19,7 +19,6 @@ import type {
   TacticalMapCard,
   TeammateOption,
 } from '@/lib/api/types'
-import type { Locale } from '@/lib/i18n/locale'
 import { stripSessionCountSuffix } from '@/lib/sessions/sessionLabels'
 
 import type { TacticalScope } from './tacticalScope'
@@ -76,23 +75,24 @@ export function barreResultats(carte: TacticalMapCard): BarreResultats {
 
 /**
  * libelleExplorateur — la valeur `?maps=` du lien d'une vignette vers l'Explorateur : le LIBELLÉ
- * CANONIQUE de la carte (`map_name_fr`, résolu côté Go par la règle même de l'Explorateur,
- * `platform/duckdb/map_labels.go`), à défaut le nom du registre — la chaîne que l'Explorateur compare,
- * telle quelle, quelle que soit la langue de la page.
+ * CANONIQUE de la carte (`map_filter_key`, résolu côté Go par la règle même de l Explorateur,
+ * `platform/duckdb/map_labels.go`), à défaut le nom du registre — la chaîne que l Explorateur compare,
+ * telle quelle, quelle que soit la langue de la page : c est une valeur de filtre, pas le libellé
+ * affiché (`map_label`, qui suit la langue).
  */
 export function libelleExplorateur(carte: TacticalMapCard): string {
-  return carte.map_name_fr.trim() !== '' ? carte.map_name_fr : carte.map_name
+  return carte.map_filter_key
 }
 
 /**
- * nomCarte — le nom AFFICHÉ d'une carte. Le français vient du contrat (`map_name_fr`,
- * résolu côté Go depuis `asset_translations`) ; à défaut, et en anglais, le nom canonique.
+ * nomCarte — le nom AFFICHÉ d une carte : `map_label`, que le serveur résout dans la langue de la
+ * requête (repli `en`) depuis `asset_translations` ; à défaut, l identifiant de la carte.
  */
-export function nomCarte(carte: TacticalMapCard, locale: Locale): string {
-  if (locale === 'fr' && carte.map_name_fr.trim() !== '') return carte.map_name_fr
-  return nomCarteBrut(carte)
+export function nomCarte(carte: TacticalMapCard): string {
+  return carte.map_label.trim() !== '' ? carte.map_label : carte.map_id
 }
 
+/** Le nom de la carte dans la langue de la requête (repli compris), ou l identifiant : la clé de tri. */
 function nomCarteBrut(carte: TacticalMapCard): string {
   return carte.map_name.trim() !== '' ? carte.map_name : carte.map_id
 }

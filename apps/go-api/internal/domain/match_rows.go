@@ -52,7 +52,7 @@ type MatchRegistryRow struct {
 	// (`CoreStats.RoundsWon/RoundsLost/RoundsTied`). Sur un mode qui se décide aux
 	// manches, Team{0,1}Score est un cumul de points qui ne dit PAS le résultat (4 matchs
 	// Oddball du corpus donnent la victoire à l'équipe qui a le moins de points, cf.
-	// `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`). RoundsTotal est le MAX des totaux des deux
+	// ADR 0032). RoundsTotal est le MAX des totaux des deux
 	// camps (un abandon crédite 1 manche à un seul camp). Nil = inconnu (ligne antérieure au
 	// backfill, FFA, camp absent) → le lecteur retombe sur les points ; jamais un zéro
 	// substitué, qui se lirait « zéro manche gagnée ».
@@ -124,7 +124,7 @@ type MatchParticipantRow struct {
 
 	// Mécaniques de kill NATIVES Halo 5 (assassinats + compétences spartiate).
 	// Agrégats par-joueur du carnage h5, DISJOINTS de MeleeKills. nil pour les
-	// autres titres (Infinite ne les fournit pas). Cf. halo_5/dto_carnage.go.
+	// autres titres (Infinite ne les fournit pas). Cf. haloapi/halo5/dto_carnage.go.
 	AssassinationKills *int
 	GroundPoundKills   *int
 	ShoulderBashKills  *int

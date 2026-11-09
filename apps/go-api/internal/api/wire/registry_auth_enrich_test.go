@@ -15,17 +15,17 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/auth/tokencache"
 	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/platform/halo"
 )
 
 // Token de session d'expiry INCONNUE (zéro) → NON cru frais → re-mint déterministe.
 // C'est l'invariant qui tue l'intermittence du rang carrière.
 func TestEnrichWithHaloTokens_ZeroExpirySession_ResolvesFresh(t *testing.T) {
 	const xuid = "xuid-enrich-zero"
-	halo.InvalidateCachedPlayerTokens(xuid)
-	defer halo.SetPlayerTokenRefresher(nil)
-	halo.SetPlayerTokenRefresher(func(_ context.Context, x string) (*domain.HaloTokens, error) {
+	tokencache.InvalidateCachedPlayerTokens(xuid)
+	defer tokencache.SetPlayerTokenRefresher(nil)
+	tokencache.SetPlayerTokenRefresher(func(_ context.Context, x string) (*domain.HaloTokens, error) {
 		return &domain.HaloTokens{SpartanToken: "fresh-" + x, SpartanExpiresAt: time.Now().Add(time.Hour)}, nil
 	})
 
@@ -43,9 +43,9 @@ func TestEnrichWithHaloTokens_ZeroExpirySession_ResolvesFresh(t *testing.T) {
 // Token de session d'expiry CONNUE et fraîche → réutilisé tel quel (pas de re-mint inutile).
 func TestEnrichWithHaloTokens_KnownFreshSession_Reused(t *testing.T) {
 	const xuid = "xuid-enrich-fresh"
-	halo.InvalidateCachedPlayerTokens(xuid)
-	defer halo.SetPlayerTokenRefresher(nil)
-	halo.SetPlayerTokenRefresher(func(_ context.Context, x string) (*domain.HaloTokens, error) {
+	tokencache.InvalidateCachedPlayerTokens(xuid)
+	defer tokencache.SetPlayerTokenRefresher(nil)
+	tokencache.SetPlayerTokenRefresher(func(_ context.Context, x string) (*domain.HaloTokens, error) {
 		return &domain.HaloTokens{SpartanToken: "should-not-be-used-" + x, SpartanExpiresAt: time.Now().Add(time.Hour)}, nil
 	})
 
@@ -63,9 +63,9 @@ func TestEnrichWithHaloTokens_KnownFreshSession_Reused(t *testing.T) {
 // Token de session expiry CONNUE mais PÉRIMÉE → re-mint déterministe (pas de réutilisation).
 func TestEnrichWithHaloTokens_ExpiredKnownSession_ResolvesFresh(t *testing.T) {
 	const xuid = "xuid-enrich-expired"
-	halo.InvalidateCachedPlayerTokens(xuid)
-	defer halo.SetPlayerTokenRefresher(nil)
-	halo.SetPlayerTokenRefresher(func(_ context.Context, x string) (*domain.HaloTokens, error) {
+	tokencache.InvalidateCachedPlayerTokens(xuid)
+	defer tokencache.SetPlayerTokenRefresher(nil)
+	tokencache.SetPlayerTokenRefresher(func(_ context.Context, x string) (*domain.HaloTokens, error) {
 		return &domain.HaloTokens{SpartanToken: "fresh-" + x, SpartanExpiresAt: time.Now().Add(time.Hour)}, nil
 	})
 
@@ -84,9 +84,9 @@ func TestEnrichWithHaloTokens_ExpiredKnownSession_ResolvesFresh(t *testing.T) {
 // session (dégradation, pas de régression : mieux que rien).
 func TestEnrichWithHaloTokens_RemintFails_KeepsSessionToken(t *testing.T) {
 	const xuid = "xuid-enrich-nopool"
-	halo.InvalidateCachedPlayerTokens(xuid)
-	defer halo.SetPlayerTokenRefresher(nil)
-	halo.SetPlayerTokenRefresher(nil) // aucun refresher câblé → ResolveFreshPlayerTokens échoue
+	tokencache.InvalidateCachedPlayerTokens(xuid)
+	defer tokencache.SetPlayerTokenRefresher(nil)
+	tokencache.SetPlayerTokenRefresher(nil) // aucun refresher câblé → ResolveFreshPlayerTokens échoue
 
 	reg := &ServiceRegistry{}
 	pdb := &duckdb.PlayerDB{XUID: xuid}
@@ -183,7 +183,7 @@ func TestSeasonPassEnrich_ThirdPartyViewer_SubjectIsPage(t *testing.T) {
 // son propre xuid (comportement nominal préservé).
 func TestSeasonPassEnrich_OwnPage_SubjectUnchanged(t *testing.T) {
 	const xuid = "xuid-proprietaire-sp"
-	halo.InvalidateCachedPlayerTokens(xuid)
+	tokencache.InvalidateCachedPlayerTokens(xuid)
 	reg := &ServiceRegistry{}
 	pdb := &duckdb.PlayerDB{XUID: xuid}
 	ctx := ctxkeys.WithHaloAuth(context.Background(),

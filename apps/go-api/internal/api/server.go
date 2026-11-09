@@ -34,6 +34,7 @@ import (
 	halo5 "levelup/go-api/internal/games/halo_5"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/notify"
 
 	// init() de observability publie le namespace expvar "levelup" ; le handler
@@ -217,13 +218,7 @@ func loadTeamColorResolvers(metaPath string) teamColorResolvers {
 			if !ok {
 				return ""
 			}
-			if locale == "en" {
-				return tc.NameEN
-			}
-			if tc.NameFR != "" {
-				return tc.NameFR
-			}
-			return tc.NameEN
+			return tc.Name.Pick(i18n.Parse(locale))
 		},
 		color: func(teamID int) string {
 			tc, ok := m[teamID]
@@ -278,7 +273,7 @@ func buildAssetMetadataHandler(cfg *config.AppConfig, hiAssetURL *halo_games.Ass
 		maps, errM := liveRepo.ListMapsByTitle(loadCtx, titlePkg.DefaultSlug, "")
 		weapons, errW := liveRepo.ListWeaponsByTitle(loadCtx, titlePkg.DefaultSlug, "")
 		// Médailles Infinite : sans ce chargement, le tab « Médailles » du drawer reste
-		// VIDE pour Infinite. Noms FR/EN depuis medal_definitions ; icône = PNG
+		// VIDE pour Infinite. Noms par langue depuis medal_translations ; icône = PNG
 		// /static/medals/halo_infinite/{id}.png (résolu via static.MedalImage).
 		medals, errMed := liveRepo.ListMedalsByTitle(loadCtx, titlePkg.DefaultSlug, "")
 		_ = metaDB.Close() // relâche le lock Windows immédiatement après chargement
@@ -485,7 +480,7 @@ func buildTitleRuntime(serverCtx context.Context, cfg *config.AppConfig, titleRe
 	// (Halo 5 attendu vide : aucune image de rang SR → le SR s'affiche en chiffre, plus
 	// d'image de rang HINF erronée). En démo on saute (metadata title = coquille vide).
 	if !cfg.DemoMode {
-		rankImgPathResolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+		rankImgPathResolver := cfg.PathResolver()
 		for _, td := range titleRegistry.Active() {
 			if td.Slug == titlePkg.DefaultSlug {
 				continue // HINF déjà chargé ci-dessus (byte-identique)
@@ -541,8 +536,12 @@ func buildTitleRuntime(serverCtx context.Context, cfg *config.AppConfig, titleRe
 
 	// Phase 6 finition multi-titres : 3e adapter — TitleAssetURLAdapter.
 	// Compose les URLs /static/... title-scopées (post-Phase 6.5 migration FS).
+	// Suffixes de variante de carte (map_variants.toml) : une variante classée sans fichier image
+	// prend la miniature de sa carte de base. Titre sans fichier : aucune variante.
+	hiMapVariants, _ := fieldMappingsRegistry.GetMapVariants(halo_games.TitleSlug)
 	hiAssetURL := halo_games.NewAssetURLAdapter().
-		WithMapImagesDir(static.AbsKindRoot(cfg.RepoRoot, static.KindMap, halo_games.TitleSlug))
+		WithMapImagesDir(static.AbsKindRoot(cfg.RepoRoot, static.KindMap, halo_games.TitleSlug)).
+		WithMapVariantSuffixes(hiMapVariants.Suffixes())
 	titleResolver.RegisterAssetURL(hiAssetURL)
 	slog.Info("adapter_loaded",
 		"title_slug", hiAssetURL.TitleSlug(),
@@ -615,6 +614,9 @@ func applyTransverseMiddlewares(
 	r.Use(chimiddleware.Recoverer)
 	// Pair TCP, lu par middleware.PeerAddr (LoopbackOnly), jamais un en-tête.
 	r.Use(middleware.PreserveRemoteAddr)
+	// Entrée de la coquille desktop (ADR 0045 D-3) : Host strict puis cookie exigé, avant tout le
+	// reste de la pile. Sans effet hors du profil desktop.
+	useDesktopGate(r, cfg)
 	// IP cliente (chimiddleware.GetClientIP : clé du limiteur, `ip` des journaux) : le pair
 	// TCP, remplacé derrière le proxy de confiance (LEVELUP_TRUST_PROXY_HEADERS) par la
 	// dernière valeur de X-Real-IP, que nginx écrase à chaque requête (garde-rail
@@ -685,7 +687,9 @@ func NewRouter(
 	// propriété des joueurs, les DEUX clés de sécurité absentes du fichier
 	// prennent leur valeur sûre (verrouillé / sans auto-provisioning).
 	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath).
-		WithEnforcedDefaults(authz.Enforced(cfg.DemoMode, cfg.AuthMode))
+		WithEnforcedDefaults(authz.Enforced(cfg.DemoMode, cfg.AuthMode)).
+		WithSystemDefaults(cfg.SystemLocale).
+		WithAutoSyncDefault(cfg.Capabilities.AutoSyncByDefault)
 	jobsPath := cfg.RuntimePaths().JobsCachePath() // démo : sous `<démo>/runtime/` (lot B5.5)
 	jobStore := jobs_platform.NewStore(jobsPath)
 	// Amis PAR JOUEUR (data/global/player_friends.json) : remplace l'ancien réglage
@@ -724,6 +728,7 @@ func NewRouter(
 		titleRegistry: titleRegistry, humaSharedConfig: humaSharedConfig,
 	})
 	reg := deps.reg
+	deps.browserLogin = newBrowserLogin(cfg, sessionStore, attemptStore, tokenProvider)
 	// /auth/xbox/callback (sans /api/v1). Comme le SPA est servi par ce backend, ce
 	// chemin tombait sur le catch-all `/*` (index.html) → le handler OAuth ne tournait
 	// jamais → l'utilisateur retombait sur /login. On expose donc login + callback AUSSI
@@ -749,6 +754,11 @@ func NewRouter(
 			xboxOAuthRoot.Callback(w, req)
 		})
 	}
+
+	// Entrée de la coquille desktop : GET /desktop/enter (profil desktop seulement).
+	mountDesktopEntry(r, cfg)
+	// Retour de la connexion par le navigateur : GET /auth/xbox/callback (profil desktop seulement).
+	mountBrowserLoginCallback(r, deps.browserLogin)
 
 	// v1 API
 	r.Route(apiV1BasePath, func(r chi.Router) {

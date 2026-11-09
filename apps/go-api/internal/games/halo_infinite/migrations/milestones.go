@@ -15,14 +15,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/progression/milestones"
 )
 
-// v2 (A9) : bump depuis v1 pour RE-SEEDER les DBs existantes avec les colonnes
-// condition_fr / condition_en (descriptions lisibles localisées des jalons).
+// v2 (A9) : bump depuis v1 pour RE-SEEDER les DBs existantes avec les descriptions lisibles
+// localisées des jalons (aujourd'hui rangées dans asset_translations, type `milestone`).
 const milestonesSeedMigrationName = "seed_milestone_catalog_v2"
 
 // RegisterMilestonesSeedMigration enregistre la migration de seed du catalogue
@@ -72,60 +71,28 @@ func seedMilestonesAllTitles(db *sql.DB, configTitlesRoot string) error {
 }
 
 // seedMilestonesFromTOML applique le seed pour un titre. Utilise
-// milestones.LoadCatalogFromFile pour parser le TOML (validation incluse) puis
-// fait des UPSERTs SQL en série.
+// milestones.LoadCatalogFromFile pour parser le TOML (validation incluse) puis écrit chaque jalon
+// (ligne de milestone_catalog + titre et condition lisible par langue dans asset_translations)
+// par migration.UpsertMilestoneCatalogEntry, dans une seule transaction.
+//
+// Ce seed tourne APRÈS metadata_definition_texts_to_translations_v1 (il n'est pas dans
+// canonicalOrder : les seeds TOML dynamiques passent en dernier), donc sur une table sans colonnes
+// `title_en` / `title_fr` / `condition_*` : les textes ne s'écrivent que par asset_translations.
 func seedMilestonesFromTOML(db *sql.DB, path string) error {
 	catalogEntries, err := milestones.LoadCatalogFromFile(path)
 	if err != nil {
 		return fmt.Errorf("load %s: %w", path, err)
 	}
-	// A9 : garantit les colonnes condition_fr/condition_en avant l'INSERT (le seed
-	// tourne aussi hors migration en test, sans passer par create_milestone_catalog).
-	// AddColumnIfMissing est idempotent.
-	if err := migration.AddColumnIfMissing(db, "milestone_catalog", "condition_fr", "VARCHAR"); err != nil {
-		return fmt.Errorf("add condition_fr: %w", err)
+	ctx := migration.BootCtx()
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
 	}
-	if err := migration.AddColumnIfMissing(db, "milestone_catalog", "condition_en", "VARCHAR"); err != nil {
-		return fmt.Errorf("add condition_en: %w", err)
-	}
-	now := time.Now().UTC()
+	defer tx.Rollback() //nolint:errcheck // sans effet après Commit
 	for _, e := range catalogEntries {
-		_, err := db.ExecContext(migration.BootCtx(), `
-			INSERT INTO milestone_catalog (
-				id, title_slug, metric, threshold, title_en, title_fr,
-				icon, condition, condition_fr, condition_en, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT (id) DO UPDATE SET
-				title_slug   = excluded.title_slug,
-				metric       = excluded.metric,
-				threshold    = excluded.threshold,
-				title_en     = excluded.title_en,
-				title_fr     = excluded.title_fr,
-				icon         = excluded.icon,
-				condition    = excluded.condition,
-				condition_fr = excluded.condition_fr,
-				condition_en = excluded.condition_en,
-				updated_at   = excluded.updated_at`,
-			e.ID, e.TitleSlug, e.Metric, e.Threshold,
-			e.TitleEN, e.TitleFR,
-			nullableStringForSeed(e.Icon),
-			nullableStringForSeed(e.Condition),
-			nullableStringForSeed(e.ConditionFR),
-			nullableStringForSeed(e.ConditionEN),
-			now,
-		)
-		if err != nil {
+		if err := migration.UpsertMilestoneCatalogEntry(ctx, tx, e); err != nil {
 			return fmt.Errorf("upsert %s: %w", e.ID, err)
 		}
 	}
-	return nil
-}
-
-// nullableStringForSeed retourne nil si s est vide, sinon s. Stocke NULL en DuckDB
-// plutôt que ” pour Icon/Condition (cohérent avec MilestoneCatalogRepo.Upsert).
-func nullableStringForSeed(s string) any {
-	if s == "" {
-		return nil
-	}
-	return s
+	return tx.Commit()
 }

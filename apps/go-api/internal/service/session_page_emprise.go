@@ -1,5 +1,4 @@
-// Package service — session_page_emprise.go : L'EMPRISE ET « MES VIES » DE LA PAGE SESSIONS (plan
-// `.ai/V7.5/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, D3, D4, D5).
+// Package service — session_page_emprise.go : L'EMPRISE ET « MES VIES » DE LA PAGE SESSIONS.
 //
 // Le joueur de la page SEUL, en contexte escouade comme en solo (décision utilisateur V1) : aucun
 // coéquipier suivi n'a de fiche. Orchestration seule : l'assemblage est `buildSoloEmpriseBlock`
@@ -39,7 +38,7 @@ func (s *SessionPageService) sessionEmprise(
 	return buildSoloEmpriseBlock(ctx, soloEmpriseQuery{
 		Page: pageSessions, Player: s.gamertag, PlayerXUID: s.sessionXUID,
 		RepoRoot: s.repoRoot, TitleSlug: s.titleSlug, Locale: locale,
-		Current: timeseriesEmpriseMatches(rows, locale), Lectures: lu,
+		Current: timeseriesEmpriseMatches(rows, locale, domain.GroupesDeCartes{}), Lectures: lu,
 		UsageRepo: s.sessionUsageRepo, EmpriseRepo: s.empriseRepo, VehicleRepo: s.vehicleRepo,
 		Pending: s.analysisPending,
 	})

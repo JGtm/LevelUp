@@ -4,8 +4,10 @@ package wire
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -14,15 +16,15 @@ import (
 // programmés — permet d'asserter que le récap ne résout PAS les noms et que les
 // ids inconnus retombent sur une paire vide (médaille sautée).
 type fakeMedalNamer struct {
-	names  map[int64]medalNamePair
+	names  map[int64]i18n.Text
 	called bool
 	gotIDs []int64
 }
 
-func (f *fakeMedalNamer) MedalNames(_ context.Context, ids []int64) map[int64]medalNamePair {
+func (f *fakeMedalNamer) MedalNames(_ context.Context, ids []int64) map[int64]i18n.Text {
 	f.called = true
 	f.gotIDs = ids
-	out := make(map[int64]medalNamePair, len(ids))
+	out := make(map[int64]i18n.Text, len(ids))
 	for _, id := range ids {
 		if p, ok := f.names[id]; ok {
 			out[id] = p
@@ -43,7 +45,7 @@ func medalSet(ids ...int64) map[int64]struct{} {
 func TestEmitMedalFirstEarned_NewMedalEmitsNamedNotification(t *testing.T) {
 	before := &PlayerSnapshot{EarnedMedalIDs: medalSet(1, 2)}
 	after := &PlayerSnapshot{EarnedMedalIDs: medalSet(1, 2, 3)}
-	namer := &fakeMedalNamer{names: map[int64]medalNamePair{3: {FR: "Tir de précision", EN: "Perfect"}}}
+	namer := &fakeMedalNamer{names: map[int64]i18n.Text{3: i18n.FromColumns("Perfect", "Tir de précision")}}
 	em := &recordingEmitter{}
 
 	emitMedalFirstEarned(context.Background(), em, namer, "halo_infinite", "player-slug", before, after)
@@ -61,11 +63,11 @@ func TestEmitMedalFirstEarned_NewMedalEmitsNamedNotification(t *testing.T) {
 	if in.TitleKey != "notif.medal_first_earned.title" {
 		t.Errorf("title_key nominatif attendu, obtenu %q", in.TitleKey)
 	}
-	if in.Params[paramKeyMedalNameFR] != "Tir de précision" {
-		t.Errorf("medal_name_fr attendu, obtenu %v", in.Params[paramKeyMedalNameFR])
+	if in.Params[medalNameKey(i18n.LocaleFR)] != "Tir de précision" {
+		t.Errorf("medal_name_fr attendu, obtenu %v", in.Params[medalNameKey(i18n.LocaleFR)])
 	}
-	if in.Params[paramKeyMedalNameEN] != "Perfect" {
-		t.Errorf("medal_name_en attendu, obtenu %v", in.Params[paramKeyMedalNameEN])
+	if in.Params[medalNameKey(i18n.LocaleEN)] != "Perfect" {
+		t.Errorf("medal_name_en attendu, obtenu %v", in.Params[medalNameKey(i18n.LocaleEN)])
 	}
 	if in.TargetRoute != "/t/halo_infinite/players/player-slug/career/medals" {
 		t.Errorf("target_route page Médailles attendue, obtenue %q", in.TargetRoute)
@@ -125,8 +127,8 @@ func TestEmitMedalFirstEarned_RecapAboveThreshold(t *testing.T) {
 func TestEmitMedalFirstEarned_AtThresholdEmitsPerMedal(t *testing.T) {
 	before := &PlayerSnapshot{EarnedMedalIDs: medalSet(1)}
 	after := &PlayerSnapshot{EarnedMedalIDs: medalSet(1, 2, 3, 4)} // 3 nouvelles = seuil
-	namer := &fakeMedalNamer{names: map[int64]medalNamePair{
-		2: {FR: "A", EN: "A"}, 3: {FR: "B", EN: "B"}, 4: {FR: "C", EN: "C"},
+	namer := &fakeMedalNamer{names: map[int64]i18n.Text{
+		2: i18n.FromColumns("A", "A"), 3: i18n.FromColumns("B", "B"), 4: i18n.FromColumns("C", "C"),
 	}}
 	em := &recordingEmitter{}
 
@@ -153,7 +155,7 @@ func TestEmitMedalFirstEarned_NoChangeNoEmit(t *testing.T) {
 func TestEmitMedalFirstEarned_UnresolvedNameSkipped(t *testing.T) {
 	before := &PlayerSnapshot{EarnedMedalIDs: medalSet(1)}
 	after := &PlayerSnapshot{EarnedMedalIDs: medalSet(1, 2, 3)} // 2 nouvelles ≤ 3
-	namer := &fakeMedalNamer{names: map[int64]medalNamePair{2: {FR: "Résolue", EN: "Resolved"}}}
+	namer := &fakeMedalNamer{names: map[int64]i18n.Text{2: i18n.FromColumns("Resolved", "Résolue")}}
 	em := &recordingEmitter{}
 
 	emitMedalFirstEarned(context.Background(), em, namer, "halo_infinite", "p", before, after)
@@ -161,16 +163,18 @@ func TestEmitMedalFirstEarned_UnresolvedNameSkipped(t *testing.T) {
 	if len(em.emitted) != 1 {
 		t.Fatalf("seule la médaille nommée doit émettre, obtenu %d", len(em.emitted))
 	}
-	if em.emitted[0].Params[paramKeyMedalNameFR] != "Résolue" {
-		t.Errorf("médaille nommée attendue, obtenu %v", em.emitted[0].Params[paramKeyMedalNameFR])
+	if em.emitted[0].Params[medalNameKey(i18n.LocaleFR)] != "Résolue" {
+		t.Errorf("médaille nommée attendue, obtenu %v", em.emitted[0].Params[medalNameKey(i18n.LocaleFR)])
 	}
 }
 
-// Une paire nom présente dans une seule langue est réutilisée pour l'autre.
-func TestEmitMedalFirstEarned_SingleLangNameMirrored(t *testing.T) {
+// Un nom présent dans une seule langue est écrit tel quel (l'autre langue reste vide) ; la lecture
+// (notifications.LocalizeParams) le réutilise pour toute langue sans nom : dégradation propre, pour fr, en
+// et toute langue ajoutée plus tard.
+func TestEmitMedalFirstEarned_SingleLangNameServedInEveryLanguage(t *testing.T) {
 	before := &PlayerSnapshot{EarnedMedalIDs: medalSet(1)}
 	after := &PlayerSnapshot{EarnedMedalIDs: medalSet(1, 2)}
-	namer := &fakeMedalNamer{names: map[int64]medalNamePair{2: {FR: "Étoile", EN: ""}}}
+	namer := &fakeMedalNamer{names: map[int64]i18n.Text{2: i18n.FromColumns("", "Étoile")}}
 	em := &recordingEmitter{}
 
 	emitMedalFirstEarned(context.Background(), em, namer, "halo_infinite", "p", before, after)
@@ -178,11 +182,31 @@ func TestEmitMedalFirstEarned_SingleLangNameMirrored(t *testing.T) {
 	if len(em.emitted) != 1 {
 		t.Fatalf("attendu 1 notification, obtenu %d", len(em.emitted))
 	}
-	in := em.emitted[0]
-	if in.Params[paramKeyMedalNameFR] != "Étoile" || in.Params[paramKeyMedalNameEN] != "Étoile" {
-		t.Errorf("le nom mono-langue doit être miroité FR↔EN, obtenu fr=%v en=%v",
-			in.Params[paramKeyMedalNameFR], in.Params[paramKeyMedalNameEN])
+	raw, err := json.Marshal(em.emitted[0].Params)
+	if err != nil {
+		t.Fatalf("Marshal : %v", err)
 	}
+	for _, l := range i18n.Locales() {
+		items := []notifications.Notification{{Params: raw}}
+		notifications.LocalizeParams(context.Background(), items, l)
+		var got map[string]any
+		if err := json.Unmarshal(items[0].Params, &got); err != nil {
+			t.Fatalf("Unmarshal : %v", err)
+		}
+		if got[notifications.ParamMedalName] != "Étoile" {
+			t.Errorf("langue %s : medal_name = %v, attendu Étoile", l, got[notifications.ParamMedalName])
+		}
+		for k := range got {
+			if k != notifications.ParamMedalName {
+				t.Errorf("langue %s : clé inattendue %q (aucune paire par langue ne doit sortir)", l, k)
+			}
+		}
+	}
+}
+
+// medalNameKey est la clé de stockage du nom de la médaille dans la langue l.
+func medalNameKey(l i18n.Locale) string {
+	return i18n.ParamKey(notifications.ParamMedalName, l)
 }
 
 // Émetteur en échec sur la catégorie médaille → best-effort, aucune panique, la
@@ -190,8 +214,8 @@ func TestEmitMedalFirstEarned_SingleLangNameMirrored(t *testing.T) {
 func TestEmitMedalFirstEarned_EmitErrorIsBestEffort(t *testing.T) {
 	before := &PlayerSnapshot{EarnedMedalIDs: medalSet(1)}
 	after := &PlayerSnapshot{EarnedMedalIDs: medalSet(1, 2, 3)}
-	namer := &fakeMedalNamer{names: map[int64]medalNamePair{
-		2: {FR: "A", EN: "A"}, 3: {FR: "B", EN: "B"},
+	namer := &fakeMedalNamer{names: map[int64]i18n.Text{
+		2: i18n.FromColumns("A", "A"), 3: i18n.FromColumns("B", "B"),
 	}}
 	em := &recordingEmitter{failOn: notifications.CategoryMedalFirstEarned}
 

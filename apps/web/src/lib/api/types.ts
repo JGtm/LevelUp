@@ -17,6 +17,8 @@ import type { components } from './generated'
 export type PlayerSummary = components['schemas']['PlayerSummary']
 
 export type CapabilityMap = components['schemas']['CapabilityMap']
+/** Version et dossier des données de l'application de bureau (bootstrap `app_info`). */
+export type AppInfo = components['schemas']['AppInfo']
 
 // Diagnostic apparence Spartan ID (admin, volet 2) — re-exports du contrat
 // OpenAPI (source unique), pas de mirror manuel (Lot G, règle G4).
@@ -388,7 +390,6 @@ export interface SettingsResponse {
   normalize_mode_labels: boolean
   show_records: boolean
   refresh_clears_caches: boolean
-  career_top_exclude_btb: boolean
   media_captures_base_dir: string
   // Valeur effective résolue (env > réglage > défaut prod). PATCH persiste le réglage.
   media_delete_source_after_transcode: boolean
@@ -439,6 +440,29 @@ export interface SettingsResponse {
   // distance 0 = son pur, aucun traitement dans le chemin du signal.
   replay_sound_variation_percent: number
   replay_sound_distance_percent: number
+  // --- Archive des films (ADR 0045 D-12) ---
+  // Conserver les chunks des films après la cuisson du rejeu (défaut vrai). Faux : retirés
+  // après cuisson, et la fenêtre de rétention des rejeux doit rester illimitée (0).
+  archive_films: boolean
+  // Dossier de l'archive (chemin absolu) ; '' = emplacement par défaut. Pris en compte au
+  // redémarrage. L'occupation se lit par GET /settings/film-archive.
+  film_archive_dir: string
+  // --- Intégration au poste de l'application de bureau (lot L21) ---
+  // Détecter le jeu en cours (défaut vrai), notifications Windows, croix vers la zone de
+  // notification, démarrage avec Windows, tâche planifiée de rafraîchissement (défaut faux).
+  game_process_watch: boolean
+  native_notifications: boolean
+  close_to_tray: boolean
+  start_with_windows: boolean
+  scheduled_refresh: boolean
+  // --- Données de l'application de bureau (lot L22) ---
+  // Sauvegarde périodique en Parquet : dossier (chemin absolu, '' = désactivée), fréquence
+  // ('1h' à '168h'), nombre de jeux conservés (1 à 60) ; plafond mémoire de chaque base en Mo
+  // (0 = valeur par défaut du serveur, sinon 1024 à 32768).
+  backup_dir: string
+  backup_interval: string
+  backup_keep: number
+  memory_limit_mb: number
 }
 
 export type UpdateSettingsRequest = Partial<
@@ -468,8 +492,7 @@ export interface CareerSummary {
   is_max_rank: boolean
   recorded_at: string | null
   rank_image_url?: string | null
-  next_rank_name_fr?: string
-  next_rank_name_en?: string
+  next_rank_name?: string
   next_rank_image_url?: string | null
 }
 
@@ -505,13 +528,10 @@ export interface CareerLusrSection {
 }
 
 // V8b (2026-07-07) — les DTO réels servis par les endpoints Career. Le contrat Go
-// NE renvoie PAS de `top_matches_preview`/`encounters_preview` sur /pages/career :
-// les top matches et encounters sont fournis par leurs endpoints dédiés
-// (/top-matches, /encounters), consommés en direct par la page. Les schémas
-// canoniques CareerTopMatch/CareerEncounter existaient en surplus dans le contrat
-// mais N'étaient PAS les shapes de réponse — d'où des `undefined` silencieux.
-export type TopMatchDTO = components['schemas']['TopMatchDTO']
-
+// NE renvoie PAS de `encounters_preview` sur /pages/career : les encounters sont
+// fournis par leur endpoint dédié (/encounters), consommé en direct par la page. Le
+// schéma canonique CareerEncounter existait en surplus dans le contrat mais N'était
+// PAS la shape de réponse — d'où des `undefined` silencieux.
 export type EncounterDTO = components['schemas']['EncounterDTO']
 
 // CareerPageResponse reste une interface manuelle : les sous-types view-model
@@ -528,8 +548,6 @@ export interface CareerPageResponse {
   lusr: CareerLusrSection | null
   friends_xp_history?: FriendXPHistory[]
 }
-
-export type CareerTopMatchesResponse = components['schemas']['CareerTopMatchesResponse']
 
 export type CareerEncountersResponse = components['schemas']['CareerEncountersResponse']
 
@@ -777,9 +795,11 @@ export interface ExplorerMatchesQuerySummary {
   // available_experience_types : LabelValue (Label localisé backend, Value FR = clé
   // de filtre intacte). GH6-1, miroir GH5-2 Omnibar.
   available_experience_types?: LabelValue[]
-  available_playlists?: string[]
-  available_maps?: string[]
-  available_modes?: string[]
+  // playlists / cartes / modes : LabelValue (label dans la langue de la requête, value = nom de la
+  // langue par défaut, clé de filtre `playlists` / `maps` / `modes` indépendante de la langue).
+  available_playlists?: LabelValue[]
+  available_maps?: LabelValue[]
+  available_modes?: LabelValue[]
   /** Options Explorer-spécifiques avec count cascade-aware (sémantique OR au sein
    *  d'une dimension, AND entre dimensions). Les options à count=0 sont à griser.
    *  Le `value` est : code outcome (1..4) ou tier (1..5) en string, ou clé EN
@@ -891,11 +911,10 @@ export type SeasonMatchCount = components['schemas']['SeasonMatchCount']
  *  Ratios en nullable : null signifie "indisponible" (dénominateur nul). */
 export type ExplorerTargetSampleStats = components['schemas']['ExplorerTargetSampleStats']
 
-/** Une arme du top armes (cible Explorer) : label localisé + kills. */
+/** Une arme du top armes (cible Explorer) : libellé dans la langue de la requête + kills. */
 export interface ExplorerWeaponKill {
   weapon_id: number
-  label_fr: string
-  label_en: string
+  label: string
   kills: number
 }
 
@@ -1301,7 +1320,7 @@ export type MapBreakdownRow = components['schemas']['MapBreakdownRow']
 export type SquadMatchSeriesPoint = components['schemas']['SquadMatchSeriesPoint']
 
 /** Une ligne des « Outils de destruction » (Escouade, D8) : un outil — arme nommée par le
- *  registre (`kind` = `weapon`, `label` FR d'abord, `label_en` EN d'abord) ou nature nommée
+ *  registre (`kind` = `weapon`, `label` dans la langue de la requête) ou nature nommée
  *  par le web (mêlée, objet explosif, chute, non attribué…) —, sa classe de frag (pastille) et
  *  les frags de chaque joueur. */
 export type SquadWeaponToolLine = components['schemas']['SquadWeaponToolLine']
@@ -1738,6 +1757,25 @@ export type MediaAuthorsResponse = components['schemas']['MediaAuthorsResponse']
 /** Suppression définitive d'un média (item 3.1) — dérivé du contrat. */
 export type MediaDeleteResponse = components['schemas']['MediaDeleteResponse']
 
+/** Médias dont le fichier est introuvable : fusion, oubli, confirmation, explorateur — dérivés du contrat. */
+export type MediaMissingItem = components['schemas']['MediaMissingItem']
+export type MediaMissingResponse = components['schemas']['MediaMissingResponse']
+export type MediaMergeCandidate = components['schemas']['MediaMergeCandidate']
+export type MediaMergeCandidatesResponse = components['schemas']['MediaMergeCandidatesResponse']
+export type MediaMergeResponse = components['schemas']['MediaMergeResponse']
+export type MediaForgetResponse = components['schemas']['MediaForgetResponse']
+export type MediaConfirmBulkResponse = components['schemas']['MediaConfirmBulkResponse']
+export type MediaRevealResponse = components['schemas']['MediaRevealResponse']
+
+/** Corps des écritures sur un média introuvable (écrits à la main : les routes lisent un corps brut). */
+export interface MediaMergeRequest {
+  file_path: string
+  target_file_path: string
+}
+export interface MediaFilePathRequest {
+  file_path: string
+}
+
 /**
  * PATCH /media/likes — dérivés du contrat (2026-08-03). Les versions écrites à
  * la main divergeaient du serveur sur deux points : `total_likers` y était
@@ -2135,10 +2173,6 @@ export type CitationItem = components['schemas']['CitationItem']
 /** Groupe de citations par catégorie. */
 export type CitationCategoryGroup = components['schemas']['CitationCategoryGroup']
 
-export interface CitationsQueryRequest {
-  filters: FilterContextInput
-}
-
 export type CitationsPageResponse = components['schemas']['CitationsPageResponse']
 
 // Totaux à vie des commendations natives (Halo 5, AXE B).
@@ -2353,7 +2387,7 @@ export interface CompareResponse {
   /** C3.6 : indique si les données de joueur B sont partielles (champs null). */
   player_b_partial?: boolean
   /**
-   * Profil d'armes des deux joueurs (plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md).
+   * Profil d'armes des deux joueurs.
    * ADDITIF et absent quand il n'est pas lisible : titre sans registre d'armes, joueur B
    * absent de la base partagée, câblage manquant.
    *
@@ -2488,7 +2522,7 @@ export interface WatcherAuthStatus {
 // ---------------------------------------------------------------------------
 
 // AssetMeta — type contractuel régénéré. Les champs sprite (médailles Halo 5) et
-// description / description_fr sont désormais portés par le schéma OpenAPI (optionnels :
+// description sont désormais portés (le serveur les résout dans la langue de la requête) par le schéma OpenAPI (optionnels :
 // vides pour maps/armes), plus besoin de shim manuel.
 export type AssetMeta = components['schemas']['AssetMeta']
 
@@ -2823,11 +2857,17 @@ export type RegistryNamesBackfillResult = components['schemas']['RegistryNamesBa
 
 export type ResolveResult = components['schemas']['ResolveResult']
 
+/** Miroir de domain.ModeTranslationRequest ; `mode_key` est la clé technique du mode, pas un libellé. */
+export interface ModeTranslationRequest {
+  mode_key: string
+  names: Record<string, string> // clé = code d'une langue de config/locales.toml
+}
+
+/** Miroir de domain.AssetTranslationRequest. */
 export interface AssetTranslationRequest {
   asset_kind: string // playlist | map | pair | game_variant
   asset_id: string
-  name_en?: string
-  name_fr?: string
+  names: Record<string, string> // clé = code d'une langue de config/locales.toml
 }
 
 export type CatalogRefreshResult = components['schemas']['CatalogRefreshResult']

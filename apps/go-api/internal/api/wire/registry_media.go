@@ -7,6 +7,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/dblease"
@@ -86,9 +87,41 @@ func (r *ServiceRegistry) Media(ctx context.Context, slug string) (port.MediaSer
 	if a := r.assetURLFor(pdb.TitleSlug); a != nil {
 		repo = repo.WithAssetURL(a)
 	}
-	return service.NewMediaService(repo, r.timezone,
+	opts := []service.MediaOption{
 		service.WithMediaWriterAcquirer(mediaWriterAcquirerFor(pdb)),
-		service.WithMediaFileRemover(r.mediaFileRemover())), nil
+		service.WithMediaFileRemover(r.mediaFileRemover()),
+	}
+	var caps config.DeploymentCapabilities
+	if r.cfg != nil {
+		caps = r.cfg.Capabilities
+	}
+	if trasher := mediaTrasherFor(caps, r.mediaFileTrasher); trasher != nil {
+		opts = append(opts, service.WithMediaFileTrasher(trasher))
+	}
+	if revealer := mediaRevealerFor(caps, func() port.MediaFileRevealer { return ops.NewOSFileRevealer() }); revealer != nil {
+		opts = append(opts, service.WithMediaFileRevealer(revealer, r.mediaCapturesBase))
+	}
+	return service.NewMediaService(repo, r.timezone, opts...), nil
+}
+
+// mediaTrasherFor décide de la Corbeille du système : le trasher construit par build quand la
+// capacité TrashMediaSources est vraie, nil sinon (suppression définitive, instance hébergée). build
+// n'est pas appelé sans la capacité.
+func mediaTrasherFor(caps config.DeploymentCapabilities, build func() port.MediaFileTrasher) port.MediaFileTrasher {
+	if !caps.TrashMediaSources {
+		return nil
+	}
+	return build()
+}
+
+// mediaRevealerFor décide de l'ouverture de l'explorateur : le revealer construit par build quand la
+// capacité RevealFilesInExplorer est vraie, nil sinon (la route répond comme une route inexistante).
+// build n'est pas appelé sans la capacité.
+func mediaRevealerFor(caps config.DeploymentCapabilities, build func() port.MediaFileRevealer) port.MediaFileRevealer {
+	if !caps.RevealFilesInExplorer {
+		return nil
+	}
+	return build()
 }
 
 // mediaFileRemover construit le port de retrait disque des médias (item 3.1).
@@ -96,16 +129,26 @@ func (r *ServiceRegistry) Media(ctx context.Context, slug string) (port.MediaSer
 // chaud) ; sans settings store, le remover ne traite que les chemins absolus
 // legacy et trace les autres.
 func (r *ServiceRegistry) mediaFileRemover() port.MediaFileRemover {
-	return ops.NewOSMediaFileRemover(func() string {
-		if r.settingsStore == nil {
-			return ""
-		}
-		cfg, err := r.settingsStore.Load()
-		if err != nil {
-			return ""
-		}
-		return cfg.MediaCapturesBaseDir
-	})
+	return ops.NewOSMediaFileRemover(r.mediaCapturesBase)
+}
+
+// mediaCapturesBase rend le dossier de captures configuré, "" quand il n'y en a pas ou que les
+// réglages sont illisibles.
+func (r *ServiceRegistry) mediaCapturesBase() string {
+	if r.settingsStore == nil {
+		return ""
+	}
+	cfg, err := r.settingsStore.Load()
+	if err != nil {
+		return ""
+	}
+	return cfg.MediaCapturesBaseDir
+}
+
+// mediaFileTrasher construit le port de la Corbeille du système (capacité TrashMediaSources, profil
+// desktop). Même base de captures que le remover, relue à chaque suppression.
+func (r *ServiceRegistry) mediaFileTrasher() port.MediaFileTrasher {
+	return ops.NewOSMediaFileTrasher(r.mediaCapturesBase)
 }
 
 // MediaUpload retourne un MediaService + métadonnées joueur pour l'upload.

@@ -22,8 +22,7 @@ export type TacticalQui = 'moi' | 'escouade' | 'adv'
 
 /**
  * Plancher de mesure par cellule : 3 matchs distincts. MÊME SEUIL QUE LE SERVEUR
- * (calibration mesurée de `mappos-build`, `.ai/PLAN_TACTIQUE_2026-09-06.md` §6,
- * "Plancher par cellule") — affiché, jamais recalculé : le serveur ne publie que les
+ * (calibration mesurée de `mappos-build`) — affiché, jamais recalculé : le serveur ne publie que les
  * cellules déjà au-dessus.
  */
 export const TACTICAL_CELL_FLOOR = 3

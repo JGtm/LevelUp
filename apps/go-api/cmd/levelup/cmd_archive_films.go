@@ -42,7 +42,7 @@ package main
 //
 // Ce que la lecture seule apporte tout de meme : la passe ne peut RIEN corrompre, et
 // l interrompre a n importe quel instant ne laisse aucun etat a moitie ecrit cote base. Cote
-// cache, `filmcache.Write` ecrit les chunks d abord et le manifeste EN DERNIER : une coupure
+// cache, `filmarchive.Write` ecrit les chunks d abord et le manifeste EN DERNIER : une coupure
 // laisse des chunks orphelins invisibles, jamais un film a moitie lisible.
 //
 // Usage (SERVEUR ARRETE) :
@@ -63,11 +63,13 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/filmarchive"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
 	go_sync "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/matchflags"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // Compteurs de la passe, publies en expvar (ADR 0009) et restitues en fin de commande.
@@ -153,7 +155,7 @@ func runArchiveFilms(cfg *config.AppConfig, args []string) error {
 	defer stop()
 	travail := context.WithoutCancel(ctx)
 	cacheRoot := resoudreCacheFilms(cfg, o.cacheDir)
-	if err := filmcache.EnsureDirs(cacheRoot); err != nil {
+	if err := filmarchive.EnsureDirs(cacheRoot); err != nil {
 		return err
 	}
 
@@ -248,14 +250,14 @@ func archiverUnFilm(ctx context.Context, client telechargeurDeFilm, cacheRoot, m
 	if !found || len(chunks) == 0 {
 		return 0, "expire"
 	}
-	wc := make([]filmcache.WriteChunk, 0, len(chunks))
+	wc := make([]filmarchive.WriteChunk, 0, len(chunks))
 	for _, c := range chunks {
-		wc = append(wc, filmcache.WriteChunk{
+		wc = append(wc, filmarchive.WriteChunk{
 			Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS, DurationMS: c.DurationMS,
 			Data: c.Data,
 		})
 	}
-	if err := filmcache.Write(ctx, cacheRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
+	if err := filmarchive.Write(ctx, cacheRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
 		slog.ErrorContext(ctx, "archive-films: ecriture au cache echouee", "match_id", matchID, "err", err)
 		return 0, "erreur"
 	}
@@ -266,13 +268,13 @@ func archiverUnFilm(ctx context.Context, client telechargeurDeFilm, cacheRoot, m
 // recent (cf. l en-tete : l archivage court apres l expiration).
 //
 // La presence se juge sur un film COMPLET ([filmDejaEnCache]) : le manifeste est le marqueur de
-// commit de `filmcache.Write` (des chunks orphelins sans manifeste ne sont pas lisibles), et un
+// commit de `filmarchive.Write` (des chunks orphelins sans manifeste ne sont pas lisibles), et un
 // manifeste partiel ou un chunk tronque ne valent pas un film archive (J2.5, 2026-09-26).
 //
 // LECTURE SEULE sur la base partagee — `OpenReadForQuery`, jamais `OpenReadOnly` force : la base
 // peut etre tenue en ecriture par le serveur, et cette commande doit pouvoir tourner quand meme.
 func filmsManquants(ctx context.Context, cfg *config.AppConfig, o archiveOptions, cacheRoot string) ([]string, error) {
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	db, release, err := duckdb.OpenReadForQuery(pr.SharedDBPath(o.titleSlug))
 	if err != nil {
 		return nil, fmt.Errorf("ouverture en lecture de la base partagee: %w", err)
@@ -313,7 +315,7 @@ func filmsManquants(ctx context.Context, cfg *config.AppConfig, o archiveOptions
 // filmDejaEnCache : le film est-il COMPLET au cache (`filmcache.FilmComplet` : manifeste
 // finalise, chaque chunk present a la taille declaree) ? « Present » n'est pas « complet »
 // (J2.5, 2026-09-26) : un manifeste partiel ou un chunk tronque laissent le film a archiver, et
-// `filmcache.Write` le repare. Un cache illisible est journalise et le film retente.
+// `filmarchive.Write` le repare. Un cache illisible est journalise et le film retente.
 func filmDejaEnCache(ctx context.Context, cacheRoot, matchID string) bool {
 	complet, err := filmcache.FilmComplet(cacheRoot, titlePkg.FilmShortMatchID(matchID))
 	if err != nil {

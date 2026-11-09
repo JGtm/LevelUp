@@ -56,6 +56,8 @@ export function useFiltersResolve(
   // Le titre courant scope la clé (cf. queryKeys.filtersResolve) : au switch de
   // titre la clé change → refetch des options du bon titre, jamais de serve périmé.
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  // Les libellés des options playlist / mode / carte sont servis dans la langue de la requête.
+  const locale = useAppShellStore((s) => s.locale)
   // Corps envoyé : le filterContext du store, avec `match_context` quand il est
   // demandé (sans lui le corps est celui du store, tel quel).
   const filterContext: FilterContextInput = matchContext
@@ -63,7 +65,7 @@ export function useFiltersResolve(
     : storedFilterContext
 
   const query = useQuery<FilterContextResolved>({
-    queryKey: queryKeys.filtersResolve(playerSlug, titleSlug, filterContextHash, matchContext ?? 'all'),
+    queryKey: queryKeys.filtersResolve(playerSlug, titleSlug, filterContextHash, matchContext ?? 'all', locale),
     queryFn: ({ signal }) =>
       api.post<FilterContextResolved>(
         `/players/${playerSlug}/filters/resolve`,
@@ -181,6 +183,7 @@ export function useFiltersPreview(
   // Le titre courant scope la clé (cf. queryKeys.filtersPreview) — même motif que
   // useFiltersResolve : pas de preview périmé d'un autre titre après bascule.
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   // FNV-1a 32 bits — même algo que computeHash/computePendingHash. Crucial :
   // le hash doit refléter les diffs de cascade pour que toggler une checkbox
   // dans FiltresPill déclenche un refetch et mette à jour available_options.
@@ -194,7 +197,7 @@ export function useFiltersPreview(
     return h.toString(16).padStart(8, '0')
   })()
   return useQuery<FilterContextResolved>({
-    queryKey: queryKeys.filtersPreview(playerSlug, titleSlug, hash),
+    queryKey: queryKeys.filtersPreview(playerSlug, titleSlug, hash, locale),
     queryFn: ({ signal }) =>
       api.post<FilterContextResolved>(
         `/players/${playerSlug}/filters/resolve`,

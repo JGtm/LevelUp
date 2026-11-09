@@ -5,7 +5,7 @@ package killcollector
 // duels_bouclier_research_test.go — SONDE N°2 : LA MESURE QUI DECIDE DU LOT 7 (duels).
 //
 // LA QUESTION, ET POURQUOI ELLE N'EST PAS CELLE DE LA SONDE N°1. La sonde n°1
-// (`games/halo_infinite/film/replay/duels_sonde_*_test.go`, note `.ai/V7.5/film_re/SONDE_DUELS_2026-09-06.md`)
+// (`games/halo_infinite/film/replay/duels_sonde_*_test.go`)
 // a mesure la RECIPROCITE DU DEGAT et l'a rejetee : le film n'emet que 0,8 a 4,8
 // `damage_aftermath` par mort, le compte des duels serait un sous-comptage de 4 a 8x. Mais
 // elle s'interdisait la base, donc elle ignorait QUI etait le tueur pour 50 a 90 % des morts.
@@ -16,7 +16,7 @@ package killcollector
 // coups, et c'est un duel. Le bouclier est replique DANS LE RECORD DE POSITION a chaque fois
 // qu'il change (`BipedPosition.ShieldAt`) — deux a dix fois plus dense que le flux de degats.
 //
-// CE QUE CETTE SONDE MESURE (items 1.3 a 1.7 de `.ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md`) :
+// CE QUE CETTE SONDE MESURE :
 //
 //	A  pont du tueur — part des kills du feed dont le TUEUR est localise a T par le pont de
 //	   PRODUCTION (`ResolveSlotXUID` + `BuildKillPositions`). Sans lui, rien d'autre n'a de sens.
@@ -61,9 +61,10 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/platform/duckdb"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 const (
@@ -336,7 +337,7 @@ func duelsBLireFilm(
 // duelsBFilmDir rend le repertoire des chunks du film dans le cache local.
 //
 // LE CACHE DE FILMS N'A PAS D'ACCESSEUR `PathResolver` : il est hérité (title-agnostic, hors
-// `data/titles/`) et sa seule abstraction du depot est `haloclient.LocalFilmCache`, qui resout
+// `data/titles/`) et sa seule abstraction du depot est `filmfetch.LocalFilmCache`, qui resout
 // `<cache>/film_chunks/<court>` en interne SANS exposer le repertoire. La composition est donc
 // faite ici, une fois, et `DUELS_FILM` permet de la court-circuiter entierement.
 func duelsBFilmDir(root, matchID string) string {

@@ -35,6 +35,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 )
 
@@ -61,10 +62,10 @@ type SeasonsCatalogResolver interface {
 // mais redéfini ici pour éviter l'import circulaire (les types domain/canonical
 // ne suffisent pas car on a besoin du Label localisé).
 type SeasonCatalogEntry struct {
-	ID    string
-	Label string
-	// LabelEN = libellé EN (GH3-1). Vide → Label sert dans les deux locales.
-	LabelEN      string
+	ID string
+	// Label = libellé par langue (GH3-1) : fr = FR/canonique, en = EN. Une langue absente se replie
+	// sur l'autre (une saison sans traduction porte le même nom dans les deux).
+	Label        i18n.Text
 	Start        time.Time
 	End          *time.Time
 	DisplayOrder int
@@ -189,7 +190,7 @@ func (h *FieldMappingsHandler) handleGet(ctx context.Context, in *fieldMappingsI
 	// sache ce qu'il a demandé.
 	locale := in.Locale
 	if locale == "" {
-		locale = mappings.LocaleFR
+		locale = string(i18n.Default)
 	}
 
 	set, ok := h.registry.Get(slug)
@@ -201,10 +202,10 @@ func (h *FieldMappingsHandler) handleGet(ctx context.Context, in *fieldMappingsI
 	catalog := h.loadSeasonCatalog(ctx, slug)
 	version := h.tomlFingerprint(ctx, sets) + "|" + seasonsCatalogVersion(catalog)
 
-	// Seules les locales servies (fr, en) sont cachées : la locale est un paramètre
+	// Seules les langues de config/locales.toml sont cachées : la locale est un paramètre
 	// libre recopié dans le corps, un cache par valeur arbitraire serait sans borne.
 	cacheKey := slug + "|" + locale
-	cacheable := locale == mappings.LocaleFR || locale == mappings.LocaleEN
+	cacheable := i18n.Known(i18n.Locale(locale))
 	entry, hit := fieldMappingsCacheEntry{}, false
 	if cacheable {
 		entry, hit = h.cachedDTO(cacheKey, version)
@@ -367,15 +368,15 @@ func buildAssetsDTO(assets *mappings.AssetMappingSet, locale string, catalog []S
 
 // projectCatalogToBucket projette le catalog unifié saisons en bucket DTO,
 // résolu dans la locale de requête (GH3-1). Sous EN, le libellé EN prime
-// (LabelEN) ; sinon le libellé FR/canonique (Label). Les saisons DB-only sans
-// traduction portent le même Name dans les deux locales (LabelEN == Label).
+// (Label[en]) ; sinon le libellé FR/canonique (Label[fr]). Les saisons DB-only sans
+// traduction portent le même Name dans les deux locales.
 func projectCatalogToBucket(catalog []SeasonCatalogEntry, locale string) map[string]assetMappingDTO {
 	bucket := make(map[string]assetMappingDTO, len(catalog))
 	for _, e := range catalog {
 		start := e.Start
-		label := e.Label
-		if locale == mappings.LocaleEN && e.LabelEN != "" {
-			label = e.LabelEN
+		label := e.Label.Pick(i18n.Parse(locale))
+		if label == "" {
+			label = e.Label[i18n.Default]
 		}
 		bucket[e.ID] = assetMappingDTO{
 			Label:        label,

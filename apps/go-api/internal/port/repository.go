@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // BattlePassCacheRepository fournit les données Battle Pass et Challenges depuis le cache DB.
@@ -100,7 +101,6 @@ type FiltersRepository interface {
 	LoadMatchesForFilters(ctx context.Context) ([]domain.FilterMatchRow, error)
 	GetMatchCount(ctx context.Context) (int, error)
 	GetPlayerMatchCount(ctx context.Context) (int, error)
-	GetAvailablePlaylists(ctx context.Context) ([]domain.LabelValue, error)
 }
 
 // MatchHistoryRepository fournit les données pour l'historique des parties.
@@ -115,7 +115,6 @@ type CareerRepository interface {
 	GetLatestRank(ctx context.Context) (*domain.CareerRankData, error)
 	GetXPHistory(ctx context.Context) ([]domain.XPHistoryPoint, error)
 	GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpointDTO, error)
-	GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow, error)
 	GetEncounters(ctx context.Context) ([]domain.EncounterRawRow, error)
 	// GetHighlightMatchIDs : 15 best + 15 worst match_ids triés par perf+dominance.
 	// `filters` applique les filtres Expérience + Saisons (côté SQL).
@@ -123,12 +122,12 @@ type CareerRepository interface {
 	// GetHighlightPool : pool complet des matchs éligibles "marquants"
 	// (light : match_id + is_ranked + start_time). Pour cascade counts.
 	GetHighlightPool(ctx context.Context) ([]domain.HighlightMatchPoolRow, error)
-	// LoadModeTranslationsFR : map EN→FR depuis metadata.mode_name_tr (lang='fr').
+	// LoadModeTranslations : map EN→langue loc depuis metadata.mode_name_tr.
 	// Best-effort : nil silencieux si table absente.
-	LoadModeTranslationsFR(ctx context.Context, modeENs []string) (map[string]string, error)
-	// LoadPlaylistAssetTranslationsFR : map playlist_id→nom FR depuis
+	LoadModeTranslations(ctx context.Context, loc i18n.Locale, modeENs []string) (map[string]string, error)
+	// LoadPlaylistAssetTranslations : map playlist_id→nom dans la langue loc depuis
 	// metadata.asset_translations. Best-effort : nil silencieux si absent.
-	LoadPlaylistAssetTranslationsFR(ctx context.Context, playlistIDs []string) (map[string]string, error)
+	LoadPlaylistAssetTranslations(ctx context.Context, loc i18n.Locale, playlistIDs []string) (map[string]string, error)
 	// GetTopEncountersGlobal : 10 joueurs les plus croisés au niveau carrière,
 	// hors XUIDs présents dans excludeXUIDs (typiquement les amis).
 	GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []string) ([]domain.MatchEncounterRow, []domain.EncounterStatsRaw, error)
@@ -359,11 +358,11 @@ type ExplorerRepository interface {
 	// + medals_earned (perfect kills). Retourne nil si xuid vide ou limit <= 0.
 	GetTargetRecentMatches(ctx context.Context, xuid string, limit int) ([]domain.ExplorerTargetRecentMatch, error)
 
-	// TranslateModeUIsFR traduit EN PLACE les ModeUI (sous-modes EN normalisés) en
-	// FR via metadata.mode_name_tr — même résolution que GetTargetRecentMatches.
+	// TranslateModeUIs traduit EN PLACE les ModeUI (sous-modes EN normalisés) dans
+	// la langue loc via metadata.mode_name_tr — même résolution que GetTargetRecentMatches.
 	// Sert à homogénéiser la source LIVE du profil de combat (fetchée hors DB) avec
 	// la source locale. Best-effort : no-op si metadata absent.
-	TranslateModeUIsFR(ctx context.Context, rows []domain.ExplorerTargetRecentMatch)
+	TranslateModeUIs(ctx context.Context, loc i18n.Locale, rows []domain.ExplorerTargetRecentMatch)
 
 	// GetTopWeaponsForMatches retourne le top `limit` armes (par kills) du joueur
 	// sur les matchs donnés (shared.v_weapon_kills, COUNT(*) par effective_weapon_id)
@@ -399,9 +398,6 @@ func (n *noopFiltersRepo) LoadMatchesForFilters(_ context.Context) ([]domain.Fil
 }
 func (n *noopFiltersRepo) GetMatchCount(_ context.Context) (int, error)       { return 0, nil }
 func (n *noopFiltersRepo) GetPlayerMatchCount(_ context.Context) (int, error) { return 0, nil }
-func (n *noopFiltersRepo) GetAvailablePlaylists(_ context.Context) ([]domain.LabelValue, error) {
-	return nil, nil
-}
 
 // noopMatchHistoryRepo — impl nulle pour le check de compilation uniquement.
 type noopMatchHistoryRepo struct{}
@@ -422,9 +418,6 @@ func (n *noopCareerRepo) GetXPHistory(_ context.Context) ([]domain.XPHistoryPoin
 func (n *noopCareerRepo) GetLUSRHistory(_ context.Context) ([]domain.LUSRCheckpointDTO, error) {
 	return nil, nil
 }
-func (n *noopCareerRepo) GetTopMatches(_ context.Context) ([]domain.TopMatchRawRow, error) {
-	return nil, nil
-}
 func (n *noopCareerRepo) GetEncounters(_ context.Context) ([]domain.EncounterRawRow, error) {
 	return nil, nil
 }
@@ -434,10 +427,10 @@ func (n *noopCareerRepo) GetHighlightMatchIDs(_ context.Context, _ domain.Career
 func (n *noopCareerRepo) GetHighlightPool(_ context.Context) ([]domain.HighlightMatchPoolRow, error) {
 	return nil, nil
 }
-func (n *noopCareerRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
+func (n *noopCareerRepo) LoadModeTranslations(_ context.Context, _ i18n.Locale, _ []string) (map[string]string, error) {
 	return nil, nil
 }
-func (n *noopCareerRepo) LoadPlaylistAssetTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
+func (n *noopCareerRepo) LoadPlaylistAssetTranslations(_ context.Context, _ i18n.Locale, _ []string) (map[string]string, error) {
 	return nil, nil
 }
 func (n *noopCareerRepo) GetTopEncountersGlobal(_ context.Context, _ []string) ([]domain.MatchEncounterRow, []domain.EncounterStatsRaw, error) {
@@ -566,7 +559,7 @@ func (n *noopExplorerRepo) GetMatchStartTimesForXUID(_ context.Context, _ string
 func (n *noopExplorerRepo) GetTargetRecentMatches(_ context.Context, _ string, _ int) ([]domain.ExplorerTargetRecentMatch, error) {
 	return nil, nil
 }
-func (n *noopExplorerRepo) TranslateModeUIsFR(_ context.Context, _ []domain.ExplorerTargetRecentMatch) {
+func (n *noopExplorerRepo) TranslateModeUIs(_ context.Context, _ i18n.Locale, _ []domain.ExplorerTargetRecentMatch) {
 }
 func (n *noopExplorerRepo) GetTopWeaponsForMatches(_ context.Context, _ string, _ []string, _ int) ([]domain.WeaponHighlight, error) {
 	return nil, nil

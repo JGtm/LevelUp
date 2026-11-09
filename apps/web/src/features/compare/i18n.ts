@@ -1,9 +1,9 @@
 import { humanizeMetricKey } from '@/lib/i18n/metricLabel'
+import { intlLocale } from '@/lib/formatters/intlLocale'
 import type { Locale } from '@/lib/i18n/locale'
 
 export interface CompareText {
   intlLocale: string
-  pageTitle: string
   backToExplorer: string
   searchPlaceholder: string
   emptyPrompt: string
@@ -23,7 +23,7 @@ export interface CompareText {
   catPrecision: string
   catBilan: string
   /**
-   * Profil d'armes (plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 4).
+   * Profil d'armes.
    *
    * FR SANS ANGLICISME : « frags », « morts », « portée », « armes les plus utilisées » —
    * jamais « kills », « range » ou « top weapons ». La parité stricte des clés FR/EN est
@@ -45,8 +45,7 @@ export interface CompareText {
 }
 
 const FR_TEXT: CompareText = {
-  intlLocale: 'fr-FR',
-  pageTitle: 'Face-à-face',
+  intlLocale: intlLocale('fr'),
   backToExplorer: 'Retour à l\'Explorer',
   searchPlaceholder: 'Rechercher un joueur…',
   emptyPrompt: 'Recherchez un joueur pour lancer le face-à-face.',
@@ -88,8 +87,7 @@ const FR_TEXT: CompareText = {
 }
 
 const EN_TEXT: CompareText = {
-  intlLocale: 'en-GB',
-  pageTitle: 'Head-to-head',
+  intlLocale: intlLocale('en'),
   backToExplorer: 'Back to Explorer',
   searchPlaceholder: 'Search a player…',
   emptyPrompt: 'Search a player to start the head-to-head.',
@@ -134,10 +132,6 @@ const TEXT: Record<Locale, CompareText> = {
   en: EN_TEXT,
 }
 
-export function normalizeCompareLocale(locale?: string | null): Locale {
-  return locale === 'en' ? 'en' : 'fr'
-}
-
 /**
  * Métrique du contrat compare → FieldKey canonique du registre de titre
  * (`config/titles/{slug}/mappings/fields.toml`, servi par /field-mappings).
@@ -170,10 +164,10 @@ export const METRIC_TO_FIELD_KEY: Record<string, string> = {
 }
 
 export function getCompareText(
-  locale?: string | null,
+  locale: Locale,
   fieldMappings?: { fields: Record<string, { label: string }> },
 ): CompareText {
-  const base = TEXT[normalizeCompareLocale(locale)]
+  const base = TEXT[locale]
   if (!fieldMappings) return base
   const merged: CompareText = {
     ...base,

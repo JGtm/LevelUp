@@ -1,7 +1,6 @@
 /**
  * MapPerfVsHistoryChart — wrapper squad pour le grouped-bar teammates.13.
  *
- * Spec : .ai/charts_specs/teammates/13_map_perf_vs_history.yaml
  * Builder : ./charts/mapPerfVsHistoryChart.ts
  */
 import { useCallback, useMemo } from 'react'

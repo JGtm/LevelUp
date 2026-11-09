@@ -17,7 +17,7 @@ In modes that are decided by **rounds**, the team score returned by the Halo API
 not say who won.
 
 Measured on 2026-08-29 over the whole corpus — 1 942 matches re-fetched from `GetMatchStats`,
-0 errors (`.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`):
+0 errors (`.ai/archive/V7.5/RAPPORT_MANCHES_2026-08-29.md`):
 
 - 57 matches (2,9 %) are played over more than one round, across 9 game variants.
 - **4 Oddball matches award the win to the team with FEWER points** (e.g. `293a763e`: the

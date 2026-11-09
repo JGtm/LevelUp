@@ -30,9 +30,10 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // demoReplayFamily : une famille de mode et les jetons de `game_variant_name` qui la
@@ -213,7 +214,7 @@ func betterDemoReplay(a, b demoReplayCandidate) bool {
 // les données de la famille « véhicules » (seed_demo_replay_vehicles.go).
 func loadDemoReplayCandidates(ctx context.Context, opts SeedDemoOptions) ([]demoReplayCandidate, error) {
 	pr := titlePkg.NewPathResolver(opts.cacheRepoRoot())
-	films, err := filmcache.ListShortIDs(pr.CacheRootDir())
+	films, err := filmcache.ListShortIDs(pr.FilmArchiveDir())
 	if err != nil {
 		return nil, err
 	}

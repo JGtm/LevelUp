@@ -1,10 +1,8 @@
 /// <reference types="node" />
 // @vitest-environment node
 /**
- * Garde-rail (CLAUDE.md n°6, règle « ≤ 2 copies ») : le lot C1 du plan vague C
- * (`.ai/PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md`, décision D1) a désigné
- * `components/charts/Heatmap2DChart.tsx` comme l'UNIQUE wrapper canonique de grille
- * ECharts. La migration des implémentations existantes, longtemps reportée (décision S6),
+ * Garde-rail (CLAUDE.md n°6, règle « ≤ 2 copies ») : `components/charts/Heatmap2DChart.tsx` est l'UNIQUE wrapper canonique de grille
+ * ECharts. La migration des implémentations existantes, longtemps reportée,
  * est FAITE depuis le 2026-09-20 pour toutes les grilles catégorielles : ce test est ce qui
  * empêche une sixième de réapparaître.
  *

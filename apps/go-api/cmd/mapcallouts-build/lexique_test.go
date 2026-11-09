@@ -11,8 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/himap"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapcatalog"
+
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // cheminReference rend le dossier reference/ du titre par défaut depuis ce paquet.
@@ -55,8 +57,8 @@ func TestLexiqueVersionnePorteDesLibellesReels(t *testing.T) {
 			t.Errorf("string_id %08X absent du lexique", c.sid)
 			continue
 		}
-		if got.EN != c.en || got.FR != c.fr {
-			t.Errorf("string_id %08X = (%q, %q), attendu (%q, %q)", c.sid, got.EN, got.FR, c.en, c.fr)
+		if got[i18n.LocaleEN] != c.en || got[i18n.LocaleFR] != c.fr {
+			t.Errorf("string_id %08X = (%q, %q), attendu (%q, %q)", c.sid, got[i18n.LocaleEN], got[i18n.LocaleFR], c.en, c.fr)
 		}
 	}
 }
@@ -83,15 +85,15 @@ func TestLexiqueCouvreLeCSVFigeAuCaractereRes(t *testing.T) {
 		if !ok {
 			absents++
 			if absents <= 5 {
-				t.Errorf("string_id %08X (%q) absent du lexique", sid, attendu.EN)
+				t.Errorf("string_id %08X (%q) absent du lexique", sid, attendu[i18n.LocaleEN])
 			}
 			continue
 		}
-		if got != attendu {
+		if !got.Equal(attendu) {
 			divergents++
 			if divergents <= 5 {
 				t.Errorf("string_id %08X : lexique (%q, %q) != CSV (%q, %q)",
-					sid, got.EN, got.FR, attendu.EN, attendu.FR)
+					sid, got[i18n.LocaleEN], got[i18n.LocaleFR], attendu[i18n.LocaleEN], attendu[i18n.LocaleFR])
 			}
 		}
 	}
@@ -134,10 +136,10 @@ func TestLexiqueEstTrieEtSansTexteVide(t *testing.T) {
 // TestFusionneLexiqueRefuseUneDivergence — la fusion ne tranche JAMAIS entre deux textes
 // concurrents pour un même string_id : elle échoue, et rien n'est publié.
 func TestFusionneLexiqueRefuseUneDivergence(t *testing.T) {
-	base := mapcatalog.Lexique{0x11111111: {EN: "Cave", FR: "Grotte"}}
+	base := mapcatalog.Lexique{0x11111111: i18n.FromColumns("Cave", "Grotte")}
 	lex := mapcatalog.Lexique{
-		0x11111111: {EN: "Cavern", FR: "Caverne"},
-		0x22222222: {EN: "River", FR: "Rivière"},
+		0x11111111: i18n.FromColumns("Cavern", "Caverne"),
+		0x22222222: i18n.FromColumns("River", "Rivière"),
 	}
 	if _, _, err := fusionneLexique(base, lex); err == nil {
 		t.Fatal("une divergence de texte doit faire échouer la fusion")
@@ -148,7 +150,7 @@ func TestFusionneLexiqueRefuseUneDivergence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("fusion saine : %v", err)
 	}
-	if ajouts != 1 || len(out) != 2 || out[0x11111111].EN != "Cave" || out[0x22222222].EN != "River" {
+	if ajouts != 1 || len(out) != 2 || out[0x11111111][i18n.LocaleEN] != "Cave" || out[0x22222222][i18n.LocaleEN] != "River" {
 		t.Fatalf("fusion = %d ajouts, %d entrées : %+v", ajouts, len(out), out)
 	}
 }
@@ -158,10 +160,10 @@ func TestFusionneLexiqueRefuseUneDivergence(t *testing.T) {
 func TestEcritLexiqueEcarteUnCoupleIncomplet(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, nomLexique)
-	n, ecartes, err := ecritLexique(p, map[uint32]himap.LibelleLieu{
-		0x00000002: {EN: "River", FR: "Rivière"},
-		0x00000001: {EN: "Ledge", FR: ""},
-		0x00000003: {EN: "", FR: "Rampe"},
+	n, ecartes, err := ecritLexique(p, map[uint32]i18n.Text{
+		0x00000002: i18n.FromColumns("River", "Rivière"),
+		0x00000001: i18n.FromColumns("Ledge", ""),
+		0x00000003: i18n.FromColumns("", "Rampe"),
 	})
 	if err != nil {
 		t.Fatalf("écriture : %v", err)
@@ -173,7 +175,27 @@ func TestEcritLexiqueEcarteUnCoupleIncomplet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("relecture : %v", err)
 	}
-	if len(relu) != 1 || relu[0x00000002].FR != "Rivière" {
+	if len(relu) != 1 || relu[0x00000002][i18n.LocaleFR] != "Rivière" {
 		t.Fatalf("relu = %+v", relu)
+	}
+}
+
+// TestVersTextesTraduitLesCodesDuJeu — les codes de langue que himap rend (CodeLangueEN/FR)
+// deviennent des langues de l'application par i18n.FromHaloTag ; un code que la liste ne porte
+// pas est compté, jamais rangé sous une autre langue.
+func TestVersTextesTraduitLesCodesDuJeu(t *testing.T) {
+	brut := map[uint32]map[string]string{
+		0x1: {himap.CodeLangueEN: "Cave", himap.CodeLangueFR: "Grotte"},
+		0x2: {himap.CodeLangueEN: "River", "xx-XX": "?"},
+	}
+	out, inconnus := versTextes(brut)
+	if inconnus != 1 {
+		t.Fatalf("codes inconnus = %d ; attendu 1", inconnus)
+	}
+	if got := out[0x1]; got[i18n.LocaleEN] != "Cave" || got[i18n.LocaleFR] != "Grotte" || len(got) != 2 {
+		t.Fatalf("0x1 = %+v", got)
+	}
+	if got := out[0x2]; got[i18n.LocaleEN] != "River" || len(got) != 1 {
+		t.Fatalf("0x2 = %+v", got)
 	}
 }

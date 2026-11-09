@@ -49,9 +49,10 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync/replayartifacts"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // tacticalRastersOptions : les reglages de la passe.
@@ -157,7 +158,7 @@ func artefactsDuTitre(ctx context.Context, cfg *config.AppConfig, slug string) (
 func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 	o tacticalRastersOptions, shorts []string) bilanTacticalRasters {
 	b := bilanTacticalRasters{}
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	for _, short := range shorts {
 		if o.limit > 0 && b.lus >= o.limit {
 			break

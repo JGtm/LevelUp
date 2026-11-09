@@ -18,6 +18,6 @@ des références dont nous avons appris, pas du code que nous embarquons :
   Halo, et la voie d'import des données OpenSpartan.
 - **Gravemind2401** ([Gravemind2401](https://github.com/Gravemind2401)) pour [Reclaimer](https://github.com/Gravemind2401/Reclaimer) —
   sa lecture des formats de fichiers de cartes Halo est la référence derrière notre décodeur de
-  géométrie (`apps/go-api/internal/himap/` : sections SBSP, filtres de maillage, groupes SDDT).
+  géométrie (`libs/himap/himap/` : sections SBSP, filtres de maillage, groupes SDDT).
 
 Si vous utilisez ce projet, pensez à soutenir aussi les projets amont en les « star » sur GitHub.

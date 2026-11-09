@@ -106,7 +106,8 @@ func EnsureWatcherAccessToken(
 	}
 
 	// 3. Echange refresh_token → access_token (avec rotation).
-	newAccessToken, rotatedRT, err := provider.TryOAuthRefreshWithRotation(ctx, refreshToken)
+	newAccessToken, rotatedRT, err := provider.TryOAuthRefreshWithRotation(
+		WithRefreshXUID(ctx, xuid), refreshToken)
 	if err != nil {
 		slog.WarnContext(ctx, "watcher_refresh: TryOAuthRefreshWithRotation erreur",
 			"source", source, "gamertag", gamertag, "err", err,
@@ -168,6 +169,11 @@ func lookupRefreshToken(ctx context.Context, multiStore *MultiUserTokenStore, ga
 			// Cas bénin et fréquent : ce gamertag n'a jamais été authentifié.
 			slog.DebugContext(ctx, "watcher_refresh: aucune entrée store pour ce gamertag",
 				"gamertag", gamertag)
+			return "", "", ""
+		}
+		if errors.Is(err, ErrTokenFileSealed) {
+			// Déjà journalisé une fois par fichier et par processus par le codec (token_file_codec.go).
+			slog.DebugContext(ctx, "watcher_refresh: fichier de jetons scellé illisible", "gamertag", gamertag)
 			return "", "", ""
 		}
 		slog.ErrorContext(ctx, "watcher_refresh: lecture du store échouée — état anormal (I/O ou JSON corrompu), pas une absence de token",

@@ -21,8 +21,10 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 export function useMatchEngagement(playerSlug: string, matchId: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  // Le nom de la carte du match est servi dans la langue de la requête.
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.engagementMatch(playerSlug, titleSlug, matchId),
+    queryKey: queryKeys.engagementMatch(playerSlug, titleSlug, matchId, locale),
     queryFn: () =>
       api.get<EngagementScoreResultAPI>(
         `/players/${playerSlug}/matches/${matchId}/engagement`,
@@ -66,8 +68,9 @@ export function useEngagementTimeseries(
   limit: number = 50,
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
-    queryKey: queryKeys.engagementTimeseries(playerSlug, titleSlug, filterHash, limit),
+    queryKey: queryKeys.engagementTimeseries(playerSlug, titleSlug, filterHash, limit, locale),
     queryFn: () =>
       api.post<EngagementTimeseriesResponse>(
         `/players/${playerSlug}/engagement/timeseries`,
@@ -90,10 +93,11 @@ export function useSquadEngagementSession(
   teammates: SquadTeammateEntry[],
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   const xuids = teammates.map((t) => t.xuid)
   const gamertags = teammates.map((t) => t.gamertag)
   return useQuery({
-    queryKey: queryKeys.engagementSquadSession(playerSlug, titleSlug, matchIds, xuids),
+    queryKey: queryKeys.engagementSquadSession(playerSlug, titleSlug, matchIds, xuids, locale),
     queryFn: () => {
       const params = new URLSearchParams()
       if (matchIds.length > 0) params.set('match_ids', matchIds.join(','))

@@ -1,0 +1,116 @@
+# Messages du coach (arcs composés, défis synthétisés). Catalogue des messages Go (ADR 0040) :
+# une feuille par message, une valeur par langue de config/locales.toml, variables `{nom}`.
+
+# --- Arc composé : titre et description par axe pivot (ADR 0028) -------------------------------
+
+[coach.arc.title.combat]
+fr = "Domination en combat"
+en = "Combat Mastery"
+
+[coach.arc.title.survival]
+fr = "Reprise solide"
+en = "Resilient Comeback"
+
+[coach.arc.title.support]
+fr = "Pilier d'équipe"
+en = "Team Pillar"
+
+[coach.arc.title.objective]
+fr = "Objectif d'abord"
+en = "Objective First"
+
+[coach.arc.title.score]
+fr = "Performance d'élite"
+en = "Elite Performance"
+
+[coach.arc.title.impact]
+fr = "Joueur d'impact"
+en = "Impact Player"
+
+# Axe inconnu (un futur titre introduit un axe sans entrée ici).
+[coach.arc.title.default]
+fr = "Arc du coach"
+en = "Coach Arc"
+
+[coach.arc.description]
+fr = "Un arc en {steps} étapes pour consolider ta progression {axis}."
+en = "A {steps}-step arc to consolidate your {axis} progress."
+
+# Nom de l'axe tel qu'inséré dans la phrase de description de l'arc.
+[coach.axis.combat]
+fr = "en combat"
+en = "combat"
+
+[coach.axis.survival]
+fr = "en survie"
+en = "survival"
+
+[coach.axis.support]
+fr = "en support d'équipe"
+en = "team support"
+
+[coach.axis.objective]
+fr = "sur l'objectif"
+en = "objective play"
+
+[coach.axis.score]
+fr = "au scoring"
+en = "scoring"
+
+[coach.axis.impact]
+fr = "en impact"
+en = "impact"
+
+# Axe inconnu : l'identifiant lui-même, précédé de « sur » en français.
+[coach.axis.other]
+fr = "sur {axis}"
+en = "{axis}"
+
+# --- Défi synthétisé (aucun gabarit du catalogue ne couvre le signal) ---------------------------
+
+[coach.synth.label]
+fr = "Améliore {metric} sur {window}"
+en = "Improve {metric} over {window}"
+
+[coach.synth.description]
+fr = "Pousse ton {metric} au-dessus de ta moyenne personnelle sur {window}."
+en = "Push your {metric} above your personal baseline over {window}."
+
+# Noms de métrique : la sortie historique ne les traduit pas en français (mêmes mots dans les
+# deux langues) ; une nouvelle langue les traduit.
+[coach.metric.kda]
+fr = "KDA"
+en = "KDA"
+
+[coach.metric.kills_vs_expected]
+fr = "kills vs expected"
+en = "kills vs expected"
+
+[coach.metric.deaths_vs_expected]
+fr = "deaths vs expected"
+en = "deaths vs expected"
+
+[coach.metric.accuracy_delta]
+fr = "accuracy delta"
+en = "accuracy delta"
+
+[coach.metric.assists_per_kill]
+fr = "assists per kill"
+en = "assists per kill"
+
+[coach.metric.performance_score]
+fr = "performance score"
+en = "performance score"
+
+# Fenêtre d'évaluation du défi.
+[coach.window.session]
+fr = "une session"
+en = "a session"
+
+[coach.window.last_n_matches]
+fr = "les {n} derniers matchs"
+en = "the last {n} matches"
+
+[coach.window.rolling_days]
+fr = "{n} jours"
+en = "{n} days"

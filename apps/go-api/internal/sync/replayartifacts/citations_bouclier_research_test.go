@@ -2,8 +2,7 @@
 
 package replayartifacts
 
-// citations_bouclier_research_test.go — INSTRUMENT DE L'ÉTAPE E1 du plan des citations Halo 5
-// (`.ai/V7.5/PLAN_CITATIONS_FILM_2026-10-16.md`) : « Presque, ça ne compte pas » = un frag dont le
+// citations_bouclier_research_test.go — INSTRUMENT DE L'ÉTAPE E1 du plan des citations Halo 5 : « Presque, ça ne compte pas » = un frag dont le
 // tueur a un bouclier à 0 % à l'instant du frag, et qui survit.
 //
 // Mesure, sur les artefacts du parc croisés aux frags de `match_kill_events_latest` (COPIE de la
@@ -27,7 +26,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 var citBouclierDocRe = regexp.MustCompile(`^([0-9a-f]{8})\.json$`)

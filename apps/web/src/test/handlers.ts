@@ -4,6 +4,8 @@
  * URLs alignées sur /api/v1 (base URL du client HTTP).
  */
 import { http, HttpResponse } from 'msw'
+import { DEFAULT_LOCALE } from '@/lib/i18n/locale'
+import { testCapabilities } from './capabilities'
 
 const SLUG = ':playerSlug'
 const p = (path: string) => `/api/v1${path}`
@@ -33,17 +35,7 @@ const bootstrapFixture = {
     discord_configured: false,
     tailscale_enabled: false,
   },
-  capabilities: {
-    can_read_local_data: true,
-    can_run_sync: true,
-    can_use_live_halo: true,
-    can_manage_settings: true,
-    can_reset_media_index: true,
-    can_view_media: true,
-    can_self_provision: true,
-    can_start_initial_sync: true,
-    can_manage_instance: true,
-  },
+  capabilities: testCapabilities(),
   settings_excerpt: {
     lang: 'fr',
     user_timezone: 'UTC',
@@ -152,7 +144,6 @@ const settingsFixture = {
   normalize_mode_labels: true,
   show_records: true,
   refresh_clears_caches: false,
-  career_top_exclude_btb: false,
   media_captures_base_dir: '',
   media_tolerance_minutes: 5,
   media_watcher_enabled: false,
@@ -168,6 +159,43 @@ const settingsFixture = {
   spnkr_auto_sync_interval_minutes: 360,
   watcher_presence_enabled: false,
   watcher_subscribed_players: [],
+  archive_films: true,
+  film_archive_dir: '',
+  game_process_watch: true,
+  native_notifications: false,
+  close_to_tray: false,
+  start_with_windows: false,
+  scheduled_refresh: false,
+  backup_dir: '',
+  backup_interval: '24h',
+  backup_keep: 7,
+  memory_limit_mb: 0,
+}
+
+/** État vivant de l'intégration au poste (GET /settings/desktop) : le jeu ne tourne pas. */
+export const desktopStatusFixture = {
+  game_running: false,
+}
+
+/** État des données du bureau (GET /settings/data) : aucune sauvegarde choisie, mémoire mesurée. */
+export const dataStatusFixture = {
+  backup: { enabled: false, running: false, same_volume: false },
+  memory: { rss_mb: 812, limit_mb: 0, effective_limit: '4096MiB' },
+}
+
+/** Import depuis le site au repos (GET /import/site). */
+export const siteImportIdleFixture = { phase: 'idle', matches: 0 }
+
+/** Archive des films : vide, emplacement par défaut (GET /settings/film-archive). */
+export const filmArchiveFixture = {
+  dir: '/donnees/cache',
+  configured_dir: '',
+  restart_required: false,
+  archive_films: true,
+  films: 0,
+  bytes: 0,
+  partial: false,
+  measured_at: '2026-11-02T10:00:00Z',
 }
 
 const emptyKPIs = {
@@ -306,10 +334,30 @@ export const handlers = [
     return HttpResponse.json({ ...settingsFixture, ...(body as Record<string, unknown>) })
   }),
 
+  http.get(p('/settings/film-archive'), () => HttpResponse.json(filmArchiveFixture)),
+  http.get(p('/settings/desktop'), () => HttpResponse.json(desktopStatusFixture)),
+  http.get(p('/settings/data'), () => HttpResponse.json(dataStatusFixture)),
+  http.get(p('/desktop/resources'), () => HttpResponse.json({ phase: 'idle', percent: 0, restart_needed: false })),
+  http.post(p('/settings/data/backup/run'), () => HttpResponse.json({ started: true }, { status: 202 })),
+
+  // Import depuis le site, rapport de diagnostic et jeton d'export (lot L22)
+  http.get(p('/import/site'), () => HttpResponse.json(siteImportIdleFixture)),
+  http.post(p('/import/site'), () =>
+    HttpResponse.json({ phase: 'downloading', matches: 0 }, { status: 202 }),
+  ),
+  http.post(p('/desktop/diagnostic'), () =>
+    HttpResponse.json({
+      path: 'C:\\Users\\Test\\AppData\\Local\\LevelUp\\diagnostics\\levelup-diagnostic.zip',
+      file_name: 'levelup-diagnostic.zip',
+      bytes: 48_213,
+    }),
+  ),
+  http.post(p('/export/desktop/token'), () =>
+    HttpResponse.json({ token: 'jeton-' + 'e9'.repeat(14), expires_at: '2026-11-03T10:15:00Z' }),
+  ),
+
   // Career
   http.get(p(`/players/${SLUG}/pages/career`), () => HttpResponse.json(careerFixture)),
-  http.get(p(`/players/${SLUG}/pages/career/top-matches`), () =>
-    HttpResponse.json({ best_matches: [], worst_matches: [] })),
   http.get(p(`/players/${SLUG}/pages/career/encounters`), () =>
     HttpResponse.json({
       teammates: [
@@ -511,7 +559,7 @@ export const handlers = [
     return HttpResponse.json({
       title_slug: params.slug,
       schema_version: 1,
-      locale: url.searchParams.get('locale') ?? 'fr',
+      locale: url.searchParams.get('locale') ?? DEFAULT_LOCALE,
       fields: {},
       assets: {
         cadence: {
@@ -525,7 +573,7 @@ export const handlers = [
     })
   }),
 
-  // Filters resolve (NavL2 / FilterOmnibar / SessionNavBar via useFiltersResolve)
+  // Filters resolve (SoloFiltersBar / FilterOmnibar / SessionNavBar via useFiltersResolve)
   http.post(p(`/players/${SLUG}/filters/resolve`), () =>
     HttpResponse.json({
       effective: {

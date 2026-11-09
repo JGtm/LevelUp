@@ -5,6 +5,9 @@ package duckdb
 import (
 	"context"
 	"testing"
+
+	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/i18n"
 )
 
 // seedMedalFallbackData peuple un dataset hétérogène partagé par les tests de
@@ -14,19 +17,21 @@ func seedMedalFallbackData(t *testing.T, db *DB) {
 	t.Helper()
 	ctx := context.Background()
 	seedMedalDefsSchema(t, db)
-	// name_en seul (name_fr laissé vide) → label déterministe "Killjoy" quelle
+	// Nom anglais seul (aucune ligne française) → label déterministe "Killjoy" quelle
 	// que soit la locale : resolveMedalLabels et lookupMedalMeta sont locale-aware
-	// mais NULLIF(TRIM(name_fr),'') retombe sur name_en même en FR.
+	// mais une langue sans traduction retombe sur l'anglais, même en FR.
 	if _, err := db.Exec(ctx,
-		`INSERT INTO medal_definitions (medal_name_id, name_en, difficulty) VALUES (100, 'Killjoy', 'Heroic')`,
+		`INSERT INTO medal_definitions (medal_name_id, difficulty) VALUES (100, 'Heroic')`,
 	); err != nil {
 		t.Fatalf("seed medal 100: %v", err)
 	}
+	insertMedalTexts(t, db, 100, i18n.Text{i18n.LocaleEN: "Killjoy"}, nil)
 	if _, err := db.Exec(ctx,
-		`INSERT INTO citation_mappings (medal_id, citation_name_display) VALUES (200, 'Perfection')`,
+		`INSERT INTO citation_mappings (medal_id, citation_name_norm) VALUES (200, 'perfection')`,
 	); err != nil {
 		t.Fatalf("seed citation 200: %v", err)
 	}
+	insertCitationTexts(t, db, "perfection", i18n.Text{i18n.LocaleFR: "Perfection"}, nil)
 }
 
 // TestLookupMedalCitationLabels_Helper couvre le helper partagé (source unique
@@ -76,17 +81,17 @@ func TestResolveMedalLabels_CitationFallback(t *testing.T) {
 
 // TestResolveMedalLabels_LocaleAware prouve GH2-B6 : la tuile de match Home sert
 // le nom/description de médaille dans la locale de requête. Sous UI EN, JAMAIS de
-// colonne FR (name_fr/description_fr) — parité avec la vue Match (GH-5b).
+// texte français — parité avec la vue Match (GH-5b).
 func TestResolveMedalLabels_LocaleAware(t *testing.T) {
 	db := openMemDB(t)
 	seedMedalDefsSchema(t, db)
 	ctx := context.Background()
 	if _, err := db.Exec(ctx,
-		`INSERT INTO medal_definitions (medal_name_id, name_fr, name_en, description_fr, description_en, difficulty)
-		 VALUES (300, 'Tueur de joie', 'Killjoy', 'Fin d une serie', 'Ended a spree', 'Heroic')`,
+		`INSERT INTO medal_definitions (medal_name_id, difficulty) VALUES (300, 'Heroic')`,
 	); err != nil {
 		t.Fatalf("seed medal 300: %v", err)
 	}
+	insertMedalTexts(t, db, 300, frEn("Tueur de joie", "Killjoy"), frEn("Fin d une serie", "Ended a spree"))
 
 	fr := resolveMedalLabels(ctx, db, []int64{300}, "fr")
 	if fr[300].label != "Tueur de joie" {
@@ -98,10 +103,16 @@ func TestResolveMedalLabels_LocaleAware(t *testing.T) {
 
 	en := resolveMedalLabels(ctx, db, []int64{300}, "en")
 	if en[300].label != "Killjoy" {
-		t.Errorf("EN label = %q, want 'Killjoy' (jamais name_fr sous EN)", en[300].label)
+		t.Errorf("EN label = %q, want 'Killjoy' (jamais de français sous EN)", en[300].label)
 	}
 	if en[300].description != "Ended a spree" {
-		t.Errorf("EN description = %q, want 'Ended a spree' (jamais description_fr sous EN)", en[300].description)
+		t.Errorf("EN description = %q, want 'Ended a spree' (jamais de français sous EN)", en[300].description)
+	}
+
+	// Langue inconnue : repli sur l'anglais, jamais sur la langue par défaut.
+	de := resolveMedalLabels(ctx, db, []int64{300}, "de")
+	if de[300].label != "Killjoy" || de[300].description != "Ended a spree" {
+		t.Errorf("langue inconnue = %+v, want le texte anglais", de[300])
 	}
 }
 
@@ -123,5 +134,154 @@ func TestLookupMedalMeta_CitationFallback(t *testing.T) {
 	}
 	if got[200].label != "Perfection" {
 		t.Errorf("match-view: medal 200 = %q, want Perfection (fallback citation_mappings)", got[200].label)
+	}
+}
+
+// TestLookupMedalMeta_Langues : la vue d'un match sert label et description dans la langue de la
+// requête (contexte), difficulty vient de medal_definitions ; une médaille sans traduction française
+// est servie en anglais, jamais vide.
+func TestLookupMedalMeta_Langues(t *testing.T) {
+	db := openMemDB(t)
+	seedMedalDefsSchema(t, db)
+	ctx := context.Background()
+	if _, err := db.Exec(ctx,
+		`INSERT INTO medal_definitions (medal_name_id, difficulty) VALUES (300, 'Heroic'), (301, 'Normal')`,
+	); err != nil {
+		t.Fatalf("seed medals: %v", err)
+	}
+	insertMedalTexts(t, db, 300, frEn("Tueur de joie", "Killjoy"), frEn("Fin d une serie", "Ended a spree"))
+	insertMedalTexts(t, db, 301, i18n.Text{i18n.LocaleEN: "Only English"}, nil)
+
+	repo := NewMatchViewRepo(&PlayerDB{Metadata: db}, pTestXUID)
+	cases := []struct {
+		locale, label, desc, only string
+	}{
+		{"fr", "Tueur de joie", "Fin d une serie", "Only English"},
+		{"en", "Killjoy", "Ended a spree", "Only English"},
+	}
+	for _, c := range cases {
+		got, err := repo.lookupMedalMeta(ctxkeys.WithLocale(ctx, c.locale), []int64{300, 301})
+		if err != nil {
+			t.Fatalf("lookupMedalMeta(%s): %v", c.locale, err)
+		}
+		if got[300].label != c.label || got[300].description != c.desc || got[300].difficulty != "Heroic" {
+			t.Errorf("lookupMedalMeta(%s) 300 = %+v", c.locale, got[300])
+		}
+		if got[301].label != c.only {
+			t.Errorf("lookupMedalMeta(%s) 301 = %q, want %q (repli en)", c.locale, got[301].label, c.only)
+		}
+	}
+}
+
+// TestLookupMedalMetaByName_Langues : le nom anglais du film retrouve la médaille, et son label est
+// celui de la langue de la requête.
+func TestLookupMedalMetaByName_Langues(t *testing.T) {
+	db := openMemDB(t)
+	seedMedalDefsSchema(t, db)
+	ctx := context.Background()
+	if _, err := db.Exec(ctx, `INSERT INTO medal_definitions (medal_name_id) VALUES (300), (400)`); err != nil {
+		t.Fatalf("seed medals: %v", err)
+	}
+	insertMedalTexts(t, db, 300, frEn("Tueur de joie", "Killjoy"), frEn("Fin d une serie", "Ended a spree"))
+	insertMedalTexts(t, db, 400, i18n.Text{i18n.LocaleFR: "Seulement français"}, nil)
+
+	repo := NewMatchViewRepo(&PlayerDB{Metadata: db}, pTestXUID)
+	for locale, want := range map[string]string{"fr": "Tueur de joie", "en": "Killjoy"} {
+		got, err := repo.LookupMedalMetaByName(ctxkeys.WithLocale(ctx, locale), []string{"Killjoy", "Seulement français", ""})
+		if err != nil {
+			t.Fatalf("LookupMedalMetaByName(%s): %v", locale, err)
+		}
+		if got["Killjoy"].MedalNameID != 300 || got["Killjoy"].Label != want {
+			t.Errorf("LookupMedalMetaByName(%s) Killjoy = %+v, want 300 / %q", locale, got["Killjoy"], want)
+		}
+		// Seul le nom ANGLAIS est la clé du film : un nom français n'identifie rien.
+		if _, ok := got["Seulement français"]; ok {
+			t.Errorf("LookupMedalMetaByName(%s) : un nom non anglais ne doit pas résoudre", locale)
+		}
+	}
+}
+
+// TestListMedalsByTitle_LanguesEtRecherche : la liste du tiroir porte les textes de chaque langue ;
+// la recherche trouve une médaille par son nom dans n'importe quelle langue ; le tri suit le nom
+// anglais ; une langue inconnue se replie sur l'anglais au choix du texte.
+func TestListMedalsByTitle_LanguesEtRecherche(t *testing.T) {
+	db := openMemDB(t)
+	seedMedalDefsSchema(t, db)
+	ctx := context.Background()
+	if _, err := db.Exec(ctx, `INSERT INTO medal_definitions (medal_name_id) VALUES (1), (2), (3)`); err != nil {
+		t.Fatalf("seed medals: %v", err)
+	}
+	insertMedalTexts(t, db, 1, frEn("Zèbre", "Zebra"), frEn("Rayé", "Striped"))
+	insertMedalTexts(t, db, 2, frEn("Abeille", "Bee"), nil)
+	insertMedalTexts(t, db, 3, i18n.Text{i18n.LocaleFR: "Sans anglais"}, nil)
+	repo := NewMetadataRepoFromDB(db)
+
+	all, err := repo.ListMedalsByTitle(ctx, "halo_infinite", "")
+	if err != nil {
+		t.Fatalf("ListMedalsByTitle: %v", err)
+	}
+	if len(all) != 3 || all[0].ID != "2" || all[1].ID != "1" || all[2].ID != "3" {
+		t.Fatalf("ordre (nom anglais, puis sans nom anglais) = %+v", all)
+	}
+	for _, c := range []struct {
+		loc  i18n.Locale
+		name string
+		desc string
+	}{
+		{i18n.LocaleFR, "Zèbre", "Rayé"},
+		{i18n.LocaleEN, "Zebra", "Striped"},
+		{i18n.Locale("zz"), "Zebra", "Striped"}, // langue inconnue : repli en
+	} {
+		got := all[1].Localized(c.loc)
+		if got.Name != c.name || got.Description != c.desc {
+			t.Errorf("langue %s : %q / %q, want %q / %q", c.loc, got.Name, got.Description, c.name, c.desc)
+		}
+	}
+
+	// Recherche : un nom français retrouve la médaille, un nom anglais aussi, casse ignorée.
+	for _, search := range []string{"zèb", "ZEBRA", "abeille"} {
+		got, err := repo.ListMedalsByTitle(ctx, "halo_infinite", search)
+		if err != nil {
+			t.Fatalf("ListMedalsByTitle(%q): %v", search, err)
+		}
+		if len(got) != 1 {
+			t.Errorf("recherche %q : %d résultat(s), want 1", search, len(got))
+		}
+	}
+}
+
+// TestLoadTitleMedals_TextesParLangue : le tiroir d'actifs des titres à sprites charge les textes de
+// chaque langue depuis medal_translations, omet une médaille sans nom anglais et trie par nom anglais.
+func TestLoadTitleMedals_TextesParLangue(t *testing.T) {
+	db := openMemDB(t)
+	seedMedalDefsSchema(t, db)
+	ctx := context.Background()
+	for _, q := range []string{
+		`ALTER TABLE medal_definitions ADD COLUMN sprite_sheet_url VARCHAR`,
+		`ALTER TABLE medal_definitions ADD COLUMN sprite_left INTEGER`,
+		`ALTER TABLE medal_definitions ADD COLUMN sprite_top INTEGER`,
+		`ALTER TABLE medal_definitions ADD COLUMN sprite_width INTEGER`,
+		`ALTER TABLE medal_definitions ADD COLUMN sprite_height INTEGER`,
+		`INSERT INTO medal_definitions (medal_name_id, sprite_sheet_url, sprite_left, sprite_top, sprite_width, sprite_height)
+		 VALUES (1, 'sheet.png', 10, 20, 30, 40), (2, NULL, NULL, NULL, NULL, NULL), (3, NULL, NULL, NULL, NULL, NULL)`,
+	} {
+		if _, err := db.Exec(ctx, q); err != nil {
+			t.Fatalf("setup %q: %v", q, err)
+		}
+	}
+	insertMedalTexts(t, db, 1, frEn("Zèbre", "Zebra"), frEn("Rayé", "Striped"))
+	insertMedalTexts(t, db, 2, frEn("Abeille", "Bee"), nil)
+	insertMedalTexts(t, db, 3, i18n.Text{i18n.LocaleFR: "Sans anglais"}, nil)
+
+	got := loadTitleMedals(ctx, db)
+	if len(got) != 2 || got[0].ID != "2" || got[1].ID != "1" {
+		t.Fatalf("médailles = %+v, want [2 1] (la 3 n'a pas de nom anglais)", got)
+	}
+	z := got[1].Localized(i18n.LocaleFR)
+	if z.Name != "Zèbre" || z.Description != "Rayé" || z.SpriteSheet != "sheet.png" || z.SpriteLeft != 10 || z.SpriteHeight != 40 {
+		t.Errorf("médaille 1 en fr = %+v", z)
+	}
+	if e := got[1].Localized(i18n.LocaleEN); e.Name != "Zebra" || e.Description != "Striped" {
+		t.Errorf("médaille 1 en en = %+v", e)
 	}
 }

@@ -147,7 +147,7 @@ before `token-capture` / `token-import` — without the XUID the store cannot
 address the entry.
 
 > After an external rotation injects a new RT, the in-process Halo token cache
-> (~50 min) is invalidated for that XUID (`halo.InvalidateCachedPlayerTokens`),
+> (~50 min) is invalidated for that XUID (`tokencache.InvalidateCachedPlayerTokens`),
 > so the server re-derives Spartan tokens from the fresh chain. `token-capture`
 > and `token-import` do this automatically.
 
@@ -196,7 +196,9 @@ auto-detection) before any `os.Getenv` read.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `LEVELUP_REPO_ROOT` | Repo root (resolves `db_profiles.json`, `app_settings.json`, `data/`). | Auto-detected |
+| `LEVELUP_RESOURCES_DIR` | Resources root: what ships with the program, read-only by convention (`config/`, `static/`, the web build, the replay reference files `data/titles/{slug}/reference/`, `metadata-prebuilt.zip`). Takes precedence over `LEVELUP_REPO_ROOT`. Environment only (a `.env.local` cannot set it). | `LEVELUP_REPO_ROOT`, else auto-detected |
+| `LEVELUP_REPO_ROOT` | Compatible name of `LEVELUP_RESOURCES_DIR` (a checkout is both the resources and, by default, the data root). | Auto-detected |
+| `LEVELUP_DATA_DIR` | Data root: everything the program creates or modifies (databases, sessions, auth, caches, backups, generated map overlays). When set, `db_profiles.json`, `app_settings.json` and `.env.local` live at its top instead of the top of the resources root. Environment only. | `<resources>/data` |
 | `LEVELUP_API_HOST` | HTTP bind host. | `127.0.0.1` |
 | `LEVELUP_API_PORT` | HTTP listen port. | `8000` |
 | `LEVELUP_DB_PROFILES` | Path to `db_profiles.json`. | `<root>/db_profiles.json` |
@@ -225,7 +227,7 @@ auto-detection) before any `os.Getenv` read.
 |----------|-------------|---------|
 | `LEVELUP_LOG_LEVEL` | Log level (`debug`/`info`/`warn`/`error`). | `info` |
 | `LEVELUP_LOG_FORMAT` | Console format. | text |
-| `LEVELUP_LOGS_DIR` | Per-category log file directory. | `<root>/logs` |
+| `LEVELUP_LOGS_DIR` | Logs root: per-category log files and the crash capture. Created at startup before any writer opens a file in it. Environment only. | `<resources>/logs` |
 | `LEVELUP_LOGS_ENABLED` | Set `false` to disable file logging. | enabled |
 | `LEVELUP_LOGS_MAX_SIZE_MB` | Size cap of each `{category}.log` before rotation. `0` disables rotation (unbounded growth). | `100` |
 | `LEVELUP_LOGS_MAX_BACKUPS` | Rotated archives kept per category (`{category}.log.1..N`). `0` keeps none. | `3` |
@@ -253,7 +255,7 @@ defaults whatever `LEVELUP_DEMO_MODE` says, since it works on the real data (bac
 Background tasks that would write or delete outside the demo root (janitor, async persist
 queue and WAL recovery, data health, replay purge, disk watch, catalog/asset/Spartan/world
 leaderboard crons, watcher, token pool, boot friend/group migrations) are not started; one
-`demo_mode: tâches de fond coupées` log line lists them at boot. `seed-demo` generates into
+`tâches de fond coupées par le profil de déploiement` log line lists them at boot. `seed-demo` generates into
 `<demo>.generation` and publishes only after its anonymization value check passes: a failed
 regen leaves the previous demo untouched. The demo is READ-ONLY: every
 write request (POST, PUT, PATCH, DELETE) answers 403 `demo_mode_forbidden`, except read queries
@@ -321,7 +323,7 @@ Keys read by the Go backend from `app_settings.json` (some are not in the exampl
 | `spnkr_refresh_backfill_performance_scores` | bool | `true` | Compute performance scores. |
 | `spnkr_refresh_backfill_aliases` | bool | `false` | Backfill XUID→gamertag aliases. |
 | `spnkr_refresh_backfill_lusr` | bool | `true` | Backfill LUSR skill rating. |
-| `lang` | string | `"fr"` | UI language (`fr`, `en`). |
+| `lang` | string | `"fr"` | UI language (`fr`, `en`). Desktop application: while the key is absent, the system UI language (when the application has it). |
 | `discord_lang` | string | `"fr"` | Discord notification language. |
 | `discord_notifications_enabled` | bool | `false` | Enable Discord sync notifications (master switch for the whole Discord channel). |
 | `discord_notify_coach` | bool | `false` | Relay the coach's strongest proposals (progression signals) to the Discord webhook. **OFF by default — opt-in**: requires `discord_notifications_enabled` + a webhook. Emitting to an external service is a deliberate privacy choice, never on by default. Forwarded categories = coach categories only. |
@@ -330,12 +332,21 @@ Keys read by the Go backend from `app_settings.json` (some are not in the exampl
 | `discord_notify_replay` | bool | `true` | Grouped "2D replays ready" notification. One message per 10-minute window and per title, never one per artifact: the first stored artifact arms the window, the message lists the matches at expiry. Covers every server-side write path — post-sync local build, remote worker delivery and the admin action. The CLI backfill runs in a separate process and never notifies. |
 | `discord_webhook_url` | string | `""` | Discord webhook URL (env vars take precedence). |
 | `tailscale_enabled` | bool | `false` | Enable Tailscale Funnel remote access. |
-| `user_timezone` | string | `"Europe/Paris"` | IANA timezone for display. |
+| `user_timezone` | string | `"Europe/Paris"` | IANA timezone for display. Desktop application: while the key is absent, the system time zone. |
+| `desktop_checkpoint_interval` | string | `"5m"` | Desktop application only: interval of the periodic `CHECKPOINT` of the databases the server holds in read-write (Go duration, `30s` to `1h`; outside the bounds the nearest bound applies). Read at startup. |
+| `spnkr_auto_sync_enabled` | bool | `false` | Periodic automatic sync of the tracked players (and the sync requested when the game closes, see `game_process_watch`). **Desktop application: `true` while the key is absent** (a value written in `app_settings.json`, `true` or `false`, always wins; the file is not rewritten). Read at every tick. |
+| `game_process_watch` | bool | `true` | Desktop application only: look for the game in the list of Windows processes (executable names declared by `process_names` in each `title.toml`, listing only: never the game's memory), every 15 s. While the game runs ("game mode"), replay cooking and the heavy background tasks (data-health audits, catalog and asset-name sweeps, world leaderboard) wait for the match to end; when the game closes, a sync is requested (60 s debounce) if `spnkr_auto_sync_enabled` is on (otherwise the journal says "fin de partie : auto-sync désactivée, rien à faire" and `game_mode_sync_skipped_total` counts it). The data-health audits and the catalog refresh also wait for the first reading at start-up, so a game already open when LevelUp starts never sees them run; the post-sync film decoding (kill source) waits for the match too. Read at every poll. |
+| `native_notifications` | bool | `false` | Desktop application only: relay the bell notifications (sync done, sync error, challenge, streak, record, rank) as Windows notifications when the window is hidden or not in the foreground. Off by default. |
+| `close_to_tray` | bool | `false` | Desktop application only: the window's close button hides the application in the notification area (icon with Open / Sync now / Quit) and the server keeps running; off, the close button quits. The icon exists only while this is on (or after a minimized start). |
+| `start_with_windows` | bool | `false` | Desktop application only: start the application, minimized in the notification area (`--minimized`), when the Windows session opens (per-user entry, never machine-wide). Off by default; applying the setting adds or removes the entry. |
+| `scheduled_refresh` | bool | `false` | Desktop application only: create a per-user Windows scheduled task `LevelUp\Refresh-<8 hex>` (the suffix identifies the data folder; every 6 hours, no elevation) that runs `levelup-server.exe -mode refresh-only` to keep the tokens alive while the application is closed; it does nothing when the application is open (instance lock). Off by default; turning it off deletes the task. |
+| `backup_dir` | string | `""` | Desktop application only: folder of the periodic Parquet backup (absolute path, existing, writable, **not under the data folder**; the same disk as the data is accepted with a warning). Empty = no backup. Each pass writes a set `levelup-<YYYYMMDD-HHMM>/` (one zstd Parquet per table of every database, the schema, the configuration and authentication files, `manifest.json` with SHA-256 sums); the archived films are not copied. Restore: `levelup-server.exe -mode restore` (alias `levelup backup restore`, see `COMMANDS.md`). A run of partial sets never evicts the last complete one. |
+| `backup_keep` | int | `7` | Desktop application only: number of backup sets kept in `backup_dir` (1 to 60); older `levelup-*` sets are deleted, nothing else. |
+| `memory_limit_mb` | int | `0` | Desktop application only: memory ceiling of **each open DuckDB database**, in MiB (`0`, or `1024` to `32768`): the ceiling is per database, not for the process, so N databases open at once may use up to N times its value. `0` = the server default (`LEVELUP_DUCKDB_MEMORY_LIMIT`, else 512 MB). Applied at every connection open and live to the open databases; no process kill, no OS limit. The current resident memory is shown in Settings and published as `levelup.process.rss_mb`. |
 | `watcher_presence_enabled` | bool | `true` | Enable presence watcher. |
-| `career_top_exclude_btb` | bool | `false` | Exclude Big Team Battle from career tops. |
 | `csr_season_id` | string | `"CsrSeason13-1"` | CSR season id (overridable via `LEVELUP_CSR_SEASON_ID`). |
 | `backup_enabled` | bool | `false` | Enable scheduled DuckDB backups. |
-| `backup_interval` | string | `"6h"` | Backup interval (Go duration). |
+| `backup_interval` | string | `"6h"` | Hosted: restic backup interval (Go duration). **Desktop application: interval of the periodic Parquet backup, a whole number of hours (`1h` to `168h`); empty = `24h`** (the key is shared, the desktop validation applies to the values a PATCH writes and nothing rewrites the stored value). |
 | `backup_keep_daily` | int | `7` | Daily backups retained. |
 | `backup_keep_weekly` | int | `4` | Weekly backups retained. |
 | `backup_keep_monthly` | int | `12` | Monthly backups retained. |

@@ -16,6 +16,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // seasonBreakdownConcurrency plafonne le fan-out d'appels live du breakdown par
@@ -40,22 +41,27 @@ const seasonMatchmadePathExtra = "matchmade_path"
 // chemin CMS déductible : il passe par extra.matchmade_path ou par le live.
 var numberedSeasonIDRe = regexp.MustCompile(`^season(\d+)$`)
 
-// seasonShortLabel retourne le libellé compact d'une saison (extra.short_label
-// si présent, ex. "S13", sinon le Label complet).
+// seasonShortLabel retourne le libellé compact d'une saison (extra.short_label si présent, ex. "S13",
+// sinon le Label complet) dans la langue par défaut : la forme dont on LIT le numéro de saison.
 func seasonShortLabel(s *SeasonCatalogEntry) string {
+	return seasonShortLabelIn(s, i18n.Default)
+}
+
+// seasonShortLabelIn fait comme seasonShortLabel dans la langue `loc` : le libellé AFFICHÉ.
+func seasonShortLabelIn(s *SeasonCatalogEntry, loc i18n.Locale) string {
 	if s.Extra != nil {
 		if sl := s.Extra["short_label"]; sl != "" {
 			return sl
 		}
 	}
-	return s.Label
+	return s.Label.Pick(loc)
 }
 
 // buildMatchesPerSeason compte les matchs par saison en rangeant chaque
 // start_time dans la première saison dont l'intervalle [Start, End) le contient.
 // Les saisons sont parcourues dans l'ordre fourni (DisplayOrder). Seules les
 // saisons avec au moins 1 match sont retournées (ordre préservé). nil si vide.
-func buildMatchesPerSeason(starts []time.Time, seasons []SeasonCatalogEntry) []domain.SeasonMatchCount {
+func buildMatchesPerSeason(starts []time.Time, seasons []SeasonCatalogEntry, loc i18n.Locale) []domain.SeasonMatchCount {
 	if len(starts) == 0 || len(seasons) == 0 {
 		return nil
 	}
@@ -75,7 +81,7 @@ func buildMatchesPerSeason(starts []time.Time, seasons []SeasonCatalogEntry) []d
 		if n := counts[s.ID]; n > 0 {
 			out = append(out, domain.SeasonMatchCount{
 				SeasonID:   s.ID,
-				SeasonName: seasonShortLabel(s),
+				SeasonName: seasonShortLabelIn(s, loc),
 				Matches:    n,
 			})
 		}
@@ -128,7 +134,7 @@ func (s *ExplorerService) computeSeasonBreakdown(
 	g.SetLimit(seasonBreakdownConcurrency)
 	for i := range s.deps.Seasons {
 		i, entry := i, &s.deps.Seasons[i]
-		row := domain.SeasonMatchCount{SeasonID: entry.ID, SeasonName: seasonShortLabel(entry)}
+		row := domain.SeasonMatchCount{SeasonID: entry.ID, SeasonName: seasonShortLabelIn(entry, i18n.FromContext(ctx))}
 		paths := pathsPerSeason[i]
 		if len(paths) == 0 {
 			// Saison non interrogeable : on ne peut RIEN conclure (surtout pas

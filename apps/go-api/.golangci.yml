@@ -208,7 +208,9 @@ linters:
           - lll
 
       # Decodeur de film (`replay` et les couches `facts`, `source`, `grammar` et `profile` de
-      # `film/internal/`, ADR 0034) : exempte de la SEULE longueur de ligne. Les lignes de plus
+      # `libs/film/internal/`, ADR 0034) : exempte de la SEULE longueur de ligne. Le chemin est celui que
+      # golangci rapporte depuis le dossier de cette config (`../../libs/film/...`) quand il tourne dans
+      # le module `libs/film` (`--config ../../apps/go-api/.golangci.yml`). Les lignes de plus
       # de 220 caracteres y sont de la prose et non du code : les champs des registres de
       # replis nommes (`facts/fallback/registre_*.go`, D-10 : mecanisme, cible et critere de
       # retrait, un litteral chacun), des justifications de `//nolint` et des commentaires
@@ -217,9 +219,20 @@ linters:
       # regime commun : l'utilisateur a decide le 2026-10-06 que le code neuf du decodeur n'en
       # serait plus dispense, chaque fonction existante au-dessus des seuils etant simplifiee
       # ou exemptee sur sa ligne `func` avec sa raison.
-      - path: "internal/games/halo_infinite/film/(replay|internal/(facts|source|grammar|profile))/"
+      - path: "libs/film/(replay|internal/(facts|source|grammar|profile))/"
         linters:
           - lll
+
+      # DTO bruts de l'API Halo 5 (brique `libs/haloapi`, ADR 0042) : chaque champ porte le nom du
+      # JSON du service (`Id`, `MatchId`, ...), d'où la seule remarque de nommage sur le suffixe `Id`
+      # (revive var-naming et staticcheck ST1003, le même constat).
+      # Dette gelée par le ratchet tant que ces fichiers vivaient dans go-api ; depuis que la brique est
+      # un module (plan PUBLICATION, lot 3, 2026-11-01), golangci tourne dans `libs/haloapi` et ne voit
+      # plus le renommage qui franchit la racine du module (même angle mort que D2-L3-e) : les 21
+      # champs réapparaissaient comme neufs. Règle bornée aux trois fichiers de DTO et à ce motif.
+      - path: "libs/haloapi/halo5/(dto|dto_carnage|events_dto)\\.go$"
+        linters: [revive, staticcheck]
+        text: "(var-naming|ST1003): struct field \\w*Id should be \\w*ID"
 
       # handlers : setup + sync complexes par conception (orchestration I/O)
       - path: "internal/api/handlers/"

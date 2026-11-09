@@ -215,7 +215,7 @@ function WeaponsTop({ weapons, locale, t }: { weapons: ExplorerWeaponKill[]; loc
       </span>
       <ol className="flex flex-col gap-2">
         {weapons.map((w, i) => {
-          const name = locale === 'en' ? w.label_en || w.label_fr : w.label_fr || w.label_en
+          const name = w.label
           const pct = Math.round((w.kills / maxKills) * 100)
           return (
             <li key={w.weapon_id} className="flex flex-col gap-1">

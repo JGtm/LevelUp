@@ -7,10 +7,11 @@ import (
 	"context"
 	"log/slog"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/notifications"
 )
 
-// RankLabelResolver résout le libellé de rang carrière LOCALISÉ (FR) par son
+// RankLabelResolver résout le libellé de rang carrière dans la langue `loc` par son
 // rank_id, pour un titre donné (ok=false si inconnu/hors titre). Port dédié
 // vers le même catalogue que halo_ranks_loader.LoadRankCatalog
 // (career_rank_translations, 272 rangs FR/EN) : PlayerSnapshot.CurrentRankName
@@ -26,24 +27,24 @@ import (
 // Halo Infinite : ce catalog ne contient que des rank_id HI et expose son
 // propre TitleSlug() — un appel pour un autre titre renvoie ok=false (pattern
 // slug↔slug légitime, pas un gate littéral — cf. archlint no_slug_comparison).
-type RankLabelResolver func(titleSlug string, rankID int) (labelFR string, ok bool)
+type RankLabelResolver func(titleSlug string, rankID int, loc i18n.Locale) (label string, ok bool)
 
 var rankLabelResolver RankLabelResolver
 
-// SetRankLabelResolver injecte le résolveur de libellé de rang FR (boot-only,
+// SetRankLabelResolver injecte le résolveur de libellé de rang (boot-only,
 // appelé une fois depuis server_apiv1.go).
 func SetRankLabelResolver(fn RankLabelResolver) {
 	rankLabelResolver = fn
 }
 
-// resolveCareerRankNameFR retourne le libellé FR du rang rankID si le
+// resolveCareerRankName retourne le libellé du rang rankID dans la langue loc si le
 // résolveur est câblé et le connaît ; sinon retombe sur fallbackEN
 // (CurrentRankName, baké EN — dégradation gracieuse, jamais de panic/vide).
-func resolveCareerRankNameFR(titleSlug string, rankID int, fallbackEN string) string {
+func resolveCareerRankName(titleSlug string, rankID int, loc i18n.Locale, fallbackEN string) string {
 	if rankLabelResolver == nil {
 		return fallbackEN
 	}
-	if label, ok := rankLabelResolver(titleSlug, rankID); ok && label != "" {
+	if label, ok := rankLabelResolver(titleSlug, rankID, loc); ok && label != "" {
 		return label
 	}
 	return fallbackEN
@@ -67,17 +68,23 @@ func emitCareerRankDelta(
 			"slug", slug, "rank", after.CurrentRank)
 		return
 	}
-	rankNameFR := resolveCareerRankNameFR(titleSlug, after.CurrentRank, after.CurrentRankName)
+	// Le nom du rang est stocké une fois par langue (rank_name_<code>, i18n.Text.AddParams) : la lecture le
+	// résout dans la langue de la requête (notifications.LocalizeParams), comme le titre et le nom de médaille.
+	rankNames := i18n.Text{}
+	for _, loc := range i18n.Locales() {
+		rankNames[loc] = rankSubRoman(resolveCareerRankName(titleSlug, after.CurrentRank, loc, after.CurrentRankName))
+	}
+	params := map[string]any{
+		"rank":     after.CurrentRank,
+		"previous": before.CurrentRank,
+	}
+	rankNames.AddParams(params, notifications.ParamRankName)
 	if err := emitter.Emit(ctx, notifications.EmitInput{
-		Category: notifications.CategoryCareerRank,
-		Severity: notifications.SeveritySuccess,
-		TitleKey: "notif.career_rank.title",
-		BodyKey:  "notif.career_rank.body",
-		Params: map[string]any{
-			"rank":      after.CurrentRank,
-			"rank_name": rankSubRoman(rankNameFR),
-			"previous":  before.CurrentRank,
-		},
+		Category:    notifications.CategoryCareerRank,
+		Severity:    notifications.SeveritySuccess,
+		TitleKey:    "notif.career_rank.title",
+		BodyKey:     "notif.career_rank.body",
+		Params:      params,
 		TargetRoute: notifications.PlayerTargetRoute(titleSlug, slug, "career"),
 		Source:      postSyncSource,
 	}); err != nil {

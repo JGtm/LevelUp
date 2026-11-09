@@ -12,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	titlepkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 )
 
 const cumulTestNorm = "presque_ca_ne_compte_pas"
@@ -63,11 +64,12 @@ func newTestPlayerDBForCitationsCumul(t *testing.T) *PlayerDB {
 		}
 	}
 	if _, err := meta.Exec(ctx,
-		`INSERT INTO citation_mappings (citation_name_norm, citation_name_display, mapping_type, tier_targets, enabled)
-		 VALUES (?,?,?,?,?)`,
-		cumulTestNorm, "Presque, ça ne compte pas", "stat", "100,250,500", true); err != nil {
+		`INSERT INTO citation_mappings (citation_name_norm, mapping_type, tier_targets, enabled)
+		 VALUES (?,?,?,?)`,
+		cumulTestNorm, "stat", "100,250,500", true); err != nil {
 		t.Fatalf("insert mapping: %v", err)
 	}
+	insertCitationTexts(t, meta, cumulTestNorm, i18n.Text{i18n.LocaleFR: "Presque, ça ne compte pas"}, nil)
 	return &PlayerDB{
 		Player:       player,
 		Shared:       shared,

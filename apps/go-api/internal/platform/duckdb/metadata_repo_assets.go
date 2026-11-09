@@ -6,9 +6,11 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 )
 
 // GetDistinctAssetIDs retourne les asset_ids distincts depuis match_registry.
@@ -158,8 +160,9 @@ func (r *MetadataRepo) GetAssetTranslationCount(
 	return counts, rows.Err()
 }
 
-// GetAssetNameIndex retourne un mapping name→asset_id pour un type d'asset donné (langue en-US).
-// Utilisé par le script migrate-static-maps pour résoudre les noms de fichiers.
+// GetAssetNameIndex retourne un mapping name→asset_id pour un type d'asset donné, dans la langue
+// de repli (i18n.Fallback : celle des noms de fichiers d'images). Utilisé par le script
+// migrate-static-maps pour résoudre les noms de fichiers.
 func (r *MetadataRepo) GetAssetNameIndex(
 	ctx context.Context,
 	assetType string,
@@ -168,10 +171,10 @@ func (r *MetadataRepo) GetAssetNameIndex(
 		SELECT asset_id, name
 		FROM asset_translations
 		WHERE asset_type = ?
-		  AND lang = 'en-US'
+		  AND lang = ?
 	`
 
-	rows, err := r.meta.Query(ctx, query, assetType)
+	rows, err := r.meta.Query(ctx, query, assetType, i18n.HaloTags(i18n.Fallback)[0])
 	if err != nil {
 		return nil, fmt.Errorf("query asset_translations: %w", err)
 	}
@@ -345,21 +348,21 @@ func pickAssetNameByPreferredLang(langs map[string]string, preferredLangs []stri
 	return ""
 }
 
-// PreferredLangsForLocale retourne l'ordre de préférence linguistique standard
-// pour une locale UI courte (ex. "fr" → ["fr-FR","fr","en-US","en"]).
-// Centralise la convention pour que tous les callers (match-view, home,
-// citations…) utilisent la même cascade.
+// PreferredLangsForLocale retourne l'ordre de préférence linguistique standard pour une locale UI
+// courte (ex. "fr" → ["fr-FR","fr","en-US","en"]) : les étiquettes Halo de la langue puis son code,
+// ceux de la langue de repli, ceux de la langue par défaut (doublons retirés). Une locale inconnue
+// prend la langue par défaut. Centralise la convention pour que tous les callers (match-view,
+// home, citations…) utilisent la même cascade.
 func PreferredLangsForLocale(locale string) []string {
-	switch strings.ToLower(strings.TrimSpace(locale)) {
-	case "fr", "fr-fr", "fr_fr":
-		return []string{LangCodeFR, "fr", LangCodeEN, "en"}
-	case "en", "en-us", "en_us":
-		return []string{LangCodeEN, "en", LangCodeFR, "fr"}
-	default:
-		// Locale inconnue : préférence par défaut FR (le projet est FR-first),
-		// puis EN, puis n'importe quoi.
-		return []string{LangCodeFR, "fr", LangCodeEN, "en"}
+	var out []string
+	for _, l := range []i18n.Locale{i18n.Parse(locale), i18n.Fallback, i18n.Default} {
+		for _, tag := range append(i18n.HaloTags(l), string(l)) {
+			if !slices.Contains(out, tag) {
+				out = append(out, tag)
+			}
+		}
 	}
+	return out
 }
 
 // UpsertMapImageRegistry insère ou met à jour une entrée dans map_images_registry.

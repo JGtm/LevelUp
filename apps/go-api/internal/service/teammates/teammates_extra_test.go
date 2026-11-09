@@ -366,7 +366,7 @@ func TestComputeMapBreakdown_WinRateCalculation(t *testing.T) {
 		{MatchID: "m3", MapUI: "Bazaar", Outcome: domain.OutcomeLoss},
 		{MatchID: "m4", MapUI: "Recharge", Outcome: domain.OutcomeLoss},
 	}
-	rows := computeMapBreakdown(matches)
+	rows := computeMapBreakdown(matches, domain.GroupesDeCartes{})
 	if len(rows) != 2 {
 		t.Fatalf("expected 2 maps, got %d", len(rows))
 	}
@@ -391,7 +391,7 @@ func TestComputeMapBreakdown_EmptyMapUIFallback(t *testing.T) {
 	matches := []domain.SquadMatchRow{
 		{MatchID: "m1", MapUI: "", Outcome: domain.OutcomeWin},
 	}
-	rows := computeMapBreakdown(matches)
+	rows := computeMapBreakdown(matches, domain.GroupesDeCartes{})
 	if len(rows) != 1 || rows[0].MapUI != "Unknown" {
 		t.Errorf("expected MapUI=Unknown, got %v", rows)
 	}
@@ -413,7 +413,7 @@ func TestComputeMapBreakdown_OrderedByFirstAppearance(t *testing.T) {
 		{MatchID: "m2", StartTime: base.Add(90 * time.Minute), MapUI: "Mid", Outcome: domain.OutcomeWin},
 		{MatchID: "e1", StartTime: base, MapUI: "Early", Outcome: domain.OutcomeWin},
 	}
-	rows := computeMapBreakdown(matches)
+	rows := computeMapBreakdown(matches, domain.GroupesDeCartes{})
 	want := []string{"Early", "Mid", "Late"}
 	if len(rows) != len(want) {
 		t.Fatalf("want %d maps, got %d (%v)", len(want), len(rows), rows)
@@ -503,14 +503,14 @@ func TestSquadStatsToWinTotal(t *testing.T) {
 		"a": {Wins: 5, Total: 10},
 		"b": {Wins: 0, Total: 3},
 	}
-	got := squadStatsToWinTotal(stats)
+	got := squadStatsToWinTotal(stats, domain.GroupesDeCartes{})
 	if got["a"] != [2]int{5, 10} {
 		t.Errorf("a: want [5 10], got %v", got["a"])
 	}
 	if got["b"] != [2]int{0, 3} {
 		t.Errorf("b: want [0 3], got %v", got["b"])
 	}
-	if squadStatsToWinTotal(nil) != nil {
+	if squadStatsToWinTotal(nil, domain.GroupesDeCartes{}) != nil {
 		t.Errorf("nil input: want nil output")
 	}
 }
@@ -528,7 +528,7 @@ func TestComputeMapBreakdown_PerformanceAvg(t *testing.T) {
 		{MatchID: "m4", MapUI: "Recharge", Outcome: domain.OutcomeLoss, PerformanceScore: &p3},
 		{MatchID: "m5", MapUI: "Aquarius", Outcome: domain.OutcomeLoss, PerformanceScore: nil},
 	}
-	rows := computeMapBreakdown(matches)
+	rows := computeMapBreakdown(matches, domain.GroupesDeCartes{})
 	byMap := map[string]domain.MapBreakdownRow{}
 	for _, r := range rows {
 		byMap[r.MapUI] = r

@@ -39,7 +39,7 @@ package archlint
 // # PERIMETRE
 //
 // La PRODUCTION de `film/**` (hors `film/research/` et hors fichiers `//go:build research`),
-// `replaybuild`, `filmproc` et `sync/killcollector`. Les tests en sont exclus : un tri de test ne
+// `replaybuild`, `filmrun` et `sync/killcollector`. Les tests en sont exclus : un tri de test ne
 // publie rien. `sort.Stable` est compte avec `sort.Sort` (meme forme, zero appel le 2026-09-27).
 
 import (
@@ -54,14 +54,14 @@ import (
 
 // racinesTriTotal : le perimetre du cliquet, relatif a apps/go-api.
 var racinesTriTotal = []string{
-	"internal/games/halo_infinite/film",
+	"libs/film",
+	"internal/filmrun",
 	"internal/replaybuild",
-	"internal/filmproc",
 	"internal/sync/killcollector",
 }
 
 // exclusTriTotal : les sous-arbres exclus (instruments de recherche).
-var exclusTriTotal = []string{"internal/games/halo_infinite/film/research"}
+var exclusTriTotal = []string{"libs/film/research"}
 
 // plancherFichiersTriTotal : CONTRE UN BALAYAGE MUET. 588 fichiers de production mesures le
 // 2026-09-27 ; nettement moins veut dire que l'arborescence a bouge et que le cliquet ne garde plus

@@ -6,7 +6,6 @@
 // XP history). Les autres responsabilités vivent dans :
 //
 //   - career_repo_lusr.go        — historique LUSR (skill rating)
-//   - career_repo_top_matches.go — top 10 WIN / top 10 LOSS par perf_score
 //   - career_repo_highlights.go  — matchs marquants (highlights + pool + i18n)
 //   - career_repo_encounters.go  — encounters globaux + rivals
 //   - career_repo_csr.go         — snapshots CSR par playlist ranked

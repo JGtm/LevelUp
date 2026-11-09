@@ -6,31 +6,10 @@ package analysis
 import (
 	"testing"
 
+	"levelup/go-api/internal/i18n"
+
 	"levelup/go-api/internal/legacymatch"
 )
-
-// ─── labelFR ─────────────────────────────────────────────────────────────
-
-func TestLabelFR_PrefersFR(t *testing.T) {
-	t.Parallel()
-	if got := labelFR("Bonjour", "Hello"); got != "Bonjour" {
-		t.Errorf("labelFR(Bonjour, Hello) = %q, want Bonjour", got)
-	}
-}
-
-func TestLabelFR_FallbackEN(t *testing.T) {
-	t.Parallel()
-	if got := labelFR("", "Hello"); got != "Hello" {
-		t.Errorf("labelFR(empty, Hello) = %q, want Hello", got)
-	}
-}
-
-func TestLabelFR_BothEmpty(t *testing.T) {
-	t.Parallel()
-	if got := labelFR("", ""); got != "" {
-		t.Errorf("labelFR(empty, empty) = %q, want empty", got)
-	}
-}
 
 // ─── normalizeHomeLocale ──────────────────────────────────────────────────
 
@@ -55,33 +34,29 @@ func TestNormalizeHomeLocale_FR(t *testing.T) {
 	}
 }
 
-// ─── labelForLocale ───────────────────────────────────────────────────────
+// ─── Text.PickOptional (remplace labelForLocale) ──────────────────────────
 
-func TestLabelForLocale_EN_PrefersEN(t *testing.T) {
+// Les libellés de l'accueil se choisissent par Text.PickOptional : la langue, puis la langue de
+// repli, jamais le français pour l'anglais. Écart avec l'ancien labelForLocale (langue, repli,
+// défaut) : sous l'anglais, un libellé anglais absent ne retombe plus sur le français.
+func TestHomePick(t *testing.T) {
 	t.Parallel()
-	if got := labelForLocale("en", "Bonjour", "Hello"); got != "Hello" {
-		t.Errorf("labelForLocale(en) = %q, want Hello", got)
+	cases := []struct {
+		name   string
+		locale string
+		text   i18n.Text
+		want   string
+	}{
+		{"en prefere en", "en", i18n.FromColumns("Hello", "Bonjour"), "Hello"},
+		{"en sans anglais: pas de francais", "en", i18n.FromColumns("", "Bonjour"), ""},
+		{"fr prefere fr", "fr", i18n.FromColumns("Hello", "Bonjour"), "Bonjour"},
+		{"fr sans francais: repli anglais", "fr", i18n.FromColumns("Hello", ""), "Hello"},
+		{"langue inconnue: langue par defaut", "unknown", i18n.FromColumns("Hello", "Bonjour"), "Bonjour"},
 	}
-}
-
-func TestLabelForLocale_EN_FallbackFR(t *testing.T) {
-	t.Parallel()
-	if got := labelForLocale("en", "Bonjour", ""); got != "Bonjour" {
-		t.Errorf("labelForLocale(en, FR-only) = %q, want Bonjour", got)
-	}
-}
-
-func TestLabelForLocale_FR(t *testing.T) {
-	t.Parallel()
-	if got := labelForLocale("fr", "Bonjour", "Hello"); got != "Bonjour" {
-		t.Errorf("labelForLocale(fr) = %q, want Bonjour", got)
-	}
-}
-
-func TestLabelForLocale_FR_FallbackEN(t *testing.T) {
-	t.Parallel()
-	if got := labelForLocale("fr", "", "Hello"); got != "Hello" {
-		t.Errorf("labelForLocale(fr, EN-only) = %q, want Hello", got)
+	for _, tc := range cases {
+		if got := tc.text.PickOptional(normalizeHomeLocale(tc.locale)); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
+		}
 	}
 }
 

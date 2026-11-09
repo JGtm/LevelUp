@@ -41,7 +41,7 @@
 // LE MODE `-walkers` A ETE RETIRE AU LOT 6 (2026-09-03). Il portait EN COPIE les trois marcheurs
 // de paquets historiques pour mesurer leur divergence (D3, item 0.7) ; leurs originaux ont
 // disparu aux items 1.4/1.5, la copie ne comparait donc plus qu'a elle-meme. La mesure, elle,
-// reste : figee au §2 de `.ai/V7.5/MESURES_CUISSON_PERF.md`, et rejouee en CI en une seconde par
+// reste : rejouee en CI en une seconde par
 // le test de la mini-bobine de `internal/games/halo_infinite/film/internal/source` (qui compare la grammaire retenue
 // a `grammar.WalkPackets` sur un vrai chunk). Pour re-mesurer un jour : commit `aa694442f` et
 // anterieurs.
@@ -64,8 +64,10 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/observability/logging"
+
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // outilNom : le nom que ce binaire porte dans le journal des protections (verrou, sentinelle,
@@ -83,6 +85,9 @@ type options struct {
 	// temporaire efface a la sortie.
 	outDir string
 	memGiB int
+	// originaux : chemin de la liste des xuids d'origine (hors depot), qui permet de retraduire
+	// les xuids FICTIFS des faits figes en ceux du parc (cf. identites.go). Vide : faits reels.
+	originaux string
 	// deuxPasses : LE MODE S8 (item 4.1.3) — deux passes du MEME commit par film, decodage
 	// contre rejeu depuis les faits, aucune reference lue ni ecrite.
 	deuxPasses bool
@@ -129,8 +134,8 @@ func executer(ctx context.Context, o options) int {
 // lireDrapeaux analyse la ligne de commande et resout la racine du depot.
 func lireDrapeaux() (options, error) {
 	var o options
-	flag.StringVar(&o.repoRoot, "repo-root", os.Getenv(filmproc.EnvRepoRoot),
-		"racine du depot (defaut : "+filmproc.EnvRepoRoot+", sinon detection depuis l'executable)")
+	flag.StringVar(&o.repoRoot, "repo-root", os.Getenv(filmrun.EnvRepoRoot),
+		"racine du depot (defaut : "+filmrun.EnvRepoRoot+", sinon detection depuis l'executable)")
 	flag.StringVar(&o.titleSlug, "title", title.DefaultSlug, "slug du titre")
 	flag.StringVar(&o.corpus, "corpus", "",
 		"fichier listant les films a comparer (defaut : CORPUS.txt du dossier d'equivalence)")
@@ -141,7 +146,11 @@ func lireDrapeaux() (options, error) {
 	flag.StringVar(&o.outDir, "out-dir", "",
 		"conserver les digests produits par les enfants dans CE dossier (vide : dossier temporaire efface a la sortie) — "+
 			"utile pour instruire une divergence sans re-decoder le film")
-	flag.IntVar(&o.memGiB, "mem-gib", filmproc.DefaultLimitGiB,
+	flag.StringVar(&o.originaux, "originaux", os.Getenv(envIdentitesOriginales),
+		"liste des xuids d'origine, un par ligne (HORS depot) : les faits figes portent des xuids FICTIFS que le "+
+			"harnais retraduit en ceux du parc (defaut : "+envIdentitesOriginales+", sinon "+cheminOriginauxParDefaut+
+			" sous la racine du depot)")
+	flag.IntVar(&o.memGiB, "mem-gib", memguard.DefaultLimitGiB,
 		"plafond memoire de chaque enfant, en gibioctets (0 = desarme)")
 	flag.BoolVar(&o.deuxPasses, "deux-passes", false,
 		"TEST S8 : joue LES DEUX branches du meme commit par film (decodage puis rejeu depuis les "+
@@ -160,6 +169,7 @@ func lireDrapeaux() (options, error) {
 		}
 		o.repoRoot = root
 	}
+	o.originaux = originauxEffectifs(o.originaux, o.repoRoot)
 	if o.corpus == "" {
 		o.corpus = filepath.Join(dossierEquivalence(o.repoRoot), "CORPUS.txt")
 	}
@@ -188,8 +198,7 @@ func valider(o options) error {
 //
 // Chemin de SOURCE, pas de donnee : il ne passe donc pas par PathResolver (qui resout `data/`).
 func dossierEquivalence(repoRoot string) string {
-	return filepath.Join(repoRoot, "apps", "go-api",
-		"internal", "games", "halo_infinite", "film", "replay", "testdata", "equivalence")
+	return filepath.Join(repoRoot, "libs", "film", "replay", "testdata", "equivalence")
 }
 
 // filmsDemandes rend la liste short8 de `-films`, vide si le drapeau ne l'est pas.

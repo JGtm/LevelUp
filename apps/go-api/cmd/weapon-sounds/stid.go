@@ -14,7 +14,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // nomsSTID decode les couples {identifiant, nom} d'un chunk STID.

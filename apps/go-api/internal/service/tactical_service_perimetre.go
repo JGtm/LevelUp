@@ -62,10 +62,10 @@ func validerLecture(carte, question, qui string, coequipiers []string) error {
 // requeteDuScope traduit le perimetre de la page en demande au lecteur. UNE SEULE
 // traduction pour toutes les lectures : la liste blanche est TOUJOURS posee (meme
 // vide — ce qui vaut « aucun match »), et la composition est nettoyee.
-func requeteDuScope(xuid, carte string, scope domain.TacticalScope) domain.TacticalQuery {
+func requeteDuScope(xuid string, cartes []string, scope domain.TacticalScope) domain.TacticalQuery {
 	return domain.TacticalQuery{
 		PlayerXUID:  xuid,
-		MapID:       carte,
+		MapIDs:      cartes,
 		Matchs:      domain.RestreindreAux(scope.MatchIDs),
 		Coequipiers: compositionNettoyee(scope.Coequipiers),
 	}
@@ -77,8 +77,8 @@ func requeteDuScope(xuid, carte string, scope domain.TacticalScope) domain.Tacti
 // ELLE N'EST POSEE QUE POUR LES LECTURES D'ARTEFACT : ce sont les seules qui ventilent
 // leurs matchs non retenus. Les lectures de base (« ou je meurs », « ou je tue »,
 // « ou je gagne ») n'ont pas d'artefact a attendre — leur denominateur est le journal.
-func (s *TacticalService) requeteAvecRetention(carte string, scope domain.TacticalScope) domain.TacticalQuery {
-	q := requeteDuScope(s.xuid, carte, scope)
+func (s *TacticalService) requeteAvecRetention(cartes []string, scope domain.TacticalScope) domain.TacticalQuery {
+	q := requeteDuScope(s.xuid, cartes, scope)
 	if s.retentionMois != nil {
 		q.RetentionMois = s.retentionMois()
 	}

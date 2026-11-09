@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -84,15 +85,14 @@ func TestEnrichHomeMatchTranslations_CorruptedPairNameFR(t *testing.T) {
 	repo := NewHomeRepo(&PlayerDB{Metadata: meta})
 	matches := []legacymatch.HomeMatchRow{
 		{
-			MatchID:    "m1",
-			PairID:     "corrupted-pair-id",
-			PairName:   "Arena:CTF on Shiro",
-			PairNameFR: "Arena:CTF on Shiro", // FR == EN raw → corruption détectée
+			MatchID:  "m1",
+			PairID:   "corrupted-pair-id",
+			PairName: i18n.FromColumns("Arena:CTF on Shiro", "Arena:CTF on Shiro"), // FR == EN raw → corruption détectée
 		},
 	}
 	repo.enrichHomeMatchTranslations(context.Background(), matches)
 
-	if got := matches[0].PairNameFR; got != "Capture du drapeau" {
+	if got := matches[0].PairName[i18n.LocaleFR]; got != "Capture du drapeau" {
 		t.Errorf("PairNameFR = %q, want %q", got, "Capture du drapeau")
 	}
 }
@@ -107,15 +107,14 @@ func TestEnrichHomeMatchTranslations_NullPairNameResolvedViaPairID(t *testing.T)
 	repo := NewHomeRepo(&PlayerDB{Metadata: meta})
 	matches := []legacymatch.HomeMatchRow{
 		{
-			MatchID:    "m2",
-			PairID:     "corrupted-pair-id",
-			PairName:   "", // NULL en DB
-			PairNameFR: "", // NULL en DB
+			MatchID:  "m2",
+			PairID:   "corrupted-pair-id",
+			PairName: i18n.FromColumns("", ""), // NULL en DB
 		},
 	}
 	repo.enrichHomeMatchTranslations(context.Background(), matches)
 
-	if got := matches[0].PairNameFR; got != "Capture du drapeau" {
+	if got := matches[0].PairName[i18n.LocaleFR]; got != "Capture du drapeau" {
 		t.Errorf("PairNameFR = %q, want %q", got, "Capture du drapeau")
 	}
 }
@@ -130,15 +129,14 @@ func TestEnrichHomeMatchTranslations_PlaylistFR(t *testing.T) {
 	repo := NewHomeRepo(&PlayerDB{Metadata: meta})
 	matches := []legacymatch.HomeMatchRow{
 		{
-			MatchID:        "m3",
-			PlaylistID:     "qp-playlist-id",
-			PlaylistName:   "Quick Play",
-			PlaylistNameFR: "Quick Play", // EN raw — doit être remplacé
+			MatchID:      "m3",
+			PlaylistID:   "qp-playlist-id",
+			PlaylistName: i18n.FromColumns("Quick Play", "Quick Play"), // EN raw — doit être remplacé
 		},
 	}
 	repo.enrichHomeMatchTranslations(context.Background(), matches)
 
-	if got := matches[0].PlaylistNameFR; got != "Partie rapide" {
+	if got := matches[0].PlaylistName[i18n.LocaleFR]; got != "Partie rapide" {
 		t.Errorf("PlaylistNameFR = %q, want %q", got, "Partie rapide")
 	}
 }
@@ -153,15 +151,14 @@ func TestEnrichHomeMatchTranslations_AlreadyTranslatedPreserved(t *testing.T) {
 	repo := NewHomeRepo(&PlayerDB{Metadata: meta})
 	matches := []legacymatch.HomeMatchRow{
 		{
-			MatchID:    "m4",
-			PairID:     "corrupted-pair-id",
-			PairName:   "Arena:Slayer on Live Fire",
-			PairNameFR: "Assassin", // déjà traduit correctement — ne pas toucher
+			MatchID:  "m4",
+			PairID:   "corrupted-pair-id",
+			PairName: i18n.FromColumns("Arena:Slayer on Live Fire", "Assassin"), // déjà traduit correctement — ne pas toucher
 		},
 	}
 	repo.enrichHomeMatchTranslations(context.Background(), matches)
 
-	if got := matches[0].PairNameFR; got != "Assassin" {
+	if got := matches[0].PairName[i18n.LocaleFR]; got != "Assassin" {
 		t.Errorf("PairNameFR = %q, want %q (label FR correct ne doit pas être écrasé)", got, "Assassin")
 	}
 }

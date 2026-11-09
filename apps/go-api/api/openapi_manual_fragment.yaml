@@ -258,24 +258,6 @@ paths:
           $ref: '#/components/responses/ClientClosed'
         '503':
           $ref: '#/components/responses/DbBusy'
-  /players/{player_slug}/pages/career/top-matches:
-    get:
-      description: Retourne les meilleurs et pires matchs du joueur (tous critères confondus).
-      parameters:
-        - name: player_slug
-          in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
-      responses:
-        '200':
-          description: Top matchs
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
-        '499':
-          $ref: '#/components/responses/ClientClosed'
-        '503':
-          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/career/encounters:
     get:
       description: Retourne les adversaires et coéquipiers fréquents.
@@ -2870,64 +2852,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CareerLusrCheckpoint'
-    CareerTopMatch:
-      type: object
-      required:
-        - match_id
-      properties:
-        match_id:
-          type: string
-          format: uuid
-        start_time:
-          type: string
-          format: date-time
-          nullable: true
-        map_ui:
-          type: string
-          nullable: true
-        mode_ui:
-          type: string
-          nullable: true
-        playlist_label:
-          type: string
-          nullable: true
-        performance_score:
-          type: number
-          format: float
-          nullable: true
-        badge_type:
-          type: string
-          nullable: true
-        score_label:
-          type: string
-          nullable: true
-        outcome_code:
-          type: integer
-          format: int64
-          nullable: true
-        outcome:
-          type: string
-          nullable: true
-          enum: [win, loss, tie, dnf]
-        kills:
-          type: integer
-          nullable: true
-        deaths:
-          type: integer
-          nullable: true
-        assists:
-          type: integer
-          nullable: true
-        kd_ratio:
-          type: number
-          format: float
-          nullable: true
-        variant:
-          type: string
-          enum:
-            - best
-            - worst
-          nullable: true
     CareerEncounter:
       type: object
       required:
@@ -3370,8 +3294,6 @@ components:
         show_records:
           type: boolean
         refresh_clears_caches:
-          type: boolean
-        career_top_exclude_btb:
           type: boolean
         media_captures_base_dir:
           type: string

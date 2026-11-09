@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/i18n"
 )
 
 const handlerTestTOML = `
@@ -300,7 +301,7 @@ func TestFieldMappingsHandler_SeasonsCatalog_OverridesTOMLBucket(t *testing.T) {
 		entries: []SeasonCatalogEntry{
 			{
 				ID:           "season6",
-				Label:        "Spirit of Fire",
+				Label:        i18n.FromColumns("Spirit of Fire", ""),
 				Start:        mergedStart6,
 				End:          &mergedEnd6,
 				DisplayOrder: 60,
@@ -308,7 +309,7 @@ func TestFieldMappingsHandler_SeasonsCatalog_OverridesTOMLBucket(t *testing.T) {
 			},
 			{
 				ID:           "season14",
-				Label:        "Skyfall", // DB-only (pas de TOML correspondant)
+				Label:        i18n.FromColumns("Skyfall", ""), // DB-only (pas de TOML correspondant)
 				Start:        skyStart,
 				End:          nil,
 				DisplayOrder: 70,
@@ -399,9 +400,9 @@ func TestFieldMappingsHandler_SeasonsCatalog_LocaleAware(t *testing.T) {
 	dbOnlyStart := time.Date(2026, 4, 15, 0, 0, 0, 0, time.UTC)
 	catalog := &fakeSeasonsCatalog{
 		entries: []SeasonCatalogEntry{
-			{ID: "season2", Label: "Loups solitaires", LabelEN: "Lone Wolves", Start: start, DisplayOrder: 20},
+			{ID: "season2", Label: i18n.FromColumns("Lone Wolves", "Loups solitaires"), Start: start, DisplayOrder: 20},
 			// DB-only : pas de traduction → même Name FR et EN.
-			{ID: "season14", Label: "Skyfall", LabelEN: "Skyfall", Start: dbOnlyStart, DisplayOrder: 70},
+			{ID: "season14", Label: i18n.FromColumns("Skyfall", "Skyfall"), Start: dbOnlyStart, DisplayOrder: 70},
 		},
 	}
 

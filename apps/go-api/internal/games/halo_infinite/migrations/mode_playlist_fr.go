@@ -45,7 +45,7 @@ func applyModeNameTr(db *sql.DB) error {
 		return err
 	}
 
-	type modeRow struct{ modeEN, lang, name string }
+	type modeRow struct{ modeKey, lang, name string }
 	rows := []modeRow{
 		{"Assault", "en", "Assault"},
 		{modeAttrition, "en", modeAttrition},
@@ -119,7 +119,7 @@ func applyModeNameTr(db *sql.DB) error {
 	for _, r := range rows {
 		if _, err := db.ExecContext(migration.BootCtx(),
 			"INSERT OR IGNORE INTO mode_name_tr (mode_en, lang, name) VALUES (?, ?, ?)",
-			r.modeEN, r.lang, r.name,
+			r.modeKey, r.lang, r.name,
 		); err != nil {
 			return err
 		}

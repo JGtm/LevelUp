@@ -1,8 +1,8 @@
-// Package handlers — CareerHandler : GET .../pages/career[/top-matches|/encounters|/highlight-matches|/top-encounters|/rivals|/csrs].
+// Package handlers — CareerHandler : GET .../pages/career[/encounters|/highlight-matches|/top-encounters|/rivals|/csrs].
 //
 // MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
 // (préfixe /players/{player_slug} + middleware ownership/title hérités, lit
-// {player_slug} parent) et enregistre les 7 GET via huma.Get. Logique métier
+// {player_slug} parent) et enregistre les 6 GET via huma.Get. Logique métier
 // inchangée (CareerService + MatchHistoryService), seul le wrapping HTTP change.
 package handlers
 
@@ -48,12 +48,11 @@ func NewCareerHandler(
 	return &CareerHandler{newSvc: newSvc, newMHSvc: newMHSvc}
 }
 
-// Mount enregistre les 7 routes via Huma sur le sous-routeur chi (préfixe
+// Mount enregistre les 6 routes via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *CareerHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/pages/career", h.handleGetCareer, humacore.Op("getCareerPage", "Page Carrière complète", "career"))
-	huma.Get(api, "/pages/career/top-matches", h.handleGetTopMatches, humacore.Op("getCareerTopMatches", "Top matchs du joueur", "career"))
 	huma.Get(api, "/pages/career/encounters", h.handleGetEncounters, humacore.Op("getCareerEncounters", "Encounters du joueur", "career"))
 	huma.Get(api, "/pages/career/highlight-matches", h.handleGetHighlightMatches, humacore.Op("getCareerHighlightMatches", "Matchs marquants — 15 best + 15 worst (format Explorer)", "career"))
 	huma.Get(api, "/pages/career/top-encounters", h.handleGetTopEncountersRich, humacore.Op("getCareerTopEncounters", "Joueurs les plus croisés (hors amis)", "career"))
@@ -85,9 +84,6 @@ type careerCSRsInput struct {
 }
 
 type careerPageOutput struct{ Body domain.CareerPageResponse }
-type careerTopMatchesOutput struct {
-	Body domain.CareerTopMatchesResponse
-}
 type careerEncountersOutput struct {
 	Body domain.CareerEncountersResponse
 }
@@ -113,19 +109,6 @@ func (h *CareerHandler) handleGetCareer(ctx context.Context, in *careerPlayerInp
 		return nil, mapServiceError(ctx, err, "career_error")
 	}
 	return &careerPageOutput{Body: resp}, nil
-}
-
-// handleGetTopMatches retourne les top/pires matchs du joueur (format léger legacy).
-func (h *CareerHandler) handleGetTopMatches(ctx context.Context, in *careerPlayerInput) (*careerTopMatchesOutput, error) {
-	svc, err := h.resolve(ctx, in.PlayerSlug)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := svc.GetTopMatches(ctx)
-	if err != nil {
-		return nil, mapServiceError(ctx, err, "top_matches_error")
-	}
-	return &careerTopMatchesOutput{Body: resp}, nil
 }
 
 // handleGetEncounters retourne les joueurs les plus fréquemment croisés (format léger).

@@ -31,7 +31,6 @@ import { PerformanceSection } from './PerformanceSection'
 
 const RATING: SkillRatingSnapshot = {
   tier_name: 'Onyx',
-  tier_name_fr: 'Onyx',
   sub_tier: 3,
   label: 'Onyx III',
   mu: 1850,

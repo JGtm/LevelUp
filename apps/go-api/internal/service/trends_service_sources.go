@@ -10,11 +10,11 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"strings"
 
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/analysis/trends"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
@@ -213,11 +213,8 @@ func (s *TrendsService) readMedals(ctx context.Context, ids []string, locale str
 	return counts, names
 }
 
-// trendsLocale normalise la locale de la requête : "en" pour toute variante de
-// l'anglais, "fr" sinon (défaut).
+// trendsLocale normalise la locale de la requête (i18n.Parse : inconnue ou vide, la langue par
+// défaut).
 func trendsLocale(locale string) string {
-	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(locale)), "en") {
-		return "en"
-	}
-	return "fr"
+	return string(i18n.Parse(locale))
 }

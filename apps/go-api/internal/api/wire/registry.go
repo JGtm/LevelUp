@@ -39,13 +39,13 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/friendstore"
-	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
@@ -57,7 +57,7 @@ import (
 )
 
 // haloProvider est l'instance globale du provider Halo (partagée).
-var haloProvider = halo.DefaultHaloProvider
+var haloProvider = haloadapter.DefaultHaloProvider
 
 // PlayerResolver traduit un slug joueur en PlayerDB (pool-cached).
 type PlayerResolver func(ctx context.Context, slug string) (*duckdb.PlayerDB, error)
@@ -282,6 +282,7 @@ func (r *ServiceRegistry) TrackMetadataHandle(db *duckdb.DB) *ServiceRegistry {
 // NewServiceRegistry crée un ServiceRegistry câblé avec config.ResolvePlayer.
 // Le titleSlug est lu depuis le contexte (ctxkeys.TitleSlug), fallback "halo_infinite".
 func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *ServiceRegistry {
+	brancherCompteursDuFilm()
 	return &ServiceRegistry{
 		cfg: cfg,
 		resolve: func(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
@@ -480,7 +481,6 @@ func (a *seasonsCatalogHandlerAdapter) Load(ctx context.Context, titleID string)
 		out = append(out, handlers.SeasonCatalogEntry{
 			ID:           e.ID,
 			Label:        e.Label,
-			LabelEN:      e.LabelEN,
 			Start:        e.Start,
 			End:          e.End,
 			DisplayOrder: e.DisplayOrder,

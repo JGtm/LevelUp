@@ -18,8 +18,7 @@ package migrations
 // LES DEUX, exactement comme `cmd/server/main.go` le fait au démarrage. Sans cette sonde,
 // il faudrait lancer un serveur — c'est-à-dire ouvrir la vraie base en écriture.
 //
-// C'est ce qu'exigent les étapes A6.6 et A6.9 du plan
-// `.ai/V7.5/PLAN_SOURCE_UNIQUE_ARME_2026-09-01.md` : relancer le témoin de bascule après
+// C'est ce qu'exige le rejeu du témoin de bascule après
 // l'ajout des véhicules/tourelles et le reclassement de l'épée et du marteau.
 //
 // # Elle ne s'arme que sur demande, et elle ÉCRIT

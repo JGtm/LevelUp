@@ -83,49 +83,6 @@ func seedSharedForExclusion(t *testing.T, db *DB) {
 	}
 }
 
-func TestMatchExclusionRepo_ListExcluded_NoExcluded(t *testing.T) {
-	db := openMemDB(t)
-	seedSharedForExclusion(t, db)
-	seedPlayerEnrichment(t, db)
-
-	pdb := &PlayerDB{Player: db, Shared: db}
-	repo := NewMatchExclusionRepo(pdb)
-
-	results, err := repo.ListExcluded(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(results) != 0 {
-		t.Fatalf("expected 0, got %d", len(results))
-	}
-}
-
-func TestMatchExclusionRepo_ListExcluded_WithData(t *testing.T) {
-	db := openMemDB(t)
-	seedSharedForExclusion(t, db)
-	seedPlayerEnrichment(t, db)
-	ctx := context.Background()
-
-	_, err := db.Exec(ctx, `INSERT INTO player_match_enrichment (match_id, is_excluded) VALUES ('m1', TRUE), ('m2', FALSE)`)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	pdb := &PlayerDB{Player: db, Shared: db}
-	repo := NewMatchExclusionRepo(pdb)
-
-	results, err := repo.ListExcluded(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(results) != 1 {
-		t.Fatalf("expected 1 excluded, got %d", len(results))
-	}
-	if results[0].MatchID != "m1" {
-		t.Fatalf("expected m1, got %s", results[0].MatchID)
-	}
-}
-
 // SetExclusion décide sur le DERNIER état du flag (vue _latest), lu sous le verrou
 // d'écriture de la base joueur : il n'écrit que si l'état change, et le dit.
 func TestMatchExclusionRepo_SetExclusion_DecidesOnLatestState(t *testing.T) {

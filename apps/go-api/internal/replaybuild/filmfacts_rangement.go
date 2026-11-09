@@ -12,8 +12,9 @@ import (
 	"os"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/platform/atomicfile"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // rangerLesFaits range les faits d une cuisson qui a DECODE — SEULEMENT si le puits d artefact
@@ -62,7 +63,7 @@ func (b *Builder) ecrireLesFaits(ctx context.Context, matchID string, f *replay.
 			"path", chemin, "err", err)
 		return
 	}
-	if err := atomicfile.WriteFile(chemin, blob, 0o600); err != nil {
+	if err := atomicfile.WriteFile(ctx, chemin, blob, 0o600); err != nil {
 		slog.ErrorContext(ctx, "cuisson: faits de film non ecrits", "match_id", matchID,
 			"path", chemin, "err", err)
 		return

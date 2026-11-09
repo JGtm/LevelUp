@@ -33,7 +33,7 @@ func GamePrefixFromResolver(res EndpointResolver, slug string) string {
 
 // GamePrefix résout le préfixe de jeu du titre courant via le resolver partagé de
 // boot (DefaultEndpointResolver), avec fallback DefaultGamePrefix. Point d'entrée
-// des couches d'ingestion (internal/sync, internal/platform/halo, internal/assets)
+// des couches d'ingestion (internal/sync, games/halo_infinite/haloadapter, internal/assets)
 // qui injectent le segment dans les chemins d'API.
 func GamePrefix(slug string) string {
 	return GamePrefixFromResolver(DefaultEndpointResolver(), slug)

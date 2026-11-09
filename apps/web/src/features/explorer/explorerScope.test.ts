@@ -167,3 +167,28 @@ describe('explorerSearchSchema (validateSearch)', () => {
     expect(explorerSearchSchema.parse({})).toEqual({})
   })
 })
+
+describe('explorerScopeToFilterSpec : libellés', () => {
+  // Les clés (noms de la langue par défaut) filtrent dans les deux langues ; seuls les libellés posés à côté
+  // changent, et seulement pour les clés sélectionnées.
+  const scope: ExplorerScope = {
+    ...fullScope,
+    playlists: new Set(['Partie rapide']),
+    modeNames: new Set(['Assassin']),
+  }
+  it('anglais : clés inchangées, libellés anglais des clés choisies', () => {
+    const spec = explorerScopeToFilterSpec(scope, {
+      playlists: { 'Partie rapide': 'Quick Play', 'Grande bataille': 'Big Team Battle' },
+      modes: { Assassin: 'Slayer' },
+    })
+    expect(spec?.playlist_names).toEqual(['Partie rapide'])
+    expect(spec?.mode_categories).toEqual(['Assassin'])
+    expect(spec?.playlist_labels).toEqual({ 'Partie rapide': 'Quick Play' })
+    expect(spec?.mode_labels).toEqual({ Assassin: 'Slayer' })
+  })
+  it('sans libellés : spec sans table de libellés', () => {
+    const spec = explorerScopeToFilterSpec(scope)
+    expect(spec?.playlist_labels).toBeUndefined()
+    expect(spec?.mode_labels).toBeUndefined()
+  })
+})

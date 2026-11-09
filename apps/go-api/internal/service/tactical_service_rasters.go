@@ -45,6 +45,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -107,7 +108,7 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 		return games.ErrCapabilityNotSupported
 	}
 	debut := time.Now()
-	univers, err := s.repo.Univers(ctx, s.requeteAvecRetention(out.MapID, scope))
+	univers, err := s.repo.Univers(ctx, s.requeteAvecRetention(s.cartesDe(ctx, out.MapID), scope))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "tactique: univers de la lecture d'artefact en echec",
 			"player", s.xuid, "map_id", out.MapID, "err", err)
@@ -127,7 +128,7 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 	// `Raster`) : les recalculer sur l'univers DEJA RESTREINT reduirait la liste a la seule
 	// grappe choisie, et enfermerait l'utilisateur dans sa selection.
 	if out.Grappes == nil {
-		out.Grappes = grappesDeLUnivers(sidecars, s.xuid, s.zonesDeLaCarte(ctx, out.MapID))
+		out.Grappes = grappesDeLUnivers(i18n.FromContext(ctx), sidecars, s.xuid, s.zonesDeLaCarte(ctx, out.MapID))
 	}
 	// MATCHS FILTRES = L'UNIVERS DE CETTE CARTE — deja restreint par le filtre de spawn,
 	// qui est un filtre d'univers ; MatchsRetenus en est le SOUS-ENSEMBLE MESURE.

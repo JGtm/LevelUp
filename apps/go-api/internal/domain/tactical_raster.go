@@ -1,5 +1,7 @@
 package domain
 
+import "levelup/go-api/internal/i18n"
+
 // tactical_raster.go — LE SIDECAR DE RASTER TACTIQUE : l'occupation d'UN match, calculee
 // UNE FOIS a la cuisson et relue telle quelle par la page.
 //
@@ -274,12 +276,11 @@ const (
 // consomme pour nommer ses grappes. Le paquet d'algo en a un type JUMEAU, et c'est voulu —
 // il reste PUR, donc il ne connait aucun port.
 type ZoneNommee struct {
-	// NomFR / NomEN : le libelle du lieu dans chaque langue, avec repli sur le nom de
-	// CONCEPTION quand l'un manque. Un nom de lieu vient du catalogue du JEU, pas de
-	// l'i18n du produit : le client ne peut pas le traduire, donc les deux voyagent.
-	NomFR string
-	NomEN string
-	X, Y  float64
+	// Nom : le libelle du lieu dans chaque langue, avec repli sur le nom de CONCEPTION quand
+	// l'un manque. Un nom de lieu vient du catalogue du JEU, pas de l'i18n du produit : le client
+	// ne peut pas le traduire, donc toutes les langues voyagent.
+	Nom  i18n.Text
+	X, Y float64
 	// Z : la hauteur du centre du volume ; Big : une GRANDE zone, qui pave la carte (les fines
 	// sont des étages imbriqués). Le plan les dessine comme le rejeu 2D (libellé sur la zone la
 	// plus haute, aplat des seules grandes).
@@ -302,12 +303,11 @@ type TacticalGrappe struct {
 	// ID est STABLE entre deux lectures du meme amas — il est derive du barycentre, jamais
 	// d'un rang. C'est lui que le filtre `spawn` transporte.
 	ID string `json:"id"`
-	// NomFR / NomEN : le callout le plus proche du barycentre, dans chaque langue. VIDES
-	// quand la carte n'a aucune zone au catalogue — aucun nom n'est invente. Le web choisit
-	// selon sa locale : ce sont des noms de LIEU du jeu, que l'i18n du produit ne connait
-	// pas et ne peut pas traduire.
-	NomFR string `json:"nom_fr"`
-	NomEN string `json:"nom_en"`
+	// Nom : le callout le plus proche du barycentre, dans la langue de la requete (repli en).
+	// VIDE quand la carte n'a aucune zone au catalogue — aucun nom n'est invente. Ce sont des
+	// noms de LIEU du jeu : l'i18n du produit ne les connait pas, le catalogue de la carte les
+	// porte par langue.
+	Nom string `json:"nom"`
 	// X, Y : le barycentre, en metres monde.
 	X float64 `json:"x"`
 	Y float64 `json:"y"`

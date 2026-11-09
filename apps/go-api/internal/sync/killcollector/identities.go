@@ -7,8 +7,8 @@ package killcollector
 // qui se trompe en silence doit vivre a UN seul endroit, sous son propre en-tete.
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // MatchIdentities : ce que la passe demande a la base sur les participants d un match.

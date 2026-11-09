@@ -43,9 +43,10 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // rattraperDerivations rejoue les derivations des artefacts ranges dont les derives manquent.

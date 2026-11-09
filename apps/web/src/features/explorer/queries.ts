@@ -47,13 +47,15 @@ export function useExplorerMatches(
   enabled: boolean = true,
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  // Cartes, modes et playlists (lignes et options de filtre) servis dans la langue de la requête.
+  const locale = useAppShellStore((s) => s.locale)
   const perfTiers = request.perf_tiers ?? []
   const skillTiers = request.skill_tiers ?? []
   const rankedContext = request.ranked_context ?? ''
   const outcomeFilter = request.outcome_filter ?? []
   const matchFiltersKey = matchFiltersKeyOf(request)
   return useQuery({
-    queryKey: queryKeys.explorer(playerSlug, titleSlug, filterHash, perfTiers, skillTiers, rankedContext, outcomeFilter, matchFiltersKey),
+    queryKey: queryKeys.explorer(playerSlug, titleSlug, filterHash, perfTiers, skillTiers, rankedContext, outcomeFilter, matchFiltersKey, locale),
     queryFn: () =>
       api.post<ExplorerMatchesQueryResponse>(
         `/players/${playerSlug}/pages/explorer/matches-query`,
@@ -67,6 +69,8 @@ export function useExplorerMatches(
 
 export function useExplorerPlayer(playerSlug: string, request: ExplorerPlayerQueryRequest) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  // Les noms d armes sont servis dans la langue de la requête : la locale scope la clé.
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery({
     queryKey: queryKeys.explorerPlayer(
       playerSlug,
@@ -74,6 +78,7 @@ export function useExplorerPlayer(playerSlug: string, request: ExplorerPlayerQue
       request.target_gamertag,
       request.target_xuid ?? '',
       request.page ?? 1,
+      locale,
     ),
     queryFn: () =>
       api.post<ExplorerPlayerQueryResponse>(

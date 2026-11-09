@@ -6,7 +6,7 @@ package main
 // Sans ces options la passe prend tout le cache (des heures). Elles bornent la population AVANT
 // le filtre « deja a jour », le tri par cout et `--limit` : un pilote `--limit 25 --since ...`
 // livre 25 constructions reelles parmi les films retenus. La cuisson, elle, ne change pas : un
-// processus par film sous plafond memoire (`filmproc`).
+// processus par film sous plafond memoire (`filmrun`).
 //
 // SEMANTIQUE
 //

@@ -1,9 +1,17 @@
 name: Release
 
+# Deux déclencheurs :
+#   - un tag `vX.Y.Z` : compile, publie la release GitHub (binaires serveur, installeur Windows signé
+#     pour l'updater, latest.json) ;
+#   - un push sur `release/**` : compile l'installeur Windows (SANS signature d'updater) et joue le test
+#     de bout en bout de l'installation (`desktop-e2e`) ; rien n'est publié (jobs `build-go` et
+#     `publish` conditionnés au tag). C'est le verdict Windows que la CI ordinaire (ci.yml) ne rend pas.
 on:
   push:
     tags:
       - "v*.*.*"
+    branches:
+      - "release/**"
 
 # Lecture seule pour tout le workflow : les jobs de compilation n'écrivent rien dans le dépôt.
 # `contents: write` est déclaré sur le seul job `publish` (création de la release).
@@ -17,6 +25,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   build-go:
     name: Build Go ${{ matrix.goos }}-${{ matrix.goarch }}
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -44,13 +53,22 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: apps/go-api/go.mod
-          cache-dependency-path: apps/go-api/go.sum
+          cache-dependency-path: |
+            apps/go-api/go.sum
+            libs/film/go.sum
+            libs/gamefiles/go.sum
+            libs/haloapi/go.sum
+            libs/himap/go.sum
 
       - name: Extract version from tag
         id: ver
         shell: bash
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
+      # Binaire sans symboles (`-s -w`, L23.3-f : -61 Mo sur disque, -11 Mo dans le téléchargement) : retire la table
+      # des symboles et le DWARF (débogueur symbolique) mais PAS les traces de pile Go, que `runtime` lit dans
+      # pclntab (mesuré : un panic d'un binaire `-s -w` garde noms de fonctions, fichiers et lignes). Le journal
+      # des paniques reste donc complet. `-X main.version` est conservé (relu par check-version.sh via `go version -m`).
       - name: Build Go server (CGo enabled — DuckDB bindings)
         shell: bash
         env:
@@ -60,7 +78,7 @@ jobs:
         run: |
           mkdir -p dist
           go build \
-            -ldflags "-X main.version=${{ steps.ver.outputs.version }}" \
+            -ldflags "-s -w -X main.version=${{ steps.ver.outputs.version }}" \
             -o dist/levelup-server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} \
             ./cmd/server/
 
@@ -71,7 +89,7 @@ jobs:
           path: apps/go-api/dist/levelup-server-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Job 2 : Build web dist (Vite) — partagé entre les artefacts Go
+  # Job 2 : Build web dist (Vite) — partagé entre les artefacts Go et l'installeur Windows
   # ─────────────────────────────────────────────────────────────────────────────
   build-web:
     name: Build Web (Vite)
@@ -102,11 +120,274 @@ jobs:
           path: apps/web/dist/
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Job 3 : Publish GitHub Release
+  # Job 3 : installeur Windows (Tauri 2, NSIS par utilisateur) — ADR 0045, plan L17
+  #
+  # Même version partout (tag, Cargo.toml, tauri.conf.json, -ldflags du serveur : étape « Version »).
+  # Sur un tag : l'installeur est signé pour l'updater (clé Tauri, secrets du dépôt) ; sans la clé le
+  # job ÉCHOUE avant toute compilation, jamais un installeur non signé publié. Hors tag : aucune
+  # signature, aucun secret lu, l'installeur ne sert qu'au test de bout en bout.
+  #
+  # Budget : son propre timeout (la voie Windows CGO de ci.yml a 15 minutes, un build Tauri en
+  # release avec LTO les dépasse) ; caches Go (setup-go) et cargo.
+  # ─────────────────────────────────────────────────────────────────────────────
+  desktop-build:
+    name: Desktop (installeur NSIS)
+    needs: [build-web]
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      CGO_ENABLED: "1"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6.1.0
+
+      # Version unique : le tag sans son `v`, ou hors tag la version de Cargo.toml (le reste doit
+      # alors lui être égal).
+      - name: Version
+        id: ver
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            echo "tag=true" >> "$GITHUB_OUTPUT"
+          else
+            version="$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' apps/desktop/src-tauri/Cargo.toml | head -n 1)"
+            echo "tag=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Version check (tag, Cargo.toml, tauri.conf.json)
+        run: bash apps/desktop/scripts/check-version.sh "${{ steps.ver.outputs.version }}"
+
+      # Une release sans notes n'est pas une release : publish échouerait, mais après 25 minutes de
+      # compilation. La première section des notes de version doit exister dans les deux langues et porter
+      # le numéro majeur.mineur du tag : sinon le texte d'une version précédente partirait avec celle-ci.
+      - name: Notes de version FR et EN à jour (tag)
+        if: steps.ver.outputs.tag == 'true'
+        run: |
+          version="${{ steps.ver.outputs.version }}"
+          for notes in docs/FR/RELEASE_NOTES.md docs/RELEASE_NOTES.md; do
+            if ! awk '/^\*\*v[0-9]/{print; exit}' "$notes" | grep -q "^\*\*v${version%.*}[^0-9.]"; then
+              echo "::error::la première section de ${notes} ne porte pas v${version%.*}"
+              exit 1
+            fi
+          done
+
+      # Secrets : lus seulement ici et à l'étape de compilation d'un tag. Le mot de passe peut être
+      # absent (un secret GitHub ne peut pas être vide : une clé générée sans mot de passe n'en a pas).
+      - name: Clé de signature de l'updater présente (tag)
+        if: steps.ver.outputs.tag == 'true'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::error::secret TAURI_SIGNING_PRIVATE_KEY absent du dépôt : un installeur dont l'updater n'est pas signé ne doit pas être publié. Ajouter le secret (clé privée de l'updater, ADR 0045 D-16) puis relancer le workflow."
+            exit 1
+          fi
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" ]; then
+            echo "::warning::secret TAURI_SIGNING_PRIVATE_KEY_PASSWORD absent : la clé est supposée sans mot de passe."
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: apps/go-api/go.mod
+          cache-dependency-path: |
+            apps/go-api/go.sum
+            libs/film/go.sum
+            libs/gamefiles/go.sum
+            libs/haloapi/go.sum
+            libs/himap/go.sum
+
+      - name: Download web dist
+        uses: actions/download-artifact@v8
+        with:
+          name: web-dist
+          path: apps/web/dist
+
+      # ffmpeg et ffprobe LGPL (ADR 0045 D-17) : archive officielle épinglée par URL ET SHA-256 dans le
+      # script (BtbN/FFmpeg-Builds, release datée, build LGPL « shared » sans libx264).
+      - name: ffmpeg et ffprobe LGPL (archive épinglée, somme de contrôle vérifiée)
+        shell: pwsh
+        run: ./apps/desktop/scripts/fetch-ffmpeg.ps1 -OutDir "$env:RUNNER_TEMP\ffmpeg"
+
+      # Deux unités livrées à part (ADR 0045, amendement L24) : le MOTEUR (front sans titles/, config, mentions)
+      # et le PAQUET DE RESSOURCES (static, web/titles, référentiel, ffmpeg). Le paquet sort aussi en archive
+      # `levelup-resources-<empreinte>.zip` ; son empreinte (SHA-256 du manifeste trié) est son identité.
+      - name: Moteur et paquet de ressources (manifeste, empreinte, archive)
+        id: pack
+        shell: pwsh
+        run: |
+          ./apps/desktop/scripts/stage-bundle.ps1 -WebDist "$env:GITHUB_WORKSPACE\apps\web\dist" -FfmpegDir "$env:RUNNER_TEMP\ffmpeg" -ArchiveDir "$env:RUNNER_TEMP\pack-out" -Version "${{ steps.ver.outputs.version }}"
+          $fingerprint = (Get-Content -Raw apps/desktop/src-tauri/pack-staging.fingerprint).Trim()
+          "fingerprint=$fingerprint" >> $env:GITHUB_OUTPUT
+
+      # Serveur : même binaire que l'hébergé, nommé comme l'attend le bundler (externalBin). Il embarque la version
+      # ET l'empreinte du paquet livré avec lui (`-X main.resourcesFingerprint`) : c'est ce qui le lie à SON paquet.
+      # `-s -w` : sans symboles ni DWARF, traces de panique intactes (L23.3-f ; détail sur l'étape du job build-go).
+      - name: Build du serveur (CGO, DuckDB lié)
+        working-directory: apps/go-api
+        run: |
+          go build \
+            -ldflags "-s -w -X main.version=${{ steps.ver.outputs.version }} -X main.resourcesFingerprint=${{ steps.pack.outputs.fingerprint }}" \
+            -o ../desktop/src-tauri/binaries/levelup-server-x86_64-pc-windows-msvc.exe \
+            ./cmd/server/
+
+      - name: Version check (-ldflags du serveur compilé, version et empreinte du paquet)
+        run: bash apps/desktop/scripts/check-version.sh "${{ steps.ver.outputs.version }}" apps/desktop/src-tauri/binaries/levelup-server-x86_64-pc-windows-msvc.exe "${{ steps.pack.outputs.fingerprint }}"
+
+      - name: Set up Rust
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/desktop/src-tauri/target
+          key: desktop-release-cargo-${{ runner.os }}-${{ hashFiles('apps/desktop/src-tauri/Cargo.lock') }}
+          restore-keys: desktop-release-cargo-${{ runner.os }}-
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Install dependencies (CLI Tauri)
+        working-directory: apps/desktop
+        run: npm ci
+
+      # Deux installeurs (ADR 0045, amendement L24) : l'installeur COMPLET (moteur + paquet), celui de la première
+      # installation et de la page de téléchargement, jamais proposé à l'updater ; l'installeur MOTEUR SEUL, celui que
+      # `latest.json` désigne : l'updater n'installe qu'un moteur, le paquet ne se retélécharge que s'il a changé.
+      # `createUpdaterArtifacts` n'est posé que sur le second et sur un tag : un build hors tag n'a besoin d'aucune clé.
+      # La signature est calculée par le CLI Tauri depuis TAURI_SIGNING_PRIVATE_KEY ; celle du paquet par `signer sign`.
+      - name: Build Tauri (installeurs NSIS complet et moteur seul)
+        working-directory: apps/desktop
+        env:
+          TAG_BUILD: ${{ steps.ver.outputs.tag }}
+          VERSION: ${{ steps.ver.outputs.version }}
+          FINGERPRINT: ${{ steps.pack.outputs.fingerprint }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ steps.ver.outputs.tag == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ steps.ver.outputs.tag == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+        run: |
+          out="$RUNNER_TEMP/pack-out"
+          bundle=src-tauri/target/release/bundle/nsis
+          rm -rf src-tauri/target/release/bundle
+          npx tauri build --config src-tauri/tauri.bundle.conf.json
+          mv "$bundle/LevelUp_${VERSION}_x64-setup.exe" "$out/LevelUp_${VERSION}_x64-setup.exe"
+          rm -rf src-tauri/target/release/bundle
+          args=(--config src-tauri/tauri.engine.conf.json)
+          if [ "$TAG_BUILD" = "true" ]; then
+            args+=(--config src-tauri/tauri.updater.conf.json)
+          fi
+          npx tauri build "${args[@]}"
+          mv "$bundle/LevelUp_${VERSION}_x64-setup.exe" "$out/LevelUp_${VERSION}_x64-engine-setup.exe"
+          if [ "$TAG_BUILD" = "true" ]; then
+            mv "$bundle/LevelUp_${VERSION}_x64-setup.exe.sig" "$out/LevelUp_${VERSION}_x64-engine-setup.exe.sig"
+            npx tauri signer sign "$out/levelup-resources-${FINGERPRINT}.zip"
+          fi
+          printf '%s' "$FINGERPRINT" > "$out/pack-fingerprint.txt"
+
+      - name: Installeurs, paquet et signatures présents
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          TAG_BUILD: ${{ steps.ver.outputs.tag }}
+          FINGERPRINT: ${{ steps.pack.outputs.fingerprint }}
+        run: |
+          dir="$RUNNER_TEMP/pack-out"
+          for file in "LevelUp_${VERSION}_x64-setup.exe" "LevelUp_${VERSION}_x64-engine-setup.exe" "levelup-resources-${FINGERPRINT}.zip"; do
+            if [ ! -s "$dir/$file" ]; then
+              echo "::error::fichier absent : $dir/$file"
+              ls -la "$dir" || true
+              exit 1
+            fi
+            if [ "$TAG_BUILD" = "true" ] && [ "$file" != "LevelUp_${VERSION}_x64-setup.exe" ] && [ ! -s "$dir/$file.sig" ]; then
+              echo "::error::signature de l'updater absente : $dir/$file.sig"
+              ls -la "$dir" || true
+              exit 1
+            fi
+          done
+          ls -la "$dir"
+
+      # Le CLI Tauri ne fait qu'avertir quand TAURI_SIGNING_PRIVATE_KEY n'est pas la moitié de la clé publique
+      # embarquée (plugins.updater.pubkey) : sans ce contrôle la release partirait avec un installeur qui refuse
+      # toutes les mises à jour suivantes.
+      - name: Signature de l'updater conforme à la clé publique embarquée
+        if: steps.ver.outputs.tag == 'true'
+        working-directory: apps/go-api
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          FINGERPRINT: ${{ steps.pack.outputs.fingerprint }}
+          RUNNER_TEMP_DIR: ${{ runner.temp }}
+        run: |
+          for file in "LevelUp_${VERSION}_x64-engine-setup.exe" "levelup-resources-${FINGERPRINT}.zip"; do
+            artifact="$RUNNER_TEMP_DIR/pack-out/$file"
+            if ! go run ./cmd/updater-verify -pubkey ../desktop/src-tauri/tauri.conf.json -sig "$artifact.sig" -file "$artifact"; then
+              echo "::error::la signature de $file ne correspond pas à la clé publique embarquée (plugins.updater.pubkey de tauri.conf.json) : le secret TAURI_SIGNING_PRIVATE_KEY et la clé publique sont différents (rotation non faite ?). Lire l'ADR 0045 D-16 avant de relancer."
+              exit 1
+            fi
+          done
+
+      - name: Upload installeurs et paquet
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-installer
+          path: |
+            ${{ runner.temp }}/pack-out/LevelUp_${{ steps.ver.outputs.version }}_x64-setup.exe
+            ${{ runner.temp }}/pack-out/LevelUp_${{ steps.ver.outputs.version }}_x64-engine-setup.exe
+            ${{ runner.temp }}/pack-out/LevelUp_${{ steps.ver.outputs.version }}_x64-engine-setup.exe.sig
+            ${{ runner.temp }}/pack-out/levelup-resources-${{ steps.pack.outputs.fingerprint }}.zip
+            ${{ runner.temp }}/pack-out/levelup-resources-${{ steps.pack.outputs.fingerprint }}.zip.sig
+            ${{ runner.temp }}/pack-out/pack-fingerprint.txt
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 4 : test de bout en bout de l'installeur (plan L17.3) : installation silencieuse, lancement,
+  # /health, fermeture par WM_CLOSE, arrêt propre (`arrêt: terminé` clean=true, aucun *.wal),
+  # relancement, désinstallation qui conserve les données. Même script qu'en local.
+  # ─────────────────────────────────────────────────────────────────────────────
+  desktop-e2e:
+    name: Desktop (installation, lancement, arrêt propre)
+    needs: [desktop-build]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6.1.0
+
+      - name: Download installeur
+        uses: actions/download-artifact@v8
+        with:
+          name: desktop-installer
+          path: installer
+
+      - name: Installation complète, lancement, mise à jour moteur seul, désinstallation
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem installer -Filter 'LevelUp_*_x64-setup.exe' | Select-Object -First 1
+          $engine = Get-ChildItem installer -Filter 'LevelUp_*_x64-engine-setup.exe' | Select-Object -First 1
+          ./apps/desktop/scripts/e2e-install.ps1 -Installer $setup.FullName -EngineInstaller $engine.FullName -ArtifactsDir "$env:RUNNER_TEMP\e2e-artifacts"
+
+      - name: Journaux de l'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-e2e-logs
+          path: ${{ runner.temp }}/e2e-artifacts
+          if-no-files-found: ignore
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 5 : Publish GitHub Release (tag seulement)
   # ─────────────────────────────────────────────────────────────────────────────
   publish:
     name: Publish GitHub Release
-    needs: [build-go, build-web]
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    needs: [build-go, build-web, desktop-build, desktop-e2e]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -122,60 +403,85 @@ jobs:
       - name: List artifacts
         run: ls -lh dist/
 
-      # Le corps de la release reprend la section de la version dans le changelog FR
-      # (`## [X.Y.Z]`, tag sans son `v`), suivie des instructions d'installation. Une version
-      # absente du changelog fait échouer la publication : une release sans notes n'est pas
-      # une release.
-      - name: Notes de version depuis le changelog
+      # Le corps de la release et les notes de l'updater reprennent la première section de
+      # docs/FR/RELEASE_NOTES.md (docs/RELEASE_NOTES.md pour notes_en) : le texte écrit pour les joueurs,
+      # pas le journal technique. Une section vide fait échouer la publication.
+      - name: Notes de version
         env:
           TAG: ${{ github.ref_name }}
         run: |
           version="${TAG#v}"
-          awk -v h="## [${version}]" 'index($0,h)==1{f=1; next} f && index($0,"## [")==1{exit} f' \
-            docs/FR/CHANGELOG.md > notes_section.md
-          if ! grep -q '[^[:space:]]' notes_section.md; then
-            echo "::error::section ## [${version}] absente ou vide dans docs/FR/CHANGELOG.md"
-            exit 1
-          fi
+          awk '/^\*\*v[0-9]/{n++} n==1' docs/FR/RELEASE_NOTES.md > notes_section.md
+          awk '/^\*\*v[0-9]/{n++} n==1' docs/RELEASE_NOTES.md > notes_section_en.md
+          for section in notes_section.md notes_section_en.md; do
+            if ! grep -q '[^[:space:]]' "$section"; then
+              echo "::error::première section vide dans les notes de version (${section})"
+              exit 1
+            fi
+          done
           {
-            echo "## Nouveautés et correctifs"
+            echo "**[Télécharger LevelUp ${version} pour Windows](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/LevelUp_${version}_x64-setup.exe)** (Windows 10 ou 11, 64 bits). L'installeur n'est pas signé par un certificat payant : Windows affiche un avertissement, cliquer sur « Informations complémentaires » puis « Exécuter quand même »."
+            echo
             cat notes_section.md
             echo
-            echo "Détail : [CHANGELOG FR](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/FR/CHANGELOG.md) · [CHANGELOG EN](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/CHANGELOG.md)."
-            echo
-            cat <<'INSTALL'
-          ## Installation
-
-          ### Docker (recommandé — serveur Go natif)
-          ```bash
-          docker compose up -d
-          ```
-
-          ### Binaires Go natifs
-          Téléchargez le binaire correspondant à votre plateforme :
-          - **Linux (x86_64)** : `levelup-server-linux-amd64`
-          - **macOS (Apple Silicon)** : `levelup-server-darwin-arm64`
-          - **Windows (x86_64)** : `levelup-server-windows-amd64.exe`
-
-          > **Note — binaires non autosuffisants.** Ils requièrent `ffmpeg`/`ffprobe`
-          > dans le PATH (miniatures WebP, transcodage HLS, remux live) et les dossiers
-          > `config/` et `static/` adjacents au binaire (mappings de titres, assets UI).
-          > L'artefact de production de référence reste l'**image Docker** (ci-dessus),
-          > qui embarque déjà ffmpeg, `config/` et `static/`.
-
-          ```bash
-          chmod +x levelup-server-linux-amd64
-          LEVELUP_REPO_ROOT=/chemin/vers/levelup ./levelup-server-linux-amd64
-          ```
-          INSTALL
+            echo "Détail technique : [journal des modifications](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/FR/CHANGELOG.md). Les autres fichiers servent aux mises à jour de l'application et à l'auto-hébergement."
           } > release_body.md
+
+      # latest.json : le fichier que l'updater de l'application interroge
+      # (https://github.com/<dépôt>/releases/latest/download/latest.json). `notes` = la première section des
+      # notes de version FR (affichée à l'utilisateur avant d'installer ; seule clé que lit un client sans
+      # `notes_en`) et `notes_en` = sa version EN (choisie par la coquille quand
+      # la langue de l'utilisateur n'est pas la langue par défaut) ; `signature` = contenu du .sig produit
+      # par le CLI Tauri avec la clé privée ; `url` = l'installeur MOTEUR SEUL de CETTE release (jamais le complet).
+      # `resources` (champ supplémentaire, relu par la coquille via Update::raw_json) = le paquet de ressources que
+      # ce moteur exige : empreinte, adresse de l'archive, SHA-256, taille et signature (même clé que l'installeur).
+      - name: latest.json de l'updater
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          installer="LevelUp_${version}_x64-engine-setup.exe"
+          fingerprint="$(cat dist/pack-fingerprint.txt)"
+          pack="levelup-resources-${fingerprint}.zip"
+          for file in "$installer" "$pack"; do
+            if [ ! -s "dist/${file}" ] || [ ! -s "dist/${file}.sig" ]; then
+              echo "::error::fichier ou signature absents de dist/ (${file})"
+              ls -la dist/
+              exit 1
+            fi
+          done
+          jq -n \
+            --arg fingerprint "$fingerprint" \
+            --arg pack_url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${pack}" \
+            --arg pack_sha256 "$(sha256sum "dist/${pack}" | cut -d' ' -f1)" \
+            --argjson pack_size "$(stat -c %s "dist/${pack}")" \
+            --rawfile pack_signature "dist/${pack}.sig" \
+            --arg version "$version" \
+            --rawfile notes notes_section.md \
+            --rawfile notes_en notes_section_en.md \
+            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --rawfile signature "dist/${installer}.sig" \
+            --arg url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${installer}" \
+            '{version: $version, notes: $notes, notes_en: $notes_en, pub_date: $pub_date,
+              platforms: {"windows-x86_64": {signature: ($signature | rtrimstr("\n")), url: $url}},
+              resources: {fingerprint: $fingerprint, url: $pack_url, sha256: $pack_sha256, size: $pack_size,
+                          signature: ($pack_signature | rtrimstr("\n"))}}' \
+            > dist/latest.json
+          jq -e '.version != "" and ([.notes | explode[] | select(. > 32)] | length) > 0 and ([.notes_en | explode[] | select(. > 32)] | length) > 0 and (.platforms["windows-x86_64"].signature | length) > 0 and (.platforms["windows-x86_64"].url | endswith("-engine-setup.exe")) and (.platforms["windows-x86_64"].url | startswith("https://")) and (.resources.fingerprint | test("^[0-9a-f]{64}$")) and (.resources.url | startswith("https://")) and (.resources.sha256 | test("^[0-9a-f]{64}$")) and (.resources.size > 0) and (.resources.signature | length) > 0' dist/latest.json
+          cat dist/latest.json
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
-          generate_release_notes: true
+          generate_release_notes: false
           files: |
             dist/levelup-server-linux-amd64
             dist/levelup-server-darwin-arm64
             dist/levelup-server-windows-amd64.exe
+            dist/LevelUp_*_x64-setup.exe
+            dist/LevelUp_*_x64-engine-setup.exe
+            dist/LevelUp_*_x64-engine-setup.exe.sig
+            dist/levelup-resources-*.zip
+            dist/levelup-resources-*.zip.sig
+            dist/latest.json
           body_path: release_body.md

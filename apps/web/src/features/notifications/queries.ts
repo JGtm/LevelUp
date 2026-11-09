@@ -27,9 +27,10 @@ export function useNotificationsList(
   options?: { enabled?: boolean; refetchInterval?: number },
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const locale = useAppShellStore((s) => s.locale)
   const qs = buildQueryString(filter)
   return useQuery<NotificationsListResponse>({
-    queryKey: queryKeys.notifications(playerSlug, titleSlug, filter),
+    queryKey: queryKeys.notifications(playerSlug, titleSlug, locale, filter),
     queryFn: () =>
       api.get<NotificationsListResponse>(
         `/players/${playerSlug}/notifications${qs}`,

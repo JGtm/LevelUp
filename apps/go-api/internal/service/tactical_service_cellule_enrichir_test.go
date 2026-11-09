@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -136,7 +137,7 @@ type sourcesDuDetailTest struct {
 func sourcesCompletes(matchs *fakeCelluleMatchs) sourcesDuDetailTest {
 	return sourcesDuDetailTest{
 		matchs: matchs,
-		armes:  &fakeLibellesArmes{labels: map[string]port.WeaponLabel{"br75": {Label: "BR75 (fr)", LabelEN: "BR75"}}},
+		armes:  &fakeLibellesArmes{labels: map[string]port.WeaponLabel{"br75": {Name: i18n.Text{i18n.LocaleFR: "BR75 (fr)", i18n.LocaleEN: "BR75"}}}},
 		rejeu:  &stubReplayService{shortIDs: []string{"m1"}},
 		class:  fakeClassifieur{tagBR: "br75"},
 		trace:  &bytes.Buffer{},
@@ -166,17 +167,17 @@ func (src sourcesDuDetailTest) service(repo *mockTacticalRepo, caps games.Capabi
 
 // attendu : ce qu'une contribution publie.
 type attendu struct {
-	mode, score, kind, arme, armeEN, categorie string
-	placement                                  *domain.TacticalPlacement
-	rejeu                                      bool
+	mode, score, kind, arme, categorie string
+	placement                          *domain.TacticalPlacement
+	rejeu                              bool
 }
 
 func verifier(t *testing.T, i int, c domain.TacticalContribution, w attendu) {
 	t.Helper()
 	if c.ModeLabel != w.mode || c.ScoreLabel != w.score || c.ScoreKind != w.kind || c.ArmeLabel != w.arme ||
-		c.ArmeLabelEN != w.armeEN || c.CategorieSource != w.categorie || c.ReplayAvailable != w.rejeu {
-		t.Errorf("contribution %d (%s, %d ms) = mode %q, score %q (%s), arme %q / %q, catégorie %q, rejeu %v ; want %+v",
-			i, c.MatchID, c.InstantMs, c.ModeLabel, c.ScoreLabel, c.ScoreKind, c.ArmeLabel, c.ArmeLabelEN,
+		c.CategorieSource != w.categorie || c.ReplayAvailable != w.rejeu {
+		t.Errorf("contribution %d (%s, %d ms) = mode %q, score %q (%s), arme %q, catégorie %q, rejeu %v ; want %+v",
+			i, c.MatchID, c.InstantMs, c.ModeLabel, c.ScoreLabel, c.ScoreKind, c.ArmeLabel,
 			c.CategorieSource, c.ReplayAvailable, w)
 	}
 	if !memePlacement(c.Placement, w.placement) {
@@ -202,7 +203,7 @@ func TestDetail_ChaqueChamp(t *testing.T) {
 	got := celluleLue(t, sourcesCompletes(matchs).service(repo, capsCompletes()),
 		celluleDemande(repo, domain.TacticalQuestionGagne, domain.TacticalQuiMoi, 4, 4))
 	want := []attendu{
-		{mode: "Assassin", score: "50 - 42", kind: "points", arme: "BR75 (fr)", armeEN: "BR75",
+		{mode: "Assassin", score: "50 - 42", kind: "points", arme: "BR75 (fr)",
 			placement: &domain.TacticalPlacement{Seul: true}, rejeu: true},
 		{mode: "Assassin", score: "50 - 42", kind: "points", categorie: "Headshot", rejeu: true},
 		{mode: "Oddball", score: "2 - 1", kind: "rounds", placement: &domain.TacticalPlacement{DistanceM: m(10)}},
@@ -227,6 +228,23 @@ func TestDetail_ModeDansLaLangueDeLaRequete(t *testing.T) {
 	}
 	if len(got.Contributions) == 0 || got.Contributions[0].ModeLabel != "Slayer" {
 		t.Fatalf("contributions = %+v, want le mode « Slayer » en anglais", got.Contributions)
+	}
+}
+
+// TestDetail_ArmeDansLaLangueDeLaRequete : le nom de l arme suit la locale de la requête (fr, en,
+// inconnue -> défaut fr).
+func TestDetail_ArmeDansLaLangueDeLaRequete(t *testing.T) {
+	repo, matchs := corpusDetail()
+	svc := sourcesCompletes(matchs).service(repo, capsCompletes())
+	for _, c := range []struct{ locale, want string }{{"fr", "BR75 (fr)"}, {"en", "BR75"}, {"zz", "BR75 (fr)"}} {
+		got, err := svc.Cellule(i18n.WithContext(context.Background(), i18n.Parse(c.locale)),
+			celluleDemande(repo, domain.TacticalQuestionGagne, domain.TacticalQuiMoi, 4, 4))
+		if err != nil {
+			t.Fatalf("Cellule(%s): %v", c.locale, err)
+		}
+		if len(got.Contributions) == 0 || got.Contributions[0].ArmeLabel != c.want {
+			t.Errorf("locale %q : arme = %+v, want %q", c.locale, got.Contributions, c.want)
+		}
 	}
 }
 
@@ -278,8 +296,8 @@ func TestDetail_TitreSansClassificateurNiCatalogue(t *testing.T) {
 		t.Fatalf("contributions = %d, zone = %+v ; want 4 et aucune", len(got.Contributions), got.Zone)
 	}
 	for i, c := range got.Contributions {
-		if c.ArmeLabel != "" || c.ArmeLabelEN != "" || c.CategorieSource != "" {
-			t.Errorf("contribution %d : arme %q / %q, catégorie %q ; want rien", i, c.ArmeLabel, c.ArmeLabelEN, c.CategorieSource)
+		if c.ArmeLabel != "" || c.CategorieSource != "" {
+			t.Errorf("contribution %d : arme %q, catégorie %q ; want rien", i, c.ArmeLabel, c.CategorieSource)
 		}
 	}
 	if src.armes.appels != 0 {
@@ -323,7 +341,7 @@ func casDesSources() []casDeSource {
 	sansCanonique := func(c domain.TacticalContribution) bool {
 		return c.ModeLabel == "" && c.ScoreLabel == "" && c.ScoreKind == ""
 	}
-	sansArme := func(c domain.TacticalContribution) bool { return c.ArmeLabel == "" && c.ArmeLabelEN == "" }
+	sansArme := func(c domain.TacticalContribution) bool { return c.ArmeLabel == "" }
 	sansPlacement := func(c domain.TacticalContribution) bool { return c.Placement == nil }
 	sansRejeu := func(c domain.TacticalContribution) bool { return !c.ReplayAvailable }
 	return []casDeSource{

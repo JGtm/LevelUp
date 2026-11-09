@@ -13,7 +13,7 @@ package main
 // le calque vehicules (`vehicles[].rides[]`) est publie depuis le schema 67. Un artefact plus
 // ancien donne une passe « non mesure » (D8) — jamais zero : c est l etat de tout le parc tant
 // qu il n est pas recuit, et la commande l ecrit pour que l onglet le dise. Cuire des artefacts
-// en lot est INTERDIT (bombe RAM, verrou `filmproc.AcquireSolo`).
+// en lot est INTERDIT (bombe RAM, verrou `filmrun.AcquireSolo`).
 //
 // # UNE LECTURE EN BASE, ET ELLE EST CELLE DU FIL DE L EAU
 //
@@ -52,11 +52,12 @@ import (
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/replayartifacts"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // vehicleTakesOptions : les reglages de la passe.
@@ -100,7 +101,7 @@ func runBackfillVehicleTakes(cfg *config.AppConfig, args []string) error {
 	}
 
 	ctx := context.Background()
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	sharedPath := pr.SharedDBPath(o.titleSlug)
 	if _, err := os.Stat(sharedPath); err != nil {
 		return fmt.Errorf("shared_matches introuvable (%s): %w", sharedPath, err)

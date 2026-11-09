@@ -1,7 +1,6 @@
 package service
 
-// session_page_tools_test.go — « OUTILS DE DESTRUCTION » DE LA SESSION (plan
-// `.ai/V7.5/PLAN_SESSIONS_EMPRISE_2026-10-06.md`, S2.6) : le builder de l'Escouade sur le seul joueur de
+// session_page_tools_test.go — « OUTILS DE DESTRUCTION » DE LA SESSION : le builder de l'Escouade sur le seul joueur de
 // la page, avec les catégories de source du film quand le lecteur d'armes les sert.
 
 import (
@@ -12,6 +11,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -42,8 +42,8 @@ func (a *armesEtCategories) LoadKillSourceCategoryKills(_ context.Context, _ str
 // lignesArmesDeSession : 4 frags au BR75 et une bobine (objet explosif) lus au film.
 func lignesArmesDeSession() []port.WeaponKillRow {
 	return []port.WeaponKillRow{
-		{XUID: "P", WeaponKey: "hinf_br75", Label: "BR75", LabelEN: "BR75", Class: "shoulder", Kills: 4, FromDamageSource: true},
-		{XUID: "P", WeaponKey: keyOutilBobine, Label: "Bobine à plasma", Class: "environmental", Kills: 1, FromDamageSource: true},
+		{XUID: "P", WeaponKey: "hinf_br75", Label: i18n.Text{i18n.LocaleFR: "BR75", i18n.LocaleEN: "BR75"}, Class: "shoulder", Kills: 4, FromDamageSource: true},
+		{XUID: "P", WeaponKey: keyOutilBobine, Label: i18n.Text{i18n.LocaleFR: "Bobine à plasma"}, Class: "environmental", Kills: 1, FromDamageSource: true},
 	}
 }
 

@@ -33,22 +33,23 @@ import (
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // fetcherRaster : un client film minimal — le pont disque doit trouver de quoi persister,
 // il ne decode rien.
 type fetcherRaster struct{}
 
-func (fetcherRaster) GetFilmChunks(context.Context, string) ([]haloclient.FilmChunk, bool, error) {
+func (fetcherRaster) GetFilmChunks(context.Context, string) ([]filmfetch.FilmChunk, bool, error) {
 	// UN FILM FINALISE (lot L3, 2026-09-23) : le writer du cache refuse une liste sans morceau
 	// des temps forts.
-	return []haloclient.FilmChunk{
-		{Index: 0, ChunkType: haloclient.FilmChunkTypeReplicationData, Data: []byte("x")},
-		{Index: 1, ChunkType: haloclient.FilmChunkTypeHighlightEvents, Data: []byte("tf")},
+	return []filmfetch.FilmChunk{
+		{Index: 0, ChunkType: filmfetch.FilmChunkTypeReplicationData, Data: []byte("x")},
+		{Index: 1, ChunkType: filmfetch.FilmChunkTypeHighlightEvents, Data: []byte("tf")},
 	}, true, nil
 }
 
@@ -96,6 +97,7 @@ func depsCuisson(t *testing.T, racine string, db *sql.DB, build BuildOneFunc) De
 		RepoRoot:  racine,
 		TitleSlug: titlePkg.DefaultSlug,
 		CacheRoot: t.TempDir(),
+		FilmRoot:  t.TempDir(),
 		Placement: replaybuild.PlacementLocal,
 		Fetcher:   fetcherRaster{},
 		WithRead:  func(_ context.Context, _ string, fn func(*sql.DB)) { fn(db) },
@@ -156,7 +158,7 @@ func TestRun_DeposeLeSidecarDeRaster(t *testing.T) {
 // compte en echec et laisse le reste du cycle intact. Le sidecar est best-effort : il ne
 // doit jamais casser une synchronisation, mais il ne doit jamais se taire non plus.
 //
-// AVANT LE LOT M6 (double lecture, cf. `.ai/V7.5/DECOUVERTES_TACTIQUE_2026-09-07.md`), ce test
+// AVANT LA LECTURE UNIQUE (le document etait lu deux fois), ce test
 // corrompait le fichier SUR DISQUE apres rangement et laissait `projeterRastersTactiques`
 // le relire pour declencher l'echec — un usage du meme defaut qu'il fermait ailleurs.
 // `projeterRastersTactiques` prend desormais le document DEJA LU (`artefactLu.doc`, comme

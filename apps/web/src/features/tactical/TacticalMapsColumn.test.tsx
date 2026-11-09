@@ -41,7 +41,8 @@ function carte(map_id: string, nom: string, nomFR: string, matchs: number, sous_
   return {
     map_id,
     map_name: nom,
-    map_name_fr: nomFR,
+    map_label: nomFR || nom,
+    map_filter_key: nomFR || nom,
     matchs,
     victoires: Math.floor(matchs / 2) + 2,
     defaites: Math.floor(matchs / 2) - 3,
@@ -66,7 +67,6 @@ function rendre(cartes: TacticalMapCard[] = CARTES, carteActive = 'streets') {
       plancher={10}
       carteActive={carteActive}
       playerSlug="JGtm"
-      locale="fr"
       t={t}
       onSelect={onSelect}
       enRelecture={false}
@@ -108,7 +108,7 @@ describe('TacticalMapsColumn', () => {
     expect(screen.getByTestId('tactical-map-lock').contains(lien)).toBe(false)
   })
 
-  it('sans libellé FR servi, le lien porte le nom du registre', () => {
+  it('sans libellé canonique français, le lien porte le nom du registre', () => {
     useAppShellStore.setState({ currentTitleSlug: 'halo_infinite' })
     rendre([carte('lock', 'Lock', '', 18, false)], 'lock')
     expect(JSON.parse(screen.getByTestId('tactical-map-explorer-lock').getAttribute('data-search') ?? '{}')).toEqual({ maps: 'Lock' })

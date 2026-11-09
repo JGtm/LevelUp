@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+
+	"levelup/go-api/internal/i18n"
 )
 
 // Les trois refus de l'onglet Tactique. Ils sont dans `domain` parce que le
@@ -223,12 +225,13 @@ type TacticalQuery struct {
 	// sien : la portee « tout le monde » n'existe pas en V1.
 	PlayerXUID string
 
-	// MapID restreint a une carte. Vide = toutes les cartes — c'est le cas de
-	// l'ecran d'entree (MapsPlayed) ET de l'univers (Univers) lu par le
-	// bloc de coordination des pages Sessions et Series temporelles, qui porte sur une
-	// liste de matchs et non sur une carte. Seule la lecture SPATIALE (KillPositions)
-	// l'exige : une grille de 0,5 m n'a de sens que carte par carte.
-	MapID string
+	// MapIDs restreint a UNE carte, designee par TOUS les identifiants de son groupe
+	// (domain.GroupesDeCartes.Membres : la carte de base, ses variantes, les autres identifiants
+	// de meme nom). Vide = toutes les cartes — c'est le cas de l'ecran d'entree (MapsPlayed) ET de
+	// l'univers (Univers) lu par le bloc de coordination des pages Sessions et Series
+	// temporelles, qui porte sur une liste de matchs et non sur une carte. Seule la lecture
+	// SPATIALE (KillPositions) l'exige : une grille de 0,5 m n'a de sens que carte par carte.
+	MapIDs []string
 
 	// Matchs est la liste blanche du perimetre (cf. ListeBlancheMatchs).
 	Matchs ListeBlancheMatchs
@@ -438,9 +441,8 @@ type TacticalPositions struct {
 // est pose par le service, pas par le lecteur — une regle produit n'appartient pas
 // a une requete SQL.
 type TacticalMapRow struct {
-	MapID     string
-	MapName   string
-	MapNameFR string
+	MapID   string
+	MapName i18n.Text
 
 	Matchs    int
 	Victoires int

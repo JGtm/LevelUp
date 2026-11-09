@@ -1,7 +1,6 @@
 package killcollector
 
-// placement_des_vies_test.go — LA PROJECTION DU PLACEMENT DES VIES, SANS FIXTURE DE FILM (plan
-// `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`, lot V2). Meme patron que `isolation_facts_test.go` :
+// placement_des_vies_test.go — LA PROJECTION DU PLACEMENT DES VIES, SANS FIXTURE DE FILM. Meme patron que `isolation_facts_test.go` :
 // ses gardes, ses traductions et son chemin d'erreur sont verifies partout, films absents.
 
 import (
@@ -10,11 +9,13 @@ import (
 	"errors"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // TestProjeterPlacementDesVies_PontNonPubliable_EcritSansLireLesPorteurs — decision V1 amendee le

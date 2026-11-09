@@ -75,15 +75,11 @@ func (r *PrestigeTemplateRepo) ListByTitle(ctx context.Context, titleSlug string
 		return nil, translateLockErr(ctx, err)
 	}
 	defer rows.Close()
-	var out []prestige.Template
-	for rows.Next() {
-		t, err := scanTemplate(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, t)
+	out, err := scanTemplates(rows)
+	if err != nil {
+		return nil, err
 	}
-	return out, rows.Err()
+	return out, r.attachTexts(ctx, out)
 }
 
 func (r *PrestigeTemplateRepo) GetByID(ctx context.Context, id string) (prestige.Template, error) {
@@ -98,7 +94,16 @@ func (r *PrestigeTemplateRepo) GetByID(ctx context.Context, id string) (prestige
 	}
 	// Contrat QueryRowRecovered : curseur DÉJÀ positionné, scanner sans Next().
 	defer rows.Close()
-	return scanTemplate(rows)
+	t, err := scanTemplate(rows)
+	rows.Close() // libère le curseur avant la lecture des textes (une seule connexion en test)
+	if err != nil {
+		return t, err
+	}
+	one := []prestige.Template{t}
+	if err := r.attachTexts(ctx, one); err != nil {
+		return t, err
+	}
+	return one[0], nil
 }
 
 func (r *PrestigeTemplateRepo) Suggest(ctx context.Context, titleSlug string, excludeIDs []string, count int) ([]prestige.Template, error) {
@@ -126,15 +131,11 @@ func (r *PrestigeTemplateRepo) Suggest(ctx context.Context, titleSlug string, ex
 		return nil, translateLockErr(ctx, err)
 	}
 	defer rows.Close()
-	var out []prestige.Template
-	for rows.Next() {
-		t, err := scanTemplate(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, t)
+	out, err := scanTemplates(rows)
+	if err != nil {
+		return nil, err
 	}
-	return out, rows.Err()
+	return out, r.attachTexts(ctx, out)
 }
 
 // UpsertOne insère ou met à jour un seul template (wrapper sur Replace).
@@ -170,24 +171,26 @@ func (r *PrestigeTemplateRepo) Replace(ctx context.Context, titleSlug string, te
 			`SELECT 1 FROM challenge_template WHERE id = ?`,
 			[]any{t.ID},
 			`UPDATE challenge_template SET title_slug = ?, metric = ?, window_type = ?, window_value = ?,
-			 cadence = ?, eval_type = ?, mode_filter = ?, label_en = ?, label_fr = ?, description_en = ?,
-			 description_fr = ?, normal_target = ?, heroic_target = ?, legendary_target = ?, mythic_target = ?,
+			 cadence = ?, eval_type = ?, mode_filter = ?, normal_target = ?, heroic_target = ?, legendary_target = ?, mythic_target = ?,
 			 lusr_components = ?, radar_axes = ?, is_long_term = ?, source = ?, schema_version = ?, updated_at = ?
 			 WHERE id = ?`,
 			[]any{t.TitleSlug, t.Metric, string(t.WindowType), t.WindowValue, string(t.Cadence), string(t.EvalType),
-				t.ModeFilter, t.LabelEN, t.LabelFR, t.DescriptionEN, t.DescriptionFR, t.NormalTarget, t.HeroicTarget,
+				t.ModeFilter, t.NormalTarget, t.HeroicTarget,
 				t.LegendaryTarget, t.MythicTarget, lusrJSON, radarJSON, t.IsLongTerm, source, t.SchemaVersion, t.UpdatedAt, t.ID},
 			`INSERT INTO challenge_template (
 				id, title_slug, metric, window_type, window_value, cadence, eval_type,
-				mode_filter, label_en, label_fr, description_en, description_fr,
+				mode_filter,
 				normal_target, heroic_target, legendary_target, mythic_target,
 				lusr_components, radar_axes, is_long_term, source, schema_version, updated_at
-			) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			[]any{t.ID, t.TitleSlug, t.Metric, string(t.WindowType), t.WindowValue, string(t.Cadence), string(t.EvalType),
-				t.ModeFilter, t.LabelEN, t.LabelFR, t.DescriptionEN, t.DescriptionFR, t.NormalTarget, t.HeroicTarget,
+				t.ModeFilter, t.NormalTarget, t.HeroicTarget,
 				t.LegendaryTarget, t.MythicTarget, lusrJSON, radarJSON, t.IsLongTerm, source, t.SchemaVersion, t.UpdatedAt},
 		); err != nil {
 			return fmt.Errorf("upsert %s: %w", t.ID, err)
+		}
+		if err := r.db.UpsertAssetTexts(ctx, duckdb.AssetTypeChallengeTemplate, t.ID, t.Labels, t.Descriptions); err != nil {
+			return fmt.Errorf("upsert textes de %s: %w", t.ID, err)
 		}
 	}
 	return nil
@@ -196,7 +199,6 @@ func (r *PrestigeTemplateRepo) Replace(ctx context.Context, titleSlug string, te
 const templateSelectColumns = `
 	SELECT id, title_slug, metric, window_type, COALESCE(window_value, ''),
 	       cadence, eval_type, COALESCE(mode_filter, 'universal'),
-	       label_en, label_fr, COALESCE(description_en, ''), COALESCE(description_fr, ''),
 	       normal_target, heroic_target, legendary_target, mythic_target,
 	       COALESCE(lusr_components, ''), COALESCE(radar_axes, ''), COALESCE(is_long_term, FALSE),
 	       COALESCE(source, 'catalog'),
@@ -210,7 +212,6 @@ func scanTemplate(row duckdb.RowScanner) (prestige.Template, error) {
 	err := row.Scan(
 		&t.ID, &t.TitleSlug, &t.Metric, &windowType, &t.WindowValue,
 		&cadence, &evalType, &t.ModeFilter,
-		&t.LabelEN, &t.LabelFR, &t.DescriptionEN, &t.DescriptionFR,
 		&t.NormalTarget, &t.HeroicTarget, &t.LegendaryTarget, &t.MythicTarget,
 		&lusrJSON, &radarJSON, &t.IsLongTerm,
 		&t.Source,
@@ -225,6 +226,56 @@ func scanTemplate(row duckdb.RowScanner) (prestige.Template, error) {
 	t.LUSRComponents = decodeStringList(lusrJSON)
 	t.RadarAxes = decodeStringList(radarJSON)
 	return t, nil
+}
+
+// scanTemplates lit toutes les lignes d'une requête de modèles (structure seule : les textes par
+// langue sont ajoutés par attachTexts).
+func scanTemplates(rows *sql.Rows) ([]prestige.Template, error) {
+	var out []prestige.Template
+	for rows.Next() {
+		t, err := scanTemplate(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
+// attachTexts pose sur chaque modèle son libellé et sa description dans chaque langue qui en porte
+// un (asset_translations, type challenge_template ; ADR 0040 D-15).
+func (r *PrestigeTemplateRepo) attachTexts(ctx context.Context, ts []prestige.Template) error {
+	return AttachTemplateTexts(ctx, r.db, ts)
+}
+
+// AttachTemplateTexts pose sur chaque modèle de `ts` son libellé et sa description par langue,
+// lus dans asset_translations. Un modèle sans ligne de traduction garde des textes vides. Partagé
+// avec les lecteurs de modèles des autres paquets (profil Ascension).
+func AttachTemplateTexts(ctx context.Context, db *duckdb.DB, ts []prestige.Template) error {
+	if len(ts) == 0 {
+		return nil
+	}
+	ids := make([]string, len(ts))
+	for i := range ts {
+		ids[i] = ts[i].ID
+	}
+	texts, err := duckdb.LoadAssetTexts(ctx, recoveredQuerier{db}, duckdb.AssetTypeChallengeTemplate, ids)
+	if err != nil {
+		return translateLockErr(ctx, err)
+	}
+	for i := range ts {
+		ts[i].Labels = texts[ts[i].ID].Name
+		ts[i].Descriptions = texts[ts[i].ID].Description
+	}
+	return nil
+}
+
+// recoveredQuerier adapte une base à la lecture de duckdb.LoadAssetTexts en gardant la
+// réparation d'un handle invalidé de ce paquet (QueryRecovered).
+type recoveredQuerier struct{ db *duckdb.DB }
+
+func (q recoveredQuerier) Query(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return q.db.QueryRecovered(ctx, query, args...)
 }
 
 // encodeStringList sérialise une liste pour stockage VARCHAR (CSV simple).
@@ -266,9 +317,7 @@ func (r *PrestigePresetArcRepo) ListByTitle(ctx context.Context, titleSlug strin
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	rows, err := r.db.QueryRecovered(ctx, `
-		SELECT id, title_slug, title_en, title_fr,
-		       COALESCE(description_en, ''), COALESCE(description_fr, ''),
-		       schema_version, updated_at
+		SELECT id, title_slug, schema_version, updated_at
 		FROM preset_arc WHERE title_slug = ? ORDER BY id
 	`, titleSlug)
 	if err != nil {
@@ -278,13 +327,36 @@ func (r *PrestigePresetArcRepo) ListByTitle(ctx context.Context, titleSlug strin
 	var out []prestige.PresetArc
 	for rows.Next() {
 		var p prestige.PresetArc
-		if err := rows.Scan(&p.ID, &p.TitleSlug, &p.TitleEN, &p.TitleFR,
-			&p.DescriptionEN, &p.DescriptionFR, &p.SchemaVersion, &p.UpdatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.TitleSlug, &p.SchemaVersion, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, r.attachArcTexts(ctx, out)
+}
+
+// attachArcTexts pose sur chaque arc son titre et sa description dans chaque langue qui en porte
+// un (asset_translations, type preset_arc ; ADR 0040 D-15).
+func (r *PrestigePresetArcRepo) attachArcTexts(ctx context.Context, arcs []prestige.PresetArc) error {
+	if len(arcs) == 0 {
+		return nil
+	}
+	ids := make([]string, len(arcs))
+	for i := range arcs {
+		ids[i] = arcs[i].ID
+	}
+	texts, err := duckdb.LoadAssetTexts(ctx, recoveredQuerier{r.db}, duckdb.AssetTypePresetArc, ids)
+	if err != nil {
+		return translateLockErr(ctx, err)
+	}
+	for i := range arcs {
+		arcs[i].Titles = texts[arcs[i].ID].Name
+		arcs[i].Descriptions = texts[arcs[i].ID].Description
+	}
+	return nil
 }
 
 func (r *PrestigePresetArcRepo) GetByID(ctx context.Context, id string) (prestige.PresetArc, error) {
@@ -292,9 +364,7 @@ func (r *PrestigePresetArcRepo) GetByID(ctx context.Context, id string) (prestig
 	defer cancel()
 	var p prestige.PresetArc
 	rows, err := r.db.QueryRowRecovered(ctx, `
-		SELECT id, title_slug, title_en, title_fr,
-		       COALESCE(description_en, ''), COALESCE(description_fr, ''),
-		       schema_version, updated_at
+		SELECT id, title_slug, schema_version, updated_at
 		FROM preset_arc WHERE id = ?
 	`, id)
 	if err != nil {
@@ -302,9 +372,16 @@ func (r *PrestigePresetArcRepo) GetByID(ctx context.Context, id string) (prestig
 		return p, translateLockErr(ctx, err)
 	}
 	defer rows.Close()
-	err = rows.Scan(&p.ID, &p.TitleSlug, &p.TitleEN, &p.TitleFR,
-		&p.DescriptionEN, &p.DescriptionFR, &p.SchemaVersion, &p.UpdatedAt)
-	return p, err
+	err = rows.Scan(&p.ID, &p.TitleSlug, &p.SchemaVersion, &p.UpdatedAt)
+	rows.Close() // libère le curseur avant la lecture des textes (une seule connexion en test)
+	if err != nil {
+		return p, err
+	}
+	one := []prestige.PresetArc{p}
+	if err = r.attachArcTexts(ctx, one); err != nil {
+		return p, err
+	}
+	return one[0], nil
 }
 
 func (r *PrestigePresetArcRepo) GetSteps(ctx context.Context, presetArcID string) ([]prestige.PresetArcStep, error) {
@@ -342,14 +419,15 @@ func (r *PrestigePresetArcRepo) Replace(ctx context.Context, titleSlug string, a
 		if err := r.db.UpsertNoConflict(ctx,
 			`SELECT 1 FROM preset_arc WHERE id = ?`,
 			[]any{a.ID},
-			`UPDATE preset_arc SET title_slug = ?, title_en = ?, title_fr = ?, description_en = ?,
-			 description_fr = ?, schema_version = ?, updated_at = ? WHERE id = ?`,
-			[]any{a.TitleSlug, a.TitleEN, a.TitleFR, a.DescriptionEN, a.DescriptionFR, a.SchemaVersion, a.UpdatedAt, a.ID},
-			`INSERT INTO preset_arc (id, title_slug, title_en, title_fr, description_en, description_fr, schema_version, updated_at)
-			 VALUES (?,?,?,?,?,?,?,?)`,
-			[]any{a.ID, a.TitleSlug, a.TitleEN, a.TitleFR, a.DescriptionEN, a.DescriptionFR, a.SchemaVersion, a.UpdatedAt},
+			`UPDATE preset_arc SET title_slug = ?, schema_version = ?, updated_at = ? WHERE id = ?`,
+			[]any{a.TitleSlug, a.SchemaVersion, a.UpdatedAt, a.ID},
+			`INSERT INTO preset_arc (id, title_slug, schema_version, updated_at) VALUES (?,?,?,?)`,
+			[]any{a.ID, a.TitleSlug, a.SchemaVersion, a.UpdatedAt},
 		); err != nil {
 			return fmt.Errorf("upsert arc %s: %w", a.ID, err)
+		}
+		if err := r.db.UpsertAssetTexts(ctx, duckdb.AssetTypePresetArc, a.ID, a.Titles, a.Descriptions); err != nil {
+			return fmt.Errorf("upsert textes de l'arc %s: %w", a.ID, err)
 		}
 	}
 	for _, s := range steps {

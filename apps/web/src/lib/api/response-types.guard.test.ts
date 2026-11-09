@@ -55,6 +55,7 @@ const ALLOWLIST = new Set<string>([
   'HealthResponse',             // GET /health — endpoint infra hors openapi.yaml
   'FilterMatchIdsResponse',     // POST /filters/match-ids — wrapper trivial { match_ids }
   'DeviceFlowStartResponse',    // POST /auth/device-flow/start — champ deprecated alias
+  'BrowserLoginStartResponse',  // GET /auth/xbox/login (2026-11-02, L21.00) — route montée sous la capacité LoginViaBrowser seulement, donc hors du document généré (comme /desktop/strings) ; à migrer si le générateur monte un jour les routes de bureau
   'SettingsResponse',           // GET /settings — large struct settings, non migrée
   'CareerPageResponse',         // sous-types view-model (CareerSummary/LusrSection) hors schéma
   'CareerHighlightMatchesResponse', // agrégat composite ExplorerMatchRow + cascade counts
@@ -82,6 +83,20 @@ const ALLOWLIST = new Set<string>([
   'FieldMappingsResponse',      // lib/i18n/fieldMappings.ts — mappings TOML backend-driven
 ])
 
+// Types d'API écrits à la main pour des routes que le contrat généré ne porte pas (2026-11-03, lot L22) : `openapi-gen`
+// décrit le routeur du profil démo, qui ne monte aucune route sous capacité desktop ou hébergée (import depuis le site,
+// export vers l'application de bureau, rapport de diagnostic, connexion par le navigateur). Faire entrer ces routes dans
+// le contrat demande de séparer le routeur de contrat du routeur de démonstration : six garde-rails comparent
+// aujourd'hui les deux dans les deux sens (routes nues, routes documentées et enregistrées, document partagé, absence
+// hors du profil desktop). Liste DÉCROISSANTE : un type qui entre dans le contrat sort d'ici.
+const MANUAL_CAPABILITY_TYPES = [
+  { name: 'ExportToken', file: 'features/settings/exportForDesktopQueries.ts', route: 'POST /export/desktop/token' },
+  { name: 'SiteImportStatus', file: 'features/settings/siteImportQueries.ts', route: 'GET et POST /import/site' },
+  { name: 'SiteImportRequest', file: 'features/settings/siteImportQueries.ts', route: 'POST /import/site' },
+  { name: 'DiagnosticReport', file: 'components/shell/diagnosticReportQueries.ts', route: 'POST /desktop/diagnostic' },
+  { name: 'ReplayRegenStatus', file: 'components/replay-regen/queries.ts', route: 'GET /desktop/replay-regen et POST .../start|pause|resume' },
+] as const
+
 // Réponses CRITIQUES (V72-01 H7) : pages à fort trafic + endpoints d'amorçage. Elles
 // DOIVENT rester des ré-exports du contrat généré (`export type X = components[...]`).
 // Liste POSITIVE, croissante : on y ajoute un type dès qu'il quitte l'ALLOWLIST.
@@ -100,8 +115,6 @@ const CRITICAL_CONTRACT_TYPES = [
   'ExplorerPlayerQueryResponse',
   'ExplorerMatchesQueryResponse',
   'EngagementTimeseriesResponse',
-  // Régression historique A2 (cf. en-tête) : contrat {best_matches, worst_matches}.
-  'CareerTopMatchesResponse',
   'CareerEncountersResponse',
   'GamertagSearchResponse',
   'DeviceFlowStatusResponse',
@@ -186,6 +199,21 @@ describe('garde-rail types de réponse API (V8d — source unique generated.ts)'
         `Ré-exporter depuis generated.ts (type X = components['schemas'][...]) ` +
         `ou, si aucun schéma openapi n'existe, ajouter au bloc ALLOWLIST daté avec justification.`,
     ).toEqual([])
+  })
+
+  it('types manuels de routes sous capacité : déclarés là où la liste le dit, et absents du contrat généré', () => {
+    const generatedSchemas = new Set(extractContractSurface(readFileSync(join(srcRoot, 'lib/api/generated.ts'), 'utf8')).schemas)
+    for (const t of MANUAL_CAPABILITY_TYPES) {
+      const src = readFileSync(join(srcRoot, t.file), 'utf8')
+      expect(
+        new RegExp(String.raw`export\s+(interface|type)\s+${t.name}\b`).test(src),
+        `${t.name} (${t.route}) n'est plus déclaré à la main dans ${t.file} : retirer l'entrée de MANUAL_CAPABILITY_TYPES.`,
+      ).toBe(true)
+      expect(
+        generatedSchemas.has(t.name),
+        `${t.name} (${t.route}) existe maintenant dans le contrat généré : le ré-exporter (type X = components['schemas'][...]) et retirer l'entrée de MANUAL_CAPABILITY_TYPES.`,
+      ).toBe(false)
+    }
   })
 
   it('allowlist décroissante : aucune entrée périmée (self-check)', () => {

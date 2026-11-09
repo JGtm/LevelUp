@@ -2,7 +2,7 @@ package main
 
 // reglages.go — LES RÉGLAGES DE CUISSON PAR CARTE.
 //
-// LA RÈGLE, ET ELLE EST LA RAISON D'ÊTRE DE CE FICHIER. `internal/himap` ne contient AUCUNE
+// LA RÈGLE, ET ELLE EST LA RAISON D'ÊTRE DE CE FICHIER. `libs/himap/himap` ne contient AUCUNE
 // branche par carte : c'est ce qui rend la chaîne transférable, et une seule carte possède
 // l'oracle fort des positions de joueur, donc régler dans le code serait invérifiable.
 // Mais le gate utilisateur du 2026-08-26 a établi, images à l'appui, que le meilleur rendu
@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // reglageCarte : ce qui peut varier d'une carte à l'autre. Un champ vide ou nul vaut « la

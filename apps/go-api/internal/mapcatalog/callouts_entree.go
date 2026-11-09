@@ -24,8 +24,11 @@ import (
 	"fmt"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
+
+	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
 // VerdictZones dit ce que vaut la lecture d'une variante pour le catalogue.
@@ -105,8 +108,7 @@ func EntreeCalloutsDepuisZones(zs []mapvar.ZoneNommee, lex Lexique) (replay.MapC
 		}
 		entry.Zones = append(entry.Zones, replay.CalloutZone{
 			VolumeIndex: z.Index,
-			EN:          lbl.EN,
-			FR:          lbl.FR,
+			Text:        replaylabels.TexteVersFilm(lbl),
 			X:           z.Pos[0],
 			Y:           z.Pos[1],
 			Z:           z.Pos[2],

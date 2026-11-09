@@ -20,7 +20,7 @@ import { MATCH_EMPRISE_TEXT } from './matchEmpriseText'
 
 export function MatchToolsCard({ tools, locale }: { tools: SquadWeaponTools | null | undefined; locale: Locale }) {
   const t = MATCH_EMPRISE_TEXT[locale].squad
-  const rows = useMemo(() => buildSquadToolRows(tools, { locale, labels: toolKindLabels(locale, t.weaponKills) }), [tools, locale, t.weaponKills])
+  const rows = useMemo(() => buildSquadToolRows(tools, { labels: toolKindLabels(locale, t.weaponKills) }), [tools, locale, t.weaponKills])
   const player = tools?.players?.[0] ?? ''
   const colors = useMemo(() => getSquadPlayerColors(player, []), [player])
   return (

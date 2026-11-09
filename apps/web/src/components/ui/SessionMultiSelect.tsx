@@ -26,24 +26,37 @@ interface Texts {
   empty: string
 }
 
-function getTexts(locale: ManifestLocale): Texts {
-  const isFr = locale === 'fr'
-  return {
-    all:        isFr ? 'Toutes les sessions'    : 'All sessions',
-    count:      (n) => isFr ? `${n} session${n > 1 ? 's' : ''}` : `${n} session${n !== 1 ? 's' : ''}`,
+/** Textes du sélecteur, par langue (`Record<Locale, …>` : une langue manquante ne compile pas). */
+const TEXTS: Record<ManifestLocale, Texts> = {
+  fr: {
+    all: 'Toutes les sessions',
+    count: (n) => `${n} session${n > 1 ? 's' : ''}`,
     // Renommé "Filtrer la liste" → "Trouver dans la liste" pour clarifier
     // qu'il filtre seulement la liste visible (vs PeriodePill qui filtre les
     // matchs analysés). Plan smart-filter-counts, Phase 3.
-    filterList: isFr ? 'Trouver dans la liste'  : 'Find in list',
-    from:       isFr ? 'Du'                     : 'From',
-    to:         isFr ? 'Au'                     : 'To',
-    validate:   isFr ? 'Valider'                : 'Apply',
-    selectAll:  isFr ? 'Tout sélectionner'      : 'Select all',
-    deselectAll:isFr ? 'Tout désélectionner'    : 'Deselect all',
-    reset:      isFr ? 'Réinitialiser'          : 'Reset',
-    search:     isFr ? 'Rechercher…'            : 'Search…',
-    empty:      isFr ? 'Aucune session'         : 'No sessions',
-  }
+    filterList: 'Trouver dans la liste',
+    from: 'Du',
+    to: 'Au',
+    validate: 'Valider',
+    selectAll: 'Tout sélectionner',
+    deselectAll: 'Tout désélectionner',
+    reset: 'Réinitialiser',
+    search: 'Rechercher…',
+    empty: 'Aucune session',
+  },
+  en: {
+    all: 'All sessions',
+    count: (n) => `${n} session${n !== 1 ? 's' : ''}`,
+    filterList: 'Find in list',
+    from: 'From',
+    to: 'To',
+    validate: 'Apply',
+    selectAll: 'Select all',
+    deselectAll: 'Deselect all',
+    reset: 'Reset',
+    search: 'Search…',
+    empty: 'No sessions',
+  },
 }
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -73,7 +86,7 @@ export function SessionMultiSelect({
   triggerClassName,
   getMatchCount,
 }: SessionMultiSelectProps) {
-  const t = getTexts(locale)
+  const t = TEXTS[locale]
   const intlLocale = toIntlLocale(locale)
 
   const [isOpen, setIsOpen]     = useState(false)

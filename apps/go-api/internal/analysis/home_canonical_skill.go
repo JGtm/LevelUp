@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"strings"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/i18n"
 )
 
 // InferHomeSkillHistoryFromCanonical est la variante canonical-aware de l'helper
@@ -48,51 +50,109 @@ func InferHomeSkillHistoryFromCanonical(rows []canonical.PlayerMatchRow) (bool, 
 var csrSubTierRoman = [7]string{"", "I", "II", "III", "IV", "V", "VI"}
 
 // BuildSkillTierLabel construit le libellé localisé du palier (ex. "Or III",
-// "Diamant V", "Onyx") à partir des codes de tier d'un SkillSnapshot. frPreferred
-// → nom FR (tierCodeFR si présent), sinon EN (tierCode). Retourne nil si pas de
-// tier exploitable (placement / non-rankée). Même formule que la home — exposé
-// pour que la page session affiche le palier comme l'Explorer (et non la valeur brute).
-func BuildSkillTierLabel(tierCode, tierCodeFR *string, subTier *int, frPreferred bool) *string {
+// "Diamant V", "Onyx") à partir du code de tier EN d'un SkillSnapshot : le nom du palier vient du
+// catalogue des messages (skill.toml) dans la langue `loc` ; un palier hors catalogue garde son
+// code. Retourne nil si pas de tier exploitable (placement / non-rankée). Même formule que la home —
+// exposé pour que la page session affiche le palier comme l'Explorer (et non la valeur brute).
+func BuildSkillTierLabel(tierCode *string, subTier *int, loc i18n.Locale) *string {
 	if tierCode == nil || *tierCode == "" {
 		return nil
 	}
-	tierDisplay := *tierCode
-	if frPreferred && tierCodeFR != nil && *tierCodeFR != "" {
-		tierDisplay = *tierCodeFR
-	}
+	tierDisplay := tierDisplayName(loc, *tierCode)
 	// Label-only : pas besoin de l'URL → résolveur nil.
 	label, _ := buildCanonicalSkillBadge(tierDisplay, *tierCode, subTier, nil)
 	return label
 }
 
-// csrTierENtoFR : tier CSR anglais (player_csr_snapshots.alltime_tier / API Halo)
-// → libellé FR. Dupliqué volontairement de sync.tierENtoFR (le package analysis
-// ne dépend pas de sync) ; 6 paliers stables. Tier inconnu → laissé en EN.
-var csrTierENtoFR = map[string]string{
-	"Bronze":   "Bronze",
-	"Silver":   "Argent",
-	"Gold":     "Or",
-	"Platinum": "Platine",
-	"Diamond":  "Diamant",
-	"Onyx":     "Onyx",
+// SkillTierDisplayLabel est le point d'entrée des lecteurs qui servent le libellé d'un palier de
+// rang lu en base : il se DÉDUIT DU CODE (colonnes `tier` et `sub_tier`), dans la langue `loc`, et
+// la colonne `tier_label` n'est jamais servie (écrite dans la langue du moment de l'écriture, elle
+// donne « Or VI » à un client anglais et « Diamond 4 » à un client français).
+//
+//   - palier vide ou en placement : nil (le placement se signale par ses propres champs, jamais par
+//     un libellé de palier) ;
+//   - palier à sous-palier valide (1..6) : « Nom + chiffre romain » (BuildSkillTierLabel) ;
+//   - palier sans sous-palier exploitable (Onyx, Champion, ligne CSR dont le sous-palier vaut 0) :
+//     le nom seul, dans la langue de la requête ; un palier inconnu du catalogue garde son nom tel quel.
+func SkillTierDisplayLabel(tier string, subTier *int, loc i18n.Locale) *string {
+	t := strings.TrimSpace(tier)
+	if t == "" || strings.EqualFold(t, domain.TierPlacement) {
+		return nil
+	}
+	if label := BuildSkillTierLabel(&t, subTier, loc); label != nil {
+		return label
+	}
+	name := capitalizeFirstRune(tierDisplayName(loc, t))
+	return &name
 }
 
-// BuildCSRTierLabelFromEN construit le libellé CSR localisé ("Diamant III") depuis
-// le tier ANGLAIS brut (ex. player_csr_snapshots.alltime_tier) + son sous-palier.
-// frPreferred → nom FR (CSR FR-first, comme sync.formatCSRTierLabel) ; sinon EN.
-// Onyx n'a pas de sous-palier. nil si tier vide. La casse d'entrée est normalisée
+// SkillTierLabelOrPlacementMarker est SkillTierDisplayLabel pour les lecteurs dont la consommation distingue
+// « palier connu » de « sans palier » : une ligne en placement rend le marqueur machine
+// domain.TierPlacement (le web le reconnaît par `isPlacementTierLabel` et affiche son propre texte), jamais
+// un texte d'une langue ni le nombre de matchs restants (champs dédiés).
+func SkillTierLabelOrPlacementMarker(tier string, subTier *int, loc i18n.Locale) *string {
+	if label := SkillTierDisplayLabel(tier, subTier, loc); label != nil {
+		return label
+	}
+	if strings.EqualFold(strings.TrimSpace(tier), domain.TierPlacement) {
+		marker := domain.TierPlacement
+		return &marker
+	}
+	return nil
+}
+
+// SkillTierDisplayLabelPtr est SkillTierDisplayLabel pour un palier optionnel (colonne nullable).
+func SkillTierDisplayLabelPtr(tier *string, subTier *int, loc i18n.Locale) *string {
+	if tier == nil {
+		return nil
+	}
+	return SkillTierDisplayLabel(*tier, subTier, loc)
+}
+
+// Noms canoniques EN des paliers, en minuscules : clés de recherche du catalogue des messages.
+const (
+	tierKeyBronze   = "bronze"
+	tierKeySilver   = "silver"
+	tierKeyGold     = "gold"
+	tierKeyPlatinum = "platinum"
+	tierKeyDiamond  = "diamond"
+	tierKeyOnyx     = "onyx"
+)
+
+// tierDisplayName retourne le nom du palier `tierEN` (casse libre : diamond / DIAMOND / Diamond)
+// dans la langue `loc`, ou `tierEN` tel quel quand le catalogue ne connaît pas ce palier.
+func tierDisplayName(loc i18n.Locale, tierEN string) string {
+	t := strings.TrimSpace(tierEN)
+	if t == "" {
+		return tierEN
+	}
+	switch strings.ToLower(t) {
+	case tierKeyBronze:
+		return i18n.Msg(loc, "skill.tier.bronze", nil)
+	case tierKeySilver:
+		return i18n.Msg(loc, "skill.tier.silver", nil)
+	case tierKeyGold:
+		return i18n.Msg(loc, "skill.tier.gold", nil)
+	case tierKeyPlatinum:
+		return i18n.Msg(loc, "skill.tier.platinum", nil)
+	case tierKeyDiamond:
+		return i18n.Msg(loc, "skill.tier.diamond", nil)
+	case tierKeyOnyx:
+		return i18n.Msg(loc, "skill.tier.onyx", nil)
+	}
+	return tierEN
+}
+
+// BuildCSRTierLabel construit le libellé CSR localisé ("Diamant III") depuis
+// le tier ANGLAIS brut (ex. player_csr_snapshots.alltime_tier) + son sous-palier, dans la langue
+// `loc`. Onyx n'a pas de sous-palier. nil si tier vide. La casse d'entrée est normalisée
 // (diamond / DIAMOND / Diamond → "Diamant").
-func BuildCSRTierLabelFromEN(tierEN string, subTier *int, frPreferred bool) *string {
+func BuildCSRTierLabel(tierEN string, subTier *int, loc i18n.Locale) *string {
 	t := strings.TrimSpace(tierEN)
 	if t == "" {
 		return nil
 	}
-	key := strings.ToUpper(t[:1]) + strings.ToLower(t[1:])
-	var frPtr *string
-	if fr := csrTierENtoFR[key]; fr != "" {
-		frPtr = &fr
-	}
-	return BuildSkillTierLabel(&t, frPtr, subTier, frPreferred)
+	return BuildSkillTierLabel(&t, subTier, loc)
 }
 
 // normalizeSkillBadgeParts normalise le couple (tier EN brut, sous-palier) vers la
@@ -157,7 +217,7 @@ func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int, urlR
 	if display == "" {
 		display = tierENcap
 	} else {
-		display = strings.ToUpper(display[:1]) + display[1:]
+		display = capitalizeFirstRune(display)
 	}
 
 	label := display
@@ -195,12 +255,12 @@ func SkillTierBand(tierEN string, subTier int) (progressPct float64, ok bool) {
 }
 
 // csrTierOrderEN : ordre canonique des paliers Halo (ordinal croissant). SOURCE
-// UNIQUE de l'ordre des paliers — utilisée pour le palier suivant (nextTierEN) ET
+// UNIQUE de l'ordre des paliers — utilisée pour le palier suivant (nextTier) ET
 // la sélection du meilleur CSR (CSRTierOrdinal, cf. home_repo_skill_peak). Champion
 // = sommet H5 ("Champion #N", au-dessus d'Onyx) ; absent d'Infinite mais inclus
 // pour ranker un pic Champion. Ordinal → indépendant de l'échelle de valeur : un
 // titre tier-only (qui ne fournit PAS la valeur numérique CSR) reste classable par
-// palier. nextTierEN(Onyx)→Champion est inoffensif : NextSubTierLabel court-circuite
+// palier. nextTier(Onyx)→Champion est inoffensif : NextSubTierLabel court-circuite
 // déjà Onyx→nil en amont.
 var csrTierOrderEN = []string{"Bronze", "Silver", "Gold", "Platinum", "Diamond", "Onyx", "Champion"}
 
@@ -224,25 +284,25 @@ func CSRTierOrdinal(tierEN string) int {
 //   - Or VI → "Platine I" (premier sous-palier du palier suivant)
 //   - Diamant VI → "Onyx" (sommet)
 //   - Onyx → nil (déjà au sommet, pas de suivant).
-func NextSubTierLabel(tierEN string, subTier int, frPreferred bool) *string {
+func NextSubTierLabel(tierEN string, subTier int, loc i18n.Locale) *string {
 	if strings.EqualFold(strings.TrimSpace(tierEN), "Onyx") {
 		return nil
 	}
 	if subTier >= 1 && subTier < csrSubTiersPerTier {
 		next := subTier + 1
-		return BuildCSRTierLabelFromEN(tierEN, &next, frPreferred)
+		return BuildCSRTierLabel(tierEN, &next, loc)
 	}
 	if subTier == csrSubTiersPerTier {
-		if nt := nextTierEN(tierEN); nt != "" {
+		if nt := nextTier(tierEN); nt != "" {
 			one := 1
-			return BuildCSRTierLabelFromEN(nt, &one, frPreferred) // Onyx → "Onyx" (sous-palier ignoré)
+			return BuildCSRTierLabel(nt, &one, loc) // Onyx → "Onyx" (sous-palier ignoré)
 		}
 	}
 	return nil
 }
 
-// nextTierEN : palier EN au-dessus de tierEN, ou "" si dernier / inconnu.
-func nextTierEN(tierEN string) string {
+// nextTier : palier EN au-dessus de tierEN, ou "" si dernier / inconnu.
+func nextTier(tierEN string) string {
 	t := strings.TrimSpace(tierEN)
 	if t == "" {
 		return ""

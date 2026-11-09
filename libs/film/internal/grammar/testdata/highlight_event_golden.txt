@@ -1,0 +1,22 @@
+# forme du type (ordre, nom, type, tag)
+champs=7
+0 XUID uint64 tag=""
+1 Gamertag string tag=""
+2 EventType string tag=""
+3 TypeHint int tag=""
+4 IsMedal bool tag=""
+5 TimeMS int tag=""
+6 MedalType int tag=""
+# vocabulaire des types d'evenement
+EventTypeKill=kill
+EventTypeDeath=death
+EventTypeMedal=medal
+EventTypeMode=mode
+# sortie du lecteur sur testdata/v41_chunk_he.bin (version 41)
+evenements=275
+joueurs_distincts=8
+type death=101
+type kill=101
+type medal=43
+type mode=30
+sha256=6e5a10b4239be1201e5ae9cfd34214aa0ccce9b24566f50814dc021cc8dfeb1b

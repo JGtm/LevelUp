@@ -1,6 +1,6 @@
 import { outcomeScale, narrativeScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
-import type { Locale } from '@/lib/i18n/locale'
+import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n/locale'
 import type { CommonManifestKey } from '@/lib/i18n/generated/common'
 import type { AnalysisPendingCarrier, AnalysisPendingPart } from '@/lib/analysis-pending/analysisPending.logic'
 
@@ -82,7 +82,7 @@ function isNarrativeType(type: string): type is NarrativeType {
 
 export function getMatchNarrativeBadgeMeta(
   type: string | null | undefined,
-  locale: Locale = 'fr',
+  locale: Locale = DEFAULT_LOCALE,
 ): MatchNarrativeBadgeMeta | null {
   if (!type) return null
   const token = narrativeScale(type)

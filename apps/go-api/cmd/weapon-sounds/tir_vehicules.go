@@ -30,7 +30,7 @@ import (
 	"os"
 	"sort"
 
-	"levelup/go-api/internal/himodule"
+	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
 )
 
 // SonTirVehi : un tag de son designe par « Weapon Fire Sound », avec ce qu'il atteint.

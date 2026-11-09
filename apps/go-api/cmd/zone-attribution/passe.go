@@ -10,7 +10,7 @@ package main
 // basse : un seul film BTB a travers `replay.BuildFromFilm` suffit a prendre le poste en otage.
 //
 // « Un film = un processus » est NECESSAIRE ET PAS SUFFISANT. Il faut les trois ensemble, et
-// c'est ce que `internal/filmproc` fournit : un processus par film, un PLAFOND DUR par
+// c'est ce que `internal/filmrun` fournit : un processus par film, un PLAFOND DUR par
 // processus, une PRIORITE CPU BASSE.
 //
 // # LE PARENT PLANIFIE, L'ENFANT MESURE
@@ -32,7 +32,9 @@ import (
 	"os"
 	"strings"
 
-	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/filmrun"
+
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // childFlag : le drapeau qui fait d'un processus l'ENFANT d'une passe.
@@ -47,34 +49,34 @@ func runChild(ctx context.Context, r *runner, eligible []eligible, tune runTunin
 	if len(eligible) != 1 {
 		fmt.Fprintf(os.Stderr, "enfant : %d film eligible, attendu exactement 1 "+
 			"(le parent passe -match)\n", len(eligible))
-		return filmproc.CodePreparation
+		return filmrun.CodePreparation
 	}
-	g := filmproc.Arm("zone-attribution", filmproc.MeasureLimitGiB, func(peak uint64) {
+	g := memguard.Arm(ctx, "zone-attribution", memguard.MeasureLimitGiB, func(peak uint64) {
 		// LE PIC PART AVANT LA MORT : `os.Exit` ne joue pas les differes, et sans cette ligne
 		// le parent ne saurait pas a quelle hauteur l'enfant a ete coupe.
-		filmproc.EmitPeak(peak)
+		filmrun.EmitPeak(peak)
 		fmt.Fprintf(os.Stderr, "enfant : plafond memoire depasse (%d octets) — film abandonne\n", peak)
-		os.Exit(filmproc.CodeMemory)
+		os.Exit(filmrun.CodeMemory)
 	})
 	defer func() {
 		g.Disarm()
-		filmproc.EmitPeak(g.Peak())
+		filmrun.EmitPeak(g.Peak())
 	}()
 
 	r.results = append(r.results, r.measure(ctx, eligible[0]))
 	printResults(r.results, tune)
-	return filmproc.CodeOK
+	return filmrun.CodeOK
 }
 
 // runParent lance un enfant par film et rend le recap de la passe.
 func runParent(ctx context.Context, repoRoot string, eligible []eligible, tune runTuning) error {
-	runner, err := filmproc.NewRunner(repoRoot, os.Stdout)
+	runner, err := filmrun.NewRunner(repoRoot, os.Stdout)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("mode parent/enfant : 1 processus par film, plafond %d Gio, priorite basse\n",
-		filmproc.MeasureLimitGiB)
-	recap := map[filmproc.Issue]int{}
+		memguard.MeasureLimitGiB)
+	recap := map[filmrun.Issue]int{}
 	for i, m := range eligible {
 		fmt.Printf("\n########## FILM %d/%d — %s (%s) ##########\n",
 			i+1, len(eligible), m.short, m.mapName)
@@ -118,17 +120,17 @@ func peakSuffix(peak uint64) string {
 // LES MORTS SUBITES SONT NOMMEES A PART, et c'est tout l'objet du patron : un enfant tue par
 // l'OS ne doit jamais se confondre avec un film mesure. Un recap qui les noierait dans les
 // echecs laisserait croire que la mesure a couvert le corpus.
-func printPasseRecap(total int, recap map[filmproc.Issue]int) {
+func printPasseRecap(total int, recap map[filmrun.Issue]int) {
 	fmt.Printf("\nPASSE — %d film(s)\n", total)
-	for _, i := range []filmproc.Issue{
-		filmproc.IssueOK, filmproc.IssueSkipped, filmproc.IssueFailed,
-		filmproc.IssuePreparation, filmproc.IssueMemory, filmproc.IssueSuddenDeath,
+	for _, i := range []filmrun.Issue{
+		filmrun.IssueOK, filmrun.IssueSkipped, filmrun.IssueFailed,
+		filmrun.IssuePreparation, filmrun.IssueMemory, filmrun.IssueSuddenDeath,
 	} {
 		if n := recap[i]; n > 0 {
 			fmt.Printf("  %-12s %d\n", i.String(), n)
 		}
 	}
-	if n := recap[filmproc.IssueMemory] + recap[filmproc.IssueSuddenDeath]; n > 0 {
+	if n := recap[filmrun.IssueMemory] + recap[filmrun.IssueSuddenDeath]; n > 0 {
 		fmt.Printf("  ATTENTION : %d film(s) n'ont PAS ete mesures — le corpus de la mesure est "+
 			"incomplet, et un taux calcule dessus ne porte pas sur ce qu'il annonce\n", n)
 	}

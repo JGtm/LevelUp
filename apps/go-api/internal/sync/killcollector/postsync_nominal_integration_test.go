@@ -26,10 +26,12 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/filmarchive"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/matchflags"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
 
 // filmsTraces : une source de films qui NOTE l ordre dans lequel on la sollicite. C est cet
@@ -39,7 +41,7 @@ type filmsTraces struct {
 	demandes []string
 }
 
-func (f *filmsTraces) GetFilmChunks(_ context.Context, matchID string) ([]haloclient.FilmChunk, bool, error) {
+func (f *filmsTraces) GetFilmChunks(_ context.Context, matchID string) ([]filmfetch.FilmChunk, bool, error) {
 	f.demandes = append(f.demandes, matchID)
 	return nil, false, nil // film absent : etat NORMAL, la passe continue
 }
@@ -47,7 +49,7 @@ func (f *filmsTraces) GetFilmChunks(_ context.Context, matchID string) ([]halocl
 // depsDeTest cable RunPostSync sur une base reelle, avec des segments de lecture et un writer
 // qui rendent le meme handle — le process de test est seul, ADR 0013 est satisfaite par ce
 // fait, pas par un verrou de plus.
-func depsDeTest(db *sql.DB, films *filmsTraces, cache *haloclient.LocalFilmCache) PostSyncDeps {
+func depsDeTest(db *sql.DB, films *filmsTraces, cache *filmfetch.LocalFilmCache) PostSyncDeps {
 	// Le registre des matchs sans carte est un etat de PAQUET : un test ne doit pas heriter des
 	// constats d un autre (memes identifiants m1..mN, memes titre et catalogue).
 	oublierLesMatchsSansCarte()
@@ -139,11 +141,11 @@ func TestRunPostSync_PrepareLeCacheEtArchiveAuMemeEndroit(t *testing.T) {
 	// backlog en (a), et une passe sans travail sort AVANT de resoudre sa racine de cache.
 	inscrireMatch(t, db, "m2", time.Date(2026, 3, 2, 12, 0, 0, 0, time.UTC), 0)
 	autre := t.TempDir()
-	if err := filmcache.EnsureDirs(autre); err != nil {
+	if err := filmarchive.EnsureDirs(autre); err != nil {
 		t.Fatal(err)
 	}
 	h2 := NewPostSyncHook(depot, 1)
-	RunPostSync(context.Background(), h2, depsDeTest(db, &filmsTraces{}, haloclient.NewLocalFilmCache(autre)), nil)
+	RunPostSync(context.Background(), h2, depsDeTest(db, &filmsTraces{}, filmfetch.NewLocalFilmCache(autre)), nil)
 	if h2.cacheRacine != autre {
 		t.Errorf("racine retenue = %q, attendu celle du moteur %q — deux racines et l archivage "+
 			"n est jamais relu", h2.cacheRacine, autre)

@@ -71,6 +71,15 @@ var canonicalOrder = []string{
 	"seed_ranked_playlists_catalog",                // metadata
 	"challenge_template_add_source_column",         // metadata
 	"add_template_tagging_columns",                 // metadata
+	// Noms et descriptions de définitions : colonnes _fr/_en -> tables par langue (ADR 0040 D-5,
+	// plan i18n 8.3). Dernier step metadata : il suit tous ceux qui écrivent ces colonnes.
+	"metadata_definition_texts_to_translations_v1", // metadata
+	// Textes curés (citations, modèles de défi, arcs préréglés) : colonnes appariées -> tables par
+	// langue (ADR 0040 D-15, plan i18n 8.8.a). Après les steps qui créent ou remplissent ces colonnes.
+	"metadata_curated_texts_to_translations_v1", // metadata
+	// Noms d'armes par langue (ADR 0040 D-5, plan i18n 8.4) : reconstruit weapon_labels, créée par
+	// add_weapon_labels (cf. order_dependency_test.go).
+	"metadata_weapon_names_to_translations_v1", // metadata
 	// Baseline squashée v1 (chantier N4, plan PLAN_MIGRATION_SQUASH_BASELINE_2026-07) :
 	// remplace les 33 steps title-owned contigus create_base_player_schema..
 	// player_append_only_csr_snapshots_v1 (bornes M3a). Cf. steps_player_baseline.go.

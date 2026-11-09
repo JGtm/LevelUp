@@ -123,6 +123,55 @@ jobs:
             exit 1
           fi
 
+      # Paquet de ressources embarqué dans l'image (ADR 0045, amendement L24), jamais téléchargé : (1) le
+      # manifeste de l'image et le binaire serveur portent la MÊME empreinte (le serveur refuse de démarrer sinon) ;
+      # (2) les couches du paquet (static, images des titres, manifeste) sont plus basses que celles du moteur
+      # (config, docs, front compilé, binaires) : un déploiement qui ne change que le moteur ne retire que ces
+      # dernières. `docker history` est le témoin ; la taille de chaque couche est imprimée pour le relevé de la release.
+      - name: Paquet de ressources (empreinte du manifeste et du binaire) et ordre des couches
+        run: |
+          fp="$(docker run --rm --entrypoint sh levelup-test:ci -c "sed -n 's/.*\"fingerprint\": *\"\([0-9a-f]*\)\".*/\1/p' /app/resources.manifest.json | head -n 1")"
+          if ! printf '%s' "$fp" | grep -E -q '^[0-9a-f]{64}$'; then
+            echo "  ERREUR : empreinte illisible dans /app/resources.manifest.json : '$fp'"
+            exit 1
+          fi
+          # `-X main.resourcesFingerprint=<fp>` est consigné dans les informations de build (paramètres de compilation) que
+          # la variable existe ou non : l'éditeur de liens IGNORE un `-X` dont le symbole n'existe pas. Le témoin que la
+          # variable a été REMPLIE est donc une copie de la valeur HORS de ces paramètres, dans les données du binaire :
+          # plus d'occurrences de l'empreinte seule que d'occurrences de `main.resourcesFingerprint=<fp>`. Une variable
+          # renommée sans le drapeau (ou l'inverse) laisse autant d'occurrences des deux : le contrôle échoue.
+          tagged="$(docker run --rm --entrypoint grep levelup-test:ci -a -o "main.resourcesFingerprint=$fp" /app/levelup-server | wc -l)"
+          total="$(docker run --rm --entrypoint grep levelup-test:ci -a -o "$fp" /app/levelup-server | wc -l)"
+          if [ "$tagged" -lt 1 ]; then
+            echo "  ERREUR : le binaire serveur ne porte pas -X main.resourcesFingerprint=$fp dans ses paramètres de compilation"
+            exit 1
+          fi
+          if [ "$total" -le "$tagged" ]; then
+            echo "  ERREUR : l'empreinte du manifeste est dans les paramètres du binaire mais pas dans ses données : la variable main.resourcesFingerprint n'existe plus (renommée ?) et le drapeau -X est ignoré en silence ($total occurrences au total, $tagged avec le drapeau)"
+            exit 1
+          fi
+          echo "  OK : manifeste et binaire portent la même empreinte, et la variable en porte la valeur : $fp"
+
+          docker history --no-trunc --format '{{.Size}}\t{{.CreatedBy}}' levelup-test:ci | tac > "$RUNNER_TEMP/layers.txt"
+          cut -c1-200 < "$RUNNER_TEMP/layers.txt"
+          line() { grep -n -F -- "$1" "$RUNNER_TEMP/layers.txt" | head -n 1 | cut -d: -f1; }
+          static="$(line '/app/static')"
+          manifest="$(line '/app/resources.manifest.json')"
+          config="$(line '/app/config')"
+          engine="$(line '/app/levelup-server')"
+          for v in "$static" "$manifest" "$config" "$engine"; do
+            if [ -z "$v" ]; then
+              echo "  ERREUR : une couche attendue est absente de docker history"
+              exit 1
+            fi
+          done
+          if [ "$static" -lt "$config" ] && [ "$manifest" -lt "$config" ] && [ "$config" -lt "$engine" ]; then
+            echo "  OK : ordre des couches : ressources ($static, $manifest) < config ($config) < serveur ($engine)"
+          else
+            echo "  ERREUR : ordre des couches inattendu : static=$static manifeste=$manifest config=$config serveur=$engine (ressources attendues avant le moteur)"
+            exit 1
+          fi
+
       - name: Valider docker-compose.yml (docker compose config)
         run: |
           # Créer les fichiers requis pour que compose config passe

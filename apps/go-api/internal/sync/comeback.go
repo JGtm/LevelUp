@@ -47,7 +47,8 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // steaktacularMedalIDForTitle résout l'ID de la médaille "killing spree"
@@ -264,7 +265,7 @@ func computeHistoricalDominanceFlag(
 	}
 	if len(events) == 0 {
 		// Pas de timeline → fallback marge de score FINALE (DOMINATION/HUMILIATION
-		// title-agnostic, cf. analysis.ComputeScoreMarginDominance + .ai/STEAKTACULAR.md).
+		// title-agnostic, cf. analysis.ComputeScoreMarginDominance).
 		// Gate HINF (byte-identique) : la prémisse historique « Infinite a TOUJOURS des
 		// kill-events » est FAUSSE pour ~244 matchs BTB sans kill-event. Pour ne pas
 		// relabelliser rétroactivement des badges dominance HINF existants (règle projet

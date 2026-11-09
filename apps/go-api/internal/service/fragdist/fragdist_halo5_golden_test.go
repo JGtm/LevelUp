@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -50,22 +51,22 @@ const (
 // non-combat, ce qui est précisément ce qui distingue Halo 5 de Halo Infinite.
 func h5Rows() []port.WeaponKillRow {
 	return []port.WeaponKillRow{
-		{XUID: "h5_a", WeaponID: 1001, Kills: 40, Label: "BR85", Role: "precision", Class: "shoulder", Family: "battle_rifle", WeaponKey: keyH5BR},
-		{XUID: "h5_a", WeaponID: 1002, Kills: 12, Label: "Magnum", Role: "sidearm", Class: "sidearm", Family: "magnum", WeaponKey: keyH5Magnum},
-		{XUID: "h5_a", WeaponID: 1003, Kills: 7, Label: "Rocket Launcher", Role: "power", Class: "heavy", Family: "rocket_launcher", WeaponKey: keyH5Rocket},
+		{XUID: "h5_a", WeaponID: 1001, Kills: 40, Label: i18n.Text{i18n.LocaleFR: "BR85"}, Role: "precision", Class: "shoulder", Family: "battle_rifle", WeaponKey: keyH5BR},
+		{XUID: "h5_a", WeaponID: 1002, Kills: 12, Label: i18n.Text{i18n.LocaleFR: "Magnum"}, Role: "sidearm", Class: "sidearm", Family: "magnum", WeaponKey: keyH5Magnum},
+		{XUID: "h5_a", WeaponID: 1003, Kills: 7, Label: i18n.Text{i18n.LocaleFR: "Rocket Launcher"}, Role: "power", Class: "heavy", Family: "rocket_launcher", WeaponKey: keyH5Rocket},
 		// Bucket non-combat AVEC identifiant numérique : la ligne qui piège.
-		{XUID: "h5_a", WeaponID: 1004, Kills: 9, Label: "Environmental Explosives", Role: "environmental", Class: "environmental", Family: "environmental", WeaponKey: keyH5Env},
+		{XUID: "h5_a", WeaponID: 1004, Kills: 9, Label: i18n.Text{i18n.LocaleFR: "Environmental Explosives"}, Role: "environmental", Class: "environmental", Family: "environmental", WeaponKey: keyH5Env},
 		// Engin : déjà ventilé par objet AVANT le lot — le comportement ne doit pas bouger.
-		{XUID: "h5_a", WeaponID: 1005, Kills: 5, Label: "Warthog", LabelEN: "Warthog", Role: "vehicle", Class: "vehicle", Family: "vehicle", WeaponKey: keyH5Warthog},
-		{XUID: "h5_a", WeaponID: 1006, Kills: 3, Label: "Tourelle à plasma", LabelEN: "Plasma Turret", Role: "turret", Class: "turret", Family: "turret", WeaponKey: keyH5TurretPlas},
+		{XUID: "h5_a", WeaponID: 1005, Kills: 5, Label: i18n.Text{i18n.LocaleFR: "Warthog", i18n.LocaleEN: "Warthog"}, Role: "vehicle", Class: "vehicle", Family: "vehicle", WeaponKey: keyH5Warthog},
+		{XUID: "h5_a", WeaponID: 1006, Kills: 3, Label: i18n.Text{i18n.LocaleFR: "Tourelle à plasma", i18n.LocaleEN: "Plasma Turret"}, Role: "turret", Class: "turret", Family: "turret", WeaponKey: keyH5TurretPlas},
 		// Mécaniques natives attribuées à l'arme TENUE (kill_kind <> 'weapon').
 		{XUID: "h5_a", WeaponID: 1001, Kills: 6, Role: "precision", Class: "shoulder", Family: "battle_rifle", WeaponKey: keyH5BR, MechanicKills: 6},
 		// Grenades typées : le niveau 2 de la classe Grenade vient de la famille.
 		{XUID: "h5_a", WeaponID: 1007, Kills: 8, Class: "grenade", Role: "grenade", Family: "frag_grenade", WeaponKey: keyH5Frag},
 		{XUID: "h5_a", WeaponID: 1008, Kills: 4, Class: "grenade", Role: "grenade", Family: "splinter_grenade", WeaponKey: keyH5Splinter},
 		// Sentinelles grenade/mêlée issues de match_participants.
-		{XUID: "h5_a", WeaponID: 0, Kills: 14, Label: "Grenade", IsGrenadeMelee: true},
-		{XUID: "h5_a", WeaponID: 1, Kills: 11, Label: "Mêlée", IsGrenadeMelee: true},
+		{XUID: "h5_a", WeaponID: 0, Kills: 14, Label: i18n.Text{i18n.LocaleFR: "Grenade"}, IsGrenadeMelee: true},
+		{XUID: "h5_a", WeaponID: 1, Kills: 11, Label: i18n.Text{i18n.LocaleFR: "Mêlée"}, IsGrenadeMelee: true},
 	}
 }
 
@@ -84,8 +85,8 @@ const h5Golden = `{"total_kills":120,"classes":[` +
 	`{"class":"melee","kills":16,"authoritative":true,"roles":[{"role":"assassination","kills":5},{"role":"direct_melee","kills":11}]},` +
 	`{"class":"grenade","kills":14,"authoritative":true,"roles":[{"role":"grenade_frag","kills":8},{"role":"grenade_splinter","kills":4},{"role":"grenade_other","kills":2}]},` +
 	`{"class":"spartan_ability","kills":5,"authoritative":true,"roles":[{"role":"ground_pound","kills":3},{"role":"shoulder_bash","kills":2}]},` +
-	`{"class":"vehicle","kills":5,"authoritative":false,"roles":[{"role":"h5_vehicle_warthog","kills":5,"label":"Warthog","label_en":"Warthog"}]},` +
-	`{"class":"turret","kills":3,"authoritative":false,"roles":[{"role":"h5_turret_plasma","kills":3,"label":"Tourelle à plasma","label_en":"Plasma Turret"}]},` +
+	`{"class":"vehicle","kills":5,"authoritative":false,"roles":[{"role":"h5_vehicle_warthog","kills":5,"label":"Warthog"}]},` +
+	`{"class":"turret","kills":3,"authoritative":false,"roles":[{"role":"h5_turret_plasma","kills":3,"label":"Tourelle à plasma"}]},` +
 	`{"class":"unattributed","kills":18,"authoritative":false}]}`
 
 // TestHalo5SunburstNeBougePas : le verrou. Sortie de `Build` sur des lignes Halo 5,
@@ -95,7 +96,7 @@ const h5Golden = `{"total_kills":120,"classes":[` +
 // décodeur de film, sa provenance est `weapon_kills`, et ce lot ne lui ouvre AUCUNE classe
 // nouvelle. Le résidu de 18 le dit (120 − 40 − 12 − 7 − 16 − 14 − 5 − 5 − 3).
 func TestHalo5SunburstNeBougePas(t *testing.T) {
-	got := Build(h5Rows(), h5Counts(), true)
+	got := Build(i18n.LocaleFR, h5Rows(), h5Counts(), true)
 	encoded, err := json.Marshal(got)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
@@ -109,7 +110,7 @@ func TestHalo5SunburstNeBougePas(t *testing.T) {
 // fragile : la classe `environmental` de Halo 5 ne doit jamais apparaître comme un arc.
 // Un golden qui rougit se lit mal ; ce test-ci nomme la régression.
 func TestHalo5EnvironmentalResteHorsClasse(t *testing.T) {
-	got := Build(h5Rows(), h5Counts(), true)
+	got := Build(i18n.LocaleFR, h5Rows(), h5Counts(), true)
 	for _, c := range got.Classes {
 		if c.Class == domain.FragClassEnvironmental || c.Class == domain.FragClassEquipment {
 			t.Errorf("classe %q servie pour Halo 5 (%d frags) : la bascule Halo Infinite a débordé",

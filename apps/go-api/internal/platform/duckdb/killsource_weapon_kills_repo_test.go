@@ -34,6 +34,7 @@ import (
 	titlepkg "levelup/go-api/internal/domain/title"
 
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -247,5 +248,33 @@ func TestKillSourceWeaponKills_FiltresInvalides(t *testing.T) {
 	if _, err := repo.LoadWeaponKillsAggregated(context.Background(), titlepkg.DefaultSlug,
 		port.WeaponKillFilters{}); err == nil {
 		t.Error("filtres vides acceptes : le garde-fou anti-scan-complet ne tient pas")
+	}
+}
+
+// TestExplorerTopWeapons_NomDansLaLangueDeLaRequete : le top armes de la cible (lu dans la source de
+// dégât) nomme l'arme dans la langue du contexte ; une langue inconnue donne le français.
+func TestExplorerTopWeapons_NomDansLaLangueDeLaRequete(t *testing.T) {
+	pdb := newKillSourceTestPlayerDB(t)
+	ctx := context.Background()
+	createWeaponNameTables(t, pdb.Metadata)
+	putCuratedWeaponNames(t, pdb.Metadata, "halo_infinite", "hinf_br75", frEn("Fusil de combat BR75", "BR75 Battle Rifle"))
+	insertKill(t, pdb, kscDecodeV1, true, kscXUID, kscTagRifle, 1000)
+
+	repo := NewExplorerRepo(pdb, kscXUID).WithKillSourceClassifier(fakeKillSourceClassifier{})
+	for _, c := range []struct {
+		locale i18n.Locale
+		want   string
+	}{
+		{i18n.LocaleFR, "Fusil de combat BR75"},
+		{i18n.LocaleEN, "BR75 Battle Rifle"},
+		{i18n.Locale("zz"), "Fusil de combat BR75"},
+	} {
+		got, err := repo.GetTopWeaponsForMatches(i18n.WithContext(ctx, c.locale), kscXUID, []string{kscMatchID}, 3)
+		if err != nil {
+			t.Fatalf("GetTopWeaponsForMatches(%s): %v", c.locale, err)
+		}
+		if len(got) != 1 || got[0].Label != c.want {
+			t.Errorf("locale %q : top = %+v, want le libellé %q", c.locale, got, c.want)
+		}
 	}
 }

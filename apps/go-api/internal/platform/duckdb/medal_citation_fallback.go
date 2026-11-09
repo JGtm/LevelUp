@@ -15,13 +15,12 @@ import (
 	"log/slog"
 )
 
-// medalCitationFallbackQuery résout medal_id → citation_name_display pour les
-// IDs donnés. Le %s est rempli par buildLookupQuery (placeholders sûrs).
-const medalCitationFallbackQuery = `SELECT medal_id, citation_name_display
+// medalCitationFallbackQuery résout medal_id → citation_name_norm pour les IDs donnés ; le nom, dans
+// la langue de la requête, vient ensuite de citationDisplayNames. Le %s est rempli par
+// buildLookupQuery (placeholders sûrs).
+const medalCitationFallbackQuery = `SELECT medal_id, citation_name_norm
 	 FROM citation_mappings
-	 WHERE medal_id IN (%s)
-	   AND citation_name_display IS NOT NULL
-	   AND citation_name_display <> ''`
+	 WHERE medal_id IN (%s)`
 
 // lookupMedalCitationLabels retourne medal_id → libellé issu de citation_mappings
 // pour les IDs donnés (fallback quand medal_definitions n'a pas de nom
@@ -48,11 +47,31 @@ func lookupMedalCitationLabels(ctx context.Context, db *DB, ids []int64) (map[in
 			slog.Int("requested", len(ids)))
 		return map[int64]string{}, nil
 	}
-	out, err := lookupLabelsByID(ctx, db, medalCitationFallbackQuery, ids)
+	out, err := medalCitationNames(ctx, db, ids)
 	slog.DebugContext(ctx, "medal_citation_fallback",
 		slog.Int("requested", len(ids)),
 		slog.Int("resolved", len(out)),
 	)
+	return out, err
+}
+
+// medalCitationNames range pour chaque médaille le nom de sa citation dans la langue de la requête.
+func medalCitationNames(ctx context.Context, db *DB, ids []int64) (map[int64]string, error) {
+	normByMedal, err := lookupLabelsByID(ctx, db, medalCitationFallbackQuery, ids)
+	if err != nil {
+		return map[int64]string{}, err
+	}
+	norms := make([]string, 0, len(normByMedal))
+	for _, n := range normByMedal {
+		norms = append(norms, n)
+	}
+	names, err := citationDisplayNames(ctx, db, norms)
+	out := make(map[int64]string, len(normByMedal))
+	for id, norm := range normByMedal {
+		if name := names[norm]; name != "" {
+			out[id] = name
+		}
+	}
 	return out, err
 }
 

@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	titlepkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 )
 
 // newMetaResolveTestPDB construit un PlayerDB minimal (Player + Metadata)
@@ -126,11 +127,11 @@ func TestGetMatchMeta_ResolvesUUIDMapAndPlaylistViaAssetTranslations(t *testing.
 	if err != nil {
 		t.Fatalf("GetMatchMeta: %v", err)
 	}
-	if meta.MapNameFR == nil || *meta.MapNameFR != "Shiro" {
-		t.Errorf("MapNameFR = %v, want Shiro", meta.MapNameFR)
+	if !meta.MapNames.Has(i18n.LocaleFR) || meta.MapNames[i18n.LocaleFR] != "Shiro" {
+		t.Errorf("MapNameFR = %v, want Shiro", meta.MapNames[i18n.LocaleFR])
 	}
-	if meta.PlaylistNameFR == nil || *meta.PlaylistNameFR != "Partie rapide" {
-		t.Errorf("PlaylistNameFR = %v, want Partie rapide", meta.PlaylistNameFR)
+	if !meta.PlaylistNames.Has(i18n.LocaleFR) || meta.PlaylistNames[i18n.LocaleFR] != "Partie rapide" {
+		t.Errorf("PlaylistNameFR = %v, want Partie rapide", meta.PlaylistNames[i18n.LocaleFR])
 	}
 }
 
@@ -164,8 +165,8 @@ func TestGetMatchMeta_PlaylistCategoryStrip_TitleAware(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchMeta H5: %v", err)
 	}
-	if metaH5.PlaylistNameFR == nil || *metaH5.PlaylistNameFR != "Super Fiesta Fête" {
-		t.Errorf("H5 PlaylistNameFR = %v, want 'Super Fiesta Fête' (non stripée)", metaH5.PlaylistNameFR)
+	if !metaH5.PlaylistNames.Has(i18n.LocaleFR) || metaH5.PlaylistNames[i18n.LocaleFR] != "Super Fiesta Fête" {
+		t.Errorf("H5 PlaylistNameFR = %v, want 'Super Fiesta Fête' (non stripée)", metaH5.PlaylistNames[i18n.LocaleFR])
 	}
 
 	// Halo Infinite (flag présent) : catégorie "super fiesta" retirée.
@@ -174,8 +175,8 @@ func TestGetMatchMeta_PlaylistCategoryStrip_TitleAware(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchMeta HI: %v", err)
 	}
-	if metaHI.PlaylistNameFR == nil || *metaHI.PlaylistNameFR != "Fête" {
-		t.Errorf("HI PlaylistNameFR = %v, want 'Fête' (catégorie stripée)", metaHI.PlaylistNameFR)
+	if !metaHI.PlaylistNames.Has(i18n.LocaleFR) || metaHI.PlaylistNames[i18n.LocaleFR] != "Fête" {
+		t.Errorf("HI PlaylistNameFR = %v, want 'Fête' (catégorie stripée)", metaHI.PlaylistNames[i18n.LocaleFR])
 	}
 }
 
@@ -203,8 +204,8 @@ func TestGetMatchMeta_ModeViaGameVariant_NoPair(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchMeta: %v", err)
 	}
-	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Assassin" {
-		t.Errorf("ModeNameFR = %v, want 'Assassin' (fallback game_variant)", meta.ModeNameFR)
+	if !meta.ModeNames.Has(i18n.LocaleFR) || meta.ModeNames[i18n.LocaleFR] != "Assassin" {
+		t.Errorf("ModeNameFR = %v, want 'Assassin' (fallback game_variant)", meta.ModeNames[i18n.LocaleFR])
 	}
 }
 
@@ -232,8 +233,8 @@ func TestGetMatchMeta_GameVariantFallback_NotUsedWhenPairPresent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchMeta: %v", err)
 	}
-	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Arena:Slayer" {
-		t.Errorf("ModeNameFR = %v, want 'Arena:Slayer' (pair présent, pas de fallback game_variant)", meta.ModeNameFR)
+	if !meta.ModeNames.Has(i18n.LocaleFR) || meta.ModeNames[i18n.LocaleFR] != "Arena:Slayer" {
+		t.Errorf("ModeNameFR = %v, want 'Arena:Slayer' (pair présent, pas de fallback game_variant)", meta.ModeNames[i18n.LocaleFR])
 	}
 }
 
@@ -281,7 +282,7 @@ func TestGetMatchMeta_T0Ms(t *testing.T) {
 	}
 }
 
-// TestGetMatchMeta_FallsBackToENWhenNoFR vérifie la cascade FR→EN. Quand
+// TestGetMatchMeta_FallsBackToENWhenNoFR vérifie le repli sur la langue de repli. Quand
 // asset_translations n'a que en-US (cas typique d'un asset jamais traduit
 // par populate-assets), le resolver doit retourner le nom EN plutôt que
 // l'UUID brut.
@@ -307,8 +308,9 @@ func TestGetMatchMeta_FallsBackToENWhenNoFR(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchMeta: %v", err)
 	}
-	if meta.MapNameFR == nil || *meta.MapNameFR != "Forbidden" {
-		t.Errorf("MapNameFR (cascade EN) = %v, want Forbidden", meta.MapNameFR)
+	// Le nom anglais est celui de la langue de repli ; la lecture sous FR y replie (Text.PickOptional).
+	if meta.MapNames[i18n.LocaleEN] != "Forbidden" || meta.MapNames.PickOptional(i18n.LocaleFR) != "Forbidden" {
+		t.Errorf("MapNames = %v, want Forbidden en repli sous fr", meta.MapNames)
 	}
 }
 
@@ -334,11 +336,11 @@ func TestGetMatchMeta_NoTranslation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchMeta: %v", err)
 	}
-	if meta.MapNameFR != nil {
-		t.Errorf("MapNameFR = %v, want nil (asset inconnu)", meta.MapNameFR)
+	if meta.MapNames.Has(i18n.LocaleFR) {
+		t.Errorf("MapNameFR = %v, want nil (asset inconnu)", meta.MapNames[i18n.LocaleFR])
 	}
-	if meta.ModeNameFR == nil || *meta.ModeNameFR != "unknown-pair-uuid" {
-		t.Errorf("ModeNameFR = %v, want \"unknown-pair-uuid\" (NormalizeModeLabel sur brut)", meta.ModeNameFR)
+	if !meta.ModeNames.Has(i18n.LocaleFR) || meta.ModeNames[i18n.LocaleFR] != "unknown-pair-uuid" {
+		t.Errorf("ModeNameFR = %v, want \"unknown-pair-uuid\" (NormalizeModeLabel sur brut)", meta.ModeNames[i18n.LocaleFR])
 	}
 }
 
@@ -449,8 +451,8 @@ func TestGetMatchMeta_NormalizedPairName_ExtractsSubmode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchMeta: %v", err)
 	}
-	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Arena:Slayer" {
-		t.Errorf("ModeNameFR = %v, want Arena:Slayer (frontend normalise via normalizeModeLabel)", meta.ModeNameFR)
+	if !meta.ModeNames.Has(i18n.LocaleFR) || meta.ModeNames[i18n.LocaleFR] != "Arena:Slayer" {
+		t.Errorf("ModeNameFR = %v, want Arena:Slayer (frontend normalise via normalizeModeLabel)", meta.ModeNames[i18n.LocaleFR])
 	}
 }
 
@@ -476,8 +478,8 @@ func TestGetMatchMeta_LegacyPairNameFRPassedThrough(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchMeta: %v", err)
 	}
-	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Slayer on Streets" {
-		t.Errorf("ModeNameFR = %v, want 'Slayer on Streets' (frontend normalise, cf. normalizeModeLabel)", meta.ModeNameFR)
+	if !meta.ModeNames.Has(i18n.LocaleFR) || meta.ModeNames[i18n.LocaleFR] != "Slayer on Streets" {
+		t.Errorf("ModeNameFR = %v, want 'Slayer on Streets' (frontend normalise, cf. normalizeModeLabel)", meta.ModeNames[i18n.LocaleFR])
 	}
 }
 
@@ -512,12 +514,12 @@ func TestGetMatchMeta_TranslatesModeFRViaModeNameTr(t *testing.T) {
 		t.Fatalf("GetMatchMeta: %v", err)
 	}
 	// Mode : doit être traduit FR via mode_name_tr, pas l'EN normalisé.
-	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Capture du drapeau" {
-		t.Errorf("ModeNameFR = %v, want %q (mode_name_tr lookup)", meta.ModeNameFR, "Capture du drapeau")
+	if !meta.ModeNames.Has(i18n.LocaleFR) || meta.ModeNames[i18n.LocaleFR] != "Capture du drapeau" {
+		t.Errorf("ModeNameFR = %v, want %q (mode_name_tr lookup)", meta.ModeNames[i18n.LocaleFR], "Capture du drapeau")
 	}
 	// Map : toujours résolue via asset_translations.
-	if meta.MapNameFR == nil || *meta.MapNameFR != "Forbidden" {
-		t.Errorf("MapNameFR = %v, want Forbidden", meta.MapNameFR)
+	if !meta.MapNames.Has(i18n.LocaleFR) || meta.MapNames[i18n.LocaleFR] != "Forbidden" {
+		t.Errorf("MapNameFR = %v, want Forbidden", meta.MapNames[i18n.LocaleFR])
 	}
 	// Titre attendu côté frontend : "Capture du drapeau sur Forbidden"
 	// (buildMatchHeadingStr(MapNameFR, ModeNameFR, "fr")).
@@ -549,8 +551,8 @@ func TestGetMatchMeta_ExtractsModeVariantFR(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchMeta: %v", err)
 	}
-	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Assassin" {
-		t.Errorf("ModeNameFR = %v, want %q (Legacy Slayer BR → Slayer → Assassin)", meta.ModeNameFR, "Assassin")
+	if !meta.ModeNames.Has(i18n.LocaleFR) || meta.ModeNames[i18n.LocaleFR] != "Assassin" {
+		t.Errorf("ModeNameFR = %v, want %q (Legacy Slayer BR → Slayer → Assassin)", meta.ModeNames[i18n.LocaleFR], "Assassin")
 	}
 }
 
@@ -575,8 +577,8 @@ func TestGetMatchMeta_ModeNameFRFallbackToEN(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchMeta: %v", err)
 	}
-	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Arena:Slayer on Live Fire" {
-		t.Errorf("ModeNameFR = %v, want 'Arena:Slayer on Live Fire' (frontend normalise, EN leak toléré)", meta.ModeNameFR)
+	if !meta.ModeNames.Has(i18n.LocaleFR) || meta.ModeNames[i18n.LocaleFR] != "Arena:Slayer on Live Fire" {
+		t.Errorf("ModeNameFR = %v, want 'Arena:Slayer on Live Fire' (frontend normalise, EN leak toléré)", meta.ModeNames[i18n.LocaleFR])
 	}
 }
 

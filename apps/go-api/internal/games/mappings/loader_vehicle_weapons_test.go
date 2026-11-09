@@ -138,7 +138,7 @@ func TestRegistreArmesVehicule_SonsEtSpritesServis(t *testing.T) {
 			if stem == "" {
 				continue
 			}
-			p := filepath.Join(root, "static", "sounds", "halo_infinite", stem+".wav")
+			p := filepath.Join(root, "static", "sounds", "halo_infinite", stem+".ogg")
 			if _, err := os.Stat(p); err != nil {
 				t.Errorf("%s : son %q absent des assets servis", tag, stem)
 			}
@@ -154,8 +154,7 @@ func TestRegistreArmesVehicule_SonsEtSpritesServis(t *testing.T) {
 func TestRegistreArmesVehicule_ValidationFermee(t *testing.T) {
 	const base = `tag = "121B4009"
 vehicle = "wraith"
-en = "a"
-fr = "b"
+label = { en = "a", fr = "b" }
 fire = "single"
 fx = "plasma"
 tint = "plasma_hot"
@@ -234,7 +233,7 @@ func TestRegistreArmesVehicule_SonsDesignesALOreille(t *testing.T) {
 }
 
 // TestRegistreArmesVehicule_BombeDeLaBanshee — `850902EF`, identifie le 2026-09-24 (lot M6.2,
-// instrument `internal/himodule/m6_bombe_banshee_research_test.go`) : l arme de la configuration
+// instrument `libs/gamefiles/himodule/m6_bombe_banshee_research_test.go`) : l arme de la configuration
 // MULTIJOUEUR de la Banshee, qui partage le son de tir de la bombe `0000AA69` du lot V3F. Decision
 // de l utilisateur (2026-09-23 nuit) : la bombe est ROUGE et PLUS GROSSE — teinte `plasma_hot`,
 // forme `bomb` (la deflagration a l echelle d une charge larguee).

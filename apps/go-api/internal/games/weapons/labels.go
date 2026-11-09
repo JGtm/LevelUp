@@ -1,10 +1,14 @@
 package weapons
 
-// labels.go — table weapon_labels (weapon_id -> nom EN/FR) : DDL partagé par tous
-// les titres + seed des IDs Halo Infinite. Le step add_weapon_labels
-// (halo_infinite/migrations) y délègue, comme h5_add_weapon_labels pour le DDL
-// seul (les IDs d'armes Halo 5 diffèrent : sa table reste VIDE, peuplée par le
-// fetcher halo5api.svc/weapons).
+// labels.go — tables weapon_labels (weapon_id -> icône, type) et weapon_label_names (weapon_id,
+// lang -> nom) : DDL partagé par tous les titres + seed des IDs Halo Infinite. Le step
+// add_weapon_labels (halo_infinite/migrations) y délègue, comme h5_add_weapon_labels pour le DDL
+// seul (les IDs d'armes Halo 5 diffèrent : ses tables restent VIDES, peuplées par le fetcher
+// halo5api.svc/weapons).
+//
+// Les noms sont une ligne par langue (clé de langue = code de config/locales.toml), et non plus
+// deux colonnes `name_en` / `name_fr` (ADR 0040 D-5, plan i18n 8.4). Leur lecture est faite par
+// platform/duckdb/weapon_resolver.go, qui les fusionne avec les noms curés de weapon_name_labels.
 //
 // Origine : internal/migration/steps_metadata.go → halo_infinite/migrations
 // (Phase 1.5 b6) → ici (2026-08-04, cf. registry.go). Seed statique pur
@@ -14,30 +18,32 @@ import (
 	"database/sql"
 	"fmt"
 
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 )
 
 // labelEnergySwordFR — label FR récurrent (épée à énergie + variantes).
 const labelEnergySwordFR = "Épée à énergie"
 
-// EnsureLabelsTable crée weapon_labels (idempotent), SANS aucune donnée. Source
-// unique du DDL : un titre dont les IDs d'armes diffèrent (Halo 5) crée sa table
-// via cette fonction plutôt que de recopier le CREATE TABLE.
+// EnsureLabelsTable crée weapon_labels et les tables de noms par langue (idempotent), SANS aucune
+// donnée. Source unique du DDL : un titre dont les IDs d'armes diffèrent (Halo 5) crée ses tables
+// via cette fonction plutôt que de recopier le CREATE TABLE. Une base encore à l'ancienne forme
+// (colonnes `name_en` / `name_fr`) est d'abord portée à la nouvelle par le step de migration.
 func EnsureLabelsTable(db *sql.DB) error {
-	_, err := db.ExecContext(migration.BootCtx(), `
-		CREATE TABLE IF NOT EXISTS weapon_labels (
-			weapon_id UBIGINT PRIMARY KEY,
-			name_en   VARCHAR NOT NULL,
-			name_fr   VARCHAR NOT NULL
-		)
-	`)
-	return err
+	if err := migration.MigrateWeaponNames(db); err != nil {
+		return err
+	}
+	_, err := db.ExecContext(migration.BootCtx(), `CREATE TABLE IF NOT EXISTS weapon_labels (weapon_id UBIGINT PRIMARY KEY)`)
+	if err != nil {
+		return err
+	}
+	return migration.ExecScript(db, migration.WeaponTablesDDL())
 }
 
-// ApplyLabels crée weapon_labels et la peuple avec les IDs Halo Infinite connus.
-// Idempotent (CREATE TABLE IF NOT EXISTS + INSERT OR IGNORE) : sert à la fois de
-// step de migration (add_weapon_labels) et de reseed CLI (cmd/seed-weapon-labels),
-// même quand schema_migrations marque la migration comme done.
+// ApplyLabels crée les tables et les peuple avec les IDs Halo Infinite connus. Idempotent
+// (CREATE TABLE IF NOT EXISTS + INSERT OR IGNORE : une ligne déjà posée, par le fetcher ou à la
+// main, n'est jamais écrasée) : sert à la fois de step de migration (add_weapon_labels) et de
+// reseed CLI (cmd/seed-weapon-labels), même quand schema_migrations marque la migration comme done.
 func ApplyLabels(db *sql.DB) error {
 	if err := EnsureLabelsTable(db); err != nil {
 		return err
@@ -45,12 +51,16 @@ func ApplyLabels(db *sql.DB) error {
 	for _, l := range weaponLabelSeeds() {
 		// Contournement driver : database/sql ne supporte pas uint64 avec bit63=1.
 		// weapon_id est une constante interne (pas user input) → littéral décimal sûr.
-		q := fmt.Sprintf( //nolint:gosec
-			"INSERT OR IGNORE INTO weapon_labels (weapon_id, name_en, name_fr) VALUES (%d, ?, ?)",
-			l.id,
-		)
-		if _, err := db.ExecContext(migration.BootCtx(), q, l.en, l.fr); err != nil {
+		if _, err := db.ExecContext(migration.BootCtx(), //nolint:gosec
+			fmt.Sprintf("INSERT OR IGNORE INTO weapon_labels (weapon_id) VALUES (%d)", l.id)); err != nil {
 			return err
+		}
+		for lang, name := range map[i18n.Locale]string{i18n.LocaleEN: l.en, i18n.LocaleFR: l.fr} {
+			if _, err := db.ExecContext(migration.BootCtx(), //nolint:gosec
+				fmt.Sprintf("INSERT OR IGNORE INTO weapon_label_names (weapon_id, lang, name) VALUES (%d, ?, ?)", l.id),
+				string(lang), name); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

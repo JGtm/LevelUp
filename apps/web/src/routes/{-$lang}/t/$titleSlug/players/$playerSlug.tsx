@@ -7,9 +7,11 @@
 import { createFileRoute, Navigate, Outlet, redirect, useRouterState } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { passwordOnlyAccounts } from '@/lib/capabilities/deploymentCapabilities'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useEffect, useRef } from 'react'
-import { NavL2 } from '@/components/shell/NavL2'
+import { SectionHeader } from '@/components/shell/SectionHeader'
+import { SoloFiltersBar } from '@/components/shell/SoloFiltersBar'
 import { resolvePlayerFallback, routeShowsSoloFilters } from '@/components/shell/shellNavigation'
 import { useFiltersResolve, useFollowLatestSession } from '@/features/filters/queries'
 import { queryKeys } from '@/lib/query/keys'
@@ -25,7 +27,7 @@ export const Route = createFileRoute('/{-$lang}/t/$titleSlug/players/$playerSlug
     const {
       isBootstrapped,
       setupRequired,
-      authMode,
+      capabilities,
       currentUsername,
       availablePlayers,
       currentPlayer,
@@ -33,7 +35,7 @@ export const Route = createFileRoute('/{-$lang}/t/$titleSlug/players/$playerSlug
     if (!isBootstrapped) return // Bootstrap pas encore terminé — __root gère l'écran de chargement
     if (setupRequired) throw redirect({ to: '/setup' })
     // Rediriger vers login uniquement en mode password sans utilisateur connecté
-    if (authMode === 'password' && !currentUsername) throw redirect({ to: '/login' })
+    if (passwordOnlyAccounts(capabilities) && !currentUsername) throw redirect({ to: '/login' })
 
     // Slug inexistant → rediriger vers le joueur courant ou le premier disponible.
     if (availablePlayers.length > 0) {
@@ -105,11 +107,11 @@ function PlayerLayout() {
   return (
     <div className="flex flex-col">
       <SoloFiltersSync playerSlug={playerSlug} />
-      {/* NavL2 = onglets Stats + FilterOmnibar (Stats/Squad uniquement). Le rail
-          de navigation période/session est rendu DANS NavL2 (Stats) et DANS
-          SquadLayout (Squad), juste après leurs filtres respectifs, pour
-          apparaître toujours en dessous des filtres. */}
-      <NavL2 />
+      {/* En-tête de page (titre, chapeau, onglets) des sections L1 : toujours en première position,
+          à la même place d'une section à l'autre. Puis les filtres Stats (FilterOmnibar + rail
+          période/session) ; SquadLayout rend son en-tête et sa barre de filtres lui-même. */}
+      <SectionHeader />
+      <SoloFiltersBar />
       <Outlet />
     </div>
   )
@@ -117,8 +119,8 @@ function PlayerLayout() {
 
 /**
  * Résolution du filterContext SOLO côté backend → alimente le store solo (consommé
- * par NavL2/FilterOmnibar/PeriodSessionRail) — SEULEMENT sous la barre solo (même
- * règle que NavL2, D4.4), et atterrissage sur la dernière session SOLO, piloté par
+ * par SoloFiltersBar/FilterOmnibar/PeriodSessionRail) — SEULEMENT sous la barre solo (même
+ * règle que SoloFiltersBar, D4.4), et atterrissage sur la dernière session SOLO, piloté par
  * l'état (resolvedContext) tant que rien n'est épinglé manuellement. C'est le SEUL
  * montage de useFollowLatestSession dans l'app : côté escouade, l'ancrage est piloté
  * par la composition (effet de ré-ancrage de SquadLayout). Le store squad est résolu

@@ -3,7 +3,7 @@
  *
  * Tuiles réutilisant BriefingTile : Taux de victoire (hero — OutcomeBar + V-D-N +
  * tooltip des 4 issues, DEC-TILES), Durée totale (DEC-DURATION), Pic rang / Pic MMR
- * (DEC-PEAK) et Séries marquantes (bicolore). Expose aussi MinMaxTriptych (DP-1) :
+ * (DEC-PEAK) et Séries (bicolore). Expose aussi MinMaxTriptych (DP-1) :
  * l'affichage « min · moyenne · max » des tuiles FDA & Perf (rendues inline dans le
  * Strip). Le Pic FDA autonome a été fusionné dans le triptyque FDA (max = peak_kda).
  * Le Classement a quitté le socle pour la rangée « Par… » (ExplorerRankedBlock).
@@ -63,7 +63,7 @@ export function MinMaxTriptych({
   )
 }
 
-// Tuile Séries marquantes (DP-9) : valeur bicolore « {best} V / {worst} D » (tokens
+// Tuile Séries (DP-9) : valeur bicolore « {best} V / {worst} D » (tokens
 // outcome-win/outcome-loss). Segment à zéro omis ; la tuile elle-même est omise
 // par l'appelant (Strip) quand les deux segments sont à zéro. Accent neutre (DP-6).
 export function StreaksTile({ streaks, t }: { streaks: ExplorerBriefingStreaks; t: T }) {

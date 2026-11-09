@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // ligneCarte : une ligne de filtres telle que le repo la rend une fois les variantes rattachées
@@ -19,8 +20,7 @@ func ligneCarte(matchID, mapID, nom string) domain.FilterMatchRow {
 		MatchID:   matchID,
 		StartTime: &t,
 		MapID:     strPtr(mapID),
-		MapName:   strPtr(nom),
-		MapNameFR: strPtr(nom),
+		MapName:   i18n.FromColumns(nom, nom),
 	}
 }
 

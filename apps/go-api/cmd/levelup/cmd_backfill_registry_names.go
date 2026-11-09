@@ -58,7 +58,7 @@ func runBackfillRegistryNames(cfg *config.AppConfig, args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	sharedPath, metaPath := pr.SharedDBPath(*titleSlug), pr.MetadataDBPath(*titleSlug)
 	for _, p := range []string{sharedPath, metaPath} {
 		if _, err := os.Stat(p); err != nil {

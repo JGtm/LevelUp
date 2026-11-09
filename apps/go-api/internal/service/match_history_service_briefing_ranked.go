@@ -2,8 +2,8 @@
 // du bandeau de briefing de l'Explorer (mode Matchs).
 //
 // Émet une entrée PAR CHAÎNE de playlist (rating_type, playlist_group) présente dans
-// le scope : paliers début/fin (premier / dernier match noté de la chaîne, via
-// SkillTierLabel déjà résolu FR ; placement signalé par flags D-D) + variation nette
+// le scope : paliers début/fin (premier / dernier match noté de la chaîne ; libellé déduit du
+// code dans la langue de la requête ; placement signalé par flags D-D) + variation nette
 // de rating ramenée au match (co-signée avec la progression — DEC-RANK-BE). CSR =
 // chaîne unique « ranked » (P-3) ; LUSR se scinde en ses chaînes. Le calcul pur vit
 // dans analysis.ComputeRankProgressionByChain ; ce fichier ne fait que projeter les
@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // buildBriefingRanked émet le module « Classement » : une entrée PAR CHAÎNE
@@ -26,7 +27,7 @@ import (
 // rankedCapable (capability match.skill.snapshot, exclut H5). Retourne nil si aucune
 // chaîne rangée datée dans le scope.
 func buildBriefingRanked(ctx context.Context, scope []domain.MatchHistoryRawRow) *domain.ExplorerBriefingRanked {
-	samples := rankChainSamples(scope)
+	samples := rankChainSamples(scope, i18n.FromContext(ctx))
 	if len(samples) == 0 {
 		return nil
 	}
@@ -116,7 +117,7 @@ func selectTopByMatches(progs []analysis.RankChainProgression, k int) []analysis
 // l'algo pur (title-agnostic). Une row est retenue si elle porte un type de rating et
 // une date (chronologie). PlaylistGroup / RatingValue / RatingDelta viennent de
 // match_skill_rank_latest ; les flags de placement de match_history_placement.
-func rankChainSamples(scope []domain.MatchHistoryRawRow) []analysis.RankChainSample {
+func rankChainSamples(scope []domain.MatchHistoryRawRow, loc i18n.Locale) []analysis.RankChainSample {
 	samples := make([]analysis.RankChainSample, 0, len(scope))
 	for i := range scope {
 		r := &scope[i]
@@ -127,7 +128,7 @@ func rankChainSamples(scope []domain.MatchHistoryRawRow) []analysis.RankChainSam
 			RatingType:     *r.SkillRatingType,
 			PlaylistGroup:  r.PlaylistGroup,
 			StartTime:      *r.StartTime,
-			TierLabel:      r.SkillTierLabel,
+			TierLabel:      analysis.SkillTierLabelOrPlacementMarker(r.SkillTier, r.SubTier, loc),
 			RatingValue:    r.RatingValue,
 			RatingDelta:    r.RatingDelta,
 			PlacementDone:  r.PlacementDone,

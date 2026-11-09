@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // mockAchievementsRepo implémente port.AchievementsRepository.
@@ -69,11 +70,11 @@ func TestAchievementsService_NominalCase(t *testing.T) {
 	t1 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
 	t2 := time.Date(2026, 4, 15, 14, 0, 0, 0, time.UTC)
 	defs := []domain.AchievementDefinitionRow{
-		{AchievementID: "a", NameEN: "A", Gamerscore: 10},
-		{AchievementID: "b", NameEN: "B", Gamerscore: 50},
-		{AchievementID: "c", NameEN: "C", Gamerscore: 30},
-		{AchievementID: "d", NameEN: "D", Gamerscore: 20},
-		{AchievementID: "e", NameEN: "E", Gamerscore: 100},
+		{AchievementID: "a", Name: i18n.FromColumns("A", ""), Gamerscore: 10},
+		{AchievementID: "b", Name: i18n.FromColumns("B", ""), Gamerscore: 50},
+		{AchievementID: "c", Name: i18n.FromColumns("C", ""), Gamerscore: 30},
+		{AchievementID: "d", Name: i18n.FromColumns("D", ""), Gamerscore: 20},
+		{AchievementID: "e", Name: i18n.FromColumns("E", ""), Gamerscore: 100},
 	}
 	playerRows := []domain.PlayerAchievementRow{
 		{AchievementID: "a", Unlocked: true, UnlockedAt: timePtr(t1)},
@@ -128,8 +129,8 @@ func TestAchievementsService_NominalCase(t *testing.T) {
 // TestAchievementsService_NewPlayer : 0 player rows → tous locked, earned=0.
 func TestAchievementsService_NewPlayer(t *testing.T) {
 	defs := []domain.AchievementDefinitionRow{
-		{AchievementID: "a", NameEN: "A", Gamerscore: 10},
-		{AchievementID: "b", NameEN: "B", Gamerscore: 50},
+		{AchievementID: "a", Name: i18n.FromColumns("A", ""), Gamerscore: 10},
+		{AchievementID: "b", Name: i18n.FromColumns("B", ""), Gamerscore: 50},
 	}
 	svc := NewAchievementsService(
 		&mockAchievementsRepo{rows: nil},
@@ -175,7 +176,7 @@ func TestAchievementsService_EmptyDefinitions(t *testing.T) {
 // → ignorée silencieusement (pas d'entrée dans la réponse, pas d'erreur).
 func TestAchievementsService_OrphanPlayerRow(t *testing.T) {
 	defs := []domain.AchievementDefinitionRow{
-		{AchievementID: "a", NameEN: "A", Gamerscore: 10},
+		{AchievementID: "a", Name: i18n.FromColumns("A", ""), Gamerscore: 10},
 	}
 	playerRows := []domain.PlayerAchievementRow{
 		{AchievementID: "a", Unlocked: true, UnlockedAt: timePtr(time.Now().UTC())},
@@ -208,10 +209,10 @@ func TestAchievementsService_OrphanPlayerRow(t *testing.T) {
 // other, titre sans mapping → catégorie vide.
 func TestAchievementsService_Categories(t *testing.T) {
 	defs := []domain.AchievementDefinitionRow{
-		{AchievementID: "a", NameEN: "Clocking In", Gamerscore: 10},
-		{AchievementID: "b", NameEN: "Zeta", Gamerscore: 10},
-		{AchievementID: "c", NameEN: "Get the Popcorn", Gamerscore: 10},
-		{AchievementID: "d", NameEN: "Some Future DLC Achievement", Gamerscore: 10},
+		{AchievementID: "a", Name: i18n.FromColumns("Clocking In", ""), Gamerscore: 10},
+		{AchievementID: "b", Name: i18n.FromColumns("Zeta", ""), Gamerscore: 10},
+		{AchievementID: "c", Name: i18n.FromColumns("Get the Popcorn", ""), Gamerscore: 10},
+		{AchievementID: "d", Name: i18n.FromColumns("Some Future DLC Achievement", ""), Gamerscore: 10},
 	}
 	// Sans WithTitleSlug → fallback halo_infinite.
 	svc := NewAchievementsService(

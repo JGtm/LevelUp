@@ -11,7 +11,7 @@ package replaylabels
 import (
 	"sync"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 type cleCatalogue struct{ repoRoot, titleSlug string }

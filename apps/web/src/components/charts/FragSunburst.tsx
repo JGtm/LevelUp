@@ -16,8 +16,7 @@
  *
  * Couleurs : gamme « Antagonistes » réactive à la palette (fragClassColor via token) ;
  * rôles = teintes éclaircies (fragRoleColor). Double encodage couleur + label +
- * position. Composant PARTAGÉ (Synthesis/Match view/Timeseries/Sessions) — cf.
- * .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P1.4. Sans frag (total 0) : la carte reste avec son constat « Aucun frag sur ce périmètre ».
+ * position. Composant PARTAGÉ (Synthesis/Match view/Timeseries/Sessions). Sans frag (total 0) : la carte reste avec son constat « Aucun frag sur ce périmètre ».
  */
 import { useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react'
 
@@ -61,7 +60,6 @@ function useSunburstLabels(): FragSunburstBaseLabels {
     formatValue: (n: number) => n.toLocaleString(numLoc),
     othersLabel: (n: number) =>
       formatMessage(fragsManifest, 'frags.charts.others_slice', appLocale, { n }),
-    locale: appLocale,
   }
 }
 

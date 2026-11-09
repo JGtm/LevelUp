@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 
 import { StatusBadge } from '../components/StatusBadge'
-import { useAdminT } from '../useAdminText'
+import { useAdminT, useDateLocale } from '../useAdminText'
 import { fetchTitleTomlDraft, useAdminTitleDetail, useAdminTitleDiagnostic } from './queries'
 
 // TomlDraftButton — D10 : récupère le brouillon capabilities.toml (text/plain)
@@ -130,6 +130,7 @@ function KeyStatusList({ title, entries }: { title: string; entries: Record<stri
 
 export function TitleDiagnosticCard({ slug }: { slug: string }) {
   const tA = useAdminT()
+  const dateLocale = useDateLocale()
   const { data } = useAdminTitleDiagnostic(slug)
 
   if (!data) {
@@ -211,7 +212,7 @@ export function TitleDiagnosticCard({ slug }: { slug: string }) {
                         >
                           <span className="font-mono">{tb.name}</span>
                           <span className="tabular-nums">
-                            {tb.exists ? tb.rows.toLocaleString() : tA('admin.titles.diag_absent')}
+                            {tb.exists ? tb.rows.toLocaleString(dateLocale) : tA('admin.titles.diag_absent')}
                           </span>
                         </li>
                       ))}

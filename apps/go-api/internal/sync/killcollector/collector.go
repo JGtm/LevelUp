@@ -59,9 +59,10 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // defaultKillSourceTimeout — la limite de temps PAR MATCH.

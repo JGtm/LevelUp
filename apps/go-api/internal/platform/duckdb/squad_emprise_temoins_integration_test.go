@@ -21,9 +21,10 @@ import (
 
 	"levelup/go-api/internal/analysis/squademprise"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/persist"
 	ddb "levelup/go-api/internal/platform/duckdb"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 const (

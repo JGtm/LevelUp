@@ -29,7 +29,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"levelup/go-api/internal/himap"
+	"github.com/JGtm/LevelUp/libs/himap/himap"
 )
 
 // suffixeVarianteParDefaut : le nom de la variante par défaut d'une carte. Il ne désigne aucun

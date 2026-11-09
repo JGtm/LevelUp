@@ -22,11 +22,12 @@ import (
 	"os"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/titleseams"
-	"levelup/go-api/internal/games/weapons/filmshell"
 	"levelup/go-api/internal/platform/auth"
 	gosync "levelup/go-api/internal/sync"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/filmshell"
 )
 
 const (
@@ -164,7 +165,7 @@ func main() {
 			for i := 0; i < n; i++ {
 				r := faResults[i]
 				wid := filmshell.IDFromBytes(r.WeaponBytes)
-				name := filmshell.WeaponIDToName[wid]
+				name, _ := filmshell.NomDArme(wid)
 				if name == "" {
 					name = "INCONNU"
 				}

@@ -37,9 +37,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // ErrSansNomDeCarte : ce match n'a AUCUNE identité de carte exploitable — la base ne le connaît

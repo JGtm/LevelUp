@@ -29,12 +29,13 @@ import (
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
-	"levelup/go-api/internal/sync/haloclient"
+	"levelup/go-api/internal/sync/filmfetch"
+
+	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
 // poserArtefactCuisson ecrit un artefact au schema courant, avec ou sans compteurs de joueur.
@@ -117,7 +118,7 @@ type fetcherFilms struct {
 	signale map[string]chan struct{}
 }
 
-func (f *fetcherFilms) GetFilmChunks(ctx context.Context, matchID string) ([]haloclient.FilmChunk, bool, error) {
+func (f *fetcherFilms) GetFilmChunks(ctx context.Context, matchID string) ([]filmfetch.FilmChunk, bool, error) {
 	f.mu.Lock()
 	f.vus = append(f.vus, matchID)
 	sig, aSignal := f.signale[matchID]
@@ -130,9 +131,9 @@ func (f *fetcherFilms) GetFilmChunks(ctx context.Context, matchID string) ([]hal
 	}
 	// UN FILM FINALISE (lot L3, 2026-09-23) : le writer du cache refuse une liste sans morceau
 	// des temps forts, et ces tests-ci portent sur la cuisson, pas sur cette regle.
-	return []haloclient.FilmChunk{
-		{Index: 0, ChunkType: haloclient.FilmChunkTypeReplicationData, Data: []byte("x")},
-		{Index: 1, ChunkType: haloclient.FilmChunkTypeHighlightEvents, Data: []byte("tf")},
+	return []filmfetch.FilmChunk{
+		{Index: 0, ChunkType: filmfetch.FilmChunkTypeReplicationData, Data: []byte("x")},
+		{Index: 1, ChunkType: filmfetch.FilmChunkTypeHighlightEvents, Data: []byte("tf")},
 	}, true, nil
 }
 
@@ -152,7 +153,7 @@ func TestBuildAll_CuissonBloquee_CoupeeEtComptee(t *testing.T) {
 	var appels int
 	d := Deps{
 		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug,
-		CacheRoot: t.TempDir(), Fetcher: &fetcherFilms{},
+		FilmRoot: t.TempDir(), Fetcher: &fetcherFilms{},
 		Budget: time.Minute, DeadlineParFilm: 80 * time.Millisecond,
 		BuildOne: func(ctx context.Context, req BuildOneRequest) (BuildOneResult, error) {
 			appels++
@@ -208,7 +209,7 @@ func TestBuildAll_SoldeSousLePlancher_ReporteSansEchec(t *testing.T) {
 	avant := runtime.NumGoroutine()
 	var appels int
 	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: f, Budget: PlancherCuisson / 2,
 		BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
 			appels++
@@ -246,7 +247,7 @@ func TestBuildAll_SoldeSousLePlancher_ReporteSansEchec(t *testing.T) {
 func TestBuildAll_SoldeSousLePlancher_SansCuissonCablee_PersisteQuandMeme(t *testing.T) {
 	f := &fetcherFilms{}
 	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: f, Budget: PlancherCuisson / 2, // sous le plancher, mais positif
 	}
 	b := buildAll(context.Background(), d, []buildWork{{matchID: "0000a001"}, {matchID: "0000a002"}})
@@ -274,7 +275,7 @@ func TestBuildAll_PrechargeLeFilmSuivantPendantLaCuisson(t *testing.T) {
 	avant := runtime.NumGoroutine()
 
 	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: f, Budget: time.Minute,
 		BuildOne: func(ctx context.Context, req BuildOneRequest) (BuildOneResult, error) {
 			if req.MatchID == "0000a001" {
@@ -309,7 +310,7 @@ func TestBuildAll_BudgetEpuise_NePrechargePlus(t *testing.T) {
 	f := &fetcherFilms{}
 	avant := runtime.NumGoroutine()
 	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: f, Budget: -1, // deja epuise : la garde s'applique avant le premier match
 		BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
 			return BuildOneResult{}, errors.New("pas de cuisson reelle dans ce cas")
@@ -325,24 +326,23 @@ func TestBuildAll_BudgetEpuise_NePrechargePlus(t *testing.T) {
 	verifierAucuneGoroutineSurvivante(t, avant)
 }
 
-// TestBuildAll_VerrouTenuAilleurs_CompteEnEchec — item 5.7, vu du cycle.
+// TestBuildAll_VerrouTenuAilleurs_ReporteSansEchec — item 5.7, vu du cycle.
 //
-// Le refus du verrou de decodage remonte comme n'importe quel echec de cuisson : le film compte
-// en ECHEC, le cycle CONTINUE, et rien n'est ecrit. C'est ce qui permet au post-sync de refuser
-// tout de suite (le match revient au cycle suivant) plutot que d'attendre son tour derriere un
-// decodage qui ne lui appartient pas.
-func TestBuildAll_VerrouTenuAilleurs_CompteEnEchec(t *testing.T) {
+// Le refus du verrou de decodage (un autre decodage de film tient la machine : file de regeneration des rejeux, action
+// admin) REPORTE le match au cycle suivant : le cycle CONTINUE, rien n'est ecrit, et le film n'est ni un echec compte
+// ni un avertissement (cf. cuisson_verrou_test.go pour le chemin de production).
+func TestBuildAll_VerrouTenuAilleurs_ReporteSansEchec(t *testing.T) {
 	d := Deps{
-		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
+		RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, FilmRoot: t.TempDir(),
 		Fetcher: &fetcherFilms{}, Budget: time.Minute,
 		BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {
-			return BuildOneResult{}, filmproc.ErrDecodeBusy
+			return BuildOneResult{}, filmrun.ErrDecodeBusy
 		},
 	}
 	b := buildAll(context.Background(), d, []buildWork{{matchID: "0000a001"}, {matchID: "0000a002"}})
-	if b.echecs != 2 || b.construits != 0 {
-		t.Errorf("bilan = %+v, attendu 2 echecs et 0 construit — un verrou tenu n'est ni un "+
-			"succes ni un arret de cycle", b)
+	if b.reportesVerrou != 2 || b.echecs != 0 || b.construits != 0 {
+		t.Errorf("bilan = %+v, attendu 2 reportes (verrou) et ni echec ni construit — un verrou tenu n'est "+
+			"ni un succes, ni un echec, ni un arret de cycle", b)
 	}
 }
 

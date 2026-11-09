@@ -2,8 +2,7 @@
 
 package killcollector
 
-// emprise_v0_passe_research_test.go — LOT V0 DU PLAN `.ai/V7.5/PLAN_EMPRISE_VIES_2026-09-28.md`,
-// VOLET COLLECTEUR : la passe ACTUELLE chronometree, et la mesure V0.1 (le joueur en vehicule
+// emprise_v0_passe_research_test.go — VOLET COLLECTEUR : la passe ACTUELLE chronometree, et la mesure V0.1 (le joueur en vehicule
 // n'est pas situe).
 //
 // # CE QUE CE FICHIER MESURE, ET POURQUOI ICI
@@ -55,13 +54,14 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // v0Garde lit l'environnement et SAUTE proprement quand une entree manque.
@@ -153,7 +153,7 @@ func TestEmpriseV0Identites(t *testing.T) {
 }
 
 // v0Echantillon tient le PIC d'empreinte (meme mesure que la sentinelle du depot,
-// `filmproc.Footprint`) pendant une phase, echantillonne toutes les 10 ms. Au-dela de 10 Gio il
+// `memguard.Footprint`) pendant une phase, echantillonne toutes les 10 ms. Au-dela de 10 Gio il
 // ARRETE le processus : une mesure ne doit jamais faire suffoquer la machine de travail.
 type v0Echantillon struct {
 	pic  atomic.Uint64
@@ -167,7 +167,7 @@ func v0Echantillonner() *v0Echantillon {
 	runtime.GC()
 	debug.FreeOSMemory()
 	s := &v0Echantillon{stop: make(chan struct{}), fini: make(chan struct{})}
-	s.noter(filmproc.Footprint())
+	s.noter(memguard.Footprint())
 	go func() {
 		defer close(s.fini)
 		tk := time.NewTicker(10 * time.Millisecond)
@@ -177,7 +177,7 @@ func v0Echantillonner() *v0Echantillon {
 			case <-s.stop:
 				return
 			case <-tk.C:
-				v := filmproc.Footprint()
+				v := memguard.Footprint()
 				s.noter(v)
 				if v > v0PlafondDur {
 					fmt.Fprintf(os.Stderr, "EMPRISE V0 : empreinte %.2f Gio > plafond — arret\n", float64(v)/(1<<30))
@@ -200,7 +200,7 @@ func (s *v0Echantillon) noter(v uint64) {
 
 // arreter rend le pic de la phase, instant present compris.
 func (s *v0Echantillon) arreter() uint64 {
-	s.noter(filmproc.Footprint())
+	s.noter(memguard.Footprint())
 	close(s.stop)
 	<-s.fini
 	return s.pic.Load()

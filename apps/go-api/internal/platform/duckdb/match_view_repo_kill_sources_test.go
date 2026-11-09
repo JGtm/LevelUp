@@ -16,8 +16,9 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/killscope"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/migration"
+
+	"github.com/JGtm/LevelUp/libs/film/decfilm"
 )
 
 // killSourceRow : une ligne de `match_kill_events` telle que le test la pose, avec les deux

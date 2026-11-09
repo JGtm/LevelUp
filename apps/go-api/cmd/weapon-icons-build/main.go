@@ -8,7 +8,7 @@
 // reproduire ces images après une mise à jour de contenu du jeu.
 //
 // OÙ. Sur une machine qui a Halo Infinite INSTALLÉ. Il lit les archives en LECTURE SEULE et
-// n'écrit que dans le dossier de sortie. cgo requis (décompression Kraken via internal/ooz).
+// n'écrit que dans le dossier de sortie. cgo requis (décompression Kraken via libs/gamefiles/ooz).
 //
 //	go run ./cmd/weapon-icons-build                       # racine du jeu auto-détectée
 //	go run ./cmd/weapon-icons-build -deploy "D:/.../deploy" -out ../../static/...

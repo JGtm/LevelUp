@@ -8,6 +8,9 @@ import {
   resolveNeighborsFromContext,
   filterSpecToQueryString,
   parseFilterSpecFromSearch,
+  labelsFor,
+  labelsOfOptions,
+  labelOfKey,
   type MatchFilterSpec,
   type MatchNavContext,
 } from './navContext'
@@ -273,5 +276,41 @@ describe('hasNavContent', () => {
     expect(hasNavContent({ source: 'home_recent', matchIds: [], contextDescriptor: { kind: 'recent' } })).toBe(true)
     expect(hasNavContent({ source: 'history', matchIds: [] })).toBe(false)
     expect(hasNavContent(undefined)).toBe(false)
+  })
+})
+
+describe('libellé affiché / clé de filtre', () => {
+  // Même sélection vue en français et en anglais : les clés (donc le lien et le filtre) ne bougent pas, seuls
+  // les libellés changent.
+  const options = {
+    fr: [{ value: 'Partie rapide', label: 'Partie rapide' }, { value: 'Grande bataille', label: 'Grande bataille' }],
+    en: [{ value: 'Partie rapide', label: 'Quick Play' }, { value: 'Grande bataille', label: 'Big Team Battle' }],
+  }
+
+  it('le lien porte la clé dans les deux langues', () => {
+    const specOf = (lang: 'fr' | 'en'): MatchFilterSpec => ({
+      playlist_names: ['Partie rapide'],
+      playlist_labels: labelsFor(['Partie rapide'], labelsOfOptions(options[lang])),
+    })
+    expect(filterSpecToQueryString(specOf('fr'))).toBe('playlist=Partie+rapide')
+    expect(filterSpecToQueryString(specOf('en'))).toBe('playlist=Partie+rapide')
+    expect(specOf('en').playlist_labels).toEqual({ 'Partie rapide': 'Quick Play' })
+  })
+
+  it('relire le lien rend les clés, sans libellé', () => {
+    const spec = parseFilterSpecFromSearch(new URLSearchParams('playlist=Partie+rapide'))
+    expect(spec?.playlist_names).toEqual(['Partie rapide'])
+    expect(spec?.playlist_labels).toBeUndefined()
+  })
+
+  it('labelOfKey : libellé de la table, à défaut la clé', () => {
+    expect(labelOfKey('Partie rapide', { 'Partie rapide': 'Quick Play' })).toBe('Quick Play')
+    expect(labelOfKey('Partie rapide', undefined)).toBe('Partie rapide')
+  })
+
+  it('labelsFor : limité aux clés choisies, undefined si aucune', () => {
+    const all = labelsOfOptions(options.en)
+    expect(labelsFor(['Grande bataille'], all)).toEqual({ 'Grande bataille': 'Big Team Battle' })
+    expect(labelsFor(['Inconnue'], all)).toBeUndefined()
   })
 })

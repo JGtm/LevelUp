@@ -45,7 +45,7 @@ func RefreshUserXSTS(ctx context.Context, store *MultiUserTokenStore, xuid strin
 	}
 
 	// Provenance connue (AU4/F12) → préfixe RpsTicket déterministe pour l'échange XBL
-	// user-token en aval (WithTokenClientFamily lu par requestUserToken). Vide = repli
+	// user-token en aval (WithTokenClientFamily lu par la façade d'échange, xbl_exchange.go). Vide = repli
 	// sur le retry d=→t= (migration douce).
 	ctx = WithTokenClientFamily(ctx, tokens.TokenClientFamily)
 	// ... et on MESURE le préfixe réellement accepté, seule donnée fiable : la
@@ -96,7 +96,8 @@ func RefreshUserXSTS(ctx context.Context, store *MultiUserTokenStore, xuid strin
 // rotation reste alors écrite en mémoire (tokens) pour un Upsert ultérieur.
 func refreshAccessTokenForUser(ctx context.Context, store *MultiUserTokenStore, tokens *UserTokens) string {
 	if tokens.OAuthRefreshToken != "" {
-		token, rotatedRT, family, err := ExchangeRefreshTokenWithRotation(ctx, tokens.OAuthRefreshToken)
+		token, rotatedRT, family, err := ExchangeRefreshTokenWithRotation(
+			WithRefreshXUID(ctx, tokens.XUID), tokens.OAuthRefreshToken)
 		if err != nil {
 			slog.WarnContext(ctx, "refresh_user_xsts: refresh OAuth erreur",
 				"xuid", tokens.XUID, "err", err)

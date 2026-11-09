@@ -1,5 +1,35 @@
 ## Dernières nouveautés
 
+**v8.1 — LevelUp pour Windows, la performance par carte et par mode, les variantes de carte comptées ensemble**
+
+**LevelUp pour Windows**
+- **Une application qui s'installe** — Windows 10 ou 11, 64 bits, sans droits d'administrateur. Tes données, ta connexion et tes films restent sur ton ordinateur ; les mises à jour sont proposées, jamais imposées. L'installeur n'est pas signé par un certificat payant : Windows SmartScreen avertit une fois à l'installation (« Informations complémentaires », puis « Exécuter quand même ») ; la page de téléchargement l'explique
+- **Connexion Microsoft dans ton navigateur** — un clic, aucun code à recopier ; l'application passe seule à la suite
+- **Une barre latérale repliable en icônes** (`Ctrl+B`), une fenêtre « À propos » avec la version, les licences et un bouton de recherche de mise à jour, et les cartes, armes et médailles qui s'ouvrent dans un volet à côté de la page
+- **Mode jeu** — tant que Halo Infinite tourne, rien de lourd ne s'exécute en arrière-plan ; tes matchs sont synchronisés à la fermeture du jeu
+- **Notifications Windows, icône de la zone de notification, démarrage avec Windows et tâche qui garde ta connexion vivante** — dans Paramètres, onglet Application, tout désactivé par défaut
+- **Une sauvegarde automatique vers un dossier de ton choix, le passage du site à l'application, et un rapport de diagnostic** en un clic, sans jeton ni mot de passe dedans
+- **Ta langue et ton fuseau horaire** sont repris de Windows au premier lancement
+- **Le même en-tête sur toutes les sections hors accueil**, sur le site comme dans l'application, une page « Télécharger LevelUp pour Windows » et la mention Microsoft dans le pied de page
+
+**Aussi dans cette version**
+- **Score de performance par carte et par mode** — dans la Synthèse, les graphiques « Par carte » et « Par mode » portent une courbe de ton score de performance moyen (de 0 à 100, axe de droite) au-dessus des barres de résultats ; chaque point prend la couleur de son palier
+- **Les variantes de carte comptées avec leur carte de base** — les variantes « - Ranked » et « Heavies » comptent désormais sous leur carte de base dans toutes les statistiques par carte : Tactique, Explorateur, Synthèse, Escouade, Séries temporelles et page d'accueil. Le rejeu et la vue du match gardent le nom de la variante réellement jouée
+- **Le filtre de cartes ramène les variantes** — dans la Synthèse, l'Escouade et Coéquipiers, comme il le faisait déjà dans l'Explorateur
+- **Le briefing de l'Explorateur garde ses cartes** — un filtre trop étroit pour comparer affiche la carte avec la raison au lieu de la retirer ; sous 10 matchs tout reste, avec un avertissement sur la tuile Matchs ; sur les écrans plus étroits, les tuiles se répartissent en lignes égales
+- **Les modes de Halo 5 partout** — le graphique « Par mode » de la Synthèse, vide jusqu'ici pour Halo 5, liste tes modes (Assassin, Capture du drapeau, Bases...)
+- **Les noms dans ta langue, partout** — les noms de cartes, de modes, de listes de jeu, d'armes et de médailles et les textes rédigés par le serveur suivent la langue de l'interface sur toutes les pages ; changer de langue recharge toutes les données dans la nouvelle langue, et l'export CSV est rédigé dans la langue de la page
+- **Les noms de Halo 5** — en français, certains noms qui restaient en anglais apparaissent en français ; en anglais, les cartes et les listes de jeu qui n'affichaient aucun nom l'affichent
+- **Les rangs dans ta langue** — « Diamant IV » plutôt que « Diamond 4 » en français, « Gold VI » plutôt que « Or VI » en anglais, sur toutes les pages ; les défis créés en anglais suivent aussi la langue de l'interface
+- **Capteur, traqueur, écran occultant et champ de réparation de retour sur la carte du rejeu** — dessinés là où ils retombent, aussi longtemps que le film dit qu'ils durent
+- **Le mur de protection et l'écran occultant durent autant que le film le dit** — leur fin est lue dans le match au lieu d'une durée fixe
+- **Traductions dans l'administration** — le formulaire propose un champ par langue ; l'application est prête à accueillir d'autres langues
+- **Option « Exclure BTB du classement carrière » retirée** — elle n'avait aucun effet
+- **La médiathèque suit le disque** — renommer, déplacer ou supprimer une capture dans l'explorateur ne casse plus la galerie, et supprimer depuis l'application envoie l'original à la Corbeille
+- **L'équipement reçu à la réapparition s'affiche au rejeu** — effets, sons et compteurs, et les joueurs immobiles restent visibles jusqu'à leur mort
+- **Un match exclu disparaît aussitôt du graphe de carrière**, et les nouvelles citations arrivent toutes seules au démarrage
+- **Des mises à jour Windows plus légères** — l'application et ses ressources se mettent à jour séparément : une nouvelle version ne télécharge le plus souvent qu'environ 30 Mo
+
 **v8.0 — Le rejeu 2D, le film Theater décodé & un onglet Tactique**
 
 La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jusqu'ici l'application ne l'avait jamais ouvert. C'est fait — et un match se revoit désormais vu du dessus, seconde par seconde, avec tout ce que le film sait écrit autour : qui a tué qui et avec quoi, à quelle distance, qui portait le drapeau, qui a raflé l'arme de puissance, qui est mort avec un équipement qu'il n'a jamais utilisé.

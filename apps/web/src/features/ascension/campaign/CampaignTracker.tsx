@@ -12,6 +12,7 @@
  * pour Close et Abandon (irréversibles).
  */
 import { useState } from 'react'
+import { STICKY_BELOW_TABS_GAP_CLASS } from '@/components/foundations/pageHeaderLogic'
 import { AlertDialog } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -56,7 +57,7 @@ export function CampaignTracker({ playerSlug, campaign, readOnly = false }: Camp
   const linkedCount = campaign.linked_challenge_ids?.length ?? 0
 
   return (
-    <section className="sticky top-2 z-10 space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+    <section className={`sticky ${STICKY_BELOW_TABS_GAP_CLASS} z-10 space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm`}>
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold uppercase text-muted-foreground">

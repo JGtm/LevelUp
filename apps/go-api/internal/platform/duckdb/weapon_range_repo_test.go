@@ -1,7 +1,6 @@
 //go:build integration
 
-// Package duckdb — weapon_range_repo_test.go : tests WeaponRangeRepo (lot 3 du plan
-// .ai/V7.5/PLAN_DUELS_PORTEE_2026-09-06.md).
+// Package duckdb — weapon_range_repo_test.go : tests WeaponRangeRepo.
 //
 // Round-trip sur DB `:memory:` montée par les VRAIES migrations shared (fixture partagée
 // `newKillSourceTestPlayerDB` — jamais une DDL recopiée : une DDL de test qui diverge de la
@@ -29,6 +28,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -390,15 +390,8 @@ func TestWeaponRange_SourceHorsRegistre_Ecartee(t *testing.T) {
 func TestWeaponRange_ResolveWeaponLabels(t *testing.T) {
 	pdb := newKillSourceTestPlayerDB(t)
 	ctx := context.Background()
-	if _, err := pdb.Metadata.Exec(ctx, `CREATE TABLE weapon_name_labels (
-		title_slug VARCHAR, weapon_key VARCHAR, name_en VARCHAR, name_fr VARCHAR,
-		PRIMARY KEY (title_slug, weapon_key))`); err != nil {
-		t.Fatalf("create weapon_name_labels: %v", err)
-	}
-	if _, err := pdb.Metadata.Exec(ctx,
-		"INSERT INTO weapon_name_labels VALUES ('halo_infinite', 'hinf_br75', 'BR75 Battle Rifle', 'Fusil de combat BR75')"); err != nil {
-		t.Fatalf("seed weapon_name_labels: %v", err)
-	}
+	createWeaponNameTables(t, pdb.Metadata)
+	putCuratedWeaponNames(t, pdb.Metadata, "halo_infinite", "hinf_br75", frEn("Fusil de combat BR75", "BR75 Battle Rifle"))
 
 	repo := NewWeaponRangeRepo(pdb, fakeKillSourceClassifier{})
 	labels, err := repo.ResolveWeaponLabels(ctx, []string{"hinf_br75", "hinf_inconnue"})
@@ -409,8 +402,8 @@ func TestWeaponRange_ResolveWeaponLabels(t *testing.T) {
 	if !ok {
 		t.Fatalf("hinf_br75 absente de la résolution : %+v", labels)
 	}
-	if got.Label != "Fusil de combat BR75" || got.LabelEN != "BR75 Battle Rifle" {
-		t.Errorf("libellés = %q / %q, attendu FR-first puis EN-first", got.Label, got.LabelEN)
+	if got.Name.Pick(i18n.LocaleFR) != "Fusil de combat BR75" || got.Name.Pick(i18n.LocaleEN) != "BR75 Battle Rifle" {
+		t.Errorf("libellés = %q / %q, attendu FR-first puis EN-first", got.Name[i18n.LocaleFR], got.Name[i18n.LocaleEN])
 	}
 	if _, present := labels["hinf_inconnue"]; present {
 		t.Errorf("une clé inconnue de la metadata a produit une entrée : %+v", labels)

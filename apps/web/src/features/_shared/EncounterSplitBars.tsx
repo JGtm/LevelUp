@@ -10,6 +10,8 @@
  */
 import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
 import type { Locale } from '@/lib/i18n/locale'
 
 function SplitBar({
@@ -55,8 +57,8 @@ export function AllyEnemySplitBar({
   enemyCount: number
   locale: Locale
 }) {
-  const ttAlly = locale === 'en' ? `${allyCount} matches as ally` : `${allyCount} matchs en allié`
-  const ttEnemy = locale === 'en' ? `${enemyCount} matches as enemy` : `${enemyCount} matchs en ennemi`
+  const ttAlly = formatMessage(commonManifest, 'common.encounter_split.matches_ally', locale, { count: allyCount })
+  const ttEnemy = formatMessage(commonManifest, 'common.encounter_split.matches_enemy', locale, { count: enemyCount })
   return (
     <SplitBar
       leftCount={allyCount}
@@ -78,8 +80,8 @@ export function KDSplitBar({
   deaths: number
   locale: Locale
 }) {
-  const ttKills = locale === 'en' ? `${kills} kills dealt` : `${kills} frags infligés`
-  const ttDeaths = locale === 'en' ? `${deaths} deaths suffered` : `${deaths} morts subies`
+  const ttKills = formatMessage(commonManifest, 'common.encounter_split.kills_dealt', locale, { count: kills })
+  const ttDeaths = formatMessage(commonManifest, 'common.encounter_split.deaths_suffered', locale, { count: deaths })
   return (
     <SplitBar
       leftCount={kills}

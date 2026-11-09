@@ -91,8 +91,7 @@ export const SOUND_MAX_VOICES = 8
  * MÊLÉE, tous équivalents ; une annonce n'en est pas — elle raconte le déroulé du match, et c'est
  * précisément aux instants qu'elle annonce (fin de manche, fin de match) que les derniers tirs,
  * lancers et explosions tiennent les huit voix : une annonce soumise au plafond y serait refusée
- * en silence (historique et mesures : journal `.ai/thought_log.md`, entrées « item 11 » du
- * 2026-09-26 et « contrôle n° 7 » du 2026-10-21).
+ * en silence.
  */
 export function soundOccupiesVoice(sound: { conclusion?: boolean; announcer?: boolean }): boolean {
   return sound.conclusion !== true && sound.announcer !== true

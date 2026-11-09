@@ -4,7 +4,7 @@ import "sync"
 
 // Resolver d'hosts d'ingestion partagé, câblé une fois au boot (server.go) depuis
 // la mappings.Registry. Vit ici (package games, bas niveau) pour être consultable
-// par TOUTES les couches d'ingestion — internal/sync ET internal/platform/halo
+// par TOUTES les couches d'ingestion — internal/sync ET games/halo_infinite/haloadapter
 // ET internal/assets — sans dépendance croisée. Nil tant que non câblé → les
 // call-sites retombent sur leur const Halo legacy (byte-identique).
 var (

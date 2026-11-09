@@ -18,7 +18,9 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // TestRaster_CarteInconnue_NeCiteJamaisLaCarte — univers vide : sentinelle NUE.
@@ -95,8 +97,8 @@ func TestRaster_QuestionEtAxeNommentLaValeurRefusee(t *testing.T) {
 func TestMapsPlayed_MiniPlanDesVignettes(t *testing.T) {
 	repo := &mockTacticalRepo{
 		maps: []domain.TacticalMapRow{
-			{MapID: "a", MapName: "Aquarius", Matchs: domain.PlancherMatchsParCarte, Victoires: 6, Defaites: 4},
-			{MapID: "b", MapName: "Bazaar", Matchs: domain.PlancherMatchsParCarte, Victoires: 5, Defaites: 5},
+			{MapID: "a", MapName: i18n.FromColumns("Aquarius", ""), Matchs: domain.PlancherMatchsParCarte, Victoires: 6, Defaites: 4},
+			{MapID: "b", MapName: i18n.FromColumns("Bazaar", ""), Matchs: domain.PlancherMatchsParCarte, Victoires: 5, Defaites: 5},
 		},
 		// Trois matchs DISTINCTS au meme endroit : la cellule passe le plancher.
 		mortsParCarte: map[string][]domain.PositionSample{
@@ -141,7 +143,7 @@ func TestMapsPlayed_MiniPlanDesVignettes(t *testing.T) {
 func TestMapsPlayed_MiniPlanEnEchecNArretePasLaGrille(t *testing.T) {
 	repo := &mockTacticalRepo{
 		maps: []domain.TacticalMapRow{
-			{MapID: "a", MapName: "Aquarius", Matchs: domain.PlancherMatchsParCarte, Victoires: 6, Defaites: 4},
+			{MapID: "a", MapName: i18n.FromColumns("Aquarius", ""), Matchs: domain.PlancherMatchsParCarte, Victoires: 6, Defaites: 4},
 		},
 		errMortsParCarte: errors.New("lecture en echec"),
 	}
@@ -152,5 +154,40 @@ func TestMapsPlayed_MiniPlanEnEchecNArretePasLaGrille(t *testing.T) {
 	}
 	if len(page.Cartes) != 1 || len(page.Cartes[0].Cellules) != 0 {
 		t.Fatalf("cartes = %+v, attendu une carte sans mini-plan", page.Cartes)
+	}
+}
+
+// TestMapsPlayed_NomsDeCarteSuiventLaLangueDeLaRequete : `map_name` et `map_label` sont servis dans la
+// langue de la requête (D2) ; `map_filter_key` reste le nom de la langue par défaut quelle que soit la
+// langue. Une carte sans nom dans la langue demandée replie sur la langue de repli (jamais vide quand
+// une langue porte un nom, D3).
+func TestMapsPlayed_NomsDeCarteSuiventLaLangueDeLaRequete(t *testing.T) {
+	repo := &mockTacticalRepo{
+		maps: []domain.TacticalMapRow{
+			{MapID: "a", MapName: i18n.Text{i18n.Fallback: "Streets", i18n.Default: "Ruelles"}, Matchs: domain.PlancherMatchsParCarte},
+			{MapID: "b", MapName: i18n.Text{i18n.Fallback: "Bazaar"}, Matchs: domain.PlancherMatchsParCarte},
+		},
+	}
+	for _, c := range []struct {
+		loc                i18n.Locale
+		nom, label, cle    string
+		nomB, labelB, cleB string
+	}{
+		{i18n.Default, "Ruelles", "Ruelles", "Ruelles", "Bazaar", "Bazaar", "Bazaar"},
+		{i18n.Fallback, "Streets", "Streets", "Ruelles", "Bazaar", "Bazaar", "Bazaar"},
+	} {
+		ctx := ctxkeys.WithLocale(context.Background(), string(c.loc))
+		page, err := NewTacticalService(repo, capsPositionsSeules(), tsMoi).
+			MapsPlayed(ctx, domain.TacticalScope{MatchIDs: []string{"m1"}})
+		if err != nil {
+			t.Fatalf("%s : MapsPlayed: %v", c.loc, err)
+		}
+		a, b := page.Cartes[0], page.Cartes[1]
+		if a.MapName != c.nom || a.MapLabel != c.label || a.MapFilterKey != c.cle {
+			t.Errorf("%s, carte a : %q / %q / %q, attendu %q / %q / %q", c.loc, a.MapName, a.MapLabel, a.MapFilterKey, c.nom, c.label, c.cle)
+		}
+		if b.MapName != c.nomB || b.MapLabel != c.labelB || b.MapFilterKey != c.cleB {
+			t.Errorf("%s, carte b : %q / %q / %q, attendu %q / %q / %q", c.loc, b.MapName, b.MapLabel, b.MapFilterKey, c.nomB, c.labelB, c.cleB)
+		}
 	}
 }

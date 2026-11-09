@@ -2,7 +2,7 @@
 //
 // # CE QUE CE GARDE-RAIL EMPECHE DE REECRIRE
 //
-// Le P0 de la revue de la vague 6 (2026-09-11, `.ai/V7.5/REVUE_VAGUE6_2026-09-11.md`, constat C1) :
+// Le P0 de la revue de la vague 6 (2026-09-11, constat C1) :
 // quatre chaines fermaient un portage en ecrivant chacune `raws[i].t1, raws[i].closed = at, true`
 // a sa facon, et l'etat pose par la precedente (`homed`, `captured`) n'etait jamais dementi par
 // une chaine plus precoce. Resultat mesure sur le parc : 21 portages comptes dans deux `closedBy*`
@@ -26,7 +26,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -41,8 +40,7 @@ var flagCarryEndAllowlist = map[string]bool{
 var flagCarryEndWrite = regexp.MustCompile(`\.(t1|closed|homed|captured|closedBy)\s*=[^=]`)
 
 func TestFinDePortageDeDrapeauEcriteSeulementDansFlagCarriesClose(t *testing.T) {
-	_, here, _, _ := runtime.Caller(0)
-	dir := filepath.Join(filepath.Dir(here), "..", "games", "halo_infinite", "film", "replay")
+	dir := surDisque(t, racineBriqueFilm+"/replay")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("lecture de %s : %v", dir, err)

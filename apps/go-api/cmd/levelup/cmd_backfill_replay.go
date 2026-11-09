@@ -23,7 +23,7 @@ package main
 //     jamais un lecteur pendant un decodage.
 //   - « un exec perdrait le verrou process filmdec » : ce verrou de paquet n'existe plus
 //     (retire au lot 2.3 du PLAN_DECODEUR_FILM, avec les globaux de decodage qu'il protegeait).
-//     Le verrou qui reste (`filmproc.AcquireSolo`) est INTER-PROCESSUS : il borne la machine a
+//     Le verrou qui reste (`filmrun.AcquireSolo`) est INTER-PROCESSUS : il borne la machine a
 //     un decodage a la fois, et l'enfant le prend lui-meme. Un film par processus reste une
 //     isolation memoire stricte.
 //
@@ -121,10 +121,11 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/filmproc"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/replaybuild"
+
+	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/LevelUp/libs/film/memguard"
 )
 
 // replayCandidat : un film du cache joint a son match du registre.
@@ -187,19 +188,19 @@ func runBackfillReplay(cfg *config.AppConfig, args []string) error {
 
 	// LE MENAGE NE CUIT RIEN : il s'arrete ici, sans toucher au film ni au registre.
 	if o.purgeNonGeres {
-		return purgerNonGeresSeul(ctx, titlePkg.NewPathResolver(cfg.RepoRoot), o)
+		return purgerNonGeresSeul(ctx, cfg.PathResolver(), o)
 	}
 
 	// FORME ENFANT : un film, puis ce processus meurt. Le code de sortie EST le canal de
 	// retour vers le parent (cf. backfill_child.go) — d'ou l'`os.Exit` plutot qu'un `return`.
 	if strings.TrimSpace(o.one) != "" {
-		if err := refuserUnMatchNonGere(ctx, titlePkg.NewPathResolver(cfg.RepoRoot), o.titleSlug, o.one); err != nil {
+		if err := refuserUnMatchNonGere(ctx, cfg.PathResolver(), o.titleSlug, o.one); err != nil {
 			return err
 		}
 		os.Exit(runBackfillReplayUn(cfg, o, cacheRoot))
 	}
 
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 	report := replayBackfillReport{}
 	candidats, err := replaysACuire(ctx, pr, cacheRoot, o, &report)
 	if err != nil {
@@ -253,7 +254,7 @@ func parserOptionsReplay(args []string) (replayBackfillOptions, error) {
 		"quelle que soit leur date ; s ajoute a --since")
 	fs.StringVar(&o.one, "one", "", "INTERNE : cuire CE seul match dans ce processus (forme appelee par le parent)")
 	fs.Var(&o.mapNames, "map-name", "INTERNE : identite de carte candidate (repetable, du plus fiable au moins fiable)")
-	fs.IntVar(&o.memLimitGiB, "mem-limit-gib", filmproc.DefaultLimitGiB,
+	fs.IntVar(&o.memLimitGiB, "mem-limit-gib", memguard.DefaultLimitGiB,
 		"plafond memoire de chaque enfant, en GiB (0 = desarme)")
 	if err := fs.Parse(args); err != nil {
 		return o, err
@@ -373,7 +374,7 @@ func registreParShort(ctx context.Context, pr *titlePkg.PathResolver, titleSlug 
 	}
 	defer release()
 
-	enParMapID := nomsAssetsEN(ctx, pr, titleSlug)
+	enParMapID := nomsCartesCanoniques(ctx, pr, titleSlug)
 
 	rows, err := db.QueryContext(ctx, `SELECT match_id, map_name, map_id, `+analysis.SQLModeNonGere("")+
 		` FROM match_registry ORDER BY match_id`)
@@ -446,14 +447,14 @@ func mapNamesForOne(ctx context.Context, pr *titlePkg.PathResolver, titleSlug, m
 			"non resolue (passer --map-name)", "err", err, "match_id", matchID)
 		return nil
 	}
-	en := nomsAssetsEN(ctx, pr, titleSlug)[strings.TrimSpace(mapID.String)]
+	en := nomsCartesCanoniques(ctx, pr, titleSlug)[strings.TrimSpace(mapID.String)]
 	return candidatsCarte(en, rawName.String)
 }
 
-// nomsAssetsEN charge la table map_id -> nom EN depuis metadata.asset_translations.
+// nomsCartesCanoniques charge la table map_id -> nom canonique (en-US) depuis metadata.asset_translations.
 // BEST-EFFORT : metadata absente ou tenue RW par un autre process → map vide + message, la
 // passe continue sur les map_name bruts du registre.
-func nomsAssetsEN(ctx context.Context, pr *titlePkg.PathResolver, titleSlug string) map[string]string {
+func nomsCartesCanoniques(ctx context.Context, pr *titlePkg.PathResolver, titleSlug string) map[string]string {
 	metaPath := pr.MetadataDBPath(titleSlug)
 	db, release, err := duckdb.OpenReadForQuery(metaPath)
 	if err != nil {

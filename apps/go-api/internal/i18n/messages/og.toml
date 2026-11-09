@@ -1,0 +1,32 @@
+# Aperçus de liens (Open Graph / Twitter Card), package ogmeta. Les textes sont lus par les
+# robots d'aperçu social, dans la langue du lien partagé.
+
+[og.title.default]
+fr = "{site} — Stats Halo"
+en = "{site} — Halo stats"
+
+[og.description.default]
+fr = "Ton dashboard de statistiques Halo : KDR, taux de victoire, sessions, medailles et plus."
+en = "Your Halo stats dashboard: KDR, win rate, sessions, medals and more."
+
+# Joueur dont le titre du jeu est connu.
+[og.title.player]
+fr = "{gamertag} — Stats {game} · {site}"
+en = "{gamertag} — {game} stats · {site}"
+
+# Joueur sans titre de jeu à citer.
+[og.title.player_bare]
+fr = "{gamertag} — {site}"
+en = "{gamertag} — {site}"
+
+[og.kpi.kdr]
+fr = "KDR {value}"
+en = "KDR {value}"
+
+[og.kpi.win_rate]
+fr = "{value} % de victoires"
+en = "{value}% win rate"
+
+[og.kpi.matches]
+fr = "{count} matchs"
+en = "{count} matches"

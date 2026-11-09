@@ -18,7 +18,7 @@
  * (le backend ignore silencieusement mode_category inconnu côté title).
  */
 import type { FilterContextInput } from '@/lib/api/types'
-import type { MatchFilterSpec } from './navContext'
+import { labelsFor, type MatchFilterLabels, type MatchFilterSpec } from './navContext'
 
 /**
  * Construit un MatchFilterSpec à partir du contexte de filtres global.
@@ -29,6 +29,9 @@ export function filterContextToMatchFilterSpec(
   options?: {
     /** Outcome local supplémentaire (pas dans filterContext). */
     outcome?: 'win' | 'loss' | 'draw' | 'dnf'
+    /** Libellés affichés des playlists et des modes sélectionnés (les clés du contexte filtrent). */
+    playlistLabels?: MatchFilterLabels
+    modeLabels?: MatchFilterLabels
   },
 ): MatchFilterSpec | null {
   if (!ctx) return null
@@ -39,12 +42,16 @@ export function filterContextToMatchFilterSpec(
   const playlists = (ctx.cascade?.playlists ?? []).filter(Boolean)
   if (playlists.length > 0) {
     spec.playlist_names = playlists
+    const labels = labelsFor(playlists, options?.playlistLabels)
+    if (labels) spec.playlist_labels = labels
   }
 
   // Catégories de mode (multi) : idem.
   const modes = (ctx.cascade?.modes ?? []).filter(Boolean)
   if (modes.length > 0) {
     spec.mode_categories = modes
+    const labels = labelsFor(modes, options?.modeLabels)
+    if (labels) spec.mode_labels = labels
   }
 
   // Period dates : on suppose YYYY-MM-DD côté store, on rajoute T00:00:00Z / T23:59:59Z

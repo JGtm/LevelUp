@@ -1,8 +1,7 @@
 /**
  * MatchCadenceChart — match_view.11 (Cadence kills par tranche de temps)
  *
- * Reproduction 1:1 du mock `.ai/charts_specs/_generated/match_view/mock-echarts.html`
- * (chart-10) :
+ * Reproduction 1:1 du mock (chart-10) :
  *  - Bar stacked absolu (mon équipe / adversaires) par phase intra-match.
  *  - 2 courbes lissées : moyenne mobile (window=3) sur chaque équipe.
  *  - markPoint « PIC » sur la valeur la plus haute (toutes équipes confondues).

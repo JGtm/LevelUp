@@ -28,10 +28,8 @@ window_value    = "30"
 cadence         = "monthly"
 eval_type       = "threshold"
 mode_filter     = "pvp"
-label_en        = "Death below expectations"
-label_fr        = "Meurs moins que prévu"
-description_en  = "Die less often than your MMR predicts over 30 days."
-description_fr  = "Meurs moins souvent que prévu pour ton MMR sur 30 jours."
+label           = { en = "Death below expectations", fr = "Meurs moins que prévu" }
+description     = { en = "Die less often than your MMR predicts over 30 days.", fr = "Meurs moins souvent que prévu pour ton MMR sur 30 jours." }
 normal_target   = 1.05
 heroic_target   = 1.15
 legendary_target = 1.25
@@ -48,10 +46,8 @@ window_value    = "3"
 cadence         = "weekly"
 eval_type       = "threshold"
 mode_filter     = "pvp"
-label_en        = "Stay alive (3 sessions)"
-label_fr        = "Reste en vie (3 sessions)"
-description_en  = "Die less often than expected across 3 sessions."
-description_fr  = "Meurs moins souvent que prévu sur 3 sessions."
+label           = { en = "Stay alive (3 sessions)", fr = "Reste en vie (3 sessions)" }
+description     = { en = "Die less often than expected across 3 sessions.", fr = "Meurs moins souvent que prévu sur 3 sessions." }
 normal_target   = 1.05
 heroic_target   = 1.15
 legendary_target = 1.25
@@ -68,10 +64,8 @@ window_value    = "30"
 cadence         = "monthly"
 eval_type       = "threshold"
 mode_filter     = "pvp"
-label_en        = "Tank it (30 days)"
-label_fr        = "Encaisse les coups (30 jours)"
-description_en  = "Absorb more damage per death than the average."
-description_fr  = "Absorbe plus de dégâts par mort que la moyenne."
+label           = { en = "Tank it (30 days)", fr = "Encaisse les coups (30 jours)" }
+description     = { en = "Absorb more damage per death than the average.", fr = "Absorbe plus de dégâts par mort que la moyenne." }
 normal_target   = 1.05
 heroic_target   = 1.20
 legendary_target = 1.40
@@ -88,10 +82,8 @@ window_value    = "30"
 cadence         = "monthly"
 eval_type       = "threshold"
 mode_filter     = "universal"
-label_en        = "Marksman habit (30 days)"
-label_fr        = "Précision tenue (30 jours)"
-description_en  = "Maintain strong accuracy over 30 days."
-description_fr  = "Maintiens une précision élevée sur 30 jours."
+label           = { en = "Marksman habit (30 days)", fr = "Précision tenue (30 jours)" }
+description     = { en = "Maintain strong accuracy over 30 days.", fr = "Maintiens une précision élevée sur 30 jours." }
 normal_target   = 0.45
 heroic_target   = 0.52
 legendary_target = 0.59
@@ -108,10 +100,8 @@ window_value    = "30"
 cadence         = "monthly"
 eval_type       = "threshold"
 mode_filter     = "pvp"
-label_en        = "Above expectations (30 days)"
-label_fr        = "Au-dessus des attentes (30 jours)"
-description_en  = "Outperform your MMR's predicted kill rate for 30 days."
-description_fr  = "Dépasse le taux de kills attendu sur 30 jours."
+label           = { en = "Above expectations (30 days)", fr = "Au-dessus des attentes (30 jours)" }
+description     = { en = "Outperform your MMR's predicted kill rate for 30 days.", fr = "Dépasse le taux de kills attendu sur 30 jours." }
 normal_target   = 1.10
 heroic_target   = 1.25
 legendary_target = 1.40
@@ -128,10 +118,8 @@ window_value    = "1"
 cadence         = "daily"
 eval_type       = "threshold"
 mode_filter     = "universal"
-label_en        = "Score machine"
-label_fr        = "Machine à score"
-description_en  = "Stack personal score across one session."
-description_fr  = "Empile du score perso sur une session."
+label           = { en = "Score machine", fr = "Machine à score" }
+description     = { en = "Stack personal score across one session.", fr = "Empile du score perso sur une session." }
 normal_target   = 800.0
 heroic_target   = 1200.0
 legendary_target = 1600.0
@@ -148,10 +136,8 @@ window_value    = "1"
 cadence         = "daily"
 eval_type       = "threshold"
 mode_filter     = "universal"
-label_en        = "Trade up"
-label_fr        = "Troc favorable"
-description_en  = "Keep deaths low and kills up over one session."
-description_fr  = "Garde un ratio kills/morts solide sur une session."
+label           = { en = "Trade up", fr = "Troc favorable" }
+description     = { en = "Keep deaths low and kills up over one session.", fr = "Garde un ratio kills/morts solide sur une session." }
 normal_target   = 1.05
 heroic_target   = 1.30
 legendary_target = 1.55
@@ -168,10 +154,8 @@ window_value    = "1"
 cadence         = "daily"
 eval_type       = "threshold"
 mode_filter     = "pvp"
-label_en        = "Up close"
-label_fr        = "Au corps à corps"
-description_en  = "Land melee kills throughout the session."
-description_fr  = "Place des kills mêlée sur la session."
+label           = { en = "Up close", fr = "Au corps à corps" }
+description     = { en = "Land melee kills throughout the session.", fr = "Place des kills mêlée sur la session." }
 normal_target   = 1.0
 heroic_target   = 3.0
 legendary_target = 5.0
@@ -188,10 +172,8 @@ window_value    = "1"
 cadence         = "daily"
 eval_type       = "threshold"
 mode_filter     = "pvp"
-label_en        = "Cooked perfectly"
-label_fr        = "Cuisson parfaite"
-description_en  = "Convert grenades into eliminations this session."
-description_fr  = "Convertis les grenades en éliminations cette session."
+label           = { en = "Cooked perfectly", fr = "Cuisson parfaite" }
+description     = { en = "Convert grenades into eliminations this session.", fr = "Convertis les grenades en éliminations cette session." }
 normal_target   = 2.0
 heroic_target   = 4.0
 legendary_target = 6.0
@@ -208,10 +190,8 @@ window_value    = "1"
 cadence         = "daily"
 eval_type       = "threshold"
 mode_filter     = "universal"
-label_en        = "On a roll"
-label_fr        = "Sur ta lancée"
-description_en  = "Reach a high killing spree in one session."
-description_fr  = "Atteins une grosse série de kills sur une session."
+label           = { en = "On a roll", fr = "Sur ta lancée" }
+description     = { en = "Reach a high killing spree in one session.", fr = "Atteins une grosse série de kills sur une session." }
 normal_target   = 4.0
 heroic_target   = 7.0
 legendary_target = 10.0
@@ -230,10 +210,8 @@ window_value    = "3"
 cadence         = "weekly"
 eval_type       = "threshold"
 mode_filter     = "pvp"
-label_en        = "Winning streak"
-label_fr        = "Série gagnante"
-description_en  = "Keep a strong win rate across 3 sessions."
-description_fr  = "Garde un bon taux de victoire sur 3 sessions."
+label           = { en = "Winning streak", fr = "Série gagnante" }
+description     = { en = "Keep a strong win rate across 3 sessions.", fr = "Garde un bon taux de victoire sur 3 sessions." }
 normal_target   = 50.0
 heroic_target   = 60.0
 legendary_target = 70.0
@@ -250,10 +228,8 @@ window_value    = "3"
 cadence         = "weekly"
 eval_type       = "threshold"
 mode_filter     = "pvp"
-label_en        = "Above expectations"
-label_fr        = "Au-dessus des attentes"
-description_en  = "Outperform your MMR's predicted kill rate."
-description_fr  = "Dépasse le taux de kills attendu pour ton MMR."
+label           = { en = "Above expectations", fr = "Au-dessus des attentes" }
+description     = { en = "Outperform your MMR's predicted kill rate.", fr = "Dépasse le taux de kills attendu pour ton MMR." }
 normal_target   = 1.10
 heroic_target   = 1.25
 legendary_target = 1.40
@@ -270,10 +246,8 @@ window_value    = "3"
 cadence         = "weekly"
 eval_type       = "threshold"
 mode_filter     = "universal"
-label_en        = "Consistent slayer"
-label_fr        = "Slayer constant"
-description_en  = "Sustain a high KDA across 3 sessions."
-description_fr  = "Tiens un KDA élevé sur 3 sessions."
+label           = { en = "Consistent slayer", fr = "Slayer constant" }
+description     = { en = "Sustain a high KDA across 3 sessions.", fr = "Tiens un KDA élevé sur 3 sessions." }
 normal_target   = 1.20
 heroic_target   = 1.50
 legendary_target = 1.80
@@ -290,10 +264,8 @@ window_value    = "3"
 cadence         = "weekly"
 eval_type       = "threshold"
 mode_filter     = "universal"
-label_en        = "Pressure cooker"
-label_fr        = "Cocotte-minute"
-description_en  = "Deal sustained damage per minute over 3 sessions."
-description_fr  = "Inflige des dégâts par minute soutenus sur 3 sessions."
+label           = { en = "Pressure cooker", fr = "Cocotte-minute" }
+description     = { en = "Deal sustained damage per minute over 3 sessions.", fr = "Inflige des dégâts par minute soutenus sur 3 sessions." }
 normal_target   = 600.0
 heroic_target   = 800.0
 legendary_target = 1000.0
@@ -310,10 +282,8 @@ window_value    = "3"
 cadence         = "weekly"
 eval_type       = "threshold"
 mode_filter     = "ranked"
-label_en        = "Climbing the ladder"
-label_fr        = "Grimper l'échelle"
-description_en  = "Hold a stable CSR floor across 3 sessions."
-description_fr  = "Tiens un plancher CSR stable sur 3 sessions."
+label           = { en = "Climbing the ladder", fr = "Grimper l'échelle" }
+description     = { en = "Hold a stable CSR floor across 3 sessions.", fr = "Tiens un plancher CSR stable sur 3 sessions." }
 normal_target   = 1200.0
 heroic_target   = 1400.0
 legendary_target = 1600.0
@@ -330,10 +300,8 @@ window_value    = "3"
 cadence         = "weekly"
 eval_type       = "threshold"
 mode_filter     = "universal"
-label_en        = "Headhunter"
-label_fr        = "Chasseur de têtes"
-description_en  = "Maintain a high headshot rate across 3 sessions."
-description_fr  = "Tiens un taux de headshots élevé sur 3 sessions."
+label           = { en = "Headhunter", fr = "Chasseur de têtes" }
+description     = { en = "Maintain a high headshot rate across 3 sessions.", fr = "Tiens un taux de headshots élevé sur 3 sessions." }
 normal_target   = 5.0
 heroic_target   = 9.0
 legendary_target = 14.0
@@ -350,10 +318,8 @@ window_value    = "3"
 cadence         = "weekly"
 eval_type       = "threshold"
 mode_filter     = "universal"
-label_en        = "Sharpshooter"
-label_fr        = "Tireur d'élite"
-description_en  = "Sustain high accuracy across 3 sessions."
-description_fr  = "Tiens une précision élevée sur 3 sessions."
+label           = { en = "Sharpshooter", fr = "Tireur d'élite" }
+description     = { en = "Sustain high accuracy across 3 sessions.", fr = "Tiens une précision élevée sur 3 sessions." }
 normal_target   = 0.45
 heroic_target   = 0.52
 legendary_target = 0.60
@@ -370,10 +336,8 @@ window_value    = "3"
 cadence         = "weekly"
 eval_type       = "threshold"
 mode_filter     = "pvp"
-label_en        = "Heavy hitter"
-label_fr        = "Frappeur lourd"
-description_en  = "Convert power weapons consistently over 3 sessions."
-description_fr  = "Convertis les armes lourdes sur 3 sessions."
+label           = { en = "Heavy hitter", fr = "Frappeur lourd" }
+description     = { en = "Convert power weapons consistently over 3 sessions.", fr = "Convertis les armes lourdes sur 3 sessions." }
 normal_target   = 4.0
 heroic_target   = 8.0
 legendary_target = 13.0
@@ -390,10 +354,8 @@ window_value    = "3"
 cadence         = "weekly"
 eval_type       = "threshold"
 mode_filter     = "universal"
-label_en        = "Steady contributor"
-label_fr        = "Contributeur régulier"
-description_en  = "Hold a high personal score average over 3 sessions."
-description_fr  = "Garde une moyenne de score perso élevée sur 3 sessions."
+label           = { en = "Steady contributor", fr = "Contributeur régulier" }
+description     = { en = "Hold a high personal score average over 3 sessions.", fr = "Garde une moyenne de score perso élevée sur 3 sessions." }
 normal_target   = 900.0
 heroic_target   = 1200.0
 legendary_target = 1500.0
@@ -412,10 +374,8 @@ window_value    = "30"
 cadence         = "monthly"
 eval_type       = "cumulative"
 mode_filter     = "universal"
-label_en        = "Killtacular hunter"
-label_fr        = "Chasseur de Killtacular"
-description_en  = "Earn Killtacular medals over the month."
-description_fr  = "Obtiens des médailles Killtacular sur le mois."
+label           = { en = "Killtacular hunter", fr = "Chasseur de Killtacular" }
+description     = { en = "Earn Killtacular medals over the month.", fr = "Obtiens des médailles Killtacular sur le mois." }
 normal_target   = 3.0
 heroic_target   = 7.0
 legendary_target = 12.0
@@ -433,10 +393,8 @@ window_value    = "30"
 cadence         = "monthly"
 eval_type       = "cumulative"
 mode_filter     = "universal"
-label_en        = "Cartographer"
-label_fr        = "Cartographe"
-description_en  = "Play matches on different maps over the month."
-description_fr  = "Joue sur des maps différentes sur le mois."
+label           = { en = "Cartographer", fr = "Cartographe" }
+description     = { en = "Play matches on different maps over the month.", fr = "Joue sur des maps différentes sur le mois." }
 normal_target   = 5.0
 heroic_target   = 8.0
 legendary_target = 12.0
@@ -454,10 +412,8 @@ window_value    = "30"
 cadence         = "monthly"
 eval_type       = "cumulative"
 mode_filter     = "universal"
-label_en        = "Versatility"
-label_fr        = "Polyvalence"
-description_en  = "Play different game modes over the month."
-description_fr  = "Joue à différents modes de jeu sur le mois."
+label           = { en = "Versatility", fr = "Polyvalence" }
+description     = { en = "Play different game modes over the month.", fr = "Joue à différents modes de jeu sur le mois." }
 normal_target   = 3.0
 heroic_target   = 5.0
 legendary_target = 7.0
@@ -474,10 +430,8 @@ window_value    = "30"
 cadence         = "monthly"
 eval_type       = "cumulative"
 mode_filter     = "ranked"
-label_en        = "Ranked grinder"
-label_fr        = "Grinder classé"
-description_en  = "Accumulate ranked wins over the month."
-description_fr  = "Accumule des victoires classées sur le mois."
+label           = { en = "Ranked grinder", fr = "Grinder classé" }
+description     = { en = "Accumulate ranked wins over the month.", fr = "Accumule des victoires classées sur le mois." }
 normal_target   = 8.0
 heroic_target   = 16.0
 legendary_target = 25.0
@@ -495,10 +449,8 @@ window_value    = "30"
 cadence         = "monthly"
 eval_type       = "cumulative"
 mode_filter     = "pve"
-label_en        = "Wave breaker"
-label_fr        = "Briseur de vagues"
-description_en  = "Survive waves in Firefight matches this month."
-description_fr  = "Survis aux vagues en Firefight ce mois."
+label           = { en = "Wave breaker", fr = "Briseur de vagues" }
+description     = { en = "Survive waves in Firefight matches this month.", fr = "Survis aux vagues en Firefight ce mois." }
 normal_target   = 30.0
 heroic_target   = 60.0
 legendary_target = 100.0
@@ -515,10 +467,8 @@ window_value    = "30"
 cadence         = "monthly"
 eval_type       = "cumulative"
 mode_filter     = "universal"
-label_en        = "Overkill collector"
-label_fr        = "Collectionneur d'Overkill"
-description_en  = "Earn Overkill medals throughout the month."
-description_fr  = "Obtiens des médailles Overkill ce mois."
+label           = { en = "Overkill collector", fr = "Collectionneur d'Overkill" }
+description     = { en = "Earn Overkill medals throughout the month.", fr = "Obtiens des médailles Overkill ce mois." }
 normal_target   = 5.0
 heroic_target   = 12.0
 legendary_target = 22.0
@@ -535,10 +485,8 @@ window_value    = "30"
 cadence         = "monthly"
 eval_type       = "cumulative"
 mode_filter     = "pve"
-label_en        = "Boss slayer"
-label_fr        = "Pourfendeur de boss"
-description_en  = "Take down bosses in Firefight this month."
-description_fr  = "Élimine des boss en Firefight ce mois."
+label           = { en = "Boss slayer", fr = "Pourfendeur de boss" }
+description     = { en = "Take down bosses in Firefight this month.", fr = "Élimine des boss en Firefight ce mois." }
 normal_target   = 5.0
 heroic_target   = 12.0
 legendary_target = 22.0
@@ -556,10 +504,8 @@ window_value    = "30"
 cadence         = "monthly"
 eval_type       = "cumulative"
 mode_filter     = "universal"
-label_en        = "Engagement"
-label_fr        = "Engagement"
-description_en  = "Stay engaged across the month."
-description_fr  = "Reste engagé ce mois."
+label           = { en = "Engagement", fr = "Engagement" }
+description     = { en = "Stay engaged across the month.", fr = "Reste engagé ce mois." }
 normal_target   = 20.0
 heroic_target   = 40.0
 legendary_target = 70.0
@@ -576,10 +522,8 @@ window_value    = "30"
 cadence         = "monthly"
 eval_type       = "cumulative"
 mode_filter     = "universal"
-label_en        = "Killtrocity rare"
-label_fr        = "Killtrocity rare"
-description_en  = "Earn the rare Killtrocity medal this month."
-description_fr  = "Obtiens la rare médaille Killtrocity ce mois."
+label           = { en = "Killtrocity rare", fr = "Killtrocity rare" }
+description     = { en = "Earn the rare Killtrocity medal this month.", fr = "Obtiens la rare médaille Killtrocity ce mois." }
 normal_target   = 1.0
 heroic_target   = 3.0
 legendary_target = 6.0

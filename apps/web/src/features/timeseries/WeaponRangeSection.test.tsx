@@ -45,7 +45,6 @@ const RANGE: SynthesisWeaponRange = {
     {
       weapon_key: 'hinf_br75',
       label: 'Fusil de combat BR75',
-      label_en: 'BR75 Battle Rifle',
       kills: side({ measured: 281, p10: 7.1, median: 13.6, p90: 24.9, above_pct: 37, level_pct: 49.1, below_pct: 13.9 }),
       deaths: side({ measured: 402, p10: 8.9, median: 16.4, p90: 29.7, above_pct: 10, level_pct: 52, below_pct: 38 }),
     },
@@ -53,7 +52,6 @@ const RANGE: SynthesisWeaponRange = {
       // Arme mesurée d'un seul côté : un seul bâton au graphe, des tirets au tableau.
       weapon_key: 'hinf_commando',
       label: 'Commando VK78',
-      label_en: 'VK78 Commando',
       kills: side({ measured: 64, p10: 6.3, median: 11.9, p90: 21.4 }),
     },
   ],
@@ -64,10 +62,10 @@ const RANGE: SynthesisWeaponRange = {
   measured_deaths: 1087,
   total_deaths: 1455,
   below_threshold_kills: [
-    { weapon_key: 'hinf_hydra', label: 'Hydra', label_en: 'Hydra', measured: 6 },
-    { weapon_key: 'hinf_disruptor', label: 'Disrupteur', label_en: 'Disruptor', measured: 4 },
+    { weapon_key: 'hinf_hydra', label: 'Hydra', measured: 6 },
+    { weapon_key: 'hinf_disruptor', label: 'Disrupteur', measured: 4 },
   ],
-  below_threshold_deaths: [{ weapon_key: 'hinf_ravager', label: 'Ravageur', label_en: 'Ravager', measured: 5 }],
+  below_threshold_deaths: [{ weapon_key: 'hinf_ravager', label: 'Ravageur', measured: 5 }],
   opening: {
     median_m: 9.1,
     measured_kills: 618,
@@ -308,8 +306,8 @@ describe('WeaponRangeSection — dégradations', () => {
         range={{
           ...RANGE,
           weapons: [],
-          below_threshold_kills: [{ weapon_key: 'hinf_hydra', label: 'Hydra', label_en: 'Hydra', measured: 6 }],
-          below_threshold_deaths: [{ weapon_key: 'hinf_ravager', label: 'Ravageur', label_en: 'Ravager', measured: 5 }],
+          below_threshold_kills: [{ weapon_key: 'hinf_hydra', label: 'Hydra', measured: 6 }],
+          below_threshold_deaths: [{ weapon_key: 'hinf_ravager', label: 'Ravageur', measured: 5 }],
         }}
       />,
     )
@@ -328,7 +326,9 @@ describe('WeaponRangeSection — dégradations', () => {
 
   it('en anglais, libellés et nombres suivent la locale', () => {
     useAppShellStore.setState({ locale: 'en' })
-    renderWithProviders(<WeaponRangeSection range={RANGE} />)
+    // Le serveur a déjà résolu le nom de l’arme dans la langue de la requête.
+    const rangeEn = { ...RANGE, weapons: [{ ...RANGE.weapons![0], label: 'BR75 Battle Rifle' }, ...RANGE.weapons!.slice(1)] }
+    renderWithProviders(<WeaponRangeSection range={rangeEn} />)
     expect(screen.getByText("Median range of the player's kills")).toBeInTheDocument()
     expect(screen.getByText('BR75 Battle Rifle')).toBeInTheDocument()
     // LES DISTANCES AUSSI suivent la locale : « 7.4 m » et non « 7,4 m ». Sans cette ligne,

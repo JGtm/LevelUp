@@ -15,7 +15,6 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/config"
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync/killcollector"
 )
@@ -39,7 +38,7 @@ import (
 func positionCaptureDeps(
 	ctx context.Context, cfg *config.AppConfig, titleSlug string, sharedDB *sql.DB, porte *killcollector.PorteDeLaBase,
 ) (killcollector.DepsCapture, func()) {
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	pr := cfg.PathResolver()
 
 	// OpenReadOnly (pas OpenReadForQuery) : la precondition de CETTE commande est le SERVEUR
 	// ARRETE (comme pour le handle RW de shared), donc aucun autre process ne tient metadata en
