@@ -132,8 +132,7 @@ func TestSondeDuels(t *testing.T) {
 // duelsBornes charge les bornes de dequantification de la carte depuis le catalogue VERSIONNE.
 func duelsBornes(t *testing.T, carte string) profile.Vec3Range {
 	t.Helper()
-	chemin := filepath.Join("..", "..", "..", "data", "titles", "halo_infinite",
-		"reference", "map_quant_bounds.json")
+	chemin := bornesDeCartes(t)
 	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", chemin, err)

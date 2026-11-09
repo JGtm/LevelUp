@@ -75,8 +75,8 @@ func newTestManager(t *testing.T, key testKey, gate func(context.Context, func()
 	var mu sync.Mutex
 	var seen []Status
 	m := NewManager(Config{
-		Root: root, Expected: strings.Repeat("e", 64), Version: "9.9.9",
-		ReleaseBase: "https://github.com/x/y/releases/download", Key: &pk,
+		Root: root, Expected: strings.Repeat("e", 64),
+		ReleaseBase: "https://github.com/x/y/releases/download/updates", Key: &pk,
 		Downloader: Downloader{Doer: http.DefaultClient, AllowURL: allowAny},
 		Gate:       gate,
 		OnStatus:   func(s Status) { mu.Lock(); seen = append(seen, s); mu.Unlock() },
@@ -300,7 +300,7 @@ func TestOwnDescriptorEtSignatureParAdresse(t *testing.T) {
 	key := newTestKey(t)
 	m, root, _ := newTestManager(t, key, nil)
 	own := m.OwnDescriptor()
-	wantURL := "https://github.com/x/y/releases/download/v9.9.9/levelup-resources-" + strings.Repeat("e", 64) + ".zip"
+	wantURL := "https://github.com/x/y/releases/download/updates/levelup-resources-" + strings.Repeat("e", 64) + ".zip"
 	if own.URL != wantURL || own.SignatureURL != wantURL+".sig" || own.Validate() != nil {
 		t.Fatalf("descripteur propre : %+v (%v)", own, own.Validate())
 	}

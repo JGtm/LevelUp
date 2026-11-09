@@ -64,9 +64,7 @@ type Config struct {
 	Root string
 	// Expected : l'empreinte embarquée par le moteur.
 	Expected string
-	// Version : la version de l'application (compose l'adresse du paquet propre).
-	Version string
-	// ReleaseBase : racine des publications, `https://github.com/<dépôt>/releases/download`.
+	// ReleaseBase : la publication qui garde les paquets, `https://github.com/<dépôt>/releases/download/updates`.
 	ReleaseBase string
 	// Key : la clé publique qui signe archives et installeurs ; vide = aucun téléchargement.
 	Key *PublicKey
@@ -161,10 +159,10 @@ func (m *Manager) set(mut func(*Status)) {
 	}
 }
 
-// OwnDescriptor rend le descripteur du paquet de CE moteur : archive et signature publiées avec sa
-// version. Le moteur ne connaît ainsi jamais qu'un paquet, le sien.
+// OwnDescriptor rend le descripteur du paquet de CE moteur : archive et signature, nommées par son
+// empreinte. Le moteur ne connaît ainsi jamais qu'un paquet, le sien.
 func (m *Manager) OwnDescriptor() Descriptor {
-	base := fmt.Sprintf("%s/v%s/levelup-resources-%s.zip", m.cfg.ReleaseBase, m.cfg.Version, m.cfg.Expected)
+	base := fmt.Sprintf("%s/levelup-resources-%s.zip", m.cfg.ReleaseBase, m.cfg.Expected)
 	return Descriptor{Fingerprint: m.cfg.Expected, URL: base, SignatureURL: base + ".sig"}
 }
 

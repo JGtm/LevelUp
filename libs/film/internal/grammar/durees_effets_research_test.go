@@ -380,7 +380,7 @@ func TestDureesEffets(t *testing.T) {
 	}
 
 	// MARCHE 1 : toutes les vies (sans position), les lectures de l equipement porte.
-	fc, err := epContexte(filepath.Join(racine, id))
+	fc, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil {
 		t.Fatalf("%s : %v", id, err)
 	}
@@ -395,7 +395,7 @@ func TestDureesEffets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fc2, err := epContexte(filepath.Join(racine, id))
+	fc2, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil {
 		t.Fatalf("%s : %v", id, err)
 	}
@@ -410,7 +410,7 @@ func TestDureesEffets(t *testing.T) {
 		}
 	}
 	fc2 = nil
-	fc3, err := epContexte(filepath.Join(racine, id))
+	fc3, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil {
 		t.Fatalf("%s : %v", id, err)
 	}

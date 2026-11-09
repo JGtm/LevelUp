@@ -1,3 +1,62 @@
+## [2026-11-09] Fin du découplage — lot 6 : quatre dépôts dédiés publiés, revue adversariale, clôture du plan — Complété
+
+**Décision technique principale** : relevé 6.1 versé en annexe (`.ai/RELEVE_LOT6_LIBS_2026-11-09.md`, 565 fichiers d'imports, 90 garde-rails sur le disque de `libs/`, 70 fichiers de briques lisant le dépôt hôte) ; les quatre dépôts publics créés par le pilote sur le go du user (09/11, relayé par la session de release) ; extraction par `git subtree split` depuis `main` (un commit par brique : `main` n'a reçu `libs/` que par la fusion compactée v8.1.0), un commit de publication par dépôt (nouveau chemin de module, LICENSE, CI vet/build/test/govulncheck), tag `v0.1.0`, `go get` vérifié hors dépôt. Pour le décodeur : les cinq révisions de couche sont identiques avant et après le changement de chemin (`source-2026-09-16.2`, `profile-2026-10-16`, `grammar-2026-11-08`, `killsource-2026-10-18`, `objectives-2026-10-17`), 35 goldens inchangés ; mais 75 tests atteignaient le dépôt hôte par des `..` chaînés et échouaient hors monorepo : ils passent désormais par `depottest.Racine(t)` (58 fichiers de test, aucun fichier de production), nouveau garde-rail hôte `archlint/film_sortie_par_depottest_test.go` (profondeur des `..` comparée à la position du fichier dans la brique, allowlist vide, rouge sur l'état antérieur : 15 fichiers).
+**Résultats observés** : `halo-infinite-film-decoder` (`0527cb3413`, 2 701 ok / 462 skip, révisions et 35 goldens identiques, CI verte, `go get` vérifié) ; revue adversariale 6.7 : ronde 1 = 0 P0, 1 P1 (NOTICE gamefiles disait AGPL, module GPL-3.0-only), 6 P2 dont 3 corrigés (retrait collant des en-têtes dans une chaîne A -> B -> A, test de la limite de dix redirections, hashes de branches marqués dans le NOTICE), ronde 2 vide ; `halo-infinite-files-reader` (`5434addbe4`, 73 ok / 12 skip), `halo-api` (`7a9a3b692c`, 231 ok / 1 skip), `halo-infinite-map-images` (`0c34dd563b`, 73 ok / 0 skip) publiés, CI verte sur `main` et sur `v0.1.0` ; `libs/film` dans le monorepo : 3 565 pass, 296 skip avant et après, 0 fail ; copie hors dépôt : 0 fail, 462 skip ; `archlint` complet vert (170 s), `make libs-test` vert.
+**Prochaine étape** : PR de la branche `feat/film-lots-5-6` vers `release/v8.1.1` (créée par la session de release à ce signal) ; items 6.5 à 6.8 reportés en chantier séparé « LevelUp consomme les briques publiées » (BACKLOG, registre des reports) ; le NOTICE publié dans `halo-infinite-files-reader` v0.1.0 porte encore l'ancienne rédaction des hashes (licence déjà exacte) : repris à la prochaine republication ; purge des caches `go-build-film` / `golangci-film` à la fermeture.
+
+## [2026-11-09] Fin du découplage — tag `libs/film/v0.1.0` posé ; lot 5 (préalables aux dépôts dédiés) — Complété
+
+**Décision technique principale** : tag annoté `libs/film/v0.1.0` posé sur `6c3fa49063` (v8.1.0 sur `main`) par délégation datée du user (08/11 « ok pour le tag », confirmé le 09/11 à la session de release ; note sous D-2 de l'amendement film de l'ADR 0043), après `go get` depuis un module jetable hors dépôt (`GOWORK=off`) au sha puis à `v0.1.0` : module téléchargé par le proxy, compilé et exécuté. Lot 5 : (5.1, D-11) le `netguard.Doer` installe un `CheckRedirect` sur une copie du client qui retire `Authorization`, `X-343-Authorization-Spartan` et `343-Clearance` quand l'hôte (nom et port) de la redirection diffère de celui de la requête d'origine, puis applique la politique de `Next` ; la brique `libs/haloapi` ne change pas ; témoin T2 d'URL figées de Halo 5 (`client_url_figees_test.go`, 302 vers `image.halocdn.com`) amendé de ce seul point, il rougissait avant l'amendement. (5.2, PUB-4-a) `libs/gamefiles/NOTICE.md` créé : origine des trois `.mvar`, deux `navmesh.blob` et graines de fuzz d'après l'historique git, quatre fichiers à origine non établie dits tels quels ; phrase « No game data » du README de la brique remplacée (elle contredisait le NOTICE).
+**Résultats observés** : trois tests `httptest` du Doer (autre hôte : en-têtes absents, `Accept` conservé ; même hôte : présents ; politique de `Next` respectée) rougissent sans le retrait ; `make libs-test` vert sur les quatre modules ; `go test` des paquets appelants du Doer et `archlint` (297 s) : 0 échec.
+**Prochaine étape** : gate 5.3 puis commit « lot 5 » ; lot 6 (quatre dépôts dédiés ensemble, go du user du 09/11 relayé par la session de release).
+## [2026-11-09] v8.1.1 - un bloc de notes par correctif - Complété
+
+**Décision technique principale** : la clé d'un bloc de notes porte le correctif (`v8.1.1`), et le contrôle de `release.yml` exige ce numéro pour un correctif. Avec une clé tronquée à `vX.Y`, le bloc 8.1.1 écrasait le bloc 8.1 dans l'Aide ; le contrôle du tag aurait aussi refusé la publication.
+
+**Résultats observés** : CI rouge sur `TestReleaseNotesDocs_BlocksExtractedWithoutCollision`, qui a révélé le défaut. Le premier échec de la CI du correctif LUSR (tests de l'API absents) avait une autre cause, non établie.
+
+**Conclusion / prochaine étape** : CI, fusion dans la release, puis `main` et tag sur ce commit.
+
+## [2026-11-09] v8.1.1 - plus de copie de latest.json sur la page de la version - Complété
+
+**Décision technique principale** : proposition de l'utilisateur, retenue : la page de la version ne porte plus que l'installeur complet et les serveurs. La v8.1.0 publiée compte 1 téléchargement de l'installeur ; une 8.1.0 installée passe une fois par l'installeur complet.
+
+**Résultats observés** : la 8.1.1 ne peut plus se recevoir par mise à jour depuis une 8.1.0. Le premier essai réel du chemin `updates` sera donc le passage 8.1.1 vers la version suivante ; à la publication, contrôler les adresses de `updates`.
+
+**Conclusion / prochaine étape** : CI, fusion dans la release, puis `main` et tag sur ce commit.
+
+## [2026-11-09] v8.1.1 - la version de prod ne dépend plus de l'emplacement du tag - Complété
+
+**Décision technique principale** : `deploy.sh` lit la version dans `tauri.conf.json`, que `release.yml` confronte au tag. `git describe` ne voyait pas le tag v8.1.0, posé sur la tête de la branche de release (donc hors de l'histoire de `main` après le squash).
+
+**Résultats observés** : après le déploiement de la 8.1.0, `.env` portait `v8.0.7` et la notification annonçait v8.0.7. Les rejeux ne sont pas concernés. Prod non touchée : corrigé au déploiement de la 8.1.1.
+
+**Conclusion / prochaine étape** : CI, puis accord de l'utilisateur pour le tag et la prod.
+
+## [2026-11-09] v8.1.1 - version, notes et changelog ; purge des archives de films du serveur - Complété
+
+**Décision technique principale** : version 8.1.1 dans `Cargo.toml`, `Cargo.lock` et `tauri.conf.json` ; notes joueurs FR et EN, changelog bilingue. Purge du serveur sur accord de l'utilisateur, avec rapatriement préalable, conforme à la décision du 2026-10-26.
+
+**Résultats observés** : disque du serveur 89 % -> 64 % (28 Go libres). 660 films (19,6 Go) rapatriés sur le poste, tailles identiques sur 22 160 fichiers, 30 empreintes identiques ; 689 retirés du serveur ; 10 récents et 5 dont la copie diffère gardés. Conteneurs sains.
+
+**Conclusion / prochaine étape** : CI de la release, puis tag et mise en prod sur accord de l'utilisateur.
+
+## [2026-11-09] v8.1.1 - fichiers de mise à jour sortis de la page de la version - Complété
+
+**Décision technique principale** : publication unique `updates` du même dépôt, jamais « latest », qui reçoit l'installeur moteur, le paquet et sa signature et `latest.json` ; elle est publiée avant la page. Le choix évite un second dépôt et son jeton. La page garde l'installeur complet, les serveurs et une copie de `latest.json`, seul fichier qu'une application 8.1.0 sait trouver ; le `.sig` de l'installeur moteur n'est plus publié (sa signature est dans `latest.json`). `resourcepack.Config.Version` retiré : le paquet se nomme par son empreinte.
+
+**Résultats observés** : `resourcepack`, `cmd/server` et les garde-rails de workflows verts. La publication elle-même ne s'essaie qu'avec un vrai tag.
+
+**Conclusion / prochaine étape** : à la publication de la 8.1.1, vérifier les adresses de `updates` puis une mise à jour réelle depuis une 8.1.0. Reste : version, notes, changelog.
+
+## [2026-11-09] v8.1.1 - un match non convergent ne bloque plus la révision de notation - Complété
+
+**Décision technique principale** : `ep.ErrNotConverged` typée, réexposée par `skill_v2` ; `noteComputeFailure` compte la non-convergence à part (`skipped_not_converged`) au lieu de rendre le rejeu partiel, car elle dépend des entrées du match et se reproduirait à chaque démarrage. Toute autre erreur de calcul reste un échec. Aucune formule changée : `LUSRRev` inchangée.
+
+**Résultats observés** : revue adversariale (1 relecteur Sonnet, 2 constats recevables, 0 jeté, 11 conditions tiennent). Constat de test corrigé par un garde-rail sur le branchement (aucune donnée de test ne fait diverger le solveur de façon stable) ; détecteur de trous consigné au backlog. Le chemin réel n'a pas été rejoué sur un match non convergent : à constater dans les journaux au premier démarrage de la 8.1.1.
+
+**Conclusion / prochaine étape** : sortir les fichiers de mise à jour de la page de version.
+
 ## [2026-11-09] Rejeu - recalcul complet au schéma 107, rebase sur la release, fusion - En cours
 
 **Décision technique principale** : recalcul de tout le parc local avec la branche (1 442 rejeux reconstruits, 0 erreur de décodage), puis `backfill-usage-summary`, `backfill-pad-tiers --force`, `backfill-vehicle-takes --force`. `backfill-killsource` volontairement non joué (décodage complet, ces correctifs n'y touchent pas). Rebase sur la release après la fin du découplage : fixtures, graines et empreinte `grammar-2026-11-08` régénérées depuis les entrées fictives ; le témoin de recherche qui portait un xuid réel est retiré. La grenade garde un chiffre décalé de 3 px hors de la vignette.
@@ -120495,3 +120554,13 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** 47 273 caractères ramenés à 5 582 ; extraction essayée à sec, y compris le refus d'un numéro différent. Les fichiers restent séparés : la mise à jour télécharge chacun à son adresse, et le fichier de signature du paquet sert au repli du serveur.
 
 **Conclusion / prochaine étape.** E2E verte sur la PR #165, fusion vers `main`.
+
+## [2026-11-09] Release v8.1.0 : déployée en production — Complété
+
+**Décision technique principale.** Tag `v8.1.0` publié, release fusionnée dans `main` (`6c3fa49063`) sur go de l'utilisateur, sauvegarde restic prise avant. Rejeux au schéma 107 du poste copiés sans suppression, site arrêté 16 minutes, puis passes de résumés sur le serveur. Aucune base copiée.
+
+**Résultats observés.** Déploiement, ouvrier et démo verts (10 rejeux de démo en copie). Résumés d'usage : 1 445 écrits, 0 échec ; niveaux d'armes 3 514 ; véhicules 3 524. 2 079 rejeux présents seulement en prod restent à l'ancien schéma, 6 598 matchs sans artefact. Site et démo répondent 200.
+
+**Défaut ouvert.** Un match dont l'EP du LUSR ne converge pas (équipes déséquilibrées, 18 vus) compte comme échec du rejeu au démarrage : la révision n'est jamais rangée pour le joueur et le recalcul recommence à chaque redémarrage. Correctif proposé pour une 8.1.1.
+
+**Conclusion / prochaine étape.** Sha de `main` et go des dépôts dédiés transmis à la session du découplage ; décision de l'utilisateur sur la 8.1.1.

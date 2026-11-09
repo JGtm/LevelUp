@@ -342,7 +342,7 @@ func avantContexteDe(t *testing.T, dir, carte string) (*FilmContext, *profile.Ve
 		t.Logf("  LoadDir %s : %v", dir, err)
 		return nil, nil
 	}
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Logf("  catalogue : %v", err)
 		return nil, nil

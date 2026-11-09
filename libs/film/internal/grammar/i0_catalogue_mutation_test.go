@@ -87,7 +87,7 @@ var decoupageDeReferenceLiveFire = profile.I0Layout{GateBits: 6, AxisW: [3]uint{
 // liveFireEntry rend l'entrée de catalogue de Live Fire, LUE DANS LE CATALOGUE VERSIONNÉ.
 func liveFireEntry(t *testing.T) profile.MapQuantEntry {
 	t.Helper()
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}

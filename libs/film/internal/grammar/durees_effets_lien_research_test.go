@@ -42,7 +42,7 @@ func TestLienDuMur(t *testing.T) {
 		}
 		return "?"
 	}
-	fc, err := epContexte(filepath.Join(racine, id))
+	fc, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestLienDuMur(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fc2, _ := epContexte(filepath.Join(racine, id))
+	fc2, _ := epContexte(t, filepath.Join(racine, id))
 	ch, _, err := ScanEquipmentChanges(fc2, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -66,12 +66,12 @@ func TestLienDuMur(t *testing.T) {
 	usages, suivis := deLireLesUsages(lectures, rangs, famille)
 	deRattacher(usages, suivis)
 
-	fc3, _ := epContexte(filepath.Join(racine, id))
+	fc3, _ := epContexte(t, filepath.Join(racine, id))
 	poses, _, err := ScanEquipmentPlacements(fc3, &wr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fc4, _ := epContexte(filepath.Join(racine, id))
+	fc4, _ := epContexte(t, filepath.Join(racine, id))
 	evs, _, err := ScanEquipmentSpawnEvents(fc4)
 	if err != nil {
 		t.Fatal(err)
@@ -172,7 +172,7 @@ func TestLienDeLEcran(t *testing.T) {
 	if racine == "" || id == "" || out == "" {
 		t.Skip("EQUIPPORTE_FILMS, EQUIPPORTE_ID ou EQUIPPORTE_OUT absent : instrument saute")
 	}
-	fc, err := epContexte(filepath.Join(racine, id))
+	fc, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +209,7 @@ func TestAssocEcran(t *testing.T) {
 		}
 		return "?"
 	}
-	fc, err := epContexte(filepath.Join(racine, id))
+	fc, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +224,7 @@ func TestAssocEcran(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fc2, _ := epContexte(filepath.Join(racine, id))
+	fc2, _ := epContexte(t, filepath.Join(racine, id))
 	ch, _, err := ScanEquipmentChanges(fc2, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -237,7 +237,7 @@ func TestAssocEcran(t *testing.T) {
 	}
 	usages, suivis := deLireLesUsages(lectures, rangs, famille)
 	deRattacher(usages, suivis)
-	fc3, _ := epContexte(filepath.Join(racine, id))
+	fc3, _ := epContexte(t, filepath.Join(racine, id))
 	pistes, err := ScanProjectiles(fc3, &wr)
 	if err != nil {
 		t.Fatal(err)
@@ -302,7 +302,7 @@ func TestDiagEffets(t *testing.T) {
 	if racine == "" || id == "" {
 		t.Skip("EQUIPPORTE_FILMS ou EQUIPPORTE_ID absent : instrument saute")
 	}
-	fc, err := epContexte(filepath.Join(racine, id))
+	fc, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil {
 		t.Fatal(err)
 	}

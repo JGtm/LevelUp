@@ -5,6 +5,10 @@ import (
 	"math"
 )
 
+// ErrNotConverged : le solveur a atteint MaxIters sans passer sous Tolerance. L'échec vient
+// des entrées du match et non d'une ressource : le même calcul échoue à nouveau.
+var ErrNotConverged = fmt.Errorf("ep: EP n'a pas convergé")
+
 // match2team.go : assemble le factor graph d'un match 2-équipes et résout EP
 // pour produire les posteriors.
 //
@@ -179,7 +183,7 @@ func UpdateMatch2Team(m Match2TeamInput, cfg Match2TeamConfig) (teamA, teamB []G
 	runner.MaxIters = cfg.MaxIters
 	_, _, converged := runner.Run()
 	if !converged {
-		return nil, nil, fmt.Errorf("ep: EP n'a pas convergé en %d itérations", cfg.MaxIters)
+		return nil, nil, fmt.Errorf("%w en %d itérations", ErrNotConverged, cfg.MaxIters)
 	}
 
 	outA := extractPosteriors(skillA, m.Tau)

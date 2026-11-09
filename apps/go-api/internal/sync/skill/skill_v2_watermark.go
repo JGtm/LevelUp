@@ -174,6 +174,7 @@ func logShadowBurstDone(ctx context.Context, xuid string, w shadowWork, s shadow
 		"skipped_excluded", s.skippedExcluded,
 		"skipped_write_failed", s.skippedWriteFailed,
 		"skipped_group_held", s.skippedGroupHeld,
+		"skipped_not_converged", s.skippedNotConverged,
 		// Observabilité TS2 : candidats où wᵢ = time_played / durée de gameplay est
 		// alimenté. 0 → pondération inactive (repli wᵢ = 1).
 		"with_gameplay_duration", w.withGameplayDur,

@@ -1,5 +1,10 @@
 ## Dernières nouveautés
 
+**v8.1.1 — Les notes se stabilisent après une mise à jour, et une page de téléchargement plus courte**
+
+- **Les notes ne sont plus recalculées à chaque démarrage** — quand une mise à jour change une formule de note, un match que le calcul ne parvient pas à résoudre pouvait relancer le recalcul à chaque démarrage. Il aboutit désormais une seule fois. Ce match ne reçoit pas de nouvelle note.
+- **Une page de téléchargement plus courte** — elle présente l'installeur et les fichiers serveur. Les fichiers des mises à jour dans l'application sont publiés à part.
+
 **v8.1 — LevelUp pour Windows, la performance par carte et par mode, les variantes de carte comptées ensemble**
 
 **LevelUp pour Windows**

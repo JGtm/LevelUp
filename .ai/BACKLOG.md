@@ -15,6 +15,30 @@
 
 ---
 
+### [ui/navigation] Barre latérale trop haute pour la fenêtre : pas de grosse barre de défilement
+
+**Demande de l'utilisateur (2026-11-09).** Quand la fenêtre est trop petite pour tous les menus de premier niveau, la barre latérale (`components/shell/SidebarPanel.tsx:77`, et `SidebarRail.tsx:333` une fois repliée) affiche la barre de défilement standard, jugée très laide. Chercher d'abord une alternative qui évite le défilement (regrouper les entrées, réduire leur espacement selon la hauteur, reléguer les dernières dans un menu « Plus »). Si le défilement reste nécessaire : barre discrète, placée à gauche. Tenir le mode replié en icônes et tous les thèmes (tokens de couleur). **Effort : S à M.**
+
+---
+
+### [bureau/ui] Volet des référentiels aussi fluide que « Signaler un problème »
+
+**Demande de l'utilisateur (2026-11-09).** Le volet des référentiels (`features/asset-drawer/AssetDockedPanel.tsx`) apparaît et disparaît d'un coup (`if (!isOpen) return null`), alors que le panneau de retour (`features/feedback-drawer/FeedbackDrawer.tsx`) reste monté et glisse par une transition. **Décision de l'utilisateur :** par défaut, le volet passe par-dessus la page, glisse et se ferme au clic dehors, comme le panneau de retour. Un bouton « épingler » le garde ouvert et décale alors la mise en page, avec une transition aussi fluide que le glissement. Point d'attention : animer la largeur de la page la recalcule à chaque image. Retarder le redimensionnement des graphiques à la fin de la transition, et mesurer sur les pages lourdes. État épinglé mémorisé comme l'est déjà le volet. **Effort : M.**
+
+---
+
+### [bureau/ui] Choisir un dossier avec l'explorateur du système
+
+**Demande de l'utilisateur (2026-11-09).** Les réglages qui attendent un chemin de dossier (archive des films, sauvegarde, médias) se remplissent à la main dans l'application de bureau. Ajouter un bouton « Parcourir » qui ouvre le sélecteur de dossier du système, le champ restant modifiable. La coquille a déjà `rfd`, qui fonctionne aussi sur macOS (`rfd::FileDialog`, `apps/desktop/src-tauri/src/main.rs:376` pour « Enregistrer sous ») : exposer `pick_folder()` depuis la coquille. **Rester indépendant du système** : le web se branche sur une capacité de `/bootstrap` (ADR 0044), jamais sur le nom de l'OS, et aucun chemin ni séparateur propre à Windows n'entre dans le code ; sur le site hébergé, sans sélecteur natif, le champ texte reste seul. **Effort : S à M.**
+
+---
+
+### [lusr] Matchs dont le calcul ne converge pas : sans note neuve et comptés comme trous réparables
+
+Depuis la 8.1.1, un match dont le solveur ne converge pas ne bloque plus l'enregistrement de la révision de notation, mais il reste sans note neuve (18 matchs relevés en prod le 2026-11-09, équipes de 4v6 à 16v16). Le détecteur de trous (`sync/skill/lusr_gap_scan.go:116-120`) le classe en trou d'intérieur « réparable par rejeu » dès qu'un match plus récent du groupe a avancé le filigrane : le panneau d'administration l'affiche, et le rejeu retombe sur la même non-convergence. Deux suites à arbitrer : distinguer ces matchs dans le rapport, ou faire converger le solveur (amortissement, `ep/match2team.go`), ce qui change des notes et impose de monter `LUSRRev`. **Effort : S pour le rapport, M pour le solveur.**
+
+---
+
 ### [bureau/ui] Infobulle du bouton de repli restée affichée après le clic
 
 `components/ui/tooltip.tsx:47` ouvre l'infobulle au focus ; après un repli à la souris, le bouton « Déplier la barre
@@ -173,6 +197,52 @@ seul**. Noms et descriptions fixés dans l'ADR 0043 D-5 : `JGtm/halo-api`, `JGtm
 `.ai/HANDOFF_PUBLICATION_BRIQUES_2026-11-01.md`. Avant la création : trancher PUB-2.5-e et PUB-4-a (registre des
 reports, section du 2026-11-01). Coût assumé : versions épinglées, deux PR par changement transverse, deux CI.
 **Effort : L.**
+
+---
+
+### [archi] LevelUp consomme les briques publiées (modules dédiés) — reporté
+
+**Noté le** : 2026-11-09.
+
+LevelUp importe encore les briques depuis `libs/`, alors que les quatre modules dédiés sont publiés en v0.1.0 :
+`github.com/JGtm/halo-infinite-files-reader`, `halo-infinite-map-images`, `halo-api` et `halo-infinite-film-decoder`.
+Reste à faire pointer LevelUp sur ces modules : réécrire les imports de `apps/go-api`, supprimer `libs/` et `go.work`,
+poser les tags dépréciés `libs/<brique>/v0.1.1`, réécrire ADR 0041, `ARCHITECTURE_V6` et `COMMANDS` (EN et FR).
+
+**Pourquoi reporté** : le relevé `.ai/RELEVE_LOT6_LIBS_2026-11-09.md` compte 565 fichiers d'imports, environ 90
+garde-rails qui lisent le code des briques sur le disque sous `libs/`, et environ 70 fichiers de tests des briques qui
+lisent des données de LevelUp. **Condition de reprise** : plan dédié relu par `plan-review`, puis go du user. En
+attendant, les dépôts dédiés sont des copies publiées depuis `libs/` par la recette écrite dans
+`.ai/PLAN_FIN_DECOUPLAGE_BRIQUE_FILM_2026-11-02.md` (section « Reproduire la publication d'une brique »), jamais
+modifiées sur place. **Effort : L.**
+
+---
+
+### [archi/himap] Dépôt `halo-infinite-map-images` : image `coupe.png` sans usage, plugin `sbsp.xml` non crédité
+
+Dans le dépôt dédié `halo-infinite-map-images`, le fichier `himap/coupe.png` n'a aucun usage trouvé dans le code, et
+`himap/sbsp.xml` (plugin de disposition des tags venu du projet Reclaimer) n'est pas crédité. **À trancher par le
+user** : retirer l'image, ou créditer le plugin (NOTICE). **Condition de reprise** : cette décision. La correction se
+fait dans `libs/himap` de LevelUp, puis la brique est republiée en v0.1.1. **Effort : S.**
+Même republication : le `NOTICE.md` publié dans `halo-infinite-files-reader` v0.1.0 cite des hashes de branches compactées sans la convention `(branch)` (corrigé dans LevelUp le 2026-11-09, à reporter dans le dépôt dédié à la prochaine version).
+
+---
+
+### [licences] Origine des octets non établie pour quatre fichiers de test de `libs/gamefiles`
+
+`libs/gamefiles/mapvar/testdata/cliffhanger_map.mvar`, `cliffhanger_ridgeline.mvar` et les deux
+`hinavmesh/testdata/*.navmesh.blob` : l'historique git ne cite pas leur source, et `libs/gamefiles/NOTICE.md` dit
+« origin to be stated by the maintainer ». Ils sont déjà publiés tels quels dans `halo-infinite-files-reader` v0.1.0.
+**Condition de reprise** : le user complète l'origine s'il s'en souvient. **Effort : S.**
+
+---
+
+### [archi/licences] Ligne XUID de la section « Test fixtures » du NOTICE racine devenue fausse pour `libs/film`
+
+Dans le `NOTICE` racine, section « Test fixtures », la ligne « Numeric account identifiers (XUID) are still present »
+reste vraie pour les fixtures sous `apps/`, mais fausse pour `libs/film` depuis le remplacement par des identifiants
+fictifs (`libs/film/testdata/IDENTITES.tsv`). À amender avec le chantier de la brique `halo-infinite-files-reader` et
+des autres dépôts dédiés. **Effort : S.**
 
 ---
 

@@ -42,6 +42,8 @@ import (
 	"path/filepath"
 	"sort"
 	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 )
 
 const (
@@ -76,31 +78,9 @@ func zcOutDir(t *testing.T) string {
 		mustMkdir(t, v)
 		return v
 	}
-	root := zcModuleRoot(t)
-	out := filepath.Join(root, "..", "..", ".ai", "archive", "V7.5", "replay2d", "registre_film", "lotC")
+	out := filepath.Join(depottest.Racine(t), ".ai", "archive", "V7.5", "replay2d", "registre_film", "lotC")
 	mustMkdir(t, out)
 	return out
-}
-
-// zcModuleRoot remonte jusqu'au go.mod (racine du module Go, libs/film).
-func zcModuleRoot(t *testing.T) string {
-	t.Helper()
-	dir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd : %v", err)
-	}
-	for range 12 {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-	t.Fatal("go.mod introuvable au-dessus du repertoire de test")
-	return ""
 }
 
 func mustMkdir(t *testing.T, dir string) {

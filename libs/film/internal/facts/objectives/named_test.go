@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
 	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
@@ -371,12 +372,12 @@ type ligneStatborg struct {
 // lireTableStatborg lit `TABLE_STATS_STATBORG.tsv`. Les lignes de commentaire, la
 // ligne d'en-tete et les lignes sans emplacement (`hill`) sont ecartees.
 //
-// La table est VERSIONNEE : son absence est une anomalie du depot, pas une fixture
-// optionnelle — donc t.Fatal, jamais t.Skip.
+// La table est VERSIONNEE : son absence DANS LE DEPOT HOTE est une anomalie du depot, pas une
+// fixture optionnelle — donc t.Fatal, jamais t.Skip. Hors depot hote (la brique prise seule),
+// `depottest.Racine` saute le test : la table n'y existe pas.
 func lireTableStatborg(t *testing.T) []ligneStatborg {
 	t.Helper()
-	path := filepath.Join("..", "..", "..", "..", "..", ".ai", "refs",
-		"TABLE_STATS_STATBORG.tsv")
+	path := filepath.Join(depottest.Racine(t), ".ai", "refs", "TABLE_STATS_STATBORG.tsv")
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("table figee %s illisible: %v", path, err)

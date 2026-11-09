@@ -147,13 +147,14 @@ func mesurerFermetureCuisson(t *testing.T) string {
 func fermetureDeCuisson(t *testing.T, court string) map[uint32]KeyframeClosureStat {
 	t.Helper()
 	carte := carteDesFaitsDEquivalence(t, court)
+	bornes := bornesDeCartes(t) // hors de la memoisation : un t.Skip n'a pas sa place dans la fermeture
 	stats, err := fermeturesDeCuisson.valeur(court, func() (map[uint32]KeyframeClosureStat, error) {
 		dir := filepath.Join("..", "..", "replay", "testdata", "minifilm_"+court)
 		film, err := source.LoadDir(dir, nil)
 		if err != nil {
 			return nil, fmt.Errorf("LoadDir %s : %w", dir, err)
 		}
-		cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+		cat, err := profile.LoadMapQuantCatalog(bornes)
 		if err != nil {
 			return nil, fmt.Errorf("catalogue de bornes : %w", err)
 		}

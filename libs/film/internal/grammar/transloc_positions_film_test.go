@@ -18,7 +18,6 @@ package grammar
 import (
 	"math"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -55,8 +54,7 @@ var p1bisDynasty = []p1bisAncre{
 // p1bisCatalogue charge le catalogue de bornes versionné du titre et rend l'entrée demandée.
 func p1bisCatalogue(t *testing.T, key string) profile.MapQuantEntry {
 	t.Helper()
-	path := filepath.Join("..", "..", "..", "..", "data", "titles", "halo_infinite",
-		"reference", "map_quant_bounds.json")
+	path := bornesDeCartes(t)
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes %s : %v", path, err)

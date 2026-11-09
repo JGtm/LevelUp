@@ -13,6 +13,9 @@ import (
 	"levelup/go-api/internal/analysis/skill_v2/ep"
 )
 
+// ErrNotConverged : voir ep.ErrNotConverged, exposé ici pour les appelants du calcul EP.
+var ErrNotConverged = ep.ErrNotConverged
+
 // PlayerCounts capture les counts individuels d'un joueur (kills/deaths)
 // observés pendant un match + son statut "quit" (TS2 §9).
 // Utilisé par UpdateTwoTeamWithCountsEP pour injecter le signal individuel.

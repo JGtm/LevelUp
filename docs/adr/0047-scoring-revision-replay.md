@@ -39,7 +39,9 @@ computation by hand. Before this ADR, that rerun was a manual tool.
 
 `batchComputePerformanceScores` returns its write error after the cleanup and the summary, instead of `nil`. A match that
 fails during the LUSR replay (state load, computation, score write, state persist) is counted, and the replay returns
-`ErrPartialRecompute`. `ApplyScoringRevision` stores nothing on any error, partial included. In the interactive path
+`ErrPartialRecompute`. A match whose solver does not converge is not such a failure: the outcome depends on the match
+inputs, so a retry would fail the same way and the revision would never be stored. It is logged, counted apart
+(`skipped_not_converged`) and gets no new score. `ApplyScoringRevision` stores nothing on any error, partial included. In the interactive path
 (`RecomputeAfterExclusion`), a partial replay is logged as a warning and the user action still succeeds, as before this ADR;
 the pending flag stays set, so a repeated request recomputes.
 

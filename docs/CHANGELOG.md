@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [8.1.1] - 2026-11-09
+
+### Fixed
+- **Scoring revision stored despite a non-converging match** (ADR 0047) — a match whose TrueSkill solver does not converge no longer makes a player's full recalculation partial, so the revision is stored instead of being retried at every start. The match is counted apart (`skipped_not_converged`) and gets no new score; other failures still make the recalculation partial.
+- **Version shown by the site** — the deployment now reads the version from the repository instead of the latest tag reachable from `main`. The site and its notification announced v8.0.7 after the 8.1.0 deployment, because that release's tag was not in `main`'s history.
+
+### Changed
+- **Update files out of the version page** — the engine installer, the resource pack with its signature and `latest.json` move to a single `updates` release that is never marked latest. Applications from 8.1.1 read `releases/download/updates/latest.json`; an installed 8.1.0 is not offered this update and takes the full installer once. The engine installer's separate `.sig` is no longer published, its signature being in `latest.json`.
+- **Version page in English**, with a link to the French release notes.
+- **Four dedicated repositories published** for the file readers, map images, film decoder and Halo API (ADR 0043); LevelUp still builds from `libs/`.
+
+### Security
+- **Identity headers removed on cross-host redirects** — the guarded HTTP client strips them when a redirect leaves the original host.
+
 ## [8.1.0] - 2026-11-09
 
 > The Windows application. LevelUp now also ships as an installable per-user Windows application: a Tauri 2 shell that runs **the same Go server** as a child process and shows **the same web interface** in WebView2. On the server side it rests on one new concept, the **deployment profile** (ADR 0044), and on a written shell-to-server contract (ADR 0045). The release also carries the N-language application (ADR 0040), the Go bricks under `libs/` (ADR 0041 to 0043), the Explorer and Summary work, and replay fixes.

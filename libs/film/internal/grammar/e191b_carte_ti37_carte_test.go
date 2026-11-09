@@ -56,7 +56,7 @@ var e191bCarteDeBobine = map[string]string{
 }
 
 func TestE191bFermetureAvecCarte(t *testing.T) {
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}

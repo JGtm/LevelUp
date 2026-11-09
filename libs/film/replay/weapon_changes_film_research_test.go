@@ -11,7 +11,6 @@ package replay
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/JGtm/LevelUp/libs/film/internal/profile"
@@ -23,8 +22,7 @@ func TestWeaponChangesSurFilmReel(t *testing.T) {
 	if dir == "" || mapName == "" {
 		t.Skip("PICKUP_FILM / PICKUP_MAP absents : instrument de mesure saute")
 	}
-	path := filepath.Join("..", "..", "..", "data", "titles", "halo_infinite",
-		"reference", "map_quant_bounds.json")
+	path := bornesDeCartes(t)
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
@@ -75,8 +73,7 @@ func TestGroundWeaponsSurFilmReel(t *testing.T) {
 	if dir == "" || mapName == "" {
 		t.Skip("PICKUP_FILM / PICKUP_MAP absents : instrument de mesure saute")
 	}
-	path := filepath.Join("..", "..", "..", "data", "titles", "halo_infinite",
-		"reference", "map_quant_bounds.json")
+	path := bornesDeCartes(t)
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)

@@ -44,7 +44,7 @@ func miniFilmDigestsPath() string {
 }
 
 func TestEquivalenceMiniFilm(t *testing.T) {
-	lignes, err := digestsMiniBobine()
+	lignes, err := digestsMiniBobine(t)
 	if err != nil {
 		t.Fatalf("balayages de la mini-bobine : %v", err)
 	}
@@ -122,8 +122,8 @@ func lignesDe(contenu string) []string {
 
 // digestsMiniBobine rejoue les SEULS balayages que la mini-bobine supporte, dans un ordre fixe,
 // et rend une ligne `etape\tcompte\tsha` par balayage.
-func digestsMiniBobine() ([]string, error) {
-	entry, err := goldenMapQuant()
+func digestsMiniBobine(t testing.TB) ([]string, error) {
+	entry, err := goldenMapQuant(t)
 	if err != nil {
 		return nil, err
 	}

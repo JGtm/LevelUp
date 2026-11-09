@@ -119,7 +119,7 @@ func TestZeroDisqueBuildFromFilm(t *testing.T) {
 	// chunks de la bobine, et l'entree de catalogue de Cliffhanger (chemin relatif au paquet,
 	// cf. goldenMapQuant) que la production FOURNIT au lieu de la faire lire au decodeur.
 	film := chargerMiniBobineEnMemoire(t)
-	entry, err := goldenMapQuant()
+	entry, err := goldenMapQuant(t)
 	if err != nil {
 		t.Fatalf("entree de catalogue de Cliffhanger illisible : %v", err)
 	}
@@ -156,7 +156,7 @@ func TestZeroDisqueBuildFromFilm(t *testing.T) {
 // echouerait ici.
 func TestZeroDisqueBalayagesSupportes(t *testing.T) {
 	film := chargerMiniBobineEnMemoire(t)
-	entry, err := goldenMapQuant()
+	entry, err := goldenMapQuant(t)
 	if err != nil {
 		t.Fatalf("entree de catalogue de Cliffhanger illisible : %v", err)
 	}

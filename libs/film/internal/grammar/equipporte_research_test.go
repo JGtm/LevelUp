@@ -267,7 +267,7 @@ func TestEquipPorteG1(t *testing.T) {
 	if racine == "" || id == "" || out == "" {
 		t.Skip("EQUIPPORTE_FILMS, EQUIPPORTE_ID ou EQUIPPORTE_OUT absent : instrument saute")
 	}
-	fc, err := epContexte(filepath.Join(racine, id))
+	fc, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil && fc == nil {
 		t.Fatalf("%s : %v", id, err)
 	}
@@ -290,7 +290,7 @@ func TestEquipPorteG1(t *testing.T) {
 		t.Fatalf("%s : marche : %v", id, err)
 	}
 	if c.journal != nil {
-		fc2, _ := epContexte(filepath.Join(racine, id))
+		fc2, _ := epContexte(t, filepath.Join(racine, id))
 		ch, _, err := ScanEquipmentChanges(fc2, nil)
 		if err != nil {
 			t.Logf("%s : i48 : %v", id, err)
@@ -378,7 +378,7 @@ func epPorteur(parent uint32) uint32 {
 // epContexte ouvre le film comme la cuisson quand EQUIPPORTE_CARTE nomme sa carte : entree de
 // catalogue, puis carte et decoupage poses (`replay/build_from_film.go`). Sans carte : le contexte
 // des instruments ([ContexteDeFilm]), qui n est PAS celui de la cuisson.
-func epContexte(dir string) (*FilmContext, error) {
+func epContexte(t testing.TB, dir string) (*FilmContext, error) {
 	carte := os.Getenv("EQUIPPORTE_CARTE")
 	if carte == "" {
 		fc, _, err := ContexteDeFilm(dir)
@@ -387,7 +387,7 @@ func epContexte(dir string) (*FilmContext, error) {
 		}
 		return fc, nil
 	}
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		return nil, err
 	}
@@ -417,7 +417,7 @@ func TestEquipPorteScan(t *testing.T) {
 	if racine == "" || id == "" {
 		t.Skip("EQUIPPORTE_FILMS ou EQUIPPORTE_ID absent : instrument saute")
 	}
-	fc, err := epContexte(filepath.Join(racine, id))
+	fc, err := epContexte(t, filepath.Join(racine, id))
 	if err != nil {
 		t.Fatalf("%s : %v", id, err)
 	}

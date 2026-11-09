@@ -33,7 +33,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -56,8 +55,7 @@ func glResolve(t *testing.T) glSetup {
 	if dir == "" || mapName == "" {
 		t.Skip("PICKUP_FILM / PICKUP_MAP absents : instrument de mesure saute")
 	}
-	path := filepath.Join("..", "..", "..", "data", "titles", "halo_infinite",
-		"reference", "map_quant_bounds.json")
+	path := bornesDeCartes(t)
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)

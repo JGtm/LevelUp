@@ -181,7 +181,7 @@ func contexteDeLaBobine(t *testing.T, court string) *FilmContext {
 	if err != nil {
 		t.Fatalf("LoadDir %s : %v", dir, err)
 	}
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue de bornes : %v", err)
 	}

@@ -289,6 +289,36 @@ path keeps a `v0.1.1` tag whose `go.mod` says `// Deprecated: moved to ...`, set
 LevelUp then requires the tags and `go.work` leaves the repository (a `go.work` outside it, through `GOWORK`, serves
 work on a brick and LevelUp together).
 
+## Amendment of 2026-11-09 — the four dedicated repositories exist; LevelUp still develops under `libs/`
+
+Source: the maintainer's go of 2026-11-09 (relayed by the release coordinator: "give the go to the decoupling session
+so that it publishes the repositories"), executed the same day.
+
+**Done.** The four repositories of the D-5 table exist under `JGtm/`, public, each with the module path
+`github.com/JGtm/<repository>`, its licence file (GPL-3.0-only for `halo-infinite-files-reader`, AGPL-3.0-only for the
+three others), a README, a minimal CI (vet, build, test, govulncheck) and an annotated tag `v0.1.0`, installed with
+`go get` from a throwaway module outside any workspace. `halo-infinite-map-images` requires
+`halo-infinite-files-reader v0.1.0`; `halo-infinite-film-decoder` requires both. The content of each repository is the
+`git subtree split` of `libs/<brick>` on `main` (one commit each: `main` only received `libs/` through the squashed merge
+of v8.1.0, so the detailed history stays in LevelUp) plus one publication commit (module path, licence, CI). The five
+layer revisions of the decoder are identical under the new module path (historical frame, ADR 0041), as are its goldens.
+
+**Not done, by decision of scope.** The second half of D-5 (LevelUp requires the tags, `libs/` and `go.work` leave the
+repository, the deprecation tags `libs/<brick>/v0.1.1` on the old path) is NOT executed. The survey made before the
+split (plan annex `RELEVE_LOT6_LIBS_2026-11-09`) counts 565 importing files in `apps/go-api`, about 90 architecture
+tests that read the bricks' sources on disk under `libs/`, and about 70 brick test files that read the host repository
+(reference catalogues under `data/titles`, `config/titles`, `static/`). That work is a piece of its own, to be planned and
+approved separately. Until it is done:
+
+- `libs/<brick>` in LevelUp stays the place where the bricks are developed, resolved by `go.work` as before; the old
+  module paths and their `v0.1.0` tags stay valid and are NOT deprecated;
+- the dedicated repositories are **published copies**: a new version is produced from LevelUp by the recipe recorded in
+  the plan (subtree split, path rewrite, `go.sum` regenerated, revisions checked, one commit, one tag), never by editing
+  the dedicated repository directly;
+- the brick tests that read the host repository go through `depottest.Racine` only (skip outside the host; host
+  guard-rail `archlint/film_sortie_par_depottest_test.go`), so the suite of a brick taken alone is green with those tests
+  skipped, not failing.
+
 ## References
 
 - Plan: `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`; survey of the four clients:

@@ -1360,31 +1360,85 @@ Ronde 2 (2026-11-08, un relecteur frais sur le seul commit `7aa5d4a6ec`) : aucun
 
 ## Lot 5 — Préalables aux dépôts dédiés (après la clôture du desktop)
 
-- [ ] 5.1 D-11 : `netguard.Doer` retire les en-têtes d'authentification quand une redirection change d'hôte ; test
+- [x] 5.1 D-11 : `netguard.Doer` retire les en-têtes d'authentification quand une redirection change d'hôte ; test
       `httptest` (302 vers un autre hôte : en-tête absent ; même hôte : présent) ; T2 d'URL figées amendé de ce
       point seul.
-- [ ] 5.2 Haiku : PUB-4-a, origine des fixtures `libs/gamefiles/{mapvar,hinavmesh}/testdata` écrite dans le
+- [x] 5.2 Haiku : PUB-4-a, origine des fixtures `libs/gamefiles/{mapvar,hinavmesh}/testdata` écrite dans le
       `NOTICE.md` de `gamefiles` (après instruction par Sonnet si l'origine n'est pas dans l'historique git).
-- [ ] 5.3 Gate : `make libs-test`, T1. Commit « lot 5 ».
+- [x] 5.3 Gate : `make libs-test`, T1. Commit « lot 5 ». (2026-11-09 : `make libs-test` vert sur les quatre modules ; `go test` de `netguard`, `games/...`, `assets`, `mapcatalog`, `sync/filmfetch`, `archlint` : 0 échec, rejoué par le pilote. T1 complet au 6.6.)
 
 ## Lot 6 — Dépôts dédiés, les quatre ensemble (après la release sur `main`)
 
-- [ ] 6.1 Relevé : tout ce qui nomme `libs/<brique>` dans LevelUp (archlint, CI, `go-shards.txt`, Dockerfile,
+- [x] 6.1 (2026-11-09, annexe `.ai/RELEVE_LOT6_LIBS_2026-11-09.md`, 7 catégories, 10 points durs) Relevé : tout ce qui nomme `libs/<brique>` dans LevelUp (archlint, CI, `go-shards.txt`, Dockerfile,
       Makefile, `dependabot.yml`, baselines, `go.work`, docs) ; liste fermée versée au plan.
-- [ ] 6.2 Commandes `gh repo create` préparées (noms et descriptions d'ADR 0043 D-5 + D-8) ; création = geste du
-      user (publication externe).
-- [ ] 6.3 Par brique, ordre `gamefiles` → `himap` → `film`, `haloapi` à part : `git subtree split`, push, nouveau
+- [x] 6.2 (2026-11-09) Quatre dépôts publics créés sous `JGtm/` par le pilote, noms et descriptions d'ADR 0043 D-5 + D-8, sur le go
+      du user du 09/11 relayé par la session de release (« tu donnes le go ... pour qu'elle publie les repos »).
+- [x] 6.3 (2026-11-09, quatre dépôts publiés et tagués `v0.1.0`, détail ci-dessous ; décodeur : révisions et 35 goldens identiques, Sonnet a suffi, Opus non requis) Par brique, ordre `gamefiles` → `himap` → `film`, `haloapi` à part : `git subtree split`, push, nouveau
       chemin de module et imports internes réécrits, `LICENSE`, README, CI minimale (vet, test, lint,
       govulncheck). **Film (Opus)** : prouver AVANT le push que le cadre historique de `revision` rend les
       empreintes insensibles au nouveau chemin et que 3.1 tient l'ordre ; révisions et goldens identiques.
-- [ ] 6.4 Anciens chemins (D-9) : tags `libs/<brique>/v0.1.1` avec `// Deprecated` préparés ; tags `v0.1.0` des
+### Résultat de l'item 6.3 (2026-11-09)
+
+Extraction par `git subtree split` depuis `main` (`6c3fa49063`, plus `92a413bd95` pour `gamefiles`) : un commit par brique, parce que
+`main` n'a reçu `libs/` que par la fusion compactée de la v8.1.0 ; l'historique détaillé reste dans LevelUp. Un commit de publication
+par dépôt (chemin de module, LICENSE, CI vet/build/test/govulncheck, README), tag annoté `v0.1.0`, `go get` vérifié depuis un module
+jetable, CI du dépôt verte.
+
+| Dépôt | Module | Commit | Tests | Notes |
+|---|---|---|---|---|
+| `JGtm/halo-infinite-files-reader` | `github.com/JGtm/halo-infinite-files-reader` | `5434addbe4` | 73 ok, 0 fail, 12 skip (corpus, instruments, fixture `breaker_ctf_breaker.mvar` absente) | README et NOTICE passés d'AGPL à GPL-3.0-only (ooz, ADR 0043 D-1) ; auteur `2834830+JGtm.noreply.github.com` |
+| `JGtm/halo-api` | `github.com/JGtm/halo-api` | `7a9a3b692c` | 231 ok, 0 fail, 1 skip (placeholder d'origine) | le commit du split a été poussé seul avant le commit de publication (identité git absente) ; `main` en avance rapide, aucun tag sur l'état intermédiaire ; auteur `g.sit@hotmail.fr` (déjà sur 1 426 commits publics de `main`) |
+| `JGtm/halo-infinite-map-images` | `github.com/JGtm/halo-infinite-map-images` | `0c34dd563b` | 73 ok, 0 fail, 0 skip (34 fichiers `gamefiles` non exécutés) | `go.sum` du monorepo refait (hash de `files-reader` v0.1.0 différent) ; commit du split poussé avant le commit de publication, `main` en deux commits, aucun tag intermédiaire |
+| `JGtm/halo-infinite-film-decoder` | `github.com/JGtm/halo-infinite-film-decoder` | `0527cb3413` (sur `670b33c075`, split réextrait après le correctif des tests) | 2 701 ok, 0 fail, 462 skip (115 `depottest` hors hôte, le reste = mesures sans variable d'environnement) | 1 407 fichiers réécrits ; cinq révisions identiques avant/après (`grammar-2026-11-08` et non `-10-28` : montée par le chantier rejeu fusionné dans la v8.1.0) ; 35 goldens inchangés ; première tentative arrêtée sans push sur 75 FAIL (tests lisant le dépôt hôte par `..`), corrigés par `depottest.Racine` + garde-rail `film_sortie_par_depottest_test.go` |
+
+- [~] 6.4 (2026-11-09 : tags `v0.1.0` des nouveaux dépôts POSÉS ; tags dépréciés de l'ancien chemin PRÉPARÉS ci-dessous, à poser dans le chantier de consommation, juste avant la suppression de `libs/`, D-9) Anciens chemins (D-9) : tags `libs/<brique>/v0.1.1` avec `// Deprecated` préparés ; tags `v0.1.0` des
       nouveaux dépôts préparés ; posés par le user.
-- [ ] 6.5 LevelUp : `require` des nouveaux modules, imports de go-api réécrits, `libs/` et `go.work` supprimés
+### Tags dépréciés préparés (6.4, à poser AVANT la suppression de `libs/` dans LevelUp, jamais avant)
+
+Pour chaque brique, sur une branche éphémère depuis `main`, un commit qui ajoute en tête du `go.mod` de `libs/<brique>` la ligne
+`// Deprecated: moved to github.com/JGtm/<dépôt>` (au-dessus de `module ...`), puis le tag annoté `libs/<brique>/v0.1.1` sur ce commit, poussé ;
+la branche est ensuite fusionnée normalement (le commentaire reste dans `go.mod` jusqu'à la suppression de `libs/`). Dépôts :
+`gamefiles` -> `halo-infinite-files-reader`, `himap` -> `halo-infinite-map-images`, `haloapi` -> `halo-api`, `film` -> `halo-infinite-film-decoder`.
+Après chaque tag : `go list -m -u github.com/JGtm/LevelUp/libs/<brique>@v0.1.0` depuis un module jetable doit afficher la dépréciation.
+
+### Reproduire la publication d'une brique depuis LevelUp (tant que `libs/` est le lieu de développement)
+
+1. `git subtree split --prefix=libs/<brique> -b split/<brique>` dans un worktree à jour de la branche à publier.
+2. Clone de la branche `split/<brique>` hors du dépôt ; remote = le dépôt dédié ; identité git posée AVANT tout commit.
+3. Réécriture du chemin de module (`github.com/JGtm/LevelUp/libs/<brique>` -> `github.com/JGtm/<dépôt>`) et des `require` vers les briques
+   sœurs déjà publiées ; `go.sum` supprimé puis `go mod tidy` ; `grep -rn "LevelUp/libs" .` vide.
+4. Reprise de README, LICENSE, `.github/workflows/ci.yml`, `.gitignore` du dépôt dédié (`git checkout origin/main -- ...`).
+5. Décodeur : `go test ./revision/...` avant et après, cinq révisions et goldens identiques, sinon arrêt.
+6. `go build`, `go vet` (+ `-tags research` pour le décodeur), `go test ./... -count=1` dans un clone LF : 0 FAIL.
+7. Un commit, push `main`, tag annoté `vX.Y.Z`, `go get` depuis un module jetable, CI du dépôt verte.
+
+- [!] 6.5 (2026-11-09 : NON TRAITÉ dans ce plan, reporté à un chantier séparé « LevelUp consomme les briques publiées » : le relevé 6.1 montre 565 fichiers d'imports, 90 garde-rails lisant `libs/` sur le disque, 70 fichiers de briques couplés au dépôt hôte ; décision de périmètre à présenter au user, non prise par le pilote) LevelUp : `require` des nouveaux modules, imports de go-api réécrits, `libs/` et `go.work` supprimés
       (D-10), ratchets du relevé 6.1 réécrits pour lire les modules par `go list -deps` (dont
       `TestServeurNeLinkePasDeCodeGPL`), CI et Dockerfile ajustés.
-- [ ] 6.6 Gate : T1 (noms identiques modulo chemin), T2, T3, T4, T7, build Docker, lint, CI verte des cinq dépôts.
-- [ ] 6.7 Revue adversariale : deux relecteurs Sonnet aveugles, une ronde.
-- [ ] 6.8 ADR 0043 D-5 exécutée, ADR 0041 amendée (les modules ne sont plus sous `libs/`), `CLAUDE.md`,
+- [!] 6.6 (reporté avec 6.5 ; gates tenus ici : `make libs-test`, `archlint` complet, CI verte des quatre dépôts dédiés, T2 révisions identiques) Gate : T1 (noms identiques modulo chemin), T2, T3, T4, T7, build Docker, lint, CI verte des cinq dépôts.
+- [x] 6.7 (2026-11-09, sur le diff de la branche : Doer netguard + refonte depottest et garde-rail, deux relecteurs Sonnet aveugles, ronde 2 sur les corrections seules ; résultat ci-dessous) Revue adversariale : deux relecteurs Sonnet aveugles, une ronde.
+### Résultat de l'item 6.7 (2026-11-09, revue adversariale)
+
+Ronde 1, deux relecteurs Sonnet aveugles, une lentille chacun.
+- Relecteur « Doer netguard » (diff `platform/netguard`, témoin Halo 5) : 0 P0, 0 P1, 4 P2 ; 11 conditions vérifiées. P2 retenus et
+  corrigés dans le lot : (1) retrait non collant dans une chaîne A -> B -> A (`net/http` retire `Authorization` de façon collante,
+  le Doer réémettait Spartan et clearance au retour sur A) -> `chaineSortieDeLHoteDOrigine`, retrait dès que la chaîne a quitté
+  l'hôte d'origine ; (2) aucun test de la limite de dix redirections -> `TestDoer_RedirectionsLimiteeADix` (10 requêtes reçues,
+  borné à 2 s) et `TestDoer_RedirectionAllerRetourRetireIdentite`. P2 consignés, non traités : schéma ignoré dans la comparaison
+  d'hôte (https -> http même hôte, conforme à la décision « nom et port », même comportement que `net/http`) ; pas de test pour un
+  `Next.CheckRedirect` qui compte lui-même, ni pour un 303, ni pour la casse des en-têtes (`Header.Set` canonicalise).
+- Relecteur « depottest et garde-rail » (58 tests de `libs/film`, 3 fichiers `archlint`, NOTICE et README de `gamefiles`) : 0 P0,
+  1 P1, 1 P2 ; 14 conditions vérifiées. P1 corrigé : `libs/gamefiles/NOTICE.md` disait AGPL-3.0 alors que le module est
+  GPL-3.0-only (ADR 0043 D-1/D-4, `ooz`) ; section licence du README alignée sur la copie publiée. P2 corrigé : six hashes cités
+  dans le NOTICE n'existent pas sur `main` (branches compactées) -> marqués `(branch)` avec la convention en tête, faits
+  d'introduction et de déplacement réécrits d'après `git log origin/main` (Cliffhanger `1fb02cfe59` puis `5abf8c78c0`, Vagabond et
+  navmesh `c8eeea23a2`, déplacement sous `libs/gamefiles/` par `6c3fa49063`). Aucun constat sur le garde-rail ni sur les helpers.
+
+Ronde 2 (contexte frais, corrections seules) : aucun défaut recevable, 13 conditions vérifiées (`via` ordonné dans `net/http`,
+compte réel de 10 requêtes, politique de `Next` appliquée, `-race` vert, hashes et faits d'historique exacts, licence cohérente).
+Décroissance P0+P1 : 1 -> 0.
+
+- [~] 6.8 (2026-11-09 : ADR 0043 amendée « dépôts dédiés publiés, LevelUp développe encore sous `libs/` », `CLAUDE.md` ligne des briques ; ADR 0041, `ARCHITECTURE_V6` et `COMMANDS` restent EXACTS tant que `libs/` existe : à réécrire avec 6.5) ADR 0043 D-5 exécutée, ADR 0041 amendée (les modules ne sont plus sous `libs/`), `CLAUDE.md`,
       `ARCHITECTURE_V6` et `COMMANDS` EN et FR ; backlog et registre ; journal ; purge des caches.
 
 ## Protocole de reprise de session
@@ -1576,3 +1630,29 @@ Lot 4 (2026-11-08), notées, non traitées :
   montée de `SchemaDesFaits` oblige à régénérer les graines (`-update-graines-faits`). Règle à confirmer par le pilote ;
   non traitée au-delà de C1.
 - **D-L4-15** Le motif `\.bin$` de `binairesCouverts` (`apps/go-api/cmd/anonymise-gamertags/binaires_couverts_test.go`) accepte tout `.bin` neuf de `libs/film` sans inscription : un film de test ajouté avec un xuid réel ne rougit que par l'outil d'anonymisation (item 4.0), pas par ce ratchet. Remède possible : liste nominative des dossiers de films. Non traité.
+
+Lot 5 (2026-11-09), notées, non traitées :
+
+- **D-L5-1** Origine des octets non établie par l'historique pour `mapvar/testdata/cliffhanger_map.mvar`,
+  `cliffhanger_ridgeline.mvar` (commit `2044b71397`, aucune source citée) et les deux `hinavmesh/testdata/*.navmesh.blob`
+  (`682ae21951`, canal UGC documenté par `cmd/mapnav-fetch` mais non relié à ces octets). Le `NOTICE.md` de `gamefiles`
+  dit « origin to be stated by the maintainer » : à compléter par le user s'il s'en souvient, sinon la mention reste.
+- **D-L5-2** Le `NOTICE` racine (section « Test fixtures », ligne 96) dit encore « Numeric account identifiers (XUID) are
+  still present » : vrai pour les fixtures sous `apps/`, faux pour `libs/film` depuis le lot 4 (identifiants fictifs,
+  `testdata/IDENTITES.tsv`). À amender au 6.8 (docs), pas avant.
+- **D-L5-3** Les fixtures de `gamefiles` (trois `.mvar`, deux `navmesh.blob`) sont du contenu de jeu détenu par Microsoft
+  (NOTICE racine : « not licensed for any other use ») et partent dans le zip du module publié (`testdata/` est inclus
+  par le proxy Go) ; `libs/gamefiles/v0.1.0` les porte déjà. Admis par ADR 0041 D5 (exception explicite) et déjà public
+  dans ce dépôt ; à redire dans le README du dépôt dédié au 6.3, aucune décision neuve.
+- **D-L5-4** `libs/haloapi/halo5/doc.go:12` dit que les redirections sont suivies par le `Doer` sans mentionner le retrait
+  des en-têtes d'identité ; la politique vit dans LevelUp (D-11), la brique n'a pas à la décrire. Non traité.
+- **D-L5-5** Le retrait des en-têtes compare l'hôte de la redirection à celui de la requête d'ORIGINE (`via[0]`) : dans
+  une chaîne A → B → A, les en-têtes sont réémis au retour sur A (hôte d'origine). Comportement voulu, noté pour mémoire.
+- **D-L6-1** `libs/himap/himap/coupe.png` (18 Ko, suivi depuis D1 `a5bae50b44`) : aucun usage trouvé dans le code ; `sbsp.xml` (131 Ko)
+  est le plugin de disposition des tags lu par les tests `gamefiles` (origine tierce, Reclaimer, non créditée dans la brique, qui n'a pas
+  de NOTICE). Les deux partent dans `halo-infinite-map-images` v0.1.0. À trancher par le user : retirer `coupe.png`, créditer `sbsp.xml`.
+- **D-L6-2** Les commits de publication de `halo-api` et `halo-infinite-map-images` sont précédés sur `main` du commit brut du split (ancien
+  chemin de module, sans CI), poussé par erreur avant le commit de publication (identité git absente du clone). Aucun tag ne pointe dessus ;
+  un `go get` à ce sha donnerait un module au chemin `LevelUp/libs/...` qui ne correspond pas au dépôt (refusé par Go). Sans effet, noté.
+- **D-L6-3** Auteurs des commits publiés : `2834830+JGtm@users.noreply.github.com` (files-reader, film), `g.sit@hotmail.fr` (halo-api,
+  adresse déjà portée par 1 426 commits publics de `main`), `guillaume@levelup.local` (map-images). Hétérogène, sans exposition neuve.

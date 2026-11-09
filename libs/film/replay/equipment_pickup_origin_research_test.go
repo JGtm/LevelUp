@@ -62,7 +62,6 @@ package replay
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -270,8 +269,7 @@ func epoCompte(b *epoBilan, n int) {
 func epoSoclesDeCarte(t *testing.T, s glSetup, pickups []types.BipedPickup, familles map[uint32]string) {
 	t.Helper()
 	nom := os.Getenv("PICKUP_MAP")
-	cat, err := LoadMapWeaponPads(filepath.Join("..", "..", "..", "data", "titles",
-		"halo_infinite", "reference", "map_weapon_pads.json"))
+	cat, err := LoadMapWeaponPads(cheminCatalogueLivre(t, "map_weapon_pads.json"))
 	if err != nil {
 		t.Logf("O3 : catalogue des socles illisible (%v) — branche non mesurée", err)
 		return

@@ -162,14 +162,19 @@ jobs:
 
       # Une release sans notes n'est pas une release : publish échouerait, mais après 25 minutes de
       # compilation. La première section des notes de version doit exister dans les deux langues et porter
-      # le numéro majeur.mineur du tag : sinon le texte d'une version précédente partirait avec celle-ci.
+      # le numéro du tag (vX.Y pour une version en .0, vX.Y.Z pour un correctif) : sinon le texte d'une
+      # version précédente partirait avec celle-ci.
       - name: Notes de version FR et EN à jour (tag)
         if: steps.ver.outputs.tag == 'true'
         run: |
           version="${{ steps.ver.outputs.version }}"
+          case "$version" in
+            *.0) attendu="${version%.*}" ;;
+            *) attendu="$version" ;;
+          esac
           for notes in docs/FR/RELEASE_NOTES.md docs/RELEASE_NOTES.md; do
-            if ! awk '/^\*\*v[0-9]/{print; exit}' "$notes" | grep -q "^\*\*v${version%.*}[^0-9.]"; then
-              echo "::error::la première section de ${notes} ne porte pas v${version%.*}"
+            if ! awk '/^\*\*v[0-9]/{print; exit}' "$notes" | grep -q "^\*\*v${attendu}[^0-9.]"; then
+              echo "::error::la première section de ${notes} ne porte pas v${attendu}"
               exit 1
             fi
           done
@@ -403,9 +408,10 @@ jobs:
       - name: List artifacts
         run: ls -lh dist/
 
-      # Le corps de la release et les notes de l'updater reprennent la première section de
-      # docs/FR/RELEASE_NOTES.md (docs/RELEASE_NOTES.md pour notes_en) : le texte écrit pour les joueurs,
-      # pas le journal technique. Une section vide fait échouer la publication.
+      # La page de la release est en anglais, langue principale du dépôt, avec un lien vers la version française.
+      # Son corps et les notes de l'updater reprennent la première section de docs/RELEASE_NOTES.md et de
+      # docs/FR/RELEASE_NOTES.md (notes, notes_en) : le texte écrit pour les joueurs, pas le journal technique.
+      # Une section vide fait échouer la publication.
       - name: Notes de version
         env:
           TAG: ${{ github.ref_name }}
@@ -420,15 +426,15 @@ jobs:
             fi
           done
           {
-            echo "**[Télécharger LevelUp ${version} pour Windows](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/LevelUp_${version}_x64-setup.exe)** (Windows 10 ou 11, 64 bits). L'installeur n'est pas signé par un certificat payant : Windows affiche un avertissement, cliquer sur « Informations complémentaires » puis « Exécuter quand même »."
+            echo "**[Download LevelUp ${version} for Windows](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/LevelUp_${version}_x64-setup.exe)** (Windows 10 or 11, 64-bit). The installer isn't signed with a paid certificate: Windows shows a warning, click \"More info\" then \"Run anyway\"."
             echo
-            cat notes_section.md
+            cat notes_section_en.md
             echo
-            echo "Détail technique : [journal des modifications](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/FR/CHANGELOG.md). Les autres fichiers servent aux mises à jour de l'application et à l'auto-hébergement."
+            echo "Technical details: [changelog](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/CHANGELOG.md). [Version française](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/FR/RELEASE_NOTES.md). The server files are for self-hosting."
           } > release_body.md
 
       # latest.json : le fichier que l'updater de l'application interroge
-      # (https://github.com/<dépôt>/releases/latest/download/latest.json). `notes` = la première section des
+      # (https://github.com/<dépôt>/releases/download/updates/latest.json). `notes` = la première section des
       # notes de version FR (affichée à l'utilisateur avant d'installer ; seule clé que lit un client sans
       # `notes_en`) et `notes_en` = sa version EN (choisie par la coquille quand
       # la langue de l'utilisateur n'est pas la langue par défaut) ; `signature` = contenu du .sig produit
@@ -452,7 +458,7 @@ jobs:
           done
           jq -n \
             --arg fingerprint "$fingerprint" \
-            --arg pack_url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${pack}" \
+            --arg pack_url "https://github.com/${GITHUB_REPOSITORY}/releases/download/updates/${pack}" \
             --arg pack_sha256 "$(sha256sum "dist/${pack}" | cut -d' ' -f1)" \
             --argjson pack_size "$(stat -c %s "dist/${pack}")" \
             --rawfile pack_signature "dist/${pack}.sig" \
@@ -461,7 +467,7 @@ jobs:
             --rawfile notes_en notes_section_en.md \
             --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --rawfile signature "dist/${installer}.sig" \
-            --arg url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${installer}" \
+            --arg url "https://github.com/${GITHUB_REPOSITORY}/releases/download/updates/${installer}" \
             '{version: $version, notes: $notes, notes_en: $notes_en, pub_date: $pub_date,
               platforms: {"windows-x86_64": {signature: ($signature | rtrimstr("\n")), url: $url}},
               resources: {fingerprint: $fingerprint, url: $pack_url, sha256: $pack_sha256, size: $pack_size,
@@ -470,18 +476,32 @@ jobs:
           jq -e '.version != "" and ([.notes | explode[] | select(. > 32)] | length) > 0 and ([.notes_en | explode[] | select(. > 32)] | length) > 0 and (.platforms["windows-x86_64"].signature | length) > 0 and (.platforms["windows-x86_64"].url | endswith("-engine-setup.exe")) and (.platforms["windows-x86_64"].url | startswith("https://")) and (.resources.fingerprint | test("^[0-9a-f]{64}$")) and (.resources.url | startswith("https://")) and (.resources.sha256 | test("^[0-9a-f]{64}$")) and (.resources.size > 0) and (.resources.signature | length) > 0' dist/latest.json
           cat dist/latest.json
 
+      # Les fichiers que seule l'application lit vivent dans une publication unique, jamais marquée « latest » :
+      # les fichiers de chaque version s'y ajoutent (nommés par version ou empreinte), latest.json y est remplacé.
+      # Elle passe avant la page de la version : latest.json ne désigne jamais un fichier absent.
+      - name: Fichiers des mises à jour
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          tag_name: updates
+          name: Application updates
+          prerelease: true
+          make_latest: false
+          generate_release_notes: false
+          body: Files read by LevelUp's in-app updates. To install the application, use the latest release.
+          files: |
+            dist/LevelUp_*_x64-engine-setup.exe
+            dist/levelup-resources-*.zip
+            dist/levelup-resources-*.zip.sig
+            dist/latest.json
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
+          make_latest: true
           generate_release_notes: false
           files: |
             dist/levelup-server-linux-amd64
             dist/levelup-server-darwin-arm64
             dist/levelup-server-windows-amd64.exe
             dist/LevelUp_*_x64-setup.exe
-            dist/LevelUp_*_x64-engine-setup.exe
-            dist/LevelUp_*_x64-engine-setup.exe.sig
-            dist/levelup-resources-*.zip
-            dist/levelup-resources-*.zip.sig
-            dist/latest.json
           body_path: release_body.md

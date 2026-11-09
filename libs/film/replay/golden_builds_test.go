@@ -112,9 +112,9 @@ func (b goldenBuild) assemblyPath() string {
 
 // mapQuant rend l entree de catalogue de la carte du film, par le MEME chemin que la production
 // (`NormalizeMapName` via `Lookup`).
-func (b goldenBuild) mapQuant() (profile.MapQuantEntry, error) {
-	path := filepath.Join("..", "..", "..", "data", "titles",
-		"halo_infinite", "reference", "map_quant_bounds.json")
+func (b goldenBuild) mapQuant(t testing.TB) (profile.MapQuantEntry, error) {
+	t.Helper()
+	path := bornesDeCartes(t)
 	cat, err := profile.LoadMapQuantCatalog(path)
 	if err != nil {
 		return profile.MapQuantEntry{}, fmt.Errorf("catalogue de bornes %s : %w", path, err)
@@ -163,7 +163,7 @@ func TestGoldenBuildsRegenerate(t *testing.T) {
 // jamais toucher un film.
 func regenererGoldenBuild(t *testing.T, b goldenBuild, dir string) {
 	t.Helper()
-	entry, err := b.mapQuant()
+	entry, err := b.mapQuant(t)
 	if err != nil {
 		t.Fatalf("carte %q hors catalogue de bornes : %v", b.Map, err)
 	}
@@ -314,7 +314,7 @@ func chargerGoldenBuild(t *testing.T, b goldenBuild) (*FilmFacts, profile.MapQua
 	if _, err := buf.ReadFrom(zr); err != nil {
 		t.Fatalf("decompression %s : %v", b.inputsPath(), err)
 	}
-	entry, err := b.mapQuant()
+	entry, err := b.mapQuant(t)
 	if err != nil {
 		t.Fatalf("carte %q hors catalogue : %v", b.Map, err)
 	}

@@ -13,13 +13,13 @@ import (
 
 // referenceDuDepot rend le chemin d'un catalogue de reference versionne du titre
 // (`data/titles/halo_infinite/reference/<nom>`) dans le depot hote.
-func referenceDuDepot(t *testing.T, nom string) string {
+func referenceDuDepot(t testing.TB, nom string) string {
 	t.Helper()
 	return filepath.Join(depottest.Racine(t), "data", "titles", "halo_infinite", "reference", nom)
 }
 
 // bornesDeCartes rend le chemin du catalogue des bornes de quantification (`map_quant_bounds.json`).
-func bornesDeCartes(t *testing.T) string {
+func bornesDeCartes(t testing.TB) string {
 	t.Helper()
 	return referenceDuDepot(t, "map_quant_bounds.json")
 }

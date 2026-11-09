@@ -96,7 +96,7 @@ func TestAttestationSurFilm(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("film %s : ok=%v err=%v", dir, ok, err)
 	}
-	cat, err := profile.LoadMapQuantCatalog(e191bCatalogue())
+	cat, err := profile.LoadMapQuantCatalog(bornesDeCartes(t))
 	if err != nil {
 		t.Fatalf("catalogue : %v", err)
 	}
