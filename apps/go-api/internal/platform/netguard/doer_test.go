@@ -12,7 +12,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/platform/netguard"
 
@@ -198,5 +200,59 @@ func TestDoer_RedirectionRespecteLaPolitiqueDeNext(t *testing.T) {
 	}
 	if next.CheckRedirect == nil {
 		t.Error("le client Next a été modifié")
+	}
+}
+
+// TestDoer_RedirectionAllerRetourRetireIdentite : dans une chaîne A -> B -> A, le retrait des en-têtes
+// d'identité est collant (comme celui d'`Authorization` par `net/http`) : la requête finale reçue par
+// A, de retour sur l'hôte d'origine, ne les porte pas ; les en-têtes neutres suivent.
+func TestDoer_RedirectionAllerRetourRetireIdentite(t *testing.T) {
+	var a *httptest.Server
+	b, _ := serveurEnTetes(t, func() string { return a.URL + "/fin" })
+	a, vusA := serveurEnTetes(t, func() string { return b.URL + "/saut" })
+
+	requeteAuthentifiee(t, a.URL+"/depart", &http.Client{})
+
+	got := vusA()
+	if got == nil {
+		t.Fatal("A n'a pas reçu la requête finale de la chaîne A -> B -> A")
+	}
+	for _, nom := range []string{"Authorization", "X-343-Authorization-Spartan", "343-Clearance"} {
+		if v := got.Get(nom); v != "" {
+			t.Errorf("retour sur l'hôte d'origine : %s = %q, attendu absent (retrait collant)", nom, v)
+		}
+	}
+	if got.Get("Accept") != "image/png" {
+		t.Errorf("retour sur l'hôte d'origine : Accept = %q, attendu conservé", got.Get("Accept"))
+	}
+}
+
+// TestDoer_RedirectionsLimiteeADix : sans `CheckRedirect` sur `Next`, une boucle de redirections est
+// coupée comme `net/http` le fait : dix requêtes reçues (l'origine plus neuf sauts ; le dixième saut est
+// refusé), puis une erreur.
+func TestDoer_RedirectionsLimiteeADix(t *testing.T) {
+	netguard.SetOffline(false)
+	var recues atomic.Int32
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		recues.Add(1)
+		http.Redirect(w, r, srv.URL+"/boucle", http.StatusFound)
+	}))
+	t.Cleanup(srv.Close)
+	// Délai borné : sans la limite, la boucle ne finirait pas et le test échouerait par le compte, pas par blocage.
+	ctx, annule := context.WithTimeout(context.Background(), 2*time.Second)
+	t.Cleanup(annule)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/boucle", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resp, err := netguard.Doer{Surface: "doer_test.boucle", Next: &http.Client{}}.Do(req)
+	if err == nil {
+		_ = resp.Body.Close()
+		t.Fatal("Do : aucune erreur sur une boucle de redirections")
+	}
+	if got := recues.Load(); got != 10 {
+		t.Errorf("le serveur a reçu %d requête(s), attendu 10 (l'origine plus neuf sauts, le dixième étant refusé)", got)
 	}
 }

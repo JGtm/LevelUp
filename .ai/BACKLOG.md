@@ -176,6 +176,52 @@ reports, section du 2026-11-01). Coût assumé : versions épinglées, deux PR p
 
 ---
 
+### [archi] LevelUp consomme les briques publiées (modules dédiés) — reporté
+
+**Noté le** : 2026-11-09.
+
+LevelUp importe encore les briques depuis `libs/`, alors que les quatre modules dédiés sont publiés en v0.1.0 :
+`github.com/JGtm/halo-infinite-files-reader`, `halo-infinite-map-images`, `halo-api` et `halo-infinite-film-decoder`.
+Reste à faire pointer LevelUp sur ces modules : réécrire les imports de `apps/go-api`, supprimer `libs/` et `go.work`,
+poser les tags dépréciés `libs/<brique>/v0.1.1`, réécrire ADR 0041, `ARCHITECTURE_V6` et `COMMANDS` (EN et FR).
+
+**Pourquoi reporté** : le relevé `.ai/RELEVE_LOT6_LIBS_2026-11-09.md` compte 565 fichiers d'imports, environ 90
+garde-rails qui lisent le code des briques sur le disque sous `libs/`, et environ 70 fichiers de tests des briques qui
+lisent des données de LevelUp. **Condition de reprise** : plan dédié relu par `plan-review`, puis go du user. En
+attendant, les dépôts dédiés sont des copies publiées depuis `libs/` par la recette écrite dans
+`.ai/PLAN_FIN_DECOUPLAGE_BRIQUE_FILM_2026-11-02.md` (section « Reproduire la publication d'une brique »), jamais
+modifiées sur place. **Effort : L.**
+
+---
+
+### [archi/himap] Dépôt `halo-infinite-map-images` : image `coupe.png` sans usage, plugin `sbsp.xml` non crédité
+
+Dans le dépôt dédié `halo-infinite-map-images`, le fichier `himap/coupe.png` n'a aucun usage trouvé dans le code, et
+`himap/sbsp.xml` (plugin de disposition des tags venu du projet Reclaimer) n'est pas crédité. **À trancher par le
+user** : retirer l'image, ou créditer le plugin (NOTICE). **Condition de reprise** : cette décision. La correction se
+fait dans `libs/himap` de LevelUp, puis la brique est republiée en v0.1.1. **Effort : S.**
+Même republication : le `NOTICE.md` publié dans `halo-infinite-files-reader` v0.1.0 cite des hashes de branches compactées sans la convention `(branch)` (corrigé dans LevelUp le 2026-11-09, à reporter dans le dépôt dédié à la prochaine version).
+
+---
+
+### [licences] Origine des octets non établie pour quatre fichiers de test de `libs/gamefiles`
+
+`libs/gamefiles/mapvar/testdata/cliffhanger_map.mvar`, `cliffhanger_ridgeline.mvar` et les deux
+`hinavmesh/testdata/*.navmesh.blob` : l'historique git ne cite pas leur source, et `libs/gamefiles/NOTICE.md` dit
+« origin to be stated by the maintainer ». Ils sont déjà publiés tels quels dans `halo-infinite-files-reader` v0.1.0.
+**Condition de reprise** : le user complète l'origine s'il s'en souvient. **Effort : S.**
+
+---
+
+### [archi/licences] Ligne XUID de la section « Test fixtures » du NOTICE racine devenue fausse pour `libs/film`
+
+Dans le `NOTICE` racine, section « Test fixtures », la ligne « Numeric account identifiers (XUID) are still present »
+reste vraie pour les fixtures sous `apps/`, mais fausse pour `libs/film` depuis le remplacement par des identifiants
+fictifs (`libs/film/testdata/IDENTITES.tsv`). À amender avec le chantier de la brique `halo-infinite-files-reader` et
+des autres dépôts dédiés. **Effort : S.**
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.

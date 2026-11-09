@@ -1,12 +1,13 @@
 # NOTICE — origin of the test fixtures of `libs/gamefiles`
 
-This module is licensed AGPL-3.0 (see `README.md`). Its test fixtures are not source code: three Forge
+This module is licensed GPL-3.0-only (see `README.md`). Its test fixtures are not source code: three Forge
 map variants (`.mvar`), two navigation meshes (`navmesh.blob`) and a set of synthetic fuzz seeds. This page says
 where each group comes from, what it contains, and how it sits with the rule of ADR 0041 (no file
 extracted from the game installation in a brick). Nothing here is Microsoft, 343 Industries or Halo
 Studios software; the module is not affiliated with them.
 
 The commit hashes below are those of the repository history at the time of writing (2026-11-09).
+Hashes of the form `xxxx (branch)` belong to feature branches squashed into `main`; they resolve only in a clone of LevelUp that still holds those branches. On `main`, the two Cliffhanger variants appear with `1fb02cfe59` (2026-07-31, at `.ai/re_dump/mapvar/`, moved to `.ai/V7.5/dumps/mapvar/` by `5abf8c78c0` the same day), the Vagabond variant and the two navmesh blobs with `c8eeea23a2` (2026-10-20, release v8.0.0, at `.ai/V7.5/dumps/mapvar/` and `apps/go-api/internal/hinavmesh/testdata/`), and all of them move under `libs/gamefiles/` with `6c3fa49063` (2026-11-09, release v8.1.0).
 
 ## Summary
 
@@ -24,17 +25,19 @@ A `.mvar` is the object list of a Forge map variant (object positions, type iden
 objectives), in a Bond CompactBinary v2 container. It is read by `mapvar.Parse`. The variants are the
 files of the User Generated Content (UGC) assets of the Halo service; they are not read from the game's
 `.module` archives, which the history records as a path that does not give the object list (commit
-`59bb7b2eb0`, 2026-09-01).
+`59bb7b2eb0 (branch)`, 2026-09-01).
 
 - `cliffhanger_map.mvar` (93 795 bytes) and `cliffhanger_ridgeline.mvar` (84 794 bytes): the map Cliffhanger
-  (the registry of the maps names the module `ridgeline` for it). Introduced by `2044b71397` (2026-07-31,
-  "feat(B): porter l additif du rejeu 2D sur la branche saine"), first at `.ai/re_dump/mapvar/`; moved to
-  `libs/gamefiles/mapvar/testdata/` in the modules move `a5bae50b44` (2026-10-28). Origin to be stated by the
+  (the registry of the maps names the module `ridgeline` for it). Introduced by `2044b71397 (branch)` (2026-07-31,
+  "feat(B): porter l additif du rejeu 2D sur la branche saine"; on `main`, `1fb02cfe59`), first at `.ai/re_dump/mapvar/`;
+  moved under `libs/gamefiles/` on `main` by `6c3fa49063` (2026-11-09; on the release branch, `a5bae50b44 (branch)`,
+  2026-10-28, into `libs/gamefiles/mapvar/testdata/`). Origin to be stated by the
   maintainer: the commit does not say where these bytes come from.
 - `vagabond_fo08_wetland.mvar` (17 280 bytes): one of the two variants of the map Vagabond (the other is
-  `map.mvar`, not versioned). Introduced by `fb33bbddc2` (2026-08-08, "fix(v7.5-lot5): mapobj-build publiait
+  `map.mvar`, not versioned). Introduced by `fb33bbddc2 (branch)` (2026-08-08, "fix(v7.5-lot5): mapobj-build publiait
   le rack du canevas, pas la carte jouee"), whose message says the variants are saved by map identifier from the
-  UGC service with `--save-mvar`. Moved to the module path by `c8eeea23a2` (2026-10-20, release v8.0.0).
+  UGC service with `--save-mvar`. Introduced on `main` by `c8eeea23a2` (2026-10-20, release v8.0.0, under
+  `.ai/V7.5/dumps/mapvar/`) and moved under `libs/gamefiles/` by `6c3fa49063` (2026-11-09).
 
 Contents: the object lists and objectives of the map variants. No player identifier, no film and no
 installation file is part of these bytes as far as the history shows. The fixtures are read by
@@ -51,9 +54,10 @@ the blobs of the Forge assets `01af558d` (Isolation, asset registry entry `forge
 `forge`). They are read by `hinavmesh.Decode`, through the test helper `decodeTemoin` and the
 `TestOracle*` tests.
 
-- Introduced by `682ae21951` (2026-08-27, "feat(v7.5-cartes): Isolation est lisible — le fond vient du
-  maillage de navigation"; the same message is on `3fecc17ad7`). Moved to the module path by `c8eeea23a2`
-  (2026-10-20) and by the modules move `a5bae50b44`.
+- Introduced by `682ae21951 (branch)` (2026-08-27, "feat(v7.5-cartes): Isolation est lisible — le fond vient du
+  maillage de navigation"; the same message is on `3fecc17ad7 (branch)`). Introduced on `main` by `c8eeea23a2`
+  (2026-10-20, release v8.0.0, under `apps/go-api/internal/hinavmesh/testdata/`) and moved under `libs/gamefiles/`
+  by `6c3fa49063` (2026-11-09).
 - The documented channel for a `navmesh.blob` is the anonymous download from the public page of the Forge
   asset (`cmd/mapnav-fetch`, whose header says the navmesh is not in the game installation). The commit that
   added these two files does not record the download, and the bytes are not tied to a download by a hash in
@@ -77,11 +81,11 @@ variants and of the film fixtures belongs to Microsoft and is kept only because 
 Reading of the history for this page:
 
 - The `.mvar` files and the navmesh blobs were not read from the installation, according to the commits
-  and notes that describe their channel (`59bb7b2eb0`, `fb33bbddc2`, the navmesh notes of 2026-08-27). For the
+  and notes that describe their channel (`59bb7b2eb0 (branch)`, `fb33bbddc2 (branch)`, the navmesh notes of 2026-08-27). For the
   two Cliffhanger files and the two navmesh blobs, the commits do not state the channel.
 - Their content is game content (map objects and navigation geometry of Halo Infinite maps). D5 names
   them as the exception to the rule, so the rule holds only by that exception.
-- The AGPL-3.0 licence of this module does not give rights to that content. The root `NOTICE` says it is
+- The GPL-3.0-only licence of this module does not give rights to that content. The root `NOTICE` says it is
   "not licensed for any other use".
 
 Compliance: no file of `libs/gamefiles` is recorded as read from the installation. The game-content fixtures

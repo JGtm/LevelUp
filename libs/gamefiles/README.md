@@ -74,12 +74,13 @@ not.
 
 ## License
 
-The vendored `ooz` decoder is GPLv3 (Powzix, see [`ooz/NOTICE.md`](ooz/NOTICE.md)), so this
-module is a GPL chain: any binary that links `himodule` or `ooz` must be distributed under
-GPL-3.0-compatible terms, and `ooz/NOTICE.md` recommends keeping it to offline tooling. The
-upstream notice says "GPLv3", not "or later", and this README claims no more. The other code
-(`mapvar`, `hinavmesh`, which do not import `ooz`) is AGPL-3.0, the repository license
-(`LICENSE`, `NOTICE` at the repository root). This is a summary, not legal advice.
+GPL-3.0-only, for the module as a whole. The vendored `ooz` decoder is GPLv3 (Powzix, see
+[`ooz/NOTICE.md`](ooz/NOTICE.md)), so this module is a GPL chain: any binary that links `himodule`
+or `ooz` must be distributed under GPL-3.0-compatible terms, and `ooz/NOTICE.md` recommends keeping
+it to offline tooling. The upstream notice says "GPLv3", not "or later", hence GPL-3.0-only for the
+whole module, including `mapvar` and `hinavmesh`, which do not import `ooz`. In the LevelUp monorepo,
+the root `LICENSE` (AGPL-3.0) covers the other bricks and the application, not this module; the module
+has no `LICENSE` file of its own here. This is a summary, not legal advice.
 
 ## Contributing
 

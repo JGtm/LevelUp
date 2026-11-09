@@ -36,10 +36,13 @@ func (d Doer) Verifie(ctx context.Context) error {
 
 // entetesAuthentification liste les en-têtes qui portent une identité (jeton Spartan, clearance,
 // autorisation) et que `libs/haloapi` pose sur ses requêtes. Contrat : le [Doer] les retire de toute
-// requête de redirection dont l'hôte (nom et port) diffère de celui de la requête d'origine ; sur le
-// même hôte ils sont conservés. `net/http` ne retire seul que `Authorization` et `Cookie` ; l'en-tête
-// Spartan et la clearance, propres à Halo, ne partiraient sinon vers le CDN d'images ou tout autre
-// hôte tiers visé par un 302. Tout nouvel en-tête d'identité posé par la brique s'ajoute ici.
+// requête de redirection dès que la chaîne a quitté l'hôte (nom et port) de la requête d'origine,
+// c'est-à-dire dès que l'hôte de la requête courante OU de l'un des sauts intermédiaires diffère.
+// Le retrait est collant, comme celui de `Authorization` par `net/http` : un retour à l'hôte d'origine
+// (A -> B -> A) ne les rétablit pas. Tant que la chaîne n'a pas quitté l'hôte d'origine, ils sont
+// conservés. `net/http` ne retire seul que `Authorization` et `Cookie` ; l'en-tête Spartan et la
+// clearance, propres à Halo, ne partiraient sinon vers le CDN d'images ou tout autre hôte tiers visé
+// par un 302. Tout nouvel en-tête d'identité posé par la brique s'ajoute ici.
 var entetesAuthentification = []string{
 	"Authorization",
 	"X-343-Authorization-Spartan",
@@ -62,11 +65,12 @@ func (d Doer) Do(req *http.Request) (*http.Response, error) {
 	return c.Do(req)
 }
 
-// verifieRedirection est le `CheckRedirect` du [Doer] : il retire les en-têtes d'identité d'une
-// redirection vers un autre hôte que la requête d'origine (`via[0]`), puis applique la politique de
-// `Next` (celle de `net/http` : dix redirections au plus, quand `Next` n'en a pas).
+// verifieRedirection est le `CheckRedirect` du [Doer] : il retire les en-têtes d'identité dès que la
+// chaîne a quitté l'hôte de la requête d'origine (`via[0]`), de façon collante (voir
+// [entetesAuthentification]), puis applique la politique de `Next` (celle de `net/http` : dix
+// redirections au plus, quand `Next` n'en a pas).
 func (d Doer) verifieRedirection(req *http.Request, via []*http.Request) error {
-	if len(via) > 0 && !strings.EqualFold(req.URL.Host, via[0].URL.Host) {
+	if chaineSortieDeLHoteDOrigine(req, via) {
 		for _, nom := range entetesAuthentification {
 			req.Header.Del(nom)
 		}
@@ -78,4 +82,23 @@ func (d Doer) verifieRedirection(req *http.Request, via []*http.Request) error {
 		return errors.New("netguard: arrêt après 10 redirections")
 	}
 	return nil
+}
+
+// chaineSortieDeLHoteDOrigine dit si la requête courante ou l'un des sauts intermédiaires (`via[1:]`)
+// vise un hôte (nom et port) autre que celui de la requête d'origine (`via[0]`) : la chaîne a alors
+// quitté l'hôte d'origine, même si la requête courante y revient.
+func chaineSortieDeLHoteDOrigine(req *http.Request, via []*http.Request) bool {
+	if len(via) == 0 {
+		return false
+	}
+	origine := via[0].URL.Host
+	if !strings.EqualFold(req.URL.Host, origine) {
+		return true
+	}
+	for _, saut := range via[1:] {
+		if !strings.EqualFold(saut.URL.Host, origine) {
+			return true
+		}
+	}
+	return false
 }
