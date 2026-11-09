@@ -120495,3 +120495,13 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** 47 273 caractères ramenés à 5 582 ; extraction essayée à sec, y compris le refus d'un numéro différent. Les fichiers restent séparés : la mise à jour télécharge chacun à son adresse, et le fichier de signature du paquet sert au repli du serveur.
 
 **Conclusion / prochaine étape.** E2E verte sur la PR #165, fusion vers `main`.
+
+## [2026-11-09] Release v8.1.0 : déployée en production — Complété
+
+**Décision technique principale.** Tag `v8.1.0` publié, release fusionnée dans `main` (`6c3fa49063`) sur go de l'utilisateur, sauvegarde restic prise avant. Rejeux au schéma 107 du poste copiés sans suppression, site arrêté 16 minutes, puis passes de résumés sur le serveur. Aucune base copiée.
+
+**Résultats observés.** Déploiement, ouvrier et démo verts (10 rejeux de démo en copie). Résumés d'usage : 1 445 écrits, 0 échec ; niveaux d'armes 3 514 ; véhicules 3 524. 2 079 rejeux présents seulement en prod restent à l'ancien schéma, 6 598 matchs sans artefact. Site et démo répondent 200.
+
+**Défaut ouvert.** Un match dont l'EP du LUSR ne converge pas (équipes déséquilibrées, 18 vus) compte comme échec du rejeu au démarrage : la révision n'est jamais rangée pour le joueur et le recalcul recommence à chaque redémarrage. Correctif proposé pour une 8.1.1.
+
+**Conclusion / prochaine étape.** Sha de `main` et go des dépôts dédiés transmis à la session du découplage ; décision de l'utilisateur sur la 8.1.1.
