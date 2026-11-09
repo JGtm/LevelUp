@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
+
+	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 )
 
 // ErrCanonicalWriteHeld signale qu'au moins une écriture canonical (match_skill_rank) a
@@ -63,7 +65,8 @@ func WithMedalExploit(l MedalExploitLoader) ShadowOption {
 // WithMatchFailureCounter fait compter à n chaque match dont le chargement de l'état, le calcul,
 // l'écriture de la note ou le persist de l'état échoue. Ces échecs sont journalisés sans arrêter
 // la boucle : un appelant qui doit savoir que le rejeu est complet (rejeu après changement de
-// formule) lit n à la fin. Sans l'option, le comportement est inchangé.
+// formule) lit n à la fin. Sans l'option, le comportement est inchangé. Un match dont le solveur
+// ne converge pas n'est pas compté (noteComputeFailure).
 func WithMatchFailureCounter(n *atomic.Int64) ShadowOption {
 	return func(o *shadowOptions) { o.matchFailures = n }
 }
@@ -73,6 +76,18 @@ func (c shadowRunContext) noteMatchFailure() {
 	if c.matchFailures != nil {
 		c.matchFailures.Add(1)
 	}
+}
+
+// noteComputeFailure classe l'échec de calcul d'un match. Une non-convergence du solveur dépend
+// des entrées du match : un nouvel essai échouerait pareil, le rejeu est donc complet pour ce
+// match, qui ne reçoit pas de note neuve. Elle est comptée à part ; toute autre erreur est un
+// échec du match.
+func (c shadowRunContext) noteComputeFailure(err error, s *shadowRunStats) {
+	if errors.Is(err, skillv2.ErrNotConverged) {
+		s.skippedNotConverged++
+		return
+	}
+	c.noteMatchFailure()
 }
 
 func buildShadowOptions(ownerOnly bool, opts []ShadowOption) shadowOptions {
