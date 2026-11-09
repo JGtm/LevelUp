@@ -11,6 +11,7 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 
+import { focusByKeyboard } from '@/test/focus'
 import { ValueGrid } from './ValueGrid'
 import { buildValueGrid } from './valueGridModel'
 
@@ -79,7 +80,7 @@ describe('ValueGrid — l’infobulle', () => {
     const vue = render(<ValueGrid model={MODEL} />)
     const barre = vue.getAllByRole('img')[1]
     expect(barre.getAttribute('tabindex')).toBe('0')
-    fireEvent.focus(barre)
+    focusByKeyboard(barre)
     expect(screen.getByRole('tooltip').textContent).toBe('Bravo — Grenades : 13')
   })
 

@@ -5,7 +5,7 @@
  * sections défile (`overflow-y-auto`), un panneau absolu y serait rogné. Le menu volant touche son
  * ancre (marge intérieure transparente, pas d'espace mort) : passer de l'icône au menu ne le ferme pas.
  *
- * - `RailTip` : une infobulle au survol et au focus, pour une entrée sans onglets.
+ * - `RailTip` : une infobulle au survol et au focus clavier, pour une entrée sans onglets.
  * - `RailMenu` : une entrée à onglets. Le survol ouvre le menu ; un clic (ou Entrée, Espace, flèche
  *   droite ou basse au clavier) l'épingle. Flèches haut et bas parcourent les entrées, Échap ferme et rend
  *   le focus au déclencheur, sortir du focus ferme. Au focus clavier sans ouverture, l'infobulle dit le
@@ -21,6 +21,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react'
+import { isKeyboardFocus } from '@/lib/dom/focusVisible'
 
 const TIP_GAP_PX = 8
 const VIEWPORT_MARGIN_PX = 8
@@ -58,7 +59,7 @@ function Tooltip({ label, anchor }: { label: string; anchor: Anchor }) {
   )
 }
 
-/** Une entrée sans menu : le libellé en infobulle au survol et au focus. */
+/** Une entrée sans menu : le libellé en infobulle au survol et au focus clavier (pas au focus rendu après un clic). */
 export function RailTip({ label, children }: { label: string; children: ReactNode }) {
   const { ref, anchor, measure } = useAnchor()
   const [shown, setShown] = useState(false)
@@ -71,7 +72,9 @@ export function RailTip({ label, children }: { label: string; children: ReactNod
       ref={ref}
       onMouseEnter={show}
       onMouseLeave={() => setShown(false)}
-      onFocusCapture={show}
+      onFocusCapture={(e) => {
+        if (isKeyboardFocus(e.target)) show()
+      }}
       onBlurCapture={() => setShown(false)}
     >
       {children}
@@ -185,9 +188,9 @@ function useRailMenu() {
       setHovered(true)
     },
     onMouseLeave: () => setHovered(false),
-    onFocus: () => {
+    onFocus: (e: FocusEvent<HTMLDivElement>) => {
       measure()
-      setFocused(true)
+      setFocused(isKeyboardFocus(e.target))
     },
     onBlur: (e: FocusEvent<HTMLDivElement>) => {
       setFocused(false)

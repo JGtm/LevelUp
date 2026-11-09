@@ -7,6 +7,7 @@ import type { ComponentPropsWithoutRef } from 'react'
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { focusByKeyboard, focusByMouse, withFocusVisible } from '@/test/focus'
 import { renderWithProviders } from '@/test/render-utils'
 import { resolveRoutePath } from '@/test/routeLinkMock'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -292,9 +293,34 @@ describe('SidebarNav — repliement en icônes', () => {
       fireEvent.mouseLeave(home.parentElement as HTMLElement)
       expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
 
-      fireEvent.focus(home)
+      focusByKeyboard(home)
       expect(screen.getByRole('tooltip')).toHaveTextContent('Accueil')
-      fireEvent.blur(home)
+      act(() => home.blur())
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    })
+
+    it('un focus qui ne vient pas du clavier n’ouvre pas l’infobulle', () => {
+      renderWithProviders(<SidebarNav />)
+      focusByMouse(screen.getByRole('link', { name: 'Accueil' }))
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      focusByMouse(screen.getByRole('button', { name: 'Solo' }))
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    })
+
+    it('replier puis déplier au clic : le focus rendu au bouton de bascule n’ouvre pas son infobulle', () => {
+      localStorage.setItem(SIDEBAR_PREFERENCE_STORAGE_KEY, 'expanded')
+      renderWithProviders(<SidebarNav />)
+      const collapse = screen.getByRole('button', { name: 'Replier la barre latérale' })
+      focusByMouse(collapse)
+      // Le navigateur refuse `:focus-visible` au focus que le code rend après un clic de souris.
+      withFocusVisible(false, () => fireEvent.click(collapse, { detail: 1 }))
+      expect(state()).toBe('collapsed')
+      const expand = screen.getByRole('button', { name: 'Déplier la barre latérale' })
+      expect(expand).toHaveFocus()
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+
+      withFocusVisible(false, () => fireEvent.click(expand, { detail: 1 }))
+      expect(state()).toBe('expanded')
       expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
     })
 
@@ -342,8 +368,7 @@ describe('SidebarNav — repliement en icônes', () => {
     it('au clavier : flèche basse ouvre et donne le focus, flèches parcourent, Échap ferme et rend le focus', () => {
       renderWithProviders(<SidebarNav />)
       const solo = screen.getByRole('button', { name: 'Solo' })
-      solo.focus()
-      fireEvent.focus(solo)
+      focusByKeyboard(solo)
       expect(screen.getByRole('tooltip')).toHaveTextContent('Solo')
 
       fireEvent.keyDown(solo, { key: 'ArrowDown' })
