@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
-## [8.1.0] - Unreleased
+## [8.1.0] - 2026-11-09
 
 > The Windows application. LevelUp now also ships as an installable per-user Windows application: a Tauri 2 shell that runs **the same Go server** as a child process and shows **the same web interface** in WebView2. On the server side it rests on one new concept, the **deployment profile** (ADR 0044), and on a written shell-to-server contract (ADR 0045). The release also carries the N-language application (ADR 0040), the Go bricks under `libs/` (ADR 0041 to 0043), the Explorer and Summary work, and replay fixes.
 

@@ -120471,3 +120471,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** 7 constats recevables, 65 conditions vérifiées qui tiennent. En production, en lecture seule : base média configurée (`/app/data/media`). Reste au backlog (.ai/BACKLOG.md) : FDA d'Ascension, formule de l'Aide, alertes en français, badge d'analyse, fichiers laissés par une mise à jour moteur, harnais `replay-equiv`.
 
 **Conclusion / prochaine étape.** CI de la branche, fusion dans `release/v8.1.0`, gate 24.z, puis tag par l'utilisateur.
+
+## [2026-11-09] Release v8.1.0 : gate 24.z validé, journaux datés — En cours
+
+**Décision technique principale.** L'utilisateur valide le gate 24.z (« j'ai testé tout est bon »). Les deux journaux de version portent la date du 2026-11-09. En production, seuls les rejeux recuits sur le poste seront copiés, sans suppression et sans aucune base ; les trois passes de résumés y seront rejouées avec le binaire v8.1.0, site arrêté.
+
+**Résultats observés.** Versions concordantes (`Cargo.toml`, `tauri.conf.json` : 8.1.0).
+
+**Conclusion / prochaine étape.** Tag `v8.1.0`, fusion vers `main`, copie des rejeux, passes de résumés, puis sha de `main` transmis pour le tag `libs/film/v0.1.0`.
