@@ -343,6 +343,8 @@ the "Experimental" status no longer described them).
   `libs/himap/v1.0.0`; the tag of an upper module is set on the commit that carries its bump.
 - The deprecation tags foreseen for the old path become `v1.0.1` instead of `v0.1.1` when that step is executed.
 
+**Done on 2026-11-09.** The four dedicated repositories are republished at `v1.0.0` from the `libs/` content of LevelUp commit `4093470e5f` (recipe of the previous amendment; one commit each, README status sentence replaced, `v0.1.0` installs become `v1.0.0`, CI green on `main` and on the tag, `go get` checked from a throwaway module): `halo-infinite-files-reader` `33bfb640` (NOTICE taken from the source), `halo-infinite-map-images` `c7872af` (requires `halo-infinite-files-reader v1.0.0`), `halo-api` `1aaf3871`, `halo-infinite-film-decoder` `f89cd69` (requires both at `v1.0.0`; the five layer revisions and the 35 goldens are identical to `v0.1.0`). The tags `libs/<brick>/v1.0.0` in LevelUp are not set yet: they wait for this commit to reach `main` with v8.1.2.
+
 ## References
 
 - Plan: `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md`; survey of the four clients:
