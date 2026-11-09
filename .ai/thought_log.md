@@ -120463,3 +120463,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** Le tag sera posé sur le commit de `main` portant la release, après la vérification `go get` hors dépôt.
 
 **Conclusion / prochaine étape.** Transmettre le sha de `main` à la session du découplage après la fusion par l'utilisateur.
+
+## [2026-11-09] Revue globale v8.1.0 : tri des constats — Complété
+
+**Décision technique principale.** Trois relecteurs Opus sans contexte sur le commit gelé `9f70f24bb6`. Corrigés : un profil sans xuid n'entre plus dans le rejeu des notes (il aurait vu toutes ses notes effacées), et le fond codé en dur de la fenêtre À propos passe sur un token. Rejeu au premier démarrage conservé, conforme à l'ADR 0047. Une seule ronde, la correction tenant en une garde couverte par un test.
+
+**Résultats observés.** 7 constats recevables, 65 conditions vérifiées qui tiennent. En production, en lecture seule : base média configurée (`/app/data/media`). Reste au registre des reports : FDA d'Ascension, formule de l'Aide, alertes en français, badge d'analyse, fichiers laissés par une mise à jour moteur, harnais `replay-equiv`.
+
+**Conclusion / prochaine étape.** CI de la branche, fusion dans `release/v8.1.0`, gate 24.z, puis tag par l'utilisateur.

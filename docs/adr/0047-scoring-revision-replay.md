@@ -50,7 +50,7 @@ the pending flag stays set, so a repeated request recomputes.
   exported. Literals inline in other files are not hashed (the victory-score table of the composite rating, the team weight
   floor of the solver, unexported constants of the shadow and shared-access files). **A change of logic without a change of
   number is not detected: the maintainer must bump `PerformanceScoreRev` or `LUSRRev` by hand.**
-- A profile that has a player database but no xuid recomputes an empty set and then stores the revision.
+- A profile that has a player database but no xuid is skipped and counted as an error: the recomputation joins on the xuid, would find no match and would clear every score. Its revision is not stored, so it is reported again at each start.
 
 ## Consequences
 

@@ -49,7 +49,8 @@ func titresLUSR(tous []*title.TitleDescriptor) []string {
 
 // Run passe en revue chaque joueur de chaque titre, un à la fois, et s'arrête entre deux joueurs
 // dès que ctx est annulé. Une liste de joueurs illisible saute le titre ; les profils réservés aux
-// jetons (AuthOnly) n'ont pas de base joueur.
+// jetons (AuthOnly) n'ont pas de base joueur. Un profil sans xuid est sauté et compté en erreur : le
+// recalcul se joint sur le xuid, il n'y trouverait aucun match et effacerait toutes les notes.
 func (s *Service) Run(ctx context.Context) {
 	for _, slug := range s.titres() {
 		players, err := s.a.FollowedPlayers(slug)
@@ -64,6 +65,12 @@ func (s *Service) Run(ctx context.Context) {
 				return
 			}
 			if p.AuthOnly {
+				continue
+			}
+			if p.XUID == "" {
+				observability.IncCounterT(slug, CompteurErreurs)
+				slog.WarnContext(ctx, "scoring revision: profil sans xuid, notes laissées telles quelles",
+					"player", p.Gamertag, "titleSlug", slug)
 				continue
 			}
 			s.appliquer(ctx, slug, p)
