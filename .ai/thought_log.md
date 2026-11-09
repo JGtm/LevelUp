@@ -120487,3 +120487,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** Un seul test rouge sur 107, sur les trois essais.
 
 **Conclusion / prochaine étape.** E2E verte sur la PR #165, puis fusion vers `main`.
+
+## [2026-11-09] Release v8.1.0 : texte de publication court — Complété
+
+**Décision technique principale.** Le corps de la release et les notes de l'updater viennent de la première section des notes de version, écrites pour les joueurs, et non plus du journal technique. La liste automatique des PR est retirée ; la publication refuse une première section qui ne porte pas le numéro majeur.mineur du tag. Corps de la v8.1.0 réécrit à la main.
+
+**Résultats observés.** 47 273 caractères ramenés à 5 582 ; extraction essayée à sec, y compris le refus d'un numéro différent. Les fichiers restent séparés : la mise à jour télécharge chacun à son adresse, et le fichier de signature du paquet sert au repli du serveur.
+
+**Conclusion / prochaine étape.** E2E verte sur la PR #165, fusion vers `main`.
