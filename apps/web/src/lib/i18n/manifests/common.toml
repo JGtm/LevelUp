@@ -1913,6 +1913,10 @@ en = "America/Chicago"
 fr = "Onglets paramètres"
 en = "Settings tabs"
 
+[common.settings.browse_folder]
+fr = "Parcourir…"
+en = "Browse…"
+
 # ─── Changelog ──────────────────────────────────────────────────────────
 
 [common.changelog.load_failed]
@@ -2689,6 +2693,10 @@ en = "About"
 [common.shell.nav_feedback]
 fr = "Signaler un problème"
 en = "Report a problem"
+
+[common.shell.nav_more]
+fr = "Plus"
+en = "More"
 
 [common.shell.sidebar_footer_aria]
 fr = "Aide, paramètres et informations sur l'application"

@@ -179,7 +179,7 @@ export function MatchCard({ match: m, locale = DEFAULT_LOCALE, timezone = 'UTC',
               e.stopPropagation()
               onToggleFavorite()
             }}
-            className="absolute top-2 left-2 rounded-full p-1 bg-black/40 hover:bg-black/60 transition-colors disabled:opacity-40"
+            className="absolute top-2 left-2 rounded-full p-1 bg-scrim/40 hover:bg-scrim/60 transition-colors disabled:opacity-40"
           >
             {m.is_favorite ? (
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="#f59e0b" className="h-4 w-4" aria-hidden="true"> {/* color-allow: amber gold pour étoile favori — CLAUDE.md §20 (warning/amber UI générique) */}

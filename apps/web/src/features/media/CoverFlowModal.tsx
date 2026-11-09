@@ -804,7 +804,7 @@ export function CoverFlowModal({
             ref={stageRef}
             className={`relative mx-auto w-full ${
               isFullscreen
-                ? 'flex h-full items-center justify-center overflow-hidden bg-black'
+                ? 'flex h-full items-center justify-center overflow-hidden bg-scrim'
                 : 'aspect-video overflow-visible'
             }`}
           >
@@ -909,7 +909,7 @@ export function CoverFlowModal({
                 }}
                 aria-label={text.coverFlow.exitFullscreen}
                 title={text.coverFlow.exitFullscreen}
-                className="absolute right-4 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-foreground transition-colors hover:bg-black/80"
+                className="absolute right-4 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-scrim/60 text-on-scrim transition-colors hover:bg-scrim/80"
               >
                 <svg
                   className="h-5 w-5"

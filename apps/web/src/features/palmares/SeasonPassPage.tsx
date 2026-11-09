@@ -311,8 +311,7 @@ function SeasonPassCard({ pass, intlLocale, statusLabel, labels, contentLabels, 
             style={{ backgroundImage: `url(${background})` }}
             aria-hidden="true"
           />
-          {/* color-allow: gradient sombre fixe pour lisibilité du contenu sur image plein-cadre */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/50" aria-hidden="true" />
+          <div className="absolute inset-0 bg-gradient-to-t from-scrim/80 via-scrim/40 to-scrim/50" aria-hidden="true" />
         </>
       )}
       <div className="relative flex h-full flex-col gap-4 p-6">
@@ -432,17 +431,17 @@ function PassShowcase({
             alt={pass.name}
             className="aspect-[986/248] w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent" /> {/* color-allow: gradient sombre fixe pour lisibilité du titre hero (overlay sur image map) */}
+          <div className="absolute inset-0 bg-gradient-to-t from-scrim/60 via-scrim/5 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
             <div className="flex items-center gap-1.5">
-              <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl"> {/* color-allow: blanc sur gradient sombre fixe (hero overlay) */}
+              <h2 className="text-xl font-bold tracking-tight text-on-scrim sm:text-2xl">
                 {pass.name}
               </h2>
               <DataFreshnessIndicator
                 snapshotAt={pass.snapshot_at}
                 buildLabel={text.seasonPass.freshnessLastSync}
                 locale={text.intlLocale}
-                className="text-white/50 hover:text-white/80"
+                className="text-on-scrim/50 hover:text-on-scrim/80"
               />
             </div>
             <div className="mt-1 flex flex-wrap gap-1.5">

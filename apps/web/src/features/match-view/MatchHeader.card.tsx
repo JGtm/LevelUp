@@ -203,7 +203,7 @@ function MapImageSection({
         type="button"
         onClick={onToggleFavorite}
         disabled={favoriteIsPending}
-        className="absolute left-3 top-3 rounded-full bg-black/40 p-2 transition-colors hover:bg-black/60 disabled:opacity-40"
+        className="absolute left-3 top-3 rounded-full bg-scrim/40 p-2 transition-colors hover:bg-scrim/60 disabled:opacity-40"
         aria-label={header.is_favorite ? removeFavoriteLabel : addFavoriteLabel}
         title={header.is_favorite ? removeFavoriteLabel : addFavoriteLabel}
       >

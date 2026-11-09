@@ -186,6 +186,8 @@ export interface ReplayText {
   killFeedNoAssistHint: string
   killFeedAssistHint: string
   killFeedKillerShare: (pct: number) => string
+  /** Infobulle de la zone nommée où se trouvait le tueur, à son instant : le nom complet. */
+  killFeedKillerZone: (zone: string) => string
   /**
    * L'ASSISTANCE EST UN PICTOGRAMME, PAS UN MOT (décision utilisateur du 16/08) : le fil
    * n'écrit plus « assisté par », il pose une marque puis le nom. Ce libellé est ce que la
@@ -294,7 +296,7 @@ export interface ReplayText {
   layers: string
   layerAim: string
   layerAimHint: string
-  /** Zones nommées (callouts officiels) : calque + libellé de la fiche. */
+  /** Libellé accessible du groupe de commandes de zoom du cadrage de la carte. */
   zoomGroup: string
   zoomIn: string
   zoomOut: string

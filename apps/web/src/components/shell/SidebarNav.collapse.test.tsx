@@ -7,9 +7,11 @@ import type { ComponentPropsWithoutRef } from 'react'
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { focusByKeyboard, focusByMouse, withFocusVisible } from '@/test/focus'
 import { renderWithProviders } from '@/test/render-utils'
 import { resolveRoutePath } from '@/test/routeLinkMock'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import { useAssetDrawerStore } from '@/features/asset-drawer'
 import { useFeedbackDrawerStore } from '@/features/feedback-drawer'
 
@@ -37,8 +39,6 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     useRouterState: () => ({ location: { pathname } }),
   }
 })
-
-vi.mock('./ThemeToggle', () => ({ ThemeToggle: () => <div data-testid="theme-toggle" /> }))
 
 type State = ReturnType<typeof useAppShellStore.getState>
 
@@ -69,6 +69,9 @@ function installMatchMedia(initialNarrow: boolean) {
 
 const sidebar = () => screen.getByRole('complementary', { name: 'Navigation principale' })
 const state = () => sidebar().getAttribute('data-sidebar')
+
+const menuItems = (menu: HTMLElement) => Array.from(menu.querySelectorAll<HTMLElement>('[role^="menuitem"]'))
+const menuItemTexts = (menu: HTMLElement) => menuItems(menu).map((i) => i.textContent)
 
 describe('SidebarNav — repliement en icônes', () => {
   const originalMatchMedia = window.matchMedia
@@ -209,7 +212,7 @@ describe('SidebarNav — repliement en icônes', () => {
     expect(screen.getByRole('button', { name: 'Déplier la barre latérale' })).toHaveFocus()
 
     // Même chose au clavier (Ctrl+B) depuis un autre élément de la barre, dans l'autre sens.
-    screen.getByRole('link', { name: 'Aide' }).focus()
+    screen.getByRole('link', { name: 'Accueil' }).focus()
     fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'b', ctrlKey: true })
     expect(state()).toBe('expanded')
     expect(screen.getByRole('button', { name: 'Replier la barre latérale' })).toHaveFocus()
@@ -292,9 +295,34 @@ describe('SidebarNav — repliement en icônes', () => {
       fireEvent.mouseLeave(home.parentElement as HTMLElement)
       expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
 
-      fireEvent.focus(home)
+      focusByKeyboard(home)
       expect(screen.getByRole('tooltip')).toHaveTextContent('Accueil')
-      fireEvent.blur(home)
+      act(() => home.blur())
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    })
+
+    it('un focus qui ne vient pas du clavier n’ouvre pas l’infobulle', () => {
+      renderWithProviders(<SidebarNav />)
+      focusByMouse(screen.getByRole('link', { name: 'Accueil' }))
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      focusByMouse(screen.getByRole('button', { name: 'Solo' }))
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    })
+
+    it('replier puis déplier au clic : le focus rendu au bouton de bascule n’ouvre pas son infobulle', () => {
+      localStorage.setItem(SIDEBAR_PREFERENCE_STORAGE_KEY, 'expanded')
+      renderWithProviders(<SidebarNav />)
+      const collapse = screen.getByRole('button', { name: 'Replier la barre latérale' })
+      focusByMouse(collapse)
+      // Le navigateur refuse `:focus-visible` au focus que le code rend après un clic de souris.
+      withFocusVisible(false, () => fireEvent.click(collapse, { detail: 1 }))
+      expect(state()).toBe('collapsed')
+      const expand = screen.getByRole('button', { name: 'Déplier la barre latérale' })
+      expect(expand).toHaveFocus()
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+
+      withFocusVisible(false, () => fireEvent.click(expand, { detail: 1 }))
+      expect(state()).toBe('expanded')
       expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
     })
 
@@ -342,8 +370,7 @@ describe('SidebarNav — repliement en icônes', () => {
     it('au clavier : flèche basse ouvre et donne le focus, flèches parcourent, Échap ferme et rend le focus', () => {
       renderWithProviders(<SidebarNav />)
       const solo = screen.getByRole('button', { name: 'Solo' })
-      solo.focus()
-      fireEvent.focus(solo)
+      focusByKeyboard(solo)
       expect(screen.getByRole('tooltip')).toHaveTextContent('Solo')
 
       fireEvent.keyDown(solo, { key: 'ArrowDown' })
@@ -372,23 +399,67 @@ describe('SidebarNav — repliement en icônes', () => {
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     })
 
-    it('le pied de barre garde les mêmes actions, en icônes, et le bouton qui déplie', () => {
+    it('le pied de barre replié tient en trois contrôles : référentiels, « Plus » et le bouton qui déplie', () => {
       renderWithProviders(<SidebarNav />)
       const foot = screen.getByRole('group', { name: /Aide, paramètres/ })
-      expect(within(foot).getByRole('link', { name: 'Aide' })).toBeInTheDocument()
-      expect(within(foot).getByRole('link', { name: 'Paramètres' })).toBeInTheDocument()
-      expect(within(foot).getByRole('switch', { name: 'Thème' })).toBeInTheDocument()
+      const controls = Array.from(foot.querySelectorAll<HTMLElement>('a, button, [role="switch"]'))
+      expect(controls.map((c) => c.getAttribute('aria-label'))).toEqual([
+        'Référentiels',
+        'Plus',
+        'Déplier la barre latérale',
+      ])
 
       fireEvent.click(within(foot).getByRole('button', { name: 'Référentiels' }))
       expect(useAssetDrawerStore.getState().isOpen).toBe(true)
-      fireEvent.click(within(foot).getByRole('button', { name: 'Signaler un problème' }))
-      expect(useFeedbackDrawerStore.getState().isOpen).toBe(true)
-      fireEvent.click(within(foot).getByRole('button', { name: 'À propos' }))
-      expect(screen.getByRole('dialog', { name: 'LevelUp' })).toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: 'Fermer' }))
-
       fireEvent.click(within(foot).getByRole('button', { name: 'Déplier la barre latérale' }))
       expect(state()).toBe('expanded')
+    })
+
+    it('« Plus » liste Aide, Signaler un problème, Paramètres, Thème et À propos, et chacune agit', () => {
+      renderWithProviders(<SidebarNav />)
+      const foot = screen.getByRole('group', { name: /Aide, paramètres/ })
+      const more = within(foot).getByRole('button', { name: 'Plus' })
+      expect(more).toHaveAttribute('aria-haspopup', 'menu')
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+
+      const openMenu = () => {
+        fireEvent.mouseEnter(more.parentElement as HTMLElement)
+        return screen.getByRole('menu', { name: 'Plus' })
+      }
+      const menu = openMenu()
+      expect(menuItemTexts(menu)).toEqual(['Aide', 'Signaler un problème', 'Paramètres', 'Thème', 'À propos'])
+      expect(within(menu).getByRole('menuitem', { name: 'Aide' })).toHaveAttribute('href', '/help')
+      expect(within(menu).getByRole('menuitem', { name: 'Paramètres' })).toHaveAttribute('href', '/settings')
+
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Signaler un problème' }))
+      expect(useFeedbackDrawerStore.getState().isOpen).toBe(true)
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+
+      const dark = useSettingsDraftStore.getState().localUiPrefs.theme
+      fireEvent.click(within(openMenu()).getByRole('menuitemcheckbox', { name: 'Thème' }))
+      expect(useSettingsDraftStore.getState().localUiPrefs.theme).not.toBe(dark)
+
+      fireEvent.click(within(openMenu()).getByRole('menuitem', { name: 'À propos' }))
+      expect(screen.getByRole('dialog', { name: 'LevelUp' })).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Fermer' }))
+    })
+
+    it('« Plus » monte depuis le bas de son icône (jamais rogné par le bas de la fenêtre) et suit la langue', () => {
+      useAppShellStore.setState({ locale: 'en' })
+      renderWithProviders(<SidebarNav />)
+      const more = screen.getByRole('button', { name: 'More' })
+      fireEvent.mouseEnter(more.parentElement as HTMLElement)
+      const menu = screen.getByRole('menu', { name: 'More' })
+      const placed = menu.parentElement as HTMLElement
+      expect(placed.style.bottom).not.toBe('')
+      expect(placed.style.top).toBe('')
+      expect(menuItemTexts(menu)).toEqual([
+        'Help',
+        'Report a problem',
+        'Settings',
+        'Theme',
+        'About',
+      ])
     })
 
     it('plusieurs jeux : le sigle du jeu courant ouvre le menu des jeux', () => {

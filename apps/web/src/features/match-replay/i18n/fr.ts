@@ -44,6 +44,7 @@ export const FR_TEXT = {
   killFeedAssistHint:
     'Assistant lu dans le film, avec sa part de dégâts. Les parts ne sont pas bornées à 100 %.',
   killFeedKillerShare: (pct) => `tueur ${pct} %`,
+  killFeedKillerZone: (zone) => `Zone du tueur : ${zone}`,
   killFeedAssistMark: 'Assistance',
   killFeedAssistShare: (pct) => `${pct} %`,
   killFeedDeathLabel: 'mort',

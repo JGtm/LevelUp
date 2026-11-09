@@ -75,7 +75,7 @@ func TestDeployment_TableDesCombinaisonsActuelles(t *testing.T) {
 					if c.CompactChrome || c.AdoptSystemLocale || c.FrequentCheckpoint || c.LoginViaBrowser ||
 						c.GameProcessWatch || c.ShellIntegration || c.ScheduledRefresh || c.AutoSyncByDefault ||
 						c.ParquetBackup || c.ImportFromSite || c.DiagnosticReport || c.MemoryLimit || c.ReplayRegen ||
-						c.KeepMediaSources || c.RevealFilesInExplorer || c.TrashMediaSources {
+						c.KeepMediaSources || c.RevealFilesInExplorer || c.TrashMediaSources || c.PickFolder {
 						t.Errorf("hors desktop : chrome de bureau ou langue du système offerts : %+v", c)
 					}
 					if c.UpdateApp || !c.OfferWindowsDownload {
@@ -115,7 +115,7 @@ func TestDeployment_CapacitesParProfil(t *testing.T) {
 			CompactChrome: true, AdoptSystemLocale: true, FrequentCheckpoint: true, LoginViaBrowser: true,
 			GameProcessWatch: true, ShellIntegration: true, ScheduledRefresh: true, AutoSyncByDefault: true,
 			ParquetBackup: true, ImportFromSite: true, DiagnosticReport: true, MemoryLimit: true, ReplayRegen: true,
-			KeepMediaSources: true, RevealFilesInExplorer: true, TrashMediaSources: true}},
+			KeepMediaSources: true, RevealFilesInExplorer: true, TrashMediaSources: true, PickFolder: true}},
 	}
 	for _, c := range cas {
 		t.Run(string(c.profil), func(t *testing.T) {

@@ -50,6 +50,11 @@
  * `replayMarkers.ts`) : un joueur marqué — moi ou un ami — se reconnaît au token `success`
  * porté par son nom, seul.
  *
+ * LA ZONE DU TUEUR OUVRE LA LIGNE DE FRAG, après l'horloge (`ReplayKillLineParts.KillZone`) : le nom
+ * de la zone nommée où il se trouvait à l'instant du frag, calculé par la page (`useKillerZones`).
+ * Gouttière de largeur fixe sur les seules lignes de frag, vide quand la zone n'est pas établie,
+ * absente quand la carte n'a aucune zone.
+ *
  * L'ASSISTANCE NE S'AFFICHE QUE NOMMÉE (décision utilisateur 2026-08-12) : marque
  * d'assistance, marque d'identité de l'assistant, Nom, « - part % », puis la part du
  * tueur ; fond BLEUTÉ sur la ligne — le fond affirme une contribution. « Aucun »
@@ -76,14 +81,16 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 import { displayPlayerName, normalizeGamertagKey } from '@/lib/players/displayName'
 
+import type { KillerZoneOf } from '../hooks/useKillerZones'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 
 /** Réexporté pour `assistMarkIcon.guard.test.ts` : le stem a déménagé, sa surface non. */
 export { ASSIST_ICON_STEM }
-import { ASSIST_ICON_STEM, AssistMark } from './ReplayAssistMark'
+import { ASSIST_ICON_STEM } from './ReplayAssistMark'
 import { MedalBadges } from './MedalBadges'
 import { NO_MARKS, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { FeedName } from './ReplayFeedName'
+import { DOT_PX, KillAssist, KillWeapon, KillZone } from './ReplayKillLineParts'
 import { ReplayPresenceLine } from './ReplayPresenceLine'
 import { HUD_BAND_CLASS, hudBandStyle } from '../model/hudBand'
 import {
@@ -95,11 +102,6 @@ import {
 import { formatClock } from '../../../lib/replay/replayLogic'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 
-/** Gabarit d'une icône d'arme : le format bandeau de l'atlas kill feed (option 2a : 22×10). */
-const ICON_W = 22
-const ICON_H = 10
-/** Diamètre du repère servi quand l'arme est inconnue — jamais l'icône d'une autre arme. */
-const DOT_PX = 7
 /**
  * Côté d'un pictogramme quasi carré de l'atlas kill feed — TYPE DE MORT ou ASSISTANCE.
  * Ces vignettes ne suivent PAS le gabarit bandeau des armes : mesurées à l'extraction,
@@ -168,6 +170,12 @@ interface Props {
    * carte. Absentes = aucun glyphe, jamais une marque devinée.
    */
   marks?: ReadonlyMap<string, PlayerMarkKind>
+  /**
+   * La zone nommée où se trouvait le tueur de chaque frag (`useKillerZones`), par clé de ligne.
+   * Absent = la carte n'a aucune zone : les lignes de frag ne réservent pas de gouttière. Présent,
+   * la gouttière suit l'horloge sur CHAQUE ligne de frag et reste vide quand la zone est inconnue.
+   */
+  zoneOf?: KillerZoneOf
 }
 
 /** Les noms de la feuille par xuid (`XuidMeta` s'y conforme) : ce que le fil en lit, et rien d'autre. */
@@ -177,7 +185,7 @@ type GamertagIndex = ReadonlyMap<string, { gamertag: string }>
 type InkOf = (xuid: string) => string
 
 export function ReplayKillFeed({
-  entries, nowMs, playWindow, scoreboard, xuidMeta, allegiance, locale, marks,
+  entries, nowMs, playWindow, scoreboard, xuidMeta, allegiance, locale, marks, zoneOf,
 }: Props) {
   const t = REPLAY_TEXT[locale]
   // UNE SEULE RÈGLE POUR LES QUATRE FORMES DE LIGNE : l'allégeance du film, `team-ally` /
@@ -238,6 +246,7 @@ export function ReplayKillFeed({
             marks={marks ?? NO_MARKS}
             marksByGamertag={marksByGamertag}
             locale={locale}
+            zoneOf={zoneOf}
           />
         ))}
       </ul>
@@ -288,6 +297,7 @@ function FeedLine({
   marks,
   marksByGamertag,
   locale,
+  zoneOf,
 }: {
   entry: ReplayFeedEntry
   inkOf: InkOf
@@ -295,6 +305,7 @@ function FeedLine({
   marks: ReadonlyMap<string, PlayerMarkKind>
   marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
+  zoneOf?: KillerZoneOf
 }) {
   if (entry.presence) {
     // ENTRÉE/SORTIE DE PARTIE (presenceFeed.ts) : même encre que les autres formes de ligne —
@@ -346,6 +357,7 @@ function FeedLine({
       marks={marks}
       marksByGamertag={marksByGamertag}
       locale={locale}
+      zone={zoneOf?.(entry.key)}
     />
   )
 }
@@ -421,7 +433,11 @@ function DeathLine({
   )
 }
 
-/** KillLine — une mort : tueur (son encre), arme, victime (SON encre), médailles, assistance. */
+/**
+ * KillLine — une mort : zone du tueur (si la carte en a), tueur (son encre), arme, victime (SON
+ * encre), médailles, assistance. `zone` : le nom de la zone du tueur, vide quand elle n'est pas
+ * établie, `undefined` quand la carte n'a aucune zone (pas de gouttière).
+ */
 function KillLine({
   kill: k,
   replayMs,
@@ -430,6 +446,7 @@ function KillLine({
   marks,
   marksByGamertag,
   locale,
+  zone,
 }: {
   kill: ReplayKill
   replayMs: number
@@ -438,6 +455,7 @@ function KillLine({
   marks: ReadonlyMap<string, PlayerMarkKind>
   marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
+  zone?: string
 }) {
   const t = REPLAY_TEXT[locale]
   const assisted = k.assistState === 'named'
@@ -457,39 +475,13 @@ function KillLine({
       title={lineHint}
     >
       <FeedClock ms={replayMs} />
+      {zone !== undefined && <KillZone name={zone} locale={locale} />}
       <FeedName kind={marks.get(k.xuid)} color={killerColor} locale={locale} className="font-medium"
         name={displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)} />
-        {/* L'ARME entre le tueur et la victime — elle remplace la croix (POC). L'icône
-            extraite du jeu est un masque teint par currentColor (cf. WeaponIcon) : on
-            pose donc la couleur d'équipe du TUEUR sur l'icône elle-même. */}
-      {k.weaponImageUrl ? (
-        <WeaponIcon
-          imageUrl={k.weaponImageUrl}
-          tinted={k.weaponTinted}
-          label={k.weaponLabel || t.killFeedUnknownWeapon}
-          width={ICON_W}
-          height={ICON_H}
-          style={{ color: killerColor }}
-        />
-      ) : (
-        /* Repli assumé : la source du dégât n'est pas identifiable sans ambiguïté. */
-        <span
-          aria-hidden
-          className="rounded-full"
-          style={{
-            width: DOT_PX,
-            height: DOT_PX,
-            backgroundColor: killerColor,
-            opacity: 0.7,
-            flex: 'none',
-          }}
-        />
-      )}
+      <KillWeapon kill={k} color={killerColor} locale={locale} />
       {k.victimGamertag && (
-        <>
-          <FeedName kind={marks.get(k.victimXuid)} name={displayPlayerName(k.victimGamertag, k.victimXuid)} locale={locale}
-            color={inkOf(k.victimXuid)} />
-        </>
+        <FeedName kind={marks.get(k.victimXuid)} name={displayPlayerName(k.victimGamertag, k.victimXuid)} locale={locale}
+          color={inkOf(k.victimXuid)} />
       )}
       {/* LES MÉDAILLES DANS LA RANGÉE, plus en dessous : `shrink-0` parce qu'un badge rogné
           ne se reconnaît plus, alors qu'un nom tronqué se lit encore. */}
@@ -498,27 +490,7 @@ function KillLine({
           <MedalBadges medals={k.medals} />
         </span>
       )}
-      {/* L'ASSISTANCE DANS LA MÊME RANGÉE : la marque à l'encre `stat-assists` (option 2a — la
-          couleur d'équipe de l'assistant colorait une DEUXIÈME fois ce que son nom dit
-          déjà), l'assistant, SA part seule — la part du tueur est sortie de la rangée
-          (demande utilisateur du 2026-08-24 : « celui de l'assistant suffit »). Le nom de
-          l'assistant est le seul élément qui cède — comme celui du tueur et de la victime. */}
-      {assisted && (
-        <span
-          className="flex min-w-0 items-center gap-1 text-[10.5px] text-muted-foreground"
-          title={t.killFeedAssistHint}
-        >
-          <AssistMark label={t.killFeedAssistMark} />
-          <FeedName name={displayPlayerName(k.assistGamertag)} locale={locale}
-            kind={marksByGamertag.get(normalizeGamertagKey(k.assistGamertag))} />
-          {k.assistDamagePct != null && (
-            <span className="shrink-0 font-mono tabular-nums">
-              {t.killFeedAssistShare(k.assistDamagePct)}
-            </span>
-          )}
-        </span>
-      )}
+      {assisted && <KillAssist kill={k} marksByGamertag={marksByGamertag} locale={locale} />}
     </li>
   )
 }
-

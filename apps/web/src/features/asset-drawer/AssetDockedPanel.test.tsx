@@ -1,14 +1,16 @@
 /**
- * Tests — volet des référentiels ancré (application de bureau) : il pousse le contenu au lieu de le
- * recouvrir, se ferme au bouton, à Échap (focus rendu au bouton d'ouverture) et se bascule au raccourci,
- * se redimensionne à la souris et au clavier, mémorise sa largeur et son état.
+ * Tests — volet des référentiels ancré (application de bureau) : toujours monté, il glisse depuis le bord
+ * droit ; épinglé il pousse le contenu, sinon il se superpose sous un voile qui le ferme au clic ; il se
+ * ferme au bouton, à Échap (focus rendu au bouton d’ouverture), se bascule au raccourci, se redimensionne
+ * à la souris et au clavier, mémorise sa largeur, son état et son mode.
  */
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '@/test/render-utils'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { endLayoutTransition, isLayoutSettling } from '@/lib/layout/layoutSettling'
 import { useAssetDrawerStore } from './assetDrawer.store'
 import { AssetDockedPanel } from './AssetDockedPanel'
 import { ASSET_PANEL_TRIGGER_ID } from './assetPanel'
@@ -16,9 +18,11 @@ import { PANEL_DEFAULT_WIDTH, PANEL_WIDTH_STORAGE_KEY, loadPanelWidth } from './
 
 beforeEach(() => {
   window.localStorage.clear()
+  endLayoutTransition()
   useAppShellStore.setState({ locale: 'fr', currentTitleSlug: 'halo_infinite' })
   useAssetDrawerStore.setState({
     isOpen: false,
+    pinned: false,
     activeTab: 'maps',
     search: '',
     panelWidth: PANEL_DEFAULT_WIDTH,
@@ -27,47 +31,118 @@ beforeEach(() => {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1600 })
   server.use(http.get('/api/v1/assets/:titleSlug/:kind', () => HttpResponse.json([])))
 })
+afterEach(() => {
+  endLayoutTransition()
+})
 
 function panel() {
   return screen.getByRole('complementary', { name: 'Référentiels' })
+}
+
+// Masqué (aria-hidden), le panneau n'a plus de nom accessible : on le prend par son rôle seul.
+function hiddenPanel() {
+  return screen.getByRole('complementary', { hidden: true })
+}
+
+function slot() {
+  return screen.getByTestId('asset-panel-slot')
 }
 
 function handle() {
   return screen.getByRole('separator', { name: 'Redimensionner le volet des référentiels' })
 }
 
+function pinButton() {
+  return screen.getByRole('button', { name: 'Épingler le volet' })
+}
+
 function ctrlShiftL() {
   fireEvent.keyDown(document, { key: 'L', ctrlKey: true, shiftKey: true })
 }
 
-describe('AssetDockedPanel — ouverture et fermeture', () => {
-  it('fermé : rien n’est rendu', () => {
+describe('AssetDockedPanel — ouverture, fermeture et modes', () => {
+  it('fermé : toujours monté mais hors de l’écran, inerte, masqué aux lecteurs d’écran, sans place ni voile', () => {
     renderWithProviders(<AssetDockedPanel />)
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    const aside = hiddenPanel()
+    expect(aside).toHaveAttribute('aria-hidden', 'true')
+    expect(aside).toHaveAttribute('inert')
+    expect(aside.className).toMatch(/\btranslate-x-full\b/)
+    expect(slot()).toHaveStyle({ width: '0px' })
+    expect(screen.queryByTestId('asset-panel-scrim')).not.toBeInTheDocument()
   })
 
-  it('ouvert : un volet ancré (dans le flux, largeur propre, sans voile) avec la recherche en tête', () => {
-    useAssetDrawerStore.setState({ isOpen: true })
-    const { container } = renderWithProviders(<AssetDockedPanel />)
+  it('ouvert et épinglé : il pousse le contenu (fente à sa largeur, panneau hors superposition), sans voile, recherche en tête', () => {
+    useAssetDrawerStore.setState({ isOpen: true, pinned: true })
+    renderWithProviders(<AssetDockedPanel />)
     const aside = panel()
-    // Il pousse le contenu : dans le flux (pas `fixed`), ne se réduit pas, largeur posée en style.
+    expect(aside).not.toHaveAttribute('inert')
+    expect(aside.className).toMatch(/\btranslate-x-0\b/)
     expect(aside.className).not.toMatch(/\bfixed\b/)
-    expect(aside.className).toMatch(/\bshrink-0\b/)
+    expect(aside.className).not.toMatch(/\bz-50\b/)
+    expect(slot().className).toMatch(/\bshrink-0\b/)
+    expect(slot()).toHaveStyle({ width: `${PANEL_DEFAULT_WIDTH}px` })
     expect(aside).toHaveStyle({ width: `${PANEL_DEFAULT_WIDTH}px` })
-    // Aucun voile qui recouvre la page.
-    expect(container.querySelector('.inset-0')).toBeNull()
+    expect(screen.queryByTestId('asset-panel-scrim')).not.toBeInTheDocument()
     // Le champ de recherche précède les onglets.
     const search = screen.getByRole('searchbox')
     const tabs = screen.getByRole('tablist')
     expect(search.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('le bouton de fermeture ferme le volet', () => {
+  it('ouvert et non épinglé : il se superpose (fente sans largeur) sous un voile transparent plein écran', () => {
+    useAssetDrawerStore.setState({ isOpen: true, pinned: false })
+    renderWithProviders(<AssetDockedPanel />)
+    expect(slot()).toHaveStyle({ width: '0px' })
+    expect(panel()).toHaveStyle({ width: `${PANEL_DEFAULT_WIDTH}px` })
+    expect(panel().className).toMatch(/\bz-50\b/)
+    const scrim = screen.getByTestId('asset-panel-scrim')
+    expect(scrim.className).toMatch(/\bfixed\b/)
+    expect(scrim.className).toMatch(/\binset-0\b/)
+  })
+
+  it('un clic sur le voile ferme le volet superposé', () => {
+    useAssetDrawerStore.setState({ isOpen: true, pinned: false })
+    renderWithProviders(<AssetDockedPanel />)
+    fireEvent.click(screen.getByTestId('asset-panel-scrim'))
+    expect(useAssetDrawerStore.getState().isOpen).toBe(false)
+    expect(screen.queryByTestId('asset-panel-scrim')).not.toBeInTheDocument()
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  })
+
+  it('le bouton d’épinglage bascule le mode : la fente prend la largeur du volet, le voile disparaît', () => {
+    useAssetDrawerStore.setState({ isOpen: true, pinned: false })
+    renderWithProviders(<AssetDockedPanel />)
+    expect(pinButton()).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(pinButton())
+    expect(useAssetDrawerStore.getState().pinned).toBe(true)
+    expect(pinButton()).toHaveAttribute('aria-pressed', 'true')
+    expect(slot()).toHaveStyle({ width: `${PANEL_DEFAULT_WIDTH}px` })
+    expect(screen.queryByTestId('asset-panel-scrim')).not.toBeInTheDocument()
+    fireEvent.click(pinButton())
+    expect(useAssetDrawerStore.getState().pinned).toBe(false)
+    expect(slot()).toHaveStyle({ width: '0px' })
+    expect(screen.getByTestId('asset-panel-scrim')).toBeInTheDocument()
+  })
+
+  it('fermer un volet épinglé conserve le mode : rouvert, il pousse encore le contenu', () => {
+    useAssetDrawerStore.setState({ isOpen: true, pinned: true })
+    renderWithProviders(<AssetDockedPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer le référentiel visuel' }))
+    expect(useAssetDrawerStore.getState()).toMatchObject({ isOpen: false, pinned: true })
+    expect(slot()).toHaveStyle({ width: '0px' })
+    act(() => useAssetDrawerStore.getState().open())
+    expect(slot()).toHaveStyle({ width: `${PANEL_DEFAULT_WIDTH}px` })
+    expect(screen.queryByTestId('asset-panel-scrim')).not.toBeInTheDocument()
+  })
+
+  it('le bouton de fermeture ferme le volet : il redevient masqué et inerte', () => {
     useAssetDrawerStore.setState({ isOpen: true })
     renderWithProviders(<AssetDockedPanel />)
     fireEvent.click(screen.getByRole('button', { name: 'Fermer le référentiel visuel' }))
     expect(useAssetDrawerStore.getState().isOpen).toBe(false)
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    expect(hiddenPanel()).toHaveAttribute('inert')
   })
 
   it('le raccourci Ctrl+Maj+L ouvre puis ferme, et prend la main sur le défaut du moteur', () => {
@@ -121,6 +196,45 @@ describe('AssetDockedPanel — ouverture et fermeture', () => {
     renderWithProviders(<AssetDockedPanel />)
     fireEvent.keyDown(document.body, { key: 'Escape' })
     expect(useAssetDrawerStore.getState().isOpen).toBe(true)
+  })
+})
+
+describe('AssetDockedPanel — transition de mise en page', () => {
+  it('au montage : aucune transition déclarée', () => {
+    useAssetDrawerStore.setState({ isOpen: true, pinned: true })
+    renderWithProviders(<AssetDockedPanel />)
+    expect(isLayoutSettling()).toBe(false)
+  })
+
+  it('ouvrir, fermer ou épingler change la place prise : transition déclarée jusqu’à la fin de l’animation de la fente', () => {
+    renderWithProviders(<AssetDockedPanel />)
+    // Ouvert non épinglé : la place prise reste nulle, rien à attendre.
+    act(() => useAssetDrawerStore.getState().open())
+    expect(isLayoutSettling()).toBe(false)
+    act(() => useAssetDrawerStore.getState().setPinned(true))
+    expect(isLayoutSettling()).toBe(true)
+    // L’animation du panneau lui-même (transform) ne clôt pas la transition de la fente.
+    fireEvent.transitionEnd(panel())
+    expect(isLayoutSettling()).toBe(true)
+    fireEvent.transitionEnd(slot())
+    expect(isLayoutSettling()).toBe(false)
+    act(() => useAssetDrawerStore.getState().close())
+    expect(isLayoutSettling()).toBe(true)
+  })
+
+  it('pendant le glissement de la poignée : la fente ne s’anime pas, aucune transition déclarée', () => {
+    useAssetDrawerStore.setState({ isOpen: true, pinned: true })
+    renderWithProviders(<AssetDockedPanel />)
+    panel().getBoundingClientRect = () => ({ right: 1600 }) as DOMRect
+    const h = handle()
+    h.setPointerCapture = () => {}
+    h.releasePointerCapture = () => {}
+    h.hasPointerCapture = () => true
+    fireEvent.pointerDown(h, { pointerId: 1, clientX: 1240 })
+    fireEvent.pointerMove(h, { pointerId: 1, clientX: 1100 })
+    expect(slot()).toHaveStyle({ width: '500px' })
+    expect(slot().className).not.toMatch(/transition-\[width\]/)
+    expect(isLayoutSettling()).toBe(false)
   })
 })
 

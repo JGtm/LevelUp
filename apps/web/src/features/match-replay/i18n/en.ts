@@ -44,6 +44,7 @@ export const EN_TEXT = {
   killFeedAssistHint:
     'Assist read from the film, with its damage share. Shares are not capped at 100%.',
   killFeedKillerShare: (pct) => `killer ${pct}%`,
+  killFeedKillerZone: (zone) => `Killer's zone: ${zone}`,
   killFeedAssistMark: 'Assist',
   killFeedAssistShare: (pct) => `${pct}%`,
   killFeedDeathLabel: 'died',

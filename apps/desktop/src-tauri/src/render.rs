@@ -18,8 +18,9 @@ pub struct Embedded {
     pub body: Vec<u8>,
 }
 
-/// Chemin que la page du serveur appelle pour demander la verification de mise a jour : la page tourne
-/// sans aucune commande de la coquille (ADR 0045), ce chemin du protocole embarque est son seul canal.
+/// Chemin que la page du serveur appelle pour demander la verification de mise a jour : la page n'a
+/// qu'une commande de la coquille, la boite « Parcourir » (ADR 0045 D-31) ; pour le reste, ce chemin du
+/// protocole embarque est son seul canal.
 pub const CHECK_UPDATE_PATH: &str = "/check-update";
 
 /// Ce que le protocole embarque fait d'un chemin.

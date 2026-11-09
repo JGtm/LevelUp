@@ -76,7 +76,7 @@ export function NavL1MobileMenu({ sections, pathname, titleSlug, playerSlug }: N
       {/* Overlay — clic hors panneau ferme */}
       {open && (
         <div
-          className="fixed inset-0 z-[59] bg-black/40"
+          className="fixed inset-0 z-[59] bg-scrim/40"
           onClick={() => setOpen(false)}
           aria-hidden="true"
         />

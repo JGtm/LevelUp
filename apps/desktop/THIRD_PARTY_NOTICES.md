@@ -49,7 +49,7 @@ SIL Open Font License, Version 1.1 (https://openfontlicense.org). Served by the 
 The navigation and footer icons of the application (sidebar, About, settings and others) are copied
 from Lucide, https://lucide.dev, as SVG (no library is installed): `layout-dashboard`, `crosshair`,
 `swords`, `award`, `flame`, `globe`, `film`, `search`, `book-open`, `bug`, `book-open-text`,
-`settings`, `sun-moon`, `info`, `panel-left-close`, `panel-left-open` (lucide-static 0.552.0).
+`settings`, `sun-moon`, `info`, `panel-left-close`, `panel-left-open`, `ellipsis`, `pin`, `pin-off` (lucide-static 0.552.0).
 
 ISC License
 

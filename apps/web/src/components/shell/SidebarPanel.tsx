@@ -12,6 +12,7 @@ import { NavSectionList } from './NavSectionList'
 import { PlayerSwitcher } from './PlayerSwitcher'
 import { SidebarFooter } from './SidebarFooter'
 import type { SidebarRailProps } from './SidebarRail'
+import { SIDEBAR_SCROLL_CLASS, SIDEBAR_SCROLL_CONTENT_CLASS } from './sidebarScroll'
 import { TitleSwitcher } from './TitleSwitcher'
 
 export type SidebarPanelProps = Omit<SidebarRailProps, 'onExpand'> & {
@@ -74,16 +75,18 @@ export function SidebarPanel({
         </div>
       )}
 
-      <nav className="flex-1 overflow-y-auto py-2" aria-label={t('common.nav.sections_aria')}>
-        {playerSlug && (
-          <NavSectionList
-            variant="sidebar"
-            sections={sections}
-            pathname={pathname}
-            titleSlug={titleSlug}
-            playerSlug={playerSlug}
-          />
-        )}
+      <nav className={`flex-1 overflow-y-auto ${SIDEBAR_SCROLL_CLASS}`} aria-label={t('common.nav.sections_aria')}>
+        <div className={`py-2 ${SIDEBAR_SCROLL_CONTENT_CLASS}`}>
+          {playerSlug && (
+            <NavSectionList
+              variant="sidebar"
+              sections={sections}
+              pathname={pathname}
+              titleSlug={titleSlug}
+              playerSlug={playerSlug}
+            />
+          )}
+        </div>
       </nav>
 
       <SidebarFooter pathname={pathname} locale={locale} appVersion={appVersion} onCollapse={onCollapse} onOpenAbout={onOpenAbout} />

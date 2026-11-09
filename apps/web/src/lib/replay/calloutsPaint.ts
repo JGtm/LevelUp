@@ -1,6 +1,7 @@
 /**
- * calloutsPaint.ts — les ZONES NOMMÉES (« callouts ») de la carte : normalisation,
- * affectation 3D (zoneAt) et peintre canvas. PARTAGÉ (comme heatPaint.ts) par le rejeu 2D et par
+ * calloutsPaint.ts — les ZONES NOMMÉES (« callouts ») de la carte : normalisation et peintre
+ * canvas. L'affectation d'un point à sa zone n'est PAS ici : elle vit dans
+ * `features/match-replay/model/killerZone.ts`. PARTAGÉ (comme heatPaint.ts) par le rejeu 2D et par
  * le plan de l'onglet Tactique : un seul peintre, donc un seul aspect (garde-rail
  * calloutsPaint.guard.test.ts). Chaque appelant fournit sa projection monde → toile. Portage du POC (artefact eb7b8af2,
  * l.1033-1094 et l.780-789), qui est LA spec de rendu — pas une réinvention.
@@ -15,9 +16,9 @@
  * - le libellé s'écrit UNE fois par nom, sur la zone la plus haute, en MAJUSCULES,
  *   BLANC CERNÉ DE NOIR — le cerne le rend lisible sur les aplats clairs comme sur le
  *   fond sombre, SANS dépendre du thème ;
- * - l'affectation d'un joueur à sa zone se fait en distance 3D : une zone existe en
- *   version haute ET basse (« Fer à cheval » / « Fer à cheval inférieur ») et les étages
- *   se confondent en 2D.
+ * - une zone existe en version haute ET basse (« Fer à cheval » / « Fer à cheval inférieur ») et les étages
+ *   se confondent en 2D. Le nommage d'un point (polygone, tranche de hauteur) est le jumeau de
+ *   `NommerZone` côté Go : `killerZone.ts`.
  */
 import type { ReplayCalloutZone, ReplayMapCallouts } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
@@ -32,12 +33,17 @@ export type ProjectionMonde = (p: XY) => XY
 export interface CalloutZoneReady {
   /** Le nom officiel de la zone, un texte par langue (vide dans une langue que le lexique ne couvre pas). */
   names: Partial<Record<Locale, string>>
-  /** Centre 3D du volume (mètres monde) — la référence de zoneAt. */
+  /** Centre 3D du volume (mètres monde). */
   x: number
   y: number
   z: number
+  /** Tranche de hauteur du volume (mètres monde), bornes déclarées SANS la marge du nommage. */
+  zBottom: number
+  zTop: number
+  /** Indice du volume au catalogue : il départage deux zones à égalité parfaite (déterminisme). */
+  volumeIndex: number
   big: boolean
-  /** Contour principal ([] = zone non dessinée, interrogeable par zoneAt seulement). */
+  /** Contour principal ([] = aucun contour : la zone n'est pas dessinée par lui). */
   polygon: XY[]
   /** Parties supplémentaires et trous (provenance « découpe ») — remplissage pair-impair. */
   parts: XY[][]
@@ -50,8 +56,8 @@ export interface CalloutZoneReady {
 /**
  * normalizeCallouts résout la nullabilité du transport UNE fois, à l'entrée (même règle
  * que replayNormalize). TOUTES les zones sont gardées, y compris sans polygone : les
- * volumes secondaires d'un même nom portent les étages bas et rendent zoneAt juste —
- * seul le DESSIN exige un contour.
+ * volumes secondaires d'un même nom restent dans la liste — seul le DESSIN exige un contour ;
+ * le nommage d'un point (`killerZone.ts`) ignore, lui, une zone sans contour ni partie.
  */
 export function normalizeCallouts(entry: ReplayMapCallouts | null | undefined): CalloutZoneReady[] {
   return normalizeCalloutZones(entry?.zones)
@@ -68,6 +74,9 @@ export function normalizeCalloutZones(zones: readonly ReplayCalloutZone[] | null
       x: z.x,
       y: z.y,
       z: z.z,
+      zBottom: z.z_bottom,
+      zTop: z.z_top,
+      volumeIndex: z.volume_index,
       big: z.big ?? false,
       polygon,
       parts: rings(z.parts),
@@ -105,27 +114,6 @@ function centroid(pts: XY[]): XY {
     sy += p.y
   }
   return { x: sx / pts.length, y: sy / pts.length }
-}
-
-/**
- * zoneAt rend la zone dont le CENTRE 3D est le plus proche du point — le portage exact
- * du POC. La distance est euclidienne 3D : c'est le z qui départage les étages
- * superposés, un plus-proche-voisin 2D rendrait l'étage du dessus.
- */
-export function zoneAt(zones: CalloutZoneReady[], x: number, y: number, z: number): CalloutZoneReady | null {
-  let best: CalloutZoneReady | null = null
-  let bd = Infinity
-  for (const c of zones) {
-    const dx = c.x - x
-    const dy = c.y - y
-    const dz = c.z - z
-    const d = dx * dx + dy * dy + dz * dz
-    if (d < bd) {
-      bd = d
-      best = c
-    }
-  }
-  return best
 }
 
 /** calloutLabel rend le libellé officiel dans la langue de l'interface. */
@@ -242,7 +230,7 @@ function tracePoly(ctx: CanvasRenderingContext2D, pts: XY[], px: ProjectionMonde
  * drawCalloutsLabels écrit chaque nom UNE fois, sur la zone dessinée la plus haute qui le porte
  * (tri z décroissant, règle du POC — sans dédoublonnage, « Tuyaux » s'écrirait quatre
  * fois). Seules les zones AVEC contour reçoivent un libellé : les volumes secondaires
- * servent zoneAt, pas l'affichage.
+ * ne servent pas à l'affichage.
  */
 export function drawCalloutsLabels(
   ctx: CanvasRenderingContext2D,

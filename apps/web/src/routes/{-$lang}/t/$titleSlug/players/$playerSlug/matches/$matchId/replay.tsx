@@ -35,6 +35,7 @@ import { REPLAY_TEXT } from '@/features/match-replay/i18n/i18n'
 import { usePlaybackFrame, usePlaybackStore } from '@/features/match-replay/model/playbackStore'
 import { replayLoadState } from '@/features/match-replay/model/replayLoadState'
 import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
+import { useKillerZones } from '@/features/match-replay/hooks/useKillerZones'
 import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
 import {
   REPLAY_FULLSCREEN_FRAME,
@@ -147,7 +148,7 @@ function ReplayPage() {
     [background, mapImage],
   )
   // LES ZONES NOMMÉES, normalisées UNE fois : la même liste sert le calque du canvas et
-  // la zone courante des fiches. 404 = la carte n'en a pas (Forge) — liste vide, rien.
+  // la zone du tueur du fil des éliminations. 404 = la carte n'en a pas (Forge) — liste vide, rien.
   const { data: calloutsEntry } = useReplayMapCallouts(playerSlug, matchId)
   const callouts = useMemo(() => normalizeCallouts(calloutsEntry), [calloutsEntry])
 
@@ -169,6 +170,8 @@ function ReplayPage() {
   const modelSettings = useMemo(() => ({ friendGamertags }), [friendGamertags])
   const model = useReplayModel(data, replayContext, modelSettings, viewpoint.xuid)
   const { scoreboard, identity: xuidMeta, marks, window: playWindow, feed: feedEntries } = model
+  // LA ZONE DU TUEUR de chaque frag du fil : calculée UNE fois sur le fil aligné (instant brut).
+  const killerZoneOf = useKillerZones(feedEntries, data, callouts, locale, scoreboard)
   // LA PAGE PARLE D'UNE SEULE VOIX (décision D1) : sur le rejeu, les points, les titres de
   // colonnes et les noms du fil prennent les MÊMES tokens d'accessibilité — allié / adverse,
   // surchargeables par les réglages — et la MÊME allégeance, lue dans le film et vue du point de
@@ -454,6 +457,7 @@ function ReplayPage() {
                   allegiance={model.allegiance}
                   locale={locale}
                   marks={marks}
+                  zoneOf={killerZoneOf}
                 />
               </div>
             </div>

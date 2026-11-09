@@ -5569,6 +5569,8 @@ export interface components {
             can_manage_settings: boolean;
             /** @description Téléchargement de l'application Windows proposé. */
             can_offer_windows_download: boolean;
+            /** @description Choix d'un dossier par la boîte « Parcourir » du système, demandée à la coquille de bureau. */
+            can_pick_folder: boolean;
             /** @description Mise en commun des jetons proposée à l'utilisateur. */
             can_pool_tokens: boolean;
             can_read_local_data: boolean;

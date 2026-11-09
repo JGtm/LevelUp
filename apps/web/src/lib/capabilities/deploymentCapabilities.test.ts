@@ -52,6 +52,20 @@ describe('capacités médias du bureau', () => {
   })
 })
 
+describe('capacité de choix de dossier', () => {
+  it('fausse avant hydratation et sans capacités', () => {
+    for (const caps of [null, undefined, {}]) {
+      expect(deploymentCapabilityOf(caps, 'can_pick_folder')).toBe(false)
+    }
+  })
+
+  it('vraie pour le profil bureau seulement', () => {
+    expect(deploymentCapabilityOf(testCapabilities(desktopCapabilities()), 'can_pick_folder')).toBe(true)
+    expect(deploymentCapabilityOf(testCapabilities(demoCapabilities()), 'can_pick_folder')).toBe(false)
+    expect(deploymentCapabilityOf(testCapabilities(), 'can_pick_folder')).toBe(false)
+  })
+})
+
 describe('passwordOnlyAccounts', () => {
   it.each([
     ['none', false],

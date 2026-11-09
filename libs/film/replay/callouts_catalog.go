@@ -125,9 +125,9 @@ type CalloutZone struct {
 	// introduit un nom que le lexique versionné ne connaît pas encore : le rendu dessine
 	// alors le contour SANS libellé — jamais de nom de repli inventé.
 	Text Text `json:"i18n_text,omitempty" required:"true"`
-	// X, Y, Z : le point de référence du volume. C'est le centre 3D qu'utilise zoneAt —
-	// l'affectation d'un joueur à sa zone se fait en distance 3D, sinon les étages se
-	// confondent (règle du POC).
+	// X, Y, Z : le point de référence du volume, son centre 3D ; il ancre le libellé d'une zone
+	// sans contour. Le nommage d'un point (analysis/tactical.NommerZone, et son jumeau web
+	// killerZone.ts) lit la forme et la tranche verticale, pas ce centre.
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
 	Z float64 `json:"z"`
@@ -140,8 +140,8 @@ type CalloutZone struct {
 	// contre le POC (cmd/mapcallouts-build).
 	Big bool `json:"big,omitempty"`
 	// Polygon est le contour principal au sol (sommets XY monde). Vide quand le volume
-	// n'a pas de forme propre — le rendu ne dessine alors rien, la zone reste
-	// interrogeable par zoneAt.
+	// n'a pas de forme propre — le rendu ne dessine alors rien, et sans partie non plus la
+	// zone ne nomme aucun point.
 	Polygon [][2]float64 `json:"polygon,omitempty"`
 	// Parts et Holes n'existent qu'en provenance « decoupe » : parties supplémentaires
 	// et trous du contour découpé, remplis en règle pair-impair (rendu du POC).

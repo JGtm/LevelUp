@@ -1,12 +1,13 @@
 /**
  * Tests composant — FilmArchivePanel (archive des films : conserver, où, occupation).
  */
-import { describe, it, expect, afterEach, beforeEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '@/test/render-utils'
 import { filmArchiveFixture } from '@/test/handlers'
 import { server } from '@/test/setup'
+import { desktopCapabilities, testCapabilities } from '@/test/capabilities'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { FilmArchivePanel } from './FilmArchivePanel'
 import { useSaveFeedbackStore } from './saveFeedbackStore'
@@ -38,8 +39,9 @@ describe('FilmArchivePanel', () => {
     useAppShellStore.setState({ locale: 'fr' })
   })
   afterEach(() => {
+    vi.unstubAllGlobals()
     useSaveFeedbackStore.getState().clear()
-    useAppShellStore.setState({ locale: 'fr' })
+    useAppShellStore.setState({ locale: 'fr', capabilities: null })
   })
 
   it('affiche l’occupation : nombre de films, taille et espace du volume', async () => {
@@ -142,6 +144,43 @@ describe('FilmArchivePanel', () => {
     renderWithProviders(<FilmArchivePanel />)
     expect(await screen.findByText('Keep films')).toBeInTheDocument()
     expect(screen.getByText('Film archive')).toBeInTheDocument()
+  })
+
+  it('« Parcourir… » remplit le champ et enregistre le dossier choisi, aussi dans l’assistant', async () => {
+    serveurPatch()
+    useAppShellStore.setState({ capabilities: testCapabilities(desktopCapabilities()) })
+    const invoke = vi.fn().mockResolvedValue('D:\\Films choisis')
+    vi.stubGlobal('__TAURI_INTERNALS__', { invoke })
+    renderWithProviders(<FilmArchivePanel variant="wizard" />)
+    await screen.findByText(/Conserver les films/)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Parcourir…' }))
+
+    await waitFor(() => expect(patches).toEqual([{ film_archive_dir: 'D:\\Films choisis' }]))
+    expect(invoke).toHaveBeenCalledWith('pick_folder', { initial: '' })
+  })
+
+  it('une annulation de « Parcourir… » laisse le champ et les réglages inchangés', async () => {
+    serveurPatch()
+    useAppShellStore.setState({ capabilities: testCapabilities(desktopCapabilities()) })
+    const invoke = vi.fn().mockResolvedValue(null)
+    vi.stubGlobal('__TAURI_INTERNALS__', { invoke })
+    renderWithProviders(<FilmArchivePanel />)
+    const champ = await screen.findByLabelText("Dossier de l'archive")
+    fireEvent.change(champ, { target: { value: 'D:\\Saisi' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Parcourir…' }))
+
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith('pick_folder', { initial: 'D:\\Saisi' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Parcourir…' })).toBeEnabled())
+    expect(champ).toHaveValue('D:\\Saisi')
+    expect(patches).toEqual([])
+  })
+
+  it('sans la capacité, pas de bouton « Parcourir… »', async () => {
+    renderWithProviders(<FilmArchivePanel />)
+    await screen.findByLabelText("Dossier de l'archive")
+    expect(screen.queryByRole('button', { name: 'Parcourir…' })).not.toBeInTheDocument()
   })
 
   it('dans l’assistant, ne rend pas l’occupation ni le titre de carte', async () => {

@@ -7,6 +7,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 
+import { focusByKeyboard } from '@/test/focus'
 import { SquadExactCompositionOption } from './SquadExactCompositionOption'
 import { getSquadText } from './i18n'
 
@@ -25,7 +26,7 @@ describe('SquadExactCompositionOption', () => {
 
   it('ouvre aussi l’infobulle au focus de la case (clavier)', () => {
     render(<SquadExactCompositionOption locale="fr" checked onChange={() => {}} />)
-    fireEvent.focus(screen.getByRole('checkbox'))
+    focusByKeyboard(screen.getByRole('checkbox'))
     expect(screen.getByRole('tooltip')).toBeInTheDocument()
   })
 

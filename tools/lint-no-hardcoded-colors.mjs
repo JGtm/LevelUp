@@ -52,6 +52,11 @@ const TW_PATTERN = new RegExp(
   'g',
 )
 
+// 2 bis. Noir et blanc absolus (plan 8.1.2, 1.4) : `bg-black/60`, `text-white`, etc. Ils
+//    contournent les jetons (`scrim` / `on-scrim`) : un noir ou un blanc écrit en dur ne suit
+//    pas le thème. Compté dans la famille `tailwind`.
+const ABSOLUTE_COLOR_PATTERN = /\b(?:bg|text|border|ring|fill|stroke|divide|from|via|to|shadow)-(?:black|white)(?:\/\d+)?\b/g
+
 // 3. Fonctions de couleur CSS : oklch(), rgb()/rgba(), hsl()/hsla(), color()...
 //    AJOUTE LE 2026-09-06 (lot v2, correction C5 de la revue R1). Deux gardes du rejeu
 //    supprimes en D.12 portaient ce controle (oklch sur les encres d'effet de tir, oklch et
@@ -173,6 +178,13 @@ for (const rootDir of [featuresDir, componentsDir, libReplayDir]) {
       const twMatches = line.match(TW_PATTERN)
       if (twMatches) {
         for (const m of twMatches) {
+          violations.push({ file: relPath, line: i + 1, kind: 'tailwind', match: m })
+        }
+      }
+      // Noir / blanc absolus (famille tailwind)
+      const absMatches = line.match(ABSOLUTE_COLOR_PATTERN)
+      if (absMatches) {
+        for (const m of absMatches) {
           violations.push({ file: relPath, line: i + 1, kind: 'tailwind', match: m })
         }
       }

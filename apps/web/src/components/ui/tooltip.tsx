@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { isKeyboardFocus } from '@/lib/dom/focusVisible'
 
 interface TooltipProps {
   content: ReactNode
@@ -11,7 +12,8 @@ interface TooltipProps {
 }
 
 /**
- * Tooltip — wrapper hover.
+ * Tooltip — wrapper hover et focus clavier : un focus qui ne vient pas du clavier (clic, focus rendu par
+ * programme à la fermeture d'un volet) n'ouvre pas l'infobulle.
  *
  * Le tooltip est rendu dans `document.body` via Portal + `position: fixed` pour
  * échapper aux parents `overflow:hidden` (ex. cellules de tableau scrollables).
@@ -44,7 +46,9 @@ export function Tooltip({ content, children, className, wide }: TooltipProps) {
       className={`relative inline-flex items-center${className ? ` ${className}` : ''}`}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
+      onFocus={(e) => {
+        if (isKeyboardFocus(e.target)) setOpen(true)
+      }}
       onBlur={() => setOpen(false)}
     >
       {children}
