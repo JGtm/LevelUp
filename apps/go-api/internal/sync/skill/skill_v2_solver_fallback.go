@@ -23,9 +23,10 @@ import (
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 )
 
-// solverCountFallbackTotal compte les matchs dont le solveur n'a pas convergé avec les comptes et
-// qui ont été recalculés sans eux. Publié sous /debug/vars ; un second échec du recalcul est
-// compté en plus par le classement de noteComputeFailure.
+// solverCountFallbackTotal compte les tentatives de repli : chaque calcul dont le solveur n'a pas
+// convergé avec les comptes et qui est recalculé sans eux. Un même match peut être retenté (nouveau
+// cycle, rejeu), le compteur dépasse alors le nombre de matchs distincts. Publié sous /debug/vars ;
+// un second échec du recalcul est compté en plus par le classement de noteComputeFailure.
 var solverCountFallbackTotal = expvar.NewInt("levelup.lusr_v2.solver_count_fallback_total")
 
 // twoTeamSolver est la signature de skillv2.UpdateTwoTeamWithCountsEP, passée en paramètre pour
@@ -38,6 +39,13 @@ type countedMatch struct {
 	match   skillv2.TwoTeamMatch
 	counts  *skillv2.CountInputs
 	priors  skillv2.Priors
+}
+
+// solveMatchWithCounts est l'unique point d'appel de skillv2.UpdateTwoTeamWithCountsEP hors du
+// moteur : tout calcul LUSR d'un match passe par le repli (garde-rail
+// TestUpdateTwoTeamWithCountsEPAppeleSeulementParLeRepli).
+func solveMatchWithCounts(ctx context.Context, in countedMatch) (teamA, teamB []skillv2.Gaussian, err error) {
+	return solveWithCountFallback(ctx, skillv2.UpdateTwoTeamWithCountsEP, in)
 }
 
 // solveWithCountFallback résout le match avec ses comptes. Sur skillv2.ErrNotConverged seulement,

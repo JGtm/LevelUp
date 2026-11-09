@@ -2,13 +2,20 @@ package skill
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"io/fs"
 	"math"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
+	"levelup/go-api/internal/domain"
 )
 
 func ptr(v float64) *float64 { return &v }
@@ -214,5 +221,83 @@ func TestSolveWithCountFallback_ConvergenceDirecte(t *testing.T) {
 	}
 	if delta := solverCountFallbackTotal.Value() - before; delta != 0 {
 		t.Errorf("compteur du repli +%d, attendu +0", delta)
+	}
+}
+
+// Le calcul d'un match entier (computeMatchToSkillV2, le chemin du rejeu et du sync) rattrape la
+// non-convergence : rosters et comptes de la fixture, états seedés depuis les priors. Un appel
+// direct au solveur, sans le repli, rendrait ErrNotConverged.
+func TestComputeMatchToSkillV2_RattrapeLaNonConvergence(t *testing.T) {
+	const gameplayDurMs = 600_000
+	div := matchDivergent()
+	member := func(xuid string, pc skillv2.PlayerCounts) rosterMember {
+		return rosterMember{
+			xuid:           xuid,
+			kills:          pc.Kills,
+			deaths:         pc.Deaths,
+			timePlayedSecs: sql.NullFloat64{Float64: pc.Weight * gameplayDurMs / 1000, Valid: true},
+		}
+	}
+	var teamA, teamB []rosterMember
+	for i, pc := range div.counts.TeamA {
+		pc.Quit = false
+		teamA = append(teamA, member(fmt.Sprintf("a%d", i), pc))
+	}
+	for i, pc := range div.counts.TeamB {
+		teamB = append(teamB, member(fmt.Sprintf("b%d", i), pc))
+	}
+	repo := &fakeSkillV2Repo{states: map[string]*domain.SkillV2State{}}
+	before := solverCountFallbackTotal.Value()
+
+	got, err := computeMatchToSkillV2(context.Background(), repo, nil, skillv2.DefaultPriors(), nil, quitTimeline{},
+		"m_divergent", "arena_slayer", time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC),
+		teamA, teamB, skillv2.TeamWin, "a0", gameplayDurMs)
+
+	if err != nil {
+		t.Fatalf("le calcul du match doit être rattrapé par le repli : %v", err)
+	}
+	if got.ownerNew == nil || len(got.newA) != 4 || len(got.newB) != 6 {
+		t.Fatalf("note attendue : ownerNew=%v newA=%d newB=%d", got.ownerNew, len(got.newA), len(got.newB))
+	}
+	if delta := solverCountFallbackTotal.Value() - before; delta != 1 {
+		t.Errorf("compteur du repli +%d, attendu +1", delta)
+	}
+}
+
+// Hors du moteur skill_v2, de ce fichier et des tests, personne n'appelle (ni ne référence)
+// skillv2.UpdateTwoTeamWithCountsEP : un appel direct contournerait le repli et rouvrirait les
+// matchs sans note. Le chemin est solveMatchWithCounts.
+func TestUpdateTwoTeamWithCountsEPAppeleSeulementParLeRepli(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pattern := regexp.MustCompile(`\.UpdateTwoTeamWithCountsEP\b`)
+	engineDir := filepath.Join(root, "internal", "analysis", "skill_v2") + string(filepath.Separator)
+	allowed := filepath.Join(root, "internal", "sync", "skill", "skill_v2_solver_fallback.go")
+	scanned := 0
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") ||
+			path == allowed || strings.HasPrefix(path, engineDir) {
+			return nil
+		}
+		src, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		scanned++
+		if pattern.Match(src) {
+			t.Errorf("%s référence skillv2.UpdateTwoTeamWithCountsEP : passer par solveMatchWithCounts", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scanned < 100 {
+		t.Fatalf("garde-rail aveugle : %d fichiers parcourus sous %s", scanned, root)
 	}
 }

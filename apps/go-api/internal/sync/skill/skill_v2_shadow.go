@@ -385,9 +385,8 @@ func resolveGroupParams(ctx context.Context, c shadowRunContext, group string) (
 // ne bouge pas, donc retry au prochain run — improbable de changer en pratique).
 // Diff = 1 reste accepté (cas courant : 4v3 / 4v5 après quit/late-join).
 //
-// Cf. ADR 0024 limites — Phase 3e pourrait introduire du damping EP pour
-// élargir la tolérance, ou un facteur tronqué propre pour mieux gérer les
-// asymétries.
+// Une non-convergence du solveur sur un match accepté est rattrapée par
+// solveWithCountFallback (recalcul sans les observations de comptes).
 func isTeamImbalanceTooHigh(nA, nB int) bool {
 	if nA == 0 || nB == 0 {
 		return true
@@ -654,7 +653,7 @@ func computeMatchToSkillV2(
 	if counts != nil {
 		counts.Hyperparams = countHyp
 	}
-	newEffA, newEffB, err := solveWithCountFallback(ctx, skillv2.UpdateTwoTeamWithCountsEP, countedMatch{
+	newEffA, newEffB, err := solveMatchWithCounts(ctx, countedMatch{
 		matchID: matchID,
 		match:   skillv2.TwoTeamMatch{TeamA: effA, TeamB: effB, ResultA: outcomeA},
 		counts:  counts,
