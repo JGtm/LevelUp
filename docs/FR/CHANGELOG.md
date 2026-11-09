@@ -6,6 +6,11 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [Unreleased]
+
+### Modifié
+- **Icônes du jeu pour les grenades et les capacités** — les vignettes de grenades et de capacités du rejeu sont désormais extraites des atlas d'interface du jeu, aux mêmes chemins. Le paquet de ressources change : un téléchargement unique pour l'application de bureau. Le dossier inutilisé `static/abilities-assets` est supprimé.
+
 ## [8.1.1] - 2026-11-09
 
 ### Corrigé
