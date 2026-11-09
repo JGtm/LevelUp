@@ -6,7 +6,8 @@ policies and raw JSON DTOs, with no storage and no decisions.
 
 ## Status
 
-Experimental. The API is not stable before v1.0.0; minor versions may break. Published from the
+Used in production by LevelUp since October 2026. From v1.0.0 the exported API follows semantic
+versioning (a breaking change means a new major version). Published from the
 LevelUp monorepo as a Go module in a subdirectory; versions are tagged `libs/haloapi/vX.Y.Z`.
 
 ## What it is
@@ -37,11 +38,11 @@ LevelUp monorepo as a Go module in a subdirectory; versions are tagged `libs/hal
 ## Install
 
 ```
-go get github.com/JGtm/LevelUp/libs/haloapi@v0.1.0
+go get github.com/JGtm/LevelUp/libs/haloapi@v1.0.0
 ```
 
-Works from any Go module; no `replace` directive is needed. (Go resolves `v0.1.0` to the
-subdirectory tag `libs/haloapi/v0.1.0`.)
+Works from any Go module; no `replace` directive is needed. (Go resolves `v1.0.0` to the
+subdirectory tag `libs/haloapi/v1.0.0`.)
 
 ## Example
 

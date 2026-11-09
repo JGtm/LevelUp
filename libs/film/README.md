@@ -6,7 +6,8 @@ assembles them into a 2D replay document.
 
 ## Status
 
-Experimental. The API is not stable before v1.0.0; minor versions may break. Published from the
+Used in production by LevelUp since October 2026. From v1.0.0 the exported API follows semantic
+versioning (a breaking change means a new major version). Published from the
 LevelUp monorepo as a Go module in a subdirectory; versions are tagged `libs/film/vX.Y.Z`.
 
 ## What it is
@@ -50,11 +51,11 @@ The four lower layers live under `internal/`, so the compiler closes them. What 
 ## Install
 
 ```
-go get github.com/JGtm/LevelUp/libs/film@v0.1.0
+go get github.com/JGtm/LevelUp/libs/film@v1.0.0
 ```
 
-Works from any Go module; no `replace` directive is needed. (Go resolves `v0.1.0` to the subdirectory tag
-`libs/film/v0.1.0`.) The module requires `libs/gamefiles` and `libs/himap` at their `v0.1.0` tags; `go get`
+Works from any Go module; no `replace` directive is needed. (Go resolves `v1.0.0` to the subdirectory tag
+`libs/film/v1.0.0`.) The module requires `libs/gamefiles` and `libs/himap` at their `v1.0.0` tags; `go get`
 brings them in.
 
 ## Example

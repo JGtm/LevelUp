@@ -5,7 +5,8 @@ geometry stored in the game's own `.module` archives.
 
 ## Status
 
-Experimental. The API is not stable before v1.0.0; minor versions may break. Published from the
+Used in production by LevelUp since October 2026. From v1.0.0 the exported API follows semantic
+versioning (a breaking change means a new major version). Published from the
 LevelUp monorepo as a Go module in a subdirectory; versions are tagged `libs/himap/vX.Y.Z`.
 
 ## What it is
@@ -35,12 +36,12 @@ One package, `himap`, built on `libs/gamefiles`:
 ## Install
 
 ```
-go get github.com/JGtm/LevelUp/libs/himap@v0.1.0
-go get github.com/JGtm/LevelUp/libs/gamefiles@v0.1.0
+go get github.com/JGtm/LevelUp/libs/himap@v1.0.0
+go get github.com/JGtm/LevelUp/libs/gamefiles@v1.0.0
 ```
 
-Works from any Go module; no `replace` directive is needed. (Go resolves `v0.1.0` to the
-subdirectory tag `libs/himap/v0.1.0`.) `himap` imports `libs/gamefiles`, so install both.
+Works from any Go module; no `replace` directive is needed. (Go resolves `v1.0.0` to the
+subdirectory tag `libs/himap/v1.0.0`.) `himap` imports `libs/gamefiles`, so install both.
 
 ## Example
 

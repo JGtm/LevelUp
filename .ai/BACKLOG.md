@@ -209,6 +209,8 @@ LevelUp importe encore les briques depuis `libs/`, alors que les quatre modules 
 Reste à faire pointer LevelUp sur ces modules : réécrire les imports de `apps/go-api`, supprimer `libs/` et `go.work`,
 poser les tags dépréciés `libs/<brique>/v0.1.1`, réécrire ADR 0041, `ARCHITECTURE_V6` et `COMMANDS` (EN et FR).
 
+**Mise à jour 2026-11-09** : les briques passent en v1.0.0 (décision du mainteneur) ; les tags dépréciés de l'ancien chemin seront donc `libs/<brique>/v1.0.1`, pas `v0.1.1`.
+
 **Pourquoi reporté** : le relevé `.ai/RELEVE_LOT6_LIBS_2026-11-09.md` compte 565 fichiers d'imports, environ 90
 garde-rails qui lisent le code des briques sur le disque sous `libs/`, et environ 70 fichiers de tests des briques qui
 lisent des données de LevelUp. **Condition de reprise** : plan dédié relu par `plan-review`, puis go du user. En
