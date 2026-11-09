@@ -15,6 +15,12 @@
 
 ---
 
+### [ui/navigation] Barre latérale trop haute pour la fenêtre : pas de grosse barre de défilement
+
+**Demande de l'utilisateur (2026-11-09).** Quand la fenêtre est trop petite pour tous les menus de premier niveau, la barre latérale (`components/shell/SidebarPanel.tsx:77`, et `SidebarRail.tsx:333` une fois repliée) affiche la barre de défilement standard, jugée très laide. Chercher d'abord une alternative qui évite le défilement (regrouper les entrées, réduire leur espacement selon la hauteur, reléguer les dernières dans un menu « Plus »). Si le défilement reste nécessaire : barre discrète, placée à gauche. Tenir le mode replié en icônes et tous les thèmes (tokens de couleur). **Effort : S à M.**
+
+---
+
 ### [bureau/ui] Volet des référentiels aussi fluide que « Signaler un problème »
 
 **Demande de l'utilisateur (2026-11-09).** Le volet des référentiels (`features/asset-drawer/AssetDockedPanel.tsx`) apparaît et disparaît d'un coup (`if (!isOpen) return null`), alors que le panneau de retour (`features/feedback-drawer/FeedbackDrawer.tsx`) reste monté et glisse par une transition. **Décision de l'utilisateur :** par défaut, le volet passe par-dessus la page, glisse et se ferme au clic dehors, comme le panneau de retour. Un bouton « épingler » le garde ouvert et décale alors la mise en page, avec une transition aussi fluide que le glissement. Point d'attention : animer la largeur de la page la recalcule à chaque image. Retarder le redimensionnement des graphiques à la fin de la transition, et mesurer sur les pages lourdes. État épinglé mémorisé comme l'est déjà le volet. **Effort : M.**
