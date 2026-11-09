@@ -15,6 +15,60 @@
 
 ---
 
+### [kpi/ascension] FDA calculée en quotient sur Solo / Escouade
+
+`platform/duckdb/patterns_repo.go:455` calcule `(frags + assistances/2) / max(1, morts)`, repris par
+`analysis/patterns/context.go:102` et affiché comme « FDA » par `features/ascension/SquadVsSoloCard.tsx:38,50` : avec
+15/4/6 la carte montre 2,83 au lieu de 10,33 (ADR 0006). Le même quotient décide les alertes de contre-performance et de
+fatigue (`behavioral.go:48,60,137`) : leurs seuils sont à recalibrer en même temps. Présent depuis avant la v8.0.7,
+relevé par la revue globale de la v8.1.0 (2026-11-09). **Effort : M.**
+
+---
+
+### [aide/kpi] Formule de la FDA fausse et différente par langue dans l'Aide
+
+`features/help/i18n/fr.ts:80` annonce `(frags + assistances/3) / max(1, morts)` et `en.ts:80`
+`(kills + assists) / max(1, deaths)`, exemples compris (lignes 82) ; la règle est `(frags + assistances/3) - morts`
+(`lib/fda.ts`, ADR 0006). À traiter avec l'entrée précédente. **Effort : S.**
+
+---
+
+### [i18n] Alertes de comportement composées en français côté Go
+
+`analysis/patterns/behavioral.go:69,76,158,159` et `behavioral_engagement.go:70,71,104,105,163,164`, affichées telles
+quelles par `features/ascension/BehaviorAlertList.tsx:45` : phrases françaises sur l'interface anglaise, contraire à
+l'ADR 0040. Dette gelée par `archlint/no_french_label_literal_test.go:92-93`. Passer au catalogue
+`internal/i18n/messages` et retirer l'exception. **Effort : S.**
+
+---
+
+### [web/couleurs] Fonds `bg-black/*` encore codés en dur
+
+`components/ui/analysis-pending-badge.tsx:91` (`bg-black/55`) et les autres `bg-black/*` de `components/` et `features/`
+(9 fichiers au 2026-11-09, dont `NavL1MobileActions.tsx:110` et `NavL1MobileMenu.tsx:79`) : à passer sur un token
+sémantique (règle web 12). **Effort : S.**
+
+---
+
+### [bureau] Fichiers de l'ancienne version laissés par une mise à jour moteur seul
+
+L'installeur moteur seul part avec `/UPDATE` et n'appelle pas l'ancien désinstalleur ; `resourcepack/remove.go:33` ne
+retire que le manifeste du paquet (`windows/hooks.nsh:49-50`). Les `web\assets\*` à noms hachés des versions précédentes
+s'accumulent sous `%LOCALAPPDATA%\Programs\LevelUp` et survivent à la désinstallation. Sans effet avant la première mise
+à jour après la 8.1.0 : **à traiter avant la 8.1.1 de bureau.** L'étape 5 de `e2e-install.ps1` ne le voit pas (réinstalle
+la même version). **Effort : S.**
+
+---
+
+### [outillage/rejeu] `replay-equiv` dépend d'un fichier local non versionné
+
+Les références du film `11de8353` (54 `spawn_points`) viennent de
+`data/titles/halo_infinite/reference/generated/map_weapon_pads.json`, git-ignoré (`replaybuild/spawnpoints.go:121`) : le
+harnais échoue à tort sur une machine sans ce fichier, et un `-update` lancé là y perd la branche « origine = point
+d'apparition ». Faire lire au harnais le seul catalogue versionné. **Effort : S.**
+
+---
+
 ### [rejeu/identité] 15 vies sans nom restantes dans les rejeux cuits
 
 Reste du lot film E8.4 (plan `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-16.md`) : sur les 36 films en cause (449 vies
