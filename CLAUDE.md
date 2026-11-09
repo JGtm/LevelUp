@@ -426,7 +426,7 @@ git commit -m "refactor(phase2): ..."
   précise 0023) ·
   `0043` **publication des briques** (quatre modules publiables, `libs/gamefiles`, `libs/himap`, `libs/film` et `libs/haloapi`,
   depuis le dépôt unique, `libs/film` ajouté par l'amendement du 2026-11-08 (README, exemple compilé, `NOTICE.md`, `require` sur les tags de `gamefiles` et `himap`) ; tags `libs/<brique>/vX.Y.Z` posés par l'utilisateur seul,
-  `v0.x` sans promesse de stabilité, un numéro par module ; un README modèle unique par brique, exemple compilé
+  `v1.0.0` depuis le 2026-11-09 (promesse de compatibilité semver, changement cassant = `/v2`), un numéro par module ; un README modèle unique par brique, exemple compilé
   par `example_test.go` ; licences : `gamefiles` GPL-3.0 à cause de `ooz`, `himap`, `film` et `haloapi` AGPL-3.0 ;
   critère de séparation en dépôt : contributeur externe, ou cadence indépendante, ou CI qui pèse, décision finale de
   l'utilisateur exécutée ensemble pour les quatre (dépôt du décodeur : `JGtm/halo-infinite-film-decoder`) ; `haloapitest` public ; l'exploitation reste dans LevelUp ; amende 0041 et 0042) ·

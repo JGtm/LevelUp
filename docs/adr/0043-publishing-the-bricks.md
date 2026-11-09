@@ -73,7 +73,8 @@ promise. It may change shape freely.
   `go get github.com/JGtm/LevelUp/libs/<brick>@v0.1.0`: Go itself resolves the tag `libs/<brick>/v0.1.0` of a module
   in a subdirectory (the form `@libs/<brick>/v0.1.0` would be read as a revision name).
 - `v0.x` until a brick is declared stable: **no promise of API stability before `v1`** (the READMEs say so). Each
-  module carries its own number; there is no shared version across the bricks.
+  module carries its own number; there is no shared version across the bricks. — superseded on 2026-11-09, see
+  the amendment below: v1.0.0.
 - A module that imports another brick (`himap` imports `gamefiles`) has no `require` for it today (ADR 0041 D2:
   a `require` on an unpublished version breaks package loading). `go get` of such a module cannot resolve the
   sibling. Before the tag of the upper module, its `go.mod` therefore gains a `require` on the tag of the brick below,
@@ -318,6 +319,29 @@ approved separately. Until it is done:
 - the brick tests that read the host repository go through `depottest.Racine` only (skip outside the host; host
   guard-rail `archlint/film_sortie_par_depottest_test.go`), so the suite of a brick taken alone is green with those tests
   skipped, not failing.
+
+## Amendment of 2026-11-09 — v1.0.0, the API is under a compatibility promise
+
+Source: decision of the maintainer on 2026-11-09 (the bricks have run in production inside LevelUp since October 2026;
+the "Experimental" status no longer described them).
+
+**Decision.** The four bricks are declared stable.
+
+- Tag `libs/<brick>/v1.0.0` in LevelUp, set by the maintainer on `main`, in the order `gamefiles`, `himap`, then `film`
+  and `haloapi` (`himap` requires `gamefiles v1.0.0`; `film` requires both).
+- Tag `v1.0.0` in each dedicated repository, republished from `libs/` by the recipe of the previous amendment.
+
+**Consequences.**
+
+- From v1.0.0 a breaking change in an exported symbol is a new major version (`/v2` module path); additions are minor
+  versions, fixes are patch versions.
+- The sentence "Experimental. The API is not stable before v1.0.0" is removed from the four READMEs.
+- The `require` lines of `himap` (on `gamefiles`) and `film` (on `gamefiles` and `himap`) stay at `v0.1.0` until the
+  tag they name exists: the workspace reads the `go.mod` of a required version even for a module it resolves locally,
+  so a `require` on an untagged `v1.0.0` breaks every build of the repository (checked on 2026-11-09). Each bump lands
+  in a commit after the tag below it, with its `go.sum` lines: `himap` after `libs/gamefiles/v1.0.0`, `film` after
+  `libs/himap/v1.0.0`; the tag of an upper module is set on the commit that carries its bump.
+- The deprecation tags foreseen for the old path become `v1.0.1` instead of `v0.1.1` when that step is executed.
 
 ## References
 
