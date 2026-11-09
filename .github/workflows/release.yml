@@ -403,9 +403,10 @@ jobs:
       - name: List artifacts
         run: ls -lh dist/
 
-      # Le corps de la release et les notes de l'updater reprennent la première section de
-      # docs/FR/RELEASE_NOTES.md (docs/RELEASE_NOTES.md pour notes_en) : le texte écrit pour les joueurs,
-      # pas le journal technique. Une section vide fait échouer la publication.
+      # La page de la release est en anglais, langue principale du dépôt, avec un lien vers la version française.
+      # Son corps et les notes de l'updater reprennent la première section de docs/RELEASE_NOTES.md et de
+      # docs/FR/RELEASE_NOTES.md (notes, notes_en) : le texte écrit pour les joueurs, pas le journal technique.
+      # Une section vide fait échouer la publication.
       - name: Notes de version
         env:
           TAG: ${{ github.ref_name }}
@@ -420,11 +421,11 @@ jobs:
             fi
           done
           {
-            echo "**[Télécharger LevelUp ${version} pour Windows](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/LevelUp_${version}_x64-setup.exe)** (Windows 10 ou 11, 64 bits). L'installeur n'est pas signé par un certificat payant : Windows affiche un avertissement, cliquer sur « Informations complémentaires » puis « Exécuter quand même »."
+            echo "**[Download LevelUp ${version} for Windows](https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/LevelUp_${version}_x64-setup.exe)** (Windows 10 or 11, 64-bit). The installer isn't signed with a paid certificate: Windows shows a warning, click \"More info\" then \"Run anyway\"."
             echo
-            cat notes_section.md
+            cat notes_section_en.md
             echo
-            echo "Détail technique : [journal des modifications](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/FR/CHANGELOG.md). Les autres fichiers servent aux mises à jour de l'application et à l'auto-hébergement."
+            echo "Technical details: [changelog](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/CHANGELOG.md). [Version française](https://github.com/${GITHUB_REPOSITORY}/blob/${TAG}/docs/FR/RELEASE_NOTES.md). The other files are used by in-app updates and for self-hosting."
           } > release_body.md
 
       # latest.json : le fichier que l'updater de l'application interroge
