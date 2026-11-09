@@ -489,9 +489,12 @@ type CarriedEquipmentCoverage struct {
 	Published               int `json:"published"`
 	NoIdentity              int `json:"noIdentity"`
 	BeforeOrigin            int `json:"beforeOrigin"`
-	WithoutRank             int `json:"withoutRank"`
-	AmbiguousRank           int `json:"ambiguousRank"`
-	Unnamed                 int `json:"unnamed"`
+	EndedBeforeOrigin       int `json:"endedBeforeOrigin"`
+	ReadsBeforeOrigin       int `json:"readsBeforeOrigin"`
+	NoGlobalID              int `json:"noGlobalId"`
+	Grenades                int `json:"grenades"`
+	Unresolved              int `json:"unresolved"`
+	Conflicting             int `json:"conflicting"`
 	WithCost                int `json:"withCost"`
 	NoCatalog               int `json:"noCatalog"`
 	AmbiguousCost           int `json:"ambiguousCost"`

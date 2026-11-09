@@ -237,7 +237,11 @@ const VersionCodecFaits = 2
 // ce lot porte le blob v28 : il est refuse a la magie du blob, et redecode — sans quoi un artefact rejoue
 // depuis des faits perimes perdrait la detonation lue et retomberait systematiquement sur le repli nomme
 // (`fallback.NomDetonationDernierePositionConnue`).
-const SchemaDesFaits = 18
+// SCHEMA 19 (2026-11-08, equipement porte) : chaque lecture de l equipement porte porte l IDENTITE de l objet a sa
+// creation (`CarriedEquipmentRead.HasGlobalID`, `GlobalID` : le GlobalID de son tag `eqip`), ecrite apres le genre de
+// lecture. La famille de l objet se lit desormais sur lui, et non sur l annonce i48 du porteur dans le meme paquet.
+// `grammar.Rev` monte avec ce numero (`grammar-2026-11-08`) : un fichier ecrit avant ce lot est refuse sur les deux.
+const SchemaDesFaits = 19
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.

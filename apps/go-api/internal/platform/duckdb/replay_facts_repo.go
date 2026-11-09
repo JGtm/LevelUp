@@ -103,12 +103,18 @@ func (r *ReplayFactsRepo) registryFacts(ctx context.Context, matchID string) (po
 // fermetures par RELAIS du rejeu (un remplaçant hérite des vies anonymes qui suivent
 // son arrivée). Les lignes de bot (`bid(N.0)`) sont GARDÉES : ce sont précisément les
 // remplaçants.
+//
+// LA PRESENCE A LA FIN SE LIT TELLE QUE LA BASE LA PORTE : `left_in_progress` et
+// `present_at_completion` restent nuls quand la colonne l'est (match ancien), jamais un faux par
+// COALESCE — un NULL changé en « présent » ou en « parti » fabriquerait la fin d'une vie du
+// rejeu. `Deaths` vaut zéro sur une colonne NULL : `DeathsDeclared` dit si ce zéro est une valeur.
 func (r *ReplayFactsRepo) playerFacts(ctx context.Context, matchID string) ([]port.MatchPlayerFact, error) {
 	start := analysis.SQLStartTimeCanonical("mr")
 	rows, err := r.shared.QueryContext(ctx,
 		`SELECT p.xuid, COALESCE(p.kills, 0), COALESCE(p.deaths, 0), COALESCE(p.assists, 0),
 		        COALESCE(p.team_id, -1),
-		        COALESCE(p.joined_in_progress, FALSE), COALESCE(p.left_in_progress, FALSE),
+		        COALESCE(p.joined_in_progress, FALSE), p.left_in_progress, p.present_at_completion,
+		        (p.deaths IS NOT NULL),
 		        CAST(epoch_ms(p.first_joined_time) - epoch_ms(`+start+`) AS BIGINT),
 		        CAST(epoch_ms(p.last_leave_time) - epoch_ms(`+start+`) AS BIGINT)
 		 FROM match_participants p
@@ -123,12 +129,19 @@ func (r *ReplayFactsRepo) playerFacts(ctx context.Context, matchID string) ([]po
 	for rows.Next() {
 		var p port.MatchPlayerFact
 		var joinMS, leaveMS sql.NullInt64
+		var left, present sql.NullBool
 		if err := rows.Scan(&p.XUID, &p.Kills, &p.Deaths, &p.Assists, &p.TeamID,
-			&p.JoinedInProgress, &p.LeftInProgress, &joinMS, &leaveMS); err != nil {
+			&p.JoinedInProgress, &left, &present, &p.DeathsDeclared, &joinMS, &leaveMS); err != nil {
 			return nil, fmt.Errorf("faits de rejeu : lecture match_participants (scan) : %w", err)
 		}
 		if p.XUID == "" {
 			continue // sans xuid, la ligne ne peut apparier aucun slot
+		}
+		if left.Valid {
+			p.LeftInProgress = &left.Bool
+		}
+		if present.Valid {
+			p.PresentAtCompletion = &present.Bool
 		}
 		if joinMS.Valid {
 			p.JoinMatchMS = &joinMS.Int64

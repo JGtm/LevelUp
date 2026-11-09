@@ -5783,6 +5783,7 @@ export interface components {
         };
         CarriedEquipment: {
             energy?: components["schemas"]["CarriedEnergy"][] | null;
+            family?: string;
             /** Format: int64 */
             r: number;
             /** Format: int32 */
@@ -5798,17 +5799,23 @@ export interface components {
             /** Format: int64 */
             ambiguousCost: number;
             /** Format: int64 */
-            ambiguousRank: number;
-            /** Format: int64 */
             attached: number;
             /** Format: int64 */
             beforeOrigin: number;
             /** Format: int64 */
+            conflicting: number;
+            /** Format: int64 */
             created: number;
+            /** Format: int64 */
+            endedBeforeOrigin: number;
             /** Format: int64 */
             energyReads: number;
             /** Format: int64 */
+            grenades: number;
+            /** Format: int64 */
             noCatalog: number;
+            /** Format: int64 */
+            noGlobalId: number;
             /** Format: int64 */
             noIdentity: number;
             /** Format: int64 */
@@ -5817,6 +5824,8 @@ export interface components {
             positionedByObject: number;
             /** Format: int64 */
             published: number;
+            /** Format: int64 */
+            readsBeforeOrigin: number;
             /** Format: int64 */
             riftEndsRead: number;
             /** Format: int64 */
@@ -5842,15 +5851,13 @@ export interface components {
             /** Format: int64 */
             trackedUnpositioned: number;
             /** Format: int64 */
-            unnamed: number;
-            /** Format: int64 */
             unpositioned: number;
+            /** Format: int64 */
+            unresolved: number;
             /** Format: int64 */
             uses: number;
             /** Format: int64 */
             withCost: number;
-            /** Format: int64 */
-            withoutRank: number;
         };
         CarriedTracked: {
             effect?: components["schemas"]["CarriedEffect"];
@@ -9446,6 +9453,7 @@ export interface components {
             assists: number;
             /** Format: int64 */
             deaths: number;
+            deathsDeclared?: boolean;
             /** Format: int64 */
             joinMatchMs?: number;
             joinedInProgress?: boolean;
@@ -9454,6 +9462,7 @@ export interface components {
             /** Format: int64 */
             leaveMatchMs?: number;
             leftInProgress?: boolean;
+            presentAtCompletion?: boolean;
             /** Format: int64 */
             teamId: number;
             xuid: string;

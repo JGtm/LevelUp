@@ -11,10 +11,11 @@ import {
 import { project } from '../layers/placementShapes'
 import { SHROUD_DURATION_MS } from '../layers/placementShroud'
 import { VIEW } from '../test/placementFixtures'
+import { RESPAWN_WITNESSES, sansFamillePubliee } from '../test/spawnedObjectWitnesses'
 import { testReplayDoc } from '../test/testDoc'
 import { zonePresenceAt } from './equipmentZones'
 import { placementAt } from './placementHitTest'
-import { sensorReveals } from './threatSensor'
+import { SENSOR_DURATION_MS, SENSOR_READ_END_MAX_MS, sensorReveals } from './threatSensor'
 import {
   drawablePlacements,
   SPAWNED_OBJECT_FAMILIES,
@@ -340,5 +341,204 @@ describe('écran occultant — la bulle lue dans le film (`tracked[].effect`, sc
   it('le compte des déploiements ne change pas : un objet engendré = un déploiement, bulle lue ou non', () => {
     const avec = shroud([{ ...tracked(100, 105), effect: effect() }, tracked(300, 305)])
     expect(spawnedObjectDeployments(avec).map((d) => d.t0)).toEqual([100, 300])
+  })
+})
+
+describe('un objet de réapparition (témoin réel bc4bde17, slot 518) — la famille se lit sur l objet', () => {
+  it('fabrique une pose par capteur situé, au repos lu, sans table de rang : la famille est celle du document', () => {
+    const doc = RESPAWN_WITNESSES.sensor()
+    const poses = spawnedObjectPlacements(doc)
+    expect(poses.map((p) => [p.family, p.owner, p.t0, p.x, p.y])).toEqual([
+      ['sensor', 518, 96, 25.02, -0.81],
+      ['sensor', 518, 328, 4.13, -2.99],
+      ['sensor', 518, 572, 24.13, -1.36],
+      ['sensor', 518, 764, 4.8, 2.24],
+    ])
+    expect(poses.every((p) => p.origin === 'deployed' && p.endRead === true)).toBe(true)
+    // Le calque dessine ces quatre poses (drawablePlacements) : la révélation, le survol et les zones les lisent.
+    expect(drawablePlacements(doc)).toHaveLength(4 + doc.equipmentPlacements.length)
+  })
+
+  it('compte quatre déploiements, un par objet engendré, au lancer', () => {
+    expect(spawnedObjectDeployments(RESPAWN_WITNESSES.sensor()).map((d) => [d.family, d.owner, d.t0])).toEqual([
+      ['sensor', 518, 77],
+      ['sensor', 518, 325],
+      ['sensor', 518, 554],
+      ['sensor', 518, 757],
+    ])
+  })
+
+  it("lit la famille publiée même quand la table des capacités du document ne nomme pas le rang", () => {
+    const doc = RESPAWN_WITNESSES.sensor()
+    const sansTable = { ...doc, abilityLabels: undefined }
+    expect(spawnedObjectPlacements(sansTable)).toHaveLength(4)
+    const rangInconnu = { ...doc, carriedEquipment: doc.carriedEquipment.map((c) => ({ ...c, r: -1 })) }
+    expect(spawnedObjectPlacements(rangInconnu)).toHaveLength(4)
+  })
+
+  it('un artefact antérieur, sans famille publiée, garde sa famille par le rang', () => {
+    const doc = RESPAWN_WITNESSES.sensor()
+    const ancien = sansFamillePubliee(doc)
+    expect(spawnedObjectPlacements(ancien)).toHaveLength(4)
+    expect(spawnedObjectPlacements({ ...ancien, abilityLabels: undefined })).toEqual([])
+  })
+})
+
+describe('capteur — un seul actif par joueur, et une fin lue plafonnée', () => {
+  /** Une vie de joueur : le slot qu'elle occupe, sa fenêtre en images, et son xuid (absent = vie sans identité). */
+  const life = (slot: number, start: number, end: number, xuid?: string) => ({
+    slot,
+    team: 0,
+    startFrame: start,
+    endFrame: end,
+    ...(xuid === undefined ? {} : { xuid }),
+    points: [
+      { t: start, x: 0, y: 0 },
+      { t: end, x: 0, y: 0 },
+    ],
+  })
+  /** Un objet porté d'une famille (rang du LABELS) au nom d'un slot, avec ses objets engendrés. */
+  const carried = (slot: number, r: number, objects: unknown[]) => ({ slot, r, t0: 0, t1: 900, tracked: objects })
+  const sensorDoc = (carriedEquipment: unknown[], tracks: unknown[]) =>
+    testReplayDoc({
+      frameCount: 1000,
+      frameIntervalMs: 100,
+      abilityLabels: LABELS,
+      carriedEquipment,
+      tracks,
+    } as never)
+  const ends = (doc: ReturnType<typeof sensorDoc>) => spawnedObjectPlacements(doc).map((p) => [p.t0, p.t1, p.endRead])
+  /** Plafond en images pour 100 ms par image. */
+  const CAP = SENSOR_READ_END_MAX_MS / TIME.frameMs
+
+  it('le lancer suivant dans la même vie met fin au précédent, au plus à l image où il apparaît', () => {
+    const doc = sensorDoc(
+      [carried(540, 1, [tracked(100, 105, { t1: 310 }), tracked(200, 205, { t1: 225 })])],
+      [life(540, 0, 900, 'A')],
+    )
+    expect(ends(doc)).toEqual([
+      [105, 200, true],
+      [205, 225, true],
+    ])
+  })
+
+  it('une fin lue plus courte que le lancer suivant reste telle quelle', () => {
+    const doc = sensorDoc(
+      [carried(540, 1, [tracked(100, 105, { t1: 150 }), tracked(200, 205, { t1: 225 })])],
+      [life(540, 0, 900, 'A')],
+    )
+    expect(ends(doc)[0]).toEqual([105, 150, true])
+  })
+
+  it('le lancer suivant après une mort (autre slot, même xuid) coupe aussi, d un autre objet porté', () => {
+    const doc = sensorDoc(
+      [
+        carried(540, 1, [tracked(100, 105, { t1: 310 })]),
+        carried(541, 1, [tracked(300, 305, { t1: 320 })]),
+      ],
+      [life(540, 0, 250, 'A'), life(541, 260, 900, 'A')],
+    )
+    expect(ends(doc)).toEqual([
+      [105, 300, true],
+      [305, 320, true],
+    ])
+  })
+
+  it('deux joueurs sur le même slot à des instants différents ne se coupent pas', () => {
+    const doc = sensorDoc(
+      [carried(540, 1, [tracked(100, 105, { t1: 400 }), tracked(305, 310, { t1: 330 })])],
+      [life(540, 0, 200, 'A'), life(540, 300, 900, 'B')],
+    )
+    expect(ends(doc)).toEqual([
+      [105, 105 + CAP, true],
+      [310, 330, true],
+    ])
+  })
+
+  it('une vie sans xuid est identifiée par son slot, sans se confondre avec un joueur identifié', () => {
+    const doc = sensorDoc(
+      [
+        carried(540, 1, [tracked(100, 105, { t1: 310 }), tracked(200, 205, { t1: 225 })]),
+        carried(541, 1, [tracked(150, 155, { t1: 300 })]),
+        carried(542, 1, [tracked(160, 165, { t1: 300 })]),
+      ],
+      [life(540, 0, 900), life(541, 0, 900, 'A'), life(542, 0, 900)],
+    )
+    expect(ends(doc)).toEqual([
+      [105, 200, true],
+      [205, 225, true],
+      [155, 300, true],
+      [165, 300, true],
+    ])
+  })
+
+  it('un slot sans aucune vie qui couvre le lancer se lit par le slot seul', () => {
+    const doc = sensorDoc(
+      [carried(540, 1, [tracked(100, 105, { t1: 310 }), tracked(200, 205, { t1: 225 })])],
+      [],
+    )
+    expect(ends(doc)[0]).toEqual([105, 200, true])
+  })
+
+  it('un capteur non situé coupe le précédent : le geste a eu lieu, seul son lieu manque', () => {
+    const doc = sensorDoc(
+      [carried(540, 1, [tracked(100, 105, { t1: 310 }), { t0: 200, t1: 220 }])],
+      [life(540, 0, 900, 'A')],
+    )
+    expect(ends(doc)).toEqual([[105, 200, true]])
+  })
+
+  it('une fin lue aberrante est plafonnée à repos + SENSOR_READ_END_MAX_MS, et reste marquée lue', () => {
+    expect(SENSOR_READ_END_MAX_MS).toBe(20_600)
+    expect(SENSOR_READ_END_MAX_MS).not.toBe(SENSOR_DURATION_MS)
+    const at = (t1: number) =>
+      ends(sensorDoc([carried(540, 1, [tracked(100, 105, { t1 })])], [life(540, 0, 900, 'A')]))
+    expect(at(105 + CAP)).toEqual([[105, 105 + CAP, true]])
+    expect(at(105 + CAP + 1)).toEqual([[105, 105 + CAP, true]])
+    expect(at(900)).toEqual([[105, 105 + CAP, true]])
+  })
+
+  it('la fin n est jamais antérieure au repos, même coupée par un lancer qui précède le repos', () => {
+    const doc = sensorDoc(
+      [carried(540, 1, [tracked(100, 120, { t1: 310 }), tracked(110, 125)])],
+      [life(540, 0, 900, 'A')],
+    )
+    expect(ends(doc)[0]).toEqual([120, 120, true])
+  })
+
+  it('un capteur sans fin lue garde la durée de repli, que le lancer suivant coupe quand même', () => {
+    const repli = (second: number) =>
+      ends(
+        sensorDoc(
+          [carried(540, 1, [tracked(100, 105, { t1: undefined }), tracked(second, second + 5)])],
+          [life(540, 0, 900, 'A')],
+        ),
+      )[0]
+    expect(repli(200)).toEqual([105, 200, true])
+    expect(repli(400)).toEqual([105, 105 + SENSOR_DURATION_MS / TIME.frameMs, true])
+  })
+
+  it('un capteur seul sans fin lue n affirme toujours aucune fin', () => {
+    const doc = sensorDoc([carried(540, 1, [tracked(100, 105, { t1: undefined })])], [life(540, 0, 900, 'A')])
+    expect(ends(doc)).toEqual([[105, 105, undefined]])
+  })
+
+  it('les autres familles ne changent pas : ni coupure au lancer suivant, ni plafond', () => {
+    for (const rank of [5, 3, 4]) {
+      const doc = sensorDoc(
+        [carried(540, rank, [tracked(100, 105, { t1: 900 }), tracked(200, 205, { t1: 900 })])],
+        [life(540, 0, 900, 'A')],
+      )
+      const [first] = spawnedObjectPlacements(doc)
+      expect(first.t1).toBe(rank === 5 ? 900 : 105)
+    }
+  })
+
+  it('les déploiements comptés ne changent pas : un objet engendré = un déploiement', () => {
+    const doc = sensorDoc(
+      [carried(540, 1, [tracked(100, 105, { t1: 310 }), tracked(200, 205), { t0: 300, t1: 320 }])],
+      [life(540, 0, 900, 'A')],
+    )
+    expect(spawnedObjectDeployments(doc).map((d) => d.t0)).toEqual([100, 200, 300])
   })
 })

@@ -162,6 +162,7 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 		       COALESCE(p.joined_in_progress, FALSE),
 		       CAST(epoch_ms(p.first_joined_time) - epoch_ms(`+start+`) AS BIGINT),
 		       COALESCE(p.kills, 0), COALESCE(p.deaths, 0), COALESCE(p.assists, 0),
+		       p.left_in_progress, p.present_at_completion, p.deaths,
 		       COALESCE(mr.game_variant_name, ''), trim(COALESCE(mr.map_id, ''))
 		FROM match_participants p
 		JOIN match_registry mr ON mr.match_id = p.match_id
@@ -175,11 +176,13 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 
 	for rows.Next() {
 		var xuid string
-		var shots, team, joinMS sql.NullInt64
+		var shots, team, joinMS, morts sql.NullInt64
+		var left, present sql.NullBool
 		var joined bool
 		ligne := decfilm.PlayerLine{}
 		if err := rows.Scan(&xuid, &shots, &team, &joined, &joinMS,
-			&ligne.Kills, &ligne.Deaths, &ligne.Assists, &out.Variante, &out.CarteID); err != nil {
+			&ligne.Kills, &ligne.Deaths, &ligne.Assists, &left, &present, &morts,
+			&out.Variante, &out.CarteID); err != nil {
 			return fmt.Errorf("SharedRoster participants(%s) scan: %w", matchID, err)
 		}
 		ligne.XUID = xuid
@@ -191,21 +194,46 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 		if team.Valid {
 			out.Equipes[xuid] = int(team.Int64)
 		}
-		p := replay.Participant{ID: xuid, JoinedInProgress: joined}
-		// L INSTANT NE VOYAGE QUE S IL EST DECLARE (meme garde que `participantsDuTableau`
-		// cote cuisson) : le porter avec un zero fabriquerait une arrivee au coup d envoi, ce
-		// qui donnerait TOUTES les vies du siege a l humain — exactement le defaut que ce lot
-		// corrige.
-		if joined && joinMS.Valid {
-			ms := joinMS.Int64
-			p.JoinMatchMS = &ms
-		}
-		out.Participants = append(out.Participants, p)
+		out.Participants = append(out.Participants, colonnesDuTableau{
+			joined: joined, joinMS: joinMS, left: left, present: present, morts: morts}.participant(xuid))
 	}
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("SharedRoster participants(%s) rows: %w", matchID, err)
 	}
 	return nil
+}
+
+// colonnesDuTableau est ce que la base porte d un participant pour le tableau du registre.
+type colonnesDuTableau struct {
+	joined        bool
+	joinMS, morts sql.NullInt64
+	left, present sql.NullBool
+}
+
+// participant projette ces colonnes vers [replay.Participant], par la MEME regle que
+// `replaybuild.participantsDuTableau` cote cuisson.
+//
+// L INSTANT D ARRIVEE NE VOYAGE QUE S IL EST DECLARE : le porter avec un zero fabriquerait une
+// arrivee au coup d envoi, ce qui donnerait TOUTES les vies du siege a l humain — exactement le
+// defaut que ce lot corrige. LA PRESENCE A LA FIN NE VOYAGE DE MEME QUE SI LA BASE LA DECLARE : un
+// NULL reste nil, jamais un faux par defaut.
+func (c colonnesDuTableau) participant(xuid string) replay.Participant {
+	p := replay.Participant{ID: xuid, JoinedInProgress: c.joined}
+	if c.left.Valid {
+		p.LeftInProgress = &c.left.Bool
+	}
+	if c.present.Valid {
+		p.PresentAtCompletion = &c.present.Bool
+	}
+	if c.morts.Valid {
+		n := int(c.morts.Int64)
+		p.Deaths = &n
+	}
+	if c.joined && c.joinMS.Valid {
+		ms := c.joinMS.Int64
+		p.JoinMatchMS = &ms
+	}
+	return p
 }
 
 // KillSourceSummary : ce qu une passe multi-matchs a produit. Tous les compteurs sont des

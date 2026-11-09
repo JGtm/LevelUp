@@ -53,6 +53,12 @@ const (
 	// `causeDeLaCoupure` (film muet sur les morts du joueur) et `replay/tracks_publication.go`,
 	// `bornesDesVies` (table d'index des joueurs vide). Le registre porte la condition de chacun.
 	NomVieCoupeeAuTrouDeReplication Nom = "repli_vie_coupee_au_trou_de_replication"
+	// NomFinDeVieAuDernierPoint : `replay/tracks_fin_de_vie.go`, `clotureParMort.compterLeSilenceDeCalage`.
+	NomFinDeVieAuDernierPoint Nom = "repli_fin_de_vie_au_dernier_point"
+	// NomFinDeVieSansTableauAPI : `replay/tracks_fin_de_vie_presence.go`, `motifFin.compter`.
+	NomFinDeVieSansTableauAPI Nom = "repli_fin_de_vie_sans_tableau_api"
+	// NomFinDeVieMortManquante : `replay/tracks_fin_de_vie_presence.go`, `motifFin.compter`.
+	NomFinDeVieMortManquante Nom = "repli_fin_de_vie_mort_manquante"
 	// NomArmementBombeDebutAZero : `replay/bomb_armings.go`, `buildBombArmings`.
 	NomArmementBombeDebutAZero Nom = "repli_armement_bombe_debut_a_zero"
 	// NomGesteDernierOccupantDuMatch : `replay/usage_summary_owners.go`, `usageOwners.at` et

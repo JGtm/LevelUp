@@ -1,6 +1,7 @@
 package replay
 
-// filmfacts_equipement_porte.go — L EQUIPEMENT PORTE DANS LE FICHIER DE FAITS (schema des faits 13, vies suivies au 14, leurs creations au 15) :
+// filmfacts_equipement_porte.go — L EQUIPEMENT PORTE DANS LE FICHIER DE FAITS (schema des faits 13, vies suivies au 14, leurs creations au 15,
+// l identite de l objet — son GlobalID — au 19) :
 // les lectures des objets ti=37 crees attaches et leurs denominateurs, au complement de la section 1
 // ([encodeComplementDesEntrees]), apres les poussees.
 
@@ -18,6 +19,8 @@ func encodeEquipementPorte(w *gwriter, ls []types.CarriedEquipmentRead, st types
 		w.u(uint64(l.Object.Gen))
 		w.u(uint64(l.Carrier))
 		w.str(string(l.Kind))
+		w.bool8(l.HasGlobalID)
+		w.u(uint64(l.GlobalID))
 		w.bool8(l.HasEnergy)
 		w.u(uint64(l.Energy))
 		w.bool8(l.HasActivation)
@@ -48,6 +51,8 @@ func decodeEquipementPorte(r *greader) ([]types.CarriedEquipmentRead, types.Carr
 		l.Object = types.LifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())} //nolint:gosec // ecrits depuis des uint32
 		l.Carrier = uint32(r.u())                                         //nolint:gosec // idem
 		l.Kind = types.CarriedReadKind(r.str())
+		l.HasGlobalID = r.bool8()
+		l.GlobalID = uint32(r.u()) //nolint:gosec // R(32)
 		l.HasEnergy = r.bool8()
 		l.Energy = uint32(r.u()) //nolint:gosec // R(14)
 		l.HasActivation = r.bool8()

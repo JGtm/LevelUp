@@ -12,14 +12,14 @@ import (
 
 const origineEcran = uint64(10_000_000)
 
-// ecranDeTest : un ecran occultant (rang 10) de l objet 2039, porteur 539 : la grenade 1123 est nommee a 118 775 ms et
+// ecranDeTest : un objet porte d identite `id` (par defaut un ecran occultant) de l objet 2039, porteur 539 : la grenade 1123 est nommee a 118 775 ms et
 // supprimee a 119 100 ms ; `cands` sont les candidates lues a cette suppression, `fins` les suppressions d effet.
-func ecranDeTest(rang int, repos []types.ProjectileTrack, cands []types.SpawnedObject,
+func ecranDeTest(id uint32, repos []types.ProjectileTrack, cands []types.SpawnedObject,
 	fins ...types.CarriedEquipmentRead) entreeDEquipementPorte {
 	grenade := types.LifeKey{Slot: 1123, Gen: 1}
 	objet := types.LifeKey{Slot: 2039, Gen: 1}
 	reads := []types.CarriedEquipmentRead{
-		lecture(90183.0, 2039, 539, types.CarriedNew),
+		avecIdentite(lecture(90183.0, 2039, 539, types.CarriedNew), id),
 		avecActivation(avecSuivis(lecture(118775.4, 2039, 539, types.CarriedDelta), 1123)),
 		{TimestampUS: 119_100_000, Object: objet, Carrier: 539, Kind: types.CarriedTrackedEnd, Tracked: []types.LifeKey{grenade}},
 	}
@@ -30,8 +30,8 @@ func ecranDeTest(rang int, repos []types.ProjectileTrack, cands []types.SpawnedO
 	reads = append(reads, fins...)
 	reads = append(reads, lecture(130000.0, 2039, 539, types.CarriedDel))
 	return entreeDEquipementPorte{reads: reads,
-		palette:     &AbilityPalette{Families: map[int]string{10: "shroud_screen", 23: "repair_field"}},
-		changes:     []types.EquipmentChange{{TimestampUS: 90183000, Slot: 539, Kind: types.EquipmentTaken, Rank: rang}},
+		palette:     &AbilityPalette{Families: map[int]string{10: familleDeLEcranOccultant, 23: "repair_field"}},
+		refs:        referenceDuTest(),
 		projectiles: repos, tracks: []Track{{Slot: 539}}, origin: origineEcran, step: pas100ms}
 }
 
@@ -55,7 +55,7 @@ func finDEffetLue(slot uint32, ts uint64) types.CarriedEquipmentRead {
 // TestEffetDeLEcranLu : la candidate a 0,3 m du repos de la grenade devient l objet d effet : sa frame de
 // naissance, sa suppression lue, sa position arrondie.
 func TestEffetDeLEcranLu(t *testing.T) {
-	out, _, cov := buildCarriedEquipment(ecranDeTest(10, reposDeLaGrenade(),
+	out, _, cov := buildCarriedEquipment(ecranDeTest(idEcran, reposDeLaGrenade(),
 		[]types.SpawnedObject{candidate(1478, 118_850_000, 10.2, 20.2, 5.1)}, finDEffetLue(1478, 126_357_000)))
 	e := out[0].Tracked[0].Effect
 	if e == nil || e.T0 != 1088 || e.T1 == nil || *e.T1 != 1163 || e.X == nil || *e.X != 10.2 || *e.Y != 20.2 || *e.Z != 5.1 {
@@ -68,7 +68,7 @@ func TestEffetDeLEcranLu(t *testing.T) {
 
 // TestEffetRivaleEcartee : une candidate lointaine (la rivale mesuree est a 9,5 m) ne gene pas la bonne.
 func TestEffetRivaleEcartee(t *testing.T) {
-	out, _, cov := buildCarriedEquipment(ecranDeTest(10, reposDeLaGrenade(), []types.SpawnedObject{
+	out, _, cov := buildCarriedEquipment(ecranDeTest(idEcran, reposDeLaGrenade(), []types.SpawnedObject{
 		candidate(1500, 118_700_000, 19.5, 20, 5), candidate(1478, 118_850_000, 10.2, 20.2, 5.1)}))
 	e := out[0].Tracked[0].Effect
 	if e == nil || *e.X != 10.2 || e.T1 != nil || cov.TrackedEffects != 1 || cov.TrackedEffectEnds != 0 {
@@ -82,7 +82,7 @@ func TestEffetBordDuRayon(t *testing.T) {
 		dx      float32
 		retenue bool
 	}{{3, true}, {3.01, false}} {
-		out, _, cov := buildCarriedEquipment(ecranDeTest(10, reposDeLaGrenade(),
+		out, _, cov := buildCarriedEquipment(ecranDeTest(idEcran, reposDeLaGrenade(),
 			[]types.SpawnedObject{candidate(1478, 118_850_000, 10+k.dx, 20, 5)}))
 		if got := out[0].Tracked[0].Effect != nil; got != k.retenue {
 			t.Fatalf("dx %.2f : retenue %v, attendu %v (%+v)", k.dx, got, k.retenue, cov)
@@ -95,7 +95,7 @@ func TestEffetBordDuRayon(t *testing.T) {
 
 // TestEffetAmbigu : deux candidates a portee du repos : rien n est publie, l ambiguite se compte.
 func TestEffetAmbigu(t *testing.T) {
-	out, _, cov := buildCarriedEquipment(ecranDeTest(10, reposDeLaGrenade(), []types.SpawnedObject{
+	out, _, cov := buildCarriedEquipment(ecranDeTest(idEcran, reposDeLaGrenade(), []types.SpawnedObject{
 		candidate(1478, 118_850_000, 10.2, 20.2, 5.1), candidate(1479, 118_870_000, 10.4, 20, 5)}))
 	if out[0].Tracked[0].Effect != nil || cov.TrackedEffects != 0 || cov.TrackedEffectsAmbiguous != 1 {
 		t.Fatalf("effet %+v, couverture %+v", out[0].Tracked[0].Effect, cov)
@@ -105,13 +105,13 @@ func TestEffetAmbigu(t *testing.T) {
 // TestEffetSansRepos : sans repos publie (aucune trajectoire), la candidate unique de la fenetre est retenue avec sa
 // position ; deux candidates sont ambigues. Aucune position ne vient d ailleurs que de la candidate.
 func TestEffetSansRepos(t *testing.T) {
-	out, _, cov := buildCarriedEquipment(ecranDeTest(10, nil,
+	out, _, cov := buildCarriedEquipment(ecranDeTest(idEcran, nil,
 		[]types.SpawnedObject{candidate(1478, 118_850_000, 40, 50, 6)}))
 	e := out[0].Tracked[0].Effect
 	if out[0].Tracked[0].Land != nil || e == nil || *e.X != 40 || cov.TrackedEffects != 1 {
 		t.Fatalf("effet %+v, couverture %+v", e, cov)
 	}
-	out, _, cov = buildCarriedEquipment(ecranDeTest(10, nil, []types.SpawnedObject{
+	out, _, cov = buildCarriedEquipment(ecranDeTest(idEcran, nil, []types.SpawnedObject{
 		candidate(1478, 118_850_000, 40, 50, 6), candidate(1479, 118_850_000, 60, 50, 6)}))
 	if out[0].Tracked[0].Effect != nil || cov.TrackedEffectsAmbiguous != 1 {
 		t.Fatalf("effet %+v, couverture %+v", out[0].Tracked[0].Effect, cov)
@@ -123,11 +123,11 @@ func TestEffetSansRepos(t *testing.T) {
 func TestEffetSansPositionDeCandidate(t *testing.T) {
 	sans := candidate(1478, 118_850_000, 0, 0, 0)
 	sans.HasPosition = false
-	out, _, _ := buildCarriedEquipment(ecranDeTest(10, nil, []types.SpawnedObject{sans}))
+	out, _, _ := buildCarriedEquipment(ecranDeTest(idEcran, nil, []types.SpawnedObject{sans}))
 	if e := out[0].Tracked[0].Effect; e == nil || e.X != nil || e.Y != nil || e.Z != nil {
 		t.Fatalf("effet %+v : les trois coordonnees sont absentes ensemble", e)
 	}
-	out, _, cov := buildCarriedEquipment(ecranDeTest(10, reposDeLaGrenade(), []types.SpawnedObject{sans}))
+	out, _, cov := buildCarriedEquipment(ecranDeTest(idEcran, reposDeLaGrenade(), []types.SpawnedObject{sans}))
 	if out[0].Tracked[0].Effect != nil || cov.TrackedEffectsUnlinked != 1 {
 		t.Fatalf("effet %+v, couverture %+v", out[0].Tracked[0].Effect, cov)
 	}
@@ -136,7 +136,7 @@ func TestEffetSansPositionDeCandidate(t *testing.T) {
 // TestEffetAutreFamille : seule la famille de l ecran occultant lit un effet ; un champ de reparation dont le film
 // rend les memes lectures n en publie pas.
 func TestEffetAutreFamille(t *testing.T) {
-	out, _, cov := buildCarriedEquipment(ecranDeTest(23, reposDeLaGrenade(),
+	out, _, cov := buildCarriedEquipment(ecranDeTest(idChampReparable, reposDeLaGrenade(),
 		[]types.SpawnedObject{candidate(1478, 118_850_000, 10.2, 20.2, 5.1)}, finDEffetLue(1478, 126_357_000)))
 	if out[0].Tracked[0].Effect != nil || cov.TrackedEffects != 0 || cov.TrackedEffectsUnlinked != 0 {
 		t.Fatalf("effet %+v, couverture %+v", out[0].Tracked[0].Effect, cov)
@@ -146,7 +146,7 @@ func TestEffetAutreFamille(t *testing.T) {
 // TestEffetFinAvantLaNaissance : une suppression lue AVANT la naissance de la candidate est celle d une vie anterieure
 // de la meme cle ; elle ne date pas la fin de l effet.
 func TestEffetFinAvantLaNaissance(t *testing.T) {
-	out, _, cov := buildCarriedEquipment(ecranDeTest(10, reposDeLaGrenade(),
+	out, _, cov := buildCarriedEquipment(ecranDeTest(idEcran, reposDeLaGrenade(),
 		[]types.SpawnedObject{candidate(1478, 118_850_000, 10.2, 20.2, 5.1)}, finDEffetLue(1478, 118_000_000)))
 	if e := out[0].Tracked[0].Effect; e == nil || e.T1 != nil || cov.TrackedEffectEnds != 0 {
 		t.Fatalf("effet %+v, couverture %+v", e, cov)
@@ -156,7 +156,7 @@ func TestEffetFinAvantLaNaissance(t *testing.T) {
 // TestEffetSansCandidate : un ecran dont la grenade n a aucune candidate (fin non lue, ou aucune ti=38) ne publie
 // pas d effet et se compte sans lien.
 func TestEffetSansCandidate(t *testing.T) {
-	out, _, cov := buildCarriedEquipment(ecranDeTest(10, reposDeLaGrenade(), nil))
+	out, _, cov := buildCarriedEquipment(ecranDeTest(idEcran, reposDeLaGrenade(), nil))
 	if out[0].Tracked[0].Effect != nil || cov.TrackedEffectsUnlinked != 1 || cov.TrackedObjects != 1 {
 		t.Fatalf("effet %+v, couverture %+v", out[0].Tracked[0].Effect, cov)
 	}
@@ -169,7 +169,7 @@ func TestEffetFinRetrouveeSousUnAutreObjet(t *testing.T) {
 	fin := finDEffetLue(1478, 126_357_000)
 	fin.Object = types.LifeKey{Slot: 2050, Gen: 1}
 	fin.Carrier = 540
-	out, _, cov := buildCarriedEquipment(ecranDeTest(10, reposDeLaGrenade(),
+	out, _, cov := buildCarriedEquipment(ecranDeTest(idEcran, reposDeLaGrenade(),
 		[]types.SpawnedObject{candidate(1478, 118_850_000, 10.2, 20.2, 5.1)}, fin))
 	e := out[0].Tracked[0].Effect
 	if e == nil || e.T1 == nil || *e.T1 != 1163 || cov.TrackedEffectEnds != 1 {
@@ -181,7 +181,7 @@ func TestEffetFinRetrouveeSousUnAutreObjet(t *testing.T) {
 // supprimee a 119 100 ms, celle du second nommee a 125 000 ms et supprimee a 126 100 ms. Chaque suppression rend ses
 // candidates.
 func deuxLancers(premiere, seconde types.SpawnedObject) entreeDEquipementPorte {
-	in := ecranDeTest(10, reposDeLaGrenade(), []types.SpawnedObject{premiere})
+	in := ecranDeTest(idEcran, reposDeLaGrenade(), []types.SpawnedObject{premiere})
 	grenade := types.LifeKey{Slot: 1123, Gen: 1}
 	objet := types.LifeKey{Slot: 2039, Gen: 1}
 	suite := []types.CarriedEquipmentRead{

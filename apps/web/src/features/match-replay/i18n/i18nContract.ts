@@ -860,10 +860,10 @@ export interface ReplayText {
    * LES CHARGES DE LA CAPACITÉ PORTÉE (schéma 38 enrichi, lot P6) : le compte de la lecture
    * la plus récente de la même vie et du même équipement — et « PLEIN » QUALITATIF avant la
    * première lecture (décision utilisateur du 04/09) : le film ne transmet RIEN au ramassage,
-   * un chiffre serait inventé. Une famille que le canal ne mesure pas n'affiche rien du tout
+   * un chiffre serait inventé. « Plein » ne se lit que dans l'infobulle de la vignette
+   * (`abilityChargesFullHint`). Une famille que le canal ne mesure pas n'affiche rien du tout
    * — ni compte, ni « plein » (cf. `abilityChargeLogic.ts`).
    */
-  abilityChargesFull: string
   abilityChargesFullHint: string
   abilityChargesCount: (n: number) => string
   abilityChargesAge: string

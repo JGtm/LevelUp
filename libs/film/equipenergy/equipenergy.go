@@ -74,6 +74,12 @@ func (e Entry) PickupID() (uint32, bool) {
 	return uint32(v), err == nil
 }
 
+// CarriedID rend le GlobalID de l objet porte d une entree, ou faux s il est illisible.
+func (e Entry) CarriedID() (uint32, bool) {
+	v, err := strconv.ParseUint(e.Carried, 0, 32)
+	return uint32(v), err == nil
+}
+
 // epsilonDesUsages est la constante que `FUN_1407e9384` ajoute a l energie avant la division
 // (`DAT_143cd837c` = 0x38d1b717 = 1e-4).
 const epsilonDesUsages float32 = 1e-4

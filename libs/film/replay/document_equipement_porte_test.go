@@ -31,28 +31,56 @@ func avecActivation(l types.CarriedEquipmentRead) types.CarriedEquipmentRead {
 	return l
 }
 
+// Les identifiants d objets PORTES du catalogue du test : l identite que le film ecrit a la creation.
+const (
+	idRepulseur      = uint32(0x1e79ebda)
+	idTranslocateur  = uint32(0xa1344fc2)
+	idMurRamasse     = uint32(0xc12e5469) // mur de deux ramassables (0x186b28f2 hors manifeste, 0x2974c233)
+	idMurReapparu    = uint32(0x37c87a13)
+	idChampReparable = uint32(0x5c8e2316)
+	idEcran          = uint32(0x6a0b4f2d)
+	idGrenade        = uint32(0x0c0de001)
+	idGrappin        = uint32(0x273fe0eb) // nomme directement au manifeste, sans fiche d energie
+)
+
+// avecIdentite pose l identite que le record de creation ecrit.
+func avecIdentite(l types.CarriedEquipmentRead, id uint32) types.CarriedEquipmentRead {
+	l.HasGlobalID, l.GlobalID = true, id
+	return l
+}
+
+// referenceDuTest : la reference des objets portes (catalogue et manifeste) des tests.
+func referenceDuTest() *referenceDesObjetsPortes {
+	return nouvelleReferenceDesObjetsPortes(catalogueDuTest(), famillesDuTest)
+}
+
 func catalogueDuTest() *equipenergy.Catalog {
 	return &equipenergy.Catalog{Entries: []equipenergy.Entry{
 		{Pickup: "0x7ca85adc", Carried: "0x1e79ebda", PickupEnergy: 0.6, CarriedEnergy: 1, Threshold: 0.2, Delta: -0.2},
 		{Pickup: "0x730dc70f", Carried: "0xa1344fc2", PickupEnergy: 1, CarriedEnergy: 1, Threshold: 1, Delta: -1},
 		{Pickup: "0x2974c233", Carried: "0xc12e5469", PickupEnergy: 0.66, CarriedEnergy: 1, Threshold: 0.33, Delta: -0.33},
+		{Pickup: "0x186b28f2", Carried: "0xc12e5469", PickupEnergy: 1, CarriedEnergy: 1, Threshold: 0.33, Delta: -0.33},
 		{Pickup: "0x8e2dc574", Carried: "0x37c87a13", PickupEnergy: 1, CarriedEnergy: 1, Threshold: 1, Delta: -1},
 		{Pickup: "0x32d97758", Carried: "0x5c8e2316", PickupEnergy: 0.5, CarriedEnergy: 1, Threshold: 0.1, Delta: -0.5},
+		{Pickup: "0x4396db42", Carried: "0x6a0b4f2d", PickupEnergy: 1, CarriedEnergy: 1, Threshold: 0.5, Delta: -0.5},
+		{Pickup: "0x0f5716ff", Carried: "0x0c0de001", PickupEnergy: 1, CarriedEnergy: 1, Threshold: 0, Delta: 0},
 	}}
 }
 
 var famillesDuTest = map[uint32]string{0x7ca85adc: "repulsor", 0x730dc70f: "translocator_beacon",
-	0x2974c233: "wall", 0x8e2dc574: "wall", 0x32d97758: "repair_field"}
+	0x2974c233: "wall", 0x8e2dc574: "wall", 0x32d97758: "repair_field", 0x4396db42: familleDeLEcranOccultant,
+	0x0f5716ff: familleDeLaGrenadePique, 0x273fe0eb: "grapple"}
 
 func paletteDuTest() *AbilityPalette {
-	return &AbilityPalette{Families: map[int]string{6: "repulsor", 11: "translocator_beacon", 2: "wall", 23: "repair_field"}}
+	return &AbilityPalette{Families: map[int]string{6: "repulsor", 11: "translocator_beacon", 2: "wall", 23: "repair_field",
+		10: familleDeLEcranOccultant, 4: "grapple"}}
 }
 
 // TestRepulseurTroisUsages : 0d9a9af9 — ramasse a 0,6 (3 usages), puis 2, 1, 0 aux trois activations ;
 // la suppression date la fin.
 func TestRepulseurTroisUsages(t *testing.T) {
 	reads := []types.CarriedEquipmentRead{
-		avecEnergie(lecture(78332.1, 1566, 513, types.CarriedNew), 9830),
+		avecEnergie(avecIdentite(lecture(78332.1, 1566, 513, types.CarriedNew), idRepulseur), 9830),
 		avecActivation(lecture(85839.3, 1566, 513, types.CarriedDelta)),
 		avecEnergie(lecture(85855.9, 1566, 513, types.CarriedDelta), 6553),
 		avecActivation(lecture(95566.0, 1566, 513, types.CarriedDelta)),
@@ -61,9 +89,8 @@ func TestRepulseurTroisUsages(t *testing.T) {
 		avecEnergie(lecture(106630.8, 1566, 513, types.CarriedDelta), 1),
 		lecture(107464.7, 1566, 513, types.CarriedDel),
 	}
-	changes := []types.EquipmentChange{{TimestampUS: 78332100, Slot: 513, Kind: types.EquipmentTaken, Rank: 6}}
-	out, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads, changes: changes,
-		palette: paletteDuTest(), couts: coutsParFamille(catalogueDuTest(), famillesDuTest),
+	out, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads,
+		palette: paletteDuTest(), refs: referenceDuTest(),
 		tracks: []Track{{Slot: 513}}, origin: origine0d9a, step: pas100ms})
 	if len(out) != 1 || len(poses) != 0 || cov.WithCost != 1 {
 		t.Fatalf("publies %d, poses %d, couverture %+v", len(out), len(poses), cov)
@@ -99,15 +126,14 @@ func failleCreee(ms, neMs float64, objet, porteur, slot uint32, x, y, z float32)
 // l objet que ce paquet cree (1822, nomme par la pile au paquet suivant), a sa position i0.
 func TestPoseDeFailleDatee(t *testing.T) {
 	reads := []types.CarriedEquipmentRead{
-		lecture(161077.8, 1816, 535, types.CarriedNew),
+		avecIdentite(lecture(161077.8, 1816, 535, types.CarriedNew), idTranslocateur),
 		avecActivation(lecture(162478.1, 1816, 535, types.CarriedDelta)),
 		avecEnergie(lecture(164113.6, 1816, 535, types.CarriedDelta), 0),
 		failleCreee(164129.9, 164113.6, 1816, 535, 1822, 17.34, 135.50, 73.98),
 		lecture(194210.5, 1816, 535, types.CarriedDel),
 	}
-	changes := []types.EquipmentChange{{TimestampUS: 161077800, Slot: 535, Kind: types.EquipmentTaken, Rank: 11}}
-	out, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads, changes: changes,
-		palette: paletteDuTest(), couts: coutsParFamille(catalogueDuTest(), famillesDuTest),
+	out, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads,
+		palette: paletteDuTest(), refs: referenceDuTest(),
 		tracks: []Track{{Slot: 535}}, origin: origine1b2d, step: pas100ms})
 	if len(out) != 1 || len(poses) != 1 || cov.PositionedByObject != 1 {
 		t.Fatalf("publies %d, poses %+v, couverture %+v", len(out), poses, cov)
@@ -126,14 +152,13 @@ func TestPoseDeFailleDatee(t *testing.T) {
 // faille est quand meme situee, par l objet que la pose cree (1766, (0,73 ; 145,50 ; 76,43)).
 func TestPoseSansEchangeSituee(t *testing.T) {
 	reads := []types.CarriedEquipmentRead{
-		lecture(131000.0, 1763, 531, types.CarriedNew),
+		avecIdentite(lecture(131000.0, 1763, 531, types.CarriedNew), idTranslocateur),
 		avecActivation(lecture(133097.0, 1763, 531, types.CarriedDelta)),
 		avecEnergie(lecture(134734.2, 1763, 531, types.CarriedDelta), 0),
 		failleCreee(134750.3, 134734.2, 1763, 531, 1766, 0.73, 145.50, 76.43),
 	}
-	changes := []types.EquipmentChange{{TimestampUS: 131000000, Slot: 531, Kind: types.EquipmentTaken, Rank: 11}}
-	_, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads, changes: changes,
-		palette: paletteDuTest(), couts: coutsParFamille(catalogueDuTest(), famillesDuTest),
+	_, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads,
+		palette: paletteDuTest(), refs: referenceDuTest(),
 		tracks: []Track{{Slot: 531}}, origin: origine1b2d, step: pas100ms})
 	if len(poses) != 1 || poses[0].T != 1256 || poses[0].X == nil || *poses[0].X != 0.73 ||
 		poses[0].Src != sourceFailleObjet || cov.Unpositioned != 0 {
@@ -145,12 +170,11 @@ func TestPoseSansEchangeSituee(t *testing.T) {
 // piste a l image de la pose, nommee et comptee ; sans point a cette image, elle reste sans position.
 func TestPoseRepliDuPorteur(t *testing.T) {
 	reads := []types.CarriedEquipmentRead{
-		lecture(131000.0, 1763, 531, types.CarriedNew),
+		avecIdentite(lecture(131000.0, 1763, 531, types.CarriedNew), idTranslocateur),
 		avecEnergie(lecture(134734.2, 1763, 531, types.CarriedDelta), 0),
 	}
-	changes := []types.EquipmentChange{{TimestampUS: 131000000, Slot: 531, Kind: types.EquipmentTaken, Rank: 11}}
-	entree := entreeDEquipementPorte{reads: reads, changes: changes, palette: paletteDuTest(),
-		couts: coutsParFamille(catalogueDuTest(), famillesDuTest), origin: origine1b2d, step: pas100ms,
+	entree := entreeDEquipementPorte{reads: reads, palette: paletteDuTest(),
+		refs: referenceDuTest(), origin: origine1b2d, step: pas100ms,
 		tracks: []Track{{Slot: 531, Points: []Point{{T: 1255, X: 9, Y: 9}, {T: 1256, X: 0.7, Y: 145.4, Z: 76.4}}}}}
 	_, poses, cov := buildCarriedEquipment(entree)
 	if len(poses) != 1 || poses[0].Src != sourceFaillePorteur || *poses[0].X != 0.7 || cov.PositionedByCarrier != 1 {
@@ -163,41 +187,16 @@ func TestPoseRepliDuPorteur(t *testing.T) {
 	}
 }
 
-// TestMurDeuxFiches : la famille du mur porte deux fiches de couts differents ; l energie ecrite a la
-// prise (0,66, celle du ramassable de la premiere) choisit, sinon aucun compte.
-func TestMurDeuxFiches(t *testing.T) {
-	couts := coutsParFamille(catalogueDuTest(), famillesDuTest)
-	if c, ok := choisirLeCout(couts["wall"], avecEnergie(lecture(0, 1, 513, types.CarriedNew), 10812)); !ok ||
-		c.variation != -0.33 {
-		t.Fatalf("energie 0,66 : %+v %v", c, ok)
-	}
-	if _, ok := choisirLeCout(couts["wall"], lecture(0, 1, 513, types.CarriedNew)); ok {
-		t.Fatal("sans energie ecrite, deux fiches en desaccord ne choisissent rien")
-	}
-}
-
-// TestObjetSansAnnonceNonPublie : un objet cree attache sans annonce i48 du porteur dans son paquet
-// n est pas publie, et se compte.
-func TestObjetSansAnnonceNonPublie(t *testing.T) {
-	reads := []types.CarriedEquipmentRead{lecture(78332.1, 1566, 513, types.CarriedNew)}
-	out, _, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads, palette: paletteDuTest(),
-		tracks: []Track{{Slot: 513}}, origin: origine0d9a, step: pas100ms})
-	if len(out) != 0 || cov.WithoutRank != 1 {
-		t.Fatalf("publies %d, couverture %+v", len(out), cov)
-	}
-}
-
 // TestRepulseurEpuiseNePoseRien : un repulseur dont l energie tombe a 0 apres sa creation ne pose
 // aucune faille — la regle de pose est celle du seul translocateur.
 func TestRepulseurEpuiseNePoseRien(t *testing.T) {
 	reads := []types.CarriedEquipmentRead{
-		avecEnergie(lecture(78332.1, 1566, 513, types.CarriedNew), 3277),
+		avecEnergie(avecIdentite(lecture(78332.1, 1566, 513, types.CarriedNew), idRepulseur), 3277),
 		avecActivation(lecture(85839.3, 1566, 513, types.CarriedDelta)),
 		avecEnergie(lecture(85855.9, 1566, 513, types.CarriedDelta), 0),
 	}
-	changes := []types.EquipmentChange{{TimestampUS: 78332100, Slot: 513, Kind: types.EquipmentTaken, Rank: 6}}
-	out, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads, changes: changes,
-		palette: paletteDuTest(), couts: coutsParFamille(catalogueDuTest(), famillesDuTest),
+	out, poses, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads,
+		palette: paletteDuTest(), refs: referenceDuTest(),
 		tracks: []Track{{Slot: 513}}, origin: origine0d9a, step: pas100ms})
 	if len(out) != 1 || len(poses) != 0 || cov.RiftPoses != 0 {
 		t.Fatalf("publies %d, poses %+v, couverture %+v", len(out), poses, cov)
@@ -226,7 +225,7 @@ func finDeSuivi(ms float64, slot uint32) types.CarriedEquipmentRead {
 // date sa fin, meme quand elle suit la fin de l objet porte (le second champ survit a 134,998 s).
 func TestChampDeReparationFinLue(t *testing.T) {
 	reads := []types.CarriedEquipmentRead{
-		lecture(90183.0, 2039, 539, types.CarriedNew),
+		avecIdentite(lecture(90183.0, 2039, 539, types.CarriedNew), idChampReparable),
 		avecActivation(avecEnergie(lecture(118540.0, 2039, 539, types.CarriedDelta), 8192)),
 		avecSuivis(lecture(118775.4, 2039, 539, types.CarriedDelta), 1123),
 		avecSuivis(lecture(130254.9, 2039, 539, types.CarriedDelta)),
@@ -236,9 +235,8 @@ func TestChampDeReparationFinLue(t *testing.T) {
 		lecture(134997.8, 2039, 539, types.CarriedDel),
 		finDeSuivi(135728.8, 1138),
 	}
-	changes := []types.EquipmentChange{{TimestampUS: 90183000, Slot: 539, Kind: types.EquipmentTaken, Rank: 23}}
-	out, _, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads, changes: changes,
-		palette: paletteDuTest(), couts: coutsParFamille(catalogueDuTest(), famillesDuTest),
+	out, _, cov := buildCarriedEquipment(entreeDEquipementPorte{reads: reads,
+		palette: paletteDuTest(), refs: referenceDuTest(),
 		tracks: []Track{{Slot: 539}}, origin: origine5676, step: pas100ms})
 	if len(out) != 1 || cov.TrackedObjects != 2 || cov.TrackedEnds != 2 {
 		t.Fatalf("publies %d, couverture %+v", len(out), cov)
@@ -261,16 +259,15 @@ func TestFailleFinitASuppressionLue(t *testing.T) {
 	fin := lecture(196000.0, 1816, 535, types.CarriedTrackedEnd)
 	fin.Tracked = []types.LifeKey{{Slot: 1822, Gen: 1}}
 	reads := []types.CarriedEquipmentRead{
-		lecture(161077.8, 1816, 535, types.CarriedNew),
+		avecIdentite(lecture(161077.8, 1816, 535, types.CarriedNew), idTranslocateur),
 		avecEnergie(lecture(164113.6, 1816, 535, types.CarriedDelta), 0),
 		failleCreee(164129.9, 164113.6, 1816, 535, 1822, 17.34, 135.50, 73.98),
 		lecture(194210.5, 1816, 535, types.CarriedDel),
 		fin,
 	}
 	entree := entreeDEquipementPorte{reads: reads, palette: paletteDuTest(),
-		changes: []types.EquipmentChange{{TimestampUS: 161077800, Slot: 535, Kind: types.EquipmentTaken, Rank: 11}},
-		couts:   coutsParFamille(catalogueDuTest(), famillesDuTest),
-		tracks:  []Track{{Slot: 535}}, origin: origine1b2d, step: pas100ms}
+		refs:   referenceDuTest(),
+		tracks: []Track{{Slot: 535}}, origin: origine1b2d, step: pas100ms}
 	_, poses, cov := buildCarriedEquipment(entree)
 	if len(poses) != 1 || poses[0].T1 == nil || *poses[0].T1 != 1869 || cov.RiftEndsRead != 1 ||
 		cov.RiftEndsUnread != 0 {

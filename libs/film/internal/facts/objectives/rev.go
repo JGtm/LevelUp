@@ -234,6 +234,10 @@ package objectives
 // qu aucun bit soit lu autrement. SORTIE IDENTIQUE, prouvee par les digests `replay-equiv` des 20 films de
 // reference (egaux au temoin d avant le lot) et par la liste des tests (memes noms, memes verdicts). Golden
 // de revision et golden de perimetre regeneres une seule fois.
+// A REVISION CONSTANTE (equipement porte, identite lue sur l objet, 2026-11-08) : la VALEUR de `grammar.Rev` monte a
+// `grammar-2026-11-08` (le canal de l equipement porte rend le GlobalID de chaque objet attache) et `film/types` gagne deux
+// champs de la lecture de l equipement porte ; aucune source de cette couche ne change et aucune de ses lectures n appelle
+// ce canal, l empreinte du golden est recopiee au meme rang.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-10-17"

@@ -194,6 +194,89 @@ describe("alignFeedByOrigin — le fil sur l'origine publiée par l'artefact", (
   })
 })
 
+/**
+ * LA VIE QUI FINIT À SA MORT ÉCRITE, sur le témoin réel `20c703a7` (slot 579) : le film cesse
+ * d'écrire le bipède à la frame 3920, mais écrit sa mort à 400 537 ms du match, soit la frame
+ * 3957 pour une origine de 4 735 ms et un pas de 100 ms. Une fin posée au dernier point
+ * (3920) laissait une ligne sans icône à 392 000 ms, 3,8 s avant le vrai kill.
+ */
+describe('alignFeedByOrigin — une fin de vie prolongée à la mort écrite', () => {
+  const ORIGINE = 4_735
+  const MORT = 400_537
+  const docDe = (endFrame: number) =>
+    testReplayDoc({
+      frameCount: 5_611,
+      frameIntervalMs: 100,
+      originMs: ORIGINE,
+      tracks: [
+        {
+          slot: 579,
+          team: -1,
+          xuid: 'V',
+          points: [
+            { t: 3_717, x: 0, y: 0 },
+            { t: 3_920, x: 1, y: 1 },
+          ],
+          startFrame: 3_717,
+          endFrame,
+        },
+      ],
+    })
+
+  it('la fin prolongée porte le kill de sa victime : aucune mort neutre dans le fil', () => {
+    const doc = docDe(3_957)
+    const out = alignFeedByOrigin([kill(MORT, 'k1', 'V')], 0, doc, replayClock(doc)!)
+    expect(out.kills.map((k) => k.replayMs)).toEqual([395_802])
+    expect(out.deaths).toEqual([])
+  })
+
+  it('une fin au dernier point, hors de KILL_MATCH_TOL_MS, ne revendique pas le kill (tolérance non relâchée)', () => {
+    const doc = docDe(3_920)
+    const out = alignFeedByOrigin([kill(MORT, 'k1', 'V')], 0, doc, replayClock(doc)!)
+    expect(out.deaths).toEqual([{ replayMs: 392_000, xuid: 'V', kind: '', img: '', tinted: false }])
+  })
+})
+
+/**
+ * LE JOUEUR QUI N'A PAS QUITTÉ LA PARTIE RESTE AFFICHÉ JUSQU'AU BOUT, sur le témoin réel `008e1bba`
+ * (SloppyTopp8812) : le film cesse d'écrire le bipède à la frame 636 sur 1 701, sans écrire sa mort, et
+ * l'API le déclare présent à la fin — la piste publie `endFrame = frameCount − 1`. Une fin close avant
+ * l'horizon passait pour une mort que le fil doit dire : la ligne fantôme sans icône.
+ */
+describe("alignFeedByOrigin — un joueur présent à la fin n'a pas de mort neutre", () => {
+  const docDe = (endFrame: number | undefined) =>
+    testReplayDoc({
+      frameCount: 1_701,
+      frameIntervalMs: 100,
+      originMs: 0,
+      tracks: [
+        {
+          slot: 12,
+          team: -1,
+          xuid: 'P',
+          points: [
+            { t: 500, x: 0, y: 0 },
+            { t: 636, x: 1, y: 1 },
+          ],
+          startFrame: 500,
+          endFrame,
+        },
+      ],
+    })
+
+  it("la vie tenue jusqu'au bout du film ne produit aucune mort neutre", () => {
+    const doc = docDe(1_700)
+    expect(alignFeedByOrigin([], 0, doc, replayClock(doc)!).deaths).toEqual([])
+    expect(alignFeed([], 0, doc).deaths).toEqual([])
+  })
+
+  it('la même vie close au dernier point, bien avant le bout, reste une mort neutre (témoin de la ligne fantôme)', () => {
+    const doc = docDe(636)
+    const out = alignFeedByOrigin([], 0, doc, replayClock(doc)!)
+    expect(out.deaths).toEqual([{ replayMs: 63_600, xuid: 'P', kind: '', img: '', tinted: false }])
+  })
+})
+
 describe('alignFeed — origine publiée, appariement en repli', () => {
   it("emploie l'origine dès que l'artefact la porte", () => {
     // Origine 500 ms ET aucune victime nommée : seul le chemin par origine sait recaler.

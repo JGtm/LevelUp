@@ -3637,3 +3637,84 @@ package replay
 //	                les revisions qui hachent sa valeur.
 //
 //	LE PARC         un artefact 105 : verdict `redecoder` (la revision de grammaire a change).
+
+// v107 (2026-11-08, fin de vie a la mort ecrite ; equipement porte : l identite se lit sur l objet).
+//
+// PREMIER VOLET — fin de vie. Le film cesse de repliquer la position d un bipede avant que sa mort soit ecrite
+// (corps immobile et mort, ou joueur embarque) ; la fin d une vie etait son dernier point, donc le point et la
+// fiche passaient a « elimine » jusqu a plusieurs secondes trop tot, et le fil portait une ligne sans icone la ou
+// aucune vie ne finissait a l instant du kill.
+//
+//	`tracks[].endFrame`   la frame de la MORT ECRITE du joueur quand elle suit le dernier point : la premiere
+//	                 mort du fil posterieure a l ouverture de la vie, dans une frame anterieure a celle de la vie
+//	                 suivante du joueur ou du slot, et dans le film. Aucun point n est ajoute : le client tient
+//	                 la derniere position (`positionAt`) et montre la vie en cours jusqu a cette frame. Sans mort
+//	                 ecrite qui la clot (fin de manche, fin du film, joueur parti), la fin reste le dernier point.
+//	                 Le fil des morts est date sur l horloge du match : il se pose sur l axe par le calage deja
+//	                 resolu (`coverage.bridge.deathOffsetMs`), sans fenetre de tolerance.
+//	                 SECOND CAS : la DERNIERE vie d un joueur qu aucune mort ecrite ne clot et que l API declare
+//	                 present a la fin (`present_at_completion` vrai, `left_in_progress` faux) finit a la derniere
+//	                 frame du film, bornee STRICTEMENT avant l ouverture de la vie suivante du slot ; aucun point
+//	                 n est fabrique. « A quitte » se lit sur l API, jamais sur l arret des positions (mesure sur
+//	                 1 331 matchs : 1 124 joueurs presents a la fin dont le dernier point precede la fin du film
+//	                 d au moins 5 s sans kill lu ensuite, 132 d au moins 15 s, dont 107 sans aucune mort ecrite
+//	                 apres le dernier point). Sans drapeau declare (matchs anciens, colonne NULL, participant
+//	                 introuvable, bot) la fin reste le dernier point : le web n y produit plus de mort neutre
+//	                 pour un joueur present (`lifeEndsOf` lit `endFrame`), et en produit encore une pour les autres.
+//	`coverage.fallbacks[]`   `repli_fin_de_vie_au_dernier_point` : une vie nommee par le registre est restee au
+//	                 dernier point faute de calage resolu, alors que le fil porte des morts.
+//	                 `repli_fin_de_vie_sans_tableau_api` : la derniere vie d un joueur aurait pu etre prolongee et
+//	                 le tableau de l API ne permet pas d en decider (drapeau ou nombre de morts non declare,
+//	                 participant introuvable, vie sans xuid que le film laisse courir jusqu au bout).
+//	                 `repli_fin_de_vie_mort_manquante` : l API compte plus de morts pour ce joueur que le film n en
+//	                 ecrit, une mort manque, la vie reste au dernier point (aucune tolerance).
+//	                 `equipmentEpisodes[]` : un episode d etat actif (camo) ouvert quand la vie finissait au dernier point
+//	                 court jusqu a la fin prolongee de cette vie (la fenetre de l episode est celle de la piste). Sur
+//	                 26 films rejoues avant / apres, seule la duree cumulee de camo du resume d usage change : 6 films,
+//	                 un joueur chacun, de +0,3 s a +3 s ; aucun autre champ du resume, aucun chevauchement de vies.
+//	                 `UsageSummaryRev` ne bouge pas : la regle d attribution du resume (le geste d un slot appartient
+//	                 a la vie qui le couvre) est inchangee, et la cle de reprise (`UsageSummaryRev`, `SchemaVersion`)
+//	                 refait deja tout resume cuit avant la 107.
+//
+// SECOND VOLET — equipement porte. La famille d un objet porte se joignait a l annonce i48 du porteur dans le MEME
+// paquet que sa creation (le rang nommait la famille). Le jeu cree DEUX objets attaches dans le paquet de la
+// reapparition (`ambiguousRank`, rien de publie), et cree l equipement de depart de match AVANT l origine du film
+// (`beforeOrigin`, rien de publie) : sans publication, ni dessin, ni son, ni compte d usages restants. Le parc
+// local en perdait 12 771 objets utilises et 20 265 activations. Le record de creation de chaque objet ti=37 porte,
+// dans le bloc `object-multiplayer-properties` de son etat par defaut, le GlobalID de son tag `eqip` : le film
+// ecrit l IDENTITE de l objet, quelle que soit la facon dont le joueur l a obtenu (mesure sur 1 448 films : 293 693
+// objets attaches, 0 sans identifiant, 0 echec ; 46 505 objets actives, 46 478 resolus).
+//
+//	`carriedEquipment[].family`   la famille de l objet, lue sur son identite : le catalogue de l energie des
+//	                 equipements (objet porte -> objets ramassables, dont les familles du manifeste doivent
+//	                 s accorder), puis le manifeste (`[[equipment_objects]]`) pour un objet qu il nomme directement.
+//	                 Plus aucune jointure par rang : un objet de reapparition, de depart de match ou ramasse suit
+//	                 une seule regle. Ne se publient JAMAIS : une grenade attachee (`usageGrenadeFamilies`), un
+//	                 identifiant que rien ne resout, des sources qui nomment des familles differentes — comptes en
+//	                 couverture, jamais devines, aucun repli sur le rang.
+//	`carriedEquipment[].r`   le rang de PALETTE de cette famille quand le film en nomme un (`AbilityPalette.RankOf`),
+//	                 -1 sinon : il n est plus une identite, les lecteurs lisent `family` (un artefact anterieur, sans
+//	                 `family`, garde sa famille par le rang).
+//	`carriedEquipment[].energy[].n`   le cout par usage est celui de l objet PORTE du catalogue (la fiche dont
+//	                 `carried` est son identifiant), non celui de la famille : les `ambiguousCost` et `noCatalog`
+//	                 qui venaient d un choix entre fiches de la famille tombent.
+//	un objet cree avant l origine   publie, `t0` = 0 ; `frame()` rend 0 pour un instant anterieur a l origine (la
+//	                 soustraction non signee deborderait), et aucune lecture ne se publie a une frame negative :
+//	                 l energie de la frame 0 est la derniere lue avant l origine, une activation, une pose de faille
+//	                 ou un objet engendre d avant l origine ne se publient pas (`readsBeforeOrigin`), un objet
+//	                 supprime avant l origine non plus (`endedBeforeOrigin`).
+//	`coverage.carriedEquipment.{noGlobalId,grenades,unresolved,conflicting,endedBeforeOrigin,readsBeforeOrigin}`
+//	                 comptent ce que la regle ecarte ; `withoutRank`, `ambiguousRank` et `unnamed` disparaissent avec
+//	                 la jointure, `beforeOrigin` compte desormais des objets PUBLIES.
+//
+//	CE QUI MONTE    `SchemaVersion` 106 -> 107, et avec lui `publication-107` (la revision de la couche de
+//	AVEC ELLE       publication) ; `grammar.Rev` -> `grammar-2026-11-08` (la creation de chaque objet porte son
+//	                GlobalID), `SchemaDesFaits` 18 -> 19 (les lectures de l equipement porte l ecrivent) et les
+//	                revisions qui hachent la valeur de la grammaire (`killsource`, `objectives` : empreinte
+//	                recopiee a revision constante). `UsageSummaryRev` ne bouge pas : la regle d attribution du
+//	                resume (le geste d un slot appartient a la vie qui le couvre) est inchangee, et le resume ne lit
+//	                pas `carriedEquipment` ; la cle de reprise du backfill est (`UsageSummaryRev`, `SchemaVersion`),
+//	                donc le resume se refait avec le document.
+//
+//	LE PARC         un artefact 106 : verdict `redecoder` (la revision de grammaire a change, et avec elle le
+//	                numero des faits : les faits cuits avant se refusent).

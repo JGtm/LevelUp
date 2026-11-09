@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
+import { RESPAWN_WITNESSES } from '../test/spawnedObjectWitnesses'
 import { testReplayDoc } from '../test/testDoc'
 import { carriedUsesAt } from './carriedUsesLogic'
 
@@ -36,5 +37,22 @@ describe('carriedUsesAt — les usages restants de l équipement porté', () => 
     expect(carriedUsesAt(doc, 513, 930, 6)).toBeNull()
     expect(carriedUsesAt(doc, 513, 700, 2)).toBeNull()
     expect(carriedUsesAt(doc, 519, 700, 6)).toBeNull()
+  })
+})
+
+describe('carriedUsesAt - un objet de reapparition (releve reel bc4bde17, slot 518, cree avant la frame 0)', () => {
+  const doc = RESPAWN_WITNESSES.sensor()
+  it('compte les usages restants du capteur de depart, de la prise a la frame 0 jusqu a ses quatre usages', () => {
+    expect(carriedUsesAt(doc, 518, 0, 22)).toEqual({ kind: 'count', charges: 4, age: 0 })
+    expect(carriedUsesAt(doc, 518, 100, 22)).toEqual({ kind: 'count', charges: 3, age: 24 })
+    expect(carriedUsesAt(doc, 518, 600, 22)).toEqual({ kind: 'count', charges: 1, age: 48 })
+  })
+  it('joint par la famille quand le rang affiche n est pas celui de l objet, jamais par un autre porteur', () => {
+    // Le rang 99 n a aucune famille dans le document : rien ne se joint.
+    expect(carriedUsesAt(doc, 518, 100, 99)).toBeNull()
+    expect(carriedUsesAt(doc, 519, 100, 22)).toBeNull()
+    // Un objet dont le rang est inconnu (-1) se joint a la capacite de sa famille.
+    const sansRang = { ...doc, carriedEquipment: doc.carriedEquipment.map((c) => ({ ...c, r: -1 })) }
+    expect(carriedUsesAt(sansRang, 518, 100, 22)).toEqual({ kind: 'count', charges: 3, age: 24 })
   })
 })

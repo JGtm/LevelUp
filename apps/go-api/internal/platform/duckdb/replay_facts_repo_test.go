@@ -46,7 +46,7 @@ func seedReplayFacts(t *testing.T) *sql.DB {
 			match_id VARCHAR, xuid VARCHAR, kills INTEGER, deaths INTEGER, assists INTEGER, team_id INTEGER,
 			-- Presence (lot sieges) : les deux drapeaux et les deux instants dont playerFacts
 			-- derive JoinMatchMS / LeaveMatchMS.
-			joined_in_progress BOOLEAN, left_in_progress BOOLEAN,
+			joined_in_progress BOOLEAN, left_in_progress BOOLEAN, present_at_completion BOOLEAN,
 			first_joined_time TIMESTAMP, last_leave_time TIMESTAMP);
 	`); err != nil {
 		t.Fatalf("ddl: %v", err)
@@ -67,10 +67,11 @@ func TestReplayFactsForMatch(t *testing.T) {
 	// Le second joueur ENTRE EN COURS, 90 s apres le debut, et ne sort pas : c est le cas que
 	// le lot sieges a ajoute, et il doit remonter jusqu a JoinMatchMS.
 	if _, err := db.ExecContext(ctx, `INSERT INTO match_participants
-		(match_id, xuid, kills, deaths, assists, team_id, joined_in_progress, left_in_progress, first_joined_time)
+		(match_id, xuid, kills, deaths, assists, team_id, joined_in_progress, left_in_progress,
+		 present_at_completion, first_joined_time)
 		VALUES
-		('m1', '2533274', 12, 7, 3, 0, FALSE, FALSE, NULL),
-		('m1', '2533275', 9, 11, 5, 1, TRUE, FALSE, TIMESTAMP '2026-09-01 20:01:30')`); err != nil {
+		('m1', '2533274', 12, 7, 3, 0, FALSE, FALSE, TRUE, NULL),
+		('m1', '2533275', 9, 11, 5, 1, TRUE, FALSE, TRUE, TIMESTAMP '2026-09-01 20:01:30')`); err != nil {
 		t.Fatalf("insert participants: %v", err)
 	}
 
@@ -107,8 +108,11 @@ func TestReplayFactsForMatch(t *testing.T) {
 	if tard.JoinMatchMS == nil || *tard.JoinMatchMS != 90_000 {
 		t.Errorf("instant d entree = %v, attendu 90000 ms", tard.JoinMatchMS)
 	}
-	if tard.LeftInProgress || tard.LeaveMatchMS != nil {
-		t.Errorf("sortie inventee : en cours=%t, instant=%v", tard.LeftInProgress, tard.LeaveMatchMS)
+	if tard.LeftInProgress == nil || *tard.LeftInProgress || tard.LeaveMatchMS != nil {
+		t.Errorf("sortie inventee : en cours=%v, instant=%v", tard.LeftInProgress, tard.LeaveMatchMS)
+	}
+	if p.PresentAtCompletion == nil || !*p.PresentAtCompletion || !p.DeathsDeclared {
+		t.Errorf("presence a la fin declaree perdue : present=%v, morts declarees=%t", p.PresentAtCompletion, p.DeathsDeclared)
 	}
 	if got.Empty() {
 		t.Error("des faits complets se declarent vides")
@@ -176,5 +180,36 @@ func TestReplayFactsNullTeamIsMinusOne(t *testing.T) {
 	}
 	if len(got.Players) != 1 || got.Players[0].TeamID != -1 {
 		t.Fatalf("camp inconnu mal rendu : %+v", got.Players)
+	}
+}
+
+// TestReplayFactsPresenceEstTriEtat — UNE COLONNE NULL N EST NI PRESENTE NI PARTIE. Un match ancien porte
+// des drapeaux de presence et un nombre de morts NULL : la lecture les rend nil et non declares, jamais un
+// faux ou un zero qui affirme (la fin de la derniere vie du rejeu s en sert).
+func TestReplayFactsPresenceEstTriEtat(t *testing.T) {
+	db := seedReplayFacts(t)
+	ctx := context.Background()
+	if _, err := db.ExecContext(ctx,
+		`INSERT INTO match_registry (match_id, game_variant_name, start_time_utc)
+		 VALUES ('m1', 'CTF:Arena', TIMESTAMPTZ '2026-09-01 20:00:00+00')`); err != nil {
+		t.Fatalf("insert registry: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO match_participants
+		(match_id, xuid, kills, deaths, assists, team_id, joined_in_progress, left_in_progress, present_at_completion)
+		VALUES ('m1', '2533274', 1, NULL, 1, 0, NULL, NULL, NULL),
+		       ('m1', '2533275', 1, 0, 1, 0, FALSE, TRUE, FALSE)`); err != nil {
+		t.Fatalf("insert participants: %v", err)
+	}
+	got, err := NewReplayFactsRepo(db).FactsForMatch(ctx, "m1")
+	if err != nil {
+		t.Fatalf("FactsForMatch: %v", err)
+	}
+	ancien, parti := got.Players[0], got.Players[1]
+	if ancien.LeftInProgress != nil || ancien.PresentAtCompletion != nil || ancien.DeathsDeclared {
+		t.Errorf("colonnes NULL lues comme declarees : %+v", ancien)
+	}
+	if parti.LeftInProgress == nil || !*parti.LeftInProgress || parti.PresentAtCompletion == nil ||
+		*parti.PresentAtCompletion || !parti.DeathsDeclared {
+		t.Errorf("drapeaux declares mal lus : %+v", parti)
 	}
 }

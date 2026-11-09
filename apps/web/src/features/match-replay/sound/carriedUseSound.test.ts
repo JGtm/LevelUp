@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { doc1f8e8849, doc5676a9ba, PORTES_5676A9BA, POSES_DU_MUR_565 } from '../test/carriedUseWitnesses'
+import { RESPAWN_WITNESSES, sansFamillePubliee } from '../test/spawnedObjectWitnesses'
 import { carriedEndSoundEvents, carriedUseSoundEvents } from './carriedUseSound'
 import { buildSoundTimeline } from './replaySound'
 
@@ -62,5 +63,26 @@ describe('carriedEndSoundEvents — la fin du champ de réparation, écrite par 
     const porte = PORTES_5676A9BA.find((c) => c.slot === 539 && c.r === 23)
     expect(porte?.tracked[1].t1).toBeGreaterThan(porte?.t1 ?? Infinity)
     expect(carriedEndSoundEvents(doc5676a9ba()).map((e) => e.ms)).toContain(111_300)
+  })
+})
+
+describe('un objet de reapparition (releve reel bc4bde17, slot 518) - un son par usage, jamais doublé', () => {
+  it('le capteur de depart sonne a ses quatre usages, et la frise entiere ne le fait pas sonner deux fois', () => {
+    const doc = RESPAWN_WITNESSES.sensor()
+    expect(carriedUseSoundEvents(doc).map((e) => [e.ms, e.stem])).toEqual([
+      [7600, 'sensor_activate'],
+      [32_400, 'sensor_activate'],
+      [55_200, 'sensor_activate'],
+      [75_500, 'sensor_activate'],
+    ])
+    const frise = buildSoundTimeline(doc, [])
+    expect(frise.filter((e) => e.stem === 'sensor_activate')).toHaveLength(4)
+  })
+
+  it('un artefact anterieur, sans famille publiee, sonne par le rang de la table des capacites', () => {
+    const doc = RESPAWN_WITNESSES.sensor()
+    const ancien = sansFamillePubliee(doc)
+    expect(carriedUseSoundEvents(ancien)).toHaveLength(4)
+    expect(carriedUseSoundEvents({ ...ancien, abilityLabels: undefined })).toEqual([])
   })
 })

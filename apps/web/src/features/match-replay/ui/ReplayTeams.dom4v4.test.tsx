@@ -47,6 +47,25 @@
  * mot « dégainée ? » du sélecteur d'arme lacunaire devient un tiret, le mot passant en `title`
  * (1 occurrence en 4v4, 1 en 6v6) ; aucun autre caractère du HTML.
  *
+ * SIXIEME MISE A JOUR, 2026-11-08 (le compte de charges passe en surimpression sur la vignette) :
+ * SEULE la classe `relative` s'ajoute à la cellule de capacité (`<span class="relative inline-flex
+ * shrink-0 items-center" style="width: 16px;">`, 7 occurrences en 4v4, 11 en 6v6), qui devient le
+ * repère du chiffre ; aucune largeur, aucun nœud ni `title` ne bouge, vérifié balise par balise.
+ *
+ * SEPTIEME MISE A JOUR, 2026-11-08 (le stock d'une grenade passe en surimpression sur sa vignette,
+ * comme le compte de charges) : SEUL le contenu des puces de grenade change, vérifié balise par
+ * balise. Une puce à vignette (5 en 4v4, 9 en 6v6) enveloppe la vignette dans `<span
+ * class="relative inline-flex">` et y pose le chiffre (`<span aria-hidden="true" class="pointer-events-none
+ * absolute bottom-0 right-0 ...">N</span>`) au lieu de `<span class="tabular-nums">×N</span>` ; une puce
+ * sans vignette (5 dans chaque fixture) écrit `N` sans « × », dans `<span class="tabular-nums
+ * text-foreground">`. Aucune largeur, aucun `title` ni aucun autre nœud ne bouge.
+ *
+ * HUITIEME MISE A JOUR, 2026-11-08 (le type de grenade équipé ne garde que l'encre `warning`, sans
+ * fond teinté) : SEUL le style de la puce équipée change (5 en 4v4, 9 en 6v6) : `style="color:
+ * var(--ac-warning); background: color-mix(...)"` devient `style="color: var(--ac-warning);"`, et
+ * la classe `rounded-sm px-0.5 font-semibold` devient `font-semibold`. Les puces non équipées, les
+ * chiffres et tous les autres nœuds ne bougent pas.
+ *
  * LE GABARIT NORMAL VA JUSQU'À SIX SIÈGES PAR CAMP (la densité se lit sur la catégorie de
  * mode, jamais sur les effectifs — décision D1) : la même fixation à 6 sièges
  * (`__fixtures__/replayTeams.6v6.html`) a été prise à l'étape 2 du plan, AVANT le premier code

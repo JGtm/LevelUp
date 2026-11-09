@@ -20,14 +20,13 @@ func echantillon(us uint64, x, y, z float32, auRepos bool) types.ProjectileSampl
 // la pile i28 nomme l'objet engendré 1123 puis 1138.
 func champsDeTest(projectiles []types.ProjectileTrack) entreeDEquipementPorte {
 	reads := []types.CarriedEquipmentRead{
-		lecture(90183.0, 2039, 539, types.CarriedNew),
+		avecIdentite(lecture(90183.0, 2039, 539, types.CarriedNew), idChampReparable),
 		avecSuivis(lecture(118775.4, 2039, 539, types.CarriedDelta), 1123),
 		avecSuivis(lecture(134024.8, 2039, 539, types.CarriedDelta), 1138),
 		lecture(134997.8, 2039, 539, types.CarriedDel),
 	}
 	return entreeDEquipementPorte{reads: reads, palette: paletteDuTest(),
-		changes: []types.EquipmentChange{{TimestampUS: 90183000, Slot: 539, Kind: types.EquipmentTaken, Rank: 23}},
-		couts:   coutsParFamille(catalogueDuTest(), famillesDuTest), projectiles: projectiles,
+		refs: referenceDuTest(), projectiles: projectiles,
 		tracks: []Track{{Slot: 539}}, origin: origine5676, step: pas100ms}
 }
 

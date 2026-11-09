@@ -470,6 +470,7 @@ describe('ReplayPlayerCard — la tuile compacte : gate 3 (ce qui quitte la tuil
     expect(cellule.style.width).toBe('14px')
     expect(within(cellule).getByRole('img', { name: 'Fragmentation' })).toBeTruthy()
     expect(within(alpha).queryByText(/×/)).toBeNull()
+    expect(cellule.textContent, 'la tuile compacte n’écrit aucun compte de grenade').toBe('')
     // Un seul type porté, sans sélecteur : DÉDUITE, et dite déduite.
     const golf = within(tuile(vue, 'Golf')).getByTitle(/Grenades lues il y a/)
     expect(golf.title).toContain('Type équipé : le seul porté')

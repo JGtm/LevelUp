@@ -92,11 +92,22 @@ export const SENSOR_REVEAL_MS = 750
  *
  * C'EST LE REPLI DE LA FENÊTRE, PAS SON CONTRAT. Un capteur dont le film écrit la suppression
  * (objet engendré situé, `endRead`, cf. `spawnedObjects.ts`) se dessine jusqu'à cette fin lue,
- * qui peut dépasser 15 s ; cette durée ne vaut que pour une pose sans fin lue (`placementWindow.ts`).
+ * qui peut dépasser 15 s (dans la limite de `SENSOR_READ_END_MAX_MS`) ; cette durée ne vaut que pour une pose
+ * sans fin lue (`placementWindow.ts`).
  * Elle ne borne ni le nombre de pings ni la révélation : le ping est périodique à tout âge
  * (`sensorPing`).
  */
 export const SENSOR_DURATION_MS = 15_000
+
+/**
+ * Plafond de la fin LUE d'un capteur, en millisecondes après son repos : 20,6 s.
+ *
+ * La clé (slot, génération) d'un objet du film se réutilise : une suppression lue bien après le repos
+ * est alors celle d'un objet ultérieur, pas celle du capteur. Une fin lue qui dépasse ce plafond est
+ * ramenée au repos + 20,6 s. C'est distinct de `SENSOR_DURATION_MS`, qui reste le repli d'un capteur
+ * SANS fin lue.
+ */
+export const SENSOR_READ_END_MAX_MS = 20_600
 
 /**
  * Course de l'onde d'un ping, en millisecondes : le temps qu'elle met à atteindre le rayon.

@@ -3,8 +3,8 @@
  *
  * LA SOURCE est le document (schéma 95) : `carriedEquipment[].uses`, les images des activations de
  * l'objet porté (i21). Chacune est suivie, une ou deux images plus tard, de la baisse d'énergie d'un
- * coût de la famille : c'est le geste qui consomme une charge. La famille est celle du rang de l'objet
- * (`abilityLabels[r].family`).
+ * coût de la famille : c'est le geste qui consomme une charge. La famille est celle que le document publie sur
+ * l'objet (`carriedEquipment[].family`, [carriedFamilyOf]).
  *
  * POURQUOI CES QUATRE FAMILLES, ET POURQUOI PAS LEUR POSE. Le capteur, le traqueur, le champ de
  * réparation et l'écran occultant sonnaient sur leur pose `deployed` (`equipmentPlacements`) ; le film
@@ -24,6 +24,7 @@
  */
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { frameToMs } from '../../../lib/replay/replayLogic'
+import { carriedFamilyOf } from '../model/carriedFamily'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 
 /** Le stem de l'utilisation, par famille de la palette. */
@@ -42,7 +43,7 @@ export const CARRIED_USE_SOUND_STEMS: Readonly<Record<string, string>> = {
 export function carriedUseSoundEvents(doc: ReplayDocumentReady): ReplaySoundEvent[] {
   const out: ReplaySoundEvent[] = []
   for (const c of doc.carriedEquipment) {
-    const family = doc.abilityLabels?.[String(c.r)]?.family
+    const family = carriedFamilyOf(doc.abilityLabels, c)
     const stem = family ? CARRIED_USE_SOUND_STEMS[family] : undefined
     if (!stem) continue
     for (const u of c.uses) out.push(soundEvent(frameToMs(u, doc), stem))
@@ -63,7 +64,7 @@ export const CARRIED_END_SOUND_STEMS: Readonly<Record<string, string>> = {
 export function carriedEndSoundEvents(doc: ReplayDocumentReady): ReplaySoundEvent[] {
   const out: ReplaySoundEvent[] = []
   for (const c of doc.carriedEquipment) {
-    const family = doc.abilityLabels?.[String(c.r)]?.family
+    const family = carriedFamilyOf(doc.abilityLabels, c)
     const stem = family ? CARRIED_END_SOUND_STEMS[family] : undefined
     if (!stem) continue
     for (const s of c.tracked) if (s.t1 !== undefined) out.push(soundEvent(frameToMs(s.t1, doc), stem))

@@ -409,3 +409,16 @@ package grammar
 // digests `replay-equiv` des 20 films de reference (identiques au temoin d avant le lot) et par
 // `replay-corpus-gate` (18 temoins sur 18 identiques). Golden de revision regenere une seule fois ; le
 // golden de perimetre ne change pas (`filmshell` reste un paquet du perimetre).
+
+// ENTREE `grammar-2026-11-08` (2026-11-08, equipement porte : l identite se lit sur l objet). LE CANAL DE
+// L EQUIPEMENT PORTE REND, A LA CREATION DE CHAQUE OBJET ATTACHE, SON IDENTITE : le GlobalID de son tag `eqip`,
+// le mot de 32 bits inconditionnel du bloc `object-multiplayer-properties` de son etat par defaut
+// ([MPPWord32], relu par [lecteurDIdentite] avec le deserialiseur de production [consumeDefaultStateTI37], a
+// `HeaderBit` + [woNewHeaderBits] du record NEW). Aucun bit n est lu autrement : le mot etait lu et jete par la
+// marche. Mesure sur 1 448 films : 293 693 objets attaches, 0 sans identifiant, 0 echec de lecture ; 46 505 objets
+// actives, 46 478 resolus par le catalogue de l energie des equipements et le manifeste. La creation
+// (`CarriedEquipmentRead`) gagne `GlobalID` et `HasGlobalID`, et le rejeu en tire la famille de l objet quelle que
+// soit la facon dont le joueur l a obtenu (ramasse, equipement de reapparition, equipement de depart de match) :
+// la jointure par le rang de l annonce i48 du meme paquet, qui perdait les deux derniers cas, disparait. Les
+// lectures changent de forme (le codec des faits les ecrit avec l identite, `SchemaDesFaits` 18 -> 19) : les faits
+// cuits avant se refusent sur cette revision et sur ce numero, par construction.

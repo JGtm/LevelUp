@@ -15,9 +15,10 @@ package grammar
 // # CE QUE CE CANAL REND, ET CE QU IL NE DIT PAS
 //
 // Les lectures BRUTES de ces records, dans l ordre du flux, pour les seuls objets crees attaches :
-// aucune interpretation (pose, consommation) — elle appartient au rejeu, qui joint la famille par
-// l annonce i48 du meme paquet. Une trame dont la marche n a pas localise la liste ne rend rien : ce
-// qu elle portait n est pas lu.
+// aucune interpretation (pose, consommation) — elle appartient au rejeu. L IDENTITE de l objet voyage
+// avec sa creation : le GlobalID de son tag `eqip` ([lecteurDIdentite]), lu sur l objet lui-meme et non
+// deduit d une annonce du porteur ; le rejeu en tire la famille. Une trame dont la marche n a pas
+// localise la liste ne rend rien : ce qu elle portait n est pas lu.
 //
 // LES OBJETS QUE L EQUIPEMENT ENGENDRE. Les entrees presentes de la pile i28 sont des handles : les
 // vies des objets que l equipement porte suit (la faille du translocateur, le champ de reparation,
@@ -87,7 +88,9 @@ type canalDeLEquipementPorte struct {
 	// slot, DANS LES RECORDS DE LECTURE de chaque trame (cf. [canalDeLEquipementPorte.lireLesEffets]).
 	effets map[uint32]objetSuivi
 	nes38  map[uint32]naissanceLue
-	lu     equipementPorteLu
+	// identites relit le GlobalID de chaque objet attache a sa creation.
+	identites *lecteurDIdentite
+	lu        equipementPorteLu
 }
 
 // Les genres de lecture de l objet d effet. Declares ICI et non dans `types` : le paquet `types` est dans le
@@ -133,7 +136,8 @@ func nouveauCanalDeLEquipementPorte(fc *FilmContext) *canalDeLEquipementPorte {
 	return &canalDeLEquipementPorte{fc: fc, reg: reg, vies: map[uint32]vieDObjetPorte{},
 		suivis: map[uint32]objetSuivi{}, naissances: map[uint32]naissanceLue{},
 		nommes: map[types.LifeKey][]uint64{}, effets: map[uint32]objetSuivi{}, nes38: map[uint32]naissanceLue{},
-		lu: equipementPorteLu{quanta: map[types.LifeKey][3]uint64{}, quantaEffets: map[naissanceCle][3]uint64{}}}
+		identites: nouveauLecteurDIdentite(fc),
+		lu:        equipementPorteLu{quanta: map[types.LifeKey][3]uint64{}, quantaEffets: map[naissanceCle][3]uint64{}}}
 }
 
 // Interets : les cinq composants de ti=37 que le registre du film declare, dans les trames.
@@ -181,7 +185,7 @@ func (c *canalDeLEquipementPorte) Trame(p *lecture.Paquet) {
 		switch r.Type {
 		case recNew:
 			if r.TypeIndex == EquipmentTypeIndex && r.DesyncAt == -1 {
-				c.creation(p.TS, r)
+				c.creation(p, r)
 			}
 		case recDelta:
 			if r.TypeIndex == EquipmentTypeIndex {
@@ -193,8 +197,9 @@ func (c *canalDeLEquipementPorte) Trame(p *lecture.Paquet) {
 	}
 }
 
-// creation suit l objet d un record NEW ti=37 dont i10 ouvre la porte « attache ».
-func (c *canalDeLEquipementPorte) creation(ts uint64, r *FrameRecord) {
+// creation suit l objet d un record NEW ti=37 dont i10 ouvre la porte « attache », et lit son identite
+// ([lecteurDIdentite]) : le GlobalID de son tag `eqip`, qui nomme l objet quelle que soit son origine.
+func (c *canalDeLEquipementPorte) creation(p *lecture.Paquet, r *FrameRecord) {
 	c.lu.st.Created++
 	parent, ok := parentDuRecord(r)
 	if !ok || !parent.Attached {
@@ -204,7 +209,8 @@ func (c *canalDeLEquipementPorte) creation(ts uint64, r *FrameRecord) {
 	c.lu.st.Attached++
 	v := vieDObjetPorte{gen: r.ID >> 30, porteur: (parent.Quant16 & parentHandleValueMask) + parentHandleBase}
 	c.vies[r.Slot] = v
-	l := c.lecture(ts, r, v, types.CarriedNew)
+	l := c.lecture(p.TS, r, v, types.CarriedNew)
+	l.GlobalID, l.HasGlobalID = c.identites.identite(p, r)
 	c.lu.lectures = append(c.lu.lectures, l)
 }
 

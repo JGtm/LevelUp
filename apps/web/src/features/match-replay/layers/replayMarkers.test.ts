@@ -570,6 +570,18 @@ describe('pion embarqué (lot véhicules, C7, 2026-09-02)', () => {
     expect(count(ops, 'moveTo')).toBe(0) // la croix de mort trace deux `moveTo`/`lineTo`
     expect(count(ops, 'stroke')).toBe(0)
   })
+
+  it('une vie qui finit À BORD ne laisse pas de croix à la position de montée du bipède', () => {
+    // La vie finit à la mort écrite (frame 50), bien après le dernier point (frame 20) : le
+    // bipède est monté à bord et c'est le véhicule qui dit où il est mort. À la frame 55, hors
+    // du véhicule, la croix ne se pose donc pas ; un slot non embarqué à sa fin l'a toujours.
+    const dead = singlePointTrack(512, { endFrame: 50, points: [{ t: 20, x: 5, y: 5, z: 0, h: 90 }] })
+    const aBord = trace({ frame: 55, embarkedAtSlot: (_slot, frame) => frame <= 50 }, dead)
+    expect(count(aBord, 'moveTo')).toBe(0)
+    expect(count(aBord, 'stroke')).toBe(0)
+    const aPied = trace({ frame: 55, embarkedAtSlot: () => false }, dead)
+    expect(count(aPied, 'moveTo')).toBe(2)
+  })
 })
 
 /**

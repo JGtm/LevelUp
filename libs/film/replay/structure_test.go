@@ -1472,8 +1472,12 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   l ecran occultant : naissance, suppression, position), plus sept compteurs de couverture. La grammaire
 	//   rend les candidates a l effet (`grammar.Rev` monte) : un v105 se lit « a redecoder ». Detail :
 	//   `document_chronicle.go`.
-	if SchemaVersion != 106 {
-		t.Fatalf("SchemaVersion = %d, attendu 106 : incrémenter exige une raison écrite ci-dessus "+
+	// - 107 (2026-11-08, fin de vie a la mort ecrite ; equipement porte lu sur l objet) : `tracks[].endFrame` change
+	//   de contenu (la mort ecrite, ou la fin du film d un joueur present) et trois replis de fin de vie se comptent ;
+	//   champ neuf `carriedEquipment[].family`, `coverage.carriedEquipment` change. `grammar.Rev` et le schema des
+	//   faits montent : un v106 se lit « a redecoder ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 107 {
+		t.Fatalf("SchemaVersion = %d, attendu 107 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

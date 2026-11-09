@@ -179,6 +179,7 @@ type PickupKind string
 type CarriedEquipment struct {
 	Slot    uint32           `json:"slot"`
 	R       int              `json:"r"`
+	Family  string           `json:"family,omitempty"`
 	T0      int              `json:"t0"`
 	T1      *int             `json:"t1,omitempty"`
 	Energy  []CarriedEnergy  `json:"energy,omitempty"`

@@ -8,20 +8,22 @@
  * donc entière — vignette, glyphe de rang non résolu, infobulle d'âge — et les charges
  * naissent ici, jamais une ligne de logique au composant de rangée.
  *
- * CE QUE LA CELLULE AFFICHE DES CHARGES, et pourquoi (décisions P6.1, arbitrage utilisateur
- * du 04/09) :
- *  - un COMPTE discret à côté de la vignette (même convention « ×N » que les grenades) quand
- *    une lecture du canal i56 couvre la vie et l'équipement courants ;
+ * CE QUE LA CELLULE AFFICHE DES CHARGES, et pourquoi (décisions P6.1, arbitrage utilisateur) :
+ *  - le CHIFFRE du compte, en petit, en SURIMPRESSION sur le coin bas droit de la vignette,
+ *    quand une lecture du canal i56 couvre la vie et l'équipement courants ;
  *  - « PLEIN » QUALITATIF, sans chiffre, avant la première lecture : le film ne transmet
- *    RIEN au ramassage, un maximum déduit serait inventé ;
+ *    RIEN au ramassage, un maximum déduit serait inventé. Il ne s'écrit plus à l'écran, il se
+ *    lit dans l'infobulle de la vignette ;
  *  - RIEN pour une famille que le canal ne mesure pas (camouflage, surbouclier,
  *    répulseur…) : ni chiffre, ni « plein » — rien d'affirmé.
  * Le tri entre ces trois états vit dans `abilityChargeLogic.ts` (pur, testé sans rendu).
  *
- * LA CELLULE GARDE SA LARGEUR FIXE (la grille des fiches en dépend) : le compte et le
- * « plein » se posent APRÈS elle, dans l'espace souple de la rangée — comme le badge d'état
- * vide, ils ne décalent aucune colonne. Chaque marque pâlit avec l'âge de SA lecture (la
- * doctrine de la rangée) ; « plein » n'a pas de lecture, il ne pâlit pas.
+ * LA CELLULE GARDE SA LARGEUR FIXE ET N'EN AJOUTE AUCUNE : la rangée n'a pas d'espace souple
+ * après ses cellules fixes (elle rogne ce qui déborde), donc un compte posé à côté de la
+ * vignette serait coupé. Le chiffre (`ReplayIconCount`, rendu partagé avec les grenades) se pose DANS la boîte de la
+ * vignette (`iconAbilityPx`), hors du flux : la grille ne bouge pas d'un pixel. Il pâlit avec l'âge de SA lecture (la doctrine
+ * de la rangée), indépendamment de la vignette, qui pâlit avec celle de la capacité. La tuile
+ * compacte (`showInventoryMarks: false`) n'écrit rien : tout passe par l'infobulle.
  */
 import type { ReactNode } from 'react'
 
@@ -35,6 +37,7 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { formatSeconds, frameToMs, freshness, READING_FADE } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { abilityAt } from '../../../lib/replay/rosterLogic'
+import { ReplayIconCount } from './ReplayIconCount'
 
 // LA BOÎTE DE LA VIGNETTE DE CAPACITÉ (16 px, la hauteur de la ligne) VIENT DU GABARIT de la
 // fiche (`model/cardGabarit.ts`, `iconAbilityPx`, 2026-09-06) — aucune cote locale ici.
@@ -72,95 +75,56 @@ export function ReplayAbilityCell({
     abilityRead !== null
       ? (abilityChargesAt(doc, slot, frame, abilityRead.rank) ?? carriedUsesAt(doc, slot, frame, abilityRead.rank))
       : null
-  // LES CHARGES EN TEXTE À CÔTÉ DE LA CELLULE (fiche normale), OU DANS SON INFOBULLE (tuile
-  // compacte, `showInventoryMarks: false` — décision D5 : la rangée n'a plus d'espace souple).
-  // Le texte de l'infobulle est le même que celui de la marque : une seule composition.
-  const chargeInTitle = charge && !gabarit.showInventoryMarks ? chargeTitle(charge, doc, t) : null
+  // LES CHARGES SE DISENT DANS L'INFOBULLE DE LA VIGNETTE, sur les deux gabarits, avec la même
+  // composition ; le chiffre en surimpression (fiche normale) n'en est que la lecture rapide.
+  const chargeInTitle = charge ? chargeTitle(charge, doc, t) : null
   return (
-    <>
-      <span className="inline-flex shrink-0 items-center" style={{ width: px }}>
-        {abilityRead ? (
-          ability && (
-            <span
-              className="inline-flex items-center"
-              style={{ opacity: freshness(abilityRead.age, readingFull, READING_FADE) }}
-              title={
-                chargeInTitle
-                  ? `${abilityAgeTitle(t, abilityRead.age, doc, ability.text)} · ${chargeInTitle}`
-                  : abilityAgeTitle(t, abilityRead.age, doc, ability.text)
-              }
-            >
-              {ability.img ? (
-                <WeaponIcon
-                  imageUrl={ability.img}
-                  tinted={ability.tinted}
-                  label={ability.text}
-                  width={px}
-                  height={px}
-                />
-              ) : ability.known ? (
-                ability.text
-              ) : (
-                /* RANG NON RÉSOLU : un GLYPHE, pas un mot ni un caractère (planche du 16/08).
-                   Le rang lu reste la seule chose vraie : il vit dans l'infobulle. */
-                <AbilityUnknownMark label={ability.text} px={px} />
-              )}
-            </span>
-          )
-        ) : null /* AUCUNE LECTURE DANS LA VIE EN COURS : rien n'est rendu, ni glyphe ni texte — jamais
-             la capacité d'une vie précédente du slot (correctif P0-2), jamais une lacune écrite. */}
-      </span>
-      {ability && abilityRead && charge && gabarit.showInventoryMarks && (
-        <AbilityChargeMark charge={charge} doc={doc} readingFull={readingFull} t={t} />
+    <span className="relative inline-flex shrink-0 items-center" style={{ width: px }}>
+      {abilityRead ? (
+        ability && (
+          <span
+            className="inline-flex items-center"
+            style={{ opacity: freshness(abilityRead.age, readingFull, READING_FADE) }}
+            title={
+              chargeInTitle
+                ? `${abilityAgeTitle(t, abilityRead.age, doc, ability.text)} · ${chargeInTitle}`
+                : abilityAgeTitle(t, abilityRead.age, doc, ability.text)
+            }
+          >
+            {ability.img ? (
+              <WeaponIcon
+                imageUrl={ability.img}
+                tinted={ability.tinted}
+                label={ability.text}
+                width={px}
+                height={px}
+              />
+            ) : ability.known ? (
+              ability.text
+            ) : (
+              /* RANG NON RÉSOLU : un GLYPHE, pas un mot ni un caractère (planche du 16/08).
+                 Le rang lu reste la seule chose vraie : il vit dans l'infobulle. */
+              <AbilityUnknownMark label={ability.text} px={px} />
+            )}
+          </span>
+        )
+      ) : null /* AUCUNE LECTURE DANS LA VIE EN COURS : rien n'est rendu, ni glyphe ni texte — jamais
+           la capacité d'une vie précédente du slot (correctif P0-2), jamais une lacune écrite. */}
+      {ability && abilityRead && charge?.kind === 'count' && gabarit.showInventoryMarks && (
+        <ReplayIconCount count={charge.charges} fade={freshness(charge.age, readingFull, READING_FADE)} />
       )}
-    </>
+    </span>
   )
 }
 
 /**
- * chargeTitle — ce que l'infobulle dit des charges : le compte et l'âge de SA lecture, ou
- * d'où vient l'affirmation « plein » (rien transmis = rien consommé). Une seule composition,
- * pour la marque en texte comme pour l'infobulle de la cellule compacte.
+ * chargeTitle — ce que l'infobulle de la vignette dit des charges : le compte et l'âge de SA
+ * lecture, ou d'où vient l'affirmation « plein » (rien transmis = rien consommé). Une seule
+ * composition pour les deux gabarits.
  */
 function chargeTitle(charge: AbilityChargeDisplay, doc: ReplayDocumentReady, t: ReplayText): string {
   if (charge.kind === 'full') return t.abilityChargesFullHint
   return `${t.abilityChargesCount(charge.charges)} · ${t.abilityChargesAge} ${formatSeconds(frameToMs(charge.age, doc))}`
-}
-
-/**
- * AbilityChargeMark — le compte de charges, ou « plein » qualitatif.
- *
- * Le compte pâlit avec l'âge de SA lecture (comme toute cellule de la rangée) et son
- * infobulle date la lecture. « Plein » n'est pas une lecture : un libellé discret, et
- * l'infobulle dit d'où vient l'affirmation (rien transmis = rien consommé).
- */
-function AbilityChargeMark({
-  charge,
-  doc,
-  readingFull,
-  t,
-}: {
-  charge: AbilityChargeDisplay
-  doc: ReplayDocumentReady
-  readingFull: number
-  t: ReplayText
-}) {
-  if (charge.kind === 'full') {
-    return (
-      <span className="opacity-70" title={chargeTitle(charge, doc, t)}>
-        {t.abilityChargesFull}
-      </span>
-    )
-  }
-  return (
-    <span
-      className="tabular-nums text-foreground"
-      style={{ opacity: freshness(charge.age, readingFull, READING_FADE) }}
-      title={chargeTitle(charge, doc, t)}
-    >
-      ×{charge.charges}
-    </span>
-  )
 }
 
 /**

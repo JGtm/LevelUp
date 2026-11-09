@@ -329,7 +329,6 @@ export const EN_TEXT = {
   abilityUnidentified: (rank) => `unidentified ability (rank ${rank})`,
   abilityAge: 'Ability read',
   abilityAhead: 'Ability read in',
-  abilityChargesFull: 'full',
   abilityChargesFullHint:
     'Charges full — the film only transmits a reading after the first use.',
   abilityChargesCount: (n) => `Charges left: ${n}`,
