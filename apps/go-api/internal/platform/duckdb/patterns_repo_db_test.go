@@ -7,6 +7,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"math"
 	"strings"
 	"testing"
 
@@ -46,15 +47,15 @@ func newPatternsTestPDB(t *testing.T) *PlayerDB {
 	mustExec(t, sharedSQL, `CREATE TABLE match_participants (
 		match_id VARCHAR, xuid VARCHAR, outcome INTEGER, kills INTEGER,
 		deaths INTEGER, assists INTEGER, accuracy DOUBLE, damage_dealt DOUBLE,
-		damage_taken DOUBLE, headshot_kills INTEGER, team_mmr DOUBLE)`)
+		damage_taken DOUBLE, headshot_kills INTEGER, team_mmr DOUBLE, kda FLOAT)`)
 	// m1 = plus récent, non ranked (team_mmr NULL) ; m2 = plus ancien, ranked.
 	// Voie Infinite : pair_name renseigné → le variant (NULL ici) n'est pas consulté.
 	mustExec(t, sharedSQL, `INSERT INTO match_registry VALUES
 		('m1', TIMESTAMP '2026-01-02 12:00:00', TIMESTAMPTZ '2026-01-02 12:00:00+00', 'Slayer', NULL, NULL, NULL, 'map1', 600),
 		('m2', TIMESTAMP '2026-01-01 12:00:00', TIMESTAMPTZ '2026-01-01 12:00:00+00', 'Oddball', NULL, NULL, NULL, 'map2', 500)`)
 	mustExec(t, sharedSQL, `INSERT INTO match_participants VALUES
-		('m1', 'p1', 2, 10, 5, 4, 0.55, 2000, 1500, 3, NULL),
-		('m2', 'p1', 3, 8, 4, 2, 0.40, 1200, 1300, 1, 1500)`)
+		('m1', 'p1', 2, 10, 5, 4, 0.55, 2000, 1500, 3, NULL, NULL),
+		('m2', 'p1', 3, 8, 4, 2, 0.40, 1200, 1300, 1, 1500, 4.66)`)
 
 	mustExec(t, playerSQL, `CREATE TABLE player_match_enrichment (
 		match_id VARCHAR, performance_score DOUBLE, session_id VARCHAR,
@@ -115,9 +116,13 @@ func TestPatternsRepo_LoadRows_EndToEnd(t *testing.T) {
 
 	m1, m2 := rows[0], rows[1]
 
-	// loadShared : KDA = (10 + 4/2)/5 = 2.4 ; team_mmr NULL → non ranked.
-	if m1.KDA != 2.4 {
-		t.Errorf("m1.KDA = %v, want 2.4", m1.KDA)
+	// loadShared : m1 a un kda NULL, dérivé en FDA net = 10 + 4/3 - 5 = 6,333... (jamais le quotient
+	// 2,4) ; m2 porte la valeur native 4,66 (colonne FLOAT, d'où la tolérance) ; team_mmr NULL → non ranked.
+	if math.Abs(m1.KDA-(10.0+4.0/3.0-5.0)) > 1e-9 {
+		t.Errorf("m1.KDA = %v, want 6.333...", m1.KDA)
+	}
+	if math.Abs(m2.KDA-4.66) > 1e-5 {
+		t.Errorf("m2.KDA = %v, want 4.66 (valeur native)", m2.KDA)
 	}
 	if m1.IsRanked {
 		t.Errorf("m1.IsRanked = true, want false (team_mmr NULL)")
@@ -176,16 +181,16 @@ func newH5PatternsTestPDB(t *testing.T) *PlayerDB {
 	mustExec(t, sharedSQL, `CREATE TABLE match_participants (
 		match_id VARCHAR, xuid VARCHAR, outcome INTEGER, kills INTEGER,
 		deaths INTEGER, assists INTEGER, accuracy DOUBLE, damage_dealt DOUBLE,
-		damage_taken DOUBLE, headshot_kills INTEGER, team_mmr DOUBLE)`)
+		damage_taken DOUBLE, headshot_kills INTEGER, team_mmr DOUBLE, kda FLOAT)`)
 	// 2 matchs Slayer (variant vSlayer) + 1 Strongholds (variant vStrong).
 	mustExec(t, sharedSQL, `INSERT INTO match_registry VALUES
 		('h1', TIMESTAMP '2026-02-03 12:00:00', TIMESTAMPTZ '2026-02-03 12:00:00+00', NULL, NULL, 'vSlayer', NULL, 'mapA', 600),
 		('h2', TIMESTAMP '2026-02-02 12:00:00', TIMESTAMPTZ '2026-02-02 12:00:00+00', NULL, NULL, 'vSlayer', NULL, 'mapA', 600),
 		('h3', TIMESTAMP '2026-02-01 12:00:00', TIMESTAMPTZ '2026-02-01 12:00:00+00', NULL, NULL, 'vStrong', NULL, 'mapB', 500)`)
 	mustExec(t, sharedSQL, `INSERT INTO match_participants VALUES
-		('h1', 'p1', 2, 10, 5, 4, 0.5, 2000, 1500, 3, NULL),
-		('h2', 'p1', 3,  8, 4, 2, 0.4, 1200, 1300, 1, NULL),
-		('h3', 'p1', 2,  9, 6, 3, 0.5, 1800, 1400, 2, NULL)`)
+		('h1', 'p1', 2, 10, 5, 4, 0.5, 2000, 1500, 3, NULL, 6.33),
+		('h2', 'p1', 3,  8, 4, 2, 0.4, 1200, 1300, 1, NULL, NULL),
+		('h3', 'p1', 2,  9, 6, 3, 0.5, 1800, 1400, 2, NULL, NULL)`)
 
 	// asset_translations : noms EN + FR par game_variant_id (voie metadata H5).
 	mustExec(t, metaSQL, `CREATE TABLE asset_translations (
@@ -236,11 +241,13 @@ func TestPatternsRepo_LoadRows_H5ModeFromVariant(t *testing.T) {
 	}
 
 	byMatch := make(map[string]string, len(rows))
+	kdaByMatch := make(map[string]float64, len(rows))
 	for _, r := range rows {
 		if strings.TrimSpace(r.Mode) == "" {
 			t.Errorf("match %s : Mode vide (dérivation pair-only dégénérée non corrigée)", r.MatchID)
 		}
 		byMatch[r.MatchID] = r.Mode
+		kdaByMatch[r.MatchID] = r.KDA
 	}
 	// FR-first : "Assassin" (fr-FR de vSlayer), "Bases" (fr-FR de vStrong).
 	if byMatch["h1"] != "Assassin" || byMatch["h2"] != "Assassin" {
@@ -248,6 +255,13 @@ func TestPatternsRepo_LoadRows_H5ModeFromVariant(t *testing.T) {
 	}
 	if byMatch["h3"] != "Bases" {
 		t.Errorf("Strongholds H5 : mode = %q, want Bases", byMatch["h3"])
+	}
+	// FDA net : h1 porte la valeur native (colonne FLOAT, d'où la tolérance), h2 et h3 (NULL, cas
+	// courant de Halo 5) la dérivent des compteurs : 8+2/3-4 et 9+3/3-6.
+	for id, want := range map[string]float64{"h1": 6.33, "h2": 8.0 + 2.0/3.0 - 4.0, "h3": 4.0} {
+		if math.Abs(kdaByMatch[id]-want) > 1e-5 {
+			t.Errorf("match %s : KDA = %v, want %v", id, kdaByMatch[id], want)
+		}
 	}
 }
 

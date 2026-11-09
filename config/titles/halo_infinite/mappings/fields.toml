@@ -129,7 +129,7 @@ group         = "combat"
 
 [fields.kda]
 labels        = { en = "KDA", fr = "FDA" }
-description   = { en = "Kills + Assists/2 - Deaths.", fr = "Éliminations + Assistances/2 - Morts." }
+description   = { en = "Kills + Assists/3 - Deaths.", fr = "Éliminations + Assistances/3 - Morts." }
 storage_unit  = ""
 display_unit  = ""
 format        = "kdr_2"

@@ -83,20 +83,22 @@ var accentedLiteralRE = regexp.MustCompile(`[éèêàùçÉÈÊÀÙÇ]`)
 // liste (weaponRegistryFamilies ne porte plus de libellé EN/FR, colonnes purgées de
 // weapon_families — champ mort, cf. commentaire ci-dessous) — 130 fichiers, 500
 // littéraux.
+// Mise à jour 2026-11-09 (v8.1.2, item 2.1) : behavioral.go 2 → 0 et behavioral_engagement.go
+// 3 → 0, retirés (alertes de comportement rendues par le catalogue de messages) — 128 fichiers,
+// 472 littéraux. L'en-tête précédent (500) n'était plus exact : la somme mesurée des entrées
+// était 477 avant cette mise à jour.
 // Familles connues (cf. plan libellés §2) annotées ; le reste (essentiel : messages
 // d'erreur des handlers, famille F/D6) attend la décision utilisateur D6 avant tri fin.
 var frenchLabelAllowlist = map[string]int{
 	// L6 — narratif / prestige (D7 : ce sont des PHRASES/contenu, ADR 0028 — hors plan
 	// libellés sauf mojibake, mais comptées ici tant qu'elles restent en dur).
 	"libs/film/internal/grammar/equipment_creation_width.go": 1,
-	"analysis/patterns/behavioral.go":                        2,
-	"analysis/patterns/behavioral_engagement.go":             3,
 	"analysis/prestigetuning/analyze.go":                     6,
 	"analysis/prestigetuning/render.go":                      16,
 	"libs/film/replay/coverage_bridge.go":                    5,
 	"libs/film/replay/neutral_deaths.go":                     2,
 	"analysis/skill_v2/display_smoothing.go":                 1,
-	"notify/coach.go":                                        5,
+	"notify/coach.go":                                        3,
 	"service/synthesis_service_builders.go":                  1,
 	"service/synthesis_service_legacy.go":                    5,
 

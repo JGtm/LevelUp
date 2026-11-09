@@ -58,11 +58,6 @@ const (
 	// « à consolider ». Catégorie NEUTRE distincte de threshold_crossed (positif) :
 	// une tendance descendante ne doit pas s'afficher « Palier franchi ».
 	CategoryTrendConsolidate Category = "trend_consolidate"
-	// 2026-05-24 : Pattern Engine v3 (PLAN_PATTERN_ENGINE.md phases 1-3).
-	CategoryPatternStrength Category = "pattern_strength"
-	CategoryPatternWeakness Category = "pattern_weakness"
-	CategoryPatternBehavior Category = "pattern_behavior"
-	CategoryPatternLever    Category = "pattern_lever"
 	// 2026-05-24 : Combat Profile Wiring Phase 5 — alertes proactives OC/DR/activité.
 	CategoryCombatPattern Category = "combat_pattern"
 	// 2026-06-23 : MT-19 / axe E — « titre prêt ». Émise à la première synchro d'un
@@ -101,9 +96,6 @@ func AllCategories() []Category {
 		CategoryMilestoneNearMiss, CategoryLUSRTierApproach,
 		CategoryStreakMilestone, CategoryComebackWelcome,
 		CategoryTrendConsolidate,
-		// Pattern Engine v3.
-		CategoryPatternStrength, CategoryPatternWeakness,
-		CategoryPatternBehavior, CategoryPatternLever,
 		// Combat Profile Phase 5.
 		CategoryCombatPattern,
 		// MT-19 / axe E.

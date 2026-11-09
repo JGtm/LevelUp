@@ -10,8 +10,9 @@ const (
 	// chaîne, fenêtre glissante, seuils de matchs, durée de repli).
 	PerformanceScoreRev = "perf-2026-11-08"
 	// LUSRRev est la révision du LUSR (paramètres TrueSkill, poids du score composite,
-	// pénalités d'abandon, couplage entre modes, décalage d'escouade, grille des paliers).
-	LUSRRev = "lusr-2026-11-08"
+	// pénalités d'abandon, couplage entre modes, décalage d'escouade, grille des paliers, repli du
+	// solveur sans les comptes de frags et de morts quand il ne converge pas).
+	LUSRRev = "lusr-2026-11-09"
 
 	// SyncMetaScoringRevision est la clé de `sync_meta` qui porte, par joueur, la dernière
 	// valeur de ScoringRevision dont le recalcul complet a réussi.

@@ -91,7 +91,7 @@ export const FR_TEXT = {
     daily_play: 'Match par jour',
     daily_perf: 'Performance par jour',
     weekly_play: '5 matchs par semaine',
-    weekly_kda_threshold: 'KDA hebdomadaire',
+    weekly_kda_threshold: 'FDA hebdomadaire',
   },
   recordsSectionTitle: 'Mes records',
   recordsTimelineTitle: 'Historique des records battus',

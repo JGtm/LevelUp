@@ -24,6 +24,8 @@ var (
 	}
 	lusrParametersByRevision = map[string]string{
 		"lusr-2026-11-08": "ef84e6e155f63198d9a7387d11af1f1dfd77473d4e12bad220e667ef5fd3443a",
+		// Le repli du solveur sans comptes (solveWithCountFallback) est de la logique : aucun paramètre haché ne change.
+		"lusr-2026-11-09": "ef84e6e155f63198d9a7387d11af1f1dfd77473d4e12bad220e667ef5fd3443a",
 	}
 )
 

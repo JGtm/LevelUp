@@ -63,7 +63,7 @@ const (
 // Signal est l'entrée du matcher / synthesizer.
 //
 // Construit par signals.SignalsFromCoachInput() à partir des sorties du coach
-// existant ([]coach.Alert, LUSRSnapshot, PatternReport). Ce package ne dépend
+// existant ([]coach.Alert, LUSRSnapshot). Ce package ne dépend
 // pas du package coach pour éviter le couplage inverse — c'est le service
 // orchestrateur qui fait la traduction.
 type Signal struct {

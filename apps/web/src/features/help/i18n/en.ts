@@ -42,7 +42,7 @@ export const EN_TEXT = {
             definition:
               'Relative 0–100 score measuring the contribution of a player in a match vs their own history. Computed from 13 weighted metrics — each metric is converted to a percentile rank over the player\'s past matches. Requires at least 10 historical matches to activate. Bot-resistant: if bots were on the player\'s team, a corrective bonus is applied based on the MMR gap.',
             formula:
-              'Score = Σ(percentile_rank × weight) / Σ(active weights), clamped 0–100\n\nMain weights:\n0.14 × kills/min · 0.11 × KDA · 0.10 × deaths/min (inverted)\n0.10 × personal score/min · 0.09 × kills vs expected\n0.09 × offensive conversion · 0.07 × deaths vs expected\n0.06 × damage/min · 0.06 × heroic medals · 0.05 × defensive resistance\n0.04 × accuracy · 0.04 × rank vs expected',
+              'Score = Σ(percentile_rank × weight) / Σ(active weights), clamped 0–100\n\nMain weights:\n0.14 × kills/min · 0.11 × Combat efficiency · 0.10 × deaths/min (inverted)\n0.10 × personal score/min · 0.09 × kills vs expected\n0.09 × offensive conversion · 0.07 × deaths vs expected\n0.06 × damage/min · 0.06 × heroic medals · 0.05 × defensive resistance\n0.04 × accuracy · 0.04 × rank vs expected',
             example:
               '80/100 in a match = the performance was in the top 20 % of the player\'s own historical performances across those metrics.',
           },
@@ -76,10 +76,11 @@ export const EN_TEXT = {
           {
             term: 'KDA',
             definition:
-              'Classic kills/deaths/assists ratio, with a floor of 1 death to avoid division by zero. Assists count fully (unlike offensive conversion where they count as 1/3). A reference metric but volume-sensitive — a very active player may have the same KDA as a passive one.',
-            formula: 'KDA = (kills + assists) / max(1, deaths)',
+              'Net result of a match: kills, plus one third of assists, minus deaths. This is the value the Halo API returns directly for each match. It can go negative: a player who dies more than their effective kills goes below zero. One third reflects that helping to down an opponent is worth less than doing it yourself: three assists are worth one kill.\n\nOver several matches, KDA is the average of the per-match values: the net total (kills + assists / 3 − deaths) divided by the number of matches. It is never a quotient by deaths, and it is not K/D (kills / deaths), which is a separate measure.\n\nReading: negative = deficit, 0 to 1 = even, above 1 = surplus. A reference measure but volume-sensitive: a very active player can show the same KDA as a passive one. The performance score complements this reading with 12 other measures.',
+            formula:
+              'KDA of a match = kills + assists / 3 − deaths\nKDA over several matches = (kills + assists / 3 − deaths) / number of matches',
             example:
-              '15 kills, 4 assists, 6 deaths → KDA = 19/6 ≈ 3.17\n0 kills, 0 assists, 0 deaths → KDA = 0/1 = 0 (floor at 1 death)',
+              '15 kills, 4 assists, 6 deaths → KDA = 15 + 4/3 − 6 ≈ 10.33\n4 kills, 3 assists, 9 deaths → KDA = 4 + 3/3 − 9 = −4.00 (below zero: more deaths than effective kills)\n0 kills, 0 assists, 0 deaths → KDA = 0.00\nOver the first two matches: KDA = (10.33 − 4.00) / 2 ≈ 3.17',
           },
         ],
       },

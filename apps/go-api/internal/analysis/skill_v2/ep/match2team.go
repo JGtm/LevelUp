@@ -102,16 +102,11 @@ type Match2TeamConfig struct {
 // adaptés aux factor graphs TS classiques (win/loss seul) qui convergent en
 // 5-20 itérations.
 //
-// Phase 3c (count observations) ajoute des facteurs additionnels — le graph
-// peut nécessiter plus d'itérations, surtout sur des scenarios contradictoires
-// (ex : équipe gagne mais joueur a des stats faibles, ou tailles d'équipes
-// légèrement asymétriques 4v5/5v4 fréquents post-quit). MaxIters bumped à 500
-// pour absorber ces cas. La sortie reste correcte pour les cas convergents
-// en < 50 itérations.
-//
-// À monitorer : si les warns "EP n'a pas convergé" deviennent fréquents,
-// soit augmenter MaxIters encore, soit introduire du damping EP, soit ajouter
-// un skip plus agressif côté caller (cf. isTeamImbalanceTooHigh).
+// Les observations de comptes (frags et morts, un sous-graphe par joueur) ajoutent des facteurs
+// et peuvent nécessiter plus d'itérations ; MaxIters à 500 absorbe les cas lents. Un match qui
+// ne converge toujours pas rend ErrNotConverged : ces échecs viennent des observations de
+// comptes, et ni plus d'itérations ni un amortissement ne les résolvent de façon fiable. Le
+// repli est côté appelant, qui recalcule le match sans Counts (sync/skill, solveWithCountFallback).
 func DefaultMatch2TeamConfig() Match2TeamConfig {
 	return Match2TeamConfig{Tolerance: 1e-4, MaxIters: 500}
 }
