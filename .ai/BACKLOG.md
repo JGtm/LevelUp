@@ -15,6 +15,18 @@
 
 ---
 
+### [bureau/ui] Volet des référentiels aussi fluide que « Signaler un problème »
+
+**Demande de l'utilisateur (2026-11-09).** Le volet des référentiels (`features/asset-drawer/AssetDockedPanel.tsx`) apparaît et disparaît d'un coup (`if (!isOpen) return null`), alors que le panneau de retour (`features/feedback-drawer/FeedbackDrawer.tsx`) reste monté et glisse par une transition. Lui donner le même comportement à l'ouverture et à la fermeture. À trancher : le volet pousse aujourd'hui le contenu et le panneau de retour le recouvre ; animer sa largeur ferait recalculer la page à chaque image, à mesurer sur les pages lourdes. **Effort : S.**
+
+---
+
+### [bureau/ui] Choisir un dossier avec l'explorateur du système
+
+**Demande de l'utilisateur (2026-11-09).** Les réglages qui attendent un chemin de dossier (archive des films, sauvegarde, médias) se remplissent à la main dans l'application de bureau. Ajouter un bouton « Parcourir » qui ouvre le sélecteur de dossier du système, le champ restant modifiable. La coquille a déjà `rfd`, qui fonctionne aussi sur macOS (`rfd::FileDialog`, `apps/desktop/src-tauri/src/main.rs:376` pour « Enregistrer sous ») : exposer `pick_folder()` depuis la coquille. **Rester indépendant du système** : le web se branche sur une capacité de `/bootstrap` (ADR 0044), jamais sur le nom de l'OS, et aucun chemin ni séparateur propre à Windows n'entre dans le code ; sur le site hébergé, sans sélecteur natif, le champ texte reste seul. **Effort : S à M.**
+
+---
+
 ### [lusr] Matchs dont le calcul ne converge pas : sans note neuve et comptés comme trous réparables
 
 Depuis la 8.1.1, un match dont le solveur ne converge pas ne bloque plus l'enregistrement de la révision de notation, mais il reste sans note neuve (18 matchs relevés en prod le 2026-11-09, équipes de 4v6 à 16v16). Le détecteur de trous (`sync/skill/lusr_gap_scan.go:116-120`) le classe en trou d'intérieur « réparable par rejeu » dès qu'un match plus récent du groupe a avancé le filigrane : le panneau d'administration l'affiche, et le rejeu retombe sur la même non-convergence. Deux suites à arbitrer : distinguer ces matchs dans le rapport, ou faire converger le solveur (amortissement, `ep/match2team.go`), ce qui change des notes et impose de monter `LUSRRev`. **Effort : S pour le rapport, M pour le solveur.**

@@ -162,14 +162,19 @@ jobs:
 
       # Une release sans notes n'est pas une release : publish échouerait, mais après 25 minutes de
       # compilation. La première section des notes de version doit exister dans les deux langues et porter
-      # le numéro majeur.mineur du tag : sinon le texte d'une version précédente partirait avec celle-ci.
+      # le numéro du tag (vX.Y pour une version en .0, vX.Y.Z pour un correctif) : sinon le texte d'une
+      # version précédente partirait avec celle-ci.
       - name: Notes de version FR et EN à jour (tag)
         if: steps.ver.outputs.tag == 'true'
         run: |
           version="${{ steps.ver.outputs.version }}"
+          case "$version" in
+            *.0) attendu="${version%.*}" ;;
+            *) attendu="$version" ;;
+          esac
           for notes in docs/FR/RELEASE_NOTES.md docs/RELEASE_NOTES.md; do
-            if ! awk '/^\*\*v[0-9]/{print; exit}' "$notes" | grep -q "^\*\*v${version%.*}[^0-9.]"; then
-              echo "::error::la première section de ${notes} ne porte pas v${version%.*}"
+            if ! awk '/^\*\*v[0-9]/{print; exit}' "$notes" | grep -q "^\*\*v${attendu}[^0-9.]"; then
+              echo "::error::la première section de ${notes} ne porte pas v${attendu}"
               exit 1
             fi
           done

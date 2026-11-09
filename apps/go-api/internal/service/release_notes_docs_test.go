@@ -33,7 +33,7 @@ func readRepoDoc(t *testing.T, rel string) string {
 }
 
 // countVersionLines compte les lignes de version de la section « What's new » :
-// c'est le nombre de blocs attendu, indépendamment de la clé tronquée à vX.Y.
+// c'est le nombre de blocs attendu, indépendamment de la forme de la clé.
 func countVersionLines(content string) int {
 	n := 0
 	in := false
@@ -62,11 +62,33 @@ func sortedBlockKeys(blocks map[string]string) []string {
 	return keys
 }
 
-var changelogHeadingRe = regexp.MustCompile(`(?m)^## \[(\d+)\.(\d+)\.\d+\]`)
+var changelogHeadingRe = regexp.MustCompile(`(?m)^## \[(\d+)\.(\d+)\.(\d+)\]`)
+
+// La clé d'un bloc porte le correctif quand la ligne le nomme, et un correctif se classe avant
+// sa version mineure.
+func TestExtractVersionKey(t *testing.T) {
+	cases := map[string]string{
+		"**v8.1.1 — Scores settle**": "v8.1.1",
+		"**v8.1 — LevelUp**":         "v8.1",
+		"**v8.0 — 2D replay**":       "v8.0",
+		"**v8.0 — 2 new modes**":     "v8.0",
+		"- **v7.2.1 — Objective**":   "v7.2.1",
+		"**v8.1-rc1 — Preview**":     "v8.1",
+	}
+	for line, want := range cases {
+		if got := extractVersionKey(line); got != want {
+			t.Errorf("extractVersionKey(%q) = %q, attendu %q", line, got, want)
+		}
+	}
+	got := sortedBlockKeys(map[string]string{"v8.0": "", "v8.1": "", "v8.1.1": "", "v7.2.1": ""})
+	if want := "[v8.1.1 v8.1 v8.0 v7.2.1]"; fmt.Sprint(got) != want {
+		t.Errorf("ordre = %v, attendu %s", got, want)
+	}
+}
 
 // TestReleaseNotesDocs_BlocksExtractedWithoutCollision garde les notes de version servies
-// par l'app : la clé d'un bloc est tronquée à vX.Y et la première occurrence d'une clé
-// gagne, donc deux lignes de version de même vX.Y feraient disparaître un bloc en silence.
+// par l'app : la première occurrence d'une clé gagne, donc deux lignes de version de même
+// clé feraient disparaître un bloc en silence.
 func TestReleaseNotesDocs_BlocksExtractedWithoutCollision(t *testing.T) {
 	langs := map[string]string{"en": "docs/RELEASE_NOTES.md", "fr": "docs/FR/RELEASE_NOTES.md"}
 	keys := map[string][]string{}
@@ -87,8 +109,8 @@ func TestReleaseNotesDocs_BlocksExtractedWithoutCollision(t *testing.T) {
 }
 
 // TestReleaseNotesDocs_NewestBlockMatchesChangelog garde la cohérence de numéro : le bloc
-// le plus récent des notes de version porte le vX.Y de la première entrée du changelog,
-// en anglais et en français.
+// le plus récent des notes de version porte le numéro de la première entrée du changelog
+// (vX.Y pour une version mineure en .0, vX.Y.Z pour un correctif), en anglais et en français.
 func TestReleaseNotesDocs_NewestBlockMatchesChangelog(t *testing.T) {
 	pairs := [][2]string{
 		{"docs/RELEASE_NOTES.md", "docs/CHANGELOG.md"},
@@ -100,7 +122,11 @@ func TestReleaseNotesDocs_NewestBlockMatchesChangelog(t *testing.T) {
 		if m == nil || len(keys) == 0 {
 			t.Fatalf("%s / %s : entrée de changelog ou bloc introuvable", p[0], p[1])
 		}
-		if want := fmt.Sprintf("v%s.%s", m[1], m[2]); keys[0] != want {
+		want := fmt.Sprintf("v%s.%s", m[1], m[2])
+		if m[3] != "0" {
+			want = fmt.Sprintf("%s.%s", want, m[3])
+		}
+		if keys[0] != want {
 			t.Errorf("%s : bloc le plus récent %s, première entrée de %s : %s", p[0], keys[0], p[1], want)
 		}
 	}
