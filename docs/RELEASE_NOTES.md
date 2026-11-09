@@ -25,6 +25,10 @@
 - **Drop wall and shroud screen last as long as the film says** — their end is read from the match instead of a flat duration
 - **Translations in administration** — the form offers one field per language; the application is ready for more languages
 - **"Exclude BTB from the career ranking" removed** — the option had no effect
+- **The media library follows the disk** — renaming, moving or deleting a capture in the file explorer no longer breaks the gallery, and deleting from the app sends the original to the Recycle Bin
+- **Equipment received at respawn shows on the replay** — effects, sounds and counters, and players who stand still stay visible until they die
+- **An excluded match leaves the career graph right away**, and new citations arrive on their own at startup
+- **Smaller Windows updates** — the app and its resources update separately, so a new version usually downloads about 30 MB
 
 **v8.0 — 2D replay, the Theater film decoded & a Tactics tab**
 

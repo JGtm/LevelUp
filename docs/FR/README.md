@@ -26,6 +26,11 @@ LevelUp s'installe désormais sur ton PC comme n'importe quelle application : te
 
 **Aussi nouveau, sur le site comme dans l'application** : le même en-tête clair sur toutes les sections, la performance par carte et par mode dans la Synthèse, les modes de Halo 5 et des corrections du rejeu.
 
+- **La médiathèque suit le disque** — renommer, déplacer ou supprimer une capture dans l'explorateur ne casse plus la galerie, et supprimer depuis l'application envoie l'original à la Corbeille.
+- **Rejeu** — l'équipement reçu à la réapparition s'affiche enfin (effets, sons, compteurs), et les joueurs immobiles restent visibles jusqu'à leur mort.
+- **Carrière** — un match exclu disparaît aussitôt du graphe de carrière, et les nouvelles citations arrivent toutes seules au démarrage.
+- **Des mises à jour Windows plus légères** — l'application et ses ressources se mettent à jour séparément : une nouvelle version ne télécharge le plus souvent qu'environ 30 Mo.
+
 **À savoir** : Windows 10 ou 11 (64 bits) uniquement. L'installeur n'est pas signé par un certificat payant : Windows affiche un avertissement à l'installation (« Informations complémentaires », puis « Exécuter quand même ») ; la page de téléchargement t'explique tout.
 
 Tous les détails dans le [journal des modifications](CHANGELOG.md).

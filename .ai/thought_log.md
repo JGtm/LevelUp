@@ -120447,3 +120447,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** 0 P0, 3 constats recevables, 31 conditions vérifiées qui tiennent. Corrigés : `finParPresence` scindée (règle des complexités), commentaire v107 aligné sur la chronique, test synthétique de la lecture d'identité (cinq mutations détectées). Après correction : `go vet` et `go test ./...` de `libs/film` à 0, archlint de `apps/go-api` à 0, lint neuf `--new-from-rev=HEAD` à 0.
 
 **Conclusion / prochaine étape.** Vérification visuelle du user après recuisson ; CI et `make gate-push` restent à passer avant fusion.
+
+## [2026-11-09] Release v8.1.0 : gel du code et lignes « What's new » — En cours
+
+**Décision technique principale.** Code gelé sur `9f70f24bb6` (rejeu fusionné, PR #162). Revue globale indépendante confiée à trois relecteurs Opus sans contexte, par zone (données et démarrage, bureau et publication, décodeur et affichage), concentrés sur les interactions entre lots. Seules les corrections issues de cette revue entrent encore en code.
+
+**Résultats observés.** README et notes de version (EN et FR) complétés : médiathèque, rejeu, carrière, mises à jour Windows.
+
+**Conclusion / prochaine étape.** Tri des constats, gate 24.z et récapitulatif à l'utilisateur avant le tag `v8.1.0`.
