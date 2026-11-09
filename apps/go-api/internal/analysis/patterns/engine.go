@@ -1,6 +1,10 @@
 package patterns
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // engine.go — orchestrateur du Pattern Engine.
 //
@@ -28,7 +32,7 @@ func Analyze(input AnalyzeInput) PatternReport {
 		return report
 	}
 	report.ContextPatterns = analyzeContext(rows, input.Config)
-	report.BehaviorPatterns = analyzeBehavior(rows, input.Config)
+	report.BehaviorPatterns = analyzeBehavior(rows, input.Config, i18n.Parse(string(input.Locale)))
 	report.Levers = selectLevers(report.ContextPatterns, report.BehaviorPatterns, rows, input.Config)
 	return report
 }

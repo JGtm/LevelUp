@@ -5,6 +5,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/i18n"
 )
 
 // behavioral.go — détection des patterns comportementaux (tilt + fatigue).
@@ -13,28 +14,28 @@ import (
 // behavioral_engagement.go pour respecter la limite de 500 lignes par fichier.
 
 // analyzeBehavior détecte les patterns comportementaux sur les rows.
-func analyzeBehavior(rows []MatchRow, cfg PatternConfig) []BehavioralPattern {
+func analyzeBehavior(rows []MatchRow, cfg PatternConfig, loc i18n.Locale) []BehavioralPattern {
 	var out []BehavioralPattern
-	if p, ok := detectTilt(rows, cfg); ok {
+	if p, ok := detectTilt(rows, cfg, loc); ok {
 		out = append(out, p)
 	}
-	if p, ok := detectSessionFatigue(rows, cfg); ok {
+	if p, ok := detectSessionFatigue(rows, cfg, loc); ok {
 		out = append(out, p)
 	}
-	if p, ok := detectEngagementDrop(rows, cfg); ok {
+	if p, ok := detectEngagementDrop(rows, cfg, loc); ok {
 		out = append(out, p)
 	}
-	if p, ok := detectAccuracyPlateau(rows, cfg); ok {
+	if p, ok := detectAccuracyPlateau(rows, cfg, loc); ok {
 		out = append(out, p)
 	}
-	if p, ok := detectPerfCeiling(rows, cfg); ok {
+	if p, ok := detectPerfCeiling(rows, cfg, loc); ok {
 		out = append(out, p)
 	}
 	return out
 }
 
 // detectTilt détecte une suite de défaites avec chute de KDA.
-func detectTilt(rows []MatchRow, cfg PatternConfig) (BehavioralPattern, bool) {
+func detectTilt(rows []MatchRow, cfg PatternConfig, loc i18n.Locale) (BehavioralPattern, bool) {
 	// Plus longue série de défaites consécutives + son index de départ (le start
 	// est nécessaire pour découper tiltRows / outsideRows).
 	bestRun, bestStart := analysis.LongestRun(rows, func(r MatchRow) bool {
@@ -66,14 +67,16 @@ func detectTilt(rows []MatchRow, cfg PatternConfig) (BehavioralPattern, bool) {
 		sev = SeverityHigh
 	}
 
-	evidence := fmt.Sprintf("KDA chute de %.2f → %.2f", kdaOutside, kdaDuring)
+	fdaParams := i18n.Params{"before": fmt.Sprintf("%.2f", kdaOutside), "during": fmt.Sprintf("%.2f", kdaDuring)}
+	evidence := i18n.Msg(loc, "patterns.behavior.tilt.evidence", fdaParams)
 	if engDrop := meanEngageDrop(tiltRows, outsideRows); engDrop > 0 {
-		evidence += fmt.Sprintf(" ; engagement −%.0f%%", engDrop*100)
+		fdaParams["pct"] = fmt.Sprintf("%.0f", engDrop*100)
+		evidence = i18n.Msg(loc, "patterns.behavior.tilt.evidence_engagement", fdaParams)
 	}
 
 	return BehavioralPattern{
 		Type:      BehaviorTilt,
-		Trigger:   fmt.Sprintf("%d+ défaites consécutives", bestRun),
+		Trigger:   i18n.Msg(loc, "patterns.behavior.tilt.trigger", i18n.Params{"n": bestRun}),
 		Evidence:  evidence,
 		Severity:  sev,
 		Confirmed: false,
@@ -122,7 +125,7 @@ func meanKDA(rows []MatchRow) float64 {
 }
 
 // detectSessionFatigue détecte la dégradation de KDA au sein des sessions.
-func detectSessionFatigue(rows []MatchRow, cfg PatternConfig) (BehavioralPattern, bool) {
+func detectSessionFatigue(rows []MatchRow, cfg PatternConfig, loc i18n.Locale) (BehavioralPattern, bool) {
 	sessions := groupBySessions(rows, cfg)
 	if len(sessions) == 0 {
 		return BehavioralPattern{}, false
@@ -155,8 +158,8 @@ func detectSessionFatigue(rows []MatchRow, cfg PatternConfig) (BehavioralPattern
 	}
 	return BehavioralPattern{
 		Type:      BehaviorSessionFatigue,
-		Trigger:   fmt.Sprintf("Sessions de %d+ matchs", cfg.FatigueMinSession),
-		Evidence:  fmt.Sprintf("KDA diminue sur %.0f%% des sessions analysées", cov*100),
+		Trigger:   i18n.Msg(loc, "patterns.behavior.fatigue.trigger", i18n.Params{"n": cfg.FatigueMinSession}),
+		Evidence:  i18n.Msg(loc, "patterns.behavior.fatigue.evidence", i18n.Params{"pct": fmt.Sprintf("%.0f", cov*100)}),
 		Severity:  SeverityMedium,
 		Confirmed: false,
 	}, true

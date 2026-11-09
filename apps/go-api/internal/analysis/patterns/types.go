@@ -4,7 +4,11 @@
 // L'entrée est un []MatchRow et la sortie est un PatternReport.
 package patterns
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/i18n"
+)
 
 // MatchRow est la ligne d'entrée pour l'analyse de patterns.
 // Toutes les métriques sont déjà calculées avant d'arriver ici.
@@ -215,4 +219,7 @@ type AnalyzeInput struct {
 	N      int // nombre max de rows à utiliser (0 = toutes)
 	Config PatternConfig
 	Now    time.Time
+	// Locale : langue des libellés composés (déclencheurs, preuves). Vide ou inconnue = langue
+	// par défaut de l'application (i18n.Parse).
+	Locale i18n.Locale
 }

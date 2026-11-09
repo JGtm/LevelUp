@@ -110,6 +110,7 @@ func (h *PatternsHandler) GetPatterns(ctx context.Context, in *patternsInput) (*
 		N:      n,
 		Config: patterns.DefaultPatternConfig(),
 		Now:    time.Now().UTC(),
+		Locale: i18n.FromContext(ctx),
 	})
 	h.enrichContextLabels(ctx, repo, &report)
 	slog.DebugContext(ctx, "patterns: analyse terminée",

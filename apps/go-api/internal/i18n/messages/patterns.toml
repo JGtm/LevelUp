@@ -4,3 +4,55 @@
 [patterns.unknown_map]
 fr = "Carte inconnue ({id})"
 en = "Unknown map ({id})"
+
+# Alertes de comportement (behavioral.go, behavioral_engagement.go) : déclencheur et preuve.
+# Les paramètres numériques arrivent pré-formatés aux précisions indiquées.
+
+# Tilt : série de défaites avec chute de FDA (une seule clé de preuve selon la présence de l'engagement).
+[patterns.behavior.tilt.trigger]
+fr = "{n}+ défaites consécutives"
+en = "{n}+ consecutive losses"
+
+[patterns.behavior.tilt.evidence]
+fr = "FDA moyen {before} → {during}"
+en = "Average KDA {before} → {during}"
+
+[patterns.behavior.tilt.evidence_engagement]
+fr = "FDA moyen {before} → {during} ; engagement −{pct}%"
+en = "Average KDA {before} → {during}; engagement −{pct}%"
+
+# Fatigue de session : FDA en baisse dans une part des sessions.
+[patterns.behavior.fatigue.trigger]
+fr = "Sessions de {n}+ matchs"
+en = "Sessions of {n}+ matches"
+
+[patterns.behavior.fatigue.evidence]
+fr = "FDA en baisse sur {pct}% des sessions analysées"
+en = "KDA dropping in {pct}% of analysed sessions"
+
+# Baisse d'engagement : matchs récents sous les seuils habituels.
+[patterns.behavior.engagement_drop.trigger]
+fr = "{n} matchs récents sous les seuils habituels"
+en = "{n} recent matches below usual levels"
+
+[patterns.behavior.engagement_drop.evidence]
+fr = "Engagement perso : {self}% vs habitude ; {lobby}% vs le lobby"
+en = "Personal engagement: {self}% vs usual; {lobby}% vs the lobby"
+
+# Précision en plateau : précision stable mais basse.
+[patterns.behavior.accuracy_plateau.trigger]
+fr = "{n} matchs sans progression"
+en = "{n} matches without progress"
+
+[patterns.behavior.accuracy_plateau.evidence]
+fr = "Précision stable à {acc}% (σ={sigma})"
+en = "Accuracy steady at {acc}% (σ={sigma})"
+
+# Plafond de performance : tendance LOWESS plate.
+[patterns.behavior.perf_ceiling.trigger]
+fr = "Progression LOWESS plate sur {n}+ matchs"
+en = "Flat LOWESS trend over {n}+ matches"
+
+[patterns.behavior.perf_ceiling.evidence]
+fr = "Plafond de performance à {max} pts (top {topn} moyen : {mean_top})"
+en = "Performance ceiling at {max} pts (top {topn} average: {mean_top})"

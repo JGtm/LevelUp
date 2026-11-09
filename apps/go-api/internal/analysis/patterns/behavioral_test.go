@@ -2,8 +2,11 @@ package patterns
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/i18n"
 )
 
 func ptr64(v float64) *float64 { return &v }
@@ -28,7 +31,7 @@ func TestDetectTilt_FiveConsecutiveLosses(t *testing.T) {
 		rows = append(rows, makeRowWithKDA(3, 1.0)) // LOSS
 	}
 
-	p, ok := detectTilt(rows, cfg)
+	p, ok := detectTilt(rows, cfg, i18n.Default)
 	if !ok {
 		t.Fatal("tilt non détecté")
 	}
@@ -56,7 +59,7 @@ func TestDetectSessionFatigue_DecreasingKDA(t *testing.T) {
 		})
 	}
 
-	p, ok := detectSessionFatigue(rows, cfg)
+	p, ok := detectSessionFatigue(rows, cfg, i18n.Default)
 	if !ok {
 		t.Fatal("session fatigue non détectée")
 	}
@@ -89,7 +92,7 @@ func TestDetectEngagementDrop_BothMetricsLow(t *testing.T) {
 	// Les rows récents en premier
 	rows = append(lowRows, rows...)
 
-	p, ok := detectEngagementDrop(rows, DefaultPatternConfig())
+	p, ok := detectEngagementDrop(rows, DefaultPatternConfig(), i18n.Default)
 	if !ok {
 		t.Fatal("engagement drop non détecté")
 	}
@@ -113,7 +116,7 @@ func TestDetectEngagementDrop_OnlyEngageScore(t *testing.T) {
 		})
 	}
 
-	_, ok := detectEngagementDrop(rows, DefaultPatternConfig())
+	_, ok := detectEngagementDrop(rows, DefaultPatternConfig(), i18n.Default)
 	if ok {
 		t.Error("engagement drop ne devrait pas être détecté sans ResidualBrut")
 	}
@@ -133,7 +136,7 @@ func TestDetectAccuracyPlateau_LowStableAccuracy(t *testing.T) {
 		rows = append(rows, MatchRow{Accuracy: acc})
 	}
 
-	p, ok := detectAccuracyPlateau(rows, cfg)
+	p, ok := detectAccuracyPlateau(rows, cfg, i18n.Default)
 	if !ok {
 		t.Fatal("accuracy plateau non détecté")
 	}
@@ -154,7 +157,7 @@ func TestDetectAccuracyPlateau_HighAccuracy(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		rows = append(rows, MatchRow{Accuracy: 0.55 + float64(i%3)*0.002})
 	}
-	_, ok := detectAccuracyPlateau(rows, cfg)
+	_, ok := detectAccuracyPlateau(rows, cfg, i18n.Default)
 	if ok {
 		t.Error("accuracy plateau ne doit pas être détecté pour une précision haute (>= AccuracyPlateauMax)")
 	}
@@ -171,7 +174,7 @@ func TestDetectTilt_NotEnoughLosses(t *testing.T) {
 	rows = append(rows, makeRowWithKDA(3, 0.5))
 	rows = append(rows, makeRowWithKDA(3, 0.5))
 
-	_, ok := detectTilt(rows, cfg)
+	_, ok := detectTilt(rows, cfg, i18n.Default)
 	if ok {
 		t.Error("tilt ne doit pas être détecté pour moins de TiltLossRun défaites consécutives")
 	}
@@ -193,7 +196,7 @@ func TestDetectSessionFatigue_NoLongSessions(t *testing.T) {
 			})
 		}
 	}
-	_, ok := detectSessionFatigue(rows, cfg)
+	_, ok := detectSessionFatigue(rows, cfg, i18n.Default)
 	if ok {
 		t.Error("session fatigue ne doit pas être détectée quand toutes les sessions sont trop courtes")
 	}
@@ -209,7 +212,7 @@ func TestDetectPerfCeiling_FlatLowess(t *testing.T) {
 		rows = append(rows, MatchRow{PerfScore: ptr64(v)})
 	}
 
-	p, ok := detectPerfCeiling(rows, cfg)
+	p, ok := detectPerfCeiling(rows, cfg, i18n.Default)
 	if !ok {
 		t.Fatal("perf ceiling non détecté")
 	}
@@ -229,8 +232,58 @@ func TestDetectPerfCeiling_NotEnoughRows(t *testing.T) {
 	for i := 0; i < 15; i++ {
 		rows = append(rows, MatchRow{PerfScore: ptr64(70.0)})
 	}
-	_, ok := detectPerfCeiling(rows, cfg)
+	_, ok := detectPerfCeiling(rows, cfg, i18n.Default)
 	if ok {
 		t.Error("perf ceiling ne doit pas être détecté avec moins de PerfCeilingMinRows matchs")
+	}
+}
+
+// TestAnalyze_LocalisationDesAlertes vérifie que le déclencheur et la preuve du tilt suivent la
+// langue de la requête : fr en français, en sans accent ni mot français, langue inconnue en
+// français (i18n.Parse, langue par défaut).
+func TestAnalyze_LocalisationDesAlertes(t *testing.T) {
+	var rows []MatchRow
+	for i := 0; i < 10; i++ {
+		rows = append(rows, makeRowWithKDA(2, 2.0)) // WIN
+	}
+	for i := 0; i < 5; i++ {
+		rows = append(rows, makeRowWithKDA(3, 1.0)) // LOSS
+	}
+	tiltDe := func(loc i18n.Locale) BehavioralPattern {
+		t.Helper()
+		rep := Analyze(AnalyzeInput{Rows: rows, Config: DefaultPatternConfig(), Locale: loc})
+		for _, p := range rep.BehaviorPatterns {
+			if p.Type == BehaviorTilt {
+				return p
+			}
+		}
+		t.Fatalf("tilt non détecté pour la langue %q", loc)
+		return BehavioralPattern{}
+	}
+
+	fr := tiltDe("fr")
+	if want := "5+ défaites consécutives"; fr.Trigger != want {
+		t.Errorf("fr trigger = %q, want %q", fr.Trigger, want)
+	}
+	if want := "FDA moyen 2.00 → 1.00"; fr.Evidence != want {
+		t.Errorf("fr evidence = %q, want %q", fr.Evidence, want)
+	}
+
+	en := tiltDe("en")
+	if want := "5+ consecutive losses"; en.Trigger != want {
+		t.Errorf("en trigger = %q, want %q", en.Trigger, want)
+	}
+	if want := "Average KDA 2.00 → 1.00"; en.Evidence != want {
+		t.Errorf("en evidence = %q, want %q", en.Evidence, want)
+	}
+	for _, s := range []string{en.Trigger, en.Evidence} {
+		if strings.ContainsAny(s, "éèêàùçÉÈÊÀÙÇ") || strings.Contains(s, "FDA") || strings.Contains(s, "défaite") {
+			t.Errorf("libellé en contient du français : %q", s)
+		}
+	}
+
+	inconnue := tiltDe("xx")
+	if inconnue != fr {
+		t.Errorf("langue inconnue = %+v, want le français %+v", inconnue, fr)
 	}
 }
