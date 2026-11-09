@@ -17,7 +17,7 @@
 
 ### [bureau/ui] Volet des référentiels aussi fluide que « Signaler un problème »
 
-**Demande de l'utilisateur (2026-11-09).** Le volet des référentiels (`features/asset-drawer/AssetDockedPanel.tsx`) apparaît et disparaît d'un coup (`if (!isOpen) return null`), alors que le panneau de retour (`features/feedback-drawer/FeedbackDrawer.tsx`) reste monté et glisse par une transition. Lui donner le même comportement à l'ouverture et à la fermeture. À trancher : le volet pousse aujourd'hui le contenu et le panneau de retour le recouvre ; animer sa largeur ferait recalculer la page à chaque image, à mesurer sur les pages lourdes. **Effort : S.**
+**Demande de l'utilisateur (2026-11-09).** Le volet des référentiels (`features/asset-drawer/AssetDockedPanel.tsx`) apparaît et disparaît d'un coup (`if (!isOpen) return null`), alors que le panneau de retour (`features/feedback-drawer/FeedbackDrawer.tsx`) reste monté et glisse par une transition. **Décision de l'utilisateur :** par défaut, le volet passe par-dessus la page, glisse et se ferme au clic dehors, comme le panneau de retour. Un bouton « épingler » le garde ouvert et décale alors la mise en page, avec une transition aussi fluide que le glissement. Point d'attention : animer la largeur de la page la recalcule à chaque image. Retarder le redimensionnement des graphiques à la fin de la transition, et mesurer sur les pages lourdes. État épinglé mémorisé comme l'est déjà le volet. **Effort : M.**
 
 ---
 
