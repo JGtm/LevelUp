@@ -120455,3 +120455,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** README et notes de version (EN et FR) complétés : médiathèque, rejeu, carrière, mises à jour Windows.
 
 **Conclusion / prochaine étape.** Tri des constats, gate 24.z et récapitulatif à l'utilisateur avant le tag `v8.1.0`.
+
+## [2026-11-09] Tag `libs/film/v0.1.0` délégué à la session du découplage (ADR 0043) — En cours
+
+**Décision technique principale.** Confirmation directe de l'utilisateur le 2026-11-09 (« Oui pour le tag j'autorise ») : note de délégation ajoutée sous D-2 de l'amendement film, un seul geste, la règle reste. La PR #157 entrait en conflit sur le journal : son contenu ADR passe par la PR des notes de version, #157 est fermée.
+
+**Résultats observés.** Le tag sera posé sur le commit de `main` portant la release, après la vérification `go get` hors dépôt.
+
+**Conclusion / prochaine étape.** Transmettre le sha de `main` à la session du découplage après la fusion par l'utilisateur.

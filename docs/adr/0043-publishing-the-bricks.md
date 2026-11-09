@@ -245,6 +245,11 @@ the launcher, the single-decode lock, the archive and the host's registry of fal
 resolving the local copies. The order of publication is `gamefiles`, `himap`, `film`; `haloapi` has no
 constraint. The tag `libs/film/v0.1.0` is set by the maintainer alone, after `go get` of the module has been
 checked from a throwaway module outside the repository (`GOWORK=off`), as for the other bricks.
+*Delegation of 2026-11-08 (dated messages of the maintainer: "ok pour le tag", then "coordonne-toi avec les
+autres, pas besoin de moi"; confirmed on 2026-11-09, "Oui pour le tag j'autorise"): for this one tag, the agent that closed the decoupling sets and pushes
+`libs/film/v0.1.0` on the commit of `main` that carries `release/v8.1.0`, once the `go get` check above has passed
+and the release coordinator has handed over the sha. The rule of D-2 above (tags set by the maintainer; no lot or
+agent pushes a tag) stands for every other tag: this is the delegation of one gesture, not a change of the rule.*
 
 **D-3 (applied) — README, example, notice.** `libs/film/README.md` follows the template of D-3. Its example is
 `decfilm/example_test.go`: compiled and run by `go test`, with a checked output, on a minimal film of the module's
