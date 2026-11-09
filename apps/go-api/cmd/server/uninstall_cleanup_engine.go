@@ -19,6 +19,9 @@ import (
 	"levelup/go-api/internal/resourcepack"
 )
 
+// bilanErreur est la valeur d'un champ du bilan quand son etape a echoue.
+const bilanErreur = "erreur"
+
 // engineDirs : les dossiers du moteur, relatifs au dossier du programme.
 var engineDirs = []string{"web", "config"}
 
@@ -30,7 +33,7 @@ var engineMarker = filepath.Join("web", "index.html")
 // bilans sont rendus tels qu'ils s'écrivent dans la ligne du bilan (`<n>-fichiers` ou `erreur`) ; les échecs sont
 // rendus pour être comptés et écrits par l'appelant.
 func removeProgramFiles(installDir string) (pack, engine string, failures []error) {
-	pack, engine = "erreur", "erreur"
+	pack, engine = bilanErreur, bilanErreur
 	if n, err := resourcepack.Remove(installDir); err != nil {
 		failures = append(failures, err)
 	} else {

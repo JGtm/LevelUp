@@ -101,7 +101,7 @@ func newUninstallCleanupDeps(exe string, roots title.Roots, startup startupentry
 // première échoue.
 func uninstallCleanup(ctx context.Context, d uninstallCleanupDeps) int {
 	var failures []error
-	startup := "erreur"
+	startup := bilanErreur
 	if outcome, err := startupentry.RemoveForInstall(d.Startup, d.InstallDir); err != nil {
 		failures = append(failures, err)
 	} else {
@@ -109,7 +109,7 @@ func uninstallCleanup(ctx context.Context, d uninstallCleanupDeps) int {
 	}
 	task := "racine-inconnue"
 	if d.Tasks != nil {
-		task = "erreur"
+		task = bilanErreur
 		if outcome, err := d.Tasks.RemoveIfTargets(ctx, d.InstallDir); err != nil {
 			failures = append(failures, err)
 		} else {
