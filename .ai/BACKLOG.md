@@ -21,6 +21,18 @@ Le 2026-11-09, elle a échoué deux fois sans test rouge alors que le code n'ét
 
 ---
 
+### [assets] Planches d'icônes de Dend : armes, grenades et équipements plus nets
+
+**Demande de l'utilisateur (2026-11-09).** Dend a les mêmes icônes d'armes que LevelUp, l'air plus nettes, réunies dans une seule image : `C:\Users\Guillaume\Downloads\feed.350c786f.png`. Une seconde planche, `C:\Users\Guillaume\Downloads\icons.18423eb2.png`, porte les images d'armes (netteté comparable à l'existant, à première vue) et surtout les icônes des grenades (de mauvaise qualité chez LevelUp) et des équipements (venues aujourd'hui d'images trouvées sur Internet). À instruire : comment découper ces planches et faire correspondre chaque icône à son arme ou équipement, si elles remplacent les images actuelles partout, et quelle est leur provenance (droit de les réutiliser, ou retrouver les mêmes images dans les fichiers du jeu). **Condition de reprise :** examen des deux planches. **Effort : à estimer après cet examen.**
+
+---
+
+### [rejeu/killfeed] Zone de callout du tueur dans le killfeed
+
+**Demande de l'utilisateur (2026-11-09).** Ajouter à chaque ligne du killfeed la zone de callout où se trouve le tueur au moment du frag : horodatage, zone, frag. Point de départ : `features/match-replay/ui/ReplayKillFeed.tsx` pour l'affichage, `lib/replay/calloutsPaint.ts` pour les callouts déjà présents au rejeu. À instruire : tueur sans position connue, carte sans callouts (rien d'inventé, ligne sans zone), libellé de zone dans chaque langue. **Effort : à estimer.**
+
+---
+
 ### [ui/navigation] Barre latérale trop haute pour la fenêtre : pas de grosse barre de défilement
 
 **Demande de l'utilisateur (2026-11-09).** Quand la fenêtre est trop petite pour tous les menus de premier niveau, la barre latérale (`components/shell/SidebarPanel.tsx:77`, et `SidebarRail.tsx:333` une fois repliée) affiche la barre de défilement standard, jugée très laide. Chercher d'abord une alternative qui évite le défilement (regrouper les entrées, réduire leur espacement selon la hauteur, reléguer les dernières dans un menu « Plus »). Si le défilement reste nécessaire : barre discrète, placée à gauche. Tenir le mode replié en icônes et tous les thèmes (tokens de couleur). **Effort : S à M.**
@@ -107,7 +119,7 @@ d'apparition ». Faire lire au harnais le seul catalogue versionné. **Effort : 
 
 ---
 
-### [rejeu/identité] 15 vies sans nom restantes dans les rejeux cuits
+### [rejeu/identité] Vies sans nom restantes dans les rejeux cuits (8 mesurées sur 2 films, 7 non mesurables)
 
 Reste du lot film E8.4 (plan `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-16.md`) : sur les 36 films en cause (449 vies
 sans nom), 15 vies restent sans nom, aucune lecture du film ne les nomme : `72c48587` (7 vies, table
@@ -130,7 +142,8 @@ reste sans position alors que la tenue le placerait ; `siegesDe` donne un second
 parent qui n'est ni un véhicule échantillonné ni un bipède (`5676a9ba`) ; le châssis de véhicule
 `b857fb95` (`e449a696`, `99b8ba5c`) n'est pas dans la table des familles (marqueur neutre). **Effort : S
 chacune, à instruire une par une.**
-**Mesure du 2026-11-08** (lecture seule, rejeux recuits au schéma 107) : le châssis `b857fb95` reste sans famille sur 117 films et 455 vies, publiées en marqueur neutre immobile (453 sans échantillon de position, 265 avec occupant) ; sa nature reste à établir. Second corps de `4f77afc1` : non mesurable tant que le code lu ne lit pas les faits au schéma 19, à relancer après la fusion de cette branche (`TestLieuUniqueDesMorts` avec `L1_FAITS` et `L1_BORNES`, `L1_DEPOT` seul ne mesure que les fixtures). Entame sans position et parent non véhicule : non mesurés, il faut une copie à froid de la base partagée.
+**Mesure du 2026-11-08** (lecture seule, rejeux recuits au schéma 107) : le châssis `b857fb95` reste sans famille sur 117 films et 455 vies, publiées en marqueur neutre immobile (453 sans échantillon de position, 265 avec occupant) ; sa nature reste à établir. Second corps de `4f77afc1` : non mesuré ce jour-là, le code alors lu ne lisait pas les faits au schéma 19. Entame sans position et parent non véhicule : non mesurés, il faut une copie à froid de la base partagée.
+**Suite (report décidé par le user le 2026-11-09 : après la sortie de la 8.1.0, publiée depuis)**. Ordre proposé : (1) établir la nature du châssis `b857fb95` ; (2) mesurer le second corps de `4f77afc1`, désormais possible (`fix/rejeu-vies-equipement` fusionnée, `SchemaDesFaits` = 19) : depuis `libs/film`, `L1_FAITS=<dossier des faits> L1_BORNES=<map_quant_bounds.json> go test -tags research -count=1 -run '^TestLieuUniqueDesMorts$' -v ./replay/` (`L1_DEPOT` seul ne mesure que les fixtures) ; (3) mesurer l'entame sans position et le parent non véhicule sur une copie à froid de la base partagée, serveur arrêté. Ne corriger que ce que ces mesures confirment, après accord du user.
 
 ---
 

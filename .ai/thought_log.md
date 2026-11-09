@@ -120578,3 +120578,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Défaut ouvert.** Un match dont l'EP du LUSR ne converge pas (équipes déséquilibrées, 18 vus) compte comme échec du rejeu au démarrage : la révision n'est jamais rangée pour le joueur et le recalcul recommence à chaque redémarrage. Correctif proposé pour une 8.1.1.
 
 **Conclusion / prochaine étape.** Sha de `main` et go des dépôts dédiés transmis à la session du découplage ; décision de l'utilisateur sur la 8.1.1.
+
+## [2026-11-09] Plan v8.1.2 : analyse sur pièces et relecture indépendante — Complété (plan écrit, exécution non lancée)
+
+**Décision technique principale.** Plan `.ai/PLAN_V8_1_2_2026-11-09.md` pour tous les points du backlog du 2026-11-09 sauf quatre (17, 18, 24, 25) : cinq voies parallèles (web, stats, bureau, film, licences), puis bascule de LevelUp sur les modules publiés, puis relecture globale Opus. `killsource.Rev` non montée, pour éviter un redécodage complet du parc pour un seul film.
+
+**Résultats observés.** Sept analyses en lecture seule. Backlog corrigé sur pièces : la non-convergence LUSR vient des observations de comptes, pas de l'amortissement ; la planche `feed` de Dend est identique à nos images, `icons` en demi-résolution ; `sbsp.xml` vient d'Infinite Runtime Tag Viewer, pas de Reclaimer ; origine des fixtures établie par empreinte ; le dépôt public `halo-api` porte une capture avec 100 XUID et 102 pseudos de tiers. Relecture Opus indépendante : 6 P0 et 19 P1, intégrés, preuves principales recontrôlées.
+
+**Conclusion / prochaine étape.** Attend le go du user sur le plan et ses décisions ; aucune ligne de code, aucun commit. Annexes sous `.ai/annexes_v8_1_2/`.

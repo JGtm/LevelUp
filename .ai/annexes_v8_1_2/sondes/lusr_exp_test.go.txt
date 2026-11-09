@@ -1,0 +1,73 @@
+package ep
+
+import (
+	"errors"
+	"fmt"
+	"math"
+	"math/rand"
+	"testing"
+)
+
+type scen struct {
+	nA, nB   int
+	in       Match2TeamInput
+}
+
+func mkScen(r *rand.Rand, nA, nB int, withWeights bool, sigmaSpread bool) Match2TeamInput {
+	beta := 25.0 / 3.0 / 2.0
+	mk := func(n int) ([]Gaussian, []float64, []CountObservation) {
+		g := make([]Gaussian, n)
+		w := make([]float64, n)
+		for i := range g {
+			mu := 25 + r.NormFloat64()*4
+			sg := 25.0 / 3.0
+			if sigmaSpread {
+				sg = 2 + r.Float64()*6.3
+			}
+			g[i], _ = FromMeanSigma(mu, sg)
+			w[i] = 1
+			if withWeights && r.Float64() < 0.4 {
+				w[i] = 0.05 + r.Float64()*0.9
+			}
+		}
+		return g, w, nil
+	}
+	a, wa, _ := mk(nA)
+	b, wb, _ := mk(nB)
+	var obs []CountObservation
+	for i := 0; i < nA; i++ {
+		obs = append(obs, CountObservation{PlayerIndex: i, Side: SideA, Type: CountKill, Value: math.Round(r.Float64() * 25)},
+			CountObservation{PlayerIndex: i, Side: SideA, Type: CountDeath, Value: math.Round(r.Float64() * 25)})
+	}
+	for i := 0; i < nB; i++ {
+		obs = append(obs, CountObservation{PlayerIndex: i, Side: SideB, Type: CountKill, Value: math.Round(r.Float64() * 25)},
+			CountObservation{PlayerIndex: i, Side: SideB, Type: CountDeath, Value: math.Round(r.Float64() * 25)})
+	}
+	res := TeamWin
+	if r.Intn(2) == 0 {
+		res = TeamLoss
+	}
+	// DrawMargin identique à skill_v2.DrawMargin (p=0.10)
+	dm := 0.0645 * 0 // placeholder, calculé ci-dessous
+	pinv := math.Sqrt2 * math.Erfinv(2*((0.10+1)/2)-1)
+	dm = pinv * math.Sqrt(float64(nA+nB)) * beta
+	return Match2TeamInput{TeamA: a, TeamB: b, ResultA: res, Beta: beta, Tau: 25.0 / 3.0 / 100, DrawMargin: dm, Counts: obs, WeightsA: wa, WeightsB: wb}
+}
+
+func TestSweep(t *testing.T) {
+	r := rand.New(rand.NewSource(42))
+	cfg := DefaultMatch2TeamConfig()
+	for _, sizes := range [][2]int{{4, 4}, {4, 5}, {4, 6}, {6, 8}, {8, 8}, {10, 12}, {12, 12}, {16, 16}} {
+		for _, ww := range []bool{false, true} {
+			nonconv, N := 0, 300
+			for k := 0; k < N; k++ {
+				in := mkScen(r, sizes[0], sizes[1], ww, true)
+				_, _, err := UpdateMatch2Team(in, cfg)
+				if errors.Is(err, ErrNotConverged) {
+					nonconv++
+				}
+			}
+			fmt.Printf("%dv%d weights=%v nonconv=%d/%d\n", sizes[0], sizes[1], ww, nonconv, N)
+		}
+	}
+}

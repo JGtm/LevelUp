@@ -1,0 +1,204 @@
+//go:build research
+
+package replay
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"reflect"
+	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+)
+
+func chargerFaitsSonde(t *testing.T, film string) *FilmFacts {
+	cat, err := profile.LoadMapQuantCatalog(os.Getenv("L1_BORNES"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	blob, err := os.ReadFile(filepath.Join(os.Getenv("L1_FAITS"), film+".filmfacts.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	head, _ := DecodeFilmFactsEntete(blob)
+	var entry profile.MapQuantEntry
+	for _, c := range cat.Maps {
+		if c.Module == head.MapModule {
+			entry = c
+		}
+	}
+	ff, err := DecodeFilmFactsFile(blob, entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &ff.Facts
+}
+
+func TestSondeChamps(t *testing.T) {
+	g := chargerFaitsSonde(t, os.Getenv("FILM"))
+	v := reflect.ValueOf(g.FilmInputs)
+	ty := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		n := -1
+		switch f.Kind() {
+		case reflect.Slice, reflect.Map:
+			n = f.Len()
+		}
+		if n != 0 {
+			fmt.Printf("%s %s len=%d\n", ty.Field(i).Name, f.Type(), n)
+		}
+	}
+}
+
+func TestSondeIdentites(t *testing.T) {
+	g := chargerFaitsSonde(t, os.Getenv("FILM"))
+	fmt.Printf("FilmTable: occupied=%d vacant=%d interleaved=%v refusal=%v build=%q\n", g.FilmTable.Occupied, g.FilmTable.Vacant, g.FilmTable.InterleavedVacant, g.FilmTable.Refusal, g.FilmTable.Build)
+	for _, s := range g.FilmTable.Seats {
+		fmt.Printf("  seat idx=%d xuid=%d gt=%q\n", s.FilmIndex, s.XUID, s.Gamertag)
+	}
+	fmt.Printf("PlayerIndices ByXUID=%d readings=%d disagreements=%d\n", len(g.PlayerIndices.ByXUID), g.PlayerIndices.Readings, g.PlayerIndices.Disagreements)
+	fmt.Printf("PlayerTeams=%v\n", g.PlayerTeams)
+	for _, c := range g.BipedCreations {
+		fmt.Printf("  creation slot=%d gen=%d hasIdx=%v idx=%d tUS=%d chunk=%d pkt=%d ver=%d rep=%d\n", c.Slot, c.Generation, c.HasIndex, c.ParticipantIndex, c.TimestampUS, c.Chunk, c.PacketIndex, c.Version, c.Representation)
+	}
+	fmt.Printf("PlayerEntities scanned=%v kf=%d n=%d doutes=%d\n", g.PlayerEntities.Scanned, len(g.PlayerEntities.KeyframesUS), len(g.PlayerEntities.Entities), len(g.PlayerEntities.Doutes))
+	for _, e := range g.PlayerEntities.Entities {
+		fmt.Printf("  entity slot=%d idx=%d team=%d kf=%d..%d seen=%d unstable=%v\n", e.Slot, e.Index, e.Team, e.FirstKF, e.LastKF, e.Seen, e.Unstable)
+	}
+	fmt.Printf("Deaths=%d\n", len(g.Deaths))
+	for _, d := range g.Deaths {
+		fmt.Printf("  death xuid=%d gt=%q t=%d\n", d.XUID, d.Gamertag, d.TimeMS)
+	}
+	fmt.Printf("TeamScan=%+v\n", g.TeamScan)
+}
+
+func TestSondeEntete(t *testing.T) {
+	blob, _ := os.ReadFile(filepath.Join(os.Getenv("L1_FAITS"), os.Getenv("FILM")+".filmfacts.bin"))
+	head, _ := DecodeFilmFactsEntete(blob)
+	fmt.Printf("MAPMODULE=%s\n", head.MapModule)
+}
+
+func TestSondeParasites(t *testing.T) {
+	g := chargerFaitsSonde(t, os.Getenv("FILM"))
+	mn, mx := uint32(1<<31), uint32(0)
+	for _, c := range g.BipedCreations {
+		if c.Slot < mn {
+			mn = c.Slot
+		}
+		if c.Slot > mx {
+			mx = c.Slot
+		}
+	}
+	fmt.Printf("creations=%d slots %d..%d\n", len(g.BipedCreations), mn, mx)
+	hist := map[uint32]int{}
+	for _, p := range g.Positions {
+		hist[p.Slot]++
+	}
+	for _, s := range []uint32{36, 292} {
+		fmt.Printf("slot %d : positions=%d\n", s, hist[s])
+		for _, p := range g.Positions {
+			if p.Slot == s {
+				fmt.Printf("   t=%d world=%v (%.2f %.2f %.2f) %+v\n", p.TimestampUS, p.HasWorld, p.X, p.Y, p.Z, p)
+			}
+		}
+	}
+	low := 0
+	for s, n := range hist {
+		if s < mn {
+			low += n
+			fmt.Printf("slot<mn : %d (%d pos)\n", s, n)
+		}
+	}
+	for _, v := range g.Vehicles.Creations {
+		if v.Slot == 36 || v.Slot == 292 {
+			fmt.Printf("veh creation slot=%d gen=%d t=%d\n", v.Slot, v.Gen, v.TimestampUS)
+		}
+	}
+	for _, p := range g.Vehicles.Positions {
+		if p.Slot == 36 || p.Slot == 292 {
+			fmt.Printf("veh pos slot=%d t=%d\n", p.Slot, p.TimestampUS)
+		}
+	}
+	for _, p := range g.Projectiles {
+		_ = p
+	}
+	fmt.Printf("projectiles=%d\n", len(g.Projectiles))
+}
+
+func TestSondePlageSlots(t *testing.T) {
+	dir := os.Getenv("L1_FAITS")
+	cat, _ := profile.LoadMapQuantCatalog(os.Getenv("L1_BORNES"))
+	es, _ := os.ReadDir(dir)
+	nf, nBas, nHaut, creBas, creHaut := 0, 0, 0, 0, 0
+	var cmin, cmax uint32 = 1 << 31, 0
+	for _, e := range es {
+		blob, _ := os.ReadFile(filepath.Join(dir, e.Name()))
+		head, err := DecodeFilmFactsEntete(blob)
+		if err != nil {
+			continue
+		}
+		var entry profile.MapQuantEntry
+		for _, c := range cat.Maps {
+			if c.Module == head.MapModule {
+				entry = c
+			}
+		}
+		ff, err := DecodeFilmFactsFile(blob, entry)
+		if err != nil {
+			continue
+		}
+		nf++
+		g := &ff.Facts
+		for _, c := range g.BipedCreations {
+			if c.Slot < cmin {
+				cmin = c.Slot
+			}
+			if c.Slot > cmax {
+				cmax = c.Slot
+			}
+			if c.Slot < 512 {
+				creBas++
+			}
+			if c.Slot >= 768 {
+				creHaut++
+			}
+		}
+		avecRec := map[uint32]bool{}
+		for _, c := range g.BipedCreations {
+			avecRec[c.Slot] = true
+		}
+		sansRec := map[uint32]int{}
+		for _, p := range g.Positions {
+			if !avecRec[p.Slot] {
+				sansRec[p.Slot]++
+			}
+		}
+		if len(sansRec) > 0 {
+			fmt.Println(e.Name()[:8], "slots avec positions SANS record de creation :", len(sansRec), sum(sansRec), sansRec)
+		}
+		bas, haut := map[uint32]int{}, map[uint32]int{}
+		for _, p := range g.Positions {
+			if p.Slot < 512 {
+				bas[p.Slot]++
+			} else if p.Slot >= 768 {
+				haut[p.Slot]++
+			}
+		}
+		if len(bas) > 0 || len(haut) > 0 {
+			fmt.Printf("%s : positions slots<512 : %d slots (%d pos) ; >=768 : %d slots (%d pos)\n", e.Name()[:8], len(bas), sum(bas), len(haut), sum(haut))
+		}
+		nBas += sum(bas)
+		nHaut += sum(haut)
+	}
+	fmt.Printf("films=%d ; creations slot<512=%d >=768=%d ; creation slots %d..%d ; positions hors [512,768) : <512=%d >=768=%d\n", nf, creBas, creHaut, cmin, cmax, nBas, nHaut)
+}
+
+func sum(m map[uint32]int) int {
+	n := 0
+	for _, v := range m {
+		n += v
+	}
+	return n
+}

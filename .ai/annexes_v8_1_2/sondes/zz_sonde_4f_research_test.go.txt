@@ -1,0 +1,63 @@
+//go:build research
+
+package replay
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+)
+
+func TestSonde4f(t *testing.T) {
+	dir := os.Getenv("L1_FAITS")
+	cat, err := profile.LoadMapQuantCatalog(os.Getenv("L1_BORNES"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	blob, err := os.ReadFile(filepath.Join(dir, "4f77afc1.filmfacts.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	head, _ := DecodeFilmFactsEntete(blob)
+	var entry profile.MapQuantEntry
+	for _, c := range cat.Maps {
+		if c.Module == head.MapModule {
+			entry = c
+		}
+	}
+	ff, err := DecodeFilmFactsFile(blob, entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := &ff.Facts
+	sorted := append([]grammar.BipedPosition(nil), g.Positions...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].TimestampUS < sorted[j].TimestampUS })
+	c, ok := preparerFilm("4f77afc1", "", g)
+	if !ok {
+		t.Fatal("prep")
+	}
+	reg := c.reg
+	pistes := indexBySlot(sorted)
+	sieges := siegesTries(pistes)
+	var victim uint64 = 2535457217346540
+	for _, d := range g.Deaths {
+		if d.XUID != victim {
+			continue
+		}
+		tUS := uint64(d.TimeMS*1000 + int64(g.FilmClockOriginUS))
+		sv := siegesDe(reg, sieges, victim, tUS)
+		fmt.Printf("MORT victime=%d tMS=%d sieges=%v\n", victim, d.TimeMS, sv)
+		for _, s := range sv {
+			p, dd := pistes[s].at(tUS)
+			if dd > 3000000 && d.TimeMS != 1111523 {
+				continue
+			}
+			fmt.Printf("  siege %d : d=%d us monde=%v (%.1f %.1f %.1f) npts=%d\n", s, dd, p.HasWorld, p.X, p.Y, p.Z, len(pistes[s].pts))
+		}
+	}
+}

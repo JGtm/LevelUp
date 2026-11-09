@@ -1,0 +1,125 @@
+//go:build research
+
+package replay
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+)
+
+func TestSondeEntame(t *testing.T) {
+	dir := os.Getenv("L1_FAITS")
+	kills := lireKillsTSV(t)
+	cat, err := profile.LoadMapQuantCatalog(os.Getenv("L1_BORNES"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	entrees, _ := os.ReadDir(dir)
+	tot := map[string]int{}
+	films := 0
+	for _, e := range entrees {
+		if !strings.HasSuffix(e.Name(), ".filmfacts.bin") {
+			continue
+		}
+		short := strings.TrimSuffix(e.Name(), ".filmfacts.bin")
+		ks := kills[short]
+		if len(ks) == 0 {
+			continue
+		}
+		blob, _ := os.ReadFile(filepath.Join(dir, e.Name()))
+		head, err := DecodeFilmFactsEntete(blob)
+		if err != nil {
+			continue
+		}
+		var entry profile.MapQuantEntry
+		for _, c := range cat.Maps {
+			if c.Module == head.MapModule {
+				entry = c
+			}
+		}
+		ff, err := DecodeFilmFactsFile(blob, entry)
+		if err != nil {
+			continue
+		}
+		g := &ff.Facts
+		c, ok := preparerFilm(short, "", g)
+		if !ok {
+			continue
+		}
+		films++
+		seen := map[KillRef]bool{}
+		var refs []KillRef
+		var morts []MortDuJournal
+		vus := map[[2]int64]bool{}
+		for _, k := range ks {
+			r := KillRef{KillerXUID: k.killer, VictimXUID: k.victim, TimeMS: k.timeMS}
+			if seen[r] {
+				continue
+			}
+			seen[r] = true
+			refs = append(refs, r)
+			cle := [2]int64{int64(k.victim), k.timeMS}
+			if !vus[cle] {
+				vus[cle] = true
+				morts = append(morts, MortDuJournal{VictimeXUID: k.victim, TempsMS: k.timeMS})
+			}
+		}
+		for _, d := range g.Deaths {
+			cle := [2]int64{int64(d.XUID), d.TimeMS}
+			if d.XUID != 0 && !vus[cle] {
+				vus[cle] = true
+				morts = append(morts, MortDuJournal{VictimeXUID: d.XUID, TempsMS: d.TimeMS})
+			}
+		}
+		op, _ := BuildKillOpenings(c.g.Positions, c.reg, refs, c.origine)
+		idx := map[KillRef]KillPosition{}
+		for _, p := range op {
+			idx[p.KillRef] = p
+		}
+		bord := LectureDuBord{Lue: true, Occupation: g.Vehicles.Occupancy, Vehicules: g.Vehicles.Positions}
+		lecture := lectureALInstant{tracks: c.pistes, bord: lireLeBord(bord, c.g.Positions, nil),
+			morts: nouvellesMortsDuTueur(morts, c.reg), offsetUS: c.origine}
+		lives := livesBySlot(c.pistes)
+		for _, r := range refs {
+			tot["kills"]++
+			p := idx[r]
+			for cote, xuid := range map[string]uint64{"tueur": r.KillerXUID, "victime": r.VictimXUID} {
+				var v *Vec3
+				if cote == "tueur" {
+					v = p.Killer
+				} else {
+					v = p.Victim
+				}
+				tot["cotes"]++
+				if v != nil {
+					tot["cote_place"]++
+					continue
+				}
+				tot["cote_nil_"+cote]++
+				tUS := uint64((r.TimeMS-OpeningLeadMS)*1000 + c.origine)
+				fatalUS := r.TimeMS*1000 + c.origine
+				_, slot, voie := lecture.placer(siegesDe(c.reg, c.sieges, xuid, tUS), xuid, tUS)
+				tot["voie_"+nomDeVoie(voie)]++
+				switch voie {
+				case voieTenue:
+					if sameLife(lives[slot], int64(tUS), fatalUS) {
+						tot["GAGNABLE_tenue_meme_vie_"+cote]++
+					} else {
+						tot["tenue_autre_vie"]++
+					}
+				case voieSiege:
+					tot["GAGNABLE_siege_"+cote]++
+				}
+			}
+		}
+	}
+	fmt.Printf("films=%d\n", films)
+	for _, k := range []string{"kills", "cotes", "cote_place", "cote_nil_tueur", "cote_nil_victime", "voie_muette", "voie_echantillon", "voie_tenue", "voie_siege", "voie_a-bord-sans-vehicule", "voie_debarque", "GAGNABLE_tenue_meme_vie_tueur", "GAGNABLE_tenue_meme_vie_victime", "tenue_autre_vie", "GAGNABLE_siege_tueur", "GAGNABLE_siege_victime"} {
+		fmt.Printf("%-34s %d\n", k, tot[k])
+	}
+}

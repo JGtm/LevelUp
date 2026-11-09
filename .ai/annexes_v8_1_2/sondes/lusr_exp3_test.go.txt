@@ -1,0 +1,55 @@
+package ep
+
+import (
+	"errors"
+	"fmt"
+	"math"
+	"math/rand"
+	"testing"
+)
+
+// Cherche un cas minimal et deterministe : equipes 4v6, mu/sigma "ronds", comptes ronds, qui ne converge pas.
+func TestFindFixture(t *testing.T) {
+	cfg := DefaultMatch2TeamConfig()
+	r := rand.New(rand.NewSource(1))
+	beta := 25.0 / 3.0 / 2.0
+	pinv := math.Sqrt2 * math.Erfinv(2*((0.10+1)/2)-1)
+	found := 0
+	for k := 0; k < 4000 && found < 3; k++ {
+		nA, nB := 4, 6
+		mk := func(n int) ([]Gaussian, []float64, []float64, []float64) {
+			g := make([]Gaussian, n)
+			w := make([]float64, n)
+			kl := make([]float64, n)
+			dt := make([]float64, n)
+			for i := range g {
+				g[i], _ = FromMeanSigma(25, 25.0/3.0)
+				w[i] = 1
+				if i >= 4 {
+					w[i] = 0.5
+				}
+				kl[i] = float64(r.Intn(21))
+				dt[i] = float64(r.Intn(21))
+			}
+			return g, w, kl, dt
+		}
+		a, wa, ka, da := mk(nA)
+		b, wb, kb, db := mk(nB)
+		var obs []CountObservation
+		for i := range a {
+			obs = append(obs, CountObservation{PlayerIndex: i, Side: SideA, Type: CountKill, Value: ka[i]}, CountObservation{PlayerIndex: i, Side: SideA, Type: CountDeath, Value: da[i]})
+		}
+		for i := range b {
+			obs = append(obs, CountObservation{PlayerIndex: i, Side: SideB, Type: CountKill, Value: kb[i]}, CountObservation{PlayerIndex: i, Side: SideB, Type: CountDeath, Value: db[i]})
+		}
+		in := Match2TeamInput{TeamA: a, TeamB: b, ResultA: TeamWin, Beta: beta, Tau: 25.0 / 3.0 / 100, DrawMargin: pinv * math.Sqrt(float64(nA+nB)) * beta, Counts: obs, WeightsA: wa, WeightsB: wb}
+		_, _, err := UpdateMatch2Team(in, cfg)
+		if errors.Is(err, ErrNotConverged) {
+			in2 := in
+			in2.Counts = nil
+			_, _, err2 := UpdateMatch2Team(in2, cfg)
+			found++
+			fmt.Printf("FIXTURE k=%d nonconv ; sans comptes: err=%v\n kills A=%v deaths A=%v\n kills B=%v deaths B=%v\n weights B=%v\n", k, err2, ka, da, kb, db, wb)
+		}
+	}
+}

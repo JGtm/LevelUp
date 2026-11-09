@@ -1,0 +1,243 @@
+//go:build research
+
+package replay
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"sort"
+	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+)
+
+func TestSondeBotsInjectes(t *testing.T) {
+	g := chargerFaitsSonde(t, os.Getenv("FILM"))
+	sorted := append([]grammar.BipedPosition(nil), g.Positions...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].TimestampUS < sorted[j].TimestampUS })
+	opt := g.options()
+	origin := sorted[0].TimestampUS
+	step := uint64(opt.frameIntervalMS()) * 1000
+	mk := func(bots []BotIdentity, c struct{ nom string; bots []BotIdentity }) IdentityRegistry {
+		in := IdentityInput{
+			Positions: sorted, BipedCreations: g.BipedCreations,
+			Deaths: g.Deaths, PlayerIndices: g.PlayerIndices, FilmTable: g.FilmTable,
+			Bots: bots, Fire: fireRefs(g.Fire), RosterXUIDs: opt.RosterXUIDs,
+			Participants: partsDe(c.bots), Entities: g.PlayerEntities,
+			Clock:   IdentityClock{OriginUS: origin, StepUS: step, FrameCount: frameSpan(sorted, origin, step)},
+			MatchID: g.Film,
+		}
+		return BuildIdentityRegistry(context.Background(), in)
+	}
+	zero := 0
+	bots := []BotIdentity{
+		{FilmIndex: 8, Name: "343 Hollis", BotID: 59, BotIDLu: true, Declarations: [][2]uint64{{5306466741, 0}}, Team: &zero},
+		{FilmIndex: 9, Name: "343 Brew Dog", BotID: 19, BotIDLu: true, Declarations: [][2]uint64{{5319823878, 0}}, Team: &zero},
+		{FilmIndex: 10, Name: "343 The Referee", BotID: 51, BotIDLu: true, Declarations: [][2]uint64{{5319823878, 0}}, Team: &zero},
+	}
+	for _, c := range []struct {
+		nom  string
+		bots []BotIdentity
+	}{{"SANS bots (etat actuel)", nil}, {"AVEC bots lus par grammar.PaquetsBotMetadata", bots}} {
+		reg := mk(c.bots, c)
+		sans := 0
+		for _, v := range reg.Vies() {
+			if v.xuid == 0 && v.bid == "" {
+				sans++
+			}
+			if v.slot >= 520 && v.slot <= 522 {
+				fmt.Printf("   [%s] slot=%d from=%d to=%d xuid=%d bid=%q nomPar=%q\n", c.nom, v.slot, v.from, v.to, v.xuid, v.bid, v.nomPar)
+			}
+		}
+		fmt.Printf("%s : vies=%d sansIdentite=%d\n", c.nom, len(reg.Vies()), sans)
+	}
+}
+
+func partsDe(bots []BotIdentity) []Participant {
+	// le tableau de l'API porte les trois bots meme quand le film n'en declare aucun
+	out := []Participant{{ID: "bid(59.0)"}, {ID: "bid(19.0)"}, {ID: "bid(51.0)"}}
+	return out
+}
+
+func TestSondeSansKillFeed(t *testing.T) {
+	dir := os.Getenv("L1_FAITS")
+	es, _ := os.ReadDir(dir)
+	nf, nilKills, avecIndexHors := 0, 0, 0
+	for _, e := range es {
+		g, ok := chargerSansT(dir, e.Name())
+		if !ok {
+			continue
+		}
+		nf++
+		if g.Kills == nil {
+			nilKills++
+			seats := map[int]bool{}
+			for _, s := range g.Facts.FilmTable.Seats {
+				if s.XUID != 0 {
+					seats[s.FilmIndex] = true
+				}
+			}
+			hors := 0
+			for _, c := range g.Facts.BipedCreations {
+				if c.HasIndex && !seats[int(c.ParticipantIndex)] {
+					hors++
+				}
+			}
+			fmt.Printf("%s : Kills=nil ; creations=%d dont index hors table=%d ; deaths=%d\n", e.Name()[:8], len(g.Facts.BipedCreations), hors, len(g.Facts.Deaths))
+			if hors > 0 {
+				avecIndexHors++
+			}
+		}
+	}
+	fmt.Printf("films=%d ; Kills=nil : %d ; dont avec index hors table (bots non declares par ce canal) : %d\n", nf, nilKills, avecIndexHors)
+}
+
+func chargerSansT(dir, name string) (*FilmFactsFile, bool) {
+	cat, err := profileCat()
+	if err != nil {
+		return nil, false
+	}
+	blob, err := os.ReadFile(dir + "/" + name)
+	if err != nil {
+		return nil, false
+	}
+	head, err := DecodeFilmFactsEntete(blob)
+	if err != nil {
+		return nil, false
+	}
+	for _, c := range cat.Maps {
+		if c.Module == head.MapModule {
+			ff, err := DecodeFilmFactsFile(blob, c)
+			if err != nil {
+				return nil, false
+			}
+			return ff, true
+		}
+	}
+	return nil, false
+}
+
+func profileCat() (*profile.MapQuantCatalog, error) {
+	return profile.LoadMapQuantCatalog(os.Getenv("L1_BORNES"))
+}
+
+func TestSondeParentsSansEchantillon(t *testing.T) {
+	dir := os.Getenv("L1_FAITS")
+	es, _ := os.ReadDir(dir)
+	parChassis := map[string]int{}
+	totalParents, sansEch, nf := 0, 0, 0
+	for _, e := range es {
+		g, ok := chargerSansT(dir, e.Name())
+		if !ok {
+			continue
+		}
+		nf++
+		ech := map[uint32]bool{}
+		for _, p := range g.Facts.Vehicles.Positions {
+			ech[p.Slot] = true
+		}
+		chassis := map[uint32]string{}
+		for _, c := range g.Facts.Vehicles.Creations {
+			chassis[c.Slot] = fmt.Sprintf("%08x", uint32(c.MPPVal[grammar.MPPWord32]))
+		}
+		vus := map[uint32]bool{}
+		for _, o := range g.Facts.Vehicles.Occupancy {
+			if !o.Attached || vus[o.ParentSlot] {
+				continue
+			}
+			vus[o.ParentSlot] = true
+			totalParents++
+			if !ech[o.ParentSlot] {
+				sansEch++
+				c := chassis[o.ParentSlot]
+				if c == "" {
+					c = "(sans creation)"
+				}
+				parChassis[c]++
+			}
+		}
+	}
+	fmt.Printf("films=%d parents distincts (film, slot) attaches=%d dont SANS echantillon de position=%d\n", nf, totalParents, sansEch)
+	type kv struct {
+		k string
+		v int
+	}
+	var l []kv
+	for k, v := range parChassis {
+		l = append(l, kv{k, v})
+	}
+	sort.Slice(l, func(i, j int) bool { return l[i].v > l[j].v })
+	for i, x := range l {
+		if i < 12 {
+			fmt.Printf("   chassis %s : %d parents\n", x.k, x.v)
+		}
+	}
+}
+
+func TestSondeParent(t *testing.T) {
+	g := chargerFaitsSonde(t, os.Getenv("FILM"))
+	var parent uint32
+	fmt.Sscanf(os.Getenv("PARENT"), "%d", &parent)
+	for _, c := range g.Vehicles.Creations {
+		if c.Slot == parent {
+			fmt.Printf("creation slot=%d gen=%d chassis=%08x t=%d pos=(%.1f %.1f %.1f)\n", c.Slot, c.Gen, uint32(c.MPPVal[grammar.MPPWord32]), c.TimestampUS, c.X, c.Y, c.Z)
+		}
+	}
+	n := 0
+	for _, p := range g.Vehicles.Positions {
+		if p.Slot == parent {
+			n++
+		}
+	}
+	fmt.Printf("positions vehicule du parent=%d\n", n)
+	for _, o := range g.Vehicles.Occupancy {
+		if o.ParentSlot == parent {
+			fmt.Printf("  occ t=%d slot=%d attached=%v seat=%v/%d\n", o.TimestampUS, o.Slot, o.Attached, o.HasSeat, o.Seat)
+		}
+	}
+	for _, d := range g.Vehicles.Deaths {
+		if d.Slot == parent {
+			fmt.Printf("  objdeath %+v\n", d)
+		}
+	}
+	for _, e := range g.Vehicles.Events {
+		if e.VehicleSlot == parent {
+			fmt.Printf("  event kind=%v t=%d occ=%d\n", e.Kind, e.TimestampUS, e.OccupantSlot)
+		}
+	}
+}
+
+func TestSondeVies4f(t *testing.T) {
+	g := chargerFaitsSonde(t, "4f77afc1")
+	sorted := append([]grammar.BipedPosition(nil), g.Positions...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].TimestampUS < sorted[j].TimestampUS })
+	opt := g.options()
+	origin := sorted[0].TimestampUS
+	step := uint64(opt.frameIntervalMS()) * 1000
+	var victim uint64 = 2535457217346540
+	tUS := int64(1111523*1000) + int64(g.FilmClockOriginUS)
+	for _, coll := range []bool{false, true} {
+		in := IdentityInput{
+			Positions: sorted, BipedCreations: g.BipedCreations,
+			Deaths: g.Deaths, PlayerIndices: g.PlayerIndices, FilmTable: g.FilmTable,
+			Bots: nil, Fire: fireRefs(g.Fire), RosterXUIDs: opt.RosterXUIDs,
+			Participants: opt.Participants, Entities: g.PlayerEntities,
+			Clock:   IdentityClock{OriginUS: origin, StepUS: step, FrameCount: frameSpan(sorted, origin, step)},
+			MatchID: g.Film,
+		}
+		if coll {
+			in.FilmTable, in.Fire, in.Clock = grammar.FilmPlayerTable{}, nil, IdentityClock{}
+		}
+		reg := BuildIdentityRegistry(context.Background(), in)
+		fmt.Printf("== registre collecteur=%v\n", coll)
+		for _, v := range reg.Vies() {
+			if v.slot == 565 || v.slot == 547 {
+				if v.xuid == victim || true {
+					fmt.Printf("  vie slot=%d [%d..%d] (t-from=%.1fs t-to=%.1fs) xuid=%d nomPar=%q cause=%q\n", v.slot, v.from, v.to, float64(int64(v.from)-tUS)/1e6, float64(int64(v.to)-tUS)/1e6, v.xuid, v.nomPar, v.cause)
+				}
+			}
+		}
+	}
+}

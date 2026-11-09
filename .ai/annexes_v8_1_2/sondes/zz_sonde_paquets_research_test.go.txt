@@ -1,0 +1,53 @@
+//go:build research
+
+package replay
+
+import (
+	"fmt"
+	"os"
+	"sort"
+	"testing"
+
+	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/LevelUp/libs/film/internal/source"
+)
+
+func TestSondePaquets(t *testing.T) {
+	f, err := source.LoadDir(os.Getenv("FILMDIR"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	build := os.Getenv("BUILD")
+	hist := map[int]int{}
+	fv, _ := grammar.FilmFormatVersionFromHeader(f.Chunk(0))
+	persoO, ok := profile.PersonnalisationOctets(build)
+	fmt.Printf("chunks=%d formatVersion=%d perso=%d ok=%v\n", f.NumChunks(), fv, persoO, ok)
+	for _, p := range f.AllPackets() {
+		hist[p.Type]++
+	}
+	var ks []int
+	for k := range hist {
+		ks = append(ks, k)
+	}
+	sort.Ints(ks)
+	for _, k := range ks {
+		fmt.Printf("type %d : %d paquets\n", k, hist[k])
+	}
+	for _, p := range f.AllPackets() {
+		if p.Type == 8 {
+			es, b := grammar.DecodeRoster(p.Payload, fv, persoO*8)
+			fmt.Printf("TYPE8 chunk=%d idx=%d ts=%d annonce=%d entrees=%d debord=%v :", p.Chunk, p.Index, p.TS, b.Annonce, b.Entrees, b.Debordement)
+			for _, e := range es {
+				fmt.Printf(" [filmIdx=%d xuid=%d gt=%q]", e.Joueur.FilmIndex, e.Identite, e.Joueur.Gamertag)
+			}
+			fmt.Println()
+		}
+	}
+	for _, pm := range grammar.PaquetsBotMetadata(f, grammar.LectureDesBotsPour(build)) {
+		fmt.Printf("TYPE12 ts=%d nbots=%d balayees=%d ecrites=%d ferme=%v\n", pm.Instant, pm.NBots, len(pm.Balayees), len(pm.Ecrites), pm.Ferme)
+		for _, e := range pm.Ecrites {
+			fmt.Printf("   ecrite slot=%d bid=%d nom=%q equipe=%d\n", e.Slot, e.BotID, e.Nom, e.Equipe)
+		}
+	}
+}
