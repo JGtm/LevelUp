@@ -1229,8 +1229,8 @@ cd apps/go-api && go run ./cmd/resources-manifest -dir <pack dir> [-version <X.Y
   `-X main.resourcesFingerprint=<that fingerprint>`.
 - Release workflow: a `vX.Y.Z` tag builds and signs the installer (secrets `TAURI_SIGNING_PRIVATE_KEY` and, if the key
   has a password, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`; without the key the job fails before compiling), plays the
-  end-to-end test, then publishes the full installer, the engine installer, the pack (`levelup-resources-<fingerprint>.zip`), their signatures and `latest.json` (the file
-  the updater reads: it points at the engine installer and carries a `resources` block with the fingerprint, URL, SHA-256, size and signature of the pack) with the release. A push on `release/**` builds the installer unsigned and plays the end-to-end test only.
+  end-to-end test, then publishes the engine installer, the pack (`levelup-resources-<fingerprint>.zip`) with its signature and `latest.json` (the file
+  the updater reads: it points at the engine installer and carries a `resources` block with the fingerprint, URL, SHA-256, size and signature of the pack) to the single `updates` release. The version page carries the full installer, the servers and a copy of `latest.json` for 8.1.0 applications. A push on `release/**` builds the installer unsigned and plays the end-to-end test only.
 
 ---
 

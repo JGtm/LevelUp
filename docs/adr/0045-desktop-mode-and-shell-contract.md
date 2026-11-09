@@ -708,7 +708,7 @@ accepts only https and the publication hosts (`github.com` and its asset hosts, 
 before the first byte, never during), resumes a cut transfer (`Range`), checks the SHA-256, then the minisign signature (prehashed form `ED` only, the
 one `tauri signer sign` writes; key from `LEVELUP_UPDATE_PUBKEY`, set by the shell from `plugins.updater.pubkey`), then extracts into
 `<ResourcesRoot>/.pack/incoming-<fingerprint>` verifying every file against the archive manifest (zip-slip refused, no extra file, no missing file, size and sum) and
-that the manifest fingerprint is the expected one. The same machinery downloads the engine's own pack (`releases/download/v<version>/levelup-resources-<fingerprint>.zip`
+that the manifest fingerprint is the expected one. The same machinery downloads the engine's own pack (`releases/download/updates/levelup-resources-<fingerprint>.zip`, a single non-latest release that keeps the update files out of the version page since 8.1.1; an 8.1.0 engine still reads `releases/download/v8.1.0/...`
 and its `.sig`, no `latest.json` needed) when a start finds the pack missing or different.
 
 *Activation.* A staged pack becomes the active one at the **next start**, when nothing holds a file: `Activate` renames unit by unit (`static`,

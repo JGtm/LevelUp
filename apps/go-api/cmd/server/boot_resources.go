@@ -31,8 +31,8 @@ import (
 )
 
 const (
-	// resourcesReleaseBase : la racine des publications où vit le paquet de chaque version.
-	resourcesReleaseBase = "https://github.com/JGtm/LevelUp/releases/download"
+	// resourcesReleaseBase : la publication unique `updates`, qui garde le paquet de chaque version.
+	resourcesReleaseBase = "https://github.com/JGtm/LevelUp/releases/download/updates"
 	// resourcesSurface nomme la sortie réseau du paquet dans le journal de netguard.
 	resourcesSurface = "resources_pack"
 	// stdinCommandResources : la commande de la coquille qui demande de préparer un paquet.
@@ -150,7 +150,6 @@ func newResourceManager(st *bootState, expected string) *resourcepack.Manager {
 	cfg := resourcepack.Config{
 		Root:        st.cfg.Roots().Resources,
 		Expected:    expected,
-		Version:     st.cfg.AppVersion,
 		ReleaseBase: resourcesReleaseBase,
 		Downloader:  newResourcesDownloader(),
 		Gate: func(ctx context.Context, onWait func()) error {

@@ -184,8 +184,8 @@ by the text guards of `apps/desktop/src-tauri/tests/textes_de_configuration.rs` 
 
 - A `vX.Y.Z` tag runs `release.yml`: version check (tag, `Cargo.toml`, `tauri.conf.json`, server `-ldflags` including the pack fingerprint), the pack
   (manifest, fingerprint, archive), the **full** installer (first installation, download page) and the **engine-only** installer (what the updater installs), the
-  signatures (engine installer and pack, same key), end-to-end test (full installation, then an engine-only update), then the GitHub release with `latest.json`
-  (points at the engine installer, carries the `resources` block of the pack). The repository secret
+  signatures (engine installer and pack, same key), end-to-end test (full installation, then an engine-only update), then the single `updates` release (engine installer, pack and its signature, `latest.json`, which
+  points at the engine installer and carries the `resources` block of the pack) and the version page (full installer, servers, a copy of `latest.json` for 8.1.0 applications). The repository secret
   `TAURI_SIGNING_PRIVATE_KEY` (and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` when the key has a password) must exist: without
   it the job fails before compiling. Key backup and rotation: ADR 0045, "Implementation notes (L17)".
 - A push on `release/**` builds the installer unsigned and plays the end-to-end test only.
