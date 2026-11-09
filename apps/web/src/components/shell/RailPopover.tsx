@@ -16,6 +16,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
   type FocusEvent,
   type KeyboardEvent,
   type ReactNode,
@@ -32,6 +33,8 @@ interface Anchor {
   /** Milieu vertical de l'ancre. */
   centerY: number
   top: number
+  /** Bord bas de l'ancre. */
+  bottom: number
 }
 
 function useAnchor() {
@@ -39,7 +42,7 @@ function useAnchor() {
   const [anchor, setAnchor] = useState<Anchor | null>(null)
   const measure = useCallback(() => {
     const rect = ref.current?.getBoundingClientRect()
-    if (rect) setAnchor({ right: rect.right, centerY: rect.top + rect.height / 2, top: rect.top })
+    if (rect) setAnchor({ right: rect.right, centerY: rect.top + rect.height / 2, top: rect.top, bottom: rect.bottom })
   }, [])
   return { ref, anchor, measure }
 }
@@ -92,8 +95,23 @@ interface RailMenuProps {
   triggerClassName: string
   /** L'entrée désigne la page courante (`aria-current`). */
   current?: boolean
-  /** Entrées du menu : des éléments `role="menuitem"` (ou `menuitemradio`). Reçoit la fermeture. */
+  /**
+   * Bord de l'ancre auquel le menu s'aligne : `top` (défaut) le fait descendre depuis le haut de l'ancre,
+   * `bottom` le fait monter depuis son bas. Une entrée du pied de barre prend `bottom` : un menu qui
+   * descendrait sortirait de la fenêtre.
+   */
+  placement?: 'top' | 'bottom'
+  /** Entrées du menu : des éléments `role="menuitem"` (ou `menuitemradio`, `menuitemcheckbox`). Reçoit la fermeture. */
   children: (close: () => void) => ReactNode
+}
+
+/** Position fixe du conteneur du menu, calée sur le bord haut ou bas de l'ancre et bornée par la fenêtre. */
+function menuPlacementStyle(anchor: Anchor, placement: 'top' | 'bottom'): CSSProperties {
+  const maxHeight = `calc(100vh - ${2 * VIEWPORT_MARGIN_PX}px)`
+  if (placement === 'bottom') {
+    return { position: 'fixed', left: anchor.right, bottom: Math.max(VIEWPORT_MARGIN_PX, window.innerHeight - anchor.bottom), maxHeight }
+  }
+  return { position: 'fixed', left: anchor.right, top: Math.max(VIEWPORT_MARGIN_PX, anchor.top), maxHeight }
 }
 
 /** Un menu ouvert au clavier prend le focus sur sa première entrée ; ouvert au survol, il ne le vole pas. */
@@ -201,7 +219,7 @@ function useRailMenu() {
   return { ref, anchor, triggerRef, menuRef, open, focused, close, wrapperProps, onTriggerClick, onTriggerKeyDown, onMenuKeyDown }
 }
 
-export function RailMenu({ label, trigger, triggerClassName, current = false, children }: RailMenuProps) {
+export function RailMenu({ label, trigger, triggerClassName, current = false, placement = 'top', children }: RailMenuProps) {
   const { ref, triggerRef, menuRef, anchor, open, focused, close, wrapperProps, onTriggerClick, onTriggerKeyDown, onMenuKeyDown } =
     useRailMenu()
   return (
@@ -221,15 +239,7 @@ export function RailMenu({ label, trigger, triggerClassName, current = false, ch
       </button>
       {!open && focused && anchor && <Tooltip label={label} anchor={anchor} />}
       {open && anchor && (
-        <div
-          style={{
-            position: 'fixed',
-            left: anchor.right,
-            top: Math.max(VIEWPORT_MARGIN_PX, anchor.top),
-            maxHeight: `calc(100vh - ${2 * VIEWPORT_MARGIN_PX}px)`,
-          }}
-          className="z-50 overflow-y-auto pl-2"
-        >
+        <div style={menuPlacementStyle(anchor, placement)} className="z-50 overflow-y-auto pl-2">
           <div
             ref={menuRef}
             role="menu"

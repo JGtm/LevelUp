@@ -4,8 +4,8 @@
  * Mêmes sections et mêmes onglets que `SidebarNav` déplié, une icône par entrée : un lien avec
  * infobulle (au survol et au focus) pour une section sans onglets, un menu volant (`RailMenu`) listant
  * les onglets pour les autres. La bascule de jeu et le joueur se réduisent au sigle et à l'initiale (leur
- * menu volant porte les noms), la cloche garde sa place. Le pied de barre garde les mêmes actions que la
- * barre dépliée, en icônes, et le bouton qui la déplie. L'état (replié ou non) est décidé par
+ * menu volant porte les noms), la cloche garde sa place. Le pied de barre porte les référentiels, un menu
+ * « Plus » (Aide, signalement, Paramètres, thème, « À propos ») et le bouton qui la déplie. L'état (replié ou non) est décidé par
  * `useSidebarCollapse`, le contenu des sections et du joueur est calculé par `SidebarNav`.
  */
 import { Link } from '@tanstack/react-router'
@@ -14,6 +14,7 @@ import {
   BookOpenIcon,
   BookOpenTextIcon,
   BugIcon,
+  EllipsisIcon,
   InfoIcon,
   PanelLeftOpenIcon,
   SettingsIcon,
@@ -29,7 +30,6 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 import type { Locale } from '@/lib/i18n/locale'
 import { routeTemplateSuffix, playerRelativePath } from '@/lib/title-routing'
 import { buildTitleSwitcherEntries, useAppShellStore } from '@/stores/appShellStore'
-import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import { HomeLink } from './HomeLink'
 import type { L1Section } from './navL1Sections'
 import { RailMenu, RailTip } from './RailPopover'
@@ -37,6 +37,7 @@ import { playerInitial, titleInitials } from './railLabels'
 import { SIDEBAR_TOGGLE_ATTR } from './sidebarCollapse'
 import { SIDEBAR_SHORTCUT_LABEL, useSidebarFooterActions } from './sidebarFooterActions'
 import { SectionIcon } from './sidebarIcons'
+import { SIDEBAR_SCROLL_CLASS, SIDEBAR_SCROLL_CONTENT_CLASS } from './sidebarScroll'
 import { useSelectTitle } from './useSelectTitle'
 
 const RAIL_ITEM_BASE =
@@ -54,6 +55,11 @@ const MENU_ITEM_CLASS =
   'flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left text-sm whitespace-nowrap text-popover-foreground hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60'
 
 const ICON_CLASS = 'h-5 w-5'
+
+const MORE_ITEM_CLASS =
+  'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm whitespace-nowrap text-popover-foreground hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:outline-none'
+
+const MORE_ICON_CLASS = 'h-4 w-4 shrink-0'
 
 export interface SidebarRailProps {
   sections: L1Section[]
@@ -225,15 +231,99 @@ function RailButton({ label, tip, active = false, children, ...rest }: RailButto
   )
 }
 
-function RailFooter({ pathname, locale, onExpand, onOpenAbout }: Pick<SidebarRailProps, 'pathname' | 'locale' | 'onExpand' | 'onOpenAbout'>) {
+/**
+ * Les actions secondaires du pied de barre repliée (Aide, signalement, Paramètres, thème, « À propos »)
+ * regroupées dans un menu volant « Plus » : cinq icônes de plus ne tiendraient pas dans une fenêtre basse.
+ * Le menu monte depuis le bas de son icône.
+ */
+function RailMoreMenu({
+  pathname,
+  locale,
+  onOpenAbout,
+}: Pick<SidebarRailProps, 'pathname' | 'locale' | 'onOpenAbout'>) {
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
-  const { assetsOpen, toggleAssets, openFeedback } = useSidebarFooterActions()
-  const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
-  const toggleTheme = useSettingsDraftStore((s) => s.toggleTheme)
-  const helpLabel = t('common.shell.nav_help')
-  const settingsLabel = t('common.shell.nav_settings')
+  const { openFeedback, isDark, toggleTheme } = useSidebarFooterActions()
   const helpActive = pathname.startsWith('/help')
   const settingsActive = pathname.startsWith('/settings')
+
+  return (
+    <RailMenu
+      label={t('common.shell.nav_more')}
+      trigger={<EllipsisIcon className={ICON_CLASS} />}
+      triggerClassName={railItemClass(helpActive || settingsActive)}
+      current={helpActive || settingsActive}
+      placement="bottom"
+    >
+      {(close) => (
+        <>
+          <Link
+            to="/help"
+            search={{ tab: 'glossary' }}
+            role="menuitem"
+            onClick={close}
+            aria-current={helpActive ? 'page' : undefined}
+            className={`${MORE_ITEM_CLASS} ${helpActive ? 'bg-accent text-accent-foreground' : ''}`}
+          >
+            <BookOpenTextIcon className={MORE_ICON_CLASS} />
+            {t('common.shell.nav_help')}
+          </Link>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              openFeedback()
+              close()
+            }}
+            className={MORE_ITEM_CLASS}
+          >
+            <BugIcon className={MORE_ICON_CLASS} />
+            {t('common.shell.nav_feedback')}
+          </button>
+          <Link
+            to="/settings"
+            search={{ tab: 'appearance' }}
+            role="menuitem"
+            onClick={close}
+            aria-current={settingsActive ? 'page' : undefined}
+            className={`${MORE_ITEM_CLASS} ${settingsActive ? 'bg-accent text-accent-foreground' : ''}`}
+          >
+            <SettingsIcon className={MORE_ICON_CLASS} />
+            {t('common.shell.nav_settings')}
+          </Link>
+          <button
+            type="button"
+            role="menuitemcheckbox"
+            aria-checked={isDark}
+            onClick={() => {
+              toggleTheme()
+              close()
+            }}
+            className={MORE_ITEM_CLASS}
+          >
+            <SunMoonIcon className={MORE_ICON_CLASS} />
+            {t('common.shell.nav_theme')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onOpenAbout()
+              close()
+            }}
+            className={MORE_ITEM_CLASS}
+          >
+            <InfoIcon className={MORE_ICON_CLASS} />
+            {t('common.shell.nav_about')}
+          </button>
+        </>
+      )}
+    </RailMenu>
+  )
+}
+
+function RailFooter({ pathname, locale, onExpand, onOpenAbout }: Pick<SidebarRailProps, 'pathname' | 'locale' | 'onExpand' | 'onOpenAbout'>) {
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  const { assetsOpen, toggleAssets } = useSidebarFooterActions()
   const expandLabel = t('common.shell.sidebar_expand')
 
   return (
@@ -242,17 +332,6 @@ function RailFooter({ pathname, locale, onExpand, onOpenAbout }: Pick<SidebarRai
       role="group"
       aria-label={t('common.shell.sidebar_footer_aria')}
     >
-      <RailTip label={helpLabel}>
-        <Link
-          to="/help"
-          search={{ tab: 'glossary' }}
-          aria-label={helpLabel}
-          aria-current={helpActive ? 'page' : undefined}
-          className={railItemClass(helpActive)}
-        >
-          <BookOpenTextIcon className={ICON_CLASS} />
-        </Link>
-      </RailTip>
       <RailButton
         label={formatMessage(assetDrawerManifest, 'asset_drawer.mini_tab', locale)}
         active={assetsOpen}
@@ -263,26 +342,7 @@ function RailFooter({ pathname, locale, onExpand, onOpenAbout }: Pick<SidebarRai
       >
         <BookOpenIcon className={ICON_CLASS} />
       </RailButton>
-      <RailButton label={t('common.shell.nav_feedback')} onClick={openFeedback}>
-        <BugIcon className={ICON_CLASS} />
-      </RailButton>
-      <RailTip label={settingsLabel}>
-        <Link
-          to="/settings"
-          search={{ tab: 'appearance' }}
-          aria-label={settingsLabel}
-          aria-current={settingsActive ? 'page' : undefined}
-          className={railItemClass(settingsActive)}
-        >
-          <SettingsIcon className={ICON_CLASS} />
-        </Link>
-      </RailTip>
-      <RailButton label={t('common.shell.nav_theme')} role="switch" aria-checked={theme === 'dark'} onClick={toggleTheme}>
-        <SunMoonIcon className={ICON_CLASS} />
-      </RailButton>
-      <RailButton label={t('common.shell.nav_about')} onClick={onOpenAbout}>
-        <InfoIcon className={ICON_CLASS} />
-      </RailButton>
+      <RailMoreMenu pathname={pathname} locale={locale} onOpenAbout={onOpenAbout} />
       <RailButton
         label={expandLabel}
         tip={`${expandLabel} (${SIDEBAR_SHORTCUT_LABEL})`}
@@ -329,19 +389,18 @@ export function SidebarRail(props: SidebarRailProps) {
         </div>
       )}
 
-      <nav
-        className="flex w-full flex-1 flex-col items-center gap-1 overflow-y-auto py-2"
-        aria-label={t('common.nav.sections_aria')}
-      >
-        {playerSlug && (
-          <RailSections
-            sections={sections}
-            pathname={pathname}
-            locale={locale}
-            titleSlug={titleSlug}
-            playerSlug={playerSlug}
-          />
-        )}
+      <nav className={`w-full flex-1 overflow-y-auto ${SIDEBAR_SCROLL_CLASS}`} aria-label={t('common.nav.sections_aria')}>
+        <div className={`flex flex-col items-center gap-1 py-2 ${SIDEBAR_SCROLL_CONTENT_CLASS}`}>
+          {playerSlug && (
+            <RailSections
+              sections={sections}
+              pathname={pathname}
+              locale={locale}
+              titleSlug={titleSlug}
+              playerSlug={playerSlug}
+            />
+          )}
+        </div>
       </nav>
 
       <RailFooter pathname={pathname} locale={locale} onExpand={props.onExpand} onOpenAbout={props.onOpenAbout} />

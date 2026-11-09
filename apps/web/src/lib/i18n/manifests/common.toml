@@ -2690,6 +2690,10 @@ en = "About"
 fr = "Signaler un problème"
 en = "Report a problem"
 
+[common.shell.nav_more]
+fr = "Plus"
+en = "More"
+
 [common.shell.sidebar_footer_aria]
 fr = "Aide, paramètres et informations sur l'application"
 en = "Help, settings and application information"

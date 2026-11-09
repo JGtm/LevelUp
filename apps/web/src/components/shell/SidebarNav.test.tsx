@@ -8,6 +8,7 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { resolveRoutePath } from '@/test/routeLinkMock'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import { useAssetDrawerStore } from '@/features/asset-drawer'
 import { useFeedbackDrawerStore } from '@/features/feedback-drawer'
 
@@ -33,10 +34,6 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     useRouterState: () => ({ location: { pathname: mockPathname } }),
   }
 })
-
-vi.mock('./ThemeToggle', () => ({
-  ThemeToggle: () => <div data-testid="theme-toggle" />,
-}))
 
 type State = ReturnType<typeof useAppShellStore.getState>
 
@@ -91,9 +88,39 @@ describe('SidebarNav', () => {
     const foot = screen.getByRole('group', { name: /Aide, paramètres/ })
     expect(within(foot).getByRole('link', { name: 'Aide' })).toBeInTheDocument()
     expect(within(foot).getByRole('link', { name: 'Paramètres' })).toBeInTheDocument()
-    expect(within(foot).getByTestId('theme-toggle')).toBeInTheDocument()
+    expect(within(foot).getByRole('switch', { name: 'Thème' })).toBeInTheDocument()
     expect(within(foot).getByRole('button', { name: 'À propos' })).toBeInTheDocument()
     expect(screen.getByTestId('sidebar-version')).toHaveTextContent('Version 8.1.0')
+  })
+
+  it('le pied de barre déplié tient en une rangée de sept contrôles nommés, titrés, sans texte visible', () => {
+    renderWithProviders(<SidebarNav />)
+    const foot = screen.getByRole('group', { name: /Aide, paramètres/ })
+    const controls = Array.from(foot.querySelectorAll<HTMLElement>('a, button, [role="switch"]'))
+    expect(controls.map((c) => c.getAttribute('aria-label'))).toEqual([
+      'Aide',
+      'Référentiels',
+      'Signaler un problème',
+      'Paramètres',
+      'Thème',
+      'À propos',
+      'Replier la barre latérale',
+    ])
+    for (const control of controls) {
+      expect(control).toHaveAttribute('title')
+      expect(control.textContent).toBe('')
+    }
+  })
+
+  it('la bascule de thème du pied de barre est un interrupteur qui suit le thème', () => {
+    useSettingsDraftStore.getState().toggleTheme()
+    const before = useSettingsDraftStore.getState().localUiPrefs.theme
+    renderWithProviders(<SidebarNav />)
+    const toggle = within(screen.getByRole('group', { name: /Aide, paramètres/ })).getByRole('switch', { name: 'Thème' })
+    expect(toggle).toHaveAttribute('aria-checked', String(before === 'dark'))
+    fireEvent.click(toggle)
+    expect(useSettingsDraftStore.getState().localUiPrefs.theme).not.toBe(before)
+    expect(toggle).toHaveAttribute('aria-checked', String(before !== 'dark'))
   })
 
   it('« Référentiels » bascule le volet ancré, annonce son état et porte le raccourci en infobulle', () => {

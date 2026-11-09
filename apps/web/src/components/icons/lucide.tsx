@@ -21,7 +21,7 @@
  *
  * Glyphes copiés de lucide-static 0.552.0 : layout-dashboard, crosshair, swords, award, flame, globe,
  * film, search, book-open, bug, book-open-text, settings, sun-moon, info, panel-left-close,
- * panel-left-open. Un composant par glyphe, décoratif (`aria-hidden` : le libellé vit sur le bouton ou le
+ * panel-left-open, ellipsis. Un composant par glyphe, décoratif (`aria-hidden` : le libellé vit sur le bouton ou le
  * lien), couleur `currentColor`, trait de 2 px. Réservées à l'interface de l'application : les icônes du
  * jeu restent réservées au contenu Halo (règles de contenu de Microsoft). La mention de licence est
  * aussi dans `apps/desktop/THIRD_PARTY_NOTICES.md`.
@@ -226,6 +226,16 @@ export function PanelLeftOpenIcon(props: LucideIconProps) {
       <rect width="18" height="18" x="3" y="3" rx="2" />
       <path d="M9 3v18" />
       <path d="m14 9 3 3-3 3" />
+    </LucideSvg>
+  )
+}
+
+export function EllipsisIcon(props: LucideIconProps) {
+  return (
+    <LucideSvg {...props}>
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+      <circle cx="5" cy="12" r="1" />
     </LucideSvg>
   )
 }

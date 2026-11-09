@@ -643,6 +643,7 @@ export const commonManifest = {
   "common.shell.nav_menu_close": { fr: "Fermer le menu", en: "Close menu" },
   "common.shell.nav_menu_open": { fr: "Ouvrir le menu de navigation", en: "Open navigation menu" },
   "common.shell.nav_menu_title": { fr: "Navigation", en: "Navigation" },
+  "common.shell.nav_more": { fr: "Plus", en: "More" },
   "common.shell.nav_player_aria": { fr: "Navigation joueur", en: "Player navigation" },
   "common.shell.nav_settings": { fr: "Paramètres", en: "Settings" },
   "common.shell.nav_theme": { fr: "Thème", en: "Theme" },
