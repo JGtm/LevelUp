@@ -27,8 +27,8 @@ func TestParseLeaderboardPage(t *testing.T) {
 		t.Fatalf("len(Leaderboard) = %d, attendu 100", len(pp.Leaderboard))
 	}
 	first := pp.Leaderboard[0]
-	if first.Player.Gamertag != "Twissted Mindss" {
-		t.Errorf("premier gamertag = %q, attendu \"Twissted Mindss\"", first.Player.Gamertag)
+	if first.Player.Gamertag != "Mucikutu Lovulu" {
+		t.Errorf("premier gamertag = %q, attendu \"Mucikutu Lovulu\"", first.Player.Gamertag)
 	}
 	if first.Score != 2180 {
 		t.Errorf("premier score = %d, attendu 2180", first.Score)

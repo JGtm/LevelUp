@@ -74,7 +74,7 @@ func TestClassement_Fixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if page.PageSize != 100 || len(page.Leaderboard) != 100 || page.Leaderboard[0].Player.Gamertag != "Twissted Mindss" ||
+	if page.PageSize != 100 || len(page.Leaderboard) != 100 || page.Leaderboard[0].Player.Gamertag != "Mucikutu Lovulu" ||
 		page.Leaderboard[0].Score != 2180 || page.Leaderboard[0].Player.XUID == "" {
 		t.Errorf("page = taille %d, %d entrées, première %+v", page.PageSize, len(page.Leaderboard), page.Leaderboard[0])
 	}

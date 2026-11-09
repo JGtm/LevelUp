@@ -9,7 +9,7 @@ import (
 )
 
 func TestXboxProfileResolver_ResolveXUID(t *testing.T) {
-	const body = `{"profileUsers":[{"id":"2533274895653213","settings":[{"id":"Gamertag","value":"Neo"}]}]}`
+	const body = `{"profileUsers":[{"id":"2533274800000000","settings":[{"id":"Gamertag","value":"Neo"}]}]}`
 	var gotAuth, gotPath, gotContract string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
@@ -27,8 +27,8 @@ func TestXboxProfileResolver_ResolveXUID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveXUID: %v", err)
 	}
-	if xuid != "2533274895653213" {
-		t.Errorf("xuid = %q, want 2533274895653213", xuid)
+	if xuid != "2533274800000000" {
+		t.Errorf("xuid = %q, want 2533274800000000", xuid)
 	}
 	if gotAuth != "XBL3.0 x=hash;token" {
 		t.Errorf("Authorization header = %q", gotAuth)

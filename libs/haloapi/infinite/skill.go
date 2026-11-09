@@ -212,7 +212,7 @@ func FilterHumanXUIDs(xuids []string) []string {
 	return out
 }
 
-// UnwrapXUID retire l'enveloppe `xuid(...)` : « xuid(2533274858283686) » -> « 2533274858283686 ».
+// UnwrapXUID retire l'enveloppe `xuid(...)` : « xuid(2533274800000000) » -> « 2533274800000000 ».
 func UnwrapXUID(wrapped string) string {
 	wrapped = strings.TrimSpace(wrapped)
 	if strings.HasPrefix(wrapped, "xuid(") && strings.HasSuffix(wrapped, ")") {

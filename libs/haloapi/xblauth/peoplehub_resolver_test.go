@@ -12,7 +12,7 @@ func staticHeader(_ context.Context) (string, error) { return "XBL3.0 x=hash;tok
 func TestPeopleHubResolver_ResolveXUID(t *testing.T) {
 	const body = `{"people":[
 		{"gamertag":"OtherGuy","xuid":"111"},
-		{"gamertag":"Neo","xuid":"2533274895653213"}
+		{"gamertag":"Neo","xuid":"2533274800000000"}
 	]}`
 	var gotAuth, gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -31,8 +31,8 @@ func TestPeopleHubResolver_ResolveXUID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveXUID: %v", err)
 	}
-	if xuid != "2533274895653213" {
-		t.Errorf("xuid = %q, want 2533274895653213", xuid)
+	if xuid != "2533274800000000" {
+		t.Errorf("xuid = %q, want 2533274800000000", xuid)
 	}
 	if gotAuth != "XBL3.0 x=hash;token" {
 		t.Errorf("Authorization header = %q", gotAuth)
