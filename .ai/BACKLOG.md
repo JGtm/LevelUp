@@ -15,6 +15,12 @@
 
 ---
 
+### [ci] Série Go « reste » : blocages sans test en échec
+
+Le 2026-11-09, elle a échoué deux fois sans test rouge alors que le code n'était pas en cause, et a chaque fois réussi à la relance : tests de `api/handlers` absents (PR #176, lot terminé en code 1), puis arrêt à 30 minutes (PR #179, 12 minutes d'habitude). À établir : paquet qui se bloque, ou manque de ressources de la machine. Le lot dure déjà de 9 à 12 minutes pour un `-timeout 600s` par paquet. **Effort : S pour le diagnostic.**
+
+---
+
 ### [ui/navigation] Barre latérale trop haute pour la fenêtre : pas de grosse barre de défilement
 
 **Demande de l'utilisateur (2026-11-09).** Quand la fenêtre est trop petite pour tous les menus de premier niveau, la barre latérale (`components/shell/SidebarPanel.tsx:77`, et `SidebarRail.tsx:333` une fois repliée) affiche la barre de défilement standard, jugée très laide. Chercher d'abord une alternative qui évite le défilement (regrouper les entrées, réduire leur espacement selon la hauteur, reléguer les dernières dans un menu « Plus »). Si le défilement reste nécessaire : barre discrète, placée à gauche. Tenir le mode replié en icônes et tous les thèmes (tokens de couleur). **Effort : S à M.**

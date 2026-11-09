@@ -111,6 +111,9 @@ data/world_backfill_checkpoint.json*
 data/refresh*.json
 data/*.db
 data/*.db-journal
+# Mode bureau lancé sur les données locales : verrou d'instance et port mémorisé.
+data/levelup.lock
+data/desktop/
 data/investigation/
 # Identifiants Xbox reels des films de test (liste d'origine du harnais replay-equiv) : jamais versionnes.
 data/film_identites/
