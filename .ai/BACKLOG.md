@@ -15,6 +15,12 @@
 
 ---
 
+### [bureau/publication] Sortir les fichiers de mise à jour de la page de la version
+
+**Pour la 8.1.1 (décision de l'utilisateur, 2026-11-09).** La page de la version mêle l'installeur et les fichiers que seule l'application utilise (`x64-engine-setup.exe`, paquet de ressources, leurs `.sig`, `latest.json`), ce qui déroute. Les publier ailleurs (version ou dépôt dédié) pour ne laisser que l'installeur et les serveurs : point d'accès de l'updater dans `tauri.conf.json`, adresse de `OwnDescriptor` (`resourcepack/manager.go:168`), URL de `latest.json` et motifs de publication dans `release.yml`. La v8.1.0 interroge l'adresse actuelle : ses fichiers restent en place tant que des clients 8.1.0 existent, et la 8.1.1 doit encore y publier un `latest.json` pour qu'ils trouvent la nouvelle adresse. **Effort : M.**
+
+---
+
 ### [bureau/ui] Infobulle du bouton de repli restée affichée après le clic
 
 `components/ui/tooltip.tsx:47` ouvre l'infobulle au focus ; après un repli à la souris, le bouton « Déplier la barre
