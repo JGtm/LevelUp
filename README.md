@@ -26,6 +26,11 @@ LevelUp now installs on your PC like any other app: your stats, the 2D replay an
 
 **Also new, on the site and in the app**: the same clean header on every section, performance by map and by mode in the Summary, Halo 5 modes, and replay fixes.
 
+- **The media library follows the disk** — renaming, moving or deleting a capture in the file explorer no longer breaks the gallery, and deleting from the app sends the original to the Recycle Bin.
+- **Replay** — equipment received at respawn finally shows (effects, sounds, counters), and players who stand still stay visible until they die.
+- **Career** — an excluded match leaves the career graph right away, and new citations arrive on their own at startup.
+- **Smaller Windows updates** — the app and its resources update separately, so a new version usually downloads about 30 MB.
+
 **Good to know**: Windows 10 or 11 (64-bit) only. The installer isn't signed with a paid certificate, so Windows shows a warning when you install ("More info", then "Run anyway"); the download page explains it.
 
 Full details in the [changelog](docs/CHANGELOG.md).

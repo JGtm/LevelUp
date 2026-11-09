@@ -120447,3 +120447,27 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** 0 P0, 3 constats recevables, 31 conditions vérifiées qui tiennent. Corrigés : `finParPresence` scindée (règle des complexités), commentaire v107 aligné sur la chronique, test synthétique de la lecture d'identité (cinq mutations détectées). Après correction : `go vet` et `go test ./...` de `libs/film` à 0, archlint de `apps/go-api` à 0, lint neuf `--new-from-rev=HEAD` à 0.
 
 **Conclusion / prochaine étape.** Vérification visuelle du user après recuisson ; CI et `make gate-push` restent à passer avant fusion.
+
+## [2026-11-09] Release v8.1.0 : gel du code et lignes « What's new » — En cours
+
+**Décision technique principale.** Code gelé sur `9f70f24bb6` (rejeu fusionné, PR #162). Revue globale indépendante confiée à trois relecteurs Opus sans contexte, par zone (données et démarrage, bureau et publication, décodeur et affichage), concentrés sur les interactions entre lots. Seules les corrections issues de cette revue entrent encore en code.
+
+**Résultats observés.** README et notes de version (EN et FR) complétés : médiathèque, rejeu, carrière, mises à jour Windows.
+
+**Conclusion / prochaine étape.** Tri des constats, gate 24.z et récapitulatif à l'utilisateur avant le tag `v8.1.0`.
+
+## [2026-11-09] Tag `libs/film/v0.1.0` délégué à la session du découplage (ADR 0043) — En cours
+
+**Décision technique principale.** Confirmation directe de l'utilisateur le 2026-11-09 (« Oui pour le tag j'autorise ») : note de délégation ajoutée sous D-2 de l'amendement film, un seul geste, la règle reste. La PR #157 entrait en conflit sur le journal : son contenu ADR passe par la PR des notes de version, #157 est fermée.
+
+**Résultats observés.** Le tag sera posé sur le commit de `main` portant la release, après la vérification `go get` hors dépôt.
+
+**Conclusion / prochaine étape.** Transmettre le sha de `main` à la session du découplage après la fusion par l'utilisateur.
+
+## [2026-11-09] Revue globale v8.1.0 : tri des constats — Complété
+
+**Décision technique principale.** Trois relecteurs Opus sans contexte sur le commit gelé `9f70f24bb6`. Corrigés : un profil sans xuid n'entre plus dans le rejeu des notes (il aurait vu toutes ses notes effacées), et le fond codé en dur de la fenêtre À propos passe sur un token. Rejeu au premier démarrage conservé, conforme à l'ADR 0047. Une seule ronde, la correction tenant en une garde couverte par un test.
+
+**Résultats observés.** 7 constats recevables, 65 conditions vérifiées qui tiennent. En production, en lecture seule : base média configurée (`/app/data/media`). Reste au backlog (.ai/BACKLOG.md) : FDA d'Ascension, formule de l'Aide, alertes en français, badge d'analyse, fichiers laissés par une mise à jour moteur, harnais `replay-equiv`.
+
+**Conclusion / prochaine étape.** CI de la branche, fusion dans `release/v8.1.0`, gate 24.z, puis tag par l'utilisateur.

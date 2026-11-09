@@ -107,6 +107,23 @@ func TestRun_ProfilAuthOnlyIgnore(t *testing.T) {
 	}
 }
 
+// Un profil sans xuid n'est jamais rejoué : le recalcul viderait ses notes. Il est compté en erreur
+// et ne retient pas le joueur suivant.
+func TestRun_ProfilSansXuidIgnore(t *testing.T) {
+	sansXuid := joueur("")
+	f := &fauxApplier{joueurs: map[string][]domain.PlayerSummary{"sr-f": {sansXuid, joueur("x1")}}}
+	erreursAvant := observability.LoadCounterT("sr-f", CompteurErreurs)
+
+	nouveau(f, "sr-f").Run(context.Background())
+
+	if len(f.appels) != 1 || f.appels[0] != "sr-f/x1" {
+		t.Fatalf("appels = %v, attendu le seul profil avec xuid", f.appels)
+	}
+	if got := observability.LoadCounterT("sr-f", CompteurErreurs) - erreursAvant; got != 1 {
+		t.Errorf("erreurs : +%d, attendu +1", got)
+	}
+}
+
 // Seuls les titres qui portent la capacité LUSR sont passés en revue.
 func TestTitresLUSR_SauteUnTitreSansCapacite(t *testing.T) {
 	tous := []*title.TitleDescriptor{

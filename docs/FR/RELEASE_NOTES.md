@@ -25,6 +25,10 @@
 - **Le mur de protection et l'écran occultant durent autant que le film le dit** — leur fin est lue dans le match au lieu d'une durée fixe
 - **Traductions dans l'administration** — le formulaire propose un champ par langue ; l'application est prête à accueillir d'autres langues
 - **Option « Exclure BTB du classement carrière » retirée** — elle n'avait aucun effet
+- **La médiathèque suit le disque** — renommer, déplacer ou supprimer une capture dans l'explorateur ne casse plus la galerie, et supprimer depuis l'application envoie l'original à la Corbeille
+- **L'équipement reçu à la réapparition s'affiche au rejeu** — effets, sons et compteurs, et les joueurs immobiles restent visibles jusqu'à leur mort
+- **Un match exclu disparaît aussitôt du graphe de carrière**, et les nouvelles citations arrivent toutes seules au démarrage
+- **Des mises à jour Windows plus légères** — l'application et ses ressources se mettent à jour séparément : une nouvelle version ne télécharge le plus souvent qu'environ 30 Mo
 
 **v8.0 — Le rejeu 2D, le film Theater décodé & un onglet Tactique**
 
