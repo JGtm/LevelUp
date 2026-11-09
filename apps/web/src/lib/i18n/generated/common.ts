@@ -570,6 +570,7 @@ export const commonManifest = {
   "common.root.server_step.databases": { fr: "Ouverture des bases", en: "Opening databases" },
   "common.root.server_step.migrations": { fr: "Mise à jour des bases", en: "Updating databases" },
   "common.root.server_step.services": { fr: "Lancement des services", en: "Starting services" },
+  "common.settings.browse_folder": { fr: "Parcourir…", en: "Browse…" },
   "common.settings.tabs_aria": { fr: "Onglets paramètres", en: "Settings tabs" },
   "common.settings.tz_chicago": { fr: "America/Chicago", en: "America/Chicago" },
   "common.settings.tz_los_angeles": { fr: "America/Los_Angeles", en: "America/Los_Angeles" },

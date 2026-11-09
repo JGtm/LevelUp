@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { FolderPickButton } from '@/components/ui/FolderPickButton'
 import { formatBytes } from '@/lib/formatters/bytes'
 import { apiErrorMessage } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
@@ -81,6 +82,10 @@ export function FilmArchivePanel({ variant = 'card' }: FilmArchivePanelProps) {
           status={status}
           onChange={setDirDraft}
           onSave={() => save({ film_archive_dir: dir.trim() })}
+          onPick={(path) => {
+            setDirDraft(path)
+            save({ film_archive_dir: path })
+          }}
           dirty={dirDraft !== null && dirDraft !== (settings?.film_archive_dir ?? '')}
           saving={update.isPending}
         />
@@ -113,9 +118,11 @@ interface LocationFieldProps {
   saving: boolean
   onChange: (v: string) => void
   onSave: () => void
+  /** Un dossier choisi dans la boîte du système : saisi et enregistré d'un coup. */
+  onPick: (path: string) => void
 }
 
-function LocationField({ t, dir, status, dirty, saving, onChange, onSave }: LocationFieldProps) {
+function LocationField({ t, dir, status, dirty, saving, onChange, onSave, onPick }: LocationFieldProps) {
   const hasFilms = (status?.films ?? 0) > 0
   return (
     <div className="space-y-1">
@@ -131,6 +138,7 @@ function LocationField({ t, dir, status, dirty, saving, onChange, onSave }: Loca
           placeholder={status?.dir ?? t.locationPlaceholder}
           onChange={(e) => onChange(e.target.value)}
         />
+        <FolderPickButton value={dir} disabled={saving} onPick={onPick} />
         <Button size="sm" variant="outline" disabled={!dirty || saving} onClick={onSave}>
           {t.locationSave}
         </Button>

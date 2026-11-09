@@ -189,6 +189,10 @@ type DeploymentCapabilities struct {
 	// système quand le support en a une, au lieu de l'effacer définitivement. Faux sur un serveur : la
 	// suppression y est définitive.
 	TrashMediaSources bool
+	// PickFolder : la page peut demander à la coquille d'ouvrir la boîte « Parcourir » du système pour
+	// choisir un dossier (une seule commande IPC, limitée à la boucle locale, ADR 0045). Vraie sur le
+	// profil desktop seulement : un navigateur n'a pas ce pont, le champ reste alors un texte à saisir.
+	PickFolder bool
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -302,6 +306,7 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		KeepMediaSources:       desktop,
 		RevealFilesInExplorer:  desktop,
 		TrashMediaSources:      desktop,
+		PickFolder:             desktop,
 	}
 }
 

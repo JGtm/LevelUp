@@ -5,6 +5,7 @@
  */
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
+import { FolderPickButton } from '@/components/ui/FolderPickButton'
 import { apiErrorCode } from '@/lib/api/client'
 import { formatDateTime, intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
@@ -118,6 +119,11 @@ function BackupDirField({ t, form, same }: { t: DataText; form: DataSettingsForm
           placeholder={t.backupDirPlaceholder}
           onChange={(e) => form.edit('backup_dir', e.target.value)}
           onBlur={() => form.commit('backup_dir')}
+        />
+        <FolderPickButton
+          value={form.value('backup_dir')}
+          disabled={form.saving}
+          onPick={(path) => form.commit('backup_dir', path)}
         />
         <Button
           size="sm"

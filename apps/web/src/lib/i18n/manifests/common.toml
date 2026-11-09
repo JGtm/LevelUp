@@ -1913,6 +1913,10 @@ en = "America/Chicago"
 fr = "Onglets paramètres"
 en = "Settings tabs"
 
+[common.settings.browse_folder]
+fr = "Parcourir…"
+en = "Browse…"
+
 # ─── Changelog ──────────────────────────────────────────────────────────
 
 [common.changelog.load_failed]

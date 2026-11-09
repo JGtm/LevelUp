@@ -61,6 +61,7 @@ type CapabilityMap struct {
 	CanKeepMediaSources      bool `json:"can_keep_media_sources" doc:"L'original d'une vidéo convertie n'est jamais supprimé par l'application (réglage de rétention masqué)."`
 	CanRevealFilesInExplorer bool `json:"can_reveal_files_in_explorer" doc:"Ouverture de l'explorateur de fichiers du système sur un média."`
 	CanTrashMediaSources     bool `json:"can_trash_media_sources" doc:"Suppression d'un média : l'original part à la Corbeille du système quand le support en a une."`
+	CanPickFolder            bool `json:"can_pick_folder" doc:"Choix d'un dossier par la boîte « Parcourir » du système, demandée à la coquille de bureau."`
 
 	// Deployment : nom du profil de déploiement, pour l'affichage et le diagnostic SEULEMENT.
 	Deployment string `json:"deployment" enum:"hosted,desktop,demo,dev" doc:"Profil de déploiement (affichage et diagnostic ; ne jamais brancher dessus)."`

@@ -74,7 +74,8 @@ func TestBuildCapabilities_CombinaisonsActuellesInchangees(t *testing.T) {
 						caps.CanUploadMedia != c.UploadMedia || caps.CanUseRestic != c.UseResticBackup ||
 						caps.CanKeepMediaSources != c.KeepMediaSources ||
 						caps.CanRevealFilesInExplorer != c.RevealFilesInExplorer ||
-						caps.CanTrashMediaSources != c.TrashMediaSources {
+						caps.CanTrashMediaSources != c.TrashMediaSources ||
+						caps.CanPickFolder != c.PickFolder {
 						t.Errorf("capacités du profil non recopiées : %+v pour %+v", caps, c)
 					}
 				})
@@ -94,7 +95,7 @@ func TestBuildCapabilities_Desktop(t *testing.T) {
 	}
 	if caps.Deployment != "desktop" || caps.CanUseAccounts || caps.CanPoolTokens || caps.CanUseRestic ||
 		caps.CanUseDiscord || !caps.CanUpdateApp || caps.CanOfferWindowsDownload || !caps.CanUseCompactChrome ||
-		!caps.CanKeepMediaSources || !caps.CanRevealFilesInExplorer || !caps.CanTrashMediaSources {
+		!caps.CanKeepMediaSources || !caps.CanRevealFilesInExplorer || !caps.CanTrashMediaSources || !caps.CanPickFolder {
 		t.Errorf("capacités desktop inattendues : %+v", caps)
 	}
 }
@@ -226,6 +227,31 @@ func TestBuildCapabilities_CapacitesMediaSeulementEnDesktop(t *testing.T) {
 				caps.CanTrashMediaSources != c.want {
 				t.Errorf("capacités média = keep:%v reveal:%v trash:%v, attendu %v partout",
 					caps.CanKeepMediaSources, caps.CanRevealFilesInExplorer, caps.CanTrashMediaSources, c.want)
+			}
+		})
+	}
+}
+
+// TestBuildCapabilities_ChoixDeDossierSeulementEnDesktop : la boîte « Parcourir » demandée à la
+// coquille n'existe que sur le profil desktop (un navigateur n'a pas ce pont).
+func TestBuildCapabilities_ChoixDeDossierSeulementEnDesktop(t *testing.T) {
+	cas := []struct {
+		nom    string
+		launch string
+		env    string
+		demo   string
+		want   bool
+	}{
+		{"hosted", config.LaunchModeDefault, "production", "", false},
+		{"dev", config.LaunchModeDefault, "", "", false},
+		{"demo", config.LaunchModeDefault, "", "true", false},
+		{"desktop", config.LaunchModeDesktop, "", "", true},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			caps := buildCapabilities(chargerPourBootstrap(t, c.launch, c.env, c.demo, ""), map[string]interface{}{})
+			if caps.CanPickFolder != c.want {
+				t.Errorf("can_pick_folder = %v, attendu %v", caps.CanPickFolder, c.want)
 			}
 		})
 	}

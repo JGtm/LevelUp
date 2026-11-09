@@ -10838,6 +10838,9 @@ components:
         can_offer_windows_download:
           description: Téléchargement de l'application Windows proposé.
           type: boolean
+        can_pick_folder:
+          description: Choix d'un dossier par la boîte « Parcourir » du système, demandée à la coquille de bureau.
+          type: boolean
         can_pool_tokens:
           description: Mise en commun des jetons proposée à l'utilisateur.
           type: boolean
@@ -10952,6 +10955,7 @@ components:
         - can_keep_media_sources
         - can_reveal_files_in_explorer
         - can_trash_media_sources
+        - can_pick_folder
         - deployment
       type: object
     CareerCSRRank:

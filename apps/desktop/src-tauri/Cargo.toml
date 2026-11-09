@@ -51,6 +51,11 @@ tauri-plugin-autostart = "2"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.56"
 
+[dev-dependencies]
+# Runtime factice de tauri : `src/pick_folder_acl_tests.rs` interroge les permissions embarquees par build.rs
+# sans ouvrir de fenetre.
+tauri = { version = "2", features = ["test"] }
+
 [profile.release]
 # Binaire plus petit : la coquille ne calcule rien, elle attend.
 opt-level = "s"

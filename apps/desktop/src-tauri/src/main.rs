@@ -2,11 +2,15 @@
 //!
 //! Rien ne se decide ici : la fenetre montre ce que la machine d'etats demande (ecran embarque,
 //! entree du serveur, page d'echec du serveur), ferme quand elle le dit, et laisse le web
-//! s'afficher. Aucune commande n'est exposee a la page du serveur (aucune capacite accordee).
+//! s'afficher. La page du serveur n'appelle qu'une commande, `pick_folder` (`folder_pick_tauri`),
+//! autorisee par `capabilities/pick-folder.json` pour `http://127.0.0.1:*` seulement.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod autostart_tauri;
+mod folder_pick_tauri;
+#[cfg(test)]
+mod pick_folder_acl_tests;
 mod shell_tauri;
 mod toast_tauri;
 mod tray_tauri;
@@ -94,10 +98,10 @@ fn main() {
                 .build(),
         )
         // Notifications Windows relayees depuis la cloche (L21.b) : montrees depuis Rust seulement, la page
-        // du serveur n'a aucune commande a appeler.
+        // du serveur n'a aucune commande de ce plugin a appeler.
         .plugin(tauri_plugin_notification::init())
         // Le script que le plugin injecte par defaut attrape les clics sur `target="_blank"` et appelle la commande
-        // `open_url` par le pont IPC, que la page du serveur n'a pas le droit d'appeler (aucune capacite) : le clic
+        // `open_url` par le pont IPC, que la page du serveur n'a pas le droit d'appeler (hors `pick_folder`) : le clic
         // etait avale sans rien ouvrir. Sans lui, le clic arrive au moteur, qui demande une nouvelle fenetre :
         // `on_new_window` (create_window) l'envoie au navigateur par `open_external`.
         .plugin(
@@ -105,6 +109,7 @@ fn main() {
                 .open_js_links_on_click(false)
                 .build(),
         )
+        .invoke_handler(tauri::generate_handler![folder_pick_tauri::pick_folder]) // seule commande de la page
         .register_uri_scheme_protocol(SCHEME, move |ctx, request| {
             let reply = render::reply(request.uri().path(), locale, || {
                 request_update_check(ctx.app_handle().clone());

@@ -453,6 +453,7 @@ func buildCapabilities(cfg *config.AppConfig, settings map[string]interface{}) d
 		CanKeepMediaSources:      dc.KeepMediaSources,
 		CanRevealFilesInExplorer: dc.RevealFilesInExplorer,
 		CanTrashMediaSources:     dc.TrashMediaSources,
+		CanPickFolder:            dc.PickFolder,
 		Deployment:               string(cfg.Deployment),
 	}
 }

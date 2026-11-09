@@ -381,7 +381,7 @@ the previous state and is logged once.
 `{"event":"notification","title","body","kind"}` and
 `{"event":"shell_settings","native_notifications","close_to_tray","start_with_windows","locale"}` (written once the server is ready, then
 at every change read every 5 s from the settings, whatever wrote them). The shell cannot call the server's HTTP API (its cookie is
-`HttpOnly`, no command is exposed to the page), so both directions use the private pipes: server to shell by stdout events, shell to
+`HttpOnly`, and the page calls no command of the shell but the folder picker, D-31), so both directions use the private pipes: server to shell by stdout events, shell to
 server by **commands on stdin**, one per line, executed before the EOF, which stays the stop order (D-4): `sync` runs
 `AutoSyncScheduler.RunOnceTrigger("manual")`, one cycle at a time, counted by the background wait group (`cmd/server/stdin_commands.go`).
 An unknown command is logged and ignored.
@@ -475,9 +475,10 @@ puts the configuration back, and refuses a target that already holds one of the 
 is refused without `--force` (killed application: start it once for a clean stop, or delete the WAL if losing the last writes is acceptable); under
 `--force` the WAL is set aside WITH its base and put back with it on failure, never replayed by the new database. The migrations of the next start
 bring the databases up to date.
-Tokens of another machine do not decrypt (system vault): the player signs in again. No native folder picker: the web page cannot open one
-and the shell has no command channel from the page (the cookie is `HttpOnly`, D-23), so the folder is a text field validated by the
-server; a `pick_dir` command and a `dir_picked` event would have been a new contract between shell and server for a field typed once.
+Tokens of another machine do not decrypt (system vault): the player signs in again. The folder is a text field validated by the
+server. When the shell offers it (capability `can_pick_folder`), a "Browse" button fills the field from the system folder picker (D-31:
+one shell command called by the page, nothing between shell and server); a `pick_dir` command and a `dir_picked` event, a new contract
+between shell and server, were not needed.
 
 **D-25 - Moving from the site to the application: an export by one-shot token, an import through `persist` (L22.b, 2026-11-03).**
 Hosted side, capability `ExportForDesktop` (`can_export_for_desktop`: every profile but desktop and demo): `POST /export/desktop/token`
@@ -739,6 +740,42 @@ first met at gate 24.z.
 Amends D-17 (the 80 MB are paid at the first installation and when the pack changes, no longer at every update), D-2 and D-4 (event `resources`, state
 `resources_incompatible`, command `resources`), D-15 (two installers), D-16 (the pack is signed by the same key as the installer, verified by the server in Go).
 
+**D-31 - The page calls one shell command: the native folder picker (2026-11-10, plan 8.1.2 item 1.6, decision D-6 of that plan).**
+Until now the shell exposed no command to the page: the cookie is `HttpOnly` (D-23), every direction used the private pipes, and a field
+that wants a folder was a text field (D-24). That left a user of the desktop application typing `D:\...` by hand in three places (the
+backup folder, the film archive folder, the captures folder). The page may now ask the shell for the system "Browse" box, through **one
+command, `pick_folder`, and nothing else**.
+
+*What Tauri requires for a remote origin* (read in the sources of the `tauri` 2.11.6 and `tauri-build` 2.6.3 crates of `Cargo.lock`, not
+assumed). The server page is loaded from `http://127.0.0.1:<port>`: for Tauri it is a **remote** origin (`Webview::is_local_url` is true only
+for the embedded `tauri://` / `http://tauri.localhost`, the `frontendDist` and the registered custom protocols). A request from a remote
+origin is refused unless a capability lists that origin (`Webview::on_message`: the ACL is checked when the origin is not local, whether or
+not the application declared an app manifest). Hence three parts, all in `apps/desktop/src-tauri`:
+`build.rs` declares the command (`tauri_build::Attributes::app_manifest(AppManifest::new().commands(&["pick_folder"]))`, which generates
+the permission `allow-pick-folder`); `capabilities/pick-folder.json` grants it with `"remote": {"urls": ["http://127.0.0.1:*"]}`,
+`"windows": ["main"]` and `"local": false` (the embedded screens of the shell have no capability and call nothing); `main.rs` registers the
+handler. The origin is matched with a URL pattern (`urlpattern`) against the `Origin` header of the IPC request, which the page cannot forge.
+The bridge itself (`window.__TAURI_INTERNALS__.invoke`) is injected by Tauri in the main frame of every page of the window, remote ones
+included, so the web side needs no `@tauri-apps/api` dependency. The server sets no `connect-src`, so the IPC fetch to `ipc.localhost` is
+not blocked (and Tauri falls back to `postMessage` if it were).
+
+*The command.* `pick_folder(window, initial: Option<String>) -> Result<Option<String>, String>` opens `rfd::FileDialog::pick_folder`, modal
+to the calling window, and returns the chosen path **as an opaque string** (`None` when the user cancels). It is `async` and runs the blocking
+dialog in `spawn_blocking`: a synchronous Tauri command runs on the main thread, which the dialog's owner window needs to answer. `initial`
+(the field value) only picks where the box opens: `folder_pick::initial_dir` keeps the nearest existing parent, ignores an empty or relative
+value, and **never probes a network path** (a `\\host\share` value coming from the page would otherwise make the shell open a connection).
+The shell validates nothing else: the server validates the folder when the setting is saved, as for a typed value (D-24).
+
+*The capability.* `can_pick_folder` (`DeploymentCapabilities.PickFolder`, ADR 0044) is true in the `desktop` profile only. The web branches
+on it (`FolderPickButton`), never on the profile name, the system, or the presence of the bridge; without it the field stays a text field.
+This amends D-24 ("No native folder picker") and the sentence of the L21.b notes ("no command is exposed to the page"): the page now has
+exactly one command, and the guard below keeps it at one.
+
+*Guards.* `src/pick_folder_acl_tests.rs` builds the mock Tauri runtime on the real embedded permissions and checks that `pick_folder` is
+allowed from `http://127.0.0.1:<any port>` on the window `main`, and refused from another host, scheme, window or embedded origin, and that
+`open_url` and the plugin commands stay refused. `folder_pick::tests` (pure), `FolderPickButton.test.tsx`, `pickFolder.test.ts`, the
+profile tests of `config` and `service` for the capability.
+
 ### Tests
 
 **D-21 — Strategy (plan section 7).** Each side of the contract is tested against a double of the other: a **fake
@@ -851,7 +888,7 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
   replaces the browser launch by the log line, for automated runs.
 - **Why `target="_blank"` used to do nothing.** `tauri-plugin-opener` injects by default a script that catches clicks on
   `target="_blank"` links, calls `preventDefault()` and invokes the `open_url` command over IPC. The server page has no
-  capability, so the invocation is refused and the click was swallowed before the engine asked for a new window (only
+  capability for it (the only command the page may call is `pick_folder`, D-31), so the invocation is refused and the click was swallowed before the engine asked for a new window (only
   `window.open` reached `on_new_window`). The plugin is built with `open_js_links_on_click(false)`; the Rust side keeps
   using `AppHandle::opener()` for the launch. Ctrl+click and Shift+click, which the script also routed, now reach the engine
   as new-window requests and follow the same policy.

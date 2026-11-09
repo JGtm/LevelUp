@@ -1,7 +1,7 @@
 /**
  * Tests composant — DataCard (sauvegarde périodique et plafond mémoire de l'application de bureau, lot L22).
  */
-import { describe, it, expect, afterEach, beforeEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '@/test/render-utils'
@@ -55,6 +55,7 @@ describe('DataCard', () => {
     useAppShellStore.setState({ locale: 'fr', capabilities: testCapabilities(desktopCapabilities()) })
   })
   afterEach(() => {
+    vi.unstubAllGlobals()
     useSaveFeedbackStore.getState().clear()
     useAppShellStore.setState({ locale: 'fr', capabilities: null })
   })
@@ -365,6 +366,32 @@ describe('DataCard', () => {
     useAppShellStore.setState({ capabilities: testCapabilities() })
     const { container } = renderWithProviders(<DataCard />)
     expect(container).toBeEmptyDOMElement()
+  })
+
+  it('« Parcourir… » enregistre le dossier choisi ; une annulation ne change rien', async () => {
+    serveurPatch()
+    const invoke = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce('D:\\Choisi')
+    vi.stubGlobal('__TAURI_INTERNALS__', { invoke })
+    renderWithProviders(<DataCard />)
+    const champ = await screen.findByLabelText('Dossier de sauvegarde')
+    const parcourir = screen.getByRole('button', { name: 'Parcourir…' })
+
+    fireEvent.click(parcourir)
+    await waitFor(() => expect(invoke).toHaveBeenCalledTimes(1))
+    expect(invoke).toHaveBeenCalledWith('pick_folder', { initial: '' })
+    expect(champ).toHaveValue('')
+    expect(patches).toEqual([])
+
+    await waitFor(() => expect(parcourir).toBeEnabled())
+    fireEvent.click(parcourir)
+    await waitFor(() => expect(patches).toEqual([{ backup_dir: 'D:\\Choisi' }]))
+  })
+
+  it('sans la capacité, pas de bouton « Parcourir… » : le champ reste une saisie', async () => {
+    useAppShellStore.setState({ capabilities: testCapabilities({ ...desktopCapabilities(), can_pick_folder: false }) })
+    renderWithProviders(<DataCard />)
+    await screen.findByLabelText('Dossier de sauvegarde')
+    expect(screen.queryByRole('button', { name: 'Parcourir…' })).not.toBeInTheDocument()
   })
 
   it('parle anglais quand la langue est en', async () => {
