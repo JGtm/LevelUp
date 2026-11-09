@@ -13,10 +13,10 @@ Hashes of the form `xxxx (branch)` belong to feature branches squashed into `mai
 
 | File(s) | Content | Origin as recorded in the history | Status against ADR 0041 |
 |---|---|---|---|
-| `mapvar/testdata/cliffhanger_map.mvar`, `mapvar/testdata/cliffhanger_ridgeline.mvar` | Two Forge map variants of the map Cliffhanger (the second one is the variant of the `ridgeline` module) | origin to be stated by the maintainer | see the section below |
-| `mapvar/testdata/vagabond_fo08_wetland.mvar` | One Forge map variant of the map Vagabond | downloaded from the Halo UGC service (`mapobj-build --save-mvar`) | see the section below |
-| `hinavmesh/testdata/01af558d-53ab-4f05-ba68-92d805fc6260.navmesh.blob` | Navigation mesh of the Forge asset `01af558d` (the map Isolation) | origin of these bytes to be stated by the maintainer; the documented channel is the anonymous UGC download | see the section below |
-| `hinavmesh/testdata/df7dbf08-b8de-4ade-9d7f-1947128c9ae4.navmesh.blob` | Navigation mesh of the Forge asset `df7dbf08` (the map Kiken'na) | origin of these bytes to be stated by the maintainer; the documented channel is the anonymous UGC download | see the section below |
+| `mapvar/testdata/cliffhanger_map.mvar`, `mapvar/testdata/cliffhanger_ridgeline.mvar` | Two Forge map variants of the map Cliffhanger (the second one is the variant of the `ridgeline` module) | Files `map.mvar` and `ridgeline.mvar` of the UGC asset `5324364b-39a8-4f93-96a6-b80a1f18ce8a`, downloaded without token from the public Halo UGC service (verified byte for byte on 2026-11-09, see below) | see the section below |
+| `mapvar/testdata/vagabond_fo08_wetland.mvar` | One Forge map variant of the map Vagabond | File `fo08_wetland.mvar` of the UGC asset `105f5d84-8de1-4908-af3a-1c4f3bf9d642`, same channel (verified on 2026-11-09) | see the section below |
+| `hinavmesh/testdata/01af558d-53ab-4f05-ba68-92d805fc6260.navmesh.blob` | Navigation mesh of the Forge asset `01af558d` (the map Isolation) | `navmesh.blob` of the UGC asset `01af558d-53ab-4f05-ba68-92d805fc6260`, same channel (verified on 2026-11-09) | see the section below |
+| `hinavmesh/testdata/df7dbf08-b8de-4ade-9d7f-1947128c9ae4.navmesh.blob` | Navigation mesh of the Forge asset `df7dbf08` (the map Kiken'na) | `navmesh.blob` of the UGC asset `df7dbf08-b8de-4ade-9d7f-1947128c9ae4`, same channel (verified on 2026-11-09) | see the section below |
 | `mapvar/testdata/fuzz/FuzzMapvarParse/seed_00` to `seed_05` | Synthetic corpus seeds for the fuzz test of the `.mvar` reader | written by the test generator (see below) | no game content |
 
 ## Forge map variants (`.mvar`)
@@ -31,8 +31,7 @@ files of the User Generated Content (UGC) assets of the Halo service; they are n
   (the registry of the maps names the module `ridgeline` for it). Introduced by `2044b71397 (branch)` (2026-07-31,
   "feat(B): porter l additif du rejeu 2D sur la branche saine"; on `main`, `1fb02cfe59`), first at `.ai/re_dump/mapvar/`;
   moved under `libs/gamefiles/` on `main` by `6c3fa49063` (2026-11-09; on the release branch, `a5bae50b44 (branch)`,
-  2026-10-28, into `libs/gamefiles/mapvar/testdata/`). Origin to be stated by the
-  maintainer: the commit does not say where these bytes come from.
+  2026-10-28, into `libs/gamefiles/mapvar/testdata/`).
 - `vagabond_fo08_wetland.mvar` (17 280 bytes): one of the two variants of the map Vagabond (the other is
   `map.mvar`, not versioned). Introduced by `fb33bbddc2 (branch)` (2026-08-08, "fix(v7.5-lot5): mapobj-build publiait
   le rack du canevas, pas la carte jouee"), whose message says the variants are saved by map identifier from the
@@ -61,7 +60,7 @@ the blobs of the Forge assets `01af558d` (Isolation, asset registry entry `forge
 - The documented channel for a `navmesh.blob` is the anonymous download from the public page of the Forge
   asset (`cmd/mapnav-fetch`, whose header says the navmesh is not in the game installation). The commit that
   added these two files does not record the download, and the bytes are not tied to a download by a hash in
-  the history. Origin of these two versioned files to be stated by the maintainer.
+  the history.
 
 ## Synthetic fuzz seeds
 
@@ -70,6 +69,26 @@ the blobs of the Forge assets `01af558d` (Isolation, asset registry entry `forge
 root and the five forms of the count fields of the format. They are not taken from a game file. The commit
 that first introduced them under this path was not found by the history search; the content is what the
 generator writes.
+
+## Origin of the five game-content fixtures, verified
+
+All five files are files that the Halo UGC service publishes for a map asset. On 2026-11-09 each was
+downloaded again without any token (the public page of the asset gives the storage prefix, the storage
+serves the file) and compared with the versioned file: the five are identical byte for byte.
+
+| Versioned file | UGC asset | Published file | SHA-256 |
+|---|---|---|---|
+| `mapvar/testdata/cliffhanger_map.mvar` | `5324364b-39a8-4f93-96a6-b80a1f18ce8a` | `map.mvar` | `e81eff51154a28d521b53211557d65d5dbdd90fd3333aa999ecd4fc9fc4f9c07` |
+| `mapvar/testdata/cliffhanger_ridgeline.mvar` | `5324364b-39a8-4f93-96a6-b80a1f18ce8a` | `ridgeline.mvar` | `39da68769a36dc9481e1ea4668278124a95546057b205e289336073506ea42e4` |
+| `mapvar/testdata/vagabond_fo08_wetland.mvar` | `105f5d84-8de1-4908-af3a-1c4f3bf9d642` | `fo08_wetland.mvar` | `d9ad81a9233ab3136b1ef7c33be65114b04ce3f47a3ca2312c74e43e795c4275` |
+| `hinavmesh/testdata/01af558d-53ab-4f05-ba68-92d805fc6260.navmesh.blob` | `01af558d-53ab-4f05-ba68-92d805fc6260` | `navmesh.blob` | `b015084c6b22ead9f28cad8cf1d1b2abee5771e908001f4c6534669910bc5708` |
+| `hinavmesh/testdata/df7dbf08-b8de-4ade-9d7f-1947128c9ae4.navmesh.blob` | `df7dbf08-b8de-4ade-9d7f-1947128c9ae4` | `navmesh.blob` | `3b447e3e41a4d9043ee4527f600fb0c9f5f711fb98693579d632d3069a0a198e` |
+
+The history of the repository does not record these downloads (the commits that added the Cliffhanger files
+and the navmesh blobs name no source); the hashes above are the evidence. None of the five was read from
+the game installation. The maps are Microsoft's content; the Forge maps of the service may also have
+community authors, whom the history does not name. Nothing here is licensed for other use, and a rights
+holder who wants a file removed can open an issue on the repository.
 
 ## Rule of ADR 0041 (no game-extracted file in a brick)
 
@@ -88,5 +107,5 @@ Reading of the history for this page:
 - The GPL-3.0-only licence of this module does not give rights to that content. The root `NOTICE` says it is
   "not licensed for any other use".
 
-Compliance: no file of `libs/gamefiles` is recorded as read from the installation. The game-content fixtures
-are an explicit exception of D5, not a case the rule covers.
+Compliance: no file of this module was read from the installation: the five game-content fixtures are files of the
+Halo UGC service, an explicit exception of D5, not a case the rule covers.

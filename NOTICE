@@ -76,11 +76,20 @@ lets them reuse:
     images under data/titles/.
   - Test fixtures that carry game content, kept in the tree only because tests read
     them: three map variants (libs/gamefiles/mapvar/testdata/cliffhanger_map.mvar,
-    cliffhanger_ridgeline.mvar, vagabond_fo08_wetland.mvar), the reference map image
-    libs/himap/himap/testdata/carte_validee_v1.png and the callout
-    zones dump apps/go-api/internal/testfixtures/testdata/cartes/callout_zones_ridgeline_clipped.json.
-    The content is Microsoft's;
-    it is kept for the tests and is not licensed for any other use.
+    cliffhanger_ridgeline.mvar, vagabond_fo08_wetland.mvar) and two navigation meshes
+    (libs/gamefiles/hinavmesh/testdata/*.navmesh.blob), all five being files of the public Halo UGC
+    service (origin and hashes in libs/gamefiles/NOTICE.md), the reference map image
+    libs/himap/himap/testdata/carte_validee_v1.png and the callout zones dump
+    apps/go-api/internal/testfixtures/testdata/cartes/callout_zones_ridgeline_clipped.json. The
+    content is Microsoft's, or that of the authors of the maps; it is kept for the tests and is not
+    licensed for any other use.
+  - Tag layout definitions copied unmodified from the Infinite Runtime Tag Viewer project
+    (https://github.com/Gamergotten/Infinite-runtime-tagviewer, folder Plugins/):
+    libs/himap/himap/sbsp.xml, apps/go-api/cmd/weapon-icons-build/weap.xml and
+    apps/go-api/cmd/weapon-sounds/weap.xml. The upstream repository states no licence; the
+    definitions remain the work of their authors (the upstream README credits Lord Zedd and Exhibit
+    for dumping them). They are read at run time to find fields in game files, and are outside
+    sections 1 to 3.
   - Removed from the tree on 2026-10-22: the captures of the game's memory and the
     other research outputs under .ai/archive/V7.5/dumps/, and the *.bin captures under
     tools/ce/. They are ignored by .gitignore and live outside the repository, as does

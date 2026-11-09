@@ -31,7 +31,7 @@ LevelUp monorepo as a Go module in a subdirectory; versions are tagged `libs/gam
   the navmesh are interpreted here, as far as they were measured.
 - No installation file: the module ships code and small test fixtures, not the game's
   archives. You supply the installation. The fixtures are three Forge map variants and two
-  navigation meshes of the Halo service, game content kept for the tests only; `NOTICE.md`
+  navigation meshes, public files of the Halo UGC service, game content kept for the tests only; `NOTICE.md`
   says where each comes from and what rights it carries.
 
 ## Install
