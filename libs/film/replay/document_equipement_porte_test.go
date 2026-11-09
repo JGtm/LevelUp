@@ -68,12 +68,12 @@ func catalogueDuTest() *equipenergy.Catalog {
 }
 
 var famillesDuTest = map[uint32]string{0x7ca85adc: "repulsor", 0x730dc70f: "translocator_beacon",
-	0x2974c233: "wall", 0x8e2dc574: "wall", 0x32d97758: "repair_field", 0x4396db42: "shroud_screen",
-	0x0f5716ff: "grenade_spike", 0x273fe0eb: "grapple"}
+	0x2974c233: "wall", 0x8e2dc574: "wall", 0x32d97758: "repair_field", 0x4396db42: familleDeLEcranOccultant,
+	0x0f5716ff: familleDeLaGrenadePique, 0x273fe0eb: "grapple"}
 
 func paletteDuTest() *AbilityPalette {
 	return &AbilityPalette{Families: map[int]string{6: "repulsor", 11: "translocator_beacon", 2: "wall", 23: "repair_field",
-		10: "shroud_screen", 4: "grapple"}}
+		10: familleDeLEcranOccultant, 4: "grapple"}}
 }
 
 // TestRepulseurTroisUsages : 0d9a9af9 — ramasse a 0,6 (3 usages), puis 2, 1, 0 aux trois activations ;

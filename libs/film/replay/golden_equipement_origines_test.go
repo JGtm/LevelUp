@@ -67,7 +67,7 @@ var combinaisonsAttendues = []combinaisonAttendue{
 	{"wall", origineRamasse}, {"wall", origineReapparition}, {"wall", origineDepart},
 	{"repulsor", origineRamasse}, {"repulsor", origineReapparition},
 	{"repair_field", origineRamasse}, {"repair_field", origineReapparition},
-	{"shroud_screen", origineRamasse}, {"shroud_screen", origineReapparition},
+	{familleDeLEcranOccultant, origineRamasse}, {familleDeLEcranOccultant, origineReapparition},
 	{"translocator_beacon", origineRamasse}, {"translocator_beacon", origineReapparition},
 	{"powerup_camo", origineRamasse}, {"powerup_overshield", origineRamasse},
 }

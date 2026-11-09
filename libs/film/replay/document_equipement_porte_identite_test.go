@@ -10,12 +10,15 @@ import (
 	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
+// familleDeLaGrenadePique : la famille de la palette que les tests de l equipement porte attendent pour la grenade pique.
+const familleDeLaGrenadePique = "grenade_spike"
+
 // TestObjetPorteResoluParSonIdentite : la famille et le cout se lisent sur l identifiant de l objet porte, par le
 // catalogue (le mur a deux ramassables, dont l un est hors manifeste) ou par le manifeste seul (le grappin).
 func TestObjetPorteResoluParSonIdentite(t *testing.T) {
 	r := referenceDuTest()
 	for id, want := range map[uint32]string{idRepulseur: "repulsor", idTranslocateur: "translocator_beacon",
-		idMurRamasse: "wall", idMurReapparu: "wall", idChampReparable: "repair_field", idEcran: "shroud_screen",
+		idMurRamasse: "wall", idMurReapparu: "wall", idChampReparable: "repair_field", idEcran: familleDeLEcranOccultant,
 		idGrappin: "grapple"} {
 		if f, issue := r.famille(id); issue != identiteResolue || f != want {
 			t.Errorf("famille de 0x%08x : %q (%d), attendu %q", id, f, issue, want)
@@ -36,7 +39,7 @@ func TestObjetPorteResoluParSonIdentite(t *testing.T) {
 // contredisent, n a pas de famille.
 func TestIdentiteJamaisDevinee(t *testing.T) {
 	r := referenceDuTest()
-	if f, issue := r.famille(idGrenade); issue != identiteGrenade || f != "grenade_spike" {
+	if f, issue := r.famille(idGrenade); issue != identiteGrenade || f != familleDeLaGrenadePique {
 		t.Errorf("grenade : %q (%d)", f, issue)
 	}
 	if _, issue := r.famille(0xa53cd143); issue != identiteInconnue {

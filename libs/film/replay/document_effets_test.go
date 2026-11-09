@@ -30,7 +30,7 @@ func ecranDeTest(id uint32, repos []types.ProjectileTrack, cands []types.Spawned
 	reads = append(reads, fins...)
 	reads = append(reads, lecture(130000.0, 2039, 539, types.CarriedDel))
 	return entreeDEquipementPorte{reads: reads,
-		palette:     &AbilityPalette{Families: map[int]string{10: "shroud_screen", 23: "repair_field"}},
+		palette:     &AbilityPalette{Families: map[int]string{10: familleDeLEcranOccultant, 23: "repair_field"}},
 		refs:        referenceDuTest(),
 		projectiles: repos, tracks: []Track{{Slot: 539}}, origin: origineEcran, step: pas100ms}
 }

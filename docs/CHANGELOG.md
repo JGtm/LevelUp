@@ -71,6 +71,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Google Fonts links** — in `index.html`, replaced by the self-hosted font.
 
 ### Fixed
+- **2D replay: a life ends at the death the film writes** — the film can stop writing a player's position seconds before their death, so the player was shown as dead too early and the kill feed had a line without an icon. A player the match results list as present at the end stays on the map until the end, even without a position.
+- **2D replay: equipment from a respawn or from the match start is shown** — the family of a carried object is now read on the object itself, however the player got it. These objects had no drawing, no sound and no use count before.
+- **2D replay: one active threat sensor per player** — throwing a second sensor ends the first, including after a death, and the duration read from the film is capped.
+- **2D replay: counts on the thumbnails** — equipment uses and grenade stock sit on the corner of their thumbnail and are no longer cut off next to long weapon icons; the equipped grenade is marked by its color only.
 - **Replay: the flag taken by our team rings once, as in the game** — the event declares its repeated alert layer three times 850 ms apart and the sound played it three times (4.59 s); it is rebuilt from the CTF bank with a single pass of that layer (2.89 s). The opposing side is unchanged.
 - **Home: "See all" of the commendations close to completion** goes straight to the final route instead of through a redirect.
 - **Report a problem: the form no longer takes the "window blocked" branch by mistake** — `window.open(..., 'noopener')` always returns `null`, so the form copied the URL and stayed open even when GitHub had opened, on the site too; the form now clicks a `target="_blank"` link.

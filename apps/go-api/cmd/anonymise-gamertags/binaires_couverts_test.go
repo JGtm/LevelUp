@@ -34,6 +34,9 @@ var binairesCouverts = []binaireCouvert{
 	{regexp.MustCompile(`^replay/testdata/(entites|equipement)_[0-9a-f]{8}\.bin\.gz$`),
 		"codec sans champ xuid (filmfacts_encode.go : morts, table des index et des sieges seuls) ; " +
 			"mesure du 2026-11-08, 0 des 420 originaux"},
+	{regexp.MustCompile(`^replay/testdata/equipement_origines_[0-9a-f]{8}.bin.gz$`),
+		"encodeFaitsDeGarde sans champ xuid (slots, rangs, lectures de l equipement porte, projectiles) ; " +
+			"inventaire cmd/anonymise-gamertags du 2026-11-09, 0 des 420 originaux"},
 	{regexp.MustCompile(`^internal/grammar/testdata/fuzz/FuzzFilmRecordReaders/seed_[0-9]+$`),
 		"payloads de records de la mini-bobine fictive, sans table d identite ; mesure du 2026-11-08, " +
 			"0 des 420 originaux apres decodage des graines"},

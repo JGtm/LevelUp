@@ -1,3 +1,11 @@
+## [2026-11-09] Rejeu - recalcul complet au schéma 107, rebase sur la release, fusion - En cours
+
+**Décision technique principale** : recalcul de tout le parc local avec la branche (1 442 rejeux reconstruits, 0 erreur de décodage), puis `backfill-usage-summary`, `backfill-pad-tiers --force`, `backfill-vehicle-takes --force`. `backfill-killsource` volontairement non joué (décodage complet, ces correctifs n'y touchent pas). Rebase sur la release après la fin du découplage : fixtures, graines et empreinte `grammar-2026-11-08` régénérées depuis les entrées fictives ; le témoin de recherche qui portait un xuid réel est retiré. La grenade garde un chiffre décalé de 3 px hors de la vignette.
+
+**Résultats observés** : le journal du recalcul porte des erreurs sur 33 films, aucune liée à la branche (code inchangé ; 20 films comparables à la sauvegarde identiques ; 5 films sans section d'identification, limite connue). L'écart `replay-equiv` de `11de8353` (0 -> 54 points d'apparition) vient de l'overlay local non versionné `reference/generated/map_weapon_pads.json`, pas du décodeur.
+
+**Conclusion / prochaine étape** : re-figer les références, gate, CI, squash dans la release. Découverte laissée à la revue globale : le harnais dépend d'un fichier local.
+
 ## [2026-11-08] Fin du découplage — lot 4 clos, PR #155 fusionnée dans release/v8.1.0 — Complété
 
 **Décision** : squash de la PR #155 (`5842e16cad`) après fusion de la release dans la branche (deux conflits : CI union, ADR 0045 ; fichier `cmd_decode_verrou.go` de la release rebranché de `filmproc` sur `filmrun`) et CI verte (28 jobs). Montée `klauspost/compress` 1.20.2 pour Govulncheck (avis GO-2026-6865 du 2026-11-05).

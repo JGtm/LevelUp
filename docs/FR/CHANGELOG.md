@@ -71,6 +71,10 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 - **Liens Google Fonts** — dans `index.html`, remplacés par la police auto-hébergée.
 
 ### Fixed
+- **Rejeu 2D : une vie finit à la mort que le film écrit** — le film peut cesser d'écrire la position d'un joueur quelques secondes avant sa mort : le joueur passait trop tôt à « éliminé » et le fil des éliminations portait une ligne sans icône. Un joueur que les résultats du match donnent présent à la fin reste sur la carte jusqu'au bout, même sans position.
+- **Rejeu 2D : l'équipement de réapparition et de début de match s'affiche** — la famille d'un objet porté se lit désormais sur l'objet lui-même, quelle que soit la façon dont le joueur l'a obtenu. Ces objets n'avaient jusqu'ici ni dessin, ni son, ni compte d'usages.
+- **Rejeu 2D : un seul détecteur de menaces actif par joueur** — en lancer un second met fin au premier, y compris après une mort, et la durée lue dans le film est plafonnée.
+- **Rejeu 2D : les compteurs sur les vignettes** — les usages d'équipement et le stock de grenades se posent sur le coin de leur vignette et ne sont plus rognés à côté des longues icônes d'armes ; la grenade équipée se désigne par sa seule couleur.
 - **Rejeu : le drapeau pris par notre équipe sonne une fois, comme dans le jeu** — l'événement déclare sa couche d'alerte répétée trois fois à 850 ms d'intervalle et le son la jouait trois fois (4,59 s) ; il est refait depuis la banque CTF avec une seule lecture de cette couche (2,89 s). Le côté adverse est inchangé.
 - **Accueil : « Tout voir » des citations proches de l'achèvement** mène directement à la route finale au lieu de passer par une redirection.
 - **Signaler un problème : le formulaire ne prend plus à tort la branche « fenêtre bloquée »** — `window.open(..., 'noopener')` rend toujours `null`, donc le formulaire copiait l'adresse et restait ouvert même quand GitHub s'était ouvert, sur le site aussi ; le formulaire clique désormais un lien `target="_blank"`.
