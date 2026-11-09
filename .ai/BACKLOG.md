@@ -21,6 +21,12 @@
 
 ---
 
+### [lusr] Matchs dont le calcul ne converge pas : sans note neuve et comptés comme trous réparables
+
+Depuis la 8.1.1, un match dont le solveur ne converge pas ne bloque plus l'enregistrement de la révision de notation, mais il reste sans note neuve (18 matchs relevés en prod le 2026-11-09, équipes de 4v6 à 16v16). Le détecteur de trous (`sync/skill/lusr_gap_scan.go:116-120`) le classe en trou d'intérieur « réparable par rejeu » dès qu'un match plus récent du groupe a avancé le filigrane : le panneau d'administration l'affiche, et le rejeu retombe sur la même non-convergence. Deux suites à arbitrer : distinguer ces matchs dans le rapport, ou faire converger le solveur (amortissement, `ep/match2team.go`), ce qui change des notes et impose de monter `LUSRRev`. **Effort : S pour le rapport, M pour le solveur.**
+
+---
+
 ### [bureau/ui] Infobulle du bouton de repli restée affichée après le clic
 
 `components/ui/tooltip.tsx:47` ouvre l'infobulle au focus ; après un repli à la souris, le bouton « Déplier la barre

@@ -216,6 +216,8 @@ type shadowRunStats struct {
 	// échoué son écriture canonical ce run (préserve l'avance EN ORDRE du watermark
 	// de groupe → empêche le gap LUSR permanent multi-matchs, fix 2026-06-07).
 	skippedGroupHeld int
+	// skippedNotConverged : matchs dont le solveur n'a pas convergé (noteComputeFailure).
+	skippedNotConverged int
 }
 
 // processOneShadowMatch applique le pipeline shadow à UN match :
@@ -286,7 +288,7 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 		slog.WarnContext(ctx, "LUSR v2 shadow: compute échoué",
 			"match_id", m.matchID, "group", group, "err", err,
 			"team_a_size", len(teamA), "team_b_size", len(teamB))
-		c.noteMatchFailure()
+		c.noteComputeFailure(err, s)
 		return
 	}
 
