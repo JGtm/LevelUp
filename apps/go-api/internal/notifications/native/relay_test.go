@@ -86,7 +86,7 @@ func TestRelay_CategorieNonRelayeeEtReglagesIllisibles(t *testing.T) {
 	c := &collect{}
 	r := &Relay{}
 	r.Install(c.sink, fakeStore{cfg: settingsWith(true, "fr")})
-	r.Forward(context.Background(), notif(notifications.CategoryPatternStrength))
+	r.Forward(context.Background(), notif(notifications.CategoryComebackWelcome))
 	r.Forward(context.Background(), notif(notifications.CategoryMediaLiked))
 	if len(c.got) != 0 {
 		t.Fatalf("catégories non relayées : %v", c.got)

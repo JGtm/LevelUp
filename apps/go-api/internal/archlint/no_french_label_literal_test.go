@@ -98,7 +98,7 @@ var frenchLabelAllowlist = map[string]int{
 	"libs/film/replay/coverage_bridge.go":                    5,
 	"libs/film/replay/neutral_deaths.go":                     2,
 	"analysis/skill_v2/display_smoothing.go":                 1,
-	"notify/coach.go":                                        5,
+	"notify/coach.go":                                        3,
 	"service/synthesis_service_builders.go":                  1,
 	"service/synthesis_service_legacy.go":                    5,
 

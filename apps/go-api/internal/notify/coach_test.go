@@ -79,7 +79,7 @@ func TestBuildCoachEmbed_ParamsSortedAndCapped(t *testing.T) {
 		params[k] = 1
 	}
 	embed := BuildCoachEmbed(CoachEmbedInput{
-		Category: "pattern_lever",
+		Category: "trend_consolidate",
 		Params:   params,
 		Lang:     "fr",
 	}, nil)
@@ -142,7 +142,7 @@ func TestCoachCategoryLabel_LangFallback(t *testing.T) {
 
 // TestCategoryOrRaw : champ « code » technique — clé brute si présente, "-" sinon.
 func TestCategoryOrRaw(t *testing.T) {
-	if got := (CoachEmbedInput{Category: "pattern_lever"}).CategoryOrRaw(); got != "pattern_lever" {
+	if got := (CoachEmbedInput{Category: "trend_consolidate"}).CategoryOrRaw(); got != "trend_consolidate" {
 		t.Errorf("catégorie présente → clé brute, obtenu %q", got)
 	}
 	if got := (CoachEmbedInput{}).CategoryOrRaw(); got != "-" {

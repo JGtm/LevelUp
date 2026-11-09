@@ -17,8 +17,6 @@ func TestSignalsFromAlerts_IgnoresNonActionableTypes(t *testing.T) {
 		mkAlert(coach.AlertTypeRecordBroken, map[string]any{}),
 		mkAlert(coach.AlertTypeMilestoneUnlocked, map[string]any{}),
 		mkAlert(coach.AlertTypeStreakMilestone, map[string]any{}),
-		mkAlert(coach.AlertPatternStrength, map[string]any{}),
-		mkAlert(coach.AlertPatternWeakness, map[string]any{}),
 	}
 	got := coach_advisor.SignalsFromAlerts(in)
 	if len(got) != 0 {
