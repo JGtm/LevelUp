@@ -408,9 +408,11 @@ levelup-server.exe -mode uninstall-cleanup      # appelé par le désinstalleur 
 `HKCU\...\Run` et sa valeur `StartupApproved`, seulement si sa commande vise le dossier du programme désinstallé) et la tâche planifiée
 `LevelUp\Refresh-<8 hex>` de la racine de données de `LEVELUP_DATA_DIR` (seulement si son action lance le serveur de ce même dossier : deux installations
 d'un même utilisateur partagent la racine par défaut, donc le nom de la tâche, et la tâche de l'autre reste en place, `tache=foreign`). Il n'ouvre aucune
-base, ne lie aucun port, ne prend aucun verrou et ne touche jamais à la racine de données. Sortie 0 quand rien n'existait ou que tout était étranger, 1 quand
+base, ne lie aucun port, ne prend aucun verrou et ne touche jamais à la racine de données. Il retire aussi le paquet de ressources installé et les dossiers `web` et `config` du moteur (ces
+derniers seulement quand `web/index.html` existe, et en entier : le front nomme ses fichiers par un hachage de leur contenu, donc après une mise à jour le
+désinstalleur ne liste plus les anciens ; un fichier posé à la racine du dossier du programme reste). Sortie 0 quand rien n'existait ou que tout était étranger, 1 quand
 une lecture ou une suppression a échoué (le crochet NSIS ignore le code : la désinstallation n'en dépend jamais) ; le bilan va sur stderr
-(`demarrage=… tache=… ok=… exit=…`). `LEVELUP_UNINSTALL_WITNESS` posée à un chemin écrit aussi la ligne de bilan dans un fichier (ce que vérifie
+(`demarrage=… tache=… ressources=… moteur=… ok=… exit=…`). `LEVELUP_UNINSTALL_WITNESS` posée à un chemin écrit aussi la ligne de bilan dans un fichier (ce que vérifie
 `e2e-install.ps1`, code de sortie compris). Le `NSIS_HOOK_PREUNINSTALL` de l'installeur vérifie d'abord que l'application ne tourne pas (« Annuler » à
 « LevelUp est en cours d'exécution » ne retire rien), puis le lance avant l'effacement des fichiers. Il ne tourne pas dans le flux de l'updater
 (`/UPDATE` : l'updater n'appelle jamais l'ancien désinstalleur), mais une mise à jour MANUELLE (installeur lancé à la main, case « désinstaller avant »
