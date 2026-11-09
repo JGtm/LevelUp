@@ -1132,6 +1132,12 @@ ne se comparait donc plus qu'à lui-même. Sa mesure reste figée au §2 de
 `.ai/archive/V7.5/MESURES_CUISSON_PERF.md` et rejouée en CI par le test de la mini-bobine de
 `internal/analysis/filmsource`.
 
+Le harnais est **hermétique pour le catalogue des socles d'armes** : la construction qu'il cuit lit
+le catalogue versionné plus la fixture `cmd/replay-equiv/testdata/map_weapon_pads_overlay.json` (la
+seule carte avec laquelle les références ont été figées), jamais l'overlay non versionné que le
+runtime d'un poste remplit ; le verdict ne dépend donc plus de la machine. Une fixture absente est
+une erreur, pas un repli silencieux.
+
 ```bash
 levelup replay-parc-vies --faits <dossier des faits> --cache <depot>/data/cache --sortie <racine de travail> \
   [--ids <fichier>] [--garder-documents] [--title slug]
