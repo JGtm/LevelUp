@@ -5,6 +5,9 @@ package tactical
 // les témoins sur le catalogue réel vivent côté service (projection du catalogue).
 
 import (
+	"encoding/json"
+	"math"
+	"os"
 	"testing"
 
 	"levelup/go-api/internal/i18n"
@@ -162,4 +165,76 @@ func TestNommerZone_MedianePaire(t *testing.T) {
 	zones := []ZoneNommee{zone("Bas", 1, carre(0, 0, 10, 10), 0, 3)}
 	// Médiane (3 + 3,4) / 2 = 3,2 : dans la tranche avec la marge.
 	attendreZone(t, 5, 5, []float64{3, 3.4}, zones, "Bas", RegleZonePolygone)
+}
+
+// jeuDeCasNommage : le chemin du jeu partagé, relatif au paquet. Le paquet testfixtures n'est PAS importé :
+// il tire le décodeur de film dans la fermeture d'internal/analysis (archlint, constat G).
+const jeuDeCasNommage = "../../testfixtures/testdata/cartes/nommage_zone_cas.json"
+
+// casNommageJSON est un cas du jeu partagé avec le port web (nommage_zone_cas.json) : les zones au
+// format du contrat des callouts, le point, le z (nil = inconnu) et la zone attendue (nil = aucune).
+type casNommageJSON struct {
+	Nom   string `json:"nom"`
+	Zones []struct {
+		Name        string         `json:"name"`
+		VolumeIndex int            `json:"volume_index"`
+		Polygon     [][2]float64   `json:"polygon"`
+		Parts       [][][2]float64 `json:"parts"`
+		Holes       [][][2]float64 `json:"holes"`
+		ZBottom     float64        `json:"z_bottom"`
+		ZTop        float64        `json:"z_top"`
+	} `json:"zones"`
+	X         float64  `json:"x"`
+	Y         float64  `json:"y"`
+	Z         *float64 `json:"z"`
+	Attendu   *string  `json:"attendu"`
+	Regle     string   `json:"regle"`
+	DistanceM float64  `json:"distance_m"`
+}
+
+// Le jeu de cas PARTAGÉ avec le port web (features/match-replay/model/killerZone.test.ts) : les deux
+// côtés lisent le même fichier, c'est lui qui prouve que les deux ports nomment pareil.
+func TestNommerZone_JeuDeCasPartage(t *testing.T) {
+	data, err := os.ReadFile(jeuDeCasNommage)
+	if err != nil {
+		t.Fatalf("lecture du jeu de cas : %v", err)
+	}
+	var jeu struct {
+		Cas []casNommageJSON `json:"cas"`
+	}
+	if err := json.Unmarshal(data, &jeu); err != nil {
+		t.Fatalf("décodage du jeu de cas : %v", err)
+	}
+	if len(jeu.Cas) == 0 {
+		t.Fatal("jeu de cas vide : le test ne prouverait rien")
+	}
+	for _, c := range jeu.Cas {
+		t.Run(c.Nom, func(t *testing.T) {
+			zones := make([]ZoneNommee, 0, len(c.Zones))
+			for _, z := range c.Zones {
+				zones = append(zones, ZoneNommee{
+					Nom: i18n.FromColumns(z.Name, z.Name), Polygone: z.Polygon, Parties: z.Parts, Trous: z.Holes,
+					ZBas: z.ZBottom, ZHaut: z.ZTop, VolumeIndex: z.VolumeIndex,
+				})
+			}
+			var zs []float64
+			if c.Z != nil {
+				zs = []float64{*c.Z}
+			}
+			got, ok := NommerZone(c.X, c.Y, zs, zones)
+			if c.Attendu == nil {
+				if ok {
+					t.Fatalf("attendu aucun nom, obtenu %q (%s)", got.Zone.Nom[i18n.LocaleFR], got.Regle)
+				}
+				return
+			}
+			if !ok {
+				t.Fatalf("attendu %q, obtenu aucun nom", *c.Attendu)
+			}
+			if got.Zone.Nom[i18n.LocaleFR] != *c.Attendu || got.Regle != c.Regle || math.Abs(got.DistanceM-c.DistanceM) > 1e-9 {
+				t.Fatalf("obtenu %q par %q à %v m, attendu %q par %q à %v m",
+					got.Zone.Nom[i18n.LocaleFR], got.Regle, got.DistanceM, *c.Attendu, c.Regle, c.DistanceM)
+			}
+		})
+	}
 }

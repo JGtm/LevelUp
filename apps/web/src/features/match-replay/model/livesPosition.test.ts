@@ -13,7 +13,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { posOfPlayerAt } from './livesPosition'
+import { altitudeOfPlayerAt, posOfPlayerAt } from './livesPosition'
 import { testReplayDoc } from '../test/testDoc'
 
 /** La victime : vie CLOSE à la frame 20, deux échantillons. */
@@ -47,5 +47,44 @@ describe('posOfPlayerAt', () => {
 
   it("ne rend RIEN au-delà de la fenêtre — aucune position inventée", () => {
     expect(posOfPlayerAt(lives, 40, 15)).toBeNull()
+  })
+})
+
+describe('altitudeOfPlayerAt — la même règle de vie que la position', () => {
+  const avecZ = testReplayDoc({
+    tracks: [
+      {
+        slot: 2,
+        team: -1,
+        xuid: 'V',
+        points: [
+          { t: 0, x: 5, y: 5, z: 0 },
+          { t: 20, x: 5, y: 4, z: 4 },
+        ],
+        startFrame: 0,
+        endFrame: 20,
+      },
+    ] as never,
+  }).tracks
+  const sansZ = testReplayDoc({
+    tracks: [{ slot: 3, team: -1, xuid: 'W', points: [{ t: 0, x: 1, y: 1 }, { t: 20, x: 2, y: 2 }], startFrame: 0, endFrame: 20 }] as never,
+  }).tracks
+
+  it('rend l’altitude interpolée pendant la vie', () => {
+    expect(altitudeOfPlayerAt(avecZ, 10, 15)).toBeCloseTo(2)
+  })
+
+  it('rend la dernière altitude dans la fenêtre après-mort, rien au-delà', () => {
+    expect(altitudeOfPlayerAt(avecZ, 30, 15)).toBe(4)
+    expect(altitudeOfPlayerAt(avecZ, 40, 15)).toBeNull()
+  })
+
+  it('une vie dont aucun point ne porte de z rend null, jamais un 0 inventé', () => {
+    expect(altitudeOfPlayerAt(sansZ, 10, 15)).toBeNull()
+    expect(altitudeOfPlayerAt(sansZ, 30, 15)).toBeNull()
+  })
+
+  it('joueur inconnu : null', () => {
+    expect(altitudeOfPlayerAt(undefined, 10, 15)).toBeNull()
   })
 })

@@ -141,7 +141,7 @@ interface ReplayCanvasProps {
   background?: ReplayMapBackgroundLayer | null
   /**
    * Zones nommées de la carte (callouts officiels), déjà normalisées par la route —
-   * la même liste sert les fiches (zone courante). Vide = la carte n'en a pas (cas
+   * la même liste nomme la zone du tueur dans le fil des éliminations. Vide = la carte n'en a pas (cas
    * Forge, par construction) : pas de calque, pas de bouton.
    */
   callouts?: CalloutZoneReady[]

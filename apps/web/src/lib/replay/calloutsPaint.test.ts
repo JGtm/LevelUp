@@ -1,8 +1,8 @@
 /**
- * Tests — calloutsPaint (zones nommées : normalisation, zoneAt 3D, peintre partagé).
+ * Tests — calloutsPaint (zones nommées : normalisation, peintre partagé).
  *
- * CE QU'ILS PROTÈGENT : l'affectation d'un joueur à sa zone se fait en DISTANCE 3D (les
- * étages se confondent en 2D — règle du POC), et le calque écrit chaque nom UNE fois.
+ * CE QU'ILS PROTÈGENT : la normalisation garde TOUTES les zones (y compris sans contour, qui
+ * servent le nommage d'un point) et le calque écrit chaque nom UNE fois.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -15,7 +15,6 @@ import {
   drawCalloutsShapes,
   normalizeCalloutZones,
   normalizeCallouts,
-  zoneAt,
 } from './calloutsPaint'
 
 const ENTRY: ReplayMapCallouts = {
@@ -59,6 +58,12 @@ describe('normalizeCallouts', () => {
     expect(zones[2].holes).toHaveLength(1)
   })
 
+  it('porte la tranche de hauteur et l’indice de volume que le nommage d’un point lit', () => {
+    const zones = normalizeCallouts(ENTRY)
+    expect(zones[0]).toMatchObject({ zBottom: -0.2, zTop: 11, volumeIndex: 10 })
+    expect(zones[3]).toMatchObject({ zBottom: -5, zTop: -3, volumeIndex: 26 })
+  })
+
   it('ancre le libellé au centroïde du contour, ou au centre du volume sans contour', () => {
     const zones = normalizeCallouts(ENTRY)
     // Triangle (14,7)(24,7)(24,15) : centroïde (62/3, 29/3).
@@ -71,28 +76,6 @@ describe('normalizeCallouts', () => {
   it('entrée absente = liste vide, jamais une erreur', () => {
     expect(normalizeCallouts(null)).toHaveLength(0)
     expect(normalizeCallouts(undefined)).toHaveLength(0)
-  })
-})
-
-describe('zoneAt — affectation 3D', () => {
-  const zones = normalizeCallouts(ENTRY)
-  const nameAt = (x: number, y: number, z: number) => {
-    const zone = zoneAt(zones, x, y, z)
-    return zone ? calloutLabel(zone, 'en') : undefined
-  }
-
-  it('départage deux étages superposés par le z', () => {
-    // Même point 2D (19, 10) : en bas -> version inférieure, en haut -> version haute.
-    expect(nameAt(19, 10, -1.9)).toBe('Lower Horseshoe')
-    expect(nameAt(19, 10, 0.9)).toBe('Horseshoe')
-  })
-
-  it('les volumes secondaires comptent : l’étage bas d’Antenne est affecté à Antenne', () => {
-    expect(nameAt(-2, -5, -4)).toBe('Antenna')
-  })
-
-  it('liste vide = null', () => {
-    expect(zoneAt([], 0, 0, 0)).toBeNull()
   })
 })
 

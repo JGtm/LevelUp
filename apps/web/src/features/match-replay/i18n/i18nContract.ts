@@ -186,6 +186,8 @@ export interface ReplayText {
   killFeedNoAssistHint: string
   killFeedAssistHint: string
   killFeedKillerShare: (pct: number) => string
+  /** Infobulle de la zone nommée où se trouvait le tueur, à son instant : le nom complet. */
+  killFeedKillerZone: (zone: string) => string
   /**
    * L'ASSISTANCE EST UN PICTOGRAMME, PAS UN MOT (décision utilisateur du 16/08) : le fil
    * n'écrit plus « assisté par », il pose une marque puis le nom. Ce libellé est ce que la

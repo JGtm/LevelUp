@@ -27,7 +27,9 @@ const (
 // internal/testfixtures/testdata/cartes/.
 //
 // Contenu : callout_zones_ridgeline_clipped.json, dump decoupe de Ridgeline (oracle de
-// mapdecoupe, donnees de mapcatalog). Les fixtures binaires de cartes ne sont PAS ici : elles
+// mapdecoupe, donnees de mapcatalog) ; nommage_zone_cas.json, le jeu de cas du nommage d'une
+// zone, lu par analysis/tactical (par chemin relatif : importer ce paquet tirerait le decodeur de film
+// dans la fermeture d'analysis) ET par le test web killerZone.test.ts. Les fixtures binaires de cartes ne sont PAS ici : elles
 // vivent dans la brique qui les lit (voir MapvarFixturesDir, NavmeshFixturesDir,
 // CarteValideeFixturesDir) et Carte les y resout.
 //
