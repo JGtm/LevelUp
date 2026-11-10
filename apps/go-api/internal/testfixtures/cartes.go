@@ -1,18 +1,23 @@
 package testfixtures
 
-import "path/filepath"
+import (
+	"fmt"
+	"path/filepath"
+
+	"levelup/go-api/internal/briques"
+)
 
 // Dossiers de fixtures binaires POSSEDES PAR LA BRIQUE QUI LES LIT. Chaque fichier n'existe
 // qu'en une copie, versionnee a cote du lecteur (son `testdata/`) ; LevelUp la lit d'ici, par
-// un chemin depuis la racine du depot, jamais par un `../` entre paquets. Ce sont des actifs
+// un chemin resolu par le resolveur des briques, jamais par un `../` entre paquets. Ce sont des actifs
 // proprietaires 343/Microsoft : ne pas en dupliquer, ne pas en ajouter.
 //
-// Chemins relatifs a la racine du depot, separateurs slash. Les briques vivent sous `libs/` (ADR 0041) ;
-// quand l'une change de place, c'est la seule ligne a toucher.
+// Chemins de garde-rail (`libs/<brique>/<suite>`, separateurs slash) : la cle logique d'un dossier de
+// brique, que le resolveur [briques.SurDisque] situe sur le disque (dossier de l'espace de travail ou
+// cache de modules), jamais depuis la racine du depot.
 const (
 	// MapvarFixturesDir : la brique mapvar possede ses trois `.mvar` (cliffhanger_map,
-	// cliffhanger_ridgeline, vagabond_fo08_wetland) ; LevelUp les lit ici. Le dossier sert aussi
-	// de cache local des variantes re-telechargeables (cf. .gitignore, seules trois sont suivies).
+	// cliffhanger_ridgeline, vagabond_fo08_wetland) ; LevelUp les lit ici.
 	MapvarFixturesDir = "libs/gamefiles/mapvar/testdata"
 
 	// NavmeshFixturesDir : la brique hinavmesh possede les deux `<assetID>.navmesh.blob`.
@@ -63,7 +68,12 @@ func Navmesh(assetID string) string {
 
 const nomCarteValidee = "carte_validee_v1.png"
 
-// repoPath resout un chemin slash relatif a la racine du depot en chemin absolu du poste.
+// repoPath resout un chemin de garde-rail de brique en chemin absolu du poste, par le resolveur des
+// briques. Une brique introuvable est une installation cassee : panique, comme [RepoRoot].
 func repoPath(dirSlash string) string {
-	return filepath.Join(RepoRoot(), filepath.FromSlash(dirSlash))
+	abs, ok, err := briques.SurDisque(dirSlash)
+	if err != nil || !ok {
+		panic(fmt.Sprintf("testfixtures: %s ne se resout pas vers une brique (ok=%v) : %v", dirSlash, ok, err))
+	}
+	return abs
 }

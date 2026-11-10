@@ -2,7 +2,7 @@ package anonymisegamertags
 
 // registre_test.go — LE REGISTRE DES IDENTIFIANTS FICTIFS ET SON GARDE-RAIL.
 //
-// `libs/film/testdata/IDENTITES.tsv` liste les xuids fictifs qui tiennent lieu d identifiants de
+// `testdata/IDENTITES.tsv` de la brique du decodeur (resolveur des briques) liste les xuids fictifs qui tiennent lieu d identifiants de
 // joueurs dans les fixtures du decodeur, et `testdata/IDENTITES_APPS.tsv` (a cote de ce fichier) ceux
 // des fichiers suivis sous `apps/`. Le garde-rail tourne a chaque `go test` : un xuid de la plage des
 // xuids qui figure dans un fichier TEXTE de `libs/film` ou de `apps/` sans etre a l un des deux
@@ -30,11 +30,17 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/briques"
 	"levelup/go-api/internal/identitefictive"
 )
 
-// cheminRegistre : le registre de la brique, depuis la racine du depot.
-var cheminRegistre = filepath.Join("libs", "film", "testdata", "IDENTITES.tsv")
+// libelleRegistre nomme le registre de la brique dans les messages ; cheminRegistre le situe sur le
+// disque par le resolveur des briques.
+const libelleRegistre = "brique du decodeur, testdata/IDENTITES.tsv"
+
+func cheminRegistre() (string, error) {
+	return briques.Chemin("film", "testdata", "IDENTITES.tsv")
+}
 
 // cheminRegistreApps : le registre des fichiers suivis sous `apps/`.
 var cheminRegistreApps = filepath.Join("apps", "go-api", "cmd", "anonymise-gamertags", "testdata", "IDENTITES_APPS.tsv")
@@ -222,9 +228,13 @@ func appendSiHorsRegistre(hors []string, suites [][]byte, base int, inverse bool
 // lireRegistres rend l union des deux registres, et refuse un xuid inscrit dans les deux : chaque
 // fictif n a qu une seule ligne.
 func lireRegistres(racine string) (map[uint64]bool, error) {
-	film, err := lireRegistre(filepath.Join(racine, cheminRegistre))
+	cheminFilm, err := cheminRegistre()
 	if err != nil {
-		return nil, fmt.Errorf("%s : %w", filepath.ToSlash(cheminRegistre), err)
+		return nil, fmt.Errorf("%s : %w", libelleRegistre, err)
+	}
+	film, err := lireRegistre(cheminFilm)
+	if err != nil {
+		return nil, fmt.Errorf("%s : %w", libelleRegistre, err)
 	}
 	apps, err := lireRegistre(filepath.Join(racine, cheminRegistreApps))
 	if err != nil {
@@ -250,8 +260,8 @@ func TestLesXuidsDesFixturesSontFictifs(t *testing.T) {
 	for _, cible := range []struct {
 		dossier    string
 		extensions map[string]bool
-	}{{filepath.Join("libs", "film"), extensionsTexte}, {"apps", extensionsTexteApps}} {
-		h, err := xuidsHorsRegistre(filepath.Join(racineDuDepot, cible.dossier), registre, cible.extensions)
+	}{{dossierDeLaBrique(t), extensionsTexte}, {filepath.Join(racineDuDepot, "apps"), extensionsTexteApps}} {
+		h, err := xuidsHorsRegistre(cible.dossier, registre, cible.extensions)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -273,7 +283,7 @@ func TestLesXuidsDesFixturesSontFictifs(t *testing.T) {
 	}
 	t.Fatalf("%d fichier(s) portent un xuid hors de %s et de %s : un identifiant reel, ou un fictif a ajouter "+
 		"a l un des registres (utiliser de preference un xuid qui y figure deja), ou un nombre qui n est pas "+
-		"un xuid a nommer dans nombresHorsXuid avec sa raison%s", len(hors), filepath.ToSlash(cheminRegistre),
+		"un xuid a nommer dans nombresHorsXuid avec sa raison%s", len(hors), libelleRegistre,
 		filepath.ToSlash(cheminRegistreApps), sb.String())
 }
 

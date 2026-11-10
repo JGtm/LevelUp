@@ -125,7 +125,7 @@ func TestChaqueRepliBrancheEstDeclencheOuVerse(t *testing.T) {
 	}
 	vus := map[string]bool{}
 	for _, sous := range append(append([]string{}, perimetreReplis...), perimetreDeclenchementsHorsDecodeur...) {
-		parcourirGoProduction(t, filepath.Join(racine, sous), func(rel string, f *ast.File) {
+		parcourirGoProduction(t, cheminDuDepotOuFatal(t, racine, sous), func(rel string, f *ast.File) {
 			for _, a := range declenchementsDuFichierOuDeSaTable(rel, f) {
 				vus[a] = true
 			}
@@ -167,7 +167,11 @@ func siteDuCompteServi(racine, fichier, ancre, date, raison string) string {
 	if !dateExemptionConforme(date) || strings.TrimSpace(raison) == "" {
 		return "exemption sans date ou sans raison"
 	}
-	b, err := os.ReadFile(filepath.Join(racine, filepath.FromSlash(fichier))) //nolint:gosec // chemin fige dans le code
+	chemin, errChemin := cheminDuDepot(racine, fichier)
+	if errChemin != nil {
+		return "brique introuvable (" + fichier + ") : " + errChemin.Error()
+	}
+	b, err := os.ReadFile(chemin) //nolint:gosec // chemin fige dans le code
 	if err != nil || !strings.Contains(string(b), ancre) {
 		return "compte au document servi introuvable (" + fichier + " : " + ancre + ") — l exemption survit a son site, la RETIRER"
 	}
@@ -187,7 +191,7 @@ func TestChaqueTableDeVersementATouJoursSonSite(t *testing.T) {
 			t.Errorf("table de versement %s : fichier, date ou raison incoherents", rel)
 		}
 		trouve := false
-		parcourirGoProduction(t, filepath.Dir(filepath.Join(racine, filepath.FromSlash(rel))), func(r string, f *ast.File) {
+		parcourirGoProduction(t, filepath.Dir(cheminDuDepotOuFatal(t, racine, rel)), func(r string, f *ast.File) {
 			if r == rel && len(nomsCitesParUneTable(f)) > 0 {
 				trouve = true
 			}
@@ -216,7 +220,7 @@ func TestLesReplisHorsProductionNOntQueLeursOutilsPourAppelants(t *testing.T) {
 			continue
 		}
 		for _, sous := range []string{"apps/go-api/internal", "apps/go-api/cmd", racineBriqueFilm} {
-			parcourirGoProduction(t, filepath.Join(racine, sous), func(rel string, f *ast.File) {
+			parcourirGoProduction(t, cheminDuDepotOuFatal(t, racine, sous), func(rel string, f *ast.File) {
 				if appelantAdmis(rel, filmreplis.Appelants(r.Nom, h.Appelants)) {
 					return
 				}

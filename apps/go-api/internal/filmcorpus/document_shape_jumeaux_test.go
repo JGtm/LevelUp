@@ -32,8 +32,9 @@ import (
 	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
-// cheminGoldenDeForme : le golden de forme de la brique, depuis la racine du depot.
-var cheminGoldenDeForme = filepath.Join("libs", "film", "replay", "testdata", "document_shape.golden")
+// cheminGoldenDeForme : le golden de forme de la brique, relatif a la brique du decodeur (resolveur des
+// briques).
+var cheminGoldenDeForme = filepath.Join("replay", "testdata", "document_shape.golden")
 
 // TestDocumentShapeTwinsAgree : la forme STOCKEE et la forme SERVIE coincident-elles ?
 //
@@ -68,7 +69,7 @@ func TestDocumentShapeSchemaHasChronicleEntry(t *testing.T) {
 // TestRenduDesFormesJumeauxSuitLeGolden : la copie du rendu de forme de ce fichier est celle de la
 // brique. Elle rend, pour le document de la brique, la forme en clair du golden et son empreinte.
 func TestRenduDesFormesJumeauxSuitLeGolden(t *testing.T) {
-	chemin := filepath.Join(racineDuDepot(t), cheminGoldenDeForme)
+	chemin := testutil.CheminBriqueFilm(t, cheminGoldenDeForme)
 	brut, err := os.ReadFile(chemin) //nolint:gosec // chemin fige dans le code
 	if err != nil {
 		t.Fatalf("golden de forme de la brique illisible (%s) : %v", chemin, err)

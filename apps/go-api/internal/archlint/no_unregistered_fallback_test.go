@@ -149,7 +149,7 @@ func TestToutReplinNommeEstAuRegistre(t *testing.T) {
 	var orphelins []string
 	fichiersVus := 0
 	for _, sous := range perimetreReplis {
-		parcourirGoProduction(t, filepath.Join(racine, sous), func(rel string, f *ast.File) {
+		parcourirGoProduction(t, cheminDuDepotOuFatal(t, racine, sous), func(rel string, f *ast.File) {
 			fichiersVus++
 			for _, id := range identifiantsDeclares(f) {
 				if !ressembleAUnRepli(id) || connus[rel][id] {
@@ -191,7 +191,7 @@ func TestToutSiteDuRegistreExiste(t *testing.T) {
 		for _, s := range filmreplis.Sites(r.Nom, r.Sites) {
 			contenu, ok := cache[s.Fichier]
 			if !ok {
-				b, err := os.ReadFile(filepath.Join(racine, filepath.FromSlash(s.Fichier))) //nolint:gosec // chemin issu du registre versionné
+				b, err := os.ReadFile(cheminDuDepotOuFatal(t, racine, s.Fichier)) //nolint:gosec // chemin issu du registre versionné
 				if err != nil {
 					t.Errorf("%s : le fichier %s n'existe plus (%v) — le repli a-t-il été converti ? "+
 						"Dans ce cas, RETIRER l'entrée du registre dans le même commit (D14 d)",
@@ -337,11 +337,11 @@ func parcourirGoProduction(t *testing.T, dir string, visite func(rel string, f *
 			t.Errorf("parse de %s : %v", chemin, err)
 			return nil
 		}
-		rel, errRel := filepath.Rel(racine, chemin)
+		rel, errRel := relDuDepot(racine, chemin)
 		if errRel != nil {
-			rel = chemin
+			rel = filepath.ToSlash(chemin)
 		}
-		visite(filepath.ToSlash(rel), f)
+		visite(rel, f)
 		return nil
 	})
 	if err != nil {

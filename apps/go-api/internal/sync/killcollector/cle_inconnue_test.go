@@ -117,12 +117,7 @@ func TestKillCollectorNEcartePasUnFilmACleConnue(t *testing.T) {
 // decompresse : recompresser pour le faire re-decompresser ne prouverait rien de plus.
 func bobineEnChunks(t *testing.T, court string, muter bool) []filmfetch.FilmChunk {
 	t.Helper()
-	racine, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot : %v", err)
-	}
-	dir := filepath.Join(racine, "libs", "film",
-		"replay", "testdata", "minifilm_"+court)
+	dir := testutil.CheminBriqueFilm(t, "replay", "testdata", "minifilm_"+court)
 	noms, err := filepath.Glob(filepath.Join(dir, "chunk_*.bin"))
 	if err != nil || len(noms) == 0 {
 		t.Fatalf("mini-bobine %s : aucun chunk lu (%v)", dir, err)

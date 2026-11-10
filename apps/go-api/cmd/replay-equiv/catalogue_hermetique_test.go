@@ -69,7 +69,10 @@ func TestCatalogueDuHarnaisExpliqueLesReferences(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dossier := dossierEquivalence(racine)
+	dossier, err := dossierEquivalence()
+	if err != nil {
+		t.Fatalf("dossier des references : %v", err)
+	}
 	faitsFichiers, err := filepath.Glob(filepath.Join(dossier, "*.facts.json"))
 	if err != nil || len(faitsFichiers) == 0 {
 		t.Fatalf("aucun fichier de faits sous %s (err=%v)", dossier, err)

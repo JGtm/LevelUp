@@ -7,7 +7,10 @@
 //	go run ./cmd/refresh_golden_fixture --gamertag JGtm [--match-id <UUID>]
 //
 // Si `--match-id` est omis, le tool prend le match le plus récent du joueur.
-// Le fixture est écrit dans `internal/games/halo_infinite/film/internal/grammar/testdata/v41_chunk_he.bin`.
+// Le fixture est écrit dans `internal/grammar/testdata/v41_chunk_he.bin` de la brique du décodeur de film,
+// dossier que le résolveur des briques tire de l'outil Go. L'outil n'écrit que dans une brique de la copie de
+// travail : si le dossier résolu est hors du dépôt (cache de modules), il refuse, et `--out` désigne alors la
+// cible.
 //
 // **Pré-requis** : refresh token OAuth du joueur dans le MultiUserTokenStore
 // (data/auth/watcher_tokens, source unique ADR 0023), et SPNKR_AZURE_CLIENT_ID
@@ -25,16 +28,27 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/briques"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/games/titleseams"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	go_sync "levelup/go-api/internal/sync"
 )
 
-const (
-	defaultFixturePath  = "../../libs/film/internal/grammar/testdata/v41_chunk_he.bin"
-	manifestFixturePath = "../../libs/film/internal/grammar/testdata/v41_film_manifest.json"
+// Fixtures par défaut, relatives à la brique du décodeur de film.
+var (
+	defaultFixtureElems  = []string{"internal", "grammar", "testdata", "v41_chunk_he.bin"}
+	manifestFixtureElems = []string{"internal", "grammar", "testdata", "v41_film_manifest.json"}
 )
+
+// cibleParDefaut rend le chemin d'une fixture de la brique du décodeur, après avoir vérifié que la brique est
+// dans le dépôt : un outil qui écrit ne suit jamais le résolveur dans le cache de modules.
+func cibleParDefaut(elems []string) (string, error) {
+	if err := briques.Modifiable("film"); err != nil {
+		return "", err
+	}
+	return briques.Chemin("film", elems...)
+}
 
 func main() {
 	// Seams title-owned (classifiers LUSR et famille objectif, provider des
@@ -45,19 +59,43 @@ func main() {
 	titleseams.RegisterAll("")
 	gamertag := flag.String("gamertag", "", "Gamertag pour résoudre le refresh token (MultiUserTokenStore)")
 	matchID := flag.String("match-id", "", "Match ID UUID à capturer (par défaut : dernier match du joueur)")
-	out := flag.String("out", defaultFixturePath, "Chemin de sortie du chunk binaire")
-	manifestOut := flag.String("manifest-out", manifestFixturePath, "Chemin de sortie du manifest JSON (optionnel)")
+	out := flag.String("out", "", "Chemin de sortie du chunk binaire (défaut : fixture de la brique du décodeur, dans le dépôt)")
+	manifestOut := flag.String("manifest-out", "", "Chemin de sortie du manifest JSON (défaut : fixture de la brique du décodeur ; vide explicite = aucun)")
 	flag.Parse()
+	explicites := map[string]bool{}
+	flag.Visit(func(f *flag.Flag) { explicites[f.Name] = true })
 
 	if strings.TrimSpace(*gamertag) == "" {
 		fmt.Fprintln(os.Stderr, "usage: refresh_golden_fixture --gamertag <GT> [--match-id <UUID>] [--out path]")
 		os.Exit(2)
 	}
 
+	if err := resoudreCibles(explicites, out, manifestOut); err != nil {
+		fmt.Fprintf(os.Stderr, "erreur: %v\n", err)
+		os.Exit(1)
+	}
+
 	if err := run(*gamertag, *matchID, *out, *manifestOut); err != nil {
 		fmt.Fprintf(os.Stderr, "erreur: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// resoudreCibles pose, pour chaque sortie non donnée en ligne de commande, la fixture de la brique du
+// décodeur résolue par [cibleParDefaut].
+func resoudreCibles(explicites map[string]bool, out, manifestOut *string) error {
+	var err error
+	if !explicites["out"] {
+		if *out, err = cibleParDefaut(defaultFixtureElems); err != nil {
+			return err
+		}
+	}
+	if !explicites["manifest-out"] {
+		if *manifestOut, err = cibleParDefaut(manifestFixtureElems); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func run(gamertag, matchID, outPath, manifestPath string) error {

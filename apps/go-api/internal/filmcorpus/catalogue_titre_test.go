@@ -31,6 +31,7 @@ import (
 	"reflect"
 	"testing"
 
+	"levelup/go-api/internal/briques"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/testutil"
@@ -43,8 +44,8 @@ var majInstantaneCatalogue = flag.Bool("update-catalogue-titre", false,
 
 const majInstantaneCatalogueEnv = "LEVELUP_UPDATE_CATALOGUE_TITRE"
 
-// cheminInstantaneCatalogue : l'instantane, depuis la racine du depot.
-var cheminInstantaneCatalogue = filepath.Join("libs", "film", "replay", "testdata", "golden_catalogue_titre.json")
+// cheminInstantaneCatalogue : l'instantane, relatif a la brique du decodeur (resolveur des briques).
+var cheminInstantaneCatalogue = filepath.Join("replay", "testdata", "golden_catalogue_titre.json")
 
 // texteEnFr fabrique le libelle d'un test dans les deux langues du parc, chaque langue presente,
 // vide comprise : le fil que le producteur pose.
@@ -171,10 +172,13 @@ func TestInstantaneDuCatalogueDuTitreEstFrais(t *testing.T) {
 		t.Fatalf("serialisation du catalogue : %v", err)
 	}
 	obtenu = append(obtenu, '\n')
-	chemin := filepath.Join(racineDuDepot(t), cheminInstantaneCatalogue)
+	chemin := testutil.CheminBriqueFilm(t, cheminInstantaneCatalogue)
 	if *majInstantaneCatalogue {
 		if os.Getenv(majInstantaneCatalogueEnv) == "" {
 			t.Skip("regeneration de l'instantane : " + majInstantaneCatalogueEnv + " non defini")
+		}
+		if err := briques.Modifiable("film"); err != nil {
+			t.Fatalf("regeneration de l'instantane : %v", err)
 		}
 		if err := os.WriteFile(chemin, obtenu, 0o600); err != nil {
 			t.Fatalf("ecriture de %s : %v", chemin, err)

@@ -337,8 +337,7 @@ func scanFrenchLabelLiterals(t *testing.T, internalRoot, dir string, compte map[
 		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		rel, _ := filepath.Rel(internalRoot, path)
-		rel = filepath.ToSlash(rel)
+		rel := relDuDepotOuFatal(t, internalRoot, path)
 		if strings.Contains(rel, "/migrations/") {
 			return nil // DDL + notes de migration — HORS PÉRIMÈTRE, cf. en-tête du fichier.
 		}

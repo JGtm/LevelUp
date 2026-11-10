@@ -50,8 +50,9 @@ import (
 	"levelup/go-api/internal/testutil"
 )
 
-// cheminTableProfil : le fichier de la table du lot 2.1, relatif a la racine du depot.
-var cheminTableProfil = filepath.Join("libs", "film", "internal", "profile", "profile_table.go")
+// cheminTableProfil : le fichier de la table du lot 2.1, relatif a la brique du decodeur (resolveur des
+// briques, testutil.CheminBriqueFilm).
+var cheminTableProfil = filepath.Join("internal", "profile", "profile_table.go")
 
 // tablesDuProfil : les sous-tables de la table, DANS L ORDRE ou `TableProfil()` les concatene,
 // avec le nombre de lignes mesure le 2026-09-16. Le compte est ecrit pour que l ajout d une
@@ -88,7 +89,7 @@ func TestCatalogueConformeALaTableDuLot21(t *testing.T) {
 	if err != nil {
 		t.Fatalf("racine du depot : %v", err)
 	}
-	table := lireTableProfil(t, filepath.Join(racine, cheminTableProfil))
+	table := lireTableProfil(t, testutil.CheminBriqueFilm(t, cheminTableProfil))
 	if len(table) != lignesAttenduesParTable() {
 		t.Fatalf("%d ligne(s) lue(s) dans %s, %d attendue(s) — l analyse de la table s est "+
 			"cassee, ou la table a bouge sans que le catalogue suive",

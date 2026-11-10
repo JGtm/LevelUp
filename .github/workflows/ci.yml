@@ -111,8 +111,10 @@ jobs:
   #            les tests Go et les lints web lisent des fichiers hors de leur dossier)
   #   croisee  le contrat OpenAPI (relie les deux piles) et les miroirs TypeScript que des tests
   #            Go relisent (parité des capacités, variations sonores, familles d'objectifs,
-  #            fixtures de contrat du rejeu), et les sources Go que des tests Vitest relisent
-  #            (archlint/ci_web_reads_go_test.go tient la liste) : touchent les deux piles
+  #            fixtures de contrat du rejeu), les sources Go que des tests Vitest relisent
+  #            (archlint/ci_web_reads_go_test.go tient la liste), et `apps/go-api/go.mod` : il porte la
+  #            version des briques dont l'instantané versionné des tests web est tiré
+  #            (cmd/film-web-snapshot, test de fraîcheur Go) : touchent les deux piles
   #   autre    tout le reste (.github/, scripts/, Makefile, docs/, config/, tools/, ...) : les
   #            tests Go et les lints web lisent des fichiers hors de leur dossier
   #   tous     au moins un fichier modifié (sinon, rien à classer : tout tourne)
@@ -165,6 +167,7 @@ jobs:
               - 'apps/go-api/cmd/server/boot_gate.go'
               - 'apps/go-api/internal/analysis/weapon_range.go'
               - 'apps/go-api/internal/testfixtures/testdata/cartes/nommage_zone_cas.json'
+              - 'apps/go-api/go.mod'
               - 'libs/film/replay/**'
               - 'libs/film/internal/grammar/**'
               - 'libs/film/killicon/data/**'
@@ -1093,6 +1096,10 @@ jobs:
           LEVELUP_DEMO_MODE: "true"
           # P3.4 (revue 2026-04-29) : flag actif en CI pour couvrir les chemins Prestige.
           PRESTIGE_ENABLED: "true"
+          # Les tests de la brique `libs/film` qui lisent le depot hote (catalogues de reference,
+          # sources du front : `internal/depottest`) le trouvent par cette variable : la CI les rejoue
+          # tous, sans dependre de la presence d'un `go.work`.
+          DECODEUR_FILM_RACINE_DONNEES: ${{ github.workspace }}
         run: |
           set -uo pipefail
           out=$(bash ../../scripts/ci_go_shard.sh "$LOT") || {

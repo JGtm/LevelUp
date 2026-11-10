@@ -44,15 +44,17 @@ package testutil
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
+
+	"levelup/go-api/internal/briques"
 )
 
-// ReplayChroniclePath : le fichier qui porte la chronique, depuis la racine du depot.
-func ReplayChroniclePath(repoRoot string) string {
-	return filepath.Join(repoRoot, "libs", "film", "replay", "document_chronicle.go")
+// ReplayChroniclePath : le fichier qui porte la chronique, dans la brique du decodeur de film
+// (resolveur [briques.Chemin]).
+func ReplayChroniclePath() (string, error) {
+	return briques.Chemin("film", "replay", "document_chronicle.go")
 }
 
 // chronicleHeaders : les trois formes d'en-tete attestees (cf. en-tete du fichier). Chacune
@@ -68,12 +70,11 @@ var chronicleHeaders = []*regexp.Regexp{
 // L'erreur est destinee a un t.Fatalf : une chronique illisible ou vide est un garde-rail
 // mort, pas un cas nominal a ignorer.
 func ReplayChronicleVersions() ([]int, error) {
-	root, err := RepoRoot()
+	path, err := ReplayChroniclePath()
 	if err != nil {
 		return nil, err
 	}
-	path := ReplayChroniclePath(root)
-	raw, err := os.ReadFile(path) //nolint:gosec // chemin deduit de la racine du depot
+	raw, err := os.ReadFile(path) //nolint:gosec // chemin rendu par le resolveur des briques
 	if err != nil {
 		return nil, fmt.Errorf("testutil: chronique du rejeu illisible (%s) : %w", path, err)
 	}

@@ -21,7 +21,6 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
-	"path/filepath"
 	"testing"
 )
 
@@ -36,8 +35,8 @@ var nomsDuProtocoleDuVerrou = []string{"soloFileName", "soloHolderFileName", "so
 
 func TestLeVerrouDeDecodageParleLeMemeProtocoleDesDeuxCotes(t *testing.T) {
 	racine := workspaceRoot(t)
-	ref := declarationsDuProtocole(t, filepath.Join(racine, filepath.FromSlash(cotesDuVerrou[0])))
-	autre := declarationsDuProtocole(t, filepath.Join(racine, filepath.FromSlash(cotesDuVerrou[1])))
+	ref := declarationsDuProtocole(t, cheminDuDepotOuFatal(t, racine, cotesDuVerrou[0]))
+	autre := declarationsDuProtocole(t, cheminDuDepotOuFatal(t, racine, cotesDuVerrou[1]))
 	for _, nom := range nomsDuProtocoleDuVerrou {
 		a, b := ref[nom], autre[nom]
 		if a == "" || b == "" {

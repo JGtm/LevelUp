@@ -82,7 +82,7 @@ func lecturesDesFaits(t *testing.T) (map[string][]lectureDesFaits, int) {
 	out := map[string][]lectureDesFaits{}
 	fichiers := 0
 	fset := token.NewFileSet()
-	err := filepath.WalkDir(filepath.Join(racine, filepath.FromSlash(racineDesFaits)),
+	err := filepath.WalkDir(cheminDuDepotOuFatal(t, racine, racineDesFaits),
 		func(chemin string, d os.DirEntry, errMarche error) error {
 			if errMarche != nil {
 				return errMarche
@@ -99,8 +99,7 @@ func lecturesDesFaits(t *testing.T) (map[string][]lectureDesFaits, int) {
 				return nil
 			}
 			fichiers++
-			rel, _ := filepath.Rel(racine, chemin)
-			rel = filepath.ToSlash(rel)
+			rel := relDuDepotOuFatal(t, racine, chemin)
 			for _, detail := range lecturesDuFichier(f) {
 				out[filepath.ToSlash(filepath.Dir(rel))] = append(out[filepath.ToSlash(filepath.Dir(rel))],
 					lectureDesFaits{fichier: rel, detail: detail})

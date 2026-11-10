@@ -33,10 +33,12 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/briques"
 )
 
 // modulePath est le chemin du module Go de l'API ; libsPrefix le préfixe d'import des briques
-// (dossier libs/ de la racine du dépôt : le chemin du module EST le chemin du dossier).
+// (le dossier d'une brique vient du résolveur des briques, pas du chemin du module).
 const (
 	modulePath      = "levelup/go-api"
 	libsPrefix      = "github.com/JGtm/LevelUp/libs/"
@@ -113,14 +115,14 @@ func TestGardeRailDeLicenceDetecteUneViolation(t *testing.T) {
 }
 
 // dossierDuPaquet rend le dossier d'un paquet des modules suivis : `levelup/go-api/…` sous la
-// racine du module, `…/libs/<brique>/…` sous `libs/<brique>` de la racine du dépôt (deux niveaux
-// au-dessus de `apps/go-api`).
-func dossierDuPaquet(racineModule, paquet string) string {
+// racine du module, `…/libs/<brique>/…` dans le dossier que le résolveur des briques tire de l'outil Go
+// pour la brique (espace de travail ou cache de modules).
+func dossierDuPaquet(racineModule, paquet string) (string, error) {
 	if reste, ok := strings.CutPrefix(paquet, libsPrefix); ok {
-		depot := filepath.Dir(filepath.Dir(racineModule))
-		return filepath.Join(depot, "libs", filepath.FromSlash(reste))
+		dir, _, err := briques.SurDisque("libs/" + reste)
+		return dir, err
 	}
-	return filepath.Join(racineModule, filepath.FromSlash(strings.TrimPrefix(paquet, modulePath+"/")))
+	return filepath.Join(racineModule, filepath.FromSlash(strings.TrimPrefix(paquet, modulePath+"/"))), nil
 }
 
 // estSuivi dit si un import vise un paquet d'un des modules dont on parcourt le graphe : le module
@@ -132,7 +134,10 @@ func estSuivi(chemin string) bool {
 // importsDuPaquet rend les imports d'un paquet qui visent l'un des modules suivis, tests exclus
 // (un test n'est pas linké dans le binaire distribué).
 func importsDuPaquet(racineModule, paquet string) ([]string, error) {
-	dir := dossierDuPaquet(racineModule, paquet)
+	dir, err := dossierDuPaquet(racineModule, paquet)
+	if err != nil {
+		return nil, err
+	}
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err

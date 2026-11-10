@@ -18,8 +18,18 @@ func referenceDuDepot(t testing.TB, nom string) string {
 	return filepath.Join(depottest.Racine(t), "data", "titles", "halo_infinite", "reference", nom)
 }
 
-// bornesDeCartes rend le chemin du catalogue des bornes de quantification (`map_quant_bounds.json`).
+// bornesDeCartes rend le chemin du catalogue des bornes de quantification (`map_quant_bounds.json`)
+// que la brique porte dans ses propres fixtures (`testdata/`) : les tests qui en ont besoin tournent
+// sans depot hote. Le catalogue LIVRE par l'hote est [bornesLivreesParLHote] ; le test
+// `TestLesBornesDeTestSontLeCatalogueLivre` garde les deux octet a octet.
 func bornesDeCartes(t testing.TB) string {
+	t.Helper()
+	return filepath.Join("testdata", "map_quant_bounds.json")
+}
+
+// bornesLivreesParLHote rend le chemin du catalogue des bornes tel que le depot hote le livre
+// (`data/titles/halo_infinite/reference/map_quant_bounds.json`) ; saute le test hors depot hote.
+func bornesLivreesParLHote(t testing.TB) string {
 	t.Helper()
 	return referenceDuDepot(t, "map_quant_bounds.json")
 }

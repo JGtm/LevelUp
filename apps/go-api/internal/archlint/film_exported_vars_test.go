@@ -137,12 +137,11 @@ func mesurerVarsExportees(t *testing.T) (map[string]bool, int) {
 	trouvees := map[string]bool{}
 	fichiers := 0
 	for _, r := range racines {
-		err := filepath.WalkDir(filepath.Join(racine, filepath.FromSlash(r)), func(p string, d fs.DirEntry, err error) error {
+		err := filepath.WalkDir(cheminDuDepotOuFatal(t, racine, r), func(p string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-			rel, _ := filepath.Rel(racine, p)
-			rel = filepath.ToSlash(rel)
+			rel := relDuDepotOuFatal(t, racine, p)
 			if d.IsDir() {
 				if rel == racineBriqueFilm+"/research" {
 					return filepath.SkipDir

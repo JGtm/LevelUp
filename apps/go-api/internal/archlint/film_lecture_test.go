@@ -92,7 +92,7 @@ func importeurInterditDeLaLecture(rel string) bool {
 // méthode ou variable déclarée au niveau du paquet, sous la forme `fichier:ligne nom`.
 func declarationsDeLogique(t *testing.T, racineAPI, rel string) []string {
 	t.Helper()
-	dir := filepath.Join(racineAPI, filepath.FromSlash(rel))
+	dir := cheminDuDepotOuFatal(t, racineAPI, rel)
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("paquet %s introuvable : %v", rel, err)

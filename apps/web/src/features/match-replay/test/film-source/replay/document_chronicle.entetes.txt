@@ -1,0 +1,113 @@
+// v2 (2026-08-02, lot 3.1/3.2) : les trois tables de libellés deviennent BILINGUES
+// v3 (2026-08-13, plan parité lot 2) : le lancer de grenade publie son LIEN vers le
+// v4 (2026-08-14, plan parité lot 7.2) : le document publie son ORIGINE (`originMs`) —
+// v5 (2026-08-14, plan parité lot 7.1) : le document publie `neutralDeaths` — le TYPE des
+// v6 (2026-08-14, plan PLAN_RANG_CAPACITE_I48 étape 1.2) : la capacité d'armure CHANGE DE
+// v7 (2026-08-16, plan PLAN_EQUIPEMENT_TI37 phase 1) : le document publie
+// v8 (2026-08-16, plan PLAN_GRAPPIN_LIGNE phase 1) : le document publie `grappleLines` —
+// v9 (2026-08-18, plan PLAN_POSES_EQUIPEMENT_PUBLICATION phase 2) : le document publie
+// v10 (2026-08-18, plan PLAN_ORIGINE_POSES_ET_FAMILLES phase G) : chaque pose porte son
+// v11 (2026-08-17, plan PLAN_ARMES_AU_SOL_2E_LECTURE phase 3) : `weaponPads` et `padPickups` —
+// v12 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot A phase 1) : `scoreTimeline` — LE
+// v13 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot E phase 1) : `Point.p` — LE
+// v14 (2026-08-18, plan PLAN_OBJECTIFS_VIVANTS_2E_LECTURE phase 1 item 1.3) : `flagCarries` — LA VIE DE
+// v15 (2026-08-18, plan PLAN_DRAPEAU_OBJET phase 2) : AUCUN CHAMP NEUF — c'est le CONTENU de
+// v16 (2026-08-18, plan PLAN_EXPLOITATION_REGISTRE_FILM lot C-bis phase 2b) : `zoneStates` — L'ETAT
+// v17 (2026-08-19, plan PLAN_POWERUP_SOCLE_CATALYST phase 8) : AUCUN CHAMP NEUF À LA RACINE —
+// v18 (2026-08-19, plan PLAN_EXPLOITATION_REGISTRE_FILM lot C-ter volet 3) : `zoneStates[].gauge`
+// v19 (2026-08-25, lot 1 « lecture vide ») : `inventory[].empty` — POURQUOI cette lecture ne
+// v20 (2026-08-25, lot 4.4 du suivi delta de l'inventaire) : `grenadeReads` — LES GRENADES
+// CE QUE LA VERSION 20 NE PORTE PAS, ET POURQUOI C'EST ECRIT ICI. Les MUNITIONS delta ont ete
+// CE QUE LA VERSION 21 PORTE, ET POURQUOI ELLE MONTE ALORS QU'AUCUNE CLE NE BOUGE. Le
+// CE QUE LA VERSION 21 NE PORTE PAS. Le portage du CRANE d'Oddball : son identite est etablie
+// CE QUE LA VERSION 22 PORTE, ET POURQUOI ELLE MONTE. La COURONNE VIP est desormais publiee
+// v14 (drapeau), v16 (zones) et v21 (proprietaire de colline) : la reprise du backfill se fait
+// CE QUE LA VERSION 23 PORTE, ET POURQUOI ELLE MONTE. Le PORTEUR DU CRANE d'Oddball est desormais
+// CE QUE LA VERSION 24 PORTE, ET POURQUOI ELLE MONTE. `equipmentEpisodes[].k`/`.a` — LES
+// CE QUE LA VERSION 25 PORTE. Les PRISES ET LES LÂCHERS D'ARME (`weaponChanges`), datés à la
+// CE QUE LA VERSION 25 NE PORTE PAS. Le SOCLE d'origine d'une prise : trois hypothèses de lien
+// CE QUE LA VERSION 26 PORTE. Les RAMASSAGES ET LES CONSOMMATIONS D'ÉQUIPEMENT
+// CE QUE LA VERSION 26 NE PORTE PAS. Le SOCLE d'où vient l'équipement ramassé — même impasse
+// CE QUE LA VERSION 27 PORTE, ET CE QU'ELLE RETIRE. Les ARMES AU SOL individuelles
+// CE QUE LA VERSION 28 PORTE, ET CE QU'ELLE REFUSE. Les POSES D'ÉQUIPEMENT gagnent leur FIN
+// SCHEMA 29 (2026-08-31) — LA LUNETTE. `Point.S` publie le palier de visee a la lunette, lu
+// CE QUE LA VERSION 30 PORTE. Le RAMASSAGE NATIF (`pickups`) : l'événement `biped_pickup` de
+// CE QUE LA VERSION 30 LÈVE. `padPickups` cesse d'être un intervalle anonyme de vingt
+// CE QUE LA VERSION 30 REFUSE. De remplacer `weaponChanges` : les deux canaux coexistent parce
+// CE QUE LA VERSION 31 PORTE : LE NOM DE L'OBJET RAMASSÉ (`pickups[].family`), et une nature
+// CE QUE LA VERSION 31 TRANCHE. `kind` distinguait l'arme du reste ; il distingue désormais
+// CE QUE LA VERSION 31 REFUSE. De descendre un libellé : `family` est un SLUG, la traduction
+// CE QUE LA VERSION 33 PORTE, ET CE QU'ELLE REFUSE. L'ARMEMENT DE LA BOMBE d'Assaut
+// CE QUE LA VERSION 34 PORTE. Le PORTEUR DE LA BOMBE d'Assaut (`bombCarries`) : les périodes
+// CE QUE LA VERSION 35 PORTE. LE RETOUR DU DRAPEAU DE CTF, dans ses deux moitiés. (1) Le retour
+// CE QUE LA VERSION 36 PORTE : L'IDENTITÉ DES VIES (lot du 2026-09-02, retour user « joueurs
+// CE QUE LA VERSION 37 PORTE. LE COUP D'ENVOI, DATE PAR LE FILM (`t0FilmMs`) : l'instant ou la
+// CE QUE LA VERSION 38 PORTE : LA LECTURE FIABLE DES USAGES D'EQUIPEMENT (lots P1, P1bis et
+// CE QUE LA VERSION 39 PORTE, ET CE QU'ELLE REFUSE — CINQ APPORTS EN UNE SEULE MONTÉE. Deux
+// v40 (2026-09-06) : LE PONT D'IDENTITÉ EST COMPLÉTÉ PAR LE TRIPLET, et la version monte pour
+// v41 (2026-09-06) : TROIS CALQUES RATTRAPENT « UNE TRACK = UNE VIE ». Aucun champ n'est
+// v42 (2026-09-06) : LE DRAPEAU A ENFIN DES PORTEURS. Aucun champ n'est ajouté, aucune clé ne
+// v43 (2026-09-06) : UNE VIE ANONYME N'EST PAS UNE ABSENCE. Aucun champ n'est ajouté ; c'est le
+// v44 (2026-09-06) : LA MANCHE DÉCLARÉE D'UN ENREGISTREMENT EST CONFRONTÉE AU TEMPS. Aucun champ
+// v45 (2026-09-06) : UN TROU DE RÉPLICATION N'AMPUTE PLUS UNE DURÉE MESURÉE. Aucun champ n'est
+// v46 (2026-09-06) : UN JOUEUR NE PORTE PLUS SON PROPRE DRAPEAU. Aucun champ n'est ajouté ;
+// v47 (2026-09-07) : AUCUNE VIE PUBLIEE NE RESTE SANS NOM, ET LES LECTEURS LISENT LA PISTE SOUS
+// v48 (2026-09-07) : LE PONT D'IDENTITE CESSE D'ETRE MUET SUR LES FILMS DONT LA PREMIERE FIN DE
+// v49 (2026-09-08, lot M1b — décision utilisateur ferme, « corriger le décalage ») : le
+// v50 (2026-09-08, lot P2 — REGISTRE D'IDENTITÉ DES JOUEURS) : le document publie POUR LA
+// v51 (2026-09-10, lot 4.3 — LE TABLEAU DE L'API NOMME LES CORPS HORS TABLE).
+// v52 (2026-09-11, lot B — LES CORRECTIFS DU DÉCODEUR REPRIS DU FORK). Trois changements de
+// v53 (2026-09-12, lot B-bis — LE BIT DE TROP PEU DE LA PORTE D'i0). UNE seule CAUSE, sur une
+// v54 (2026-09-12, lot G.2bis) — LA VERSION DU FILM EST LUE, PLUS DEVINEE
+// v55 (2026-09-14, lot 1.0.4 du PLAN_DECODEUR_FILM) : LE REFUS DE PUBLICATION D'UNE VIE CESSE
+// v56 (2026-09-14, lot 1.6 du PLAN_DECODEUR_FILM) : LE REGISTRE D'IDENTITE PREND LA TABLE DU
+// v57 (2026-09-14, lot 1.7 du PLAN_DECODEUR_FILM) : L'EQUIPE DE CHAQUE JOUEUR EST DANS LE FILM,
+// v58 (2026-09-14, lot 1.9.0 du PLAN_DECODEUR_FILM) : L'ARTEFACT DIT QUELLE PART DE LUI VIENT
+// v59 (2026-09-15, lot 1.9.1 du PLAN_DECODEUR_FILM) : L'ORIGINE D'UNE POSE SE LIT DANS LE FILM,
+// v60 (2026-09-17, vague 2 de la famille 1.9 du PLAN_DECODEUR_FILM — lots 1.9.13, 1.9.10, 1.9.9,
+// v61 (2026-09-17, lot 2.6 du PLAN_DECODEUR_FILM) : L'ARTEFACT DIT SOUS QUELLES REVISIONS IL A
+// v62 (2026-09-17, lot 4.2.1 du PLAN_DECODEUR_FILM, jalon M4) : L'ARTEFACT DIT SOUS QUELLE
+// v63 (2026-09-19, post-chantier lot 5.1, montee UNIQUE de la branche `feat/decfilm-51`) : DEUX
+// v66 (2026-09-21, post-chantier lots 5.9.4 et 5.9.5, decision utilisateur) : LE SPRINT, LU —
+// v65 (2026-09-21, post-chantier lot 5.3.6, decision utilisateur) : LES ETATS DE MOUVEMENT DU
+// v64 (2026-09-20, post-chantier lot 5.2-A, demandes utilisateur du 2026-09-19) : LA COULEUR DE
+// v67 (2026-09-21, post-chantier lot 5.10, arbitrage utilisateur) : L OCCUPATION D UN VEHICULE
+// v68 (2026-09-22, post-chantier lot 5.22.4, verdict Theater de l utilisateur) : L ACTION DE
+// v69 (2026-09-24, vague C des retours du rejeu) : UNE SEULE MONTEE POUR QUATRE LOTS — M1 (positions), M5 (score a sens unique et fil des
+// v70 (2026-09-24, vague D des retours du rejeu) : UNE SEULE MONTEE POUR LES LOTS DE LA VAGUE — M2 (equipes, presence et place lues dans
+// v71 (2026-09-24, lot M4b de la campagne « retours rejeu ») : LE TIR CONTINU,
+// v72 (2026-09-26, jalon J3 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, lot J3.3, decision
+// v73 (2026-09-26, jalon J9 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, constats RB1-1, RB1-2,
+// v74 (2026-09-27, jalon J5 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, lot J5.5 ; constats GB-1,
+// v75 (2026-09-27, jalon J8 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25 ; constats GA1-2, RB2-5,
+// v76 (2026-09-27, jalon J10 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, lot J10.7 ; constats GB-3, RA2-5, RB2-6, RB2-7, GA1-4, GA1-5 et faiblesse 9 de
+// v77 (2026-10-02, chantier « Falcon de Behemoth », handoff HANDOFF_RETOURS_REJEU_2026-09-25 §3.1 et
+// v78 (2026-10-04, rejeu « vies de bots sans identite ») : DEUX VIES DE BOTS ANONYMES NOMMEES. La
+// v79 (2026-10-05, rejeu « cercle de retour du drapeau », lot L1) : LA BASE ET LE CAMP DE CHAQUE
+// v80 (2026-10-06, rejeu « toute entree du roster a l equipe que le film ecrit ») : L EQUIPE D UN
+// v81 (2026-10-07, rejeu « aucune fiche en trop », phase D du lot des equipes) : UNE EQUIPE A
+// v82 (2026-10-07, zones a l etat initial) : UNE ZONE TENUE DES LE COUP D ENVOI SE PUBLIE TENUE DES
+// v84 (2026-10-07, proprietaire des zones par le nom) : LE CANAL DE PROPRIETE D UNE ZONE EST DESIGNE
+// v86 (2026-10-07, pousseur et colline par le nom) : LE POUSSEUR D UNE ZONE ET LE PROPRIETAIRE D UNE
+// v87 (2026-10-07, representation intermediaire 2.7.c : killsource sur la marche des trames, kill-events
+// v88 (2026-10-07, lot des arrets de la vue B : cinq composants et correctif D9) : LES MAINS NUES
+// v89 (2026-10-08, representation intermediaire 2.7.d : positions et objets du monde derriere la
+// v90 (2026-10-08, lot `feat/aj-film`, points 11 et 18 des ajustements, fusionne apres le lot des
+// v91 (2026-10-09, lot `feat/aj-needler` des ajustements) : UNE SEULE PRISE DE SOCLE PAR REAPPARITION
+// v92 (2026-10-09, lot `feat/koth-colline`, signalement du user sur son 2v2 Roi de la colline) : LA
+// v93 (2026-10-09, representation intermediaire 2.7.d1, `grammar-2026-10-09.3`) : L ETAT COMPLET DU
+// v94 (2026-10-14, lot F, `grammar-2026-10-14`) : LES
+// v95 (2026-10-14, lot « équipement porté »,
+// v96 (2026-10-15, lot « équipement porté », `grammar-2026-10-15`, demande du user : « si on a
+// v97 (2026-10-15, branche `feat/ri-ecart-108`,
+// v98 (2026-10-16, intégration groupée des lots film du 15/10, branche `feat/integ-film` : « faille à
+// v99 (2026-10-17, « vies sans identite ») : contenu
+// v100 (2026-10-19, correctif des vehicules d arene, suite de l etat des lieux du 2026-10-19) : contenu
+// v101 (2026-10-21, controles de la v8 : controle n° 8, BTB `4f77afc1`, et controle n° 24, grenades
+// v102 (2026-10-22, lot detonations, suite du controle n° 24 des controles v8 : des lancers de
+// v103 (2026-10-22, lot detonations, item 2 : ramassage de power-up date). Aucun champ neuf ; le
+// v104 (2026-10-25, lot impact des projectiles explosifs). Un champ neuf `projectiles[].shot` et
+// v105 (2026-10-28, lot objets engendres). Le capteur, le traqueur, l ecran occultant et le champ de
+// v106 (2026-10-28, lot durees d effets). Le rejeu dessinait
+// v107 (2026-11-08, fin de vie a la mort ecrite ; equipement porte : l identite se lit sur l objet).
+// v108 (2026-11-09, tourelle fixe generique ; slots sans creation). Aucun champ neuf : le CONTENU change.

@@ -13,7 +13,6 @@ package replaybuild
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -26,12 +25,7 @@ import (
 // bobineKillsource000d5950 : la mini-bobine versionnee du paquet `killsource` (film 000d5950, Cliffhanger).
 func bobineKillsource000d5950(t *testing.T) *decfilm.Film {
 	t.Helper()
-	racine, err := testutil.RepoRoot()
-	if err != nil {
-		t.Fatalf("racine du depot : %v", err)
-	}
-	dir := filepath.Join(racine, "libs", "film",
-		"internal", "facts", "killsource", "testdata", "minibobine_000d5950")
+	dir := testutil.CheminBriqueFilm(t, "internal", "facts", "killsource", "testdata", "minibobine_000d5950")
 	film, err := decfilm.LoadDir(dir, nil)
 	if err != nil {
 		t.Fatalf("mini-bobine illisible sous %s : %v", dir, err)
