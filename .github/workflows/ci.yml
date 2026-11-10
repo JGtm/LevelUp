@@ -1093,6 +1093,10 @@ jobs:
           LEVELUP_DEMO_MODE: "true"
           # P3.4 (revue 2026-04-29) : flag actif en CI pour couvrir les chemins Prestige.
           PRESTIGE_ENABLED: "true"
+          # Les tests de la brique `libs/film` qui lisent le depot hote (catalogues de reference,
+          # sources du front : `internal/depottest`) le trouvent par cette variable : la CI les rejoue
+          # tous, sans dependre de la presence d'un `go.work`.
+          DECODEUR_FILM_RACINE_DONNEES: ${{ github.workspace }}
         run: |
           set -uo pipefail
           out=$(bash ../../scripts/ci_go_shard.sh "$LOT") || {

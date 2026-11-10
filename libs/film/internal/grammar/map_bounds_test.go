@@ -1,6 +1,7 @@
 package grammar
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
@@ -77,9 +78,9 @@ func TestScanFilmBipedPositionsRefusesWithoutBounds(t *testing.T) {
 
 // TestMapQuantCatalogShipped vérifie le catalogue RÉELLEMENT livré : la largeur d'axe
 // déduite des bornes doit être celle stockée (donc celle mesurée dans les films). Le test
-// est ignoré si le catalogue n'est pas dans l'arbre courant (worktree sans data/).
+// est ignoré si le catalogue n'est pas dans l'arbre courant (worktree sans data/) ou hors dépôt hôte.
 func TestMapQuantCatalogShipped(t *testing.T) {
-	path := bornesDeCartes(t)
+	path := bornesLivreesParLHote(t)
 	if _, err := os.Stat(path); err != nil {
 		t.Skip("catalogue de bornes absent de cet arbre")
 	}
@@ -106,5 +107,23 @@ func TestMapQuantCatalogShipped(t *testing.T) {
 				t.Errorf("%s axe %d : quantum %.6f hors de ]1/120 ; 1/60]", name, ax, q)
 			}
 		}
+	}
+}
+
+// TestLesBornesDeTestSontLeCatalogueLivre : la copie que la brique porte dans `testdata/` (lue par
+// les tests qui ont besoin des bornes de carte) est, octet a octet, le catalogue que l'hote livre.
+// Une regeneration du catalogue de l'hote qui ne remet pas la copie a jour rougit ici. Hors depot
+// hote, il n'y a rien a comparer : le test saute.
+func TestLesBornesDeTestSontLeCatalogueLivre(t *testing.T) {
+	livre, err := os.ReadFile(bornesLivreesParLHote(t))
+	if err != nil {
+		t.Skipf("catalogue de bornes absent du depot hote : %v", err)
+	}
+	copie, err := os.ReadFile(bornesDeCartes(t))
+	if err != nil {
+		t.Fatalf("copie de test illisible : %v", err)
+	}
+	if !bytes.Equal(livre, copie) {
+		t.Errorf("%s differe du catalogue livre par l'hote : recopier le catalogue dans testdata/", bornesDeCartes(t))
 	}
 }
