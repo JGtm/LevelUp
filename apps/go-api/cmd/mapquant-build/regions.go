@@ -1,6 +1,13 @@
 package main
 
 // regions.go : la TABLE PAR INDEX DE RÉGION d'une entrée du catalogue.
+//
+// Un film nomme la région d'une position par un index, et `FUN_14076e524` lit les trois axes aux
+// largeurs de CETTE région. L'entrée porte donc toutes les régions de compression de la carte,
+// dans l'ordre du bloc structure-BSP du tag de niveau (`himap.RegionsBSPLocales` pour un module
+// qui porte ses sbsp, `himap.RegionsBSPExternes` sinon), chacune avec ses bornes et ses largeurs.
+// Les champs historiques de l'entrée (`min`, `max`, `axisWidths`, `region`) restent ceux de la
+// région jouée.
 
 import (
 	"fmt"
@@ -61,4 +68,27 @@ func poserLesRegions(e *decfilm.MapQuantEntry, regions []himap.BSP, jouee int) e
 	slog.Info("table des régions", "module", e.Module, "regions", len(regions), "invalides", invalides,
 		"jouee", jouee, "indexBits", decfilm.LargeurIndexDePlage(len(regions)))
 	return nil
+}
+
+// poserLesRegionsLocales range la table d'un module qui porte ses propres sbsp ; `q` est le BSP de
+// déquantification que rend `himap.BSPQuantification`, qui doit être la région 0 de la table.
+func poserLesRegionsLocales(e *decfilm.MapQuantEntry, modulePath string, q himap.BSP) error {
+	regions, err := himap.RegionsBSPLocales(modulePath)
+	if err != nil {
+		return err
+	}
+	if regions[0].GlobalID != q.GlobalID {
+		return fmt.Errorf("la région 0 de la table (%08x) n'est pas le BSP de déquantification (%08x)",
+			regions[0].GlobalID, q.GlobalID)
+	}
+	return poserLesRegions(e, regions, 0)
+}
+
+// poserLesRegionsExternes range la table d'une carte dont les régions vivent hors de son module.
+func poserLesRegionsExternes(e *decfilm.MapQuantEntry, regions []himap.RegionExterne, jouee int) error {
+	bsps := make([]himap.BSP, len(regions))
+	for i, r := range regions {
+		bsps[i] = r.BSP
+	}
+	return poserLesRegions(e, bsps, jouee)
 }

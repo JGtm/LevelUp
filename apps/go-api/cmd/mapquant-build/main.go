@@ -5,14 +5,7 @@
 // Le film ne porte que des indices de quantum ; les bornes (`world bounds x/y/z` du tag sbsp
 // de la RÉGION JOUÉE de la carte, la 0 sauf déclaration, cf. `himap.BSPQuantification`) ne vivent
 // que dans le module de la carte. Sans elles, aucune coordonnée monde n'est produite (refus
-// explicite côté décodeur).
-//
-// L'entrée porte aussi la TABLE PAR INDEX DE RÉGION (`regions`) : toutes les régions de
-// compression de la carte, dans l'ordre du bloc structure-BSP du tag de niveau, chacune avec ses
-// bornes et ses largeurs d'axe. Un film nomme la région d'une position par un index, et
-// `FUN_14076e524` lit les trois axes aux largeurs de CETTE région (`himap.RegionsBSPLocales` pour
-// un module qui porte ses sbsp, `himap.RegionsBSPExternes` sinon). Les champs historiques
-// (`min`, `max`, `axisWidths`, `region`) restent ceux de la région jouée.
+// explicite côté décodeur). Chaque entrée porte aussi la table par index de région (regions.go).
 //
 // Le lien nom de carte affiché -> dossier de module est déclaré ici, EXPLICITEMENT, et
 // n'est retenu que lorsqu'il est établi hors de toute mesure (identité du nom, ou preuve
@@ -380,11 +373,7 @@ func entreeRegionExterne(name, mod, modulePath, levels string, region uint32) (d
 		e.Max[ax] = float32(b.Bounds.Max[ax])
 		e.AxisWidths[ax] = uint(w[ax])
 	}
-	bsps := make([]himap.BSP, len(regions))
-	for i, r := range regions {
-		bsps[i] = r.BSP
-	}
-	if err := poserLesRegions(&e, bsps, int(region)); err != nil {
+	if err := poserLesRegionsExternes(&e, regions, int(region)); err != nil {
 		return decfilm.MapQuantEntry{}, err
 	}
 	slog.Info("bornes lues (régions externes)", "carte", name, "module", mod,
@@ -505,14 +494,7 @@ func main() {
 			e.Max[ax] = float32(q.Bounds.Max[ax])
 			e.AxisWidths[ax] = uint(w[ax])
 		}
-		regions, err := himap.RegionsBSPLocales(mods[0])
-		if err == nil {
-			err = poserLesRegions(&e, regions, 0)
-		}
-		if err == nil && regions[0].GlobalID != q.GlobalID {
-			err = fmt.Errorf("la région 0 de la table (%08x) n'est pas le BSP de déquantification (%08x)", regions[0].GlobalID, q.GlobalID)
-		}
-		if err != nil {
+		if err := poserLesRegionsLocales(&e, mods[0], q); err != nil {
 			slog.Error("table des régions", "err", err, "carte", name, "module", mod)
 			missing++
 			continue
