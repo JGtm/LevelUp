@@ -87,16 +87,20 @@ const vehicleTurretSlotReach = 2
 // LA NAISSANCE COMMUNE, TEMOIN INDEPENDANT DU VOISINAGE DE SLOT (revue adverse du lot M4a, F5).
 // Une piece montee et son chassis sont crees ENSEMBLE : MESURE du 2026-09-23 sur les 111 documents
 // du parc, 141 pieces posees sur 141 — naissances au meme point (ecart 0,0 m, maximum 0,0 m) et au
-// meme instant (ecart <= 1 frame). Un voisin de slot qui n est pas ne avec la piece n est PAS son
+// meme instant (ecart <= 100 ms). Un voisin de slot qui n est pas ne avec la piece n est PAS son
 // porteur : le poser la ferait tirer depuis un autre vehicule. Les deux tolerances sont le
 // parametre du repli `repli_tourelle_porteur_voisin_de_slot` (meme registre, meme critere de
 // retrait) ; la distance ne se juge que si les DEUX naissances sont lues.
 const (
-	vehicleTurretBirthFrames = 1
+	// vehicleTurretBirthMS est l ecart maximal de naissance, en millisecondes, entre une piece et son
+	// porteur sur la grille du document : il se convertit en frames avec le pas du document
+	// ([framesOfMS]), si bien que le verdict ne depend pas de la cadence.
+	vehicleTurretBirthMS     = 100
 	vehicleTurretBirthMeters = 1.0
-	// vehicleTurretBirthUS : la meme tolerance que `vehicleTurretBirthFrames` sur l'horloge des records
-	// (une frame de grille d'ecart peut valoir deux pas : 200 ms ; memes bornes, memes temoins).
-	vehicleTurretBirthUS = int64(vehicleTurretBirthFrames+1) * DefaultFrameIntervalMS * 1000
+	// vehicleTurretBirthUS : la meme tolerance sur l horloge BRUTE des records, qui n a pas de grille.
+	// Un ecart d une frame de grille peut valoir deux pas (la quantification joue dans les deux
+	// sens) : 200 ms, soit le double de la tolerance de la grille ; memes bornes, memes temoins.
+	vehicleTurretBirthUS = 2 * vehicleTurretBirthMS * 1000
 )
 
 // vehicleTurretOf rend la piece montee d une vie, ou faux si la vie n en est pas une.
@@ -149,7 +153,12 @@ func poseTurretsOnCarriers(
 	tracks []VehicleTrack, anchors vehicleBoardingAnchors, fb *fallback.Compteur,
 ) turretTally {
 	var tally turretTally
-	bySlot := vehicleTracksBySlot(tracks)
+	search := turretSearch{
+		tracks: tracks, bySlot: vehicleTracksBySlot(tracks), fb: fb,
+		// La grille du calque est celle de l horloge que portent les ancres ; sans echelle (0), le
+		// pas de construction.
+		birthFrames: framesOfMS(vehicleTurretBirthMS, int(anchors.clock.step/1000)),
+	}
 	for i := range tracks {
 		spec, ok := vehicleTurretOf(tracks[i])
 		if !ok {
@@ -157,7 +166,7 @@ func poseTurretsOnCarriers(
 		}
 		tally.turrets++
 		tracks[i].Part = VehiclePartTurret
-		c, ok, mismatch := carrierOfTurret(tracks, bySlot, i, spec, fb)
+		c, ok, mismatch := search.carrierOfTurret(i, spec)
 		if mismatch {
 			tally.birthMismatch++
 		}
@@ -187,6 +196,15 @@ func vehicleTracksBySlot(tracks []VehicleTrack) map[uint32][]int {
 	return out
 }
 
+// turretSearch porte ce que la recherche d un porteur lit : les vies, leur index par slot, la
+// tolerance de naissance en frames du pas courant et le compteur de replis.
+type turretSearch struct {
+	tracks      []VehicleTrack
+	bySlot      map[uint32][]int
+	birthFrames int
+	fb          *fallback.Compteur
+}
+
 // carrierOfTurret rend le rang du porteur de la piece `i`, par le REPLI du voisin de slot. Le
 // troisieme retour dit qu un voisin de la bonne famille, present au meme moment, a ete REFUSE
 // parce qu il n est pas ne avec la piece (`vehicleBornTogether`).
@@ -194,9 +212,8 @@ func vehicleTracksBySlot(tracks []VehicleTrack) map[uint32][]int {
 // LE REPLI SE COMPTE A CHAQUE PORTEUR QU IL DECIDE : c est lui, et non une lecture, qui dit
 // « ce vehicule porte cette tourelle ». Une piece sans candidat n est pas un declenchement : le
 // repli n a rien decide, et la couverture la compte a part (`turrets - turretsOnCarrier`).
-func carrierOfTurret(
-	tracks []VehicleTrack, bySlot map[uint32][]int, i int, spec vehicleTurret, fb *fallback.Compteur,
-) (carrier int, found, birthMismatch bool) {
+func (s turretSearch) carrierOfTurret(i int, spec vehicleTurret) (carrier int, found, birthMismatch bool) {
+	tracks, bySlot, fb := s.tracks, s.bySlot, s.fb
 	t := tracks[i]
 	for d := uint32(1); d <= vehicleTurretSlotReach; d++ {
 		for _, c := range bySlot[t.Slot+d] {
@@ -204,7 +221,7 @@ func carrierOfTurret(
 			if cand.Part != "" || cand.Family != spec.carrier || !vehicleWindowsOverlap(t, cand) {
 				continue
 			}
-			if !vehicleBornTogether(t, cand) {
+			if !vehicleBornTogether(t, cand, s.birthFrames) {
 				birthMismatch = true
 				continue
 			}
@@ -215,11 +232,12 @@ func carrierOfTurret(
 	return 0, false, birthMismatch
 }
 
-// vehicleBornTogether dit si deux vies sont nees ensemble : au meme instant, et au meme point
-// quand les deux naissances sont lues (cf. `vehicleTurretBirthFrames`).
-func vehicleBornTogether(a, b VehicleTrack) bool {
+// vehicleBornTogether dit si deux vies sont nees ensemble : a `birthFrames` frames au plus l une
+// de l autre ([vehicleTurretBirthMS] converti avec le pas du document), et au meme point quand les
+// deux naissances sont lues.
+func vehicleBornTogether(a, b VehicleTrack, birthFrames int) bool {
 	dt := a.T0 - b.T0
-	if dt < -vehicleTurretBirthFrames || dt > vehicleTurretBirthFrames {
+	if dt < -birthFrames || dt > birthFrames {
 		return false
 	}
 	if a.Spawn == nil || b.Spawn == nil {
@@ -236,7 +254,7 @@ func memePointDeNaissance(dx, dy float64) bool {
 }
 
 // porteurDUnePiece trouve, parmi les records de creation qui tiennent les slots voisins, le chassis qui
-// porte la piece montee `piece` : meme regle que [carrierOfTurret] sur les records de la passe des
+// porte la piece montee `piece` : meme regle que [turretSearch.carrierOfTurret] sur les records de la passe des
 // positions (qui n'a pas de document) — slot +1 puis +2 ([vehicleTurretSlotReach]), famille attendue,
 // jamais une autre piece, nee avec elle. `creationA` rend le record qui tient un slot a l'instant demande.
 func porteurDUnePiece(creationA func(uint32) (types.EquipmentCreation, bool), piece types.EquipmentCreation,
@@ -293,7 +311,7 @@ func vehicleWindowsOverlap(a, b VehicleTrack) bool {
 //
 // LE REFUS « PORTEUR NON PILOTABLE » A ETE RETIRE LE 2026-09-24 (revue adverse du lot M7b,
 // RR-M7b-04) : depuis que le Falcon est pilotable, aucune piece de `vehicleTurretByChassis` n a
-// de porteur non pilotable, et `carrierOfTurret` n elit qu un porteur de la famille que la table
+// de porteur non pilotable, et `turretSearch.carrierOfTurret` n elit qu un porteur de la famille que la table
 // attend — la branche ne pouvait plus s ouvrir. L invariant vit dans
 // `TestPiecesMonteesOntUnPorteurPilotable` : une piece ajoutee a un Pelican, un Phantom ou un Skiff
 // le fait rougir, et c est une DECISION a ecrire.

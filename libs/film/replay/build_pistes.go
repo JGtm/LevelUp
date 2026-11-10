@@ -208,7 +208,7 @@ func (a *assemblage) poserTirsProjectilesEtGrenades() {
 			// repare pas la dequantification qui la cause.
 			slog.InfoContext(a.ctx, "rejeu : trajectoires de projectile coupees a un pas impossible",
 				"match_id", a.matchID, "tronquees", projTronquees, "pistes", len(a.opt.Projectiles),
-				"seuil_m", projectileMaxStepM)
+				"seuil_mps", projectileMaxSpeedMPS)
 		}
 	}
 

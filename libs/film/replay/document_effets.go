@@ -129,7 +129,7 @@ func (o *objetLu) situerLesEffets(cov *CarriedEquipmentCoverage) {
 
 // deCetObjet garde les candidates lues a la suppression de CET objet suivi. Une cle (slot, generation) recyclee dans le
 // meme objet porte (un second lancer) rend ses candidates sous la meme cle : sans cette garde la bulle du second
-// serait attribuee au premier. Meme esprit que la garde de naissance du repos (`toleranceDeNaissance`). Un objet suivi
+// serait attribuee au premier. Meme esprit que la garde de naissance du repos (`toleranceDeNaissanceMS`). Un objet suivi
 // dont la suppression n est pas lue n a aucune candidate : elles sont toutes nees d une suppression.
 func deCetObjet(cands []effetCandidat, t *CarriedTracked) []effetCandidat {
 	if t.T1 == nil {

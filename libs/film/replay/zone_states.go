@@ -184,7 +184,7 @@ func buildZoneStates(ctx context.Context, in ZoneInput, c zoneCtx) ([]ZoneState,
 	caps := zoneCapturesOf(c.actions)
 	cov.Captures = len(caps)
 	att, attCov := AttributeZones(caps, c.tracks, cat, c.slotXUID,
-		AttributeOptions{MaxDistanceM: zoneCaptureDistanceM})
+		AttributeOptions{MaxDistanceM: zoneCaptureDistanceM, FrameIntervalMS: c.intervalMS})
 	// LA COUVERTURE DE L'ATTRIBUTION EST PUBLIEE, PLUS JETEE (correctif du 2026-09-06, constat
 	// P1-5). Elle etait perdue a la ligne d'appel (`att, _ :=`), et avec elle la seule piece qui
 	// distingue « le joueur n'etait pas dans la zone » (`Outside`, une MESURE) de « le pont ne

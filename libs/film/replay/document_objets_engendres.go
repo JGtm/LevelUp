@@ -12,7 +12,7 @@ package replay
 //
 // LA CLÉ NE SUFFIT PAS : la génération d'une vie tient sur quelques bits, le même couple (slot,
 // génération) revient donc plus tard dans le match pour un autre projectile. L'objet est situé par la
-// trajectoire de sa vie NÉE À SON APPARITION (à [toleranceDeNaissance] frames de la pile qui le nomme,
+// trajectoire de sa vie NÉE À SON APPARITION (à [toleranceDeNaissanceMS] de la pile qui le nomme,
 // l'objet naissant dans ce paquet), la plus proche s'il y en a plusieurs. Une vie sans une telle
 // trajectoire publiée est publiée sans position : `land`, `x`, `y`, `z` sont absents ENSEMBLE, et la
 // couverture la compte (`coverage.carriedEquipment.trackedUnpositioned`). Aucune position ne vient du
@@ -41,12 +41,13 @@ type CarriedTracked struct {
 	Effect *CarriedEffect `json:"effect,omitempty"`
 }
 
-// toleranceDeNaissance borne l'écart, en frames, entre la frame où la pile i28 nomme un objet engendré
-// et la naissance de la trajectoire qui le situe. L'objet naît dans le paquet de la pile ; la
-// génération d'une vie ne tient que sur quelques bits, donc le même couple (slot, génération) revient
-// plus tard dans le match pour un autre projectile : sans cette borne, la dernière trajectoire de la
-// clé situerait l'objet à un autre moment du match.
-const toleranceDeNaissance = 3
+// toleranceDeNaissanceMS borne l'écart, en millisecondes, entre l'instant où la pile i28 nomme un
+// objet engendré et la naissance de la trajectoire qui le situe. Il se convertit en frames avec le pas
+// du document ([framesOfMS]) : la décision ne dépend pas de la cadence. L'objet naît dans le paquet de
+// la pile ; la génération d'une vie ne tient que sur quelques bits, donc le même couple (slot,
+// génération) revient plus tard dans le match pour un autre projectile : sans cette borne, la dernière
+// trajectoire de la clé situerait l'objet à un autre moment du match.
+const toleranceDeNaissanceMS = 300
 
 // reposEngendre est une trajectoire publiée d'une vie : sa frame de naissance, et la position de son
 // dernier point publié.
@@ -77,10 +78,10 @@ func reposParVie(tracks []types.ProjectileTrack, origin, step uint64) map[types.
 }
 
 // reposNeAPeuPres rend la trajectoire de la vie née le plus près de la frame `t0` de l'objet, à
-// [toleranceDeNaissance] frames au plus (la première à égalité).
-func reposNeAPeuPres(cands []reposEngendre, t0 int) (reposEngendre, bool) {
+// [toleranceDeNaissanceMS] au plus, converti en frames avec `intervalMS` (la première à égalité).
+func reposNeAPeuPres(cands []reposEngendre, t0, intervalMS int) (reposEngendre, bool) {
 	var best reposEngendre
-	ecart, trouve := toleranceDeNaissance+1, false
+	ecart, trouve := framesOfMS(toleranceDeNaissanceMS, intervalMS)+1, false
 	for _, c := range cands {
 		e := c.naissance - t0
 		if e < 0 {
@@ -95,11 +96,12 @@ func reposNeAPeuPres(cands []reposEngendre, t0 int) (reposEngendre, bool) {
 
 // situerLesObjetsEngendres pose la position de repos de chaque objet engendré dont une trajectoire
 // publiée, née à son apparition, porte la vie, et compte les objets situés et ceux qui ne le sont pas.
-func (o *objetLu) situerLesObjetsEngendres(repos map[types.LifeKey][]reposEngendre, cov *CarriedEquipmentCoverage) {
+func (o *objetLu) situerLesObjetsEngendres(repos map[types.LifeKey][]reposEngendre, cov *CarriedEquipmentCoverage,
+	intervalMS int) {
 	situes := 0
 	for vie, k := range o.suivis {
 		t := &o.pub.Tracked[k]
-		r, ok := reposNeAPeuPres(repos[vie], t.T0)
+		r, ok := reposNeAPeuPres(repos[vie], t.T0, intervalMS)
 		if !ok {
 			continue
 		}

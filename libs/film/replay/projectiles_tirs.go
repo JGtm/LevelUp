@@ -12,10 +12,11 @@ package replay
 // elle est comptée ([ProjectileCoverage.ShotAmbiguous]).
 
 const (
-	// projShotFrameWindow est l'écart maximal, en frames de la grille, entre la naissance du
-	// projectile et l'instant du tir. Les deux horloges quantifient indépendamment : une frame
-	// de tolérance de chaque côté.
-	projShotFrameWindow = 1
+	// projShotWindowMS est l'écart maximal, en millisecondes, entre la naissance du projectile et
+	// l'instant du tir. Les deux horloges quantifient indépendamment : un pas de grille de
+	// tolérance de chaque côté. La durée se convertit en frames avec le pas du document
+	// ([framesOfMS]) : la décision ne dépend pas de la cadence.
+	projShotWindowMS = 100
 	// projShotMaxDistM est la distance maximale, en mètres, entre le point du tir (la bouche, ou
 	// le véhicule pour un tir embarqué) et le premier point publié du projectile.
 	projShotMaxDistM = 3.0
@@ -24,7 +25,7 @@ const (
 // lierLesProjectilesAuxTirs pose les liens sur le document en construction et en publie le
 // compte dans la couverture des projectiles (absente, donc rien à compter, sans piste).
 func (a *assemblage) lierLesProjectilesAuxTirs() {
-	linked, ambiguous := linkShotsToProjectiles(a.doc.Projectiles, a.doc.Shots, a.doc.Grenades)
+	linked, ambiguous := linkShotsToProjectiles(a.doc.Projectiles, a.doc.Shots, a.doc.Grenades, a.interval)
 	if a.projCov != nil {
 		a.projCov.ShotLinked, a.projCov.ShotAmbiguous = linked, ambiguous
 	}
@@ -40,19 +41,21 @@ type tirCandidat struct {
 // publié rend la naissance. Il rend le nombre de liens posés et le nombre de projectiles
 // laissés sans lien parce qu'AMBIGUS.
 //
-// Les candidats d'un projectile sont les tirs dont l'instant est à `projShotFrameWindow` frames
-// de sa naissance et dont le point est à `projShotMaxDistM` de son premier point. Le lien est
-// publié quand tous les candidats sont de la MÊME arme et du MÊME tireur (un seul tir, ou une
-// salve) : le plus proche l'emporte, à égalité le plus petit index — l'ordre de `shots` est
+// Les candidats d'un projectile sont les tirs dont l'instant est à `projShotWindowMS` de sa
+// naissance (converti en frames avec `intervalMS`, le pas de la grille) et dont le point est à
+// `projShotMaxDistM` de son premier point. Le lien est publié quand tous les candidats sont de la
+// MÊME arme et du MÊME tireur (un seul tir, ou une salve) : le plus proche l'emporte, à égalité le plus petit index — l'ordre de `shots` est
 // déterministe, donc le lien aussi. Deux armes ou deux tireurs candidats : ambigu, aucun lien.
 // Un projectile sans candidat n'est ni lié ni ambigu (balle, trace, tir non publié).
 //
 // Les projectiles que référence un lancer de grenade ([Grenade.Proj]) sont exclus : leur lien
 // est celui du lancer.
-func linkShotsToProjectiles(projs []Projectile, shots []Shot, grenades []Grenade) (linked, ambiguous int) {
+func linkShotsToProjectiles(projs []Projectile, shots []Shot, grenades []Grenade,
+	intervalMS int) (linked, ambiguous int) {
 	if len(projs) == 0 || len(shots) == 0 {
 		return 0, 0
 	}
+	window := framesOfMS(projShotWindowMS, intervalMS)
 	byFrame := make(map[int][]int, len(shots))
 	for i, s := range shots {
 		byFrame[s.T] = append(byFrame[s.T], i)
@@ -67,7 +70,7 @@ func linkShotsToProjectiles(projs []Projectile, shots []Shot, grenades []Grenade
 		if fromGrenade[i] || len(projs[i].P) == 0 {
 			continue
 		}
-		cands := candidateShots(projs[i], shots, byFrame)
+		cands := candidateShots(projs[i], shots, byFrame, window)
 		if len(cands) == 0 {
 			continue
 		}
@@ -83,9 +86,9 @@ func linkShotsToProjectiles(projs []Projectile, shots []Shot, grenades []Grenade
 }
 
 // candidateShots rend les tirs candidats de `p`, par frame croissante puis index croissant.
-func candidateShots(p Projectile, shots []Shot, byFrame map[int][]int) []tirCandidat {
+func candidateShots(p Projectile, shots []Shot, byFrame map[int][]int, window int) []tirCandidat {
 	var out []tirCandidat
-	for f := p.T0 - projShotFrameWindow; f <= p.T0+projShotFrameWindow; f++ {
+	for f := p.T0 - window; f <= p.T0+window; f++ {
 		for _, idx := range byFrame[f] {
 			d := planDist(shots[idx].X, shots[idx].Y, p.P[0][1], p.P[0][2])
 			if d <= projShotMaxDistM {

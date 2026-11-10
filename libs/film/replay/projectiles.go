@@ -61,8 +61,10 @@ type Projectile struct {
 	Shot *int `json:"shot,omitempty"`
 }
 
-// projectileMaxStepM borne le déplacement d'un projectile entre deux points de la grille
-// (100 ms). Au-delà, ce n'est plus une lecture : c'est un artefact de déquantification.
+// projectileMaxSpeedMPS borne la vitesse d'un projectile entre deux points de la grille, en mètres
+// par seconde. Au-delà, ce n'est plus une lecture : c'est un artefact de déquantification. Le
+// déplacement maximal d'un pas s'en déduit avec le pas du document ([projectileMaxStepM]), si bien
+// que la coupure ne dépend pas de la cadence.
 //
 // LE DÉFAUT MESURÉ, ET POURQUOI CE GARDE-FOU EXISTE. Sur les 76 artefacts du parc (schéma 51,
 // 2026-09-11), 947 trajectoires sur 15 735 — 6,0 % — portent au moins un pas impossible, soit
@@ -78,16 +80,24 @@ type Projectile struct {
 // ici est la PUBLICATION d'une position fausse, qui faisait tracer au client une droite en
 // travers de toute la carte, à 300 m/s et plus.
 //
-// 10 m par pas, soit 100 m/s, laisse passer tout projectile du jeu (une grenade tient sous
-// 20 m/s, une roquette sous 30) et ne coupe que l'impossible. C'est aussi le seuil que le
-// filtre de vitesse des bipèdes emploie déjà, pour la même raison.
-const projectileMaxStepM = 10
+// 100 m/s laisse passer tout projectile du jeu (une grenade tient sous 20 m/s, une roquette
+// sous 30) et ne coupe que l'impossible. C'est aussi le seuil que le filtre de vitesse des bipèdes
+// emploie déjà, pour la même raison.
+const projectileMaxSpeedMPS = 100
+
+// projectileMaxStepM est le déplacement maximal, en mètres, entre deux points consécutifs d'une grille
+// de pas `stepUS` (microsecondes) : [projectileMaxSpeedMPS] fois la durée du pas. Un pas de 100 ms
+// rend 10 m.
+func projectileMaxStepM(stepUS uint64) float64 {
+	return projectileMaxSpeedMPS * float64(stepUS) / 1e6
+}
 
 // buildProjectiles projette les trajectoires décodées sur la grille de frames du rejeu.
 //
-// DÉCIMATION : le film réplique à ~60 Hz, la grille du rejeu est à 10 Hz. On garde UN point
-// par frame — le premier — plutôt que de moyenner : un projectile suit une parabole, et
-// moyenner deux positions distantes de 100 ms couperait le sommet de l'arc.
+// DÉCIMATION : le film réplique à ~60 Hz, la grille du rejeu est plus lâche (un pas de
+// `FrameIntervalMS`). On garde UN point par frame — le premier — plutôt que de moyenner : un
+// projectile suit une parabole, et moyenner deux positions distantes d'un pas couperait le
+// sommet de l'arc.
 //
 // LE VOL S'ARRÊTE AU PREMIER PAS IMPOSSIBLE, il n'est pas recousu : après un basculement de
 // bit, la suite du vol est ailleurs sur la carte et rien ne dit où le projectile est réellement
@@ -178,6 +188,7 @@ func volPublie(tr types.ProjectileTrack, origin, step uint64) (v vol, lu bool) {
 		return vol{}, false
 	}
 	v.t0 = int((tr.Pts[0].TimestampUS - origin) / step)
+	maxStepM := projectileMaxStepM(step)
 	last := -1
 	for _, p := range tr.Pts {
 		if p.TimestampUS < origin {
@@ -187,7 +198,7 @@ func volPublie(tr types.ProjectileTrack, origin, step uint64) (v vol, lu bool) {
 		if f == last {
 			continue // un seul point par frame de la grille
 		}
-		if n := len(v.pts); n > 0 && planDist(round2(p.X), round2(p.Y), v.pts[n-1][1], v.pts[n-1][2]) > projectileMaxStepM {
+		if n := len(v.pts); n > 0 && planDist(round2(p.X), round2(p.Y), v.pts[n-1][1], v.pts[n-1][2]) > maxStepM {
 			v.coupe = true
 			break
 		}

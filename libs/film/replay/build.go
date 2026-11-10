@@ -8,10 +8,37 @@ import (
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
 )
 
-// DefaultFrameIntervalMS est le pas de la grille de rééchantillonnage, en millisecondes.
-// Les records du film arrivent à ~60 Hz par entité : à 100 ms (10 Hz) le rendu reste
-// fluide (le client interpole) tout en divisant le volume de points par ~4.
+// DefaultFrameIntervalMS est le pas de la grille de rééchantillonnage d'une construction qui n'en
+// demande pas, en millisecondes. Les records du film arrivent à ~60 Hz par entité : une grille
+// plus lâche que ce rythme allège le document (le client interpole) en divisant le volume de points.
+//
+// C'est un DÉFAUT DE CONSTRUCTION : il peut changer pour les documents à venir. Pour lire un
+// document déjà publié, voir [HistoricalFrameIntervalMS].
 const DefaultFrameIntervalMS = 100
+
+// HistoricalFrameIntervalMS est le pas de grille des documents publiés SANS `frameIntervalMs` :
+// avant que le champ existe, tous l'étaient à 100 ms. Un lecteur de document absent de ce champ
+// lit donc cette valeur, jamais le défaut de construction, qui peut évoluer sans réécrire
+// l'archive. Constante distincte de [DefaultFrameIntervalMS] : elle ne bouge jamais.
+const HistoricalFrameIntervalMS = 100
+
+// framesOfMS convertit une durée en millisecondes en nombre de frames d'une grille de
+// `intervalMS`, ARRONDI VERS LE BAS : le seuil ainsi obtenu n'excède jamais la durée voulue. C'est
+// la seule conversion durée -> nombre de frames des seuils du paquet qui n'ont pas d'horloge à
+// leur portée ; un seuil s'écrit en millisecondes et se convertit ici avec le pas du document.
+//
+// Une durée nulle ou négative donne 0 frame (la marge nulle ne dépend pas du pas). Un pas absent ou
+// négatif prend [DefaultFrameIntervalMS], comme [Options] le fait pour la grille. À 100 ms par
+// frame, 100 ms valent 1 frame et 200 ms valent 2.
+func framesOfMS(ms, intervalMS int) int {
+	if ms <= 0 {
+		return 0
+	}
+	if intervalMS <= 0 {
+		intervalMS = DefaultFrameIntervalMS
+	}
+	return ms / intervalMS
+}
 
 // coordScale arrondit les coordonnées au centimètre : le quantum du décodeur est de
 // ~1,4 cm, deux décimales ne perdent donc rien et allègent nettement le JSON.
