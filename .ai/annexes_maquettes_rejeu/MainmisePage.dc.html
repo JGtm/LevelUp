@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Mainmise</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&amp;display=swap">
+<style>body{margin:0;background:#050505}</style>
+</helmet>
+<div style="width: 1280px; height: 800px; position: relative; overflow: hidden; background: #050505; color: #fafafa; font-family: Roboto, system-ui, sans-serif; font-size: 12px">
+  <div style="height: 44px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid #1f1f1f; font-weight: 700; font-size: 14px">{{pageTitle}}</div>
+
+  <sc-if value="{{is.sessions}}" hint-placeholder-val="{{ true }}">
+    <div style="position: absolute; left: 12px; top: 56px; width: 1256px; height: 650px; display: grid; grid-template-columns: 1fr; gap: 12px">
+      <div style="background: #0b0b0b; border: 1px solid #1f1f1f; border-radius: 8px; padding: 12px; box-sizing: border-box">
+        <div style="font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 8px">Mainmise, match par match <span style="display: inline-flex; width: 14px; height: 14px; border-radius: 50%; border: 1px solid #666; color: #a1a1a1; font-size: 10px; align-items: center; justify-content: center; font-weight: 400">i</span></div>
+        <div style="position: relative; margin-top: 18px">
+          <div style="position: absolute; left: 0; right: 0; top: 200px; border-top: 1px dashed #e8a33f"></div>
+          <div style="display: flex; gap: 14px">
+            <sc-for list="{{session}}" as="c" hint-placeholder-count="6">
+              <div style="flex: 1; min-width: 0">
+                <div style="height: 400px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center">
+                  <sc-if value="{{c.has}}" hint-placeholder-val="{{ true }}"><div style="font-weight: 700; margin-bottom: 4px">{{c.v}} %</div><div title="{{c.tip}}" style="width: 56px; height: {{c.h}}px; background: #4f46e5"></div></sc-if>
+                  <sc-if value="{{c.none}}" hint-placeholder-val="{{ false }}"><div title="{{c.tip}}" style="width: 56px; height: 400px; border: 1px dashed #4a4a4a; box-sizing: border-box; display: flex; align-items: center; justify-content: center; color: #8a8a8a">—</div></sc-if>
+                </div>
+                <div style="height: 8px; margin-top: 8px; background: {{c.chip}}; border-radius: 2px"></div>
+                <div style="text-align: center; margin-top: 6px; font-weight: 500">{{c.m}}</div>
+                <div style="text-align: center; color: #a1a1a1">{{c.mo}}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: center; gap: 18px; color: #d4d4d4; margin-top: 16px"><span><span style="display: inline-block; width: 12px; height: 12px; background: #4f46e5; margin-right: 5px"></span>Mainmise</span><span><span style="display: inline-block; width: 14px; border-top: 1px dashed #e8a33f; margin-right: 5px; vertical-align: middle"></span>50 % : autant en tête que mené</span><span><span style="display: inline-block; width: 12px; height: 8px; background: #26cf7d; margin-right: 5px"></span>Gagné</span><span><span style="display: inline-block; width: 12px; height: 8px; background: #cf2e30; margin-right: 5px"></span>Perdu</span></div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{is.match}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; left: 12px; top: 56px; width: 1256px; height: 190px; background: #0b0b0b; border: 1px solid #1f1f1f; border-radius: 8px; display: flex; overflow: hidden">
+      <div style="width: 330px; background: #2b2b2b; display: flex; align-items: center; justify-content: center; color: #8a8a8a">Image de la carte</div>
+      <div style="flex: 1; padding: 14px 20px">
+        <div style="font-size: 24px; font-weight: 900">Massacre sur Bazaar</div>
+        <div style="color: #a1a1a1; margin-top: 3px">9 nov. 2026, 20:30 · 9 min 14 s</div>
+        <div style="color: #26cf7d; font-size: 20px; font-weight: 900; margin-top: 8px">Victoire · 50 - 44</div>
+        <div style="display: flex; align-items: center; gap: 26px; margin-top: 12px; border-top: 1px solid #1f1f1f; padding-top: 10px">
+          <div><div style="font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #a1a1a1">PERFORMANCE</div><div style="font-size: 26px; font-weight: 900; color: #e8a33f">55</div></div>
+          <div style="padding: 0 22px; border-left: 1px solid #1f1f1f; border-right: 1px solid #1f1f1f"><div style="font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #a1a1a1">MAINMISE <span style="color: #2ee08f; letter-spacing: 0">nouveau</span></div><div style="font-size: 26px; font-weight: 900">62 %</div><div style="color: #a1a1a1">du match en tête · 3 retournements</div></div>
+          <div><div style="font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #a1a1a1">RANG</div><div style="font-size: 16px; font-weight: 700">Or VI</div><div style="color: #a1a1a1">LUSR 1571</div></div>
+        </div>
+      </div>
+    </div>
+    <div style="position: absolute; left: 12px; top: 256px; display: flex; gap: 22px; color: #a1a1a1; font-size: 14px"><span>Général</span><span style="color: #fafafa; font-weight: 700">Chronologie</span><span>Armes et terrain</span><span>Joueurs</span></div>
+    <div style="position: absolute; left: 12px; top: 288px; width: 1256px; display: flex; flex-direction: column; gap: 6px">
+      <sc-for list="{{chronoOrder}}" as="o" hint-placeholder-count="7">
+        <div style="height: 52px; display: flex; align-items: center; padding: 0 14px; background: {{o.bg}}; border: 1px solid {{o.bd}}; border-radius: 8px"><span style="font-weight: 700; font-size: 13px">{{o.t}}</span><span style="margin-left: 14px; color: #a1a1a1">{{o.d}}</span></div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{is.compare}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; left: 12px; top: 56px; width: 1256px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+      <sc-for list="{{compare}}" as="s" hint-placeholder-count="2">
+        <div style="background: #0b0b0b; border: 1px solid #1f1f1f; border-radius: 8px; padding: 12px">
+          <div style="font-weight: 700; font-size: 13px">Mainmise · {{s.date}}</div>
+          <sc-for list="{{s.rows}}" as="r" hint-placeholder-count="4"><div style="display: flex; padding: 8px 0; border-bottom: 1px solid #1f1f1f"><span style="color: #d4d4d4">{{r.l}}</span><span style="margin-left: auto; font-weight: 700">{{r.v}}</span></div></sc-for>
+          <div style="position: relative; margin-top: 18px">
+            <div style="position: absolute; left: 0; right: 0; top: 70px; border-top: 1px dashed #e8a33f"></div>
+            <div style="display: flex; gap: 8px">
+              <sc-for list="{{s.cols}}" as="c" hint-placeholder-count="5">
+                <div style="flex: 1; min-width: 0"><div style="height: 140px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center"><sc-if value="{{c.has}}" hint-placeholder-val="{{ true }}"><div title="{{c.tip}}" style="width: 26px; height: {{c.h}}px; background: #4f46e5"></div></sc-if><sc-if value="{{c.none}}" hint-placeholder-val="{{ false }}"><div title="{{c.tip}}" style="width: 26px; height: 140px; border: 1px dashed #4a4a4a; box-sizing: border-box"></div></sc-if></div><div style="height: 6px; margin-top: 4px; background: {{c.chip}}; border-radius: 2px"></div></div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{is.timeseries}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; left: 12px; top: 56px; width: 1256px; height: 318px; background: #0b0b0b; border: 1px solid #1f1f1f; border-radius: 8px; padding: 12px; box-sizing: border-box">
+      <div style="font-weight: 700; font-size: 13px">Mainmise par mois</div>
+      <div style="position: relative; margin-top: 14px">
+        <div style="position: absolute; left: 0; right: 0; top: 105px; border-top: 1px dashed #e8a33f"></div>
+        <div style="display: flex; gap: 12px">
+          <sc-for list="{{months}}" as="c" hint-placeholder-count="10"><div style="flex: 1; min-width: 0"><div style="height: 210px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center"><div style="font-weight: 700; margin-bottom: 3px">{{c.v}} %</div><div title="{{c.tip}}" style="width: 38px; height: {{c.h}}px; background: #4f46e5"></div></div><div style="text-align: center; margin-top: 6px; color: #a1a1a1">{{c.m}}</div><div style="text-align: center; color: #a1a1a1">({{c.n}})</div></div></sc-for>
+        </div>
+      </div>
+    </div>
+    <div style="position: absolute; left: 12px; top: 386px; width: 1256px; height: 320px; background: #0b0b0b; border: 1px solid #1f1f1f; border-radius: 8px; padding: 12px; box-sizing: border-box">
+      <div style="font-weight: 700; font-size: 13px">Mainmise par carte, soirée et historique</div>
+      <div style="margin-top: 10px">
+        <sc-for list="{{maps}}" as="r" hint-placeholder-count="6"><div style="display: grid; grid-template-columns: 100px 1fr 50px; align-items: center; column-gap: 10px; height: 38px"><span style="text-align: right; color: #d4d4d4">{{r.m}}</span><div><div title="{{r.tipH}}" style="height: 9px; width: {{r.h}}%; background: #3a3a3a"></div><div title="{{r.tipS}}" style="height: 9px; margin-top: 2px; width: {{r.s}}%; background: #e8a33f"></div></div><span style="font-weight: 700">{{r.s}} %</span></div></sc-for>
+      </div>
+      <div style="display: flex; justify-content: center; gap: 18px; color: #d4d4d4; margin-top: 6px"><span><span style="display: inline-block; width: 12px; height: 8px; background: #3a3a3a; margin-right: 5px"></span>Historique</span><span><span style="display: inline-block; width: 12px; height: 8px; background: #e8a33f; margin-right: 5px"></span>Soirée</span></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{is.squad}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; left: 12px; top: 56px; width: 760px; height: 650px; background: #0b0b0b; border: 1px solid #1f1f1f; border-radius: 8px; padding: 12px; box-sizing: border-box">
+      <div style="font-weight: 700; font-size: 13px">Mainmise, soirée par soirée</div>
+      <svg width="730" height="460" viewBox="0 0 730 460" role="img" aria-label="Mainmise de l'escouade par soirée" style="display: block; margin-top: 14px">
+        <line x1="24" x2="716" y1="230" y2="230" stroke="#e8a33f" stroke-dasharray="4 4"></line>
+        <line x1="24" x2="716" y1="{{evenMedianY}}" y2="{{evenMedianY}}" stroke="#a1a1a1" stroke-dasharray="2 4"></line>
+        <path d="{{evenPath}}" fill="none" stroke="#a78bfa" stroke-width="2.4"></path>
+        <circle cx="{{evenLast.x}}" cy="{{evenLast.y}}" r="6" fill="#a78bfa" stroke="#0b0b0b" stroke-width="2"></circle>
+      </svg>
+      <div style="display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); margin-top: 4px; padding: 0 8px">
+        <sc-for list="{{evenings}}" as="e" hint-placeholder-count="11"><div style="text-align: center; font-size: 11px; color: {{e.fg}}; font-weight: {{e.fw}}"><div style="height: 8px; display: flex; margin: 0 3px 4px"><div style="flex: {{e.w}}; background: #26cf7d"></div><div style="flex: {{e.l}}; background: #cf2e30"></div></div>{{e.d}}</div></sc-for>
+      </div>
+      <div style="display: flex; justify-content: center; gap: 18px; color: #d4d4d4; margin-top: 14px"><span><span style="display: inline-block; width: 14px; height: 3px; background: #a78bfa; margin-right: 5px; vertical-align: middle"></span>Mainmise</span><span><span style="display: inline-block; width: 14px; border-top: 1px dashed #e8a33f; margin-right: 5px; vertical-align: middle"></span>50 %</span><span><span style="display: inline-block; width: 14px; border-top: 1px dotted #a1a1a1; margin-right: 5px; vertical-align: middle"></span>Médiane des soirées précédentes</span></div>
+    </div>
+    <div style="position: absolute; left: 784px; top: 56px; width: 484px; height: 650px; background: #0b0b0b; border: 1px solid #1f1f1f; border-radius: 8px; padding: 12px; box-sizing: border-box">
+      <div style="font-weight: 700; font-size: 13px">Mainmise par composition</div>
+      <sc-for list="{{compos}}" as="c" hint-placeholder-count="5"><div style="margin-top: 14px"><div style="display: flex"><span style="color: #d4d4d4">{{c.n}}</span><span style="margin-left: auto; font-weight: 700">{{c.v}} %</span></div><div style="height: 10px; margin-top: 4px; background: #1c1c1c; position: relative"><div title="{{c.tip}}" style="height: 100%; width: {{c.v}}%; background: #4f46e5"></div><div style="position: absolute; left: 50%; top: -3px; height: 16px; border-left: 1px dashed #e8a33f"></div></div><div style="color: #a1a1a1; margin-top: 3px">{{c.m}} matchs</div></div></sc-for>
+    </div>
+  </sc-if>
+
+  <div style="position: absolute; left: 0; top: 720px; width: 1280px; height: 80px; box-sizing: border-box; background: #18181b; border-top: 1px solid #333; padding: 10px 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+    <sc-for list="{{caption}}" as="c" hint-placeholder-count="3"><div><div style="font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #a1a1a1">{{c.h}}</div><div style="margin-top: 4px; line-height: 1.35; color: #e5e5e5">{{c.t}}</div></div></sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":null},"$preview":{"width":1280,"height":800}}'>
+const WIN = "#26cf7d", LOSS = "#cf2e30";
+const MATCHES = [
+  { m: "Bazaar", mo: "Massacre", v: 78, w: 1, r: 2 }, { m: "Recharge", mo: "Massacre", v: 41, w: 0, r: 5 },
+  { m: "Aquarius", mo: "Drapeau", v: null, w: 1, r: 0 }, { m: "Streets", mo: "Oddball", v: 66, w: 1, r: 3 },
+  { m: "Live Fire", mo: "Massacre", v: 12, w: 0, r: 1 }, { m: "Prism", mo: "Massacre", v: 92, w: 1, r: 0 }
+];
+const PREV = [{ v: 52, w: 1 }, { v: null, w: 0 }, { v: 34, w: 0 }, { v: 61, w: 1 }, { v: 47, w: 0 }];
+const EVENINGS = [["23/04", 46, 1, 2], ["27/04", 55, 2, 4], ["05/05", 62, 3, 1], ["11/05", 58, 2, 2], ["21/05", 49, 3, 3], ["03/06", 53, 3, 1], ["09/06", 57, 2, 1], ["28/07", 28, 0, 3], ["31/07", 51, 2, 1], ["07/09", 39, 1, 6], ["ce soir", 71, 3, 2]];
+const avg = (a) => Math.round(a.filter((x) => x.v !== null).reduce((t, x) => t + x.v, 0) / a.filter((x) => x.v !== null).length);
+const col = (c, H) => ({ m: c.m, mo: c.mo, has: c.v !== null, none: c.v === null, v: c.v, h: c.v === null ? 0 : Math.round((c.v / 100) * H), chip: c.w ? WIN : LOSS, tip: c.v === null ? "Mode où le score avance trop peu souvent" : `En tête ${c.v} % du match, ${c.r ?? 0} retournements` });
+class Component extends DCLogic {
+  renderVals() {
+    const variant = this.props.variant || "sessions";
+    const valid = MATCHES.filter((x) => x.v !== null);
+    const med = (arr) => { const s = [...arr].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
+    const prevMed = med(EVENINGS.slice(0, -1).map((e) => e[1]));
+    const yOf = (v) => 460 - (v / 100) * 460;
+    const xOf = (i) => 40 + (i * 650) / (EVENINGS.length - 1);
+    const pts = EVENINGS.map((e, i) => `${xOf(i)} ${yOf(e[1])}`);
+    const CAPS = {
+      sessions: [["DÉFINITION", "Part du match passée en tête du score, en temps de jeu."], ["PÉRIMÈTRE", "Modes où le score avance en continu. Un mode à peu de points reste en pointillé, sans chiffre."], ["EMPLACEMENT", "Section Match par match, après Vies nettes, avant Intensité. Une seule colonne, pleine largeur."]],
+      match: [["EN-TÊTE", "Le chiffre du match, entre Performance et Rang, avec le nombre de retournements."], ["CHRONOLOGIE", "Écart de score et Supériorité numérique juste après Score dans le temps. La Mainmise s'affiche aussi sur la carte Écart de score."], ["MODES À PEU DE POINTS", "En-tête avec un tiret, sans chiffre : le score y avance trop rarement pour être lu ainsi."]],
+      compare: [["FORMAT", "Vue compacte des deux soirées, en parts et par match pour rester comparable."], ["LECTURE", "Une soirée à 40 % perdue de peu ne se lit pas comme une soirée à 40 % écrasée : les barres par match le montrent."], ["PÉRIMÈTRE", "Les matchs sans chiffre restent à leur place, en pointillé."]],
+      timeseries: [["PAR MOIS", "Juste après Performance solo par période, même axe de temps."], ["PAR CARTE", "Sous la paire Taux de victoire et Performance par carte, même patron Soirée et Historique."], ["DONNÉES FICTIVES", "Valeurs illustratives. Échelle fixe de 0 à 100 %."]],
+      squad: [["EMPLACEMENT", "Page Dynamique, après la rangée Vies nettes et Écart cumulé au FDA, avant Engagement."], ["SOIRÉE PAR SOIRÉE", "Repère à 50 %, médiane des soirées passées, victoires et défaites sous chaque date."], ["PAR COMPOSITION", "Une composition, une Mainmise : quel groupe tient le match le plus longtemps."]]
+    };
+    const TITLES = { match: "Vue du match", sessions: "Sessions · Ce soir", compare: "Sessions · Comparaison de deux soirées", timeseries: "Timeseries", squad: "Escouade" };
+    const compact = (date, list) => ({
+      date, cols: list.map((c) => col(c, 140)),
+      rows: [{ l: "Mainmise de la soirée", v: `${avg(list)} %` }, { l: "Matchs majoritairement en tête", v: `${Math.round((list.filter((x) => x.v !== null && x.v > 50).length / list.filter((x) => x.v !== null).length) * 100)} %` }, { l: "Retournements par match", v: "2,2" }]
+    });
+    return {
+      pageTitle: TITLES[variant],
+      chronoOrder: [["Frags cumulés", "existant", 0], ["Points marqués", "existant, selon le mode", 0], ["Score dans le temps", "existant", 0], ["Écart de score", "nouveau, avec la Mainmise du match", 1], ["Supériorité numérique", "nouveau", 1], ["Domination", "existant", 0], ["Cadence des frags", "existant", 0]].map(([t, d, n]) => ({ t, d, bg: n ? "#111a16" : "#0b0b0b", bd: n ? "#2ee08f" : "#1f1f1f" })),
+      is: { match: variant === "match", sessions: variant === "sessions", compare: variant === "compare", timeseries: variant === "timeseries", squad: variant === "squad" },
+      session: MATCHES.map((c) => col(c, 400)),
+      summary: [{ l: "Mainmise de la soirée", v: `${avg(MATCHES)} %` }, { l: "Médiane des soirées précédentes", v: `${prevMed} %` }, { l: "Matchs majoritairement en tête", v: `${valid.filter((x) => x.v > 50).length} sur ${valid.length}` }, { l: "Retournements par match", v: (valid.reduce((t, x) => t + x.r, 0) / valid.length).toFixed(1).replace(".", ",") }],
+      compare: [compact("Ce soir", MATCHES), compact("07/11", PREV)],
+      months: [["Jan", 51, 116], ["Fév", 48, 122], ["Mar", 46, 73], ["Avr", 58, 10], ["Mai", 54, 49], ["Juin", 44, 36], ["Juil", 49, 83], ["Août", 30, 6], ["Sep", 63, 26], ["Oct", 57, 15]].map(([m, v, n]) => ({ m, v, n, h: Math.round((v / 100) * 210), tip: `${v} % sur ${n} matchs` })),
+      maps: [["Bazaar", 55, 78], ["Recharge", 49, 41], ["Streets", 60, 66], ["Live Fire", 53, 12], ["Prism", 46, 92]].map(([m, h, s]) => ({ m, h, s, tipH: `Historique : ${h} %`, tipS: `Soirée : ${s} %` })),
+      evenings: EVENINGS.map(([d, , w, l], i) => ({ d, w, l, fg: i === EVENINGS.length - 1 ? "#fafafa" : "#a1a1a1", fw: i === EVENINGS.length - 1 ? 900 : 400 })),
+      evenPath: "M" + pts.join("L"), evenMedianY: yOf(prevMed), evenLast: { x: xOf(EVENINGS.length - 1), y: yOf(EVENINGS[EVENINGS.length - 1][1]) },
+      compos: [["JGtm, Brume42, Vortex Kael, NoScope Lou", 64, 38], ["JGtm, Brume42, Vortex Kael", 57, 22], ["JGtm, NoScope Lou", 51, 41], ["JGtm, Vortex Kael", 46, 19], ["JGtm seul avec inconnus", 39, 54]].map(([n, v, m]) => ({ n, v, m, tip: `${v} % sur ${m} matchs` })),
+      caption: CAPS[variant].map(([h, t]) => ({ h, t }))
+    };
+  }
+}
+</script>
+</body>
+</html>

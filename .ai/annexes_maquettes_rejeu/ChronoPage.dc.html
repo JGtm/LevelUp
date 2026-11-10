@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Socle de la chronologie</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&amp;display=swap">
+<style>body{margin:0;background:#050505}</style>
+</helmet>
+<div style="width: 1280px; height: 1040px; position: relative; overflow: hidden; background: #050505; color: #fafafa; font-family: Roboto, system-ui, sans-serif; font-size: 12px">
+  <div style="height: 44px; display: flex; align-items: center; gap: 22px; padding: 0 16px; border-bottom: 1px solid #1f1f1f; color: #a1a1a1"><span>Résumé</span><span style="color: #fafafa; font-weight: 700; box-shadow: 0 2px #fafafa; padding: 13px 0 12px">Chronologie</span><span>Arsenal</span><span>Joueurs</span><span>Médias</span></div>
+
+  <div style="position: absolute; left: 12px; top: 56px; width: 622px; height: 300px; background: #0b0b0b; border: 1px solid #1f1f1f; border-radius: 8px; box-sizing: border-box">
+    <div style="height: 34px; line-height: 34px; padding-left: 12px; font-weight: 700; font-size: 13px; border-bottom: 1px solid #191919">Domination</div>
+    <svg width="620" height="214" viewBox="0 0 620 214" role="img" aria-label="Écart de frags par tranche de 30 secondes" style="display: block">
+      <line x1="20" x2="600" y1="107" y2="107" stroke="#333"></line>
+      <path d="{{dom.pos}}" fill="#26cf7d"></path>
+      <path d="{{dom.neg}}" fill="#cf2e30"></path>
+    </svg>
+    <div style="display: flex; justify-content: center; gap: 16px; color: #a1a1a1"><span><span style="display: inline-block; width: 10px; height: 10px; background: #26cf7d; margin-right: 5px"></span>Équipe</span><span><span style="display: inline-block; width: 10px; height: 10px; background: #cf2e30; margin-right: 5px"></span>Adversaires</span></div>
+  </div>
+
+  <div style="position: absolute; left: 646px; top: 56px; width: 622px; height: 300px; background: #0b0b0b; border: 1px solid #1f1f1f; border-radius: 8px; box-sizing: border-box">
+    <div style="height: 34px; line-height: 34px; padding-left: 12px; font-weight: 700; font-size: 13px; border-bottom: 1px solid #191919">Cadence des frags</div>
+    <svg width="620" height="214" viewBox="0 0 620 214" role="img" aria-label="Frags par tranche et moyenne glissante" style="display: block">
+      <path d="{{cad.a}}" fill="#26cf7d"></path>
+      <path d="{{cad.e}}" fill="#cf2e30"></path>
+      <path d="{{cad.la}}" fill="none" stroke="#b8f5d6" stroke-width="2"></path>
+      <path d="{{cad.le}}" fill="none" stroke="#f7c0c0" stroke-width="2"></path>
+    </svg>
+    <div style="display: flex; justify-content: center; gap: 16px; color: #a1a1a1"><span><span style="display: inline-block; width: 10px; height: 10px; background: #26cf7d; margin-right: 5px"></span>Équipe</span><span><span style="display: inline-block; width: 10px; height: 10px; background: #cf2e30; margin-right: 5px"></span>Adversaires</span></div>
+  </div>
+
+  <div style="position: absolute; left: 12px; top: 368px; width: 1256px; height: {{card.h}}px; background: #0b0b0b; border: 1px solid {{card.bd}}; border-radius: 8px; box-sizing: border-box">
+    <div style="height: 34px; display: flex; align-items: center; gap: 8px; padding-left: 12px; font-weight: 700; font-size: 13px; border-bottom: 1px solid #191919">{{card.title}}<span aria-label="Explication" style="display: inline-flex; width: 14px; height: 14px; border-radius: 50%; border: 1px solid #666; color: #a1a1a1; font-size: 10px; align-items: center; justify-content: center; font-weight: 400">i</span><sc-if value="{{card.isNew}}" hint-placeholder-val="{{ true }}"><span style="margin-left: 4px; font-size: 10px; font-weight: 700; color: #06281a; background: #2ee08f; border-radius: 3px; padding: 1px 6px">NOUVEAU</span></sc-if><sc-if value="{{card.mainmise}}" hint-placeholder-val="{{ false }}"><span style="margin-left: auto; margin-right: 12px; font-weight: 400; color: #d4d4d4">{{card.mainmise}}</span></sc-if></div>
+
+    <div style="position: relative; width: 1254px; height: {{plot.H}}px" onMouseMove="{{hoverMove}}" onMouseLeave="{{hoverOut}}">
+      <svg width="1254" height="{{plot.H}}" viewBox="0 0 1254 {{plot.H}}" role="img" aria-label="{{card.title}}" style="position: absolute; left: 0; top: 0; pointer-events: none">
+        <path d="{{plot.grid}}" stroke="#1c1c1c" fill="none"></path>
+        <line x1="{{plot.L}}" x2="{{plot.Rx}}" y1="{{plot.zero}}" y2="{{plot.zero}}" stroke="#4a4a4a" stroke-dasharray="{{plot.zeroDash}}"></line>
+        <path d="{{plot.areaPos}}" fill="#2ee08f" fill-opacity=".45"></path>
+        <path d="{{plot.areaNeg}}" fill="#e5393b" fill-opacity=".45"></path>
+        <path d="{{plot.ally}}" fill="none" stroke="#2ee08f" stroke-width="2"></path>
+        <path d="{{plot.enemy}}" fill="none" stroke="#e5393b" stroke-width="2"></path>
+        <path d="{{plot.adv}}" fill="none" stroke="#9fc6ff" stroke-width="2" stroke-dasharray="5 4"></path>
+        <path d="{{plot.runsA}}" fill="none" stroke="#2ee08f" stroke-width="2"></path>
+        <path d="{{plot.runsE}}" fill="none" stroke="#e5393b" stroke-width="2"></path>
+        <line x1="{{hover.x}}" x2="{{hover.x}}" y1="8" y2="{{plot.bottom}}" stroke="#777" stroke-opacity="{{hover.op}}"></line>
+      </svg>
+      <sc-for list="{{plot.xTicks}}" as="t" hint-placeholder-count="6"><div style="position: absolute; top: {{plot.bottomLabel}}px; left: {{t.x}}px; transform: translateX(-50%); color: #a1a1a1; font-size: 11px">{{t.l}}</div></sc-for>
+      <sc-for list="{{plot.yTicks}}" as="t" hint-placeholder-count="4"><div style="position: absolute; left: 8px; width: 34px; text-align: right; top: {{t.y}}px; transform: translateY(-50%); color: #a1a1a1; font-size: 11px">{{t.l}}</div></sc-for>
+      <sc-for list="{{plot.y2Ticks}}" as="t" hint-placeholder-count="4"><div style="position: absolute; left: {{plot.y2x}}px; top: {{t.y}}px; transform: translateY(-50%); color: #9fc6ff; font-size: 11px">{{t.l}}</div></sc-for>
+      <sc-for list="{{plot.markers}}" as="m" hint-placeholder-count="6"><div onMouseEnter="{{m.enter}}" onMouseLeave="{{hoverOut}}" style="position: absolute; left: {{m.x}}px; top: {{m.y}}px; width: 12px; height: 12px; margin: -6px 0 0 -6px; transform: rotate({{m.r}}deg); background: {{m.bg}}; border: 1.5px solid {{m.bd}}; border-radius: {{m.rad}}; box-sizing: border-box"></div></sc-for>
+      <sc-if value="{{hover.show}}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; left: {{hover.bx}}px; top: 12px; width: 206px; background: #161616; border: 1px solid #333; border-radius: 6px; padding: 7px 9px; pointer-events: none">
+          <div style="color: #a1a1a1; margin-bottom: 3px">{{hover.title}}</div>
+          <sc-for list="{{hover.rows}}" as="r" hint-placeholder-count="2"><div style="display: flex; align-items: center; gap: 6px"><span style="width: 9px; height: 9px; background: {{r.c}}"></span>{{r.l}}<span style="margin-left: auto; font-weight: 700">{{r.v}}</span></div></sc-for>
+        </div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{tiles.show}}" hint-placeholder-val="{{ false }}"><div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 0 14px"><sc-for list="{{tiles.items}}" as="t" hint-placeholder-count="4"><div style="background: #141414; border-radius: 6px; padding: 8px 10px"><div style="font-size: 20px; font-weight: 900">{{t.v}}</div><div style="color: #a1a1a1">{{t.l}}</div></div></sc-for></div></sc-if>
+
+    <div style="display: flex; justify-content: center; align-items: center; gap: 18px; color: #d4d4d4; padding: 8px 0">
+      <sc-for list="{{legend}}" as="l" hint-placeholder-count="3"><button type="button" onClick="{{l.pick}}" aria-pressed="{{l.on}}" style="display: flex; align-items: center; gap: 6px; background: none; border: 0; color: {{l.fg}}; font: inherit; cursor: {{l.cursor}}; padding: 2px"><span style="width: 14px; height: 3px; background: {{l.c}}; border-radius: {{l.rad}}"></span>{{l.t}}</button></sc-for>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 0; top: 960px; width: 1280px; height: 80px; box-sizing: border-box; background: #18181b; border-top: 1px solid #333; padding: 10px 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+    <sc-for list="{{caption}}" as="c" hint-placeholder-count="3"><div><div style="font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #a1a1a1">{{c.h}}</div><div style="margin-top: 4px; line-height: 1.35; color: #e5e5e5">{{c.t}}</div></div></sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":null},"$preview":{"width":1280,"height":1040}}'>
+const ALLY_INC = [0,1,0,2,1,1,0,2,0,1,2,0,1,1,2,0,1,2,1,0,1,2,1,0,2,1,1,2,0,1,2,1,0,2,1,1,2,1,0];
+const ENEMY_INC = [1,0,2,1,0,1,2,0,1,1,0,2,1,0,1,2,0,1,0,2,1,0,2,1,0,2,1,0,2,0,1,1,2,0,1,0,1,1,1];
+const ADV = [0,1,0,-1,-2,0,1,1,2,0,-1,0,1,2,3,1,0,-1,-2,-1,0,1,0,-1,0,1,2,1,0,-1,0,1,2,2,1,0,1,2,1];
+const STEP = 15, N = ALLY_INC.length;
+const RUNS = [
+  { team: "a", pts: [[40, 0], [62, .3], [84, .52]], from: "Prise", end: "Lâché", who: "Brume42" },
+  { team: "e", pts: [[110, 0], [150, .45], [185, 1]], from: "Prise", end: "Capture", who: "Ombre Noire" },
+  { team: "a", pts: [[225, 0], [262, .4], [300, .78]], from: "Prise", end: "Retour", who: "Vortex Kael" },
+  { team: "a", pts: [[340, 0], [370, .48], [412, 1]], from: "Prise", end: "Capture", who: "Brume42" },
+  { team: "e", pts: [[440, 0], [468, .36]], from: "Prise", end: "Lâché", who: "Fenrir88" },
+  { team: "a", pts: [[492, 0], [522, .46], [560, 1]], from: "Prise", end: "Capture", who: "JGtm" }
+];
+const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+const cumul = (a) => { let t = 0; return a.map((v) => (t += v)); };
+const ALLY_S = cumul(ALLY_INC), ENEMY_S = cumul(ENEMY_INC);
+const stepPath = (xs, ys) => xs.map((x, i) => (i === 0 ? `M${x} ${ys[i]}` : `H${x}V${ys[i]}`)).join("");
+class Component extends DCLogic {
+  state = { hover: null, showAdv: true, marker: null };
+  renderVals() {
+    const variant = this.props.variant || "base";
+    const isCourses = variant === "courses", isSup = variant === "superiorite", isDelta = variant === "delta", isScore = variant === "score" || variant === "base";
+    const showAdv = this.state.showAdv ?? variant === "score";
+    const H = isSup || isDelta ? 320 : 400;
+    const L = 52, R = 1200, T = 14, B = H - 30, W = R - L, Dur = (N - 1) * STEP;
+    const xOf = (s) => L + (s / Dur) * W;
+    const xs = Array.from({ length: N }, (_, i) => xOf(i * STEP));
+    const grid = [];
+    for (let i = 0; i <= 4; i++) { const y = T + ((B - T) * i) / 4; grid.push(`M${L} ${y}H${R}`); }
+
+    const domBars = (() => {
+      let pos = "", neg = "";
+      for (let i = 0; i + 1 < N; i += 2) {
+        const d = ALLY_INC[i] + ALLY_INC[i + 1] - ENEMY_INC[i] - ENEMY_INC[i + 1];
+        const x = 26 + (i / N) * 572, w = 20, h = Math.abs(d) * 26;
+        if (d > 0) pos += `M${x} ${107 - h}h${w}v${h}h${-w}Z`; else if (d < 0) neg += `M${x} 107h${w}v${h}h${-w}Z`;
+      }
+      return { pos, neg };
+    })();
+    const cad = (() => {
+      let a = "", e = "", la = [], le = [];
+      for (let i = 0; i + 1 < N; i += 2) {
+        const ga = ALLY_INC[i] + ALLY_INC[i + 1], ge = ENEMY_INC[i] + ENEMY_INC[i + 1];
+        const x = 32 + (i / N) * 566, w = 20, b = 196, u = 28;
+        a += `M${x} ${b - ga * u}h${w}v${ga * u}h${-w}Z`;
+        e += `M${x} ${b - (ga + ge) * u}h${w}v${ge * u}h${-w}Z`;
+        la.push(`${x + w / 2} ${b - ga * u - 8}`); le.push(`${x + w / 2} ${b - ge * u - 14}`);
+      }
+      return { a, e, la: "M" + la.join("L"), le: "M" + le.join("L") };
+    })();
+
+    const maxS = Math.max(...ALLY_S, ...ENEMY_S);
+    const yS = (v) => B - (v / maxS) * (B - T);
+    const yAdv = (v) => T + ((4 - v) / 8) * (B - T);
+    const yUp = (v) => T + ((4 - v) / 8) * (B - T);
+    const yProg = (v) => B - v * (B - T);
+
+    const xTicks = Array.from({ length: 7 }, (_, i) => { const s = (Dur * i) / 6; return { x: xOf(s), l: fmt(s) }; });
+    let yTicks = [], y2Ticks = [], plotExtras = { ally: "", enemy: "", adv: "", areaPos: "", areaNeg: "", runsA: "", runsE: "", markers: [] };
+    let zero = -10, zeroDash = "4 4";
+
+    if (isScore) {
+      plotExtras.ally = stepPath(xs, ALLY_S.map(yS));
+      plotExtras.enemy = stepPath(xs, ENEMY_S.map(yS));
+      yTicks = [0, Math.round(maxS / 2), maxS].map((v) => ({ y: yS(v), l: v }));
+      if (variant === "score" && showAdv) {
+        plotExtras.adv = stepPath(xs, ADV.map(yAdv));
+        y2Ticks = [4, 2, 0, -2, -4].map((v) => ({ y: yAdv(v), l: v > 0 ? `+${v}` : `${v}` }));
+      }
+    } else if (isSup || isDelta) {
+      const series = isDelta ? ALLY_S.map((v, i) => v - ENEMY_S[i]) : ADV;
+      const M = isDelta ? Math.max(4, ...series.map(Math.abs)) : 4;
+      const yD = (v) => T + ((M - v) / (2 * M)) * (B - T);
+      zero = yD(0);
+      zeroDash = "";
+      const posPath = [], negPath = [];
+      for (let i = 0; i + 1 < N; i++) {
+        const y = yD(series[i]);
+        if (series[i] > 0) posPath.push(`M${xs[i]} ${zero}H${xs[i + 1]}V${y}H${xs[i]}Z`);
+        if (series[i] < 0) negPath.push(`M${xs[i]} ${zero}H${xs[i + 1]}V${y}H${xs[i]}Z`);
+      }
+      plotExtras.areaPos = posPath.join(""); plotExtras.areaNeg = negPath.join("");
+      yTicks = [M, M / 2, 0, -M / 2, -M].map((v) => ({ y: yD(v), l: v > 0 ? `+${v}` : `${v}` }));
+      if (isDelta && showAdv) {
+        plotExtras.adv = stepPath(xs, ADV.map(yAdv));
+        y2Ticks = [4, 2, 0, -2, -4].map((v) => ({ y: yAdv(v), l: v > 0 ? `+${v}` : `${v}` }));
+      }
+    } else if (isCourses) {
+      const A = [], E = [], markers = [];
+      RUNS.forEach((r) => {
+        const d = "M" + r.pts.map(([s, p]) => `${xOf(s)} ${yProg(p)}`).join("L");
+        (r.team === "a" ? A : E).push(d);
+        const c = r.team === "a" ? "#2ee08f" : "#e5393b";
+        const mk = (s, p, kind) => {
+          const shape = { Prise: { r: 0, rad: "50%", bg: c, bd: "#0b0b0b" }, "Lâché": { r: 45, rad: "1px", bg: "#0b0b0b", bd: c }, Retour: { r: 0, rad: "1px", bg: "#0b0b0b", bd: "#fafafa" }, Capture: { r: 45, rad: "1px", bg: c, bd: "#fafafa" } }[kind];
+          markers.push({ x: xOf(s), y: yProg(p), ...shape, enter: () => this.setState({ marker: { x: xOf(s), title: `${fmt(s)} · ${kind}`, who: r.who, c } }) });
+        };
+        const [s0, p0] = r.pts[0], [s1, p1] = r.pts[r.pts.length - 1];
+        mk(s0, p0, r.from); mk(s1, p1, r.end);
+      });
+      plotExtras.runsA = A.join(""); plotExtras.runsE = E.join(""); plotExtras.markers = markers;
+      yTicks = [{ y: yProg(0), l: "Base" }, { y: yProg(.5), l: "50 %" }, { y: yProg(1), l: "But" }];
+    }
+
+    const hoverMove = (e) => {
+      if (isCourses) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const scale = rect.width / 1254;
+      const px = (e.clientX - rect.left) / (scale || 1);
+      const i = Math.max(0, Math.min(N - 1, Math.round(((px - L) / W) * (N - 1))));
+      if (i !== this.state.hover) this.setState({ hover: i });
+    };
+    const hoverOut = () => this.setState({ hover: null, marker: null });
+
+    let hover = { show: false, x: 0, bx: 0, op: 0, title: "", rows: [] };
+    if (this.state.marker) {
+      const m = this.state.marker;
+      hover = { show: true, x: m.x, op: 0, bx: Math.min(m.x + 12, 1020), title: m.title, rows: [{ c: m.c, l: m.who, v: "" }] };
+    } else if (this.state.hover !== null && !isCourses) {
+      const i = this.state.hover, x = xs[i];
+      const rows = isSup ? [{ c: "#9fc6ff", l: "Écart de joueurs en vie", v: ADV[i] > 0 ? `+${ADV[i]}` : `${ADV[i]}` }] : [{ c: "#2ee08f", l: "Équipe", v: ALLY_S[i] }, { c: "#e5393b", l: "Adversaires", v: ENEMY_S[i] }];
+      if ((variant === "score" || isDelta) && showAdv) rows.push({ c: "#9fc6ff", l: "Avantage numérique", v: ADV[i] > 0 ? `+${ADV[i]}` : `${ADV[i]}` });
+      hover = { show: true, x, op: 1, bx: x > 980 ? x - 218 : x + 12, title: fmt(i * STEP), rows };
+    }
+
+    const stat = (fn) => ADV.filter(fn).length * STEP;
+    const pct = (s) => `${Math.round((s / (N * STEP)) * 100)} %`;
+    let run = 0, best = 0; ADV.forEach((v) => { run = v > 0 ? run + STEP : 0; best = Math.max(best, run); });
+    const lead = ALLY_S.filter((v, i) => v > ENEMY_S[i]).length / N;
+    const tiles = { show: false, items: [{ v: pct(stat((v) => v > 0)), l: "du temps en supériorité" }, { v: pct(stat((v) => v === 0)), l: "du temps à égalité" }, { v: pct(stat((v) => v < 0)), l: "du temps en infériorité" }, { v: fmt(best), l: "plus longue supériorité" }] };
+
+    const legendFor = {
+      base: [["Équipe", "#2ee08f"], ["Adversaires", "#e5393b"]],
+      score: [["Équipe", "#2ee08f"], ["Adversaires", "#e5393b"], ["Avantage numérique (axe droit)", "#9fc6ff", "adv"]],
+      superiorite: [["Équipe en supériorité", "#2ee08f"], ["Adversaires en supériorité", "#e5393b"]],
+      delta: [["Équipe en tête", "#2ee08f"], ["Adversaires en tête", "#e5393b"], ["Avantage numérique (axe droit)", "#9fc6ff", "adv"]],
+      courses: [["Course de l'équipe", "#2ee08f"], ["Course adverse", "#e5393b"], ["Rond : prise", "#fafafa"], ["Losange plein : capture", "#fafafa"], ["Losange creux : lâché", "#fafafa"], ["Carré : retour", "#fafafa"]]
+    };
+    const legend = legendFor[variant].map(([t, c, k]) => ({
+      t, c, on: k ? showAdv : true, rad: 2,
+      fg: k && !showAdv ? "#777" : "#d4d4d4", cursor: k ? "pointer" : "default",
+      pick: () => { if (k) this.setState({ showAdv: !showAdv }); }
+    }));
+
+    const CAP = {
+      base: [["EXISTANT", "Reconstitution de l'onglet Chronologie : Domination, Cadence et Score dans le temps."], ["DONNÉES", "Match et chiffres fictifs, 15 s entre deux points."], ["SURVOL", "Le survol du graphique de score montre un point de lecture."]],
+      score: [["PLACE", "Aucune carte en plus : une courbe sur l'axe droit de « Score dans le temps », masquable depuis la légende."], ["CE QU'ON LIT", "Quel écart de joueurs en vie précède un changement de score."], ["DONNÉES", "Calculable depuis les vies déjà publiées dans le rejeu."]],
+      superiorite: [["PLACE", "Une carte en plus sous Score dans le temps, largeur pleine, le graphique seul."], ["CE QU'ON LIT", "Quand l'équipe joue à plus ou à moins de joueurs en vie."], ["DONNÉES", "Calculable depuis les vies déjà publiées dans le rejeu. Survol au point près."]],
+      delta: [["CE QUE C'EST", "Le graphique principal de Guilty Spark : l'écart de score, coloré selon l'équipe en tête."], ["CE QU'ON LIT", "Qui mène et de combien, et la Mainmise du match en haut à droite. La légende ajoute l'avantage numérique."], ["EMPLACEMENT", "Onglet Chronologie, juste après Score dans le temps, suivi de Supériorité numérique, avant Domination."]],
+      courses: [["PLACE", "Une carte dans les modes à drapeau seulement, à la place de la courbe de score, qui y est un escalier vide."], ["CE QU'ON LIT", "Chaque course, jusqu'où elle est allée, comment elle a fini."], ["DONNÉES", "Porteurs et instants déjà publiés ; la progression vers le but reste à calculer depuis les positions."]]
+    };
+    const caption = CAP[variant].map(([h, t]) => ({ h, t }));
+
+    const titles = { base: "Score dans le temps", score: "Score dans le temps", superiorite: "Supériorité numérique", delta: "Écart de score", courses: "Courses de drapeau" };
+    return {
+      dom: domBars, cad,
+      card: { title: titles[variant], isNew: variant !== "base", mainmise: isDelta ? `Mainmise : ${Math.round(lead * 100)} % du match en tête` : "", bd: variant === "base" ? "#1f1f1f" : "#3b4a60", h: isSup || isDelta ? 400 : 576 },
+      plot: { H, L, Rx: R, y2x: R + 8, grid: grid.join(""), zero, zeroDash, bottom: B, bottomLabel: B + 8, xTicks, yTicks, y2Ticks, ...plotExtras },
+      hover, hoverMove, hoverOut, tiles, legend, caption
+    };
+  }
+}
+</script>
+</body>
+</html>
