@@ -5,6 +5,14 @@
 **Résultats observés** : tests de cadence écrits d'abord (rouges : helper absent, puis mutation du helper sur 100 ms fixes), puis verts ; mêmes décisions à 100 ms et à 33 ms. `make libs-test` ok (39 paquets) ; `go build ./...` et tests `replaybuild`, `sync/replayartifacts`, `archlint` ok (archlint seul : 621 s, la première passe a heurté le délai de 10 min sous charge) ; surface de la façade `decfilm` inchangée ; lint 0 issue (`apps/go-api` et quatre modules `libs/`) ; aucun golden ni empreinte de couche modifiés ; `make replay-equiv` : 19 identiques, 0 différent, 1 échec de plafond mémoire (a349fea8 : pic 3,77 Gio sous charge machine, plafond dur 3,75) ; relancé seul : identique (pic 2,68 Gio), soit 20 identiques sur 20.
 
 **Conclusion / prochaine étape** : à 100 ms le décodeur donne les mêmes décisions. Restent hors lot : unifier les conversions durée -> images déjà présentes (`zoneWindowFrames`, `zoneGaugeGapFrames`, `slackFrames` en arrondi vers le haut, `replayClock.framesOf`), faire lire `HistoricalFrameIntervalMS` aux lecteurs de documents sans `frameIntervalMs`, migrer `cmd/zone-attribution` vers la durée, borner le pas de projectile par le temps écoulé entre deux points plutôt que par le pas.
+## [2026-11-10] Plan architecture, étape 0 : témoins et compteurs de départ — Complété (branche `feat/812-architecture`)
+
+**Décision technique principale.** Chantier rattaché à la v8.1.2 par l'utilisateur, décisions D1 à D9 validées, go donné pour les étapes 0 à 8. Témoins capturés par un harnais hors dépôt (`C:/t/812-archi/capture.sh`) sur une copie du jeu de démo, serveur isolé sur le port 8011 : profil démo pour les routes joueur, profil dev sans authentification pour les routes admin.
+
+**Résultats observés.** 90 routes en 200, deux captures successives identiques après neutralisation des champs volatils. Le témoin ne voit pas le rejeu (pas de film dans le jeu de démo) ni un changement d'ordre sur les listes que le serveur rend dans un ordre non déterministe (découvertes consignées au plan, non traitées). Compteurs de départ relevés (plan, étape 0). Les quatre branches 8.1.2 sont fusionnées : plus d'attente entre les étapes ; la bascule sur les modules publiés attend la fin de ce chantier.
+
+**Conclusion / prochaine étape.** Étape 1 (suppressions pures).
+
 ## [2026-11-10] Plan architecture (frontières, ménage, front) — En cours (plan écrit, aucun code)
 
 **Décision technique principale.** L'utilisateur fixe la cible le 2026-11-10 : chaque ligne du tableau « changer l'UI ou une technologie » à « bon » ou « très bon », dettes P2 comprises, décodeur de film hors périmètre (revu plus tard), commandes mortes selon la recommandation. Plan en 9 étapes : témoins, suppressions pures, interrupteurs, écritures, couche HTTP, stockage, multi-titre, front, clôture. Chaque compte ramené à zéro reçoit son garde-rail dans le même commit.

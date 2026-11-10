@@ -2,8 +2,7 @@
 
 **Statut : écrit le 2026-11-10 à partir du registre `.ai/AUDIT_ARCHITECTURE_2026-11-10.md`. Non relu
 par un contexte frais. Décisions D1 à D9 validées par l'utilisateur le 2026-11-10. Go d'exécution donné le 2026-11-10 pour
-les étapes 0 à 3. Lectures de production faites (0.4).
-**
+les étapes 0 à 3, puis pour les étapes 4 à 8 le même jour. Lectures de production faites (0.4).**
 
 **Rattachement : ce chantier fait partie de la v8.1.2 (utilisateur, 2026-11-10).** Le plan
 `.ai/PLAN_V8_1_2_2026-11-09.md` est tenu par une autre session : il reste à y inscrire ce chantier.
@@ -68,13 +67,18 @@ Le skill `plan-execution` s'applique en entier. Propre à ce plan :
 | D8 | Commandes sans utilisateur | Supprimer les 98 commandes de l'annexe (85 sans aucune référence, 13 après relecture de la référence qui les nomme). Conserver 14 : instruments de mesure cartes et film (liés au décodeur, revu plus tard), items déjà au registre des reports, outils nommés par un message de test. | validée le 2026-11-10 (« je vais suivre tes reco, de toute façon tout est versionné ») |
 | D9 | Contrat d'API | Le retrait des champs `expected_win_prob` change `openapi.yaml`. Sans effet de compatibilité : le front et le serveur sont livrés ensemble, y compris dans l'application Windows. | validée avec D2 (conséquence mécanique) |
 
-**Ordonnancement dans la v8.1.2 (D1).** Quatre branches 8.1.2 sont en cours (`feat/812-bureau`,
-`feat/812-film`, `feat/812-web`, `feat/812-stats`) et le plan v8.1.2 prévoit la bascule sur les
-modules publiés, qui réécrit des imports dans tout le dépôt. Pour éviter les conflits :
-les étapes 0 à 3 peuvent partir tout de suite ; les étapes 4 à 6 (Go) partent après la fusion de
-`feat/812-stats` et `feat/812-film` ; l'étape 7 (front) après la fusion de `feat/812-web` ; ce
-chantier se termine AVANT la bascule sur les modules publiés, qui se rebase plus facilement en
-dernier. La branche est rebasée sur `release/v8.1.2` avant chaque étape.
+**Ordonnancement dans la v8.1.2 (D1).** Les quatre branches 8.1.2 (`feat/812-bureau`,
+`feat/812-film`, `feat/812-web`, `feat/812-stats`) sont fusionnées dans `release/v8.1.2` (vérifié le
+2026-11-10 : la base de ce chantier, `76635f08be`, les contient ; confirmé par le pilote de la
+v8.1.2). Plus aucune attente entre les étapes de ce plan. Reste côté v8.1.2 : la PR des identités de
+test (#187) et la bascule sur les modules publiés, qui réécrit des imports dans tout le dépôt : le
+pilote de la v8.1.2 la lance APRÈS la fusion de la dernière étape de ce chantier, à lui signaler.
+La branche est rebasée sur `release/v8.1.2` avant chaque étape.
+
+**Vérifications à l'écran de l'utilisateur.** Elles vivent dans son artefact unique
+(`https://claude.ai/artifact/P9VJKKbSDsQu1PUBjyGwTv`, collection `verifs`, documents `archi-tri` et
+`archi-palette`, état `a_venir`). À la clôture de l'étape 7 : passer leur `etat` à `a_faire`, puis y
+relire sa réponse.
 
 **Mesures de production (0.4, lecture seule, 2026-11-10).**
 - Jauge des trous de note : 298 relevés dans `scheduler.log` du 2026-07-22 au 2026-11-10, tous à 0,
@@ -88,12 +92,35 @@ dernier. La branche est rebasée sur `release/v8.1.2` avant chaque étape.
 ## 3. Étape 0 — Préparation et témoins
 
 - [x] 0.1 Créer `feat/812-architecture` depuis `release/v8.1.2` (D1) dans un worktree dédié.
-- [ ] 0.2 Capturer les témoins AVANT sur le serveur local, joueur et titre fixés, sortie JSON
+- [x] 0.2 Capturer les témoins AVANT sur le serveur local, joueur et titre fixés, sortie JSON
       triée (`jq -S`) : accueil, carrière, progression (séries, records, jalons), campagne, profil
       joueur, escouade et synergies, détail de match, sessions, séries temporelles, explorateur,
       classements, réglages (données), monitoring (fraîcheur, couverture des armes), état de sync.
       Un fichier par route sous le dossier de session, liste des routes écrite dans le compte rendu.
-- [ ] 0.3 Relever les compteurs de départ des mesures de clôture du §0 (commandes du registre).
+- [x] 0.3 Relever les compteurs de départ des mesures de clôture du §0 (commandes du registre).
+
+Résultat de 0.2 (2026-11-10). Harnais hors dépôt : `bash C:/t/812-archi/capture.sh <dossier>` (2 min, plus la
+compilation). 90 routes, toutes en 200, sur le jeu de démo copié : 69 routes joueur et titre en profil démo,
+21 routes admin, monitoring et réglages en profil dev sans authentification ; 10 variantes `halo_5`, 4 en
+anglais. Référence : `C:/t/812-archi/avant/` ; `diff -r avant avant-bis` vide. Champs neutralisés et listes
+triées : `C:/t/812-archi/normalize.txt`. Limites du témoin : il ne voit ni un changement d'ordre sur les listes
+triées par le harnais, ni le contenu de `top_medals`, `top_citations`, `impact_roles`, `levers[].rank` ; il ne
+couvre ni le rejeu (le jeu de démo n'a pas de film), ni `/squads`, ni l'export de l'historique.
+
+Résultat de 0.3 (2026-11-10, base `76635f08be`).
+
+| Mesure | Départ |
+|---|---|
+| fichiers de `api/handlers` important `platform/duckdb`, `persist` ou `sync` | 9 |
+| fichiers de `service/` et `api/handlers` important `games/halo_infinite` ou `games/halo_5` | 16 |
+| fichiers de `api/wire` et de la racine `api/` portant du SQL | 9 |
+| occurrences de `*service.X` dans `api/handlers` | 20 |
+| fichiers important `database/sql` dans `service`, `analysis`, `progression`, `scheduler`, `prestige`, `port` | 19 |
+| fichiers lisant `os.Getenv` hors `internal/config` | 22 |
+| fichiers web important `echarts` hors `components/charts/` | 72 |
+| `fetch` hors `lib/api/` et `lib/desktop/` | 7 |
+| types manuels homonymes d'un schéma du contrat | 31 |
+| commandes de `cmd/` | 180 |
 - [x] 0.4 Lectures de prod en lecture seule pour D3, D4 et D5 : faites le 2026-11-10, résultats au §2.
 
 Gate : témoins rejoués deux fois de suite, identiques (sinon retirer la route instable et le dire).
@@ -324,7 +351,7 @@ deux graphes de 7.3.
 
 | Étape | État | Commit | Note |
 |---|---|---|---|
-| 0 | en cours | | 0.1 et 0.4 faits |
+| 0 | close | (commit de clôture de l'étape 0) | témoins et compteurs relevés le 2026-11-10 |
 | 1 | à faire | | |
 | 2 | à faire | | |
 | 3 | à faire | | |
@@ -336,7 +363,16 @@ deux graphes de 7.3.
 
 ## 12. Découvertes d'exécution
 
-(vide)
+- (étape 0) Ordres non déterministes dans des réponses d'API, à code constant : titres et capacités de
+  `bootstrap`, listes `available_*` de la carrière, `commendations`, `career_csrs`, médailles et adversaires du
+  détail de match, `patterns`, carte de chaleur des séries temporelles. Non traité.
+- (étape 0) Départage aléatoire d'ex aequo : `top_medals` et `top_citations` de l'Accueil, `impact_roles` du
+  détail de match, `levers[].rank`. Non traité.
+- (étape 0) Le témoin ne couvre pas le rejeu. L étape 6 déplace `replaylabels` et touche `service/replayview` :
+  son gate s'appuie donc en plus sur les tests de `service/replayview` et de `libs/film/replay` (équivalence),
+  à lancer explicitement.
+- (étape 0) En profil dev, le premier démarrage rejoue les formules de note du jeu de démo (révision vide) :
+  le harnais attend la fin de ce rejeu avant de capturer.
 
 ## 13. Hors périmètre
 
