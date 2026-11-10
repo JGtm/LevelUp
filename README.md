@@ -2,7 +2,7 @@
 
 > **Analyze your Halo 5: Guardians and Halo Infinite stats match by match, track your progress over time, and compare your performance with your squad.**
 
-[![Version](https://img.shields.io/github/v/release/JGtm/LevelUp?label=Version&color=blue)](https://github.com/JGtm/LevelUp/releases/latest)
+[![Version](https://img.shields.io/github/v/release/JGtm/LevelUp.svg?label=Version&color=blue)](https://github.com/JGtm/LevelUp/releases/latest)
 [![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8.svg)](https://go.dev/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.5%2B-FEE14E.svg)](https://duckdb.org/)
@@ -266,7 +266,9 @@ Full details in the [changelog](docs/CHANGELOG.md).
 
 ## Quick start
 
-**Windows app**: download the installer (`LevelUp_X.Y.Z_x64-setup.exe`) from the [GitHub releases page](https://github.com/JGtm/LevelUp/releases/latest) or from the "Download LevelUp for Windows" page of the hosted site, then run it. The installer is not code-signed, so Windows SmartScreen warns once ("More info", then "Run anyway"). Your data lives in `%LOCALAPPDATA%\LevelUp` and stays there after an uninstall. Details: [docs/RUNBOOK_DESKTOP.md](docs/RUNBOOK_DESKTOP.md). The rest of this section is for running LevelUp from the source.
+[![Download for Windows](https://img.shields.io/github/v/release/JGtm/LevelUp.svg?label=Download%20for%20Windows&color=blue)](https://github.com/JGtm/LevelUp/releases/latest)
+
+**Windows app**: download the installer (`LevelUp_X.Y.Z_x64-setup.exe`) from the badge above or from the "Download LevelUp for Windows" page of the hosted site, then run it. The installer is not code-signed, so Windows SmartScreen warns once ("More info", then "Run anyway"). Your data lives in `%LOCALAPPDATA%\LevelUp` and stays there after an uninstall. Details: [docs/RUNBOOK_DESKTOP.md](docs/RUNBOOK_DESKTOP.md). The rest of this section is for running LevelUp from the source.
 
 **Prerequisites**: Go 1.26+, Node.js + npm, GNU Make, Air for Go hot reload, and a **C toolchain** — the DuckDB driver is CGO, and on Windows a `gcc` missing from the `PATH` makes Air silently serve a stale binary (MinGW/UCRT64; see [docs/INSTALL.md](docs/INSTALL.md)).
 
