@@ -7,6 +7,7 @@ package replay
 import (
 	"errors"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
@@ -201,6 +202,9 @@ func TestCleDeCuisson_ChaqueChampDeLEntreeGouverne(t *testing.T) {
 		"AxisWidths":      func(m *profile.MapQuantEntry) { m.AxisWidths[1]++ },
 		"Region":          func(m *profile.MapQuantEntry) { m.Region++ },
 		"RegionIndexBits": func(m *profile.MapQuantEntry) { m.RegionIndexBits = m.EffectiveRegionIndexBits() + 1 },
+		"Regions": func(m *profile.MapQuantEntry) {
+			m.Regions = append(slices.Clone(m.Regions), profile.RegionQuant{Index: uint32(len(m.Regions)), AxisWidths: [3]uint{9, 9, 9}}) //nolint:gosec // essai
+		},
 	}
 	for _, champ := range reflect.VisibleFields(reflect.TypeFor[profile.MapQuantEntry]()) {
 		if _, ok := mutations[champ.Name]; !ok {

@@ -406,11 +406,10 @@ package killsource
 // `sync/killcollector`). Golden regenere a revision constante : aucune ligne `match_kill_events` ne devient candidate
 // au redecodage.
 //
-// A REVISION CONSTANTE, DECISION OUVERTE (lecture des positions par index de region, 2026-11-10) : la VALEUR de
-// `profile.Rev` monte a `profile-2026-11-10` et celle de `grammar.Rev` a `grammar-2026-11-10`, et `decode.go` pose la
-// table par index de region de la carte sur le profil de depart (`PoserLesRegionsDeLaCarte`). La sortie de cette couche
-// PEUT changer sur les films dont une position porte un index de region autre que la region jouee : sur la mini-bobine
-// de 000d5950, l attribution d un kill passe de `scan` a `marche`. La revision n est PAS montee ici : la monter oblige a
-// regenerer `replay/testdata/bots_*.json` et `types/testdata/shapes.golden`, qui portent sa valeur, hors du perimetre de
-// ce lot. Tant qu elle n est pas montee, aucune ligne `match_kill_events` ne devient candidate au redecodage. Golden
-// regenere a revision constante.
+// ENTREE `killsource-2026-11-10` (2026-11-10, lecture des positions par index de region, plan de la marche
+// complete, A2.P) : la VALEUR de `profile.Rev` monte a `profile-2026-11-10` et celle de `grammar.Rev` a
+// `grammar-2026-11-10`, et `decode.go` pose la table par index de region de la carte sur le profil de depart
+// (`PoserLesRegionsDeLaCarte`). La SORTIE de cette couche change : sur la mini-bobine de 000d5950, l attribution
+// de deux kills passe de `scan` a `marche` (une position lue a ses propres largeurs ferme le paquet que la lecture
+// d avant laissait ouvert). Les lignes de `match_kill_events` portant une revision anterieure deviennent candidates
+// au redecodage ; le redecodage du parc reste un geste de PRODUCTION sur signal utilisateur (D6), jamais automatique.
