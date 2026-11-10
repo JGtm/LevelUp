@@ -94,14 +94,32 @@ Le plan est réussi quand :
 ## 4. Étapes
 
 ### Étape 0 — Témoins AVANT
-- [ ] 0.1 Fixer une liste fermée de 12 matchs : Assassin, CTF, Roi de la colline, Bastions, Oddball, Bombe, une carte Forge, un match avec véhicules, un match avec bots, plus 0076ebdc.
-- [ ] 0.2 Capturer sur cette liste et conserver dans le dossier de gate :
-  - `replay-equiv` ;
-  - les empreintes `replaydiff` ;
-  - `replay-verite` ;
-  - les sorties en simulation de `backfill-usage-summary`, `vehicle-takes`, `flag-grabs-net`, `pad-tiers` et `tactical-rasters` ;
-  - une séquence de mort Tactique ;
-  - la taille de chaque fichier.
+- [x] 0.1 Fixer une liste fermée de 12 matchs : Assassin, CTF, Roi de la colline, Bastions, Oddball, Bombe, une carte Forge, un match avec véhicules, un match avec bots, plus 0076ebdc.
+  Liste fermée (2026-11-10). Tous ont un film archivé (manifeste, chunks, faits) et un artefact au parc (schéma 107), ce qui a été vérifié sur pièces ; le choix vient des artefacts et du registre `shared_matches_v2.duckdb`.
+
+  | short8 | Mode (variante) | Carte | Ce que le match couvre |
+  |---|---|---|---|
+  | `0076ebdc` | Super Fiesta (`Slayer:Arena Super Fiesta`) | Prism | obligatoire ; 5 043 images, 106 pistes, 691 projectiles |
+  | `ef8cb72b` | Assassin (`Slayer:Arena`) | Vagabond | Assassin d'arène, sans véhicule |
+  | `008e1bba` | CTF (`CTF:Arena`) | Critical Dewpoint | 2 prises de drapeau, sans bot |
+  | `d2b74083` | Roi de la colline (`KOTH:Arena`) | Illusion | zone tenue, sans bot |
+  | `de3cec8b` | Bastions (`Strongholds:Arena`) | Kiken'na | bases, sans bot |
+  | `43716616` | Oddball (`Oddball:Arena`) | Smallhalla | balle |
+  | `c75f33b8` | Bombe (`Assault:One Bomb`) | Curfew | bombe, 2 pistes de bot |
+  | `e157a672` | Carte Forge (`Husky Raid:Super CTF`) | Pharaoh | trame Forge `fo11_blank` (REGISTRE_CARTES), 2 prises de drapeau |
+  | `82f29378` | Véhicules (`BTB:CTF`) | Oasis | 22 véhicules, grande équipe (25 joueurs) |
+  | `ce927bd2` | Bots (`Strongholds:Arena`) | Live Fire | 11 pistes de bot (noms « [bot] », xuid vide) |
+  | `be565134` | Extraction (`BTB:Extraction`) | Refuge | Extraction, 21 véhicules, le plus gros de la liste (5,3 Mo) |
+  | `4f862258` | Classé (`Ranked:Slayer`) | Solitude - Ranked | playlist classée |
+
+  Non couvert : aucun match avec bots ET véhicules à la fois n'a été retenu (`0f9550e5` le ferait, non ajouté pour tenir 12). `82f29378` n'a aucun calque de drapeau (`flagCarries` vide) malgré son mode CTF ; la partie « drapeau » est tenue par `008e1bba` et `e157a672`.
+- [x] 0.2 Capturer sur cette liste et conserver dans le dossier de gate (`data/investigation/gate_30ips/avant/`, commandes exactes dans `COMMANDES.md`, somme de contrôle de chaque fichier dans `MANIFEST.sha256`). Faits le 2026-11-10 avec le code de la branche (schéma 108, cadence 100 ms), HEAD `8b5fc378c7` :
+  - [x] les 12 artefacts recuits un à un par `levelup backfill-replay --match <id> --force`, décodage complet, 2 à 16 s chacun, 78 s en tout ; `artefacts/` (json et meta), `sha256.txt`, `tailles.txt` (la taille de chaque fichier) ; cuisson déterministe (mêmes octets sur seconde cuisson, et depuis les faits ou depuis le film) ;
+  - [x] `replay-equiv` : `make replay-equiv`, 20 identiques, 0 différent, sortie 0, 1253 s (`replay-equiv.txt`) ;
+  - [x] les empreintes `replaydiff` : `replaydiff/<id>.empreinte.json` (toutes les mesures non nulles, par comparaison à un document vide, car `replay-diff` n'a pas de mode « empreinte seule »), `.auto.json`, et l'écart au parc 107 (`parc107_vs_108`) ;
+  - [x] `replay-verite` sur les 12 (avant = parc 107, après = branche, faits et oracles exportés dans `faits/`) : 12 « ok », code 0 ;
+  - [x] simulations (`derives/`) : `backfill-usage-summary`, `backfill-vehicle-takes`, `backfill-flag-grabs-net`, `backfill-pad-tiers`, chacune `--dry-run --force --match <id complet>` par match (sans `--force`, `vehicle-takes` et `pad-tiers` répondent « déjà en base » sans projeter) ; `tactical-rasters --backfill --dry-run` (aucun filtre par match : il couvre les 12 artefacts du worktree, comptes seulement, le contenu du sidecar n'est pas capturé) ;
+  - [!] une séquence de mort Tactique, réelle : impossible sans serveur ni base joueur (`POST /api/v1/players/{player_slug}/tactical/{map_id}/sequence`, corps `match_id`, `victim_xuid`, `time_ms`, lit `stats.duckdb` du joueur, non monté dans ce worktree). Substitut capturé, sans serveur : le test de recherche existant `TestMesureLectureDesPistes` (`-tags research`) calcule la séquence d'une piste à mi-vie et rend nombre de pistes, de points, cadence et taille du corps (`tactique/sequence_mesure.txt`, 12 lignes). Pour une vraie séquence : monter la base joueur et lancer le serveur du worktree, puis poster la requête.
 
 Gate : témoins rangés, liste écrite dans ce plan.
 
@@ -195,6 +213,17 @@ Courses de drapeau (non validé). Mainmise, préréglages de vue, fil d'événem
 
 ## 8. Découvertes
 
+- **2026-11-10, étape 0 : trouvailles d'exécution** (aucune corrigée, aucun code touché).
+  - **Montage des données d'un worktree neuf.** Il manque `data/titles/halo_infinite/reference/generated/` (`map_callouts.json`, `map_weapon_pads.json`, ignoré par git, rempli par chaque poste). Sans lui, `backfill-replay` cuit sans erreur mais perd les points d'apparition des cartes « - Ranked » : `4f862258` rendait `pickups.origin` 51 -> 8 et `spawnPointsState` `map_absent`. Un témoin AVANT fait ainsi aurait été faux sans le dire. Copié depuis `LevelUp/` (identique au parc). `replay-equiv` n'en dépend pas (catalogue hermétique). Les bases `shared_matches_v2.duckdb` et `metadata.duckdb` (+ `.wal`) viennent de `LevelUp-wt-812-film` ; `metadata.duckdb.wal` existait (642 716 octets, postérieur au `.duckdb`) et a été copié avec, sans être rejoué.
+  - **`data/investigation/gate_30ips/` n'est pas ignoré par git** (`git status` le montre `??`) : le plan et la consigne le disent ignoré. Aucun `.gitignore` modifié ; à ajouter avant de commiter l'étape A, ou à écarter du commit.
+  - **Les `backfill-*` ouvrent la base partagée en écriture même en `--dry-run`** (cycle de migration au démarrage : `migration: cycle terminé applied=0`). Aucune ligne écrite (`0 ecrits`), mais les octets de `shared_matches_v2.duckdb` changent d'une commande à l'autre : comparer des comptes et des sorties, pas des sommes de contrôle de base.
+  - **`replay-diff` n'a pas de mode « empreinte »** ni de `-tout` qui liste les mesures identiques : l'empreinte complète s'obtient en comparant à `{}`. Si l'étape B veut une comparaison fine, un mode `-empreinte` serait utile (non fait).
+  - **Écart code-parc.** Les 12 recuits au code de la branche ne diffèrent du parc 107 que par `schemaVersion`, sauf `82f29378` et `be565134` (gain « tourelle fixe » de l'étape 4 du plan v8.1.2). Aucune perte.
+  - **`make replay-equiv` dure 1253 s** (21 min) sur un poste chargé, pas ~12 min.
+  - **Sans `--force`**, `backfill-vehicle-takes` et `backfill-pad-tiers` répondent « déjà en base » et ne projettent pas : le témoin ne vaut qu'avec `--force`.
+  - **`flag-grabs-net` : « sans calque de drapeau »** pour `82f29378` (BTB CTF, `flagCarries` vide) : ce match ne teste pas la partie drapeau ; `008e1bba` et `e157a672` la tiennent.
+
 ## 9. Journal
 
 - **2026-11-10, lancement.** Go du user (« vas-y orchestre l'implem, revue adversariale à la fin »). Le plan v8.1.2 n'est pas clos : ses étapes 1, 2, 4, 5 sont fusionnées dans `release/v8.1.2`, son étape 6 (bascule sur les modules publiés, qui retire `libs/`) reste à faire par une autre session. Aménagement de la dépendance de la section 3 : branche `feat/rejeu-30ips` créée depuis `origin/release/v8.1.2` (`afb963994c`), worktree dédié `LevelUp-wt-30ips`. Les étapes 0 et A (hors `libs/film`, sauf un test) s'exécutent maintenant ; l'étape B, qui modifie `libs/film/replay`, attend la bascule de l'étape 6 de la v8.1.2 (dépendance explicite, report valide). `SchemaVersion` vaut déjà 108 sur cette base : la bascule de cadence le portera à 109.
+- **2026-11-10, étape 0 (témoins AVANT) : exécutée, à vérifier par le user.** Liste fermée de 12 écrite sous 0.1 ; témoins rangés sous `data/investigation/gate_30ips/avant/` (non versionné, `MANIFEST.sha256` en tête, commandes exactes dans `COMMANDES.md`). Code : `feat/rejeu-30ips`, HEAD `8b5fc378c7`, schéma 108, 100 ms. Résultats : 12 recuisons en 78 s ; `replay-equiv` 20 identiques en 1253 s ; `replay-verite` 12 « ok » ; empreintes et écart au parc 107 sans perte ; simulations des dérivés sans échec. Reste `[!]` : la séquence de mort Tactique réelle (serveur et base joueur requis), remplacée par une mesure de la séquence calculée sur artefact. Le premier jeu de témoins, fait sans `reference/generated/`, a été jeté et refait (section 8). Gate de l'étape 0 : à clore par le user après vérification ; aucune étape A engagée.

@@ -71,6 +71,13 @@
 **Décision technique principale** : plan `.ai/PLAN_MARCHE_COMPLETE_ET_CANAUX_2026-11-10.md` (annexes `.ai/annexes_marche_complete/`), branche `feat/film-marche-complete`. Le décodeur de Dend (`OpenSpartan/libfilmshell`, Rust, MIT) sert de témoin pour localiser, paquet par paquet, les largeurs fausses qui empêchent notre marche de fermer ; puis retrait des balayages delta et des replis à compte nul, une seule marche par décodage, documents de format, infos de match lues dans le film. Rendus et tables d'analyse sortis du plan (décision du user).
 **Résultats observés** : libfilmshell lancé hors dépôt sur 151 films de l'archive : 127 lus (1,1 s en moyenne), 24 refusés (tous antérieurs à HI_1_12_0) ; 97,6 à 100 % des paquets de tick lus jusqu'au dernier octet sur 8 films, contre 66,9 % des trames chez nous (ADR 0037, cause dominante : fermeture refusée, largeur fausse à position inconnue). Contre l'API : tableau des scores du film égal pour 99,7 % des joueurs à 8 ou moins ; touches par message de dégât à +-10 % pour 69 à 75 % des joueurs ; variante de partie (score de victoire, durée, réapparition) lisible dans le chunk 0.
 **Conclusion / prochaine étape** : A0 (témoins et instruments, aucun code de production) ; A3 et A4 attendent la fusion du chantier 30 images/s.
+## [2026-11-10] Rejeu 30 ips et compression : étape 0, témoins AVANT — Complété (à vérifier)
+
+**Décision technique principale** : liste fermée de 12 matchs (dont `0076ebdc`) recuits un à un au code de la branche (schéma 108) puis figés sous `data/investigation/gate_30ips/avant/` avec leurs commandes exactes ; aucune modification de code.
+
+**Résultats observés** : 12 recuisons en 78 s ; `make replay-equiv` 20 identiques en 1253 s ; `replay-verite` 12 « ok » ; écart au parc 107 limité à `schemaVersion` (plus le gain « tourelle fixe » sur 2 matchs). Piège trouvé : un worktree neuf n'a pas `reference/generated/` (ignoré par git), sans quoi les cartes « - Ranked » perdent leurs points d'apparition sans erreur ; premier jeu de témoins jeté et refait. Le dossier de gate n'est pas ignoré par git.
+
+**Conclusion / prochaine étape** : le user vérifie les témoins et clôt le gate de l'étape 0 ; étape A (porte unique et compression) ensuite. Séquence de mort Tactique réelle non capturée (serveur et base joueur requis), remplacée par une mesure sur artefact.
 
 ## [2026-11-09] Briques en v1.0.0 (README, require, ADR 0043) — Complété
 
