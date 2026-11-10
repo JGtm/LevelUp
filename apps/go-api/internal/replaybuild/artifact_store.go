@@ -46,7 +46,7 @@ import (
 )
 
 // StoredArtifact décrit ce qui a été rangé, tel qu'on le rend à l'ouvrier. Bytes est la taille STOCKÉE (le fichier
-// compressé sur disque, cf. artifact_gate.go).
+// compressé sur disque, cf. internal/replayartifact/gate.go).
 type StoredArtifact struct {
 	Path          string
 	MatchID       string
@@ -230,7 +230,7 @@ func writeArtifactBytes(ctx context.Context, outPath, titleSlug, matchID string,
 	}
 	replayartifact.RemoveLegacy(ctx, ecritPath)
 	ecrit, _ := digestFromBytes(blob)
-	ecrit.Bytes = len(stocke) // taille stockee, cf. artifact_gate.go
+	ecrit.Bytes = len(stocke) // taille stockee, cf. internal/replayartifact/gate.go
 	// L'en-tete voisin, APRES l'artefact : un fichier .meta plus recent que l'artefact fait foi (cf. artifact_meta.go),
 	// un .meta absent ou plus ancien (arret entre les deux ecritures) fait relire l'artefact.
 	ecrireEntete(ctx, ecritPath, ecrit, AppVersion())

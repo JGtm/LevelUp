@@ -5,13 +5,15 @@ package main
 //
 // UN GESTE QUE L'UTILISATEUR LANCE LUI-MEME, JAMAIS LE PROGRAMME : la conversion reecrit tout le dossier
 // d'artefacts. Aucun cron, aucune tache de fond, aucun demarrage n'appelle `replaybuild.CompressDir`
-// (garde-rail `archlint/no_auto_replay_compress_test.go`). Serveur arrete de preference : la conversion est
-// atomique et un lecteur en cours ne voit jamais un fichier a moitie ecrit, mais un serveur qui ecrit un
-// artefact au meme moment reecrirait celui qu'on vient de convertir.
+// (garde-rail `archlint/no_auto_replay_compress_test.go`). Elle supporte un serveur actif : la pose d'un
+// `.json.gz` est exclusive et atomique (un `.json.gz` existant, par exemple pose par le serveur pendant la
+// conversion, n'est JAMAIS remplace) et un lecteur ne voit jamais un fichier a moitie ecrit.
 //
 // Chaque artefact est relu et verifie (contenu decompresse identique, octet pour octet) AVANT que le `.json`
 // soit supprime ; la commande est idempotente (un artefact deja compresse n'est pas touche) et chiffre ce
-// qu'elle a fait. Le contenu des artefacts ne change pas d'un octet.
+// qu'elle a fait. Un match aux deux formes se juge sur le contenu : identique, le `.json` est supprime ;
+// different, rien n'est supprime. Un `.json` qui ne se supprime pas est « a relancer » (code de sortie non
+// nul) : la relance termine. Le contenu des artefacts ne change pas d'un octet.
 //
 // Usage :
 //
@@ -93,8 +95,9 @@ func replayCompress(cfg *config.AppConfig, args []string, out io.Writer) error {
 	if o.dryRun {
 		verbe = "a convertir"
 	}
-	s.printf("%d %s, %d deja compresses, %d en doublon (.json et .json.gz, laisses tels quels), %d en echec — %s -> %s (gain %s)\n",
-		rep.Converted, verbe, rep.AlreadyCompressed, rep.Duplicates, rep.Failed,
+	s.printf("%d %s, %d deja compresses, %d doublons identiques resorbes, %d doublons de contenus differents "+
+		"(rien n'est supprime, a trancher a la main), %d a relancer (.json non supprime), %d en echec — %s -> %s (gain %s)\n",
+		rep.Converted, verbe, rep.AlreadyCompressed, rep.Resolved, rep.Different, rep.ToRetry, rep.Failed,
 		formaterOctets(rep.BytesBefore), formaterOctets(rep.BytesAfter), formaterOctets(rep.BytesBefore-rep.BytesAfter))
 	if cause := causeDArret(ctx); cause != "" {
 		s.printf("passe interrompue (%s) : relancer la meme commande reprend les artefacts restants.\n", cause)
@@ -104,6 +107,9 @@ func replayCompress(cfg *config.AppConfig, args []string, out io.Writer) error {
 	}
 	if rep.Failed > 0 {
 		return fmt.Errorf("%d artefacts en echec (voir le journal) : aucun .json en echec n'a ete supprime", rep.Failed)
+	}
+	if rep.ToRetry > 0 {
+		return fmt.Errorf("%d .json non supprimes (le .json.gz est pose et verifie) : relancer la commande", rep.ToRetry)
 	}
 	return nil
 }

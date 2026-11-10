@@ -7,7 +7,8 @@
 // remplacees par ce registre publie dans le document.
 //
 // LECTURE SEULE : il lit les documents de rejeu publies (`<depot>/data/cache/replays/halo_infinite`,
-// fichiers `*.json` hors `*.derived.json`), n'ouvre aucune base, n'ecrit que la fixture.
+// fichiers `*.json.gz`, ou `*.json` d'un parc ancien, hors `*.derived.json`), n'ouvre aucune base, n'ecrit que la
+// fixture ; un dossier sans aucun document fait echouer l'instrument.
 //
 // CE QU'IL COMPTE, par tag d'arme de VEHICULE (`Shot.w` au gabarit `0x<weap>00000000`) :
 //  - `shots` : tous les tirs publies sous ce tag ;
@@ -24,6 +25,7 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { gunzipSync } from 'node:zlib'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const FIXTURE = join(HERE, 'vehicle_weapon_tags_observed.json')
@@ -44,11 +46,28 @@ function lifeAt(vehicles, slot, t) {
   return vehicles.find((v) => v.slot === slot && v.t0 <= t && t <= (v.t1max ?? v.t1 ?? Infinity))
 }
 
-const files = readdirSync(dir).filter((f) => f.endsWith('.json') && !f.includes('derived')).sort()
+// Un artefact est `<short8>.json.gz` (gzip) ou, dans un parc ancien, `<short8>.json` ; un match qui a les deux est lu
+// dans le compresse. La forme est detectee par les octets magiques, pas par le nom.
+const NOM_ARTEFACT = /^([0-9a-f]{8})\.json(\.gz)?$/
+const parCourt = new Map()
+for (const f of readdirSync(dir)) {
+  const m = NOM_ARTEFACT.exec(f)
+  if (m && !(parCourt.has(m[1]) && !m[2])) parCourt.set(m[1], f)
+}
+const files = [...parCourt.values()].sort()
+if (files.length === 0) {
+  console.error(`aucun document de rejeu (*.json.gz ou *.json) dans ${dir} : un corpus vide ne mesure rien`)
+  process.exit(2)
+}
+const readDoc = (f) => {
+  const octets = readFileSync(join(dir, f))
+  const gzip = octets.length >= 2 && octets[0] === 0x1f && octets[1] === 0x8b
+  return JSON.parse((gzip ? gunzipSync(octets) : octets).toString('utf8'))
+}
 const byTag = new Map()
 const schemaVersions = new Set()
 for (const f of files) {
-  const doc = JSON.parse(readFileSync(join(dir, f), 'utf8'))
+  const doc = readDoc(f)
   schemaVersions.add(doc.schemaVersion)
   const vehicles = doc.vehicles ?? []
   for (const s of doc.shots ?? []) {

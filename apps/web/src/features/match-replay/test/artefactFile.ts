@@ -6,7 +6,7 @@
  * `{short8}.json` bruts. Les tests de mesure qui lisent `data/cache/replays/{titre}` passent par
  * ce module : la forme est détectée par les octets magiques (0x1f 0x8b), jamais par le nom, et
  * quand un match a les deux fichiers le compressé gagne — la même règle que la porte Go
- * (`replaybuild.ReadArtifactBytes`).
+ * (`replayartifact.ReadBytes`).
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'

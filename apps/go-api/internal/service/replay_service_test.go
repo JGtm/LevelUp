@@ -9,6 +9,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replayartifact"
 )
 
 // artefactAt écrit un artefact de rejeu factice pour un match, sous le chemin que
@@ -20,7 +21,7 @@ func artefactAt(t *testing.T, titleSlug, matchID, body string) string {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+	if _, _, err := replayartifact.Write(context.Background(), path, []byte(body)); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	return root

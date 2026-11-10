@@ -252,7 +252,7 @@ command exits with code **130** (distinct from 0 for a finished pass and 1 for a
 
 #### Projecting replay artifacts into the database — RELEASE ORDER MATTERS
 
-Two passes read the already-cooked replay artifacts (`data/cache/replays/{slug}/{short8}.json`)
+Two passes read the already-cooked replay artifacts (`data/cache/replays/{slug}/{short8}.json.gz`, or `.json` in a parc not yet converted)
 and project them into shared tables. **Neither decodes a film.** Both are RELEASE tasks, and
 both need the **server stopped**: they take `OpenReadWrite` on the shared DB and run the shared
 migrations themselves — including under `--dry-run`.
@@ -740,7 +740,7 @@ go run ./cmd/mappos-build --cle <mapId> [--carte NAME] [--title slug] [--pas M] 
 - Output: `data/titles/{slug}/reference/map_positions_jouees.json` (merges into the existing
   catalog, one map key at a time).
 - Prereq: no game install, no cgo — pure post-processing over already-decoded replay
-  artifacts (`data/cache/replays/{title}/{matchId}.json`), passed as positional arguments.
+  artifacts (`data/cache/replays/{title}/{matchId}.json.gz` or `.json`), passed as positional arguments.
 - Replay when: more or newer matches should refine a map's played-positions mask.
 
 #### mapnav-fetch

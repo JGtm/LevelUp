@@ -108,11 +108,7 @@ func TestDetecteParLesOctetsMagiques(t *testing.T) {
 	if lu, err := ReadBytes(cheminBrut(dir)); err != nil || !bytes.Equal(lu, docTest) {
 		t.Errorf("gzip sous un nom .json : %d octets, %v", len(lu), err)
 	}
-	dir2 := t.TempDir()
-	ecrireTest(t, cheminCanonique(dir2), docTest) // du JSON brut sous le nom compressé
-	if lu, err := ReadBytes(cheminCanonique(dir2)); err != nil || !bytes.Equal(lu, docTest) {
-		t.Errorf("JSON brut sous un nom .json.gz : %d octets, %v", len(lu), err)
-	}
+	// Du JSON brut sous le nom compressé n'est pas un artefact : refusé (cf. TestLectureRefuseUnFichierVideOuSansEnteteGzip).
 }
 
 // TestParcMixte : le compressé gagne, et le doublon est compté.
@@ -235,5 +231,73 @@ func TestRemoveRetireLesDeuxFormes(t *testing.T) {
 	}
 	if err := Remove(cheminCanonique(dir)); err != nil {
 		t.Errorf("l'absence n'est pas une erreur : %v", err)
+	}
+}
+
+// TestEcritureSansEcraserNePoseJamaisParDessusUnCompresse : la pose exclusive ne remplace pas un `.json.gz`
+// existant (un serveur actif a pu en poser un plus récent), et ne laisse aucun temporaire.
+func TestEcritureSansEcraserNePoseJamaisParDessusUnCompresse(t *testing.T) {
+	dir := t.TempDir()
+	recent := []byte(`{"schemaVersion":2}`)
+	ecrireTest(t, cheminCanonique(dir), gzipTest(t, recent))
+	avant, _ := os.ReadFile(cheminCanonique(dir))
+	_, _, created, err := WriteIfAbsent(context.Background(), cheminCanonique(dir), docTest)
+	if err != nil || created {
+		t.Fatalf("created = %v, err = %v : l'existant doit être respecté sans erreur", created, err)
+	}
+	if apres, _ := os.ReadFile(cheminCanonique(dir)); !bytes.Equal(apres, avant) {
+		t.Fatal("le .json.gz existant a été écrasé")
+	}
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 1 {
+		t.Errorf("un temporaire a été laissé : %d entrées", len(entries))
+	}
+	other := t.TempDir()
+	w, stored, created, err := WriteIfAbsent(context.Background(), cheminCanonique(other), docTest)
+	if err != nil || !created || w != cheminCanonique(other) {
+		t.Fatalf("première pose : %s, %v, %v", w, created, err)
+	}
+	if c, err := Read(w); err != nil || !bytes.Equal(c.JSON, docTest) || c.StoredBytes != len(stored) {
+		t.Fatalf("relecture de la pose : %v", err)
+	}
+}
+
+// TestLectureRefuseUnFichierVideOuSansEnteteGzip : un `.json.gz` qui n'est pas du gzip, et tout fichier vide, sont des
+// erreurs journalisées et comptées ; un `.json` brut reste accepté.
+func TestLectureRefuseUnFichierVideOuSansEnteteGzip(t *testing.T) {
+	cas := []struct {
+		nom, fichier string
+		octets       []byte
+		ok           bool
+	}{
+		{"gz sans entete", courtTest + ".json.gz", docTest, false},
+		{"gz vide", courtTest + ".json.gz", nil, false},
+		{"brut vide", courtTest + ".json", nil, false},
+		{"brut valide", courtTest + ".json", docTest, true},
+		{"gz valide", courtTest + ".json.gz", nil, true}, // octets posés ci-dessous
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			dir := t.TempDir()
+			octets := c.octets
+			if c.nom == "gz valide" {
+				octets = gzipTest(t, docTest)
+			}
+			ecrireTest(t, filepath.Join(dir, c.fichier), octets)
+			avant := observability.LoadCounter(CounterUnreadable)
+			_, err := ReadBytes(filepath.Join(dir, c.fichier))
+			if c.ok {
+				if err != nil {
+					t.Fatalf("lecture refusée : %v", err)
+				}
+				return
+			}
+			if err == nil || errors.Is(err, fs.ErrNotExist) {
+				t.Fatalf("une erreur de lecture est attendue : %v", err)
+			}
+			if observability.LoadCounter(CounterUnreadable) <= avant {
+				t.Error("le fichier refusé n'est pas compté")
+			}
+		})
 	}
 }

@@ -6,28 +6,39 @@ package replaybuild
 // POUR CHAQUE ARTEFACT BRUT, DANS L'ORDRE, et l'ordre est la sûreté :
 //
 //  1. le JSON est lu (par la porte : un brut qui se décode mal est un ÉCHEC, il reste en place) ;
-//  2. le `.json.gz` est écrit ATOMIQUEMENT (cf. [writeStored]) ;
-//  3. il est RELU et son contenu décompressé doit être, octet pour octet, le JSON d'origine — sinon le
-//     `.json.gz` est retiré et le `.json` reste ;
-//  4. l'en-tête `.meta` est réécrit (la taille stockée a changé) et la marque de dérivation, si elle était à jour
-//     pour le brut, est réécrite à la nouvelle taille stockée : convertir un parc ne fait rejouer aucune dérivation ;
-//  5. alors seulement le `.json` est supprimé.
+//  2. le `.json.gz` est posé par une création EXCLUSIVE ([replayartifact.WriteIfAbsent]) : un `.json.gz` déjà
+//     présent n'est JAMAIS remplacé. Un serveur actif qui a posé un `.json.gz` plus récent entre la lecture et la
+//     pose garde le sien ; le match est alors jugé comme un doublon (point 6) ;
+//  3. le `.json.gz` posé est RELU et son contenu décompressé doit être, octet pour octet, le JSON d'origine —
+//     sinon il est retiré (c'est le nôtre) et le `.json` reste ;
+//  4. il reprend la DATE du `.json` : le rattrapage trie les artefacts sur leur date, une conversion ne les
+//     rajeunit pas ;
+//  5. l'en-tête `.meta` est réécrit APRÈS (il n'est donc pas plus ancien que l'artefact, et fait foi sans relire
+//     l'artefact) et la marque de dérivation, si elle était à jour pour le brut, est reportée sur la nouvelle taille
+//     stockée : convertir un parc ne fait rejouer aucune dérivation ;
+//  6. alors seulement le `.json` est supprimé (son absence est tolérée : un serveur a pu le retirer).
 //
-// IDEMPOTENTE : un artefact déjà compressé n'est pas touché ; une seconde passe ne convertit rien. Un match qui
-// porte les DEUX formes est compté comme doublon et laissé tel quel (le compressé gagne à la lecture, cf.
-// artifact_gate.go) : lequel des deux est le bon est un geste de l'opérateur.
+// UN MATCH AUX DEUX FORMES (suite d'un arrêt entre 2 et 6, d'une suppression refusée, ou d'un serveur) se juge sur le
+// contenu : `.gz` décodé IDENTIQUE au `.json` = le `.json` est supprimé (le doublon est résorbé, la relance
+// termine ce qu'une interruption a laissé) ; contenus DIFFÉRENTS = rien n'est supprimé, le match est compté à part,
+// lequel est le bon est un geste de l'opérateur.
 //
-// Un dossier qui sert un serveur en marche reste lisible pendant la conversion : le remplacement est atomique et
-// la porte relit le compressé quand le brut vient de disparaître.
+// UNE SUPPRESSION QUI ÉCHOUE (fichier tenu ouvert par un lecteur sous Windows) n'est pas une conversion ratée : le
+// `.json.gz` vérifié est en place, le match est compté « à relancer » et la relance résorbe le doublon.
+//
+// IDEMPOTENTE : un artefact déjà compressé n'est pas touché ; une seconde passe sans interruption ne fait rien.
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/replayartifact"
@@ -37,10 +48,16 @@ import (
 type CompressReport struct {
 	// Converted : artefacts convertis (à convertir, en simulation).
 	Converted int
-	// AlreadyCompressed : artefacts déjà compressés, laissés tels quels.
+	// AlreadyCompressed : artefacts déjà compressés, sans `.json` voisin, laissés tels quels.
 	AlreadyCompressed int
-	// Duplicates : matchs qui portent le `.json` ET le `.json.gz`, laissés tels quels.
-	Duplicates int
+	// Resolved : matchs aux deux formes dont le `.gz` décodé est identique au `.json` : le `.json` est supprimé
+	// (à supprimer, en simulation).
+	Resolved int
+	// Different : matchs aux deux formes dont les contenus diffèrent : aucun fichier n'est supprimé.
+	Different int
+	// ToRetry : matchs dont le `.json.gz` est posé et vérifié mais dont le `.json` n'a pas pu être supprimé :
+	// relancer la commande.
+	ToRetry int
 	// Failed : artefacts non convertis (illisibles, écriture ou vérification en échec) ; chacun est journalisé.
 	Failed int
 	// BytesBefore / BytesAfter : somme des tailles stockées des artefacts convertis, avant (bruts) et après
@@ -48,15 +65,33 @@ type CompressReport struct {
 	BytesBefore, BytesAfter int64
 }
 
-// relireCompresse relit un `.json.gz` fraîchement écrit pour le vérifier : le fichier précis, sans résolution de
-// jumeau. Variable pour qu'un test fasse mentir la relecture ; la production n'a qu'une valeur.
-var relireCompresse = func(path string) ([]byte, error) {
-	stocke, err := replayartifact.ReadStored(path)
-	if err != nil {
-		return nil, err
+// Points d'injection des tests ; la production n'a qu'une valeur de chacun.
+var (
+	// relireCompresse relit un `.json.gz` fraîchement posé pour le vérifier : le fichier précis, sans résolution de
+	// jumeau.
+	relireCompresse = func(path string) ([]byte, error) {
+		stocke, err := replayartifact.ReadStored(path)
+		if err != nil {
+			return nil, err
+		}
+		return replayartifact.Decode(stocke)
 	}
-	return replayartifact.Decode(stocke)
-}
+	// retirerLeBrut supprime le `.json` d'un match dont le `.json.gz` est posé et vérifié.
+	retirerLeBrut = os.Remove
+	// apresLectureDuBrut est appelé entre la lecture du `.json` et la pose du `.json.gz` : la fenêtre de la course
+	// avec un serveur actif.
+	apresLectureDuBrut func(brut string)
+)
+
+// issue : ce qu'est devenu un match.
+type issue int
+
+const (
+	issueConverti issue = iota
+	issueResorbe
+	issueDifferent
+	issueARelancer
+)
 
 // CompressDir convertit en place les artefacts bruts d'un dossier d'artefacts (cf. l'en-tête du fichier). `dryRun`
 // lit et compresse en mémoire pour chiffrer le gain, et n'écrit ni ne supprime rien. Une erreur n'est rendue que
@@ -72,64 +107,151 @@ func CompressDir(ctx context.Context, dir string, dryRun bool) (CompressReport, 
 			return rep, err
 		}
 		path := filepath.Join(dir, e.Name)
-		if e.Name == e.Short+title.ReplayArtifactExt {
-			if replayartifact.HasLegacySibling(path) {
-				rep.Duplicates++
-				slog.WarnContext(ctx, "replay compress: match présent sous deux formes — laissé tel quel", "compresse", path)
-				continue
-			}
+		var (
+			res          issue
+			avant, apres int64
+			err          error
+		)
+		switch {
+		case e.Name != e.Short+title.ReplayArtifactExt:
+			res, avant, apres, err = convertirUn(ctx, path, dryRun)
+		case replayartifact.HasLegacySibling(path):
+			res, err = jugerLeDoublon(ctx, path, dryRun)
+		default:
 			rep.AlreadyCompressed++
 			continue
 		}
-		avant, apres, err := convertirUn(ctx, path, dryRun)
 		if err != nil {
 			rep.Failed++
 			slog.ErrorContext(ctx, "replay compress: artefact non converti", "path", path, "err", err)
 			continue
 		}
-		rep.Converted++
-		rep.BytesBefore += avant
-		rep.BytesAfter += apres
+		switch res {
+		case issueConverti:
+			rep.Converted++
+			rep.BytesBefore += avant
+			rep.BytesAfter += apres
+		case issueResorbe:
+			rep.Resolved++
+		case issueDifferent:
+			rep.Different++
+		case issueARelancer:
+			rep.ToRetry++
+		}
 	}
 	return rep, nil
 }
 
-// convertirUn convertit un artefact brut et rend sa taille avant et après.
-func convertirUn(ctx context.Context, brut string, dryRun bool) (avant, apres int64, err error) {
+// convertirUn convertit un artefact brut et rend son issue et sa taille avant et après.
+func convertirUn(ctx context.Context, brut string, dryRun bool) (res issue, avant, apres int64, err error) {
 	stocke, err := replayartifact.ReadStored(brut)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
+	}
+	st, err := os.Stat(brut)
+	if err != nil {
+		return 0, 0, 0, err
 	}
 	doc, err := replayartifact.Decode(stocke)
 	if err != nil {
-		return 0, 0, fmt.Errorf("lecture : %w", err)
+		return 0, 0, 0, fmt.Errorf("lecture : %w", err)
+	}
+	if apresLectureDuBrut != nil {
+		apresLectureDuBrut(brut)
 	}
 	if dryRun {
 		compresse, err := replayartifact.Encode(doc)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
-		return int64(len(stocke)), int64(len(compresse)), nil
+		return issueConverti, int64(len(stocke)), int64(len(compresse)), nil
 	}
-	ecrit, compresse, err := replayartifact.Write(ctx, brut, doc)
+	ecrit, compresse, cree, err := replayartifact.WriteIfAbsent(ctx, brut, doc)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
+	if !cree {
+		// Un `.json.gz` est apparu depuis le listage : on ne le touche pas, on juge le doublon.
+		res, err = jugerLeDoublon(ctx, ecrit, false)
+		return res, 0, 0, err
+	}
+	if err := verifierLaPose(ctx, ecrit, doc, st.ModTime()); err != nil {
+		return 0, 0, 0, err
+	}
+	renouvelerVoisins(ctx, brut, ecrit, doc, int64(len(stocke)), len(compresse))
+	if retirerLeBrutVerifie(ctx, brut) == issueARelancer {
+		return issueARelancer, 0, 0, nil
+	}
+	return issueConverti, int64(len(stocke)), int64(len(compresse)), nil
+}
+
+// verifierLaPose relit le `.json.gz` que cette conversion vient de poser : son contenu décompressé doit être, octet
+// pour octet, le JSON d'origine (sinon il est retiré), puis il reprend la date du `.json`.
+func verifierLaPose(ctx context.Context, ecrit string, doc []byte, date time.Time) error {
 	relu, err := relireCompresse(ecrit)
 	if err == nil && !bytes.Equal(relu, doc) {
 		err = fmt.Errorf("le contenu relu du .json.gz (%d octets) diffère du JSON d'origine (%d octets)", len(relu), len(doc))
 	}
 	if err != nil {
-		if rerr := os.Remove(ecrit); rerr != nil { // ecrit seul : jamais le .json d origine
+		if rerr := os.Remove(ecrit); rerr != nil { // ecrit seul : c'est le .json.gz que cette conversion vient de poser
 			slog.ErrorContext(ctx, "replay compress: .json.gz non vérifié non retiré", "path", ecrit, "err", rerr)
 		}
-		return 0, 0, fmt.Errorf("vérification : %w", err)
+		return fmt.Errorf("vérification : %w", err)
 	}
-	renouvelerVoisins(ctx, brut, ecrit, doc, int64(len(stocke)), len(compresse))
-	if err := os.Remove(brut); err != nil {
-		return 0, 0, fmt.Errorf("suppression du .json converti : %w", err)
+	if err := os.Chtimes(ecrit, date, date); err != nil {
+		slog.WarnContext(ctx, "replay compress: date du .json non reportée sur le .json.gz", "path", ecrit, "err", err)
 	}
-	return int64(len(stocke)), int64(len(compresse)), nil
+	return nil
+}
+
+// retirerLeBrutVerifie supprime le `.json` d'un match dont le `.json.gz` est vérifié. Absent = déjà retiré (tolérée).
+// Un échec n'est pas une conversion ratée : le match est « à relancer ».
+func retirerLeBrutVerifie(ctx context.Context, brut string) issue {
+	err := retirerLeBrut(brut)
+	if err == nil || errors.Is(err, fs.ErrNotExist) {
+		return issueConverti
+	}
+	slog.WarnContext(ctx, "replay compress: .json non supprimé — le .json.gz est posé et vérifié, relancer la commande",
+		"path", brut, "err", err)
+	return issueARelancer
+}
+
+// jugerLeDoublon juge un match qui porte `.json.gz` (compressedPath) ET `.json` : identique après décodage, le
+// `.json` est supprimé (à supprimer, en simulation) ; différent, rien n'est supprimé.
+func jugerLeDoublon(ctx context.Context, compressedPath string, dryRun bool) (issue, error) {
+	_, legacy := title.ReplayArtifactCandidates(compressedPath)
+	brutStocke, err := replayartifact.ReadStored(legacy)
+	if errors.Is(err, fs.ErrNotExist) {
+		return issueResorbe, nil // retiré entre-temps par un serveur : plus de doublon
+	}
+	if err != nil {
+		return 0, fmt.Errorf("lecture du .json du doublon : %w", err)
+	}
+	brutDoc, err := replayartifact.Decode(brutStocke)
+	if err != nil {
+		return 0, fmt.Errorf("lecture du .json du doublon : %w", err)
+	}
+	gz, err := relireCompresse(compressedPath)
+	if err != nil {
+		return 0, fmt.Errorf("lecture du .json.gz du doublon : %w", err)
+	}
+	if !bytes.Equal(gz, brutDoc) {
+		slog.WarnContext(ctx, "replay compress: match aux deux formes de contenus DIFFÉRENTS — rien n'est supprimé, "+
+			"choisir à la main", "compresse", compressedPath, "brut", legacy)
+		return issueDifferent, nil
+	}
+	if dryRun {
+		return issueResorbe, nil
+	}
+	if stGz, serr := replayartifact.ReadStored(compressedPath); serr == nil {
+		d, _ := digestFromBytes(gz)
+		d.Bytes = len(stGz)
+		ecrireEntete(ctx, compressedPath, d, appVersionDeLEntete(legacy))
+	}
+	if retirerLeBrutVerifie(ctx, legacy) == issueARelancer {
+		return issueARelancer, nil
+	}
+	return issueResorbe, nil
 }
 
 // renouvelerVoisins réécrit l'en-tête `.meta` du compressé et reporte la marque de dérivation du brut sur la taille

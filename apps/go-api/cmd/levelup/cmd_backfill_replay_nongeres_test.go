@@ -120,7 +120,7 @@ func TestPurgerNonGeres(t *testing.T) {
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(p, []byte("{}"), 0o644); err != nil {
+		if err := poserCompresse(p, []byte("{}"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}

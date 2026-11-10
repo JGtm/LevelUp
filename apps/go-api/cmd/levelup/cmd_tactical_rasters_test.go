@@ -47,7 +47,7 @@ func trPoserArtefacts(t *testing.T, root string, shorts ...string) {
 			t.Fatalf("creer le dossier des artefacts: %v", err)
 		}
 		corps := strings.ReplaceAll(trArtefact, "%ID%", short)
-		if err := os.WriteFile(path, []byte(corps), 0o644); err != nil {
+		if err := poserCompresse(path, []byte(corps), 0o644); err != nil {
 			t.Fatalf("ecrire artefact: %v", err)
 		}
 	}
@@ -183,7 +183,7 @@ func TestTacticalRasters_ArtefactIllisible(t *testing.T) {
 	trPoserArtefacts(t, root, "bbbbbbbb")
 	pr := titlePkg.NewPathResolver(root)
 	casse := pr.ReplayArtifactPath(titlePkg.DefaultSlug, "aaaaaaaa")
-	if err := os.WriteFile(casse, []byte(`{"schemaVersion":`), 0o644); err != nil {
+	if err := poserCompresse(casse, []byte(`{"schemaVersion":`), 0o644); err != nil {
 		t.Fatalf("ecrire: %v", err)
 	}
 	b := projeterCorpusRasters(context.Background(), &config.AppConfig{RepoRoot: root},
@@ -238,7 +238,7 @@ func trEcrireSidecar(t *testing.T, path string, sc domain.TacticalRasterSidecar)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if err := os.WriteFile(path, raw, 0o644); err != nil {
+	if err := poserCompresse(path, raw, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 }

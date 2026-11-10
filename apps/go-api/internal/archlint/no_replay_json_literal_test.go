@@ -9,8 +9,15 @@
 //
 // RÈGLE. Une fonction de production de `apps/go-api` qui construit ou balaie des chemins de rejeu (son
 // corps nomme `ReplayArtifactPath`, `ReplayArtifactsDir`, `ReplayArtifactFileName`, `TacticalRasterPath`,
-// `SousDossierRasters` ou une fonction de la porte `replayartifact`) ne porte aucun littéral `".json"`,
-// `".json.gz"` ni `".derived.json"`. Seul `film_id.go` les déclare. L'allowlist est vide.
+// `SousDossierRasters` ou une fonction de la porte `replayartifact`, ou son NOM parle d'artefact ou de rejeu)
+// ne porte aucun littéral `".json"`, `".json.gz"` ni `".derived.json"`. Seul `film_id.go` les déclare.
+// L'allowlist est vide.
+//
+// LIMITE. Il n'existe pas de règle simple qui voie « un `HasSuffix(x, ".json")` appliqué au listage du dossier des
+// rejeux » : le dossier arrive par un paramètre (`mesureFrequentation(dir)`), et `".json"` est aussi l'extension
+// des jetons, des sessions et de dizaines de catalogues, dans les mêmes fichiers. La règle est donc lexicale, par
+// fonction ; les balayages de dossier de rejeu hors de ce périmètre (un script `.mjs`, un outil dont la fonction ne
+// parle pas de rejeu) se tiennent par la migration vers `replayartifact.List` et par la revue.
 package archlint
 
 import (
@@ -41,7 +48,10 @@ func litteralsDExtensionDeRejeu(s goSource) []string {
 	var out []string
 	for _, d := range s.File.Decls {
 		fn, ok := d.(*ast.FuncDecl)
-		if !ok || fn.Body == nil || !motifSurfaceDeRejeu.MatchString(texteDeLExpression(s, fn.Body)) {
+		if !ok || fn.Body == nil {
+			continue
+		}
+		if !motifSurfaceDeRejeu.MatchString(texteDeLExpression(s, fn.Body)) && !motifArtefact.MatchString(fn.Name.Name) {
 			continue
 		}
 		ast.Inspect(fn.Body, func(n ast.Node) bool {

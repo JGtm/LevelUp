@@ -32,7 +32,7 @@ func ecrireArtefact(t *testing.T, repoRoot, slug, matchID string, schema int) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if err := os.WriteFile(path, raw, 0o644); err != nil {
+	if err := poserCompresse(path, raw, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 }

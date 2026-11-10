@@ -42,7 +42,7 @@ func ecrireArtefactAvecJoueurs(t *testing.T, repoRoot, slug, matchID string, sch
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if err := os.WriteFile(path, raw, 0o644); err != nil {
+	if err := poserCompresse(path, raw, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 }
@@ -121,7 +121,7 @@ func TestClasserReparation_IllisibleNEstPasAbsent(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if err := os.WriteFile(path, []byte("{ceci n est pas du JSON"), 0o644); err != nil {
+	if err := poserCompresse(path, []byte("{ceci n est pas du JSON"), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	if got := classerReparation(path, func() int { return 0 }); got != reparationHorsSchema {

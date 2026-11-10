@@ -60,7 +60,7 @@ type artifactMeta struct {
 	SchemaVersion int               `json:"schemaVersion"`
 	Layers        map[string]string `json:"layers,omitempty"`
 	// Bytes : la TAILLE STOCKEE de l'artefact decrit (celle du fichier sur disque, compresse le cas echeant, cf.
-	// artifact_gate.go) ; un artefact de taille differente n'est pas celui-la.
+	// internal/replayartifact/gate.go) ; un artefact de taille differente n'est pas celui-la.
 	Bytes int64 `json:"bytes"`
 	// AppVersion : la version de l'application du processus qui a ecrit l'artefact ; vide = inconnue.
 	AppVersion string `json:"appVersion,omitempty"`

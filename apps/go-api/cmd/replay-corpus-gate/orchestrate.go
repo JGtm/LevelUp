@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replayverite"
 )
@@ -134,7 +135,7 @@ func traiterTemoin(ctx context.Context, t Temoin, tc temoinContexte) ligneRappor
 func (tc temoinContexte) resoudreReference(ctx context.Context, t Temoin, facts replaybuild.FactsFile) (baseResolue, error) {
 	if tc.Reference == referenceParc {
 		refPath := referenceArtifactPath(tc.ParcRoot, tc.TitleSlug, facts.MatchID)
-		if _, err := os.Stat(refPath); err != nil {
+		if _, err := replayartifact.Locate(refPath); err != nil {
 			return baseResolue{}, fmt.Errorf("%w : %s (%v)", errAbsentDuParc, refPath, err)
 		}
 		return baseResolue{Artefact: refPath}, nil

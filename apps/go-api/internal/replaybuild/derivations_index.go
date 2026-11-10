@@ -79,7 +79,7 @@ func EstMarqueDerivations(name string) bool {
 
 // ArtefactDeLaMarque rend le chemin (ou le nom) CANONIQUE (`.json.gz`) de l ARTEFACT que cette marque
 // decrit — l inverse de [DerivationsMarkPath] pour un artefact compresse. Un artefact brut d un parc ancien porte
-// le meme nom de marque : pour savoir si l artefact existe, passer ce chemin a [ArtifactExists], qui voit les deux
+// le meme nom de marque : pour savoir si l artefact existe, passer ce chemin a [replayartifact.Exists], qui voit les deux
 // formes.
 //
 // ELLE EXISTE POUR QUE LA RELATION MARQUE <-> ARTEFACT NE SOIT ECRITE QU'ICI. Le cron de purge

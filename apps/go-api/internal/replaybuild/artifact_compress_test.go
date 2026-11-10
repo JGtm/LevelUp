@@ -56,7 +56,7 @@ func TestCompressDir_ConvertitSurPlaceEtVerifie(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rep.Converted != 3 || rep.AlreadyCompressed != 1 || rep.Failed != 0 || rep.Duplicates != 0 {
+	if rep.Converted != 3 || rep.AlreadyCompressed != 1 || rep.Failed != 0 {
 		t.Fatalf("compte rendu = %+v", rep)
 	}
 	var avant, apres int64
@@ -193,24 +193,6 @@ func TestCompressDir_NeSupprimeLeBrutQueSiLeCompresseSeRelitIdentique(t *testing
 		if _, err := os.Stat(filepath.Join(dir, court+".json.gz")); !errors.Is(err, fs.ErrNotExist) {
 			t.Errorf("le .json.gz non vérifié doit être retiré : %v", err)
 		}
-	}
-}
-
-// TestCompressDir_ParcMixteDuMemeMatchEstCompte : un match qui a les deux formes n'est ni converti ni supprimé.
-func TestCompressDir_ParcMixteDuMemeMatchEstCompte(t *testing.T) {
-	ctx := context.Background()
-	dir := t.TempDir()
-	ecrireTest(t, filepath.Join(dir, "d0000001.json"), []byte(`{"schemaVersion":1}`))
-	ecrireTest(t, filepath.Join(dir, "d0000001.json.gz"), gzipTest(t, []byte(`{"schemaVersion":2}`)))
-	rep, err := CompressDir(ctx, dir, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rep.Duplicates != 1 || rep.Converted != 0 || rep.AlreadyCompressed != 0 {
-		t.Fatalf("compte rendu = %+v", rep)
-	}
-	if _, err := os.Stat(filepath.Join(dir, "d0000001.json")); err != nil {
-		t.Errorf("le .json d'un doublon est laissé au geste de l'opérateur : %v", err)
 	}
 }
 

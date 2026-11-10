@@ -37,10 +37,82 @@ var appelsFichierInterdits = map[string]bool{
 	"ReadFile": true, "Open": true, "OpenFile": true, "Stat": true, "Lstat": true, "WriteFile": true,
 }
 
-var motifArtefact = regexp.MustCompile(`(?i)art[ei]fact`)
+var motifArtefact = regexp.MustCompile(`(?i)art[ei]fact|rejeu`)
 
-// appelsSurUnArtefact rend les appels `os.X(...)` d'une source dont l'argument ou la fonction englobante
-// désigne un artefact, sous la forme « fichier:ligne os.X ».
+// contientIdentifiant dit si `texte` nomme l'identifiant `id` (mot entier).
+func contientIdentifiant(texte, id string) bool {
+	return regexp.MustCompile(`\b` + regexp.QuoteMeta(id) + `\b`).MatchString(texte)
+}
+
+// identifiantsContamines rend les identifiants d'une fonction qui portent un chemin d'artefact : affectés (`:=`,
+// `=`, `var`, `range`) depuis une expression qui nomme un artefact (motifArtefact) ou depuis un autre identifiant
+// contaminé. Une passe à point fixe, dans la seule fonction : c'est la limite de la règle.
+func identifiantsContamines(s goSource, fn *ast.FuncDecl) map[string]bool {
+	tainted := map[string]bool{}
+	atteint := func(texte string) bool {
+		if motifArtefact.MatchString(texte) {
+			return true
+		}
+		for id := range tainted {
+			if contientIdentifiant(texte, id) {
+				return true
+			}
+		}
+		return false
+	}
+	pose := func(lhs ast.Expr, rhs string) bool {
+		id, ok := lhs.(*ast.Ident)
+		if !ok || id.Name == "_" || tainted[id.Name] || !atteint(rhs) {
+			return false
+		}
+		tainted[id.Name] = true
+		return true
+	}
+	for changed := true; changed; {
+		changed = false
+		ast.Inspect(fn.Body, func(n ast.Node) bool {
+			switch v := n.(type) {
+			case *ast.AssignStmt:
+				rhs := ""
+				for _, r := range v.Rhs {
+					rhs += texteDeLExpression(s, r) + " "
+				}
+				for _, l := range v.Lhs {
+					changed = pose(l, rhs) || changed
+				}
+			case *ast.ValueSpec:
+				rhs := ""
+				for _, r := range v.Values {
+					rhs += texteDeLExpression(s, r) + " "
+				}
+				for _, l := range v.Names {
+					changed = pose(l, rhs) || changed
+				}
+			case *ast.RangeStmt:
+				x := texteDeLExpression(s, v.X)
+				if v.Key != nil {
+					changed = pose(v.Key, x) || changed
+				}
+				if v.Value != nil {
+					changed = pose(v.Value, x) || changed
+				}
+			}
+			return true
+		})
+	}
+	return tainted
+}
+
+// appelsSurUnArtefact rend les appels `os.X(...)` d'une source qui portent sur un artefact, sous la forme
+// « fichier:ligne os.X ». Trois indices, dans la fonction qui porte l'appel : l'argument nomme un artefact ou un
+// rejeu ; l'argument contient un identifiant affecté depuis un tel nom (cf. [identifiantsContamines]) ; le NOM de la
+// fonction en parle (le commentaire de doc n'est pas lu : il cite des artefacts à propos de sidecars, de faits ou
+// d'index et rendrait la règle bavarde).
+//
+// LIMITE : la règle est lexicale. Un chemin d'artefact reçu par un paramètre, un champ de structure ou un retour de
+// fonction qui ne le nomme pas, dans une fonction dont le nom ne parle pas d'artefact ou de rejeu, passe (ainsi
+// `cmd/mappos-build`, dont les chemins viennent de `os.Args`, est tenu par sa migration et non par la règle). Elle attrape la dérive la plus probable (un `os.Stat` sur un chemin obtenu de `ReplayArtifactPath` ou d'une
+// fonction « ...Artifact... »), pas une obfuscation.
 func appelsSurUnArtefact(s goSource) []string {
 	var out []string
 	for _, d := range s.File.Decls {
@@ -48,6 +120,8 @@ func appelsSurUnArtefact(s goSource) []string {
 		if !ok || fn.Body == nil {
 			continue
 		}
+		fonctionEnParle := motifArtefact.MatchString(fn.Name.Name)
+		tainted := identifiantsContamines(s, fn)
 		ast.Inspect(fn.Body, func(n ast.Node) bool {
 			call, ok := n.(*ast.CallExpr)
 			if !ok || len(call.Args) == 0 {
@@ -62,7 +136,13 @@ func appelsSurUnArtefact(s goSource) []string {
 				return true
 			}
 			arg := texteDeLExpression(s, call.Args[0])
-			if motifArtefact.MatchString(arg) || motifArtefact.MatchString(fn.Name.Name) {
+			vise := fonctionEnParle || motifArtefact.MatchString(arg)
+			for id := range tainted {
+				if !vise && contientIdentifiant(arg, id) {
+					vise = true
+				}
+			}
+			if vise {
 				out = append(out, fmt.Sprintf("%s:%d os.%s", s.Rel, s.Fset.Position(call.Pos()).Line, sel.Sel.Name))
 			}
 			return true
@@ -87,6 +167,26 @@ func autre(p string) { _, _ = os.Stat(replayArtifactPath(p)) }
 `)
 	if got := appelsSurUnArtefact(copie); len(got) != 2 {
 		t.Errorf("le garde-rail doit voir les deux appels, vu %v", got)
+	}
+	// Le cas de la revue : le chemin vient d'une fonction « ...Artifact... » et passe par une variable neutre.
+	contamine := parseGoSnippet(t, "cmd/x/main.go", `package main
+import "os"
+func resoudre(root string) error {
+	refPath := referenceArtifactPath(root, "a")
+	chemin := refPath
+	if _, err := os.Stat(chemin); err != nil {
+		return err
+	}
+	return nil
+}
+func lireLesRejeux(fichiers []string) {
+	for _, f := range fichiers {
+		_, _ = os.ReadFile(f)
+	}
+}
+`)
+	if got := appelsSurUnArtefact(contamine); len(got) != 2 {
+		t.Errorf("le garde-rail doit voir le chemin contaminé et la fonction nommée d'après les rejeux, vu %v", got)
 	}
 	innocent := parseGoSnippet(t, "cmd/x/main.go", `package main
 import "os"

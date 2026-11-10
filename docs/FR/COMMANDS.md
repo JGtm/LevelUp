@@ -259,7 +259,7 @@ panne). Un **second** `Ctrl-C` tue le processus immédiatement.
 
 #### Projeter les artefacts de rejeu en base — L'ORDRE DE RELEASE N'EST PAS INTERCHANGEABLE
 
-Deux passes lisent les artefacts de rejeu DÉJÀ cuits (`data/cache/replays/{slug}/{short8}.json`)
+Deux passes lisent les artefacts de rejeu DÉJÀ cuits (`data/cache/replays/{slug}/{short8}.json.gz`, ou `.json` dans un parc pas encore converti)
 et les projettent vers les tables partagées. **Aucune des deux ne décode de film.** Ce sont des
 tâches de RELEASE, et toutes deux exigent le **serveur arrêté** : elles prennent `OpenReadWrite`
 sur la DB partagée et jouent elles-mêmes les migrations — y compris sous `--dry-run`.
@@ -766,7 +766,7 @@ go run ./cmd/mappos-build --cle <mapId> [--carte NOM] [--title slug] [--pas M] \
 - Sortie : `data/titles/{slug}/reference/map_positions_jouees.json` (fusionne dans le
   catalogue existant, une clé de carte à la fois).
 - Prérequis : ni jeu installé, ni cgo — post-traitement pur sur des artefacts de rejeu déjà
-  décodés (`data/cache/replays/{title}/{matchId}.json`), passés en arguments positionnels.
+  décodés (`data/cache/replays/{title}/{matchId}.json.gz` ou `.json`), passés en arguments positionnels.
 - À rejouer : quand plus ou de plus récents matchs doivent affiner le masque de positions
   jouées d'une carte.
 

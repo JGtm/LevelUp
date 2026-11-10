@@ -42,7 +42,7 @@ func bsEcrireArtefact(t *testing.T, matchID, corps string) *titlePkg.PathResolve
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("creer le dossier des artefacts: %v", err)
 	}
-	if err := os.WriteFile(path, []byte(corps), 0o644); err != nil {
+	if err := poserCompresse(path, []byte(corps), 0o644); err != nil {
 		t.Fatalf("ecrire artefact: %v", err)
 	}
 	return pr
@@ -139,7 +139,7 @@ func TestProjeterCorpusBombe_Limit(t *testing.T) {
 	const a, bID = "000d5950-1234-4abc-9def-0123456789ab", "35b75a31-1234-4abc-9def-0123456789ab"
 	pr := bsEcrireArtefact(t, a, bsArtefactPlein)
 	pathB := pr.ReplayArtifactPath(titlePkg.DefaultSlug, bID)
-	if err := os.WriteFile(pathB, []byte(bsArtefactPlein), 0o644); err != nil {
+	if err := poserCompresse(pathB, []byte(bsArtefactPlein), 0o644); err != nil {
 		t.Fatalf("ecrire artefact: %v", err)
 	}
 	o := bombStatsOptions{titleSlug: titlePkg.DefaultSlug, dryRun: true, limit: 1}
@@ -157,7 +157,7 @@ func TestLireUnArtefactBombe(t *testing.T) {
 	dir := t.TempDir()
 	ecrire := func(nom, corps string) string {
 		path := filepath.Join(dir, nom)
-		if err := os.WriteFile(path, []byte(corps), 0o644); err != nil {
+		if err := poserCompresse(path, []byte(corps), 0o644); err != nil {
 			t.Fatalf("ecrire %s: %v", nom, err)
 		}
 		return path

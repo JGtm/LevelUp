@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -107,4 +108,47 @@ func TestReplayCompress_SousCommandeInconnue(t *testing.T) {
 	if err := runReplayTo(&config.AppConfig{RepoRoot: t.TempDir()}, nil, &bytes.Buffer{}); err == nil {
 		t.Fatal("sans sous-commande : erreur attendue")
 	}
+}
+
+// TestReplayCompress_DoublonsIdentiqueEtDifferent : un doublon identique est résorbé, un doublon différent n'est
+// rien supprimé ; le compte rendu le dit.
+func TestReplayCompress_DoublonsIdentiqueEtDifferent(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "parc")
+	docs := poserParcBrut(t, dir) // a0000001 et a0000002 bruts
+	// a0000001 : son .gz existe déjà, identique au .json.
+	gz, err := replayartifact.Encode(docs["a0000001"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "a0000001.json.gz"), gz, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// a0000002 : son .gz diffère du .json.
+	gz2, err := replayartifact.Encode([]byte(`{"autre":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "a0000002.json.gz"), gz2, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := runReplayTo(&config.AppConfig{RepoRoot: t.TempDir()}, []string{"compress", "--dir", dir}, &out); err != nil {
+		t.Fatalf("%v / %s", err, out.String())
+	}
+	if !strings.Contains(out.String(), "1 doublons identiques resorbes") || !strings.Contains(out.String(), "1 doublons de contenus differents") {
+		t.Errorf("compte rendu = %q", out.String())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "a0000001.json")); !os.IsNotExist(err) {
+		t.Errorf("le .json identique doit etre supprime : %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "a0000002.json")); err != nil {
+		t.Errorf("le .json different doit rester : %v", err)
+	}
+}
+
+// poserCompresse range un artefact de test par la porte (compressé, sous le nom canonique de p) ; la signature suit
+// os.WriteFile pour que les écritures des tests de ce paquet ne changent que de nom.
+func poserCompresse(p string, raw []byte, _ os.FileMode) error {
+	_, _, err := replayartifact.Write(context.Background(), p, raw)
+	return err
 }

@@ -51,7 +51,7 @@ type Digest struct {
 	SchemaVersion int
 	Players       int
 	Tracks        int
-	// Bytes : la TAILLE STOCKEE de l artefact, celle du fichier sur disque (cf. artifact_gate.go) ; pour un digest
+	// Bytes : la TAILLE STOCKEE de l artefact, celle du fichier sur disque (cf. internal/replayartifact/gate.go) ; pour un digest
 	// pris sur des octets en memoire, la longueur du JSON, que l appelant remplace par la taille stockee.
 	Bytes int
 	// Layers : les revisions de couche que l artefact DECLARE, calque par calque (schema 62,
@@ -118,7 +118,7 @@ func (d Digest) HasPlayerCounters() bool { return d.Players > 0 }
 // ArtifactDigest lit UNE FOIS l'artefact au chemin donné et rend ses marques. ok=false si
 // absent ou illisible : dans le doute, l'appelant traite l'artefact comme inexploitable, jamais
 // comme bon — il ne peut PAS distinguer les deux cas ici, et c'est voulu (les deux appellent la
-// même conduite ; celui qui a besoin de la nuance interroge `ArtifactExists`, cf.
+// même conduite ; celui qui a besoin de la nuance interroge `replayartifact.Exists`, cf.
 // `cmd_backfill_replay_repair.go`).
 //
 // LE COMPTEUR EST LA MESURE DE CETTE LECTURE, et il a un rôle : c'est par lui que les gardes de
