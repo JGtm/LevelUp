@@ -239,5 +239,10 @@ package objectives
 // champs de la lecture de l equipement porte ; aucune source de cette couche ne change et aucune de ses lectures n appelle
 // ce canal, l empreinte du golden est recopiee au meme rang.
 
+// A REVISION CONSTANTE (lecture des positions par index de region, 2026-11-10) : la VALEUR de `grammar.Rev` monte a
+// `grammar-2026-11-10` ; aucune source de cette couche ne change. Sur les 20 films de reference (`replay-equiv`), aucune
+// etape d objectifs ne differe (statborg, actions d objectif, manches, drapeau, couronne, crane, bombe) ; l empreinte du
+// golden est recopiee au meme rang.
+
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-10-17"
