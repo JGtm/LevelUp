@@ -67,7 +67,6 @@ const BASELINE_COLLISIONS = new Set([
   'MatchEncounterBadge',
   'MatchHighlightEvent',
   'MatchHistoryQueryRequest',
-  'MatchHistoryRow',
   'MatchScoreboardRow',
   'MatchTeamTab',
   'MatchViewResponse',
