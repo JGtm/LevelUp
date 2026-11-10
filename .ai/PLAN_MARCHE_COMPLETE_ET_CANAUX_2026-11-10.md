@@ -16,7 +16,7 @@ et les infos de match que le film porte (variante de partie, carte, heure) sont 
 
 | # | Critère | Aujourd'hui | Cible |
 |---|---|---|---|
-| C1 | Paquets delta fermés au bit près, builds HI_1_12_0 et HI_1_13_0, corpus de l'annexe | **97,1 % et 96,9 % (mesure A0 du 2026-11-10)** ; les 66,9 % et 80,2 % de l'ADR 0037 dataient du 2026-10-01 | >= 97 % tenu ou presque dès A0 ; relèvement à >= 99 % proposé au user le 10/11 |
+| C1 | Paquets delta fermés au bit près, builds HI_1_12_0 et HI_1_13_0, corpus de l'annexe | **97,1 % et 96,9 % (mesure A0 du 2026-11-10)** ; les 66,9 % et 80,2 % de l'ADR 0037 dataient du 2026-10-01 | **>= 99 % des paquets, par build** (cible relevée, validée par le user le 2026-11-10 ; 97 % était tenu dès A0) |
 | C2 | Balayages bit à bit des paquets delta sur le chemin de production, mêmes builds | 22 au 2026-10-01 (ADR 0037), relevé en A3.1 | 0 |
 | C3 | Durée de décodage d'un film (film vers faits), 10 témoins de A0 | **médiane 7,8 s, pire cas 37,9 s (mesure A0, options minimales, sans killsource ni objectifs)** | médiane <= 5 s, pire cas <= 30 s |
 | C4 | Replis du registre dont le compte est nul sur le corpus | 128 entrées | toutes retirées, avec leur code et leurs tests |
@@ -128,13 +128,13 @@ jamais sous `data/`. Films lus un à la fois.
       un film à la fois sous `memguard` ; sortie TSV (durée de chaque temps, pic mémoire).
 - [x] A0.4 Relevé d'avant des dix témoins avec A0.3, et des compteurs de replis
       (`coverage.fallbacks[]`) de leurs dix rejeux.
-- [ ] A0.5 Empreintes d'avant : `make replay-equiv` et `make replay-corpus-gate` verts sur la base.
+- [x] A0.5 Empreintes d'avant : `make replay-equiv` et `make replay-corpus-gate` verts sur la base.
 - [x] A0.6 Sonde libfilmshell hors dépôt, étendue à partir de
       `annexes_marche_complete/sondes/sonde_fermeture_filmshell.rs.txt` : une ligne par entrée lue
       (film, chunk, paquet, vue, position de bit de début, type d'entrée, index d'entité, type
       d'entité, liste des composants, position de bit de chaque bloc, position de bit de fin).
       Sortie dans `C:\t\marche\A0\oracle\` ; source versée en `.txt` dans l'annexe.
-- [ ] A0.7 Test sous tag `research` (`libs/film/research/divergence/`) : lit le TSV de A0.6 et la
+- [x] A0.7 Test sous tag `research` (`libs/film/research/divergence/`) : lit le TSV de A0.6 et la
       marche de production du même film ; rend par paquet la première position de bit où les deux
       lectures diffèrent et le lecteur en cause (vue, genre de message ou composant).
 
@@ -156,8 +156,9 @@ des fichiers sous `research/`.
       libfilmshell), pour savoir quelles corrections de la liste A1.3 y sont candidates (D-4).
 
 Porte A1 : l'addendum existe ; la somme des paquets expliqués par sa liste, ajoutée aux paquets
-déjà fermés, atteint 97 % par build récent. Sinon le plan s'arrête ici et le constat est rendu au
-user.
+déjà fermés, atteint 99 % par build récent. Sinon le constat est rendu au user avec le taux
+  atteignable, et A2 ne traite que la liste établie ; pas d'arrêt du plan : A3 et A4 ne dépendent pas
+  de ce seuil. (Ancienne rédaction : arrêt du plan ; remplacée le 10/11, la fermeture étant déjà à 97 %.)
 
 ### A2 — Corriger les lecteurs de la liste A1
 
@@ -172,7 +173,7 @@ user.
 - [ ] A2.z Révision de la couche `grammar` montée ; ADR 0037 amendé (tableau des faits, section
       « An independent confirmation », IR-12) ; ligne de `NOTICE.md` (D-2).
 
-Porte A2 : C1 tenu (`cmd_fermeture -mode v2` sur le corpus, >= 97 % par build HI_1_12_0 et
+Porte A2 : C1 tenu (`cmd_fermeture -mode v2` sur le corpus, >= 99 % par build HI_1_12_0 et
 HI_1_13_0) ; aucun compte `fermés` en baisse sur les builds anciens, gains écrits par build ;
 `make libs-test`, `make replay-corpus-gate` (référence base, zéro perte) verts.
 
@@ -277,6 +278,10 @@ Porte A6 : lecteur vert sur tous les films du corpus des builds où il s'appliqu
   Piste du user (10/11) pour combler les limites (troisième contributeur, joueur qui ne meurt plus, valeur à l'instant) : croiser le total réel par vie et les parts du message de mort avec une estimation par coup tirée des armes (dégât de base tête ou corps, sur bouclier ou non, coup au but ou non), l'estimation servant à répartir et le total réel à recaler.
 - Autres canaux que libfilmshell publie : entrées de déplacement, santé et bouclier à chaque point,
   dégâts par coup en points, munitions et chaleur dans le temps, voix, messages d'écran, sprint.
+- **Téléporteurs et canons à homme** (abandonnés chez nous ; question du user le 10/11) : libfilmshell les
+  tire du film, pas des cartes. Chaque téléportation est un message du film avec le point de départ et
+  le point d'arrivée (32 sur un CTF en BTB mesuré). Les dispositifs fixes (type 43) viennent des
+  instantanés du film avec position et tag ; sa table publique n'en nomme presque aucun.
 - Images-clés (D-5) ; travail propre aux cinq builds anciens (D-4).
 - Cadence du rejeu et compression (chantier 30 images/s), planches d'icônes (chantier séparé).
 
@@ -331,3 +336,22 @@ Lire dans l'ordre : ce fichier (cases cochées, addendum A1, journal), les derni
   films sous `data/cache` du worktree) : à rejouer avec les jonctions `film_chunks` et
   `film_manifests` vers le parc, comme dans les autres worktrees. Les jonctions se retirent par
   `rmdir` avant toute suppression du worktree.
+- 2026-11-10 : cible de C1 relevée à 99 % (validée par le user). Porte A1 réécrite : plus d'arrêt du plan si la liste n'explique pas 99 %.
+- 2026-11-10, **A0 close**. A0.5 : `make replay-equiv` 20 identiques sur 20 ; `make replay-corpus-gate
+  --base origin/release/v8.1.2 --allow-missing` 18 témoins sur 19 sans perte ni changement, le 19e
+  (`f75e7053`) absent du parc local, seul manque admis. A0.7 : test `research/divergence/`, contrôle
+  sur 100 paquets fermés par les deux lectures : 0 désaccord de position ; aucune conversion de bit
+  nécessaire (mêmes conventions des deux côtés). Porte tenue : `make libs-test` vert, seuls des
+  fichiers sous `libs/film/research/` diffèrent de la release.
+  Constats de A0.7 sur les dix témoins (`annexes_marche_complete/A0_divergence_resume_global.md`) :
+  (1) 685 paquets sur 388 569 que nous « fermons » sont lus de travers (0,18 %) : début de la vue B
+  retrouvé par signature à un autre bit que le témoin, le paquet fermant quand même ;
+  (2) premier désaccord le plus fréquent hors rejet : `ti=40` composant 0, décalage constant de
+  19 bits (aussi `ti=41` et `ti=37` composant 0), 6 953 + 2 852 + 633 paquets ; puis `ti=21`
+  composant 16 (+37 bits, constant), `ti=35` composant 57 (variable), type de l'entité (1 700
+  paquets, dont `ti=20` chez nous contre 35 chez le témoin : 1 182), largeurs des messages de genre
+  5, 6, 82, 36 et 0 de la vue A ;
+  (3) les 9 077 rejets « hors datum » visent tous un slot absent de notre table d'entités alors que
+  le témoin a vu sa création : création sautée ou suppression fantôme dans un paquet mal lu en
+  amont, ou entité perdue au changement de chunk. La première divergence n'est donc pas toujours la
+  cause de l'arrêt : corriger les lecteurs de tête doit faire tomber une partie des rejets.
