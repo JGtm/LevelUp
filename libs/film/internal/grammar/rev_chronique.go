@@ -450,3 +450,13 @@ package grammar
 // ne bouge, la garde se declenche 1 090 fois (marches d essai comprises) ; sur la mini-bobine de 000d5950 des
 // records lus sous un type perime ne se lisent plus. Les rejeux et les faits cuits avant se refusent sur cette
 // revision : la recuisson est une decision de l utilisateur.
+
+// ENTREE `grammar-2026-11-10.3` (2026-11-10, `biped-spartan-ability`, tag 3). LA PORTE DU CORPS PORTE SUR LES 6 BITS
+// LUS DANS LE FLUX. LE DECODAGE CHANGE. `FUN_142f262d4` met `dst[2]` a zero en tete, puis `FUN_14297ea84` y range les 6
+// bits qu elle lit : le test `dst[2] & 1` porte sur ces bits, et la branche qu il garde est atteignable. Le lecteur
+// ([consumeSpartanAbilityTag3]) lit la suite du jeu : a ; si a, flags = R(6) ; si flags & 1, c = R(1), puis la position
+// de `FUN_14076e494` (c nul) ou la reference de categorie 0 de `FUN_1406d3140` (13 bits de valeur et 2 de queue, soit 15
+// bits) suivie, sous flags & 0x10, du corps de `FUN_142f04664` (c = 1) ; puis b = R(1) et, si b, la seconde position.
+// Mesure sur 38 films (30 recents, 8 anciens) : aucun film ne ferme moins de paquets ; HI_1_13_0 98,79 % -> 98,90 %,
+// HI_1_12_0 97,70 % -> 97,75 %, et les quatre builds anciens gagnent de 30 a 159 paquets. Les rejeux et les faits cuits
+// avant se refusent sur cette revision : la recuisson est une decision de l utilisateur.

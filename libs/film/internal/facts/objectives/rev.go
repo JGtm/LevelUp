@@ -249,5 +249,10 @@ package objectives
 // `replay-corpus-gate` les mesures d objectifs (statborg, score personnel, equipes) sont identiques a celles d avant ce
 // changement ; l empreinte du golden est recopiee au meme rang.
 
+// A REVISION CONSTANTE (`biped-spartan-ability`, tag 3, 2026-11-10) : la VALEUR de `grammar.Rev` monte a
+// `grammar-2026-11-10.3` ; aucune source de cette couche ne change. Sur les 18 temoins du banc de verite du
+// `replay-corpus-gate`, les mesures d objectifs (O-K, O-S, O-T) et de vies (O-V, V-) sont identiques a celles d avant ce
+// changement ; l empreinte du golden est recopiee au meme rang.
+
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-10-17"

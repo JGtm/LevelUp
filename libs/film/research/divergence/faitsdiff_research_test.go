@@ -39,16 +39,24 @@ func lireFaits(t *testing.T, chemin, carte string) *replay.FilmFactsFile {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e, err := entreeDuNiveau(cat, ent.MapModule)
-	if err != nil {
-		t.Fatal(err)
+	var derniere error
+	for _, e := range entreesDuNiveau(cat, ent.MapModule) {
+		// Les faits cuits avant le patch de la cle de A2.P ne hachaient pas la table par region : les deux formes
+		// sont essayees, sur chaque entree du module (les entrees d un module ne portent pas toutes les memes bornes).
+		for _, avecRegions := range []bool{true, false} {
+			x := e
+			if !avecRegions {
+				x.Regions = nil
+			}
+			f, err := replay.DecodeFilmFactsFile(blob, x)
+			if err == nil {
+				return f
+			}
+			derniere = err
+		}
 	}
-	e.Regions = nil // les faits de l apres ont ete cuits sous la cle d AVANT le patch de la cle (qui ne hachait pas la table)
-	f, err := replay.DecodeFilmFactsFile(blob, *e)
-	if err != nil {
-		t.Fatalf("%s : %v", chemin, err)
-	}
-	return f
+	t.Fatalf("%s : %v", chemin, derniere)
+	return nil
 }
 
 // texte rend une valeur en texte, pointeurs suivis.

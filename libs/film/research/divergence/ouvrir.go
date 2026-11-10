@@ -60,3 +60,19 @@ func ouvrirFilm(racine, id, niveau string, cat *profile.MapQuantCatalog) (*gramm
 	fc.PoserLaCarteEtLeDecoupage() // le geste de replay.installWorldObjectPrecision, apres le constructeur
 	return fc, nil
 }
+
+// entreesDuNiveau rend TOUTES les entrees du catalogue dont le module est `niveau`, dans l ordre des cles.
+func entreesDuNiveau(cat *profile.MapQuantCatalog, niveau string) []profile.MapQuantEntry {
+	noms := make([]string, 0, len(cat.Maps))
+	for nom := range cat.Maps {
+		noms = append(noms, nom)
+	}
+	sort.Strings(noms)
+	var out []profile.MapQuantEntry
+	for _, nom := range noms {
+		if e := cat.Maps[nom]; e.Module == niveau {
+			out = append(out, e)
+		}
+	}
+	return out
+}

@@ -418,3 +418,9 @@ package killsource
 // `grammar.Rev` monte a `grammar-2026-11-10.2` ; aucune source de cette couche ne change. La garde de la vue B rejette un delta
 // dont la generation ne vaut pas celle de la liaison lue, au lieu de le lire sous le type de l ancienne : sur la mini-bobine de
 // 000d5950 (`minibobine.golden`), aucune attribution de kill ne change. Golden regenere a revision constante.
+//
+// A REVISION CONSTANTE (`biped-spartan-ability`, tag 3, 2026-11-10, plan de la marche complete, A2.A) : la VALEUR de
+// `grammar.Rev` monte a `grammar-2026-11-10.3` ; aucune source de cette couche ne change. Le corps du tag 3 d i57 se lit
+// sous la porte que le flux donne : sur la mini-bobine de 000d5950 (`minibobine.golden`) aucune attribution de kill ne
+// change, et sur les 18 temoins du banc de verite du `replay-corpus-gate` les mesures de kills (O-K) sont celles d avant. Golden
+// regenere a revision constante.
