@@ -267,6 +267,60 @@ des autres dépôts dédiés. **Effort : S.**
 
 ---
 
+### [rejeu/trajets] Trajet de Warthog porté par l'humain alors qu'il suit un bot
+
+Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Film `4f77afc1` : un trajet de Warthog (siège 524, images 279 à 287) porte le xuid de l'humain alors qu'il suit la piste du bot qui le précède, et 8 pistes de bot sont rattachées à l'humain du siège par le pont « premier occupant ». Corriger demande une publication des équipes et des trajets par corps, qui fait aujourd'hui bouger des équipes (joueur `3abf0258`, revenu sous deux index). **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
+
+---
+
+### [rejeu/sièges] Pose des places : 13 films à siège vacant intercalé lus sans table
+
+Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. La pose des places (`sieges.go`, `siegesDuDebut`) lit encore `grammar.Lue()` et voit sans table les 13 films à siège vacant intercalé désormais confirmés. Film `23ffd885` : les chunks donnent au siège 2 l'index 8 ; une confirmation par les chunks pourrait le trancher. **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
+
+---
+
+### [rejeu/schéma] Sept films du parc avec des faits d'un ancien schéma
+
+Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Sept films du parc ont des faits d'un ancien schéma, illisibles par le binaire actuel. Le relevé en identifie six : `000d5950`, `51101d1d`, `9f57c612`, `a521164d`, `bcb6d393`, `edc5daf6`. Toute recuisson de ces films demande l'accord du user. **Condition de reprise :** à planifier après la 8.1.2, avec l'accord du user sur la recuisson. **Effort : S.**
+
+---
+
+### [rejeu/ti=40] Bande ti=40 : 249 parents d'occupation exclus, 6 porteurs lus à plus de 15 m
+
+Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. La bande `ti=40` exclut 249 parents d'occupation recensés (slot ayant porté un autre archétype). Six porteurs de pièce sont aussi lus à plus de 15 m à la montée. **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
+
+---
+
+### [rejeu/identité] Film `5da6fd30` : six vies sans nom tant qu'il n'est pas régénéré
+
+Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Les faits actuels du film (`Kills` nil) restent frais ; les 6 vies ne seront nommées qu'après régénération de ce seul film (étape 7.5). En prod, sans chunks, elles restent sans nom. **Condition de reprise :** à planifier après la 8.1.2, régénération de ce film seul sur accord du user. **Effort : S.**
+
+---
+
+### [web/couleurs] Infobulle `info-tooltip` ouverte au focus sans filtre clavier ; garde-rail de couleurs incomplet
+
+Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. `components/ui/info-tooltip.tsx` ouvre aussi au focus sans filtre clavier. Le garde-rail de couleurs ne couvre pas `ring-offset`, `outline`, `decoration`, `accent` ni `caret`, et un `color-allow` masque toute couleur de sa ligne. **Condition de reprise :** à planifier après la 8.1.2. **Effort : S.**
+
+---
+
+### [docs] ADR 0020 cite `PatternReport` ; ADR 0006 garde le quotient dans son corps
+
+Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. L'ADR 0020 cite encore `PatternReport` comme entrée du coach. L'ADR 0006 garde le quotient dans son corps, l'amendement étant censé l'annuler. **Condition de reprise :** à planifier après la 8.1.2. **Effort : S.**
+
+---
+
+### [licences/tests] Surnoms dérivés de pseudos réels dans des identifiants de tests
+
+Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Après la pseudonymisation des fixtures sous `apps/` (v8.1.2, item 5.4), des surnoms tirés de gamertags réels restent dans des noms de tests et des libellés (plusieurs centaines d'occurrences, liste dans les tables hors dépôt de la pseudonymisation). La table de remplacement ne remplace que des gamertags entiers. Décision du user du 2026-11-10 : noté au backlog. **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
+
+---
+
+### [licences] Pseudos réels hors de `apps/`
+
+Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. `.claude/skills/db-schema/SKILL.md`, `.gitignore`, `config/titles/halo_infinite/constants.toml`, `docs/` et `.ai/` portent encore des gamertags réels. Un chemin Windows personnel reste dans `apps/go-api/cmd/restore_one_player/main.go`. Le pseudo du mainteneur (`JGtm`) est conservé par décision du même jour. Décision du user du 2026-11-10 : noté au backlog. **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
