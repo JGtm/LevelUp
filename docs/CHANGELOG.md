@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [Unreleased]
+
+### Changed
+- **Game icons for grenades and abilities** — the grenade and ability thumbnails of the replay are now extracted from the game's own interface atlases, at the same paths. The resource pack changes: a single download for the desktop application. The unused `static/abilities-assets` folder is removed.
+
 ## [8.1.1] - 2026-11-09
 
 ### Fixed

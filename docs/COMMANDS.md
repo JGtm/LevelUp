@@ -395,8 +395,10 @@ levelup-server.exe -mode uninstall-cleanup      # called by the uninstaller; no 
 `HKCU\...\Run` and its `StartupApproved` value, only when its command points into the folder of the program being uninstalled) and the scheduled
 task `LevelUp\Refresh-<8 hex>` of the data root in `LEVELUP_DATA_DIR` (only when its action runs the server of that same folder: two installations of
 one user share the default data root, hence the task name, and the other one's task is left, `tache=foreign`). It opens no database, binds no port, takes
-no lock, and never touches the data root. Exit 0 when nothing existed or was foreign, 1 when a read or a deletion failed (the NSIS hook ignores the code:
-uninstalling never depends on it); the report goes to stderr (`demarrage=… tache=… ok=… exit=…`). Set `LEVELUP_UNINSTALL_WITNESS` to a path to also get
+no lock, and never touches the data root. It also removes the installed resource pack and the engine's `web` and `config` folders (the latter only when
+`web/index.html` exists, and whole: the front's files are named by a content hash, so after an update the uninstaller no longer lists the old ones; a file at
+the root of the program folder stays). Exit 0 when nothing existed or was foreign, 1 when a read or a deletion failed (the NSIS hook ignores the code:
+uninstalling never depends on it); the report goes to stderr (`demarrage=… tache=… ressources=… moteur=… ok=… exit=…`). Set `LEVELUP_UNINSTALL_WITNESS` to a path to also get
 the report line in a file (what `e2e-install.ps1` checks, exit code included). The installer's `NSIS_HOOK_PREUNINSTALL` first checks that the application
 is not running (Cancel at "LevelUp is running" removes nothing), then runs it before the files are deleted. It does not run in the updater's flow
 (`/UPDATE`: the updater never calls the old uninstaller), but a MANUAL update (installer launched by hand, "uninstall before" ticked by default) or a

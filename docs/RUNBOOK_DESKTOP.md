@@ -14,9 +14,11 @@ clean machine (plan item L17.7) follows these five steps and records witnesses (
    (`titles\`), tokens (`auth\`, sealed for the Windows account), the film archive (`cache\`), logs (`logs\`,
    `desktop.log` is the shell journal). The program folder holds no user data.
 4. **Update.** The application offers a new version once the server is ready; "Later" does nothing, "Install and
-   restart" downloads the signed installer, stops the server, then installs. The data folder is never touched.
+   restart" downloads the signed installer, stops the server, then installs. The data folder is never touched. The installer empties `web\assets` of the
+   program folder first (the front's files are named by a content hash, so those of the previous version would otherwise stay next to the new ones), after
+   checking that LevelUp is not running ("Cancel" removes nothing).
 5. **Uninstall.** "Settings > Apps > LevelUp > Uninstall" (or `uninstall.exe` in the program folder). The program is
-   removed; `%LOCALAPPDATA%\LevelUp` stays, so a reinstall finds the data again. Delete that folder by hand to remove
+   removed, `web` and `config` of the program folder included (even files a previous version left there); `%LOCALAPPDATA%\LevelUp` stays, so a reinstall finds the data again. Delete that folder by hand to remove
    everything (it can reach tens of GB because of the film archive).
 
 ## Window conveniences
@@ -172,11 +174,11 @@ tokens to "repair" a sign-in (ADR 0023). The `code` and the `state` never reach 
 ## Automated proof
 
 `powershell -File apps/desktop/scripts/e2e-install.ps1 -Installer <setup.exe> [-EngineInstaller <engine-setup.exe>]` plays steps 1 to 5 on a throwaway data
-root (silent install, pack checked against its manifest, two launches, with `-EngineInstaller` an engine-only update that must keep the pack and a third launch, close by `WM_CLOSE`, clean stop, silent uninstall, data kept, and the uninstaller's cleanup
-call proven by a witness file: `LEVELUP_UNINSTALL_WITNESS`, whose line must carry the full report: `exit=0`, `ok=true`, `ressources=<n>-fichiers`, `demarrage=absent` or
+root (silent install, pack checked against its manifest, two launches, with `-EngineInstaller` an engine-only update that must keep the pack, remove two planted files of a "previous front" in `web\assets`, leave the list of front files unchanged and every `assets/` file named by `web\index.html` present, and a third launch, close by `WM_CLOSE`, clean stop, silent uninstall, data kept, and the uninstaller's cleanup
+call proven by a witness file: `LEVELUP_UNINSTALL_WITNESS`, whose line must carry the full report: `exit=0`, `ok=true`, `ressources=<n>-fichiers`, `moteur=<n>-fichiers` (n >= 3), `demarrage=absent` or
 `foreign` (never `removed`), `tache=absent`, the task name of the throwaway root, the root and the program folder). It creates no startup entry and no
 scheduled task. It refuses to run when LevelUp is already installed. The `desktop-e2e` job of `.github/workflows/release.yml` runs the same script.
-**Not played by the script**: the uninstaller's branch "`LEVELUP_DATA_DIR` absent" (it sets `LEVELUP_DATA_DIR` itself to the default
+**Limit of the update step**: the engine-only installer is of the installed version (version B simulated), so this is not a real upgrade from one published version to the next; the old front files are planted by the script. **Not played by the script**: the uninstaller's branch "`LEVELUP_DATA_DIR` absent" (it sets `LEVELUP_DATA_DIR` itself to the default
 `%LOCALAPPDATA%\LevelUp`; playing it would aim the cleanup at the real data root of the machine), nor the rewrite of a foreign `Run` value. Both are held
 by the text guards of `apps/desktop/src-tauri/tests/textes_de_configuration.rs` (presence, form and order of the lines of the hooks).
 

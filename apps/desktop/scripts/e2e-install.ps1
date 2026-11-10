@@ -23,7 +23,11 @@
          PAQUET (LICENSE.LGPL, livre avec ffmpeg), qui ne doit PAS revenir : preuve que l'installeur moteur seul
          ne reinstalle pas les ressources, alors que le complet l'aurait fait. Tous les autres fichiers du paquet
          (manifeste compris) gardent leur somme SHA-256 ; l'application demarre et ferme proprement une
-         troisieme fois (le serveur y verifie l'empreinte de son paquet contre le manifeste) ;
+         troisieme fois (le serveur y verifie l'empreinte de son paquet contre le manifeste). Deux fichiers
+         d'une "version precedente du front" (web\assets\orphelin-maj-*) sont poses avant : l'installeur les
+         retire (crochet d'avant installation), la liste des fichiers du front est identique a celle d'avant, et
+         chaque fichier assets/ que web\index.html nomme est present. Limite : l'installeur moteur est de la meme
+         version que l'installation (version B simulee), ce n'est pas une vraie montee de version ;
       5. desinstallation silencieuse : le programme disparait ; la racine de donnees par defaut
          (%LOCALAPPDATA%\LevelUp), ou le script a pose une sentinelle avant l'installation, existe
          encore avec sa sentinelle (le desinstalleur ne la supprime jamais), comme la racine jetable ;
@@ -32,7 +36,8 @@
          jetable, dossier du programme, `exit=0`, `ok=true`, tache de la racine jetable nommee et absente,
          paquet de ressources retire : `ressources=<n>-fichiers`). Apres une mise a jour moteur seul, le
          desinstalleur ne connait plus les fichiers du paquet : c'est ce nettoyage qui les retire, et le dossier
-         du programme doit disparaitre ENTIEREMENT.
+         du programme doit disparaitre ENTIEREMENT. Le bilan porte aussi `moteur=<n>-fichiers` (n >= 3) : le
+         serveur retire web\ et config\ du dossier du programme, y compris trois orphelins poses avant l'etape.
          Le test ne pose aucune entree de demarrage ni tache planifiee (trop risque sur le poste) : le
          bilan attendu est `demarrage=absent` (ou `foreign` : une entree d'un autre dossier sur le poste) et
          `tache=absent`, jamais `removed`. La branche du desinstalleur "LEVELUP_DATA_DIR absente" n'est PAS
@@ -193,6 +198,40 @@ function Assert-PackIntact([string[]]$Except) {
     if ($bad.Count -gt 0) { Fail ('fichiers du paquet alteres : ' + (($bad | Select-Object -First 5) -join ', ')) }
 }
 
+# Les fichiers du front installe (web\, hors web\titles qui est du paquet), en chemins relatifs, tries : la liste que
+# l'installeur moteur seul doit laisser identique (le front compile nomme ses fichiers par un hachage de contenu).
+function Get-WebFileList {
+    $root = Join-Path $InstallDir 'web'
+    $titles = Join-Path $root 'titles'
+    return @(Get-ChildItem -Path $root -Recurse -File |
+        Where-Object { -not $_.FullName.StartsWith($titles + '\', [StringComparison]::OrdinalIgnoreCase) } |
+        ForEach-Object { $_.FullName.Substring($root.Length + 1) } |
+        Sort-Object)
+}
+
+# Chaque fichier assets/... que web\index.html reference est present sous web\ : un front dont l'index nomme un
+# fichier absent (page blanche) est une mise a jour ratee.
+function Assert-IndexAssetsPresent {
+    $index = Get-Content -Raw -Encoding UTF8 (Join-Path $InstallDir 'web\index.html')
+    $refs = @([regex]::Matches($index, '(?:src|href)\s*=\s*["'']\.?/?(assets/[^"''?#]+)["'']') |
+        ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+    if ($refs.Count -eq 0) { Fail 'web\index.html ne reference aucun fichier assets/ : le test ne prouverait rien' }
+    $missing = @($refs | Where-Object { -not (Test-Path (Join-Path $InstallDir ('web\' + ($_ -replace '/', '\')))) })
+    if ($missing.Count -gt 0) { Fail ('web\index.html reference des fichiers absents : ' + ($missing -join ', ')) }
+    Step ("front coherent : les $($refs.Count) fichiers assets/ de index.html sont presents")
+}
+
+# Pose des fichiers dans web\assets, avec des noms de la forme produite par le front (<nom>-<hachage>.<ext>).
+function Add-WebOrphans([string[]]$Names) {
+    $assets = Join-Path $InstallDir 'web\assets'
+    if (-not (Test-Path $assets)) { Fail "$assets absent : rien a quoi poser des orphelins" }
+    foreach ($name in $Names) {
+        $path = Join-Path $assets $name
+        Set-Content -Path $path -Value 'orphelin e2e : fichier d''une version precedente du front' -Encoding ASCII
+    }
+    return @($Names | ForEach-Object { Join-Path $assets $_ })
+}
+
 function Copy-Failure {
     New-Item -ItemType Directory -Force -Path $ArtifactsDir | Out-Null
     $logs = Join-Path $DataDir 'logs'
@@ -303,6 +342,9 @@ try {
         $packProbe = Join-Path $InstallDir 'LICENSE.LGPL'
         foreach ($probe in $engineProbe, $packProbe) { if (-not (Test-Path $probe)) { Fail "$probe absent avant la mise a jour" } }
         $manifestBefore = (Get-FileHash -Algorithm SHA256 -Path $manifestPath).Hash
+        # Des fichiers que la version precedente du front aurait laisses : l'installeur ne les ecrase pas (noms haches).
+        $webBefore = @(Get-WebFileList)
+        $updateOrphans = @(Add-WebOrphans @('orphelin-maj-0a1b2c3d.js', 'orphelin-maj-4e5f6a7b.css'))
         Remove-Item -Force $engineProbe, $packProbe
         $update = Start-Process -FilePath $EngineInstaller -ArgumentList '/S', '/UPDATE' -Wait -PassThru
         if ($update.ExitCode -ne 0) { Fail "l'installeur moteur seul a rendu le code $($update.ExitCode)" }
@@ -311,8 +353,27 @@ try {
         if ((Get-FileHash -Algorithm SHA256 -Path $manifestPath).Hash -ne $manifestBefore) { Fail 'le manifeste du paquet a change pendant une mise a jour moteur seul' }
         Assert-PackIntact @('LICENSE.LGPL')
         Step 'moteur reinstalle, paquet conserve (fichier supprime non reinstalle, autres sommes intactes)'
+        # Le crochet d'avant installation a vide web\assets : les orphelins ont disparu, la liste des fichiers du
+        # front est celle d'avant (rien en trop, rien de manquant), et chaque fichier que index.html nomme existe.
+        $left = @($updateOrphans | Where-Object { Test-Path $_ })
+        if ($left.Count -gt 0) { Fail ('la mise a jour a laisse des fichiers de la version precedente du front : ' + ($left -join ', ')) }
+        $webAfter = @(Get-WebFileList)
+        if (($webBefore -join '|') -ne ($webAfter -join '|')) {
+            Fail ("la liste des fichiers du front a change a la mise a jour. Avant : $($webBefore -join ', '). Apres : $($webAfter -join ', ')")
+        }
+        Assert-IndexAssetsPresent
+        Step "mise a jour : orphelins du front retires, liste des $($webAfter.Count) fichiers du front identique"
         Invoke-Run 3
     }
+
+    # Limite de ce test : l'installeur moteur est de la MEME version que l'installation (version B simulee), donc ses
+    # noms haches sont ceux deja presents ; les orphelins sont des fichiers plantes, pas ceux d'une vraie version A.
+    # Une vraie montee de version (A vers B, hachages differents) n'est prouvee que par une installation reelle de A
+    # puis de B.
+    # Des orphelins poses APRES la mise a jour (cas que le crochet d'installation ne voit pas : fichiers arrives
+    # depuis la derniere installation, ou installation faite avant ce crochet) : le desinstalleur ne les connait pas,
+    # le serveur livre doit les retirer et le dossier du programme disparaitre entierement (attente plus bas).
+    Add-WebOrphans @('orphelin-tardif-9c8d7e6f.js', 'orphelin-tardif-1a2b3c4d.js', 'orphelin-tardif-5e6f7a8b.css') | Out-Null
 
     Step 'desinstallation silencieuse'
     $marker = Join-Path $DataDir 'desktop\port'
@@ -335,6 +396,9 @@ try {
     if ($report -notmatch 'demarrage=(absent|foreign) ') { Fail "bilan de l'entree de demarrage inattendu (absent ou foreign attendu, jamais removed) : $report" }
     if ($report -notmatch ' ressources=\d+-fichiers ') { Fail "le nettoyage n'a pas retire le paquet de ressources (ressources=<n>-fichiers attendu) : $report" }
     if ($EngineInstaller -and $report -match ' ressources=0-fichiers ') { Fail "apres une mise a jour moteur seul, le nettoyage doit retirer les fichiers du paquet : $report" }
+    # Le serveur retire aussi web\ et config\ (index.html, assets, manifestes de titre) : au moins index.html, les 3
+    # orphelins plantes avant la desinstallation et config\locales.toml, soit plus de 3 fichiers.
+    if ($report -notmatch ' moteur=(\d+)-fichiers ' -or [int]$Matches[1] -lt 3) { Fail "le nettoyage n'a pas retire les dossiers web et config du moteur (moteur=<n>-fichiers, n >= 3 attendu) : $report" }
     if ($report -notmatch ' tache=absent ') { Fail "bilan de la tache inattendu (tache=absent attendu : la racine jetable n'en a pas) : $report" }
     if (-not $report.Contains('nom_tache="' + (Get-ExpectedTaskName $DataDir) + '"')) { Fail "la tache visee n'est pas celle de la racine $DataDir : $report" }
     if (-not $report.Contains('data_root="' + $DataDir + '"')) { Fail "le nettoyage a vise une autre racine de donnees que $DataDir : $report" }

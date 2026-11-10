@@ -20,6 +20,18 @@
     ; (donnees de l'utilisateur), RMDir le laisse.
     RMDir "$LOCALAPPDATA\${PRODUCTNAME}"
   ${EndIf}
+  ; Mise a jour par-dessus une installation existante (le serveur livre est la):
+  ; le front compile nomme ses fichiers par un hachage de leur contenu (web\assets\<nom>-<hash>.js), et
+  ; l'installeur n'ecrase que les noms qu'il porte. Les fichiers de la version precedente resteraient donc
+  ; a cote de ceux de la nouvelle. Le dossier est vide AVANT l'extraction, qui le repose en entier ;
+  ; index.html est ecrase sur place. La verification « application en cours » vient d'abord : « Annuler »
+  ; a « LevelUp est en cours d'execution » arrete l'installation avant tout retrait (le modele refait la
+  ; meme verification juste apres ce crochet et ne trouve plus rien a fermer). Rien d'autre n'est retire
+  ; ici : le retrait de web et de config a la desinstallation est fait par le serveur livre.
+  ${If} ${FileExists} "$INSTDIR\levelup-server.exe"
+    !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+    RMDir /r "$INSTDIR\web\assets"
+  ${EndIf}
 !macroend
 
 ; Le modele de Tauri pose MUI_FINISHPAGE_NOAUTOCLOSE (la page d'extraction reste affichee

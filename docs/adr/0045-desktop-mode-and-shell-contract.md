@@ -729,12 +729,17 @@ fingerprint, so the shell never waits 6 h for a pack nobody prepares. `Start` re
 right after (retry button, `POST /desktop/resources/retry`) is the preparation's, and a second request gets 409.
 
 *Uninstall.* The uninstaller written by the engine-only installer does not know the pack's files: `-mode uninstall-cleanup` (D-28) also removes the installed
-pack (`resourcepack.Remove`: the files the manifest lists, `.pack`, the empty directories, nothing else) before the program folder is deleted. Nothing is
-ever written under the data root (A22).
+pack (`resourcepack.Remove`: the files the manifest lists, `.pack`, the empty directories, nothing else) before the program folder is deleted. It then removes
+the engine's `web` and `config` folders whole, only when `web/index.html` exists (the folder is an installation); a file at the root of the program folder is
+kept. The report line carries `moteur=<n>-fichiers` after `ressources=`. The uninstaller cannot do it itself: the front's files are named by a content hash,
+so after an update the uninstaller's list holds only the names of the last installed version. Nothing is ever written under the data root (A22).
 
 *Known limits.* The shell screen of `resources_incompatible` tells the user to start LevelUp again (the start retries the download); a retry **button** is not
-built (it needs the shell to restart itself, which cannot be tested without launching it). Old `web/assets/*` files of a previous version stay after an
-update (the NSIS update mode never deletes: true since L17). The download is exercised against a local server in tests; the real publication hosts are
+built (it needs the shell to restart itself, which cannot be tested without launching it). Old `web/assets/*` files of a previous version are removed by the
+`NSIS_HOOK_PREINSTALL` hook, which empties `web\assets` before the extraction rewrites it, only when `levelup-server.exe` is already there (an existing
+installation) and AFTER the same `CheckIfAppIsRunning` check as the uninstall hook (a cancel at "LevelUp is running" removes nothing). The hook deletes nothing
+else: the uninstall hooks still delete nothing themselves (the server does it, see above). A real upgrade from one published version to the next, with different
+hashes, is not covered by the end-to-end test, which plants the old files itself (the engine-only installer is of the installed version). The download is exercised against a local server in tests; the real publication hosts are
 first met at gate 24.z.
 
 Amends D-17 (the 80 MB are paid at the first installation and when the pack changes, no longer at every update), D-2 and D-4 (event `resources`, state

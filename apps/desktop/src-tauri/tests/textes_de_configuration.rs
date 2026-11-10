@@ -231,6 +231,49 @@ fn le_crochet_verifie_que_l_application_ne_tourne_pas_avant_de_nettoyer() {
     assert!(verif < appel, "CheckIfAppIsRunning doit preceder nsExec");
 }
 
+/// Mise a jour par-dessus une installation : le front compile nomme ses fichiers par un hachage, l'installeur
+/// n'ecrase que les noms qu'il porte. Le crochet d'avant installation vide donc `web\assets` (l'extraction le
+/// repose en entier), seulement quand le serveur livre est la (une installation existante), et APRES la verification
+/// « application en cours » : « Annuler » ne doit rien retirer. Il ne retire rien d'autre (web et config le sont a la
+/// desinstallation, par le serveur).
+#[test]
+fn le_crochet_d_avant_installation_vide_les_fichiers_haches_apres_la_verification() {
+    let hooks = lire("windows/hooks.nsh");
+    let corps = entre(&hooks, "!macro NSIS_HOOK_PREINSTALL", "!macroend");
+    let code = lignes_de_code(corps);
+    let verif = position(&code, "!insertmacro CheckIfAppIsRunning")
+        .unwrap_or_else(|| panic!("NSIS_HOOK_PREINSTALL doit verifier que l'application ne tourne pas:\n{corps}"));
+    assert_eq!(
+        code[verif], r#"!insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}""#,
+        "la verification porte l'executable principal et le nom du produit"
+    );
+    let retrait = position(&code, r"RMDir /r").unwrap_or_else(|| panic!("aucun `RMDir /r`:\n{corps}"));
+    assert_eq!(
+        code[retrait], r#"RMDir /r "$INSTDIR\web\assets""#,
+        "le seul retrait recursif est web\\assets"
+    );
+    assert_eq!(
+        code.iter().filter(|l| l.starts_with("RMDir /r")).count(),
+        1,
+        "un seul retrait recursif dans le crochet d'avant installation:\n{corps}"
+    );
+    assert!(verif < retrait, "CheckIfAppIsRunning doit preceder RMDir /r:\n{corps}");
+    let garde = code
+        .iter()
+        .position(|l| *l == r#"${If} ${FileExists} "$INSTDIR\levelup-server.exe""#)
+        .unwrap_or_else(|| panic!("le retrait doit etre garde par la presence du serveur livre:\n{corps}"));
+    let fin_garde = code.iter().rposition(|l| *l == "${EndIf}").unwrap();
+    assert!(
+        garde < verif && retrait < fin_garde,
+        "verification et retrait doivent etre DANS la garde `levelup-server.exe` ({garde} < {verif} < {retrait} < {fin_garde}):\n{corps}"
+    );
+    let pose_du_dossier = position(&code, "StrCpy $INSTDIR").expect("le crochet fixe $INSTDIR par defaut");
+    assert!(
+        pose_du_dossier < garde,
+        "le retrait vise le $INSTDIR definitif : il vient apres le bloc qui le fixe"
+    );
+}
+
 /// Revue V1 : apres le crochet, le modele de Tauri supprime la valeur Run du produit sans regarder ce qu'elle lance.
 /// Le crochet de fin la REECRIT quand elle ne visait pas le dossier desinstalle : la valeur est lue AVANT le nettoyage
 /// (le serveur retire la sienne), gardee dans une variable, comparee au debut de `$INSTDIR\` apres retrait du
