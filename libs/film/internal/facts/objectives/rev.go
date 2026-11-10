@@ -244,5 +244,10 @@ package objectives
 // etape d objectifs ne differe (statborg, actions d objectif, manches, drapeau, couronne, crane, bombe) ; l empreinte du
 // golden est recopiee au meme rang.
 
+// A REVISION CONSTANTE (type d une entite lie a son eid complet, 2026-11-10) : la VALEUR de `grammar.Rev` monte a
+// `grammar-2026-11-10.2` ; aucune source de cette couche ne change. Sur les dix temoins du banc de verite du
+// `replay-corpus-gate` les mesures d objectifs (statborg, score personnel, equipes) sont identiques a celles d avant ce
+// changement ; l empreinte du golden est recopiee au meme rang.
+
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-10-17"

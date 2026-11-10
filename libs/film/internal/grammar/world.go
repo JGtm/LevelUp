@@ -13,11 +13,13 @@ import (
 // game's runtime datum store (FUN_1406cb5f0: per-id slot table, stride 0xa0, the
 // archetype index living at slot+8). We materialize it as a simple per-slot map.
 //
-// Key = id & 0x3fffffff (the slot index). The full id also carries a 2-bit
-// generation/namespace tag in bits 30-31, but the decoder keys ONLY on the slot index:
-// a slot's identity is reset whenever a NEW record rebinds it (BindFull/BindSoft rewrite
-// the whole slotState, PosValid=false). No separate generation guard is maintained — a
-// well-formed stream only changes a slot's occupant via such a rebind.
+// Key = id & 0x3fffffff (the slot index), as in the game's table, whose entry carries the FULL
+// eid (2-bit generation in bits 30-31). The type is bound to that full eid: a delta is read only
+// when its eid equals the one the slot holds ([World.ArchetypeForEID], the guard of
+// FUN_1406caad8, FUN_1406cbaa0 case 3). A binding whose generation is unknown
+// ([slotState.GenAny]) answers to any generation of its slot. A slot's occupant is replaced by
+// the NEW record that rebinds it (BindFull/BindSoft rewrite the whole slotState, PosValid=false)
+// and forgotten by a DEL (Unbind).
 //
 // UN CACHE « ARME EN MAIN » A VECU ICI, ET IL A ETE RETIRE le 2026-08-18 (regle 0 code mort).
 // `SetHeldWeapon` / `HeldWeapon` recopiaient la variante `weapon-state-type-info` (i43-i46) de
@@ -119,13 +121,14 @@ func (w *World) PoserChunkCourant(n int) { w.chunkCourant = n }
 
 // LierParRepliDAnticipation lie le slot de l eid `id` a l archetype que la premiere image-cle
 // POSTERIEURE au chunk courant lui donne, et rend cet archetype. `false` = la table est absente,
-// le slot est deja lie, ou aucune image-cle ulterieure ne le declare.
+// l eid est deja lie ([World.ArchetypeForEID]), ou aucune image-cle ulterieure ne le declare. Un
+// slot lie sous une AUTRE generation n est pas lie pour cet eid : sa liaison est remplacee.
 func (w *World) LierParRepliDAnticipation(id uint32) (uint32, bool) {
 	if w.anticipee == nil {
 		return 0, false
 	}
 	slot := id & 0x3fffffff
-	if _, lie := w.slots[slot]; lie {
+	if _, lie := w.ArchetypeForEID(id); lie {
 		return 0, false
 	}
 	ti, declarant, ok := w.anticipee.ArchetypeApres(id, w.chunkCourant)
@@ -362,6 +365,18 @@ func (w *World) OublierLesSlotsNonPortes(portes map[uint32]bool) int {
 		}
 	}
 	return n
+}
+
+// ArchetypeForEID returns the archetype bound to the FULL eid `id` (slot and 2-bit generation), if
+// any: the guard the game applies before it reads a delta body (FUN_1406caad8 returns 3 and reads
+// ZERO bits when `*(uint *)(slot * 200 + t) != eid`). A slot bound under another generation is not
+// bound for `id`; a binding of unknown generation ([slotState.GenAny]) answers to any generation.
+func (w *World) ArchetypeForEID(id uint32) (uint32, bool) {
+	s, ok := w.slots[id&0x3fffffff]
+	if !ok || (!s.GenAny && s.FullID != id) {
+		return 0, false
+	}
+	return s.TypeIndex, true
 }
 
 // ArchetypeForSlot returns the archetype typeIndex bound to a slot, if any.

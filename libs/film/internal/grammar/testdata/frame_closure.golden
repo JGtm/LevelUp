@@ -69,6 +69,12 @@
 #     -> 34 813/39 305 ; premier bloquant `ti=43 i35` -> `vue B : sortie par rejet`. ks_e5adf7b2 : paquets
 #     370 -> 371 (la baisse de J6.3 sur ce film etait la lacune de table). Lignes disparues, a 0 ferme :
 #     ks_000d5950 ti=18, 19, 26, 50, 58. 0 ligne `fermes` ne descend.
+#   2026-11-10 plan de la marche complete, A2.T : le type d une entite est lie a son eid COMPLET (slot et
+#     generation) : un delta dont la generation ne vaut pas celle de la liaison lue (NEW) est rejete hors
+#     datum au lieu d etre lu sous le type de l ancienne. ks_000d5950 : paquets 5 314 et au bit 5 316
+#     inchanges, vue B terminee 5 406 -> 5 404, records lus ti=30 0/3 -> disparu, ti=33 0/5 -> 0/4, ti=8
+#     0/14 -> 0/12, ti=35 28 879 -> 28 878. Lignes disparues, a 0 ferme : ks_000d5950 ti=30. 0 ligne
+#     `fermes` ne descend.
 a521164d	paquets	0	0		listes_non_localisees=0
 a521164d	paquets_au_bit	0	0		utiles_fermes_au_bit=0
 a521164d	vue=A	0	0		terminees=0 arrets=
@@ -115,17 +121,17 @@ fb1a1a72	utiles	0	0		entrees_controle_fermees=0
 ks_000d5950	paquets	5314	5957	vue B : sortie par rejet	listes_non_localisees=1
 ks_000d5950	paquets_au_bit	5316	5957		utiles_fermes_au_bit=34832
 ks_000d5950	vue=A	4913	5484		terminees=5484 arrets=
-ks_000d5950	vue=B	5314	5956	vue B : sortie par rejet	terminees=5406 arrets=ti=0 i19 forge-engine-total-budget-component:2;ti=0 i20 forge-engine-map-properties-component:1;ti=23 i1 selectable-zone-data-component:1;ti=24 i10 persistence-state-bucket-component:1;ti=35 archetype hors registre:1;ti=37 archetype hors registre:3;ti=48 i0 forge-player-data-edited-objects-ids-component:2;ti=51 archetype hors registre:1;ti=52 archetype hors registre:3;ti=56 archetype hors registre:1;ti=59 archetype hors registre:2;ti=60 archetype hors registre:15;ti=61 archetype hors registre:4;ti=62 archetype hors registre:2;ti=7 i0 forge-sim-generic-component:1;ti=7 i21 forge-sim-generic-component:1;ti=7 i6 forge-sim-generic-component:1;ti=7 i9 forge-sim-generic-component:1;vue B : fin de payload:19;vue B : sortie par rejet:488
-ks_000d5950	vue=C	5314	5406	vue C : terminateur hors cadre	terminees=5396 arrets=ecrivain : ordre de la vue B:1;vue C : bloc 0xbc (desalignement):3;vue C : debordement:1;vue C : kind non porte:6;vue C : terminateur hors cadre:81
-ks_000d5950	utiles	34813	39305		entrees_controle_fermees=36682
+ks_000d5950	vue=B	5314	5956	vue B : sortie par rejet	terminees=5404 arrets=ti=0 i19 forge-engine-total-budget-component:2;ti=0 i20 forge-engine-map-properties-component:1;ti=23 i1 selectable-zone-data-component:1;ti=24 i10 persistence-state-bucket-component:1;ti=35 archetype hors registre:1;ti=37 archetype hors registre:3;ti=48 i0 forge-player-data-edited-objects-ids-component:2;ti=51 archetype hors registre:1;ti=52 archetype hors registre:3;ti=56 archetype hors registre:1;ti=59 archetype hors registre:2;ti=60 archetype hors registre:15;ti=61 archetype hors registre:4;ti=62 archetype hors registre:2;ti=7 i0 forge-sim-generic-component:1;ti=7 i21 forge-sim-generic-component:1;ti=7 i6 forge-sim-generic-component:1;ti=7 i9 forge-sim-generic-component:1;vue B : fin de payload:18;vue B : sortie par rejet:491
+ks_000d5950	vue=C	5314	5404	vue C : terminateur hors cadre	terminees=5396 arrets=ecrivain : ordre de la vue B:1;vue C : bloc 0xbc (desalignement):3;vue C : debordement:1;vue C : kind non porte:4;vue C : terminateur hors cadre:81
+ks_000d5950	utiles	34813	39304		entrees_controle_fermees=36682
 ks_000d5950	ti=0	0	5	ti=0 i19 forge-engine-total-budget-component	neufs=0/5 deltas=0/0 utiles=0/0
 ks_000d5950	ti=1	0	1	vue B : sortie par rejet	neufs=0/1 deltas=0/0 utiles=0/0
-ks_000d5950	ti=2	136	162	vue B : sortie par rejet	neufs=0/3 deltas=136/159 utiles=0/0
-ks_000d5950	ti=4	5265	5917	vue B : sortie par rejet	neufs=0/11 deltas=5265/5906 utiles=0/0
-ks_000d5950	ti=5	231	302	vue B : sortie par rejet	neufs=0/4 deltas=231/298 utiles=0/0
+ks_000d5950	ti=2	136	161	vue B : sortie par rejet	neufs=0/2 deltas=136/159 utiles=0/0
+ks_000d5950	ti=4	5265	5915	vue B : sortie par rejet	neufs=0/11 deltas=5265/5904 utiles=0/0
+ks_000d5950	ti=5	231	301	vue B : sortie par rejet	neufs=0/4 deltas=231/297 utiles=0/0
 ks_000d5950	ti=6	72	79	vue B : sortie par rejet	neufs=0/1 deltas=72/78 utiles=0/0
 ks_000d5950	ti=7	0	4	ti=7 i0 forge-sim-generic-component	neufs=0/4 deltas=0/0 utiles=0/0
-ks_000d5950	ti=8	0	14	vue B : sortie par rejet	neufs=0/12 deltas=0/2 utiles=0/0
+ks_000d5950	ti=8	0	12	vue B : sortie par rejet	neufs=0/12 deltas=0/0 utiles=0/0
 ks_000d5950	ti=9	8	9	vue B : sortie par rejet	neufs=8/9 deltas=0/0 utiles=8/9
 ks_000d5950	ti=10	0	2	ecrivain : ordre de la vue B	neufs=0/2 deltas=0/0 utiles=0/0
 ks_000d5950	ti=11	1	2	vue B : fin de payload	neufs=1/2 deltas=0/0 utiles=0/0
@@ -140,10 +146,9 @@ ks_000d5950	ti=23	0	1	ti=23 i1 selectable-zone-data-component	neufs=0/1 deltas=0
 ks_000d5950	ti=24	0	1	ti=24 i10 persistence-state-bucket-component	neufs=0/1 deltas=0/0 utiles=0/0
 ks_000d5950	ti=25	0	2	vue C : terminateur hors cadre	neufs=0/2 deltas=0/0 utiles=0/0
 ks_000d5950	ti=29	0	1	vue C : terminateur hors cadre	neufs=0/1 deltas=0/0 utiles=0/0
-ks_000d5950	ti=30	0	3	vue B : sortie par rejet	neufs=0/1 deltas=0/2 utiles=0/0
-ks_000d5950	ti=33	0	5	vue B : sortie par rejet	neufs=0/4 deltas=0/1 utiles=0/0
+ks_000d5950	ti=33	0	4	vue B : sortie par rejet	neufs=0/4 deltas=0/0 utiles=0/0
 ks_000d5950	ti=34	0	1	vue B : fin de payload	neufs=0/1 deltas=0/0 utiles=0/0
-ks_000d5950	ti=35	24941	28879	vue B : sortie par rejet	neufs=15/32 deltas=24926/28847 utiles=24924/28856
+ks_000d5950	ti=35	24941	28878	vue B : sortie par rejet	neufs=15/31 deltas=24926/28847 utiles=24924/28855
 ks_000d5950	ti=37	5270	5291	vue B : sortie par rejet	neufs=58/77 deltas=5212/5214 utiles=4271/4275
 ks_000d5950	ti=38	735	812	vue C : terminateur hors cadre	neufs=18/68 deltas=717/744 utiles=0/0
 ks_000d5950	ti=40	0	1	vue B : fin de payload	neufs=0/1 deltas=0/0 utiles=0/0

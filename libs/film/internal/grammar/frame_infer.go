@@ -132,8 +132,9 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 //
 //	garde VIVE (`FUN_1406cbaa0`, cas DELTA) : `*(uint *)(slot * 200 + t) != eid` sur la table
 //	  de datums du DECODEUR PARTAGE. Un slot absent de cette table ne rend AUCUN bit de corps,
-//	  et la boucle sort (code 2 ou 3). Hors ligne, « absent de la table » = slot non lie — la
-//	  table de datums de l image-cle est justement ce que `keyframe_datums.go` y verse.
+//	  et la boucle sort (code 2 ou 3). Hors ligne, « absent de la table » = EID non lie
+//	  ([World.ArchetypeForEID]) : slot non lie, ou lie sous une AUTRE generation que celle de l eid.
+//	  La table de datums de l image-cle est justement ce que `keyframe_datums.go` y verse.
 //	repli de VUE (`FUN_1406cd128`, branche 0 : `vue[0x38]`, pas de 0xa0, eid ET type) : un
 //	  delta dont le slot appartient a une AUTRE vue. Le jeu n emprunte cette branche que pour
 //	  l aller-retour d etat de `FUN_1428e24bc`, et le 5.15.1 (d) a mesure ZERO cas sur 22 112
@@ -158,7 +159,7 @@ func rejetDeVue(typ int, id uint32, w *World, cfg FrameConfig) (lecture.SortieVu
 		return lecture.SortieNonAtteinte, false
 	}
 	slot := id & 0x3fffffff
-	if _, lie := w.ArchetypeForSlot(slot); !lie {
+	if _, lie := w.ArchetypeForEID(id); !lie {
 		ti, anticipe := w.LierParRepliDAnticipation(id)
 		if !anticipe {
 			cfg.Obs.compterRejetHorsDatum()

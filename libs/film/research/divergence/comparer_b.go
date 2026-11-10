@@ -33,7 +33,7 @@ func longueurEnTete(op string, idLowBits int) int {
 }
 
 func luRecordNous(r *lecture.Record) string {
-	return fmt.Sprintf("%s slot=%d gen=%d ti=%d", nomDuGenre(r.Genre), r.Vie.Slot, r.Vie.Gen, r.TI)
+	return fmt.Sprintf("%s slot=%d gen=%d ti=%d liaison=%d", nomDuGenre(r.Genre), r.Vie.Slot, r.Vie.Gen, r.TI, r.Liaison)
 }
 
 func luOpTemoin(o *opTemoin) string {

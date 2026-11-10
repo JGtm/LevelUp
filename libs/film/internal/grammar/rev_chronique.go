@@ -437,3 +437,16 @@ package grammar
 // 96,07 % -> 98,29 %, HI_1_10_0 95,41 % -> 95,46 %, HI_1_12_0 inchange ; le desaccord de lecture contre le temoin
 // `ti=40` composant 0 disparait (12 087 paquets). Les rejeux et les faits cuits avant se refusent sur cette
 // revision : la recuisson est une decision de l utilisateur.
+
+// ENTREE `grammar-2026-11-10.2` (2026-11-10, type d une entite lie a son eid complet). LE TYPE D UNE ENTITE EST
+// LIE A SON EID COMPLET, SLOT ET GENERATION. LE DECODAGE CHANGE. La garde de delta du jeu (`FUN_1406cbaa0` cas 3,
+// `FUN_1406caad8`) compare `*(uint *)(slot * 200 + t)` a l eid entier et ne lit aucun bit de corps quand ils
+// different ; la boucle de records de la vue B ne testait que « slot lie » ([rejetDeVue]). Elle consulte
+// desormais [World.ArchetypeForEID] : une liaison a generation connue (NEW lu, inference) ne repond qu a son eid,
+// une liaison de generation inconnue (image-cle, table de datums) repond a toute generation de son slot, et le repli
+// d anticipation ([World.LierParRepliDAnticipation]) traite un slot lie sous une autre generation comme un eid non
+// lie. Aucun type n est devine : un delta d une generation dont la creation n a pas ete lue sort de la vue B par
+// rejet hors datum, comme chez le jeu. Mesure sur 38 films (30 recents, 8 anciens) : aucun compte de paquets fermes
+// ne bouge, la garde se declenche 1 090 fois (marches d essai comprises) ; sur la mini-bobine de 000d5950 des
+// records lus sous un type perime ne se lisent plus. Les rejeux et les faits cuits avant se refusent sur cette
+// revision : la recuisson est une decision de l utilisateur.

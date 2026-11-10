@@ -413,3 +413,8 @@ package killsource
 // de deux kills passe de `scan` a `marche` (une position lue a ses propres largeurs ferme le paquet que la lecture
 // d avant laissait ouvert). Les lignes de `match_kill_events` portant une revision anterieure deviennent candidates
 // au redecodage ; le redecodage du parc reste un geste de PRODUCTION sur signal utilisateur (D6), jamais automatique.
+//
+// A REVISION CONSTANTE (type d une entite lie a son eid complet, 2026-11-10, plan de la marche complete, A2.T) : la VALEUR de
+// `grammar.Rev` monte a `grammar-2026-11-10.2` ; aucune source de cette couche ne change. La garde de la vue B rejette un delta
+// dont la generation ne vaut pas celle de la liaison lue, au lieu de le lire sous le type de l ancienne : sur la mini-bobine de
+// 000d5950 (`minibobine.golden`), aucune attribution de kill ne change. Golden regenere a revision constante.
