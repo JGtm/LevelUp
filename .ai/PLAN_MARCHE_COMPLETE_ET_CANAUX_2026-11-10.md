@@ -16,9 +16,9 @@ et les infos de match que le film porte (variante de partie, carte, heure) sont 
 
 | # | Critère | Aujourd'hui | Cible |
 |---|---|---|---|
-| C1 | Paquets delta fermés au bit près, builds HI_1_12_0 et HI_1_13_0, corpus de l'annexe | 66,9 % des trames, 80,2 % des records utiles (ADR 0037) | >= 97 % des paquets, par build |
+| C1 | Paquets delta fermés au bit près, builds HI_1_12_0 et HI_1_13_0, corpus de l'annexe | **97,1 % et 96,9 % (mesure A0 du 2026-11-10)** ; les 66,9 % et 80,2 % de l'ADR 0037 dataient du 2026-10-01 | >= 97 % tenu ou presque dès A0 ; relèvement à >= 99 % proposé au user le 10/11 |
 | C2 | Balayages bit à bit des paquets delta sur le chemin de production, mêmes builds | 22 au 2026-10-01 (ADR 0037), relevé en A3.1 | 0 |
-| C3 | Durée de décodage d'un film (film vers faits), 10 témoins de A0 | 13 s à 2 min 37 (annexe de l'ADR 0034), re-mesurée en A0 | médiane <= 5 s, pire cas <= 30 s |
+| C3 | Durée de décodage d'un film (film vers faits), 10 témoins de A0 | **médiane 7,8 s, pire cas 37,9 s (mesure A0, options minimales, sans killsource ni objectifs)** | médiane <= 5 s, pire cas <= 30 s |
 | C4 | Replis du registre dont le compte est nul sur le corpus | 128 entrées | toutes retirées, avec leur code et leurs tests |
 | C5 | Document de format et glossaire | absents | `libs/film/FORMAT.md` (EN) et `libs/film/GLOSSARY.md` (FR-EN) |
 | C6 | Infos de match lues dans le film | 3 champs lus | variante complète, carte, heure : lues et rangées dans les faits |
@@ -119,17 +119,17 @@ jamais sous `data/`. Films lus un à la fois.
 
 ### A0 — Témoins et instruments (aucun changement du code de production)
 
-- [ ] A0.1 Carte de fermeture d'avant, corpus de l'annexe, un film à la fois :
+- [x] A0.1 Carte de fermeture d'avant, corpus de l'annexe, un film à la fois :
       `cd libs/film && go run -tags=research ./research/cmd_fermeture -racine <parc>/data/cache/film_chunks -films <ids de corpus_151.tsv> -sortie C:\t\marche\A0\fermeture -mode v2 -paquets`.
 - [x] A0.2 Dix témoins de durée choisis dans le corpus (2 Slayer, 2 CTF, 2 Bases, 2 KOTH, 1 Oddball,
       1 CTF en BTB, dont 2 films HI_1_12_0) ; liste écrite dans l'annexe (`temoins_duree.txt`).
-- [ ] A0.3 Test de mesure sous tag `research` (`libs/film/research/duree/`) : pour chaque témoin,
+- [x] A0.3 Test de mesure sous tag `research` (`libs/film/research/duree/`) : pour chaque témoin,
       décodage (film vers faits) puis publication (faits vers rejeu) vers un dossier temporaire,
       un film à la fois sous `memguard` ; sortie TSV (durée de chaque temps, pic mémoire).
-- [ ] A0.4 Relevé d'avant des dix témoins avec A0.3, et des compteurs de replis
+- [x] A0.4 Relevé d'avant des dix témoins avec A0.3, et des compteurs de replis
       (`coverage.fallbacks[]`) de leurs dix rejeux.
 - [ ] A0.5 Empreintes d'avant : `make replay-equiv` et `make replay-corpus-gate` verts sur la base.
-- [ ] A0.6 Sonde libfilmshell hors dépôt, étendue à partir de
+- [x] A0.6 Sonde libfilmshell hors dépôt, étendue à partir de
       `annexes_marche_complete/sondes/sonde_fermeture_filmshell.rs.txt` : une ligne par entrée lue
       (film, chunk, paquet, vue, position de bit de début, type d'entrée, index d'entité, type
       d'entité, liste des composants, position de bit de chaque bloc, position de bit de fin).
@@ -264,6 +264,17 @@ Porte A6 : lecteur vert sur tous les films du corpus des builds où il s'appliqu
 - **Données à réexaminer une fois le décodeur mis à niveau** : précision dans le temps et par arme
   (touches par message de dégât, table soeur de `match_weapon_shots`), tableau des scores complet
   (autres emplacements du statborg, plus de 8 joueurs).
+- **Fiche du joueur du rejeu** (maquette validée le 2026-11-09, panneau à la place du fil) : ses
+  compteurs à l'instant demandent trois données que ce plan ne produit pas : tirs et touches
+  (précision), dégâts infligés en points (table des effets de dégât tirée des fichiers du jeu,
+  mesure du 10/11 : médiane 1,05 de l'API, 72 % des joueurs à +-10 %), dégâts subis (emplacement
+  20 du statborg, médiane 0,96 de l'API). Frags, morts, assistances et score existent déjà.
+  Le détail du score par action reste à instruire.
+  Précisions du user (2026-11-10) : le barème existe déjà (table `personal_score_awards`, récompenses
+  de score par match venues de l'API) ; nos deux méthodes de comptage des touches sont à mesurer
+  ensemble ; le BTB est une bêta, on y donne ce que le film permet, sans seuil à tenir.
+  Mesure du 10/11 sur 3 témoins : le compteur « dégâts subis » du film monte une fois par vie, à la réapparition (481 ticks après la mort en Slayer, 601 en CTF, sur 100 % des hausses ; 229 points pour une vie sans recharge). Croisé avec la part de dégâts du tueur et de l'assistant que porte le message de mort, il donne des dégâts infligés en vrais points, par vie ; à l'instant, entre deux morts, il faut une estimation corrigée à la mort.
+  Piste du user (10/11) pour combler les limites (troisième contributeur, joueur qui ne meurt plus, valeur à l'instant) : croiser le total réel par vie et les parts du message de mort avec une estimation par coup tirée des armes (dégât de base tête ou corps, sur bouclier ou non, coup au but ou non), l'estimation servant à répartir et le total réel à recaler.
 - Autres canaux que libfilmshell publie : entrées de déplacement, santé et bouclier à chaque point,
   dégâts par coup en points, munitions et chaleur dans le temps, voix, messages d'écran, sprint.
 - Images-clés (D-5) ; travail propre aux cinq builds anciens (D-4).
@@ -299,3 +310,24 @@ Lire dans l'ordre : ce fichier (cases cochées, addendum A1, journal), les derni
 
 - 2026-11-10 : go du user ; plan révisé (rendus et tables d'analyse sortis, infos de match
   ramenées en A6, D-4 et D-9 ajoutées, dépendance au chantier 30 images/s écrite). Worktree créé.
+- 2026-11-10, A0 (mesures d'avant) — **constat qui corrige le §1** : la carte de fermeture mesurée
+  sur les 151 films donne 97,1 % des paquets delta fermés au bit en HI_1_13_0 (119 films) et 96,9 %
+  en HI_1_12_0 (8 films), 98,0 % et 97,8 % des records utiles. Les chiffres du §1 (66,9 %, 80,2 %,
+  plafond à 81,3 %) venaient du tableau de l'ADR 0037, daté du 2026-10-01 et antérieur à la
+  campagne de grammaire ; ils n'avaient pas été re-mesurés avant la rédaction du plan. Builds
+  anciens : 41,3 % (HI_1_8_0), 32,8 % (HI_1_9_0), 26,5 % (HI_1_10_0), 23,3 % (HI_1_11_0).
+  Sur les dix témoins, film par film, nous fermons 84,1 à 99,8 % des paquets là où libfilmshell en
+  lit 98,97 à 100 % : l'écart restant va de 0,2 à 15 points. Causes d'arrêt sur les builds récents
+  du corpus : sortie de la vue B par rejet (90 425 paquets), terminateur de la vue C hors cadre
+  (12 078), liste d'événements non localisée (6 048), `kind` de la vue C non porté (3 400).
+  Durées : décodage 4,7 à 37,9 s (médiane 7,8 s), publication 0,16 à 0,88 s. Replis déclenchés sur
+  les dix rejeux : 220 072 pour 28 replis distincts, dont `repli_pistes_du_monde_apres_la_marche`
+  106 573 et `repli_ancrage_bipede_apres_la_marche` 75 719 : les récupérations tournent encore à
+  plein alors que les paquets ferment à 97 %. Conséquence : l'enjeu de A1 et A2 sur les builds
+  récents est de quelques points ; le gros du travail utile est A3 (retirer les récupérations
+  devenues inutiles) et A4 (vitesse). Signalé au user le 10/11.
+  A0.5 : `make replay-corpus-gate` 18 témoins sur 19 sans perte (le 19e, `f75e7053`, n'a pas de
+  manifeste dans le parc local) ; `make replay-equiv` n'a rien comparé (le harnais cherche les
+  films sous `data/cache` du worktree) : à rejouer avec les jonctions `film_chunks` et
+  `film_manifests` vers le parc, comme dans les autres worktrees. Les jonctions se retirent par
+  `rmdir` avant toute suppression du worktree.
