@@ -36,6 +36,11 @@
 **Résultats observés.** 0 P0, 25 P1, 22 P2, 12 écartés ou requalifiés. Axes non passés : A3, A5, A6, A8, A9, A10 ; périmètres non passés : intérieur de `libs/film`, coquille Rust, branches 8.1.2 en cours, sécurité. Là où un garde-rail existe la règle tient ; tous les P1 sont hors garde-rail. Registre : `.ai/AUDIT_ARCHITECTURE_2026-11-10.md`.
 
 **Conclusion / prochaine étape.** À trancher par l'utilisateur : alias perdus (ART-2), 106 binaires sans utilisateur (MORT-1), deux interrupteurs (FLG-1, FLG-2). Probabilité de victoire (ART-5) : l'utilisateur confirme le 2026-11-10 que la statistique est abandonnée ; aucun titre ne l'affiche, le constat devient un retrait de code à planifier. Trois chantiers candidats : frontières, ménage, front.
+## [2026-11-10] Plan « lecture complète des paquets » : analyse de libfilmshell, plan, go du user — En cours
+
+**Décision technique principale** : plan `.ai/PLAN_MARCHE_COMPLETE_ET_CANAUX_2026-11-10.md` (annexes `.ai/annexes_marche_complete/`), branche `feat/film-marche-complete`. Le décodeur de Dend (`OpenSpartan/libfilmshell`, Rust, MIT) sert de témoin pour localiser, paquet par paquet, les largeurs fausses qui empêchent notre marche de fermer ; puis retrait des balayages delta et des replis à compte nul, une seule marche par décodage, documents de format, infos de match lues dans le film. Rendus et tables d'analyse sortis du plan (décision du user).
+**Résultats observés** : libfilmshell lancé hors dépôt sur 151 films de l'archive : 127 lus (1,1 s en moyenne), 24 refusés (tous antérieurs à HI_1_12_0) ; 97,6 à 100 % des paquets de tick lus jusqu'au dernier octet sur 8 films, contre 66,9 % des trames chez nous (ADR 0037, cause dominante : fermeture refusée, largeur fausse à position inconnue). Contre l'API : tableau des scores du film égal pour 99,7 % des joueurs à 8 ou moins ; touches par message de dégât à +-10 % pour 69 à 75 % des joueurs ; variante de partie (score de victoire, durée, réapparition) lisible dans le chunk 0.
+**Conclusion / prochaine étape** : A0 (témoins et instruments, aucun code de production) ; A3 et A4 attendent la fusion du chantier 30 images/s.
 
 ## [2026-11-09] Briques en v1.0.0 (README, require, ADR 0043) — Complété
 
