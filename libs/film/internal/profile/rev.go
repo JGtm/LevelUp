@@ -159,7 +159,20 @@ package profile
 // `equipe_bot.go` : [PositionEquipeBotPour] — octets 0x25/0x26 du bloc de 44 octets sur HI_1_13_0
 // (relu), 4/6 sur HI_1_10_0 a HI_1_12_0 (mesure : feuille de match 111/111, 2/2, 10/10 bots distincts),
 // aucune position pour HI_1_8_0, HI_1_9_0, HI_1_4_1. Aucune autre ligne de la table ne change.
-const Rev = "profile-2026-10-16"
+//
+// ENTREE `profile-2026-11-10` (2026-11-10, lecture des positions par index de region) : LA TABLE PAR INDEX
+// DE REGION DE LA CARTE ENTRE AU PROFIL. LE DECODAGE CHANGE.
+//
+// `map_bounds.go` : [MapQuantEntry.Regions] ([RegionQuant]) porte, par carte, TOUTES les regions de
+// compression dans l ordre du tableau de la carte, chacune avec ses bornes, ses largeurs d axe au niveau 0x10
+// et sa validite ; `cmd/mapquant-build` l ecrit depuis les modules du jeu (`himap.RegionsBSPLocales`,
+// `himap.RegionsBSPExternes`). Les champs historiques (la region jouee) ne changent pas, sur les 101 entrees.
+// `FUN_14076e524` lit l index dans le flux puis les trois axes aux largeurs de LA LIGNE DE CET INDEX : le
+// lecteur qui appliquait a tout index les largeurs de la region jouee lisait de travers tout index autre
+// (19 bits d ecart sur Live Fire, 7 sur les canevas Forge a deux regions). Un index sans ligne (region
+// invalide, ou au-dela du nombre de regions) lit zero bit par axe, comme le jeu. Une entree sans table garde
+// la lecture d avant (la ligne de la region jouee pour tout index).
+const Rev = "profile-2026-11-10"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/profile_rev.golden` porte le couple (revision, empreinte) avec son historique, et

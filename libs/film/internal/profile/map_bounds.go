@@ -63,6 +63,48 @@ type MapQuantEntry struct {
 	// ceilLog2(nb de régions déclarées), jamais moins de 1 (la valeur historique, vérifiée
 	// par le contrôle film sur toutes les cartes à 1-2 régions). Zéro (champ absent) = 1.
 	RegionIndexBits uint `json:"regionIndexBits,omitempty"`
+	// Regions est la TABLE PAR INDEX DE RÉGION de la carte (`DAT_1445ccbe0`) : une ligne par région
+	// de compression, dans l'ordre du bloc structure-BSP du tag de niveau, l'élément i étant la
+	// région d'index i. `FUN_14076e524` lit l'index dans le flux puis les trois axes aux largeurs de
+	// LA LIGNE DE CET INDEX, pas de la région jouée. Champ absent (catalogue antérieur, entrée
+	// fabriquée à la main) : la seule ligne connue est celle de la région jouée (Min, Max,
+	// AxisWidths), et le lecteur la lit pour tout index. Table présente, index absent ou région
+	// invalide ([RegionQuant.Invalid]) : ligne à zéro, comme chez le jeu.
+	Regions []RegionQuant `json:"regions,omitempty"`
+}
+
+// RegionQuant est une ligne de la table par index de région : les bornes monde de la région et
+// les largeurs d'axe que la loi du moteur en déduit au niveau du composant de position.
+type RegionQuant struct {
+	// Index est la position de la région dans le bloc structure-BSP (celle que le flux écrit).
+	Index uint32 `json:"index"`
+	// Min / Max sont les bornes monde par axe (X, Y, Z) de la région.
+	Min [3]float32 `json:"min"`
+	Max [3]float32 `json:"max"`
+	// AxisWidths est la ligne 0x10 de la table : `LargeursAxeDuNiveau(bornes, 0x10)`, produite hors
+	// ligne ; [TestLaLoiRendLesLargeursDuCatalogue] exige qu'elle égale la loi.
+	AxisWidths [3]uint `json:"axisWidths"`
+	// Invalid : la région existe dans le tableau de la carte mais son AABB n'est pas valide
+	// (`FUN_140be9d1c` : min < max sur les trois axes). Le jeu n'en remplit pas la ligne, qui reste
+	// à zéro : zéro bit par axe. L'index d'une région avance quand même pour une région invalide.
+	Invalid bool `json:"invalid,omitempty"`
+}
+
+// Bornes rend les bornes de la région en plage de déquantification.
+func (r RegionQuant) Bornes() Vec3Range {
+	var out Vec3Range
+	for ax := range 3 {
+		out[ax] = AxisRange{Min: r.Min[ax], Max: r.Max[ax]}
+	}
+	return out
+}
+
+// AjouterRegion pose la région suivante de la table : son index est le rang d'ajout, l'ordre du
+// bloc structure-BSP. Le producteur du catalogue (`cmd/mapquant-build`) l'appelle dans cet ordre.
+// `invalid` marque une région dont l'AABB n'est pas valide : elle garde son index, sans ligne.
+func (e *MapQuantEntry) AjouterRegion(min, max [3]float32, axisWidths [3]uint, invalid bool) {
+	e.Regions = append(e.Regions, RegionQuant{Index: uint32(len(e.Regions)), Min: min, Max: max, //nolint:gosec // une carte compte moins de 2^31 regions
+		AxisWidths: axisWidths, Invalid: invalid})
 }
 
 // EffectiveRegionIndexBits rend la largeur d'index de région, défauts historiques compris.

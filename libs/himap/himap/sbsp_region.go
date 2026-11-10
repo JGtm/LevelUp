@@ -148,3 +148,45 @@ func memeOrdre(a, b []uint32) bool {
 	}
 	return true
 }
+
+// RegionsBSPLocales rend TOUTES les regions de compression d'un module qui porte ses propres tags
+// sbsp, dans l'ordre du bloc structure-BSP du tag de niveau : l'element i est la region d'index i,
+// celle que `FUN_14076e524` lit dans la table PAR INDEX (`DAT_1445ccbe0 + index * 0x20 ...`). Le
+// premier element est le BSP que rend [BSPQuantification].
+//
+// Meme critere que [BSPQuantification] (le module n'est ouvert qu'une fois) : un ordre illisible
+// est une erreur ([ErrRegionBSPIndecidable]), jamais un ordre par taille. Un module qui ne porte
+// aucun tag sbsp rend [ErrAucunTagSbsp] : ses regions vivent ailleurs ([RegionsBSPExternes]).
+func RegionsBSPLocales(modulePath string) ([]BSP, error) {
+	m, err := himodule.Open(modulePath)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = m.Close() }()
+	bsps, err := bspBoundsFrom(m, modulePath)
+	if err != nil {
+		return nil, err
+	}
+	if len(bsps) == 1 {
+		return bsps, nil
+	}
+	ordre, err := ordreRegionsBSP(m, bsps)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", modulePath, err)
+	}
+	out := make([]BSP, 0, len(ordre))
+	for _, gid := range ordre {
+		trouve := false
+		for _, b := range bsps {
+			if b.GlobalID == gid {
+				out = append(out, b)
+				trouve = true
+				break
+			}
+		}
+		if !trouve {
+			return nil, fmt.Errorf("%s: %w (region %08x absente des tags sbsp)", modulePath, ErrRegionBSPIndecidable, gid)
+		}
+	}
+	return out, nil
+}
