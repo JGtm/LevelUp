@@ -2,7 +2,7 @@
 
 > **Analysez vos stats de Halo 5: Guardians et de Halo Infinite match par match, suivez votre progression dans le temps, et comparez vos performances avec votre escouade.**
 
-[![Version](https://img.shields.io/github/v/release/JGtm/LevelUp?label=Version&color=blue)](https://github.com/JGtm/LevelUp/releases/latest)
+[![Version](https://img.shields.io/github/v/release/JGtm/LevelUp.svg?label=Version&color=blue)](https://github.com/JGtm/LevelUp/releases/latest)
 [![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8.svg)](https://go.dev/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.5%2B-FEE14E.svg)](https://duckdb.org/)
@@ -266,7 +266,9 @@ Tous les détails dans le [journal des modifications](CHANGELOG.md).
 
 ## Démarrage rapide
 
-**Application Windows** : télécharge l'installeur (`LevelUp_X.Y.Z_x64-setup.exe`) depuis la [page des releases GitHub](https://github.com/JGtm/LevelUp/releases/latest) ou depuis la page « Télécharger LevelUp pour Windows » du site hébergé, puis lance-le. L'installeur n'est pas signé par un certificat de code : Windows SmartScreen avertit une fois (« Informations complémentaires », puis « Exécuter quand même »). Tes données vivent dans `%LOCALAPPDATA%\LevelUp` et y restent après une désinstallation. Détails : [docs/RUNBOOK_DESKTOP.md](../RUNBOOK_DESKTOP.md) (en anglais). Le reste de cette section sert à lancer LevelUp depuis les sources.
+[![Télécharger pour Windows](https://img.shields.io/github/v/release/JGtm/LevelUp.svg?label=T%C3%A9l%C3%A9charger%20pour%20Windows&color=blue)](https://github.com/JGtm/LevelUp/releases/latest)
+
+**Application Windows** : télécharge l'installeur (`LevelUp_X.Y.Z_x64-setup.exe`) depuis le badge ci-dessus ou depuis la page « Télécharger LevelUp pour Windows » du site hébergé, puis lance-le. L'installeur n'est pas signé par un certificat de code : Windows SmartScreen avertit une fois (« Informations complémentaires », puis « Exécuter quand même »). Tes données vivent dans `%LOCALAPPDATA%\LevelUp` et y restent après une désinstallation. Détails : [docs/RUNBOOK_DESKTOP.md](../RUNBOOK_DESKTOP.md) (en anglais). Le reste de cette section sert à lancer LevelUp depuis les sources.
 
 **Prérequis** : Go 1.26+, Node.js + npm, GNU Make, Air pour le rechargement à chaud du Go, et une **chaîne C** — le pilote DuckDB est en CGO, et sous Windows un `gcc` absent du `PATH` fait servir à Air un binaire périmé sans le dire (MinGW/UCRT64 ; voir [INSTALL.md](INSTALL.md)).
 
