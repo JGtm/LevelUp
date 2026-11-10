@@ -321,6 +321,12 @@ Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. `.claude/skil
 
 ---
 
+### [logs] Avertissements répétés pendant un long recalcul
+
+Relevé le 2026-11-10 au premier démarrage de la 8.1.2 : pendant le rejeu des notes LUSR, `sharedprovider` écrit environ 200 fois « writer RW tenu au-delà du seuil — lectures gatées » pour le même écrivain (`match_recompute/lusr`), et le repli du solveur une ligne WARN par match (36). Une ligne au début et une à la fin de la tenue, avec la durée et le nombre de lectures retenues, suffiraient ; le repli peut être compté et résumé en fin de rejeu. Le user trouve ce bruit gênant (10/11) ; noté pendant la v8.1.2, périmètre figé. **Condition de reprise :** à planifier après la 8.1.2. **Effort : S.**
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
