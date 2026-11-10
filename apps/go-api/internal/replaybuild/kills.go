@@ -10,6 +10,7 @@ package replaybuild
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/JGtm/LevelUp/libs/film/decfilm"
@@ -22,7 +23,8 @@ import (
 // second appel aurait payé une DEUXIÈME fois le décodage du film pour le même fait (le verrou
 // de paquet qui le rendait coûteux a disparu au lot 2.3 ; le décodage, lui, coûte toujours).
 // nil = décodage impossible (film absent ou source non décodable), déjà journalisé ici :
-// les deux appelants n'ont qu'à tester le nil.
+// les deux appelants n'ont qu'à tester le nil. Un film sans kill-feed qui déclare des bots rend le
+// résultat minimal de [botsSansKillFeed] (roster seul), jamais nil.
 //
 // LE FILM EST CELUI QUE `BuildBytes` A DÉJÀ CHARGÉ (lot 1, PLAN_CUISSON_PERF item 1.4) : ce
 // décodage ouvrait et redécompressait le film ENTIER pour son propre compte, en plus des
@@ -50,8 +52,26 @@ func (b *Builder) decodeKillSource(ctx context.Context, matchID string, entry de
 	if err != nil {
 		slog.InfoContext(ctx, "replaybuild: source de dégât non décodée — morts neutres et frags sous effet non décodés",
 			"err", err, "match_id", matchID)
+		return botsSansKillFeed(ctx, matchID, film, err)
+	}
+	return res
+}
+
+// botsSansKillFeed rend le résultat minimal d'un film que le décodage refuse faute de kill-feed : le
+// roster de bots que BOT_METADATA déclare, sans mort ni bijection. Un match sans aucun frag n'a pas de
+// kill-feed et pourtant des bots, dont les vies ne se nommeraient pas sans lui. Ce résultat voyage
+// comme celui d'un décodage abouti : il se range dans les faits, que la cuisson suivante relit sans
+// rouvrir le film. nil pour tout autre refus et pour un film sans bot déclaré.
+func botsSansKillFeed(ctx context.Context, matchID string, film *decfilm.Film, cause error) *decfilm.Result {
+	if !errors.Is(cause, decfilm.ErrNoKillFeed) {
 		return nil
 	}
+	res := decfilm.ResultatDeBotsSansKillFeed(film)
+	if res == nil {
+		return nil
+	}
+	slog.InfoContext(ctx, "replaybuild: film sans kill-feed — roster de bots lu dans BOT_METADATA",
+		"match_id", matchID, "bots", len(res.Roster.Bots), "non_epingles", len(res.Roster.UnpinnedBots))
 	return res
 }
 
