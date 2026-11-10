@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // composants_vue_b_m4b.go — LES COMPOSANTS QUI FERMAIENT LA VUE B DANS LES FENETRES DU TIR CONTINU
 // (lot M4b de la campagne « retours rejeu », 2026-09-25).

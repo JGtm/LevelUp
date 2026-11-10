@@ -58,7 +58,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // Les largeurs relevees chez l ecrivain (cf. l en-tete). Nommees pour qu un port futur les

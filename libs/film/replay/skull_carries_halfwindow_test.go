@@ -12,7 +12,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // La fixture partagee ([skullFixture]) cadence ses tics a 1 000 ms ; l'axe des tests vaut

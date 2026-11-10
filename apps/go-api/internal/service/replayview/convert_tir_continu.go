@@ -6,7 +6,7 @@ package replayview
 import (
 	"levelup/go-api/internal/domain/replaydoc"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func toFireBurst(v replay.FireBurst) replaydoc.FireBurst {

@@ -73,7 +73,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // ti11SommeLargeurs est la somme des largeurs portees de l'archetype, `i2`, `i9` et `i4` EXCLUS

@@ -29,7 +29,7 @@ package replay
 import (
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // vehicleSeatTol est la tolerance appliquee AVANT le debut d un episode pour y rattacher la

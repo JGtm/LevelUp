@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
+	"github.com/JGtm/halo-api"
 )
 
 // requestXSTSToken échange un User Token XBL contre un XSTS Token.

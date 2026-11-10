@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/filmshell"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/filmshell"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // litScan balaie un chunk : pour chaque paquet, cherche un littéral d'arme complet

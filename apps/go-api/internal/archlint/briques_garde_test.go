@@ -29,23 +29,23 @@ func TestBriquesImports_ParcoursRecursifEtFrontiere(t *testing.T) {
 		nom:      "x",
 		paquets:  []string{"libs/film"},
 		recursif: true,
-		permis:   []string{"libs/y/q"},
+		permis:   []string{"libs/himap/himap"},
 	}
 	for imp, attendu := range map[string]bool{
-		prefixeBriques + "film":                                       true,
-		prefixeBriques + "film/internal/source":                       true,
-		prefixeBriques + "filmprofile":                                false,
+		moduleBrique("film"):                                          true,
+		moduleBrique("film") + "/internal/source":                     true,
+		moduleBrique("film") + "profile":                              false,
 		prefixeModuleAPI + "internal/games/halo_infinite/film":        false,
 		prefixeModuleAPI + "internal/games/halo_infinite/filmprofile": false,
-		"github.com/JGtm/LevelUp/libs/y/q":                            true,
-		"github.com/JGtm/LevelUp/libs/y/q/sous":                       false,
+		moduleBrique("himap") + "/himap":                              true,
+		moduleBrique("himap") + "/himap/sous":                         false,
 	} {
 		if got := b.interne(imp); got != attendu {
 			t.Errorf("interne(%q) = %v, attendu %v", imp, got, attendu)
 		}
 	}
-	exact := brique{nom: "e", paquets: []string{"libs/x/p"}}
-	if exact.interne("github.com/JGtm/LevelUp/libs/x/p/sous") {
+	exact := brique{nom: "e", paquets: []string{"libs/gamefiles/ooz"}}
+	if exact.interne(moduleBrique("gamefiles") + "/ooz/sous") {
 		t.Error("une brique non récursive ne couvre pas ses sous-répertoires")
 	}
 }

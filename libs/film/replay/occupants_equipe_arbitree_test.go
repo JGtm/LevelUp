@@ -20,8 +20,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmobs"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/filmobs"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // botContredit : un bot d'index 8 et de `bid(7.0)` dont l'entite (equipe 1) couvre sa declaration,

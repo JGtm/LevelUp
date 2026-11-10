@@ -86,7 +86,7 @@ import (
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replaydiff"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 const (

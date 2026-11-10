@@ -11,12 +11,12 @@
 // parcours des imports directs ne voit pas (même méthode que
 // `TestFermetureDeAnalysisSansDecodeurDeFilm`).
 //
-// Le paquet surveillé est la brique (module `github.com/JGtm/LevelUp/libs/haloapi`, arbre).
+// Le paquet surveillé est la brique (module `github.com/JGtm/halo-api`, arbre).
 //
 // MESURE du 2026-10-29 (HEAD b92916328) : 299 paquets dans la fermeture, AUCUN des paquets
 // surveillés. Il n'y a donc pas d'allowlist : toute fuite est une faute à couper, pas une dette.
 //
-// Mutation qui doit le faire rougir : importer `github.com/JGtm/LevelUp/libs/haloapi/infinite` depuis
+// Mutation qui doit le faire rougir : importer `github.com/JGtm/halo-api/infinite` depuis
 // un fichier d'`internal/analysis/`.
 package archlint
 
@@ -81,7 +81,7 @@ func TestFermetureDeDomainEtAnalysisSansHaloapi(t *testing.T) {
 // compris les variantes de test et les sous-paquets) et laisse passer les voisins qui partagent
 // seulement le début du nom, et les autres briques.
 func TestFermetureDeDomainEtAnalysis_AutoPreuve(t *testing.T) {
-	const h = importBriqueHaloapi
+	h := importBriqueHaloapi
 	sortie := "levelup/go-api/internal/domain\n" +
 		h + "/xblauth\n" +
 		h + "\n" +
@@ -90,7 +90,7 @@ func TestFermetureDeDomainEtAnalysis_AutoPreuve(t *testing.T) {
 		"levelup/go-api/internal/platform/haloextra\n" +
 		"levelup/go-api/internal/sync/haloclient_reexport\n" +
 		h + "x\n" +
-		prefixeBriques + "film/decfilm\n" +
+		moduleBrique("film") + "/decfilm\n" +
 		"levelup/go-api/internal/platform/auth\n"
 	got := strings.Join(fuitesHaloapi(paquetsDeFermeture(sortie)), ",")
 	attendu := h + "," + h + "/infinite," + h + "/xblauth"

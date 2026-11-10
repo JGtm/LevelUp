@@ -39,7 +39,7 @@ import (
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/service"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 const (

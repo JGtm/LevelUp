@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // TestBis2RegionsDeLaCarte journalise les bornes et les largeurs (niveau 0x10) de chaque plage.

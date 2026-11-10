@@ -15,7 +15,7 @@ package replay
 // de tir est le controle du tir continu (coups simules contre sauts du compteur).
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // encodeTirContinu ecrit les rafales (TRIEES par debut : delta d horodatage) et les compteurs.

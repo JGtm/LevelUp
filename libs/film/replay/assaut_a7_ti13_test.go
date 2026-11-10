@@ -65,7 +65,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // a7ExigeChainage : le filtre de fiabilite. MIS A FAUX le 2026-08-31 apres une premiere passe

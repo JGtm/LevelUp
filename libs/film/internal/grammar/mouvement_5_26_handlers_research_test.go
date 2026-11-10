@@ -38,7 +38,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // Les trois types de bloc que le repartiteur `FUN_1428e22c0` sert et que le depot ne lit pas.

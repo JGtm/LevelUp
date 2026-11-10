@@ -19,7 +19,7 @@ package replay
 import (
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // lireLesImagesCles joue la marche unique des images-cles et journalise ce que la regle

@@ -40,7 +40,7 @@ import (
 
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // carteTemoinDesJumelles / jumelleDeLaCarteTemoin : deux cartes du catalogue VERSIONNE de meme

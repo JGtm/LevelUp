@@ -9,7 +9,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // jeuDArmesEcrit rend les bits d un jeu d armes : R(3) de demande, puis deux `FUN_1406d00ec`

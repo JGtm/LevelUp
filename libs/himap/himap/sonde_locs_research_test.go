@@ -25,8 +25,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // TestSondeTagLocsStructure — combien de tags `locs`, quelle taille, quels StringId ?

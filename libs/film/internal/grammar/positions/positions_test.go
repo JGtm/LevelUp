@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/depottest"
 )
 
 // refMatchShort8 — 8 premiers chars hex de l'UUID du match de référence (§N).

@@ -23,8 +23,8 @@ import (
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // fetcherNonFinalise : le client Halo face a un film en cours de publication. `liste` choisit la

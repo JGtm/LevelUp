@@ -37,7 +37,7 @@ import (
 
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // filmsEssayesAuMax borne le nombre de films tentés.

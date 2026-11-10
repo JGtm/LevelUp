@@ -3,7 +3,7 @@ package grammar
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // origin.go — L'HORLOGE DU FILM : L HORODATAGE MOTEUR DE SON PREMIER PAQUET.

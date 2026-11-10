@@ -20,8 +20,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // filmDuSilence : la victime 111 (slot 1) immobile en (5, 0), echantillonnee de 0,2 s a `finVictimeMS`,

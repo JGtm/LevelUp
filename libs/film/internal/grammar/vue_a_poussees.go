@@ -18,7 +18,7 @@ package grammar
 // les recueille ([lireLaVueA]). L appariement et le dequantifie de l impulsion vivent dans le
 // balayage (`poussees.go`).
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 
 // Les genres des deux messages de poussee (numerotation de `FUN_140e453b4`).
 const (

@@ -335,7 +335,7 @@
 # RETRAIT DU 2026-10-28 (plan de découplage D1, lot 3 : le paquet `mapvar` quitte le module `go-api` pour
 # le module `libs/gamefiles`, ADR 0041) : 48 paires (Package, Test) retirées, 48 lignes JSONL, toutes du
 # paquet `levelup/go-api/internal/games/halo_infinite/film/replay/mapvar`. Ce n'est PAS une perte de test :
-# 38 des 48 tournent dans le module `libs/gamefiles` (paquet `github.com/JGtm/LevelUp/libs/gamefiles/mapvar`),
+# 38 des 48 tournent dans le module `libs/gamefiles` (paquet `github.com/JGtm/halo-infinite-files-reader/mapvar`),
 # joués par le pas « go test (brique gamefiles) » du job go-build, et les 10 autres (TestArbreRacineVarianteInventaire,
 # TestBalayageChampsObjets{Isolation,Native}, TestCandidatsNomDeLieu, TestCategorieDesCoquesForge,
 # TestChamp6DesObjetsForge, TestInventaireBranchesRacine, TestNomsLisiblesDeLaVariante,
@@ -349,7 +349,7 @@
 # `levelup/go-api/internal/games/halo_infinite/film/...` (`internal/grammar` 208, `internal/grammar/signaux` 9,
 # `internal/grammar/weaponscan` 48, `internal/facts/objectives` 65, `replay` 720) quittent cette baseline et
 # forment `.ai/baselines/tests_libs_film.jsonl`, À L'IDENTIQUE sauf le préfixe de paquet réécrit en
-# `github.com/JGtm/LevelUp/libs/film`. Aucun test ne sort du contrôle de présence : la seconde baseline est
+# `github.com/JGtm/halo-infinite-film-decoder`. Aucun test ne sort du contrôle de présence : la seconde baseline est
 # jugée contre le JSONL des lots du module `libs/film` (`--baseline`, cf. ci-dessous). Les 2 lignes que le
 # lot 2.11 du même plan a relocalisées de `film/replay` vers `internal/filmcorpus` restent ici.
 #

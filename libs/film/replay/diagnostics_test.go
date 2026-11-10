@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/constat"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/constat"
 )
 
 // TestNiveauxDesConstatsEgalentSlog : la conversion `slog.Level(d.Niveau)` de

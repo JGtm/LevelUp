@@ -26,7 +26,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // memeBande dit si deux bandes de slots sont identiques, et nomme le premier ecart.

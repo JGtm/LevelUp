@@ -6,8 +6,8 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/equipenergy"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/equipenergy"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // familleDeLaGrenadePique : la famille de la palette que les tests de l equipement porte attendent pour la grenade pique.

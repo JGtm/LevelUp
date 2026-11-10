@@ -16,7 +16,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // ancresIsolation : les 25 ancres d'objectif d'Isolation (map_objectives.json, asset

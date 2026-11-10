@@ -33,7 +33,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // v6ScanMaxBit borne le balayage : au-dela, on n'est plus dans la liste d'evenements mais dans

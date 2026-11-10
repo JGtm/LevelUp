@@ -33,7 +33,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // p4ImageCle : une image-cle porteuse, et ce qu'elle a montre des entites ti=9.

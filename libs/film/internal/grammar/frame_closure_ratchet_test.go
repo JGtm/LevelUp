@@ -50,7 +50,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // updateFrameClosure : LA PORTE DE REGENERATION DE CE GOLDEN, ET D AUCUN AUTRE (cf. la porte

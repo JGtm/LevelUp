@@ -36,7 +36,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // localiserRamasseur rend la position du ramasseur d'un ramassage natif publié, à l'instant du

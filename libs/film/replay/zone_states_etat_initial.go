@@ -24,7 +24,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // zoneKeyOwnerOf pose les etats d'image-cle du canal de propriete (tag 4) sur la grille de

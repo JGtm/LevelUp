@@ -9,7 +9,7 @@ import (
 	"math"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // instantDeFrame rend l'instant, en microsecondes de film, du debut d'une frame du document.

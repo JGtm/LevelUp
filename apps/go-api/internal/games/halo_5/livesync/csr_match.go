@@ -16,7 +16,7 @@ import (
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/sync/skill"
 
-	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
+	h5api "github.com/JGtm/halo-api/halo5"
 )
 
 // carnageGetter — sous-ensemble de halo5.CaptureSource réellement utilisé par le CSR

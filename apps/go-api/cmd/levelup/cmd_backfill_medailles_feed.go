@@ -53,8 +53,8 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/medalname"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/medalname"
 )
 
 // medaillesFeedOptions : les reglages de la passe.

@@ -3,7 +3,7 @@ package objectives
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // Les quatre tests ci-dessous testent [RoundIdentity.CompletedByElimination] SEULE : une

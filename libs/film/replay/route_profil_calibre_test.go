@@ -31,7 +31,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // TestRouteDuProfilCalibreJusquAuContexte — LE PROFIL CALIBRE ARRIVE, ET LES LARGEURS DE CARTE

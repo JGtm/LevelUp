@@ -57,8 +57,8 @@ package grammar
 import (
 	"errors"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // FilmTableRefusal nomme la cause pour laquelle la table du film n'a PAS ete lue. Liste FERMEE :

@@ -16,7 +16,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // recsExAequo : quatre manches dont TROIS commencent au meme instant (5 000 ms). L'instant seul

@@ -33,7 +33,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // Reference de tag SERIALISEE, 28 octets — meme convention que `physique_sonde` :

@@ -25,7 +25,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // vipFilmEnv designe LE film qualifie par ce processus — une boucle sur trois films dans un

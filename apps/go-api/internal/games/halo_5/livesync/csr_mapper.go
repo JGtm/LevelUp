@@ -18,7 +18,7 @@ import (
 
 	syncpkg "levelup/go-api/internal/sync"
 
-	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
+	h5api "github.com/JGtm/halo-api/halo5"
 )
 
 // h5LifetimeSeasonID — saison CSR « lifetime » FIXE de Halo 5 (Phase 1). Le service

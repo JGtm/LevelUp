@@ -26,7 +26,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // TestDrapeau518Temoin publie le drapeau du film courant, et les octets qui le portent.

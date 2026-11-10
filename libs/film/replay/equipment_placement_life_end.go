@@ -16,8 +16,8 @@ package replay
 // LA FIN est la suppression ecrite de l objet suivi (`tracked-end`) : la premiere qui suit le nommage.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // finDePose est le resultat du lien d UNE pose brute.

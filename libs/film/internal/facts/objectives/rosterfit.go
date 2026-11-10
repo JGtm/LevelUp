@@ -1,6 +1,6 @@
 package objectives
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/signaux"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/signaux"
 
 // rosterfit.go — L'EFFECTIF DU MATCH TIENT-IL DANS LE STATBORG ? La garde d'effectif du calque
 // des ACTIONS d'objectif.

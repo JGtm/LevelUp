@@ -14,7 +14,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // magicBKHD marque le debut de la bank Wwise dans les octets du tag `sbnk`.

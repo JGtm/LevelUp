@@ -14,7 +14,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // nomsSTID decode les couples {identifiant, nom} d'un chunk STID.

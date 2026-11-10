@@ -40,7 +40,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // updateGoldenEquipementOrigines : LA PORTE D ECRITURE DE CE GOLDEN, ET D AUCUN AUTRE.

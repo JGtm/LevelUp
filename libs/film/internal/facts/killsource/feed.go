@@ -27,8 +27,8 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/highlightevent"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/highlightevent"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // feedEvent : un instant du kill-feed. `killer` et `victim` peuvent etre vides separement

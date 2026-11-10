@@ -28,7 +28,7 @@ import (
 const racineBriqueFilm = "libs/film"
 
 // importBriqueFilm : le chemin d import de la racine du meme module.
-const importBriqueFilm = "github.com/JGtm/LevelUp/libs/film"
+const importBriqueFilm = "github.com/JGtm/halo-infinite-film-decoder"
 
 // motifsDeViolationDeCouche rend les motifs pour lesquels l arete `de -> vers` sort des regles,
 // ou nil. Les deux regles sont independantes : une arete peut violer les deux.

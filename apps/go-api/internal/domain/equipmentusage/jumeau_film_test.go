@@ -15,7 +15,7 @@ import (
 
 	"levelup/go-api/internal/domain/equipmentusage"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func TestJumeauFilm_FamillesDuBilanIdentiques(t *testing.T) {

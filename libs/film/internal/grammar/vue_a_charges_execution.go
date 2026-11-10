@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/internal/profile"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 
 // vue_a_charges_execution.go — LES CHARGES DE LA VUE A GARDEES PAR UNE VALEUR D EXECUTION, ET CE QUI
 // LA FIXE (lot VA de la campagne de grammaire, recherche R2 du 2026-10-04 et etape V3) : Script (15),

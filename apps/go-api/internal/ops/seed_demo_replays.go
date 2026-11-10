@@ -36,7 +36,7 @@ import (
 	"levelup/go-api/internal/platform/atomicfile"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // Issues d'un rejeu figé au bilan du seed.

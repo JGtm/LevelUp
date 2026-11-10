@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // reglageCarte : ce qui peut varier d'une carte à l'autre. Un champ vide ou nul vaut « la

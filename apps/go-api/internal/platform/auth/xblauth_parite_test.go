@@ -11,7 +11,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
+	"github.com/JGtm/halo-api/xblauth"
 )
 
 // champsDe rend, dans l'ordre, « nom type `tag` » de chaque champ d'une struct.

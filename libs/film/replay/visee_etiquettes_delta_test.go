@@ -30,7 +30,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // vgColonne est un composant transpose en colonnes de bits, avec le slot de chaque echantillon.

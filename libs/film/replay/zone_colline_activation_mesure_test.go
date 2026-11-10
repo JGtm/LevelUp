@@ -27,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // TestCollineActivationMesure publie, film par film, les bornes de l activation de la 1re colline.

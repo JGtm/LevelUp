@@ -16,8 +16,8 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
-	"github.com/JGtm/LevelUp/libs/film/playerposition"
+	"github.com/JGtm/halo-infinite-film-decoder/objectiveevent"
+	"github.com/JGtm/halo-infinite-film-decoder/playerposition"
 )
 
 type mockMatchViewService struct {

@@ -62,7 +62,7 @@ package replay
 // muet pendant la rampe. La retirer ferait PERDRE des camps aujourd hui publies ; elle se retire le
 // jour ou le parc rend 0 declenchement.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 
 const (
 	// zoneCapturerMinAgreements est le nombre MINIMAL de rampes abouties concordantes qu un

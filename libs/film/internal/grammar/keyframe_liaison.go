@@ -42,7 +42,7 @@ package grammar
 import (
 	"maps"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // neufRefuse : un NEW refuse, en attente du verdict de l image-cle suivante.

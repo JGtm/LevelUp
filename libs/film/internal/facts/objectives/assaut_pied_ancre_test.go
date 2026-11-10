@@ -52,8 +52,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // paCorpus : les neuf films d'Assaut, le temoin Oddball, et trois temoins de modes a pied connu.

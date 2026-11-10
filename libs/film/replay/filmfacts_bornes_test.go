@@ -16,8 +16,8 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // compteImpossible : un compte qu aucun fichier de faits ne peut porter (2^40 elements).

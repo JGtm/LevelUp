@@ -26,7 +26,7 @@ package replay
 // dans la couverture comme avant. Aucune table par film, aucun ordre d arrivee : la regle ne lit que
 // la table du film et les records de creation du meme film.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 
 // rangAbsoluConfirmeParLesCreations dit si les records de creation confirment que le rang absolu des
 // sieges d une table LUE a vacant intercale est l index de participant (cf. l en-tete). Faux pour

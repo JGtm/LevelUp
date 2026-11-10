@@ -22,7 +22,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // v5MaxDecalage borne le balayage : au-delà, on sort du plus long record observé. Les records

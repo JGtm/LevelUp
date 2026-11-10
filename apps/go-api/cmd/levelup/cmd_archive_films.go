@@ -69,7 +69,7 @@ import (
 	go_sync "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/matchflags"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // Compteurs de la passe, publies en expvar (ADR 0009) et restitues en fin de commande.

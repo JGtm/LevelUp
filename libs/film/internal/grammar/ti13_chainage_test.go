@@ -34,7 +34,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // ti13MaxComp est le plus grand index de composant que l'archetype ti=13 declare (34 composants :

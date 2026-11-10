@@ -23,7 +23,7 @@ package replay
 // PUR : aucune I/O.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // occupantDePlace est un INTERVALLE de presence d'une entree, tenu a une place : l'index de joueur de

@@ -45,7 +45,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // scCartes : les modules sondes, et ce qu'on attend d'y trouver.

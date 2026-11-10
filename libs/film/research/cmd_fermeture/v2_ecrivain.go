@@ -20,7 +20,7 @@ package main
 import (
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // ecrivainV2 porte les mesures du lot L0 d un film (ou d un cumul).

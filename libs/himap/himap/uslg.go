@@ -47,7 +47,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // LangueEN et LangueFR : index de langue tels que le jeu les numérote. Les autres existent

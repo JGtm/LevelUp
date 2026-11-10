@@ -19,7 +19,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // bpkTolUS est la tolerance d'appariement temporel. Un paquet est date a la milliseconde ;

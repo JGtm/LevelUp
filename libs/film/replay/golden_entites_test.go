@@ -44,7 +44,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // entitesFaitsEnv : le dossier des fichiers de faits dont la regeneration relit les entites.

@@ -21,7 +21,7 @@ import (
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // tacticalCalloutsStore lit les zones nommees d'une carte d'un titre.

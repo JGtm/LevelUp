@@ -20,7 +20,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // grammaireSous compose la grammaire de balayage d une amorce donnee, sur l archetype de

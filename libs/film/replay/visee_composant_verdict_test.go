@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // vfCalibChunks : nombre de chunks deroules par largeur candidate pendant la calibration.

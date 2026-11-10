@@ -32,10 +32,10 @@ const prefixeGardeRail = "libs/"
 
 // modules associe chaque brique au chemin de son module.
 var modules = map[string]string{
-	"film":      "github.com/JGtm/LevelUp/libs/film",
-	"gamefiles": "github.com/JGtm/LevelUp/libs/gamefiles",
-	"haloapi":   "github.com/JGtm/LevelUp/libs/haloapi",
-	"himap":     "github.com/JGtm/LevelUp/libs/himap",
+	"film":      "github.com/JGtm/halo-infinite-film-decoder",
+	"gamefiles": "github.com/JGtm/halo-infinite-files-reader",
+	"haloapi":   "github.com/JGtm/halo-api",
+	"himap":     "github.com/JGtm/halo-infinite-map-images",
 }
 
 // Noms rend les briques connues, triées.
@@ -52,6 +52,46 @@ func Noms() []string {
 func Module(brique string) (string, bool) {
 	m, ok := modules[brique]
 	return m, ok
+}
+
+// ImportDeGardeRail rend le chemin d'import Go d'un chemin de garde-rail `libs/<brique>[/<suite>]` :
+// `libs/film/types` -> `<module de film>/types`. ok est faux quand rel ne désigne pas une brique connue.
+func ImportDeGardeRail(rel string) (string, bool) {
+	reste, ok := strings.CutPrefix(rel, prefixeGardeRail)
+	if !ok {
+		return "", false
+	}
+	nom, suite, _ := strings.Cut(reste, "/")
+	module, ok := modules[nom]
+	if !ok {
+		return "", false
+	}
+	if suite == "" {
+		return module, true
+	}
+	return module + "/" + suite, true
+}
+
+// GardeRailDeImport est l'inverse de [ImportDeGardeRail] : le chemin de garde-rail d'un paquet d'une
+// brique donné par son chemin d'import ; ok est faux pour un import qui n'est ni un module de brique ni
+// un paquet dessous (la frontière d'un chemin compte : `<module>x` n'est pas sous `<module>`).
+func GardeRailDeImport(imp string) (string, bool) {
+	for _, nom := range Noms() {
+		module := modules[nom]
+		if imp == module {
+			return prefixeGardeRail + nom, true
+		}
+		if suite, ok := strings.CutPrefix(imp, module+"/"); ok {
+			return prefixeGardeRail + nom + "/" + suite, true
+		}
+	}
+	return "", false
+}
+
+// EstImportDeBrique dit si le chemin d'import vise un module de brique ou un paquet dessous.
+func EstImportDeBrique(imp string) bool {
+	_, ok := GardeRailDeImport(imp)
+	return ok
 }
 
 var (

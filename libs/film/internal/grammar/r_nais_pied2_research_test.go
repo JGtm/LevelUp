@@ -29,8 +29,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // rnVueCDepuis relit la vue C depuis `t` : ferme-t-elle le paquet, et ses index d entrees.

@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // vehicle_end.go — LA FIN DE VIE D UN VEHICULE, LUE AU LIEU D ETRE INFEREE (lot 1.9.10, D13).

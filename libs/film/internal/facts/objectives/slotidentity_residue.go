@@ -1,6 +1,6 @@
 package objectives
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // slotidentity_residue.go — L'IDENTITE D'UN SLOT D'ENTITE PAR RESIDU DE MANCHE.
 //

@@ -17,7 +17,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 
-	"github.com/JGtm/LevelUp/libs/film/playerposition"
+	"github.com/JGtm/halo-infinite-film-decoder/playerposition"
 )
 
 // matchPositionDTO est la projection JSON camelCase d'une playerposition.PlayerPosition.

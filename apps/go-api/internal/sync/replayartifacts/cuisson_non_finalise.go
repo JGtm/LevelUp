@@ -49,7 +49,7 @@ import (
 
 	"levelup/go-api/internal/observability"
 
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // CompteurFilmsNonFinalises : films dont l'archivage et la cuisson sont REPORTÉS au cycle suivant

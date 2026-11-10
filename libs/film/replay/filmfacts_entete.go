@@ -14,7 +14,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // FilmFactsEntete est ce que les PREMIERS OCTETS d un fichier de faits disent, et qui suffit a

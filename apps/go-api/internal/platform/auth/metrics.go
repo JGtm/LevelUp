@@ -7,7 +7,7 @@ package auth
 import (
 	"expvar"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
+	"github.com/JGtm/halo-api/xblauth"
 )
 
 var (

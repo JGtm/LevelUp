@@ -1,4 +1,4 @@
-# github.com/JGtm/LevelUp/libs/haloapi
+# github.com/JGtm/halo-api
 
 Stateless Go clients for the Halo web services (Halo Infinite, Halo 5: Guardians, Xbox Live
 achievements) and the Xbox Live authentication chain that feeds them: URLs, headers, retry
@@ -7,8 +7,8 @@ policies and raw JSON DTOs, with no storage and no decisions.
 ## Status
 
 Used in production by LevelUp since October 2026. From v1.0.0 the exported API follows semantic
-versioning (a breaking change means a new major version). Published from the
-LevelUp monorepo as a Go module in a subdirectory; versions are tagged `libs/haloapi/vX.Y.Z`.
+versioning (a breaking change means a new major version). Published as a Go module in its own
+repository; versions are tagged `vX.Y.Z`.
 
 ## What it is
 
@@ -38,11 +38,10 @@ LevelUp monorepo as a Go module in a subdirectory; versions are tagged `libs/hal
 ## Install
 
 ```
-go get github.com/JGtm/LevelUp/libs/haloapi@v1.0.0
+go get github.com/JGtm/halo-api@v1.0.0
 ```
 
-Works from any Go module; no `replace` directive is needed. (Go resolves `v1.0.0` to the
-subdirectory tag `libs/haloapi/v1.0.0`.)
+Works from any Go module; no `replace` directive is needed.
 
 ## Example
 

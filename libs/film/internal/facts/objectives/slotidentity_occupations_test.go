@@ -3,7 +3,7 @@ package objectives
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // slotidentity_occupations_test.go — LE SIEGE RECYCLE (lot R1 du plan de suite d audit, constat C1

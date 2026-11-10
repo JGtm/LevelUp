@@ -16,7 +16,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // G11 : l'entite est lue de la premiere a la derniere image-cle porteuse (f10..f90) ; le document

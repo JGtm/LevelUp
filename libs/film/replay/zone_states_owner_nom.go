@@ -35,7 +35,7 @@ package replay
 import (
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // zoneBlocNomme est le nom de chaque propriete que le rejeu lit dans un bloc de zone : la CLE de

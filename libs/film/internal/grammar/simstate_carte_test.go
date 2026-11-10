@@ -19,7 +19,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // carteDeTestSimState rend une entree de catalogue PORTANT ses largeurs d axe (les valeurs de

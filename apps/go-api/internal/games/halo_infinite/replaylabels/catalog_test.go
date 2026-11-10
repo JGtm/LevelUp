@@ -10,7 +10,7 @@ import (
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/i18n"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // repoRoot remonte jusqu'au répertoire qui porte config/titles.

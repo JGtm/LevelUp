@@ -50,7 +50,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // equipeDecalageMesure est le decalage, en bits depuis le debut du record d'image-cle, ou le

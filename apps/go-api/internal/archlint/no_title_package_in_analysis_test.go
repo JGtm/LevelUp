@@ -40,7 +40,7 @@
 // importe aucun paquet, directement (même parcours, tests compris, SANS allowlist) ni par la
 // fermeture (`TestFermetureDeAnalysisSansDecodeurDeFilm`, `go list -deps -test`, allowlist datée
 // des fuites qui ne peut que descendre). Mutation : ajouter à un fichier d'`analysis/` un import
-// de `github.com/JGtm/LevelUp/libs/film/types` (direct), ou faire importer
+// de `github.com/JGtm/halo-infinite-film-decoder/types` (direct), ou faire importer
 // `games/weapons/filmshell` par un paquet que la fermeture d'`analysis` contient (transitif).
 package archlint
 
@@ -350,34 +350,34 @@ func TestFermetureDeAnalysisSansDecodeurDeFilm(t *testing.T) {
 func TestFermetureDeAnalysis_AutoPreuve(t *testing.T) {
 	sortie := "levelup/go-api/internal/analysis\n" +
 		"levelup/go-api/internal/games/weapons [levelup/go-api/internal/games/weapons.test]\n" +
-		"github.com/JGtm/LevelUp/libs/film/types\n" +
+		"github.com/JGtm/halo-infinite-film-decoder/types\n" +
 		"levelup/go-api/internal/games/halo_infinite/filmprofile\n" +
-		"github.com/JGtm/LevelUp/libs/film/filmshell\n" +
-		"github.com/JGtm/LevelUp/libs/film/replay\n" +
+		"github.com/JGtm/halo-infinite-film-decoder/filmshell\n" +
+		"github.com/JGtm/halo-infinite-film-decoder/replay\n" +
 		"levelup/go-api/internal/analysis.test\n"
 	paquets := paquetsDeFermeture(sortie)
 	if !contientChaine(paquets, "levelup/go-api/internal/games/weapons") || contientChaine(paquets, "levelup/go-api/internal/analysis.test") {
 		t.Fatalf("variantes de test mal ramenées : %v", paquets)
 	}
 	fuites, mortes := fuitesDeFermeture(paquets, nil)
-	attendu := "github.com/JGtm/LevelUp/libs/film/filmshell,github.com/JGtm/LevelUp/libs/film/replay,github.com/JGtm/LevelUp/libs/film/types"
+	attendu := "github.com/JGtm/halo-infinite-film-decoder/filmshell,github.com/JGtm/halo-infinite-film-decoder/replay,github.com/JGtm/halo-infinite-film-decoder/types"
 	if strings.Join(fuites, ",") != attendu || len(mortes) != 0 {
 		t.Fatalf("fuites = %v, mortes = %v ; attendu %s et aucune morte", fuites, mortes, attendu)
 	}
 	fuites, mortes = fuitesDeFermeture(paquets, map[string]string{
-		"github.com/JGtm/LevelUp/libs/film/filmshell": "2026-10-29 test",
-		"github.com/JGtm/LevelUp/libs/film/types":     "2026-10-29 test",
-		"github.com/JGtm/LevelUp/libs/film/replay":    "2026-10-29 test",
-		"github.com/JGtm/LevelUp/libs/film/absent":    "2026-10-29 test",
+		"github.com/JGtm/halo-infinite-film-decoder/filmshell": "2026-10-29 test",
+		"github.com/JGtm/halo-infinite-film-decoder/types":     "2026-10-29 test",
+		"github.com/JGtm/halo-infinite-film-decoder/replay":    "2026-10-29 test",
+		"github.com/JGtm/halo-infinite-film-decoder/absent":    "2026-10-29 test",
 	})
-	if len(fuites) != 0 || len(mortes) != 1 || !strings.HasSuffix(mortes[0], "film/absent") {
+	if len(fuites) != 0 || len(mortes) != 1 || !strings.HasSuffix(mortes[0], "film-decoder/absent") {
 		t.Fatalf("allowlist honorée et entrée morte signalée attendues ; fuites = %v, mortes = %v", fuites, mortes)
 	}
 	for imp, attendu := range map[string]bool{
-		"github.com/JGtm/LevelUp/libs/film/replay":                true,
-		"github.com/JGtm/LevelUp/libs/film/filmshell":             true,
-		"github.com/JGtm/LevelUp/libs/film/equipenergy":           true,
-		"github.com/JGtm/LevelUp/libs/film/decfilm":               true,
+		"github.com/JGtm/halo-infinite-film-decoder/replay":       true,
+		"github.com/JGtm/halo-infinite-film-decoder/filmshell":    true,
+		"github.com/JGtm/halo-infinite-film-decoder/equipenergy":  true,
+		"github.com/JGtm/halo-infinite-film-decoder/decfilm":      true,
 		"levelup/go-api/internal/games/halo_infinite/film":        false,
 		"levelup/go-api/internal/games/halo_infinite/filmprofile": false,
 		"levelup/go-api/internal/games/weapons":                   false,

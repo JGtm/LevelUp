@@ -33,8 +33,8 @@ package replay
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // entreesDuReleve : ce que la regle consomme, deja lu ailleurs — jamais relu.

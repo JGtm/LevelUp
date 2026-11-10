@@ -30,7 +30,7 @@ package himap
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // ErrRegionBSPIndecidable signale que l'ordre des regions de compression n'a pas pu etre lu

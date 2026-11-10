@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // L'ORACLE — les positions de joueur REELLEMENT observees jugent la carte reconstruite.

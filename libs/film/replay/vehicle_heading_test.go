@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // vehicle_heading_test.go — LA PRESEANCE DES DEUX SOURCES DU CAP (lot 5.4.3).

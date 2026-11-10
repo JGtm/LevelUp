@@ -21,7 +21,7 @@ import (
 	"levelup/go-api/internal/platform/gameproc"
 	"levelup/go-api/internal/replayregen"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // ReplayRegenDeps assemble les dépendances de la file : rien d'autre que ce que le registre sait déjà (chemins,

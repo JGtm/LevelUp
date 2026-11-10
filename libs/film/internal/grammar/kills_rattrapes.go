@@ -22,8 +22,8 @@ package grammar
 // chaines arretees sur un code non modelise sous `repli_chaine_evenement_code_non_modelise`.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // minChain : profondeur de chaine exigee pour retenir un candidat. Trois evenements — le seuil

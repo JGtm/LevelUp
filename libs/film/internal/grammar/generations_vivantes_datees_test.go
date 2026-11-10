@@ -7,7 +7,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // gensDatees : le slot de test porte un corps de generation 1 cree a 100, puis un corps de

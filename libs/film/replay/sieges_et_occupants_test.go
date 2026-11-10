@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // lecturesDuNommage : les deux lectures du film que [lireSiegesEtOccupants] est seule a appeler.

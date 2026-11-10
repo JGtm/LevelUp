@@ -11,7 +11,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // duelsPct formate un taux en gardant le couple brut visible — un pourcentage seul ne

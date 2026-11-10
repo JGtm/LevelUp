@@ -9,7 +9,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // L'INSTRUMENT QUI MANQUAIT — ou la reconstruction differe-t-elle de la reference, PIXEL A

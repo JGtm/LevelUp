@@ -15,9 +15,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/signaux"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/signaux"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/objectiveevent"
 )
 
 // Valeurs de objectiveevent.Event.ObjectiveType (parent mode-agnostique).

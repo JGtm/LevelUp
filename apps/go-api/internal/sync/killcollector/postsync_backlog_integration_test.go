@@ -28,7 +28,7 @@ import (
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/sync/matchflags"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 func baseBacklog(t *testing.T) *sql.DB {

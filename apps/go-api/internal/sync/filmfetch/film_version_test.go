@@ -22,7 +22,7 @@ import (
 
 	"levelup/go-api/internal/filmarchive"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 const matchIDDeTest = "11111111-2222-3333-4444-555555555555"

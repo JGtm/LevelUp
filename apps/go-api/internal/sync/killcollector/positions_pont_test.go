@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // bobineDuPont : la mini-bobine killsource du film de reference `000d5950` (Cliffhanger), prefixe

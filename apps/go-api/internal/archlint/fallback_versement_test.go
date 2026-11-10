@@ -38,7 +38,7 @@ import (
 
 	"levelup/go-api/internal/filmreplis"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // tablesDeVersement : LES FICHIERS DONT LE DECLENCHEMENT PORTE UN NOM VARIABLE, lu dans une table

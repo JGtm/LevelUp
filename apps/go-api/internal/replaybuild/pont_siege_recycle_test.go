@@ -30,8 +30,8 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 var updatePontSiege = flag.Bool("update-pont-siege", false,

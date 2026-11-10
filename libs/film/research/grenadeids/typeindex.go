@@ -24,7 +24,7 @@ package grenadeids
 // autres. La seule position ou il manque est `marqueur = 0` (debut de payload), comptee a part
 // — jamais devinee a zero en silence.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/source"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/source"
 
 // bitsTypeIndexBasDuMarqueur : les cinq bits bas du typeIndex, en tete du marqueur.
 const bitsTypeIndexBasDuMarqueur = 5

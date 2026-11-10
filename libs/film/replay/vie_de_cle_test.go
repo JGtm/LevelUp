@@ -3,8 +3,8 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // vie_de_cle_test.go — LA VIE D'UNE CLE D'OBJET DU MONDE FINIT A LA VIE SUIVANTE DE SON SLOT (RB2-3,

@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // TestObjectifTi11DeltaControleTi13 — LE MEME INSTRUMENT SUR L'ARCHETYPE QUI MARCHE.

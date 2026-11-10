@@ -20,7 +20,7 @@ package himap
 import (
 	"math"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/hinavmesh"
+	"github.com/JGtm/halo-infinite-files-reader/hinavmesh"
 )
 
 // MargeNavmesh : de combien on elargit la couverture du maillage avant d effacer autour. Le

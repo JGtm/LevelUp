@@ -3,7 +3,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // Vecteurs des deux archetypes « frequence », ecrits d apres les ECRIVAINS du jeu :

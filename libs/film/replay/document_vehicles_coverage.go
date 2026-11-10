@@ -12,7 +12,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // tallyVehicleCoverage compte, sur les vies PUBLIEES, ce que la couverture annonce. Un compteur

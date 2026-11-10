@@ -39,7 +39,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // rbBipedArchetype : l'archetype du spartan (TI=35), le seul a porter la forme lourde du

@@ -24,7 +24,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // bobineEquipes : ce que la lecture doit rendre sur chaque bobine par build.

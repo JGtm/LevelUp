@@ -15,7 +15,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/netguard"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
+	"github.com/JGtm/halo-api/haloapitest"
 )
 
 func TestXboxClient_Demo_AucuneRequete(t *testing.T) {

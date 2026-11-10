@@ -19,8 +19,8 @@ package grammar
 // permis une migration purement mecanique de ces sites.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // filmDeDir charge le film d'un repertoire, ou rend nil. Les helpers ci-dessous rendent alors

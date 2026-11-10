@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 // A *http.Client satisfies haloapi.Doer: the caller owns the transport, the timeout and the

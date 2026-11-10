@@ -37,7 +37,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // TestAssautA3Ti13 — le diagnostic A3.1 sur UN film.

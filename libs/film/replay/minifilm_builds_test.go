@@ -41,7 +41,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // miniFilmBuildBudget : le plafond par bobine, arbitrage V7 du plan (1 Mio).

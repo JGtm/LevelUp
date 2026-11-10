@@ -3,7 +3,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // inventory_delta_test.go — LES GARDE-RAILS PURS du suivi delta de l'inventaire (aucun film,

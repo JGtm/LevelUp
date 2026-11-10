@@ -14,7 +14,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // deathOffsetStepMS est le pas du balayage fin du calage, et la grille reste ancrée sur la

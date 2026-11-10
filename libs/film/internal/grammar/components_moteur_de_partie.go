@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // components_moteur_de_partie.go — LA FIN DE L'ARCHETYPE DU MOTEUR DE PARTIE (`ti=0`, `ti=1`,
 // `ti=2`, composants `i11` a `i17`).

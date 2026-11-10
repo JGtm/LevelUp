@@ -25,7 +25,7 @@ import (
 )
 
 // cheminDeDepottest : le chemin d'import de l'aide de test.
-const cheminDeDepottest = prefixeBriques + "film/internal/depottest"
+var cheminDeDepottest = moduleBrique("film") + "/internal/depottest"
 
 func TestDepottestNEstImporteQueParDesTests(t *testing.T) {
 	var violations []string

@@ -11,8 +11,8 @@ import (
 
 	"levelup/go-api/internal/platform/netguard"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
-	"github.com/JGtm/LevelUp/libs/haloapi/xboxlive"
+	"github.com/JGtm/halo-api"
+	"github.com/JGtm/halo-api/xboxlive"
 )
 
 // doerQuiEchoue : un Doer dont l'émission échoue avec `err`.

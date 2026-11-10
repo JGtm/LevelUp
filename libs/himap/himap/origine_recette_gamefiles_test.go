@@ -49,7 +49,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 func origIndexForge(t *testing.T, racine string) *ModuleIndex {

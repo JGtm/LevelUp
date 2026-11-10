@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // auditModesConteneurs balaie les banques d'un module et statue sur leur mode de lecture.

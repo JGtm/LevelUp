@@ -22,9 +22,9 @@ package grammar
 // contexte, apres leur profil ([FilmContext.PoserLaCarteEtLeDecoupage], `killsource.poserLeProfil`).
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // imagesClesDeLaDeclaration : le nombre maximal d images-cles examinees pour trouver un record de

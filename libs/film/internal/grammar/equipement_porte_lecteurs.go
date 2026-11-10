@@ -9,7 +9,7 @@ package grammar
 // `TestCaptureConsumesSameBitsAsDispatch` le garde. Les crochets de [Observation.EquipmentStateHook]
 // restent publies par ces lecteurs, comme avant.
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // EquipementLu est la valeur capturee d un composant d equipement de ti=37.
 type EquipementLu struct {

@@ -58,8 +58,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/decodelock"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // baGateFilms : les cinq films du gate. `portage` marque les deux où AUCUN désaccord n'est

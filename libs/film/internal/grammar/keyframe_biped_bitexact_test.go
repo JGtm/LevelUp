@@ -33,7 +33,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // kf35bPrecision est UNE facon de renseigner les largeurs d'axe pour une passe.

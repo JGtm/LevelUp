@@ -11,7 +11,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // trajectoire fabrique une vie dont les points vont de 0 à n-1 frames, une frame par point.

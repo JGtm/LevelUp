@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // hillOwnerCase monte un cas a designateur avec un canal de propriete SUR MESURE.

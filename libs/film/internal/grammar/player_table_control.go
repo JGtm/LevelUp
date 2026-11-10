@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // player_table_control.go — LE CONTROLE DU PROFIL PAR LE FILM (lot 1.5.2).
 //

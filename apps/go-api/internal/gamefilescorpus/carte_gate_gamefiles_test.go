@@ -13,7 +13,7 @@ import (
 
 	"levelup/go-api/internal/testfixtures"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // LE GATE VISUEL — la carte reconstruite contre la carte VALIDEE, au meme calage.

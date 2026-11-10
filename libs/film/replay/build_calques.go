@@ -12,7 +12,7 @@ package replay
 import (
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // poserGrappinEtPoses publie les tractions de grappin (qui exigent les bornes de la carte) et

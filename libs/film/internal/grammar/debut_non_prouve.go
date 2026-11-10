@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 
 // debut_non_prouve.go — UNE LECTURE QUE RIEN NE PROUVE NE MODIFIE PAS LE MONDE.
 //

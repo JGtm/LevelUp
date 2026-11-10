@@ -13,7 +13,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // stTrack rend une piste publiee d UNE vie, bornee en frames.

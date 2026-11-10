@@ -68,7 +68,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // ti11ArchIndex est l'archetype des objectifs geres, et ti11Composants sa taille (le registre

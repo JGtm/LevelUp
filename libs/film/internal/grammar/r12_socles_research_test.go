@@ -30,7 +30,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // r12EqipRepulseur : le GlobalID du tag `eqip` du repulseur. Source :

@@ -14,8 +14,8 @@ package grammar
 // n est pas etablie, avant la vue B (`kills_rattrapes.go`).
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // EtatDeMortLu est un dead-state `Mort` qu un record lu porte.

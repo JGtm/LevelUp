@@ -21,7 +21,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/netguard"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 const (

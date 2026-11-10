@@ -74,7 +74,7 @@ package grammar
 // publie, mais c est le DEBORDEMENT qui est le verdict du jeu.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // PacketTypeRoster : le type d en-tete du paquet de population de session (`FUN_1428e22c0`,

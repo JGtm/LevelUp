@@ -29,8 +29,8 @@ import (
 	"testing"
 	"unicode/utf16"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // TestProfilEgaleGlobales : sur chaque bobine par build, le profil resolu et les globales que la

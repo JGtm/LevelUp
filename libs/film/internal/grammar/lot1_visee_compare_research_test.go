@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // lot1AimConc accumule la concentration d'un jeu de vecteurs de visee : pour un vrai axe

@@ -33,8 +33,8 @@ package grammar
 // de l appelant, en donnees (lot J8.7) — c est l appelant qui les publie, ou non.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // OptionsDuPont : ce que l appelant fournit a l etage.

@@ -27,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // eqipInfo : ce qu'un tag `eqip` porte et qui sert au nommage.

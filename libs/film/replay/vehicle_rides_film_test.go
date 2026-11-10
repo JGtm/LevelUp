@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // filmRideFixture : une vie de vehicule (slot 900, frames 0 a 600 sous `vehClock`) et la montee a

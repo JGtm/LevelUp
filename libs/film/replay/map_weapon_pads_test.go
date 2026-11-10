@@ -17,7 +17,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // spot fabrique un emplacement de catalogue.

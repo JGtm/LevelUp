@@ -4,8 +4,8 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/finalise"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // pied_de_film.go — les EVENEMENTS D'OBJECTIF DU PIED DE FILM (type_hint 10), horodates sur

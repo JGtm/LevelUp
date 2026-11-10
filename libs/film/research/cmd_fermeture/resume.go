@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // seuilDeclencheur est le seuil de la spec (§9) : la part des records utiles fermes, par build.

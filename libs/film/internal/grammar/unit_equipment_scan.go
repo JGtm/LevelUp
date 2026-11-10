@@ -16,7 +16,7 @@ package grammar
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // UnitEquipmentEmission est UNE lecture d'i26 rattachée à son record bipède.

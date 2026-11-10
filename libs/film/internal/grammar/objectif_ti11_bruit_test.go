@@ -134,8 +134,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/decodelock"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // Les trois champs interroges. i12 et i13 sont R(32) bruts, i14 est R(3).

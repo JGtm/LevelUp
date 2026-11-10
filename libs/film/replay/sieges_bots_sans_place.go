@@ -23,7 +23,7 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/filmobs"
+	"github.com/JGtm/halo-infinite-film-decoder/filmobs"
 )
 
 // metriqueBotsSansVieNiPlace : le compteur expvar des bots ecartes du roster publie par cette regle.

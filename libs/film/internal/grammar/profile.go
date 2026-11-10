@@ -25,8 +25,8 @@ package grammar
 // aujourd hui.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // ResolveProfile resout le profil d un film DEJA CHARGE, sous l entree de catalogue de sa carte.

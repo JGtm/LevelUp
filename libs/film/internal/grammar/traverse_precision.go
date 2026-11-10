@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/internal/profile"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 
 // traverse_precision.go — LES DESCRIPTEURS DE QUANTIFICATION DE POSITION.
 //

@@ -62,7 +62,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 
-	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
+	h5api "github.com/JGtm/halo-api/halo5"
 )
 
 // defaultH5MechCutoff : borne created_at par defaut. Fixee APRES le 2e batch corrompu

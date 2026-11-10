@@ -18,8 +18,8 @@ package replay
 import (
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // GardesDesPorteurs dit, pour une variante, quels calques de porteur se lisent.

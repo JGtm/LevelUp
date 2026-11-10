@@ -31,8 +31,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // ErrFilmFactsGardes : les faits ont ete cuits sous des gardes de l appelant qui ne couvrent pas

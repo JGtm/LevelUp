@@ -43,7 +43,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // obFilms : les trois films One Bomb et leurs explosions (sous-ensemble de ti12Explosions,

@@ -52,8 +52,8 @@ package killsource
 // de la representation intermediaire, qui a retire sa copie de la traduction).
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // FilmTableRefusal nomme la cause pour laquelle la table du film n a PAS ete lue : celle de la

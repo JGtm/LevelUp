@@ -40,7 +40,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // d6FilmsEnv nomme les films a mesurer (short8, separes par des virgules).

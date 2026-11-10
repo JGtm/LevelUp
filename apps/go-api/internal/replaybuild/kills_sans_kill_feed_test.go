@@ -16,7 +16,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // filmUnBotDeclare fabrique un film dont l unique paquet est un BOT_METADATA declarant `nom` au `slot`,

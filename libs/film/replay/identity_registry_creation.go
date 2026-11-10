@@ -64,8 +64,8 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/identity"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/identity"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // Les DEUX voies de nommage par le record de creation. Elles repondent a « comment sait-on a qui

@@ -3,8 +3,8 @@ package grammar
 import (
 	"math"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // Décodage OFFLINE des ÉVÉNEMENTS DE TIR du film : le record `action_weapon_fire`, TYPE 36 de la

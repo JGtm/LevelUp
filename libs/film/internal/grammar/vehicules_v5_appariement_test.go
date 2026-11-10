@@ -28,7 +28,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // v5ContactUS est la fenêtre temporelle dans laquelle on cherche la position d'un véhicule

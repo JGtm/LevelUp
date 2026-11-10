@@ -4,8 +4,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // vip_crown_rounds_test.go — LA PREUVE DE LA CORRECTION MULTI-MANCHE, AU NIVEAU DU CALQUE.

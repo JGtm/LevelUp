@@ -15,7 +15,7 @@ package killsource
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/highlightevent"
+	"github.com/JGtm/halo-infinite-film-decoder/highlightevent"
 )
 
 func TestLeMotifChercheAussiLesTueursQuiNeMeurentPas(t *testing.T) {

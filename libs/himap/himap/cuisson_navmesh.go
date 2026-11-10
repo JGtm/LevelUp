@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/hinavmesh"
+	"github.com/JGtm/halo-infinite-files-reader/hinavmesh"
 )
 
 // OptionsCuissonNavmesh decrit un fond a rendre depuis un maillage de navigation.

@@ -48,7 +48,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/replayview"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // mimeImagePNG / mimeImageWebP : les deux seuls types MIME qu'un fond de carte peut

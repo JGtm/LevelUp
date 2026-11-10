@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // abilities.go — LA CAPACITÉ D'ARMURE PORTÉE, portée à la grille du rejeu.

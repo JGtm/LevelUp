@@ -44,7 +44,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/filmprofile"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // deployVariantTest : la variante d installation ou vivent les bornes monde du BSP, la meme

@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
-	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
+	"github.com/JGtm/halo-api"
+	"github.com/JGtm/halo-api/haloapitest"
 )
 
 // errCoupure : la cause que rend un corps coupé.

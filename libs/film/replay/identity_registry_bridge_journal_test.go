@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmobs"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/filmobs"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // pontDeTest : quatre vies appariees. Deux discordances sur le slot 3, une concordance (slot 5),

@@ -13,7 +13,7 @@ import (
 
 	"levelup/go-api/internal/observability"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 // Tests du retry de downloadBlob (volet C, 2026-09-05). Le blob CDN est public :

@@ -28,7 +28,7 @@ import (
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/i18n"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // corpusDir rend le dossier d'artefacts, ou saute le test.

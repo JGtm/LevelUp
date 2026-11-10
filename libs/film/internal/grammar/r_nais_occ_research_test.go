@@ -15,7 +15,7 @@ package grammar
 // le detail de chaque paquet ferme apres un rejet (R-L1 (b), `r_nais_pied_research_test.go`), et le
 // score de l allocateur par chunk (R-L1 (d)).
 
-import "github.com/JGtm/LevelUp/libs/film/internal/source"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/source"
 
 // rnRegionRejet est la region (iii') « apres un rejet » de M1.
 const rnRegionRejet = "(iii') apres l arret de la vue B : rejet hors datum"

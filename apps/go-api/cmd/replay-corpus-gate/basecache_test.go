@@ -15,7 +15,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 const (

@@ -62,7 +62,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // e1911CorpusEnv nomme le TSV d'entree (cf. l'en-tete pour ses colonnes).

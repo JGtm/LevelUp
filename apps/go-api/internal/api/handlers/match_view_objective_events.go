@@ -14,7 +14,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 
-	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
+	"github.com/JGtm/halo-infinite-film-decoder/objectiveevent"
 )
 
 // objectiveEventDTO est la projection JSON camelCase d'un objectiveevent.Event.

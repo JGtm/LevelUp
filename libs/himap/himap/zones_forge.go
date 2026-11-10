@@ -12,7 +12,7 @@ package himap
 import (
 	"math"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // ContoursDeZones rend les seuls polygones, dans la forme qu'attend `MasqueZones`.

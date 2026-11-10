@@ -11,7 +11,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/weaponv3"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/weaponv3"
 )
 
 // bpkCollecte rend tous les biped_pickup du film, decodes et tries par horodatage.

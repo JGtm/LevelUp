@@ -1,6 +1,6 @@
 package replay
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // flag_grabs_net_bridge.go — LE PONT entre le calque de drapeau PUBLIE et la regle des prises
 // nettes (`objectives.NetFlagGrabs`).

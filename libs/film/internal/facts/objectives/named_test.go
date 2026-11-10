@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/depottest"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // named_test.go — la verite terrain de la lecture par COMPOSANT.

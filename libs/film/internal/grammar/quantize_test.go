@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // step for bits=8, range +/-100 is 200/256 = 0.78125; with mid-bucket +0.5:

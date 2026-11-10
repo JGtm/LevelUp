@@ -24,8 +24,8 @@ import (
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/killicon"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/killicon"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 const (

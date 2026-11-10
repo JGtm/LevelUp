@@ -1,7 +1,7 @@
 package grammar
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // keyframe_record_walk.go - LA MARCHE DETERMINISTE DE LA TABLE D'IMAGE-CLE : suivre l'ecrivain

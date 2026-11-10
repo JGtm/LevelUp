@@ -38,7 +38,7 @@ import (
 	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/matchflags"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func baseRegistre(t *testing.T) *sql.DB {

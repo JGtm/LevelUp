@@ -9,7 +9,7 @@ package replay
 // la fiche affichait des cellules vides et RIEN dans le document ne le disait (rapport
 // `fiche_armes` §6-3 : 213 images-clés touchées sur 2 868 au parc, invisibles). Ce bloc le dit.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 
 // KeyframeCoverage dit, pour le film entier, comment le balayeur d'image-clé a atteint chaque
 // record, et combien de bipèdes il a manqués alors que les images-clés voisines les portaient.

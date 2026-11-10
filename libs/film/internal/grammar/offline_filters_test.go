@@ -3,7 +3,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 func bp(slot uint32, ms int, x, y float32) BipedPosition {

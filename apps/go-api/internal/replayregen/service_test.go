@@ -15,7 +15,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 const testSlug = "halo_infinite"

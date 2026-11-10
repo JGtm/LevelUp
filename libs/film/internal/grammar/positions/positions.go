@@ -30,8 +30,8 @@ package positions
 import (
 	"math"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/playerposition"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/playerposition"
 )
 
 // combOffsetBits est le recul en bits depuis le début du comb jusqu'au premier

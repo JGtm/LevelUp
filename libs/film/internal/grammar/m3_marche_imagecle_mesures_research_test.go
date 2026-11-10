@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // m3N1 est la table apprise sur le payload EN COURS de marche : archetype -> n1 vu (et combien

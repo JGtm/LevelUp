@@ -8,7 +8,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
+	"github.com/JGtm/halo-api/halo5"
 )
 
 // TestApplySpartanRank_MidRank : un SR intermédiaire (JGtm SR111, 3 908 120 XP)

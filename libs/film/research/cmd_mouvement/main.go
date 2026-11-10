@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/JGtm/LevelUp/libs/film/research/mouvement"
+	"github.com/JGtm/halo-infinite-film-decoder/research/mouvement"
 )
 
 func main() {

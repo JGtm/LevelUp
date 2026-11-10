@@ -18,8 +18,8 @@ package killsource
 // que la marche lie au slot —, puis son filtre de credibilite.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // deadRecord : un dead-state atteint par la marche, avec sa position.

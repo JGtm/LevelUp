@@ -5,8 +5,8 @@ package grammar
 // l equipement porte engendre.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // decodeWorldObjectPos lit et déquantifie `object-position-component` sur le chemin dominant.

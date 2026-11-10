@@ -22,7 +22,7 @@ package replay
 import (
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // vehicleEmptiedAtOnceMinPrev est le recensement minimal de l image-cle precedente pour qu un

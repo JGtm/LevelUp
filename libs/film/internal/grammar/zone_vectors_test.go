@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // zcVecTarget est un composant dont on veut des vecteurs, et la largeur totale de sa charge

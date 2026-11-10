@@ -30,7 +30,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // TestKeyframeClosureInventaire imprime la fermeture et l inventaire des composants par

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // score_measure_probe_test.go — la SONDE DE MODE de la phase 0 du lot A.

@@ -11,7 +11,7 @@ package grammar
 // parcouru : la table et la liaison ne lisent que des ancres, et la table de datums de chaque
 // image-cle.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 
 // preliminairesDesTrames porte ce que la marche des trames lit des images-cles avant ses trames.
 type preliminairesDesTrames struct {

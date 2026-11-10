@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/damagetag"
+	"github.com/JGtm/halo-infinite-film-decoder/damagetag"
 )
 
 // TestNeutralVignettesExistentSurDisque ferme le meme trou que pour les regles : le pont ne

@@ -51,7 +51,7 @@ package grammar
 // `kind` u32 du premier slot ». Le comptage etait juste, l'interpretation non : c'est la version
 // du film. Le commentaire de `looksZlib` renvoie desormais ici.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/source"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/source"
 
 // FilmMajorVersionUnknown : la valeur que porte une version non lue. C'est aussi celle que les
 // appelants passaient en dur avant le 2026-09-12, et le decoupage « gamertag en tete » que

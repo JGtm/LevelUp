@@ -96,7 +96,7 @@ import (
 	"fmt"
 	"math/bits"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // PacketTypeDatums est le type du bloc qui precede chaque image-cle : la table de datums du

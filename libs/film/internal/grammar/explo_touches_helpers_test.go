@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmshell"
+	"github.com/JGtm/halo-infinite-film-decoder/filmshell"
 )
 
 // exploShot : un tir 0xD2 t36 LONG horodate (attaquant ref0 dom1 + WeaponID + lourd?).

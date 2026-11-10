@@ -33,7 +33,7 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // demoReplayFamily : une famille de mode et les jetons de `game_variant_name` qui la

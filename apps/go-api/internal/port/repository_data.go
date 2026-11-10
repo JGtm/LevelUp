@@ -13,8 +13,8 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/i18n"
 
-	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
-	"github.com/JGtm/LevelUp/libs/film/playerposition"
+	"github.com/JGtm/halo-infinite-film-decoder/objectiveevent"
+	"github.com/JGtm/halo-infinite-film-decoder/playerposition"
 )
 
 type SquadRepository interface {

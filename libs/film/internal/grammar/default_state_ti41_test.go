@@ -3,7 +3,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // default_state_ti41_test.go — l etat par defaut du projectile (`FUN_1408efb58`, lot M4b), branche

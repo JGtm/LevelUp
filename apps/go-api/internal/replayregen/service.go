@@ -12,7 +12,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // Compteurs expvar de la file.

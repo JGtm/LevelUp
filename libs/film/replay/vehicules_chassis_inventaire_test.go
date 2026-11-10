@@ -44,7 +44,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/damagetag"
+	"github.com/JGtm/halo-infinite-film-decoder/damagetag"
 )
 
 const (

@@ -29,7 +29,7 @@ import (
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // cheminGoldenDeForme : le golden de forme de la brique, relatif a la brique du decodeur (resolveur des

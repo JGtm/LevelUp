@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // TestM4bCompteurDeTir publie le controle par le numero de tir (en-tete du fichier).

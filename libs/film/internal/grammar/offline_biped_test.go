@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // cliffLayout est le découpage d'i0 de la carte de 000d5950 (Cliffhanger), établi par

@@ -32,7 +32,7 @@ package grammar
 //
 // Une version majeure illisible (film sans `chunk_00`) garde la grammaire de l executable courant.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/source"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/source"
 
 // majeureSansDrapeauFinalMalleable : la version majeure declaree dont le flux n a pas le drapeau
 // final du bloc malleable du bipede (mesure, cf. l en-tete).

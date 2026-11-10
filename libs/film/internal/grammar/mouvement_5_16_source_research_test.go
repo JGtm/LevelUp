@@ -48,7 +48,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // TestTemoin516ImageCle compare, sur tout le film, ce que les DEUX lectures de la table

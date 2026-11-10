@@ -19,7 +19,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // bombRecord fabrique une emission du compteur de morts d'un slot de joueur.

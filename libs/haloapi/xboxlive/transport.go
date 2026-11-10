@@ -11,7 +11,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
+	"github.com/JGtm/halo-api"
 )
 
 // En-têtes et valeurs du protocole des succès.

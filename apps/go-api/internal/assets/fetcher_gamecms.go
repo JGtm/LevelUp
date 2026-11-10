@@ -12,7 +12,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/netguard"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 // surfaceGameCMS nomme la sortie des fichiers GameCMS dans le journal de netguard.

@@ -28,7 +28,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // soclesTemoinsEnv porte le dossier des artefacts de rejeu cuits.

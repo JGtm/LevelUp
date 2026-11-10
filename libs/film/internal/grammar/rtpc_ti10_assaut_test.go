@@ -99,7 +99,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // ti10MonteeDiviseur fixe le seuil d'amplitude d'une montee : le SEIZIEME de l'etendue observee

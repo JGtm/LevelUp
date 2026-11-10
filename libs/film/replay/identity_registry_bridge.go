@@ -47,7 +47,7 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // bridgeVerification est ce que la confrontation du pont au lien direct etablit.

@@ -32,7 +32,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // tailleDuBalayage lit `FILM_SWEEP`, ou saute le test.

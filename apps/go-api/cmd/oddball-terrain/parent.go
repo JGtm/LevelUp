@@ -17,7 +17,7 @@ import (
 
 	"levelup/go-api/internal/filmrun"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // terrainFilm : le film calibrant (verite terrain).

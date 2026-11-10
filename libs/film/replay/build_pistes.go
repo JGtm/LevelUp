@@ -12,7 +12,7 @@ package replay
 import (
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // horloge rend la grille du document et le compteur de replis de la cuisson, sous la forme que

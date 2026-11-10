@@ -21,7 +21,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability/timing"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 // PrivacyCacheTTL est la durée de validité d'une entrée dans le cache privacy.

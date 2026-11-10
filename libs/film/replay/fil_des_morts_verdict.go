@@ -22,7 +22,7 @@ package replay
 import (
 	"errors"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // VerdictDuFilDesMorts est ce que la lecture du fil des morts a rendu : son verdict publie et,

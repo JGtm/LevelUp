@@ -40,8 +40,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // I0LayoutReport porte les mesures qui ONT servi à établir le découpage : c'est la pièce

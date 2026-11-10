@@ -31,7 +31,7 @@ import (
 	"levelup/go-api/internal/sync/filmfetch"
 	"levelup/go-api/internal/sync/matchflags"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // filmsTraces : une source de films qui NOTE l ordre dans lequel on la sollicite. C est cet

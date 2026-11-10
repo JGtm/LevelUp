@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/highlightevent"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/highlightevent"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // highlight_events_bits_test.go — LES LECTURES AU BIT DU LECTEUR DES TEMPS FORTS, ET LE SCAN

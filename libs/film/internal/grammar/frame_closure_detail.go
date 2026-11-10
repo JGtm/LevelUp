@@ -29,7 +29,7 @@ package grammar
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // CauseHorsCadre est le nom de la cause « vue C : terminateur hors cadre » : la vue C a lu son

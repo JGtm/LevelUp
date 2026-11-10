@@ -90,7 +90,7 @@ func TestToutModuleDeLibsEstDansLaTable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("go", "list", "-m", "-f", "{{.Path}}")
+	cmd := exec.Command("go", "list", "-m", "-f", "{{.Path}}\t{{.Dir}}")
 	cmd.Dir = racine
 	sortie, err := cmd.Output()
 	if err != nil {
@@ -101,12 +101,47 @@ func TestToutModuleDeLibsEstDansLaTable(t *testing.T) {
 		m, _ := Module(nom)
 		connus[m] = true
 	}
-	for _, chemin := range strings.Fields(string(sortie)) {
-		if !strings.Contains(chemin, "/libs/") {
+	depot, err := racineDepot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	depotAvecSeparateur := filepath.Clean(depot) + string(filepath.Separator)
+	api := filepath.Clean(racine)
+	for _, ligne := range strings.Split(strings.TrimSpace(string(sortie)), "\n") {
+		chemin, dir, ok := strings.Cut(strings.TrimRight(ligne, "\r"), "\t")
+		// Un module du dépôt autre que l'application est une brique.
+		dir = filepath.Clean(dir)
+		if !ok || dir == api || !strings.HasPrefix(dir+string(filepath.Separator), depotAvecSeparateur) {
 			continue
 		}
 		if !connus[chemin] {
 			t.Errorf("le module %s est dans l'espace de travail mais absent de la table des briques (briques.go)", chemin)
 		}
+	}
+}
+
+// TestImportEtGardeRailSontInverses : la correspondance chemin de garde-rail <-> chemin d'import est une
+// bijection sur les briques, et refuse ce qui n'est pas une brique (frontière d'un chemin comprise).
+func TestImportEtGardeRailSontInverses(t *testing.T) {
+	for _, rel := range []string{"libs/film", "libs/film/internal/source", "libs/gamefiles/ooz", "libs/himap/himap", "libs/haloapi/halo5"} {
+		imp, ok := ImportDeGardeRail(rel)
+		if !ok {
+			t.Fatalf("ImportDeGardeRail(%s) : brique non reconnue", rel)
+		}
+		if retour, ok := GardeRailDeImport(imp); !ok || retour != rel {
+			t.Errorf("GardeRailDeImport(ImportDeGardeRail(%s)) = %q ok %v", rel, retour, ok)
+		}
+	}
+	film, _ := Module("film")
+	for _, imp := range []string{film + "x", "levelup/go-api/internal/briques", "fmt"} {
+		if EstImportDeBrique(imp) {
+			t.Errorf("EstImportDeBrique(%q) = true, attendu faux", imp)
+		}
+	}
+	if _, ok := ImportDeGardeRail("libs/inconnue/x"); ok {
+		t.Error("ImportDeGardeRail(libs/inconnue/x) devrait être refusé")
+	}
+	if _, ok := ImportDeGardeRail("internal/briques"); ok {
+		t.Error("ImportDeGardeRail(internal/briques) devrait être refusé")
 	}
 }

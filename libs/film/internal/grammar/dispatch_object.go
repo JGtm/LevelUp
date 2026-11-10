@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // dispatch_object.go — TETE DE LA CHAINE DE DISPATCH DES COMPOSANTS.
 //

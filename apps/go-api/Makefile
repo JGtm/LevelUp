@@ -80,8 +80,8 @@ lint: vet build lint-go
 # Les dependances de go-api se changent par `go get` ou edition de go.mod.
 tidy:
 	@echo "apps/go-api : go mod tidy est inutilisable (go.work, ADR 0041) ; briques libs/ : ci-dessous."
-	@for m in ../../libs/*/; do n=$$(basename $$m); \
-		if (cd $$m && go list -deps ./... | grep -E '^github.com/JGtm/LevelUp/libs/' | grep -qv "^github.com/JGtm/LevelUp/libs/$$n/"); then \
+	@for m in ../../libs/*/; do n=$$(basename $$m); own=$$(cd $$m && go list -m); \
+		if (cd $$m && go list -deps ./... | grep -E '^github.com/JGtm/halo-' | grep -Eqv "^$$own(/|$$)"); then \
 			echo "libs/$$n : importe une autre brique, tidy impossible (ADR 0041 D2) - editer son go.mod a la main"; \
 		else \
 			(cd $$m && go mod tidy) || exit 1; \

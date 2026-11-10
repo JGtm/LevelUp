@@ -24,7 +24,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // mesureIdentiteChamps porte les champs de l'etat par defaut de ti=9 pour UN record.

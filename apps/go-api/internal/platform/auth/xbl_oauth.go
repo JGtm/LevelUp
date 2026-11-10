@@ -17,8 +17,8 @@ import (
 
 	"levelup/go-api/internal/observability/logging"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
-	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
+	"github.com/JGtm/halo-api"
+	"github.com/JGtm/halo-api/xblauth"
 )
 
 // msalTokenURL : endpoint /token de l'app Azure. var (pas const) pour l'override httptest.

@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // vue_a_lecture_test.go — les vecteurs de la lecture de la vue A (lots LN et VA), ecrits d apres

@@ -20,7 +20,7 @@ import (
 	"levelup/go-api/internal/platform/netguard"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 const (

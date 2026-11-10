@@ -20,7 +20,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // dumpAvant / dumpApres : la fenetre relevee autour du marqueur, en bits.

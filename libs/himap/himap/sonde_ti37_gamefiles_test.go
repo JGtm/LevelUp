@@ -25,7 +25,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // ti37Observes : les valeurs de `mpp-word32` relevees dans les POSES confirmees des records de

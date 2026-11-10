@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // m4bRecouvre dit si la part LUE d une rafale (hors de ses trous) recouvre les trames [a, b] :

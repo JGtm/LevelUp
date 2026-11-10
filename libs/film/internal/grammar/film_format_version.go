@@ -75,8 +75,8 @@ package grammar
 import (
 	"strconv"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // FilmFormatVersionUnknown : la valeur rendue quand l en-tete est trop court pour la porter.

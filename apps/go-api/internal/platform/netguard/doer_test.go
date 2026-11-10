@@ -18,8 +18,8 @@ import (
 
 	"levelup/go-api/internal/platform/netguard"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
-	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
+	"github.com/JGtm/halo-api"
+	"github.com/JGtm/halo-api/haloapitest"
 )
 
 // doerDeTest rend un Doer gardé sur un enregistreur de requêtes.

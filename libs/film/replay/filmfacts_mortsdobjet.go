@@ -14,8 +14,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // encodeMortsDObjet / decodeMortsDObjet : LA FIN DE VIE ECRITE D UN VEHICULE, et les denominateurs

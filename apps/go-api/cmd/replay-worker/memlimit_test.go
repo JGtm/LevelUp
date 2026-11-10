@@ -22,7 +22,7 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 func TestMemoryExceededMessage_ContientMatchIDPicEtMention(t *testing.T) {

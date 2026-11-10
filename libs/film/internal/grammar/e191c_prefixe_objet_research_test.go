@@ -39,7 +39,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // e191cCinq sont les cinq archetypes « objet du monde » du perimetre re-cadre du lot : ceux

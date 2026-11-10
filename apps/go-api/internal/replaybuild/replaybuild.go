@@ -38,9 +38,9 @@ import (
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/equipenergy"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/equipenergy"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // Builder porte les entrées chargées UNE fois (catalogue de bornes, libellés du titre,

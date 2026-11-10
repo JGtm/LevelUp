@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // Couche de CAPTURE : elle rend les valeurs des composants que le décodeur ne faisait
 // jusqu'ici que traverser.

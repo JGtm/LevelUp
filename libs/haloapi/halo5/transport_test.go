@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
-	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
+	"github.com/JGtm/halo-api"
+	"github.com/JGtm/halo-api/haloapitest"
 )
 
 // doerGarde : un Doer qui porte une garde refusant toute sortie et compte les requêtes reçues.

@@ -47,7 +47,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmshell"
+	"github.com/JGtm/halo-infinite-film-decoder/filmshell"
 )
 
 // TestLot1Projectiles : grammaire (oracle de tag), en-tete (ref0), et attribution des armes

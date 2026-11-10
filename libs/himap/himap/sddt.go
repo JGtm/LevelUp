@@ -40,7 +40,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // Offsets etablis par l'investigation du 2026-08-10 (arbre des blocs, ridgeline et catalyst).

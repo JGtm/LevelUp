@@ -13,7 +13,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // zoneChainedReadAt fabrique une lecture dont le record CHAINE — la seule que le designateur lit.

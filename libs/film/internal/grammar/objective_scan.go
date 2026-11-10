@@ -97,7 +97,7 @@ package grammar
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // ObjectiveRead est UNE valeur de champ d'objectif lue dans un paquet.

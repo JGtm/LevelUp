@@ -11,7 +11,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // replay_vehicle_scenery_test.go — LE DECOR DE CARTE SUR LES ZONES JOUABLES REELLES (lot M7 des

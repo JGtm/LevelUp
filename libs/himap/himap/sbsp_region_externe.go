@@ -28,7 +28,7 @@ package himap
 import (
 	"errors"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 
 	"fmt"
 	"sort"

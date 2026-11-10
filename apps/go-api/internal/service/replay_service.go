@@ -18,7 +18,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/replayview"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // replayService lit l'artefact de rejeu d'un titre donné via le PathResolver.

@@ -24,8 +24,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/atomicfile"
-	"github.com/JGtm/LevelUp/libs/film/internal/filelock"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/atomicfile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/filelock"
 )
 
 const (

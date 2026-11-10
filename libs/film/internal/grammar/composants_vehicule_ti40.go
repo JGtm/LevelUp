@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // composants_vehicule_ti40.go — LES COMPOSANTS PROPRES AU VEHICULE (`ti=40`, i30 a i47).
 //

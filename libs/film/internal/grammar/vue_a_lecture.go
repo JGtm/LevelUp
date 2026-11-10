@@ -53,7 +53,7 @@ package grammar
 // ([grammaireDeLaVueA] : table des genres, Script, tables de la region jouee) et AUCUNE
 // observation : la vue A ne publie rien.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 
 // FluxVueA est ce que la lecture de la vue A (rang 0) d une trame delta a lu.
 //

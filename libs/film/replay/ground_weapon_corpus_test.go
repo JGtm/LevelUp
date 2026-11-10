@@ -29,7 +29,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 const gwCorpusEnv = "GW_CORPUS" // liste de répertoires de films, séparés par des virgules

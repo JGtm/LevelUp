@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // moduleRoot rend la racine `deploy` de l'installation Halo Infinite. Le drapeau -deploy la

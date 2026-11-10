@@ -11,7 +11,7 @@ import (
 
 	"levelup/go-api/internal/testfixtures"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // TestCoquilleEnXY — la coquille testee a l'altitude DE JEU et non a l'altitude DESSINEE.

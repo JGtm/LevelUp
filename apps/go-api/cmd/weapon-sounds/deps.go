@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // dependancesEnOrdre affiche les references sortantes d'un tag DANS L'ORDRE DU FICHIER, sans

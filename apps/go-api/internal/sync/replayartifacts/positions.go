@@ -72,7 +72,7 @@ import (
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // GrainPositionsMS : l'ecart minimal entre deux positions retenues d'une MEME trajectoire.

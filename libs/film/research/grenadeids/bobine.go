@@ -12,8 +12,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // amorceEtatParDefaut : les 19 bits de poids faible du « marqueur » de production, c est-a-dire

@@ -18,7 +18,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // botDeclare fabrique l'entree de roster et l'identite d'un bot d'index 8, declare des frames

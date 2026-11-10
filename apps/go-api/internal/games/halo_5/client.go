@@ -19,7 +19,7 @@ import (
 
 	"levelup/go-api/internal/platform/netguard"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
+	"github.com/JGtm/halo-api/halo5"
 )
 
 // TitleSlug est l'identite canonique du titre Halo 5 (constante de package

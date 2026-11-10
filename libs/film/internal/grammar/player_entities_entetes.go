@@ -1,7 +1,7 @@
 package grammar
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // player_entities_entetes.go — CE QUI PROUVE UNE ABSENCE : L'EN-TETE EXACT, CHERCHE PARTOUT (lot

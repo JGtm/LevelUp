@@ -12,7 +12,7 @@ package killsource
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // rosterAvecRemplacant : la table du film nomme les sieges 0..7, BOT_METADATA tient le 8, et le

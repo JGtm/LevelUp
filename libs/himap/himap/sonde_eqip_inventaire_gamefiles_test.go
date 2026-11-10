@@ -31,7 +31,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // eqipPresence : ou un tag `eqip` a ete trouve, et ce qu'il porte.

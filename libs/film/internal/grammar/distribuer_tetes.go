@@ -14,7 +14,7 @@ package grammar
 // distribution sans canal des trames ne marche rien et joue la seule PASSE DES TETES
 // ([distribuerLesTetes]) : un parcours des paquets, sans record, sans monde, sans registre.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 
 // rangerLaTete lit la vue A du paquet delta `p` (payload non vide) sous le profil `bal` et la
 // grammaire `g` que le film declare — debut au bit 1, apres le bit de configuration — la range dans

@@ -20,7 +20,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
+	"github.com/JGtm/halo-api"
 )
 
 const (

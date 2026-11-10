@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
+	"github.com/JGtm/halo-api"
 )
 
 // serveurJeton : un endpoint /token factice qui répond `repondre(secretPresent)` et compte ses

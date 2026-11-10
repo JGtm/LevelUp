@@ -26,7 +26,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/filmobs"
+	"github.com/JGtm/halo-infinite-film-decoder/filmobs"
 )
 
 // contradictionDEquipe : un bot dont l'entite et la declaration disent deux equipes, et ce que la

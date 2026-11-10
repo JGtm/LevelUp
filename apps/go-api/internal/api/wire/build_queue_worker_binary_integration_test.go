@@ -62,7 +62,7 @@ import (
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // fixtureShort : le film de la preuve — le plus petit du corpus qui rend un artefact À JOUEURS.

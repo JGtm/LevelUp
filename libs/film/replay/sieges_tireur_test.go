@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // sieges_tireur_test.go — LA VIE QUI TIRE REFUSE LA DEDUCTION QU'ELLE CONTREDIT (lot R2 du plan de

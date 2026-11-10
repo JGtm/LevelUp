@@ -18,7 +18,7 @@ import (
 
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // cheminReglagesPublies, relatif a la RACINE du depot — la racine se demande a

@@ -15,7 +15,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // scanDeTest fabrique un balayage aux images-cles donnees (frames d'un document a 100 ms).

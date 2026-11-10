@@ -12,7 +12,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // replayVehicleTracks fabrique des vies ne portant QUE leur famille — la seule entree de

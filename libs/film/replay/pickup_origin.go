@@ -1,6 +1,6 @@
 package replay
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 
 // pickup_origin.go — D'OU VIENT L'OBJET QU'UN JOUEUR RAMASSE.
 //

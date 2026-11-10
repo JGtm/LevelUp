@@ -38,7 +38,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // e191cSansDesync sont les archetypes de la classe (B) : aucun composant sans lecteur, et

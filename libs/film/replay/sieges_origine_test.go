@@ -19,7 +19,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // origineDuDocument : l'origine de la grille, en microsecondes de film — 28 s apres la premiere

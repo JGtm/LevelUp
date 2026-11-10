@@ -57,7 +57,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // UsageSummaryRev — révision des RÈGLES DE PROJECTION de ce fichier (attribution par

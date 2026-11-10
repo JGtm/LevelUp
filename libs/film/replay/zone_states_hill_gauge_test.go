@@ -9,7 +9,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // hillGaugeReads fabrique la jauge (slot 43) d une montee de `t0` a `t0+9` par pas de 0,1, suivie

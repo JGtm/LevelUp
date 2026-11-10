@@ -35,7 +35,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // censusMode agrege un mode : ses matchs, ceux qui ont un film, et les schemas des artefacts.

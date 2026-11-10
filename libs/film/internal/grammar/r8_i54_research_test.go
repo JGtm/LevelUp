@@ -28,7 +28,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // r8I54Index est l'index d'iterateur de `biped-mobility-action-component` dans l'archetype

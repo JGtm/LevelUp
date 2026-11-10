@@ -6,7 +6,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // TestLeTirDuRemplacantLuiRevient — la place 5 est tenue par l index 5 jusqu a la frame 30, puis par

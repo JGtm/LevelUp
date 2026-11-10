@@ -33,7 +33,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // m57SprintBinMS est la largeur d un casier de l histogramme de vitesse au sol, en m/s.

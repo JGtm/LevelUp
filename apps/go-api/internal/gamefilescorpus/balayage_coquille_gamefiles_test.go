@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // LE GATE DE LA COQUILLE — elle transfere-t-elle aux 27 cartes, ou seulement aux deux qui

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // cmdDiag est un outil de reconnaissance : il dumpe, pour un tag donne (vehi, bloc, hlmt,

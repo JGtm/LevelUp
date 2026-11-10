@@ -37,7 +37,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // v10Cand est une candidate du § 4.3, datee sur l horloge du FILM (secondes).

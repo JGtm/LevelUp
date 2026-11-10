@@ -53,8 +53,8 @@ package replay
 import (
 	"math"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // lectureParDeclaration porte, pour chaque index que la lecture couvre, ses bots dont le `bid` est

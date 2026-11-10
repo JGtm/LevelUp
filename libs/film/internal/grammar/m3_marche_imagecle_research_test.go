@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // m3ScanV2 est `kfScanNext` sous la regle V2 de la sonde P2 (`p2ElectionV2`) : un voisin

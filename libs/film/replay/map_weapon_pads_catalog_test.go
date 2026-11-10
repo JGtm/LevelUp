@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/depottest"
 )
 
 // ecrireCatalogueSocles pose un catalogue minimal sur disque et rend son chemin.

@@ -19,7 +19,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // bobineKillsource000d5950 : la mini-bobine versionnee du paquet `killsource` (film 000d5950, Cliffhanger).

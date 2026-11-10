@@ -31,7 +31,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // etatHome est l etat `home` d un drapeau, tel que le document le publie (le symbole du paquet

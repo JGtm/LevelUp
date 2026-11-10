@@ -42,7 +42,7 @@ package killsource
 import (
 	"cmp"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 
 	"slices"
 )

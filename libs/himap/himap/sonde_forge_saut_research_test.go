@@ -22,7 +22,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 func TestSondeForgeSautBlocScenMach(t *testing.T) {

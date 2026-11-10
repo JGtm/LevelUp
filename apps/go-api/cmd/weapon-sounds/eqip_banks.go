@@ -23,7 +23,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // BankResolue est ce qu'une bank rend une fois ses medias rattaches aux packs nommes.

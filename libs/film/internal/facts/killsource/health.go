@@ -41,7 +41,7 @@ package killsource
 import (
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // health : la mesure complete.

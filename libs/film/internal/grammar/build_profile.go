@@ -26,8 +26,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // unknownBuildCounterName rend le nom expvar du compteur de build inconnu.

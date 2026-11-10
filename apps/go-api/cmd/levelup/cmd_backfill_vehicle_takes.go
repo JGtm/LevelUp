@@ -57,7 +57,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/replayartifacts"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // vehicleTakesOptions : les reglages de la passe.

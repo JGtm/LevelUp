@@ -5,7 +5,7 @@ package himap
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // TestModuleExtractionRate est le garde-rail du calcul de dataBase (libs/gamefiles/himodule).

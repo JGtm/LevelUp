@@ -3,7 +3,7 @@ package halo_infinite
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/damagetag"
+	"github.com/JGtm/halo-infinite-film-decoder/damagetag"
 )
 
 // TestKillSourceRegistryKey_LesTroisVoies : les deux voies de resolution rendent bien ce

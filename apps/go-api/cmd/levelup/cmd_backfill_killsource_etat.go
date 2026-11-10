@@ -47,7 +47,7 @@ import (
 
 	"levelup/go-api/internal/sync/killcollector"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // Les deux cadences de la ligne de progression.

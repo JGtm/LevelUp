@@ -12,7 +12,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // miniBobineChunks : la mini-bobine du film 000d5950 (fixture de `replay`, avec sa PROVENANCE).

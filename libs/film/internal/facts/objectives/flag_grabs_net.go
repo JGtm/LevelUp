@@ -53,7 +53,7 @@ package objectives
 
 // L ordre de ces imports entre dans l empreinte de la couche (revision/cadre.go) : ne pas regrouper.
 import (
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 
 	"time"
 )

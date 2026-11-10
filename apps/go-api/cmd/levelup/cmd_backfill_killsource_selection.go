@@ -18,8 +18,8 @@ import (
 	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/sync/killcollector"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // bilanDeSelection : les DENOMINATEURS de la selection, qu elle seule connait.

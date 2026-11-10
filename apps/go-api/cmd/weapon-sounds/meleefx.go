@@ -27,7 +27,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // champsDuTableau rend les champs d'un `_40`, avec leurs offsets DANS un element, et la

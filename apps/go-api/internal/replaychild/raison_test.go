@@ -14,7 +14,7 @@ import (
 
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // refusTypes : les trois refus voulus du protocole.

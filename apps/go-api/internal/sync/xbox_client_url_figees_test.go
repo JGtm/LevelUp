@@ -13,8 +13,8 @@ import (
 
 	"levelup/go-api/internal/platform/auth"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
-	"github.com/JGtm/LevelUp/libs/haloapi/xboxlive"
+	"github.com/JGtm/halo-api/haloapitest"
+	"github.com/JGtm/halo-api/xboxlive"
 )
 
 const (

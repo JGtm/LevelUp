@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // ground_weapon_ammo.go — LES MUNITIONS EXACTES d'une ARME AU SOL, lues sur son record de
 // CREATION (lot 6.10, 2026-09-11).

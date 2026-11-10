@@ -42,7 +42,7 @@ import (
 	"levelup/go-api/internal/sync/debrief"
 	"levelup/go-api/internal/sync/matchflags"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // marquerRegistre pose UN bit sur `match_registry.backfill_completed`.

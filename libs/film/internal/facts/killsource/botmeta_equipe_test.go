@@ -42,9 +42,9 @@ package killsource
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/constat"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/constat"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // persoBitsHI113 : le bloc de personnalisation de HI_1_13_0 (et de HI_1_12_0), 1 852 octets.

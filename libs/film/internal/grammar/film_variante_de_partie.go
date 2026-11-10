@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/internal/profile"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 
 // film_variante_de_partie.go — LE CORPS DE `chunk_00` LU JUSQU A LA TABLE DES JOUEURS, ET CE QUE SA
 // VARIANTE DE PARTIE DECLARE (lot VA de la campagne de grammaire, etape V3).

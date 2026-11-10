@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // marqueurDivergence : le signe qui dit que les deux verites ne designent pas le meme responsable.

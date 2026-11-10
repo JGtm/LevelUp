@@ -49,7 +49,7 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/JGtm/LevelUp/libs/film/identity"
+	"github.com/JGtm/halo-infinite-film-decoder/identity"
 )
 
 // NomParTableauAPI : la vie est nommee par le TABLEAU DE L'API — l'identifiant du participant

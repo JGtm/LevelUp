@@ -33,7 +33,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // WeaponHitPosToleranceUS est l ecart temporel maximal entre le ts d un degat et l echantillon de

@@ -33,7 +33,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // gwPickupWitnessTolUS est la tolerance temporelle du TEMOIN d'instant : de combien on accepte

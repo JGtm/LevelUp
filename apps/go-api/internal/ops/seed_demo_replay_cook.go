@@ -26,7 +26,7 @@ import (
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replaychild"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // demoReplayLockWait borne l'attente du verrou de décodage par film : au-delà, le rejeu reste

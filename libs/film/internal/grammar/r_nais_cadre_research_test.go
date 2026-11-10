@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // rnPredictionsUnique : le modele « pool unique » de l allocateur, next-fit sur `[0, n)` depuis

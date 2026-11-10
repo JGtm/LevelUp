@@ -13,7 +13,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // nExAequo : la taille des entrees d'ex aequo — au-dela du seuil du tri par insertion.

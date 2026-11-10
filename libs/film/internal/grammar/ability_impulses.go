@@ -36,8 +36,8 @@ package grammar
 // sont des globaux de paquet.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // abilityImpulseTag : la valeur du tag externe qui date une impulsion. Le 3 est le grappin

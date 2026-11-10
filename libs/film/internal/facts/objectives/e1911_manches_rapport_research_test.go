@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // TestE1911DesignateurDeManche imprime, film par film, les designateurs ecrits, ce que la garde

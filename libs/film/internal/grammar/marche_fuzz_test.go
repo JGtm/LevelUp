@@ -8,7 +8,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // largeurMinimaleDUneAncre : deux ancres d image-cle sont a 64 bits au moins l une de l autre

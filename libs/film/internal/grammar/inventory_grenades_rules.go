@@ -1,7 +1,7 @@
 package grammar
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // inventory_grenades_rules.go — LES DEUX VOIES DE LECTURE DES COMPTEURS DE GRENADE (i22) d'un

@@ -25,7 +25,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // v11Regime nomme une des deux grammaires d'i2/i3 confrontees.

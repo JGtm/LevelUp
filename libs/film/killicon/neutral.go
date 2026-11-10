@@ -40,7 +40,7 @@ package killicon
 import (
 	"maps"
 
-	"github.com/JGtm/LevelUp/libs/film/damagetag"
+	"github.com/JGtm/halo-infinite-film-decoder/damagetag"
 )
 
 // Les TYPES de mort publies. Identifiants stables, jamais des libelles : la traduction FR/EN

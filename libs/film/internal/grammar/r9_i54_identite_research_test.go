@@ -48,7 +48,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // r9MobCell croise une valeur de champ d'i54 avec les rangs et l'oracle.

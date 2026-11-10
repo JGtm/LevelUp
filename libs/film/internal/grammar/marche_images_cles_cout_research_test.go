@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // TestCoutDesImagesCles imprime, film par film, la duree de la marche des ancres et celle de la

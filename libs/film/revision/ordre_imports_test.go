@@ -359,7 +359,7 @@ func sourceAvecImports(bloc string) []byte {
 // un echange dans un groupe, le regroupement d une source figee, un import qui change de groupe,
 // et un fichier neuf a la mise en page historique.
 func TestOrdreDesImportsRougitSurUnOutil(t *testing.T) {
-	const brique = "github.com/JGtm/LevelUp/libs/film"
+	const brique = "github.com/JGtm/halo-infinite-film-decoder"
 	const mise = "import (\n\t\"cmp\"\n\n\t\"" + brique + "/types\"\n\n\t\"slices\"\n)"
 	figee := []string{"cmp", marqueDeLaBrique + "/types", "slices"}
 	cas := []struct {

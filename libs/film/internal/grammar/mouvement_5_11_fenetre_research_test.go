@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // TestMouvement511Registre2 dumpe le registre du film : combien de composants par archetype, et

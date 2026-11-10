@@ -3,7 +3,7 @@ package grammar
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // FRAME-delta decoder (L3) — port of the type-0 packet record loop FUN_1406cd128 +

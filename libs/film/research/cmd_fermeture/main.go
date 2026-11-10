@@ -49,8 +49,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // plafondParDefautGiB : le plafond memoire de l outil, par film. La marche des trames d un film

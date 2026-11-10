@@ -30,7 +30,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // registryBlocks est le nombre de blocs d'archetype que porte REELLEMENT le registre du build

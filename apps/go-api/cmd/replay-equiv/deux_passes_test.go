@@ -14,7 +14,7 @@ import (
 
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // TestVerifierLaBrancheServie : LA GARDE ANTI-EQUIVALENCE-VACUANTE, DANS LES DEUX REGIMES.

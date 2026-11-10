@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/revision"
+	"github.com/JGtm/halo-infinite-film-decoder/revision"
 )
 
 // moduleDeLaBrique rend le module qui porte ce paquet, trouve en remontant au premier `go.mod`

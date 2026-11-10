@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // Reglages de la reconnaissance — VALEURS DE `internal/mapdecoupe`, ne pas les re-regler ici.

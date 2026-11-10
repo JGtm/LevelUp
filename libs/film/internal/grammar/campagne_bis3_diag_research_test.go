@@ -17,7 +17,7 @@ package grammar
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // Les populations de la critique (point 27) ; P7, la region (iii), a sa propre sonde.

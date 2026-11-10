@@ -11,7 +11,7 @@ import (
 
 	"levelup/go-api/internal/observability"
 
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // TestObserveHaloCall_FilmNonFinalise_PasUneErreurReseau : le refus d'un film non finalise ne

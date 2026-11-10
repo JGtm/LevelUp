@@ -16,8 +16,8 @@ package replay
 // UNE ligne `non_resolu` — un lien borne dont les bornes ne se disent pas ne se publie pas nomme.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/identity"
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/identity"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
 )
 
 // lignesDesOccupations publie les occupations d'un siege recycle, une ligne chacune.

@@ -32,8 +32,8 @@ package grammar
 // partage dans un fichier NON tague, regle du 2026-09-16, §2.3 du plan).
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // detectI0Layout lit le decoupage d i0 DANS le film de `dir`. Rend le decoupage, le rapport de

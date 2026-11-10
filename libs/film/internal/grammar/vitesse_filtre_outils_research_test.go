@@ -17,7 +17,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // vitfCtx porte l'environnement d'une exécution : film, origine d'horloge, artefact,

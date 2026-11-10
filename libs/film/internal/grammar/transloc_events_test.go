@@ -9,7 +9,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // translocWriter écrit des champs de bits MSB-first — l'ordre du flux du moteur.

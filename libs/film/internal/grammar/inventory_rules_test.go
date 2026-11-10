@@ -35,7 +35,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // abilityAnchorBits / abilityPatternBits : les largeurs des deux constantes de R1.

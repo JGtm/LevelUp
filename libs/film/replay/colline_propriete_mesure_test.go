@@ -16,7 +16,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // ctEtatSlot est un slot d'une lecture : ses bascules, et l'instant a partir duquel il « porte »

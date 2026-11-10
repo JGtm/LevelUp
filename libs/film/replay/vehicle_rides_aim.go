@@ -44,7 +44,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // vehicleAimBySlot indexe les lectures de visee par slot d occupant et TRIE chaque liste par

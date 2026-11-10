@@ -30,7 +30,7 @@ package fallback
 import (
 	"cmp"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/constat"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/constat"
 
 	"slices"
 	"strconv"

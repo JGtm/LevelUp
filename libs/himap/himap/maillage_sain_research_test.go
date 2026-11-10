@@ -7,7 +7,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // UN MAILLAGE MAL DECODE SE MESURE — hypothese de l'utilisateur, 2026-08-27 :

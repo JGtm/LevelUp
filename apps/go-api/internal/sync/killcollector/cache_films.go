@@ -28,7 +28,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // CompteurCacheNonFinalise : manifestes du cache refuses parce qu'ils ne portent pas le morceau

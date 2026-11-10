@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // quant_width_guard_test.go — LA LARGEUR DE LA TABLE PAR INDEX N EST PAS CELLE DE LA TABLE DEFAUT.

@@ -24,7 +24,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // seuilAccordIndexUnite : sous cet accord, l index de tireur n est pas la place. MESURE du

@@ -27,8 +27,8 @@ package replay
 // l'API ; relais), comme sans entite.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // proprietaireDEntite est une entite d'un index partage : sa fenetre LARGE et son occupant (un

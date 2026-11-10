@@ -32,7 +32,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // v4TemoinsFrames sont les decalages du temoin des tirs, en frames (100 ms) : +/-30, +/-60 et

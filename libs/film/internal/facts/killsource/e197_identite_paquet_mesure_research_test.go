@@ -47,7 +47,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // e197Temps : le temps de l hybride qui a decide l appariement. Domaine FERME.

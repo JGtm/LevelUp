@@ -28,7 +28,7 @@ package replay
 //
 // Le fait ne CLOT toujours pas le portage (cf. [flagCloser.ferme]) : seule sa borne change.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
 
 // carrierKillVerdict est ce que la regle statue pour UN evenement.
 type carrierKillVerdict uint8

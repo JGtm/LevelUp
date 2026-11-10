@@ -3,8 +3,8 @@ package objectives
 import (
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // score_instruments_test.go — LES COURBES QUI NE SERVENT QU AUX INSTRUMENTS DE MESURE.

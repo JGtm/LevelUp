@@ -12,7 +12,7 @@ import (
 
 	"levelup/go-api/internal/platform/netguard"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
+	"github.com/JGtm/halo-api"
 )
 
 // netguardDoer appelle `netguard.Check` (mode démo) AVANT d'émettre par `next`. Une sortie

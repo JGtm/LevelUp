@@ -19,7 +19,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // killRec est une emission synthetique du triplet complet (frags A, morts B) plus assistances.

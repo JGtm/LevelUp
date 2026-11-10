@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
-	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
+	"github.com/JGtm/halo-api"
+	"github.com/JGtm/halo-api/haloapitest"
 )
 
 const (

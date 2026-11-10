@@ -24,7 +24,7 @@ import (
 	"levelup/go-api/internal/persist"
 	ddb "levelup/go-api/internal/platform/duckdb"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 const (

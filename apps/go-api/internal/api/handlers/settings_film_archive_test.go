@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/handlers"

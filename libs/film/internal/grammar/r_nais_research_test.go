@@ -29,7 +29,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // rnSeuilScore : part des NEW propres (paquets sans liste d evenements) que l allocateur a cinq

@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
+	"github.com/JGtm/halo-api/haloapitest"
 )
 
 // retryRapide : la politique de Halo 5 avec une attente de base négligeable (les paramètres de la

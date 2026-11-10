@@ -68,7 +68,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // updateGoldenBuildsAssembly : LA PORTE DES GOLDENS D ASSEMBLAGE PAR BUILD, et d eux seuls.

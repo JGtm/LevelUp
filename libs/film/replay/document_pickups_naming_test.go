@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // pkClock construit l'horloge de test avec sa table d'équipement. Les trois quarts des cas de ce

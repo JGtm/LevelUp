@@ -53,7 +53,7 @@ package grammar
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // ManagedPropertyTypeIndex est l'index d'archetype des proprietes reseau d'objet gere.

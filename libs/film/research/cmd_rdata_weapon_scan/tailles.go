@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/filmshell"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/filmshell"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // sizesMode liste les paquets type-0 d'un chunk par taille décroissante et compte les

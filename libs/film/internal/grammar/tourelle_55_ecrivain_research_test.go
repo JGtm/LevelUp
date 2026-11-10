@@ -47,7 +47,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/research/reapparition"
+	"github.com/JGtm/halo-infinite-film-decoder/research/reapparition"
 )
 
 // ciblesTourelle55 — les composants interroges, dans l ordre de la question.

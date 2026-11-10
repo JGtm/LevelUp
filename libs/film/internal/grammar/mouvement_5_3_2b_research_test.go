@@ -43,7 +43,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // m532bIgnores : les composants que la question EXCLUT — position, vitesse, orientation et

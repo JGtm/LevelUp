@@ -13,8 +13,8 @@ package grammar
 // ([FilmContext.NoterReplis]) : la cuisson l appelle une fois.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // EtatsDesImagesCles est ce que la phase des images-cles d un film dit de ses bipedes.

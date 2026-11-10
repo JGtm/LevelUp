@@ -76,7 +76,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // ti11DeltaBilan compte, par composant, les marches abouties et celles qui chainent.

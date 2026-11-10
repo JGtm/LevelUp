@@ -48,7 +48,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // b2Forme est une forme de lecture du champ `+0x74` du bloc 0xbc.

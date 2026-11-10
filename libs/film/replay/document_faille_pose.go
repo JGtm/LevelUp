@@ -5,8 +5,8 @@ package replay
 // suppression lue de cet objet la clot.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // situerLesPoses pose la position et la fin de chaque faille. La position est celle de l'objet que la

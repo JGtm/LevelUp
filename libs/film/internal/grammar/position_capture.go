@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/internal/profile"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 
 // Position capture (ADDITIVE, PARTIE 1 victim-position pipeline). This file lets a
 // probe observe the i0 object-position-dynamic-precision payload WITHOUT changing

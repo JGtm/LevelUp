@@ -8,7 +8,7 @@ package grammar
 // fermeture detaillee en publie le detail. Les trois lisent la MEME marche : aucun d eux ne
 // recopie le pilotage des rangs.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 
 // lectureDeTrame est ce que la marche d UNE trame delta par rangs a lu.
 type lectureDeTrame struct {

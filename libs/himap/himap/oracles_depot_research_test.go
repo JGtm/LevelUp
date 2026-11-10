@@ -27,7 +27,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // moduleCliffhanger : le module du banc de reference (Cliffhanger, variante Ridgeline).

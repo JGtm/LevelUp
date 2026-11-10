@@ -42,7 +42,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // zoomPeriode est un intervalle « a la lunette » reconstruit pour un slot, en microsecondes.

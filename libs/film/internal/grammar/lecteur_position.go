@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/internal/profile"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 
 // lecteur_position.go — LE PORTAGE UNIQUE DE `FUN_14076e524`, LE LECTEUR DE POSITION QUANTIFIEE,
 // ET DE SES DEUX ENVELOPPES (lot J6.3 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, DU-1).

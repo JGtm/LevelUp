@@ -36,7 +36,7 @@ import (
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // vehicleSpriteDir est le sous-dossier des sprites de vehicule sous

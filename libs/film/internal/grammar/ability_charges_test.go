@@ -11,7 +11,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 func TestAbilityChargeResolutionParNomExact(t *testing.T) {

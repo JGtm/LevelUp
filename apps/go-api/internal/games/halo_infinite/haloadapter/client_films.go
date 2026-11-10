@@ -10,7 +10,7 @@ import (
 
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 // PlaylistEntry : un couple carte-mode d'une playlist, sa version et son poids de rotation.
