@@ -57,27 +57,27 @@ func firstMediaItem(t *testing.T, svc *MediaService, filters domain.MediaPageReq
 	return &page.Items.Items[0]
 }
 
-// TestMediaLike_IsolatedBetweenViewers : le like de Chocoboflor n'allume que SON
+// TestMediaLike_IsolatedBetweenViewers : le like de Joueur90001 n'allume que SON
 // cœur. JGtm voit le même média non liké — mais voit bien le compteur social à 1.
 func TestMediaLike_IsolatedBetweenViewers(t *testing.T) {
 	db, _ := socialDBForLikeTest(t)
 	ctx := context.Background()
 
-	liker := mediaServiceForViewer(db, "Chocoboflor")
+	liker := mediaServiceForViewer(db, "Joueur90001")
 	other := mediaServiceForViewer(db, "JGtm")
 
 	// État initial : personne n'a liké — les deux viewers voient un cœur vide.
-	for name, svc := range map[string]*MediaService{"Chocoboflor": liker, "JGtm": other} {
+	for name, svc := range map[string]*MediaService{"Joueur90001": liker, "JGtm": other} {
 		if item := firstMediaItem(t, svc, domain.MediaPageRequest{}); item == nil || item.Liked {
 			t.Fatalf("état initial pour %s : attendu un média non liké, got %+v", name, item)
 		}
 	}
 
-	// Chocoboflor like.
+	// Joueur90001 like.
 	resp, err := liker.SetMediaLike(ctx, domain.MediaLikeRequest{
 		FilePath:      perViewerClipPath,
-		LikerSlug:     "Chocoboflor",
-		LikerGamertag: "Chocoboflor",
+		LikerSlug:     "Joueur90001",
+		LikerGamertag: "Joueur90001",
 		Liked:         true,
 	})
 	if err != nil {
@@ -118,13 +118,13 @@ func TestMediaLike_LikedOnlyFilterIsPerViewer(t *testing.T) {
 	db, _ := socialDBForLikeTest(t)
 	ctx := context.Background()
 
-	liker := mediaServiceForViewer(db, "Chocoboflor")
+	liker := mediaServiceForViewer(db, "Joueur90001")
 	other := mediaServiceForViewer(db, "JGtm")
 
 	if _, err := liker.SetMediaLike(ctx, domain.MediaLikeRequest{
 		FilePath:      perViewerClipPath,
-		LikerSlug:     "Chocoboflor",
-		LikerGamertag: "Chocoboflor",
+		LikerSlug:     "Joueur90001",
+		LikerGamertag: "Joueur90001",
 		Liked:         true,
 	}); err != nil {
 		t.Fatalf("SetMediaLike: %v", err)
@@ -147,13 +147,13 @@ func TestMediaLike_UnlikeOnlyAffectsItsOwner(t *testing.T) {
 	db, _ := socialDBForLikeTest(t)
 	ctx := context.Background()
 
-	first := mediaServiceForViewer(db, "Chocoboflor")
+	first := mediaServiceForViewer(db, "Joueur90001")
 	second := mediaServiceForViewer(db, "JGtm")
 
 	for _, who := range []struct {
 		svc  *MediaService
 		slug string
-	}{{first, "Chocoboflor"}, {second, "JGtm"}} {
+	}{{first, "Joueur90001"}, {second, "JGtm"}} {
 		if _, err := who.svc.SetMediaLike(ctx, domain.MediaLikeRequest{
 			FilePath:      perViewerClipPath,
 			LikerSlug:     who.slug,
@@ -164,10 +164,10 @@ func TestMediaLike_UnlikeOnlyAffectsItsOwner(t *testing.T) {
 		}
 	}
 
-	// Chocoboflor retire son like ; JGtm garde le sien.
+	// Joueur90001 retire son like ; JGtm garde le sien.
 	if _, err := first.SetMediaLike(ctx, domain.MediaLikeRequest{
 		FilePath:  perViewerClipPath,
-		LikerSlug: "Chocoboflor",
+		LikerSlug: "Joueur90001",
 		Liked:     false,
 	}); err != nil {
 		t.Fatalf("unlike: %v", err)
@@ -179,7 +179,7 @@ func TestMediaLike_UnlikeOnlyAffectsItsOwner(t *testing.T) {
 		t.Fatal("la galerie doit servir le média aux deux viewers")
 	}
 	if firstItem.Liked {
-		t.Error("après son unlike, Chocoboflor doit voir un cœur vide")
+		t.Error("après son unlike, Joueur90001 doit voir un cœur vide")
 	}
 	if !secondItem.Liked {
 		t.Error("RÉGRESSION : l'unlike d'un joueur a éteint le cœur de JGtm")

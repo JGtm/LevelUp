@@ -15,9 +15,9 @@ var players = []struct {
 	XUID     string
 	Gamertag string
 }{
-	{"2533274858283686", "Madina97294"},
-	{"2533274823110022", "JGtm"},
-	{"2535469190789936", "Chocoboflor"},
+	{"2623439693412443", "Joueur90002"},
+	{"2603225103667623", "JGtm"},
+	{"2547408409520575", "Joueur90001"},
 }
 
 func main() {
@@ -70,7 +70,7 @@ func main() {
 	}
 
 	// Distribution KPM par décile pour Madina
-	fmt.Printf("\n── Déciles KPM Madina97294 (xuid=2533274858283686) ──\n")
+	fmt.Printf("\n── Déciles KPM Joueur90002 (xuid=2623439693412443) ──\n")
 	rows, err := db.Query(`
 		SELECT
 			NTILE(10) OVER (ORDER BY mp.kills::DOUBLE / mp.time_played_seconds * 60) as decile,
@@ -79,7 +79,7 @@ func main() {
 			COUNT(*) as n
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid = '2533274858283686'
+		WHERE mp.xuid = '2623439693412443'
 		  AND COALESCE(mr.is_ranked, FALSE) = FALSE
 		  AND COALESCE(mr.is_firefight, FALSE) = FALSE
 		  AND mr.start_time IS NOT NULL

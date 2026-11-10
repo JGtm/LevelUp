@@ -25,16 +25,16 @@ func TestStampede_CrossSource_SingleSync(t *testing.T) {
 	coord.SetOnComplete(func(_ string, _ error) { completed.Add(1) })
 
 	// 1. Le watcher déclenche le sync (pose le claim + lance run()).
-	if !coord.Submit(context.Background(), CoordinatorRequest{Gamertag: "Madina97294", XUID: "x", MatchIDs: []string{"m1"}}) {
+	if !coord.Submit(context.Background(), CoordinatorRequest{Gamertag: "Joueur90002", XUID: "x", MatchIDs: []string{"m1"}}) {
 		t.Fatal("Submit watcher devrait réussir")
 	}
 	time.Sleep(20 * time.Millisecond) // laisser run() démarrer et poser le claim
 
 	// 2. Pendant le sync watcher : auto-sync + HTTP tentent le même joueur → cèdent.
-	if _, ok := coord.TryClaim("Madina97294"); ok {
+	if _, ok := coord.TryClaim("Joueur90002"); ok {
 		t.Error("auto-sync ne devrait PAS obtenir le claim pendant le sync watcher")
 	}
-	if _, ok := coord.TryClaim("madina97294"); ok { // casse différente → même clé normalisée
+	if _, ok := coord.TryClaim("joueur90002"); ok { // casse différente → même clé normalisée
 		t.Error("HTTP ne devrait PAS obtenir le claim (clé normalisée)")
 	}
 
@@ -51,10 +51,10 @@ func TestStampede_CrossSource_SingleSync(t *testing.T) {
 	}
 
 	// 4. Le claim est libéré → une nouvelle source peut l'obtenir.
-	if coord.IsInFlight("Madina97294") {
+	if coord.IsInFlight("Joueur90002") {
 		t.Error("le claim devrait être libéré après la fin du sync")
 	}
-	release, ok := coord.TryClaim("Madina97294")
+	release, ok := coord.TryClaim("Joueur90002")
 	if !ok {
 		t.Fatal("TryClaim devrait réussir après libération du claim watcher")
 	}

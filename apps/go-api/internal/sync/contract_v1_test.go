@@ -19,8 +19,8 @@ import (
 // l'API /matches renvoie alors une réponse stale figée, pas un 404).
 func TestContract_HaloAPIURLFormatXUID_V1(t *testing.T) {
 	repoRoot := t.TempDir()
-	const gamertag = "Chocoboflor"
-	const xuid = "2533274823110022"
+	const gamertag = "Joueur90001"
+	const xuid = "2603225103667623"
 	tokens := &domain.HaloTokens{SpartanToken: "t", ClearanceToken: "c"}
 	engine := NewSyncEngine(repoRoot, gamertag, xuid, tokens, nil)
 

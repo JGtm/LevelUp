@@ -36,7 +36,7 @@ func TestAnnuaireGamertags_Resolve(t *testing.T) {
 		{"x_alias_vide", "NomParticipant", "un alias vide ne nomme pas"},
 		{"x_part", "NomParticipant", "les participants passent avant le kill-feed"},
 		{"x_kf", "NomKillFeed", "le kill-feed nomme ce que rien d'autre ne nomme"},
-		{"2533274823110022", "Joueur 0022", "inconnu de toutes les sources : libellé masqué"},
+		{"2603225103667623", "Joueur 7623", "inconnu de toutes les sources : libellé masqué"},
 		{"x1", "Joueur x1", "xuid de moins de quatre caractères : entier"},
 	}
 	for _, c := range cas {

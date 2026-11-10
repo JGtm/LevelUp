@@ -93,7 +93,7 @@ func newDeleteFixture(t *testing.T) *deleteFixture {
 		INSERT INTO media_files (player_slug, file_path, file_name, thumbnail_path)
 		VALUES ('JGtm', 'JGtm/clip.mp4', 'clip.mp4', 'JGtm/thumbs/clip.webp');
 		INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
-		VALUES ('JGtm/clip.mp4', 'Chocoboflor', 'Chocoboflor', TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP));
+		VALUES ('JGtm/clip.mp4', 'Joueur90001', 'Joueur90001', TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP));
 	`
 	if _, err := db.SQLDb().Exec(ddl); err != nil {
 		t.Fatalf("seed shared_social: %v", err)
@@ -233,7 +233,7 @@ func TestMediaService_DeleteMedia_ForeignRequesterRefused(t *testing.T) {
 
 	_, err := f.svc.DeleteMedia(context.Background(), domain.MediaDeleteRequest{
 		FilePath:      "JGtm/clip.mp4",
-		RequesterSlug: "Chocoboflor",
+		RequesterSlug: "Joueur90001",
 		AuthEnforced:  true,
 	})
 	if err == nil {
@@ -266,7 +266,7 @@ func TestMediaService_DeleteMedia_AdminAllowed(t *testing.T) {
 
 	resp, err := f.svc.DeleteMedia(context.Background(), domain.MediaDeleteRequest{
 		FilePath:         "JGtm/clip.mp4",
-		RequesterSlug:    "Chocoboflor",
+		RequesterSlug:    "Joueur90001",
 		RequesterIsAdmin: true,
 		AuthEnforced:     true,
 	})
@@ -323,7 +323,7 @@ func TestMediaService_DeleteMedia_LikeOnDeletedMediaFails(t *testing.T) {
 
 	_, err := f.svc.SetMediaLike(ctx, domain.MediaLikeRequest{
 		FilePath:  "JGtm/clip.mp4",
-		LikerSlug: "Madina97294",
+		LikerSlug: "Joueur90002",
 		Liked:     true,
 	})
 	if err == nil {

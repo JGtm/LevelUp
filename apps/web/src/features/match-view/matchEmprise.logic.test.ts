@@ -62,7 +62,7 @@ describe('buildMatchControl — D, contrôle des ressources, par match', () => {
 describe('buildMatchSheets — E, prises par joueur', () => {
   it('une fiche par joueur de l’équipe, dans l’ordre de `players`, SANS fiche du reste', () => {
     const s = buildMatchSheets(STARBOARD, nameOf)!
-    expect(s.owners.map((o) => o.gamertag)).toEqual(['JGtm', 'XL JACOB', 'Madina97294', 'Chocoboflor'])
+    expect(s.owners.map((o) => o.gamertag)).toEqual(['JGtm', 'Joueur9c', 'Joueur90002', 'Joueur90001'])
     expect(s.sections.map((x) => x.resource)).toEqual(['powerup', 'rack'])
     const bonus = s.sections[0]
     expect(bonus.lines[0].taken).toEqual([2, 0, 1, 2])
@@ -157,13 +157,13 @@ describe('buildMatchYield — H, raisons fermées', () => {
 describe('buildMatchLives — I, une ligne par joueur dans l’ordre des fiches', () => {
   it('suit l’ordre des fiches, pas celui du repo ; témoin JGtm 11 près / 2 seul, 8 / 0 frags', () => {
     const l = buildMatchLives(STARBOARD_LIVES, STARBOARD.players!)!
-    expect(l.rows.map((r) => r.gamertag)).toEqual(['JGtm', 'XL JACOB', 'Madina97294', 'Chocoboflor'])
+    expect(l.rows.map((r) => r.gamertag)).toEqual(['JGtm', 'Joueur9c', 'Joueur90002', 'Joueur90001'])
     expect(l.rows[0].model).toMatchObject({ near: { lives: 11, kills: 8 }, alone: { lives: 2, kills: 0 } })
   })
 
   it('un joueur sans vie rangée n’a pas de ligne ; aucun joueur rangé → null', () => {
     const l = buildMatchLives({ players: STARBOARD_LIVES.players!.filter((p) => p.xuid !== XUID.jacob) }, STARBOARD.players!)!
-    expect(l.rows.map((r) => r.gamertag)).toEqual(['JGtm', 'Madina97294', 'Chocoboflor'])
+    expect(l.rows.map((r) => r.gamertag)).toEqual(['JGtm', 'Joueur90002', 'Joueur90001'])
     expect(buildMatchLives({ players: [] }, STARBOARD.players!)).toBeNull()
   })
 })

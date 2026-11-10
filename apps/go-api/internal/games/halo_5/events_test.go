@@ -19,10 +19,10 @@ const fixtureEvents = `{"GameEvents":[
  {"RoundIndex":0,"TimeSinceStart":"PT0.0950007S","EventName":"RoundStart"},
  {"Player":{"Gamertag":"JGtm","Xuid":null},"WeaponAttachmentIds":[2758383128],"WeaponStockId":669296699,"TimeSinceStart":"PT24.2979846S","EventName":"WeaponPickup"},
  {"Player":{"Gamertag":"JGtm","Xuid":null},"TimeSinceStart":"PT24.2819841S","EventName":"PlayerSpawn"},
- {"IsHeadshot":true,"IsMelee":false,"IsGroundPound":false,"IsShoulderBash":false,"IsWeapon":true,"Killer":{"Gamertag":"Madman684844","Xuid":null},"KillerAgent":1,"KillerWeaponAttachmentIds":[2758383128],"KillerWeaponStockId":2650887244,"KillerWorldLocation":{"x":24.908062,"y":-41.9863129,"z":-7.5632887},"Victim":{"Gamertag":"Madina97294","Xuid":null},"VictimAgent":1,"VictimStockId":0,"VictimWorldLocation":{"x":24.669899,"y":-41.7344475,"z":-7.5619984},"TimeSinceStart":"PT33.2154416S","EventName":"Death"},
- {"MedalId":3001183151,"Player":{"Gamertag":"Madman684844","Xuid":null},"TimeSinceStart":"PT33.2204424S","EventName":"Medal"},
- {"ImpulseId":2556889090,"Player":{"Gamertag":"Madman684844","Xuid":null},"TimeSinceStart":"PT34.0640328S","EventName":"Impulse"},
- {"IsHeadshot":false,"IsMelee":true,"IsWeapon":false,"Killer":{"Gamertag":"JGtm","Xuid":null},"Victim":{"Gamertag":"Pancakeflips","Xuid":null},"TimeSinceStart":"PT40S","EventName":"Death"},
+ {"IsHeadshot":true,"IsMelee":false,"IsGroundPound":false,"IsShoulderBash":false,"IsWeapon":true,"Killer":{"Gamertag":"Joueur900005","Xuid":null},"KillerAgent":1,"KillerWeaponAttachmentIds":[2758383128],"KillerWeaponStockId":2650887244,"KillerWorldLocation":{"x":24.908062,"y":-41.9863129,"z":-7.5632887},"Victim":{"Gamertag":"Joueur90002","Xuid":null},"VictimAgent":1,"VictimStockId":0,"VictimWorldLocation":{"x":24.669899,"y":-41.7344475,"z":-7.5619984},"TimeSinceStart":"PT33.2154416S","EventName":"Death"},
+ {"MedalId":3001183151,"Player":{"Gamertag":"Joueur900005","Xuid":null},"TimeSinceStart":"PT33.2204424S","EventName":"Medal"},
+ {"ImpulseId":2556889090,"Player":{"Gamertag":"Joueur900005","Xuid":null},"TimeSinceStart":"PT34.0640328S","EventName":"Impulse"},
+ {"IsHeadshot":false,"IsMelee":true,"IsWeapon":false,"Killer":{"Gamertag":"JGtm","Xuid":null},"Victim":{"Gamertag":"Joueur900006","Xuid":null},"TimeSinceStart":"PT40S","EventName":"Death"},
  {"Player":{"Gamertag":"JGtm","Xuid":null},"WeaponStockId":669296699,"TimeSinceStart":"PT50S","EventName":"WeaponDrop"},
  {"TimeSinceStart":"PT60S","EventName":"SomethingBrandNew"},
  {"RoundIndex":0,"TimeSinceStart":"PT5M41.7899986S","EventName":"RoundEnd"}
@@ -55,11 +55,11 @@ func TestMapH5Events_Kill(t *testing.T) {
 	if kill == nil {
 		t.Fatal("aucun event kill")
 	}
-	if kill.Killer == nil || kill.Killer.Gamertag != "Madman684844" {
-		t.Errorf("killer = %+v, want Madman684844", kill.Killer)
+	if kill.Killer == nil || kill.Killer.Gamertag != "Joueur900005" {
+		t.Errorf("killer = %+v, want Joueur900005", kill.Killer)
 	}
-	if kill.Victim == nil || kill.Victim.Gamertag != "Madina97294" {
-		t.Errorf("victim = %+v, want Madina97294", kill.Victim)
+	if kill.Victim == nil || kill.Victim.Gamertag != "Joueur90002" {
+		t.Errorf("victim = %+v, want Joueur90002", kill.Victim)
 	}
 	if kill.Kind != canonical.KillKindWeapon {
 		t.Errorf("kind = %q, want weapon", kill.Kind)

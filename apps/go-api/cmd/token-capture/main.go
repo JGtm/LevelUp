@@ -16,7 +16,7 @@
 // Usage :
 //
 //	go run ./cmd/token-capture/ <gamertag>
-//	go run ./cmd/token-capture/ Madina97294
+//	go run ./cmd/token-capture/ Joueur90002
 //
 // Si le joueur n'est pas dans db_profiles.json, le tool affiche une erreur explicite.
 package main
@@ -76,7 +76,7 @@ func resolveClientID() string {
 
 func main() {
 	if len(os.Args) < 2 {
-		fatalf("usage: token-capture <gamertag>\n  ex: token-capture Madina97294\n")
+		fatalf("usage: token-capture <gamertag>\n  ex: token-capture Joueur90002\n")
 	}
 	gamertag := os.Args[1]
 

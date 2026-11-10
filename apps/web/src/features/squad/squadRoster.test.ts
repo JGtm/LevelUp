@@ -27,8 +27,8 @@ describe('findSquadByRoster (clé XUID, player-agnostic)', () => {
   // Escouade « Big Bsses » créée par JGtm (me-x), roster {JGtm, Madina, Choco}.
   const bigBsses = sq('big', [
     member('me-x', 'JGtm', 'jgtm'),
-    member('madina-x', 'Madina97294'),
-    member('choco-x', 'Chocoboflor'),
+    member('madina-x', 'Joueur90002'),
+    member('choco-x', 'Joueur90001'),
   ])
 
   it('viewer == créateur : roster hors viewer reconnu', () => {
@@ -37,7 +37,7 @@ describe('findSquadByRoster (clé XUID, player-agnostic)', () => {
   })
 
   it('escouade créée par A, vue par B : reconnue, sans doublon du viewer', () => {
-    // Chocoboflor (choco-x) voit Big Bsses : roster hors lui = {JGtm, Madina}.
+    // Joueur90001 (choco-x) voit Big Bsses : roster hors lui = {JGtm, Madina}.
     const others = squadTeammates(bigBsses.members, 'choco-x').map((m) => m.xuid)
     expect(others).toEqual(['me-x', 'madina-x'])
     expect(others).not.toContain('choco-x') // pas de doublon de lui-même

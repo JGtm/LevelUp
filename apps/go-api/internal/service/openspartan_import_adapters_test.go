@@ -132,7 +132,7 @@ func TestToSyncMedals_PreservesIDsAndCounts(t *testing.T) {
 }
 
 func TestToAnalysisEvent_ParsesNumericXUID(t *testing.T) {
-	xuid := "2533274945467756"
+	xuid := "2650295491772772"
 	timeMs := 46832
 	typeHint := 50
 	row := mapper.HighlightEventRow{
@@ -143,8 +143,8 @@ func TestToAnalysisEvent_ParsesNumericXUID(t *testing.T) {
 	if got.EventType != "kill" {
 		t.Errorf("EventType: want 'kill', got %q", got.EventType)
 	}
-	if got.XUID != 2533274945467756 {
-		t.Errorf("XUID: want 2533274945467756, got %d", got.XUID)
+	if got.XUID != 2650295491772772 {
+		t.Errorf("XUID: want 2650295491772772, got %d", got.XUID)
 	}
 	if got.TimeMS != 46832 {
 		t.Errorf("TimeMS: want 46832, got %d", got.TimeMS)

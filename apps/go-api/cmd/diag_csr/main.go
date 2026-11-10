@@ -114,7 +114,7 @@ func diagUnrankedDatesXUID(xuid, gamertag string) {
 }
 
 func main() {
-	diagUnrankedDatesXUID("2533274858283686", "Madina97294")
-	diagUnrankedDatesXUID("2533274823110022", "JGtm")
-	diagUnrankedDatesXUID("2535469190789936", "Chocoboflor")
+	diagUnrankedDatesXUID("2623439693412443", "Joueur90002")
+	diagUnrankedDatesXUID("2603225103667623", "JGtm")
+	diagUnrankedDatesXUID("2547408409520575", "Joueur90001")
 }

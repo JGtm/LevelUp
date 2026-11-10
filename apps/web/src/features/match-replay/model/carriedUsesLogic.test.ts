@@ -1,6 +1,6 @@
 /**
  * Tests — carriedUsesLogic. Relevés réels figés de `0d9a9af9` (Forest), cuisson au schéma 95 du
- * 2026-10-14 : WolfzyLIVE (slot 513) prend un répulseur (rang 6) à l'image 638 avec trois usages, les
+ * 2026-10-14 : Joueur900b (slot 513) prend un répulseur (rang 6) à l'image 638 avec trois usages, les
  * consomme aux images 714, 811 et 921 ; l'objet disparaît à 930. Il portait avant un mur (rang 2).
  */
 import { describe, expect, it } from 'vitest'

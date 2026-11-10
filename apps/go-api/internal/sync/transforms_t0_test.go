@@ -15,14 +15,14 @@ func TestComputeMatchT0(t *testing.T) {
 	matchJSON := map[string]any{
 		"Players": []any{
 			map[string]any{
-				"PlayerId": "xuid(2533274823110022)",
+				"PlayerId": "xuid(2603225103667623)",
 				"ParticipationInfo": map[string]any{
 					"PresentAtBeginning": true,
 					"FirstJoinedTime":    start.Add(28 * time.Second).Format(time.RFC3339),
 				},
 			},
 			map[string]any{
-				"PlayerId": "xuid(2535469190789936)",
+				"PlayerId": "xuid(2547408409520575)",
 				"ParticipationInfo": map[string]any{
 					"PresentAtBeginning": true,
 					"FirstJoinedTime":    start.Add(28200 * time.Millisecond).Format(time.RFC3339Nano),
@@ -38,7 +38,7 @@ func TestComputeMatchT0(t *testing.T) {
 			},
 			// Latecomer : present_at_beginning=false → ignoré.
 			map[string]any{
-				"PlayerId": "xuid(2535443797720345)",
+				"PlayerId": "xuid(2664271391936720)",
 				"ParticipationInfo": map[string]any{
 					"PresentAtBeginning": false,
 					"FirstJoinedTime":    start.Add(200 * time.Second).Format(time.RFC3339),
@@ -61,7 +61,7 @@ func TestComputeMatchT0_NoParticipation(t *testing.T) {
 	start := time.Date(2025, 3, 15, 20, 0, 0, 0, time.UTC)
 	matchJSON := map[string]any{
 		"Players": []any{
-			map[string]any{"PlayerId": "xuid(2533274823110022)"},
+			map[string]any{"PlayerId": "xuid(2603225103667623)"},
 		},
 	}
 	_, q := computeMatchT0(matchJSON, start)

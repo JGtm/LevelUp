@@ -43,7 +43,7 @@ func main() {
 	if len(os.Args) > 1 {
 		base = os.Args[1]
 	}
-	players := []string{"Chocoboflor", "JGtm", "Madina97294", "XxDaemonGamerxX"}
+	players := []string{"Joueur90001", "JGtm", "Joueur90002", "Joueur90000000f"}
 	if len(os.Args) > 2 {
 		players = os.Args[2:]
 	}
@@ -236,7 +236,7 @@ func main() {
 		byPlayer[s.player] = append(byPlayer[s.player], s)
 	}
 	fmt.Println("\n=== DÉCISIF — kills~rating INTRA-joueur (vs moyenne perso) ===")
-	for _, gt := range []string{"Chocoboflor", "JGtm", "Madina97294", "XxDaemonGamerxX"} {
+	for _, gt := range []string{"Joueur90001", "JGtm", "Joueur90002", "Joueur90000000f"} {
 		ss := byPlayer[gt]
 		if len(ss) < 40 {
 			fmt.Printf("  %-16s n=%d (trop peu)\n", gt, len(ss))

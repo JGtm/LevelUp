@@ -3,39 +3,39 @@
   "auth_state": "missing",
   "setup_state": "profile_ready_no_sync",
   "current_player": {
-    "player_slug": "Chocoboflor",
-    "gamertag": "Chocoboflor",
-    "xuid": "2535469190789936",
-    "waypoint_player": "Chocoboflor",
+    "player_slug": "Joueur90001",
+    "gamertag": "Joueur90001",
+    "xuid": "2547408409520575",
+    "waypoint_player": "Joueur90001",
     "is_demo": false
   },
   "available_players": [
     {
-      "player_slug": "Chocoboflor",
-      "gamertag": "Chocoboflor",
-      "xuid": "2535469190789936",
-      "waypoint_player": "Chocoboflor",
+      "player_slug": "Joueur90001",
+      "gamertag": "Joueur90001",
+      "xuid": "2547408409520575",
+      "waypoint_player": "Joueur90001",
       "is_demo": false
     },
     {
       "player_slug": "JGtm",
       "gamertag": "JGtm",
-      "xuid": "2533274823110022",
+      "xuid": "2603225103667623",
       "waypoint_player": "JGtm",
       "is_demo": false
     },
     {
-      "player_slug": "Madina97294",
-      "gamertag": "Madina97294",
-      "xuid": "2533274858283686",
-      "waypoint_player": "Madina97294",
+      "player_slug": "Joueur90002",
+      "gamertag": "Joueur90002",
+      "xuid": "2623439693412443",
+      "waypoint_player": "Joueur90002",
       "is_demo": false
     },
     {
-      "player_slug": "XxDaemonGamerxX",
-      "gamertag": "XxDaemonGamerxX",
-      "xuid": "2533274833178266",
-      "waypoint_player": "XxDaemonGamerxX",
+      "player_slug": "Joueur90000000f",
+      "gamertag": "Joueur90000000f",
+      "xuid": "2558964982616721",
+      "waypoint_player": "Joueur90000000f",
       "is_demo": false
     }
   ],

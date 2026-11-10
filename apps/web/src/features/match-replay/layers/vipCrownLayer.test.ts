@@ -5,7 +5,7 @@ import type { ReplayVipPeriod } from '../../../lib/replay/replayNormalize'
 import { drawVipCrown, vipActiveAt, type VipCrownInput } from './vipCrownLayer'
 
 const period = (over: Partial<ReplayVipPeriod>): ReplayVipPeriod => ({
-  xuid: '2533274806055812',
+  xuid: '2725208139384704',
   t0: 0,
   t1: 100,
   closed: true,

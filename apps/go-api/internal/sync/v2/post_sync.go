@@ -7,7 +7,7 @@
 // les heals lisent shared concurremment et écrivent dans des DBs
 // player isolées.
 //
-// C'est la phase où le gain perf maximal va se voir : en V1, Madina97294
+// C'est la phase où le gain perf maximal va se voir : en V1, Joueur90002
 // attendait 6 min 30 sur 8 min 30 totales JUSTE pour avoir le shared
 // lease pour son post-sync. En V2, cette attente disparaît entièrement.
 //

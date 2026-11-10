@@ -25,7 +25,7 @@ import (
 // FICHIERS : ce qui disparaît, et surtout ce qui ne doit PAS bouger d'un octet.
 
 const (
-	purgeXUID     = "2533274796795729"
+	purgeXUID     = "2676423891261051"
 	purgeGamertag = "Inconnu"
 	purgeAdminGT  = "Admin"
 	purgeAdminXID = "111"

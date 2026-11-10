@@ -178,18 +178,18 @@ describe('SessionMatchesTable — colonne « Ouvrir sur Halo Waypoint » (I19, V
 
   it('vue full : lien Waypoint présent avec un href valide (capability fail-open + pref ON par défaut)', () => {
     renderWithProviders(
-      <SessionMatchesTable matches={[makeRow()]} playerSlug="Chocoboflor" variant="full" />,
+      <SessionMatchesTable matches={[makeRow()]} playerSlug="Joueur90001" variant="full" />,
     )
     const link = screen.getByRole('link', { name: WAYPOINT_LABEL })
     expect(link).toHaveAttribute(
       'href',
-      'https://www.halowaypoint.com/halo-infinite/players/Chocoboflor/matches/m1',
+      'https://www.halowaypoint.com/halo-infinite/players/Joueur90001/matches/m1',
     )
   })
 
   it('vue compact (drawer) : colonne Waypoint masquée par COMPACT_HIDDEN_COLUMNS', () => {
     renderWithProviders(
-      <SessionMatchesTable matches={[makeRow()]} playerSlug="Chocoboflor" variant="compact" />,
+      <SessionMatchesTable matches={[makeRow()]} playerSlug="Joueur90001" variant="compact" />,
     )
     expect(screen.queryByRole('link', { name: WAYPOINT_LABEL })).not.toBeInTheDocument()
   })

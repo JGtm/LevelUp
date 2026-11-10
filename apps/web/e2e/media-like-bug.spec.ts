@@ -93,7 +93,7 @@ test.describe('Bug : like change la vidéo', () => {
       data: { player_slug: 'JGtm' },
     })
 
-    const candidates = ['JGtm', 'Madina97294', 'XxDaemonGamerxX', 'Chocoboflor']
+    const candidates = ['JGtm', 'Joueur90002', 'Joueur90000000f', 'Joueur90001']
     let found = false
     for (const slug of candidates) {
       // Re-set current_player_slug avant chaque tentative pour que section_filter=mine match le slug visité

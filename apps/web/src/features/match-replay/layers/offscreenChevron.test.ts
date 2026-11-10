@@ -90,12 +90,12 @@ describe('offscreenLabelAnchor — le côté INTÉRIEUR de la flèche', () => {
 describe('drawOffscreenLabel — le texte, à l’encre du thème passée par l’appelant', () => {
   it('écrit le texte au double trait (contour puis remplissage), centré sur l’ancre intérieure', () => {
     const { ops, ctx } = recordingContext()
-    drawOffscreenLabel(ctx, { x: 50, y: 50 }, 0, 'Nilton410 · 42 m', { k: 1, labelStroke: 'encre-sombre' }, 'encre-equipe')
+    drawOffscreenLabel(ctx, { x: 50, y: 50 }, 0, 'Joueur903 · 42 m', { k: 1, labelStroke: 'encre-sombre' }, 'encre-equipe')
     const anchor = offscreenLabelAnchor({ x: 50, y: 50 }, 0, 1)
     const stroke = ops.find((o) => o.op === 'strokeText')
     const fill = ops.find((o) => o.op === 'fillText')
-    expect(stroke?.args).toEqual(['Nilton410 · 42 m', anchor.x, anchor.y])
-    expect(fill?.args).toEqual(['Nilton410 · 42 m', anchor.x, anchor.y])
+    expect(stroke?.args).toEqual(['Joueur903 · 42 m', anchor.x, anchor.y])
+    expect(fill?.args).toEqual(['Joueur903 · 42 m', anchor.x, anchor.y])
     expect(ops.filter((o) => o.op === 'set strokeStyle').map((o) => o.args[0])).toContain('encre-sombre')
     expect(ops.filter((o) => o.op === 'set fillStyle').map((o) => o.args[0])).toContain('encre-equipe')
   })

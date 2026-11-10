@@ -242,9 +242,9 @@ func TestParseNeighborsFilterSpec_TrimsWhitespace(t *testing.T) {
 }
 
 func TestParseNeighborsFilterSpec_WithPlayer_Numeric(t *testing.T) {
-	r := mustParse(t, "with_player=2533274791785593")
-	if !ptrEq(r.withPlayer, "2533274791785593") {
-		t.Errorf("with_player numérique : want 2533274791785593, got %v", r.withPlayer)
+	r := mustParse(t, "with_player=2561451715135583")
+	if !ptrEq(r.withPlayer, "2561451715135583") {
+		t.Errorf("with_player numérique : want 2561451715135583, got %v", r.withPlayer)
 	}
 }
 

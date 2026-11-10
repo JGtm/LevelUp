@@ -144,7 +144,7 @@ describe('SquadContributionsPage', () => {
   // le bloc : la carte reste avec son constat quand le titre lit les événements horodatés, sinon elle est absente.
   it('monte « Points d’impact par soirée et par rôle » sous la matrice quand le bloc est servi', () => {
     mockSquadContext({
-      confirmedGamertags: ['Chocoboflor', 'Madina97294'],
+      confirmedGamertags: ['Joueur90001', 'Joueur90002'],
       pageData: { main_player: 'JGtm', squad_impact_history: impactHistory3 } as unknown as TeammatesPageResponse,
     })
     const { container } = renderWithProviders(<SquadContributionsPage />)
@@ -175,7 +175,7 @@ describe('SquadContributionsPage', () => {
   // n'en monte plus aucune carte.
   it('ne monte plus la section « Objectif » (partie dans l’onglet Emprise)', () => {
     mockSquadContext({
-      confirmedGamertags: ['Chocoboflor', 'Madina97294'],
+      confirmedGamertags: ['Joueur90001', 'Joueur90002'],
       pageData: {
         main_player: 'JGtm',
         formes_retenues: block0709(),

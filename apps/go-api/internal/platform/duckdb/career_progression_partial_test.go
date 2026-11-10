@@ -62,7 +62,7 @@ func TestInsertPartial_BannerOnly_OtherFieldsRemainNullable(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewCareerLiveRepo(pdb)
 	ctx := context.Background()
-	xuid := "2535469190789936"
+	xuid := "2547408409520575"
 
 	inserted, err := repo.InsertCareerProgressionPartial(ctx, xuid, &CareerProgressionPartial{
 		BannerImageURL: partialPtr("https://cdn/banner.png"),
@@ -107,7 +107,7 @@ func TestInsertPartial_RankOnly_DoesNotPolluteOldBanner(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewCareerLiveRepo(pdb)
 	ctx := context.Background()
-	xuid := "2535469190789936"
+	xuid := "2547408409520575"
 
 	_, err := repo.InsertCareerProgressionPartial(ctx, xuid, &CareerProgressionPartial{
 		BannerImageURL: partialPtr("https://cdn/old-banner.png"),
@@ -159,7 +159,7 @@ func TestInsertPartial_BannerUpdate_PreservesRank(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewCareerLiveRepo(pdb)
 	ctx := context.Background()
-	xuid := "2535469190789936"
+	xuid := "2547408409520575"
 
 	_, err := repo.InsertCareerProgressionPartial(ctx, xuid, &CareerProgressionPartial{
 		Rank:      partialPtr(180),
@@ -198,7 +198,7 @@ func TestInsertPartial_IdenticalToLast_Skip(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewCareerLiveRepo(pdb)
 	ctx := context.Background()
-	xuid := "2535469190789936"
+	xuid := "2547408409520575"
 
 	_, _ = repo.InsertCareerProgressionPartial(ctx, xuid, &CareerProgressionPartial{
 		Rank:           partialPtr(100),
@@ -224,7 +224,7 @@ func TestInsertPartial_MultipleRows_CarryForwardPerField(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewCareerLiveRepo(pdb)
 	ctx := context.Background()
-	xuid := "2535469190789936"
+	xuid := "2547408409520575"
 
 	_, err := repo.InsertCareerProgressionPartial(ctx, xuid, &CareerProgressionPartial{
 		Rank:      partialPtr(100),
@@ -278,7 +278,7 @@ func TestInsertPartial_NullXPForNext_DoesNotOverwriteHistoric(t *testing.T) {
 		t.Fatalf("delete: %v", err)
 	}
 	repo := NewCareerLiveRepo(pdb)
-	xuid := "2535469190789936"
+	xuid := "2547408409520575"
 
 	// Row historique complète (xp_for_next_rank=200).
 	if _, err := pdb.Player.Exec(ctx, `
@@ -322,7 +322,7 @@ func TestInsertPartial_AllFieldsSet_RoundTrip(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewCareerLiveRepo(pdb)
 	ctx := context.Background()
-	xuid := "2535469190789936"
+	xuid := "2547408409520575"
 
 	maxRank := true
 	_, err := repo.InsertCareerProgressionPartial(ctx, xuid, &CareerProgressionPartial{

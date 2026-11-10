@@ -20,7 +20,7 @@ import (
 // porteurDeDrapeau : Joueur000185, 7 frags / 2 morts / 1 assistance — l'auteur des DEUX actions
 // de drapeau du fixture ET du seul portage publié. C'est le joueur que le pont par instants de
 // mort ne peut pas nommer seul (il meurt deux fois, le seuil est de trois).
-const porteurDeDrapeau = "2535463878425995"
+const porteurDeDrapeau = "2569104772637498"
 
 // assertCalquesDObjectif confronte les calques d'objectif à l'ORACLE INDÉPENDANT du fixture — la
 // feuille de match de l'API, que le décodeur ne lit jamais.
@@ -54,7 +54,7 @@ const porteurDeDrapeau = "2535463878425995"
 //	le PONTAGE          7 des 8 joueurs de la feuille sont nommés, chacun avec EXACTEMENT ses
 //	                    compteurs. LE 8e A POURTANT UN SLOT, et la première version de ce
 //	                    commentaire disait le contraire (corrigé le 2026-09-06, revue CTF-R2,
-//	                    constat 3) : 2535458702376288 occupe le slot 12, dont les compteurs de
+//	                    constat 3) : 2643148600905879 occupe le slot 12, dont les compteurs de
 //	                    film valent (5 frags, 0 mort, 60 assistances). Ses frags et ses morts
 //	                    sont exactement ceux de sa feuille ; c'est le compteur d'assistances,
 //	                    lu à 60 contre 0, qui fait refuser le triplet — et le pont par morts ne

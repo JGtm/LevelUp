@@ -25,7 +25,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
-var players = []string{"Madina97294", "Chocoboflor", "JGtm", "XxDaemonGamerxX"}
+var players = []string{"Joueur90002", "Joueur90001", "JGtm", "Joueur90000000f"}
 
 func main() {
 	root := flag.String("root", "../..", "racine du repo")

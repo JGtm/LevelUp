@@ -54,7 +54,7 @@ func TestWriteError_SetsErrorBody(t *testing.T) {
 // --- sanitizeFloatsForJSON : NaN/Inf neutralization ---
 // Bug : un float64 NaN dans une struct passée par valeur à writeJSON faisait
 // échouer json.Marshal et retournait 500 (vu en prod le 2026-05-26 sur le
-// détail match Madina97294/615b3ebc...). La sanitize existait déjà mais
+// détail match Joueur90002/615b3ebc...). La sanitize existait déjà mais
 // n'agissait pas sur les champs de struct par valeur (CanSet()=false via
 // reflect.ValueOf d'un interface non-pointeur).
 

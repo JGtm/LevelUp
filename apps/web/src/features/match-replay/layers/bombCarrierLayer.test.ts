@@ -6,7 +6,7 @@ import type { ReplayBombCarry } from '../../../lib/replay/replayNormalize'
 import { OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
 
 const carry = (over: Partial<ReplayBombCarry>): ReplayBombCarry => ({
-  xuid: '2533274806055812',
+  xuid: '2725208139384704',
   t0: 0,
   t1: 100,
   closed: true,

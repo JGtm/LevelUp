@@ -8,7 +8,7 @@ package duckdb_test
 // calcul pur (analysis/squademprise).
 //
 // La fixture reproduit la soirée du 22/09 telle que la maquette de l'onglet la relève en base
-// (JGtm, Chocoboflor, Madina97294, sept matchs dont Detachment sans film) : prises objet par objet
+// (JGtm, Joueur90001, Joueur90002, sept matchs dont Detachment sans film) : prises objet par objet
 // et joueur par joueur (données ITEMS / ROLES / MATCHES de la maquette), temps et frags d'effet,
 // frags aux armes spéciales de la feuille. Aucune base réelle n'est lue.
 
@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	tJ, tC, tM, tR = "J", "C", "M", "R" // notre camp : JGtm, Chocoboflor, Madina97294, reste du camp
+	tJ, tC, tM, tR = "J", "C", "M", "R" // notre camp : JGtm, Joueur90001, Joueur90002, reste du camp
 	camoT, osT     = "powerup_camo", "powerup_overshield"
 )
 
@@ -189,7 +189,7 @@ func lireEmprise(t *testing.T, pdb *ddb.PlayerDB, soiree []matchTemoin) domain.S
 	must(t, err)
 	return squademprise.Build(squademprise.Input{
 		PlayerXUID: tJ,
-		Players:    []domain.SessionUsageSquadPlayer{{XUID: tJ, Gamertag: "JGtm"}, {XUID: tC, Gamertag: "Chocoboflor"}, {XUID: tM, Gamertag: "Madina97294"}},
+		Players:    []domain.SessionUsageSquadPlayer{{XUID: tJ, Gamertag: "JGtm"}, {XUID: tC, Gamertag: "Joueur90001"}, {XUID: tM, Gamertag: "Joueur90002"}},
 		Current:    current,
 		Film:       &squademprise.FilmData{Films: films, Players: players, Participants: participants, PadTiers: tiers},
 		PowerKills: pwk,
@@ -264,7 +264,7 @@ func verifierProduction(t *testing.T, prod []domain.SquadEmpriseProduction) {
 }
 
 // verifierFiches : ROLES de la maquette — bonus 3 / 3 / 5 / 1, armes spéciales 9 / 3 / 3 / 8 ;
-// camouflage perdu par Chocoboflor (gardé) et Madina97294 (lâché) ; 33 socles de bonus vidés.
+// camouflage perdu par Joueur90001 (gardé) et Joueur90002 (lâché) ; 33 socles de bonus vidés.
 func verifierFiches(t *testing.T, b domain.SquadEmpriseBlock) {
 	t.Helper()
 	parJoueur := map[string][4]int{}
@@ -284,13 +284,13 @@ func verifierFiches(t *testing.T, b domain.SquadEmpriseBlock) {
 		}
 	}
 	if got := parJoueur[domain.EmpriseResourcePowerup]; got != [4]int{3, 3, 5, 1} {
-		t.Errorf("bonus par joueur = %v, attendu JGtm 3, Chocoboflor 3, Madina97294 5, reste 1", got)
+		t.Errorf("bonus par joueur = %v, attendu JGtm 3, Joueur90001 3, Joueur90002 5, reste 1", got)
 	}
 	if got := parJoueur[domain.EmpriseResourcePowerWeapon]; got != [4]int{9, 3, 3, 8} {
 		t.Errorf("armes spéciales par joueur = %v, attendu 9 / 3 / 3 / 8", got)
 	}
 	if perdus[camoT+"/1/garde"] != 1 || perdus[camoT+"/2/lache"] != 1 {
-		t.Errorf("camouflages perdus = %v, attendu Chocoboflor 1 gardé, Madina97294 1 lâché", perdus)
+		t.Errorf("camouflages perdus = %v, attendu Joueur90001 1 gardé, Joueur90002 1 lâché", perdus)
 	}
 	if socles != 33 {
 		t.Errorf("socles de bonus vidés = %d, attendu 33", socles)

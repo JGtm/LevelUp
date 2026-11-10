@@ -112,8 +112,8 @@ func TestInsertWorldCSRSnapshot_AppendOnlyAndLatestView(t *testing.T) {
 
 	t0 := time.Date(2026, 6, 8, 10, 0, 0, 0, time.UTC)
 	batch1 := []domain.LeaderboardEntry{
-		{Season: "csrseason13-2", Playlist: "p", Rank: 1, Gamertag: "Twissted Mindss", CSRValue: 2180, Tier: "Onyx", FetchedAt: t0},
-		{Season: "csrseason13-2", Playlist: "p", Rank: 2, Gamertag: "OR81TAL", CSRValue: 2097, Tier: "Onyx", FetchedAt: t0},
+		{Season: "csrseason13-2", Playlist: "p", Rank: 1, Gamertag: "Joueur90000000c", CSRValue: 2180, Tier: "Onyx", FetchedAt: t0},
+		{Season: "csrseason13-2", Playlist: "p", Rank: 2, Gamertag: "J900005", CSRValue: 2097, Tier: "Onyx", FetchedAt: t0},
 	}
 	n, err := InsertWorldCSRSnapshot(ctx, db, "halo_infinite", batch1)
 	if err != nil {
@@ -123,7 +123,7 @@ func TestInsertWorldCSRSnapshot_AppendOnlyAndLatestView(t *testing.T) {
 		t.Fatalf("inserted = %d, want 2", n)
 	}
 
-	// Vue _latest : 2 lignes, rang 1 = Twissted Mindss.
+	// Vue _latest : 2 lignes, rang 1 = Joueur90000000c.
 	var count int
 	if err := db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM world_csr_leaderboard_latest WHERE season_id='csrseason13-2' AND playlist_id='p'`,

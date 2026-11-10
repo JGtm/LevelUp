@@ -87,8 +87,8 @@ func TestMediaServiceAtomic_Success(t *testing.T) {
 
 	resp, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
 		FilePath:      "JGtm/clip.mp4",
-		LikerSlug:     "Chocoboflor",
-		LikerGamertag: "Chocoboflor",
+		LikerSlug:     "Joueur90001",
+		LikerGamertag: "Joueur90001",
 		Liked:         true,
 	})
 	if err != nil {
@@ -97,13 +97,13 @@ func TestMediaServiceAtomic_Success(t *testing.T) {
 	if !resp.Liked || resp.TotalLikers != 1 {
 		t.Fatalf("réponse = %+v, want Liked=true TotalLikers=1", resp)
 	}
-	if got := countLikeEvents(t, db, "JGtm/clip.mp4", "Chocoboflor"); got != 1 {
+	if got := countLikeEvents(t, db, "JGtm/clip.mp4", "Joueur90001"); got != 1 {
 		t.Errorf("events de like pour le liker = %d, want 1", got)
 	}
 	// Le like ne déborde pas sur un autre joueur : c'est tout l'objet du
 	// passage au par-viewer.
 	if got := countLikeEvents(t, db, "JGtm/clip.mp4", "JGtm"); got != 0 {
-		t.Errorf("le like de Chocoboflor a produit %d event(s) au nom de JGtm, want 0", got)
+		t.Errorf("le like de Joueur90001 a produit %d event(s) au nom de JGtm, want 0", got)
 	}
 }
 
@@ -119,7 +119,7 @@ func TestMediaServiceAtomic_UnknownMedia_WritesNothing(t *testing.T) {
 
 	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
 		FilePath:  "JGtm/nexiste-pas.mp4",
-		LikerSlug: "Chocoboflor",
+		LikerSlug: "Joueur90001",
 		Liked:     true,
 	})
 	if err == nil {
@@ -144,7 +144,7 @@ func TestMediaServiceAtomic_RepoError_RollsBack(t *testing.T) {
 
 	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
 		FilePath:  "JGtm/clip.mp4",
-		LikerSlug: "Chocoboflor",
+		LikerSlug: "Joueur90001",
 		Liked:     true,
 	})
 	if !errors.Is(err, sentinel) {
@@ -175,7 +175,7 @@ func TestMediaServiceAtomic_PanicMidTx_ReleasesWriter(t *testing.T) {
 		}()
 		_, _ = svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
 			FilePath:  "JGtm/clip.mp4",
-			LikerSlug: "Chocoboflor",
+			LikerSlug: "Joueur90001",
 			Liked:     true,
 		})
 	}()
@@ -195,7 +195,7 @@ func TestMediaServiceAtomic_LeaseTimeout_NoLeak(t *testing.T) {
 
 	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
 		FilePath:  "JGtm/clip.mp4",
-		LikerSlug: "Chocoboflor",
+		LikerSlug: "Joueur90001",
 		Liked:     true,
 	})
 	if !errors.Is(err, dblease.ErrDBLocked) {

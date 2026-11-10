@@ -98,11 +98,11 @@ function survoler(hook: ReturnType<typeof monter>['result'], at: { x: number; y:
 describe('useReplayGroundWeapons — le survol (item A)', () => {
   it('lâcheur RÉSOLU : une ligne « <arme> · lâchée par X »', () => {
     const { result } = monter([item({ dropper: 42 })], {
-      nameOfSlot: (slot) => (slot === 42 ? 'DinoR00' : null),
+      nameOfSlot: (slot) => (slot === 42 ? 'J900001' : null),
     })
     survoler(result)
     expect(result.current.hover?.weaponName).toBe('BR75')
-    expect(result.current.hover?.originLine).toBe('lâchée par DinoR00')
+    expect(result.current.hover?.originLine).toBe('lâchée par J900001')
     expect(result.current.hover?.pickupLine).toBeNull()
   })
 
@@ -114,7 +114,7 @@ describe('useReplayGroundWeapons — le survol (item A)', () => {
 
   it('origine `spawned` : « apparue », MÊME SI dropper était renseigné par erreur', () => {
     const { result } = monter([item({ origin: 'spawned', dropper: 42 })], {
-      nameOfSlot: () => 'DinoR00',
+      nameOfSlot: () => 'J900001',
     })
     survoler(result)
     expect(result.current.hover?.originLine).toBe('apparue')
@@ -122,7 +122,7 @@ describe('useReplayGroundWeapons — le survol (item A)', () => {
 
   it('ramasseur CONNU : une seconde clause « · reprise par Y »', () => {
     const { result } = monter([item({ picker: 9, end: 'pickup' })], {
-      nameOfSlot: (slot) => (slot === 9 ? 'SHROOM' : slot === 7 ? 'DinoR00' : null),
+      nameOfSlot: (slot) => (slot === 9 ? 'SHROOM' : slot === 7 ? 'J900001' : null),
     })
     survoler(result)
     expect(result.current.hover?.pickupLine).toBe('reprise par SHROOM')

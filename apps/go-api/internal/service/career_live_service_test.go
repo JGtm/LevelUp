@@ -1031,7 +1031,7 @@ func TestCareerLive_GetSpartanIdentityFor_ThirdPartyXUID(t *testing.T) {
 // player-gated → progress nil ; appearance servie via la vue publique). Aucune
 // persistance ne doit être déclenchée.
 func TestCareerLive_FetchLiveIdentity_ThirdPartyAppearance(t *testing.T) {
-	const targetXUID = "2535427927026623"
+	const targetXUID = "2548036979862261"
 
 	fetcher := &mockCareerFetcher{
 		progress: nil, // adversaire : /careerranks player-gated

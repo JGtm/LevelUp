@@ -14,7 +14,7 @@ import (
 // purs du builder sont dans service/squadagg/weapon_tools_test.go.
 
 const (
-	toolJ, toolC, toolM    = "JGtm", "Chocoboflor", "Madina97294"
+	toolJ, toolC, toolM    = "JGtm", "Joueur90001", "Joueur90002"
 	toolXJ, toolXC, toolXM = "x_jgtm", "x_choco", "x_madina"
 	keyToolCoilPlasma      = "hinf_" + "coil_plasma"
 	keyToolCoilKinetic     = "hinf_" + "coil_kinetic"
@@ -98,7 +98,7 @@ func soiree2209Rows() []port.WeaponKillRow {
 }
 
 // soiree2209Categories : objets explosifs (2 / 1 / 2, dont une bobine avec clé chez JGtm et
-// Madina97294) et chute (0 / 1 / 1), par catégorie de source du film.
+// Joueur90002) et chute (0 / 1 / 1), par catégorie de source du film.
 func soiree2209Categories() []port.KillSourceCategoryRow {
 	return []port.KillSourceCategoryRow{
 		{XUID: toolXJ, Category: domain.KillSourceCategoryExplosiveObject, WeaponKey: keyToolCoilPlasma, Kills: 1},
@@ -164,7 +164,7 @@ func TestSquadWeaponTools_Soiree2209(t *testing.T) {
 		t.Fatal("outils absents")
 	}
 	if len(tools.Players) != 3 || tools.Players[0] != toolJ {
-		t.Errorf("Players = %v, want [JGtm Chocoboflor Madina97294]", tools.Players)
+		t.Errorf("Players = %v, want [JGtm Joueur90001 Joueur90002]", tools.Players)
 	}
 	lines := toolLineByName(t, tools)
 
@@ -189,7 +189,7 @@ func TestSquadWeaponTools_Soiree2209(t *testing.T) {
 			t.Errorf("ligne %q présente : la catégorie aurait dû la reprendre", gone)
 		}
 	}
-	// Feuille = lignes pour JGtm et Madina97294 ; Chocoboflor a une ligne de plus au film
+	// Feuille = lignes pour JGtm et Joueur90002 ; Joueur90001 a une ligne de plus au film
 	// qu'à la feuille (reliquat négatif) : aucune ligne « Non attribué ».
 	if _, ok := lines[domain.SquadToolKindUnattributed]; ok {
 		t.Errorf("« Non attribué » inattendu : %+v", lines[domain.SquadToolKindUnattributed])

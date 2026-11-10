@@ -90,7 +90,7 @@ func TestDeleteConvertedMediaThenIndex_ComesBackWithOriginal(t *testing.T) {
 		t.Fatalf("RunHLSTranscode: %v", err)
 	}
 	if _, err := db.SQLDb().Exec(`INSERT INTO media_likes_history (media_path, liker_slug, liker_gamertag, is_liked, liked_at)
-		VALUES (?, 'Chocoboflor', 'Chocoboflor', TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`, hlsRel); err != nil {
+		VALUES (?, 'Joueur90001', 'Joueur90001', TRUE, CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`, hlsRel); err != nil {
 		t.Fatal(err)
 	}
 

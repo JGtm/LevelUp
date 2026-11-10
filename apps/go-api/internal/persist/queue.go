@@ -178,7 +178,7 @@ func (q *BatchQueue) Submit(batch *MatchBatch) error {
 
 	// Phase 4 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : sanitize defensif
 	// NaN/Inf avant marshal. Cas observe en prod (cycle 20:33-20:38) :
-	// match Chocoboflor 508bd2fb + ed8adf67 + XxDaemonGamerxX cf23bfed
+	// match Joueur90001 508bd2fb + ed8adf67 + Joueur90000000f cf23bfed
 	// droppes silencieusement avec "json: unsupported value: NaN".
 	// SanitizeBatch est idempotent (no-op si batch deja sanitize).
 	SanitizeBatch(batch)

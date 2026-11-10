@@ -21,13 +21,13 @@ vi.mock('echarts-for-react', () => ({
 const T = getSquadText('fr')
 
 const TOOLS: SquadWeaponTools = {
-  players: ['JGtm', 'Chocoboflor'],
+  players: ['JGtm', 'Joueur90001'],
   lines: [
-    { kind: 'weapon', weapon_key: 'hinf_br75', label: 'BR75', class: 'shoulder', kills_by_player: { JGtm: 22, Chocoboflor: 22 }, total_squad: 44 },
-    { kind: 'melee', class: 'melee', kills_by_player: { JGtm: 6, Chocoboflor: 13 }, total_squad: 19 },
+    { kind: 'weapon', weapon_key: 'hinf_br75', label: 'BR75', class: 'shoulder', kills_by_player: { JGtm: 22, Joueur90001: 22 }, total_squad: 44 },
+    { kind: 'melee', class: 'melee', kills_by_player: { JGtm: 6, Joueur90001: 13 }, total_squad: 19 },
     { kind: 'explosive_object', class: 'unattributed', kills_by_player: { JGtm: 2 }, total_squad: 2 },
     { kind: 'weapon', weapon_key: 'hinf_mutilator', label: 'Mutilateur', class: 'shoulder', kills_by_player: { JGtm: 1 }, total_squad: 1 },
-    { kind: 'unattributed', class: 'unattributed', kills_by_player: { Chocoboflor: 1 }, total_squad: 1 },
+    { kind: 'unattributed', class: 'unattributed', kills_by_player: { Joueur90001: 1 }, total_squad: 1 },
   ],
 }
 
@@ -39,15 +39,15 @@ describe('SquadFragSection — Outils de destruction', () => {
         fragClassesByPlayer={{}}
         weaponTools={TOOLS}
         weaponAccuracy={null}
-        playerColors={{ JGtm: 'var(--p1)', Chocoboflor: 'var(--p2)' }}
-        playerOrder={['JGtm', 'Chocoboflor']}
+        playerColors={{ JGtm: 'var(--p1)', Joueur90001: 'var(--p2)' }}
+        playerOrder={['JGtm', 'Joueur90001']}
         locale="fr"
         t={T}
       />,
     )
     const legends = screen.getAllByTestId('chart-legend')
     const players = legends.find((l) => within(l).queryByText('JGtm'))!
-    expect(within(players).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['JGtm', 'Chocoboflor'])
+    expect(within(players).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['JGtm', 'Joueur90001'])
 
     await waitFor(() => expect(options.some((o) => o.yAxis)).toBe(true))
     const opt = options.filter((o) => o.yAxis).pop()!

@@ -100,7 +100,7 @@ func TestMergeMissingMedia_MovesLikesRemovesAppFilesKeepsOriginalAndTargetFiles(
 	}
 	var likes int
 	if err := f.db.SQLDb().QueryRow(
-		`SELECT COUNT(*) FROM media_likes_latest WHERE media_path = 'JGtm/new.mp4' AND liker_slug = 'Chocoboflor' AND is_liked`,
+		`SELECT COUNT(*) FROM media_likes_latest WHERE media_path = 'JGtm/new.mp4' AND liker_slug = 'Joueur90001' AND is_liked`,
 	).Scan(&likes); err != nil || likes != 1 {
 		t.Errorf("like transféré à la cible = %d (err=%v), attendu 1", likes, err)
 	}

@@ -20,15 +20,15 @@ describe('formatDataIssues', () => {
   })
 
   it('matchs d\'un coéquipier non chargés : le gamertag apparaît dans le message', () => {
-    const [msg] = formatDataIssues([{ code: 'teammate_matches', detail: 'Chocoboflor' }], fr)
-    expect(msg).toContain('Chocoboflor')
+    const [msg] = formatDataIssues([{ code: 'teammate_matches', detail: 'Joueur90001' }], fr)
+    expect(msg).toContain('Joueur90001')
   })
 
   it('heatmap : message distinct de celui des matchs du coéquipier', () => {
-    const [tm] = formatDataIssues([{ code: 'teammate_matches', detail: 'Madina97294' }], fr)
-    const [hm] = formatDataIssues([{ code: 'heatmap_teammate', detail: 'Madina97294' }], fr)
+    const [tm] = formatDataIssues([{ code: 'teammate_matches', detail: 'Joueur90002' }], fr)
+    const [hm] = formatDataIssues([{ code: 'heatmap_teammate', detail: 'Joueur90002' }], fr)
     expect(hm).not.toEqual(tm)
-    expect(hm).toContain('Madina97294')
+    expect(hm).toContain('Joueur90002')
   })
 
   it('codes sans détail : message fixe', () => {
@@ -44,8 +44,8 @@ describe('formatDataIssues', () => {
 
   it('parité EN : chaque code produit un message anglais non vide et distinct du FR', () => {
     const issues = [
-      { code: 'teammate_matches', detail: 'Chocoboflor' },
-      { code: 'heatmap_teammate', detail: 'Chocoboflor' },
+      { code: 'teammate_matches', detail: 'Joueur90001' },
+      { code: 'heatmap_teammate', detail: 'Joueur90001' },
       { code: 'main_team_participants' },
       { code: 'map_stats' },
     ]

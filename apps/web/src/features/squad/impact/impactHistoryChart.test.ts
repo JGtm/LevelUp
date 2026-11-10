@@ -85,7 +85,7 @@ describe('buildImpactHistoryOption', () => {
 
   it('infobulle de la barre, données échappées', () => {
     const html = option().tooltip.formatter({ seriesIndex: 1, dataIndex: 7 })
-    expect(html).toContain('Chocoboflor')
+    expect(html).toContain('Joueur90001')
     expect(html).toContain('1 match, aucune victoire')
     expect(html).toContain('Boulet ×1')
     expect(html).toMatch(new RegExp('Net</span><span[^>]*>−4</span>'))

@@ -7,8 +7,8 @@ package main
 //  1. Le compteur de morts (comp 2 B) REPART DE ZERO a chaque manche (indexe `manche*4` dans le
 //     getter natif). Un deroulage monotone sur tout le match ne voit que la manche 0.
 //  2. PLUS PROFOND : le SLOT D'ENTITE est REATTRIBUE a un AUTRE joueur d'une manche a l'autre.
-//     Mesure : les instants de mort du slot 22 valent scuderiasven en manche 0
-//     (120925,139494,159148,174913 <-> 120926,139497,159150,174916) puis LadyJezz en manches 1-2
+//     Mesure : les instants de mort du slot 22 valent Joueur90000b en manche 0
+//     (120925,139494,159148,174913 <-> 120926,139497,159150,174916) puis Joueur97 en manches 1-2
 //     (14 instants <-> 245200,303775,...,698184). Un slot n'est donc PAS une identite stable ;
 //     l'identite se resout PAR MANCHE.
 //

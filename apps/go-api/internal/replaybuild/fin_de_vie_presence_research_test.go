@@ -41,7 +41,7 @@ import (
 
 // temoinsPresence : les trois films nommes, et le gamertag dont la derniere vie doit finir avec le film.
 var temoinsPresence = map[string]string{
-	"008e1bba": "SloppyTopp8812", "1e26f641": "xPIPExGODx", "15d8d850": "JGtm",
+	"008e1bba": "Joueur90000008", "1e26f641": "Joueur900d", "15d8d850": "JGtm",
 }
 
 // bilanPresence : ce que la regle change sur un film.

@@ -46,10 +46,10 @@ type player struct {
 }
 
 var players = []player{
-	{Gamertag: "JGtm", XUID: "2533274823110022"},
-	{Gamertag: "Chocoboflor", XUID: "2535469190789936"},
-	{Gamertag: "Madina97294", XUID: "2533274858283686"},
-	{Gamertag: "XxDaemonGamerxX", XUID: "2533274833178266"},
+	{Gamertag: "JGtm", XUID: "2603225103667623"},
+	{Gamertag: "Joueur90001", XUID: "2547408409520575"},
+	{Gamertag: "Joueur90002", XUID: "2623439693412443"},
+	{Gamertag: "Joueur90000000f", XUID: "2558964982616721"},
 }
 
 // matchRow porte les colonnes de loadHistoryForPerf (performance_helpers.go:153)

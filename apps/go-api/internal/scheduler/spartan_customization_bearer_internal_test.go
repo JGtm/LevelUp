@@ -19,11 +19,11 @@ import (
 // dépend pas de l'ordre de lecture du fichier. Sans compte admin, aucun candidat.
 func TestAdminBearerCandidates_CompteAdminSeulement(t *testing.T) {
 	players := []domain.PlayerSummary{
-		{Gamertag: "Trimbutton", XUID: "5", TitleSlug: "halo_infinite", AuthOnly: true},
+		{Gamertag: "Joueur9009", XUID: "5", TitleSlug: "halo_infinite", AuthOnly: true},
 		{Gamertag: "zAdmin", XUID: "7", TitleSlug: "halo_infinite"},
 		{Gamertag: "JGtm", XUID: "2", TitleSlug: "halo_infinite"},
-		{Gamertag: "chocoboflor", XUID: "1", TitleSlug: "halo_infinite"},
-		{Gamertag: "DankerGlue", XUID: "3", TitleSlug: "halo_infinite", AuthOnly: true},
+		{Gamertag: "joueur90001", XUID: "1", TitleSlug: "halo_infinite"},
+		{Gamertag: "Joueur9001", XUID: "3", TitleSlug: "halo_infinite", AuthOnly: true},
 		{Gamertag: "JGtm", XUID: "2", TitleSlug: "halo_5"},
 		{Gamertag: "SansXuid", XUID: "", TitleSlug: "halo_infinite"},
 	}
@@ -62,7 +62,7 @@ func TestAdminXUIDs_RoleAdminSeulement(t *testing.T) {
 	c := (&SpartanCustomizationCron{}).WithAccounts(fakeAccounts{users: []domain.AdminUserSummary{
 		{Username: "JGtm", Role: domain.RoleAdmin, XUID: "2"},
 		{Username: "admin-sans-xuid", Role: domain.RoleAdmin},
-		{Username: "DankerGlue", Role: domain.RoleUser, XUID: "3"},
+		{Username: "Joueur9001", Role: domain.RoleUser, XUID: "3"},
 	}})
 	got, err := c.adminXUIDs()
 	if err != nil || !reflect.DeepEqual(got, map[string]bool{"2": true}) {

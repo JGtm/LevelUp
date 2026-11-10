@@ -132,13 +132,13 @@ func TestParsePresencePayload_EmptyDetails(t *testing.T) {
 // state + devices[].titles[]. JGtm joue à Halo Infinite ; on doit
 // extraire le titre actif depuis devices[0].titles[0].
 func TestParsePresencePayload_DevicesFormat_Active(t *testing.T) {
-	raw := json.RawMessage(`{"xuid":"2533274823110022","state":"Online","devices":[{"type":"WindowsOneCore","titles":[{"id":"2043073184","name":"Halo Infinite","placement":"Full","state":"Active","lastModified":"2026-05-25T19:53:30.5573644"}]}]}`)
+	raw := json.RawMessage(`{"xuid":"2603225103667623","state":"Online","devices":[{"type":"WindowsOneCore","titles":[{"id":"2043073184","name":"Halo Infinite","placement":"Full","state":"Active","lastModified":"2026-05-25T19:53:30.5573644"}]}]}`)
 	event, err := ParsePresencePayload(raw, "fallback")
 	if err != nil {
 		t.Fatalf("ParsePresencePayload() error = %v", err)
 	}
-	if event.XUID != "2533274823110022" {
-		t.Errorf("XUID = %q, want 2533274823110022", event.XUID)
+	if event.XUID != "2603225103667623" {
+		t.Errorf("XUID = %q, want 2603225103667623", event.XUID)
 	}
 	if event.PresenceState != "Online" {
 		t.Errorf("PresenceState = %q, want Online", event.PresenceState)
@@ -169,7 +169,7 @@ func TestParsePresencePayload_DevicesFormat_Active(t *testing.T) {
 // Snapshot Offline avec lastSeen : on parse OK mais PresenceDetail reste nil
 // (pas de devices[].titles[] actifs).
 func TestParsePresencePayload_DevicesFormat_OfflineLastSeen(t *testing.T) {
-	raw := json.RawMessage(`{"xuid":"2533274833178266","state":"Offline","lastSeen":{"deviceType":"Win32","titleId":"2043073184","titleName":"Halo Infinite","timestamp":"2026-04-13T21:10:46.8592228"}}`)
+	raw := json.RawMessage(`{"xuid":"2558964982616721","state":"Offline","lastSeen":{"deviceType":"Win32","titleId":"2043073184","titleName":"Halo Infinite","timestamp":"2026-04-13T21:10:46.8592228"}}`)
 	event, err := ParsePresencePayload(raw, "fallback")
 	if err != nil {
 		t.Fatalf("ParsePresencePayload() error = %v", err)

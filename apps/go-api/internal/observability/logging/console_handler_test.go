@@ -217,7 +217,7 @@ func TestConsoleHandler_NumericTypes(t *testing.T) {
 func TestConsoleHandler_WithAttrs(t *testing.T) {
 	var buf bytes.Buffer
 	logger := newConsoleHandler(&buf, ConsoleHandlerOptions{Level: slog.LevelInfo})
-	scoped := logger.With("module", "sync", "gamertag", "Madina97294")
+	scoped := logger.With("module", "sync", "gamertag", "Joueur90002")
 	scoped.Info("first")
 	scoped.Info("second")
 
@@ -230,7 +230,7 @@ func TestConsoleHandler_WithAttrs(t *testing.T) {
 		if !strings.Contains(line, "module=sync") {
 			t.Errorf("ligne %d sans module=sync: %q", i, line)
 		}
-		if !strings.Contains(line, "gamertag=Madina97294") {
+		if !strings.Contains(line, "gamertag=Joueur90002") {
 			t.Errorf("ligne %d sans gamertag: %q", i, line)
 		}
 	}

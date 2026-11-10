@@ -59,7 +59,7 @@ func main() {
 	dbPath := flag.String("db", "../../data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb", "shared DB")
 	envFile := flag.String("env-file", "../../.env.local", "chemin .env.local")
 	authFile := flag.String("auth-file", "../../data/auth/watcher_tokens.json", "watcher_tokens.json")
-	gamertag := flag.String("gamertag", "Chocoboflor", "gamertag porteur des tokens")
+	gamertag := flag.String("gamertag", "Joueur90001", "gamertag porteur des tokens")
 	perMonth := flag.Int("per-month", 5, "echantillon par mois")
 	since := flag.String("since", "2026-01", "premier mois inclus")
 	flag.Parse()

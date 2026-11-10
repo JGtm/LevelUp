@@ -3,10 +3,11 @@ package anonymisegamertags
 // registre_test.go — LE REGISTRE DES IDENTIFIANTS FICTIFS ET SON GARDE-RAIL.
 //
 // `libs/film/testdata/IDENTITES.tsv` liste les xuids fictifs qui tiennent lieu d identifiants de
-// joueurs dans les fixtures du decodeur. Le garde-rail tourne a chaque `go test` : un xuid de la
-// plage des xuids qui figure dans un fichier TEXTE de la brique sans etre au registre est un
-// identifiant que personne n a rendu fictif — le plus souvent un xuid reel recopie d un film ou de
-// la base dans un test.
+// joueurs dans les fixtures du decodeur, et `testdata/IDENTITES_APPS.tsv` (a cote de ce fichier) ceux
+// des fichiers suivis sous `apps/`. Le garde-rail tourne a chaque `go test` : un xuid de la plage des
+// xuids qui figure dans un fichier TEXTE de `libs/film` ou de `apps/` sans etre a l un des deux
+// registres est un identifiant que personne n a rendu fictif — le plus souvent un xuid reel recopie
+// d un film ou de la base dans un test. Les fichiers `.gz` sont lus decompresses.
 //
 // Il lit le decimal a seize chiffres, l hexadecimal a seize chiffres (avec ou sans `0x`) et l hexadecimal
 // a octets inverses. Il ne voit pas les octets des films ni les fichiers du codec des faits : pour
@@ -16,12 +17,14 @@ package anonymisegamertags
 
 import (
 	"bufio"
+	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io"
 	"io/fs"
 	"math/bits"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,20 +33,27 @@ import (
 	"levelup/go-api/internal/identitefictive"
 )
 
-// cheminRegistre : le registre, depuis la racine du depot.
+// cheminRegistre : le registre de la brique, depuis la racine du depot.
 var cheminRegistre = filepath.Join("libs", "film", "testdata", "IDENTITES.tsv")
+
+// cheminRegistreApps : le registre des fichiers suivis sous `apps/`.
+var cheminRegistreApps = filepath.Join("apps", "go-api", "cmd", "anonymise-gamertags", "testdata", "IDENTITES_APPS.tsv")
+
+// dossiersNonSuivis : dossiers que git ne suit pas (dependances, sorties de build) et que le
+// balayage de `apps/` ne lit pas.
+var dossiersNonSuivis = map[string]bool{".git": true, "node_modules": true, "target": true, "dist": true}
+
+// nombresHorsXuid : nombres de seize chiffres qui tombent dans la plage des xuids sans en etre, nommes
+// un a un avec leur raison. Une ligne n exempte que le nombre exact. Les parties decimales d un flottant
+// (`0.2857142857142857`) ne sont pas listees : le balayage les ignore, une suite de chiffres precedee de
+// `<chiffre>.` n etant pas un entier.
+var nombresHorsXuid = map[string]string{}
 
 // extensionsTexte : les fichiers que le garde-rail lit (les films, binaires, n en font pas partie).
 var extensionsTexte = map[string]bool{
 	".go": true, ".json": true, ".golden": true, ".txt": true, ".tsv": true, ".md": true,
 	".mod": true, ".sum": true,
 }
-
-var suiteDeChiffres = regexp.MustCompile(`[0-9]+`)
-
-// suiteHexa : une suite maximale de chiffres hexadecimaux (insensible a la casse) ; le prefixe `0x`
-// s en separe de lui-meme, `x` n etant pas un chiffre hexadecimal.
-var suiteHexa = regexp.MustCompile(`[0-9A-Fa-f]+`)
 
 // lireRegistre rend les xuids du registre, et refuse un registre incoherent : une ligne mal
 // formee, un xuid hors plage ou en double, un registre vide.
@@ -85,16 +95,64 @@ func lireRegistre(chemin string) (map[uint64]bool, error) {
 	return out, nil
 }
 
-// xuidsHorsRegistre parcourt les fichiers texte sous `racine` et rend, par fichier, les xuids de la
-// plage que le registre ne porte pas.
-func xuidsHorsRegistre(racine string, registre map[uint64]bool) (map[string][]string, error) {
+// extensionsTexteApps : les fichiers que le garde-rail lit sous `apps/` (code, donnees, manifestes).
+var extensionsTexteApps = map[string]bool{
+	".go": true, ".json": true, ".golden": true, ".txt": true, ".tsv": true, ".md": true, ".mod": true,
+	".sum": true, ".ts": true, ".tsx": true, ".js": true, ".mjs": true, ".toml": true, ".html": true,
+	".snap": true, ".rs": true, ".sh": true, ".ps1": true, ".yaml": true, ".yml": true, ".xml": true,
+	".css": true, ".py": true, ".svg": true, ".snapshot": true, ".out": true, ".lock": true,
+	".gitignore": true, ".gitattributes": true, ".npmrc": true, ".nsh": true, ".tanstack": true, "": true,
+}
+
+// extensionDuTexte rend l extension qui dit ce qu un fichier contient : celle du fichier, ou celle sous le
+// `.gz` pour un fichier compresse.
+func extensionDuTexte(chemin string) string {
+	if ext := filepath.Ext(chemin); ext != ".gz" {
+		return ext
+	}
+	return filepath.Ext(strings.TrimSuffix(chemin, ".gz"))
+}
+
+// lireTexte rend les octets que le garde-rail balaie pour `chemin`, ou nil si ce n est pas un texte :
+// un fichier `.gz` est decompresse et son extension interne decide (`x.json.gz` est un JSON).
+func lireTexte(chemin string, extensions map[string]bool) ([]byte, error) {
+	if !extensions[extensionDuTexte(chemin)] {
+		return nil, nil
+	}
+	brut, err := os.ReadFile(chemin) //nolint:gosec // chemin issu du parcours
+	if err != nil {
+		return nil, err
+	}
+	if filepath.Ext(chemin) != ".gz" {
+		return brut, nil
+	}
+	zr, err := gzip.NewReader(bytes.NewReader(brut))
+	if err != nil {
+		return nil, fmt.Errorf("%s : en-tete gzip : %w", chemin, err)
+	}
+	clair, err := io.ReadAll(zr)
+	if err != nil {
+		return nil, fmt.Errorf("%s : flux gzip : %w", chemin, err)
+	}
+	return clair, nil
+}
+
+// xuidsHorsRegistre parcourt les fichiers texte (`extensions`) sous `racine` et rend, par fichier, les
+// xuids de la plage que le registre ne porte pas.
+func xuidsHorsRegistre(racine string, registre map[uint64]bool, extensions map[string]bool) (map[string][]string, error) {
 	hors := map[string][]string{}
 	err := filepath.WalkDir(racine, func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || !extensionsTexte[filepath.Ext(p)] {
+		if err != nil {
 			return err
 		}
-		brut, err := os.ReadFile(p) //nolint:gosec // chemin issu du parcours
-		if err != nil {
+		if d.IsDir() {
+			if dossiersNonSuivis[d.Name()] {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		brut, err := lireTexte(p, extensions)
+		if err != nil || brut == nil {
 			return err
 		}
 		if l := xuidsHorsRegistreDuTexte(brut, registre); len(l) > 0 {
@@ -110,9 +168,34 @@ func xuidsHorsRegistre(racine string, registre map[uint64]bool) (map[string][]st
 // (prefixe `0x` ou non, casse indifferente), hexadecimal a octets inverses.
 func xuidsHorsRegistreDuTexte(brut []byte, registre map[uint64]bool) []string {
 	var hors []string
-	hors = appendSiHorsRegistre(hors, suiteDeChiffres.FindAll(brut, -1), 10, false, registre)
-	hors = appendSiHorsRegistre(hors, suiteHexa.FindAll(brut, -1), 16, false, registre)
-	return appendSiHorsRegistre(hors, suiteHexa.FindAll(brut, -1), 16, true, registre)
+	hors = appendSiHorsRegistre(hors, suitesDeSeize(brut, estChiffre, true), 10, false, registre)
+	hexa := suitesDeSeize(brut, estChiffreHexa, false)
+	hors = appendSiHorsRegistre(hors, hexa, 16, false, registre)
+	return appendSiHorsRegistre(hors, hexa, 16, true, registre)
+}
+
+// suitesDeSeize rend les suites MAXIMALES de seize caracteres de l alphabet (`dans`), dans l ordre du
+// texte ; une suite plus courte ou plus longue n est pas un xuid. Un seul passage, sans expression
+// reguliere : le garde-rail lit des dizaines de milliers de fichiers. Avec `entiere`, une suite qui
+// suit `<chiffre>.` est ecartee : c est la partie decimale d un flottant, pas un entier.
+func suitesDeSeize(brut []byte, dans func(byte) bool, entiere bool) [][]byte {
+	var out [][]byte
+	for debut := 0; debut < len(brut); {
+		if !dans(brut[debut]) {
+			debut++
+			continue
+		}
+		fin := debut + 1
+		for fin < len(brut) && dans(brut[fin]) {
+			fin++
+		}
+		partieDecimale := entiere && debut >= 2 && brut[debut-1] == '.' && estChiffre(brut[debut-2])
+		if fin-debut == 16 && !partieDecimale {
+			out = append(out, brut[debut:fin])
+		}
+		debut = fin
+	}
+	return out
 }
 
 // appendSiHorsRegistre ajoute a `hors` les suites de seize chiffres de la `base` dont la valeur
@@ -129,23 +212,52 @@ func appendSiHorsRegistre(hors []string, suites [][]byte, base int, inverse bool
 		if inverse {
 			v = bits.ReverseBytes64(v)
 		}
-		if identitefictive.DansLaPlage(v) && !registre[v] {
+		if identitefictive.DansLaPlage(v) && !registre[v] && nombresHorsXuid[string(m)] == "" {
 			hors = append(hors, string(m))
 		}
 	}
 	return hors
 }
 
-// TestLesXuidsDesFixturesSontFictifs : aucun xuid de la plage, hors registre, dans les fichiers
-// texte de `libs/film`.
-func TestLesXuidsDesFixturesSontFictifs(t *testing.T) {
-	registre, err := lireRegistre(filepath.Join(racineDuDepot, cheminRegistre))
+// lireRegistres rend l union des deux registres, et refuse un xuid inscrit dans les deux : chaque
+// fictif n a qu une seule ligne.
+func lireRegistres(racine string) (map[uint64]bool, error) {
+	film, err := lireRegistre(filepath.Join(racine, cheminRegistre))
 	if err != nil {
-		t.Fatalf("registre des identifiants fictifs : %v", err)
+		return nil, fmt.Errorf("%s : %w", filepath.ToSlash(cheminRegistre), err)
 	}
-	hors, err := xuidsHorsRegistre(filepath.Join(racineDuDepot, "libs", "film"), registre)
+	apps, err := lireRegistre(filepath.Join(racine, cheminRegistreApps))
 	if err != nil {
-		t.Fatal(err)
+		return nil, fmt.Errorf("%s : %w", filepath.ToSlash(cheminRegistreApps), err)
+	}
+	for v := range apps {
+		if film[v] {
+			return nil, fmt.Errorf("%d figure aux deux registres", v)
+		}
+		film[v] = true
+	}
+	return film, nil
+}
+
+// TestLesXuidsDesFixturesSontFictifs : aucun xuid de la plage, hors registres, dans les fichiers
+// texte de `libs/film` ni dans ceux de `apps/` (les `.gz` lus decompresses).
+func TestLesXuidsDesFixturesSontFictifs(t *testing.T) {
+	registre, err := lireRegistres(racineDuDepot)
+	if err != nil {
+		t.Fatalf("registres des identifiants fictifs : %v", err)
+	}
+	hors := map[string][]string{}
+	for _, cible := range []struct {
+		dossier    string
+		extensions map[string]bool
+	}{{filepath.Join("libs", "film"), extensionsTexte}, {"apps", extensionsTexteApps}} {
+		h, err := xuidsHorsRegistre(filepath.Join(racineDuDepot, cible.dossier), registre, cible.extensions)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for f, l := range h {
+			hors[f] = l
+		}
 	}
 	if len(hors) == 0 {
 		return
@@ -159,8 +271,10 @@ func TestLesXuidsDesFixturesSontFictifs(t *testing.T) {
 	for _, f := range fichiers {
 		fmt.Fprintf(&sb, "\n  %s : %s", f, strings.Join(hors[f], ", "))
 	}
-	t.Fatalf("%d fichier(s) portent un xuid hors de %s : un identifiant reel, ou un fictif a ajouter au "+
-		"registre (utiliser de preference un xuid qui y figure deja)%s", len(hors), filepath.ToSlash(cheminRegistre), sb.String())
+	t.Fatalf("%d fichier(s) portent un xuid hors de %s et de %s : un identifiant reel, ou un fictif a ajouter "+
+		"a l un des registres (utiliser de preference un xuid qui y figure deja), ou un nombre qui n est pas "+
+		"un xuid a nommer dans nombresHorsXuid avec sa raison%s", len(hors), filepath.ToSlash(cheminRegistre),
+		filepath.ToSlash(cheminRegistreApps), sb.String())
 }
 
 // TestLeGardeRailVoitUnXuidHorsRegistre : sur un dossier synthetique, un xuid absent du registre
@@ -182,7 +296,7 @@ func TestLeGardeRailVoitUnXuidHorsRegistre(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dossier, "x.bin"), []byte(dehors), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	hors, err := xuidsHorsRegistre(dossier, map[uint64]bool{v: true})
+	hors, err := xuidsHorsRegistre(dossier, map[uint64]bool{v: true}, extensionsTexte)
 	if err != nil || len(hors) != 1 {
 		t.Fatalf("hors registre : %v (%v)", hors, err)
 	}
@@ -194,5 +308,37 @@ func TestLeGardeRailVoitUnXuidHorsRegistre(t *testing.T) {
 		if strings.Join(l, " ") != strings.Join(attendu, " ") {
 			t.Fatalf("attendu %v, lu %v", attendu, l)
 		}
+	}
+}
+
+// TestLeGardeRailLitLesGzIgnoreLesFlottantsEtLesDossiersNonSuivis : un `.json.gz` est lu decompresse, une
+// partie decimale de seize chiffres n est pas un xuid, un dossier `node_modules` n est pas balaye, et un
+// nombre nomme dans la liste des non-xuids n est pas signale (lui seul).
+func TestLeGardeRailLitLesGzIgnoreLesFlottantsEtLesDossiersNonSuivis(t *testing.T) {
+	dossier := t.TempDir()
+	const reel, flottant = "2533274790395904", "0.2533274790395905"
+	base, _ := strconv.ParseUint(reel, 10, 64)
+	nomme := strconv.FormatUint(base+2, 10) // construit : un litteral serait signale par le balayage de ce fichier
+	var tampon bytes.Buffer
+	zw := gzip.NewWriter(&tampon)
+	if _, err := zw.Write([]byte(`{"xuid":"` + reel + `"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	ecrire(t, filepath.Join(dossier, "a.json.gz"), tampon.String())
+	ecrire(t, filepath.Join(dossier, "b.ts"), "const v = "+flottant+"\n")
+	ecrire(t, filepath.Join(dossier, "node_modules", "c.json"), reel)
+	ecrire(t, filepath.Join(dossier, "d.png.gz"), tampon.String())
+	ecrire(t, filepath.Join(dossier, "e.txt"), "nomme "+nomme+"\n")
+	nombresHorsXuid[nomme] = "nombre de test"
+	t.Cleanup(func() { delete(nombresHorsXuid, nomme) })
+	hors, err := xuidsHorsRegistre(dossier, map[uint64]bool{}, extensionsTexteApps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hors) != 1 || len(hors[filepath.ToSlash(filepath.Join(dossier, "a.json.gz"))]) != 1 {
+		t.Fatalf("attendu un seul signalement, dans a.json.gz : %v", hors)
 	}
 }

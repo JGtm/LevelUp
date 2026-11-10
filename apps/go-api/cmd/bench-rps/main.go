@@ -29,7 +29,7 @@
 //
 //	# Réel (consomme quota API)
 //	SPARTAN_TOKEN=... CLEARANCE_TOKEN=... go run ./cmd/bench-rps \
-//	    -mode real -xuid 2535469190789936 -rps 1,3,5
+//	    -mode real -xuid 2547408409520575 -rps 1,3,5
 package main
 
 import (
@@ -79,7 +79,7 @@ func main() {
 	mode := flag.String("mode", "sim", "Mode : 'sim' | 'real' (1 token) | 'real-multi' (N tokens concurrents).")
 	xuid := flag.String("xuid", "", "XUID joueur (mode real uniquement). Sans 'xuid()'.")
 	gamertagsRaw := flag.String("gamertags", "",
-		"Mode real-multi : liste 'NAME:XUID,NAME:XUID' (ex: 'JGTM:2533274823110022,CHOCOBOFLOR:2535469190789936'). "+
+		"Mode real-multi : liste 'NAME:XUID,NAME:XUID' (ex: 'JGTM:2603225103667623,JOUEUR90001:2547408409520575'). "+
 			"NAME est le gamertag (libellé), XUID la clé du MultiUserTokenStore.")
 	count := flag.Int("count", 25, "Nombre de matchs à fetcher (max 25).")
 	rpsListRaw := flag.String("rps", "1,3,5", "Liste RPS à bencher, séparés par virgule.")
@@ -108,7 +108,7 @@ func main() {
 		runRealMode(ctx, *xuid, *count, rpsList)
 	case "real-multi":
 		if *gamertagsRaw == "" {
-			fatalf("flag -gamertags requis en mode real-multi (ex: 'JGTM:2533274823110022,CHOCOBOFLOR:2535469190789936')")
+			fatalf("flag -gamertags requis en mode real-multi (ex: 'JGTM:2603225103667623,JOUEUR90001:2547408409520575')")
 		}
 		runRealMultiMode(ctx, *gamertagsRaw, *watcherTokensDir, *count, rpsList)
 	default:

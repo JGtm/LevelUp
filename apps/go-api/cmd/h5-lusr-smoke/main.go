@@ -23,7 +23,7 @@ import (
 	lusync "levelup/go-api/internal/sync"
 )
 
-const jgtmXUID = "2533274823110022"
+const jgtmXUID = "2603225103667623"
 
 func main() {
 	// Seams title-owned (classifiers LUSR et famille objectif, provider des

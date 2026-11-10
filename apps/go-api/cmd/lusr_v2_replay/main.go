@@ -11,7 +11,7 @@
 // Usage :
 //
 //	go run -tags cgo ./cmd/lusr_v2_replay --reset
-//	go run -tags cgo ./cmd/lusr_v2_replay --reset Madina97294 JGtm
+//	go run -tags cgo ./cmd/lusr_v2_replay --reset Joueur90002 JGtm
 //
 // Sortie : rapport markdown sur stdout.
 package main
@@ -37,16 +37,16 @@ import (
 const sharedDBPath = "data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb"
 
 // defaultPlayers — les 4 joueurs trackés actuellement.
-var defaultPlayers = []string{"Madina97294", "Chocoboflor", "JGtm", "XxDaemonGamerxX"}
+var defaultPlayers = []string{"Joueur90002", "Joueur90001", "JGtm", "Joueur90000000f"}
 
 // targets : cibles validées (memory/reference_lusr_target_levels.md).
 // Note : exprimées en termes qualitatifs ; le mapping vers la grille μ
 // native TrueSkill se fait à l'œil sur le rapport pour Phase 1d.
 var targets = map[string]string{
-	"Madina97294":     "fin Platine / début Diamant (joueur fort)",
-	"Chocoboflor":     "milieu/bas Or (joueur moyen)",
+	"Joueur90002":     "fin Platine / début Diamant (joueur fort)",
+	"Joueur90001":     "milieu/bas Or (joueur moyen)",
 	"JGtm":            "milieu/bas Or (joueur moyen)",
-	"XxDaemonGamerxX": "Bronze (joueur faible)",
+	"Joueur90000000f": "Bronze (joueur faible)",
 }
 
 func main() {

@@ -40,7 +40,7 @@ func TestMapMuToLegacyRating_ReferencePlayers(t *testing.T) {
 		{"Madina BTB Diamant I", 26.17, "Diamond", 1800},        // sub 1 → 1800
 		{"Madina Slayer Diamant I", 26.12, "Diamond", 1800},     // sub 1 → 1800
 		{"Madina Objectif Platine II", 25.75, "Platinum", 1700}, // 1600 + 1*100 = 1700
-		{"Chocoboflor Or IV", 23.81, "Gold", 1500},              // 1400 + 3/6*200 = 1500
+		{"Joueur90001 Or IV", 23.81, "Gold", 1500},              // 1400 + 3/6*200 = 1500
 		{"JGtm Or IV", 23.52, "Gold", 1500},                     // idem
 		{"XxDaemon Bronze VI", 20.38, "Bronze", 1167},           // 1000 + 5/6*200 ≈ 1167
 	}

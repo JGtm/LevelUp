@@ -385,7 +385,7 @@ describe('WatcherCard', () => {
         rta_connected: true,
         players: [{
           gamertag: 'JGtm',
-          xuid: '2533274823110022',
+          xuid: '2603225103667623',
           state: 'Idle',
           in_game: false,
           state_since: '',
@@ -404,7 +404,7 @@ describe('WatcherCard', () => {
         ...baseStatusData,
         daemon_running: true,
         rta_connected: true,
-        players: [{ gamertag: 'JGtm', xuid: '2533274823110022', state: 'Idle', in_game: false, state_since: '', state_duration: '' }],
+        players: [{ gamertag: 'JGtm', xuid: '2603225103667623', state: 'Idle', in_game: false, state_since: '', state_duration: '' }],
       }
       renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
       await waitFor(() => {

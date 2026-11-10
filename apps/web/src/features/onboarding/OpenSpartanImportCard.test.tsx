@@ -95,7 +95,7 @@ describe('OpenSpartanImportCard — happy path', () => {
           started_at: null,
           finished_at: null,
           result: {
-            detected_owner_xuid: '2533274823110022',
+            detected_owner_xuid: '2603225103667623',
             confidence: 'high',
             total_matches: 12,
             inserted_matches: 12,

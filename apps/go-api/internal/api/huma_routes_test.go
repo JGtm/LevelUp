@@ -150,7 +150,7 @@ func TestRegisterGamertagHuma_ContractPreserved(t *testing.T) {
 	}
 
 	// 200 — query param lié, items renvoyés, SANS $schema.
-	r := newRouter(&stubGamertagSearch{results: []domain.GamertagSearchResult{{Gamertag: "Chocoboflor", XUID: "1"}}})
+	r := newRouter(&stubGamertagSearch{results: []domain.GamertagSearchResult{{Gamertag: "Joueur90001", XUID: "1"}}})
 	rec := do(r, "/directory/gamertags/search?q=cho")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("200 attendu, got %d: %s", rec.Code, rec.Body.String())
@@ -167,7 +167,7 @@ func TestRegisterGamertagHuma_ContractPreserved(t *testing.T) {
 	if ok.Query != "cho" {
 		t.Errorf("query = %q, want cho (query param non lié)", ok.Query)
 	}
-	if len(ok.Items) != 1 || ok.Items[0].Gamertag != "Chocoboflor" {
+	if len(ok.Items) != 1 || ok.Items[0].Gamertag != "Joueur90001" {
 		t.Errorf("items = %+v", ok.Items)
 	}
 	if strings.Contains(rec.Body.String(), "$schema") {

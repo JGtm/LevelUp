@@ -5,7 +5,7 @@ import type { RelationAssists } from '@/lib/api/types'
 
 import { AssistExchangeCell } from './AssistExchangeCell'
 
-// JGtm × Chocoboflor (base du 08/10) : 476 assistances données, 658 reçues, sur les frags
+// JGtm × Joueur90001 (base du 08/10) : 476 assistances données, 658 reçues, sur les frags
 // officiels des matchs ensemble dont le film porte l'assistance.
 const ASSISTS: RelationAssists = {
   my_frags: 4247,

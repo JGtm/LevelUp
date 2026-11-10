@@ -20,7 +20,7 @@ import (
 
 func main() {
 	ownerGT := "JGtm"
-	targetXUID := "2535427927026623" // Nilton410 (inconnu, non local)
+	targetXUID := "2548036979862261" // Joueur903 (inconnu, non local)
 	if len(os.Args) > 1 {
 		ownerGT = os.Args[1]
 	}

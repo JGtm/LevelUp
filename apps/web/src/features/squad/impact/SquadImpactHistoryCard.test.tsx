@@ -17,7 +17,7 @@ describe('SquadImpactHistoryCard', () => {
     expect(within(card).getByText('Points d’impact par soirée et par rôle')).toBeInTheDocument()
     const rows = within(card).getAllByRole('list')
     expect(rows).toHaveLength(3)
-    expect(rows[0].textContent).toBe('Net de la soirée :JGtmChocoboflorMadina97294')
+    expect(rows[0].textContent).toBe('Net de la soirée :JGtmJoueur90001Joueur90002')
     expect(within(rows[1]).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
       'Finisseur +2', 'Premier sang +2', 'Héros silencieux +1,5', 'Bourreau +1',
     ])

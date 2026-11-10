@@ -147,7 +147,7 @@ export function parseFilterSpecFromSearch(
     spec.outcome = outcome
   }
   // with_player : XUID numérique uniquement (validation backend identique).
-  // Format Halo XUID : entier décimal jusqu'à 32 chars (ex: 2533274791785593).
+  // Format Halo XUID : entier décimal jusqu'à 32 chars (ex: 2561451715135583).
   const withPlayer = get('with_player')
   if (withPlayer && /^\d{1,32}$/.test(withPlayer)) {
     spec.with_player_xuid = withPlayer

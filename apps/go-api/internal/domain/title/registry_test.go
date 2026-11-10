@@ -173,8 +173,8 @@ func TestPathResolver_MetadataDBPath(t *testing.T) {
 func TestPathResolver_PlayerDBPath(t *testing.T) {
 	r := NewRegistry()
 	pr := NewPathResolver("/repo", r)
-	got := pr.PlayerDBPath("halo_infinite", "Chocoboflor")
-	want := filepath.Join("/repo", "data", "titles", "halo_infinite", "players", "Chocoboflor", "stats.duckdb")
+	got := pr.PlayerDBPath("halo_infinite", "Joueur90001")
+	want := filepath.Join("/repo", "data", "titles", "halo_infinite", "players", "Joueur90001", "stats.duckdb")
 	if got != want {
 		t.Errorf("PlayerDBPath: got %q, want %q", got, want)
 	}
@@ -183,8 +183,8 @@ func TestPathResolver_PlayerDBPath(t *testing.T) {
 func TestPathResolver_PlayerMediaAudioConfigPath(t *testing.T) {
 	r := NewRegistry()
 	pr := NewPathResolver("/repo", r)
-	got := pr.PlayerMediaAudioConfigPath("halo_infinite", "Chocoboflor")
-	want := filepath.Join("/repo", "data", "titles", "halo_infinite", "players", "Chocoboflor", "media_audio_config.json")
+	got := pr.PlayerMediaAudioConfigPath("halo_infinite", "Joueur90001")
+	want := filepath.Join("/repo", "data", "titles", "halo_infinite", "players", "Joueur90001", "media_audio_config.json")
 	if got != want {
 		t.Errorf("PlayerMediaAudioConfigPath: got %q, want %q", got, want)
 	}

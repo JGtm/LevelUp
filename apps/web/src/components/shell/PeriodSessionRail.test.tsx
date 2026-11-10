@@ -181,7 +181,7 @@ describe('PeriodSessionRail', () => {
       <PeriodSessionRail
         sessionCount={(label) =>
           label === '06/04 21h24'
-            ? { shown: 4, total: 7, hint: <span>27 août — Aquarius : écarté, Nilton410 était dans ton équipe</span> }
+            ? { shown: 4, total: 7, hint: <span>27 août — Aquarius : écarté, Joueur903 était dans ton équipe</span> }
             : undefined
         }
       />,
@@ -190,7 +190,7 @@ describe('PeriodSessionRail', () => {
     expect(screen.queryByRole('tooltip')).toBeNull()
 
     fireEvent.mouseEnter(screen.getByText(/4 sur 7/))
-    expect(screen.getByRole('tooltip')).toHaveTextContent('Nilton410 était dans ton équipe')
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Joueur903 était dans ton équipe')
   })
 
   it('sessionCount SANS hint : aucune info-bulle, rendu inchangé (pas de survol parasite)', () => {

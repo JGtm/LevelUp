@@ -9,8 +9,8 @@
 //
 // Usage :
 //
-//	go run ./cmd/purge_player_media --player Madina97294
-//	go run ./cmd/purge_player_media --player Madina97294 --dry-run
+//	go run ./cmd/purge_player_media --player Joueur90002
+//	go run ./cmd/purge_player_media --player Joueur90002 --dry-run
 package main
 
 import (
@@ -27,7 +27,7 @@ import (
 )
 
 func main() {
-	playerSlug := flag.String("player", "", "slug du joueur (ex: Madina97294) — obligatoire")
+	playerSlug := flag.String("player", "", "slug du joueur (ex: Joueur90002) — obligatoire")
 	dryRun := flag.Bool("dry-run", false, "affiche les counts sans supprimer")
 	flag.Parse()
 

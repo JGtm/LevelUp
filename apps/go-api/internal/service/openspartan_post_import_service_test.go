@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	postImportTestXUID     = "2533274823110022"
+	postImportTestXUID     = "2603225103667623"
 	postImportTestGamertag = "TestOwner"
 )
 

@@ -6,7 +6,7 @@
 // Un ratio Halo Infinite avec denominateur=0 (deaths=0 sur KDR, shots_fired=0
 // sur accuracy) produit NaN ou Inf en Go. Or json.Marshal rejette ces valeurs
 // avec `json: unsupported value: NaN` — bug observe en prod 2026-05-24 sur
-// 2 matchs/cycle de Chocoboflor + 1 match XxDaemonGamerxX, droppes
+// 2 matchs/cycle de Joueur90001 + 1 match Joueur90000000f, droppes
 // silencieusement avant insertion DB.
 //
 // Strategie : sanitize defensif au point de soumission a la queue (Submit())

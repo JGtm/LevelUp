@@ -44,7 +44,7 @@ func main() {
 	matchID := flag.String("match", defaultMatchID, "Match ID à analyser")
 	envFile := flag.String("env-file", "../../.env.local", "Chemin .env.local (depuis apps/go-api/)")
 	authFile := flag.String("auth-file", "../../data/auth/watcher_tokens.json", "watcher_tokens.json")
-	gamertag := flag.String("gamertag", "Chocoboflor", "Gamertag pour charger les tokens")
+	gamertag := flag.String("gamertag", "Joueur90001", "Gamertag pour charger les tokens")
 	verbose := flag.Bool("verbose", true, "Dump fire events détaillés + agrégat par arme/joueur")
 	maxEventsPerChunk := flag.Int("max-events", 5, "Nombre max de fire events à afficher par chunk en mode verbose")
 	flag.Parse()

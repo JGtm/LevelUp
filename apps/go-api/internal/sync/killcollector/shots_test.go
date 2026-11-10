@@ -174,8 +174,8 @@ func TestReferenceAbsenteNEstPasZero(t *testing.T) {
 	// Indice 0 -> xuid connu AVEC reference ; indice 1 -> xuid inconnu du film, donc sans ligne.
 	// Ici aucun xuid n est resolu (le chunk ne porte aucun motif de xuid) : les deux joueurs
 	// sortent SANS xuid, donc SANS reference.
-	batch := BuildWeaponShotsBatch("m1", [][]byte{chunk}, []string{"2533274792395366"},
-		map[string]int{"2533274792395366": 0}, nil)
+	batch := BuildWeaponShotsBatch("m1", [][]byte{chunk}, []string{"2697935320551236"},
+		map[string]int{"2697935320551236": 0}, nil)
 
 	for _, p := range batch.Players {
 		if p.XUID == "" && p.ShotsFired != nil {
@@ -191,7 +191,7 @@ func TestReferenceAbsenteNEstPasZero(t *testing.T) {
 // motif portent l indice. Le test ecrit exactement cela et exige de le relire — c est la seule
 // facon de prouver que l on ne lit pas l ordre de la base par accident.
 func TestResolutionIndiceLitLesCinqBitsAvantLeMotif(t *testing.T) {
-	const xuid = "2533274792395366"
+	const xuid = "2697935320551236"
 	const indice = 19
 
 	var b bitBuf
@@ -211,7 +211,7 @@ func TestResolutionIndiceLitLesCinqBitsAvantLeMotif(t *testing.T) {
 // Trancher au hasard publierait les tirs d un joueur sous le nom d un autre. On n en garde
 // AUCUN, et l indice sort sans xuid.
 func TestResolutionRefuseDeTrancherEntreDeuxXuids(t *testing.T) {
-	const x1, x2 = "2533274792395366", "2533274824966873"
+	const x1, x2 = "2697935320551236", "2561509825159198"
 	const indice = 9
 
 	var b bitBuf
@@ -238,7 +238,7 @@ func TestResolutionRefuseDeTrancherEntreDeuxXuids(t *testing.T) {
 // test confronte les deux implementations sur des flux ou les motifs sont places a des positions
 // non alignees, en plusieurs exemplaires et dans plusieurs chunks.
 func TestRechercheDeMotifsEquivautALaVersionNaive(t *testing.T) {
-	const x1, x2, x3 = "2533274792395366", "2533274824966873", "2535419139267382"
+	const x1, x2, x3 = "2697935320551236", "2561509825159198", "2739909164114739"
 
 	// Trois chunks : le premier porte x1 (deux fois, indices differents — la PREMIERE gagne),
 	// le deuxieme x2, le troisieme x1 encore (ne doit rien changer) et x3.

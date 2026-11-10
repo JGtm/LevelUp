@@ -152,7 +152,7 @@ describe('playerCountersAt — publié, ou pas publié : jamais zéro par défau
     teams: null,
     players: [
       {
-        xuid: '2533274815845110',
+        xuid: '2742063072864889',
         score: { rounds: null, total: [{ t: 1000, v: 500 }, { t: 4408, v: 1520 }] },
         kills: { rounds: null, total: [{ t: 1000, v: 4 }, { t: 4203, v: 12 }] },
         deaths: { rounds: null, total: [{ t: 4796, v: 10 }] },
@@ -162,7 +162,7 @@ describe('playerCountersAt — publié, ou pas publié : jamais zéro par défau
   })
 
   it('rend les quatre compteurs au frame courant', () => {
-    expect(playerCountersAt(slayer, '2533274815845110', 4408)).toEqual({
+    expect(playerCountersAt(slayer, '2742063072864889', 4408)).toEqual({
       score: 1520,
       kills: 12,
       deaths: 0,
@@ -171,7 +171,7 @@ describe('playerCountersAt — publié, ou pas publié : jamais zéro par défau
   })
 
   it('lit chaque série sur SON dernier palier, pas sur celui d’une autre', () => {
-    expect(playerCountersAt(slayer, '2533274815845110', 1500)).toEqual({
+    expect(playerCountersAt(slayer, '2742063072864889', 1500)).toEqual({
       score: 500,
       kills: 4,
       deaths: 0,
@@ -181,8 +181,8 @@ describe('playerCountersAt — publié, ou pas publié : jamais zéro par défau
 
   it('rend NULL pour un joueur non publié — surtout pas un objet de zéros', () => {
     // Les 2 joueurs du témoin Slayer sans compteurs, et tout un mode (Oddball 0/32).
-    expect(playerCountersAt(slayer, '2533274826120416', 4408)).toBeNull()
-    expect(playerCountersAt(undefined, '2533274815845110', 4408)).toBeNull()
+    expect(playerCountersAt(slayer, '2633090228607708', 4408)).toBeNull()
+    expect(playerCountersAt(undefined, '2742063072864889', 4408)).toBeNull()
   })
 })
 

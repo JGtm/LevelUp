@@ -114,7 +114,7 @@ func TestGolden_FiltersResolveAll_Structure(t *testing.T) {
 }
 
 func TestGolden_CareerPage_Structure(t *testing.T) {
-	m := loadGolden(t, "career_page_chocoboflor.json")
+	m := loadGolden(t, "career_page_joueur90001.json")
 	assertKeyExists(t, m, "summary")
 }
 

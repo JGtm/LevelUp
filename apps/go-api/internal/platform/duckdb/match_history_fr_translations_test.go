@@ -72,7 +72,7 @@ func TestApplyMatchHistoryFRTranslations_HandlesCorruptedAssetTranslations(t *te
 	meta := setupMetadataWithModeTranslations(t)
 	pdb := &PlayerDB{Metadata: meta}
 
-	// Cas reproduisant le bug observé sur Chocoboflor :
+	// Cas reproduisant le bug observé sur Joueur90001 :
 	corruptedID := "bd1457cc-corrupted-pair"
 	pairNameOK := "Arena:CTF on Aquarius"
 	pairNameFROK := pairNameOK // COALESCE(NULL, EN)

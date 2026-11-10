@@ -165,7 +165,7 @@ func TestList_PorteLeXUID(t *testing.T) {
 	if _, err := s.Create("Bob", testPass2, domain.RoleUser); err != nil {
 		t.Fatalf("Create Bob: %v", err)
 	}
-	if err := s.LinkIdentity(testUser, "AliceGT", "2533274796795729"); err != nil {
+	if err := s.LinkIdentity(testUser, "AliceGT", "2676423891261051"); err != nil {
 		t.Fatalf("LinkIdentity: %v", err)
 	}
 
@@ -185,8 +185,8 @@ func TestList_PorteLeXUID(t *testing.T) {
 	if linked == nil || unlinked == nil {
 		t.Fatalf("liste incomplète : %+v", list)
 	}
-	if linked.XUID != "2533274796795729" {
-		t.Errorf("xuid = %q, want 2533274796795729", linked.XUID)
+	if linked.XUID != "2676423891261051" {
+		t.Errorf("xuid = %q, want 2676423891261051", linked.XUID)
 	}
 	if linked.Gamertag != "AliceGT" {
 		t.Errorf("gamertag = %q, want AliceGT", linked.Gamertag)

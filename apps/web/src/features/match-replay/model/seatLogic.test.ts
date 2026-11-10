@@ -212,27 +212,27 @@ describe('buildSeats — la place vient du document', () => {
 
   /**
    * LE TÉMOIN `859da825` : « 343 Forge Lord » (bot, index 8, SANS équipe) tient l'index 8, puis
-   * SplinterCell958 (humain, index 9, `seatSource: index`, équipe 0) joue jusqu'à la fin. Seule
+   * Joueur90000000a (humain, index 9, `seatSource: index`, équipe 0) joue jusqu'à la fin. Seule
    * l'ABSENCE D'ÉQUIPE retire une tuile : la provenance `index` (aucune place lue) n'en retire
-   * aucune — masquer SplinterCell958 effacerait un joueur qui joue sur la carte.
+   * aucune — masquer Joueur90000000a effacerait un joueur qui joue sur la carte.
    */
   it('une entrée `seatSource: index` AVEC équipe garde sa place ; seule l’absence d’équipe retire une tuile', () => {
     const seats = buildSeats(
       [
         joueur('Titulaire', 't0', [vie(0, FIN)]),
         joueur('bot:343 Forge Lord [bot]', 't0', [vie(500, 560)]),
-        joueur('SplinterCell958', 't0', [vie(610, FIN)]),
+        joueur('Joueur90000000a', 't0', [vie(610, FIN)]),
       ],
       doc([
         { xuid: 'Titulaire', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0, presence: [pr(0, FIN)] },
         { xuid: '', bot: true, name: '343 Forge Lord [bot]', filmIndex: 8, seat: 8, seatSource: 'index', presence: [pr(500, 600)] },
-        { xuid: 'SplinterCell958', filmIndex: 9, seat: 9, seatSource: 'index', team: 0, presence: [pr(601, FIN)] },
+        { xuid: 'Joueur90000000a', filmIndex: 9, seat: 9, seatSource: 'index', team: 0, presence: [pr(601, FIN)] },
       ]),
     )
     expect(seats.map((s) => s.key)).toEqual(['siege:0:0', 'siege:0:9'])
     const place9 = seats.find((s) => s.seat === 9)!
-    expect(montre(place9, 700)).toBe('SplinterCell958:present')
-    expect(montre(place9, 605)).toBe('SplinterCell958:pasEncoreApparu')
+    expect(montre(place9, 700)).toBe('Joueur90000000a:present')
+    expect(montre(place9, 605)).toBe('Joueur90000000a:pasEncoreApparu')
   })
 
   it('sans aucun camp du film, AUCUNE place : la feuille de match ne regroupe plus', () => {
@@ -265,9 +265,9 @@ describe('buildSeats — la place vient du document', () => {
 })
 
 /**
- * LE TÉMOIN `43716616` (4v4, mesure du superviseur du 2026-10-06) : Slowpoke6743 (équipe 0,
+ * LE TÉMOIN `43716616` (4v4, mesure du superviseur du 2026-10-06) : Joueur900007 (équipe 0,
  * place 5) part — certain jusqu'à 118, peut-être là jusqu'à 317 ; « 343 Sandwolf [bot] » est
- * déclaré de 248 à 281 SANS équipe (index 8, `seatSource: index`) ; KernelPanic10 (équipe 0)
+ * déclaré de 248 à 281 SANS équipe (index 8, `seatSource: index`) ; Joueur9000002 (équipe 0)
  * arrive à 318 et prend la place 5. Tant que la source ne donne pas d'équipe au bot, il ne rend
  * RIEN — ni tuile, ni troisième colonne — et la place 5 reste celle d'Eagle.
  */
@@ -275,16 +275,16 @@ describe('témoin 43716616 : le bot bouche-trou sans équipe ne rend rien', () =
   const fin = 2999
   const seats = buildSeats(
     [
-      joueur('Slowpoke6743', 't0', [vie(0, 118)]),
+      joueur('Joueur900007', 't0', [vie(0, 118)]),
       joueur('bot:343 Sandwolf [bot]', null, []),
-      joueur('KernelPanic10', 't0', [vie(330, fin)]),
+      joueur('Joueur9000002', 't0', [vie(330, fin)]),
       joueur('Titulaire', 't1', [vie(0, fin)]),
     ],
     doc(
       [
-        { xuid: 'Slowpoke6743', filmIndex: 5, seat: 5, seatSource: 'lu', team: 0, presence: [pr(0, 118, 317)] },
+        { xuid: 'Joueur900007', filmIndex: 5, seat: 5, seatSource: 'lu', team: 0, presence: [pr(0, 118, 317)] },
         { xuid: '', bot: true, name: '343 Sandwolf [bot]', filmIndex: 8, seat: 8, seatSource: 'index', presence: [pr(248, 281)] },
-        { xuid: 'KernelPanic10', filmIndex: 9, seat: 5, seatSource: 'tirs', team: 0, presence: [pr(318, fin)] },
+        { xuid: 'Joueur9000002', filmIndex: 9, seat: 5, seatSource: 'tirs', team: 0, presence: [pr(318, fin)] },
         { xuid: 'Titulaire', filmIndex: 1, seat: 1, seatSource: 'lu', team: 1, presence: [pr(0, fin)] },
       ],
       fin + 1,
@@ -298,12 +298,12 @@ describe('témoin 43716616 : le bot bouche-trou sans équipe ne rend rien', () =
     expect(seats.flatMap((s) => s.occupants.map((o) => o.player.xuid))).not.toContain('bot:343 Sandwolf [bot]')
   })
 
-  it('la place 5 chaîne Slowpoke6743 puis KernelPanic10 ; pendant la déclaration du bot, elle reste à Slowpoke (jusqu’à `toMax`)', () => {
+  it('la place 5 chaîne Joueur900007 puis Joueur9000002 ; pendant la déclaration du bot, elle reste à Slowpoke (jusqu’à `toMax`)', () => {
     const place5 = seats.find((s) => s.seat === 5)!
-    expect(place5.occupants.map((o) => o.player.xuid)).toEqual(['Slowpoke6743', 'KernelPanic10'])
-    expect(montre(place5, 260)).toBe('Slowpoke6743:present')
-    expect(montre(place5, 318)).toBe('KernelPanic10:pasEncoreApparu')
-    expect(montre(place5, 330)).toBe('KernelPanic10:present')
+    expect(place5.occupants.map((o) => o.player.xuid)).toEqual(['Joueur900007', 'Joueur9000002'])
+    expect(montre(place5, 260)).toBe('Joueur900007:present')
+    expect(montre(place5, 318)).toBe('Joueur9000002:pasEncoreApparu')
+    expect(montre(place5, 330)).toBe('Joueur9000002:present')
   })
 })
 
@@ -374,30 +374,30 @@ describe('témoin b1ad85eb : quatre places contre quatre, les bons occupants', (
   const tout = pr(0, fin)
   const eagle = [
     { xuid: 'MONEY', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0, presence: [tout] },
-    { xuid: 'Namikidori', filmIndex: 3, seat: 3, seatSource: 'lu', team: 0, presence: [tout] },
-    { xuid: 'DRghie', filmIndex: 6, seat: 6, seatSource: 'lu', team: 0, presence: [tout] },
+    { xuid: 'Joueur9007', filmIndex: 3, seat: 3, seatSource: 'lu', team: 0, presence: [tout] },
+    { xuid: 'J90002', filmIndex: 6, seat: 6, seatSource: 'lu', team: 0, presence: [tout] },
     { xuid: 'WNBA', filmIndex: 5, seat: 5, seatSource: 'lu', team: 0 }, // parti avant le coup d'envoi
     { xuid: '', name: 'Hundy', bot: true, filmIndex: 8, seat: 5, seatSource: 'apparie', team: 0, presence: [pr(0, 272)] },
     { xuid: 'Hanover', filmIndex: 9, seat: 5, seatSource: 'apparie', team: 0, presence: [pr(412, 662, 773)] },
     { xuid: '', name: 'PardonMy', bot: true, filmIndex: 8, seat: 5, seatSource: 'apparie', team: 0, presence: [pr(774, 830)] },
-    { xuid: 'Claudors', filmIndex: 10, seat: 5, seatSource: 'tirs', team: 0, presence: [pr(1013, fin)] },
+    { xuid: 'Joueur92', filmIndex: 10, seat: 5, seatSource: 'tirs', team: 0, presence: [pr(1013, fin)] },
   ]
   const cobra = [
     { xuid: 'FairyNectar', filmIndex: 1, seat: 1, seatSource: 'lu', team: 1, presence: [pr(0, 3117, 3154)] },
     { xuid: 'Madina', filmIndex: 2, seat: 2, seatSource: 'lu', team: 1, presence: [tout] },
-    { xuid: 'Chocoboflor', filmIndex: 4, seat: 4, seatSource: 'lu', team: 1, presence: [tout] },
+    { xuid: 'Joueur90001', filmIndex: 4, seat: 4, seatSource: 'lu', team: 1, presence: [tout] },
     { xuid: 'JGtm', filmIndex: 7, seat: 7, seatSource: 'lu', team: 1, presence: [tout] },
     { xuid: '', name: 'BrewDog', bot: true, filmIndex: 8, seat: 1, seatSource: 'apparie', team: 1, presence: [pr(3155, fin)] },
   ]
   const joueurs = [
-    ...['MONEY', 'Namikidori', 'DRghie'].map((x) => joueur(x, 't0', [vie(0, fin)])),
+    ...['MONEY', 'Joueur9007', 'J90002'].map((x) => joueur(x, 't0', [vie(0, fin)])),
     joueur('WNBA', 't0', []),
     joueur('bot:Hundy', 't0', [vie(0, 270)]),
     joueur('Hanover', 't0', [vie(661, 662)]),
     joueur('bot:PardonMy', 't0', [vie(774, 829)]),
-    joueur('Claudors', 't0', [vie(1184, fin)]),
+    joueur('Joueur92', 't0', [vie(1184, fin)]),
     joueur('FairyNectar', 't1', [vie(0, 3117)]),
-    ...['Madina', 'Chocoboflor', 'JGtm'].map((x) => joueur(x, 't1', [vie(0, fin)])),
+    ...['Madina', 'Joueur90001', 'JGtm'].map((x) => joueur(x, 't1', [vie(0, fin)])),
     joueur('bot:BrewDog', 't1', [vie(3236, fin)]),
   ]
   const groupes = groupSeatsByTeam(buildSeats(joueurs, doc([...eagle, ...cobra], fin + 1)))
@@ -414,15 +414,15 @@ describe('témoin b1ad85eb : quatre places contre quatre, les bons occupants', (
     expect(groupes.map((g) => g.seats.length)).toEqual([4, 4])
   })
 
-  it('la place 5 d’Eagle chaîne Hundy, Hanover Cat, PardonMy puis Claudors', () => {
+  it('la place 5 d’Eagle chaîne Hundy, Joueur90007, PardonMy puis Joueur92', () => {
     const place5 = groupes[0].seats.find((s) => s.seat === 5)!
     expect(place5.occupants.map((o) => o.player.xuid)).toEqual([
-      'bot:Hundy', 'Hanover', 'bot:PardonMy', 'Claudors',
+      'bot:Hundy', 'Hanover', 'bot:PardonMy', 'Joueur92',
     ])
-    expect(montre(place5, 300)).toBe('vide') // Hundy retiré, Hanover Cat pas encore arrivé
+    expect(montre(place5, 300)).toBe('vide') // Hundy retiré, Joueur90007 pas encore arrivé
     expect(montre(place5, 500)).toBe('Hanover:pasEncoreApparu')
     expect(montre(place5, 900)).toBe('vide')
-    expect(montre(place5, 1100)).toBe('Claudors:pasEncoreApparu')
+    expect(montre(place5, 1100)).toBe('Joueur92:pasEncoreApparu')
   })
 
   it('la place 1 de Cobra : FairyNectar puis Brew Dog, jamais les deux', () => {
@@ -441,9 +441,9 @@ describe('témoin b1ad85eb : quatre places contre quatre, les bons occupants', (
   })
 
   it('les bons occupants aux trois instants du témoin', () => {
-    expect(affiches(0, 227)).toEqual(['DRghie', 'MONEY', 'Namikidori', 'bot:Hundy'])
-    expect(affiches(0, 1567)).toEqual(['Claudors', 'DRghie', 'MONEY', 'Namikidori'])
-    expect(affiches(1, 4067)).toEqual(['Chocoboflor', 'JGtm', 'Madina', 'bot:BrewDog'])
+    expect(affiches(0, 227)).toEqual(['J90002', 'Joueur9007', 'MONEY', 'bot:Hundy'])
+    expect(affiches(0, 1567)).toEqual(['J90002', 'Joueur9007', 'Joueur92', 'MONEY'])
+    expect(affiches(1, 4067)).toEqual(['JGtm', 'Joueur90001', 'Madina', 'bot:BrewDog'])
   })
 })
 

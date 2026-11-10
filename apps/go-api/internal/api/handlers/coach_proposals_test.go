@@ -116,7 +116,7 @@ func TestListProposals_HappyPath(t *testing.T) {
 	srv := httptest.NewServer(mountHandler(svc, "u1", nil))
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "/api/v1/players/madina97294/coach/proposals")
+	resp, err := http.Get(srv.URL + "/api/v1/players/joueur90002/coach/proposals")
 	if err != nil {
 		t.Fatalf("GET: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestListProposals_FiltersByStatus(t *testing.T) {
 	srv := httptest.NewServer(mountHandler(svc, "u1", nil))
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "/api/v1/players/madina97294/coach/proposals?status=pending")
+	resp, err := http.Get(srv.URL + "/api/v1/players/joueur90002/coach/proposals?status=pending")
 	if err != nil {
 		t.Fatalf("GET: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestAcceptProposal_HappyPath(t *testing.T) {
 	srv := httptest.NewServer(mountHandler(svc, "u1", nil))
 	defer srv.Close()
 
-	resp, err := http.Post(srv.URL+"/api/v1/players/madina97294/coach/proposals/p1/accept", "", nil)
+	resp, err := http.Post(srv.URL+"/api/v1/players/joueur90002/coach/proposals/p1/accept", "", nil)
 	if err != nil {
 		t.Fatalf("POST: %v", err)
 	}
@@ -199,7 +199,7 @@ func TestAcceptProposal_NotFound_Returns404(t *testing.T) {
 	srv := httptest.NewServer(mountHandler(svc, "u1", nil))
 	defer srv.Close()
 
-	resp, err := http.Post(srv.URL+"/api/v1/players/madina97294/coach/proposals/missing/accept", "", nil)
+	resp, err := http.Post(srv.URL+"/api/v1/players/joueur90002/coach/proposals/missing/accept", "", nil)
 	if err != nil {
 		t.Fatalf("POST: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestAcceptProposal_AlreadyAccepted_Returns409(t *testing.T) {
 	srv := httptest.NewServer(mountHandler(svc, "u1", nil))
 	defer srv.Close()
 
-	resp, err := http.Post(srv.URL+"/api/v1/players/madina97294/coach/proposals/p1/accept", "", nil)
+	resp, err := http.Post(srv.URL+"/api/v1/players/joueur90002/coach/proposals/p1/accept", "", nil)
 	if err != nil {
 		t.Fatalf("POST: %v", err)
 	}
@@ -234,7 +234,7 @@ func TestDismissProposal_HappyPath(t *testing.T) {
 	srv := httptest.NewServer(mountHandler(svc, "u1", nil))
 	defer srv.Close()
 
-	resp, err := http.Post(srv.URL+"/api/v1/players/madina97294/coach/proposals/p1/dismiss", "", nil)
+	resp, err := http.Post(srv.URL+"/api/v1/players/joueur90002/coach/proposals/p1/dismiss", "", nil)
 	if err != nil {
 		t.Fatalf("POST: %v", err)
 	}
@@ -251,7 +251,7 @@ func TestHandler_NilService_Returns503(t *testing.T) {
 	srv := httptest.NewServer(mountHandler(nil, "", nil))
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "/api/v1/players/madina97294/coach/proposals")
+	resp, err := http.Get(srv.URL + "/api/v1/players/joueur90002/coach/proposals")
 	if err != nil {
 		t.Fatalf("GET: %v", err)
 	}

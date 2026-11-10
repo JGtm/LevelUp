@@ -184,7 +184,7 @@ func readEventsLoadedFlag(t *testing.T, sdb *sql.DB, matchID string) bool {
 // pour la passe suivante (events_loaded FALSE).
 func TestEventsConvergence_NoFilm_DefinitiveVsRetry(t *testing.T) {
 	pdb, sdb := openEventsBackfillDBs(t)
-	xuid := "2533274823110022"
+	xuid := "2603225103667623"
 	old := time.Now().UTC().Add(-60 * 24 * time.Hour) // > fenêtre 30j → définitif
 	recent := time.Now().UTC().Add(-2 * time.Minute)  // récent → retry
 	seedEventsBackfillMatch(t, sdb, "m_old", xuid, old)
@@ -216,7 +216,7 @@ func TestEventsConvergence_NoFilm_DefinitiveVsRetry(t *testing.T) {
 // boucle sans signal. Le compteur est ce qui distingue les deux.
 func TestEventsConvergence_FetchError_Skipped(t *testing.T) {
 	pdb, sdb := openEventsBackfillDBs(t)
-	xuid := "2533274823110022"
+	xuid := "2603225103667623"
 	seedEventsBackfillMatch(t, sdb, "m_err", xuid, time.Now().UTC().Add(-10*24*time.Hour))
 
 	ctx := t.Context()
@@ -248,7 +248,7 @@ func TestEventsConvergence_FetchError_Skipped(t *testing.T) {
 // ce trafic réseau perpétuel invisible ; le compteur est ce qui le distingue.
 func TestEventsConvergence_MarkNoFilmFailure_Counted(t *testing.T) {
 	pdb, sdb := openEventsBackfillDBsWithRegistry(t, eventsBackfillRegistryDDLMarkFails)
-	xuid := "2533274823110022"
+	xuid := "2603225103667623"
 	seedEventsBackfillMatch(t, sdb, "m_old", xuid, time.Now().UTC().Add(-60*24*time.Hour))
 
 	ctx := t.Context()
@@ -280,7 +280,7 @@ func TestEventsConvergence_MarkNoFilmFailure_Counted(t *testing.T) {
 // sans signal.
 func TestEventsConvergence_MarkEventsEmptyFailure_Counted(t *testing.T) {
 	pdb, sdb := openEventsBackfillDBsWithRegistry(t, eventsBackfillRegistryDDLMarkFails)
-	xuid := "2533274823110022"
+	xuid := "2603225103667623"
 	seedEventsBackfillMatch(t, sdb, "m_empty", xuid, time.Now().UTC().Add(-60*24*time.Hour))
 
 	ctx := t.Context()
@@ -316,7 +316,7 @@ func TestEventsConvergence_HappyPath_WritesEventsAndConverges(t *testing.T) {
 		t.Skipf("fixture film absente: %v", err)
 	}
 	pdb, sdb := openEventsBackfillDBs(t)
-	xuid := "2533274823110022"
+	xuid := "2603225103667623"
 	seedEventsBackfillMatch(t, sdb, "m_film", xuid, time.Now().UTC().Add(-5*24*time.Hour))
 
 	fetcher := &mockHLChunkFetcher{resp: map[string]hlChunkResp{

@@ -143,7 +143,7 @@ func TestEnqueueAll_ReEnfileUnArtefactAppauvri(t *testing.T) {
 		matchID: appauvri,
 		facts: port.MatchFacts{
 			GameVariantName: "CTF:Arena",
-			Players:         []port.MatchPlayerFact{{XUID: "2533274819954312", Kills: 12}},
+			Players:         []port.MatchPlayerFact{{XUID: "2533491259474651", Kills: 12}},
 		},
 	}})
 	if len(enfiles) != 1 || enfiles[0] != appauvri {
@@ -168,7 +168,7 @@ func TestEnqueueAll_ArtefactCompletResteSaute(t *testing.T) {
 	}
 	enqueueAll(context.Background(), d, []buildWork{{
 		matchID: complet,
-		facts:   port.MatchFacts{Players: []port.MatchPlayerFact{{XUID: "2533274819954312"}}},
+		facts:   port.MatchFacts{Players: []port.MatchPlayerFact{{XUID: "2533491259474651"}}},
 	}})
 	if len(enfiles) != 0 {
 		t.Fatalf("mis en file = %v, attendu aucun (l'artefact porte déjà les faits)", enfiles)
@@ -240,7 +240,7 @@ func ecrireArtefactAvecFaits(t *testing.T, repoRoot, matchID string) {
 	blob, err := json.Marshal(replay.ReplayDocument{
 		SchemaVersion: replay.SchemaVersion,
 		MatchID:       matchID,
-		ScoreTimeline: &replay.ScoreTimeline{Players: []replay.PlayerScore{{XUID: "2533274819954312"}}},
+		ScoreTimeline: &replay.ScoreTimeline{Players: []replay.PlayerScore{{XUID: "2533491259474651"}}},
 		Layers:        couchesDeTest(),
 	})
 	if err != nil {

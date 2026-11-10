@@ -37,7 +37,7 @@ func work() buildWork {
 		mapNames: []string{"Catalyst"},
 		facts: port.MatchFacts{
 			GameVariantName: "CTF:Arena", MapID: "f7e8cde9",
-			Players: []port.MatchPlayerFact{{XUID: "2533274819954312"}},
+			Players: []port.MatchPlayerFact{{XUID: "2533491259474651"}},
 		},
 	}
 }

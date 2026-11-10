@@ -122,7 +122,7 @@ describe('SessionBriefing — mode squad', () => {
       score: makeSquadScore(),
       players: [
         makePlayerCard('xuid-me', 'Spartan-117', 50, 'above'),
-        makePlayerCard('xuid-choco', 'Chocoboflor', 40, 'below'),
+        makePlayerCard('xuid-choco', 'Joueur90001', 40, 'below'),
         makePlayerCard('xuid-ghost', 'Ghost', 51, 'above'),
       ],
       kpisByXuid: {
@@ -137,20 +137,20 @@ describe('SessionBriefing — mode squad', () => {
 
     expect(screen.getByText(/Score d'équipe/)).toBeInTheDocument()
     expect(screen.getByText('Spartan-117')).toBeInTheDocument()
-    expect(screen.getByText('Chocoboflor')).toBeInTheDocument()
+    expect(screen.getByText('Joueur90001')).toBeInTheDocument()
     expect(screen.getByText('Ghost')).toBeInTheDocument()
     // Trend hint visible quand teamAvg fourni
     expect(screen.getByText(/vs moyenne d'équipe/)).toBeInTheDocument()
   })
 
-  it('drill-down : click sur Chocoboflor → KpiGrid affiche ses stats + reset bar visible', () => {
+  it('drill-down : click sur Joueur90001 → KpiGrid affiche ses stats + reset bar visible', () => {
     const kpis = makeKPIs()
     const chocoKpis = makeKPIs({ kills_per_game: 6.5 })
     const squad = {
       score: makeSquadScore(),
       players: [
         makePlayerCard('xuid-me', 'Spartan-117', 50, 'above'),
-        makePlayerCard('xuid-choco', 'Chocoboflor', 40, 'below'),
+        makePlayerCard('xuid-choco', 'Joueur90001', 40, 'below'),
       ],
       kpisByXuid: {
         'xuid-me': kpis,
@@ -164,15 +164,15 @@ describe('SessionBriefing — mode squad', () => {
     // Initial : 8.70 (kpis du main)
     expect(screen.getByText('8.70')).toBeInTheDocument()
 
-    // Click sur Chocoboflor
-    const chocoButton = screen.getByText('Chocoboflor').closest('button')
+    // Click sur Joueur90001
+    const chocoButton = screen.getByText('Joueur90001').closest('button')
     expect(chocoButton).not.toBeNull()
     fireEvent.click(chocoButton!)
 
-    // Désormais 6.50 (kpis de Chocoboflor)
+    // Désormais 6.50 (kpis de Joueur90001)
     expect(screen.getByText('6.50')).toBeInTheDocument()
     // Reset bar visible
-    expect(screen.getByText(/Vue active : Chocoboflor/)).toBeInTheDocument()
+    expect(screen.getByText(/Vue active : Joueur90001/)).toBeInTheDocument()
     expect(screen.getByText(/revenir à mes stats/)).toBeInTheDocument()
   })
 
@@ -183,7 +183,7 @@ describe('SessionBriefing — mode squad', () => {
       score: makeSquadScore(),
       players: [
         makePlayerCard('xuid-me', 'Spartan-117', 50, 'above'),
-        makePlayerCard('xuid-choco', 'Chocoboflor', 40, 'below'),
+        makePlayerCard('xuid-choco', 'Joueur90001', 40, 'below'),
       ],
       kpisByXuid: {
         'xuid-me': kpis,
@@ -195,13 +195,13 @@ describe('SessionBriefing — mode squad', () => {
     renderWithProviders(<SessionBriefing kpis={kpis} squad={squad} />)
 
     // Drill-down
-    fireEvent.click(screen.getByText('Chocoboflor').closest('button')!)
+    fireEvent.click(screen.getByText('Joueur90001').closest('button')!)
     expect(screen.getByText('6.50')).toBeInTheDocument()
 
     // Reset
     fireEvent.click(screen.getByText(/revenir à mes stats/))
     expect(screen.getByText('8.70')).toBeInTheDocument()
-    expect(screen.queryByText(/Vue active : Chocoboflor/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Vue active : Joueur90001/)).not.toBeInTheDocument()
   })
 })
 

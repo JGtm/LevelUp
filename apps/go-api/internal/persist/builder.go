@@ -3,7 +3,7 @@
 //
 // Usage type :
 //
-//	builder := persist.NewBatchBuilder("halo_infinite", "Madina97294", "2533274858283686", "sync_delta")
+//	builder := persist.NewBatchBuilder("halo_infinite", "Joueur90002", "2623439693412443", "sync_delta")
 //	builder.SetMatch(matchRegistryRow)
 //	builder.AddParticipants(participants)
 //	builder.AddMedals(medals)

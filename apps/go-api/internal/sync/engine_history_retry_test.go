@@ -49,7 +49,7 @@ func TestPaginateAndPersistHistory_429Persistant_ErreurEtStatutFailure(t *testin
 			Err:        fmt.Errorf("HTTP 429"),
 		},
 	}
-	e := &SyncEngine{gamertag: "Nuzzles", xuid: "2533274873954866"}
+	e := &SyncEngine{gamertag: "J900004", xuid: "2601461636236373"}
 	in := historyPaginationInputs{
 		client: client,
 		opts:   domain.SyncOptions{MaxMatches: 25, MatchType: "matchmaking"},
@@ -76,7 +76,7 @@ func TestPaginateAndPersistHistory_429Persistant_ErreurEtStatutFailure(t *testin
 	if got := result.Status(); got != "failure" {
 		t.Errorf("statut = %q, attendu failure (0 match inséré)", got)
 	}
-	if got, _ := client.lastHistoryPlayer.Load().(string); got != "xuid(2533274873954866)" {
+	if got, _ := client.lastHistoryPlayer.Load().(string); got != "xuid(2601461636236373)" {
 		t.Errorf("format joueur = %q, attendu xuid(NNN)", got)
 	}
 }

@@ -53,12 +53,12 @@ func creerPlayerDB(t *testing.T, repoRoot, gamertag string) {
 // précondition `HasPlayer` revient (vérifié le 2026-09-16 en la remettant).
 func TestPreconditions_JoueurHorsPoolAccepte(t *testing.T) {
 	repoRoot := t.TempDir()
-	creerPlayerDB(t, repoRoot, "Nuzzles")
-	// Le pool ne contient QUE JGtm — Nuzzles n'a pas de token propre.
+	creerPlayerDB(t, repoRoot, "J900004")
+	// Le pool ne contient QUE JGtm — J900004 n'a pas de token propre.
 	s := schedulerAvecPool(t, repoRoot, map[string]bool{"JGtm": true}, true)
 
 	raison, ok := s.checkSyncPreconditions(context.Background(),
-		domain.PlayerSummary{Gamertag: "Nuzzles", XUID: "2533274800000000", TitleSlug: "halo_infinite"})
+		domain.PlayerSummary{Gamertag: "J900004", XUID: "2533274800000000", TitleSlug: "halo_infinite"})
 	if !ok {
 		t.Fatalf("un profil suivi sans token propre doit être synchronisé par le pool (D1, "+
 			"plan 2026-09-16) — skip=%q", raison)
@@ -69,11 +69,11 @@ func TestPreconditions_JoueurHorsPoolAccepte(t *testing.T) {
 // il n'y a plus personne pour parler à l'API.
 func TestPreconditions_PoolNilRefuse(t *testing.T) {
 	repoRoot := t.TempDir()
-	creerPlayerDB(t, repoRoot, "Nuzzles")
+	creerPlayerDB(t, repoRoot, "J900004")
 	s := schedulerAvecPool(t, repoRoot, nil, false)
 
 	raison, ok := s.checkSyncPreconditions(context.Background(),
-		domain.PlayerSummary{Gamertag: "Nuzzles", XUID: "2533274800000000", TitleSlug: "halo_infinite"})
+		domain.PlayerSummary{Gamertag: "J900004", XUID: "2533274800000000", TitleSlug: "halo_infinite"})
 	if ok {
 		t.Fatal("pool nil : la précondition doit refuser (aucun credential découvert au boot)")
 	}

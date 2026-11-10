@@ -1,6 +1,6 @@
 /**
  * placement.fixtures.ts — le bloc `squad_emprise.placement` d'une soirée à trois joueurs (JGtm,
- * Chocoboflor, Madina97294) au format du contrat (lot V3 du plan PLAN_EMPRISE_VIES_2026-09-28) :
+ * Joueur90001, Joueur90002) au format du contrat (lot V3 du plan PLAN_EMPRISE_VIES_2026-09-28) :
  * des vies dans les quatre quarts, une vie au-delà des plafonds d'affichage (X > 2, frags > 5),
  * une vie non mesurée. Données figées (aucune lecture de base) ; les parts et les médianes sont
  * écrites comme le Go les publie (seuils du bloc : isolé à 1,0 portée, rentable à 1 frag).
@@ -81,13 +81,13 @@ export const PLACEMENT_2209: SquadEmprisePlacement = {
       ],
       1,
     ),
-    player(XUID.choco, 'Chocoboflor', [
+    player(XUID.choco, 'Joueur90001', [
       [0.4, 0, 30, 0],
       [0.5, 1, 55, 0.05],
       [1.1, 0, 20, 0.7],
       [1.4, 2, 48, 0.5],
     ]),
-    player(XUID.madina, 'Madina97294', [
+    player(XUID.madina, 'Joueur90002', [
       [0.2, 1, 90, 0],
       [0.8, 3, 33, 0.2],
       [1.9, 0, 9, 1],

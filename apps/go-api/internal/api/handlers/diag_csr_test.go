@@ -90,7 +90,7 @@ func TestDiagCSRHandler_GapDetected_NeedsBackfillTrue(t *testing.T) {
 	factory := func(ctx context.Context, slug string) (CSRCoverageProvider, string, error) {
 		return &stubCoverageProvider{cov: cov}, "xuid-456", nil
 	}
-	w := serveDiag(t, "Chocoboflor", factory)
+	w := serveDiag(t, "Joueur90001", factory)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", w.Code)
 	}

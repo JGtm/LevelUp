@@ -7,7 +7,7 @@
 // base joueur aligne ses séquences avant toute écriture (physical_open.go). Un
 // `sql.Open("duckdb", <fichier>)` ou un `duckdb.NewConnector(<fichier>, …)` ouvert en écriture
 // ailleurs contourne les deux : une base joueur ainsi ouverte peut écrire avec une séquence en
-// retard (« Duplicate key » sur chaque insertion, cas du LUSR de Chocoboflor, 2026-10-08).
+// retard (« Duplicate key » sur chaque insertion, cas du LUSR de Joueur90001, 2026-10-08).
 //
 // Le test recense ces appels (arbre syntaxique, fichiers de test exclus) sous internal/, cmd/,
 // pkg/ et scripts/. Une ouverture est en LECTURE quand le texte de son DSN contient
