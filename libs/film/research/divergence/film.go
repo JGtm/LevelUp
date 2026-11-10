@@ -30,9 +30,9 @@ func oui(b bool) string {
 
 // traiterUnFilm compare nos paquets a ceux du temoin et ecrit divergence_paquets.tsv du film.
 func traiterUnFilm(cfg config, id, build string, g *agregat) error {
-	fc, _, errLargeurs := grammar.ContexteDeFilm(filepath.Join(cfg.racine, id))
-	if fc == nil {
-		return fmt.Errorf("film illisible : %w", errLargeurs)
+	fc, err := ouvrirFilm(cfg.racine, id, cfg.niveau, cfg.carte)
+	if err != nil {
+		return err
 	}
 	verdicts, err := lireLesVerdicts(fc)
 	if err != nil {

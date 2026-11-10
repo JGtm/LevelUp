@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/LevelUp/libs/film/internal/profile"
 )
 
 const (
@@ -31,7 +32,10 @@ var causesPrincipales = []string{
 	"vue C : kind non porte",
 }
 
-type config struct{ racine, temoin, sortie string }
+type config struct {
+	racine, temoin, sortie, niveau string
+	carte                          *profile.MapQuantCatalog // nil : sans carte (voir ouvrir.go)
+}
 
 // cleClassement : un premier desaccord, range par la cause d arret de notre marche et le lecteur.
 type cleClassement struct{ build, cause, vue, lecteur string }
