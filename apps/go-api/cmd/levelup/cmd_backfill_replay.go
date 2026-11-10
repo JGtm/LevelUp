@@ -122,6 +122,7 @@ import (
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
@@ -278,7 +279,7 @@ func filtrerEtTrierReplay(
 	for _, c := range candidats {
 		path := pr.ReplayArtifactPath(o.titleSlug, c.matchID)
 		if o.onlyExisting {
-			if _, err := os.Stat(path); err != nil {
+			if !replayartifact.Exists(path) {
 				report.sansArtefact++
 				continue
 			}

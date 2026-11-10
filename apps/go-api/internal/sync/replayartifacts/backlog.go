@@ -25,7 +25,7 @@ package replayartifacts
 //	                        milliers de matchs verrait le fil de l'eau réclamer indéfiniment
 //	                        des films expirés depuis des années. Le solde historique relève de
 //	                        `levelup backfill-replay`, et c'est déjà ce que dit `maxPerCycle`.
-//	présence du FICHIER     Le prédicat le moins cher qui existe : un `os.Stat`. Le prédicat
+//	présence du FICHIER     Le prédicat le moins cher qui existe : un `os.Stat` (par la porte, sous l'une ou l'autre forme). Le prédicat
 //	                        complet (version de schéma + compteurs de joueur) lit et
 //	                        désérialise l'artefact ENTIER — acceptable sur les quelques matchs
 //	                        insérés d'un cycle, ruineux sur soixante-quatre à chaque cycle.
@@ -47,7 +47,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 	"time"
 
@@ -55,6 +54,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/sync/matchflags"
 )
 
@@ -191,8 +191,8 @@ func requeteQueueRecente(months int) (string, []any) {
 // cf. l'en-tête du fichier. La question des DÉRIVÉS a son propre prédicat, tout aussi bon
 // marché : `replaybuild.DerivationsUpToDate` (derivations_backlog.go, constat A2).
 func artefactPresent(path string) bool {
-	st, err := os.Stat(path)
-	return err == nil && !st.IsDir() && st.Size() > 0
+	f, err := replayartifact.Locate(path)
+	return err == nil && f.Info.Size() > 0
 }
 
 // budgetDuCycle rend le budget de durée effectif.

@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 )
 
 func TestProjeterRastersTactiques_NeRelitPasLeDocumentDejaEnMain(t *testing.T) {
@@ -40,7 +41,7 @@ func TestProjeterRastersTactiques_NeRelitPasLeDocumentDejaEnMain(t *testing.T) {
 
 	original := ouvrirArtefact
 	lectures := 0
-	ouvrirArtefact = func(p string) ([]byte, error) {
+	ouvrirArtefact = func(p string) (replayartifact.Content, error) {
 		lectures++
 		return original(p)
 	}

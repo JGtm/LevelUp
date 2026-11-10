@@ -50,5 +50,5 @@ func (p *PathResolver) TacticalRasterDir(titleSlug string) string {
 // de nommer un sidecar depuis un simple listing du dossier d'artefacts, et a la lecture
 // de le retrouver depuis le match_id complet du registre.
 func (p *PathResolver) TacticalRasterPath(titleSlug, matchID string) string {
-	return filepath.Join(p.TacticalRasterDir(titleSlug), FilmShortMatchID(matchID)+".json")
+	return filepath.Join(p.TacticalRasterDir(titleSlug), FilmShortMatchID(matchID)+ReplaySidecarExt)
 }

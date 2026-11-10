@@ -60,7 +60,7 @@ cmd_fetch() {
   local replay_files=()
   local m
   for m in "${MATCH[@]}"; do
-    replay_files+=("cache/replays/halo_infinite/${m:0:8}.json" "cache/replays/halo_infinite/${m:0:8}.derived.json")
+    replay_files+=("cache/replays/halo_infinite/${m:0:8}.json.gz" "cache/replays/halo_infinite/${m:0:8}.json" "cache/replays/halo_infinite/${m:0:8}.derived.json")
   done
   local tar_paths=()
   for p in "${data_paths[@]}"; do

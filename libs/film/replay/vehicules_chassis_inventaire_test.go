@@ -4,7 +4,7 @@ package replay
 // mesure AVANT de coder le lot 1.9.9.
 //
 // CE QU IL MESURE, ET SUR QUOI. Les ARTEFACTS DE REJEU DEJA CUITS
-// (`data/cache/replays/{slug}/*.json`), en LECTURE SEULE : aucun film n est redecode, aucune
+// (`data/cache/replays/{slug}/*.json.gz`, ou `*.json` d'un parc ancien), en LECTURE SEULE : aucun film n est redecode, aucune
 // base n est ouverte, rien n est ecrit. Chaque vie de vehicule publiee y porte deja son mot
 // d identite de chassis (`chassis`, hexadecimal 8 chiffres) et la famille que
 // `vehicle_families.go` lui a resolue (`family`, absente quand la table ne le connait pas) : la
@@ -36,8 +36,11 @@ package replay
 // qui manquent. Sans `PARC_ARTEFACTS`, le test est saute : il n a pas de donnee a lire.
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -113,8 +116,8 @@ func inventaireFichiers(t *testing.T, dir string) (fichiers []string, manquants 
 			if id == "" {
 				continue
 			}
-			p := filepath.Join(dir, id+".json")
-			if _, err := os.Stat(p); err != nil {
+			p, ok := cheminArtefactInventaire(dir, id)
+			if !ok {
 				manquants = append(manquants, id)
 				continue
 			}
@@ -126,19 +129,56 @@ func inventaireFichiers(t *testing.T, dir string) (fichiers []string, manquants 
 	if err != nil {
 		t.Fatalf("dossier d artefacts illisible (%s) : %v", dir, err)
 	}
+	vus := map[string]bool{}
 	for _, e := range entries {
 		n := e.Name()
-		if e.IsDir() || !strings.HasSuffix(n, ".json") || strings.HasSuffix(n, ".derived.json") {
+		stem, ok := strings.CutSuffix(n, ".json.gz")
+		if !ok {
+			stem, ok = strings.CutSuffix(n, ".json")
+		}
+		if e.IsDir() || !ok || strings.HasSuffix(n, ".derived.json") || vus[stem] {
 			continue
 		}
-		fichiers = append(fichiers, filepath.Join(dir, n))
+		vus[stem] = true
+		if p, found := cheminArtefactInventaire(dir, stem); found { // le compresse gagne sur le brut
+			fichiers = append(fichiers, p)
+		}
 	}
 	sort.Strings(fichiers)
 	return fichiers, nil
 }
 
-func lireArtefactInventaire(path string) (inventaireArtefact, error) {
+// cheminArtefactInventaire rend le fichier d'un artefact du parc : le `.json.gz` s'il existe, sinon le `.json` d'un
+// parc ancien. libs/film n'importe pas le serveur : la lecture gzip-ou-brut est locale a ce test.
+func cheminArtefactInventaire(dir, id string) (string, bool) {
+	for _, ext := range []string{".json.gz", ".json"} {
+		p := filepath.Join(dir, id+ext)
+		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+			return p, true
+		}
+	}
+	return "", false
+}
+
+// lireOctetsArtefact lit un fichier d'artefact, decompresse si ses octets sont du gzip (octets magiques, jamais le nom).
+func lireOctetsArtefact(path string) ([]byte, error) {
 	raw, err := os.ReadFile(path) //nolint:gosec // chemin fourni par l operateur, lecture seule
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) < 2 || raw[0] != 0x1f || raw[1] != 0x8b {
+		return raw, nil
+	}
+	zr, err := gzip.NewReader(bytes.NewReader(raw))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = zr.Close() }()
+	return io.ReadAll(zr)
+}
+
+func lireArtefactInventaire(path string) (inventaireArtefact, error) {
+	raw, err := lireOctetsArtefact(path)
 	if err != nil {
 		return inventaireArtefact{}, err
 	}
@@ -150,7 +190,7 @@ func lireArtefactInventaire(path string) (inventaireArtefact, error) {
 }
 
 func short8DeFichier(path string) string {
-	return strings.TrimSuffix(filepath.Base(path), ".json")
+	return strings.TrimSuffix(strings.TrimSuffix(filepath.Base(path), ".gz"), ".json")
 }
 
 // cumulerChassis ajoute les vies d UN artefact a l agregat.

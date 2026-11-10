@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -94,7 +95,7 @@ func TestWriteArtifact_NEcrasePasUnArtefactRiche(t *testing.T) {
 	if err != nil {
 		t.Fatalf("writeArtifact: %v", err)
 	}
-	surDisque, err := os.ReadFile(path)
+	surDisque, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		t.Fatalf("relecture: %v", err)
 	}
@@ -136,7 +137,7 @@ func TestWriteArtifact_MonteeDeSchemaToujoursEcrite(t *testing.T) {
 	if _, err := writeArtifact(context.Background(), path, title.DefaultSlug, "000d5950", nouveau); err != nil {
 		t.Fatalf("writeArtifact: %v", err)
 	}
-	surDisque, err := os.ReadFile(path)
+	surDisque, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		t.Fatalf("relecture: %v", err)
 	}
@@ -164,7 +165,7 @@ func TestStoreArtifact_RefuseLaRegression(t *testing.T) {
 	if err != nil {
 		t.Fatalf("un dépôt appauvri ne doit pas être une erreur de protocole : %v", err)
 	}
-	surDisque, err := os.ReadFile(path)
+	surDisque, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		t.Fatalf("relecture: %v", err)
 	}
@@ -173,9 +174,13 @@ func TestStoreArtifact_RefuseLaRegression(t *testing.T) {
 	}
 	// L'accusé doit décrire CE QUI EST RANGÉ, pas ce qui a été refusé : un ouvrier qui lirait
 	// la taille du blob refusé croirait son travail retenu.
-	if stored.Bytes != len(complet) {
-		t.Errorf("accusé = %d octets, attendu %d (la taille de l'artefact réellement en place)",
-			stored.Bytes, len(complet))
+	stocke, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if int64(stored.Bytes) != stocke.Size() {
+		t.Errorf("accusé = %d octets, attendu %d (la taille stockée de l artefact réellement en place)",
+			stored.Bytes, stocke.Size())
 	}
 }
 
@@ -193,7 +198,7 @@ func TestStoreArtifact_EnrichissementAccepte(t *testing.T) {
 		t.Fatalf("dépôt enrichi: %v", err)
 	}
 	path := title.NewPathResolver(repoRoot).ReplayArtifactPath(title.DefaultSlug, matchID)
-	surDisque, err := os.ReadFile(path)
+	surDisque, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		t.Fatalf("relecture: %v", err)
 	}

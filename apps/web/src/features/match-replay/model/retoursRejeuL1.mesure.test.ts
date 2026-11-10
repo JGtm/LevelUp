@@ -33,7 +33,7 @@
  * `RR_L1_MESURE`, la suite est ignorée (même porte que `tourelleVisee.mesure.test.ts`).
  */
 import { createHash } from 'node:crypto'
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createElement } from 'react'
 import { render, renderHook } from '@testing-library/react'
@@ -48,6 +48,7 @@ import { rosterEntryKey } from '../../../lib/replay/rosterLogic'
 import type { ReplayDocumentReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { useReplayTiming } from '../hooks/useReplayTiming'
 import { shotSoundStem } from '../sound/replaySound'
+import { lireArtefact, listerArtefacts } from '../test/artefactFile'
 import { racineDuDepot } from '../test/featureFiles'
 import { testReplayDoc } from '../test/testDoc'
 import { ReplayTeams } from '../ui/ReplayTeams'
@@ -71,9 +72,8 @@ const dossier = (): string =>
 
 const sha = (): ReturnType<typeof createHash> => createHash('sha1')
 
-function charger(fichier: string): ReplayDocumentReady {
-  const brut = JSON.parse(readFileSync(join(dossier(), fichier), 'utf8')) as Partial<ReplayDocument>
-  return testReplayDoc(brut)
+function charger(chemin: string): ReplayDocumentReady {
+  return testReplayDoc(lireArtefact<Partial<ReplayDocument>>(chemin))
 }
 
 // --- L1.4 : lacunes -----------------------------------------------------------------------------
@@ -443,12 +443,11 @@ describe.skipIf(!ACTIF)('mesure de parc — lot L1 des retours du rejeu (2026-09
 
   it('mesure chaque document du parc, puis compare a la base quand elle est donnee', () => {
     const filtre = process.env.RR_L1_MESURE_FILTRE?.split(',')
-    const fichiers = readdirSync(dossier())
-      .filter((f) => f.endsWith('.json') && !f.includes('derived'))
-      .filter((f) => !filtre || filtre.some((p) => f.startsWith(p)))
-      .sort()
+    const fichiers = listerArtefacts(dossier()).filter(
+      (a) => !filtre || filtre.some((p) => a.court.startsWith(p)),
+    )
     const out: Record<string, Mesure> = {}
-    for (const f of fichiers) out[f.slice(0, 8)] = mesurerDocument(f)
+    for (const a of fichiers) out[a.court] = mesurerDocument(a.chemin)
     const cible = process.env.RR_L1_MESURE_OUT
     if (cible) writeFileSync(cible, JSON.stringify(out))
     console.log(`documents mesures : ${fichiers.length}`)

@@ -192,6 +192,8 @@ func main() {
 		exitErr = runPoolSharing(cfg, args)
 	case "film":
 		exitErr = runFilm(cfg, args)
+	case "replay":
+		exitErr = runReplay(cfg, args)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -329,6 +331,9 @@ Commandes:
                   film recompress [--dry-run] [--films ID,ID] (passe en zstd-3 les chunks bruts et zlib, un film a la fois,
                   ecriture atomique, reprenable ; --dry-run chiffre le gain sans ecrire) et film archive-move
                   (--to DIR | --default) [--resume] (range les films dans un autre dossier puis enregistre film_archive_dir)
+  replay          Rejeux, geste de l utilisateur (jamais lance automatiquement) : replay compress [--dry-run] [--title SLUG]
+                  [--dir DIR] (convertit en place les artefacts bruts {short8}.json en {short8}.json.gz, un a la fois, releus et
+                  verifies avant de supprimer le .json, idempotent ; --dry-run chiffre le gain sans ecrire ; le contenu ne change pas)
 
 Options globales:
   LEVELUP_REPO_ROOT        Racine du repo (auto-detecte si absent)

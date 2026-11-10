@@ -1,5 +1,5 @@
 // Package service — replay_service.go : sert l'artefact de rejeu 2D pré-construit d'un
-// match (data/cache/replays/{title}/{matchId}.json). Aucune logique de décodage ici —
+// match (data/cache/replays/{title}/{matchId}.json.gz). Aucune logique de décodage ici —
 // l'assemblage lourd est fait hors ligne par cmd/replay-build ; ce service lit l'artefact.
 package service
 
@@ -11,11 +11,11 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/service/replayview"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
@@ -94,8 +94,7 @@ func (s *replayService) artifactPath(matchID string) string {
 // Tout échec vaut « pas de rejeu » (répertoire absent, droits, chemin non résolu) :
 // l'absence de lien est la dégradation sûre, une erreur 500 sur la page match ne l'est pas.
 func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
-	path := s.artifactPath(matchID)
-	info, err := os.Stat(path)
+	f, err := replayartifact.Locate(s.artifactPath(matchID))
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			// Un artefact présent mais illisible n'est pas un cas normal : il ne doit pas
@@ -105,7 +104,7 @@ func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
 		}
 		return false
 	}
-	return !info.IsDir() && !s.modeNonGere(ctx, matchID)
+	return !f.Info.IsDir() && !s.modeNonGere(ctx, matchID)
 }
 
 // AvailableSet liste les matchs du titre qui ont un artefact, par UN SEUL listing du
@@ -118,7 +117,7 @@ func (s *replayService) IsAvailable(ctx context.Context, matchID string) bool {
 // l'appelant dégrade sur l'ensemble vide (aucune icône), jamais sur un 500.
 func (s *replayService) AvailableSet(ctx context.Context) (port.ReplayAvailability, error) {
 	dir := s.artifactsDir
-	entries, err := os.ReadDir(dir)
+	entries, err := replayartifact.List(dir)
 	if errors.Is(err, os.ErrNotExist) {
 		return port.ReplayAvailability{}, nil
 	}
@@ -129,11 +128,7 @@ func (s *replayService) AvailableSet(ctx context.Context) (port.ReplayAvailabili
 	}
 	set := make(port.ReplayAvailability, len(entries))
 	for _, e := range entries {
-		name := e.Name()
-		if e.IsDir() || !strings.HasSuffix(name, replayArtifactExt) {
-			continue // on ne compte QUE des artefacts {short8}.json
-		}
-		set[strings.TrimSuffix(name, replayArtifactExt)] = struct{}{}
+		set[e.Short] = struct{}{} // on ne compte QUE des artefacts (replayartifact.List)
 	}
 	s.retirerModesNonGeres(ctx, set)
 	return set, nil
@@ -160,10 +155,6 @@ func (s *replayService) retirerModesNonGeres(ctx context.Context, set port.Repla
 		delete(set, short)
 	}
 }
-
-// replayArtifactExt est l'extension des artefacts de rejeu ({short8}.json) — la même
-// convention que PathResolver.ReplayArtifactPath et que la purge récurrente.
-const replayArtifactExt = ".json"
 
 // GetReplay lit et désérialise l'artefact du match. Retourne port.ErrReplayNotAvailable
 // si aucun artefact n'existe (404 côté handler), une erreur enveloppée sinon.
@@ -196,7 +187,7 @@ func (s *replayService) GetReplay(ctx context.Context, matchID string) (replaydo
 	if s.modeNonGere(ctx, matchID) {
 		return replaydoc.ReplayDocument{}, port.ErrReplayNotAvailable
 	}
-	raw, err := os.ReadFile(s.artifactPath(matchID))
+	raw, err := replayartifact.ReadBytes(s.artifactPath(matchID))
 	if errors.Is(err, os.ErrNotExist) {
 		return replaydoc.ReplayDocument{}, port.ErrReplayNotAvailable
 	}

@@ -55,9 +55,13 @@ func TestPuits_DepotOuvrierPublieUnEvenement(t *testing.T) {
 	if ev.Path != stored.Path {
 		t.Errorf("path = %q, attendu %q (celui de l'accusé)", ev.Path, stored.Path)
 	}
-	if ev.Bytes != len(blob) || ev.Tracks != 1 || ev.SchemaVersion != replay.SchemaVersion {
-		t.Errorf("event = %+v, attendu %d octets, 1 piste, schéma %d",
-			ev, len(blob), replay.SchemaVersion)
+	stocke, serr := os.Stat(stored.Path)
+	if serr != nil {
+		t.Fatal(serr)
+	}
+	if int64(ev.Bytes) != stocke.Size() || ev.Tracks != 1 || ev.SchemaVersion != replay.SchemaVersion {
+		t.Errorf("event = %+v, attendu %d octets stockés, 1 piste, schéma %d",
+			ev, stocke.Size(), replay.SchemaVersion)
 	}
 }
 
@@ -66,7 +70,7 @@ func TestPuits_DepotOuvrierPublieUnEvenement(t *testing.T) {
 func TestPuits_ConstructionLocalePublieUnEvenement(t *testing.T) {
 	vus := capturePuits(t)
 	dir := t.TempDir()
-	path := dir + "/000d5950.json"
+	path := dir + "/000d5950.json.gz"
 	doc := replay.ReplayDocument{
 		SchemaVersion: replay.SchemaVersion,
 		MatchID:       "000d5950",

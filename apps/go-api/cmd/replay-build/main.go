@@ -1,6 +1,6 @@
 // cmd/replay-build — génère l'artefact de rejeu 2D d'un match à partir des SEULS CHUNKS
 // DU FILM (décodage offline des positions bipeds, zéro entrée Cheat Engine), plus un fond
-// de carte optionnel (props Forge). Écrit data/cache/replays/{title}/{matchId}.json
+// de carte optionnel (props Forge). Écrit data/cache/replays/{title}/{matchId}.json.gz (JSON compressé)
 // (résolu par PathResolver).
 //
 // L'ASSEMBLAGE (catalogue de bornes + libellés + structure + écriture) vit dans

@@ -24,6 +24,7 @@ import (
 	"os"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replayverite"
 
@@ -87,11 +88,11 @@ func juger(o options) (replayverite.Comparaison, string, error) {
 	if err != nil {
 		return replayverite.Comparaison{}, "", err
 	}
-	avant, err := lireAvec(o.avant, replayverite.LireDocument)
+	avant, err := lireArtefact(o.avant)
 	if err != nil {
 		return replayverite.Comparaison{}, "", err
 	}
-	apres, err := lireAvec(o.apres, replayverite.LireDocument)
+	apres, err := lireArtefact(o.apres)
 	if err != nil {
 		return replayverite.Comparaison{}, "", err
 	}
@@ -116,7 +117,21 @@ func juger(o options) (replayverite.Comparaison, string, error) {
 	return c, temoin, nil
 }
 
-// lireAvec lit un fichier et le decode par le lecteur du banc.
+// lireArtefact lit un artefact de rejeu (compresse ou brut) par la porte de replaybuild et le
+// decode par le lecteur du banc.
+func lireArtefact(path string) (*replayverite.Document, error) {
+	blob, err := replayartifact.ReadBytes(path)
+	if err != nil {
+		return nil, fmt.Errorf("%s : %w", path, err)
+	}
+	d, err := replayverite.LireDocument(blob)
+	if err != nil {
+		return nil, fmt.Errorf("%s : %w", path, err)
+	}
+	return d, nil
+}
+
+// lireAvec lit un fichier (registre, oracle) et le decode par le lecteur du banc.
 func lireAvec[T any](path string, lire func([]byte) (T, error)) (T, error) {
 	var zero T
 	blob, err := os.ReadFile(path) //nolint:gosec // chemin fourni par l'operateur

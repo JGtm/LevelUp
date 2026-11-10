@@ -1,7 +1,7 @@
 // Package replayregen — la file de régénération des rejeux après une mise à jour de l'application de bureau
 // (ADR 0045).
 //
-// Un rejeu rangé (data/cache/replays/{titre}/{short8}.json) porte la version de schéma et les révisions de
+// Un rejeu rangé (data/cache/replays/{titre}/{short8}.json.gz) porte la version de schéma et les révisions de
 // couche qui l'ont produit. Une mise à jour qui les fait monter laisse les rejeux déjà rangés « en retard » :
 // ils restent lisibles, mais ne portent pas ce que la nouvelle version sait y mettre. Ce paquet les compte et,
 // sur demande EXPLICITE de l'utilisateur, les régénère un par un.
@@ -17,9 +17,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
@@ -56,7 +56,7 @@ func artifactStale(ctx context.Context, path string) bool {
 // refuse par règle (mode non géré : Deps.RefusedByRule).
 func scanTitle(ctx context.Context, dir, slug string, filmPresent func(slug, matchID string) bool,
 	blocked func(slug, matchID string) bool) ([]Candidate, error) {
-	entries, err := os.ReadDir(dir)
+	entries, err := replayartifact.List(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -68,17 +68,13 @@ func scanTitle(ctx context.Context, dir, slug string, filmPresent func(slug, mat
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		name := e.Name()
-		if e.IsDir() || !strings.HasSuffix(name, ".json") || replaybuild.EstMarqueDerivations(name) {
-			continue
-		}
-		short := strings.TrimSuffix(name, ".json")
+		short := e.Short
 		// LE MOINS CHER D'ABORD : le registre des refus, puis le film (un test d'existence), puis l'en-tête de l'artefact.
-		if blocked(slug, short) || !filmPresent(slug, short) || !artifactStale(ctx, filepath.Join(dir, name)) {
+		if blocked(slug, short) || !filmPresent(slug, short) || !artifactStale(ctx, filepath.Join(dir, e.Name)) {
 			continue
 		}
 		c := Candidate{TitleSlug: slug, MatchID: short}
-		if info, err := e.Info(); err == nil {
+		if info, err := e.Entry.Info(); err == nil {
 			c.modTime = info.ModTime()
 		}
 		out = append(out, c)

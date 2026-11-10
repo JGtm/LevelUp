@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/replayartifact"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -50,7 +51,9 @@ type Digest struct {
 	SchemaVersion int
 	Players       int
 	Tracks        int
-	Bytes         int
+	// Bytes : la TAILLE STOCKEE de l artefact, celle du fichier sur disque (cf. artifact_gate.go) ; pour un digest
+	// pris sur des octets en memoire, la longueur du JSON, que l appelant remplace par la taille stockee.
+	Bytes int
 	// Layers : les revisions de couche que l artefact DECLARE, calque par calque (schema 62,
 	// `film/replay/layers.go`). Nil = artefact anterieur au schema 62, qui ne declarait rien —
 	// et c est une REPONSE : on ne peut alors pas prouver que son decodage est intact.
@@ -115,7 +118,7 @@ func (d Digest) HasPlayerCounters() bool { return d.Players > 0 }
 // ArtifactDigest lit UNE FOIS l'artefact au chemin donné et rend ses marques. ok=false si
 // absent ou illisible : dans le doute, l'appelant traite l'artefact comme inexploitable, jamais
 // comme bon — il ne peut PAS distinguer les deux cas ici, et c'est voulu (les deux appellent la
-// même conduite ; celui qui a besoin de la nuance fait son propre `os.Stat`, cf.
+// même conduite ; celui qui a besoin de la nuance interroge `ArtifactExists`, cf.
 // `cmd_backfill_replay_repair.go`).
 //
 // LE COMPTEUR EST LA MESURE DE CETTE LECTURE, et il a un rôle : c'est par lui que les gardes de
@@ -123,11 +126,13 @@ func (d Digest) HasPlayerCounters() bool { return d.Players > 0 }
 // qui doublerait ses lectures se verrait dans /debug/vars avant de se voir dans un profil.
 func ArtifactDigest(path string) (Digest, bool) {
 	observability.IncCounter(CompteurLecturesArtefact)
-	raw, err := os.ReadFile(path)
+	c, err := replayartifact.Read(path)
 	if err != nil {
 		return Digest{}, false
 	}
-	return digestFromBytes(raw)
+	d, ok := digestFromBytes(c.JSON)
+	d.Bytes = c.StoredBytes
+	return d, ok
 }
 
 // CompteurLecturesArtefact : le nombre de lectures disque d'artefact faites par les gardes.

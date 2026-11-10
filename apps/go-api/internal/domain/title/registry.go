@@ -879,7 +879,8 @@ func (p *PathResolver) JobsCachePath() string {
 
 // ReplayArtifactPath retourne le chemin de l'artefact de rejeu 2D d'un match (produit
 // hors ligne par cmd/replay-build, servi tel quel par l'API).
-// Ex: data/cache/replays/halo_infinite/000d5950.json
+// Ex: data/cache/replays/halo_infinite/000d5950.json.gz (un parc ancien porte encore des .json bruts,
+// que la porte de replaybuild lit aussi).
 // Sous data/cache/* (non versionné, regénérable depuis capture + film).
 //
 // La clé est la forme COURTE (cf. FilmShortMatchID) : l'artefact est un dérivé du film,
@@ -891,7 +892,7 @@ func (p *PathResolver) ReplayArtifactPath(titleSlug, matchID string) string {
 }
 
 // ReplayArtifactsDir retourne le dossier des artefacts de rejeu 2D d'un titre (un
-// fichier {short8}.json par match). Sert la purge récurrente (replay_purge_cron) — qui
+// fichier {short8}.json.gz par match). Sert la purge récurrente (replay_purge_cron) — qui
 // supprime des ARTEFACTS, jamais des films.
 func (p *PathResolver) ReplayArtifactsDir(titleSlug string) string {
 	return filepath.Join(p.roots.Data, "cache", "replays", titleSlug)

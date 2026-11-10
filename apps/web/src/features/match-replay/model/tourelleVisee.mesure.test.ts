@@ -44,12 +44,12 @@
  * sans elle, chaque tir tombait dans « sans montage » et la mesure était muette sans le dire
  * (revue adverse du lot M4a, F7). Un document qui porte déjà la table (lu depuis l'API) la garde.
  */
-import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocument, ReplayVehicleRide } from '@/lib/api/types'
 
+import { cheminArtefact, lireArtefact } from '../test/artefactFile'
 import { racineDuDepot } from '../test/featureFiles'
 import { testReplayDoc } from '../test/testDoc'
 import { registreDuTitre } from '../test/vehicleWeaponsTitre'
@@ -76,9 +76,9 @@ function dossierTemoins(): string {
 }
 
 function charger(court: string): ReplayDocumentReady | null {
-  const p = join(dossierTemoins(), `${court}.json`)
-  if (!existsSync(p)) return null
-  const brut = JSON.parse(readFileSync(p, 'utf8')) as Partial<ReplayDocument>
+  const p = cheminArtefact(dossierTemoins(), court)
+  if (!p) return null
+  const brut = lireArtefact<Partial<ReplayDocument>>(p)
   return testReplayDoc({ ...brut, vehicleWeapons: brut.vehicleWeapons ?? registreDuTitre().armes })
 }
 

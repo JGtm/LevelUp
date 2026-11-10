@@ -59,6 +59,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
 
@@ -201,8 +202,8 @@ func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domai
 	}
 
 	// Le chemin canonique est TOUJOURS la forme courte (ReplayArtifactPath normalise).
-	recu := filepath.Join(serveurRepo, "data", "cache", "replays", titlePkg.DefaultSlug, fixtureShort+".json")
-	blobRecu, err := os.ReadFile(recu)
+	recu := filepath.Join(serveurRepo, "data", "cache", "replays", titlePkg.DefaultSlug, fixtureShort+titlePkg.ReplayArtifactExt)
+	blobRecu, err := replayartifact.ReadBytes(recu)
 	if err != nil {
 		t.Fatalf("aucun artefact rangé côté serveur (%s): %v", recu, err)
 	}
