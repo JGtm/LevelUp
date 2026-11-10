@@ -133,7 +133,6 @@ export interface SquadText {
     outcome: string
     score: string
     winRateHist: string
-    winProb: string
     kda: string
     accuracy: string
     perf: string
@@ -168,7 +167,6 @@ export interface SquadText {
      */
     scoreTooltip: string
     winRateHistTooltip: string
-    winProbTooltip: string
     teamMmrTooltip: string
     enemyMmrTooltip: string
     deltaMmrTooltip: string

@@ -711,9 +711,6 @@ export interface ExplorerMatchRow {
    *  porteur de données pour une colonne « Δ rang » INJECTÉE par un consommateur
    *  (vue session via extraColumns). Reste undefined côté page Explorer. */
   skill_rating_delta?: number | null
-  /** Proba de victoire pré-match de l'équipe (LUSR v2, 0..1). Porteur de données
-   *  pour une colonne « Pronostic » INJECTÉE par la vue session. Undefined côté Explorer. */
-  expected_win_prob?: number | null
   /** Progression placement (X). Si défini avec placement_total, l'UI affiche "X/Y" dans la
    *  cellule Rang à la place du skill_tier_label, ET un badge « En placement » (V72-32,
    *  cf. ExplorerMatchesTable.placement.tsx) dans les cellules Perf/ΔPerf/Note à la place

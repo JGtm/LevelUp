@@ -164,7 +164,7 @@ Aucun comportement ne change. Effort : moyen.
       (`service/career_live_service.go:539`), `AuthHandler.WithUserStore` (`api/handlers/auth.go:76`).
 - [x] 1.5 (STO-P2-3) Retirer l'import `duckdb-go` de `service/media_service.go` et
       `service/media_index_service.go` ; corriger le commentaire.
-- [ ] 1.6 (ART-5, D2, D9) Probabilité de victoire : retirer `CapExpectedWinProb` et son miroir web,
+- [x] 1.6 (ART-5, D2, D9) Probabilité de victoire : retirer `CapExpectedWinProb` et son miroir web,
       `MatchWinProbCard`, les colonnes des tableaux Synergies et Progression, `lib/winProbCategory.ts`,
       les champs des réponses d'API et de `openapi.yaml`, `QSquadExpectedWinProbTpl` et
       `loadExpectedWinProbs`, l'entrée `queries_squad.go` de `no_raw_rating_reads_test.go`, les
@@ -195,6 +195,20 @@ Sont partis avec 1.2 : `STEAM_API_KEY` (exemple d'environnement, `docs/CONFIGURA
 français), l'entrée netguard de Steam, l'alias `handlers.UserLinker`. `docs/CHANGELOG.md` n'est pas modifié
 (historique). Témoins : `diff -r avant apres-1a` vide. `go test ./internal/archlint/...` demande
 `-timeout 30m` (4 min 30 s à vide, plus de 10 min sous charge).
+
+Résultat de 1.6 (2026-11-10). Retirés : la capability, les champs de 5 schémas OpenAPI (`ExplorerMatchesRow`,
+`MatchExpectedStats`, `MatchHistoryRow`, `SessionDetailMatchRow`, `SquadMatchHistoryRow`) et de `SkillSnapshot`,
+les lecteurs de `platform/duckdb` (dont la lecture brute d'Escouade et son entrée d'allowlist : 5 vers 4), la
+carte du détail de match, les colonnes des tableaux Synergies et Progression, `lib/winProbCategory.ts`, 14 clés
+i18n dans chaque langue. Aucun cas où la probabilité alimente une autre valeur. Intacts : `sync/skill`,
+`analysis/skill_v2`, `persist`, schéma et migrations (aucune ligne modifiée). Témoins : 303 lignes disparues
+dans 10 fichiers, toutes porteuses de la clé retirée, aucune ligne ajoutée.
+
+Gate de clôture de l'étape 1 (2026-11-10) : compilation, `go vet`, `gofmt`, `archlint`, `platform/duckdb` et
+`sync` en série, `domain`, `analysis`, `service`, `api`, `games`, `ops`, `config`, `scheduler`, `cmd` verts ;
+typecheck, lint, vitest (1 078 fichiers) et lint des imports entre features verts. La suite complète
+`go test ./...` n'a pas été rejouée d'un bloc en local (poste chargé par plusieurs sessions) : c'est la CI de
+la PR qui la porte.
 
 Gate : `cd apps/go-api && go build ./... && go vet ./... && go test ./...` ; `make check-types`,
 `npm run lint`, `make test-web` ; commande de reproduction de MORT-1 : 0 commande hors de la section
@@ -397,7 +411,7 @@ deux graphes de 7.3.
 | Étape | État | Commit | Note |
 |---|---|---|---|
 | 0 | close | (commit de clôture de l'étape 0) | témoins et compteurs relevés le 2026-11-10 |
-| 1 | en cours | | reste 1.6 |
+| 1 | close | (commits `chore(plan-archi/1…)`) | PR vers `release/v8.1.2` ; 4 commandes en attente de décision (D8 révisée) |
 | 2 | à faire | | |
 | 3 | à faire | | |
 | 4 | à faire | | |
@@ -432,6 +446,11 @@ deux graphes de 7.3.
   `diag_art_probe`, `h5-career-rank-xp`, `msal-poc`. Non traité.
 - (étape 1) Le critère « aucune citation » de l'audit ne voit pas l'usage réel : deux commandes de la liste
   servaient (`admin`, `diag_q`). Toute suppression future de commande passe par une relecture de son rôle.
+- (étape 1) `psa_index_repro_msr_fixture_test.go` (tag `psarepro`) nomme encore `QSquadExpectedWinProbTpl`,
+  disparu : instantané d'une mesure datée, à retirer ou à garder. `SkillV2Service.PredictWin` n'a que son
+  test pour appelant. Non traités.
+- (étape 1) `scripts/disk-hygiene.ps1` teste encore `origin/feat/v75`, branche disparue, et affiche une
+  erreur à chaque passage. Non traité.
 - (étape 0) En profil dev, le premier démarrage rejoue les formules de note du jeu de démo (révision vide) :
   le harnais attend la fin de ce rejeu avant de capturer.
 

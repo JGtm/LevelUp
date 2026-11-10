@@ -130,7 +130,6 @@ export const FR_TEXT = {
     outcome: 'Résultat',
     score: 'Score',
     winRateHist: 'Taux hist.',
-    winProb: 'Prob. vic.',
     kda: 'K/D/A',
     accuracy: 'Précision',
     perf: 'Perf.',
@@ -152,7 +151,6 @@ export const FR_TEXT = {
     scoreTooltip:
       "Score final de la partie : l'équipe puis l'équipe adverse. Sur les modes qui se jouent en manches, ce sont les MANCHES gagnées et perdues qui sont affichées — le score en points de l'API peut y donner l'avantage à l'équipe qui a perdu.",
     winRateHistTooltip: 'Taux de victoire de cette escouade sur tous ses matchs communs.',
-    winProbTooltip: 'Probabilité de victoire estimée avant le match, d\'après les MMR des deux équipes.',
     teamMmrTooltip: 'Niveau de compétence moyen estimé (MMR) de l\'équipe.',
     enemyMmrTooltip: 'Niveau de compétence moyen estimé (MMR) de l\'équipe adverse.',
     deltaMmrTooltip: 'Écart de MMR entre l\'équipe et l\'équipe adverse.',

@@ -52,7 +52,6 @@ var knownCapabilities = map[Capability]struct{}{
 	CapObjectiveStats:      {},
 	CapReplay:              {},
 	CapWeaponRange:         {},
-	CapExpectedWinProb:     {},
 	CapCitations:           {},
 }
 

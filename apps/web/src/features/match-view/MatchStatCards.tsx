@@ -11,7 +11,7 @@
  */
 import type { MatchViewRank, MatchExpectedStats, MatchNemesisRow, MatchSummaryKpis } from '@/lib/api/types'
 import { skillDeltaScale, kdScale } from '@/lib/accessibility/scales'
-import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { tokenCssVar } from '@/lib/accessibility'
 import { formatRankDelta, formatDurationMShort } from '@/lib/formatters'
 import { localizeTierLabel } from '@/lib/skillTiers'
 import {
@@ -19,14 +19,12 @@ import {
   formatDefensiveResistance,
   combatYieldToken,
 } from '@/lib/formatters/combatYield'
-import { KpiCard } from '@/components/cards/KpiCard'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest } from '@/lib/i18n/generated/common'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useProvidesDamageTaken, useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
-import { useCapability } from '@/lib/capabilities'
 import { MatchVsStatCard } from './MatchVsStatCard'
 
 // Tooltip "Vie moy." : MatchSummaryKpis n'expose la vie moyenne qu'en chaîne M:SS
@@ -219,62 +217,6 @@ export function KdIndicatorCard({ nemesis }: KdIndicatorCardProps) {
 }
 
 // ---------------------------------------------------------------------------
-// C8 — MatchWinProbCard (résultat attendu : proba de victoire pré-match)
-// ---------------------------------------------------------------------------
-
-interface MatchWinProbCardProps {
-  /** Proba de victoire pré-match de l'équipe du joueur (LUSR v2, 0..1). Toujours
-   *  fournie : le call site ne rend PAS la card quand la proba est absente (une card
-   *  grisée « pas d'estimation » n'apporte rien — DEC-3). */
-  winProb: number
-}
-
-export function MatchWinProbCard({ winProb }: MatchWinProbCardProps) {
-  const locale = useAppShellStore((s) => s.locale)
-  const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
-  const pct = Math.round(winProb * 100)
-
-  const qualitativeKey: MatchViewManifestKey =
-    pct >= 55
-      ? 'match_view.cards.win_prob_favorite'
-      : pct <= 45
-        ? 'match_view.cards.win_prob_underdog'
-        : 'match_view.cards.win_prob_balanced'
-
-  const valueColor =
-    pct > 45 && pct < 55
-      ? undefined
-      : pct >= 55
-        ? tokenCssVar('divergent-pos')
-        : tokenCssVar('divergent-neg')
-
-  // Accent dynamique (type 4) : barre 3px verte si favori, rouge si outsider,
-  // absente si équilibré.
-  const accent: SemanticToken | undefined =
-    pct > 45 && pct < 55 ? undefined : pct >= 55 ? 'divergent-pos' : 'divergent-neg'
-
-  return (
-    <KpiCard accent={accent} className="h-full">
-      <div className="px-3 py-2.5">
-        <p className="text-2xs text-muted-foreground uppercase tracking-wide mb-1.5">
-          {t('match_view.cards.expected_result')}
-        </p>
-        <div className="flex items-baseline gap-2">
-          <span
-            className="text-lg font-bold text-foreground leading-none"
-            style={valueColor ? { color: valueColor } : undefined}
-          >
-            {`${pct} %`}
-          </span>
-          <span className="text-2xs text-muted-foreground">{t('match_view.cards.win_prob_label')}</span>
-        </div>
-        <p className="text-2xs text-muted-foreground mt-0.5">{t(qualitativeKey)}</p>
-      </div>
-    </KpiCard>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // C7 — MatchSummaryCardsSection (grille cartes onglet Résumé)
 // ---------------------------------------------------------------------------
 
@@ -299,7 +241,7 @@ export function MatchSummaryCardsSection({
   damagePerKill,
   damagePerDeath,
 }: MatchSummaryCardsSectionProps) {
-  const { expected_kills, expected_deaths, expected_assists, expected_win_prob } = expectedStats
+  const { expected_kills, expected_deaths, expected_assists } = expectedStats
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: MatchViewManifestKey, vars?: Record<string, unknown>) =>
     formatMessage(matchViewManifest, key, locale, vars)
@@ -311,7 +253,6 @@ export function MatchSummaryCardsSection({
   // MMR équipe/adverse → no_team_mmr). On masque entièrement la card MMR pour
   // les titres sans la capability (au lieu d'afficher une card vide/à tiret).
   const providesTeamMmr = useProvidesTeamMmr()
-  const hasExpectedWinProb = useCapability('expected_win_prob')
 
   // Dégâts/frag (Rendement) et dégâts/mort (Résistance), arrondis comme l'Explorer
   // et la hero KPI de l'accueil. Affichés en sous-valeur sous le pourcentage.
@@ -345,8 +286,8 @@ export function MatchSummaryCardsSection({
     <div className="space-y-2">
       {/* Répartition fluide : auto-fit + minmax(1fr) → les cartes RÉELLEMENT
           rendues se partagent équitablement la largeur, sans trous quand des
-          cartes sont masquées (H5 : pas de MMR/Résistance, éventuellement pas de
-          Résultat attendu). Remplace la grille fixe xl:grid-cols-8 qui laissait
+          cartes sont masquées (H5 : pas de MMR/Résistance). Remplace la grille fixe
+          xl:grid-cols-8 qui laissait
           des colonnes vides à droite. */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3">
       {providesTeamMmr && (
@@ -391,9 +332,6 @@ export function MatchSummaryCardsSection({
         lowerIsBetter={false}
         precision={0}
       />
-      {hasExpectedWinProb && expected_win_prob != null && Number.isFinite(expected_win_prob) && (
-        <MatchWinProbCard winProb={expected_win_prob} />
-      )}
       <MatchVsStatCard
         label={t('match_view.cards.avg_life')}
         primary={kpis.average_life ?? null}

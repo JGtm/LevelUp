@@ -67,10 +67,6 @@ type SessionDetailMatchRow struct {
 	SkillRatingType  string   `json:"skill_rating_type,omitempty"`
 	SkillRatingValue *float64 `json:"skill_rating_value,omitempty"`
 	SkillRatingDelta *float64 `json:"skill_rating_delta,omitempty"` // gain/perte de rating du match
-	// SkillExpectedWinProb : proba de victoire pré-match de l'équipe du joueur
-	// (LUSR v2, ∈ [0,1]). nil pour les matchs pré-v2 / non-LUSR. Le front la
-	// catégorise (attendu / surprise / belle perf) via categorizeWinProb.
-	SkillExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`
 	// SkillTierLabel : libellé du palier ranked/LUSR (ex. "Or III", "Diamant V"),
 	// construit comme l'Explorer (analysis.BuildSkillTierLabel). Nil si non rankée /
 	// placement. La colonne "Rang" du tableau affiche ça (pas la valeur brute).

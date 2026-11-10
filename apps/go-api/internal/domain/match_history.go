@@ -78,9 +78,6 @@ type MatchHistoryRawRow struct {
 	// match_skill_rank_latest.sub_tier. Sert au « Pic rang » du socle : classement des
 	// paliers par (analysis.CSRTierOrdinal(tier EN), sub_tier) — DEC-PEAK.
 	SubTier *int
-	// SkillExpectedWinProb : proba de victoire pré-match ∈ [0,1] (LUSR v2), lue
-	// depuis match_skill_rank.expected_win_prob. Nil si pré-v2 / non disponible.
-	SkillExpectedWinProb *float64
 	// PlacementDone/PlacementTotal : progression dans la phase de placement.
 	// CSR : lu du SkillTierLabel de placement (ParsePlacementRemaining) + threshold via csr_placement_thresholds.
 	// LUSR : 10 plus anciens matchs sans LUSR par chaîne (arena_slayer/arena_objectif/btb/chaos).
@@ -165,9 +162,6 @@ type MatchHistoryRow struct {
 	// personal_score). Distinct de ScoreLabel qui porte le score d'ÉQUIPE "X - Y".
 	// Nil quand le titre/le match ne le fournit pas.
 	PersonalScore *int `json:"personal_score,omitempty"`
-	// ExpectedWinProb : proba de victoire pré-match de l'équipe ∈ [0,1] (LUSR v2).
-	// Alimente la colonne « Prob. vic. ». Nil si pré-v2 / non disponible.
-	ExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`
 	// PlacementDone/PlacementTotal : phase de placement (X/Y).
 	// CSR : remaining lu du libellé de placement (ParsePlacementRemaining) + threshold csr_placement_thresholds.
 	// LUSR : rang chronologique parmi les 10 plus anciens matchs sans LUSR de la chaîne.

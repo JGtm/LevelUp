@@ -129,7 +129,6 @@ export const EN_TEXT = {
     outcome: 'Result',
     score: 'Score',
     winRateHist: 'Hist. win%',
-    winProb: 'Win prob.',
     kda: 'K/D/A',
     accuracy: 'Accuracy',
     perf: 'Perf.',
@@ -151,7 +150,6 @@ export const EN_TEXT = {
     scoreTooltip:
       'Final match score: the team, then the opposing team. In modes played in rounds, the ROUNDS won and lost are shown instead — the API point score can favour the losing team there.',
     winRateHistTooltip: 'Win rate for this squad across all their shared matches.',
-    winProbTooltip: 'Win probability estimated before the match, from both teams\' MMR.',
     teamMmrTooltip: 'Average estimated skill level (MMR) of the team.',
     enemyMmrTooltip: 'Average estimated skill level (MMR) of the enemy team.',
     deltaMmrTooltip: 'MMR gap between the team and the enemy team.',

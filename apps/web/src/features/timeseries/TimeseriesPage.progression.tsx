@@ -12,13 +12,10 @@
  * vient du film décodé y est réuni, cf. TimeseriesPage.usages.tsx).
  */
 import { useMemo } from 'react'
-import { type ColumnDef } from '@tanstack/react-table'
 import { PAIR_ROW_CLASS } from '@/components/ui/pair-row'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
 import { intensityTooltipText } from '@/components/charts/intensityTooltipText'
-import { tokenCssVar } from '@/lib/accessibility'
-import { formatWinProb } from '@/lib/winProbCategory'
 import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
 import { firstBloodMaxSec, toFirstBloodSeries } from '@/features/_shared/firstBlood'
 import {
@@ -40,7 +37,6 @@ import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
-import { NUMERIC_SORT } from '@/features/explorer/explorerMatchesClientSort'
 import { TimeseriesSkillProgression } from './TimeseriesSkillProgression'
 import type { FilterContextInput, TimeseriesPageResponse, ExplorerMatchRow } from '@/lib/api/types'
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
@@ -74,30 +70,6 @@ export function TimeseriesProgressionTab({
   filterContextHash,
   explorerMatchRows,
 }: TimeseriesProgressionTabProps) {
-  const hasExpectedWinProb = useCapability('expected_win_prob')
-  // Colonne « Prob. vic. » (expected_win_prob, LUSR v2) injectée après « Résultat »
-  // dans le tableau historique — gatée par capability expected_win_prob (remisée).
-  const winProbColumns = useMemo<ColumnDef<ExplorerMatchRow>[]>(
-    () => hasExpectedWinProb ? [
-      {
-        id: 'expected_win_prob',
-        accessorFn: (r) => r.expected_win_prob ?? undefined,
-        ...NUMERIC_SORT,
-        header: t('timeseries.progression.col_win_prob'),
-        cell: (ctx) => {
-          const v = ctx.row.original.expected_win_prob
-          if (v == null) return <span className="text-muted-foreground">-</span>
-          const color = v >= 0.5 ? tokenCssVar('outcome-win') : tokenCssVar('outcome-loss')
-          return (
-            <span className="font-mono tabular-nums" style={{ color }}>
-              {formatWinProb(v)}
-            </span>
-          )
-        },
-      },
-    ] : [],
-    [t, hasExpectedWinProb],
-  )
   const emptyMsg = t('timeseries.empty.no_data_description')
   // « Premier frag / première mort » : série solo servie par le payload de page —
   // même scope (filtres L2) que tous les autres blocs Progression.
@@ -295,15 +267,12 @@ export function TimeseriesProgressionTab({
 
       {/* Historique des matchs — tableau Explorer standalone (sans bloc ni titre)
           en bas de Progression. Reflète le scope solo du filtre global (mêmes
-          matchs que les charts ci-dessus). Colonne « Prob. vic. » injectée après
-          « Résultat ». */}
+          matchs que les charts ci-dessus). */}
       {explorerMatchRows && explorerMatchRows.length > 0 && (
         <ExplorerMatchesTable
           rows={explorerMatchRows}
           playerSlug={playerSlug}
           alwaysShowPagination
-          extraColumns={winProbColumns}
-          extraColumnsAfterId="outcome_code"
           // I16 : même endpoint/tri backend (date DESC) que le mode Matchs →
           // le défaut interne de ExplorerMatchesTable reproduit déjà l'ordre
           // serveur, aucun `defaultSort` à surcharger (cf. ExplorerPage.playerMode).

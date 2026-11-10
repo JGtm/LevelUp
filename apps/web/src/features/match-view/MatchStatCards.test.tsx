@@ -11,9 +11,7 @@ vi.mock('@/lib/damage/effectiveHp', () => ({
   useProvidesTeamMmr: () => caps.teamMmr,
 }))
 
-// Locale FR fixe (le sélecteur reçoit un state minimal). `availableTitles` vide :
-// `useCapability` (gate `expected_win_prob` depuis 9af8aea41) rend `true` quand le titre
-// courant n'est pas dans la liste — les cas « winProb absent » se pilotent par la valeur.
+// Locale FR fixe (le sélecteur reçoit un state minimal).
 vi.mock('@/stores/appShellStore', () => ({
   useAppShellStore: (
     sel: (s: { locale: string; availableTitles: never[]; currentTitle: string }) => unknown,
@@ -41,7 +39,6 @@ function renderSection(overrides?: {
     expected_kills: 12,
     expected_deaths: 11,
     expected_assists: 6,
-    expected_win_prob: 0.62,
     has_hist_avg: false,
     locally_estimated: false,
     ...overrides?.expected,
@@ -64,10 +61,9 @@ describe('MatchSummaryCardsSection — masquage des cards par capability (résid
     caps.teamMmr = true
   })
 
-  it('Infinite (capabilities + winProb) : cards Résistance ET Résultat attendu présentes', () => {
+  it('Infinite (capabilities) : cards Résistance ET MMR présentes', () => {
     renderSection()
     expect(screen.getByText('Résistance')).toBeInTheDocument()
-    expect(screen.getByText('Résultat attendu')).toBeInTheDocument()
     expect(screen.getByText('MMR')).toBeInTheDocument()
   })
 
@@ -81,17 +77,6 @@ describe('MatchSummaryCardsSection — masquage des cards par capability (résid
   it('Halo 5 (pas de team_mmr) : card MMR ABSENTE (non-régression)', () => {
     renderSection({ teamMmr: false })
     expect(screen.queryByText('MMR')).not.toBeInTheDocument()
-  })
-
-  it('winProb absent : card Résultat attendu ABSENTE (C2/DEC-3)', () => {
-    renderSection({ expected: { expected_win_prob: undefined } })
-    expect(screen.queryByText('Résultat attendu')).not.toBeInTheDocument()
-  })
-
-  it('winProb présent : card Résultat attendu affiche le pourcentage', () => {
-    renderSection({ expected: { expected_win_prob: 0.62 } })
-    expect(screen.getByText('Résultat attendu')).toBeInTheDocument()
-    expect(screen.getByText('62 %')).toBeInTheDocument()
   })
 })
 
