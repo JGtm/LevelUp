@@ -7,12 +7,25 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/testutil"
 )
 
+// Chemins relatifs à la racine du dépôt.
 const (
-	staticHudRoot    = "../../../../static/weapons-assets/halo_infinite"
-	replayLabelsTOML = "../../../../config/titles/halo_infinite/mappings/replay_labels.toml"
+	staticHudRoot    = "static/weapons-assets/halo_infinite"
+	replayLabelsTOML = "config/titles/halo_infinite/mappings/replay_labels.toml"
 )
+
+// depuisLaRacine rend le chemin absolu d'un chemin relatif à la racine du dépôt.
+func depuisLaRacine(t *testing.T, rel string) string {
+	t.Helper()
+	root, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return filepath.Join(root, filepath.FromSlash(rel))
+}
 
 // atlasSizes : nombre d'images appariées de chaque atlas lu, mesuré sur le jeu.
 var atlasSizes = map[uint32]int{
@@ -47,7 +60,7 @@ func TestHudIcons_TableIsWellFormed(t *testing.T) {
 // Tout `icon = "hud/X"` du manifeste doit avoir sa ligne : sinon la vignette servie ne
 // serait plus régénérée par l'outil.
 func TestHudIcons_CoverEveryIconOfTheManifest(t *testing.T) {
-	f, err := os.Open(filepath.FromSlash(replayLabelsTOML))
+	f, err := os.Open(depuisLaRacine(t, replayLabelsTOML))
 	if err != nil {
 		t.Fatalf("manifeste illisible : %v", err)
 	}
@@ -83,7 +96,7 @@ func TestHudIcons_CoverEveryIconOfTheManifest(t *testing.T) {
 // sont cuites dans les rejeux.
 func TestHudIcons_EveryTargetExists(t *testing.T) {
 	for _, ic := range hudIcons {
-		p := filepath.Join(filepath.FromSlash(staticHudRoot), filepath.FromSlash(ic.File))
+		p := filepath.Join(depuisLaRacine(t, staticHudRoot), filepath.FromSlash(ic.File))
 		if _, err := os.Stat(p); err != nil {
 			t.Errorf("%s : %v", ic.File, err)
 		}
