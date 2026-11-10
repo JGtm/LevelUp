@@ -61,6 +61,10 @@ var binairesCouvertsApps = []binaireCouvert{
 		"charge utile et signature de test de l updater : octets sans identifiant de joueur"},
 }
 
+// sortiesDeCINonSuivies : fichiers que le job de test de la CI ecrit dans `apps/go-api` (journal JSONL du lot,
+// profil de couverture) ; git ne les suit pas, le balayage ne les lit pas.
+var sortiesDeCINonSuivies = regexp.MustCompile(`^go-api/(baseline_[A-Za-z0-9_.-]+\.jsonl|coverage\.[A-Za-z0-9_.-]+\.raw)$`)
+
 // couvertureDuBinaire rend la ligne de `liste` qui couvre `rel`, ou -1.
 func couvertureDuBinaire(rel string, liste []binaireCouvert) int {
 	for i, b := range liste {
@@ -90,6 +94,9 @@ func binairesSansCouverture(racine string, extensions map[string]bool, liste []b
 			return err
 		}
 		rel = filepath.ToSlash(rel)
+		if sortiesDeCINonSuivies.MatchString(rel) {
+			return nil
+		}
 		if i := couvertureDuBinaire(rel, liste); i >= 0 {
 			couverts[i]++
 			return nil
@@ -144,7 +151,7 @@ func TestLesBinairesDeAppsSontCouverts(t *testing.T) {
 // fichier sans extension hors liste sont signales, un fichier texte et un film liste ne le sont pas.
 func TestLaListeDesBinairesVoitUnBinaireNeuf(t *testing.T) {
 	dossier := t.TempDir()
-	for _, f := range []string{"a.go", "film/chunk_00.bin", "neuf.dat", "sans_extension", "replay/testdata/fuzz/FuzzDecodeFilmFactsFile/seed_00"} {
+	for _, f := range []string{"a.go", "film/chunk_00.bin", "neuf.dat", "sans_extension", "replay/testdata/fuzz/FuzzDecodeFilmFactsFile/seed_00", "go-api/baseline_reste.jsonl", "go-api/coverage.reste.raw"} {
 		ecrire(t, filepath.Join(dossier, filepath.FromSlash(f)), "x")
 	}
 	sans, couverts, err := binairesSansCouverture(dossier, extensionsTexte, binairesCouverts)
