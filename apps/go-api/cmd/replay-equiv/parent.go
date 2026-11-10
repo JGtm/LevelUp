@@ -69,7 +69,12 @@ func parentEquivalence(ctx context.Context, o options) int {
 	}
 	defer nettoyer()
 
-	p := passe{dir: dossierEquivalence(o.repoRoot), attendues: etapesAttendues(), update: o.update}
+	dossier, err := dossierEquivalence()
+	if err != nil {
+		fmt.Println("dossier des references :", err)
+		return 1
+	}
+	p := passe{dir: dossier, attendues: etapesAttendues(), update: o.update}
 	fmt.Printf("%d film(s), %d etape(s) attendues par film, reference %s\n",
 		len(films), len(p.attendues), p.dir)
 	var b bilan

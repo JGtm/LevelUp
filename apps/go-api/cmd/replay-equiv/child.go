@@ -126,7 +126,11 @@ func enfantEquivalence(ctx context.Context, o options) int {
 
 // digestsDuFilm cuit le film et rend une ligne `etape\tcompte\tsha` par etape observee.
 func digestsDuFilm(ctx context.Context, o options, archiveRoot string) ([]string, error) {
-	factsPath := filepath.Join(dossierEquivalence(o.repoRoot), o.film+".facts.json")
+	dossier, err := dossierEquivalence()
+	if err != nil {
+		return nil, err
+	}
+	factsPath := filepath.Join(dossier, o.film+".facts.json")
 	faits, err := replaybuild.ReadFactsFile(factsPath)
 	if err != nil {
 		return nil, err

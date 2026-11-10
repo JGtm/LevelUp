@@ -63,6 +63,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"levelup/go-api/internal/briques"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/observability/logging"
@@ -171,7 +172,11 @@ func lireDrapeaux() (options, error) {
 	}
 	o.originaux = originauxEffectifs(o.originaux, o.repoRoot)
 	if o.corpus == "" {
-		o.corpus = filepath.Join(dossierEquivalence(o.repoRoot), "CORPUS.txt")
+		dossier, err := dossierEquivalence()
+		if err != nil {
+			return o, err
+		}
+		o.corpus = filepath.Join(dossier, "CORPUS.txt")
 	}
 	return o, valider(o)
 }
@@ -179,6 +184,11 @@ func lireDrapeaux() (options, error) {
 // valider refuse une ligne de commande incoherente. SEPAREE de la lecture des drapeaux pour etre
 // testable sans toucher a `flag` (dont l etat est global au processus).
 func valider(o options) error {
+	if o.update {
+		if err := verifierMiseAJourPossible(); err != nil {
+			return err
+		}
+	}
 	if o.child && o.film == "" {
 		return errors.New("role d enfant sans -film : rien a traiter")
 	}
@@ -196,9 +206,22 @@ func valider(o options) error {
 
 // dossierEquivalence rend l'emplacement CANONIQUE des digests de reference et des faits figes.
 //
+// Ces references font partie du decodeur (ses propres tests les lisent) : le dossier est celui que le
+// resolveur des briques tire de l'outil Go pour la brique du decodeur (espace de travail ou cache de modules).
 // Chemin de SOURCE, pas de donnee : il ne passe donc pas par PathResolver (qui resout `data/`).
-func dossierEquivalence(repoRoot string) string {
-	return filepath.Join(repoRoot, "libs", "film", "replay", "testdata", "equivalence")
+func dossierEquivalence() (string, error) {
+	return briques.Chemin("film", "replay", "testdata", "equivalence")
+}
+
+// verifierMiseAJourPossible refuse `-update` quand la brique n'est pas modifiable (dossier du cache de modules,
+// hors depot) : figer des references y echouerait ou, pire, modifierait une copie que personne ne versionne.
+func verifierMiseAJourPossible() error {
+	if err := briques.Modifiable("film"); err != nil {
+		return fmt.Errorf("-update refuse : %w. Les references vivent dans la brique du decodeur : "+
+			"travailler sur un clone de la brique (fichier d'espace de travail local qui la designe), re-figer la, "+
+			"puis publier une version de la brique", err)
+	}
+	return nil
 }
 
 // filmsDemandes rend la liste short8 de `-films`, vide si le drapeau ne l'est pas.

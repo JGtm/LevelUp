@@ -32,10 +32,6 @@ import (
 var cheminsDeBriqueEnDurAutorises = map[string]string{
 	"apps/go-api/internal/archlint/dockerfile_go_version_test.go": "vérifie le DÉPÔT (go.mod de chaque brique contre le Dockerfile et dependabot.yml), pas une lecture de brique ; " +
 		"supprimé avec `libs/` par l'étape 6.5 du plan 8.1.2 — 2026-11-10",
-	"apps/go-api/cmd/replay-equiv/main.go": "références du harnais (`dossierEquivalence`) : des tests de la brique du décodeur " +
-		"(`replay/golden_inputs_film_test.go`, `replay/equivalence_minifilm_test.go`, `internal/grammar/keyframe_closure_cuisson_ratchet_test.go`) " +
-		"lisent le même dossier `replay/testdata/equivalence`, le déménagement prévu par l'item 6.2 est donc arrêté " +
-		"en attente de décision du pilote — 2026-11-10",
 }
 
 // constructionsDeCheminDeBrique rend « fichier:ligne » de chaque `Join(...)` qui porte un littéral `"libs"` ou
