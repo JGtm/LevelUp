@@ -356,6 +356,10 @@ func (r IdentityRegistry) xuidDuLieuA(slot uint32, tUS uint64) uint64 {
 	return x
 }
 
+// collisionDeSiege dit que deux joueurs sont nommes dans un corps indiscernable de ce siege
+// (`SlotAmbiguous`) : aucun corps n'y est etabli pour departager un instant.
+func (r IdentityRegistry) collisionDeSiege(slot uint32) bool { return r.own.SlotAmbiguous[slot] }
+
 // DeathOffsetMS rend le calage du fil des morts sur l'horloge du film
 // (`horlogeFilm = horlogeMatch + DeathOffsetMS`).
 func (r IdentityRegistry) DeathOffsetMS() int64 { return r.own.DeathOffsetMS }

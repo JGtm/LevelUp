@@ -40,7 +40,7 @@ import (
 //
 // AUCUN CRITERE DE VITESSE, AUCUNE DUREE : la tenue s'appuie sur ce que le film ecrit (il ecrit les
 // changements), pas sur une allure presumee. Sans lecture d'occupation (`LectureDuBord.Lue` faux), la
-// condition Â« hors embarquement Â» n'est pas verifiable : seule la voie ECHANTILLON s'applique.
+// condition « hors embarquement » n'est pas verifiable : seule la voie ECHANTILLON s'applique.
 
 // LectureDuBord porte ce que le film dit de l'occupation des vehicules, deja lu par l'appelant.
 type LectureDuBord struct {
@@ -169,8 +169,11 @@ func (l lectureALInstant) sansEchantillonDUnAutreJoueur(slots []uint32, xuid uin
 
 // memeJoueur dit que le registre nomme `xuid` sur le siege `slot` a l'instant `tUS`. Vrai sur un siege
 // sans divergence d'index : ses corps successifs sont un seul participant, quelle que soit leur generation.
+// Vrai aussi sur un siege en COLLISION (deux joueurs dans un corps indiscernable) : aucun corps n'y est
+// etabli, le registre s'y tait a tout instant hors d'une vie nommee, et ce silence ne prouve pas qu'un
+// autre joueur tient le siege (un echantillon du corps juste apres la fin ecrite de sa vie, par exemple).
 func (l lectureALInstant) memeJoueur(slot uint32, tUS uint64, xuid uint64) bool {
-	if c, ok := l.registre.corps[slot]; !ok || !c.indexDivergents() {
+	if c, ok := l.registre.corps[slot]; !ok || !c.indexDivergents() || l.registre.collisionDeSiege(slot) {
 		return true
 	}
 	x, _ := l.registre.joueurDuLieuA(slot, tUS)
@@ -198,7 +201,10 @@ func (l lectureALInstant) placer(slots []uint32, xuid uint64, tUS uint64) (*Vec3
 		return nil, 0, voieMuette
 	}
 	dernier, slot, ok := dernierEchantillonAvant(l.tracks, slots, tUS)
-	if !ok || l.mortEntre(xuid, dernier.TimestampUS, tUS) {
+	// LE DERNIER ECHANTILLON DOIT ETRE CELUI DU JOUEUR : sur un siege aux index divergents, il peut etre
+	// celui du corps d'un autre occupant (un bot entre deux corps du joueur) ; tenir le joueur la, ou le
+	// dire a bord depuis la, serait poser le lieu d'un autre.
+	if !ok || !l.memeJoueur(slot, dernier.TimestampUS, xuid) || l.mortEntre(xuid, dernier.TimestampUS, tUS) {
 		return nil, 0, voieMuette
 	}
 	switch parent, etat := l.bord.etatPendantLeSilence(l.tracks[slot], slot, dernier.TimestampUS, tUS); etat {
@@ -274,7 +280,7 @@ const (
 // seule ou aucune lecture le laisse libre.
 //
 // UNE DESCENTE A LA TOLERANCE DE `tUS` N EST PAS UN DEBARQUEMENT : le film ecrit la sortie du siege a
-// la mort a bord, dans la meme fraction de seconde. Elle se lit comme le corps replique encore a Â± la
+// la mort a bord, dans la meme fraction de seconde. Elle se lit comme le corps replique encore a ± la
 // tolerance : le joueur etait a bord a l'instant, et le vehicule le place.
 func (b bordDuFilm) etatPendantLeSilence(piste slotTrack, slot uint32, dernierUS, tUS uint64,
 ) (uint32, etatDuSilence) {

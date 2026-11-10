@@ -146,7 +146,7 @@ func scanBandeVide(kf grammar.WorldObjectKeyframes) VehicleScan {
 
 // nuageDesVehicules lit le nuage de positions `ti=40` sur la bande `band` des images-cles, aux
 // reglages du calque ([vehicleScanOptions]). C'est LA lecture des positions de vehicule : la cuisson
-// et la passe des positions du collecteur ([PositionsDesVehicules]) la partagent.
+// et la passe des positions du collecteur ([LireLesVehicules]) la partagent.
 func nuageDesVehicules(fc *grammar.FilmContext, band map[uint32]bool, wr *profile.Vec3Range,
 ) ([]grammar.BipedPosition, error) {
 	return grammar.ScanBipedPositionsForBand(fc, grammar.NewSlotBand(band), vehicleScanOptions(fc, wr))

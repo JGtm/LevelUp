@@ -182,3 +182,41 @@ func TestEntame_InstantAvantLOrigineNeLitPasLeSilence(t *testing.T) {
 		t.Fatalf("kill %+v (%+v) : une entame avant l'origine du film ne place personne", got, rep)
 	}
 }
+
+// TestLieu_LaTenueNePrendPasLeDernierEchantillonDUnAutreCorps : le siege 1 porte 111 (generation 1,
+// [1 s..3 s]), un corps d index 5 sans xuid (generation 2, [9 s..14 s]), puis 111 de nouveau (generation 3,
+// creee a 20 s, silencieuse jusqu a 27 s). 111 meurt a 25 s sans mort anterieure : le dernier echantillon du
+// siege est celui de l'autre corps, il ne la tient pas la.
+func TestLieu_LaTenueNePrendPasLeDernierEchantillonDUnAutreCorps(t *testing.T) {
+	pos := append(pisteMonde(1, 1_000, 3_000, 1, 1), pisteMonde(1, 9_000, 14_000, 40, 40)...)
+	pos = append(pos, pisteMonde(1, 27_000, 30_000, 2, 2)...)
+	pos = append(pos, pisteMonde(3, 100, 40_000, 20, 0)...)
+	reg := BuildIdentityRegistry(context.Background(), IdentityInput{Positions: pos,
+		BipedCreations: []grammar.BipedCreation{creationGen(1, 500_000, 0, 1), creationGen(1, 8_500_000, 5, 2),
+			creationGen(1, 20_000_000, 0, 3), creationDe(3, 100_000, 2)},
+		PlayerIndices: indexDe(111, 222, 333)})
+	got, rep := BuildKillPositions(EntreeDesPositions{Positions: pos, Registre: reg,
+		Kills: []KillRef{{KillerXUID: 333, VictimXUID: 111, TimeMS: 25_000}},
+		Morts: []MortDuJournal{{VictimeXUID: 111, TempsMS: 25_000}}, Bord: LectureDuBord{Lue: true}})
+	if len(got) != 1 || got[0].Victim != nil || rep.Held != 0 {
+		t.Fatalf("victime %+v (tenus %d) : le dernier echantillon est celui d'un autre corps, attendu nil", got, rep.Held)
+	}
+}
+
+// TestLieu_UnSiegeEnCollisionGardeSonEchantillon : le siege 100 porte deux records de la MEME generation et
+// d'index differents, 111 puis 222 : collision, aucun corps etabli. Un echantillon juste apres la fin de la
+// vie de 222 (le corps replique encore apres sa mort) reste le sien : le silence du registre hors de la vie
+// ne prouve pas un autre occupant.
+func TestLieu_UnSiegeEnCollisionGardeSonEchantillon(t *testing.T) {
+	pos := append(pisteMonde(100, 1_000, 3_000, 1, 1), pisteMonde(100, 9_000, 12_000, 7, 7)...)
+	reg := BuildIdentityRegistry(context.Background(), IdentityInput{Positions: pos,
+		BipedCreations: []grammar.BipedCreation{creationGen(100, 500_000, 0, 1), creationGen(100, 8_000_000, 1, 1)},
+		PlayerIndices:  indexDe(111, 222)})
+	if !reg.collisionDeSiege(100) {
+		t.Fatal("fixture : le siege 100 doit etre une collision")
+	}
+	l := lectureALInstant{registre: reg}
+	if !l.memeJoueur(100, 12_060_000, 222) {
+		t.Fatal("echantillon a la fin de vie + 60 ms sur un siege en collision : attendu garde")
+	}
+}
