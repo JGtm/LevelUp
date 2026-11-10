@@ -1,0 +1,200 @@
+# Plan : rejeu à 30 images/s et rejeux compressés sur disque (2026-11-10)
+
+Statut : **go du user le 2026-11-10, exécution en cours**. Exécution sous le skill `plan-execution`.
+
+## 0. Objectif et critère de succès
+
+- **Fluidité.** Tous les rejeux sont publiés à 30 images/s, tout le point compris (position, visée, bouclier). Essai concluant sur un match le 2026-11-09 (verdict user : « très propre et fluide »).
+- **Disque.** Les rejeux sont stockés compressés. Mesuré sur 30 rejeux : ratio 0,20, décompression de 6 ms pour le rejeu médian et de 20 ms pour le plus gros, en Go.
+- **Évolutivité.** Le user va comparer le décodeur à un décodeur concurrent et corriger des trous de données. Changer un champ, combler un trou ou changer à nouveau de cadence ne doit toucher ni le stockage ni les seuils.
+
+Le plan est réussi quand :
+- les quatre conditions de la porte de B9 sont tenues ;
+- le parc local est entièrement à 30 images/s et compressé ;
+- l'empreinte disque est mesurée (estimée à environ 1,8 Go, contre 3,6 Go aujourd'hui) ;
+- tous les garde-rails sont verts.
+
+## 1. Constats sur pièces (inventaires du 2026-11-10)
+
+- **Le format du fichier est découplé du format envoyé à la page.**
+  - `service/replay_service.go:199` décode l'artefact, l'enrichit, puis `replayview.FromArtifact` le projette. Huma ré-encode le résultat et `chimiddleware.Compress(5)` le compresse.
+  - Conséquence : compacter le fichier ne réduirait rien sur le réseau, seulement sur le disque, et la compression couvre déjà le disque.
+- **Lecteurs qui décodent dans `replay.ReplayDocument`** (`GetReplay`, `replayartifacts.LireArtefactRange` et les commandes `backfill-*`, `validateArtifact`) : ils sont insensibles à la forme JSON.
+- **Lecteurs ad hoc**, qui casseraient si la forme des listes changeait :
+  - `service/tactical_sequence_store.go:45` ;
+  - `cmd/backfill_t0_film/artefacts.go:67` ;
+  - `internal/replayverite/document.go:301` ;
+  - `internal/replaydiff/empreinte.go:68` ;
+  - `libs/film/replay/vehicules_chassis_inventaire_test.go:59` ;
+  - les fixtures web `replay_schema_107_*.json.gz`.
+- **Lectures d'octets directes, sensibles à la compression :**
+  - les mêmes lecteurs ad hoc ;
+  - `artifact_digest.go:126` ;
+  - `artifact_meta.go:114`, dont `bytes == st.Size()` est rompu sous compression ;
+  - `derivations_index.go`, qui compare `ArtifactBytes` à `st.Size()` ;
+  - `cmd/zone-attribution/census.go:115` ;
+  - `ops/seed_demo_replays.go:177` ;
+  - `cmd/replay-corpus-gate/basecache.go:275` ;
+  - les tests web de mesure activés par variable d'environnement.
+  - Non inspectés : `cmd/replay-equiv/parent.go:350`, `cmd/levelup/cmd_replay_parc_vies*.go`, `sync/replayartifacts/zones_rattrapage.go:394`.
+- **Extension `.json` en dur.** Source unique : `domain/title/film_id.go:84`. Mais `HasSuffix(".json")` est recopié dans `replay_service.go:133`, `replay_purge_cron.go:177,189,231`, `replayregen/scan.go:56` et `backfill_t0_film/artefacts.go:107`. Plus de deux copies : règle 6.
+- **Seuils exprimés en images**, qui deviendraient 3 fois plus courts à 33 ms.
+  - Go :
+    - `zone_attribution.go:50` ;
+    - `replayverite/seuils.go:20,37,46,51,55` ;
+    - `analysis/tactical/sequence.go:38` ;
+    - `projectiles_tirs.go:18` ;
+    - `vehicle_turrets.go:94` ;
+    - `projectiles.go:84`, un pas en mètres par image ;
+    - `t0_film.go` vers `:72`, un plancher de bruit par pas.
+  - Web : `bombBlastFx.ts:94`, `flagCaptureFx.ts:86`, `flagCarriesLayer.ts:259`, `carriedGlyphPulse.ts:29`, `replayProjectiles.ts:16`, `headingInterp.ts:27`, `vehiclesAim.ts:52`, `skullSound.ts:121,129`, `zoneSound.ts:344`, `weaponChangeSound.ts:96`. `placementWall.ts:110` reste à vérifier.
+  - Le moteur de lecture, `useReplayTiming` et la Tactique web travaillent déjà en millisecondes.
+- **Défaut de relecture.** `replayartifacts/raster.go:115` relit les artefacts sans `frameIntervalMs` avec `replay.DefaultFrameIntervalMS`. Si cette constante passe à 33, les anciens artefacts sont relus à 33 ms.
+- **Révision de publication.** Elle vaut `"publication-" + SchemaVersion` (`layers.go:115`), et `frameIntervalMs` en dépend (`layers.go:133`).
+  - Pour qu'un rejeu à 100 ms soit jugé « à re-cuire », `SchemaVersion` doit monter (108 depuis l'étape 4.1 du plan v8.1.2, donc 109).
+  - Une montée ne déclenche **aucune** recuisson automatique en lot. La file du bureau ne démarre que sur un geste du user, et l'après-sync est plafonné à 5 rejeux par cycle.
+- **Le pas de 33 ms donne 30,3 images/s.** Chaque champ `T` vaut un pas de 33 ms, ce qui est cohérent sur tout l'axe.
+- **Essai du 2026-11-09.** Les fiches n'avaient pas leurs compteurs, parce que l'essai passait par `cmd/replay-build` et non par `backfill-replay`. La cause est à confirmer en B7.
+
+## 2. Décisions
+
+| # | Décision | Raison |
+|---|---|---|
+| D-1 | **Pas d'écriture compacte (colonnes) dans le fichier.** | Le serveur ré-encode de toute façon pour la page, donc aucun gain réseau. La compression donne déjà le gain disque. Six lecteurs ad hoc et les fixtures casseraient. Un codec par champ rendrait chaque correction du décodeur plus coûteuse. |
+| D-2 | **Écriture compacte sur le réseau, seulement sur mesure** (étape D) | Règle « pas de sur-correction ». Si elle se fait, elle se fait en un seul endroit de chaque côté (`replayview` et `normalizeReplayDocument`), de façon générique, sans table par champ. |
+| D-3 | **Grille à 33 ms pour tout le point** | C'est le réglage de l'essai validé. Une seule cadence évite de gérer deux grilles. |
+| D-4 | **Fichier `{short8}.json.gz`, gzip de la bibliothèque standard, niveau 6** | gzip compresse mieux que zstd niveau 3 ici (0,204 contre 0,223). La compression coûte 110 ms une fois, à l'écriture. Aucune dépendance ajoutée. L'extension dit le contenu, et le parc mixte reste lisible. |
+| D-5 | **Toute lecture et toute écriture d'octets d'artefact passent par une porte unique de `internal/replaybuild`**, tenue par un garde-rail | La compression devient un détail de la porte. Un futur changement de stockage touche un fichier. |
+| D-6 | **Tout seuil temporel est écrit en millisecondes et converti à la lecture**, garde-rail Go et web | Changer de cadence redevient un réglage. Les corrections du décodeur ne rencontrent pas de seuil caché. |
+| D-7 | **`SchemaVersion` passe à 109** à la bascule de cadence. Une constante `HistoricalFrameIntervalMS = 100` est figée pour relire les artefacts sans champ. | C'est la seule voie par laquelle les rejeux à 100 ms se voient « à re-cuire ». Le défaut de construction et le défaut de relecture sont deux faits distincts. |
+| D-8 | **La recuisson du parc et la conversion des fichiers sont des gestes du user** | Règle « jamais de cuisson en lot sans demander ». La copie vers la prod porte sur les rejeux seuls, jamais sur les bases. |
+
+## 3. Dépendances et gestes réservés au user
+
+- **Dépendance : après la clôture du plan v8.1.2.** Son étape 6 bascule LevelUp sur les modules publiés, et `libs/film` en fait partie. Toute modification de `libs/film/replay` passe ensuite par un numéro de version du module, tag posé par le user. Branche `feat/rejeu-30ips` depuis la release qui suivra la v8.1.2.
+- **Gestes du user :**
+  - le go de ce plan ;
+  - la porte visuelle B9 ;
+  - la conversion du parc, en C1 ;
+  - la recuisson, en C2 ;
+  - la copie des rejeux vers la prod et le déploiement simultané du serveur et des ouvriers, en C4 ;
+  - le tag de module ;
+  - le merge vers `main`.
+
+## 3 bis. Contrat d'exécution
+
+- Skill `plan-execution` (contrat par défaut). Ordre strict : une étape n'est close que lorsque son gate est passé et consigné dans le Journal (section 9). Statuts : `[x]` fait, `[~]` couvert ailleurs (référence), `[!]` non traité (justification écrite). Aucune case vide à la clôture.
+- Zéro correctif hors périmètre : toute trouvaille va dans « Découvertes » (section 8).
+- Reprise de session : lire le Journal, puis `git log --oneline -10` sur `feat/rejeu-30ips`, et reprendre au premier item non coché.
+- Effort : 0 rapide ; A moyen (une vingtaine de fichiers, surtout des remplacements par la porte) ; B lourd (seuils, re-mesures, goldens) ; C dépend du parc (recuisson séquentielle) ; D rapide à mesurer.
+- Couches : la porte et la conversion dans `internal/replaybuild` (orchestration de stockage) ; le prédicat de nom dans `internal/domain/title` à côté de `ReplayArtifactFileName` ; les seuils restent dans leurs paquets (`libs/film/replay`, `internal/analysis/tactical`) ; la commande dans `cmd/levelup`. Aucun handler ne change. Les chemins passent tous par `PathResolver`. Le rejeu reste derrière sa capability existante, donc aucun cas propre à un titre.
+- Journalisation : la porte écrit un `slog.ErrorContext` et incrémente un compteur sur un fichier illisible, sans dégradation silencieuse. Le parc mixte (`.json` et `.json.gz` du même match) donne un `slog.WarnContext` et un compteur. La commande `replay compress` rend un compte rendu chiffré : convertis, déjà compressés, échecs.
+- Commandes du gate (exactes) : `make go-api-test` ; `cd apps/go-api && go test -tags=integration ./...` ; `make libs-test` ; `make test-web` ; `make check-types` ; `make go-api-lint` ; `make replay-equiv` ; `make replay-corpus-gate`.
+
+## 4. Étapes
+
+### Étape 0 — Témoins AVANT
+- [ ] 0.1 Fixer une liste fermée de 12 matchs : Assassin, CTF, Roi de la colline, Bastions, Oddball, Bombe, une carte Forge, un match avec véhicules, un match avec bots, plus 0076ebdc.
+- [ ] 0.2 Capturer sur cette liste et conserver dans le dossier de gate :
+  - `replay-equiv` ;
+  - les empreintes `replaydiff` ;
+  - `replay-verite` ;
+  - les sorties en simulation de `backfill-usage-summary`, `vehicle-takes`, `flag-grabs-net`, `pad-tiers` et `tactical-rasters` ;
+  - une séquence de mort Tactique ;
+  - la taille de chaque fichier.
+
+Gate : témoins rangés, liste écrite dans ce plan.
+
+### Étape A — Porte unique et compression (aucun contenu ne change)
+- [ ] A1 **Tests d'abord.**
+  - Aller-retour écriture compressée puis lecture identique, octet pour octet après décompression.
+  - Lecture d'un `.json` ancien.
+  - Parc mixte (`.json` et `.json.gz` du même match : le `.gz` gagne, et c'est compté).
+  - `.meta` avec `bytes` égal à la taille stockée.
+  - `DerivationsUpToDate` sous compression.
+  - Listage par un seul prédicat de nom.
+- [ ] A2 **Porte.** `replaybuild.ReadArtifactBytes(path)` / `OpenArtifact`, qui détecte par les octets magiques, pas par le nom. `writeArtifactBytes` compresse. `ReplayArtifactFileName` rend `.json.gz`. Un prédicat `title.IsReplayArtifactFile(name)` remplace les 6 `HasSuffix`.
+- [ ] A3 **Migrer tous les lecteurs** de la section 1 vers la porte, y compris les trois non inspectés, après lecture. Côté web, les tests de mesure lisent par `gunzipSync` si le fichier est compressé.
+- [ ] A4 **Garde-rails** (allowlist vide, datée) :
+  - aucun `os.ReadFile` ni `os.Open` sur `ReplayArtifactPath` hors de la porte, en élargissant `archlint/no_artefact_reread_in_cmd_test.go` à tout l'espace de travail ;
+  - aucun `".json"` littéral de rejeu hors de `film_id.go`.
+- [ ] A5 **Commande `levelup replay compress [--dry-run]`.**
+  - Convertit sur place, atomiquement.
+  - Relit le `.gz` décodé avant de supprimer le `.json`.
+  - Idempotente, avec un compte rendu chiffré.
+
+Gate A :
+- tous les témoins de 0.2 sont identiques, tailles exceptées ;
+- `make go-api-test`, `go test -tags=integration ./...`, `make libs-test`, `make test-web` et `make check-types` passent ;
+- la taille du parc est mesurée après une conversion à blanc sur une copie.
+
+### Étape B — 30 images/s
+- [ ] B1 **Tests d'abord**, pour chaque seuil de la section 1 : la même décision, exprimée en millisecondes, aux cadences 100 et 33 ms. Côté Go, un seul helper de conversion des millisecondes en images (vérifier d'abord qu'il n'en existe pas). Côté web, `msToFrames` (`lib/replay/replayLogic.ts:348`), déjà utilisé par `useReplayTiming`.
+- [ ] B2 **Convertir les seuils Go**. Le pas maximal des projectiles devient une vitesse : 100 m/s × pas.
+- [ ] B3 **Convertir les 11 constantes web** et vérifier `placementWall.ts:110`.
+- [ ] B4 **Re-mesurer à 33 ms** les seuils qui sont des mesures de corpus : `replayverite/seuils.go` et le plancher de bruit de `t0_film.go`. Les valeurs retenues et leur mesure vont dans le commit. Si une mesure contredit la valeur historique convertie, remonter au user avant de trancher.
+- [ ] B5 **Garde-rail D-6.** Aucune constante numérique suffixée `Frames` / `Images` / `_FRAMES` dans `libs/film/replay`, `analysis/tactical`, `replayverite` et `features/match-replay`. Allowlist vide, sauf les outils de recherche.
+- [ ] B6 **Bascule.**
+  - `DefaultFrameIntervalMS = 33` ;
+  - `HistoricalFrameIntervalMS = 100`, utilisé par `raster.go:115` et tout défaut de relecture ;
+  - `SchemaVersion` à 109, avec son entrée de chronique ;
+  - les commentaires périmés listés par l'inventaire sont corrigés ;
+  - les goldens sont régénérés, chaque écart expliqué.
+- [ ] B7 **Recuire la liste fermée** par `backfill-replay --match` (et non `replay-build`). Vérifier que les compteurs de joueur sont présents. Si ce n'est pas le cas, en trouver la cause avant d'aller plus loin.
+- [ ] B8 **Témoins APRÈS sur la liste fermée.**
+  - Différences attendues seulement : axe `T` et nombre de points. Effets attendus : vies et tirs, rattachements, comptes de dérivés à ± 1 image de quantification.
+  - Toute autre différence est expliquée ou corrigée.
+  - Le gate de corpus et `replay-equiv` passent.
+- [ ] B9 **Porte visuelle du user** sur 3 matchs de la liste (Assassin, CTF, Bastions). Il vérifie quatre points :
+  - fluidité ;
+  - durée des effets (explosion de bombe, capture de drapeau, clignotement, traînées) ;
+  - sons (crâne, zone, ramassage) ;
+  - fiches avec compteurs.
+
+Gate B : B9 validé par un message du user, plus les commandes du gate A.
+
+### Étape C — Parc (gestes du user)
+- [ ] C1 Le user lance `levelup replay compress` sur le parc local.
+- [ ] C2 Le user lance la recuisson : la file du bureau, ou `backfill-replay --only-existing`, séquentiel.
+- [ ] C3 Rejouer les dérivés, dans l'ordre déjà en vigueur : `usage-summary` (révision montée à `us8`), puis `pad-tiers --force`, puis `killsource`, plus les rasters tactiques. Le user est prévenu de chacun.
+- [ ] C4 Copier les rejeux vers la prod, et seulement eux. Déployer le serveur et les ouvriers ensemble : un ouvrier à un schéma antérieur voit ses dépôts refusés.
+
+### Étape D — Compaction sur le réseau (conditionnelle)
+- [ ] D1 **Mesurer.** Taille transférée, plus temps d'analyse et de normalisation dans le navigateur, sur le plus gros rejeu du parc à 30 images/s.
+- [ ] D2 **Seuil.** On n'implémente que si la réponse compressée dépasse 2 Mo ou si analyse et normalisation dépassent 300 ms. Sinon, l'item est clos `[!]` avec les mesures.
+  - Si on implémente : un encodage générique auto-décrit, où le fichier porte l'échelle de chaque champ.
+  - Il vit dans `replayview` et dans `normalizeReplayDocument`.
+  - Le reste de l'application voit les mêmes objets.
+  - Le premier test est l'absence : `h` manque sur 42 % des points, `sh` sur 76 %, et « absent » n'est pas « 0 ».
+
+### Étape E — Clôture
+- [ ] E1 Mettre à jour `docs/COMMANDS.md` (FR et EN) pour `replay compress`, l'ADR 0034 (cadence et stockage) et `.ai/thought_log.md`.
+- [ ] E2 Dresser la liste des reports et des découvertes.
+
+## 5. Pour faire évoluer le décodeur (contrat d'évolutivité)
+
+- **Ajouter ou corriger un champ** : un champ dans le type Go et son tag. Le stockage et la cadence ne bougent pas, et il n'y a pas de codec par champ à tenir.
+- **Combler un trou de données** : recuire. La porte de lecture et d'écriture n'est pas concernée.
+- **Changer à nouveau de cadence** : une constante et une montée de version. Les seuils sont en millisecondes et un garde-rail le tient.
+- **Changer de compression** : la porte seule.
+
+## 6. Risques
+
+| Risque | Parade |
+|---|---|
+| Un seuil en images oublié | B5 (garde-rail) et B8 (témoins) |
+| Une re-mesure de seuil contredit l'historique | Arrêt et remontée au user (B4) |
+| Fiches sans compteurs après recuisson | B7 bloquant |
+| Ouvrier non redéployé | C4 : serveur et ouvriers ensemble |
+| Mémoire pendant la recuisson | Recuisson séquentielle, lancée par le user |
+| Navigateur lent sur un gros rejeu | Mesure D1 |
+
+## 7. Hors périmètre
+
+Courses de drapeau (non validé). Mainmise, préréglages de vue, fil d'événements, fiche joueur et graphiques : plans séparés. Dessin des véhicules : planche d'essai des pions.
+
+## 8. Découvertes
+
+## 9. Journal
+
+- **2026-11-10, lancement.** Go du user (« vas-y orchestre l'implem, revue adversariale à la fin »). Le plan v8.1.2 n'est pas clos : ses étapes 1, 2, 4, 5 sont fusionnées dans `release/v8.1.2`, son étape 6 (bascule sur les modules publiés, qui retire `libs/`) reste à faire par une autre session. Aménagement de la dépendance de la section 3 : branche `feat/rejeu-30ips` créée depuis `origin/release/v8.1.2` (`afb963994c`), worktree dédié `LevelUp-wt-30ips`. Les étapes 0 et A (hors `libs/film`, sauf un test) s'exécutent maintenant ; l'étape B, qui modifie `libs/film/replay`, attend la bascule de l'étape 6 de la v8.1.2 (dépendance explicite, report valide). `SchemaVersion` vaut déjà 108 sur cette base : la bascule de cadence le portera à 109.
