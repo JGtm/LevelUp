@@ -1,0 +1,121 @@
+# Commandes de apps/go-api/cmd sans utilisateur - releve du 2026-11-10 sur origin/release/v8.1.2 (f44885cfb8)
+# Critere : aucune citation dans Makefile, scripts/, .github/, docs/ (hors docs/adr), apps/desktop, README, CLAUDE.md, .claude/, Dockerfile, ni dans un plan actif .ai/PLAN_*.md.
+# Colonne 1 : nombre de fichiers Go/TS/Rust non-test, hors du dossier de la commande, qui la nomment (commentaire ou lancement : a relire avant suppression).
+
+## A SUPPRIMER (aucune reference de code)
+admin
+analyze_media_tz
+apply_tz_migration
+audit_coverage
+backfill-csr-history
+backfill-media-hls
+backfill-team-scores
+backfill-world-player-stats
+backfill_bp_items
+backfill_first_joined_tz
+backfill_participation_info
+backfill_quit_timestamps
+backfill_time_played
+bench-rps
+check-registry
+check_playlists
+cleanup_media_index
+cleanup_orphan_match
+cleanup_post_art
+diag_api_lecture
+diag_appearance
+diag_art_corruption_audit
+diag_audit_crash
+diag_backfill_dryrun
+diag_bot_resolution
+diag_career
+diag_citation_counters
+diag_composite
+diag_csr
+diag_csr_check
+diag_csr_scoreboard
+diag_customization_population
+diag_deaths
+diag_emblem_colors
+diag_emblem_mapping
+diag_expected_assists
+diag_expected_kd
+diag_highlight_match
+diag_intensity_timeline
+diag_kpm
+diag_live_economy
+diag_lusr_displayed
+diag_lusr_slots
+diag_lusr_volatility
+diag_lying_bits
+diag_match_id_tables
+diag_matchstats_dump
+diag_medals
+diag_media_assets
+diag_mp_rebuild
+diag_orphan_session
+diag_orphan_xuids
+diag_perfsim
+diag_q
+diag_recent_match_sync
+diag_replay_wal
+diag_session_map_winrate
+duckdb_7659_repro
+engagement-calibrate
+engagement-validate
+export_t0_fixtures
+h5-appearance-backfill
+h5-csr-match-backfill
+h5-events-backfill
+h5-kill-kind-backfill
+h5-lusr-backfill
+h5-lusr-smoke
+h5-read-smoke
+h5-roster-refetch
+h5-teamscore-backfill
+inspect_engagement
+lusr_v2_tier_analysis
+migrate-roman-ranks
+openapi-diff
+probe-world-stats
+purge_corrupt_records
+purge_foreign_lusr_chain
+purge_player_media
+query_medals_gap
+rebuild_pme_art
+reindex-media-thumbs
+repair-metadata
+seed-medal
+seed-ranked-playlists
+world-aliases-persist
+
+## A SUPPRIMER APRES RELECTURE DE LA REFERENCE (nommee par du code non-test)
+1 ref : backfill_kda_accuracy
+1 ref : h5-backfill
+1 ref : h5-csr-backfill
+3 ref : h5-enrich
+1 ref : h5-roster-topup
+1 ref : h5-sync
+1 ref : lusr_v2_canonical_backfill
+2 ref : lusr_v2_replay
+1 ref : lusr_v2_squad_estimate
+3 ref : lusr_v2_ttt_batch
+1 ref : migrate-hls-audio
+2 ref : rebuild_mp
+1 ref : snapshot-world-leaderboard
+
+## CONSERVEES (instruments de mesure cartes et film, items deja au registre des reports, outils nommes par un message de test)
+backfill_t0
+backfill_t0_film
+equipenergy-build
+gen_test_fixtures
+get-token
+killsource
+mapfond-cadrage
+mapfond-inventaire
+mapfond-planche
+mapfond-webp
+mapplafond-mesure
+oddball-terrain
+statnames-sweep
+zone-attribution
