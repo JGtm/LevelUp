@@ -324,7 +324,10 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 107 -> 108 (2026-11-09), +33 : l entree v108 (le second chassis de tourelle fixe, les slots sans
 	// record de creation ni nom ecartes avant le registre d identite). Exception ecrite, dans le commit qui
 	// monte `SchemaVersion`.
-	"libs/film/replay/document_chronicle.go": 3753,
+	// SCHEMA 108 NON PUBLIE (2026-11-10), +8 : l entree v108 recoit son troisieme volet (la table du film a
+	// siege vacant intercale, employee quand les records de creation confirment le rang absolu). Meme
+	// exception ecrite : la chronique de la version que la branche monte, avant sa publication.
+	"libs/film/replay/document_chronicle.go": 3761,
 	// `film_scan.go` N ENTRE PAS EN TABLE (2026-10-22, lot detonations, correction CI) : l appel a
 	// `grammar.ScanProjectileDetonations` (item 1) l avait fait passer de 500 a 504 lignes, mais
 	// « mettre le fichier dans plafondsParFichier n est pas une reponse » (cette table est close au

@@ -49,8 +49,10 @@ type contradictionDeSiege struct {
 // complement (indexDesChunksHorsTable) saute les sieges que le retrait a ensuite supprimes.
 //
 // `in` est l'entree AVANT composition : `in.PlayerIndices` y est la lecture brute des chunks.
-func contradictionsAssises(table types.PlayerIndexTable, in IdentityInput) []contradictionDeSiege {
-	if !in.FilmTable.Lue() {
+// `employee` est la decision de la composition ([tableDuFilmEmployee]) : une table non employee
+// n'assied personne.
+func contradictionsAssises(table types.PlayerIndexTable, in IdentityInput, employee bool) []contradictionDeSiege {
+	if !employee {
 		return nil
 	}
 	var out []contradictionDeSiege

@@ -41,8 +41,10 @@ func consignerLaTableDuFilm(ctx context.Context, t grammar.FilmPlayerTable, err 
 	slog.InfoContext(ctx, "rejeu : table des joueurs du film lue", "match_id", matchID, "build", t.Build,
 		"sieges", t.Occupied, "vacants", t.Vacant, "vacantIntercale", t.InterleavedVacant)
 	if t.InterleavedVacant {
-		slog.WarnContext(ctx, "rejeu : siege VACANT INTERCALE dans la table du film — le rang absolu et "+
-			"l'index parmi les occupes divergent, le lien direct n'est PAS affirme",
+		// Le registre d'identite tranche (identity_registry_vacant_intercale.go) et journalise son
+		// refus quand les records de creation ne confirment pas le rang absolu.
+		slog.InfoContext(ctx, "rejeu : siege VACANT INTERCALE dans la table du film — le rang absolu et "+
+			"l'index parmi les occupes divergent, le lien direct attend la confirmation des records de creation",
 			"match_id", matchID, "build", t.Build)
 	}
 	return t

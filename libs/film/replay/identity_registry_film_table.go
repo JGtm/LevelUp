@@ -40,15 +40,14 @@ package replay
 //	contradiction  il en donne un AUTRE — la table du film est conservee, l'ecart est compte ;
 //	silence        le controle ne porte pas ce xuid (il ne l'a pas cherche, ou ne l'a pas trouve).
 //
-// # LE VACANT INTERCALE EST UNE CONTRADICTION, PAS UNE LECTURE (decouverte D3 (1.5))
+// # LE VACANT INTERCALE SE TRANCHE PAR LES RECORDS DE CREATION, OU NE SE TRANCHE PAS
 //
 // `PlayerSlot.FilmIndex` est le rang ABSOLU dans la table de 32, vacants compris. Tant qu'aucun
-// vacant n'est INTERCALE, ce rang EST le `player_index` de production (76 films sur 76). Quand un
-// vacant s'intercale, les deux lectures divergent et AUCUN oracle ne les departage : les 13 films
-// du cache concernes n'ont aucun document de rejeu (mesure du 2026-09-14). Le lien direct ne
-// s'affirme donc PAS sur ces films — la table entiere passe en repli, et le refus est nomme
-// (`FilmPlayerTable.Lue`). Le jour ou un tel film aura un document, la question se tranchera sur
-// piece ; d'ici la, on se tait plutot que de choisir.
+// vacant n'est INTERCALE, ce rang EST le `player_index` de production. Quand un vacant s'intercale,
+// rang absolu et index parmi les occupes divergent, et la table seule ne les departage pas. Les
+// records de creation des bipedes, eux, le peuvent : la table est employee quand ils CONFIRMENT le
+// rang absolu (identity_registry_vacant_intercale.go, [tableDuFilmEmployee]). Sinon le lien direct
+// ne s'affirme PAS — la table entiere passe en repli, et le refus est nomme (`vacant_intercale`).
 
 import (
 	"context"
@@ -96,12 +95,13 @@ func composerTableDIndex(in IdentityInput) filmTableLinks {
 		voie: map[uint64]identity.LinkMethod{},
 		noms: map[uint64]string{},
 		couverture: identity.FilmTableCounts{
-			Read: in.FilmTable.Lue(), Refusal: string(in.FilmTable.Refusal),
+			Read: tableDuFilmEmployee(in), Refusal: string(in.FilmTable.Refusal),
 			Seats: in.FilmTable.Occupied,
 		},
 	}
-	if in.FilmTable.InterleavedVacant && in.FilmTable.Refusal == grammar.FilmTableRead {
-		// Une table LUE dont le rang est ambigu : le refus n'est pas une erreur de lecture, il
+	if in.FilmTable.InterleavedVacant && in.FilmTable.Refusal == grammar.FilmTableRead && !out.couverture.Read {
+		// Une table LUE dont le rang reste ambigu, les records de creation ne le confirmant pas
+		// (identity_registry_vacant_intercale.go) : le refus n'est pas une erreur de lecture, il
 		// est une abstention, et il se nomme comme tel.
 		out.couverture.Refusal = string(identity.FilmTableInterleavedVacant)
 	}
@@ -111,7 +111,7 @@ func composerTableDIndex(in IdentityInput) filmTableLinks {
 	completerParLesChunks(&out, in)
 	// LA CHAINE SE RESOUT AVANT LE RETRAIT DES COLLISIONS : un siege contredit que les chunks donnent
 	// a un autre joueur est une collision qu elle explique (identity_registry_chaines.go).
-	cs := contradictionsAssises(out.table, in)
+	cs := contradictionsAssises(out.table, in, out.couverture.Read)
 	membres := resoudreLesChaines(&out, cs, in)
 	retirerLesIndexEnCollision(&out)
 	out.indexDesChunks, out.indexTenus = indexDesChunksHorsTable(out.table, cs, membres)

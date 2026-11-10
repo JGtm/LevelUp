@@ -3744,6 +3744,14 @@ package replay
 //	`coverage.tracks.published`, `coverage.bridge.unnamedLives` et `coverage.identity` suivent : le document ne
 //	                 porte plus ni la piste ni la vie sans identite que le registre ne voyait plus.
 //
+// TROISIEME VOLET — la table du film a siege vacant INTERCALE (identity_registry_vacant_intercale.go). Le registre
+// la refusait toujours (`vacant_intercale`) ; il l emploie quand les records de creation des bipedes confirment le
+// rang absolu : chaque siege a un corps a son rang, aucun corps au rang d un vacant intercale. 13 des 15 films du
+// parc a vacant intercale passent ; les 2 autres (un siege sans corps a son rang) gardent le refus.
+//
+//	`coverage.identity.filmTable`   `lu` vrai, `refus` vide, les sieges en `direct` ; les vies que la table nomme
+//	                 quittent `index_hors_table` et `coverage.bridge.unnamedLives` baisse d autant.
+//
 // CE QUI MONTE    `SchemaVersion` 107 -> 108, et avec lui `publication-108` (la revision de la couche de
 // AVEC ELLE       publication). Aucune revision de grammaire, de faits ni d isolation ne bouge, et
 //                 `SchemaDesFaits` garde sa valeur : la completude du film se lit sur le verdict du fil des morts,

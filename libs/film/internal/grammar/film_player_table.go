@@ -110,10 +110,10 @@ type FilmPlayerTable struct {
 	Occupied int
 	Vacant   int
 	// InterleavedVacant dit qu'un siege vacant tombe AVANT le dernier occupe. C'est le SEUL cas
-	// ou « rang absolu » et « index parmi les occupes » divergent, et la mesure du 2026-09-14 ne
-	// tranche pas lequel des deux est le `player_index` : aucun des 13 films du cache concernes
-	// n'a de document de rejeu. Le registre d'identite traite donc ce cas en CONTRADICTION
-	// nommee — il n'affirme pas le lien direct (cf. identity_registry_film_table.go).
+	// ou « rang absolu » et « index parmi les occupes » divergent, et la table seule ne dit pas
+	// lequel des deux est le `player_index`. [FilmPlayerTable.Lue] rend donc faux ; le registre
+	// d'identite de `replay` emploie la table quand les records de creation des bipedes confirment
+	// le rang absolu, et la refuse sinon (identity_registry_vacant_intercale.go).
 	InterleavedVacant bool
 	// Refusal nomme la cause quand la table n'a pas ete lue. Vide = lue.
 	Refusal FilmTableRefusal
