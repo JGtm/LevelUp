@@ -80,7 +80,7 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 		consumeBipedSpartanAbilityEnergy(br)
 		return variant, nil, true
 	case "flock-position-component": // ti21 i16 (FUN_140ee7270 -> FUN_14076e524)
-		consumeFlockPosition(br, uint(level))
+		consumeFlockPosition(br)
 		return variant, nil, true
 	case "flock-current-destination-component": // ti21 i17 (FUN_142ed4668 -> FUN_142ed0674)
 		consumeFlockCurrentDestination(br)

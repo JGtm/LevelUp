@@ -36,17 +36,18 @@ const (
 // MEMES BORNES QUE `readTranslocVec` (transloc_events.go), POUR LA MEME RAISON : la table DEFAUT
 // du build quand la porte est posee (`pos.idx < 0` — `FUN_14076e524` n a alors lu AUCUN index, ses
 // largeurs viennent de `profile.LargeursAxeParDefautDuBuild`, qui n a de sens que sur les bornes
-// +/-20000 du moteur), celles de la region jouee sinon (`pos.idx >= 0` ; `lireE524Sur` a deja refuse
-// tout index different de `br.vueA.positions.region` — jamais une autre region). Une lecture EN
+// +/-20000 du moteur), celles de la region que l index designe sinon (`pos.idx >= 0`,
+// [tablesDePosition.ligneDeLIndex]). Un index sans ligne ([positionQuantifiee.sansLigne]) ne porte aucun quantum. Une lecture EN
 // PLEINE PRECISION (`pos.brute`, garde de `FUN_14076f91c`) ne porte aucun quantum a deplacer : rien
 // n est range, [lecture.DetonationPositionLue] reste a 0.
 func dequantDetonationPosition(br *Lecteur, pos positionQuantifiee) {
-	if pos.brute {
+	if pos.brute || pos.sansLigne {
 		return
 	}
 	rng := profile.QuantRangeParDefautDuBuild()
 	if pos.idx >= 0 {
-		rng = vec3RangeDeBornes(br.vueA.positions.bornesCarte)
+		l, _ := br.vueA.positions.ligneDeLIndex(pos.idx) // lu : lireE524Sur n a pas refuse l index
+		rng = vec3RangeDeBornes(l.bornes)
 	}
 	lay := profile.I0Layout{AxisW: pos.w}
 	br.detonationLue.X = DequantBipedAxis(uint32(pos.q[0]), 0, lay, rng)

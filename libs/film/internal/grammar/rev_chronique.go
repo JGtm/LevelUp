@@ -422,3 +422,18 @@ package grammar
 // la jointure par le rang de l annonce i48 du meme paquet, qui perdait les deux derniers cas, disparait. Les
 // lectures changent de forme (le codec des faits les ecrit avec l identite, `SchemaDesFaits` 18 -> 19) : les faits
 // cuits avant se refusent sur cette revision et sur ce numero, par construction.
+
+// ENTREE `grammar-2026-11-10` (2026-11-10, lecture des positions par index de region). LES POSITIONS SONT LUES
+// AUX LARGEURS DE LA REGION QUE LE FLUX DESIGNE. LE DECODAGE CHANGE. `FUN_14076e524` lit un index de region
+// puis trois axes aux largeurs de la ligne de CET index ; le portage unique ([lireE524Sur]) appliquait a tout
+// index la ligne de la region jouee. Il lit desormais la table par index de la carte
+// ([profile.MapQuantEntry.Regions], posee par [ProfilDeBalayage.PoserLesRegionsDeLaCarte]) : un index sans
+// ligne lit zero bit par axe et se compte ([Observation.IndexSansLigne]) ; une entree sans table garde la lecture
+// d avant. Trois sites rejoignent le portage unique et quittent les exceptions datees : flock-position (ti=21
+// i16), flock-destination (ti=21 i2 a i11) et world-object i0, branche precHigh = 0 ; seule la branche precHigh = 1
+// de world-object i0 reste en exception. Les positions des messages de la vue A (genres 5 et 6, niveaux 0xf et
+// 0xc) lisent la meme table, et la position d une detonation se dequantifie dans la region lue. Mesure sur le
+// corpus (127 films lus, catalogue regenere) : paquets delta fermes HI_1_13_0 97,60 % -> 99,42 %, HI_1_11_0
+// 96,07 % -> 98,29 %, HI_1_10_0 95,41 % -> 95,46 %, HI_1_12_0 inchange ; le desaccord de lecture contre le temoin
+// `ti=40` composant 0 disparait (12 087 paquets). Les rejeux et les faits cuits avant se refusent sur cette
+// revision : la recuisson est une decision de l utilisateur.

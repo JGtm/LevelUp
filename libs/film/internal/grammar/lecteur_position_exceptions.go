@@ -1,14 +1,14 @@
 package grammar
 
-// lecteur_position_exceptions.go — LES TREIZE SITES DE `FUN_14076e524` QUI GARDENT LEUR ANCIEN
+// lecteur_position_exceptions.go — LES ONZE SITES DE `FUN_14076e524` QUI GARDENT LEUR ANCIEN
 // LECTEUR (lot J6.3 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, decision du superviseur du
-// 2026-09-27 pour les trois premiers ; lot J6-bis du 2026-09-28 pour flock-destination,
-// tacmap-poiicon et player-desired-respawn-location ; lot R3 du 2026-09-29 pour
+// 2026-09-27 pour ti=38 i18 et le precHigh de world-object i0 ; lot J6-bis du 2026-09-28 pour tacmap-poiicon et
+// player-desired-respawn-location ; lot R3 du 2026-09-29 pour
 // tacmap-displayasset, tacmap-areaofinterest, tacmap-cooptetherarea, crew-order et le precHigh de
 // la branche absolue d i0 du bipede ; lot R3-bis du 2026-09-30 pour unit-actor-state et
 // tacmap-waypointstate — meme situation, meme format).
 //
-// Le portage unique (`lecteur_position.go`) lit ces treize sites comme le jeu les ecrit — releve
+// Le portage unique (`lecteur_position.go`) lit ces onze sites comme le jeu les ecrit — releve
 // Ghidra du 2026-09-27 — et la FERMETURE DES BOBINES baisse sur chacun : la lecture du jeu y est
 // donc contredite par une mesure que ce lot ne sait pas expliquer. Chaque site garde ici son
 // lecteur d AVANT le lot, et figure comme EXCEPTION DATEE dans la table des sites
@@ -29,74 +29,23 @@ package grammar
 // l exception : il rougit si le site est migre sans que l exception soit retiree, et inversement.
 // Ce fichier est le SEUL exempte des formes de lecteur local interdites par le ratchet.
 
-import "github.com/JGtm/halo-infinite-film-decoder/internal/profile"
-
-// consumeObjectPositionMonde lit world-object i0 (`FUN_14076e29c` -> `FUN_14076e420(0x10)`, CALL
-// 14076e2c0) avec le lecteur d AVANT le lot J6.3 : precHigh R(1) ; a 1, R(59) mesure ; a 0, la
-// porte, l index sur `DAT_144632be0` bits et les trois axes AUX LARGEURS DE LA CARTE quand la porte
-// est a 0, AUX LARGEURS DE LA TABLE DEFAUT a la ligne 0x10 (22/22/22) quand elle est posee, puis R(2).
+// consumePrecHautDeLObjetMonde lit la branche precHigh = 1 de world-object i0 (`FUN_14076e420(0x10)`,
+// CALL 14076e2c0) : R(59), la longueur MESUREE de `FUN_141f85880` (trois axes de 14 bits sur +/-100),
+// de la queue de handle `FUN_14076e3e4(1)` et du R(2).
 //
-// EXCEPTION (GA2-5) : la garde de pleine precision n est pas lue. LA PORTE POSEE SUIT LE JEU DEPUIS
-// LE 2026-10-08 (lot des arrets de la vue B, suite) : `FUN_14076e524` lit la ligne du NIVEAU de la
-// table DEFAUT (`DAT_1445cc9e0 + niveau * 0xc`) quand sa porte vaut 1, et l ecrivain
-// (`FUN_140770640` -> `FUN_1407eb6a8`) pose la porte a 1 pour l index -1 et prend la meme ligne. Ce
-// site lisait les largeurs de la carte quelle que soit la porte : sur `fccc61cd` (Launch Site), 437
-// trames a message de degats (genre 0) s arretaient apres un record `ti=38` lu ainsi. Le releve du
-// 2026-09-27 (fermeture d image-cle en baisse sur les anciens builds, ti=38 11de8353 99 -> 83,
-// a521164d 122 -> 119) portait sur la lecture entiere du portage, garde comprise.
-//
-// SOUS LA GARDE (plan du residu, R3.1 ; relu au plan LK, LK.5.4.1, le 2026-10-08) : `FUN_14076e29c`
-// lit precHigh et R(96) (`FUN_14076e420` -> `FUN_14076e494`, garde vraie), la queue
-// `FUN_14076e3e4(precHigh)` (MOV R9B,AL en 14076e2c5), puis R(2) si les trois flottants sont finis, et
-// rend faux sinon (14076e2fe) : la forme de la branche absolue d i0 du bipede
-// ([consumeAbsoluSousLaPortee]).
-func consumeObjectPositionMonde(br *Lecteur) {
-	if br.sousLaGardeSinonException() {
-		consumeAbsoluSousLaPortee(br)
-		return
-	}
-	if br.ReadBit() { // precHigh (FUN_14076e420 R(1))
-		br.ReadBits(59) // precHigh=1 : FUN_141f85880 AABB + handle-tail + R(2) (total 60 mesuré)
-		return
-	}
-	axes := br.worldObjectPrecision().AxisW
-	if !br.ReadBit() { // FUN_14076e524 index-sel ; si 0 -> lit l'index de région
-		br.ReadBits(br.worldObjectPrecision().IndexW)
-	} else {
-		axes = profile.LargeursAxeParDefautDuBuild(niveauPosition) // porte posee : table DEFAUT
-	}
-	for a := range 3 {
-		br.ReadBits(axes[a]) // FUN_140cc5128 axe a
-	}
-	br.ReadBits(2) // FUN_14076e304 R(2) finite (handle-tail = 0 bit quand precHigh=0)
-}
-
-// consumeFlockPosition lit ti21 i16 (`FUN_140ee7270`, CALL 140ee7293, niveau 0x10 en 140ee7288)
-// avec le lecteur d AVANT le lot J6.3 : la garde, la porte, un index fige a 1 bit, puis trois axes
-// a `min(26, 6 + niveau du registre)`.
-//
-// EXCEPTION (GA2-2) : le jeu lit l index sur `DAT_144632be0` bits et les axes a la ligne 0x10
-// (22/22/22 porte posee, les largeurs de la carte sinon). Portee ainsi, la carte de fermeture
-// monte sur ks_000d5950 (paquets 1823 -> 1847, ti=21 44/490 -> 84/536, ti=35 3549 -> 3638) et
-// BAISSE sur ks_e5adf7b2 (paquets 371 -> 370, ti=21 1/60 -> 0/60, ti=4 240 -> 239).
-func consumeFlockPosition(br *Lecteur, level uint) {
+// EXCEPTION (GA2-5) : chez le jeu, la queue de handle est de largeur variable
+// ([consumeQueueDePoignee]) ; le site lit les 59 bits en bloc, comme avant le lot J6.3. Les autres
+// branches du composant (la garde, la porte posee, l index de region) lisent comme le jeu
+// ([consumeObjectPositionMonde]).
+func consumePrecHautDeLObjetMonde(br *Lecteur) {
 	br.noterExceptionDatee()
-	if fullPrecisionGate(br) {
-		br.ReadBits(rawVec3Bits) // FUN_1411b259c -> FUN_1406d676c(..., 0x60)
-		return
-	}
-	w := largeurAncienneDuFlock(level)
-	if !br.ReadBit() { // FUN_1406cf008 ; bit==0 -> l'index est present
-		br.ReadBits(1)
-	}
-	br.ReadBits(w)
-	br.ReadBits(w)
-	br.ReadBits(w)
+	br.ReadBits(59)
 }
 
 // largeurAncienneDuFlock est la largeur `min(26, 6 + niveau du registre)` que le flock lisait
 // avant le lot J6.3 — infirmee par le releve (aucun site ne transmet le niveau du registre au
-// lecteur), gardee pour ce seul site tant que l exception tient.
+// lecteur), gardee pour les sites en exception qui lisent un vecteur au niveau du registre
+// ([lireVecteurAncienAuNiveauDuRegistre]).
 func largeurAncienneDuFlock(level uint) uint {
 	if w := 6 + level; w < 26 {
 		return w
@@ -135,33 +84,6 @@ func consumeGenericRigidBodyTransforms(br *Lecteur) {
 				br.ReadBits(br.traversal().AxisW[a]) // FUN_140cc5128 axis a
 			}
 		}
-	}
-}
-
-// consumeFlockDestination lit ti=21 i2-i11 flock-destination (`FUN_140fb8af0`, CALL 140fb8b3e,
-// niveau 0x10 en 140fb8b33) avec le lecteur d AVANT le lot J6.3 : R(1), le vecteur au niveau du
-// registre ([lireVecteurAncienAuNiveauDuRegistre]), puis R(2) quand ce niveau depasse 1.
-//
-// EXCEPTION (lot J6-bis, 2026-09-28) : chez le jeu, R(1), la garde, `FUN_14076e524(0x10)` et R(2)
-// (`FUN_1424e268c`, `param_4 > 1`). Portee ainsi, deux listes d evenements de `11de8353`
-// (HI_1_9_0) que l ancien lecteur fermait au bit pres ne se localisent plus : chunk 19 paquet
-// 494 (16 entrees de controle) et chunk 9 paquet 1146 (22 entrees) — l ancien lit ce composant sur
-// 29 et 4 bits, la lecture du jeu sur 52 et 70. Elle en ferme une autre, `000d5950` (HI_1_13_0) chunk 20
-// paquet 1322 (8 entrees) : le format depend du build ou du contenu, ce que ce lot n etablit pas.
-//
-// SOUS LA GARDE (plan LK, LK.5.4.10, relu le 2026-10-08 ; `FUN_1424e268c` = R(2), lu en LK.1.6) :
-// `FUN_140fb8af0` lit R(1), la garde `FUN_14076f91c` -> `FUN_1411b259c` R(96), puis R(2) quand le
-// niveau du registre depasse 1.
-func consumeFlockDestination(br *Lecteur, level uint32) {
-	sousLaGarde := br.sousLaGardeSinonException()
-	br.ReadBit()
-	if sousLaGarde {
-		br.ReadBits(rawVec3Bits) // FUN_1411b259c
-	} else {
-		lireVecteurAncienAuNiveauDuRegistre(br, level)
-	}
-	if level > 1 {
-		br.ReadBits(2) // FUN_1424e268c
 	}
 }
 

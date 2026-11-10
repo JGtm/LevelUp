@@ -336,6 +336,21 @@ type Observation struct {
 	// (bornes de la carte) ou pas, donc quelle ligne de la table de largeurs pese reellement.
 	// C etait la variable de paquet `absIdxHist` jusqu au lot 2.3.
 	IndexAbsolus map[int]int
+	// IndexSansLigne : histogramme des index lus qui n ont AUCUNE ligne dans la table par index de la
+	// carte (region invalide, ou index au-dela du nombre de regions) : le jeu lit alors zero bit par
+	// axe, et le lecteur de position fait de meme ([tablesDePosition.ligneDeLIndex]). Observationnel.
+	IndexSansLigne map[int]int
+}
+
+// compterIndexSansLigne incremente l histogramme des index lus sans ligne de table.
+func (o *Observation) compterIndexSansLigne(idx int) {
+	if o == nil {
+		return
+	}
+	if o.IndexSansLigne == nil {
+		o.IndexSansLigne = map[int]int{}
+	}
+	o.IndexSansLigne[idx]++
 }
 
 // compterIndexAbsolu incremente l histogramme des index de plage absolus.

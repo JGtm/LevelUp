@@ -192,7 +192,7 @@ func decrireRecords(vus []deltaBipedRecord) string {
 //
 // LES HUIT LECTEURS LISENT UNE SEULE POPULATION depuis le lot 2.7.b de la representation
 // intermediaire ([lecturesBipedes]) : les records bipedes delta que la marche des trames a lus, plus
-// ceux que l ancrage a rendus derriere elle — 29 520 sur cette bobine (29 519 avant que le corps
+// ceux que l ancrage a rendus derriere elle — 29 534 sur cette bobine (29 520 avant que flock-position, flock-destination et world-object i0 lisent comme le jeu ; 29 519 avant que le corps
 // d i59 se lise comme le jeu le lit, 2026-10-08 : les trames 3:636 et 3:722 passent le slot 513). Un
 // compte qui differe d un lecteur a l autre veut dire qu un lecteur ne lit plus cette population.
 //
@@ -210,14 +210,14 @@ func decrireRecords(vus []deltaBipedRecord) string {
 // bande de slots elargie, une porte deplacee — tout ce qui change la population ancree.
 var comptesDeRecordsMiniBobine = map[string]int{
 	"marcheurDeltaBipede": 28005,
-	"abilityCharges":      29520,
-	"abilityImpulses":     29520,
-	"abilityRanks":        29520,
-	"camoStates":          29520,
-	"equipmentChanges":    29520,
-	"grappleReads":        29520,
-	"heldWeaponChanges":   29520,
-	"inventoryDeltas":     29520,
+	"abilityCharges":      29534,
+	"abilityImpulses":     29534,
+	"abilityRanks":        29534,
+	"camoStates":          29534,
+	"equipmentChanges":    29534,
+	"grappleReads":        29534,
+	"heldWeaponChanges":   29534,
+	"inventoryDeltas":     29534,
 }
 
 // TestMarcheurDeltaBipedeCompteSesRecordsSurLaMiniBobine — sur des OCTETS REELS, le marcheur

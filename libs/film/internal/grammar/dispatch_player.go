@@ -118,7 +118,7 @@ func consumeCrewFlockAndMusicComponent(br *Lecteur, name string, typeIndex uint3
 		consumeTacmapPoiIcon(br, level)
 		return variant, nil, true
 	case "flock-destination-component": // ti=21 i2-i11 (FUN_140fb8af0, descripteur 143c96c50 + 0x28)
-		// EXCEPTION DU PORTAGE UNIQUE (lot J6-bis, 2026-09-28) : [consumeFlockDestination].
+		// [consumeFlockDestination] : le portage unique, comme le jeu.
 		consumeFlockDestination(br, level)
 		return variant, nil, true
 	case "crew-marked-objects-component": // ti=14 i1 (FUN_142ed421c) — R(1); gate==1 -> R(W)+R(2) W runtime

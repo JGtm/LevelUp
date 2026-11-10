@@ -48,14 +48,17 @@ import "github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 // `dispatch_object.go`) : largeur 6 + niveau du registre, largeurs du descripteur de traversee,
 // index fige a 1, largeurs de la carte sous la porte posee, 16 bits plats — chacun faux ailleurs.
 //
-// TREIZE SITES RESTENT HORS DU PORTAGE, en EXCEPTIONS DATEES (decision du superviseur du
+// ONZE SITES RESTENT HORS DU PORTAGE, en EXCEPTIONS DATEES (decision du superviseur du
 // 2026-09-27 ; lot J6-bis du 2026-09-28 ; lot R3 du 2026-09-29 ; lot R3-bis du 2026-09-30) :
-// flock-position, world-object i0, `ti=38 i18`, flock-destination, tacmap-poiicon,
+// la branche precHigh = 1 de world-object i0, `ti=38 i18`, tacmap-poiicon,
 // player-desired-respawn-location, tacmap-displayasset, tacmap-areaofinterest,
 // tacmap-cooptetherarea, crew-order, la branche precHigh = 1 de l i0 absolu du bipede, les deux
 // vecteurs de unit-actor-state et tacmap-waypointstate gardent leur ancien lecteur dans
 // `lecteur_position_exceptions.go`, parce que la lecture du jeu y fait baisser la fermeture des
-// bobines. Les chiffres et le critere de retrait sont dans ce fichier et dans la table des sites.
+// bobines. flock-position, flock-destination et world-object i0 (precHigh = 0) lisent comme le jeu
+// depuis que la table par index de region est celle de la carte : la baisse mesuree venait des
+// index lus aux largeurs de la region jouee. Les chiffres et le critere de retrait sont dans ce
+// fichier et dans la table des sites.
 
 // Les immediats de niveau des sites d appel portes (releve J6.1, 2026-09-27, §1 et §6).
 const (
@@ -83,6 +86,9 @@ type positionQuantifiee struct {
 	w        [3]uint
 	brute    bool
 	precHaut bool
+	// sansLigne : l index lu n a pas de ligne dans la table de la carte (zero bit par axe) ; q et w
+	// n ont alors aucun sens.
+	sansLigne bool
 }
 
 // tablesDePosition est ce que `FUN_14076e524` lit HORS du flux : la largeur d index de plage
@@ -95,12 +101,17 @@ type tablesDePosition struct {
 	axesCarte [3]uint
 	// bornesCarte sont les bornes de la plage, pour les lignes d un autre niveau que 0x10.
 	bornesCarte [3][2]float32
+	// regions est la table PAR INDEX de la carte (`DAT_1445ccbe0`) : une ligne par region, que
+	// `FUN_14076e524` choisit par l index lu dans le flux. Non vide, elle decide seule des largeurs
+	// d un index ; vide, la ligne de la region jouee (`axesCarte`, `bornesCarte`) vaut pour tout index.
+	regions []profile.RegionQuant
 	// indexLisible est faux quand la table par index est inconnue (entree de catalogue absente) :
 	// un index lu ne peut alors pas l etre, et la lecture s arrete sur la porte.
 	indexLisible bool
 	// regionSeule : seule la ligne de l index `region` est connue — les bornes de la region jouee,
-	// celles de l entree de catalogue ([tablesDeLaRegionJouee]). Un autre index designe une autre
-	// structure du scenario, dont les bornes ne sont pas lues : la lecture s arrete apres l index.
+	// celles d une entree de catalogue SANS table par index ([tablesDeLaRegionJouee]). Un autre index
+	// designe une autre structure du scenario, dont les bornes ne sont pas lues : la lecture s arrete
+	// apres l index. Faux des qu une table par index est la (`regions`).
 	regionSeule bool
 	region      uint32
 }
@@ -110,7 +121,7 @@ type tablesDePosition struct {
 func (b *Lecteur) tablesDuProfil() tablesDePosition {
 	d := b.worldObjectPrecision()
 	return tablesDePosition{indexW: d.IndexW, axesCarte: d.AxisW,
-		bornesCarte: bornesDeLaPlage(b.worldPositionRange()), indexLisible: true}
+		bornesCarte: bornesDeLaPlage(b.worldPositionRange()), regions: b.p.Regions, indexLisible: true}
 }
 
 // bornesDeLaPlage convertit une plage en bornes {min, max} par axe.
@@ -133,22 +144,59 @@ func vec3RangeDeBornes(b [3][2]float32) profile.Vec3Range {
 	return out
 }
 
-// largeursDeLaLigne rend la ligne `niveau` de la table que l index choisit.
-func largeursDeLaLigne(t tablesDePosition, idx, niveau int) [3]uint {
+// ligneDePosition est la ligne de la table PAR INDEX qu un index lu designe.
+type ligneDePosition struct {
+	axes   [3]uint
+	bornes [3][2]float32
+	// sansLigne : la table de la carte n a pas de ligne pour cet index (region invalide, ou index au-dela
+	// du nombre de regions). Chez le jeu la ligne est a zero : zero bit par axe, aucune valeur.
+	sansLigne bool
+}
+
+// ligneDeLIndex rend la ligne de la table PAR INDEX que l index lu designe : les largeurs d axe
+// au niveau 0x10 et les bornes de la region. Avec la table de la carte, un index sans ligne rend une
+// ligne `sansLigne` — le jeu ne retombe sur aucune autre region. ok est faux seulement SANS table : la
+// seule ligne connue est celle de la region jouee, et un autre index (`regionSeule`) n est pas lisible.
+func (t tablesDePosition) ligneDeLIndex(idx int) (l ligneDePosition, ok bool) {
+	if len(t.regions) > 0 {
+		for _, r := range t.regions {
+			if int(r.Index) == idx && !r.Invalid {
+				return ligneDePosition{axes: r.AxisWidths, bornes: bornesDeLaPlage(r.Bornes())}, true
+			}
+		}
+		return ligneDePosition{sansLigne: true}, true
+	}
+	if t.regionSeule && uint64(idx) != uint64(t.region) {
+		return l, false
+	}
+	return ligneDePosition{axes: t.axesCarte, bornes: t.bornesCarte}, true
+}
+
+// largeursDeLaLigne rend la ligne `niveau` de la table que l index choisit : trois largeurs, et
+// `sansLigne` quand l index n a pas de ligne (largeurs nulles). ok est faux quand la table ne sait pas
+// lire cet index ([tablesDePosition.ligneDeLIndex]).
+func largeursDeLaLigne(t tablesDePosition, idx, niveau int) (w [3]uint, sansLigne, ok bool) {
+	if idx < 0 {
+		return profile.LargeursAxeParDefautDuBuild(niveau), false, true
+	}
+	l, ok := t.ligneDeLIndex(idx)
 	switch {
-	case idx < 0:
-		return profile.LargeursAxeParDefautDuBuild(niveau)
+	case !ok:
+		return w, false, false
+	case l.sansLigne:
+		return w, true, true
 	case niveau == profile.NiveauPositionDObjet:
-		return t.axesCarte
+		return l.axes, false, true
 	default:
-		return profile.LargeursAxeDuNiveau(t.bornesCarte, niveau)
+		return profile.LargeursAxeDuNiveau(l.bornes, niveau), false, true
 	}
 }
 
 // lireE524Sur porte `FUN_14076e524` sur des tables donnees. ok est faux quand la porte ouvre un
 // index que `t` ne sait pas lire : le curseur s arrete apres la porte quand la table par index est
-// inconnue ([tablesDePosition.indexLisible]), apres l index quand il designe une autre region que
-// la region jouee ([tablesDePosition.regionSeule]).
+// inconnue ([tablesDePosition.indexLisible]), apres l index quand une entree SANS table designe une
+// autre region que la region jouee ([tablesDePosition.ligneDeLIndex]). Un index sans ligne dans la
+// table de la carte se lit comme chez le jeu : zero bit par axe, compte ([Observation.IndexSansLigne]).
 func lireE524Sur(br *Lecteur, niveau int, t tablesDePosition) (positionQuantifiee, bool) {
 	pos := positionQuantifiee{idx: -1}
 	if !br.ReadBit() { // FUN_1406cf008 : porte a 0 -> l index est present
@@ -156,12 +204,18 @@ func lireE524Sur(br *Lecteur, niveau int, t tablesDePosition) (positionQuantifie
 			return pos, false
 		}
 		pos.idx = int(br.ReadBits(t.indexW)) // DAT_144632be0
-		if t.regionSeule && uint64(pos.idx) != uint64(t.region) {
-			return pos, false
-		}
 	}
 	br.obs.compterIndexAbsolu(pos.idx)
-	pos.w = largeursDeLaLigne(t, pos.idx, niveau)
+	w, sansLigne, ok := largeursDeLaLigne(t, pos.idx, niveau)
+	if !ok {
+		return pos, false
+	}
+	if sansLigne {
+		br.obs.compterIndexSansLigne(pos.idx)
+		pos.sansLigne = true
+		return pos, true // la ligne est a zero : FUN_140cc5128 ne lit aucun bit
+	}
+	pos.w = w
 	for axe := range pos.q {
 		pos.q[axe] = br.ReadBits(pos.w[axe]) // FUN_140cc5128 axe
 	}
@@ -225,7 +279,7 @@ func lireF85880(br *Lecteur, niveau int) positionQuantifiee {
 // brute et precHaut ne portent pas de coordonnee de carte. Dans chacun de ces cas la coordonnee
 // serait fausse en silence ; l histogramme [Observation.IndexAbsolus] les compte.
 func semerPositionAbsolue(br *Lecteur, pos positionQuantifiee, kind PosKind) {
-	if pos.brute || pos.precHaut || pos.idx < 0 || uint32(pos.idx) != br.worldObjectPrecision().Region {
+	if pos.brute || pos.precHaut || pos.sansLigne || pos.idx < 0 || uint32(pos.idx) != br.worldObjectPrecision().Region {
 		return
 	}
 	var v [3]float32

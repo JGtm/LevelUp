@@ -40,6 +40,12 @@ type ProfilDeBalayage struct {
 	// Mouvement : descripteur de traversee, largeur d axe absolue, descripteur world-object,
 	// range de dequantification, quantum et largeur du delta, drapeaux de contexte.
 	Mouvement profile.MovementProfile
+	// Regions : la table PAR INDEX DE REGION de la carte du match ([profile.MapQuantEntry.Regions]),
+	// que `FUN_14076e524` lit apres l index : les trois axes d une position sont aux largeurs de la
+	// ligne de l index lu. Partagee en lecture seule. Vide = seule la ligne de la region jouee
+	// (`Mouvement.WorldObject`) est connue, et elle vaut pour tout index (entree de catalogue
+	// anterieure a la table, profil sans carte).
+	Regions []profile.RegionQuant
 	// Cadre : l en-tete par entite et la largeur d un mot de taille des images-cles d etat
 	// complet. Invariants du format, relus chez l ecrivain — rien ne les installe par film.
 	Cadre profile.KeyframeProfile
@@ -111,6 +117,15 @@ func (p *ProfilDeBalayage) PoserLargeursObjetDuMondeDepuisDecoupage(l profile.I0
 	// [grammaireSousCarte]).
 	p.Grammaire = grammaireSousCarte(p.Grammaire, true)
 	return replis
+}
+
+// PoserLesRegionsDeLaCarte installe la table PAR INDEX DE REGION de la carte ([profile.MapQuantEntry.Regions])
+// que `FUN_14076e524` lit apres l index : les trois axes d une position sont lus aux largeurs de la
+// ligne de l index lu, pas de la region jouee. C est le complement de
+// [ProfilDeBalayage.PoserLargeursObjetDuMondeDepuisDecoupage], qui pose la ligne de la region jouee ;
+// une entree sans table laisse le profil lire cette seule ligne pour tout index.
+func (p *ProfilDeBalayage) PoserLesRegionsDeLaCarte(e profile.MapQuantEntry) {
+	p.Regions = e.Regions
 }
 
 // grammaireSousCarte rend la grammaire d un profil selon que les LARGEURS D AXE DE LA CARTE du

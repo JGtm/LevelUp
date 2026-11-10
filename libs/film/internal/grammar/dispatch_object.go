@@ -165,7 +165,7 @@ func consumeByName(br *Lecteur, name string, typeIndex uint32, level uint32) (va
 		// traînait dans les notes : ce ne sont pas deux mesures du même champ, ce sont deux
 		// archétypes différents.
 		//
-		// EXCEPTION DU PORTAGE UNIQUE (lot J6.3, 2026-09-27) : [consumeObjectPositionMonde].
+		// [consumeObjectPositionMonde] : le portage unique ; seule la branche precHigh = 1 reste une exception datee.
 		consumeObjectPositionMonde(br)
 		return variant, nil, true
 	case "object-translational-velocity-component": // world-object i1 (FUN_14076e228)
