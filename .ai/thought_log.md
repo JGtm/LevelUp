@@ -120586,3 +120586,11 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** Sept analyses en lecture seule. Backlog corrigé sur pièces : la non-convergence LUSR vient des observations de comptes, pas de l'amortissement ; la planche `feed` de Dend est identique à nos images, `icons` en demi-résolution ; `sbsp.xml` vient d'Infinite Runtime Tag Viewer, pas de Reclaimer ; origine des fixtures établie par empreinte ; le dépôt public `halo-api` porte une capture avec 100 XUID et 102 pseudos de tiers. Relecture Opus indépendante : 6 P0 et 19 P1, intégrés, preuves principales recontrôlées.
 
 **Conclusion / prochaine étape.** Attend le go du user sur le plan et ses décisions ; aucune ligne de code, aucun commit. Annexes sous `.ai/annexes_v8_1_2/`.
+
+## [2026-11-10] Plan v8.1.2 : étapes 1 à 5 exécutées — En cours
+
+**Décision technique principale.** Cinq chantiers parallèles sous pilotage (Haiku, Sonnet, Opus pour le lieu des morts et le siège vacant), une ronde de revue adversariale sur chaque lot à risque (repli LUSR, zone du killfeed, lieu des morts). Lieu des morts : lecture par corps confinée au lieu (document de rejeu inchangé), l'option qui nommait par corps faisant bouger des équipes publiées.
+
+**Résultats observés.** Fusionnés dans `release/v8.1.2` : interface, statistiques, licences. Rejeu : 0 vie nommée perdue sur 30 témoins, 52 morts sans lieu localisées sur le parc, entame de 1 383 à 493 côtés sans position, vies de `5da6fd30` et `72c48587` nommées, 13 films à siège vacant intercalé lus par leur table. LUSR : 35 matchs sans note avant, 0 après (rejeu en mémoire). `halo-api` pseudonymisé.
+
+**Conclusion / prochaine étape.** En attente du user : planche des icônes (G-B), tourelle (G-A), bouton Parcourir (G-C) et contrôle à l'écran (5.9). Puis 5.4, puis bascule sur les modules publiés (étape 6).
