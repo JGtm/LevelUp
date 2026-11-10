@@ -9,13 +9,12 @@
  */
 /// <reference types="node" />
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
 import type { ReplayContractIssue } from '@/lib/replay/replayDocumentSchema'
 
-import { racineDuDepot } from '../test/featureFiles'
+import { instantaneFilm } from '../test/featureFiles'
 import { goFixtureEntries, goFixtureSchemaVersion } from '../test/goFixtures'
 import { testReplayDoc } from '../test/testDoc'
 import { calquePresent, couchesDesCalquesProduits, revisionDuCalque } from './calquePresent'
@@ -125,13 +124,7 @@ describe('la borne de compatibilité est ÉPINGLÉE, pas seulement écrite', () 
   it('et cette version EXISTE dans la chronique du producteur', () => {
     // Les trois formes d'en-tête attestées de `document_chronicle.go` (cf.
     // `testutil.ReplayChronicleVersions`, côté Go : le fichier n'en a pas une mais trois).
-    const src = readFileSync(
-      join(
-        racineDuDepot(),
-        'libs/film/replay/document_chronicle.go',
-      ),
-      'utf8',
-    )
+    const src = readFileSync(instantaneFilm('replay', 'document_chronicle.entetes.txt'), 'utf8')
     const declarees = new Set<number>()
     for (const re of [
       /^\/\/ v(\d+) \(/gm,

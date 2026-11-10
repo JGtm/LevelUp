@@ -36,7 +36,7 @@ import (
 const filmTypesLeafPkg = racineBriqueFilm + "/types"
 
 func TestFilmTypesEstUneFeuille(t *testing.T) {
-	pkgDir := filepath.Join(workspaceRoot(t), filepath.FromSlash(filmTypesLeafPkg))
+	pkgDir := cheminDuDepotOuFatal(t, workspaceRoot(t), filmTypesLeafPkg)
 	entries, err := os.ReadDir(pkgDir)
 	if err != nil {
 		t.Fatalf("paquet %s introuvable (%v) : s il a DEMENAGE, deplacer ce garde-rail avec lui — "+

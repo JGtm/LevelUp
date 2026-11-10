@@ -113,7 +113,7 @@ func binairesSansCouverture(racine string, extensions map[string]bool, liste []b
 // TestLesBinairesDeLaBriqueSontCouverts : aucun fichier de `libs/film` n echappe a la fois au
 // balayage de texte et a la liste fermee des binaires couverts.
 func TestLesBinairesDeLaBriqueSontCouverts(t *testing.T) {
-	sans, couverts, err := binairesSansCouverture(filepath.Join(racineDuDepot, "libs", "film"), extensionsTexte, binairesCouverts)
+	sans, couverts, err := binairesSansCouverture(dossierDeLaBrique(t), extensionsTexte, binairesCouverts)
 	if err != nil {
 		t.Fatal(err)
 	}

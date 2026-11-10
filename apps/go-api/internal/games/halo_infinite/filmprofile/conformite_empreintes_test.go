@@ -38,8 +38,9 @@ import (
 	"levelup/go-api/internal/testutil"
 )
 
-// cheminTableDesEmpreintes : le fichier de la table des empreintes, relatif a la racine du depot.
-var cheminTableDesEmpreintes = filepath.Join("libs", "film", "internal", "profile", "registre_empreintes.go")
+// cheminTableDesEmpreintes : le fichier de la table des empreintes, relatif a la brique du decodeur
+// (resolveur des briques, testutil.CheminBriqueFilm).
+var cheminTableDesEmpreintes = filepath.Join("internal", "profile", "registre_empreintes.go")
 
 // fonctionDeLaTableDesEmpreintes : la fonction qui CONCATENE les sous-tables.
 const fonctionDeLaTableDesEmpreintes = "EmpreintesRegistre"
@@ -81,7 +82,7 @@ func TestCatalogueConformeALaTableDesEmpreintes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("racine du depot : %v", err)
 	}
-	table := lireTableDesEmpreintes(t, filepath.Join(racine, cheminTableDesEmpreintes))
+	table := lireTableDesEmpreintes(t, testutil.CheminBriqueFilm(t, cheminTableDesEmpreintes))
 	if len(table) != lignesAttenduesDesEmpreintes() {
 		t.Fatalf("%d ligne(s) lue(s) dans %s, %d attendue(s) — l analyse de la table s est "+
 			"cassee, ou la table a bouge sans que le catalogue suive",

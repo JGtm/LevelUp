@@ -10,7 +10,7 @@
 //
 // # CE QU'IL VÉRIFIE
 //
-// Chaque dossier de `libs/` (lu sur le disque, pas dans une table) a un `NOTICE.md`, et ce `NOTICE.md`
+// Chaque brique (dossier tiré de l'outil Go par le résolveur des briques) a un `NOTICE.md`, et ce `NOTICE.md`
 // cite, par son chemin relatif à la brique (séparateur `/`), tout fichier d'extension `.xml`, `.png`,
 // `.mvar`, `.blob`, `.html`, `.jpg` ou `.webp` du dossier, `testdata` compris. Une citation est la présence
 // du chemin dans le texte : le nom seul ne suffit pas, il s'en trouve de communs à deux dossiers.
@@ -33,6 +33,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	resolveur "levelup/go-api/internal/briques"
 )
 
 // extensionsNoticees : les extensions de fichier dont une brique doit citer l'origine.
@@ -77,30 +79,24 @@ func fichiersNonCites(notice string, fichiers []string) []string {
 	return manquants
 }
 
-// dossiersDeBriques rend les noms des dossiers de `libs/`, lus sur le disque.
-func dossiersDeBriques(t *testing.T) (racineLibs string, noms []string) {
-	t.Helper()
-	racineLibs = filepath.Join(workspaceRoot(t), "libs")
-	entrees, err := os.ReadDir(racineLibs)
-	if err != nil {
-		t.Fatalf("lecture de libs/ : %v", err)
-	}
-	for _, e := range entrees {
-		if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
-			noms = append(noms, e.Name())
-		}
-	}
-	return racineLibs, noms
+// dossiersDeBriques rend les briques du résolveur ([resolveur.Noms]) ; leur dossier se tire de l'outil Go
+// ([resolveur.Dir]). Que la table du résolveur couvre toutes les briques de l'espace de travail est tenu par
+// `briques.TestToutModuleDeLibsEstDansLaTable`.
+func dossiersDeBriques() []string {
+	return resolveur.Noms()
 }
 
 func TestChaqueBriqueADesNoticeQuiCiteSesFichiersDeDonnees(t *testing.T) {
-	racineLibs, briquesDisque := dossiersDeBriques(t)
+	briquesDisque := dossiersDeBriques()
 	if len(briquesDisque) < 4 {
 		t.Fatalf("%d dossiers sous libs/, au moins 4 attendus (film, gamefiles, haloapi, himap) : le parcours ne voit plus l'arborescence", len(briquesDisque))
 	}
 	for _, nom := range briquesDisque {
-		racine := filepath.Join(racineLibs, nom)
-		brut, err := os.ReadFile(filepath.Join(racine, "NOTICE.md")) //nolint:gosec // chemin issu du parcours de libs/
+		racine, err := resolveur.Dir(nom)
+		if err != nil {
+			t.Fatalf("brique %s : %v", nom, err)
+		}
+		brut, err := os.ReadFile(filepath.Join(racine, "NOTICE.md")) //nolint:gosec // chemin rendu par le résolveur des briques
 		if err != nil {
 			t.Errorf("libs/%s : pas de NOTICE.md (%v) — chaque brique dit l'origine de ses fichiers de données", nom, err)
 			continue

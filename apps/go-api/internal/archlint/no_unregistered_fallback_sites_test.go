@@ -12,7 +12,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -36,7 +35,7 @@ func TestToutDeclenchementEstAUnSiteDuRegistre(t *testing.T) {
 	fichiersParNom := fichiersDesSites()
 	appelsVus := 0
 	for _, sous := range perimetreReplis {
-		parcourirGoProduction(t, filepath.Join(racine, sous), func(rel string, f *ast.File) {
+		parcourirGoProduction(t, cheminDuDepotOuFatal(t, racine, sous), func(rel string, f *ast.File) {
 			for _, a := range declenchementsDuFichierOuDeSaTable(rel, f) {
 				nom, connu := valeurDeLaConstante[a]
 				if !connu {
@@ -105,7 +104,7 @@ func TestChaqueExemptionDeLEcrivainATouJoursSonSite(t *testing.T) {
 	racine := workspaceRoot(t)
 	fset := token.NewFileSet()
 	for id, ex := range replisDeLEcrivainDuJeu {
-		chemin := filepath.Join(racine, filepath.FromSlash(ex.Fichier))
+		chemin := cheminDuDepotOuFatal(t, racine, ex.Fichier)
 		f, err := parser.ParseFile(fset, chemin, nil, 0)
 		if err != nil {
 			t.Errorf("exemption %s : %s est illisible (%v) — l'identifiant a-t-il disparu ? "+
@@ -151,7 +150,7 @@ func dateExemptionConforme(d string) bool {
 // relit sans que personne n'ait a la recopier.
 func nomsDuPaquetFallback(t *testing.T, racine string) map[string]decfilm.Nom {
 	t.Helper()
-	chemin := filepath.Join(racine, filepath.FromSlash(cheminNomsFallback))
+	chemin := cheminDuDepotOuFatal(t, racine, cheminNomsFallback)
 	f, err := parser.ParseFile(token.NewFileSet(), chemin, nil, 0)
 	if err != nil {
 		t.Fatalf("parse de %s : %v", cheminNomsFallback, err)

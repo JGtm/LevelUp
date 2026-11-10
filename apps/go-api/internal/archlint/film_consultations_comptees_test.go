@@ -14,7 +14,6 @@ package archlint
 
 import (
 	"go/ast"
-	"path/filepath"
 	"testing"
 )
 
@@ -36,7 +35,7 @@ func TestAucuneLectureDeLaCuissonNeConsulteSansEnregistreur(t *testing.T) {
 	racine := workspaceRoot(t)
 	vus := 0
 	for _, sous := range perimetreDesConsultationsComptees {
-		parcourirGoProduction(t, filepath.Join(racine, sous), func(rel string, f *ast.File) {
+		parcourirGoProduction(t, cheminDuDepotOuFatal(t, racine, sous), func(rel string, f *ast.File) {
 			ast.Inspect(f, func(n ast.Node) bool {
 				appel, ok := n.(*ast.CallExpr)
 				if !ok || len(appel.Args) == 0 {

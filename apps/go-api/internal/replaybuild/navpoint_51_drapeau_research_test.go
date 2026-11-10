@@ -51,7 +51,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -69,7 +68,7 @@ func TestNavpoint51DrapeauSurFilm(t *testing.T) {
 	if err != nil {
 		t.Fatalf("racine repo : %v", err)
 	}
-	factsPath := filepath.Join(repoRoot, "libs", "film", "replay", "testdata", "equivalence", court+".facts.json")
+	factsPath := testutil.CheminBriqueFilm(t, "replay", "testdata", "equivalence", court+".facts.json")
 	faits, err := ReadFactsFile(factsPath)
 	if err != nil {
 		t.Fatalf("faits %s : %v", factsPath, err)

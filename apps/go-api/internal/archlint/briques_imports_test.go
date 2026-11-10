@@ -295,12 +295,15 @@ func sousDossiersGo(t *testing.T, racine, dossier string) []string {
 
 // sousDossiersGoErr est la forme à erreur de [sousDossiersGo] : erreur si la racine n'existe pas.
 func sousDossiersGoErr(racine, dossier string) ([]string, error) {
-	base := filepath.Join(racine, filepath.FromSlash(dossier))
+	base, err := cheminDuDepot(racine, dossier)
+	if err != nil {
+		return nil, err
+	}
 	if st, err := os.Stat(base); err != nil || !st.IsDir() {
 		return nil, fmt.Errorf("%s n'existe pas : la table décrit une arborescence disparue", dossier)
 	}
 	var out []string
-	err := filepath.WalkDir(base, func(chemin string, d os.DirEntry, err error) error {
+	err = filepath.WalkDir(base, func(chemin string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -311,8 +314,11 @@ func sousDossiersGoErr(racine, dossier string) ([]string, error) {
 		if chemin != base && (dossiersInvisiblesAuGo[nom] || strings.HasPrefix(nom, ".") || strings.HasPrefix(nom, "_")) {
 			return filepath.SkipDir
 		}
-		rel, _ := filepath.Rel(racine, chemin)
-		out = append(out, filepath.ToSlash(rel))
+		rel, errRel := relDuDepot(racine, chemin)
+		if errRel != nil {
+			return errRel
+		}
+		out = append(out, rel)
 		return nil
 	})
 	return out, err
@@ -331,7 +337,10 @@ func importsDuDossier(t *testing.T, fset *token.FileSet, racine, p string) []fic
 // importsDuDossierErr est la forme à erreur de [importsDuDossier] : un dossier déclaré qui n'existe
 // pas est refusé.
 func importsDuDossierErr(fset *token.FileSet, racine, p string) ([]fichierImports, error) {
-	dir := filepath.Join(racine, filepath.FromSlash(p))
+	dir, err := cheminDuDepot(racine, p)
+	if err != nil {
+		return nil, err
+	}
 	entrees, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("paquet %s introuvable : %w", p, err)

@@ -1,0 +1,11 @@
+Copies des fichiers de la brique du decodeur de film que les tests web relisent.
+Generees par `go run ./cmd/film-web-snapshot` (depuis apps/go-api) ; jamais editees a la main.
+Colonnes : fichier de l'instantane, fichier de la brique (module du decodeur de film).
+replay/document.go.txt	replay/document.go
+replay/document_equipment_changes.go.txt	replay/document_equipment_changes.go
+replay/document_ground_weapon_items.go.txt	replay/document_ground_weapon_items.go
+replay/document_weapon_changes.go.txt	replay/document_weapon_changes.go
+replay/vehicle_cycles.go.txt	replay/vehicle_cycles.go
+internal/grammar/components_biped_ability.go.txt	internal/grammar/components_biped_ability.go
+killicon/data/rules.tsv	killicon/data/rules.tsv
+replay/document_chronicle.entetes.txt	replay/document_chronicle.go

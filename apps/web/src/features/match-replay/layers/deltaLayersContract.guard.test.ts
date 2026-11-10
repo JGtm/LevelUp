@@ -27,7 +27,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { racineDuDepot } from '../test/featureFiles'
+import { instantaneFilm } from '../test/featureFiles'
 import {
   REPLAY_NO_ABILITY_RANK,
   type ReplayEquipmentChange,
@@ -36,13 +36,13 @@ import {
 } from '@/lib/api/types'
 import type { Equals, Expect } from '@/lib/types/typeEquality'
 
-const REPO = racineDuDepot()
-const GO = resolve(REPO, 'libs/film/replay')
-const GRAMMAR = resolve(REPO, 'libs/film/internal/grammar')
+// Les sources Go de la brique du décodeur, lues dans leur instantané versionné (suffixe `.txt`).
+const GO = instantaneFilm('replay')
+const GRAMMAR = instantaneFilm('internal', 'grammar')
 
 /** Les balises `json:` d'une structure Go nommée, dans l'ordre de déclaration. */
 function goJSONTags(file: string, struct: string): string[] {
-  const src = readFileSync(resolve(GO, file), 'utf8')
+  const src = readFileSync(resolve(GO, `${file}.txt`), 'utf8')
   const start = src.indexOf(`type ${struct} struct {`)
   expect(start, `structure ${struct} introuvable dans ${file}`).toBeGreaterThanOrEqual(0)
   const end = src.indexOf('\n}', start)
@@ -59,7 +59,7 @@ function goJSONTags(file: string, struct: string): string[] {
  * la forme — ce qui se lit, et ce qui ne casse pas au prochain typage.
  */
 function goStringConst(file: string, name: string): string {
-  const src = readFileSync(resolve(GO, file), 'utf8')
+  const src = readFileSync(resolve(GO, `${file}.txt`), 'utf8')
   const ligne = src.split('\n').find((l) => l.trim().startsWith(`${name} `))
   expect(ligne, `constante ${name} introuvable dans ${file}`).toBeDefined()
   const valeur = (ligne ?? '').split('=').slice(1).join('=').trim()
@@ -172,17 +172,17 @@ describe('garde-rail : les types manuels des schémas 25-27 <-> les structures G
   it('REPLAY_NO_ABILITY_RANK vaut la sentinelle du décodeur', () => {
     // `replay.NoAbilityRank` n'est qu'un alias de `grammar.AbilitySetNoRank` : c'est la valeur
     // de ce dernier qu'il faut vérifier, sans quoi le garde-rail comparerait un nom à un nom.
-    const src = readFileSync(resolve(GRAMMAR, 'components_biped_ability.go'), 'utf8')
+    const src = readFileSync(resolve(GRAMMAR, 'components_biped_ability.go.txt'), 'utf8')
     const m = src.match(/^const AbilitySetNoRank = (-?\d+)$/m)
     expect(m, 'const AbilitySetNoRank introuvable').not.toBeNull()
     expect(REPLAY_NO_ABILITY_RANK).toBe(Number(m![1]))
     expect(
-      readFileSync(resolve(GO, 'document_equipment_changes.go'), 'utf8'),
+      readFileSync(resolve(GO, 'document_equipment_changes.go.txt'), 'utf8'),
     ).toContain('const NoAbilityRank = grammar.AbilitySetNoRank')
   })
 
   it('le document publie bien les trois calques, sous ces noms-là', () => {
-    const doc = readFileSync(resolve(GO, 'document.go'), 'utf8')
+    const doc = readFileSync(resolve(GO, 'document.go.txt'), 'utf8')
     for (const champ of ['weaponChanges', 'equipmentChanges', 'groundWeapons']) {
       expect(doc, `champ ${champ} du ReplayDocument Go`).toContain(`json:"${champ},omitempty"`)
     }

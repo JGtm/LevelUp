@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/testutil"
 
 	"github.com/JGtm/LevelUp/libs/film/filmcache"
 )
@@ -38,8 +39,7 @@ func TestVAV2Etapes(t *testing.T) {
 	cacheRoot := title.NewPathResolver(racine).CacheRootDir()
 	repFaits := os.Getenv("VA_FAITS")
 	if repFaits == "" {
-		repFaits = filepath.Join(racine, "libs", "film", "replay",
-			"testdata", "equivalence")
+		repFaits = testutil.CheminBriqueFilm(t, "replay", "testdata", "equivalence")
 	}
 	for _, film := range films {
 		faits, err := ReadFactsFile(filepath.Join(repFaits, film+".facts.json"))

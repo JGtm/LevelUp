@@ -60,7 +60,7 @@ const filmsourceLeafPkg = racineBriqueFilm + "/internal/source"
 const filmsourceLeafImportAutorise = importBriqueFilm + "/types"
 
 func TestFilmsourceEstUneFeuille(t *testing.T) {
-	pkgDir := filepath.Join(workspaceRoot(t), filepath.FromSlash(filmsourceLeafPkg))
+	pkgDir := cheminDuDepotOuFatal(t, workspaceRoot(t), filmsourceLeafPkg)
 
 	entries, err := os.ReadDir(pkgDir)
 	if err != nil {
