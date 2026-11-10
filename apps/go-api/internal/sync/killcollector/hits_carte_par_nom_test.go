@@ -36,6 +36,7 @@ package killcollector
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
 	"levelup/go-api/internal/port"
@@ -164,7 +165,7 @@ func TestLesDeuxPassesPartagentLaMemeResolutionDeCarte(t *testing.T) {
 	if !ok {
 		t.Fatal("resolution des touches refusee la ou celle des positions a abouti")
 	}
-	if positions != touches {
+	if !reflect.DeepEqual(positions, touches) { // l'entree porte une table par index de region (tranche)
 		t.Errorf("les deux passes resolvent des cartes differentes :\n  positions %+v\n  touches   %+v",
 			positions, touches)
 	}
