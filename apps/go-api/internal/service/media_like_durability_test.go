@@ -121,8 +121,8 @@ func TestMediaService_SetMediaLike_Atomic_SurvivesWALLoss(t *testing.T) {
 
 	resp, err := svc.SetMediaLike(ctx, domain.MediaLikeRequest{
 		FilePath:      "JGtm/clip.mp4",
-		LikerSlug:     "Chocoboflor",
-		LikerGamertag: "Chocoboflor",
+		LikerSlug:     "Joueur90001",
+		LikerGamertag: "Joueur90001",
 		Liked:         true,
 	})
 	if err != nil {
@@ -159,12 +159,12 @@ func TestMediaService_SetMediaLike_Atomic_SurvivesWALLoss(t *testing.T) {
 	if err := db.SQLDb().QueryRow(
 		`SELECT COUNT(*) FROM media_likes_latest
 		 WHERE media_path = ? AND liker_slug = ? AND is_liked = TRUE`,
-		"JGtm/clip.mp4", "Chocoboflor",
+		"JGtm/clip.mp4", "Joueur90001",
 	).Scan(&events); err != nil {
 		t.Fatalf("relecture media_likes_latest: %v", err)
 	}
 	if events != 1 {
-		t.Errorf("relecture immédiate : %d event(s) de like pour Chocoboflor, want 1", events)
+		t.Errorf("relecture immédiate : %d event(s) de like pour Joueur90001, want 1", events)
 	}
 
 	if err := db.Close(); err != nil {

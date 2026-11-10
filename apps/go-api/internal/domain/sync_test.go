@@ -32,7 +32,7 @@ func TestSyncResult_Status_OnlyErrors_Failure(t *testing.T) {
 }
 
 // TestSyncResult_Status_PostSyncFatalDegradesStatus simule le scénario
-// observé en prod 2026-05-24 20:41:08 sur Chocoboflor :
+// observé en prod 2026-05-24 20:41:08 sur Joueur90001 :
 //   - 15 matchs insérés OK (ingestion réussie)
 //   - LUSR FATAL ART → invalide la player DB → cascade friends/aggregates/achievements
 //   - Avant Phase 5 ART : Status() = "success" (mensonge, monitoring aveugle)

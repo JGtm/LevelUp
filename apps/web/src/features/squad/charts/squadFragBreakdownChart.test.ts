@@ -63,10 +63,10 @@ describe('buildFragBreakdownRows', () => {
   it('soirée du 22/09 (maquette C3EW) : totaux 65 / 63 / 121', () => {
     const soiree = {
       JGtm: [cls('shoulder', 28), cls('sidearm', 13), cls('heavy', 11), cls('melee', 6), cls('grenade', 5), cls('unattributed', 2)],
-      Chocoboflor: [cls('shoulder', 24), cls('sidearm', 19), cls('heavy', 4), cls('melee', 13), cls('grenade', 2), cls('environmental', 1)],
-      Madina97294: [cls('shoulder', 45), cls('sidearm', 37), cls('heavy', 16), cls('melee', 16), cls('grenade', 3), cls('environmental', 1), cls('unattributed', 3)],
+      Joueur90001: [cls('shoulder', 24), cls('sidearm', 19), cls('heavy', 4), cls('melee', 13), cls('grenade', 2), cls('environmental', 1)],
+      Joueur90002: [cls('shoulder', 45), cls('sidearm', 37), cls('heavy', 16), cls('melee', 16), cls('grenade', 3), cls('environmental', 1), cls('unattributed', 3)],
     }
-    const rows = buildFragBreakdownRows(soiree, ['JGtm', 'Chocoboflor', 'Madina97294'])
+    const rows = buildFragBreakdownRows(soiree, ['JGtm', 'Joueur90001', 'Joueur90002'])
     expect(rows.map((r) => r.total)).toEqual([65, 63, 121])
     const last = rows[2].segments[rows[2].segments.length - 1]
     expect(last.leftPct + last.widthPct).toBeCloseTo(100)

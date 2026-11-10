@@ -146,15 +146,15 @@ func TestSharedDBPath_KnownTitle(t *testing.T) {
 func TestReadXUIDFile_Valid(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "xuid.txt")
-	if err := os.WriteFile(p, []byte("2535469190789936\n"), 0600); err != nil {
+	if err := os.WriteFile(p, []byte("2547408409520575\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	xuid, err := readXUIDFile(p)
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}
-	if xuid != "2535469190789936" {
-		t.Errorf("xuid = %q, want 2535469190789936", xuid)
+	if xuid != "2547408409520575" {
+		t.Errorf("xuid = %q, want 2547408409520575", xuid)
 	}
 }
 

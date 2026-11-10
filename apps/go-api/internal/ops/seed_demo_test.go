@@ -195,7 +195,7 @@ func TestResolveSourceXUIDFromProfiles_V3MultiTitres(t *testing.T) {
 		"version": "3.0",
 		"profiles": {
 			"halo_infinite": {
-				"JGtm": {"xuid": "2533274823110022", "db_path": "data/titles/halo_infinite/players/JGtm/stats.duckdb"},
+				"JGtm": {"xuid": "2603225103667623", "db_path": "data/titles/halo_infinite/players/JGtm/stats.duckdb"},
 				"Other": {"xuid": "1111111111111111", "db_path": "data/titles/halo_infinite/players/Other/stats.duckdb"}
 			},
 			"halo_reach": {
@@ -211,7 +211,7 @@ func TestResolveSourceXUIDFromProfiles_V3MultiTitres(t *testing.T) {
 	if err != nil {
 		t.Fatalf("JGtm: %v", err)
 	}
-	if xuid != "2533274823110022" {
+	if xuid != "2603225103667623" {
 		t.Errorf("JGtm.xuid = %q", xuid)
 	}
 	if dbPath != "data/titles/halo_infinite/players/JGtm/stats.duckdb" {

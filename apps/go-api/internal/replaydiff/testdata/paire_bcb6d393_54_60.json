@@ -414,7 +414,7 @@
     },
     {
       "axe": "pistes",
-      "metrique": "tracks/par-xuid/2535429985869093",
+      "metrique": "tracks/par-xuid/2669605393856835",
       "ancien": "6",
       "nouveau": "5",
       "sens": "changement",
@@ -422,7 +422,7 @@
     },
     {
       "axe": "pistes",
-      "metrique": "tracks/vies-par-xuid/2535429985869093",
+      "metrique": "tracks/vies-par-xuid/2669605393856835",
       "ancien": "6",
       "nouveau": "5",
       "sens": "changement",
@@ -526,7 +526,7 @@
     },
     {
       "axe": "pistes",
-      "metrique": "tracks/par-xuid/2533274876732804",
+      "metrique": "tracks/par-xuid/2713751699127665",
       "ancien": "3",
       "nouveau": "4",
       "sens": "gain",
@@ -534,7 +534,7 @@
     },
     {
       "axe": "pistes",
-      "metrique": "tracks/par-xuid/2535460750735339",
+      "metrique": "tracks/par-xuid/2701236422544437",
       "ancien": "5",
       "nouveau": "6",
       "sens": "gain",
@@ -558,7 +558,7 @@
     },
     {
       "axe": "pistes",
-      "metrique": "tracks/vies-par-xuid/2533274876732804",
+      "metrique": "tracks/vies-par-xuid/2713751699127665",
       "ancien": "3",
       "nouveau": "4",
       "sens": "gain",
@@ -566,7 +566,7 @@
     },
     {
       "axe": "pistes",
-      "metrique": "tracks/vies-par-xuid/2535460750735339",
+      "metrique": "tracks/vies-par-xuid/2701236422544437",
       "ancien": "5",
       "nouveau": "6",
       "sens": "gain",

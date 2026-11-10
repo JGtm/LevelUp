@@ -304,7 +304,7 @@ func buildAPIFragClasses(rows []port.WeaponKillRow, counts domain.FragKillTypeCo
 //
 // VERDICT (probe empirique, 2026-07-19) : assassinat ⊄ mêlée — les deux compteurs API
 // sont DISJOINTS (melee_kills n'inclut PAS les assassinats). Preuve : match
-// 3066a511-ebd0-428f-9555-50422caebaba / xuid 2535421586125737 → melee_kills=6,
+// 3066a511-ebd0-428f-9555-50422caebaba / xuid 2664543533134265 → melee_kills=6,
 // assassination_kills=4, per-kill 6 mêlées + 4 assassinats ; et match 9bb09267… a
 // melee_kills=2 < assassination_kills=4 (impossible sous inclusion). 1212/1213 couples
 // disjoints. Donc Σ rôles = melee + assass = total de la classe (invariant b tenu).

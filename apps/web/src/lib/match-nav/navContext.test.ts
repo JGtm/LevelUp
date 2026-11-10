@@ -248,9 +248,9 @@ describe('parseFilterSpecFromSearch', () => {
 
   it('with_player : XUID numérique valide est conservé', () => {
     expect(
-      parseFilterSpecFromSearch({ with_player: '2533274791785593' }),
+      parseFilterSpecFromSearch({ with_player: '2561451715135583' }),
     ).toEqual({
-      with_player_xuid: '2533274791785593',
+      with_player_xuid: '2561451715135583',
     })
   })
 
@@ -262,10 +262,10 @@ describe('parseFilterSpecFromSearch', () => {
   })
 
   it('round-trip with_player_xuid via toQueryString', () => {
-    const qs = filterSpecToQueryString({ with_player_xuid: '2533274791785593' })
-    expect(qs).toContain('with_player=2533274791785593')
+    const qs = filterSpecToQueryString({ with_player_xuid: '2561451715135583' })
+    expect(qs).toContain('with_player=2561451715135583')
     expect(parseFilterSpecFromSearch(new URLSearchParams(qs))).toEqual({
-      with_player_xuid: '2533274791785593',
+      with_player_xuid: '2561451715135583',
     })
   })
 })

@@ -187,7 +187,7 @@ func TestSpartanCron_RunOnce_AcquireFails(t *testing.T) {
 }
 
 // TestSpartanCron_RunOnce_SkipsAuthOnlyProfile : un profil auth_only (compte
-// token-only sans player DB, ex. DankerGlue/QuiteSiren) est exclu du refresh à la
+// token-only sans player DB, ex. Joueur9001/Joueur9008) est exclu du refresh à la
 // source — le fetcher n'est appelé QUE pour le vrai joueur. Garde-rail contre le
 // bruit "refresher failed: No such file or directory" en prod.
 func TestSpartanCron_RunOnce_SkipsAuthOnlyProfile(t *testing.T) {
@@ -195,7 +195,7 @@ func TestSpartanCron_RunOnce_SkipsAuthOnlyProfile(t *testing.T) {
 	profilesPath := filepath.Join(repoRoot, "db_profiles.json")
 	json := `{"version":"3.0","profiles":{"halo_infinite":{` +
 		`"RealGT":{"db_path":"unused","xuid":"1111111111111111","waypoint_player":"RealGT"},` +
-		`"DankerGlue":{"db_path":"","xuid":"2222222222222222","waypoint_player":"DankerGlue","auth_only":true}` +
+		`"Joueur9001":{"db_path":"","xuid":"2222222222222222","waypoint_player":"Joueur9001","auth_only":true}` +
 		`}}}`
 	if err := os.WriteFile(profilesPath, []byte(json), 0o644); err != nil {
 		t.Fatalf("write profiles: %v", err)
@@ -209,7 +209,7 @@ func TestSpartanCron_RunOnce_SkipsAuthOnlyProfile(t *testing.T) {
 	// Les DEUX sont dans le pool (le compte auth_only fournit bien un RT) : sans le
 	// filtre SyncablePlayers, le cron tenterait de le rafraîchir et échouerait.
 	pl := &fakeCronPool{
-		hasPlayerMap: map[string]bool{"RealGT": true, "DankerGlue": true},
+		hasPlayerMap: map[string]bool{"RealGT": true, "Joueur9001": true},
 		leaseTokens:  &domain.HaloTokens{SpartanToken: "fake-token"},
 	}
 	cron := scheduler.NewSpartanCustomizationCron(cfg, pl, provider, "halo_infinite", 0)

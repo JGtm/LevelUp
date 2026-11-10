@@ -13,17 +13,17 @@ import (
 func TestAppReleaseTargets_ExcludesAuthOnly(t *testing.T) {
 	players := []domain.PlayerSummary{
 		{PlayerSlug: "JGtm", TitleSlug: "halo_infinite"},
-		{PlayerSlug: "QuiteSiren", TitleSlug: "halo_infinite", AuthOnly: true},
-		{PlayerSlug: "UppedJoker", TitleSlug: "halo_infinite", AuthOnly: true},
-		{PlayerSlug: "Madina97294", TitleSlug: "halo_infinite"},
+		{PlayerSlug: "Joueur9008", TitleSlug: "halo_infinite", AuthOnly: true},
+		{PlayerSlug: "Joueur900a", TitleSlug: "halo_infinite", AuthOnly: true},
+		{PlayerSlug: "Joueur90002", TitleSlug: "halo_infinite"},
 	}
 
 	targets, skipped := appReleaseTargets(players)
 
-	if want := []string{"JGtm", "Madina97294"}; !reflect.DeepEqual(targets, want) {
+	if want := []string{"JGtm", "Joueur90002"}; !reflect.DeepEqual(targets, want) {
 		t.Errorf("targets = %v, attendu %v", targets, want)
 	}
-	if want := []string{"QuiteSiren", "UppedJoker"}; !reflect.DeepEqual(skipped, want) {
+	if want := []string{"Joueur9008", "Joueur900a"}; !reflect.DeepEqual(skipped, want) {
 		t.Errorf("skipped = %v, attendu %v", skipped, want)
 	}
 }
@@ -35,13 +35,13 @@ func TestAppReleaseTargets_DedupesAcrossTitles(t *testing.T) {
 	players := []domain.PlayerSummary{
 		{PlayerSlug: "JGtm", TitleSlug: "halo_infinite"},
 		{PlayerSlug: "JGtm", TitleSlug: "halo_5"},
-		{PlayerSlug: "Chocoboflor", TitleSlug: "halo_5"},
-		{PlayerSlug: "Chocoboflor", TitleSlug: "halo_infinite"},
+		{PlayerSlug: "Joueur90001", TitleSlug: "halo_5"},
+		{PlayerSlug: "Joueur90001", TitleSlug: "halo_infinite"},
 	}
 
 	targets, skipped := appReleaseTargets(players)
 
-	if want := []string{"Chocoboflor", "JGtm"}; !reflect.DeepEqual(targets, want) {
+	if want := []string{"JGtm", "Joueur90001"}; !reflect.DeepEqual(targets, want) {
 		t.Errorf("targets = %v, attendu %v", targets, want)
 	}
 	if len(skipped) != 0 {
@@ -72,8 +72,8 @@ func TestAppReleaseTargets_IgnoresEmptySlug(t *testing.T) {
 // sur plusieurs titres n'apparaît qu'une fois dans la trace DEBUG.
 func TestAppReleaseTargets_AuthOnlyDedupedAcrossTitles(t *testing.T) {
 	players := []domain.PlayerSummary{
-		{PlayerSlug: "DankerGlue", TitleSlug: "halo_infinite", AuthOnly: true},
-		{PlayerSlug: "DankerGlue", TitleSlug: "halo_5", AuthOnly: true},
+		{PlayerSlug: "Joueur9001", TitleSlug: "halo_infinite", AuthOnly: true},
+		{PlayerSlug: "Joueur9001", TitleSlug: "halo_5", AuthOnly: true},
 	}
 
 	targets, skipped := appReleaseTargets(players)
@@ -81,7 +81,7 @@ func TestAppReleaseTargets_AuthOnlyDedupedAcrossTitles(t *testing.T) {
 	if len(targets) != 0 {
 		t.Errorf("targets = %v, attendu vide", targets)
 	}
-	if want := []string{"DankerGlue"}; !reflect.DeepEqual(skipped, want) {
+	if want := []string{"Joueur9001"}; !reflect.DeepEqual(skipped, want) {
 		t.Errorf("skipped = %v, attendu %v", skipped, want)
 	}
 }

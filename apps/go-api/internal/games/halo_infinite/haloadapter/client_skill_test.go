@@ -58,9 +58,9 @@ func TestComputeEnemyMMR(t *testing.T) {
 }
 
 func TestFilterHumanXUIDs(t *testing.T) {
-	in := []string{"2533274858283686", "bid(3.0)", "", "2533274823110022", "bid(0.0)"}
+	in := []string{"2623439693412443", "bid(3.0)", "", "2603225103667623", "bid(0.0)"}
 	got := filterHumanXUIDs(in)
-	want := []string{"2533274858283686", "2533274823110022"}
+	want := []string{"2623439693412443", "2603225103667623"}
 	if len(got) != len(want) {
 		t.Fatalf("want %d, got %d: %v", len(want), len(got), got)
 	}
@@ -73,8 +73,8 @@ func TestFilterHumanXUIDs(t *testing.T) {
 
 func TestUnwrapXUID(t *testing.T) {
 	cases := map[string]string{
-		"xuid(2533274858283686)": "2533274858283686",
-		"2533274858283686":       "2533274858283686",
+		"xuid(2623439693412443)": "2623439693412443",
+		"2623439693412443":       "2623439693412443",
 		"":                       "",
 	}
 	for in, want := range cases {
@@ -96,7 +96,7 @@ func TestTransformMatchSkillResponse_RankedMatchWithRankRecap(t *testing.T) {
 	raw := []byte(`{
 		"Value": [
 			{
-				"Id": "xuid(2533274858283686)",
+				"Id": "xuid(2623439693412443)",
 				"ResultCode": 0,
 				"Result": {
 					"TeamMmr": 1500.0,
@@ -115,7 +115,7 @@ func TestTransformMatchSkillResponse_RankedMatchWithRankRecap(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 	out := transformMatchSkillResponse(resp)
-	data := out["2533274858283686"]
+	data := out["2623439693412443"]
 	if data == nil {
 		t.Fatal("expected data for xuid")
 	}
@@ -149,7 +149,7 @@ func TestTransformMatchSkillResponse_PlacementMatch(t *testing.T) {
 	raw := []byte(`{
 		"Value": [
 			{
-				"Id": "xuid(2533274858283686)",
+				"Id": "xuid(2623439693412443)",
 				"ResultCode": 0,
 				"Result": {
 					"TeamMmr": 1450.0,
@@ -168,7 +168,7 @@ func TestTransformMatchSkillResponse_PlacementMatch(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 	out := transformMatchSkillResponse(resp)
-	data := out["2533274858283686"]
+	data := out["2623439693412443"]
 	if data == nil {
 		t.Fatal("expected data for xuid")
 	}
@@ -194,7 +194,7 @@ func TestTransformMatchSkillResponse_NoRankRecap(t *testing.T) {
 	raw := []byte(`{
 		"Value": [
 			{
-				"Id": "xuid(2533274858283686)",
+				"Id": "xuid(2623439693412443)",
 				"ResultCode": 0,
 				"Result": {
 					"TeamMmr": 1500.0,
@@ -213,7 +213,7 @@ func TestTransformMatchSkillResponse_NoRankRecap(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 	out := transformMatchSkillResponse(resp)
-	data := out["2533274858283686"]
+	data := out["2623439693412443"]
 	if data == nil {
 		t.Fatal("expected data for xuid")
 	}
@@ -236,7 +236,7 @@ func TestTransformMatchSkillResponse_RankedMatchWithZeroMMR(t *testing.T) {
 	raw := []byte(`{
 		"Value": [
 			{
-				"Id": "xuid(2533274858283686)",
+				"Id": "xuid(2623439693412443)",
 				"ResultCode": 0,
 				"Result": {
 					"TeamMmr": 0.0,
@@ -254,7 +254,7 @@ func TestTransformMatchSkillResponse_RankedMatchWithZeroMMR(t *testing.T) {
 	if err := json.Unmarshal(raw, &resp); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	data := transformMatchSkillResponse(resp)["2533274858283686"]
+	data := transformMatchSkillResponse(resp)["2623439693412443"]
 	if data == nil {
 		t.Fatal("expected data for xuid")
 	}

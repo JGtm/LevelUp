@@ -46,7 +46,7 @@ func TestBuildCrossGameCooccurrence_NilGuards(t *testing.T) {
 // construit et propage le slug courant + l'xuid (champs lus par CooccurrencesByXUID).
 func TestBuildCrossGameCooccurrence_Valid(t *testing.T) {
 	reg := &ServiceRegistry{cfg: &config.AppConfig{RepoRoot: t.TempDir(), UserTimezone: "Europe/Paris"}}
-	pdb := &duckdb.PlayerDB{XUID: "2533274895653213", TitleSlug: "halo_infinite"}
+	pdb := &duckdb.PlayerDB{XUID: "2599816533977960", TitleSlug: "halo_infinite"}
 
 	got := reg.buildCrossGameCooccurrence(pdb)
 	if got == nil {
@@ -59,7 +59,7 @@ func TestBuildCrossGameCooccurrence_Valid(t *testing.T) {
 	if c.currentSlug != "halo_infinite" {
 		t.Errorf("currentSlug = %q, want halo_infinite", c.currentSlug)
 	}
-	if c.myXUID != "2533274895653213" {
+	if c.myXUID != "2599816533977960" {
 		t.Errorf("myXUID = %q", c.myXUID)
 	}
 	if c.registry == nil || c.resolver == nil {

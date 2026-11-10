@@ -13,7 +13,7 @@ describe('isXuidLike', () => {
   })
   it('ne masque PAS un gamertag légitime', () => {
     expect(isXuidLike('JGtm')).toBe(false)
-    expect(isXuidLike('Madina97294')).toBe(false)
+    expect(isXuidLike('Joueur90002')).toBe(false)
     expect(isXuidLike('Player 123')).toBe(false)
     expect(isXuidLike('1234')).toBe(false) // court → gamertag possible
   })

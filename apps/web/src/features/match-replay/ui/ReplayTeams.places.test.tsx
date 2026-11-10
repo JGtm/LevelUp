@@ -103,8 +103,8 @@ function tuilesRendues(container: HTMLElement): number {
 
 /**
  * UNE SECTION SANS ÉQUIPE N'EXISTE PAS (décision du 2026-10-06). Le témoin `43716616` réduit à
- * sa place 5 : Slowpoke6743 part (certain jusqu'à 118, peut-être là jusqu'à 317), le bot
- * « 343 Sandwolf » est déclaré de 248 à 281 SANS équipe écrite par le film, KernelPanic10 arrive à
+ * sa place 5 : Joueur900007 part (certain jusqu'à 118, peut-être là jusqu'à 317), le bot
+ * « 343 Sandwolf » est déclaré de 248 à 281 SANS équipe écrite par le film, Joueur9000002 arrive à
  * 318 ; un titulaire tient le camp d'en face. La feuille connaît le bot : elle ne le range pas.
  */
 describe('ReplayTeams — aucune section sans équipe (témoin 43716616)', () => {
@@ -114,18 +114,18 @@ describe('ReplayTeams — aucune section sans équipe (témoin 43716616)', () =>
       frameIntervalMs: 100,
       originMs: 0,
       roster: [
-        { xuid: 'S', filmIndex: 5, seat: 5, seatSource: 'lu', name: 'Slowpoke6743', team: 0, presence: [{ from: 0, to: 118, toMax: 317 }] },
+        { xuid: 'S', filmIndex: 5, seat: 5, seatSource: 'lu', name: 'Joueur900007', team: 0, presence: [{ from: 0, to: 118, toMax: 317 }] },
         { xuid: '', bot: true, filmIndex: 8, seat: 8, seatSource: 'index', name: '343 Sandwolf [bot]', presence: [{ from: 248, to: 281 }] },
-        { xuid: 'K', filmIndex: 9, seat: 5, seatSource: 'tirs', name: 'KernelPanic10', team: 0, presence: [{ from: 318, to: 599 }] },
+        { xuid: 'K', filmIndex: 9, seat: 5, seatSource: 'tirs', name: 'Joueur9000002', team: 0, presence: [{ from: 318, to: 599 }] },
         { xuid: 'T', filmIndex: 1, seat: 1, seatSource: 'lu', name: 'Titulaire', team: 1, presence: [{ from: 0, to: 599 }] },
       ],
       tracks: [vie('S', 512, 0, 118), { ...vie('', 540, 250, 270), bot: '343 Sandwolf [bot]' }, vie('K', 530, 330, 599), vie('T', 513, 0, 599)],
     })
   }
   const feuille = [
-    scoreboardRow('S', 'Slowpoke6743', 't0'),
+    scoreboardRow('S', 'Joueur900007', 't0'),
     scoreboardRow('bid(44.0)', '343 Sandwolf', 't0', { is_bot: true }),
-    scoreboardRow('K', 'KernelPanic10', 't0'),
+    scoreboardRow('K', 'Joueur9000002', 't0'),
     scoreboardRow('T', 'Titulaire', 't1'),
   ]
 
@@ -142,7 +142,7 @@ describe('ReplayTeams — aucune section sans équipe (témoin 43716616)', () =>
   }
 
   /**
-   * LE TÉMOIN `859da825` : « 343 Forge Lord » (bot, index 8, sans équipe) puis SplinterCell958
+   * LE TÉMOIN `859da825` : « 343 Forge Lord » (bot, index 8, sans équipe) puis Joueur90000000a
    * (humain, `seatSource: index`, équipe 0) jusqu'à la fin. La provenance `index` ne retire
    * aucune tuile : seul le silence du film sur l'équipe en retire une.
    */
@@ -154,21 +154,21 @@ describe('ReplayTeams — aucune section sans équipe (témoin 43716616)', () =>
       roster: [
         { xuid: 'T', filmIndex: 0, seat: 0, seatSource: 'lu', name: 'Titulaire', team: 0, presence: [{ from: 0, to: 599 }] },
         { xuid: '', bot: true, filmIndex: 8, seat: 8, seatSource: 'index', name: '343 Forge Lord [bot]', presence: [{ from: 170, to: 182 }] },
-        { xuid: 'SC', filmIndex: 9, seat: 9, seatSource: 'index', name: 'SplinterCell958', team: 0, presence: [{ from: 183, to: 599 }] },
+        { xuid: 'SC', filmIndex: 9, seat: 9, seatSource: 'index', name: 'Joueur90000000a', team: 0, presence: [{ from: 183, to: 599 }] },
       ],
       tracks: [vie('T', 512, 0, 599), { ...vie('', 540, 171, 181), bot: '343 Forge Lord [bot]' }, vie('SC', 530, 190, 599)],
     })
     const feuille = [
       scoreboardRow('T', 'Titulaire', 't0'),
       scoreboardRow('bid(7.0)', '343 Forge Lord', 't0', { is_bot: true }),
-      scoreboardRow('SC', 'SplinterCell958', 't0'),
+      scoreboardRow('SC', 'Joueur90000000a', 't0'),
     ]
     const pendantLeBot = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={feuille} frame={175} locale="fr" />)
     expect(pendantLeBot.queryByText('343 Forge Lord')).toBeNull()
-    expect(tuilesRendues(pendantLeBot.container)).toBe(2) // la place de SplinterCell958 attend, libre
+    expect(tuilesRendues(pendantLeBot.container)).toBe(2) // la place de Joueur90000000a attend, libre
     pendantLeBot.unmount()
     const apres = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={doc} scoreboard={feuille} frame={300} locale="fr" />)
-    expect(apres.getByText('SplinterCell958')).toBeTruthy()
+    expect(apres.getByText('Joueur90000000a')).toBeTruthy()
     expect(apres.container.querySelectorAll('.overflow-y-auto')).toHaveLength(1)
     apres.unmount()
   })
@@ -176,8 +176,8 @@ describe('ReplayTeams — aucune section sans équipe (témoin 43716616)', () =>
   it('les colonnes portent les noms de la feuille : Eagle, puis Cobra', () => {
     const vue = render(<ReplayTeams allegiance={NO_ALLEGIANCE} doc={document43716616()} scoreboard={feuille} frame={260} locale="fr" />)
     expect([...vue.container.querySelectorAll('h3')].map((h) => h.textContent)).toEqual(['Équipe Eagle', 'Équipe Cobra'])
-    // Pendant la déclaration du bot, la place 5 reste à Slowpoke6743 (jusqu'à son `toMax`).
-    expect(vue.getByText('Slowpoke6743')).toBeTruthy()
+    // Pendant la déclaration du bot, la place 5 reste à Joueur900007 (jusqu'à son `toMax`).
+    expect(vue.getByText('Joueur900007')).toBeTruthy()
   })
 })
 

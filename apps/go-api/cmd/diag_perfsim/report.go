@@ -133,7 +133,7 @@ func secDedup(b *strings.Builder, results []*playerResult) {
 	fmt.Fprintf(b, "ligne retenue). Un match couvert avec 0 point objectif vaut ospm = 0 (valeur legitime :\n")
 	fmt.Fprintf(b, "le joueur n'a rien fait a l'objectif) ; un match SANS ligne PSA a une metrique ABSENTE\n")
 	fmt.Fprintf(b, "(poids redistribue). Confondre les deux reviendrait a noter 0 une absence de donnee.\n\n")
-	fmt.Fprintf(b, "**Piege majeur rencontre** (cf. Decouvertes du CR) : sur la DB `XxDaemonGamerxX`,\n")
+	fmt.Fprintf(b, "**Piege majeur rencontre** (cf. Decouvertes du CR) : sur la DB `Joueur90000000f`,\n")
 	fmt.Fprintf(b, "l'index `idx_psa_match` est INCOHERENT — `WHERE match_id = '05fffb2a-...'` rend 2 lignes\n")
 	fmt.Fprintf(b, "la ou le scan complet en rend 4. Toutes les lectures PSA de l'outil se font donc en scan\n")
 	fmt.Fprintf(b, "complet SANS predicat, la selection etant faite en Go.\n\n")

@@ -88,12 +88,12 @@ func TestTeammatesService_KnownGamertag_NoSilentDropLog(t *testing.T) {
 }
 
 // TestTeammatesService_CaseInsensitiveTopMatch : le matching dans topRows
-// doit être case-insensitive — le user saisit "Madina97294" mais la DB peut
-// avoir "madina97294" (Halo API renvoie tantôt l'un tantôt l'autre).
+// doit être case-insensitive — le user saisit "Joueur90002" mais la DB peut
+// avoir "joueur90002" (Halo API renvoie tantôt l'un tantôt l'autre).
 func TestTeammatesService_CaseInsensitiveTopMatch(t *testing.T) {
 	repo := &mockSquadRepo{
 		topRows: []domain.TopTeammateRow{
-			{XUID: "tm1", Gamertag: "madina97294", GamesTogether: 42},
+			{XUID: "tm1", Gamertag: "joueur90002", GamesTogether: 42},
 		},
 		squadRows: []domain.SquadMatchRow{
 			{MatchID: "m1", Outcome: domain.OutcomeWin, Kills: 10, Deaths: 5},
@@ -102,7 +102,7 @@ func TestTeammatesService_CaseInsensitiveTopMatch(t *testing.T) {
 	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
 
 	resp, err := svc.GetPage(context.Background(), "player-xuid",
-		domain.TeammatesQueryRequest{SelectedGamertags: []string{"Madina97294"}},
+		domain.TeammatesQueryRequest{SelectedGamertags: []string{"Joueur90002"}},
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -119,7 +119,7 @@ func TestTeammatesService_CaseInsensitiveTopMatch(t *testing.T) {
 }
 
 // TestTeammatesService_AliasFallback : couvre le cas exact rapporté par
-// l'utilisateur — le coéquipier (Madina97294) n'est pas dans le top 50
+// l'utilisateur — le coéquipier (Joueur90002) n'est pas dans le top 50
 // (mockée vide) mais shared.xuid_aliases le connaît. La row doit être
 // construite avec les KPIs des matchs communs et encounterCount calculé
 // depuis len(squadMatches).
@@ -133,7 +133,7 @@ func TestTeammatesService_AliasFallback_BuildsRowFromOutOfTopGamertag(t *testing
 		topRows: []domain.TopTeammateRow{},
 		// L'alias DB connaît bien le gamertag.
 		lookupAliases: map[string]string{
-			"madina97294": "tm-madina-xuid",
+			"joueur90002": "tm-madina-xuid",
 		},
 		// Les matchs communs avec ce coéquipier existent.
 		squadRows: []domain.SquadMatchRow{
@@ -146,7 +146,7 @@ func TestTeammatesService_AliasFallback_BuildsRowFromOutOfTopGamertag(t *testing
 
 	logs := withCapturedLogs(t, func() {
 		resp, err := svc.GetPage(context.Background(), "player-xuid",
-			domain.TeammatesQueryRequest{SelectedGamertags: []string{"Madina97294"}},
+			domain.TeammatesQueryRequest{SelectedGamertags: []string{"Joueur90002"}},
 		)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -155,7 +155,7 @@ func TestTeammatesService_AliasFallback_BuildsRowFromOutOfTopGamertag(t *testing
 			t.Fatalf("expected 1 teammate row built via alias fallback, got %d", len(resp.Teammates))
 		}
 		row := resp.Teammates[0]
-		if row.Gamertag != "Madina97294" {
+		if row.Gamertag != "Joueur90002" {
 			t.Errorf("expected gamertag preserved as input casing, got %q", row.Gamertag)
 		}
 		if row.XUID == nil || *row.XUID != "tm-madina-xuid" {

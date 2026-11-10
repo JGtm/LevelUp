@@ -121,7 +121,7 @@ func chargerPontSiege(t *testing.T) pontSiegeEntrees {
 // TestSiegeRecycleBcb6d393 : les trois actions du constat C1 recoivent le joueur que le FILM place
 // sur le siege a leur instant, et aucune action n est publiee pour un joueur absent du siege.
 //
-// ROUGE OBSERVE AVANT LE LOT : 70 706 ms -> 2535468064146356 (le remplacant, dont la premiere mort
+// ROUGE OBSERVE AVANT LE LOT : 70 706 ms -> 2544014377305993 (le remplacant, dont la premiere mort
 // tombe a 231 179 ms).
 func TestSiegeRecycleBcb6d393(t *testing.T) {
 	in := chargerPontSiege(t)
@@ -139,9 +139,9 @@ func TestSiegeRecycleBcb6d393(t *testing.T) {
 		want     string
 		pourquoi string
 	}{
-		{70706, 12, "2535460750735339", "frag du premier occupant du slot 12 (il meurt a 70 732 ms au fil)"},
-		{274479, 14, "2533274811363842", "premier frag du dernier occupant du slot 14 (siege repris a 232 705 ms)"},
-		{347519, 14, "2533274811363842", "second frag du dernier occupant du slot 14"},
+		{70706, 12, "2701236422544437", "frag du premier occupant du slot 12 (il meurt a 70 732 ms au fil)"},
+		{274479, 14, "2653441341920331", "premier frag du dernier occupant du slot 14 (siege repris a 232 705 ms)"},
+		{347519, 14, "2653441341920331", "second frag du dernier occupant du slot 14"},
 	} {
 		if got := parInstant[c.t][c.slot]; got != c.want {
 			t.Errorf("action de %d ms (slot %d) : %q, attendu %q — %s", c.t, c.slot, got, c.want, c.pourquoi)
@@ -157,8 +157,8 @@ func TestSiegeRecycleBcb6d393(t *testing.T) {
 		slot int
 		want []string
 	}{
-		{12, []string{"2535460750735339", "2535468064146356"}},
-		{14, []string{"2533274876732804", "", "2533274811363842"}},
+		{12, []string{"2701236422544437", "2544014377305993"}},
+		{14, []string{"2713751699127665", "", "2653441341920331"}},
 	} {
 		occ := id.Occupations(0, c.slot)
 		got := make([]string, 0, len(occ))

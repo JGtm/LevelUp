@@ -61,7 +61,7 @@ func fakeConfigWithPlayers(t *testing.T, gamertag, xuid string) *config.AppConfi
 // ─── Test 1 : MultiUserTokenStore peuple le pool ──────────────────────────
 
 func TestDiscoveryScan_MultiUserStore_Populates(t *testing.T) {
-	cfg := fakeConfigWithPlayers(t, "Madina97294", "2533274858283686")
+	cfg := fakeConfigWithPlayers(t, "Joueur90002", "2623439693412443")
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 
 	storeDir := filepath.Join(cfg.RepoRoot, "data", "auth", "watcher_tokens")
@@ -70,8 +70,8 @@ func TestDiscoveryScan_MultiUserStore_Populates(t *testing.T) {
 	}
 	store := auth.NewMultiUserTokenStore(storeDir)
 	err := store.Upsert(&auth.UserTokens{
-		XUID:              "2533274858283686",
-		Gamertag:          "Madina97294",
+		XUID:              "2623439693412443",
+		Gamertag:          "Joueur90002",
 		OAuthRefreshToken: "rt_watcher_store",
 		XSTSToken:         "xsts_value",
 		XSTSUserHash:      "uhs_value",
@@ -93,7 +93,7 @@ func TestDiscoveryScan_MultiUserStore_Populates(t *testing.T) {
 		t.Fatalf("sources = %d, want 1", len(sources))
 	}
 	src := sources[0]
-	if src.Gamertag != "Madina97294" || src.XUID != "2533274858283686" {
+	if src.Gamertag != "Joueur90002" || src.XUID != "2623439693412443" {
 		t.Errorf("source identity wrong: %+v", src)
 	}
 	if src.RefreshToken != "rt_watcher_store" {

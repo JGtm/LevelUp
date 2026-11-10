@@ -56,9 +56,9 @@ func TestBroadcast_PropagatesToAllOthers(t *testing.T) {
 	}, reg, &mockDaemonSyncRunner{})
 
 	jgtm := addTestPlayer(d, "JGtm", "111")
-	madina := addTestPlayer(d, "Madina97294", "222")
-	choco := addTestPlayer(d, "Chocoboflor", "333")
-	xxdaemon := addTestPlayer(d, "XxDaemonGamerxX", "444")
+	madina := addTestPlayer(d, "Joueur90002", "222")
+	choco := addTestPlayer(d, "Joueur90001", "333")
+	xxdaemon := addTestPlayer(d, "Joueur90000000f", "444")
 
 	handler := d.makePresenceHandler(context.Background(), jgtm)
 	handler(haloPresenceEvent("111"))
@@ -68,9 +68,9 @@ func TestBroadcast_PropagatesToAllOthers(t *testing.T) {
 
 	for name, pw := range map[string]*PlayerWatcher{
 		"JGtm":            jgtm,
-		"Madina97294":     madina,
-		"Chocoboflor":     choco,
-		"XxDaemonGamerxX": xxdaemon,
+		"Joueur90002":     madina,
+		"Joueur90001":     choco,
+		"Joueur90000000f": xxdaemon,
 	} {
 		if got := pw.FSM().State(); got != StateWatching {
 			t.Errorf("après broadcast, %s FSM = %v, want Watching", name, got)
@@ -88,8 +88,8 @@ func TestBroadcast_DisabledKeepsOthersIdle(t *testing.T) {
 	}, reg, &mockDaemonSyncRunner{})
 
 	jgtm := addTestPlayer(d, "JGtm", "111")
-	madina := addTestPlayer(d, "Madina97294", "222")
-	choco := addTestPlayer(d, "Chocoboflor", "333")
+	madina := addTestPlayer(d, "Joueur90002", "222")
+	choco := addTestPlayer(d, "Joueur90001", "333")
 
 	handler := d.makePresenceHandler(context.Background(), jgtm)
 	handler(haloPresenceEvent("111"))
@@ -118,7 +118,7 @@ func TestBroadcast_IdempotentOnRepeatedEvents(t *testing.T) {
 	}, reg, &mockDaemonSyncRunner{})
 
 	jgtm := addTestPlayer(d, "JGtm", "111")
-	madina := addTestPlayer(d, "Madina97294", "222")
+	madina := addTestPlayer(d, "Joueur90002", "222")
 
 	handler := d.makePresenceHandler(context.Background(), jgtm)
 
@@ -173,7 +173,7 @@ func TestBroadcast_DoesNotFireOnUntrackedTitle(t *testing.T) {
 	}, reg, &mockDaemonSyncRunner{})
 
 	jgtm := addTestPlayer(d, "JGtm", "111")
-	madina := addTestPlayer(d, "Madina97294", "222")
+	madina := addTestPlayer(d, "Joueur90002", "222")
 
 	handler := d.makePresenceHandler(context.Background(), jgtm)
 

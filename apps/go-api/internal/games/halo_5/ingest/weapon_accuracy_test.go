@@ -30,13 +30,13 @@ func TestMapWeaponAccuracy_AggregatesPerPlayerWeapon(t *testing.T) {
 		weaponDrop("JGtm", "100", 10, 4, 1000),       // arme 100
 		weaponDrop("JGtm", "100", 5, 3, 5000),        // même (joueur, arme) → cumul
 		weaponDrop("JGtm", "200", 8, 2, 6000),        // autre arme
-		weaponDrop("Madina97294", "100", 7, 7, 7000), // autre joueur
+		weaponDrop("Joueur90002", "100", 7, 7, 7000), // autre joueur
 		weaponDrop("JGtm", "100", 0, 0, 8000),        // 0 tir → ignoré (somme inchangée)
 		weaponDrop("JGtm", "0", 3, 1, 9000),          // arme 0 → ignorée
 		weaponDrop("", "100", 3, 1, 9500),            // sans joueur → ignoré
 		pickupWithShots,
 	}
-	resolve := fakeResolver(map[string]string{"JGtm": "xJ", "Madina97294": "xM"})
+	resolve := fakeResolver(map[string]string{"JGtm": "xJ", "Joueur90002": "xM"})
 
 	rows := MapWeaponAccuracy("m1", events, resolve)
 

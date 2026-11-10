@@ -13,7 +13,7 @@ import (
 // quand JGtm jouait à Halo Infinite. Format devices[].titles[] (cf.
 // ParsePresencePayload dans event_parser.go).
 const fixtureOnlineHaloInfinite = `{
-  "xuid":"2533274823110022",
+  "xuid":"2603225103667623",
   "state":"Online",
   "devices":[{
     "type":"WindowsOneCore",
@@ -28,7 +28,7 @@ const fixtureOnlineHaloInfinite = `{
 }`
 
 const fixtureOfflineWithLastSeen = `{
-  "xuid":"2533274823110022",
+  "xuid":"2603225103667623",
   "state":"Offline",
   "lastSeen":{
     "deviceType":"WindowsOneCore",
@@ -39,7 +39,7 @@ const fixtureOfflineWithLastSeen = `{
 }`
 
 const fixtureOnlineOtherGame = `{
-  "xuid":"2533274858283686",
+  "xuid":"2623439693412443",
   "state":"Online",
   "devices":[{
     "type":"WindowsOneCore",
@@ -115,7 +115,7 @@ func TestPresenceClient_GetPresence_OnlineHaloInfinite(t *testing.T) {
 	defer ts.Close()
 
 	client := presenceClientPointingTo(ts.URL)
-	event, err := client.GetPresence(context.Background(), "2533274823110022")
+	event, err := client.GetPresence(context.Background(), "2603225103667623")
 	if err != nil {
 		t.Fatalf("GetPresence error = %v", err)
 	}
@@ -141,7 +141,7 @@ func TestPresenceClient_GetPresence_OfflineLastSeen(t *testing.T) {
 	defer ts.Close()
 
 	client := presenceClientPointingTo(ts.URL)
-	event, err := client.GetPresence(context.Background(), "2533274823110022")
+	event, err := client.GetPresence(context.Background(), "2603225103667623")
 	if err != nil {
 		t.Fatalf("GetPresence error = %v", err)
 	}
@@ -158,7 +158,7 @@ func TestPresenceClient_GetPresence_OtherGame(t *testing.T) {
 	defer ts.Close()
 
 	client := presenceClientPointingTo(ts.URL)
-	event, err := client.GetPresence(context.Background(), "2533274858283686")
+	event, err := client.GetPresence(context.Background(), "2623439693412443")
 	if err != nil {
 		t.Fatalf("GetPresence error = %v", err)
 	}

@@ -13,7 +13,7 @@ package teammates
 // `present_at_beginning`, `joined_in_progress` ni `last_leave_time`.
 //
 // LE SCENARIO EST CELUI QUI A ETE MESURE (session du 27 aout 2026, match `2cf24f30`) :
-// Chocoboflor perd son PC en cours de match, un bot `bid(3.0)` prend sa place sur l'equipe,
+// Joueur90001 perd son PC en cours de match, un bot `bid(3.0)` prend sa place sur l'equipe,
 // il ne revient pas avant la fin. Ce match compte, sous les DEUX valeurs de l'option
 // « composition exacte » — et le bot ne casse pas l'exclusivite.
 //

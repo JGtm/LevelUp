@@ -14,10 +14,10 @@ import (
 // 100 % synthétiques (aucun film) : PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1.
 
 func TestResolveKillIdentity_Gamertag(t *testing.T) {
-	byGamertag := map[string]uint64{"Chocoboflor": 2533274822053343}
-	xuid, ok := resolveKillIdentity("Chocoboflor", byGamertag)
-	if !ok || xuid != 2533274822053343 {
-		t.Fatalf("xuid=%d ok=%v, attendu 2533274822053343/true", xuid, ok)
+	byGamertag := map[string]uint64{"Joueur90001": 2760422862404164}
+	xuid, ok := resolveKillIdentity("Joueur90001", byGamertag)
+	if !ok || xuid != 2760422862404164 {
+		t.Fatalf("xuid=%d ok=%v, attendu 2760422862404164/true", xuid, ok)
 	}
 }
 

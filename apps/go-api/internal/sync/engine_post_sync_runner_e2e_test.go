@@ -83,7 +83,7 @@ func TestSyncEngine_PostSyncRunner_Contract(t *testing.T) {
 		{
 			name:            "sync échoué : finalizer skip",
 			runner:          &recordingRunner{},
-			slug:            "Chocoboflor",
+			slug:            "Joueur90001",
 			simulateError:   errors.New("simulated sync failure"),
 			wantBeforeCalls: 1,
 			wantFinalCalls:  0,
@@ -91,7 +91,7 @@ func TestSyncEngine_PostSyncRunner_Contract(t *testing.T) {
 		{
 			name:            "BeforeSync retourne nil finalizer : pas d'appel après",
 			runner:          &recordingRunner{returnNilFinalizer: true},
-			slug:            "Madina97294",
+			slug:            "Joueur90002",
 			wantBeforeCalls: 1,
 			wantFinalCalls:  0,
 		},

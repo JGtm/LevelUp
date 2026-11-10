@@ -48,7 +48,7 @@ func TestBuildSyncEngineFactory_RefusesForeignTitleProfile(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			engine, err := factory(context.Background(), syncv2.PlayerProfile{
-				PlayerSlug: "JGtm", Gamertag: "JGtm", XUID: "2533274858283686",
+				PlayerSlug: "JGtm", Gamertag: "JGtm", XUID: "2623439693412443",
 				TitleSlug: c.profileTitle,
 			})
 			if !c.wantErr {
@@ -115,7 +115,7 @@ func TestBuildSyncEngineFactory_WiresSessionRule(t *testing.T) {
 		Settings:  settingsplatform.NewStore(settingsPath),
 	}
 	engine, err := buildSyncEngineFactoryParityComplete(deps)(context.Background(), syncv2.PlayerProfile{
-		PlayerSlug: "JGtm", Gamertag: "JGtm", XUID: "2533274858283686", TitleSlug: titlePkg.DefaultSlug,
+		PlayerSlug: "JGtm", Gamertag: "JGtm", XUID: "2623439693412443", TitleSlug: titlePkg.DefaultSlug,
 	})
 	if err != nil {
 		t.Fatalf("factory: %v", err)

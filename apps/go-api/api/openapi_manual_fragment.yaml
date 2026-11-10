@@ -190,7 +190,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       requestBody:
         required: true
         content:
@@ -215,7 +215,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       requestBody:
         required: true
         content:
@@ -246,7 +246,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Page Carrière
@@ -264,7 +264,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Encounters
@@ -297,7 +297,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
         - name: experience
           in: query
           schema:
@@ -342,7 +342,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Top encounters
@@ -366,7 +366,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Rivals
@@ -393,7 +393,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
         - name: season
           in: query
           description: |
@@ -419,7 +419,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
         - name: 'n'
           in: query
           description: Nombre de matchs récents à analyser (10 ≤ n ≤ 200, défaut 50).
@@ -448,7 +448,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Page Achievements
@@ -468,7 +468,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       requestBody:
         required: true
         content:
@@ -552,7 +552,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       requestBody:
         required: true
         content:
@@ -578,7 +578,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       requestBody:
         required: true
         content:
@@ -610,7 +610,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
         - name: match_id
           in: path
           description: UUID du match Halo Infinite
@@ -629,7 +629,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
         - name: match_id
           in: path
           description: UUID du match Halo Infinite
@@ -651,7 +651,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
         - name: slug
           in: path
           description: Slug du titre cible (ex. halo_infinite, halo_5)
@@ -674,7 +674,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
         - name: slug
           in: path
           description: Slug du titre cible
@@ -847,7 +847,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Page accueil (hero card, tête des matchs récents, sessions)
@@ -887,7 +887,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
         - name: kind
           in: query
           description: |
@@ -935,7 +935,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Liste des sessions avec stats agrégées
@@ -950,7 +950,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       requestBody:
         required: false
         content:
@@ -974,7 +974,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Données séries temporelles (win/loss, précision, forme, objectif)
@@ -985,7 +985,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Données séries temporelles
@@ -1000,7 +1000,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Analyse escouade / coéquipiers
@@ -1011,7 +1011,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       requestBody:
         required: false
         content:
@@ -1042,7 +1042,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Sessions de la composition, de la plus récente à la plus ancienne
@@ -1057,7 +1057,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Synthèse globale (heatmap, top semaines, comparaison KPIs)
@@ -1072,7 +1072,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Citations calculées (Triple Kill, Clutch, etc.)
@@ -1083,7 +1083,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Commendations et médailles par catégorie
@@ -1094,7 +1094,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Catalogue complet des médailles du titre avec le compteur obtenu par le joueur (0 = jamais obtenue), regroupées par catégorie et super-section
@@ -1105,7 +1105,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Totaux à vie des commendations natives, groupés par catégorie
@@ -1116,7 +1116,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       requestBody:
         required: false
         content:
@@ -1133,7 +1133,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       requestBody:
         required: true
         content:
@@ -1152,7 +1152,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       requestBody:
         required: true
         content:
@@ -1171,7 +1171,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
         - name: season
           in: query
           description: Filtrer par saison
@@ -1188,7 +1188,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Catalogue saisons + playlists ayant des snapshots
@@ -2371,7 +2371,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Couverture CSR
@@ -2389,7 +2389,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: État pipeline progression V2
@@ -2409,7 +2409,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Agrégats télémétrie Prestige par origine
@@ -2427,7 +2427,7 @@ paths:
       parameters:
         - name: player_slug
           in: path
-          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+          description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       responses:
         '200':
           description: Diag pipeline progression V2 après backfill
@@ -2439,7 +2439,7 @@ components:
       name: player_slug
       in: path
       required: true
-      description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       schema:
         type: string
   responses:

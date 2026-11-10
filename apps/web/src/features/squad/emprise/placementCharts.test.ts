@@ -205,7 +205,7 @@ describe('buildPlacementLifeOption — décalage vertical déterministe', () => 
 })
 
 describe('medianOffsets — les gros points qui se recouvrent sont écartés (Escouade OKLM, 22/09)', () => {
-  // Les médianes relevées sur la soirée du 22/09 : Madina97294 et Chocoboflor à 0,0025 portée
+  // Les médianes relevées sur la soirée du 22/09 : Joueur90002 et Joueur90001 à 0,0025 portée
   // l'un de l'autre, au même compte de frags — le second tracé cachait le premier.
   const spot = (xuid: string, gamertag: string, ratio: number, kills: number) => ({
     ...PLACEMENT_2209.players![0],
@@ -214,7 +214,7 @@ describe('medianOffsets — les gros points qui se recouvrent sont écartés (Es
     median_radar_ratio: ratio,
     median_kills: kills,
   })
-  const oklm = [spot('xj', 'JGtm', 0.4394, 0), spot('xm', 'Madina97294', 0.4256, 1), spot('xc', 'Chocoboflor', 0.4231, 1)]
+  const oklm = [spot('xj', 'JGtm', 0.4394, 0), spot('xm', 'Joueur90002', 0.4256, 1), spot('xc', 'Joueur90001', 0.4231, 1)]
 
   it('deux gros points confondus : écartés de part et d’autre de leur valeur, dans l’ordre du bloc', () => {
     const off = medianOffsets(oklm)
@@ -234,12 +234,12 @@ describe('medianOffsets — les gros points qui se recouvrent sont écartés (Es
 
   it('le nuage pose le gros point décalé ; l’infobulle garde la vraie médiane', () => {
     const block = { ...PLACEMENT_2209, players: oklm }
-    const madina = scatterOf(life(block), 'Madina97294')[1]
-    const choco = scatterOf(life(block), 'Chocoboflor')[1]
+    const madina = scatterOf(life(block), 'Joueur90002')[1]
+    const choco = scatterOf(life(block), 'Joueur90001')[1]
     const yM = (madina.data[0] as Datum).value[1]
     const yC = (choco.data[0] as Datum).value[1]
     expect(yC - yM).toBeCloseTo(MEDIAN_SPREAD, 10)
-    expect((madina.data[0] as Datum).tip).toContain('Madina97294')
+    expect((madina.data[0] as Datum).tip).toContain('Joueur90002')
   })
 })
 
@@ -314,7 +314,7 @@ describe('buildPlacementLifeOption — repères et quarts', () => {
 describe('buildPlacementLifeOption — joueurs, légende, gros point', () => {
   it('un semis et un gros point par joueur, MÊME nom de série (le clic sur la légende isole les deux) ; le gros point est au-dessus', () => {
     const o = life()
-    for (const gt of ['JGtm', 'Chocoboflor', 'Madina97294']) {
+    for (const gt of ['JGtm', 'Joueur90001', 'Joueur90002']) {
       const [semis, gros] = scatterOf(o, gt)
       expect(semis.data.length).toBeGreaterThan(0)
       expect(gros.data).toHaveLength(1)
@@ -326,8 +326,8 @@ describe('buildPlacementLifeOption — joueurs, légende, gros point', () => {
 
   it('le gros point : médiane X × médiane des frags', () => {
     // Seul dans le nuage : aucun autre gros point ne le recouvre, rien ne l’écarte (medianOffsets).
-    const choco = PLACEMENT_2209.players!.find((p) => p.gamertag === 'Chocoboflor')!
-    const big = scatterOf(life({ ...PLACEMENT_2209, players: [choco] }), 'Chocoboflor')[1].data[0] as Datum
+    const choco = PLACEMENT_2209.players!.find((p) => p.gamertag === 'Joueur90001')!
+    const big = scatterOf(life({ ...PLACEMENT_2209, players: [choco] }), 'Joueur90001')[1].data[0] as Datum
     // Vies à 0,4 / 0,5 / 1,1 / 1,4 : médiane 0,8 ; frags 0, 1, 0, 2 : médiane 0,5.
     expect(big.value[0]).toBeCloseTo(0.8, 10)
     expect(big.value[1]).toBe(0.5)
@@ -344,8 +344,8 @@ describe('buildPlacementLifeOption — joueurs, légende, gros point', () => {
   it('légende native en bas, centrée, une entrée par joueur à la couleur du joueur', () => {
     const l = life().legend
     expect(l).toMatchObject({ bottom: 4, left: 'center' })
-    expect(l.data.map((d) => d.name)).toEqual(['JGtm', 'Chocoboflor', 'Madina97294'])
-    expect(l.data.map((d) => d.itemStyle.color)).toEqual(['joueur-JGtm', 'joueur-Chocoboflor', 'joueur-Madina97294'])
+    expect(l.data.map((d) => d.name)).toEqual(['JGtm', 'Joueur90001', 'Joueur90002'])
+    expect(l.data.map((d) => d.itemStyle.color)).toEqual(['joueur-JGtm', 'joueur-Joueur90001', 'joueur-Joueur90002'])
   })
 
   it('sans vie mesurée, un joueur garde son semis (vide) mais n’a pas de gros point', () => {
@@ -421,7 +421,7 @@ describe('buildPlacementQuartsOption', () => {
 
   it('premier joueur en haut (axe catégoriel inversé), noms en gras, axe de 0 à 100 %', () => {
     const o = quarts()
-    expect(o.yAxis.data).toEqual(['Madina97294', 'Chocoboflor', 'JGtm'])
+    expect(o.yAxis.data).toEqual(['Joueur90002', 'Joueur90001', 'JGtm'])
     expect(o.yAxis.axisLabel.fontWeight).toBe(600)
     expect(o.xAxis).toMatchObject({ min: 0, max: 100 })
     expect(o.xAxis.axisLabel.formatter(50)).toBe('50 %')
@@ -475,13 +475,13 @@ describe('resolvePlacementColors', () => {
   })
 
   it('joueurs : palette de la page (ordre de la SÉLECTION, pas du bloc) ; quarts : jetons perf-tier ; repère : jeton', () => {
-    // Sélection Madina97294 puis Chocoboflor : l’ordre du bloc (JGtm, Chocoboflor, Madina97294) ne compte pas.
-    const palette = squadPlayerPalette('JGtm', ['Madina97294', 'Chocoboflor'])
+    // Sélection Joueur90002 puis Joueur90001 : l’ordre du bloc (JGtm, Joueur90001, Joueur90002) ne compte pas.
+    const palette = squadPlayerPalette('JGtm', ['Joueur90002', 'Joueur90001'])
     const c = resolvePlacementColors(palette.tokenOf)
     expect(c.player('JGtm')).toBe(defaultPalette['squad-player-1'])
-    expect(c.player('Madina97294')).toBe(defaultPalette['squad-player-2'])
-    expect(c.player('Chocoboflor')).toBe(defaultPalette['squad-player-3'])
-    expect(c.player('madina97294')).toBe(palette.colorByPlayer.Madina97294)
+    expect(c.player('Joueur90002')).toBe(defaultPalette['squad-player-2'])
+    expect(c.player('Joueur90001')).toBe(defaultPalette['squad-player-3'])
+    expect(c.player('joueur90002')).toBe(palette.colorByPlayer.Joueur90002)
     expect(c.player('Inconnu')).toBe(c.theme.text)
     expect(c.quadrant.in_range_productive).toBe(defaultPalette['perf-tier-1'])
     expect(c.quadrant.isolated_productive).toBe(defaultPalette['perf-tier-2'])

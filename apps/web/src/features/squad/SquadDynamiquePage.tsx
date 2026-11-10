@@ -45,7 +45,7 @@ export function SquadDynamiquePage() {
     [pageData?.intensity_profile],
   )
   const perfSeriesByPlayer = useMemo(() => performanceSeries ?? {}, [performanceSeries])
-  // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
+  // Le backend renvoie s.gamertag (casse mixte ex "Joueur90002") tandis que
   // playerSlug est l'URL param (souvent lowercase). On aligne sur main_player
   // pour que l'ordre des joueurs matche les clés des séries par joueur.
   const mainPlayerKey = pageData?.main_player ?? playerSlug

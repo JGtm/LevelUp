@@ -31,13 +31,13 @@ func TestCanDeleteMedia(t *testing.T) {
 		{
 			name:      "admin sur le média d'un autre",
 			ownerSlug: "JGtm",
-			req:       MediaDeleteRequest{RequesterSlug: "Chocoboflor", RequesterIsAdmin: true, AuthEnforced: true},
+			req:       MediaDeleteRequest{RequesterSlug: "Joueur90001", RequesterIsAdmin: true, AuthEnforced: true},
 			want:      true,
 		},
 		{
 			name:      "co-membre de groupe (passe l'ownership middleware) — REFUSÉ",
 			ownerSlug: "JGtm",
-			req:       MediaDeleteRequest{RequesterSlug: "Madina97294", AuthEnforced: true},
+			req:       MediaDeleteRequest{RequesterSlug: "Joueur90002", AuthEnforced: true},
 			want:      false,
 		},
 		{

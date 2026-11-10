@@ -149,7 +149,7 @@ func TestAggregatePlayer_SharedMatchOrderIndependent(t *testing.T) {
 // TestAggregatePlayer_SeasonWindow valide la pagination + le filtre TargetSeasons
 // + le bucketing par playlist sur un historique multi-saison.
 func TestAggregatePlayer_SeasonWindow(t *testing.T) {
-	const xuid = "2533274895653213"
+	const xuid = "2599816533977960"
 	const cur = "Csr/Seasons/CsrSeason13-2.json"
 	const old = "Csr/Seasons/CsrSeason12-1.json"
 

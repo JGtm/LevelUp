@@ -340,7 +340,7 @@ func TestMultiUserTokenStore_UpdateOAuthRefreshToken_PreservesOtherFields(t *tes
 
 	original := &UserTokens{
 		XUID:          "2535471234567890",
-		Gamertag:      "Madina97294",
+		Gamertag:      "Joueur90002",
 		XSTSToken:     "xsts-original",
 		XSTSUserHash:  "hash-original",
 		XSTSExpiresAt: time.Now().Add(1 * time.Hour),
@@ -362,7 +362,7 @@ func TestMultiUserTokenStore_UpdateOAuthRefreshToken_PreservesOtherFields(t *tes
 	if loaded.OAuthRefreshToken != "rt-rotated-v1" {
 		t.Errorf("OAuthRefreshToken = %q, want rt-rotated-v1", loaded.OAuthRefreshToken)
 	}
-	if loaded.Gamertag != "Madina97294" {
+	if loaded.Gamertag != "Joueur90002" {
 		t.Errorf("Gamertag écrasé : %q", loaded.Gamertag)
 	}
 	if loaded.XSTSToken != "xsts-original" {
@@ -427,11 +427,11 @@ func TestMultiUserTokenStore_UpdateOAuthRefreshToken_Idempotent(t *testing.T) {
 func TestMultiUserTokenStore_LoadByGamertag(t *testing.T) {
 	s := NewMultiUserTokenStore(tempTokenDir(t))
 
-	_ = s.Upsert(&UserTokens{XUID: "111", Gamertag: "Madina97294", XSTSToken: "tok-madina"})
-	_ = s.Upsert(&UserTokens{XUID: "222", Gamertag: "Chocoboflor", XSTSToken: "tok-choco"})
+	_ = s.Upsert(&UserTokens{XUID: "111", Gamertag: "Joueur90002", XSTSToken: "tok-madina"})
+	_ = s.Upsert(&UserTokens{XUID: "222", Gamertag: "Joueur90001", XSTSToken: "tok-choco"})
 
 	// Match exact
-	loaded, err := s.LoadByGamertag("Madina97294")
+	loaded, err := s.LoadByGamertag("Joueur90002")
 	if err != nil {
 		t.Fatalf("LoadByGamertag exact: %v", err)
 	}
@@ -440,7 +440,7 @@ func TestMultiUserTokenStore_LoadByGamertag(t *testing.T) {
 	}
 
 	// Case insensitive
-	loaded, err = s.LoadByGamertag("madina97294")
+	loaded, err = s.LoadByGamertag("joueur90002")
 	if err != nil {
 		t.Fatalf("LoadByGamertag lower: %v", err)
 	}
@@ -449,7 +449,7 @@ func TestMultiUserTokenStore_LoadByGamertag(t *testing.T) {
 	}
 
 	// Trim whitespace
-	loaded, err = s.LoadByGamertag("  Chocoboflor  ")
+	loaded, err = s.LoadByGamertag("  Joueur90001  ")
 	if err != nil {
 		t.Fatalf("LoadByGamertag trim: %v", err)
 	}

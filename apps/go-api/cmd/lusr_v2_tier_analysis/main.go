@@ -22,7 +22,7 @@ import (
 
 const defaultDBPath = "data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb"
 
-var trackedPlayers = []string{"Madina97294", "Chocoboflor", "JGtm", "XxDaemonGamerxX"}
+var trackedPlayers = []string{"Joueur90002", "Joueur90001", "JGtm", "Joueur90000000f"}
 
 func main() {
 	dbPath := flag.String("db", defaultDBPath, "path to shared_matches_v2.duckdb")
@@ -75,10 +75,10 @@ func main() {
 	fmt.Println("| Joueur | Cible | Groupe | μ | σ | exp |")
 	fmt.Println("|---|---|---|---:|---:|---:|")
 	targets := map[string]string{
-		"Madina97294":     "fin Platine / début Diamant",
-		"Chocoboflor":     "milieu/bas Or",
+		"Joueur90002":     "fin Platine / début Diamant",
+		"Joueur90001":     "milieu/bas Or",
 		"JGtm":            "milieu/bas Or",
-		"XxDaemonGamerxX": "Bronze (faible)",
+		"Joueur90000000f": "Bronze (faible)",
 	}
 	for _, gt := range trackedPlayers {
 		xuid := xuidByGT[gt]

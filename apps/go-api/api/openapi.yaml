@@ -105,7 +105,7 @@ paths:
         (counts) post-exécution pour vérifier que les tables se peuplent.
       operationId: backfillProgression
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -200,7 +200,7 @@ paths:
         matured/placement) ou s'il faut lancer un backfill.
       operationId: getDiagCSRCoverage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -237,7 +237,7 @@ paths:
         (dénominateur nul).
       operationId: getDiagPrestigeTelemetry
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -272,7 +272,7 @@ paths:
         n'est pas câblé correctement.
       operationId: getDiagProgression
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -3178,7 +3178,7 @@ paths:
     get:
       operationId: getCommendationTotals
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -3314,7 +3314,7 @@ paths:
     post:
       operationId: filtersMatchIDs
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -3362,7 +3362,7 @@ paths:
         - Les listes vides dans cascade = « tout coché » (pas de filtre restrictif)
       operationId: resolveFilters
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -3460,7 +3460,7 @@ paths:
         - Les blocs partiels sont autorisés si le contrat principal est servable
       operationId: getMatchView
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -3576,7 +3576,7 @@ paths:
         Un match exclu est ignoré partout dans l'app (stats, graphes, historique, export).
       operationId: setMatchExclusion
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4057,7 +4057,7 @@ paths:
     patch:
       operationId: patchMediaLike
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4592,7 +4592,7 @@ paths:
         titre courant ne supporte pas cette feature.
       operationId: getAchievementsPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4630,7 +4630,7 @@ paths:
         - Le contrat est page-oriented, pas une projection brute du canonique Halo
       operationId: getCareerPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4674,7 +4674,7 @@ paths:
         + saison courante). LUSR n'est pas concerné (cumulatif, hors saison).
       operationId: getCareerCSRs
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4716,7 +4716,7 @@ paths:
       description: Retourne les adversaires et coéquipiers fréquents.
       operationId: getCareerEncounters
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4766,7 +4766,7 @@ paths:
         `available_seasons`) qui respectent l'autre filtre actif (cascade-aware).
       operationId: getCareerHighlightMatches
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4844,7 +4844,7 @@ paths:
         (avec garde div-par-zéro : 0 morts → ratio = float64(frags)).
       operationId: getCareerRivals
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4884,7 +4884,7 @@ paths:
         badges narratifs ally_plus / tough_enemy / ordinal.
       operationId: getCareerTopEncounters
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4918,7 +4918,7 @@ paths:
     post:
       operationId: postCitations
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4946,7 +4946,7 @@ paths:
     post:
       operationId: postCommendations
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -4974,7 +4974,7 @@ paths:
     post:
       operationId: postComparePage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5011,7 +5011,7 @@ paths:
       description: Retourne la liste paginée et filtrée des matchs pour la vue Explorer.
       operationId: queryExplorerMatches
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5054,7 +5054,7 @@ paths:
       description: Retourne le profil d'encounter et les matchs communs avec un joueur cible.
       operationId: queryExplorerPlayer
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5096,7 +5096,7 @@ paths:
     get:
       operationId: getHomePage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5170,7 +5170,7 @@ paths:
         match_id décroissant) et, avec `kind=favorites`, les favoris du joueur en entier.
       operationId: getHomeMatches
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5285,7 +5285,7 @@ paths:
     get:
       operationId: getLeaderboardPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5340,7 +5340,7 @@ paths:
     get:
       operationId: getLeaderboardCatalog
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5400,7 +5400,7 @@ paths:
         - `match_url` est porté par chaque ligne, pas reconstruit côté frontend
       operationId: queryMatchHistory
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5438,7 +5438,7 @@ paths:
     post:
       operationId: postMedals
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5466,7 +5466,7 @@ paths:
     post:
       operationId: postMediaLibrary
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5583,7 +5583,7 @@ paths:
     get:
       operationId: getSessions
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5630,7 +5630,7 @@ paths:
     post:
       operationId: postSessionDetailPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5671,7 +5671,7 @@ paths:
     get:
       operationId: getSquadPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5799,7 +5799,7 @@ paths:
     post:
       operationId: postStatsQuery
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5827,7 +5827,7 @@ paths:
     post:
       operationId: postSynthesisPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5859,7 +5859,7 @@ paths:
     post:
       operationId: postTeammatesPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5907,7 +5907,7 @@ paths:
         capability requise répond 503 `capability_not_supported`.
       operationId: getTeammatesSessions
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -5957,7 +5957,7 @@ paths:
     post:
       operationId: postTimeseriesPage
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -6019,7 +6019,7 @@ paths:
         (top 3 axes d'amélioration). Analyse sur les `n` derniers matchs.
       operationId: getPlayerPatterns
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -6974,7 +6974,7 @@ paths:
         pu être supprimés malgré le retrait du profil (verrou disque résiduel).
       operationId: purgeTitleData
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -7016,7 +7016,7 @@ paths:
         Refuse de mettre en pause le DERNIER titre actif du joueur (409).
       operationId: setTitleSync
       parameters:
-        - description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+        - description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
           in: path
           name: player_slug
           required: true
@@ -7822,7 +7822,7 @@ paths:
 components:
   parameters:
     PlayerSlug:
-      description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      description: Slug du joueur (dérivé du gamertag, ex. "Joueur90001")
       in: path
       name: player_slug
       required: true

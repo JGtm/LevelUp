@@ -161,7 +161,7 @@ func TestResolveMSAccessTokenStoreFirst_StoreSansFichier_AucunError(t *testing.T
 	store := NewMultiUserTokenStore(tempTokenDir(t))
 	prov := &fakeProvider{oauthAccess: "at-jamais-servi"}
 
-	at, err := ResolveMSAccessTokenStoreFirst(context.Background(), prov, store, "222", "Nuzzles")
+	at, err := ResolveMSAccessTokenStoreFirst(context.Background(), prov, store, "222", "J900004")
 	if err != nil {
 		t.Fatalf("attendu un skip (\"\", nil), obtenu err=%v", err)
 	}

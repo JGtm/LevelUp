@@ -121,7 +121,7 @@ func TestBuildMainTeamXUIDSet(t *testing.T) {
 
 // newExtraTeammateRepo : composition {AllyA, AllyB} dont l'intersection donne
 // {m1, m2} ; m2 avait AllyC (profil suivi, donc coéquipier connu, hors sélection) sur
-// l'équipe du main. C'est le scénario {JGtm, Chocoboflor} + Madina97294.
+// l'équipe du main. C'est le scénario {JGtm, Joueur90001} + Joueur90002.
 func newExtraTeammateRepo() *mockSquadRepo {
 	tS1 := time.Date(2026, 6, 1, 20, 0, 0, 0, time.UTC)
 	tS2 := time.Date(2026, 6, 8, 20, 0, 0, 0, time.UTC)
@@ -251,9 +251,9 @@ func TestGetPage_ExactComposition_ExtraKnownTeammateExcluded(t *testing.T) {
 
 // newExactCompositionGapRepo : composition {AllyA, AllyB}, UNE session "S1" avec
 // 5 matchs "commencés ensemble" (roster) : m1 exact (gardé), m2 écarté par
-// Nilton410 seul (ami déclaré hors registre, résolu par la lecture), m3 écarté par
-// passivemarquise seul (profil suivi), m4 écarté par un profil suivi SANS nom (repli
-// "Joueur <4 derniers>" de l'annuaire), m5 écarté par Nilton410 ET passivemarquise
+// Joueur903 seul (ami déclaré hors registre, résolu par la lecture), m3 écarté par
+// Joueur90000000i seul (profil suivi), m4 écarté par un profil suivi SANS nom (repli
+// "Joueur <4 derniers>" de l'annuaire), m5 écarté par Joueur903 ET Joueur90000000i
 // ensemble. Scénario ADR 0033 : l'écart affiché doit nommer, match par match, le(s)
 // coéquipier(s) responsable(s).
 func newExactCompositionGapRepo() *mockSquadRepo {
@@ -271,12 +271,12 @@ func newExactCompositionGapRepo() *mockSquadRepo {
 			{XUID: "xb", Gamertag: "AllyB", GamesTogether: 10},
 		},
 		profils: []domain.PlayerSummary{
-			profilSuivi("xa", "AllyA"), profilSuivi("xb", "AllyB"), profilSuivi("xp", "passivemarquise"),
+			profilSuivi("xa", "AllyA"), profilSuivi("xb", "AllyB"), profilSuivi("xp", "Joueur90000000i"),
 			// Connu (dans le pool) mais SANS nom — cas du repli "Joueur <4 derniers>".
 			profilSuivi("xuid0009", ""),
 		},
-		amis:    []string{"AllyA", "AllyB", "Nilton410"},
-		amisLus: map[string]string{"Nilton410": "xn"},
+		amis:    []string{"AllyA", "AllyB", "Joueur903"},
+		amisLus: map[string]string{"Joueur903": "xn"},
 		squadRowsByTeammate: map[string][]domain.SquadMatchRow{
 			"xa": shared,
 			"xb": shared,
@@ -335,17 +335,17 @@ func TestGetPage_ExactComposition_PublishesRosterCountAndExcludedMatches(t *test
 	for _, ex := range s1.ExcludedByExactComposition {
 		byMatch[ex.MatchID] = ex
 	}
-	if got := byMatch["m2"].ExtraGamertags; len(got) != 1 || got[0] != "Nilton410" {
-		t.Errorf("m2 écarté par Nilton410 seul: got %v", got)
+	if got := byMatch["m2"].ExtraGamertags; len(got) != 1 || got[0] != "Joueur903" {
+		t.Errorf("m2 écarté par Joueur903 seul: got %v", got)
 	}
-	if got := byMatch["m3"].ExtraGamertags; len(got) != 1 || got[0] != "passivemarquise" {
-		t.Errorf("m3 écarté par passivemarquise seul: got %v", got)
+	if got := byMatch["m3"].ExtraGamertags; len(got) != 1 || got[0] != "Joueur90000000i" {
+		t.Errorf("m3 écarté par Joueur90000000i seul: got %v", got)
 	}
 	if got := byMatch["m4"].ExtraGamertags; len(got) != 1 || got[0] != "Joueur 0009" {
 		t.Errorf("m4 écarté par un xuid sans gamertag résolu (repli): got %v", got)
 	}
-	if got := byMatch["m5"].ExtraGamertags; len(got) != 2 || got[0] != "Nilton410" || got[1] != "passivemarquise" {
-		t.Errorf("m5 écarté par Nilton410 ET passivemarquise: got %v", got)
+	if got := byMatch["m5"].ExtraGamertags; len(got) != 2 || got[0] != "Joueur903" || got[1] != "Joueur90000000i" {
+		t.Errorf("m5 écarté par Joueur903 ET Joueur90000000i: got %v", got)
 	}
 	if byMatch["m4"].MapUI != "Bazaar" {
 		t.Errorf("MapUI de l'écarté m4: want Bazaar, got %s", byMatch["m4"].MapUI)

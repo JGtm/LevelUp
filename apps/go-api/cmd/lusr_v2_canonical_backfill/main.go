@@ -41,7 +41,7 @@ import (
 	lusync "levelup/go-api/internal/sync"
 )
 
-var defaultPlayers = []string{"Madina97294", "Chocoboflor", "JGtm", "XxDaemonGamerxX"}
+var defaultPlayers = []string{"Joueur90002", "Joueur90001", "JGtm", "Joueur90000000f"}
 
 func sharedDBPath(root string) string {
 	return root + "/data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb"

@@ -25,7 +25,7 @@ func TestMatchRegistryRowFromSummary(t *testing.T) {
 		IsPvE:           boolptr(false),
 	}
 
-	row := MatchRegistryRowFromSummary(s, "Madina97294")
+	row := MatchRegistryRowFromSummary(s, "Joueur90002")
 
 	if row.MatchID != "match-xyz" || !row.StartTime.Equal(start) {
 		t.Fatalf("identité/temps mal mappés: %+v", row)
@@ -39,7 +39,7 @@ func TestMatchRegistryRowFromSummary(t *testing.T) {
 	if !row.IsRanked || row.IsFirefight {
 		t.Errorf("flags ranked/firefight mal dérivés: ranked=%v ff=%v", row.IsRanked, row.IsFirefight)
 	}
-	if row.ModeCategory != "Slayer" || row.FirstSyncBy != "Madina97294" {
+	if row.ModeCategory != "Slayer" || row.FirstSyncBy != "Joueur90002" {
 		t.Errorf("mode/first_sync_by: cat=%q by=%q", row.ModeCategory, row.FirstSyncBy)
 	}
 	// end_time dérivé de start + durée (540s → 12:09:00) : l'API h5 ne fournit pas
@@ -61,14 +61,14 @@ func TestCollectMatchBatch_EndToEnd(t *testing.T) {
 		IsRanked:     boolptr(true),
 	}
 	timeline := []canonical.MatchEvent{
-		medal("Madina97294", "100", 5000),
-		medal("Madina97294", "100", 9000),
+		medal("Joueur90002", "100", 5000),
+		medal("Joueur90002", "100", 9000),
 		medal("JGtm", "200", 3000),
-		kill("Madina97294", "JGtm", "12345", 6000),
-		kill("JGtm", "Madina97294", "", 8000),
+		kill("Joueur90002", "JGtm", "12345", 6000),
+		kill("JGtm", "Joueur90002", "", 8000),
 	}
-	resolve := fakeResolver(map[string]string{"Madina97294": "xA", "JGtm": "xB"})
-	viewer := canonical.PlayerIdentity{Gamertag: "Madina97294", XUID: "xA"}
+	resolve := fakeResolver(map[string]string{"Joueur90002": "xA", "JGtm": "xB"})
+	viewer := canonical.PlayerIdentity{Gamertag: "Joueur90002", XUID: "xA"}
 	participants := []domain.MatchParticipantRow{
 		{MatchID: "m1", XUID: "xA"},
 		{MatchID: "m1", XUID: "xB"},
@@ -84,7 +84,7 @@ func TestCollectMatchBatch_EndToEnd(t *testing.T) {
 		batch.Shared.Match.Team1Score == nil || *batch.Shared.Match.Team1Score != 30 {
 		t.Fatalf("scores objectif d'équipe non posés sur le registry: %+v", batch.Shared.Match)
 	}
-	if batch.TitleSlug != "halo_5" || batch.Player != "Madina97294" || batch.XUID != "xA" {
+	if batch.TitleSlug != "halo_5" || batch.Player != "Joueur90002" || batch.XUID != "xA" {
 		t.Fatalf("métadonnées batch: slug=%q player=%q xuid=%q", batch.TitleSlug, batch.Player, batch.XUID)
 	}
 	// match_registry présent → SharedPersister ne no-op pas.

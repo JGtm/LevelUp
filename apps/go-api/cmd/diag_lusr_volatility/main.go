@@ -41,9 +41,9 @@ type player struct {
 }
 
 var players = []player{
-	{"Madina97294", "2533274858283686"},
-	{"Chocoboflor", "2535469190789936"},
-	{"JGtm", "2533274823110022"},
+	{"Joueur90002", "2623439693412443"},
+	{"Joueur90001", "2547408409520575"},
+	{"JGtm", "2603225103667623"},
 }
 
 // snap = état (μ,σ) après un match + contexte du match.

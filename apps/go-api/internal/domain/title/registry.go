@@ -789,25 +789,25 @@ func (p *PathResolver) PlayersRootDir(titleSlug string) string {
 }
 
 // PlayerDir retourne le répertoire d'un joueur pour un titre.
-// Ex: data/titles/halo_infinite/players/Chocoboflor/
+// Ex: data/titles/halo_infinite/players/Joueur90001/
 func (p *PathResolver) PlayerDir(titleSlug, gamertag string) string {
 	return filepath.Join(p.PlayersRootDir(titleSlug), gamertag)
 }
 
 // PlayerDBPath retourne le chemin de la DB stats d'un joueur.
-// Ex: data/titles/halo_infinite/players/Chocoboflor/stats.duckdb
+// Ex: data/titles/halo_infinite/players/Joueur90001/stats.duckdb
 func (p *PathResolver) PlayerDBPath(titleSlug, gamertag string) string {
 	return filepath.Join(p.PlayerDir(titleSlug, gamertag), playerDBFileName)
 }
 
 // PlayerArchiveDir retourne le répertoire d'archive d'un joueur.
-// Ex: data/titles/halo_infinite/players/Chocoboflor/archive/
+// Ex: data/titles/halo_infinite/players/Joueur90001/archive/
 func (p *PathResolver) PlayerArchiveDir(titleSlug, gamertag string) string {
 	return filepath.Join(p.PlayerDir(titleSlug, gamertag), "archive")
 }
 
 // PlayerCapturesDir retourne le répertoire captures d'un joueur.
-// Ex: data/titles/halo_infinite/players/Chocoboflor/captures/
+// Ex: data/titles/halo_infinite/players/Joueur90001/captures/
 func (p *PathResolver) PlayerCapturesDir(titleSlug, gamertag string) string {
 	return filepath.Join(p.PlayerDir(titleSlug, gamertag), "captures")
 }
@@ -815,7 +815,7 @@ func (p *PathResolver) PlayerCapturesDir(titleSlug, gamertag string) string {
 // PlayerMediaAudioConfigPath retourne le chemin du sidecar de réglage audio média
 // d'un joueur (rôle voix/jeu/autres des pistes source, mode auto/manuel). Placé à
 // côté du dossier captures dans le répertoire joueur du titre.
-// Ex: data/titles/halo_infinite/players/Chocoboflor/media_audio_config.json
+// Ex: data/titles/halo_infinite/players/Joueur90001/media_audio_config.json
 func (p *PathResolver) PlayerMediaAudioConfigPath(titleSlug, gamertag string) string {
 	return filepath.Join(p.PlayerDir(titleSlug, gamertag), "media_audio_config.json")
 }
@@ -850,7 +850,7 @@ func (p *PathResolver) MediaDataDir() string {
 }
 
 // BackupDir retourne le répertoire de backup d'un joueur pour un titre.
-// Ex: data/titles/halo_infinite/backups/Chocoboflor/
+// Ex: data/titles/halo_infinite/backups/Joueur90001/
 func (p *PathResolver) BackupDir(titleSlug, gamertag string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "backups", gamertag)
 }

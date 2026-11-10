@@ -38,7 +38,7 @@ function makeItem(overrides: Partial<MediaItemRow> = {}): MediaItemRow {
 }
 
 const OWN_ITEM = makeItem()
-const FOREIGN_ITEM = makeItem({ owner_gamertag: 'Chocoboflor', file_path: '/media/autre.mp4' })
+const FOREIGN_ITEM = makeItem({ owner_gamertag: 'Joueur90001', file_path: '/media/autre.mp4' })
 
 function setStore(state: { locale?: 'fr' | 'en'; isAdmin?: boolean }) {
   act(() => {

@@ -104,12 +104,12 @@ func TestPersistAppearance_DelaiCourt(t *testing.T) {
 	playerPath := filepath.Join(tmp, "player", "stats.duckdb")
 	cacheRoot := filepath.Join(tmp, "cache")
 	src := &fakeAppearanceSource{
-		app:       &h5api.H5Appearance{Gamertag: "Chocoboflor", ServiceTag: "OKLM"},
+		app:       &h5api.H5Appearance{Gamertag: "Joueur90001", ServiceTag: "OKLM"},
 		emblemPNG: testPNG,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	out, err := PersistAppearance(ctx, src, playerPath, cacheRoot, "Chocoboflor", "xuid-choco")
+	out, err := PersistAppearance(ctx, src, playerPath, cacheRoot, "Joueur90001", "xuid-choco")
 	cancel()
 	if err != nil || !out.Persisted {
 		t.Fatalf("écriture sous délai court, verrou libre : persisted=%v err=%v", out.Persisted, err)
@@ -129,7 +129,7 @@ func TestPersistAppearance_DelaiCourt(t *testing.T) {
 	short, cancelShort := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancelShort()
 	start := time.Now()
-	_, err = PersistAppearance(short, src, playerPath, cacheRoot, "Chocoboflor", "xuid-choco")
+	_, err = PersistAppearance(short, src, playerPath, cacheRoot, "Joueur90001", "xuid-choco")
 	if !errors.Is(err, dblease.ErrDBLocked) {
 		t.Fatalf("écriture pendant que le verrou est tenu : err=%v, attendu dblease.ErrDBLocked", err)
 	}

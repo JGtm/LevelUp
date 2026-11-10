@@ -91,7 +91,7 @@ func TestSessionContext_AcceptsRealValues(t *testing.T) {
 		`{"player_slug":"JGtm"}`,
 		`{"player_slug":"test-player"}`,
 		`{"player_slug":"Xx Daemon_Gamer-1"}`,
-		`{"player_slug":"Chocoboflor"}`,
+		`{"player_slug":"Joueur90001"}`,
 		`{"player_slug":"Élodie#1234"}`,
 		`{"player_slug":"` + strings.Repeat("a", 64) + `"}`,
 		`{"title_slug":"halo_infinite"}`,

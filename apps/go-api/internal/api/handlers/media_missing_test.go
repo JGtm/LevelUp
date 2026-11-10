@@ -100,7 +100,7 @@ func newMissingRouter(mock port.MediaService, rescan handlers.MediaRescan) *chi.
 		return mock, nil
 	}
 	h := handlers.NewMediaHandler(factory, nil, "").WithAuthEnforced(true).
-		WithRequester(sessionPlayerAsOwnedProfile).WithUserLookup(mediaAccounts{"Chocoboflor": domain.RoleAdmin}).
+		WithRequester(sessionPlayerAsOwnedProfile).WithUserLookup(mediaAccounts{"Joueur90001": domain.RoleAdmin}).
 		WithAuthorsContext(func(_ context.Context, slug string) (string, string, error) {
 			return "halo_5", "Gamertag-" + slug, nil
 		}, nil).
@@ -209,7 +209,7 @@ func TestMissingMerge_ConvertsBothPathsAndEchoesThem(t *testing.T) {
 func TestMissingMerge_RequesterNeverReadFromBody(t *testing.T) {
 	mock := &missingMock{}
 	r := newMissingRouter(mock, nil)
-	raw := []byte(`{"file_path":"JGtm/clip.mp4","target_file_path":"JGtm/new.mp4","RequesterSlug":"Chocoboflor","RequesterIsAdmin":true,"AuthEnforced":false}`)
+	raw := []byte(`{"file_path":"JGtm/clip.mp4","target_file_path":"JGtm/new.mp4","RequesterSlug":"Joueur90001","RequesterIsAdmin":true,"AuthEnforced":false}`)
 	req := httptest.NewRequest(http.MethodPost, "/players/"+testPlayerSlug+"/media/missing/merge", bytes.NewReader(raw))
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(middleware.InjectSession(req.Context(), sessionFor("Mallory", "user")))

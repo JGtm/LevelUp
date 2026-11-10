@@ -34,12 +34,12 @@ type PadPickups = ReplayDocumentReady['padPickups']
 describe('applyPadPickupDating', () => {
   it('une occupation datée collapse sa fenêtre sur l instant publié et porte le ramasseur', () => {
     const pads = [pad()]
-    const padPickups: PadPickups = [{ pad: 0, tLow: 100, tHigh: 200, t: 137, xuid: '2535470853746269' }]
+    const padPickups: PadPickups = [{ pad: 0, tLow: 100, tHigh: 200, t: 137, xuid: '2763825816095527' }]
     const out = applyPadPickupDating(pads, padPickups)
     const occ = padOccupancyAt(out[0], 137) as DatedPadPresence | null
     expect(occ?.tLow).toBe(137)
     expect(occ && occ.tHigh > occ.tLow).toBe(true)
-    expect(occ?.pickupXuid).toBe('2535470853746269')
+    expect(occ?.pickupXuid).toBe('2763825816095527')
     // L'« INCERTAIN » SE RÉDUIT À UNE FRACTION DE FRAME (PAD_BETWEEN_FRAMES = 1/64), invisible
     // en pratique — même garantie que le raffinement par proximité, pour la même raison
     // (`tHigh > tLow` strictement, sinon le sentinel « jamais vidé » reprendrait la main) :

@@ -102,7 +102,14 @@ lets them reuse:
     identifiers. Since 2026-10-22 the gamertags of third-party players in the film
     fixtures and in the files derived from them are replaced by pseudonyms; the
     names left are those of players who agreed to appear. Numeric account
-    identifiers (XUID) are still present.
+    identifiers (XUID) and gamertags in the test fixtures and test sources of this
+    repository and of its dedicated repositories are invented since version 8.1.2 of LevelUp and
+    version 0.1.1 of those repositories (registers: libs/film/testdata/IDENTITES.tsv and
+    apps/go-api/cmd/anonymise-gamertags/testdata/IDENTITES_APPS.tsv). One fixture keeps real
+    identifiers because its bytes cannot be rewritten without corrupting it: the capture of a
+    production DuckDB database under
+    apps/go-api/internal/platform/duckdb/testdata/wal_orphan_fixture/. Earlier commits in the git
+    history still carry real ones.
 
 A rights holder who wants any of this removed can open an issue on the repository;
 it will be removed from the current tree.

@@ -139,7 +139,7 @@ func TestGetMatchEvents_GamertagKeyed_NoResolveNeeded(t *testing.T) {
 		Events: []canonical.MatchEvent{
 			{Type: canonical.MatchEventKill, TimeMs: 1000,
 				Killer: &canonical.PlayerIdentity{Gamertag: "JGtm"},
-				Victim: &canonical.PlayerIdentity{Gamertag: "Madina97294"}},
+				Victim: &canonical.PlayerIdentity{Gamertag: "Joueur90002"}},
 		},
 	}
 	// resolver qui paniquerait s'il était appelé avec des xuids (m nil) — ici non appelé.

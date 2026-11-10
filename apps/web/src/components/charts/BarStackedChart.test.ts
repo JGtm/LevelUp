@@ -248,9 +248,9 @@ describe('buildBarStackedOption', () => {
     const opt = buildBarStackedOption(series, {
       tooltipRoles: { category: 'Larbin', component: 'Patron' },
     }) as TooltipOpt
-    const html = opt.tooltip.formatter!([param('Chocoboflor', 3, 'JGtm')])
+    const html = opt.tooltip.formatter!([param('Joueur90001', 3, 'JGtm')])
     expect(html).toContain('Larbin · JGtm')
-    expect(html).toContain('Patron · Chocoboflor')
+    expect(html).toContain('Patron · Joueur90001')
     expect(html).toContain('<strong>3</strong>')
   })
 
@@ -263,9 +263,9 @@ describe('buildBarStackedOption', () => {
         return 'part 50,0 %'
       },
     }) as TooltipOpt
-    const html = opt.tooltip.formatter!([param('Chocoboflor', 3, 'JGtm')])
-    expect(vues).toEqual([['JGtm', 'Chocoboflor']])
-    expect(html).toContain('Patron · Chocoboflor')
+    const html = opt.tooltip.formatter!([param('Joueur90001', 3, 'JGtm')])
+    expect(vues).toEqual([['JGtm', 'Joueur90001']])
+    expect(html).toContain('Patron · Joueur90001')
     expect(html).toContain('part 50,0 %')
   })
 

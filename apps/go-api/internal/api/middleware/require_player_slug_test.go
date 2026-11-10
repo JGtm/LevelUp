@@ -21,7 +21,7 @@ var invalidPlayerSlugs = []string{
 }
 
 var legitimatePlayerSlugs = []string{
-	"JGtm", "Madina97294", "XxDaemonGamerxX", "Gamer Tag", "I SiK killa 12",
+	"JGtm", "Joueur90002", "Joueur90000000f", "Gamer Tag", "Joueur90000004",
 	"test-player", "demo_player", "DEMO", "p1", "Élodie", "日本語タグ",
 	strings.Repeat("a", 64),
 }

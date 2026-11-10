@@ -13,7 +13,7 @@ package migration
 // existent mais que l'arbre ART ne pointe pas dessus.
 //
 // Conséquence métier : `loadLUSRParticipants` chargeait 1-2 participants au
-// lieu de 8-16 pour les matchs concernés. Pour Madina97294 (1079 match_ids
+// lieu de 8-16 pour les matchs concernés. Pour Joueur90002 (1079 match_ids
 // LUSR-éligibles), presque tous ses matchs étaient impactés. Résultat : LUSR
 // figé en Argent IV alors qu'attendu fin Platine / début Diamant.
 //

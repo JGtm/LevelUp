@@ -20,7 +20,7 @@ import type { SquadText } from './i18n'
 import type { SquadSessionExcludedMatch } from './squadSessionCounts'
 
 /** Joint les coéquipiers responsables d'UN match écarté en un libellé unique
- *  ("Nilton410" / "Nilton410 et passivemarquise") ; repli textuel quand aucun
+ *  ("Joueur903" / "Joueur903 et Joueur90000000i") ; repli textuel quand aucun
  *  coéquipier connu n'est identifiable (jamais une ligne muette). */
 function culpritsLabelFor(match: SquadSessionExcludedMatch, t: SquadText['compositionGap']): {
   label: string

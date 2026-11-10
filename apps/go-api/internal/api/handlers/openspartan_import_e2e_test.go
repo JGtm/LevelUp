@@ -21,7 +21,7 @@ import (
 	"levelup/go-api/internal/sync"
 )
 
-const testE2EXUID = "2533274823110022"
+const testE2EXUID = "2603225103667623"
 
 // e2eEnv bundles every dependency the end-to-end test needs.
 type e2eEnv struct {

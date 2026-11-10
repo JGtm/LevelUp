@@ -109,7 +109,7 @@ const (
 // LES COUPLES A PLACER SONT CEUX DU JOURNAL FUSIONNE (`fusionne`, ce que `match_kill_events` porte
 // apres `MergeCreditAndFilm`), PAS la liste pre-fusion du film (correction E8.1 du 2026-10-17,
 // decision utilisateur D-16). La liste pre-fusion ne porte un xuid que pour les noms que le roster
-// resout par GAMERTAG : un joueur renomme (fil du film « Fluxnic », base « DI0NIC ») y avait un xuid
+// resout par GAMERTAG : un joueur renomme (fil du film « J900003 », base « J90001 ») y avait un xuid
 // vide, et AUCUN de ses frags n'etait place — sur tout le match. La fusion lui rend l'identite que
 // le credit porte. Une mort du credit absente du fil du film est placee au meme instant du match :
 // c'est le meme fil des temps forts, donc la meme horloge (cf. `replay.MatchKillsInput`) ; si le

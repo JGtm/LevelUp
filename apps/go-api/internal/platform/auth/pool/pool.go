@@ -155,7 +155,7 @@ func NewPool(
 
 	// MaxSize plafonne les slots SAINS, pas les sources TENTÉES (D2, plan robustesse
 	// 2026-09-16). L'ancienne troncature `sources[:MaxSize]` coupait AVANT de résoudre :
-	// avec `--token-pool-size 1`, la première source du scan (Chocoboflor, dont le refresh
+	// avec `--token-pool-size 1`, la première source du scan (Joueur90001, dont le refresh
 	// token est révoqué) était la seule tentée et le pool échouait sur « aucun slot créé ».
 	// Le scan vient d'une map : son ordre change d'une exécution à l'autre, d'où le tri par
 	// gamertag — un plafond doit donner le MÊME parc à chaque passe.

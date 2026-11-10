@@ -8,7 +8,7 @@ import { skullPresenceAt } from '../model/skullPresence'
 import type { ReplayObjectiveObjectReady } from '../../../lib/replay/replayNormalize'
 
 const carry = (over: Partial<ReplaySkullCarry>): ReplaySkullCarry => ({
-  xuid: '2533274806055812',
+  xuid: '2725208139384704',
   t0: 0,
   t1: 100,
   closed: true,

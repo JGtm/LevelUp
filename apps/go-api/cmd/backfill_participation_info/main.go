@@ -18,7 +18,7 @@
 //
 //	go run -tags cgo ./cmd/backfill_participation_info/
 //	go run -tags cgo ./cmd/backfill_participation_info/ -dry-run -limit 10
-//	go run -tags cgo ./cmd/backfill_participation_info/ -gamertag Chocoboflor
+//	go run -tags cgo ./cmd/backfill_participation_info/ -gamertag Joueur90001
 package main
 
 import (
@@ -50,7 +50,7 @@ func main() {
 	titleSlug := flag.String("title", "halo_infinite", "Title slug")
 	envFile := flag.String("env-file", ".env.local", "Chemin .env.local")
 	authFile := flag.String("auth-file", "data/auth/watcher_tokens.json", "Chemin watcher_tokens.json")
-	gamertag := flag.String("gamertag", "Chocoboflor", "Gamertag pour charger les tokens")
+	gamertag := flag.String("gamertag", "Joueur90001", "Gamertag pour charger les tokens")
 	limit := flag.Int("limit", 0, "Nombre max de matchs à traiter (0 = tous)")
 	dryRun := flag.Bool("dry-run", false, "Afficher les matchs sans modifier la DB")
 	rps := flag.Int("rps", 3, "Requêtes API par seconde")

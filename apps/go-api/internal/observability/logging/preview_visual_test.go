@@ -25,7 +25,7 @@ func TestVisualPreview_ConsoleFormat(t *testing.T) {
 	logger := slog.New(h)
 
 	logger.Info("sync.postSync: pipeline démarré",
-		"gamertag", "Madina97294",
+		"gamertag", "Joueur90002",
 		"matches_inserted", 3,
 		"event_id", "sync.RunDelta:abc123", // skipped on console
 	)

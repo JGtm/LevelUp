@@ -46,7 +46,7 @@ export function SquadContributionsPage() {
   const synergyRadar = useMemo(() => pageData?.synergy_radar ?? [], [pageData?.synergy_radar])
   const performanceSeries = pageData?.performance_series
   const perfSeriesByPlayer = useMemo(() => performanceSeries ?? {}, [performanceSeries])
-  // Le backend renvoie s.gamertag (casse mixte ex "Madina97294") tandis que
+  // Le backend renvoie s.gamertag (casse mixte ex "Joueur90002") tandis que
   // playerSlug est l'URL param (souvent lowercase). On aligne sur main_player
   // pour que l'ordre des joueurs matche les clés des SquadPerMinuteEntry.player
   // / SquadSynergyRadarSeries.player etc.

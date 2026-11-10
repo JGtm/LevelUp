@@ -71,7 +71,7 @@ func TestPuits_ConstructionLocalePublieUnEvenement(t *testing.T) {
 		SchemaVersion: replay.SchemaVersion,
 		MatchID:       "000d5950",
 		TitleSlug:     title.DefaultSlug,
-		Tracks:        []replay.Track{{XUID: "2533274819954312"}},
+		Tracks:        []replay.Track{{XUID: "2533491259474651"}},
 	}
 
 	if _, err := writeArtifact(context.Background(), path, title.DefaultSlug, "000d5950", doc); err != nil {

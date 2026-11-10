@@ -18,11 +18,11 @@ import (
 )
 
 const (
-	testOwnerXUID = "2533274823110022"
+	testOwnerXUID = "2603225103667623"
 	// testOtherXUID must be lexicographically GREATER than testOwnerXUID
 	// so that, in a 1-match fixture where both have the same frequency,
 	// the mostFrequentHumanXUID tie-breaker (smallest-first) picks the owner.
-	testOtherXUID = "2533274999999999"
+	testOtherXUID = "2699999999999999"
 )
 
 // buildMinimalFixtureDB writes a tiny but realistic OpenSpartan SQLite at
@@ -132,7 +132,7 @@ func buildMinimalFixtureDB(t *testing.T, dir, filename, ownerXUID string) string
 
 	hl, _ := json.Marshal(map[string]any{
 		"event_type": "kill", "time_ms": 46832,
-		"xuid": 2533274823110022, "type_hint": 50,
+		"xuid": 2603225103667623, "type_hint": 50,
 	})
 	if _, err := db.Exec(`INSERT INTO HighlightEvents(MatchId, ResponseBody) VALUES (?, ?)`, matchID, string(hl)); err != nil {
 		t.Fatalf("insert HighlightEvents: %v", err)

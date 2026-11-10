@@ -76,7 +76,7 @@ func TestInferDroppedTeam_Tie(t *testing.T) {
 }
 
 // Cas témoin (du brief) : 2v4 → 2 droppés rééquilibrent à 4v4.
-// Match 5d16ff8d… : team0 = {KNeow1, MsTada87} (outcome 3=défaite),
+// Match 5d16ff8d… : team0 = {J90003, Joueur98} (outcome 3=défaite),
 // team1 = {JGtm, Madina, Treitor, Choco} (outcome 2=victoire). Les 2 droppés
 // (Madman, Pancake) ont des kills sur team1 → inférés team0 → 4v4 équilibré.
 func TestInferDroppedRoster_WitnessMatch_2v4(t *testing.T) {
@@ -89,8 +89,8 @@ func TestInferDroppedRoster_WitnessMatch_2v4(t *testing.T) {
 		{XUID: "choco", TeamID: 1, Outcome: 2},
 	}
 	dropped := []droppedPlayer{
-		{XUID: "madman", Gamertag: "Madman684844", Kills: 5, Deaths: 4},
-		{XUID: "pancake", Gamertag: "Pancakeflips", Kills: 3, Deaths: 6},
+		{XUID: "madman", Gamertag: "Joueur900005", Kills: 5, Deaths: 4},
+		{XUID: "pancake", Gamertag: "Joueur900006", Kills: 3, Deaths: 6},
 	}
 	edges := []killEdge{
 		// Les deux droppés frappent team1 (adversaire) → inférés team0.

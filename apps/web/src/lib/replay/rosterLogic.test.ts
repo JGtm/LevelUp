@@ -250,9 +250,9 @@ describe('buildSlotOwnership — le propriétaire d’un slot À UNE IMAGE (mult
   })
 
   it('multi-manche : un slot RÉATTRIBUÉ montre le joueur de LA MANCHE COURANTE (contre-épreuve)', () => {
-    // Le bug rapporté « deux DinoR00 et pas de SHROOM » : slot 512 = SHROOM en manche 0 puis
-    // DinoR00 en manche 2 ; slot 513 = DinoR00 partout. L’ancienne Map effondrée (DERNIER
-    // gagnant) attribuait 512 à DinoR00 pour TOUT le match → deux DinoR00, SHROOM jamais montré.
+    // Le bug rapporté « deux J900001 et pas de SHROOM » : slot 512 = SHROOM en manche 0 puis
+    // J900001 en manche 2 ; slot 513 = J900001 partout. L’ancienne Map effondrée (DERNIER
+    // gagnant) attribuait 512 à J900001 pour TOUT le match → deux J900001, SHROOM jamais montré.
     const d = doc({
       roster: [
         { xuid: 'S', filmIndex: 0, seat: 0, team: 0 },
@@ -260,27 +260,27 @@ describe('buildSlotOwnership — le propriétaire d’un slot À UNE IMAGE (mult
       ],
       tracks: [
         track(512, 'S', 0, 50), // manche 0 : SHROOM
-        track(512, 'D', 200, 250), // manche 2 : le slot revient à DinoR00
-        track(513, 'D', 0, 250), // DinoR00 tient 513 tout du long
+        track(512, 'D', 200, 250), // manche 2 : le slot revient à J900001
+        track(513, 'D', 0, 250), // J900001 tient 513 tout du long
       ],
     })
-    const players = buildPlayers(d, [row('S', 'SHROOM', 'Eagle'), row('D', 'DinoR00', 'Eagle')])
+    const players = buildPlayers(d, [row('S', 'SHROOM', 'Eagle'), row('D', 'J900001', 'Eagle')])
     const own = buildSlotOwnership(players)
     const name = nameResolver(own)
-    // À 25 (manche 0) : 512 = SHROOM, 513 = DinoR00 → DEUX noms distincts, SHROOM PRÉSENT.
+    // À 25 (manche 0) : 512 = SHROOM, 513 = J900001 → DEUX noms distincts, SHROOM PRÉSENT.
     expect(name(512, 25)).toBe('SHROOM')
-    expect(name(513, 25)).toBe('DinoR00')
+    expect(name(513, 25)).toBe('J900001')
     // CONTRE-ÉPREUVE : le slot 512 change de propriétaire selon l’image — impossible avec une
     // Map figée, qui rendait le même nom aux deux images.
-    expect(name(512, 220)).toBe('DinoR00')
+    expect(name(512, 220)).toBe('J900001')
     expect(name(512, 25)).not.toBe(name(512, 220))
-    // L’ancien comportement (dernier gagnant) aurait rendu DinoR00 aux DEUX images ; la couleur
+    // L’ancien comportement (dernier gagnant) aurait rendu J900001 aux DEUX images ; la couleur
     // et le camp suivent la même règle par image.
     const color = colorResolver(own, teamColor, () => true, 'neutre')
     expect(color(512, 25)).toBe('allie')
     const camp = campResolver(own)
     expect(camp(512, 25)).toBe(0) // l'équipe du FILM de SHROOM, pas le côté de feuille
-    expect(camp(512, 220)).toBe(1) // celle de DinoR00, propriétaire de la manche 2
+    expect(camp(512, 220)).toBe(1) // celle de J900001, propriétaire de la manche 2
     expect(camp(512, 80)).toBeNull() // manche 1 : le slot est libre entre les deux vies
   })
 
@@ -315,7 +315,7 @@ describe('ownerAtFrameOrLast — la FRONTIÈRE : vie couvrante, sinon la vie jus
   it('trou entre deux vies d’un même slot (multi-manche) : la vie PRÉCÉDENTE, jamais la suivante', () => {
     // Slot 512 : A en manche 0 [0,50], B en manche 2 [200,250]. Dans le trou (frame 100),
     // la frontière rend A (le lâcheur d’alors), PAS B (la vie à venir) — donc PAS le
-    // dernier-gagnant du match : « deux DinoR00 » n’est pas réintroduit.
+    // dernier-gagnant du match : « deux J900001 » n’est pas réintroduit.
     const d = doc({
       roster: [{ xuid: 'A', filmIndex: 0, seat: 0 }, { xuid: 'B', filmIndex: 1, seat: 1 }],
       tracks: [track(512, 'A', 0, 50), track(512, 'B', 200, 250)],

@@ -31,7 +31,7 @@ import (
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )
 
-var defaultPlayers = []string{"Madina97294", "Chocoboflor", "JGtm", "XxDaemonGamerxX"}
+var defaultPlayers = []string{"Joueur90002", "Joueur90001", "JGtm", "Joueur90000000f"}
 
 func openRO(path string) (*sql.DB, error) {
 	connector, err := duckdb.NewConnector(path+"?access_mode=READ_ONLY", func(driver.ExecerContext) error { return nil })

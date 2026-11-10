@@ -1,5 +1,5 @@
 /**
- * emprise.fixtures.ts — la soirée témoin du 22/09/2026 (JGtm, Chocoboflor, Madina97294, sept
+ * emprise.fixtures.ts — la soirée témoin du 22/09/2026 (JGtm, Joueur90001, Joueur90002, sept
  * matchs) au format du contrat : bloc `squad_emprise` et historique de matchs. Chiffres relevés en lecture seule dans la base réelle ; les mêmes
  * que le test d'intégration Go `TestSquadEmprise_TemoinsDu2209` (lot L4). Aucune lecture de
  * base : des données figées.
@@ -177,8 +177,8 @@ const MATCHES: MatchSpec[] = [
 
 const PLAYERS = [
   { xuid: XUID.jgtm, gamertag: 'JGtm' },
-  { xuid: XUID.choco, gamertag: 'Chocoboflor' },
-  { xuid: XUID.madina, gamertag: 'Madina97294' },
+  { xuid: XUID.choco, gamertag: 'Joueur90001' },
+  { xuid: XUID.madina, gamertag: 'Joueur90002' },
 ]
 const OWNERS = ['jgtm', 'choco', 'madina'] as const
 

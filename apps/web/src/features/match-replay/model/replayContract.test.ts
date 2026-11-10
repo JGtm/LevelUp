@@ -600,7 +600,7 @@ describe('la frontière du document de rejeu', () => {
         teams: [{ teamId: 0, rounds: [{ round: 0, points: null }], total: null }],
         players: [
           {
-            xuid: '2533274815845110',
+            xuid: '2742063072864889',
             score: { rounds: [{ round: 0, points: null }], total: null },
             kills: { rounds: null, total: null },
             deaths: { rounds: null, total: null },

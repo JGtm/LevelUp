@@ -158,13 +158,13 @@ func TestLigneVersJSONPorteLesDeuxDetails(t *testing.T) {
 			{Axe: "couverture", Metrique: "coverage.bridge.livesTotal", Sens: replaydiff.SensPerte, Ancien: "58", Nouveau: "57"},
 		},
 		ChangementsDetail: []replaydiff.Difference{
-			{Axe: "pistes", Metrique: "tracks/par-xuid/2535429985869093", Sens: replaydiff.SensChangement, Ancien: "6", Nouveau: "5"},
+			{Axe: "pistes", Metrique: "tracks/par-xuid/2669605393856835", Sens: replaydiff.SensChangement, Ancien: "6", Nouveau: "5"},
 		},
 	})
 	if len(lj.PertesDetail) != 1 || lj.PertesDetail[0].Metrique != "coverage.bridge.livesTotal" {
 		t.Errorf("pertesDetail mal porte : %+v", lj.PertesDetail)
 	}
-	if len(lj.ChangementsDetail) != 1 || lj.ChangementsDetail[0].Metrique != "tracks/par-xuid/2535429985869093" {
+	if len(lj.ChangementsDetail) != 1 || lj.ChangementsDetail[0].Metrique != "tracks/par-xuid/2669605393856835" {
 		t.Errorf("changementsDetail mal porte : %+v", lj.ChangementsDetail)
 	}
 }

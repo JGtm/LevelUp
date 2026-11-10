@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-SP=$(curl -s --max-time 15 "http://127.0.0.1:8000/api/v1/players/Chocoboflor/pages/palmares/season-pass")
+SP=$(curl -s --max-time 15 "http://127.0.0.1:8000/api/v1/players/Joueur90001/pages/palmares/season-pass")
 
 echo "=== 1. Taille réponse ==="
 echo "$SP" | wc -c

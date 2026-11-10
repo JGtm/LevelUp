@@ -78,11 +78,11 @@ func artefactAuSchema(version int, matchID string, avecCompteurs bool) []byte {
 		"schemaVersion": version,
 		"matchId":       matchID,
 		"titleSlug":     title.DefaultSlug,
-		"tracks":        []map[string]any{{"xuid": "2533274819954312"}},
+		"tracks":        []map[string]any{{"xuid": "2533491259474651"}},
 	}
 	if avecCompteurs {
 		corps["scoreTimeline"] = map[string]any{
-			"players": []map[string]any{{"xuid": "2533274819954312"}},
+			"players": []map[string]any{{"xuid": "2533491259474651"}},
 		}
 	}
 	blob, err := json.Marshal(corps)

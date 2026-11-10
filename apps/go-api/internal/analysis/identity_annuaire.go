@@ -103,7 +103,7 @@ func (a AnnuaireGamertags) Nomme(xuid string) bool {
 
 // LES LISTES SE LIENT EN UN PARAMÈTRE (item B.7 du plan perf « compaction et périmètre joueur »,
 // 2026-09-27) : chaque liste de xuids ou de match_id des gabarits ci-dessous est UN paramètre
-// `VARCHAR[]` (sql_liste.go), plus un `IN (?, ?, …)` — chez Nuzzles, les Relations liaient jusqu'à
+// `VARCHAR[]` (sql_liste.go), plus un `IN (?, ?, …)` — chez J900004, les Relations liaient jusqu'à
 // 17 741 paramètres par requête. Les xuids et les match_id filtrés sur des TABLES passent par la
 // semi-jointure (SQLDansListeParJointure) ; les match_id qui bornent une vue `_latest` du kill-feed
 // par la constante (SQLDansListe), la seule forme qui descende sous sa fenêtre. L'argument lié

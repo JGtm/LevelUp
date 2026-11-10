@@ -24,7 +24,7 @@ import (
 )
 
 // msrRetardSQL — match_skill_rank append-only dont la séquence rend 1 alors que les ids 1..3
-// sont pris (forme de la base de Chocoboflor, séquence recréée à START 1 par une reconstruction).
+// sont pris (forme de la base de Joueur90001, séquence recréée à START 1 par une reconstruction).
 var msrRetardSQL = []string{
 	`CREATE SEQUENCE match_skill_rank_id_seq START 1`,
 	`CREATE TABLE match_skill_rank (
@@ -45,7 +45,7 @@ var msrRetardSQL = []string{
 // vérifie la collision, puis ferme le fichier.
 func preparePlayerDBMSRRetard(t *testing.T) string {
 	t.Helper()
-	path := title.NewPathResolver(t.TempDir()).PlayerDBPath(title.DefaultSlug, "Chocoboflor")
+	path := title.NewPathResolver(t.TempDir()).PlayerDBPath(title.DefaultSlug, "Joueur90001")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}

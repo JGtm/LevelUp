@@ -52,7 +52,7 @@ func poserArtefactCuisson(t *testing.T, repoRoot, matchID string, joueurs int) s
 	doc.ScoreTimeline = &replay.ScoreTimeline{}
 	for i := range joueurs {
 		doc.ScoreTimeline.Players = append(doc.ScoreTimeline.Players,
-			replay.PlayerScore{XUID: strconv.Itoa(2533274819954312 + i)})
+			replay.PlayerScore{XUID: strconv.Itoa(2533491259474651 + i)})
 	}
 	blob, err := json.Marshal(doc)
 	if err != nil {
@@ -74,7 +74,7 @@ func TestEtatArtefact_UneSeuleLectureParArtefact(t *testing.T) {
 	repoRoot := t.TempDir()
 	const matchID = "64e8adfa-0000-0000-0000-000000000000"
 	path := poserArtefactCuisson(t, repoRoot, matchID, 8)
-	faits := port.MatchFacts{Players: []port.MatchPlayerFact{{XUID: "2533274819954312"}}}
+	faits := port.MatchFacts{Players: []port.MatchPlayerFact{{XUID: "2533491259474651"}}}
 
 	avant := observability.LoadCounter(replaybuild.CompteurLecturesArtefact)
 	aJour, complet := etatArtefact(path, faits)

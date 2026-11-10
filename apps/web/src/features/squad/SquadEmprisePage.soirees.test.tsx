@@ -69,7 +69,7 @@ function page(block = EMPRISE_2209): TeammatesPageResponse {
 }
 
 function mount(opts: { gamertags?: string[]; rows?: TeammateRow[]; pageData?: TeammatesPageResponse | null } = {}) {
-  const gamertags = opts.gamertags ?? ['Chocoboflor', 'Madina97294']
+  const gamertags = opts.gamertags ?? ['Joueur90001', 'Joueur90002']
   vi.spyOn(squadContextModule, 'useSquadContext').mockReturnValue({
     selectedRows: opts.rows ?? gamertags.map(ROW),
     confirmedGamertags: gamertags,

@@ -14,8 +14,8 @@
 //
 // Usage :
 //
-//	go run ./cmd/backfill-csr-history -xuid 2533274823110022 \
-//	    -player-db data/titles/halo_infinite/players/Madina97294/stats.duckdb
+//	go run ./cmd/backfill-csr-history -xuid 2603225103667623 \
+//	    -player-db data/titles/halo_infinite/players/Joueur90002/stats.duckdb
 //	go run ./cmd/backfill-csr-history -xuid <XUID> -player-db <path> -season CsrSeason12-1 -dry-run
 package main
 

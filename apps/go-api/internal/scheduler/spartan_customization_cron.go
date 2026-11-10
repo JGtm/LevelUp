@@ -251,8 +251,8 @@ func (c *SpartanCustomizationCron) runOnceForTitle(ctx context.Context, titleSlu
 	}
 	// Filtre CANONIQUE des chemins de refresh (domain.SyncablePlayers) : exclut les
 	// titres en pause ET les profils AuthOnly. Un profil AuthOnly n'existe que pour
-	// fournir des refresh tokens au pool (comptes DankerGlue/QuiteSiren/UppedJoker/
-	// GeleJugefi/Trimbutton) : il n'a PAS de player DB (stats.duckdb absent), donc le
+	// fournir des refresh tokens au pool (comptes Joueur9001/Joueur9008/Joueur900a/
+	// Joueur9003/Joueur9009) : il n'a PAS de player DB (stats.duckdb absent), donc le
 	// refresher échoue systématiquement en "No such file or directory" et polluait les
 	// cycles d'un WARN par joueur. Le refresh de customisation est un chemin de refresh
 	// au même titre que le sync : on applique le même filtre à la SOURCE.

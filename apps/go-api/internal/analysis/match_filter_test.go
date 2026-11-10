@@ -296,7 +296,7 @@ func TestBuildNeighborsWhereClause_SessionID_Ignored(t *testing.T) {
 
 func TestBuildNeighborsWhereClause_WithPlayerXuid(t *testing.T) {
 	t.Parallel()
-	xuid := "2533274791785593"
+	xuid := "2561451715135583"
 	got := BuildNeighborsWhereClause(
 		&domain.MatchFilterSpec{WithPlayerXuid: &xuid},
 		fakeCategoryPrefixes,

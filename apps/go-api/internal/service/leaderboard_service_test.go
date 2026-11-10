@@ -123,8 +123,8 @@ func TestLeaderboardService_StatCategory_NoSeasonPlaylist_StillQueries(t *testin
 // La catégorie par défaut route vers le classement CSR mondial.
 func TestLeaderboardService_DefaultsToCSRWorld(t *testing.T) {
 	entries := []domain.LeaderboardEntry{
-		{Rank: 1, Gamertag: "Twissted Mindss", CSRValue: 2180},
-		{Rank: 2, Gamertag: "OR81TAL", CSRValue: 2097},
+		{Rank: 1, Gamertag: "Joueur90000000c", CSRValue: 2180},
+		{Rank: 2, Gamertag: "J900005", CSRValue: 2097},
 	}
 	repo := &mockLeaderboardRepo{csrWorld: entries}
 	svc := NewLeaderboardService(repo)
@@ -142,7 +142,7 @@ func TestLeaderboardService_DefaultsToCSRWorld(t *testing.T) {
 	if repo.lastLimit != defaultLeaderboardLimit {
 		t.Errorf("expected default limit %d, got %d", defaultLeaderboardLimit, repo.lastLimit)
 	}
-	if len(resp.Entries) != 2 || resp.Entries[0].Gamertag != "Twissted Mindss" {
+	if len(resp.Entries) != 2 || resp.Entries[0].Gamertag != "Joueur90000000c" {
 		t.Fatalf("unexpected entries: %+v", resp.Entries)
 	}
 }

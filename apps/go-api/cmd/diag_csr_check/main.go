@@ -15,7 +15,7 @@ import (
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )
 
-var players = []string{"Madina97294", "Chocoboflor", "JGtm", "XxDaemonGamerxX"}
+var players = []string{"Joueur90002", "Joueur90001", "JGtm", "Joueur90000000f"}
 
 func openDB(path string) *sql.DB {
 	connector, err := duckdb.NewConnector(path+"?access_mode=READ_ONLY", func(execer driver.ExecerContext) error {

@@ -54,56 +54,56 @@ func playerSummaries(entries map[string]string) []domain.PlayerSummary {
 
 func TestResolveXUIDByGamertag_ExactMatch(t *testing.T) {
 	players := playerSummaries(map[string]string{
-		"Madina97294": "2533274858283686",
-		"JGtm":        "2533274823110022",
+		"Joueur90002": "2623439693412443",
+		"JGtm":        "2603225103667623",
 	})
 
-	xuid, canonical, err := ResolveXUIDByGamertag(players, "Madina97294")
+	xuid, canonical, err := ResolveXUIDByGamertag(players, "Joueur90002")
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if xuid != "2533274858283686" {
-		t.Errorf("xuid = %q, want 2533274858283686", xuid)
+	if xuid != "2623439693412443" {
+		t.Errorf("xuid = %q, want 2623439693412443", xuid)
 	}
-	if canonical != "Madina97294" {
-		t.Errorf("canonical = %q, want Madina97294", canonical)
+	if canonical != "Joueur90002" {
+		t.Errorf("canonical = %q, want Joueur90002", canonical)
 	}
 }
 
 func TestResolveXUIDByGamertag_CaseInsensitive(t *testing.T) {
 	players := playerSummaries(map[string]string{
-		"Madina97294": "2533274858283686",
+		"Joueur90002": "2623439693412443",
 	})
 
-	xuid, canonical, err := ResolveXUIDByGamertag(players, "madina97294")
+	xuid, canonical, err := ResolveXUIDByGamertag(players, "joueur90002")
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if xuid != "2533274858283686" {
+	if xuid != "2623439693412443" {
 		t.Errorf("xuid = %q", xuid)
 	}
-	if canonical != "Madina97294" {
-		t.Errorf("canonical = %q, want Madina97294 (casse db_profiles)", canonical)
+	if canonical != "Joueur90002" {
+		t.Errorf("canonical = %q, want Joueur90002 (casse db_profiles)", canonical)
 	}
 }
 
 func TestResolveXUIDByGamertag_TrimsWhitespace(t *testing.T) {
 	players := playerSummaries(map[string]string{
-		"Madina97294": "2533274858283686",
+		"Joueur90002": "2623439693412443",
 	})
 
-	xuid, _, err := ResolveXUIDByGamertag(players, "  Madina97294  ")
+	xuid, _, err := ResolveXUIDByGamertag(players, "  Joueur90002  ")
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
-	if xuid != "2533274858283686" {
+	if xuid != "2623439693412443" {
 		t.Errorf("xuid = %q (trim attendu)", xuid)
 	}
 }
 
 func TestResolveXUIDByGamertag_EmptyGamertag(t *testing.T) {
 	players := playerSummaries(map[string]string{
-		"Madina97294": "2533274858283686",
+		"Joueur90002": "2623439693412443",
 	})
 
 	if _, _, err := ResolveXUIDByGamertag(players, ""); err == nil {
@@ -115,20 +115,20 @@ func TestResolveXUIDByGamertag_EmptyGamertag(t *testing.T) {
 }
 
 func TestResolveXUIDByGamertag_NilPlayersList(t *testing.T) {
-	if _, _, err := ResolveXUIDByGamertag(nil, "Madina97294"); err == nil {
+	if _, _, err := ResolveXUIDByGamertag(nil, "Joueur90002"); err == nil {
 		t.Error("players nil → erreur attendue")
 	}
 }
 
 func TestResolveXUIDByGamertag_EmptyPlayersList(t *testing.T) {
-	if _, _, err := ResolveXUIDByGamertag([]domain.PlayerSummary{}, "Madina97294"); err == nil {
+	if _, _, err := ResolveXUIDByGamertag([]domain.PlayerSummary{}, "Joueur90002"); err == nil {
 		t.Error("players vide → erreur attendue")
 	}
 }
 
 func TestResolveXUIDByGamertag_PlayerNotFound(t *testing.T) {
 	players := playerSummaries(map[string]string{
-		"Madina97294": "2533274858283686",
+		"Joueur90002": "2623439693412443",
 	})
 
 	_, _, err := ResolveXUIDByGamertag(players, "UnknownPlayer")
@@ -179,7 +179,7 @@ func TestParseRefreshTokenStdin_PlainTokenNoNewline(t *testing.T) {
 }
 
 func TestParseRefreshTokenStdin_EnvVarFormat(t *testing.T) {
-	r := strings.NewReader("SPNKR_OAUTH_REFRESH_TOKEN_MADINA97294=M.C544_value\n")
+	r := strings.NewReader("SPNKR_OAUTH_REFRESH_TOKEN_JOUEUR90002=M.C544_value\n")
 	got, err := ParseRefreshTokenStdin(r)
 	if err != nil {
 		t.Fatalf("err = %v", err)
@@ -284,41 +284,41 @@ func TestPersistRefreshToken_NewEntry(t *testing.T) {
 	store := tempStore(t)
 	inv := &trackingInvalidator{}
 
-	if err := PersistRefreshToken(store, "2533274858283686", "Madina97294", "rt-fresh", inv.invalidate); err != nil {
+	if err := PersistRefreshToken(store, "2623439693412443", "Joueur90002", "rt-fresh", inv.invalidate); err != nil {
 		t.Fatalf("err = %v", err)
 	}
 
-	user, err := store.Load("2533274858283686")
+	user, err := store.Load("2623439693412443")
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
 	if user.OAuthRefreshToken != "rt-fresh" {
 		t.Errorf("RT = %q", user.OAuthRefreshToken)
 	}
-	if user.Gamertag != "Madina97294" {
+	if user.Gamertag != "Joueur90002" {
 		t.Errorf("Gamertag = %q (devrait être complété)", user.Gamertag)
 	}
-	if calls := inv.snapshot(); len(calls) != 1 || calls[0] != "2533274858283686" {
-		t.Errorf("invalidator calls = %v, want [2533274858283686]", calls)
+	if calls := inv.snapshot(); len(calls) != 1 || calls[0] != "2623439693412443" {
+		t.Errorf("invalidator calls = %v, want [2623439693412443]", calls)
 	}
 }
 
 func TestPersistRefreshToken_ExistingEntryPreservesFields(t *testing.T) {
 	store := tempStore(t)
 	if err := store.Upsert(&auth.UserTokens{
-		XUID:         "2533274858283686",
-		Gamertag:     "Madina97294",
+		XUID:         "2623439693412443",
+		Gamertag:     "Joueur90002",
 		XSTSToken:    "xsts-original",
 		XSTSUserHash: "uhs-original",
 	}); err != nil {
 		t.Fatalf("Upsert pré-existant: %v", err)
 	}
 
-	if err := PersistRefreshToken(store, "2533274858283686", "Madina97294", "rt-new", nil); err != nil {
+	if err := PersistRefreshToken(store, "2623439693412443", "Joueur90002", "rt-new", nil); err != nil {
 		t.Fatalf("err = %v", err)
 	}
 
-	user, _ := store.Load("2533274858283686")
+	user, _ := store.Load("2623439693412443")
 	if user.OAuthRefreshToken != "rt-new" {
 		t.Errorf("RT = %q (devrait être updated)", user.OAuthRefreshToken)
 	}
@@ -332,16 +332,16 @@ func TestPersistRefreshToken_ExistingEntryPreservesFields(t *testing.T) {
 
 func TestPersistRefreshToken_CompletesEmptyGamertag(t *testing.T) {
 	store := tempStore(t)
-	if err := store.UpdateOAuthRefreshToken("2533274858283686", "rt-initial"); err != nil {
+	if err := store.UpdateOAuthRefreshToken("2623439693412443", "rt-initial"); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
-	if err := PersistRefreshToken(store, "2533274858283686", "Madina97294", "rt-new", nil); err != nil {
+	if err := PersistRefreshToken(store, "2623439693412443", "Joueur90002", "rt-new", nil); err != nil {
 		t.Fatalf("err = %v", err)
 	}
 
-	user, _ := store.Load("2533274858283686")
-	if user.Gamertag != "Madina97294" {
+	user, _ := store.Load("2623439693412443")
+	if user.Gamertag != "Joueur90002" {
 		t.Errorf("Gamertag = %q (devrait être complété)", user.Gamertag)
 	}
 	if user.OAuthRefreshToken != "rt-new" {
@@ -352,19 +352,19 @@ func TestPersistRefreshToken_CompletesEmptyGamertag(t *testing.T) {
 func TestPersistRefreshToken_DoesNotOverwriteExistingGamertag(t *testing.T) {
 	store := tempStore(t)
 	if err := store.Upsert(&auth.UserTokens{
-		XUID:     "2533274858283686",
-		Gamertag: "Madina97294",
+		XUID:     "2623439693412443",
+		Gamertag: "Joueur90002",
 	}); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
-	if err := PersistRefreshToken(store, "2533274858283686", "DifferentName", "rt-new", nil); err != nil {
+	if err := PersistRefreshToken(store, "2623439693412443", "DifferentName", "rt-new", nil); err != nil {
 		t.Fatalf("err = %v", err)
 	}
 
-	user, _ := store.Load("2533274858283686")
-	if user.Gamertag != "Madina97294" {
-		t.Errorf("Gamertag écrasé : %q (devrait rester Madina97294)", user.Gamertag)
+	user, _ := store.Load("2623439693412443")
+	if user.Gamertag != "Joueur90002" {
+		t.Errorf("Gamertag écrasé : %q (devrait rester Joueur90002)", user.Gamertag)
 	}
 }
 
@@ -372,7 +372,7 @@ func TestPersistRefreshToken_InvalidatorCalled(t *testing.T) {
 	store := tempStore(t)
 	inv := &trackingInvalidator{}
 
-	if err := PersistRefreshToken(store, "2533274858283686", "Madina97294", "rt-new", inv.invalidate); err != nil {
+	if err := PersistRefreshToken(store, "2623439693412443", "Joueur90002", "rt-new", inv.invalidate); err != nil {
 		t.Fatalf("err = %v", err)
 	}
 
@@ -380,14 +380,14 @@ func TestPersistRefreshToken_InvalidatorCalled(t *testing.T) {
 	if len(calls) != 1 {
 		t.Fatalf("invalidator calls = %d, want 1", len(calls))
 	}
-	if calls[0] != "2533274858283686" {
-		t.Errorf("invalidator called with %q, want 2533274858283686", calls[0])
+	if calls[0] != "2623439693412443" {
+		t.Errorf("invalidator called with %q, want 2623439693412443", calls[0])
 	}
 }
 
 func TestPersistRefreshToken_NilInvalidatorIsSafe(t *testing.T) {
 	store := tempStore(t)
-	if err := PersistRefreshToken(store, "2533274858283686", "Madina97294", "rt", nil); err != nil {
+	if err := PersistRefreshToken(store, "2623439693412443", "Joueur90002", "rt", nil); err != nil {
 		t.Fatalf("invalidator nil ne doit pas paniquer ni échouer : %v", err)
 	}
 }
@@ -426,11 +426,11 @@ func TestPersistRefreshToken_UnsafeXUID(t *testing.T) {
 
 func TestPersistRefreshToken_EmptyGamertagSkipsCompletion(t *testing.T) {
 	store := tempStore(t)
-	if err := PersistRefreshToken(store, "2533274858283686", "", "rt-only", nil); err != nil {
+	if err := PersistRefreshToken(store, "2623439693412443", "", "rt-only", nil); err != nil {
 		t.Fatalf("err = %v", err)
 	}
 
-	user, _ := store.Load("2533274858283686")
+	user, _ := store.Load("2623439693412443")
 	if user.OAuthRefreshToken != "rt-only" {
 		t.Errorf("RT = %q", user.OAuthRefreshToken)
 	}
@@ -443,17 +443,17 @@ func TestPersistRefreshToken_EmptyGamertagSkipsCompletion(t *testing.T) {
 
 func TestResolveXUIDForRotation_FoundInStore(t *testing.T) {
 	players := playerSummaries(map[string]string{
-		"Madina97294": "9999999999999999", // ne devrait pas être utilisé
+		"Joueur90002": "9999999999999999", // ne devrait pas être utilisé
 	})
 	store := tempStore(t)
 	if err := store.Upsert(&auth.UserTokens{
 		XUID:     "1111111111111111",
-		Gamertag: "Madina97294",
+		Gamertag: "Joueur90002",
 	}); err != nil {
 		t.Fatalf("seed store: %v", err)
 	}
 
-	got := ResolveXUIDForRotation(context.Background(), store, players, "Madina97294")
+	got := ResolveXUIDForRotation(context.Background(), store, players, "Joueur90002")
 	if got != "1111111111111111" {
 		t.Errorf("got = %q, want 1111111111111111 (store prioritaire)", got)
 	}
@@ -461,11 +461,11 @@ func TestResolveXUIDForRotation_FoundInStore(t *testing.T) {
 
 func TestResolveXUIDForRotation_FallbackToPlayers(t *testing.T) {
 	players := playerSummaries(map[string]string{
-		"Madina97294": "players-xuid",
+		"Joueur90002": "players-xuid",
 	})
 	store := tempStore(t)
 
-	got := ResolveXUIDForRotation(context.Background(), store, players, "Madina97294")
+	got := ResolveXUIDForRotation(context.Background(), store, players, "Joueur90002")
 	if got != "players-xuid" {
 		t.Errorf("got = %q, want players-xuid (fallback)", got)
 	}
@@ -473,7 +473,7 @@ func TestResolveXUIDForRotation_FallbackToPlayers(t *testing.T) {
 
 func TestResolveXUIDForRotation_StoreLookupMissesGoesToPlayers(t *testing.T) {
 	players := playerSummaries(map[string]string{
-		"Madina97294": "players-xuid",
+		"Joueur90002": "players-xuid",
 	})
 	store := tempStore(t)
 	_ = store.Upsert(&auth.UserTokens{
@@ -481,7 +481,7 @@ func TestResolveXUIDForRotation_StoreLookupMissesGoesToPlayers(t *testing.T) {
 		Gamertag: "OtherPlayer",
 	})
 
-	got := ResolveXUIDForRotation(context.Background(), store, players, "Madina97294")
+	got := ResolveXUIDForRotation(context.Background(), store, players, "Joueur90002")
 	if got != "players-xuid" {
 		t.Errorf("got = %q, want players-xuid (gamertag pas dans store)", got)
 	}
@@ -493,14 +493,14 @@ func TestResolveXUIDForRotation_NotFoundAnywhere(t *testing.T) {
 	})
 	store := tempStore(t)
 
-	got := ResolveXUIDForRotation(context.Background(), store, players, "Madina97294")
+	got := ResolveXUIDForRotation(context.Background(), store, players, "Joueur90002")
 	if got != "" {
 		t.Errorf("got = %q, want vide (introuvable partout)", got)
 	}
 }
 
 func TestResolveXUIDForRotation_NilStoreNilPlayers(t *testing.T) {
-	got := ResolveXUIDForRotation(context.Background(), nil, nil, "Madina97294")
+	got := ResolveXUIDForRotation(context.Background(), nil, nil, "Joueur90002")
 	if got != "" {
 		t.Errorf("got = %q, want vide", got)
 	}
@@ -508,10 +508,10 @@ func TestResolveXUIDForRotation_NilStoreNilPlayers(t *testing.T) {
 
 func TestResolveXUIDForRotation_NilStoreUsePlayers(t *testing.T) {
 	players := playerSummaries(map[string]string{
-		"Madina97294": "players-xuid",
+		"Joueur90002": "players-xuid",
 	})
 
-	got := ResolveXUIDForRotation(context.Background(), nil, players, "Madina97294")
+	got := ResolveXUIDForRotation(context.Background(), nil, players, "Joueur90002")
 	if got != "players-xuid" {
 		t.Errorf("got = %q, want players-xuid", got)
 	}
@@ -519,17 +519,17 @@ func TestResolveXUIDForRotation_NilStoreUsePlayers(t *testing.T) {
 
 func TestResolveXUIDForRotation_CaseInsensitive(t *testing.T) {
 	players := playerSummaries(map[string]string{
-		"Madina97294": "players-xuid",
+		"Joueur90002": "players-xuid",
 	})
 
-	got := ResolveXUIDForRotation(context.Background(), nil, players, "MADINA97294")
+	got := ResolveXUIDForRotation(context.Background(), nil, players, "JOUEUR90002")
 	if got != "players-xuid" {
 		t.Errorf("got = %q (case-insensitive attendu)", got)
 	}
 }
 
 func TestResolveXUIDForRotation_EmptyPlayersListReturnsEmpty(t *testing.T) {
-	got := ResolveXUIDForRotation(context.Background(), nil, []domain.PlayerSummary{}, "Madina97294")
+	got := ResolveXUIDForRotation(context.Background(), nil, []domain.PlayerSummary{}, "Joueur90002")
 	if got != "" {
 		t.Errorf("got = %q, want vide (players list vide)", got)
 	}
@@ -539,11 +539,11 @@ func TestResolveXUIDForRotation_EmptyPlayersListReturnsEmpty(t *testing.T) {
 
 func TestCaptureWorkflow_FullCycle(t *testing.T) {
 	players := playerSummaries(map[string]string{
-		"Madina97294": "2533274858283686",
+		"Joueur90002": "2623439693412443",
 	})
 	store := tempStore(t)
 
-	xuid, canonical, err := ResolveXUIDByGamertag(players, "madina97294")
+	xuid, canonical, err := ResolveXUIDByGamertag(players, "joueur90002")
 	if err != nil {
 		t.Fatalf("ResolveXUIDByGamertag: %v", err)
 	}
@@ -568,14 +568,14 @@ func TestCaptureWorkflow_FullCycle(t *testing.T) {
 	if user.OAuthRefreshToken != "rt-from-stdin" {
 		t.Errorf("RT = %q", user.OAuthRefreshToken)
 	}
-	if user.Gamertag != "Madina97294" {
+	if user.Gamertag != "Joueur90002" {
 		t.Errorf("Gamertag = %q", user.Gamertag)
 	}
 	if user.XUID != xuid {
 		t.Errorf("XUID = %q, want %q", user.XUID, xuid)
 	}
 
-	byGamertag, err := store.LoadByGamertag("madina97294")
+	byGamertag, err := store.LoadByGamertag("joueur90002")
 	if err != nil {
 		t.Fatalf("LoadByGamertag: %v", err)
 	}

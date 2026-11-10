@@ -139,10 +139,10 @@ func gateConcordance(b *strings.Builder, results []*playerResult) {
 	}
 	fmt.Fprintf(b, "\nBorne analytique : avec un poids w=0.06 sur une somme de poids 1.01, l'ecart vaut\n")
 	fmt.Fprintf(b, "`0.06 x (p_metrique - note) / 1.01`, soit au plus ~3 pts et typiquement ~1.5 pt.\n\n")
-	fmt.Fprintf(b, "**Lecture du contraste entre joueurs.** Chez JGtm et XxDaemonGamerxX la replique est\n")
+	fmt.Fprintf(b, "**Lecture du contraste entre joueurs.** Chez JGtm et Joueur90000000f la replique est\n")
 	fmt.Fprintf(b, "EXACTE (ecart 0.00 sur 1033 et 12 matchs, 100%% dans +/-1) : sur ces DB, les notes\n")
 	fmt.Fprintf(b, "stockees ont donc ete produites SANS medal_exploit, exactement comme la simulation.\n")
-	fmt.Fprintf(b, "Chez Chocoboflor et Madina97294 l'ecart moyen (1.3 a 2.2 pt) et son p90 tombent dans\n")
+	fmt.Fprintf(b, "Chez Joueur90001 et Joueur90002 l'ecart moyen (1.3 a 2.2 pt) et son p90 tombent dans\n")
 	fmt.Fprintf(b, "la plage mesuree par la sonde ci-dessus — hypothese coherente, non prouvee ici : leurs\n")
 	fmt.Fprintf(b, "notes stockees ont ete produites AVEC medal_exploit. Les medianes restent a +/-0.8 pt\n")
 	fmt.Fprintf(b, "sur toutes les chaines de volume ; les seuls ecarts mediens > 1 pt sont les chaines\n")

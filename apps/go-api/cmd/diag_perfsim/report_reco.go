@@ -122,7 +122,7 @@ func secConsequences(b *strings.Builder, results []*playerResult) {
 			pr.Player.Gamertag, pr.Purge.StoredScored, countScored(ref),
 			pr.Purge.StoredScored-countScored(ref), detail)
 	}
-	fmt.Fprintf(b, "\nLa scission ranked ne produit de notes QUE chez Madina97294 : les 8 matchs ranked de\n")
-	fmt.Fprintf(b, "JGtm et les 8 de Chocoboflor tombent sous le seuil de 10 par chaine et perdent leur\n")
+	fmt.Fprintf(b, "\nLa scission ranked ne produit de notes QUE chez Joueur90002 : les 8 matchs ranked de\n")
+	fmt.Fprintf(b, "JGtm et les 8 de Joueur90001 tombent sous le seuil de 10 par chaine et perdent leur\n")
 	fmt.Fprintf(b, "note — conformement a D-D (purge seche, deja validee par l'utilisateur).\n\n")
 }

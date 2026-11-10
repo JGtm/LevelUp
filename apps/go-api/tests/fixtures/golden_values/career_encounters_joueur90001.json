@@ -2,39 +2,39 @@
   "teammates": [
     {
       "gamertag": "JGtm",
-      "xuid": "2533274823110022",
+      "xuid": "2603225103667623",
       "match_count": 255,
       "as_teammate": 255,
       "as_enemy": 0,
       "avg_kda": -1.2385882318019867
     },
     {
-      "gamertag": "Madina97294",
-      "xuid": "2533274858283686",
+      "gamertag": "Joueur90002",
+      "xuid": "2623439693412443",
       "match_count": 249,
       "as_teammate": 249,
       "as_enemy": 0,
       "avg_kda": 6.122369434579788
     },
     {
-      "gamertag": "XxDaemonGamerxX",
-      "xuid": "2533274833178266",
+      "gamertag": "Joueur90000000f",
+      "xuid": "2558964982616721",
       "match_count": 22,
       "as_teammate": 22,
       "as_enemy": 0,
       "avg_kda": -6.45136356760155
     },
     {
-      "gamertag": "Nilton410",
-      "xuid": "2535427927026623",
+      "gamertag": "Joueur903",
+      "xuid": "2548036979862261",
       "match_count": 14,
       "as_teammate": 8,
       "as_enemy": 6,
       "avg_kda": 9.567857069628579
     },
     {
-      "gamertag": "TheTatice",
-      "xuid": "2535438316355031",
+      "gamertag": "Joueur907",
+      "xuid": "2793906376193516",
       "match_count": 11,
       "as_teammate": 11,
       "as_enemy": 0,
@@ -57,32 +57,32 @@
       "avg_kda": -0.2
     },
     {
-      "gamertag": "GrownCave800199",
-      "xuid": "2535410854435556",
+      "gamertag": "Joueur900000005",
+      "xuid": "2699021784258199",
       "match_count": 6,
       "as_teammate": 4,
       "as_enemy": 2,
       "avg_kda": 4.331666588783264
     },
     {
-      "gamertag": "TheDangerdoll",
-      "xuid": "2747731915524001",
+      "gamertag": "Joueur9000005",
+      "xuid": "2662969723980108",
       "match_count": 4,
       "as_teammate": 3,
       "as_enemy": 1,
       "avg_kda": 0.6674999967217445
     },
     {
-      "gamertag": "Brexit420Banter",
-      "xuid": "2535409561713955",
+      "gamertag": "Joueur900000001",
+      "xuid": "2762301109875265",
       "match_count": 4,
       "as_teammate": 2,
       "as_enemy": 2,
       "avg_kda": 5.332499921321869
     },
     {
-      "gamertag": "OB5CUR",
-      "xuid": "2535459831643224",
+      "gamertag": "J90004",
+      "xuid": "2814408124474731",
       "match_count": 4,
       "as_teammate": 2,
       "as_enemy": 2,
@@ -115,16 +115,16 @@
   ],
   "enemies": [
     {
-      "gamertag": "WaiseAbgrund449",
-      "xuid": "2533274983859511",
+      "gamertag": "Joueur90000000e",
+      "xuid": "2608752947863938",
       "match_count": 11,
       "as_teammate": 1,
       "as_enemy": 10,
       "avg_kda": 0.2136363766410134
     },
     {
-      "gamertag": "GWADAPAT",
-      "xuid": "2533274826773990",
+      "gamertag": "Joueur93",
+      "xuid": "2771011184273892",
       "match_count": 9,
       "as_teammate": 1,
       "as_enemy": 8,
@@ -235,24 +235,24 @@
       "avg_kda": -0.7216666539510092
     },
     {
-      "gamertag": "Pavogear",
-      "xuid": "2533274869010584",
+      "gamertag": "Joueur9a",
+      "xuid": "2676749707347653",
       "match_count": 5,
       "as_teammate": 1,
       "as_enemy": 4,
       "avg_kda": 9.927999877929688
     },
     {
-      "gamertag": "NormalKubus39",
-      "xuid": "2533274897645479",
+      "gamertag": "Joueur9000004",
+      "xuid": "2787523225734321",
       "match_count": 5,
       "as_teammate": 2,
       "as_enemy": 3,
       "avg_kda": 8.597999954223633
     },
     {
-      "gamertag": "KNEELb3foreZOD",
-      "xuid": "2533274873595385",
+      "gamertag": "Joueur90000005",
+      "xuid": "2764902232431273",
       "match_count": 5,
       "as_teammate": 0,
       "as_enemy": 5,
@@ -267,16 +267,16 @@
       "avg_kda": -1.265999984741211
     },
     {
-      "gamertag": "Ninja Maccers",
-      "xuid": "2533274974148269",
+      "gamertag": "Joueur9000003",
+      "xuid": "2564587983402228",
       "match_count": 5,
       "as_teammate": 0,
       "as_enemy": 5,
       "avg_kda": 8.729999923706055
     },
     {
-      "gamertag": "PutBunnyBkInBox",
-      "xuid": "2533275001807081",
+      "gamertag": "Joueur900000009",
+      "xuid": "2724085884799648",
       "match_count": 5,
       "as_teammate": 0,
       "as_enemy": 5,
@@ -291,32 +291,32 @@
       "avg_kda": 0.06600000262260437
     },
     {
-      "gamertag": "Slowpoke6743",
-      "xuid": "2535469889270266",
+      "gamertag": "Joueur900007",
+      "xuid": "2808450491243056",
       "match_count": 5,
       "as_teammate": 2,
       "as_enemy": 3,
       "avg_kda": 7.329999923706055
     },
     {
-      "gamertag": "BlackSaberR1",
-      "xuid": "2535470490035432",
+      "gamertag": "Joueur900001",
+      "xuid": "2774167124165231",
       "match_count": 5,
       "as_teammate": 2,
       "as_enemy": 3,
       "avg_kda": 5.5319999873638155
     },
     {
-      "gamertag": "IIQuarryII",
-      "xuid": "2533274875224535",
+      "gamertag": "Joueur9004",
+      "xuid": "2760434244227387",
       "match_count": 4,
       "as_teammate": 0,
       "as_enemy": 4,
       "avg_kda": 1.5024999678134918
     },
     {
-      "gamertag": "FoxyLoxy3812",
-      "xuid": "2535406376942100",
+      "gamertag": "Joueur900004",
+      "xuid": "2624085451875343",
       "match_count": 4,
       "as_teammate": 0,
       "as_enemy": 4,
@@ -331,8 +331,8 @@
       "avg_kda": -0.6649999916553497
     },
     {
-      "gamertag": "evilsonic665",
-      "xuid": "2533274794363089",
+      "gamertag": "Joueur900009",
+      "xuid": "2701946388890064",
       "match_count": 4,
       "as_teammate": 1,
       "as_enemy": 3,
@@ -347,8 +347,8 @@
       "avg_kda": 0
     },
     {
-      "gamertag": "HueyP Newton303",
-      "xuid": "2535437292820819",
+      "gamertag": "Joueur900000006",
+      "xuid": "2550274293828998",
       "match_count": 4,
       "as_teammate": 1,
       "as_enemy": 3,
@@ -371,32 +371,32 @@
       "avg_kda": -1
     },
     {
-      "gamertag": "genjo shimurder",
-      "xuid": "2535447400657785",
+      "gamertag": "Joueur90000000g",
+      "xuid": "2657647232088856",
       "match_count": 4,
       "as_teammate": 1,
       "as_enemy": 3,
       "avg_kda": 0.9175000190734863
     },
     {
-      "gamertag": "L0RD S0R0S",
-      "xuid": "2535458400242651",
+      "gamertag": "Joueur9005",
+      "xuid": "2534937356463633",
       "match_count": 4,
       "as_teammate": 0,
       "as_enemy": 4,
       "avg_kda": 4.497500002384186
     },
     {
-      "gamertag": "stoutanator",
-      "xuid": "2533274808560139",
+      "gamertag": "Joueur90011",
+      "xuid": "2715933942159057",
       "match_count": 4,
       "as_teammate": 0,
       "as_enemy": 4,
       "avg_kda": 6.912499904632568
     },
     {
-      "gamertag": "Fadetonull",
-      "xuid": "2535406000408371",
+      "gamertag": "Joueur9002",
+      "xuid": "2652806099316905",
       "match_count": 4,
       "as_teammate": 0,
       "as_enemy": 4,

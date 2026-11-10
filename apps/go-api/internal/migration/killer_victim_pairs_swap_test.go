@@ -31,7 +31,7 @@ func seedKillerVictimPairs(t *testing.T) *sql.DB {
 		`CREATE INDEX idx_kv_killer ON killer_victim_pairs(killer_xuid)`,
 		`CREATE INDEX idx_kv_victim ON killer_victim_pairs(victim_xuid)`,
 		`INSERT INTO killer_victim_pairs (match_id,killer_xuid,killer_gamertag,victim_xuid,victim_gamertag,time_ms)
-			VALUES ('m1','jgtm','JGtm','sprifi','Sprifi',593093),('m1','a','A','b','B',100),
+			VALUES ('m1','jgtm','JGtm','j90005','J90005',593093),('m1','a','A','b','B',100),
 			       ('m2','c','C','d','D',200),('m3','e','E','f','F',300)`,
 	} {
 		if _, err := db.Exec(s); err != nil {
@@ -60,7 +60,7 @@ func TestReplaceKillerVictimPairsParEchange(t *testing.T) {
 		t.Fatalf("index avant = %v (err=%v), attendu 3", avant, err)
 	}
 	n, err := ReplaceKillerVictimPairs(ctx, db, map[string][]KillerVictimPair{
-		"m1": {{KillerXUID: "jgtm", KillerGamertag: "JGtm", VictimXUID: "sprifi", TimeMS: 593095}},
+		"m1": {{KillerXUID: "jgtm", KillerGamertag: "JGtm", VictimXUID: "j90005", TimeMS: 593095}},
 		"m3": {},
 	})
 	if err != nil || n != 2 {

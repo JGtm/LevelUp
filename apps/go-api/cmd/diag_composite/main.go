@@ -49,7 +49,7 @@ func main() {
 	}
 	rows2.Close()
 
-	for _, gt := range []string{"Madina97294", "Chocoboflor"} {
+	for _, gt := range []string{"Joueur90002", "Joueur90001"} {
 		path := fmt.Sprintf(`C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\data\titles\halo_infinite\players\%s\stats.duckdb?access_mode=READ_ONLY`, gt)
 		pdb, _ := sql.Open("duckdb", path)
 		pdb.SetMaxOpenConns(1)

@@ -37,7 +37,7 @@ func newMultiStoreForWatcher(t *testing.T, xuid, gamertag, refreshToken string) 
 // ─── T5.1 — Le RT vient du MultiUserTokenStore ────────────────────────────
 
 func TestEnsureWatcherAccessToken_UsesMultiStoreRefreshToken(t *testing.T) {
-	multiStore := newMultiStoreForWatcher(t, "2533274858283686", "JGtm", "rt-from-multi-store")
+	multiStore := newMultiStoreForWatcher(t, "2623439693412443", "JGtm", "rt-from-multi-store")
 	watcherState := newStoreWithTokens(t, &StoredTokens{
 		AccessToken:    "", // access expiré → déclenche le refresh
 		OAuthExpiresAt: time.Now().Add(-time.Hour),
@@ -111,7 +111,7 @@ func (s *stubProviderWithRotation) TryOAuthRefreshWithRotation(_ context.Context
 }
 
 func TestEnsureWatcherAccessToken_RotationPersistedInMultiStore(t *testing.T) {
-	multiStore := newMultiStoreForWatcher(t, "2533274858283686", "JGtm", "rt-original")
+	multiStore := newMultiStoreForWatcher(t, "2623439693412443", "JGtm", "rt-original")
 	watcherState := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
 
 	prov := &stubProviderWithRotation{
@@ -124,7 +124,7 @@ func TestEnsureWatcherAccessToken_RotationPersistedInMultiStore(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 
-	user, err := multiStore.Load("2533274858283686")
+	user, err := multiStore.Load("2623439693412443")
 	if err != nil {
 		t.Fatalf("multi-store Load: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestEnsureWatcherAccessToken_RotationPersistedInMultiStore(t *testing.T) {
 // ─── T5.5 — L'état watcher ne reçoit QUE l'access_token ────────────────────
 
 func TestEnsureWatcherAccessToken_WatcherStateGetsAccessTokenOnly(t *testing.T) {
-	multiStore := newMultiStoreForWatcher(t, "2533274858283686", "JGtm", "rt-original")
+	multiStore := newMultiStoreForWatcher(t, "2623439693412443", "JGtm", "rt-original")
 	watcherState := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
 
 	prov := &stubProviderWithRotation{
@@ -158,7 +158,7 @@ func TestEnsureWatcherAccessToken_WatcherStateGetsAccessTokenOnly(t *testing.T) 
 // ─── T5.6 — Rotation : pas de rotation reçue → no-op ────────────────────
 
 func TestEnsureWatcherAccessToken_NoRotationKeepsOriginalInStore(t *testing.T) {
-	multiStore := newMultiStoreForWatcher(t, "2533274858283686", "JGtm", "rt-original")
+	multiStore := newMultiStoreForWatcher(t, "2623439693412443", "JGtm", "rt-original")
 	watcherState := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
 
 	prov := &stubProviderWithRotation{
@@ -168,7 +168,7 @@ func TestEnsureWatcherAccessToken_NoRotationKeepsOriginalInStore(t *testing.T) {
 
 	_, _ = EnsureWatcherAccessToken(context.Background(), multiStore, watcherState, prov, "JGtm")
 
-	user, _ := multiStore.Load("2533274858283686")
+	user, _ := multiStore.Load("2623439693412443")
 	if user.OAuthRefreshToken != "rt-original" {
 		t.Errorf("RT = %q, want rt-original (pas de rotation = pas de changement)", user.OAuthRefreshToken)
 	}
@@ -196,7 +196,7 @@ func TestEnsureWatcherAccessToken_MultiStoreEntryWithoutOAuthRT(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "watcher_tokens_multi")
 	multiStore := NewMultiUserTokenStore(dir)
 	if err := multiStore.Upsert(&UserTokens{
-		XUID:     "2533274858283686",
+		XUID:     "2623439693412443",
 		Gamertag: "JGtm",
 		// OAuthRefreshToken vide → lookupRefreshToken doit skipper
 		XSTSToken: "xsts-only",
@@ -219,7 +219,7 @@ func TestEnsureWatcherAccessToken_MultiStoreEntryWithoutOAuthRT(t *testing.T) {
 // ─── T5.9 — Provider error sur refresh → RT du store intact ──────────────
 
 func TestEnsureWatcherAccessToken_ProviderRefreshError_ReturnsEmpty(t *testing.T) {
-	multiStore := newMultiStoreForWatcher(t, "2533274858283686", "JGtm", "rt-multi")
+	multiStore := newMultiStoreForWatcher(t, "2623439693412443", "JGtm", "rt-multi")
 	watcherState := newStoreWithTokens(t, &StoredTokens{OAuthExpiresAt: time.Now().Add(-time.Hour)})
 
 	prov := &stubProviderWithRotation{
@@ -237,7 +237,7 @@ func TestEnsureWatcherAccessToken_ProviderRefreshError_ReturnsEmpty(t *testing.T
 	}
 
 	// Le RT dans le store ne doit PAS être modifié sur erreur
-	user, _ := multiStore.Load("2533274858283686")
+	user, _ := multiStore.Load("2623439693412443")
 	if user.OAuthRefreshToken != "rt-multi" {
 		t.Errorf("RT modifié sur erreur : %q, want rt-multi", user.OAuthRefreshToken)
 	}

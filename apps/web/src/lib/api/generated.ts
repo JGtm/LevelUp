@@ -2322,7 +2322,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: components["parameters"]["PlayerSlug"];
                 filepath: string;
             };
@@ -2479,7 +2479,7 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
@@ -15146,7 +15146,7 @@ export interface components {
         };
     };
     parameters: {
-        /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+        /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
         PlayerSlug: string;
     };
     requestBodies: never;
@@ -15160,7 +15160,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -15282,7 +15282,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -15315,7 +15315,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -15348,7 +15348,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -19024,7 +19024,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -19178,7 +19178,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -19218,7 +19218,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -19321,7 +19321,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
                 /** @description UUID du match Halo Infinite */
                 match_id: string;
@@ -19432,7 +19432,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
                 /** @description UUID du match Halo Infinite */
                 match_id: string;
@@ -19921,7 +19921,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: components["parameters"]["PlayerSlug"];
                 filepath: string;
             };
@@ -19943,7 +19943,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20203,7 +20203,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
@@ -20547,7 +20547,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20581,7 +20581,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20620,7 +20620,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20656,7 +20656,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20698,7 +20698,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20748,7 +20748,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20784,7 +20784,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20820,7 +20820,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20853,7 +20853,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20886,7 +20886,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20924,7 +20924,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -20965,7 +20965,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21009,7 +21009,7 @@ export interface operations {
                 "If-None-Match"?: string;
             };
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21077,7 +21077,7 @@ export interface operations {
                 "If-None-Match"?: string;
             };
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21133,7 +21133,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
@@ -21165,7 +21165,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21198,7 +21198,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21231,7 +21231,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
@@ -21257,7 +21257,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21296,7 +21296,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21329,7 +21329,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21467,7 +21467,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21502,7 +21502,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21544,7 +21544,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21650,7 +21650,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21683,7 +21683,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21718,7 +21718,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21762,7 +21762,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21797,7 +21797,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -21866,7 +21866,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
             };
             cookie?: never;
@@ -22988,7 +22988,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
                 /** @description Slug du titre cible */
                 slug: string;
@@ -23025,7 +23025,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Joueur90001") */
                 player_slug: string;
                 /** @description Slug du titre cible (ex. halo_infinite, halo_5) */
                 slug: string;

@@ -61,21 +61,21 @@ describe('getSquadPlayerColors', () => {
 
 describe('squadPlayerPalette — ordre de la SÉLECTION, la seule attribution', () => {
   it('attribue main puis coéquipiers dans l’ordre donné, quel que soit l’ordre d’un bloc', () => {
-    const p = squadPlayerPalette('JGtm', ['Chocoboflor', 'Madina97294'])
+    const p = squadPlayerPalette('JGtm', ['Joueur90001', 'Joueur90002'])
     expect(p.tokenOf('JGtm')).toBe('squad-player-1')
-    expect(p.tokenOf('Chocoboflor')).toBe('squad-player-2')
-    expect(p.tokenOf('Madina97294')).toBe('squad-player-3')
-    expect(p.colorByPlayer).toEqual(getSquadPlayerColors('JGtm', ['Chocoboflor', 'Madina97294']))
+    expect(p.tokenOf('Joueur90001')).toBe('squad-player-2')
+    expect(p.tokenOf('Joueur90002')).toBe('squad-player-3')
+    expect(p.colorByPlayer).toEqual(getSquadPlayerColors('JGtm', ['Joueur90001', 'Joueur90002']))
   })
 
   it('clé insensible à la casse (URL en minuscules, backend en casse mixte)', () => {
-    const p = squadPlayerPalette('JGtm', ['Madina97294'])
-    expect(p.tokenOf('madina97294')).toBe('squad-player-2')
+    const p = squadPlayerPalette('JGtm', ['Joueur90002'])
+    expect(p.tokenOf('joueur90002')).toBe('squad-player-2')
     expect(p.inkOf('JGTM')).toBe('var(--squad-player-1)')
   })
 
   it('hors sélection : aucun jeton, encre neutre', () => {
-    const p = squadPlayerPalette('JGtm', ['Madina97294'])
+    const p = squadPlayerPalette('JGtm', ['Joueur90002'])
     expect(p.tokenOf('Inconnu')).toBeNull()
     expect(p.inkOf('Inconnu')).toBe('var(--muted-foreground)')
   })

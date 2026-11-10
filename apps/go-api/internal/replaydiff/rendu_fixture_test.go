@@ -22,7 +22,7 @@ package replaydiff
 //
 //	60 gains       30 « gain » + 30 « apparu »
 //	13 pertes       9 « perte » +  4 « disparu »
-//	 2 changements  la reattribution d'une vie (`tracks/par-xuid/2535429985869093` 6 -> 5 et sa
+//	 2 changements  la reattribution d'une vie (`tracks/par-xuid/2669605393856835` 6 -> 5 et sa
 //	                jumelle `tracks/vies-par-xuid/...`), temoin des 12 index pour 8 occupants
 //	                (lots 1.9.13 / 1.9.14)
 //
@@ -107,7 +107,7 @@ func TestAfficherTableauSurUnePaireReelle(t *testing.T) {
 		// Un ecart de CHAQUE categorie, nomme.
 		"disparu", "perte", "gain", "apparu", "changement",
 		// La cle a rallonge par joueur, tronquee a 58 colonnes par `tronquer`.
-		"tracks/par-xuid/2535429985869093",
+		"tracks/par-xuid/2669605393856835",
 		// Une valeur absente d'un cote s'affiche par le tiret cadratin, jamais par du vide.
 		"—",
 	} {

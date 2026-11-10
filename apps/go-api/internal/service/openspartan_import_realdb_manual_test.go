@@ -22,7 +22,7 @@ import (
 // Run with:
 //
 //	OPENSPARTAN_DB_PATH=/path/to/{xuid}.db \
-//	OPENSPARTAN_OWNER_XUID=2533274823110022 \
+//	OPENSPARTAN_OWNER_XUID=2603225103667623 \
 //	OPENSPARTAN_OWNER_GAMERTAG=YourGamertag \
 //	go test ./internal/service/ -run TestRealDB_FullPipeline -v
 func TestRealDB_FullPipeline(t *testing.T) {
@@ -193,7 +193,7 @@ func TestRealDB_FullPipeline(t *testing.T) {
 // Run with:
 //
 //	OPENSPARTAN_DB_PATH=/path/to/{xuid}.db \
-//	OPENSPARTAN_OWNER_XUID=2533274823110022 \
+//	OPENSPARTAN_OWNER_XUID=2603225103667623 \
 //	go test ./internal/service/ -run TestRealDB_OpenSpartanImport_DryRun -v
 func TestRealDB_OpenSpartanImport_DryRun(t *testing.T) {
 	path := os.Getenv("OPENSPARTAN_DB_PATH")
@@ -266,7 +266,7 @@ func TestRealDB_OpenSpartanImport_DryRun(t *testing.T) {
 // Run locally with:
 //
 //	OPENSPARTAN_DB_PATH=/path/to/{xuid}.db \
-//	OPENSPARTAN_OWNER_XUID=2533274823110022 \
+//	OPENSPARTAN_OWNER_XUID=2603225103667623 \
 //	go test ./internal/service/ -run TestRealDB_OpenSpartanImport -v
 func TestRealDB_OpenSpartanImport(t *testing.T) {
 	path := os.Getenv("OPENSPARTAN_DB_PATH")

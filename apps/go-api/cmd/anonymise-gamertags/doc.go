@@ -38,9 +38,21 @@
 // xuids de la liste que des fichiers portaient : un ecart avec une mesure faite par ailleurs se lit
 // la.
 //
-// Le registre VERSIONNE des fictifs est `libs/film/testdata/IDENTITES.tsv`, et son garde-rail
-// (`TestLesXuidsDesFixturesSontFictifs`) refuse tout xuid de la plage, hors registre, dans un
-// fichier texte de `libs/film`.
+// Les registres VERSIONNES des fictifs sont `libs/film/testdata/IDENTITES.tsv` (la brique du decodeur) et
+// `testdata/IDENTITES_APPS.tsv` (ce dossier : les fichiers suivis sous `apps/`). Le fictif d un joueur ne
+// depend que de son xuid : un joueur present dans les deux ensembles recoit le meme dans les deux. Le
+// garde-rail (`TestLesXuidsDesFixturesSontFictifs`) refuse tout xuid de la plage, hors des deux registres,
+// dans un fichier texte de `libs/film` ou de `apps/` (les `.gz` sont lus decompresses) ; un nombre de la
+// plage qui n est pas un xuid se nomme dans `nombresHorsXuid` avec sa raison, et la partie decimale d un
+// flottant n est pas lue. `TestLesBinairesDeAppsSontCouverts` tient la liste fermee des fichiers de `apps/`
+// que le balayage de texte ne lit pas.
+//
+// Sous `apps/`, l outil se passe par dossier (les dependances non suivies, `apps/web/node_modules`, ne se
+// donnent pas) : par exemple `GAMERTAGS_CHEMINS="apps/go-api;apps/desktop;apps/web/src;apps/web/public;
+// apps/web/e2e;apps/web/scripts"`. Le nom d un joueur suivi s ecrit aussi en minuscules ou en
+// majuscules (identifiants, chemins) : chaque variante est une ligne de la table, avec le pseudonyme dans
+// la meme casse. Un fichier de fixture qui porte un nom dans son NOM se renomme (`git mv`) et ses lecteurs
+// se mettent a jour.
 //
 // # LES TABLES D ORIGINE NE SONT PAS VERSIONNEES
 //

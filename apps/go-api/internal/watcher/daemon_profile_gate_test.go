@@ -26,14 +26,14 @@ func TestAddPlayer_RefuseSansProfilSuivi(t *testing.T) {
 	})
 
 	err := d.AddPlayer(context.Background(), domain.PlayerSummary{
-		Gamertag: "InconnuAuBataillon", XUID: "2533274796795729", TitleSlug: "halo_infinite",
+		Gamertag: "InconnuAuBataillon", XUID: "2676423891261051", TitleSlug: "halo_infinite",
 	})
 
 	if !errors.Is(err, ErrPlayerNotTracked) {
 		t.Fatalf("AddPlayer doit rendre ErrPlayerNotTracked, reçu %v", err)
 	}
-	if vuTitre != "halo_infinite" || vuXUID != "2533274796795729" {
-		t.Errorf("la porte doit recevoir (titre, xuid) = (halo_infinite, 2533274796795729), reçu (%q, %q)", vuTitre, vuXUID)
+	if vuTitre != "halo_infinite" || vuXUID != "2676423891261051" {
+		t.Errorf("la porte doit recevoir (titre, xuid) = (halo_infinite, 2676423891261051), reçu (%q, %q)", vuTitre, vuXUID)
 	}
 
 	d.playersMu.RLock()
@@ -113,7 +113,7 @@ func TestWithProfileGate_PoseAussiLaPorteDuCoordinateur(t *testing.T) {
 	d.WithProfileGate(func(_ context.Context, _, _ string) bool { return false })
 
 	ok := d.coordinator.Submit(context.Background(), syncpkg.CoordinatorRequest{
-		Gamertag: "InconnuAuBataillon", XUID: "2533274796795729",
+		Gamertag: "InconnuAuBataillon", XUID: "2676423891261051",
 		MatchIDs: []string{"m1"}, TitleSlug: "halo_infinite",
 	})
 	if ok {

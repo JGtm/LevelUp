@@ -214,7 +214,7 @@ func TestBuildViewerFragDistribution_GrenadeSubLevel(t *testing.T) {
 // pas dans le residu « non attribue ».
 //
 // Temoin reel (lot 4.5 du plan maitre, 2026-09-10) : match `1eedd3c8`, Nemesis, Theater
-// 02:04, EIcRriizz tue par JGtm par chute (`match_kill_events_latest` : source_tag
+// 02:04, Joueur901 tue par JGtm par chute (`match_kill_events_latest` : source_tag
 // 0x00403594, lecture « source-victime »). La vue match servait sidearm 9 / melee 4 /
 // non attribue 1 : la ligne « environnement » existait en base, elle etait perdue ICI —
 // `buildViewerFragDistribution` ne recopiait pas la provenance film, et `fragdist` ne sert

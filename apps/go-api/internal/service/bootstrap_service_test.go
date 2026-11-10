@@ -261,14 +261,14 @@ func TestBuild_ReauthRequired_NoOwnIdentity_False(t *testing.T) {
 // ont un refresh_token mort. Le flag est scopé à SON propre xuid, pas au joueur
 // courant affiché.
 func TestBuild_ReauthRequired_ScopedToOwnAccount(t *testing.T) {
-	const ownXUID = "2533274823110022" // JGtm, RT sain
+	const ownXUID = "2603225103667623" // JGtm, RT sain
 	admin := &domain.User{Username: "jgtm_xbox", XUID: ownXUID, Role: domain.RoleAdmin}
 	lookup := fakeBootstrapLookup{
 		byName: map[string]*domain.User{"jgtm_xbox": admin},
 		byXUID: map[string]*domain.User{ownXUID: admin},
 	}
 	// Checker "mort pour tout le monde SAUF le compte propre" : simule
-	// Chocoboflor/Madina/XxDaemon morts, JGtm vivant.
+	// Joueur90001/Madina/XxDaemon morts, JGtm vivant.
 	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{}).
 		WithUserLookup(lookup).
 		WithReauthChecker(func(xuid string) bool { return xuid != ownXUID })
@@ -286,17 +286,17 @@ func TestBuild_ReauthRequired_ScopedToOwnAccount(t *testing.T) {
 // TestBuild_ReauthRequired_OwnAccountDead_True : un user dont SON propre RT est
 // mort voit bien le bandeau (il peut, lui, se reconnecter via le SSO Xbox).
 func TestBuild_ReauthRequired_OwnAccountDead_True(t *testing.T) {
-	const ownXUID = "2535469190789936" // Chocoboflor, RT mort
-	user := &domain.User{Username: "chocoboflor", XUID: ownXUID, Role: domain.RoleUser}
+	const ownXUID = "2547408409520575" // Joueur90001, RT mort
+	user := &domain.User{Username: "joueur90001", XUID: ownXUID, Role: domain.RoleUser}
 	lookup := fakeBootstrapLookup{
-		byName: map[string]*domain.User{"chocoboflor": user},
+		byName: map[string]*domain.User{"joueur90001": user},
 		byXUID: map[string]*domain.User{ownXUID: user},
 	}
 	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{}).
 		WithUserLookup(lookup).
 		WithReauthChecker(func(xuid string) bool { return xuid == ownXUID })
 
-	username := "chocoboflor"
+	username := "joueur90001"
 	resp, err := svc.Build(context.Background(), &domain.SessionData{Username: &username})
 	if err != nil {
 		t.Fatalf("Build: %v", err)

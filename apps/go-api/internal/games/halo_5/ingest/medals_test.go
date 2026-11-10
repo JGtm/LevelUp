@@ -23,13 +23,13 @@ func fakeResolver(m map[string]string) func(string) string {
 
 func TestMapMedalEvents_AggregateAndTimeline(t *testing.T) {
 	events := []canonical.MatchEvent{
-		medal("Madina97294", "100", 5000),
-		medal("Madina97294", "100", 9000), // même joueur + même médaille → count=2
-		medal("Madina97294", "200", 12000),
+		medal("Joueur90002", "100", 5000),
+		medal("Joueur90002", "100", 9000), // même joueur + même médaille → count=2
+		medal("Joueur90002", "200", 12000),
 		medal("JGtm", "100", 3000),
 		{Type: canonical.MatchEventKill, TimeMs: 1000}, // non-médaille → ignoré
 	}
-	resolve := fakeResolver(map[string]string{"Madina97294": "2533274858283686", "JGtm": "2535400000000000"})
+	resolve := fakeResolver(map[string]string{"Joueur90002": "2623439693412443", "JGtm": "2535400000000000"})
 
 	agg, tl := MapMedalEvents("match-1", events, resolve)
 
@@ -37,7 +37,7 @@ func TestMapMedalEvents_AggregateAndTimeline(t *testing.T) {
 	if len(agg) != 3 {
 		t.Fatalf("agrégat: %d lignes, attendu 3 — %+v", len(agg), agg)
 	}
-	if agg[0].XUID != "2533274858283686" || agg[0].MedalNameID != 100 || agg[0].Count != 2 {
+	if agg[0].XUID != "2623439693412443" || agg[0].MedalNameID != 100 || agg[0].Count != 2 {
 		t.Errorf("1re ligne médaille: %+v, attendu Madina/100/count=2", agg[0])
 	}
 	if agg[1].MedalNameID != 200 || agg[1].Count != 1 {
@@ -79,8 +79,8 @@ func TestMapMedalEvents_UnresolvedXUIDStillPersisted(t *testing.T) {
 }
 
 func TestMapMedalEvents_NonNumericRefIgnored(t *testing.T) {
-	events := []canonical.MatchEvent{medal("Madina97294", "not-a-number", 5000)}
-	agg, tl := MapMedalEvents("m", events, fakeResolver(map[string]string{"Madina97294": "x"}))
+	events := []canonical.MatchEvent{medal("Joueur90002", "not-a-number", 5000)}
+	agg, tl := MapMedalEvents("m", events, fakeResolver(map[string]string{"Joueur90002": "x"}))
 	if len(agg) != 0 || len(tl) != 0 {
 		t.Fatalf("médaille à id non numérique doit être ignorée: agg=%+v tl=%+v", agg, tl)
 	}

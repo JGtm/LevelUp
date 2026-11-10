@@ -59,9 +59,9 @@ const (
 
 // l70Squad : l'escouade temoin (xuid -> gamertag), `db_profiles.json`.
 var l70Squad = map[string]string{
-	"2533274823110022": "JGtm",
-	"2533274858283686": "Madina97294",
-	"2535469190789936": "Chocoboflor",
+	"2603225103667623": "JGtm",
+	"2623439693412443": "Joueur90002",
+	"2547408409520575": "Joueur90001",
 }
 
 // l70Frag : un frag de classe d'engin (sortie de `TestEmpriseL70Frags`).

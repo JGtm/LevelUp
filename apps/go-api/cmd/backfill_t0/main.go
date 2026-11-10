@@ -263,7 +263,7 @@ func loadParticipations(db *sql.DB) (map[string][]timeline.ParticipationT0Input,
 }
 
 // isBotXUID retourne true si l'xuid n'est pas un identifiant joueur numérique
-// (bots Halo : "bid(19.0)"; vrais joueurs : "2533274823110022").
+// (bots Halo : "bid(19.0)"; vrais joueurs : "2603225103667623").
 func isBotXUID(xuid string) bool {
 	if xuid == "" {
 		return true

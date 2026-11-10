@@ -30,11 +30,11 @@ func docJSON(t *testing.T, matchID string, avecCompteurs bool) []byte {
 		MatchID:       matchID,
 		TitleSlug:     title.DefaultSlug,
 		// Une trajectoire au moins : validateArtifact refuse un document sans piste.
-		Tracks: []replay.Track{{XUID: "2533274819954312"}},
+		Tracks: []replay.Track{{XUID: "2533491259474651"}},
 	}
 	if avecCompteurs {
 		doc.ScoreTimeline = &replay.ScoreTimeline{
-			Players: []replay.PlayerScore{{XUID: "2533274819954312"}},
+			Players: []replay.PlayerScore{{XUID: "2533491259474651"}},
 		}
 	}
 	blob, err := json.Marshal(doc)
@@ -88,7 +88,7 @@ func TestWriteArtifact_NEcrasePasUnArtefactRiche(t *testing.T) {
 		SchemaVersion: replay.SchemaVersion,
 		MatchID:       "000d5950",
 		TitleSlug:     title.DefaultSlug,
-		Tracks:        []replay.Track{{XUID: "2533274819954312"}},
+		Tracks:        []replay.Track{{XUID: "2533491259474651"}},
 	}
 	taille, err := writeArtifact(context.Background(), path, title.DefaultSlug, "000d5950", appauvri)
 	if err != nil {
@@ -123,7 +123,7 @@ func TestWriteArtifact_MonteeDeSchemaToujoursEcrite(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "000d5950.json")
 	// En place : RICHE, mais à un schéma ANTÉRIEUR.
-	ancien := `{"schemaVersion":1,"matchId":"000d5950","scoreTimeline":{"players":[{"xuid":"2533274819954312"}]}}`
+	ancien := `{"schemaVersion":1,"matchId":"000d5950","scoreTimeline":{"players":[{"xuid":"2533491259474651"}]}}`
 	if err := os.WriteFile(path, []byte(ancien), 0o644); err != nil {
 		t.Fatalf("pose: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestWriteArtifact_MonteeDeSchemaToujoursEcrite(t *testing.T) {
 		SchemaVersion: replay.SchemaVersion,
 		MatchID:       "000d5950",
 		TitleSlug:     title.DefaultSlug,
-		Tracks:        []replay.Track{{XUID: "2533274819954312"}},
+		Tracks:        []replay.Track{{XUID: "2533491259474651"}},
 	}
 	if _, err := writeArtifact(context.Background(), path, title.DefaultSlug, "000d5950", nouveau); err != nil {
 		t.Fatalf("writeArtifact: %v", err)

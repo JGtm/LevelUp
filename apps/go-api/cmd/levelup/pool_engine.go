@@ -12,7 +12,7 @@ package main
 //
 // Avant le 2026-09-16, la CLI mono-joueur exigeait le refresh token du joueur visé
 // (haloTokensForPlayer) et la CLI `--all` sautait en bloc tout joueur absent du pool
-// (`SKIP reason=not_in_pool`) : un profil suivi sans token propre — Nuzzles — n'était jamais
+// (`SKIP reason=not_in_pool`) : un profil suivi sans token propre — J900004 — n'était jamais
 // synchronisé, alors que seul son rang de carrière lui est inaccessible.
 
 import (

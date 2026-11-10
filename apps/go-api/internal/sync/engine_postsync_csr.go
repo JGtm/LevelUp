@@ -164,7 +164,7 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 	// parallèle (cf. Coordinator parallel_slots:2 ou scheduler errgroup) qui
 	// faisaient un upsert (INSERT-OR-UPDATE via conflict clause) sur la même
 	// row déclenchaient "TransactionContext Error: Conflict on update!" côté
-	// DuckDB (vu dans logs/sync.log 23:58:11 Madina97294 et précédents).
+	// DuckDB (vu dans logs/sync.log 23:58:11 Joueur90002 et précédents).
 	// Sérialisation applicative via dblease.AcquireWriterCtx(KindMetadata)
 	// — bloque le 2ème caller jusqu'au Release du 1er, sans contention DuckDB.
 	metadataLease, err := dblease.AcquireWriterCtx(ctx, nil, e.metadataDBPath, dblease.KindMetadata)

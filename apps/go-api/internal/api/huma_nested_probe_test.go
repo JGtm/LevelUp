@@ -53,7 +53,7 @@ func TestHumaNestedSubrouterProbe(t *testing.T) {
 	})
 
 	rec := httptest.NewRecorder()
-	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/players/Madina97294/pages/probe", nil))
+	r.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/players/Joueur90002/pages/probe", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("200 attendu, got %d: %s", rec.Code, rec.Body.String())
 	}
@@ -64,8 +64,8 @@ func TestHumaNestedSubrouterProbe(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("JSON invalide: %v", err)
 	}
-	if out.Slug != "Madina97294" {
-		t.Errorf("slug = %q, want Madina97294 (path param parent non lu)", out.Slug)
+	if out.Slug != "Joueur90002" {
+		t.Errorf("slug = %q, want Joueur90002 (path param parent non lu)", out.Slug)
 	}
 	if !out.MiddlewareRan {
 		t.Error("middleware du sous-groupe NON hérité par la route Huma")

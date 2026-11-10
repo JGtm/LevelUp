@@ -4,7 +4,7 @@
 // SharedDBProvider ↔ pool joueur ↔ readers HTTP-like, sous charge concurrente.
 //
 // Ce test reproduit le scénario exact qui a déclenché le bug initial
-// "different configuration" sur Madina97294 :
+// "different configuration" sur Joueur90002 :
 //   - 1 SyncEngine en mode B-swap (sharedProvider injecté)
 //   - 1 PlayerDB pool consommant le Provider via SharedReader
 //   - N goroutines readers tapant les repos cross-DB pendant que le sync écrit

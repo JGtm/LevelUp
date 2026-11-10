@@ -72,7 +72,7 @@ describe('squadSessionCount', () => {
 
   it('écart publié (D1) : `excluded_by_exact_composition` passe tel quel dans le compte', () => {
     const excluded = [
-      { match_id: 'm1', start_time: '2026-08-27T20:00:00Z', map_ui: 'Aquarius', extra_gamertags: ['Nilton410'] },
+      { match_id: 'm1', start_time: '2026-08-27T20:00:00Z', map_ui: 'Aquarius', extra_gamertags: ['Joueur903'] },
     ]
     const got = squadSessionCount(
       'S1 (11)',

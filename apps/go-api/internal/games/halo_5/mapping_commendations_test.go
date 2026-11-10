@@ -13,7 +13,7 @@ func carnageWithCommendations() *halo5.H5CarnageResponse {
 		IsTeamGame: true,
 		PlayerStats: []halo5.H5CarnagePlayer{
 			{
-				Player: halo5.H5PlayerRef{Gamertag: "Madina97294"},
+				Player: halo5.H5PlayerRef{Gamertag: "Joueur90002"},
 				ProgressiveCommendationDeltas: []halo5.H5CommendationDelta{
 					{Id: "uuid-kills", PreviousProgress: 100, Progress: 117}, // +17
 					{Id: "uuid-flat", PreviousProgress: 50, Progress: 50},    // +0 → ignoré
@@ -37,7 +37,7 @@ func carnageWithCommendations() *halo5.H5CarnageResponse {
 func commendResolver() func(string) string {
 	return func(gt string) string {
 		switch gt {
-		case "Madina97294":
+		case "Joueur90002":
 			return "xA"
 		case "JGtm":
 			return "xB"

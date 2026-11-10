@@ -45,8 +45,8 @@ const (
 // C'est la correction structurelle du défaut qui rendait tout le module muet :
 // `RecentMatches` prenait un `userID string` que ses trois appelants
 // (computeBaselineFor, computeCurrentValue, evaluateOne) remplissaient avec
-// `Challenge.UserID` — un **player_slug** applicatif ("JGtm", "Chocoboflor"),
-// jamais un **xuid** Xbox ("2533274823110022"). Le `WHERE mp.xuid = ?` ne
+// `Challenge.UserID` — un **player_slug** applicatif ("JGtm", "Joueur90001"),
+// jamais un **xuid** Xbox ("2603225103667623"). Le `WHERE mp.xuid = ?` ne
 // ramenait donc JAMAIS une ligne : baseline vide, jauges à 0, objectifs figés,
 // silencieusement, en production. Deux identités distinctes voyageaient dans le
 // même type `string` ; supprimer le paramètre supprime le transport, donc

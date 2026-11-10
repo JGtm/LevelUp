@@ -24,7 +24,7 @@
 //	  --shared-db   ../../LevelUp-go-migration/data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb \
 //	  --tokens-dir  ../../LevelUp-go-migration/data/auth/watcher_tokens \
 //	  --env-file    ../../LevelUp-go-migration/.env.local \
-//	  --token-xuid 2533274823110022 --token-gamertag JGtm \
+//	  --token-xuid 2603225103667623 --token-gamertag JGtm \
 //	  --playlists-per-season 2 --matches 10 --max-candidates 5 --dump-raw
 package main
 

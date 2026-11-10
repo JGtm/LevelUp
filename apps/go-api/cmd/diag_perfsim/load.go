@@ -3,7 +3,7 @@ package main
 // load.go — accès DuckDB STRICTEMENT en lecture seule.
 //
 // Piège rencontré sur les données réelles (consigné au rapport) : l'index ART
-// idx_psa_match de la DB XxDaemonGamerxX est incohérent — un lookup indexé
+// idx_psa_match de la DB Joueur90000000f est incohérent — un lookup indexé
 // (`WHERE match_id = ?`) rend 2 lignes là où le scan complet en rend 4. Toutes
 // les lectures de personal_score_awards se font donc en SCAN COMPLET SANS
 // PRÉDICAT, la sélection (xuid, catégorie, génération) étant faite en Go.

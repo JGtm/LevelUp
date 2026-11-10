@@ -31,7 +31,7 @@ const insertLUSRSansID = `INSERT INTO match_skill_rank (match_id, rating_type) V
 
 // preparePlayerDBEnRetard pose, hors du cache du paquet duckdb, une base joueur au schéma
 // complet dont msr_seq rend encore 1 alors que les ids 1..3 sont pris (forme de la base de
-// Chocoboflor : séquence recréée à START 1 par une reconstruction), exécute extra, vérifie la
+// Joueur90001 : séquence recréée à START 1 par une reconstruction), exécute extra, vérifie la
 // collision, puis ferme le fichier. Rend le chemin, de la forme d'une base joueur.
 func preparePlayerDBEnRetard(t *testing.T, extra ...string) string {
 	t.Helper()

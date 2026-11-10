@@ -287,7 +287,7 @@ func TestMultiUserTokenStore_AcceptsValidXUIDFormats(t *testing.T) {
 	// xuidIsSafe accepte uniquement [0-9_-] — pas de lettres.
 	goodXUIDs := []string{
 		"123",
-		"2533274858283686", // format Xbox Live typique
+		"2623439693412443", // format Xbox Live typique
 		"0",
 		"9999999999999999",
 		"123-456-789",
@@ -363,7 +363,7 @@ func TestMultiUserTokenStore_AllFieldsRoundtrip(t *testing.T) {
 
 	original := &UserTokens{
 		XUID:              "111",
-		Gamertag:          "Madina97294",
+		Gamertag:          "Joueur90002",
 		XSTSToken:         "xsts-token-value",
 		XSTSUserHash:      "user-hash-abc",
 		XSTSExpiresAt:     time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),

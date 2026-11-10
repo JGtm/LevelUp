@@ -35,8 +35,8 @@ func TestSyncablePlayers_AllActive_ReturnsAll(t *testing.T) {
 func TestSyncablePlayers_ExcludesAuthOnly(t *testing.T) {
 	in := []PlayerSummary{
 		{Gamertag: "RealPlayer", TitleSlug: "halo_infinite", SyncEnabled: true, AuthOnly: false},
-		{Gamertag: "DankerGlue", TitleSlug: "halo_infinite", SyncEnabled: true, AuthOnly: true},
-		{Gamertag: "QuiteSiren", TitleSlug: "halo_infinite", SyncEnabled: true, AuthOnly: true},
+		{Gamertag: "Joueur9001", TitleSlug: "halo_infinite", SyncEnabled: true, AuthOnly: true},
+		{Gamertag: "Joueur9008", TitleSlug: "halo_infinite", SyncEnabled: true, AuthOnly: true},
 	}
 	out := SyncablePlayers(in)
 	if len(out) != 1 {

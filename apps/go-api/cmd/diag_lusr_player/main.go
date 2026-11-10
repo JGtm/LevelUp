@@ -45,7 +45,7 @@ func main() {
 	flag.Parse()
 	gamertags := flag.Args()
 	if len(gamertags) == 0 {
-		gamertags = []string{"Chocoboflor", "Madina97294", "JGtm"}
+		gamertags = []string{"Joueur90001", "Joueur90002", "JGtm"}
 	}
 
 	db := openShared()
@@ -101,7 +101,7 @@ func main() {
 	// Affine pour Madina : essayer chunks plus petits pour identifier le seuil.
 	fmt.Println("\n══ Affinement : test du seuil chunk pour Madina ══")
 	for _, p := range players {
-		if p.gamertag != "Madina97294" {
+		if p.gamertag != "Joueur90002" {
 			continue
 		}
 		for _, chunkSize := range []int{50, 100, 200, 500, 1000} {
@@ -421,7 +421,7 @@ func printMatchParticipantsKind(db *sql.DB) {
 		rows14.Close()
 	}
 	// SELECT pour Madina seule, sur ce match : direct row inspection
-	rowsM, _ := db.Query(`SELECT xuid, match_id, team_id, kills, kills_expected FROM match_participants WHERE xuid = '2533274858283686' AND match_id = '50cd2d8c-9feb-4b98-bc7c-e34aa8b1df7e'`)
+	rowsM, _ := db.Query(`SELECT xuid, match_id, team_id, kills, kills_expected FROM match_participants WHERE xuid = '2623439693412443' AND match_id = '50cd2d8c-9feb-4b98-bc7c-e34aa8b1df7e'`)
 	if rowsM != nil {
 		fmt.Println("  SELECT direct (Madina, 50cd2d8c) :")
 		for rowsM.Next() {
@@ -435,7 +435,7 @@ func printMatchParticipantsKind(db *sql.DB) {
 		rowsM.Close()
 	}
 	// Liste tous les match_ids de Madina contenant '50cd2d8c' (en cas de typo/suffixe)
-	rowsL, _ := db.Query(`SELECT match_id FROM match_participants WHERE xuid = '2533274858283686' AND match_id LIKE '50cd2d8c%'`)
+	rowsL, _ := db.Query(`SELECT match_id FROM match_participants WHERE xuid = '2623439693412443' AND match_id LIKE '50cd2d8c%'`)
 	if rowsL != nil {
 		fmt.Println("  Madina match_ids LIKE '50cd2d8c%' :")
 		for rowsL.Next() {
@@ -468,11 +468,11 @@ func printMatchParticipantsKind(db *sql.DB) {
 	var n3 int64
 	_ = cnt3.Scan(&n3)
 	fmt.Printf("  COUNT(*) WHERE match_id=50cd2d8c... = %d\n", n3)
-	cnt4 := db.QueryRow(`SELECT COUNT(*) FROM match_participants WHERE xuid = '2533274858283686'`)
+	cnt4 := db.QueryRow(`SELECT COUNT(*) FROM match_participants WHERE xuid = '2623439693412443'`)
 	var n4 int64
 	_ = cnt4.Scan(&n4)
 	fmt.Printf("  COUNT(*) WHERE xuid=Madina = %d\n", n4)
-	cnt5 := db.QueryRow(`SELECT COUNT(*) FROM match_participants WHERE xuid = '2533274858283686' AND match_id = '50cd2d8c-9feb-4b98-bc7c-e34aa8b1df7e'`)
+	cnt5 := db.QueryRow(`SELECT COUNT(*) FROM match_participants WHERE xuid = '2623439693412443' AND match_id = '50cd2d8c-9feb-4b98-bc7c-e34aa8b1df7e'`)
 	var n5 int64
 	_ = cnt5.Scan(&n5)
 	fmt.Printf("  COUNT(*) (Madina, 50cd2d8c) = %d\n", n5)

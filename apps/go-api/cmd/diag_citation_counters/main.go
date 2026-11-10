@@ -25,7 +25,7 @@ import (
 const base = `C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\data\titles\halo_infinite`
 
 func main() {
-	gt := "Madina97294"
+	gt := "Joueur90002"
 	if len(os.Args) > 1 {
 		gt = os.Args[1]
 	}
