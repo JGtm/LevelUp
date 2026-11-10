@@ -15,7 +15,7 @@ import (
 //
 // # LA LECTURE, ET SES TROIS VOIES
 //
-// Elle sert les deux cotes d'un frag (`kill_positions`), le lieu d'un tueur deja mort (D-17) et le
+// Elle sert les deux cotes d'un frag (`kill_positions`), l'entame (`kill_openings`), le lieu d'un tueur deja mort (D-17) et le
 // lieu de la victime du contexte de mort (`ContextesDesMorts`) : un seul lieu par joueur et par
 // instant. A l'instant `t`, sur les sieges que le registre nomme pour le joueur :
 //
@@ -27,12 +27,16 @@ import (
 //	             echantillon, le journal ne porte aucune mort du joueur entre lui et `t` (meme vie), et
 //	             aucune montee a bord (`object-parent-state`, i10) ne court sur le silence.
 //	SIEGE        une montee a bord court sur le silence (lue depuis `vehicleSeatTol` avant le dernier
-//	             echantillon, ni descente ni retour du bipede au flux depuis) : un occupant ne replique
-//	             plus son bipede, sa position est celle du VEHICULE qu'il occupe, l'echantillon du
-//	             vehicule a la tolerance — la meme lecture que celle qui pose les tirs embarques.
+//	             echantillon, ni descente anterieure a la tolerance ni retour du bipede au flux depuis) :
+//	             un occupant ne replique plus son bipede, sa position est celle du VEHICULE qu'il occupe,
+//	             par la meme lecture que celle qui pose les tirs embarques ([bordDuFilm.positionDuVehicule]).
 //
-// Le reste se tait et se compte ([KillPosReport]) : a bord d'un vehicule sans echantillon a la
-// tolerance, debarque pendant le silence (montee puis descente, sans retour au flux).
+// Le reste se tait et se compte ([KillPosReport]) : a bord d'un vehicule qu'aucune lecture ne place,
+// debarque pendant le silence (montee puis descente, sans retour au flux).
+//
+// UN ECHANTILLON N'APPARTIENT A LA LECTURE QUE S'IL EST CELUI DU CORPS QUI TIENT LE SIEGE A `t`
+// ([lectureALInstant.sansEchantillonDUnAutreJoueur]) : un siege recycle porte plusieurs joueurs, et le
+// premier echantillon d'un corps cree dans la tolerance de `t` ne dit rien du joueur precedent.
 //
 // AUCUN CRITERE DE VITESSE, AUCUNE DUREE : la tenue s'appuie sur ce que le film ecrit (il ecrit les
 // changements), pas sur une allure presumee. Sans lecture d'occupation (`LectureDuBord.Lue` faux), la
@@ -46,8 +50,12 @@ type LectureDuBord struct {
 	// et vehicule parent ([types.VehicleOccupancy]).
 	Occupation []types.VehicleOccupancy
 	// Vehicules : le nuage de positions des vehicules (`ti=40`), lu comme la cuisson le lit
-	// ([PositionsDesVehicules]).
+	// ([LireLesVehicules]).
 	Vehicules []grammar.BipedPosition
+	// Creations : les records de creation des vehicules (`ti=40`) : la position de naissance et le mot
+	// d'identite du chassis. Une piece montee ou un poste fixe sans echantillon se lit par eux
+	// ([bordDuFilm.positionDuVehicule]).
+	Creations []types.EquipmentCreation
 	// indexe : l'index de la lecture, partage par les copies de [LectureDuBord.Partagee].
 	indexe *bordIndexe
 }
@@ -86,6 +94,9 @@ type bordDuFilm struct {
 	lu         bool
 	occupation map[uint32][]types.VehicleOccupancy // par slot d'occupant, triees par instant
 	vehicules  map[uint32]slotTrack
+	creations  map[uint32][]types.EquipmentCreation // par slot de vehicule, triees par instant
+	// fb compte, a la lecture, les porteurs de piece decides par le voisin de slot.
+	fb *fallback.Compteur
 }
 
 // lireLeBord indexe la lecture du bord. Les echantillons de vehicule hors de l'emprise jouee du film
@@ -108,7 +119,8 @@ func lireLeBord(l LectureDuBord, bipedes []grammar.BipedPosition, fb *fallback.C
 
 // indexerLeBord construit l'index d'une lecture lue.
 func indexerLeBord(l LectureDuBord, bipedes []grammar.BipedPosition, fb *fallback.Compteur) bordDuFilm {
-	b := bordDuFilm{lu: true, occupation: map[uint32][]types.VehicleOccupancy{}}
+	b := bordDuFilm{lu: true, occupation: map[uint32][]types.VehicleOccupancy{}, fb: fb,
+		creations: creationsVehiculesParSlot(l.Creations)}
 	for _, o := range l.Occupation {
 		b.occupation[o.Slot] = append(b.occupation[o.Slot], o)
 	}
@@ -131,11 +143,50 @@ type lectureALInstant struct {
 	bord     bordDuFilm
 	morts    *mortsDuTueur
 	offsetUS int64
+	// registre : le registre d'identite, pour savoir qui tient un siege a l'instant d'un echantillon.
+	// Valeur zero : aucun corps connu, tout echantillon de la tolerance vaut pour le siege.
+	registre IdentityRegistry
+}
+
+// sansEchantillonDUnAutreJoueur retire de `slots` les sieges dont l'echantillon a la tolerance de `tUS`
+// est celui d'un AUTRE joueur que `xuid` : sur un siege aux index divergents, le registre nomme autrement
+// (ou ne nomme pas) le corps qui tient le siege a l'instant de l'echantillon. Ce siege n'etait pas le
+// corps du joueur a `tUS` : son echantillon ne le place pas. La comparaison est par JOUEUR, pas par corps :
+// deux index du meme joueur gardent l'echantillon.
+func (l lectureALInstant) sansEchantillonDUnAutreJoueur(slots []uint32, xuid uint64, tUS uint64) []uint32 {
+	if len(l.registre.corps) == 0 {
+		return slots
+	}
+	out := make([]uint32, 0, len(slots))
+	for _, s := range slots {
+		if p, d := l.tracks[s].at(tUS); d <= killPosToleranceUS && p.HasWorld && !l.memeJoueur(s, p.TimestampUS, xuid) {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+// memeJoueur dit que le registre nomme `xuid` sur le siege `slot` a l'instant `tUS`. Vrai sur un siege
+// sans divergence d'index : ses corps successifs sont un seul participant, quelle que soit leur generation.
+// Vrai aussi sur un siege en COLLISION (deux joueurs dans un corps indiscernable) : aucun corps n'y est
+// etabli, le registre s'y tait a tout instant hors d'une vie nommee, et ce silence ne prouve pas qu'un
+// autre joueur tient le siege (un echantillon du corps juste apres la fin ecrite de sa vie, par exemple).
+func (l lectureALInstant) memeJoueur(slot uint32, tUS uint64, xuid uint64) bool {
+	if c, ok := l.registre.corps[slot]; !ok || !c.indexDivergents() || l.registre.collisionDeSiege(slot) {
+		return true
+	}
+	x, _ := l.registre.joueurDuLieuA(slot, tUS)
+	return x == xuid
 }
 
 // placer rend le lieu du joueur `xuid` a l'instant film `tUS` sur ses sieges `slots`, le slot qui le
-// porte (0 hors des voies ECHANTILLON et TENUE) et la voie.
+// porte (son siege de bipede, sur les voies ECHANTILLON, TENUE et SIEGE) et la voie.
 func (l lectureALInstant) placer(slots []uint32, xuid uint64, tUS uint64) (*Vec3, uint32, voieDuLieu) {
+	if int64(tUS) < 0 { //nolint:gosec // un instant decale d avant l origine du film (entame) deborde en uint64
+		return nil, 0, voieMuette
+	}
+	slots = l.sansEchantillonDUnAutreJoueur(slots, xuid, tUS)
 	proches := 0
 	for _, s := range slots {
 		if p, d := l.tracks[s].at(tUS); d <= killPosToleranceUS && p.HasWorld {
@@ -150,7 +201,10 @@ func (l lectureALInstant) placer(slots []uint32, xuid uint64, tUS uint64) (*Vec3
 		return nil, 0, voieMuette
 	}
 	dernier, slot, ok := dernierEchantillonAvant(l.tracks, slots, tUS)
-	if !ok || l.mortEntre(xuid, dernier.TimestampUS, tUS) {
+	// LE DERNIER ECHANTILLON DOIT ETRE CELUI DU JOUEUR : sur un siege aux index divergents, il peut etre
+	// celui du corps d'un autre occupant (un bot entre deux corps du joueur) ; tenir le joueur la, ou le
+	// dire a bord depuis la, serait poser le lieu d'un autre.
+	if !ok || !l.memeJoueur(slot, dernier.TimestampUS, xuid) || l.mortEntre(xuid, dernier.TimestampUS, tUS) {
 		return nil, 0, voieMuette
 	}
 	switch parent, etat := l.bord.etatPendantLeSilence(l.tracks[slot], slot, dernier.TimestampUS, tUS); etat {
@@ -159,7 +213,7 @@ func (l lectureALInstant) placer(slots []uint32, xuid uint64, tUS uint64) (*Vec3
 		if !ok {
 			return nil, 0, voieABordSansVehicule
 		}
-		return v, 0, voieSiege
+		return v, slot, voieSiege
 	case etatDebarque:
 		return nil, 0, voieDebarque
 	}
@@ -224,6 +278,10 @@ const (
 // revenu au flux (aucun echantillon apres `vehicleSeatTol` passe la montee) met le joueur a bord, et
 // rend le vehicule parent ; une descente apres une montee de la fenetre le dit debarque ; une descente
 // seule ou aucune lecture le laisse libre.
+//
+// UNE DESCENTE A LA TOLERANCE DE `tUS` N EST PAS UN DEBARQUEMENT : le film ecrit la sortie du siege a
+// la mort a bord, dans la meme fraction de seconde. Elle se lit comme le corps replique encore a ± la
+// tolerance : le joueur etait a bord a l'instant, et le vehicule le place.
 func (b bordDuFilm) etatPendantLeSilence(piste slotTrack, slot uint32, dernierUS, tUS uint64,
 ) (uint32, etatDuSilence) {
 	tol := uint64(vehicleSeatTol.Microseconds()) //nolint:gosec // duree positive
@@ -239,6 +297,9 @@ func (b bordDuFilm) etatPendantLeSilence(piste slotTrack, slot uint32, dernierUS
 		}
 		if o.Attached {
 			monte, descend, montee = true, false, o
+			continue
+		}
+		if o.TimestampUS+killPosToleranceUS >= tUS {
 			continue
 		}
 		descend = descend || monte
@@ -258,11 +319,83 @@ func (s slotTrack) echantillonEntre(de, a uint64) bool {
 	return i < len(s.pts) && s.pts[i].TimestampUS <= a
 }
 
-// positionDuVehicule rend la position du vehicule `slot` a `tUS`, a la tolerance des positions.
+// positionDuVehicule rend le lieu du vehicule `slot` a `tUS`, par l'echantillon a la tolerance, sinon
+// par ce que son record de creation dit de lui : une piece montee ne replique jamais sa position (son
+// lieu est celui du chassis qui la porte, [porteurDUnePiece]), un poste de tir fixe reste ou le film
+// le cree. Nil sur tout autre vehicule silencieux : le film ne le situe pas a cet instant.
 func (b bordDuFilm) positionDuVehicule(slot uint32, tUS uint64) (*Vec3, bool) {
+	if v, ok := b.echantillonDeVehicule(slot, tUS); ok {
+		return v, true
+	}
+	c, ok := b.creationA(slot, tUS)
+	if !ok {
+		return nil, false
+	}
+	chassis, lu := gwPadsIdentity(c)
+	if !lu {
+		return nil, false
+	}
+	if spec, piece := vehicleTurretByChassis[chassis]; piece {
+		return b.positionDuPorteur(c, spec, tUS)
+	}
+	if vehicleFamilyOf(chassis) == familleTourelleFixe {
+		return &Vec3{X: float64(c.X), Y: float64(c.Y), Z: float64(c.Z)}, true
+	}
+	return nil, false
+}
+
+// echantillonDeVehicule rend la position du vehicule `slot` a `tUS`, a la tolerance des positions.
+func (b bordDuFilm) echantillonDeVehicule(slot uint32, tUS uint64) (*Vec3, bool) {
 	p, d := b.vehicules[slot].at(tUS)
 	if d > killPosToleranceUS || !p.HasWorld {
 		return nil, false
 	}
 	return &Vec3{X: float64(p.X), Y: float64(p.Y), Z: float64(p.Z)}, true
+}
+
+// creationA rend le record de creation du vehicule `slot` qui tient le slot a `tUS` : le dernier date
+// au plus tard a cet instant.
+func (b bordDuFilm) creationA(slot uint32, tUS uint64) (types.EquipmentCreation, bool) {
+	var trouve types.EquipmentCreation
+	lu := false
+	for _, c := range b.creations[slot] {
+		if c.TimestampUS > tUS {
+			break
+		}
+		trouve, lu = c, true
+	}
+	return trouve, lu
+}
+
+// creationsVehiculesParSlot indexe les records de creation des vehicules par slot, tries par instant.
+func creationsVehiculesParSlot(creations []types.EquipmentCreation) map[uint32][]types.EquipmentCreation {
+	if len(creations) == 0 {
+		return nil
+	}
+	out := map[uint32][]types.EquipmentCreation{}
+	for _, c := range creations {
+		out[c.Slot] = append(out[c.Slot], c)
+	}
+	for s := range out {
+		slices.SortStableFunc(out[s], func(x, y types.EquipmentCreation) int {
+			return cmp.Compare(x.TimestampUS, y.TimestampUS)
+		})
+	}
+	return out
+}
+
+// positionDuPorteur rend le lieu du chassis qui porte la piece `piece` a `tUS`, par son echantillon a la
+// tolerance : le voisin de slot n est qu un repli, nomme, compte a chaque lieu qu il decide.
+func (b bordDuFilm) positionDuPorteur(piece types.EquipmentCreation, spec vehicleTurret, tUS uint64) (*Vec3, bool) {
+	creationA := func(slot uint32) (types.EquipmentCreation, bool) { return b.creationA(slot, tUS) }
+	porteur, ok := porteurDUnePiece(creationA, piece, spec)
+	if !ok {
+		return nil, false
+	}
+	v, ok := b.echantillonDeVehicule(porteur.Slot, tUS)
+	if !ok {
+		return nil, false
+	}
+	b.fb.Declenche(fallback.NomTourellePorteurVoisinDeSlot)
+	return v, true
 }

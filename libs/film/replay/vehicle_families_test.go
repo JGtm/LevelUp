@@ -134,3 +134,16 @@ func TestVehicleFamilyTourelleFixeDeTakamanohara(t *testing.T) {
 		t.Error("la tourelle fixe doit porter un occupant")
 	}
 }
+
+// TestVehicleFamilyTourelleFixeGenerique — le chassis `b857fb95` (schema 108) : le chassis de
+// tourelle « generique » que `labels.tsv` classe `turret`, au meme profil que `3a8060e2` (455 vies
+// du parc, presque toutes sans echantillon de position, renaissant aux memes points). Meme famille
+// nommee, donc meme poste de tir occupable, et plus de marqueur neutre.
+func TestVehicleFamilyTourelleFixeGenerique(t *testing.T) {
+	if got := vehicleFamilyOf(0xb857fb95); got != familleTourelleFixe {
+		t.Fatalf("vehicleFamilyOf(0xb857fb95) = %q, attendu %q", got, familleTourelleFixe)
+	}
+	if vehicleFamilyOf(0xb857fb95) != vehicleFamilyOf(0x3a8060e2) {
+		t.Error("les deux chassis de tourelle fixe doivent partager la meme famille")
+	}
+}

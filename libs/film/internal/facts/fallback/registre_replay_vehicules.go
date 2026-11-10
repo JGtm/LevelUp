@@ -30,7 +30,8 @@ var registreReplayVehicules = []Repli{
 			"la table des pieces montees attend pour elle, dont la fenetre d affichage recouvre la " +
 			"sienne, NEE AVEC elle (meme instant a 1 frame, meme point a 1 m quand les deux naissances " +
 			"sont lues ; un voisin refuse est compte `turretCarrierBirthMismatch`) ; aucune candidate = " +
-			"tourelle sans porteur, publiee et non dessinee",
+			"tourelle sans porteur, publiee et non dessinee. Meme regle a la passe des positions du " +
+			"collecteur (lieu d un occupant de piece sans echantillon), sur les records de creation",
 		// LA RELATION EXISTE DANS LE JEU (la tourelle est attachee a son chassis) ; la sonde P1-S2
 		// du 2026-09-23 n a trouve aucun lien lisible (`object-parent-state` ne rattache aucun
 		// objet au vehicule sur les deux films sondes). C est une DETTE de lecteur, pas un
@@ -40,6 +41,9 @@ var registreReplayVehicules = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "vehicle_turrets.go",
 			Ancre:   "fb.Declenche(fallback.NomTourellePorteurVoisinDeSlot)",
+		}, {
+			Fichier: pkgReplay + "killpos_a_l_instant.go",
+			Ancre:   "b.fb.Declenche(fallback.NomTourellePorteurVoisinDeSlot)",
 		}},
 		DatePose:     dateRetoursRejeu,
 		CibleRetrait: "la lecture du parent d une piece montee dans le film ; a defaut, " + retraitRegle4,

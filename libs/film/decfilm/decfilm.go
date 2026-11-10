@@ -52,7 +52,8 @@
 // Elle n a AUCUNE logique : pas de valeur par defaut, pas de garde, pas de log, pas de
 // conversion. Un renvoi qui se mettrait a decider serait du decodage pose hors des couches —
 // exactement ce que l ADR ferme. Le ratchet des couches la classe `horsCoucheFilm` : elle ne
-// lit aucun octet et ne publie rien.
+// lit aucun octet et ne publie rien. UNE EXCEPTION, nommee : `bots_sans_kill_feed.go` agrege les
+// paquets BOT_METADATA que la grammaire a deja lus (cf. l en-tete de ce fichier).
 //
 // `film/replay` N EST PAS ICI, et c est une decision ecrite : c est la couche de PUBLICATION,
 // ses symboles sont cites hors du decodeur (`sync/replayartifacts`, `sync/killcollector`,
@@ -267,6 +268,13 @@ func Decode(ctx context.Context, name string, film *source.Film, opts *killsourc
 }
 
 var ErrNoKillFeed = killsource.ErrNoKillFeed
+
+// ResultatDeBotsSansKillFeed rend, pour un film que [Decode] refuse par [ErrNoKillFeed], le resultat
+// minimal que BOT_METADATA permet : le roster de bots, sans mort (cf. `bots_sans_kill_feed.go`). Nil
+// quand le film ne declare aucun bot.
+func ResultatDeBotsSansKillFeed(film *source.Film) *killsource.Result {
+	return resultatDeBotsSansKillFeed(film)
+}
 
 // ErrCarteAbsente : film MIS DE COTE faute de carte (2026-09-27, « pas de repli ») — le collecteur
 // le classe comme la cle de film inconnue, jamais comme une panne.

@@ -40,6 +40,7 @@ package replay
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
@@ -145,20 +146,47 @@ func scanBandeVide(kf grammar.WorldObjectKeyframes) VehicleScan {
 
 // nuageDesVehicules lit le nuage de positions `ti=40` sur la bande `band` des images-cles, aux
 // reglages du calque ([vehicleScanOptions]). C'est LA lecture des positions de vehicule : la cuisson
-// et la passe des positions du collecteur ([PositionsDesVehicules]) la partagent.
+// et la passe des positions du collecteur ([LireLesVehicules]) la partagent.
 func nuageDesVehicules(fc *grammar.FilmContext, band map[uint32]bool, wr *profile.Vec3Range,
 ) ([]grammar.BipedPosition, error) {
 	return grammar.ScanBipedPositionsForBand(fc, grammar.NewSlotBand(band), vehicleScanOptions(fc, wr))
 }
 
-// PositionsDesVehicules rend le nuage de positions des vehicules du film, lu comme la cuisson le lit
-// (bande `ti=40` des images-cles, [nuageDesVehicules]) : nil sans bande. HORS LIGNE.
-func PositionsDesVehicules(fc *grammar.FilmContext, wr *profile.Vec3Range) ([]grammar.BipedPosition, error) {
+// VehiculesDuFilm porte les deux lectures `ti=40` que la passe des positions du collecteur consulte.
+type VehiculesDuFilm struct {
+	// Positions : le nuage de positions (bande `ti=40` des images-cles, [nuageDesVehicules]).
+	Positions []grammar.BipedPosition
+	// Creations : les records de creation (position de naissance et mot d identite du chassis).
+	Creations []types.EquipmentCreation
+}
+
+// LireLesVehicules rend le nuage de positions et les records de creation des vehicules du film, lus
+// comme la cuisson les lit : vide sans bande. Une erreur de lecture rend ce qui a pu etre lu et la
+// cause. HORS LIGNE.
+//
+// LES LARGEURS MPP SONT CELLES QUE LA GRAMMAIRE RESOUT POUR CE FILM ([gwWidthsForFilm]) : sans elles le
+// mot d identite se lirait aux largeurs par defaut et aucun chassis ne se resoudrait. Il n y a pas de
+// calibration ici (la passe du collecteur ne balaie pas les poses d equipement) : un film dont la
+// grammaire ne tranche pas garde l invariant, repli `repli_largeurs_mpp_par_defaut`, compte au rapport
+// du contexte.
+func LireLesVehicules(fc *grammar.FilmContext, wr *profile.Vec3Range) (VehiculesDuFilm, error) {
+	var out VehiculesDuFilm
 	kf := grammar.ScanWorldObjectKeyframes(fc, grammar.VehicleTypeIndex)
 	if len(kf.Band) == 0 {
-		return nil, nil
+		return out, nil
 	}
-	return nuageDesVehicules(fc, kf.Band, wr)
+	pos, err := nuageDesVehicules(fc, kf.Band, wr)
+	if err != nil {
+		return out, fmt.Errorf("nuage des vehicules : %w", err)
+	}
+	out.Positions = pos
+	defer gwInstallMPPWidths(fc, gwWidthsForFilm(fc, profile.MPPWidths{}))()
+	cre, _, err := grammar.ScanVehicleCreationsForBand(fc, wr, kf.Band)
+	if err != nil {
+		return out, fmt.Errorf("creations des vehicules : %w", err)
+	}
+	out.Creations = cre
+	return out, nil
 }
 
 // mortsDeVehicule rend les MORTS ECRITES des vehicules et les lectures d occupation que la marche

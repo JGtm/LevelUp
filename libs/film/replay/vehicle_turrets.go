@@ -37,6 +37,7 @@ import (
 	"strconv"
 
 	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/LevelUp/libs/film/types"
 )
 
 // VehiclePartTurret : la seule valeur de `VehicleTrack.Part`.
@@ -93,6 +94,9 @@ const vehicleTurretSlotReach = 2
 const (
 	vehicleTurretBirthFrames = 1
 	vehicleTurretBirthMeters = 1.0
+	// vehicleTurretBirthUS : la meme tolerance que `vehicleTurretBirthFrames` sur l'horloge des records
+	// (une frame de grille d'ecart peut valoir deux pas : 200 ms ; memes bornes, memes temoins).
+	vehicleTurretBirthUS = int64(vehicleTurretBirthFrames+1) * DefaultFrameIntervalMS * 1000
 )
 
 // vehicleTurretOf rend la piece montee d une vie, ou faux si la vie n en est pas une.
@@ -221,8 +225,46 @@ func vehicleBornTogether(a, b VehicleTrack) bool {
 	if a.Spawn == nil || b.Spawn == nil {
 		return true
 	}
-	dx, dy := float64(a.Spawn.X-b.Spawn.X), float64(a.Spawn.Y-b.Spawn.Y)
+	return memePointDeNaissance(float64(a.Spawn.X-b.Spawn.X), float64(a.Spawn.Y-b.Spawn.Y))
+}
+
+// memePointDeNaissance dit si deux naissances sont au meme point, en plan, a `vehicleTurretBirthMeters`
+// pres. LA seule ecriture de cette tolerance pour le document ([vehicleBornTogether]) et pour la lecture
+// du porteur a l'instant ([porteurDUnePiece]).
+func memePointDeNaissance(dx, dy float64) bool {
 	return dx*dx+dy*dy <= vehicleTurretBirthMeters*vehicleTurretBirthMeters
+}
+
+// porteurDUnePiece trouve, parmi les records de creation qui tiennent les slots voisins, le chassis qui
+// porte la piece montee `piece` : meme regle que [carrierOfTurret] sur les records de la passe des
+// positions (qui n'a pas de document) — slot +1 puis +2 ([vehicleTurretSlotReach]), famille attendue,
+// jamais une autre piece, nee avec elle. `creationA` rend le record qui tient un slot a l'instant demande.
+func porteurDUnePiece(creationA func(uint32) (types.EquipmentCreation, bool), piece types.EquipmentCreation,
+	spec vehicleTurret,
+) (types.EquipmentCreation, bool) {
+	for d := uint32(1); d <= vehicleTurretSlotReach; d++ {
+		cand, ok := creationA(piece.Slot + d)
+		if !ok {
+			continue
+		}
+		chassis, lu := gwPadsIdentity(cand)
+		_, autrePiece := vehicleTurretByChassis[chassis]
+		if !lu || autrePiece || vehicleFamilyOf(chassis) != spec.carrier || !creationsNeesEnsemble(piece, cand) {
+			continue
+		}
+		return cand, true
+	}
+	return types.EquipmentCreation{}, false
+}
+
+// creationsNeesEnsemble dit si deux records de creation sont nes ensemble : a [vehicleTurretBirthUS] et au
+// meme point.
+func creationsNeesEnsemble(a, b types.EquipmentCreation) bool {
+	dt := int64(a.TimestampUS) - int64(b.TimestampUS) //nolint:gosec // horloge du film, bien sous 2^63
+	if dt < -vehicleTurretBirthUS || dt > vehicleTurretBirthUS {
+		return false
+	}
+	return memePointDeNaissance(float64(a.X-b.X), float64(a.Y-b.Y))
 }
 
 // vehicleWindowsOverlap dit si deux vies coexistent a au moins une frame d affichage.

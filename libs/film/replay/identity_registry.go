@@ -180,6 +180,8 @@ type IdentityRegistry struct {
 	// fb est le compteur de replis de la cuisson (nil-safe) : le nommage final par occupation
 	// (unnamed_lives.go) est un repli, et il se compte la ou il nomme.
 	fb *fallback.Compteur
+	// siegesPartages : les sieges que la lecture du lieu lit par corps (identity_registry_corps.go).
+	siegesPartages map[uint32]bool
 }
 
 // BuildIdentityRegistry construit le registre d'identite du film. PURE : aucune I/O.
@@ -220,6 +222,7 @@ func BuildIdentityRegistry(ctx context.Context, in IdentityInput) IdentityRegist
 	reg.resolveByScoreboard(ctx, in)
 	reg.resolveByRosterElimination(ctx, in)
 	reg.resolveByTemporalExclusion(ctx, in)
+	reg.siegesPartages = siegesPartagesDe(reg)
 	reg.Section = buildIdentitySection(reg, in)
 	return reg
 }
@@ -321,6 +324,16 @@ func (r IdentityRegistry) XUIDNumAt(slot uint32, tUS uint64) uint64 {
 // xuidNumAt sert les deux accesseurs, et COMPTE le repli du premier occupant du siege quand c est
 // lui qui nomme (lot J8.7) : une demande qu aucune vie couvrante ne tranche.
 func (r IdentityRegistry) xuidNumAt(slot uint32, tUS uint64) uint64 {
+	x, parLePremierOccupant := r.joueurA(slot, tUS)
+	if parLePremierOccupant {
+		r.fb.Declenche(fallback.NomIdentitePremierOccupantDuSiege)
+	}
+	return x
+}
+
+// joueurA est la reponse de [IdentityRegistry.XUIDNumAt] sans compter le repli : le second retour dit
+// qu'elle vient du premier occupant du siege (ou du corps), pas d'une vie qui couvre l'instant.
+func (r IdentityRegistry) joueurA(slot uint32, tUS uint64) (uint64, bool) {
 	x, parLePremierOccupant := r.own.xuidNumAt(slot, tUS)
 	if x == 0 && r.own.SlotRecycle[slot] && !r.own.SlotAmbiguous[slot] {
 		// SIEGE RECYCLE (lot R2) : le corps qui tient le slot a l instant, par ses vies nommees. C est
@@ -328,11 +341,24 @@ func (r IdentityRegistry) xuidNumAt(slot uint32, tUS uint64) uint64 {
 		x = r.xuidDuCorpsA(slot, int64(tUS)) //nolint:gosec // horloge du film, bien sous 2^63
 		parLePremierOccupant = x != 0
 	}
+	return x, parLePremierOccupant
+}
+
+// xuidDuLieuA est [IdentityRegistry.XUIDNumAt] pour la LECTURE DU LIEU d'un joueur : sur un siege
+// partage ([siegesPartagesDe]), le joueur du corps qui tient le siege a l'instant (ses vies nommees,
+// repli compte comme celui du premier occupant), jamais le premier occupant du siege ; ailleurs la meme
+// reponse que `XUIDNumAt`.
+func (r IdentityRegistry) xuidDuLieuA(slot uint32, tUS uint64) uint64 {
+	x, parLePremierOccupant := r.joueurDuLieuA(slot, tUS)
 	if parLePremierOccupant {
 		r.fb.Declenche(fallback.NomIdentitePremierOccupantDuSiege)
 	}
 	return x
 }
+
+// collisionDeSiege dit que deux joueurs sont nommes dans un corps indiscernable de ce siege
+// (`SlotAmbiguous`) : aucun corps n'y est etabli pour departager un instant.
+func (r IdentityRegistry) collisionDeSiege(slot uint32) bool { return r.own.SlotAmbiguous[slot] }
 
 // DeathOffsetMS rend le calage du fil des morts sur l'horloge du film
 // (`horlogeFilm = horlogeMatch + DeathOffsetMS`).

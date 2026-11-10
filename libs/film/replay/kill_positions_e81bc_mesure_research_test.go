@@ -62,7 +62,7 @@ func (b *e81bcBilan) mesurer(c *contexteFilm, kills []tsvKill, base map[cleKP]li
 	}
 	e := EntreeDesPositions{Positions: c.g.Positions, Registre: c.reg, Kills: refs, Morts: morts, OrigineUS: c.origine}
 	posAD, _ := BuildKillPositions(e)
-	e.Bord = LectureDuBord{Lue: true, Occupation: c.g.Vehicles.Occupancy, Vehicules: c.g.Vehicles.Positions}
+	e.Bord = LectureDuBord{Lue: true, Occupation: c.g.Vehicles.Occupancy, Vehicules: c.g.Vehicles.Positions, Creations: c.g.Vehicles.Creations}
 	posBC, rep := BuildKillPositions(e)
 	b.rep.Held += rep.Held
 	b.rep.Seated += rep.Seated
@@ -79,7 +79,7 @@ func (b *e81bcBilan) mesurer(c *contexteFilm, kills []tsvKill, base map[cleKP]li
 	}
 	iad, ibc := indexer(posAD), indexer(posBC)
 	lecture := lectureALInstant{tracks: c.pistes, bord: lireLeBord(e.Bord, c.g.Positions, nil),
-		morts: nouvellesMortsDuTueur(morts, c.reg), offsetUS: c.origine}
+		morts: nouvellesMortsDuTueur(morts, c.reg), offsetUS: c.origine, registre: c.reg}
 	for _, r := range refs {
 		b.kills++
 		lb := base[cleKP{short, r.KillerXUID, r.TimeMS}]

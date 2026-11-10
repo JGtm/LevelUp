@@ -198,7 +198,7 @@ func ContextesDesMorts(e EntreeContexteMorts) []ContexteMort {
 	mortsPar := mortsParVictime(e.Journal)
 	pistes := indexBySlot(e.Positions)
 	lecture := lectureALInstant{tracks: pistes, bord: lireLeBord(e.Bord, e.Positions, e.Fallbacks),
-		morts: nouvellesMortsDuTueur(e.Journal, e.Registre), offsetUS: e.OrigineDuFilmUS}
+		morts: nouvellesMortsDuTueur(e.Journal, e.Registre), offsetUS: e.OrigineDuFilmUS, registre: e.Registre}
 	sieges := siegesTries(pistes)
 
 	out := make([]ContexteMort, 0, len(e.Journal))

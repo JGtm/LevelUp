@@ -1080,6 +1080,11 @@ of three historical packet walkers whose originals no longer exist, so it only c
 itself. Its measurement stays frozen in `.ai/archive/V7.5/MESURES_CUISSON_PERF.md` §2 and is replayed in CI
 by the mini-reel test of `internal/analysis/filmsource`.
 
+The harness is **hermetic for the weapon-pad catalogue**: the build it cooks reads the versioned
+catalogue plus the fixture `cmd/replay-equiv/testdata/map_weapon_pads_overlay.json` (the one map the
+references were frozen with), never the unversioned overlay a workstation's runtime fills in, so
+the verdict no longer depends on the machine. A missing fixture is an error, not a silent fallback.
+
 ```bash
 levelup replay-parc-vies --faits <facts dir> --cache <repo>/data/cache --sortie <work root> \
   [--ids <file>] [--garder-documents] [--title slug]

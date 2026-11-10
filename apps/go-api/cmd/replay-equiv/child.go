@@ -139,6 +139,13 @@ func digestsDuFilm(ctx context.Context, o options, archiveRoot string) ([]string
 	if err != nil {
 		return nil, fmt.Errorf("preparation du builder (titre %s) : %w", o.titleSlug, err)
 	}
+	// LE CATALOGUE DES SOCLES EST CELUI DU HARNAIS, jamais l'overlay du poste (cf.
+	// catalogue_hermetique.go).
+	socles, err := catalogueDesSocles(ctx, o.repoRoot, o.titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	b.WithPadsCatalog(socles)
 	var col collecteur
 	b.WithObserver(col.etape)
 	// LE DECODAGE EST FORCE PARTOUT SAUF DANS LA PASSE `faits`, ET C EST UNE CORRECTION MESUREE

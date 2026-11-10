@@ -3718,3 +3718,44 @@ package replay
 //
 //	LE PARC         un artefact 106 : verdict `redecoder` (la revision de grammaire a change, et avec elle le
 //	                numero des faits : les faits cuits avant se refusent).
+
+// v108 (2026-11-09, tourelle fixe generique ; slots sans creation). Aucun champ neuf : le CONTENU change.
+//
+// PREMIER VOLET — le chassis `b857fb95`. 455 vies sur 117 films du parc portaient ce chassis, que la table
+// ne nommait pas : le client dessinait un marqueur neutre (`repli_chassis_vehicule_marqueur_neutre`). Il entre
+// en table sous la famille `tourelle_fixe` (vehicle_families.go) : `labels.tsv` le classe `turret` avec les
+// armes `sb_010_tur_un_{gausscannon,machinegun,rocketturret}`, et son profil est celui de `3a8060e2` (453 vies
+// sans echantillon de position, 238 nees a t=0, renaissance aux memes points fixes, 265 avec un occupant).
+//
+//	`vehicles[].family`   `tourelle_fixe` au lieu de la chaine vide pour ces vies ; le poste de tir est
+//	                 occupable, comme celui de Takamanohara. `coverage.vehicles.familyResolved` gagne ces vies, `familyUnknown`
+//	                 et `unknownChassis` les perdent.
+//
+// SECOND VOLET — un slot que aucun record de creation n ouvre n est pas un corps (pistes_sans_creation.go).
+// `7aa132d1` publiait deux pistes sans identite (slots 36 et 292, quatre echantillons chacune) alors que ses 379
+// creations tombent toutes dans les slots 512..767. Sur un film COMPLET (le morceau des temps forts est lu) dont
+// des records de creation sont lus, les positions d un slot sans aucun record sortent AVANT le registre
+// d identite quand toutes les vies de ce slot restent sans nom apres toutes ses lectures et deductions ; le
+// registre est alors relance sans elles. Un slot qu une vie nommee touche reste entier ; un film sans record
+// de creation lu (`inputs_000d5950` du corpus) n est pas touche.
+//
+//	`coverage.fallbacks[]`   `repli_position_de_bipede_sans_creation_ecartee` : les positions ecartees, comptees
+//	                 en positions brutes ; une ligne de journal en AVERTISSEMENT les dit.
+//	`coverage.tracks.published`, `coverage.bridge.unnamedLives` et `coverage.identity` suivent : le document ne
+//	                 porte plus ni la piste ni la vie sans identite que le registre ne voyait plus.
+//
+// TROISIEME VOLET — la table du film a siege vacant INTERCALE (identity_registry_vacant_intercale.go). Le registre
+// la refusait toujours (`vacant_intercale`) ; il l emploie quand les records de creation des bipedes confirment le
+// rang absolu : chaque siege a un corps a son rang, aucun corps au rang d un vacant intercale. 13 des 15 films du
+// parc a vacant intercale passent ; les 2 autres (un siege sans corps a son rang) gardent le refus.
+//
+//	`coverage.identity.filmTable`   `lu` vrai, `refus` vide, les sieges en `direct` ; les vies que la table nomme
+//	                 quittent `index_hors_table` et `coverage.bridge.unnamedLives` baisse d autant.
+//
+// CE QUI MONTE    `SchemaVersion` 107 -> 108, et avec lui `publication-108` (la revision de la couche de
+// AVEC ELLE       publication). Aucune revision de grammaire, de faits ni d isolation ne bouge, et
+//                 `SchemaDesFaits` garde sa valeur : la completude du film se lit sur le verdict du fil des morts,
+//                 que les faits portent deja. `killsource.Rev` ne monte pas non plus.
+//
+// LE PARC         un artefact 107 : verdict `a republier` (la couche de publication a change, les faits cuits
+//                 restent frais). Aucun redecodage de film.

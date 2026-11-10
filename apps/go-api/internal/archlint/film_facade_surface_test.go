@@ -156,7 +156,14 @@ const exigenceDeJustificationDatee = "UNE HAUSSE EXIGE UNE JUSTIFICATION DATEE D
 // `ErrUnknownBuild` et `ErrUnknownFormat` — le contrat d erreurs typees de l ADR 0034 D-4 rendu nommable
 // (`errors.Is`) par un consommateur hors du module, qui ne peut pas importer la couche `profile` ; decision
 // du pilote du 2026-11-08.
-const plafondSurfaceFacade = 181 // 2026-11-08 — item 4.6b : 179 + 2 (ErrUnknownBuild, ErrUnknownFormat) ; cf. l historique ci-dessus
+// 182 LE 2026-11-10 (plan v8.1.2, item 4.3, base `85b5513c77` re-mesuree : 181) : UN renvoi neuf,
+// `ResultatDeBotsSansKillFeed`. Un match sans aucun frag n a pas de kill-feed, `Decode` rend `ErrNoKillFeed`
+// avant son roster, et `replaybuild` n avait alors aucun bot a donner au registre d identite : les six vies
+// des trois bots de `5da6fd30` restaient sans nom alors que BOT_METADATA les declare. La lecture ne peut
+// pas se poser dans `killsource` (toute modification de la couche monte `killsource.Rev` et perime les faits
+// du parc entier, decision du 2026-11-09) ; elle vit hors couche, dans `decfilm/bots_sans_kill_feed.go`, et
+// ce renvoi est le seul symbole qu un appelant hors du module en cite.
+const plafondSurfaceFacade = 182 // 2026-11-10 — item 4.3 : 181 + 1 (ResultatDeBotsSansKillFeed) ; cf. l historique ci-dessus
 
 // plafondSurfaceReplay — identifiants `replay.<Symbole>` DISTINCTS cites hors de `film/`.
 //
@@ -401,9 +408,10 @@ const plafondSurfaceFacade = 181 // 2026-11-08 — item 4.6b : 179 + 2 (ErrUnkno
 //	                                           entrees ne tiennent plus en parametres. Aucun retrait.
 //	312  backlog E8.1 (b) (c) (2026-10-18)      base `9d8879471` re-mesuree a 310. +2 :
 //	                                           `replay.LectureDuBord` (occupation des vehicules et leur
-//	                                           nuage, decision D-16) et `replay.PositionsDesVehicules`
-//	                                           (le nuage `ti=40` lu comme la cuisson le lit), que la passe
-//	                                           des positions du collecteur fournit. Aucun retrait.
+//	                                           nuage, decision D-16) et `replay.LireLesVehicules` (le nuage
+//	                                           `ti=40` lu comme la cuisson le lit ; PositionsDesVehicules
+//	                                           jusqu au 2026-11-10, qui ajoute les records de creation), que
+//	                                           la passe des positions du collecteur fournit. Aucun retrait.
 //	314  decouplage D2, item 2.8 (2026-10-29)  base `86b7924a1` re-mesuree a 312. +2 :
 //	                                           `replay.EquipmentOutcomeFamilies` et `replay.UsageFamilySpawnsPiece`,
 //	                                           la copie jumelle du perimetre du bilan d equipement que le
@@ -446,6 +454,10 @@ var plafondsParFamilleFacade = map[string]int{
 	"weaponv3":   4,
 	"positions":  2,
 	"signaux":    1, // 2026-10-03 — lot 2.6 de la RI sur 129512162 : +1 (CaptureBurstTimes, lu par la grammaire ; venu de la famille objectives, total inchange)
+	// 2026-11-10 — item 4.3 : +1, `ResultatDeBotsSansKillFeed`, le seul renvoi de la facade vers du code
+	// du paquet lui-meme (`bots_sans_kill_feed.go`) et non vers une couche : il n a donc pas de paquet de
+	// destination, d ou cette famille, qui ne doit jamais depasser un symbole.
+	"(aucune)": 1,
 }
 
 // TestSurfaceDeLaFacadeDuDecodeur : (a) — le compte par AST, et sa ventilation par famille.

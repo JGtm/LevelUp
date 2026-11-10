@@ -108,7 +108,7 @@ func TestKillPositions_TueurPosthumeSansLieuResteNil(t *testing.T) {
 // fonction de l'entame ne recoit pas les morts du journal et n'en compte aucune.
 func TestKillOpenings_IgnorentLaRegleDuTueurPosthume(t *testing.T) {
 	pos, kills, _ := posthumeScenario()
-	_, rep := BuildKillOpenings(pos, regPlat(map[uint32]uint64{1: 111, 2: 222}), kills, 0)
+	_, rep := BuildKillOpenings(EntreeDesPositions{Positions: pos, Registre: regPlat(map[uint32]uint64{1: 111, 2: 222}), Kills: kills})
 	if rep.Posthumous != 0 || rep.PosthumousUnplaced != 0 {
 		t.Errorf("rapport d entame %+v : aucun posthume attendu", rep)
 	}

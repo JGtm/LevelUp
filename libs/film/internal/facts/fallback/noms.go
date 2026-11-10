@@ -118,6 +118,8 @@ const (
 	// NomPositionHorsEmpriseEcartee : `replay/positions_porte.go` (points de trace) et
 	// `replay/positions_porte_vehicules.go` (echantillons et naissances de vehicule).
 	NomPositionHorsEmpriseEcartee Nom = "repli_position_hors_emprise_ecartee"
+	// NomPositionDeBipedeSansCreationEcartee : `replay/pistes_sans_creation.go`, `construireLeRegistre`.
+	NomPositionDeBipedeSansCreationEcartee Nom = "repli_position_de_bipede_sans_creation_ecartee"
 	// NomEchantillonVehiculeAuTraversDUnSilenceEcarte : `replay/positions_porte_vehicules.go`.
 	NomEchantillonVehiculeAuTraversDUnSilenceEcarte Nom = "repli_echantillon_vehicule_au_travers_d_un_silence_ecarte"
 	// NomSocleHorsEmpriseAuLieuDesPrises : `replay/ground_weapon_pads_releve.go` ; compte par
