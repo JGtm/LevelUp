@@ -13,10 +13,9 @@ package main
 // POURQUOI UNE TABLE EXPLICITE. L'ordre d'un atlas n'est pas celui qu'on imagine (le
 // propulseur est à l'index 0 de l'atlas des capacités, la fragmentation à l'index 9 de celui
 // des équipements) : chaque ligne a été fixée en comparant le glyphe décodé à la vignette
-// qu'elle remplace, jamais d'après un rang supposé. Dynamo et Pointes viennent de l'atlas de
-// grenades (index 3 et 2) : le glyphe de l'atlas des équipements (index 11 et 12) est un autre
-// dessin, qui ne ressemble pas à ces deux grenades. Frag et Plasma restent sur l'atlas des
-// équipements, validés à l'écran.
+// qu'elle remplace, jamais d'après un rang supposé. Les quatre grenades viennent de l'atlas
+// de grenades (frag 0, plasma 1, pointes 2, dynamo 3) : les glyphes de l'atlas des équipements
+// (index 9 à 12) sont un autre dessin, plein et marqué de blocs dégradés.
 //
 // CE QUI EST EXIGÉ. L'appariement de chaque image doit être confirmé par le contrôle
 // arithmétique (`align_verified`) : une image déduite du seul rang n'est pas écrite.
@@ -52,10 +51,10 @@ var hudIcons = []hudIcon{
 	{"hud/ActiveCamouflage.png", abilityAtlasTag, 5},
 	{"hud/DropWall.png", abilityAtlasTag, 2},
 	{"hud/Dynamo.png", grenadeAtlasTag, 3},
-	{"hud/Frag.png", equipmentAtlasTag, 9},
+	{"hud/Frag.png", grenadeAtlasTag, 0},
 	{"hud/Grappleshot.png", abilityAtlasTag, 1},
 	{"hud/Overshield.png", abilityAtlasTag, 6},
-	{"hud/Plasma.png", equipmentAtlasTag, 10},
+	{"hud/Plasma.png", grenadeAtlasTag, 1},
 	{"hud/QuantumTranslocator.png", abilityAtlasTag, 15},
 	{"hud/RepairField.png", abilityAtlasTag, 17},
 	{"hud/Repulsor.png", abilityAtlasTag, 4},
