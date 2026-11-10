@@ -13,10 +13,6 @@ import { ReplayIconCount } from './ReplayIconCount'
 
 type ReplayText = (typeof REPLAY_TEXT)[ReplayLocale]
 
-// Le chiffre déborde de la vignette dans l'intervalle entre deux puces (4 px) : la petite vignette
-// reste lisible, et la boîte de grenades (6 px de marge pour trois types) ne le coupe pas.
-const COUNT_OUTSET_PX = 3
-
 /**
  * GrenadeChip — UN type de grenade porté : sa vignette, le stock en surimpression sur son coin
  * bas droit (`ReplayIconCount`, le rendu du compte de charges de la capacité), et l'encre
@@ -64,7 +60,7 @@ export function GrenadeChip({
             width={iconPx}
             height={iconPx}
           />
-          <ReplayIconCount count={carried.count} outsetPx={COUNT_OUTSET_PX} />
+          <ReplayIconCount count={carried.count} />
         </span>
       ) : (
         <>

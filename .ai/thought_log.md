@@ -120594,3 +120594,9 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Résultats observés.** Fusionnés dans `release/v8.1.2` : interface, statistiques, licences. Rejeu : 0 vie nommée perdue sur 30 témoins, 52 morts sans lieu localisées sur le parc, entame de 1 383 à 493 côtés sans position, vies de `5da6fd30` et `72c48587` nommées, 13 films à siège vacant intercalé lus par leur table. LUSR : 35 matchs sans note avant, 0 après (rejeu en mémoire). `halo-api` pseudonymisé.
 
 **Conclusion / prochaine étape.** En attente du user : planche des icônes (G-B), tourelle (G-A), bouton Parcourir (G-C) et contrôle à l'écran (5.9). Puis 5.4, puis bascule sur les modules publiés (étape 6).
+
+## [2026-11-10] Rejeu : badge de lancer de grenade sans cadre, compteur d'équipement décalé — Complété
+
+- **Décision** : le badge posé sur la cellule de la main pendant un lancer prend le rendu du type de grenade équipé (encre `warning` sur la vignette, ni liseré ni fond teinté ; fond `card` opaque pour masquer l'arme dessous). Le débord de 3 px du chiffre vers la droite devient le rendu unique de `ReplayIconCount` : grenades et charges d'équipement se décalent pareil.
+- **Résultats** : tsc et eslint propres, `vitest src/features/match-replay` vert (3484 tests).
+- **Suite** : contrôle visuel par l'utilisateur, puis commit sur `fix/rejeu-grenade-hud` (depuis `release/v8.1.2`).

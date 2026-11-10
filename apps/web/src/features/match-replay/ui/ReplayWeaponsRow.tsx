@@ -218,8 +218,9 @@ function EmptyWeaponCell({ width }: { width: number }) {
 }
 
 /**
- * GrenadeThrowBadge — le `.gic` du POC : la vignette du TYPE lancé, allumée à l'accent,
- * avec un POP d'apparition, posée SUR la cellule de la main. La clé porte la frame du
+ * GrenadeThrowBadge — le `.gic` du POC : la vignette du TYPE lancé, à l'encre `warning` du type
+ * équipé (même rendu que `GrenadeChip` : ni liseré ni fond teinté), avec un POP d'apparition,
+ * posée SUR la cellule de la main, dont le fond `card` opaque masque l'arme. La clé porte la frame du
  * lancer : React garde l'identité du nœud pendant la rémanence, l'animation ne repart pas
  * à chaque image publiée.
  */
@@ -247,10 +248,7 @@ function GrenadeThrowBadge({
     <span
       key={`gic-${throwFrame}`}
       className="replay-gpop absolute inset-0 z-10 inline-flex items-center justify-center rounded-sm"
-      style={{
-        outline: `1px solid ${tokenCssVar('warning')}`,
-        background: `color-mix(in srgb, ${tokenCssVar('warning')} 13%, var(--card))`,
-      }}
+      style={{ color: tokenCssVar('warning'), background: 'var(--card)' }}
       title={tooltip}
     >
       {icon ? (
@@ -260,10 +258,9 @@ function GrenadeThrowBadge({
           label={tooltip}
           width={GIC_H}
           height={GIC_H}
-          className="text-foreground"
         />
       ) : (
-        <span role="img" aria-label={tooltip} className="font-semibold text-foreground">
+        <span role="img" aria-label={tooltip} className="font-semibold">
           {name}
         </span>
       )}

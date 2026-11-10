@@ -20,7 +20,7 @@
  *
  * LA CELLULE GARDE SA LARGEUR FIXE ET N'EN AJOUTE AUCUNE : la rangée n'a pas d'espace souple
  * après ses cellules fixes (elle rogne ce qui déborde), donc un compte posé à côté de la
- * vignette serait coupé. Le chiffre (`ReplayIconCount`, rendu partagé avec les grenades) se pose DANS la boîte de la
+ * vignette serait coupé. Le chiffre (`ReplayIconCount`, rendu partagé avec les grenades) se pose sur le coin de la
  * vignette (`iconAbilityPx`), hors du flux : la grille ne bouge pas d'un pixel. Il pâlit avec l'âge de SA lecture (la doctrine
  * de la rangée), indépendamment de la vignette, qui pâlit avec celle de la capacité. La tuile
  * compacte (`showInventoryMarks: false`) n'écrit rien : tout passe par l'infobulle.
