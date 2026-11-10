@@ -8,7 +8,7 @@ package replay
 // Les mesures avant / apres d'E8.1 lisent l'occupation et le nuage des vehicules dans les faits de la
 // CUISSON (`Vehicles.Occupancy`, `Vehicles.Positions`). La passe des positions du collecteur les lit
 // autrement : l'occupation du decodage killsource (`Result.Occupation`) et le nuage
-// ([PositionsDesVehicules]) sur un contexte ouvert comme le sien (carte, sans pose du decoupage).
+// ([LireLesVehicules]) sur un contexte ouvert comme le sien (carte, sans pose du decoupage).
 // UN film, decode sous `decodelock.Prendre` et le plafond memoire, rien d'ecrit : les deux lectures
 // sont comparees a celles de ses faits.
 //
@@ -77,7 +77,7 @@ func TestBordDuCollecteurEgaleLesFaits(t *testing.T) {
 		t.Fatalf("killsource : %v", err)
 	}
 	rng := entry.Range()
-	veh, err := PositionsDesVehicules(grammar.NewFilmContextForMap(film, &entry, nil), &rng)
+	veh, err := LireLesVehicules(grammar.NewFilmContextForMap(film, &entry, nil), &rng)
 	if err != nil {
 		t.Fatalf("nuage des vehicules : %v", err)
 	}
@@ -85,8 +85,8 @@ func TestBordDuCollecteurEgaleLesFaits(t *testing.T) {
 	t.Logf("occupation : killsource %d lectures, faits %d, egales=%v", len(res.Occupation), len(occFaits),
 		slices.Equal(res.Occupation, occFaits))
 	vehFaits := ff.Facts.Vehicles.Positions
-	t.Logf("nuage des vehicules : collecteur %d echantillons, faits %d, egaux=%v", len(veh), len(vehFaits),
-		memesEchantillons(veh, vehFaits))
+	t.Logf("nuage des vehicules : collecteur %d echantillons, faits %d, egaux=%v", len(veh.Positions), len(vehFaits),
+		memesEchantillons(veh.Positions, vehFaits))
 }
 
 // memesEchantillons compare deux nuages par (slot, instant, quanta, monde).

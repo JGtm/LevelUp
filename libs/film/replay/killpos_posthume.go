@@ -101,8 +101,8 @@ func (m *mortsDuTueur) placerPosthume(p *killPlacement, reg IdentityRegistry, si
 }
 
 // placerLeTueurPosthume pose le tueur d'une mort au lieu de sa propre mort quand la regle
-// s'applique, et le compte. Le SLOT du cote reste 0 : seul `BuildKillOpenings` le lit, et il ne
-// demande jamais la regle.
+// s'applique, et le compte. Le SLOT du cote reste celui de la lecture : `BuildKillOpenings` ne
+// demande jamais la regle ([reglesDuPlacement.posthume]).
 func placerLeTueurPosthume(out *killPlacement, m *mortsDuTueur, reg IdentityRegistry,
 	sieges []uint32, kp *KillPosition, offsetUS int64,
 ) {

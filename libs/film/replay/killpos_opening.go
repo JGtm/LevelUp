@@ -1,7 +1,5 @@
 package replay
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar"
-
 // killpos_opening.go — OÙ L'ENGAGEMENT A COMMENCÉ, ET POURQUOI CE N'EST QU'UN PROXY.
 //
 // # LA QUESTION
@@ -85,7 +83,8 @@ func ShiftKillRefs(kills []KillRef, deltaMS int64) []KillRef {
 // joueurs de chaque mort, UNIQUEMENT si l'instant décalé tombe dans la MÊME VIE que le kill.
 //
 // PURE, comme tout ce paquet : aucune I/O. Mêmes paramètres que `BuildKillPositions`, et pour
-// cause — elle place par la même fonction.
+// cause — elle place par la même fonction : la même lecture à l'instant (échantillon, tenue,
+// siège, selon `e.Bord`), sans la règle du tueur déjà mort, qui n'a pas de sens pour une entame.
 //
 // L'INSTANT PORTÉ EN SORTIE EST CELUI DU KILL, jamais l'instant décalé. `time_ms` est la clé de
 // jointure d'une entame vers sa mort (`kill_positions` / `kill_openings`) : un consommateur qui
@@ -94,9 +93,10 @@ func ShiftKillRefs(kills []KillRef, deltaMS int64) []KillRef {
 // LE RAPPORT EST RECOMPTÉ après le filtre : retirer un côté change la classe de la mort
 // (`Both` -> `KillerOnly`, et une mort dont les deux côtés tombent n'est pas écrite du tout,
 // elle passe en `Dropped`). `OpeningOutOfLife` compte les CÔTÉS écartés par le filtre de vie.
-func BuildKillOpenings(pos []grammar.BipedPosition, reg IdentityRegistry,
-	kills []KillRef, offsetUS int64) ([]KillPosition, KillPosReport) {
-	p := placeKillPositions(pos, reg, ShiftKillRefs(kills, -OpeningLeadMS), offsetUS, reglesDuPlacement{})
+func BuildKillOpenings(e EntreeDesPositions) ([]KillPosition, KillPosReport) {
+	p := placeKillPositions(e.Positions, e.Registre, ShiftKillRefs(e.Kills, -OpeningLeadMS), e.OrigineUS,
+		reglesDuPlacement{morts: nouvellesMortsDuTueur(e.Morts, e.Registre),
+			bord: lireLeBord(e.Bord, e.Positions, e.Fallbacks)})
 	rep := p.report
 	if len(p.positions) == 0 {
 		return nil, rep
@@ -105,7 +105,7 @@ func BuildKillOpenings(pos []grammar.BipedPosition, reg IdentityRegistry,
 	rep.Both, rep.KillerOnly, rep.VictimOnly = 0, 0, 0
 	out := make([]KillPosition, 0, len(p.positions))
 	for i, kp := range p.positions {
-		kp = keepOpeningInLife(kp, p.slots[i], lives, offsetUS, &rep)
+		kp = keepOpeningInLife(kp, p.slots[i], lives, p.lecture, &rep)
 		kp.TimeMS += OpeningLeadMS
 		if !countKillPosition(&rep, kp) {
 			continue
@@ -117,15 +117,25 @@ func BuildKillOpenings(pos []grammar.BipedPosition, reg IdentityRegistry,
 
 // keepOpeningInLife écarte les côtés dont l'entame et le kill ne partagent pas la même vie.
 // `kp.TimeMS` est encore l'instant DÉCALÉ à l'entrée : le fatal s'en déduit.
+//
+// LA MÊME VIE SE LIT SUR LE SIÈGE, SAUF POUR LE CÔTÉ POSÉ AU SIÈGE D'UN VÉHICULE : un occupant ne
+// réplique pas son bipède, ses séjours sont coupés au trou du bord, et le siège ne dit rien de sa vie
+// ([sameLife] s'y tromperait). Elle s'y lit au journal : aucune mort du joueur entre l'entame et le kill.
 func keepOpeningInLife(kp KillPosition, sides killSides, lives map[uint32][]lifeSpan,
-	offsetUS int64, rep *KillPosReport) KillPosition {
-	ouvertureUS := kp.TimeMS*1000 + offsetUS
+	l lectureALInstant, rep *KillPosReport) KillPosition {
+	ouvertureUS := kp.TimeMS*1000 + l.offsetUS
 	fatalUS := ouvertureUS + OpeningLeadMS*1000
-	if kp.Killer != nil && !sameLife(lives[sides.killer], ouvertureUS, fatalUS) {
+	garde := func(slot uint32, voie voieDuLieu, xuid uint64) bool {
+		if voie == voieSiege {
+			return ouvertureUS >= 0 && !l.mortEntre(xuid, uint64(ouvertureUS), uint64(fatalUS)) //nolint:gosec // instants positifs, verifies juste avant
+		}
+		return sameLife(lives[slot], ouvertureUS, fatalUS)
+	}
+	if kp.Killer != nil && !garde(sides.killer, sides.voieKiller, kp.KillerXUID) {
 		kp.Killer = nil
 		rep.OpeningOutOfLife++
 	}
-	if kp.Victim != nil && !sameLife(lives[sides.victim], ouvertureUS, fatalUS) {
+	if kp.Victim != nil && !garde(sides.victim, sides.voieVictim, kp.VictimXUID) {
 		kp.Victim = nil
 		rep.OpeningOutOfLife++
 	}

@@ -401,9 +401,10 @@ const plafondSurfaceFacade = 181 // 2026-11-08 — item 4.6b : 179 + 2 (ErrUnkno
 //	                                           entrees ne tiennent plus en parametres. Aucun retrait.
 //	312  backlog E8.1 (b) (c) (2026-10-18)      base `9d8879471` re-mesuree a 310. +2 :
 //	                                           `replay.LectureDuBord` (occupation des vehicules et leur
-//	                                           nuage, decision D-16) et `replay.PositionsDesVehicules`
-//	                                           (le nuage `ti=40` lu comme la cuisson le lit), que la passe
-//	                                           des positions du collecteur fournit. Aucun retrait.
+//	                                           nuage, decision D-16) et `replay.LireLesVehicules` (le nuage
+//	                                           `ti=40` lu comme la cuisson le lit ; PositionsDesVehicules
+//	                                           jusqu au 2026-11-10, qui ajoute les records de creation), que
+//	                                           la passe des positions du collecteur fournit. Aucun retrait.
 //	314  decouplage D2, item 2.8 (2026-10-29)  base `86b7924a1` re-mesuree a 312. +2 :
 //	                                           `replay.EquipmentOutcomeFamilies` et `replay.UsageFamilySpawnsPiece`,
 //	                                           la copie jumelle du perimetre du bilan d equipement que le

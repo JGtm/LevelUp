@@ -63,7 +63,7 @@ func (o occupantsDesSlots) vide() bool { return len(o.plat) == 0 && len(o.corps)
 // n'est etabli et l'on se tait. Ailleurs, le pont par slot — sauf sur un slot ambigu, ou il
 // servirait un nom arbitraire.
 func (o occupantsDesSlots) indexA(slot uint32, tUS int64) (int, bool) {
-	if c, ok := o.corps[slot]; ok && len(c.index) > 1 {
+	if c, ok := o.corps[slot]; ok && c.indexDivergents() {
 		d, connu := c.recordA(tUS)
 		if !connu {
 			return 0, false
@@ -163,6 +163,76 @@ func classerLeSlot(lives []lifeSpan, vies []int, corps map[uint32]corpsLu) (coll
 	return false, recycle
 }
 
+// # LE LIEU D'UN JOUEUR SE LIT PAR CORPS SUR UN SIEGE PARTAGE ([IdentityRegistry.xuidDuLieuA])
+//
+// Un siege dont les records portent deux index de participant, et dont les corps portent des occupants
+// distincts, peut n'avoir qu'UN xuid nomme : l'autre corps est un bot (nomme par son `bid`) ou un index
+// que rien ne rattache a un xuid. Le pont aplati n'y est pas muet (il n'a vu qu'un joueur) et servirait
+// le nom du premier au corps de l'autre : la lecture du lieu (`kill_positions`, `kill_openings`, contexte
+// de mort) placerait ce joueur sur le corps d'un bot. Elle lit donc ce siege PAR CORPS. Les lecteurs du
+// document gardent leur lecture : leur passage par corps (equipes des pistes, pistes par le pont,
+// trajets) est un autre chantier, mesure et non tenu par ce lot.
+
+// occupantsDistincts dit que les corps etablis d'un siege aux index divergents ne portent pas tous le
+// meme xuid : l'un est nomme X, un autre porte un autre xuid ou aucun (bot, index non rattache). Un corps
+// sans vie ne compte pas : il n'a rien a nommer. Deux index du MEME joueur (revenu en cours de match) ne
+// font pas deux occupants.
+func occupantsDistincts(lives []lifeSpan, slot uint32, corps map[uint32]corpsLu) bool {
+	if c, ok := corps[slot]; !ok || !c.indexDivergents() {
+		return false
+	}
+	parCorps := map[types.LifeKey]uint64{}
+	for _, l := range lives {
+		if l.slot != slot {
+			continue
+		}
+		k := corpsDuSlotA(corps, slot, l.from)
+		if !k.etabli {
+			continue
+		}
+		if x, vu := parCorps[k.cle]; !vu || x == 0 {
+			parCorps[k.cle] = l.xuid
+		}
+	}
+	vus := map[uint64]bool{}
+	for _, x := range parCorps {
+		vus[x] = true
+	}
+	return len(vus) > 1
+}
+
+// siegesPartagesDe rend les sieges a occupants distincts ([occupantsDistincts]) que le pont aplati ne
+// tait pas (ni collision ni siege recycle) : ceux que la lecture du lieu lit par corps.
+func siegesPartagesDe(r IdentityRegistry) map[uint32]bool {
+	var out map[uint32]bool
+	muets := r.SlotsAmbigus()
+	for s := range r.corps {
+		if muets[s] || !occupantsDistincts(r.Vies(), s, r.corps) {
+			continue
+		}
+		if out == nil {
+			out = map[uint32]bool{}
+		}
+		out[s] = true
+	}
+	return out
+}
+
+// joueurDuLieuA est [IdentityRegistry.xuidDuLieuA] sans compter le repli.
+func (r IdentityRegistry) joueurDuLieuA(slot uint32, tUS uint64) (uint64, bool) {
+	if !r.siegesPartages[slot] {
+		return r.joueurA(slot, tUS)
+	}
+	t := int64(tUS) //nolint:gosec // horloge du film, bien sous 2^63
+	for _, l := range r.Vies() {
+		if l.slot == slot && l.xuid != 0 && t >= l.from && t <= l.to {
+			return l.xuid, false
+		}
+	}
+	x := r.xuidDuCorpsA(slot, t)
+	return x, x != 0
+}
+
 // xuidDuCorpsA rend le joueur du corps qui tient `slot` a `tUS`, par les vies NOMMEES de ce corps :
 // la lecture PAR CORPS d'un siege recycle. Zero quand aucun corps n'est etabli a l'instant, ou que
 // le corps n'a aucune vie nommee.
@@ -198,8 +268,13 @@ func (r IdentityRegistry) memeCorps(named []lifeSpan, slot uint32, tUS int64) []
 // corps du slot — ses records ne divergent pas —, et rien sinon : le pont garde le premier
 // occupant nomme, et le servir a un autre corps franchirait la frontiere.
 func (r IdentityRegistry) pontDuCorps(slot uint32) string {
-	if c, ok := r.corps[slot]; ok && len(c.index) > 1 {
+	if c, ok := r.corps[slot]; ok && c.indexDivergents() {
 		return ""
 	}
 	return r.PontDeSlot(slot)
 }
+
+// indexDivergents dit que les records de creation d un slot portent des index de participant
+// differents : le siege a eu plusieurs occupants, quel que soit le nombre de corps NOMMES. Un slot
+// sans divergence garde le pont aplati : ses corps successifs sont un seul et meme participant.
+func (c corpsLu) indexDivergents() bool { return len(c.index) > 1 }

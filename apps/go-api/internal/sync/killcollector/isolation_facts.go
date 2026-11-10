@@ -293,7 +293,27 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 //
 // Une montee pour TOUT le lot film E8 (D-8) : un changement ulterieur du meme lot garde cette valeur
 // tant qu aucun `backfill-killsource` ne l a publiee. Le bump ne declenche rien par lui-meme.
-const IsolationDecoderRev = "isolement-2026-10-17-positions"
+//
+// # POURQUOI ELLE BOUGE LE 2026-11-10 (plan de la v8.1.2, item 4.2)
+//
+// Trois changements de SORTIE de `kill_positions`, `kill_openings`, `match_death_context` et
+// `match_death_mates` (la lecture du lieu a l instant, `replay/killpos_a_l_instant.go`) :
+//   - sur un siege dont les records de creation portent DEUX index de participant et deux occupants, la
+//     lecture du lieu repond par corps meme si un seul corps porte un xuid
+//     (`replay/identity_registry_corps.go`) : le corps d un bot n herite plus du premier occupant ; un
+//     echantillon d un AUTRE joueur du siege dans la tolerance ne place plus le joueur du corps
+//     precedent : les « ambiguites de corps » du lieu de la mort disparaissent ;
+//   - un occupant d une piece montee sans echantillon est place par le chassis qui la porte (table des
+//     pieces, voisin de slot, repli `repli_tourelle_porteur_voisin_de_slot`), un occupant d un poste fixe
+//     a la creation du poste ; une descente a la tolerance de l instant n est pas un debarquement ;
+//   - `kill_openings` lit l entame comme `kill_positions` (tenue et siege, meme garde de vie).
+//
+// LE JOURNAL DES MORTS NE CHANGE PAS (`killsource.Rev` ne monte pas), `match_lives` non plus : ce sont
+// les memes vies, nommees par le meme registre. Une ligne ecrite sous une revision anterieure reste servie telle quelle par les vues `_latest` :
+// aucun lecteur de page ne filtre sur cette revision, et le backlog automatique du post-sync ne la lit
+// pas (`conditionBacklog`). Le bump ne declenche rien par lui-meme : seule la commande
+// `levelup backfill-killsource` re-decode.
+const IsolationDecoderRev = "isolement-2026-11-10-lieux-par-corps"
 
 // materiauDIsolement : ce que la passe de positions a lu et que la projection reutilise.
 //

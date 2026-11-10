@@ -93,3 +93,71 @@ func TestPont_DeuxJoueursDansUnMemeCorpsRestentUneCollision(t *testing.T) {
 		}
 	}
 }
+
+// TestLieu_SiegePartageSeLitParCorps : le siege 100 porte le corps de 111 puis un corps d'index hors de
+// la table (aucun xuid). La lecture du LIEU y repond par corps ; les accesseurs du document gardent leur
+// reponse (le pont aplati, que ce lot ne change pas).
+//
+// MUTATIONS : retirer `siegesPartages` de `joueurDuLieuA` -> rouge a 15 s (le premier occupant) ;
+// faire rendre faux a `occupantsDistincts` -> rouge.
+func TestLieu_SiegePartageSeLitParCorps(t *testing.T) {
+	in := entreeSlotRecycle(7)
+	fb := fallback.NouveauCompteur()
+	in.Fallbacks = fb
+	reg := BuildIdentityRegistry(context.Background(), in)
+	if !reg.siegesPartages[100] || reg.SlotsAmbigus()[100] {
+		t.Fatalf("siege 100 : partage %v, ambigu pour le document %v ; attendu partage, document inchange",
+			reg.siegesPartages[100], reg.SlotsAmbigus()[100])
+	}
+	for _, c := range []struct {
+		tUS  uint64
+		want uint64
+	}{{2_000_000, 111}, {15_000_000, 0}, {13_000_000, 0}} {
+		if got := reg.xuidDuLieuA(100, c.tUS); got != c.want {
+			t.Errorf("xuidDuLieuA(100, %d) = %d, attendu %d", c.tUS, got, c.want)
+		}
+	}
+	if got := reg.XUIDNumAt(100, 15_000_000); got != 111 {
+		t.Errorf("XUIDNumAt(100, 15 s) = %d : la reponse du document ne doit pas changer (111)", got)
+	}
+}
+
+// TestPont_DeuxCorpsDuMemeIndexGardentLePont : les corps successifs d'un meme index sont un seul
+// participant : le pont aplati reste valable, et le second corps se lit comme le premier.
+func TestPont_DeuxCorpsDuMemeIndexGardentLePont(t *testing.T) {
+	in := entreeSlotRecycle(0)
+	in.PlayerIndices.ByXUID = map[uint64]int{111: 0, 333: 2}
+	reg := BuildIdentityRegistry(context.Background(), in)
+	if reg.SlotsAmbigus()[100] {
+		t.Fatal("deux corps du meme index ne font pas un siege recycle")
+	}
+	if got := reg.XUIDNumAt(100, 15_000_000); got != 111 {
+		t.Errorf("XUIDNumAt(100, 15 s) = %d, attendu 111", got)
+	}
+}
+
+// TestPont_DeuxIndexDuMemeJoueurNeRecyclentPas : un joueur revenu en cours de match prend un nouvel index
+// de participant ; ses deux corps sur le meme siege sont un seul occupant, le siege n'est pas recycle.
+func TestPont_DeuxIndexDuMemeJoueurNeRecyclentPas(t *testing.T) {
+	in := entreeSlotRecycle(7)
+	in.PlayerIndices.ByXUID = map[uint64]int{111: 0, 333: 2}
+	in.indexDesChunks = nil
+	reg := BuildIdentityRegistry(context.Background(), in)
+	// Le second corps (index 7) recoit le meme joueur par une lecture : le siege porte un seul occupant.
+	for i, l := range reg.own.lives {
+		if l.slot == 100 && l.xuid == 0 {
+			reg.own.lives[i].xuid = 111
+		}
+	}
+	if occupantsDistincts(reg.own.lives, 100, reg.corps) {
+		t.Fatal("deux index du meme joueur ne font pas deux occupants")
+	}
+	for i, l := range reg.own.lives {
+		if l.slot == 100 && l.from >= 12_000_000 {
+			reg.own.lives[i].xuid = 0
+		}
+	}
+	if !occupantsDistincts(reg.own.lives, 100, reg.corps) {
+		t.Fatal("un corps sans xuid d'un autre index est un autre occupant")
+	}
+}

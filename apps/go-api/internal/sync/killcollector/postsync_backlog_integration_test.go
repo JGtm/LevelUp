@@ -189,3 +189,29 @@ func TestBacklogAJour_IgnoreLePlacementDesVies(t *testing.T) {
 			"des vies (decision V12 : aucun redecodage ne part de lui-meme)", ids, total)
 	}
 }
+
+// TestBacklogAJour_IgnoreLaRevisionDIsolement — une ligne de `match_lives` d'une revision d'isolement
+// anterieure (une base de prod non rejouee, dont les chunks de film ne sont plus sur place) ne ramene
+// pas le match au backlog automatique : aucun redecodage ne part de cette revision, et la vue `_latest`
+// la sert telle quelle aux lecteurs de page.
+func TestBacklogAJour_IgnoreLaRevisionDIsolement(t *testing.T) {
+	db := baseBacklog(t)
+	quand := time.Date(2026, 10, 18, 21, 0, 0, 0, time.UTC)
+	inscrireMatch(t, db, "isolement-perime", quand, 0)
+	inscrirePasseFilm(t, db, "isolement-perime", decfilm.Rev, killscope.ReadPathFilmWalk, "p1", quand)
+	if _, err := db.Exec(`INSERT INTO match_lives (match_id, decode_pass, decoder_rev, xuid,
+		start_ms, end_ms, end_cause, named_by) VALUES ('isolement-perime', 'v1', 'isolement-2026-10-17-positions',
+		'111', 0, 10000, 'death', 'death')`); err != nil {
+		t.Fatalf("vies : %v", err)
+	}
+	if ids, total := backlogAJour(context.Background(), db, 10, 0); total != 0 || len(ids) != 0 {
+		t.Errorf("liste = %v (total %d) ; la revision d'isolement ne relance aucun redecodage", ids, total)
+	}
+	var servies int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_lives_latest WHERE match_id = 'isolement-perime'`).Scan(&servies); err != nil {
+		t.Fatalf("vue : %v", err)
+	}
+	if servies != 1 {
+		t.Errorf("match_lives_latest sert %d ligne(s), attendu 1 : la vue ne filtre pas sur la revision", servies)
+	}
+}

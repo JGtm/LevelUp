@@ -388,7 +388,7 @@ func lireLePontDuCollecteur(ctx context.Context,
 // toutes les lignes de 1,5 s.
 func composerPassePositions(e replay.EntreeDesPositions, matchID string) passePositions {
 	posOut, rep := replay.BuildKillPositions(e)
-	openOut, openRep := replay.BuildKillOpenings(e.Positions, e.Registre, e.Kills, e.OrigineUS)
+	openOut, openRep := replay.BuildKillOpenings(e)
 	return passePositions{
 		rep:      rep,
 		rows:     toKillPositionRows(matchID, posOut),

@@ -11,9 +11,11 @@ import (
 	"github.com/JGtm/LevelUp/libs/film/replay"
 )
 
-// lireLeBordDuCollecteur rend la lecture du bord de la passe : l occupation du decodage killsource et
-// le nuage des vehicules ([replay.PositionsDesVehicules]). Sans decodage, rien n est lu (ni tenue ni
-// siege). Un nuage illisible se journalise et laisse les occupants sans lieu ; l occupation reste lue.
+// lireLeBordDuCollecteur rend la lecture du bord de la passe : l occupation du decodage killsource, le
+// nuage et les records de creation des vehicules ([replay.LireLesVehicules]). Sans decodage, rien n est lu
+// (ni tenue ni siege). Une lecture illisible se journalise ; ce qui a ete lu sert (un nuage illisible
+// laisse les occupants sans lieu, des creations illisibles laissent les pieces montees et postes fixes
+// sans lieu, l occupation reste lue dans les deux cas).
 func lireLeBordDuCollecteur(ctx context.Context, fc *decfilm.FilmContext, entry decfilm.MapQuantEntry,
 	res *decfilm.Result, matchID string,
 ) replay.LectureDuBord {
@@ -21,13 +23,13 @@ func lireLeBordDuCollecteur(ctx context.Context, fc *decfilm.FilmContext, entry 
 		return replay.LectureDuBord{}
 	}
 	rng := entry.Range()
-	vehicules, err := replay.PositionsDesVehicules(fc, &rng)
+	vehicules, err := replay.LireLesVehicules(fc, &rng)
 	if err != nil {
-		slog.WarnContext(ctx, "killsource: positions — nuage des vehicules illisible, les occupants restent sans lieu",
+		slog.WarnContext(ctx, "killsource: positions — vehicules illisibles, les occupants restent en partie sans lieu",
 			"match_id", matchID, "err", err)
-		vehicules = nil
 	}
 	// Partagee : les deux lecteurs de la passe (placement des morts, contexte de mort) lisent ce bord
 	// contre les memes positions et ne l'indexent qu'une fois.
-	return replay.LectureDuBord{Lue: true, Occupation: res.Occupation, Vehicules: vehicules}.Partagee()
+	return replay.LectureDuBord{Lue: true, Occupation: res.Occupation, Vehicules: vehicules.Positions,
+		Creations: vehicules.Creations}.Partagee()
 }

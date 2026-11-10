@@ -94,7 +94,7 @@ func mesurerLieuUnique(film string, g *FilmFacts) lieuMesure {
 		}
 	}
 	m.victimes = len(journal)
-	bord := LectureDuBord{Lue: true, Occupation: g.Vehicles.Occupancy, Vehicules: g.Vehicles.Positions}
+	bord := LectureDuBord{Lue: true, Occupation: g.Vehicles.Occupancy, Vehicules: g.Vehicles.Positions, Creations: g.Vehicles.Creations}
 	entree := EntreeContexteMorts{
 		Positions: sorted, Registre: reg, Journal: journal, Equipes: equipes,
 		OrigineDuFilmUS: int64(g.FilmClockOriginUS), Bord: bord,
@@ -107,7 +107,7 @@ func mesurerLieuUnique(film string, g *FilmFacts) lieuMesure {
 	pistes := indexBySlot(sorted)
 	sieges := siegesTries(pistes)
 	lecture := lectureALInstant{tracks: pistes, bord: lireLeBord(bord, sorted, nil),
-		morts: nouvellesMortsDuTueur(journal, reg), offsetUS: int64(g.FilmClockOriginUS)}
+		morts: nouvellesMortsDuTueur(journal, reg), offsetUS: int64(g.FilmClockOriginUS), registre: reg}
 	for _, j := range journal {
 		cle := [2]int64{int64(j.VictimeXUID), j.TempsMS}
 		ancien, avait := anciennes.visibleA(j.VictimeXUID, j.TempsMS)
