@@ -167,7 +167,7 @@ Mesure sous catalogue de carte (contexte de production), 30 films. Fermés aujou
 (HI_1_13_0) et 97,67 % (HI_1_12_0). Estimation après la liste : 99,08 % et 97,82 % sans compter les
 rejets en cascade, 99,85 % et 99,99 % au mieux.
 
-- [ ] A2.P Positions lues aux largeurs de la région (BSP) que le flux désigne, et non à celles de la
+- [x] A2.P Positions lues aux largeurs de la région (BSP) que le flux désigne, et non à celles de la
       seule région jouée : catalogue de carte étendu à toutes les régions (`cmd/mapquant-build`,
       `map_quant_bounds.json`), `lireE524Sur` sur la ligne de l'index lu, puis `consumeFlockPosition`,
       `consumeObjectPositionMonde` et les positions de la vue A (genres 5 et 6) sur le même lecteur.
@@ -199,7 +199,10 @@ aux builds anciens selon D-4 (tous les lecteurs de la liste y existent au même 
 
 Porte A2 : C1 tenu (`cmd_fermeture -mode v2` sur le corpus, >= 99 % par build HI_1_12_0 et
 HI_1_13_0) ; aucun compte `fermés` en baisse sur les builds anciens, gains écrits par build ;
-`make libs-test`, `make replay-corpus-gate` (référence base, zéro perte) verts.
+`make libs-test` vert ; `make replay-corpus-gate` (référence base) : zéro perte NON EXPLIQUÉE, chaque
+écart classé au journal (faux retiré, vraie perte, indécidable). (Rédaction d'origine : « zéro perte » ;
+amendée le 2026-11-10 : une lecture devenue juste retire des données fausses que le gate compte comme
+des baisses.)
 
 ### A3 — Retirer les balayages delta et les replis à compte nul (après la fusion du 30 images/s)
 
@@ -306,12 +309,31 @@ Porte A6 : lecteur vert sur tous les films du corpus des builds où il s'appliqu
   tire du film, pas des cartes. Chaque téléportation est un message du film avec le point de départ et
   le point d'arrivée (32 sur un CTF en BTB mesuré). Les dispositifs fixes (type 43) viennent des
   instantanés du film avec position et tag ; sa table publique n'en nomme presque aucun.
+- **Contenu voulu de la fiche du joueur (user, 2026-11-10)** : antagonistes à l'instant, tirs par arme, frags par arme, dégâts par arme, détail des médailles, et plus largement l'essentiel des statistiques tirées du film. État des données : antagonistes (couples tueur-victime), tirs par arme, frags par arme (source de dégât de la mort) et médailles horodatées (chunk des temps forts, absentes du rejeu aujourd'hui) sont déjà lus ; les dégâts par arme demandent la reconstruction des dégâts infligés (ci-dessus).
 - Images-clés (D-5) ; travail propre aux cinq builds anciens (D-4).
 - Cadence du rejeu et compression (chantier 30 images/s), planches d'icônes (chantier séparé).
 
 ## 6. Découvertes
 
-(vide)
+- **D1 (A2.P, `libs/film/replay/grenades.go`, `birthForThrow`)** : sur un match Live Fire, un lancer de
+  grenade sans auteur vivant avait une seule naissance de projectile candidate ; la lecture corrigée
+  en lit une seconde dans un paquet désormais fermé, et le calcul s'abstient devant deux candidates :
+  un lancer n'est plus publié (103 -> 102). Vraie perte de publication, à traiter dans `replay/` après
+  la fusion du chantier 30 images/s.
+- **D2 (A2.P)** : un paquet d'un témoin ancien (`084a804d`, 26/296) était fermé par recherche du début
+  de liste avec un seul record ; la lecture corrigée y lit 32 records mais bute sur un invariant de
+  l'écrivain. Indécidable sans témoin sur ce build ; aucun fait publié ne diffère.
+- **D3 (A2.P, porte « aucune baisse sur les builds anciens »)** : `f144db25` (HI_1_8_0) perd 3 paquets
+  fermés sur 20 210, tous fermés avant par recherche du début de liste (38 paquets de ce type dans le
+  film, 35 restent fermés). Indécidable sans témoin ni exécutable de ce build ; accepté sans cas
+  particulier par build (D-4).
+- **D4 (A2.P)** : 1 382 lectures d'un index de région sans ligne (toujours l'index 1 sur des cartes à
+  une seule région) relevées par un balayage ; la marche de la grammaire n'en fait aucune sur trois
+  films récents contrôlés : elles viennent d'autres lecteurs (recherches), non localisés.
+- **D5 (A2.P)** : `apps/go-api/cmd/mapquant-build/main.go`, déjà au-dessus de 500 lignes, a grossi de
+  9 lignes : à ramener à sa taille d'avant dans le prochain item qui touche l'outil, ou à la clôture.
+- **D6 (A0, A1)** : les portes de A0 et A1 ne rejouaient pas `archlint` ; deux paquets de recherche y
+  étaient hors couche. Corrigé en A2.P ; `go test ./internal/archlint/...` entre dans chaque porte.
 
 ## 7. Reprise de session
 
@@ -393,3 +415,35 @@ Lire dans l'ordre : ce fichier (cases cochées, addendum A1, journal), les derni
   fait. Builds anciens : le registre des composants est identique de HI_1_8_0 à HI_1_13_0, tous les
   lecteurs de la liste y sont candidats ; leur cause dominante (plus de 95 % des rejets) est une
   création non lue.
+- 2026-11-10 : décisions. (1) Entités d'un morceau à l'autre (A2.H) : le user laisse le pilote trancher. Ordre retenu : d'abord garder la table d'un morceau au suivant tant qu'aucune suppression ne la retire, mesurer ; si le gain est insuffisant pour C1, lire la table d'entités de l'instantané (identifiant, génération, type par emplacement, comme le témoin), sans rouvrir le corps des images-clés. D-5 est amendée en ce sens. (2) Ghidra est ouvert : un agent relit en lecture seule les fonctions du jeu des fiches A1 et écrit `C:\t\marche\A2\desassemblage.md` ; le pilote contrôle cette note contre les bits et la fermeture (D-1).
+- 2026-11-10 : relecture du jeu faite (lecture seule, API locale du greffon Ghidra, exécutable
+  `HaloInfinite.exe` du 2026-04-08, adresses concordantes avec le dépôt) :
+  `annexes_marche_complete/A2_desassemblage.md`. Fiches P, A, T, H, K confirmées ; fiche V : les 123
+  genres de cet exécutable sont identiques à notre table, l'écart de HI_1_12_0 reste indécidable
+  sans son exécutable. Sur la branche « cible = objet » du grappin, le jeu lit 15 bits comme notre
+  code et non 13 comme le témoin.
+- 2026-11-10, **A2.P : correction faite, item NON clos**. Catalogue de carte étendu à toutes les
+  régions (101 cartes, 196 régions, région jouée identique avant et après sur les 101) ; position,
+  volées, objets du monde et messages de genre 5 et 6 lus sur la ligne de l'index de région ; index
+  sans ligne lu à zéro bit et compté (règle du jeu). Fermeture sous carte, corpus : HI_1_13_0
+  97,60 % -> 99,42 % (119 films, +70 715 paquets) ; HI_1_12_0 inchangé à 97,70 % (A2.V) ; HI_1_11_0
+  96,07 % -> 98,29 % ; HI_1_10_0 +29 paquets ; HI_1_9_0 +1 ; HI_1_8_0 -3 paquets sur un film (trois
+  paquets que la recherche de début de liste fermait avant). Interlock : 88 à 93 % -> 99,6 à
+  99,99 %. Désaccord « ti=40 composant 0 » contre le témoin : 12 087 -> 0.
+  Restent rouges : (1) `libs/film/replay`, deux tests (la clé de cuisson doit hacher les régions ;
+  fixtures de contrat à régénérer) ; (2) `replay-corpus-gate` : 8 témoins ok, 7 PERTE, 3 FAUX, non
+  expliqués ; (3) `replay-equiv` : 20 films diffèrent (attendu, références non mises à jour) ;
+  (4) `archlint` : les paquets `research/divergence` et `research/duree` de A0 et A1 ne sont dans
+  aucune couche (défaut de notre branche, que les portes de A0 et A1 ne regardaient pas).
+  `killsource.Rev` à monter (sa sortie change). Branche rebasée sur `origin/release/v8.1.2`.
+- 2026-11-10, **A2.P clos**. Portes : `make libs-test` vert ; `cd apps/go-api && go test ./...` vert,
+  `archlint` compris ; `libs/film/replay` vert (clé de cuisson hachant les régions, seul changement
+  de code sous `replay/` ; fixtures, graines et goldens régénérés : seules les révisions de couche
+  bougent) ; `killsource.Rev`, `grammar.Rev`, `profile.Rev` montées. `replay-corpus-gate` : 8 témoins
+  identiques, 10 avec des baisses, toutes classées (`annexes_marche_complete/A2P_constats_gate.md`) :
+  données fausses retirées par des paquets désormais fermés (changements d'arme attribués à des
+  joueurs pas encore nés, postures de 24 à 740 secondes ramenées à leur vraie durée, pistes et
+  détonations à des coordonnées impossibles), confirmé par le témoin sur les deux films qu'il sait
+  lire ; une vraie perte de publication (D1) ; deux indécidables (D2, D3). `replay-equiv` : 20 films
+  diffèrent, familles expliquées par les mêmes causes ; ses références seront mises à jour à la
+  porte A2, pas item par item. Fermeture : voir `A2P_fermeture_par_build.txt`.

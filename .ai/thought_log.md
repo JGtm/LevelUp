@@ -36,6 +36,12 @@
 **Résultats observés.** 0 P0, 25 P1, 22 P2, 12 écartés ou requalifiés. Axes non passés : A3, A5, A6, A8, A9, A10 ; périmètres non passés : intérieur de `libs/film`, coquille Rust, branches 8.1.2 en cours, sécurité. Là où un garde-rail existe la règle tient ; tous les P1 sont hors garde-rail. Registre : `.ai/AUDIT_ARCHITECTURE_2026-11-10.md`.
 
 **Conclusion / prochaine étape.** À trancher par l'utilisateur : alias perdus (ART-2), 106 binaires sans utilisateur (MORT-1), deux interrupteurs (FLG-1, FLG-2). Probabilité de victoire (ART-5) : l'utilisateur confirme le 2026-11-10 que la statistique est abandonnée ; aucun titre ne l'affiche, le constat devient un retrait de code à planifier. Trois chantiers candidats : frontières, ménage, front.
+## [2026-11-10] Plan « lecture complète des paquets » — A2.P (positions par région de carte) — Complété
+
+**Décision technique principale** : une position se lit aux largeurs de la région (BSP) que le flux désigne ; le catalogue de carte porte toutes les régions dans l'ordre du tableau de la carte ; index sans ligne lu à zéro bit et compté, comme le jeu (`FUN_14076e524`, relu). Volées, objets du monde et messages de genre 5 et 6 passent par le même lecteur. Révisions `grammar`, `profile` et `killsource` montées ; clé de cuisson hachant les régions.
+**Résultats observés** : fermeture sous carte, corpus : HI_1_13_0 97,60 % -> 99,42 % (+70 715 paquets, cible C1 tenue pour ce build) ; HI_1_12_0 inchangé (97,70 %) ; HI_1_11_0 96,07 % -> 98,29 %. Désaccord principal avec le témoin (véhicules) : 12 087 paquets -> 0. `replay-corpus-gate` : 10 témoins en baisse, classés un par un : données fausses retirées (confirmé par le témoin là où il lit), une vraie perte de publication dans `replay/` (un lancer de grenade, D1), deux indécidables sur des builds anciens. Défaut de la branche corrigé : deux paquets de recherche hors couche pour `archlint`, que les portes de A0 et A1 ne rejouaient pas.
+**Conclusion / prochaine étape** : A2.T (type d'entité par identifiant complet) et A2.A (capacité du Spartan), confirmés par la relecture du jeu ; puis A2.H et A2.V.
+
 ## [2026-11-10] Plan « lecture complète des paquets » — étape A1 (liste des lecteurs à corriger) — Complété
 
 **Décision technique principale** : aucun code de production touché. Liste fermée de six lecteurs inscrite au plan (A2.P, T, A, V, H ; C et les `kind` de la vue C écartés avec leur mesure). Les portes se mesurent désormais sous catalogue de carte, comme la production.
