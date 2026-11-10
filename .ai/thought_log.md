@@ -36,6 +36,12 @@
 **Résultats observés.** 0 P0, 25 P1, 22 P2, 12 écartés ou requalifiés. Axes non passés : A3, A5, A6, A8, A9, A10 ; périmètres non passés : intérieur de `libs/film`, coquille Rust, branches 8.1.2 en cours, sécurité. Là où un garde-rail existe la règle tient ; tous les P1 sont hors garde-rail. Registre : `.ai/AUDIT_ARCHITECTURE_2026-11-10.md`.
 
 **Conclusion / prochaine étape.** À trancher par l'utilisateur : alias perdus (ART-2), 106 binaires sans utilisateur (MORT-1), deux interrupteurs (FLG-1, FLG-2). Probabilité de victoire (ART-5) : l'utilisateur confirme le 2026-11-10 que la statistique est abandonnée ; aucun titre ne l'affiche, le constat devient un retrait de code à planifier. Trois chantiers candidats : frontières, ménage, front.
+## [2026-11-10] Plan « lecture complète des paquets » — étape A1 (liste des lecteurs à corriger) — Complété
+
+**Décision technique principale** : aucun code de production touché. Liste fermée de six lecteurs inscrite au plan (A2.P, T, A, V, H ; C et les `kind` de la vue C écartés avec leur mesure). Les portes se mesurent désormais sous catalogue de carte, comme la production.
+**Résultats observés** : sur 30 films, fermés aujourd'hui 97,09 % (HI_1_13_0) et 97,67 % (HI_1_12_0) ; après la liste, 99,08 % et 97,82 % en estimation prudente, 99,85 % et 99,99 % au mieux. Cause dominante : positions lues aux largeurs de la seule région jouée (catalogue à une région), 13 106 paquets. Rejets « hors datum » : entités nées au chunk précédent et absentes de la table (6 165), ou suite d'une vue A mal lue en HI_1_12_0 (4 644). Un commentaire du dépôt (branche inatteignable de `biped-spartan-ability`) est contredit par les bits. Désassemblage non relu faute d'instance Ghidra ouverte.
+**Conclusion / prochaine étape** : A2.P (catalogue de carte à toutes les régions et lecture par index de région).
+
 ## [2026-11-10] Plan « lecture complète des paquets » — étape A0 (témoins et instruments) — Complété
 
 **Décision technique principale** : aucun code de production touché ; trois instruments sous tag `research` (`research/duree/`, `research/divergence/`) et une sonde libfilmshell hors dépôt (`C:\t\oracle-filmshell`, sources en annexe). Cible de fermeture relevée à 99 % sur les builds récents (validée par le user).

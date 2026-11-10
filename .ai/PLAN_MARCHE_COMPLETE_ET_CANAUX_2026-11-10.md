@@ -145,14 +145,14 @@ des fichiers sous `research/`.
 
 ### A1 — Localiser les largeurs fausses
 
-- [ ] A1.1 Lancer A0.7 sur les films HI_1_12_0 et HI_1_13_0 du corpus.
-- [ ] A1.2 Classer les premières divergences par lecteur en cause, en paquets touchés.
-- [ ] A1.3 Écrire la liste fermée des lecteurs à corriger dans ce plan (addendum daté « A1 ») :
+- [x] A1.1 Lancer A0.7 sur les films HI_1_12_0 et HI_1_13_0 du corpus.
+- [x] A1.2 Classer les premières divergences par lecteur en cause, en paquets touchés.
+- [x] A1.3 Écrire la liste fermée des lecteurs à corriger dans ce plan (addendum daté « A1 ») :
       tout lecteur responsable d'au moins 0,1 % des paquets du corpus, par ordre décroissant, avec
       pour chacun la lecture de libfilmshell et la fonction du jeu à relire.
-- [ ] A1.4 Même classement pour les causes typées d'arrêt déjà connues (composant non porté,
+- [x] A1.4 Même classement pour les causes typées d'arrêt déjà connues (composant non porté,
       message de la vue A non porté, `kind` 1 et 2 de la vue C).
-- [ ] A1.5 Builds anciens : classement des causes d'arrêt par build avec la carte de A0.1 (sans
+- [x] A1.5 Builds anciens : classement des causes d'arrêt par build avec la carte de A0.1 (sans
       libfilmshell), pour savoir quelles corrections de la liste A1.3 y sont candidates (D-4).
 
 Porte A1 : l'addendum existe ; la somme des paquets expliqués par sa liste, ajoutée aux paquets
@@ -162,14 +162,38 @@ déjà fermés, atteint 99 % par build récent. Sinon le constat est rendu au us
 
 ### A2 — Corriger les lecteurs de la liste A1
 
-- [ ] A2.n Un item par lecteur de l'addendum A1, dans son ordre. Pour chacun : lecture portée avec
-      la référence du jeu (D-1), test synthétique au bit près, carte de fermeture rejouée sur le
-      corpus (les 7 builds), application aux builds anciens selon D-4, `TestFrameClosureRatchet`
-      régénéré avec une ligne d'historique.
-- [ ] A2.v Vue de contrôle : `kind` 1 (enregistrements de commande) et `kind` 2, et arbitrage des
-      deux écarts relevés avec libfilmshell (bit de référence de 7 bits lu avant le joueur ;
-      `kind` 3 lu chez nous comme zéro bit, non lu chez lui), par relecture de `FUN_1406cf548`,
-      `FUN_142f29b38` et `FUN_142f29e54`.
+**Addendum A1 (2026-11-10) — liste fermée, détail et fiches dans `annexes_marche_complete/A1_addendum.md`.**
+Mesure sous catalogue de carte (contexte de production), 30 films. Fermés aujourd'hui : 97,09 %
+(HI_1_13_0) et 97,67 % (HI_1_12_0). Estimation après la liste : 99,08 % et 97,82 % sans compter les
+rejets en cascade, 99,85 % et 99,99 % au mieux.
+
+- [ ] A2.P Positions lues aux largeurs de la région (BSP) que le flux désigne, et non à celles de la
+      seule région jouée : catalogue de carte étendu à toutes les régions (`cmd/mapquant-build`,
+      `map_quant_bounds.json`), `lireE524Sur` sur la ligne de l'index lu, puis `consumeFlockPosition`,
+      `consumeObjectPositionMonde` et les positions de la vue A (genres 5 et 6) sur le même lecteur.
+      Enjeu : 13 106 paquets en HI_1_13_0 (1,58 %). Jeu : `FUN_14076e524`.
+- [ ] A2.T Type d'une entité lié à son identifiant complet (slot et génération), délié à la
+      suppression. Enjeu : 1 799 paquets et 908 fermetures fausses. Jeu : `FUN_1406cbaa0`.
+- [ ] A2.A `biped-spartan-ability` (ti=35 composant 57), tag 3 : branche sous `flags & 1` lue (le
+      commentaire qui la dit inatteignable est contredit par trois occurrences relues). Enjeu : 846
+      paquets. Jeu : `FUN_142f262d4`, `FUN_14297ea84`. Après A2.P (largeur des positions).
+- [ ] A2.V Vue A en HI_1_12_0 : isoler le lecteur trop court (candidat : table des poignées par genre),
+      puis le corriger. Enjeu : 780 paquets directs, 4 644 rejets en cascade (tout l'écart de ce build).
+- [ ] A2.H Entités nées dans un chunk précédent et absentes de la table à l'ouverture du chunk
+      suivant : garder la table d'un chunk au suivant tant qu'aucune suppression ne la retire. La
+      relecture de l'image-clé comme le témoin reste hors périmètre (D-5), sauf décision du user.
+      Enjeu : 6 165 paquets (0,72 % en HI_1_13_0, surtout les BTB).
+- [!] A2.C États de création (ti=3, 21, 47, 13, 10, 4, 22) : sous le seuil de 0,1 % (265 paquets),
+      non isolés par lecteur. Non traités dans ce plan ; à reprendre si C1 n'est pas tenu après A2.H.
+
+Règle commune à chaque item : lecture portée avec la référence du jeu (D-1), test synthétique
+au bit près, carte de fermeture rejouée sous carte sur le corpus (les 7 builds), application
+aux builds anciens selon D-4 (tous les lecteurs de la liste y existent au même composant),
+`TestFrameClosureRatchet` régénéré avec une ligne d'historique.
+
+- [!] A2.v Vue de contrôle, `kind` 1 et 2 : non traité. Mesure A1 : premier désaccord dans 0 paquet
+      sur 30 films ; le témoin lui-même n'en lit presque aucun (6 messages sur 756 696). Les porter
+      serait du travail sans effet mesuré (D-9).
 - [ ] A2.z Révision de la couche `grammar` montée ; ADR 0037 amendé (tableau des faits, section
       « An independent confirmation », IR-12) ; ligne de `NOTICE.md` (D-2).
 
@@ -355,3 +379,17 @@ Lire dans l'ordre : ce fichier (cases cochées, addendum A1, journal), les derni
   le témoin a vu sa création : création sautée ou suppression fantôme dans un paquet mal lu en
   amont, ou entité perdue au changement de chunk. La première divergence n'est donc pas toujours la
   cause de l'arrêt : corriger les lecteurs de tête doit faire tomber une partie des rejets.
+- 2026-11-10, **A1 close**. Mesure élargie à 30 films (liste : `annexes_marche_complete/A1_films.txt`).
+  L'instrument de A0 lisait sans l'entrée de catalogue de carte que la production pose ; rejoué sous
+  carte : 97,6 % (HI_1_13_0) et 97,7 % (HI_1_12_0) sur le corpus. Décision du pilote : les portes se
+  mesurent sous carte. Porte A1 : 99 % atteint au mieux sur les deux builds (99,85 % et 99,99 %),
+  en estimation prudente seulement en HI_1_13_0 (99,08 %) ; HI_1_12_0 dépend de la vue A (A2.V),
+  dont le lecteur fautif n'est pas encore isolé. Constats : une cause domine (positions lues aux
+  largeurs de la région jouée quel que soit l'index de région du flux : 19 bits d'écart sur
+  Interlock, 7 sur Academy et Wetland) ; les rejets « hors datum » sont à 93 % des entités nées
+  dans un chunk précédent (HI_1_13_0) et à 96 % la suite d'une vue A mal lue (HI_1_12_0) ; les
+  `kind` 1 et 2 de la vue C ne pèsent rien. Le désassemblage n'a été relu pour aucune fonction
+  (aucune instance Ghidra ouverte) : D-1 retombe sur la fermeture au bit près tant que ce n'est pas
+  fait. Builds anciens : le registre des composants est identique de HI_1_8_0 à HI_1_13_0, tous les
+  lecteurs de la liste y sont candidats ; leur cause dominante (plus de 95 % des rejets) est une
+  création non lue.
