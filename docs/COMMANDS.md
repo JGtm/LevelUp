@@ -991,6 +991,85 @@ go run ./cmd/levelup compact-passes                                  # optional:
 The repair rewrites only the matches whose stored pairs differ from the current pairing (477 of
 4 010 on the 2026-10-15 copy) and is idempotent.
 
+### Halo 5 history backfills and past-season ranks (standalone tools, server stopped)
+
+Standalone binaries (`apps/go-api/cmd/<name>`), run from the repository root; they need the CGO
+build (gcc) like the server. Each opens the database it writes directly, so the **server must be
+stopped** (one writer process per database). The Halo 5 tools read `db_profiles.json` and the
+token store (`data/auth/watcher_tokens/`); when the target's refresh token is dead, borrow a
+healthy account's token with `LEVELUP_H5_AUTH_AS=<Gamertag>` (Halo 5 history, events and service
+records are served for any gamertag to any valid token). The positional gamertag defaults to `JGtm`.
+
+```bash
+go run ./apps/go-api/cmd/h5-backfill [Gamertag] [pageSize]                 # pageSize default 25
+go run ./apps/go-api/cmd/h5-events-backfill [auth-Gamertag] [maxMatches]   # 0 or omitted = every match
+go run ./apps/go-api/cmd/h5-kill-kind-backfill [auth-Gamertag] [maxMatches] [force]
+go run ./apps/go-api/cmd/h5-csr-backfill [Gamertag]
+go run ./apps/go-api/cmd/h5-roster-refetch [--commit] [--match ID] [--limit N] [--title halo_5] [--resolver]
+go run ./apps/go-api/cmd/backfill-csr-history -xuid XUID -player-db PATH [-season CsrSeason12-1] [-dry-run]
+```
+
+- `h5-backfill` — full live Halo 5 history of one player (2016 to today), complementing the delta
+  sync. Every page is persisted as soon as it is read and known matches are skipped, so running it
+  again after an interruption resumes without duplicates (INSERT-only). Prints the row counts of the
+  Halo 5 shared database at the end.
+- `h5-events-backfill` — re-fetches the per-match events of Halo 5 matches collected before the
+  derived surfaces existed and rewrites only those surfaces (weapon accuracy, assist and objective
+  highlight events). Idempotent. The auth account is the first argument (or `LEVELUP_H5_AUTH_AS`).
+- `h5-kill-kind-backfill` — re-fetches the events and re-derives `weapon_kills` with the kill
+  mechanic (`kill_kind`), written as a new generation (INSERT-only, `v_weapon_kills` reads the last
+  one). Without `force` only matches whose `kill_kind` is empty are processed; `force` (third
+  argument `force`, `1` or `true`, or `LEVELUP_KK_FORCE=1`) re-derives every match, required to pick
+  up a newly introduced `kill_kind` value.
+- `h5-csr-backfill` — writes the career arena CSR snapshots of one player, per ranked playlist,
+  into `player_csr_snapshots` of their Halo 5 player database (the target must be declared in
+  `db_profiles.json`).
+- `h5-roster-refetch` — Halo 5 matches whose roster is incomplete and cannot be rebuilt offline
+  (8v8 BTB, matches with substitutions): re-fetches the match and adds the MISSING participants with
+  full stats (INSERT-only, `NOT EXISTS` guard on `(match_id, xuid)`, `match_registry` untouched).
+  **Dry run by default**: nothing is written without `--commit`. Identities come from the match's
+  local kill feed first; `--resolver` adds the universal resolver as a fallback (off by default).
+- `backfill-csr-history` — rank (CSR) snapshots of the PAST seasons of one Halo Infinite player,
+  which feed the season menu of the Career page: the sync only writes the current season. Seasons
+  come from `csr_season_calendars` of `-metadata-db` (all of them unless `-season` is given); a
+  season never played ranked has no real tier and writes nothing. `-dry-run` lists the targeted
+  seasons without calling the API or writing. Other flags: `-metadata-db`, `-watcher-tokens-dir`,
+  `-title` (default `halo_infinite`), `-gamertag` (logs only), `-env-file` (default `.env.local`),
+  `-rate-limit` (requests per minute, default 60). The player's own refresh token must be in the
+  token store.
+
+### LUSR calibration (standalone tools, server stopped)
+
+Offline estimates that feed the LUSR v2 rating from the match history of the shared Halo Infinite
+database. Run them from the repository root (the default `--db` is the relative path
+`data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb`) with the **server stopped**: they
+open the database directly. Use `--dry-run` first where it exists.
+
+```bash
+go run ./apps/go-api/cmd/lusr_v2_ttt_batch [--dry-run] [--db PATH] [--smooth [--write-smoothed]]
+go run ./apps/go-api/cmd/lusr_v2_squad_estimate [--dry-run] [--db PATH] [--weeks 4] [--min-matches 10] [--gain 6.0]
+go run ./apps/go-api/cmd/lusr_v2_replay [--db PATH] [--reset] [Gamertag ...]
+```
+
+- `lusr_v2_ttt_batch` — empirical hyperparameters per playlist group (draw probability, mean and
+  standard deviation of kills and deaths, match count) and the cross-mode coupling matrix, appended
+  to `lusr_hyperparams_v2` under a dated source `batch_YYYY_MM_DD`; the shadow runner reads them
+  back through the `_latest` views. Idempotent (a rerun appends a row, the view deduplicates).
+  `--smooth` also estimates a per-player, per-group tau and writes `ttt_tau_empirical`;
+  `--write-smoothed` (with `--smooth`) additionally writes the smoothed terminal mu into
+  `player_skill_state_v2`. A first-pass estimate, not the full Through-Time smoothing.
+- `lusr_v2_squad_estimate` — squad synergy offset (`player_squad_offset`) of every pair of
+  teammates with at least `--min-matches` matches together over the last `--weeks` weeks, per
+  playlist group: mean of (actual outcome - win probability predicted by the SOLO ratings), converted
+  to mu with `--gain`. A conservative first pass (the current solo ratings already include these
+  matches, so the offset is under-estimated). The offsets are used by the rating only when
+  `LEVELUP_LUSR_V2_SQUAD_OFFSET=1` is set on the server.
+- `lusr_v2_replay` — replays the LUSR v2 over the full history of the named players (default: four
+  fixed gamertags, so pass your own) and prints a markdown report on stdout to compare with the
+  validated target levels. The replay itself writes the rating state (`player_skill_state_v2`).
+  **`--reset` deletes every row of `player_skill_state_v2`**, for all players, before the replay
+  (fresh state from the priors).
+
 ### Media paths migration (one-shot, standalone binary)
 
 Converts legacy **absolute** media paths to portable relative `{owner_slug}/{rel}` paths in

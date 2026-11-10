@@ -39,7 +39,6 @@ var bareDuckDBRWOpenAllowlist = map[string]int{
 	// Outils CLI ponctuels (un binaire par dossier), lancés serveur arrêté sur une base dont ils
 	// sont le seul processus : backfills, diagnostics, réparations, migrations historiques.
 	"cmd/backfill-csr-history/main.go":        1,
-	"cmd/backfill-world-player-stats/main.go": 1,
 	"cmd/backfill_milestone_dates/main.go":    3,
 	"cmd/backfill_t0/main.go":                 1,
 	"cmd/backfill_time_played/main.go":        1,
@@ -59,9 +58,7 @@ var bareDuckDBRWOpenAllowlist = map[string]int{
 	"cmd/regen-thumbnails/main.go":            1,
 	"cmd/seed-assists-model/main.go":          1,
 	"cmd/seed-weapon-labels/main.go":          1,
-	"cmd/snapshot-world-leaderboard/main.go":  1,
 	"cmd/wal_forensic_compare/main.go":        5,
-	"cmd/world-aliases-persist/main.go":       1,
 	// CLI principale : sous-commandes ponctuelles (reconstruction PME,
 	// consolidation des alias), même régime que les outils ci-dessus.
 	"cmd/levelup/cmd_consolidate_aliases.go": 1,

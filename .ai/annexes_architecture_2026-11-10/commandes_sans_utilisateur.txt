@@ -106,20 +106,24 @@ admin
 diag_q
 
 ## RETABLIES LE 2026-11-10 : seul point d'entree de code du moteur (decision de l'utilisateur attendue, famille par famille)
-backfill-csr-history
+migrate-hls-audio
 backfill-media-hls
-backfill-world-player-stats
+purge_corrupt_records
 backfill_time_played
+
+## SUPPRIMEES AVEC LEUR CODE DU MOTEUR (decision de l'utilisateur du 2026-11-10)
+snapshot-world-leaderboard
+backfill-world-player-stats
+world-aliases-persist
+h5-read-smoke
+
+## GARDEES ET DOCUMENTEES dans docs/COMMANDS.md (decision de l'utilisateur du 2026-11-10)
 h5-backfill
-h5-csr-backfill
 h5-events-backfill
 h5-kill-kind-backfill
-h5-read-smoke
+h5-csr-backfill
 h5-roster-refetch
-lusr_v2_replay
-lusr_v2_squad_estimate
 lusr_v2_ttt_batch
-migrate-hls-audio
-purge_corrupt_records
-snapshot-world-leaderboard
-world-aliases-persist
+lusr_v2_squad_estimate
+lusr_v2_replay
+backfill-csr-history

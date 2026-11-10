@@ -27,10 +27,9 @@ func ConsoleLevelFromEnv() slog.Level {
 	}
 }
 
-// InstallCLI configure le logging pour un binaire CLI (cmd/*) : console compacte
-// sur stderr + fichiers `logs/{module}.log` (comme le serveur). Permet aux jobs
-// one-shot (snapshot leaderboard, backfills) de tracer dans le dossier logs/
-// dédié, et pas seulement sur stderr.
+// InstallCLILevel configure le logging pour un binaire CLI (cmd/*) : console compacte
+// sur stderr, au niveau consoleLevel, + fichiers `logs/{module}.log` (comme le serveur).
+// Permet aux jobs one-shot de tracer dans le dossier logs/ dédié, et pas seulement sur stderr.
 //
 // repoRoot est passé à LoadConfig (peut être vide → défauts sains). Retourne une
 // fonction de fermeture à `defer` (flush + close des fichiers). No-op si le file
@@ -39,11 +38,7 @@ func ConsoleLevelFromEnv() slog.Level {
 // Installe le handler comme slog.Default() — les logs taggés
 // `slog.With("module", logging.ModuleLeaderboard)` sont routés vers
 // logs/leaderboard.log.
-func InstallCLI(repoRoot string) func() {
-	return InstallCLILevel(repoRoot, slog.LevelInfo)
-}
-
-// InstallCLILevel est comme InstallCLI mais fixe le niveau de la CONSOLE (stderr).
+//
 // Les fichiers logs/*.log gardent leur propre niveau (cfg.FileLevel) : monter le
 // niveau console (ex. slog.LevelError pour un mode -quiet) coupe le bruit INFO/WARN
 // à l'écran SANS perdre le détail dans les fichiers. Utile aux jobs bruyants (backfill :

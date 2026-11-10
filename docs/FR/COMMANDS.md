@@ -1036,6 +1036,88 @@ go run ./cmd/levelup compact-passes                                  # facultati
 La réparation ne réécrit que les matchs dont les couples stockés diffèrent de l'appariement courant
 (477 sur 4 010 sur la copie du 2026-10-15) et est idempotente.
 
+### Rattrapages de l'historique Halo 5 et rangs des saisons passées (outils autonomes, serveur arrêté)
+
+Binaires autonomes (`apps/go-api/cmd/<nom>`), à lancer depuis la racine du dépôt ; ils demandent la
+compilation CGO (gcc) comme le serveur. Chacun ouvre directement la base qu'il écrit : le **serveur
+doit être arrêté** (un seul processus écrivain par base). Les outils Halo 5 lisent `db_profiles.json`
+et le magasin de jetons (`data/auth/watcher_tokens/`) ; quand le jeton de rafraîchissement de la
+cible est mort, empruntez celui d'un compte sain avec `LEVELUP_H5_AUTH_AS=<Gamertag>` (l'historique,
+les événements et les dossiers de service Halo 5 sont servis pour n'importe quel gamertag à n'importe
+quel jeton valide). Le gamertag positionnel vaut `JGtm` par défaut.
+
+```bash
+go run ./apps/go-api/cmd/h5-backfill [Gamertag] [tailleDePage]              # tailleDePage : 25 par défaut
+go run ./apps/go-api/cmd/h5-events-backfill [Gamertag-auth] [maxMatchs]     # 0 ou absent = tous les matchs
+go run ./apps/go-api/cmd/h5-kill-kind-backfill [Gamertag-auth] [maxMatchs] [force]
+go run ./apps/go-api/cmd/h5-csr-backfill [Gamertag]
+go run ./apps/go-api/cmd/h5-roster-refetch [--commit] [--match ID] [--limit N] [--title halo_5] [--resolver]
+go run ./apps/go-api/cmd/backfill-csr-history -xuid XUID -player-db CHEMIN [-season CsrSeason12-1] [-dry-run]
+```
+
+- `h5-backfill` : historique Halo 5 complet d'un joueur (de 2016 à aujourd'hui), en complément de la
+  synchronisation incrémentale. Chaque page est persistée dès qu'elle est lue et les matchs connus
+  sont sautés : relancer après une interruption reprend sans doublon (INSERT seul). Affiche à la fin
+  les effectifs de la base partagée Halo 5.
+- `h5-events-backfill` : relit les événements par match des matchs Halo 5 collectés avant l'existence
+  des surfaces dérivées et ne réécrit que celles-ci (précision des armes, événements marquants
+  d'assistance et d'objectif). Idempotent. Le compte d'authentification est le premier argument (ou
+  `LEVELUP_H5_AUTH_AS`).
+- `h5-kill-kind-backfill` : relit les événements et recalcule `weapon_kills` avec la mécanique du
+  frag (`kill_kind`), écrite en nouvelle génération (INSERT seul, `v_weapon_kills` lit la dernière).
+  Sans `force`, seuls les matchs dont `kill_kind` est vide sont traités ; `force` (troisième argument
+  `force`, `1` ou `true`, ou `LEVELUP_KK_FORCE=1`) recalcule tous les matchs, nécessaire pour
+  recueillir une valeur de `kill_kind` nouvellement introduite.
+- `h5-csr-backfill` : écrit les instantanés de CSR de carrière en arène d'un joueur, par liste de
+  lecture classée, dans `player_csr_snapshots` de sa base joueur Halo 5 (la cible doit être déclarée
+  dans `db_profiles.json`).
+- `h5-roster-refetch` : matchs Halo 5 dont l'effectif est incomplet et non reconstructible hors
+  ligne (BTB 8 contre 8, matchs avec remplacements) : relit le match et ajoute les participants
+  MANQUANTS avec leurs statistiques complètes (INSERT seul, garde `NOT EXISTS` sur
+  `(match_id, xuid)`, `match_registry` intact). **Simulation par défaut** : rien n'est écrit sans
+  `--commit`. Les identités viennent d'abord du fil des frags local du match ; `--resolver` ajoute le
+  résolveur universel en repli (désactivé par défaut).
+- `backfill-csr-history` : instantanés de rang (CSR) des saisons PASSÉES d'un joueur Halo Infinite,
+  qui alimentent le menu des saisons de la page Carrière : la synchronisation n'écrit que la saison
+  courante. Les saisons viennent de `csr_season_calendars` dans `-metadata-db` (toutes, sauf si
+  `-season` est donné) ; une saison jamais jouée en classé n'a pas de palier réel et n'écrit rien.
+  `-dry-run` liste les saisons visées sans appeler l'API ni écrire. Autres drapeaux : `-metadata-db`,
+  `-watcher-tokens-dir`, `-title` (`halo_infinite` par défaut), `-gamertag` (journaux seulement),
+  `-env-file` (`.env.local` par défaut), `-rate-limit` (requêtes par minute, 60 par défaut). Le jeton
+  de rafraîchissement du joueur doit se trouver dans le magasin de jetons.
+
+### Calibrage du LUSR (outils autonomes, serveur arrêté)
+
+Estimations hors ligne qui alimentent la note LUSR v2 à partir de l'historique des matchs de la base
+partagée Halo Infinite. À lancer depuis la racine du dépôt (le `--db` par défaut est le chemin
+relatif `data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb`), **serveur arrêté** : ils
+ouvrent la base directement. Commencer par `--dry-run` quand il existe.
+
+```bash
+go run ./apps/go-api/cmd/lusr_v2_ttt_batch [--dry-run] [--db CHEMIN] [--smooth [--write-smoothed]]
+go run ./apps/go-api/cmd/lusr_v2_squad_estimate [--dry-run] [--db CHEMIN] [--weeks 4] [--min-matches 10] [--gain 6.0]
+go run ./apps/go-api/cmd/lusr_v2_replay [--db CHEMIN] [--reset] [Gamertag ...]
+```
+
+- `lusr_v2_ttt_batch` : hyperparamètres empiriques par groupe de listes de lecture (probabilité de
+  match nul, moyenne et écart type des frags et des morts, nombre de matchs) et matrice de couplage
+  entre modes, ajoutés à `lusr_hyperparams_v2` sous une source datée `batch_AAAA_MM_JJ` ; le
+  calcul de fond les relit par les vues `_latest`. Idempotent (une relance ajoute une ligne, la vue
+  dédoublonne). `--smooth` estime en plus un tau par joueur et par groupe et l'écrit dans
+  `ttt_tau_empirical` ; `--write-smoothed` (avec `--smooth`) écrit en outre le mu lissé terminal dans
+  `player_skill_state_v2`. Estimation de première passe, pas le lissage complet « Through-Time ».
+- `lusr_v2_squad_estimate` : décalage de synergie d'escouade (`player_squad_offset`) de chaque paire
+  de coéquipiers ayant au moins `--min-matches` matchs ensemble sur les `--weeks` dernières
+  semaines, par groupe de listes de lecture : moyenne de (issue réelle - probabilité de victoire
+  prédite par les notes SOLO), convertie en mu par `--gain`. Première passe prudente (les notes solo
+  courantes incluent déjà ces matchs, le décalage est donc sous-estimé). La note n'utilise ces
+  décalages que si `LEVELUP_LUSR_V2_SQUAD_OFFSET=1` est posé sur le serveur.
+- `lusr_v2_replay` : rejoue le LUSR v2 sur tout l'historique des joueurs nommés (par défaut quatre
+  gamertags figés : passez les vôtres) et imprime sur la sortie standard un rapport markdown à
+  comparer aux niveaux cibles validés. Le rejeu écrit lui-même l'état de note
+  (`player_skill_state_v2`). **`--reset` supprime toutes les lignes de `player_skill_state_v2`**, pour
+  tous les joueurs, avant le rejeu (état neuf depuis les priors).
+
 ### Migration des chemins média (one-shot, binaire autonome)
 
 Convertit les chemins média **absolus** (legacy) en chemins relatifs portables

@@ -74,7 +74,7 @@ func TestGetCSRWorldLeaderboard_PrivateMasking(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("insert enrich: %v", err)
 	}
-	if _, err := InsertWorldNoDataPlayers(ctx, shared.SQLDb(), "halo_infinite", "s1", []string{"P2"}); err != nil {
+	if _, err := markWorldNoDataPlayers(ctx, shared.SQLDb(), "halo_infinite", "s1", []string{"P2"}); err != nil {
 		t.Fatalf("mark private: %v", err)
 	}
 	got, err := repo.GetCSRWorldLeaderboard(ctx, "halo_infinite", "s1", "pl1", 10)
@@ -91,7 +91,7 @@ func TestGetCSRWorldLeaderboard_PrivateMasking(t *testing.T) {
 	}
 
 	// s2 : AUCUN enrichi (saison expirée) ; Q1 marqué privé → garde : PAS de masquage.
-	if _, err := InsertWorldNoDataPlayers(ctx, shared.SQLDb(), "halo_infinite", "s2", []string{"Q1"}); err != nil {
+	if _, err := markWorldNoDataPlayers(ctx, shared.SQLDb(), "halo_infinite", "s2", []string{"Q1"}); err != nil {
 		t.Fatalf("mark private s2: %v", err)
 	}
 	got2, err := repo.GetCSRWorldLeaderboard(ctx, "halo_infinite", "s2", "pl1", 10)

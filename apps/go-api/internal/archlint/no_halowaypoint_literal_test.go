@@ -77,7 +77,6 @@ var halowaypointAllowlist = map[string]bool{
 	"cmd/probe-h5/main.go":                    true,
 	"cmd/probe-mcc/main.go":                   true,
 	"cmd/refresh_golden_fixture/main.go":      true,
-	"cmd/snapshot-world-leaderboard/main.go":  true,
 	// Outillage du rejeu 2D (ajouté le 2026-07-31 à la réconciliation avec
 	// killsource) : le client UGC appelle DIRECTEMENT les hôtes officiels pour
 	// récupérer les variantes de carte. C'est une frontière HTTP au même titre que

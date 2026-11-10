@@ -1135,8 +1135,7 @@ func Steps() []migration.Migration {
 		{
 			// Joueurs « privés / sans données » du classement mondial : un joueur dont
 			// l'historique matchmade est inaccessible (privacy Xbox → 403/vide) ressort
-			// de l'enrichissement avec 0 stat. On le marque ici pour (a) ne plus le
-			// re-fetcher aux runs suivants (backfill -skip-existing), (b) le masquer du
+			// de l'enrichissement avec 0 stat. On le marque ici pour le masquer du
 			// classement affiché (anti-join). Marqueur par (titre, saison, gamertag).
 			Name:        "create_world_player_no_data",
 			TargetDB:    migration.TargetShared,

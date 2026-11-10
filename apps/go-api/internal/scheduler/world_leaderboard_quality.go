@@ -13,9 +13,7 @@
 //
 // Règle appliquée : décision D1, définie UNE SEULE FOIS dans
 // duckdb.DegradedBatchReason (volume effondré ou identification effondrée) — ce
-// fichier n'en est qu'un appelant. L'autre appelant est le CLI -restore-best, qui
-// s'en sert dans l'autre sens (le lot servi mérite-t-il d'être remplacé par un
-// meilleur lot historique ?) : une seule règle, deux usages, aucune redéfinition.
+// fichier n'en est qu'un appelant, il ne la redéfinit pas.
 //
 // Un refus est un SKIP de la playlist, jamais une erreur de cycle : les autres
 // playlists sont persistées normalement et le lot servi reste en place. Le plancher

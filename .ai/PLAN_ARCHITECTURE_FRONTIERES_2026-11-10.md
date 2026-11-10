@@ -174,9 +174,17 @@ Aucun comportement ne change. Effort : moyen.
       `cmd/server/main.go:16`).
 - [x] 1.8 (TEC-2, partie code mort) Supprimer le type manuel `MatchHistoryRow` de `lib/api/types.ts`.
 
-- [ ] 1.9 (règle 7, découvert en 1.1) Supprimer le code que 1.1 a laissé sans appelant : fonctions dont les
-      seuls appelants étaient des commandes supprimées. Liste établie par `deadcode` (comparaison avant et
-      après 1.1), fermée dans le compte rendu.
+- [x] 1.9 (règle 7, découvert en 1.1) Aucun code du moteur laissé sans appelant par les suppressions de
+      commandes. Contrôle : `deadcode` avant et après, `comm -13` vide.
+
+Résultat de 1.9 (2026-11-10). 17 commandes rétablies (seul point d'entrée de 63 fonctions), puis décision de
+l'utilisateur appliquée (D8 révisée) : 4 supprimées avec leur code (`WorldCSRBatchEntries`,
+`WorldCSRBestBatch`, `WorldCSRSeasonPlaylistPairs` et leurs types, `InsertWorldNoDataPlayers`,
+`WorldSeasonEnrichedGamertags`, `logging.InstallCLI`, `ProvidesNativeKDA` et le réglage `no_native_kda` que
+plus rien ne lisait), 9 gardées et documentées dans `docs/COMMANDS.md` et son pendant français, 4 en attente.
+Bilan de `apps/go-api/cmd` : 180 au départ, 83 supprimées, 98 restantes (une arrivée par la release).
+Témoins identiques. Le harnais neutralise désormais l'état du disque du poste (seuil de 80 % franchi en cours
+de chantier : `open_detections`, `disk.status`, `volume.status`).
 
 Résultat de 1.1 à 1.8 hors 1.6 (2026-11-10). 96 commandes supprimées et non 98 : `admin` (outil de secours des
 comptes, seul moyen de créer un administrateur ou de réinitialiser un mot de passe sans l'API web) et `diag_q`
@@ -389,7 +397,7 @@ deux graphes de 7.3.
 | Étape | État | Commit | Note |
 |---|---|---|---|
 | 0 | close | (commit de clôture de l'étape 0) | témoins et compteurs relevés le 2026-11-10 |
-| 1 | en cours | | 1.1 à 1.5, 1.7, 1.8 faits ; restent 1.9 et 1.6 |
+| 1 | en cours | | reste 1.6 |
 | 2 | à faire | | |
 | 3 | à faire | | |
 | 4 | à faire | | |
@@ -408,9 +416,16 @@ deux graphes de 7.3.
 - (étape 0) Le témoin ne couvre pas le rejeu. L étape 6 déplace `replaylabels` et touche `service/replayview` :
   son gate s'appuie donc en plus sur les tests de `service/replayview` et de `libs/film/replay` (équivalence),
   à lancer explicitement.
-- (étape 1) Plus rien n'écrit dans `lusr_hyperparams_v2` ni `player_squad_offset` hors tests et migrations
-  (les outils d'estimation `lusr_v2_ttt_batch` et `lusr_v2_squad_estimate` n'avaient plus d'utilisateur) ; les
-  lecteurs restent, sans effet faute de données. À rapprocher de 2.3 (interrupteur du décalage d'escouade).
+- (étape 1) `lusr_hyperparams_v2` et `player_squad_offset` ne sont écrits que par les outils de calibrage
+  (`lusr_v2_ttt_batch`, `lusr_v2_squad_estimate`, gardés) ; `lusr_v2_squad_estimate` dépend de
+  `LEVELUP_LUSR_V2_SQUAD_OFFSET=1`. À traiter en 2.3 : retirer l'interrupteur sans casser l'outil.
+- (étape 1) La table `world_player_no_data` n'a plus d'écrivain de production ; son lecteur reste (masquage du
+  classement). La description de la migration qui la crée parle encore d'un rattrapage. Non traité.
+- (étape 1) `h5-roster-refetch` cite `cmd/h5-roster-topup`, supprimée. `lusr_v2_replay` porte quatre gamertags
+  par défaut. `h5-events-backfill` fait un « DELETE puis INSERT ciblé » non vérifié contre les règles ART.
+  Non traités.
+- (étape 1) `TestBackfillRegistryNames_BaseTenueParUnAutreProcessus` (`cmd/levelup`) échoue sous charge et
+  passe seul. Non traité.
 - (étape 1) `domain.PlayerInfo.SteamID` (`steam_id` dans l'API) n'a aucun lecteur ; le retirer change
   `openapi.yaml`. Non traité.
 - (étape 1) Des commentaires citent des commandes qui n'ont jamais existé dans `cmd/` : `diag_exec`,

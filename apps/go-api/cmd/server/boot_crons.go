@@ -201,8 +201,8 @@ func launchWorldLeaderboardCron(st *bootState) {
 		worldLbTask := loopTask(taskWorldLeaderbd, true, schedulerCtx, func(sctx context.Context) {
 			// Enrichissement des stats joueur (ranked-only, dédup match-centric,
 			// append-only) : TOUJOURS actif, via le POOL multi-token (comptes db_profiles
-			// round-robin — même chemin d'auth que le reste de l'app et que le CLI
-			// -all-tokens, store-first ADR 0023). Construit ICI, dans la goroutine (hors
+			// round-robin — même chemin d'auth que le reste de l'app,
+			// store-first ADR 0023). Construit ICI, dans la goroutine (hors
 			// chemin de démarrage → boot non bloqué), en Eager:true : résout les tokens et
 			// ÉLIMINE les comptes au RT mort (invalid_grant). Indispensable — sinon le
 			// round-robin taperait des sources mortes et raterait des fetchs. Un build en
