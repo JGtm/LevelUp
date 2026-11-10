@@ -6,7 +6,7 @@
 //   - le scan/sync média (déclenchement automatique in-process, cf.
 //     media_index_service.go) — les captures scannées passent désormais en HLS
 //     comme les uploads ;
-//   - un rattrapage manuel, serveur arrêté.
+//   - le CLI backfill-media-hls (rattrapage manuel, serveur arrêté).
 //
 // Le HLS gère le HEVC en copie (zéro réencodage) ; le remux WebM live, lui, le
 // rejette. Faire converger les deux chemins vers le HLS rend donc les captures
@@ -117,7 +117,7 @@ func selectPendingHLSCandidates(ctx context.Context, dbPath, onlySlug string) ([
 	// Éligibilité :
 	//   - transcode_status NULL  → éligible (ligne historique jamais évaluée) ;
 	//   - 'direct' / 'failed'    → exclus (web-natif servi direct, plus de re-probe ;
-	//     échec = plus de retry auto, réarmable par ResetFailedTranscodes) ;
+	//     échec = plus de retry auto, réarmable via backfill-media-hls --retry-failed) ;
 	//   - 'processing' FRAIS     → exclu (transcodage réellement en cours) ;
 	//   - 'processing' PÉRIMÉ ou sans horodatage (orphelin legacy/crash) → éligible
 	//     (récupération, cf. transcodeStaleAfter).
@@ -226,8 +226,8 @@ func processHLSCandidate(ctx context.Context, c hlsCandidate, store MediaPathSto
 // optionnellement bornées à onlySlug, les rendant de nouveau éligibles au
 // balayage. Le retry des 'failed' n'est PLUS automatique — un échec permanent
 // (codec non supporté, source corrompu) subissait un transcodage ffmpeg complet
-// en pure perte à chaque sync : c'est devenu une action opérateur maîtrisée
-// par cette fonction. Retourne le nombre de lignes réarmées.
+// en pure perte à chaque sync : c'est devenu une action opérateur maîtrisée via
+// le CLI backfill-media-hls --retry-failed. Retourne le nombre de lignes réarmées.
 func ResetFailedTranscodes(ctx context.Context, dbPath, onlySlug string) (int64, error) {
 	var n int64
 	err := withSharedSocialDB(ctx, dbPath, func(db *sql.DB) error {

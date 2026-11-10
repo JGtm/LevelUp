@@ -65,6 +65,7 @@ var weaponKillsSQLAllowlist = map[string]string{
 	// (2) Halo 5
 	"internal/games/halo_5/livesync/kill_kind_backfill.go":        "Halo 5 : backfill de kill_kind sur SA table",
 	"internal/platform/duckdb/halo5/halo5_match_events_source.go": "Halo 5 : source d'événements adossée à SA table",
+	"cmd/h5-backfill/main.go":                                     "CLI Halo 5",
 	// (3) replis partagés — branche « titre sans décodeur de film », c'est-à-dire Halo 5
 	"internal/platform/duckdb/weapon_kills_repo.go":      "repo historique : sert Halo 5 (le lecteur Halo Infinite est killsource_weapon_kills_repo.go)",
 	"internal/platform/duckdb/queries_match_detail.go":   "repli Q-détail par joueur (branche sans classifier de source)",

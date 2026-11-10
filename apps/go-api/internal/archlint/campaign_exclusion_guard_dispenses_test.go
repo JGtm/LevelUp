@@ -182,11 +182,17 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 	// cmd : outils opérateur (D-2) — diag_*, backfills et reconstruction de la ligne lue
 	"cmd/backfill_all/main.go:loadMissingPSAMatches": {dispenseOperateur, "2026-10-15",
 		"backfill : sélectionne les matchs sans PSA, puis les réécrit (main.go:115-129)."},
+	"cmd/backfill_time_played/main.go:commitUpdates": {dispenseOperateur, "2026-10-15",
+		"backfill : UPDATE time_played_seconds du match lu (main.go:197)."},
 	"cmd/diag_lusr_player/loaders.go:loadMatches": {dispenseOperateur, "2026-10-15", "cmd/diag_* : rejeu diagnostique du LUSR, lecture seule."},
+	"cmd/h5-roster-refetch/insert.go:insertParticipant": {dispenseOperateur, "2026-10-15",
+		"reconstruit les participants manquants du match lu (INSERT, insert.go:66) ; réécrit le match lui-même."},
 	"cmd/levelup/cmd_backfill_h5_kill_mechanics.go:applyMechanicUpdates": {dispenseOperateur, "2026-10-15",
 		"backfill : UPDATE des mécaniques de frag du match lu (cmd_backfill_h5_kill_mechanics.go:376)."},
 
 	// ── E5.6 (plan backlog 2026-10-16) : lecteurs du registre sur fenêtre de temps, sans `xuid = ?` ──
 	"cmd/diag_film_avail/main.go:lireCandidats": {dispenseOperateur, "2026-10-17",
 		"cmd/diag_* : mesure, par mois, des matchs sans voie de film (main.go:123, `>= ?` sur le mois), lecture seule : la mesure porte sur le registre entier, Campagne comprise."},
+	"cmd/lusr_v2_squad_estimate/main.go:loadWindowMatches": {dispenseOperateur, "2026-10-17",
+		"outil d'estimation du LUSR v2 par escouade (cmd/, main.go:135, `start_time >= ?`) : lecture seule, n'écrit rien ; l'estimation porte sur les matchs de tous les joueurs de la fenêtre, pas sur un affichage joueur."},
 }

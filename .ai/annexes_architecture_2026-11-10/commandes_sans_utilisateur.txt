@@ -6,15 +6,11 @@
 analyze_media_tz
 apply_tz_migration
 audit_coverage
-backfill-csr-history
-backfill-media-hls
 backfill-team-scores
-backfill-world-player-stats
 backfill_bp_items
 backfill_first_joined_tz
 backfill_participation_info
 backfill_quit_timestamps
-backfill_time_played
 bench-rps
 check-registry
 check_playlists
@@ -64,19 +60,14 @@ engagement-validate
 export_t0_fixtures
 h5-appearance-backfill
 h5-csr-match-backfill
-h5-events-backfill
-h5-kill-kind-backfill
 h5-lusr-backfill
 h5-lusr-smoke
-h5-read-smoke
-h5-roster-refetch
 h5-teamscore-backfill
 inspect_engagement
 lusr_v2_tier_analysis
 migrate-roman-ranks
 openapi-diff
 probe-world-stats
-purge_corrupt_records
 purge_foreign_lusr_chain
 purge_player_media
 query_medals_gap
@@ -85,22 +76,14 @@ reindex-media-thumbs
 repair-metadata
 seed-medal
 seed-ranked-playlists
-world-aliases-persist
 
 ## A SUPPRIMER APRES RELECTURE DE LA REFERENCE (nommee par du code non-test)
 1 ref : backfill_kda_accuracy
-1 ref : h5-backfill
-1 ref : h5-csr-backfill
 3 ref : h5-enrich
 1 ref : h5-roster-topup
 1 ref : h5-sync
 1 ref : lusr_v2_canonical_backfill
-2 ref : lusr_v2_replay
-1 ref : lusr_v2_squad_estimate
-3 ref : lusr_v2_ttt_batch
-1 ref : migrate-hls-audio
 2 ref : rebuild_mp
-1 ref : snapshot-world-leaderboard
 
 ## CONSERVEES (instruments de mesure cartes et film, items deja au registre des reports, outils nommes par un message de test)
 backfill_t0
@@ -121,3 +104,22 @@ zone-attribution
 ## CONSERVEES APRES RELECTURE DU PILOTE (2026-11-10) : outils utilises hors de toute citation, desormais documentes dans docs/COMMANDS.md
 admin
 diag_q
+
+## RETABLIES LE 2026-11-10 : seul point d'entree de code du moteur (decision de l'utilisateur attendue, famille par famille)
+backfill-csr-history
+backfill-media-hls
+backfill-world-player-stats
+backfill_time_played
+h5-backfill
+h5-csr-backfill
+h5-events-backfill
+h5-kill-kind-backfill
+h5-read-smoke
+h5-roster-refetch
+lusr_v2_replay
+lusr_v2_squad_estimate
+lusr_v2_ttt_batch
+migrate-hls-audio
+purge_corrupt_records
+snapshot-world-leaderboard
+world-aliases-persist

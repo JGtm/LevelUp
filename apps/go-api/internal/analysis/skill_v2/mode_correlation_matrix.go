@@ -10,7 +10,7 @@ package skill_v2
 // Pearson des μ entre modes sur l'ensemble des joueurs ayant joué les deux,
 // capée à Phase4ModeCouplingMaxWeight (0.4, contrainte produit).
 //
-// Pure (0 accès DB). L'estimation se fait hors runtime ; les poids
+// Pure (0 accès DB). L'estimation tourne dans cmd/lusr_v2_ttt_batch ; les poids
 // sont stockés dans lusr_hyperparams_v2 et relus par propagateCrossModeLeak.
 
 import (

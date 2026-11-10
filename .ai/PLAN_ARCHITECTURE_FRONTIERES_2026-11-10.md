@@ -67,6 +67,22 @@ Le skill `plan-execution` s'applique en entier. Propre à ce plan :
 | D8 | Commandes sans utilisateur | Supprimer les 98 commandes de l'annexe (85 sans aucune référence, 13 après relecture de la référence qui les nomme). Conserver 14 : instruments de mesure cartes et film (liés au décodeur, revu plus tard), items déjà au registre des reports, outils nommés par un message de test. | validée le 2026-11-10 (« je vais suivre tes reco, de toute façon tout est versionné ») |
 | D9 | Contrat d'API | Le retrait des champs `expected_win_prob` change `openapi.yaml`. Sans effet de compatibilité : le front et le serveur sont livrés ensemble, y compris dans l'application Windows. | validée avec D2 (conséquence mécanique) |
 
+**D8 révisée le 2026-11-10 (après exécution de 1.1).** Le critère « aucune citation » ne voit pas l'usage réel. La
+comparaison du code inatteignable avant et après 1.1 (`deadcode`) montre que 17 commandes supprimées étaient le
+seul point d'entrée de 63 fonctions du moteur ; elles sont rétablies. Décision de l'utilisateur le 2026-11-10
+(« ok avec tes recos », et pour le classement mondial « le serveur lance les commandes en cron ») :
+- GARDER et documenter dans `docs/COMMANDS.md` (deux langues) : Halo 5 (`h5-backfill`, `h5-events-backfill`,
+  `h5-kill-kind-backfill`, `h5-csr-backfill`, `h5-roster-refetch`), calibrage du LUSR (`lusr_v2_ttt_batch`,
+  `lusr_v2_squad_estimate`, `lusr_v2_replay`), et `backfill-csr-history` (saisons de rang PASSÉES d'un joueur :
+  la sync n'écrit que la saison courante, vérifié dans `sync/engine_postsync_scoring.go`).
+- SUPPRIMER avec leur code du moteur : classement mondial (`snapshot-world-leaderboard`,
+  `backfill-world-player-stats`, `world-aliases-persist`). Vérifié en production le 2026-11-10 : aucune tâche
+  planifiée de l'hôte ne les lance, c'est `scheduler.WorldLeaderboardCron` du serveur qui tourne chaque jour.
+  Et `h5-read-smoke` (outil d'essai).
+- EN ATTENTE, rétablies : `migrate-hls-audio`, `backfill-media-hls`, `purge_corrupt_records`,
+  `backfill_time_played`. La recommandation acceptée est « supprimer si elles ont été passées en production » ;
+  le journal n'en porte aucune trace. Question posée à l'utilisateur.
+
 **Ordonnancement dans la v8.1.2 (D1).** Les quatre branches 8.1.2 (`feat/812-bureau`,
 `feat/812-film`, `feat/812-web`, `feat/812-stats`) sont fusionnées dans `release/v8.1.2` (vérifié le
 2026-11-10 : la base de ce chantier, `76635f08be`, les contient ; confirmé par le pilote de la

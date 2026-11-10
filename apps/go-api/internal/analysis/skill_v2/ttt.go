@@ -2,7 +2,8 @@ package skill_v2
 
 // ttt.go — Sprint 3.A : prototype TrueSkill Through Time (TS2 §10).
 //
-// Une simple agrégation forward (moyennes empiriques) ne suffit pas. La vraie inférence "Through-Time" lisse l'historique
+// Le batch actuel (cmd/lusr_v2_ttt_batch) ne fait qu'une agrégation forward
+// (moyennes empiriques). La vraie inférence "Through-Time" lisse l'historique
 // complet d'un joueur (forward + backward) et ré-estime les paramètres de
 // dynamique (τ²) et de bruit d'observation, en utilisant TOUTE l'information
 // (passée ET future), pas seulement le passé.

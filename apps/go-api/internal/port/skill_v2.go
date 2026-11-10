@@ -25,8 +25,8 @@ type SkillV2Repository interface {
 // (LUSR v2 Sprint 1.C, player_squad_offset) tel que consommé par le shadow
 // runner. Implémenté par duckdb.SquadOffsetRepo.
 //
-// Le runtime sync ne fait que LIRE les offsets (l'écriture vient d'un outil
-// d'estimation hors runtime), d'où une interface à une seule méthode.
+// Le runtime sync ne fait que LIRE les offsets (l'écriture vient du CLI
+// lusr_v2_squad_estimate), d'où une interface à une seule méthode.
 type SquadOffsetRepository interface {
 	LoadSquadOffsets(ctx context.Context, xuid, playlistGroup string) (map[string]float64, error)
 }

@@ -5,7 +5,7 @@
 // Alimente le menu déroulant saison de la page Carrière : une saison n'apparaît
 // que si le joueur y a des snapshots, donc on ne persiste QUE les entrées avec un
 // tier réel (pas les "Non classé" des saisons jamais jouées qui pollueraient le
-// menu). Réutilisable par un CLI.
+// menu). Réutilisable par le CLI cmd/backfill-csr-history.
 package sync
 
 import (

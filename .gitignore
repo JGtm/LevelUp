@@ -34,7 +34,8 @@ wheels/
 *.egg
 MANIFEST
 
-# Go — binaires CLI buildés localement (cmd/*). Artefacts volumineux (80-94 Mo), jamais commités.
+# Go — binaires CLI buildés localement (cmd/*, ex. backfill-world / snapshot-world /
+# world-aliases-persist). Artefacts volumineux (80-94 Mo), jamais commités.
 *.exe
 
 # Node

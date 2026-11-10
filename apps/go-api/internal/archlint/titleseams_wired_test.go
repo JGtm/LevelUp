@@ -167,8 +167,8 @@ func TestSeamsPosesUniquementParTitleseams(t *testing.T) {
 	// dont la liste divergeait entre binaires (certains posaient le défaut Infinite sans la
 	// variante h5 — tous les modes h5 collapsés dans arena_slayer, sans un mot). Les seams
 	// SetTitleStepsProvider / SetCareerRankTranslationsProvider ne sont PAS ici : des
-	// binaires qui n'embarquent pas le moteur de sync (h5-metadata-fetch,
-	// seed-rank-translations) les posent légitimement seuls,
+	// binaires qui n'embarquent pas le moteur de sync (h5-metadata-fetch, h5-read-smoke,
+	// seed-rank-translations, snapshot-world-leaderboard) les posent légitimement seuls,
 	// et les leur imposer via RegisterAll y ferait entrer internal/sync pour rien.
 	motifs := []string{
 		"SetLUSRChainClassifier(",

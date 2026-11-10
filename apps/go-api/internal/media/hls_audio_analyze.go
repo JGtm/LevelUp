@@ -282,7 +282,7 @@ type AudioLayoutReport struct {
 
 // AnalyzeAudioLayoutReport sonde un fichier source et retourne l'analyse complète du
 // layout audio (décision full-mix + métriques) sans rien écrire. Outil de diagnostic
-// durable. IO ffmpeg + ffprobe.
+// durable (cf. cmd/migrate-hls-audio --analyze). IO ffmpeg + ffprobe.
 func AnalyzeAudioLayoutReport(ctx context.Context, src string) (AudioLayoutReport, error) {
 	streams, err := ProbeStreamsDetailed(ctx, src)
 	if err != nil {

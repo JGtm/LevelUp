@@ -25,8 +25,9 @@ import (
 const h5ArenaRecordType = "arena"
 
 // PersistArenaCSR — point d'entrée EXPORTÉ de persistArenaCSR pour les outils ops
-// (backfill des snapshots CSR carrière par playlist pour un joueur, via une source
-// authentifiée — éventuellement empruntée). Même logique que le hook live PersistCSR.
+// (cmd/h5-csr-backfill : backfill des snapshots CSR carrière par playlist pour un
+// joueur, via une source authentifiée — éventuellement empruntée). Même logique que
+// le hook live PersistCSR.
 func PersistArenaCSR(ctx context.Context, src halo5.CaptureSource, playerDBPath, gamertag string) (int, error) {
 	return persistArenaCSR(ctx, src, playerDBPath, gamertag)
 }
