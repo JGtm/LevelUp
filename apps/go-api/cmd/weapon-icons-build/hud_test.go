@@ -31,6 +31,7 @@ func depuisLaRacine(t *testing.T, rel string) string {
 var atlasSizes = map[uint32]int{
 	abilityAtlasTag:   18,
 	equipmentAtlasTag: 21,
+	grenadeAtlasTag:   5,
 }
 
 func TestHudIcons_TableIsWellFormed(t *testing.T) {
