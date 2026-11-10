@@ -811,6 +811,10 @@ go run ./cmd/levelup diagnose --db PATH [--verbose]
 go run ./cmd/levelup check-env
 go run ./cmd/levelup gate-check [--gamertag X] [--json]
 go run ./cmd/levelup compare-db --go-db PATH --python-db PATH [--json]
+go run ./cmd/diag_q DB_PATH "SQL"                       # read-only SQL, TSV output; run it on a COPY of a database the server holds
+go run ./cmd/admin create-admin --username U --password P   # emergency account tool, no web API needed
+go run ./cmd/admin reset-password --username U --password P
+go run ./cmd/admin list-users
 ```
 
 ### Prestige — coach grammar tuning analyzer

@@ -373,9 +373,7 @@ var mediaAppendOnlyTables = []string{
 // prouver l'absence de déclencheur ART (le bug DuckDB #23645 FATAL-invalide le handle
 // partagé pour tout le process — cf. incident catalog_fetch_queue 2026-06-19).
 //
-// Vide au 2026-08-03 : aucune mutation tolérée. Les seuls DELETE existants vivent
-// dans `cmd/cleanup_media_index` et `cmd/purge_player_media` — outils one-shot
-// mono-process, hors serveur, exclus du périmètre comme partout ailleurs.
+// Vide au 2026-08-03 : aucune mutation tolérée.
 var allowlistMediaMutation = map[string]string{}
 
 // reMediaDelete / reMediaUpdate : motifs STATEMENT-level pour une table donnée.

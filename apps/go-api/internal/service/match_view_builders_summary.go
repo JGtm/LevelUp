@@ -259,7 +259,7 @@ func buildExpectedStats(e *domain.ExpectedStatsRaw, histRows []domain.MatchHistA
 	// expected K/D LOCAL — modèle count∝durée (TrueSkill2-like) quand l'API skill
 	// n'a pas fourni l'attendu (Halo 5). Cf. localExpectedKD (réutilisé pour les
 	// amis trackés). Validé sur 3135 matchs H5 (+13% frags / +5% morts vs moyenne
-	// plate ; cmd/diag_expected_kd). N'écrase JAMAIS un attendu fourni par l'API.
+	// plate). N'écrase JAMAIS un attendu fourni par l'API.
 	if out.ExpectedKills == nil && out.ExpectedDeaths == nil {
 		if ek, ed, ok := localExpectedKD(histRows, meta, durationSec); ok {
 			out.ExpectedKills = ek

@@ -194,8 +194,7 @@ func launchWorldLeaderboardCron(st *bootState) {
 	// manuelle ; garde-fou fraîcheur 20h → pas de
 	// re-scrape à chaque hot-reload. Gardé par cfg.SharedProvider != nil : en mode
 	// legacy (RO direct), une 2e connexion RW sur shared entrerait en conflit
-	// "different configuration" — on désactive donc le cron in-process (le CLI
-	// snapshot-world-leaderboard reste la voie manuelle, serveur arrêté).
+	// "different configuration" — on désactive donc le cron in-process.
 	if cfg.SharedProvider != nil {
 		lbScraper := haloadapter.NewLeaderboardScraper(800 * time.Millisecond)
 		worldLbCron := scheduler.NewWorldLeaderboardCron(cfg.SharedProvider, lbScraper, 0)

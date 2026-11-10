@@ -46,7 +46,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 	"sync"
 	"time"
@@ -531,10 +530,3 @@ func (s *CareerLiveService) serveDBFallback(ctx context.Context, xuid string, in
 //
 // CareerFetcherFactoryFromTokens, compile-time check → extraits dans
 // `career_live_fetcher.go`.
-
-// errNoFallback est conservé pour signaler explicitement le cas "rien à
-// servir" dans les futurs chemins (CLI manuel, healthcheck). Inutilisé pour
-// l'instant côté HTTP.
-//
-//nolint:unused // export api defensive — supprimer si non câblé d'ici 2026-Q3
-var errNoFallback = sql.ErrNoRows

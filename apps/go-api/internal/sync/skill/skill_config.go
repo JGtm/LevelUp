@@ -147,7 +147,7 @@ var RelativeWeights = map[string]float64{
 //
 // À 0.16 les porteurs de combat perdaient jusqu'à 12 points et la marge de
 // non-inversion tombait au niveau du bruit : ne pas modifier ces poids sans
-// re-simuler (cmd/diag_perfsim) et les re-figer avec l'utilisateur.
+// re-simuler et les re-figer avec l'utilisateur.
 var objectiveChainWeights = map[string]float64{
 	MetricKeyObjectiveParticipation: 0.12,
 	MetricKeyKPM:                    0.10,

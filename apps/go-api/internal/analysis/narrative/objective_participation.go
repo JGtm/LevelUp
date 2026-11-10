@@ -201,7 +201,7 @@ type objectiveFamilyCalibration struct {
 }
 
 // objectiveCalibrations : repères P80 par famille, mesurés localement le 2026-07-26
-// (diag_q sur match_objective_stats_latest ⋈ match_participants, population
+// (requête sur match_objective_stats_latest ⋈ match_participants, population
 // match-joueur, time_played_seconds > 30, hors bots xuid LIKE 'bid(%').
 // actions = Σ w_col × col par ligne ; hold = durée_f / time_played_seconds par ligne.
 //

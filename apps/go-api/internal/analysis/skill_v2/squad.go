@@ -8,7 +8,7 @@ package skill_v2
 // Conséquence : en attribuant les victoires au seul skill individuel, le modèle
 // SUR-estime le μ des joueurs qui jouent souvent en escouade.
 //
-// Correction : on mesure hors-ligne (cmd/lusr_v2_squad_estimate) un "offset de
+// Correction : on mesure hors-ligne un "offset de
 // synergie" par paire de coéquipiers. Au runtime, on ajoute cet offset au μ
 // EFFECTIF avant l'update EP : l'équipe paraît plus forte, le résultat est donc
 // moins surprenant, et le μ INDIVIDUEL bouge moins (la victoire est en partie

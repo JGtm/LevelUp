@@ -55,7 +55,7 @@ type shadowMatch struct {
 //
 // Variante "persist des 2 équipes" (avance le watermark de TOUS les participants).
 // N'est PLUS utilisée par le live (cf. RunLUSRV2ShadowOwnerOnly, fix 2026-06-08,
-// couplage cross-joueur) — conservée pour cmd/lusr_v2_replay et les tests.
+// couplage cross-joueur) — conservée pour les tests.
 func RunLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccessor, xuid string, opts ...ShadowOption) (int, error) {
 	return runLUSRV2Shadow(ctx, playerDB, shared, xuid, buildShadowOptions(false, opts))
 }
@@ -168,8 +168,8 @@ func newShadowRunContext(playerDB *sql.DB, xuid string, canonical, ownerOnlyPers
 // passées à `processOneShadowMatch` au lieu d'avoir 7 paramètres en cascade.
 //
 // `priors` reste les DEFAULTS ; les priors/count-hyperparams effectifs sont
-// résolus PAR GROUPE via resolveGroupParams (override empirique du batch
-// lusr_v2_ttt_batch) et mémoïsés dans priorsCache / countHypCache. Les maps
+// résolus PAR GROUPE via resolveGroupParams (override empirique stocké dans
+// lusr_hyperparams_v2) et mémoïsés dans priorsCache / countHypCache. Les maps
 // sont des références — le cache survit aux copies par valeur du contexte.
 type shadowRunContext struct {
 	repo           port.SkillV2Repository
@@ -347,7 +347,7 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 
 // resolveGroupParams retourne les Priors et CountHyperparams effectifs pour un
 // groupe de modes : les défauts surchargés par les hyperparams empiriques
-// ré-estimés par cmd/lusr_v2_ttt_batch (table lusr_hyperparams_v2). Mémoïsé par
+// ré-estimés (table lusr_hyperparams_v2). Mémoïsé par
 // groupe — 1 seul LoadHyperparams par groupe et par run.
 //
 // Best-effort : si LoadHyperparams échoue (table absente sur une DB non migrée,

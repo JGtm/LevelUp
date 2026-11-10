@@ -843,6 +843,10 @@ go run ./cmd/levelup diagnose --db PATH [--verbose]
 go run ./cmd/levelup check-env
 go run ./cmd/levelup gate-check [--gamertag X] [--json]
 go run ./cmd/levelup compare-db --go-db PATH --python-db PATH [--json]
+go run ./cmd/diag_q DB_PATH "SQL"                       # SQL en lecture seule, sortie TSV ; à lancer sur une COPIE d'une base tenue par le serveur
+go run ./cmd/admin create-admin --username U --password P   # outil de secours des comptes, sans l'API web
+go run ./cmd/admin reset-password --username U --password P
+go run ./cmd/admin list-users
 ```
 
 ### Prestige — analyseur de tuning de la grammaire coach

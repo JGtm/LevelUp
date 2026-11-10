@@ -13,8 +13,7 @@ package main
 //
 // STRATEGIE : re-fetch le carnage h5 (SOURCE DE VERITE, MEME client + DTO que le sync
 // live — halo5.NewCaptureSource + GetMatchCarnage) de chaque match candidat, puis UPDATE
-// cible row-by-row (WHERE match_id=? AND xuid=?, placeholders lies -> ART-safe, meme forme
-// que cmd/backfill_kda_accuracy) des lignes dont la valeur stockee differe de la verite
+// cible row-by-row (WHERE match_id=? AND xuid=?, placeholders lies -> ART-safe) des lignes dont la valeur stockee differe de la verite
 // carnage. match_participants N'EST PAS append-only (absente de tablesProtegees / ADR 0026) :
 // l'UPDATE cible single-writer serialise est le pattern sanctionne (PostSyncEnrichment).
 // Colonnes NON indexees + WHERE sur la PK non modifiee -> aucune suppression d'index (le
@@ -26,8 +25,8 @@ package main
 // ligne participant a 0/0/0 dont created_at < cutoff. Le motif 0/0/0 capte la corruption ;
 // le cutoff (defaut 2026-06-26T15:00Z, APRES le 2e batch) borne le re-fetch aux ingestions
 // de la fenetre de corruption (les matchs correctement ingeres ensuite sont hors scope). Le
-// diff par-ligne garantit qu'un match partiellement complete (topup roster, cf.
-// h5-roster-refetch) voit quand meme ses lignes 0/0/0 d'origine corrigees. cutoff vide =
+// diff par-ligne garantit qu'un match partiellement complete (topup roster)
+// voit quand meme ses lignes 0/0/0 d'origine corrigees. cutoff vide =
 // pur motif (re-fetch de TOUS les matchs a 0/0/0, y compris les vrais-zeros).
 //
 // IDEMPOTENT : apres correction une ligne porte la vraie valeur -> le match sort du motif
@@ -74,7 +73,7 @@ const defaultH5MechCutoff = "2026-06-26T15:00:00Z"
 // h5MechCarnageMode : segment d'URL du carnage. "arena" couvre l'Arena classe ET social
 // (GameMode 1) — le seul mode h5 ingere (Campagne/Warzone exclus a la collecte). Un match
 // residuel d'un autre mode echoue au fetch -> skip best-effort (compte). Meme constante que
-// h5-roster-refetch / livesync/csr_match.go.
+// livesync/csr_match.go.
 const h5MechCarnageMode = "arena"
 
 // mechTriple : les 3 compteurs de mecaniques de kill natives h5 (verite carnage).
@@ -184,7 +183,7 @@ func parseH5MechCutoff(s string) (time.Time, error) {
 // setupH5CarnageSource resout l'xuid d'auth (db_profiles), rafraichit les tokens
 // store-first (ADR 0023) et construit la CaptureSource live. Le SpartanToken est fige
 // dans le *Client a la construction -> le ctx retourne (porteur de l'auth) suffit pour
-// tous les GetMatchCarnage. Cablage identique a cmd/h5-kill-kind-backfill.
+// tous les GetMatchCarnage.
 func setupH5CarnageSource(ctx context.Context, cfg *config.AppConfig, tokensDir, authGT string) (context.Context, halo5.CaptureSource, error) {
 	authXUID := resolveH5AuthXUID(cfg, authGT)
 	if authXUID == "" {
@@ -222,8 +221,7 @@ func resolveH5AuthXUID(cfg *config.AppConfig, authGT string) string {
 
 // loadZeroMechanicMatches selectionne les match_id (recents d'abord) ayant AU MOINS une
 // ligne participant a 0/0/0 dont created_at < cutoff (Campagne exclue read-side canonique).
-// cutoff zero -> aucune borne temporelle. Meme forme DISTINCT + tri temporel canonique que
-// cmd/backfill_kda_accuracy (proven sur DuckDB).
+// cutoff zero -> aucune borne temporelle. Forme DISTINCT + tri temporel canonique.
 func loadZeroMechanicMatches(ctx context.Context, db *sql.DB, titleSlug string, cutoff time.Time, limit int) ([]string, error) {
 	where := `COALESCE(mp.assassination_kills,0)=0 AND COALESCE(mp.ground_pound_kills,0)=0 AND COALESCE(mp.shoulder_bash_kills,0)=0`
 	var qargs []any

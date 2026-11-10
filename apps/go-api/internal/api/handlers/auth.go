@@ -52,11 +52,6 @@ type AuthHandler struct {
 	provider     auth_platform.TokenProvider // abstrait le mécanisme d'acquisition de tokens
 }
 
-// UserLinker est l'interface dont a besoin PasswordLinkStrategy.
-// Conservée comme alias type pour limiter le diff sur les call sites — la définition
-// canonique vit dans platform/auth (cf. link_strategy.go).
-type UserLinker = auth_platform.UserLinker
-
 // NewAuthHandler crée un AuthHandler.
 func NewAuthHandler(
 	sessionStore *session.Store,
@@ -70,16 +65,7 @@ func NewAuthHandler(
 	}
 }
 
-// WithUserStore est conservé pour la backward compat des call sites existants.
-// Auto-wrap le UserLinker dans une PasswordLinkStrategy (comportement historique).
-// Pour le mode SSO Xbox, préférer WithLinkStrategy() avec un XboxSSOLinkStrategy.
-func (h *AuthHandler) WithUserStore(us UserLinker) *AuthHandler {
-	h.linkStrategy = auth_platform.NewPasswordLinkStrategy(us)
-	return h
-}
-
 // WithLinkStrategy injecte explicitement la LinkStrategy à appliquer après le flow.
-// Override tout WithUserStore antérieur.
 func (h *AuthHandler) WithLinkStrategy(s auth_platform.LinkStrategy) *AuthHandler {
 	h.linkStrategy = s
 	return h

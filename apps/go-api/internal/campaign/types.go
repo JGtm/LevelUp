@@ -117,10 +117,6 @@ func (c *ImprovementCampaign) Delta() *float64 {
 	return &d
 }
 
-// MinMatchesForTrend est le seuil sous lequel le delta lissé n'est pas affiché.
-// Cf. R1 (delta lissé LOWESS) — l'UI montre "joue encore N matchs" en dessous.
-const MinMatchesForTrend = 20
-
 // MinMatchesForMannWhitney est le seuil sous lequel le test stat n'est pas
 // calculé. Cf. R4 — déclenche la notif "progression confirmée".
 const MinMatchesForMannWhitney = 20

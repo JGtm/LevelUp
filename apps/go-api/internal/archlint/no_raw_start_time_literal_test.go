@@ -10,7 +10,7 @@
 // Le motif est PRÉCIS : il n'attrape ni `real_start_time AT TIME ZONE 'UTC'`
 // (colonne distincte, calcul d'epoch/durée), ni la forme diagnostique d'offset
 // `epoch_ms(r.start_time AT TIME ZONE 'UTC') - epoch_ms(r.start_time_utc)`
-// (cmd/backfill_first_joined_tz, mesure volontairement le décalage), ni la
+// (mesure volontairement le décalage), ni la
 // définition elle-même (`"COALESCE(" + prefix + "start_time_utc, "...` — coupée
 // par la concaténation). L'allowlist est donc VIDE.
 package archlint
@@ -103,11 +103,6 @@ var manualStartTimeUTCAllowlist = map[string]bool{
 	// 2026-08-03 — DÉFINITION du fragment canonique (source unique). Exemptée par
 	// construction : c'est elle que tous les autres sites doivent appeler.
 	"internal/analysis/sql_fragments.go": true,
-	// 2026-08-03 — MESURE du décalage, pas une lecture de date : l'outil calcule
-	// `epoch_ms(r.start_time AT TIME ZONE 'UTC') - epoch_ms(r.start_time_utc)` pour
-	// quantifier la dette TZ historique. Le fragment canonique masquerait justement
-	// l'écart qu'on cherche à mesurer. Outil one-shot (cmd/), hors serveur.
-	"cmd/backfill_first_joined_tz/main.go": true,
 }
 
 // rawOrderByStartTimeAllowlist : dette PRÉEXISTANTE gelée (règle CLAUDE.md n°5 —
@@ -128,22 +123,9 @@ var rawOrderByStartTimeAllowlist = map[string]bool{
 	"internal/sync/engagement.go":                                     true,
 	"internal/sync/performance_helpers.go":                            true,
 	"internal/sync/session_recalc.go":                                 true,
-	"cmd/analyze_media_tz/main.go":                                    true,
-	"cmd/audit_coverage/main.go":                                      true,
 	"cmd/backfill_all/main.go":                                        true,
-	"cmd/backfill_participation_info/main.go":                         true,
-	"cmd/backfill_quit_timestamps/main.go":                            true,
-	"cmd/diag_citation_counters/main.go":                              true,
 	"cmd/diag_lusr_player/loaders.go":                                 true,
-	// diag_perfsim (2026-08-27, lot 0 du plan PLAN_PERF_NOTE_OBJECTIFS) : oracle de
-	// concordance qui REPLIQUE VERBATIM le SQL de sync/performance_helpers.go
-	// (lui-même dans cette allowlist) — adopter le fragment canonique ici seul
-	// casserait la propriété de réplique. À migrer ENSEMBLE si
-	// performance_helpers.go passe à StartTimeCanonicalSQL.
-	"cmd/diag_perfsim/load.go":        true,
-	"cmd/diag_orphan_session/main.go": true,
-	"cmd/levelup/cmd_backfill.go":     true,
-	"cmd/seed-medal/main.go":          true,
+	"cmd/levelup/cmd_backfill.go":                                     true,
 }
 
 func TestNoNewRawStartTimeLiteral(t *testing.T) {

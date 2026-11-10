@@ -67,16 +67,12 @@ type checkpointAllowance struct {
 // adversariale : l'ancienne détection ne voyait que le littéral « CHECKPOINT » seul et comptait à tort
 // des noms de drapeau). Exact : un fichier qui en a plus échoue, un fichier qui en a moins aussi.
 var checkpointAllowlist = map[string]checkpointAllowance{
-	"cmd/cleanup_media_index/main.go":                                           {2, "outil en ligne de commande qui ouvre sa base seul, serveur arrêté : aucun bail concurrent à respecter (2026-11-02)"},
 	"cmd/levelup/cmd_backfill_h5_kill_mechanics.go":                             {1, "outil en ligne de commande qui ouvre sa base seul, serveur arrêté : aucun bail concurrent à respecter (2026-11-02)"},
 	"cmd/levelup/cmd_compact_passes.go":                                         {1, "outil en ligne de commande qui ouvre sa base seul, serveur arrêté : aucun bail concurrent à respecter (2026-11-02)"},
 	"cmd/levelup/cmd_compact_passes_rewrite.go":                                 {1, "outil en ligne de commande qui ouvre sa base seul, serveur arrêté : aucun bail concurrent à respecter (2026-11-02)"},
 	"cmd/levelup/cmd_consolidate_aliases.go":                                    {1, "outil en ligne de commande qui ouvre sa base seul, serveur arrêté : aucun bail concurrent à respecter (2026-11-02)"},
 	"cmd/levelup/cmd_rebuild_pme.go":                                            {2, "outil en ligne de commande qui ouvre sa base seul, serveur arrêté : aucun bail concurrent à respecter (2026-11-02)"},
 	"cmd/levelup/cmd_repair_highlight_phantoms.go":                              {1, "outil en ligne de commande qui ouvre sa base seul, serveur arrêté : aucun bail concurrent à respecter (2026-11-02)"},
-	"cmd/purge_foreign_lusr_chain/purge.go":                                     {1, "outil en ligne de commande qui ouvre sa base seul, serveur arrêté : aucun bail concurrent à respecter (2026-11-02)"},
-	"cmd/purge_player_media/main.go":                                            {1, "outil en ligne de commande qui ouvre sa base seul, serveur arrêté : aucun bail concurrent à respecter (2026-11-02)"},
-	"cmd/rebuild_pme_art/main.go":                                               {2, "outil en ligne de commande qui ouvre sa base seul, serveur arrêté : aucun bail concurrent à respecter (2026-11-02)"},
 	"cmd/rebuild_shared_social/main.go":                                         {1, "outil en ligne de commande qui ouvre sa base seul, serveur arrêté : aucun bail concurrent à respecter (2026-11-02)"},
 	"cmd/recompute_perfnote/main.go":                                            {1, "outil en ligne de commande qui ouvre sa base seul, serveur arrêté : aucun bail concurrent à respecter (2026-11-02)"},
 	"cmd/server/background_tasks.go":                                            {1, "CHECKPOINT périodique de shared_social (checkpointSharedSocial, ADR 0022) : handle du pool process-wide, la tâche sociale est la seule à les traiter (2026-11-02)"},

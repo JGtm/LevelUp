@@ -8,7 +8,7 @@ French version: [FR/SYNC_GUIDE.md](FR/SYNC_GUIDE.md)
 
 Sync runs **inside the Go server**. Two independent loops keep the data fresh, both backed by the same `SyncEngine` and the same token pool:
 
-- **Presence watcher** (`internal/watcher`) — event-driven. A daemon tracks each configured player's Xbox/Steam presence (RTA WebSocket + REST pollers). When a player finishes a match, a delta sync is queued for that player only. Low latency, near-real-time.
+- **Presence watcher** (`internal/watcher`) — event-driven. A daemon tracks each configured player's Xbox presence (RTA WebSocket + REST pollers). When a player finishes a match, a delta sync is queued for that player only. Low latency, near-real-time.
 - **Auto-sync scheduler** (`internal/scheduler/auto_sync.go`) — periodic. On a fixed interval it runs a delta sync for every player in `db_profiles.json`, catching anything the watcher missed.
 
 Manual CLI commands (`levelup sync-delta` / `sync-full` / `backfill`) exist for bootstrap, gap-filling and local recomputes, but day-to-day operation needs no manual action.

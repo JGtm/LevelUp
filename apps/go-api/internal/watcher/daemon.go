@@ -2,7 +2,6 @@
 //
 // Le Daemon orchestre tout le système de présence :
 //   - Connexion RTA WebSocket (Xbox Live)
-//   - Pollers Steam (fallback)
 //   - PlayerWatchers (FSM + MatchPoller) par joueur
 //   - MatchQueue + Coordinator pour les syncs
 //
@@ -51,13 +50,7 @@ type DaemonController interface {
 
 // DaemonConfig configure le watcher daemon.
 type DaemonConfig struct {
-	RepoRoot string
-	// SteamAPIKey : NON CONSOMMÉ actuellement (W8, revue 2026-06-01). Le
-	// presence.SteamPoller est implémenté + testé (presence_test.go) mais PAS
-	// encore câblé dans le daemon — fallback présence Steam planifié, non activé.
-	// Renseigné par STEAM_API_KEY pour le jour où il sera branché ; ne déclenche
-	// aucun polling tant que le daemon ne l'instancie pas.
-	SteamAPIKey     string
+	RepoRoot        string
 	MaxParallelSync int
 
 	// LiveRefreshFactory est une factory optionnelle pour créer un LiveRefreshTrigger

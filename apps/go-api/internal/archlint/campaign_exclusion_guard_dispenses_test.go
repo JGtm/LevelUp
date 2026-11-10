@@ -17,7 +17,7 @@ const (
 	dispenseEnsembleFourni = "ensemble fourni par l'appelant"
 	dispenseCallSite       = "exclu au call site"
 	dispenseSemantique     = "sémantique"
-	// dispenseOperateur : cmd/diag_*, cmd/audit_* et les
+	// dispenseOperateur : cmd/diag_* et les
 	// backfills qui réécrivent le match lu lui-même (la Campagne n'y change aucun agrégat).
 	// Réservée à cmd/ (décision du superviseur du 2026-10-15) : un lecteur de internal/sync ou
 	// internal/ops est corrigé ou classé mono-match / ensemble fourni / sémantique, jamais ici.
@@ -179,49 +179,14 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 	"internal/ops/seed_demo_replay_picks.go:loadDemoReplayCandidates": {dispenseSemantique, "2026-10-15",
 		"candidats au rejeu démo : seuls les matchs dont le cache porte un film (seed_demo_replay_picks.go:248) ; Halo 5 n'a aucun décodeur de film (config/titles/halo_5/mappings/capabilities.toml:65), donc aucune ligne de Campagne."},
 
-	// cmd : outils opérateur (D-2) — diag_*, audit_*, backfills et reconstruction de la ligne lue
-	"cmd/audit_coverage/main.go:auditPlayer": {dispenseOperateur, "2026-10-15",
-		"cmd/audit_* : audit de couverture, lecture seule."},
+	// cmd : outils opérateur (D-2) — diag_*, backfills et reconstruction de la ligne lue
 	"cmd/backfill_all/main.go:loadMissingPSAMatches": {dispenseOperateur, "2026-10-15",
 		"backfill : sélectionne les matchs sans PSA, puis les réécrit (main.go:115-129)."},
-	"cmd/backfill_kda_accuracy/main.go:main": {dispenseOperateur, "2026-10-15",
-		"backfill : UPDATE match_participants SET kda, accuracy sur le match lu (main.go:111)."},
-	"cmd/backfill_participation_info/main.go:updateParticipationInfo": {dispenseOperateur, "2026-10-15",
-		"backfill : UPDATE ciblé des colonnes de participation du match lu (main.go:220)."},
-	"cmd/backfill_quit_timestamps/main.go:updateQuitTimestamps": {dispenseOperateur, "2026-10-15",
-		"backfill : UPDATE des horodatages de départ du match lu (main.go:223)."},
-	"cmd/backfill_time_played/main.go:commitUpdates": {dispenseOperateur, "2026-10-15",
-		"backfill : UPDATE time_played_seconds du match lu (main.go:197)."},
-	"cmd/diag_backfill_dryrun/main.go:countMatchParticipants": {dispenseOperateur, "2026-10-15", "cmd/diag_* : essai à blanc d'un backfill, lecture seule."},
-	"cmd/diag_backfill_dryrun/main.go:countRankedForPlayer":   {dispenseOperateur, "2026-10-15", "cmd/diag_* : essai à blanc d'un backfill, lecture seule."},
-	"cmd/diag_csr/main.go:diagUnrankedDates":                  {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic CSR, lecture seule."},
-	"cmd/diag_csr/main.go:diagUnrankedDatesXUID":              {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic CSR, lecture seule."},
-	"cmd/diag_expected_kd/main.go:main":                       {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic, lecture seule."},
-	"cmd/diag_highlight_match/main.go:main":                   {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic d'UN match, lecture seule."},
-	"cmd/diag_kpm/main.go:main":                               {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic, lecture seule."},
-	"cmd/diag_lusr_player/loaders.go:loadMatches":             {dispenseOperateur, "2026-10-15", "cmd/diag_* : rejeu diagnostique du LUSR, lecture seule."},
-	"cmd/diag_lusr_volatility/main.go:loadTrajectory":         {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic de volatilité, lecture seule."},
-	"cmd/diag_lusr_volatility/main.go:printPlayerCoverage":    {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic de couverture, lecture seule."},
-	"cmd/diag_medals/main.go:main":                            {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic des médailles, lecture seule."},
-	"cmd/diag_orphan_session/main.go:main":                    {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic de sessions orphelines, lecture seule."},
-	"cmd/diag_perfsim/load.go:universeSQL":                    {dispenseOperateur, "2026-10-15", "cmd/diag_* : simulation du score de performance, lecture seule."},
-	"cmd/diag_recent_match_sync/main.go:inspectMatch":         {dispenseOperateur, "2026-10-15", "cmd/diag_* : inspection d'UN match, lecture seule."},
-	"cmd/diag_session_map_winrate/main.go:computeSquad":       {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic, lecture seule."},
-	"cmd/diag_session_map_winrate/main.go:findSessionsOnDate": {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic, lecture seule."},
-	"cmd/diag_session_map_winrate/main.go:loadHistory":        {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic, lecture seule."},
-	"cmd/diag_session_map_winrate/main.go:matchHasAllXUIDs":   {dispenseOperateur, "2026-10-15", "cmd/diag_* : diagnostic, lecture seule."},
-	"cmd/h5-roster-refetch/insert.go:insertParticipant": {dispenseOperateur, "2026-10-15",
-		"reconstruit les participants manquants du match lu (INSERT, insert.go:66) ; réécrit le match lui-même."},
-	"cmd/h5-roster-topup/main.go:insertParticipant": {dispenseOperateur, "2026-10-15",
-		"complète les participants manquants du match lu (INSERT, main.go:387) ; réécrit le match lui-même."},
+	"cmd/diag_lusr_player/loaders.go:loadMatches": {dispenseOperateur, "2026-10-15", "cmd/diag_* : rejeu diagnostique du LUSR, lecture seule."},
 	"cmd/levelup/cmd_backfill_h5_kill_mechanics.go:applyMechanicUpdates": {dispenseOperateur, "2026-10-15",
 		"backfill : UPDATE des mécaniques de frag du match lu (cmd_backfill_h5_kill_mechanics.go:376)."},
-	"cmd/seed-medal/main.go:main": {dispenseOperateur, "2026-10-15",
-		"script de développement (//go:build ignore) qui pose un badge sur le dernier match lu (main.go:1-14) : réécrit le match lui-même."},
 
 	// ── E5.6 (plan backlog 2026-10-16) : lecteurs du registre sur fenêtre de temps, sans `xuid = ?` ──
 	"cmd/diag_film_avail/main.go:lireCandidats": {dispenseOperateur, "2026-10-17",
 		"cmd/diag_* : mesure, par mois, des matchs sans voie de film (main.go:123, `>= ?` sur le mois), lecture seule : la mesure porte sur le registre entier, Campagne comprise."},
-	"cmd/lusr_v2_squad_estimate/main.go:loadWindowMatches": {dispenseOperateur, "2026-10-17",
-		"outil d'estimation du LUSR v2 par escouade (cmd/, main.go:135, `start_time >= ?`) : lecture seule, n'écrit rien ; l'estimation porte sur les matchs de tous les joueurs de la fenêtre, pas sur un affichage joueur."},
 }

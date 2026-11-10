@@ -99,8 +99,8 @@ const (
 // (typiquement retournée par SkillV2Repo.LoadHyperparams). Retourne les
 // defaults si aucun seuil n'est présent, sinon merge tier par tier.
 //
-// Cette fonction est PURE (no I/O) — le caller (typiquement service.SkillV2Service
-// ou cmd/lusr_v2_replay) fait le LoadHyperparams puis appelle ça.
+// Cette fonction est PURE (no I/O) — le caller (typiquement service.SkillV2Service)
+// fait le LoadHyperparams puis appelle ça.
 func TierBoundariesFromHyperparams(hp map[string]float64) []TierBoundary {
 	out := DefaultTierBoundaries()
 	for i := range out {

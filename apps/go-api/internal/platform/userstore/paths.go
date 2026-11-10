@@ -2,7 +2,7 @@
 //
 // Seul endroit du dépôt où le nom du fichier est écrit (ratchet
 // internal/archlint/no_users_json_literal_test.go). Vit ICI, et non dans
-// internal/config, pour que les CLI légers (cmd/admin) qui ne connaissent que
+// internal/config, pour que les CLI légers qui ne connaissent que
 // le répertoire d'auth n'importent pas config — qui tire DuckDB/CGO (revue de
 // clôture du 2026-09-16).
 package userstore

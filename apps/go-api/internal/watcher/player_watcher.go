@@ -3,10 +3,10 @@
 // Un PlayerWatcher orchestre :
 //   - La FSM (state_machine.go) pour l'état du joueur
 //   - Le MatchPoller (match_poller.go) pour détecter les nouveaux matchs
-//   - Les callbacks de présence (RTA Xbox / Steam) pour piloter la FSM
+//   - Les callbacks de présence (RTA Xbox) pour piloter la FSM
 //
 // Cycle de vie :
-//  1. Présence détectée (RTA/Steam) → FSM Idle→Watching + démarrage MatchPoller
+//  1. Présence détectée (RTA) → FSM Idle→Watching + démarrage MatchPoller
 //  2. Nouveau match détecté → FSM Watching→Syncing + envoi match_ids au sync
 //  3. Sync terminé → FSM Syncing→Cooling (cooldown)
 //  4. Cooldown expiré → FSM Cooling→Watching (si encore en jeu) ou →Idle
@@ -70,7 +70,7 @@ type PlayerWatcher struct {
 	// Cancel sur OnPresenceActive (le user est revenu en jeu).
 	postExitTimer *time.Timer
 
-	// inGame track si la présence dit "en jeu" (RTA ou Steam)
+	// inGame track si la présence dit "en jeu" (RTA)
 	inGame bool
 	// subscribeError conserve la dernière erreur d'abonnement RTA (nil si abonné avec succès)
 	subscribeError error
@@ -229,7 +229,7 @@ func (pw *PlayerWatcher) WithLiveRefresh(r LiveRefreshTrigger) *PlayerWatcher {
 	return pw
 }
 
-// OnPresenceActive est appelé quand le joueur est détecté en jeu (RTA ou Steam).
+// OnPresenceActive est appelé quand le joueur est détecté en jeu (RTA).
 //
 // Si un timer de grâce post-extinction est en cours (extinction récente non
 // encore confirmée), il est cancel : le joueur est revenu en jeu avant la fin

@@ -1,9 +1,9 @@
 // Package worldenrich assemble les dépendances de l'enrichissement du classement
 // mondial (source de fetch Halo + résolveur xuid PeopleHub) à partir de la config,
 // selon le chemin d'auth canonique store-first (ADR 0023) — exactement celui des
-// backfills qui marchent (cf. cmd/backfill-csr-history). Mutualisé entre le CLI
-// (cmd/backfill-world-player-stats) et le cron in-process (cmd/server, Phase C) :
-// une seule implémentation de la résolution token → zéro divergence.
+// backfills qui marchent. Mutualisé entre les CLI et le cron in-process
+// (cmd/server, Phase C) : une seule implémentation de la résolution token → zéro
+// divergence.
 package worldenrich
 
 import (

@@ -207,7 +207,7 @@ func TestPSAReproS3MigrationOnPopulated(t *testing.T) {
 	}
 }
 
-// ── S4 : DELETE puis ROLLBACK (dry-run de cmd/cleanup_orphan_match) ──────────
+// ── S4 : DELETE puis ROLLBACK (dry-run d'un nettoyage de match orphelin) ──────────
 
 func TestPSAReproS4DeleteRollback(t *testing.T) {
 	dir := t.TempDir()
@@ -241,7 +241,7 @@ func TestPSAReproS4DeleteRollback(t *testing.T) {
 	reproExec(t, db, `CHECKPOINT`)
 	reproReport(t, db, "S4 apres CHECKPOINT")
 
-	// masse : dry-run sur ~5 % du corpus (cleanup_post_art)
+	// masse : dry-run sur ~5 % du corpus (nettoyage post-reconstruction)
 	tx2, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatalf("begin2: %v", err)

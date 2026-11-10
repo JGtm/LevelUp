@@ -185,10 +185,9 @@ package migration
 //	   dans la base de demonstration. Un remplacement qui oublierait cette ligne livrerait une
 //	   demo dont les duels sont vides — panne silencieuse, visible seulement a l ecran. La VUE ne
 //	   se copie pas : la demo doit rejouer les migrations (elle le fait deja) ;
-//	6. `cmd/rebuild_mp/main.go` : ce reconstructeur CTAS capture puis recree `dependentViews`, qui
+//	6. `RebuildMatchParticipantsART` : ce reconstructeur CTAS capture puis recree `dependentViews`, qui
 //	   contient `v_killer_victim_full`. Le jour ou l on reconstruira une table portant
-//	   `match_kill_events_latest`, la vue doit entrer dans cette liste. Outil `//go:build ignore`,
-//	   donc AUCUN test ne le protege : ce commentaire est le seul filet ;
+//	   `match_kill_events_latest`, la vue doit entrer dans cette liste ;
 //	7. ALORS SEULEMENT `DROP TABLE killer_victim_pairs`, dans une migration dediee.
 //
 // ─── DEUX ARBITRAGES TRANCHES, A NE PAS REOUVRIR AU MOMENT DE LA BASCULE ──────────────────

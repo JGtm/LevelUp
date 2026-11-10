@@ -2,7 +2,7 @@ package main
 
 // cmd_backfill_h5_kill_mechanics_test.go — logique PURE du backfill : projection carnage
 // -> verite par gamertag, plan de correction (update/unchanged/unmatched) et idempotence.
-// Aucune DB ni reseau : les helpers testes sont stateless (modele cmd/h5-roster-refetch).
+// Aucune DB ni reseau : les helpers testes sont stateless.
 
 import (
 	"testing"

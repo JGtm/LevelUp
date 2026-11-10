@@ -75,6 +75,13 @@ test (#187) et la bascule sur les modules publiés, qui réécrit des imports da
 pilote de la v8.1.2 la lance APRÈS la fusion de la dernière étape de ce chantier, à lui signaler.
 La branche est rebasée sur `release/v8.1.2` avant chaque étape.
 
+**Fenêtres convenues avec le pilote de la v8.1.2 (2026-11-10, sauf avis contraire de l'utilisateur).** Chaque étape
+part en une PR et l'étape suivante ne commence qu'après sa fusion : entre deux étapes, aucun travail en vol.
+(1) Après la fusion de l'étape 1 : prévenir le pilote, qui passe le renommage des chemins de module (environ
+580 fichiers d'imports) ; attendre son signal de fusion, rebaser, puis étape 2. (2) Après la fusion de l'étape 3 :
+le prévenir, il passe la republication des briques et la bascule (suppression de `libs/` et `go.work`,
+`Dockerfile`, CI) ; attendre son signal, rebaser, puis étape 4. Après sa PR #189 (aides d'`archlint`) : rebaser.
+
 **Vérifications à l'écran de l'utilisateur.** Elles vivent dans son artefact unique
 (`https://claude.ai/artifact/P9VJKKbSDsQu1PUBjyGwTv`, collection `verifs`, documents `archi-tri` et
 `archi-palette`, état `a_venir`). À la clôture de l'étape 7 : passer leur `etat` à `a_faire`, puis y
@@ -129,17 +136,17 @@ Gate : témoins rejoués deux fois de suite, identiques (sinon retirer la route 
 
 Aucun comportement ne change. Effort : moyen.
 
-- [ ] 1.1 (MORT-1, MORT-P2-1) Supprimer les 98 commandes de l'annexe, section par section. Pour les
+- [x] 1.1 (MORT-1, MORT-P2-1) Supprimer les 98 commandes de l'annexe, section par section. Pour les
       13 de la seconde section, relire d'abord la référence de code qui les nomme et corriger le
       commentaire. Retirer leurs entrées des allowlists (`archlint/*_test.go`,
       `platform/duckdb/no_attach_on_social_test.go`).
-- [ ] 1.2 (MORT-2) Supprimer `internal/presence/steam_poller.go`, ses tests et
+- [x] 1.2 (MORT-2) Supprimer `internal/presence/steam_poller.go`, ses tests et
       `DaemonConfig.SteamAPIKey` ; supprimer `internal/domain/chart/`.
-- [ ] 1.3 (MORT-P2-1) Supprimer `openspartan.IsOpenSpartanDB` et `campaign.MinMatchesForTrend`.
-- [ ] 1.4 (FLG-5) Supprimer `buildHomePlaylistRankItem`, `fillRankedMSRItem`, `fillPlacementItem`
+- [x] 1.3 (MORT-P2-1) Supprimer `openspartan.IsOpenSpartanDB` et `campaign.MinMatchesForTrend`.
+- [x] 1.4 (FLG-5) Supprimer `buildHomePlaylistRankItem`, `fillRankedMSRItem`, `fillPlacementItem`
       (`platform/duckdb/home_repo_playlist_ranks.go`), `errNoFallback`
       (`service/career_live_service.go:539`), `AuthHandler.WithUserStore` (`api/handlers/auth.go:76`).
-- [ ] 1.5 (STO-P2-3) Retirer l'import `duckdb-go` de `service/media_service.go` et
+- [x] 1.5 (STO-P2-3) Retirer l'import `duckdb-go` de `service/media_service.go` et
       `service/media_index_service.go` ; corriger le commentaire.
 - [ ] 1.6 (ART-5, D2, D9) Probabilité de victoire : retirer `CapExpectedWinProb` et son miroir web,
       `MatchWinProbCard`, les colonnes des tableaux Synergies et Progression, `lib/winProbCategory.ts`,
@@ -147,9 +154,23 @@ Aucun comportement ne change. Effort : moyen.
       `loadExpectedWinProbs`, l'entrée `queries_squad.go` de `no_raw_rating_reads_test.go`, les
       chaînes i18n devenues orphelines. Régénérer `generated.ts`. Ne toucher ni au calcul ni à la
       colonne. Lister dans le compte rendu les 34 fichiers Go relus et le sort de chacun.
-- [ ] 1.7 (FLG-4) Corriger les deux commentaires inversés (`scheduler/auto_sync.go:205`,
+- [x] 1.7 (FLG-4) Corriger les deux commentaires inversés (`scheduler/auto_sync.go:205`,
       `cmd/server/main.go:16`).
-- [ ] 1.8 (TEC-2, partie code mort) Supprimer le type manuel `MatchHistoryRow` de `lib/api/types.ts`.
+- [x] 1.8 (TEC-2, partie code mort) Supprimer le type manuel `MatchHistoryRow` de `lib/api/types.ts`.
+
+- [ ] 1.9 (règle 7, découvert en 1.1) Supprimer le code que 1.1 a laissé sans appelant : fonctions dont les
+      seuls appelants étaient des commandes supprimées. Liste établie par `deadcode` (comparaison avant et
+      après 1.1), fermée dans le compte rendu.
+
+Résultat de 1.1 à 1.8 hors 1.6 (2026-11-10). 96 commandes supprimées et non 98 : `admin` (outil de secours des
+comptes, seul moyen de créer un administrateur ou de réinitialiser un mot de passe sans l'API web) et `diag_q`
+(requête SQL en lecture seule, outil courant des diagnostics) sont conservées et documentées dans
+`docs/COMMANDS.md` et `docs/FR/COMMANDS.md` ; l'annexe est à jour. 84 commandes restent. 142 entrées
+d'allowlist retirées dans 11 tests, aucune ajoutée ; plafond `nombreSitesAiAutorisesPlafond` descendu de 15 à 14.
+Sont partis avec 1.2 : `STEAM_API_KEY` (exemple d'environnement, `docs/CONFIGURATION.md` et son pendant
+français), l'entrée netguard de Steam, l'alias `handlers.UserLinker`. `docs/CHANGELOG.md` n'est pas modifié
+(historique). Témoins : `diff -r avant apres-1a` vide. `go test ./internal/archlint/...` demande
+`-timeout 30m` (4 min 30 s à vide, plus de 10 min sous charge).
 
 Gate : `cd apps/go-api && go build ./... && go vet ./... && go test ./...` ; `make check-types`,
 `npm run lint`, `make test-web` ; commande de reproduction de MORT-1 : 0 commande hors de la section
@@ -352,7 +373,7 @@ deux graphes de 7.3.
 | Étape | État | Commit | Note |
 |---|---|---|---|
 | 0 | close | (commit de clôture de l'étape 0) | témoins et compteurs relevés le 2026-11-10 |
-| 1 | à faire | | |
+| 1 | en cours | | 1.1 à 1.5, 1.7, 1.8 faits ; restent 1.9 et 1.6 |
 | 2 | à faire | | |
 | 3 | à faire | | |
 | 4 | à faire | | |
@@ -371,6 +392,15 @@ deux graphes de 7.3.
 - (étape 0) Le témoin ne couvre pas le rejeu. L étape 6 déplace `replaylabels` et touche `service/replayview` :
   son gate s'appuie donc en plus sur les tests de `service/replayview` et de `libs/film/replay` (équivalence),
   à lancer explicitement.
+- (étape 1) Plus rien n'écrit dans `lusr_hyperparams_v2` ni `player_squad_offset` hors tests et migrations
+  (les outils d'estimation `lusr_v2_ttt_batch` et `lusr_v2_squad_estimate` n'avaient plus d'utilisateur) ; les
+  lecteurs restent, sans effet faute de données. À rapprocher de 2.3 (interrupteur du décalage d'escouade).
+- (étape 1) `domain.PlayerInfo.SteamID` (`steam_id` dans l'API) n'a aucun lecteur ; le retirer change
+  `openapi.yaml`. Non traité.
+- (étape 1) Des commentaires citent des commandes qui n'ont jamais existé dans `cmd/` : `diag_exec`,
+  `diag_art_probe`, `h5-career-rank-xp`, `msal-poc`. Non traité.
+- (étape 1) Le critère « aucune citation » de l'audit ne voit pas l'usage réel : deux commandes de la liste
+  servaient (`admin`, `diag_q`). Toute suppression future de commande passe par une relecture de son rôle.
 - (étape 0) En profil dev, le premier démarrage rejoue les formules de note du jeu de démo (révision vide) :
   le harnais attend la fin de ce rejeu avant de capturer.
 

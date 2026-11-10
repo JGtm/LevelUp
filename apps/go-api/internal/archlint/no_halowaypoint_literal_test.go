@@ -72,15 +72,11 @@ var halowaypointAllowlist = map[string]bool{
 	// halotest/ — fake server (URLs factices halowaypoint en test-support).
 	"internal/sync/halotest/fake_server.go": true,
 	// cmd/ — outils diag/probe/fixtures.
-	"cmd/diag_appearance/main.go":             true,
-	"cmd/diag_emblem_colors/main.go":          true,
-	"cmd/diag_emblem_mapping/main.go":         true,
 	"cmd/gen_test_fixtures/main.go":           true,
 	"cmd/populate-career-rank-images/main.go": true,
 	"cmd/probe-h5/main.go":                    true,
 	"cmd/probe-mcc/main.go":                   true,
 	"cmd/refresh_golden_fixture/main.go":      true,
-	"cmd/snapshot-world-leaderboard/main.go":  true,
 	// Outillage du rejeu 2D (ajouté le 2026-07-31 à la réconciliation avec
 	// killsource) : le client UGC appelle DIRECTEMENT les hôtes officiels pour
 	// récupérer les variantes de carte. C'est une frontière HTTP au même titre que

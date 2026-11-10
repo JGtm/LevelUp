@@ -77,7 +77,6 @@ var sitesAiAutorises = map[string]siteAi{
 	"libs/film/replay/colline_propriete_test.go":     {1, raisonSortie},
 	"libs/film/replay/lettres_corpus_test.go":        {1, raisonSortie},
 	"libs/film/replay/zone_state_ti13_scan_test.go":  {1, raisonSortie},
-	"apps/go-api/cmd/engagement-calibrate/main.go":   {1, "écrit son rapport de calibration à la racine de .ai (sortie de l'outil)"},
 	"apps/go-api/cmd/weapon-icons-build/page.go":     {1, "réécrit la page de nommage des icônes dans l'archive (sortie de l'outil, pas une entrée)"},
 	// Contrôles de cohérence entre documents de .ai.
 	"apps/go-api/internal/archlint/no_stale_fallback_target_test.go": {1, "contrôle de cohérence entre le registre de replis et le plan du décodeur (accepté, 2026-10-27)"},
@@ -87,7 +86,7 @@ var sitesAiAutorises = map[string]siteAi{
 }
 
 // nombreSitesAiAutorisesPlafond : taille maximale de la liste (ratchet). Baisser avec elle.
-const nombreSitesAiAutorisesPlafond = 15
+const nombreSitesAiAutorisesPlafond = 14
 
 // sitesSousAi compte, dans une source Go, les littéraux qui construisent un chemin sous `.ai`.
 func sitesSousAi(t *testing.T, nom string, src []byte) int {

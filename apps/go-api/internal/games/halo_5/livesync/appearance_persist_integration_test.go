@@ -96,7 +96,7 @@ func TestPersistAppearance_RoundTrip(t *testing.T) {
 
 // TestPersistAppearance_DelaiCourt : l'écriture passe sous le verrou d'écrivain
 // (KindPlayer) de la player DB, qui n'est pas réentrant. Aucun appelant de
-// PersistAppearance ne le tient (cron de personnalisation, CLI h5-appearance-backfill) :
+// PersistAppearance ne le tient (cron de personnalisation, CLI) :
 // sous un délai court, l'écriture aboutit. Quand un autre écrivain le tient, elle
 // échoue à la fin du délai avec dblease.ErrDBLocked, sans rester bloquée.
 func TestPersistAppearance_DelaiCourt(t *testing.T) {

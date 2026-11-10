@@ -74,7 +74,7 @@ type PlayerSummary struct {
 	XUID           string `json:"xuid"`
 	WaypointPlayer string `json:"waypoint_player"`
 	IsDemo         bool   `json:"is_demo"`
-	SteamID        string `json:"steam_id,omitempty"`   // Steam ID pour le poller de présence
+	SteamID        string `json:"steam_id,omitempty"`   // Steam ID (réservé, sans lecteur)
 	TitleSlug      string `json:"title_slug,omitempty"` // Sprint 44 : titre associé
 	// SyncEnabled : false = sync en PAUSE pour ce (joueur, titre) — les données
 	// restent sur disque mais ne sont plus rafraîchies. Résolu nil→true au chargement.

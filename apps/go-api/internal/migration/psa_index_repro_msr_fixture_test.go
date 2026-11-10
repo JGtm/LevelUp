@@ -228,7 +228,7 @@ GROUP BY playlist_group ORDER BY n DESC, playlist_group ASC`,
 		// Temoins de CALIBRAGE du detecteur. C0 : lookup par PRIMARY KEY (ART present
 		// dans les deux bases) → Index Scan attendu des deux cotes, sinon le detecteur
 		// ne voit rien. C1/C2 : la forme exacte de l'incident du 2026-09-13
-		// (cmd/purge_foreign_lusr_chain, COUNT d'une chaine etrangere peu peuplee).
+		// (purge d'une chaine LUSR etrangere : COUNT d'une chaine peu peuplee).
 		{"C0", "temoin : PK id = 5",
 			`SELECT * FROM match_skill_rank WHERE id = 5`, nil, false},
 		{"C1", "temoin : COUNT(*) WHERE playlist_group = litteral 'h5_arena'",

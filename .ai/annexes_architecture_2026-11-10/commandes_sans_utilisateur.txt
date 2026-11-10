@@ -3,7 +3,6 @@
 # Colonne 1 : nombre de fichiers Go/TS/Rust non-test, hors du dossier de la commande, qui la nomment (commentaire ou lancement : a relire avant suppression).
 
 ## A SUPPRIMER (aucune reference de code)
-admin
 analyze_media_tz
 apply_tz_migration
 audit_coverage
@@ -56,7 +55,6 @@ diag_mp_rebuild
 diag_orphan_session
 diag_orphan_xuids
 diag_perfsim
-diag_q
 diag_recent_match_sync
 diag_replay_wal
 diag_session_map_winrate
@@ -119,3 +117,7 @@ mapplafond-mesure
 oddball-terrain
 statnames-sweep
 zone-attribution
+
+## CONSERVEES APRES RELECTURE DU PILOTE (2026-11-10) : outils utilises hors de toute citation, desormais documentes dans docs/COMMANDS.md
+admin
+diag_q

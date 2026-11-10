@@ -84,7 +84,7 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 		},
 		// Hook post-score : enrichment PAR JOUEUR (+ LUSR) INCRÉMENTAL des nouveaux
 		// matchs, comme le post-sync Infinite. Rend le sync live h5 autonome (l'app
-		// enrichit seule, sans cmd/h5-enrich manuel). Best-effort côté runner.
+		// enrichit seule, sans enrichissement manuel). Best-effort côté runner.
 		// Tient le shared (writer coordonné) + la player DB RW le temps du recompute
 		// incrémental (force=false → seuls les matchs neufs) : court.
 		PostScore: func(ctx context.Context, src halo5.CaptureSource, inserted []string) error {

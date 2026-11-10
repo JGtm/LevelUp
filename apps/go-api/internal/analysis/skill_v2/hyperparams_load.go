@@ -1,7 +1,7 @@
 package skill_v2
 
 // hyperparams_load.go : conversion des hyperparamètres empiriques (écrits en
-// base par cmd/lusr_v2_ttt_batch dans lusr_hyperparams_v2) vers les structures
+// base dans lusr_hyperparams_v2) vers les structures
 // que consomme le modèle au runtime — Priors (draw probability) et
 // CountHyperparams (biais des observations kills/deaths).
 //
@@ -26,7 +26,7 @@ const (
 	CountDeath = ep.CountDeath
 )
 
-// Noms des hyperparams empiriques écrits par cmd/lusr_v2_ttt_batch.
+// Noms des hyperparams empiriques stockés dans lusr_hyperparams_v2.
 const (
 	hyperparamDrawProbability = "draw_probability_empirical"
 	hyperparamKillMean        = "kill_mean_empirical"

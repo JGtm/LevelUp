@@ -1,5 +1,5 @@
 {
-  "_doc": "Fixtures golden T0 — events + metadata des 8 matchs de reference. Genere par cmd/export_t0_fixtures. Ne pas editer a la main.",
+  "_doc": "Fixtures golden T0 — events + metadata des 8 matchs de reference. Ne pas editer a la main.",
   "matches": [
     {
       "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",

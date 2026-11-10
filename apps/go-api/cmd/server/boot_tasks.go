@@ -263,7 +263,7 @@ func buildAutoSyncPool(
 	p, err := pool.NewPool(ctx, resolver, sources, pool.PoolOptions{
 		MaxSize:     0, // 0 = tous les sources découverts
 		PerTokenRPS: 5, // Option 2 audit 2026-05-21 : aligné sur le sync manuel
-		//                 (validé bench-rps real-multi : 0 × 429 à 5N RPS)
+		//                 (validé en multi-tokens réel : 0 × 429 à 5N RPS)
 	})
 	if err != nil {
 		slog.Error("auto_sync: pool creation échouée", "err", err)

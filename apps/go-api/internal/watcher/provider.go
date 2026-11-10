@@ -2,7 +2,7 @@
 //
 // Le WatcherStateProvider est le seul point de contact entre le watcher
 // et les handlers HTTP. Aucun handler ne doit accéder directement
-// à la FSM, aux pollers, ou au SteamPoller.
+// à la FSM ou aux pollers.
 package watcher
 
 import (

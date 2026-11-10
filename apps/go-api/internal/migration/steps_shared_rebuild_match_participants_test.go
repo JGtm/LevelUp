@@ -296,13 +296,13 @@ func TestRebuildMatchParticipants_NoSyncMetaNoOp(t *testing.T) {
 // En production la table porte TOUJOURS des vues dépendantes, et DuckDB NE LES SUPPRIME
 // PAS au `DROP TABLE`, même avec CASCADE (mesuré le 2026-08-02, constat J4R-7) : elles
 // survivent au catalogue, liées à une table qui n'existe plus. C'est exactement là que
-// l'ancien `cmd/rebuild_mp` avortait — son `CREATE VIEW` de recréation tombait sur
+// l'ancien outil de reconstruction avortait — son `CREATE VIEW` de recréation tombait sur
 // « View with name "v" already exists! », rollback, réparation impossible.
 //
 // Ce test exerce ce chemin de bout en bout : les vues existent AVANT, le rebuild doit
 // passer, et les vues doivent être REBINDÉES sur la table neuve (donc interrogeables et
-// rendant les lignes reconstruites). Il garde la propriété dont dépend `cmd/rebuild_mp`
-// depuis qu'il délègue ici (dette H4).
+// rendant les lignes reconstruites). Il garde la propriété dont dépend le rebuild
+// lancé au runtime (dette H4).
 func TestRebuildMatchParticipants_AvecVuesDejaPresentes(t *testing.T) {
 	db := openMemDB(t)
 	seedMatchParticipantsForRebuild(t, db)

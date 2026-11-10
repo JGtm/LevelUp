@@ -25,7 +25,7 @@ import (
 
 // lusrSquadOffsetEnvFlag contrôle la Phase 2 (squad offset). **ON par défaut**
 // (décision produit 2026-05-28). NB : même actif, la correction n'a d'effet que
-// si des offsets ont été estimés par cmd/lusr_v2_squad_estimate (sinon
+// si des offsets ont été estimés (sinon
 // LoadSquadOffsets renvoie vide → no-op). Mettre "0"/"false"/"no" pour désactiver.
 const lusrSquadOffsetEnvFlag = "LEVELUP_LUSR_V2_SQUAD_OFFSET"
 
