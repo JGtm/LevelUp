@@ -215,7 +215,7 @@ func buildCarriedEquipment(in entreeDEquipementPorte) ([]CarriedEquipment, []Rif
 			continue
 		}
 		poses = append(poses, o.projeter(in, &cov)...)
-		o.situerLesObjetsEngendres(repos, &cov)
+		o.situerLesObjetsEngendres(repos, &cov, int(in.step/1000))
 		o.situerLesEffets(&cov)
 		out = append(out, o.pub)
 		cov.Published++

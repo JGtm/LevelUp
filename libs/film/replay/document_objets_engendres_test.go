@@ -129,32 +129,33 @@ func TestObjetEngendreCleRecyclee(t *testing.T) {
 // cand construit une trajectoire de repos née à la frame `n`, reconnaissable par son `land`.
 func cand(n, land int) reposEngendre { return reposEngendre{naissance: n, land: land} }
 
-// TestReposNeAPeuPresBornes : la borne est INCLUSE à toleranceDeNaissance frames et refuse la suivante,
-// avant comme après la frame de l'objet.
+// TestReposNeAPeuPresBornes : la borne est INCLUSE à toleranceDeNaissanceMS (3 frames au pas de
+// construction) et refuse la suivante, avant comme après la frame de l'objet.
 func TestReposNeAPeuPresBornes(t *testing.T) {
 	const t0 = 1000
+	borne := framesOfMS(toleranceDeNaissanceMS, DefaultFrameIntervalMS)
 	cas := []struct {
 		nom       string
 		naissance int
 		attendu   bool
 	}{
 		{"ecart 0", t0, true},
-		{"ecart +borne", t0 + toleranceDeNaissance, true},
-		{"ecart -borne", t0 - toleranceDeNaissance, true},
-		{"ecart +borne+1", t0 + toleranceDeNaissance + 1, false},
-		{"ecart -borne-1", t0 - toleranceDeNaissance - 1, false},
+		{"ecart +borne", t0 + borne, true},
+		{"ecart -borne", t0 - borne, true},
+		{"ecart +borne+1", t0 + borne + 1, false},
+		{"ecart -borne-1", t0 - borne - 1, false},
 	}
 	for _, c := range cas {
-		r, ok := reposNeAPeuPres([]reposEngendre{cand(c.naissance, 7)}, t0)
+		r, ok := reposNeAPeuPres([]reposEngendre{cand(c.naissance, 7)}, t0, DefaultFrameIntervalMS)
 		if ok != c.attendu || (ok && r.land != 7) {
 			t.Errorf("%s : situe=%v, attendu %v (%+v)", c.nom, ok, c.attendu, r)
 		}
 	}
-	if toleranceDeNaissance != 3 {
-		t.Errorf("la tolerance vaut %d : les bornes ci-dessus sont ecrites pour 3 (4 refuse, 3 accepte)",
-			toleranceDeNaissance)
+	if borne != 3 {
+		t.Errorf("la tolerance vaut %d frames : les bornes ci-dessus sont ecrites pour 3 (4 refuse, 3 accepte)",
+			borne)
 	}
-	if _, ok := reposNeAPeuPres(nil, t0); ok {
+	if _, ok := reposNeAPeuPres(nil, t0, DefaultFrameIntervalMS); ok {
 		t.Error("aucune candidate : rien ne se situe")
 	}
 }
@@ -164,26 +165,26 @@ func TestReposNeAPeuPresBornes(t *testing.T) {
 func TestReposNeAPeuPresLaPlusProche(t *testing.T) {
 	const t0 = 1000
 	// La plus proche est au milieu : ni la premiere ni la derniere.
-	r, ok := reposNeAPeuPres([]reposEngendre{cand(t0-3, 1), cand(t0+1, 2), cand(t0+3, 3)}, t0)
+	r, ok := reposNeAPeuPres([]reposEngendre{cand(t0-3, 1), cand(t0+1, 2), cand(t0+3, 3)}, t0, DefaultFrameIntervalMS)
 	if !ok || r.land != 2 {
 		t.Fatalf("la plus proche (ecart 1) attendue, obtenu %+v", r)
 	}
 	// La plus proche est la premiere.
-	r, _ = reposNeAPeuPres([]reposEngendre{cand(t0, 1), cand(t0+2, 2)}, t0)
+	r, _ = reposNeAPeuPres([]reposEngendre{cand(t0, 1), cand(t0+2, 2)}, t0, DefaultFrameIntervalMS)
 	if r.land != 1 {
 		t.Fatalf("la plus proche (ecart 0, premiere) attendue, obtenu %+v", r)
 	}
 	// Egalite : ecart 2 avant puis ecart 2 apres, et l'inverse.
-	r, _ = reposNeAPeuPres([]reposEngendre{cand(t0-2, 1), cand(t0+2, 2)}, t0)
+	r, _ = reposNeAPeuPres([]reposEngendre{cand(t0-2, 1), cand(t0+2, 2)}, t0, DefaultFrameIntervalMS)
 	if r.land != 1 {
 		t.Fatalf("egalite : la premiere attendue, obtenu %+v", r)
 	}
-	r, _ = reposNeAPeuPres([]reposEngendre{cand(t0+2, 2), cand(t0-2, 1)}, t0)
+	r, _ = reposNeAPeuPres([]reposEngendre{cand(t0+2, 2), cand(t0-2, 1)}, t0, DefaultFrameIntervalMS)
 	if r.land != 2 {
 		t.Fatalf("egalite : la premiere attendue, obtenu %+v", r)
 	}
 	// Une candidate hors tolerance ne l'emporte pas, meme seule apres une proche.
-	r, ok = reposNeAPeuPres([]reposEngendre{cand(t0+3, 1), cand(t0+4, 2)}, t0)
+	r, ok = reposNeAPeuPres([]reposEngendre{cand(t0+3, 1), cand(t0+4, 2)}, t0, DefaultFrameIntervalMS)
 	if !ok || r.land != 1 {
 		t.Fatalf("seule la candidate a 3 frames est eligible, obtenu %+v", r)
 	}

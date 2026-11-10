@@ -39,15 +39,20 @@ import (
 	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
 )
 
-// DefaultMaxGapFrames est la tolerance par defaut entre l'instant d'une action et
-// l'echantillon de position utilise, en NOMBRE DE FRAMES de la grille du rejeu.
+// DefaultMaxGapMS est la tolerance par defaut entre l'instant d'une action et l'echantillon de
+// position utilise, en MILLISECONDES : elle se convertit en frames avec le pas de la grille du
+// document ([AttributeOptions.FrameIntervalMS]), si bien que la decision ne depend pas de la cadence.
 //
-// Deux a 100 ms font 200 ms. Le choix vient de la donnee, pas du confort : le film
-// replique une entite a ~60 Hz mais PAS a intervalle garanti, et le reechantillonnage
-// laisse des trous quand l'entite n'a rien emis. Au-dela de deux frames, on interpolerait
-// un joueur en mouvement sur plusieurs metres — la largeur d'une zone. En deca, on
-// perdrait des actions pour un trou d'echantillonnage qui ne dit rien de la position.
-const DefaultMaxGapFrames = 2
+// Le choix vient de la donnee, pas du confort : le film replique une entite a ~60 Hz mais PAS a
+// intervalle garanti, et le reechantillonnage laisse des trous quand l'entite n'a rien emis. Au-dela
+// de 200 ms, on interpolerait un joueur en mouvement sur plusieurs metres — la largeur d'une zone.
+// En deca, on perdrait des actions pour un trou d'echantillonnage qui ne dit rien de la position.
+const DefaultMaxGapMS = 200
+
+// DefaultMaxGapFrames est [DefaultMaxGapMS] au pas de construction [DefaultFrameIntervalMS], en
+// NOMBRE DE FRAMES. Il ne sert qu'aux appelants qui fixent la tolerance en frames
+// ([AttributeOptions.MaxGapFrames]) ; la construction du document passe par la duree.
+const DefaultMaxGapFrames = DefaultMaxGapMS / DefaultFrameIntervalMS
 
 // ZoneAttribution est le verdict rendu pour UNE action d'objectif.
 type ZoneAttribution struct {
@@ -85,9 +90,9 @@ type ZoneAttribution struct {
 type ZoneCoverage struct {
 	Actions    int
 	Attributed int
-	// NoPosition : aucun echantillon de position de ce joueur a moins de MaxGapFrames de
-	// l'action. Ce n'est PAS un echec du croisement mais un trou du rejeu (vie non
-	// nommee, joueur sans track publiee, trou d'echantillonnage).
+	// NoPosition : aucun echantillon de position de ce joueur a moins de la tolerance de position
+	// (DefaultMaxGapMS, ou MaxGapFrames) de l'action. Ce n'est PAS un echec du croisement mais un
+	// trou du rejeu (vie non nommee, joueur sans track publiee, trou d'echantillonnage).
 	NoPosition int
 	// Outside : la position est connue, et la zone la plus proche est au-dela de
 	// MaxDistanceM (donc, au seuil par defaut de zero : le joueur n'est dans aucune
@@ -102,9 +107,12 @@ type ZoneCoverage struct {
 
 // AttributeOptions regle le croisement.
 type AttributeOptions struct {
-	// MaxGapFrames : tolerance entre l'instant de l'action et l'echantillon de position.
-	// <= 0 prend DefaultMaxGapFrames.
+	// MaxGapFrames : tolerance entre l'instant de l'action et l'echantillon de position, en
+	// frames. <= 0 prend DefaultMaxGapMS, converti avec FrameIntervalMS.
 	MaxGapFrames int
+	// FrameIntervalMS : pas de la grille des frames de l'action et des pistes, en millisecondes.
+	// <= 0 prend DefaultFrameIntervalMS.
+	FrameIntervalMS int
 	// MaxDistanceM : distance maximale AU VOLUME de la zone, en metres.
 	//
 	// ZERO = appartenance STRICTE (le joueur est dans la forme), et c'est le defaut. Une
@@ -128,7 +136,7 @@ func (o AttributeOptions) maxGapFrames() int {
 	if o.MaxGapFrames > 0 {
 		return o.MaxGapFrames
 	}
-	return DefaultMaxGapFrames
+	return framesOfMS(DefaultMaxGapMS, o.FrameIntervalMS)
 }
 
 // AttributeZones croise les actions, les trajectoires et les zones.

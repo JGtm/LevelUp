@@ -349,7 +349,7 @@ type ZonesCoverage struct {
 	// 2026-09-06 (`att, _ :=`) : `captures - attributed` donnait un total muet, et il etait
 	// impossible, sur un artefact du parc, de separer les trois causes.
 	//
-	//	NoPosition     aucun echantillon de position du capteur a moins de `MaxGapFrames` —
+	//	NoPosition     aucun echantillon de position du capteur a moins de `DefaultMaxGapMS` —
 	//	               une IGNORANCE (piste dont le nommage a echoue, trou d'echantillonnage) ;
 	//	Outside        la position est connue et la zone la plus proche est trop loin — une
 	//	               MESURE, et le seul compteur qui parle vraiment du croisement ;
