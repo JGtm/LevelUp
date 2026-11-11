@@ -3,9 +3,9 @@ package main
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // regionsSynthetiques rend n régions valides, de tailles croissantes (aucune région invalide).

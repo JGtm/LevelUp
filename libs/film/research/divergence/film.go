@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 const entetePaquets = "chunk\tpaquet\ttaille\tfenetre_ok\tnous_ferme\ttemoin_ferme\ttemoin_reprises\ttemoin_arret\tcause_nous\t" +

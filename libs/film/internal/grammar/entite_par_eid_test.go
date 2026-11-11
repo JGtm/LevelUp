@@ -12,7 +12,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // neuf13Gen ecrit un record NEW d un archetype sans composant : comme [bitWriter.neuf13], sous la

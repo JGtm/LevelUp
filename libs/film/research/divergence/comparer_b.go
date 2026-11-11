@@ -8,7 +8,7 @@ package divergence
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // nomDuGenre rend le genre du record dans les mots du temoin (create, update, delete).

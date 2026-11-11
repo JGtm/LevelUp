@@ -16,7 +16,7 @@ package divergence
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // cleDePaquet situe un paquet : (chunk, rang dans le chunk, tous types confondus).
