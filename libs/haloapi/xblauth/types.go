@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JGtm/halo-api"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 // Tokens : les jetons Halo que rend la chaîne d'échange. Mêmes champs que `domain.HaloTokens`

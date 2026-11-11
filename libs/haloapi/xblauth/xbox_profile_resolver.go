@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/JGtm/halo-api"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 // xboxProfileBaseURL — endpoint Xbox Live "profile settings". Contrairement à

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JGtm/halo-api"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 // En-têtes et valeurs du protocole Halo 5.

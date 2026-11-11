@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/halo-api"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 // sansDelai rend la politique avec des attentes nulles (les séquences testent le NOMBRE d'essais ;

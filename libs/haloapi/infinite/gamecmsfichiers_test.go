@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/JGtm/halo-api"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 func TestURLImageGameCMS_SeptFormes(t *testing.T) {

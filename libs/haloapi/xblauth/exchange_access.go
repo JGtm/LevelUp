@@ -19,7 +19,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/JGtm/halo-api"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 const (

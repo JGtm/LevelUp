@@ -16,7 +16,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/JGtm/halo-api"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 const (

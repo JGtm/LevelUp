@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/JGtm/halo-api"
+	haloapi "github.com/JGtm/halo-api"
 	"github.com/JGtm/halo-api/haloapitest"
 )
 

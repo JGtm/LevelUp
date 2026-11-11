@@ -3,7 +3,7 @@ package halo5
 import (
 	"time"
 
-	"github.com/JGtm/halo-api"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 // Paramètres de [RetryHalo5].
