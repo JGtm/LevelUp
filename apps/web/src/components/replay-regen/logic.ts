@@ -23,7 +23,7 @@ export function regenPhase(status: ReplayRegenStatus | undefined): RegenPhase {
     return status.compressing ? 'compressing' : 'running'
   }
   if (!status.checked) return 'checking'
-  return status.stale > 0 ? 'offer' : 'upToDate'
+  return status.stale > 0 || status.raw > 0 ? 'offer' : 'upToDate'
 }
 
 /** La file est lancée (préparation, refonte, compression, pause ou attente comprises). */

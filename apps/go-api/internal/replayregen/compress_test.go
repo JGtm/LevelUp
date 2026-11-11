@@ -21,7 +21,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replayartifact"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // seedBruts range n artefacts BRUTS (`.json`) dont le film est absent : la file ne peut pas les refaire. current :
@@ -214,6 +214,8 @@ func TestCompression_PauseEntreDeuxFichiers(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitFor(t, "pause en cours de compression", func() bool { return f.svc.Status().Paused })
+	// Le deuxième fichier va à son terme (sous charge, après la pause) ; ensuite plus rien ne part.
+	waitFor(t, "deuxième fichier converti", func() bool { return f.svc.Status().Compressed == 2 })
 	time.Sleep(60 * time.Millisecond)
 	// La pause tombe pendant la consultation de la porte du deuxième fichier : celui-ci va à son terme, le troisième
 	// attend.

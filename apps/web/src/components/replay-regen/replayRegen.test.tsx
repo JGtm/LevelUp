@@ -19,7 +19,7 @@ const API = '/api/v1'
 
 const IDLE: ReplayRegenStatus = {
   checked: true, stale: 0, running: false, done: 0, total: 0, paused: false, waiting_for_game: false, failed: 0,
-  compressing: false, compressed: 0, compress_failed: 0,
+  compressing: false, compressed: 0, compress_failed: 0, raw: 0,
 }
 
 /** Sert l'état courant ; les commandes le font évoluer comme le serveur. */
@@ -47,6 +47,8 @@ describe('regenPhase et visibilité', () => {
     expect(regenPhase({ ...IDLE, checked: false })).toBe('checking')
     expect(regenPhase(IDLE)).toBe('upToDate')
     expect(regenPhase({ ...IDLE, stale: 5 })).toBe('offer')
+    // Aucun rejeu à refaire mais des rejeux bruts à compresser : l'offre est faite aussi.
+    expect(regenPhase({ ...IDLE, raw: 4 })).toBe('offer')
     expect(regenPhase({ ...IDLE, running: true })).toBe('preparing')
     expect(regenPhase({ ...IDLE, running: true, total: 4, done: 1 })).toBe('running')
     expect(regenPhase({ ...IDLE, running: true, total: 4, paused: true })).toBe('paused')
@@ -89,6 +91,27 @@ describe('ReplayRegenBanner', () => {
     expect(await screen.findByText('12 rejeux à régénérer après la mise à jour.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Régénérer' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Plus tard' })).toBeInTheDocument()
+  })
+
+  it('propose la compression seule quand il ne reste que des rejeux bruts, en français et en anglais', async () => {
+    serveur({ stale: 0, raw: 4 })
+    renderWithProviders(<ReplayRegenBanner />)
+    expect(await screen.findByText('4 rejeux à compresser pour libérer de la place sur le disque.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Compresser' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Régénérer' })).not.toBeInTheDocument()
+    cleanup()
+    useAppShellStore.setState({ locale: 'en' })
+    serveur({ stale: 0, raw: 1 })
+    renderWithProviders(<ReplayRegenBanner />)
+    expect(await screen.findByText('1 replay to compress to free up disk space.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Compress' })).toBeInTheDocument()
+  })
+
+  it('avec des rejeux à refaire, l offre reste celle de la régénération, bruts ou non', async () => {
+    serveur({ stale: 3, raw: 9 })
+    renderWithProviders(<ReplayRegenBanner />)
+    expect(await screen.findByText('3 rejeux à régénérer après la mise à jour.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Régénérer' })).toBeInTheDocument()
   })
 
   it('dit « 1 rejeu » au singulier, et parle anglais en anglais', async () => {
@@ -197,6 +220,13 @@ describe('ReplayRegenCard (Paramètres)', () => {
     renderWithProviders(<ReplayRegenCard />)
     expect(await screen.findByText('12 replays compressed on disk.')).toBeInTheDocument()
     expect(screen.getByText('1 replay could not be compressed; it stays readable.')).toBeInTheDocument()
+  })
+
+  it('ne dit pas que tout est à jour tant qu il reste des bruts', async () => {
+    serveur({ stale: 0, raw: 2 })
+    renderWithProviders(<ReplayRegenCard />)
+    expect(await screen.findByText('2 rejeux à compresser pour libérer de la place sur le disque.')).toBeInTheDocument()
+    expect(screen.queryByText('Tous les rejeux sont à jour.')).not.toBeInTheDocument()
   })
 
   it('dit que tout est à jour', async () => {

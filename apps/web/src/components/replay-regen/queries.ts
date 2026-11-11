@@ -19,6 +19,8 @@ export interface ReplayRegenStatus {
   checked: boolean
   /** Rejeux en retard et régénérables ; pendant la file : ce qu'il en reste. */
   stale: number
+  /** Rejeux encore en JSON brut, à compresser ; la passe de l'utilisateur les compresse même sans rejeu à refaire. */
+  raw: number
   /** La file est active (en pause comprise). */
   running: boolean
   /** Rejeux traités par la file courante ou la dernière. */

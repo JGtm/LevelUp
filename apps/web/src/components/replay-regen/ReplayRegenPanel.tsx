@@ -34,6 +34,7 @@ function phaseLine(t: ReplayRegenText, phase: RegenPhase, s: ReplayRegenStatus |
     case 'upToDate':
       return t.upToDate
     case 'offer':
+      if ((s?.stale ?? 0) === 0) return s?.raw === 1 ? t.rawOne : fill(t.rawMany, { count: s?.raw ?? 0 })
       return s?.stale === 1 ? t.staleOne : fill(t.staleMany, { count: s?.stale ?? 0 })
     case 'preparing':
       return t.preparing
@@ -54,6 +55,7 @@ export function ReplayRegenPanel({ status, variant, onLater }: PanelProps) {
   const command = useReplayRegenCommand()
   const phase = regenPhase(status)
   const active = regenPhaseActive(phase)
+  const rawOnly = phase === 'offer' && (status?.stale ?? 0) === 0
   const failed = status?.failed ?? 0
   const compressed = status?.compressed ?? 0
   const compressFailed = status?.compress_failed ?? 0
@@ -74,7 +76,7 @@ export function ReplayRegenPanel({ status, variant, onLater }: PanelProps) {
         <div className="flex shrink-0 items-center gap-2">
           {phase === 'offer' && (
             <Button size="sm" loading={command.isPending} onClick={() => command.mutate('start')}>
-              {t.regenerate}
+              {rawOnly ? t.compress : t.regenerate}
             </Button>
           )}
           {phase === 'offer' && variant === 'banner' && onLater && (
@@ -94,7 +96,7 @@ export function ReplayRegenPanel({ status, variant, onLater }: PanelProps) {
           )}
         </div>
       </div>
-      {phase === 'offer' && <p className="text-xs text-muted-foreground">{t.hint}</p>}
+      {phase === 'offer' && <p className="text-xs text-muted-foreground">{rawOnly ? t.rawHint : t.hint}</p>}
       {active && status && status.total > 0 && (
         <div
           role="progressbar"
