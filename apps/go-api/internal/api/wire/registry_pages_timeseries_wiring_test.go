@@ -94,3 +94,12 @@ func TestTimeseries_LeResumeDUsageSansResolveurDAmis(t *testing.T) {
 		t.Errorf("WithUsageSummary = %+v : attendu WithUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot)", appels)
 	}
 }
+
+// La Mainmise : la seule porte film.lead_share, sur le PlayerDB du joueur.
+func TestTimeseries_CableLaMainmiseSousSaPorte(t *testing.T) {
+	ms := appelsDansUsages(t, "WithLeadShare")
+	if len(ms) != 1 || strings.Join(ms[0].args, "") != "duckdb.NewLeadShareRepo(pdb)" ||
+		len(ms[0].portes) != 1 || !strings.Contains(ms[0].portes[0], "games.CapFilmLeadShare") {
+		t.Errorf("WithLeadShare = %+v : attendu duckdb.NewLeadShareRepo(pdb) sous la seule porte games.CapFilmLeadShare", ms)
+	}
+}

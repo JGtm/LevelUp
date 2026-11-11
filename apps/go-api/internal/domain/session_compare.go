@@ -49,6 +49,11 @@ type SessionCompareEntry struct {
 	DmgPerDeath *float64 `json:"dmg_per_death,omitempty"`
 	// AvgPaceRatio : engagement absolu moyen (pace_joueur/pace_lobby ; 1.0 = rythme lobby).
 	AvgPaceRatio *float64 `json:"avg_pace_ratio,omitempty"`
+	// LeadShare : MAINMISE moyenne de la session — moyenne des parts des matchs MESURÉS seulement (un
+	// match non mesuré n'entre ni au numérateur ni au dénominateur), FRACTION 0..1. LeadShareMatches :
+	// le nombre de ces matchs mesurés. Les deux absents quand aucun match n'est mesuré.
+	LeadShare        *float64 `json:"lead_share,omitempty"`
+	LeadShareMatches int      `json:"lead_share_matches,omitempty"`
 	// MatchSeries : données par match pour les charts de progression (K/D, cumul, précision).
 	MatchSeries []SessionMatchPoint `json:"match_series"`
 	// Skill rating (LUSR ou CSR) — dernier match de la session.

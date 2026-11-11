@@ -114,27 +114,36 @@ type mapAgg struct {
 	firstSeen   time.Time
 }
 
+// mapKeyOf rend la clé d'agrégation d'une carte et son libellé : la clé est le nom de la langue par
+// défaut (indépendante de la langue de la requête), le libellé celui de la langue de la requête ; une
+// carte de groupe se replie sous la clé de son groupe, avec le libellé de la carte de base. UN foyer
+// pour l'agrégat par carte et la Mainmise par carte.
+func mapKeyOf(r legacymatch.StatsMatchRow, groups domain.GroupesDeCartes, loc i18n.Locale) (key, label string) {
+	key = r.MapName.Pick(i18n.Default)
+	if key == "" {
+		key = tsLabelUnknown
+	}
+	// Clé = nom de la langue par défaut, donc indépendante de la
+	// langue de la requête ; libellé = nom dans la langue de la requête. Cohérent avec le fallback de
+	// computeMapBreakdown côté squad.
+	label = r.MapName.Pick(loc)
+	if label == "" {
+		label = key
+	}
+	// Une carte de groupe : la clé est le groupe de son identifiant (une variante compte sous sa carte de
+	// base) et le libellé celui de la base dans la langue de la requête.
+	if r.MapID != "" {
+		if base, ok := groups.Libelle(r.MapID, loc); ok {
+			key, label = "groupe:"+groups.Groupe(r.MapID), base
+		}
+	}
+	return key, label
+}
+
 func aggregateMapStats(rows []legacymatch.StatsMatchRow, groups domain.GroupesDeCartes, loc i18n.Locale) map[string]*mapAgg {
 	m := make(map[string]*mapAgg, 16)
 	for _, r := range rows {
-		key := r.MapName.Pick(i18n.Default)
-		if key == "" {
-			key = tsLabelUnknown
-		}
-		// Clé = nom de la langue par défaut, donc indépendante de la
-		// langue de la requête ; libellé = nom dans la langue de la requête. Cohérent avec le fallback de
-		// computeMapBreakdown côté squad.
-		label := r.MapName.Pick(loc)
-		if label == "" {
-			label = key
-		}
-		// Une carte de groupe : la clé est le groupe de son identifiant (une variante compte sous sa carte de
-		// base) et le libellé celui de la base dans la langue de la requête.
-		if r.MapID != "" {
-			if base, ok := groups.Libelle(r.MapID, loc); ok {
-				key, label = "groupe:"+groups.Groupe(r.MapID), base
-			}
-		}
+		key, label := mapKeyOf(r, groups, loc)
 		a, ok := m[key]
 		if !ok {
 			a = &mapAgg{label: label, firstSeen: r.StartTime}

@@ -36,6 +36,10 @@ func (r *ServiceRegistry) cablerBlocsSessions(svc *service.SessionPageService, p
 	if caps.Has(games.CapFilmVehicleUsage) {
 		svc = svc.WithSessionVehicleUsage(duckdb.NewSquadVehicleRepo(pdb, r.killSourceClassifierFor(pdb)))
 	}
+	// Mainmise (part du temps en tete du score) : la capability fine film.lead_share.
+	if caps.Has(games.CapFilmLeadShare) {
+		svc = svc.WithSessionLeadShare(duckdb.NewLeadShareRepo(pdb))
+	}
 	// Feuille d'objectif : les colonnes d'objectif quand le titre les publie (match.objective.stats).
 	if caps.Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithSessionObjectives(duckdb.NewObjectiveStatsRepo(pdb))

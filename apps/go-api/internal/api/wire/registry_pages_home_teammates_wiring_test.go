@@ -177,3 +177,21 @@ func TestTeammatesCtx_CableLesVehiculesDeLEmprise(t *testing.T) {
 		t.Errorf("WithVehicleUsage hors de la seule porte games.CapFilmVehicleUsage (portes : %v)", a.portes)
 	}
 }
+
+// TestTeammatesCtx_CableLaMainmiseDeLaSectionDynamique : le lecteur de la Mainmise est câblé sur le
+// PlayerDB du joueur, SOUS la seule porte `film.lead_share` (celle de sa dérivation au sync). Une
+// porte retirée, élargie ou déplacée rougit : sans lui, la série disparaît — ou sort pour un titre
+// sans film — en silence.
+func TestTeammatesCtx_CableLaMainmiseDeLaSectionDynamique(t *testing.T) {
+	appels := appelsDansTeammatesCtx(t, "WithLeadShare")
+	if len(appels) != 1 {
+		t.Fatalf("%d appel(s) à WithLeadShare dans TeammatesCtx, attendu 1", len(appels))
+	}
+	a := appels[0]
+	if strings.Join(a.args, "") != "duckdb.NewLeadShareRepo(pdb)" {
+		t.Errorf("WithLeadShare(%s) : attendu WithLeadShare(duckdb.NewLeadShareRepo(pdb))", strings.Join(a.args, ", "))
+	}
+	if len(a.portes) != 1 || !strings.Contains(a.portes[0], "games.CapFilmLeadShare") {
+		t.Errorf("WithLeadShare hors de la seule porte games.CapFilmLeadShare (portes : %v)", a.portes)
+	}
+}

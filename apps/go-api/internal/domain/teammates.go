@@ -94,6 +94,14 @@ type MapBreakdownRow struct {
 	// sur TOUT son historique pour cette carte. Sert de référence pour le chart
 	// teammates.13. Nil si aucune donnée historique avec score.
 	HistoricalPerformanceAvg *float64 `json:"historical_performance_avg,omitempty"`
+	// LeadShare : MAINMISE moyenne sur les matchs filtrés de la carte — moyenne des parts des matchs
+	// MESURÉS (FRACTION 0..1), LeadShareMatches leur nombre. HistoricalLeadShare(Matches) : même chose sur
+	// tout l'historique de la carte. Absents quand aucun match n'est mesuré (jamais zéro). Servis par les
+	// Séries temporelles seulement.
+	LeadShare                  *float64 `json:"lead_share,omitempty"`
+	LeadShareMatches           int      `json:"lead_share_matches,omitempty"`
+	HistoricalLeadShare        *float64 `json:"historical_lead_share,omitempty"`
+	HistoricalLeadShareMatches int      `json:"historical_lead_share_matches,omitempty"`
 }
 
 // SquadMatchSeriesPoint est un point de la série par match (perf/timeline).
@@ -149,6 +157,19 @@ type SquadKillMechanicBar struct {
 type SquadKillMechanics struct {
 	Players []string               `json:"players"`
 	Bars    []SquadKillMechanicBar `json:"bars"`
+}
+
+// SquadLeadSharePoint est la Mainmise d'UN match de l'escouade. LeadShare est une FRACTION 0..1 ;
+// ABSENT = match non mesuré (mode à peu de points, score non couvert, film absent) : jamais zéro. Le
+// match reste dans la série pour que la page le dise.
+type SquadLeadSharePoint struct {
+	MatchID      string   `json:"match_id"`
+	StartTime    string   `json:"start_time"` // ISO 8601
+	Outcome      int      `json:"outcome"`
+	SessionLabel *string  `json:"session_label,omitempty"`
+	MapName      string   `json:"map_name,omitempty"` // libellé localisé de la carte
+	LeadShare    *float64 `json:"lead_share,omitempty"`
+	LeadChanges  *int     `json:"lead_changes,omitempty"`
 }
 
 // SquadPerformanceSeriesPoint est une mesure 1-match × 1-joueur pour le
@@ -544,6 +565,10 @@ type TeammatesPageResponse struct {
 	// matchs partagés). Map gamertag → série triée par MatchOrder ASC. Nil
 	// si aucun match commun.
 	PerformanceSeries map[string][]SquadPerformanceSeriesPoint `json:"performance_series,omitempty"`
+	// LeadShareSeries : la MAINMISE de chaque match du périmètre pour l'équipe du joueur principal
+	// (l'escouade joue du même côté), triée du plus ancien au plus récent. Alimente la carte Mainmise de la
+	// section Dynamique. Vide sans lecteur de la mesure (titre sans film.lead_share) ou sans match.
+	LeadShareSeries []SquadLeadSharePoint `json:"lead_share_series,omitempty"`
 	// FragClasses alimente le sous-chart « Répartition des frags » de teammates.16
 	// (barres empilées PAR CLASSE, D8). Map gamertag → classes niveau 1 (agrégat sur
 	// les matchs partagés du scope, réutilise fragdist.Build). Sans mécaniques natives

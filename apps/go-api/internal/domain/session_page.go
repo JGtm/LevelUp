@@ -100,6 +100,11 @@ type SessionDetailMatchRow struct {
 	ScoreLabel string `json:"score_label,omitempty"`
 	// DominanceFlag : enrichissement narratif du match (canonical.DominanceFlag) ; 0 = aucun.
 	DominanceFlag int `json:"dominance_flag,omitempty"`
+	// LeadShare : la MAINMISE du match — part de la durée jouée passée EN TÊTE du score par l'équipe du
+	// joueur, FRACTION 0..1 (ADR 0006). ABSENT = non mesuré (mode à peu de points, score non couvert,
+	// film absent) : jamais zéro. LeadChanges : retournements du match, absent avec LeadShare.
+	LeadShare   *float64 `json:"lead_share,omitempty"`
+	LeadChanges *int     `json:"lead_changes,omitempty"`
 }
 
 // SessionCompareSuggestion décrit la session proposée pour une comparaison rapide.

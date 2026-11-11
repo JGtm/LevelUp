@@ -41,6 +41,7 @@ func TestMatchView_CableChaqueSourceSousSaPorte(t *testing.T) {
 		"WithEmpriseUsageSummary": "games.CapFilmUsageSummary",
 		"WithCampLives":           "games.CapFilmKillPositions",
 		"WithEmpriseVehicles":     "games.CapFilmVehicleUsage",
+		"WithLeadShare":           "games.CapFilmLeadShare",
 	} {
 		appels := appelsDansFilmMatchView(t, methode)
 		if len(appels) != 1 || len(appels[0].portes) != 1 || !strings.Contains(appels[0].portes[0], porte) {

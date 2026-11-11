@@ -32,5 +32,10 @@ func (r *ServiceRegistry) cablerUsagesTimeseries(svc *service.TimeseriesService,
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmVehicleUsage) {
 		svc = svc.WithVehicleUsage(duckdb.NewSquadVehicleRepo(pdb, r.killSourceClassifierFor(pdb)))
 	}
+	// Mainmise (part du temps en tete du score, par match, par mois et par carte) : la capability fine
+	// film.lead_share (absente pour Halo 5 -> mesure absente). Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapFilmLeadShare) {
+		svc = svc.WithLeadShare(duckdb.NewLeadShareRepo(pdb))
+	}
 	return svc
 }
