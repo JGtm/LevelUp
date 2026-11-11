@@ -126,8 +126,7 @@ export const EN_TEXT = {
   scoreDeltaTitle: 'Score gap',
   scoreDeltaInfo:
     'The player’s team score minus the opposing team’s, as dated by the match film. Above zero the player’s team leads; below, the opponents do. The score only changes when points are scored, so the gap moves in steps.',
-  scoreDeltaLegendAlly: 'Team leading',
-  scoreDeltaLegendEnemy: 'Opponents leading',
+  divergentNeedsReplay: 'This chart needs the match replay, which is not available.',
   scoreDeltaUnavailableFilm: 'The match film does not date the score: the gap is not drawn.',
   scoreDeltaUnavailableCamps:
     'The player’s team is not established for this match: the gap is not drawn.',

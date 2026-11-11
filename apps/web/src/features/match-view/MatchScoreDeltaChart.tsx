@@ -7,9 +7,9 @@
  * lisent l'un sous l'autre sur le même axe des temps.
  *
  * MÊME SOURCE, MÊME CLÉ DE CACHE, MÊME GATE QUE LA COURBE (`useMatchReplay`, gaté par
- * `header.replay_available`) : aucun appel de plus. Sans film, la carte ne rend rien, comme la
- * courbe qu'elle accompagne. Dès qu'un film existe, elle reste À L'ÉCRAN : si l'écart ne peut pas
- * être tracé (score non daté, camp du joueur non établi), l'état vide en dit la cause — jamais une
+ * `header.replay_available`) : aucun appel de plus. La carte reste TOUJOURS À L'ÉCRAN : sans film,
+ * le bloc vide canonique dit que le graphique demande le rejeu ; avec un film mais sans écart
+ * traçable (score non daté, camp du joueur non établi), l'état vide en dit la cause — jamais une
  * courbe devinée.
  *
  * ELLE NE LIT PAS `score_timeline_kind`. Ce champ efface la COURBE en Assassin (le mode marque
@@ -97,8 +97,10 @@ export function MatchScoreDeltaChart({
         {
           points: s[0].datapoints,
           endMs: delta.endMs,
-          positiveName: t.scoreDeltaLegendAlly,
-          negativeName: t.scoreDeltaLegendEnemy,
+          // Les noms de la légende sont ceux de « Score dans le temps » ; les aires, leurs couleurs.
+          positiveName: delta.allyLabel,
+          negativeName: delta.opponentLabel ?? t.divergentBestOpponent,
+          negativeNeutral: delta.multiTeam,
           tooltipHtml: (ms) => tooltipHtml(delta, ms, t),
         },
         getEChartsThemeColors(),
@@ -107,12 +109,12 @@ export function MatchScoreDeltaChart({
     [delta, t],
   )
 
-  // Pas de film pour ce match : la carte ne se montre pas (même règle que la courbe).
-  if (!replayAvailable) return null
-
-  // La cause de l'absence : le film ne date pas le score, ou le camp du joueur est inconnu.
-  const unavailable =
-    timeline && clock && modeSupported ? t.scoreDeltaUnavailableCamps : t.scoreDeltaUnavailableFilm
+  // La cause de l'absence : pas de rejeu, le film ne date pas le score, ou le camp du joueur est inconnu.
+  const unavailable = !replayAvailable
+    ? t.divergentNeedsReplay
+    : timeline && clock && modeSupported
+      ? t.scoreDeltaUnavailableCamps
+      : t.scoreDeltaUnavailableFilm
 
   return (
     <ChartCard

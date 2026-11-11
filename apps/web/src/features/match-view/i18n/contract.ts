@@ -163,8 +163,8 @@ export interface MatchViewText {
    */
   scoreDeltaTitle: string
   scoreDeltaInfo: string
-  scoreDeltaLegendAlly: string
-  scoreDeltaLegendEnemy: string
+  /** État vide des deux graphes divergents quand le match n'a pas de rejeu. */
+  divergentNeedsReplay: string
   scoreDeltaUnavailableFilm: string
   scoreDeltaUnavailableCamps: string
   numbersAdvantageTitle: string

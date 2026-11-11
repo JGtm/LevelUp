@@ -2,11 +2,14 @@
  * _divergentStepOption.ts — L'OPTION ECHARTS COMMUNE AUX DEUX GRAPHES DIVERGENTS de l'onglet
  * Chronologie : « Écart de score » et « Supériorité numérique ».
  *
- * UNE GRANDEUR SIGNÉE AUTOUR DE ZÉRO, PEINTE PAR RÔLE. Au-dessus de zéro, l'équipe du joueur
- * est devant ; en dessous, c'est l'équipe d'en face. Les deux aires prennent les jetons
- * DIVERGENTS du projet (`divergent-pos` / `divergent-neg`), donc la palette d'accessibilité
- * réglée par l'utilisateur — jamais un vert ou un rouge écrit ici. La polarité est portée par la
- * POSITION par rapport à la ligne de zéro autant que par la teinte : la couleur n'est pas seule.
+ * UNE GRANDEUR SIGNÉE AUTOUR DE ZÉRO, PEINTE AUX COULEURS DES ÉQUIPES. Au-dessus de zéro, l'équipe du
+ * joueur est devant ; en dessous, c'est l'équipe d'en face. Les deux aires prennent la MÊME encre
+ * d'équipe que « Score dans le temps » et les autres graphes de l'onglet (`teamSeriesColor` : jetons
+ * `team-ally` / `team-enemy`, donc la palette d'accessibilité réglée par l'utilisateur) — jamais une
+ * teinte écrite ici. Face à PLUS DE DEUX camps, le dessous est l'écart contre la MEILLEURE équipe
+ * adverse, qui change dans le temps : aucune couleur d'adversaire unique n'a de sens, il prend
+ * l'encre neutre du thème (`negativeNeutral`). La polarité est portée par la POSITION par rapport à
+ * la ligne de zéro autant que par la teinte : la couleur n'est pas seule.
  *
  * DEUX SÉRIES, UNE PAR MOITIÉ. Chacune ne garde que sa part de la valeur (`max(v, 0)` /
  * `min(v, 0)`), en ESCALIER (`step: 'end'` : la valeur tient jusqu'au point suivant — ni le
@@ -36,9 +39,8 @@ import {
   type EChartsThemeColors,
 } from '@/components/charts/_utils'
 import { tipNumber } from '@/components/charts/tipNumber'
-import { resolveToken } from '@/lib/accessibility'
-
 import { formatClock } from './_scoreCurve'
+import { teamSeriesColor } from './teamSeriesColor'
 
 /** Un point de la série signée : tient jusqu'au suivant. */
 export interface DivergentStepPoint {
@@ -51,10 +53,12 @@ export interface DivergentStepInput {
   points: readonly DivergentStepPoint[]
   /** Fin de l'axe des temps, en ms depuis le coup d'envoi. */
   endMs: number
-  /** Nom de la moitié positive (légende), ex. « Équipe en tête ». */
+  /** Nom de la moitié positive (légende) : le nom de l'équipe du joueur. */
   positiveName: string
-  /** Nom de la moitié négative (légende), ex. « Adversaires en tête ». */
+  /** Nom de la moitié négative (légende) : le nom de l'équipe d'en face, ou « meilleure équipe adverse ». */
   negativeName: string
+  /** Plus d'un camp en face : le dessous prend l'encre neutre, pas la couleur d'un adversaire. */
+  negativeNeutral?: boolean
   /** Le corps de l'infobulle à l'instant `ms` : HTML DÉJÀ échappé par l'appelant. */
   tooltipHtml: (ms: number) => string
   /** Plus petite demi-étendue de l'axe des valeurs (défaut 4). */
@@ -99,8 +103,10 @@ export function buildDivergentStepOption(
   tc: EChartsThemeColors,
 ): EChartsCoreOption {
   const { points, endMs, positiveName, negativeName, tooltipHtml } = input
-  const posColor = resolveToken('divergent-pos')
-  const negColor = resolveToken('divergent-neg')
+  // L'appel se fait ICI, dans le constructeur d'option : le rebuild sur changement de palette
+  // rafraîchit la teinte.
+  const posColor = teamSeriesColor(true, tc)
+  const negColor = teamSeriesColor(input.negativeNeutral ? null : false, tc)
   const { max, interval } = symmetricExtent(
     points.reduce((m, p) => Math.max(m, Math.abs(p.value)), 0),
     input.minExtent,

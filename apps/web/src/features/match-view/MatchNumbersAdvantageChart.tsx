@@ -11,8 +11,9 @@
  * avec l'option divergente commune (`_divergentStepOption`).
  *
  * MÊME GATE QUE LES AUTRES GRAPHES DU FILM (`useMatchReplay`, `header.replay_available`) :
- * sans film, la carte ne rend rien. Avec un film mais sans camp établi pour le joueur, l'état
- * vide dit pourquoi — jamais un effectif deviné.
+ * sans film, la carte reste à l'écran avec le bloc vide canonique (le graphique demande le rejeu).
+ * Avec un film mais sans camp établi pour le joueur, l'état vide dit pourquoi — jamais un
+ * effectif deviné.
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { useCallback, useMemo } from 'react'
@@ -29,6 +30,7 @@ import { useMatchReplay } from '@/lib/replay/queries'
 import { buildPlayers } from '@/lib/replay/rosterLogic'
 
 import { formatClock } from './_scoreCurve'
+import { teamLegend } from './teamLegend'
 import { buildDivergentStepOption, type DivergentStepPoint } from './_divergentStepOption'
 import type { MatchViewText } from './i18n'
 
@@ -63,6 +65,7 @@ export function MatchNumbersAdvantageChart({
     () => buildAliveBalance({ players, allyTeam, clock }),
     [players, allyTeam, clock],
   )
+  const legend = useMemo(() => teamLegend(board, meXUID, t), [board, meXUID, t])
 
   const buildOption = useCallback(
     (s: ChartSeries<DivergentStepPoint>[]): EChartsCoreOption => {
@@ -71,22 +74,23 @@ export function MatchNumbersAdvantageChart({
         {
           points: s[0].datapoints,
           endMs: balance.endMs,
-          positiveName: t.numbersAdvantageLegendAlly,
-          negativeName: t.numbersAdvantageLegendEnemy,
+          // Les noms de la légende sont ceux de la feuille (comme « Score dans le temps ») ; sans
+          // camp situé, le texte générique. Les aires prennent les couleurs d'équipe.
+          positiveName: legend.ally ?? t.numbersAdvantageLegendAlly,
+          negativeName: legend.opponent ?? t.numbersAdvantageLegendEnemy,
+          negativeNeutral: balance.multiTeam,
           tooltipHtml: (ms) => tooltipHtml(balance, ms, t),
         },
         getEChartsThemeColors(),
       )
     },
-    [balance, t],
+    [balance, t, legend],
   )
 
-  // Pas de film pour ce match : la carte ne se montre pas.
-  if (!replayAvailable) return null
-
-  // La cause de l'absence : le film ne date pas les vies, ou le camp du joueur est inconnu.
-  const unavailable =
-    clock && players.length > 0
+  // La cause de l'absence : pas de rejeu, le film ne date pas les vies, ou le camp du joueur est inconnu.
+  const unavailable = !replayAvailable
+    ? t.divergentNeedsReplay
+    : clock && players.length > 0
       ? t.numbersAdvantageUnavailableCamps
       : t.numbersAdvantageUnavailableFilm
 

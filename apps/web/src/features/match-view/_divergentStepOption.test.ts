@@ -36,8 +36,8 @@ function option(over: Partial<Parameters<typeof buildDivergentStepOption>[0]> = 
         { ms: 30_000, value: -2 },
       ],
       endMs: 30_000,
-      positiveName: 'Équipe en tête',
-      negativeName: 'Adversaires en tête',
+      positiveName: 'Équipe Eagle',
+      negativeName: 'Équipe Cobra',
       tooltipHtml: (ms) => `INFOBULLE ${ms}`,
       ...over,
     },
@@ -54,10 +54,17 @@ describe('buildDivergentStepOption — la forme', () => {
     expect(o.series[1].data).toEqual([[0, 0], [10_000, 0], [20_000, -2], [30_000, -2]])
   })
 
-  it('peint chaque moitié d’un jeton DIVERGENT du projet, jamais d’une valeur en dur', () => {
+  it('face à plus de deux équipes, le dessous prend l’encre NEUTRE du thème, pas un camp précis', () => {
+    const o = option({ negativeNeutral: true })
+    expect(o.series[0].areaStyle.color).toBe('var(--ac-team-ally)')
+    expect(o.series[1].areaStyle.color).toBe('LABEL')
+    expect(o.legend.data[1].itemStyle.color).toBe('LABEL')
+  })
+
+  it('peint chaque moitié de la couleur de son ÉQUIPE (jetons d’équipe), jamais d’une valeur en dur', () => {
     const o = option()
-    expect(o.series[0].areaStyle.color).toBe('var(--ac-divergent-pos)')
-    expect(o.series[1].areaStyle.color).toBe('var(--ac-divergent-neg)')
+    expect(o.series[0].areaStyle.color).toBe('var(--ac-team-ally)')
+    expect(o.series[1].areaStyle.color).toBe('var(--ac-team-enemy)')
     expect(JSON.stringify(o)).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
   })
 
@@ -86,11 +93,11 @@ describe('buildDivergentStepOption — la forme', () => {
     const o = option()
     expect(o.legend.bottom).toBe(0)
     expect(o.legend.data.map((e: { name: string }) => e.name)).toEqual([
-      'Équipe en tête',
-      'Adversaires en tête',
+      'Équipe Eagle',
+      'Équipe Cobra',
     ])
-    expect(o.legend.data[0].itemStyle.color).toBe('var(--ac-divergent-pos)')
-    expect(o.legend.data[1].itemStyle.color).toBe('var(--ac-divergent-neg)')
+    expect(o.legend.data[0].itemStyle.color).toBe('var(--ac-team-ally)')
+    expect(o.legend.data[1].itemStyle.color).toBe('var(--ac-team-enemy)')
   })
 
   it('partage les marges et l’axe des temps du graphe « Score dans le temps » (alignement)', () => {

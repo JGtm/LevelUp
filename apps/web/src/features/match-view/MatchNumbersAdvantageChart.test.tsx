@@ -135,9 +135,12 @@ function valeurA(o: Record<string, any>, ms: number): number { // eslint-disable
 }
 
 describe('MatchNumbersAdvantageChart — quand la carte apparaît', () => {
-  it('est MASQUÉE sans film : `replay_available` faux, rien à l’écran', () => {
-    poserArtefact({})
-    expect(afficher({ replayAvailable: false }).container.firstChild).toBeNull()
+  it('sans film (`replay_available` faux), la carte reste à l’écran : bloc vide qui dit qu’il faut le rejeu', () => {
+    poserArtefact(null) // la requête désactivée ne rend aucune donnée
+    const view = afficher({ replayAvailable: false })
+    expect(view.getByText(t.numbersAdvantageTitle)).toBeTruthy()
+    expect(view.getByText(t.divergentNeedsReplay)).toBeTruthy()
+    expect(view.queryByTestId('echarts-stub')).toBeNull()
   })
 
   it('affiche la carte, son titre neutre et le bouton d’information', async () => {
@@ -205,18 +208,17 @@ describe('MatchNumbersAdvantageChart — ce que l’option ECharts contient', ()
     expect(o.xAxis).toMatchObject({ type: 'value', min: 0, max: 480_400 })
   })
 
-  it('UN SEUL axe des ordonnées, des jetons divergents, la légende en bas', async () => {
+  it('UN SEUL axe des ordonnées, les couleurs d’équipe, la légende en bas aux noms d’équipe', async () => {
     poserArtefact({})
     afficher()
     const o = await derniereOption()
     expect(Array.isArray(o.yAxis)).toBe(false)
-    expect(o.series[0].areaStyle.color).toBe('var(--ac-divergent-pos)')
-    expect(o.series[1].areaStyle.color).toBe('var(--ac-divergent-neg)')
+    expect(o.series[0].areaStyle.color).toBe('var(--ac-team-ally)')
+    expect(o.series[1].areaStyle.color).toBe('var(--ac-team-enemy)')
     expect(o.legend.bottom).toBe(0)
-    expect(o.legend.data.map((e: { name: string }) => e.name)).toEqual([
-      t.numbersAdvantageLegendAlly,
-      t.numbersAdvantageLegendEnemy,
-    ])
+    const noms = o.legend.data.map((e: { name: string }) => e.name)
+    expect(noms[0]).toContain('Eagle')
+    expect(noms[1]).toContain('Cobra')
   })
 
   it('l’infobulle lit l’instant du curseur : effectifs en vie et écart signé', async () => {
@@ -272,6 +274,6 @@ describe('MatchNumbersAdvantageChart — langue', () => {
     const view = afficher({ locale: 'en' })
     expect(view.getByText(MATCH_VIEW_TEXT.en.numbersAdvantageTitle)).toBeTruthy()
     const o = await derniereOption()
-    expect(o.legend.data[0].name).toBe(MATCH_VIEW_TEXT.en.numbersAdvantageLegendAlly)
+    expect(o.legend.data[0].name).toContain('Eagle')
   })
 })

@@ -137,7 +137,7 @@ export function MatchViewTabChronology({
           pleine largeur, sous le score et sur le même axe des temps (`t0Ms`). L'écart ne
           consulte PAS `scoreTimelineKind` : il vit du score du rejeu dans tous les modes, Assassin
           compris (plan 8.1.2, D-9) — c'est la courbe, et elle seule, que `hidden` efface.
-          Sans film, ni l'un ni l'autre ne rend rien. */}
+          Sans film, les deux restent à l'écran avec le bloc vide canonique. */}
       <MatchScoreDeltaChart
         playerSlug={playerSlug}
         matchId={matchId}
