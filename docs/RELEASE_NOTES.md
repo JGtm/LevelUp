@@ -1,5 +1,10 @@
 ## What's new
 
+**v8.1.3 — Signing in from your browser works on the Windows app**
+
+- **Sign in from your browser** — on the Windows app, the return from Microsoft was refused ("Host not allowed") and the sign-in never finished. It now completes, and the app opens on your profile.
+- **The code screen matches the website** — if you sign in with a code instead, the first-run screen now shows the "Copy the code" button and the same layout as the website; the "Saved" notice no longer lands on the explanation text when you change the film setting.
+
 **v8.1.2 — Every match gets synced, and the Windows app starts syncing on its own**
 
 - **Your whole history is fetched** — a first sync that stopped early (the app closed, a page lost on the way) left the older matches behind for good. The app now keeps going back through your history until it reaches the end, then returns to quick syncs.

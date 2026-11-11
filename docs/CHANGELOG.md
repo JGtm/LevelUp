@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 > French version: [FR/CHANGELOG.md](FR/CHANGELOG.md)
 
+## [8.1.3] - 2026-11-11
+
+### Fixed
+- **Browser sign-in never completed on the Windows application** — the startup gate (`StrictHost`), which stays in front of the router for the life of the server, refused the Microsoft return (`GET http://localhost:<port>/auth/xbox/callback`) with `421 desktop_host_refused` before the router guard that allows it. `StrictHost` is now a method of `DesktopGate` and applies the same exemption (`isBrowserCallback`); end-to-end test in `-mode desktop` (`TestE2ERetourConnexionNavigateur`), red on the installed 8.1.2 binary.
+- **First-run assistant** — the device-code step shows the same block as the Xbox sign-in screen (label, selectable code, "Copy the code" button); the "Saved" badge sits on the toggle row instead of floating over the introduction text.
+
 ## [8.1.2] - 2026-11-11
 
 ### Fixed

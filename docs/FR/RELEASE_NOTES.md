@@ -1,5 +1,10 @@
 ## Dernières nouveautés
 
+**v8.1.3 — La connexion depuis le navigateur fonctionne sur l'application Windows**
+
+- **Connexion depuis le navigateur** — sur l'application Windows, le retour de Microsoft était refusé (« Host non autorisé ») et la connexion n'aboutissait jamais. Elle aboutit maintenant, et l'application s'ouvre sur ton profil.
+- **L'écran du code aligné sur le site** — si tu te connectes par code, l'écran de premier lancement a désormais le bouton « Copier le code » et la même présentation que le site ; la mention « Enregistré » ne tombe plus sur le texte explicatif quand tu changes le réglage des films.
+
 **v8.1.2 — Tous les matchs se synchronisent, et l'application Windows démarre seule sa synchronisation**
 
 - **Tout ton historique est récupéré** — une première synchronisation arrêtée en route (application fermée, page perdue en chemin) laissait les matchs plus anciens de côté pour de bon. L'application remonte désormais ton historique jusqu'au bout, puis revient aux synchronisations rapides.
