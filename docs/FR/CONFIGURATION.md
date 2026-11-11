@@ -276,7 +276,6 @@ remplacés par les identités démo. `<démo>/runtime/` est ignoré par git sous
 | `LEVELUP_EVENTS_CONVERGENCE` | Passe de convergence des highlight_events (scheduler + trigger immédiat). Kill-switch : `0` pour désactiver. Retrait cible >= 2026-Q4. | on |
 | `LEVELUP_EVENTS_CONVERGENCE_MAX` | Borne le nombre de matchs traités par tick de convergence. | `50` |
 | `LEVELUP_CSR_SEASON_ID` | Surcharge l'id de saison CSR. | depuis `app_settings.json` |
-| `PRESTIGE_ENABLED` | Active le module Prestige (override de `app_settings.json`). | `true` |
 
 ### Intégrations
 
@@ -353,7 +352,7 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `backup_keep_daily` | int | `7` | Backups quotidiens conservés. |
 | `backup_keep_weekly` | int | `4` | Backups hebdomadaires conservés. |
 | `backup_keep_monthly` | int | `12` | Backups mensuels conservés. |
-| `prestige_enabled` | bool | `true` | Active le module Prestige (surchargeable via `PRESTIGE_ENABLED`). |
+| `prestige_enabled` | bool | `true` | Active le module Prestige. |
 | `instance_locked` | bool | `false` | Verrouille l'instance aux utilisateurs existants (aussi via `LEVELUP_INSTANCE_LOCKED`). |
 | `replay_sound_variation_percent` | int | `100` | Sons d'armes du rejeu 2D : variation du volume et de la hauteur à chaque tir, dans les fourchettes déclarées par le jeu. `100` = fourchettes du jeu telles quelles, `0` = toujours le même fichier. Réglage d'instance, modifié depuis Admin · Système. |
 | `replay_sound_distance_percent` | int | `0` | Sons d'armes du rejeu 2D : effet de distance (atténuation + passe-bas). `0` = son pur, aucun nœud dans le chemin du signal. Réglage d'instance, modifié depuis Admin · Système. |

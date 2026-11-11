@@ -5,7 +5,7 @@
  * Les types reflètent la sérialisation JSON du package Go ; toute évolution
  * du backend doit être répercutée ici.
  *
- * Le câblage des routes côté serveur est conditionnel à PRESTIGE_ENABLED —
+ * Le câblage des routes côté serveur est conditionnel à prestige_enabled —
  * les appels peuvent retourner 404 si le flag est désactivé. Les UI doivent
  * gérer gracieusement (skeleton + message de feature désactivée).
  */
@@ -341,7 +341,7 @@ const scopedToPlayer = (actorSlug: string) => `/players/${encodeURIComponent(act
 /**
  * Section api.prestige — toutes les requêtes vers les endpoints Prestige.
  *
- * Si le backend retourne 404 (PRESTIGE_ENABLED désactivé), les fonctions
+ * Si le backend retourne 404 (prestige_enabled désactivé), les fonctions
  * propagent l'erreur ; les hooks React Query l'interpréteront comme
  * "feature désactivée".
  */

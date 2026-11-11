@@ -174,7 +174,6 @@ func TestBareRoutesRatchet_NoUnguardedRouteOutsideAllowlist(t *testing.T) {
 	// Flags ON pour exposer les routes conditionnelles (référentiels titre, prestige),
 	// comme le contract_test — la surface publique doit être couverte au complet.
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
-	t.Setenv("PRESTIGE_ENABLED", "true")
 
 	router := buildTestRouter(t)
 	r, ok := router.(chi.Router)

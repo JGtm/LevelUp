@@ -216,7 +216,6 @@ type semNode struct {
 
 func TestSharedDocSchemaSemanticsVsYAML(t *testing.T) {
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
-	t.Setenv("PRESTIGE_ENABLED", "true")
 
 	yamlSem := loadYAMLSchemaSem(t)
 	if len(yamlSem) < 100 {

@@ -627,9 +627,6 @@ jobs:
           LEVELUP_DEMO_MODE: "true"
           # MULTI_TITLE_API_ENABLED retire le 2026-08-02 (v7.3 lot 2) : le flag
           # n'existe plus, les routes multi-titres sont montees sans condition.
-          # P3.4 : flag PRESTIGE_ENABLED active en CI pour exercer les ~21 routes
-          # Prestige (smoke tests + route registration).
-          PRESTIGE_ENABLED: "true"
 
   # J12.6 (2026-09-30) : D-5 (deux films decodes en parallele ne partagent aucun etat) est prouve
   # SOUS `-race`. `-race` est incompatible avec DuckDB (cf. job coverage) : ce job cible donc le
@@ -1094,8 +1091,6 @@ jobs:
           LOT: ${{ matrix.lot }}
           CGO_ENABLED: "1"
           LEVELUP_DEMO_MODE: "true"
-          # P3.4 (revue 2026-04-29) : flag actif en CI pour couvrir les chemins Prestige.
-          PRESTIGE_ENABLED: "true"
           # Les tests de la brique `libs/film` qui lisent le depot hote (catalogues de reference,
           # sources du front : `internal/depottest`) le trouvent par cette variable : la CI les rejoue
           # tous, sans dependre de la presence d'un `go.work`.

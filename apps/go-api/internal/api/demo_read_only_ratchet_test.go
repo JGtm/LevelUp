@@ -157,7 +157,6 @@ func routeHasDemoGuard(mws []func(http.Handler) http.Handler) bool {
 
 func TestDemoReadOnlyRatchet(t *testing.T) {
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
-	t.Setenv("PRESTIGE_ENABLED", "true")
 	r, ok := buildTestRouter(t).(chi.Router)
 	if !ok {
 		t.Fatal("le routeur n'est pas un chi.Router")

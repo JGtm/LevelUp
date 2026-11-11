@@ -8,7 +8,7 @@
  *
  * Remplace les anciennes sections séparées (HomePrestigeBar / HomeActiveArcCard /
  * carousel de challenges). Si toutes les sous-données sont vides ou en erreur
- * (PRESTIGE_ENABLED=false), retourne null silencieusement.
+ * (prestige_enabled=false), retourne null silencieusement.
  *
  * Tous les libellés FR/EN passent par homeManifest (clés home.prestige.*).
  */

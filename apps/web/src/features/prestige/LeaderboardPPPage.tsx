@@ -5,7 +5,7 @@
  * Affichage décomposé brut/bonus/total selon Axe 5 du plan conceptuel.
  *
  * Phase 5 : structure complète avec composant LeaderboardPP. La récupération
- * du leaderboard cross-amis dépend du wiring backend (PRESTIGE_ENABLED + sources
+ * du leaderboard cross-amis dépend du wiring backend (prestige_enabled + sources
  * amis dérivées de squad_member + Relations DB).
  */
 import { useState } from 'react'

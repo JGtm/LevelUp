@@ -60,7 +60,6 @@ type ownershipRoute struct {
 
 func walkOwnershipRoutes(t *testing.T) []ownershipRoute {
 	t.Helper()
-	t.Setenv("PRESTIGE_ENABLED", "true")
 	r, ok := buildTestRouter(t).(chi.Router)
 	if !ok {
 		t.Fatal("le routeur n'est pas un chi.Router")

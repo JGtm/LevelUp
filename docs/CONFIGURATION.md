@@ -271,7 +271,6 @@ by the demo identities. `<demo>/runtime/` is git-ignored under `data/demo/` and
 | `LEVELUP_EVENTS_CONVERGENCE` | Highlight-events convergence pass (scheduler + immediate trigger). Kill-switch: set `0` to disable. Removal target >= 2026-Q4. | on |
 | `LEVELUP_EVENTS_CONVERGENCE_MAX` | Cap on matches processed per convergence tick. | `50` |
 | `LEVELUP_CSR_SEASON_ID` | Override CSR season id. | from `app_settings.json` |
-| `PRESTIGE_ENABLED` | Enable the Prestige module (override of `app_settings.json`). | `true` |
 
 ### Integrations
 
@@ -348,7 +347,7 @@ Keys read by the Go backend from `app_settings.json` (some are not in the exampl
 | `backup_keep_daily` | int | `7` | Daily backups retained. |
 | `backup_keep_weekly` | int | `4` | Weekly backups retained. |
 | `backup_keep_monthly` | int | `12` | Monthly backups retained. |
-| `prestige_enabled` | bool | `true` | Enable Prestige module (overridable via `PRESTIGE_ENABLED`). |
+| `prestige_enabled` | bool | `true` | Enable Prestige module. |
 | `instance_locked` | bool | `false` | Lock the instance to existing users (also via `LEVELUP_INSTANCE_LOCKED`). |
 | `replay_sound_variation_percent` | int | `100` | 2D replay weapon sounds: per-shot variation of volume and pitch, within the ranges declared by the game. `100` = game ranges as they are, `0` = always the same file. Instance setting, edited from Admin · System. |
 | `replay_sound_distance_percent` | int | `0` | 2D replay weapon sounds: distance effect (attenuation + low-pass). `0` = untouched sound, no node in the signal path. Instance setting, edited from Admin · System. |

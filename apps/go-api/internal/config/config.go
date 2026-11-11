@@ -143,8 +143,8 @@ type AppConfig struct {
 	// Activé par LEVELUP_BACKUP_ENABLED=true.
 	Backup BackupConfig
 	// PrestigeEnabled gate les 16 routes Prestige ET le hook post-sync (gate UNIQUE,
-	// C7/DEC-4). Source : prestige.IsEnabled → prestige_enabled dans app_settings.json,
-	// override d'urgence PRESTIGE_ENABLED. Défaut : true (activation actée, ADR 0005).
+	// C7/DEC-4). Source : prestige.IsEnabled → prestige_enabled dans app_settings.json.
+	// Défaut : true (activation actée, ADR 0005).
 	PrestigeEnabled bool
 	// WebDistDir : répertoire du build React (Vite) servi en SPA par le routeur.
 	// Lit LEVELUP_WEB_DIST (posé par le Dockerfile/compose → /app/apps/web/dist).

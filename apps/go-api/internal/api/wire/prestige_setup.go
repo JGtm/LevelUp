@@ -1,4 +1,4 @@
-// Package api — câblage du module Prestige derrière le feature flag PRESTIGE_ENABLED.
+// Package api — câblage du module Prestige derrière le réglage prestige_enabled.
 //
 // Au boot :
 //  1. Charge tuning.toml (fallback DefaultTuning si absent)
@@ -265,7 +265,7 @@ func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug stri
 // newEngineFor ; V2 via CycleOrchestratorImpl.WithPrestigeHook) pour ré-évaluer
 // les défis actifs après ingestion de matchs. Câblage réel depuis VF-1 (2026-07-06).
 //
-// No-op si PRESTIGE_ENABLED=false. Best-effort : log les erreurs
+// No-op si prestige_enabled=false. Best-effort : log les erreurs
 // sans propager (le sync ne doit pas échouer à cause de Prestige).
 //
 // ⚠️ Invariant deadlock-free (commit 7 db-concurrency) : RunPostSync est appelé

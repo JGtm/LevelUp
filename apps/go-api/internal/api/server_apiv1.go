@@ -1111,7 +1111,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		fav := handlers.NewMatchFavoriteHandler(reg.Social)
 		fav.Mount(r.With(participated), playerOpt) // PATCH /matches/{match_id}/favorite
 
-		// Module Prestige — routes derrière feature flag PRESTIGE_ENABLED.
+		// Module Prestige — routes derrière le réglage prestige_enabled (cfg.PrestigeEnabled).
 		// Le bundle a été initialisé au boot ; si nil ou flag off, routes non montées.
 		//
 		// V721-04 — contrat publié : le document OpenAPI est rendu depuis un routeur
@@ -1423,7 +1423,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 
 	// Module Prestige — initialisation du bundle (best-effort, désactivable via flag).
 	// Charge tuning.toml + templates + preset arcs Halo, ouvre shared_social et metadata.
-	// Si le flag PRESTIGE_ENABLED est désactivé, les routes ne sont pas montées et
+	// Si le réglage prestige_enabled est désactivé, les routes ne sont pas montées et
 	// le sync hook est no-op — mais le boot du bundle reste utile pour valider la
 	// config au démarrage.
 	var prestigeBundle *wire.PrestigeBundle

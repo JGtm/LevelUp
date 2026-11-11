@@ -6,7 +6,6 @@ import (
 	"levelup/go-api/internal/observability"
 	"log/slog"
 	"os"
-	"strings"
 )
 
 // sync_hook.go — point d'extension Prestige post-sync.
@@ -15,27 +14,15 @@ import (
 //
 // Les chemins de sync appellent `RunPostSyncHook` (via PrestigeBundle.RunPostSync)
 // après ingestion des matchs — cf. le détail du câblage sur RunPostSyncHook.
-// La fonction est gardée par le feature flag `PRESTIGE_ENABLED` :
-// si le flag est désactivé, aucune action — le module Prestige est
-// totalement absent du flux de sync.
-
-// FeatureFlagEnv est le nom de la variable d'environnement d'override d'urgence
-// de la source canonique (app_settings.json).
-const FeatureFlagEnv = "PRESTIGE_ENABLED"
+// La fonction est gardée par le réglage `prestige_enabled` d'app_settings.json :
+// s'il est désactivé, aucune action — le module Prestige est totalement absent
+// du flux de sync.
 
 // IsEnabled est la SOURCE UNIQUE de l'activation Prestige (C7 / DEC-4, ADR 0005).
-// Lit `prestige_enabled` dans app_settings.json (settingsPath), avec la var d'env
-// PRESTIGE_ENABLED en override d'urgence (falsy "0"/"false"/"no"/"off" → OFF).
+// Lit `prestige_enabled` dans app_settings.json (settingsPath).
 // Défaut : ACTIVÉ (fichier/clé absents ou JSON malformé → true). Consommée par
 // TOUTES les surfaces via cfg.PrestigeEnabled (config.go) → un seul gate.
 func IsEnabled(settingsPath string) bool {
-	if v := os.Getenv(FeatureFlagEnv); v != "" {
-		switch strings.ToLower(strings.TrimSpace(v)) {
-		case "0", "false", "no", "off":
-			return false
-		}
-		return true
-	}
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
 		return true

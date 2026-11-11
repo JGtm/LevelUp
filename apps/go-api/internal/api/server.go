@@ -147,7 +147,7 @@ func metadataDBPathForTitle(cfg *config.AppConfig, titleSlug string) string {
 // Retourne aussi le *wire.ServiceRegistry pour permettre au démon watcher de lier le TTL dynamique.
 //
 // Le montage des routes et services passe par plusieurs sous-fonctions (extraites
-// en K2a) et des groupes conditionnels (PRESTIGE_ENABLED, etc.). La complexité
+// en K2a) et des groupes conditionnels (prestige_enabled, etc.). La complexité
 // reflète la surface API, pas un défaut de conception.
 //
 // loadTitleAssetDrawerData charge les maps + armes (avec leurs URLs d'image) d'un

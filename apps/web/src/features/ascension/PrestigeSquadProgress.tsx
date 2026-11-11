@@ -13,7 +13,7 @@
  *
  * Les PP n'existent que pour les joueurs trackés : un ami absent de
  * availablePlayers (donc sans DB locale) n'a pas de UserPrestige et est
- * silencieusement omis. Si aucune barre n'a de données (PRESTIGE_ENABLED=false
+ * silencieusement omis. Si aucune barre n'a de données (prestige_enabled=false
  * ou squad vide), le bloc ne s'affiche pas.
  */
 import { useMemo } from 'react'

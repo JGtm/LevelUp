@@ -123,31 +123,8 @@ func (m *mockService) DisablePilotMode(ctx context.Context, _, _ string) error {
 }
 
 func TestIsEnabled_Defaults(t *testing.T) {
-	t.Setenv(FeatureFlagEnv, "")
 	if !IsEnabled("") {
-		t.Error("expected enabled when env var empty (default-on)")
-	}
-	t.Setenv(FeatureFlagEnv, "false")
-	if IsEnabled("") {
-		t.Error("expected disabled when explicitly false")
-	}
-}
-
-func TestIsEnabled_FalsyValues(t *testing.T) {
-	for _, v := range []string{"0", "false", "FALSE", "no", "off"} {
-		t.Setenv(FeatureFlagEnv, v)
-		if IsEnabled("") {
-			t.Errorf("expected disabled for %q", v)
-		}
-	}
-}
-
-func TestIsEnabled_TruthyValues(t *testing.T) {
-	for _, v := range []string{"1", "true", "TRUE", "yes", "on"} {
-		t.Setenv(FeatureFlagEnv, v)
-		if !IsEnabled("") {
-			t.Errorf("expected enabled for %q", v)
-		}
+		t.Error("expected enabled when no settings file (default-on)")
 	}
 }
 
@@ -162,7 +139,6 @@ func TestRunPostSyncHook_EnabledCallsService(t *testing.T) {
 }
 
 func TestRunPostSyncHook_NilServiceSurvives(t *testing.T) {
-	t.Setenv(FeatureFlagEnv, "true")
 	// Doit pas paniquer ni planter
 	defer func() {
 		if r := recover(); r != nil {
@@ -182,7 +158,6 @@ func (f *failingService) EvaluateForUser(ctx context.Context, _, _ string) ([]Ev
 }
 
 func TestRunPostSyncHook_ServiceErrorIsLoggedNotPropagated(t *testing.T) {
-	t.Setenv(FeatureFlagEnv, "true")
 	// Pas de retour d'erreur — RunPostSyncHook est void par design (best-effort).
 	RunPostSyncHook(context.Background(), &failingService{}, "u1", "halo_infinite")
 }

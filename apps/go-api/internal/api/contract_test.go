@@ -121,7 +121,6 @@ func TestContractRoutesRegistered(t *testing.T) {
 	// P8.8 (revue 2026-04-29) : flag ON pour exposer les routes conditionnelles
 	// (prestige challenges/arcs/...) que l'OpenAPI documente désormais. Les
 	// routes multi-titres n'ont plus de flag depuis le 2026-08-02 (item 3.3).
-	t.Setenv("PRESTIGE_ENABLED", "true")
 	router := buildTestRouter(t)
 	chiRouteSet := chiRoutes(router)
 
@@ -188,7 +187,6 @@ func TestContractRoutesRegistered(t *testing.T) {
 func TestContractRoutesDocumented(t *testing.T) {
 	doc := loadOpenAPI(t)
 	t.Setenv("LEVELUP_DEMO_MODE", "true")
-	t.Setenv("PRESTIGE_ENABLED", "true")
 	router := buildTestRouter(t)
 	chiRouteSet := chiRoutes(router)
 
