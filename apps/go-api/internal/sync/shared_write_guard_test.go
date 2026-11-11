@@ -41,27 +41,28 @@ func sharedWritePattern(table string) *regexp.Regexp {
 		`\b|UPDATE\s+` + regexp.QuoteMeta(table) + `\b|DELETE\s+FROM\s+` + regexp.QuoteMeta(table) + `\b)`)
 }
 
-// allowedSharedWriteFiles : sites NON-persist tolérés, par table → chemin relatif
-// (depuis apps/go-api/) → raison. Le package internal/persist/ est autorisé en
-// bloc (c'est la couche d'orchestration). Toute autre écriture doit être listée
-// ici avec justification, sinon le test échoue.
+// allowedSharedWriteFiles : sites NON-persist tolérés, par table → chemin relatif complet
+// (depuis apps/go-api/) → raison. Le package internal/persist/ est autorisé en bloc (c'est la
+// couche d'orchestration). Toute autre écriture doit être listée ici avec justification, sinon le
+// test échoue. Chaque raison COMMENCE par la date de l'entrée, puis « (revu AAAA-MM-JJ) » : la
+// dernière vérification sur pièces (TestAllowlistsEcritureDatees).
 //
-// Garder cette liste COURTE : une entrée = une dette documentée. Quand un site
-// est migré vers persist, retirer son entrée (le test n'exige PAS qu'une entrée
-// corresponde à un write réel, mais une liste qui grossit signale une dérive).
+// Garder cette liste COURTE : une entrée = une dette documentée. Quand un site est migré vers
+// persist, retirer son entrée (le test n'exige PAS qu'une entrée corresponde à un write réel,
+// mais une liste qui grossit signale une dérive).
 var allowedSharedWriteFiles = map[string]map[string]string{
 	"match_registry": {
-		"internal/sync/killcollector/registry_flags.go": "marqueurs de film (UPDATE backfill_completed bitmask post-complétion, single-writer sérialisé dblease) — ex-MarkWeaponKillsDone de writes.go, déménagé le 2026-09-01 avec l'étape 1.55",
-		"internal/sync/engagement.go":                   "UPDATE match_intensity (bitmask post-complétion, single-writer)",
-		"internal/sync/pve.go":                          "UPDATE pve bits (bitmask post-complétion, single-writer)",
-		"internal/sync/events_replay.go":                "outil replay (reset events_loaded) — recovery hors flux primaire",
+		"internal/sync/killcollector/registry_flags.go": "2026-09-01 (revu 2026-11-12) : marquerRegistre, UPDATE backfill_completed (bitmask post-complétion), row par row sous le bail d'écriture dblease ; match_registry n'est pas append-only",
+		"internal/sync/engagement.go":                   "2026-06-01 (revu 2026-11-12) : persistMatchIntensity, UPDATE match_intensity, row par row dans le burst d'écriture shared de l'engagement",
+		"internal/sync/pve.go":                          "2026-06-01 (revu 2026-11-12) : MarkPveStatsDone, UPDATE backfill_completed (bit MBitPVEStats) post-complétion, sous le bail d'écriture",
+		"internal/sync/events_replay.go":                "2026-06-01 (revu 2026-11-12) : clearEventsLoaded, UPDATE events_loaded et bit MBitEvents ; outil de rejeu des événements, hors flux primaire",
 	},
 	// match_participants / medals_earned : plus AUCUN writer direct dans sync/ —
 	// le trio legacy InsertParticipants/InsertMedals a été supprimé en V4b
 	// (import OpenSpartan routé via persist.SharedPersister depuis E1). Ces tables
 	// ne sont donc écrites QUE par internal/persist/. Aucune entrée d'allowlist.
 	"weapon_kills": {
-		"internal/sync/writes.go": "InsertWeaponKills (DELETE+INSERT sérialisé par lease shared + MaxOpenConns(1), backfill film inline)",
+		"internal/sync/writes.go": "2026-06-01 (revu 2026-11-12) : InsertWeaponKills, INSERT append-only par génération (weapon_kills_generation_seq, lue par la vue v_weapon_kills), plus aucun DELETE ; backfill film inline sous le bail d'écriture shared",
 	},
 }
 
@@ -131,5 +132,31 @@ func TestSharedMatchTablesWrittenViaPersistOrAllowlist(t *testing.T) {
 		t.Errorf("écriture(s) directe(s) sur une table match-of-record hors orchestration persist :\n  - %s\n"+
 			"→ router via internal/persist (BatchBuilder/persisters) OU, si legacy sanctionné, ajouter à allowedSharedWriteFiles avec justification.",
 			strings.Join(violations, "\n  - "))
+	}
+}
+
+// regexEntreeDatee : une raison d'allowlist commence par une date AAAA-MM-JJ.
+var regexEntreeDatee = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}\b`)
+
+// TestAllowlistsEcritureDatees : toute entrée d'allowlist de ce fichier et de
+// append_only_state_guard_test.go commence par une date (règle ART 3 : jamais d'allowlist sans
+// justification datée).
+func TestAllowlistsEcritureDatees(t *testing.T) {
+	for table, files := range allowedSharedWriteFiles {
+		for rel, raison := range files {
+			if !regexEntreeDatee.MatchString(raison) {
+				t.Errorf("allowedSharedWriteFiles[%s][%s] : la raison ne commence pas par une date AAAA-MM-JJ : %q", table, rel, raison)
+			}
+		}
+	}
+	for rel, raison := range allowlistMediaMutation {
+		if !regexEntreeDatee.MatchString(raison) {
+			t.Errorf("allowlistMediaMutation[%s] : la raison ne commence pas par une date AAAA-MM-JJ : %q", rel, raison)
+		}
+	}
+	for _, e := range rawPMEReadAllowlist {
+		if !regexEntreeDatee.MatchString(e.raison) {
+			t.Errorf("rawPMEReadAllowlist[%q] : la raison ne commence pas par une date AAAA-MM-JJ : %q", e.motif, e.raison)
+		}
 	}
 }

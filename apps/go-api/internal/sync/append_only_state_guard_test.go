@@ -213,15 +213,20 @@ var appendOnlyStateTables = []string{
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors
-// vue _latest) tolérés dans le hot path — retirés du texte avant le scan raw-read.
-var rawPMEReadAllowlist = []string{
-	// player_persister.go : ancre d'idempotence du sous-batch live (vérifie la
-	// présence d'une row stage='live' sur la table physique). Pas un reader UI.
-	"FROM player_match_enrichment WHERE match_id = ? AND stage = 'live'",
-	// engagement.go loadExistingEngagementScores : marqueur d'idempotence writer-side
-	// (engagement déjà TENTÉ — borne la croissance des matchs insufficient_history).
-	// La vue n'expose pas `stage` → lecture physique nécessaire.
-	"FROM player_match_enrichment WHERE stage = 'engagement'",
+// vue _latest) tolérés dans le hot path — retirés du texte avant le scan raw-read. Chaque raison
+// commence par la date de l'entrée, puis « (revu AAAA-MM-JJ) » (TestAllowlistsEcritureDatees).
+var rawPMEReadAllowlist = []struct{ motif, raison string }{
+	{
+		motif: "FROM player_match_enrichment WHERE match_id = ? AND stage = 'live'",
+		raison: "2026-06-21 (revu 2026-11-12) : internal/persist/player_persister.go, ancre d'idempotence du " +
+			"sous-batch live (présence d'une row stage='live' sur la table physique) ; pas un lecteur d'écran",
+	},
+	{
+		motif: "FROM player_match_enrichment WHERE stage = 'engagement'",
+		raison: "2026-06-21 (revu 2026-11-12) : internal/sync/engagement.go, loadExistingEngagementScores, marqueur " +
+			"d'idempotence côté écrivain (engagement déjà TENTÉ, borne la croissance des matchs insufficient_history) ; " +
+			"la vue n'expose pas stage, lecture physique nécessaire",
+	},
 }
 
 // TestPlayerMatchEnrichmentAppendOnlyAccess durcit la doctrine append-only sur
@@ -267,7 +272,7 @@ func TestPlayerMatchEnrichmentAppendOnlyAccess(t *testing.T) {
 		}
 		text := stripGoComments(string(content))
 		for _, allowed := range rawPMEReadAllowlist {
-			text = strings.ReplaceAll(text, allowed, "")
+			text = strings.ReplaceAll(text, allowed.motif, "")
 		}
 		rel, _ := filepath.Rel(repoRoot, path)
 		rel = filepath.ToSlash(rel)
@@ -376,9 +381,10 @@ var mediaAppendOnlyTables = []string{
 }
 
 // allowlistMediaMutation : sites de prod où un DELETE/UPDATE sur une table média
-// append-only serait toléré. Format : "fichier — raison (date)". Toute entrée doit
-// prouver l'absence de déclencheur ART (le bug DuckDB #23645 FATAL-invalide le handle
-// partagé pour tout le process — cf. incident catalog_fetch_queue 2026-06-19).
+// append-only serait toléré. Format : fichier -> raison commençant par la date AAAA-MM-JJ
+// (TestAllowlistsEcritureDatees). Toute entrée doit prouver l'absence de déclencheur ART
+// (le bug DuckDB #23645 FATAL-invalide le handle partagé pour tout le process — cf. incident
+// catalog_fetch_queue 2026-06-19).
 //
 // Vide au 2026-08-03 : aucune mutation tolérée.
 var allowlistMediaMutation = map[string]string{}

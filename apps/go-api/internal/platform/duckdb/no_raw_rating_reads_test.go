@@ -9,6 +9,50 @@ import (
 	"testing"
 )
 
+// rawAppendOnlyReadAllowlist : lectures brutes VOLONTAIRES et documentées, par chemin COMPLET du
+// fichier (relatif à apps/go-api) : une exemption par nom de base laissait passer tout fichier
+// homonyme d'un autre dossier. Chaque raison commence par la date de l'entrée, puis « (revu
+// AAAA-MM-JJ) » (TestAllowlistLecturesBrutesDatee). Décroissante.
+//
+// 2026-09-13 (lot finitions LUSR, C.3 bis) : `queries_career.go` RETIRÉ de l'allowlist.
+// Q8LUSRHistoryPlayer lit désormais match_skill_rank_latest_by_type — le motif « le
+// graphe veut TOUS les checkpoints » rendait le graphe d'évolution non réparable par
+// un replay append-only (résidu h5_arena du 2026-06-26 encore tracé après la
+// réparation d'août). L'allowlist est décroissante : 5 → 4 entrées.
+// 2026-09-26 (lot A, décision DA.10 du plan perf « lectures par périmètre ») : 4 → 5, une
+// entrée pour le SEUL site de « locating read » de l'ADR 0036 (AnnuaireKillFeedLocaliserSQL).
+// 2026-11-10 (plan architecture, 1.6) : `queries_squad.go` RETIRÉ, sa seule lecture brute (la probabilité
+// de victoire d'Escouade) ayant disparu avec son affichage : 5 → 4 entrées.
+var rawAppendOnlyReadAllowlist = map[string]string{
+	"internal/analysis/identity_annuaire.go": "2026-09-26 (revu 2026-11-12) : lot A, DA.10, ADR 0036 « locating read ». " +
+		"AnnuaireKillFeedLocaliserSQL lit match_kill_events BRUTE pour localiser des match_id — lecture de localisation, " +
+		"sur-ensemble de matchs, aucune valeur lue ; valeurs par `_latest` (AnnuaireKillFeedSQL sur ces seuls matchs).",
+	"internal/platform/duckdb/queries_home_citations.go": "2026-07-02 (revu 2026-11-12) : Q26g, lecture brute de " +
+		"match_skill_rank, filtre H5 placeholder CSR=0 appliqué AVANT le choix de ligne (la vue a déjà tranché CSR>LUSR) + " +
+		"tie-break written_at/id déterministe (la requête porte le commentaire « allowlist B8 »).",
+	"internal/platform/duckdb/queries_career_encounters.go": "2026-07-02 (revu 2026-11-12) : Q24LUSRHistory " +
+		"(pipeline LUSR, échelle mu), raw VOLONTAIRE — _latest (CSR>LUSR) injecterait des valeurs CSR (échelle ~1500) sur " +
+		"les matchs ranked à double ligne = rupture d'échelle. DÉCISION B7 (2026-07-10) : statu quo, ne pas migrer. " +
+		"Non revérifié : la requête n'a ni filtre rating_type ni tie-break written_at (voir les découvertes du plan architecture).",
+	"internal/platform/duckdb/career_repo_csr_seasons.go": "2026-07-02 (revu 2026-11-12) : qDistinctMatchCSRSeasons, " +
+		"SELECT DISTINCT season_id sur match_csrs : stale-safe (season_id invariant entre versions).",
+}
+
+// TestAllowlistLecturesBrutesDatee : toute raison de l'allowlist commence par une date AAAA-MM-JJ
+// (règle ART 3 : jamais d'allowlist sans justification datée) et les clés sont des chemins
+// complets, pas des noms de fichier.
+func TestAllowlistLecturesBrutesDatee(t *testing.T) {
+	forme := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}\b`)
+	for rel, raison := range rawAppendOnlyReadAllowlist {
+		if !forme.MatchString(raison) {
+			t.Errorf("%s : la raison ne commence pas par une date AAAA-MM-JJ : %q", rel, raison)
+		}
+		if !strings.Contains(rel, "/") || !strings.HasSuffix(rel, ".go") {
+			t.Errorf("%s : la clé doit être un chemin complet relatif à apps/go-api, pas un nom de fichier", rel)
+		}
+	}
+}
+
 // TestNoRawAppendOnlyReads — garde-rail Lot B (ADR 0026 / règle ART n°2).
 //
 // Les tables append-only (match_skill_rank, match_csrs, player_csr_snapshots,
@@ -22,7 +66,7 @@ import (
 // diagnostic (cmd/) lisent légitimement le brut → hors scan.
 //
 // Ajout d'une lecture brute = migrer vers `_latest`, ou (rare) l'allowlister
-// ci-dessous avec une justification datée. L'allowlist est décroissante.
+// dans rawAppendOnlyReadAllowlist avec une justification datée. L'allowlist est décroissante.
 func TestNoRawAppendOnlyReads(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -65,23 +109,6 @@ func TestNoRawAppendOnlyReads(t *testing.T) {
 	// création, avant tout lecteur.
 	rawRe := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+(match_skill_rank|match_csrs|player_csr_snapshots|pve_match_stats|match_lives|match_death_context|match_death_mates|match_life_placement|match_kill_events|kill_positions|match_bomb_stats|match_flag_grabs_net|match_pad_pickups_by_tier|match_vehicle_takes|match_lead_share|match_kill_heads|match_kill_pairs|match_assist_pairs)(_latest(?:_by_type)?)?\b`)
 
-	// Allowlist datée (2026-07-02) — lectures brutes VOLONTAIRES et documentées.
-	// 2026-09-13 (lot finitions LUSR, C.3 bis) : `queries_career.go` RETIRÉ de l'allowlist.
-	// Q8LUSRHistoryPlayer lit désormais match_skill_rank_latest_by_type — le motif « le
-	// graphe veut TOUS les checkpoints » rendait le graphe d'évolution non réparable par
-	// un replay append-only (résidu h5_arena du 2026-06-26 encore tracé après la
-	// réparation d'août). L'allowlist est décroissante : 5 → 4 entrées.
-	// 2026-09-26 (lot A, décision DA.10 du plan perf « lectures par périmètre ») : 4 → 5, une
-	// entrée pour le SEUL site de « locating read » de l'ADR 0036 (AnnuaireKillFeedLocaliserSQL).
-	// 2026-11-10 (plan architecture, 1.6) : `queries_squad.go` RETIRÉ, sa seule lecture brute (la probabilité
-	// de victoire d'Escouade) ayant disparu avec son affichage : 5 → 4 entrées.
-	allow := map[string]string{
-		"identity_annuaire.go":         "2026-09-26 (lot A, DA.10, ADR 0036 « locating read ») : AnnuaireKillFeedLocaliserSQL lit match_kill_events BRUTE pour localiser des match_id — lecture de localisation, sur-ensemble de matchs, aucune valeur lue ; valeurs par `_latest` (AnnuaireKillFeedSQL sur ces seuls matchs).",
-		"queries_home_citations.go":    "Q26g : filtre H5 placeholder CSR=0 appliqué AVANT le choix de ligne (la vue a déjà tranché CSR>LUSR) + tie-break written_at déterministe. (NB 2026-07-10 : l'ex-mention Q26f est obsolète — la classification effective_type vit en Go sur match_registry.is_ranked et lit déjà _latest, cf. leaderboard_repo/home_repo_skill_peak.)",
-		"queries_career_encounters.go": "Q24LUSRHistory (pipeline LUSR, échelle mu) : raw VOLONTAIRE — _latest (CSR>LUSR) injecterait des valeurs CSR (échelle ~1500) sur les matchs ranked à double ligne = rupture d'échelle. DÉCISION B7 (2026-07-10) : statu quo, ne pas migrer.",
-		"career_repo_csr_seasons.go":   "SELECT DISTINCT season_id : stale-safe (season_id invariant entre versions)",
-	}
-
 	var offenders []string
 	for _, dir := range scanDirs {
 		_ = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
@@ -105,10 +132,11 @@ func TestNoRawAppendOnlyReads(t *testing.T) {
 			if !hasRaw {
 				return nil
 			}
-			if _, allowed := allow[filepath.Base(path)]; allowed {
+			rel, _ := filepath.Rel(goAPIRoot, path)
+			rel = filepath.ToSlash(rel)
+			if _, allowed := rawAppendOnlyReadAllowlist[rel]; allowed {
 				return nil
 			}
-			rel, _ := filepath.Rel(goAPIRoot, path)
 			offenders = append(offenders, rel)
 			return nil
 		})
