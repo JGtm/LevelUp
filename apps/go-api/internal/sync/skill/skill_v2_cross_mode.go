@@ -3,34 +3,18 @@ package skill
 // skill_v2_cross_mode.go — Phase 4 (mode correlation) : leak post-EP du
 // delta μ vers les autres playlist_groups du même joueur, avec cap w_d ≤ 0.4.
 //
-// Extrait de skill_v2_shadow.go (2026-05-27). Activation gated par env
-// `LEVELUP_LUSR_V2_MODE_COUPLING=1`.
+// Extrait de skill_v2_shadow.go (2026-05-27). Toujours active : appliquée à chaque
+// match noté du joueur.
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
-	"strings"
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
-
-// lusrModeCouplingEnvFlag contrôle la Phase 4 (cross-mode leak). **ON par défaut**
-// (décision produit 2026-05-28) : le leak applique le poids de la matrice de
-// corrélation (Sprint 2.B), avec fallback w_d = DefaultModeCouplingWeight tant que
-// la matrice n'est pas calculée. Mettre explicitement "0"/"false"/"no" pour
-// désactiver.
-const lusrModeCouplingEnvFlag = "LEVELUP_LUSR_V2_MODE_COUPLING"
-
-// IsLUSRV2ModeCouplingEnabled retourne true sauf si le flag est explicitement
-// désactivé ("0"/"false"/"no"). ON par défaut. Cf. lusrModeCouplingEnvFlag.
-func IsLUSRV2ModeCouplingEnabled() bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv(lusrModeCouplingEnvFlag)))
-	return v != "0" && v != "false" && v != "no"
-}
 
 // findOwnerPrior cherche l'état AVANT-match du owner dans les deux rosters.
 // Retourne nil si owner pas trouvé (cas dégénéré).

@@ -14,7 +14,7 @@
 //     approximation : les ratings courants incluent déjà ces matchs, ce qui
 //     biaise SoloWinProb vers le haut → offset SOUS-estimé. Biais conservateur
 //     (sous-correction) donc sûr ; ré-exécuter périodiquement raffine.
-//   - L'offset n'est CONSOMMÉ au runtime que si LEVELUP_LUSR_V2_SQUAD_OFFSET=1.
+//   - Les offsets écrits sont lus par le calcul de la note (shadow runner) dès qu'ils existent.
 //
 // Usage :
 //

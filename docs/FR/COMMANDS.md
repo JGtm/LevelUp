@@ -1135,8 +1135,8 @@ go run ./apps/go-api/cmd/lusr_v2_replay [--db CHEMIN] [--reset] [Gamertag ...]
   de coéquipiers ayant au moins `--min-matches` matchs ensemble sur les `--weeks` dernières
   semaines, par groupe de listes de lecture : moyenne de (issue réelle - probabilité de victoire
   prédite par les notes SOLO), convertie en mu par `--gain`. Première passe prudente (les notes solo
-  courantes incluent déjà ces matchs, le décalage est donc sous-estimé). La note n'utilise ces
-  décalages que si `LEVELUP_LUSR_V2_SQUAD_OFFSET=1` est posé sur le serveur.
+  courantes incluent déjà ces matchs, le décalage est donc sous-estimé). La note lit ces
+  décalages dès qu'ils existent (aucun interrupteur côté serveur).
 - `lusr_v2_replay` : rejoue le LUSR v2 sur tout l'historique des joueurs nommés (par défaut quatre
   gamertags figés : passez les vôtres) et imprime sur la sortie standard un rapport markdown à
   comparer aux niveaux cibles validés. Le rejeu écrit lui-même l'état de note

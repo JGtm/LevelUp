@@ -1087,8 +1087,8 @@ go run ./apps/go-api/cmd/lusr_v2_replay [--db PATH] [--reset] [Gamertag ...]
   teammates with at least `--min-matches` matches together over the last `--weeks` weeks, per
   playlist group: mean of (actual outcome - win probability predicted by the SOLO ratings), converted
   to mu with `--gain`. A conservative first pass (the current solo ratings already include these
-  matches, so the offset is under-estimated). The offsets are used by the rating only when
-  `LEVELUP_LUSR_V2_SQUAD_OFFSET=1` is set on the server.
+  matches, so the offset is under-estimated). The rating reads the offsets as soon as they
+  exist (no switch on the server).
 - `lusr_v2_replay` — replays the LUSR v2 over the full history of the named players (default: four
   fixed gamertags, so pass your own) and prints a markdown report on stdout to compare with the
   validated target levels. The replay itself writes the rating state (`player_skill_state_v2`).

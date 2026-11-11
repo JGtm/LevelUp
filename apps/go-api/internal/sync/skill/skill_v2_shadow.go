@@ -156,7 +156,6 @@ func newShadowRunContext(playerDB *sql.DB, xuid string, canonical, ownerOnlyPers
 		xuid:             xuid,
 		canonical:        canonical,
 		ownerOnlyPersist: ownerOnlyPersist,
-		squadEnabled:     IsLUSRV2SquadOffsetEnabled(),
 		priorsCache:      make(map[string]skillv2.Priors),
 		countHypCache:    make(map[string]map[skillv2.CountType]skillv2.CountHyperparams),
 		burst:            defaultLUSRBurstLimits,
@@ -173,7 +172,7 @@ func newShadowRunContext(playerDB *sql.DB, xuid string, canonical, ownerOnlyPers
 // sont des références — le cache survit aux copies par valeur du contexte.
 type shadowRunContext struct {
 	repo           port.SkillV2Repository
-	squadRepo      port.SquadOffsetRepository // nil si LEVELUP_LUSR_V2_SQUAD_OFFSET off
+	squadRepo      port.SquadOffsetRepository // câblé sur la rafale (processShadowBurst)
 	playerDB       *sql.DB
 	sharedDB       *sql.DB
 	priors         skillv2.Priors
@@ -183,11 +182,8 @@ type shadowRunContext struct {
 	// ownerOnlyPersist : recovery backfill — ne persiste que l'état du joueur
 	// traité (pas les coéquipiers). Voir RunLUSRV2ShadowOwnerOnly.
 	ownerOnlyPersist bool
-	// squadEnabled : LEVELUP_LUSR_V2_SQUAD_OFFSET actif → squadRepo câblé sur la rafale.
-	// Porté ici (pas en paramètre) pour borner le nb d'arguments de processShadowBurst.
-	squadEnabled  bool
-	priorsCache   map[string]skillv2.Priors
-	countHypCache map[string]map[skillv2.CountType]skillv2.CountHyperparams
+	priorsCache      map[string]skillv2.Priors
+	countHypCache    map[string]map[skillv2.CountType]skillv2.CountHyperparams
 	// burst : bornes d'une rafale d'écrivain (skill_v2_shared_access.go).
 	burst lusrBurstLimits
 	// excluded : matchs is_excluded du joueur, que le chaînage des notes ne prend jamais
@@ -709,10 +705,10 @@ func persistComputedMatchSkillV2(
 		}
 	}
 
-	// Phase 4 (mode correlation) : si activée, propage le delta du owner dans
-	// son mode primaire vers tous ses autres modes joués. w_d capé à 0.4 par
-	// la fonction skill_v2.ApplyCrossModeLeak.
-	if IsLUSRV2ModeCouplingEnabled() && c.ownerNew != nil && c.ownerPrior != nil {
+	// Phase 4 (mode correlation) : propage le delta du owner dans son mode
+	// primaire vers tous ses autres modes joués. w_d capé à 0.4 par la fonction
+	// skill_v2.ApplyCrossModeLeak.
+	if c.ownerNew != nil && c.ownerPrior != nil {
 		if err := propagateCrossModeLeak(ctx, repo, *c.ownerPrior, *c.ownerNew); err != nil {
 			slog.WarnContext(ctx, "Phase 4: cross-mode leak échoué",
 				"xuid", ownerXUID, "primary_group", playlistGroup, "err", err)
