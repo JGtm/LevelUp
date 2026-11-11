@@ -58,11 +58,11 @@ type AppConfig struct {
 	CORSOrigins   []string
 	Lang          string
 	AppVersion    string
-	// SharedProvider (commit 8g, retypé 8i) — injecté au boot par main.go en
-	// mode B-swap (LEVELUP_USE_SHARED_PROVIDER=1). Provider du shared Halo
+	// SharedProvider — injecté au boot par main.go (B-swap, ADR 0016). Provider du shared Halo
 	// Infinite (DefaultSlug), source unique des writes Infinite + recherche
 	// gamertag. Passé aux PlayerPoolConfig (satisfait duckdb.SharedReader
-	// structurellement) et au SyncEngine via WithSharedProvider. nil en mode legacy.
+	// structurellement) et au SyncEngine via WithSharedProvider. nil hors serveur
+	// (outils en ligne de commande, tests) : les pools lisent alors le shared en direct.
 	SharedProvider sharedprovider.Provider
 	// SharedManager (multi-titre) — le Manager qui déduplique les Provider par
 	// chemin. Injecté au boot par main.go en même temps que SharedProvider (mode

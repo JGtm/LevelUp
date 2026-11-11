@@ -1467,9 +1467,6 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// qui pinnait le fichier shared pendant les swaps RW du sync engine (bug
 	// latent : le handle dédié à gamertag search bloquait Provider.AcquireWriter
 	// avec "Unique file handle conflict" et faisait régresser le bug Joueur90002).
-	// En mode kill-switch (LEVELUP_USE_SHARED_PROVIDER=0), cfg.SharedProvider
-	// reste un LegacySharedReader wrappant le handle global — comportement
-	// identique au pre-sprint.
 	if cfg.SharedProvider != nil {
 		local := platform_duckdb.NewGamertagRepo(cfg.SharedProvider)
 		// Fallback live (joueur JAMAIS croisé) : résolveur PeopleHub→profil Xbox

@@ -41,77 +41,36 @@ func bootOpenDatabases(st *bootState) {
 	runBootARTGuard(st)
 }
 
-// openSharedReader ouvre le lecteur de la base partagée : provider B-swap par défaut, lecture
-// seule directe si LEVELUP_USE_SHARED_PROVIDER=0.
+// openSharedReader ouvre le lecteur de la base partagée : un SharedDBProvider (ADR 0016, B-swap)
+// par base partagée de titre.
+//
+// shared_matches_v2.duckdb est géré par un SharedDBProvider qui swap dynamiquement RO <-> RW
+// autour des leases writer (sync engine). Les handlers HTTP attendent la fenêtre de sync
+// (timeout borné, mappé en 503 Retry-After). Cela élimine l'erreur « different configuration »
+// qui survenait quand le sync ouvrait shared en RW pendant qu'une instance RO globale existait.
+//
+// Le fournisseur est posé dans la configuration (SharedProvider, SharedManager) : les pools
+// joueur créés ensuite en héritent, et un PlayerDB ne tient AUCUN handle sur le fichier shared
+// (le provider de chaque titre en est l'unique détenteur). La lecture per-titre
+// (player_resolver) et l'écriture per-titre (livesync Halo 5) résolvent le provider d'un titre
+// par SharedManager.For(SharedDBPath(slug)) ; pour le titre par défaut, For() rend CE provider
+// (caché par chemin). La fermeture ferme tous les providers via Manager.Close().
+//
+// `attachShared` (pool.go) reste en place pour les requêtes cross-DB de squad_repo
+// (LoadTopTeammates, LoadSquadMatches, LoadTeammateMatches, LoadSynthesisMatches,
+// LoadMapStatsForSquad).
 func openSharedReader(st *bootState) {
 	cfg, sharedPath := st.cfg, st.dbPaths.shared
-	// Architecture B-swap (sprint sharedprovider, ADR 0016) — ACTIVÉ PAR DÉFAUT
-	// au commit 9.
-	//
-	// shared_matches_v2.duckdb est géré par un SharedDBProvider qui swap
-	// dynamiquement RO ↔ RW autour des leases writer (sync engine). Les
-	// handlers HTTP attendent la fenêtre de sync (timeout borné, mappé en
-	// 503 Retry-After) — comparable à un read replica qui réplique.
-	//
-	// Élimine le bug historique "different configuration" qui plantait
-	// auto_sync RunDelta quand le sync ouvrait shared en RW pendant qu'une
-	// instance RO globale était ouverte ailleurs.
-	//
-	// LEVELUP_USE_SHARED_PROVIDER (kill-switch d'urgence) :
-	//   - "0" : repli mode legacy LegacySharedReader(pdb.Shared) — UNIQUEMENT
-	//     en cas de régression critique constatée en prod. Logger les
-	//     compteurs `shared_provider_swap_failures_total` avant de basculer.
-	//   - "1" / non défini (default) : Provider actif (recommandé).
-	//
-	// Note : `attachShared` (pool.go) reste en place pour résoudre les
-	// queries cross-DB encore non-migrées (squad_repo : LoadTopTeammates,
-	// LoadSquadMatches, LoadTeammateMatches, LoadSynthesisMatches,
-	// LoadMapStatsForSquad). Le split+merge complet de ces 5 méthodes est
-	// prévu pour un commit follow-up post-9.
-	useSharedProvider := os.Getenv("LEVELUP_USE_SHARED_PROVIDER") != "0"
-
-	var (
-		sharedReader duckdb.SharedReader
-		closeShared  func() error
-	)
-	if useSharedProvider {
-		sharedMgr := sharedprovider.NewManager()
-		provider, err := sharedMgr.For(sharedPath)
-		if err != nil {
-			slog.Error("ouverture shared_matches_v2 via provider échouée", "err", err)
-			os.Exit(1)
-		}
-		sharedReader = provider
-
-		// Aucun abonnement du pool joueur aux bascules : en mode B-swap, un PlayerDB
-		// ne tient AUCUN handle sur le fichier shared (pdb.Shared nil) — le provider
-		// de chaque titre en est l'unique détenteur (ADR 0016).
-
-		// Injecter le Provider dans le AppConfig pour que les
-		// PlayerPoolConfig créés ensuite (resolveDemoPlayer, buildPlayerPool
-		// Config) reçoivent SharedReader → mode B-swap actif au niveau pool.
-		// + le SyncEngine via WithSharedProvider (auto_sync.go, sync_handler.go).
-		cfg.SharedProvider = provider
-		// Injecter aussi le Manager : la lecture per-titre (player_resolver) et
-		// l'écriture per-titre (livesync Halo 5+) résolvent le provider du shared
-		// d'un titre via For(SharedDBPath(slug)). Pour DefaultSlug, For() retourne
-		// CE provider (caché par path) → byte-identique. closeShared ferme TOUS
-		// les providers via sharedMgr.Close().
-		cfg.SharedManager = sharedMgr
-
-		closeShared = sharedMgr.Close
-		slog.Info("shared_matches_v2: mode sharedprovider (B-swap actif, un provider par base partagée)")
-	} else {
-		sharedDB, err := duckdb.OpenReadOnly(sharedPath)
-		if err != nil {
-			slog.Error("ouverture shared_matches_v2 échouée", "err", err)
-			os.Exit(1)
-		}
-		sharedReader = duckdb.LegacySharedReader(sharedDB)
-		closeShared = sharedDB.Close
-		slog.Info("shared_matches_v2: mode legacy (RO direct, trade-off différent-configuration accepté)")
+	sharedMgr := sharedprovider.NewManager()
+	provider, err := sharedMgr.For(sharedPath)
+	if err != nil {
+		slog.Error("ouverture shared_matches_v2 via provider échouée", "err", err)
+		os.Exit(1)
 	}
-	st.sharedReader, st.closeShared = sharedReader, closeShared
+	cfg.SharedProvider = provider
+	cfg.SharedManager = sharedMgr
+	slog.Info("shared_matches_v2: mode sharedprovider (B-swap actif, un provider par base partagée)")
+	st.sharedReader, st.closeShared = provider, sharedMgr.Close
 }
 
 // openMetadataDB ouvre metadata.duckdb en écriture partagée (reprise du verrou comprise).

@@ -313,7 +313,7 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 		// ratchet TestSyncV2WiringHasSingleTitleSource.
 		engine := syncpkg.NewSyncEngineForTitle(deps.Cfg.RepoRoot, deps.TitleSlug, p.Gamertag, p.XUID, &domain.HaloTokens{}, deps.TokenProvider)
 
-		// 1. SharedProvider (B-swap si LEVELUP_USE_SHARED_PROVIDER=1)
+		// 1. SharedProvider du titre (B-swap)
 		if deps.Cfg.SharedProvider != nil {
 			engine.WithSharedProvider(deps.Cfg.SharedProvider)
 		}

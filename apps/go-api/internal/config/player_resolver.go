@@ -37,7 +37,7 @@ func (cfg *AppConfig) SharedReaderForTitle(titleSlug string) duckdb.SharedReader
 //   - DefaultSlug : SharedDBPath(DefaultSlug) == le path passé au boot →
 //     Manager.For() retourne le MÊME provider que cfg.SharedProvider
 //     (byte-identique, aucune nouvelle conn DuckDB ouverte).
-//   - Mode legacy / kill-switch (SharedManager == nil) : fallback direct sur
+//   - Sans Manager (SharedManager == nil : outils en ligne de commande, tests) : fallback direct sur
 //     cfg.SharedProvider (nil-safe — le pool repasse alors en mode legacy).
 //   - Mode démo : le shared du titre PAR DÉFAUT est celui ouvert au boot (provider
 //     boot, byte-identique) ; un titre ADDITIONNEL (Halo 5…) résout le provider de
@@ -46,7 +46,7 @@ func (cfg *AppConfig) SharedReaderForTitle(titleSlug string) duckdb.SharedReader
 //     cfg.SharedProvider + warn. Le pool tolère un SharedReader pointant le
 //     mauvais titre mieux qu'un crash de résolution (lecture vide vs panique).
 func (cfg *AppConfig) sharedReaderForTitle(titleSlug string) duckdb.SharedReader {
-	// Mode legacy/kill-switch : pas de routage per-titre.
+	// Sans Manager : pas de routage per-titre.
 	if cfg.SharedManager == nil {
 		return cfg.SharedProvider
 	}

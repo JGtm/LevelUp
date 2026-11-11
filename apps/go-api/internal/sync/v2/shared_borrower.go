@@ -37,7 +37,7 @@ type SharedSwapSource interface {
 
 // SharedBorrower rend l'emprunt de la base partagée servi au KnownLoader.
 //
-// src nil (kill-switch LEVELUP_USE_SHARED_PROVIDER=0, aucune bascule dans le process) : la
+// src nil (aucun provider : outils en ligne de commande, tests ; aucune bascule dans le process) : la
 // connexion en cache `cached()` avec un release sans effet ; nil → erreur.
 //
 // src non nil, selon l'état du provider :

@@ -90,8 +90,7 @@ func TestSharedProviderForPath_ReadEqualsWrite(t *testing.T) {
 	}
 }
 
-// TestSharedProviderForPath_NilManager : sans Manager (mode legacy / kill-switch
-// LEVELUP_USE_SHARED_PROVIDER=0), le chemin écriture retourne nil → fallback legacy.
+// TestSharedProviderForPath_NilManager : sans Manager (hors serveur), le chemin écriture retourne nil → fallback legacy.
 func TestSharedProviderForPath_NilManager(t *testing.T) {
 	repoRoot := t.TempDir()
 	sharedPath := provisionSharedH5(t, repoRoot)

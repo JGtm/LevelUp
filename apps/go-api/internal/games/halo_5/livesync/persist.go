@@ -17,8 +17,8 @@ import (
 // « Can't open a connection to same database file with a different configuration »
 // quand les 4 joueurs h5 synchronisent en parallèle (chacun forçait auparavant un
 // swap RO→RW pour une simple lecture) et que des lecteurs HTTP servent le shared h5
-// — N connexions RO coexistent nativement. provider == nil (mode legacy / kill-switch
-// LEVELUP_USE_SHARED_PROVIDER=0) → fallback writer standalone : comportement legacy
+// — N connexions RO coexistent nativement. provider == nil (hors serveur : outils en ligne de commande,
+// tests) → fallback writer standalone : comportement legacy
 // inchangé, sûr tant qu'aucun pool ne tient le shared en RO concurremment.
 func acquireSharedReader(ctx context.Context, provider sharedprovider.Provider, sharedDBPath string) (*sql.DB, func(), error) {
 	if provider != nil {

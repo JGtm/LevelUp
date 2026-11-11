@@ -222,7 +222,6 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 | `LEVELUP_DEMO_FIXTURES_DIR` | Racine démo (fixture générée par `levelup seed-demo`). | `<root>/data/demo` |
 | `LEVELUP_LANG` | Langue UI/CLI par défaut. | `fr` |
 | `LEVELUP_APP_VERSION` | Version applicative reportée. | `dev` |
-| `LEVELUP_USE_SHARED_PROVIDER` | Active le swap RO↔RW du SharedDBProvider (ADR 0016). | (off) |
 
 ### Logging
 

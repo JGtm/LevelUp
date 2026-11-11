@@ -222,8 +222,8 @@ func halo5ResolverFactory(cfg *config.AppConfig, viewerGamertag, viewerXUID stri
 }
 
 // sharedProviderForPath résout le provider per-titre du shared d'un path via le
-// Manager injecté dans cfg (B-swap). nil si le Manager est absent (mode legacy /
-// kill-switch LEVELUP_USE_SHARED_PROVIDER=0) OU si l'ouverture échoue (fichier
+// Manager injecté dans cfg (B-swap). nil si le Manager est absent (hors serveur : outils en
+// ligne de commande, tests) OU si l'ouverture échoue (fichier
 // shared du titre pas encore créé) → AcquireSharedWriterStandalone repassera en
 // legacy. Pour un titre dont le shared n'existe pas encore (premier run h5), le
 // provider échoue ; le legacy crée le fichier au premier OpenSharedDB RW.
