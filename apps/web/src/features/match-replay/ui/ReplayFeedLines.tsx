@@ -1,8 +1,8 @@
 /**
  * ReplayFeedLines — LES FORMES DE LIGNE du fil des éliminations : frag (`KillLine`), mort sans
  * tueur (`DeathLine`), médaille seule, entrée/sortie de partie, et les lignes d'événement
- * (objectif, prise d'arme ou de bonus, montée en véhicule). `FeedLine` choisit la forme d'une
- * entrée ; le fil (`ReplayKillFeed`) ne fait plus que la liste, le menu et les états vides.
+ * (objectif, prise d'arme ou de bonus, montée ou destruction de véhicule). `FeedLine` choisit la
+ * forme d'une entrée ; le fil (`ReplayKillFeed`) ne fait plus que la liste, le menu et les états vides.
  *
  * EXTRAIT DE `ReplayKillFeed.tsx` (lot 1 du plan « maquettes du rejeu »), sans changement de
  * rendu : le fichier était au plafond de taille et le menu de filtre s'ajoute à côté. Le contrat
@@ -347,13 +347,22 @@ function EventFeedLine({
   marks: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
 }) {
+  // UNE DESTRUCTION SANS AUTEUR n'a pas d'acteur : ni nom ni encre de camp (neutre), la phrase seule.
+  const actor = event.xuid
   const shared = {
     replayMs,
-    color: inkOf(event.xuid),
-    mark: marks.get(event.xuid),
-    name: displayPlayerName(xuidMeta.get(event.xuid)?.gamertag, event.xuid),
+    color: actor ? inkOf(actor) : inkOf(''),
+    mark: actor ? marks.get(actor) : undefined,
+    name: actor ? displayPlayerName(xuidMeta.get(actor)?.gamertag, actor) : '',
     locale,
   }
   if (event.family === 'objectives') return <ReplayObjectiveLine line={event} {...shared} />
-  return <ReplayEventLine line={event} {...shared} />
+  const occupant = 'destroyed' in event ? event.occupantXuid : null
+  return (
+    <ReplayEventLine
+      line={event}
+      {...shared}
+      occupantName={occupant ? displayPlayerName(xuidMeta.get(occupant)?.gamertag, occupant) : undefined}
+    />
+  )
 }

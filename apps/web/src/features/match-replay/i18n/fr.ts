@@ -66,6 +66,10 @@ export const FR_TEXT = {
   },
   feedPickupAction: (name) => `a pris : ${name}`,
   feedVehicleAction: (name) => `est monté à bord : ${name}`,
+  feedGroundPickupAction: (name) => `a ramassé : ${name}`,
+  feedVehicleDestroyedBy: (name) => `a détruit : ${name}`,
+  feedVehicleDestroyed: (name) => `${name} détruit`,
+  feedVehicleOccupant: (who) => `(${who} à bord)`,
   killFeedUnknownWeapon: 'Arme non identifiée',
   killFeedFocusHint: 'Aller à cet instant et mettre en valeur le tueur et la victime sur la carte',
   killFeedNoAssistHint:

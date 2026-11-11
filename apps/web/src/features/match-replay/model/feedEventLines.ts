@@ -1,6 +1,7 @@
 /**
  * feedEventLines.ts — LES LIGNES DU FIL QUI NE SONT PAS DES ÉLIMINATIONS : objectifs, prises
- * d'armes et de bonus, montées en véhicule. Types seulement, plus l'assemblage.
+ * d'armes et de bonus (socle ou sol), montées et destructions de véhicule. Types seulement, plus
+ * l'assemblage.
  *
  * ELLES NE VIVENT PAS DANS `model.feed`. Le fil de la page (`buildFeedEntries` + présences) est
  * lu par la frise et par les effets de mort ; ces lignes ne servent QUE la liste affichée, que
@@ -18,11 +19,16 @@ export interface ObjectiveEventLine {
   stat: ObjectiveFeedStat
 }
 
-/** Une prise d'arme ou de bonus sur un socle : le NOM est résolu par l'appelant. */
+/**
+ * Une prise d'arme ou de bonus sur un socle, ou (`ground`) une arme ramassée au sol : le NOM est
+ * résolu par l'appelant.
+ */
 export interface PickupEventLine {
   family: 'pickups'
   xuid: string
   name: string
+  /** Vrai pour une arme ramassée au sol ; absent pour une prise sur socle. */
+  ground?: true
 }
 
 /** Une montée à bord d'un véhicule : le NOM de la famille est celui du document. */
@@ -32,7 +38,24 @@ export interface VehicleEventLine {
   name: string
 }
 
-export type FeedEventLine = ObjectiveEventLine | PickupEventLine | VehicleEventLine
+/**
+ * Une DESTRUCTION de véhicule. L'auteur et le joueur à bord à l'instant sont facultatifs : sans
+ * auteur connu la ligne dit seulement que le véhicule est détruit (`xuid` nul), sans occupant elle
+ * ne le nomme pas. Le NOM est celui de la famille, comme pour une montée.
+ */
+export interface VehicleDestroyedEventLine {
+  family: 'vehicles'
+  destroyed: true
+  xuid: string | null
+  occupantXuid: string | null
+  name: string
+}
+
+export type FeedEventLine =
+  | ObjectiveEventLine
+  | PickupEventLine
+  | VehicleEventLine
+  | VehicleDestroyedEventLine
 
 /** Une ligne d'événement, au format commun du fil. */
 export function eventFeedEntry(

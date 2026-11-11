@@ -211,6 +211,14 @@ export interface ReplayText {
   feedPickupAction: (name: string) => string
   /** La montée à bord d'un véhicule : `name` est le nom du véhicule. */
   feedVehicleAction: (name: string) => string
+  /** Une arme ramassée au sol (pas sur un socle) : `name` est le nom de l'arme. */
+  feedGroundPickupAction: (name: string) => string
+  /** La destruction d'un véhicule par un auteur connu, nommé devant la phrase : `name` est le véhicule. */
+  feedVehicleDestroyedBy: (name: string) => string
+  /** La destruction d'un véhicule sans auteur connu : `name` est le véhicule. */
+  feedVehicleDestroyed: (name: string) => string
+  /** Le joueur à bord à l'instant de la destruction, en fin de phrase : `who` est son nom. */
+  feedVehicleOccupant: (who: string) => string
   killFeedUnknownWeapon: string
   /**
    * L'infobulle d'une ligne de frag, qui est un BOUTON : ce que le clic fait — poser la lecture en
