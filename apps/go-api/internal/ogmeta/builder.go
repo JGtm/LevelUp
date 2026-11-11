@@ -205,20 +205,22 @@ func IsCrawler(userAgent string) bool {
 	return false
 }
 
-// LocaleFromParams resout la locale d'un apercu de lien. Un parametre de requete
-// ?lang= explicite et connu (i18n.Lookup) PRIME sur l'Accept-Language : le crawler social
-// envoie SA propre langue (souvent en/absente), pas celle du partageur — un lien portant
-// ?lang=fr permet donc a l'auteur du partage de figer la langue de la carte. Vide
-// ou inconnu -> repli sur l'Accept-Language (ParseLocale).
+// LocaleFromParams resout la langue d'un apercu de lien, dans cet ordre :
+//
+//  1. le parametre ?lang= du lien, s'il nomme une langue de config/locales.toml : le
+//     robot d'apercu envoie SA langue (souvent aucune), pas celle du partageur ; le lien
+//     copie depuis l'application porte donc la langue de l'interface du partageur ;
+//  2. l'en-tete Accept-Language du robot, s'il nomme une langue connue ;
+//  3. i18n.Fallback, la langue de repli de config/locales.toml, et NON i18n.Default :
+//     un lien nu est lu par un inconnu, et la langue de repli est celle qu'on suppose
+//     comprise a defaut d'indication. Default reste la langue de l'interface pour un
+//     visiteur sans preference, un autre sujet.
 func LocaleFromParams(queryLang, acceptLanguage string) i18n.Locale {
 	if l, ok := i18n.Lookup(queryLang); ok {
 		return l
 	}
-	return ParseLocale(acceptLanguage)
-}
-
-// ParseLocale deduit la locale depuis un en-tete Accept-Language : la premiere langue
-// citee, normalisee par i18n.Parse (vide ou inconnue -> i18n.Default).
-func ParseLocale(acceptLanguage string) i18n.Locale {
-	return i18n.Parse(acceptLanguage)
+	if l, ok := i18n.Lookup(acceptLanguage); ok {
+		return l
+	}
+	return i18n.Fallback
 }

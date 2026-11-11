@@ -218,6 +218,11 @@ export function setApiLocale(locale: Locale): void {
   _currentLocale = locale
 }
 
+/** Locale courante des réponses API, telle que posée par le store (lien de partage, exports). */
+export function getApiLocale(): Locale {
+  return _currentLocale
+}
+
 function getLocaleHeader(): Record<string, string> {
   return { 'X-LevelUp-Locale': _currentLocale }
 }

@@ -149,22 +149,6 @@ func TestRender_NoMarkers_Unchanged(t *testing.T) {
 	}
 }
 
-func TestParseLocale(t *testing.T) {
-	cases := map[string]i18n.Locale{
-		"":                        i18n.LocaleFR,
-		"fr-FR,fr;q=0.9":          i18n.LocaleFR,
-		"en-US,en;q=0.9,fr;q=0.8": i18n.LocaleEN,
-		"en":                      i18n.LocaleEN,
-		"de-DE":                   i18n.LocaleFR, // langue inconnue → defaut FR
-		"fr":                      i18n.LocaleFR,
-	}
-	for al, want := range cases {
-		if got := ParseLocale(al); got != want {
-			t.Errorf("ParseLocale(%q) = %v, want %v", al, got, want)
-		}
-	}
-}
-
 func TestLocaleFromParams(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -175,13 +159,28 @@ func TestLocaleFromParams(t *testing.T) {
 		{"lang=en prime sur Accept-Language fr", "en", "fr-FR,fr;q=0.9", i18n.LocaleEN},
 		{"lang=fr prime sur Accept-Language en", "fr", "en-US,en;q=0.9", i18n.LocaleFR},
 		{"lang insensible a la casse + espaces", " EN ", "fr-FR", i18n.LocaleEN},
-		{"lang vide → repli Accept-Language en", "", "en-US,en;q=0.9", i18n.LocaleEN},
-		{"lang inconnu → repli Accept-Language fr", "de", "fr-FR", i18n.LocaleFR},
-		{"tout vide → defaut FR", "", "", i18n.LocaleFR},
+		{"lang vide → Accept-Language en", "", "en-US,en;q=0.9,fr;q=0.8", i18n.LocaleEN},
+		{"lang vide → Accept-Language fr", "", "fr-FR,fr;q=0.9", i18n.LocaleFR},
+		{"lang inconnu → Accept-Language fr", "de", "fr-FR", i18n.LocaleFR},
+		{"Accept-Language inconnu → repli", "", "de-DE", i18n.Fallback},
+		{"lang et Accept-Language inconnus → repli", "de", "de-DE,de;q=0.9", i18n.Fallback},
+		{"tout vide (robot sans en-tete) → repli", "", "", i18n.Fallback},
 	}
 	for _, c := range cases {
 		if got := LocaleFromParams(c.queryLang, c.acceptLang); got != c.want {
 			t.Errorf("%s: LocaleFromParams(%q, %q) = %v, want %v", c.name, c.queryLang, c.acceptLang, got, c.want)
 		}
+	}
+}
+
+// Le repli d'un lien nu est la langue de repli de config/locales.toml, jamais la langue
+// par defaut de l'interface : les deux valeurs different aujourd'hui et ce test fige
+// que l'apercu suit bien la premiere.
+func TestLocaleFromParams_FallbackIsNotDefault(t *testing.T) {
+	if i18n.Fallback == i18n.Default {
+		t.Skip("default et fallback identiques dans config/locales.toml : rien a distinguer")
+	}
+	if got := LocaleFromParams("", ""); got != i18n.Fallback || got == i18n.Default {
+		t.Errorf("lien nu : LocaleFromParams(\"\", \"\") = %v, want Fallback %v (Default %v)", got, i18n.Fallback, i18n.Default)
 	}
 }
