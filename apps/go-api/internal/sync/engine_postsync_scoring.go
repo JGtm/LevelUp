@@ -230,26 +230,47 @@ func (e *SyncEngine) runPSAConvergence(ctx context.Context, playerDB *sql.DB, sh
 	if len(psaWork) == 0 {
 		return
 	}
-	// Split 4b : fetch réseau + écritures PLAYER hors de tout lease shared ;
-	// seul le flush des alias (shared.xuid_aliases) passe en burst court.
-	n, pairs := convergePSACollect(ctx, playerDB, client, e.xuid, psaWork)
-	if len(pairs) > 0 {
-		if wdb, releaseW, werr := shared.Write(ctx, "psa_aliases"); werr != nil {
-			slog.WarnContext(ctx, "post-sync: burst psa_aliases indisponible — alias non flushés (retentés au prochain cycle)",
-				"gamertag", e.gamertag, "count", len(pairs), "err", werr)
-		} else {
-			// Corps du burst sous closure : releaseW en defer, donc la fenêtre RW est
-			// rendue même si flushAliasPairs panique.
-			func() {
-				defer releaseW()
-				flushAliasPairs(ctx, wdb, e.xuid, pairs)
-			}()
-		}
-	}
+	// Split 4b : fetch réseau + écritures PLAYER hors de tout lease shared ; seul le flush
+	// des alias (shared.xuid_aliases) passe en burst court. Le marqueur terminal n'est posé
+	// qu'après ce flush : un match dont les alias ne sont pas écrits est retenté.
+	fetched := convergePSACollect(ctx, playerDB, client, e.xuid, psaWork)
+	n := stampPSAChecked(ctx, playerDB, e.flushPSAAliases(ctx, shared, fetched))
 	r.ConvergedPSA = n
 	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_psa_processed_total", int64(n))
 	slog.InfoContext(ctx, "post-sync: convergence PSA",
 		"gamertag", e.gamertag, "selected", len(psaWork), "processed", n)
+}
+
+// flushPSAAliases ouvre le burst d'écriture shared (psa_aliases) et rend les matchs dont les
+// alias sont écrits. Sans alias à écrire, le burst n'est pas ouvert ; burst indisponible : aucun
+// match avec alias n'est rendu, ils sont comptés comme différés et retentés au prochain cycle.
+func (e *SyncEngine) flushPSAAliases(ctx context.Context, shared *SharedAccess, fetched []psaFetchedMatch) []psaFetchedMatch {
+	var noAlias, withAlias []psaFetchedMatch
+	for _, m := range fetched {
+		if len(m.pairs) == 0 {
+			noAlias = append(noAlias, m)
+		} else {
+			withAlias = append(withAlias, m)
+		}
+	}
+	if len(withAlias) == 0 {
+		return noAlias
+	}
+	wdb, releaseW, werr := shared.Write(ctx, "psa_aliases")
+	if werr != nil {
+		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_psa_deferred_total", int64(len(withAlias)))
+		slog.WarnContext(ctx, "post-sync: burst psa_aliases indisponible — alias non flushés (retentés au prochain cycle)",
+			"gamertag", e.gamertag, "count", len(withAlias), "err", werr)
+		return noAlias
+	}
+	// Corps du burst sous closure : releaseW en defer, donc la fenêtre RW est rendue
+	// même si flushAliasPairs panique.
+	var flushed []psaFetchedMatch
+	func() {
+		defer releaseW()
+		flushed = flushAliasPairs(ctx, wdb, e.xuid, withAlias)
+	}()
+	return append(noAlias, flushed...)
 }
 
 // runCatalogRefresh inscrit les nouvelles playlists/maps/paires/variantes dans les tables

@@ -162,21 +162,21 @@ func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
 
 // convergePSA re-fetch le JSON match des matchs sans PSA et extrait les
 // PersonalScores du joueur (ExtractPersonalScoreAwards + InsertPersonalScoreAwards,
-// idempotent DELETE+INSERT). Stampe psa_checked_at dans TOUS les cas où le
-// fetch a réussi (même 0 award) — état terminal. En cas d'échec fetch, pas de
-// stamp : retenté au cycle suivant.
+// append-only par génération : ré-exécutable). Pose le marqueur terminal
+// psa_checked_at quand le fetch a réussi (même 0 award) ET que les alias du match
+// sont écrits dans shared.xuid_aliases — état terminal. Fetch ou écriture d'alias
+// en échec : pas de marqueur, le match est retenté au cycle suivant.
 //
 // Convergence OPPORTUNISTE des alias (2026-06-10) : le JSON fetché contient le
 // gamertag de TOUS les participants — on upserte shared.xuid_aliases au
-// passage, à coût API nul. Résorbe le backlog d'alias des vieux matchs
-// (113 xuids absents au moment de l'audit). Depuis 2026-06-19, shared.xuid_aliases
-// est l'unique store (le store global xbox_aliases a été consolidé puis supprimé) :
-// ce chemin convergent en est l'alimentation principale, avec
-// match_participants/killer_victim_pairs (lus par v_gamertag_lookup).
+// passage, à coût API nul. Résorbe le backlog d'alias des vieux matchs. Depuis
+// 2026-06-19, shared.xuid_aliases est l'unique store (le store global
+// xbox_aliases a été consolidé puis supprimé) : ce chemin convergent en est
+// l'alimentation principale, avec match_participants/killer_victim_pairs (lus
+// par v_gamertag_lookup).
 func convergePSA(ctx context.Context, playerDB, sharedDB *sql.DB, client HaloClient, xuid string, ids []string) int {
-	done, pairs := convergePSACollect(ctx, playerDB, client, xuid, ids)
-	flushAliasPairs(ctx, sharedDB, xuid, pairs)
-	return done
+	fetched := convergePSACollect(ctx, playerDB, client, xuid, ids)
+	return stampPSAChecked(ctx, playerDB, flushAliasPairs(ctx, sharedDB, xuid, fetched))
 }
 
 // aliasPair : upsert shared.xuid_aliases différé (étape 1 contention — le fetch
@@ -184,13 +184,21 @@ func convergePSA(ctx context.Context, playerDB, sharedDB *sql.DB, client HaloCli
 // flushés en burst court par le caller).
 type aliasPair struct{ xuid, gamertag string }
 
-// convergePSACollect : phase fetch + écritures PLAYER de la convergence PSA.
-// AUCUNE écriture shared — les alias extraits des JSONs sont RETOURNÉS pour un
-// flush en burst par le caller. Sémantique par match inchangée (best-effort,
-// stamp terminal psa_checked_at côté player).
-func convergePSACollect(ctx context.Context, playerDB *sql.DB, client HaloClient, xuid string, ids []string) (int, []aliasPair) {
-	done := 0
-	var pairs []aliasPair
+// psaFetchedMatch : match dont les PersonalScores sont écrits côté joueur. Son marqueur
+// terminal n'est posé qu'après l'écriture de ses alias : un flush perdu ne doit pas
+// condamner ces alias à ne jamais être retentés.
+type psaFetchedMatch struct {
+	matchID       string
+	pairs         []aliasPair
+	awardsWritten bool // faux : l'écriture des awards a échoué, le match est retenté sans marqueur
+}
+
+// convergePSACollect : phase fetch + écritures PLAYER (awards) de la convergence PSA.
+// AUCUNE écriture shared et AUCUN marqueur — les alias extraits des JSONs sont RETOURNÉS,
+// par match, pour un flush en burst par le caller, qui pose ensuite le marqueur
+// (stampPSAChecked) des seuls matchs dont les alias sont écrits.
+func convergePSACollect(ctx context.Context, playerDB *sql.DB, client HaloClient, xuid string, ids []string) []psaFetchedMatch {
+	var out []psaFetchedMatch
 	for _, mid := range ids {
 		if ctx.Err() != nil {
 			break
@@ -200,62 +208,79 @@ func convergePSACollect(ctx context.Context, playerDB *sql.DB, client HaloClient
 			slog.WarnContext(ctx, "convergence: PSA fetch échoué", "match_id", mid, "err", err)
 			continue
 		}
-		pairs = append(pairs, extractAliasPairsFromMatchJSON(matchJSON)...)
-		awards := ExtractPersonalScoreAwards(matchJSON, mid, xuid)
-		if len(awards) > 0 {
+		m := psaFetchedMatch{matchID: mid, pairs: extractAliasPairsFromMatchJSON(matchJSON), awardsWritten: true}
+		if awards := ExtractPersonalScoreAwards(matchJSON, mid, xuid); len(awards) > 0 {
 			if err := InsertPersonalScoreAwards(ctx, playerDB, mid, xuid, awards); err != nil {
 				slog.WarnContext(ctx, "convergence: PSA insert échoué", "match_id", mid, "err", err)
-				continue
+				m.awardsWritten = false
 			}
 		}
-		// Append-only #23645 : INSERT pur stage='psa' (marqueur terminal). La vue
-		// merge expose psa_checked_at par match ; selectMatchesMissingPSA lit _latest.
+		out = append(out, m)
+	}
+	return out
+}
+
+// flushAliasPairs upserte les alias bufferisés dans shared.xuid_aliases (burst
+// court, SQL UpsertXUIDAlias INCHANGÉ) et rend les matchs dont TOUS les alias sont
+// écrits (un match sans alias n'a rien à écrire). Chaque échec est journalisé et
+// compté ; un match laissé de côté est compté comme différé. sharedDB nil : seuls
+// les matchs sans alias sont rendus.
+func flushAliasPairs(ctx context.Context, sharedDB *sql.DB, xuid string, fetched []psaFetchedMatch) []psaFetchedMatch {
+	title := ctxkeys.TitleSlug(ctx)
+	var flushed []psaFetchedMatch
+	aliases, deferred := 0, 0
+	for _, m := range fetched {
+		if len(m.pairs) > 0 && sharedDB == nil {
+			deferred++
+			continue
+		}
+		failed := 0
+		for _, p := range m.pairs {
+			if err := UpsertXUIDAlias(ctx, sharedDB, p.xuid, p.gamertag); err != nil {
+				failed++
+				slog.WarnContext(ctx, "convergence: alias non écrit — match retenté au prochain cycle",
+					"match_id", m.matchID, "xuid", p.xuid, "err", err)
+				continue
+			}
+			aliases++
+		}
+		if failed > 0 {
+			observability.AddIntT(title, "convergence_alias_upsert_failed_total", int64(failed))
+			deferred++
+			continue
+		}
+		flushed = append(flushed, m)
+	}
+	if deferred > 0 {
+		observability.AddIntT(title, "convergence_psa_deferred_total", int64(deferred))
+	}
+	if aliases > 0 {
+		// Cumul boot-level pour le dashboard monitoring (rattrapage convergence).
+		observability.AddIntT(title, "convergence_aliases_upserted_total", int64(aliases))
+		slog.InfoContext(ctx, "convergence: alias upsertés depuis les JSONs PSA",
+			"xuid", xuid, "aliases", aliases)
+	}
+	return flushed
+}
+
+// stampPSAChecked pose le marqueur terminal psa_checked_at des matchs donnés dont les
+// awards sont écrits et rend leur nombre. Append-only #23645 : INSERT pur stage='psa' ; la vue merge expose
+// psa_checked_at par match et selectMatchesMissingPSA lit _latest. Un échec est
+// journalisé : le match est retenté au cycle suivant.
+func stampPSAChecked(ctx context.Context, playerDB *sql.DB, matches []psaFetchedMatch) int {
+	done := 0
+	for _, m := range matches {
+		if !m.awardsWritten {
+			continue
+		}
 		if _, err := playerDB.ExecContext(ctx,
-			`INSERT INTO player_match_enrichment (match_id, psa_checked_at, stage) VALUES (?, now(), 'psa')`, mid); err != nil {
-			slog.WarnContext(ctx, "convergence: PSA stamp échoué", "match_id", mid, "err", err)
+			`INSERT INTO player_match_enrichment (match_id, psa_checked_at, stage) VALUES (?, now(), 'psa')`, m.matchID); err != nil {
+			slog.WarnContext(ctx, "convergence: PSA stamp échoué", "match_id", m.matchID, "err", err)
 			continue
 		}
 		done++
 	}
-	return done, pairs
-}
-
-// flushAliasPairs upserte les alias bufferisés dans shared.xuid_aliases (burst
-// court, SQL UpsertXUIDAlias INCHANGÉ). Best-effort — même sémantique que
-// l'ancien upsert inline (erreurs individuelles ignorées, sharedDB nil = no-op).
-func flushAliasPairs(ctx context.Context, sharedDB *sql.DB, xuid string, pairs []aliasPair) {
-	if sharedDB == nil || len(pairs) == 0 {
-		return
-	}
-	aliases := 0
-	for _, p := range pairs {
-		if err := UpsertXUIDAlias(ctx, sharedDB, p.xuid, p.gamertag); err == nil {
-			aliases++
-		}
-	}
-	if aliases > 0 {
-		// Cumul boot-level pour le dashboard monitoring (rattrapage convergence).
-		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_aliases_upserted_total", int64(aliases))
-		slog.InfoContext(ctx, "convergence: alias upsertés depuis les JSONs PSA",
-			"xuid", xuid, "aliases", aliases)
-	}
-}
-
-// upsertAliasesFromMatchJSON upserte un alias xuid→gamertag dans
-// shared.xuid_aliases pour chaque participant du JSON match. Best-effort
-// (sharedDB nil ou erreurs individuelles ignorées — UpsertXUIDAlias normalise
-// déjà les bots). Retourne le nombre d'upserts réussis.
-func upsertAliasesFromMatchJSON(ctx context.Context, sharedDB *sql.DB, matchJSON map[string]any) int {
-	if sharedDB == nil {
-		return 0
-	}
-	n := 0
-	for _, p := range extractAliasPairsFromMatchJSON(matchJSON) {
-		if err := UpsertXUIDAlias(ctx, sharedDB, p.xuid, p.gamertag); err == nil {
-			n++
-		}
-	}
-	return n
+	return done
 }
 
 // extractAliasPairsFromMatchJSON extrait les paires (xuid, gamertag) des

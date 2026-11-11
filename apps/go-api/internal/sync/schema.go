@@ -499,7 +499,7 @@ func OpenPlayerDB(path string) (*duckdbpkg.DB, error) {
 //
 // Note : le store global xbox_aliases (openGlobalDB) a été supprimé le
 // 2026-06-19 — consolidé dans shared.xuid_aliases (plus aucun lecteur ni
-// écrivain). Cf. v_gamertag_lookup + chemin convergent upsertAliasesFromMatchJSON.
+// écrivain). Cf. v_gamertag_lookup + chemin convergent flushAliasPairs.
 func OpenSharedDB(path string) (*duckdbpkg.DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, fmt.Errorf("OpenSharedDB mkdir %s: %w", path, err)
