@@ -13,7 +13,7 @@ import (
 
 	"levelup/go-api/internal/platform/netguard"
 
-	"github.com/JGtm/halo-api"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 // TestNetguardDoer_DemoOffline : en mode démo, Do n'émet rien et rend ErrOffline marquée

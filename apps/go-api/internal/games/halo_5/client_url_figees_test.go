@@ -16,7 +16,7 @@ import (
 
 	"golang.org/x/time/rate"
 
-	"github.com/JGtm/halo-api"
+	haloapi "github.com/JGtm/halo-api"
 	"github.com/JGtm/halo-api/halo5"
 	"github.com/JGtm/halo-api/haloapitest"
 )

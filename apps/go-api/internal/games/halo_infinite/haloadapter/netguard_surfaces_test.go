@@ -28,7 +28,7 @@ import (
 	"levelup/go-api/internal/platform/netguard"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/halo-api"
+	haloapi "github.com/JGtm/halo-api"
 	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 

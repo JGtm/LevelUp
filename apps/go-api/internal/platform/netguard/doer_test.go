@@ -18,7 +18,7 @@ import (
 
 	"levelup/go-api/internal/platform/netguard"
 
-	"github.com/JGtm/halo-api"
+	haloapi "github.com/JGtm/halo-api"
 	"github.com/JGtm/halo-api/haloapitest"
 )
 
