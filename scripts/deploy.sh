@@ -242,9 +242,13 @@ _wait_for_http() {
 # 4. Healthcheck serveur Go — bloquant. `GET /health` ouvre metadata + shared en
 # read-only et renvoie le nb de matchs + la version DuckDB : un 200 confirme donc
 # à la fois que le binaire est up ET que les DBs s'ouvrent correctement.
+# 240 s : le démarrage résout le pool de jetons AVANT d'ouvrir le port ; quand le service de
+# jetons Halo ne répond pas, chaque compte attend son délai de 20 s et le serveur a mis 122 s
+# à répondre (2026-11-11, douze comptes) — à 90 s le déploiement était déclaré en échec et
+# les jobs suivants (regen démo, ouvrier) sautés, alors que le serveur était sain.
 HC_LOG="$DEPLOY_DIR/data/logs/healthcheck_deploy.log"
 mkdir -p "$(dirname "$HC_LOG")"
-if _wait_for_http "http://127.0.0.1:${APP_PORT}/health" "levelup (Go)" 90; then
+if _wait_for_http "http://127.0.0.1:${APP_PORT}/health" "levelup (Go)" 240; then
     {
         echo "=== Deploy $(date '+%Y-%m-%d %H:%M:%S') — $(git log -1 --oneline) ==="
         curl -s "http://127.0.0.1:${APP_PORT}/health" || true
