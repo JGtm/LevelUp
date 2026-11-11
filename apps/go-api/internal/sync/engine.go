@@ -42,6 +42,11 @@ import (
 const (
 	// historyPageSize est le nombre de matchs demandés par page API.
 	historyPageSize = 25
+	// maxHistoryMatchesPerPass borne la profondeur d'un parcours de l'historique (mode full) :
+	// au-delà, la passe s'arrête avec un avertissement, sans ranger la fin d'historique. Très
+	// au-dessus du plus grand historique connu (7 000 matchs), le plus profond parcours réel
+	// reste donc complet.
+	maxHistoryMatchesPerPass = 50_000
 
 	// postsyncEventsBurstChunk / postsyncWeaponsBurstChunk : taille des lots des
 	// étapes film du post-sync (events / weapon kills).
@@ -237,6 +242,15 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 	for processed < in.opts.MaxMatches {
 		// Respecter le contexte d'annulation.
 		if err := ctx.Err(); err != nil {
+			break
+		}
+		// Borne de sûreté du parcours en mode full : un historique entièrement connu se
+		// parcourt jusqu'à la page vide ; une API qui ne la rendrait jamais ne doit pas
+		// tenir la passe indéfiniment.
+		if start >= maxHistoryMatchesPerPass {
+			slog.WarnContext(ctx, "sync: parcours de l'historique arrêté à la borne de sûreté",
+				"gamertag", e.gamertag, "start", start, "max", maxHistoryMatchesPerPass)
+			result.AddWarning(fmt.Sprintf("historique parcouru jusqu'à start=%d sans page vide", start))
 			break
 		}
 

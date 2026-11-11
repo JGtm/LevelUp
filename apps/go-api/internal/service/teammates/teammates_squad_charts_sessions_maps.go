@@ -143,20 +143,27 @@ func buildSquadSessionTimeline(matches []domain.SquadMatchRow, squadPerf map[str
 		points = append(points, p)
 	}
 
-	// Tri par firstSeen ASC (chronologique).
+	firstSeen := make(map[string]int64, len(buckets))
+	for label, b := range buckets {
+		firstSeen[label] = b.firstSeenStartTimeUnix
+	}
+	return windowSessionPoints(points, firstSeen)
+}
+
+// windowSessionPoints trie les sessions par première partie (chronologique) puis ne garde que
+// les plus récentes, l'horizon (en jours) étant dimensionné par l'écart médian entre sessions
+// (cf. analysis.SquadSessionWindowKeep).
+func windowSessionPoints(points []domain.SquadSessionPoint, firstSeen map[string]int64) []domain.SquadSessionPoint {
 	type sortable struct {
 		point domain.SquadSessionPoint
 		first int64
 	}
 	sortables := make([]sortable, 0, len(points))
 	for _, p := range points {
-		sortables = append(sortables, sortable{p, buckets[p.SessionLabel].firstSeenStartTimeUnix})
+		sortables = append(sortables, sortable{p, firstSeen[p.SessionLabel]})
 	}
 	sort.Slice(sortables, func(i, j int) bool { return sortables[i].first < sortables[j].first })
 
-	// Fenêtre adaptative au rythme du joueur : on ne garde que les sessions les
-	// plus récentes, l'horizon (en jours) étant dimensionné par l'écart médian
-	// entre sessions (cf. analysis.SquadSessionWindowKeep).
 	times := make([]int64, len(sortables))
 	for i, s := range sortables {
 		times[i] = s.first
