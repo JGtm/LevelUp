@@ -14,7 +14,7 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { displayPlayerName } from '@/lib/players/displayName'
 
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { FEED_ROW } from '../model/feedRow'
+import { FEED_ROW, FEED_ROW_BUTTON, FEED_ROW_ITEM } from '../model/feedRow'
 import type { ReplayDeath, ReplayFeedEntry, ReplayKill } from '../model/killFeedLogic'
 import type { KillerZoneOf } from '../hooks/useKillerZones'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
@@ -39,6 +39,15 @@ export type GamertagIndex = ReadonlyMap<string, { gamertag: string }>
 
 /** L'encre de camp d'un nom du fil, désigné par son xuid : son allégeance du film, en tokens. */
 export type InkOf = (xuid: string) => string
+
+/**
+ * Ce qui rend une ligne de frag CLIQUABLE : si elle est la ligne choisie, et le geste du clic. Absent
+ * = ligne en lecture seule (pas de magasin de lecture, ou pas de document où viser une image).
+ */
+export interface FeedLineFocus {
+  selected: boolean
+  onSelect: () => void
+}
 
 /**
  * deathKindLabel traduit l'identifiant STABLE du type de mort publié par le document. Un
@@ -68,6 +77,7 @@ export function FeedLine({
   marksByGamertag,
   locale,
   zoneOf,
+  focus,
 }: {
   entry: ReplayFeedEntry
   inkOf: InkOf
@@ -76,6 +86,8 @@ export function FeedLine({
   marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
   zoneOf?: KillerZoneOf
+  /** Seule la ligne de FRAG s'en sert : les autres formes de ligne ne sont pas cliquables. */
+  focus?: FeedLineFocus
 }) {
   if (entry.event) {
     return (
@@ -140,6 +152,7 @@ export function FeedLine({
       marksByGamertag={marksByGamertag}
       locale={locale}
       zone={zoneOf?.(entry.key)}
+      focus={focus}
     />
   )
 }
@@ -219,6 +232,13 @@ function DeathLine({
  * KillLine — une mort : zone du tueur (si la carte en a), tueur (son encre), arme, victime (SON
  * encre), médailles, assistance. `zone` : le nom de la zone du tueur, vide quand elle n'est pas
  * établie, `undefined` quand la carte n'a aucune zone (pas de gouttière).
+ *
+ * AVEC `focus`, LA LIGNE EST UN BOUTON (plan « maquettes du rejeu », lot 2) : le clic pose la
+ * lecture à l'instant du frag et met le tueur et la victime en valeur sur la carte. La ligne choisie
+ * se lit par un fond de jeton (`bg-muted`) ET deux filets aux couleurs de camp du tueur (à gauche) et de la
+ * victime (à droite) — la couleur ne porte jamais seule. La souris ne prend pas le focus
+ * (`mousedown` annulé) : après un clic, Espace reste « Lecture » ; au clavier, Entrée et Espace
+ * activent la ligne, et Espace ne remonte pas au raccourci global de lecture.
  */
 function KillLine({
   kill: k,
@@ -229,6 +249,7 @@ function KillLine({
   marksByGamertag,
   locale,
   zone,
+  focus,
 }: {
   kill: ReplayKill
   replayMs: number
@@ -238,6 +259,7 @@ function KillLine({
   marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
   locale: ReplayLocale
   zone?: string
+  focus?: FeedLineFocus
 }) {
   const t = REPLAY_TEXT[locale]
   const assisted = k.assistState === 'named'
@@ -248,14 +270,9 @@ function KillLine({
         ? `${t.killFeedNoAssistHint} ${t.killFeedKillerShare(k.killerDamagePct)}.`
         : t.killFeedNoAssistHint
       : undefined
-  return (
-    <li
-      className={FEED_ROW}
-      style={{
-        background: assisted ? `color-mix(in srgb, ${tokenCssVar('stat-assists')} 9%, transparent)` : undefined,
-      }}
-      title={lineHint}
-    >
+  const assistTint = assisted ? `color-mix(in srgb, ${tokenCssVar('stat-assists')} 9%, transparent)` : undefined
+  const content = (
+    <>
       <FeedClock ms={replayMs} />
       {zone !== undefined && <KillZone name={zone} locale={locale} />}
       <FeedName kind={marks.get(k.xuid)} color={killerColor} locale={locale} className="font-medium"
@@ -273,6 +290,39 @@ function KillLine({
         </span>
       )}
       {assisted && <KillAssist kill={k} marksByGamertag={marksByGamertag} locale={locale} />}
+    </>
+  )
+  if (!focus) {
+    return (
+      <li className={FEED_ROW} style={{ background: assistTint }} title={lineHint}>
+        {content}
+      </li>
+    )
+  }
+  return (
+    <li
+      className={focus.selected ? `${FEED_ROW_ITEM} bg-muted` : FEED_ROW_ITEM}
+      data-selected={focus.selected ? 'true' : undefined}
+      style={{
+        background: focus.selected ? undefined : assistTint,
+        boxShadow: focus.selected
+          ? `inset 3px 0 ${killerColor}, inset -3px 0 ${inkOf(k.victimXuid)}`
+          : undefined,
+      }}
+    >
+      <button
+        type="button"
+        className={FEED_ROW_BUTTON}
+        aria-pressed={focus.selected}
+        title={lineHint ? `${t.killFeedFocusHint} — ${lineHint}` : t.killFeedFocusHint}
+        onMouseDown={(e) => e.preventDefault()}
+        onKeyDown={(e) => {
+          if (e.key === ' ') e.stopPropagation()
+        }}
+        onClick={focus.onSelect}
+      >
+        {content}
+      </button>
     </li>
   )
 }

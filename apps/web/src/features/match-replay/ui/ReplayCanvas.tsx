@@ -52,6 +52,8 @@ import { useReplayGrenadeRest } from '../layers/useReplayGrenadeRest'
 import { useReplayFlagCarries } from '../layers/useReplayFlagCarries'
 import { useZoneStates } from '../layers/useZoneStates'
 import { useReplayWeaponPads } from '../layers/useReplayWeaponPads'
+import { useReplayKillFocus } from '../layers/useReplayKillFocus'
+import { prepareStage } from '../layers/canvasStage'
 import { useReplayGroundWeapons } from '../layers/useReplayGroundWeapons'
 import { useReplayVehicles } from '../layers/useReplayVehicles'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -95,7 +97,6 @@ import { drawProjectilesLayer, PROJECTILE_TAIL_MS } from '../layers/replayProjec
 import { drawTracksLayer } from '../layers/replayMarkers'
 import { useReplayTiming } from '../hooks/useReplayTiming'
 import { CANVAS_PAD, useReplayView, type ReplayMapBackgroundLayer } from '../hooks/useReplayView'
-import { canvasPixelRatio } from '../export/exportLayoutStore'
 import { useReplayViewport } from '../hooks/useReplayViewport'
 import type { ReplayFullscreen } from '../hooks/useReplayFullscreen'
 import { useReplayWheelZoom } from '../hooks/useReplayWheelZoom'
@@ -257,7 +258,7 @@ export function ReplayCanvas({
   // TOUTES LES ENCRES DU REJEU, résolues une fois par palette — voir l'en-tête d'useReplayInks.
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
-    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, self: selfInk, wall: wallInk, rift: riftInk, shroud: shroudInk, mark: markInk,
+    floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, scrim, self: selfInk, wall: wallInk, rift: riftInk, shroud: shroudInk, mark: markInk,
     zone: zoneInk,
   } = useReplayInks(paletteVersion)
   // COULEURS DISTINCTES PAR JOUEUR (option du tiroir, 2026-08-24) : une série stable par joueur
@@ -342,6 +343,12 @@ export function ReplayCanvas({
   // au moment de l'appel, jamais une capture figee (l'assignation vit avec le redraw plus bas).
   const drawRef = useRef<() => void>(() => {})
   const redraw = useCallback(() => drawRef.current(), [])
+  // LA MISE EN VALEUR D'UNE ÉLIMINATION (clic sur une ligne de frag) : demande lue au magasin, deux
+  // calques tout en haut de la scène, et le nom du pion qui lui cède la place (cf. le hook).
+  const killFocus = useReplayKillFocus({
+    doc, view: canvasView, store: playbackStore, scrimInk: scrim, labelInk: labelStroke,
+    seatedOfXuid, colorOfXuid, nameOfXuid, reducedMotion, redraw,
+  })
   // LES CALQUES STATIQUES (sol, zones nommées, chaleur, objectifs), cuits hors écran et
   // recopiés par la boucle : quatre effets qui partageaient la même amorce et recopiaient
   // chacun le cadrage — ils vivent dans useReplayStaticLayers, qui lit `canvasView`.
@@ -483,6 +490,8 @@ export function ReplayCanvas({
             skullCarrier,
             bombCarrier,
             bombBlast,
+            killFocus.veil,
+            killFocus.labels,
           ),
           // L'image ENTIERE sur son emprise monde, le canvas rogne le debord : projection
           // affine sans rotation, donc deux coins suffisent (mapBackground.ts).
@@ -533,6 +542,7 @@ export function ReplayCanvas({
               selfInk,
               deathInk: shotColor,
               labelStroke, embarkedAtSlot: vehicles.isEmbarkedAt, seatedAtSlot, // PION EMBARQUE (C7) ; PION SANS FICHE.
+              nameHiddenAtSlot: killFocus.nameHiddenAtSlot,
               // BORNAGE HORS CADRE (chantier B, decision D2, 2026-09-10) : la flèche porte le
               // nom ET la distance ; le texte est resolu ICI (langue de la page), le calque ne
               // connait aucune locale.
@@ -600,7 +610,7 @@ export function ReplayCanvas({
     vipCrown,
     skullCarrier,
     bombCarrier,
-    bombBlast,
+    bombBlast, killFocus,
     floorStyle.edge,
     colorOfSlot,
     colorOfSlotOrLast,
@@ -628,22 +638,10 @@ export function ReplayCanvas({
    * `replayCompose` : cette fonction n'a plus a savoir ce qu'il y a a peindre.
    */
   const draw = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas || renderWidth === 0) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    const dpr = canvasPixelRatio() // celle du FORMAT pendant un export, celle de l'écran sinon
-    const pw = Math.round(renderWidth * dpr)
-    const ph = Math.round(viewH * dpr)
-    if (canvas.width !== pw || canvas.height !== ph) {
-      canvas.width = pw
-      canvas.height = ph
-    }
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, renderWidth, viewH)
-
+    const stage = prepareStage(canvasRef.current, renderWidth, viewH)
+    if (!stage) return
     const frame = frameRef.current
-    composeScene(ctx, sceneLayers(buildScene(ctx, frame)), frame, dpr)
+    composeScene(stage.ctx, sceneLayers(buildScene(stage.ctx, frame)), frame, stage.dpr)
 
     // L'HORLOGE ET LA PUBLICATION DE L'IMAGE, en dernier : elles disent ou en est la scene
     // qu'on vient de peindre (cf. useReplayClock).
@@ -664,6 +662,8 @@ export function ReplayCanvas({
     doc, playWindow, baseFps, speed: multiplier, renderWidth, frameRef, draw, openAtFrame,
     soundTick: sound.tick, soundSeek: sound.seek, onStarted: sound.intro,
     onEnded: sound.endMatch, onTransportGesture: sound.wake, onPlayingChange: sound.setTransportPlaying,
+    // LE CANAL DE SAUT DE LA PAGE et l'effacement de la mise en valeur à tout geste manuel (cf. le hook).
+    onSeekRequest: playbackStore.onSeekRequest, onUserMove: playbackStore.clearFocus,
   })
   // LA FRISE ET SON CLAVIER (planche 2a) vivent dans useReplayTimeline — treizième extraction
   // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.

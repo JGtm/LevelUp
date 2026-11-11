@@ -67,6 +67,7 @@ export const EN_TEXT = {
   feedPickupAction: (name) => `picked up: ${name}`,
   feedVehicleAction: (name) => `boarded: ${name}`,
   killFeedUnknownWeapon: 'Unidentified weapon',
+  killFeedFocusHint: 'Go to this moment and highlight the killer and the victim on the map',
   killFeedNoAssistHint:
     'Death without an assist: the death carries its event in the film, and it names no one.',
   killFeedAssistHint:

@@ -46,6 +46,8 @@ import {
   filterFeedEntries,
 } from '../model/feedFilterLogic'
 import { feedAt, type ReplayFeedEntry } from '../model/killFeedLogic'
+import { focusTargetOf } from '../model/killFocusLogic'
+import { usePlaybackFocus, type PlaybackStore } from '../model/playbackStore'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { useFeedFilter } from '../settings/useFeedFilter'
 import { NO_MARKS, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
@@ -92,10 +94,16 @@ interface Props {
    * fil ne porte que les éliminations, médailles, morts et présences de `entries`.
    */
   doc?: ReplayDocumentReady | null
+  /**
+   * Le magasin de lecture de la page : il rend les lignes de FRAG cliquables (le clic demande le
+   * saut et pose la mise en valeur) et dit laquelle est choisie. Absent, ou sans `doc` où viser
+   * une image : le fil reste en lecture seule.
+   */
+  playbackStore?: PlaybackStore
 }
 
 export function ReplayKillFeed({
-  entries, nowMs, playWindow, scoreboard, xuidMeta, allegiance, locale, marks, zoneOf, doc,
+  entries, nowMs, playWindow, scoreboard, xuidMeta, allegiance, locale, marks, zoneOf, doc, playbackStore,
 }: Props) {
   const t = REPLAY_TEXT[locale]
   // UNE SEULE RÈGLE POUR TOUTES LES FORMES DE LIGNE : l'allégeance du film, `team-ally` /
@@ -124,6 +132,17 @@ export function ReplayKillFeed({
   const shown = useMemo(() => filterFeedEntries(fullFeed, filter), [fullFeed, filter])
   const visibles = feedAt(shown, nowMs)
   const matchHasNone = (options.find((o) => o.id === filter)?.count ?? 0) === 0
+
+  // LE CLIC SUR UNE LIGNE DE FRAG : la ligne choisie vient de la mise en valeur du magasin, et le
+  // geste fait deux demandes — la mise en valeur d'abord, puis le saut (pause sur l'image du frag).
+  // La cible se lit sur la ligne ORIGINALE : la copie affichée porte l'horloge recalée.
+  const selectedKey = usePlaybackFocus(playbackStore)?.entryKey ?? null
+  const selectKill = (entry: ReplayFeedEntry) => {
+    const target = playbackStore && doc ? focusTargetOf(entry, doc) : null
+    if (!playbackStore || !target) return
+    playbackStore.focusKill(target)
+    playbackStore.requestSeek(target.frame)
+  }
 
   // POSITION DE LECTURE (règle du POC) : on ne colle en tête que si le lecteur y était.
   const listRef = useRef<HTMLUListElement>(null)
@@ -166,6 +185,11 @@ export function ReplayKillFeed({
             marksByGamertag={marksByGamertag}
             locale={locale}
             zoneOf={zoneOf}
+            focus={
+              playbackStore && doc
+                ? { selected: selectedKey === entry.key, onSelect: () => selectKill(entry) }
+                : undefined
+            }
           />
         ))}
       </ul>

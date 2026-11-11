@@ -459,6 +459,7 @@ function ReplayPage() {
                   marks={marks}
                   zoneOf={killerZoneOf}
                   doc={data}
+                  playbackStore={playbackStore}
                 />
               </div>
             </div>

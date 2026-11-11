@@ -118,10 +118,12 @@ const ORDRE_ATTENDU = [
   'deflagration',
   'pulses-objectif',
   'morts',
+  'mise-en-valeur',
+  'etiquettes-mise-en-valeur',
 ] as const
 
 describe('sceneLayers — l’ordre de la scène', () => {
-  it('rend les vingt-cinq calques, dans l’ordre attendu, sans doublon ni oubli', () => {
+  it('rend les vingt-sept calques, dans l’ordre attendu, sans doublon ni oubli', () => {
     const layers = sceneLayers(scene())
     expect(layers.map((l) => l.id)).toEqual([...ORDRE_ATTENDU])
     // La table de la source ne s'écarte pas de l'oracle : le second garde le premier.
@@ -129,10 +131,14 @@ describe('sceneLayers — l’ordre de la scène', () => {
     expect(new Set(LAYER_ORDER).size).toBe(LAYER_ORDER.length)
   })
 
-  it('PEINT du fond vers le sujet : le sol d’abord, les morts en dernier', () => {
+  it('PEINT du fond vers le sujet : le sol d’abord, la mise en valeur d’une élimination en dernier', () => {
     const ordre = peints(scene({ has: { ...TOUT_A_PEINDRE, floor: false } }))
     expect(ordre[0]).toBe('fond-carte')
-    expect(ordre[ordre.length - 1]).toBe('morts')
+    expect(ordre[ordre.length - 1]).toBe('etiquettes-mise-en-valeur')
+    // Le voile et les équerres au-dessus des pions et des morts, les étiquettes au-dessus des équerres.
+    expect(ordre.indexOf('trajectoires')).toBeLessThan(ordre.indexOf('mise-en-valeur'))
+    expect(ordre.indexOf('morts')).toBeLessThan(ordre.indexOf('mise-en-valeur'))
+    expect(ordre.indexOf('mise-en-valeur')).toBeLessThan(ordre.indexOf('etiquettes-mise-en-valeur'))
     // Les repères qui décident de la lisibilité : le terrain sous les joueurs, les joueurs
     // sous les événements.
     expect(ordre.indexOf('chaleur')).toBeLessThan(ordre.indexOf('trajectoires'))
@@ -238,6 +244,10 @@ describe('sceneLayers — un calque sans matière ne s’ouvre pas', () => {
       'crane-porte',
       'bombe-portee',
       'deflagration',
+      // La mise en valeur d'une élimination n'a pas de condition d'ouverture : son peintre ne pose
+      // rien tant qu'aucun clic n'a demandé de mise en valeur.
+      'mise-en-valeur',
+      'etiquettes-mise-en-valeur',
     ])
   })
 })
@@ -256,6 +266,6 @@ describe('composeScene — la boucle', () => {
     const { ctx, journal } = contexteEnregistreur()
     const inverse = [...sceneLayers(scene())].reverse()
     composeScene(ctx, inverse, 7, 1)
-    expect(journal[0]).toBe('morts@7/1')
+    expect(journal[0]).toBe('etiquettes-mise-en-valeur@7/1')
   })
 })

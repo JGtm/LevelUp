@@ -23,3 +23,13 @@ export const FEED_ROW =
 
 /** Largeur de la GOUTTIÈRE D'HORLOGE : fixe, les lignes s'alignent dessus. */
 export const FEED_CLOCK_W = 42
+
+/**
+ * LA LIGNE DE FRAG CLIQUABLE : le `li` ne porte plus que le filet et la hauteur naturelle, et c'est
+ * le BOUTON qui prend la rangée (mêmes règles : une ligne, rien ne passe à la ligne, ce qui déborde
+ * est tronqué). Le retrait et l'espacement vivent donc sur le bouton, pour que toute la ligne soit la
+ * cible du clic. Le focus clavier se voit par un anneau de jeton, jamais par une teinte seule.
+ */
+export const FEED_ROW_ITEM = 'replay-feed-row shrink-0'
+export const FEED_ROW_BUTTON =
+  'flex w-full cursor-pointer flex-nowrap items-center gap-2 overflow-hidden py-[5px] pl-2.5 pr-2 text-left text-xs hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'

@@ -212,6 +212,12 @@ export interface ReplayText {
   /** La montée à bord d'un véhicule : `name` est le nom du véhicule. */
   feedVehicleAction: (name: string) => string
   killFeedUnknownWeapon: string
+  /**
+   * L'infobulle d'une ligne de frag, qui est un BOUTON : ce que le clic fait — poser la lecture en
+   * pause à l'instant du frag et mettre le tueur et la victime en valeur sur la carte. Elle précède
+   * l'éventuelle explication d'absence d'assistant.
+   */
+  killFeedFocusHint: string
   killFeedNoAssistHint: string
   killFeedAssistHint: string
   killFeedKillerShare: (pct: number) => string
