@@ -119,7 +119,7 @@ func classifyWeaponCoverage(ctx context.Context, metaSQL *sql.DB, slug string, i
 		" LEFT JOIN weapon_labels wl ON wl.weapon_id=CAST(ids.v AS UBIGINT)"
 	rows, err := metaSQL.QueryContext(ctx, q, slug)
 	if err != nil {
-		classifyWeaponLabelsOnly(ctx, metaSQL, ids, inLabel)
+		classifyWeaponLabelsOnly(ctx, metaSQL, slug, ids, inLabel)
 		return
 	}
 	defer rows.Close()
@@ -127,6 +127,7 @@ func classifyWeaponCoverage(ctx context.Context, metaSQL *sql.DB, slug string, i
 		var v string
 		var reg, lab int
 		if scanErr := rows.Scan(&v, &reg, &lab); scanErr != nil {
+			signalerLigneIllisible(ctx, slug, "weapon_coverage", scanErr)
 			continue
 		}
 		u, perr := strconv.ParseUint(v, 10, 64)
@@ -144,7 +145,7 @@ func classifyWeaponCoverage(ctx context.Context, metaSQL *sql.DB, slug string, i
 }
 
 // classifyWeaponLabelsOnly — fallback quand le registre est absent.
-func classifyWeaponLabelsOnly(ctx context.Context, metaSQL *sql.DB, ids []int64, inLabel map[int64]bool) {
+func classifyWeaponLabelsOnly(ctx context.Context, metaSQL *sql.DB, slug string, ids []int64, inLabel map[int64]bool) {
 	parts := make([]string, len(ids))
 	for i, id := range ids {
 		parts[i] = strconv.FormatUint(uint64(id), 10) //nolint:gosec
@@ -157,9 +158,11 @@ func classifyWeaponLabelsOnly(ctx context.Context, metaSQL *sql.DB, ids []int64,
 	defer rows.Close()
 	for rows.Next() {
 		var id duckdb.UBigint
-		if scanErr := rows.Scan(&id); scanErr == nil {
-			inLabel[id.Int64()] = true
+		if scanErr := rows.Scan(&id); scanErr != nil {
+			signalerLigneIllisible(ctx, slug, "weapon_coverage_labels", scanErr)
+			continue
 		}
+		inLabel[id.Int64()] = true
 	}
 }
 

@@ -164,9 +164,11 @@ func (r *ServiceRegistry) playlistsVuesEnMatch(ctx context.Context, titleSlug st
 	var playlists []playlistVersionnee
 	for rows.Next() {
 		var p playlistVersionnee
-		if err := rows.Scan(&p.id, &p.ver); err == nil {
-			playlists = append(playlists, p)
+		if err := rows.Scan(&p.id, &p.ver); err != nil {
+			signalerLigneIllisible(ctx, titleSlug, "catalog_expand_playlists", err)
+			continue
 		}
+		playlists = append(playlists, p)
 	}
 	return playlists, rows.Err()
 }
