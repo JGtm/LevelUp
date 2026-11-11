@@ -57,6 +57,9 @@ interface Props {
    * −24 à +4,5 s (registre 2026-09-05, P0-7). La conversion vit dans `lib/replay/matchClock`.
    */
   t0Ms?: number
+  /** `header.lead_share` / `header.lead_changes` — la Mainmise, rappelée sous « Écart de score ». */
+  leadShare?: number
+  leadChanges?: number
   t: MatchViewText
 }
 
@@ -73,6 +76,8 @@ export function MatchViewTabChronology({
   cadence,
   scoreTimelineKind,
   t0Ms,
+  leadShare,
+  leadChanges,
   t,
 }: Props) {
   return (
@@ -145,6 +150,8 @@ export function MatchViewTabChronology({
         scoreboard={scoreboard}
         meXUID={meXUID}
         t0Ms={t0Ms}
+        leadShare={leadShare}
+        leadChanges={leadChanges}
         t={t}
       />
       <MatchNumbersAdvantageChart

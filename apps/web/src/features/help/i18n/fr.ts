@@ -109,6 +109,15 @@ export const FR_TEXT = {
             example:
               "Match Slayer 11:30, 8 humains au lobby, 95 events highlight (kills + deaths + assists + medals). Intensité = 95 / 8 / 11.5 = 1.03 events/min/joueur côté lobby per_player.\n\nUn match avec 14 events/min/joueur correspond à un cas chaotique (P88 vs l'historique du joueur). Un match à 6 events/min/joueur est à l'inverse calme/tactique.",
           },
+          {
+            term: 'Mainmise',
+            definition:
+              "Part de la durée du match passée EN TÊTE du score par l'équipe du joueur, avec le nombre de retournements. Un camp est en tête quand il est seul devant : à égalité, personne ne l'est, et le premier passage en tête n'est pas un retournement.\n\nLe chiffre se lit sur le score du rejeu, sur la partie réellement jouée (du coup d'envoi à la fin du match). Un mode où le score avance trop peu souvent (drapeau, colline, bombe) n'a pas de Mainmise : un tiret remplace le pourcentage, jamais zéro. Il en va de même d'un match dont le film n'a pas été lu.\n\nSur plusieurs matchs, la moyenne ne compte que les matchs mesurés.",
+            formula:
+              'Mainmise = temps seul en tête / durée du match jouée\n\nRetournement = changement de meneur (une égalité suspend le meneur, elle ne le ferme pas)',
+            example:
+              "Sur un match de 10 minutes où l'équipe du joueur est seule en tête pendant 6 minutes et à égalité pendant 1 minute, la Mainmise vaut 60 %.",
+          },
         ],
       },
       {

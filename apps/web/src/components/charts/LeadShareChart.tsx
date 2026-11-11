@@ -1,0 +1,68 @@
+/**
+ * LeadShareChart — la carte de la MAINMISE, commune à Sessions, Séries temporelles et Escouade.
+ *
+ * Titre neutre + bouton d'information + graphique + légende en bas, un seul axe (convention des
+ * graphiques du projet). L'option vit dans `leadShareOption.ts` (pur, testé) ; ce composant ne
+ * fait que poser les points dans un `ChartCard`.
+ *
+ * Aucun match mesuré : l'état vide en dit la cause (le film ou le score ne permet pas de calculer
+ * la Mainmise), jamais une carte de zéros.
+ */
+import { useCallback, useMemo, type ReactNode } from 'react'
+
+import { InfoTooltip } from '@/components/ui/info-tooltip'
+import type { LeadSharePoint } from '@/lib/charts/leadShare/model'
+import { useLeadShareText } from '@/lib/charts/leadShare/text'
+
+import { ChartCard, type ChartSeries } from './ChartCard'
+import { buildLeadShareOption, type LeadShareVariant } from './leadShareOption'
+
+export interface LeadShareChartProps {
+  /** Titre de la carte ; absent : « Mainmise ». */
+  title?: string
+  points: LeadSharePoint[]
+  variant?: LeadShareVariant
+  compact?: boolean
+  height?: number
+  /** Ligne de résumé sous le titre (moyenne des matchs mesurés...). */
+  summary?: ReactNode
+  loading?: boolean
+}
+
+export function LeadShareChart({
+  title,
+  points,
+  variant = 'bars',
+  compact = false,
+  height = 260,
+  summary,
+  loading,
+}: LeadShareChartProps) {
+  const text = useLeadShareText()
+  const series = useMemo<ChartSeries<LeadSharePoint>[]>(
+    () => (points.some((p) => p.share != null) ? [{ key: 'lead-share', datapoints: points }] : []),
+    [points],
+  )
+  const buildOption = useCallback(
+    (s: ChartSeries<LeadSharePoint>[]) => buildLeadShareOption(s[0]?.datapoints ?? [], { text, variant, compact }),
+    [text, variant, compact],
+  )
+  return (
+    <div className="space-y-2" data-testid="lead-share-chart">
+      <ChartCard
+        title={
+          <span className="inline-flex items-center gap-2">
+            {title ?? text.name}
+            <InfoTooltip content={text.help} />
+          </span>
+        }
+        series={series}
+        buildOption={buildOption}
+        height={height}
+        loading={loading}
+        emptyMessage={text.emptyNoMeasure}
+      />
+      {summary ? <p className="px-1 text-xs text-muted-foreground tabular-nums">{summary}</p> : null}
+    </div>
+  )
+}

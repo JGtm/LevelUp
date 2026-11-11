@@ -48,6 +48,7 @@ import { SessionParticipationBars } from './SessionParticipationBars'
 import { SessionNetScoreArea } from './SessionNetScoreArea'
 import { SessionFdaGapCumulative } from './SessionFdaGapCumulative'
 import { SessionNetLivesCumulative } from './SessionNetLivesCumulative'
+import { SessionLeadShareChart } from './SessionLeadShareChart'
 import { CUMULATIVE_GAP_CHARTS_SHOWN } from '@/lib/charts/cumulativeGapChartsVisibility'
 import { SessionIntensityProfile } from './SessionIntensityProfile'
 import { SessionMmrDumbbell } from './SessionMmrDumbbell'
@@ -122,6 +123,8 @@ export function useSessionChartSections({
   // Masquage par capability (décision produit : retrait silencieux, pas de carte vide).
   // team_mmr absent (Halo 5) → la carte « challenge MMR » disparaît entièrement.
   const hasTeamMmr = useCapability('team_mmr')
+  // La Mainmise vient du score du film : la carte n'existe que sur un titre qui decode le film.
+  const hasFilmDecoder = useCapability('replay')
 
   const outcomeDonut = (
     <SessionOutcomeDonut title={t('session.detail.chart_outcomes_title')} matches={matches} compact={compact} />
@@ -290,6 +293,9 @@ export function useSessionChartSections({
     ),
     fda_gap: fdaGap,
     ...(netLives ? { net_lives: netLives } : {}),
+    ...(hasFilmDecoder
+      ? { lead_share: <SessionLeadShareChart matches={matches} entry={entry} compact={compact} /> }
+      : {}),
     intensity,
     first_blood: firstBlood,
     participation,

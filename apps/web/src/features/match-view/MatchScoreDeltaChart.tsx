@@ -26,6 +26,7 @@ import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getEChartsThemeColors } from '@/components/charts/_utils'
 import { tipNumber } from '@/components/charts/tipNumber'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { resolveTeamLabel } from '@/lib/halo/teamLabel'
 import { parseTeamSideID } from '@/lib/halo/teamNames'
@@ -37,6 +38,8 @@ import { formatClock, teamIdsOf } from './_scoreCurve'
 import { buildDivergentStepOption, type DivergentStepPoint } from './_divergentStepOption'
 import { buildScoreDelta, scoreDeltaAt, type ScoreDelta } from './_scoreDelta'
 import type { MatchViewText } from './i18n'
+import { LeadShareRecall } from './MatchLeadShare'
+import { showsLeadShare } from './matchLeadShare.logic'
 import { allyOfTeamId, resolveXuidMeta } from './xuidMeta'
 
 interface Props {
@@ -48,6 +51,9 @@ interface Props {
   meXUID: string | null
   /** `header.t0_ms` — l'ancre de l'horloge du gameplay (cf. `lib/replay/matchClock`). */
   t0Ms?: number
+  /** `header.lead_share` / `header.lead_changes` — la Mainmise du match, rappelée sous la carte. */
+  leadShare?: number
+  leadChanges?: number
   t: MatchViewText
 }
 
@@ -58,8 +64,11 @@ export function MatchScoreDeltaChart({
   scoreboard,
   meXUID,
   t0Ms,
+  leadShare,
+  leadChanges,
   t,
 }: Props) {
+  const locale = useAppShellStore((s) => s.locale)
   const { data, isLoading } = useMatchReplay(playerSlug, matchId, replayAvailable)
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
   const xuidMeta = useMemo(() => resolveXuidMeta(board, meXUID), [board, meXUID])
@@ -116,7 +125,7 @@ export function MatchScoreDeltaChart({
       ? t.scoreDeltaUnavailableCamps
       : t.scoreDeltaUnavailableFilm
 
-  return (
+  const card = (
     <ChartCard
       title={
         <span className="flex items-center gap-1.5">
@@ -146,6 +155,14 @@ export function MatchScoreDeltaChart({
       buildOption={buildOption}
       emptyMessage={unavailable}
     />
+  )
+  // Le rappel de la Mainmise : la même mesure que l'en-tête, lue ici avec la courbe de l'écart.
+  if (!showsLeadShare({ leadShare, replayAvailable })) return card
+  return (
+    <div className="space-y-2">
+      {card}
+      <LeadShareRecall leadShare={leadShare} leadChanges={leadChanges} replayAvailable={replayAvailable} locale={locale} />
+    </div>
   )
 }
 

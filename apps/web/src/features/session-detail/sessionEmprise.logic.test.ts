@@ -183,5 +183,8 @@ describe('sessionRowKeys — les rangées partagées de la comparaison', () => {
     expect(keys).toContain('control')
     expect(keys).not.toContain('weapon_accuracy')
     expect(keys).not.toContain('coordination')
+    // Sans décodeur de film, pas de Mainmise ; avec, une rangée partagée des deux côtés.
+    expect(keys).not.toContain('lead_share')
+    expect(sessionRowKeys(data, true)).toContain('lead_share')
   })
 })

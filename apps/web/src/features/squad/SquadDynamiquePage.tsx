@@ -29,6 +29,8 @@ import { SquadFdaGapCumulativeCard } from './SquadFdaGapCumulativeCard'
 import { SquadEngagementGapChart } from './SquadEngagementGapChart'
 import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
+import { useCapability } from '@/lib/capabilities/capabilities'
+import { SquadLeadShareCard } from './SquadLeadShareCard'
 import type { SquadTeammateEntry } from '@/features/engagement/queries'
 
 export function SquadDynamiquePage() {
@@ -36,6 +38,8 @@ export function SquadDynamiquePage() {
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
   const performanceSeries = pageData?.performance_series
+  // La Mainmise vient du score du film : sa carte n'existe que sur un titre qui decode le film.
+  const hasFilmDecoder = useCapability('replay')
   // Dérivés MÉMOÏSÉS : ils descendent en props dans des ChartCard, qui
   // reconstruisent leur option ECharts (et rejouent leur animation d'entrée) dès
   // qu'une prop change d'identité, même à valeur égale. Les objets/tableaux
@@ -130,6 +134,9 @@ export function SquadDynamiquePage() {
         t={t}
         locale={locale}
       />
+
+      {/* Mainmise, match par match : apres Vies nettes / Ecart cumule, avant Engagement. */}
+      {hasFilmDecoder && <SquadLeadShareCard series={pageData?.lead_share_series} />}
 
       <EngagementRow
         playerSlug={playerSlug}

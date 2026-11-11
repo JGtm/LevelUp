@@ -82,6 +82,15 @@ export const EN_TEXT = {
             example:
               '15 kills, 4 assists, 6 deaths → KDA = 15 + 4/3 − 6 ≈ 10.33\n4 kills, 3 assists, 9 deaths → KDA = 4 + 3/3 − 9 = −4.00 (below zero: more deaths than effective kills)\n0 kills, 0 assists, 0 deaths → KDA = 0.00\nOver the first two matches: KDA = (10.33 − 4.00) / 2 ≈ 3.17',
           },
+          {
+            term: 'Lead share',
+            definition:
+              "Share of the match time the player's team spends ALONE in the lead of the score, with the number of lead changes. A team leads when it is alone in front: when tied nobody leads, and the first time a team takes the lead is not a lead change.\n\nThe figure is read from the replay score, over the part of the match actually played (from kickoff to the end). A mode where the score moves too rarely (flag, hill, bomb) has no lead share: a dash replaces the percentage, never zero. The same goes for a match whose film was not read.\n\nOver several matches, the average only counts the measured matches.",
+            formula:
+              'Lead share = time alone in the lead / played match duration\n\nLead change = change of leader (a tie suspends the leader, it does not close it)',
+            example:
+              "In a 10-minute match where the player's team is alone in the lead for 6 minutes and tied for 1 minute, the lead share is 60%.",
+          },
         ],
       },
       {

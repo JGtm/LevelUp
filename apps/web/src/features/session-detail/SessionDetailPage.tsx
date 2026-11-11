@@ -40,6 +40,7 @@ import { useSessionDetailPage } from './queries'
 import { useSessionT } from './_shared'
 import { SessionParamPills } from './SessionParamPills'
 import { SessionColumnBody } from './SessionColumnBody'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { sessionRowKeys } from './_sections'
 import { sessionColumnBlocks } from './sessionEmprise.logic'
 import { computeCompareScale, rangeDeltaDomain, type CompareScale } from './_compareScale'
@@ -61,6 +62,8 @@ export function SessionDetailPage() {
   // Locale envoyée au backend pour la résolution FR/EN des cartes/modes/playlists
   // (aligné Home/Explorer) ; incluse dans la queryKey → refetch au changement de locale.
   const locale = useAppShellStore((s) => s.locale)
+  // La Mainmise (carte « match par match ») n'existe que sur un titre qui decode le film.
+  const hasFilmDecoder = useCapability('replay')
 
   // Le contexte filtre le périmètre (solo/escouade/mixte). On l'injecte dans les
   // filtres envoyés au backend (sessions listées, session par défaut, prev/next,
@@ -261,7 +264,7 @@ export function SessionDetailPage() {
   // session »). Les colonnes sont alors des `grid-rows: subgrid` de la grille racine :
   // la i-eme section de gauche et celle de droite partagent LA MEME rangee, donc la
   // meme hauteur et la meme ligne de titre. Aucune mesure JS — la grille suffit.
-  const rowKeys = drawerOpen ? sessionRowKeys(data) : null
+  const rowKeys = drawerOpen ? sessionRowKeys(data, hasFilmDecoder) : null
   // 1 rangee d'en-tete L3 + 1 rangee par section : les deux colonnes s'y accrochent.
   const gridRowsStyle = rowKeys ? { gridTemplateRows: `repeat(${rowKeys.length + 1}, auto)` } : undefined
 

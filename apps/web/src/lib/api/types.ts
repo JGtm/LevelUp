@@ -1429,6 +1429,8 @@ export interface TeammatesPageResponse {
   synergy_radar?: SquadSynergyRadarSeries[]
   intensity_profile?: SquadIntensityProfile
   performance_series?: Record<string, SquadPerformanceSeriesPoint[]>
+  /** La Mainmise de chaque match du périmètre pour l'équipe du joueur principal (section Dynamique). */
+  lead_share_series?: SquadLeadSharePoint[]
   /** Répartition des frags PAR CLASSE (D8) par gamertag — barres empilées du
    *  sous-chart « Répartition des frags » de teammates.16. */
   frag_classes?: Record<string, FragClassEntry[]>
@@ -2205,6 +2207,8 @@ export type IntensityMatchRow = components['schemas']['IntensityMatchRow']
 
 /** Agrégat par session/semaine/mois (chart "Performance solo par session"). */
 export type SoloSessionPerfPoint = components['schemas']['SoloSessionPerfPoint']
+export type LeadSharePeriodPoint = components['schemas']['LeadSharePeriodPoint']
+export type SquadLeadSharePoint = components['schemas']['SquadLeadSharePoint']
 
 /** Bloc avec granularité auto-adaptative + points. */
 export type SoloSessionPerfBlock = components['schemas']['SoloSessionPerfBlock']

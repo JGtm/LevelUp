@@ -39,6 +39,8 @@ import {
 import { TimeseriesSessionPerformance } from './TimeseriesSquadAdapted'
 import { WinRateVsHistoryBulletChart } from '@/features/squad/WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from '@/features/squad/MapPerfVsHistoryChart'
+import { LeadShareMapChart } from '@/components/charts/LeadShareMapChart'
+import { TimeseriesLeadShareByMonth } from './TimeseriesLeadShare'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { formatMessage } from '@/lib/i18n/format'
 import { fragsManifest } from '@/lib/i18n/generated/frags'
@@ -79,6 +81,8 @@ export function TimeseriesSummaryTab({
   // « Écart au FDA attendu » se place à DROITE du FDA (2 colonnes) au lieu d'un bloc
   // pleine largeur en dessous. Absente (Halo 5) → FDA seul, pleine largeur.
   const hasExpectedStats = useCapability('expected_stats')
+  // La Mainmise vient du score du film : ses cartes n'existent que sur un titre qui decode le film.
+  const hasFilmDecoder = useCapability('replay')
   const soloPerf = data.solo_session_perf
   const soloGranularity: 'session' | 'week' | 'month' =
     soloPerf?.granularity === 'week' || soloPerf?.granularity === 'month'
@@ -323,6 +327,9 @@ export function TimeseriesSummaryTab({
         showMmr={hasTeamMmr}
       />
 
+      {/* Mainmise par mois : juste apres « Performance solo », meme population solo complete. */}
+      {hasFilmDecoder && <TimeseriesLeadShareByMonth months={data.lead_share_by_month} />}
+
       {/* Taux de victoire (gauche) | Performance par carte (droite) —
           réutilisation des wrappers Escouade (teammates.02 + .13). */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -345,6 +352,16 @@ export function TimeseriesSummaryTab({
           historyLabel={t('timeseries.summary.history_label')}
         />
       </div>
+
+      {/* Mainmise par carte : sous la paire ci-dessus, meme patron selection / historique. */}
+      {hasFilmDecoder && (
+        <LeadShareMapChart
+          rows={data.map_breakdown ?? []}
+          mapLabelOf={mapLabelOf}
+          scopeLabel={t('timeseries.summary.session_label')}
+          historyLabel={t('timeseries.summary.history_label')}
+        />
+      )}
     </div>
   )
 }
