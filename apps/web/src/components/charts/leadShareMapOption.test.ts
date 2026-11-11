@@ -66,11 +66,11 @@ describe('buildLeadShareMapOption', () => {
     const o = option()
     const html = o.tooltip.formatter([{ dataIndex: 0 }]) as string
     expect(html).toContain('BAZAAR')
-    expect(html).toContain('Session : <b>55 %</b> (4 matchs mesurés)')
-    expect(html).toContain('Historique : <b>50 %</b> (20 matchs mesurés)')
+    expect(html).toContain('Session : <b>55 %</b> (4 matchs)')
+    expect(html).toContain('Historique : <b>50 %</b> (20 matchs)')
     const streets = o.tooltip.formatter([{ dataIndex: 1 }]) as string
     expect(streets).not.toContain('Session')
-    expect(streets).toContain('Historique : <b>60 %</b> (1 match mesuré)')
+    expect(streets).toContain('Historique : <b>60 %</b> (1 match)')
   })
 
   it('aucune carte mesurée : option vide', () => {

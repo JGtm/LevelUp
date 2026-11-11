@@ -85,7 +85,7 @@ export const EN_TEXT = {
           {
             term: 'Lead share',
             definition:
-              "Share of the match time the player's team spends ALONE in the lead of the score, with the number of lead changes. A team leads when it is alone in front: when tied nobody leads, and the first time a team takes the lead is not a lead change.\n\nThe figure is read from the replay score, over the part of the match actually played (from kickoff to the end). A mode where the score moves too rarely (flag, hill, bomb) has no lead share: a dash replaces the percentage, never zero. The same goes for a match whose film was not read.\n\nOver several matches, the average only counts the measured matches.",
+              "Share of the match time the player's team spends ALONE in the lead of the score, with the number of lead changes. A team leads when it is alone in front: when tied nobody leads, and the first time a team takes the lead is not a lead change.\n\nThe figure is read from the replay score, over the part of the match actually played (from kickoff to the end). A mode where the score moves too rarely (flag, hill, bomb) has no lead share: a dash replaces the percentage, never zero. The same goes for a match whose film was not read.\n\nOver several matches, the average only counts the matches that have a figure.",
             formula:
               'Lead share = time alone in the lead / played match duration\n\nLead change = change of leader (a tie suspends the leader, it does not close it)',
             example:

@@ -11,8 +11,9 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { resolveToken } from '@/lib/accessibility'
 import type { MapBreakdownRow } from '@/lib/api/types'
-import { formatLeadShare, formatTemplate } from '@/lib/charts/leadShare/model'
+import { formatLeadShare } from '@/lib/charts/leadShare/model'
 import type { LeadShareText } from '@/lib/charts/leadShare/text'
+import { fillTemplate } from '@/lib/i18n/template'
 
 import {
   CHART_BG,
@@ -58,7 +59,7 @@ export function buildLeadShareMapOption(rows: readonly MapBreakdownRow[], opts: 
     share == null
       ? null
       : `${escapeHtml(label)} : <b>${formatLeadShare(share)}</b> (${escapeHtml(
-          formatTemplate(n === 1 ? text.measuredOne : text.measuredOther, { n: n ?? 0 }),
+          fillTemplate(n === 1 ? text.measuredOne : text.measuredOther, { n: n ?? 0 }),
         )})`
 
   return {

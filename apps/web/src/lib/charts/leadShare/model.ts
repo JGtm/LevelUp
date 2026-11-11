@@ -5,6 +5,7 @@
  * couvert ou un film non lu n'ont pas de part. L'affichage dit « — », pas « 0 % ».
  */
 import { formatPercent } from '@/lib/formatters/percent'
+import { fillTemplate } from '@/lib/i18n/template'
 import type { LeadShareText } from './text'
 
 /** Une valeur servie par l'API : une fraction 0..1, ou absente (non mesuré). */
@@ -18,7 +19,7 @@ export function formatLeadShare(share: LeadShareValue): string {
 /** « 3 retournements », au bon nombre. Absent : chaîne vide (rien à dire). */
 export function formatLeadChanges(changes: number | null | undefined, text: LeadShareText): string {
   if (changes == null) return ''
-  return formatTemplate(changes === 1 ? text.changesOne : text.changesOther, { n: changes })
+  return fillTemplate(changes === 1 ? text.changesOne : text.changesOther, { n: changes })
 }
 
 /** Une carte, un mois ou un match d'un graphe de Mainmise. */
@@ -39,9 +40,4 @@ export function averageOfMeasured(points: readonly LeadSharePoint[]): { avg: num
   const shares = points.flatMap((p) => (p.share == null ? [] : [p.share]))
   if (shares.length === 0) return { avg: null, n: 0 }
   return { avg: shares.reduce((a, b) => a + b, 0) / shares.length, n: shares.length }
-}
-
-/** Substitue `{nom}` dans un gabarit (les textes de ce module n'ont que des variables simples). */
-export function formatTemplate(template: string, vars: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (whole, name: string) => (name in vars ? String(vars[name]) : whole))
 }

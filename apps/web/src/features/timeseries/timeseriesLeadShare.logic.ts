@@ -4,8 +4,9 @@
  * mesuré garde sa colonne en pointillé, jamais un zéro.
  */
 import type { LeadSharePeriodPoint } from '@/lib/api/types'
-import { formatTemplate, type LeadSharePoint } from '@/lib/charts/leadShare/model'
+import { type LeadSharePoint } from '@/lib/charts/leadShare/model'
 import type { LeadShareText } from '@/lib/charts/leadShare/text'
+import { fillTemplate } from '@/lib/i18n/template'
 import type { Locale } from '@/lib/i18n/locale'
 import { intlLocale } from '@/lib/formatters/intlLocale'
 
@@ -24,6 +25,6 @@ export function leadShareMonthPoints(
     key: m.month,
     label: formatMonthShort(m.start_date, locale),
     share: m.lead_share ?? null,
-    details: [formatTemplate(text.measuredOfTotal, { measured: m.measured_matches, total: m.matches })],
+    details: [fillTemplate(text.measuredOfTotal, { measured: m.measured_matches, total: m.matches })],
   }))
 }

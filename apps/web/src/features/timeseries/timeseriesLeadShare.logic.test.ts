@@ -15,7 +15,7 @@ describe('leadShareMonthPoints — une colonne par mois', () => {
     const [sept] = leadShareMonthPoints(MOIS, LEAD_SHARE_TEXT.fr, 'fr')
     expect(sept.key).toBe('2026-09')
     expect(sept.share).toBe(0.63)
-    expect(sept.details).toEqual(['26 matchs mesurés sur 30'])
+    expect(sept.details).toEqual(['26 matchs sur 30 avec un chiffre'])
   })
 
   it('un mois sans match mesuré : part NULLE (pointillé), jamais zéro', () => {

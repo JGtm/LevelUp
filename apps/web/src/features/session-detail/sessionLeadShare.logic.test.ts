@@ -41,12 +41,12 @@ describe('sessionLeadShareSummary — la moyenne des matchs mesurés', () => {
     ({ lead_share, lead_share_matches }) as unknown as SessionCompareEntry
 
   it('FR : pourcentage entier et nombre de matchs mesurés', () => {
-    expect(sessionLeadShareSummary(entry(0.54, 5), LEAD_SHARE_TEXT.fr)).toBe('Moyenne 54 % sur 5 matchs mesurés')
+    expect(sessionLeadShareSummary(entry(0.54, 5), LEAD_SHARE_TEXT.fr)).toBe('Moyenne 54 % sur 5 matchs')
   })
 
   it('singulier d’un seul match mesuré, et EN', () => {
-    expect(sessionLeadShareSummary(entry(0.5, 1), LEAD_SHARE_TEXT.fr)).toBe('Moyenne 50 % sur 1 match mesuré')
-    expect(sessionLeadShareSummary(entry(0.5, 3), LEAD_SHARE_TEXT.en)).toBe('Average 50 % over 3 measured matches')
+    expect(sessionLeadShareSummary(entry(0.5, 1), LEAD_SHARE_TEXT.fr)).toBe('Moyenne 50 % sur 1 match')
+    expect(sessionLeadShareSummary(entry(0.5, 3), LEAD_SHARE_TEXT.en)).toBe('Average 50 % over 3 matches')
   })
 
   it('aucun match mesuré : pas de ligne (ni « 0 % », ni « N non mesurés »)', () => {

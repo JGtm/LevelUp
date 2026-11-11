@@ -8,8 +8,9 @@
  * `entry.lead_share_matches`) : ils ne se recalculent pas ici.
  */
 import type { SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
-import { formatLeadShare, formatTemplate, type LeadSharePoint } from '@/lib/charts/leadShare/model'
+import { formatLeadShare, type LeadSharePoint } from '@/lib/charts/leadShare/model'
 import type { LeadShareText } from '@/lib/charts/leadShare/text'
+import { fillTemplate } from '@/lib/i18n/template'
 
 import { sessionMatchAxisLabel } from './_shared'
 
@@ -24,14 +25,14 @@ export function sessionLeadSharePoints(matches: readonly SessionDetailMatchRow[]
   }))
 }
 
-/** « Moyenne 54 % sur 5 matchs mesurés », ou `null` quand aucun match n'est mesuré. */
+/** « Moyenne 54 % sur 5 matchs », ou `null` quand aucun match n'est mesuré. */
 export function sessionLeadShareSummary(
   entry: Pick<SessionCompareEntry, 'lead_share' | 'lead_share_matches'> | null | undefined,
   text: LeadShareText,
 ): string | null {
   if (entry?.lead_share == null || !entry.lead_share_matches) return null
   const n = entry.lead_share_matches
-  return formatTemplate(n === 1 ? text.averageOne : text.averageOther, {
+  return fillTemplate(n === 1 ? text.averageOne : text.averageOther, {
     pct: formatLeadShare(entry.lead_share),
     n,
   })

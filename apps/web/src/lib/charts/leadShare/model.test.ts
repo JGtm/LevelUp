@@ -6,7 +6,6 @@ import {
   averageOfMeasured,
   formatLeadChanges,
   formatLeadShare,
-  formatTemplate,
   type LeadSharePoint,
 } from './model'
 import { LEAD_SHARE_TEXT, type LeadShareText } from './text'
@@ -44,12 +43,6 @@ describe('averageOfMeasured — un match non mesuré n’entre ni au numérateur
   it('aucune part mesurée : pas de moyenne', () => {
     expect(averageOfMeasured([pt(null)])).toEqual({ avg: null, n: 0 })
     expect(averageOfMeasured([])).toEqual({ avg: null, n: 0 })
-  })
-})
-
-describe('formatTemplate', () => {
-  it('substitue les variables connues et laisse les inconnues', () => {
-    expect(formatTemplate('{a} sur {b} {c}', { a: 1, b: 'x' })).toBe('1 sur x {c}')
   })
 })
 

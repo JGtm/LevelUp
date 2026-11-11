@@ -39,7 +39,7 @@ describe('SessionLeadShareChart — la carte', () => {
     )
     expect(screen.getByText(LEAD_SHARE_TEXT.fr.perMatchTitle)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /informations/i })).toBeInTheDocument()
-    expect(screen.getByText('Moyenne 54 % sur 5 matchs mesurés')).toBeInTheDocument()
+    expect(screen.getByText('Moyenne 54 % sur 5 matchs')).toBeInTheDocument()
     expect(await screen.findByTestId('echarts-stub')).toBeInTheDocument()
   })
 
