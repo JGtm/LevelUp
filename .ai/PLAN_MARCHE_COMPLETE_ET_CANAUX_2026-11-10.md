@@ -347,6 +347,13 @@ Porte A6 : lecteur vert sur tous les films du corpus des builds où il s'appliqu
   (type 12) avec l'instant où chacun est listé, et le composant `unit-control` qui nomme le joueur aux
   commandes de chaque corps. Un arrivant peut reprendre l'identifiant d'un partant (`holders.rs`). Chez
   nous `unit-control` est lu sans usage produit. À mesurer contre l'API avant d'en tirer un plan.
+- **D11 (revue adversariale, 11/11)** : aucun P0. P1-1 (`translocEntryUsable` refusait toute carte portant une région invalide ; latent, 0 région invalide au catalogue) et P1-2 (bits d'index non renseignés par le constructeur local du catalogue, aucun test du catalogue livré) corrigés avant fusion, ainsi que trois commentaires devenus faux, la garde « pas sous data » de trois instruments et le test de la clé de cuisson.
+- **D12 (revue, non traité, phase C)** : le type par identifiant complet ne vaut que dans la boucle de la vue B ; quatre sites lisent encore par emplacement seul (`frame_records.go` `decodeDelta`, `frame_chain_infer.go`, `frame_harvest.go`, `birth_loadouts.go`), la suppression délie par emplacement, et le repli par anticipation rouvre toute génération.
+- **D13 (revue, non traité, phase C)** : le compteur des lectures d'index sans ligne n'est alimenté que par les instruments de recherche ; en production rien ne le verse au registre des replis.
+- **D14 (revue, non traité, phase C)** : le téléporteur et la semence de position refusent encore une position d'une autre région que la région jouée (donnée perdue, pas fausse) ; l'ordre des régions locales du catalogue vient de l'ordre de première apparition des tags dans le module (heuristique).
+- **D15 (revue)** : `decfilm.MapQuantEntry` n'est plus comparable par `==` (champ tranche) : changement d'API de la brique à mentionner dans ses notes.
+- **D16 (piste d'un membre de la communauté, 11/11 ; premier item de la phase C)** : destructeur d'un véhicule. Le bloc d'état de mort a la même forme pour un joueur et pour un véhicule ; ses deux champs de 5 bits portent chez le joueur la victime et le tueur. Nous les gardons déjà pour les véhicules (`types.DeadState.EnumA` / `EnumB`, sens non établi) ainsi que la référence de la source du dégât. Mesure à faire, sans changer le décodeur : sur les matchs avec véhicules, compter les morts de véhicule par joueur désigné dans le second champ et comparer au nombre de véhicules détruits de l'API ; regarder ensuite le premier champ, puis rapprocher les morts des occupants de l'instant de destruction et du siège. Le user répondra au membre quand il y aura du concret.
+- **D16, résultat de la mesure (11/11, 193 films, 4 465 morts de véhicule)** : le second champ du bloc d'état de mort d'un véhicule désigne le destructeur. Preuve indépendante de l'API : sur 1 465 occupants morts dans la demi-seconde qui suit, le tueur de l'occupant est ce joueur dans 98,0 % des cas (47,6 % pour les non-occupants). Le premier champ est vide (99,9 %). La source du dégât se lit dans `SrcTag0` (résolu en effet de dégât dans 97,5 % des cas : Skewer, S7, véhicule), pas dans `GlobalID`. Contre l'API : la base ne range pas les véhicules détruits ; seule référence, les récompenses de score `destroyed_*` de quatre joueurs suivis : compte exact pour 21 des 48 cas où l'API en compte au moins un, film 88 contre API 69. Les tourelles meurent avec leur porteur et sont à exclure. Sources : `C:\t\vehicules\constats.md` ; tests de recherche non commités dans le worktree `LevelUp-wt-vehicules`.
 
 ## 7. Reprise de session
 
@@ -473,3 +480,15 @@ Lire dans l'ordre : ce fichier (cases cochées, addendum A1, journal), les derni
   gate : un témoin de plus en baisse (`4f77afc1`), classé données fausses retirées, aucune vraie
   perte trouvée (`annexes_marche_complete/A2A_constats.md`). Portes vertes (libs-test au second
   passage, voir D9). `grammar.Rev` = `grammar-2026-11-10.3`.
+- 2026-11-11 : décisions du user. (1) Version visée : **v8.2.0** (un hotfix a pris le numéro précédent) ; branche cible de la PR à confirmer avec la session pilote. (2) Les découvertes et enrichissements relevés en route (D7, D10, nouveautés de libfilmshell du 10/11 au soir, fiche du joueur, dégâts, téléporteurs) forment une **phase C**, traitée après les phases en cours, sauf s'il est judicieux d'en avancer une.
+- 2026-11-11 : le user confirme que la PR vise `release/v8.1.2` telle quelle ; le numéro 8.2.0 se règle au tag, à la fusion vers `main`.
+- 2026-11-11 : la branche d'intégration s'appelle désormais `release/v8.2.0` (annonce de la session pilote ; vérifiée sur le dépôt distant, 91727b0c30). La PR et les rebases de ce chantier la visent ; elle sera rebasée sur `main` après la fusion du correctif 8.1.2. Remplace la ligne précédente (« la PR vise `release/v8.1.2` »).
+- 2026-11-11, **préparation de la fusion**. Revue adversariale : aucun P0, deux P1 et trois P2 corrigés
+  (D11), le reste en phase C (D12 à D15). Rebase final sur `origin/release/v8.2.0` (`fe4579354b`, après
+  le renommage des modules) : un conflit, imports de 18 fichiers neufs réécrits. Portes sur la tête
+  `ee2513a157`, toutes en code 0 : `make libs-test`, `go test -timeout 40m ./...`, lint du serveur et
+  des briques, `check-types`, `test-web`, `replay-equiv` (20 identiques, références mises à jour),
+  et `archlint`, `sync`, `platform/duckdb` en `-tags=integration -p 1 -timeout 40m`. `make gate-push`
+  rouge par le seul budget de 300 s sur ces trois paquets, mesuré identique sur la release sans la
+  branche (machine chargée) ; signalé à la session pilote, qui le traite à part.
+  `replay-corpus-gate` : identique à la fin de A2.A (écarts classés). PR ouverte vers `release/v8.2.0`.
