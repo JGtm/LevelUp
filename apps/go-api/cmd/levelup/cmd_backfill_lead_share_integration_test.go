@@ -20,7 +20,7 @@ import (
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 const (
