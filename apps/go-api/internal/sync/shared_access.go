@@ -23,20 +23,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"sync"
 	"sync/atomic"
 
 	"levelup/go-api/internal/ctxkeys"
 )
-
-// PostSyncBurstEnabled : le post-sync utilise les bursts paresseux (défaut ON).
-// LEVELUP_POSTSYNC_BURST=0 est l'ÉCHAPPATOIRE DE ROLLBACK vers le mode pinned
-// historique (writer tenu pendant tout le pipeline) — à RETIRER après validation
-// en prod (règle projet : pas de flag qui laisse une feature OFF).
-func PostSyncBurstEnabled() bool {
-	return os.Getenv("LEVELUP_POSTSYNC_BURST") != "0"
-}
 
 // SharedAccess arbitre les accès shared du pipeline post-sync.
 type SharedAccess struct {

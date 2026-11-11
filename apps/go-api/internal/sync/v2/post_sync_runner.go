@@ -1,5 +1,5 @@
 // Package v2 — post_sync_runner.go : adapter PostSyncRunner V2 qui délègue
-// à V1.RunPostSyncForV2 (cf. engine_v2bridge.go).
+// à V1.RunPostSyncForV2Shared (cf. engine_v2bridge.go).
 //
 // Stratégie de duplication ciblée (cf. discussion D6.4) : au lieu de
 // dupliquer les 14 sous-étapes du post-sync (~600-1000 lignes), V2
@@ -8,7 +8,7 @@
 // post-sync, bug fix dans V1 → V2 en bénéficie automatiquement.
 //
 // L'adapter construit un SyncEngine V1 éphémère par joueur (via le
-// EngineFactory injecté) et appelle son RunPostSyncForV2. Le SyncEngine
+// EngineFactory injecté) et appelle son RunPostSyncForV2Shared. Le SyncEngine
 // doit être configuré avec WithCSRSeasonID, WithFriendsLoader, WithResolver,
 // WithMediaScanHook — fait par EngineFactory en runtime.
 package v2
@@ -85,14 +85,13 @@ func NewPostSyncRunner(
 	}
 }
 
-// RunPostSync délègue à V1.RunPostSyncForV2 après avoir ouvert les DB
+// RunPostSync délègue à V1.RunPostSyncForV2Shared après avoir ouvert les DB
 // et construit le client + engine.
 //
-// INVARIANT (Phase 6, ADR 0016 B-swap) : en mode bursts (défaut), aucun
-// write-lease shared n'est tenu pour toute la durée de la phase 6 — chaque
-// écriture shared ouvre une fenêtre RW courte puis la relâche (mesure étape 0 :
-// ~13s/joueur tenues pour rien). Le fallback LEVELUP_POSTSYNC_BURST=0 acquiert
-// encore le writer upfront.
+// INVARIANT (Phase 6, ADR 0016 B-swap) : aucun write-lease shared n'est tenu
+// pour toute la durée de la phase 6 — chaque écriture shared ouvre une fenêtre
+// RW courte puis la relâche (mesure : ~13s/joueur tenues pour rien en mode
+// writer tenu).
 func (r *postSyncRunnerV2) RunPostSync(ctx context.Context, p PlayerProfile, insertedIDs []string) (PlayerPostSyncResult, error) {
 	engine, err := r.engineFactory(ctx, p)
 	if err != nil {
@@ -117,40 +116,15 @@ func (r *postSyncRunnerV2) RunPostSync(ctx context.Context, p PlayerProfile, ins
 		}
 	}
 
-	// Étape 1 contention (défaut) : mode BURSTS PARESSEUX — le runner n'acquiert
-	// PLUS le writer upfront ; le pipeline ouvre des segments Read RO et des
-	// bursts Write courts par écriture shared (fenêtre RW ~0 en stationnaire,
-	// mesure étape 0 : 13s/joueur tenues pour rien). L'échec d'acquisition est
-	// géré PAR ÉTAPE dans le pipeline (dégradation, plus de skip global).
-	if syncpkg.PostSyncBurstEnabled() {
-		shared := syncpkg.NewBurstSharedAccess(
-			func(c context.Context) (*sql.DB, func(), error) { return r.acquireSharedW(c) },
-			readFnOrNil(r.readSharedRO),
-			"sync_v2_postsync")
-		v1Res := engine.RunPostSyncForV2Shared(ctx, playerDB, shared, client, insertedIDs)
-		return mapV1PostSyncResult(p.PlayerSlug, v1Res), nil
-	}
-
-	// ROLLBACK (LEVELUP_POSTSYNC_BURST=0) : chemin pinned historique — RC-A fix :
-	// acquérir le shared en READ-WRITE (writer provider), pas le handle RO caché.
-	sharedDB, releaseShared, err := r.acquireSharedW(ctx)
-	if err != nil {
-		slog.WarnContext(ctx, "sync.v2 post-sync: acquisition shared RW échouée — skip",
-			"event", "sync.v2.postsync.shared_acquire_failed", "player", p.PlayerSlug, "err", err)
-		return PlayerPostSyncResult{PlayerSlug: p.PlayerSlug}, nil
-	}
-	if sharedDB == nil {
-		if releaseShared != nil {
-			releaseShared()
-		}
-		slog.WarnContext(ctx, "sync.v2 post-sync: shared DB indisponible — skip",
-			"event", "sync.v2.postsync.shared_unavailable", "player", p.PlayerSlug)
-		return PlayerPostSyncResult{PlayerSlug: p.PlayerSlug}, nil
-	}
-	defer releaseShared()
-
-	v1Res := engine.RunPostSyncForV2(ctx, playerDB, sharedDB, client, insertedIDs)
-
+	// Mode BURSTS PARESSEUX : le runner n'acquiert PAS le writer upfront ; le
+	// pipeline ouvre des segments Read RO et des bursts Write courts par écriture
+	// shared (fenêtre RW ~0 en stationnaire). L'échec d'acquisition est géré PAR
+	// ÉTAPE dans le pipeline (dégradation, pas de skip global).
+	shared := syncpkg.NewBurstSharedAccess(
+		func(c context.Context) (*sql.DB, func(), error) { return r.acquireSharedW(c) },
+		readFnOrNil(r.readSharedRO),
+		"sync_v2_postsync")
+	v1Res := engine.RunPostSyncForV2Shared(ctx, playerDB, shared, client, insertedIDs)
 	return mapV1PostSyncResult(p.PlayerSlug, v1Res), nil
 }
 

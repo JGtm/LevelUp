@@ -19,8 +19,8 @@
 //   - Lecture : si fichier existe, skip l'appel API.
 //   - Pas de delete par batch — purge par âge (>7 jours) via PurgeOldCache.
 //
-// **Désactivation** : `LEVELUP_PERSIST_NO_FETCH_CACHE=1` → wrapper inactif
-// (renvoie directement les appels à l'inner client, sans cache).
+// **Désactivation** : CacheDir vide → wrapper inactif (renvoie directement les
+// appels à l'inner client, sans cache).
 
 package sync
 
@@ -40,9 +40,6 @@ type FetchCacheConfig struct {
 	// CacheDir : répertoire de cache (typiquement `data/sync_cache/{cycle_id}/`).
 	// Créé lazy au 1er write. Si vide → cache désactivé (fall-through inner).
 	CacheDir string
-	// Disabled : court-circuite complètement le cache (lecture ET écriture).
-	// Activé par `LEVELUP_PERSIST_NO_FETCH_CACHE=1`.
-	Disabled bool
 }
 
 // cachedHaloClient wrap un HaloClient et ajoute un cache disque sur les
@@ -55,9 +52,9 @@ type cachedHaloClient struct {
 }
 
 // NewCachedHaloClient construit un wrapping cache autour d'un HaloClient.
-// Si cfg.Disabled, retourne directement inner (pas de wrapping).
+// Si cfg.CacheDir est vide, retourne directement inner (pas de wrapping).
 func NewCachedHaloClient(inner HaloClient, cfg FetchCacheConfig) HaloClient {
-	if cfg.Disabled || cfg.CacheDir == "" {
+	if cfg.CacheDir == "" {
 		return inner
 	}
 	return &cachedHaloClient{inner: inner, cfg: cfg}

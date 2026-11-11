@@ -37,10 +37,10 @@
 // **Granularité** : 1 batch = 1 match COMPLET (data API + tous les
 // enrichments locaux). Cf. §6.bis de REFACTOR_COLLECT_PERSIST.md.
 //
-// **Cache fetch intermédiaire** : activé par défaut. Les responses API
-// brutes sont écrites dans `data/sync_cache/{cycle_id}/match_{id}_*.json`
-// pour debug + tests + recovery sans re-fetch. Désactivable via
-// LEVELUP_PERSIST_NO_FETCH_CACHE=1.
+// **Cache fetch intermédiaire** : toujours actif dès qu'un répertoire de cache est
+// configuré. Les responses API brutes sont écrites dans
+// `data/sync_cache/{cycle_id}/match_{id}_*.json` pour debug + tests + recovery
+// sans re-fetch.
 //
 // **Extensibilité — ajouter un enrichment local sur player_match_enrichment** :
 //

@@ -99,21 +99,6 @@ func TestCachedHaloClient_GetMatchSkill_Cached(t *testing.T) {
 	}
 }
 
-// ─── Test 3 : Disabled config → pass-through, pas de cache ────────────────
-
-func TestCachedHaloClient_Disabled_PassesThrough(t *testing.T) {
-	inner := &countingMockClient{
-		mockHaloClient: &mockHaloClient{
-			statsBody: map[string]map[string]any{"m1": {"MatchId": "m1"}},
-		},
-	}
-	// Disabled=true → wrapping retourne directement inner
-	client := NewCachedHaloClient(inner, FetchCacheConfig{Disabled: true})
-	if client != inner {
-		t.Error("NewCachedHaloClient(disabled) doit retourner inner directement")
-	}
-}
-
 // ─── Test 4 : CacheDir vide → pass-through ────────────────────────────────
 
 func TestCachedHaloClient_EmptyCacheDir_PassesThrough(t *testing.T) {

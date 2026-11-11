@@ -70,23 +70,11 @@ type SyncV2WiringDeps struct {
 // dépendances réelles (V1-bridge). Retourne nil si une dépendance
 // critique manque (le scheduler tombera en V1).
 //
-// Mode dry-run via LEVELUP_SYNC_V2_DRYRUN=1 : remplace persister +
-// postSyncRunner par des stubs qui LOG les données qu'ils auraient
-// écrites mais ne touchent PAS la DB. Permet de valider le pipeline
-// (Discovery → Dedup → FetchShared → FetchPlayer) en conditions
-// réelles sans aucun risque pour les données.
-//
 // Pour D8 cleanup : supprimer ce fichier + le bloc if-call dans main.go.
 func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 	if deps.TokenPool == nil || deps.BatchQueue == nil {
 		slog.Warn("sync.v2 wiring: pool ou queue absente → orchestrator non câblé")
 		return nil
-	}
-
-	dryRun := os.Getenv("LEVELUP_SYNC_V2_DRYRUN") == "1"
-	if dryRun {
-		slog.Warn("sync.v2: MODE DRY-RUN ACTIVÉ — aucune écriture DB ne sera effectuée",
-			"event", "sync.v2.dryrun.active")
 	}
 
 	// getSharedDB retourne la connexion shared courante via le cache process-wide.
@@ -134,15 +122,9 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 	sharedFetcher := syncv2.NewSharedMatchFetcher(clientFactory)
 	playerEnrFetcher := syncv2.NewPlayerEnrichmentFetcher()
 
-	// CycleBatchPersister : réel ou dry-run logger.
-	// playerBySlug est désormais passé via CycleBatch.PlayerBySlug
-	// (renseigné par l'orchestrator à chaque cycle).
-	var persister syncv2.CycleBatchPersister
-	if dryRun {
-		persister = newDryRunPersister()
-	} else {
-		persister = buildCyclePersister(deps, getSharedDB)
-	}
+	// playerBySlug est passé via CycleBatch.PlayerBySlug (renseigné par
+	// l'orchestrator à chaque cycle).
+	persister := buildCyclePersister(deps, getSharedDB)
 
 	// RC-A fix (2026-06-01) : le PostSyncRunner doit acquérir le shared en
 	// READ-WRITE (writer provider), pas le handle RO caché via getSharedDB. Les
@@ -161,27 +143,20 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		// SharedAccess.Write, qui a DÉJÀ posé le label fin "sync_v2_postsync/<step>"
 		// (weapons, events, psa_aliases). Écraser ici ramenait les 3 étapes sous le
 		// même label grossier — les WARN watchdog prod n'attribuaient plus la
-		// fenêtre à l'étape fautive. Seuls les call-sites nus (chemin pinned de
-		// rollback LEVELUP_POSTSYNC_BURST=0) reçoivent le label de base.
+		// fenêtre à l'étape fautive. Un appel sans label reçoit le label de base.
 		ctx = ctxkeys.WithDBWriterLabelIfAbsent(ctx, "sync_v2_postsync")
 		return syncpkg.AcquireSharedWriterStandalone(ctx, deps.Cfg.SharedProvider, sharedPath)
 	}
 
-	// PostSyncRunner : réel ou dry-run no-op logger.
-	// CRITIQUE : playerDBOpenerRW (pas RO) + acquireSharedRW (pas getSharedDB RO).
-	var postSyncRunner syncv2.PostSyncRunner
-	if dryRun {
-		postSyncRunner = &dryRunPostSyncRunner{}
-	} else {
-		engineFactory := buildSyncEngineFactoryParityComplete(deps)
-		runner := syncv2.NewPostSyncRunner(engineFactory, playerDBOpenerRW, acquireSharedRW, clientFactory)
-		// Étape 1 contention : lecteur RO du shared (provider.Get, avec release)
-		// pour les segments Read du pipeline en mode bursts. Sans provider
-		// (legacy), les lectures retombent sur des bursts Write.
-		if deps.Cfg.SharedProvider != nil {
-			runner = runner.WithSharedReader(deps.Cfg.SharedProvider.Get)
-		}
-		postSyncRunner = runner
+	// PostSyncRunner. CRITIQUE : playerDBOpenerRW (pas RO) + acquireSharedRW (pas
+	// getSharedDB RO).
+	engineFactory := buildSyncEngineFactoryParityComplete(deps)
+	postSyncRunner := syncv2.NewPostSyncRunner(engineFactory, playerDBOpenerRW, acquireSharedRW, clientFactory)
+	// Lecteur RO du shared (provider.Get, avec release) pour les segments Read du
+	// pipeline en mode bursts. Sans provider, les lectures retombent sur des bursts
+	// Write.
+	if deps.Cfg.SharedProvider != nil {
+		postSyncRunner = postSyncRunner.WithSharedReader(deps.Cfg.SharedProvider.Get)
 	}
 
 	// Phase 6bis — producteur de snapshot immuable (durabilité / lecture découplée du
@@ -220,53 +195,6 @@ func knownSetSharedBorrower(deps SyncV2WiringDeps, cached func() *sql.DB) syncv2
 			"titleSlug", deps.TitleSlug, "reader", fmt.Sprintf("%T", reader))
 	}
 	return syncv2.SharedBorrower(src, cached)
-}
-
-// ─── Dry-run stubs (mode validation sans écriture DB) ─────────────────
-
-// dryRunPersister implémente CycleBatchPersister en loggant ce qu'il
-// aurait écrit, sans rien toucher en DB.
-type dryRunPersister struct{}
-
-func newDryRunPersister() syncv2.CycleBatchPersister { return &dryRunPersister{} }
-
-func (p *dryRunPersister) PersistCycle(ctx context.Context, batch syncv2.CycleBatch) error {
-	enrichmentsCount := 0
-	for _, m := range batch.Enrichments {
-		enrichmentsCount += len(m)
-	}
-	slog.InfoContext(ctx, "sync.v2 DRY-RUN: PersistCycle SKIP (no write)",
-		"event", "sync.v2.dryrun.persist",
-		"cycle_id", batch.CycleID,
-		"matches_would_persist", len(batch.Matches),
-		"enrichments_would_persist", enrichmentsCount,
-	)
-	for mID, sd := range batch.Matches {
-		slog.InfoContext(ctx, "sync.v2 DRY-RUN: match récupéré (would persist)",
-			"event", "sync.v2.dryrun.match",
-			"match_id", mID,
-			"fetcher", sd.Fetcher,
-			"has_stats", sd.Stats != nil,
-			"has_skill", len(sd.Skill) > 0,
-			"has_highlights", sd.HasHighlights,
-			"highlight_bytes", len(sd.HighlightChunk),
-		)
-	}
-	return nil
-}
-
-// dryRunPostSyncRunner implémente PostSyncRunner en no-op.
-type dryRunPostSyncRunner struct{}
-
-func (r *dryRunPostSyncRunner) RunPostSync(ctx context.Context, p syncv2.PlayerProfile, insertedIDs []string) (syncv2.PlayerPostSyncResult, error) {
-	slog.InfoContext(ctx, "sync.v2 DRY-RUN: PostSync SKIP (no heal, no write)",
-		"event", "sync.v2.dryrun.postsync",
-		"player", p.PlayerSlug,
-		"inserted_ids_count", len(insertedIDs),
-	)
-	return syncv2.PlayerPostSyncResult{
-		PlayerSlug: p.PlayerSlug,
-	}, nil
 }
 
 // buildSyncEngineFactoryParityComplete construit un SyncEngineFactory
