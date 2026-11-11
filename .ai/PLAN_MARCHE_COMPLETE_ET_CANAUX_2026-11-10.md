@@ -172,9 +172,9 @@ rejets en cascade, 99,85 % et 99,99 % au mieux.
       `map_quant_bounds.json`), `lireE524Sur` sur la ligne de l'index lu, puis `consumeFlockPosition`,
       `consumeObjectPositionMonde` et les positions de la vue A (genres 5 et 6) sur le même lecteur.
       Enjeu : 13 106 paquets en HI_1_13_0 (1,58 %). Jeu : `FUN_14076e524`.
-- [ ] A2.T Type d'une entité lié à son identifiant complet (slot et génération), délié à la
+- [x] A2.T Type d'une entité lié à son identifiant complet (slot et génération), délié à la
       suppression. Enjeu : 1 799 paquets et 908 fermetures fausses. Jeu : `FUN_1406cbaa0`.
-- [ ] A2.A `biped-spartan-ability` (ti=35 composant 57), tag 3 : branche sous `flags & 1` lue (le
+- [x] A2.A `biped-spartan-ability` (ti=35 composant 57), tag 3 : branche sous `flags & 1` lue (le
       commentaire qui la dit inatteignable est contredit par trois occurrences relues). Enjeu : 846
       paquets. Jeu : `FUN_142f262d4`, `FUN_14297ea84`. Après A2.P (largeur des positions).
 - [ ] A2.V Vue A en HI_1_12_0 : isoler le lecteur trop court (candidat : table des poignées par genre),
@@ -334,6 +334,19 @@ Porte A6 : lecteur vert sur tous les films du corpus des builds où il s'appliqu
   9 lignes : à ramener à sa taille d'avant dans le prochain item qui touche l'outil, ou à la clôture.
 - **D6 (A0, A1)** : les portes de A0 et A1 ne rejouaient pas `archlint` ; deux paquets de recherche y
   étaient hors couche. Corrigé en A2.P ; `go test ./internal/archlint/...` entre dans chaque porte.
+- **D7 (A2.T)** : l'hypothèse de A1 (confusion de génération) est réfutée pour les désaccords de type : 1 578
+  paquets viennent d'une liaison posée par l'image-clé (type faux dès l'ouverture du morceau), 154 d'une
+  création lue avec un autre type que le témoin (41 contre 36). À traiter avec A2.H.
+- **D8 (A2.A)** : sur la branche « cible = objet » avec `flags & 0x10`, notre lecture et celle du témoin
+  diffèrent de 5 bits ; la nôtre ferme des paquets que la sienne ne ferme pas ; un paquet ferme des deux
+  façons : indécidable.
+- **D9** : sous charge, `make libs-test` s'est arrêté une fois dans `grammar` sans échec affiché, et des
+  tests de `mapcatalog` (concurrence) et `media` (ffprobe) ont échoué puis passé seuls. Non expliqué.
+- **D10 (question du user, 11/11)** : entrées et sorties de joueurs et de bots. libfilmshell les tire de
+  trois sources du film : table des joueurs du chunk 0, listes de joueurs (paquets de type 8) et de bots
+  (type 12) avec l'instant où chacun est listé, et le composant `unit-control` qui nomme le joueur aux
+  commandes de chaque corps. Un arrivant peut reprendre l'identifiant d'un partant (`holders.rs`). Chez
+  nous `unit-control` est lu sans usage produit. À mesurer contre l'API avant d'en tirer un plan.
 
 ## 7. Reprise de session
 
@@ -447,3 +460,16 @@ Lire dans l'ordre : ce fichier (cases cochées, addendum A1, journal), les derni
   lire ; une vraie perte de publication (D1) ; deux indécidables (D2, D3). `replay-equiv` : 20 films
   diffèrent, familles expliquées par les mêmes causes ; ses références seront mises à jour à la
   porte A2, pas item par item. Fermeture : voir `A2P_fermeture_par_build.txt`.
+- 2026-11-10 : coordination. La session qui pilote la v8.1.2 renomme les chemins de module des briques (`libs/*/go.mod` et environ 580 fichiers d'imports) sur `feat/812-renommage`, PR vers la release. Consigne : ne réécrire aucun import de brique ici ; après sa fusion, rebaser et garder `github.com/JGtm/halo-*` ; les paquets neufs de cette branche (`research/divergence`, `research/duree`, fichiers neufs de `grammar`) portent l'ancien chemin et sont à réécrire au rebase. Rebase à faire entre deux items, jamais pendant qu'un agent travaille dans le worktree.
+- 2026-11-10 : calendrier de la v8.1.2 (source : sa session pilote). Gel de `libs/` au plus tôt le 2026-11-11 (après la fusion du renommage, celle du lot « seuils en millisecondes », puis les tags posés par le user). Entre le gel et la bascule qui supprime `libs/` et `go.work`, le décodeur n'est modifiable que pour un correctif bloquant. Après la bascule, tout changement du décodeur passe par le dépôt dédié (clone local, espace de travail `GOWORK`, tag par le user, montée du `require` dans LevelUp). Question posée au user : entrée partielle (étape A2 seule) dans la release avant le gel, ou suite du chantier dans le dépôt dédié.
+- 2026-11-10 : le user reporte à demain 11/11 la décision d'une entrée partielle dans la v8.1.2 avant le gel (« ok pour ce soir » : préparer la branche comme pour une fusion). Périmètre de cette entrée éventuelle : A2.P, A2.T, A2.A ; A2.H et A2.V restent après. À remettre demain : ce qui est prêt, ce que le user verra changer au rejeu, ce qui reste imparfait.
+- 2026-11-10 : **décision du user : OUI**, les corrections de lecture entrent dans la v8.1.2 avant le gel de `libs/` (et, relayé par la session pilote : la recuisson des rejeux n'est pas un frein). Périmètre : A2.P, A2.T, A2.A, chacune seulement si verte et ses écarts classés. Enchaînement : fin de A2.T et A2.A, rebase sur la release après le renommage des modules, mise à jour des références de `replay-equiv`, revue adversariale, `make gate-push`, PR vers `release/v8.1.2`, ligne de notes de version. A2.H, A2.V et les étapes A3 à A6 se poursuivent après, dans le dépôt dédié du décodeur une fois la bascule faite.
+- 2026-11-11, **A2.T et A2.A clos**. A2.T (`40dc36e9bd`) : le type d'une entité répond à son
+  identifiant complet, comme la garde du jeu ; aucun effet mesuré sur la fermeture (38 films
+  identiques), 12 + 7 paquets non fermés s'arrêtent une étape plus tôt au lieu de lire sous un type
+  périmé ; gate identique à la fin de A2.P. A2.A (`c95cd8725b`) : branche du grappin lue selon le jeu ;
+  aucun film ne baisse ; gains sur les six builds (38 films : HI_1_13_0 +899 paquets, HI_1_12_0 +118,
+  HI_1_11_0 +46, HI_1_10_0 +159, HI_1_9_0 +30, HI_1_8_0 +126) ; désaccords sur ce composant 599 -> 3 ;
+  gate : un témoin de plus en baisse (`4f77afc1`), classé données fausses retirées, aucune vraie
+  perte trouvée (`annexes_marche_complete/A2A_constats.md`). Portes vertes (libs-test au second
+  passage, voir D9). `grammar.Rev` = `grammar-2026-11-10.3`.

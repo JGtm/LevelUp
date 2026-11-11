@@ -36,6 +36,12 @@
 **Résultats observés.** 0 P0, 25 P1, 22 P2, 12 écartés ou requalifiés. Axes non passés : A3, A5, A6, A8, A9, A10 ; périmètres non passés : intérieur de `libs/film`, coquille Rust, branches 8.1.2 en cours, sécurité. Là où un garde-rail existe la règle tient ; tous les P1 sont hors garde-rail. Registre : `.ai/AUDIT_ARCHITECTURE_2026-11-10.md`.
 
 **Conclusion / prochaine étape.** À trancher par l'utilisateur : alias perdus (ART-2), 106 binaires sans utilisateur (MORT-1), deux interrupteurs (FLG-1, FLG-2). Probabilité de victoire (ART-5) : l'utilisateur confirme le 2026-11-10 que la statistique est abandonnée ; aucun titre ne l'affiche, le constat devient un retrait de code à planifier. Trois chantiers candidats : frontières, ménage, front.
+## [2026-11-11] Plan « lecture complète des paquets » — A2.T et A2.A — Complété
+
+**Décision technique principale** : A2.T, type d'une entité lié à son identifiant complet (garde du jeu relue) ; A2.A, branche du grappin de `biped-spartan-ability` lue selon le jeu (15 bits sur la cible objet, contre 13 chez le témoin). Décision du user : ces corrections et A2.P entrent dans la v8.1.2 avant le gel de `libs/`.
+**Résultats observés** : A2.T sans effet mesuré sur la fermeture ; l'hypothèse de A1 est réfutée, les désaccords de type viennent de l'image-clé (D7). A2.A : gains sur les six builds, aucun film en baisse, désaccords sur le composant 599 -> 3 ; un témoin de plus en baisse au gate, classé données fausses retirées. Instabilités de tests sous charge notées (D9).
+**Conclusion / prochaine étape** : rebase sur la release, références de `replay-equiv`, revue adversariale, `make gate-push`, PR vers `release/v8.1.2`. A2.H et A2.V après le gel.
+
 ## [2026-11-10] Plan « lecture complète des paquets » — A2.P (positions par région de carte) — Complété
 
 **Décision technique principale** : une position se lit aux largeurs de la région (BSP) que le flux désigne ; le catalogue de carte porte toutes les régions dans l'ordre du tableau de la carte ; index sans ligne lu à zéro bit et compté, comme le jeu (`FUN_14076e524`, relu). Volées, objets du monde et messages de genre 5 et 6 passent par le même lecteur. Révisions `grammar`, `profile` et `killsource` montées ; clé de cuisson hachant les régions.
