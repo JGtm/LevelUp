@@ -49,6 +49,7 @@ var colonneDePasse = map[string]string{
 	"match_player_positions": "positions_pass", "match_usage_films": colonneDeGeneration,
 	"match_usage_players": colonneDeGeneration, "match_pad_pickups_by_tier": passeDeDecodage,
 	"match_flag_grabs_net": passeDeDecodage, "match_vehicle_takes": passeDeDecodage,
+	"match_lead_share": passeDeDecodage,
 	tableTetesDeResume: colonneDeGeneration, "match_kill_pairs": colonneDeGeneration,
 	"match_assist_pairs": colonneDeGeneration,
 	"match_bomb_stats":   "",

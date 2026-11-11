@@ -281,6 +281,22 @@ const (
 	// l'EXPOSITION de cette ressource, rien d'autre des vehicules. Ne pas l'élargir.
 	CapFilmVehicleUsage CapabilityKey = "film.vehicle_usage"
 
+	// CapFilmLeadShare — le titre produit, PAR MATCH, la MAINMISE : la part de la durée jouée
+	// pendant laquelle chaque camp est seul en tête du score, et le nombre de retournements. Lue
+	// de la courbe de score de l'artefact rangé (`scoreTimeline.teams[].total`), calculée par
+	// `analysis/leadshare` et persistée dans `shared.match_lead_share` (append-only + vue
+	// `_latest`).
+	//
+	// POURQUOI UNE CLÉ NEUVE. `film.replay_artifact` gouverne l'artefact lui-même ; la Mainmise est
+	// une projection distincte de son calque de score, qui s'arme séparément.
+	//
+	// Halo Infinite : supported. Halo 5 : ABSENTE — pas de décodeur de film, donc aucun artefact,
+	// donc aucune courbe de score : la mesure n'existe pas.
+	//
+	// ⚠ Clé FINE, même doctrine que les `film.*` ci-dessus : elle gouverne la PRODUCTION et
+	// l'EXPOSITION de cette mesure, rien d'autre du score. Ne pas l'élargir.
+	CapFilmLeadShare CapabilityKey = "film.lead_share"
+
 	// CapFilmReplayArtifact — le titre produit L'ARTEFACT DE REJEU 2D lui-même
 	// (`data/cache/replays/{slug}/{match}.json`) : trame de positions, kill-feed recalé,
 	// score, roster, calques d'objectif. C'est la SOURCE dont les quatre dérivés du film

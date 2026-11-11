@@ -312,6 +312,19 @@ go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--li
 #    caractères, résolus contre le registre comme backfill-killsource ; inconnu / ambigu /
 #    trop court = refusé, rien d écrit.
 
+# 4 ter bis. MAINMISE (part du temps joué pendant laquelle un camp est seul en tête du score, et
+#    nombre de retournements) -> match_lead_share (append-only). Même motif que (4 ter) : elle
+#    LIT les artefacts TELS QU'ILS SONT, sans décodage, SANS RECUISSON, un artefact à la fois ; la
+#    seule lecture en base est le mode et la durée du match au registre. Un match que la mesure
+#    refuse (mode à peu de points : drapeau, colline, bombe ; score non couvert ; horloge sans
+#    origine ; ...) s'écrit « non mesuré » avec sa raison, jamais zéro. LA REPRISE SE CLE SUR LA
+#    PRÉSENCE, donc APRÈS UNE RECUISSON (ou un changement de règle) --force EST OBLIGATOIRE.
+#    SERVEUR ARRÊTÉ. --dry-run ouvre la base partagée en LECTURE SEULE (rien d'écrit, aucune
+#    migration, la table peut ne pas exister) : une ligne par match et un bilan avec le taux de
+#    matchs mesurés et les refus par raison.
+go run ./cmd/levelup backfill-lead-share --dry-run [--limit N]
+go run ./cmd/levelup backfill-lead-share [--force] [--match ID[,ID...]] [--limit N] [--title S]
+
 # 4 quater. Zones nommées (callouts) des cartes Forge jouées qui n'en ont pas -> le catalogue
 #    GÉNÉRÉ reference/generated/map_callouts.json (ignoré par git ; le map_callouts.json
 #    versionné n'est jamais écrit). La variante (.mvar) de chaque carte est lue au cache

@@ -121,6 +121,26 @@ Les frags viennent de `match_kill_events_latest` (source mesurée, tueur du kill
 joints aux épisodes par `frameOfFilmMS`/`frameInWindow` (les mêmes que les épisodes d'équipement).
 **Lecture : vue `match_vehicle_takes_latest` UNIQUEMENT** (dernière passe ENTIÈRE par match).
 
+### match_lead_share — Mainmise : temps en tête du score (append-only, 2026-11-11)
+Écrite par la dérivation post-rangement `sync/replayartifacts/leadshare.go` (famille de `Deriver`,
+gate `film.lead_share`) et par `levelup backfill-lead-share`, depuis la courbe de score de
+l'artefact (`scoreTimeline.teams[].total`), calcul pur `analysis/leadshare` (une seule définition du
+meneur, partagée avec le web par `testdata/meneur_cas.json`). Persister `persist/lead_share_persister.go`
+(INSERT-only, une transaction par passe). Deux natures de ligne (`row_kind`) dans UNE passe
+(`decode_pass`) :
+- `camp` : une ligne par camp publié, `camp` = identifiant d'équipe du registre, `lead_ms` = temps
+  passé SEUL en tête (partie jouée) ;
+- `match` : UNE ligne par passe (`camp` -1), écrite MÊME refusée : elle porte « non mesuré » et sa
+  raison (`unmeasured_reason` : `mode_events`, `score_missing`, `score_not_covered`, `score_truncated`,
+  `clock_origin_missing`, `clock_step_missing`, `kickoff_unmeasured`, `duration_unknown`,
+  `window_incoherent`, `team_unresolved`, `single_camp`).
+Colonnes du match recopiées sur chaque ligne : `measured`, `unmeasured_reason`, `doc_schema`,
+`measured_ms` (durée jouée), `tie_ms` (sans meneur), `lead_changes`, `silent_camps` (camps du roster
+sans série de score : ils concourent à zéro, ne mènent jamais). Invariant d'une passe mesurée :
+`tie_ms + somme(lead_ms) = measured_ms`. La part = `lead_ms / measured_ms` (fraction 0..1, ADR 0006) ;
+un camp absent d'une passe mesurée avec `silent_camps >= 1` est à 0. Un match non mesuré n'entre ni au
+numérateur ni au dénominateur d'une moyenne. **Lecture : vue `match_lead_share_latest` UNIQUEMENT.**
+
 ### match_kill_heads / match_kill_pairs / match_assist_pairs — résumés par match du journal des morts (append-only, ADR 0039, 2026-10-21)
 Écrits DANS LA TRANSACTION de chaque passe de `match_kill_events`, au même horodatage, par
 `persist.insertKillSummaryRows` (appelée par `insertKillEventRows` ; passes relues en base :

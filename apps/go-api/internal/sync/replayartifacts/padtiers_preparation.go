@@ -91,6 +91,13 @@ func lotProjetable(ctx context.Context, lus []artefactLu) []artefactLu {
 	return out
 }
 
+// reglementDuTitre charge regulation.toml du titre de la passe. UN SEUL lecteur de la racine des
+// ressources pour les familles qui lisent le reglement (niveaux d armes, Mainmise) : le ratchet
+// archlint/repo_root_readers_test.go ne laisse pas ce compte monter.
+func reglementDuTitre(d Deps) (*mappings.RegulationSet, error) {
+	return ReglesDepartsAleatoires(d.RepoRoot, d.TitleSlug)
+}
+
 // referencesDuTitre charge la reference des emplacements et les regles du titre. Rend
 // (nil, nil, false) quand l une des deux manque — cette famille s abstient SEULE, sans toucher
 // au bilan des autres.
@@ -105,7 +112,7 @@ func referencesDuTitre(ctx context.Context, d Deps, titre string, n int) (
 		observability.AddIntT(titre, CompteurNiveauxArmesEchecs, int64(n))
 		return nil, nil, false
 	}
-	reg, err := ReglesDepartsAleatoires(d.RepoRoot, d.TitleSlug)
+	reg, err := reglementDuTitre(d)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: niveaux d'armes — regulation.toml illisible, "+
 			"cette famille s'abstient (les autres gardent leur marque)",

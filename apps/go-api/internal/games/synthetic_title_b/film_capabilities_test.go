@@ -40,6 +40,7 @@ var filmAttendu = map[games.CapabilityKey]games.CapabilityStatus{
 	games.CapFilmFlagGrabsNet:   games.CapNotExposed,
 	games.CapFilmWeaponTiers:    games.CapNotExposed,
 	games.CapFilmVehicleUsage:   games.CapNotExposed,
+	games.CapFilmLeadShare:      games.CapNotExposed,
 	games.CapFilmKillSource:     games.CapNotExposed,
 	games.CapFilmWeaponShots:    games.CapNotExposed,
 	games.CapFilmKillPositions:  games.CapNotExposed,

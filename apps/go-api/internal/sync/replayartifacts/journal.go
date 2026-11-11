@@ -138,6 +138,15 @@ const (
 	CompteurPrisesVehiculesEcrites     = "postsync_replay_vehicle_takes_ecrites_total"
 	CompteurPrisesVehiculesEchecs      = "postsync_replay_vehicle_takes_echecs_total"
 	CompteurPrisesVehiculesNonMesurees = "postsync_replay_vehicle_takes_non_mesurees_total"
+	// Mainmise (temps en tete du score) projetee des artefacts ranges, ecrite dans
+	// `match_lead_share` (cf. leadshare.go). CompteurMainmiseEcrites : passes persistees (y compris
+	// « non mesure », avec sa raison) ; CompteurMainmiseEchecs : writer indisponible, capabilities,
+	// reglement ou identites illisibles, ou INSERT refuse — un defaut, jamais un etat normal ;
+	// CompteurMainmiseNonMesurees : passes ecrites « non mesure » — un etat normal (mode a peu de
+	// points, score non couvert, horloge sans origine), compte pour ne jamais se confondre avec zero.
+	CompteurMainmiseEcrites     = "postsync_replay_lead_share_ecrites_total"
+	CompteurMainmiseEchecs      = "postsync_replay_lead_share_echecs_total"
+	CompteurMainmiseNonMesurees = "postsync_replay_lead_share_non_mesurees_total"
 	// Positions joueurs projetees des artefacts ranges, ecrites dans `match_player_positions`
 	// (cf. positions.go, decision utilisateur 1). CompteurPositionsEcrites : passes persistees ;
 	// CompteurPositionsEchecs : writer indisponible, absent du cablage, ou INSERT refuse — un

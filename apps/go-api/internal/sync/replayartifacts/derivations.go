@@ -133,6 +133,8 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	niveaux := preparerNiveauxDArmes(ctx, d, b, lus)
 	// LA RESSOURCE VEHICULES lit aussi la base (frags de mort) : meme regle, meme place.
 	vehicules := preparerPrisesDeVehicules(ctx, d, b, lus)
+	// LA MAINMISE lit aussi la base (mode et duree du match) : meme regle, meme place.
+	mainmise := preparerMainmise(ctx, d, b, lus)
 	// LE FIL DES MORTS DU RESUME D USAGE (frags sans bouclier) : meme regle, meme place.
 	preparerFragsDuResume(ctx, d, lus)
 	// UN SEUL SEGMENT D'ECRITURE POUR LES QUATRE FAMILLES (constat C7 de la revue A-R1) : la
@@ -162,6 +164,8 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	ecrireNiveauxDArmes(ctx, d, b, niveaux)
 	// LES VEHICULES DE L EMPRISE juste apres : meme forme, meme segment d ecriture, une passe par match.
 	ecrirePrisesDeVehicules(ctx, d, b, vehicules)
+	// LA MAINMISE juste apres : meme forme, meme segment d ecriture, une passe par match.
+	ecrireMainmise(ctx, d, b, mainmise)
 	// LES RASTERS TACTIQUES, QUATRIEME PROJECTION — memes artefacts lus, meme place (apres
 	// toute cuisson). La seule qui n'ecrit AUCUNE base : son resultat est un fichier pose a
 	// cote de son artefact (cf. raster.go), donc hors du segment d'ecriture shared partage

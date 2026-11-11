@@ -171,6 +171,7 @@ jobs:
               - 'apps/go-api/go.mod'
               - 'libs/film/replay/**'
               - 'libs/film/internal/grammar/**'
+              - 'libs/film/internal/facts/**'
               - 'libs/film/killicon/data/**'
               - 'apps/go-api/internal/games/mappings/loader_replay_labels*.go'
             autre:

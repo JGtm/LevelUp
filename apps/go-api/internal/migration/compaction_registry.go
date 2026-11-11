@@ -106,6 +106,9 @@ var tablesCompactables = []compactable{
 	// match_vehicle_takes (plan Emprise vehicules L7.2, 2026-09-30) : ses passes superseedees n ont
 	// aucun lecteur — la lecture de l onglet Emprise passe par la vue `_latest` seule.
 	dernierePasse("match_vehicle_takes", "decode_pass"),
+	// match_lead_share (Mainmise) : mêmes passes superseedées sans lecteur, lecture par la vue
+	// `_latest` seule.
+	dernierePasse("match_lead_share", "decode_pass"),
 	derniereLigneParCle("match_bomb_stats", "match_id, xuid"),
 }
 

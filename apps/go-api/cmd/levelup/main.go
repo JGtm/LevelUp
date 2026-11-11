@@ -168,6 +168,8 @@ func main() {
 		exitErr = runBackfillPadTiers(cfg, args)
 	case "backfill-vehicle-takes":
 		exitErr = runBackfillVehicleTakes(cfg, args)
+	case "backfill-lead-share":
+		exitErr = runBackfillLeadShare(cfg, args)
 	case "backfill-match-summaries":
 		exitErr = runBackfillMatchSummaries(cfg, args)
 	case "backfill-map-callouts":
@@ -280,6 +282,11 @@ Commandes:
   backfill-vehicle-takes  Projette en base la ressource VEHICULES de l Emprise (prises, temps a bord, frags apparies par camp/joueur/famille) lue du calque
                   vehicules des artefacts de rejeu deja ranges (match_vehicle_takes append-only) : AUCUN decodage, AUCUNE recuisson. Un artefact
                   de schema < 67 est ecrit « non mesure ». Apres une recuisson, --force (--dry-run, --force, --match, --limit, serveur arrete)
+  backfill-lead-share  Projette en base la MAINMISE (part de la duree jouee passee en tete du score par camp, retournements) lue de la courbe
+                  de score des artefacts de rejeu deja ranges (match_lead_share append-only) : AUCUN decodage, AUCUNE recuisson. Un mode a
+                  peu de points, un score non couvert ou une horloge sans origine est ecrit « non mesure » avec sa raison. --dry-run ouvre la
+                  base en LECTURE SEULE (rien d ecrit, aucune migration). Apres une recuisson, --force (--dry-run, --force, --match, --limit,
+                  serveur arrete)
   backfill-map-callouts  Donne leurs ZONES NOMMEES (callouts) aux cartes Forge jouees qui n en ont pas : variante .mvar lue au cache,
                   sinon telechargee une fois (pool de jetons) et deposee au cache, zones rangees au catalogue GENERE
                   reference/generated/map_callouts.json (le versionne n est jamais ecrit). AUCUNE recuisson : les zones se
