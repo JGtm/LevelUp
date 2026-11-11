@@ -31,6 +31,11 @@
 # ou renommer un test de ces packages fait désormais rougir le gate : c'est voulu, et
 # le remède est d'ajouter les nouvelles entrées dans le même commit.
 #
+# RETRAIT DU 2026-11-10 (plan architecture, étape 1) : 38 tests quittent la baseline avec le code qu'ils
+# couvraient, supprimé faute d'appelant : commandes `h5-roster-topup`, `reindex-media-thumbs`,
+# `backfill-world-player-stats`, `backfill_bp_items` (28), sondeur Steam de `presence` (4),
+# `openspartan.IsOpenSpartanDB` (2), `domain/chart` (2), `games.ProvidesNativeKDA` (1), `logging.InstallCLI` (1).
+#
 # RENOMMAGE DU 2026-11-03 (lot Desktop L22b, revue U1) : `sync/replayartifacts` :
 # `TestBuildAll_VerrouTenuAilleurs_CompteEnEchec` devient `TestBuildAll_VerrouTenuAilleurs_ReporteSansEchec`,
 # parce que le contrat a changé : un verrou de décodage tenu ailleurs REPORTE le match au cycle suivant
