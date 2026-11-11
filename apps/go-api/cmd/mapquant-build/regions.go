@@ -61,6 +61,7 @@ func poserLesRegions(e *decfilm.MapQuantEntry, regions []himap.BSP, jouee int) e
 		}
 		e.AjouterRegion(lo, hi, w, false)
 	}
+	poserLaLargeurDIndex(e, len(regions))
 	j := e.Regions[jouee]
 	if j.Min != e.Min || j.Max != e.Max || j.AxisWidths != e.AxisWidths {
 		return fmt.Errorf("la région jouée %d de la table diffère de l'entrée", jouee)
@@ -68,6 +69,17 @@ func poserLesRegions(e *decfilm.MapQuantEntry, regions []himap.BSP, jouee int) e
 	slog.Info("table des régions", "module", e.Module, "regions", len(regions), "invalides", invalides,
 		"jouee", jouee, "indexBits", decfilm.LargeurIndexDePlage(len(regions)))
 	return nil
+}
+
+// poserLaLargeurDIndex écrit la largeur d'index de région que la loi du moteur tire du compte brut
+// de régions ([decfilm.LargeurIndexDePlage]), sauf quand elle vaut la valeur implicite (1, une ou deux
+// régions) : le champ reste alors absent du catalogue, comme l'entrée d'avant la table par région.
+// Une carte de trois régions ou plus l'exige, faute de quoi le lecteur lirait un bit d'index de trop
+// peu ([profile.MapQuantEntry.EffectiveRegionIndexBits]).
+func poserLaLargeurDIndex(e *decfilm.MapQuantEntry, nbRegions int) {
+	if bits := decfilm.LargeurIndexDePlage(nbRegions); bits != 1 {
+		e.RegionIndexBits = bits
+	}
 }
 
 // poserLesRegionsLocales range la table d'un module qui porte ses propres sbsp ; `q` est le BSP de

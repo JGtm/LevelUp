@@ -209,3 +209,42 @@ func TestLesDeuxGardesDeLaLoiSontModelises(t *testing.T) {
 			got, profile.PasDuNiveau(23))
 	}
 }
+
+// TestTableParRegionDuCatalogueLivre : chaque entrée du catalogue commis porte sa table par index de
+// région, et cette table est cohérente avec les champs historiques de l'entrée et avec la loi du moteur :
+// l'index d'une ligne est son rang ; une ligne valide porte les largeurs que la loi tire de ses bornes ;
+// la ligne de la région jouée égale les champs de l'entrée ; la largeur d'index effective égale la loi
+// sur le compte brut de lignes (une région invalide compte).
+func TestTableParRegionDuCatalogueLivre(t *testing.T) {
+	cat := chargerCatalogueDesCartes(t)
+	var ecarts []string
+	for nom, e := range cat.Maps {
+		if len(e.Regions) == 0 {
+			ecarts = append(ecarts, fmt.Sprintf("%s : aucune table par région", nom))
+			continue
+		}
+		for i, r := range e.Regions {
+			if int(r.Index) != i {
+				ecarts = append(ecarts, fmt.Sprintf("%s : ligne %d d'index %d", nom, i, r.Index))
+			}
+			if r.Invalid {
+				continue
+			}
+			bornes := [3][2]float32{{r.Min[0], r.Max[0]}, {r.Min[1], r.Max[1]}, {r.Min[2], r.Max[2]}}
+			if loi := profile.LargeursAxeDuNiveau(bornes, profile.NiveauPositionDObjet); loi != r.AxisWidths {
+				ecarts = append(ecarts, fmt.Sprintf("%s : ligne %d largeurs %v, loi %v", nom, i, r.AxisWidths, loi))
+			}
+		}
+		if int(e.Region) >= len(e.Regions) {
+			ecarts = append(ecarts, fmt.Sprintf("%s : région jouée %d hors des %d lignes", nom, e.Region, len(e.Regions)))
+		} else if j := e.Regions[e.Region]; j.Invalid || j.Min != e.Min || j.Max != e.Max || j.AxisWidths != e.AxisWidths {
+			ecarts = append(ecarts, fmt.Sprintf("%s : la ligne jouée %d ne reprend pas les champs de l'entrée", nom, e.Region))
+		}
+		if got, loi := e.EffectiveRegionIndexBits(), profile.LargeurIndexDePlage(len(e.Regions)); got != loi {
+			ecarts = append(ecarts, fmt.Sprintf("%s : largeur d'index effective %d, loi %d pour %d région(s)", nom, got, loi, len(e.Regions)))
+		}
+	}
+	if len(ecarts) > 0 {
+		t.Fatalf("%d écart(s) sur %d cartes :\n  %v", len(ecarts), len(cat.Maps), ecarts)
+	}
+}
