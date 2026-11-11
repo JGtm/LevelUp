@@ -7,7 +7,8 @@
  * du serveur — combinaison « sans archive + rétention finie », dossier non vide, archive qui
  * contient déjà des films — arrivent rédigés dans la langue de la requête et s'affichent tels
  * quels : la carte ne les reformule pas. Le succès passe par le badge flottant partagé des Réglages
- * (`saveFeedbackStore`, monté par `SettingsPage`) ; l'assistant, qui n'a pas cette page, monte le sien.
+ * (`saveFeedbackStore`, monté par `SettingsPage`) ; l'assistant, qui n'a pas cette page, monte le sien dans
+ * la ligne de l'interrupteur (`accessory`), jamais flottant : il tombait sur le texte d'introduction.
  */
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -61,8 +62,7 @@ export function FilmArchivePanel({ variant = 'card' }: FilmArchivePanelProps) {
   }
 
   const body = (
-    <div className={variant === 'wizard' ? 'relative space-y-3' : 'space-y-3'}>
-      {variant === 'wizard' && <SaveStatusBadge />}
+    <div className="space-y-3">
       {variant === 'wizard' && <p className="text-sm text-muted-foreground">{t.wizardIntro}</p>}
       <fieldset disabled={frozen} className="m-0 min-w-0 space-y-3 border-0 p-0">
         <div>
@@ -70,6 +70,7 @@ export function FilmArchivePanel({ variant = 'card' }: FilmArchivePanelProps) {
             label={t.toggleLabel}
             value={archiveFilms}
             onChange={(v) => save({ archive_films: v })}
+            accessory={variant === 'wizard' ? <SaveStatusBadge inline /> : undefined}
           />
           <p className="text-xs text-muted-foreground">
             {archiveFilms ? t.toggleHintOn : t.toggleHintOff}

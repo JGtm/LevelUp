@@ -19,12 +19,13 @@ import (
 	"levelup/go-api/internal/transfer"
 )
 
-// desktopGateFor construit l'entrée de la coquille du port lié de cfg (SetBoundPort a déjà posé le
-// port ; la clé du cookie est le secret de session du fichier).
+// DesktopGateFor construit l'entrée de la coquille du port lié de cfg (SetBoundPort a déjà posé le
+// port ; la clé du cookie est le secret de session du fichier). Exportée pour la porte de démarrage
+// (cmd/server), qui applique le même Host strict, avec la même exemption, avant que le routeur existe.
 //
 // Sous la capacité LoginViaBrowser, le retour de Microsoft (GET /auth/xbox/callback) est la seule route
 // qui passe sans cookie : le navigateur par défaut n'a pas celui de la coquille.
-func desktopGateFor(cfg *config.AppConfig) *middleware.DesktopGate {
+func DesktopGateFor(cfg *config.AppConfig) *middleware.DesktopGate {
 	g := middleware.NewDesktopGate(cfg.DesktopAuthority(), cfg.APIPort, cfg.SessionSecret, cfg.DesktopSecret)
 	if cfg.Capabilities.LoginViaBrowser {
 		g.AllowBrowserCallback()
@@ -37,7 +38,7 @@ func desktopGateFor(cfg *config.AppConfig) *middleware.DesktopGate {
 // voit rien d'autre de la pile.
 func useDesktopGate(r chi.Router, cfg *config.AppConfig) {
 	if cfg.Capabilities.ShellEntryGate {
-		r.Use(desktopGateFor(cfg).Middleware)
+		r.Use(DesktopGateFor(cfg).Middleware)
 	}
 }
 
@@ -45,7 +46,7 @@ func useDesktopGate(r chi.Router, cfg *config.AppConfig) {
 // sur le pair TCP, que le demandeur ne choisit pas), sous l'entrée de la coquille seulement.
 func mountDesktopEntry(r chi.Router, cfg *config.AppConfig) {
 	if cfg.Capabilities.ShellEntryGate {
-		r.With(middleware.NoStore, middleware.LoopbackOnly).Get(middleware.DesktopEnterPath, desktopGateFor(cfg).EnterHandler)
+		r.With(middleware.NoStore, middleware.LoopbackOnly).Get(middleware.DesktopEnterPath, DesktopGateFor(cfg).EnterHandler)
 	}
 }
 

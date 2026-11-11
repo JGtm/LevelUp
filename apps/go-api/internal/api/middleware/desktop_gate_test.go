@@ -289,3 +289,54 @@ func TestDesktopGate_RetourDeConnexion_FermeSansLaCapacite(t *testing.T) {
 		t.Errorf("sans cookie sans capacité : %d (atteint=%v), attendu 401", code, reached)
 	}
 }
+
+// strictHostReq rejoue une requête à travers StrictHost seul et dit si l'aval a été atteint.
+func strictHostReq(g *DesktopGate, method, target, host string) (int, bool) {
+	reached := false
+	h := g.StrictHost(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		reached = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	req := httptest.NewRequest(method, target, nil)
+	req.Host = host
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec.Code, reached
+}
+
+// StrictHost (la porte de démarrage, qui reste devant le routeur) ouvre exactement ce que Middleware
+// ouvre : le retour de la connexion par le navigateur avec un Host « localhost:<port> », et lui seul.
+// Témoin du défaut du 2026-11-11 : le retour arrivait en 421 « desktop_host_refused » avant le garde.
+func TestDesktopGate_StrictHost_LaisseLeRetourDeConnexionCommeLeGarde(t *testing.T) {
+	g := newTestGate(time.Now()).AllowBrowserCallback()
+	loopbackName := "localhost:" + strconv.Itoa(gateTestPort)
+
+	for _, host := range []string{loopbackName, gateTestAuthority} {
+		if code, reached := strictHostReq(g, http.MethodGet, DesktopBrowserCallbackPath+"?code=c&state=s", host); code != http.StatusOK || !reached {
+			t.Errorf("GET callback, Host %q : %d (atteint=%v), attendu 200", host, code, reached)
+		}
+	}
+	if code, reached := strictHostReq(g, http.MethodGet, "/", gateTestAuthority); code != http.StatusOK || !reached {
+		t.Errorf("racine, Host exact : %d (atteint=%v), attendu 200 (aucun cookie exigé ici)", code, reached)
+	}
+	refuses := []struct{ nom, method, target, host string }{
+		{"autre méthode, Host localhost", http.MethodPost, DesktopBrowserCallbackPath, loopbackName},
+		{"autre chemin, Host localhost", http.MethodGet, "/api/v1/bootstrap", loopbackName},
+		{"racine, Host localhost", http.MethodGet, "/", loopbackName},
+		{"autre port", http.MethodGet, DesktopBrowserCallbackPath, "localhost:49556"},
+		{"autre nom", http.MethodGet, DesktopBrowserCallbackPath, "evil.example:49555"},
+		{"sous-chemin", http.MethodGet, DesktopBrowserCallbackPath + "/x", loopbackName},
+		{"chemin ambigu", http.MethodGet, "//auth/xbox/callback", loopbackName},
+	}
+	for _, c := range refuses {
+		if code, reached := strictHostReq(g, c.method, c.target, c.host); code != http.StatusMisdirectedRequest || reached {
+			t.Errorf("%s : %d (atteint=%v), attendu 421 sans atteindre l'aval", c.nom, code, reached)
+		}
+	}
+
+	// Sans la capacité, le retour reste fermé au Host « localhost ».
+	closed := newTestGate(time.Now())
+	if code, reached := strictHostReq(closed, http.MethodGet, DesktopBrowserCallbackPath, loopbackName); code != http.StatusMisdirectedRequest || reached {
+		t.Errorf("sans capacité, Host localhost : %d (atteint=%v), attendu 421", code, reached)
+	}
+}

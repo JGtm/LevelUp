@@ -17,7 +17,8 @@
 //   - Une seule exception d'entrée, sous la capacité de connexion par le navigateur (AllowBrowserCallback) :
 //     le retour de Microsoft arrive dans le navigateur par défaut, sans cookie, sur http://localhost:<port>.
 //     GET /auth/xbox/callback, et lui seul, passe sans cookie ET avec un Host « localhost » ou
-//     « 127.0.0.1 » du port lié ; il est protégé par le state à usage unique de la tentative.
+//     « 127.0.0.1 » du port lié ; il est protégé par le state à usage unique de la tentative. La porte
+//     de démarrage (StrictHost), qui reste devant le routeur, applique la même exemption.
 //
 // Le cookie n'est pas une session : sa valeur est une échéance signée (HMAC-SHA256 avec le secret de
 // session du fichier, lié au port), vérifiée sans état, valable 30 jours et renouvelée à chaque
@@ -192,19 +193,22 @@ func refuseForeignHost(w http.ResponseWriter, r *http.Request, authority string)
 	return true
 }
 
-// StrictHost n'accepte que l'autorité exacte authority dans l'en-tête Host (421 sinon). Elle enveloppe
+// StrictHost n'accepte que l'autorité exacte du garde dans l'en-tête Host (421 sinon). Elle enveloppe
 // la porte de démarrage du mode desktop, qui répond avant que le routeur (et son garde) existe : sans
 // elle, la page de démarrage serait servie à tout nom d'hôte (rebond DNS). Aucun cookie n'y est exigé :
 // la coquille charge cette page avant de l'avoir.
-func StrictHost(authority string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if refuseForeignHost(w, r, authority) {
-				return
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
+//
+// La porte reste devant le routeur pour toute la vie du serveur : ce contrôle doit donc ouvrir exactement
+// ce que Middleware ouvre, à savoir le retour de la connexion par le navigateur (isBrowserCallback),
+// qui arrive avec un Host « localhost:<port> ». Sans cette exemption, le retour est refusé ici avant
+// d'atteindre le garde du routeur, et la connexion par le navigateur n'aboutit jamais.
+func (g *DesktopGate) StrictHost(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !g.isBrowserCallback(r) && refuseForeignHost(w, r, g.authority) {
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // EnterHandler sert GET /desktop/enter?secret=… : 404 si l'entrée n'est pas configurée, 403 si le
