@@ -25,6 +25,7 @@ func TestSansLigne(t *testing.T) {
 	if racine == "" || id == "" || niveau == "" || chemin == "" || sortie == "" {
 		t.Skip("SL_RACINE, SL_FILM, SL_NIVEAU, SL_CARTE et SL_SORTIE requis")
 	}
+	refuserSortieSousData(t, sortie)
 	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		t.Fatal(err)

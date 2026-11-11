@@ -52,9 +52,7 @@ func TestFermetureCarte(t *testing.T) {
 	if racine == "" || liste == "" || chemin == "" || sortie == "" {
 		t.Skip("FERMETURE_RACINE, FERMETURE_FILMS, FERMETURE_CARTE et FERMETURE_SORTIE requis")
 	}
-	if sousData(sortie) {
-		t.Fatalf("sortie refusee : %s est sous un dossier data", sortie)
-	}
+	refuserSortieSousData(t, sortie)
 	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		t.Fatal(err)

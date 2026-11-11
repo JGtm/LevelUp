@@ -83,6 +83,15 @@ func sousData(chemin string) bool {
 	return false
 }
 
+// refuserSortieSousData arrete le test quand le fichier de sortie d un instrument tomberait sous un
+// dossier `data` (jamais d ecriture d un rapport dans les donnees).
+func refuserSortieSousData(t *testing.T, sortie string) {
+	t.Helper()
+	if sousData(sortie) {
+		t.Fatalf("sortie refusee : %s est sous un dossier data", sortie)
+	}
+}
+
 func TestDivergence(t *testing.T) {
 	cfg := config{racine: os.Getenv("DIVERGENCE_RACINE"), temoin: os.Getenv("DIVERGENCE_TEMOIN"), sortie: os.Getenv("DIVERGENCE_SORTIE")}
 	if chemin := os.Getenv("DIVERGENCE_CARTE"); chemin != "" {
@@ -96,9 +105,7 @@ func TestDivergence(t *testing.T) {
 	if cfg.racine == "" || cfg.temoin == "" || cfg.sortie == "" || liste == "" {
 		t.Skip("DIVERGENCE_RACINE, DIVERGENCE_FILMS, DIVERGENCE_TEMOIN et DIVERGENCE_SORTIE requis")
 	}
-	if sousData(cfg.sortie) {
-		t.Fatalf("sortie refusee : %s est sous un dossier data", cfg.sortie)
-	}
+	refuserSortieSousData(t, cfg.sortie)
 	films, err := lireLesFilms(liste)
 	if err != nil {
 		t.Fatal(err)

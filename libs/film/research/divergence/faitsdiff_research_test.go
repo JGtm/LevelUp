@@ -172,6 +172,7 @@ func TestFaitsDiff(t *testing.T) {
 	if a == "" || b == "" || ca == "" || cb == "" || sortie == "" {
 		t.Skip("FAITS_A, FAITS_CARTE_A, FAITS_B, FAITS_CARTE_B et FAITS_SORTIE requis")
 	}
+	refuserSortieSousData(t, sortie)
 	r := &rapporteur{ex: 8}
 	if v, err := strconv.Atoi(os.Getenv("FAITS_EXEMPLES")); err == nil {
 		r.ex = v
@@ -210,6 +211,7 @@ func TestFaitsFiltre(t *testing.T) {
 	if a == "" || b == "" || filtre == "" {
 		t.Skip("FAITS_A, FAITS_B, FAITS_FILTRE requis")
 	}
+	refuserSortieSousData(t, sortie)
 	canal := os.Getenv("FAITS_CANAL")
 	fa, fb := lireFaits(t, a, ca), lireFaits(t, b, cb)
 	var w strings.Builder

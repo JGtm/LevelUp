@@ -25,6 +25,7 @@ func TestDetailDesPaquets(t *testing.T) {
 	if racine == "" || id == "" || niveau == "" || chemin == "" || sortie == "" {
 		t.Skip("PAQUETS_RACINE, PAQUETS_FILM, PAQUETS_NIVEAU, PAQUETS_CARTE et PAQUETS_SORTIE requis")
 	}
+	refuserSortieSousData(t, sortie)
 	cat, err := profile.LoadMapQuantCatalog(chemin)
 	if err != nil {
 		t.Fatal(err)
