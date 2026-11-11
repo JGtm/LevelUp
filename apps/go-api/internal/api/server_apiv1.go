@@ -388,6 +388,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// Installation desktop à utilisateur unique : l'accord de mise en commun est posé d'office (ADR 0045 D-8).
 	deviceCodeCompletion := service.NewAuthCompletion(authStore, deviceCodeTokenGate).
 		WithLocalPoolGrant(cfg.Capabilities.PoolGrantedToLocalUser)
+	// Jeton écrit = le joueur entre dans le pool et sa première synchronisation part tout de
+	// suite (détachée de la requête : le re-scan et le cycle font du réseau).
+	if sched := d.autoSyncScheduler; sched != nil {
+		deviceCodeCompletion = deviceCodeCompletion.WithOnCredentialsWritten(func(ctx context.Context, xuid string) {
+			slog.InfoContext(ctx, "auth_completion: jeton écrit — entrée dans le pool et cycle d'auto-sync", "xuid", xuid)
+			go sched.OnCredentialsWritten(context.WithoutCancel(ctx))
+		})
+	}
 	var xboxLinkStrategy auth_platform.LinkStrategy
 	if cfg.AuthMode == "xbox" {
 		// PR 2.5b : daemonGetter retourne le daemon courant (capturé par closure).

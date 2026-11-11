@@ -72,7 +72,7 @@ Retry policies differ on purpose between services (`RetryProvider`, `RetryDiscov
 
 ## Requirements
 
-Go 1.26.10 (`go.mod`). Pure Go, no cgo. Third-party dependency: `golang.org/x/sync`
+Go 1.26.11 (`go.mod`). Pure Go, no cgo. Third-party dependency: `golang.org/x/sync`
 (`golang.org/x/time` is used by tests only). The services need valid Xbox / Halo tokens:
 `xblauth` performs the exchange chain, but you bring the Azure client and own the storage.
 

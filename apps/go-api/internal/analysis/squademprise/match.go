@@ -7,6 +7,7 @@ import (
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/equipmentusage"
 )
 
 // index — les lectures rangées par match, et le camp de chaque participant.
@@ -200,6 +201,11 @@ func tallyTiers(t *matchTally, c camp, rows []sessionusage.PadTierRow) {
 	for _, r := range rows {
 		res := tierResource(r.Tier)
 		if res == "" || r.Pickups <= 0 {
+			continue
+		}
+		// Un socle de bonus classé par erreur dans un niveau d'arme (lecture des socles) :
+		// le bonus est déjà compté par la ressource « bonus » (film), jamais comme une arme.
+		if equipmentusage.IsPowerupFamily(r.WeaponFamily) {
 			continue
 		}
 		us, who := c.side(r.XUID)

@@ -42,6 +42,11 @@ import (
 const (
 	// historyPageSize est le nombre de matchs demandés par page API.
 	historyPageSize = 25
+	// maxHistoryMatchesPerPass borne la profondeur d'un parcours de l'historique (mode full) :
+	// au-delà, la passe s'arrête avec un avertissement, sans ranger la fin d'historique. Très
+	// au-dessus du plus grand historique connu (7 000 matchs), le plus profond parcours réel
+	// reste donc complet.
+	maxHistoryMatchesPerPass = 50_000
 
 	// postsyncEventsBurstChunk / postsyncWeaponsBurstChunk : taille des lots des
 	// étapes film du post-sync (events / weapon kills).
@@ -239,6 +244,15 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 		if err := ctx.Err(); err != nil {
 			break
 		}
+		// Borne de sûreté du parcours en mode full : un historique entièrement connu se
+		// parcourt jusqu'à la page vide ; une API qui ne la rendrait jamais ne doit pas
+		// tenir la passe indéfiniment.
+		if start >= maxHistoryMatchesPerPass {
+			slog.WarnContext(ctx, "sync: parcours de l'historique arrêté à la borne de sûreté",
+				"gamertag", e.gamertag, "start", start, "max", maxHistoryMatchesPerPass)
+			result.AddWarning(fmt.Sprintf("historique parcouru jusqu'à start=%d sans page vide", start))
+			break
+		}
 
 		slog.DebugContext(ctx, "sync: requête historique API",
 			"gamertag", e.gamertag, "xuid", e.xuid, "start", start, "page_size", historyPageSize)
@@ -256,6 +270,7 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 		}
 		if len(entries) == 0 {
 			slog.DebugContext(ctx, "sync: fin historique (page vide)", "gamertag", e.gamertag, "start", start)
+			result.HistoryExhausted = true
 			break // fin de l'historique
 		}
 		slog.DebugContext(ctx, "sync: page reçue",
@@ -463,6 +478,19 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	slog.InfoContext(ctx, "sync: match_ids connus chargés", "gamertag", e.gamertag,
 		"known_count", len(knownSet.Known), "orphans_to_recover", len(knownSet.Recover))
 
+	// Rattrapage de l'historique : un delta s'arrête au premier match connu, donc une
+	// première synchronisation interrompue (plafond, fermeture du poste, page perdue)
+	// laisserait un trou définitif derrière les matchs déjà rangés. Tant que la fin de
+	// l'historique n'a pas été vue une fois (clé sync_meta), tout delta passe en mode
+	// full : les matchs connus sont sautés, les inconnus plus anciens sont rattrapés,
+	// le plafond MaxMatches borne chaque passe.
+	if isDelta && !historyComplete(ctx, playerDB) {
+		isDelta = false
+		mode = "full"
+		slog.InfoContext(ctx, "sync: historique incomplet — rattrapage en mode full",
+			"gamertag", e.gamertag, "known_count", len(knownSet.Known), "max_matches", opts.MaxMatches)
+	}
+
 	// ─── Client API ────────────────────────────────────────────────────────────
 	var client HaloClient
 	if e.customClient != nil {
@@ -634,6 +662,12 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 					"gamertag", e.gamertag, "err", roErr)
 			}
 		}
+	}
+
+	// Fin de l'historique vue en mode full, sans page perdue ni file incomplète : la clé
+	// est rangée et les passes suivantes redeviennent des deltas.
+	if !isDelta && result.HistoryExhausted && len(result.Errors) == 0 && drainErr == nil {
+		markHistoryComplete(ctx, playerDB, e.gamertag)
 	}
 
 	// ─── Pipeline post-sync ─────────────────────────────────────────────────────

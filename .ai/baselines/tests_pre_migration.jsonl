@@ -40057,10 +40057,10 @@
 {"Time":"2026-06-26T23:51:16.830888+02:00","Action":"output","Package":"levelup/go-api/internal/scheduler","Test":"TestRunOnce_PoolNil_AllSkipped","Output":"=== RUN   TestRunOnce_PoolNil_AllSkipped\n"}
 {"Time":"2026-06-26T23:51:16.832941+02:00","Action":"output","Package":"levelup/go-api/internal/scheduler","Test":"TestRunOnce_PoolNil_AllSkipped","Output":"--- PASS: TestRunOnce_PoolNil_AllSkipped (0.00s)\n"}
 {"Time":"2026-06-26T23:51:16.832941+02:00","Action":"pass","Package":"levelup/go-api/internal/scheduler","Test":"TestRunOnce_PoolNil_AllSkipped","Elapsed":0}
-{"Time":"2026-06-26T23:51:16.8350078+02:00","Action":"run","Package":"levelup/go-api/internal/scheduler","Test":"TestRunOnce_PlayerDBAbsent_Skipped"}
-{"Time":"2026-06-26T23:51:16.8350078+02:00","Action":"output","Package":"levelup/go-api/internal/scheduler","Test":"TestRunOnce_PlayerDBAbsent_Skipped","Output":"=== RUN   TestRunOnce_PlayerDBAbsent_Skipped\n"}
-{"Time":"2026-06-26T23:51:16.8365382+02:00","Action":"output","Package":"levelup/go-api/internal/scheduler","Test":"TestRunOnce_PlayerDBAbsent_Skipped","Output":"--- PASS: TestRunOnce_PlayerDBAbsent_Skipped (0.00s)\n"}
-{"Time":"2026-06-26T23:51:16.8365382+02:00","Action":"pass","Package":"levelup/go-api/internal/scheduler","Test":"TestRunOnce_PlayerDBAbsent_Skipped","Elapsed":0}
+{"Time":"2026-06-26T23:51:16.8350078+02:00","Action":"run","Package":"levelup/go-api/internal/scheduler","Test":"TestRunOnce_PlayerDBAbsent_FirstSyncRuns"}
+{"Time":"2026-06-26T23:51:16.8350078+02:00","Action":"output","Package":"levelup/go-api/internal/scheduler","Test":"TestRunOnce_PlayerDBAbsent_FirstSyncRuns","Output":"=== RUN   TestRunOnce_PlayerDBAbsent_FirstSyncRuns\n"}
+{"Time":"2026-06-26T23:51:16.8365382+02:00","Action":"output","Package":"levelup/go-api/internal/scheduler","Test":"TestRunOnce_PlayerDBAbsent_FirstSyncRuns","Output":"--- PASS: TestRunOnce_PlayerDBAbsent_FirstSyncRuns (0.00s)\n"}
+{"Time":"2026-06-26T23:51:16.8365382+02:00","Action":"pass","Package":"levelup/go-api/internal/scheduler","Test":"TestRunOnce_PlayerDBAbsent_FirstSyncRuns","Elapsed":0}
 {"Time":"2026-06-26T23:51:16.8365382+02:00","Action":"run","Package":"levelup/go-api/internal/scheduler","Test":"TestRunOnce_ActivityChecker_SkipsActivePlayer"}
 {"Time":"2026-06-26T23:51:16.8365382+02:00","Action":"output","Package":"levelup/go-api/internal/scheduler","Test":"TestRunOnce_ActivityChecker_SkipsActivePlayer","Output":"=== RUN   TestRunOnce_ActivityChecker_SkipsActivePlayer\n"}
 {"Time":"2026-06-26T23:51:16.8386115+02:00","Action":"output","Package":"levelup/go-api/internal/scheduler","Test":"TestRunOnce_ActivityChecker_SkipsActivePlayer","Output":"--- PASS: TestRunOnce_ActivityChecker_SkipsActivePlayer (0.00s)\n"}

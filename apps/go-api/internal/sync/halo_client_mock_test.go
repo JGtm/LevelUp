@@ -74,18 +74,27 @@ type highlightChunkResponse struct {
 	err     error
 }
 
-// GetMatchHistory retourne la liste de matchs configurée ou une erreur simulée.
+// GetMatchHistory retourne la page demandée de la liste configurée (ou une erreur simulée),
+// comme l'API : au-delà de la liste, une page vide — c'est elle qui termine un parcours en
+// mode full (rattrapage de l'historique), sans quoi le moteur tournerait sur la même page.
 func (m *mockHaloClient) GetMatchHistory(
 	_ context.Context,
 	player, _ string,
-	_, _ int,
+	start, count int,
 ) ([]MatchHistoryEntry, error) {
 	m.callsGetHistory.Add(1)
 	m.lastHistoryPlayer.Store(player)
 	if m.getHistoryErr != nil {
 		return nil, m.getHistoryErr
 	}
-	return m.history, nil
+	if start < 0 || start >= len(m.history) {
+		return nil, nil
+	}
+	end := start + count
+	if count <= 0 || end > len(m.history) {
+		end = len(m.history)
+	}
+	return m.history[start:end], nil
 }
 
 // GetMatchStats retourne le corps JSON configuré pour le match donné.

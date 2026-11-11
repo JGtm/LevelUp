@@ -143,6 +143,23 @@ func TestBuild_MatchParMatchEtProduction(t *testing.T) {
 	}
 }
 
+// Un socle de bonus classé par erreur dans un niveau d'arme (surbouclier au sol) ne devient
+// jamais une arme de râtelier : le bonus est compté par la ressource « bonus » seulement.
+func TestBuild_BonusMalClasseHorsDesArmes(t *testing.T) {
+	in := entreeUnMatch()
+	in.Film.PadTiers = append(in.Film.PadTiers, tier("m1", "P", domain.PadTierGround, os, 2))
+	b := Build(in)
+	for _, o := range b.Objects {
+		if o.Resource == domain.EmpriseResourceRack && o.Key == os {
+			t.Fatalf("le surbouclier apparaît comme arme de râtelier : %+v", o)
+		}
+	}
+	m := b.Matches[0]
+	if len(m.Resources) != 3 || m.Resources[2].Taken != (domain.SquadEmpriseCount{Us: 1}) {
+		t.Errorf("ressources du match = %+v, attendu râtelier inchangé à 1/0", m.Resources)
+	}
+}
+
 // TestBuild_SansFilm_SeuleLaFeuille — D10 : sans film, seuls les frags aux armes spéciales.
 func TestBuild_SansFilm_SeuleLaFeuille(t *testing.T) {
 	in := entreeUnMatch()

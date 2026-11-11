@@ -11,6 +11,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - **Game icons for grenades and abilities** — the grenade and ability thumbnails of the replay are now extracted from the game's own interface atlases, at the same paths. The resource pack changes: a single download for the desktop application. The unused `static/abilities-assets` folder is removed.
 
+## [8.1.2] - 2026-11-11
+
+### Fixed
+- **Interrupted first sync no longer leaves a permanent gap** — a delta sync stops at the first known match, so a first sync cut short (shutdown, lost page, cap) left the older history unreachable. The engine now records the end of history per player (`sync_meta.history_complete_at`, written when a full-mode pass receives an empty page with no error); until it is recorded, every delta runs in full mode, skipping known matches and fetching the older ones, bounded by `MaxMatches` per pass.
+- **Auto-sync dead until restart when no token resolved at boot** — the token pool was `nil` without a credential (or when every exchange failed, as during a Halo services outage), so the scheduler skipped every player until the next start. The pool is now created empty (`PoolOptions.AllowEmpty`) and filled by the periodic re-scan; a successful sign-in (device code or browser) re-scans the store at once and runs a sync cycle (`AuthCompletion.WithOnCredentialsWritten`).
+- **Player without a database skipped forever by the scheduler** — a missing player database was a skip reason ("initial sync never run"); the desktop application never called the initial sync, so a player who signed in after boot stayed on "Sync in progress" (issue #192). The scheduler now runs the first sync itself; the engine creates the database.
+- **Squad performance per session read the main player's score only** — `session_timeline[].squad_perf` is now the per-session average of each match's squad performance (members with a score, same rule as `attachSquadPerformance`), and is omitted instead of `0` when no score exists.
+- **Power-up pad counted as a rack weapon** — a bonus pad tiered as a ground pad entered the `rack` resource under its family key; `tallyTiers` now skips power-up families (`equipmentusage.IsPowerupFamily`).
+
+### Changed
+- **"Cumulative engagement gap" and "Cumulative damage balance" hidden** on Squad, Sessions and Time series behind one constant (`CUMULATIVE_GAP_CHARTS_SHOWN`), components and tests kept, pending a redesign.
+- **Objective evenings note** no longer appends the frequency sentence; **Microsoft notice** in the footer drops its introduction (`common.footer.microsoft_notice_intro` removed).
+
+### Security
+- **Go 1.26.11** — standard library fix for `net/http` (GO-2026-6859, reachable according to `govulncheck`); `go.mod`, `go.work`, the bricks and the build image move together.
+
 ## [8.1.1] - 2026-11-09
 
 ### Fixed

@@ -92,7 +92,7 @@ list is refused with `decfilm.ErrUnknownMapBounds`. The optional map props and s
 
 ## Requirements
 
-- Go 1.26.10 (`go.mod`).
+- Go 1.26.11 (`go.mod`).
 - No cgo to build or to use it: `CGO_ENABLED=0 go build ./...` and `go vet ./...` pass, no production
   package links C code. A few tests import `libs/himap`, which reaches the cgo `ooz` decoder through
   `libs/gamefiles`; running them needs `CGO_ENABLED=1` and a C++ compiler (see the `libs/gamefiles`

@@ -1,5 +1,14 @@
 ## What's new
 
+**v8.1.2 — Every match gets synced, and the Windows app starts syncing on its own**
+
+- **Your whole history is fetched** — a first sync that stopped early (the app closed, a page lost on the way) left the older matches behind for good. The app now keeps going back through your history until it reaches the end, then returns to quick syncs.
+- **The Windows app syncs right after you sign in** — a player who signed in after the app had started was never synced until the next start, and the home page kept saying "Sync in progress". The first sync now starts within the minute.
+- **Squad performance per session** — the bar now reads the squad's performance of each match (the average of the members who have a score), as the match history table does, instead of your own score only; a session without any score has no bar instead of a zero.
+- **Power-ups out of the rack weapons** — an overshield no longer appears under its technical name among the rack weapons of "Resource control, match by match".
+- **Two charts set aside** — "Cumulative engagement gap" and "Cumulative damage balance" are hidden on Squad, Sessions and Time series while their format is reconsidered.
+- **Shorter texts** — the note under a short objective evening no longer counts the previous ones, and the Microsoft notice in the footer stands alone.
+
 **v8.1.1 — Scores settle after an update, and a shorter download page**
 
 - **Scores are no longer recalculated at every start** — after an update changes a score formula, a match the rating cannot resolve could restart the recalculation at each start. It now completes once. That match gets no new score.

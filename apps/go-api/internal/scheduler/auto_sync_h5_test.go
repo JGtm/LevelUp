@@ -63,9 +63,9 @@ func (r *stubDeltaRunner) RunDelta(context.Context, domain.SyncOptions) (domain.
 	return domain.SyncResult{MatchesInserted: 3}, nil
 }
 
-// Les titres live-only n'ont pas de player DB → la précondition os.Stat doit être
-// court-circuitée (sinon le joueur h5 serait skippé à vie). Le titre Infinite, lui,
-// reste soumis au contrôle (DB absente → skip), servant de contrôle négatif.
+// Les titres live-only n'ont pas de player DB et passent la précondition ; depuis le
+// rattrapage de l'historique, une base joueur absente sur Infinite passe aussi (le moteur
+// la crée et joue la première synchronisation en mode full).
 func TestCheckSyncPreconditions_LiveTitleSkipsPlayerDBCheck(t *testing.T) {
 	s := newH5Scheduler(t)
 	ctx := context.Background()
@@ -76,11 +76,8 @@ func TestCheckSyncPreconditions_LiveTitleSkipsPlayerDBCheck(t *testing.T) {
 	}
 
 	reason, ok = s.checkSyncPreconditions(ctx, domain.PlayerSummary{Gamertag: "JGtm", XUID: "x", TitleSlug: "halo_infinite"})
-	if ok {
-		t.Fatal("infinite : précondition devrait skip (player DB absente), got ok=true")
-	}
-	if reason == "" {
-		t.Error("infinite : raison de skip vide")
+	if !ok {
+		t.Fatalf("infinite : une base joueur absente ne saute plus le joueur (première synchronisation), got skip=%q", reason)
 	}
 }
 

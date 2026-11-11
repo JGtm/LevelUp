@@ -11,6 +11,22 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 ### Modifié
 - **Icônes du jeu pour les grenades et les capacités** — les vignettes de grenades et de capacités du rejeu sont désormais extraites des atlas d'interface du jeu, aux mêmes chemins. Le paquet de ressources change : un téléchargement unique pour l'application de bureau. Le dossier inutilisé `static/abilities-assets` est supprimé.
 
+## [8.1.2] - 2026-11-11
+
+### Corrigé
+- **Une première synchronisation interrompue ne laisse plus de trou définitif** — un delta s'arrête au premier match connu : une première synchronisation coupée en route (arrêt, page perdue, plafond) rendait l'historique plus ancien inaccessible. Le moteur range désormais la fin de l'historique par joueur (`sync_meta.history_complete_at`, écrite quand une passe en mode full reçoit une page vide sans erreur) ; tant qu'elle n'est pas rangée, tout delta se joue en full : les matchs connus sont sautés, les plus anciens rattrapés, `MaxMatches` borne chaque passe.
+- **Auto-sync mort jusqu'au redémarrage sans jeton résolu au démarrage** — le pool de jetons était `nil` sans credential (ou quand tous les échanges échouaient, comme pendant une panne des services Halo) : l'ordonnanceur sautait tous les joueurs jusqu'au démarrage suivant. Le pool est créé vide (`PoolOptions.AllowEmpty`) et rempli par le re-scan périodique ; une connexion aboutie (code d'appareil ou navigateur) relit le magasin tout de suite et joue un cycle (`AuthCompletion.WithOnCredentialsWritten`).
+- **Joueur sans base sauté à jamais par l'ordonnanceur** — une base joueur absente était un motif de saut (« sync initiale jamais effectuée ») ; l'application de bureau n'appelait jamais la synchronisation initiale, un joueur connecté après le démarrage restait sur « Synchronisation en cours » (issue #192). L'ordonnanceur joue désormais la première synchronisation lui-même ; le moteur crée la base.
+- **La performance d'escouade par session lisait la seule note du joueur principal** — `session_timeline[].squad_perf` est la moyenne par session de la performance d'escouade de chaque match (membres notés, même règle qu'`attachSquadPerformance`), omise plutôt que `0` sans aucune note.
+- **Socle de bonus compté comme arme de râtelier** — un socle de bonus classé au sol entrait dans la ressource `rack` sous sa clé de famille ; `tallyTiers` saute les familles de bonus (`equipmentusage.IsPowerupFamily`).
+
+### Modifié
+- **« Écart d'engagement cumulé » et « Balance des dégâts cumulée » masqués** sur l'Escouade, les Sessions et les Séries temporelles derrière une constante unique (`CUMULATIVE_GAP_CHARTS_SHOWN`), composants et tests conservés, en attendant une refonte.
+- **La note des soirées à objectif** ne porte plus la phrase de fréquence ; **la mention Microsoft** du pied de page perd son introduction (clé `common.footer.microsoft_notice_intro` retirée).
+
+### Sécurité
+- **Go 1.26.11** — correctif de la bibliothèque standard pour `net/http` (GO-2026-6859, atteint selon `govulncheck`) ; `go.mod`, `go.work`, les briques et l'image de build montent ensemble.
+
 ## [8.1.1] - 2026-11-09
 
 ### Corrigé

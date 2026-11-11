@@ -59,12 +59,15 @@ func initAccountsPool(st *bootState) {
 		autoSyncPool = buildAutoSyncPool(ctx, cfg, tokenProvider)
 	}
 	gate.setStep(ctx, bootStepServices)
-	if autoSyncPool != nil {
-		slog.Info("auto_sync: pool initialisé", "size", autoSyncPool.Size())
-	} else {
-		slog.Warn("auto_sync: pool non initialisé — aucun credential découvert",
+	switch {
+	case autoSyncPool == nil:
+		slog.Error("auto_sync: pool non initialisé — découverte ou création en échec, auto-sync inactif jusqu'au redémarrage")
+	case autoSyncPool.Size() == 0:
+		slog.Warn("auto_sync: pool vide — aucun jeton résolu au démarrage, il se remplira à la connexion d'un joueur ou au re-scan",
 			"hint", "authentifier un joueur (SSO Xbox) ou lancer `go run ./cmd/token-capture/ <GT>`",
 		)
+	default:
+		slog.Info("auto_sync: pool initialisé", "size", autoSyncPool.Size())
 	}
 	st.autoSyncPool = autoSyncPool
 }
@@ -255,15 +258,16 @@ func buildAutoSyncPool(
 		slog.Error("auto_sync: pool discovery échoué", "err", err)
 		return nil
 	}
-	if len(sources) == 0 {
-		return nil // log Warn fait par le caller
-	}
-
+	// Aucune source, ou aucune qui se résout (services Halo indisponibles) : le pool est
+	// créé VIDE et se remplit à chaud (re-scan périodique, connexion d'un joueur). Un pool nil
+	// condamnait l'auto-sync jusqu'au redémarrage : un joueur qui se connectait après le
+	// démarrage n'était jamais synchronisé (constaté sur l'application de bureau).
 	resolver := pool.NewResolverWithCallbacks(tokenProvider, 0, poolCallbacks(cfg, multiUserStore)) // 0 = default TTL ~3h30
 	p, err := pool.NewPool(ctx, resolver, sources, pool.PoolOptions{
 		MaxSize:     0, // 0 = tous les sources découverts
 		PerTokenRPS: 5, // Option 2 audit 2026-05-21 : aligné sur le sync manuel
 		//                 (validé en multi-tokens réel : 0 × 429 à 5N RPS)
+		AllowEmpty: true,
 	})
 	if err != nil {
 		slog.Error("auto_sync: pool creation échouée", "err", err)

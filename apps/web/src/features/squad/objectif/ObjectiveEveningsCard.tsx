@@ -88,7 +88,7 @@ export function ObjectiveEveningsCard({ history, familyLabel, locale, t }: Props
   )
 
   if (view.kind === 'belowMinimum') {
-    return <EveningsPlaceholderCard notice={t.evenings.belowMinimum(view.matches, view.below, view.withObjective)} t={t} />
+    return <EveningsPlaceholderCard notice={t.evenings.belowMinimum(view.matches)} t={t} />
   }
   if (view.kind === 'noHistory') {
     const c = view.current

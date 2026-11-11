@@ -28737,7 +28737,6 @@ components:
           type: integer
       required:
         - session_label
-        - squad_perf
         - match_count
         - wins
         - losses

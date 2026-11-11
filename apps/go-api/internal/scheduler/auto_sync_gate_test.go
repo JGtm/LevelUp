@@ -153,6 +153,10 @@ func TestRunOnce_WarnsStaleGateClaim(t *testing.T) {
 	repoRoot := t.TempDir()
 	p := &fakePool{hasPlayerMap: map[string]bool{}, size: 0}
 	s := newSchedulerForTest(t, repoRoot, p)
+	// La base joueur absente ne saute plus le joueur : un runner factice évite le moteur réel.
+	s.RunnerFactory = func(_ context.Context, _, _ string) scheduler.DeltaRunner {
+		return &mockRunner{result: domain.SyncResult{}}
+	}
 	s.SyncGate = &fakeGate{snapshot: gosync.GateSnapshotData{
 		StaleCount: 1,
 		Claims: []gosync.GateClaimInfo{

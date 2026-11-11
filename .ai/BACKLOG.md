@@ -33,6 +33,36 @@ Le 2026-11-09, elle a échoué deux fois sans test rouge alors que le code n'ét
 
 ---
 
+### [bureau/auth] Connexion Microsoft dans le navigateur : « redirect_uri » refusé par Azure
+
+**Constaté le 2026-11-11** (poste de l'utilisateur, v8.1.1). Le serveur construit `http://localhost:<port lié>/auth/xbox/callback` (`handlers/auth_browser_login.go`, port mémorisé dans `desktop/port`, 53891 sur ce poste). Microsoft répond `invalid_request … redirect_uri … not valid` : l'enregistrement Azure du client `e1cb35ab` ne porte pas `http://localhost/auth/xbox/callback` sous la plateforme « Applications mobiles et de bureau » (seule plateforme où le port est libre ; sous « Web » le port doit correspondre exactement). Rien dans le code ni dans les bases copiées ne change cette adresse. **Réglé côté Azure le 2026-11-11 par l'utilisateur** (adresse ajoutée à l'inscription) ; reste à vérifier depuis l'application une fois les services Halo revenus. Le code d'appareil avait échoué le même jour pour une autre raison : `settings.svc.halowaypoint.com/spartan-token` en dépassement de délai (service de jetons Halo injoignable ce jour-là, voir l'entrée du journal).
+
+---
+
+### [bureau/auth] Le code d'appareil avale la cause de l'échec
+
+**Constaté le 2026-11-11.** « Impossible d'obtenir un accès Halo. Veuillez réessayer. » couvre toute erreur de l'échange XBL → XSTS → Spartan (`handlers/auth.go`, `pollDeviceFlow`, code `halo_exchange_error`), y compris un dépassement de délai des services Halo. Distinguer au moins « services Halo injoignables, réessayer plus tard » d'un refus du compte (pas de profil Xbox, mauvais compte).
+
+---
+
+### [accueil] « Synchronisation en cours » affiché dès qu'il n'y a aucun match, qu'une synchronisation tourne ou non
+
+**Constaté le 2026-11-11** (issue #192). `features/home/HomePage.tsx` montre l'écran de première synchronisation sur `total_matches == 0`, sans lire l'état réel du sync. Un joueur dont aucune synchronisation ne part (cas corrigé par la 8.1.2) lisait ce message pendant une heure. Lire l'état du sync (job actif, dernière erreur) et le dire : « en cours », « en attente de connexion », « échec : … ».
+
+---
+
+### [bureau/retours] « App version : unknown » dans les signalements envoyés depuis l'application
+
+**Constaté le 2026-11-11** (issue #192). Le tiroir de signalement ne connaît pas la version de l'application de bureau ; le navigateur se reconnaît à `Edg/` dans l'agent. Renseigner la version depuis `/bootstrap` ou la coquille.
+
+---
+
+### [branches] `release/v8.1.2` à renommer `release/v8.2.0`
+
+**Décision de l'utilisateur du 2026-11-11.** Le correctif `hotfix/v8.1.2` (depuis `main`) prend le numéro 8.1.2 ; le travail des autres sessions sur `release/v8.1.2` (et ses branches `feat/812-*`) passera en 8.2.0. Renommer la branche et le plan `.ai/PLAN_V8_1_2_2026-11-09.md` quand ces sessions auront rendu la main ; rebaser sur `main` après la fusion du correctif.
+
+---
+
 ### [ui/navigation] Barre latérale trop haute pour la fenêtre : pas de grosse barre de défilement
 
 **Demande de l'utilisateur (2026-11-09).** Quand la fenêtre est trop petite pour tous les menus de premier niveau, la barre latérale (`components/shell/SidebarPanel.tsx:77`, et `SidebarRail.tsx:333` une fois repliée) affiche la barre de défilement standard, jugée très laide. Chercher d'abord une alternative qui évite le défilement (regrouper les entrées, réduire leur espacement selon la hauteur, reléguer les dernières dans un menu « Plus »). Si le défilement reste nécessaire : barre discrète, placée à gauche. Tenir le mode replié en icônes et tous les thèmes (tokens de couleur). **Effort : S à M.**

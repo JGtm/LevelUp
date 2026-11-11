@@ -12,8 +12,6 @@ package scheduler_test
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -76,15 +74,14 @@ func TestConsecutiveZeroInserts_PreservedOnSkipped(t *testing.T) {
 		t.Fatalf("setup: ConsecutiveZeroInserts = %d, want 2", got)
 	}
 
-	// Cycle 3 : player DB retirée → outcome=skipped, compteur préservé à 2.
+	// Cycle 3 : watcher actif sur le joueur → outcome=skipped, compteur préservé à 2.
 	//
-	// Le déclencheur de skip était « joueur retiré du pool » jusqu'au 2026-09-16 : depuis la
-	// décision D1, un profil suivi sans token propre est synchronisé PAR le pool et n'est
-	// plus sauté. Ce qui est testé ici — la préservation du compteur sur outcome=skipped —
-	// est inchangé ; seul le moyen de provoquer le skip a changé.
-	if err := os.Remove(filepath.Join(repoRoot, "data", "titles", "halo_infinite", "players", "Player1", "stats.duckdb")); err != nil {
-		t.Fatalf("suppression de la player DB: %v", err)
-	}
+	// Le déclencheur de skip a changé deux fois : « joueur retiré du pool » jusqu'au 2026-09-16
+	// (D1 : un profil suivi sans token propre est synchronisé PAR le pool), puis « player DB
+	// retirée » jusqu'au rattrapage de l'historique (une base absente est une première
+	// synchronisation, plus un saut). Ce qui est testé ici — la préservation du compteur sur
+	// outcome=skipped — est inchangé ; seul le moyen de provoquer le skip a changé.
+	s.ActivityChecker = &fakeActivityChecker{activeGamertags: map[string]bool{"Player1": true}}
 	s.RunOnce(context.Background())
 	snap := s.Snapshot()
 	if snap.Players[0].Outcome != "skipped" {

@@ -45,7 +45,8 @@ func TestBuildSquadSessionTimeline_GroupAndAggregate(t *testing.T) {
 		// duplicate by match_id (autre teammate sur même match) — doit être dédupliqué
 		{MatchID: "m1", StartTime: t1, SessionLabel: &sessA, Outcome: domain.OutcomeWin, PerformanceScore: &p1, TeamMMR: 1500},
 	}
-	pts := buildSquadSessionTimeline(matches)
+	perf := map[string]float64{"m1": 70, "m2": 50, "m3": 90}
+	pts := buildSquadSessionTimeline(matches, perf)
 	if len(pts) != 2 {
 		t.Fatalf("expected 2 sessions, got %d", len(pts))
 	}
@@ -60,8 +61,8 @@ func TestBuildSquadSessionTimeline_GroupAndAggregate(t *testing.T) {
 	if a.Wins != 1 || a.Losses != 1 {
 		t.Errorf("A: expected wins=1 losses=1, got wins=%d losses=%d", a.Wins, a.Losses)
 	}
-	if a.SquadPerf != 60.0 {
-		t.Errorf("A: expected squad_perf=60 ((70+50)/2), got %f", a.SquadPerf)
+	if a.SquadPerf == nil || *a.SquadPerf != 60.0 {
+		t.Errorf("A: expected squad_perf=60 ((70+50)/2), got %v", a.SquadPerf)
 	}
 	if a.WinRate == nil || *a.WinRate != 0.5 {
 		t.Errorf("A: expected win_rate=0.5, got %v", a.WinRate)
@@ -70,8 +71,8 @@ func TestBuildSquadSessionTimeline_GroupAndAggregate(t *testing.T) {
 		t.Errorf("A: expected team_mmr_avg=1490, got %v", a.TeamMMRAvg)
 	}
 	b := pts[1]
-	if b.MatchCount != 1 || b.SquadPerf != 90.0 {
-		t.Errorf("B: expected match_count=1 squad_perf=90, got %d / %f", b.MatchCount, b.SquadPerf)
+	if b.MatchCount != 1 || b.SquadPerf == nil || *b.SquadPerf != 90.0 {
+		t.Errorf("B: expected match_count=1 squad_perf=90, got %d / %v", b.MatchCount, b.SquadPerf)
 	}
 }
 
@@ -79,23 +80,66 @@ func TestBuildSquadSessionTimeline_NoSessionLabelBucket(t *testing.T) {
 	matches := []domain.SquadMatchRow{
 		{MatchID: "m1", StartTime: time.Now(), SessionLabel: nil, Outcome: domain.OutcomeWin, TeamMMR: 1500},
 	}
-	pts := buildSquadSessionTimeline(matches)
+	pts := buildSquadSessionTimeline(matches, nil)
 	if len(pts) != 1 || pts[0].SessionLabel != "(no session)" {
 		t.Errorf("expected single bucket '(no session)', got %v", pts)
 	}
 }
 
-func TestBuildSquadSessionTimeline_PerfNilLeavesZero(t *testing.T) {
+func TestBuildSquadSessionTimeline_PerfAbsentLeavesNil(t *testing.T) {
 	sessA := "A"
 	matches := []domain.SquadMatchRow{
 		{MatchID: "m1", StartTime: time.Now(), SessionLabel: &sessA, Outcome: domain.OutcomeWin, PerformanceScore: nil},
 	}
-	pts := buildSquadSessionTimeline(matches)
+	pts := buildSquadSessionTimeline(matches, map[string]float64{})
 	if len(pts) != 1 {
 		t.Fatalf("expected 1 point, got %d", len(pts))
 	}
-	if pts[0].SquadPerf != 0 {
-		t.Errorf("expected squad_perf=0 when no score, got %f", pts[0].SquadPerf)
+	if pts[0].SquadPerf != nil {
+		t.Errorf("sans aucun score la note est absente, pas un zéro ; got %v", *pts[0].SquadPerf)
+	}
+}
+
+// La barre d'une session lit la performance d'ESCOUADE du match (moyenne des membres notés),
+// pas la seule note du joueur principal portée par la ligne.
+func TestBuildSquadSessionTimeline_UsesSquadPerfNotMainPerf(t *testing.T) {
+	sessA := "A"
+	main := 90.0
+	matches := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: time.Now(), SessionLabel: &sessA, Outcome: domain.OutcomeWin, PerformanceScore: &main},
+	}
+	pts := buildSquadSessionTimeline(matches, map[string]float64{"m1": 60})
+	if len(pts) != 1 || pts[0].SquadPerf == nil || *pts[0].SquadPerf != 60 {
+		t.Fatalf("expected squad_perf=60 (escouade), got %+v", pts)
+	}
+}
+
+// squadPerfByMatch : la note du joueur principal vient de ses lignes, celle des coéquipiers de
+// leurs propres lignes ; un match sans aucun score n'a pas d'entrée.
+func TestSquadPerfByMatch_AveragesMembers(t *testing.T) {
+	main, friend := 80.0, 40.0
+	rows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: time.Now(), PerformanceScore: &main},
+		{MatchID: "m2", StartTime: time.Now()},
+	}
+	now := time.Now()
+	svc := &TeammatesService{gamertag: "main", titleSlug: "halo_infinite", squadLoader: &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"friend1": {
+				rowWithStats("m1", now, canonical.OutcomeWin, 10, 5, 2, 600, 0.5, friend),
+				rowWithStats("m9", now, canonical.OutcomeWin, 10, 5, 2, 600, 0.5, friend), // hors périmètre : ignoré
+			},
+		},
+	}}
+	got := svc.squadPerfByMatch(context.Background(), rows, []string{"friend1", "main"})
+	if v, ok := got["m1"]; !ok || v != 60 {
+		t.Errorf("m1 : attendu 60 ((80+40)/2), got %v (%v)", v, ok)
+	}
+	if _, ok := got["m2"]; ok {
+		t.Errorf("m2 sans aucun score ne doit pas avoir d'entrée")
+	}
+	if _, ok := got["m9"]; ok {
+		t.Errorf("m9 hors des lignes de l'escouade ne doit pas apparaître")
 	}
 }
 

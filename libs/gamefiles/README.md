@@ -68,7 +68,7 @@ for _, f := range m.Files("sbsp") { // "" lists every entry
 
 ## Requirements
 
-Go 1.26.10 (`go.mod`). `himodule` and `ooz` need cgo (`CGO_ENABLED=1`) and a C++ compiler
+Go 1.26.11 (`go.mod`). `himodule` and `ooz` need cgo (`CGO_ENABLED=1`) and a C++ compiler
 (developed with mingw-w64 g++; the build flags include `-msse4.1`). `mapvar` and `hinavmesh`
 are pure Go. To use the module you need a local Halo Infinite installation; to build it you do
 not.

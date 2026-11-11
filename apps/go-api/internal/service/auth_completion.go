@@ -78,6 +78,8 @@ type AuthCompletion struct {
 	// grantLocalPool : un jeton sans décision de mise en commun reçoit l'accord de
 	// l'utilisateur local (WithLocalPoolGrant).
 	grantLocalPool bool
+	// onWritten : appelé après chaque écriture réussie dans le magasin (WithOnCredentialsWritten).
+	onWritten func(ctx context.Context, xuid string)
 
 	mu      sync.Mutex
 	pending map[string]pendingCredentials
@@ -103,6 +105,22 @@ func (c *AuthCompletion) WithLocalPoolGrant(enabled bool) *AuthCompletion {
 	return c
 }
 
+// WithOnCredentialsWritten enregistre le rappel joué après chaque écriture réussie d'un jeton
+// (connexion aboutie, jetons en attente rejoués à la création du profil). Sert à faire entrer
+// le jeton dans le pool de l'auto-sync et à lancer la première synchronisation sans attendre
+// le re-scan périodique. Le rappel reçoit le contexte de la requête : à lui de se détacher.
+func (c *AuthCompletion) WithOnCredentialsWritten(fn func(ctx context.Context, xuid string)) *AuthCompletion {
+	c.onWritten = fn
+	return c
+}
+
+// notifyWritten joue le rappel d'écriture, s'il existe.
+func (c *AuthCompletion) notifyWritten(ctx context.Context, xuid string) {
+	if c.onWritten != nil {
+		c.onWritten(ctx, xuid)
+	}
+}
+
 // Persist écrit sans condition les jetons de la tentative. Rend false, sans erreur,
 // quand la tentative ne porte rien à écrire (ni jeton de rafraîchissement ni XSTS) ou
 // quand le magasin est absent. Un échec d'écriture est rendu en erreur, sans journal :
@@ -119,6 +137,7 @@ func (c *AuthCompletion) Persist(ctx context.Context, attempt *auth.Attempt) (bo
 	}
 	slog.InfoContext(ctx, "auth_completion: jetons persistés", "xuid", attempt.XUID, "gamertag", attempt.Gamertag,
 		"refresh_token", tokens.OAuthRefreshToken != "", "xsts_expires_at", attempt.XSTSRTAExpiresAt)
+	c.notifyWritten(ctx, attempt.XUID)
 	return true, nil
 }
 
@@ -140,6 +159,7 @@ func (c *AuthCompletion) CompleteForTrackedProfile(ctx context.Context, attempt 
 		}
 		slog.InfoContext(ctx, "auth_completion: jetons persistés pour un profil suivi",
 			"xuid", attempt.XUID, "gamertag", attempt.Gamertag, "refresh_token", tokens.OAuthRefreshToken != "")
+		c.notifyWritten(ctx, attempt.XUID)
 		return true
 	}
 	c.stash(tokens)
@@ -166,6 +186,7 @@ func (c *AuthCompletion) SeedCredentials(ctx context.Context, xuid string) {
 	}
 	slog.InfoContext(ctx, "auth_completion: jetons en attente persistés à la création du profil",
 		"xuid", xuid, "gamertag", tokens.Gamertag, "refresh_token", tokens.OAuthRefreshToken != "")
+	c.notifyWritten(ctx, xuid)
 }
 
 // tokensFromAttempt construit les UserTokens d'une tentative, ou nil quand elle ne porte

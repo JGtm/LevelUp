@@ -169,33 +169,45 @@ func TestRunOnce_PoolNil_AllSkipped(t *testing.T) {
 // pool ne doit plus jamais apparaître.
 //
 // La précondition elle-même est exercée directement (player DB présente, joueur hors pool)
-// par TestPreconditions_JoueurHorsPoolAccepte, dans le test interne du paquet.
+// par TestPreconditions_JoueurHorsPoolAccepte, dans le test interne du paquet. Depuis le
+// rattrapage de l'historique, une base joueur absente ne saute plus le joueur non plus : le
+// joueur hors pool d'une fixture vide est donc synchronisé.
 func TestRunOnce_PlayerNotInPool_PlusDeSkipPool(t *testing.T) {
 	p := &fakePool{hasPlayerMap: map[string]bool{}, size: 1}
 	s := newSchedulerForTest(t, t.TempDir(), p)
+	s.RunnerFactory = func(_ context.Context, _, _ string) scheduler.DeltaRunner {
+		return &mockRunner{result: domain.SyncResult{MatchesInserted: 1}}
+	}
 	res := s.RunOnce(context.Background())
-	if res.Skipped != 1 {
-		t.Errorf("Skipped = %d, want 1 (player DB absente)", res.Skipped)
+	if res.Synced != 1 || res.Skipped != 0 {
+		t.Errorf("Synced/Skipped = %d/%d, want 1/0 (ni le pool ni la base absente ne sautent le joueur)", res.Synced, res.Skipped)
 	}
 
 	snap := s.Snapshot()
-	if snap.Players[0].Outcome != "skipped" || snap.Players[0].Reason == "" {
-		t.Errorf("snapshot player = %+v, want skipped+reason non vide", snap.Players[0])
-	}
 	if strings.Contains(snap.Players[0].Reason, "absent du pool") {
 		t.Errorf("raison = %q — un profil suivi sans token propre ne doit plus être sauté "+
 			"pour cette raison (D1, plan 2026-09-16)", snap.Players[0].Reason)
 	}
 }
 
-func TestRunOnce_PlayerDBAbsent_Skipped(t *testing.T) {
-	// Player1 est dans le pool mais sa DB n'existe pas → skip.
+// Une base joueur absente est une PREMIÈRE synchronisation, pas un saut : le moteur crée la
+// base et joue la passe en mode full (profil connecté après le démarrage, application de
+// bureau sans assistant).
+func TestRunOnce_PlayerDBAbsent_FirstSyncRuns(t *testing.T) {
 	repoRoot := t.TempDir()
 	p := &fakePool{hasPlayerMap: map[string]bool{"Player1": true}, size: 1}
 	s := newSchedulerForTest(t, repoRoot, p)
+	called := false
+	s.RunnerFactory = func(_ context.Context, _, _ string) scheduler.DeltaRunner {
+		called = true
+		return &mockRunner{result: domain.SyncResult{MatchesInserted: 5}}
+	}
 	res := s.RunOnce(context.Background())
-	if res.Skipped != 1 {
-		t.Errorf("Skipped = %d, want 1 (DB absente)", res.Skipped)
+	if !called {
+		t.Fatal("le runner doit être appelé malgré la base joueur absente (première synchronisation)")
+	}
+	if res.Synced != 1 || res.Skipped != 0 {
+		t.Errorf("Synced/Skipped = %d/%d, want 1/0", res.Synced, res.Skipped)
 	}
 
 	snap := s.Snapshot()
@@ -426,7 +438,8 @@ func TestRunOnce_MultiPlayer_MixedOutcomes(t *testing.T) {
 
 	touchPlayerDB(t, repoRoot, "Alice")
 	touchPlayerDB(t, repoRoot, "Bob")
-	// Carol n'a pas de DB → skip
+	// Carol n'a pas de DB : ce n'est plus un saut (première synchronisation) ; le saut vient du
+	// watcher actif sur elle.
 
 	p := &fakePool{
 		hasPlayerMap: map[string]bool{"Alice": true, "Bob": true}, // Carol absente du pool
@@ -437,7 +450,8 @@ func TestRunOnce_MultiPlayer_MixedOutcomes(t *testing.T) {
 	cfg := &config.AppConfig{RepoRoot: repoRoot, DBProfilesPath: dbProfilesPath, AppSettingsPath: settingsPath}
 	s := scheduler.New(cfg, store, &fakeProvider{}, p)
 
-	// Alice → OK, Bob → fail. Carol → skip (pas dans le pool).
+	// Alice → OK, Bob → fail. Carol → skip (watcher actif).
+	s.ActivityChecker = &fakeActivityChecker{activeGamertags: map[string]bool{"Carol": true}}
 	s.RunnerFactory = func(_ context.Context, gt, _ string) scheduler.DeltaRunner {
 		if gt == "Alice" {
 			return &mockRunner{result: domain.SyncResult{MatchesInserted: 5}}
@@ -456,7 +470,7 @@ func TestRunOnce_MultiPlayer_MixedOutcomes(t *testing.T) {
 		t.Errorf("Failed = %d, want 1 (Bob)", res.Failed)
 	}
 	if res.Skipped != 1 {
-		t.Errorf("Skipped = %d, want 1 (Carol pas dans le pool)", res.Skipped)
+		t.Errorf("Skipped = %d, want 1 (Carol, watcher actif)", res.Skipped)
 	}
 
 	snap := s.Snapshot()

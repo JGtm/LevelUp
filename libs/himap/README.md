@@ -76,7 +76,7 @@ The anchors above are placeholders; real ones come from your own map data.
 
 ## Requirements
 
-Go 1.26.10 (`go.mod`). cgo is required, transitively: `libs/gamefiles/himodule` links the C++
+Go 1.26.11 (`go.mod`). cgo is required, transitively: `libs/gamefiles/himodule` links the C++
 `ooz` decoder, so you need `CGO_ENABLED=1` and a C++ compiler (see the `libs/gamefiles`
 README). A local Halo Infinite installation is needed to use the module, not to build it.
 

@@ -116,9 +116,9 @@ describe('AppFooter', () => {
   it('rend les libellés en anglais quand locale=en', () => {
     useAppShellStore.setState({ locale: 'en' })
     renderWithProviders(<AppFooter />)
-    // Le texte imposé reste en anglais mot pour mot ; l'introduction et le lien suivent la langue.
+    // Le texte imposé reste en anglais mot pour mot, sans phrase d'introduction ; le lien suit la langue.
     expect(screen.getByTestId('microsoft-notice')).toHaveTextContent(MICROSOFT_CONTENT_NOTICE)
-    expect(screen.getByText(/Notice required by Microsoft/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Notice required by Microsoft/i)).toBeNull()
     expect(hrefOf(/Microsoft Game Content Usage Rules/i)).toBe(XBOX_GAME_CONTENT_RULES_URL)
     expect(screen.getByRole('link', { name: /Source code/i })).toBeInTheDocument()
   })

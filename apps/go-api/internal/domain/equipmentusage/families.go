@@ -73,6 +73,11 @@ const (
 	EquipmentFamilyPowerupOvershield = usageFamilyPowerupOvershield
 )
 
+// IsPowerupFamily : vrai pour les deux familles de bonus (camouflage, surbouclier).
+func IsPowerupFamily(family string) bool {
+	return family == usageFamilyPowerupCamo || family == usageFamilyPowerupOvershield
+}
+
 // EquipmentFamilyWall — la clé du MUR, seul déployable qui engendre une pièce : la famille dont le
 // côté « utilisé » se lit sur les poses. Exportée pour que les tests de l'agrégat de session
 // nomment le mur sans réécrire son orthographe.

@@ -230,14 +230,12 @@ describe('Onglet Usages — état vide', () => {
     expect(blocks()).toEqual(['lives'])
   })
 })
-describe('« Balance des dégâts cumulée » — déplacée vers le Résumé (2026-09-22)', () => {
-  it('le Résumé la monte, juste après « Assistances »', () => {
+describe('« Balance des dégâts cumulée » — masquée (2026-11-11, format à repenser)', () => {
+  it('le Résumé ne la monte plus, « Assistances » reste', () => {
     renderSummary(page())
     const titres = screen.getAllByTestId('chart-card').map((n) => n.textContent ?? '')
-    const assistances = titres.findIndex((x) => x.includes('Assistances'))
-    const balance = titres.findIndex((x) => x.includes('timeseries.progression.net_lives_title'))
-    expect(assistances).toBeGreaterThanOrEqual(0)
-    expect(balance).toBe(assistances + 1)
+    expect(titres.findIndex((x) => x.includes('Assistances'))).toBeGreaterThanOrEqual(0)
+    expect(titres.some((x) => x.includes('timeseries.progression.net_lives_title'))).toBe(false)
   })
 
   it('la Progression ne la monte plus', () => {
