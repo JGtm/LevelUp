@@ -94,7 +94,7 @@ La branche est rebasée sur `release/v8.1.2` avant chaque étape.
 
 **Plus de PR par étape (utilisateur, 2026-11-11 : « arrête de passer par des PR, je suis dev solo »).** L'étape 1 est
 partie par la PR #191 (fusionnée, `91727b0c30`). À partir de l'étape 2, les commits sont poussés directement
-sur `release/v8.1.2` une fois le gate local passé ; la CI de la release se lit après le push.
+sur `release/v8.2.0` (ancien nom `release/v8.1.2`, renommée le 2026-11-11) une fois le gate local passé ; la CI de la release se lit après le push.
 
 **Changement de numéro (relais d'une autre session, 2026-11-11, décision de l'utilisateur).** Un hotfix prend le numéro
 8.1.2 depuis `main` (PR #193) ; le travail de `release/v8.1.2` passe en 8.2.0 (branche renommée par son pilote,
