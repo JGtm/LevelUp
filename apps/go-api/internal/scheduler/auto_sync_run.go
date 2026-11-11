@@ -455,13 +455,13 @@ func (s *AutoSyncScheduler) checkSyncPreconditions(ctx context.Context, p domain
 	if livesync.HandlesTitle(slug) {
 		return "", true
 	}
+	// Une base joueur absente n'est plus un motif de saut : le moteur la crée et, sans fin
+	// d'historique rangée, joue la passe en mode full (première synchronisation). Un profil
+	// connecté après le démarrage se synchronise donc sans passer par l'assistant.
 	dbPath := s.cfg.PathResolver().PlayerDBPath(slug, p.Gamertag)
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		slog.InfoContext(ctx, "auto_sync: DB joueur absente, joueur ignoré",
-			"gamertag", p.Gamertag, "title_slug", slug, "db_path", dbPath,
-			"hint", "lancer la sync initiale via POST /sync/initial pour créer la DB",
-		)
-		return "DB joueur absente — sync initiale jamais effectuée", false
+		slog.InfoContext(ctx, "auto_sync: DB joueur absente — première synchronisation",
+			"gamertag", p.Gamertag, "title_slug", slug, "db_path", dbPath)
 	}
 	return "", true
 }

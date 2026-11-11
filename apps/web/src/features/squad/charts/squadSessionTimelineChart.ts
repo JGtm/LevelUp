@@ -43,10 +43,15 @@ export function buildSquadSessionTimelineOption(
   if (points.length === 0) return { backgroundColor: CHART_BG }
 
   const labels = points.map((p) => p.session_label)
-  const perfData = points.map((p) => ({
-    value: round1(p.squad_perf),
-    itemStyle: { color: resolveToken(perfSessionScale(p.squad_perf)), opacity: 0.85 },
-  }))
+  // Une session sans aucun score n'a pas de barre (jamais un zéro qui se lirait comme une note).
+  const perfData = points.map((p) =>
+    p.squad_perf == null
+      ? { value: null }
+      : {
+          value: round1(p.squad_perf),
+          itemStyle: { color: resolveToken(perfSessionScale(p.squad_perf)), opacity: 0.85 },
+        },
+  )
   const hasWinRate = points.some((p) => p.win_rate !== undefined)
   const hasMmr = points.some((p) => p.team_mmr_avg !== undefined)
   const winRateData = points.map((p) =>

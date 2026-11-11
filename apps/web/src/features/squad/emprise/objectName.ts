@@ -12,8 +12,13 @@ import type { SquadEmpriseObject } from '@/lib/api/types'
 import { RESOURCE_POWERUP, RESOURCE_VEHICLE } from './emprise.logic'
 import { vehicleFamilyName } from './vehicles.logic'
 
+/** Les deux familles de bonus : nommées par l'i18n d'usage quelle que soit la ressource qui les porte. */
+const POWERUP_FAMILIES: ReadonlySet<string> = new Set(['powerup_camo', 'powerup_overshield'])
+
 export function empriseObjectName(o: SquadEmpriseObject, usageText: UsageText, unknownVehicle: string): string {
-  if (o.resource === RESOURCE_POWERUP) return equipmentFamilyLabel(o.key, usageText)
+  // Un bonus se nomme par sa famille même si le serveur l'a rangé ailleurs (socle mal classé) :
+  // jamais sa clé technique à l'écran.
+  if (o.resource === RESOURCE_POWERUP || POWERUP_FAMILIES.has(o.key)) return equipmentFamilyLabel(o.key, usageText)
   if (o.resource === RESOURCE_VEHICLE) return vehicleFamilyName(o.key, o.label, unknownVehicle)
   return o.label || o.key
 }

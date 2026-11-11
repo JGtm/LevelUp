@@ -1,6 +1,6 @@
 module github.com/JGtm/LevelUp/libs/haloapi
 
-go 1.26.10
+go 1.26.11
 
 require (
 	golang.org/x/sync v0.24.0

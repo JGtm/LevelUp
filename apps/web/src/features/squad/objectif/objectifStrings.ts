@@ -70,7 +70,7 @@ export interface ObjectifText {
     pointTip: (role: string, evening: string, value: string, median: string | null) => string
     bandTip: (evening: string, wins: number, matches: number, mix: string) => string
     eveningOf: (date: string) => string
-    belowMinimum: (n: number, below: number, withObjective: number) => ObjectifNotice
+    belowMinimum: (n: number) => ObjectifNotice
     noHistory: (take: string, defend: string, hold: string, wins: number, matches: number) => ObjectifNotice
   }
 }
@@ -158,14 +158,9 @@ const FR: ObjectifText = {
     bandTip: (evening, wins, matches, mix) =>
       `${evening}\n${wins} victoire${wins > 1 ? 's' : ''} sur ${matches} matchs à objectif (${mix})`,
     eveningOf: (date) => `soirée du ${date}`,
-    belowMinimum: (n, below, withObjective) => ({
+    belowMinimum: (n) => ({
       title: `${n > 1 ? `${n} matchs` : `${n} match`} à objectif ce soir`,
-      description:
-        'Sous le minimum de trois, la soirée n’a pas de point et la carte se masque.' +
-        (withObjective > 0
-          ? ` C’est fréquent : ${below} soirées de la composition sur ${withObjective} avec de ` +
-            'l’objectif n’en ont qu’un ou deux.'
-          : ''),
+      description: 'Sous le minimum de trois, la soirée n’a pas de point et la carte se masque.',
     }),
     noHistory: (take, defend, hold, wins, matches) => ({
       title: 'Première soirée à objectif de la composition (trois matchs ou plus)',
@@ -243,14 +238,9 @@ const EN: ObjectifText = {
     bandTip: (evening, wins, matches, mix) =>
       `${evening}\n${wins} win${wins > 1 ? 's' : ''} out of ${matches} objective matches (${mix})`,
     eveningOf: (date) => `evening of ${date}`,
-    belowMinimum: (n, below, withObjective) => ({
+    belowMinimum: (n) => ({
       title: `${n > 1 ? `${n} objective matches` : `${n} objective match`} tonight`,
-      description:
-        'Below the minimum of three, the evening has no point and the card is hidden.' +
-        (withObjective > 0
-          ? ` It is common: ${below} of the line-up’s ${withObjective} evenings with objective ` +
-            'play have only one or two.'
-          : ''),
+      description: 'Below the minimum of three, the evening has no point and the card is hidden.',
     }),
     noHistory: (take, defend, hold, wins, matches) => ({
       title: 'First objective evening of the line-up (three matches or more)',

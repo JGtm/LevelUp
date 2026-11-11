@@ -87,6 +87,10 @@ type SyncResult struct {
 	FinishedAt       time.Time
 	DurationSeconds  float64
 	PostSync         *PostSyncResult
+	// HistoryExhausted : la pagination a reçu une page vide, c'est-à-dire la fin de
+	// l'historique du joueur chez le titre. Faux quand la boucle s'est arrêtée avant
+	// (plafond, annulation, page perdue, match connu en delta).
+	HistoryExhausted bool
 }
 
 // Status retourne "success", "partial_success" ou "failure".

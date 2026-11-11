@@ -48,6 +48,7 @@ import { SessionParticipationBars } from './SessionParticipationBars'
 import { SessionNetScoreArea } from './SessionNetScoreArea'
 import { SessionFdaGapCumulative } from './SessionFdaGapCumulative'
 import { SessionNetLivesCumulative } from './SessionNetLivesCumulative'
+import { CUMULATIVE_GAP_CHARTS_SHOWN } from '@/lib/charts/cumulativeGapChartsVisibility'
 import { SessionIntensityProfile } from './SessionIntensityProfile'
 import { SessionMmrDumbbell } from './SessionMmrDumbbell'
 import { SessionPerfTrend } from './SessionPerfTrend'
@@ -181,13 +182,13 @@ export function useSessionChartSections({
   )
   // Balance des dégâts cumulée (P3) — self-gate capability `damage_taken` (null
   // sur un titre sans dégâts subis, ex. Halo 5). Pleine largeur comme fdaGap.
-  const netLives = (
+  const netLives = CUMULATIVE_GAP_CHARTS_SHOWN ? (
     <SessionNetLivesCumulative
       title={t('session.detail.chart_net_lives_title')}
       matches={matches}
       yDomain={scale?.netLives}
     />
-  )
+  ) : null
   // Intensité — profil médian des parts de frags par phase + enveloppe P25–P75
   // (pleine largeur). Phases calculées côté Go (payload intensity_rows) ; le
   // composant retombe sur l'état vide si aucune manche exploitable.
@@ -218,12 +219,14 @@ export function useSessionChartSections({
         yDomain={scale?.engagement}
       />
       {/* Écart d'engagement cumulé (P4) — cumul du résidu pondéré par la durée. */}
-      <SessionEngagementCumulative
-        title={t('session.detail.chart_engagement_cumulative_title')}
-        matches={matches}
-        entry={entry}
-        yDomain={scale?.engagementGap}
-      />
+      {CUMULATIVE_GAP_CHARTS_SHOWN && (
+        <SessionEngagementCumulative
+          title={t('session.detail.chart_engagement_cumulative_title')}
+          matches={matches}
+          entry={entry}
+          yDomain={scale?.engagementGap}
+        />
+      )}
     </FeatureGate>
   )
   const ocdr = (
@@ -286,7 +289,7 @@ export function useSessionChartSections({
       </div>
     ),
     fda_gap: fdaGap,
-    net_lives: netLives,
+    ...(netLives ? { net_lives: netLives } : {}),
     intensity,
     first_blood: firstBlood,
     participation,

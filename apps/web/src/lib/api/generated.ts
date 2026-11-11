@@ -13031,7 +13031,7 @@ export interface components {
             match_count: number;
             session_label: string;
             /** Format: double */
-            squad_perf: number;
+            squad_perf?: number;
             /** Format: double */
             team_mmr_avg?: number;
             /** Format: double */

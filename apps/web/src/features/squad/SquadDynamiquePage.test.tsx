@@ -145,30 +145,29 @@ describe('SquadDynamiquePage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('monte « Écart cumulé au FDA attendu » sur la rangée de « Balance des dégâts cumulée »', () => {
+  it('monte « Écart cumulé au FDA attendu » seul sur sa rangée : « Balance des dégâts cumulée » est masquée (2026-11-11)', () => {
     setTitleCaps(['expected_stats', 'damage_taken'])
     mockSquadContext({ confirmedGamertags: [], pageData: PERF_PAGE, playerSlug: 'main' })
     renderWithProviders(<SquadDynamiquePage />)
     const row = screen.getByTestId('squad-cumulative-row')
     const fda = screen.getByText('Écart cumulé au FDA attendu')
-    const balance = screen.getByText('Balance des dégâts cumulée')
     expect(row).toContainElement(fda)
-    expect(row).toContainElement(balance)
-    // Deux colonnes sur desktop, même rangée (grid stretch → même hauteur).
-    expect(row.className).toContain('md:grid-cols-2')
-    expect(row.children).toHaveLength(2)
+    expect(screen.queryByText('Balance des dégâts cumulée')).toBeNull()
+    expect(row.children).toHaveLength(1)
+    // La survivante prend toute la rangée.
+    expect(row.className).toContain('md:[&>*:only-child]:col-span-2')
   })
 
-  it('sans expected_stats : la carte FDA est absente, la balance reste seule sur sa rangée', () => {
+  it('sans expected_stats : la rangée cumulée est vide (balance masquée, FDA absente)', () => {
     setTitleCaps(['damage_taken'])
     mockSquadContext({ confirmedGamertags: [], pageData: PERF_PAGE, playerSlug: 'main' })
     renderWithProviders(<SquadDynamiquePage />)
     expect(screen.queryByText('Écart cumulé au FDA attendu')).toBeNull()
+    expect(screen.queryByText('Balance des dégâts cumulée')).toBeNull()
     const row = screen.getByTestId('squad-cumulative-row')
-    expect(row).toContainElement(screen.getByText('Balance des dégâts cumulée'))
-    expect(row.children).toHaveLength(1)
-    // La survivante prend toute la rangée.
-    expect(row.className).toContain('md:[&>*:only-child]:col-span-2')
+    expect(row.children).toHaveLength(0)
+    // Une rangée vide ne laisse pas de trou.
+    expect(row.className).toContain('empty:hidden')
   })
 
   it('passe a l engagement les match_ids du scope en ordre chronologique ASC, cap 15', () => {

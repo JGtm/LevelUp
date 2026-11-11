@@ -2,8 +2,8 @@
  * MicrosoftNotice — mention imposée par les règles d'usage du contenu de jeu de Microsoft.
  *
  * Le texte de la mention reste en anglais dans toutes les langues (libellé imposé, repris mot
- * pour mot de `lib/appLinks`) ; seules la phrase d'introduction et l'étiquette du lien vers les
- * règles suivent la langue de l'interface. Rendue dans le pied de page et sur la page de
+ * pour mot de `lib/appLinks`), sans phrase d'introduction ; seule l'étiquette du lien vers les
+ * règles suit la langue de l'interface. Rendue dans le pied de page et sur la page de
  * téléchargement : visible de quiconque voit le contenu.
  */
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -19,7 +19,6 @@ export function MicrosoftNotice() {
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   return (
     <p data-testid="microsoft-notice">
-      <span>{t('common.footer.microsoft_notice_intro')} </span>
       <span lang="en">{MICROSOFT_CONTENT_NOTICE}</span>{' '}
       <a href={XBOX_GAME_CONTENT_RULES_URL} target="_blank" rel="noopener noreferrer" className={LINK_CLASS}>
         {t('common.footer.microsoft_rules_link')}

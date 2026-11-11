@@ -13,6 +13,9 @@ describe('empriseObjectName — le nom d’un objet de l’Emprise', () => {
   it('un bonus est nommé par le web (famille du résumé d’usage)', () => {
     expect(empriseObjectName(obj('powerup', 'powerup_camo'), t, 'Inconnu')).toBe(t.metricCamo)
   })
+  it('un bonus rangé par le serveur dans une autre ressource garde son nom, jamais sa clé technique', () => {
+    expect(empriseObjectName(obj('rack', 'powerup_overshield'), t, 'Inconnu')).toBe(t.metricOvershield)
+  })
   it('un véhicule par son libellé de titre, sinon par sa clé, et l’inconnu par le texte fourni', () => {
     expect(empriseObjectName(obj('vehicle', 'turret', 'Tourelle'), t, 'Inconnu')).toBe('Tourelle')
     expect(empriseObjectName(obj('vehicle', 'unknown'), t, 'Inconnu')).toBe('Inconnu')
