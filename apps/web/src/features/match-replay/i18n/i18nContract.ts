@@ -10,6 +10,8 @@
  * LA PARITÉ FR/EN RESTE TENUE PAR LE TYPAGE : `Record<ReplayLocale, ReplayText>` dans
  * `i18n.ts` refuse toute langue à laquelle il manque un champ.
  */
+import type { FeedFilterId } from '../model/feedFilterLogic'
+import type { ObjectiveFeedStat } from '../model/objectiveFeedLogic'
 import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
 
 /**
@@ -180,8 +182,35 @@ export interface ReplayText {
    */
   keySpace: string
   /** Kill feed synchronisé sur l'horloge du rejeu. */
-  killFeedTitle: string
+  /**
+   * Le MENU DU FIL : le titre est le bouton qui ouvre la liste des filtres, et porte le nom du
+   * filtre actif. Un libellé par filtre (`FeedFilterId`) ; le typage refuse un filtre sans nom.
+   */
+  feedFilterLabel: Record<FeedFilterId, string>
+  /** Nom accessible du menu de filtre du fil (déclencheur et liste). */
+  feedFilterMenuLabel: string
+  /** Séparateur du menu, avant les familles proposées en plus de Tout / Éliminations / Objectifs. */
+  feedFilterMoreHeading: string
+  /**
+   * LES DEUX ÉTATS VIDES DU FIL, DEUX TEXTES (le bloc vide en pointillé du projet). « Rien à cet
+   * instant » : le match a des lignes pour ce filtre, mais plus tard dans la lecture. « Aucune
+   * entrée pour ce match » : aucune ligne de ce filtre dans tout le match — ne pas les confondre,
+   * le premier se résout en lisant, le second jamais.
+   */
   killFeedEmpty: string
+  killFeedEmptyHint: string
+  feedEmptyMatch: string
+  feedEmptyMatchHint: string
+  /**
+   * L'action d'une ligne d'OBJECTIF, après le nom du joueur : un libellé pour CHAQUE action de la
+   * liste fermée du décodeur (`ObjectiveFeedStat`, tenue par un garde-rail qui relit `named.go`).
+   * Strongholds se dit « bases » ; aucun possessif, aucun anglicisme.
+   */
+  feedObjectiveAction: Record<ObjectiveFeedStat, string>
+  /** La prise d'une arme ou d'un bonus sur un socle : `name` est le nom de ce qui a été pris. */
+  feedPickupAction: (name: string) => string
+  /** La montée à bord d'un véhicule : `name` est le nom du véhicule. */
+  feedVehicleAction: (name: string) => string
   killFeedUnknownWeapon: string
   killFeedNoAssistHint: string
   killFeedAssistHint: string

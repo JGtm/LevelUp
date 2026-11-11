@@ -11,6 +11,7 @@
  * recopier une troisième fois chacun de leur côté.
  */
 import { DEFAULT_EXPORT_FORMAT_ID, EXPORT_FORMAT_IDS, type ExportFormatId } from '../export/exportFormats'
+import { DEFAULT_FEED_FILTER, FEED_FILTER_IDS, type FeedFilterId } from '../model/feedFilterLogic'
 
 /** Lit un booléen persisté ; absent ou storage indisponible -> `fallback`. */
 export function readStoredFlag(key: string, fallback: boolean): boolean {
@@ -113,4 +114,23 @@ export function readExportFormat(): ExportFormatId {
 /** Retient le format choisi. Stockage refusé : le choix vaut pour la session, sans erreur. */
 export function persistExportFormat(id: ExportFormatId): void {
   persistPreference(EXPORT_FORMAT_KEY, id)
+}
+
+/**
+ * LE FILTRE DU FIL DES ÉLIMINATIONS (D-4 du plan « maquettes du rejeu ») : retenu dans CE
+ * navigateur, jamais côté serveur. La lecture est VALIDÉE contre la liste fermée des filtres :
+ * absente, inconnue ou écrite par une autre version -> Tout. Le filtre mémorisé qu'un match ne
+ * propose pas (Objectifs sur un Assassin) n'est pas effacé : il se lit tel quel, et c'est
+ * `effectiveFeedFilter` qui retombe sur Tout pour ce match seulement.
+ */
+export const FEED_FILTER_KEY = 'replay-feed-filter'
+
+/** Le filtre du fil retenu, ou Tout. */
+export function readFeedFilter(): FeedFilterId {
+  return readStoredChoice(FEED_FILTER_KEY, DEFAULT_FEED_FILTER, FEED_FILTER_IDS)
+}
+
+/** Retient le filtre choisi. Stockage refusé : le choix vaut pour la session, sans erreur. */
+export function persistFeedFilter(id: FeedFilterId): void {
+  persistPreference(FEED_FILTER_KEY, id)
 }

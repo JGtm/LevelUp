@@ -140,6 +140,12 @@ export interface ReplayFeedEntry {
    * le portent — ce fichier n'en produit jamais.
    */
   presence?: import('./presenceFeed').PresenceEvent | null
+  /**
+   * Ligne d'ÉVÉNEMENT (objectif, prise d'arme ou de bonus, montée en véhicule), assemblée par
+   * `withEventLines` pour la seule liste AFFICHÉE. Ce fichier n'en produit jamais : `model.feed`
+   * n'en porte aucune, la frise et les effets de mort ne les voient donc pas.
+   */
+  event?: import('./feedEventLines').FeedEventLine | null
 }
 
 /**

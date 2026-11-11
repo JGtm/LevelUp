@@ -458,6 +458,7 @@ function ReplayPage() {
                   locale={locale}
                   marks={marks}
                   zoneOf={killerZoneOf}
+                  doc={data}
                 />
               </div>
             </div>
