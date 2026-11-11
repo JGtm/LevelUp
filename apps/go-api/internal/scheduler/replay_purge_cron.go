@@ -2,7 +2,7 @@
 // hors fenêtre de rétention (lot 6 v7.5).
 //
 // CE CRON SUPPRIME DES ARTEFACTS, JAMAIS DES FILMS. Les artefacts
-// (data/cache/replays/{title}/{short8}.json) se re-cuisent en une commande depuis le
+// (data/cache/replays/{title}/{short8}.json.gz) se re-cuisent en une commande depuis le
 // cache film (levelup backfill-replay) ; les films, eux, sont IRREMPLAÇABLES une fois
 // expirés côté serveur Halo — le cron ne touche ni film_chunks/ ni film_manifests/.
 //
@@ -29,13 +29,13 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -172,21 +172,22 @@ func purgeReplayArtifactsForTitle(
 	if derr != nil {
 		return 0, 0, 0, derr
 	}
+	// LA MARQUE DE DÉRIVATION N'EST PAS UN ARTEFACT (constat C6 de la revue A-R1).
+	// `<short8>.derived.json` vit dans le MÊME dossier : le prédicat de nom des artefacts
+	// (title.IsReplayArtifactFile) l'écarte, donc elle n'entre dans AUCUNE des trois catégories du
+	// bilan ; celle d'un artefact vivant se traite avec lui, plus bas. Seules les orphelines se
+	// retirent ici.
 	for _, e := range entries {
-		name := e.Name()
-		if e.IsDir() || !strings.HasSuffix(name, ".json") {
-			continue // on ne touche QUE des artefacts {short8}.json
+		if !e.IsDir() && replaybuild.EstMarqueDerivations(e.Name()) {
+			supprimerMarqueOrpheline(ctx, artifactsDir, e.Name())
 		}
-		// LA MARQUE DE DÉRIVATION N'EST PAS UN ARTEFACT (constat C6 de la revue A-R1).
-		// `<short8>.derived.json` vit dans le MÊME dossier et finit par `.json` : elle donnait
-		// `short = "<short8>.derived"`, absent du registre, donc `unknown++` — une ligne INFO à
-		// CHAQUE passage dès qu'une dérivation existait. Elle n'entre donc dans AUCUNE des trois
-		// catégories du bilan ; celle d'un artefact vivant se traite avec lui, plus bas.
-		if replaybuild.EstMarqueDerivations(name) {
-			supprimerMarqueOrpheline(ctx, artifactsDir, name)
-			continue
-		}
-		short := strings.TrimSuffix(name, ".json")
+	}
+	artefacts, lerr := replayartifact.List(artifactsDir)
+	if lerr != nil {
+		return 0, 0, 0, fmt.Errorf("listage des artefacts %s: %w", artifactsDir, lerr)
+	}
+	for _, a := range artefacts {
+		name, short := a.Name, a.Short
 		at, ok := dates[short]
 		if !ok || at.IsZero() {
 			unknown++ // indatable : on ne détruit pas ce qu'on ne sait pas dater
@@ -197,7 +198,7 @@ func purgeReplayArtifactsForTitle(
 			continue
 		}
 		chemin := filepath.Join(artifactsDir, name)
-		if rmErr := os.Remove(chemin); rmErr != nil {
+		if rmErr := replayartifact.Remove(chemin); rmErr != nil {
 			slog.WarnContext(ctx, "replay_purge_cron: suppression échouée",
 				"artifact", name, "err", rmErr)
 			continue
@@ -224,11 +225,11 @@ func purgeReplayArtifactsForTitle(
 	return purged, kept, unknown, nil
 }
 
-// contientUnArtefact dit si le dossier porte au moins un `{short8}.json` de PREMIER
-// NIVEAU. Les répertoires — dont `rasters/` — n'en sont pas.
+// contientUnArtefact dit si le dossier porte au moins un artefact de PREMIER NIVEAU
+// (title.IsReplayArtifactFile). Les répertoires — dont `rasters/` — n'en sont pas.
 func contientUnArtefact(entries []os.DirEntry) bool {
 	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+		if !e.IsDir() && titlePkg.IsReplayArtifactFile(e.Name()) {
 			return true
 		}
 	}
@@ -241,7 +242,7 @@ func contientUnArtefact(entries []os.DirEntry) bool {
 // artefacts n'ont pas encore été projetés), et toute autre erreur est un WARN — la purge
 // de l'artefact, elle, a déjà réussi, et la rejouer n'est pas possible.
 func supprimerSidecarRaster(ctx context.Context, artifactsDir, short string) {
-	path := filepath.Join(artifactsDir, titlePkg.SousDossierRasters, short+".json")
+	path := filepath.Join(artifactsDir, titlePkg.SousDossierRasters, short+titlePkg.ReplaySidecarExt)
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		slog.WarnContext(ctx, "replay_purge_cron: sidecar de raster non supprimé",
 			"sidecar", path, "err", err)
@@ -263,7 +264,7 @@ func supprimerSidecarRaster(ctx context.Context, artifactsDir, short string) {
 // vérifiable (« chacun tombe dans exactement une catégorie ») ne doit pas être diluée. Le
 // journal, lui, la nomme — un fichier supprimé ne part jamais en silence.
 func supprimerMarqueOrpheline(ctx context.Context, artifactsDir, name string) {
-	if _, err := os.Stat(filepath.Join(artifactsDir, replaybuild.ArtefactDeLaMarque(name))); err == nil {
+	if replayartifact.Exists(filepath.Join(artifactsDir, replaybuild.ArtefactDeLaMarque(name))) {
 		return // l'artefact est là : la marque le décrit toujours, elle partira avec lui
 	}
 	if err := os.Remove(filepath.Join(artifactsDir, name)); err != nil {

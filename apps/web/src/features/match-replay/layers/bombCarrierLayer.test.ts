@@ -83,7 +83,7 @@ describe('drawBombCarrier', () => {
   it('porteur sans position : la bombe est rendue LIBRE à sa DERNIÈRE position connue', () => {
     const { ctx, fill, arc } = makeCtx()
     const layer: BombCarrierInput = {
-      style: { ink: '#fff', outline: '#000', reducedMotion: true },
+      style: { ink: '#fff', outline: '#000', reducedMotion: true, frameMs: 100 },
       // Le porteur est localisable jusqu'à l'image 5, muet ensuite.
       posOf: (_x, f) => (f <= 5 ? { x: 50, y: 50 } : null),
     }
@@ -100,7 +100,7 @@ describe('drawBombCarrier', () => {
   it('porteur JAMAIS localisable : rien — la bombe n’a aucun canal de position propre', () => {
     const { ctx, fill } = makeCtx()
     const layer: BombCarrierInput = {
-      style: { ink: '#fff', outline: '#000', reducedMotion: true },
+      style: { ink: '#fff', outline: '#000', reducedMotion: true, frameMs: 100 },
       posOf: () => null,
     }
     drawBombCarrier(ctx, layer, [carry({ t0: 0, t1: 100 })], [], view, 10)
@@ -110,7 +110,7 @@ describe('drawBombCarrier', () => {
   it('MUTATION — le repli ne remonte JAMAIS avant le début du portage', () => {
     const { ctx, fill } = makeCtx()
     const layer: BombCarrierInput = {
-      style: { ink: '#fff', outline: '#000', reducedMotion: true },
+      style: { ink: '#fff', outline: '#000', reducedMotion: true, frameMs: 100 },
       // La seule position connue est AVANT t0 : elle appartient à la vie d'avant la prise.
       posOf: (_x, f) => (f < 40 ? { x: 50, y: 50 } : null),
     }
@@ -121,7 +121,7 @@ describe('drawBombCarrier', () => {
   it('dessine la bombe sur la position relue du porteur courant', () => {
     const { ctx, fill } = makeCtx()
     const layer: BombCarrierInput = {
-      style: { ink: '#fff', outline: '#000', reducedMotion: true },
+      style: { ink: '#fff', outline: '#000', reducedMotion: true, frameMs: 100 },
       posOf: () => ({ x: 50, y: 50 }),
     }
     drawBombCarrier(ctx, layer, [carry({ t0: 0, t1: 100 })], [], view, 10)
@@ -133,7 +133,7 @@ describe('drawBombCarrier', () => {
     const { ctx, fill } = makeCtx()
     const posOf = vi.fn(() => ({ x: 50, y: 50 }))
     const layer: BombCarrierInput = {
-      style: { ink: '#fff', outline: '#000', reducedMotion: true },
+      style: { ink: '#fff', outline: '#000', reducedMotion: true, frameMs: 100 },
       posOf,
     }
     drawBombCarrier(ctx, layer, [carry({ xuid: 'a', t0: 0, t1: 50 })], [], view, 120)
@@ -149,7 +149,7 @@ describe('drawBombCarrier', () => {
   it('PORTÉE ET HORS CADRE : la bombe est PLAQUÉE À LA MARGE, jamais projetée hors toile', () => {
     const { ctx, arc } = makeCtx()
     const layer: BombCarrierInput = {
-      style: { ink: '#fff', outline: '#000', reducedMotion: true },
+      style: { ink: '#fff', outline: '#000', reducedMotion: true, frameMs: 100 },
       // Monde (1000, 25) -> canvas brut (2000, 150) : très au-delà de la toile (200x200) sur
       // l'axe X seul, pour garder un test à un seul axe borné.
       posOf: () => ({ x: 1000, y: 25 }),
@@ -166,7 +166,7 @@ describe('drawBombCarrier', () => {
     // carte comme un socle d'arme, hors du périmètre tranché pour ce lot.
     const { ctx, arc } = makeCtx()
     const posOf = vi.fn(() => ({ x: 1000, y: 25 }))
-    const layer: BombCarrierInput = { style: { ink: '#fff', outline: '#000', reducedMotion: true }, posOf }
+    const layer: BombCarrierInput = { style: { ink: '#fff', outline: '#000', reducedMotion: true, frameMs: 100 }, posOf }
     drawBombCarrier(ctx, layer, [carry({ xuid: 'a', t0: 0, t1: 50 })], [], view, 120)
     const [cx] = arc.mock.calls[0] as number[]
     expect(cx).toBeCloseTo(2000, 5)

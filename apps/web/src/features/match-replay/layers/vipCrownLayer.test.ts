@@ -45,7 +45,7 @@ describe('drawVipCrown', () => {
     }
     return { ctx: ctx as unknown as CanvasRenderingContext2D, fills, raw: ctx }
   }
-  const style = (inkOf: (xuid: string) => string) => ({ inkOf, outline: 'fond', reducedMotion: true })
+  const style = (inkOf: (xuid: string) => string) => ({ inkOf, outline: 'fond', reducedMotion: true, frameMs: 100 })
 
   it('ne dessine pas un VIP non localisable (aucune position propre à inventer)', () => {
     const { ctx, raw } = recordingCtx()

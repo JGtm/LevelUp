@@ -28,6 +28,7 @@ import { BOMB_DETONATION_STAT } from './bombBlastFx'
 import { drawBombCarrier, type BombCarrierInput } from './bombCarrierLayer'
 import { useCarrierPosAt } from '../model/carrierPosition'
 import { type CanvasView } from '../model/replayView'
+import { durationFrameMs } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 interface UseReplayBombCarrierArgs {
@@ -83,8 +84,8 @@ export function useReplayBombCarrier({
   }, [doc])
 
   const layer = useMemo<BombCarrierInput>(
-    () => ({ style: { ink, outline, reducedMotion }, posOf }),
-    [ink, outline, reducedMotion, posOf],
+    () => ({ style: { ink, outline, reducedMotion, frameMs: durationFrameMs(doc) }, posOf }),
+    [ink, outline, reducedMotion, posOf, doc],
   )
 
   const paint = useCallback(

@@ -29,11 +29,10 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/platform/atomicfile"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
@@ -135,7 +134,7 @@ func installDemoArtifact(ctx context.Context, opts SeedDemoOptions, layout title
 		if c.from == dst {
 			return c.outcome
 		}
-		if err := copyArtifact(c.from, dst); err != nil {
+		if err := replayartifact.Copy(ctx, c.from, dst); err != nil {
 			slog.ErrorContext(ctx, "seed-demo: copie d'artefact de rejeu échouée", "err", err, "match_id", matchID)
 			continue
 		}
@@ -156,11 +155,11 @@ func installDemoArtifact(ctx context.Context, opts SeedDemoOptions, layout title
 // rejeu n'est pas servi.
 func keepStaleArtifact(ctx context.Context, candidates []string, dst, matchID string) string {
 	for _, c := range candidates {
-		if !fileExists(c) {
+		if !replayartifact.Exists(c) {
 			continue
 		}
 		if c != dst {
-			if err := copyArtifact(c, dst); err != nil {
+			if err := replayartifact.Copy(ctx, c, dst); err != nil {
 				slog.ErrorContext(ctx, "seed-demo: copie d'artefact périmé échouée", "err", err, "match_id", matchID)
 				continue
 			}
@@ -170,18 +169,6 @@ func keepStaleArtifact(ctx context.Context, candidates []string, dst, matchID st
 	}
 	slog.ErrorContext(ctx, "seed-demo: aucun artefact pour ce rejeu démo — non servi", "match_id", matchID)
 	return DemoReplayMissing
-}
-
-// copyArtifact copie un artefact de rejeu, atomiquement.
-func copyArtifact(src, dst string) error {
-	raw, err := os.ReadFile(src)
-	if err != nil {
-		return fmt.Errorf("lecture %s: %w", src, err)
-	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return err
-	}
-	return atomicfile.WriteFile(context.Background(), dst, raw, 0o644)
 }
 
 // embedDemoFilm copie le film `short` du cache source vers le magasin persistant des films de
@@ -243,7 +230,7 @@ func pruneDemoReplays(ctx context.Context, layout titlePkg.DemoLayout, films, sl
 		slog.ErrorContext(ctx, "seed-demo: dossier des artefacts démo illisible", "err", err)
 	}
 	for _, e := range entries {
-		short := strings.TrimSuffix(e.Name(), ".json")
+		short := titlePkg.ReplayArtifactStem(e.Name())
 		if e.IsDir() || keep[short] {
 			continue
 		}

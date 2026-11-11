@@ -29,6 +29,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/testutil"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
@@ -220,7 +221,7 @@ func l1ToutPres(publies [][2]float32, socles []replay.FlagSpawn) bool {
 }
 
 func l1LireArtefact(t *testing.T, chemin string) replay.ReplayDocument {
-	blob, err := os.ReadFile(chemin) //nolint:gosec // instrument, chemin du depot
+	blob, err := replayartifact.ReadBytes(chemin)
 	if err != nil {
 		t.Skipf("artefact absent : %v", err)
 	}
@@ -264,7 +265,7 @@ func l1ModulesDuCatalogue(t *testing.T, repoRoot string) map[string]string {
 // elles, le pont du statborg perd l'appariement par triplet et le calque perd des prises
 // (`noBridge`) — un ecart d'entree, pas de regle.
 func l1FeuilleDeLArtefact(t *testing.T, chemin string) port.MatchFacts {
-	blob, err := os.ReadFile(chemin) //nolint:gosec // instrument, chemin du depot
+	blob, err := replayartifact.ReadBytes(chemin)
 	if err != nil {
 		t.Fatal(err)
 	}

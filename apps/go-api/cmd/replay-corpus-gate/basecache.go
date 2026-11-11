@@ -43,7 +43,8 @@ package main
 //
 // # LE STOCKAGE
 //
-// `<parc>/data/cache/replay_corpus_gate_base/<sha>/<temoin>-<empreinte>.artefact.json`, `.filmfacts.bin` et
+// `<parc>/data/cache/replay_corpus_gate_base/<sha>/<temoin>-<empreinte>.artefact.json` (JSON brut, decompresse par la porte de
+// replaybuild ; somme et taille du meta portent sur ce JSON), `.filmfacts.bin` et
 // `.meta.json`. Les TROIS fichiers s'ecrivent par `atomicfile.WriteFileStrict` (temporaire du
 // meme dossier + fsync + rename), l'artefact, les faits du film, PUIS le meta : le meta est le
 // marqueur de validation. Un crash avant lui laisse des fichiers sans meta, ignores a la lecture.
@@ -83,6 +84,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/atomicfile"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/replaydiff"
 
@@ -244,6 +246,11 @@ func verifierSomme(chemin, sha string, octets int64) error {
 	if err != nil {
 		return err
 	}
+	return comparerSomme(somme, n, sha, octets)
+}
+
+// comparerSomme compare une somme et une taille mesurees a celles que le meta en dit.
+func comparerSomme(somme string, n int64, sha string, octets int64) error {
 	if n != octets {
 		return fmt.Errorf("taille %d, le meta dit %d", n, octets)
 	}
@@ -254,9 +261,15 @@ func verifierSomme(chemin, sha string, octets int64) error {
 }
 
 // verifierArtefactRange controle l'artefact contre son meta, et qu'il se decode en document
-// JSON (ce que la comparaison lira).
+// JSON (ce que la comparaison lira). La somme et la taille portent sur le JSON DECOMPRESSE,
+// lu par la porte de replaybuild : elles ne dependent pas de la forme de stockage.
 func verifierArtefactRange(chemin string, m metaCacheBase) error {
-	if err := verifierSomme(chemin, m.ArtefactSHA256, m.ArtefactOctets); err != nil {
+	doc, err := replayartifact.ReadBytes(chemin)
+	if err != nil {
+		return err
+	}
+	somme := sha256.Sum256(doc)
+	if err := comparerSomme(hex.EncodeToString(somme[:]), int64(len(doc)), m.ArtefactSHA256, m.ArtefactOctets); err != nil {
 		return err
 	}
 	if _, err := replaydiff.LireDocument(chemin); err != nil {
@@ -272,7 +285,7 @@ func (bc baseCache) ranger(c cleBase, artefactSource, faitsSource string) error 
 	if err := c.valider(); err != nil {
 		return err
 	}
-	artefact, err := os.ReadFile(artefactSource) //nolint:gosec // artefact produit par ce gate
+	artefact, err := replayartifact.ReadBytes(artefactSource)
 	if err != nil {
 		return fmt.Errorf("lecture de l'artefact a ranger : %w", err)
 	}

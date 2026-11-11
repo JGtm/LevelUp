@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaydiff"
 	"levelup/go-api/internal/replayverite"
 )
@@ -185,7 +186,7 @@ func juger(j jugement) (*replayverite.Comparaison, error) {
 }
 
 func lireArtefactDuBanc(path string) (*replayverite.Document, error) {
-	blob, err := os.ReadFile(path) //nolint:gosec // chemin d'artefact produit par ce gate
+	blob, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		return nil, fmt.Errorf("banc de verite : %w", err)
 	}

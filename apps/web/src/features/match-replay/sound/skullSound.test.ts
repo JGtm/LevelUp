@@ -17,6 +17,7 @@ function doc(
   teams?: { teamId: number; total: { t: number; v: number }[] }[],
 ): ReplayDocumentReady {
   return {
+    frameIntervalMs: 100,
     originMs: 0,
     coverage: { originResolved: true },
     skullCarries: carries,
@@ -149,9 +150,9 @@ describe('skullSoundEvents', () => {
       { t0: 200, t1: 260, closed: true, xuid: 'b' },
       { t0: 100, t1: 150, closed: true, xuid: 'a' },
     ])
-    // L'horloge du rejeu court a 60 images/s : la prise a l'image 100 tombe a 1 666,7 ms.
+    // Le document de test porte 100 ms par image : la prise a l'image 100 tombe a 10 000 ms.
     // Ce qui compte ici est l'ORDRE — les deux portages sont donnes a l'envers en entree.
-    expect(skullSoundEvents(d).map((e) => Math.round(e.ms))).toEqual([1667, 2500, 3333, 4333])
+    expect(skullSoundEvents(d).map((e) => Math.round(e.ms))).toEqual([10_000, 15_000, 20_000, 26_000])
   })
 
   it('livre toutes les variantes du RandomSequence, pas seulement la premiere', () => {

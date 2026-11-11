@@ -27,6 +27,7 @@ import (
 
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/replayartifact"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -41,28 +42,24 @@ func corpusDir(t *testing.T) string {
 	return dir
 }
 
-// artefacts liste les documents de rejeu du corpus, extension .json STRICTE (le dossier
-// porte aussi des copies datées, qui ne sont pas des artefacts courants).
+// artefacts liste les documents de rejeu du corpus (un par match, compressé ou brut, par la porte
+// replayartifact : le dossier porte aussi des copies datées et des marques, qui ne sont pas des artefacts).
 func artefacts(t *testing.T, dir string) []string {
 	t.Helper()
-	entries, err := os.ReadDir(dir)
+	entries, err := replayartifact.List(dir)
 	if err != nil {
 		t.Fatalf("lecture du corpus : %v", err)
 	}
 	var out []string
 	for _, e := range entries {
-		if e.IsDir() || filepath.Ext(e.Name()) != ".json" {
-			continue
-		}
-		out = append(out, filepath.Join(dir, e.Name()))
+		out = append(out, filepath.Join(dir, e.Name))
 	}
-	sort.Strings(out)
 	return out
 }
 
 func lireDocument(t *testing.T, path string) replay.ReplayDocument {
 	t.Helper()
-	raw, err := os.ReadFile(path) //nolint:gosec // chemin de corpus fourni par l'opérateur
+	raw, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		t.Fatalf("lecture %s : %v", path, err)
 	}

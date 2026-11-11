@@ -24,7 +24,7 @@ package replaybuild
 // Le predicat doit coder « les derives collent-ils au CONTENU d'aujourd'hui ». Un hachage
 // exigerait de relire l'artefact ENTIER (~2 Mo) pour chaque candidat de chaque cycle — le cout
 // meme que le predicat `os.Stat` d'origine refusait, et sa justification ecrite tient toujours.
-// La taille vient du `os.Stat` qu'on fait de toute facon. Un artefact re-cuit dont la sortie
+// La taille stockee vient du `os.Stat` qu on fait de toute facon. Un artefact re-cuit dont la sortie
 // ferait EXACTEMENT la meme taille sans etre le meme document est possible en theorie ; ses
 // derives seraient alors quasi identiques, et le prochain bump de [DerivationsRev] les rejouera
 // de toute maniere. C'est le compromis, il est ecrit, et il n'a pas d'angle mort silencieux.
@@ -44,6 +44,9 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 )
 
 // DerivationsRev — LA VERSION DES DERIVATIONS, ecrite sur chaque marque.
@@ -57,14 +60,15 @@ import (
 // servi avec l'ancienne — sans compteur et sans reprise possible.
 const DerivationsRev = "derivations-2026-09-06"
 
-// SuffixeMarqueDerivations : l'extension du fichier de marque, posee a la place de `.json`.
+// SuffixeMarqueDerivations : le suffixe du fichier de marque, pose a la place de l'extension d'artefact (`.json.gz` comme
+// `.json` : le nom `{short8}.derived.json` ne depend pas de la forme de l'artefact).
 //
 // ELLE EST EXPORTEE PARCE QUE LA MARQUE PARTAGE LE DOSSIER DES ARTEFACTS, et que deux
 // consommateurs y balaient `*.json` (constat C6 de la revue A-R1) : le cron de purge
 // (`scheduler/replay_purge_cron.go`) et le bilan du backfill (`cmd/backfill_t0_film`). Sans un
 // predicat COMMUN, chacun aurait recopie le litteral — troisieme exemplaire, et la premiere
 // evolution du suffixe en aurait laisse un en arriere.
-const SuffixeMarqueDerivations = ".derived.json"
+const SuffixeMarqueDerivations = title.ReplayDerivationsMarkSuffix
 
 // EstMarqueDerivations dit si ce NOM DE FICHIER est une marque de derivation et non un artefact.
 //
@@ -73,8 +77,10 @@ func EstMarqueDerivations(name string) bool {
 	return strings.HasSuffix(name, SuffixeMarqueDerivations)
 }
 
-// ArtefactDeLaMarque rend le chemin (ou le nom) de l'ARTEFACT que cette marque decrit —
-// l'inverse exact de [DerivationsMarkPath].
+// ArtefactDeLaMarque rend le chemin (ou le nom) CANONIQUE (`.json.gz`) de l ARTEFACT que cette marque
+// decrit — l inverse de [DerivationsMarkPath] pour un artefact compresse. Un artefact brut d un parc ancien porte
+// le meme nom de marque : pour savoir si l artefact existe, passer ce chemin a [replayartifact.Exists], qui voit les deux
+// formes.
 //
 // ELLE EXISTE POUR QUE LA RELATION MARQUE <-> ARTEFACT NE SOIT ECRITE QU'ICI. Le cron de purge
 // doit pouvoir dire si une marque est ORPHELINE (son artefact a disparu : purge anterieure a la
@@ -87,14 +93,15 @@ func ArtefactDeLaMarque(markPath string) string {
 	if !EstMarqueDerivations(markPath) {
 		return markPath
 	}
-	return strings.TrimSuffix(markPath, SuffixeMarqueDerivations) + ".json"
+	return strings.TrimSuffix(markPath, SuffixeMarqueDerivations) + title.ReplayArtifactExt
 }
 
 // DerivationsMark est l'etat « derive » d'UN artefact, tel qu'il est sur disque.
 type DerivationsMark struct {
 	// Rev : la revision des derivations jouees (cf. [DerivationsRev]).
 	Rev string `json:"rev"`
-	// ArtifactBytes : la taille de l'artefact AU MOMENT de la derivation. C'est elle qui dit
+	// ArtifactBytes : la taille STOCKEE de l artefact (celle du fichier sur disque, compresse le cas echeant) AU MOMENT
+	// de la derivation. C'est elle qui dit
 	// si la marque colle encore au contenu.
 	ArtifactBytes int `json:"artifactBytes"`
 	// ArtifactSchema : la version de schema du document derive. Purement informative — le
@@ -112,7 +119,7 @@ type DerivationsMark struct {
 // l'artefact vient de `PathResolver.ReplayArtifactPath`, et un second calcul du dossier
 // deriverait le jour ou elle bougerait.
 func DerivationsMarkPath(artifactPath string) string {
-	return strings.TrimSuffix(artifactPath, ".json") + SuffixeMarqueDerivations
+	return title.ReplayArtifactStem(artifactPath) + SuffixeMarqueDerivations
 }
 
 // ReadDerivationsMark lit la marque d'un artefact. ok=false quand elle est absente ou
@@ -136,12 +143,17 @@ func ReadDerivationsMark(artifactPath string) (DerivationsMark, bool) {
 // donc lue « pas derive », donc rejouee. Le pire cas est un travail refait ; il n'y a aucun
 // etat a corrompre. Une ecriture atomique protegerait d'un risque qui n'existe pas ici.
 func WriteDerivationsMark(artifactPath string, artifactSchema, artifactBytes int) error {
-	blob, err := json.Marshal(DerivationsMark{
+	return writeDerivationsMark(artifactPath, DerivationsMark{
 		Rev:            DerivationsRev,
 		ArtifactBytes:  artifactBytes,
 		ArtifactSchema: artifactSchema,
 		At:             time.Now().UTC(),
 	})
+}
+
+// writeDerivationsMark ecrit une marque telle quelle (cf. [WriteDerivationsMark]).
+func writeDerivationsMark(artifactPath string, m DerivationsMark) error {
+	blob, err := json.Marshal(m)
 	if err != nil {
 		return fmt.Errorf("marque de derivation: %w", err)
 	}
@@ -161,11 +173,15 @@ func WriteDerivationsMark(artifactPath string, artifactSchema, artifactBytes int
 //	revision differente      les derivations ont change depuis
 //	taille differente        l'artefact a ete re-cuit depuis la derniere derivation
 //
-// UN SEUL `os.Stat` ET UNE LECTURE DE QUELQUES DIZAINES D'OCTETS : c'est ce qui permet de le
+// UNE RESOLUTION DE FICHIER (`os.Stat`) ET UNE LECTURE DE QUELQUES DIZAINES D'OCTETS : c'est ce qui permet de le
 // jouer sur les soixante-quatre candidats d'un horizon a chaque cycle.
 func DerivationsUpToDate(artifactPath string) bool {
-	st, err := os.Stat(artifactPath)
-	if err != nil || st.IsDir() || st.Size() == 0 {
+	f, err := replayartifact.Locate(artifactPath)
+	if err != nil {
+		return false
+	}
+	st := f.Info
+	if st.Size() == 0 {
 		return false
 	}
 	m, ok := ReadDerivationsMark(artifactPath)

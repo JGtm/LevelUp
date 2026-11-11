@@ -9,7 +9,7 @@
  */
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { regenPercent, regenPhase, type RegenPhase } from './logic'
+import { regenPercent, regenPhase, regenPhaseActive, type RegenPhase } from './logic'
 import { useReplayRegenCommand, type ReplayRegenStatus } from './queries'
 import { REPLAY_REGEN_TEXT, type ReplayRegenText } from './text'
 
@@ -34,11 +34,14 @@ function phaseLine(t: ReplayRegenText, phase: RegenPhase, s: ReplayRegenStatus |
     case 'upToDate':
       return t.upToDate
     case 'offer':
+      if ((s?.stale ?? 0) === 0) return s?.raw === 1 ? t.rawOne : fill(t.rawMany, { count: s?.raw ?? 0 })
       return s?.stale === 1 ? t.staleOne : fill(t.staleMany, { count: s?.stale ?? 0 })
     case 'preparing':
       return t.preparing
     case 'running':
       return fill(t.running, { done, total })
+    case 'compressing':
+      return fill(t.compressing, { count: s?.compressed ?? 0 })
     case 'paused':
       return fill(t.paused, { done, total })
     case 'waitingGame':
@@ -51,8 +54,11 @@ export function ReplayRegenPanel({ status, variant, onLater }: PanelProps) {
   const t = REPLAY_REGEN_TEXT[locale]
   const command = useReplayRegenCommand()
   const phase = regenPhase(status)
-  const active = phase === 'preparing' || phase === 'running' || phase === 'paused' || phase === 'waitingGame'
+  const active = regenPhaseActive(phase)
+  const rawOnly = phase === 'offer' && (status?.stale ?? 0) === 0
   const failed = status?.failed ?? 0
+  const compressed = status?.compressed ?? 0
+  const compressFailed = status?.compress_failed ?? 0
 
   return (
     <div
@@ -70,7 +76,7 @@ export function ReplayRegenPanel({ status, variant, onLater }: PanelProps) {
         <div className="flex shrink-0 items-center gap-2">
           {phase === 'offer' && (
             <Button size="sm" loading={command.isPending} onClick={() => command.mutate('start')}>
-              {t.regenerate}
+              {rawOnly ? t.compress : t.regenerate}
             </Button>
           )}
           {phase === 'offer' && variant === 'banner' && onLater && (
@@ -78,7 +84,7 @@ export function ReplayRegenPanel({ status, variant, onLater }: PanelProps) {
               {t.later}
             </Button>
           )}
-          {(phase === 'running' || phase === 'waitingGame') && (
+          {(phase === 'running' || phase === 'compressing' || phase === 'waitingGame') && (
             <Button size="sm" variant="outline" disabled={command.isPending} onClick={() => command.mutate('pause')}>
               {t.pause}
             </Button>
@@ -90,7 +96,7 @@ export function ReplayRegenPanel({ status, variant, onLater }: PanelProps) {
           )}
         </div>
       </div>
-      {phase === 'offer' && <p className="text-xs text-muted-foreground">{t.hint}</p>}
+      {phase === 'offer' && <p className="text-xs text-muted-foreground">{rawOnly ? t.rawHint : t.hint}</p>}
       {active && status && status.total > 0 && (
         <div
           role="progressbar"
@@ -106,6 +112,16 @@ export function ReplayRegenPanel({ status, variant, onLater }: PanelProps) {
       {failed > 0 && !active && (
         <p role="status" className="text-xs text-muted-foreground">
           {failed === 1 ? t.failedOne : fill(t.failedMany, { count: failed })}
+        </p>
+      )}
+      {compressed > 0 && !active && (
+        <p role="status" className="text-xs text-muted-foreground">
+          {compressed === 1 ? t.compressedOne : fill(t.compressedMany, { count: compressed })}
+        </p>
+      )}
+      {compressFailed > 0 && !active && (
+        <p role="status" className="text-xs text-muted-foreground">
+          {compressFailed === 1 ? t.compressFailedOne : fill(t.compressFailedMany, { count: compressFailed })}
         </p>
       )}
       {command.isError && (

@@ -39,7 +39,7 @@ import { withLoadedImage } from './loadedImage'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { PlacementView } from './placementShapes'
 import { outlinedSpriteCanvas, tintedIconCanvas } from './replayDraw'
-import { frameToMs, type XY } from '../../../lib/replay/replayLogic'
+import { durationFrameMs, frameToMs, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { Respawn } from '../model/respawnCountdown'
 import {
@@ -403,7 +403,7 @@ export function useReplayVehicles({
         ctx,
         tracks,
         view,
-        { frame, k, frameMs },
+        { frame, k, frameMs, durationFrameMs: durationFrameMs(doc) },
         {
           neutralInk, mapElementInk, labelStroke, showNames, showAim, spriteOf, sizeOf, kindOf,
           labelOfFamily, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf,

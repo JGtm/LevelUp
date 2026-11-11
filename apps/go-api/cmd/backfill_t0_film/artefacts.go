@@ -27,15 +27,14 @@ package main
 // le compte rendu ne les melange jamais aux quatre refus de `t0_film.go`.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 
-	"levelup/go-api/internal/replaybuild"
+	"levelup/go-api/internal/replayartifact"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -95,26 +94,18 @@ type verdictArtefact struct {
 // Un fichier a la fois : les octets d'un artefact et ses pistes converties ne coexistent que le
 // temps d'un tour de boucle. Le corpus entier ne tient jamais en memoire.
 func scannerArtefacts(ctx context.Context, dir string) ([]verdictArtefact, error) {
-	entrees, err := os.ReadDir(dir)
+	entrees, err := replayartifact.List(dir)
 	if err != nil {
 		return nil, fmt.Errorf("dossier des artefacts %s: %w", dir, err)
 	}
 	out := make([]verdictArtefact, 0, len(entrees))
 	for _, e := range entrees {
-		// Suffixe EXACT : le dossier porte des sauvegardes manuelles (`.json.ancien-11juillet`)
-		// qui ne sont pas des artefacts courants et ne doivent rien reparer.
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
-			continue
-		}
-		// LA MARQUE DE DERIVATION N'EST PAS UN ARTEFACT (constat C6 de la revue A-R1).
-		// `<short8>.derived.json` vit dans le MEME dossier et finit par `.json` : scannee, elle
-		// tombait en « sans match_id » et gonflait le bilan jusqu'a 2x le corpus, avec autant
-		// d'entrees fantomes — alors que la propriete AFFICHEE du bilan est « chaque artefact
-		// tombe dans EXACTEMENT une categorie, c'est ce qui rend le total verifiable ».
-		if replaybuild.EstMarqueDerivations(e.Name()) {
-			continue
-		}
-		out = append(out, lireUnArtefact(ctx, filepath.Join(dir, e.Name())))
+		// Le predicat de nom des artefacts (title.IsReplayArtifactFile) ecarte les sauvegardes
+		// manuelles (`.json.ancien-11juillet`) et LA MARQUE DE DERIVATION (constat C6 de la revue
+		// A-R1) : scannee, elle gonflait le bilan jusqu'a 2x le corpus, alors que la propriete
+		// AFFICHEE du bilan est « chaque artefact tombe dans EXACTEMENT une categorie, c'est ce
+		// qui rend le total verifiable ».
+		out = append(out, lireUnArtefact(ctx, filepath.Join(dir, e.Name)))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].fichier < out[j].fichier })
 	return out, nil
@@ -147,16 +138,15 @@ func lireUnArtefact(ctx context.Context, path string) verdictArtefact {
 	return v
 }
 
-// decoderMinimal ouvre le fichier en flux : les octets ne sont jamais tous en memoire en plus
-// de la structure decodee.
+// decoderMinimal lit l'artefact par la porte de replaybuild (compresse ou brut) et n'en decode
+// que les champs de artefactMinimal. Un seul artefact est en memoire a la fois.
 func decoderMinimal(path string) (artefactMinimal, error) {
-	f, err := os.Open(path)
+	raw, err := replayartifact.ReadBytes(path)
 	if err != nil {
 		return artefactMinimal{}, err
 	}
-	defer func() { _ = f.Close() }()
 	var doc artefactMinimal
-	if err := json.NewDecoder(f).Decode(&doc); err != nil {
+	if err := json.NewDecoder(bytes.NewReader(raw)).Decode(&doc); err != nil {
 		return artefactMinimal{}, err
 	}
 	return doc, nil

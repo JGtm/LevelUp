@@ -41,6 +41,8 @@ export interface SkullCarrierStyle {
   outline: string
   /** Mouvement réduit : la pulsation d'un portage « ouvert » devient une opacité constante. */
   reducedMotion: boolean
+  /** Durée réelle d'une image du document, en ms (`frameToMs(1, doc)`) : la période de pulsation est une durée. */
+  frameMs: number
 }
 
 /**
@@ -109,7 +111,7 @@ export function drawSkullCarrier(
     drawSkullGlyph(ctx, center, {
       ink: layer.style.ink,
       outline: layer.style.outline,
-      alpha: carriedGlyphAlpha(c.closed, frame, layer.style.reducedMotion),
+      alpha: carriedGlyphAlpha(c.closed, frame, layer.style.reducedMotion, layer.style.frameMs),
     })
   }
   ctx.globalAlpha = 1

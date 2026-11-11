@@ -36,18 +36,17 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/platform/atomicfile"
+	"levelup/go-api/internal/replayartifact"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
-// StoredArtifact décrit ce qui a été rangé, tel qu'on le rend à l'ouvrier.
+// StoredArtifact décrit ce qui a été rangé, tel qu'on le rend à l'ouvrier. Bytes est la taille STOCKÉE (le fichier
+// compressé sur disque, cf. internal/replayartifact/gate.go).
 type StoredArtifact struct {
 	Path          string
 	MatchID       string
@@ -82,8 +81,9 @@ func StoreArtifactAt(ctx context.Context, outPath, titleSlug, matchID string, bl
 	if err != nil {
 		return StoredArtifact{}, fmt.Errorf("écriture artefact %s: %w", outPath, err)
 	}
+	canonique, _ := title.ReplayArtifactCandidates(outPath)
 	return StoredArtifact{
-		Path: outPath, MatchID: matchID, Bytes: surDisque.Bytes,
+		Path: canonique, MatchID: matchID, Bytes: surDisque.Bytes,
 		Tracks: surDisque.Tracks, SchemaVersion: surDisque.SchemaVersion,
 	}, nil
 }
@@ -224,18 +224,18 @@ func writeArtifactBytes(ctx context.Context, outPath, titleSlug, matchID string,
 		observability.IncCounter("replay_artifact_downgrade_refused_total")
 		return enPlace, nil
 	}
-	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+	ecritPath, stocke, err := replayartifact.Write(ctx, outPath, blob)
+	if err != nil {
 		return Digest{}, err
 	}
-	if err := atomicfile.WriteFile(ctx, outPath, blob, 0o644); err != nil {
-		return Digest{}, err
-	}
+	replayartifact.RemoveLegacy(ctx, ecritPath)
 	ecrit, _ := digestFromBytes(blob)
+	ecrit.Bytes = len(stocke) // taille stockee, cf. internal/replayartifact/gate.go
 	// L'en-tete voisin, APRES l'artefact : un fichier .meta plus recent que l'artefact fait foi (cf. artifact_meta.go),
 	// un .meta absent ou plus ancien (arret entre les deux ecritures) fait relire l'artefact.
-	ecrireEntete(ctx, outPath, ecrit, AppVersion())
+	ecrireEntete(ctx, ecritPath, ecrit, AppVersion())
 	publishArtifactStored(ctx, ArtifactStored{
-		TitleSlug: titleSlug, MatchID: matchID, Path: outPath,
+		TitleSlug: titleSlug, MatchID: matchID, Path: ecritPath,
 		Bytes: ecrit.Bytes, Tracks: ecrit.Tracks, SchemaVersion: ecrit.SchemaVersion,
 	})
 	return ecrit, nil

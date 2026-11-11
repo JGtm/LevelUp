@@ -21,6 +21,7 @@ import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
 
 import { useCarrierPosAt } from '../model/carrierPosition'
 import { type CanvasView } from '../model/replayView'
+import { durationFrameMs } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { drawVipCrown, type VipCrownInput } from './vipCrownLayer'
 
@@ -78,8 +79,8 @@ export function useReplayVipCrown({
   )
 
   const layer = useMemo<VipCrownInput>(
-    () => ({ style: { inkOf, outline, reducedMotion }, posOf }),
-    [inkOf, outline, reducedMotion, posOf],
+    () => ({ style: { inkOf, outline, reducedMotion, frameMs: durationFrameMs(doc) }, posOf }),
+    [inkOf, outline, reducedMotion, posOf, doc],
   )
 
   const paint = useCallback(

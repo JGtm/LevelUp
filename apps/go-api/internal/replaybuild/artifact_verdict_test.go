@@ -15,12 +15,14 @@ package replaybuild
 // verifierait que l aller passerait sur un verdict constant.
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -128,7 +130,7 @@ func TestArtifactVerdictLitLeDisqueEtLaPresenceDesFaits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("serialisation : %v", err)
 	}
-	if err = os.WriteFile(artefact, blob, 0o600); err != nil {
+	if _, _, err = replayartifact.Write(context.Background(), artefact, blob); err != nil {
 		t.Fatalf("pose de l artefact : %v", err)
 	}
 	// SANS le fichier de faits : `redecoder`.

@@ -252,7 +252,7 @@ command exits with code **130** (distinct from 0 for a finished pass and 1 for a
 
 #### Projecting replay artifacts into the database — RELEASE ORDER MATTERS
 
-Two passes read the already-cooked replay artifacts (`data/cache/replays/{slug}/{short8}.json`)
+Two passes read the already-cooked replay artifacts (`data/cache/replays/{slug}/{short8}.json.gz`, or `.json` in a parc not yet converted)
 and project them into shared tables. **Neither decodes a film.** Both are RELEASE tasks, and
 both need the **server stopped**: they take `OpenReadWrite` on the shared DB and run the shared
 migrations themselves — including under `--dry-run`.
@@ -491,6 +491,31 @@ go run ./cmd/levelup film archive-move --to D:\Films --resume   # resumes an int
   from the archive).
 - To measure the gain on your machine: `du -sh data/cache/film_chunks` before and after `film recompress`.
 
+### Replay artifacts (compression)
+
+A replay artifact is stored as `data/cache/replays/<title>/<short8>.json.gz` (gzip, level 6 of the Go
+standard library). Its decompressed content is the replay document, unchanged byte for byte: reading and
+writing the bytes of an artifact goes through one gate (`internal/replaybuild`), which detects the form by
+the gzip magic bytes, not by the name. An older parc holds raw `<short8>.json` files and stays readable; a
+match that has both forms is read from the `.json.gz` (a warning and a counter report it). The `.meta` header
+and the `.derived.json` mark keep the same names, and their `bytes` is the stored size (the size of the file
+on disk).
+
+`replay compress` converts a raw parc in place. It is **yours to launch** (nothing runs it on its own: no
+cron, no startup task). Each artifact is written as `.json.gz` atomically, read back and compared with the
+original JSON (identical, byte for byte) before the `.json` is deleted; its `.meta` is rewritten, and an
+up-to-date derivation mark follows the new stored size, so no derivation is replayed. A file that fails is
+counted, logged and left in place. The command is idempotent (a compressed artifact is skipped) and prints
+the counts: converted, already compressed, duplicates (both forms, left untouched), failures, and bytes
+before and after.
+
+```bash
+go run ./cmd/levelup replay compress --dry-run          # reads and compresses in memory, prints the gain, writes nothing
+go run ./cmd/levelup replay compress                    # converts the parc of the default title
+go run ./cmd/levelup replay compress --title halo_5     # another title
+go run ./cmd/levelup replay compress --dir D:\copy\parc # an explicit artifacts folder
+```
+
 ### Metadata / seed / migration
 
 ```bash
@@ -715,7 +740,7 @@ go run ./cmd/mappos-build --cle <mapId> [--carte NAME] [--title slug] [--pas M] 
 - Output: `data/titles/{slug}/reference/map_positions_jouees.json` (merges into the existing
   catalog, one map key at a time).
 - Prereq: no game install, no cgo — pure post-processing over already-decoded replay
-  artifacts (`data/cache/replays/{title}/{matchId}.json`), passed as positional arguments.
+  artifacts (`data/cache/replays/{title}/{matchId}.json.gz` or `.json`), passed as positional arguments.
 - Replay when: more or newer matches should refine a map's played-positions mask.
 
 #### mapnav-fetch

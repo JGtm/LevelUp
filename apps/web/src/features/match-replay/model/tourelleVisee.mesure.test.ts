@@ -20,7 +20,7 @@
  *
  * COUVERTURE : part des tirs de tourelle pour lesquels un occupant d'un siège donné a une lecture
  * de visée EN VIGUEUR à l'image du tir (même fenêtre de maintien que le cône,
- * `VEHICLE_AIM_HOLD_FRAMES`). Sans couverture, le port ne dessinerait rien de plus.
+ * `VEHICLE_AIM_HOLD_MS`). Sans couverture, le port ne dessinerait rien de plus.
  *
  * UTILITÉ : écart angulaire entre cette visée et le cap auquel le CHÂSSIS est dessiné
  * (`vehicleChassisHeadingAt`). Un écart nul dirait que la tourelle suit le corps, donc que le
@@ -44,21 +44,22 @@
  * sans elle, chaque tir tombait dans « sans montage » et la mesure était muette sans le dire
  * (revue adverse du lot M4a, F7). Un document qui porte déjà la table (lu depuis l'API) la garde.
  */
-import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocument, ReplayVehicleRide } from '@/lib/api/types'
 
+import { cheminArtefact, lireArtefact } from '../test/artefactFile'
 import { racineDuDepot } from '../test/featureFiles'
 import { testReplayDoc } from '../test/testDoc'
 import { registreDuTitre } from '../test/vehicleWeaponsTitre'
+import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { buildShotFx, type VehicleShotSource } from './shotFx'
 import { vehicleActiveRides } from './vehiclesLayer'
 import {
-  VEHICLE_AIM_HOLD_FRAMES,
+  VEHICLE_AIM_HOLD_MS,
   vehicleChassisHeadingAt,
   vehicleRideAimReading,
 } from './vehiclesAim'
@@ -76,9 +77,9 @@ function dossierTemoins(): string {
 }
 
 function charger(court: string): ReplayDocumentReady | null {
-  const p = join(dossierTemoins(), `${court}.json`)
-  if (!existsSync(p)) return null
-  const brut = JSON.parse(readFileSync(p, 'utf8')) as Partial<ReplayDocument>
+  const p = cheminArtefact(dossierTemoins(), court)
+  if (!p) return null
+  const brut = lireArtefact<Partial<ReplayDocument>>(p)
   return testReplayDoc({ ...brut, vehicleWeapons: brut.vehicleWeapons ?? registreDuTitre().armes })
 }
 
@@ -170,11 +171,12 @@ function mesurer(doc: ReplayDocumentReady): Mesure {
     tireurTourelle: ligneTireurVide(),
   }
   mesurerRenduReel(doc, m)
+  const frameMs = frameToMs(1, doc)
   for (const s of doc.shots) {
     if (s.v === undefined) continue
     m.tirsVehicule++
     const track = doc.vehicles.find((v) => v.slot === s.v)
-    if (track) ventilerTireur(m.tireur, track, s.slot, s.t)
+    if (track) ventilerTireur(m.tireur, track, s.slot, s.t, frameMs)
     const mount = vehicleWeaponMountOf(doc, s.w)
     if (!mount) {
       m.sansMontage++
@@ -187,8 +189,8 @@ function mesurer(doc: ReplayDocumentReady): Mesure {
     }
     m.montageTourelle++
     if (!track) continue
-    ventilerTireur(m.tireurTourelle, track, s.slot, s.t)
-    ventilerParSiege(m, s.w ?? 'sans-tag', track, s.t)
+    ventilerTireur(m.tireurTourelle, track, s.slot, s.t, frameMs)
+    ventilerParSiege(m, s.w ?? 'sans-tag', track, s.t, frameMs)
   }
   return m
 }
@@ -205,7 +207,7 @@ function ligneTireurVide(): LigneTireur {
  * sur ce décompte.
  */
 function mesurerRenduReel(doc: ReplayDocumentReady, m: Mesure): void {
-  for (const e of buildShotFx(doc, VEHICLE_AIM_HOLD_FRAMES)) {
+  for (const e of buildShotFx(doc, msToFrames(VEHICLE_AIM_HOLD_MS, doc))) {
     const src = e.vehicleShot
     if (!src) continue
     m.populationRendu++
@@ -244,6 +246,7 @@ function ventilerTireur(
   track: ReplayVehicleTrackReady,
   slotTireur: number,
   frame: number,
+  frameMs: number,
 ): void {
   const sien = vehicleActiveRides(track, frame).find((r) => r.slot === slotTireur)
   if (!sien) {
@@ -253,10 +256,10 @@ function ventilerTireur(
   l.episodeTrouve++
   const cle: number | 'inconnu' = sien.seat ?? 'inconnu'
   l.sieges.set(cle, (l.sieges.get(cle) ?? 0) + 1)
-  const lu = lectureDeVisee(sien, frame)
+  const lu = lectureDeVisee(sien, frame, frameMs)
   if (lu === null) return
   l.avecVisee++
-  l.ecarts.push(ecartDeg(lu, vehicleChassisHeadingAt(track, frame)))
+  l.ecarts.push(ecartDeg(lu, vehicleChassisHeadingAt(track, frame, frameMs)))
 }
 
 function ventilerParSiege(
@@ -264,13 +267,14 @@ function ventilerParSiege(
   tag: string,
   track: ReplayVehicleTrackReady,
   frame: number,
+  frameMs: number,
 ): void {
   let parSiege = m.parArme.get(tag)
   if (!parSiege) {
     parSiege = new Map()
     m.parArme.set(tag, parSiege)
   }
-  const cap = vehicleChassisHeadingAt(track, frame)
+  const cap = vehicleChassisHeadingAt(track, frame, frameMs)
   for (const ride of vehicleActiveRides(track, frame)) {
     const cle: number | 'inconnu' = ride.seat ?? 'inconnu'
     let ligne = parSiege.get(cle)
@@ -279,15 +283,15 @@ function ventilerParSiege(
       parSiege.set(cle, ligne)
     }
     ligne.occupe++
-    const lu = lectureDeVisee(ride, frame)
+    const lu = lectureDeVisee(ride, frame, frameMs)
     if (lu === null) continue
     ligne.avecVisee++
     ligne.ecarts.push(ecartDeg(lu, cap))
   }
 }
 
-function lectureDeVisee(ride: ReplayVehicleRide, frame: number): number | null {
-  const lu = vehicleRideAimReading(ride, frame)
+function lectureDeVisee(ride: ReplayVehicleRide, frame: number, frameMs: number): number | null {
+  const lu = vehicleRideAimReading(ride, frame, frameMs)
   return lu?.h ?? null
 }
 

@@ -108,8 +108,9 @@ func TestProjeterRasterTactique_SchemaAncien(t *testing.T) {
 	if s.ArtifactSchemaVersion != 20 {
 		t.Fatalf("artifact_schema_version = %d, attendu 20", s.ArtifactSchemaVersion)
 	}
-	if s.FrameIntervalMs != 100 {
-		t.Fatalf("frame_interval_ms = %d, attendu la valeur par defaut du decodeur (100)", s.FrameIntervalMs)
+	if s.FrameIntervalMs != cadenceHistoriqueMS || cadenceHistoriqueMS != 100 {
+		t.Fatalf("frame_interval_ms = %d, attendu la cadence historique 100 ms (cadenceHistoriqueMS = %d)",
+			s.FrameIntervalMs, cadenceHistoriqueMS)
 	}
 	if len(s.Joueurs) != 1 || len(s.Joueurs[0].Cellules) != 1 ||
 		s.Joueurs[0].Cellules[0].Echantillons != 8 {

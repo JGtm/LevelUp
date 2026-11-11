@@ -29,13 +29,13 @@ import (
 
 // Les durees de la sequence, en millisecondes.
 const (
-	SequenceAvantMs       = 8000 // debut des traces, avant la mort
-	SequenceApresMs       = 3000 // fin des traces et des etapes, apres la mort
-	SequencePasMs         = 200  // pas des traces
-	SequenceEtapeDebut    = -4000
-	SequenceEtapePasMs    = 1000
-	SequenceTraineMs      = 4000 // duree de la traine derriere chaque acteur
-	toleranceDeBordImages = 1    // image(s) de tolerance avant le premier point et apres le dernier
+	SequenceAvantMs    = 8000 // debut des traces, avant la mort
+	SequenceApresMs    = 3000 // fin des traces et des etapes, apres la mort
+	SequencePasMs      = 200  // pas des traces
+	SequenceEtapeDebut = -4000
+	SequenceEtapePasMs = 1000
+	SequenceTraineMs   = 4000 // duree de la traine derriere chaque acteur
+	toleranceDeBordMs  = 100  // tolerance avant le premier point d'une vie et apres le dernier
 )
 
 // ErrSequenceSansMort : la victime n'a aucune position a l'instant de sa mort — la sequence n'a pas
@@ -99,12 +99,13 @@ func dansLaVie(points []domain.TacticalPistePoint, intervalMs int, filmMs int64)
 // CHAQUE VIE EST UNE PISTE A PART, et la position se cherche dans la seule vie qui CONTIENT l'instant :
 // entre la derniere image d'une vie et la premiere de la suivante, l'acteur n'a pas de position (il est
 // mort, ou pas encore reapparu) — interpoler de l'une a l'autre le ferait « continuer » apres sa mort.
-// La tolerance d'une image ne vaut qu'aux BORNES d'une vie (la replication s'arrete ~34 ms apres la mort).
+// La tolerance de toleranceDeBordMs (une duree, independante du pas de la grille) ne vaut qu'aux BORNES
+// d'une vie : la replication s'arrete un instant apres la mort.
 func positionA(vies [][]domain.TacticalPistePoint, intervalMs int, filmMs int64) (pos, int, bool) {
 	if intervalMs <= 0 {
 		return pos{}, 0, false
 	}
-	tolerance := int64(toleranceDeBordImages * intervalMs)
+	tolerance := int64(toleranceDeBordMs)
 	bord, bordPos := -1, pos{}
 	for v, points := range vies {
 		n := len(points)

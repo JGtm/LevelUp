@@ -15,6 +15,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -144,7 +145,8 @@ func TestBuildAndStoreOneRemonteLaMesure(t *testing.T) {
 		t.Errorf("pic = %d, attendu %d", out.peak, picAttendu)
 	}
 	// L'ARTEFACT EST BIEN RANGE : la mesure accompagne un rangement reel, elle ne le remplace pas.
-	if out.stored.Path == "" || out.stored.Bytes != len(blob) {
-		t.Errorf("artefact range = %+v, attendu %d octets a une place canonique", out.stored, len(blob))
+	st, serr := os.Stat(out.stored.Path)
+	if out.stored.Path == "" || serr != nil || int64(out.stored.Bytes) != st.Size() {
+		t.Errorf("artefact range = %+v (%v), attendu la taille stockee a une place canonique", out.stored, serr)
 	}
 }

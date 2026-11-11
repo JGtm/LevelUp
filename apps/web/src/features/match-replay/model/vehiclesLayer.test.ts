@@ -7,6 +7,9 @@
  * distinction que `weaponPadTime.test.ts` face à `weaponPadsLayer.ts`. Le tracé canvas lui-même
  * (drawVehiclesLayer) est vérifié à l'œil au gate C6 (film réel) faute d'un contexte 2D sous
  * jsdom — même repli que documenté pour `tintedIconCanvas` avant ce lot.
+ *
+ * Le dernier argument de `vehicleHeadingAt` (100) est la durée d'une image, en ms : la grille
+ * historique du document de test.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -122,19 +125,19 @@ describe('vehicleDriverAt — le conducteur, et lui seul', () => {
 
 describe('vehicleHeadingAt — orientation (décision de cadrage)', () => {
   it('JAMAIS MOBILE (aucun échantillon) : cap par défaut, nez vers le haut de l’écran', () => {
-    expect(vehicleHeadingAt(track({ samples: [] }), 500)).toBe(VEHICLE_DEFAULT_HEADING_DEG)
+    expect(vehicleHeadingAt(track({ samples: [] }), 500, 100)).toBe(VEHICLE_DEFAULT_HEADING_DEG)
   })
 
   it('JAMAIS MOBILE (des échantillons existent, aucun ne porte de cap — tourelle immobile)', () => {
     const t = track({ samples: [sample({ t: 0, x: 1, y: 1 }), sample({ t: 500, x: 1, y: 1 })] })
-    expect(vehicleHeadingAt(t, 500)).toBe(VEHICLE_DEFAULT_HEADING_DEG)
+    expect(vehicleHeadingAt(t, 500, 100)).toBe(VEHICLE_DEFAULT_HEADING_DEG)
   })
 
   it('EN MOUVEMENT : l’échantillon couvrant l’image porte le cap de la vélocité', () => {
     const t = track({
       samples: [sample({ t: 0, x: 0, y: 0 }), sample({ t: 100, x: 5, y: 5, h: 45 })],
     })
-    expect(vehicleHeadingAt(t, 100)).toBe(45)
+    expect(vehicleHeadingAt(t, 100, 100)).toBe(45)
   })
 
   it('À L’ARRÊT : le dernier cap connu est reporté (aucune interpolation vers un cap futur)', () => {
@@ -146,9 +149,9 @@ describe('vehicleHeadingAt — orientation (décision de cadrage)', () => {
       ],
     })
     // Entre les deux derniers échantillons (immobile) : le cap CONNU au dernier point couvrant.
-    expect(vehicleHeadingAt(t, 15)).toBe(60)
+    expect(vehicleHeadingAt(t, 15, 100)).toBe(60)
     // Après le dernier échantillon (véhicule au repos, plus aucun flux) : même cap maintenu.
-    expect(vehicleHeadingAt(t, 999)).toBe(60)
+    expect(vehicleHeadingAt(t, 999, 100)).toBe(60)
   })
 
   it('AVANT LE PREMIER MOUVEMENT : le cap du PREMIER échantillon mobile à venir', () => {
@@ -159,8 +162,8 @@ describe('vehicleHeadingAt — orientation (décision de cadrage)', () => {
         sample({ t: 100, x: 5, y: 5, h: 45 }), // premier mouvement
       ],
     })
-    expect(vehicleHeadingAt(t, 0)).toBe(45)
-    expect(vehicleHeadingAt(t, 75)).toBe(45)
+    expect(vehicleHeadingAt(t, 0, 100)).toBe(45)
+    expect(vehicleHeadingAt(t, 75, 100)).toBe(45)
   })
 })
 

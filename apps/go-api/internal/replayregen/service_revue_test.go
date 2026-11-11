@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -79,9 +80,12 @@ func TestScan_FilmAbsentNeLitAucunArtefact(t *testing.T) {
 func TestScan_DeuxMilleArtefacts_OctetsLus(t *testing.T) {
 	f := newFixture(t)
 	const n = 2000
+	// Un remplissage peu compressible : les octets lus sont les octets STOCKES (gzip), qui doivent rester de l'ordre de
+	// la taille du document pour que la mesure garde un sens.
 	pad := make([]byte, 16<<10)
+	alea := rand.New(rand.NewSource(1))
 	for i := range pad {
-		pad[i] = 'x'
+		pad[i] = byte('a' + alea.Intn(26))
 	}
 	var total int64
 	for i := range n {
@@ -91,11 +95,15 @@ func TestScan_DeuxMilleArtefacts_OctetsLus(t *testing.T) {
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(p, raw, 0o644); err != nil {
+		if err := poserCompresse(p, raw, 0o644); err != nil {
 			t.Fatal(err)
 		}
 		f.films[id] = true
-		total += int64(len(raw))
+		st, err := os.Stat(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		total += st.Size() // taille stockée : celle que le premier décompte lit en entier
 	}
 	octets := func() int64 { return observability.LoadCounter(replaybuild.CompteurOctetsLusEntetes) }
 
@@ -307,11 +315,15 @@ func writeStaleSameSchema(t *testing.T, f *fixture, id, producer string) {
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(p, raw, 0o644); err != nil {
+	if err := poserCompresse(p, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	st, err := os.Stat(p)
+	if err != nil {
 		t.Fatal(err)
 	}
 	meta, _ := json.Marshal(map[string]any{"matchId": id, "schemaVersion": replay.SchemaVersion, "layers": layers,
-		"bytes": len(raw), "appVersion": producer})
+		"bytes": st.Size(), "appVersion": producer}) // « bytes » = taille stockée
 	if err := os.WriteFile(replaybuild.MetaPath(p), meta, 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -26,6 +26,7 @@ func violationsSauts(d *Document, mapID string) Violation {
 	var out Violation
 	portes := portesDe(mapID)
 	pas := float64(d.FrameIntervalMs) / 1000
+	tolTransloc := d.images(toleranceTranslocationMS)
 	for _, t := range d.Tracks {
 		for i := 1; i < len(t.Points); i++ {
 			p, q := t.Points[i-1], t.Points[i]
@@ -33,7 +34,7 @@ func violationsSauts(d *Document, mapID string) Violation {
 			if dt <= 0 || distance(p.X, p.Y, p.Z, q.X, q.Y, q.Z)/dt <= vitesseSautMaxMPS {
 				continue
 			}
-			if procheDUneTranslocation(d.Translocations, q.T) || surUnePorte(portes, p) || surUnePorte(portes, q) {
+			if procheDUneTranslocation(d.Translocations, q.T, tolTransloc) || surUnePorte(portes, p) || surUnePorte(portes, q) {
 				out.Exemptees++
 				continue
 			}
@@ -44,9 +45,9 @@ func violationsSauts(d *Document, mapID string) Violation {
 	return out
 }
 
-func procheDUneTranslocation(ts []Translocation, t int) bool {
+func procheDUneTranslocation(ts []Translocation, t, tolerance int) bool {
 	for _, x := range ts {
-		if t-x.T >= -toleranceTranslocationImages && t-x.T <= toleranceTranslocationImages {
+		if t-x.T >= -tolerance && t-x.T <= tolerance {
 			return true
 		}
 	}
@@ -96,17 +97,18 @@ func violationsHorsEmprise(d *Document) Violation {
 }
 
 // violationsTrajets : V-6, un echantillon de vehicule pendant un trajet dont le passager, a la meme
-// image (±toleranceEchantillonImages), est a plus de rayonTrajetM du vehicule.
+// instant (±toleranceEchantillonMS), est a plus de rayonTrajetM du vehicule.
 func violationsTrajets(d *Document) Violation {
 	var out Violation
 	points := pointsParSlot(d)
+	tolerance := d.images(toleranceEchantillonMS)
 	for _, v := range d.Vehicles {
 		for _, r := range v.Rides {
 			for _, s := range v.Samples {
 				if s.T < r.T0 || s.T > r.T1 {
 					continue
 				}
-				p, ok := pointA(points[r.Slot], s.T)
+				p, ok := pointA(points[r.Slot], s.T, tolerance)
 				if !ok {
 					continue
 				}
@@ -133,12 +135,12 @@ func pointsParSlot(d *Document) map[int][]Point {
 	return out
 }
 
-// pointA rend le point le plus proche de l'image t, s'il est a ±toleranceEchantillonImages.
-func pointA(pts []Point, t int) (Point, bool) {
-	i := sort.Search(len(pts), func(i int) bool { return pts[i].T >= t-toleranceEchantillonImages })
-	if i < len(pts) && pts[i].T <= t+toleranceEchantillonImages {
+// pointA rend le point le plus proche de l'image t, s'il est a ±tolerance images.
+func pointA(pts []Point, t, tolerance int) (Point, bool) {
+	i := sort.Search(len(pts), func(i int) bool { return pts[i].T >= t-tolerance })
+	if i < len(pts) && pts[i].T <= t+tolerance {
 		best := pts[i]
-		for j := i + 1; j < len(pts) && pts[j].T <= t+toleranceEchantillonImages; j++ {
+		for j := i + 1; j < len(pts) && pts[j].T <= t+tolerance; j++ {
 			if abs(pts[j].T-t) < abs(best.T-t) {
 				best = pts[j]
 			}

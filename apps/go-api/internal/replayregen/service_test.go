@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
@@ -61,7 +62,7 @@ func writeArtifact(t *testing.T, paths *title.PathResolver, matchID string, curr
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(p, raw, 0o644); err != nil {
+	if err := poserCompresse(p, raw, 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -81,8 +82,10 @@ type fixture struct {
 	inFly    atomic.Int32
 	maxFly   atomic.Int32
 	rebuild  func(ctx context.Context, slug, id string) error
-	cancel   context.CancelFunc
-	wg       sync.WaitGroup
+	// heavyHook : appelé à chaque consultation de la porte du mode jeu (nil = rien).
+	heavyHook func()
+	cancel    context.CancelFunc
+	wg        sync.WaitGroup
 }
 
 // newFixture relie un service sur une racine temporaire. Par défaut la reconstruction réécrit l'artefact à jour.
@@ -117,8 +120,13 @@ func newFixture(t *testing.T) *fixture {
 			time.Sleep(5 * time.Millisecond)
 			return f.rebuild(ctx, slug, id)
 		},
-		Pending:        f.pending,
-		HeavyAllowed:   f.heavy.Load,
+		Pending: f.pending,
+		HeavyAllowed: func() bool {
+			if f.heavyHook != nil {
+				f.heavyHook()
+			}
+			return f.heavy.Load()
+		},
 		GateEvery:      10 * time.Millisecond,
 		BusyRetryEvery: 5 * time.Millisecond,
 		BusyRetries:    3,
@@ -181,7 +189,7 @@ func TestScan_ArtefactPlusRecentQueLeBinaireNEstPasEnRetard(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(p, []byte(fmt.Sprintf(`{"matchId":"f00d0001","schemaVersion":%d}`, replay.SchemaVersion+5)), 0o644); err != nil {
+	if err := poserCompresse(p, []byte(fmt.Sprintf(`{"matchId":"f00d0001","schemaVersion":%d}`, replay.SchemaVersion+5)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	f.films["f00d0001"] = true
@@ -495,4 +503,11 @@ func TestScan_RefusParRegleIllisiblesRetombentSurLAncienComportement(t *testing.
 	if err != nil || len(cands) != 2 {
 		t.Fatalf("candidats = %d, err = %v : le décompte doit tenir sans le registre", len(cands), err)
 	}
+}
+
+// poserCompresse range un artefact par la porte (compressé, sous le nom canonique de p) ; la signature suit os.WriteFile
+// pour que les écritures de ce paquet de tests ne changent que de nom.
+func poserCompresse(p string, raw []byte, _ os.FileMode) error {
+	_, _, err := replayartifact.Write(context.Background(), p, raw)
+	return err
 }

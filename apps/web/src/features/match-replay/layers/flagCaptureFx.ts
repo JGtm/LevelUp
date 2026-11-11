@@ -31,7 +31,7 @@
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
 import { type CanvasView, projectTo } from '../model/replayView'
-import { type XY } from '../../../lib/replay/replayLogic'
+import { durationToFrames, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
@@ -76,14 +76,18 @@ export function buildFlagCaptureFx(
 }
 
 /**
- * Durée de l'effet, EN IMAGES — 6 images ≈ 600 ms au pas de 100 ms documenté du rejeu.
- *
- * En images pour la même raison que le clignotement du calque voisin : le tracé ne reçoit que
- * l'index d'image, jamais l'horloge du document. Assez long pour être vu à 1x, assez court pour
- * ne pas se superposer à la capture suivante (la plus rapide mesurée sur les films CTF témoins
- * laisse plusieurs secondes entre deux).
+ * Durée de l'effet, en millisecondes de match : 600 ms. Le tracé ne reçoit que l'index d'image,
+ * jamais l'horloge du document : la durée lui arrive convertie (`flagCaptureHoldFrames`), donc
+ * indépendante de la cadence du rejeu. Assez long pour être vu à 1x, assez court pour ne pas se
+ * superposer à la capture suivante (la plus rapide mesurée sur les films CTF témoins laisse
+ * plusieurs secondes entre deux).
  */
-export const FLAG_CAPTURE_HOLD_FRAMES = 6
+export const FLAG_CAPTURE_HOLD_MS = 600
+
+/** flagCaptureHoldFrames rend la durée de l'effet en images du document (fractionnaire si la grille ne tombe pas juste). */
+export function flagCaptureHoldFrames(doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>): number {
+  return durationToFrames(FLAG_CAPTURE_HOLD_MS, doc)
+}
 
 /** Fenêtre d'affichage (même forme que celle des pulses d'objectif). */
 export interface FlagCaptureWindow {

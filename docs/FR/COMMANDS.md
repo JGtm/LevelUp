@@ -259,7 +259,7 @@ panne). Un **second** `Ctrl-C` tue le processus immédiatement.
 
 #### Projeter les artefacts de rejeu en base — L'ORDRE DE RELEASE N'EST PAS INTERCHANGEABLE
 
-Deux passes lisent les artefacts de rejeu DÉJÀ cuits (`data/cache/replays/{slug}/{short8}.json`)
+Deux passes lisent les artefacts de rejeu DÉJÀ cuits (`data/cache/replays/{slug}/{short8}.json.gz`, ou `.json` dans un parc pas encore converti)
 et les projettent vers les tables partagées. **Aucune des deux ne décode de film.** Ce sont des
 tâches de RELEASE, et toutes deux exigent le **serveur arrêté** : elles prennent `OpenReadWrite`
 sur la DB partagée et jouent elles-mêmes les migrations — y compris sous `--dry-run`.
@@ -507,6 +507,31 @@ go run ./cmd/levelup film archive-move --to D:\Films --resume   # reprend un dé
   une reconstruction depuis l'archive).
 - Pour mesurer le gain sur son poste : `du -sh data/cache/film_chunks` avant et après `film recompress`.
 
+### Artefacts de rejeu (compression)
+
+Un artefact de rejeu se range `data/cache/replays/<titre>/<short8>.json.gz` (gzip, niveau 6 de la
+bibliothèque standard Go). Son contenu décompressé est le document de rejeu, inchangé d'un octet : toute
+lecture et toute écriture des octets d'un artefact passent par une porte unique (`internal/replaybuild`),
+qui reconnaît la forme aux octets magiques de gzip, pas au nom. Un parc ancien porte des `<short8>.json`
+bruts et reste lisible ; un match qui a les deux formes est lu dans le `.json.gz` (un avertissement et un
+compteur le signalent). L'en-tête `.meta` et la marque `.derived.json` gardent leurs noms, et leur `bytes`
+est la taille stockée (celle du fichier sur disque).
+
+`replay compress` convertit un parc brut sur place. Il est **à lancer soi-même** (rien ne le lance seul :
+ni cron, ni tâche au démarrage). Chaque artefact est écrit en `.json.gz` atomiquement, relu et comparé au
+JSON d'origine (identique, octet pour octet) avant que le `.json` ne soit supprimé ; son `.meta` est
+réécrit, et une marque de dérivation à jour suit la nouvelle taille stockée : aucune dérivation n'est
+rejouée. Un fichier en échec est compté, journalisé et laissé en place. La commande est idempotente (un
+artefact compressé est sauté) et rend le compte : convertis, déjà compressés, doublons (les deux formes,
+laissées telles quelles), échecs, octets avant et après.
+
+```bash
+go run ./cmd/levelup replay compress --dry-run          # lit et compresse en mémoire, affiche le gain, n'écrit rien
+go run ./cmd/levelup replay compress                    # convertit le parc du titre par défaut
+go run ./cmd/levelup replay compress --title halo_5     # un autre titre
+go run ./cmd/levelup replay compress --dir D:\copie\parc # un dossier d'artefacts explicite
+```
+
 ### Référentiels / seed / migration
 
 ```bash
@@ -741,7 +766,7 @@ go run ./cmd/mappos-build --cle <mapId> [--carte NOM] [--title slug] [--pas M] \
 - Sortie : `data/titles/{slug}/reference/map_positions_jouees.json` (fusionne dans le
   catalogue existant, une clé de carte à la fois).
 - Prérequis : ni jeu installé, ni cgo — post-traitement pur sur des artefacts de rejeu déjà
-  décodés (`data/cache/replays/{title}/{matchId}.json`), passés en arguments positionnels.
+  décodés (`data/cache/replays/{title}/{matchId}.json.gz` ou `.json`), passés en arguments positionnels.
 - À rejouer : quand plus ou de plus récents matchs doivent affiner le masque de positions
   jouées d'une carte.
 

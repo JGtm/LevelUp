@@ -561,7 +561,7 @@ rebuilds them **on the user's request only**.
 - **When the count runs.** At server start (in the background, behind the game-mode gate), at the end of the queue, and on an explicit
   `POST .../rescan`. `GET` never starts a count. During the final count `checked` is false (the interface never shows "finished" with the old
   count); a count started before a newer one finished is dropped (sequence number).
-- **Routes** (under the shell cookie): `GET /api/v1/desktop/replay-regen` returns `{checked, stale, running, done, total, paused, waiting_for_game, failed}`;
+- **Routes** (under the shell cookie): `GET /api/v1/desktop/replay-regen` returns `{checked, stale, raw, running, done, total, paused, waiting_for_game, failed, compressing, compressed, compress_failed}`;
   `POST .../start`, `.../pause`, `.../resume` drive the queue (`resume` on a finished queue is a 409), `POST .../rescan` recounts in the background.
   Nothing starts without the `POST start`.
 - **The queue.** One film at a time, never two in parallel, in the server process. Each film goes through the existing recipe, never a second one:
@@ -583,8 +583,27 @@ rebuilds them **on the user's request only**.
   (not running, not paused, flag cleared) before its final count, and the flag is written under the same lock as the state;
   a server stop leaves it set, so the queue **resumes at the next opening** (`ResumeIfPending` at boot), the only way it starts without a click, and only
   because the user had started it. A paused queue does not resume by itself.
+- **Raw replays are compressed at the end of a pass (2026-11-11).** A replay the queue rebuilds is written compressed (`{short8}.json.gz`). Those it
+  cannot rebuild (film no longer archived) and those already up to date stay raw `.json` from before the compression of replays, and an installed desktop
+  application has no command line. At the end of a pass the user launched (or resumed from the flag that gesture set), never at server start and never from the count,
+  `replayregen` runs the same conversion as `levelup replay compress` (`replaybuild.CompressDirWith`): one file at a time, behind the same wait for its turn as a film
+  (pause, game-mode gate, no sync cycle in progress), so never in parallel with a cooking. The `.json` is deleted only after its `.json.gz` is read back identical;
+  a stop, a pause or a crash loses nothing and the pass is idempotent (a resumed pass compresses the rest). The status reports `compressing`, `compressed` and
+  `compress_failed` (unreadable file, failed write or check, duplicate with different contents, raw file to delete on a re-run; every failed file stays readable
+  as it is). Guard-rail `archlint/no_auto_replay_compress_test.go` names the two callers of the conversion (the command and this queue).
+  The count also reports `raw`, the replays still in raw `.json` (by the file names the gate lists, no file is opened; a match with both forms is not counted).
+  The offer shows when `stale > 0` or `raw > 0`; when only raw replays remain, the text and the button say "compress" and the pass only compresses
+  (2026-11-11, user decision). The conversion never deletes a `.json.gz` it did not write itself: if another writer (a server re-cooking the match) replaced
+  it after the laying, nothing is touched and the file is counted apart (`replaced` in the command report), not as a failure.
+- **Filesystems without hard links.** `replayartifact.WriteIfAbsent` (the exclusive laying of a `.json.gz`) uses a hard link, which exFAT and FAT32 refuse. When the
+  link refusal means "not supported" (`errors.ErrUnsupported`; Windows `ERROR_INVALID_FUNCTION`, `ERROR_NOT_SUPPORTED`, `ERROR_CALL_NOT_IMPLEMENTED`;
+  POSIX `EPERM`, `ENOTSUP`, `EOPNOTSUPP`, `ENOSYS`) the folder is remembered for the process and every later file there is created with `O_CREATE|O_EXCL`, written and synced. Any other link error
+  (antivirus, sharing violation) only makes that one file fall back, with a warning and `replay_artifact_link_error_total`, and the folder is not remembered; a failed write
+  removes the partial file. This is not atomic, and it is safe because the gate refuses an incomplete gzip (a reader gets an error, never a document) and reads the
+  neighbouring `.json` when the `.json.gz` cannot be read; the conversion recognises an incomplete `.json.gz` left by a crash beside a valid `.json` (non-empty, well-formed JSON; a 0- or 1-byte `.json.gz` counts as incomplete), removes it and
+  converts again; a reader gets one more read of the `.json.gz` before an error is concluded. Counter `replay_artifact_link_fallback_total`.
 - **Journal and expvar.** `replay_regen: ...` lines (start, end, interruption, skipped and failed films), counters `replay_regen_started_total`,
-  `_done_total`, `_skipped_total`, `_failed_total`, `_deferred_game_total` and the gauge `replay_regen_stale`.
+  `_done_total`, `_skipped_total`, `_failed_total`, `_deferred_game_total`, `_compressed_total`, `_compress_failed_total` and the gauge `replay_regen_stale`.
 - **Web.** One component, `ReplayRegenPanel`, serves the banner of the replay page (offer with "Regenerate" and "Later", the latter hiding the offer for the
   session; progress with Pause and Resume while the queue runs) and the Replays card of Settings > Application (which also says "all replays are up to
   date"). A replay opened while its artifact is behind is shown as before, and rebuilt on opening if unreadable: the banner changes nothing there.

@@ -34,7 +34,7 @@ func TestReplayArtifactPath_MemeCheminPourLesDeuxFormes(t *testing.T) {
 	if court != complet {
 		t.Errorf("les deux formes du match_id donnent deux chemins :\n  court   %s\n  complet %s", court, complet)
 	}
-	if !strings.HasSuffix(filepath.ToSlash(court), "data/cache/replays/halo_infinite/000d5950.json") {
+	if !strings.HasSuffix(filepath.ToSlash(court), "data/cache/replays/halo_infinite/000d5950.json.gz") {
 		t.Errorf("chemin inattendu : %s", court)
 	}
 }

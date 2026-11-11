@@ -31,7 +31,7 @@ func TestDemoLayout_Disposition(t *testing.T) {
 		"LogsDir":                    {l.LogsDir(), filepath.Join(root, "runtime", "logs")},
 		"RuntimePaths.RepoRoot":      {l.RuntimePaths().RepoRoot(), filepath.Join(root, "runtime")},
 		"ReplayArtifactPath(défaut)": {l.ReplayArtifactPath("", "abcd1234-0000-0000-0000-000000000000"),
-			filepath.Join(root, "replays", "artifacts", "abcd1234.json")},
+			filepath.Join(root, "replays", "artifacts", "abcd1234.json.gz")},
 		"DemoFilmsCacheRoot(halo_5)": {NewPathResolver(filepath.Join("X:", "repo")).DemoFilmsCacheRoot("halo_5"), filepath.Join("X:", "repo", "data", "demo_films", "halo_5")},
 		"ReplayIndexPath(défaut)":    {l.ReplayIndexPath(DefaultSlug), filepath.Join(root, "replays", "index.json")},
 	}

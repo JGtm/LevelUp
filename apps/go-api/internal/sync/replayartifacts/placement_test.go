@@ -246,7 +246,7 @@ func ecrireArtefactAvecFaits(t *testing.T, repoRoot, matchID string) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if err := os.WriteFile(path, blob, 0o644); err != nil {
+	if err := poserCompresse(path, blob, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 }
@@ -264,7 +264,7 @@ func ecrireArtefact(t *testing.T, repoRoot, matchID string) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if err := os.WriteFile(path, blob, 0o644); err != nil {
+	if err := poserCompresse(path, blob, 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 }

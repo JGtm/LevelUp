@@ -270,3 +270,28 @@ func TestSequence_DeuxViesDansLeDesordre(t *testing.T) {
 		t.Errorf("+1 s : %+v, attendu x = 130", p)
 	}
 }
+
+// TestPositionA_ToleranceDeBordEstUneDuree — la tolerance aux bornes d'une vie est une DUREE
+// (toleranceDeBordMs), pas un nombre d'images : a 100 ms et a 33 ms par image, une position est
+// rendue jusqu'a 100 ms apres la derniere image d'une vie (et avant la premiere), pas une
+// milliseconde de plus.
+func TestPositionA_ToleranceDeBordEstUneDuree(t *testing.T) {
+	for _, pas := range []int{100, 33} {
+		vies := [][]domain.TacticalPistePoint{piste(10, 50, func(int) float32 { return 7 }, 0)}
+		debut, fin := int64(10*pas), int64(50*pas)
+		for _, c := range []struct {
+			nom    string
+			filmMs int64
+			ok     bool
+		}{
+			{"apres la fin, a la tolerance", fin + toleranceDeBordMs, true},
+			{"apres la fin, au-dela", fin + toleranceDeBordMs + 1, false},
+			{"avant le debut, a la tolerance", debut - toleranceDeBordMs, true},
+			{"avant le debut, au-dela", debut - toleranceDeBordMs - 1, false},
+		} {
+			if _, _, ok := positionA(vies, pas, c.filmMs); ok != c.ok {
+				t.Errorf("pas %d ms, %s (%d ms) : position rendue = %v, veut %v", pas, c.nom, c.filmMs, ok, c.ok)
+			}
+		}
+	}
+}

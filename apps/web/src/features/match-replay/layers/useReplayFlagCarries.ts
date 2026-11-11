@@ -45,12 +45,12 @@ import {
 import {
   buildFlagCaptureFx,
   drawFlagCaptureFx,
-  FLAG_CAPTURE_HOLD_FRAMES,
+  flagCaptureHoldFrames,
   type FlagCaptureStyle,
 } from './flagCaptureFx'
 import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
 import { buildFlagReturnDrops, drawFlagReturnZones } from './flagReturnZone'
-import { frameToMs, type XY } from '../../../lib/replay/replayLogic'
+import { durationFrameMs, frameToMs, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /** Le camp d'un drapeau VU DU JOUEUR REGARDÉ — `unknown` quand le film ne le situe pas. */
@@ -161,8 +161,8 @@ export function useReplayFlagCarries({
   )
 
   const layer = useMemo<FlagCarriesInput>(
-    () => ({ style: { colorOfTeam: inkOfTeam, outline, reducedMotion }, posOf }),
-    [inkOfTeam, outline, reducedMotion, posOf],
+    () => ({ style: { colorOfTeam: inkOfTeam, outline, reducedMotion, frameMs: durationFrameMs(doc) }, posOf }),
+    [inkOfTeam, outline, reducedMotion, posOf, doc],
   )
 
   // LES CAPTURES (retour du 2026-08-27) : construites UNE fois par document, comme les autres
@@ -206,6 +206,8 @@ export function useReplayFlagCarries({
     [allegiance, neutral, teamColorOf, reducedMotion],
   )
 
+  const captureHold = useMemo(() => flagCaptureHoldFrames(doc), [doc])
+
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D, frame: number) => {
       // LA GARDE « AUCUN DRAPEAU PUBLIÉ » VAUT AUSSI POUR LES ONDES, et ce n'est pas un détail :
@@ -224,9 +226,9 @@ export function useReplayFlagCarries({
       )
       drawFlagCarries(ctx, layer, carries, view, frame)
       // Les ondes APRÈS le calque : l'anneau s'ouvre autour du glyphe, il ne passe pas dessous.
-      drawFlagCaptureFx(ctx, captures, view, { frame, hold: FLAG_CAPTURE_HOLD_FRAMES }, captureStyle)
+      drawFlagCaptureFx(ctx, captures, view, { frame, hold: captureHold }, captureStyle)
     },
-    [enabled, carries, layer, view, captures, captureStyle, returnDrops, inkOfTeam],
+    [enabled, carries, layer, view, captures, captureStyle, captureHold, returnDrops, inkOfTeam],
   )
 
   const onPointerMove = useCallback(

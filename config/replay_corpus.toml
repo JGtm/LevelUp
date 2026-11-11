@@ -16,7 +16,7 @@
 # pont d'identite multi-manche, fusion de vehicules...) — perdre cette matiere-la est le
 # signal le plus probable d'une regression future. Les id sont la forme COURTE du match
 # (title.FilmShortMatchID, 8 caracteres hex) : la cle du cache film ET du parc d'artefacts
-# (data/cache/replays/{slug}/{id}.json, data/cache/film_chunks/{id}/).
+# (data/cache/replays/{slug}/{id}.json.gz, data/cache/film_chunks/{id}/).
 #
 # CE MANIFESTE EST TITLE-AGNOSTIC PAR CONSTRUCTION : il nomme le titre en donnee (`title_slug`
 # ci-dessous), jamais en dur dans le code — cmd/replay-corpus-gate lit ce champ et branche sur

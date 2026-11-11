@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/testutil"
 
 	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
@@ -77,6 +78,12 @@ func ecrire(t *testing.T, path, body string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir %s: %v", path, err)
+	}
+	if strings.HasSuffix(path, title.ReplayArtifactExt) { // un artefact se range compressé, par la porte
+		if _, _, err := replayartifact.Write(context.Background(), path, []byte(body)); err != nil {
+			t.Fatalf("write %s: %v", path, err)
+		}
+		return
 	}
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 		t.Fatalf("write %s: %v", path, err)

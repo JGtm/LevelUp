@@ -66,7 +66,7 @@ func vtArtefact(t *testing.T, racine, matchID string, schema int) {
 		t.Fatal(err)
 	}
 	blob, _ := json.Marshal(doc)
-	if err := os.WriteFile(path, blob, 0o600); err != nil {
+	if err := poserCompresse(path, blob, 0o600); err != nil {
 		t.Fatal(err)
 	}
 }

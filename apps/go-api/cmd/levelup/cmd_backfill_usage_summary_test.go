@@ -11,7 +11,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -22,7 +21,7 @@ import (
 func artefactUsageDeTest(t *testing.T, schema int) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "artefact.json")
-	if err := os.WriteFile(path, []byte(fmt.Sprintf(`{"schemaVersion":%d}`, schema)), 0o644); err != nil {
+	if err := poserCompresse(path, []byte(fmt.Sprintf(`{"schemaVersion":%d}`, schema)), 0o644); err != nil {
 		t.Fatalf("ecrire artefact: %v", err)
 	}
 	return path
@@ -111,7 +110,7 @@ func TestProjeterUnArtefact_CleDeReprise(t *testing.T) {
 
 func TestProjeterUnArtefact_ArtefactIllisible(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "corrompu.json")
-	if err := os.WriteFile(path, []byte("{pas du json"), 0o644); err != nil {
+	if err := poserCompresse(path, []byte("{pas du json"), 0o644); err != nil {
 		t.Fatalf("ecrire artefact: %v", err)
 	}
 	if _, etat := projeterUnArtefact(context.Background(), path, "m1", usageSummaryOptions{}, nil); etat != usageEchec {

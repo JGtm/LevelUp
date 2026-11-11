@@ -36,12 +36,13 @@ import {
 } from './vehiclesLayer'
 
 /**
- * VEHICLE_AIM_HOLD_FRAMES — combien de frames une lecture de visée reste EN VIGUEUR après son
- * instant, avant que le cône ne retombe sur le cap du châssis.
+ * VEHICLE_AIM_HOLD_MS — combien de millisecondes une lecture de visée reste EN VIGUEUR après son
+ * instant, avant que le cône ne retombe sur le cap du châssis. Les fonctions de ce fichier la
+ * convertissent en images avec `frameMs`, la durée réelle d'une image du document.
  *
- * DIX FRAMES, C'EST-À-DIRE UNE SECONDE, ET LE CHIFFRE VIENT DE LA MESURE : le film réplique la
- * visée d'un occupant à 5 à 46 lectures par seconde (lot V11, 35 épisodes attestés, 5 films) pour
- * 10 frames publiées par seconde — une seconde entière sans la moindre lecture n'est donc pas un
+ * UNE SECONDE, ET LE CHIFFRE VIENT DE LA MESURE : le film réplique la visée d'un occupant à 5 à
+ * 46 lectures par seconde (lot V11, 35 épisodes attestés, 5 films) pour 10 images publiées par
+ * seconde à la grille de 100 ms — une seconde entière sans la moindre lecture n'est donc pas un
  * défaut d'échantillonnage, c'est une interruption réelle du flux.
  *
  * CE N'EST PAS `TIMING_MS.aimHold` (5 s, le maintien du regard d'un PION), et il ne faut pas les
@@ -49,7 +50,7 @@ import {
  * ses points, alors que la série d'un occupant est DENSE par construction. Maintenir 5 s ici
  * afficherait une direction périmée là où le châssis, lui, est connu à l'image près.
  */
-export const VEHICLE_AIM_HOLD_FRAMES = 10
+export const VEHICLE_AIM_HOLD_MS = 1000
 
 /**
  * VehicleOccupantAim — CE QU'UN OCCUPANT REGARDE à une image, prêt à peindre.
@@ -85,13 +86,15 @@ export interface VehicleOccupantAim {
 export function vehicleRideAimReading(
   ride: ReplayVehicleRide,
   frame: number,
+  frameMs: number,
 ): ReplayVehicleAim | null {
   const aim = ride.aim
   if (!aim || aim.length === 0) return null
+  const holdFrames = VEHICLE_AIM_HOLD_MS / frameMs
   for (let i = lastIndexAt(aim, frame); i >= 0; i--) {
     const a = aim[i]
-    if (frame - a.t > VEHICLE_AIM_HOLD_FRAMES) return null
-    if (a.h !== undefined) return { ...a, h: headingTowardNext(aim, i, frame, VEHICLE_AIM_HOLD_FRAMES) }
+    if (frame - a.t > holdFrames) return null
+    if (a.h !== undefined) return { ...a, h: headingTowardNext(aim, i, frame, holdFrames) }
   }
   return null
 }
@@ -131,13 +134,14 @@ export function vehicleShooterAimAt(
   track: ReplayVehicleTrackReady,
   shooterSlot: number,
   frame: number,
+  frameMs: number,
 ): number | null {
   // `vehicleActiveRides` PLUTÔT QU'UN FILTRE À LA MAIN : le prédicat « cet épisode couvre-t-il
   // cette image » vit là-bas et nulle part ailleurs (CLAUDE.md n° 6) — le recopier ici en ferait
   // une troisième orthographe de la même borne.
   const sien = vehicleActiveRides(track, frame).find((r) => r.slot === shooterSlot)
   if (!sien) return null
-  return vehicleRideAimReading(sien, frame)?.h ?? null
+  return vehicleRideAimReading(sien, frame, frameMs)?.h ?? null
 }
 
 /**
@@ -152,14 +156,15 @@ export function vehicleOccupantAimAt(
   track: ReplayVehicleTrackReady,
   ride: ReplayVehicleRide,
   frame: number,
+  frameMs: number,
 ): VehicleOccupantAim {
-  const read = vehicleRideAimReading(ride, frame)
+  const read = vehicleRideAimReading(ride, frame, frameMs)
   if (read && read.h !== undefined) {
     return { ang: vehicleAimAngle(read.h), pitchDeg: read.p ?? 0, measured: true }
   }
   // À PLAT EN REPLI, et c'est une mesure : le cap du châssis est la direction d'un DÉPLACEMENT,
   // qui est horizontal — lui prêter une élévation inventerait un second angle.
-  return { ang: vehicleAimAngle(vehicleHeadingAt(track, frame)), pitchDeg: 0, measured: false }
+  return { ang: vehicleAimAngle(vehicleHeadingAt(track, frame, frameMs)), pitchDeg: 0, measured: false }
 }
 /**
  * vehicleChassisHeadingAt — LE CAP AUQUEL LE CHÂSSIS SE DESSINE : la visée du CONDUCTEUR sur les
@@ -209,11 +214,12 @@ export function vehicleOccupantAimAt(
 export function vehicleChassisHeadingAt(
   track: ReplayVehicleTrackReady,
   frame: number,
+  frameMs: number,
 ): number {
   if (track.family !== undefined && FAMILLES_ARME_FIXE.has(track.family)) {
     const driver = vehicleDriverAt(track, frame)
-    const read = driver ? vehicleRideAimReading(driver, frame) : null
+    const read = driver ? vehicleRideAimReading(driver, frame, frameMs) : null
     if (read?.h !== undefined) return read.h
   }
-  return vehicleHeadingAt(track, frame)
+  return vehicleHeadingAt(track, frame, frameMs)
 }

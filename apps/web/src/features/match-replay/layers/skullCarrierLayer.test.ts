@@ -42,7 +42,7 @@ describe('drawSkullCarrier', () => {
       beginPath: vi.fn(), arc: vi.fn(), fill: vi.fn(), stroke: vi.fn(),
     } as unknown as CanvasRenderingContext2D
     const layer: SkullCarrierInput = {
-      style: { ink: '#fff', outline: '#000', reducedMotion: true },
+      style: { ink: '#fff', outline: '#000', reducedMotion: true, frameMs: 100 },
       posOf: () => null,
     }
     drawSkullCarrier(ctx, layer, [carry({ t0: 0, t1: 100 })], view, 10)
@@ -55,7 +55,7 @@ describe('drawSkullCarrier', () => {
       beginPath: vi.fn(), arc: vi.fn(), fill, stroke: vi.fn(),
     } as unknown as CanvasRenderingContext2D
     const layer: SkullCarrierInput = {
-      style: { ink: '#fff', outline: '#000', reducedMotion: true },
+      style: { ink: '#fff', outline: '#000', reducedMotion: true, frameMs: 100 },
       posOf: () => ({ x: 50, y: 50 }),
     }
     drawSkullCarrier(ctx, layer, [carry({ t0: 0, t1: 100 })], view, 10)
@@ -69,7 +69,7 @@ describe('drawSkullCarrier', () => {
       beginPath: vi.fn(), arc: vi.fn(), fill, stroke: vi.fn(),
     } as unknown as CanvasRenderingContext2D
     const layer: SkullCarrierInput = {
-      style: { ink: '#fff', outline: '#000', reducedMotion: true },
+      style: { ink: '#fff', outline: '#000', reducedMotion: true, frameMs: 100 },
       posOf: () => ({ x: 50, y: 50 }),
     }
     drawSkullCarrier(ctx, layer, [carry({ t0: 0, t1: 40 })], view, 80)
@@ -84,7 +84,7 @@ describe('drawSkullCarrier', () => {
     const arc = vi.fn()
     const ctx = { beginPath: vi.fn(), arc, fill: vi.fn(), stroke: vi.fn() } as unknown as CanvasRenderingContext2D
     const layer: SkullCarrierInput = {
-      style: { ink: '#fff', outline: '#000', reducedMotion: true },
+      style: { ink: '#fff', outline: '#000', reducedMotion: true, frameMs: 100 },
       // Monde (1000, 25) -> canvas brut (2000, 150) : très au-delà de la toile (200x200).
       posOf: () => ({ x: 1000, y: 25 }),
     }
@@ -125,7 +125,7 @@ describe('crâne porté et crâne libre : exactement un glyphe à chaque image',
       beginPath: vi.fn(), arc: vi.fn(), fill, stroke: vi.fn(),
     } as unknown as CanvasRenderingContext2D
     const layer: SkullCarrierInput = {
-      style: { ink: '#fff', outline: '#000', reducedMotion: true }, posOf,
+      style: { ink: '#fff', outline: '#000', reducedMotion: true, frameMs: 100 }, posOf,
     }
     drawSkullCarrier(ctx, layer, carries, view, frame)
     return { porte: fill.mock.calls.length > 0, presence: skullPresenceAt(lives, carries, frame, null, posOf) }

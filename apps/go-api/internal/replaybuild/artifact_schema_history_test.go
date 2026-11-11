@@ -43,6 +43,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/testutil"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
@@ -175,7 +176,7 @@ func TestLePointDEcritureRefuseLAppauvrissementAChaqueSchema(t *testing.T) {
 				t.Errorf("l'accuse decrit un artefact sans compteurs alors que celui en place "+
 					"en porte (schema %d)", v)
 			}
-			surDisque, err := os.ReadFile(path) //nolint:gosec // chemin de repertoire temporaire de test
+			surDisque, err := replayartifact.ReadBytes(path)
 			if err != nil {
 				t.Fatalf("relecture : %v", err)
 			}

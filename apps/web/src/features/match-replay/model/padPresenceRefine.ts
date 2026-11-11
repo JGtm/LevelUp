@@ -72,17 +72,20 @@ export const PAD_APPROACH_RADIUS_M = 2
  * environ trois images peintes de halo « incertain » juste avant chaque bascule — et l'état s'y
  * FIGEAIT si le lecteur mettait pause dedans.
  *
- * `1/64` D'IMAGE RAMÈNE LA LAME À ~1,6 ms de film (une image de 100 ms) : au pire UNE image
- * peinte isolée de temps en temps, et une pause qui tomberait pile dedans devient de l'ordre de
+ * `1/64` D'IMAGE RAMÈNE LA LAME À ~1,6 ms de film à 100 ms par image (0,5 ms à 33 ms) : au pire UNE
+ * image peinte isolée de temps en temps, et une pause qui tomberait pile dedans devient de l'ordre de
  * 0,008 % de l'axe. La lame ne DISPARAÎT pas — elle ne peut pas, `tHigh > tLow` est la
  * condition qui garde le sentinel libre — elle devient invisible en pratique. Puissance de deux
  * choisie exprès : exacte en binaire, donc aucune dérive d'arrondi en comparant à une image
  * fractionnaire.
  *
+ * C'EST UNE FRACTION D'IMAGE, pas une durée : un écart d'ordre numérique qui garde le sentinel libre,
+ * sans effet visible à aucune cadence — donc pas un seuil temporel converti en millisecondes.
+ *
  * EXPORTÉE parce qu'elle est une CLAUSE de ce module, pas un détail : un test qui la recopierait
  * en littéral ne verrait pas son changement.
  */
-export const PAD_BETWEEN_FRAMES = 1 / 64
+export const PAD_BETWEEN_EPSILON = 1 / 64
 
 /** Le socle et la fenêtre d'incertitude d'une de ses occupations : ce qu'on interroge. */
 interface PadWindow {
@@ -142,7 +145,7 @@ function refineOccupancies(
 /**
  * refinedLow — la nouvelle borne de présence prouvée pour une fenêtre ouverte.
  *
- * AUCUNE APPROCHE : la borne se pose juste avant `tHigh` (cf. PAD_BETWEEN_FRAMES) — le socle
+ * AUCUNE APPROCHE : la borne se pose juste avant `tHigh` (cf. PAD_BETWEEN_EPSILON) — le socle
  * reste plein jusqu'à la preuve d'absence, qui garde tous ses droits.
  *
  * UNE APPROCHE À `t` : la borne devient la DERNIÈRE IMAGE AVANT `t`. Elle ne DESCEND jamais —
@@ -150,7 +153,7 @@ function refineOccupancies(
  */
 function refinedLow(win: PadWindow, tracks: readonly ReplayTrackReady[]): number {
   const t = firstApproach(win, tracks)
-  if (t === null) return win.hi - PAD_BETWEEN_FRAMES
+  if (t === null) return win.hi - PAD_BETWEEN_EPSILON
   // `Math.ceil(t) - 1` est le plus grand entier STRICTEMENT inférieur à `t` : à cette image, le
   // joueur n'est pas encore au socle. C'est une image de prudence (l'approche a lieu APRÈS
   // elle), et elle va dans le bon sens : on n'affirme jamais une présence à une image où le

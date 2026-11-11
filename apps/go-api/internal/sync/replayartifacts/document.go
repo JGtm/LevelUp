@@ -30,7 +30,8 @@ package replayartifacts
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+
+	"levelup/go-api/internal/replayartifact"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -40,7 +41,7 @@ import (
 // Variable, pas fonction : c'est le seul seam qui permet a un test de COMPTER les lectures
 // (raster_lecture_unique_test.go, lot M6) sans introduire de dependance sur un `fs.FS` dans
 // tout le paquet pour un seul besoin de diagnostic. Jamais substitue hors des tests.
-var ouvrirArtefact = os.ReadFile
+var ouvrirArtefact = replayartifact.Read
 
 // lireDocumentRange lit UN artefact TEL QU IL EST RANGE SUR DISQUE et le deserialise.
 //
@@ -52,19 +53,19 @@ var ouvrirArtefact = os.ReadFile
 // journaux se lisent alors de la meme facon, et un `lecture artefact` dans un log designe
 // toujours le meme evenement.
 //
-// RENVOIE AUSSI LA TAILLE LUE (octets) : [lireArtefacts] (derivations.go) en a besoin pour la
-// marque de derivation (`replaybuild.WriteDerivationsMark`), et c'est le meme octet-la — le
-// deduire d'un second `os.Stat` risquerait une taille qui a change entre les deux appels.
+// RENVOIE AUSSI LA TAILLE STOCKEE (octets du fichier lu, compresse le cas echeant) : [lireArtefacts]
+// (derivations.go) en a besoin pour la marque de derivation (`replaybuild.WriteDerivationsMark`), et c'est le
+// meme fichier-la — le deduire d'un second `os.Stat` risquerait une taille qui a change entre les deux appels.
 func lireDocumentRange(path string) (*replay.ReplayDocument, int, error) {
-	raw, err := ouvrirArtefact(path)
+	c, err := ouvrirArtefact(path)
 	if err != nil {
 		return nil, 0, fmt.Errorf("lecture artefact: %w", err)
 	}
 	var doc replay.ReplayDocument
-	if err := json.Unmarshal(raw, &doc); err != nil {
+	if err := json.Unmarshal(c.JSON, &doc); err != nil {
 		return nil, 0, fmt.Errorf("parse artefact: %w", err)
 	}
-	return &doc, len(raw), nil
+	return &doc, c.StoredBytes, nil
 }
 
 // LireArtefactRange est la PORTE EXPORTEE de [lireDocumentRange] pour les commandes hors ligne
