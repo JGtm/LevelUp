@@ -19,6 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **"Cumulative engagement gap" and "Cumulative damage balance" hidden** on Squad, Sessions and Time series behind one constant (`CUMULATIVE_GAP_CHARTS_SHOWN`), components and tests kept, pending a redesign.
 - **Objective evenings note** no longer appends the frequency sentence; **Microsoft notice** in the footer drops its introduction (`common.footer.microsoft_notice_intro` removed).
 
+### Security
+- **Go 1.26.11** — standard library fix for `net/http` (GO-2026-6859, reachable according to `govulncheck`); `go.mod`, `go.work`, the bricks and the build image move together.
+
 ## [8.1.1] - 2026-11-09
 
 ### Fixed

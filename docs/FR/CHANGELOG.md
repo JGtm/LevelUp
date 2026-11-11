@@ -19,6 +19,9 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 - **« Écart d'engagement cumulé » et « Balance des dégâts cumulée » masqués** sur l'Escouade, les Sessions et les Séries temporelles derrière une constante unique (`CUMULATIVE_GAP_CHARTS_SHOWN`), composants et tests conservés, en attendant une refonte.
 - **La note des soirées à objectif** ne porte plus la phrase de fréquence ; **la mention Microsoft** du pied de page perd son introduction (clé `common.footer.microsoft_notice_intro` retirée).
 
+### Sécurité
+- **Go 1.26.11** — correctif de la bibliothèque standard pour `net/http` (GO-2026-6859, atteint selon `govulncheck`) ; `go.mod`, `go.work`, les briques et l'image de build montent ensemble.
+
 ## [8.1.1] - 2026-11-09
 
 ### Corrigé
