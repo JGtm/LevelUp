@@ -183,24 +183,22 @@ func (w *World) VuePossede(slot uint32) bool {
 // BindFull registers (or rebinds) the entity created by a NEW record: slot -> archetype.
 // L'eid COMPLET (generation en bits 30-31) est memorise : le jeu teste `entry[+0x00] != eid` sur
 // l'eid entier avant de lire le corps d'un delta (FUN_1406caad8 -> `return 3`), donc la generation
-// est une contrainte de validite gratuite. Elle n'est appliquee que si SetStrictGeneration(true).
+// est une contrainte de validite gratuite. Une liaison a generation connue (celle-ci) ne repond qu'a
+// son eid complet pour la lecture du type ([World.ArchetypeForEID], utilisee par la vue B et le repli
+// d'anticipation) ; le controle supplementaire [World.GenerationMatches] ne joue que pour les chemins
+// qui l'appellent et sous la generation stricte du profil.
 func (w *World) BindFull(id, typeIndex uint32) {
 	w.slots[id&0x3fffffff] = slotState{TypeIndex: typeIndex, FullID: id, Vue: w.vueCourante,
 		Liaison: lecture.LiaisonLueNeuf}
 }
 
-// strictGeneration exige que l'eid COMPLET d'un delta (tag de generation inclus) corresponde a
-// celui pose au binding, comme le fait `FUN_1406caad8` (`entry[0] != eid` -> return 3, corps NON
-// lu, boucle abandonnee). Defaut false : les bindings issus des keyframes portent une generation
-// qui peut avoir change depuis, et le mode strict doit rester un A/B mesurable.
-//
-// C EST UNE BASCULE DU PROFIL DE BALAYAGE DEPUIS LE LOT 2.3
-// ([GrammaireBalayage.GenerationStricte]), plus une variable de paquet : elle arrive donc par le
-// meme canal que les largeurs, et `killsource` la passe a la cuisson du rejeu comme le reste de
-// ce qu il retient.
-
-// GenerationMatches indique si l'eid complet `id` correspond a celui memorise pour son slot.
-// Toujours vrai quand le mode strict est desactive ou quand aucune generation n'a ete memorisee.
+// GenerationMatches indique si l'eid complet `id` correspond a celui memorise pour son slot,
+// comme le fait `FUN_1406caad8` (`entry[0] != eid` -> return 3, corps NON lu, boucle abandonnee).
+// Toujours vrai quand `strict` est faux, et pour une liaison de generation inconnue ([slotState.GenAny]).
+// `strict` vient du profil de balayage ([GrammaireBalayage.GenerationStricte]) ; ce controle ne
+// gouverne que les chemins qui l'appellent (`DecodeFrameRecords`, le localisateur du canal des
+// morts). La lecture du type par la vue B ne passe pas par lui : elle repond a l'eid complet par
+// [World.ArchetypeForEID], que `strict` soit vrai ou non.
 func (w *World) GenerationMatches(id uint32, strict bool) bool {
 	if !strict {
 		return true

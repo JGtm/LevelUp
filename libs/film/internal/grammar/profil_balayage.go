@@ -298,14 +298,15 @@ type GrammaireBalayage struct {
 	// composant dead-state ne doit PAS y entrer (il est decode pour lire l index de participant
 	// du tueur absolu).
 	LargeursCalibrees map[string]int
-	// GenerationStricte exige que l eid COMPLET d un delta (tag de generation inclus)
-	// corresponde a celui pose au binding, comme le fait `FUN_1406caad8` (`entry[0] != eid` ->
-	// return 3, corps NON lu, boucle abandonnee). Defaut false : les liaisons issues des
-	// images-cles portent une generation qui peut avoir change depuis.
+	// GenerationStricte fait appliquer [World.GenerationMatches] aux chemins qui l'appellent
+	// (`DecodeFrameRecords`, le localisateur du canal des morts) : l eid COMPLET d un delta (tag de
+	// generation inclus) doit etre celui pose au binding, comme le fait `FUN_1406caad8`
+	// (`entry[0] != eid` -> return 3, corps NON lu, boucle abandonnee). Defaut false ; une liaison de
+	// generation inconnue ([World.BindWildcard]) repond a toute generation.
 	//
-	// `killsource` LE LEVE POUR TOUT SON DECODAGE ([killsource.ProfilDeDepart]) — et il le
-	// levait jusqu au lot 2.3 pour tout le PROCESSUS, donc aussi pour la cuisson du rejeu qui
-	// suivait. Ce fait est desormais porte par le profil, comme les largeurs calibrees.
+	// Elle ne gouverne PAS la garde d eid de la vue B : celle-ci lit le type par
+	// [World.ArchetypeForEID] (eid complet pour une liaison de generation connue), que cette bascule
+	// soit levee ou non. `killsource` la leve dans son profil de depart ([killsource.ProfilDeDepart]).
 	GenerationStricte bool
 	// TablesParVue applique la GARDE DE TABLE DE VUE dans la boucle d inference : un delta dont
 	// le slot appartient a une AUTRE vue n est pas un record, et la vue s arrete sur son en-tete
