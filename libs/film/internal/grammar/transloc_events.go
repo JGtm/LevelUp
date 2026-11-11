@@ -299,7 +299,10 @@ func translocEntryUsable(e *profile.MapQuantEntry) bool {
 			return false
 		}
 	}
-	for _, r := range e.Regions { // chaque ligne de la table par index commande, elle aussi, des bits lus
+	for _, r := range e.Regions { // chaque ligne REMPLIE de la table par index commande, elle aussi, des bits lus
+		if r.Invalid {
+			continue // une region sans ligne (AABB refusee par le jeu) lit zero bit : largeurs a zero par construction
+		}
 		for ax := range 3 {
 			if r.AxisWidths[ax] == 0 || r.AxisWidths[ax] > translocMaxAxisBits || r.Max[ax] <= r.Min[ax] {
 				return false
