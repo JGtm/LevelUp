@@ -166,7 +166,9 @@ describe('Soirées précédentes — une rangée, deux cartes', () => {
   it('soirée sous le minimum : le bloc placeholder du rapport de force dit pourquoi, dans la rangée', () => {
     mount({ pageData: withEvenings(EMPRISE_2209, history2209Evenings()) })
     const note = screen.getByTestId('objective-evenings-note')
-    expect(note.textContent).toContain('24 soirées de la composition sur 49')
+    // La phrase de fréquence (« 24 soirées de la composition sur 49 ») a été retirée le 2026-11-11.
+    expect(note.textContent).toContain('Sous le minimum de trois')
+    expect(note.textContent).not.toContain('soirées de la composition')
     expect(screen.getByTestId('emprise-habit').parentElement).toBe(screen.getByTestId('objective-evenings').parentElement)
   })
 

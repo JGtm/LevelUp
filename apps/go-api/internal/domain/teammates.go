@@ -264,13 +264,15 @@ type SquadPerMinuteEntry struct {
 // (teammates.04). Calculé sur l'union dédupliquée de allSquadRows groupé par
 // SessionLabel. team_mmr_avg / win_rate facultatifs (toutes-Nil → omitempty).
 type SquadSessionPoint struct {
-	SessionLabel string   `json:"session_label"`
-	SquadPerf    float64  `json:"squad_perf"` // moyenne PerformanceScore (0..100), 0 si aucun score
-	MatchCount   int      `json:"match_count"`
-	Wins         int      `json:"wins"`
-	Losses       int      `json:"losses"`
-	WinRate      *float64 `json:"win_rate,omitempty"`     // wins/match_count si match_count>0
-	TeamMMRAvg   *float64 `json:"team_mmr_avg,omitempty"` // moyenne TeamMMR si dispo
+	SessionLabel string `json:"session_label"`
+	// SquadPerf : moyenne, sur les matchs de la session, de la performance d'escouade du match
+	// (moyenne des scores des membres qui en ont un, 0..100) ; absente sans aucun score.
+	SquadPerf  *float64 `json:"squad_perf,omitempty"`
+	MatchCount int      `json:"match_count"`
+	Wins       int      `json:"wins"`
+	Losses     int      `json:"losses"`
+	WinRate    *float64 `json:"win_rate,omitempty"`     // wins/match_count si match_count>0
+	TeamMMRAvg *float64 `json:"team_mmr_avg,omitempty"` // moyenne TeamMMR si dispo
 }
 
 // SquadMapHeatmapCell est une cellule (joueur, carte, perf_avg) pour le

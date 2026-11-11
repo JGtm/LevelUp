@@ -103,6 +103,9 @@ func gtKey(titleSlug, gamertag string) string {
 	return titleSlug + "\x00" + gamertag
 }
 
+// hotAddPublicSlots : places du tour de rôle réservées aux slots ajoutés après le démarrage.
+const hotAddPublicSlots = 16
+
 // poolTitleOf retourne le premier titleSlug non vide parmi les sources — le
 // titre propriétaire du pool (les sources d'un même scan partagent ce titre).
 func poolTitleOf(sources []CredentialSource) string {
@@ -146,7 +149,7 @@ func NewPool(
 		opts.GlobalCooldown = 30 * time.Second
 	}
 
-	if len(sources) == 0 {
+	if len(sources) == 0 && !opts.AllowEmpty {
 		return nil, fmt.Errorf("pool: aucune source de credential pour créer un pool")
 	}
 
@@ -189,9 +192,12 @@ func NewPool(
 	}
 	poolSize := len(slots)
 
-	if poolSize == 0 {
+	if poolSize == 0 && !opts.AllowEmpty {
 		return nil, fmt.Errorf("pool: aucun slot créé (toutes les résolutions ont échoué)")
 	}
+	// Capacité du tour de rôle : les slots du démarrage plus une marge pour les ajouts à
+	// chaud (sans elle, un pool né vide ne servirait ses slots qu'en politique épinglée).
+	publicCap := poolSize + hotAddPublicSlots
 
 	// Créer le cooldown context.
 	cooldownCtx, cancel := context.WithCancel(context.Background())
@@ -201,7 +207,7 @@ func NewPool(
 		titleSlug:       poolTitle,
 		slots:           slots,
 		slotsByKey:      slotsByKey,
-		anyPublicChan:   make(chan int, poolSize),
+		anyPublicChan:   make(chan int, publicCap),
 		maxSize:         opts.MaxSize,
 		perTokenRPS:     opts.PerTokenRPS,
 		refreshInterval: opts.RefreshInterval,

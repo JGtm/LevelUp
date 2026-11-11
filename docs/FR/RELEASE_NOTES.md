@@ -1,5 +1,14 @@
 ## Dernières nouveautés
 
+**v8.1.2 — Tous les matchs se synchronisent, et l'application Windows démarre seule sa synchronisation**
+
+- **Tout ton historique est récupéré** — une première synchronisation arrêtée en route (application fermée, page perdue en chemin) laissait les matchs plus anciens de côté pour de bon. L'application remonte désormais ton historique jusqu'au bout, puis revient aux synchronisations rapides.
+- **L'application Windows synchronise dès la connexion** — un joueur connecté après le démarrage de l'application n'était jamais synchronisé avant le démarrage suivant, et l'accueil restait sur « Synchronisation en cours ». La première synchronisation part désormais dans la minute.
+- **Performance d'escouade par session** — la barre lit maintenant la performance d'escouade de chaque match (la moyenne des membres qui ont une note), comme le tableau de l'historique, et non plus ta seule note ; une session sans aucune note n'a pas de barre plutôt qu'un zéro.
+- **Les bonus hors des armes de râtelier** — un surbouclier n'apparaît plus sous son nom technique parmi les armes de râtelier de « Contrôle des ressources, par match ».
+- **Deux graphiques mis de côté** — « Écart d'engagement cumulé » et « Balance des dégâts cumulée » sont masqués sur l'Escouade, les Sessions et les Séries temporelles, le temps de repenser leur format.
+- **Des textes plus courts** — la note sous une soirée à objectif trop courte ne compte plus les précédentes, et la mention Microsoft du pied de page se tient seule.
+
 **v8.1.1 — Les notes se stabilisent après une mise à jour, et une page de téléchargement plus courte**
 
 - **Les notes ne sont plus recalculées à chaque démarrage** — quand une mise à jour change une formule de note, un match que le calcul ne parvient pas à résoudre pouvait relancer le recalcul à chaque démarrage. Il aboutit désormais une seule fois. Ce match ne reçoit pas de nouvelle note.

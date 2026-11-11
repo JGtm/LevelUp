@@ -70,7 +70,10 @@ func buildCompositionSessionLabels(rows []domain.SquadMatchRow) []domain.Session
 	return out
 }
 
-func buildSquadSessionTimeline(matches []domain.SquadMatchRow) []domain.SquadSessionPoint {
+// buildSquadSessionTimeline : un point par session. squadPerf : la performance d'escouade de
+// chaque match (squadPerfByMatch) ; la barre d'une session est la moyenne de ces valeurs sur
+// ses matchs qui en ont une, absente sinon (jamais un zéro qui se lirait comme une note).
+func buildSquadSessionTimeline(matches []domain.SquadMatchRow, squadPerf map[string]float64) []domain.SquadSessionPoint {
 	type agg struct {
 		count                  int
 		wins, losses           int
@@ -107,8 +110,8 @@ func buildSquadSessionTimeline(matches []domain.SquadMatchRow) []domain.SquadSes
 		case analysis.OutcomeLoss:
 			b.losses++
 		}
-		if m.PerformanceScore != nil {
-			b.perfSum += *m.PerformanceScore
+		if v, ok := squadPerf[m.MatchID]; ok {
+			b.perfSum += v
 			b.perfCount++
 		}
 		if analysis.MMRKnown(m.TeamMMR) {
@@ -126,7 +129,8 @@ func buildSquadSessionTimeline(matches []domain.SquadMatchRow) []domain.SquadSes
 			Losses:       b.losses,
 		}
 		if b.perfCount > 0 {
-			p.SquadPerf = round2(b.perfSum / float64(b.perfCount))
+			v := round2(b.perfSum / float64(b.perfCount))
+			p.SquadPerf = &v
 		}
 		if b.count > 0 {
 			wr := round2(float64(b.wins) / float64(b.count))

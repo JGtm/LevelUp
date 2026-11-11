@@ -242,7 +242,6 @@ export const commonManifest = {
   "common.footer.download": { fr: "Application Windows", en: "Windows app" },
   "common.footer.elsewhere_heading": { fr: "Ailleurs", en: "Elsewhere" },
   "common.footer.license": { fr: "Licence AGPL-3.0", en: "AGPL-3.0 licence" },
-  "common.footer.microsoft_notice_intro": { fr: "Mention exigée par Microsoft pour le contenu du jeu :", en: "Notice required by Microsoft for the game content:" },
   "common.footer.microsoft_rules_link": { fr: "Règles d'usage du contenu de jeu de Microsoft", en: "Microsoft Game Content Usage Rules" },
   "common.footer.paypal": { fr: "PayPal", en: "PayPal" },
   "common.footer.privacy": { fr: "Confidentialité", en: "Privacy" },

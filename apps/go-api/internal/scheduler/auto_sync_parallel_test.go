@@ -175,8 +175,9 @@ func TestRunOnce_Parallel_MixedOutcomes_Counted(t *testing.T) {
 	touchParallelDB(t, repoRoot, "OK2")
 	touchParallelDB(t, repoRoot, "FAIL")
 	// SKIP_NOPOOL est absent du pool ET sans player DB : depuis le 2026-09-16 (D1), un
-	// joueur hors pool n'est PLUS sauté pour cette raison — seule la DB absente le saute.
-	// Sa DB n'est donc volontairement PAS créée.
+	// joueur hors pool n'est plus sauté pour cette raison ; depuis le rattrapage de
+	// l'historique, la base absente ne le saute plus non plus (première synchronisation).
+	// Sa DB n'est volontairement PAS créée : il est synchronisé comme les autres.
 
 	p := &fakePool{
 		hasPlayerMap: map[string]bool{"OK1": true, "OK2": true, "FAIL": true}, // SKIP_NOPOOL absent
@@ -200,14 +201,14 @@ func TestRunOnce_Parallel_MixedOutcomes_Counted(t *testing.T) {
 	if res.Total != 4 {
 		t.Errorf("Total = %d, want 4", res.Total)
 	}
-	if res.Synced != 2 {
-		t.Errorf("Synced = %d, want 2 (OK1+OK2)", res.Synced)
+	if res.Synced != 3 {
+		t.Errorf("Synced = %d, want 3 (OK1+OK2+SKIP_NOPOOL en première synchronisation)", res.Synced)
 	}
 	if res.Failed != 1 {
 		t.Errorf("Failed = %d, want 1 (FAIL)", res.Failed)
 	}
-	if res.Skipped != 1 {
-		t.Errorf("Skipped = %d, want 1 (SKIP_NOPOOL : player DB absente)", res.Skipped)
+	if res.Skipped != 0 {
+		t.Errorf("Skipped = %d, want 0 (une base absente ne saute plus le joueur)", res.Skipped)
 	}
 }
 

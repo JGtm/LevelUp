@@ -235,4 +235,10 @@ type PoolOptions struct {
 	// GlobalCooldown est le délai d'attente après un 429/503 global (tout le pool).
 	// Après ce délai, les appels Refresh() redémarrent. Défaut : 30s.
 	GlobalCooldown time.Duration
+
+	// AllowEmpty accepte un pool sans aucun slot au démarrage (aucune source, ou toutes en
+	// échec) : il se remplit ensuite par AddOrUpdateSource (re-scan du magasin, connexion
+	// d'un joueur). Faux : l'absence de slot est une erreur, comme pour un outil en ligne de
+	// commande qui n'a rien à faire sans jeton.
+	AllowEmpty bool
 }

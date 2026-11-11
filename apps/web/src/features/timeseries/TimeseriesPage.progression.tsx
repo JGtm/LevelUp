@@ -46,6 +46,7 @@ import type { FilterContextInput, TimeseriesPageResponse, ExplorerMatchRow } fro
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import type { TimeseriesManifestKey } from '@/lib/i18n/generated/timeseries'
 import type { Locale } from '@/lib/i18n/locale'
+import { CUMULATIVE_GAP_CHARTS_SHOWN } from '@/lib/charts/cumulativeGapChartsVisibility'
 
 export interface TimeseriesProgressionTabProps {
   data: TimeseriesPageResponse
@@ -284,12 +285,14 @@ export function TimeseriesProgressionTab({
             filterHash={filterContextHash}
             limit={30}
           />
-          <TimeseriesEngagementGapTrend
-            playerSlug={playerSlug}
-            filters={soloFilterContext}
-            filterHash={filterContextHash}
-            limit={30}
-          />
+          {CUMULATIVE_GAP_CHARTS_SHOWN && (
+            <TimeseriesEngagementGapTrend
+              playerSlug={playerSlug}
+              filters={soloFilterContext}
+              filterHash={filterContextHash}
+              limit={30}
+            />
+          )}
         </div>
       </FeatureGate>
 

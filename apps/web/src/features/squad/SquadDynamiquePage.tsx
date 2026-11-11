@@ -24,6 +24,7 @@ import type { Locale } from '@/lib/i18n/locale'
 import { SquadIntensityProfileChart } from './SquadIntensityProfileChart'
 import { SquadEfficiencyChart } from './SquadEfficiencyChart'
 import { SquadNetLivesChart } from './SquadNetLivesChart'
+import { CUMULATIVE_GAP_CHARTS_SHOWN } from '@/lib/charts/cumulativeGapChartsVisibility'
 import { SquadFdaGapCumulativeCard } from './SquadFdaGapCumulativeCard'
 import { SquadEngagementGapChart } from './SquadEngagementGapChart'
 import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
@@ -166,13 +167,15 @@ function CumulativeRow({
       className="grid gap-4 empty:hidden md:grid-cols-2 md:[&>*:only-child]:col-span-2"
       data-testid="squad-cumulative-row"
     >
-      <SquadNetLivesChart
-        rowsByPlayer={rowsByPlayer}
-        playerOrder={playerOrder}
-        colorByPlayer={colorByPlayer}
-        t={t}
-        emptyMessage={t.empty.noBlockData}
-      />
+      {CUMULATIVE_GAP_CHARTS_SHOWN && (
+        <SquadNetLivesChart
+          rowsByPlayer={rowsByPlayer}
+          playerOrder={playerOrder}
+          colorByPlayer={colorByPlayer}
+          t={t}
+          emptyMessage={t.empty.noBlockData}
+        />
+      )}
       <SquadFdaGapCumulativeCard
         rowsByPlayer={rowsByPlayer}
         playerOrder={playerOrder}
@@ -211,14 +214,16 @@ function EngagementRow({
           teammates={teammates}
           colorByPlayer={colorByPlayer}
         />
-        <SquadEngagementGapChart
-          playerSlug={playerSlug}
-          matchIds={matchIds}
-          teammates={teammates}
-          colorByPlayer={colorByPlayer}
-          t={t}
-          emptyMessage={t.empty.noBlockData}
-        />
+        {CUMULATIVE_GAP_CHARTS_SHOWN && (
+          <SquadEngagementGapChart
+            playerSlug={playerSlug}
+            matchIds={matchIds}
+            teammates={teammates}
+            colorByPlayer={colorByPlayer}
+            t={t}
+            emptyMessage={t.empty.noBlockData}
+          />
+        )}
       </div>
     </FeatureGate>
   )

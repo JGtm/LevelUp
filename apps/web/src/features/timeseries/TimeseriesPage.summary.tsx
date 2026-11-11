@@ -45,6 +45,7 @@ import { fragsManifest } from '@/lib/i18n/generated/frags'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import type { TimeseriesPageResponse } from '@/lib/api/types'
+import { CUMULATIVE_GAP_CHARTS_SHOWN } from '@/lib/charts/cumulativeGapChartsVisibility'
 import type { TimeseriesManifestKey } from '@/lib/i18n/generated/timeseries'
 
 export interface OutcomeLabels {
@@ -238,16 +239,18 @@ export function TimeseriesSummaryTab({
           déjà adaptatif) — la scinder en deux colonnes l'écraserait. Même carte que
           Sessions et Escouade, aucune requête neuve : les dégâts arrivent avec
           `match_rows`. */}
-      <TimeseriesNetLivesTrend
-        rows={data.match_rows ?? []}
-        locale={appLocale}
-        title={t('timeseries.progression.net_lives_title')}
-        tooltip={t('timeseries.progression.net_lives_tooltip')}
-        labels={netLivesLabels}
-        avgCaption={t('timeseries.progression.net_lives_average_caption')}
-        avgUnit={t('timeseries.progression.net_lives_average_unit')}
-        emptyMessage={t('timeseries.progression.net_lives_empty')}
-      />
+      {CUMULATIVE_GAP_CHARTS_SHOWN && (
+        <TimeseriesNetLivesTrend
+          rows={data.match_rows ?? []}
+          locale={appLocale}
+          title={t('timeseries.progression.net_lives_title')}
+          tooltip={t('timeseries.progression.net_lives_tooltip')}
+          labels={netLivesLabels}
+          avgCaption={t('timeseries.progression.net_lives_average_caption')}
+          avgUnit={t('timeseries.progression.net_lives_average_unit')}
+          emptyMessage={t('timeseries.progression.net_lives_empty')}
+        />
+      )}
 
       {/* Répartition des frags v2 — MÊME rendu que Match view / Sessions : sunburst
           hiérarchique classe→rôle (compteur seul, légende à gauche, maxW 480) +
