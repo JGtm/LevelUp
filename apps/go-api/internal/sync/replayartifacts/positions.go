@@ -81,10 +81,13 @@ import (
 // change le volume ecrit ; le mesurer avant est la seule facon de le changer honnetement.
 const GrainPositionsMS = 20_000
 
-// cadenceParDefautMS : la duree d'une frame quand le document ne la publie pas (schemas
+// cadenceHistoriqueMS : la duree d'une frame quand le document ne la publie pas (schemas
 // anterieurs au champ `frameIntervalMs`). 100 ms est la grille du rejeu depuis sa creation ;
-// supposer autre chose ferait mentir l'axe de temps des vieux artefacts.
-const cadenceParDefautMS = 100
+// supposer autre chose ferait mentir l'axe de temps des vieux artefacts. C'est un fait de
+// l'histoire des fichiers, distinct de la cadence a laquelle le decodeur cuit aujourd'hui : elle
+// ne suit pas `replay.DefaultFrameIntervalMS`. Seule ecriture de ce defaut de relecture ici : les
+// projections de positions et de rasters la partagent.
+const cadenceHistoriqueMS = 100
 
 // EquipeInconnue : la valeur que porte une position dont on ne sait pas le camp. C'est une
 // valeur PLEINE, pas un trou : le lecteur (`MatchPositionsHeatmap.tsx`) la reconnait et range
@@ -119,7 +122,7 @@ type passePositionsPrete struct {
 func projeterPositions(matchID string, doc *replay.ReplayDocument) passePositionsPrete {
 	cadence := doc.FrameIntervalMS
 	if cadence <= 0 {
-		cadence = cadenceParDefautMS
+		cadence = cadenceHistoriqueMS
 	}
 	rows := make([]persist.PlayerPositionRow, 0, 256)
 	porteurs := make([]string, 0, 256)

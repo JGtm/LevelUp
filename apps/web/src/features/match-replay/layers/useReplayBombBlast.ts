@@ -19,7 +19,7 @@
 import { useCallback, useMemo } from 'react'
 
 import {
-  BOMB_BLAST_HOLD_FRAMES,
+  bombBlastHoldFrames,
   buildBombBlastFx,
   drawBombBlastFx,
   type BombBlastStyle,
@@ -86,12 +86,14 @@ export function useReplayBombBlast({
     [allegiance, teamColorOf, neutral, reducedMotion],
   )
 
+  const hold = useMemo(() => bombBlastHoldFrames(doc), [doc])
+
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D, frame: number) => {
       if (blasts.length === 0) return
-      drawBombBlastFx(ctx, blasts, view, { frame, hold: BOMB_BLAST_HOLD_FRAMES }, style)
+      drawBombBlastFx(ctx, blasts, view, { frame, hold }, style)
     },
-    [blasts, view, style],
+    [blasts, view, style, hold],
   )
 
   return { id: 'deflagration', available: blasts.length > 0, paint }

@@ -18,6 +18,7 @@ import { useCallback, useMemo } from 'react'
 
 import { useCarrierPosAt } from '../model/carrierPosition'
 import { type CanvasView } from '../model/replayView'
+import { frameToMs } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { drawSkullCarrier, type SkullCarrierInput } from './skullCarrierLayer'
 
@@ -61,8 +62,8 @@ export function useReplaySkullCarrier({
   const posOf = useCarrierPosAt(doc)
 
   const layer = useMemo<SkullCarrierInput>(
-    () => ({ style: { ink, outline, reducedMotion }, posOf }),
-    [ink, outline, reducedMotion, posOf],
+    () => ({ style: { ink, outline, reducedMotion, frameMs: frameToMs(1, doc) }, posOf }),
+    [ink, outline, reducedMotion, posOf, doc],
   )
 
   const paint = useCallback(

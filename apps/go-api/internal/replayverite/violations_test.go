@@ -43,10 +43,10 @@ func TestHorsEmprise_ObjetsEtVehiculesAuDelaDeLaMarge(t *testing.T) {
 // tolerance, est un faux ; dans la tolerance, non.
 func TestHorsVie_ActionSurUnSlotSansVie(t *testing.T) {
 	d := documentJuste()
-	d.Shots = append(d.Shots, Action{T: 100 + toleranceVieImages, Slot: ptr(512)}, Action{T: 130, Slot: ptr(512)})
+	d.Shots = append(d.Shots, Action{T: 100 + d.images(toleranceVieMS), Slot: ptr(512)}, Action{T: 130, Slot: ptr(512)})
 	d.Grenades = []Action{{T: 5, Slot: ptr(999)}}
 	d.Pickups = []Action{{T: 120, Slot: ptr(513)}}
-	d.WeaponChanges = []Action{{T: 301 + toleranceVieImages, Slot: ptr(514)}}
+	d.WeaponChanges = []Action{{T: 301 + d.images(toleranceVieMS), Slot: ptr(514)}}
 	d.Abilities = []Action{{T: 225, Slot: ptr(513)}}
 	d.EquipmentChanges = []Action{{T: 10}}                            // sans slot : non jugeable, ignore
 	exigerViolations(t, Noter(d, faitsJustes(), nil), ViolHorsVie, 4) // tir @130, grenade slot 999, changement @306, capacite @225
@@ -109,7 +109,7 @@ func TestIdentite_CompteursPublies(t *testing.T) {
 // du joueur est un faux ; un joueur sans vie nommee n'est pas juge.
 func TestMortSansVie_IncrementLoinDeToutesLesFinsDeVie(t *testing.T) {
 	d := documentJuste()
-	d.ScoreTimeline.Players[0].Deaths = serie(Pas{0, 0}, Pas{100 + toleranceMortImages, 1}, Pas{220, 2})
+	d.ScoreTimeline.Players[0].Deaths = serie(Pas{0, 0}, Pas{100 + d.images(toleranceMortMS), 1}, Pas{220, 2})
 	d.ScoreTimeline.Players = append(d.ScoreTimeline.Players, ScoreJoueur{XUID: "333", Deaths: serie(Pas{50, 1})})
 	exigerViolations(t, Noter(d, faitsJustes(), nil), ViolMortSansVie, 1)
 }

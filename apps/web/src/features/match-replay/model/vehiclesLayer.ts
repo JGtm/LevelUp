@@ -68,7 +68,7 @@ import { screenLengthPx, spriteWorldLengthMm } from '@/lib/replay/screenSizes'
 import { lastIndexAt, positionAt, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { covers } from './replaySpans'
-import { headingTowardNext } from './headingInterp'
+import { HEADING_INTERP_MAX_SPAN_MS, headingTowardNext } from './headingInterp'
 
 // --- FAMILLES REFUSÉES ------------------------------------------------------------------------
 
@@ -472,8 +472,9 @@ export const VEHICLE_DEFAULT_HEADING_DEG = 90
  *     `VehicleSample.H`) — chercher EN ARRIÈRE depuis `frame` couvre donc les deux à la fois.
  *     ENTRE deux échantillons, le cap TOURNE vers le suivant par le plus court chemin angulaire
  *     (`headingTowardNext`, contrôles v8 du 2026-10-21 : tenu au dernier échantillon, il
- *     faisait pivoter le sprite par saccades de 100 ms alors que sa position glissait) ; jamais
- *     au travers d'un silence de réplication, jamais sur plus d'une seconde.
+ *     faisait pivoter le sprite par saccades alors que sa position glissait) ; jamais au travers
+ *     d'un silence de réplication, jamais sur plus d'une seconde (`HEADING_INTERP_MAX_SPAN_MS`,
+ *     converti avec `frameMs`, la durée réelle d'une image du document).
  *  2. AVANT LE PREMIER MOUVEMENT — aucun échantillon EN ARRIÈRE ne porte de cap (le véhicule est
  *     encore à quai) : le cap du PREMIER échantillon mobile À VENIR, pour que le véhicule
  *     s'oriente déjà dans le sens qu'il va prendre plutôt que de pivoter brutalement au premier
@@ -481,12 +482,18 @@ export const VEHICLE_DEFAULT_HEADING_DEG = 90
  *  3. JAMAIS MOBILE — aucun échantillon, nulle part, ne porte de cap (véhicule jamais conduit,
  *     ou tourelle qui ne translate pas) : `VEHICLE_DEFAULT_HEADING_DEG`, nez vers le haut.
  */
-export function vehicleHeadingAt(track: ReplayVehicleTrackReady, frame: number): number {
+export function vehicleHeadingAt(
+  track: ReplayVehicleTrackReady,
+  frame: number,
+  frameMs: number,
+): number {
   const samples = track.samples
   if (samples.length === 0) return VEHICLE_DEFAULT_HEADING_DEG
   const idx = lastIndexAt(samples, frame)
   for (let i = idx; i >= 0; i--) {
-    if (samples[i].h !== undefined) return headingTowardNext(samples, i, frame)
+    if (samples[i].h !== undefined) {
+      return headingTowardNext(samples, i, frame, HEADING_INTERP_MAX_SPAN_MS / frameMs)
+    }
   }
   for (let i = Math.max(idx + 1, 0); i < samples.length; i++) {
     const h = samples[i].h

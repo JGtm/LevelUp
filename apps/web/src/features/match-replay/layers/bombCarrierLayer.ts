@@ -42,6 +42,8 @@ export interface BombCarrierStyle {
   outline: string
   /** Mouvement réduit : la pulsation d'un portage « ouvert » devient une opacité constante. */
   reducedMotion: boolean
+  /** Durée réelle d'une image du document, en ms (`frameToMs(1, doc)`) : la période de pulsation est une durée. */
+  frameMs: number
 }
 
 /**
@@ -157,7 +159,7 @@ export function drawBombCarrier(
     drawBombGlyph(ctx, { x: at.x, y: at.y - BOMB_OFFSET_Y }, {
       ink: layer.style.ink,
       outline: layer.style.outline,
-      alpha: carriedGlyphAlpha(c.closed, frame, layer.style.reducedMotion),
+      alpha: carriedGlyphAlpha(c.closed, frame, layer.style.reducedMotion, layer.style.frameMs),
     })
     ctx.globalAlpha = 1
     return // une seule bombe : portée, donc jamais au sol à la même image

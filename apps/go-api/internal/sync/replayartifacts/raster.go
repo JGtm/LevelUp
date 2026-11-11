@@ -96,9 +96,9 @@ func ProjeterRasterTactique(path string) (domain.TacticalRasterSidecar, error) {
 // le lire) et `projeterRastersTactiques` (qui le recoit d'`artefactLu.doc`, sans jamais
 // rouvrir le fichier — lot M6, cf. DECOUVERTES_TACTIQUE).
 //
-// `frameIntervalMs` absent (artefacts anciens) : l'echelle par defaut du decodeur
-// (replay.DefaultFrameIntervalMS) est appliquee ICI, chez l'appelant du calcul pur —
-// `analysis/tactical` ne devine aucune cadence.
+// `frameIntervalMs` absent (artefacts anciens) : la cadence historique ([cadenceHistoriqueMS]) est
+// appliquee ICI, chez l'appelant du calcul pur — `analysis/tactical` ne devine aucune cadence.
+// Ce n'est pas la cadence de cuisson du decodeur : un artefact sans champ date de la grille a 100 ms.
 func projeterRasterDepuisDocument(doc *replay.ReplayDocument) (domain.TacticalRasterSidecar, error) {
 	if doc == nil {
 		// Ne devrait jamais arriver : `lireArtefacts` ne pose `artefactLu` qu'apres une
@@ -114,7 +114,7 @@ func projeterRasterDepuisDocument(doc *replay.ReplayDocument) (domain.TacticalRa
 	}
 	intervalle := doc.FrameIntervalMS
 	if intervalle <= 0 {
-		intervalle = replay.DefaultFrameIntervalMS
+		intervalle = cadenceHistoriqueMS
 	}
 	g := tactical.GrilleParDefaut()
 	entree := tactical.EntreeOccupation{

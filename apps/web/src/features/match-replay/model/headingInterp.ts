@@ -2,7 +2,7 @@
  * headingInterp — LE CAP ENTRE DEUX ÉCHANTILLONS, par le plus court chemin angulaire.
  *
  * POURQUOI (contrôles v8, 2026-10-21, témoin 7b0d89c4 : « rotations saccadées des véhicules »). Le
- * film publie un cap par image du document (10 Hz) et le rendu tourne à l'écran bien plus vite : la
+ * film publie un cap par image du document (10 Hz à l'origine) et le rendu tourne à l'écran bien plus vite : la
  * POSITION d'un véhicule s'interpole entre deux échantillons (`positionAt`), son CAP était tenu au
  * dernier échantillon — le sprite glissait en continu puis pivotait par saccades de 100 ms. Un cap
  * s'interpole sur le cercle : de 350 à 10 degrés, le chemin est de +20, pas de -340 (d'où le plus
@@ -12,7 +12,7 @@
  *  - elle ne traverse jamais un SILENCE de réplication (`g > 0`) : comme la
  *    position, le cap est tenu au point qui précède — un véhicule ne tourne pas pendant que le film
  *    se tait ;
- *  - elle ne comble pas un trou plus long que `HEADING_INTERP_MAX_SPAN_FRAMES` : au-delà, les deux
+ *  - elle ne comble pas un trou plus long que `HEADING_INTERP_MAX_SPAN_MS` : au-delà, les deux
  *    lectures n'appartiennent plus à un même mouvement et le cap reste tenu (un virage lissé sur
  *    dix secondes serait une invention).
  *
@@ -20,11 +20,12 @@
  */
 
 /**
- * Écart maximal, en images, entre deux lectures de cap pour qu'on tourne de l'une à l'autre. Une
- * seconde (10 images) : le même ordre que le maintien d'une lecture de visée
- * (`VEHICLE_AIM_HOLD_FRAMES`), pour la même raison — au-delà, ce n'est plus un flux continu.
+ * Écart maximal, en millisecondes, entre deux lectures de cap pour qu'on tourne de l'une à l'autre.
+ * Une seconde : le même ordre que le maintien d'une lecture de visée (`VEHICLE_AIM_HOLD_MS`), pour
+ * la même raison — au-delà, ce n'est plus un flux continu. L'appelant le convertit en images avec
+ * la durée réelle d'une image du document.
  */
-export const HEADING_INTERP_MAX_SPAN_FRAMES = 10
+export const HEADING_INTERP_MAX_SPAN_MS = 1000
 
 /** Un point qui porte (ou non) un cap : un échantillon de véhicule ou une lecture de visée. */
 export interface HeadingPoint {
@@ -46,14 +47,15 @@ export function lerpHeadingDeg(from: number, to: number, f: number): number {
 /**
  * headingTowardNext — le cap à `frame`, sachant que `points[prevIdx]` est la dernière lecture de
  * cap au plus tard à cet instant. S'il existe une lecture suivante de cap, atteignable sans
- * traverser de silence et à moins de `maxSpanFrames`, le cap tourne vers elle ; sinon il reste celui
- * de `points[prevIdx]`. `prevIdx` doit désigner un point qui porte un cap.
+ * traverser de silence et à moins de `maxSpanFrames` images (`HEADING_INTERP_MAX_SPAN_MS` converti),
+ * le cap tourne vers elle ; sinon il reste celui de `points[prevIdx]`. `prevIdx` doit désigner un
+ * point qui porte un cap.
  */
 export function headingTowardNext(
   points: readonly HeadingPoint[],
   prevIdx: number,
   frame: number,
-  maxSpanFrames: number = HEADING_INTERP_MAX_SPAN_FRAMES,
+  maxSpanFrames: number,
 ): number {
   const prev = points[prevIdx]
   const held = prev.h as number

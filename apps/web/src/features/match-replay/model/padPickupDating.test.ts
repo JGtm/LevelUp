@@ -40,7 +40,7 @@ describe('applyPadPickupDating', () => {
     expect(occ?.tLow).toBe(137)
     expect(occ && occ.tHigh > occ.tLow).toBe(true)
     expect(occ?.pickupXuid).toBe('2763825816095527')
-    // L'« INCERTAIN » SE RÉDUIT À UNE FRACTION DE FRAME (PAD_BETWEEN_FRAMES = 1/64), invisible
+    // L'« INCERTAIN » SE RÉDUIT À UNE FRACTION DE FRAME (PAD_BETWEEN_EPSILON = 1/64), invisible
     // en pratique — même garantie que le raffinement par proximité, pour la même raison
     // (`tHigh > tLow` strictement, sinon le sentinel « jamais vidé » reprendrait la main) :
     // plein jusqu'à l'instant daté, vide dès la frame suivante.

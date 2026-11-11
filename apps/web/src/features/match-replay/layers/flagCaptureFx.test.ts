@@ -16,10 +16,13 @@ import { describe, expect, it } from 'vitest'
 import {
   buildFlagCaptureFx,
   drawFlagCaptureFx,
-  FLAG_CAPTURE_HOLD_FRAMES,
+  flagCaptureHoldFrames,
   type FlagCaptureFx,
 } from './flagCaptureFx'
 import { testReplayDoc } from '../test/testDoc'
+
+/** La durée de l'onde, en images, sur la grille historique de 100 ms de ces fixtures. */
+const HOLD = flagCaptureHoldFrames({ frameIntervalMs: 100 })
 
 const VIEW = {
   bounds: { minX: 0, minY: 0, maxX: 10, maxY: 10 },
@@ -133,7 +136,7 @@ describe('buildFlagCaptureFx', () => {
 describe('drawFlagCaptureFx', () => {
   const FX: FlagCaptureFx[] = [{ frame: 30, x: 5, y: 5, xuid: 'A' }]
   const style = (reducedMotion = false) => ({ inkOf: () => INK, reducedMotion })
-  const win = (frame: number) => ({ frame, hold: FLAG_CAPTURE_HOLD_FRAMES })
+  const win = (frame: number) => ({ frame, hold: HOLD })
 
   it("AVANT l'instant de la capture : rien n'est tracé", () => {
     const { ctx, calls } = mockCtx()
@@ -143,7 +146,7 @@ describe('drawFlagCaptureFx', () => {
 
   it("APRÈS la fenêtre : rien non plus — l'effet ne traîne pas", () => {
     const { ctx, calls } = mockCtx()
-    drawFlagCaptureFx(ctx, FX, VIEW, win(30 + FLAG_CAPTURE_HOLD_FRAMES + 1), style())
+    drawFlagCaptureFx(ctx, FX, VIEW, win(30 + HOLD + 1), style())
     expect(calls).toHaveLength(0)
   })
 

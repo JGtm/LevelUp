@@ -35,7 +35,7 @@
  */
 import { fxTintOf, type FxTint } from '../layers/fxInk'
 import { familyOf, type ShotFamily } from '../layers/shotEffects'
-import { heldReading } from '../../../lib/replay/replayLogic'
+import { frameToMs, heldReading } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { vehicleChassisHeadingAt, vehicleShooterAimAt } from './vehiclesAim'
 import { vehicleShotStyleOf, vehicleWeaponMountOf } from './vehicleWeaponRegistry'
@@ -217,8 +217,9 @@ function vehicleShotSourceOf(
   // LE SLOT DU TIREUR, PAS SON SIÈGE (lot 5.5) : c'est la seule clé qui désigne l'occupant qui a
   // tiré, et elle vaut pour le tourelleur passager du Warthog comme pour le conducteur artilleur
   // du Scorpion — comme pour le passager qui tire sa propre arme.
+  const frameMs = frameToMs(1, doc)
   const viseeTireur =
-    vehicleShooterAimAt(track, shot.slot, t) ?? viseeSurUnePiecePortee(doc, track, shot.slot, t)
+    vehicleShooterAimAt(track, shot.slot, t, frameMs) ?? viseeSurUnePiecePortee(doc, track, shot.slot, t)
   // UNE ARME DE JOUEUR N'ENTRE QUE SI SA VISÉE EST LUE : sans elle, la source n'apporterait rien
   // et le tir perdrait son propre regard (`h`), qui est parfois lisible.
   if (!mount && !armeDeVehicule && viseeTireur === null) return null
@@ -227,7 +228,7 @@ function vehicleShotSourceOf(
     arme: armeDeVehicule ? 'vehicule' : 'joueur',
     // LE SPRITE DESSINÉ, variante comprise (schéma 69) : c'est sur SES dimensions que l'ancre se lit.
     family: vehicleSpriteFamily(track),
-    headingDeg: vehicleChassisHeadingAt(track, t),
+    headingDeg: vehicleChassisHeadingAt(track, t, frameMs),
     shooterHeadingDeg: viseeTireur,
   }
 }
@@ -250,9 +251,10 @@ function viseeSurUnePiecePortee(
   slotTireur: number,
   t: number,
 ): number | null {
+  const frameMs = frameToMs(1, doc)
   for (const piece of doc.vehicles) {
     if (piece.carrier?.slot !== porteur.slot || piece.carrier.gen !== porteur.gen) continue
-    const visee = vehicleShooterAimAt(piece, slotTireur, t)
+    const visee = vehicleShooterAimAt(piece, slotTireur, t, frameMs)
     if (visee !== null) return visee
   }
   return null

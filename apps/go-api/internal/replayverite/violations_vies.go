@@ -58,6 +58,7 @@ const slotMuet = 0
 func violationsHorsVie(d *Document) Violation {
 	v := indexerVies(d)
 	trajets := trajetsParSlot(d)
+	tolerance := d.images(toleranceVieMS)
 	var out Violation
 	familles := []struct {
 		nom     string
@@ -69,8 +70,8 @@ func violationsHorsVie(d *Document) Violation {
 	}
 	for _, f := range familles {
 		for _, a := range f.actions {
-			if a.Slot == nil || *a.Slot == slotMuet || couvertPar(v.parSlot[*a.Slot], a.T, toleranceVieImages) ||
-				couvertPar(trajets[*a.Slot], a.T, toleranceVieImages) {
+			if a.Slot == nil || *a.Slot == slotMuet || couvertPar(v.parSlot[*a.Slot], a.T, tolerance) ||
+				couvertPar(trajets[*a.Slot], a.T, tolerance) {
 				continue
 			}
 			out.Instances = append(out.Instances, fmt.Sprintf("%s slot %d @%d", f.nom, *a.Slot, a.T))
@@ -127,6 +128,7 @@ func violationsAbsents(d *Document) Violation {
 	for _, r := range d.Roster {
 		presence[r.XUID] = append(presence[r.XUID], r.Presence...)
 	}
+	tolerance := d.images(toleranceVieMS)
 	var out Violation
 	for _, a := range acteursNommes(d) {
 		if len(d.Roster) > 0 && !present(presence[a.xuid], a.t) {
@@ -134,7 +136,7 @@ func violationsAbsents(d *Document) Violation {
 			continue
 		}
 		for _, t := range a.vivantEn {
-			if !couvertPar(v.parXUID[a.xuid], t, toleranceVieImages) {
+			if !couvertPar(v.parXUID[a.xuid], t, tolerance) {
 				out.Instances = append(out.Instances, fmt.Sprintf("%s %s @%d : sans vie", a.famille, a.xuid, t))
 				break
 			}
@@ -186,13 +188,14 @@ func present(ps []Presence, t int) bool {
 }
 
 // violationsMortsSansVie : V-8, une mort du statborg (increment de la courbe `deaths`) sans fin de
-// vie du meme joueur a ±toleranceMortImages. Un joueur sans AUCUNE vie nommee n'est pas compte :
+// vie du meme joueur a ±toleranceMortMS. Un joueur sans AUCUNE vie nommee n'est pas compte :
 // c'est un manque de nommage, pas un faux.
 func violationsMortsSansVie(d *Document) Violation {
 	var out Violation
 	if d.ScoreTimeline == nil {
 		return out
 	}
+	tolerance := d.images(toleranceMortMS)
 	fins := map[string][]int{}
 	for _, t := range d.Tracks {
 		if t.XUID != "" {
@@ -209,7 +212,7 @@ func violationsMortsSansVie(d *Document) Violation {
 			if (i > 0 && pts[i].V <= pts[i-1].V) || (i == 0 && pts[i].V <= 0) {
 				continue
 			}
-			if !finProche(f, pts[i].T) {
+			if !finProche(f, pts[i].T, tolerance) {
 				out.Instances = append(out.Instances, fmt.Sprintf("%s mort @%d", p.XUID, pts[i].T))
 			}
 		}
@@ -218,9 +221,9 @@ func violationsMortsSansVie(d *Document) Violation {
 	return out
 }
 
-func finProche(fins []int, t int) bool {
+func finProche(fins []int, t, tolerance int) bool {
 	for _, e := range fins {
-		if t-e >= -toleranceMortImages && t-e <= toleranceMortImages {
+		if t-e >= -tolerance && t-e <= tolerance {
 			return true
 		}
 	}

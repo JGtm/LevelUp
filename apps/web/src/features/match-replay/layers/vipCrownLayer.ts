@@ -42,6 +42,8 @@ export interface VipCrownStyle {
   outline: string
   /** Mouvement réduit : la pulsation de la couronne « ouverte » devient une opacité constante. */
   reducedMotion: boolean
+  /** Durée réelle d'une image du document, en ms (`frameToMs(1, doc)`) : la période de pulsation est une durée. */
+  frameMs: number
 }
 
 /**
@@ -101,7 +103,7 @@ export function drawVipCrown(
     drawCrownGlyph(ctx, projectTo(view, w), {
       ink: layer.style.inkOf(p.xuid),
       outline: layer.style.outline,
-      alpha: carriedGlyphAlpha(p.closed, frame, layer.style.reducedMotion),
+      alpha: carriedGlyphAlpha(p.closed, frame, layer.style.reducedMotion, layer.style.frameMs),
     })
   }
   ctx.globalAlpha = 1

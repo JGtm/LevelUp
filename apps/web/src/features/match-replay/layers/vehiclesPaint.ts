@@ -377,7 +377,7 @@ function vehicleOffscreenText(
  * trace (`drawAimSector`), pas une copie locale, et l'ÉLÉVATION passe par le même barème de
  * longueur (`aimLengthScale`). Une seule différence subsiste, voulue : pas de FRAÎCHEUR — la
  * série d'un occupant est dense (5 à 46 lectures/s pour 10 frames/s) et son maintien est court
- * (`VEHICLE_AIM_HOLD_FRAMES`), il n'y a pas de visée « vieille » à faire pâlir.
+ * (`VEHICLE_AIM_HOLD_MS`), il n'y a pas de visée « vieille » à faire pâlir.
  */
 function drawVehicleAimCones(
   ctx: CanvasRenderingContext2D,
@@ -394,7 +394,7 @@ function drawVehicleAimCones(
     // couleur ne se dessine pas). Un occupant non résolu ne reçoit donc aucun cône.
     const color = vehicleRideColor(ride, time.frame, style)
     if (!color) continue
-    const aim = vehicleOccupantAimAt(track, ride, time.frame)
+    const aim = vehicleOccupantAimAt(track, ride, time.frame, time.frameMs)
     drawAimSector(ctx, c, aim.ang, time.k, color, { lengthScale: aimLengthScale(aim.pitchDeg) })
   }
 }
@@ -556,7 +556,7 @@ export function drawVehiclesLayer(
           const size = style.sizeOf(dessin)
           const sprite = size ? style.spriteOf(dessin, color) : null
           if (size && sprite) {
-            const angle = vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame))
+            const angle = vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame, time.frameMs))
             const scaleRatio = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, echelle, ceilPx)
             ctx.globalAlpha = 1
             drawRotatedSprite(ctx, sprite, c.x, c.y, angle, scaleRatio * time.k)
@@ -568,7 +568,7 @@ export function drawVehiclesLayer(
             // l'emporte d'elle-même : seule la table d'assets aura changé.
             const demi = vehicleTurretHalfPx(echelle)
             drawMapElementTurret(ctx, c, color, time.k,
-              vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame)), demi)
+              vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame, time.frameMs)), demi)
             edgePx = demi * time.k
           }
           // Sinon : image ou manifeste pas encore chargés — rien ne remplace le sprite (même

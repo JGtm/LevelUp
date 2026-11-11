@@ -6,6 +6,10 @@ package replayverite
 // schema 76), lus sans decodage le 2026-09-30 (conception §7). Aucune constante n'est recopiee du
 // producteur (la garde « une seule ecriture » de `film/replay/emprise_jouee_test.go`) : chaque
 // valeur est justifiee ici, independamment.
+//
+// Tout seuil temporel est une DUREE en millisecondes : le document dit son pas
+// (`frameIntervalMs`) et [Document.images] la convertit en images. Aucun nombre d'images n'est
+// ecrit ici (garde-rail `archlint/no_seuil_en_images_go_test.go`) : changer de cadence ne change aucun seuil.
 
 const (
 	// vitesseSautMaxMPS : au-dela, deux points consecutifs d'une piste sont un SAUT (V-1).
@@ -15,9 +19,9 @@ const (
 	// dont 80 sur des portes de carte (portes_de_carte.go) et 1 sur une translocation.
 	vitesseSautMaxMPS = 100.0
 
-	// toleranceTranslocationImages : un saut a ±2 images d'une translocation publiee est la
-	// translocation elle-meme (±200 ms, l'exemption du filtre de la grammaire au pas de 100 ms).
-	toleranceTranslocationImages = 2
+	// toleranceTranslocationMS : un saut a ±200 ms d'une translocation publiee est la
+	// translocation elle-meme (l'exemption du filtre de la grammaire, mesuree au pas de 100 ms).
+	toleranceTranslocationMS = 200
 
 	// rayonPorteM : un saut dont le depart ou l'arrivee est a moins de 3 m du centre d'une porte
 	// de carte mesuree est exempte. 3 m couvre les cellules de 2 m ou les arrivees se groupent
@@ -31,26 +35,27 @@ const (
 	// `spawned` jamais ramassees, echantillons de vehicule des builds anciens).
 	margeEmpriseObjetsM = 10.0
 
-	// toleranceVieImages : une action datee a ±5 images d'une vie de son slot est DANS la vie
-	// (V-3, V-5). 500 ms absorbent la datation au pas d'image et la latence de publication ; essai :
-	// tirs hors vie 279 a tolerance 0, 203 a 5, sur 42 735.
-	toleranceVieImages = 5
+	// toleranceVieMS : une action datee a ±500 ms d'une vie de son slot est DANS la vie
+	// (V-3, V-5). 500 ms absorbent la datation au pas d'image et la latence de publication ; essai
+	// au pas de 100 ms : tirs hors vie 279 a tolerance 0, 203 a 5 images, sur 42 735.
+	toleranceVieMS = 500
 
 	// rayonTrajetM : un passager a plus de 3 m de son vehicule a la meme image est LOIN (V-6).
 	// 3 m = le rayon d'ancrage d'un trajet mesure par le producteur (dernier rayon « gratuit »).
 	// Essai : 6 echantillons au-dela sur 19 temoins, 0 au-dela de 10 m.
 	rayonTrajetM = 3.0
 
-	// toleranceEchantillonImages : un point de piste apparie a un echantillon de vehicule s'il est
-	// a ±1 image (les deux flux ne sont pas echantillonnes aux memes images).
-	toleranceEchantillonImages = 1
+	// toleranceEchantillonMS : un point de piste apparie a un echantillon de vehicule s'il est
+	// a ±100 ms (les deux flux ne sont pas echantillonnes aux memes images).
+	toleranceEchantillonMS = 100
 
-	// toleranceMortImages : une mort du statborg a l'image t appartient a une fin de vie du meme
-	// joueur en [t-2, t+2] (V-8). Mesure sur 1 344 morts statborg : 982 a l'image meme de la fin
-	// de vie, 304 a +1, 2 a +2 ; au-dela la distribution est eparse (56 morts).
-	toleranceMortImages = 2
+	// toleranceMortMS : une mort du statborg a l'instant t appartient a une fin de vie du meme
+	// joueur en [t-200 ms, t+200 ms] (V-8). Mesure au pas de 100 ms sur 1 344 morts statborg : 982
+	// a l'image meme de la fin de vie, 304 a +1, 2 a +2 ; au-dela la distribution est eparse
+	// (56 morts).
+	toleranceMortMS = 200
 
-	// margeFinDeFilmImages : une piste qui finit a moins de 2 images de la fin du film finit AVEC
-	// le film, pas par une mort (O-V2).
-	margeFinDeFilmImages = 2
+	// margeFinDeFilmMS : une piste qui finit a moins de 200 ms de la fin du film finit AVEC le
+	// film, pas par une mort (O-V2).
+	margeFinDeFilmMS = 200
 )

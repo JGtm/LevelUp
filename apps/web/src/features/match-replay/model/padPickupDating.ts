@@ -11,7 +11,7 @@
  * ne couvre : LA GRAMMAIRE PRIME SUR L'HEURISTIQUE.
  *
  * LA FENÊTRE COLLAPSE, ELLE NE DISPARAÎT PAS : `tLow` ET `tHigh` prennent la valeur datée, séparés
- * de [PAD_BETWEEN_FRAMES] pour ne jamais atteindre le sentinel « jamais vidé » de `padStateAt`
+ * de [PAD_BETWEEN_EPSILON] pour ne jamais atteindre le sentinel « jamais vidé » de `padStateAt`
  * (`tHigh <= tLow`) — même garantie, même raison que `padPresenceRefine.ts`. L'état passe donc de
  * PLEIN à VIDE en une fraction de frame (au pire une image peinte « incertain », invisible en
  * pratique), là où il restait incertain jusqu'à vingt secondes — et `padStateAt`/`padRespawnAt`
@@ -32,7 +32,7 @@
  * Pur : aucune dépendance React, aucun canvas.
  */
 import type { ReplayDocumentReady, ReplayWeaponPadReady } from '../../../lib/replay/replayNormalize'
-import { PAD_BETWEEN_FRAMES } from './padPresenceRefine'
+import { PAD_BETWEEN_EPSILON } from './padPresenceRefine'
 
 /** Une occupation dont l'instant vient d'un ramassage natif porte en plus son ramasseur. */
 export type DatedPadPresence = ReplayWeaponPadReady['presence'][number] & {
@@ -71,7 +71,7 @@ export function applyPadPickupDating(
       const date = parCle.get(clePickup(i, occ.tLow, occ.tHigh))
       if (!date) return occ
       touchePad = true
-      const datee: DatedPadPresence = { ...occ, tLow: date.t, tHigh: date.t + PAD_BETWEEN_FRAMES }
+      const datee: DatedPadPresence = { ...occ, tLow: date.t, tHigh: date.t + PAD_BETWEEN_EPSILON }
       if (date.xuid !== undefined) datee.pickupXuid = date.xuid
       return datee
     })

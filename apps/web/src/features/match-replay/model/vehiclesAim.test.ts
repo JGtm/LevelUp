@@ -12,12 +12,17 @@ import type { ReplayVehicleAim } from '@/lib/api/types'
 
 import type { ReplayVehicleRideReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import {
-  VEHICLE_AIM_HOLD_FRAMES,
+  VEHICLE_AIM_HOLD_MS,
   vehicleChassisHeadingAt,
   vehicleOccupantAimAt,
   vehicleRideAimReading,
 } from './vehiclesAim'
 import { vehicleAimAngle, FAMILLES_ARME_FIXE, VEHICLE_DEFAULT_HEADING_DEG } from './vehiclesLayer'
+
+/** Durée d'une image du document de test : la grille historique de 100 ms. */
+const FRAME_MS = 100
+/** Le maintien d'une lecture de visée, en images, à cette grille. */
+const AIM_HOLD_FRAMES = VEHICLE_AIM_HOLD_MS / FRAME_MS
 
 /** Un véhicule dont le châssis pointe PLEIN EST (cap monde 0°) : le repli est alors l'angle 0. */
 function track(over: Partial<ReplayVehicleTrackReady> = {}): ReplayVehicleTrackReady {
@@ -46,10 +51,10 @@ describe('vehicleRideAimReading — la lecture EN VIGUEUR', () => {
       { t: 14, h: 20 },
       { t: 30, h: 30 },
     ])
-    expect(vehicleRideAimReading(r, 14)?.h).toBe(20)
+    expect(vehicleRideAimReading(r, 14, FRAME_MS)?.h).toBe(20)
     // ENTRE DEUX LECTURES TROP ÉLOIGNÉES (16 images, plus que le maintien) : la précédente est
     // MAINTENUE — pas de virage inventé sur plus d'une seconde.
-    expect(vehicleRideAimReading(r, 16)?.h).toBe(20)
+    expect(vehicleRideAimReading(r, 16, FRAME_MS)?.h).toBe(20)
   })
 
   it('ENTRE DEUX LECTURES CONSÉCUTIVES, le cap tourne par le plus court chemin (contrôles v8)', () => {
@@ -57,34 +62,34 @@ describe('vehicleRideAimReading — la lecture EN VIGUEUR', () => {
       { t: 10, h: 350, p: 5 },
       { t: 11, h: 10, p: 9 },
     ])
-    expect(vehicleRideAimReading(r, 10.5)?.h).toBeCloseTo(0, 6)
-    expect(vehicleRideAimReading(r, 10.75)?.h).toBeCloseTo(5, 6)
+    expect(vehicleRideAimReading(r, 10.5, FRAME_MS)?.h).toBeCloseTo(0, 6)
+    expect(vehicleRideAimReading(r, 10.75, FRAME_MS)?.h).toBeCloseTo(5, 6)
     // L'élévation reste celle de la dernière lecture.
-    expect(vehicleRideAimReading(r, 10.5)?.p).toBe(5)
+    expect(vehicleRideAimReading(r, 10.5, FRAME_MS)?.p).toBe(5)
     // Sur une lecture, la valeur est exactement la sienne.
-    expect(vehicleRideAimReading(r, 11)?.h).toBe(10)
+    expect(vehicleRideAimReading(r, 11, FRAME_MS)?.h).toBe(10)
   })
 
   it('rend null AVANT la première lecture, et sur une série vide', () => {
-    expect(vehicleRideAimReading(ride([{ t: 10, h: 10 }]), 9)).toBeNull()
-    expect(vehicleRideAimReading(ride([]), 50)).toBeNull()
+    expect(vehicleRideAimReading(ride([{ t: 10, h: 10 }]), 9, FRAME_MS)).toBeNull()
+    expect(vehicleRideAimReading(ride([]), 50, FRAME_MS)).toBeNull()
   })
 
   it('rend null au-delà du MAINTIEN — une visée d’il y a plus d’une seconde n’est plus la sienne', () => {
     const r = ride([{ t: 10, h: 10 }])
-    expect(vehicleRideAimReading(r, 10 + VEHICLE_AIM_HOLD_FRAMES)?.h).toBe(10)
-    expect(vehicleRideAimReading(r, 10 + VEHICLE_AIM_HOLD_FRAMES + 1)).toBeNull()
+    expect(vehicleRideAimReading(r, 10 + AIM_HOLD_FRAMES, FRAME_MS)?.h).toBe(10)
+    expect(vehicleRideAimReading(r, 10 + AIM_HOLD_FRAMES + 1, FRAME_MS)).toBeNull()
   })
 
   it('SAUTE un point sans cap plutôt que de le lire comme 0° (qui pointerait l’est)', () => {
     const r = ride([{ t: 10, h: 45 }, { t: 12 }])
-    expect(vehicleRideAimReading(r, 12)?.h).toBe(45)
+    expect(vehicleRideAimReading(r, 12, FRAME_MS)?.h).toBe(45)
   })
 })
 
 describe('vehicleOccupantAimAt — la mesure d’abord, le châssis en repli', () => {
   it('la visée MESURÉE l’emporte sur le cap du châssis, et elle porte son élévation', () => {
-    const got = vehicleOccupantAimAt(track(), ride([{ t: 50, h: 90, p: -12.5 }]), 50)
+    const got = vehicleOccupantAimAt(track(), ride([{ t: 50, h: 90, p: -12.5 }]), 50, FRAME_MS)
     expect(got.measured).toBe(true)
     expect(got.ang).toBeCloseTo(vehicleAimAngle(90), 10)
     expect(got.pitchDeg).toBe(-12.5)
@@ -92,22 +97,22 @@ describe('vehicleOccupantAimAt — la mesure d’abord, le châssis en repli', (
 
   it('ARTILLEUR ET PASSAGER ont chacun LEUR angle — c’est tout l’objet du lot', () => {
     const t = track()
-    const artilleur = vehicleOccupantAimAt(t, ride([{ t: 50, h: 200 }], { slot: 8, seat: 1 }), 50)
-    const passager = vehicleOccupantAimAt(t, ride([{ t: 50, h: 300 }], { slot: 9, seat: 2 }), 50)
+    const artilleur = vehicleOccupantAimAt(t, ride([{ t: 50, h: 200 }], { slot: 8, seat: 1 }), 50, FRAME_MS)
+    const passager = vehicleOccupantAimAt(t, ride([{ t: 50, h: 300 }], { slot: 9, seat: 2 }), 50, FRAME_MS)
     expect(artilleur.ang).toBeCloseTo(vehicleAimAngle(200), 10)
     expect(passager.ang).toBeCloseTo(vehicleAimAngle(300), 10)
     expect(artilleur.ang).not.toBeCloseTo(passager.ang, 3)
   })
 
   it('SANS visée, le repli est le CAP DU CHÂSSIS, à plat — le comportement d’avant la série de visée', () => {
-    const got = vehicleOccupantAimAt(track(), ride([]), 50)
+    const got = vehicleOccupantAimAt(track(), ride([]), 50, FRAME_MS)
     expect(got.measured).toBe(false)
     expect(got.ang).toBeCloseTo(vehicleAimAngle(0), 10) // châssis plein est
     expect(got.pitchDeg).toBe(0)
   })
 
   it('une élévation ABSENTE se lit « à plat », jamais « inconnue » (contrat de `Point.p`)', () => {
-    expect(vehicleOccupantAimAt(track(), ride([{ t: 50, h: 90 }]), 50).pitchDeg).toBe(0)
+    expect(vehicleOccupantAimAt(track(), ride([{ t: 50, h: 90 }]), 50, FRAME_MS).pitchDeg).toBe(0)
   })
 })
 /**
@@ -125,28 +130,28 @@ describe('vehicleChassisHeadingAt — la visée du conducteur sur les armes fixe
 
   it('GHOST occupé (arme fixe) : le cap du châssis EST la visée du conducteur', () => {
     const t = track({ family: 'ghost', rides: [conducteur([{ t: 0, h: AIM_NORD }])] })
-    expect(vehicleChassisHeadingAt(t, 0)).toBe(AIM_NORD)
+    expect(vehicleChassisHeadingAt(t, 0, FRAME_MS)).toBe(AIM_NORD)
   })
 
   it('GHOST VIDE : aucun conducteur, donc la vélocité', () => {
     const t = track({ family: 'ghost', rides: [] })
-    expect(vehicleChassisHeadingAt(t, 0)).toBe(0)
+    expect(vehicleChassisHeadingAt(t, 0, FRAME_MS)).toBe(0)
   })
 
   it('WARTHOG occupé (famille à TOURELLE) : la vélocité, jamais la visée', () => {
     const t = track({ family: 'warthog', rides: [conducteur([{ t: 0, h: AIM_NORD }])] })
-    expect(vehicleChassisHeadingAt(t, 0)).toBe(0)
+    expect(vehicleChassisHeadingAt(t, 0, FRAME_MS)).toBe(0)
   })
 
   it('arme fixe, conducteur présent mais AUCUNE lecture de visée : la vélocité', () => {
     const t = track({ family: 'wraith', rides: [conducteur([])] })
-    expect(vehicleChassisHeadingAt(t, 0)).toBe(0)
+    expect(vehicleChassisHeadingAt(t, 0, FRAME_MS)).toBe(0)
   })
 
   it('arme fixe, lecture de visée PÉRIMÉE : la vélocité reprend la main', () => {
     const t = track({ family: 'wraith', rides: [conducteur([{ t: 0, h: AIM_NORD }])] })
     // Au-delà du maintien, la lecture n'est plus en vigueur — même règle que le cône.
-    expect(vehicleChassisHeadingAt(t, VEHICLE_AIM_HOLD_FRAMES + 1)).toBe(0)
+    expect(vehicleChassisHeadingAt(t, AIM_HOLD_FRAMES + 1, FRAME_MS)).toBe(0)
   })
 
   it('SEUL LE SIÈGE 0 compte : la visée d’un passager n’oriente pas le châssis', () => {
@@ -154,17 +159,17 @@ describe('vehicleChassisHeadingAt — la visée du conducteur sur les armes fixe
       family: 'ghost',
       rides: [ride([{ t: 0, h: AIM_NORD }], { seat: 1 })],
     })
-    expect(vehicleChassisHeadingAt(t, 0)).toBe(0)
+    expect(vehicleChassisHeadingAt(t, 0, FRAME_MS)).toBe(0)
   })
 
   it('famille INCONNUE de la table : le repli neutre, c’est-à-dire la vélocité', () => {
     const t = track({ family: 'chassis_futur', rides: [conducteur([{ t: 0, h: AIM_NORD }])] })
-    expect(vehicleChassisHeadingAt(t, 0)).toBe(0)
+    expect(vehicleChassisHeadingAt(t, 0, FRAME_MS)).toBe(0)
   })
 
   it('aucun cap de vélocité nulle part : le défaut, nez vers le haut', () => {
     const t = track({ family: 'warthog', samples: [{ t: 0, x: 0, y: 0 }], rides: [] })
-    expect(vehicleChassisHeadingAt(t, 0)).toBe(VEHICLE_DEFAULT_HEADING_DEG)
+    expect(vehicleChassisHeadingAt(t, 0, FRAME_MS)).toBe(VEHICLE_DEFAULT_HEADING_DEG)
   })
 
   /**
@@ -175,7 +180,7 @@ describe('vehicleChassisHeadingAt — la visée du conducteur sur les armes fixe
   it('le repli du CÔNE reste la vélocité, même sur une famille à arme fixe', () => {
     const t = track({ family: 'ghost', rides: [conducteur([{ t: 0, h: AIM_NORD }])] })
     const passager = ride([], { seat: 1 })
-    const vu = vehicleOccupantAimAt(t, passager, 0)
+    const vu = vehicleOccupantAimAt(t, passager, 0, FRAME_MS)
     expect(vu.measured).toBe(false)
     expect(vu.ang).toBe(vehicleAimAngle(0))
   })
