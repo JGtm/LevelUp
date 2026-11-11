@@ -23,7 +23,9 @@ import { DetailSection } from '@/components/ui/detail-section'
 import { MatchCadenceChart } from './MatchCadenceChart'
 import { MatchImpactBadgesBar } from './MatchImpactBadgesBar'
 import { MatchKDCumulChart } from './MatchKDCumulChart'
+import { MatchNumbersAdvantageChart } from './MatchNumbersAdvantageChart'
 import { MatchScoreCurveChart } from './MatchScoreCurveChart'
+import { MatchScoreDeltaChart } from './MatchScoreDeltaChart'
 import { MatchScoreEventsChart } from './MatchScoreEventsChart'
 import { MatchTugOfWarChart } from './MatchTugOfWarChart'
 import type { MatchViewText } from './i18n'
@@ -130,6 +132,30 @@ export function MatchViewTabChronology({
           t={t}
         />
       )}
+
+      {/* L'ÉCART DE SCORE puis la SUPÉRIORITÉ NUMÉRIQUE : deux angles de lecture du même film,
+          pleine largeur, sous le score et sur le même axe des temps (`t0Ms`). L'écart ne
+          consulte PAS `scoreTimelineKind` : il vit du score du rejeu dans tous les modes, Assassin
+          compris (plan 8.1.2, D-9) — c'est la courbe, et elle seule, que `hidden` efface.
+          Sans film, ni l'un ni l'autre ne rend rien. */}
+      <MatchScoreDeltaChart
+        playerSlug={playerSlug}
+        matchId={matchId}
+        replayAvailable={replayAvailable}
+        scoreboard={scoreboard}
+        meXUID={meXUID}
+        t0Ms={t0Ms}
+        t={t}
+      />
+      <MatchNumbersAdvantageChart
+        playerSlug={playerSlug}
+        matchId={matchId}
+        replayAvailable={replayAvailable}
+        scoreboard={scoreboard}
+        meXUID={meXUID}
+        t0Ms={t0Ms}
+        t={t}
+      />
 
       {/* Dominance | Cadence des frags */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

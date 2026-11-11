@@ -156,6 +156,31 @@ export interface MatchViewText {
   scoreEventsScoredFmt: (points: number) => string
   /** Score cumulé du camp juste après cette marque (ex. « Score : 2 »). */
   scoreEventsTotalFmt: (total: number) => string
+  /**
+   * LES DEUX GRAPHES DIVERGENTS qui suivent « Score dans le temps » : l'ÉCART DE SCORE et la
+   * SUPÉRIORITÉ NUMÉRIQUE. Même forme (deux aires autour de zéro), mêmes réserves : sans film ou
+   * sans camp établi pour le joueur, ils disent pourquoi ils ne tracent rien.
+   */
+  scoreDeltaTitle: string
+  scoreDeltaInfo: string
+  scoreDeltaLegendAlly: string
+  scoreDeltaLegendEnemy: string
+  scoreDeltaUnavailableFilm: string
+  scoreDeltaUnavailableCamps: string
+  numbersAdvantageTitle: string
+  numbersAdvantageInfo: string
+  numbersAdvantageLegendAlly: string
+  numbersAdvantageLegendEnemy: string
+  /** Joueurs en vie d'un camp à cet instant, dans l'infobulle (ex. « 3 en vie »). */
+  numbersAdvantageAliveFmt: (n: number) => string
+  numbersAdvantageUnavailableFilm: string
+  numbersAdvantageUnavailableCamps: string
+  /** L'écart signé (score ou effectif) de l'infobulle. */
+  divergentGapLabel: string
+  /** Ajoutée à l'aide du titre quand le match oppose plus de deux camps. */
+  divergentMultiTeamNote: string
+  /** Nom du camp d'en face quand il y en a plusieurs : la meilleure équipe adverse. */
+  divergentBestOpponent: string
   combatCadenceTitle: string
   combatKillsLabel: string
   combatDeathsLabel: string

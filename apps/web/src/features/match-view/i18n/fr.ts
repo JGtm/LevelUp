@@ -119,6 +119,28 @@ export const FR_TEXT = {
   scoreEventsTitle: 'Points marqués dans le temps',
   scoreEventsScoredFmt: (points) => `+${points} point${points > 1 ? 's' : ''}`,
   scoreEventsTotalFmt: (total) => `Score : ${total}`,
+  scoreDeltaTitle: 'Écart de score',
+  scoreDeltaInfo:
+    'Score de l’équipe du joueur moins celui de l’équipe adverse, tel que le film du match l’a daté. Au-dessus de zéro, l’équipe du joueur mène ; en dessous, ce sont les adversaires. Le score ne change qu’aux points marqués : l’écart avance par marches.',
+  scoreDeltaLegendAlly: 'Équipe en tête',
+  scoreDeltaLegendEnemy: 'Adversaires en tête',
+  scoreDeltaUnavailableFilm: 'Le film de ce match ne date pas le score : l’écart n’est pas tracé.',
+  scoreDeltaUnavailableCamps:
+    'L’équipe du joueur n’est pas établie pour ce match : l’écart n’est pas tracé.',
+  numbersAdvantageTitle: 'Supériorité numérique',
+  numbersAdvantageInfo:
+    'Joueurs en vie de l’équipe du joueur moins joueurs en vie de l’équipe adverse, bots compris, relevés chaque seconde sur les vies du film. Au-dessus de zéro, l’équipe du joueur est en supériorité ; en dessous, ce sont les adversaires.',
+  numbersAdvantageLegendAlly: 'Équipe en supériorité',
+  numbersAdvantageLegendEnemy: 'Adversaires en supériorité',
+  numbersAdvantageAliveFmt: (n) => `${n} en vie`,
+  numbersAdvantageUnavailableFilm:
+    'Les vies des joueurs ne sont pas datées pour ce match : la supériorité numérique n’est pas tracée.',
+  numbersAdvantageUnavailableCamps:
+    'L’équipe du joueur n’est pas établie pour ce match : la supériorité numérique n’est pas tracée.',
+  divergentGapLabel: 'Écart',
+  divergentMultiTeamNote:
+    'Avec plus de deux équipes, la comparaison se fait avec la meilleure équipe adverse à chaque instant.',
+  divergentBestOpponent: 'Meilleure équipe adverse',
   combatCadenceTitle: 'Cadence des frags',
   combatKillsLabel: 'Frags',
   combatDeathsLabel: 'Morts',
