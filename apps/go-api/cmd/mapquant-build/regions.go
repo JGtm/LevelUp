@@ -92,3 +92,37 @@ func poserLesRegionsExternes(e *decfilm.MapQuantEntry, regions []himap.RegionExt
 	}
 	return poserLesRegions(e, bsps, jouee)
 }
+
+// avertitSiEcarte publie, en AVERTISSEMENT, les cas où le critère de région a écarté le plus
+// gros tag sbsp. C'est la trace qui rend le catalogue relisible : sur les six canevas Forge de
+// l'installation, cet avertissement est la ligne qui dit que les bornes ont changé de BSP.
+func avertitSiEcarte(name, mod string, q himap.BSP, candidats []himap.BSP) {
+	if len(candidats) < 2 || q.GlobalID == candidats[0].GlobalID {
+		return
+	}
+	w, wPlusGros := q.Bounds.AxisWidths(), candidats[0].Bounds.AxisWidths()
+	slog.Warn("le plus gros tag sbsp n'est PAS la région 0 — bornes prises sur la région 0",
+		"carte", name, "module", mod, "candidats", len(candidats),
+		"region0", fmt.Sprintf("gid=%08x W=%d/%d/%d étendue=%.1f/%.1f/%.1f",
+			q.GlobalID, w[0], w[1], w[2], q.Bounds.Extent(0), q.Bounds.Extent(1), q.Bounds.Extent(2)),
+		"plusGrosTag", fmt.Sprintf("gid=%08x W=%d/%d/%d étendue=%.1f/%.1f/%.1f",
+			candidats[0].GlobalID, wPlusGros[0], wPlusGros[1], wPlusGros[2],
+			candidats[0].Bounds.Extent(0), candidats[0].Bounds.Extent(1), candidats[0].Bounds.Extent(2)))
+}
+
+// entreeRegionLocale construit l'entrée d'une carte dont le module porte ses propres sbsp : les
+// champs historiques viennent de `q` (le BSP de déquantification), la table par région du module.
+func entreeRegionLocale(name, mod, modulePath string, q himap.BSP, candidats []himap.BSP) (decfilm.MapQuantEntry, error) {
+	avertitSiEcarte(name, mod, q, candidats)
+	e := decfilm.MapQuantEntry{Module: mod}
+	w := q.Bounds.AxisWidths()
+	for ax := 0; ax < 3; ax++ {
+		e.Min[ax] = float32(q.Bounds.Min[ax])
+		e.Max[ax] = float32(q.Bounds.Max[ax])
+		e.AxisWidths[ax] = uint(w[ax])
+	}
+	if err := poserLesRegionsLocales(&e, modulePath, q); err != nil {
+		return decfilm.MapQuantEntry{}, err
+	}
+	return e, nil
+}
