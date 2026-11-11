@@ -9,8 +9,7 @@ SELECT
     msr.rating_delta,
     msr.playlist_group,
     msr.tier,
-    msr.sub_tier,
-    msr.expected_win_prob
+    msr.sub_tier
 FROM match_skill_rank_latest msr
 WHERE msr.match_id = ?
 LIMIT 1`

@@ -3,6 +3,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -24,14 +25,42 @@ func openNoDataTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
+// markWorldNoDataPlayers pose des marques « privé / sans données » dans
+// world_player_no_data (INSERT-only, idempotent via WHERE NOT EXISTS) : amorce des
+// tests de lecture, la table n'ayant plus d'écrivain de production. Retourne le
+// nombre de nouvelles marques.
+func markWorldNoDataPlayers(ctx context.Context, db *sql.DB, titleSlug, season string, gamertags []string) (int, error) {
+	n := 0
+	for _, gt := range gamertags {
+		if gt == "" {
+			continue
+		}
+		res, err := db.ExecContext(ctx,
+			`INSERT INTO world_player_no_data (title_slug, season_id, gamertag)
+			 SELECT ?, ?, ?
+			 WHERE NOT EXISTS (
+				SELECT 1 FROM world_player_no_data
+				WHERE title_slug = ? AND season_id = ? AND gamertag = ?
+			 )`,
+			titleSlug, season, gt, titleSlug, season, gt)
+		if err != nil {
+			return n, fmt.Errorf("markWorldNoDataPlayers(%s,%s): %w", season, gt, err)
+		}
+		if a, _ := res.RowsAffected(); a > 0 {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func TestWorldNoDataPlayers_RoundTripAndIdempotent(t *testing.T) {
 	db := openNoDataTestDB(t)
 	ctx := context.Background()
 
-	n, err := InsertWorldNoDataPlayers(ctx, db, "halo_infinite", "csrseason12-1",
+	n, err := markWorldNoDataPlayers(ctx, db, "halo_infinite", "csrseason12-1",
 		[]string{"PrivateGuy", "SecretPlayer", "", "PrivateGuy"}) // "" ignoré ; doublon dédup
 	if err != nil {
-		t.Fatalf("InsertWorldNoDataPlayers: %v", err)
+		t.Fatalf("markWorldNoDataPlayers: %v", err)
 	}
 	if n != 2 {
 		t.Errorf("marques = %d, attendu 2 (vide ignoré, doublon dédupliqué)", n)
@@ -49,7 +78,7 @@ func TestWorldNoDataPlayers_RoundTripAndIdempotent(t *testing.T) {
 	}
 
 	// Idempotence : re-insérer les mêmes → 0 nouvelle marque, pas de doublon (INSERT-only).
-	n2, err := InsertWorldNoDataPlayers(ctx, db, "halo_infinite", "csrseason12-1",
+	n2, err := markWorldNoDataPlayers(ctx, db, "halo_infinite", "csrseason12-1",
 		[]string{"PrivateGuy", "SecretPlayer"})
 	if err != nil {
 		t.Fatalf("2e insert: %v", err)

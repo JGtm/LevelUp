@@ -306,12 +306,6 @@ func (s *MatchViewService) buildMatchViewFromData(
 		curDurSec = int(*meta.DurationSeconds)
 	}
 	summary := buildSummaryTabFull(d.stats, d.medals, d.expected, d.histRows, meta, s.titleSlug, d.richCitations, curDurSec, outcomes)
-	// Proba de victoire pré-match (LUSR v2) → card « Résultat attendu ». Source :
-	// match_skill_rank_latest.expected_win_prob via d.skillRank (même lecture que le
-	// player-matches scan). Best-effort : nil pour les matchs pré-v2 / sans donnée.
-	if d.skillRank != nil && d.skillRank.ExpectedWinProb != nil {
-		summary.ExpectedStats.ExpectedWinProb = d.skillRank.ExpectedWinProb
-	}
 	// Propage l'expected K/D LOCAL (modèle count∝durée, Halo 5) sur la ligne is_me
 	// du scoreboard → le drawer (expander) affiche attendu vs réel sur les 3 stats,
 	// pas seulement les assists. Limité au is_me (seul joueur dont l'historique est

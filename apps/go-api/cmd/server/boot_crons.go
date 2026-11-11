@@ -194,16 +194,15 @@ func launchWorldLeaderboardCron(st *bootState) {
 	// manuelle ; garde-fou fraîcheur 20h → pas de
 	// re-scrape à chaque hot-reload. Gardé par cfg.SharedProvider != nil : en mode
 	// legacy (RO direct), une 2e connexion RW sur shared entrerait en conflit
-	// "different configuration" — on désactive donc le cron in-process (le CLI
-	// snapshot-world-leaderboard reste la voie manuelle, serveur arrêté).
+	// "different configuration" — on désactive donc le cron in-process.
 	if cfg.SharedProvider != nil {
 		lbScraper := haloadapter.NewLeaderboardScraper(800 * time.Millisecond)
 		worldLbCron := scheduler.NewWorldLeaderboardCron(cfg.SharedProvider, lbScraper, 0)
 		worldLbTask := loopTask(taskWorldLeaderbd, true, schedulerCtx, func(sctx context.Context) {
 			// Enrichissement des stats joueur (ranked-only, dédup match-centric,
 			// append-only) : TOUJOURS actif, via le POOL multi-token (comptes db_profiles
-			// round-robin — même chemin d'auth que le reste de l'app et que le CLI
-			// -all-tokens, store-first ADR 0023). Construit ICI, dans la goroutine (hors
+			// round-robin — même chemin d'auth que le reste de l'app,
+			// store-first ADR 0023). Construit ICI, dans la goroutine (hors
 			// chemin de démarrage → boot non bloqué), en Eager:true : résout les tokens et
 			// ÉLIMINE les comptes au RT mort (invalid_grant). Indispensable — sinon le
 			// round-robin taperait des sources mortes et raterait des fetchs. Un build en

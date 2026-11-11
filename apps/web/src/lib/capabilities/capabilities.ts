@@ -37,10 +37,6 @@ export const TITLE_CAPABILITIES = [
   // Synthèse). Absente ⇒ la section est masquée. Miroir de title.CapWeaponRange
   // (registry.go), qui documente pourquoi Halo 5 ne l'obtient pas.
   'weapon_range',
-  // Probabilité de victoire attendue (LUSR TrueSkill 2). REMISÉE 2026-09-07 :
-  // non accordée par aucun titre. Absente ⇒ carte / colonnes « Prob. vic. »
-  // masquées. Miroir de title.CapExpectedWinProb (registry.go).
-  'expected_win_prob',
   // Citations CALCULÉES par LevelUp (moteur dérivé : page Citations, tuiles de la home).
   // Absente ⇒ le titre sert des commendations NATIVES (Halo 5) : la page career/citations
   // est remplacée par FeatureUnavailable, et la nav comme la home basculent sur

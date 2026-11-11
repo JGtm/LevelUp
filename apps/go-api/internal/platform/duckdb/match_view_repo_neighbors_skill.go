@@ -142,7 +142,6 @@ func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (
 		&row.PlaylistGroup,
 		&row.Tier,
 		&row.SubTier,
-		&row.ExpectedWinProb,
 	); err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchSkillRank scan: %w", err)
 	}

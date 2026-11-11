@@ -7306,8 +7306,6 @@ export interface components {
             duration_seconds?: number;
             /** Format: double */
             enemy_mmr?: number;
-            /** Format: double */
-            expected_win_prob?: number;
             /** @default Non classé */
             experience_type_label: string;
             /** @description Un coéquipier était un bot. Exposé sur les best_matches de la carrière (les LOSS avec bot sont exclus côté backend). */
@@ -9087,8 +9085,6 @@ export interface components {
             expected_deaths?: number;
             /** Format: double */
             expected_kills?: number;
-            /** Format: double */
-            expected_win_prob?: number;
             has_hist_avg: boolean;
             /** Format: double */
             hist_avg_assists?: number;
@@ -9217,8 +9213,6 @@ export interface components {
             duration_seconds?: number;
             /** Format: double */
             enemy_mmr: number | null;
-            /** Format: double */
-            expected_win_prob?: number;
             experience_type_label?: string;
             has_replay?: boolean;
             is_excluded: boolean;
@@ -12036,8 +12030,6 @@ export interface components {
             duration_seconds?: number;
             /** Format: double */
             enemy_mmr?: number;
-            /** Format: double */
-            expected_win_prob?: number;
             is_ranked: boolean;
             /** Format: double */
             kda?: number;
@@ -12305,8 +12297,6 @@ export interface components {
             DeathsExpected: number | null;
             /** Format: double */
             Delta: number | null;
-            /** Format: double */
-            ExpectedWinProb: number | null;
             /** Format: double */
             KillsExpected: number | null;
             /** Format: int64 */
@@ -12821,8 +12811,6 @@ export interface components {
             duration_seconds?: number;
             /** Format: double */
             enemy_mmr_avg?: number;
-            /** Format: double */
-            expected_win_prob?: number;
             /** Format: int64 */
             gameplay_duration_seconds?: number;
             has_replay?: boolean;

@@ -3,7 +3,6 @@ package openspartan
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 )
 
@@ -11,22 +10,6 @@ import (
 // with a ResponseBody TEXT column. We do not rely on PRAGMA user_version
 // because real-world OpenSpartan databases expose it as 0.
 var requiredTables = []string{"MatchStats", "PlayerMatchStats", "HighlightEvents"}
-
-// IsOpenSpartanDB opens the file at path read-only and returns true if it
-// looks like a vanilla OpenSpartan/grunt database. It does NOT verify that
-// any row exists — callers that need a non-empty database should use Open
-// and then MatchCount.
-func IsOpenSpartanDB(path string) (bool, error) {
-	r, err := Open(path)
-	if err != nil {
-		if errors.Is(err, ErrNotOpenSpartanDB) {
-			return false, nil
-		}
-		return false, err
-	}
-	_ = r.Close()
-	return true, nil
-}
 
 // detectSchema verifies that the database exposes the canonical OpenSpartan
 // tables, each with a ResponseBody column. Returns an error wrapping

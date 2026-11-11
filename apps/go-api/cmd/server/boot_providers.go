@@ -174,8 +174,8 @@ func runBootARTGuard(st *bootState) {
 		// Phase 5 cleanup (2026-05-24) : auto-heal supprimé — Phase 4 batch
 		// INSERT-only path élimine la corruption ART à la racine. On garde la
 		// DÉTECTION (BootARTGuard) pour alerte ops, mais le rebuild auto au
-		// boot est remplacé par les outils CLI manuels `rebuild_mp` (shared) et
-		// `rebuild_pme_art` (player DB). Cf. ADR 0019.
+		// boot est remplacé par `levelup rebuild-pme-art` (player DB) ; la shared
+		// se reconstruit par le step de migration (RebuildMatchParticipantsART). Cf. ADR 0019.
 		bootCtx, bootCancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer bootCancel()
 		if sharedSQL, release, err := sharedReader.Get(bootCtx); err == nil {

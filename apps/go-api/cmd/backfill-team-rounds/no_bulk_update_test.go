@@ -6,7 +6,7 @@ package main
 // `internal/sync/no_art_patterns_test.go`, EXCLUT explicitement tout chemin `/cmd/` de ses
 // scans (« CLI/scripts one-shot »). Un `UPDATE match_registry … FROM (VALUES …)` écrit ICI
 // passerait donc tous les gates du dépôt sans être vu. Ce test rétablit la protection sur le
-// seul périmètre de ce paquet — même parade que dans `cmd/backfill-team-scores`.
+// seul périmètre de ce paquet.
 //
 // La forme interdite n'est pas une coquetterie : un UPDATE bulk multi-lignes touche N
 // entrées d'index en un statement, ce qui déclenche le bug DuckDB ART #23645 (« Failed to

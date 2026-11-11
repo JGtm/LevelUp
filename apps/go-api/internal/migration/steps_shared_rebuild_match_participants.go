@@ -167,8 +167,8 @@ func RebuildMatchParticipantsART(ctx context.Context, db *sql.DB) error {
 	// qu'un crash entre le DROP et le RENAME ne peut PAS laisser match_participants
 	// (table partagée de tous les joueurs) absente — rollback intégral. Un garde
 	// anti-perte vérifie en outre que le rebuild a bien toutes les rows avant de
-	// détruire l'original. Cf. revue P0 2026-06-02. `cmd/rebuild_mp` DÉLÈGUE ICI
-	// depuis le 2026-08-05 (dette H4) : il n'y a plus de second swap à la main.
+	// détruire l'original. Cf. revue P0 2026-06-02. Un seul swap, ici : aucun outil
+	// n'en refait un à la main.
 	if err := swapMatchParticipantsTx(ctx, db, colList, before); err != nil {
 		return err
 	}
@@ -268,7 +268,7 @@ func swapMatchParticipantsTx(ctx context.Context, db *sql.DB, colList string, be
 	// recréation par l'appelant (ApplyResolutionViews / ApplyMvPlayerMatchesView) doit être
 	// en `CREATE OR REPLACE` : un `CREATE VIEW` nu échouerait en « View with name "v"
 	// already exists! » et ferait avorter la réparation (c'était le défaut de l'ancien
-	// cmd/rebuild_mp). Ne pas « simplifier » ces OR REPLACE.
+	// outil de reconstruction). Ne pas « simplifier » ces OR REPLACE.
 	for _, sqlStmt := range []string{
 		`DROP TABLE match_participants`,
 		`ALTER TABLE match_participants__rebuilt RENAME TO match_participants`,

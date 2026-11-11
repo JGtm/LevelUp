@@ -631,38 +631,6 @@ export interface PaginatedResponse<T> {
 // Historique des matchs (Slice 3)
 // ---------------------------------------------------------------------------
 
-export interface MatchHistoryRow {
-  match_id: string
-  start_time: string
-  start_time_label: string
-  outcome_code: number | null
-  /** Clé canonique d'issue (MT-06) : le web localise via useOutcomeLabel/useOutcomeMapping. */
-  outcome?: 'win' | 'loss' | 'tie' | 'dnf'
-  score_label: string
-  map_ui: string
-  mode_ui: string
-  playlist_label: string
-  team_mmr: number | null
-  enemy_mmr: number | null
-  delta_mmr: number | null
-  win_rate_hist: number | null
-  win_rate_hist_total: number | null
-  performance_score_relative: number | null
-  average_life_mmss: string
-  match_url: string
-  is_excluded?: boolean
-  /** S56 — combat yield */
-  kills?: number | null
-  assists?: number | null
-  deaths?: number | null
-  damage_dealt?: number | null
-  damage_taken?: number | null
-  offensive_conversion?: number | null
-  defensive_resistance?: number | null
-  offensive_finishing?: number | null
-  map_image_url?: string | null
-}
-
 export type MatchHistoryQuerySummary = components['schemas']['MatchHistoryQuerySummary']
 
 export type ExportHint = components['schemas']['ExportHint']
@@ -743,9 +711,6 @@ export interface ExplorerMatchRow {
    *  porteur de données pour une colonne « Δ rang » INJECTÉE par un consommateur
    *  (vue session via extraColumns). Reste undefined côté page Explorer. */
   skill_rating_delta?: number | null
-  /** Proba de victoire pré-match de l'équipe (LUSR v2, 0..1). Porteur de données
-   *  pour une colonne « Pronostic » INJECTÉE par la vue session. Undefined côté Explorer. */
-  expected_win_prob?: number | null
   /** Progression placement (X). Si défini avec placement_total, l'UI affiche "X/Y" dans la
    *  cellule Rang à la place du skill_tier_label, ET un badge « En placement » (V72-32,
    *  cf. ExplorerMatchesTable.placement.tsx) dans les cellules Perf/ΔPerf/Note à la place

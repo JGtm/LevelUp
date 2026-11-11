@@ -10,8 +10,6 @@ import (
 	"log/slog"
 	"os"
 
-	_ "github.com/duckdb/duckdb-go/v2"
-
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"

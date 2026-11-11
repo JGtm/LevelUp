@@ -7,8 +7,7 @@ package main
 // à l'envers : un `SET team_0_rounds_won = ?, team_1_rounds_won = ?` dont les arguments
 // seraient permutés produirait un journal PARFAITEMENT correct — il est construit depuis la
 // décision, pas depuis ce qui part réellement vers la base — et écrirait pourtant l'inverse.
-// Même constat que sur `cmd/backfill-team-scores` (revue adversariale du 2026-08-24), même
-// parade : des coutures observables par un double de test.
+// Parade (revue adversariale du 2026-08-24) : des coutures observables par un double de test.
 
 import (
 	"context"
@@ -132,7 +131,7 @@ func (r sqlRegistry) WriteRounds(ctx context.Context, matchID string, won0, won1
 
 // pendingMatchIDs rend la liste de travail, lue DANS LA BASE.
 //
-// Pas de fichier de liste ici, contrairement à `cmd/backfill-team-scores` : la population à
+// Pas de fichier de liste ici : la population à
 // traiter se définit exactement par « rounds_total IS NULL », ce que la base sait dire. La
 // conséquence est heureuse — l'outil est reprenable tel quel après une interruption, et un
 // second passage ne re-télécharge que ce qui manque encore.

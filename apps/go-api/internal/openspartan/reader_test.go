@@ -10,30 +10,6 @@ import (
 
 const fixtureOwnerXUID = "2603225103667623"
 
-func TestIsOpenSpartanDB_ValidFixture(t *testing.T) {
-	dir := t.TempDir()
-	path := buildFixtureDB(t, dir, fixtureOwnerXUID+".db", fixtureOwnerXUID)
-	ok, err := IsOpenSpartanDB(path)
-	if err != nil {
-		t.Fatalf("IsOpenSpartanDB: %v", err)
-	}
-	if !ok {
-		t.Fatal("expected fixture to be detected as OpenSpartan, got false")
-	}
-}
-
-func TestIsOpenSpartanDB_NotOpenSpartan(t *testing.T) {
-	dir := t.TempDir()
-	path := buildEmptyDB(t, dir, "empty.db")
-	ok, err := IsOpenSpartanDB(path)
-	if err != nil {
-		t.Fatalf("IsOpenSpartanDB: %v", err)
-	}
-	if ok {
-		t.Fatal("expected empty database to be rejected, got true")
-	}
-}
-
 func TestOpen_ReturnsErrNotOpenSpartanDB_OnUnrecognizedSchema(t *testing.T) {
 	dir := t.TempDir()
 	path := buildEmptyDB(t, dir, "empty.db")

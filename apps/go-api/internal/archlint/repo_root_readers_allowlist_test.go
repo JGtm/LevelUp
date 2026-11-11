@@ -3,10 +3,6 @@ package archlint
 // repoRootLecteursAllowlist : compte figé des sélections `.RepoRoot` par fichier, daté 2026-11-01
 // (lot L11c : 149 lectures dans 91 fichiers). Ne fait que descendre — voir repo_root_readers_test.go.
 var repoRootLecteursAllowlist = map[string]int{
-	"cmd/backfill-team-scores/main.go":                      1,
-	"cmd/backfill-world-player-stats/main.go":               1,
-	"cmd/cleanup_media_index/main.go":                       1,
-	"cmd/h5-appearance-backfill/main.go":                    1,
 	"cmd/levelup/cmd_backfill.go":                           1,
 	"cmd/levelup/cmd_backfill_csr.go":                       2,
 	"cmd/levelup/cmd_backfill_flag_grabs_net.go":            1,

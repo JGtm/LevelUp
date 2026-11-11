@@ -2,8 +2,8 @@ package haloadapter
 
 // leaderboard_scraper.go — le classement CSR mondial lu dans les pages publiques Halo Waypoint
 // (`/halo-infinite/leaderboards/{saison}/{playlist}?page=N`), rendues côté serveur, sans
-// authentification, paginées : l'API du client de jeu n'expose PAS de classement mondial. Le job
-// cmd/snapshot-world-leaderboard l'appelle puis persiste en append-only.
+// authentification, paginées : l'API du client de jeu n'expose PAS de classement mondial. Le cron du
+// classement mondial (`scheduler.WorldLeaderboardCron`) l'appelle puis persiste en append-only.
 //
 // La brique (`infinite.Classement`) lit les pages et leur JSON `__NEXT_DATA__` ; ici : la
 // pagination polie, le rang recalculé (le `rank` du JSON vaut 0), le palier dérivé du CSR, les

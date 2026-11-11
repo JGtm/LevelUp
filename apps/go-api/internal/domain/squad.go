@@ -93,9 +93,6 @@ type SquadMatchRow struct {
 	RoundsTotal    *int
 	MapID          string
 	PlaylistID     string
-	// ExpectedWinProb : proba de victoire pré-match ∈ [0,1] (LUSR v2), chargée
-	// depuis player.match_skill_rank. Nil si pré-v2 / non disponible.
-	ExpectedWinProb *float64
 	// DominanceFlag : badge narratif du match (player_match_enrichment) —
 	// 0=aucun, 1=domination, 2=humiliation, 3=remontada, 4=débandade,
 	// 5=contre-remontada (cf. canonical.DominanceFlag). 0 quand le titre ne

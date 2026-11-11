@@ -42,8 +42,6 @@ var groupByRegistryNameExceptions = map[string]string{
 		"par match, aucune scission possible.",
 	"internal/ops/data_quality.go": "2026-10-08 — diagnostic des pair_name BRUTS non traduits : le nom " +
 		"brut est l'objet mesure (filtre `pair_name <> pair_id`), regroupe ensuite par mode normalise.",
-	"cmd/diag_expected_assists/main.go": "2026-10-08 — outil de diagnostic ponctuel, hors serveur, lecture " +
-		"seule ; regroupement exploratoire par libelle de variante, aucun affichage produit.",
 }
 
 func TestNoGroupByRegistryName(t *testing.T) {

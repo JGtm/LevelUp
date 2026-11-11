@@ -4,15 +4,13 @@
 //
 // Pourquoi : Halo Waypoint n'expose aucune API de classement mondial (HaloDotAPI
 // mort). La seule source est la page web publique, qu'il faut re-photographier
-// régulièrement car le classement évolue. Le CLI cmd/snapshot-world-leaderboard
-// fait ce travail mais EXIGE d'arrêter le serveur (ouverture RW directe de la
-// shared DB). Ce cron fait la même chose serveur allumé, via le SharedDBProvider
-// (AcquireWriter), donc zéro intervention manuelle.
+// régulièrement car le classement évolue. Ce cron la photographie serveur
+// allumé, via le SharedDBProvider (AcquireWriter), donc zéro intervention manuelle.
 //
 // Mode autonome (ADR : direction sync convergent autonome) : la saison active est
 // DÉCOUVERTE sur la page (seasons[0]), jamais codée en dur — quand Halo change de
 // saison, le cron suit tout seul. Seule la saison active est rafraîchie : les
-// saisons passées sont figées (un snapshot one-shot via le CLI suffit).
+// saisons passées sont figées.
 //
 // Architecture clé — fenêtre RW minimale :
 //   - Le scraping (réseau, potentiellement plusieurs minutes : pagination + délais

@@ -15,8 +15,8 @@ package skill
 // plausible mais fausse. Le fallback légitime pour pair_name inconnu (arena_slayer)
 // reste À L'INTÉRIEUR de ClassifyLUSRChain.
 //
-// Câblage requis : cmd/server + tout cmd LUSR (lusr_v2_canonical_backfill,
-// diag_lusr_player, lusr_v2_squad_estimate, lusr_v2_ttt_batch) +
+// Câblage requis : cmd/server + tout cmd LUSR (diag_lusr_player,
+// lusr_v2_squad_estimate, lusr_v2_ttt_batch) +
 // les TestMain des packages dont les tests atteignent GetLUSRChain (sync, service).
 
 import "errors"

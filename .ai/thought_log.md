@@ -5,6 +5,37 @@
 **Résultats observés** : tests de cadence écrits d'abord (rouges : helper absent, puis mutation du helper sur 100 ms fixes), puis verts ; mêmes décisions à 100 ms et à 33 ms. `make libs-test` ok (39 paquets) ; `go build ./...` et tests `replaybuild`, `sync/replayartifacts`, `archlint` ok (archlint seul : 621 s, la première passe a heurté le délai de 10 min sous charge) ; surface de la façade `decfilm` inchangée ; lint 0 issue (`apps/go-api` et quatre modules `libs/`) ; aucun golden ni empreinte de couche modifiés ; `make replay-equiv` : 19 identiques, 0 différent, 1 échec de plafond mémoire (a349fea8 : pic 3,77 Gio sous charge machine, plafond dur 3,75) ; relancé seul : identique (pic 2,68 Gio), soit 20 identiques sur 20.
 
 **Conclusion / prochaine étape** : à 100 ms le décodeur donne les mêmes décisions. Restent hors lot : unifier les conversions durée -> images déjà présentes (`zoneWindowFrames`, `zoneGaugeGapFrames`, `slackFrames` en arrondi vers le haut, `replayClock.framesOf`), faire lire `HistoricalFrameIntervalMS` aux lecteurs de documents sans `frameIntervalMs`, migrer `cmd/zone-attribution` vers la durée, borner le pas de projectile par le temps écoulé entre deux points plutôt que par le pas.
+## [2026-11-10] Plan architecture, étape 1 : suppressions — Complété (branche `feat/812-architecture`)
+
+**Décision technique principale.** Le critère de l'audit (« aucune citation ») s'est révélé insuffisant : la comparaison du code inatteignable avant et après la suppression (`deadcode`) a montré que 17 commandes étaient le seul point d'entrée de 63 fonctions du moteur, et la relecture en a sauvé deux autres (`admin`, `diag_q`). L'utilisateur a tranché par famille : Halo 5, calibrage du LUSR et rang des saisons passées gardés et documentés ; classement mondial supprimé avec son code (vérifié en production : c'est le planificateur du serveur qui tourne) ; quatre commandes de migration et de réparation en attente de sa réponse.
+
+**Résultats observés.** 83 commandes supprimées sur 180, 98 restantes. Sondeur Steam, `domain/chart`, fonctions sans appelant et type manuel `MatchHistoryRow` retirés. Probabilité de victoire : affichage, capability, champs d'API et lecteurs retirés, calcul et colonne intacts. Témoins identiques à la référence, hors la clé retirée. Le harnais neutralise l'état du disque du poste (80 % franchis dans la journée).
+
+**Conclusion / prochaine étape.** PR de l'étape 1 vers `release/v8.1.2`, prévenir le pilote de la v8.1.2 à sa fusion, puis étape 2 (interrupteurs).
+
+## [2026-11-10] Plan architecture, étape 0 : témoins et compteurs de départ — Complété (branche `feat/812-architecture`)
+
+**Décision technique principale.** Chantier rattaché à la v8.1.2 par l'utilisateur, décisions D1 à D9 validées, go donné pour les étapes 0 à 8. Témoins capturés par un harnais hors dépôt (`C:/t/812-archi/capture.sh`) sur une copie du jeu de démo, serveur isolé sur le port 8011 : profil démo pour les routes joueur, profil dev sans authentification pour les routes admin.
+
+**Résultats observés.** 90 routes en 200, deux captures successives identiques après neutralisation des champs volatils. Le témoin ne voit pas le rejeu (pas de film dans le jeu de démo) ni un changement d'ordre sur les listes que le serveur rend dans un ordre non déterministe (découvertes consignées au plan, non traitées). Compteurs de départ relevés (plan, étape 0). Les quatre branches 8.1.2 sont fusionnées : plus d'attente entre les étapes ; la bascule sur les modules publiés attend la fin de ce chantier.
+
+**Conclusion / prochaine étape.** Étape 1 (suppressions pures).
+
+## [2026-11-10] Plan architecture (frontières, ménage, front) — En cours (plan écrit, aucun code)
+
+**Décision technique principale.** L'utilisateur fixe la cible le 2026-11-10 : chaque ligne du tableau « changer l'UI ou une technologie » à « bon » ou « très bon », dettes P2 comprises, décodeur de film hors périmètre (revu plus tard), commandes mortes selon la recommandation. Plan en 9 étapes : témoins, suppressions pures, interrupteurs, écritures, couche HTTP, stockage, multi-titre, front, clôture. Chaque compte ramené à zéro reçoit son garde-rail dans le même commit.
+
+**Résultats observés.** Relevé refait sur `origin/release/v8.1.2` (`f44885cfb8`) : 112 commandes sans citation, dont 98 à supprimer et 14 conservées (annexe). Deux cibles restent à « bon » : graphes (les pages construisent leurs options, ADR 0001) et base (SQL de `sync/`).
+
+**Conclusion / prochaine étape.** Plan `.ai/PLAN_ARCHITECTURE_FRONTIERES_2026-11-10.md`, non relu par un contexte frais. L'utilisateur rattache le chantier à la v8.1.2 et valide D2 à D5 le 2026-11-10 ; D8 et D9 en découlent ; D6 et D7 (cibles « bon » pour les graphes et la base) restent à valider. Lectures de production faites : jauge des trous de note à 0 sur 298 relevés du 22/07 au 10/11 (la réparation automatique sera supprimée), aucune erreur de bascule du fournisseur partagé depuis le 11/07, `LEVELUP_LOG_JSON=true` posé par le `Dockerfile` (à remplacer dans le même commit). Reste : inscrire le chantier au plan v8.1.2 (tenu par une autre session), puis go d'exécution.
+
+## [2026-11-10] Audit architecture et état du code — Complété (registre, aucun code)
+
+**Décision technique principale.** Dernière grosse revue retenue : l'audit du 2026-09-05. Depuis, 6 162 commits : pas de relecture de diff, mais une campagne « périmètre × axe » sur la tête de `release/v8.1.2` (`afb963994c`), 8 auditeurs Sonnet en lecture seule (couches HTTP, étanchéité au stockage, direction des dépendances, frontières web, un point d'entrée par techno web, écritures DuckDB, flags, code mort). Constats P1 revérifiés sur pièces par le superviseur.
+
+**Résultats observés.** 0 P0, 25 P1, 22 P2, 12 écartés ou requalifiés. Axes non passés : A3, A5, A6, A8, A9, A10 ; périmètres non passés : intérieur de `libs/film`, coquille Rust, branches 8.1.2 en cours, sécurité. Là où un garde-rail existe la règle tient ; tous les P1 sont hors garde-rail. Registre : `.ai/AUDIT_ARCHITECTURE_2026-11-10.md`.
+
+**Conclusion / prochaine étape.** À trancher par l'utilisateur : alias perdus (ART-2), 106 binaires sans utilisateur (MORT-1), deux interrupteurs (FLG-1, FLG-2). Probabilité de victoire (ART-5) : l'utilisateur confirme le 2026-11-10 que la statistique est abandonnée ; aucun titre ne l'affiche, le constat devient un retrait de code à planifier. Trois chantiers candidats : frontières, ménage, front.
 
 ## [2026-11-09] Briques en v1.0.0 (README, require, ADR 0043) — Complété
 

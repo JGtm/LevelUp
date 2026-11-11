@@ -5,7 +5,7 @@
 // Chaque player DB est ouverte en access_mode=read_only, la shared y est ATTACHée
 // en `sh` (READ_ONLY) pour les jointures outcome/pair_name. Les prédicats sur la
 // shared forcent le scan (`col || ” = ?`) : c'est le même parti que
-// recompute_after_art_rebuild.go et diag_perfsim — un contrôle d'intégrité ne doit
+// recompute_after_art_rebuild.go — un contrôle d'intégrité ne doit
 // pas dépendre d'un index ART dont la fiabilité est précisément l'objet du doute.
 package main
 

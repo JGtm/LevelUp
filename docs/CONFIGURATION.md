@@ -281,7 +281,6 @@ by the demo identities. `<demo>/runtime/` is git-ignored under `data/demo/` and
 | `LEVELUP_DISCORD_WEBHOOK_URL` | Discord webhook (preferred over `DISCORD_WEBHOOK_URL` and over `app_settings.json:discord_webhook_url`). |
 | `DISCORD_WEBHOOK_URL` | Discord webhook (legacy name, still read). |
 | `LEVELUP_PUBLIC_BASE_URL` | Optional public base URL of the app. When set, the coach Discord relay adds an "Open in LevelUp" link to embeds. Empty → no link. |
-| `STEAM_API_KEY` | Steam Web API key (Steam presence). |
 | `RESTIC_REPOSITORY` / `RESTIC_PASSWORD` / `RESTIC_PASSWORD_FILE` | Restic backup target/credentials. |
 | `LEVELUP_BACKUP_DIR` | Local backup directory. |
 

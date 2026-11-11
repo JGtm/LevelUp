@@ -356,7 +356,6 @@ func buildSquadMatchHistory(
 			GameplayDurationSeconds: m.GameplayDurationSeconds,
 			WinRateHist:             winRate,
 			WinRateHistTotal:        winRateTotal,
-			ExpectedWinProb:         m.ExpectedWinProb,
 			SessionLabel:            m.SessionLabel,
 			DominanceFlag:           m.DominanceFlag,
 		})

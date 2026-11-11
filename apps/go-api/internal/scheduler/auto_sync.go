@@ -202,8 +202,8 @@ type AutoSyncScheduler struct {
 	postSyncRunner port.PostSyncRunner
 
 	// batchQueue (Phase 4.7 closure 2026-05-24) — BatchQueue serveur-wide
-	// optionnelle. Activée via LEVELUP_PERSIST_BATCH_ASYNC=1 (+ batch mode
-	// déjà actif). Injectée par cmd/server/main.go via WithBatchQueue.
+	// optionnelle. Active par défaut (LEVELUP_PERSIST_BATCH_ASYNC=0 la coupe ;
+	// coupée aussi en démo). Injectée par le câblage de cmd/server via WithBatchQueue.
 	// Sans queue : path synchrone (Persister.Persist direct). Avec queue :
 	// path async (queue.Submit + worker, WAL durable, recovery au boot).
 	batchQueue *persist.BatchQueue

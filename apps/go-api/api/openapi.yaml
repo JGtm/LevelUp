@@ -14829,9 +14829,6 @@ components:
         enemy_mmr:
           format: double
           type: number
-        expected_win_prob:
-          format: double
-          type: number
         experience_type_label:
           default: Non classé
           type: string
@@ -19045,9 +19042,6 @@ components:
         expected_kills:
           format: double
           type: number
-        expected_win_prob:
-          format: double
-          type: number
         has_hist_avg:
           type: boolean
         hist_avg_assists:
@@ -19372,9 +19366,6 @@ components:
           type:
             - number
             - "null"
-        expected_win_prob:
-          format: double
-          type: number
         experience_type_label:
           type: string
         has_replay:
@@ -26172,9 +26163,6 @@ components:
         enemy_mmr:
           format: double
           type: number
-        expected_win_prob:
-          format: double
-          type: number
         is_ranked:
           type: boolean
         kda:
@@ -26827,11 +26815,6 @@ components:
           type:
             - number
             - "null"
-        ExpectedWinProb:
-          format: double
-          type:
-            - number
-            - "null"
         KillsExpected:
           format: double
           type:
@@ -26877,7 +26860,6 @@ components:
         - MeasurementRemaining
         - KillsExpected
         - DeathsExpected
-        - ExpectedWinProb
       type: object
     SkillTrendPoint:
       additionalProperties: false
@@ -28286,9 +28268,6 @@ components:
           format: int64
           type: integer
         enemy_mmr_avg:
-          format: double
-          type: number
-        expected_win_prob:
           format: double
           type: number
         gameplay_duration_seconds:

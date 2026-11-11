@@ -406,30 +406,6 @@ en = "Damage balance = (damage dealt − damage taken) ÷ '{{HP}}' HP, expressed
 fr = "Δ rang"
 en = "Δ rank"
 
-[session.detail.col_win_prob]
-fr = "Pronostic"
-en = "Win odds"
-
-[session.detail.win_prob_expected]
-fr = "Match attendu"
-en = "Expected match"
-
-[session.detail.win_prob_upset]
-fr = "Surprise"
-en = "Upset"
-
-[session.detail.win_prob_strong_perf]
-fr = "Belle performance"
-en = "Strong performance"
-
-[session.detail.win_prob_balanced]
-fr = "Match équilibré"
-en = "Balanced match"
-
-[session.detail.win_prob_aria]
-fr = "Probabilité de victoire"
-en = "Win probability"
-
 [session.detail.chart_mmr_title]
 fr = "Challenge MMR"
 en = "MMR challenge"

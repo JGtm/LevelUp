@@ -47,7 +47,6 @@ var resolutionsGelees = map[string]string{
 	"internal/api/wire/registry_replay_build.go":            "rejeu : nom EN technique de la carte (cuisson)",
 	"internal/sync/replayartifacts/backlog.go":              "rejeu : nom EN technique de la carte (file de cuisson)",
 	"cmd/diag_db_health/main.go":                            "outil de diagnostic",
-	"cmd/diag_media_assets/main.go":                         "outil de diagnostic",
 	"cmd/levelup/cmd_backfill_replay.go":                    "rejeu : nom EN technique de la carte (rattrapage)",
 	"cmd/mapfond-inventaire/lecture.go":                     "outil d'inventaire des fonds de carte",
 }

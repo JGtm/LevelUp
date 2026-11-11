@@ -7,8 +7,6 @@ import (
 	"log/slog"
 	"strings"
 
-	_ "github.com/duckdb/duckdb-go/v2"
-
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/dblease"

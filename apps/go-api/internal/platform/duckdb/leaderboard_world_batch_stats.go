@@ -18,10 +18,8 @@ package duckdb
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -42,25 +40,21 @@ const (
 
 // DegradedBatchReason applique la décision D1 et retourne la cause du refus en clair
 // (chaîne vide = lot acceptable). Fonction PURE : toute la règle métier est ici, donc
-// testable sans base ni réseau.
+// testable sans base ni réseau. Appelée par le cron, avant de persister un lot
+// fraîchement scrapé (reference = lot servi, candidate = lot scrapé).
 //
-// Deux appelants, une seule définition (règle « ≤ 2 copies ») :
-//   - le cron, avant de persister un lot fraîchement scrapé (reference = lot servi) ;
-//   - le CLI -restore-best, pour décider si le lot SERVI mérite d'être remplacé par
-//     un meilleur lot historique (reference = meilleur lot, candidate = lot servi).
+// candidateDepthLimit = profondeur MAXIMALE que le candidat pouvait atteindre (la
+// limite de son appelant) ; 0 = aucun plafond (échelle complète demandée).
 //
-// candidateDepthLimit = profondeur MAXIMALE que le candidat pouvait atteindre (le
-// -limit de son appelant) ; 0 = aucun plafond (échelle complète demandée).
-//
-// À quoi sert ce plafond : les deux producteurs ne capturent pas la même profondeur.
-// Le cron s'arrête à 200 entrées par playlist, alors que le CLI lancé avec -limit 0
-// peut en archiver jusqu'à 2500. Comparer brutalement les volumes gèlerait le cron
-// pour toujours dès qu'un lot profond a été servi : 200 lignes face à 2500 tombent
-// sous la moitié, donc chaque cycle quotidien serait refusé alors qu'il a fait
-// exactement le travail demandé. On borne donc la référence à ce que le candidat
-// avait le DROIT de ramener : un lot au plafond de sa propre limite n'est jamais
-// « effondré ». La règle d'identification (xuid), elle, ne dépend pas de la
-// profondeur et s'applique telle quelle.
+// À quoi sert ce plafond : un lot déjà servi peut être plus profond que ce que le
+// cron capture (200 entrées par playlist, contre jusqu'à 2500 pour un lot archivé
+// sans limite). Comparer brutalement les volumes gèlerait le cron pour toujours dès
+// qu'un lot profond a été servi : 200 lignes face à 2500 tombent sous la moitié, donc
+// chaque cycle quotidien serait refusé alors qu'il a fait exactement le travail
+// demandé. On borne donc la référence à ce que le candidat avait le DROIT de
+// ramener : un lot au plafond de sa propre limite n'est jamais « effondré ». La
+// règle d'identification (xuid), elle, ne dépend pas de la profondeur et s'applique
+// telle quelle.
 func DegradedBatchReason(reference, candidate WorldCSRBatchStats, candidateDepthLimit int) string {
 	expected := reference.Rows
 	if candidateDepthLimit > 0 && candidateDepthLimit < expected {
@@ -85,7 +79,7 @@ type WorldCSRBatchStats struct {
 // WorldCSRStatsOfEntries mesure un lot EN MÉMOIRE (lot fraîchement scrapé, pas encore
 // écrit) avec EXACTEMENT la même définition que WorldCSRServedBatchStats côté base —
 // sans quoi comparer les deux jeux de chiffres n'aurait aucun sens. Appelée par le
-// cron et par le CLI de capture.
+// cron.
 func WorldCSRStatsOfEntries(entries []domain.LeaderboardEntry) WorldCSRBatchStats {
 	stats := WorldCSRBatchStats{Rows: len(entries)}
 	for _, e := range entries {
@@ -102,116 +96,6 @@ func (s WorldCSRBatchStats) XUIDCoverage() float64 {
 		return 0
 	}
 	return float64(s.WithXUID) / float64(s.Rows)
-}
-
-// WorldCSRBatchKey identifie le couple (titre, saison, playlist) auquel appartient
-// un lot de classement.
-type WorldCSRBatchKey struct {
-	TitleSlug  string
-	SeasonID   string
-	PlaylistID string
-}
-
-// WorldCSRBatch identifie un lot capturé — son instant de capture, qui le distingue
-// des autres lots du même couple — et porte sa qualité mesurée.
-type WorldCSRBatch struct {
-	FetchedAt time.Time
-	Stats     WorldCSRBatchStats
-}
-
-// WorldCSRSeasonPlaylistPairs liste les couples (saison, playlist) présents dans les
-// snapshots d'un titre. Sert au balayage de restauration (CLI -restore-best) : on ne
-// peut pas deviner ces couples, ils dépendent de ce qui a été capturé au fil du temps.
-func WorldCSRSeasonPlaylistPairs(ctx context.Context, db *sql.DB, titleSlug string) ([]WorldCSRBatchKey, error) {
-	if strings.TrimSpace(titleSlug) == "" {
-		titleSlug = titlePkg.DefaultSlug
-	}
-	const q = `
-		SELECT DISTINCT season_id, playlist_id
-		FROM world_csr_leaderboard_snapshots
-		WHERE title_slug = ? AND season_id <> '' AND playlist_id <> ''
-		ORDER BY season_id, playlist_id`
-	rows, err := db.QueryContext(ctx, q, titleSlug)
-	if err != nil {
-		return nil, fmt.Errorf("WorldCSRSeasonPlaylistPairs: %w", err)
-	}
-	defer rows.Close()
-	var out []WorldCSRBatchKey
-	for rows.Next() {
-		k := WorldCSRBatchKey{TitleSlug: titleSlug}
-		if err := rows.Scan(&k.SeasonID, &k.PlaylistID); err != nil {
-			return nil, fmt.Errorf("WorldCSRSeasonPlaylistPairs: scan: %w", err)
-		}
-		out = append(out, k)
-	}
-	return out, rows.Err()
-}
-
-// WorldCSRBestBatch retourne le MEILLEUR lot historique d'un couple, tous batches
-// confondus (un batch = les lignes partageant un même fetched_at).
-//
-// Ordre de mérite : d'abord le nombre d'entrées IDENTIFIÉES (xuid), car c'est ce qui
-// rend un relevé exploitable — un classement sans xuid ne se joint à rien ; puis le
-// nombre de lignes (profondeur du top) ; puis la fraîcheur, qui ne départage que des
-// lots de qualité égale. ok=false si le couple n'a aucun snapshot.
-func WorldCSRBestBatch(ctx context.Context, db *sql.DB, key WorldCSRBatchKey) (WorldCSRBatch, bool, error) {
-	slug := key.TitleSlug
-	if strings.TrimSpace(slug) == "" {
-		slug = titlePkg.DefaultSlug
-	}
-	const q = `
-		SELECT fetched_at,
-		       COUNT(*) AS rows_count,
-		       COALESCE(SUM(CASE WHEN COALESCE(xuid, '') <> '' THEN 1 ELSE 0 END), 0) AS with_xuid
-		FROM world_csr_leaderboard_snapshots
-		WHERE title_slug = ? AND season_id = ? AND playlist_id = ?
-		GROUP BY fetched_at
-		ORDER BY with_xuid DESC, rows_count DESC, fetched_at DESC
-		LIMIT 1`
-	var b WorldCSRBatch
-	err := db.QueryRowContext(ctx, q, slug, key.SeasonID, key.PlaylistID).
-		Scan(&b.FetchedAt, &b.Stats.Rows, &b.Stats.WithXUID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return WorldCSRBatch{}, false, nil
-	}
-	if err != nil {
-		return WorldCSRBatch{}, false, fmt.Errorf("WorldCSRBestBatch: %w", err)
-	}
-	return b, true, nil
-}
-
-// WorldCSRBatchEntries relit les entrées d'un lot précis (identifié par son
-// fetched_at) pour permettre sa RÉ-INSERTION à l'identique — rank, gamertag, xuid,
-// CSR et palier préservés. Le FetchedAt des entrées retournées est laissé à zéro :
-// c'est à l'appelant de poser un instant frais commun au lot restauré (sans quoi la
-// vue _latest, qui sert le dernier fetched_at, ne servirait pas la restauration).
-func WorldCSRBatchEntries(ctx context.Context, db *sql.DB, key WorldCSRBatchKey, fetchedAt time.Time) ([]domain.LeaderboardEntry, error) {
-	slug := key.TitleSlug
-	if strings.TrimSpace(slug) == "" {
-		slug = titlePkg.DefaultSlug
-	}
-	const q = `
-		SELECT rank, COALESCE(gamertag, ''), COALESCE(xuid, ''), csr_value, COALESCE(tier_derived, '')
-		FROM world_csr_leaderboard_snapshots
-		WHERE title_slug = ? AND season_id = ? AND playlist_id = ? AND fetched_at = ?
-		ORDER BY rank`
-	rows, err := db.QueryContext(ctx, q, slug, key.SeasonID, key.PlaylistID, fetchedAt)
-	if err != nil {
-		return nil, fmt.Errorf("WorldCSRBatchEntries: %w", err)
-	}
-	defer rows.Close()
-	var out []domain.LeaderboardEntry
-	for rows.Next() {
-		e := domain.LeaderboardEntry{Season: key.SeasonID, Playlist: key.PlaylistID}
-		if err := rows.Scan(&e.Rank, &e.Gamertag, &e.XUID, &e.CSRValue, &e.Tier); err != nil {
-			return nil, fmt.Errorf("WorldCSRBatchEntries: scan: %w", err)
-		}
-		e.CSR = e.CSRValue
-		e.Value = float64(e.CSRValue)
-		e.Category = string(domain.LeaderboardCSRWorld)
-		out = append(out, e)
-	}
-	return out, rows.Err()
 }
 
 // WorldCSRServedBatchStats lit la qualité du lot ACTUELLEMENT SERVI pour
