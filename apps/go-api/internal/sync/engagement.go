@@ -646,12 +646,18 @@ func persistMatchIntensity(ctx context.Context, sharedDB *sql.DB, matchID string
 	return err
 }
 
-// persistMatchIntensities flushe un lot d'intensités accumulées (best-effort,
-// même sémantique que l'ancien write inline : les erreurs sont ignorées une à
-// une). SQL inchangé — seul le MOMENT de l'écriture change (burst caller).
+// persistMatchIntensities flushe un lot d'intensités accumulées. Best-effort : un échec
+// n'interrompt pas le lot ; il est journalisé et compté (match_intensity_write_failed_total) et
+// match_registry.match_intensity reste inchangée pour ce match. SQL inchangé — seul le MOMENT
+// de l'écriture change (burst caller).
 func persistMatchIntensities(ctx context.Context, sharedDB *sql.DB, ups []matchIntensityUpdate) {
+	title := ctxkeys.TitleSlug(ctx)
 	for _, u := range ups {
-		_ = persistMatchIntensity(ctx, sharedDB, u.matchID, u.intensity)
+		if err := persistMatchIntensity(ctx, sharedDB, u.matchID, u.intensity); err != nil {
+			observability.IncCounterT(title, "match_intensity_write_failed_total")
+			slog.WarnContext(ctx, "engagement: intensité de match non écrite",
+				"match_id", u.matchID, "err", err)
+		}
 	}
 }
 
