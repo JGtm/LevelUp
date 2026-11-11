@@ -105,7 +105,7 @@ zone-attribution
 admin
 diag_q
 
-## RETABLIES LE 2026-11-10 : seul point d'entree de code du moteur (decision de l'utilisateur attendue, famille par famille)
+## RETABLIES LE 2026-11-10 : seul point d'entree de code du moteur ; GARDEES, jamais lancees mais jugees utiles par l'utilisateur, desormais documentees dans docs/COMMANDS.md (EN et FR)
 migrate-hls-audio
 backfill-media-hls
 purge_corrupt_records

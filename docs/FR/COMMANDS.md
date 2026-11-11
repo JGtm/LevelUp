@@ -1118,6 +1118,47 @@ go run ./apps/go-api/cmd/lusr_v2_replay [--db CHEMIN] [--reset] [Gamertag ...]
   (`player_skill_state_v2`). **`--reset` supprime toutes les lignes de `player_skill_state_v2`**, pour
   tous les joueurs, avant le rejeu (état neuf depuis les priors).
 
+### Réparations de données (outils autonomes, serveur arrêté)
+
+Deux outils de réparation des données existantes, jamais lancés par le serveur. Chacun ouvre
+directement les bases qu'il écrit : le **serveur doit être arrêté**. La synchronisation produit déjà
+des données justes pour les nouveaux matchs ; ces outils ne concernent que des lignes écrites avant.
+
+```bash
+cd apps/go-api
+go run -tags cgo ./cmd/purge_corrupt_records [--data-root CHEMIN] [--apply]
+go run ./cmd/backfill_time_played --db CHEMIN [--commit]
+```
+
+- `purge_corrupt_records` : retire les records personnels invraisemblables : valeurs hors des bornes
+  de vraisemblance (une précision de « 7333 % », un `best_kda` de 107) ou métriques hors du
+  catalogue suivi. Il couvre `player_records_history` (et sa vue `player_records_latest`) dans
+  `warehouse/shared_social.duckdb`, et `record_history` dans le `stats.duckdb` de chaque dossier
+  joueur sous `players/`, le tout sous `--data-root` (défaut `../../data/titles/halo_infinite`,
+  relatif à `apps/go-api` ; passer `data/titles/{slug}` pour un autre titre). Jamais de `DELETE`
+  brut : chaque table est reconstruite avec les seules lignes plausibles et échangée dans une seule
+  transaction (recette de l'ADR 0026), avec un contrôle du nombre de lignes avant le COMMIT et un
+  retour arrière complet à la moindre erreur ; clé primaire, index et vue sont recréés.
+  **Simulation par défaut** : sans `--apply`, il imprime seulement, par table, les lignes à retirer
+  regroupées par (métrique, valeur). Il ouvre chaque base en lecture-écriture dans les deux modes :
+  le serveur doit donc être arrêté même pour la simulation. Il ne fait aucune sauvegarde de
+  lui-même.
+- `backfill_time_played` : recalcule `time_played_seconds` de `match_participants` à partir des
+  horodatages de participation (`first_joined_time`, `last_leave_time`), en gérant les joueurs partis
+  avant la fin et les arrivés en cours de match, dans la fenêtre de jeu du match (de
+  `real_start_time` au début plus la durée). `--db` est la base de matchs partagée
+  (`shared_matches_v2.duckdb`). **Simulation par défaut** (base ouverte en lecture seule) : il
+  imprime la répartition par qualité, l'écart entre la valeur recalculée et celle de l'API, et le
+  garde-fou des matchs complets (la médiane de `time_played` des joueurs présents du début à la fin
+  doit être proche de la durée de jeu, cible : plus de 95 % à 5 % près). `--commit` écrit, dans une
+  seule transaction, uniquement les lignes de qualité `ok` ; les lignes sans `first_joined_time`
+  gardent leur valeur de l'API. Serveur en marche, viser une copie de la base pour la simulation.
+  Réserve : les nouveaux matchs sont déjà corrects, la synchronisation calcule elle-même cette valeur
+  (`timeline.ComputeTimePlayedFor`, appelé depuis `internal/sync/transforms.go`) ; la commande ne sert
+  qu'aux anciens matchs. Elle dépend de l'heure d'arrivée du joueur (`first_joined_time`), dont le
+  fuseau horaire est une dette connue : lire un échantillon du rapport de simulation avant de
+  l'appliquer en masse.
+
 ### Migration des chemins média (one-shot, binaire autonome)
 
 Convertit les chemins média **absolus** (legacy) en chemins relatifs portables
@@ -1133,6 +1174,51 @@ go run ./cmd/migrate-media-paths --db data/titles/{slug}/warehouse/shared_social
 # flags : --db PATH (requis)  --captures-base DIR  --settings app_settings.json  --dry-run
 # --captures-base : défaut = media_captures_base_dir de app_settings.json
 ```
+
+### Maintenance des médias HLS (outils autonomes)
+
+Deux binaires pour la version HLS des médias (clips servis par segments). Le serveur fait déjà le
+travail courant lui-même : il transcode les médias sans version HLS après chaque scan ou
+synchronisation des médias. Ces outils servent aux gros rattrapages et à la réparation d'arbres
+existants. Les deux ont besoin de `ffmpeg` et `ffprobe` (sauf mention contraire).
+
+```bash
+cd apps/go-api
+go run ./cmd/backfill-media-hls --db CHEMIN [--captures-base DOSSIER] [--settings app_settings.json] [--slug GT] [--limit N] [--dry-run] [--retry-failed] [--delete-source=false]
+go run ./cmd/migrate-hls-audio --root DOSSIER [--slug GT] [--limit N] [--dry-run] [--collapse-redundant]
+go run ./cmd/migrate-hls-audio --collapse-dir DOSSIER [--dry-run]
+go run ./cmd/migrate-hls-audio --analyze FICHIER
+```
+
+- `backfill-media-hls` : convertit en HLS les vidéos médias qui n'ont pas encore de version HLS, et
+  reprend les transcodages laissés à `processing` sans `hls_path` après un plantage. C'est une fine
+  enveloppe autour de la routine que le serveur lance après chaque scan. **Serveur arrêté** : il écrit
+  `shared_social.duckdb` (`--db`, requis) en lecture-écriture. `--captures-base` vaut par défaut
+  `media_captures_base_dir` du fichier donné par `--settings`. `--slug` limite à un joueur, `--limit`
+  borne le nombre de clips transcodés. `--dry-run` liste sans transcoder. `--retry-failed` réarme
+  d'abord les transcodages en échec (`transcode_status` `failed` remis à NULL, dans le périmètre de
+  `--slug`), puis balaie ; les échecs ne sont plus rejoués automatiquement, c'est donc un geste
+  explicite de l'opérateur (ignoré avec `--dry-run`). **`--delete-source` vaut vrai par défaut ici** :
+  après un transcodage HLS réussi, le fichier source est SUPPRIMÉ ; passer `--delete-source=false`
+  pour garder les originaux.
+- `migrate-hls-audio` : maintenance sur place des arbres HLS multipistes EXISTANTS. Il ne touche que
+  des fichiers sous la racine des médias (aucune base). Les modes sont exclusifs ; les modes
+  d'écriture remplacent des fichiers servis : lancer **serveur arrêté** (ou à faible trafic : un clip
+  lu pendant l'échange pourrait saccader). Tous sont idempotents et relançables, et tous sauf
+  `--analyze` acceptent `--dry-run`.
+  - défaut (`--root` ; `--slug`, `--limit`) : rend mono-codec AAC le groupe audio des arbres dont les
+    renditions mélangent des codecs (jeu en Opus, voix et mix complet en AAC), pour que le changement
+    de piste fonctionne sur Firefox et Safari. Ni la vidéo ni le master ne sont touchés.
+  - `--collapse-redundant` (`--root`) : sur les clips dont les renditions `game` et `voices` portent le
+    MÊME son (pas de voix isolée, par exemple des sessions solo OBS), réécrit le master pour n'exposer
+    que `game`. Gardé par la corrélation d'enveloppe : un vrai clip jeu et voix n'est pas touché.
+  - `--collapse-dir DOSSIER` : réduction FORCÉE d'UN seul arbre (dossier contenant `master.m3u8`) sans
+    le critère de corrélation, pour des clips anciens dont la redondance est structurelle mais dont la
+    corrélation passe sous le seuil à cause de la voix, et dont les sources sont supprimées. À réserver
+    à un arbre dont on sait la redondance. N'a pas besoin de `ffmpeg`.
+  - `--analyze FICHIER` : inspection en lecture seule de la disposition audio d'un fichier SOURCE
+    (détection de la piste de mix complet, composante jeu, mesures) ; imprime la décision, n'écrit rien.
+  - Code de sortie 1 si un arbre a échoué ; `--root` ou l'un des deux autres modes est requis.
 
 ### Rejeu 2D — où se construit un artefact (`replay_build_location`)
 

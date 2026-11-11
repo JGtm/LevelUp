@@ -1070,6 +1070,43 @@ go run ./apps/go-api/cmd/lusr_v2_replay [--db PATH] [--reset] [Gamertag ...]
   **`--reset` deletes every row of `player_skill_state_v2`**, for all players, before the replay
   (fresh state from the priors).
 
+### Data repairs (standalone tools, server stopped)
+
+Two repair tools for existing data, never run by the server. Each opens the databases it writes
+directly, so the **server must be stopped**. The sync already produces correct data for new matches;
+these tools only concern rows written before.
+
+```bash
+cd apps/go-api
+go run -tags cgo ./cmd/purge_corrupt_records [--data-root PATH] [--apply]
+go run ./cmd/backfill_time_played --db PATH [--commit]
+```
+
+- `purge_corrupt_records`: removes implausible personal-best records: values outside the plausibility
+  bounds (an accuracy of "7333 %", a `best_kda` of 107) or metrics outside the tracked catalogue.
+  It covers `player_records_history` (and its `player_records_latest` view) in
+  `warehouse/shared_social.duckdb`, and `record_history` in the `stats.duckdb` of every player folder
+  under `players/`, all under `--data-root` (default `../../data/titles/halo_infinite`, relative to
+  `apps/go-api`; pass `data/titles/{slug}` for another title). Never a raw `DELETE`: each table is
+  rebuilt with only the plausible rows and swapped in one transaction (ADR 0026 recipe), with a
+  row-count check before COMMIT and a full rollback on any error; primary key, index and view are
+  recreated. **Dry run by default**: without `--apply` it only prints, per table, the rows to remove
+  grouped by (metric, value). It opens each database read-write in both modes, so the server must be
+  stopped even for the dry run. It takes no backup of its own.
+- `backfill_time_played`: recomputes `time_played_seconds` of `match_participants` from the
+  participation timestamps (`first_joined_time`, `last_leave_time`), handling players who left early
+  and latecomers, inside the gameplay window of the match (`real_start_time` to start + duration).
+  `--db` is the shared match database (`shared_matches_v2.duckdb`). **Dry run by default** (database
+  opened read-only): it prints the quality distribution, the gap between the recomputed value and the
+  API value, and the full-match guard-rail (median `time_played` of players present from start to end
+  must be close to the gameplay duration, target above 95 % within 5 %). `--commit` writes, in one
+  transaction, only the rows of quality `ok`; rows without `first_joined_time` keep their API value.
+  With the server running, point the dry run at a copy of the database.
+  Caveat: new matches are already correct, the sync computes this value itself
+  (`timeline.ComputeTimePlayedFor`, called from `internal/sync/transforms.go`); the command only
+  serves older matches. It depends on the player's arrival time (`first_joined_time`), whose time
+  zone is a known debt: read a sample of the dry-run report before applying it in bulk.
+
 ### Media paths migration (one-shot, standalone binary)
 
 Converts legacy **absolute** media paths to portable relative `{owner_slug}/{rel}` paths in
@@ -1084,6 +1121,49 @@ go run ./cmd/migrate-media-paths --db data/titles/{slug}/warehouse/shared_social
 # flags: --db PATH (required)  --captures-base DIR  --settings app_settings.json  --dry-run
 # --captures-base defaults to app_settings.json media_captures_base_dir
 ```
+
+### HLS media maintenance (standalone tools)
+
+Two binaries for the HLS version of the media (clips served in segments). The server already does
+the routine work itself: it transcodes the media without an HLS version after every media scan or
+sync. These tools serve large catch-ups and the repair of existing trees. Both need `ffmpeg` and
+`ffprobe` (except where noted).
+
+```bash
+cd apps/go-api
+go run ./cmd/backfill-media-hls --db PATH [--captures-base DIR] [--settings app_settings.json] [--slug GT] [--limit N] [--dry-run] [--retry-failed] [--delete-source=false]
+go run ./cmd/migrate-hls-audio --root DIR [--slug GT] [--limit N] [--dry-run] [--collapse-redundant]
+go run ./cmd/migrate-hls-audio --collapse-dir DIR [--dry-run]
+go run ./cmd/migrate-hls-audio --analyze FILE
+```
+
+- `backfill-media-hls`: converts to HLS the video media that still have no HLS version, and resumes
+  the transcodes left as `processing` without an `hls_path` after a crash. It is a thin wrapper around
+  the routine the server runs after each scan. **Server stopped**: it writes `shared_social.duckdb`
+  (`--db`, required) read-write. `--captures-base` defaults to `media_captures_base_dir` of the file
+  given by `--settings`. `--slug` restricts to one player, `--limit` bounds the number of clips
+  transcoded. `--dry-run` lists without transcoding. `--retry-failed` first re-arms the transcodes in
+  failure (`transcode_status` `failed` back to NULL, within `--slug`), then sweeps; failures are no
+  longer retried automatically, so this is an explicit operator gesture (ignored with `--dry-run`).
+  **`--delete-source` defaults to true here**: after a successful HLS transcode the source file is
+  DELETED; pass `--delete-source=false` to keep the originals.
+- `migrate-hls-audio`: in-place maintenance of EXISTING multi-track HLS trees. It touches only files
+  under the media root (no database). Modes are exclusive; the write modes replace served files, so
+  run with the **server stopped** (or low traffic: a clip read during the swap could stutter). All
+  are idempotent and rerunnable, and all but `--analyze` accept `--dry-run`.
+  - default (`--root`; `--slug`, `--limit`): makes the audio group of trees whose renditions mix codecs
+    (game in Opus, voices and full in AAC) single-codec AAC, so that the track switch works on Firefox
+    and Safari. Neither the video nor the master is touched.
+  - `--collapse-redundant` (`--root`): on clips whose `game` and `voices` renditions carry the SAME
+    sound (no isolated voice, for example solo OBS sessions), rewrites the master to expose `game`
+    only. Guarded by the envelope correlation: a real game + voice clip is not touched.
+  - `--collapse-dir DIR`: FORCED collapse of ONE tree (folder holding `master.m3u8`) without the
+    correlation criterion, for legacy clips whose redundancy is structural but whose correlation falls
+    under the threshold because of the voice, and whose sources are deleted. Only for a tree known to be
+    redundant. Needs no `ffmpeg`.
+  - `--analyze FILE`: read-only inspection of the audio layout of a SOURCE file (full-mix track
+    detection, game component, metrics); prints the decision and writes nothing.
+  - Exit code 1 if any tree failed; `--root` or one of the two other modes is required.
 
 ### 2D replay — where an artifact gets built (`replay_build_location`)
 
