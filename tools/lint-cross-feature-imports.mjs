@@ -189,6 +189,10 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // émises et les codes réels tombaient sur le message générique (2026-10-16, plan sécurité
   // L11-6). Module nommé seulement, dépendance durable.
   'setup=>auth/loginError',
+  // Même raison pour le bloc du code à recopier : l'assistant affiche le code comme l'écran de
+  // connexion (libellé, code sélectionnable, bouton « Copier le code », CopyCodeButton) ; une copie
+  // locale avait divergé (pas de bouton, 2026-11-11). Module nommé seulement, dépendance durable.
+  'setup=>auth/CopyCodeButton',
   // Home dashboard agrège aussi le widget Ascension (HomeAscensionWidget).
   'home=>ascension',
   // Explorer réutilise la bannière d'identité joueur de Home
