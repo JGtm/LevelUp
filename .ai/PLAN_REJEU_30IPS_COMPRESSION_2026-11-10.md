@@ -185,7 +185,14 @@ Gate A :
   - sons (crâne, zone, ramassage) ;
   - fiches avec compteurs.
 
-- [ ] B10 **Applications de bureau déjà installées (décision D-9).** Vérifier d'abord sur pièces le comportement de la file `replayregen` (décompte au démarrage, démarrage sur geste, `isStale` qui exige le film archivé). Tests d'abord, puis : à la fin d'une mise à jour des rejeux lancée par l'utilisateur, la file compresse par la porte les artefacts encore en `.json` qu'elle n'a pas pu refaire (film non archivé). Jamais au démarrage, jamais sans ce geste : le garde-rail `no_auto_replay_compress_test.go` reçoit ce second appelant, nommé et justifié. Compte rendu visible dans l'état de la file (refaits, compressés, échecs). Vérification du user sur une application installée : après mise à jour, les anciens rejeux s'ouvrent ; l'écran propose la mise à jour des rejeux ; à la fin, plus aucun `.json` brut dans le dossier des rejeux et la place occupée a baissé.
+- [x] B10 **Applications de bureau déjà installées (décision D-9).** Vérifier d'abord sur pièces le comportement de la file `replayregen` (décompte au démarrage, démarrage sur geste, `isStale` qui exige le film archivé). Tests d'abord, puis : à la fin d'une mise à jour des rejeux lancée par l'utilisateur, la file compresse par la porte les artefacts encore en `.json` qu'elle n'a pas pu refaire (film non archivé). Jamais au démarrage, jamais sans ce geste : le garde-rail `no_auto_replay_compress_test.go` reçoit ce second appelant, nommé et justifié. Compte rendu visible dans l'état de la file (refaits, compressés, échecs). Vérification du user sur une application installée : après mise à jour, les anciens rejeux s'ouvrent ; l'écran propose la mise à jour des rejeux ; à la fin, plus aucun `.json` brut dans le dossier des rejeux et la place occupée a baissé.
+  Fait le 2026-11-11 (journal) :
+  - [x] vérification sur pièces du comportement de la file (journal) ;
+  - [x] compression en fin de passe : `replayregen/compress.go`, par `replaybuild.CompressDirWith` (porte avant chaque fichier : pause, mode jeu, synchro ; un fichier à la fois) ;
+  - [x] état de la file : `compressing`, `compressed`, `compress_failed` (type de domaine, expvar `replay_regen_compressed_total` et `_compress_failed_total`) ; web : une phase « compression » et deux lignes de compte rendu dans l'écran existant (FR et EN) ; type web écrit à la main (la route n'est pas dans `openapi.yaml`, aucun diff à régénérer) ;
+  - [x] garde-rail `no_auto_replay_compress_test.go` : deux appelants nommés et justifiés ;
+  - [x] exFAT et FAT32 : repli par création exclusive (journal) ;
+  - [x] garde-rail D-6 étendu à `libs/film/replay` (deux entrées d'allowlist datées : la grille elle-même).
 
 Gate B : B9 validé par un message du user, plus les commandes du gate A.
 

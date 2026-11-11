@@ -25,4 +25,12 @@ type ReplayRegenStatus struct {
 	WaitingForGame bool `json:"waiting_for_game" doc:"La file attend la fin de la partie avant de lancer le rejeu suivant."`
 	// Failed : rejeux de la file courante ou de la dernière que la régénération n'a pas pu refaire.
 	Failed int `json:"failed" doc:"Rejeux de la file courante ou de la dernière qui n'ont pas pu être régénérés."`
+	// Compressing : la file compresse, à sa fin, les rejeux encore en JSON brut qu'elle n'a pas pu refaire (film absent
+	// de l'archive).
+	Compressing bool `json:"compressing" doc:"La file compresse les rejeux bruts qu'elle n'a pas pu refaire (fin de passe)."`
+	// Compressed : rejeux bruts compressés par la file courante ou la dernière.
+	Compressed int `json:"compressed" doc:"Rejeux bruts compressés par la file courante ou la dernière."`
+	// CompressFailed : rejeux bruts que la compression n'a pas pu convertir (illisibles, écriture ou vérification en
+	// échec, doublon de contenu différent, suppression du brut à relancer) ; chacun reste lisible tel quel.
+	CompressFailed int `json:"compress_failed" doc:"Rejeux bruts que la compression n'a pas pu convertir ; ils restent lisibles."`
 }

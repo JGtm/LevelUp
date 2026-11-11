@@ -121,6 +121,10 @@ rebuilds them by itself.
 - **The same line in Settings > Application** ("Replays" card): the count, or "All replays are up to date", with the same buttons.
 - **While it runs**, the banner shows `done of total` with **Pause** / **Resume**. One film at a time, in the background. It never starts a film
   while the game runs (the line says it is waiting for the game to end). **Pause** lets the film in progress finish.
+- **At the end of a pass**, the replays it could not rebuild (film no longer archived) are compressed on disk, one file at a time, behind the same waits (pause,
+  game, sync). The card then says how many were compressed and how many could not be (those stay readable). After an update, expect no raw `<match>.json` left in the
+  replays folder (`data/cache/replays/<title>/`) and less space used. On an exFAT or FAT32 drive the files are laid without hard links
+  (`replay_artifact_link_fallback_total` counts them).
 - **If you close LevelUp while it runs**, it picks up again at the next opening. A paused queue does not.
 - **A replay that cannot be rebuilt** (map outside the catalogue, unfinished film) is set aside and not counted again until the next launch; others
   that fail are counted ("N replays could not be regenerated") and can be offered again.

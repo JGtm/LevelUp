@@ -19,6 +19,7 @@ const API = '/api/v1'
 
 const IDLE: ReplayRegenStatus = {
   checked: true, stale: 0, running: false, done: 0, total: 0, paused: false, waiting_for_game: false, failed: 0,
+  compressing: false, compressed: 0, compress_failed: 0,
 }
 
 /** Sert l'état courant ; les commandes le font évoluer comme le serveur. */
@@ -50,12 +51,18 @@ describe('regenPhase et visibilité', () => {
     expect(regenPhase({ ...IDLE, running: true, total: 4, done: 1 })).toBe('running')
     expect(regenPhase({ ...IDLE, running: true, total: 4, paused: true })).toBe('paused')
     expect(regenPhase({ ...IDLE, running: true, total: 4, waiting_for_game: true })).toBe('waitingGame')
+    // La compression des rejeux bruts, en fin de passe, même quand il n'y avait aucun rejeu à refaire (total 0).
+    expect(regenPhase({ ...IDLE, running: true, total: 4, done: 4, compressing: true })).toBe('compressing')
+    expect(regenPhase({ ...IDLE, running: true, compressing: true })).toBe('compressing')
+    expect(regenPhase({ ...IDLE, running: true, compressing: true, paused: true })).toBe('paused')
+    expect(regenPhase({ ...IDLE, running: true, compressing: true, waiting_for_game: true })).toBe('waitingGame')
   })
 
   it('« Plus tard » ne masque que l’offre, jamais une file lancée', () => {
     expect(bannerPhaseVisible('offer', false)).toBe(true)
     expect(bannerPhaseVisible('offer', true)).toBe(false)
     expect(bannerPhaseVisible('running', true)).toBe(true)
+    expect(bannerPhaseVisible('compressing', true)).toBe(true)
     expect(bannerPhaseVisible('upToDate', false)).toBe(false)
     expect(bannerPhaseVisible('checking', false)).toBe(false)
   })
@@ -138,6 +145,17 @@ describe('ReplayRegenBanner', () => {
     expect(await screen.findByText('Régénération des rejeux : 2 sur 4.')).toBeInTheDocument()
   })
 
+  it('dit que la file compresse les rejeux bruts, avec Pause, en français et en anglais', async () => {
+    serveur({ running: true, total: 4, done: 4, compressing: true, compressed: 7 })
+    renderWithProviders(<ReplayRegenBanner />)
+    expect(await screen.findByText('Compression des rejeux sur le disque : 7 faits.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument()
+    cleanup()
+    useAppShellStore.setState({ locale: 'en' })
+    renderWithProviders(<ReplayRegenBanner />)
+    expect(await screen.findByText('Compressing replays on disk: 7 done.')).toBeInTheDocument()
+  })
+
   it('dit quand la file attend la fin de la partie', async () => {
     serveur({ running: true, total: 4, done: 2, stale: 2, waiting_for_game: true })
     renderWithProviders(<ReplayRegenBanner />)
@@ -161,6 +179,24 @@ describe('ReplayRegenCard (Paramètres)', () => {
     expect(screen.queryByRole('button', { name: 'Plus tard' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Régénérer' }))
     await waitFor(() => expect(s.commands).toEqual(['start']))
+  })
+
+  it('rend compte de la compression une fois la file finie : compressés et échecs, singulier et pluriel', async () => {
+    serveur({ compressed: 12, compress_failed: 1 })
+    renderWithProviders(<ReplayRegenCard />)
+    expect(await screen.findByText('12 rejeux compressés sur le disque.')).toBeInTheDocument()
+    expect(screen.getByText('1 rejeu n’a pas pu être compressé ; il reste lisible.')).toBeInTheDocument()
+    cleanup()
+    serveur({ compressed: 1, compress_failed: 3 })
+    renderWithProviders(<ReplayRegenCard />)
+    expect(await screen.findByText('1 rejeu compressé sur le disque.')).toBeInTheDocument()
+    expect(screen.getByText('3 rejeux n’ont pas pu être compressés ; ils restent lisibles.')).toBeInTheDocument()
+    cleanup()
+    useAppShellStore.setState({ locale: 'en' })
+    serveur({ compressed: 12, compress_failed: 1 })
+    renderWithProviders(<ReplayRegenCard />)
+    expect(await screen.findByText('12 replays compressed on disk.')).toBeInTheDocument()
+    expect(screen.getByText('1 replay could not be compressed; it stays readable.')).toBeInTheDocument()
   })
 
   it('dit que tout est à jour', async () => {

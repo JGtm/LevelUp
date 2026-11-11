@@ -129,17 +129,44 @@ func Exists(path string) bool {
 
 // Read lit UNE FOIS l'artefact désigné par `path` et rend son JSON décompressé et la taille stockée. Un
 // artefact absent rend une erreur qui enveloppe fs.ErrNotExist (sans journal : c'est un cas nominal) ; un
-// artefact présent mais illisible est journalisé (ERROR) et compté.
+// artefact présent mais illisible est journalisé (ERROR) et compté ; si c'est un `.json.gz` et que le match a un
+// `.json` valide, celui-ci est lu à sa place.
 func Read(path string) (Content, error) {
 	f, err := Locate(path)
 	if err != nil {
 		return Content{}, err
 	}
+	c, err := readLocated(path, f)
+	if err == nil || errors.Is(err, fs.ErrNotExist) || !strings.HasSuffix(f.Path, title.ReplayArtifactExt) {
+		return c, err
+	}
+	// Un compressé illisible (reste d'une écriture interrompue, ou écriture en cours sur un système de fichiers sans
+	// lien dur) ne masque pas un brut valide du même match : le brut est lu, l'anomalie est déjà journalisée.
+	_, legacy := title.ReplayArtifactCandidates(path)
+	if legacy == "" {
+		return Content{}, err
+	}
+	lf, lerr := os.Stat(legacy)
+	if lerr != nil || lf.IsDir() {
+		return Content{}, err
+	}
+	lc, lerr := readLocated(legacy, File{Path: legacy, Info: lf})
+	if lerr != nil {
+		return Content{}, err
+	}
+	slog.WarnContext(context.Background(), "replayartifact: .json.gz illisible, le .json voisin est lu",
+		"compresse", f.Path, "brut", legacy)
+	return lc, nil
+}
+
+// readLocated lit le fichier `f` résolu pour `path` et le décode.
+func readLocated(path string, f File) (Content, error) {
 	stored, err := os.ReadFile(f.Path) //nolint:gosec // chemin résolu par la porte
 	if errors.Is(err, fs.ErrNotExist) {
 		// Conversion concurrente (`replay compress`) : le brut vient d'être remplacé par le compressé.
-		if f, err = Locate(path); err != nil {
-			return Content{}, err
+		var lerr error
+		if f, lerr = Locate(path); lerr != nil {
+			return Content{}, lerr
 		}
 		stored, err = os.ReadFile(f.Path) //nolint:gosec // chemin résolu par la porte
 	}
@@ -243,54 +270,6 @@ func Write(ctx context.Context, outPath string, doc []byte) (written string, sto
 		return written, nil, err
 	}
 	return written, stored, nil
-}
-
-// linkFile : la pose exclusive d'un fichier (lien dur, qui échoue si la cible existe). Point d'injection des tests.
-var linkFile = os.Link
-
-// WriteIfAbsent écrit le JSON d'un artefact, compressé, sous son nom canonique, SANS JAMAIS remplacer un fichier déjà
-// présent : le contenu est écrit dans un temporaire du même dossier, fsync, puis posé par un lien dur (atomique, et
-// qui échoue si la cible existe). `created` dit si le fichier a été posé ; faux = un `.json.gz` existait déjà et
-// n'a pas été touché (un serveur actif en a posé un plus récent, ou une conversion précédente a été interrompue) :
-// l'appelant juge alors le doublon. Aucun temporaire ne survit.
-func WriteIfAbsent(ctx context.Context, outPath string, doc []byte) (written string, stored []byte, created bool, err error) {
-	written, _ = title.ReplayArtifactCandidates(outPath)
-	stored, err = Encode(doc)
-	if err != nil {
-		return written, nil, false, fmt.Errorf("compression de l'artefact : %w", err)
-	}
-	if err := os.MkdirAll(filepath.Dir(written), 0o755); err != nil {
-		return written, nil, false, err
-	}
-	tmp, err := os.CreateTemp(filepath.Dir(written), ".levelup-atomic-*")
-	if err != nil {
-		return written, nil, false, err
-	}
-	tmpName := tmp.Name()
-	defer func() {
-		if rerr := os.Remove(tmpName); rerr != nil && !errors.Is(rerr, fs.ErrNotExist) {
-			slog.WarnContext(ctx, "replayartifact: temporaire non supprimé", "path", tmpName, "err", rerr)
-		}
-	}()
-	if _, err = tmp.Write(stored); err == nil {
-		err = tmp.Sync()
-	}
-	if err == nil {
-		err = tmp.Chmod(0o644) // le mode d'un artefact écrit par la porte, comme atomicfile.WriteFile
-	}
-	if cerr := tmp.Close(); err == nil {
-		err = cerr
-	}
-	if err != nil {
-		return written, nil, false, err
-	}
-	if err = linkFile(tmpName, written); err != nil {
-		if errors.Is(err, fs.ErrExist) {
-			return written, stored, false, nil
-		}
-		return written, nil, false, err
-	}
-	return written, stored, true, nil
 }
 
 // RemoveLegacy supprime le `.json` ancien du match dont le compressé `writtenPath` vient d'être écrit : un

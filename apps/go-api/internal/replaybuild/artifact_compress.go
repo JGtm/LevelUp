@@ -23,10 +23,19 @@ package replaybuild
 // termine ce qu'une interruption a laissé) ; contenus DIFFÉRENTS = rien n'est supprimé, le match est compté à part,
 // lequel est le bon est un geste de l'opérateur.
 //
+// UN `.json.gz` INCOMPLET À CÔTÉ D'UN `.json` VALIDE (reste d'une pose par création exclusive interrompue, sur un dossier
+// sans lien dur : cf. replayartifact.WriteIfAbsent) est retiré, puis le `.json` est converti. Cela ne vaut que si les
+// octets du `.gz` ont été lus et ne se décodent pas, et si le `.json` se décode : jamais sur une erreur de lecture
+// du disque, jamais quand le `.json` est lui aussi illisible.
+//
 // UNE SUPPRESSION QUI ÉCHOUE (fichier tenu ouvert par un lecteur sous Windows) n'est pas une conversion ratée : le
 // `.json.gz` vérifié est en place, le match est compté « à relancer » et la relance résorbe le doublon.
 //
 // IDEMPOTENTE : un artefact déjà compressé n'est pas touché ; une seconde passe sans interruption ne fait rien.
+//
+// DEUX APPELANTS, nommés par `archlint/no_auto_replay_compress_test.go` : la commande `levelup replay compress`, et la file
+// de régénération des rejeux du bureau, à la fin d'une passe lancée par l'utilisateur (`replayregen`). Elle se pilote par
+// [CompressOptions] : une porte avant chaque artefact (pause, mode jeu, arrêt) et un compte rendu après chacun.
 
 import (
 	"bytes"
@@ -74,7 +83,11 @@ var (
 		if err != nil {
 			return nil, err
 		}
-		return replayartifact.Decode(stocke)
+		doc, err := replayartifact.Decode(stocke)
+		if err != nil {
+			return nil, fmt.Errorf("%w : %w", errContenuIllisible, err)
+		}
+		return doc, nil
 	}
 	// retirerLeBrut supprime le `.json` d'un match dont le `.json.gz` est posé et vérifié.
 	retirerLeBrut = os.Remove
@@ -82,6 +95,10 @@ var (
 	// avec un serveur actif.
 	apresLectureDuBrut func(brut string)
 )
+
+// errContenuIllisible : les octets d'un `.json.gz` ont été lus et ne se décodent pas (tronqué, corrompu), par
+// opposition à une erreur de lecture du disque.
+var errContenuIllisible = errors.New("contenu gzip illisible")
 
 // issue : ce qu'est devenu un match.
 type issue int
@@ -93,10 +110,39 @@ const (
 	issueARelancer
 )
 
+// Add ajoute le compte rendu d'un artefact (ou d'un dossier) à celui-ci.
+func (r *CompressReport) Add(o CompressReport) {
+	r.Converted += o.Converted
+	r.AlreadyCompressed += o.AlreadyCompressed
+	r.Resolved += o.Resolved
+	r.Different += o.Different
+	r.ToRetry += o.ToRetry
+	r.Failed += o.Failed
+	r.BytesBefore += o.BytesBefore
+	r.BytesAfter += o.BytesAfter
+}
+
+// CompressOptions : ce qu'un appelant pilote dans une conversion.
+type CompressOptions struct {
+	// DryRun : lit et compresse en mémoire pour chiffrer le gain, n'écrit ni ne supprime rien.
+	DryRun bool
+	// Gate est consultée avant chaque artefact qui demande du travail (jamais pour un artefact déjà compressé et
+	// sans doublon) ; une erreur arrête le parc et remonte telle quelle. nil = jamais.
+	Gate func(ctx context.Context) error
+	// Progress reçoit, après chaque artefact, le compte rendu de cet artefact seul. nil = jamais.
+	Progress func(CompressReport)
+}
+
 // CompressDir convertit en place les artefacts bruts d'un dossier d'artefacts (cf. l'en-tête du fichier). `dryRun`
 // lit et compresse en mémoire pour chiffrer le gain, et n'écrit ni ne supprime rien. Une erreur n'est rendue que
 // pour un dossier illisible ou un contexte annulé ; les échecs par artefact sont dans le compte rendu.
 func CompressDir(ctx context.Context, dir string, dryRun bool) (CompressReport, error) {
+	return CompressDirWith(ctx, dir, CompressOptions{DryRun: dryRun})
+}
+
+// CompressDirWith est [CompressDir] pour un appelant qui interrompt et suit la conversion (cf. [CompressOptions]).
+// Les artefacts se traitent un à un, jamais en parallèle.
+func CompressDirWith(ctx context.Context, dir string, opts CompressOptions) (CompressReport, error) {
 	entries, err := replayartifact.List(dir)
 	if err != nil {
 		return CompressReport{}, fmt.Errorf("dossier des artefacts %s : %w", dir, err)
@@ -107,39 +153,81 @@ func CompressDir(ctx context.Context, dir string, dryRun bool) (CompressReport, 
 			return rep, err
 		}
 		path := filepath.Join(dir, e.Name)
-		var (
-			res          issue
-			avant, apres int64
-			err          error
-		)
-		switch {
-		case e.Name != e.Short+title.ReplayArtifactExt:
-			res, avant, apres, err = convertirUn(ctx, path, dryRun)
-		case replayartifact.HasLegacySibling(path):
-			res, err = jugerLeDoublon(ctx, path, dryRun)
-		default:
-			rep.AlreadyCompressed++
-			continue
+		travail := e.Name != e.Short+title.ReplayArtifactExt || replayartifact.HasLegacySibling(path)
+		if travail && opts.Gate != nil {
+			if err := opts.Gate(ctx); err != nil {
+				return rep, err
+			}
 		}
-		if err != nil {
-			rep.Failed++
-			slog.ErrorContext(ctx, "replay compress: artefact non converti", "path", path, "err", err)
-			continue
-		}
-		switch res {
-		case issueConverti:
-			rep.Converted++
-			rep.BytesBefore += avant
-			rep.BytesAfter += apres
-		case issueResorbe:
-			rep.Resolved++
-		case issueDifferent:
-			rep.Different++
-		case issueARelancer:
-			rep.ToRetry++
+		un := compressEntry(ctx, path, e, travail, opts.DryRun)
+		rep.Add(un)
+		if opts.Progress != nil {
+			opts.Progress(un)
 		}
 	}
 	return rep, nil
+}
+
+// compressEntry traite UN artefact du dossier et rend son compte rendu. `travail` : l'artefact est brut ou aux deux
+// formes.
+func compressEntry(ctx context.Context, path string, e replayartifact.Entry, travail, dryRun bool) CompressReport {
+	if !travail {
+		return CompressReport{AlreadyCompressed: 1}
+	}
+	var (
+		res          issue
+		avant, apres int64
+		err          error
+	)
+	if e.Name != e.Short+title.ReplayArtifactExt {
+		res, avant, apres, err = convertirUn(ctx, path, dryRun)
+	} else {
+		res, avant, apres, err = traiterUnDoublon(ctx, path, dryRun)
+	}
+	if err != nil {
+		slog.ErrorContext(ctx, "replay compress: artefact non converti", "path", path, "err", err)
+		return CompressReport{Failed: 1}
+	}
+	switch res {
+	case issueConverti:
+		return CompressReport{Converted: 1, BytesBefore: avant, BytesAfter: apres}
+	case issueResorbe:
+		return CompressReport{Resolved: 1}
+	case issueDifferent:
+		return CompressReport{Different: 1}
+	default:
+		return CompressReport{ToRetry: 1}
+	}
+}
+
+// traiterUnDoublon juge un match aux deux formes ; si son `.json.gz` est incomplet (reste d'une écriture interrompue :
+// les octets lus ne se décodent pas) alors que le `.json` est valide, le `.gz` est retiré et le `.json` converti.
+// Une erreur de LECTURE du disque ne retire jamais rien : le `.gz` peut être le plus récent.
+func traiterUnDoublon(ctx context.Context, compressed string, dryRun bool) (res issue, avant, apres int64, err error) {
+	res, err = jugerLeDoublon(ctx, compressed, dryRun)
+	if err == nil || !errors.Is(err, errContenuIllisible) {
+		return res, 0, 0, err
+	}
+	_, legacy := title.ReplayArtifactCandidates(compressed)
+	if _, lerr := readDecoded(legacy); lerr != nil {
+		return 0, 0, 0, fmt.Errorf("%w ; le .json voisin est illisible aussi (%w) : rien n'est supprimé", err, lerr)
+	}
+	slog.WarnContext(ctx, "replay compress: .json.gz incomplet à côté d'un .json valide — repris", "compresse", compressed)
+	if !dryRun {
+		if rerr := os.Remove(compressed); rerr != nil {
+			return 0, 0, 0, fmt.Errorf(".json.gz incomplet non retiré : %w", rerr)
+		}
+	}
+	return convertirUn(ctx, legacy, dryRun)
+}
+
+// readDecoded lit et décode le fichier EXACT `path`.
+func readDecoded(path string) ([]byte, error) {
+	stocke, err := replayartifact.ReadStored(path)
+	if err != nil {
+		return nil, err
+	}
+	return replayartifact.Decode(stocke)
 }
 
 // convertirUn convertit un artefact brut et rend son issue et sa taille avant et après.

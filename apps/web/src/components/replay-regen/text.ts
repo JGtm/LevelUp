@@ -20,6 +20,13 @@ export interface ReplayRegenText {
   running: string
   paused: string
   waitingGame: string
+  /** Fin de passe : gabarit {count}. */
+  compressing: string
+  /** Gabarit : {count}. */
+  compressedOne: string
+  compressedMany: string
+  compressFailedOne: string
+  compressFailedMany: string
   /** Gabarit : {count}. */
   failedOne: string
   failedMany: string
@@ -47,6 +54,11 @@ export const REPLAY_REGEN_TEXT: Record<Locale, ReplayRegenText> = {
     running: 'Régénération des rejeux : {done} sur {total}.',
     paused: 'Régénération en pause : {done} sur {total}.',
     waitingGame: 'En attente de la fin de la partie : {done} sur {total}.',
+    compressing: 'Compression des rejeux sur le disque : {count} faits.',
+    compressedOne: '1 rejeu compressé sur le disque.',
+    compressedMany: '{count} rejeux compressés sur le disque.',
+    compressFailedOne: '1 rejeu n’a pas pu être compressé ; il reste lisible.',
+    compressFailedMany: '{count} rejeux n’ont pas pu être compressés ; ils restent lisibles.',
     failedOne: '1 rejeu n’a pas pu être régénéré.',
     failedMany: '{count} rejeux n’ont pas pu être régénérés.',
     commandFailed: 'La commande n’a pas pu être envoyée.',
@@ -70,6 +82,11 @@ export const REPLAY_REGEN_TEXT: Record<Locale, ReplayRegenText> = {
     running: 'Regenerating replays: {done} of {total}.',
     paused: 'Regeneration paused: {done} of {total}.',
     waitingGame: 'Waiting for the game to end: {done} of {total}.',
+    compressing: 'Compressing replays on disk: {count} done.',
+    compressedOne: '1 replay compressed on disk.',
+    compressedMany: '{count} replays compressed on disk.',
+    compressFailedOne: '1 replay could not be compressed; it stays readable.',
+    compressFailedMany: '{count} replays could not be compressed; they stay readable.',
     failedOne: '1 replay could not be regenerated.',
     failedMany: '{count} replays could not be regenerated.',
     commandFailed: 'The command could not be sent.',

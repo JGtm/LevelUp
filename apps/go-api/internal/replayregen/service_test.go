@@ -82,8 +82,10 @@ type fixture struct {
 	inFly    atomic.Int32
 	maxFly   atomic.Int32
 	rebuild  func(ctx context.Context, slug, id string) error
-	cancel   context.CancelFunc
-	wg       sync.WaitGroup
+	// heavyHook : appelé à chaque consultation de la porte du mode jeu (nil = rien).
+	heavyHook func()
+	cancel    context.CancelFunc
+	wg        sync.WaitGroup
 }
 
 // newFixture relie un service sur une racine temporaire. Par défaut la reconstruction réécrit l'artefact à jour.
@@ -118,8 +120,13 @@ func newFixture(t *testing.T) *fixture {
 			time.Sleep(5 * time.Millisecond)
 			return f.rebuild(ctx, slug, id)
 		},
-		Pending:        f.pending,
-		HeavyAllowed:   f.heavy.Load,
+		Pending: f.pending,
+		HeavyAllowed: func() bool {
+			if f.heavyHook != nil {
+				f.heavyHook()
+			}
+			return f.heavy.Load()
+		},
 		GateEvery:      10 * time.Millisecond,
 		BusyRetryEvery: 5 * time.Millisecond,
 		BusyRetries:    3,

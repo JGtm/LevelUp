@@ -31,6 +31,12 @@ export interface ReplayRegenStatus {
   waiting_for_game: boolean
   /** Rejeux que la file n'a pas pu régénérer. */
   failed: number
+  /** La file compresse, à sa fin, les rejeux bruts qu'elle n'a pas pu refaire (film absent de l'archive). */
+  compressing: boolean
+  /** Rejeux bruts compressés par la file courante ou la dernière. */
+  compressed: number
+  /** Rejeux bruts que la compression n'a pas pu convertir (ils restent lisibles). */
+  compress_failed: number
 }
 
 /** Périodes de relecture, en ms. */
