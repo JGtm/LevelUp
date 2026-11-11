@@ -27,10 +27,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
-	"strconv"
 	"time"
 
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain/highlightevent"
 	haloinfinite "levelup/go-api/internal/games/halo_infinite"
@@ -210,6 +209,7 @@ func (e *SyncEngine) RunEventsConvergence(ctx context.Context, gate convergenceC
 		return EventsConvergenceResult{}, fmt.Errorf("RunEventsConvergence OpenPlayerDB: %w", err)
 	}
 	defer playerHandle.Close()
+	chunk, yield := config.EventsConvergenceTuning()
 	return RunEventsConvergenceBackfill(ctx, EventsConvergenceConfig{
 		Client:        e.customClient,
 		AcquireShared: e.acquireSharedWriter,
@@ -218,22 +218,12 @@ func (e *SyncEngine) RunEventsConvergence(ctx context.Context, gate convergenceC
 		Gamertag:      e.gamertag,
 		XUID:          e.xuid,
 		MaxMatches:    maxMatches,
-		// Réglages fins prod (0 → défauts de l'orchestrateur : 15 / 2s). L'env est
-		// lu ici (entrée prod) pour garder RunEventsConvergenceBackfill pur/testable.
-		ChunkSize:     convergenceEnvInt("LEVELUP_EVENTS_CONVERGENCE_CHUNK"),
-		YieldInterval: time.Duration(convergenceEnvInt("LEVELUP_EVENTS_CONVERGENCE_YIELD_MS")) * time.Millisecond,
+		// Réglages fins prod (0 → défauts de l'orchestrateur : 15 / 2s), lus par
+		// config.EventsConvergenceTuning (entrée prod) pour garder
+		// RunEventsConvergenceBackfill pur/testable.
+		ChunkSize:     chunk,
+		YieldInterval: yield,
 	})
-}
-
-// convergenceEnvInt lit un entier positif depuis l'env ; 0 si absent/invalide
-// (l'orchestrateur applique alors son défaut).
-func convergenceEnvInt(key string) int {
-	if v := os.Getenv(key); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			return n
-		}
-	}
-	return 0
 }
 
 // detectIncomplete liste les matchs sans events (events_loaded=false), récent→vieux,

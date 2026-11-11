@@ -460,7 +460,7 @@ func resoudreCacheFilms(cfg *config.AppConfig, flagValue string) string {
 	if v := strings.TrimSpace(flagValue); v != "" {
 		return v
 	}
-	if v := strings.TrimSpace(os.Getenv("LEVELUP_LEGACY_FILM_CACHE_DIR")); v != "" {
+	if v := config.LegacyFilmCacheDirFromEnv(); v != "" {
 		return v
 	}
 	return cfg.PathResolver().FilmArchiveDir()

@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/platform/atomicfile"
 )
 
@@ -44,7 +45,7 @@ func NotifyNewVersion(cfg NotifyConfig, currentVersion string) bool {
 	if !cfg.NotifyVersion {
 		return false
 	}
-	if os.Getenv("LEVELUP_NOTIFY_VERSIONS") != "1" {
+	if !config.NotifyVersionsEnabled() {
 		slog.DebugContext(ctx, "discord_version_skip_flag_off", "op", "version", "reason", "LEVELUP_NOTIFY_VERSIONS != 1")
 		return false
 	}

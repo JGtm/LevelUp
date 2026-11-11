@@ -29,7 +29,9 @@ var centralizedEnvReadPattern = regexp.MustCompile(
 	// SUPPRIMÉ (item 3.3), plus aucun lecteur ne doit exister nulle part — c'est le
 	// smoke test internal/api/multi_title_smoke_test.go qui garde cet invariant.
 	`Getenv\(\s*"(DISCORD_WEBHOOK_URL|LEVELUP_DISCORD_WEBHOOK_URL|` +
-		`LEVELUP_PERSIST_BATCH_ASYNC|LEVELUP_EVENTS_CONVERGENCE|LEVELUP_EVENTS_CONVERGENCE_MAX)"\s*\)`)
+		`LEVELUP_PERSIST_BATCH_ASYNC|LEVELUP_EVENTS_CONVERGENCE|LEVELUP_EVENTS_CONVERGENCE_MAX|` +
+		`LEVELUP_LOG_LEVEL|LEVELUP_OAUTH_CLIENT_ID|LEVELUP_LEGACY_FILM_CACHE_DIR|` +
+		`LEVELUP_EVENTS_CONVERGENCE_CHUNK|LEVELUP_EVENTS_CONVERGENCE_YIELD_MS|LEVELUP_NOTIFY_VERSIONS)"\s*\)`)
 
 // allowedCentralizedEnvReaders : sites AUTORISÉS à lire ces flags via os.Getenv.
 // Seul internal/config est légitime (source unique) — exclu par chemin ci-dessous,

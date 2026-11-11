@@ -15,6 +15,7 @@ package auth
 import (
 	"os"
 
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
 
 	"github.com/JGtm/halo-api/xblauth"
@@ -54,12 +55,8 @@ type AzureOAuthClient struct {
 // Phase 3 : LEVELUP_OAUTH_CLIENT_ID si défini, sinon LevelUpClientID (= e1cb35ab,
 // app canonique). On NE lit PLUS SPNKR_AZURE_CLIENT_ID (ancienne app 39829f7a).
 func ResolveAzureOAuthClient() AzureOAuthClient {
-	clientID := os.Getenv("LEVELUP_OAUTH_CLIENT_ID")
-	if clientID == "" {
-		clientID = LevelUpClientID
-	}
 	return AzureOAuthClient{
-		ClientID:  clientID,
+		ClientID:  oauthClientID(),
 		rawSecret: os.Getenv("SPNKR_AZURE_CLIENT_SECRET"),
 	}
 }
@@ -96,7 +93,13 @@ func DeviceFlowClientID() string {
 // serveur (ResolveAzureOAuthClient) — un refresh_token est lié à son client émetteur.
 // Les deux lisent désormais la MÊME source (LEVELUP_OAUTH_CLIENT_ID) → convergence.
 func TokenCaptureClientID() string {
-	if v := os.Getenv("LEVELUP_OAUTH_CLIENT_ID"); v != "" {
+	return oauthClientID()
+}
+
+// oauthClientID : LEVELUP_OAUTH_CLIENT_ID (lu par config.OAuthClientIDFromEnv) si défini, sinon
+// LevelUpClientID. Source unique du client_id du serveur et de l'outil de capture.
+func oauthClientID() string {
+	if v := config.OAuthClientIDFromEnv(); v != "" {
 		return v
 	}
 	return LevelUpClientID

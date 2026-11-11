@@ -17,7 +17,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -190,7 +189,7 @@ func setupLogging(st *bootState) {
 	//   - json             : slog.NewJSONHandler (prod).
 	// Rétro-compat : LEVELUP_LOG_JSON=true → format=json.
 	// Niveau via LEVELUP_LOG_LEVEL (défaut INFO).
-	logLevel := bootLogLevel()
+	logLevel := config.ConsoleLogLevel()
 
 	// Les racines se lisent dans l'environnement seul (config.ResolveRoots) : la même résolution
 	// que config.LoadServer, donc le même dossier de journaux que celui de la configuration.
@@ -222,21 +221,6 @@ func ensureLogsRoot(logsCfg logging.Config) {
 	if err := os.MkdirAll(logsCfg.LogsDir, 0o755); err != nil {
 		slog.Warn("logs_root: création impossible", "err", err, "path", logsCfg.LogsDir)
 	}
-}
-
-// bootLogLevel lit le niveau de journalisation demandé (LEVELUP_LOG_LEVEL, défaut INFO).
-func bootLogLevel() slog.Level {
-	logLevelStr := strings.ToLower(os.Getenv("LEVELUP_LOG_LEVEL"))
-	logLevel := slog.LevelInfo
-	switch logLevelStr {
-	case "debug":
-		logLevel = slog.LevelDebug
-	case "warn":
-		logLevel = slog.LevelWarn
-	case "error":
-		logLevel = slog.LevelError
-	}
-	return logLevel
 }
 
 // installCrashOutput redirige les panics et erreurs fatales du runtime vers le fichier de
