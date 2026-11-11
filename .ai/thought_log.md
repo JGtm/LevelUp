@@ -1,3 +1,9 @@
+## [2026-11-11] Plan architecture, étape 2 : interrupteurs — Complété (branche `feat/812-architecture`)
+
+- Décision : retirer les huit interrupteurs en gardant le défaut lu dans le code (pas celui des commentaires), supprimer la réparation automatique des trous de note, faire lire six variables par `internal/config` et poser le garde-rail `archlint` dans le même commit.
+- Résultats : gate vert (vet, archlint, intégration en série sur sync, persist, duckdb, scheduler, reste des paquets), code sans appelant inchangé, témoins identiques à une sonde ffmpeg près dans la référence. Les deux branches de compatibilité sont datées au 2026-12-31 : mesure de production à zéro mais sur 15 jours seulement.
+- Prochaine étape : étape 3 (écritures), puis prévenir le pilote de la release pour sa bascule. Au premier déploiement : vérifier que les journaux restent en JSON.
+
 ## [2026-11-11] Lecture du film : revue adversariale, rebase sur release/v8.2.0, demande de fusion — Complété
 
 **Décision technique principale** : les corrections de lecture A2.P, A2.T et A2.A entrent dans la v8.2.0 avant le gel des briques (décision du user). Revue adversariale par un contexte neuf : aucun P0 ; corrigés avant fusion : validation d'une carte portant une région invalide, bits d'index du catalogue pour un module local à plus de deux régions avec un test du catalogue livré, trois commentaires devenus faux, garde « pas sous data » de trois instruments, test de la clé de cuisson.

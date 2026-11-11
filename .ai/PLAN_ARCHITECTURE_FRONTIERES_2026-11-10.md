@@ -229,29 +229,45 @@ Gate : `cd apps/go-api && go build ./... && go vet ./... && go test ./...` ; `ma
 
 Effort : moyen. D3, D4 et D5 sont validées, les lectures de 0.4 sont faites.
 
-- [ ] 2.1 (FLG-1, D3) Retirer `LEVELUP_USE_SHARED_PROVIDER` ; `LegacySharedReader` passe sous les
+- [x] 2.1 (FLG-1, D3) Retirer `LEVELUP_USE_SHARED_PROVIDER` ; `LegacySharedReader` passe sous les
       tests ou disparaît si les tests se branchent sur le fournisseur.
-- [ ] 2.2 (FLG-2, D4) Supprimer la réparation automatique des trous de note : `isLUSRAutoHealEnabled`,
+- [x] 2.2 (FLG-2, D4) Supprimer la réparation automatique des trous de note : `isLUSRAutoHealEnabled`,
       `LEVELUP_LUSR_AUTOHEAL_ENABLED`, le candidat de réparation et son déclenchement
       (`scheduler/data_health_lusr.go`), leurs tests. La détection, la jauge, l'alerte et le recalcul
       manuel du panneau de monitoring restent.
-- [ ] 2.3 (FLG-3, FLG-P2-1, D5) Retirer les huit interrupteurs de D5 et leurs branches mortes ;
+- [x] 2.3 (FLG-3, FLG-P2-1, D5) Retirer les huit interrupteurs de D5 et leurs branches mortes ;
       `Dockerfile:315` passe de `LEVELUP_LOG_JSON=true` à `LEVELUP_LOG_FORMAT=json` dans le même
       commit, et le premier déploiement vérifie que les journaux restent en JSON. Pour
       les deux interrupteurs du LUSR : le comportement par défaut est conservé à l'identique, donc
       `LUSRRev` ne change pas ; le prouver par l'empreinte de `sync/scoring_revision_test.go`
       inchangée.
-- [ ] 2.4 (FLG-P2-3) Faire lire par `internal/config`, une seule fois, `LEVELUP_LOG_LEVEL`,
+- [x] 2.4 (FLG-P2-3) Faire lire par `internal/config`, une seule fois, `LEVELUP_LOG_LEVEL`,
       `LEVELUP_OAUTH_CLIENT_ID`, `LEVELUP_LEGACY_FILM_CACHE_DIR`,
       `LEVELUP_EVENTS_CONVERGENCE_CHUNK`, `LEVELUP_EVENTS_CONVERGENCE_YIELD_MS`,
       `LEVELUP_NOTIFY_VERSIONS`.
-- [ ] 2.5 (FLG-P2-2) Dater ou retirer les deux branches de compatibilité
+- [x] 2.5 (FLG-P2-2) Dater ou retirer les deux branches de compatibilité
       (`handlers/media_paths.go:110-160`, `web/lib/title-routing/buildLegacyRedirect.ts`) : retrait
       si la mesure montre zéro usage, sinon date cible et critère en commentaire.
-- [ ] 2.6 Garde-rail : `archlint` interdit `os.Getenv` et `os.LookupEnv` hors `internal/config` et
+- [x] 2.6 Garde-rail : `archlint` interdit `os.Getenv` et `os.LookupEnv` hors `internal/config` et
       `cmd/`, allowlist datée pour les données de déploiement restantes (chemins système).
-- [ ] 2.7 Mettre à jour `docs/COMMANDS.md` et son pendant français, plus toute doc qui nomme une
+- [x] 2.7 Mettre à jour `docs/COMMANDS.md` et son pendant français, plus toute doc qui nomme une
       variable retirée (règle 15).
+
+Résultat de l'étape 2 (2026-11-11). Dix commits. 2.1 : interrupteur retiré, le fournisseur partagé est le seul chemin.
+2.2 : réparation automatique supprimée ; détection, jauge, alerte et recalcul manuel intacts. 2.3 : huit
+interrupteurs retirés ; défauts vérifiés dans le code avant retrait (les deux du LUSR étaient ACTIFS par défaut,
+leurs commentaires disaient l'inverse) ; `LUSRRev` et `sync/scoring_revision_test.go` inchangés ; l'image pose
+`LEVELUP_LOG_FORMAT=json` (à vérifier au premier déploiement : journaux en JSON). 2.4 et 2.6 : six variables lues
+une fois par `internal/config`, garde-rail `archlint` avec allowlist datée. 2.5 : les deux branches sont DATÉES
+(retrait cible 2026-12-31), pas retirées : en production, 0 requête de page `/players/...` dans les journaux
+d'accès, qui ne couvrent que 15 jours (2026-10-28 au 2026-11-11, 344 pages aux adresses actuelles) ; 0 avertissement
+« aucun mapping trouvé » depuis le 2026-06-14, mais les chemins absolus en base ne sont pas comptés. 2.7 : aucune
+mention restante hors historiques. Gate : `go vet ./...`, `archlint`, `-tags=integration -p 1` sur sync, persist,
+platform/duckdb et scheduler, reste des paquets : code de sortie 0 ; `git grep` du gate vide ; code sans appelant :
+0 nouveauté ; témoins : 90 routes, une seule différence, `ffmpeg_version` absent de la référence `avant-2` seule
+(présent dans toutes les autres captures : sonde ffmpeg en échec pendant cette capture, poste chargé). Web : deux
+commentaires seulement, contrôles laissés au pre-push. Exécutant coupé deux fois par les limites d'usage ; la fin
+de 2.3, 2.5 et le gate ont été faits par le pilote.
 
 Gate : gate de l'étape 1, plus `go test -tags=integration -p 1 ./...` (le post-sync change de
 chemin) ; `git grep -nE 'LEVELUP_(USE_SHARED_PROVIDER|POSTSYNC_BURST|LUSR_V2_(MODE_COUPLING|SQUAD_OFFSET)|SYNC_V2_DRYRUN|WATCHER_BROADCAST|PERSIST_NO_FETCH_CACHE|LOG_JSON)' -- apps docs`
@@ -423,7 +439,7 @@ deux graphes de 7.3.
 |---|---|---|---|
 | 0 | close | (commit de clôture de l'étape 0) | témoins et compteurs relevés le 2026-11-10 |
 | 1 | close | `91727b0c30` (PR #191) | fusionnée le 2026-11-11 |
-| 2 | à faire | | |
+| 2 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-11 |
 | 3 | à faire | | |
 | 4 | à faire | | |
 | 5 | à faire | | |
@@ -475,7 +491,9 @@ deux graphes de 7.3.
   hors périmètre par l'audit, à reprendre si le lint corrigé de 7.1 les fait remonter.
 - (documentation des 4 commandes gardées, 2026-11-11) `backfill-media-hls` : `--delete-source` vaut `true` par
   défaut alors que `RunHLSTranscode` documente la conservation comme défaut sûr ; signalé en gras dans la
-  documentation. Non traité, décision de l'utilisateur à demander.
+  documentation. Utilisateur, 2026-11-11 : « on garde pas les originaux, du moins pas en mode web app » : défaut
+  voulu, rien à changer. La commande ne consulte pas le réglage de conservation des sources du bureau
+  (`KeepMediaSources`) : sans objet tant qu'elle n'est lancée que sur le serveur. Non traité.
 - (idem) `backfill_time_played` : UPDATE ligne à ligne sur `match_participants` hors `persist`, sans sauvegarde ;
   le commentaire « pas de risque ART » n'est pas vérifié. Non traité.
 - (idem) `purge_corrupt_records` : `log.Fatalf` au milieu du parcours des joueurs (arrêt à mi-course), paquet
