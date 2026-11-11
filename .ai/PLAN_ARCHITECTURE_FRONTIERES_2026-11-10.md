@@ -79,8 +79,9 @@ seul point d'entrée de 63 fonctions du moteur ; elles sont rétablies. Décisio
   `backfill-world-player-stats`, `world-aliases-persist`). Vérifié en production le 2026-11-10 : aucune tâche
   planifiée de l'hôte ne les lance, c'est `scheduler.WorldLeaderboardCron` du serveur qui tourne chaque jour.
   Et `h5-read-smoke` (outil d'essai).
-- EN ATTENTE, rétablies : `migrate-hls-audio`, `backfill-media-hls`, `purge_corrupt_records`,
-  `backfill_time_played`. La recommandation acceptée est « supprimer si elles ont été passées en production » ;
+- GARDÉES (utilisateur, 2026-11-11 : « je n'ai lancé aucune de ces 4 commandes, mais elles me semblent
+  utiles ») : `migrate-hls-audio`, `backfill-media-hls`, `purge_corrupt_records`, `backfill_time_played`. À
+  documenter dans `docs/COMMANDS.md` (deux langues) avec l'étape 2. Texte d'origine de cette ligne : La recommandation acceptée est « supprimer si elles ont été passées en production » ;
   le journal n'en porte aucune trace. Question posée à l'utilisateur.
 
 **Ordonnancement dans la v8.1.2 (D1).** Les quatre branches 8.1.2 (`feat/812-bureau`,
@@ -90,6 +91,16 @@ v8.1.2). Plus aucune attente entre les étapes de ce plan. Reste côté v8.1.2 :
 test (#187) et la bascule sur les modules publiés, qui réécrit des imports dans tout le dépôt : le
 pilote de la v8.1.2 la lance APRÈS la fusion de la dernière étape de ce chantier, à lui signaler.
 La branche est rebasée sur `release/v8.1.2` avant chaque étape.
+
+**Plus de PR par étape (utilisateur, 2026-11-11 : « arrête de passer par des PR, je suis dev solo »).** L'étape 1 est
+partie par la PR #191 (fusionnée, `91727b0c30`). À partir de l'étape 2, les commits sont poussés directement
+sur `release/v8.1.2` une fois le gate local passé ; la CI de la release se lit après le push.
+
+**Changement de numéro (relais d'une autre session, 2026-11-11, décision de l'utilisateur).** Un hotfix prend le numéro
+8.1.2 depuis `main` (PR #193) ; le travail de `release/v8.1.2` passe en 8.2.0 (branche renommée par son pilote,
+puis rebasée sur `main`). Le hotfix porte la montée de Go en 1.26.11 et touche `sync/engine.go`, `sync/writes.go`,
+`scheduler`, `platform/auth/pool`, `service/teammates`. Conséquence : l'étape 2 (qui touche `sync/engine.go` et
+`scheduler`) attend que la release soit renommée et rebasée.
 
 **Fenêtres convenues avec le pilote de la v8.1.2 (2026-11-10, sauf avis contraire de l'utilisateur).** Chaque étape
 part en une PR et l'étape suivante ne commence qu'après sa fusion : entre deux étapes, aucun travail en vol.
@@ -411,7 +422,7 @@ deux graphes de 7.3.
 | Étape | État | Commit | Note |
 |---|---|---|---|
 | 0 | close | (commit de clôture de l'étape 0) | témoins et compteurs relevés le 2026-11-10 |
-| 1 | close | (commits `chore(plan-archi/1…)`) | PR vers `release/v8.1.2` ; 4 commandes en attente de décision (D8 révisée) |
+| 1 | close | `91727b0c30` (PR #191) | fusionnée le 2026-11-11 |
 | 2 | à faire | | |
 | 3 | à faire | | |
 | 4 | à faire | | |
