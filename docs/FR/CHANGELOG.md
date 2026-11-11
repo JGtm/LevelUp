@@ -6,6 +6,12 @@ Toutes les modifications notables de ce projet sont documentées ici.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
+## [8.1.3] - 2026-11-11
+
+### Corrigé
+- **La connexion par le navigateur n'aboutissait jamais sur l'application Windows** — la porte de démarrage (`StrictHost`), qui reste devant le routeur toute la vie du serveur, refusait le retour de Microsoft (`GET http://localhost:<port>/auth/xbox/callback`) en `421 desktop_host_refused` avant le garde du routeur qui l'admet. `StrictHost` est désormais une méthode de `DesktopGate` et applique la même exemption (`isBrowserCallback`) ; test bout en bout en `-mode desktop` (`TestE2ERetourConnexionNavigateur`), rouge sur le binaire installé 8.1.2.
+- **Assistant de premier lancement** — l'étape du code d'appareil affiche le même bloc que l'écran de connexion Xbox (libellé, code sélectionnable, bouton « Copier le code ») ; le badge « Enregistré » se tient sur la ligne de l'interrupteur au lieu de flotter sur le texte d'introduction.
+
 ## [8.1.2] - 2026-11-11
 
 ### Corrigé
