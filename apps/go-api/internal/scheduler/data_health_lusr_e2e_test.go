@@ -2,8 +2,7 @@ package scheduler_test
 
 // data_health_lusr_e2e_test.go — E2E du volet « trous LUSR » du HealthScheduler :
 // arborescence titre réelle (migrations shared + player), match éligible sous le
-// watermark sans note LUSR → trou d'intérieur détecté, et déclenchement (ou non)
-// de l'auto-heal selon le kill-switch. Réutilise healthE2ESetup (data_health_check_e2e_test.go).
+// watermark sans note LUSR → trou d'intérieur détecté ; jauge gelée sur scan partiel. Réutilise healthE2ESetup (data_health_check_e2e_test.go).
 
 import (
 	"context"
@@ -160,47 +159,5 @@ func TestHealthScheduler_E2E_LUSRUnmeasured_GaugeFrozen(t *testing.T) {
 	// Scan partiel → la jauge n'est pas écrasée : la valeur précédente est conservée.
 	if got := skill.LUSRInteriorGapsGaugeValue(); got != sentinel {
 		t.Errorf("jauge écrasée sur scan partiel: got %d, want %d (valeur précédente conservée)", got, sentinel)
-	}
-}
-
-func TestHealthScheduler_E2E_AutoHeal_FiresWhenEnabled(t *testing.T) {
-	t.Setenv("LEVELUP_LUSR_AUTOHEAL_ENABLED", "1")
-	repoRoot := healthE2ESetup(t)
-	seedLUSRInteriorGaps(t, repoRoot, "HealMe", "2533274822222222", 3) // >= seuil (3)
-
-	var healedTitle, healedGT string
-	calls := 0
-	sched := scheduler.NewDataHealthScheduler(repoRoot).WithLUSRAutoHeal(
-		func(_ context.Context, titleSlug, gamertag string) error {
-			healedTitle, healedGT = titleSlug, gamertag
-			calls++
-			return nil
-		})
-	res := sched.RunOnce(context.Background())
-	if res.LUSRInteriorGaps < 3 {
-		t.Fatalf("LUSRInteriorGaps: attendu >= 3, obtenu %d", res.LUSRInteriorGaps)
-	}
-	if calls != 1 {
-		t.Errorf("auto-heal ON : %d appel(s), want 1 (1 joueur/cycle)", calls)
-	}
-	if healedGT != "HealMe" || healedTitle != "halo_infinite" {
-		t.Errorf("auto-heal ciblé = (%q, %q), want (halo_infinite, HealMe)", healedTitle, healedGT)
-	}
-}
-
-func TestHealthScheduler_E2E_AutoHeal_OffByDefault(t *testing.T) {
-	t.Setenv("LEVELUP_LUSR_AUTOHEAL_ENABLED", "0") // défaut = OFF (explicite ici)
-	repoRoot := healthE2ESetup(t)
-	seedLUSRInteriorGaps(t, repoRoot, "NoHeal", "2533274833333333", 3)
-
-	calls := 0
-	sched := scheduler.NewDataHealthScheduler(repoRoot).WithLUSRAutoHeal(
-		func(context.Context, string, string) error { calls++; return nil })
-	res := sched.RunOnce(context.Background())
-	if res.LUSRInteriorGaps < 3 {
-		t.Fatalf("LUSRInteriorGaps: attendu >= 3, obtenu %d", res.LUSRInteriorGaps)
-	}
-	if calls != 0 {
-		t.Errorf("auto-heal OFF par défaut : %d appel(s), want 0 (alerte seule)", calls)
 	}
 }

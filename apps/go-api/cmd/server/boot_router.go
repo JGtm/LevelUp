@@ -17,7 +17,7 @@ import (
 )
 
 // buildRouter construit le routeur HTTP et branche le registre de services (jetons, journal
-// d'actions, planificateur de santé, notifications de rejeux, auto-heal LUSR).
+// d'actions, planificateur de santé, notifications de rejeux).
 func buildRouter(st *bootState) {
 	cfg, bootRepo, bootSvc, tokenProvider, groupStore := st.cfg, st.bootRepo, st.bootSvc, st.tokenProvider, st.groupStore
 	autoScheduler, watcherDaemon, schedulerCtx, watcherCtrl := st.autoScheduler, st.watcherDaemon, st.schedulerCtx, st.watcherCtrl
@@ -73,15 +73,6 @@ func buildRouter(st *bootState) {
 	// démarre quelques lignes plus haut — au pire les tout premiers artefacts d'un cycle
 	// déjà en cours au boot ne sont pas annoncés, jamais un artefact perdu.
 	reg.InstallReplayNotify()
-
-	// Auto-heal LUSR (garde-fou trous d'intérieur) : le cron data_health peut
-	// déclencher un replay du joueur le plus impacté. Câblé vers le runner du
-	// registry (in-server, leases coordonnés). Ne fire que si le kill-switch
-	// LEVELUP_LUSR_AUTOHEAL_ENABLED est ON (défaut OFF → alerte seule).
-	healthScheduler.WithLUSRAutoHeal(func(ctx context.Context, titleSlug, gamertag string) error {
-		_, err := reg.RecomputeLUSRGapsForPlayer(ctx, titleSlug, gamertag)
-		return err
-	})
 }
 
 // wireSyncPipeline câble le runner post-sync, la file des rejeux, le hook Prestige et

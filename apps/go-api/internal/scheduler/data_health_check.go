@@ -93,12 +93,6 @@ type HealthScheduler struct {
 	intervalHours int
 	enabled       bool
 
-	// lusrAutoHeal : hook de remédiation (replay LUSR d'un joueur). nil → auto-heal
-	// indisponible (alerte seule). Câblé par main.go vers
-	// ServiceRegistry.RecomputeLUSRGapsForPlayer. Ne fire QUE si le kill-switch
-	// LEVELUP_LUSR_AUTOHEAL_ENABLED est ON (défaut OFF, cf. isLUSRAutoHealEnabled).
-	lusrAutoHeal func(ctx context.Context, titleSlug, gamertag string) error
-
 	// sharedReader : lecteur de la base partagée de la jauge des passes (nil = OpenReadForQuery) ;
 	// now : horloge du fichier de jauge (data_health_passes.go).
 	sharedReader SharedReaderFunc
@@ -112,7 +106,7 @@ type HealthScheduler struct {
 	lastRunAt  time.Time
 }
 
-// Le volet « garde-fou trous LUSR » (auto-heal, scan par joueur, kill-switch)
+// Le volet « garde-fou trous LUSR » (scan par joueur)
 // vit dans data_health_lusr.go — même package.
 
 // NewDataHealthScheduler crée un scheduler avec les défauts (24h, enabled).
@@ -204,9 +198,8 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	// pas encore backfillé.
 	pr := titlePkg.NewPathResolver(s.repoRoot)
 	auditedTitles := 0
-	var healCand lusrHealCandidate
 	for _, td := range titlePkg.DefaultRegistry().All() {
-		if s.auditTitle(ctx, pr, td.Slug, res, &healCand) {
+		if s.auditTitle(ctx, pr, td.Slug, res) {
 			auditedTitles++
 		}
 		// La jauge ne dépend pas de l'audit (elle prend ses propres lectures courtes, une fois le
@@ -233,10 +226,6 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	// monitoring + auto-heal), mais sont toujours loggés.
 	publishLUSRGaugeIfComplete(ctx, res)
 	s.publierJaugePasses(ctx, pr, res)
-
-	// Auto-heal (remédiation bornée) : 1 joueur/cycle max, le plus impacté, seulement
-	// si le kill-switch est ON (défaut OFF → alerte seule).
-	s.maybeAutoHealLUSR(ctx, healCand)
 
 	// Log structuré uniquement — pas d'émission de notif (cf. décision
 	// 2026-05-20 dans le commentaire de tête du package).
@@ -299,7 +288,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 // pas de panic, retourne false) ; les requêtes individuelles ignorent déjà leurs
 // erreurs (table manquante ⇒ compteur reste à 0), donc un schéma partiel ne casse
 // pas le cycle.
-func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResolver, slug string, res *DataHealthCheckResult, healCand *lusrHealCandidate) bool {
+func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResolver, slug string, res *DataHealthCheckResult) bool {
 	sharedPath := pr.SharedDBPath(slug)
 	if _, err := os.Stat(sharedPath); err != nil {
 		slog.DebugContext(ctx, "data_health: shared DB absente — skip titre",
@@ -356,7 +345,7 @@ func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResol
 
 	// 5. Trous d'intérieur LUSR (garde-fou notes LUSR — read-only, best-effort ;
 	// implémentation dans data_health_lusr.go).
-	s.auditTitleLUSRGaps(ctx, pr, slug, db, res, healCand)
+	s.auditTitleLUSRGaps(ctx, pr, slug, db, res)
 
 	return true
 }
