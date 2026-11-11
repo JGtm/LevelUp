@@ -74,6 +74,13 @@ export interface ReplayZoom {
   zoomAt: (dir: number, towards: { x: number; y: number }) => void
   /** Déplacement en UNITÉS MONDE. La croix et le glisser s'y ramènent tous les deux. */
   panBy: (dx: number, dy: number) => void
+  /**
+   * CADRER UN POINT DU MONDE, par le programme et non par la main (« Suivre ») : monte au moins
+   * jusqu'à `minLevel` (un palier déjà plus haut reste tel quel) et centre sur `at`, rebornée à la
+   * scène comme toute écriture. C'est la SEULE action qui ne compte pas comme un geste de
+   * l'utilisateur (`withManualMove`).
+   */
+  focusOn: (at: { x: number; y: number }, minLevel: ZoomLevel) => void
 }
 
 const inert = () => {}
@@ -99,6 +106,34 @@ export function lockedZoom(zoom: ReplayZoom): ReplayZoom {
     panStep: inert,
     zoomAt: inert,
     panBy: inert,
+    focusOn: inert,
+  }
+}
+
+/**
+ * withManualMove — le MÊME zoom, dont chaque geste de l'UTILISATEUR (croix, molette, clavier,
+ * glisser, retour) prévient `onManual` avant d'agir. C'est ce qui arrête « Suivre » : une main qui
+ * prend la carte reprend la main sur le cadrage. `focusOn`, l'action du programme, n'y passe pas —
+ * sans quoi le suivi s'arrêterait lui-même à sa première image.
+ *
+ * Le rappel part même quand le geste ne change rien (déjà au palier maximal) : l'intention de
+ * prendre la main est le fait, pas son effet.
+ */
+export function withManualMove(zoom: ReplayZoom, onManual: () => void): ReplayZoom {
+  const gesture =
+    <A extends unknown[]>(act: (...args: A) => void) =>
+    (...args: A) => {
+      onManual()
+      act(...args)
+    }
+  return {
+    ...zoom,
+    zoomIn: gesture(zoom.zoomIn),
+    zoomOut: gesture(zoom.zoomOut),
+    reset: gesture(zoom.reset),
+    panStep: gesture(zoom.panStep),
+    zoomAt: gesture(zoom.zoomAt),
+    panBy: gesture(zoom.panBy),
   }
 }
 
@@ -179,10 +214,22 @@ export function useReplayZoom(scene: ReplayBounds): ReplayZoom {
     [scene],
   )
 
+  // CADRER UN POINT (« Suivre ») : le palier monte au besoin, le centre se pose d'un coup — un seul
+  // chemin d'écriture, donc un seul rebornage, pour ne jamais stocker un centre qu'on ne peut montrer.
+  const focusOn = useCallback(
+    (at: { x: number; y: number }, minLevel: ZoomLevel) => {
+      const next = Math.max(index, ZOOM_LEVELS.indexOf(minLevel))
+      setIndex(next)
+      setRaw(clampCenter(scene, ZOOM_LEVELS[next], at.x, at.y))
+    },
+    [index, scene],
+  )
+
   return {
     level,
     center,
     zoomAt,
+    focusOn,
     canZoomIn: index < ZOOM_LEVELS.length - 1,
     canZoomOut: index > 0,
     canPan: level > 1,

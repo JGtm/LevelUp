@@ -37,6 +37,7 @@ import { replayLoadState } from '@/features/match-replay/model/replayLoadState'
 import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
 import { useKillerZones } from '@/features/match-replay/hooks/useKillerZones'
 import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
+import { usePlayerPanel } from '@/features/match-replay/hooks/usePlayerPanel'
 import {
   REPLAY_FULLSCREEN_FRAME,
   useReplayFullscreen,
@@ -51,6 +52,8 @@ import {
 import { ReplayCanvas } from '@/features/match-replay/ui/ReplayCanvas'
 import { ReplayRegenBanner } from '@/components/replay-regen/ReplayRegenBanner'
 import { ReplayKillFeed } from '@/features/match-replay/ui/ReplayKillFeed'
+import { ReplayFeedOrPanel } from '@/features/match-replay/ui/ReplayFeedOrPanel'
+import { ReplayPlayerPanel } from '@/features/match-replay/ui/ReplayPlayerPanel'
 import { ReplayMatchRecall } from '@/features/match-replay/ui/ReplayMatchRecall'
 import { frameToMs, resolveTacticalOpenAtFrame } from '@/lib/replay/replayLogic'
 import { ReplayBombCountdownOverlay } from '@/features/match-replay/ui/ReplayBombCountdownOverlay'
@@ -170,6 +173,11 @@ function ReplayPage() {
   const modelSettings = useMemo(() => ({ friendGamertags }), [friendGamertags])
   const model = useReplayModel(data, replayContext, modelSettings, viewpoint.xuid)
   const { scoreboard, identity: xuidMeta, marks, window: playWindow, feed: feedEntries } = model
+  // LE PANNEAU DE JOUEUR (lot 4 du plan « maquettes du rejeu ») : un clic sur une fiche l'ouvre à la
+  // place du fil ; Suivre, Seul et Masquer agissent sur la carte. Son état naît avec la page et avec
+  // le match — jamais mémorisé (D-4) — et NE TOUCHE PAS au point de vue ci-dessus : ces actions
+  // décident de ce que la carte dessine et d'où elle regarde, ni de l'encre de camp ni du roster.
+  const playerPanel = usePlayerPanel(matchId, model.players)
   // LA ZONE DU TUEUR de chaque frag du fil : calculée UNE fois sur le fil aligné (instant brut).
   const killerZoneOf = useKillerZones(feedEntries, data, callouts, locale, scoreboard)
   // LA PAGE PARLE D'UNE SEULE VOIX (décision D1) : sur le rejeu, les points, les titres de
@@ -361,6 +369,8 @@ function ReplayPage() {
               marks={marks}
               endMatch={endMatchSound}
               viewpoint={viewpoint.xuid}
+              playerFocus={playerPanel.focus}
+              onFollowStop={playerPanel.onFollowStop}
               fullscreen={fullscreen}
               players={model.players}
               onSelectViewpoint={viewpoint.select}
@@ -445,23 +455,44 @@ function ReplayPage() {
                   locale={locale}
                   allegiance={model.allegiance}
                   header={replayContext?.header}
+                  panel={{ xuid: playerPanel.focus?.player.xuid ?? null, onSelect: playerPanel.onCard }}
                 />
               </div>
-              <div className="flex min-h-0 flex-1 flex-col xl:min-h-[12rem]">
-                <ReplayKillFeed
-                  entries={feedEntries}
-                  nowMs={nowMs}
-                  playWindow={playWindow}
-                  scoreboard={scoreboard}
-                  xuidMeta={xuidMeta}
-                  allegiance={model.allegiance}
-                  locale={locale}
-                  marks={marks}
-                  zoneOf={killerZoneOf}
-                  doc={data}
-                  playbackStore={playbackStore}
-                />
-              </div>
+              {/* LE PANNEAU DE JOUEUR PREND LA PLACE DU FIL SANS LE DÉTRUIRE (cf. ReplayFeedOrPanel) :
+                  « Retour au fil » retrouve le filtre du menu et la position de défilement. */}
+              <ReplayFeedOrPanel
+                feed={
+                  <ReplayKillFeed
+                    entries={feedEntries}
+                    nowMs={nowMs}
+                    playWindow={playWindow}
+                    scoreboard={scoreboard}
+                    xuidMeta={xuidMeta}
+                    allegiance={model.allegiance}
+                    locale={locale}
+                    marks={marks}
+                    zoneOf={killerZoneOf}
+                    doc={data}
+                    playbackStore={playbackStore}
+                  />
+                }
+                panel={
+                  playerPanel.focus && (
+                    <ReplayPlayerPanel
+                      player={playerPanel.focus.player}
+                      actions={playerPanel.focus}
+                      onToggle={playerPanel.onToggle}
+                      onClose={playerPanel.onClose}
+                      doc={data}
+                      frame={frame}
+                      nowMs={nowMs}
+                      playWindow={playWindow}
+                      allegiance={model.allegiance}
+                      locale={locale}
+                    />
+                  )
+                }
+              />
             </div>
           </aside>
         </div>

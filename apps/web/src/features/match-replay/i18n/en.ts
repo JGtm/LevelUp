@@ -1,5 +1,6 @@
 /** Textes du rejeu 2D en anglais (contrat : `i18nContract.ts`). */
 import type { ReplayText } from './i18nContract'
+import { EN_PLAYER_PANEL } from './playerPanel.i18n'
 
 export const EN_TEXT = {
   title: '2D replay',
@@ -72,6 +73,7 @@ export const EN_TEXT = {
   feedVehicleOccupant: (who) => `(${who} aboard)`,
   killFeedUnknownWeapon: 'Unidentified weapon',
   killFeedFocusHint: 'Go to this moment and highlight the killer and the victim on the map',
+  playerPanel: EN_PLAYER_PANEL,
   killFeedNoAssistHint:
     'Death without an assist: the death carries its event in the film, and it names no one.',
   killFeedAssistHint:

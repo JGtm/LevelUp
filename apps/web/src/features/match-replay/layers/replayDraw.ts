@@ -135,6 +135,7 @@ export function drawShotsLayer(
   for (const s of shots) {
     const age = win.frame - s.frame
     if (age < 0 || age > win.hold) continue
+    if (style.shownAtSlot && !style.shownAtSlot(s.slot, s.frame)) continue
     const c = projectTo(view, s)
     const { origin, angle } = vehicleShotOrigin({
       h: s.h, vehicleShot: s.vehicleShot, center: c, sizeOf: style.vehicleSizeOf, k: style.k,
@@ -170,6 +171,11 @@ export interface ShotStyle {
    * garde le repli centre pour tout tir en véhicule, jamais une exception.
    */
   vehicleSizeOf?: (family: string) => VehicleMountSpriteSize | null
+  /**
+   * SEUL ET MASQUER (panneau de joueur, lot 4) : faux quand ce que porte ce slot à cette image est
+   * retiré de la carte. L'éclair de bouche est celui du tireur : il part avec son pion. Absent = tout se dessine.
+   */
+  shownAtSlot?: (slot: number, frame: number) => boolean
 }
 
 /** Style du calque des morts : la couleur du tueur, et le repli quand il n'a pas de trace. */

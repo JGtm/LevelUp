@@ -24,6 +24,7 @@ import { ReplayEventLine } from './ReplayEventLine'
 import { ReplayObjectiveLine } from './ReplayObjectiveLine'
 import { KillAssist, KillWeapon, KillZone, DOT_PX } from './ReplayKillLineParts'
 import { FeedClock } from './ReplayFeedClock'
+import { PRESS_GUARDS } from './replayPressGuards'
 import { FeedName } from './ReplayFeedName'
 import { ReplayPresenceLine } from './ReplayPresenceLine'
 
@@ -315,10 +316,7 @@ function KillLine({
         className={FEED_ROW_BUTTON}
         aria-pressed={focus.selected}
         title={lineHint ? `${t.killFeedFocusHint} — ${lineHint}` : t.killFeedFocusHint}
-        onMouseDown={(e) => e.preventDefault()}
-        onKeyDown={(e) => {
-          if (e.key === ' ') e.stopPropagation()
-        }}
+        {...PRESS_GUARDS}
         onClick={focus.onSelect}
       >
         {content}

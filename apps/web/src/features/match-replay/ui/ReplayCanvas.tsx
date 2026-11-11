@@ -21,7 +21,6 @@
  */
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 
-import { getSeriesColors } from '@/lib/accessibility/plotlyColorscale'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
@@ -42,7 +41,8 @@ import { drawEquipmentPlacementsLayer } from '../layers/equipmentPlacementsLayer
 import { drawRiftLayer } from '../layers/placementRift'
 import { ReplayCanvasTips } from './ReplayCanvasTips'
 import { useReplayPlacements } from '../layers/useReplayPlacements'
-import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_PLAYERS, EMPTY_ZONES, NO_VIEWPOINT_SELECT, SERIES_TOKENS } from '../layers/replayCanvasConfig'
+import { EMPTY_FEED, EMPTY_MEDIA, EMPTY_PLAYERS, EMPTY_ZONES, NO_VIEWPOINT_SELECT } from '../layers/replayCanvasConfig'
+import { useDistinctPlayerColors, useZoneSeriesColors } from '../layers/useSeriesColors'
 import { useReplayObjectiveObjects } from '../layers/useReplayObjectiveObjects'
 import { useReplayVipCrown } from '../layers/useReplayVipCrown'
 import { useReplayBombCarrier } from '../layers/useReplayBombCarrier'
@@ -101,6 +101,9 @@ import { useReplayViewport } from '../hooks/useReplayViewport'
 import type { ReplayFullscreen } from '../hooks/useReplayFullscreen'
 import { useReplayWheelZoom } from '../hooks/useReplayWheelZoom'
 import { useReplayDrag } from '../hooks/useReplayDrag'
+import { useReducedMotion } from '../hooks/useReducedMotion'
+import { useReplayPlayerFocus } from '../hooks/useReplayPlayerFocus'
+import type { PlayerFocus } from '../model/playerPanelLogic'
 
 interface ReplayCanvasProps {
   doc: ReplayDocumentReady
@@ -210,12 +213,21 @@ interface ReplayCanvasProps {
    * ne voit. Absent = clip sans ecran de fin, exactement comme une page sans libelle d'issue.
    */
   outcome?: ExportOutcome | null
+  /**
+   * LE PANNEAU DE JOUEUR (lot 4 du plan « maquettes du rejeu ») : le joueur dont le panneau est
+   * ouvert et ses actions, tenus par la page. Suivre cadre la carte sur lui, Seul et Masquer filtrent
+   * ce que la carte dessine de lui (cf. `useReplayPlayerFocus`). `null`/absent = rien n'est changé.
+   * Le point de vue (`viewpoint`) n'en dépend pas.
+   */
+  playerFocus?: PlayerFocus | null
+  /** Un geste MANUEL de zoom ou de déplacement a eu lieu : la page éteint Suivre. */
+  onFollowStop?: () => void
 }
 
 export function ReplayCanvas({
   doc, locale, playWindow, playbackStore, openAtFrame, background, callouts, scoreboard, marks,
   allegiance, viewpoint, fullscreen, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
-  players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null,
+  players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, onFollowStop,
 }: ReplayCanvasProps) {
   // LE POINT DE VUE N'A PLUS DE DÉFAUT (2026-09-07, revue ronde 2) : il est REQUIS à l'entrée,
   // `null` compris, et ses destinataires (son, zones, drapeaux, déflagration — par l'allégeance
@@ -263,10 +275,7 @@ export function ReplayCanvas({
   } = useReplayInks(paletteVersion)
   // COULEURS DISTINCTES PAR JOUEUR (option du panneau de la vue, 2026-08-24) : une série stable par joueur
   // à la place de la couleur d'équipe — le camp reste dit par les fiches, le fil et le bandeau.
-  const distinctColors = useMemo(() => {
-    void paletteVersion
-    return markerColors === 'player' ? getSeriesColors(doc.roster.length, SERIES_TOKENS) : null
-  }, [markerColors, doc.roster.length, paletteVersion])
+  const distinctColors = useDistinctPlayerColors(markerColors === 'player' ? doc.roster.length : null, paletteVersion)
   // Identité PAR SLOT ET PAR IMAGE : strict pour marqueurs/vies, `OrLast` pour la frontière — cf. useSlotIdentity.
   const { colorOfSlot, colorOfSlotOrLast, colorOfXuid, markOfSlot, nameOfSlot, nameOfXuid, campOfSlot, seatedAtSlot, seatedOfXuid } = useSlotIdentity({
     doc,
@@ -278,28 +287,22 @@ export function ReplayCanvas({
     distinctColors,
   })
 
-  // PRÉFÉRENCE DE MOUVEMENT RÉDUIT. La feuille de style la respecte pour le DOM ; un canvas
-  // dessiné en JS n'est atteint par aucune règle CSS, la préférence se lit donc ici.
-  const reducedMotion = useMemo(
-    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    [],
-  )
+  // PRÉFÉRENCE DE MOUVEMENT RÉDUIT : un canvas dessiné en JS n'est atteint par aucune règle CSS.
+  const reducedMotion = useReducedMotion()
 
   // LE CADRAGE — fond retenu ou écarté, bornes de la scène, largeur de dessin, amplitude
   // verticale, projection partagée et trame d'altitudes : une seule chaîne de décision, qui
   // vit dans `useReplayView` (neuvième extraction imposée par le cliquet de taille). Les noms
   // sortent inchangés : le dessin en dessous lit exactement les mêmes valeurs qu'avant.
   const { mapImage, bounds, renderWidth, renderHeight: viewH, screen, zRange, canvasView, zoom } = useReplayView({
-    doc, background, width, freeHeight,
+    doc, background, width, freeHeight, onManualMove: onFollowStop,
   })
+  // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
+  const { shownAtSlot } = useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom })
 
   // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
   const calloutZones = callouts ?? EMPTY_ZONES
-  const zoneColors = useMemo(() => {
-    void paletteVersion
-    const nBig = calloutZones.reduce((n, z) => n + (z.big ? 1 : 0), 0)
-    return nBig > 0 ? getSeriesColors(nBig, SERIES_TOKENS) : []
-  }, [calloutZones, paletteVersion])
+  const zoneColors = useZoneSeriesColors(calloutZones, paletteVersion)
 
   // Les OBJECTIFS STATIQUES du mode arrivent AVEC le document (`mapObjectives`, servi à
   // la requête) : normalisés une fois, comme les callouts. Absents = pas de calque.
@@ -326,7 +329,7 @@ export function ReplayCanvas({
     useReplayFx(doc, feedKills, timing.aimHold, mapObjectives, { seatedAtSlot, seatedOfXuid })
   // LES GESTES DE CAPACITÉ SUR LEUR PORTEUR (grappin, propulseur) : bâtis et peints par un
   // seul hook — ils ne posent rien au sol, ils se lisent sur le pion (cf. useReplayAbilityFx).
-  const abilityFx = useReplayAbilityFx({ doc, view: canvasView, grappleInk, colorOfSlot, reducedMotion })
+  const abilityFx = useReplayAbilityFx({ doc, view: canvasView, grappleInk, colorOfSlot, shownAtSlot, reducedMotion })
   // La CARTE DE CHALEUR : grille cuite, rampe du thème et lecture réellement servie —
   // toute la logique vit dans le hook, le canvas ne fait que poser le calque.
   useReplayWheelZoom(canvasRef, zoom, canvasView) // molette : memes paliers que les boutons
@@ -541,7 +544,7 @@ export function ReplayCanvas({
               showTrail,
               selfInk,
               deathInk: shotColor,
-              labelStroke, embarkedAtSlot: vehicles.isEmbarkedAt, seatedAtSlot, // PION EMBARQUE (C7) ; PION SANS FICHE.
+              labelStroke, embarkedAtSlot: vehicles.isEmbarkedAt, seatedAtSlot, shownAtSlot, // PION EMBARQUE (C7) ; PION SANS FICHE ; SEUL / MASQUER.
               nameHiddenAtSlot: killFocus.nameHiddenAtSlot,
               // BORNAGE HORS CADRE (chantier B, decision D2, 2026-09-10) : la flèche porte le
               // nom ET la distance ; le texte est resolu ICI (langue de la page), le calque ne
@@ -559,13 +562,13 @@ export function ReplayCanvas({
             ),
           'marques-de-tir': (_c, fr, k) =>
             drawFireMarks(ctx, fireMarks, view, {
-              frame: fr, hold: shotHoldFrames, colorOfSlot, ink: labelStroke || floorStyle.edge, k, embarkedAtSlot: vehicles.isEmbarkedAt,
+              frame: fr, hold: shotHoldFrames, colorOfSlot, ink: labelStroke || floorStyle.edge, k, embarkedAtSlot: vehicles.isEmbarkedAt, shownAtSlot,
             }),
           // vehicleSizeOf : origine des tirs en vehicule sur LA MEME source de tailles que le
           // calque vehicules (`useReplayVehicles.sizeOf`), jamais un second chargement.
           tirs: (_c, _fr, k) =>
             drawShotsLayer(ctx, shotFx, view, { ...win, hold: shotHoldFrames }, {
-              ink: fxInk, k, reducedMotion, vehicleSizeOf: vehicles.sizeOf,
+              ink: fxInk, k, reducedMotion, vehicleSizeOf: vehicles.sizeOf, shownAtSlot,
             }),
           'etat-zones': (_c, fr) => drawZoneStates(ctx, zones, doc.zoneStates, view, fr),
           'pulses-objectif': () =>
@@ -614,7 +617,7 @@ export function ReplayCanvas({
     floorStyle.edge,
     colorOfSlot,
     colorOfSlotOrLast,
-    campOfSlot, seatedAtSlot,
+    campOfSlot, seatedAtSlot, shownAtSlot,
     markOfSlot,
     nameOfSlot,
     showTrail,

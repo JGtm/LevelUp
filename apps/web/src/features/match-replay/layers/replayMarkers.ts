@@ -218,6 +218,13 @@ export interface MarkerStyle {
    * joueur hors cadre garde le sien, et le pion reste dessiné. Absent = tous les noms s'écrivent.
    */
   nameHiddenAtSlot?: (slot: number) => boolean
+  /**
+   * SEUL ET MASQUER (panneau de joueur, lot 4) : faux quand la vie VIVANTE d'un slot à cette image est
+   * retirée de la carte — pion, nom, cône de visée et traînée d'un seul geste. La croix de mort n'y
+   * passe pas : une mort est un événement du match, ni Seul ni Masquer ne l'efface. Absent = tout se
+   * dessine.
+   */
+  shownAtSlot?: (slot: number, frame: number) => boolean
 }
 
 /**
@@ -275,6 +282,7 @@ export function drawTracksLayer(
       drawDeathMark(ctx, track, view, style)
       return
     }
+    if (style.shownAtSlot && !style.shownAtSlot(track.slot, style.frame)) return
     drawLivingTrack(ctx, track, view, style, color)
   })
   ctx.globalAlpha = 1

@@ -93,6 +93,8 @@ export interface VehicleShotSource {
 export interface ShotFxEntry {
   /** Frame du tir sur la grille du rejeu. */
   frame: number
+  /** Le slot du tireur : Seul et Masquer retirent ses éclairs avec son pion. */
+  slot: number
   x: number
   y: number
   /**
@@ -150,6 +152,7 @@ export function buildShotFx(
     const read = track ? heldReading(track.points, s.t, (p) => p.h, aimHoldFrames) : null
     out.push({
       frame: s.t,
+      slot: s.slot,
       x: s.x,
       y: s.y,
       h: read ? read.value : null,

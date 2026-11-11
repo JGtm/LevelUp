@@ -34,6 +34,7 @@ function fakeZoom(over: Partial<ReplayZoom> = {}): ReplayZoom {
     panStep: vi.fn(),
     panBy: vi.fn(),
     zoomAt: vi.fn(),
+    focusOn: vi.fn(),
     ...over,
   }
 }

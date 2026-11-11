@@ -12,6 +12,7 @@
  */
 import type { FeedFilterId } from '../model/feedFilterLogic'
 import type { ObjectiveFeedStat } from '../model/objectiveFeedLogic'
+import type { PlayerPanelText } from './playerPanel.i18n'
 import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
 
 /**
@@ -226,6 +227,8 @@ export interface ReplayText {
    * l'éventuelle explication d'absence d'assistant.
    */
   killFeedFocusHint: string
+  /** Le panneau de joueur (lot 4) : ses textes vivent dans `playerPanel.i18n.ts`. */
+  playerPanel: PlayerPanelText
   killFeedNoAssistHint: string
   killFeedAssistHint: string
   killFeedKillerShare: (pct: number) => string
