@@ -167,6 +167,7 @@ jobs:
               - 'apps/go-api/cmd/server/boot_gate.go'
               - 'apps/go-api/internal/analysis/weapon_range.go'
               - 'apps/go-api/internal/testfixtures/testdata/cartes/nommage_zone_cas.json'
+              - 'apps/go-api/internal/analysis/leadshare/testdata/meneur_cas.json'
               - 'apps/go-api/go.mod'
               - 'libs/film/replay/**'
               - 'libs/film/internal/grammar/**'
