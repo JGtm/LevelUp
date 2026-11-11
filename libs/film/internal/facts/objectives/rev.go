@@ -239,5 +239,20 @@ package objectives
 // champs de la lecture de l equipement porte ; aucune source de cette couche ne change et aucune de ses lectures n appelle
 // ce canal, l empreinte du golden est recopiee au meme rang.
 
+// A REVISION CONSTANTE (lecture des positions par index de region, 2026-11-10) : la VALEUR de `grammar.Rev` monte a
+// `grammar-2026-11-10` ; aucune source de cette couche ne change. Sur les 20 films de reference (`replay-equiv`), aucune
+// etape d objectifs ne differe (statborg, actions d objectif, manches, drapeau, couronne, crane, bombe) ; l empreinte du
+// golden est recopiee au meme rang.
+
+// A REVISION CONSTANTE (type d une entite lie a son eid complet, 2026-11-10) : la VALEUR de `grammar.Rev` monte a
+// `grammar-2026-11-10.2` ; aucune source de cette couche ne change. Sur les dix temoins du banc de verite du
+// `replay-corpus-gate` les mesures d objectifs (statborg, score personnel, equipes) sont identiques a celles d avant ce
+// changement ; l empreinte du golden est recopiee au meme rang.
+
+// A REVISION CONSTANTE (`biped-spartan-ability`, tag 3, 2026-11-10) : la VALEUR de `grammar.Rev` monte a
+// `grammar-2026-11-10.3` ; aucune source de cette couche ne change. Sur les 18 temoins du banc de verite du
+// `replay-corpus-gate`, les mesures d objectifs (O-K, O-S, O-T) et de vies (O-V, V-) sont identiques a celles d avant ce
+// changement ; l empreinte du golden est recopiee au meme rang.
+
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-10-17"

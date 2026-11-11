@@ -13,11 +13,13 @@ import (
 // game's runtime datum store (FUN_1406cb5f0: per-id slot table, stride 0xa0, the
 // archetype index living at slot+8). We materialize it as a simple per-slot map.
 //
-// Key = id & 0x3fffffff (the slot index). The full id also carries a 2-bit
-// generation/namespace tag in bits 30-31, but the decoder keys ONLY on the slot index:
-// a slot's identity is reset whenever a NEW record rebinds it (BindFull/BindSoft rewrite
-// the whole slotState, PosValid=false). No separate generation guard is maintained — a
-// well-formed stream only changes a slot's occupant via such a rebind.
+// Key = id & 0x3fffffff (the slot index), as in the game's table, whose entry carries the FULL
+// eid (2-bit generation in bits 30-31). The type is bound to that full eid: a delta is read only
+// when its eid equals the one the slot holds ([World.ArchetypeForEID], the guard of
+// FUN_1406caad8, FUN_1406cbaa0 case 3). A binding whose generation is unknown
+// ([slotState.GenAny]) answers to any generation of its slot. A slot's occupant is replaced by
+// the NEW record that rebinds it (BindFull/BindSoft rewrite the whole slotState, PosValid=false)
+// and forgotten by a DEL (Unbind).
 //
 // UN CACHE « ARME EN MAIN » A VECU ICI, ET IL A ETE RETIRE le 2026-08-18 (regle 0 code mort).
 // `SetHeldWeapon` / `HeldWeapon` recopiaient la variante `weapon-state-type-info` (i43-i46) de
@@ -119,13 +121,14 @@ func (w *World) PoserChunkCourant(n int) { w.chunkCourant = n }
 
 // LierParRepliDAnticipation lie le slot de l eid `id` a l archetype que la premiere image-cle
 // POSTERIEURE au chunk courant lui donne, et rend cet archetype. `false` = la table est absente,
-// le slot est deja lie, ou aucune image-cle ulterieure ne le declare.
+// l eid est deja lie ([World.ArchetypeForEID]), ou aucune image-cle ulterieure ne le declare. Un
+// slot lie sous une AUTRE generation n est pas lie pour cet eid : sa liaison est remplacee.
 func (w *World) LierParRepliDAnticipation(id uint32) (uint32, bool) {
 	if w.anticipee == nil {
 		return 0, false
 	}
 	slot := id & 0x3fffffff
-	if _, lie := w.slots[slot]; lie {
+	if _, lie := w.ArchetypeForEID(id); lie {
 		return 0, false
 	}
 	ti, declarant, ok := w.anticipee.ArchetypeApres(id, w.chunkCourant)
@@ -180,24 +183,22 @@ func (w *World) VuePossede(slot uint32) bool {
 // BindFull registers (or rebinds) the entity created by a NEW record: slot -> archetype.
 // L'eid COMPLET (generation en bits 30-31) est memorise : le jeu teste `entry[+0x00] != eid` sur
 // l'eid entier avant de lire le corps d'un delta (FUN_1406caad8 -> `return 3`), donc la generation
-// est une contrainte de validite gratuite. Elle n'est appliquee que si SetStrictGeneration(true).
+// est une contrainte de validite gratuite. Une liaison a generation connue (celle-ci) ne repond qu'a
+// son eid complet pour la lecture du type ([World.ArchetypeForEID], utilisee par la vue B et le repli
+// d'anticipation) ; le controle supplementaire [World.GenerationMatches] ne joue que pour les chemins
+// qui l'appellent et sous la generation stricte du profil.
 func (w *World) BindFull(id, typeIndex uint32) {
 	w.slots[id&0x3fffffff] = slotState{TypeIndex: typeIndex, FullID: id, Vue: w.vueCourante,
 		Liaison: lecture.LiaisonLueNeuf}
 }
 
-// strictGeneration exige que l'eid COMPLET d'un delta (tag de generation inclus) corresponde a
-// celui pose au binding, comme le fait `FUN_1406caad8` (`entry[0] != eid` -> return 3, corps NON
-// lu, boucle abandonnee). Defaut false : les bindings issus des keyframes portent une generation
-// qui peut avoir change depuis, et le mode strict doit rester un A/B mesurable.
-//
-// C EST UNE BASCULE DU PROFIL DE BALAYAGE DEPUIS LE LOT 2.3
-// ([GrammaireBalayage.GenerationStricte]), plus une variable de paquet : elle arrive donc par le
-// meme canal que les largeurs, et `killsource` la passe a la cuisson du rejeu comme le reste de
-// ce qu il retient.
-
-// GenerationMatches indique si l'eid complet `id` correspond a celui memorise pour son slot.
-// Toujours vrai quand le mode strict est desactive ou quand aucune generation n'a ete memorisee.
+// GenerationMatches indique si l'eid complet `id` correspond a celui memorise pour son slot,
+// comme le fait `FUN_1406caad8` (`entry[0] != eid` -> return 3, corps NON lu, boucle abandonnee).
+// Toujours vrai quand `strict` est faux, et pour une liaison de generation inconnue ([slotState.GenAny]).
+// `strict` vient du profil de balayage ([GrammaireBalayage.GenerationStricte]) ; ce controle ne
+// gouverne que les chemins qui l'appellent (`DecodeFrameRecords`, le localisateur du canal des
+// morts). La lecture du type par la vue B ne passe pas par lui : elle repond a l'eid complet par
+// [World.ArchetypeForEID], que `strict` soit vrai ou non.
 func (w *World) GenerationMatches(id uint32, strict bool) bool {
 	if !strict {
 		return true
@@ -362,6 +363,18 @@ func (w *World) OublierLesSlotsNonPortes(portes map[uint32]bool) int {
 		}
 	}
 	return n
+}
+
+// ArchetypeForEID returns the archetype bound to the FULL eid `id` (slot and 2-bit generation), if
+// any: the guard the game applies before it reads a delta body (FUN_1406caad8 returns 3 and reads
+// ZERO bits when `*(uint *)(slot * 200 + t) != eid`). A slot bound under another generation is not
+// bound for `id`; a binding of unknown generation ([slotState.GenAny]) answers to any generation.
+func (w *World) ArchetypeForEID(id uint32) (uint32, bool) {
+	s, ok := w.slots[id&0x3fffffff]
+	if !ok || (!s.GenAny && s.FullID != id) {
+		return 0, false
+	}
+	return s.TypeIndex, true
 }
 
 // ArchetypeForSlot returns the archetype typeIndex bound to a slot, if any.

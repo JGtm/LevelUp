@@ -163,6 +163,7 @@ func ProfilDeDepartPourCarte(carte *profile.MapQuantEntry) (grammar.ProfilDeBala
 	// region (lot J8.7 ; `repli_carte_absente_largeurs_par_defaut` est retire depuis le 2026-09-27,
 	// carte obligatoire).
 	_ = p.PoserLargeursObjetDuMondeDepuisDecoupage(carte.Layout())
+	p.PoserLesRegionsDeLaCarte(*carte)
 	return p, true
 }
 

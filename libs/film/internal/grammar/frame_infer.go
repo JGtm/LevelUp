@@ -45,11 +45,12 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 //
 // # CE QUE LE TROU COUTE, MESURE SUR `dad793c7` (lot 5.11.6)
 //
-// Ce paquet-ci ne porte PAS la garde — `DecodeFrameRecords` la porte depuis le lot 2.3
-// (`frame_records.go`, `GenerationMatches`), cette boucle NON, et c est elle que
-// `DecodeFrameViews` emprunte, donc toutes les marches du chantier. Sur un slot non lie elle
-// appelle l inference d archetype au lieu de s arreter : l inference « trouve » un archetype
-// pour l en-tete de la vue SUIVANTE et decode un corps qui n existe pas. Le dernier record rendu
+// La garde d eid de la vue B est celle de [rejetDeVue] ([World.ArchetypeForEID]), et elle n agit
+// que sous `Profil.Grammaire.TablesParVue` ; `DecodeFrameRecords` applique en plus
+// `GenerationMatches` sous la generation stricte du profil (`frame_records.go`). Sans la garde de
+// vue, sur un slot non lie la boucle appelle l inference d archetype au lieu de s arreter :
+// l inference « trouve » un archetype pour l en-tete de la vue SUIVANTE et decode un corps qui
+// n existe pas. Le dernier record rendu
 // de chaque paquet de `dad793c7` etait ainsi un `ti=6` a masque vide, FABRIQUE a partir de zeros
 // lus AU-DELA de la fin du payload.
 //
@@ -58,19 +59,16 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 //	les 24 paquets qui s en ecartent sont les 23 paquets a liste d evenements... et le paquet
 //	  du DECOLLAGE du saut, seul du film a porter le mot dominant modifie de deux bits
 //
-// # POURQUOI LA GARDE N EST PAS PORTEE ICI, ET CE QU IL FAUDRAIT POUR LA PORTER
+// # CE QUE LA BOUCLE NE TRANSCRIT PAS, ET CE QU IL FAUDRAIT POUR LE FAIRE
 //
 // Le monde hors ligne ne porte PAS les trois tables de vues du jeu : `World` est une seule table
 // slot -> archetype, reconstruite du film, et l inference d archetype existe pour rattraper les
-// liaisons que les images-cles eparses ne donnent pas (lot 5.3.3-b). Deux transcriptions ont ete
-// ESSAYEES ET MESUREES, et les deux perdent :
+// liaisons que les images-cles eparses ne donnent pas. La garde d eid de la boucle est [rejetDeVue], qui
+// respecte `GenAny` ; la boucle ne transcrit pas deux controles :
 //
-//	`GenerationMatches` pose ici comme dans `DecodeFrameRecords` : l A/B du mode strict coute
-//	  12 248 records `ti=35` sur `bfecd02b` (97 343 -> 85 095) et ne referme pas le debordement,
-//	  parce que la liaison du slot fautif vient d une image-cle (`BindWildcard`, `GenAny`) qui
-//	  neutralise le test.
-//	le rejet d un corps qui DEPASSE la fin du payload : `replay-equiv -films bcb6d393` rend
-//	  `movementStates` 1 364 -> 1 254, une PERTE de 110 transitions.
+//	le controle de generation stricte du profil (`GenerationMatches`) : une liaison d image-cle
+//	  (`BindWildcard`, `GenAny`) repond a toute generation, il ne rejetterait pas le slot fautif ;
+//	le rejet d un corps qui DEPASSE la fin du payload : il retire des transitions que le film porte.
 //
 // CE QU IL FAUT EST LE MODELE MANQUANT, ET IL EST NOMME : les TROIS TABLES D ENTITES PAR VUE
 // (`param_1 + 0x228` donne trois objets de vue, chacun avec sa table `vue + 0x38`). Une entite
@@ -132,8 +130,9 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 //
 //	garde VIVE (`FUN_1406cbaa0`, cas DELTA) : `*(uint *)(slot * 200 + t) != eid` sur la table
 //	  de datums du DECODEUR PARTAGE. Un slot absent de cette table ne rend AUCUN bit de corps,
-//	  et la boucle sort (code 2 ou 3). Hors ligne, « absent de la table » = slot non lie — la
-//	  table de datums de l image-cle est justement ce que `keyframe_datums.go` y verse.
+//	  et la boucle sort (code 2 ou 3). Hors ligne, « absent de la table » = EID non lie
+//	  ([World.ArchetypeForEID]) : slot non lie, ou lie sous une AUTRE generation que celle de l eid.
+//	  La table de datums de l image-cle est justement ce que `keyframe_datums.go` y verse.
 //	repli de VUE (`FUN_1406cd128`, branche 0 : `vue[0x38]`, pas de 0xa0, eid ET type) : un
 //	  delta dont le slot appartient a une AUTRE vue. Le jeu n emprunte cette branche que pour
 //	  l aller-retour d etat de `FUN_1428e24bc`, et le 5.15.1 (d) a mesure ZERO cas sur 22 112
@@ -158,7 +157,7 @@ func rejetDeVue(typ int, id uint32, w *World, cfg FrameConfig) (lecture.SortieVu
 		return lecture.SortieNonAtteinte, false
 	}
 	slot := id & 0x3fffffff
-	if _, lie := w.ArchetypeForSlot(slot); !lie {
+	if _, lie := w.ArchetypeForEID(id); !lie {
 		ti, anticipe := w.LierParRepliDAnticipation(id)
 		if !anticipe {
 			cfg.Obs.compterRejetHorsDatum()

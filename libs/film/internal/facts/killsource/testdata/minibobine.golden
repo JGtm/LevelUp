@@ -32,10 +32,10 @@
 00:35  Joue ur00118  eea85c26  "Disruptor"  ARME  credit=J00 0086  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
 00:43  Joueur000007  877da252  "Gravity Hammer"  ARME  credit=Joueur000000204  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
 00:44  Jf01  130c4b61  "Skewer"  ARME  credit=Joueur00 000006  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
-00:46  Joueur000000094  acd1cff4  "M41 SPNKr"  ARME  credit=Joue ur00118  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
+00:46  Joueur000000094  acd1cff4  "M41 SPNKr"  ARME  credit=Joue ur00118  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
 00:52  Joueur000203  130c4b61  "Skewer"  ARME  credit=Joueur00 000006  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
 00:58  Joueur000000204  acd1cff4  "M41 SPNKr"  ARME  credit=J00 0086  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
-01:02  Jf01  17d6bd23  "Sentinel Beam"  ARME  credit=Joueur000007  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
+01:02  Jf01  17d6bd23  "Sentinel Beam"  ARME  credit=Joueur000007  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
 01:08  Joueur000203  acd1cff4  "M41 SPNKr"  ARME  credit=J00 0086  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
 01:09  Joueur000007  acd1cff4  "M41 SPNKr"  ARME  credit=Joue ur00118  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
 01:12  Joue ur00118  acd1cff4  "M41 SPNKr"  ARME  credit=Joueur000007  assistant=AUCUN (mesure)  marche  source-victime  divergence=oui
@@ -51,17 +51,17 @@
 5484 paquet(s) SANS evenement · 7687528 bits balayes · 0 candidat(s) accepte(s)
 
 ## COUT PAR VOIE DE LECTURE — ventilation, PAS deux precisions comparables
-marche   : 7 propose(s), 7 apparie(s) au couple exact, 7 publiee(s)
-scan     : 2 propose(s), 2 apparie(s) au couple exact, 2 publiee(s)
+marche   : 9 propose(s), 9 apparie(s) au couple exact, 9 publiee(s)
+scan     : 0 propose(s), 0 apparie(s) au couple exact, 0 publiee(s)
 marche, source appartenant a la victime : 1 propose(s), 1 publiee(s)
 scan,   source appartenant a la victime : 1 propose(s), 0 publiee(s)
 morts de BOT : 16 propose(s), 0 publiee(s)
 morts infligees PAR un bot : 0 propose(s), 0 apparie(s), 0 publiee(s)
-8 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 7 · DESACCORD 0
+10 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 9 · DESACCORD 0
 DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
 0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
 473 / 473 paquet(s) a evenements localise(s)
-calibration resolue automatiquement : LU axisW=[13 13 14] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=23 [score 8, mediane 1] desaccords=1 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 63, mediane 63]
+calibration resolue automatiquement : LU axisW=[13 13 14] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=6 [PROFIL PLAT (score 71, mediane 71)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 71, mediane 71]
 
 ## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
 verdict : HORS DOMAINE MESURE

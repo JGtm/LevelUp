@@ -52,6 +52,9 @@ type siteDePosition struct {
 func tableDesSitesDePosition() []siteDePosition {
 	const n10, n1e = 0x10, 0x1e
 	return []siteDePosition{
+		{"consumeObjectPositionMonde", "", "lireE524", n10, 1, "world-object i0 : FUN_14076e29c -> FUN_14076e420, CALL 14076e2c0 (precHigh = 0)"},
+		{"consumeFlockPosition", "", "lireE494", n10, 1, "ti=21 i16 : FUN_140ee7270, CALL 140ee7293 (140ee7288)"},
+		{"consumeFlockDestination", "", "lireE494", n10, 1, "ti=21 i2-i11 : FUN_140fb8af0, CALL 140fb8b3e (140fb8b33)"},
 		{"consumeAbsoluteWithGate", "", "lireE524", n10, 1, "FUN_1406cfe44 branche absolue, precHigh = 0, CALL 1406d009d (MOV R9D,0x10 en 1406d008a)"},
 		{"consumePredictedDelta", "", "lireE524", n10, 1, "FUN_14076f3ec repli, CALL 14226a6c7 (14226a6b8)"},
 		{"consumePredictedAbsolute", "", "lireE420", n10, 1, "FUN_140f7ea14 -> FUN_14076e4ec, CALL 140f7ea5c"},
@@ -103,7 +106,7 @@ var lecteursLocauxInterdits = []*regexp.Regexp{
 // fichierDesExceptions porte les sites qui gardent leur ancien lecteur ([exceptionsDuPortage]).
 const fichierDesExceptions = "lecteur_position_exceptions.go"
 
-// critereDeRetraitDesExceptions : le meme pour les treize (decision du superviseur, 2026-09-27 ; lot
+// critereDeRetraitDesExceptions : le meme pour les onze (decision du superviseur, 2026-09-27 ; lot
 // J6-bis, 2026-09-28 ; lot R3, 2026-09-29 ; lot R3-bis, 2026-09-30).
 const critereDeRetraitDesExceptions = "la lecture du jeu fait monter la fermeture sans aucune baisse " +
 	"sur les bobines, ou la grammaire dependante du build est etablie"
@@ -121,19 +124,12 @@ type exceptionDuPortage struct {
 // `lecteur_position_sites_test.go` marques « ecart attendu ».
 func exceptionsDuPortage() map[string]exceptionDuPortage {
 	return map[string]exceptionDuPortage{
-		"flock-position": {"consumeFlockPosition", 0x10, "ti=21 i16 : FUN_140ee7270, CALL 140ee7293 (140ee7288)",
-			"GA2-2 : carte de fermeture, ks_000d5950 paquets 1823 -> 1847 mais ks_e5adf7b2 paquets 371 -> 370, " +
-				"ti=21 1/60 -> 0/60, ti=4 240 -> 239"},
-		"world-object-i0": {"consumeObjectPositionMonde", 0x10, "world-object i0 : FUN_14076e29c -> FUN_14076e420, CALL 14076e2c0",
-			"GA2-5 : image-cle ti=38 11de8353 99 -> 83, a521164d 122 -> 119 ; ti=42 60ae07c4 5 -> 4, " +
-				"11de8353 3 -> 2, 111fa685 2 -> 1 (hausses sur les builds recents). Depuis le 2026-10-08 la porte posee " +
-				"lit la table DEFAUT hors portee, comme le jeu ; l ecart restant est la portee (garde de pleine precision)"},
+		"world-object-i0": {"consumePrecHautDeLObjetMonde", 0x10, "world-object i0, precHigh = 1 : FUN_14076e29c -> FUN_14076e420, CALL 14076e2c0",
+			"GA2-5 : la queue de handle (`FUN_14076e3e4(1)`, largeur variable) est lue en bloc de 59 bits avec les trois axes " +
+				"de `FUN_141f85880` et le R(2) ; la lecture du jeu y est celle de [consumeQueueDePoignee], non portee ici"},
 		"ti38-i18": {"consumeGenericRigidBodyTransforms", 0x10, "ti=38 i18 : FUN_142f036f0, CALL 142f03837",
 			"image-cle ti=38 fb1a1a72 317 -> 245, 111fa685 72 -> 30, 11de8353 99 -> 19, sans aucune hausse"},
 		// Lot J6-bis (2026-09-28), meme situation, meme format.
-		"flock-destination": {"consumeFlockDestination", 0x10, "ti=21 i2-i11 : FUN_140fb8af0, CALL 140fb8b3e (140fb8b33)",
-			"marche des trames de 11de8353 : listes chunk 19 paquet 494 (16 entrees de controle) et chunk 9 " +
-				"paquet 1146 (22 entrees) fermees -> non localisees ; hausse sur 000d5950 chunk 20 paquet 1322 (8 entrees)"},
 		"respawn-location": {"consumePlayerDesiredRespawnLocation", 0x10, "ti=5 i12 : FUN_142f03ec8 (descripteur 143d0f2f8)",
 			"marche des trames de e5adf7b2 : liste chunk 25 paquet 344 (14 entrees) fermee -> non localisee ; " +
 				"hausses sur e5adf7b2 chunk 6 paquet 50 (4 entrees) et 111fa685 chunk 14 paquet 552 (2 entrees)"},
@@ -175,7 +171,7 @@ func exceptionsDuPortage() map[string]exceptionDuPortage {
 // datee du portage.
 var exemptionsDeLecteurLocal = map[string]string{
 	fichierDesExceptions: "2026-09-27 (lot J6.3, decision du superviseur), 2026-09-28 (lot J6-bis) et " +
-		"2026-09-29 (lot R3), 2026-09-30 (lot R3-bis) : les treize exceptions datees du portage unique (`exceptionsDuPortage`), critere de retrait : " + critereDeRetraitDesExceptions,
+		"2026-09-29 (lot R3), 2026-09-30 (lot R3-bis) : les onze exceptions datees du portage unique (`exceptionsDuPortage`), critere de retrait : " + critereDeRetraitDesExceptions,
 }
 
 // TestLesExceptionsDuPortageSontEnPlace : chaque exception vit dans son fichier, n appelle PAS le

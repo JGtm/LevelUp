@@ -80,12 +80,10 @@ var worldObjectPrecisionReaders = map[string]string{
 		"d'installation qu'avant : les largeurs viennent de l'appelant (BuildFromFilm / " +
 		"installWorldObjectPrecision) ; `idx == -1` n'en prend AUCUNE — c'est la table DÉFAUT du " +
 		"build, à la ligne du niveau du site",
-	"internal/grammar/lecteur_position_exceptions.go": "L EXCEPTION DATEE " +
-		"world-object i0 (lot J6.3, 2026-09-27, decision du superviseur) : `consumeObjectPositionMonde` " +
-		"garde le lecteur d avant le lot — index sur `DAT_144632be0` et largeurs de la CARTE, que la " +
-		"porte soit posee ou non — parce que la lecture du jeu (table DEFAUT porte posee) fait baisser " +
-		"la fermeture d image-cle sur les anciens builds. Meme contrat d installation que le reste : " +
-		"BuildFromFilm / installWorldObjectPrecision. Vivait dans `dispatch_object.go`",
+	"research/divergence/ouvrir.go": "L INSTRUMENT DE FERMETURE sous catalogue (plan marche complete, " +
+		"A1, 2026-11-10) : il ouvre le contexte du film par `NewFilmContextForMap` puis appelle le geste unique " +
+		"`PoserLaCarteEtLeDecoupage`, qui pose les largeurs de la carte du match ; sans catalogue il lit les " +
+		"largeurs DANS LE FILM (`ContexteDeFilm`). Aucune lecture de la valeur ici",
 	"internal/grammar/projectiles.go": "longueur du champ (`projPosBits`) et " +
 		"déquantification (`decodeWorldObjectPos`) — le balayage des objets du monde",
 	"internal/grammar/position_objet_du_monde.go": "le lecteur de la position " +

@@ -422,3 +422,41 @@ package grammar
 // la jointure par le rang de l annonce i48 du meme paquet, qui perdait les deux derniers cas, disparait. Les
 // lectures changent de forme (le codec des faits les ecrit avec l identite, `SchemaDesFaits` 18 -> 19) : les faits
 // cuits avant se refusent sur cette revision et sur ce numero, par construction.
+
+// ENTREE `grammar-2026-11-10` (2026-11-10, lecture des positions par index de region). LES POSITIONS SONT LUES
+// AUX LARGEURS DE LA REGION QUE LE FLUX DESIGNE. LE DECODAGE CHANGE. `FUN_14076e524` lit un index de region
+// puis trois axes aux largeurs de la ligne de CET index ; le portage unique ([lireE524Sur]) appliquait a tout
+// index la ligne de la region jouee. Il lit desormais la table par index de la carte
+// ([profile.MapQuantEntry.Regions], posee par [ProfilDeBalayage.PoserLesRegionsDeLaCarte]) : un index sans
+// ligne lit zero bit par axe et se compte ([Observation.IndexSansLigne]) ; une entree sans table garde la lecture
+// d avant. Trois sites rejoignent le portage unique et quittent les exceptions datees : flock-position (ti=21
+// i16), flock-destination (ti=21 i2 a i11) et world-object i0, branche precHigh = 0 ; seule la branche precHigh = 1
+// de world-object i0 reste en exception. Les positions des messages de la vue A (genres 5 et 6, niveaux 0xf et
+// 0xc) lisent la meme table, et la position d une detonation se dequantifie dans la region lue. Mesure sur le
+// corpus (127 films lus, catalogue regenere) : paquets delta fermes HI_1_13_0 97,60 % -> 99,42 %, HI_1_11_0
+// 96,07 % -> 98,29 %, HI_1_10_0 95,41 % -> 95,46 %, HI_1_12_0 inchange ; le desaccord de lecture contre le temoin
+// `ti=40` composant 0 disparait (12 087 paquets). Les rejeux et les faits cuits avant se refusent sur cette
+// revision : la recuisson est une decision de l utilisateur.
+
+// ENTREE `grammar-2026-11-10.2` (2026-11-10, type d une entite lie a son eid complet). LE TYPE D UNE ENTITE EST
+// LIE A SON EID COMPLET, SLOT ET GENERATION. LE DECODAGE CHANGE. La garde de delta du jeu (`FUN_1406cbaa0` cas 3,
+// `FUN_1406caad8`) compare `*(uint *)(slot * 200 + t)` a l eid entier et ne lit aucun bit de corps quand ils
+// different ; la boucle de records de la vue B ne testait que « slot lie » ([rejetDeVue]). Elle consulte
+// desormais [World.ArchetypeForEID] : une liaison a generation connue (NEW lu, inference) ne repond qu a son eid,
+// une liaison de generation inconnue (image-cle, table de datums) repond a toute generation de son slot, et le repli
+// d anticipation ([World.LierParRepliDAnticipation]) traite un slot lie sous une autre generation comme un eid non
+// lie. Aucun type n est devine : un delta d une generation dont la creation n a pas ete lue sort de la vue B par
+// rejet hors datum, comme chez le jeu. Mesure sur 38 films (30 recents, 8 anciens) : aucun compte de paquets fermes
+// ne bouge, la garde se declenche 1 090 fois (marches d essai comprises) ; sur la mini-bobine de 000d5950 des
+// records lus sous un type perime ne se lisent plus. Les rejeux et les faits cuits avant se refusent sur cette
+// revision : la recuisson est une decision de l utilisateur.
+
+// ENTREE `grammar-2026-11-10.3` (2026-11-10, `biped-spartan-ability`, tag 3). LA PORTE DU CORPS PORTE SUR LES 6 BITS
+// LUS DANS LE FLUX. LE DECODAGE CHANGE. `FUN_142f262d4` met `dst[2]` a zero en tete, puis `FUN_14297ea84` y range les 6
+// bits qu elle lit : le test `dst[2] & 1` porte sur ces bits, et la branche qu il garde est atteignable. Le lecteur
+// ([consumeSpartanAbilityTag3]) lit la suite du jeu : a ; si a, flags = R(6) ; si flags & 1, c = R(1), puis la position
+// de `FUN_14076e494` (c nul) ou la reference de categorie 0 de `FUN_1406d3140` (13 bits de valeur et 2 de queue, soit 15
+// bits) suivie, sous flags & 0x10, du corps de `FUN_142f04664` (c = 1) ; puis b = R(1) et, si b, la seconde position.
+// Mesure sur 38 films (30 recents, 8 anciens) : aucun film ne ferme moins de paquets ; HI_1_13_0 98,79 % -> 98,90 %,
+// HI_1_12_0 97,70 % -> 97,75 %, et les quatre builds anciens gagnent de 30 a 159 paquets. Les rejeux et les faits cuits
+// avant se refusent sur cette revision : la recuisson est une decision de l utilisateur.

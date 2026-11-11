@@ -197,7 +197,7 @@ func listeDesRevisions(c DecoderCoverage) string {
 }
 
 // EmpreinteDeCle rend l empreinte CANONIQUE de toute l entree de catalogue : module, bornes,
-// largeurs d axe, region et largeur d index de region — tout ce qui gouverne la redequantification
+// largeurs d axe, region, largeur d index de region et table par index de region — tout ce qui gouverne la redequantification
 // des positions (lot J3.5 du PLAN_SUITE_AUDIT_DECODEUR_FILM, decision DU-2 (e), constat RA1-4).
 //
 // CANONIQUE : les bornes par leurs bits exacts (`math.Float32bits`), la largeur d index de region
@@ -211,6 +211,11 @@ func EmpreinteDeCle(entry profile.MapQuantEntry) [sha256.Size]byte {
 			math.Float32bits(entry.Max[a]), entry.AxisWidths[a])
 	}
 	_, _ = fmt.Fprintf(h, "region:%d:%d\n", entry.Region, entry.EffectiveRegionIndexBits())
+	for _, r := range entry.Regions { // la table par index de region ; absente, l empreinte d avant est inchangee
+		_, _ = fmt.Fprintf(h, "regions:%d:%t:%v:%v:%v\n", r.Index, r.Invalid, r.AxisWidths,
+			[3]uint32{math.Float32bits(r.Min[0]), math.Float32bits(r.Min[1]), math.Float32bits(r.Min[2])},
+			[3]uint32{math.Float32bits(r.Max[0]), math.Float32bits(r.Max[1]), math.Float32bits(r.Max[2])})
+	}
 	var out [sha256.Size]byte
 	copy(out[:], h.Sum(nil))
 	return out

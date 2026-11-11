@@ -292,6 +292,24 @@ func TestTranslocEntryUsable(t *testing.T) {
 	if translocEntryUsable(&plates) {
 		t.Error("des bornes plates ont été acceptées : la déquantification y diviserait par zéro d'étendue")
 	}
+	// Une region INVALIDE (AABB refusee par le jeu) garde son index et sa ligne reste a zero : elle ne
+	// rend pas la carte illisible. Une ligne VALIDE aux largeurs nulles, elle, reste refusee.
+	avecInvalide := ok
+	avecInvalide.RegionIndexBits = 2
+	avecInvalide.AjouterRegion([3]float32{0, 0, 0}, [3]float32{1024, 1024, 1024}, [3]uint{10, 10, 10}, false)
+	avecInvalide.AjouterRegion([3]float32{}, [3]float32{}, [3]uint{}, true)
+	if !translocEntryUsable(&avecInvalide) {
+		t.Error("une entree portant une region invalide a ete jugee inutilisable")
+	}
+	if tables := tablesDeLEntree(&avecInvalide); !tables.indexLisible || len(tables.regions) != 2 {
+		t.Errorf("une region invalide rend la table par index illisible : %+v", tables)
+	}
+	valideNulle := avecInvalide
+	valideNulle.Regions = append([]profile.RegionQuant(nil), avecInvalide.Regions...)
+	valideNulle.Regions[0].AxisWidths = [3]uint{}
+	if translocEntryUsable(&valideNulle) {
+		t.Error("une ligne valide aux largeurs nulles a ete acceptee")
+	}
 	regions := ok
 	regions.RegionIndexBits = translocMaxRegionBits + 1
 	if translocEntryUsable(&regions) {

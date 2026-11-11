@@ -80,7 +80,7 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 		consumeBipedSpartanAbilityEnergy(br)
 		return variant, nil, true
 	case "flock-position-component": // ti21 i16 (FUN_140ee7270 -> FUN_14076e524)
-		consumeFlockPosition(br, uint(level))
+		consumeFlockPosition(br)
 		return variant, nil, true
 	case "flock-current-destination-component": // ti21 i17 (FUN_142ed4668 -> FUN_142ed0674)
 		consumeFlockCurrentDestination(br)
@@ -92,8 +92,8 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 		consumeFlockFleeing(br)
 		return variant, nil, true
 	case abilityPredictedName: // i57 (FUN_142f02810 -> FUN_142f268c4)
-		// PORTE EN ENTIER DEPUIS LE LOT 5.13.3 : l « octet d etat runtime » qui gardait la
-		// branche `tag == 3` n en est pas un (cf. `consumeSpartanAbilityTag3`).
+		// La porte du corps de la branche `tag == 3` porte sur les 6 bits que le flux donne
+		// (cf. `consumeSpartanAbilityTag3`).
 		consumeBipedSpartanAbility(br)
 		return variant, nil, true
 	case grappleComponentNameAlt, grappleComponentName: // i59 (FUN_142f02994)

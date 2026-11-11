@@ -7,6 +7,7 @@ package replay
 import (
 	"errors"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
@@ -194,6 +195,15 @@ func TestCleDeCuisson_ChaqueChampDeLEntreeGouverne(t *testing.T) {
 	if err := e.Frais(entry); err != nil {
 		t.Fatalf("faits frais refuses : %v", err)
 	}
+	if len(entry.Regions) == 0 {
+		t.Fatal("l'entree de reference ne porte aucune ligne de la table par index : les mutations de ligne n'ont rien a muter")
+	}
+	// mutee rend une copie de la table dont la premiere ligne est changee par `f`.
+	mutee := func(rs []profile.RegionQuant, f func(*profile.RegionQuant)) []profile.RegionQuant {
+		out := slices.Clone(rs)
+		f(&out[0])
+		return out
+	}
 	mutations := map[string]func(*profile.MapQuantEntry){
 		"Module":          func(m *profile.MapQuantEntry) { m.Module += "_bis" },
 		"Min":             func(m *profile.MapQuantEntry) { m.Min[0] -= 0.5 },
@@ -201,6 +211,20 @@ func TestCleDeCuisson_ChaqueChampDeLEntreeGouverne(t *testing.T) {
 		"AxisWidths":      func(m *profile.MapQuantEntry) { m.AxisWidths[1]++ },
 		"Region":          func(m *profile.MapQuantEntry) { m.Region++ },
 		"RegionIndexBits": func(m *profile.MapQuantEntry) { m.RegionIndexBits = m.EffectiveRegionIndexBits() + 1 },
+		"Regions": func(m *profile.MapQuantEntry) {
+			m.Regions = append(slices.Clone(m.Regions), profile.RegionQuant{Index: uint32(len(m.Regions)), AxisWidths: [3]uint{9, 9, 9}}) //nolint:gosec // essai
+		},
+		// Une ligne de la table par index commande, elle aussi, les bits lus : chacun de ses champs
+		// gouverne la cle (l'index suit le rang d'ajout, il n'a pas de mutation propre).
+		"Regions[0].Min": func(m *profile.MapQuantEntry) {
+			m.Regions = mutee(m.Regions, func(r *profile.RegionQuant) { r.Min[1] -= 0.5 })
+		},
+		"Regions[0].Max": func(m *profile.MapQuantEntry) {
+			m.Regions = mutee(m.Regions, func(r *profile.RegionQuant) { r.Max[1] += 0.5 })
+		},
+		"Regions[0].Invalid": func(m *profile.MapQuantEntry) {
+			m.Regions = mutee(m.Regions, func(r *profile.RegionQuant) { r.Invalid = !r.Invalid })
+		},
 	}
 	for _, champ := range reflect.VisibleFields(reflect.TypeFor[profile.MapQuantEntry]()) {
 		if _, ok := mutations[champ.Name]; !ok {

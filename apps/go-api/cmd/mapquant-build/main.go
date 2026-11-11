@@ -3,8 +3,9 @@
 // data/titles/{slug}/reference/map_quant_bounds.json (PathResolver).
 //
 // Le film ne porte que des indices de quantum ; les bornes (`world bounds x/y/z` du tag sbsp
-// de la RÉGION 0 de la carte, cf. `himap.BSPQuantification`) ne vivent que dans le module de
-// la carte. Sans elles, aucune coordonnée monde n'est produite (refus explicite côté décodeur).
+// de la RÉGION JOUÉE de la carte, la 0 sauf déclaration, cf. `himap.BSPQuantification`) ne vivent
+// que dans le module de la carte. Sans elles, aucune coordonnée monde n'est produite (refus
+// explicite côté décodeur). Chaque entrée porte aussi la table par index de région (regions.go).
 //
 // Le lien nom de carte affiché -> dossier de module est déclaré ici, EXPLICITEMENT, et
 // n'est retenu que lorsqu'il est établi hors de toute mesure (identité du nom, ou preuve
@@ -324,23 +325,6 @@ var regionExterneDeclarations = map[string]uint32{
 	"Live Fire": 1,
 }
 
-// avertitSiEcarte publie, en AVERTISSEMENT, les cas où le critère de région a écarté le plus
-// gros tag sbsp. C'est la trace qui rend le catalogue relisible : sur les six canevas Forge de
-// l'installation, cet avertissement est la ligne qui dit que les bornes ont changé de BSP.
-func avertitSiEcarte(name, mod string, q himap.BSP, candidats []himap.BSP) {
-	if len(candidats) < 2 || q.GlobalID == candidats[0].GlobalID {
-		return
-	}
-	w, wPlusGros := q.Bounds.AxisWidths(), candidats[0].Bounds.AxisWidths()
-	slog.Warn("le plus gros tag sbsp n'est PAS la région 0 — bornes prises sur la région 0",
-		"carte", name, "module", mod, "candidats", len(candidats),
-		"region0", fmt.Sprintf("gid=%08x W=%d/%d/%d étendue=%.1f/%.1f/%.1f",
-			q.GlobalID, w[0], w[1], w[2], q.Bounds.Extent(0), q.Bounds.Extent(1), q.Bounds.Extent(2)),
-		"plusGrosTag", fmt.Sprintf("gid=%08x W=%d/%d/%d étendue=%.1f/%.1f/%.1f",
-			candidats[0].GlobalID, wPlusGros[0], wPlusGros[1], wPlusGros[2],
-			candidats[0].Bounds.Extent(0), candidats[0].Bounds.Extent(1), candidats[0].Bounds.Extent(2)))
-}
-
 // entreeRegionExterne construit l'entrée d'une carte dont les régions vivent dans
 // `ds/globals` (module sans sbsp, région jouée déclarée). La largeur de l'index d'i0 est
 // `decfilm.LargeurIndexDePlage` — la loi du moteur (`FUN_140be9a14` : 1 si une seule plage,
@@ -371,6 +355,9 @@ func entreeRegionExterne(name, mod, modulePath, levels string, region uint32) (d
 		e.Min[ax] = float32(b.Bounds.Min[ax])
 		e.Max[ax] = float32(b.Bounds.Max[ax])
 		e.AxisWidths[ax] = uint(w[ax])
+	}
+	if err := poserLesRegionsExternes(&e, regions, int(region)); err != nil {
+		return decfilm.MapQuantEntry{}, err
 	}
 	slog.Info("bornes lues (régions externes)", "carte", name, "module", mod,
 		"porteur", regions[region].Module, "region", region, "regions", len(regions),
@@ -482,15 +469,14 @@ func main() {
 			missing++
 			continue
 		}
-		avertitSiEcarte(name, mod, q, candidats)
-		e := decfilm.MapQuantEntry{Module: mod}
-		w := q.Bounds.AxisWidths()
-		for ax := 0; ax < 3; ax++ {
-			e.Min[ax] = float32(q.Bounds.Min[ax])
-			e.Max[ax] = float32(q.Bounds.Max[ax])
-			e.AxisWidths[ax] = uint(w[ax])
+		e, err := entreeRegionLocale(name, mod, mods[0], q, candidats)
+		if err != nil {
+			slog.Error("table des régions", "err", err, "carte", name, "module", mod)
+			missing++
+			continue
 		}
 		cat.Maps[decfilm.NormalizeMapName(name)] = e
+		w := q.Bounds.AxisWidths()
 		slog.Info("bornes lues", "carte", name, "module", mod,
 			"W", fmt.Sprintf("%d/%d/%d", w[0], w[1], w[2]),
 			"extent", fmt.Sprintf("%.3f/%.3f/%.3f", q.Bounds.Extent(0), q.Bounds.Extent(1), q.Bounds.Extent(2)))

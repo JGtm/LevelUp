@@ -1,0 +1,12 @@
+# Dix temoins de duree (A0.2), choisis le 2026-11-10 dans corpus_151.tsv
+# film	build	mode	niveau	joueurs	chunks
+03b7bbb6	HI_1_13_0	Slayer	sgh_streets	8	25
+221dd082	HI_1_12_0	Slayer	fo09_academy	8	30
+090139ed	HI_1_13_0	CaptureTheFlag	fo08_wetland	8	29
+77e41773	HI_1_12_0	CaptureTheFlag	ctf_aquarius	8	31
+59680177	HI_1_13_0	Strongholds	sgh_interlock	8	34
+6bbad606	HI_1_13_0	Strongholds	sgh_streets	8	40
+29a3ef4c	HI_1_13_0	KingOfTheHill	sgh_interlock	8	38
+3f0a1fcb	HI_1_13_0	KingOfTheHill	sgh_blueprint	8	37
+672641d0	HI_1_13_0	Oddball	sgh_interlock	8	67
+8b1f15cb	HI_1_13_0	CaptureTheFlag (BTB)	fo08_wetland	33	41

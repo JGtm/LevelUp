@@ -52,6 +52,16 @@ All three are identifiers and labels, not content of the game: no mesh, texture,
 - **Maps, weapons and medal names** that appear in fixtures and tables are the names the game itself shows
   for them.
 
+## Prior art consulted
+
+- **libfilmshell** (Dend, MIT licence, https://github.com/OpenSpartan/libfilmshell, tree published on 2026-11-09;
+  the exact commit read was not recorded). Its reader showed that a position names its quantization region (an
+  index, then three axes at the widths of THAT region), where this decoder applied the widths of the played
+  region to every index. The reading was then checked against the game's executable (`FUN_14076e524`, the
+  per-region table filled by `FUN_140be9a14`) and measured on the maintainer's own films. No line of libfilmshell
+  code is copied or translated into this module; the region tables of the map catalogue are produced from the
+  game's files by `cmd/mapquant-build`, not taken from libfilmshell's own tables.
+
 ## Third-party code
 
 The module imports `github.com/klauspost/compress`, `github.com/pelletier/go-toml/v2` and `golang.org/x/sys`

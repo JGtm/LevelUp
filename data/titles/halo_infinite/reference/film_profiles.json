@@ -6,7 +6,7 @@
     "catalogue": "map_quant_bounds.json",
     "schemaVersion": 1,
     "maps": 101,
-    "mapsSha256": "2b95eae8cd521af7b1e730edec5ca5083c7382e446284f922d901a5152bee7c0",
+    "mapsSha256": "461690dc137e5e28ec871a5db8f1b1285d8f2466100cf4c33ef6a965af394b50",
     "tool": "CGO_ENABLED=1 go run ./cmd/mapquant-build"
   },
   "entries": [

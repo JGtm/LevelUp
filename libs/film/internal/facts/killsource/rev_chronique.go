@@ -405,3 +405,22 @@ package killsource
 // n appelle ce canal (il ne lit que les records ti=37 attaches, jamais par la marche de killsource ni par
 // `sync/killcollector`). Golden regenere a revision constante : aucune ligne `match_kill_events` ne devient candidate
 // au redecodage.
+//
+// ENTREE `killsource-2026-11-10` (2026-11-10, lecture des positions par index de region, plan de la marche
+// complete, A2.P) : la VALEUR de `profile.Rev` monte a `profile-2026-11-10` et celle de `grammar.Rev` a
+// `grammar-2026-11-10`, et `decode.go` pose la table par index de region de la carte sur le profil de depart
+// (`PoserLesRegionsDeLaCarte`). La SORTIE de cette couche change : sur la mini-bobine de 000d5950, l attribution
+// de deux kills passe de `scan` a `marche` (une position lue a ses propres largeurs ferme le paquet que la lecture
+// d avant laissait ouvert). Les lignes de `match_kill_events` portant une revision anterieure deviennent candidates
+// au redecodage ; le redecodage du parc reste un geste de PRODUCTION sur signal utilisateur (D6), jamais automatique.
+//
+// A REVISION CONSTANTE (type d une entite lie a son eid complet, 2026-11-10, plan de la marche complete, A2.T) : la VALEUR de
+// `grammar.Rev` monte a `grammar-2026-11-10.2` ; aucune source de cette couche ne change. La garde de la vue B rejette un delta
+// dont la generation ne vaut pas celle de la liaison lue, au lieu de le lire sous le type de l ancienne : sur la mini-bobine de
+// 000d5950 (`minibobine.golden`), aucune attribution de kill ne change. Golden regenere a revision constante.
+//
+// A REVISION CONSTANTE (`biped-spartan-ability`, tag 3, 2026-11-10, plan de la marche complete, A2.A) : la VALEUR de
+// `grammar.Rev` monte a `grammar-2026-11-10.3` ; aucune source de cette couche ne change. Le corps du tag 3 d i57 se lit
+// sous la porte que le flux donne : sur la mini-bobine de 000d5950 (`minibobine.golden`) aucune attribution de kill ne
+// change, et sur les 18 temoins du banc de verite du `replay-corpus-gate` les mesures de kills (O-K) sont celles d avant. Golden
+// regenere a revision constante.

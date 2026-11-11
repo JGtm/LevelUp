@@ -40,6 +40,12 @@ type ProfilDeBalayage struct {
 	// Mouvement : descripteur de traversee, largeur d axe absolue, descripteur world-object,
 	// range de dequantification, quantum et largeur du delta, drapeaux de contexte.
 	Mouvement profile.MovementProfile
+	// Regions : la table PAR INDEX DE REGION de la carte du match ([profile.MapQuantEntry.Regions]),
+	// que `FUN_14076e524` lit apres l index : les trois axes d une position sont aux largeurs de la
+	// ligne de l index lu. Partagee en lecture seule. Vide = seule la ligne de la region jouee
+	// (`Mouvement.WorldObject`) est connue, et elle vaut pour tout index (entree de catalogue
+	// anterieure a la table, profil sans carte).
+	Regions []profile.RegionQuant
 	// Cadre : l en-tete par entite et la largeur d un mot de taille des images-cles d etat
 	// complet. Invariants du format, relus chez l ecrivain — rien ne les installe par film.
 	Cadre profile.KeyframeProfile
@@ -111,6 +117,15 @@ func (p *ProfilDeBalayage) PoserLargeursObjetDuMondeDepuisDecoupage(l profile.I0
 	// [grammaireSousCarte]).
 	p.Grammaire = grammaireSousCarte(p.Grammaire, true)
 	return replis
+}
+
+// PoserLesRegionsDeLaCarte installe la table PAR INDEX DE REGION de la carte ([profile.MapQuantEntry.Regions])
+// que `FUN_14076e524` lit apres l index : les trois axes d une position sont lus aux largeurs de la
+// ligne de l index lu, pas de la region jouee. C est le complement de
+// [ProfilDeBalayage.PoserLargeursObjetDuMondeDepuisDecoupage], qui pose la ligne de la region jouee ;
+// une entree sans table laisse le profil lire cette seule ligne pour tout index.
+func (p *ProfilDeBalayage) PoserLesRegionsDeLaCarte(e profile.MapQuantEntry) {
+	p.Regions = e.Regions
 }
 
 // grammaireSousCarte rend la grammaire d un profil selon que les LARGEURS D AXE DE LA CARTE du
@@ -283,14 +298,15 @@ type GrammaireBalayage struct {
 	// composant dead-state ne doit PAS y entrer (il est decode pour lire l index de participant
 	// du tueur absolu).
 	LargeursCalibrees map[string]int
-	// GenerationStricte exige que l eid COMPLET d un delta (tag de generation inclus)
-	// corresponde a celui pose au binding, comme le fait `FUN_1406caad8` (`entry[0] != eid` ->
-	// return 3, corps NON lu, boucle abandonnee). Defaut false : les liaisons issues des
-	// images-cles portent une generation qui peut avoir change depuis.
+	// GenerationStricte fait appliquer [World.GenerationMatches] aux chemins qui l'appellent
+	// (`DecodeFrameRecords`, le localisateur du canal des morts) : l eid COMPLET d un delta (tag de
+	// generation inclus) doit etre celui pose au binding, comme le fait `FUN_1406caad8`
+	// (`entry[0] != eid` -> return 3, corps NON lu, boucle abandonnee). Defaut false ; une liaison de
+	// generation inconnue ([World.BindWildcard]) repond a toute generation.
 	//
-	// `killsource` LE LEVE POUR TOUT SON DECODAGE ([killsource.ProfilDeDepart]) — et il le
-	// levait jusqu au lot 2.3 pour tout le PROCESSUS, donc aussi pour la cuisson du rejeu qui
-	// suivait. Ce fait est desormais porte par le profil, comme les largeurs calibrees.
+	// Elle ne gouverne PAS la garde d eid de la vue B : celle-ci lit le type par
+	// [World.ArchetypeForEID] (eid complet pour une liaison de generation connue), que cette bascule
+	// soit levee ou non. `killsource` la leve dans son profil de depart ([killsource.ProfilDeDepart]).
 	GenerationStricte bool
 	// TablesParVue applique la GARDE DE TABLE DE VUE dans la boucle d inference : un delta dont
 	// le slot appartient a une AUTRE vue n est pas un record, et la vue s arrete sur son en-tete

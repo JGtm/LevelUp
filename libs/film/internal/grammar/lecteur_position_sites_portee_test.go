@@ -80,10 +80,7 @@ func casDesExceptionsSousLaPortee() []casDeSite {
 
 // consultationsDirectesDeLaGarde : les fonctions de `lecteur_position_exceptions.go` qui consultent
 // encore la garde sans passer par [Lecteur.sousLaGardeSinonException], et pourquoi (date).
-var consultationsDirectesDeLaGarde = map[string]string{
-	"consumeFlockPosition": "2026-10-08 (plan LK) : conforme sous la garde depuis le lot J6.3, hors de " +
-		"la liste de LK.5 ; il note l exception meme sous la garde (decouverte D-20 du plan LK)",
-}
+var consultationsDirectesDeLaGarde = map[string]string{}
 
 // TestLesExceptionsDecidentLaGardeParUnSeulGeste — regle 6 : un site en exception datee decide entre la
 // lecture du jeu sous la garde et son ancien lecteur par [Lecteur.sousLaGardeSinonException] ; hors de

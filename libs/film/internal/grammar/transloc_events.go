@@ -224,7 +224,7 @@ func decodeTranslocJump(br *Lecteur, entry *profile.MapQuantEntry) ([3]float32, 
 func readTranslocVec(br *Lecteur, entry *profile.MapQuantEntry) ([3]float32, bool) {
 	var out [3]float32
 	pos, ok := lireE494Sur(br, niveauPosition, tablesDeLEntree(entry))
-	if !ok || pos.brute {
+	if !ok || pos.brute || pos.sansLigne {
 		return out, false // pas de bornes -> pas de coordonnée monde (map_bounds.go) ; brut -> pas de quanta
 	}
 	rng := profile.QuantRangeParDefautDuBuild()
@@ -252,25 +252,26 @@ func tablesDeLEntree(e *profile.MapQuantEntry) tablesDePosition {
 		return tablesDePosition{}
 	}
 	return tablesDePosition{indexW: e.EffectiveRegionIndexBits(), axesCarte: e.AxisWidths,
-		bornesCarte: bornesDeLaPlage(e.Range()), indexLisible: true}
+		bornesCarte: bornesDeLaPlage(e.Range()), regions: e.Regions, indexLisible: true}
 }
 
 // tablesDeLaRegionJouee rend les tables de `FUN_14076e524` que l entree de catalogue de la carte du
-// match fait connaitre : celles de [tablesDeLEntree], restreintes a l index de sa region jouee. La
-// grammaire de la vue A en fait une CONDITION de lecture (un autre index arrete la lecture,
-// [lireE524Sur]) ; elle n accepte donc qu une region LUE dans le jeu.
+// match fait connaitre pour la vue A : celles de [tablesDeLEntree]. Avec la table PAR INDEX de la
+// carte (`regions`), tout index declare est lisible a ses propres largeurs, la region jouee comprise.
 //
-// PROVENANCE DE [profile.MapQuantEntry.Region] (`cmd/mapquant-build`). Pour une carte dont le module
-// porte ses tags sbsp, la region est la 0 de l ordre des regions de compression du bloc
-// structure-BSP du tag de niveau (`himap.BSPQuantification`) : lue. Une region autre que 0 ne vient
-// que de `regionExterneDeclarations` (le seul site du constructeur qui pose le champ) : une carte dont
-// les regions vivent dans `ds/globals` (Live Fire, region 1 sur 4), ou la region JOUEE est tranchee
-// par mesure (ancres d objectifs du catalogue contenues dans son AABB, index des records i0 de ses
-// films), pas lue. Sous une telle entree, aucun index n est lisible : la lecture s arrete sur la porte
-// de tout index, comme sans carte, plutot que de lire des largeurs sous une region choisie a la
-// mesure. La table DEFAUT (porte a 1) reste lisible.
+// SANS cette table (entree de catalogue anterieure au champ, entree fabriquee a la main), seule la
+// ligne de la region jouee est connue : la grammaire de la vue A en fait une CONDITION de lecture (un
+// autre index arrete la lecture, [lireE524Sur]) et n accepte qu une region LUE dans le jeu. Pour une
+// carte dont le module porte ses tags sbsp, la region jouee est la 0 de l ordre des regions de
+// compression du bloc structure-BSP du tag de niveau (`himap.BSPQuantification`) : lue. Une region
+// autre que 0 ne vient que de `regionExterneDeclarations` (`cmd/mapquant-build`) : tranchee par
+// mesure, pas lue ; sous une telle entree sans table, aucun index n est lisible et la lecture
+// s arrete sur la porte de tout index, comme sans carte. La table DEFAUT (porte a 1) reste lisible.
 func tablesDeLaRegionJouee(e profile.MapQuantEntry) tablesDePosition {
 	t := tablesDeLEntree(&e)
+	if len(t.regions) > 0 {
+		return t
+	}
 	t.regionSeule, t.region = true, e.Region
 	if e.Region != regionLueDansLeTag {
 		t.indexLisible = false
@@ -296,6 +297,16 @@ func translocEntryUsable(e *profile.MapQuantEntry) bool {
 		}
 		if e.Max[ax] <= e.Min[ax] {
 			return false
+		}
+	}
+	for _, r := range e.Regions { // chaque ligne REMPLIE de la table par index commande, elle aussi, des bits lus
+		if r.Invalid {
+			continue // une region sans ligne (AABB refusee par le jeu) lit zero bit : largeurs a zero par construction
+		}
+		for ax := range 3 {
+			if r.AxisWidths[ax] == 0 || r.AxisWidths[ax] > translocMaxAxisBits || r.Max[ax] <= r.Min[ax] {
+				return false
+			}
 		}
 	}
 	return true

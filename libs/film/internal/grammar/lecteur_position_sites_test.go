@@ -146,14 +146,14 @@ func parNom(nom string, ti, niveauRegistre uint32) func(br *Lecteur) {
 func casDesSitesDePosition() []casDeSite {
 	var cas []casDeSite
 	// ti=21 i16 flock-position : FUN_140ee7270, CALL 140ee7293, niveau 0x10 (140ee7288) ; garde
-	// f91c (0 bit hors portee) puis e524. GA2-2.
+	// f91c (0 bit hors portee) puis e524.
 	for _, idx := range []int{-1, 0} {
-		cas = append(cas, casDeSite{nom: fmt.Sprintf("flock-position idx=%d", idx), indexW: 1, exception: "flock-position",
+		cas = append(cas, casDeSite{nom: fmt.Sprintf("flock-position idx=%d", idx), indexW: 1,
 			flux: e524(idx, 1, choisir(idx, axesDefautNiveau16, axesCarteNiveau16)),
 			lire: parNom("flock-position-component", 21, 0)})
 	}
 	// GA2-3 : la largeur d index est celle de la CARTE (2 bits sur une carte a quatre plages).
-	cas = append(cas, casDeSite{nom: "flock-position idx=1 carte a quatre plages", indexW: 2, exception: "flock-position",
+	cas = append(cas, casDeSite{nom: "flock-position idx=1 carte a quatre plages", indexW: 2,
 		flux: e524(1, 2, axesCarteNiveau16), lire: parNom("flock-position-component", 21, 0)})
 	// ti=44 i0 asset-transform : FUN_142ed3c64 -> 5 x FUN_142ed9530 -> FUN_14076e494(0x1E),
 	// CALL 142ed9556 ; niveau 30 : 26 bits par axe dans les DEUX tables.
@@ -290,10 +290,13 @@ func casDesVecteursDeJoueur() []casDeSite {
 			lire: parNom("crew-order-component", 14, 0)},
 		// ti=21 flock-destination : FUN_140fb8af0 (descripteur 143c96c50 + 0x28), CALL 140fb8b3e,
 		// niveau 0x10 ; R(1), garde f91c + e524, R(2) quand le niveau du registre depasse 1.
-		// EXCEPTION DATEE (lot J6-bis, 2026-09-28) : le site garde son ancien lecteur.
-		{nom: "flock-destination niveau registre 2", indexW: 1, exception: "flock-destination",
+		// Le portage unique lit comme le jeu : la region de l index lu decide des largeurs.
+		{nom: "flock-destination niveau registre 2", indexW: 1,
 			flux: concat(seul(bit(true)), e524(-1, 1, axesDefautNiveau16), seul(fixe(2))),
 			lire: parNom("flock-destination-component", 21, 2)},
+		{nom: "flock-destination niveau registre 1, index 0", indexW: 1,
+			flux: concat(seul(bit(true)), e524(0, 1, axesCarteNiveau16)),
+			lire: parNom("flock-destination-component", 21, 1)},
 		// ti=5 i12 player-desired-respawn-location : FUN_142f03ec8 (descripteur 143d0f2f8 + 0x28),
 		// CALL 142f03f0d ; porte, e494, FUN_14076dc04 = R(19).
 		// EXCEPTION DATEE (lot J6-bis, 2026-09-28) : le site garde son ancien lecteur.
