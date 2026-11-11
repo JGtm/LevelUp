@@ -46,13 +46,22 @@
 //
 //  1. Migration DB : ajouter la colonne dans `internal/migration/steps_player*.go`
 //     via `addColumnIfMissing(db, "player_match_enrichment", "X", "DOUBLE")`.
-//  2. Ajouter le champ pointer dans `EnrichmentRow` (rows.go).
-//  3. Ajouter une entrée dans la liste de champs de
+//  2. Projeter la colonne dans la vue de lecture : ajouter `{"X", "<étape>"}` à
+//     `pmeColumnStage` (`internal/migration/steps_player_append_only_match_enrichment.go`).
+//     La vue `player_match_enrichment_latest` ne sert QUE les colonnes de cette liste, sous
+//     l'étape propriétaire qui les écrit ; une colonne absente est écrite puis jamais lue
+//     (la table est append-only : la lecture passe par la vue, règle ART n°2).
+//  3. Ajouter le champ pointer dans `EnrichmentRow` (rows.go).
+//  4. Ajouter une entrée dans la liste de champs de
 //     `player_persister.go::enrichmentFields()` :
 //     `if row.X != nil { append(fields, fieldEntry{"X", *row.X}) }`.
-//  4. Implémenter le compute pur dans `internal/analysis/*` ou `internal/sync/*`.
-//  5. Brancher dans l'orchestrator : `builder.SetEnrichment(enrichmentRow)`.
-//  6. Test TDD dans `player_persister_test.go` qui assigne le champ et vérifie
+//  5. Si la colonne est aussi écrite par une étape post-sync (BatchUpdateColumn) : l'ajouter à
+//     `enrichmentColumnStage` (`post_sync_enrichment_persister.go`), avec LE MÊME stage que dans
+//     `pmeColumnStage`. `TestEnrichmentColumnStage_LieALaVueMergeOnRead` échoue si une colonne
+//     de cette liste n'existe pas, n'est pas projetée par la vue ou y est lue sous un autre stage.
+//  6. Implémenter le compute pur dans `internal/analysis/*` ou `internal/sync/*`.
+//  7. Brancher dans l'orchestrator : `builder.SetEnrichment(enrichmentRow)`.
+//  8. Test TDD dans `player_persister_test.go` qui assigne le champ et vérifie
 //     qu'il est persisté en DB.
 //
 // **Extensibilité — ajouter une NOUVELLE TABLE shared** :

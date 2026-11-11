@@ -3,13 +3,10 @@
 //
 // **Property clé — ajout facile d'enrichment** :
 //
-//   Pour ajouter un enrichment local à player_match_enrichment :
-//
-//     1. Migration DB → addColumnIfMissing(db, "player_match_enrichment", "X", "DOUBLE")
-//     2. Champ pointer dans EnrichmentRow (rows.go) : `X *float64`
-//     3. 1 if-block dans enrichmentFields() (ce fichier)
-//
-//   C'est tout. Pas de SQL à modifier (INSERT dynamique sur fields non-nil).
+//   Pour ajouter un enrichment local à player_match_enrichment : la recette complète est dans
+//   doc.go (migration, projection dans la vue par pmeColumnStage, champ de EnrichmentRow, if-block
+//   de enrichmentFields() dans ce fichier). Pas de SQL à modifier (INSERT dynamique sur fields
+//   non-nil).
 //
 // Architecture identique à SharedPersister : 1 transaction par batch, INSERT-only,
 // idempotence par EXISTS(player_match_enrichment WHERE match_id = ? AND stage='live').
@@ -165,10 +162,8 @@ type fieldEntry struct {
 // enrichmentFields produit la liste des colonnes à INSERTer pour cette row
 // (uniquement les champs pointer non-nil, plus le PK match_id).
 //
-// RECETTE 3 ÉTAPES pour ajouter un enrichment local (ADR 0019 + persist/doc.go) :
-//  1. migration ALTER TABLE (nouvelle colonne) ;
-//  2. champ pointer dans EnrichmentRow ;
-//  3. if-block ci-dessous ajoutant le fieldEntry.
+// Recette d'ajout d'un enrichment local (ADR 0019) : persist/doc.go. Ce fichier porte l'étape
+// « if-block ci-dessous ajoutant le fieldEntry ».
 func enrichmentFields(row *EnrichmentRow) []fieldEntry {
 	fields := []fieldEntry{
 		{"match_id", row.MatchID},

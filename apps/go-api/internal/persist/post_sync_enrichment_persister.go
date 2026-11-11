@@ -49,7 +49,9 @@ func NewPostSyncEnrichmentPersister(db txBeginner) *PostSyncEnrichmentPersister 
 // enrichmentColumnStage mappe chaque colonne persistable vers son `stage`
 // propriétaire (append-only #23645). Sert AUSSI de whitelist anti SQL injection
 // (les noms sont concaténés dans la query). Doit rester aligné avec pmeColumnStage
-// de la migration (internal/migration/steps_player_append_only_match_enrichment.go).
+// de la migration (internal/migration/steps_player_append_only_match_enrichment.go) :
+// TestEnrichmentColumnStage_LieALaVueMergeOnRead tient l'alignement (colonne projetée par la
+// vue, lue sous le même stage).
 // stageEngagement : stage le plus fréquent (colonnes engagement). Constante pour
 // éviter la répétition du littéral (goconst). NOTE factorisation : ce mapping
 // duplique pmeColumnStage (migration) — à unifier en single source.
