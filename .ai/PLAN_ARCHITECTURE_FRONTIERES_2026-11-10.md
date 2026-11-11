@@ -473,3 +473,10 @@ deux graphes de 7.3.
   de tests, correction des données.
 - `stores/createFilterStore.ts` et `lib/api/types.ts:1482`, qui importent `features/` : relevés
   hors périmètre par l'audit, à reprendre si le lint corrigé de 7.1 les fait remonter.
+- (documentation des 4 commandes gardées, 2026-11-11) `backfill-media-hls` : `--delete-source` vaut `true` par
+  défaut alors que `RunHLSTranscode` documente la conservation comme défaut sûr ; signalé en gras dans la
+  documentation. Non traité, décision de l'utilisateur à demander.
+- (idem) `backfill_time_played` : UPDATE ligne à ligne sur `match_participants` hors `persist`, sans sauvegarde ;
+  le commentaire « pas de risque ART » n'est pas vérifié. Non traité.
+- (idem) `purge_corrupt_records` : `log.Fatalf` au milieu du parcours des joueurs (arrêt à mi-course), paquet
+  `log` au lieu de `slog`, pas de sauvegarde. Non traité.
