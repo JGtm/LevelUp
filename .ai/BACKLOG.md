@@ -15,6 +15,12 @@
 
 ---
 
+### [boot/auth] Le démarrage attend la résolution du pool de jetons avant d'ouvrir le port
+
+**Constaté le 2026-11-11** (déploiement de la 8.1.2 pendant l'indisponibilité du service de jetons Halo). `initAccountsPool` résout tous les comptes découverts (`resolveBootSources`, délai de 20 s par échange) avant `démarrage : serveur prêt` : 122 s de démarrage avec douze comptes, le déploiement déclaré en échec à 90 s (attente portée à 240 s depuis), les jobs regen démo et ouvrier sautés. Le pool se remplissant désormais à chaud (`AllowEmpty`, re-scan, connexion), le démarrage pourrait créer le pool vide et résoudre les comptes en tâche de fond : port ouvert en quelques secondes, auto-sync dès la première résolution.
+
+---
+
 ### [bureau/auth] Connexion Microsoft dans le navigateur : « redirect_uri » refusé par Azure
 
 **Constaté le 2026-11-11** (poste de l'utilisateur, v8.1.1). Le serveur construit `http://localhost:<port lié>/auth/xbox/callback` (`handlers/auth_browser_login.go`, port mémorisé dans `desktop/port`, 53891 sur ce poste). Microsoft répond `invalid_request … redirect_uri … not valid` : l'enregistrement Azure du client `e1cb35ab` ne porte pas `http://localhost/auth/xbox/callback` sous la plateforme « Applications mobiles et de bureau » (seule plateforme où le port est libre ; sous « Web » le port doit correspondre exactement). Rien dans le code ni dans les bases copiées ne change cette adresse. **Réglé côté Azure le 2026-11-11 par l'utilisateur** (adresse ajoutée à l'inscription) ; reste à vérifier depuis l'application une fois les services Halo revenus. Le code d'appareil avait échoué le même jour pour une autre raison : `settings.svc.halowaypoint.com/spartan-token` en dépassement de délai (service de jetons Halo injoignable ce jour-là, voir l'entrée du journal).
