@@ -109,8 +109,15 @@ func (h *MediaHandler) filePathToURL(slug, storedPath, capturesBase string) stri
 //
 // Path stocké legacy : absolu (ex: "C:\old\layout\JGtm\thumbs\xxx.gif"). On
 // tente 3 préfixes (capturesBase+slug, capturesBase brut, repoRoot interne)
-// pour relativiser et fallback à absPath si rien ne matche. Cette branche
-// disparaîtra une fois le script de migration DB exécuté.
+// pour relativiser et fallback à absPath si rien ne matche.
+//
+// BRANCHE DE COMPATIBILITÉ (créée le 2026-07-01). Retrait cible : 2026-12-31.
+// Critère mesurable, relevé en lecture seule sur la production : 0 ligne de
+// media_files (metadata.duckdb) dont file_path ou thumbnail_path est absolu (lettre
+// de lecteur ou « / » initial), ET 0 ligne de journal « mediaStoredPathToURL: aucun
+// mapping trouvé » sur 30 jours. Critère tenu : supprimer tout ce qui suit le test
+// IsAbs, avec relIfWithin et relFromSlugMarker, et leurs tests. Non tenu : repousser
+// la date ici avec la nouvelle mesure.
 func mediaStoredPathToURL(slug, storedPath, capturesBase, repoRoot string) string {
 	if storedPath == "" {
 		return storedPath
