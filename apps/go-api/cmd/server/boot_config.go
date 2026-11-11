@@ -187,7 +187,6 @@ func setupLogging(st *bootState) {
 	//     limiter le bruit console (préservés dans logs/{module}.log JSON).
 	//   - text             : slog.NewTextHandler natif (verbose, pre-sprint).
 	//   - json             : slog.NewJSONHandler (prod).
-	// Rétro-compat : LEVELUP_LOG_JSON=true → format=json.
 	// Niveau via LEVELUP_LOG_LEVEL (défaut INFO).
 	logLevel := config.ConsoleLogLevel()
 

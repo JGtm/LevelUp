@@ -312,7 +312,7 @@ ENV LEVELUP_RESOURCES_DIR=/app \
     LEVELUP_LOGS_DIR=/app/data/logs \
     LEVELUP_WEB_DIST=/app/apps/web/dist \
     LEVELUP_API_HOST=0.0.0.0 \
-    LEVELUP_LOG_JSON=true
+    LEVELUP_LOG_FORMAT=json
 
 # Healthcheck Go (endpoint natif)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \

@@ -19,7 +19,7 @@ const (
 type Config struct {
 	// LogsDir : répertoire où écrire les fichiers `{module}.log`.
 	// Vide → file logging désactivé (console uniquement).
-	// Par défaut : `logs/` en non-prod, vide en prod (LEVELUP_LOG_JSON=true).
+	// Par défaut : `logs/` sous la racine du dépôt (LEVELUP_LOGS_ENABLED=false : vide).
 	// Override via LEVELUP_LOGS_DIR.
 	LogsDir string
 
@@ -45,9 +45,7 @@ type Config struct {
 	//   - "compact" (défaut) : `HH:MM:SS [LEVEL] msg key=val ...` (ConsoleHandler)
 	//   - "text"             : slog.NewTextHandler (verbose, pre-sprint)
 	//   - "json"             : slog.NewJSONHandler (prod)
-	// Override via LEVELUP_LOG_FORMAT=compact|text|json. La var legacy
-	// LEVELUP_LOG_JSON=true force "json" si LEVELUP_LOG_FORMAT n'est pas
-	// défini (rétro-compat).
+	// Override via LEVELUP_LOG_FORMAT=compact|text|json.
 	ConsoleFormat string
 
 	// MaxLineWidth : tronquage des lignes console au-delà de N caractères.
@@ -107,10 +105,8 @@ func (cfg Config) WithTitleNamespace(titleSlug string) Config {
 	return cfg
 }
 
-// parseConsoleFormat résout le format console selon (priorité) :
-//  1. LEVELUP_LOG_FORMAT explicite (compact|text|json)
-//  2. LEVELUP_LOG_JSON=true → json (rétro-compat)
-//  3. Défaut → compact
+// parseConsoleFormat résout le format console : LEVELUP_LOG_FORMAT explicite
+// (compact|text|json), sinon compact.
 func parseConsoleFormat() string {
 	switch strings.ToLower(strings.TrimSpace(os.Getenv("LEVELUP_LOG_FORMAT"))) {
 	case ConsoleFormatCompact:
@@ -118,9 +114,6 @@ func parseConsoleFormat() string {
 	case ConsoleFormatText:
 		return ConsoleFormatText
 	case ConsoleFormatJSON:
-		return ConsoleFormatJSON
-	}
-	if parseBoolEnv("LEVELUP_LOG_JSON", false) {
 		return ConsoleFormatJSON
 	}
 	return ConsoleFormatCompact

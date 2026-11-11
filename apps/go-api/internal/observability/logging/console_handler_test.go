@@ -385,27 +385,22 @@ func TestConsoleHandler_ConcurrentWrites(t *testing.T) {
 	}
 }
 
-// TestParseConsoleFormat : la combinatoire LEVELUP_LOG_FORMAT × LEVELUP_LOG_JSON
-// résout au bon format avec la priorité documentée.
+// TestParseConsoleFormat : LEVELUP_LOG_FORMAT résout au bon format, compact sinon.
 func TestParseConsoleFormat(t *testing.T) {
 	cases := []struct {
-		name       string
-		format     string
-		jsonLegacy string
-		want       string
+		name   string
+		format string
+		want   string
 	}{
-		{"default", "", "", "compact"},
-		{"explicit_compact", "compact", "", "compact"},
-		{"explicit_text", "text", "", "text"},
-		{"explicit_json", "json", "", "json"},
-		{"legacy_json", "", "true", "json"},
-		{"format_wins_over_legacy", "compact", "true", "compact"},
-		{"unknown_falls_back", "weird", "", "compact"},
+		{"default", "", "compact"},
+		{"explicit_compact", "compact", "compact"},
+		{"explicit_text", "text", "text"},
+		{"explicit_json", "json", "json"},
+		{"unknown_falls_back", "weird", "compact"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Setenv("LEVELUP_LOG_FORMAT", c.format)
-			t.Setenv("LEVELUP_LOG_JSON", c.jsonLegacy)
 			got := parseConsoleFormat()
 			if got != c.want {
 				t.Errorf("parseConsoleFormat() = %q, want %q", got, c.want)

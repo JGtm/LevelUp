@@ -13,7 +13,7 @@
 //	LEVELUP_REPO_ROOT    — racine du repo (par défaut : auto-détection)
 //	LEVELUP_API_PORT     — port d'écoute (défaut : 8000)
 //	LEVELUP_DEMO_MODE    — "true" pour activer le mode démo
-//	LEVELUP_LOG_JSON     — "true" pour la console au format JSON (prod), défaut: compact
+//	LEVELUP_LOG_FORMAT   — format de la console : compact (défaut) | text | json (prod)
 package main
 
 import (
