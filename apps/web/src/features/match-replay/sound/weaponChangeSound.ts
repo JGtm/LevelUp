@@ -52,7 +52,7 @@
  * en plus le bruit du ramassage d'arme ferait entendre une arme là où il n'y en a pas.
  */
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
+import { durationToFrames, frameToMs } from '../../../lib/replay/replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 
 /**
@@ -108,7 +108,7 @@ function nativePickupsNotAlreadyHeard(
   // rejeu doit se taire sur ce qu'il ne porte pas, pas lever.
   if (!doc.pickups?.length) return []
   const heard = doc.weaponChanges.filter((c) => c.kind !== 'dropped')
-  const matchFrames = msToFrames(NATIVE_PICKUP_MATCH_MS, doc)
+  const matchFrames = durationToFrames(NATIVE_PICKUP_MATCH_MS, doc)
   return doc.pickups.filter((p) => {
     if (p.kind !== 'weapon') return false
     return !heard.some(

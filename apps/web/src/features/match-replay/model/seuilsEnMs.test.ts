@@ -46,6 +46,12 @@ describe('durées des effets : la même durée réelle à 100 et à 33 ms', () =
     expect(msToFrames(BLINK_PERIOD_MS, d)).toBe(10)
   })
 
+  it('un document sans pas redonne les anciens nombres d images (pas historique de 100 ms)', () => {
+    const sansPas = {} as unknown as ReplayDocumentReady
+    expect(bombBlastHoldFrames(sansPas)).toBe(12)
+    expect(flagCaptureHoldFrames(sansPas)).toBe(6)
+  })
+
   it.each(PAS)("la déflagration et l'onde de capture durent la même durée réelle à %i ms", (pas) => {
     const d = docAuPas(pas)
     for (const [hold, ms] of [

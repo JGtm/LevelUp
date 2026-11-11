@@ -344,7 +344,28 @@ export function frameToMs(frame: number, doc: ReplayDocumentReady): number {
   return interval > 0 ? frame * interval : (frame / FALLBACK_FPS) * 1000
 }
 
-/** msToFrames convertit une durée réelle (ms) en nombre de frames. */
+/**
+ * Pas historique d'un rejeu, en ms : celui des artefacts d'avant la cadence variable. Un document qui ne publie pas
+ * son pas se lit à ce pas pour convertir une DURÉE en images (seuils, effets, sons), ce qui rend exactement les nombres
+ * d'images que portaient ces seuils quand ils s'écrivaient en images. Ne touche pas l'horloge ([FALLBACK_FPS]).
+ */
+export const HISTORICAL_FRAME_INTERVAL_MS = 100
+
+/** durationFrameMs : la durée d'une image pour convertir une durée en images (pas du document, sinon le pas historique). */
+export function durationFrameMs(doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>): number {
+  const interval = doc.frameIntervalMs ?? 0
+  return interval > 0 ? interval : HISTORICAL_FRAME_INTERVAL_MS
+}
+
+/**
+ * durationToFrames convertit une DURÉE (seuil, effet, tolérance de son) en images. À distinguer de [msToFrames], qui est
+ * l'inverse de [frameToMs] pour un INSTANT de l'horloge de lecture : un document sans pas se lit ici au pas historique.
+ */
+export function durationToFrames(ms: number, doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>): number {
+  return ms / durationFrameMs(doc)
+}
+
+/** msToFrames convertit un instant de l'horloge de lecture (ms) en nombre de frames (inverse de [frameToMs]). */
 export function msToFrames(ms: number, doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>): number {
   const interval = doc.frameIntervalMs ?? 0
   return interval > 0 ? ms / interval : (ms / 1000) * FALLBACK_FPS

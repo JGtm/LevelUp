@@ -80,7 +80,7 @@ import type {
   ReplayObjectiveObjectReady,
   ReplaySkullCarry,
 } from '../../../lib/replay/replayNormalize'
-import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
+import { durationToFrames, frameToMs } from '../../../lib/replay/replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 import { scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
@@ -245,8 +245,8 @@ export function skullSoundEvents(
   const carries: readonly ReplaySkullCarry[] = doc.skullCarries ?? []
   if (carries.length === 0) return []
   const lives = doc.objectiveObjects ?? []
-  const toleranceFrames = msToFrames(TOLERANCE_MS, doc)
-  const retombeeFrames = msToFrames(RETOMBEE_MS, doc)
+  const toleranceFrames = durationToFrames(TOLERANCE_MS, doc)
+  const retombeeFrames = durationToFrames(RETOMBEE_MS, doc)
   const out: ReplaySoundEvent[] = []
 
   // LES APPARITIONS SONT UN ENSEMBLE D'INSTANTS, pas une suite de `push` : l'apparition

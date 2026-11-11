@@ -27,6 +27,8 @@ const (
 	MetricCompressFailed = "replay_regen_compress_failed_total"
 	// MetricStale : jauge, rejeux en retard au dernier décompte.
 	MetricStale = "replay_regen_stale"
+	// MetricRaw : jauge, rejeux bruts restants au dernier décompte.
+	MetricRaw = "replay_regen_raw"
 )
 
 // Erreurs de la file.
@@ -110,6 +112,7 @@ type Service struct {
 	// demande explicite ([Service.Rescan]) ; Status ne le relance jamais.
 	checked  bool
 	stale    int
+	raw      int
 	scanning bool
 	blocked  map[string]struct{}
 	// countSeq numérote les décomptes à leur lancement ; countApplied est le numéro du dernier publié. Un
@@ -184,7 +187,7 @@ func (s *Service) statusLocked() domain.ReplayRegenStatus {
 		stale = max(s.total-s.done, 0)
 	}
 	return domain.ReplayRegenStatus{
-		Checked: s.checked || s.running, Stale: stale, Running: s.running, Done: s.done, Total: s.total,
+		Checked: s.checked || s.running, Stale: stale, Raw: s.raw, Running: s.running, Done: s.done, Total: s.total,
 		Paused: s.running && s.userPaused, WaitingForGame: s.running && s.waitingGame, Failed: s.failed,
 		Compressing: s.running && s.compressing, Compressed: s.compressed, CompressFailed: s.compressFailed,
 	}
@@ -341,14 +344,14 @@ func (s *Service) finish(ctx context.Context, interrupted bool) {
 	done, total, failed := s.done, s.total, s.failed
 	s.mu.Unlock()
 
-	cands, err := s.scanUnderGate(ctx)
+	n, err := s.countUnderGate(ctx)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err != nil {
 		s.checked = wasChecked
 		slog.WarnContext(ctx, "replay_regen: décompte final impossible", "err", err)
 	} else {
-		s.publishCountLocked(seq, len(cands))
+		s.publishCountLocked(seq, n)
 	}
 	slog.InfoContext(ctx, "replay_regen: file terminée", "done", done, "total", total, "failed", failed)
 }

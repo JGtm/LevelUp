@@ -51,7 +51,7 @@
  * colline sonne quand même, elle n'affirme rien.
  */
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
+import { durationToFrames, frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 import { covers } from '../model/replaySpans'
 
@@ -192,7 +192,7 @@ export function zoneSoundEvents(
   const zones: readonly ZoneStateLike[] = doc.zoneStates ?? []
   if (zones.length === 0) return []
   const out: ReplaySoundEvent[] = []
-  const toleranceFrames = msToFrames(TOLERANCE_MS, doc)
+  const toleranceFrames = durationToFrames(TOLERANCE_MS, doc)
   const cote = (owner: number | null | undefined): ZoneSide | undefined => {
     if (allyTeam === null || owner === null || owner === undefined) return undefined
     return owner === allyTeam ? 'ally' : 'enemy'

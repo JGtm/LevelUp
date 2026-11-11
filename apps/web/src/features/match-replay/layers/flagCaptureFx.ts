@@ -31,7 +31,7 @@
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
 import { type CanvasView, projectTo } from '../model/replayView'
-import { msToFrames, type XY } from '../../../lib/replay/replayLogic'
+import { durationToFrames, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
@@ -86,7 +86,7 @@ export const FLAG_CAPTURE_HOLD_MS = 600
 
 /** flagCaptureHoldFrames rend la durée de l'effet en images du document (fractionnaire si la grille ne tombe pas juste). */
 export function flagCaptureHoldFrames(doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>): number {
-  return msToFrames(FLAG_CAPTURE_HOLD_MS, doc)
+  return durationToFrames(FLAG_CAPTURE_HOLD_MS, doc)
 }
 
 /** Fenêtre d'affichage (même forme que celle des pulses d'objectif). */

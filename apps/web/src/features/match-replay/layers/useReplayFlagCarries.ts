@@ -50,7 +50,7 @@ import {
 } from './flagCaptureFx'
 import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
 import { buildFlagReturnDrops, drawFlagReturnZones } from './flagReturnZone'
-import { frameToMs, type XY } from '../../../lib/replay/replayLogic'
+import { durationFrameMs, frameToMs, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /** Le camp d'un drapeau VU DU JOUEUR REGARDÉ — `unknown` quand le film ne le situe pas. */
@@ -161,7 +161,7 @@ export function useReplayFlagCarries({
   )
 
   const layer = useMemo<FlagCarriesInput>(
-    () => ({ style: { colorOfTeam: inkOfTeam, outline, reducedMotion, frameMs: frameToMs(1, doc) }, posOf }),
+    () => ({ style: { colorOfTeam: inkOfTeam, outline, reducedMotion, frameMs: durationFrameMs(doc) }, posOf }),
     [inkOfTeam, outline, reducedMotion, posOf, doc],
   )
 

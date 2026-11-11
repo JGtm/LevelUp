@@ -15,12 +15,13 @@ func documentAuPas(pas int) *Document {
 }
 
 // TestImages_ConvertitUneDureeAvecLePasDuDocument : la conversion arrondit vers le bas (une
-// tolerance ne s'elargit jamais), et un document sans pas se lit a la cadence historique.
+// tolerance ne s'elargit jamais) ; un document sans pas n'a AUCUN repli : LireDocument le refuse, et un Document
+// construit a la main sans pas rend 0 image (jamais une tolerance elargie).
 func TestImages_ConvertitUneDureeAvecLePasDuDocument(t *testing.T) {
 	cas := []struct{ pas, ms, veut int }{
 		{100, 200, 2}, {100, 500, 5}, {100, 100, 1},
 		{33, 200, 6}, {33, 500, 15}, {33, 100, 3},
-		{0, 500, 5}, // artefact ancien sans `frameIntervalMs` : 100 ms
+		{0, 500, 0}, // pas absent : aucune image, pas de repli
 	}
 	for _, c := range cas {
 		d := &Document{FrameIntervalMs: c.pas}
@@ -147,5 +148,13 @@ func TestTrajet_ToleranceDEchantillonEstUneDuree(t *testing.T) {
 				Rides:   []Trajet{{T0: 0, T1: 100, Slot: 512}}}}
 			exigerViolations(t, Noter(d, faitsJustes(), nil), ViolTrajetLoin, c.faux)
 		}
+	}
+}
+
+// TestLireDocument_RefuseUnPasAbsent : la seule porte des documents lus refuse un artefact sans pas positif ; c'est
+// pourquoi la conversion des durees n'a pas de repli.
+func TestLireDocument_RefuseUnPasAbsent(t *testing.T) {
+	if _, err := LireDocument([]byte(`{"matchId":"m","tracks":[]}`)); err == nil {
+		t.Fatal("un artefact sans frameIntervalMs doit etre refuse")
 	}
 }

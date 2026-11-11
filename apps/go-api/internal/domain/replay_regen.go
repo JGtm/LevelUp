@@ -13,6 +13,10 @@ type ReplayRegenStatus struct {
 	// Stale : rejeux rangés plus anciens que la version de l'application et régénérables (film encore dans l'archive).
 	// Pendant la file : ce qu'il en reste.
 	Stale int `json:"stale" doc:"Rejeux rangés en retard sur la version de l'application, dont le film est encore dans l'archive. Pendant la régénération : ce qu'il en reste."`
+	// Raw : rejeux encore en JSON brut (avant la compression des rejeux), comptés par les noms de fichiers au même
+	// décompte que Stale. Quand il ne reste que des bruts (Stale = 0), la passe lancée par l'utilisateur ne fait que
+	// les compresser.
+	Raw int `json:"raw" doc:"Rejeux encore en JSON brut, à compresser. La passe de l'utilisateur les compresse, même sans rejeu à refaire."`
 	// Running : la file de régénération est active (en pause comprise).
 	Running bool `json:"running" doc:"La file de régénération est active (mise en pause comprise)."`
 	// Done : rejeux traités par la file courante ou la dernière (régénérés, déjà à jour, écartés ou en échec).

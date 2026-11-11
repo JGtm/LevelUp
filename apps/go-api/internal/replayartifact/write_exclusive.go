@@ -14,8 +14,11 @@ package replayartifact
 //     s'il existe ([Read]). Un échec d'écriture supprime le fichier partiel ; un arrêt brutal en laisse un, que la
 //     conversion du parc reconnaît et reprend (`replaybuild.CompressDir`).
 //
-// Toute erreur du lien dur autre que « la cible existe » est lue comme un refus : le repli est lui-même exclusif,
-// donc sans danger si l'erreur avait une autre cause (il rend alors la sienne).
+// Toute erreur du lien dur autre que « la cible existe » fait replier CE fichier (le repli est lui-même exclusif, donc
+// sans danger si l'erreur avait une autre cause : il rend alors la sienne). Mais le DOSSIER n'est mémorisé « sans lien
+// dur » que sur une erreur qui signifie « non pris en charge » ([lienNonPrisEnCharge]) : une erreur transitoire
+// (antivirus, violation de partage) ne condamne pas le lien dur pour tout le processus ; elle est journalisée (WARN) et
+// comptée ([CounterLinkError]).
 
 import (
 	"context"
@@ -25,7 +28,10 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"sync"
+	"syscall"
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
@@ -33,6 +39,10 @@ import (
 
 // CounterLinkFallback : artefacts posés par création exclusive parce que le dossier refuse le lien dur.
 const CounterLinkFallback = "replay_artifact_link_fallback_total"
+
+// CounterLinkError : liens durs refusés par une erreur qui NE signifie PAS « non pris en charge » (le fichier est posé par
+// le repli, le dossier n'est pas mémorisé).
+const CounterLinkError = "replay_artifact_link_error_total"
 
 // Points d'injection des tests ; la production n'a qu'une valeur de chacun.
 var (
@@ -46,6 +56,36 @@ var (
 		return f.Sync()
 	}
 )
+
+// Codes Windows d'un lien dur refusé par le système de fichiers : ERROR_INVALID_FUNCTION (exFAT, FAT32 renvoient
+// « Incorrect function »), ERROR_NOT_SUPPORTED, ERROR_CALL_NOT_IMPLEMENTED.
+var codesWindowsSansLien = []syscall.Errno{1, 50, 120}
+
+// Codes POSIX : EPERM (FAT et exFAT sous Linux refusent le lien par « Operation not permitted »), ENOTSUP et
+// EOPNOTSUPP (même valeur ou non selon l'OS), ENOSYS.
+var codesPosixSansLien = []syscall.Errno{syscall.EPERM, syscall.ENOTSUP, syscall.EOPNOTSUPP, syscall.ENOSYS}
+
+// lienNonPrisEnCharge dit si l'erreur d'un lien dur signifie « ce système de fichiers ne sait pas faire de lien dur » :
+// `errors.ErrUnsupported` (que la bibliothèque standard fait correspondre à ENOSYS, ENOTSUP, EOPNOTSUPP et
+// ERROR_NOT_SUPPORTED) ou l'un des codes ci-dessus de l'OS courant. Tout le reste (accès refusé, violation de partage,
+// disque plein) est traité comme transitoire.
+func lienNonPrisEnCharge(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, errors.ErrUnsupported) {
+		return true
+	}
+	var errno syscall.Errno
+	if !errors.As(err, &errno) {
+		return false
+	}
+	codes := codesPosixSansLien
+	if runtime.GOOS == "windows" {
+		codes = codesWindowsSansLien
+	}
+	return slices.Contains(codes, errno)
+}
 
 // dossiersSansLienDur : les dossiers dont le lien dur a été refusé dans ce processus (clé : le dossier).
 var dossiersSansLienDur sync.Map
@@ -77,9 +117,15 @@ func WriteIfAbsent(ctx context.Context, outPath string, doc []byte) (written str
 		if !errors.As(err, &refus) {
 			return written, orNil(stored, err), created, err
 		}
-		dossiersSansLienDur.Store(dir, struct{}{})
-		slog.InfoContext(ctx, "replayartifact: ce dossier refuse le lien dur (exFAT, FAT32 ?) — les artefacts y sont "+
-			"posés par création exclusive", "dir", dir, "err", refus.err)
+		if lienNonPrisEnCharge(refus.err) {
+			dossiersSansLienDur.Store(dir, struct{}{})
+			slog.InfoContext(ctx, "replayartifact: ce dossier refuse le lien dur (exFAT, FAT32 ?) — les artefacts y sont "+
+				"posés par création exclusive", "dir", dir, "err", refus.err)
+		} else {
+			observability.IncCounter(CounterLinkError)
+			slog.WarnContext(ctx, "replayartifact: lien dur refusé pour une raison qui n'est pas « non pris en charge » — "+
+				"cet artefact est posé par création exclusive, le dossier n'est pas mémorisé", "path", written, "err", refus.err)
+		}
 	}
 	created, err = poserParCreationExclusive(ctx, written, stored)
 	if err == nil && created {

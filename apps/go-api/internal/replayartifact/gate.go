@@ -137,29 +137,41 @@ func Read(path string) (Content, error) {
 		return Content{}, err
 	}
 	c, err := readLocated(path, f)
-	if err == nil || errors.Is(err, fs.ErrNotExist) || !strings.HasSuffix(f.Path, title.ReplayArtifactExt) {
+	if err == nil || errors.Is(err, fs.ErrNotExist) {
 		return c, err
 	}
+	if !strings.HasSuffix(f.Path, title.ReplayArtifactExt) {
+		return Content{}, reportUnreadable(f.Path, err)
+	}
 	// Un compressé illisible (reste d'une écriture interrompue, ou écriture en cours sur un système de fichiers sans
-	// lien dur) ne masque pas un brut valide du même match : le brut est lu, l'anomalie est déjà journalisée.
+	// lien dur) ne masque pas un brut valide du même match : le brut est lu.
+	if apresEchecDeLecture != nil {
+		apresEchecDeLecture(f.Path)
+	}
 	_, legacy := title.ReplayArtifactCandidates(path)
-	if legacy == "" {
-		return Content{}, err
+	if legacy != "" {
+		if lf, lerr := os.Stat(legacy); lerr == nil && !lf.IsDir() {
+			lc, lerr := readLocated(legacy, File{Path: legacy, Info: lf})
+			if lerr == nil {
+				slog.WarnContext(context.Background(), "replayartifact: .json.gz illisible, le .json voisin est lu",
+					"compresse", f.Path, "brut", legacy, "err", err)
+				return lc, nil
+			}
+			slog.WarnContext(context.Background(), "replayartifact: .json voisin illisible aussi", "brut", legacy, "err", lerr)
+		}
 	}
-	lf, lerr := os.Stat(legacy)
-	if lerr != nil || lf.IsDir() {
-		return Content{}, err
+	// Une seule relecture : l'écriture du compressé a pu s'achever depuis (le brut, retiré entre-temps, n'est alors plus là).
+	if rc, rerr := readLocated(path, f); rerr == nil {
+		return rc, nil
 	}
-	lc, lerr := readLocated(legacy, File{Path: legacy, Info: lf})
-	if lerr != nil {
-		return Content{}, err
-	}
-	slog.WarnContext(context.Background(), "replayartifact: .json.gz illisible, le .json voisin est lu",
-		"compresse", f.Path, "brut", legacy)
-	return lc, nil
+	return Content{}, reportUnreadable(f.Path, err)
 }
 
-// readLocated lit le fichier `f` résolu pour `path` et le décode.
+// apresEchecDeLecture : point d'injection des tests, appelé entre l'échec de lecture d'un compressé et la recherche de
+// son brut voisin (la fenêtre d'une écriture en cours).
+var apresEchecDeLecture func(path string)
+
+// readLocated lit le fichier `f` résolu pour `path` et le décode. Aucun journal ni compteur : l'appelant décide.
 func readLocated(path string, f File) (Content, error) {
 	stored, err := os.ReadFile(f.Path) //nolint:gosec // chemin résolu par la porte
 	if errors.Is(err, fs.ErrNotExist) {
@@ -171,14 +183,14 @@ func readLocated(path string, f File) (Content, error) {
 		stored, err = os.ReadFile(f.Path) //nolint:gosec // chemin résolu par la porte
 	}
 	if err != nil {
-		return Content{}, reportUnreadable(f.Path, err)
+		return Content{}, err
 	}
 	if err := checkStored(f.Path, stored); err != nil {
-		return Content{}, reportUnreadable(f.Path, err)
+		return Content{}, err
 	}
 	doc, err := Decode(stored)
 	if err != nil {
-		return Content{}, reportUnreadable(f.Path, err)
+		return Content{}, err
 	}
 	return Content{JSON: doc, StoredBytes: len(stored), Path: f.Path}, nil
 }
@@ -195,6 +207,11 @@ func checkStored(path string, stored []byte) error {
 	}
 	return nil
 }
+
+// ValidateStored dit si des octets lus dans le fichier `path` sont ceux d'un artefact : refuse un fichier vide et un
+// fichier nommé `.json.gz` sans en-tête gzip. Pour la conversion d'un parc, qui lit chaque fichier tel qu'il est rangé
+// ([ReadStored]) et doit juger « illisible » un `.json.gz` de 0 ou 1 octet que [Decode], lui, rend tel quel.
+func ValidateStored(path string, stored []byte) error { return checkStored(path, stored) }
 
 func hasGzipMagic(b []byte) bool { return len(b) >= 2 && b[0] == 0x1f && b[1] == 0x8b }
 

@@ -33,6 +33,17 @@ function seuilsEnImages(src: string): string[] {
   return [...src.matchAll(SEUIL_EN_IMAGES)].map((m) => m[1])
 }
 
+/** Les durées des seuils convertis à l'étape B (`*_MS` de la page), qui se convertissent au pas historique. */
+const DUREES_DES_SEUILS = [
+  'BOMB_BLAST_HOLD_MS', 'FLAG_CAPTURE_HOLD_MS', 'PROJECTILE_TAIL_MS', 'TOLERANCE_MS', 'RETOMBEE_MS', 'NATIVE_PICKUP_MATCH_MS',
+]
+const PAR_L_HORLOGE = new RegExp(String.raw`\bmsToFrames\(\s*(${DUREES_DES_SEUILS.join('|')})\b`, 'g')
+
+/** conversionsParLHorloge rend les durées de seuil converties par `msToFrames` (au repli de lecture). */
+function conversionsParLHorloge(src: string): string[] {
+  return [...src.matchAll(PAR_L_HORLOGE)].map((m) => m[1])
+}
+
 describe('garde-rail : aucun seuil temporel du rejeu en nombre d images', () => {
   it('aucune constante *_FRAMES numérique dans le code de production', () => {
     const fautifs: string[] = []
@@ -47,6 +58,29 @@ describe('garde-rail : aucun seuil temporel du rejeu en nombre d images', () => 
       `ces constantes sont des durées en images : les écrire en millisecondes (suffixe _MS) et les convertir ` +
         `avec le pas du document (msToFrames, frameMs) — [${fautifs.join(', ')}]`,
     ).toEqual([])
+  })
+
+  it('les durées des seuils convertis se passent par durationToFrames / durationFrameMs, jamais par l horloge', () => {
+    // Un document sans pas se lit, pour ses durées, au pas historique : msToFrames et frameToMs(1, doc) y
+    // donneraient six fois plus d'images (repli de lecture à 60 images par seconde).
+    const fautifs: string[] = []
+    for (const f of sourcesDeLaFeature()) {
+      for (const nom of conversionsParLHorloge(lire(f))) fautifs.push(`${cheminCourt(f)}:${nom}`)
+    }
+    expect(
+      fautifs,
+      `convertir ces durées avec durationToFrames / durationFrameMs (pas historique sans frameIntervalMs) — [${fautifs.join(', ')}]`,
+    ).toEqual([])
+  })
+
+  it('le détecteur de conversions voit les formes visées', () => {
+    const src = [
+      'msToFrames(BOMB_BLAST_HOLD_MS, doc)',
+      'const t = msToFrames(RETOMBEE_MS, doc)',
+      'durationToFrames(RETOMBEE_MS, doc)',
+      'msToFrames(k.replayMs, doc)',
+    ].join(String.fromCharCode(10))
+    expect(conversionsParLHorloge(src)).toEqual(['BOMB_BLAST_HOLD_MS', 'RETOMBEE_MS'])
   })
 
   it('le détecteur voit les formes visées et laisse passer les autres', () => {

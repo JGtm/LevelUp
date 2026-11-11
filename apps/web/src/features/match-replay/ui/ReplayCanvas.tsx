@@ -89,7 +89,7 @@ import {
   type LayerPaint,
   type ReplayScene,
 } from '../layers/replayCompose'
-import { frameToMs, layerOffset, msToFrames } from '../../../lib/replay/replayLogic'
+import { durationToFrames, frameToMs, layerOffset } from '../../../lib/replay/replayLogic'
 import type { ReplayWindowBounds } from '../model/replayWindow'
 import { drawProjectilesLayer, PROJECTILE_TAIL_MS } from '../layers/replayProjectiles'
 import { drawTracksLayer } from '../layers/replayMarkers'
@@ -501,7 +501,7 @@ export function ReplayCanvas({
               ctx,
               doc.projectiles ?? [],
               view,
-              { frame: fr, tailFrames: msToFrames(PROJECTILE_TAIL_MS, doc) },
+              { frame: fr, tailFrames: durationToFrames(PROJECTILE_TAIL_MS, doc) },
               grenadeColor,
             ),
           // La fenetre d'une pose n'est PAS [t0, t1] : `t1` date la mise au repos, pas la

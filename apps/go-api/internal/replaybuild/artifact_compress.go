@@ -64,6 +64,9 @@ type CompressReport struct {
 	Resolved int
 	// Different : matchs aux deux formes dont les contenus diffèrent : aucun fichier n'est supprimé.
 	Different int
+	// Replaced : artefacts dont le `.json.gz` posé par cette conversion a été remplacé par un autre écrivain (un
+	// serveur qui a re-cuit le match) avant la vérification : rien n'est touché, ce n'est pas un échec.
+	Replaced int
 	// ToRetry : matchs dont le `.json.gz` est posé et vérifié mais dont le `.json` n'a pas pu être supprimé :
 	// relancer la commande.
 	ToRetry int
@@ -83,6 +86,11 @@ var (
 		if err != nil {
 			return nil, err
 		}
+		// Un fichier vide, ou nommé `.json.gz` sans en-tête gzip (0 ou 1 octet d'une écriture interrompue), est illisible :
+		// Decode, lui, le rendrait tel quel.
+		if err := replayartifact.ValidateStored(path, stocke); err != nil {
+			return nil, fmt.Errorf("%w : %w", errContenuIllisible, err)
+		}
 		doc, err := replayartifact.Decode(stocke)
 		if err != nil {
 			return nil, fmt.Errorf("%w : %w", errContenuIllisible, err)
@@ -94,7 +102,14 @@ var (
 	// apresLectureDuBrut est appelé entre la lecture du `.json` et la pose du `.json.gz` : la fenêtre de la course
 	// avec un serveur actif.
 	apresLectureDuBrut func(brut string)
+	// apresLaPose est appelé entre la pose du `.json.gz` et sa vérification : la fenêtre où un serveur peut le remplacer.
+	apresLaPose func(ecrit string)
+	// avantLeJugement est appelé avant le jugement d'un match aux deux formes.
+	avantLeJugement func(compressed string)
 )
+
+// errRemplace : le `.json.gz` posé par cette conversion n'est plus celui que nous avons écrit.
+var errRemplace = errors.New("le .json.gz a été remplacé par un autre écrivain")
 
 // errContenuIllisible : les octets d'un `.json.gz` ont été lus et ne se décodent pas (tronqué, corrompu), par
 // opposition à une erreur de lecture du disque.
@@ -108,6 +123,8 @@ const (
 	issueResorbe
 	issueDifferent
 	issueARelancer
+	issueRemplace   // le .json.gz posé a été remplacé par un autre écrivain : rien n'est touché
+	issueDejaRetire // le .json du doublon a été retiré par un autre acteur : déjà compressé, pas résorbé par nous
 )
 
 // Add ajoute le compte rendu d'un artefact (ou d'un dossier) à celui-ci.
@@ -116,6 +133,7 @@ func (r *CompressReport) Add(o CompressReport) {
 	r.AlreadyCompressed += o.AlreadyCompressed
 	r.Resolved += o.Resolved
 	r.Different += o.Different
+	r.Replaced += o.Replaced
 	r.ToRetry += o.ToRetry
 	r.Failed += o.Failed
 	r.BytesBefore += o.BytesBefore
@@ -195,6 +213,12 @@ func compressEntry(ctx context.Context, path string, e replayartifact.Entry, tra
 		return CompressReport{Resolved: 1}
 	case issueDifferent:
 		return CompressReport{Different: 1}
+	case issueRemplace:
+		slog.InfoContext(ctx, "replay compress: .json.gz remplacé par un autre écrivain après notre pose — rien n'est touché",
+			"path", path)
+		return CompressReport{Replaced: 1}
+	case issueDejaRetire:
+		return CompressReport{AlreadyCompressed: 1}
 	default:
 		return CompressReport{ToRetry: 1}
 	}
@@ -209,7 +233,11 @@ func traiterUnDoublon(ctx context.Context, compressed string, dryRun bool) (res 
 		return res, 0, 0, err
 	}
 	_, legacy := title.ReplayArtifactCandidates(compressed)
-	if _, lerr := readDecoded(legacy); lerr != nil {
+	doc, lerr := readDecoded(legacy)
+	if lerr == nil && !json.Valid(doc) {
+		lerr = errors.New("JSON mal formé ou tronqué")
+	}
+	if lerr != nil {
 		return 0, 0, 0, fmt.Errorf("%w ; le .json voisin est illisible aussi (%w) : rien n'est supprimé", err, lerr)
 	}
 	slog.WarnContext(ctx, "replay compress: .json.gz incomplet à côté d'un .json valide — repris", "compresse", compressed)
@@ -263,7 +291,10 @@ func convertirUn(ctx context.Context, brut string, dryRun bool) (res issue, avan
 		res, err = jugerLeDoublon(ctx, ecrit, false)
 		return res, 0, 0, err
 	}
-	if err := verifierLaPose(ctx, ecrit, doc, st.ModTime()); err != nil {
+	if err := verifierLaPose(ctx, ecrit, doc, compresse, st.ModTime()); err != nil {
+		if errors.Is(err, errRemplace) {
+			return issueRemplace, 0, 0, nil
+		}
 		return 0, 0, 0, err
 	}
 	renouvelerVoisins(ctx, brut, ecrit, doc, int64(len(stocke)), len(compresse))
@@ -273,9 +304,21 @@ func convertirUn(ctx context.Context, brut string, dryRun bool) (res issue, avan
 	return issueConverti, int64(len(stocke)), int64(len(compresse)), nil
 }
 
-// verifierLaPose relit le `.json.gz` que cette conversion vient de poser : son contenu décompressé doit être, octet
-// pour octet, le JSON d'origine (sinon il est retiré), puis il reprend la date du `.json`.
-func verifierLaPose(ctx context.Context, ecrit string, doc []byte, date time.Time) error {
+// verifierLaPose relit le `.json.gz` que cette conversion vient de poser. Il doit d'abord être CELUI QUE NOUS AVONS
+// ÉCRIT (octets identiques à `pose`) : un serveur qui re-cuit le match peut l'avoir remplacé, et un fichier qui n'est pas
+// le nôtre n'est jamais supprimé ([errRemplace]). Puis son contenu décompressé doit être, octet pour octet, le JSON
+// d'origine (sinon il est retiré : c'est le nôtre), puis il reprend la date du `.json`.
+func verifierLaPose(ctx context.Context, ecrit string, doc, pose []byte, date time.Time) error {
+	if apresLaPose != nil {
+		apresLaPose(ecrit)
+	}
+	actuel, err := replayartifact.ReadStored(ecrit)
+	if err != nil {
+		return fmt.Errorf("vérification : %w", err)
+	}
+	if !bytes.Equal(actuel, pose) {
+		return errRemplace
+	}
 	relu, err := relireCompresse(ecrit)
 	if err == nil && !bytes.Equal(relu, doc) {
 		err = fmt.Errorf("le contenu relu du .json.gz (%d octets) diffère du JSON d'origine (%d octets)", len(relu), len(doc))
@@ -307,10 +350,13 @@ func retirerLeBrutVerifie(ctx context.Context, brut string) issue {
 // jugerLeDoublon juge un match qui porte `.json.gz` (compressedPath) ET `.json` : identique après décodage, le
 // `.json` est supprimé (à supprimer, en simulation) ; différent, rien n'est supprimé.
 func jugerLeDoublon(ctx context.Context, compressedPath string, dryRun bool) (issue, error) {
+	if avantLeJugement != nil {
+		avantLeJugement(compressedPath)
+	}
 	_, legacy := title.ReplayArtifactCandidates(compressedPath)
 	brutStocke, err := replayartifact.ReadStored(legacy)
 	if errors.Is(err, fs.ErrNotExist) {
-		return issueResorbe, nil // retiré entre-temps par un serveur : plus de doublon
+		return issueDejaRetire, nil // retiré entre-temps par un autre acteur : plus de doublon, rien résorbé par nous
 	}
 	if err != nil {
 		return 0, fmt.Errorf("lecture du .json du doublon : %w", err)

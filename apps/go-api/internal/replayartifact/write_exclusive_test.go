@@ -7,10 +7,13 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
+	"syscall"
 	"testing"
 
 	"levelup/go-api/internal/observability"
@@ -18,7 +21,7 @@ import (
 
 // erreurSansLien : ce que rend un système de fichiers sans lien dur (le texte importe peu : toute erreur autre que
 // « existe déjà » est lue comme un refus).
-var erreurSansLien = errors.New("link: la fonction n'est pas prise en charge par ce système de fichiers")
+var erreurSansLien = fmt.Errorf("link: %w", errors.ErrUnsupported)
 
 // sansLienDur remplace linkFile par un refus et rend le nombre d'appels.
 func sansLienDur(t *testing.T) *atomic.Int32 {
@@ -191,5 +194,118 @@ func TestLecture_CompresseIllisible_LitLeBrutVoisin(t *testing.T) {
 	doc, err := ReadBytes(cheminCanonique(dir))
 	if err != nil || !bytes.Equal(doc, docTest) {
 		t.Fatalf("le brut valide doit être lu : %v", err)
+	}
+}
+
+// TestPoseExclusive_ErreurTransitoire_RepliePourCeFichierSeulement : une erreur du lien dur qui ne dit pas « non pris en
+// charge » (antivirus, violation de partage) replie pour CE fichier, journalise, compte, et ne mémorise pas le dossier.
+func TestPoseExclusive_ErreurTransitoire_RepliePourCeFichierSeulement(t *testing.T) {
+	var appels atomic.Int32
+	avant := linkFile
+	linkFile = func(string, string) error {
+		appels.Add(1)
+		return errors.New("le processus ne peut pas accéder au fichier")
+	}
+	t.Cleanup(func() { linkFile = avant })
+	dir := t.TempDir()
+	repli := observability.LoadCounter(CounterLinkFallback)
+	erreurs := observability.LoadCounter(CounterLinkError)
+	for _, nom := range []string{courtTest, "00000002"} {
+		_, _, created, err := WriteIfAbsent(context.Background(), filepath.Join(dir, nom+".json.gz"), docTest)
+		if err != nil || !created {
+			t.Fatalf("%s : créé=%v, err=%v", nom, created, err)
+		}
+	}
+	if appels.Load() != 2 {
+		t.Errorf("le lien dur a été tenté %d fois, attendu 2 : le dossier n'est pas mémorisé sur une erreur transitoire", appels.Load())
+	}
+	if got := observability.LoadCounter(CounterLinkFallback); got != repli+2 {
+		t.Errorf("repli compté %d, attendu %d", got, repli+2)
+	}
+	if got := observability.LoadCounter(CounterLinkError); got != erreurs+2 {
+		t.Errorf("erreur de lien compté %d, attendu %d", got, erreurs+2)
+	}
+}
+
+// TestLienNonPrisEnCharge : seules les erreurs qui signifient « ce système de fichiers ne sait pas » mémorisent le
+// dossier ; les codes sont ceux de l'OS courant.
+func TestLienNonPrisEnCharge(t *testing.T) {
+	lien := func(e error) error { return &os.LinkError{Op: "link", Old: "a", New: "b", Err: e} }
+	cas := []struct {
+		nom string
+		err error
+		ok  bool
+	}{
+		{"non pris en charge", lien(errors.ErrUnsupported), true},
+		{"erreur quelconque", lien(errors.New("boum")), false},
+		{"nil", nil, false},
+	}
+	if runtime.GOOS == "windows" {
+		cas = append(cas, []struct {
+			nom string
+			err error
+			ok  bool
+		}{
+			{"ERROR_INVALID_FUNCTION (exFAT, FAT32)", lien(syscall.Errno(1)), true},
+			{"ERROR_NOT_SUPPORTED", lien(syscall.Errno(50)), true},
+			{"ERROR_SHARING_VIOLATION", lien(syscall.Errno(32)), false},
+			{"ERROR_ACCESS_DENIED", lien(syscall.Errno(5)), false},
+		}...)
+	} else {
+		cas = append(cas, []struct {
+			nom string
+			err error
+			ok  bool
+		}{
+			{"EPERM (FAT sous Linux)", lien(syscall.EPERM), true},
+			{"ENOTSUP", lien(syscall.ENOTSUP), true},
+			{"EACCES", lien(syscall.EACCES), false},
+		}...)
+	}
+	for _, c := range cas {
+		if got := lienNonPrisEnCharge(c.err); got != c.ok {
+			t.Errorf("%s : lienNonPrisEnCharge = %v, attendu %v", c.nom, got, c.ok)
+		}
+	}
+}
+
+// TestLecture_CompresseEnCoursDEcriture_UneRelectureAvantDeConclure : le compressé est partiel à la première lecture, le
+// brut voisin disparaît, et le compressé est complet à la relecture : le document est rendu, pas l'erreur du partiel.
+func TestLecture_CompresseEnCoursDEcriture_UneRelectureAvantDeConclure(t *testing.T) {
+	dir := t.TempDir()
+	complet := gzipTest(t, docTest)
+	ecrireTest(t, cheminCanonique(dir), complet[:len(complet)/2])
+	ecrireTest(t, cheminBrut(dir), docTest)
+	avant := apresEchecDeLecture
+	apresEchecDeLecture = func(string) {
+		ecrireTest(t, cheminCanonique(dir), complet)
+		_ = os.Remove(cheminBrut(dir))
+	}
+	t.Cleanup(func() { apresEchecDeLecture = avant })
+	doc, err := ReadBytes(cheminCanonique(dir))
+	if err != nil || !bytes.Equal(doc, docTest) {
+		t.Fatalf("la relecture doit rendre le document complet : %v", err)
+	}
+}
+
+// TestLecture_CompresseVraimentIllisible_UneSeuleRelecture : sans brut et sans changement, l'erreur est rendue après UNE
+// relecture, et comptée une fois.
+func TestLecture_CompresseVraimentIllisible_UneSeuleRelecture(t *testing.T) {
+	dir := t.TempDir()
+	complet := gzipTest(t, docTest)
+	ecrireTest(t, cheminCanonique(dir), complet[:len(complet)/2])
+	appels := 0
+	avant := apresEchecDeLecture
+	apresEchecDeLecture = func(string) { appels++ }
+	t.Cleanup(func() { apresEchecDeLecture = avant })
+	compte := observability.LoadCounter(CounterUnreadable)
+	if _, err := ReadBytes(cheminCanonique(dir)); err == nil {
+		t.Fatal("un compressé tronqué sans brut doit rester une erreur")
+	}
+	if appels != 1 {
+		t.Errorf("relectures = %d, attendu 1", appels)
+	}
+	if got := observability.LoadCounter(CounterUnreadable); got != compte+1 {
+		t.Errorf("illisible compté %d fois, attendu 1", got-compte)
 	}
 }

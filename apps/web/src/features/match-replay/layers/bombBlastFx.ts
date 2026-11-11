@@ -40,7 +40,7 @@
 import { filmClockTrusted } from '@/lib/replay/scoreTimeline'
 
 import { type CanvasView, projectTo } from '../model/replayView'
-import { msToFrames, type XY } from '../../../lib/replay/replayLogic'
+import { durationToFrames, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
@@ -97,7 +97,7 @@ export const BOMB_BLAST_HOLD_MS = 1200
 
 /** bombBlastHoldFrames rend la durée de l'effet en images du document (fractionnaire si la grille ne tombe pas juste). */
 export function bombBlastHoldFrames(doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>): number {
-  return msToFrames(BOMB_BLAST_HOLD_MS, doc)
+  return durationToFrames(BOMB_BLAST_HOLD_MS, doc)
 }
 
 /** Fenêtre d'affichage (même forme que celle de l'onde de capture). */

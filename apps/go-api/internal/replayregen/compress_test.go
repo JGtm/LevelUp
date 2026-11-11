@@ -304,29 +304,6 @@ func TestCompression_ArretDuServeurSansPerteEtReprise(t *testing.T) {
 	}
 }
 
-// TestCompression_UnFichierALaFois : un seul fichier est converti à la fois.
-func TestCompression_UnFichierALaFois(t *testing.T) {
-	f := newFixture(t)
-	ids, _ := f.seedBruts(t, 5, false)
-	var vus atomic.Int32
-	var maxVus atomic.Int32
-	f.heavyHook = func() {
-		// La porte est consultée avant chaque fichier, jamais pendant : à chaque consultation, au plus un brut a disparu
-		// depuis la précédente.
-		n := int32(5 - len(f.bruts(ids)))
-		if d := n - vus.Swap(n); d > maxVus.Load() {
-			maxVus.Store(d)
-		}
-	}
-	if _, err := f.svc.Start(); err != nil {
-		t.Fatal(err)
-	}
-	f.attendreFinDeFile(t)
-	if maxVus.Load() > 1 {
-		t.Fatalf("%d fichiers convertis entre deux consultations de la porte", maxVus.Load())
-	}
-}
-
 // TestCompression_DossierAbsentNEstPasUneErreur : un titre sans dossier de rejeux est sauté sans bruit.
 func TestCompression_DossierAbsentNEstPasUneErreur(t *testing.T) {
 	f := newFixture(t)
@@ -353,5 +330,81 @@ func TestCompression_Compteurs(t *testing.T) {
 	f.attendreFinDeFile(t)
 	if got := observability.LoadCounter(MetricCompressed); got != avant+2 {
 		t.Errorf("%s = %d, attendu %d", MetricCompressed, got, avant+2)
+	}
+}
+
+// TestDecompte_ExposeLesBrutsSansLireLeurContenu : le décompte donne le nombre de rejeux bruts restants par le listage de
+// la porte (les noms), sans ouvrir un seul fichier : des octets illisibles se comptent pareil. Un match aux deux formes
+// n'est pas un brut à compresser (la conversion le juge à part).
+func TestDecompte_ExposeLesBrutsSansLireLeurContenu(t *testing.T) {
+	f := newFixture(t)
+	ids, _ := f.seedBruts(t, 3, false)
+	for _, id := range ids { // contenu inexploitable : seul le nom compte
+		_, legacy := f.legacyPaths(id)
+		if err := os.WriteFile(legacy, []byte("pas du json"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	f.films[ids[0]] = true // film présent mais rejeu illisible : jamais lu par le décompte des bruts
+	doublonID := "0000d0b1"
+	writeArtifact(t, f.paths, doublonID, true)
+	_, legacy := f.legacyPaths(doublonID)
+	if err := os.WriteFile(legacy, []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.Rescan(); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "décompte", func() bool { return f.svc.Status().Checked })
+	if st := f.svc.Status(); st.Raw != 3 {
+		t.Fatalf("bruts comptés = %d, attendu 3 : %+v", st.Raw, st)
+	}
+	if len(f.bruts(ids)) != 3 {
+		t.Fatal("le décompte ne touche à aucun fichier")
+	}
+}
+
+// TestPasseDeCompressionSeule : sans aucun rejeu refaisable mais des bruts, la passe lancée par l'utilisateur ne fait que
+// compresser ; le décompte final dit ce qu'il reste (zéro).
+func TestPasseDeCompressionSeule(t *testing.T) {
+	f := newFixture(t)
+	ids, _ := f.seedBruts(t, 3, false)
+	if _, err := f.svc.Rescan(); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "décompte", func() bool { return f.svc.Status().Checked })
+	if st := f.svc.Status(); st.Stale != 0 || st.Raw != 3 {
+		t.Fatalf("avant la passe : %+v", st)
+	}
+	if _, err := f.svc.Start(); err != nil {
+		t.Fatal(err)
+	}
+	f.attendreFinDeFile(t)
+	waitFor(t, "décompte final", func() bool { s := f.svc.Status(); return s.Checked && s.Raw == 0 })
+	st := f.svc.Status()
+	if st.Compressed != 3 || f.calls.Load() != 0 || len(f.bruts(ids)) != 0 {
+		t.Fatalf("état = %+v, reconstructions = %d", st, f.calls.Load())
+	}
+}
+
+// TestDecompteFinal_LesBrutsEnEchecRestentComptes : un brut que la compression n'a pas pu convertir reste compté.
+func TestDecompteFinal_LesBrutsEnEchecRestentComptes(t *testing.T) {
+	f := newFixture(t)
+	ids, _ := f.seedBruts(t, 2, false)
+	_, casse := f.legacyPaths(ids[0])
+	var tronque bytes.Buffer
+	zw := gzip.NewWriter(&tronque)
+	_, _ = zw.Write(bytes.Repeat([]byte(`{"a":1}`), 200))
+	_ = zw.Close()
+	if err := os.WriteFile(casse, tronque.Bytes()[:tronque.Len()/2], 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.Start(); err != nil {
+		t.Fatal(err)
+	}
+	f.attendreFinDeFile(t)
+	waitFor(t, "décompte final", func() bool { return f.svc.Status().Checked })
+	if st := f.svc.Status(); st.Raw != 1 || st.CompressFailed != 1 {
+		t.Fatalf("état = %+v", st)
 	}
 }

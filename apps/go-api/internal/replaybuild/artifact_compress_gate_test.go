@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/replayartifact"
@@ -148,5 +149,114 @@ func TestCompressDir_CompresseLuEnEchecDeLectureNEstPasRetire(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "d0000005.json.gz")); err != nil {
 		t.Errorf("le .json.gz doit rester : %v", err)
+	}
+}
+
+// TestCompressDir_CompresseVideOuSansEnteteEstReprisCommeIncomplet : un fichier NOMMÉ `.json.gz` de 0 ou 1 octet (arrêt
+// entre la création exclusive et la première écriture du repli sans lien dur) est illisible pour la conversion : il est
+// retiré, puis le `.json` valide est converti. Sans cela le match restait « contenus différents » pour toujours.
+func TestCompressDir_CompresseVideOuSansEnteteEstReprisCommeIncomplet(t *testing.T) {
+	for _, octets := range [][]byte{{}, {0x1f}, []byte("pas du gzip")} {
+		dir := t.TempDir()
+		doc := docJSON(t, "d0000006-1234-4abc-9def-0123456789ab", true)
+		ecrireTest(t, filepath.Join(dir, "d0000006.json"), doc)
+		ecrireTest(t, filepath.Join(dir, "d0000006.json.gz"), octets)
+
+		blanc, err := CompressDir(context.Background(), dir, true)
+		if err != nil || blanc.Converted != 1 || blanc.Different != 0 || blanc.Failed != 0 {
+			t.Fatalf("%d octets, simulation : %+v, %v", len(octets), blanc, err)
+		}
+		rep, err := CompressDir(context.Background(), dir, false)
+		if err != nil || rep != blanc {
+			t.Fatalf("%d octets : %+v (simulation %+v), %v", len(octets), rep, blanc, err)
+		}
+		if _, err := os.Stat(filepath.Join(dir, "d0000006.json")); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("%d octets : le .json doit être supprimé : %v", len(octets), err)
+		}
+		if lu, err := replayartifact.ReadBytes(filepath.Join(dir, "d0000006.json.gz")); err != nil || !bytes.Equal(lu, doc) {
+			t.Errorf("%d octets : relecture : %v", len(octets), err)
+		}
+	}
+}
+
+// TestCompressDir_BrutTronqueOuVideNEstPasUnBrutValide : un `.json` brut tronqué ou vide ne sert jamais à reprendre un
+// `.json.gz` incomplet : rien n'est retiré, l'échec est compté.
+func TestCompressDir_BrutTronqueOuVideNEstPasUnBrutValide(t *testing.T) {
+	complet := gzipTest(t, docJSON(t, "d0000007-1234-4abc-9def-0123456789ab", true))
+	for _, brut := range [][]byte{{}, []byte(`{"matchId":"d0000007","tracks":[`)} {
+		dir := t.TempDir()
+		ecrireTest(t, filepath.Join(dir, "d0000007.json"), brut)
+		ecrireTest(t, filepath.Join(dir, "d0000007.json.gz"), complet[:len(complet)/2])
+		for _, dryRun := range []bool{true, false} {
+			rep, err := CompressDir(context.Background(), dir, dryRun)
+			if err != nil || rep.Failed != 1 || rep.Converted != 0 {
+				t.Fatalf("brut de %d octets, simulation=%v : %+v, %v", len(brut), dryRun, rep, err)
+			}
+		}
+		for _, n := range []string{"d0000007.json", "d0000007.json.gz"} {
+			if _, err := os.Stat(filepath.Join(dir, n)); err != nil {
+				t.Errorf("%s doit rester : %v", n, err)
+			}
+		}
+	}
+}
+
+// TestCompressDir_UnAutreEcrivainQuiRemplaceLeCompresseNEstPasSupprime : après notre pose, le serveur re-cuit le match :
+// il remplace le `.json.gz` et retire le `.json`. Le fichier du serveur n'est JAMAIS supprimé, le cas n'est pas un échec.
+func TestCompressDir_UnAutreEcrivainQuiRemplaceLeCompresseNEstPasSupprime(t *testing.T) {
+	dir, _ := parcBrut(t, 1)
+	serveur := gzipTest(t, docJSON(t, "a0000000-1234-4abc-9def-0123456789ab", false))
+	orig := apresLaPose
+	apresLaPose = func(ecrit string) {
+		ecrireTest(t, ecrit, serveur) // le rejeu re-cuit remplace le nôtre
+		_ = os.Remove(strings.TrimSuffix(ecrit, ".gz"))
+	}
+	t.Cleanup(func() { apresLaPose = orig })
+	rep, err := CompressDir(context.Background(), dir, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Replaced != 1 || rep.Failed != 0 || rep.Converted != 0 {
+		t.Fatalf("compte rendu = %+v", rep)
+	}
+	if got, _ := os.ReadFile(filepath.Join(dir, "a0000000.json.gz")); !bytes.Equal(got, serveur) {
+		t.Fatal("le .json.gz du serveur a été touché")
+	}
+}
+
+// TestCompressDir_DoublonRetireParUnAutreNEstPasCompteCommeResorbe : le `.json` d'un doublon disparaît (un serveur l'a
+// retiré) entre le listage et le jugement : le match est déjà compressé, pas « résorbé » par nous.
+func TestCompressDir_DoublonRetireParUnAutreNEstPasCompteCommeResorbe(t *testing.T) {
+	dir := t.TempDir()
+	doc := docJSON(t, "d0000008-1234-4abc-9def-0123456789ab", true)
+	doublon(t, dir, "d0000008", doc, doc)
+	orig := avantLeJugement
+	avantLeJugement = func(compressed string) { _ = os.Remove(strings.TrimSuffix(compressed, ".gz")) }
+	t.Cleanup(func() { avantLeJugement = orig })
+	rep, err := CompressDir(context.Background(), dir, false)
+	if err != nil || rep.Resolved != 0 || rep.AlreadyCompressed != 1 {
+		t.Fatalf("compte rendu = %+v, %v", rep, err)
+	}
+}
+
+// TestCompressDirWith_UnFichierALaFois : la porte du fichier suivant n'est consultée qu'après le compte rendu du
+// précédent : jamais deux conversions en cours.
+func TestCompressDirWith_UnFichierALaFois(t *testing.T) {
+	dir, _ := parcBrut(t, 5)
+	var evenements []string
+	_, err := CompressDirWith(context.Background(), dir, CompressOptions{
+		Gate:     func(context.Context) error { evenements = append(evenements, "porte"); return nil },
+		Progress: func(CompressReport) { evenements = append(evenements, "fini") },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, e := range evenements {
+		if want := []string{"porte", "fini"}[i%2]; e != want {
+			t.Fatalf("événements %v : rang %d = %s, attendu %s", evenements, i, e, want)
+		}
+	}
+	if len(evenements) != 10 {
+		t.Fatalf("événements = %v", evenements)
 	}
 }
