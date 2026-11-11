@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"sync"
 	"time"
 
@@ -355,12 +354,6 @@ func newWatcherDaemon(cfg *config.AppConfig, deps watcherDeps, titleReg *title.R
 		RepoRoot:        cfg.RepoRoot,
 		MaxParallelSync: 2,
 		MatchFetcher:    matchFetcher,
-		// Broadcast présence active : quand un joueur passe in-game (titre
-		// tracké), tous les autres PlayerWatcher passent aussi en Watching.
-		// Évite que les sessions de groupe soient invisibles côté tracker
-		// (incident 2026-05-27 — cf. ensure_enrichment_rows.go + thought_log).
-		// Désactivable via LEVELUP_WATCHER_BROADCAST=0.
-		BroadcastPresenceActive: os.Getenv("LEVELUP_WATCHER_BROADCAST") != "0",
 		LiveRefreshFactory: func(gamertag, xuid, titleSlug string) watcher.LiveRefreshTrigger {
 			if titleSlug == "" {
 				titleSlug = title.DefaultSlug

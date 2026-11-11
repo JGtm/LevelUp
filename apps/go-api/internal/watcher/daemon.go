@@ -65,25 +65,6 @@ type DaemonConfig struct {
 	// Normalement injecté depuis main avec un HaloMatchFetcher branché sur
 	// le pool de tokens auto-sync.
 	MatchFetcher MatchFetcher
-
-	// BroadcastPresenceActive (incident 2026-05-27) : quand un joueur passe
-	// présent in-game (titre tracké), propager l'état Active à TOUS les
-	// PlayerWatcher pour qu'ils démarrent leur propre MatchPoller. Utile pour
-	// les sessions de groupe où plusieurs joueurs jouent ensemble : si la
-	// présence Xbox ne signale fiablement que JGtm (token tracker), les autres
-	// (Madina, Choco) restent en Idle et leur MatchPoller ne tourne pas — leurs
-	// nouveaux matchs ne sont jamais détectés tant que le scheduler delta ne
-	// tourne pas (15 min). Avec broadcast = true, dès que JGtm passe Watching
-	// les 3 autres aussi → leurs MatchPoller tournent → leurs nouveaux matchs
-	// sont détectés au prochain poll.
-	//
-	// Coût : 4× appels GET /matches?count=25 toutes les 30s pendant la
-	// session. Pour un endpoint public (PolicyAnyPublic du pool), c'est
-	// négligeable (~25 IDs × 4 KB par réponse).
-	//
-	// Idempotent côté PlayerWatcher : `OnPresenceActive` ne re-transitionne
-	// pas la FSM si elle est déjà Watching. Pas de risque de cascade.
-	BroadcastPresenceActive bool
 }
 
 // Daemon est le démon de surveillance de présence.
@@ -499,12 +480,9 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 					"event", evID,
 				)
 				pw.OnPresenceActive(evCtx)
-				// Broadcast l'état Active aux autres PlayerWatcher si activé.
-				// Cf. DaemonConfig.BroadcastPresenceActive godoc — incident
-				// 2026-05-27 sessions de groupe non détectées. Scopé au MÊME titre.
-				if d.cfg.BroadcastPresenceActive {
-					d.broadcastPresenceActive(evCtx, pw.gamertag, expectedSlug)
-				}
+				// Broadcast l'état Active aux autres PlayerWatcher (incident
+				// 2026-05-27 : sessions de groupe non détectées). Scopé au MÊME titre.
+				d.broadcastPresenceActive(evCtx, pw.gamertag, expectedSlug)
 				return
 			}
 			// Titre présent mais pas dans le registre (ex: Xbox Dashboard
@@ -544,6 +522,10 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 // la FSM si déjà Watching, pas de cascade entre broadcasts simultanés.
 //
 // Le triggering player est exclu — il a déjà été activé par le handler.
+//
+// Coût : 4× appels GET /matches?count=25 toutes les 30s pendant la session. Pour un
+// endpoint public (PolicyAnyPublic du pool), c'est négligeable (~25 IDs × 4 KB par
+// réponse).
 func (d *Daemon) broadcastPresenceActive(ctx context.Context, triggeringGamertag, triggeringTitleSlug string) {
 	d.playersMu.RLock()
 	others := make([]*PlayerWatcher, 0, len(d.players))
