@@ -12,6 +12,7 @@
  */
 import { DEFAULT_EXPORT_FORMAT_ID, EXPORT_FORMAT_IDS, type ExportFormatId } from '../export/exportFormats'
 import { DEFAULT_FEED_FILTER, FEED_FILTER_IDS, type FeedFilterId } from '../model/feedFilterLogic'
+import { VIEW_PRESET_IDS, type ViewPresetId } from './viewPresetLogic'
 
 /** Lit un booléen persisté ; absent ou storage indisponible -> `fallback`. */
 export function readStoredFlag(key: string, fallback: boolean): boolean {
@@ -133,4 +134,24 @@ export function readFeedFilter(): FeedFilterId {
 /** Retient le filtre choisi. Stockage refusé : le choix vaut pour la session, sans erreur. */
 export function persistFeedFilter(id: FeedFilterId): void {
   persistPreference(FEED_FILTER_KEY, id)
+}
+
+/**
+ * LE PRÉRÉGLAGE DE VUE CHOISI en dernier (plan « maquettes du rejeu », lot 3) : retenu dans CE
+ * navigateur. La vue active se DÉDUIT de l'état des calques (`activeView`) ; cette valeur ne
+ * sert qu'à départager deux préréglages égaux sur les calques d'un match. Les clés `replay-*`
+ * des calques restent lues telles quelles. La lecture est VALIDÉE contre la liste fermée :
+ * absente, inconnue (« personnalise » compris, il se déduit et ne se retient pas) ou écrite
+ * par une autre version -> `undefined`.
+ */
+export const VIEW_PRESET_KEY = 'replay-view-preset'
+
+/** Le préréglage retenu, ou `undefined`. */
+export function readViewPreset(): ViewPresetId | undefined {
+  return readStoredChoice<ViewPresetId | ''>(VIEW_PRESET_KEY, '', VIEW_PRESET_IDS) || undefined
+}
+
+/** Retient le préréglage choisi. Stockage refusé : le choix vaut pour la session, sans erreur. */
+export function persistViewPreset(id: ViewPresetId): void {
+  persistPreference(VIEW_PRESET_KEY, id)
 }

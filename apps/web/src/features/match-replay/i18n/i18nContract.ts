@@ -305,10 +305,20 @@ export interface ReplayText {
    * d'écran annonce. Ce mot-ci est ce que l'ŒIL lit sans survoler : trois icônes muettes côte
    * à côte se ressemblent toutes, un mot les départage d'un coup.
    */
-  /** Le tiroir de réglages (décision utilisateur du 16/08) : bouton et panneau partagent
-   *  le même intitulé — ouvrir dit ce qu'on va trouver derrière. */
-  settingsButton: string
-  settingsClose: string
+  /**
+   * LE BOUTON « VUE » et son panneau (plan « maquettes du rejeu », lot 3) : ils remplacent le
+   * tiroir de réglages. Bouton et panneau partagent le même intitulé — ouvrir dit ce qu'on va
+   * trouver derrière : les préréglages de calques, puis les calques, les effets, la chaleur, la
+   * couleur des points et le son.
+   */
+  viewButton: string
+  viewClose: string
+  viewPresetsTitle: string
+  /** Le nom d'un préréglage, et ce qu'il montre en une phrase courte (infobulle comprise). */
+  viewPreset: Record<'complet' | 'combat' | 'deplacements' | 'objectif' | 'personnalise', string>
+  viewPresetHint: Record<'complet' | 'combat' | 'deplacements' | 'objectif', string>
+  /** Dit pourquoi la vue est « Personnalisé » : un calque a été basculé à la main. */
+  viewCustomNote: string
   /**
    * LE MODE PLEIN ÉCRAN (bouton de la barre de lecture, touche F) : un bouton à état, comme
    * lecture/pause — le nom accessible dit ce que le CLIC va faire. L'infobulle y ajoute le

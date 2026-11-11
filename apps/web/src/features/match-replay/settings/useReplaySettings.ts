@@ -7,7 +7,7 @@
  * DÉLIBÉRÉMENT SÉPARÉ DE useReplaySound : ce hook ne connaît RIEN au son (ni la piste, ni
  * Web Audio) — même séparation des responsabilités que les modules voisins. Il ne fait que
  * porter l'état des calques et de la vitesse ; ReplayCanvas les consomme sans savoir qu'ils
- * survivent à la page, ReplaySettingsDrawer les affiche sans savoir où ils vivent.
+ * survivent à la page, ReplayViewPanel les affiche sans savoir où ils vivent.
  */
 import { useCallback, useEffect, useState } from 'react'
 

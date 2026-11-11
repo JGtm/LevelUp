@@ -1,22 +1,22 @@
 /**
- * ReplaySettingsDrawer.test.tsx — LE TIROIR DE RÉGLAGES : chaque section n'apparaît que si
- * elle a quelque chose à commander, chaque bascule appelle EXACTEMENT son callback (jamais
- * une voisine), et le panneau se ferme par son bouton comme par Échap (même contrat que les
- * autres panneaux du dépôt — AlertDialog, AssetDrawer).
+ * ReplayViewPanel.test.tsx — LE PANNEAU DE LA VUE : les préréglages en tête, puis chaque section
+ * n'apparaît que si elle a quelque chose à commander, chaque bascule appelle EXACTEMENT son
+ * callback (jamais une voisine), et le panneau se ferme par son bouton comme par Échap (même
+ * contrat que les autres panneaux du dépôt — AlertDialog, AssetDrawer).
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 
 import { ReplayHeatmapLegend } from '../ui/ReplayHeatmapLegend'
 import {
-  ReplaySettingsDrawer,
+  ReplayViewPanel,
   type ReplayGroundWeaponControls,
   type ReplayHeatmapControls,
   type ReplayModeObjectivesControls,
   type ReplayPlacementControls,
   type ReplayFlagControls,
   type ReplayWeaponPadControls,
-} from './ReplaySettingsDrawer'
+} from './ReplayViewPanel'
 import type { ReplaySound } from '../sound/useReplaySound'
 
 function makePlacements(over: Partial<ReplayPlacementControls> = {}): ReplayPlacementControls {
@@ -98,8 +98,9 @@ function makeSound(over: Partial<ReplaySound> = {}): ReplaySound {
   }
 }
 
-function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> = {}) {
+function renderPanel(over: Partial<Parameters<typeof ReplayViewPanel>[0]> = {}) {
   const onClose = vi.fn()
+  const onSelect = vi.fn()
   const onToggleAim = vi.fn()
   const onToggleZones = vi.fn()
   const onToggleTrail = vi.fn()
@@ -108,10 +109,10 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
   const onToggleKillFx = vi.fn()
   const onSetMarkerColors = vi.fn()
   const utils = render(
-    <ReplaySettingsDrawer
+    <ReplayViewPanel
       locale="fr"
       onClose={onClose}
-
+      view={{ active: 'complet', onSelect }}
       showAim
       onToggleAim={onToggleAim}
       showZones
@@ -140,25 +141,25 @@ function renderDrawer(over: Partial<Parameters<typeof ReplaySettingsDrawer>[0]> 
     />,
   )
   return {
-    ...utils, onClose, onToggleAim, onToggleZones, onToggleTrail, onSetSpeed,
+    ...utils, onClose, onSelect, onToggleAim, onToggleZones, onToggleTrail, onSetSpeed,
     onToggleShotFx, onToggleKillFx, onSetMarkerColors,
   }
 }
 
-describe('ReplaySettingsDrawer — les deux formes de commande (2026-08-29)', () => {
+describe('ReplayViewPanel — les deux formes de commande (2026-08-29)', () => {
   // UN OUI/NON EST UN INTERRUPTEUR, UN CHOIX EXCLUSIF RESTE UN BOUTON PRESSÉ. La demande
   // utilisateur (« je préfère un toggle plutôt que des boutons ») porte sur les réglages
   // oui/non ; un interrupteur sur « Par équipe » promettrait un « tout éteint » que le
   // réglage n'accepte pas. Ce test épingle la frontière, qui se perdrait à la relecture.
   it('les calques et les catégories de son sont des interrupteurs', () => {
-    renderDrawer({ heatmap: makeHeatmap({ show: true }) })
+    renderPanel({ heatmap: makeHeatmap({ show: true }) })
     for (const nom of ['Visée', 'Traînée', 'Zones', 'Carte de chaleur', 'Armes']) {
       expect(screen.getByRole('switch', { name: nom })).toBeTruthy()
     }
   })
 
   it('les choix exclusifs ne sont JAMAIS des interrupteurs', () => {
-    renderDrawer({ heatmap: makeHeatmap({ show: true }) })
+    renderPanel({ heatmap: makeHeatmap({ show: true }) })
     for (const nom of ['Présence', 'Éliminations', 'Par équipe', 'Par joueur']) {
       expect(screen.queryByRole('switch', { name: nom })).toBeNull()
     }
@@ -169,7 +170,7 @@ describe('ReplaySettingsDrawer — les deux formes de commande (2026-08-29)', ()
   // qui porte la contrainte — des options empilées laissaient croire qu'on pouvait en allumer
   // deux. Les couleurs de marqueur, elles, restent des boutons : leur liste n'a pas bougé.
   it('les axes de la chaleur sont un choix radio, pas une grappe de boutons', () => {
-    renderDrawer({ heatmap: makeHeatmap({ show: true }) })
+    renderPanel({ heatmap: makeHeatmap({ show: true }) })
     for (const nom of ['Présence', 'Éliminations']) {
       expect(screen.getByRole('radio', { name: nom })).toBeTruthy()
     }
@@ -177,9 +178,9 @@ describe('ReplaySettingsDrawer — les deux formes de commande (2026-08-29)', ()
   })
 })
 
-describe('ReplaySettingsDrawer — calques', () => {
+describe('ReplayViewPanel — calques', () => {
   it('bascule Visée : reflète showAim et appelle onToggleAim au clic, jamais onToggleZones', () => {
-    const { onToggleAim, onToggleZones } = renderDrawer({ showAim: true })
+    const { onToggleAim, onToggleZones } = renderPanel({ showAim: true })
     const btn = screen.getByRole('switch', { name: 'Visée' })
     expect(btn).toHaveAttribute('aria-checked', 'true')
     fireEvent.click(btn)
@@ -189,16 +190,16 @@ describe('ReplaySettingsDrawer — calques', () => {
 
   // LE CALQUE DES NOMS N'A PLUS DE BASCULE (2026-09-02) : il est toujours allumé. Le test
   // garde l'ABSENCE — sans lui, une revue future la réintroduirait par symétrie avec les
-  // autres calques, et le tiroir reprendrait la ligne qu'on vient de lui faire rendre.
+  // autres calques, et le panneau reprendrait la ligne qu'on vient de lui faire rendre.
   it('aucune bascule « Noms » : le calque est toujours allumé', () => {
-    renderDrawer({ zonesAvailable: false })
+    renderPanel({ zonesAvailable: false })
     expect(screen.queryByRole('switch', { name: 'Noms' })).toBeNull()
   })
 
   // V1 (2026-08-18) : la TRAÎNÉE devient un calque comme les autres — toujours proposée (elle
   // n'a aucune condition de disponibilité : une vie a toujours un passé), allumée par défaut.
   it('bascule Traînée : toujours proposée, reflète showTrail, appelle onToggleTrail au clic', () => {
-    const { onToggleTrail, onToggleAim } = renderDrawer({ showTrail: false, zonesAvailable: false })
+    const { onToggleTrail, onToggleAim } = renderPanel({ showTrail: false, zonesAvailable: false })
     const btn = screen.getByRole('switch', { name: 'Traînée' })
     expect(btn).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(btn)
@@ -207,12 +208,12 @@ describe('ReplaySettingsDrawer — calques', () => {
   })
 
   it('bouton Zones absent quand la carte n a pas de zones nommées', () => {
-    renderDrawer({ zonesAvailable: false })
+    renderPanel({ zonesAvailable: false })
     expect(screen.queryByRole('switch', { name: 'Zones' })).toBeNull()
   })
 
   it('bouton Zones présent, reflète showZones, appelle onToggleZones au clic', () => {
-    const { onToggleZones } = renderDrawer({ zonesAvailable: true, showZones: false })
+    const { onToggleZones } = renderPanel({ zonesAvailable: true, showZones: false })
     const btn = screen.getByRole('switch', { name: 'Zones' })
     expect(btn).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(btn)
@@ -220,16 +221,16 @@ describe('ReplaySettingsDrawer — calques', () => {
   })
 })
 
-describe('ReplaySettingsDrawer — poses d équipement', () => {
+describe('ReplayViewPanel — poses d équipement', () => {
   it('film sans pose dessinable : ni le calque ni les objets non identifiés', () => {
-    renderDrawer({ placements: makePlacements({ available: false }) })
+    renderPanel({ placements: makePlacements({ available: false }) })
     expect(screen.queryByRole('switch', { name: 'Équipements posés' })).toBeNull()
     expect(screen.queryByRole('switch', { name: 'Objets non identifiés' })).toBeNull()
   })
 
   it('bascule Équipements posés : reflète son état et appelle SON callback', () => {
     const onToggle = vi.fn()
-    const { onToggleAim } = renderDrawer({ placements: makePlacements({ show: false, onToggle }) })
+    const { onToggleAim } = renderPanel({ placements: makePlacements({ show: false, onToggle }) })
     const btn = screen.getByRole('switch', { name: 'Équipements posés' })
     expect(btn).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(btn)
@@ -238,12 +239,12 @@ describe('ReplaySettingsDrawer — poses d équipement', () => {
   })
 
   it('calque éteint : la bascule des objets non identifiés ne commanderait rien, elle est absente', () => {
-    renderDrawer({ placements: makePlacements({ show: false }) })
+    renderPanel({ placements: makePlacements({ show: false }) })
     expect(screen.queryByRole('switch', { name: 'Objets non identifiés' })).toBeNull()
   })
 
   it('toutes les poses nommées : rien à révéler, la bascule n est pas proposée', () => {
-    renderDrawer({ placements: makePlacements({ unnamedAvailable: false }) })
+    renderPanel({ placements: makePlacements({ unnamedAvailable: false }) })
     expect(screen.getByRole('switch', { name: 'Équipements posés' })).toBeTruthy()
     expect(screen.queryByRole('switch', { name: 'Objets non identifiés' })).toBeNull()
   })
@@ -251,7 +252,7 @@ describe('ReplaySettingsDrawer — poses d équipement', () => {
   it('bascule Objets non identifiés : éteinte par défaut, appelle SON callback', () => {
     const onToggleUnnamed = vi.fn()
     const onToggle = vi.fn()
-    renderDrawer({ placements: makePlacements({ onToggle, onToggleUnnamed }) })
+    renderPanel({ placements: makePlacements({ onToggle, onToggleUnnamed }) })
     const btn = screen.getByRole('switch', { name: 'Objets non identifiés' })
     expect(btn).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(btn)
@@ -260,15 +261,15 @@ describe('ReplaySettingsDrawer — poses d équipement', () => {
   })
 })
 
-describe('ReplaySettingsDrawer — emplacements d arme', () => {
+describe('ReplayViewPanel — emplacements d arme', () => {
   it('film sans socle publié : pas de bascule (elle ne commanderait rien)', () => {
-    renderDrawer({ weaponPads: makeWeaponPads({ available: false }) })
+    renderPanel({ weaponPads: makeWeaponPads({ available: false }) })
     expect(screen.queryByRole('switch', { name: "Emplacements d'arme" })).toBeNull()
   })
 
   it('bascule Emplacements d arme : reflète son état et appelle SON callback', () => {
     const onToggle = vi.fn()
-    const { onToggleAim } = renderDrawer({
+    const { onToggleAim } = renderPanel({
       weaponPads: makeWeaponPads({ show: false, onToggle }),
       placements: makePlacements({ onToggle: vi.fn() }),
     })
@@ -280,7 +281,7 @@ describe('ReplaySettingsDrawer — emplacements d arme', () => {
   })
 })
 
-describe('ReplaySettingsDrawer — objectifs du mode (2026-09-18)', () => {
+describe('ReplayViewPanel — objectifs du mode (2026-09-18)', () => {
   /** Les objets PORTÉS tous indisponibles : ce qu'un film sans drapeau, VIP, crâne ni bombe publie. */
   const sansObjetsPortes = () => ({
     flagCarries: makeFlagCarries({ available: false }),
@@ -292,7 +293,7 @@ describe('ReplaySettingsDrawer — objectifs du mode (2026-09-18)', () => {
   it('bascule Objectifs du mode : reflète son état et appelle SON callback, jamais les drapeaux', () => {
     const onToggle = vi.fn()
     const onToggleFlags = vi.fn()
-    renderDrawer({
+    renderPanel({
       modeObjectives: makeModeObjectives({ show: false, onToggle }),
       flagCarries: makeFlagCarries({ onToggle: onToggleFlags }),
     })
@@ -304,7 +305,7 @@ describe('ReplaySettingsDrawer — objectifs du mode (2026-09-18)', () => {
   })
 
   it('elle ouvre le groupe Objectifs, EN PREMIER, avant les drapeaux', () => {
-    renderDrawer()
+    renderPanel()
     const titre = screen.getByText('Objectifs')
     const groupe = titre.parentElement
     expect(groupe).not.toBeNull()
@@ -316,22 +317,22 @@ describe('ReplaySettingsDrawer — objectifs du mode (2026-09-18)', () => {
   })
 
   it('le groupe Objectifs existe même sans drapeau, VIP, crâne ni bombe : le terrain de l enjeu suffit', () => {
-    renderDrawer(sansObjetsPortes())
+    renderPanel(sansObjetsPortes())
     expect(screen.getByText('Objectifs')).toBeTruthy()
     expect(screen.getByRole('switch', { name: 'Objectifs du mode' })).toBeTruthy()
     expect(screen.queryByRole('switch', { name: 'Drapeaux' })).toBeNull()
   })
 
   it('film sans objectif de mode ni objet porté : ni la bascule, ni le titre du groupe', () => {
-    renderDrawer({ ...sansObjetsPortes(), modeObjectives: makeModeObjectives({ available: false }) })
+    renderPanel({ ...sansObjetsPortes(), modeObjectives: makeModeObjectives({ available: false }) })
     expect(screen.queryByRole('switch', { name: 'Objectifs du mode' })).toBeNull()
     expect(screen.queryByText('Objectifs')).toBeNull()
   })
 })
 
-describe('ReplaySettingsDrawer — carte de chaleur', () => {
+describe('ReplayViewPanel — carte de chaleur', () => {
   it('calque éteint : la bascule est là, le choix de lecture ne l est pas', () => {
-    renderDrawer({ heatmap: makeHeatmap({ show: false }) })
+    renderPanel({ heatmap: makeHeatmap({ show: false }) })
     expect(screen.getByRole('switch', { name: 'Carte de chaleur' })).toHaveAttribute(
       'aria-checked',
       'false',
@@ -341,7 +342,7 @@ describe('ReplaySettingsDrawer — carte de chaleur', () => {
   })
 
   it('calque allumé : les deux lectures, la courante pressée (choix exclusif)', () => {
-    renderDrawer({ heatmap: makeHeatmap({ show: true, mode: 'kills' }) })
+    renderPanel({ heatmap: makeHeatmap({ show: true, mode: 'kills' }) })
     expect(screen.getByRole('radio', { name: 'Présence' })).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByRole('radio', { name: 'Éliminations' })).toHaveAttribute('aria-checked', 'true')
   })
@@ -349,7 +350,7 @@ describe('ReplaySettingsDrawer — carte de chaleur', () => {
   it('cliquer une lecture appelle onSetMode avec SA clé, jamais la bascule du calque', () => {
     const onSetMode = vi.fn()
     const onToggle = vi.fn()
-    renderDrawer({ heatmap: makeHeatmap({ show: true, onSetMode, onToggle }) })
+    renderPanel({ heatmap: makeHeatmap({ show: true, onSetMode, onToggle }) })
     fireEvent.click(screen.getByRole('radio', { name: 'Éliminations' }))
     expect(onSetMode).toHaveBeenCalledTimes(1)
     expect(onSetMode).toHaveBeenCalledWith('kills')
@@ -357,7 +358,7 @@ describe('ReplaySettingsDrawer — carte de chaleur', () => {
   })
 
   it('aucune mort localisée : la lecture éliminations n est pas proposée', () => {
-    renderDrawer({ heatmap: makeHeatmap({ show: true, killsAvailable: false }) })
+    renderPanel({ heatmap: makeHeatmap({ show: true, killsAvailable: false }) })
     expect(screen.queryByRole('button', { name: 'Éliminations' })).toBeNull()
     // Et le choix disparaît entièrement : une seule lecture ne se choisit pas.
     expect(screen.queryByRole('button', { name: 'Présence' })).toBeNull()
@@ -365,43 +366,43 @@ describe('ReplaySettingsDrawer — carte de chaleur', () => {
 
   it('la bascule appelle onToggle, jamais un calque voisin', () => {
     const onToggle = vi.fn()
-    const { onToggleZones } = renderDrawer({ heatmap: makeHeatmap({ onToggle }) })
+    const { onToggleZones } = renderPanel({ heatmap: makeHeatmap({ onToggle }) })
     fireEvent.click(screen.getByRole('switch', { name: 'Carte de chaleur' }))
     expect(onToggle).toHaveBeenCalledTimes(1)
     expect(onToggleZones).not.toHaveBeenCalled()
   })
 })
 
-describe('ReplaySettingsDrawer — couleur des points', () => {
+describe('ReplayViewPanel — couleur des points', () => {
   it('propose les deux lectures, la courante pressée (choix exclusif)', () => {
-    renderDrawer({ markerColors: 'player' })
+    renderPanel({ markerColors: 'player' })
     expect(screen.getByRole('button', { name: 'Par équipe' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'Par joueur' })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('cliquer une lecture appelle onSetMarkerColors avec SON mode', () => {
-    const { onSetMarkerColors } = renderDrawer({ markerColors: 'team' })
+    const { onSetMarkerColors } = renderPanel({ markerColors: 'team' })
     fireEvent.click(screen.getByRole('button', { name: 'Par joueur' }))
     expect(onSetMarkerColors).toHaveBeenCalledWith('player')
   })
 })
 
-describe('ReplaySettingsDrawer — son (le filtre par catégorie seul : l’interrupteur vit à la barre de lecture)', () => {
+describe('ReplayViewPanel — son (le filtre par catégorie seul : l’interrupteur vit à la barre de lecture)', () => {
   it('aucune commande de son ni de catégorie quand le match n a aucun son', () => {
-    renderDrawer({ sound: makeSound({ available: false }) })
+    renderPanel({ sound: makeSound({ available: false }) })
     expect(screen.queryByText('Sons par catégorie')).toBeNull()
     expect(screen.queryByRole('switch', { name: 'Armes' })).toBeNull()
     expect(screen.queryByRole('switch', { name: 'Son' })).toBeNull()
   })
 
-  it('l’interrupteur du son n’est PLUS au tiroir, même quand le son est disponible', () => {
-    renderDrawer()
+  it('l’interrupteur du son n’est PLUS dans le panneau, même quand le son est disponible', () => {
+    renderPanel()
     expect(screen.queryByRole('switch', { name: 'Son' })).toBeNull()
     expect(screen.getByText('Sons par catégorie')).toBeTruthy()
   })
 
   it('les quatre catégories sont affichées, chacune avec son état', () => {
-    renderDrawer({
+    renderPanel({
       sound: makeSound({
         categories: { weapon: true, grenade: false, melee: true, equipment: false, objective: false },
       }),
@@ -414,16 +415,16 @@ describe('ReplaySettingsDrawer — son (le filtre par catégorie seul : l’inte
 
   it('cliquer une catégorie appelle toggleCategory avec SA clé, jamais une voisine', () => {
     const toggleCategory = vi.fn()
-    renderDrawer({ sound: makeSound({ toggleCategory }) })
+    renderPanel({ sound: makeSound({ toggleCategory }) })
     fireEvent.click(screen.getByRole('switch', { name: 'Grenades' }))
     expect(toggleCategory).toHaveBeenCalledTimes(1)
     expect(toggleCategory).toHaveBeenCalledWith('grenade')
   })
 })
 
-describe('ReplaySettingsDrawer — effets d événement', () => {
+describe('ReplayViewPanel — effets d événement', () => {
   it('les deux effets ont leur bascule, chacune avec son état', () => {
-    renderDrawer({ showShotFx: true, showKillFx: false })
+    renderPanel({ showShotFx: true, showKillFx: false })
     expect(screen.getByRole('switch', { name: 'Effets de tirs' })).toHaveAttribute(
       'aria-checked',
       'true',
@@ -435,7 +436,7 @@ describe('ReplaySettingsDrawer — effets d événement', () => {
   })
 
   it('chaque bascule appelle SON callback, jamais celui de l autre effet', () => {
-    const { onToggleShotFx, onToggleKillFx } = renderDrawer()
+    const { onToggleShotFx, onToggleKillFx } = renderPanel()
     fireEvent.click(screen.getByRole('switch', { name: 'Effets de mort' }))
     expect(onToggleKillFx).toHaveBeenCalledTimes(1)
     expect(onToggleShotFx).not.toHaveBeenCalled()
@@ -444,20 +445,20 @@ describe('ReplaySettingsDrawer — effets d événement', () => {
   it('le (i) des effets de tir dit ce qui est dessiné, jamais une couverture', () => {
     // Le (i) demandé le 16/08 dit la règle du dessin (un tir qui applique un dégât) ; depuis le
     // 2026-10-09, il ne parle plus de couverture (aucun inconnu à l'écran).
-    renderDrawer()
+    renderPanel()
     const mark = screen.getByRole('img', { name: /tir s'affiche lorsqu'il applique un dégât/i })
     expect(mark.getAttribute('title') ?? '').not.toMatch(/couverture/i)
   })
 })
 
-describe('ReplaySettingsDrawer — cohabitation avec la légende de la carte de chaleur', () => {
+describe('ReplayViewPanel — cohabitation avec la légende de la carte de chaleur', () => {
   // LE PANNEAU A QUITTÉ LE CADRE le 2026-09-02 : il n'est plus `absolute right-0` dans la carte
   // mais un portail `fixed`, placé par `useAnchoredPanel`. Ce que le test garde n'est donc plus
   // sa position — elle est calculée, pas déclarée — mais les DEUX invariants qui survivent au
   // changement : il flotte hors du flux, et il passe AU-DESSUS de la légende si un écran étroit
   // les rapproche (un panneau ouvert prime une légende ; ce n'est pas une collision).
   it('le panneau flotte hors du flux et prime la légende, qui garde son coin bas-GAUCHE', () => {
-    const panel = renderDrawer().getByRole('region', { name: 'Réglages' })
+    const panel = renderPanel().getByRole('region', { name: 'Vue' })
     expect(panel.className).toContain('fixed')
     expect(panel.className).toContain('z-50')
     // Hors du cadre = hors du sous-arbre de la carte : il se rend sur `body`.
@@ -469,27 +470,83 @@ describe('ReplaySettingsDrawer — cohabitation avec la légende de la carte de 
   })
 })
 
-describe('ReplaySettingsDrawer — fermeture et focus', () => {
+describe('ReplayViewPanel — préréglages de vue', () => {
+  it('les quatre préréglages viennent EN PREMIER, avant les calques', () => {
+    renderPanel()
+    const titres = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+    expect(titres[0]).toBe('Préréglages')
+    expect(titres.indexOf('Calques')).toBeGreaterThan(0)
+    for (const nom of ['Complet', 'Combat', 'Déplacements', 'Objectif']) {
+      expect(screen.getByRole('button', { name: nom })).toBeTruthy()
+    }
+  })
+
+  it('le préréglage actif est pressé, les autres non', () => {
+    renderPanel({ view: { active: 'combat', onSelect: vi.fn() } })
+    expect(screen.getByRole('button', { name: 'Combat' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Complet' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('cliquer un préréglage appelle onSelect avec SON identifiant', () => {
+    const { onSelect } = renderPanel()
+    fireEvent.click(screen.getByRole('button', { name: 'Déplacements' }))
+    expect(onSelect).toHaveBeenCalledTimes(1)
+    expect(onSelect).toHaveBeenCalledWith('deplacements')
+  })
+
+  it('Personnalisé : aucun préréglage pressé, et une phrase dit pourquoi', () => {
+    renderPanel({ view: { active: 'personnalise', onSelect: vi.fn() } })
+    for (const nom of ['Complet', 'Combat', 'Déplacements', 'Objectif']) {
+      expect(screen.getByRole('button', { name: nom })).toHaveAttribute('aria-pressed', 'false')
+    }
+    expect(screen.getByText(/ne correspondent à aucun préréglage/)).toBeTruthy()
+  })
+
+  it('un préréglage actif ne montre pas la phrase de Personnalisé', () => {
+    renderPanel()
+    expect(screen.queryByText(/ne correspondent à aucun préréglage/)).toBeNull()
+  })
+
+  it('en anglais : Full, Combat, Movement, Objective, et Custom', () => {
+    renderPanel({ locale: 'en', view: { active: 'personnalise', onSelect: vi.fn() } })
+    for (const nom of ['Full', 'Combat', 'Movement', 'Objective']) {
+      expect(screen.getByRole('button', { name: nom })).toBeTruthy()
+    }
+    expect(screen.getByText('Custom')).toBeTruthy()
+  })
+})
+
+describe('ReplayViewPanel — rien ne disparaît du tiroir d’avant', () => {
+  it('les effets, la chaleur, la couleur des points et le son sont toujours là', () => {
+    renderPanel({ heatmap: makeHeatmap({ show: true }) })
+    expect(screen.getByRole('switch', { name: 'Effets de tirs' })).toBeTruthy()
+    expect(screen.getByRole('switch', { name: 'Carte de chaleur' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Par équipe' })).toBeTruthy()
+    expect(screen.getByRole('switch', { name: 'Armes' })).toBeTruthy()
+  })
+})
+
+describe('ReplayViewPanel — fermeture et focus', () => {
   it('le bouton de fermeture appelle onClose', () => {
-    const { onClose } = renderDrawer()
-    fireEvent.click(screen.getByRole('button', { name: 'Fermer les réglages' }))
+    const { onClose } = renderPanel()
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer la vue' }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('Échap appelle onClose', () => {
-    const { onClose } = renderDrawer()
+    const { onClose } = renderPanel()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('un clic DEHORS ferme le panneau (il recouvre la carte : on doit pouvoir en sortir)', () => {
-    const { onClose } = renderDrawer()
+    const { onClose } = renderPanel()
     fireEvent.pointerDown(document.body)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('un clic DEDANS ne ferme rien — sinon régler quoi que ce soit refermerait le panneau', () => {
-    const { onClose } = renderDrawer()
+    const { onClose } = renderPanel()
     fireEvent.pointerDown(screen.getByRole('switch', { name: 'Visée' }))
     expect(onClose).not.toHaveBeenCalled()
   })
@@ -497,14 +554,14 @@ describe('ReplaySettingsDrawer — fermeture et focus', () => {
   it('le DÉCLENCHEUR est exclu du clic dehors : sinon il fermerait puis rouvrirait', () => {
     const trigger = document.createElement('button')
     document.body.appendChild(trigger)
-    const { onClose } = renderDrawer({ triggerRef: { current: trigger } })
+    const { onClose } = renderPanel({ triggerRef: { current: trigger } })
     fireEvent.pointerDown(trigger)
     expect(onClose).not.toHaveBeenCalled()
     trigger.remove()
   })
 
   it('le focus entre au panneau à l ouverture (il recouvre les commandes de la carte)', () => {
-    renderDrawer()
-    expect(document.activeElement).toBe(screen.getByRole('region', { name: 'Réglages' }))
+    renderPanel()
+    expect(document.activeElement).toBe(screen.getByRole('region', { name: 'Vue' }))
   })
 })

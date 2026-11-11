@@ -63,10 +63,10 @@ import type { ReplayMediaItem } from '../model/replayTimelineTracksLogic'
 import { useReplayFx } from '../layers/useReplayFx'
 import { NO_MARKS, type PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
-import { useReplayDrawer } from '../settings/useReplayDrawer'
+import { useReplayViewMenu } from '../settings/useReplayViewMenu'
 import { useReplayTimeline } from '../hooks/useReplayTimeline'
 import { useSlotIdentity } from '../layers/useSlotIdentity'
-import { ReplaySettingsDrawer } from '../settings/ReplaySettingsDrawer'
+import { ReplayViewMenu } from '../settings/ReplayViewMenu'
 import { useReplayHeatmap } from '../layers/useReplayHeatmap'
 import { useReplayInks } from '../layers/useReplayInks'
 import { hoverHandlers } from '../layers/hoverLayers'
@@ -239,8 +239,8 @@ export function ReplayCanvas({
 
   // CE QUE L'ÉCRAN OFFRE (useReplayViewport) ; ce que la carte en retient, c'est useReplayView.
   const { width, freeHeight } = useReplayViewport(containerRef, canvasRef)
-  // L'OBJET DE RÉGLAGES RESTE ENTIER (2026-08-28) : le tiroir en consomme la quasi-totalité ;
-  // le dessin ne lit que les valeurs — d'où cette destructuration-là (cf. useReplayDrawer).
+  // L'OBJET DE RÉGLAGES RESTE ENTIER (2026-08-28) : le panneau de la vue en consomme la quasi-totalité ;
+  // le dessin ne lit que les valeurs — d'où cette destructuration-là (cf. useReplayViewMenu).
   const settings = useReplaySettings()
   const {
     showAim, showZones, showTrail, showHeatmap, heatmapMode, heatmapSpan,
@@ -261,7 +261,7 @@ export function ReplayCanvas({
     floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, scrim, self: selfInk, wall: wallInk, rift: riftInk, shroud: shroudInk, mark: markInk,
     zone: zoneInk,
   } = useReplayInks(paletteVersion)
-  // COULEURS DISTINCTES PAR JOUEUR (option du tiroir, 2026-08-24) : une série stable par joueur
+  // COULEURS DISTINCTES PAR JOUEUR (option du panneau de la vue, 2026-08-24) : une série stable par joueur
   // à la place de la couleur d'équipe — le camp reste dit par les fiches, le fil et le bandeau.
   const distinctColors = useMemo(() => {
     void paletteVersion
@@ -384,7 +384,7 @@ export function ReplayCanvas({
     ink: { fill: markInk.fill, outline: neutralInk }, redraw,
     frameRef, nameOfSlot, locale,
   })
-  // `showNames: true` : le calque des noms a quitte le tiroir le 2026-09-02 (toujours allume).
+  // `showNames: true` : le calque des noms a quitte les réglages le 2026-09-02 (toujours allume).
   // BORNAGE HORS CADRE (lot 4.4, 2026-09-10) : `offscreenLabelOf`/`offscreenGroupLabelOf`
   // resolvent le texte de la fleche ICI (langue de la page) — le calque, lui, ne connait
   // aucune locale (meme convention que `offscreenLabelOf` du calque des pions ci-dessous).
@@ -675,9 +675,9 @@ export function ReplayCanvas({
     // c'est elle qui dit qui est coéquipier du joueur regardé.
     viewpoint: viewpoint ?? null, allegiance, players, onSelectViewpoint,
   })
-  // LE TIROIR, groupé de même (useReplayDrawer) : les disponibilités viennent des calques, les
-  // bascules de `useReplaySettings`, et l'état d'ouverture du hook lui-même (2026-08-30).
-  const drawer = useReplayDrawer({
+  // LE BOUTON « VUE » ET SON PANNEAU, groupés de même (useReplayViewMenu) : les disponibilités
+  // viennent des calques, les bascules de `useReplaySettings`, et l'ouverture du hook lui-même.
+  const viewMenu = useReplayViewMenu({
     settings, sound, locale,
     heat: { mode: heat.mode, killsAvailable: heat.killsAvailable },
     available: {
@@ -705,9 +705,8 @@ export function ReplayCanvas({
   })
 
   return (
-    // RELATIVE + OVERFLOW-HIDDEN : le tiroir se pose EN SURIMPRESSION dans ce cadre (retour
-    // de planche du 16/08). `relative` lui donne son repère, `overflow-hidden` retient ses
-    // coins carrés dans le rayon arrondi de la carte.
+    // RELATIVE + OVERFLOW-HIDDEN : `overflow-hidden` retient les coins carrés de la carte dans
+    // son rayon arrondi ; le panneau de la vue en sort donc par un portail (useAnchoredPanel).
     <div className="relative overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex">
         {/* Colonne canvas : c'est ELLE que le ResizeObserver mesure. Elle occupe DÉSORMAIS
@@ -715,9 +714,6 @@ export function ReplayCanvas({
             lui prendre sa place, donc le canvas ne se retaille plus et le rendu ne saute
             plus à l'ouverture. */}
         <div ref={containerRef} className="min-w-0 flex-1">
-          {/* Le bouton du TIROIR DE RÉGLAGES vit tout à droite de la barre de lecture
-              (demande du 2026-08-24) : la barre du haut, qui ne portait plus que lui, est
-              supprimée — le rejeu gagne sa hauteur. */}
           <div className="relative p-3 pb-0">
             {/* La légende se pose DANS le cadre du canvas (coin bas-gauche) : une échelle
                 de couleur lue à côté de sa carte n'est plus une échelle. Le conteneur
@@ -752,6 +748,9 @@ export function ReplayCanvas({
                   pas correct »). Les remonter d'un cran dans la page ne suffisait pas — ce
                   composant rend AUSSI la barre de lecture. Le seul ancrage juste est celui-ci. */}
               {mapOverlays}
+              {/* LE BOUTON « VUE » : coin haut droit de la carte. Son panneau se rend en portail,
+                  sous lui, et laisse libre le coin BAS-GAUCHE de la légende de la chaleur. */}
+              <ReplayViewMenu {...viewMenu} />
             </div>
             {/* LA LÉGENDE S'ANCRE AU BLOC, PLUS À LA TOILE (2026-09-02, retour utilisateur :
                 « il faut le mettre sur le côté gauche du bloc avec un léger padding »). Elle
@@ -773,14 +772,8 @@ export function ReplayCanvas({
             autoPlay={settings.autoPlay} onToggleAutoPlay={settings.toggleAutoPlay}
             speed={multiplier} onSetSpeed={settings.setSpeed}
             sound={sound} capture={capture} locale={locale} fullscreen={fullscreen}
-            settingsOpen={drawer.open} onToggleSettings={drawer.toggle}
-            settingsButtonRef={drawer.buttonRef}
           />
         </div>
-        {/* Le panneau se pose SUR la carte, à droite (retour de planche du 16/08 : « je vois
-            plus un panneau par dessus »). Il ne mange donc plus la largeur du canvas — et il
-            laisse libre le coin BAS-GAUCHE, où vit la légende de la carte de chaleur. */}
-        {drawer.open && <ReplaySettingsDrawer {...drawer.panel} />}
       </div>
     </div>
   )

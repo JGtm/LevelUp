@@ -115,8 +115,23 @@ export const FR_TEXT = {
     "L'enregistrement filme le rejeu tel qu'il défile : changer de vitesse ou déplacer le curseur se voit dans le fichier. Démarrer relance la lecture si elle est en pause ; mettre en pause ou laisser le film finir arrête l'enregistrement et télécharge le clip.",
   // « REC » et « Arrêter » : la convention des lecteurs, identique dans les deux langues
   // pour la première — c'est le mot qu'on cherche du regard sur un bouton d'enregistrement.
-  settingsButton: 'Réglages',
-  settingsClose: 'Fermer les réglages',
+  viewButton: 'Vue',
+  viewClose: 'Fermer la vue',
+  viewPresetsTitle: 'Préréglages',
+  viewPreset: {
+    complet: 'Complet',
+    combat: 'Combat',
+    deplacements: 'Déplacements',
+    objectif: 'Objectif',
+    personnalise: 'Personnalisé',
+  },
+  viewPresetHint: {
+    complet: 'Tous les calques',
+    combat: 'Visée, traînées, véhicules, objectifs',
+    deplacements: 'Traînées et zones',
+    objectif: 'Traînées, zones, objectifs',
+  },
+  viewCustomNote: 'Les calques ne correspondent à aucun préréglage.',
   fullscreenEnter: 'Plein écran',
   fullscreenExit: 'Quitter le plein écran',
   autoPlay: 'Lecture automatique',
