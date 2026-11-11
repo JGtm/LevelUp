@@ -23,10 +23,10 @@ package grammar
 // nomme et compte (D1.2).
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/weaponv3"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/weaponv3"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // LA CONFIGURATION DE LA MARQUE DE PORTAGE (decision U-2 (b), 2026-10-08, confirmee le 2026-10-09).

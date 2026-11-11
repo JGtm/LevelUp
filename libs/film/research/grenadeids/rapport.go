@@ -11,7 +11,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // EcrireEntete publie ce que le film dit de lui-meme, avant toute mesure.

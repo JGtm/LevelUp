@@ -63,7 +63,7 @@ import (
 	"log/slog"
 	"strconv"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // unnamedLivesReport est ce que la passe de nommage final rend — par CAUSE, jamais un total

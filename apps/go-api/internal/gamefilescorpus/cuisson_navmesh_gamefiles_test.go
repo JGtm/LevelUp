@@ -10,7 +10,7 @@ import (
 
 	"levelup/go-api/internal/testfixtures"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // TestCuitIsolationDepuisSonNavmesh — LE FOND D'ISOLATION, RENDU DEPUIS LE SOL JOUABLE.

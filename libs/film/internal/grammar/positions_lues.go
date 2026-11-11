@@ -32,8 +32,8 @@ import (
 	"cmp"
 	"math/bits"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // indexDeLaPosition est l index du composant i0 de l archetype bipede : la position

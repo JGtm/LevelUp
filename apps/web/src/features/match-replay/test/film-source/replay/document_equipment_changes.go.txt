@@ -24,8 +24,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // EquipmentChangeKind qualifie un changement d'équipement, tel que le document le publie.

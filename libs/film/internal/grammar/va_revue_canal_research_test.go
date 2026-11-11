@@ -21,8 +21,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // TestVARevueOriginesDuCanal ecrit `va_revue_canal.tsv` : une ligne par trame a evenements.

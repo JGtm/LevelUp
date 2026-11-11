@@ -6,8 +6,8 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 func poseBrute(slot, gen uint32, t0 uint64) types.EquipmentPlacement {

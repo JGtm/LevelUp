@@ -43,8 +43,8 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // CES SEUILS ONT ETE REMIS EN CAUSE LE 2026-09-02, ET LA MESURE LES A CONFIRMES. Le calque

@@ -3,9 +3,9 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // ground_weapon_origine_repli_test.go — l origine `dropped` d un objet au sol, decidee par la

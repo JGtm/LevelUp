@@ -16,8 +16,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/signaux"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/signaux"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // TestPlusSommeChaqueChampDesComptes : [ComptesDesReplis.Plus] nomme ses champs ; un champ ajoute et

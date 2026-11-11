@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // manche2SansManche1Records reproduit le motif mesure sur `fb1a1a72` et 23 autres films du cache

@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 // doerGarde : un Doer qui porte une garde ([haloapi.Garde]) ; il compte les consultations de la

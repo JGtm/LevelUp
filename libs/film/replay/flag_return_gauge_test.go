@@ -9,7 +9,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // grammarManagedRead : une lecture de `ti=13` dite en FRAMES, que `frgInput` traduit en

@@ -17,7 +17,7 @@ package grammar
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // cmCollecteur recoit la marche de reference d un film et remplit ses tables.

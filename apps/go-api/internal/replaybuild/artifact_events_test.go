@@ -18,7 +18,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // capturePuits installe un puits qui enregistre les événements et le retire à la fin du

@@ -9,7 +9,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // bondEcrit est un message Bond CompactBinary v2, en octets, tel que les ecrivains du jeu le forment.

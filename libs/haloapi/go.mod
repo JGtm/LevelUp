@@ -1,4 +1,4 @@
-module github.com/JGtm/LevelUp/libs/haloapi
+module github.com/JGtm/halo-api
 
 go 1.26.11
 

@@ -12,8 +12,8 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/identity"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/identity"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // tableAVacantIntercale : sept sieges aux rangs 0, 1, 3..7, le rang 2 vacant entre deux occupes.

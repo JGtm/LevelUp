@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // lrInstruction suit les liaisons posees par les NEW lus et decrit les paquets cibles.

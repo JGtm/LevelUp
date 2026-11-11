@@ -21,8 +21,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // buildInconnuTemoin : le nom de build force dans le `chunk_00` du temoin. Il fait EXACTEMENT la

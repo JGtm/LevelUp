@@ -45,8 +45,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // afExplosions : les instants d'explosion DATES du releve A0.3 (`A_PROTOCOLE.md` §2), recopies

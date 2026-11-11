@@ -3,7 +3,7 @@ package replay
 import (
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // player_index.go — CE QUE LA PUBLICATION FAIT DE LA TABLE D INDEX DE JOUEUR.

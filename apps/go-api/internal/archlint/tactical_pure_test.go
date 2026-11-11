@@ -48,7 +48,7 @@ var tacticalPurePkgs = []string{
 
 // tacticalPureInterdits : les imports qui feraient de ces paquets autre chose que des algos.
 var tacticalPureInterdits = []string{
-	"github.com/JGtm/LevelUp/libs/film/replay",
+	"github.com/JGtm/halo-infinite-film-decoder/replay",
 	"levelup/go-api/internal/platform/duckdb",
 	"database/sql",
 }

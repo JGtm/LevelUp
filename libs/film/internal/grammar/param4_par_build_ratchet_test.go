@@ -42,7 +42,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // p4Constante porte la constante que `vtable[0]` du descripteur rend, et l adresse de la

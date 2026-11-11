@@ -10,7 +10,7 @@
 // `infinite` (services Halo Infinite : adresses, transport, DTO JSON bruts, octets des films) et
 // `halo5` (services Halo 5: Guardians : adresses, transport, DTO JSON bruts, rendus PNG) et
 // `xboxlive` (succès Xbox Live : adresse, une page par appel, DTO JSON bruts).
-// Contrat : la brique est le module `github.com/JGtm/LevelUp/libs/haloapi` (ADR 0041) ; un paquet
+// Contrat : la brique est le module `github.com/JGtm/halo-api` (ADR 0041) ; un paquet
 // n'importe RIEN de LevelUp ni d'une autre brique (`archlint/briques_imports_test.go`, ligne
 // `haloapi`, qui borne aussi ses tiers par sous-paquet) ; ce dont il a besoin (client HTTP, adresses, jetons,
 // langue) lui est PASSÉ, et il ne construit jamais de client HTTP (garde `netguard` par `Doer`

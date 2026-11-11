@@ -42,9 +42,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // Seuils et bornes de l'item 1, ecrits avant mesure.

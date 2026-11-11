@@ -28,7 +28,7 @@ import (
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/service/replayview"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // champsNonServis liste les champs du document STOCKE que l'API ne publie pas, par

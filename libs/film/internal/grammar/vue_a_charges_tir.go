@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/internal/source"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/source"
 
 // vue_a_charges_tir.go — LA CHARGE DU TIR `action_weapon_fire` (genre 36), PORTEE DEPUIS SON
 // LECTEUR `FUN_14080c1f8` (lot LN de la campagne de grammaire).

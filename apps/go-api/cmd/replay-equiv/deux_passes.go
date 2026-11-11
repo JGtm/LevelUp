@@ -51,7 +51,7 @@ import (
 	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // Les deux passes, par leur nom de drapeau. L enfant les recoit par `-passe`.

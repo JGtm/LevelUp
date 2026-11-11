@@ -31,13 +31,13 @@ import (
 
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/signaux"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/signaux"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // objSeuilMarqueur — le seuil du gate 1, ecrit avant la mesure et jamais rebaisse.

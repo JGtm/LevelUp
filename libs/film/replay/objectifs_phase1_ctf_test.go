@@ -27,8 +27,8 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/signaux"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/signaux"
 )
 
 // objModeCorpus — les films de mode CONNU. Le mode vient de `game_variant_name`, releve dans

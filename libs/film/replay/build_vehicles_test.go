@@ -12,8 +12,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // vehClock : origine 1 s, pas 100 ms, 1 200 frames (2 minutes) — les frames attendues se lisent

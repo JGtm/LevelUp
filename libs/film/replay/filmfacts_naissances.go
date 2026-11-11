@@ -14,8 +14,8 @@ package replay
 // avec lui — et sa famille, sentinelle d emplacement vide comprise.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // encodeMarcheImageCle ecrit la couverture de la marche d image-cle, champ par champ.

@@ -5,7 +5,7 @@ package replay
 // les lectures des objets ti=37 crees attaches et leurs denominateurs, au complement de la section 1
 // ([encodeComplementDesEntrees]), apres les poussees.
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // encodeEquipementPorte ecrit les lectures (triees dans l ordre du flux, d ou le delta d instant) puis
 // les denominateurs.

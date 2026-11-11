@@ -3,8 +3,8 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/equipenergy"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/equipenergy"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // Les lectures ci-dessous sont celles du film 0d9a9af9 (repulseur de WolfzyLIVE, slot 513) et de

@@ -34,8 +34,8 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/replayview"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // MapCallouts retourne les zones nommées de la carte du match, dans sa forme SERVIE : le

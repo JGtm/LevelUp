@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // skull_carries.go — LA REGLE : de quoi est faite une periode de portage du CRANE d'Oddball.

@@ -41,7 +41,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // m57Post est UNE lecture d `i55`, datee et attribuee.

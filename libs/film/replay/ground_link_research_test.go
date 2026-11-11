@@ -37,9 +37,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // glSetup porte les entrees communes aux trois mesures, decodees une fois par test.

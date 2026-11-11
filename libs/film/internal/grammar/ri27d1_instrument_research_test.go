@@ -23,8 +23,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // ri27d1Ext porte les complements de l instrument pour un film.

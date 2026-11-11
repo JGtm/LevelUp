@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // components_device_ti43.go — LES COMPOSANTS `device-*` DE L ARCHETYPE `ti=43` (dispositif de
 // carte : porte, ascenseur, station de soin, distributeur d armes ou de vehicules), `i18` a `i40`.

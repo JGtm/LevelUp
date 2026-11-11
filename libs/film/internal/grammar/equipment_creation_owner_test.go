@@ -36,8 +36,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // equipOwnerWindowUS est la fenêtre temporelle dans laquelle un échantillon de position de

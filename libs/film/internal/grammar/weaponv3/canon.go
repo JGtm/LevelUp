@@ -23,7 +23,7 @@ package weaponv3
 import (
 	"maps"
 
-	"github.com/JGtm/LevelUp/libs/film/filmshell"
+	"github.com/JGtm/halo-infinite-film-decoder/filmshell"
 )
 
 // knownWeaponHigh32 — map high-32 → nom canonique, dérivée de l enum v2. NON exportée (J12.4 résidu) :

@@ -3,8 +3,8 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // equipment_episodes_test.go — l'assembleur d'épisodes d'état actif, sur données

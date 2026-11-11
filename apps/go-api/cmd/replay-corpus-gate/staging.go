@@ -41,7 +41,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // avertirSiCatalogueModifie logue un AVERTISSEMENT explicite si config/titles/{slug} ou

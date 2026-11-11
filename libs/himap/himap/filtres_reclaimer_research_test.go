@@ -17,7 +17,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // cartesNativesMesurees : les cartes NATIVES du releve, avec leur cle de catalogue

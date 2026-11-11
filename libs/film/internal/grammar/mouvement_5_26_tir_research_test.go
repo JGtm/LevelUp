@@ -45,7 +45,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // t526TeteTir est le type d evenement de tete du record de tir (numerotation TRAME), le meme que

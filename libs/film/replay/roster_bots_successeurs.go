@@ -49,8 +49,8 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // rosterDesOccupants est le roster publie : celui de [buildRoster], plus les bots successeurs

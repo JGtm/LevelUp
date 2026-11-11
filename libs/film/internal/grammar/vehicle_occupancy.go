@@ -46,7 +46,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // VehicleKeyframeBlockBits est la taille MESURÉE du bloc supplémentaire, en bits : 89, la valeur

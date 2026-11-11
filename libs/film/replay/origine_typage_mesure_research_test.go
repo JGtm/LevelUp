@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // oriTypageEps est le rayon d'appariement naissance -> point. MEME valeur que l'instrument

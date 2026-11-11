@@ -39,7 +39,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // hillDesignatorMinOwnerSamples : SUR LA REGLE DE VOISINAGE (repli, cf. hillDesignatorOf), un slot de

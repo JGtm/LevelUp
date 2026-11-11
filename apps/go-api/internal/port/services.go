@@ -13,8 +13,8 @@ import (
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/canonical"
 
-	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
-	"github.com/JGtm/LevelUp/libs/film/playerposition"
+	"github.com/JGtm/halo-infinite-film-decoder/objectiveevent"
+	"github.com/JGtm/halo-infinite-film-decoder/playerposition"
 )
 
 // ---------------------------------------------------------------------------

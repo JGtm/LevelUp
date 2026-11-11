@@ -8,7 +8,7 @@ package replay
 // du socle neutre ; elle est ecrite ICI, une fois, et les deux appelants la lisent. Le
 // CHARGEMENT du catalogue, lui, reste chez chaque appelant (il sait ou est le depot).
 
-import "github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+import "github.com/JGtm/halo-infinite-files-reader/mapvar"
 
 // SoclesDeDrapeau rend TOUS les socles de drapeau de la carte, en coordonnees monde — les deux
 // socles d'equipe ET le socle neutre du centre. Le calque retient ceux qui correspondent a la

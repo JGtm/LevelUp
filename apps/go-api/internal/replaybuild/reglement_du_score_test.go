@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // TestReglementDuScorePoseLaGardeDeMode — la barre de garde ne s'ouvre que sur un mode a colline,

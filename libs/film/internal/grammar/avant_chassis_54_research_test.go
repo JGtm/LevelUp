@@ -34,8 +34,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // avantSeuilVitesseMPS : le seuil de l oracle V1a.3, celui sous lequel `vehicle_tracks.go`

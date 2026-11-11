@@ -1,4 +1,4 @@
-# github.com/JGtm/LevelUp/libs/film
+# github.com/JGtm/halo-infinite-film-decoder
 
 Decoder for Halo Infinite Theater films: it reads the chunks of a film (the recording the game keeps
 of a match), recovers the facts they carry (players, kill feed, weapons, objectives, positions) and
@@ -7,8 +7,8 @@ assembles them into a 2D replay document.
 ## Status
 
 Used in production by LevelUp since October 2026. From v1.0.0 the exported API follows semantic
-versioning (a breaking change means a new major version). Published from the
-LevelUp monorepo as a Go module in a subdirectory; versions are tagged `libs/film/vX.Y.Z`.
+versioning (a breaking change means a new major version). Published as a Go module in its own
+repository; versions are tagged `vX.Y.Z`.
 
 ## What it is
 
@@ -38,7 +38,7 @@ The four lower layers live under `internal/`, so the compiler closes them. What 
 ## What it is not
 
 - No download: it does not fetch films. The bytes come from your own storage; a client for the Halo web
-  services is a separate module (`libs/haloapi`).
+  services is a separate module (`github.com/JGtm/halo-api`).
 - No application storage: it decides neither where a film, a decoded fact or a document is kept, nor in
   what database.
 - No rendering: the replay document is data (tracks, events, bounds); drawing it is the caller's job.
@@ -51,11 +51,11 @@ The four lower layers live under `internal/`, so the compiler closes them. What 
 ## Install
 
 ```
-go get github.com/JGtm/LevelUp/libs/film@v1.0.0
+go get github.com/JGtm/halo-infinite-film-decoder@v1.0.0
 ```
 
-Works from any Go module; no `replace` directive is needed. (Go resolves `v1.0.0` to the subdirectory tag
-`libs/film/v1.0.0`.) The module requires `libs/gamefiles` and `libs/himap` at their `v1.0.0` tags; `go get`
+Works from any Go module; no `replace` directive is needed. The module requires
+`github.com/JGtm/halo-infinite-files-reader` and `github.com/JGtm/halo-infinite-map-images`; `go get`
 brings them in.
 
 ## Example
@@ -88,14 +88,14 @@ To go from a film to a replay document, pass the loaded film to
 map's line of the map-bounds catalogue read with `decfilm.LoadMapQuantCatalog(path)`. That catalogue (the
 world bounds and quantisation of each map) is yours: the module does not embed it, and a map it does not
 list is refused with `decfilm.ErrUnknownMapBounds`. The optional map props and structural footprints of the document
-(`replay.Options.Geometry` and `Structure`) also come from your own map data (see `libs/himap`).
+(`replay.Options.Geometry` and `Structure`) also come from your own map data (see `github.com/JGtm/halo-infinite-map-images`).
 
 ## Requirements
 
 - Go 1.26.11 (`go.mod`).
 - No cgo to build or to use it: `CGO_ENABLED=0 go build ./...` and `go vet ./...` pass, no production
-  package links C code. A few tests import `libs/himap`, which reaches the cgo `ooz` decoder through
-  `libs/gamefiles`; running them needs `CGO_ENABLED=1` and a C++ compiler (see the `libs/gamefiles`
+  package links C code. A few tests import `github.com/JGtm/halo-infinite-map-images`, which reaches the cgo `ooz` decoder through
+  `github.com/JGtm/halo-infinite-files-reader`; running them needs `CGO_ENABLED=1` and a C++ compiler (see the `github.com/JGtm/halo-infinite-files-reader`
   README).
 - Catalogues are provided by the caller: the map-bounds catalogue above, and the map data of the options.
   A film whose map has no entry is set aside, never decoded with another map's widths: `decfilm.Decode`
@@ -128,14 +128,13 @@ the table does not know.
 ## License
 
 AGPL-3.0, the repository license (`LICENSE`, `NOTICE` at the repository root). The module itself imports
-no GPL code. Its tests reach `libs/gamefiles/ooz` (GPL-3.0) through `libs/himap`, so a binary that links
-those test dependencies is GPL-3.0-compatible only; see `libs/gamefiles/ooz/NOTICE.md`. The origin of the
+no GPL code. Its tests reach `ooz` of `github.com/JGtm/halo-infinite-files-reader` (GPL-3.0) through `github.com/JGtm/halo-infinite-map-images`, so a binary that links
+those test dependencies is GPL-3.0-compatible only; see `ooz/NOTICE.md` of `github.com/JGtm/halo-infinite-files-reader`. The origin of the
 embedded tables and of the test films is in [`NOTICE.md`](NOTICE.md). This is a summary, not legal advice.
 
 ## Contributing
 
-Issues and pull requests on `github.com/JGtm/LevelUp`, with the path prefix `libs/film/` in the title.
-From the module directory: `go vet ./... && go test ./...`. The repository convention is French-language
+Issues and pull requests on this repository. From the module directory: `go vet ./... && go test ./...`. The repository convention is French-language
 code comments and many French identifiers, so expect them in the source. Regenerating a fixture or a golden
 file needs the maintainer's local film cache and is described in the `PROVENANCE.txt` next to each
 fixture; a layer's revision golden is rewritten by its gate (`LEVELUP_UPDATE_<NAME>=1 go test ...`, the

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 // Retry : la politique de reprise d'un [Client] ([haloapi.Retry], partagée par les clients de la

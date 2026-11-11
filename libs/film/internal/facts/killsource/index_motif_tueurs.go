@@ -15,7 +15,7 @@ package killsource
 // ces issues n entre dans `desaccords` : la regle « une lecture qui se contredit n est pas une
 // lecture » reste celle des xuids que la table ou une mort du feed nomment.
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // retenirLesLectures range les lectures unanimes : d abord les xuids nommes par la table ou par une
 // mort du kill-feed, avec la regle d avant ; puis les tueurs sans mort, qui ne font que completer.

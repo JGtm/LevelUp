@@ -29,7 +29,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // dicoPrefixes : les familles de nom observees dans le jeu. La chaine vide couvre les noms

@@ -35,8 +35,8 @@ package grammar
 import (
 	"errors"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // Les trois refus d'un film charge. Ils sont NOMMES parce que quinze balayages les rendaient

@@ -14,7 +14,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/netguard"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/haloapitest"
+	"github.com/JGtm/halo-api/haloapitest"
 )
 
 func TestClient_Demo_AucuneRequeteVersDiscoveryNiBlob(t *testing.T) {

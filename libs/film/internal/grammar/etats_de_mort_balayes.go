@@ -18,7 +18,7 @@ package grammar
 //	p+49..p+53 R(5)  tueur           < nombre de participants
 //	p+54..p+57 R(4)  categorie       <= 9
 
-import "github.com/JGtm/LevelUp/libs/film/internal/source"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/source"
 
 // LargeurDuGabaritDeMort est la longueur du gabarit balaye, en bits.
 const LargeurDuGabaritDeMort = 58

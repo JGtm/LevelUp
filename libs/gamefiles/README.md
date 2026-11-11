@@ -1,4 +1,4 @@
-# github.com/JGtm/LevelUp/libs/gamefiles
+# github.com/JGtm/halo-infinite-files-reader
 
 Readers for the files of a local Halo Infinite installation: the `.module` archives, the Kraken
 block decoder they need, the Forge map variants (`.mvar`) and the navigation meshes.
@@ -6,8 +6,8 @@ block decoder they need, the Forge map variants (`.mvar`) and the navigation mes
 ## Status
 
 Used in production by LevelUp since October 2026. From v1.0.0 the exported API follows semantic
-versioning (a breaking change means a new major version). Published from the
-LevelUp monorepo as a Go module in a subdirectory; versions are tagged `libs/gamefiles/vX.Y.Z`.
+versioning (a breaking change means a new major version). Published as a Go module in its own
+repository; versions are tagged `vX.Y.Z`.
 
 ## What it is
 
@@ -25,7 +25,7 @@ LevelUp monorepo as a Go module in a subdirectory; versions are tagged `libs/gam
 ## What it is not
 
 - No map catalogue: nothing here knows which module, identifier or name belongs to which map.
-- No installation discovery: you pass file paths to `himodule.Open`. (The sibling `libs/himap`
+- No installation discovery: you pass file paths to `himodule.Open`. (The sibling `github.com/JGtm/halo-infinite-map-images`
   has a `DeployRoot` helper if you want one.)
 - Not a generic tag decoder: `himodule` hands you raw tag bytes; only the `.mvar` container and
   the navmesh are interpreted here, as far as they were measured.
@@ -37,11 +37,10 @@ LevelUp monorepo as a Go module in a subdirectory; versions are tagged `libs/gam
 ## Install
 
 ```
-go get github.com/JGtm/LevelUp/libs/gamefiles@v1.0.0
+go get github.com/JGtm/halo-infinite-files-reader@v1.0.0
 ```
 
-Works from any Go module; no `replace` directive is needed. (Go resolves `v1.0.0` to the
-subdirectory tag `libs/gamefiles/v1.0.0`.)
+Works from any Go module; no `replace` directive is needed.
 
 ## Example
 
@@ -85,8 +84,7 @@ has no `LICENSE` file of its own here. This is a summary, not legal advice.
 
 ## Contributing
 
-Issues and pull requests on `github.com/JGtm/LevelUp`, with the path prefix `libs/gamefiles/`
-in the title. From the module directory: `go vet ./... && go test ./...` (exploratory probes
+Issues and pull requests on this repository. From the module directory: `go vet ./... && go test ./...` (exploratory probes
 sit behind the `research` build tag and are not run by default). The repository convention is French-language code
 comments and many French identifiers, so expect them in the source. Design:
 [ADR 0041](../../docs/adr/0041-go-modules-under-libs.md) (modules under `libs/`).

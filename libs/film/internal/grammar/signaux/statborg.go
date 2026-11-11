@@ -1,8 +1,8 @@
 package signaux
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // statborg.go — les ENREGISTREMENTS D'ENTITE du statborg, lus dans les paquets delta : le score de

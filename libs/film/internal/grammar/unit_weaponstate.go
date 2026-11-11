@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 
 // Per-component bit-consume decoders for the BIPED archetype (#35) component
 // range i18..i46, reverse-engineered statically from HaloInfinite.exe (Ghidra).

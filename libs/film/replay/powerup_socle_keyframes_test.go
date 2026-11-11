@@ -34,8 +34,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // psTIRecenses — les archetypes dont on suit le recensement. Memes que la phase 2 : un

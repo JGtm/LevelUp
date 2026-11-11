@@ -48,7 +48,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // passeBombePrete : une projection réussie, prête à persister.

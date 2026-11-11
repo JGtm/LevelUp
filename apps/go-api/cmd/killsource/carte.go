@@ -18,7 +18,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // errCarteObligatoire : aucune carte donnee. La commande refuse AVANT de lire le film.

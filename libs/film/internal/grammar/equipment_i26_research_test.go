@@ -30,7 +30,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // eqiScan rend toutes les emissions d i26 — le scan de production, trie par instant.

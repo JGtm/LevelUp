@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 // peopleHubSearchURL — endpoint de recherche Xbox Live PeopleHub.

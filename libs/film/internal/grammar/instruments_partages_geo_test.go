@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmshell"
+	"github.com/JGtm/halo-infinite-film-decoder/filmshell"
 )
 
 // geoActiveBase : base bipede DETECTEE du film courant (ref dom1 -> slot absolu = base+idx).

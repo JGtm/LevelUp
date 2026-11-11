@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/identity"
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/identity"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // pistes_sans_creation_test.go — LA REGLE « UN SLOT SANS RECORD DE CREATION NI NOM N'EST PAS UN

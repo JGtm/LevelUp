@@ -27,7 +27,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // Les offsets du bloc racine d un `eqip` et de son element de capacite, lus dans l executable.

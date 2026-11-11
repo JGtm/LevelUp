@@ -57,7 +57,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // Les sources du seuil de garde, telles que le journal de cuisson les nomme.

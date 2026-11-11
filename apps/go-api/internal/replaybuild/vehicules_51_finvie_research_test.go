@@ -50,8 +50,8 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func TestVehicules51FinDeVie(t *testing.T) {

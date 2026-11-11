@@ -1,4 +1,4 @@
-# github.com/JGtm/LevelUp/libs/himap
+# github.com/JGtm/halo-infinite-map-images
 
 Map-image generator for Halo Infinite: renders the top-down background image of a map from the
 geometry stored in the game's own `.module` archives.
@@ -6,12 +6,12 @@ geometry stored in the game's own `.module` archives.
 ## Status
 
 Used in production by LevelUp since October 2026. From v1.0.0 the exported API follows semantic
-versioning (a breaking change means a new major version). Published from the
-LevelUp monorepo as a Go module in a subdirectory; versions are tagged `libs/himap/vX.Y.Z`.
+versioning (a breaking change means a new major version). Published as a Go module in its own
+repository; versions are tagged `vX.Y.Z`.
 
 ## What it is
 
-One package, `himap`, built on `libs/gamefiles`:
+One package, `himap`, built on `github.com/JGtm/halo-infinite-files-reader`:
 
 - `CuitCarteNative` renders a native map from its `.module` (placed instances, runtime
   geometry, z-buffer and normals seen from above, water, death-volume boundary) and returns the
@@ -36,12 +36,11 @@ One package, `himap`, built on `libs/gamefiles`:
 ## Install
 
 ```
-go get github.com/JGtm/LevelUp/libs/himap@v1.0.0
-go get github.com/JGtm/LevelUp/libs/gamefiles@v1.0.0
+go get github.com/JGtm/halo-infinite-map-images@v1.0.0
+go get github.com/JGtm/halo-infinite-files-reader@v1.0.0
 ```
 
-Works from any Go module; no `replace` directive is needed. (Go resolves `v1.0.0` to the
-subdirectory tag `libs/himap/v1.0.0`.) `himap` imports `libs/gamefiles`, so install both.
+Works from any Go module; no `replace` directive is needed. `himap` imports `github.com/JGtm/halo-infinite-files-reader`, so install both.
 
 ## Example
 
@@ -76,15 +75,15 @@ The anchors above are placeholders; real ones come from your own map data.
 
 ## Requirements
 
-Go 1.26.11 (`go.mod`). cgo is required, transitively: `libs/gamefiles/himodule` links the C++
-`ooz` decoder, so you need `CGO_ENABLED=1` and a C++ compiler (see the `libs/gamefiles`
+Go 1.26.11 (`go.mod`). cgo is required, transitively: `himodule` of `github.com/JGtm/halo-infinite-files-reader` links the C++
+`ooz` decoder, so you need `CGO_ENABLED=1` and a C++ compiler (see the `github.com/JGtm/halo-infinite-files-reader`
 README). A local Halo Infinite installation is needed to use the module, not to build it.
 
 ## License
 
 AGPL-3.0, the repository license (`LICENSE`, `NOTICE` at the repository root). `himap` depends
-on `libs/gamefiles`, which embeds the GPLv3 `ooz` decoder, so a binary that links `himap` is
-GPL-3.0-compatible only; see `libs/gamefiles/ooz/NOTICE.md`. This is a summary, not legal advice.
+on `github.com/JGtm/halo-infinite-files-reader`, which embeds the GPLv3 `ooz` decoder, so a binary that links `himap` is
+GPL-3.0-compatible only; see `ooz/NOTICE.md` of `github.com/JGtm/halo-infinite-files-reader`. This is a summary, not legal advice.
 
 The origin of the data files and the rights they do not carry are in [`NOTICE.md`](NOTICE.md).
 

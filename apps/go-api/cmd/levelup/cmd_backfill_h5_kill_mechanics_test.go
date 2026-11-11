@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
+	h5api "github.com/JGtm/halo-api/halo5"
 )
 
 func TestCarnageMechByGamertag(t *testing.T) {

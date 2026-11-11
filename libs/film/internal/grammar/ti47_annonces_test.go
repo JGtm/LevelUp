@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // TestTI47Annonces execute l'instrument sur UN film.

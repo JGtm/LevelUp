@@ -8,7 +8,7 @@ package grammar
 // « decoder correctement » (deduire l archetype d un transitoire absent du liage) face au
 // decodage nominal, qui n en a pas besoin.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 
 // DecodeFrameInfer decodes a FRAME like DecodeFrameRecords but, on a delta for an
 // UNBOUND slot (a transient entity absent from the binding dump), it INFERS the slot's

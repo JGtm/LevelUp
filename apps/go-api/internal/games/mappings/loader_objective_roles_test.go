@@ -8,7 +8,7 @@ import (
 
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 const objectiveRolesValide = `

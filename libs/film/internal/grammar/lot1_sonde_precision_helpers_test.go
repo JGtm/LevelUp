@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // sondeScanDamage rend les evenements damage_aftermath (avec SOURCE) et la base d'atterrissage

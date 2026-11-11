@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
 )
 
 // build_score.go — LE CABLAGE DU CALQUE DE SCORE DANS L'ASSEMBLAGE.

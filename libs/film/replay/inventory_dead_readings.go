@@ -6,7 +6,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // inventory_dead_readings.go — POURQUOI CETTE LECTURE D'INVENTAIRE EST VIDE.

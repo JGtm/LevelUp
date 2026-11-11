@@ -38,8 +38,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // m5105Seuil est le juge, ecrit avant la mesure : precision ET rappel au-dessus de 90 %.

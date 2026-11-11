@@ -12,7 +12,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // TestArtifactUpToDate — la clé de reprise du backfill : seule la version de schéma

@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // enteteGolden : la recette de regeneration, dans le fichier lui-meme. Un fichier fige qui ne dit

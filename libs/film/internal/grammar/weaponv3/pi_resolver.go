@@ -16,7 +16,7 @@ import (
 	"math/bits"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // PIBits : largeur du champ player_index (0-31). EXPORTEE parce que la ventilation des tirs

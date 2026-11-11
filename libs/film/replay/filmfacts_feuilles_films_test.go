@@ -31,7 +31,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/decodelock"
 )
 
 // attenteVerrouFeuilles borne l attente du verrou de decodage : au-dela, un autre decodage tient la

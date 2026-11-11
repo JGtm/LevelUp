@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // thresholdsM : les seuils de distance balayes, en metres. Zero = appartenance stricte ;

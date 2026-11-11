@@ -15,7 +15,7 @@ import (
 
 	"levelup/go-api/internal/testfixtures"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // TestRenduCliffhanger produit le rendu du maillage vu du dessus, au calage de la carte

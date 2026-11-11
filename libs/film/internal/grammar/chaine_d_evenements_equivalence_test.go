@@ -27,7 +27,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // --- Copies de reference : les implantations d AVANT le lot 2.4.1 (oracles du differentiel) ---

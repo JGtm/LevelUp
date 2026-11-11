@@ -41,7 +41,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // r8I57Names / r8I59Names : les deux etiquettes possibles de chaque composant (les films

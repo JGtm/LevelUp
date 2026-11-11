@@ -29,7 +29,7 @@ package grammar
 // l exception : il rougit si le site est migre sans que l exception soit retiree, et inversement.
 // Ce fichier est le SEUL exempte des formes de lecteur local interdites par le ratchet.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/profile"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 
 // consumeObjectPositionMonde lit world-object i0 (`FUN_14076e29c` -> `FUN_14076e420(0x10)`, CALL
 // 14076e2c0) avec le lecteur d AVANT le lot J6.3 : precHigh R(1) ; a 1, R(59) mesure ; a 0, la

@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // fbRafale fabrique une rafale lue de la gachette principale, entre deux frames (pas de 100 ms).

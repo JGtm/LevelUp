@@ -1,6 +1,6 @@
 package replay
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 
 // emprise_jouee.go — L EMPRISE JOUEE D UN FILM, ECRITE UNE FOIS (lot M1 des retours du rejeu,
 // 2026-09-23).

@@ -29,9 +29,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // TestCollinePeriodesMesure publie les decomptes par periode d un film KOTH.

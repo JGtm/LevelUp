@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/filmshell"
+	"github.com/JGtm/halo-infinite-film-decoder/filmshell"
 )
 
 // upstreamScan : pour chaque littéral d'arme (WST gate à bit B-1), cherche en amont,

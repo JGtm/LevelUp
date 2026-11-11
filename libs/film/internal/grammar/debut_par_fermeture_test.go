@@ -8,7 +8,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // deuxDebuts ecrit un paquet ou la lecture depuis le bit 0 lit le DELTA 124 puis le DELTA 123

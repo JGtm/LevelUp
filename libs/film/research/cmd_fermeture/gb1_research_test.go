@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // bobinesGB1 : les deux mini-bobines a trames delta, mesurees dans cet ordre.

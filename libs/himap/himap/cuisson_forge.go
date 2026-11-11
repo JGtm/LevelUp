@@ -40,9 +40,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
-	"github.com/JGtm/LevelUp/libs/gamefiles/hinavmesh"
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/hinavmesh"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // TypesVolumesDeMort : empreinte fonctionnelle des volumes de mort, etablie sur 101 `.mvar`

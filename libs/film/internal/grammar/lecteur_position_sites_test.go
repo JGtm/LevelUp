@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // champDeFlux est un champ de largeur fixe, dans l ordre ou l ecrivain le pose.

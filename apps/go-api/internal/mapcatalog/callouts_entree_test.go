@@ -11,9 +11,9 @@ import (
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/testfixtures"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // zoneForge fabrique une zone déjà extraite : un carré de côté c centré en (x, y).

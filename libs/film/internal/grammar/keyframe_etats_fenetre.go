@@ -16,8 +16,8 @@ package grammar
 // `repli_fenetre_marque_de_portage` ([ComptesDesReplis], verses par `replay`).
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // renduDuRecord est ce qu UN record du paquet publie, lu par la grammaire ou rendu par la fenetre.

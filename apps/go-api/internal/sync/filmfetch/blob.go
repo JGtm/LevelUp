@@ -7,8 +7,8 @@ import (
 
 	"levelup/go-api/internal/observability"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // Compteurs expvar du téléchargement des blobs de film (convention observability :

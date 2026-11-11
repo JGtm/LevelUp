@@ -41,7 +41,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 const (

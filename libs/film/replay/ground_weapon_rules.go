@@ -26,9 +26,9 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/weaponv3"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/weaponv3"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // LES SEUILS, ÉCRITS AVANT LA MESURE (plan, items 1.2-1.4, 2.1, et décisions 2-4).

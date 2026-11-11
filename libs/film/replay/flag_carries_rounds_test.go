@@ -14,7 +14,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
 )
 
 // flagRoundsScan : « 1022 » vole a 150 s (manche 0) sur le slot 22 ; `suite` sont les evenements

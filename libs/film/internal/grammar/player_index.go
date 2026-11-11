@@ -3,9 +3,9 @@ package grammar
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/weaponv3"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/weaponv3"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // player_index.go — L'INDEX DE JOUEUR SE LIT DANS LE FILM.

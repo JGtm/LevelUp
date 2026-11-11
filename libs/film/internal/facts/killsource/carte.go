@@ -15,7 +15,7 @@ package killsource
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // carteApplicable : l entree de catalogue est-elle fournie ET porte-t-elle des largeurs ? C est LA

@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/JGtm/LevelUp/libs/film/research/reapparition"
+	"github.com/JGtm/halo-infinite-film-decoder/research/reapparition"
 )
 
 func main() {

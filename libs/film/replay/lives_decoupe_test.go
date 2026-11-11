@@ -8,8 +8,8 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // Les instants de la figure commune : un slot replique de 1 s a 4 s, se tait 6 s (au-dela de

@@ -8,7 +8,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
+	"github.com/JGtm/halo-api/xblauth"
 )
 
 // XboxProfileResolver résout gamertag -> xuid via l'endpoint profil Xbox Live.

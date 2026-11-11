@@ -1,7 +1,7 @@
 package grammar
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // Capture OFFLINE des directions (cap de visée / vélocité) DANS LE MÊME record biped que

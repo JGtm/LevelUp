@@ -9,7 +9,7 @@ package revision
 // ([Module.Fermeture]). Toutes deux entrent dans le hachage sous leur nom HISTORIQUE — celui du
 // temps ou la brique vivait sous `apps/go-api/internal/games/halo_infinite/film` — quel que soit
 // le module qui la porte aujourd hui. Tant que la brique vit a cet endroit, la traduction est
-// l identite ; quand elle devient le module `libs/film`, aucune empreinte ne bouge.
+// l identite ; quand elle devient un module propre, aucune empreinte ne bouge.
 //
 // LE SENS DE LA TRADUCTION. Les declarations (racines de [CouchesRevisees], goldens de perimetre)
 // parlent en noms historiques ; seul l acces au disque ([Module.SurDisque]) et la lecture des

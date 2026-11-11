@@ -62,7 +62,7 @@ import (
 	"math"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // flagFreeLife est UNE vie libre : la creation, puis la piste repliquee jusqu'a sa fin.

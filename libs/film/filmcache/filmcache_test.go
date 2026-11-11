@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // ecrireFilm pose un film factice dans une racine de cache et rend cette racine.

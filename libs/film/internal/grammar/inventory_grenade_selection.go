@@ -1,7 +1,7 @@
 package grammar
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // inventory_grenade_selection.go — LA RÈGLE R5 : la grenade SÉLECTIONNÉE (composant i47)

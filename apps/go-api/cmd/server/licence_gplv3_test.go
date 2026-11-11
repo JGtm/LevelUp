@@ -37,13 +37,20 @@ import (
 	"levelup/go-api/internal/briques"
 )
 
-// modulePath est le chemin du module Go de l'API ; libsPrefix le préfixe d'import des briques
-// (le dossier d'une brique vient du résolveur des briques, pas du chemin du module).
-const (
-	modulePath      = "levelup/go-api"
-	libsPrefix      = "github.com/JGtm/LevelUp/libs/"
-	gamefilesModule = libsPrefix + "gamefiles"
-)
+// modulePath est le chemin du module Go de l'API. Le chemin d'import d'une brique et son dossier
+// viennent du résolveur des briques (`internal/briques`), jamais d'un préfixe écrit ici.
+const modulePath = "levelup/go-api"
+
+// moduleDeBrique rend le chemin du module d'une brique de la table du résolveur.
+func moduleDeBrique(nom string) string {
+	m, ok := briques.Module(nom)
+	if !ok {
+		panic("brique inconnue : " + nom)
+	}
+	return m
+}
+
+var gamefilesModule = moduleDeBrique("gamefiles")
 
 // paquetsInterdits : les paquets dont la licence contamine le binaire distribué.
 var paquetsInterdits = map[string]string{
@@ -118,8 +125,8 @@ func TestGardeRailDeLicenceDetecteUneViolation(t *testing.T) {
 // racine du module, `…/libs/<brique>/…` dans le dossier que le résolveur des briques tire de l'outil Go
 // pour la brique (espace de travail ou cache de modules).
 func dossierDuPaquet(racineModule, paquet string) (string, error) {
-	if reste, ok := strings.CutPrefix(paquet, libsPrefix); ok {
-		dir, _, err := briques.SurDisque("libs/" + reste)
+	if rel, ok := briques.GardeRailDeImport(paquet); ok {
+		dir, _, err := briques.SurDisque(rel)
 		return dir, err
 	}
 	return filepath.Join(racineModule, filepath.FromSlash(strings.TrimPrefix(paquet, modulePath+"/"))), nil
@@ -128,7 +135,7 @@ func dossierDuPaquet(racineModule, paquet string) (string, error) {
 // estSuivi dit si un import vise un paquet d'un des modules dont on parcourt le graphe : le module
 // de l'application ou une brique de `libs/`.
 func estSuivi(chemin string) bool {
-	return strings.HasPrefix(chemin, modulePath+"/") || strings.HasPrefix(chemin, libsPrefix)
+	return strings.HasPrefix(chemin, modulePath+"/") || briques.EstImportDeBrique(chemin)
 }
 
 // importsDuPaquet rend les imports d'un paquet qui visent l'un des modules suivis, tests exclus
@@ -213,7 +220,7 @@ func TestLaChaineDeHimapAtteintOoz(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	chaines, err := chainesDepuis(racine, libsPrefix+"himap/himap")
+	chaines, err := chainesDepuis(racine, moduleDeBrique("himap")+"/himap")
 	if err != nil {
 		t.Fatal(err)
 	}

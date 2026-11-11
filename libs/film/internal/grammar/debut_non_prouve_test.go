@@ -7,7 +7,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // listeNonProuvee ecrit un paquet dont la seule lecture ferme au bit pres en contredisant

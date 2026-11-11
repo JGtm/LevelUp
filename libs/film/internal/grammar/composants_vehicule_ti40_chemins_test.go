@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // composants_vehicule_ti40_chemins_test.go — les composants `ti=40` lus par les CHEMINS DE

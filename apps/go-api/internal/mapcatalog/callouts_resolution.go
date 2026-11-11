@@ -32,8 +32,8 @@ package mapcatalog
 // de la section `maps`.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // IdentitesDeCarte est ce que le registre sait d'une carte jouée : son asset UGC et ses noms

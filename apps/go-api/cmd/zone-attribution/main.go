@@ -37,10 +37,10 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // defaultWitnessOffsetM : decalage du temoin negatif, en metres, en x ET en y. Douze

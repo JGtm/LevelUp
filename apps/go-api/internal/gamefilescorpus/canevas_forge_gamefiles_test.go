@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // LE CANEVAS D'UNE CARTE FORGE PORTE-T-IL LA GEOMETRIE DU TERRAIN ?

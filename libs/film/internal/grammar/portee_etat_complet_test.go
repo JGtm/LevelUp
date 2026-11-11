@@ -17,8 +17,8 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // motFlottantFini : 32 bits du flux dont l image memoire (octets inverses) a un exposant non plein.

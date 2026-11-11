@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // dispatch_player.go — TROISIEME, QUATRIEME ET CINQUIEME MAILLONS : le joueur et son monde.
 //

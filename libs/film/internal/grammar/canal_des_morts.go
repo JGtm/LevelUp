@@ -19,8 +19,8 @@ package grammar
 // repli `repli_localisation_largeur_libre` (registre des replis, ordre « apres la lecture »).
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // canalDesMorts est le canal des morts d objet et de l occupation ([CanalDesTrames]).

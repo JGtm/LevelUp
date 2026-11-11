@@ -41,7 +41,7 @@ package grammar
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // BipedAim est une lecture de VISEE issue d'un record qui ne porte AUCUNE position.

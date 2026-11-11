@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/highlightevent"
+	"github.com/JGtm/halo-infinite-film-decoder/highlightevent"
 )
 
 // Golden de NON-REGRESSION du temps fort (item 2.5.h du PLAN_DECODEUR_FILM_2026-09-13).

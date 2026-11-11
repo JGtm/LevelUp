@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 const (

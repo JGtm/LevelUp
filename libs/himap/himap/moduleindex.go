@@ -15,7 +15,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // ModuleIndex resout un GlobalID de tag vers l'entree qui le porte, sur un ensemble de

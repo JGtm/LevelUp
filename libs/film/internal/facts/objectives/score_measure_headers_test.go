@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // score_measure_headers_test.go — l'hypothese de la phase 0-ter : les deux en-tetes de 5 bits d'un

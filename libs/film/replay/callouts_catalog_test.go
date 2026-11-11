@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/depottest"
 )
 
 func writeCalloutsCatalog(t *testing.T, body string) string {

@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // dumperBlend est le mode `blend`. `cibles` vide = tous les conteneurs `Blend` de la banque.

@@ -30,7 +30,7 @@ package grammar
 //
 // HORS LIGNE — jamais depuis un chemin de requete.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/source"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/source"
 
 // keyframeEntreesDeTable est le nombre d entrees de la table d image-cle (`FUN_1408be074`) : les slots
 // 0 a 0x1ffe.

@@ -31,7 +31,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // LA GARDE DU FILM EST CELLE DE TOUT LE PAQUET : `OBJ_FILM` porte la RACINE du cache film

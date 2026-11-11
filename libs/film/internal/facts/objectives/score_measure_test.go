@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // score_measure_test.go — INSTRUMENT de la phase 0 de l'exploitation du registre du film.

@@ -22,7 +22,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // couchesCourantes rend une table `layers` qui declare les revisions du binaire courant. Jamais

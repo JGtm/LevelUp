@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // tirs_par_vie_test.go — UN TIR, UN LANCER, UN RELEVE D'UNITE VONT AU CORPS QUI TIENT LE SLOT A

@@ -6,8 +6,8 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // TestUnDebutLuNEstNiLocaliseNiOuvertParUnNeuf : chaque paquet a liste d evenements se compte selon

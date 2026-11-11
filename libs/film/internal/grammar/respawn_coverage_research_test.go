@@ -39,7 +39,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/highlightevent"
+	"github.com/JGtm/halo-infinite-film-decoder/highlightevent"
 )
 
 const (

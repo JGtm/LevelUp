@@ -25,7 +25,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // TestCollineProprietaireNomTemoin assemble le calque des collines sans puis avec les noms.

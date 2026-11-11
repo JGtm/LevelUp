@@ -52,7 +52,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // e191bTI est l archetype mesure par ce pas : « equipment / item, objet du monde ».

@@ -4,8 +4,8 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // slotidentity.go — QUI est le joueur derriere un slot d'entite du statborg.

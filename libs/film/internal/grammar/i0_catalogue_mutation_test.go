@@ -42,7 +42,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // recordBipedSynthetique : un enregistrement bipède écrit à la main, sous UN découpage donné.

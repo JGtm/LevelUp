@@ -1,8 +1,8 @@
 package grammar
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/weaponv3"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/weaponv3"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // keyframe_carrier_mark.go — LE MARQUEUR DE PORTAGE, lu dans le record de bipede des

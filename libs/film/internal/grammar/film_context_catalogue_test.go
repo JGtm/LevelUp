@@ -27,7 +27,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // entreeCatalogue rend l'entree VERSIONNEE d'une carte.

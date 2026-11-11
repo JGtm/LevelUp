@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // TestVehicleSeatToleranceEnFrames : la tolerance AVANT le debut d un episode vaut 2 s DE FILM,

@@ -38,8 +38,8 @@ import (
 	"log/slog"
 	"strconv"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // bombHeldFamily est la FAMILLE de l'objet bombe dans le canal des armes tenues (moitié

@@ -44,7 +44,7 @@ package replay
 // il est le CONTROLE INDEPENDANT du calque (`flag_carries_marker.go`), et s'en servir comme
 // source le rendrait tautologique. Le residu est chiffre au rapport du lot.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
 
 // flagHomeGuardMS — l'ecart, en millisecondes, sous lequel la fin d'un portage d'un AUTRE
 // drapeau rend une RENTREE ambigue. C'est [flagFreeDropWindowMS], la fenetre deja utilisee pour

@@ -36,7 +36,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // candidate : un dead-state i11 accepte par les quatre tests. C est l unite commune aux DEUX

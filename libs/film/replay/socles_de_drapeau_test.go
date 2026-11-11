@@ -16,7 +16,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 func TestEquipeDuSocle_LeLabelNeutralisePasLeTeamIndex(t *testing.T) {

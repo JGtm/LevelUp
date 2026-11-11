@@ -31,7 +31,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // catalogueDeBornesVersionne charge le catalogue de bornes RÉEL du dépôt — DONNÉE DE RÉFÉRENCE

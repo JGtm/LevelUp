@@ -15,7 +15,7 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // LireFragsDuFilDesMorts lit, pour un lot de matchs, les frags de `match_kill_events_latest`. Rend

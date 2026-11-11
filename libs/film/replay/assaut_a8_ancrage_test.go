@@ -44,7 +44,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // a8Temoins : des films d'AUTRES modes, ou `ti=13` est le canal de production des zones et des

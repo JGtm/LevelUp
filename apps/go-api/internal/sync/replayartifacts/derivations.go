@@ -52,7 +52,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // ArtefactRange : UN artefact qui vient d'etre range sur disque. C'est le seul fait qui

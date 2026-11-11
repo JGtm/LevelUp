@@ -31,7 +31,7 @@ package grammar
 // que le second ecraserait le premier sans que rien ne le dise.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // Phase est la phase de la marche ou un canal interprete un composant.

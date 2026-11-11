@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // TestLaMargeDuCalageEstPubliee — la paire (retenu, suivant) doit sortir de `bestDeathOffset`,

@@ -8,8 +8,8 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // vtLAAG / vtRoquettes / vtFalconGL / vtFalconLMG : les mots d identite des pieces, ecrits comme

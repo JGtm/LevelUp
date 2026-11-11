@@ -22,7 +22,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // shotPosToleranceUS : écart temporel maximal entre l'événement et l'échantillon de position

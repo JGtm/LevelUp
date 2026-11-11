@@ -27,9 +27,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // Emplacements de base du statborg, pour le seul DIAGNOSTIC des triplets ci-dessous (les

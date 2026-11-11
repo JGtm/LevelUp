@@ -26,8 +26,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
-	"github.com/JGtm/LevelUp/libs/film/research/grenadeids"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/research/grenadeids"
 )
 
 // plafondParDefautGiB : le plafond memoire du banc. Un balayage de bits ne construit aucun

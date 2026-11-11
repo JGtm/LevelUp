@@ -1,6 +1,6 @@
 package lecture
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // Genre est le genre d'un record : ce que son en-tête annonce (trame delta), ou l'état complet
 // d'une entité (image-clé). Le terminateur d'une vue n'est pas un record : c'est la sortie de la

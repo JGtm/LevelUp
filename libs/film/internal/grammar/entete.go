@@ -10,9 +10,9 @@ package grammar
 // ne determine qu en balayant le film (le decoupage d i0 auto-detecte) n y est pas resolu.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // idLowBitsPresume est la largeur de l identifiant bas d un record sous laquelle la marche lit les

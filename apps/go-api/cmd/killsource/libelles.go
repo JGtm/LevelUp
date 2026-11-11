@@ -13,8 +13,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/damagetag"
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/damagetag"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // natureLibelle : la nature de la source, en clair.

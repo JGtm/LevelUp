@@ -22,10 +22,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 
-	"github.com/JGtm/LevelUp/libs/film/finalise"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // bobineV40 : les trois morceaux BRUTS de la bobine v40, dans l ordre des numeros.

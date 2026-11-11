@@ -38,9 +38,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/weaponv3"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/weaponv3"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // e108EnTete est la largeur de l en-tete d entree que lit `FUN_142e2bfd0` (32+32+32+4+8).

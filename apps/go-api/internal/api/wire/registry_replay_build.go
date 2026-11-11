@@ -29,7 +29,7 @@ import (
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/replayartifacts"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // replayBuildMu sérialise l'action replay-build (single-flight, pattern registryNamesMu).

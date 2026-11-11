@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // Object-component (i0..i17) bit-consumers for the BIPED archetype (#35), plus
 // the held-weapon (weapon-state-type-info, i43..46) variant-name reader.

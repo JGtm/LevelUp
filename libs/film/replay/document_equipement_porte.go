@@ -46,10 +46,10 @@ import (
 	"math"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/equipenergy"
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/equipenergy"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // familleDuTranslocateur est la famille de la palette dont la pose se publie.

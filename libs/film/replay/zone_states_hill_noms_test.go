@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // serieColline monte deux candidats designateurs : le slot 50 (deux bascules), dont le VOISIN ne

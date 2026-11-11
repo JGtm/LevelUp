@@ -12,7 +12,7 @@ package replay
 import (
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // poserLibellesEtInventaire publie les tables de libelles, les morts sans revendication et le

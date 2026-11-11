@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // maxReplicationIndexKS : la borne du champ d indice du dead-state (5 bits). Nommee ici parce que

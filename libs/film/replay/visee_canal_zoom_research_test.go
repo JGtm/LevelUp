@@ -31,7 +31,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // TestViseeTypesDePaquet recense les TYPES D'EVENT des paquets delta d'un film (payload[0]>>1,

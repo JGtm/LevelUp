@@ -4,7 +4,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
 )
 
 // flag_carries_lives.go — DE PORTAGES ISOLES A LA VIE D'UN DRAPEAU.

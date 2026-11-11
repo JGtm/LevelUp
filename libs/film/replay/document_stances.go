@@ -34,7 +34,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // Stance est UN intervalle d etat de mouvement, porte par une vie.

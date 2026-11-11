@@ -46,7 +46,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // typesDeclaresParLeFilm est le nombre d'entrees de la table par type que porte chunk_00, mesure

@@ -3,7 +3,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // components_position_i0_profil_test.go — LE DESERIALISEUR D i0 CONSULTE BIEN LE PROFIL QUE SON

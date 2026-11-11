@@ -7,8 +7,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // zoneNomAt rend une lecture d'image-cle NOMMEE a la frame 0 : la valeur est neutre (aucun etat

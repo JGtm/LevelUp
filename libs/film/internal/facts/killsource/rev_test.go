@@ -27,11 +27,11 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/killsource"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/revision"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/killsource"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/revision"
 )
 
 // updateKillsourceRev : LA PORTE DE REGENERATION DE CE GOLDEN, ET D AUCUN AUTRE (revue R1, P1-1).

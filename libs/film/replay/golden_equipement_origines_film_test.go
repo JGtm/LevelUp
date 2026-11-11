@@ -32,7 +32,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // filmDeGarde : un film hors de la table des builds, sa carte et son build.

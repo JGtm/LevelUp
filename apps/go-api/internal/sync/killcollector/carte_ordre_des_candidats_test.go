@@ -36,7 +36,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // bornesDeLaCarte rend les bornes du catalogue VERSIONNE pour un nom, ou echoue.

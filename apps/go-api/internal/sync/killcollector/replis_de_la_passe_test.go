@@ -17,7 +17,7 @@ import (
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // TestLeCompteurDeLaPasseVoyageParLeContexte : hors passe, aucun compteur (nil, qui ne compte rien).

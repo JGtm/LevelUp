@@ -25,7 +25,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // cheminFixtureSocles est la fixture d'overlay du harnais, relative a la racine du depot.

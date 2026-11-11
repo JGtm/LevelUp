@@ -17,9 +17,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // TestLoiHimapEtLoiDuProfilSAccordent — LE GARDE-RAIL DES DEUX COPIES.

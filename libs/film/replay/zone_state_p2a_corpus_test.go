@@ -29,16 +29,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/depottest"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // p2aPlayer est la ligne de match d'un joueur, telle que l'export TSV la donne.

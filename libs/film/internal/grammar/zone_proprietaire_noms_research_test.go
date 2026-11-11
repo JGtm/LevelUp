@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // TestZoneProprietaireNoms rend une ligne par slot ti=13 (et, avec ZPROP_DETAIL, les series).

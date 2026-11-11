@@ -3,7 +3,7 @@ package objectives
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // Les tests de ce fichier sont adosses au cache film de dev (meme convention que

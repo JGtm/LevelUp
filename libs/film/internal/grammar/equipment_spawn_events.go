@@ -1,8 +1,8 @@
 package grammar
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // equipment_spawn_events.go — LE FAIT ÉCRIT « une PIÈCE a été engendrée » : l'événement de

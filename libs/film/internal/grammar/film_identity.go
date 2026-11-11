@@ -63,8 +63,8 @@ import (
 	"math/bits"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // chunk00Error : une erreur sentinelle CONSTANTE des lecteurs de `chunk_00`.

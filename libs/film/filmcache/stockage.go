@@ -17,7 +17,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // TailleLogiqueInconnue : le fichier est une trame zstd qui ne declare pas sa taille (ecrite par

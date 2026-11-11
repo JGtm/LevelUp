@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // closures.go — REFERMER LE PONT SANS JAMAIS DEVINER.

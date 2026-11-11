@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // score_measure_rounds_check_test.go — le TEST de la grammaire etendue (item A.0b.1) : il

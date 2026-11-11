@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // piste construit la trajectoire d'une vie (slot, génération 1) : un point par entrée, en

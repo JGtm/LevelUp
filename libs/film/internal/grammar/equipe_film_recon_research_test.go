@@ -26,7 +26,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // equipeTI est l'index d'archetype « managed-player » (le profil du joueur) dont le composant

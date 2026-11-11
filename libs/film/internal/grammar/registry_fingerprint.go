@@ -35,7 +35,7 @@ import (
 	"hash"
 	"hash/fnv"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/constat"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/constat"
 
 	"sync"
 )

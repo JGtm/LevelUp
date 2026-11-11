@@ -16,7 +16,7 @@ package grammar
 // fichiers du paquet) et `TestEtatCompletPoseParLaSeuleMarcheDEtatComplet` (production). Les
 // relectures de la phase (canal de l etat complet du bipede, instruments) passent par ici.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 
 // relecteurSur rend un lecteur sur `pay` sous le contexte de lecture `ctx`, hors etat complet :
 // le cadre d un relecteur d etat par defaut ([lireEquipeA]).

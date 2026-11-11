@@ -24,7 +24,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 func TestRI27d1M2Ancres(t *testing.T) {

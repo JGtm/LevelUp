@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // Read the kill feed of a Halo Infinite Theater film. The directory holds the film's chunks as

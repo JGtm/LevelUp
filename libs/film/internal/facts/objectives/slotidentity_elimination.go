@@ -3,7 +3,7 @@ package objectives
 import (
 	"maps"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // slotidentity_elimination.go — L'IDENTITE D'UN SLOT D'ENTITE PAR ELIMINATION, MANCHE PAR MANCHE.

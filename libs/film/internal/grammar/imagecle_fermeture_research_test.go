@@ -75,7 +75,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // Les deux modeles compares. Ce sont des cles de tableau, pas des reglages.

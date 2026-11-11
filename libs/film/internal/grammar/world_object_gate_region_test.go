@@ -19,7 +19,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // wogDescripteur rend un descripteur world-object. Depuis le lot 2.3 il n'y a plus rien a

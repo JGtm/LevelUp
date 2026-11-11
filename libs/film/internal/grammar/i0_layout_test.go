@@ -3,7 +3,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // synthFlipProfile fabrique un profil de bascule conforme au modèle physique : gate à zéro,

@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // tagMagicUCSH est le magic d'un fichier de tag Halo Infinite ('ucsh' en little-endian).

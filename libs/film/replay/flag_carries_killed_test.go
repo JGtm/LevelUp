@@ -15,7 +15,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
 )
 
 // flagKilledScan : « x » (equipe 0, slot 12) vole le drapeau de l equipe 1 a 1 000 ms et le

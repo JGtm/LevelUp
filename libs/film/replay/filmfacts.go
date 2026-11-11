@@ -24,7 +24,7 @@ package replay
 import (
 	"errors"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // filmFactsMagic identifie le format et sa version. Un blob d une autre version est une

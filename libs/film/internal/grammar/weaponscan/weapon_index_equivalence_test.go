@@ -31,8 +31,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/weaponscan"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/weaponscan"
 )
 
 // idxEqZeroTS : la mesure ne depend pas de l'horodatage (on correle par octet, pas par temps).

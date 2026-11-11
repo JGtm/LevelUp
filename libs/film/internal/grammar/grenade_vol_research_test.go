@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // grenVolNaissance est le premier record d une vie de projectile lue par la marche.

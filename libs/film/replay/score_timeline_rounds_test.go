@@ -3,8 +3,8 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // score_timeline_rounds_test.go — LE CALQUE DU SCORE PAR JOUEUR MIGRE VERS L'IDENTITE PAR MANCHE.

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/depottest"
 )
 
 // titreDeReference : le titre dont les tests de ce paquet lisent les donnees de reference du

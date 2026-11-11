@@ -17,7 +17,7 @@ import (
 	"go/ast"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // brut96 est le vecteur brut de `FUN_1411b259c` : trois flottants de 32 bits, finis (motif alterne).

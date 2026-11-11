@@ -22,8 +22,8 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // flagTestLife fabrique une vie libre a l'echelle du contexte de test (100 ms/frame, origine 0) :

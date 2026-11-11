@@ -3,7 +3,7 @@ package objectives
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // longest_run_non_vide_test.go — LA PREUVE QUI A RETIRE DEUX BRANCHES MORTES (lot J8.6 du plan de

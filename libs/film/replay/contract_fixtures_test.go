@@ -70,7 +70,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/depottest"
 )
 
 // contractFixturesEnv : la seconde condition explicite de la regeneration (cf. en-tete).

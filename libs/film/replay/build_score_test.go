@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // build_score_test.go — LE BRANCHEMENT DU CALQUE DANS LE DOCUMENT (revue R1, 2026-08-18).

@@ -20,7 +20,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
+	"github.com/JGtm/halo-api/xblauth"
 )
 
 const (

@@ -38,8 +38,8 @@ import (
 	"fmt"
 	"unicode/utf16"
 
-	"github.com/JGtm/LevelUp/libs/film/highlightevent"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/highlightevent"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // Constantes du parseur binaire film Halo.

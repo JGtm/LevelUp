@@ -60,7 +60,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/killcollector"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // Raisons propres a ce paquet d'un appariement non lu (`persist.VehicleTakesBatch.FragsReason`).

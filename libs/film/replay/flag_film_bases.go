@@ -7,7 +7,7 @@ import (
 	"math"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // flag_film_bases.go — LA BASE ET LE CAMP DE CHAQUE DRAPEAU, LUS DANS LE FILM.

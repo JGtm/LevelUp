@@ -33,7 +33,7 @@ package grammar
 import (
 	"iter"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // marcheurDesTrames porte l etat d UNE marche des trames d un film : le monde, ses preliminaires

@@ -40,7 +40,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/killsource"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/killsource"
 )
 
 // rjeIntervalle : une place sans occupant humain, en frames du document, bornes incluses.

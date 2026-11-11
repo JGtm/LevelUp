@@ -21,7 +21,7 @@ package objectives
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // emissionEquipe pose une emission du composant 0 d'un slot d'equipe, manche 0.

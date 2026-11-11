@@ -30,8 +30,8 @@ import (
 
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/filmobs"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/filmobs"
 )
 
 const (

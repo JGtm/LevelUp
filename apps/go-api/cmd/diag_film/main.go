@@ -26,8 +26,8 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	gosync "levelup/go-api/internal/sync"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/filmshell"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/filmshell"
 )
 
 const (

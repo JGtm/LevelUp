@@ -19,7 +19,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 func comparer(args []string, o options) error {

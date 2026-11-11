@@ -13,7 +13,7 @@ package killsource
 import (
 	"math/rand"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // Options : les quatre bascules mesurables, plus la CARTE du match (une donnee, pas une

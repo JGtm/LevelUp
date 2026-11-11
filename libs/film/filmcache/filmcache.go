@@ -40,8 +40,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // manifestsDir et chunksDir sont les deux sous-dossiers du cache. Nommes ici, et nulle

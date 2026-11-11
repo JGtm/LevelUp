@@ -35,7 +35,7 @@ import (
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // poserArtefactCuisson ecrit un artefact au schema courant, avec ou sans compteurs de joueur.

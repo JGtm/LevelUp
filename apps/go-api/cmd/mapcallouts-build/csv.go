@@ -23,7 +23,7 @@ import (
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapcatalog"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 type libelle struct {

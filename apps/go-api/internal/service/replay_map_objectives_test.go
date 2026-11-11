@@ -9,7 +9,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // objectifsFixture pose, sous une racine neuve, tout ce que le calque d'objectifs

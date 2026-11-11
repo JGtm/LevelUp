@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // phrasesParFilm : ce que le golden d un film doit dire, et pas seulement chiffrer.

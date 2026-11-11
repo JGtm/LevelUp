@@ -9,7 +9,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // TestSautDeriveReconnaitUneMonteeALaBonneHauteur : une montee de 0,85 m est retenue.

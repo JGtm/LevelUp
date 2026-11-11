@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // identity_registry_recycle_test.go — UN SIEGE RECYCLE N'EST PAS UN SIEGE QUI CHANGE DE PORTEUR (lot

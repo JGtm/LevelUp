@@ -15,8 +15,8 @@ package objectives
 // lecture que la production.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // Les constantes de la grammaire d ancrage que les instruments lisent

@@ -15,7 +15,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // trierArmesAuSol range les armes au sol publiees dans un ordre TOTAL (lot J10.1, 2026-09-27, DT-9).

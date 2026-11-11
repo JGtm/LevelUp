@@ -41,7 +41,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // parentHandleBase est la BASE de la catégorie 1 de `FUN_1406d3140` (`FUN_140d10bb0` : base

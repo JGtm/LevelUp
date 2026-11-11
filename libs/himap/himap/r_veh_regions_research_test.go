@@ -27,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // TestRVehRegionsDesCartes journalise l ordre des regions de chaque carte (lignes RVEH_*).

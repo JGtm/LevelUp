@@ -59,7 +59,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // ErrEntryExists dit que la carte est DEJA au catalogue : `AddEntry` ne fait rien.

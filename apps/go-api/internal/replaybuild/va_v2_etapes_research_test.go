@@ -25,7 +25,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // TestVAV2Etapes ecrit, par film de VA_FILMS, la valeur de chaque etape de VA_ETAPES.

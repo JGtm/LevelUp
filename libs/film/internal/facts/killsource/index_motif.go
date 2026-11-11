@@ -45,8 +45,8 @@ package killsource
 import (
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // indexParMotif : ce que la lecture du motif de xuid rend au roster.

@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // slotidentity_deaths_test.go — le pont par INSTANTS DE MORT, et la condition qui declenche

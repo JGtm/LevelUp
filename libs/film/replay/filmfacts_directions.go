@@ -7,7 +7,7 @@ package replay
 // viennent ici avec la mesure qui a impose de les porter.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // Les drapeaux du SECOND octet d une position : les directions que `componentDirs` porte et que

@@ -19,8 +19,8 @@ package grammar
 // projectile) vit dans `detonations.go`.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // Les genres des deux messages de detonation/impact (numerotation de `FUN_140e453b4`), nommes pour

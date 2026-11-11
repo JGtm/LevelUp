@@ -44,7 +44,7 @@ package killsource
 import (
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // filRec : un message du fil, avec l identite de sa trame.

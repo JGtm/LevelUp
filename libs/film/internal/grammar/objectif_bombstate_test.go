@@ -98,7 +98,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // bsBombObjectState est murmur3("bombobjectstate"), l'identifiant attendu de la propriete.

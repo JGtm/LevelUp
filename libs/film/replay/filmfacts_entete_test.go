@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // TestFaitsDuCodec1SontRefusesSurLePrefixe : un fichier ecrit par le codec d AVANT le jalon J3 est

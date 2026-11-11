@@ -12,7 +12,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // verifierLesRepliesDeLaBobine : chaque record non admis est donne aux trois fenetres et compte ;

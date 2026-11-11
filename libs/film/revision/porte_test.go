@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/revision"
+	"github.com/JGtm/halo-infinite-film-decoder/revision"
 )
 
 func TestPorteNommeSonDrapeauEtSaVariable(t *testing.T) {

@@ -6,9 +6,9 @@ package killsource
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/constat"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/constat"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // TestLeContexteDeLaMarchePrendLeDecoupageDeclare : sur la bobine `e5adf7b2` (HI_1_11_0, format 25,

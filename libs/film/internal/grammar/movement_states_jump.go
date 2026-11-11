@@ -61,7 +61,7 @@ import (
 	"math"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // jumpVelSample est UNE lecture de vitesse verticale, datee et localisee dans le film.

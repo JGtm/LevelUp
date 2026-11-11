@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // hillMesureStepUS est le pas de la grille de mesure : 10 ms, plus fin que toute cadence d emission.

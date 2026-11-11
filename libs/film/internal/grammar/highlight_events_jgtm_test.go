@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/depottest"
 )
 
 // TestParseHighlightEvents_JGtmFullMatch_HighlightChunk : parse le chunk

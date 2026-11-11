@@ -4,7 +4,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/playerposition"
+	"github.com/JGtm/halo-infinite-film-decoder/playerposition"
 )
 
 // minClusterSize : nb minimal de positions par groupe pour qu'un team-split soit

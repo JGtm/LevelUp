@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
 )
 
 // TestFlagCarriesVieAnonymeNEstPasUneAbsence — UNE VIE ANONYME EST UNE PRESENCE SANS IDENTITE

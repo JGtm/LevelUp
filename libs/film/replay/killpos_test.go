@@ -10,7 +10,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 func TestKillPositionsPlaceLesDeuxJoueurs(t *testing.T) {

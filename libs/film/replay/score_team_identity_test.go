@@ -3,8 +3,8 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // score_team_identity_test.go — LA PREUVE (a0) : LE MATCH A SENS UNIQUE (lot M5.1, retours rejeu

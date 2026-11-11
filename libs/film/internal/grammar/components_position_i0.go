@@ -3,8 +3,8 @@ package grammar
 import (
 	"math/bits"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // components_position_i0.go — LE DESERIALISEUR DE POSITION i0 (FUN_1406cfe44) ET SES TROIS

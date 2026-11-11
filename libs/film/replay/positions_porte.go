@@ -56,8 +56,8 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // premiereGenerationDuCorps est la generation que porte le record de creation du PREMIER corps d un

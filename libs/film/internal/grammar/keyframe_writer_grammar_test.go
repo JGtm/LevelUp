@@ -33,7 +33,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // kf7dI0 est le nom de composant d'`i0` tel que le registre du film le porte.

@@ -7,8 +7,8 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmshell"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/filmshell"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // naissanceAB : une vie née à t=100, arme A à l'emplacement 0, B au 1, le 2 vide.

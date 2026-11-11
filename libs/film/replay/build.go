@@ -5,7 +5,7 @@ import (
 	"context"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // DefaultFrameIntervalMS est le pas de la grille de rééchantillonnage d'une construction qui n'en

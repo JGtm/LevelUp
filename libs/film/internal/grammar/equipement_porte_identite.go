@@ -15,7 +15,7 @@ package grammar
 // film, et deroule le MEME deserialiseur ([consumeDefaultStateTI37]) : aucun second lecteur de l etat.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // lecteurDIdentite relit l identite d une creation ti=37 : l observation qui retient le mot, et le contexte de

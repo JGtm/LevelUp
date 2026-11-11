@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // porteurs_crane_identite_test.go — DEPLACE de `replaybuild/skullidentity_test.go` le 2026-09-28 avec le code qu'il teste.

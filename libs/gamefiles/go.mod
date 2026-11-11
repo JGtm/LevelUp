@@ -1,4 +1,4 @@
-module github.com/JGtm/LevelUp/libs/gamefiles
+module github.com/JGtm/halo-infinite-files-reader
 
 go 1.26.11
 

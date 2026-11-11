@@ -21,7 +21,7 @@ package halo_5
 import (
 	"levelup/go-api/internal/persist"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/halo5"
+	"github.com/JGtm/halo-api/halo5"
 )
 
 // mapCarnageCommendations projette les deltas de commendations natives du carnage

@@ -34,8 +34,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // updateGrainesFuzz est la porte de regeneration DU CORPUS DE GRAINES, et de rien d'autre.

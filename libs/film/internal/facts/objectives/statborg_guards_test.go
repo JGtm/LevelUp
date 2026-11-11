@@ -3,7 +3,7 @@ package objectives
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // statborg_guards_test.go — LES CONTROLES NEGATIFS DES GARDES CONTRE LES MANCHES FANTOMES (revue

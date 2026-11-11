@@ -31,7 +31,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // --- Copies de reference : les sept lecteurs de `grammar` a `a15bfc126` ---

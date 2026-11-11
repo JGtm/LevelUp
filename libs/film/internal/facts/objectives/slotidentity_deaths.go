@@ -3,8 +3,8 @@ package objectives
 import (
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // slotidentity_deaths.go — LE SECOND PONT slot statborg -> joueur : par les INSTANTS DE

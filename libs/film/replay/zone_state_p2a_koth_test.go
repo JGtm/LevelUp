@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // p2aPeriode est un intervalle pendant lequel UN slot ti=13 est le seul a monter.

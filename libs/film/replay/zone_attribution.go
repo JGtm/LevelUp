@@ -36,7 +36,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // DefaultMaxGapMS est la tolerance par defaut entre l'instant d'une action et l'echantillon de

@@ -32,7 +32,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // placesLisiblesParLesTirs : le nombre de places que l'index de tireur persiste distingue — 1 << 5,

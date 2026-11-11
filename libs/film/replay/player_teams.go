@@ -49,7 +49,7 @@ import (
 	"log/slog"
 	"strconv"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // TeamCoverage est ce que la lecture de l'equipe a couvert, et ce que la base en dit.

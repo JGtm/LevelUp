@@ -18,7 +18,7 @@ package replay
 // PUR : aucune I/O.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // vehicleLivesBySlot indexe les vies de vehicule par slot.

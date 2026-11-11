@@ -25,8 +25,8 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // decodeurSansKill : le decodeur rend `ErrNoKillFeed`, l issue des films du constat.

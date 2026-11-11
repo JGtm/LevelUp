@@ -21,7 +21,7 @@ import (
 
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // artefactDeuxCamps ecrit un artefact dont DEUX vies portent des xuids differents, aucune

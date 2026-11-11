@@ -1,7 +1,7 @@
 package grammar
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // keyframe_datums.go — LA TABLE DE DATUMS PAR SLOT, LUE DANS L IMAGE-CLE (lot 5.16.2/5.16.4).

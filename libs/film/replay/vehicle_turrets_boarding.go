@@ -29,8 +29,8 @@ package replay
 import (
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // vehicleBoardingAnchors est ce que la garde consulte : le nuage des BIPEDES par slot (trie par

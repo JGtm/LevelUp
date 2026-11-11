@@ -34,7 +34,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // e191cCorriges nomme les quatre composants dont la CATEGORIE a change le 2026-09-15, avec la

@@ -38,7 +38,7 @@ package service
 import (
 	"math"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // sceneryReasonAloftUnoccupied : raison publiee d une vie tenue en l air a vide (cf. en-tete).

@@ -23,7 +23,7 @@ import (
 
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
 )
 
 // refusVoulus : les refus VOULUS de la cuisson, jeton et erreur typee. L'ordre est celui du

@@ -45,8 +45,8 @@ package grammar
 import (
 	"iter"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // ImagesCles rend la PHASE IMAGES-CLES du film : chaque paquet d image-cle, dans l ordre du flux,

@@ -21,7 +21,7 @@ package replay
 // Ce calque ne change ni `projectiles`, ni `equipmentPlacements`, ni `riftPoses`, ni les résumés
 // d'usage : il se calcule à la publication, depuis les trajectoires déjà lues des faits.
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // CarriedTracked est un objet engendré par un équipement porté. T0 est la frame de la première pile
 // i28 qui le nomme (il naît dans ce paquet) ; T1 celle de sa SUPPRESSION, écrite par le film,

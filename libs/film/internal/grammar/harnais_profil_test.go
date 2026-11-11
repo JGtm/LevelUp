@@ -17,7 +17,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // profilDeCarte rend le profil de balayage d une carte : l invariant, plus les largeurs d axe

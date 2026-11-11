@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 func TestMatchsAJour_FilmLuSansKillALaRevisionCourante(t *testing.T) {

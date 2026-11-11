@@ -20,7 +20,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // realMapQuantCatalog charge le catalogue de bornes REEL du depot — DONNEE DE REFERENCE

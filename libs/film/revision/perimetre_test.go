@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/revision"
+	"github.com/JGtm/halo-infinite-film-decoder/revision"
 )
 
 // updatePerimetres : LA PORTE DE REGENERATION DES GOLDENS DE PERIMETRE, et d aucun autre. Deux

@@ -7,7 +7,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // nlTracks : trois vies publiees — le joueur A (slot 10 puis 20), un bot (slot 11 puis 21).

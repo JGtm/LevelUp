@@ -18,7 +18,7 @@ package replay
 import (
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/weaponv3"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/weaponv3"
 )
 
 // objControlePositif rend, sur un lot de records, la part de ceux dont l'emprise contient au

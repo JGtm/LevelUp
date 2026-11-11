@@ -37,8 +37,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // AbilityCharge est UNE lecture de charge publiée : qui, quand, quel équipement, et ce

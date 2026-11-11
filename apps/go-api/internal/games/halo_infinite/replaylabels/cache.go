@@ -11,7 +11,7 @@ package replaylabels
 import (
 	"sync"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 type cleCatalogue struct{ repoRoot, titleSlug string }

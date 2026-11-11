@@ -92,7 +92,7 @@ package grammar
 // ([Observation.neutraliserLesCrochetsDeCanal]) ; sans observateur, c est sans effet.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // marchSignatureSlot est le slot de la SIGNATURE du premier record d un paquet a evenements (slot

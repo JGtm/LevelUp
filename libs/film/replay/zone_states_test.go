@@ -16,7 +16,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // zoneReadAt fabrique une lecture scalaire de `ti=13` posee sur une frame de la grille.

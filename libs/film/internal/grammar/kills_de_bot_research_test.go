@@ -30,7 +30,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // toleranceInstant : l ecart admis entre l instant du kill-feed et la trame d une tete, en

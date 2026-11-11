@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/JGtm/LevelUp/libs/film/research/reapparition"
+	"github.com/JGtm/halo-infinite-film-decoder/research/reapparition"
 )
 
 // Passe resout les cibles de mouvement et ecrit le rapport sur le flux fourni.

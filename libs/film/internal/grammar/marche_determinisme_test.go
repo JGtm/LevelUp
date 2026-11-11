@@ -14,8 +14,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // bobinesAEmpreinte : les deux bobines du depot qui portent des trames delta ET des images-cles,

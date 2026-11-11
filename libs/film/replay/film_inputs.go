@@ -31,8 +31,8 @@ package replay
 // l'assemblage recoit — c'est la seule ecriture, et elle est ecrite une fois.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // FilmInputs porte ce que l'etage de balayage d'un film rend a l'assemblage.

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // slotidentity_rounds.go — L'IDENTITE slot d'entite -> joueur PAR MANCHE.

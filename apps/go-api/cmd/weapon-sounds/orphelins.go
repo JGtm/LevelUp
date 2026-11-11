@@ -32,7 +32,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // sautOrphelin : un pas de la remontee, du son vers ses referents.

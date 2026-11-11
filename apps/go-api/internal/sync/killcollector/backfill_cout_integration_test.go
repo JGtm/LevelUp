@@ -58,7 +58,7 @@ import (
 
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // echantillonParDefaut : L ECHANTILLON DU LOT — des films PRODUCTIFS du bas du cout, deux films

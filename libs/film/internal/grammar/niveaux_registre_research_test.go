@@ -40,7 +40,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // nivConstanteExe : `vtable[0]` du descripteur, LU dans `HaloInfinite.exe` le 2026-09-18.

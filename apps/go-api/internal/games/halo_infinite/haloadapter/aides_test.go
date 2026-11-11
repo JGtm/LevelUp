@@ -15,7 +15,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/auth/tokencache"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 // cheminBriqueHaloapi rend le chemin, sur le disque, d'un fichier versionné de la brique « API

@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // emissAt fabrique une émission stricte complète (clé de tri comprise).

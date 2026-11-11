@@ -44,7 +44,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // r9MasqueMin est le nombre minimal de records pour qu'un rang soit juge. Sous ce seuil, un

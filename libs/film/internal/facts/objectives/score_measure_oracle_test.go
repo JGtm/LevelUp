@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // score_measure_oracle_test.go — la lecture de l ORACLE de la phase 0 du lot A : le TSV

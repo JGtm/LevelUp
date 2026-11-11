@@ -13,8 +13,8 @@ package objectives
 // ici, il ne recopie pas une troisieme fois (CLAUDE.md regle 6).
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/finalise"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // Bornes plausibles d'un xuid Halo (filtre anti-bruit du balayage du pied).

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // inventory_decode_test.go — CE QU'UN CHUNK ILLISIBLE PRODUIT, ET CE QUE LE LOT 1 Y A CHANGÉ.

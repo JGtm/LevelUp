@@ -30,7 +30,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // sbsp.xml est une copie non modifiée de Plugins/sbsp.xml de Gamergotten/Infinite-runtime-tagviewer, sans licence déclarée en amont : voir NOTICE.md.

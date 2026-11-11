@@ -31,7 +31,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/games/mappings"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // vehicleWeaponsFile : le nom du registre dans les mappings d un titre.

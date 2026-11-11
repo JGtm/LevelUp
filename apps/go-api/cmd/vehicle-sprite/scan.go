@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // cmdScan enumere les tags `vehi`, resout leur chaine vers le render_model, et dumpe les

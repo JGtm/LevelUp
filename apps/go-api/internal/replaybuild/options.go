@@ -4,8 +4,8 @@ import (
 	"context"
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // buildReplayOptions assemble replay.Options a partir de ce que BuildBytes a deja resolu

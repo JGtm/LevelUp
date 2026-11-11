@@ -32,9 +32,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/memguard"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // d10Trou est UN trou rejoue par la chaine D9 figee, avec le detail que D9 ne publiait pas.

@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // pad_pickup_dating_cycle_test.go — UNE SEULE PRISE DE SOCLE PAR RÉAPPARITION DE L'ARME (repli

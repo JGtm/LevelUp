@@ -27,7 +27,7 @@ import (
 	"encoding/binary"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 const (

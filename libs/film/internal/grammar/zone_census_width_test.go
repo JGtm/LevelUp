@@ -39,7 +39,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // zcWidthSweep sont les largeurs de champ de slot probees. 13 est la valeur cablee en

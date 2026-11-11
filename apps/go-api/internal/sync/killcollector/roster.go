@@ -24,8 +24,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // SharedRoster : la resolution nom -> xuid depuis `shared.match_participants`.

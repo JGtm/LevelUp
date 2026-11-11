@@ -32,7 +32,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // MapWeaponPadsSchemaVersion est la version de forme attendue du catalogue.

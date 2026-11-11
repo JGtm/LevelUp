@@ -3,7 +3,7 @@ package objectives
 import (
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // slotidentity_occupations_feuille.go — LA FEUILLE DE MATCH FACE AUX SIEGES RECYCLES (lot R1) : le

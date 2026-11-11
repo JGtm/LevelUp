@@ -28,7 +28,7 @@ import (
 
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // origManifesteEquipement lit les `[[equipment_objects]]` du manifeste du titre.

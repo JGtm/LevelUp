@@ -3,7 +3,7 @@ package replay
 import (
 	"context"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // pont_shims_test.go — LES DEUX PORTES QUE LES INSTRUMENTS DU PAQUET EMPRUNTENT.

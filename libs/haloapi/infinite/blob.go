@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/haloapi"
+	haloapi "github.com/JGtm/halo-api"
 )
 
 // drainBlobMax : ce qui est lu d'un corps non-200 avant fermeture (rendre la connexion au pool).

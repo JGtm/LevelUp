@@ -15,7 +15,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // bfScrubDeTest : `successionDeTest` sans l'entite du bot (slot 5) — un bot dont toute la presence

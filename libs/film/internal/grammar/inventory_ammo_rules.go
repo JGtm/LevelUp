@@ -1,8 +1,8 @@
 package grammar
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // inventory_ammo_rules.go — LE BLOC MUNITIONS (i30..i42, règles R3+R4) d'un record de biped

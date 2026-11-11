@@ -15,7 +15,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // pisteExAequo fabrique une vie de trois points qui NAIT au meme instant que ses soeurs : seul

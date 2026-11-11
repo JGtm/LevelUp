@@ -23,9 +23,9 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // zlibCompressForTest compresse b, pour verifier qu'un chunk COMPRESSE (la forme du cache

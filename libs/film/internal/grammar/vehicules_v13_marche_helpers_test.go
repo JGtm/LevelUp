@@ -33,7 +33,7 @@ package grammar
 import (
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // v13BipedTI / v13VehicleTI : les deux archetypes compares. VehicleTypeIndex vaut deja 40.

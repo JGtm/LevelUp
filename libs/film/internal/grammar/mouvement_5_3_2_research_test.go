@@ -40,7 +40,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // Les noms des composants suivis. Le nom est la clef : l index varie d un archetype a l autre.

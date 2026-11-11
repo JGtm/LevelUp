@@ -31,9 +31,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/depottest"
 
-	"github.com/JGtm/LevelUp/libs/film/equipenergy"
+	"github.com/JGtm/halo-infinite-film-decoder/equipenergy"
 )
 
 // equipementPath : le fichier des poussees et de l equipement porte d un build.

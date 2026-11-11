@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // optionsV2 : ce que la ligne de commande donne a la carte v2.

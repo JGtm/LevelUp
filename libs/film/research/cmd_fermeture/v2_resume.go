@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // ordreDesSorties et ordreDesRestes : l ordre des colonnes, fixe.

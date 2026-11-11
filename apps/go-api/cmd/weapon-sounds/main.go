@@ -80,7 +80,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // moduleParDefaut : le module qui porte les `sbnk` (mesure : les 40 IDs `.wem` du fusil

@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // cmdRender rend un vehi (ou tous) en PNG teintable dans -out.

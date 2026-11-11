@@ -55,7 +55,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
 )
 
 // ctfzRayons — les rayons candidats, en metres monde. La borne haute (15 m) est volontairement

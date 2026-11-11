@@ -27,7 +27,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // assistAttendu : ce que chaque film de reference rend. Ces nombres ne sont PAS des cibles, ce

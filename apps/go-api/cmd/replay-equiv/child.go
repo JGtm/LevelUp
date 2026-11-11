@@ -35,9 +35,9 @@ import (
 	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // attenteVerrouMax : combien de temps un enfant attend son tour de decodage avant de refuser

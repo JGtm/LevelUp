@@ -37,7 +37,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // BanqueNommee est une banque du module, son identifiant Wwise et son nom quand il est etabli.

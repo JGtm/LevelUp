@@ -1,6 +1,6 @@
 package objectives
 
-import "github.com/JGtm/LevelUp/libs/film/internal/constat"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/constat"
 
 // diagnostics.go — CE QUE LES LECTURES D OBJECTIFS CONSTATENT, RENDU A L ORCHESTRATEUR (lot J12.3,
 // ADR 0034 D-4).

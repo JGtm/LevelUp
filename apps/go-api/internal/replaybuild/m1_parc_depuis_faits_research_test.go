@@ -47,7 +47,7 @@ import (
 	"levelup/go-api/internal/replaydiff"
 	"levelup/go-api/internal/testutil"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 var m1ArtefactRe = regexp.MustCompile(`^[0-9a-f]{8}\.json$`)

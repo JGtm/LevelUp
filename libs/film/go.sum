@@ -1,7 +1,7 @@
-github.com/JGtm/LevelUp/libs/gamefiles v0.1.0 h1:orEaAaW59TdwPrc6qN6/D0OwwakeiwS6GYg74wK6XvI=
-github.com/JGtm/LevelUp/libs/gamefiles v0.1.0/go.mod h1:n7BswMvay/UtYLmZ3Y2veqr9OJJPC5rHatRzAZktFHc=
-github.com/JGtm/LevelUp/libs/himap v0.1.0 h1:19Sw3P+FU/xLnt10jCLw8V6aDk2GYp4kD6ptaJOWrGQ=
-github.com/JGtm/LevelUp/libs/himap v0.1.0/go.mod h1:awECCS02AzTFRGsqqBYqniPu1k0CFvM8NM2ejg6FtLA=
+github.com/JGtm/halo-infinite-files-reader v1.0.0 h1:L9gtqxW3dA6CHUdv6nIQrSewIMIQaEPWYz3GTfslFRs=
+github.com/JGtm/halo-infinite-files-reader v1.0.0/go.mod h1:oHbEVzCwfJqm/d8H+5YSMn1OkgF3SSoe/q3ERxeDnC8=
+github.com/JGtm/halo-infinite-map-images v1.0.0 h1:R+J/e7QJ7mmR3rEa3SAiSdL1igzJCJ/JmR9/0NfKKjw=
+github.com/JGtm/halo-infinite-map-images v1.0.0/go.mod h1:NYB2fuao/hzQnS5Nn3yPdHrpJOGAHuh8JJRP2s6oJCo=
 github.com/klauspost/compress v1.20.2 h1:v5tiZvm1KGLyg5d5oXdXe3lsSPrbEUiKoXGia//I7Qo=
 github.com/klauspost/compress v1.20.2/go.mod h1:LUdAzn7YLVvxLpc7y3V1m40wESHTgc1422pwwBSKYuI=
 github.com/pelletier/go-toml/v2 v2.4.3 h1:GTRvJQutkOSftxIFD5xw9aepkYNuPWmVJpffdDPYVpY=

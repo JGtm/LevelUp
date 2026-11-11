@@ -3,8 +3,8 @@ package objectives
 import (
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // score_measure_rounds_test.go — la grammaire d'ancrage ETENDUE de l'item A.0b.1 : lire les

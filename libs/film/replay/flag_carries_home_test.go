@@ -14,8 +14,8 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/objectives"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/objectives"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // flagHomeScan monte un portage de « 1 » a 1 000 ms, ferme par sa mort a 6 000 ms (frame 60), et

@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/internal/profile"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 
 // vue_a_versions.go — LA VERSION DE CHAQUE GENRE DE MESSAGE : CELLE DU JEU, CELLE DU FILM, ET LA
 // REGLE QUI DIT SI LA GRAMMAIRE DU JEU LIT LA VUE A D UN FILM (lot LN, regle en deux classes du lot

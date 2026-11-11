@@ -8,7 +8,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // DIAGNOSTIC DES TROUS — d'ou vient la geometrie qui manque sous les joueurs.

@@ -40,7 +40,7 @@ package replay
 // sous-dimensionnement au lieu de fabriquer un faux negatif.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // vgKFStat porte la couverture de la marche d'image-cle, publiee AVANT tout score.

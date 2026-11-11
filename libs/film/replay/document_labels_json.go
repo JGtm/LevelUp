@@ -1,6 +1,6 @@
 package replay
 
-import "github.com/JGtm/LevelUp/libs/film/internal/flatjson"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/flatjson"
 
 // document_labels_json.go — LA FORME DE FIL DES LIBELLÉS PAR LANGUE.
 //

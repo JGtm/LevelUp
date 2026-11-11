@@ -37,7 +37,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // memoDeBobine calcule, par cle, UNE valeur par processus de test.

@@ -12,8 +12,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // teteDAvant est le TEMOIN D AVANT LE LOT VA : la vue A rangee, la tete et la route que

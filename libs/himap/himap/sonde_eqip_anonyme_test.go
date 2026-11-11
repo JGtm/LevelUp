@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // stringIDsAnonymes : les identifiants de chaine NON CASSES qui portent un objet d'equipement

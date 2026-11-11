@@ -25,7 +25,7 @@ package killsource
 // criteres ci-dessus sont INCHANGES — l identite remplace la fenetre, jamais la contrainte de
 // couple. Chaque appariement rend donc un second resultat : le repli a-t-il servi.
 
-import "github.com/JGtm/LevelUp/libs/film/damagetag"
+import "github.com/JGtm/halo-infinite-film-decoder/damagetag"
 
 // matchExact : le critere FORT. Rend l instant apparie et si le REPLI (la fenetre) a servi.
 func (c *decodeCtx) matchExact(cd candidate) (*feedEvent, bool) {

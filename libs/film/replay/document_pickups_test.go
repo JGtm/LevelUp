@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 func TestBuildPickupsProjectsAndNames(t *testing.T) {

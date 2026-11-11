@@ -55,7 +55,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // lot3Scan re-implemente la regle structurelle SANS passer par parseRegistry : c'est la

@@ -44,8 +44,8 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // PacketTypeBotMetadata est le type du paquet BOT_METADATA.

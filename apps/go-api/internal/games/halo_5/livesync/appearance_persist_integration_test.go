@@ -22,7 +22,7 @@ import (
 	"levelup/go-api/internal/platform/dblease"
 	syncpkg "levelup/go-api/internal/sync"
 
-	h5api "github.com/JGtm/LevelUp/libs/haloapi/halo5"
+	h5api "github.com/JGtm/halo-api/halo5"
 )
 
 type fakeAppearanceSource struct {

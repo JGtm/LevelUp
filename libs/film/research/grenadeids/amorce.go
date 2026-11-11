@@ -23,7 +23,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // largeurAmorceMin / largeurAmorceMax : les largeurs d amorce sondees, en bits. La grammaire

@@ -24,7 +24,7 @@ import (
 
 	"levelup/go-api/internal/games/mappings"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 func TestRRM4AGatesG4(t *testing.T) {

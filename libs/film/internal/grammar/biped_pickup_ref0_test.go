@@ -31,7 +31,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // bpkPaire est un evenement type 9 apparie, sans ambiguite, a une prise dont le SLOT du

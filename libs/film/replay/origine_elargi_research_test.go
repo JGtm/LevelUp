@@ -45,7 +45,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // oriTypesEquipement : les deux types trouvés aux positions récurrentes. Publiés en hexadécimal

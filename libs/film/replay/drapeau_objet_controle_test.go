@@ -36,7 +36,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // objDrapeauSeuilVies / objDrapeauSeuilTemoin — les deux seuils du controle 3, ecrits avant la

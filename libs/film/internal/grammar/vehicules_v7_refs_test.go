@@ -57,7 +57,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // v7CensusTolUS est la tolerance de fenetre d'une vie recensee, DE PART ET D'AUTRE. C'est la

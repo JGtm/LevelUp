@@ -5,8 +5,8 @@ import (
 	"math"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // projectiles.go — TRAJECTOIRES DE PROJECTILE projetées sur la grille du rejeu, et l'EXPLOSION qui

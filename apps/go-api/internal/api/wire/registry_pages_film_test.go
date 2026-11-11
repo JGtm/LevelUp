@@ -27,8 +27,8 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 
-	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
-	"github.com/JGtm/LevelUp/libs/film/playerposition"
+	"github.com/JGtm/halo-infinite-film-decoder/objectiveevent"
+	"github.com/JGtm/halo-infinite-film-decoder/playerposition"
 )
 
 // racineDepotDeCeTest remonte du package a la racine du depot, pour lire les

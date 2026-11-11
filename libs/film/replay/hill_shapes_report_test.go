@@ -16,7 +16,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // hillTableau publie chaque rampe : sa forme appariee, ses votes, son occupation.

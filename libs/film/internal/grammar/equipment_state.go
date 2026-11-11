@@ -25,7 +25,7 @@ package grammar
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // Étiquettes de registre des composants de ti=37 dont ce fichier publie la valeur. Elles

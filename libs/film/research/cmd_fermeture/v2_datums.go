@@ -41,7 +41,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // masqueDeSlot extrait le slot d un eid ; decalageDeGeneration, sa tete de generation.

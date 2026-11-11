@@ -52,8 +52,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // pcFenetreDetonMS borne la coincidence recompense-explosion : l'oracle A0.3 date le point de

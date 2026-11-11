@@ -3,7 +3,7 @@ package replay
 import (
 	"strconv"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // flag_carries_marker.go — LE CONTROLE INDEPENDANT, et les comptes qu'il alimente.

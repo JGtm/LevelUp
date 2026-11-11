@@ -26,8 +26,8 @@ package replay
 import (
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // zoneCles est ce que les images-cles disent des slots ti=13 : les frames des images-cles qui

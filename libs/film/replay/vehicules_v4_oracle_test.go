@@ -25,7 +25,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // v4OracleCause nomme l etat du flux du tireur au moment d un tir de l oracle.

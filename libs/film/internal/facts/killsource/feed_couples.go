@@ -1,6 +1,6 @@
 package killsource
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // feed_couples.go — LE COUPLE (TUEUR, VICTIME) EST LU AU KILL-EVENT 85, PLUS RECOLLE SUR LE
 // VOISIN.

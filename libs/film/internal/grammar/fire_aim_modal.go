@@ -1,7 +1,7 @@
 package grammar
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // Décodage de la VISÉE MODALE du record de tir `action_weapon_fire` (type 36).

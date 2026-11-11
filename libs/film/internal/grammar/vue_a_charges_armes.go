@@ -3,7 +3,7 @@ package grammar
 // vue_a_charges_armes.go — LES CHARGES DES MESSAGES D ARME, DE PROJECTILE ET D EQUIPEMENT DE LA VUE A
 // (lot LN de la campagne de grammaire). Memes conventions que `vue_a_charges.go`.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 
 // Les immediats des sites d appel de `FUN_14076dc04` et de `FUN_1406d84b4` lus dans ces lecteurs.
 const (

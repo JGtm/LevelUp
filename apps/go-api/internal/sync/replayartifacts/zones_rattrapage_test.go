@@ -30,7 +30,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // Contenus de variante reconnus par l'extraction factice (cf. zrExtractionFactice).

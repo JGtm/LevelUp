@@ -19,7 +19,7 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/constat"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/constat"
 )
 
 // JournaliserDiagnostics journalise les diagnostics sous `ctx`, dans l ordre ou ils ont ete notes.

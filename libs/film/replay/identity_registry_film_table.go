@@ -54,9 +54,9 @@ import (
 	"log/slog"
 	"strconv"
 
-	"github.com/JGtm/LevelUp/libs/film/identity"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/identity"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // filmTableLinks est la table d'index EFFECTIVE et la provenance de chacun de ses liens.

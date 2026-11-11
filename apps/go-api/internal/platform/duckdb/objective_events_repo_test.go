@@ -16,7 +16,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/migration"
 
-	"github.com/JGtm/LevelUp/libs/film/objectiveevent"
+	"github.com/JGtm/halo-infinite-film-decoder/objectiveevent"
 )
 
 const oeTestMatchID = "m_objective_001"

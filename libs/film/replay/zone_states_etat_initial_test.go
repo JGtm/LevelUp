@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // bastionSansNeutreDeDepart est le cas nominal de `bastionCase` sans les emissions neutres de la

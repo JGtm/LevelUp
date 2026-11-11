@@ -31,7 +31,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // v11Visee est UNE lecture de visee issue d'un record SANS i0.

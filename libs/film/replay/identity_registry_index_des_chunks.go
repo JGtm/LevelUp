@@ -34,7 +34,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // contradictionDeSiege : un joueur que la table du film assied a `siege` et que les chunks lisent

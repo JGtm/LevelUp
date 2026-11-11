@@ -10,7 +10,7 @@ package himap
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 func TestSondeScnr(t *testing.T) {

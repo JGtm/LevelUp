@@ -1,7 +1,7 @@
 package grammar
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // e191_helpers_test.go — les helpers des instruments E191b / E191c que des tests du build PAR

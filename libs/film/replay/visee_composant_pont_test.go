@@ -33,8 +33,8 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // vfPropagationUS : ecart maximal entre deux fragments de meme slot consideres comme la meme

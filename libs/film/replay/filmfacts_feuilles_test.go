@@ -37,8 +37,8 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // ecartDeFeuille compte les valeurs d un champ declare qui n ont pas fait l aller-retour.

@@ -3,7 +3,7 @@ package grammar
 // tete_du_payload_test.go — LES DECODEURS D EVENEMENT DE TETE SUR DES PAYLOADS FABRIQUES : la tete
 // se lit hors de la structure ([teteDuPayload]), comme la passe des tetes la rangerait.
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // decodeVehicleEventDuPayload est [decodeVehicleEvent] sous la tete du payload.
 func decodeVehicleEventDuPayload(pay []byte, base uint32, inBand SlotBand) (types.VehicleEvent, bool) {

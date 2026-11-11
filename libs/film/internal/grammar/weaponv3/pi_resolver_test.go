@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/depottest"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/depottest"
 )
 
 // piverifyXuids — roster ground-truth du match 000d5950 (cf. piverify/main.go).

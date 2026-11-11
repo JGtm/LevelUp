@@ -15,7 +15,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/highlightevent"
+	"github.com/JGtm/halo-infinite-film-decoder/highlightevent"
 )
 
 // Les trois versions de reference de ces tests. Elles NOMMENT les deux decoupages plutot que de

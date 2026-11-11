@@ -50,7 +50,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // r9Ent identifie UNE VIE d'entite ti=37 : la paire (slot, generation), jamais le seul slot

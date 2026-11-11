@@ -3,8 +3,8 @@ package grammar
 import (
 	"maps"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/constat"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/constat"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // World tracks entity-id -> archetype (and the last resolved position) ACROSS FRAME records.

@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // proprietaireNommeAttendu : par rang de lettre (0 = A), le camp du PREMIER intervalle publie et

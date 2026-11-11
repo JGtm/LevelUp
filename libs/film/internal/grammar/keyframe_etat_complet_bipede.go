@@ -18,7 +18,7 @@ package grammar
 // (D1.2).
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // genreDeRole dit ce qu une occurrence du bipede porte pour le canal.

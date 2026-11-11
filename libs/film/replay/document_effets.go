@@ -20,8 +20,8 @@ package replay
 //   - une seule candidate retenue : l effet est publie ; plusieurs : ambigu, rien n est publie ; aucune : rien.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // familleDeLEcranOccultant est la famille de la palette dont l effet se lit.

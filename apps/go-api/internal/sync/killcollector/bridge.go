@@ -43,7 +43,7 @@ import (
 	"fmt"
 	"levelup/go-api/internal/sync/filmfetch"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // filmChunkFetcher : le SEUL besoin du pont cote client. Interface etroite (patron du paquet,

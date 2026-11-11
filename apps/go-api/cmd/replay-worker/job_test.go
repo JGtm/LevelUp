@@ -24,7 +24,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 // servirZlib rend un handler qui compresse en zlib ce que fabrique produce(nom-de-fichier) —

@@ -24,7 +24,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/ooz"
+	"github.com/JGtm/halo-infinite-files-reader/ooz"
 )
 
 const (

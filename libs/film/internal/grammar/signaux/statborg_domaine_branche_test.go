@@ -22,7 +22,7 @@ package signaux
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // statBrancheComp est le composant que le vecteur porte — celui du cas reel de `fb1a1a72`.

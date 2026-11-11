@@ -93,10 +93,10 @@ package grammar
 // atomique : il appartient au balayage qui l a ouvert, et a lui seul.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/constat"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/constat"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // FilmContext porte les derivations d'un film qui ne dependent que de lui : les numeros de ses

@@ -12,7 +12,7 @@ package grammar
 // le detail de la carte ([detaillerLaLecture]), la localisation des listes ([localiserLaListe],
 // [debutParFermetureRangee]).
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 
 // largeurTagDeGeneration est la largeur du tag de generation de l en-tete d un record
 // ([readRecordID] : `R(2)` en bits 30-31) ; les sondes l emploient pour relire un en-tete.

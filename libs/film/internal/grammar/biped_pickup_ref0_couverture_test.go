@@ -23,7 +23,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // bpkBaseDom2 est la base du domaine 2 etablie par TestBipedPickupRef0Base : ecart

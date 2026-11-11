@@ -9,8 +9,8 @@ package grammar
 // manifeste ([ScanDeaths]).
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/highlightevent"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/highlightevent"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // FilDesKills rend les evenements du chunk de `f` qui porte le plus de kills, lus sous la version

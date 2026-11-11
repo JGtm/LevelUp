@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // build_aim_test.go — LE CONTRAT D ECRITURE DES DEUX ANGLES DE VISEE (lot E phase 1).

@@ -25,7 +25,7 @@ import (
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapdecoupe"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // rapportDecoupe chiffre le découpage d'une carte — de quoi CONSTATER ce que la chaîne a

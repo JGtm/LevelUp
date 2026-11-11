@@ -75,7 +75,7 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // estFamilleDuBilan dit si cette famille porte une ligne d'issue.

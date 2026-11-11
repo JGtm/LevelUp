@@ -24,7 +24,7 @@ package replay
 // `PlayerIndexTable`, repli nomme et compte) : la table du film se tait la ou deux lectures la
 // dementent.
 
-import "github.com/JGtm/LevelUp/libs/film/identity"
+import "github.com/JGtm/halo-infinite-film-decoder/identity"
 
 // membresDesChaines rend les joueurs contredits qui forment une chaine : ceux dont l'index des
 // chunks est le siege d'un autre joueur contredit, ces titulaires, et le titulaire d'un siege

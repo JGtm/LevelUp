@@ -36,7 +36,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // Offsets et strides du tag levl — mesurés, cf. en-tête.

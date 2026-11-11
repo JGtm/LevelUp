@@ -11,7 +11,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // geoTouch : un damage_aftermath 0xC0 t0 dont ref1 est NON-bipede (candidate explosive), avec

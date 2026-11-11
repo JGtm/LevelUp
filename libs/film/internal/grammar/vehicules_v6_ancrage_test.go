@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // v6FrameScore evalue un candidat de debut de trame ECS : il rejoue la boucle de records a

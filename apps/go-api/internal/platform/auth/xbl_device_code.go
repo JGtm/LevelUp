@@ -8,7 +8,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/xblauth"
+	"github.com/JGtm/halo-api/xblauth"
 )
 
 // XboxDeviceCodeResult contient les données retournées par StartXboxDeviceCode.

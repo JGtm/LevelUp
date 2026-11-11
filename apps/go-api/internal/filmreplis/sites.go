@@ -1,6 +1,6 @@
 package filmreplis
 
-import "github.com/JGtm/LevelUp/libs/film/decfilm"
+import "github.com/JGtm/halo-infinite-film-decoder/decfilm"
 
 // Les fichiers de l'hote qui portent plusieurs sites.
 const (

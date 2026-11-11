@@ -39,7 +39,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // v7LetalMaxBit borne le balayage : le record de tir (type 36) lit jusqu'au bit 142, 256 couvre

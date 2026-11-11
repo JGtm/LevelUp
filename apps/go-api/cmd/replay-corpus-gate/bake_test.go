@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // TestArgsCuissonTransmetLePlafondMemoire — LE COMPORTEMENT DEMANDE : `--mem-gib` figure dans

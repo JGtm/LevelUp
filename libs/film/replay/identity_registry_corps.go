@@ -24,7 +24,7 @@ package replay
 import (
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // occupantsDesSlots repond « quel index de joueur tient ce slot a cet instant ».

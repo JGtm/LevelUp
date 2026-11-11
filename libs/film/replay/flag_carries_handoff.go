@@ -41,7 +41,7 @@ package replay
 // interieur a `]t0, t1[` : tout instant rendu est deja plus petit que la borne en place. Le biais
 // du calque garde donc son sens — trop long, jamais trop court.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 
 // flagSingleInPlay dit que le film ne met en jeu qu'UN SEUL drapeau : la variante DRAPEAU NEUTRE
 // (un socle retenu, cf. flag_neutral.go).

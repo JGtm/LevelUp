@@ -16,8 +16,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // decorPlacement assemble une entrée à partir des pistes et des morts du fil, camps du décor.

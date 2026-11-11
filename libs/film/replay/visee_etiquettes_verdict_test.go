@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // vgIdxSentinelle : index d archetype fictif de la colonne sentinelle. POSITIF a dessein :

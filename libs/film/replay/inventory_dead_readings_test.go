@@ -3,7 +3,7 @@ package replay
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // inventory_dead_readings_test.go — le MARQUAGE des lectures vides, sur pieces montees a la main.

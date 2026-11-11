@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // slotidentity_rounds_test.go — L'IDENTITE PAR MANCHE, et les DEUX proprietes qui comptent :

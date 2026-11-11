@@ -27,7 +27,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // MapObjectivesSchemaVersion est la version de forme attendue du catalogue. Elle doit

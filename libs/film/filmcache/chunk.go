@@ -18,8 +18,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/JGtm/LevelUp/libs/film/finalise"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // ErrChunkTronque : le fichier d'un chunk n'a pas la taille que son manifeste declare. Un

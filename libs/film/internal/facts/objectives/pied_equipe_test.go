@@ -14,10 +14,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/finalise"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/signaux"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/finalise"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/signaux"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // Le bloc de référence, versionné par la grammaire, et ce que sa lecture rend.

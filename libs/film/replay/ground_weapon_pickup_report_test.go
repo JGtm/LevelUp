@@ -19,7 +19,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // gwPickup21Tally compte le bornage, la datation et les deux temoins sur un sous-ensemble.

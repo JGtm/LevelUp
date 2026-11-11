@@ -17,7 +17,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // poseExAequo fabrique une pose qui partage le triplet de tete (instant de pose, slot,

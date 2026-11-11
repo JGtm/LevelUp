@@ -24,7 +24,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/netguard"
 
-	"github.com/JGtm/LevelUp/libs/haloapi/infinite"
+	"github.com/JGtm/halo-api/infinite"
 )
 
 // logModule est l'attribut de routage des journaux du classement vers logs/leaderboard.log

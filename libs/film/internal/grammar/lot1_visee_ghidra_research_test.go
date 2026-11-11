@@ -46,7 +46,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // lot1HeaderPostCounts decode l'en-tete du record type 36/105 (framing modele-M : 2 bits

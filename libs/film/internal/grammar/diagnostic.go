@@ -6,7 +6,7 @@ package grammar
 // contexte du film ([FilmContext.Diagnostics]), que l orchestrateur releve et journalise avec son
 // `ctx` (cf. l en-tete du paquet `constat`).
 
-import "github.com/JGtm/LevelUp/libs/film/internal/constat"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/constat"
 
 // Les diagnostics de `grammar`.
 const (

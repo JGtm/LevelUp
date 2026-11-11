@@ -8,7 +8,7 @@ package grammar
 // occupe aux images-cles, et ceux qu un autre archetype y occupe. Le releve la lit dans la structure
 // de chaque paquet ([lecture.Paquet]) — l identite des records, sans parcourir leur corps.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 
 // releveDesSlots releve, dans la phase des images-cles, les slots de l archetype `ti` (`vus`) et ceux
 // d un autre archetype (`autres`). Un slot peut etre dans les deux : il a porte l archetype a une

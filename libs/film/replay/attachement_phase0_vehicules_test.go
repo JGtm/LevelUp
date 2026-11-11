@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // attVehiculeTI est l'archétype « véhicule (présumé) » de la table ECS. Présumé est le mot

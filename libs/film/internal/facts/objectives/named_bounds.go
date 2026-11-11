@@ -10,8 +10,8 @@ package objectives
 // rejet des ancrages parasites, cumul des manches).
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/constat"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/constat"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // # LES BORNES DE PRUDENCE DU DEROULAGE (lot 4b, 2026-09-03 — decision utilisateur du meme jour)

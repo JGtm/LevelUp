@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // rnLargeurEnTete : prefixe DELTA (1) + identifiant (IDLowBits) + tete (2).

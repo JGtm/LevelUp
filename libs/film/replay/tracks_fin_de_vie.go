@@ -26,8 +26,8 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // clotureParMort porte ce dont la fin d une vie a besoin : les morts ecrites sur l horloge du film,

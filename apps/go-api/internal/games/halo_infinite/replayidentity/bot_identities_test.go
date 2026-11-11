@@ -14,7 +14,7 @@ import (
 
 	"levelup/go-api/internal/observability"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // ajouter rend la tranche agrandie d un element nul et un pointeur vers lui. Le type des entrees

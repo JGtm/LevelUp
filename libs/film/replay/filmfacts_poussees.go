@@ -4,7 +4,7 @@ package replay
 // la liste des paires 105 -> 104 et les denominateurs de leur lecture, au complement de la section 1
 // ([encodeComplementDesEntrees]), avant le verdict du fil des morts.
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // encodePoussees ecrit les poussees (triees par instant, d ou le delta) puis leurs denominateurs.
 func encodePoussees(w *gwriter, ks []types.Knockback, st types.KnockbackStats) {

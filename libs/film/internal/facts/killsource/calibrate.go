@@ -39,8 +39,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // calibration : ce que le decodeur APPLIQUE, et ce que le balayage MESURE a cote.

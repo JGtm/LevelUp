@@ -26,7 +26,7 @@ import (
 
 	"levelup/go-api/internal/persist"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // filmAccuracyKey : le grain de sortie (xuid, arme). Le FilmIndex a deja ete resolu en xuid.

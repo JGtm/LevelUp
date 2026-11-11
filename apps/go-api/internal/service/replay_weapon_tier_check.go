@@ -23,7 +23,7 @@ import (
 	"levelup/go-api/internal/analysis/weapontier"
 	"levelup/go-api/internal/games/weapons"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // checkWeaponTierJoin journalise quand la jointure des niveaux d'armes paraît décalée.

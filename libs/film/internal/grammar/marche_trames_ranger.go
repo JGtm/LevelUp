@@ -11,8 +11,8 @@ package grammar
 // un tour qui arrete la marche).
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // decalageDeGeneration : la generation d un handle est dans les deux bits de tete de l eid

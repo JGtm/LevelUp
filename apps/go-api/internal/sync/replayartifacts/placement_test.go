@@ -19,7 +19,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // hookAvec construit un hook au réglage donné, sans store de configuration.

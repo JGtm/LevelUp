@@ -8,7 +8,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // releveOrigine / releveStep : l horloge des temoins (frames de 100 ms).

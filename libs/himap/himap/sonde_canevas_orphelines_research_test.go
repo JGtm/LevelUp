@@ -17,7 +17,7 @@ package himap
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // cartesOrphelines : les cartes du depot sans fichier-lien de canevas. Une entree sort de

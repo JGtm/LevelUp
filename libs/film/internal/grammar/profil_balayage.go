@@ -1,8 +1,8 @@
 package grammar
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // profil_balayage.go — CE QU UN BALAYAGE POSE SUR LES LECTEURS DE BITS QU IL CONSTRUIT

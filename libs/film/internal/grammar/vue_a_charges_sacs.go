@@ -7,7 +7,7 @@ package grammar
 // etiquetee (`FUN_14080ef08` : etiquette `R(3)`, puis `FUN_14080eff0`). Le sous-sac est
 // `FUN_14080b034`, porte une seule fois dans le depot ([consumeSacTexte]).
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 
 // largeurEtiquetteDePropriete est le `R(3)` de `FUN_14080ef08` et le compte `R(3)` de
 // `FUN_14080b1b8`.

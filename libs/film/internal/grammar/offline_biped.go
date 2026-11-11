@@ -45,8 +45,8 @@ package grammar
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // BipedTypeIndex est le typeIndex (ti) des entités biped (joueurs) dans le registre film.

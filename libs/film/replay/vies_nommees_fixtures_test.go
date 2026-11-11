@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/killsource"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/killsource"
 )
 
 // botsDuFixture rend les bots figes du fixture `id`. Le fichier est obligatoire : un fixture sans

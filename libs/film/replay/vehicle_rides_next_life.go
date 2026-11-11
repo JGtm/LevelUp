@@ -25,7 +25,7 @@ package replay
 import (
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // cutRidesAtNextLife coupe les episodes de `vehicles` a la naissance de la vie suivante du meme

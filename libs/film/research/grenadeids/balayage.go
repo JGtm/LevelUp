@@ -14,8 +14,8 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // structureBits : la taille de la structure exploitee par la production — marqueur, identifiant,

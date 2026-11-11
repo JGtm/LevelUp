@@ -59,8 +59,8 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync/replayartifacts"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // usageSummaryOptions : les reglages de la passe.

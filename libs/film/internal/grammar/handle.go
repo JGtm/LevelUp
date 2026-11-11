@@ -35,8 +35,8 @@ package grammar
 // panique — c est la convention qu elles portaient deja.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // Largeurs du handle, et place du handle dans un en-tete de record DELTA.

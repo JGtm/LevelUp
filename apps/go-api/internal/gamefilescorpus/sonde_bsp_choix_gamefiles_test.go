@@ -10,9 +10,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // SONDE — MESURER LES QUATRE BSP DE `common-rtx-new` AVANT DE CHOISIR UNE REGLE.

@@ -37,7 +37,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // Succession est un RELAIS lu dans la base : un remplaçant (bot) arrive à cet instant de

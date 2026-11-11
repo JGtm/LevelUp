@@ -27,7 +27,7 @@ package killsource
 // code en dur sur ces deux tags : le generateur ENUMERE les entrees atteintes et marque AMBIGU
 // des qu il y en a plus d une — il attrapera donc les cas d une saison future.
 
-import "github.com/JGtm/LevelUp/libs/film/damagetag"
+import "github.com/JGtm/halo-infinite-film-decoder/damagetag"
 
 // sourceTruthOf : la verite SOURCE d un tag et d une categorie.
 func sourceTruthOf(tag uint32, cat int) SourceTruth {

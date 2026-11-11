@@ -1,8 +1,8 @@
 package grammar
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // keyframe_fullstate_loop.go — LA BOUCLE D'ETAT COMPLET DU JEU, PORTEE, ET DEPUIS LE LOT 1.4

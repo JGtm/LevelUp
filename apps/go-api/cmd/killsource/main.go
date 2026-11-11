@@ -42,9 +42,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // defaultCacheDir : la racine du cache de films, relative a `apps/go-api/`. Meme valeur que

@@ -12,10 +12,10 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/mapvar"
+	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // TestProjeterPlacementDesVies_PontNonPubliable_EcritSansLireLesPorteurs — decision V1 amendee le

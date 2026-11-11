@@ -4,7 +4,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // slotidentity_occupations.go — LE SIEGE RECYCLE : un slot d'entite statborg qui CHANGE D'OCCUPANT

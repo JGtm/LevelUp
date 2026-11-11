@@ -14,7 +14,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/facts/fallback"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/facts/fallback"
 )
 
 // hillStatesOf regroupe les periodes par zone et rend les intervalles ACTIFS, avec leur

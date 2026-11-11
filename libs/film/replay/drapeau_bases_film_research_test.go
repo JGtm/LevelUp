@@ -37,7 +37,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // LES SEUILS DE DECISION SONT CEUX DE LA REGLE DE PRODUCTION (flag_film_bases.go), lus et non

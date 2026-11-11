@@ -26,8 +26,8 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // archetypesDeCreation rend les archetypes dont la cuisson marche les creations : l equipement

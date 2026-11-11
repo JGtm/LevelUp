@@ -11,8 +11,8 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // encodeStatsDePose / decodeStatsDePose : LES ONZE CHAMPS DES DENOMINATEURS DE POSE.

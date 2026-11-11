@@ -24,7 +24,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // v5bMarge élargit le balayage de part et d'autre du bloc : la position d'insertion `p` est

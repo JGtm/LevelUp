@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/JGtm/LevelUp/libs/film/types"
+import "github.com/JGtm/halo-infinite-film-decoder/types"
 
 // inventory_delta_ammo.go — LES MUNITIONS SUIVIES DANS LES PAQUETS DELTA. Prolonge
 // inventory_delta.go (seuil de taille du dépôt, CLAUDE.md n°5) : mêmes ancre, même marche,

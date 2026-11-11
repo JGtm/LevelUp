@@ -80,8 +80,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // Les seuils de la definition d'une MONTEE, figes avant la mesure. L'amplitude est en quanta de

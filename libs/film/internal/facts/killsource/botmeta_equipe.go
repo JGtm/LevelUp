@@ -63,7 +63,7 @@ package killsource
 // le siege, ni la feuille de match.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // botEquipeMax : le domaine d une equipe va de [grammar.TeamNone] (aucune) a 8, celui du designateur

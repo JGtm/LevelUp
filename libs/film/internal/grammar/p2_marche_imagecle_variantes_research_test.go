@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // p2CandN est un candidat avec son archetype et son n1.

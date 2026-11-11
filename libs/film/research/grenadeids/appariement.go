@@ -25,8 +25,8 @@ package grenadeids
 import (
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // rangsGrenade : le nombre de rangs de grenade du titre, c est-a-dire la longueur des compteurs

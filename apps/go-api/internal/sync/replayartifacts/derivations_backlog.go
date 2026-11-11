@@ -46,7 +46,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // rattraperDerivations rejoue les derivations des artefacts ranges dont les derives manquent.

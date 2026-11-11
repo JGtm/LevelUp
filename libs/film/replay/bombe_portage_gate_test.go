@@ -51,8 +51,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/decodelock"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/decodelock"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // bpFilms : les deux films du gate, et le compte d'explosions attendu du relevé.

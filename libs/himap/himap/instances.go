@@ -6,7 +6,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // instanceStride est la taille d'un enregistrement `instanced geometry instances`.

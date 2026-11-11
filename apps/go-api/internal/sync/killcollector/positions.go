@@ -77,9 +77,9 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
-	"github.com/JGtm/LevelUp/libs/film/replay"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // Compteurs de sante de la passe de positions (ADR 0009 : entiers, snake_case, aucun ratio).

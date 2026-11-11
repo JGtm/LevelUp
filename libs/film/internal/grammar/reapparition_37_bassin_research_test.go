@@ -52,7 +52,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // reap37Archetypes sont les archetypes recenses, et la raison de chacun.

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // projOwnerRead : une lecture d'i10 (object-parent-state) sur un record de PROJECTILE (ti=41),

@@ -58,7 +58,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // PasDeLaGrilleDesViesMs est le pas de la grille sur laquelle une vie est mesurée : chaque

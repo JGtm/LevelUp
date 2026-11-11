@@ -13,7 +13,7 @@ import (
 
 	"levelup/go-api/internal/persist"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // BuildKillSourceBatch traduit le resultat du decodeur en lignes ecrivables.

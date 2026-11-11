@@ -20,7 +20,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/profile"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/profile"
 )
 
 // t817Perso rend la largeur, en bits, du bloc de personnalisation du build du film — la MEME

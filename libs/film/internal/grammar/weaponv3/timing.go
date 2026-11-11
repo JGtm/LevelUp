@@ -13,7 +13,7 @@ package weaponv3
 // la contient et convertit son écart µs en ms. Cela remplace le bucketing
 // grossier v2 par un timestamp fin (levier P2 vers 90% de confiance).
 
-import "github.com/JGtm/LevelUp/libs/film/internal/source"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/source"
 
 const (
 	packetHeaderSize = 16 // [Type u16][b2][b3][Size u32][µs u64]

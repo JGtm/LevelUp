@@ -38,7 +38,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // m575Obs est UN instant ou un candidat est vrai, attribue a une vie.

@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/filmobs"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/filmobs"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // porteDepartScan : des images-cles porteuses toutes les 20 s de 0 a 200 s ; l'entite d'index 2

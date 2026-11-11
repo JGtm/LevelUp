@@ -21,8 +21,8 @@ package killsource
 // domicile : `source` ne borne rien, et killsource prend TOUS les chunks du film charge.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // packetType0 : le type des paquets de replication (events + records ECS ; les morts y sont 93/93).

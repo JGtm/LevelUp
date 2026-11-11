@@ -17,7 +17,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // TestM3Registre publie les composants du bipede tels que le registre DU FILM les nomme.

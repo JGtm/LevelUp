@@ -79,7 +79,7 @@ import (
 
 	"levelup/go-api/internal/filmreplis"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // perimetreReplis : les répertoires où un repli de production peut vivre — ceux de l'audit 0.E,

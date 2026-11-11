@@ -42,7 +42,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JGtm/LevelUp/libs/film/filmcache"
+	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 )
 
 func main() {

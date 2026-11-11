@@ -6,7 +6,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/equipenergy"
+	"github.com/JGtm/halo-infinite-film-decoder/equipenergy"
 )
 
 // energieCatalog charge le catalogue de l energie des equipements au plus une fois par Builder —

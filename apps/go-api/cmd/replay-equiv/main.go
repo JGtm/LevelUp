@@ -68,7 +68,7 @@ import (
 	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/observability/logging"
 
-	"github.com/JGtm/LevelUp/libs/film/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/memguard"
 )
 
 // outilNom : le nom que ce binaire porte dans le journal des protections (verrou, sentinelle,

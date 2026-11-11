@@ -33,7 +33,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // ti13Partage porte LA LECTURE PARTAGEE des proprietes reseau de `ti=13` : le premier

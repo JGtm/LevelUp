@@ -30,7 +30,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // Translocation est UNE téléportation exécutée, sur l'axe de frames du document.

@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // e108Decrire lit au plus `n` entrees depuis `pos` comme `FUN_142e2bfd0` et rend, pour chacune, sa

@@ -32,7 +32,7 @@ package grammar
 // du paquet) ou refuse a la relecture ne laisse AUCUNE lecture ; chaque cas se compte.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // canalDesProprietesGerees lit, dans la phase des images-cles, la valeur scalaire et le NOM de

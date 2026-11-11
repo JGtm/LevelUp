@@ -35,7 +35,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // fireBurstBoard est ce que la publication consulte pour UNE rafale.

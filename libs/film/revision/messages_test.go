@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/revision"
+	"github.com/JGtm/halo-infinite-film-decoder/revision"
 )
 
 // messagesDeFaits : le parametrage tel que la couche `facts` le posera au lot 2.6.1.

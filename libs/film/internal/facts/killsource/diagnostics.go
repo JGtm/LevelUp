@@ -1,8 +1,8 @@
 package killsource
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/constat"
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/constat"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // diagnostics.go — CE QUE LE DECODAGE DU KILL-FEED CONSTATE, RENDU A L ORCHESTRATEUR (lot J12.3,

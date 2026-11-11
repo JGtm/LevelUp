@@ -69,7 +69,7 @@ func TestFilmLanePackagesDoNotDependOnDuckDB(t *testing.T) {
 
 // TestFilmLaneAnalysisDetectsDuckDB — preuve que l'analyse sait échouer sur un listing synthétique.
 func TestFilmLaneAnalysisDetectsDuckDB(t *testing.T) {
-	clean := "fmt\ngithub.com/JGtm/LevelUp/libs/film/types\ngithub.com/pelletier/go-toml/v2\n"
+	clean := "fmt\ngithub.com/JGtm/halo-infinite-film-decoder/types\ngithub.com/pelletier/go-toml/v2\n"
 	if found := duckDBDriverImports(clean); len(found) != 0 {
 		t.Fatalf("listing sain refusé : %v", found)
 	}

@@ -19,7 +19,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // objetExAequo fabrique un objet au sol qui partage SON APPARITION ENTIERE avec ses soeurs :

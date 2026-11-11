@@ -8,7 +8,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // vsClock est l'horloge des cas : origine 0, pas 100 ms, 1 000 frames.

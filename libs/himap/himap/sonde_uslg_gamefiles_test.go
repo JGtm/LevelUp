@@ -42,7 +42,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // TestSondeGroupesDeTagsGlobals — quels groupes de tags porte le module globals, et lequel

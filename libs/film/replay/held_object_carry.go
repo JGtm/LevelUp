@@ -39,7 +39,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // HeldObjectEvent est une prise ou un lâcher de l'objet, daté sur l'horloge du match.

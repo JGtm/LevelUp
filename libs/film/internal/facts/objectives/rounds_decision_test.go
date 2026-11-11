@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // fixtureManche2SansManche1 reproduit la forme mesuree sur `fb1a1a72` et sur 23 autres films du

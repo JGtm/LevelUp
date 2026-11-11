@@ -31,7 +31,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // derivRecs fabrique la table de l'affaire : un slot SAIN qui progresse a 1 par emission, et un

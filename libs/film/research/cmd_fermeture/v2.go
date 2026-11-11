@@ -19,7 +19,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // compte : des paquets, et les records utiles en jeu qu ils portent.

@@ -44,7 +44,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // siegesTemoins : les quatre temoins que le lot 1.9.14 nomme, plus leur build — pour que la

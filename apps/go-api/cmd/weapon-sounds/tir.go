@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/gamefiles/himodule"
+	"github.com/JGtm/halo-infinite-files-reader/himodule"
 )
 
 // offsets internes d'un element de « Weapon Fire Sounds », calcules depuis le plugin.

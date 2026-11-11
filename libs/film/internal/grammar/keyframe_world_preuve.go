@@ -63,8 +63,8 @@ package grammar
 // manquante ne peut que faire échouer une fermeture (moins de preuves), jamais en fabriquer une.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // PreuveDImageCle est la grammaire qu'une marche d'ancres consulte pour PROUVER un candidat : le

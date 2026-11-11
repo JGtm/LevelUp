@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // Render the top-down background image of a native map from its .module. The caller supplies the

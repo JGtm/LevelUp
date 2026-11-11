@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // nameTracksByLives pose le xuid du porteur sur chaque trace PAR VIE : une trace est nommée

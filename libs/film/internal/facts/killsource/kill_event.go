@@ -6,7 +6,7 @@ package killsource
 // bit : il range les messages en kill-events, avec leur instant, leur trame et leur position, et les
 // confronte au kill-feed (`assist.go`, `feed.go`).
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 
 // killEventFields : les champs du kill-event (genre 85), struct 0x28 de FUN_14104bd08.
 //

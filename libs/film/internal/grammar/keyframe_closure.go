@@ -42,7 +42,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 )
 
 // KeyframeClosureStat est la fermeture d'UN archetype sur un film.

@@ -25,8 +25,8 @@ package grammar
 // kill-feed, et le kill-feed reste le seul juge.
 
 import (
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // lignesDePresRange : le nombre de lignes de la table de quantification (9 lignes + terminateur).

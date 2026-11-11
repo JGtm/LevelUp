@@ -22,9 +22,9 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 
-	"github.com/JGtm/LevelUp/libs/film/equipenergy"
+	"github.com/JGtm/halo-infinite-film-decoder/equipenergy"
 
-	"github.com/JGtm/LevelUp/libs/himap/himap"
+	"github.com/JGtm/halo-infinite-map-images/himap"
 )
 
 // outil est la commande qui produit le catalogue, ecrite dans le fichier.

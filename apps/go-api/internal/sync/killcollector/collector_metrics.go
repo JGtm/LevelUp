@@ -12,7 +12,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 
-	"github.com/JGtm/LevelUp/libs/film/decfilm"
+	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 )
 
 // Compteurs de sante du collecteur (ADR 0009 : entiers, snake_case, aucun ratio).

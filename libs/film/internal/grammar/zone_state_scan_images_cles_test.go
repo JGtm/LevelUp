@@ -6,7 +6,7 @@ package grammar
 import (
 	"testing"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/source"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/source"
 )
 
 // TestProprietesGereesImagesClesFermeesSeules : chaque record ti=13 d'image-cle se range dans

@@ -5,7 +5,7 @@ package grammar
 // Le [World] est l implantation : UNE table, indexee par le slot de l eid, la vue en attribut.
 // La structure de lecture n en voit que cette vue-ci, qui ne pose ni ne retire aucune liaison.
 
-import "github.com/JGtm/LevelUp/libs/film/internal/grammar/lecture"
+import "github.com/JGtm/halo-infinite-film-decoder/internal/grammar/lecture"
 
 // entitesDuMonde expose un [World] comme [lecture.Entites].
 type entitesDuMonde struct{ w *World }

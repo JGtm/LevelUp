@@ -31,8 +31,8 @@ package replay
 import (
 	"slices"
 
-	"github.com/JGtm/LevelUp/libs/film/equipenergy"
-	"github.com/JGtm/LevelUp/libs/film/types"
+	"github.com/JGtm/halo-infinite-film-decoder/equipenergy"
+	"github.com/JGtm/halo-infinite-film-decoder/types"
 )
 
 // rangInconnu est le rang publie d un objet dont la famille n a aucun rang dans la palette du film (palette non

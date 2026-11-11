@@ -12,8 +12,8 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/JGtm/LevelUp/libs/film/filmobs"
-	"github.com/JGtm/LevelUp/libs/film/identity"
+	"github.com/JGtm/halo-infinite-film-decoder/filmobs"
+	"github.com/JGtm/halo-infinite-film-decoder/identity"
 )
 
 // SanteDuPont rend la sante du pont slot -> joueur : sur quoi il repose, et ce qu'il refuse.

@@ -11,7 +11,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/JGtm/LevelUp/libs/film/internal/grammar"
+	"github.com/JGtm/halo-infinite-film-decoder/internal/grammar"
 )
 
 // cote : le diagnostic d un cote (tueur ou victime) d une mort a l instant tUS.
