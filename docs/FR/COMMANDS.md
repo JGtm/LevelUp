@@ -1319,6 +1319,11 @@ go run ./cmd/replay-equiv                          # tout le corpus (CORPUS.txt)
 go run ./cmd/replay-equiv -films 000d5950 -update  # (re)fige les références d'un seul film
 # flags : -corpus F  -films a,b (remplace le corpus)  -update  -mem-gib N (défaut 3, 0 = désarmé)
 #         -title slug  -out-dir D (conserve les TSV des enfants au lieu d'un temporaire effacé)
+# -update écrit dans la brique du décodeur : à lancer sur un clone de son dépôt, relié par l'espace de travail local,
+# où qu'il soit sur le disque :
+#   bash scripts/briques-workspace.sh ../halo-infinite-film-decoder
+#   export GOWORK="$PWD/levelup-briques.work"   # PowerShell : $env:GOWORK = "$PWD\levelup-briques.work"
+# Sans GOWORK la brique est résolue vers le cache de modules (lecture seule) : -update refuse et nomme le script.
 ```
 
 Le harnais d'équivalence de la construction : il hache la sortie de **chaque** balayage, pas
@@ -1882,7 +1887,8 @@ make gate-push               # ratchet lint Go + harnais replay-equiv + typechec
 `replay/testdata/equivalence` du décodeur de film (lues à la version qu'exige `go.mod`) ont dérivé sans bruit de la
 v8.0.0 au re-figeage du 2026-10-30 faute de gate qui les joue. Il exige le parc local de films ; pour re-figer après
 une preuve d'équivalence : `go run ./cmd/replay-equiv -update` depuis `apps/go-api`, avec `GOWORK` pointant sur une
-copie du décodeur (voir « Développer une brique »), puis publier la nouvelle version du décodeur et monter le `require`.
+copie du décodeur (voir « Développer une brique » ; la copie peut être n'importe où sur le disque, seul le cache de
+modules est refusé), puis publier la nouvelle version du décodeur et monter le `require`.
 
 La baseline de tests joue deux voies en parallèle (ADR 0041) : la voie des briques (les paquets des briques publiées
 `halo-infinite-film-decoder` et `halo-api`, joués depuis `apps/go-api` par chemin d'import, sans dépendance à DuckDB —

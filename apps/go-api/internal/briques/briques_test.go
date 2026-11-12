@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -61,22 +62,135 @@ func TestSurDisqueEtDeGardeRailSontInverses(t *testing.T) {
 	}
 }
 
-// TestModifiableRefuseLeHorsDepot : une brique du dépôt est modifiable ; un dossier hors du dépôt ne
-// l'est jamais.
-func TestModifiableRefuseLeHorsDepot(t *testing.T) {
-	dir, err := Dir("film")
+// racineDepot rend la racine du dépôt : deux niveaux au-dessus de `apps/go-api`.
+func racineDepot() (string, error) {
+	api, err := racineModuleAPI()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Dir(filepath.Dir(api)), nil
+}
+
+// cloneDeBrique pose, hors du dépôt, un faux clone de la brique du décodeur (un `go.mod` seul) et un
+// espace de travail Go qui le lie à apps/go-api ; rend le dossier du clone et les variables d'environnement
+// qui désignent l'espace de travail.
+func cloneDeBrique(t *testing.T) (clone string, env []string) {
+	t.Helper()
+	api, err := racineModuleAPI()
 	if err != nil {
 		t.Fatal(err)
 	}
-	depot, err := racineDepot()
+	brut, err := os.ReadFile(filepath.Join(api, "go.mod"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rel, errRel := filepath.Rel(depot, dir); errRel == nil && !strings.HasPrefix(rel, "..") {
-		if err := Modifiable("film"); err != nil {
-			t.Errorf("Modifiable(film) = %v, la brique est dans le dépôt", err)
+	var version string
+	for _, ligne := range strings.Split(string(brut), "\n") {
+		if champs := strings.Fields(ligne); len(champs) == 2 && champs[0] == "go" {
+			version = champs[1]
+			break
 		}
 	}
+	if version == "" {
+		t.Fatal("ligne go introuvable dans apps/go-api/go.mod")
+	}
+	module, _ := Module("film")
+	racine := t.TempDir()
+	clone = filepath.Join(racine, "clone-decodeur")
+	if err := os.Mkdir(clone, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(clone, "go.mod"), []byte("module "+module+"\n\ngo "+version+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	travail := filepath.Join(racine, "test.work")
+	contenu := "go " + version + "\n\nuse (\n\t" + strconv.Quote(filepath.ToSlash(api)) + "\n\t" + strconv.Quote(filepath.ToSlash(clone)) + "\n)\n"
+	if err := os.WriteFile(travail, []byte(contenu), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return clone, []string{"GOWORK=" + travail}
+}
+
+// TestModifiableAccepteUnCloneHorsDepotLieParGOWORK : avec un espace de travail qui lie un clone situé
+// hors du dépôt, la brique se résout vers ce clone et [controlerModifiable] l'accepte ; les autres
+// briques, toujours dans le cache de modules, restent refusées.
+func TestModifiableAccepteUnCloneHorsDepotLieParGOWORK(t *testing.T) {
+	clone, env := cloneDeBrique(t)
+	api, err := racineModuleAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dossiers, err := resoudreAvec(api, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache, err := cacheDeModulesAvec(api, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := resoudreLiens(dossiers["film"]), resoudreLiens(clone); got != want {
+		t.Fatalf("film résolu vers %s, attendu le clone %s", got, want)
+	}
+	if err := controlerModifiable("film", dossiers["film"], cache); err != nil {
+		t.Errorf("clone hors dépôt lié par GOWORK refusé : %v", err)
+	}
+	if err := controlerModifiable("himap", dossiers["himap"], cache); err == nil {
+		t.Error("himap, résolue vers le cache de modules, devrait être refusée")
+	}
+}
+
+// TestModifiableRefuseLeCacheDeModules : sans espace de travail (GOWORK=off) toute brique est résolue vers
+// le cache de modules ; l'erreur le dit et désigne le script d'espace de travail.
+func TestModifiableRefuseLeCacheDeModules(t *testing.T) {
+	api, err := racineModuleAPI()
+	if err != nil {
+		t.Fatal(err)
+	}
+	env := []string{"GOWORK=off"}
+	dossiers, err := resoudreAvec(api, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache, err := cacheDeModulesAvec(api, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, nom := range Noms() {
+		err := controlerModifiable(nom, dossiers[nom], cache)
+		if err == nil {
+			t.Errorf("%s (%s) est dans le cache de modules et devrait être refusée", nom, dossiers[nom])
+			continue
+		}
+		for _, attendu := range []string{"cache de modules", "lecture seule", "scripts/briques-workspace.sh", "GOWORK"} {
+			if !strings.Contains(err.Error(), attendu) {
+				t.Errorf("message pour %s : %q ne contient pas %q", nom, err, attendu)
+			}
+		}
+	}
+}
+
+// TestControlerModifiableJugeLeChemin : la comparaison au cache respecte la frontière d'un nom de dossier
+// et ne dépend pas du dépôt.
+func TestControlerModifiableJugeLeChemin(t *testing.T) {
+	racine := t.TempDir()
+	cache := filepath.Join(racine, "pkg", "mod")
+	for _, c := range []struct {
+		nom, dir string
+		refuse   bool
+	}{
+		{"dans le cache", filepath.Join(cache, "github.com", "x@v1.0.0"), true},
+		{"le cache lui-même", cache, true},
+		{"frère au préfixe commun", cache + "-clone", false},
+		{"clone ailleurs", filepath.Join(racine, "clone"), false},
+	} {
+		if err := controlerModifiable("film", c.dir, cache); (err != nil) != c.refuse {
+			t.Errorf("%s : refus = %v, attendu %v (err %v)", c.nom, err != nil, c.refuse, err)
+		}
+	}
+}
+
+// TestModifiableBriqueInconnue : une brique hors table n'est jamais jugée modifiable.
+func TestModifiableBriqueInconnue(t *testing.T) {
 	if err := Modifiable("inexistante"); err == nil {
 		t.Error("Modifiable(inexistante) devrait échouer")
 	}

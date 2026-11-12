@@ -212,13 +212,20 @@ func dossierEquivalence() (string, error) {
 	return briques.Chemin("film", "replay", "testdata", "equivalence")
 }
 
-// verifierMiseAJourPossible refuse `-update` quand la brique n'est pas modifiable (dossier du cache de modules,
-// hors depot) : figer des references y echouerait ou, pire, modifierait une copie que personne ne versionne.
+// verifierMiseAJourPossible refuse `-update` quand le dossier de la brique du decodeur est celui du cache de
+// modules (lecture seule) : c'est le cas sans espace de travail Go, ou aucun clone n'est designe. Un clone du
+// depot du decodeur, relie par `GOWORK` (scripts/briques-workspace.sh), est accepte ou qu'il soit sur le disque.
 func verifierMiseAJourPossible() error {
-	if err := briques.Modifiable("film"); err != nil {
+	return verifierMiseAJour(briques.Modifiable)
+}
+
+// verifierMiseAJour est [verifierMiseAJourPossible] avec le jugement de la brique en parametre (testable
+// sans outil Go).
+func verifierMiseAJour(modifiable func(brique string) error) error {
+	if err := modifiable("film"); err != nil {
 		return fmt.Errorf("-update refuse : %w. Les references vivent dans la brique du decodeur : "+
-			"travailler sur un clone de la brique (fichier d'espace de travail local qui la designe), re-figer la, "+
-			"puis publier une version de la brique", err)
+			"les re-figer dans un clone de son depot relie par l'espace de travail local, puis publier "+
+			"une version de la brique", err)
 	}
 	return nil
 }

@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -119,52 +120,55 @@ func resoudre() (map[string]string, error) {
 			errDossiers = err
 			return
 		}
-		noms := Noms()
-		args := []string{"list", "-m", "-f", "{{.Path}}\t{{.Dir}}"}
-		for _, nom := range noms {
-			args = append(args, modules[nom])
-		}
-		cmd := childproc.Command(context.Background(), "go", args...)
-		cmd.Dir = racine
-		sortie, err := cmd.Output()
-		if err != nil {
-			errDossiers = fmt.Errorf("briques : go %s : %w", strings.Join(args, " "), err)
-			return
-		}
-		parModule := map[string]string{}
-		for _, ligne := range strings.Split(strings.TrimSpace(string(sortie)), "\n") {
-			chemin, dir, ok := strings.Cut(strings.TrimRight(ligne, "\r"), "\t")
-			if ok && dir != "" {
-				parModule[chemin] = dir
-			}
-		}
-		dossiers = map[string]string{}
-		for _, nom := range noms {
-			dir, ok := parModule[modules[nom]]
-			if !ok {
-				var errDl error
-				if dir, errDl = telecharger(racine, modules[nom]); errDl != nil {
-					errDossiers = fmt.Errorf("briques : l'outil Go ne rend aucun dossier pour le module %s : %w", modules[nom], errDl)
-					return
-				}
-				ok = true
-			}
-			if !ok {
-				errDossiers = fmt.Errorf("briques : l'outil Go ne rend aucun dossier pour le module %s", modules[nom])
-				return
-			}
-			dossiers[nom] = dir
-		}
+		dossiers, errDossiers = resoudreAvec(racine, nil)
 	})
 	return dossiers, errDossiers
+}
+
+// resoudreAvec interroge l'outil Go, lancé depuis racine avec les variables d'environnement `env`
+// (`CLE=valeur`) en plus de celles du processus, sur le dossier de chaque brique. Sans cache : [resoudre]
+// y ajoute le « une seule fois » ; les tests y posent `GOWORK`.
+func resoudreAvec(racine string, env []string) (map[string]string, error) {
+	noms := Noms()
+	args := append(make([]string, 0, 4+len(noms)), "list", "-m", "-f", "{{.Path}}\t{{.Dir}}")
+	for _, nom := range noms {
+		args = append(args, modules[nom])
+	}
+	cmd := childproc.Command(context.Background(), "go", args...)
+	cmd.Dir = racine
+	cmd.Env = append(os.Environ(), env...)
+	sortie, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("briques : go %s : %w", strings.Join(args, " "), err)
+	}
+	parModule := map[string]string{}
+	for _, ligne := range strings.Split(strings.TrimSpace(string(sortie)), "\n") {
+		chemin, dir, ok := strings.Cut(strings.TrimRight(ligne, "\r"), "\t")
+		if ok && dir != "" {
+			parModule[chemin] = dir
+		}
+	}
+	out := map[string]string{}
+	for _, nom := range noms {
+		dir, ok := parModule[modules[nom]]
+		if !ok {
+			var errDl error
+			if dir, errDl = telecharger(racine, env, modules[nom]); errDl != nil {
+				return nil, fmt.Errorf("briques : l'outil Go ne rend aucun dossier pour le module %s : %w", modules[nom], errDl)
+			}
+		}
+		out[nom] = dir
+	}
+	return out, nil
 }
 
 // telecharger rend le dossier d'un module requis absent du cache de modules (`go list -m` ne lui donne
 // alors aucun dossier : cas d'un cache neuf où seul le build a tiré ses dépendances), après
 // `go mod download`.
-func telecharger(racine, module string) (string, error) {
+func telecharger(racine string, env []string, module string) (string, error) {
 	cmd := childproc.Command(context.Background(), "go", "mod", "download", "-json", module)
 	cmd.Dir = racine
+	cmd.Env = append(os.Environ(), env...)
 	sortie, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("go mod download %s : %w", module, err)
@@ -235,30 +239,81 @@ func DeGardeRail(abs string) (rel string, ok bool, err error) {
 	return "", false, nil
 }
 
-// racineDepot rend la racine du dépôt : deux niveaux au-dessus de `apps/go-api`.
-func racineDepot() (string, error) {
-	api, err := racineModuleAPI()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Dir(filepath.Dir(api)), nil
+var (
+	onceCache    sync.Once
+	dossierCache string
+	errCache     error
+)
+
+// cacheDeModules rend le dossier du cache de modules de l'outil Go (`go env GOMODCACHE`), une seule fois.
+func cacheDeModules() (string, error) {
+	onceCache.Do(func() {
+		racine, err := racineModuleAPI()
+		if err != nil {
+			errCache = err
+			return
+		}
+		dossierCache, errCache = cacheDeModulesAvec(racine, nil)
+	})
+	return dossierCache, errCache
 }
 
-// Modifiable rend nil quand le dossier de la brique est dans le dépôt (une copie de travail qu'un outil
-// peut réécrire) et une erreur sinon : un dossier du cache de modules n'est ni à soi ni inscriptible, et
-// un outil qui écrit ne l'y suit jamais.
+// cacheDeModulesAvec interroge l'outil Go comme [resoudreAvec], sans cache.
+func cacheDeModulesAvec(racine string, env []string) (string, error) {
+	cmd := childproc.Command(context.Background(), "go", "env", "GOMODCACHE")
+	cmd.Dir = racine
+	cmd.Env = append(os.Environ(), env...)
+	sortie, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("briques : go env GOMODCACHE : %w", err)
+	}
+	dir := strings.TrimSpace(string(sortie))
+	if dir == "" {
+		return "", fmt.Errorf("briques : go env GOMODCACHE ne rend aucun dossier")
+	}
+	return dir, nil
+}
+
+// Modifiable rend nil quand le dossier de la brique est une copie de travail qu'un outil peut réécrire :
+// un clone du dépôt de la brique, lié à LevelUp par l'espace de travail Go actif (`GOWORK`, engendré par
+// scripts/briques-workspace.sh), où qu'il soit sur le disque. Elle rend une erreur quand le dossier est
+// dans le cache de modules : celui-ci est en lecture seule et n'appartient à personne, un outil qui écrit
+// ne l'y suit jamais. Sans espace de travail, l'outil Go résout toutes les briques vers le cache : l'erreur
+// dit alors d'en désigner un.
 func Modifiable(brique string) error {
 	dir, err := Dir(brique)
 	if err != nil {
 		return err
 	}
-	depot, err := racineDepot()
+	cache, err := cacheDeModules()
 	if err != nil {
 		return err
 	}
-	rel, err := filepath.Rel(depot, dir)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return fmt.Errorf("briques : le dossier de la brique %s (%s) est hors du dépôt : refus d'y écrire", brique, dir)
+	return controlerModifiable(brique, dir, cache)
+}
+
+// controlerModifiable est le jugement de [Modifiable] sur un dossier de brique et le cache de modules,
+// sans interroger l'outil Go. Les deux chemins sont comparés après résolution des liens (jonctions et
+// liens symboliques) : un clone atteint par une jonction n'est pas pris pour le cache, ni l'inverse.
+func controlerModifiable(brique, dir, cache string) error {
+	if !estSous(resoudreLiens(cache), resoudreLiens(dir)) {
+		return nil
 	}
-	return nil
+	return fmt.Errorf("briques : le dossier de la brique %s (%s) est dans le cache de modules (%s), en lecture seule : "+
+		"refus d'y écrire. Travailler sur un clone du dépôt de la brique relié par l'espace de travail local : "+
+		"`bash scripts/briques-workspace.sh <clone>` puis GOWORK=<racine du dépôt>/levelup-briques.work", brique, dir, cache)
+}
+
+// resoudreLiens rend le chemin sans lien intermédiaire, ou le chemin nettoyé tel quel quand il n'existe pas.
+func resoudreLiens(chemin string) string {
+	if r, err := filepath.EvalSymlinks(chemin); err == nil {
+		return r
+	}
+	return filepath.Clean(chemin)
+}
+
+// estSous dit si enfant est racine ou un chemin dessous (la frontière d'un nom de dossier compte).
+func estSous(racine, enfant string) bool {
+	rel, err := filepath.Rel(racine, enfant)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
