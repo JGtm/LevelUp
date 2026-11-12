@@ -133,7 +133,7 @@ func resolveDemoPlayer(ctx context.Context, cfg *config.AppConfig, slug, titleSl
 		return nil, fmt.Errorf(
 			"resolveDemoPlayer: fixture démo manquante (%s, titre=%s). "+
 				"Générer avec : go run ./cmd/levelup seed-demo --gamertag JGtm (sortie dans data/demo). "+
-				"Puis définir LEVELUP_DEMO_FIXTURES_DIR=data/demo.",
+				"Puis définir LEVELUP_DEMO_FIXTURES_DIR=data/demo",
 			statsPath, titleSlug,
 		)
 	}

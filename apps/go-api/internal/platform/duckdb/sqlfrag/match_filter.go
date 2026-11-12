@@ -49,104 +49,122 @@ func BuildNeighborsWhereClause(spec *domain.MatchFilterSpec, categoryPrefixes an
 		return res
 	}
 
-	clauses := make([]string, 0, 6)
-	args := make([]any, 0, 12)
-	var ignored []string
+	b := neighborsBuilder{clauses: make([]string, 0, 6), args: make([]any, 0, 12)}
+	b.playlists(spec)
+	b.modeCategories(spec, categoryPrefixes)
+	b.dates(spec)
+	b.outcome(spec)
+	b.session(spec)
+	b.withPlayer(spec)
 
-	// Playlists (multi) : mr.playlist_name IN (?, ?, ...). Valeurs vides ignorées.
-	if names := nonEmpty(spec.PlaylistNames); len(names) > 0 {
-		placeholders := make([]string, len(names))
-		for i, name := range names {
-			placeholders[i] = "?"
-			args = append(args, name)
-		}
-		clauses = append(clauses, "mr.playlist_name IN ("+strings.Join(placeholders, ", ")+")")
-	}
-
-	// Catégories de mode (multi) : union des préfixes pair_name de chaque
-	// catégorie, le tout en un seul OR. categoryPrefixes (injecté) résout vers
-	// les préfixes title-specific ; une catégorie qui ne résout vers aucun
-	// préfixe est sautée. Si AUCUNE catégorie ne résout → filtre ignoré.
-	// Note multi-titres : pour un titre futur sans la notion ModeCategory,
-	// l'adapter retourne des listes vides → dégradation gracieuse.
-	if cats := nonEmpty(spec.ModeCategories); len(cats) > 0 {
-		modeClauses := make([]string, 0, len(cats)*4)
-		for _, cat := range cats {
-			var prefixes []string
-			if categoryPrefixes != nil {
-				prefixes = categoryPrefixes(cat)
-			}
-			for _, p := range prefixes {
-				modeClauses = append(modeClauses, "mr.pair_name = ?", "mr.pair_name LIKE ?")
-				args = append(args, p, p+":%")
-			}
-		}
-		if len(modeClauses) > 0 {
-			clauses = append(clauses, "("+strings.Join(modeClauses, " OR ")+")")
-		} else {
-			ignored = append(ignored, "mode_category")
-		}
-	}
-
-	if spec.DateFrom != nil {
-		// Pattern timezone canonique (cf. memory reference_timezone_canonical_pattern.md).
-		clauses = append(clauses,
-			SQLStartTimeCanonical("mr")+" >= ?",
-		)
-		args = append(args, spec.DateFrom.UTC())
-	}
-
-	if spec.DateTo != nil {
-		clauses = append(clauses,
-			SQLStartTimeCanonical("mr")+" <= ?",
-		)
-		// DateTo est inclusive — on ajoute 1 microseconde pour matcher
-		// le comportement "fin de journée incluse" si le caller passe 23:59:59.
-		args = append(args, spec.DateTo.UTC())
-	}
-
-	if spec.Outcome != nil && *spec.Outcome != "" {
-		code, ok := analysis.OutcomeCodeForLabel(*spec.Outcome)
-		if ok {
-			// Note : la colonne en DB s'appelle `outcome` (cf. Q12/Q17 prod).
-			// `outcome_code` est l'alias exposé côté domain via SELECT AS.
-			clauses = append(clauses, "mp.outcome = ?")
-			args = append(args, code)
-		} else {
-			ignored = append(ignored, "outcome")
-		}
-	}
-
-	// SessionID : non implémenté en Phase 2b initial — les sessions vivent
-	// dans player.player_match_enrichment qui n'est pas joint dans Q25
-	// (player DB séparée du shared). Le caller doit utiliser les matchIds
-	// du contexte côté front quand source='session'. Documenté dans
-	// match_nav_inventory.md.
-	if spec.SessionID != nil && *spec.SessionID != "" {
-		ignored = append(ignored, "session_id")
-	}
-
-	// WithPlayerXuid (Phase 2c) : restreint aux matchs où ce XUID est présent
-	// dans match_participants. Q25 join déjà mp avec mp.xuid = ? (joueur
-	// principal) ; pour le coéquipier, on EXISTS sur un alias mp2.
-	// Pas de préfixe `shared.` (Q25 tourne sur SharedReader depuis ADR 0016).
-	if spec.WithPlayerXuid != nil && *spec.WithPlayerXuid != "" {
-		clauses = append(clauses,
-			"EXISTS (SELECT 1 FROM match_participants mp2 "+
-				"WHERE mp2.match_id = mr.match_id AND mp2.xuid = ?)",
-		)
-		args = append(args, *spec.WithPlayerXuid)
-	}
-
-	if len(clauses) == 0 {
-		res.IgnoredFilters = ignored
+	if len(b.clauses) == 0 {
+		res.IgnoredFilters = b.ignored
 		return res
 	}
 
-	res.SQL = " AND " + strings.Join(clauses, " AND ")
-	res.Args = args
-	res.IgnoredFilters = ignored
+	res.SQL = " AND " + strings.Join(b.clauses, " AND ")
+	res.Args = b.args
+	res.IgnoredFilters = b.ignored
 	return res
+}
+
+// neighborsBuilder accumule, dans l'ordre, les clauses, les arguments liés et les filtres ignorés.
+type neighborsBuilder struct {
+	clauses []string
+	args    []any
+	ignored []string
+}
+
+// playlists : mr.playlist_name IN (?, ?, ...) (multi). Valeurs vides ignorées.
+func (b *neighborsBuilder) playlists(spec *domain.MatchFilterSpec) {
+	names := nonEmpty(spec.PlaylistNames)
+	if len(names) == 0 {
+		return
+	}
+	placeholders := make([]string, len(names))
+	for i, name := range names {
+		placeholders[i] = "?"
+		b.args = append(b.args, name)
+	}
+	b.clauses = append(b.clauses, "mr.playlist_name IN ("+strings.Join(placeholders, ", ")+")")
+}
+
+// modeCategories : union des préfixes pair_name de chaque catégorie (multi), le tout en un seul OR.
+// categoryPrefixes (injecté) résout vers les préfixes title-specific ; une catégorie qui ne résout vers
+// aucun préfixe est sautée. Si AUCUNE catégorie ne résout → filtre ignoré. Note multi-titres : pour un titre
+// futur sans la notion ModeCategory, l'adapter retourne des listes vides → dégradation gracieuse.
+func (b *neighborsBuilder) modeCategories(spec *domain.MatchFilterSpec, categoryPrefixes analysis.ModeCategoryPrefixes) {
+	cats := nonEmpty(spec.ModeCategories)
+	if len(cats) == 0 {
+		return
+	}
+	modeClauses := make([]string, 0, len(cats)*4)
+	for _, cat := range cats {
+		var prefixes []string
+		if categoryPrefixes != nil {
+			prefixes = categoryPrefixes(cat)
+		}
+		for _, p := range prefixes {
+			modeClauses = append(modeClauses, "mr.pair_name = ?", "mr.pair_name LIKE ?")
+			b.args = append(b.args, p, p+":%")
+		}
+	}
+	if len(modeClauses) > 0 {
+		b.clauses = append(b.clauses, "("+strings.Join(modeClauses, " OR ")+")")
+	} else {
+		b.ignored = append(b.ignored, "mode_category")
+	}
+}
+
+// dates : bornes sur le début de match, par le pattern timezone canonique (cf. memory
+// reference_timezone_canonical_pattern.md).
+func (b *neighborsBuilder) dates(spec *domain.MatchFilterSpec) {
+	if spec.DateFrom != nil {
+		b.clauses = append(b.clauses, SQLStartTimeCanonical("mr")+" >= ?")
+		b.args = append(b.args, spec.DateFrom.UTC())
+	}
+	if spec.DateTo != nil {
+		b.clauses = append(b.clauses, SQLStartTimeCanonical("mr")+" <= ?")
+		// DateTo est inclusive — on ajoute 1 microseconde pour matcher
+		// le comportement "fin de journée incluse" si le caller passe 23:59:59.
+		b.args = append(b.args, spec.DateTo.UTC())
+	}
+}
+
+// outcome : mp.outcome = ? pour un label de la whitelist ; sinon filtre ignoré. La colonne en DB s'appelle
+// `outcome` (cf. Q12/Q17 prod) ; `outcome_code` est l'alias exposé côté domain via SELECT AS.
+func (b *neighborsBuilder) outcome(spec *domain.MatchFilterSpec) {
+	if spec.Outcome == nil || *spec.Outcome == "" {
+		return
+	}
+	if code, ok := analysis.OutcomeCodeForLabel(*spec.Outcome); ok {
+		b.clauses = append(b.clauses, "mp.outcome = ?")
+		b.args = append(b.args, code)
+	} else {
+		b.ignored = append(b.ignored, "outcome")
+	}
+}
+
+// session : non implémenté en Phase 2b initial — les sessions vivent dans player.player_match_enrichment qui
+// n'est pas joint dans Q25 (player DB séparée du shared). Le caller doit utiliser les matchIds du contexte
+// côté front quand source='session'. Documenté dans match_nav_inventory.md.
+func (b *neighborsBuilder) session(spec *domain.MatchFilterSpec) {
+	if spec.SessionID != nil && *spec.SessionID != "" {
+		b.ignored = append(b.ignored, "session_id")
+	}
+}
+
+// withPlayer (Phase 2c) : restreint aux matchs où ce XUID est présent dans match_participants. Q25 join déjà
+// mp avec mp.xuid = ? (joueur principal) ; pour le coéquipier, on EXISTS sur un alias mp2. Pas de préfixe
+// `shared.` (Q25 tourne sur SharedReader depuis ADR 0016).
+func (b *neighborsBuilder) withPlayer(spec *domain.MatchFilterSpec) {
+	if spec.WithPlayerXuid != nil && *spec.WithPlayerXuid != "" {
+		b.clauses = append(b.clauses,
+			"EXISTS (SELECT 1 FROM match_participants mp2 "+
+				"WHERE mp2.match_id = mr.match_id AND mp2.xuid = ?)",
+		)
+		b.args = append(b.args, *spec.WithPlayerXuid)
+	}
 }
 
 // nonEmpty retourne les valeurs non vides (après TrimSpace) du slice.
