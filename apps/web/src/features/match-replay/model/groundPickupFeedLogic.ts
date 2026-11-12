@@ -20,7 +20,7 @@
  *
  * PAS DE DOUBLON. Les armes de socle ne sont pas dans `groundWeapons` (le document les publie
  * ailleurs), mais une ligne qui coïncide avec une prise de socle du même joueur, de la même
- * arme, à moins de `SAME_PICKUP_FRAMES` images, serait la même prise écrite deux fois : elle
+ * arme, à moins de `SAME_PICKUP_MS` millisecondes, serait la même prise écrite deux fois : elle
  * est écartée au profit de la ligne du socle.
  */
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -36,11 +36,11 @@ import { startingWeaponKeys } from './startingWeaponsOnGround'
 const END_PICKUP = 'pickup'
 
 /**
- * La fenêtre qui décide qu'une ligne du sol et une prise de socle sont LA MÊME prise : cinq images,
- * soit 500 ms sur la grille de 100 ms — la tolérance d'appariement des deux canaux de ramassage
+ * La fenêtre, en millisecondes, qui décide qu'une ligne du sol et une prise de socle sont LA MÊME
+ * prise : la tolérance d'appariement des deux canaux de ramassage, indépendante du pas du document
  * (cf. `sound/weaponChangeSound.ts`).
  */
-const SAME_PICKUP_FRAMES = 5
+const SAME_PICKUP_MS = 500
 
 /** Le xuid de la vie du slot qui couvre l'image, ou null (aucune vie, ou vie sans xuid). */
 function xuidOfSlotAt(doc: ReplayDocumentReady, slot: number, frame: number): string | null {
@@ -70,7 +70,7 @@ export function groundPickupFeedEntries(
 ): ReplayFeedEntry[] {
   const starting = startingWeaponKeys(doc.loadouts)
   if (!baseIsEstablished(doc, starting)) return []
-  const windowMs = frameToMs(SAME_PICKUP_FRAMES, doc)
+  const windowMs = SAME_PICKUP_MS
   const entries: ReplayFeedEntry[] = []
   doc.groundWeapons.forEach((g, i) => {
     if (g.end !== END_PICKUP || g.picker < 0) return

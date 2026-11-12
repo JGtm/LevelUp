@@ -32,7 +32,7 @@ describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque él
     ['marques de tir', /k, embarkedAtSlot: vehicles\.isEmbarkedAt, shownAtSlot,/],
     ['éclairs de bouche', /vehicleSizeOf: vehicles\.sizeOf, shownAtSlot,/],
     ['sillage du propulseur', /useReplayAbilityFx\(\{[^}]*shownAtSlot[^}]*\}\)/],
-    ['vols de projectile (grenades, tirs)', /drawProjectilesLayer\([^)]*shownProjectile\)/],
+    ['vols de projectile (grenades, tirs)', /drawProjectilesLayer\([^;]*?shownProjectile,?\s*\)/],
     ['fins de vol des grenades', /useReplayGrenadeRest\(\{[^}]*shownAtSlot[^}]*\}\)/],
     ['mise en valeur d’une élimination', /useReplayKillFocus\(\{[^}]*shownAtSlot[^}]*\}\)/],
   ])('%s', (_nom, motif) => {
