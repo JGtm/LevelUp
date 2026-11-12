@@ -11,7 +11,7 @@ package replayartifacts
 // lit le document RANGE et transporte `doc.bombStats` / `doc.bombEvents` vers
 // `persist.BombStatsPersister`.
 //
-// POURQUOI PAS UN CALCUL ICI. Le document publie le portage en FRAMES (grille de 100 ms), sans
+// POURQUOI PAS UN CALCUL ICI. Le document publie le portage en FRAMES (la grille du document), sans
 // les periodes non pontees ni la distinction lacher/mort ; il ne publie ni le recalage
 // d'horloge, ni la paire tueur/victime. Reconstruire `BombStatsInput` a partir de lui ferait un
 // SECOND decodeur du meme fait, avec une precision moindre — exactement ce que l'en-tete de
