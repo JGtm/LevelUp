@@ -47,13 +47,7 @@ func TestListMilestones_TitreEtConditionSuiventLaLangue(t *testing.T) {
 
 	r := chi.NewRouter()
 	r.Use(middleware.TitleExtractor(titlePkg.NewRegistry()))
-	resolver := func(_ context.Context, slug string) (*duckdb.PlayerDB, error) {
-		if slug != progTestSlug {
-			return nil, errNotFound
-		}
-		return pdb, nil
-	}
-	h := handlers.NewProgressionHandler(resolver, progTestTitle)
+	h := handlers.NewProgressionHandler(progressionServiceFor(pdb), progTestTitle)
 	r.Route("/api/v1/players/{player_slug}", func(sub chi.Router) { h.Mount(sub) })
 
 	get := func(locale string) map[string]map[string]any {

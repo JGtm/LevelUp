@@ -23,9 +23,11 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/progression/milestones"
 	"levelup/go-api/internal/progression/records"
 	"levelup/go-api/internal/progression/streaks"
+	"levelup/go-api/internal/service"
 
 	"levelup/go-api/internal/i18n"
 )
@@ -79,17 +81,22 @@ func setupHandlerEnv(t *testing.T) (*duckdb.PlayerDB, func()) {
 	return pdb, cleanup
 }
 
+// progressionServiceFor : le vrai service de progression branché sur le dépôt DuckDB de pdb ; tout autre
+// slug que progTestSlug est un joueur introuvable.
+func progressionServiceFor(pdb *duckdb.PlayerDB) port.ProgressionService {
+	return service.NewProgressionService(func(_ context.Context, slug string) (port.ProgressionStore, error) {
+		if slug != progTestSlug {
+			return nil, errNotFound
+		}
+		return duckdb.NewPlayerProgressionStore(pdb), nil
+	})
+}
+
 // mountRouter assemble un chi router minimal aligné sur la prod
 // (subroute /players/{player_slug}).
 func mountRouter(pdb *duckdb.PlayerDB) *chi.Mux {
 	r := chi.NewRouter()
-	resolver := func(_ context.Context, slug string) (*duckdb.PlayerDB, error) {
-		if slug != progTestSlug {
-			return nil, errNotFound
-		}
-		return pdb, nil
-	}
-	h := handlers.NewProgressionHandler(resolver, progTestTitle)
+	h := handlers.NewProgressionHandler(progressionServiceFor(pdb), progTestTitle)
 	r.Route("/api/v1/players/{player_slug}", func(sub chi.Router) {
 		h.Mount(sub)
 	})

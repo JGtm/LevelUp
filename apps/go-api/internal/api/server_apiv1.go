@@ -53,6 +53,7 @@ import (
 	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/progression/coach_advisor"
+	"levelup/go-api/internal/progression/profile"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/watcher"
@@ -1047,7 +1048,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		progressionResolve := func(ctx context.Context, slug string) (*platform_duckdb.PlayerDB, error) {
 			return reg.Resolve()(ctx, slug)
 		}
-		progressionH := handlers.NewProgressionHandler(progressionResolve, titlePkg.DefaultSlug)
+		progressionH := handlers.NewProgressionHandler(service.NewProgressionService(progressionStoreResolver(reg.Resolve())), titlePkg.DefaultSlug)
 		progressionH.Mount(r, playerOpt)
 
 		// Coach Advisor — proposals coach proactives (ADR 0020 Phase 9).
@@ -1076,18 +1077,19 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 		// PlayerProfile V1 (Ascension) — endpoint /profile complet.
 		// Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §8.1.
-		profileH := handlers.NewPlayerProfileHandler(progressionResolve, titlePkg.DefaultSlug)
+		var awardSet *mappings.AwardMappingSet
 		// V2 §2 : injection optionnelle du mapping awards→axes (Section A1 radar).
 		// Chargement lazy depuis config/titles/{slug}/mappings/awards.toml.
 		// Absence du fichier ou erreur de parse : log + fallback V1 silencieux.
 		awardsPath := filepath.Join(cfg.RepoRoot, "config", "titles", titlePkg.DefaultSlug, "mappings", "awards.toml")
-		if awardSet, err := mappings.LoadAwardsFromFile(awardsPath); err != nil {
+		if loaded, err := mappings.LoadAwardsFromFile(awardsPath); err != nil {
 			slog.Warn("player_profile_awards_load_failed", "path", awardsPath, "err", err)
 		} else {
 			slog.Info("player_profile_awards_loaded",
-				"path", awardsPath, "awards_count", len(awardSet.All()))
-			profileH = profileH.WithAwardMapping(awardSet)
+				"path", awardsPath, "awards_count", len(loaded.All()))
+			awardSet = loaded
 		}
+		profileH := handlers.NewPlayerProfileHandler(profile.NewPlayerService(progressionResolve, awardSet), titlePkg.DefaultSlug)
 		profileH.Mount(r, playerOpt)
 
 		// Pattern Engine v3 (PLAN_PATTERN_ENGINE.md phases 1-3).
@@ -1106,7 +1108,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 		// ImprovementCampaign V1 — endpoints start/active/pause/close/abandon.
 		// Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §4.5 + §5.1.
-		campaignH := handlers.NewCampaignHandler(progressionResolve, titlePkg.DefaultSlug)
+		campaignH := handlers.NewCampaignHandler(service.NewCampaignService(campaignScopeResolver(reg.Resolve())), titlePkg.DefaultSlug)
 		campaignH.Mount(r, playerOpt)
 
 		// Match favoris (shared_social.duckdb)

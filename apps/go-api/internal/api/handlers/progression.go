@@ -14,7 +14,7 @@ package handlers
 
 import (
 	"context"
-	"log/slog"
+	"errors"
 	"net/http"
 	"time"
 
@@ -24,15 +24,11 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/i18n"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/progression/milestones"
 	"levelup/go-api/internal/progression/records"
 	"levelup/go-api/internal/progression/streaks"
 )
-
-// ProgressionResolver retourne le PlayerDB pour un slug donné.
-// Implémenté par la registry (config.ResolvePlayer wrappé).
-type ProgressionResolver func(ctx context.Context, slug string) (*duckdb.PlayerDB, error)
 
 // ProgressionHandler regroupe les endpoints de progression V2.
 //
@@ -41,16 +37,16 @@ type ProgressionResolver func(ctx context.Context, slug string) (*duckdb.PlayerD
 // internal/ops/seed_demo_prestige.go. L'ancien fixture read-time de streaks
 // masquait ces lignes et affichait des compteurs sans rapport avec le corpus.
 type ProgressionHandler struct {
-	resolve   ProgressionResolver
+	svc       port.ProgressionService
 	titleSlug string // typ. "halo_infinite", utilisé pour filtrer catalog/queries
 }
 
 // NewProgressionHandler construit le handler.
-func NewProgressionHandler(resolve ProgressionResolver, titleSlug string) *ProgressionHandler {
+func NewProgressionHandler(svc port.ProgressionService, titleSlug string) *ProgressionHandler {
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
-	return &ProgressionHandler{resolve: resolve, titleSlug: titleSlug}
+	return &ProgressionHandler{svc: svc, titleSlug: titleSlug}
 }
 
 // Mount enregistre les 3 routes via Huma (Phase 3b) sur le sous-routeur chi
@@ -148,15 +144,9 @@ type milestonesResponse struct {
 
 // handleStreaks : GET /streaks → toutes les streaks du joueur (active + historique).
 func (h *ProgressionHandler) handleStreaks(ctx context.Context, in *progPlayerInput) (*streaksHumaOutput, error) {
-	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	list, err := h.svc.Streaks(ctx, in.PlayerSlug, requestTitleSlug(ctx, h.titleSlug))
 	if err != nil {
-		return nil, err
-	}
-	repo := duckdb.NewStreaksRepo(pdb.Player)
-	list, err := repo.List(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug))
-	if err != nil {
-		slog.WarnContext(ctx, "progression: list streaks", "err", err)
-		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_streaks_error", err)
+		return nil, progressionHTTPError(ctx, err)
 	}
 	items := make([]streakDTO, 0, len(list))
 	for _, s := range list {
@@ -168,50 +158,22 @@ func (h *ProgressionHandler) handleStreaks(ctx context.Context, in *progPlayerIn
 // handleRecords : GET /records → PB courants + timeline.
 // Query param optionnel history_limit (défaut 50 ; le schéma refuse au-delà de 200).
 func (h *ProgressionHandler) handleRecords(ctx context.Context, in *progRecordsInput) (*recordsHumaOutput, error) {
-	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
-	if err != nil {
-		return nil, err
-	}
 	limit := in.HistoryLimit
 	if limit <= 0 {
 		limit = 50
 	}
-
-	pbRepo := duckdb.NewPersonalRecordsRepo(pdb)
-	pbList, err := pbRepo.ListByXUID(ctx, pdb.XUID)
+	rec, err := h.svc.Records(ctx, in.PlayerSlug, requestTitleSlug(ctx, h.titleSlug), limit)
 	if err != nil {
-		slog.WarnContext(ctx, "progression: list PBs", "err", err)
-		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_pbs_error", err)
+		return nil, progressionHTTPError(ctx, err)
 	}
-
-	historyRepo := duckdb.NewRecordHistoryRepo(pdb.Player)
-	histList, err := historyRepo.ListRecent(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug), limit)
-	if err != nil {
-		slog.WarnContext(ctx, "progression: list record history", "err", err)
-		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_history_error", err)
-	}
-
 	resp := recordsResponse{
-		PersonalBests: make([]personalBestDTO, 0, len(pbList)),
-		History:       make([]recordHistoryDTO, 0, len(histList)),
+		PersonalBests: make([]personalBestDTO, 0, len(rec.PersonalBests)),
+		History:       make([]recordHistoryDTO, 0, len(rec.History)),
 	}
-	// A4 — filtre read-side : une métrique hors catalogue (ex « best_kda »
-	// legacy) n'est pas servie à l'UI (elle n'a ni libellé ni bornes connues).
-	// Trace la dégradation sans avaler l'anomalie (règle logging n°3).
-	for _, pb := range pbList {
-		if !records.IsKnownMetric(pb.Metric) {
-			slog.WarnContext(ctx, "progression: PB métrique hors catalogue non servie",
-				"metric", pb.Metric, "period", pb.Period)
-			continue
-		}
+	for _, pb := range rec.PersonalBests {
 		resp.PersonalBests = append(resp.PersonalBests, toPBDTO(pb))
 	}
-	for _, hh := range histList {
-		if !records.IsKnownMetric(hh.Metric) {
-			slog.WarnContext(ctx, "progression: record history métrique hors catalogue non servi",
-				"metric", hh.Metric, "period", hh.Period)
-			continue
-		}
+	for _, hh := range rec.History {
 		resp.History = append(resp.History, toHistoryDTO(hh))
 	}
 	return &recordsHumaOutput{Body: resp}, nil
@@ -219,64 +181,47 @@ func (h *ProgressionHandler) handleRecords(ctx context.Context, in *progRecordsI
 
 // handleMilestones : GET /milestones → catalogue du titre + statut Earned.
 func (h *ProgressionHandler) handleMilestones(ctx context.Context, in *progPlayerInput) (*milestonesHumaOutput, error) {
-	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	list, err := h.svc.Milestones(ctx, in.PlayerSlug, requestTitleSlug(ctx, h.titleSlug))
 	if err != nil {
-		return nil, err
+		return nil, progressionHTTPError(ctx, err)
 	}
-	items, err := h.milestoneDTOs(ctx, pdb, requestTitleSlug(ctx, h.titleSlug))
-	if err != nil {
-		return nil, err
+	loc := i18n.FromContext(ctx)
+	items := make([]milestoneDTO, 0, len(list))
+	for _, m := range list {
+		dto := toMilestoneDTO(m.Entry, loc)
+		dto.Earned = m.Earned
+		dto.EarnedAt = m.EarnedAt
+		items = append(items, dto)
 	}
 	return &milestonesHumaOutput{Body: milestonesResponse{Items: items}}, nil
 }
 
-// milestoneDTOs charge le catalogue du titre + le statut Earned du joueur puis les JOINT
-// en DTOs. Extrait du handler (K1h) — la jointure catalog × earned n'est plus dans la
-// méthode HTTP. Erreurs mappées en humacore.NewError (5xx).
-func (h *ProgressionHandler) milestoneDTOs(ctx context.Context, pdb *duckdb.PlayerDB, titleSlug string) ([]milestoneDTO, error) {
-	catalog, err := duckdb.NewMilestoneCatalogRepo(pdb.Metadata).ListByTitle(ctx, titleSlug)
-	if err != nil {
-		slog.WarnContext(ctx, "progression: list catalog", "err", err)
-		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_catalog_error", err)
-	}
-	earnedList, err := duckdb.NewMilestoneEarnedRepo(pdb.Player).ListByUser(ctx, pdb.XUID, titleSlug)
-	if err != nil {
-		slog.WarnContext(ctx, "progression: list earned", "err", err)
-		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "list_earned_error", err)
-	}
-	earnedByID := make(map[string]time.Time, len(earnedList))
-	for _, e := range earnedList {
-		earnedByID[e.MilestoneID] = e.EarnedAt
-	}
-	loc := i18n.FromContext(ctx)
-	items := make([]milestoneDTO, 0, len(catalog))
-	for _, c := range catalog {
-		dto := toMilestoneDTO(c, loc)
-		if at, ok := earnedByID[c.ID]; ok {
-			dto.Earned = true
-			// earned_at NULL (backfill A6 non dérivable) → EarnedAt zéro : le
-			// jalon reste débloqué mais sans date (le front n'affiche pas de date
-			// fausse). Sinon on sert la vraie date de franchissement.
-			if !at.IsZero() {
-				t := at
-				dto.EarnedAt = &t
-			}
-		}
-		items = append(items, dto)
-	}
-	return items, nil
-}
-
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-// resolvePlayer résout le slug courant ou renvoie une erreur Huma 404
-// (contrat préservé : {code:player_not_found}).
-func (h *ProgressionHandler) resolvePlayer(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
-	pdb, err := h.resolve(ctx, slug)
-	if err != nil {
-		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)
+// progressionErrorCodes : le code 500 de chaque échec de lecture de la progression.
+var progressionErrorCodes = map[port.ProgressionErrorKind]string{
+	port.ProgErrListStreaks:       "list_streaks_error",
+	port.ProgErrListPersonalBests: "list_pbs_error",
+	port.ProgErrListRecordHistory: "list_history_error",
+	port.ProgErrListCatalog:       "list_catalog_error",
+	port.ProgErrListEarned:        "list_earned_error",
+}
+
+// progressionHTTPError traduit un échec d'un service de progression, de campagne ou de profil :
+// joueur introuvable = 404 player_not_found (contrat préservé), échec de lecture = 500 au code de sa
+// nature. Une erreur d'un autre type est une panne : 500.
+func progressionHTTPError(ctx context.Context, err error) error {
+	var pe *port.ProgressionError
+	if !errors.As(err, &pe) {
+		return humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "progression_error", err)
 	}
-	return pdb, nil
+	if pe.Kind == port.ProgErrPlayerNotFound {
+		return humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", pe.Err)
+	}
+	if code, ok := progressionErrorCodes[pe.Kind]; ok {
+		return humacore.NewErrorFrom(ctx, http.StatusInternalServerError, code, pe.Err)
+	}
+	return humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "progression_error", pe.Err)
 }
 
 func toStreakDTO(s streaks.Streak) streakDTO {
