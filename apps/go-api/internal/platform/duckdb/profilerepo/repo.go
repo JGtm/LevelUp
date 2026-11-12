@@ -23,9 +23,6 @@ import (
 	"levelup/go-api/internal/prestige"
 )
 
-// queryTimeout borne chaque lecture du profil.
-const queryTimeout = 10 * time.Second
-
 // startTimeCanonicalMR : expression timezone-canonique du début de match pour l'alias `mr` — jamais de
 // `start_time` brut dans un filtre/tri temporel (piège start_time_utc NULL / start_time naïf). Source
 // unique : duckdb.StartTimeCanonicalSQL.
@@ -47,11 +44,11 @@ func New(pdb *duckdb.PlayerDB) *Repo {
 // TitleSlug rend le titre des bases du joueur.
 func (r *Repo) TitleSlug() string { return r.pdb.TitleSlug }
 
-// campaignExcl retourne la clause littérale de masquage des matchs Campagne pour l'alias registre donné
+// campaignExclMR retourne la clause littérale de masquage des matchs Campagne pour l'alias registre `mr`
 // (title-aware via le titre du joueur ; no-op Infinite). Source unique analysis.SQLExcludeCampaignVariants :
 // sans ce filtre les matchs Campagne (Halo 5) biaiseraient les axes et compteurs de la page Ascension.
-func (r *Repo) campaignExcl(alias string) string {
-	return analysis.SQLExcludeCampaignVariants(r.pdb.TitleSlug, alias)
+func (r *Repo) campaignExclMR() string {
+	return analysis.SQLExcludeCampaignVariants(r.pdb.TitleSlug, "mr")
 }
 
 // CountWindowMatches retourne le nombre de matchs distincts du joueur dans la fenêtre. Source :
@@ -67,7 +64,7 @@ func (r *Repo) CountWindowMatches(ctx context.Context, userID string, since, unt
 			SELECT COUNT(DISTINCT mp.match_id)
 			FROM match_participants mp
 			JOIN match_registry mr ON mr.match_id = mp.match_id
-			WHERE mp.xuid = ?`+r.campaignExcl("mr")+`
+			WHERE mp.xuid = ?`+r.campaignExclMR()+`
 			  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
 		`, userID, since, until).Scan(&count)
 	if err != nil {
@@ -101,7 +98,7 @@ func (r *Repo) RadarBase(ctx context.Context, userID string, since, until time.T
 				COUNT(*)
 			FROM match_participants mp
 			JOIN match_registry mr ON mr.match_id = mp.match_id
-			WHERE mp.xuid = ?`+r.campaignExcl("mr")+`
+			WHERE mp.xuid = ?`+r.campaignExclMR()+`
 			  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
 		`, userID, since, until).Scan(&avgKills, &avgDeaths, &avgAssists, &avgScore, &avgKillingSpree, &matchCount)
 	if err != nil {
@@ -134,7 +131,7 @@ func (r *Repo) WindowMatchIDs(ctx context.Context, since, until time.Time) ([]st
 	defer release()
 	matchRows, err := sharedDB.QueryContext(ctx, `
 			SELECT match_id FROM match_registry mr
-			WHERE `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?`+r.campaignExcl("mr")+`
+			WHERE `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?`+r.campaignExclMR()+`
 		`, since, until)
 	if err != nil {
 		return nil, err
@@ -162,7 +159,7 @@ func (r *Repo) PlayerWindowMatchIDs(ctx context.Context, userID string, since, u
 			SELECT DISTINCT mp.match_id
 			FROM match_participants mp
 			JOIN match_registry mr ON mr.match_id = mp.match_id
-			WHERE mp.xuid = ?`+r.campaignExcl("mr")+`
+			WHERE mp.xuid = ?`+r.campaignExclMR()+`
 			  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
 		`, userID, since, until)
 	if err != nil {
@@ -194,7 +191,7 @@ func (r *Repo) MatchStartTimes(ctx context.Context, userID string, since, until 
 			SELECT `+startTimeCanonicalMR+`
 			FROM match_participants mp
 			JOIN match_registry mr ON mr.match_id = mp.match_id
-			WHERE mp.xuid = ?`+r.campaignExcl("mr")+`
+			WHERE mp.xuid = ?`+r.campaignExclMR()+`
 			  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
 			ORDER BY `+startTimeCanonicalMR+` ASC
 		`, userID, since, until)
@@ -230,7 +227,7 @@ func (r *Repo) MatchDays(ctx context.Context, userID string, since, until time.T
 			SELECT mp.match_id, `+startTimeCanonicalMR+`
 			FROM match_participants mp
 			JOIN match_registry mr ON mr.match_id = mp.match_id
-			WHERE mp.xuid = ?`+r.campaignExcl("mr")+`
+			WHERE mp.xuid = ?`+r.campaignExclMR()+`
 			  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
 		`, userID, since, until)
 	if err != nil {
