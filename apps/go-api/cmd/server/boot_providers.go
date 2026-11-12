@@ -27,6 +27,7 @@ import (
 	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
+	"levelup/go-api/internal/playerresolve"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
 )
@@ -162,7 +163,7 @@ func bootBuildServices(st *bootState) {
 		// Infinite tenu par le sync Infinite. Manager.For est caché par path →
 		// DefaultSlug retourne le MÊME provider que sharedReader (aucune conn en plus).
 		WithMatchCountResolver(func(ctx context.Context, titleSlug string) (int, error) {
-			return duckdb.NewBootstrapRepo(cfg.SharedReaderForTitle(titleSlug), metaDB).GetMatchCount(ctx)
+			return duckdb.NewBootstrapRepo(playerresolve.SharedReaderForTitle(cfg, titleSlug), metaDB).GetMatchCount(ctx)
 		})
 
 	// Auth locale : user store partagé — filtrage ownership des joueurs (ADR 0029,

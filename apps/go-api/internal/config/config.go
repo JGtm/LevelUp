@@ -15,7 +15,6 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
-	"levelup/go-api/internal/prestige"
 )
 
 // defaultUserTimezone est le timezone IANA utilisé en l'absence de configuration.
@@ -143,7 +142,7 @@ type AppConfig struct {
 	// Activé par LEVELUP_BACKUP_ENABLED=true.
 	Backup BackupConfig
 	// PrestigeEnabled gate les 16 routes Prestige ET le hook post-sync (gate UNIQUE,
-	// C7/DEC-4). Source : prestige.IsEnabled → prestige_enabled dans app_settings.json.
+	// C7/DEC-4). Source : loadPrestigeEnabled → prestige_enabled dans app_settings.json.
 	// Défaut : true (activation actée, ADR 0005).
 	PrestigeEnabled bool
 	// WebDistDir : répertoire du build React (Vite) servi en SPA par le routeur.
@@ -254,7 +253,7 @@ func load(fromRepo bool, launchMode string) (*AppConfig, error) {
 	cfg.CurrentCSRSeasonID = loadCSRSeasonID(appSettingsPath)
 	cfg.MediaCapturesBaseDir = loadMediaCapturesBaseDir(appSettingsPath)
 	cfg.Backup = st.backupConfig(roots.Data, appSettingsPath)
-	cfg.PrestigeEnabled = prestige.IsEnabled(appSettingsPath)
+	cfg.PrestigeEnabled = loadPrestigeEnabled(appSettingsPath)
 	cfg.PersistBatchAsync = st.persistBatchAsync()
 	cfg.EventsConvergence = getEnvOrDefault("LEVELUP_EVENTS_CONVERGENCE", "") != "0"
 	cfg.EventsConvergenceMax = getEnvInt("LEVELUP_EVENTS_CONVERGENCE_MAX", DefaultEventsConvergenceMax)

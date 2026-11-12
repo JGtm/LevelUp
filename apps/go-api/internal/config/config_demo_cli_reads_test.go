@@ -11,15 +11,12 @@ package config
 // `levelup recompute-friends`, alors que Load() redirige déjà les chemins d'état vers le dépôt.
 
 import (
-	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
-	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
 // cfgCLIEnDemo charge la configuration d'un binaire opérateur sous LEVELUP_DEMO_MODE=true,
@@ -70,30 +67,5 @@ func TestLoad_Demo_CheminsDeBasesDuDepot(t *testing.T) {
 	}
 	if got, want := SharedDBPath(cfg, titlePkg.DefaultSlug), pr.SharedDBPath(titlePkg.DefaultSlug); got != want {
 		t.Errorf("SharedDBPath = %q, attendu %q", got, want)
-	}
-}
-
-func TestLoad_Demo_ResolvePlayerNeServPasLaFixture(t *testing.T) {
-	cfg, _, _ := cfgCLIEnDemo(t)
-	_, err := ResolvePlayer(context.Background(), cfg, "demo-player", "")
-	if !errors.Is(err, ErrPlayerNotFound) {
-		t.Fatalf("ResolvePlayer(demo-player) = %v, attendu ErrPlayerNotFound (résolution réelle)", err)
-	}
-}
-
-func TestLoad_Demo_SharedReaderDuTitreLitLeDepot(t *testing.T) {
-	cfg, depot, _ := cfgCLIEnDemo(t)
-	const h5Match = "h5-reel-match-1"
-	makeSharedDBWithMatch(t, depot, halo5.TitleSlug, h5Match)
-	mgr := sharedprovider.NewManager()
-	defer func() { _ = mgr.Close() }()
-	cfg.SharedManager = mgr
-
-	reader := cfg.sharedReaderForTitle(halo5.TitleSlug)
-	if reader == nil {
-		t.Fatal("aucun reader : le shared du titre a été cherché sous la fixture démo et non sous le dépôt")
-	}
-	if ok, err := readMatchExists(t, reader, h5Match); err != nil || !ok {
-		t.Fatalf("le reader du titre doit voir %q dans le shared du dépôt (ok=%v err=%v)", h5Match, ok, err)
 	}
 }

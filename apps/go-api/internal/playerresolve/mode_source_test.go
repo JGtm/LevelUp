@@ -1,8 +1,9 @@
-package config
+package playerresolve
 
 import (
 	"testing"
 
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 )
@@ -19,7 +20,7 @@ func TestBuildPoolConfig_ModeSourceDuManifeste(t *testing.T) {
 	reg.Register(&title.TitleDescriptor{Slug: "sans_cle", Name: "X", Status: title.StatusActive})
 	title.SetDefaultRegistry(reg)
 
-	cfg := &AppConfig{RepoRoot: t.TempDir()}
+	cfg := &config.AppConfig{RepoRoot: t.TempDir()}
 	p := &domain.PlayerSummary{Gamertag: "GT", XUID: "1"}
 	for slug, want := range map[string]title.ModeSource{
 		"halo_5":          title.ModeSourceGameVariant,

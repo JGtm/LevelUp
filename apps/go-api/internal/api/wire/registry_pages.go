@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/playerresolve"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync/snapshot"
@@ -210,7 +211,7 @@ func (r *ServiceRegistry) buildFriendsExtrasResolver(mainPDB *duckdb.PlayerDB) p
 		if !config.PlayerDBFileExists(cfg, titleSlug, gamertag) {
 			return nil, service.ErrFriendWithoutPlayerDB
 		}
-		pdb, perr := config.ResolvePlayer(ctx, cfg, slug, titleSlug)
+		pdb, perr := playerresolve.ResolvePlayer(ctx, cfg, slug, titleSlug)
 		if perr != nil {
 			return nil, perr
 		}

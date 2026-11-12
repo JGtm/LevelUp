@@ -12,7 +12,7 @@
 
 //go:build cgo
 
-package config
+package playerresolve
 
 import (
 	"context"
@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/platform/duckdb"
@@ -94,18 +95,18 @@ func TestSharedReaderForTitle_HINF_ByteIdentical(t *testing.T) {
 	if err != nil {
 		t.Fatalf("For(hinf): %v", err)
 	}
-	cfg := &AppConfig{
+	cfg := &config.AppConfig{
 		RepoRoot:       repoRoot,
 		SharedProvider: bootProvider,
 		SharedManager:  mgr,
 	}
 
-	got := cfg.sharedReaderForTitle(titlePkg.DefaultSlug)
+	got := SharedReaderForTitle(cfg, titlePkg.DefaultSlug)
 	if got != duckdb.SharedReader(bootProvider) {
 		t.Errorf("sharedReaderForTitle(DefaultSlug) != provider boot (byte-identique attendu)")
 	}
 	// "" doit être normalisé vers DefaultSlug → même provider.
-	if cfg.sharedReaderForTitle("") != duckdb.SharedReader(bootProvider) {
+	if SharedReaderForTitle(cfg, "") != duckdb.SharedReader(bootProvider) {
 		t.Errorf("sharedReaderForTitle(\"\") != provider boot")
 	}
 }
@@ -127,14 +128,14 @@ func TestSharedReaderForTitle_PerTitle_Selection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("For(hinf): %v", err)
 	}
-	cfg := &AppConfig{
+	cfg := &config.AppConfig{
 		RepoRoot:       repoRoot,
 		SharedProvider: bootProvider,
 		SharedManager:  mgr,
 	}
 
 	// Le reader h5 voit h5Match et NE voit PAS hinfMatch.
-	h5Reader := cfg.sharedReaderForTitle(halo5.TitleSlug)
+	h5Reader := SharedReaderForTitle(cfg, halo5.TitleSlug)
 	if ok, err := readMatchExists(t, h5Reader, h5Match); err != nil || !ok {
 		t.Errorf("reader h5 doit voir %q (ok=%v err=%v)", h5Match, ok, err)
 	}
@@ -143,7 +144,7 @@ func TestSharedReaderForTitle_PerTitle_Selection(t *testing.T) {
 	}
 
 	// Le reader Infinite voit hinfMatch et PAS h5Match.
-	hinfReader := cfg.sharedReaderForTitle(titlePkg.DefaultSlug)
+	hinfReader := SharedReaderForTitle(cfg, titlePkg.DefaultSlug)
 	if ok, err := readMatchExists(t, hinfReader, hinfMatch); err != nil || !ok {
 		t.Errorf("reader Infinite doit voir %q (ok=%v err=%v)", hinfMatch, ok, err)
 	}
@@ -169,15 +170,15 @@ func TestSharedReaderForTitle_Fallbacks(t *testing.T) {
 	sentinel := sharedprovider.FromInMemoryDB(mem, "sentinel")
 
 	// Manager nil → fallback SharedProvider direct.
-	cfg := &AppConfig{RepoRoot: t.TempDir(), SharedProvider: sentinel}
-	if got := cfg.sharedReaderForTitle(halo5.TitleSlug); got != duckdb.SharedReader(sentinel) {
+	cfg := &config.AppConfig{RepoRoot: t.TempDir(), SharedProvider: sentinel}
+	if got := SharedReaderForTitle(cfg, halo5.TitleSlug); got != duckdb.SharedReader(sentinel) {
 		t.Errorf("Manager nil : attendu fallback SharedProvider")
 	}
 	// Démo + titre par DÉFAUT → provider boot (cfg.SharedProvider), sans routage.
 	mgr := sharedprovider.NewManager()
 	defer func() { _ = mgr.Close() }()
-	cfgDemo := &AppConfig{RepoRoot: t.TempDir(), DemoMode: true, SharedProvider: sentinel, SharedManager: mgr}
-	if got := cfgDemo.sharedReaderForTitle(titlePkg.DefaultSlug); got != duckdb.SharedReader(sentinel) {
+	cfgDemo := &config.AppConfig{RepoRoot: t.TempDir(), DemoMode: true, SharedProvider: sentinel, SharedManager: mgr}
+	if got := SharedReaderForTitle(cfgDemo, titlePkg.DefaultSlug); got != duckdb.SharedReader(sentinel) {
 		t.Errorf("démo défaut : attendu provider boot (cfg.SharedProvider)")
 	}
 }
@@ -219,9 +220,9 @@ func TestSharedReaderForTitle_DemoPerTitle(t *testing.T) {
 
 	mgr := sharedprovider.NewManager()
 	defer func() { _ = mgr.Close() }()
-	cfg := &AppConfig{DemoMode: true, DemoFixturesDir: fixtures, SharedProvider: sentinel, SharedManager: mgr}
+	cfg := &config.AppConfig{DemoMode: true, DemoFixturesDir: fixtures, SharedProvider: sentinel, SharedManager: mgr}
 
-	h5Reader := cfg.sharedReaderForTitle(halo5.TitleSlug)
+	h5Reader := SharedReaderForTitle(cfg, halo5.TitleSlug)
 	if h5Reader == duckdb.SharedReader(sentinel) {
 		t.Fatalf("démo H5 : doit résoudre un provider DISTINCT du provider boot")
 	}

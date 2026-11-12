@@ -3,8 +3,9 @@ package prestige
 import (
 	"context"
 	"errors"
-	"levelup/go-api/internal/domain"
 	"log/slog"
+
+	"levelup/go-api/internal/domain"
 
 	"levelup/go-api/internal/i18n"
 )

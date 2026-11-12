@@ -2,10 +2,9 @@ package prestige
 
 import (
 	"context"
-	"encoding/json"
-	"levelup/go-api/internal/observability"
 	"log/slog"
-	"os"
+
+	"levelup/go-api/internal/observability"
 )
 
 // sync_hook.go — point d'extension Prestige post-sync.
@@ -17,25 +16,6 @@ import (
 // La fonction est gardée par le réglage `prestige_enabled` d'app_settings.json :
 // s'il est désactivé, aucune action — le module Prestige est totalement absent
 // du flux de sync.
-
-// IsEnabled est la SOURCE UNIQUE de l'activation Prestige (C7 / DEC-4, ADR 0005).
-// Lit `prestige_enabled` dans app_settings.json (settingsPath).
-// Défaut : ACTIVÉ (fichier/clé absents ou JSON malformé → true). Consommée par
-// TOUTES les surfaces via cfg.PrestigeEnabled (config.go) → un seul gate.
-func IsEnabled(settingsPath string) bool {
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		return true
-	}
-	var m map[string]any
-	if err := json.Unmarshal(data, &m); err != nil {
-		return true
-	}
-	if b, ok := m["prestige_enabled"].(bool); ok {
-		return b
-	}
-	return true
-}
 
 // RunPostSyncHook ré-évalue les défis actifs d'un joueur après une sync.
 //

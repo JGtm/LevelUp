@@ -45,6 +45,10 @@ func LoadServer(launchMode string) (*AppConfig, error) { return load(false, laun
 // construite à la main (tests) avec DemoMode suit la disposition, comme le serveur.
 func (c *AppConfig) demoState() bool { return c.DemoMode && !c.stateFromRepo }
 
+// DemoState dit si la configuration sert l'état de démonstration (fixtures) : DemoMode, sauf pour un binaire
+// opérateur dont Load a redirigé l'état vers le dépôt.
+func (c *AppConfig) DemoState() bool { return c.demoState() }
+
 // DemoLayout rend la disposition de l'arbre démo (LEVELUP_DEMO_FIXTURES_DIR).
 func (c *AppConfig) DemoLayout() title.DemoLayout {
 	return title.NewDemoLayout(c.DemoFixturesDir)

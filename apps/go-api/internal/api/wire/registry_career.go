@@ -10,10 +10,10 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/api/handlers"
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/playerresolve"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 )
@@ -167,7 +167,7 @@ func (r *ServiceRegistry) buildFriendsXPLoader(mainPDB *duckdb.PlayerDB) service
 	return func(ctx context.Context, _ string) ([]domain.FriendXPHistory, error) {
 		var results []domain.FriendXPHistory
 		for _, f := range friends {
-			pdb, perr := config.ResolvePlayer(ctx, cfg, f.playerSlug, titleSlug)
+			pdb, perr := playerresolve.ResolvePlayer(ctx, cfg, f.playerSlug, titleSlug)
 			if perr != nil {
 				slog.WarnContext(ctx, "friends_xp: resolve failed",
 					"gamertag", f.gamertag, "err", perr)

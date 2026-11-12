@@ -11,7 +11,7 @@
 
 //go:build cgo
 
-package config
+package playerresolve
 
 import (
 	"context"
@@ -21,12 +21,14 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/config"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
 func TestResolveDemoPlayer_FixtureMissing_ReturnsExplicitError(t *testing.T) {
 	tmpDir := t.TempDir()
-	cfg := &AppConfig{
+	cfg := &config.AppConfig{
 		RepoRoot:        tmpDir,
 		DemoMode:        true,
 		DemoFixturesDir: filepath.Join(tmpDir, "tests", "fixtures", "ref_player"),
@@ -70,7 +72,7 @@ func TestResolveDemoPlayer_FixturePresent_OpensWithoutError(t *testing.T) {
 	// xuid.txt optionnel (fallback hardcodé si absent — pas testé ici,
 	// le but est juste de valider que stats.duckdb manquante émet une erreur claire).
 
-	cfg := &AppConfig{
+	cfg := &config.AppConfig{
 		RepoRoot:        tmpDir,
 		DemoMode:        true,
 		DemoFixturesDir: fixtureDir,

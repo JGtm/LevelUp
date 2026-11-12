@@ -52,6 +52,7 @@ import (
 	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
+	"levelup/go-api/internal/playerresolve"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/progression/coach_advisor"
 	"levelup/go-api/internal/progression/profile"
@@ -1518,7 +1519,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		// Versions de carte jouées : lues dans la base partagée du titre demandé (lecteur
 		// du provider), elles rendent l'image de carte d'un vrai match récupérable par tous.
 		PlayedMapVersions: func(ctx context.Context, titleID string, visit func(mapID, versionID string)) error {
-			return platform_duckdb.ForEachPlayedMapVersion(ctx, cfg.SharedReaderForTitle(titleID), visit)
+			return platform_duckdb.ForEachPlayedMapVersion(ctx, playerresolve.SharedReaderForTitle(cfg, titleID), visit)
 		},
 		// Résolution d'image de carte inconnue (KindMapImage) via DiscoveryUGC.
 		// Injectée ici (et non dans internal/assets) pour éviter le cycle

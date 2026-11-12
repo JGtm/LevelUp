@@ -3,10 +3,14 @@
 package config
 
 import (
+	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
@@ -47,4 +51,36 @@ func TestSharedProviderForTitle(t *testing.T) {
 	if got := legacy.SharedProviderForTitle(titlePkg.DefaultSlug); got != boot {
 		t.Errorf("sans Manager, le titre par défaut garde le provider du boot")
 	}
+}
+
+// makeSharedDBWithMatch crée le shared_matches_v2.duckdb au path title-aware du
+// slug donné, avec une table match_registry minimale + une ligne matchID si
+// non vide. Schéma minimal (pas de dépendance à internal/sync — cycle d'import).
+func makeSharedDBWithMatch(t *testing.T, repoRoot, slug, matchID string) string {
+	t.Helper()
+	path := titlePkg.NewPathResolver(repoRoot).SharedDBPath(slug)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir warehouse %s: %v", slug, err)
+	}
+	db, err := duckdb.OpenReadWrite(path)
+	if err != nil {
+		t.Fatalf("OpenReadWrite shared %s: %v", slug, err)
+	}
+	defer func() { _ = db.Close() }()
+	ctx := context.Background()
+	if _, err := db.SQLDb().ExecContext(ctx,
+		`CREATE TABLE IF NOT EXISTS match_registry (
+			match_id   VARCHAR PRIMARY KEY,
+			start_time TIMESTAMP NOT NULL
+		)`); err != nil {
+		t.Fatalf("create match_registry %s: %v", slug, err)
+	}
+	if matchID != "" {
+		if _, err := db.SQLDb().ExecContext(ctx,
+			"INSERT INTO match_registry (match_id, start_time) VALUES (?, CURRENT_TIMESTAMP)",
+			matchID); err != nil {
+			t.Fatalf("insert match %s: %v", slug, err)
+		}
+	}
+	return path
 }

@@ -122,12 +122,6 @@ func (m *mockService) DisablePilotMode(ctx context.Context, _, _ string) error {
 	return nil
 }
 
-func TestIsEnabled_Defaults(t *testing.T) {
-	if !IsEnabled("") {
-		t.Error("expected enabled when no settings file (default-on)")
-	}
-}
-
 func TestRunPostSyncHook_EnabledCallsService(t *testing.T) {
 	// C7 : le hook ne re-lit plus le flag (gate unique chez l'appelant) ;
 	// il appelle toujours le service non-nil.

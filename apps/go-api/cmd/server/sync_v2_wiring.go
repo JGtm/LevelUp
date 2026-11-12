@@ -31,6 +31,7 @@ import (
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/friendstore"
 	settingsplatform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/playerresolve"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
@@ -188,7 +189,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 // l'écrivain pendant une écriture, attente bornée pendant une bascule. Sans provider
 // (kill-switch legacy) : connexion en cache, aucune bascule dans le process.
 func knownSetSharedBorrower(deps SyncV2WiringDeps, cached func() *sql.DB) syncv2.SharedDBAcquirer {
-	reader := deps.Cfg.SharedReaderForTitle(deps.TitleSlug)
+	reader := playerresolve.SharedReaderForTitle(deps.Cfg, deps.TitleSlug)
 	src, ok := reader.(syncv2.SharedSwapSource)
 	if reader != nil && !ok {
 		slog.Warn("sync.v2 wiring: lecteur partagé sans état de bascule — ensemble connu lu sur la connexion en cache",

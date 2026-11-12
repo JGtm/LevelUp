@@ -29,6 +29,7 @@ import (
 	"levelup/go-api/internal/notify"
 	authpkg "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/playerresolve"
 )
 
 func main() {
@@ -377,7 +378,7 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string
 
 	provider := authpkg.NewSISUProvider()
 
-	pdb, err := config.ResolvePlayer(ctx, cfg, playerSlug, titlePkg.DefaultSlug)
+	pdb, err := playerresolve.ResolvePlayer(ctx, cfg, playerSlug, titlePkg.DefaultSlug)
 	if err != nil {
 		return nil, fmt.Errorf("résoudre player %q: %w", playerSlug, err)
 	}

@@ -149,7 +149,7 @@ func TestReadXUIDFile_Valid(t *testing.T) {
 	if err := os.WriteFile(p, []byte("2547408409520575\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	xuid, err := readXUIDFile(p)
+	xuid, err := ReadXUIDFile(p)
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestReadXUIDFile_Valid(t *testing.T) {
 }
 
 func TestReadXUIDFile_Absent(t *testing.T) {
-	_, err := readXUIDFile("/nonexistent/xuid.txt")
+	_, err := ReadXUIDFile("/nonexistent/xuid.txt")
 	if err == nil {
 		t.Error("expected error (fichier absent)")
 	}
@@ -171,7 +171,7 @@ func TestReadXUIDFile_Empty(t *testing.T) {
 	if err := os.WriteFile(p, []byte("   \n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	_, err := readXUIDFile(p)
+	_, err := ReadXUIDFile(p)
 	if err == nil {
 		t.Error("expected error (contenu vide)")
 	}

@@ -49,6 +49,7 @@ import (
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/playerresolve"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
@@ -289,7 +290,7 @@ func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *Ser
 		cfg: cfg,
 		resolve: func(ctx context.Context, slug string) (*duckdb.PlayerDB, error) {
 			titleSlug := ctxkeys.TitleSlug(ctx)
-			return config.ResolvePlayer(ctx, cfg, slug, titleSlug)
+			return playerresolve.ResolvePlayer(ctx, cfg, slug, titleSlug)
 		},
 		resolveByGT:     makeTitlePlayerResolver(cfg),
 		provider:        provider,
@@ -317,7 +318,7 @@ func makeTitlePlayerResolver(cfg *config.AppConfig) duckdb.TitlePlayerResolver {
 		}
 		for i := range players {
 			if strings.EqualFold(players[i].Gamertag, gamertag) {
-				return config.ResolvePlayer(ctx, cfg, players[i].PlayerSlug, titleSlug)
+				return playerresolve.ResolvePlayer(ctx, cfg, players[i].PlayerSlug, titleSlug)
 			}
 		}
 		return nil, fmt.Errorf("%w: title=%q gamertag=%q", config.ErrPlayerNotFound, titleSlug, gamertag)
