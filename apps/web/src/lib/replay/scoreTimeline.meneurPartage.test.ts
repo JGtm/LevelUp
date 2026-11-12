@@ -57,9 +57,11 @@ describe('leaderStates et leadChanges — le jeu de cas partagé avec le Go', ()
       expect(leaderStates(timeline, cas.camp_count)).toEqual(
         cas.etats.map((e) => ({ frame: e.frame, teamId: e.team_id })),
       )
-      // `leadChanges` n'est que la projection de `leaderStates` : les retournements du jeu de cas
-      // valent aussi sans nombre de camps (les cas à camp muet n'en ont aucun).
-      expect(leadChanges(timeline)).toEqual(
+      // `leadChanges` n'est que la projection de `leaderStates`, et il reçoit le même nombre de
+      // camps que le calcul du serveur (`leadshare.Measure` le passe à `LeaderStates` puis à
+      // `Changes`) : sans lui, un camp muet ne concourrait pas à zéro et les cas à camp muet
+      // divergeraient du Go.
+      expect(leadChanges(timeline, cas.camp_count)).toEqual(
         cas.retournements.map((r) => ({ frame: r.frame, teamId: r.team_id })),
       )
     })

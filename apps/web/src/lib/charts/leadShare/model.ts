@@ -4,7 +4,9 @@
  * `null` / absent veut dire NON MESURÉ, jamais zéro : un mode à peu de points, un score non
  * couvert ou un film non lu n'ont pas de part. L'affichage dit « — », pas « 0 % ».
  */
+import { intlLocale } from '@/lib/formatters/intlLocale'
 import { formatPercent } from '@/lib/formatters/percent'
+import type { Locale } from '@/lib/i18n/locale'
 import { fillTemplate } from '@/lib/i18n/template'
 import type { LeadShareText } from './text'
 
@@ -16,10 +18,19 @@ export function formatLeadShare(share: LeadShareValue): string {
   return formatPercent(share, 0)
 }
 
-/** « 3 retournements », au bon nombre. Absent : chaîne vide (rien à dire). */
-export function formatLeadChanges(changes: number | null | undefined, text: LeadShareText): string {
+/**
+ * « 3 retournements », au bon nombre : la catégorie de pluriel est celle de la LANGUE
+ * (`Intl.PluralRules`), jamais un test sur 1 — en français zéro est au singulier, en anglais au
+ * pluriel. Absent : chaîne vide (rien à dire).
+ */
+export function formatLeadChanges(
+  changes: number | null | undefined,
+  text: LeadShareText,
+  locale: Locale,
+): string {
   if (changes == null) return ''
-  return fillTemplate(changes === 1 ? text.changesOne : text.changesOther, { n: changes })
+  const one = new Intl.PluralRules(intlLocale(locale)).select(changes) === 'one'
+  return fillTemplate(one ? text.changesOne : text.changesOther, { n: changes })
 }
 
 /** Une carte, un mois ou un match d'un graphe de Mainmise. */
@@ -33,11 +44,4 @@ export interface LeadSharePoint {
   changes?: number | null
   /** Lignes ajoutées à l'infobulle (carte, mode, matchs mesurés...). */
   details?: string[]
-}
-
-/** Moyenne des parts MESURÉES d'une liste de points, et leur nombre. `avg` null = aucune. */
-export function averageOfMeasured(points: readonly LeadSharePoint[]): { avg: number | null; n: number } {
-  const shares = points.flatMap((p) => (p.share == null ? [] : [p.share]))
-  if (shares.length === 0) return { avg: null, n: 0 }
-  return { avg: shares.reduce((a, b) => a + b, 0) / shares.length, n: shares.length }
 }

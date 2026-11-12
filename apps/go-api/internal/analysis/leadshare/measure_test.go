@@ -68,6 +68,112 @@ func TestMeasure_LaFenetreBorneLesTemps(t *testing.T) {
 	}
 }
 
+// Le pas du document n'est pas 100 ms partout : à 33 ms (30 images/s) la frame 10 vaut 330 ms, et
+// ignorer le pas décalerait chaque palier. Les attendus ci-dessous ne valent que pour 33 ms.
+func TestMeasure_AuPasDe33ms(t *testing.T) {
+	// Paliers aux frames 10, 20, 30, 40 = 330, 660, 990, 1320 ms. Fenêtre [0, 1650].
+	// Égalité [0,330], camp 0 en tête [330,660], égalité [660,990], camp 0 [990,1320], égalité [1320,1650].
+	r, reason := Measure(Input{
+		Teams: equipesDeDeuxCamps(), CampCount: 2, FrameIntervalMS: 33,
+		Window: Window{StartMS: 0, EndMS: 1650},
+	})
+	if reason != ReasonNone {
+		t.Fatalf("refus inattendu : %s", reason)
+	}
+	if r.MeasuredMS != 1650 || leadDe(r, 0) != 660 || leadDe(r, 1) != 0 || r.TieMS != 990 {
+		t.Errorf("mesure = %+v, attendu durée 1650, camp 0 en tête 660, égalité 990 (au pas de 100 ms on lirait 2000 et 3000)", r)
+	}
+	if sommeDesTemps(r) != r.MeasuredMS {
+		t.Errorf("la somme des temps (%d) n'est pas la durée mesurée (%d)", sommeDesTemps(r), r.MeasuredMS)
+	}
+}
+
+func TestMeasure_AuPasDe33msLaFenetreBorneLesTemps(t *testing.T) {
+	// Fenêtre [500, 1500] : le camp 0 tient déjà la tête depuis 330 ms, jusqu'à 660 (160 ms) ;
+	// égalité [660,990] ; camp 0 [990,1320] ; égalité [1320,1500].
+	r, reason := Measure(Input{
+		Teams: equipesDeDeuxCamps(), CampCount: 2, FrameIntervalMS: 33,
+		Window: Window{StartMS: 500, EndMS: 1500},
+	})
+	if reason != ReasonNone {
+		t.Fatalf("refus inattendu : %s", reason)
+	}
+	if r.MeasuredMS != 1000 || leadDe(r, 0) != 490 || r.TieMS != 510 {
+		t.Errorf("mesure = %+v, attendu durée 1000, camp 0 en tête 490, égalité 510", r)
+	}
+}
+
+func TestMeasure_LesRetournementsSontBornesALaFenetreJouee(t *testing.T) {
+	// 0 mène à 1000 ms, 1 passe devant à 2000, 0 à 3000, 1 à 4000 : trois retournements au match.
+	teams := []Team{
+		{ID: ptr(0), Totals: []Tick{{10, 1}, {30, 3}}},
+		{ID: ptr(1), Totals: []Tick{{20, 2}, {40, 4}}},
+	}
+	tout, _ := Measure(Input{Teams: teams, CampCount: 2, FrameIntervalMS: 100, Window: Window{0, 5000}})
+	if tout.LeadChanges != 3 {
+		t.Fatalf("fenêtre entière : %d retournements, attendu 3", tout.LeadChanges)
+	}
+	// Fenêtre [2500, 3500] : seul celui de 3000 ms est joué ; celui de 2000 précède, celui de 4000 suit.
+	r, reason := Measure(Input{Teams: teams, CampCount: 2, FrameIntervalMS: 100, Window: Window{2500, 3500}})
+	if reason != ReasonNone {
+		t.Fatalf("refus inattendu : %s", reason)
+	}
+	if r.LeadChanges != 1 {
+		t.Errorf("retournements = %d, attendu 1 (ceux de la fenêtre jouée seulement)", r.LeadChanges)
+	}
+	// Le meneur d'avant la fenêtre sert de repère : l'équipe 1, en tête depuis 2000 ms, est dépassée à 3000.
+	if leadDe(r, 1) != 500 || leadDe(r, 0) != 500 {
+		t.Errorf("mesure = %+v, attendu 500 ms en tête de chaque côté", r)
+	}
+}
+
+func TestMeasure_UnRetournementAuPremierInstantDeLaFenetreEstJoue(t *testing.T) {
+	teams := []Team{
+		{ID: ptr(0), Totals: []Tick{{10, 1}, {30, 3}}},
+		{ID: ptr(1), Totals: []Tick{{20, 2}}},
+	}
+	// 0 mène à 1000, 1 à 2000, 0 à 3000. Fenêtre [2000, 3000[ : le retournement de 2000 est joué (borne
+	// de début incluse), celui de 3000 non (borne de fin exclue, comme l'intégration des temps).
+	r, _ := Measure(Input{Teams: teams, CampCount: 2, FrameIntervalMS: 100, Window: Window{2000, 3000}})
+	if r.LeadChanges != 1 {
+		t.Errorf("retournements = %d, attendu 1", r.LeadChanges)
+	}
+}
+
+func TestMeasure_NommeLesCampsMuetsQuandLAppelantLesDit(t *testing.T) {
+	teams := []Team{{ID: ptr(0), Totals: []Tick{{10, 1}, {30, 2}}}}
+	base := Input{Teams: teams, CampCount: 2, FrameIntervalMS: 100, Window: Window{0, 5000}}
+
+	nomme := base
+	nomme.SilentCampIDs = []int{1}
+	if r, _ := Measure(nomme); len(r.SilentIDs) != 1 || r.SilentIDs[0] != 1 || r.SilentCamps != 1 {
+		t.Errorf("camps muets = %v (%d), attendu [1]", r.SilentIDs, r.SilentCamps)
+	}
+
+	cas := map[string][]int{
+		"sans identifiants":              nil,
+		"trop d'identifiants":            {1, 2},
+		"un identifiant qui a une série": {0},
+		"un identifiant en double":       {1, 1},
+	}
+	for nom, ids := range cas {
+		t.Run(nom, func(t *testing.T) {
+			in := base
+			in.SilentCampIDs = ids
+			r, reason := Measure(in)
+			if reason != ReasonNone {
+				t.Fatalf("refus inattendu : %s", reason)
+			}
+			if r.SilentIDs != nil {
+				t.Errorf("camps muets nommés = %v : une liste qui ne coïncide pas avec les camps muets ne se nomme pas", r.SilentIDs)
+			}
+			if r.SilentCamps != 1 {
+				t.Errorf("le compte des camps muets doit rester 1, lu %d", r.SilentCamps)
+			}
+		})
+	}
+}
+
 func TestMeasure_AvantLePremierPalierLeScoreEstNulEtLeMatchALegalite(t *testing.T) {
 	r, _ := Measure(Input{
 		Teams: equipesDeDeuxCamps(), CampCount: 2, FrameIntervalMS: 100,
@@ -185,6 +291,21 @@ func TestPlayedWindow(t *testing.T) {
 	tard.T0FilmMS = ptr64(3000) // le premier paquet arrive APRÈS le coup d'envoi
 	if w, _ := PlayedWindow(tard); w.StartMS != 0 {
 		t.Errorf("début = %d, attendu 0 (rien avant l'image zéro)", w.StartMS)
+	}
+}
+
+// Au pas de 33 ms la dernière image du film vaut (FrameCount-1) x 33 : ignorer le pas (100 ms) la
+// placerait à 999 900 ms et la fin de la fenêtre tomberait sur la durée du match (595 000).
+func TestPlayedWindow_AuPasDe33ms(t *testing.T) {
+	w, reason := PlayedWindow(Clock{
+		OriginMS: ptr64(5000), T0FilmMS: ptr64(20000), DurationSeconds: ptr64(600),
+		FrameIntervalMS: 33, FrameCount: 10000,
+	})
+	if reason != ReasonNone {
+		t.Fatalf("refus inattendu : %s", reason)
+	}
+	if w.StartMS != 15000 || w.EndMS != 329967 {
+		t.Errorf("fenêtre = %+v, attendu [15000, 329967] (dernière image = 9999 x 33)", w)
 	}
 }
 

@@ -15,7 +15,8 @@ package migration
 // Les colonnes du MATCH sont recopiées sur chaque ligne de la passe, pour que toute ligne se lise
 // seule : measured / unmeasured_reason / doc_schema (mesuré ou non, et pourquoi), measured_ms
 // (durée de la partie jouée), tie_ms (temps sans meneur), lead_changes (retournements),
-// silent_camps (camps du roster sans série de score, qui concourent à zéro et ne mènent jamais).
+// silent_camps (camps du roster sans série de score, qui concourent à zéro et ne mènent jamais ;
+// quand le roster les désigne, chacun porte en plus sa ligne de camp à zéro).
 //
 // Somme invariante d'une passe mesurée : tie_ms + somme des lead_ms = measured_ms. Les parts se
 // lisent en FRACTION 0..1 (ADR 0006) : lead_ms / measured_ms, calculée par le lecteur.

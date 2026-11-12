@@ -10,9 +10,10 @@ type MatchRead struct {
 	MeasuredMS int64
 	// LeadChanges : retournements du match.
 	LeadChanges int
-	// SilentCamps : camps du roster sans série de score (à zéro, jamais en tête).
+	// SilentCamps : camps du roster sans série de score (à zéro, jamais en tête). Informatif : la
+	// lecture d'un camp ne s'appuie que sur ses lignes (LeadMS).
 	SilentCamps int
-	// LeadMS : temps passé seul en tête, par camp publié.
+	// LeadMS : temps passé seul en tête, par camp nommé par la passe (série publiée, ou camp muet à zéro).
 	LeadMS map[int]int64
 }
 
@@ -24,18 +25,18 @@ type PlayerShare struct {
 }
 
 // ShareOfCamp rend la Mainmise de `camp` dans le match, ou faux quand elle n'est pas lisible :
-// durée nulle, ou camp absent de la passe sans qu'un camp muet explique l'absence. Un camp muet
-// (jamais marqué) ne figure pas dans les lignes de camp : sa part vaut zéro, et c'est une mesure.
+// durée nulle, ou camp absent de la passe. La passe porte une ligne par camp du match qu'elle sait
+// nommer : les camps à série, et les camps muets (jamais marqués) à zéro quand le roster les a
+// désignés (Result.SilentIDs). Un camp sans ligne n'est PAS un zéro : le compte des camps muets ne
+// suffit pas à le dire, il validerait n'importe quel identifiant, y compris celui d'un camp qui
+// n'est pas au match.
 func ShareOfCamp(m MatchRead, camp int) (PlayerShare, bool) {
 	if m.MeasuredMS <= 0 {
 		return PlayerShare{}, false
 	}
 	lead, ok := m.LeadMS[camp]
 	if !ok {
-		if m.SilentCamps <= 0 {
-			return PlayerShare{}, false
-		}
-		lead = 0
+		return PlayerShare{}, false
 	}
 	share := float64(lead) / float64(m.MeasuredMS)
 	return PlayerShare{Share: min(1, max(0, share)), Changes: m.LeadChanges}, true

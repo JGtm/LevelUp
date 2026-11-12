@@ -83,6 +83,21 @@ func LeaderStates(teams []Team, campCount int) []State {
 	return out
 }
 
+// ChangesWithin rend les retournements JOUÉS : ceux dont l'image tombe dans [StartMS, EndMS) de la
+// fenêtre, au pas du document (même bornes que l'intégration des temps : début inclus, fin exclue).
+// Le meneur d'avant la fenêtre sert de repère : un retournement qui défait un meneur tenu avant le
+// coup d'envoi est joué s'il tombe dans la fenêtre. `Changes` reste la lecture du film entier.
+func ChangesWithin(states []State, w Window, stepMS int64) []Change {
+	var out []Change
+	for _, c := range Changes(states) {
+		at := int64(c.Frame) * stepMS
+		if at >= w.StartMS && at < w.EndMS {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 // Changes rend les retournements d'une suite d'états : un état à égalité ne compte pas et ne
 // ferme pas le meneur précédent, la première prise de tête n'en est pas un.
 func Changes(states []State) []Change {

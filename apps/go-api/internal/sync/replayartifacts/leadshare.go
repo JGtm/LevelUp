@@ -45,6 +45,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"levelup/go-api/internal/analysis/leadshare"
@@ -145,8 +146,10 @@ func ProjeterMainmise(
 	if reason != leadshare.ReasonNone {
 		return refus(reason)
 	}
+	teams := equipesDuCalque(doc.ScoreTimeline)
+	camps := campsDuRoster(doc.Roster)
 	res, reason := leadshare.Measure(leadshare.Input{
-		Teams: equipesDuCalque(doc.ScoreTimeline), CampCount: campsDuRoster(doc.Roster),
+		Teams: teams, CampCount: len(camps), SilentCampIDs: campsMutsDuRoster(camps, teams),
 		FrameIntervalMS: doc.FrameIntervalMS, Window: window,
 	})
 	if reason != leadshare.ReasonNone {
@@ -154,10 +157,16 @@ func ProjeterMainmise(
 	}
 	out.Measured = true
 	out.MeasuredMS, out.TieMS, out.LeadChanges, out.SilentCamps = res.MeasuredMS, res.TieMS, res.LeadChanges, res.SilentCamps
-	out.Rows = make([]persist.LeadShareRow, 0, len(res.Camps))
+	out.Rows = make([]persist.LeadShareRow, 0, len(res.Camps)+len(res.SilentIDs))
 	for _, c := range res.Camps {
 		out.Rows = append(out.Rows, persist.LeadShareRow{Camp: c.Camp, LeadMS: c.LeadMS})
 	}
+	// Un camp muet que le roster désigne est un camp du match à part nulle MESURÉE : il porte sa ligne,
+	// c'est elle (et non le seul compte des camps muets) qui permet de la lire.
+	for _, id := range res.SilentIDs {
+		out.Rows = append(out.Rows, persist.LeadShareRow{Camp: id, LeadMS: 0})
+	}
+	sort.Slice(out.Rows, func(i, j int) bool { return out.Rows[i].Camp < out.Rows[j].Camp })
 	return out
 }
 
@@ -200,16 +209,39 @@ func equipesDuCalque(tl *replay.ScoreTimeline) []leadshare.Team {
 	return teams
 }
 
-// campsDuRoster compte les designateurs d'equipe distincts du roster du film, sans « aucune equipe »
-// (-1) ni silence (champ absent) : meme lecture que `campCountOf` cote web.
-func campsDuRoster(roster []replay.RosterEntry) int {
-	camps := map[int]struct{}{}
+// campsDuRoster rend les designateurs d'equipe distincts du roster du film, tries, sans « aucune
+// equipe » (-1) ni silence (champ absent) : meme lecture que `campCountOf` cote web, qui les compte.
+func campsDuRoster(roster []replay.RosterEntry) []int {
+	vus := map[int]struct{}{}
 	for _, r := range roster {
 		if r.Team != nil && *r.Team >= 0 {
-			camps[*r.Team] = struct{}{}
+			vus[*r.Team] = struct{}{}
 		}
 	}
-	return len(camps)
+	camps := make([]int, 0, len(vus))
+	for c := range vus {
+		camps = append(camps, c)
+	}
+	sort.Ints(camps)
+	return camps
+}
+
+// campsMutsDuRoster rend les camps du roster qui n'ont aucune serie publiee. Le calcul pur ne les
+// retient que s'ils coincident avec les camps muets qu'il compte (cf. leadshare.Input.SilentCampIDs).
+func campsMutsDuRoster(camps []int, teams []leadshare.Team) []int {
+	publies := map[int]struct{}{}
+	for _, t := range teams {
+		if t.ID != nil {
+			publies[*t.ID] = struct{}{}
+		}
+	}
+	var muets []int
+	for _, c := range camps {
+		if _, ok := publies[c]; !ok {
+			muets = append(muets, c)
+		}
+	}
+	return muets
 }
 
 // capabiliteMainmiseArmee dit si le titre declare `film.lead_share`, et DIT POURQUOI quand la
@@ -220,7 +252,19 @@ func capabiliteMainmiseArmee(ctx context.Context, d Deps) (armee, incident bool)
 
 // preparerMainmise fait tout ce qui precede l'ecriture : porte de capability, reglement du titre,
 // identite des matchs (segment de LECTURE court), projection. Best-effort : aucun echec ne remonte,
-// aucun ne se tait ; un match dont l'identite ne se lit pas est inscrit au bilan (pas de marque).
+// aucun ne se tait.
+//
+// DEUX SORTES DE « JE NE PEUX PAS », QUI NE SE TRAITENT PAS PAREIL :
+//
+//	une REFERENCE ILLISIBLE (reglement, identite du match, registre) : ce n'est pas le match qui est
+//	      en cause, c'est notre lecture. Le lot est inscrit en echec au bilan, sans passe ecrite, donc
+//	      sans marque : le rattrapage le rejouera. Ecrire un refus ici ferait de la panne un fait du
+//	      match, que la marque rendrait definitif.
+//	un match SANS RIEN DE MESURABLE (pas de calque de score, score tronque ou non replique) : refus
+//	      MESURE, passe `non mesuree` avec sa raison, marque posee. Sa raison tient au calque seul,
+//	      l'identite du match n'y change rien : elle n'est donc PAS lue pour lui (sans quoi un segment
+//	      de lecture absent ou une ligne de registre manquante l'inscrirait en echec et le ferait
+//	      reprendre a chaque cycle).
 func preparerMainmise(ctx context.Context, d Deps, b *bilanDerivations, lus []artefactLu) preparationMainmise {
 	titre := ctxkeys.TitleSlug(ctx)
 	prep := preparationMainmise{titre: titre}
@@ -237,31 +281,44 @@ func preparerMainmise(ctx context.Context, d Deps, b *bilanDerivations, lus []ar
 	}
 	reg, err := reglementDuTitre(d)
 	if err != nil {
-		slog.WarnContext(ctx, "post-sync: mainmise — regulation.toml illisible, cette famille s'abstient "+
-			"(les autres gardent leur marque)", "titleSlug", d.TitleSlug, "err", err)
+		slog.ErrorContext(ctx, "post-sync: mainmise — regulation.toml illisible : lot NON projete, NON marque "+
+			"(le rattrapage le rejouera)", "titleSlug", d.TitleSlug, "matchs", len(lus), "err", err)
 		observability.AddIntT(titre, CompteurMainmiseEchecs, int64(len(lus)))
-		return prep
-	}
-	identites, ok := lireIdentitesMainmise(ctx, d, b, titre, lus)
-	if !ok {
+		b.echecLot(lus)
 		return prep
 	}
 	raisons := map[string]int{}
-	for _, a := range lus {
-		ident, connu := identites[a.matchID]
-		if !connu {
-			slog.ErrorContext(ctx, "post-sync: mainmise — match absent du registre : NON projete, NON marque",
-				"titleSlug", d.TitleSlug, "match_id", a.matchID)
-			observability.AddIntT(titre, CompteurMainmiseEchecs, 1)
-			b.echec(a.matchID)
-			continue
-		}
+	projeter := func(a artefactLu, ident IdentiteMainmise) {
 		batch := ProjeterMainmise(a.matchID, a.doc, ident, reg)
 		if !batch.Measured {
 			raisons[batch.Reason]++
 			observability.AddIntT(titre, CompteurMainmiseNonMesurees, 1)
 		}
 		prep.prets = append(prep.prets, passeMainmisePrete{matchID: a.matchID, batch: batch})
+	}
+	var identifiables []artefactLu
+	for _, a := range lus {
+		if refusDuCalqueDeScore(a.doc) != leadshare.ReasonNone {
+			projeter(a, IdentiteMainmise{})
+			continue
+		}
+		identifiables = append(identifiables, a)
+	}
+	if len(identifiables) > 0 {
+		identites, ok := lireIdentitesMainmise(ctx, d, b, titre, identifiables)
+		if ok {
+			for _, a := range identifiables {
+				ident, connu := identites[a.matchID]
+				if !connu {
+					slog.ErrorContext(ctx, "post-sync: mainmise — match absent du registre : NON projete, NON marque",
+						"titleSlug", d.TitleSlug, "match_id", a.matchID)
+					observability.AddIntT(titre, CompteurMainmiseEchecs, 1)
+					b.echec(a.matchID)
+					continue
+				}
+				projeter(a, ident)
+			}
+		}
 	}
 	if len(raisons) > 0 {
 		slog.InfoContext(ctx, "post-sync: mainmise non mesuree, par raison",

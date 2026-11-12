@@ -138,7 +138,7 @@ Colonnes du match recopiées sur chaque ligne : `measured`, `unmeasured_reason`,
 `measured_ms` (durée jouée), `tie_ms` (sans meneur), `lead_changes`, `silent_camps` (camps du roster
 sans série de score : ils concourent à zéro, ne mènent jamais). Invariant d'une passe mesurée :
 `tie_ms + somme(lead_ms) = measured_ms`. La part = `lead_ms / measured_ms` (fraction 0..1, ADR 0006) ;
-un camp absent d'une passe mesurée avec `silent_camps >= 1` est à 0. Un match non mesuré n'entre ni au
+un camp muet que le roster désigne porte sa propre ligne de camp à `lead_ms = 0` (part nulle mesurée), et un camp SANS ligne ne se lit pas : le compte `silent_camps` seul ne prouve pas qu'un identifiant est au match. `lead_changes` = retournements de la fenêtre jouée. Un match non mesuré n'entre ni au
 numérateur ni au dénominateur d'une moyenne. **Lecture : vue `match_lead_share_latest` UNIQUEMENT.**
 
 ### match_kill_heads / match_kill_pairs / match_assist_pairs — résumés par match du journal des morts (append-only, ADR 0039, 2026-10-21)

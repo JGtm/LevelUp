@@ -150,6 +150,66 @@
       ],
       "etats": [{ "frame": 10, "team_id": null }],
       "retournements": []
+    },
+    {
+      "nom": "le score decroit (penalite) : l'autre camp passe devant sans marquer, c'est un retournement",
+      "camp_count": 2,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 3 }, { "t": 30, "v": 1 }] },
+        { "team_id": 1, "total": [{ "t": 20, "v": 2 }] }
+      ],
+      "etats": [
+        { "frame": 10, "team_id": 0 },
+        { "frame": 30, "team_id": 1 }
+      ],
+      "retournements": [{ "frame": 30, "team_id": 1 }]
+    },
+    {
+      "nom": "camp muet avec deux series nommees : il concourt a zero, ne mene jamais",
+      "camp_count": 3,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 1 }] },
+        { "team_id": 1, "total": [{ "t": 20, "v": 1 }, { "t": 30, "v": 2 }] }
+      ],
+      "etats": [
+        { "frame": 10, "team_id": 0 },
+        { "frame": 20, "team_id": null },
+        { "frame": 30, "team_id": 1 }
+      ],
+      "retournements": [{ "frame": 30, "team_id": 1 }]
+    },
+    {
+      "nom": "une serie publiee a zero face a un camp muet : egalite mesuree, puis le marqueur prend la tete",
+      "camp_count": 2,
+      "teams": [{ "team_id": 0, "total": [{ "t": 10, "v": 0 }, { "t": 20, "v": 1 }] }],
+      "etats": [
+        { "frame": 10, "team_id": null },
+        { "frame": 20, "team_id": 0 }
+      ],
+      "retournements": []
+    },
+    {
+      "nom": "deux camps changent a la meme image a des valeurs differentes : le plus haut mene",
+      "camp_count": 2,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 1 }, { "t": 20, "v": 2 }] },
+        { "team_id": 1, "total": [{ "t": 10, "v": 2 }, { "t": 20, "v": 1 }] }
+      ],
+      "etats": [
+        { "frame": 10, "team_id": 1 },
+        { "frame": 20, "team_id": 0 }
+      ],
+      "retournements": [{ "frame": 20, "team_id": 0 }]
+    },
+    {
+      "nom": "deux paliers d'un meme camp a la meme image : le dernier gagne",
+      "camp_count": 2,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 1 }, { "t": 10, "v": 3 }] },
+        { "team_id": 1, "total": [{ "t": 10, "v": 2 }] }
+      ],
+      "etats": [{ "frame": 10, "team_id": 0 }],
+      "retournements": []
     }
   ]
 }

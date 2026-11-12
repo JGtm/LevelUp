@@ -249,7 +249,7 @@ func comptabiliserMainmise(b *bilanLeadShareBackfill, batch persist.LeadShareBat
 // ligneDryRunMainmise rend la ligne --dry-run d'UN match : mesure ou raison, duree, retournements
 // et la part de chaque camp en pourcentage entier. Une raison vide se lit « - ».
 func ligneDryRunMainmise(id string, batch persist.LeadShareBatch) string {
-	var camps []string
+	camps := make([]string, 0, len(batch.Rows))
 	for _, r := range batch.Rows {
 		camps = append(camps, fmt.Sprintf("%d:%d%%", r.Camp, int(100*float64(r.LeadMS)/float64(batch.MeasuredMS)+0.5)))
 	}
@@ -273,7 +273,7 @@ func syntheseMainmise(b bilanLeadShareBackfill, duree time.Duration) string {
 		raison string
 		n      int
 	}
-	var tri []kv
+	tri := make([]kv, 0, len(b.raisons))
 	for r, n := range b.raisons {
 		tri = append(tri, kv{r, n})
 	}

@@ -134,3 +134,57 @@ func TestMainmise_UneSecondePasseRemplaceLaPremiere(t *testing.T) {
 		t.Errorf("vue=%d (attendu 3) brut=%d (attendu 6, append-only)", vue, brut)
 	}
 }
+
+// Un reglement illisible est une REFERENCE manquante, pas un fait du match : le lot est inscrit en
+// echec (donc sans marque) et rien n'est ecrit. Ecrire des passes ici ferait de la panne un refus
+// que la marque rendrait definitif.
+func TestMainmise_ReglementIllisibleEchoueLeLotSansRienEcrire(t *testing.T) {
+	db, d, chemin := lsLot(t, "0000ee06", lsPairSlay, lsDuree)
+	reg := filepath.Join(d.RepoRoot, "config", "titles", titlePkg.DefaultSlug, "mappings", "regulation.toml")
+	if err := os.Remove(reg); err != nil {
+		t.Fatalf("retrait du reglement: %v", err)
+	}
+	b := &bilanDerivations{}
+	lsFamille(t, d, b, chemin, "0000ee06")
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_lead_share WHERE match_id = '0000ee06'`).Scan(&n); err != nil {
+		t.Fatalf("comptage: %v", err)
+	}
+	if n != 0 || !b.aEchoue("0000ee06") {
+		t.Errorf("%d ligne(s) ecrite(s), echec au bilan = %v : attendu 0 et vrai (pas de marque)", n, b.aEchoue("0000ee06"))
+	}
+}
+
+// Un match sans calque de score n'a rien de mesurable, et l'identite du match n'y change rien : refus
+// MESURE ecrit avec sa raison, meme sans segment de lecture ni ligne de registre, donc marque.
+func TestMainmise_SansCalqueDeScoreEstUnRefusMesureSansLireLIdentite(t *testing.T) {
+	db, d, _ := lsLot(t, "0000ee07", lsPairSlay, lsDuree)
+	poserArtefact(t, d.RepoRoot, "0000ee07") // document vide : aucun calque de score
+	chemin := titlePkg.NewPathResolver(d.RepoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, "0000ee07")
+	d.WithRead = nil
+	b := &bilanDerivations{}
+	lsFamille(t, d, b, chemin, "0000ee07")
+	measured, reason, _, _, camps := lsLire(t, db, "0000ee07")
+	if measured || reason != "score_missing" || camps != 0 || b.aEchoue("0000ee07") {
+		t.Errorf("mesure=%v raison=%q camps=%d echec=%v, attendu non mesure score_missing, sans echec",
+			measured, reason, camps, b.aEchoue("0000ee07"))
+	}
+}
+
+// Un camp muet que le roster designe est ecrit comme une ligne de camp a zero MESURE.
+func TestMainmise_UnCampMuetPorteSaLigneAZero(t *testing.T) {
+	db, d, chemin := lsLot(t, "0000ee08", lsPairSlay, lsDuree)
+	doc := lsDocument()
+	doc.MatchID = "0000ee08"
+	doc.ScoreTimeline.Teams = doc.ScoreTimeline.Teams[:1]
+	chemin = vhPoser(t, d.RepoRoot, "0000ee08", *doc)
+	lsFamille(t, d, &bilanDerivations{}, chemin, "0000ee08")
+	var leadMS int64
+	if err := db.QueryRow(`SELECT lead_ms FROM match_lead_share_latest
+		WHERE match_id = '0000ee08' AND row_kind = 'camp' AND camp = 1`).Scan(&leadMS); err != nil {
+		t.Fatalf("ligne du camp muet: %v", err)
+	}
+	if leadMS != 0 {
+		t.Errorf("camp muet : %d ms en tete, attendu 0", leadMS)
+	}
+}

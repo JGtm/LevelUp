@@ -7,12 +7,18 @@
  *
  * Aucun match mesuré : l'état vide en dit la cause (le film ou le score ne permet pas de calculer
  * la Mainmise), jamais une carte de zéros.
+ *
+ * QUI GARDE LA CARTE. Les pages qui la posent la gardent par la capability `replay` (le titre décode le
+ * film) : c'est la seule que le bootstrap sert à la page, la clé fine `film.lead_share` (ce que le
+ * serveur sert) n'y arrive pas. Un titre qui a `replay` sans `film.lead_share` ne sert aucune mesure :
+ * la carte tombe alors sur l'état vide ci-dessous, jamais sur des zéros (test dédié).
  */
 import { useCallback, useMemo, type ReactNode } from 'react'
 
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { LeadSharePoint } from '@/lib/charts/leadShare/model'
 import { useLeadShareText } from '@/lib/charts/leadShare/text'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
 import { buildLeadShareOption, type LeadShareVariant } from './leadShareOption'
@@ -39,13 +45,14 @@ export function LeadShareChart({
   loading,
 }: LeadShareChartProps) {
   const text = useLeadShareText()
+  const locale = useAppShellStore((s) => s.locale)
   const series = useMemo<ChartSeries<LeadSharePoint>[]>(
     () => (points.some((p) => p.share != null) ? [{ key: 'lead-share', datapoints: points }] : []),
     [points],
   )
   const buildOption = useCallback(
-    (s: ChartSeries<LeadSharePoint>[]) => buildLeadShareOption(s[0]?.datapoints ?? [], { text, variant, compact }),
-    [text, variant, compact],
+    (s: ChartSeries<LeadSharePoint>[]) => buildLeadShareOption(s[0]?.datapoints ?? [], { text, locale, variant, compact }),
+    [text, locale, variant, compact],
   )
   return (
     <div className="space-y-2" data-testid="lead-share-chart">

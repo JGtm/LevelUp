@@ -2,12 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { KNOWN_LOCALES } from '@/lib/i18n/locale'
 
-import {
-  averageOfMeasured,
-  formatLeadChanges,
-  formatLeadShare,
-  type LeadSharePoint,
-} from './model'
+import { formatLeadChanges, formatLeadShare } from './model'
 import { LEAD_SHARE_TEXT, type LeadShareText } from './text'
 
 describe('formatLeadShare — pourcentage entier, tiret quand non mesuré', () => {
@@ -24,25 +19,26 @@ describe('formatLeadShare — pourcentage entier, tiret quand non mesuré', () =
   })
 })
 
-describe('formatLeadChanges', () => {
-  const t = LEAD_SHARE_TEXT.fr
-  it('singulier, pluriel, zéro (pluriel) et absent', () => {
-    expect(formatLeadChanges(1, t)).toBe('1 retournement')
-    expect(formatLeadChanges(3, t)).toBe('3 retournements')
-    expect(formatLeadChanges(0, t)).toBe('0 retournements')
-    expect(formatLeadChanges(null, t)).toBe('')
-    expect(formatLeadChanges(undefined, t)).toBe('')
-  })
-})
+describe('formatLeadChanges — la règle de pluriel de la langue', () => {
+  const fr = LEAD_SHARE_TEXT.fr
+  const en = LEAD_SHARE_TEXT.en
 
-describe('averageOfMeasured — un match non mesuré n’entre ni au numérateur ni au dénominateur', () => {
-  const pt = (share: number | null): LeadSharePoint => ({ key: String(share), label: 'x', share })
-  it('moyenne des seules parts mesurées, zéro mesuré compris', () => {
-    expect(averageOfMeasured([pt(0.2), pt(null), pt(0)])).toEqual({ avg: 0.1, n: 2 })
+  it('français : zéro et un sont au singulier, deux et plus au pluriel', () => {
+    expect(formatLeadChanges(0, fr, 'fr')).toBe('0 retournement')
+    expect(formatLeadChanges(1, fr, 'fr')).toBe('1 retournement')
+    expect(formatLeadChanges(2, fr, 'fr')).toBe('2 retournements')
+    expect(formatLeadChanges(3, fr, 'fr')).toBe('3 retournements')
   })
-  it('aucune part mesurée : pas de moyenne', () => {
-    expect(averageOfMeasured([pt(null)])).toEqual({ avg: null, n: 0 })
-    expect(averageOfMeasured([])).toEqual({ avg: null, n: 0 })
+
+  it('anglais : zéro est au pluriel, un au singulier', () => {
+    expect(formatLeadChanges(0, en, 'en')).toBe('0 lead changes')
+    expect(formatLeadChanges(1, en, 'en')).toBe('1 lead change')
+    expect(formatLeadChanges(2, en, 'en')).toBe('2 lead changes')
+  })
+
+  it('absent : rien à dire', () => {
+    expect(formatLeadChanges(null, fr, 'fr')).toBe('')
+    expect(formatLeadChanges(undefined, fr, 'fr')).toBe('')
   })
 })
 
@@ -60,6 +56,19 @@ describe('LEAD_SHARE_TEXT — une langue complète ou refusée', () => {
     for (const locale of KNOWN_LOCALES) {
       for (const key of keys) expect(variables(LEAD_SHARE_TEXT[locale][key]), `${locale}.${key}`).toEqual(variables(LEAD_SHARE_TEXT.fr[key]))
     }
+  })
+
+  it('l’infobulle du tiret est générique : elle ne nomme aucune cause particulière', () => {
+    expect(LEAD_SHARE_TEXT.fr.notMeasured).toBe('Pas de chiffre pour ce match.')
+    expect(LEAD_SHARE_TEXT.en.notMeasured).toBe('No figure for this match.')
+    for (const locale of KNOWN_LOCALES) {
+      expect(LEAD_SHARE_TEXT[locale].notMeasured, locale).not.toMatch(/trop peu|too rarely|avance|moves/i)
+    }
+  })
+
+  it('l’aide garde l’explication des modes à peu de points, comme exemple et non comme cause unique', () => {
+    expect(LEAD_SHARE_TEXT.fr.help).toMatch(/par exemple/)
+    expect(LEAD_SHARE_TEXT.en.help).toMatch(/for example/)
   })
 
   it('le nom anglais n’est pas « dominance » (déjà pris par un badge narratif)', () => {

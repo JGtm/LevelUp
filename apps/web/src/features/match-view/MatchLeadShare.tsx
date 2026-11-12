@@ -22,7 +22,7 @@ interface LeadShareBlockProps extends LeadShareData {
 /** Le bloc de l'en-tête : nom + aide, grand chiffre ou tiret, retournements. */
 export function LeadShareBlock({ leadShare, leadChanges, locale }: LeadShareBlockProps) {
   const text = LEAD_SHARE_TEXT[locale]
-  const changes = formatLeadChanges(leadChanges, text)
+  const changes = formatLeadChanges(leadChanges, text, locale)
   return (
     <div className="flex flex-col items-center" data-testid="match-lead-share">
       <span className="inline-flex items-center gap-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -44,7 +44,7 @@ export function LeadShareBlock({ leadShare, leadChanges, locale }: LeadShareBloc
 /** Le rappel sous « Écart de score » : « Mainmise : 62 % · 3 retournements », ou le tiret. */
 export function LeadShareRecall({ leadShare, leadChanges, locale }: LeadShareBlockProps) {
   const text = LEAD_SHARE_TEXT[locale]
-  const changes = formatLeadChanges(leadChanges, text)
+  const changes = formatLeadChanges(leadChanges, text, locale)
   return (
     <p
       className="px-1 text-xs text-muted-foreground tabular-nums"

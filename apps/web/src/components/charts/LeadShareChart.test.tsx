@@ -32,6 +32,17 @@ describe('LeadShareChart', () => {
     expect(view.queryByTestId('echarts-stub')).toBeNull()
   })
 
+  it('un titre qui décode le film mais ne sert aucune mesure (capability fine absente) : état vide, jamais des zéros', () => {
+    useAppShellStore.setState({ locale: 'fr' })
+    const points: LeadSharePoint[] = [
+      { key: 'a', label: '#1', share: null },
+      { key: 'b', label: '#2', share: undefined as unknown as null },
+    ]
+    const view = render(<LeadShareChart points={points} />)
+    expect(view.getByText(LEAD_SHARE_TEXT.fr.emptyNoMeasure)).toBeTruthy()
+    expect(view.queryByTestId('echarts-stub')).toBeNull()
+  })
+
   it('EN : le nom et l’état vide passent en anglais', () => {
     useAppShellStore.setState({ locale: 'en' })
     const view = render(<LeadShareChart points={[]} />)

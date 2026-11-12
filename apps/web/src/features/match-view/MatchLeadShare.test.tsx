@@ -41,7 +41,7 @@ describe('LeadShareBlock — le bloc de l’en-tête', () => {
   it('une part mesurée à zéro s’affiche « 0 % » : c’est une mesure', () => {
     const view = render(<LeadShareBlock leadShare={0} leadChanges={0} replayAvailable locale="fr" />)
     expect(view.getByTestId('match-lead-share-value').textContent).toBe('0 %')
-    expect(view.getByText('0 retournements')).toBeTruthy()
+    expect(view.getByText('0 retournement')).toBeTruthy()
   })
 })
 

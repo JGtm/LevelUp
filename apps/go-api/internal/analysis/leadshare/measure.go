@@ -47,6 +47,11 @@ type Input struct {
 	Teams []Team
 	// CampCount : camps du roster du film (0 = inconnu), pour compter les camps muets.
 	CampCount int
+	// SilentCampIDs : identifiants des camps du roster sans série publiée, quand l'appelant sait les
+	// nommer. Ils ne sont retenus (Result.SilentIDs) que s'ils sont EXACTEMENT les camps muets : autant
+	// que SilentCamps, aucun doublon, aucun qui porte une série. Sinon la mesure se fait quand même,
+	// mais aucun camp muet n'est nommé.
+	SilentCampIDs []int
 	// FrameIntervalMS : durée d'une image du document ; une frame vaut Frame x FrameIntervalMS.
 	FrameIntervalMS int
 	// Window : la partie jouée, sur le même axe que les frames.
@@ -67,11 +72,16 @@ type Result struct {
 	TieMS int64
 	// MeasuredMS : durée de la fenêtre jouée.
 	MeasuredMS int64
-	// LeadChanges : retournements du match entier (celui de leadChanges côté web).
+	// LeadChanges : retournements de la fenêtre jouée (ChangesWithin) : ceux d'avant le coup d'envoi
+	// ou d'après la fin ne sont pas joués. `leadChanges` côté web (frise, courbe) reste la lecture du
+	// film entier, et ne sert pas ce nombre.
 	LeadChanges int
-	// SilentCamps : camps du roster sans série publiée. Ils concourent à zéro, ne mènent jamais,
-	// et leur identifiant n'est pas connu.
+	// SilentCamps : camps du roster sans série publiée. Ils concourent à zéro et ne mènent jamais.
 	SilentCamps int
+	// SilentIDs : leurs identifiants, triés, quand l'appelant les a dits et qu'ils coïncident avec les
+	// camps muets (cf. Input.SilentCampIDs) ; nil = non nommés. Un camp nommé ici est un camp du match
+	// à part nulle MESURÉE ; un camp qui n'y est pas et n'a pas de série n'est pas lisible.
+	SilentIDs []int
 }
 
 // Measure rend le temps en tête de chaque camp sur la fenêtre jouée, ou la raison du refus.
@@ -94,11 +104,13 @@ func Measure(in Input) (Result, Reason) {
 	if states == nil {
 		return Result{}, ReasonSingleCamp
 	}
+	silent := max(0, in.CampCount-len(in.Teams))
 	res := Result{
 		Camps:       camps,
 		MeasuredMS:  in.Window.EndMS - in.Window.StartMS,
-		LeadChanges: len(Changes(states)),
-		SilentCamps: max(0, in.CampCount-len(in.Teams)),
+		LeadChanges: len(ChangesWithin(states, in.Window, int64(in.FrameIntervalMS))),
+		SilentCamps: silent,
+		SilentIDs:   namedSilent(in.SilentCampIDs, camps, silent),
 	}
 	integrate(&res, states, in)
 	return res, ReasonNone
@@ -121,6 +133,28 @@ func campsOf(teams []Team) ([]CampShare, Reason) {
 	}
 	sort.Slice(camps, func(i, j int) bool { return camps[i].Camp < camps[j].Camp })
 	return camps, ReasonNone
+}
+
+// namedSilent rend les identifiants des camps muets, triés, ou nil quand la liste de l'appelant ne
+// coïncide pas avec eux : autant que de camps muets, sans doublon, sans camp qui porte une série.
+func namedSilent(ids []int, published []CampShare, silent int) []int {
+	if silent == 0 || len(ids) != silent {
+		return nil
+	}
+	taken := make(map[int]struct{}, len(published)+len(ids))
+	for _, c := range published {
+		taken[c.Camp] = struct{}{}
+	}
+	out := make([]int, 0, len(ids))
+	for _, id := range ids {
+		if _, dup := taken[id]; dup {
+			return nil
+		}
+		taken[id] = struct{}{}
+		out = append(out, id)
+	}
+	sort.Ints(out)
+	return out
 }
 
 func anyTick(teams []Team) bool {

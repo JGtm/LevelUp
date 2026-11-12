@@ -7,7 +7,8 @@ package duckdb
 //   - la lecture ne rend que la DERNIÈRE PASSE ENTIÈRE de chaque match, et la fenêtre `_latest` ne
 //     voit que les lignes des matchs demandés ;
 //   - un match non mesuré, ou dont le camp du joueur est inconnu, n'est pas rendu — jamais un zéro ;
-//   - un camp muet (jamais marqué) est une part nulle MESURÉE ;
+//   - un camp muet (jamais marqué) est une part nulle MESURÉE quand la passe le nomme (sa ligne de camp à
+//     zéro) ; un camp absent de la passe ne se lit pas, même quand la passe compte des camps muets ;
 //   - la part est la fraction 0..1 du temps joué ; table absente : games.ErrCapabilityNotSupported.
 
 import (
@@ -52,16 +53,21 @@ func corpusMainmise(t *testing.T, pdb *PlayerDB) {
 	passeMesuree(t, pdb, "m1", "p2", lsrCourant, 600_000, 250_000, 3)
 	// m2 : non mesuré (mode à peu de points).
 	poserPasseMainmise(t, pdb, "m2", "p2", lsrCourant, "match", -1, 0, false, "mode_events", 0, 0, 0, 0)
-	// m3 : un camp muet (le camp 0 du joueur n'a jamais marqué), le camp 1 mène 700 s.
+	// m3 : un camp muet NOMMÉ (le camp 0 du joueur n'a jamais marqué, sa ligne est à zéro), le camp 1 mène 700 s.
 	poserPasseMainmise(t, pdb, "m3", "p2", lsrCourant, "match", -1, 0, true, "", 1_000_000, 300_000, 0, 1)
+	poserPasseMainmise(t, pdb, "m3", "p2", lsrCourant, "camp", 0, 0, true, "", 1_000_000, 300_000, 0, 1)
 	poserPasseMainmise(t, pdb, "m3", "p2", lsrCourant, "camp", 1, 700_000, true, "", 1_000_000, 300_000, 0, 1)
+	// m5 : la passe compte un camp muet mais ne le nomme pas, et le camp du joueur (0) n'a pas de ligne :
+	// ce camp n'est pas prouvé au match, sa part ne se lit pas.
+	poserPasseMainmise(t, pdb, "m5", "p2", lsrCourant, "match", -1, 0, true, "", 1_000_000, 300_000, 0, 1)
+	poserPasseMainmise(t, pdb, "m5", "p2", lsrCourant, "camp", 1, 700_000, true, "", 1_000_000, 300_000, 0, 1)
 	// m4 : mesuré, mais le joueur n'a pas de camp connu.
 	passeMesuree(t, pdb, "m4", "p2", lsrCourant, 500_000, 400_000, 1)
 	// m9 : HORS de la liste demandée, avec autant de lignes que possible.
 	for i := 0; i < 12; i++ {
 		passeMesuree(t, pdb, "m9", fmt.Sprintf("p%d", i), lsrCourant, 1, 1, 0)
 	}
-	for _, m := range []string{"m1", "m2", "m3", "m9"} {
+	for _, m := range []string{"m1", "m2", "m3", "m5", "m9"} {
 		poserParticipant(t, pdb, m, "P", 0)
 	}
 	poserParticipant(t, pdb, "m1", "E", 1)
@@ -72,13 +78,13 @@ func TestLeadShareRepo_DernierePasseEntiereEtBorne(t *testing.T) {
 	corpusMainmise(t, b.pdb)
 	b.carnet.vider()
 
-	got, err := NewLeadShareRepo(b.pdb).LoadLeadShare(context.Background(), []string{"m1", "m2", "m3", "m4"}, "P")
+	got, err := NewLeadShareRepo(b.pdb).LoadLeadShare(context.Background(), []string{"m1", "m2", "m3", "m4", "m5"}, "P")
 	if err != nil {
 		t.Fatalf("LoadLeadShare : %v", err)
 	}
-	// Fenêtre : les lignes des quatre matchs demandés seulement (m1 : 6, m2 : 1, m3 : 2, m4 : 3), que
-	// les 36 lignes de m9 ne doivent pas grossir.
-	exigerFenetresBornees(t, b, "LoadLeadShare", 12, 1)
+	// Fenêtre : les lignes des cinq matchs demandés seulement (m1 : 6, m2 : 1, m3 : 3, m4 : 3, m5 : 2),
+	// que les 36 lignes de m9 ne doivent pas grossir.
+	exigerFenetresBornees(t, b, "LoadLeadShare", 15, 1)
 
 	if s, ok := got["m1"]; !ok || math.Abs(s.Share-0.6) > 1e-9 || s.Changes != 3 {
 		t.Errorf("m1 = %+v (ok=%v), attendu 0,6 et 3 retournements — la passe ancienne a survécu ?", s, ok)
@@ -88,6 +94,9 @@ func TestLeadShareRepo_DernierePasseEntiereEtBorne(t *testing.T) {
 	}
 	if s, ok := got["m3"]; !ok || s.Share != 0 {
 		t.Errorf("m3 = %+v (ok=%v), attendu une part nulle MESURÉE (camp muet)", s, ok)
+	}
+	if _, ok := got["m5"]; ok {
+		t.Error("m5 : un camp absent de la passe est rendu comme un zéro mesuré, alors que rien ne le prouve au match")
 	}
 	if _, ok := got["m4"]; ok {
 		t.Error("m4, sans camp connu pour le joueur, est rendu")

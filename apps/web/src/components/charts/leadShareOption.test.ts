@@ -26,7 +26,7 @@ const POINTS: LeadSharePoint[] = [
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function option(variant: 'bars' | 'line' = 'bars', points = POINTS): Record<string, any> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return buildLeadShareOption(points, { text, variant }) as Record<string, any>
+  return buildLeadShareOption(points, { text, locale: 'fr', variant }) as Record<string, any>
 }
 
 describe('buildLeadShareOption — l’axe est NORMALISÉ', () => {
@@ -80,7 +80,7 @@ describe('buildLeadShareOption — un match non mesuré n’est PAS un zéro', (
   })
 
   it('aucun point : option vide', () => {
-    expect(buildLeadShareOption([], { text, variant: 'bars' })).toEqual({ backgroundColor: expect.anything() })
+    expect(buildLeadShareOption([], { text, locale: 'fr', variant: 'bars' })).toEqual({ backgroundColor: expect.anything() })
   })
 })
 
@@ -94,20 +94,20 @@ describe('buildLeadShareOption — couleurs', () => {
 
 describe('leadShareTooltipLines — l’infobulle', () => {
   it('un match mesuré : part en pourcentage entier et retournements', () => {
-    const lines = leadShareTooltipLines(POINTS[0], text)
+    const lines = leadShareTooltipLines(POINTS[0], text, 'fr')
     expect(lines[0]).toBe('<strong>#1 · Bazaar</strong>')
     expect(lines).toContain('Mainmise : <b>78 %</b>')
     expect(lines).toContain('2 retournements')
   })
 
   it('un match non mesuré : la raison du tiret, aucun pourcentage', () => {
-    const lines = leadShareTooltipLines(POINTS[1], text)
+    const lines = leadShareTooltipLines(POINTS[1], text, 'fr')
     expect(lines).toContain(text.notMeasured)
     expect(lines.join('')).not.toMatch(/%/)
   })
 
   it('échappe les libellés de la donnée', () => {
-    const lines = leadShareTooltipLines({ key: 'x', label: '<img src=x>', share: 0.5, details: ['<b>'] }, text)
+    const lines = leadShareTooltipLines({ key: 'x', label: '<img src=x>', share: 0.5, details: ['<b>'] }, text, 'fr')
     expect(lines.join('')).not.toContain('<img')
     expect(lines.join('')).toContain('&lt;img src=x&gt;')
     expect(lines.join('')).toContain('&lt;b&gt;')

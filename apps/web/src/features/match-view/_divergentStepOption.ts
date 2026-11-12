@@ -97,6 +97,80 @@ function signed(v: number): string {
   return tipNumber(v, 0, true)
 }
 
+/** Les deux encres des moitiés : équipe du joueur au-dessus de zéro, équipe d'en face (ou neutre) dessous. */
+interface HalfInks {
+  pos: string
+  neg: string
+}
+
+/**
+ * Une moitié du graphe : une aire en escalier qui ne garde que sa part de la valeur. Aucune marque
+ * de point (plusieurs centaines de marches en deviendraient illisibles) ; le contour est celui de
+ * l'aire, sans trait propre, donc sans double bord.
+ */
+function halfArea(
+  points: readonly DivergentStepPoint[],
+  name: string,
+  color: string,
+  keep: (v: number) => number,
+) {
+  return {
+    type: 'line' as const,
+    name,
+    step: 'end' as const,
+    showSymbol: false,
+    symbol: 'none',
+    data: points.map((p) => [p.ms, keep(p.value)]),
+    lineStyle: { width: 0 },
+    itemStyle: { color },
+    areaStyle: { color, opacity: 0.75, origin: 0 },
+    z: 3,
+  }
+}
+
+/** L'infobulle à l'instant de la souris : le corps est écrit par l'appelant. */
+function instantTooltip(tc: EChartsThemeColors, tooltipHtml: (ms: number) => string) {
+  return {
+    ...getTooltipBase(tc),
+    trigger: 'axis' as const,
+    axisPointer: { type: 'line' as const, lineStyle: { color: tc.splitLine } },
+    formatter: (params: unknown): string => {
+      const first = (Array.isArray(params) ? params[0] : params) as
+        | { axisValue?: unknown; value?: [number, number] }
+        | undefined
+      const ms = typeof first?.axisValue === 'number' ? first.axisValue : (first?.value?.[0] ?? 0)
+      return tooltipHtml(ms)
+    },
+  }
+}
+
+/** Les deux axes : les temps (M:SS depuis le coup d'envoi) et les valeurs, symétriques autour de zéro. */
+function divergentAxes(
+  tc: EChartsThemeColors,
+  endMs: number,
+  extent: { max: number; interval: number },
+) {
+  return {
+    xAxis: {
+      ...getAxisBase(tc),
+      type: 'value' as const,
+      min: 0,
+      max: endMs,
+      axisLabel: { color: tc.axisLabel, fontSize: 9, formatter: (v: number) => formatClock(v) },
+      splitLine: { show: false },
+    },
+    yAxis: {
+      ...getAxisBase(tc),
+      type: 'value' as const,
+      min: -extent.max,
+      max: extent.max,
+      interval: extent.interval,
+      axisLabel: { color: tc.axisLabel, fontSize: 9, formatter: signed },
+      splitLine: { show: true, lineStyle: { color: tc.splitLine, opacity: 0.35 } },
+    },
+  }
+}
+
 /** buildDivergentStepOption — l'option ECharts des deux graphes divergents (cf. l'en-tête). */
 export function buildDivergentStepOption(
   input: DivergentStepInput,
@@ -105,45 +179,22 @@ export function buildDivergentStepOption(
   const { points, endMs, positiveName, negativeName, tooltipHtml } = input
   // L'appel se fait ICI, dans le constructeur d'option : le rebuild sur changement de palette
   // rafraîchit la teinte.
-  const posColor = teamSeriesColor(true, tc)
-  const negColor = teamSeriesColor(input.negativeNeutral ? null : false, tc)
-  const { max, interval } = symmetricExtent(
+  const inks: HalfInks = {
+    pos: teamSeriesColor(true, tc),
+    neg: teamSeriesColor(input.negativeNeutral ? null : false, tc),
+  }
+  const extent = symmetricExtent(
     points.reduce((m, p) => Math.max(m, Math.abs(p.value)), 0),
     input.minExtent,
   )
-  const area = (name: string, color: string, keep: (v: number) => number) => ({
-    type: 'line' as const,
-    name,
-    step: 'end' as const,
-    // Aucune marque de point : un escalier de plusieurs centaines de marches en deviendrait illisible.
-    showSymbol: false,
-    symbol: 'none',
-    data: points.map((p) => [p.ms, keep(p.value)]),
-    // Le contour est celui de l'aire : pas de trait propre, donc pas de double bord.
-    lineStyle: { width: 0 },
-    itemStyle: { color },
-    areaStyle: { color, opacity: 0.75, origin: 0 },
-    z: 3,
-  })
-  const positive = area(positiveName, posColor, (v) => Math.max(v, 0))
-  const negative = area(negativeName, negColor, (v) => Math.min(v, 0))
+  const positive = halfArea(points, positiveName, inks.pos, (v) => Math.max(v, 0))
+  const negative = halfArea(points, negativeName, inks.neg, (v) => Math.min(v, 0))
   return {
     backgroundColor: CHART_BG,
     // `bottom` laisse la place à la légende posée sous le graphe ; `left` / `right` sont ceux
     // de « Score dans le temps » : les abscisses des graphes empilés tombent à la verticale.
     grid: getGridBase({ bottom: 44, left: 40, right: 16, top: 12 }),
-    tooltip: {
-      ...getTooltipBase(tc),
-      trigger: 'axis',
-      axisPointer: { type: 'line', lineStyle: { color: tc.splitLine } },
-      formatter: (params: unknown): string => {
-        const first = (Array.isArray(params) ? params[0] : params) as
-          | { axisValue?: unknown; value?: [number, number] }
-          | undefined
-        const ms = typeof first?.axisValue === 'number' ? first.axisValue : (first?.value?.[0] ?? 0)
-        return tooltipHtml(ms)
-      },
-    },
+    tooltip: instantTooltip(tc, tooltipHtml),
     legend: {
       ...getLegendBase(tc),
       left: 'center',
@@ -151,27 +202,11 @@ export function buildDivergentStepOption(
       // La légende nomme les deux moitiés ; en masquer une ne dirait rien de plus que le zéro.
       selectedMode: false,
       data: legendEntries([
-        { name: positiveName, color: posColor },
-        { name: negativeName, color: negColor },
+        { name: positiveName, color: inks.pos },
+        { name: negativeName, color: inks.neg },
       ]),
     },
-    xAxis: {
-      ...getAxisBase(tc),
-      type: 'value',
-      min: 0,
-      max: endMs,
-      axisLabel: { color: tc.axisLabel, fontSize: 9, formatter: (v: number) => formatClock(v) },
-      splitLine: { show: false },
-    },
-    yAxis: {
-      ...getAxisBase(tc),
-      type: 'value',
-      min: -max,
-      max,
-      interval,
-      axisLabel: { color: tc.axisLabel, fontSize: 9, formatter: signed },
-      splitLine: { show: true, lineStyle: { color: tc.splitLine, opacity: 0.35 } },
-    },
+    ...divergentAxes(tc, endMs, extent),
     series: [
       {
         ...positive,

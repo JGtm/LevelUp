@@ -21,12 +21,22 @@ func TestShareOfCamp(t *testing.T) {
 
 func TestShareOfCamp_CampAbsent(t *testing.T) {
 	if _, ok := ShareOfCamp(lectureDeTest(), 5); ok {
-		t.Error("un camp absent sans camp muet ne se lit pas : ce n'est pas un zéro")
+		t.Error("un camp absent de la passe ne se lit pas : ce n'est pas un zéro")
 	}
+}
+
+// Un camp muet (jamais marqué) n'a pas de série : la passe le porte comme une ligne de camp à zéro.
+// C'est cette ligne, et elle seule, qui rend sa part nulle MESURÉE ; le seul compte des camps muets
+// ne suffit pas, il validerait n'importe quel camp absent — même un camp qui n'est pas au match.
+func TestShareOfCamp_CampMuetNomme(t *testing.T) {
 	muet := lectureDeTest()
 	muet.SilentCamps = 1
-	if s, ok := ShareOfCamp(muet, 5); !ok || s.Share != 0 {
-		t.Errorf("camp muet : %+v ok=%v, attendu une part nulle MESURÉE", s, ok)
+	muet.LeadMS[2] = 0
+	if s, ok := ShareOfCamp(muet, 2); !ok || s.Share != 0 {
+		t.Errorf("camp muet nommé : %+v ok=%v, attendu une part nulle MESURÉE", s, ok)
+	}
+	if _, ok := ShareOfCamp(muet, 5); ok {
+		t.Error("avec un camp muet, un camp ABSENT de la passe (hors roster) ne rend pas zéro : il ne se lit pas")
 	}
 }
 

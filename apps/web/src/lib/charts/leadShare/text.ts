@@ -16,9 +16,14 @@ import type { Locale } from '@/lib/i18n/locale'
 export interface LeadShareText {
   /** Le nom de la mesure. */
   name: string
-  /** UNE phrase : ce que c'est, et pourquoi certains modes affichent un tiret. */
+  /** Ce que c'est, et un exemple de cause du tiret (un mode à peu de points) : jamais la cause unique. */
   help: string
-  /** Pourquoi un match n'a pas de chiffre (infobulle d'un tiret ou d'une colonne en pointillé). */
+  /**
+   * Infobulle d'un tiret ou d'une colonne en pointillé. Texte GÉNÉRIQUE, vrai quelle que soit la
+   * cause du refus : le serveur refuse aussi pour un film non analysé, un camp non résolu ou une
+   * horloge sans origine, et la raison n'est pas servie à la page. L'explication des modes à peu
+   * de points reste dans `help`.
+   */
   notMeasured: string
   /** `{n}` retournements, au singulier. */
   changesOne: string
@@ -53,9 +58,9 @@ export const LEAD_SHARE_TEXT: Record<Locale, LeadShareText> = {
     name: 'Mainmise',
     help:
       "Part de la durée du match passée en tête du score par l'équipe du joueur, avec le nombre de " +
-      "retournements. Un mode où le score avance trop peu souvent (drapeau, colline, bombe) n'a pas " +
-      "de chiffre : un tiret le remplace.",
-    notMeasured: 'Pas de chiffre pour ce match : le score de ce mode avance trop peu souvent.',
+      "retournements. Un tiret remplace le chiffre quand il ne peut pas être calculé, par " +
+      "exemple dans un mode où le score avance trop peu souvent (drapeau, colline, bombe).",
+    notMeasured: 'Pas de chiffre pour ce match.',
     changesOne: '{n} retournement',
     changesOther: '{n} retournements',
     perMatchTitle: 'Mainmise, match par match',
@@ -74,9 +79,9 @@ export const LEAD_SHARE_TEXT: Record<Locale, LeadShareText> = {
     name: 'Lead share',
     help:
       "Share of the match time the player's team spends alone in the lead of the score, with the " +
-      'number of lead changes. A mode where the score moves too rarely (flag, hill, bomb) has no ' +
-      'figure: a dash replaces it.',
-    notMeasured: 'No figure for this match: the score of this mode moves too rarely.',
+      'number of lead changes. A dash replaces the figure when it cannot be worked out, for ' +
+      'example in a mode where the score moves too rarely (flag, hill, bomb).',
+    notMeasured: 'No figure for this match.',
     changesOne: '{n} lead change',
     changesOther: '{n} lead changes',
     perMatchTitle: 'Lead share, match by match',
