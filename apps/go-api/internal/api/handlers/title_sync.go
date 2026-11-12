@@ -23,7 +23,7 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dbprofiles"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 )
 
 // TitleWatcher est ce dont ce handler a besoin du daemon watcher pour que le
@@ -50,7 +50,7 @@ type PlayerLookup func(titleSlug, playerSlug string) (domain.PlayerSummary, bool
 
 // TitleSyncHandler gère l'activation/pause et la purge d'un titre par joueur.
 type TitleSyncHandler struct {
-	profiles *service.ProfileService
+	profiles port.TitleSyncProfiles
 	// watcher résout le daemon au moment de l'appel (créé après le montage des
 	// routes, cf. daemonGetter du SSO). nil, ou daemon nil/arrêté ⇒ rien à faire :
 	// le daemon reprend les profils au prochain démarrage.
@@ -60,7 +60,7 @@ type TitleSyncHandler struct {
 
 // NewTitleSyncHandler crée un TitleSyncHandler. Ses deux écritures (activation/pause et
 // purge) sont refusées en démo par la garde générale (middleware/demo_read_only.go).
-func NewTitleSyncHandler(profiles *service.ProfileService) *TitleSyncHandler {
+func NewTitleSyncHandler(profiles port.TitleSyncProfiles) *TitleSyncHandler {
 	return &TitleSyncHandler{profiles: profiles}
 }
 

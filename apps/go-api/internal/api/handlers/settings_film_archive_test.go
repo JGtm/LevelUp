@@ -41,7 +41,7 @@ func newArchiveFixture(t *testing.T) archiveFixture {
 	dir := t.TempDir()
 	cfg := &config.AppConfig{RepoRoot: dir, DBProfilesPath: filepath.Join(dir, "db_profiles.json")}
 	store := settings_platform.NewStore(filepath.Join(dir, "app_settings.json"))
-	h := handlers.NewSettingsHandler(cfg, store, jobs.NewStore(filepath.Join(dir, "jobs.json")))
+	h := handlers.NewSettingsHandler(cfg, store, jobs.NewStore(filepath.Join(dir, "jobs.json")), &mockMediaIndexer{})
 	r := chi.NewRouter()
 	h.Mount(r)
 	return archiveFixture{r: r, store: store, archive: titlePkg.NewPathResolver(dir).FilmArchiveDir(), dir: dir}

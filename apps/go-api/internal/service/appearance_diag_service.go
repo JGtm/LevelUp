@@ -18,7 +18,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -27,11 +26,8 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/haloadapter"
+	"levelup/go-api/internal/port"
 )
-
-// ErrProfileNotFound est retourné quand le player_slug ne correspond à aucun
-// profil de db_profiles.json (le handler le mappe en 404).
-var ErrProfileNotFound = errors.New("profil apparence introuvable")
 
 // appearanceDiagFetchBudget borne la durée TOTALE des fetchs live d'un diagnostic
 // (critère du plan : verdict < 10 s). Chaque requête HTTP du client conserve par
@@ -155,7 +151,7 @@ func (s *AppearanceDiagService) resolveProfile(titleSlug, playerSlug string) (*d
 			return &players[i], nil
 		}
 	}
-	return nil, fmt.Errorf("%w: slug=%q", ErrProfileNotFound, playerSlug)
+	return nil, fmt.Errorf("%w: slug=%q", port.ErrAppearanceProfileNotFound, playerSlug)
 }
 
 // loadServed lit best-effort les valeurs servies + le dernier fetch status. Toute

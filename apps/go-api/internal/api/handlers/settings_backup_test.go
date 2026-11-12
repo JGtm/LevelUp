@@ -27,7 +27,7 @@ func newBackupRouter(t *testing.T, backupSched *duckdbbackup.Scheduler) *chi.Mux
 	}
 	settingsStore := settings_platform.NewStore(filepath.Join(dir, "app_settings.json"))
 	jobStore := jobs.NewStore(filepath.Join(dir, "jobs.json"))
-	h := handlers.NewSettingsHandlerWithIndexer(cfg, settingsStore, jobStore, &mockMediaIndexer{})
+	h := handlers.NewSettingsHandler(cfg, settingsStore, jobStore, &mockMediaIndexer{})
 	if backupSched != nil {
 		h = h.WithBackupScheduler(backupSched)
 	}

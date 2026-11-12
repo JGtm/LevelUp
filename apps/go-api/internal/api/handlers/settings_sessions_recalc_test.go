@@ -17,7 +17,7 @@ import (
 
 // recalcRouter monte les routes de réglages avec le faux service de recalcul des sessions.
 func recalcRouter(svc port.SessionsRecalcService) *chi.Mux {
-	h := handlers.NewSettingsHandlerWithIndexer(&config.AppConfig{}, nil, nil, &mockMediaIndexer{}).WithSessionsRecalc(svc)
+	h := handlers.NewSettingsHandler(&config.AppConfig{}, nil, nil, &mockMediaIndexer{}).WithSessionsRecalc(svc)
 	r := chi.NewRouter()
 	h.Mount(r)
 	return r

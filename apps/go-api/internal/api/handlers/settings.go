@@ -36,7 +36,6 @@ import (
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
-	"levelup/go-api/internal/service"
 	"levelup/go-api/pkg/duckdbbackup"
 )
 
@@ -46,25 +45,20 @@ type SettingsHandler struct {
 	settingsStore  *settings_platform.Store
 	sessionsRecalc port.SessionsRecalcService // recalcul des sessions de tous les joueurs (settings_sessions_recalc.go)
 	jobStore       *jobs.Store
-	mediaIndexer   service.MediaIndexer
+	mediaIndexer   port.MediaIndexer
 	backupSched    *duckdbbackup.Scheduler // nil = backup désactivé
 	users          authz.UserLookup        // relecture du rôle admin (settings_admin.go)
 	filmMeter      filmArchiveMeter        // occupation de l'archive des films, en cache (settings_film_archive.go)
 	memory         port.DatabaseMemory     // plafond mémoire des bases, réglable à chaud (settings_data.go) ; nil = non branché
 }
 
-// NewSettingsHandler crée un SettingsHandler avec le DirMediaIndexer par défaut.
-func NewSettingsHandler(cfg *config.AppConfig, settingsStore *settings_platform.Store, jobStore *jobs.Store) *SettingsHandler {
-	return NewSettingsHandlerWithIndexer(cfg, settingsStore, jobStore, service.NewDirMediaIndexer())
-}
-
-// NewSettingsHandlerWithIndexer crée un SettingsHandler avec un MediaIndexer explicite.
-// Utilisé en production et dans les tests (permet l'injection d'un mock).
-func NewSettingsHandlerWithIndexer(
+// NewSettingsHandler crée un SettingsHandler sur l'indexeur de médias donné (en production
+// service.DirMediaIndexer, dans les tests un faux).
+func NewSettingsHandler(
 	cfg *config.AppConfig,
 	settingsStore *settings_platform.Store,
 	jobStore *jobs.Store,
-	indexer service.MediaIndexer,
+	indexer port.MediaIndexer,
 ) *SettingsHandler {
 	return &SettingsHandler{
 		cfg:           cfg,

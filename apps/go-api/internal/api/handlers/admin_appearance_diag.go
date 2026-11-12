@@ -19,7 +19,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 )
 
 // AppearanceDiagRunner exécute le diagnostic apparence d'un joueur (implémenté par
@@ -61,7 +61,7 @@ type appearanceDiagOutput struct {
 func (h *AdminAppearanceDiagHandler) handleGet(ctx context.Context, in *appearanceDiagInput) (*appearanceDiagOutput, error) {
 	resp, err := h.run(ctx, in.PlayerSlug)
 	if err != nil {
-		if errors.Is(err, service.ErrProfileNotFound) {
+		if errors.Is(err, port.ErrAppearanceProfileNotFound) {
 			return nil, humacore.NewError(http.StatusNotFound, "player_not_found",
 				"Joueur suivi introuvable : "+in.PlayerSlug)
 		}

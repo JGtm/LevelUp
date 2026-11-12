@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
@@ -21,20 +22,9 @@ import (
 	"levelup/go-api/internal/transfer"
 )
 
-// Erreurs de la résolution du joueur local ; leur identité fixe le code d'API rendu.
-var (
-	ErrSiteImportUnbound     = errors.New("service: site import not bound")
-	ErrSiteImportNoPlayer    = errors.New("service: no locally tracked player")
-	ErrSiteImportAmbiguous   = errors.New("service: several tracked players, name the gamertag")
-	ErrSiteImportPlayerNoXID = errors.New("service: the tracked player has no resolved Xbox id")
-)
-
-// SiteImportRequest : la demande d'import. Gamertag n'est nécessaire que si plusieurs joueurs sont suivis.
-type SiteImportRequest struct {
-	URL      string
-	Token    string
-	Gamertag string
-}
+// ErrSiteImportUnbound : l'import n'est pas encore relié à la configuration du serveur (Bind) ; la couche
+// HTTP le répond comme toute indisponibilité (503).
+var ErrSiteImportUnbound = errors.New("service: site import not bound")
 
 // SiteImport relie l'import depuis le site aux écritures de l'application.
 type SiteImport struct {
@@ -60,12 +50,18 @@ func (s *SiteImport) Bind(ctx context.Context, wg *sync.WaitGroup, cfg *config.A
 	s.ctx, s.wg, s.cfg, s.caches = ctx, wg, cfg, caches
 }
 
-// Status rend l'état de l'import courant ou du dernier.
-func (s *SiteImport) Status() transfer.Status { return s.runner.Status() }
+// Status rend l'état de l'import courant ou du dernier, en réponse d'API ; Matches est le nombre de matchs du
+// registre ajoutés.
+func (s *SiteImport) Status() domain.SiteImportStatus {
+	st := s.runner.Status()
+	return domain.SiteImportStatus{Phase: string(st.Phase), ErrorCode: st.ErrorCode, Inserted: st.Inserted,
+		Matches: st.Inserted["shared/match_registry"]}
+}
 
-// Start lance l'import en arrière-plan. [ErrSiteImportUnbound] sans liaison, [transfer.ErrImportRunning] si
-// un import est en cours.
-func (s *SiteImport) Start(req SiteImportRequest) error {
+// Start lance l'import en arrière-plan. [ErrSiteImportUnbound] sans liaison, [port.ErrSiteImportRunning] si
+// un import est en cours ; les refus de la résolution du joueur sont [port.port.ErrSiteImportNoPlayer],
+// [port.port.ErrSiteImportAmbiguous] et [port.port.ErrSiteImportPlayerNoXID].
+func (s *SiteImport) Start(req port.SiteImportRequest) error {
 	s.mu.Lock()
 	cfg, ctx, wg, caches := s.cfg, s.ctx, s.wg, s.caches
 	s.mu.Unlock()
@@ -93,7 +89,13 @@ func (s *SiteImport) Start(req SiteImportRequest) error {
 			}
 		},
 	}
-	return s.runner.Start(ctx, wg, in)
+	if err := s.runner.Start(ctx, wg, in); err != nil {
+		if errors.Is(err, transfer.ErrImportRunning) {
+			return fmt.Errorf("%w: %w", port.ErrSiteImportRunning, err)
+		}
+		return err
+	}
+	return nil
 }
 
 // localPlayer résout le joueur suivi qui reçoit l'import : celui qu'on nomme, ou l'unique joueur suivi.
@@ -110,11 +112,11 @@ func localPlayer(cfg *config.AppConfig, gamertag string) (domainPlayer, error) {
 	}
 	switch {
 	case len(matches) == 0:
-		return domainPlayer{}, ErrSiteImportNoPlayer
+		return domainPlayer{}, port.ErrSiteImportNoPlayer
 	case len(matches) > 1:
-		return domainPlayer{}, ErrSiteImportAmbiguous
+		return domainPlayer{}, port.ErrSiteImportAmbiguous
 	case matches[0].XUID == "":
-		return domainPlayer{}, ErrSiteImportPlayerNoXID
+		return domainPlayer{}, port.ErrSiteImportPlayerNoXID
 	}
 	return matches[0], nil
 }

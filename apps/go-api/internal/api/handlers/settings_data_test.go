@@ -29,7 +29,7 @@ func newDataFixture(t *testing.T, caps config.DeploymentCapabilities) (desktopFi
 	cfg := &config.AppConfig{RepoRoot: root, DBProfilesPath: filepath.Join(root, "db_profiles.json")}
 	cfg.Capabilities = caps
 	store := settings_platform.NewStore(filepath.Join(root, "app_settings.json"))
-	h := handlers.NewSettingsHandler(cfg, store, jobs.NewStore(filepath.Join(root, "jobs.json"))).WithDatabaseMemory(duckdb.MemoryLimit{})
+	h := handlers.NewSettingsHandler(cfg, store, jobs.NewStore(filepath.Join(root, "jobs.json")), &mockMediaIndexer{}).WithDatabaseMemory(duckdb.MemoryLimit{})
 	r := chi.NewRouter()
 	h.Mount(r)
 	return desktopFixture{r: r, store: store}, filepath.Join(root, "data")

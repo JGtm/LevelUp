@@ -36,7 +36,7 @@ func newSessionContextRouterWithAccess(t *testing.T, check handlers.PlayerSelect
 	store := session.NewStore(dir, time.Hour, "test-secret-32bytesXXXXXXXXXXX")
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(store, middleware.SecureCookiePolicy{}))
-	handlers.NewSessionHandler(store).WithPlayerAccess(check).Mount(r)
+	handlers.NewSessionHandler(store, fakeAvailableTitles).WithPlayerAccess(check).Mount(r)
 	return r, dir
 }
 

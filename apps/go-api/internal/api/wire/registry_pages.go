@@ -225,7 +225,7 @@ func (r *ServiceRegistry) buildFriendsExtrasResolver(mainPDB *duckdb.PlayerDB) p
 // Le PlayerMatchesRepo est injecte pour que GetTimeseries (POST
 // /engagement/timeseries) puisse honorer le FilterContextInput de la page
 // Timeseries Mock 11, comme POST /pages/timeseries.
-func (r *ServiceRegistry) Engagement(ctx context.Context, slug string) (*service.PlayerEngagementService, error) {
+func (r *ServiceRegistry) Engagement(ctx context.Context, slug string) (port.PlayerEngagementService, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
 		return nil, err

@@ -39,7 +39,7 @@ func memoryFixture(t *testing.T, mem port.DatabaseMemory) desktopFixture {
 	cfg := &config.AppConfig{RepoRoot: root, DBProfilesPath: filepath.Join(root, "db_profiles.json")}
 	cfg.Capabilities = config.DeploymentCapabilities{MemoryLimit: true, EditSettings: true}
 	store := settings_platform.NewStore(filepath.Join(root, "app_settings.json"))
-	h := handlers.NewSettingsHandler(cfg, store, jobs.NewStore(filepath.Join(root, "jobs.json")))
+	h := handlers.NewSettingsHandler(cfg, store, jobs.NewStore(filepath.Join(root, "jobs.json")), &mockMediaIndexer{})
 	if mem != nil {
 		h = h.WithDatabaseMemory(mem)
 	}

@@ -37,16 +37,15 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
-	"levelup/go-api/internal/service"
 )
 
 // EngagementHandler gere les endpoints engagement.
 type EngagementHandler struct {
-	newSvc ServiceFactory[*service.PlayerEngagementService]
+	newSvc ServiceFactory[port.PlayerEngagementService]
 }
 
 // NewEngagementHandler cree un EngagementHandler.
-func NewEngagementHandler(newSvc ServiceFactory[*service.PlayerEngagementService]) *EngagementHandler {
+func NewEngagementHandler(newSvc ServiceFactory[port.PlayerEngagementService]) *EngagementHandler {
 	return &EngagementHandler{newSvc: newSvc}
 }
 
@@ -135,7 +134,7 @@ type engTimeseriesOutput struct {
 type engSquadOutput struct {
 	Body *domain.SquadEngagementSession
 }
-type engRecomputeOutput struct{ Body *service.RecomputeReport }
+type engRecomputeOutput struct{ Body *domain.RecomputeReport }
 
 // ─── Endpoints ───────────────────────────────────────────────────────────────
 
@@ -176,11 +175,11 @@ func (h *EngagementHandler) handleMatchEngagement(ctx context.Context, in *engMa
 			return nil, mapped
 		}
 		switch {
-		case errors.Is(err, service.ErrEngagementMatchNotFound):
+		case errors.Is(err, port.ErrEngagementMatchNotFound):
 			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", "match introuvable pour ce joueur : "+in.MatchID)
-		case errors.Is(err, service.ErrEngagementPvENotSupported):
+		case errors.Is(err, port.ErrEngagementPvENotSupported):
 			return nil, humacore.NewError(http.StatusUnprocessableEntity, "pve_not_supported", "engagement non couvert pour les matchs PvE en v1")
-		case errors.Is(err, service.ErrEngagementInsufficient):
+		case errors.Is(err, port.ErrEngagementInsufficient):
 			return nil, humacore.NewError(http.StatusUnprocessableEntity, "engagement_insufficient", "engagement indisponible pour ce match (trop court ou peu d'action)")
 		case errors.Is(err, port.ErrEngagementUnavailable):
 			return nil, humacore.NewError(http.StatusServiceUnavailable, "engagement_unavailable", "migration EngagementScore non appliquee")
@@ -379,7 +378,7 @@ func (h *EngagementHandler) handleEngagementProfile(ctx context.Context, in *eng
 }
 
 // resolve récupère le service pour le slug courant ou renvoie une erreur Huma 404.
-func (h *EngagementHandler) resolve(ctx context.Context, slug string) (*service.PlayerEngagementService, error) {
+func (h *EngagementHandler) resolve(ctx context.Context, slug string) (port.PlayerEngagementService, error) {
 	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
 		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)

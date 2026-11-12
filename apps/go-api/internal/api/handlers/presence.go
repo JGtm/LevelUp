@@ -10,7 +10,7 @@
 // de confort pour l'utilisateur connecté, sur SES joueurs (ADR 0029).
 // /watcher/status, lui, reste admin : il expose l'état interne du daemon.
 //
-// Handler mince par construction : tout le calcul vit dans service.PresenceService.
+// Handler mince par construction : tout le calcul vit dans le service de présence (port.PresenceService).
 package handlers
 
 import (
@@ -22,16 +22,16 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 )
 
 // PresenceHandler gère GET /api/v1/presence.
 type PresenceHandler struct {
-	svc *service.PresenceService
+	svc port.PresenceService
 }
 
 // NewPresenceHandler crée un PresenceHandler.
-func NewPresenceHandler(svc *service.PresenceService) *PresenceHandler {
+func NewPresenceHandler(svc port.PresenceService) *PresenceHandler {
 	return &PresenceHandler{svc: svc}
 }
 

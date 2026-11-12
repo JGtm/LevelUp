@@ -53,7 +53,7 @@ func TestSettings_InstanceLockToggle_DemotedAdminIs403(t *testing.T) {
 	dir := t.TempDir()
 	users := demotedBoss(t)
 	cfg := &config.AppConfig{AuthMode: "xbox", DBProfilesPath: filepath.Join(dir, "db_profiles.json")}
-	h := handlers.NewSettingsHandlerWithIndexer(cfg, settings_platform.NewStore(filepath.Join(dir, "app_settings.json")),
+	h := handlers.NewSettingsHandler(cfg, settings_platform.NewStore(filepath.Join(dir, "app_settings.json")),
 		jobs.NewStore(filepath.Join(dir, "jobs.json")), &mockMediaIndexer{}).WithUserLookup(users)
 	r := chi.NewRouter()
 	r.Use(withSession(staleAdminSession()))

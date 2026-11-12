@@ -35,7 +35,7 @@ func newSettingsRouter(t *testing.T, demoMode bool) (*chi.Mux, *jobs.Store) {
 	// Mock indexer pour éviter que la goroutine background de PostMediaResetIndex
 	// scanne le disque réel (DirMediaIndexer par défaut) et produise des effets
 	// de bord sur les tests suivants.
-	h := handlers.NewSettingsHandlerWithIndexer(cfg, settingsStore, jobStore, &mockMediaIndexer{})
+	h := handlers.NewSettingsHandler(cfg, settingsStore, jobStore, &mockMediaIndexer{})
 
 	r := chi.NewRouter()
 	h.Mount(r)

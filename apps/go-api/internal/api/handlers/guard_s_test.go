@@ -32,7 +32,7 @@ func TestLotS_GuardedRoutes_AnonymousUnauthorized(t *testing.T) {
 	auth := middleware.RequireAuth(demo, mode)
 	admin := middleware.RequireAdmin(demo, mode, nil)
 
-	newSettings := func(r chi.Router) { NewSettingsHandler(&config.AppConfig{}, nil, nil).Mount(r) }
+	newSettings := func(r chi.Router) { NewSettingsHandler(&config.AppConfig{}, nil, nil, nil).Mount(r) }
 
 	cases := []struct {
 		name   string

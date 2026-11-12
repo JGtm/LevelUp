@@ -29,6 +29,7 @@ import (
 	"levelup/go-api/internal/openspartan"
 	"levelup/go-api/internal/openspartan/mapper"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync"
 )
 
@@ -52,7 +53,7 @@ func newImportScope(owner string, mapOpts mapper.MapOptions, dryRun bool) *impor
 
 // admit dit si le match entre dans le périmètre de l'import, et le retient alors
 // (ses événements marquants suivront). Un refus est compté et journalisé.
-func (sc *importScope) admit(ctx context.Context, pm *openspartan.ParsedMatch, mm *mapper.MappedMatch, result *ImportResult) bool {
+func (sc *importScope) admit(ctx context.Context, pm *openspartan.ParsedMatch, mm *mapper.MappedMatch, result *port.OpenSpartanImportResult) bool {
 	for _, p := range mm.Participants {
 		if p.XUID == sc.owner {
 			sc.matches[pm.MatchID] = true
@@ -82,11 +83,11 @@ func (sc *importScope) thirdPartyAliases(parts []mapper.MatchParticipantRow) []p
 }
 
 // rejectMatchID écarte un match à l'identifiant malformé (compté en erreur d'étape).
-func rejectMatchID(ctx context.Context, matchID string, result *ImportResult) bool {
+func rejectMatchID(ctx context.Context, matchID string, result *port.OpenSpartanImportResult) bool {
 	if title.IsValidMatchID(matchID) {
 		return false
 	}
-	result.Errors = append(result.Errors, ImportError{MatchID: matchID, Stage: "invalid_match_id",
+	result.Errors = append(result.Errors, port.OpenSpartanImportError{MatchID: matchID, Stage: "invalid_match_id",
 		Err: "match id is not a Halo match id"})
 	slog.WarnContext(ctx, "openspartan_import: identifiant de match invalide écarté", "match_id", matchID)
 	return true
@@ -99,11 +100,11 @@ func (s *OpenSpartanImportService) importOwnerAlias(
 	sharedDB *sql.DB,
 	r *openspartan.Reader,
 	scope *importScope,
-	result *ImportResult,
+	result *port.OpenSpartanImportResult,
 ) {
 	rows, err := r.LoadXuidAliases(ctx)
 	if err != nil {
-		result.Errors = append(result.Errors, ImportError{Stage: "load_aliases_for_write", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanImportError{Stage: "load_aliases_for_write", Err: err.Error()})
 		return
 	}
 	for _, a := range rows {
@@ -115,7 +116,7 @@ func (s *OpenSpartanImportService) importOwnerAlias(
 			return
 		}
 		if err := sync.UpsertXUIDAlias(ctx, sharedDB, a.XUID, a.Gamertag); err != nil {
-			result.Errors = append(result.Errors, ImportError{Stage: "upsert_alias", Err: err.Error()})
+			result.Errors = append(result.Errors, port.OpenSpartanImportError{Stage: "upsert_alias", Err: err.Error()})
 			return
 		}
 		result.InsertedAliases++

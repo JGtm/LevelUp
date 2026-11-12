@@ -12,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite/haloadapter"
+	"levelup/go-api/internal/port"
 )
 
 type mockServedReader struct {
@@ -218,13 +219,13 @@ func TestDiagnose_NotSupported_Capability(t *testing.T) {
 	}
 }
 
-// TestDiagnose_ProfileNotFound : slug inconnu → ErrProfileNotFound (→ 404 côté handler).
+// TestDiagnose_ProfileNotFound : slug inconnu → port.ErrAppearanceProfileNotFound (→ 404 côté handler).
 func TestDiagnose_ProfileNotFound(t *testing.T) {
 	deps := baseDeps(t, nil)
 	svc := NewAppearanceDiagService(deps)
 	_, err := svc.Diagnose(context.Background(), "Inconnu", "halo_infinite")
-	if !errors.Is(err, ErrProfileNotFound) {
-		t.Fatalf("erreur = %v (attendu ErrProfileNotFound)", err)
+	if !errors.Is(err, port.ErrAppearanceProfileNotFound) {
+		t.Fatalf("erreur = %v (attendu port.ErrAppearanceProfileNotFound)", err)
 	}
 }
 

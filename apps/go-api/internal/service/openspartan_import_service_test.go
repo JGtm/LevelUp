@@ -13,6 +13,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 	_ "modernc.org/sqlite"
 
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/matchflags"
 )
@@ -216,7 +217,7 @@ func TestOpenSpartanImport_EndToEnd_WritesAllRowFamilies(t *testing.T) {
 	stashDir := filepath.Join(dir, "stash")
 
 	svc := NewOpenSpartanImportServiceForTest(sharedDB)
-	result, err := svc.Import(context.Background(), testOwnerXUID, fixturePath, ImportOptions{
+	result, err := svc.Import(context.Background(), testOwnerXUID, fixturePath, port.OpenSpartanImportOptions{
 		Source: "test", StashDir: stashDir,
 	})
 	if err != nil {
@@ -320,9 +321,9 @@ func TestOpenSpartanImport_RejectsXUIDMismatch(t *testing.T) {
 	sharedDB := setupSharedDB(t)
 
 	svc := NewOpenSpartanImportServiceForTest(sharedDB)
-	_, err := svc.Import(context.Background(), "9999999999999999", fixturePath, ImportOptions{StashDir: dir})
-	if !errors.Is(err, ErrXUIDMismatch) {
-		t.Fatalf("want ErrXUIDMismatch, got %v", err)
+	_, err := svc.Import(context.Background(), "9999999999999999", fixturePath, port.OpenSpartanImportOptions{StashDir: dir})
+	if !errors.Is(err, port.ErrOpenSpartanXUIDMismatch) {
+		t.Fatalf("want port.ErrOpenSpartanXUIDMismatch, got %v", err)
 	}
 	// Nothing should have been written to DuckDB.
 	verifyCount(t, sharedDB, "match_registry", 0)
@@ -334,7 +335,7 @@ func TestOpenSpartanImport_DryRunCountsButDoesNotWrite(t *testing.T) {
 	sharedDB := setupSharedDB(t)
 
 	svc := NewOpenSpartanImportServiceForTest(sharedDB)
-	result, err := svc.Import(context.Background(), testOwnerXUID, fixturePath, ImportOptions{
+	result, err := svc.Import(context.Background(), testOwnerXUID, fixturePath, port.OpenSpartanImportOptions{
 		DryRun: true, StashDir: filepath.Join(dir, "stash"),
 	})
 	if err != nil {
@@ -356,7 +357,7 @@ func TestOpenSpartanImport_OnProgressInvokedPerMatch(t *testing.T) {
 	sharedDB := setupSharedDB(t)
 	svc := NewOpenSpartanImportServiceForTest(sharedDB)
 	calls := 0
-	_, err := svc.Import(context.Background(), testOwnerXUID, fixturePath, ImportOptions{
+	_, err := svc.Import(context.Background(), testOwnerXUID, fixturePath, port.OpenSpartanImportOptions{
 		StashDir: filepath.Join(dir, "stash"),
 		OnProgress: func(parsed, total int) {
 			calls++

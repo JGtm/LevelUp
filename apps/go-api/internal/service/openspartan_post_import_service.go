@@ -5,7 +5,7 @@
 // The post-import service touches the per-player stats.duckdb (creating it
 // via sync.OpenPlayerDB if missing — typical at onboarding time) and reads
 // citation_mappings from metadata.duckdb. Each stage runs best-effort:
-// per-stage failure goes into PostImportResult.Errors without aborting the
+// per-stage failure goes into port.OpenSpartanPostImportResult.Errors without aborting the
 // remaining stages.
 package service
 
@@ -21,6 +21,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/friendstore"
 	settings_platform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync"
 )
 
@@ -35,30 +36,6 @@ type OpenSpartanPostImportService struct {
 	log *slog.Logger
 }
 
-// PostImportResult summarises one post-import recompute run.
-type PostImportResult struct {
-	SessionsTouched     int
-	PerfScoresTouched   int
-	CSRProjected        int // lignes CSR projetées shared.match_csrs → player.match_skill_rank
-	LUSRRecomputed      int // matchs LUSR recalculés (replay complet, inclut les matchs importés)
-	CitationsBackfilled bool
-	Errors              []PostImportError
-}
-
-// PostImportError records a single non-fatal failure during the recompute.
-type PostImportError struct {
-	Stage   string
-	MatchID string // optional — set when the error scopes to a single match
-	Err     string
-}
-
-// PostImportOptions tunes recompute behaviour. Sessions follow the title's session
-// rule (settings.SessionOptions), never a per-import value.
-type PostImportOptions struct {
-	TitleSlug       string // defaults to halo_infinite
-	ForcePerfScores bool   // recompute even if score already exists with the same chain
-}
-
 // NewOpenSpartanPostImportService construit le service. Le handle shared est
 // acquis à la demande via cfg.SharedProvider (commit 15) — pas de handle
 // persistant au boot pour éviter le conflit "different configuration".
@@ -71,15 +48,15 @@ func NewOpenSpartanPostImportService(cfg *config.AppConfig) *OpenSpartanPostImpo
 
 // Run executes the three recompute stages. Returns a non-nil error only on
 // fatal initialisation failures (missing required inputs, player DB cannot
-// be opened); per-stage failures are surfaced via PostImportResult.Errors.
+// be opened); per-stage failures are surfaced via port.OpenSpartanPostImportResult.Errors.
 func (s *OpenSpartanPostImportService) Run(
 	ctx context.Context,
 	xuid, gamertag string,
 	matchIDs []string,
-	opts PostImportOptions,
-) (PostImportResult, error) {
+	opts port.OpenSpartanPostImportOptions,
+) (port.OpenSpartanPostImportResult, error) {
 	if xuid == "" || gamertag == "" {
-		return PostImportResult{}, errors.New("post-import: xuid and gamertag are required")
+		return port.OpenSpartanPostImportResult{}, errors.New("post-import: xuid and gamertag are required")
 	}
 	opts = applyPostImportDefaults(opts)
 	// LE TITRE DES BASES, STAMPÉ UNE FOIS, POUR TOUTES LES ÉTAPES. Toutes les bases
@@ -103,12 +80,12 @@ func (s *OpenSpartanPostImportService) Run(
 
 	playerHandle, err := sync.OpenPlayerDB(playerDBPath)
 	if err != nil {
-		return PostImportResult{}, fmt.Errorf("OpenPlayerDB %s: %w", playerDBPath, err)
+		return port.OpenSpartanPostImportResult{}, fmt.Errorf("OpenPlayerDB %s: %w", playerDBPath, err)
 	}
 	defer playerHandle.Close()
 	playerDB := playerHandle.SQLDb()
 
-	var result PostImportResult
+	var result port.OpenSpartanPostImportResult
 	s.ensureEnrichmentRows(ctx, playerDB, matchIDs, &result)
 	s.recomputeCSR(ctx, playerDB, sharedDBPath, xuid, &result)
 	s.recomputeLUSR(ctx, playerDB, sharedDBPath, xuid, &result)
@@ -138,18 +115,18 @@ func postImportCtx(ctx context.Context, titleSlug string) context.Context {
 // Sprint B1 commit 15 : acquisition du shared writer à la demande via Provider
 // (lecture seule ici, mais on réutilise le même helper que recomputePerfScores).
 func (s *OpenSpartanPostImportService) recomputeCSR(
-	ctx context.Context, playerDB *sql.DB, sharedDBPath, xuid string, result *PostImportResult,
+	ctx context.Context, playerDB *sql.DB, sharedDBPath, xuid string, result *port.OpenSpartanPostImportResult,
 ) {
 	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "openspartan_post_import"), s.cfg.SharedProvider, sharedDBPath)
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: "csr_acquire", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: "csr_acquire", Err: err.Error()})
 		s.log.Warn("post_import_csr_acquire_failed", "xuid", xuid, "err", err)
 		return
 	}
 	defer releaseShared()
 	n, err := sync.BackfillCSRFromShared(ctx, sharedDB, playerDB, xuid)
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: "csr", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: "csr", Err: err.Error()})
 		s.log.Warn("post_import_csr_failed", "xuid", xuid, "err", err)
 		return
 	}
@@ -160,11 +137,11 @@ func (s *OpenSpartanPostImportService) recomputeCSR(
 // intégrer les matchs importés (anciens), que le chemin live incrémental
 // sauterait via le watermark. Pur local, aucun appel API. Best-effort.
 func (s *OpenSpartanPostImportService) recomputeLUSR(
-	ctx context.Context, playerDB *sql.DB, sharedDBPath, xuid string, result *PostImportResult,
+	ctx context.Context, playerDB *sql.DB, sharedDBPath, xuid string, result *port.OpenSpartanPostImportResult,
 ) {
 	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "openspartan_post_import"), s.cfg.SharedProvider, sharedDBPath)
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: "lusr_acquire", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: "lusr_acquire", Err: err.Error()})
 		s.log.Warn("post_import_lusr_acquire_failed", "xuid", xuid, "err", err)
 		return
 	}
@@ -175,7 +152,7 @@ func (s *OpenSpartanPostImportService) recomputeLUSR(
 	n, err := sync.RecomputeLUSRCanonicalForPlayer(ctx, playerDB, sharedDB, xuid,
 		sync.MedalExploitOption(metadataDBPath, xuid))
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: "lusr", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: "lusr", Err: err.Error()})
 		s.log.Warn("post_import_lusr_failed", "xuid", xuid, "err", err)
 		return
 	}
@@ -183,7 +160,7 @@ func (s *OpenSpartanPostImportService) recomputeLUSR(
 }
 
 // stagePrimeEnrichment : libellé de l'étape « prime enrichment » dans les
-// PostImportError (constante pour éviter la répétition du littéral — goconst).
+// port.OpenSpartanPostImportError (constante pour éviter la répétition du littéral — goconst).
 const stagePrimeEnrichment = "prime_enrichment"
 
 // ensureEnrichmentRows primes player_match_enrichment with one baseline row
@@ -194,7 +171,7 @@ const stagePrimeEnrichment = "prime_enrichment"
 // Idempotence via pré-filtre delta : seuls les matchs sans aucune row PME reçoivent
 // la baseline (évite les doublons stage='live' sur ré-import).
 func (s *OpenSpartanPostImportService) ensureEnrichmentRows(
-	ctx context.Context, playerDB *sql.DB, matchIDs []string, result *PostImportResult,
+	ctx context.Context, playerDB *sql.DB, matchIDs []string, result *port.OpenSpartanPostImportResult,
 ) {
 	if len(matchIDs) == 0 {
 		return
@@ -202,7 +179,7 @@ func (s *OpenSpartanPostImportService) ensureEnrichmentRows(
 	existing := make(map[string]struct{}, len(matchIDs))
 	rows, err := playerDB.QueryContext(ctx, `SELECT match_id FROM player_match_enrichment_latest`)
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: stagePrimeEnrichment, Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: stagePrimeEnrichment, Err: err.Error()})
 		s.log.Warn("post_import_prime_enrichment_load_failed", "err", err)
 		return
 	}
@@ -217,7 +194,7 @@ func (s *OpenSpartanPostImportService) ensureEnrichmentRows(
 	stmt, err := playerDB.PrepareContext(ctx,
 		`INSERT INTO player_match_enrichment (match_id, stage) VALUES (?, 'live')`)
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: stagePrimeEnrichment, Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: stagePrimeEnrichment, Err: err.Error()})
 		s.log.Warn("post_import_prime_enrichment_prepare_failed", "err", err)
 		return
 	}
@@ -227,7 +204,7 @@ func (s *OpenSpartanPostImportService) ensureEnrichmentRows(
 			continue
 		}
 		if _, err := stmt.ExecContext(ctx, id); err != nil {
-			result.Errors = append(result.Errors, PostImportError{Stage: stagePrimeEnrichment, MatchID: id, Err: err.Error()})
+			result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: stagePrimeEnrichment, MatchID: id, Err: err.Error()})
 			s.log.Warn("post_import_prime_enrichment_exec_failed", "match_id", id, "err", err)
 			return
 		}
@@ -241,8 +218,8 @@ func (s *OpenSpartanPostImportService) ensureEnrichmentRows(
 func (s *OpenSpartanPostImportService) recomputeSessions(
 	ctx context.Context,
 	playerDBPath, sharedDBPath, xuid string,
-	opts PostImportOptions,
-	result *PostImportResult,
+	opts port.OpenSpartanPostImportOptions,
+	result *port.OpenSpartanPostImportResult,
 ) {
 	sessionOpts := settings_platform.SessionOptionsForConfig(ctx, s.cfg, opts.TitleSlug)
 	friends, ferr := friendstore.NewFriendStore(s.cfg.RuntimePaths().PlayerFriendsPath()).Get(xuid)
@@ -253,7 +230,7 @@ func (s *OpenSpartanPostImportService) recomputeSessions(
 		sessionOpts, friends,
 	)
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: scopeSessions, Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: scopeSessions, Err: err.Error()})
 		s.log.Warn("post_import_sessions_failed", "xuid", xuid, "err", err)
 		return
 	}
@@ -266,18 +243,18 @@ func (s *OpenSpartanPostImportService) recomputeSessions(
 //
 // Sprint B1 commit 15 : acquisition du shared writer à la demande via Provider.
 func (s *OpenSpartanPostImportService) recomputePerfScores(
-	ctx context.Context, playerDB *sql.DB, sharedDBPath, xuid string, force bool, result *PostImportResult,
+	ctx context.Context, playerDB *sql.DB, sharedDBPath, xuid string, force bool, result *port.OpenSpartanPostImportResult,
 ) {
 	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "openspartan_post_import"), s.cfg.SharedProvider, sharedDBPath)
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: "perf_scores_acquire", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: "perf_scores_acquire", Err: err.Error()})
 		s.log.Warn("post_import_perf_scores_acquire_failed", "xuid", xuid, "err", err)
 		return
 	}
 	defer releaseShared()
 	n, err := sync.BatchComputePerformanceScores(ctx, playerDB, sharedDB, xuid, force)
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: "perf_scores", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: "perf_scores", Err: err.Error()})
 		s.log.Warn("post_import_perf_scores_failed", "xuid", xuid, "err", err)
 		return
 	}
@@ -304,21 +281,21 @@ func (s *OpenSpartanPostImportService) recomputeCitations(
 	ctx context.Context,
 	in citationRecomputeInputs,
 	playerDB *sql.DB,
-	result *PostImportResult,
+	result *port.OpenSpartanPostImportResult,
 ) {
 	if len(in.matchIDs) == 0 {
 		return
 	}
 	metaSQL, releaseMeta, err := sync.AcquireMetadataWriterStandalone(ctx, in.metadataDBPath)
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: "open_metadata", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: "open_metadata", Err: err.Error()})
 		s.log.Warn("post_import_metadata_unavailable", "err", err)
 		return
 	}
 	defer releaseMeta()
 	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "openspartan_post_import"), s.cfg.SharedProvider, in.sharedDBPath)
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: "citations_acquire", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: "citations_acquire", Err: err.Error()})
 		s.log.Warn("post_import_citations_acquire_failed", "xuid", in.xuid, "err", err)
 		return
 	}
@@ -326,14 +303,14 @@ func (s *OpenSpartanPostImportService) recomputeCitations(
 	pve := sync.OpenPveReadForCitations(ctx, in.pveDBPath)
 	defer pve.Close()
 	if err := sync.BackfillMatchCitations(ctx, metaSQL, sharedDB, playerDB, pve, in.xuid, in.matchIDs); err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: "citations", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: "citations", Err: err.Error()})
 		s.log.Warn("post_import_citations_failed", "xuid", in.xuid, "err", err)
 		return
 	}
 	result.CitationsBackfilled = true
 }
 
-func applyPostImportDefaults(opts PostImportOptions) PostImportOptions {
+func applyPostImportDefaults(opts port.OpenSpartanPostImportOptions) port.OpenSpartanPostImportOptions {
 	if opts.TitleSlug == "" {
 		opts.TitleSlug = titlePkg.DefaultSlug
 	}

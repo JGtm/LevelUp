@@ -347,3 +347,11 @@ type EngagementCoefficient struct {
 	// freshness (recalcul si > N jours d'inactivite).
 	LastUpdated time.Time `json:"last_updated"`
 }
+
+// RecomputeReport est le resultat d'un recalcul admin des coefficients d'engagement d'un joueur
+// (POST /engagement/recompute).
+type RecomputeReport struct {
+	ModesUpdated    []string `json:"modes_updated"`
+	NCoefsPersisted int      `json:"n_coefs_persisted"`
+	ModesSkipped    []string `json:"modes_skipped,omitempty"` // ex. insufficient_history
+}

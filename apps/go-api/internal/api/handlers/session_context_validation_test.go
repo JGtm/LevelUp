@@ -31,7 +31,7 @@ func newSessionContextRouterWithDir(t *testing.T) (*chi.Mux, string) {
 	store := session.NewStore(dir, time.Hour, "test-secret-32bytesXXXXXXXXXXX")
 	r := chi.NewRouter()
 	r.Use(middleware.WithSession(store, middleware.SecureCookiePolicy{}))
-	handlers.NewSessionHandler(store).Mount(r)
+	handlers.NewSessionHandler(store, fakeAvailableTitles).Mount(r)
 	return r, dir
 }
 

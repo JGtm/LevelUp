@@ -67,3 +67,32 @@ func TestMediaAudienceResolver(t *testing.T) {
 		})
 	}
 }
+
+// TestMediaAudienceService_Erreurs : une panne de lecture des profils ou des groupes remonte (le
+// handler se replie alors sur la page seule et le journalise) ; une page sans profil suivi ne montre
+// que ses médias, sans lire les groupes.
+func TestMediaAudienceService_Erreurs(t *testing.T) {
+	players := []domain.PlayerSummary{{PlayerSlug: "moi", Gamertag: "Moi", XUID: "3"}}
+	okPlayers := func(string) ([]domain.PlayerSummary, error) { return players, nil }
+	okGroups := func(string) (map[string]bool, error) { return nil, nil }
+	boom := errors.New("groups.json illisible")
+	sess := &domain.SessionData{LinkedHaloIdentity: &domain.HaloIdentity{XUID: "3"}}
+	ctx := context.Background()
+
+	_, err := NewMediaAudienceService(true,
+		func(string) ([]domain.PlayerSummary, error) { return nil, boom }, okGroups, noAccounts{}).Resolve(ctx, sess, "moi")
+	if !errors.Is(err, boom) {
+		t.Errorf("profils illisibles : %v, attendu l'erreur de la source", err)
+	}
+	_, err = NewMediaAudienceService(true, okPlayers,
+		func(string) (map[string]bool, error) { return nil, boom }, noAccounts{}).Resolve(ctx, sess, "moi")
+	if !errors.Is(err, boom) {
+		t.Errorf("groupes de la page illisibles : %v, attendu l'erreur de la source", err)
+	}
+	calls := 0
+	a, err := NewMediaAudienceService(true, okPlayers,
+		func(string) (map[string]bool, error) { calls++; return nil, nil }, noAccounts{}).Resolve(ctx, sess, "inconnu")
+	if err != nil || !a.Allows("inconnu") || a.Allows("moi") || calls != 0 {
+		t.Errorf("page sans profil : audience %v, erreur %v, %d lecture(s) de groupes ; attendu la page seule sans lecture", a.Authors(), err, calls)
+	}
+}

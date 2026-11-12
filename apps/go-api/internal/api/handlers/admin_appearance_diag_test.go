@@ -1,6 +1,6 @@
 // Package handlers — admin_appearance_diag_test.go : contrats HTTP du diagnostic
 // apparence (Lot F, F5). 200 nominal, 404 slug inconnu (sentinel
-// service.ErrProfileNotFound). Montage Huma sous /admin, comme la prod.
+// port.ErrAppearanceProfileNotFound). Montage Huma sous /admin, comme la prod.
 package handlers
 
 import (
@@ -14,7 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/port"
 )
 
 func serveAppearanceDiag(h *AdminAppearanceDiagHandler, req *http.Request) *httptest.ResponseRecorder {
@@ -56,7 +56,7 @@ func TestAdminAppearanceDiag_OK(t *testing.T) {
 // TestAdminAppearanceDiag_NotFound : sentinel ErrProfileNotFound → 404.
 func TestAdminAppearanceDiag_NotFound(t *testing.T) {
 	h := NewAdminAppearanceDiagHandler(func(_ context.Context, slug string) (domain.AppearanceDiagnosisResponse, error) {
-		return domain.AppearanceDiagnosisResponse{}, fmt.Errorf("%w: slug=%q", service.ErrProfileNotFound, slug)
+		return domain.AppearanceDiagnosisResponse{}, fmt.Errorf("%w: slug=%q", port.ErrAppearanceProfileNotFound, slug)
 	})
 	rec := serveAppearanceDiag(h, httptest.NewRequest(http.MethodGet, "/admin/diag/appearance/Inconnu", nil))
 	if rec.Code != http.StatusNotFound {

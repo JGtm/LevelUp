@@ -16,7 +16,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -30,61 +29,9 @@ import (
 	"levelup/go-api/internal/openspartan/mapper"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync"
 )
-
-var (
-	// ErrXUIDMismatch is returned when the OpenSpartan database's detected
-	// owner XUID does not match the caller's session XUID. Critical for
-	// security: prevents a user from importing another user's database.
-	ErrXUIDMismatch = errors.New("openspartan import: owner xuid does not match session")
-
-	// ErrLowConfidence is returned when the owner detection cannot reach at
-	// least medium confidence. The caller can decide whether to retry with
-	// an explicit hint or surface the error to the user.
-	ErrLowConfidence = errors.New("openspartan import: owner detection confidence too low")
-)
-
-// ImportOptions tunes the import behaviour.
-type ImportOptions struct {
-	// DryRun, when true, counts what would be inserted but performs no writes.
-	DryRun bool
-	// Source labels the import in match_registry.first_sync_by.
-	// Defaults to "openspartan_import" when empty.
-	Source string
-	// StashDir is the root directory under which the Friends JSON stash is
-	// written. Defaults to "./data/players" when empty. The actual file path
-	// is `<StashDir>/<ownerXUID>/stash/openspartan_friends.json`.
-	StashDir string
-	// OnProgress, when non-nil, is invoked after each parsed match with
-	// (parsed, total) counts. Intended for job system integration.
-	OnProgress func(parsed, total int)
-}
-
-// ImportResult summarises one import run.
-type ImportResult struct {
-	DetectedOwnerXUID    string
-	Confidence           openspartan.Confidence
-	TotalMatches         int
-	InsertedMatches      int
-	InsertedMatchIDs     []string // populated as registry inserts succeed; consumed by post-import recompute
-	InsertedParticipants int
-	InsertedMedals       int
-	InsertedHighlights   int
-	InsertedCSRs         int // shared.match_csrs écrits depuis RankRecap (par-match CSR)
-	InsertedAliases      int // alias de l'importeur mis à jour + alias de tiers proposés
-	// SkippedForeignMatches : matchs du fichier où l'importeur ne joue pas (non écrits).
-	SkippedForeignMatches int
-	StashedFriends        int
-	Errors                []ImportError
-}
-
-// ImportError records a single non-fatal failure during the import.
-type ImportError struct {
-	MatchID string
-	Stage   string
-	Err     string
-}
 
 // OpenSpartanImportService orchestrates one import from an OpenSpartan
 // SQLite database into the shared DuckDB.
@@ -164,10 +111,10 @@ func (s *OpenSpartanImportService) Import(
 	ctx context.Context,
 	expectedOwnerXUID string,
 	dbPath string,
-	opts ImportOptions,
-) (ImportResult, error) {
+	opts port.OpenSpartanImportOptions,
+) (port.OpenSpartanImportResult, error) {
 	opts = withDefaults(opts)
-	var result ImportResult
+	var result port.OpenSpartanImportResult
 
 	s.log.Info("openspartan_import_started",
 		"expected_xuid", expectedOwnerXUID, "db_path", dbPath, "dry_run", opts.DryRun)
@@ -246,7 +193,7 @@ func (s *OpenSpartanImportService) validateOwner(
 	ctx context.Context,
 	r *openspartan.Reader,
 	dbPath, expectedXUID string,
-	result *ImportResult,
+	result *port.OpenSpartanImportResult,
 ) error {
 	detected, conf, err := r.DetectOwner(ctx, dbPath)
 	if err != nil {
@@ -256,10 +203,10 @@ func (s *OpenSpartanImportService) validateOwner(
 	result.Confidence = conf
 
 	if conf == openspartan.ConfidenceNone || conf == openspartan.ConfidenceLow {
-		return fmt.Errorf("%w: %s", ErrLowConfidence, conf)
+		return fmt.Errorf("%w: %s", port.ErrOpenSpartanLowConfidence, conf)
 	}
 	if detected != expectedXUID {
-		return fmt.Errorf("%w: detected=%s expected=%s", ErrXUIDMismatch, detected, expectedXUID)
+		return fmt.Errorf("%w: detected=%s expected=%s", port.ErrOpenSpartanXUIDMismatch, detected, expectedXUID)
 	}
 	return nil
 }
@@ -275,13 +222,13 @@ func (s *OpenSpartanImportService) importMatches(
 	sharedDB *sql.DB,
 	r *openspartan.Reader,
 	scope *importScope,
-	opts ImportOptions,
-	result *ImportResult,
+	opts port.OpenSpartanImportOptions,
+	result *port.OpenSpartanImportResult,
 ) error {
 	parsed := 0
 	for pm, err := range r.Matches(ctx) {
 		if err != nil {
-			result.Errors = append(result.Errors, ImportError{Stage: "parse_match", Err: err.Error()})
+			result.Errors = append(result.Errors, port.OpenSpartanImportError{Stage: "parse_match", Err: err.Error()})
 			continue
 		}
 		parsed++
@@ -302,14 +249,14 @@ func (s *OpenSpartanImportService) writeOneMatch(
 	sharedDB *sql.DB,
 	pm *openspartan.ParsedMatch,
 	scope *importScope,
-	result *ImportResult,
+	result *port.OpenSpartanImportResult,
 ) {
 	if rejectMatchID(ctx, pm.MatchID, result) {
 		return
 	}
 	mm, err := mapper.MapMatch(pm, scope.mapOpts)
 	if err != nil {
-		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "map", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanImportError{MatchID: pm.MatchID, Stage: "map", Err: err.Error()})
 		return
 	}
 	if !scope.admit(ctx, pm, &mm, result) {
@@ -355,7 +302,7 @@ func (s *OpenSpartanImportService) writeOneMatch(
 		builder.AddXUIDAliases(thirdPartyAliases)
 	}
 	if err := persist.NewSharedPersister(sharedDB).Persist(ctx, builder.Build()); err != nil {
-		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "persist_match", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanImportError{MatchID: pm.MatchID, Stage: "persist_match", Err: err.Error()})
 		return
 	}
 	result.InsertedMatches++
@@ -374,14 +321,14 @@ func (s *OpenSpartanImportService) writeOneMatch(
 // Le post-import reprojette ensuite ces lignes vers player.match_skill_rank (lu par
 // l'UI). Best-effort : une erreur de parse est accumulée sans interrompre l'import.
 func (s *OpenSpartanImportService) extractMatchCSRRows(
-	pm *openspartan.ParsedMatch, reg *sync.MatchRegistryRow, result *ImportResult,
+	pm *openspartan.ParsedMatch, reg *sync.MatchRegistryRow, result *port.OpenSpartanImportResult,
 ) ([]sync.SharedMatchCSRRow, bool) {
 	if len(pm.RawPlayerStats) == 0 {
 		return nil, false
 	}
 	skillMap, err := sync.ParseMatchSkillResponseJSON(pm.RawPlayerStats)
 	if err != nil {
-		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "parse_csr", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanImportError{MatchID: pm.MatchID, Stage: "parse_csr", Err: err.Error()})
 		return nil, false
 	}
 	return sync.ExtractAllSharedCSRRows(reg, skillMap), sync.AnySkillShowsRankedMatch(skillMap)
@@ -398,11 +345,11 @@ func (s *OpenSpartanImportService) importHighlights(
 	sharedDB *sql.DB,
 	r *openspartan.Reader,
 	scope *importScope,
-	result *ImportResult,
+	result *port.OpenSpartanImportResult,
 ) error {
 	for hl, err := range r.Highlights(ctx) {
 		if err != nil {
-			result.Errors = append(result.Errors, ImportError{Stage: "parse_highlight", Err: err.Error()})
+			result.Errors = append(result.Errors, port.OpenSpartanImportError{Stage: "parse_highlight", Err: err.Error()})
 			continue
 		}
 		if !scope.matches[hl.MatchID] {
@@ -410,7 +357,7 @@ func (s *OpenSpartanImportService) importHighlights(
 		}
 		row, err := mapper.MapHighlight(hl.MatchID, hl.RawJSON)
 		if err != nil {
-			result.Errors = append(result.Errors, ImportError{MatchID: hl.MatchID, Stage: "map_highlight", Err: err.Error()})
+			result.Errors = append(result.Errors, port.OpenSpartanImportError{MatchID: hl.MatchID, Stage: "map_highlight", Err: err.Error()})
 			continue
 		}
 		if scope.dryRun {
@@ -420,7 +367,7 @@ func (s *OpenSpartanImportService) importHighlights(
 		event := toAnalysisEvent(row)
 		n, err := sync.InsertHighlightEvents(ctx, sharedDB, row.MatchID, []highlightevent.HighlightEvent{event})
 		if err != nil {
-			result.Errors = append(result.Errors, ImportError{MatchID: hl.MatchID, Stage: "insert_highlight", Err: err.Error()})
+			result.Errors = append(result.Errors, port.OpenSpartanImportError{MatchID: hl.MatchID, Stage: "insert_highlight", Err: err.Error()})
 			continue
 		}
 		result.InsertedHighlights += n
@@ -435,12 +382,12 @@ func (s *OpenSpartanImportService) stashFriends(
 	ctx context.Context,
 	r *openspartan.Reader,
 	ownerXUID string,
-	opts ImportOptions,
-	result *ImportResult,
+	opts port.OpenSpartanImportOptions,
+	result *port.OpenSpartanImportResult,
 ) {
 	friends, err := r.LoadFriends(ctx)
 	if err != nil {
-		result.Errors = append(result.Errors, ImportError{Stage: "load_friends", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanImportError{Stage: "load_friends", Err: err.Error()})
 		return
 	}
 	if len(friends) == 0 {
@@ -451,7 +398,7 @@ func (s *OpenSpartanImportService) stashFriends(
 		return
 	}
 	if err := writeFriendsStash(opts.StashDir, ownerXUID, friends); err != nil {
-		result.Errors = append(result.Errors, ImportError{Stage: "stash_friends", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanImportError{Stage: "stash_friends", Err: err.Error()})
 		return
 	}
 	result.StashedFriends = len(friends)
@@ -475,7 +422,7 @@ func writeFriendsStash(stashDir, ownerXUID string, friends []openspartan.FriendR
 	return os.WriteFile(file, data, 0o644)
 }
 
-func withDefaults(opts ImportOptions) ImportOptions {
+func withDefaults(opts port.OpenSpartanImportOptions) port.OpenSpartanImportOptions {
 	if opts.Source == "" {
 		opts.Source = "openspartan_import"
 	}

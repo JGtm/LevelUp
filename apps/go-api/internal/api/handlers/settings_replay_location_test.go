@@ -33,7 +33,7 @@ func newSettingsRouterEnv(t *testing.T, environment string) *chi.Mux {
 	}
 	h := handlers.NewSettingsHandler(cfg,
 		settings_platform.NewStore(filepath.Join(dir, "app_settings.json")),
-		jobs.NewStore(filepath.Join(dir, "jobs.json")))
+		jobs.NewStore(filepath.Join(dir, "jobs.json")), &mockMediaIndexer{})
 	r := chi.NewRouter()
 	h.Mount(r)
 	return r

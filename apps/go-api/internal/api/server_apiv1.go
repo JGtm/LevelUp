@@ -345,7 +345,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// Sprint 14 : contexte de session
 	// Le joueur courant ne désigne qu'un profil que la session peut LIRE (sien,
 	// d'un co-membre de groupe, tout profil pour un admin) : sinon 403.
-	sessionHandler := handlers.NewSessionHandler(sessionStore).
+	sessionHandler := handlers.NewSessionHandler(sessionStore, service.BuildAvailableTitles).
 		WithPlayerAccess(func(ctx context.Context, slug string) bool {
 			granted, _ := playerAccess.Allows(ctx, middleware.GetSession(ctx), slug, false)
 			return granted
@@ -626,7 +626,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// à l'arrêt (avant duckdb.CloseAll).
 	syncJobs = syncJobs.WithServerContext(serverCtx)
 
-	settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore).
+	settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore, service.NewDirMediaIndexer()).
 		WithSessionsRecalc(syncJobs).
 		WithDatabaseMemory(platform_duckdb.MemoryLimit{}).
 		WithBackupScheduler(backupScheduler).

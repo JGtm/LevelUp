@@ -16,13 +16,6 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// RecomputeReport est le resultat d'un appel admin a RecomputeCoefficients.
-type RecomputeReport struct {
-	ModesUpdated    []string `json:"modes_updated"`
-	NCoefsPersisted int      `json:"n_coefs_persisted"`
-	ModesSkipped    []string `json:"modes_skipped,omitempty"` // ex. insufficient_history
-}
-
 // engagementCoefModesService liste les categories de mode prises en charge par
 // l'admin RecomputeCoefficients. Source unique domain.EngagementCoefModes (K1n) —
 // meme liste que sync.engagementCoefModes.
@@ -37,11 +30,11 @@ var engagementCoefModesService = domain.EngagementCoefModes()
 //
 // Les modes "insufficient_history" ne sont pas une erreur : on les liste dans
 // ModesSkipped et le caller decide de l'UX (ex. afficher "<10 matchs sur ce mode").
-func (s *PlayerEngagementService) RecomputeCoefficients(ctx context.Context) (*RecomputeReport, error) {
+func (s *PlayerEngagementService) RecomputeCoefficients(ctx context.Context) (*domain.RecomputeReport, error) {
 	if s.xuid == "" {
 		return nil, errors.New("PlayerEngagementService.RecomputeCoefficients: xuid required")
 	}
-	report := &RecomputeReport{
+	report := &domain.RecomputeReport{
 		ModesUpdated: make([]string, 0, len(engagementCoefModesService)),
 		ModesSkipped: make([]string, 0),
 	}
@@ -61,7 +54,7 @@ func (s *PlayerEngagementService) RecomputeCoefficients(ctx context.Context) (*R
 func (s *PlayerEngagementService) recomputeAdminMode(
 	ctx context.Context,
 	mode string,
-	report *RecomputeReport,
+	report *domain.RecomputeReport,
 ) error {
 	samples, err := s.repo.LoadRatioSamples(ctx, s.xuid, mode, temporal.DefaultRatioSampleLimit)
 	if err != nil {

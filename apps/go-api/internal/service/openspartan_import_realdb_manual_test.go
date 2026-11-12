@@ -11,6 +11,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/openspartan"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync"
 )
 
@@ -109,7 +110,7 @@ func TestRealDB_FullPipeline(t *testing.T) {
 
 	// ─── STAGE 1 — IMPORT ────────────────────────────────────────────────────
 	t.Log("=== STAGE 1: Import (raw rows into shared DuckDB) ===")
-	importResult, err := importSvc.Import(context.Background(), owner, path, ImportOptions{
+	importResult, err := importSvc.Import(context.Background(), owner, path, port.OpenSpartanImportOptions{
 		Source:   "smoke_test_full_pipeline",
 		StashDir: filepath.Join(tempDir, "players"),
 	})
@@ -131,7 +132,7 @@ func TestRealDB_FullPipeline(t *testing.T) {
 
 	// ─── STAGE 2 — POST-IMPORT RECOMPUTE ─────────────────────────────────────
 	t.Log("=== STAGE 2: Post-import recompute (sessions / perf_score / citations) ===")
-	postResult, err := postImportSvc.Run(context.Background(), owner, gamertag, importResult.InsertedMatchIDs, PostImportOptions{})
+	postResult, err := postImportSvc.Run(context.Background(), owner, gamertag, importResult.InsertedMatchIDs, port.OpenSpartanPostImportOptions{})
 	if err != nil {
 		t.Fatalf("PostImport.Run: %v", err)
 	}
@@ -226,7 +227,7 @@ func TestRealDB_OpenSpartanImport_DryRun(t *testing.T) {
 
 	// Run the service in DryRun mode — sharedDB is unused (no writes).
 	svc := NewOpenSpartanImportServiceForTest(nil)
-	result, err := svc.Import(context.Background(), owner, path, ImportOptions{
+	result, err := svc.Import(context.Background(), owner, path, port.OpenSpartanImportOptions{
 		DryRun:   true,
 		Source:   "dry_run",
 		StashDir: t.TempDir(), // would be ignored but kept consistent
@@ -282,7 +283,7 @@ func TestRealDB_OpenSpartanImport(t *testing.T) {
 	dir := t.TempDir()
 	svc := NewOpenSpartanImportServiceForTest(sharedDB)
 
-	result, err := svc.Import(context.Background(), owner, path, ImportOptions{
+	result, err := svc.Import(context.Background(), owner, path, port.OpenSpartanImportOptions{
 		Source:   "smoke_test",
 		StashDir: filepath.Join(dir, "players"),
 	})

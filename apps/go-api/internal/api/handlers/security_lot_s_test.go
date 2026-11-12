@@ -50,7 +50,7 @@ func withAdminSession(req *http.Request) *http.Request {
 // --- S1 (audit B1) : PATCH /settings + POST associés → 401 anonyme ---
 
 func TestLotS_Settings_RequireAuthAdmin(t *testing.T) {
-	h := NewSettingsHandler(&config.AppConfig{}, nil, nil)
+	h := NewSettingsHandler(&config.AppConfig{}, nil, nil, nil)
 	srv := lotSRouter(func(r chi.Router) { h.Mount(r) }, true, false)
 
 	for _, tc := range []struct{ method, path string }{
