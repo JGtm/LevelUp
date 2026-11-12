@@ -82,15 +82,15 @@ Chemins sous `apps/go-api/` sauf mention contraire.
 ## Décodeur de film : brique et exploitation (2026-11-08)
 
 Chemins depuis la racine du dépôt. Complète la cartographie ci-dessus, dont les chemins
-sous `internal/games/halo_infinite/film/` ont été déplacés vers `libs/film/`.
+sous `internal/games/halo_infinite/film/` ont été déplacés vers `libs/film/`, puis, à la bascule de la 8.1.2 (2026-11-12), vers le dépôt dédié `halo-infinite-film-decoder` (`libs/` n'existe plus dans ce dépôt).
 
 | Rôle | Chemin |
 |---|---|
-| Brique publiable : module (README, NOTICE, exemple ; façade `decfilm` ; `memguard` ; `filmcache` en lecture seule) | `libs/film/` (`decfilm/`, `memguard/`, `filmcache/`) |
+| Brique publiable : module (README, NOTICE, exemple ; façade `decfilm` ; `memguard` ; `filmcache` en lecture seule) | dépôt `halo-infinite-film-decoder` (`decfilm/`, `memguard/`, `filmcache/`), requis par `apps/go-api/go.mod` |
 | Lanceur de décodage enfant et priorité | `apps/go-api/internal/filmrun/` |
 | Archive, recompression et déplacement des films | `apps/go-api/internal/filmarchive/` |
 | Replis complétés par l'hôte | `apps/go-api/internal/filmreplis/` |
-| Verrou de fichier : copie jumelle de `libs/film/internal/filelock` (tenue identique par `archlint/copies_identiques_test.go`) | `apps/go-api/internal/platform/filelock/` |
+| Verrou de fichier : copie jumelle de `internal/filelock` du décodeur de film (tenue identique par `archlint/copies_identiques_test.go`) | `apps/go-api/internal/platform/filelock/` |
 
 ## ⚠️ Limitations Connues
 

@@ -75,7 +75,7 @@ Third-party libraries keep their own licences:
 - Rust dependencies of the application shell: the list with versions and licences is
   `THIRD_PARTY_CARGO.md`, installed next to this file.
 - Go dependencies of the server (DuckDB, chi, Huma and others): `apps/go-api/go.mod` and
-  `libs/*/go.mod` in the source repository.
+  the `go.mod` of the four bricks it requires (dedicated repositories under github.com/JGtm).
 - JavaScript dependencies of the interface (React, TanStack, ECharts and others):
   `apps/web/package-lock.json` in the source repository.
 - Microsoft Edge WebView2 runtime, installed if missing, under Microsoft's licence terms

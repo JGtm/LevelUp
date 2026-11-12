@@ -594,7 +594,7 @@ freshness 30 days; `--langs` ignores (with a warning) a tag outside that list.
 
 Eleven offline chains, all under `apps/go-api/cmd/`, produce files committed to the repo
 (`data/titles/{slug}/reference/`, `static/`, or a generated Go file). None is wired into
-`cmd/server` — game decoding and GPLv3 code (`libs/himap/himap`, `libs/gamefiles/ooz`, Kraken/Oodle)
+`cmd/server` — game decoding and GPLv3 code (the `himap` package of `halo-infinite-map-images`, the `ooz` package of `halo-infinite-files-reader`, Kraken/Oodle)
 stay isolated to these binaries. Run from `apps/go-api` unless noted. `--title`/`-title`
 defaults to `halo_infinite` throughout.
 
@@ -683,7 +683,7 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--titl
 - Output: `data/titles/{slug}/reference/map_backgrounds/{key}.png` + `{key}.json` sidecar per
   map (218 files today) — the top-down background image and its calibration.
 - Prereq: game installed — **always**, no flag bypasses it, even a Forge-only run ; cgo/GPLv3
-  chain (`libs/himap/himap` → `libs/gamefiles/himodule` → `libs/gamefiles/ooz`, never linked into
+  chain (`halo-infinite-map-images/himap` → `halo-infinite-files-reader/himodule` → `halo-infinite-files-reader/ooz`, never linked into
   `cmd/server`) ; requires `map_objectives.json` already built (hard dependency, fails
   without it) ; uses `map_quant_bounds.json` / `map_callouts.json` / `map_positions_jouees.json`
   / `map_fond_reglages.json` when present, degrades with a warning otherwise.
@@ -803,8 +803,8 @@ go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <cha
 - Prereq: the recipe's earlier, still-external steps (extraction, banks analysis, human vote)
   must already have produced `_donnees/*.json` and the per-weapon source/rendered `.wav`
   tree. No game install is needed for this final step (the mode opens no game module), but
-  cgo IS required to BUILD the binary: `cmd/weapon-sounds` imports `libs/himap/himap` ->
-  `libs/gamefiles/himodule` -> `libs/gamefiles/ooz` (Kraken decompression) for its other modes.
+  cgo IS required to BUILD the binary: `cmd/weapon-sounds` imports `halo-infinite-map-images/himap` ->
+  `halo-infinite-files-reader/himodule` -> `halo-infinite-files-reader/ooz` (Kraken decompression) for its other modes.
 - Replay when: a weapon vote is finalized, or the full recipe is redone (game update, new
   weapon). Full recipe: `.ai/archive/V7.5/RECETTE_SONS_ARMES.md`.
 
@@ -1241,7 +1241,7 @@ the local film cache; the two offline ones need no DB and decode one film per bo
 
 ```bash
 cd apps/go-api
-go run ./cmd/levelup replay-facts-export --out ../../libs/film/replay/testdata/equivalence \
+go run ./cmd/levelup replay-facts-export --out <film-decoder clone>/replay/testdata/equivalence \
   [--title slug] [--oracle] <short8|match_id>...
 ```
 
@@ -1273,7 +1273,7 @@ of wiping a temp dir, so the obtained digests can be diffed against the referenc
 re-decoding. `-update` and the TSV reference format are unchanged. Parent and child share one binary —
 the parent plans and decodes nothing, each film is born in a bounded child (solo lock with bounded
 wait, sentinel) and dies with its RAM. References live in
-`libs/film/replay/testdata/equivalence/<short8>.tsv`, each opening with its
+`replay/testdata/equivalence/<short8>.tsv` of the film decoder (`halo-infinite-film-decoder`, taken at the version `go.mod` requires), each opening with its
 `# digest-grammar: N` marker: a reference frozen under another grammar is an infrastructure failure
 ("re-freeze with `-update`"), never a decoding difference. `-update` rewrites those references
 instead of comparing them — for a declared correction only. The `-walkers` mode (divergence of the
@@ -1330,7 +1330,7 @@ mini-reel — it derives its biped slot band from keyframes and refuses a reel w
 concatenated out of continuity.)
 
 ```bash
-cd libs/film
+cd <film-decoder clone>   # the decoder lives in its own repository (halo-infinite-film-decoder)
 # the committed baseline (regenerate only on a declared change)
 go test -bench . -run '^$' -count 10 ./internal/grammar/ \
   > internal/grammar/testdata/bench_baseline.txt
@@ -1455,68 +1455,81 @@ cd apps/go-api && CGO_ENABLED=0 go test ./internal/domain/... ./internal/analysi
 cd apps/go-api && CGO_ENABLED=1 LEVELUP_DEMO_MODE=true go test ./... -timeout 5m -count=1
 
 make go-api-coverage   # coverage report
-make go-api-lint       # golangci-lint ratchet (apps/go-api + every libs/ module) ; go vet in fallback
+make go-api-lint       # golangci-lint ratchet on apps/go-api ; go vet in fallback
 ```
 
-#### Go modules under `libs/` and the workspace (ADR 0041)
+#### Go bricks: published modules, developed in their own repositories (ADR 0041, 0043)
 
-Four bricks live in their own Go modules: "game files", `libs/gamefiles` (module path
-`github.com/JGtm/LevelUp/libs/gamefiles`: packages `himodule`, `ooz`, `hinavmesh`, `mapvar`), "map
-images", `libs/himap` (`github.com/JGtm/LevelUp/libs/himap`: package `himap`, which imports `libs/gamefiles`
-only), and the "film decoder", `libs/film` (`github.com/JGtm/LevelUp/libs/film`: the facade `decfilm`, the
-publication layer `replay`, the closed layers under `internal/`, its catalogues; imports `libs/gamefiles`
-and `libs/himap` only, ADR 0034), and the "Halo API", `libs/haloapi` (`github.com/JGtm/LevelUp/libs/haloapi`:
-packages `xblauth`, `infinite`, `halo5`, `xboxlive`; imports no other brick, ADR 0042). All four are linked to
-`apps/go-api` by the `go.work` at the repository root (no `replace`
-directive; commit `go.work.sum`). Two consequences for every command:
+Four bricks are Go modules published from their own repositories, and `apps/go-api/go.mod` requires
+them at a published version (v1.0.1 at the 8.1.2 switch; this repository no longer holds `libs/` nor any
+`go.work`): "game files", `github.com/JGtm/halo-infinite-files-reader` (packages `himodule`, `ooz`,
+`hinavmesh`, `mapvar`), "map images", `github.com/JGtm/halo-infinite-map-images` (package `himap`, which
+imports the game-files brick only), the "film decoder", `github.com/JGtm/halo-infinite-film-decoder` (the
+facade `decfilm`, the publication layer `replay`, the closed layers under `internal/`, its catalogues;
+imports the two bricks above only, ADR 0034), and the "Halo API", `github.com/JGtm/halo-api` (packages
+`xblauth`, `infinite`, `halo5`, `xboxlive`; imports no other brick, ADR 0042). Three consequences for every
+command:
 
-- `./...` never crosses a module boundary. `cd apps/go-api && go test ./...` does **not** test
-  `libs/`, and `go mod tidy` cannot run in `apps/go-api` any more (it looks for the sibling
-  module on the network; the workspace resolves it, so `go.mod` carries no `require` for it).
-  A dependency bump of a brick is made in its own `go.mod` (`cd libs/gamefiles && go get ...`); `go mod
-  tidy` does not work in `libs/himap` or `libs/film` either (they import another brick), so `make tidy` in
-  `apps/go-api` names them and skips them, and their `go.mod` is edited by hand.
-- The Go version line is the same in `apps/go-api/go.mod`, `go.work`, every `libs/*/go.mod` and the
-  `Dockerfile` image (`internal/archlint/dockerfile_go_version_test.go`).
+- `./...` of `apps/go-api` covers LevelUp only: a brick's own tests run in its repository (its CI
+  plays them). LevelUp keeps the tests that need its data (`internal/gamefilescorpus/`,
+  `internal/filmcorpus/`, `cmd/replay-equiv`, `cmd/replay-corpus-gate`).
+- A brick is bumped like any dependency: a new tag on its repository, then the `require` line of
+  `apps/go-api/go.mod` (see "Developing a brick" below). `make tidy` in `apps/go-api` runs
+  `go mod tidy` with `GOWORK=off`, never against a local workspace.
+- A brick's package is named by its import path: `cd apps/go-api && go test
+  github.com/JGtm/halo-infinite-map-images/himap/ -run ...` runs a package of the version `go.mod`
+  requires (the Makefile does so for `BRIQUE_FILM` and for the `gamefiles` corpus). `make gate-push` sets
+  `GOWORK=off`: the safety net judges the published versions, never a local workspace.
+
+##### Developing a brick
+
+The code of a brick changes in its dedicated repository, never in LevelUp:
 
 ```bash
-make libs-test                       # vet (default, research, gamefiles, gamefiles+research tags) + tests of each libs/ module, CGO on
-cd libs/gamefiles && go test ./... -count=1
-cd libs/gamefiles && go vet -tags=gamefiles,research ./...     # compile the research instruments
-cd libs/gamefiles && go list -deps ./... | grep levelup/go-api  # must print nothing: the module is autonomous
-cd libs/himap && go test ./... -count=1                         # the map-image brick, without the game: its corpus is under the tag
-cd libs/himap && go list -deps ./... | grep levelup/go-api      # must print nothing either
-cd libs/film && go test ./... -count=1                          # the film decoder (its layer gates and goldens included)
-cd libs/film && go vet -tags=research ./...                     # compile its research instruments
-cd libs/film && go test -tags research ./internal/grammar/ -run TestE191   # run research instruments on demand
-cd libs/haloapi && go test ./... -count=1                       # the Halo API protocol (httptest only, no CGo)
-cd libs/film && go list -deps -test ./... | grep levelup/go-api # must print nothing either
-go test ./libs/gamefiles/mapvar/ -run TestLabel -count=1       # from the repository root also works (workspace)
+# 1. clone the dedicated repository beside LevelUp
+git clone https://github.com/JGtm/halo-infinite-film-decoder ../halo-infinite-film-decoder
+
+# 2. see the change in LevelUp before publishing: generate the LOCAL workspace
+#    (levelup-briques.work, git-ignored; a guard, archlint/no_go_work_versionne_test.go, forbids
+#    committing a go.work), then point Go at it
+bash scripts/briques-workspace.sh ../halo-infinite-film-decoder [../halo-api ...]
+export GOWORK="$PWD/levelup-briques.work"      # PowerShell: $env:GOWORK = "$PWD\levelup-briques.work"
+
+# 3. test in the brick's repository (its own gates), then in LevelUp
+cd ../halo-infinite-film-decoder && go test ./... -count=1
+cd ../LevelUp/apps/go-api && go test ./internal/... -count=1
+
+# 4. back to the published versions
+unset GOWORK                                   # or delete levelup-briques.work
 ```
 
-`make go-api-lint` and `make gate-push` also lint every `libs/` module (same `.golangci.yml`, passed with
-`--config ../../apps/go-api/.golangci.yml`). The CI job `go-build` runs the same vet and tests in a
-dedicated step. A brick has no database and no LevelUp data: its tests read only its own
-`testdata/` and the installed game; tests that need LevelUp data live in `apps/go-api`
-(`internal/gamefilescorpus/`, `internal/filmcorpus/` for the film decoder). A film test that reads the host
-repository's versioned data finds its root by the `go.work` marker (`racineDepot`, one helper per package) and
-skips outside the repository.
+Only `GOWORK` designates the workspace: without the variable every Go tool judges the published
+versions. Publishing is two steps: (1) the maintainer pushes the brick's change to its repository and
+tags it there (`vX.Y.Z`, one number per repository; the tag is never moved), (2) a LevelUp branch bumps the
+`require` (`cd apps/go-api && go get github.com/JGtm/<brick>@vX.Y.Z && make tidy`) and plays
+`make gate-push`. A pseudo-version (`@<sha>`) is allowed on a working branch, a tag is required before
+`main` (ADR 0043, amendment of 2026-11-12). The tags of the old `libs/<brick>/vX.Y.Z` path are deprecated and never receive
+a new version; `github.com/JGtm/halo-api` retracts v0.1.0 and v1.0.0.
+
+A brick has no database and no LevelUp data: its tests read only its own `testdata/` and the installed
+game. A film test that needs the host repository's versioned data takes its root from `DECODEUR_FILM_RACINE_DONNEES`
+(a LevelUp checkout) and skips without it; a value that points nowhere fails the test.
 
 #### `gamefiles` build-tag corpus (map reverse engineering **and** committed catalogues)
 
 Two families of tests read the **installed game**, and both sit behind `//go:build gamefiles`:
 
-- the `*_gamefiles_test.go` files of `libs/himap/himap/` (34 on 2026-10-28, after lot 2c) decode the game's
+- the `*_gamefiles_test.go` files of the `himap` package of `halo-infinite-map-images` (34 on 2026-10-28, after lot 2c) decode the game's
   modules, and those of `internal/gamefilescorpus/` (25, a package of tests only: since the D1
   decoupling plan the `himap` tests that read LevelUp data live there and call `himap` through
   its exported API) sweep the 26 catalogue maps. They are long by nature — measured 2026-09-05, `TestBalayageCoquille`
   alone takes **203 s** for 26 maps (1 246 s before the module reader switched to memory
-  mapping the same day). The tag keeps a plain `go test ./himap/` (from `libs/himap`) usable (2.8 s);
+  mapping the same day). The tag keeps a plain `go test ./himap/` (from the `halo-infinite-map-images` repository) usable (2.8 s);
 - three `cmd/` catalogue builders re-derive their **committed** catalogue from the installed
   game and compare it byte for byte: `cmd/film-profiles-build/`, `cmd/mapfond-build/`,
   `cmd/mapstruct-build/` (9.0 s for the three, measured 2026-09-17).
 
-`make go-api-test-gamefiles` runs **all five packages** (the brick from `libs/himap`, the four others from
+`make go-api-test-gamefiles` runs **all five packages** (the `himap` package of the map-images brick, by import path; the four others from
 `apps/go-api`). Until 2026-09-17 it only ran the brick, so the three `cmd/` tests were run by no command in the repository
 (discovery D1 (3.1.2), the oldest of them tagged since 2026-09-05). The package list is
 explicit rather than `./cmd/...`: under the tag, a package with no `gamefiles` file only adds
@@ -1525,7 +1538,7 @@ corpus without joining the target.
 
 ```bash
 make go-api-test-gamefiles                       # whole corpus (~6 min, needs the game)
-cd libs/himap && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s ./himap/ -v
+cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s github.com/JGtm/halo-infinite-map-images/himap/ -v
 cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
   ./internal/gamefilescorpus/ \
   ./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
@@ -1539,12 +1552,12 @@ BALAYAGE_CARTES=aquarius_map go test -tags=gamefiles -timeout 300s \
   ./internal/gamefilescorpus/ -run TestBalayageCoquille -v
 
 # Game installed somewhere else:
-cd libs/himap && LEVELUP_HALO_DEPLOY=/path/to/Halo Infinite/deploy go test -tags=gamefiles ./himap/
+cd apps/go-api && LEVELUP_HALO_DEPLOY=/path/to/Halo Infinite/deploy go test -tags=gamefiles github.com/JGtm/halo-infinite-map-images/himap/
 ```
 
 Without the game installed every test takes its `t.Skip` and the corpus is empty in a
 second — which is exactly what happens in CI. CI therefore only **compiles** it
-(`go vet -tags=gamefiles ./...` in `libs/himap` and `go vet -tags=gamefiles ./internal/gamefilescorpus/` in `apps/go-api`, job `go-build`); it never runs it. The tag
+(`go vet -tags=gamefiles` of the `himap` package and of `./internal/gamefilescorpus/`, from `apps/go-api`, job `go-build`; the brick's own CI compiles the rest); it never runs it. The tag
 itself is enforced workspace-wide by `internal/archlint/gamefiles_tag_test.go`, which runs in the
 default build.
 
@@ -1562,11 +1575,11 @@ and the `gamefiles` suite above. They are `*_research_test.go` files; those that
 installed and, for some, `.ai/re_dump`:
 
 ```bash
-cd libs/himap && CGO_ENABLED=1 go test -tags=gamefiles,research -count=1 ./himap/ -run <Sonde>   # one instrument; without -run, the whole gamefiles suite plus the instruments
-cd libs/gamefiles && go test -tags=research -count=1 ./hinavmesh/ ./mapvar/
+cd <map-images clone> && CGO_ENABLED=1 go test -tags=gamefiles,research -count=1 ./himap/ -run <Sonde>   # one instrument; without -run, the whole gamefiles suite plus the instruments
+cd <game-files clone> && go test -tags=research -count=1 ./hinavmesh/ ./mapvar/
 ```
 
-CI compiles them (`go vet -tags=gamefiles,research ./...` in `libs/himap` and in `libs/gamefiles`);
+Each brick's own CI compiles them (`go vet -tags=gamefiles,research ./...` in its repository);
 the module-wide `go vet -tags=research ./...` leaves out the `gamefiles && research` ones on purpose (both
 tags are required). The rule is held by `internal/archlint/gamefiles_tag_test.go` ("an instrument that opens the
 game declares `gamefiles`") and `research_tag_test.go`.
@@ -1707,7 +1720,7 @@ exit 1.
 | `--keep-work` | `false` | keep the working root after the run (debugging) |
 | `--json` | (none) | path to also write the full report as JSON |
 
-**Run it before merging anything that touches** `libs/film/replay`, `replaybuild`, `libs/film/internal/grammar`, or
+**Run it before merging anything that touches** `replaybuild`, the decoder's `replay` or `internal/grammar` (through a new decoder version), or
 that bumps `SchemaVersion`. **Requires**: the local dev parc (film chunks; + already-baked
 artifacts under `data/cache/replays` in `--reference=parc` mode) and read access to the title's
 shared DB (for match facts, via `levelup replay-facts-export` run as a subprocess, per witness —
@@ -1789,17 +1802,19 @@ the next), removes each converted PNG (`--keep` keeps them), is idempotent, and 
 make gate-push               # golangci-lint ratchet + replay-equiv harness + web typecheck/lint + test baseline, film and DuckDB lanes in parallel (~25 min + ~12 min)
 ```
 
-`make gate-push` plays `make replay-equiv` (the replay equivalence harness, right after `make libs-test`):
-the references under `libs/film/replay/testdata/equivalence` drifted unnoticed from v8.0.0 until the
-2026-10-30 re-freeze because no gate played them. It needs the local film park; to re-freeze after a
-proof of equivalence, run `cd apps/go-api && go run ./cmd/replay-equiv -update`.
+`make gate-push` plays `make replay-equiv` (the replay equivalence harness): the references under
+`replay/testdata/equivalence` of the film decoder (read at the version `go.mod` requires) drifted unnoticed
+from v8.0.0 until the 2026-10-30 re-freeze because no gate played them. It needs the local film park; to
+re-freeze after a proof of equivalence, run `go run ./cmd/replay-equiv -update` from `apps/go-api` with
+`GOWORK` pointing at a clone of the decoder (see "Developing a brick"), then publish the decoder's new
+version and bump the `require`.
 
-The test baseline plays two lanes in parallel, one per Go module (ADR 0041): the film lane (the
-`libs/film` module, no DuckDB dependency — guarded by
-`internal/archlint/film_lane_duckdb_free_test.go` — checked against
-`.ai/baselines/tests_libs_film.jsonl`) and the DuckDB lane (all of `apps/go-api`, `-p 1`, checked
-against `.ai/baselines/tests_pre_migration.jsonl`). The DuckDB lane sets the duration;
-`scripts/gate-push.ps1` below runs the two suites one after the other.
+The test baseline plays two lanes in parallel (ADR 0041): the bricks lane (the packages of the published
+`halo-infinite-film-decoder` and `halo-api` bricks, played from `apps/go-api` by import path, no DuckDB
+dependency — guarded by `internal/archlint/film_lane_duckdb_free_test.go` — checked against
+`.ai/baselines/tests_halo-infinite-film-decoder.jsonl` and `.ai/baselines/tests_halo-api.jsonl`) and the DuckDB
+lane (all of `apps/go-api`, `-p 1`, checked against `.ai/baselines/tests_pre_migration.jsonl`). The DuckDB lane
+sets the duration; `scripts/gate-push.ps1` below runs the two suites one after the other.
 
 On some Windows dev machines, git-bash's linker fails to resolve DuckDB's
 `libduckdb_static` when building CGO test binaries (`undefined reference
@@ -1821,8 +1836,8 @@ powershell -File scripts/gate-push.ps1
 
 The CI job `go-test-windows-cgo` (`.github/workflows/ci.yml`) runs on `windows-latest` with `CGO_ENABLED=1` (the
 runner provides gcc, no MinGW action). It builds `./cmd/server` (DuckDB linked), then plays `./cmd/server/...`,
-`./internal/platform/diskfree/...`, `./internal/platform/filelock/...`, `./internal/filmrun/...` and `./cmd/levelup/...` from `apps/go-api`, `./internal/decodelock/` and
-`./internal/filelock/` from `libs/film`, and `./himodule/` from `libs/gamefiles`: the packages that carry the
+`./internal/platform/diskfree/...`, `./internal/platform/filelock/...`, `./internal/filmrun/...` and `./cmd/levelup/...` from `apps/go-api`,
+and, still from `apps/go-api` by import path, `internal/decodelock/` and `internal/filelock/` of the film decoder and `himodule/` of the game-files brick: the packages that carry the
 `*_windows.go` / `*_win.go` files (clean shutdown, file locks, free disk space, process priority, memory-mapped
 module projection). No test behind the `gamefiles` or `research` tags is played: the game is not installed on the
 runner. It triggers on `release/**` pushes, on pull requests to `main` (the only pull requests this workflow receives). Windows runners are expensive:
