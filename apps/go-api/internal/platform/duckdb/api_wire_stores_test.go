@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	titlepkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
@@ -84,7 +85,7 @@ func TestReplayRegistryRepo_IdentiteEtModesNonGeres(t *testing.T) {
 			('39910eb1-8c01-4e26-bc60-965cb2dcc789', 'Recharge', ' a ', FALSE),
 			('7b7b7b7b-0000-4000-8000-000000000000', 'Sans drapeau', NULL, NULL)`)
 	migratedFile(t, pr.MetadataDBPath(slug), migration.TargetMetadata,
-		`INSERT INTO asset_translations (asset_type, asset_id, lang, name) VALUES ('map', 'a', 'en-US', 'Recharge EN')`)
+		`INSERT INTO asset_translations (asset_type, asset_id, lang, name) VALUES ('map', 'a', 'en-US', 'Recharge EN'), ('map', 'a', 'fr-FR', 'Recharge FR')`)
 	h, err := TitleBases{Paths: pr, Log: slog.Default()}.Open(context.Background(), slug)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -104,8 +105,12 @@ func TestReplayRegistryRepo_IdentiteEtModesNonGeres(t *testing.T) {
 	if hits, _ := repo.MatchesByIDOrPrefix(ctx, "edc5daf6"); len(hits) != 1 || !hits[0].UnmanagedMode || hits[0].RawMapName != "Cole Protocol" {
 		t.Errorf("Firefight = %+v, attendu mode non géré, nom sans espaces", hits)
 	}
+	// L'étiquette liée est celle de la langue de repli : exactement celle que la requête écrivait en dur.
+	if tag := i18n.HaloTags(i18n.Fallback)[0]; tag != "en-US" {
+		t.Fatalf("étiquette Halo de la langue de repli = %q, attendu en-US", tag)
+	}
 	if en, err := repo.EnglishMapName(ctx, "a"); err != nil || en != "Recharge EN" {
-		t.Errorf("nom EN = %q, %v", en, err)
+		t.Errorf("nom EN = %q, %v (la ligne fr-FR ne doit pas être prise)", en, err)
 	}
 	if en, err := repo.EnglishMapName(ctx, "zz"); err == nil || en != "" {
 		t.Errorf("carte inconnue : %q, %v (attendu une erreur de lecture, nom vide)", en, err)

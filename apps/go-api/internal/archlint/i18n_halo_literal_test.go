@@ -24,10 +24,8 @@ import (
 	"levelup/go-api/internal/i18n"
 )
 
-// haloLiteralAllowlist : fichier relatif -> justification datée.
-var haloLiteralAllowlist = map[string]string{
-	"internal/platform/duckdb/replay_registry_repo.go": "2026-11-12 : lecture TECHNIQUE du nom EN d'une carte (clé du catalogue de modules du rejeu, jamais affichée), déplacée à l'identique depuis api/wire/registry_replay_build.go, que ce garde ne balayait pas.",
-}
+// haloLiteralAllowlist : fichier relatif -> justification datée. Vide.
+var haloLiteralAllowlist = map[string]string{}
 
 // haloLiteralRoots : racines balayées, relatives à apps/go-api.
 var haloLiteralRoots = []string{"internal/platform/duckdb", "internal/service"}

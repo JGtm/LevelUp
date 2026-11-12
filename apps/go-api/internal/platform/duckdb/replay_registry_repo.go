@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
 )
 
@@ -56,15 +57,17 @@ func (r *ReplayRegistryRepo) MatchesByIDOrPrefix(ctx context.Context, matchID st
 	return hits, nil
 }
 
-// EnglishMapName rend le nom EN technique d'une carte ; vide sans metadata.
+// EnglishMapName rend le nom EN technique d'une carte (traduction d'asset dans la langue de repli des noms de
+// jeu, i18n.Fallback, dont l'étiquette Halo est `en-US`) ; vide sans metadata. C'est la clé du catalogue de
+// modules du rejeu : si la langue de repli de config/locales.toml cessait d'être l'anglais, cette clé changerait.
 func (r *ReplayRegistryRepo) EnglishMapName(ctx context.Context, mapID string) (string, error) {
 	if r.meta == nil {
 		return "", nil
 	}
 	var en string
 	if err := r.meta.QueryRowContext(ctx,
-		`SELECT name FROM asset_translations WHERE asset_type = 'map' AND asset_id = ? AND lang = 'en-US'`,
-		mapID).Scan(&en); err != nil {
+		`SELECT name FROM asset_translations WHERE asset_type = 'map' AND asset_id = ? AND lang = ?`,
+		mapID, i18n.HaloTags(i18n.Fallback)[0]).Scan(&en); err != nil {
 		return "", err
 	}
 	return en, nil
