@@ -220,6 +220,12 @@ export interface ReplayText {
   feedVehicleDestroyed: (name: string) => string
   /** Le joueur à bord à l'instant de la destruction, en fin de phrase : `who` est son nom. */
   feedVehicleOccupant: (who: string) => string
+  /**
+   * Plusieurs joueurs connus à bord à l'instant de la destruction : leur nombre `{n}`, à la forme de
+   * pluriel `one` ou `other` de la langue (`Intl.PluralRules`). Sans possessif.
+   */
+  feedVehicleAboardOne: string
+  feedVehicleAboardOther: string
   killFeedUnknownWeapon: string
   /**
    * L'infobulle d'une ligne de frag, qui est un BOUTON : ce que le clic fait — poser la lecture en

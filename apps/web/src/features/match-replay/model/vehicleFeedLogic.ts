@@ -5,11 +5,11 @@
  *
  * CE QUE LE DOCUMENT PERMET, ET CE QU'IL NE PERMET PAS. Un épisode porte son occupant (`xuid`),
  * un début daté (`t0`, `src` = `event` ou `mixed` : à la milliseconde ; `gap` : borné à la
- * demi-seconde du flux, non daté) et un siège. Il ne porte AUCUNE destruction (`end` vaut
- * toujours `unknown`) : les lignes « a détruit » attendent la source (cf.
- * `vehicleDestructionSource.ts`), qui rend une liste vide tant que le document ne les porte pas.
- * Et l'attribution n'est pas exhaustive — la primitive d'occupation ne nomme que 15,6 à 21,1 %
- * des vies de véhicule (cf. `ReplayVehicleRide` côté Go) : cette liste est FIDÈLE, pas COMPLÈTE.
+ * demi-seconde du flux, non daté) et un siège. Les destructions viennent d'ailleurs : la fin
+ * `destroyed` d'une vie et son bloc `destruction` (cf. `vehicleDestructionSource.ts`) ; un rejeu cuit
+ * avant ce bloc n'en porte pas, et la liste des montées reste alors seule. L'attribution n'est pas
+ * exhaustive — environ 68 % des vies de véhicule hors pièces montées ont au moins un trajet nommé
+ * (mesure de l'auteur du décodeur) : cette liste est FIDÈLE, pas COMPLÈTE.
  *
  * UNE LIGNE = UNE MONTÉE : occupant nommé, début daté, famille résolue. Deux épisodes du même
  * joueur dans le même véhicule qui se chevauchent (conducteur et passager ne se départagent pas
@@ -67,7 +67,8 @@ export function vehicleDestructionEntries(
         family: 'vehicles',
         destroyed: true,
         xuid: d.authorXuid,
-        occupantXuid: d.occupantXuid,
+        botName: d.authorBotName,
+        aboardXuids: d.aboardXuids,
         name,
       }),
     )
