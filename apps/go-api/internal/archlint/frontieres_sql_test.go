@@ -189,3 +189,78 @@ func TestApiSansSQL(t *testing.T) {
 			"implémenté dans platform/duckdb, persist ou migration :\n  %s", strings.Join(violations, "\n  "))
 	}
 }
+
+// racinesMetierSansSQL : la couche métier et ses abords, sous-dossiers compris. Aucune ne parle au moteur de
+// base : `service/` orchestre, `analysis/` calcule, `progression/` et `prestige/` portent des règles,
+// `scheduler/` cadence des tâches, `api/` (handlers et middleware compris) décode et encode. Toute lecture et
+// toute écriture passent par un port de `internal/port`, implémenté dans `platform/duckdb`, `persist`,
+// `importstore`, `cronstore` ou `migration`.
+var racinesMetierSansSQL = []string{
+	"internal/service", "internal/analysis", "internal/progression", "internal/scheduler", "internal/prestige", "internal/api",
+}
+
+// metierAvecSQLAutorises : fichiers de ces dossiers qui portent encore du SQL ou `database/sql`, avec la date
+// et la raison. Vide depuis le 2026-11-12 : plafond 0. Une entrée ne s'ajoute pas, elle se supprime avec le
+// code qui la justifiait ; une entrée sans violation ou sans fichier fait échouer le test.
+var metierAvecSQLAutorises = map[string]string{}
+
+// TestMetierSansSQL : aucun fichier non-test de la couche métier n'importe `database/sql`, ne porte de
+// littéral SQL ni n'appelle une méthode de requête (même détecteur que TestApiSansSQL), hors
+// `metierAvecSQLAutorises`.
+func TestMetierSansSQL(t *testing.T) {
+	var violations []string
+	vus := map[string]bool{}
+	for _, src := range goSourcesUnder(t, racinesMetierSansSQL...) {
+		vus[src.Rel] = true
+		trouves := sqlDansSource(src)
+		_, autorise := metierAvecSQLAutorises[src.Rel]
+		switch {
+		case len(trouves) == 0 && autorise:
+			violations = append(violations, src.Rel+" : entrée autorisée sans SQL — la retirer de metierAvecSQLAutorises")
+		case len(trouves) > 0 && !autorise:
+			violations = append(violations, src.Rel+" : "+strings.Join(trouves, ", "))
+		}
+	}
+	for rel := range metierAvecSQLAutorises {
+		if !vus[rel] {
+			violations = append(violations, rel+" : entrée autorisée sans fichier — la retirer de metierAvecSQLAutorises")
+		}
+	}
+	sort.Strings(violations)
+	if len(violations) > 0 {
+		t.Errorf("du SQL ou database/sql dans la couche métier — passer par un port de internal/port :\n  %s",
+			strings.Join(violations, "\n  "))
+	}
+}
+
+// portAvecTypeSQLAutorises : fichiers de `port/` qui importent encore `database/sql`. Vide depuis le
+// 2026-11-12 (DBExecutor et DBWriter vivent dans platform/dblease) : plafond 0.
+var portAvecTypeSQLAutorises = map[string]string{}
+
+// TestPortSansTypeSQL : aucun fichier non-test de `internal/port` n'importe `database/sql` : une interface de
+// port ne nomme ni `*sql.DB`, ni `*sql.Tx`, ni `*sql.Rows`, ni `sql.Result`. Changer de moteur de base ne
+// change pas les contrats.
+func TestPortSansTypeSQL(t *testing.T) {
+	var violations []string
+	vus := map[string]bool{}
+	for _, src := range goSourcesUnder(t, "internal/port") {
+		vus[src.Rel] = true
+		trouves := importsInterdits(src, []string{"database/sql"})
+		_, autorise := portAvecTypeSQLAutorises[src.Rel]
+		switch {
+		case len(trouves) == 0 && autorise:
+			violations = append(violations, src.Rel+" : entrée autorisée sans violation — la retirer de portAvecTypeSQLAutorises")
+		case len(trouves) > 0 && !autorise:
+			violations = append(violations, src.Rel+" importe database/sql")
+		}
+	}
+	for rel := range portAvecTypeSQLAutorises {
+		if !vus[rel] {
+			violations = append(violations, rel+" : entrée autorisée sans fichier — la retirer de portAvecTypeSQLAutorises")
+		}
+	}
+	sort.Strings(violations)
+	if len(violations) > 0 {
+		t.Errorf("un port nomme un type SQL — l'interface doit parler métier :\n  %s", strings.Join(violations, "\n  "))
+	}
+}
