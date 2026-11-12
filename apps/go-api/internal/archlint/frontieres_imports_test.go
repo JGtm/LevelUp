@@ -90,17 +90,22 @@ func importsSousArbre(src goSource, racines []string) []string {
 	return trouves
 }
 
-// racinesInterditesAuxHandlers : le moteur de synchronisation et le suivi en direct de Halo 5. Un handler
-// lance une sync par un port (`port.SyncJobService`) ; il n'importe ni le moteur, ni ses sous-paquets,
-// ni le suivi en direct.
+// racinesInterditesAuxHandlers : le moteur de synchronisation, ses écritures (`persist`) et le code
+// propre à un titre (`games/halo_infinite`, `games/halo_5` et leurs sous-paquets, suivi en direct
+// compris). Un handler lance une sync par un port (`port.SyncJobService`), lit et écrit par les ports de
+// `internal/port` et passe par les adaptateurs sémantiques et les capacités pour tout ce qui dépend du
+// titre ; il n'importe aucun de ces paquets.
 var racinesInterditesAuxHandlers = []string{
 	cheminModuleAPI + "sync",
-	cheminModuleAPI + "games/halo_5/livesync",
+	cheminModuleAPI + "persist",
+	cheminModuleAPI + "games/halo_infinite",
+	cheminModuleAPI + "games/halo_5",
 }
 
 // handlersAvecMoteurDeSyncAutorises : handlers qui importent encore l'une de ces racines, avec la date et
 // la raison. Vide : plus aucun ne le fait ; une entrée ne s'ajoute pas, elle se supprime avec le code qui
-// la justifiait.
+// la justifiait. (Le nom garde « MoteurDeSync » : c'est le garde de ce périmètre, étendu le 2026-11-12
+// à `persist` et aux paquets des titres.)
 var handlersAvecMoteurDeSyncAutorises = map[string]string{}
 
 func TestOutilImportsSousArbre(t *testing.T) {
@@ -112,23 +117,30 @@ import (
 	"levelup/go-api/internal/synchro"
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/games/halo_5"
+	"levelup/go-api/internal/games/halo_infinite/haloadapter"
+	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/persistance"
 )
 `)
 	got := importsSousArbre(src, racinesInterditesAuxHandlers)
 	want := []string{
+		cheminModuleAPI + "games/halo_5",
 		cheminModuleAPI + "games/halo_5/livesync",
+		cheminModuleAPI + "games/halo_infinite/haloadapter",
+		cheminModuleAPI + "persist",
 		cheminModuleAPI + "sync",
 		cheminModuleAPI + "sync/replayartifacts",
 	}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
-		t.Fatalf("imports détectés %v, attendu %v (ni internal/synchro, ni internal/games/halo_5)", got, want)
+		t.Fatalf("imports détectés %v, attendu %v (ni internal/synchro, ni internal/games/canonical, ni internal/persistance)", got, want)
 	}
 }
 
-// TestHandlersSansMoteurDeSync : aucun handler HTTP n'importe le moteur de synchronisation ni le suivi
-// en direct de Halo 5. Les jobs de sync (sync initiale ou delta, rattrapage, recalcul des sessions) se
-// lancent par `port.SyncJobService`, que `service.SyncJobService` implémente : changer de moteur ne
-// touche pas la couche HTTP.
+// TestHandlersSansMoteurDeSync : aucun handler HTTP n'importe le moteur de synchronisation, `persist`
+// ni les paquets propres à un titre. Les jobs de sync (sync initiale ou delta, rattrapage, recalcul des
+// sessions) se lancent par `port.SyncJobService`, que `service.SyncJobService` implémente : changer de
+// moteur, ou ajouter un titre, ne touche pas la couche HTTP.
 func TestHandlersSansMoteurDeSync(t *testing.T) {
 	var violations []string
 	vus := map[string]bool{}
@@ -146,7 +158,7 @@ func TestHandlersSansMoteurDeSync(t *testing.T) {
 		}
 	}
 	if len(violations) > 0 {
-		t.Errorf("un handler importe le moteur de sync ou le suivi en direct — passer par port.SyncJobService :\n  %s",
+		t.Errorf("un handler importe le moteur de sync, persist ou un paquet de titre — passer par un port de internal/port :\n  %s",
 			strings.Join(violations, "\n  "))
 	}
 }
@@ -158,13 +170,10 @@ var racinesStockageInterditesAuxHandlers = []string{
 }
 
 // handlersAvecStockageAutorises : handlers qui importent encore le stockage DuckDB, avec la date et la
-// raison. Une entrée ne s'ajoute pas : elle se supprime avec le code qui la justifiait.
-var handlersAvecStockageAutorises = map[string]string{
-	"internal/api/handlers/home.go": "2026-11-12 : n'utilise que des prédicats d'erreur " +
-		"(duckdb.IsInvalidatedError, sharedprovider.ErrSwapTimeout / ErrSwapFailed / ErrProviderClosed) pour " +
-		"classer une panne de lecture ; aucun dépôt ni connexion. Sortie des types d'erreur vers un paquet " +
-		"neutre non décidée.",
-}
+// raison. Vide depuis le 2026-11-12 : le classement d'une panne de lecture (base occupée, poignée
+// invalidée) passe par `platform/dbfault`. Une entrée ne s'ajoute pas : elle se supprime avec le code
+// qui la justifiait.
+var handlersAvecStockageAutorises = map[string]string{}
 
 func TestOutilImportsSousArbreStockage(t *testing.T) {
 	src := parseGoSnippet(t, "x.go", `package x
