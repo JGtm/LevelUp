@@ -150,3 +150,64 @@ func TestHandlersSansMoteurDeSync(t *testing.T) {
 			strings.Join(violations, "\n  "))
 	}
 }
+
+// racinesStockageInterditesAuxHandlers : le stockage DuckDB et ses sous-paquets. Un handler lit et écrit
+// par un port de `internal/port` ; il ne construit ni dépôt ni connexion.
+var racinesStockageInterditesAuxHandlers = []string{
+	cheminModuleAPI + "platform/duckdb",
+}
+
+// handlersAvecStockageAutorises : handlers qui importent encore le stockage DuckDB, avec la date et la
+// raison. Une entrée ne s'ajoute pas : elle se supprime avec le code qui la justifiait.
+var handlersAvecStockageAutorises = map[string]string{
+	"internal/api/handlers/home.go": "2026-11-12 : n'utilise que des prédicats d'erreur " +
+		"(duckdb.IsInvalidatedError, sharedprovider.ErrSwapTimeout / ErrSwapFailed / ErrProviderClosed) pour " +
+		"classer une panne de lecture ; aucun dépôt ni connexion. Sortie des types d'erreur vers un paquet " +
+		"neutre non décidée.",
+}
+
+func TestOutilImportsSousArbreStockage(t *testing.T) {
+	src := parseGoSnippet(t, "x.go", `package x
+
+import (
+	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/platform/duckdbfake"
+	"levelup/go-api/internal/platform/settings"
+)
+`)
+	got := importsSousArbre(src, racinesStockageInterditesAuxHandlers)
+	want := []string{
+		cheminModuleAPI + "platform/duckdb",
+		cheminModuleAPI + "platform/duckdb/sharedprovider",
+	}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("imports détectés %v, attendu %v (ni platform/duckdbfake, ni platform/settings)", got, want)
+	}
+}
+
+// TestHandlersSansStockageDuckDB : aucun handler HTTP n'importe `platform/duckdb` ni ses sous-paquets,
+// hors `handlersAvecStockageAutorises`. Les lectures de progression, de campagne et de profil passent par
+// `port.ProgressionService`, `port.CampaignService` et `profile.PlayerProfileService` ; le plafond mémoire
+// des bases par `port.DatabaseMemory`.
+func TestHandlersSansStockageDuckDB(t *testing.T) {
+	var violations []string
+	vus := map[string]bool{}
+	for _, src := range goSourcesUnder(t, "internal/api/handlers") {
+		vus[src.Rel] = true
+		trouves := importsSousArbre(src, racinesStockageInterditesAuxHandlers)
+		if _, ok := handlersAvecStockageAutorises[src.Rel]; ok || len(trouves) == 0 {
+			continue
+		}
+		violations = append(violations, src.Rel+" importe "+strings.Join(trouves, ", "))
+	}
+	for rel := range handlersAvecStockageAutorises {
+		if !vus[rel] {
+			violations = append(violations, rel+" : entrée autorisée sans fichier — la retirer de handlersAvecStockageAutorises")
+		}
+	}
+	if len(violations) > 0 {
+		t.Errorf("un handler importe le stockage DuckDB — passer par un port de internal/port :\n  %s",
+			strings.Join(violations, "\n  "))
+	}
+}

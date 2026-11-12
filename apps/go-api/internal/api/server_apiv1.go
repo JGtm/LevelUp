@@ -628,6 +628,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 	settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore).
 		WithSessionsRecalc(syncJobs).
+		WithDatabaseMemory(platform_duckdb.MemoryLimit{}).
 		WithBackupScheduler(backupScheduler).
 		WithUserLookup(users)
 	// Fraîcheur A4.2 : le runner monitoring lit l'âge du dernier backup depuis

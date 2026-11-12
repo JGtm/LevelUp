@@ -16,9 +16,9 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/ops/parquetbackup"
-	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/procmem"
 	settings_platform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/port"
 )
 
 // Codes des refus des réglages de données (le texte vient du catalogue `settings.data.*`).
@@ -34,6 +34,13 @@ const (
 	codeBackupDisabled    = "backup_disabled"
 	codeBackupRunning     = "backup_already_running"
 )
+
+// WithDatabaseMemory branche le plafond mémoire des bases (réglage `memory_limit_mb`). Sans lui, le
+// plafond n'est ni appliqué à chaud ni rapporté par GET /settings/data.
+func (h *SettingsHandler) WithDatabaseMemory(m port.DatabaseMemory) *SettingsHandler {
+	h.memory = m
+	return h
+}
 
 // validateData juge le PATCH sur les données : chaque clé suit SA capacité (ADR 0044 D-4), les valeurs
 // restent dans leurs bornes et le dossier de sauvegarde est vérifié (existe, accessible en écriture, hors
@@ -95,10 +102,13 @@ func (h *SettingsHandler) applyDataRuntime(ctx context.Context, req *domain.Upda
 	if req.MemoryLimitMB == nil || !h.cfg.Capabilities.MemoryLimit {
 		return
 	}
-	duckdb.SetMemoryLimitMB(cfg.MemoryLimitMB)
-	done, failed := duckdb.ApplyMemoryLimitToOpen(ctx)
+	if h.memory == nil {
+		slog.WarnContext(ctx, "settings: plafond mémoire des bases non branché, non appliqué", "memory_limit_mb", cfg.MemoryLimitMB)
+		return
+	}
+	done, failed := h.memory.Apply(ctx, cfg.MemoryLimitMB)
 	slog.InfoContext(ctx, "settings: plafond mémoire des bases appliqué",
-		"memory_limit_mb", cfg.MemoryLimitMB, "effectif", duckdb.EffectiveMemoryLimit(), "bases", done, "echecs", failed)
+		"memory_limit_mb", cfg.MemoryLimitMB, "effectif", h.memory.Effective(), "bases", done, "echecs", failed)
 }
 
 // dataStatusOutput : le corps de GET /settings/data.
@@ -118,9 +128,9 @@ func (h *SettingsHandler) handleGetDataStatus(ctx context.Context, _ *struct{}) 
 	if h.cfg.Capabilities.ParquetBackup {
 		out.Backup = h.backupStatus(cfg)
 	}
-	if h.cfg.Capabilities.MemoryLimit {
+	if h.cfg.Capabilities.MemoryLimit && h.memory != nil {
 		out.Memory = &domain.MemoryStatus{RSSMB: procmem.RSSMB(), LimitMB: cfg.MemoryLimitMB,
-			EffectiveLimit: duckdb.EffectiveMemoryLimit()}
+			EffectiveLimit: h.memory.Effective()}
 	}
 	return &dataStatusOutput{Body: out}, nil
 }

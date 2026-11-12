@@ -50,6 +50,7 @@ type SettingsHandler struct {
 	backupSched    *duckdbbackup.Scheduler // nil = backup désactivé
 	users          authz.UserLookup        // relecture du rôle admin (settings_admin.go)
 	filmMeter      filmArchiveMeter        // occupation de l'archive des films, en cache (settings_film_archive.go)
+	memory         port.DatabaseMemory     // plafond mémoire des bases, réglable à chaud (settings_data.go) ; nil = non branché
 }
 
 // NewSettingsHandler crée un SettingsHandler avec le DirMediaIndexer par défaut.
