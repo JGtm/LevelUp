@@ -295,13 +295,30 @@ Effort : moyen.
 - [x] 3.6 (ART-P2-1) Compléter la recette de `persist/doc.go` (liste des colonnes de la vue) et
       poser un test qui lie `pmeColumnStage` et `enrichmentColumnStage`.
 
-Résultat de l'étape 3 (2026-11-12). Sept commits sur `feat/812-architecture` (`f5729e4deb` à `fc984ada37`).
-3.1 : `convergePSACollect` ne pose plus le marqueur ; `stampPSAChecked` le pose après `flushAliasPairs`, pour les
-seuls matchs dont tous les alias sont écrits (et dont les awards le sont). Chaque échec d'alias est journalisé et
-compté (`convergence_alias_upsert_failed_total`), chaque match laissé de côté aussi (`convergence_psa_deferred_total`) ;
-`upsertAliasesFromMatchJSON` supprimée (`git grep` et `deadcode` : aucun appelant, aucun test). Preuve du test : écrits
-avant le code, `TestConvergePSA_FlushAliasEnEchec` et `TestConvergePSA_SharedNilAvecAlias` ÉCHOUENT sur l'ancien
-code (`done = 1, want 0`) et passent après ; `TestRunPSAConvergence_BurstIndisponible` couvre la fenêtre refusée.
+Résultat de l'étape 3 (2026-11-12). Neuf commits sur `feat/812-architecture` (`f5729e4deb` à `e124f2423b`), dont un
+correctif de revue (P1 sur 3.1, `3b44c03102`).
+3.1 : `convergePSACollect` ne fait que le fetch et n'écrit plus rien ; `flushAliasPairs` écrit les alias ; `settlePSA`
+écrit ENSUITE les awards puis le marqueur, par match, pour les seuls matchs dont tous les alias sont écrits. Un échec
+d'alias ne laisse donc aucun award : le match reste dans `selectMatchesMissingPSA` (qui exclut tout match ayant des
+awards) et la reprise ne réinsère jamais une génération d'awards. Première version (`f5729e4deb`) : awards écrits avant
+le flush, d'où le P1 de la revue (match avec awards, alias en échec : hors sélection, marqueur NULL pour toujours) ;
+reproduit par `TestRunPSAConvergence_FlushAliasEnEchecAvecAwards`, qui ÉCHOUE sur `cec4557d45` (`sélection au cycle
+suivant = []`) et passe après. Chaque échec d'alias est journalisé et compté (`convergence_alias_upsert_failed_total`),
+chaque match laissé à reprendre aussi (`convergence_psa_deferred_total`, tous réellement sélectionnés au cycle suivant) ;
+`upsertAliasesFromMatchJSON` supprimée. Choix de conception, sur pièces : la sélection par le seul marqueur (demandée
+par la revue) n'a PAS été retenue, parce que le chemin per-match écrit des awards sans jamais poser le marqueur (aucun
+autre écrivain de `psa_checked_at`) : sur le jeu de démo (copie de `racine-source`, lecture seule), 59 matchs sur 68, 13
+sur 25 et 14 sur 24 (trois joueurs Halo Infinite) ont des awards sans marqueur, qui entreraient tous dans la reprise
+(refetch réseau, 50 par cycle) ; poser directement le marqueur pour eux changerait ce qui est écrit, hors périmètre.
+Ordre awards après alias : aucun refetch en plus pour ces matchs, un refetch seulement pour un match dont l'alias a
+échoué. Cas structurel : aucun profil de déploiement (hosted, desktop ; demo n'a ni sync ni réseau sortant) n'a de
+base partagée en lecture seule par construction ; « RC-A » est un incident (handle ouvert en lecture), signalé par
+`trackFatalErr` et qui fait échouer toutes les écritures shared ; `SharedAccess.Write` refuse un handle nil par une
+erreur. Tout échec est donc traité comme transitoire (reprise, bornée à `convergenceHorizon` matchs par cycle), pas de
+marqueur « impossibilité structurelle ». `TestConvergePSA_SharedNilAvecAlias` ne couvre qu'un enrobage de test (`convergePSA`
+n'a aucun appelant de production et figurait déjà au code sans appelant avant l'étape ; gardée, à statuer au 8).
+Preuve des dates d'allowlist : `git log --reverse --format='%as %h %s' -S'"<clé>"' -- <fichier de garde>` ; deux dates
+reprises du texte d'origine ont été ramenées à celle de git (2026-10-20, squash v8.0.0).
 3.2 : `persistMatchIntensities` journalise et compte (`match_intensity_write_failed_total`) ; SQL inchangé. 3.3 :
 les deux sites du plan plus `classifyWeaponLabelsOnly` (même motif, même fichier) passent par
 `signalerLigneIllisible` (journal et `wire_rows_scan_failed_total`) ; un `rows.Scan` ne peut pas être mis en échec
@@ -314,12 +331,12 @@ clé par chemin complet (l'entrée `identity_annuaire.go` vivait sous `internal/
 Les onze entrées d'allowlist existantes (cinq, deux et quatre) sont gardées, aucune retirée ; une porte la mention « non revérifié »
 (`queries_career_encounters.go`, voir §12). 3.6 : recette de `persist/doc.go` portée à huit étapes (projection dans la
 vue), les deux copies de `player_persister.go` y renvoient ; `TestEnrichmentColumnStage_LieALaVueMergeOnRead` échoue
-sur un stage divergent et sur une colonne absente (mutations vérifiées). Gate : `go build ./...` et `go vet ./...` code
-0 ; `go test -timeout 30m ./internal/archlint/...` code 0 (une première passe a échoué : le littéral `"scan"` de mon test
-de 3.3 est un littéral de portée interdit, corrigé en `fc984ada37`, repassé à 0) ; `go test -tags=integration -p 1
--timeout 120m ./...` code 0 en une seule passe (216 paquets `ok`, aucun `--- FAIL`) ; code sans appelant : 0
-nouveauté ; témoins : 90 routes, une seule différence (fenêtre `since`/`until` de `activity_calendar.json` décalée d'un
-jour : la date UTC a changé entre la référence, 23 h 06 UTC le 11, et la reprise, 00 h 38 UTC le 12). Revue
+sur un stage divergent et sur une colonne absente (mutations vérifiées). Gate (après correctif de revue) : `go build ./...` et `go vet ./...` code 0 ; `go test -tags=integration -p 1
+./internal/sync/... ./internal/persist/... ./internal/platform/duckdb/... ./internal/scheduler/...` code 0 ; `go test -timeout 30m
+./internal/archlint/...` code 0 ; avant correctif : `-tags=integration -p 1 ./...` code 0 (216 paquets `ok`) ; code sans appelant :
+0 nouveauté ; témoins `apres-3b` : 90 routes, une seule différence avec `avant-3` (fenêtre `since`/`until` de
+`activity_calendar.json` décalée d'un jour : changement de date UTC entre les deux captures ; `apres-3` et `apres-3b`
+sont identiques entre elles). Revue
 adversariale : en attente.
 
 Gate : gate de l'étape 2 ; `go test -tags=integration -p 1 ./...` code de sortie 0.
@@ -467,7 +484,7 @@ deux graphes de 7.3.
 | 0 | close | (commit de clôture de l'étape 0) | témoins et compteurs relevés le 2026-11-10 |
 | 1 | close | `91727b0c30` (PR #191) | fusionnée le 2026-11-11 |
 | 2 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-11 |
-| 3 | exécutée, revue en attente | `f5729e4deb` à `fc984ada37` | gate vert le 2026-11-12 ; revue adversariale à faire |
+| 3 | exécutée, revue en attente | `f5729e4deb` à `e124f2423b` | gate vert le 2026-11-12 ; P1 de revue corrigé (`3b44c03102`), reste à faire relire |
 | 4 | à faire | | |
 | 5 | à faire | | |
 | 6 | à faire | | |
@@ -521,6 +538,11 @@ deux graphes de 7.3.
 - (étape 3) `convergence.go` fait 691 lignes (666 au départ de l'étape, exemption connue du fichier) : le découpage vers un
   sous-paquet reste à faire (ADR 0027). Un alias dont l'upsert échoue en permanence fait désormais refetcher son match à chaque cycle jusqu'à `convergenceHorizon` ; le compteur
   `convergence_alias_upsert_failed_total` le rend visible. Non traité.
+- (étape 3, revue) Le chemin per-match écrit des awards PSA mais ne pose jamais `psa_checked_at` (seul `settlePSA` l'écrit) :
+  sur le jeu de démo, 59 matchs sur 68 (DEMO), 13 sur 25 et 14 sur 24 ont des awards sans marqueur, donc `blocked_psa` dans
+  `snapshot_readiness` ne se lève pour eux que par vieillissement. Antérieur à l'étape ; le lever (poser le marqueur quand des
+  awards existent) change ce qui est écrit. Non traité. Idem : si l'écriture du marqueur échoue après celle des awards, le
+  match sort de la sélection sans marqueur (même état, antérieur).
 - (étape 3) `CLAUDE.md` règle 7 (écritures) parle d'une recette d'enrichissement « en 3 étapes » : `persist/doc.go` en compte
   maintenant huit, dont la projection dans la vue. Non traité (étape 8.4).
 - (étape 3) `internal/sync/schema.go` (`OpenPlayerDB`, `OpenSharedDB`, une trentaine d'appelants) : l'allowlist de
