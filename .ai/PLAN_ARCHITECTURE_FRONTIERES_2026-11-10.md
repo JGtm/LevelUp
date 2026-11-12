@@ -392,30 +392,51 @@ Gate : gate de l'étape 3 ; mesures « cadre HTTP » du §0 à zéro ; témoins 
 
 Effort : lourd. Revue adversariale obligatoire.
 
-- [ ] 5.1 (STO-1, STO-P2-2) Import OpenSpartan : l'amorçage des lignes d'enrichissement passe par le
+- [x] 5.1 (STO-1, STO-P2-2) Import OpenSpartan : l'amorçage des lignes d'enrichissement passe par le
       persister existant (`persist/post_sync_enrichment_persister.go`), sans arrêt à la première
       erreur. Les `*sql.DB` disparaissent des signatures des services d'import (dépôts derrière
       ports) ; le champ `legacyDB` réservé aux tests disparaît.
-- [ ] 5.2 (STO-2) `progression/profile` : les 13 requêtes vont dans un dépôt de `platform/duckdb`
+- [x] 5.2 (STO-2) `progression/profile` : les 13 requêtes vont dans un dépôt de `platform/duckdb`
       derrière un port ; le service ne tient plus de `*duckdb.DB` ; `scanTemplate` n'existe plus
       qu'une fois.
-- [ ] 5.3 (STO-3) `scheduler` : les sondes de santé et la purge des rejeux lisent par un dépôt ; le
+- [x] 5.3 (STO-3) `scheduler` : les sondes de santé et la purge des rejeux lisent par un dépôt ; le
       scheduler n'importe plus `platform/duckdb`. Une sonde en erreur reste comptée dans
       `ProbeErrors` et le rapport le montre.
-- [ ] 5.4 (STO-4) Sortir d'`analysis/` `weapon_evidence.go` et `prestigetuning/collect.go` (la
+- [x] 5.4 (STO-4) Sortir d'`analysis/` `weapon_evidence.go` et `prestigetuning/collect.go` (la
       requête dans `platform/duckdb`, le calcul reste). Étendre le test de pureté à tout `analysis/`.
-- [ ] 5.5 (STO-P2-1) `port.DBExecutor` et `port.DBWriter` ne rendent plus de type SQL : la
+- [x] 5.5 (STO-P2-1) `port.DBExecutor` et `port.DBWriter` ne rendent plus de type SQL : la
       transaction média (ouverture, validation, CHECKPOINT) devient une méthode du dépôt.
-- [ ] 5.6 (STO-P2-4) Erreur de domaine « introuvable » dans `port/`, rendue par les dépôts ; les 6
+- [x] 5.6 (STO-P2-4) Erreur de domaine « introuvable » dans `port/`, rendue par les dépôts ; les 6
       comparaisons à `sql.ErrNoRows` de la couche métier s'y branchent.
-- [ ] 5.7 (STO-P2-5) Déplacer les fragments SQL d'`analysis/` (`sql_fragments.go`, `sql_liste.go`,
+- [x] 5.7 (STO-P2-5) Déplacer les fragments SQL d'`analysis/` (`sql_fragments.go`, `sql_liste.go`,
       les requêtes d'`identity.go` et `identity_annuaire.go`, `campaign_exclusion.go:107`) dans un
       paquet de `platform/duckdb` ; les garde-rails qui tiennent le fragment de fuseau canonique
       (règle 8) suivent le déplacement.
-- [ ] 5.8 (DEP-P2-1) `config` n'importe plus `platform/duckdb` ni `prestige` : `ResolvePlayer` et le
+- [x] 5.8 (DEP-P2-1) `config` n'importe plus `platform/duckdb` ni `prestige` : `ResolvePlayer` et le
       fournisseur partagé par titre montent dans le câblage.
-- [ ] 5.9 Garde-rails `archlint`, plafond 0 : ni `database/sql` ni littéral SQL dans `service/`,
+- [x] 5.9 Garde-rails `archlint`, plafond 0 : ni `database/sql` ni littéral SQL dans `service/`,
       `analysis/`, `progression/`, `scheduler/`, `prestige/` ; aucun type `sql.` dans `port/`.
+
+Résultat de l'étape 5 (2026-11-13). 5.1 : services d'import sans `*sql.DB` (ports, paquet `internal/importstore`),
+amorçage par `PostSyncEnrichmentPersister.PrimeBaseline`, une transaction par match, chaque échec loggé et compté,
+arrêt net sur contexte annulé ; `legacyDB` supprimé. 5.2 : 13 requêtes dans `platform/duckdb/profilerepo` derrière
+`port.ProfileStore`, un seul `scanTemplate`. 5.3 : `internal/cronstore` et `platform/duckdb/worldrepo` ; le scheduler
+n'importe plus `platform/duckdb` ; `ProbeErrors` testé sur un faux magasin. 5.4 : table de preuve des armes et collecte
+Prestige dans `platform/duckdb`, pureté étendue à tout `analysis/`. 5.5 : `port.MediaTxOpener` / `port.MediaTx`
+(CHECKPOINT après validation, writer rendu sur tous les chemins) ; `DBExecutor` et `DBWriter` dans `platform/dblease`.
+5.6 : `domain.ErrRecordNotFound` (`port.ErrNotFound`), cinq comparaisons branchées (le plan en comptait six : cinq
+trouvées sur pièces). 5.7 : fragments dans `platform/duckdb/sqlfrag`, noms inchangés, environ 200 appelants ;
+`BuildNeighborsWhereClause` y part aussi (elle utilisait le fragment de fuseau). 5.8 : `internal/playerresolve` ;
+`config` n'importe plus `platform/duckdb` ni `prestige`. 5.9 : `TestMetierSansSQL`, `TestPortSansTypeSQL`,
+`TestSchedulerSansStockageDuckDB`, `TestAnalysisSansStockage`, plafond 0, allowlists vides. Mesures « moteur de base » :
+fichiers important `database/sql` 18 puis 0 ; types `sql.` dans `port/` 4 puis 0 ; SQL détecté 41 occurrences puis 0.
+Gate : build, vet (avec et sans `integration`), gofmt, `golangci-lint --new-from-rev` 0 défaut, `archlint`, code sans
+appelant sans nouveauté : verts. `go test -tags=integration -p 1 ./...` complet : 3 échecs au premier passage, corrigés,
+paquets concernés rejoués verts (pas de second passage complet en local). Témoins : 90 routes, `diff -r avant-4 apres-5b`
+vide (aucune route d'écriture dans les témoins). `scripts/check_test_baseline.sh` : code 1 en local sur le délai de 300 s
+de trois paquets (`ops`, `platform/duckdb`, `sync`), aucun test manquant ; la CI fait foi. Revue adversariale, une ronde,
+deux relecteurs (écritures, lectures déplacées) : 0 P0, 0 P1, quatre P2 corrigés (test instable de `worldrepo`, arrêt de
+l'amorçage sur contexte annulé, garde de la disposition démo aveugle au fichier déplacé, test de `decodeStringList`).
 
 Gate : gate de l'étape 4 ; `go test -tags=integration -p 1 ./...` ; mesures « moteur de base » du §0
 à zéro ; témoins identiques.
@@ -499,7 +520,7 @@ deux graphes de 7.3.
 | 2 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-11 |
 | 3 | close | `dd5f4de69c` sur `release/v8.2.0` | close le 2026-11-12, CI verte ; une ronde de revue, P1 corrigé |
 | 4 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-12 ; une ronde de revue (lots 4.1 à 4.4), P1 corrigé |
-| 5 | à faire | | |
+| 5 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-13 ; une ronde de revue, 0 P0, 0 P1, quatre P2 corrigés |
 | 6 | à faire | | |
 | 7 | à faire | | |
 | 8 | à faire | | |
@@ -568,6 +589,8 @@ deux graphes de 7.3.
 - Étape 4 (4.4 et revue adversariale des lots 4.1 à 4.4, 2026-11-12). Revue : 0 P0 ; P1 « garde du writer partagé sur le chemin requête aveugle à `sync.NewSharedWriterAcquirer` » corrigé ; P1 « messages des 500 changés » réfuté sur pièces (`humacore.NewError` remplaçait déjà tout message 5xx par « internal error ») ; P2 corrigés : garde du pool (deux ouvertures nommées et inscrites en allowlist datée), étiquette Halo de la langue de repli liée en paramètre, garde anti-SQL élargi. Restent, non traités : `service.PlaylistExpansionService` ignore l erreur de `RecordWeight` (préexistant) ; `MediaRecipientsRepo.MatchParticipantXUIDs` ouvre la base partagée par `OpenReadForQuery` sous un nom que le garde du pool ne reconnaît pas ; aucune contrainte n impose `WithSessionsRecalc` et `WithDatabaseMemory` sur `SettingsHandler` ; `scripts/check_lease_enforcement.sh` cite deux chemins d avant `api/wire/` ; whitelist de `TestNoUnauthorizedSharedSocialMention` sans contrôle de péremption ; `port/dbexecutor.go` et `dbwriter.go` exposent `database/sql` (étape 5) ; KPM et PSPM : aucune fonction d `analysis` équivalente au bit près, formule déplacée telle quelle dans `analysis.PerMinute`.
 
 - Étape 4 (4.5 à 4.8, 2026-11-12). `NewRouter` garde 9 paramètres et `ServiceRegistry` porte le magasin de sessions pour le seul relais vers `cmd/server`. La purge des sessions s'arrête désormais avec le contexte des tâches de fond (avant : contexte sans fin quand le watcher est absent), toujours hors du groupe d'attente. `port` importe maintenant `openspartan` et `platform/jobs` (`MediaIndexer` expose `*jobs.Store`) : à reprendre à l'étape 5 si `port` doit rester sans dépendance vers `platform`. `home.go` dépend encore de `platform/duckdb` par transitivité (`dbfault`) : le garde ne lit que les imports directs. Le passage `transfer.ErrImportRunning` vers `port.ErrSiteImportRunning` n'est testé que par un faux côté handler (pas de point d'injection dans le `Runner`). `port/repository_data.go` (649 lignes), `repository.go` (572) et `services.go` (544) dépassent 500 lignes : dette antérieure, non traitée. `docs/CHANGELOG.md` cite `NewSettingsHandlerWithIndexer` : historique, laissé. Non traités.
+
+- Étape 5 (2026-11-13). Changements assumés, hors « à l'identique » : le dépôt de profil lit par `QueryRecovered` (une reprise sur handle invalidé, exigée par le garde de reprise) ; l'amorçage de l'import rend une erreur de lecture de la vue au lieu de l'ignorer ; les modèles de défis suggérés passent par `ListByTitle` (lecture des textes de tous les modèles du titre, réponse identique) ; clés de journal de l'après-import dérivées du nom d'étape (`post_import_metadata_unavailable` devient `post_import_open_metadata_failed`) ; une lecture en échec du classement mondial et de la fenêtre de profil est désormais journalisée ; le writer média est rendu avant la construction de la réponse. Deux messages d'erreur (Prestige « detach objectives », joueur de démo) ont été reformulés parce que le détecteur de SQL et le linter les refusaient : journal et 500 masqué seulement. Restes non traités : `port` importe `platform/jobs`, `openspartan` et `prestige` (`MediaIndexer` expose `*jobs.Store`, pas un type SQL) ; `config` importe encore `platform/duckdb/sharedprovider`, donc n'est pas importable sans cgo ; `scheduler` importe `sharedprovider` dans deux fichiers (`ErrDrainTimeout`) ; `analysis.SQLKnownMMR` reste dans `mmr_known.go`, invisible du détecteur ; `progression/profile/service.go` 580 lignes (dette antérieure, réduite) ; la vraie `mediaTx.Rollback` n'a pas de test d'échec en cours de transaction (faux seulement) ; le contrôle de contexte en cours de boucle de `PrimeBaseline` n'a pas de test ; 9 tests du scheduler importent `platform/duckdb` pour semer leurs bases ; `scripts/disk-hygiene.ps1` lit `origin/feat/v75`, branche disparue (erreur affichée, simulation rendue quand même). Disque du poste tombé à 1,7 Go libres pendant le lot (cache Go partagé : 57 Go).
 
 ## 13. Hors périmètre
 

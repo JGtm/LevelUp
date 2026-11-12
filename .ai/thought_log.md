@@ -1,3 +1,9 @@
+## [2026-11-13] Plan architecture, étape 5 : le stockage — Complété (branche `feat/812-architecture`, poussée sur `release/v8.2.0`)
+
+- Décision : tout SQL et tout `database/sql` quittent `service/`, `analysis/`, `progression/`, `scheduler/`, `prestige/` et `port/` pour des dépôts derrière des ports (`importstore`, `cronstore`, `profilerepo`, `worldrepo`, `sqlfrag`, `playerresolve`) ; la transaction média devient une méthode du dépôt ; erreur de domaine « introuvable ». Quatre garde-rails à plafond 0, allowlists vides. Le linter Go est rejoué en local avant chaque push (la CI de l'étape 4 était rouge sur goconst, corrigée par `0daede9946`).
+- Résultats : mesures « moteur de base » à zéro (18 fichiers `database/sql`, 4 types SQL dans `port/`, 41 occurrences de SQL au départ), témoins identiques sur 90 routes, revue adversariale à deux relecteurs : 0 P0, 0 P1, quatre P2 corrigés. Pas de second passage complet de la suite d'intégration en local après les correctifs ; contrôle de baseline en dépassement de délai local.
+- Prochaine étape : étape 6 (multi-titre). Restes notés au plan §12 (`port` importe `platform/jobs`, `config` importe `sharedprovider`).
+
 ## [2026-11-12] Plan architecture, étape 4 : la couche HTTP — Complété (branche `feat/812-architecture`, poussée sur `release/v8.2.0`)
 
 - Décision : la couche HTTP ne tient plus que des interfaces de `internal/port` ; le SQL de `api/wire` part dans des dépôts de `platform/duckdb`, les jobs de synchronisation et la progression dans des services, les fichiers statiques dans `api/handlers`, la purge des sessions dans les tâches de fond déclarées. Trois garde-rails `archlint` à plafond 0, allowlists vides.
