@@ -92,7 +92,7 @@ func seedLUSRInteriorGaps(t *testing.T, repoRoot, gamertag, xuid string, nMatche
 }
 
 // seedUnmeasurableLUSRPlayer crée un joueur (dir + xuid.txt) dont la player DB est un
-// fichier CORROMPU (pas une DuckDB valide) : openDBShared échoue au ping → le joueur
+// fichier CORROMPU (pas une DuckDB valide) : l ouverture en lecture échoue au ping → le joueur
 // est compté LUSRPlayersUnmeasured (scan partiel) sans être scanné, et la jauge ne
 // doit pas être republiée.
 func seedUnmeasurableLUSRPlayer(t *testing.T, repoRoot, gamertag, xuid string) {

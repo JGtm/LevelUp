@@ -31,13 +31,19 @@ func (r *Repo) LatestLUSR(ctx context.Context) (port.ProfileLUSR, error) {
 	// (aucun writer ne le renseigne — seul CSR l'a), donc ORDER BY start_time
 	// renvoyait une row arbitraire. written_at (NOT NULL) donne le rating le plus
 	// récemment écrit = LUSR courant. lastMatchAt = COALESCE(start_time, written_at).
-	err := r.pdb.Player.QueryRow(ctx, `
+	// Variantes *Recovered (Reopen + retry une fois sur invalidation) : le handle joueur peut être rouvert par
+	// un writer concurrent (garde-rail player_db_recovery_routing_test).
+	row, err := r.pdb.Player.QueryRowRecovered(ctx, `
 			SELECT rating_value, rating_deviation, COALESCE(start_time, written_at)
 			FROM match_skill_rank_latest
 			WHERE rating_type = 'LUSR' AND rating_value IS NOT NULL
 			ORDER BY written_at DESC
 			LIMIT 1
-		`).Scan(&rating, &deviation, &lastMatchAt)
+		`)
+	if err == nil {
+		err = row.Scan(&rating, &deviation, &lastMatchAt)
+		_ = row.Close() // libère le curseur avant la requête suivante (une seule connexion en test)
+	}
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return lusr, fmt.Errorf("query latest rating: %w", err)
 	}
@@ -52,10 +58,15 @@ func (r *Repo) LatestLUSR(ctx context.Context) (port.ProfileLUSR, error) {
 		lusr.LastMatchAt = &t
 	}
 
-	if err := r.pdb.Player.QueryRow(ctx, `
+	count, err := r.pdb.Player.QueryRowRecovered(ctx, `
 			SELECT COUNT(*) FROM match_skill_rank_latest
 			WHERE rating_type = 'LUSR' AND rating_value IS NOT NULL
-		`).Scan(&lusr.MatchesCount); err != nil {
+		`)
+	if err == nil {
+		err = count.Scan(&lusr.MatchesCount)
+		_ = count.Close()
+	}
+	if err != nil {
 		return lusr, fmt.Errorf("query count: %w", err)
 	}
 	return lusr, nil
@@ -66,7 +77,7 @@ func (r *Repo) LatestLUSR(ctx context.Context) (port.ProfileLUSR, error) {
 // pour dater chaque point de la sparkline. Les rows LUSR ont `start_time` souvent NULL : written_at sert de
 // proxy temporel.
 func (r *Repo) LUSRSeriesPoints(ctx context.Context, since, until time.Time) ([]port.ProfileLUSRPoint, error) {
-	rows, err := r.pdb.Player.Query(ctx, `
+	rows, err := r.pdb.Player.QueryRecovered(ctx, `
 			SELECT rating_value, COALESCE(start_time, written_at)
 			FROM match_skill_rank_latest
 			WHERE rating_type = 'LUSR' AND rating_value IS NOT NULL
@@ -98,7 +109,7 @@ func (r *Repo) LUSRSeries(ctx context.Context, since, until time.Time) ([]float6
 	// Vue _latest + COALESCE(start_time, written_at) : les rows LUSR ont start_time NULL ; sans COALESCE le
 	// filtre temporel excluait TOUT → série μ vide (« pas de tendance »). written_at sert de proxy temporel
 	// pour l'historique ; start_time est préféré quand présent.
-	rows, err := r.pdb.Player.Query(ctx, `
+	rows, err := r.pdb.Player.QueryRecovered(ctx, `
 			SELECT rating_value
 			FROM match_skill_rank_latest
 			WHERE rating_type = 'LUSR' AND rating_value IS NOT NULL
@@ -133,7 +144,7 @@ func (r *Repo) AwardTotals(ctx context.Context, userID string, matchIDs []string
 		placeholders[i] = "?"
 		args = append(args, id)
 	}
-	rows, err := r.pdb.Player.Query(ctx, `
+	rows, err := r.pdb.Player.QueryRecovered(ctx, `
 			SELECT psa.award_name, SUM(psa.award_count)
 			FROM personal_score_awards_latest psa
 			WHERE psa.xuid = ?
@@ -216,7 +227,7 @@ func (r *Repo) LUSRComponents(ctx context.Context) ([]port.ProfileComponentAggre
 		return nil, err
 	}
 	query, args := lusrComponentsQuery(excluded)
-	rows, err := r.pdb.Player.Query(ctx, query, args...)
+	rows, err := r.pdb.Player.QueryRecovered(ctx, query, args...)
 	if err != nil {
 		return nil, nil
 	}
