@@ -484,7 +484,7 @@ deux graphes de 7.3.
 | 0 | close | (commit de clôture de l'étape 0) | témoins et compteurs relevés le 2026-11-10 |
 | 1 | close | `91727b0c30` (PR #191) | fusionnée le 2026-11-11 |
 | 2 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-11 |
-| 3 | exécutée, revue en attente | `f5729e4deb` à `e124f2423b` | gate vert le 2026-11-12 ; P1 de revue corrigé (`3b44c03102`), reste à faire relire |
+| 3 | close | `dd5f4de69c` sur `release/v8.2.0` | close le 2026-11-12, CI verte ; une ronde de revue, P1 corrigé |
 | 4 | à faire | | |
 | 5 | à faire | | |
 | 6 | à faire | | |

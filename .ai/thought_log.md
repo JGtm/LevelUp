@@ -5,6 +5,7 @@
 - Prochaine étape : le pilote tranche sur le gate de corpus (cassé avant la bascule), puis fusion de #201 et 6.6.
 
 ## [2026-11-12] Plan architecture, étape 3 : écritures — En cours (revue en attente)
+## [2026-11-12] Plan architecture, étape 3 : écritures — Complété (CI verte sur `dd5f4de69c`)
 
 - Décision : awards et marqueur `psa_checked_at` écrits APRÈS l'écriture des alias (`settlePSA` après `flushAliasPairs`) ; un échec d'alias ne laisse aucun award, le match reste sélectionné, jamais de réinsertion d'awards. Revue adversariale : P1 sur la première version (awards avant le flush : match perdu de la sélection, marqueur NULL pour toujours), reproduit par un test qui échoue sur le commit précédent, corrigé. Sélection par le seul marqueur écartée sur pièces (le chemin per-match ne pose jamais le marqueur : 59 matchs sur 68 du jeu de démo entreraient dans la reprise). Aucun profil de déploiement n'a de base partagée en lecture seule par construction : tout échec est transitoire. Reste de l'étape : alerte sur tout échec best-effort des trois chemins, surface de `duckdb.OpenReadWrite` gelée (43 fichiers), allowlists datées par git et rejustifiées, recette d'enrichissement complétée.
 - Résultats : build, vet, intégration sync/persist/duckdb/scheduler, archlint en code 0, code sans appelant inchangé, témoins identiques à une fenêtre de date près (`activity_calendar`). Découvertes au §12.
