@@ -29,10 +29,7 @@ import (
 
 // cheminsDeBriqueEnDurAutorises : fichiers qui construisent `libs/...` à la main, avec la raison datée. Entrée =
 // « fichier : raison, date ». Une entrée dont le fichier ne construit plus rien est morte et fait échouer le test.
-var cheminsDeBriqueEnDurAutorises = map[string]string{
-	"apps/go-api/internal/archlint/dockerfile_go_version_test.go": "vérifie le DÉPÔT (go.mod de chaque brique contre le Dockerfile et dependabot.yml), pas une lecture de brique ; " +
-		"supprimé avec `libs/` par l'étape 6.5 du plan 8.1.2 — 2026-11-10",
-}
+var cheminsDeBriqueEnDurAutorises = map[string]string{}
 
 // constructionsDeCheminDeBrique rend « fichier:ligne » de chaque `Join(...)` qui porte un littéral `"libs"` ou
 // `"libs/..."`.

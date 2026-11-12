@@ -150,13 +150,28 @@ func compilerReplayBuild(ctx context.Context, goAPIDir, gocache, sortie string) 
 	}
 	cmd := exec.CommandContext(ctx, "go", "build", "-o", sortie, "./cmd/replay-build")
 	cmd.Dir = goAPIDir
-	cmd.Env = append(os.Environ(), "GOCACHE="+gocache, "CGO_ENABLED=0")
+	cmd.Env = append(environnementSansGOWORK(os.Environ()), "GOCACHE="+gocache, "CGO_ENABLED=0")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("compilation de cmd/replay-build (%s) : %w\n%s", goAPIDir, err, stderr.String())
 	}
 	return nil
+}
+
+// environnementSansGOWORK rend env privé de toute variable GOWORK. La base se compile dans son propre
+// worktree, avec ce qu'il porte : un go.work versionné à cette révision (trouvé en remontant), ou ses
+// seules dépendances publiées. Un GOWORK hérité y substituerait l'espace de travail local de
+// l'appelant, et GOWORK=off casserait la compilation d'une base qui porte encore un go.work.
+func environnementSansGOWORK(env []string) []string {
+	out := make([]string, 0, len(env))
+	for _, kv := range env {
+		if strings.HasPrefix(strings.ToUpper(kv), "GOWORK=") {
+			continue
+		}
+		out = append(out, kv)
+	}
+	return out
 }
 
 // basePrepParams regroupe les chemins fixes de la preparation de la reference base — un struct

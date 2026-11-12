@@ -17,6 +17,7 @@ package briques
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"runtime"
@@ -141,6 +142,14 @@ func resoudre() (map[string]string, error) {
 		for _, nom := range noms {
 			dir, ok := parModule[modules[nom]]
 			if !ok {
+				var errDl error
+				if dir, errDl = telecharger(racine, modules[nom]); errDl != nil {
+					errDossiers = fmt.Errorf("briques : l'outil Go ne rend aucun dossier pour le module %s : %w", modules[nom], errDl)
+					return
+				}
+				ok = true
+			}
+			if !ok {
 				errDossiers = fmt.Errorf("briques : l'outil Go ne rend aucun dossier pour le module %s", modules[nom])
 				return
 			}
@@ -148,6 +157,26 @@ func resoudre() (map[string]string, error) {
 		}
 	})
 	return dossiers, errDossiers
+}
+
+// telecharger rend le dossier d'un module requis absent du cache de modules (`go list -m` ne lui donne
+// alors aucun dossier : cas d'un cache neuf où seul le build a tiré ses dépendances), après
+// `go mod download`.
+func telecharger(racine, module string) (string, error) {
+	cmd := childproc.Command(context.Background(), "go", "mod", "download", "-json", module)
+	cmd.Dir = racine
+	sortie, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("go mod download %s : %w", module, err)
+	}
+	var info struct{ Dir string }
+	if err := json.Unmarshal(sortie, &info); err != nil {
+		return "", fmt.Errorf("go mod download %s : sortie illisible : %w", module, err)
+	}
+	if info.Dir == "" {
+		return "", fmt.Errorf("go mod download %s : aucun dossier rendu", module)
+	}
+	return info.Dir, nil
 }
 
 // Dir rend le dossier d'une brique sur le disque.

@@ -62,61 +62,10 @@ updates:
         update-types:
           - "minor"
           - "patch"
-
-  # Briques Go (modules sous libs/, ADR 0041) : une entree par go.mod. Le module go-api les
-  # lit par go.work (aucune directive replace) ; seules leurs dependances externes se bumpent ici
-  # (garde-rail internal/archlint/dockerfile_go_version_test.go).
-  - package-ecosystem: "gomod"
-    directory: "/libs/gamefiles"
-    schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 3
-    groups:
-      go-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-
-  - package-ecosystem: "gomod"
-    directory: "/libs/himap"
-    schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 3
-    groups:
-      go-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-
-  - package-ecosystem: "gomod"
-    directory: "/libs/film"
-    schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 3
-    groups:
-      go-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-
-  - package-ecosystem: "gomod"
-    directory: "/libs/haloapi"
-    schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 3
-    groups:
-      go-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
+    ignore:
+      # Briques publiées (ADR 0043) : leur version se monte à la main, par un lot qui rejoue les
+      # témoins du décodeur (replay-equiv, gate de corpus), jamais par une PR automatique.
+      - dependency-name: "github.com/JGtm/*"
 
   # Coquille desktop (Rust, ADR 0045 D-18) : Cargo.lock est versionne, les bumps passent par la CI
   # (cargo test contre le faux serveur, clippy, audit).

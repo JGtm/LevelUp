@@ -7,5 +7,6 @@ replay/document_ground_weapon_items.go.txt	replay/document_ground_weapon_items.g
 replay/document_weapon_changes.go.txt	replay/document_weapon_changes.go
 replay/vehicle_cycles.go.txt	replay/vehicle_cycles.go
 internal/grammar/components_biped_ability.go.txt	internal/grammar/components_biped_ability.go
+internal/facts/objectives/named.go.txt	internal/facts/objectives/named.go
 killicon/data/rules.tsv	killicon/data/rules.tsv
 replay/document_chronicle.entetes.txt	replay/document_chronicle.go

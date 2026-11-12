@@ -3,7 +3,7 @@
  * pure, aucune chaîne d'interface (les libellés vivent dans `i18n/`).
  *
  * LA LISTE EST FERMÉE. `OBJECTIVE_FEED_STATS` reprend, une pour une, les statistiques
- * d'objectif que le décodeur nomme (`libs/film/internal/facts/objectives/named.go`, hors
+ * d'objectif que le décodeur nomme (`internal/facts/objectives/named.go` de la brique du décodeur, hors
  * `kills` et `assists`) ; `objectiveFeedStats.guard.test.ts` la compare au fichier Go. Les
  * familles `hill` (colline) et `skull` (crâne) n'ont AUCUNE action nommée dans cette table
  * aujourd'hui : le décodeur n'en publie pas, donc ce fil n'en écrit pas. Le jour où la table

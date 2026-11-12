@@ -73,11 +73,10 @@ COPY apps/go-api/internal/resourcepack/ ./internal/resourcepack/
 COPY static /pack/static
 COPY apps/web/public/titles /pack/apps/web/dist/titles
 
-# GOWORK=off : ce stage ne copie que le module apps/go-api, sans go.work ni briques ; le générateur n'importe
-# que la bibliothèque standard et golang.org/x/crypto.
+# Le générateur n'importe que la bibliothèque standard et golang.org/x/crypto.
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    GOWORK=off CGO_ENABLED=0 go run ./cmd/resources-manifest -dir /pack > /pack-fingerprint \
+    CGO_ENABLED=0 go run ./cmd/resources-manifest -dir /pack > /pack-fingerprint \
  && test "$(wc -c < /pack-fingerprint)" -eq 65
 
 # ============================================================================
@@ -86,24 +85,15 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Image épinglée sur le correctif exact (pas la branche flottante `1.26`) :
 # `scripts/deploy.sh` construit sans `--pull`, donc un tag flottant resterait sur la
 # version déjà présente sur l'hôte. Même version que la ligne `go` de
-# apps/go-api/go.mod, de go.work et de chaque libs/*/go.mod ; les monter ensemble (garde-rail :
-# internal/archlint/dockerfile_go_version_test.go).
+# apps/go-api/go.mod ; les monter ensemble (garde-rail : internal/archlint/dockerfile_go_version_test.go).
 FROM golang:1.26.11-bookworm AS go-builder
 
-# Espace de travail Go (ADR 0041) : le serveur est le module apps/go-api, relié par go.work aux
-# briques sous libs/ (aucune directive `replace`). La racine de l'espace de travail est /build ;
-# les `go build` se lancent depuis /build/apps/go-api, où go.work est trouvé en remontant.
-WORKDIR /build
+# Le serveur est le module apps/go-api ; les briques sont des dépendances publiées, tirées du proxy
+# de modules par `go mod download` comme les autres (ooz y apporte ses sources C++).
+WORKDIR /build/apps/go-api
 
-# Dépendances Go (cache Docker — séparé du code source). Ordre des couches : go.work, puis les
-# go.mod/go.sum de chaque module de l'espace de travail, AVANT `go mod download` ; tout module
-# ajouté à go.work doit avoir sa ligne COPY ici (go.work refuse un `use` sans go.mod).
-COPY go.work go.work.sum ./
-COPY apps/go-api/go.mod apps/go-api/go.sum ./apps/go-api/
-COPY libs/film/go.mod libs/film/go.sum ./libs/film/
-COPY libs/gamefiles/go.mod libs/gamefiles/go.sum ./libs/gamefiles/
-COPY libs/haloapi/go.mod libs/haloapi/go.sum ./libs/haloapi/
-COPY libs/himap/go.mod libs/himap/go.sum ./libs/himap/
+# Dépendances Go (cache Docker — séparé du code source) : go.mod et go.sum AVANT `go mod download`.
+COPY apps/go-api/go.mod apps/go-api/go.sum ./
 
 # Cache mounts BuildKit (2026-07-26) — présents sur les 4 RUN Go de ce stage :
 #   /go/pkg/mod           = GOMODCACHE par défaut (l'image officielle fixe GOPATH=/go)
@@ -125,11 +115,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go mod download
 
-# Code source Go : le module de l'application, puis les briques (libs/ en entier : ooz y embarque
-# ses sources C++, mapvar ses graines de test).
-COPY apps/go-api/ ./apps/go-api/
-COPY libs/ ./libs/
-WORKDIR /build/apps/go-api
+# Code source Go du module de l'application.
+COPY apps/go-api/ ./
 
 # La version N'EST PLUS une entrée de build (V721-15, 2026-07-25).
 #

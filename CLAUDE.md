@@ -13,8 +13,8 @@
 |---|---|---|
 | API + sync + analyse | **Go** (chi + Huma, slog, DuckDB) | `apps/go-api/` |
 | Frontend | **React/TypeScript** (Vite, TanStack Router/Query/Table, ECharts) | `apps/web/` |
-| Briques Go (modules séparés, ADR 0041 ; publication, ADR 0043) | **Go**, reliées à `apps/go-api` par `go.work` (racine) | `libs/<brique>/` (`libs/gamefiles` : lecteurs de fichiers du jeu ; `libs/himap` : images de carte ; `libs/film` : décodeur de film, publiable depuis 2026-11-08 ; `libs/haloapi` : API Halo) ; copies publiées dans quatre dépôts dédiés `JGtm/{halo-infinite-files-reader,halo-infinite-map-images,halo-api,halo-infinite-film-decoder}` depuis le 2026-11-09, produites depuis `libs/` par la recette du plan, jamais éditées sur place (ADR 0043, amendement du 2026-11-09) |
-| API Halo (protocole, ADR 0042) | **Go**, paquets sans état ni politique | `libs/haloapi/` (`xblauth` : chaîne d'échange ; `infinite` : services Halo Infinite ; `halo5` : services Halo 5 ; `xboxlive` : succès Xbox ; services UGC cartes et fichiers GameCMS dans `infinite` ; `haloapitest` : enregistreur de tests, public) ; l'exploitation reste dans `platform/auth`, `games/halo_infinite/haloadapter`, `games/halo_5`, `sync/filmfetch` |
+| Briques Go (ADR 0041 ; publication, ADR 0043) | **Go**, dépendances publiées de `apps/go-api/go.mod` (aucun `go.work` versionné ; espace de travail local : `scripts/briques-workspace.sh` + `GOWORK`) | dépôts dédiés `github.com/JGtm/halo-infinite-files-reader` (lecteurs de fichiers du jeu), `halo-infinite-map-images` (images de carte), `halo-infinite-film-decoder` (décodeur de film), `halo-api` (API Halo) ; plus de `libs/` dans ce dépôt depuis la bascule de la 8.1.2 |
+| API Halo (protocole, ADR 0042) | **Go**, paquets sans état ni politique | brique `github.com/JGtm/halo-api` (`xblauth` : chaîne d'échange ; `infinite` : services Halo Infinite ; `halo5` : services Halo 5 ; `xboxlive` : succès Xbox ; services UGC cartes et fichiers GameCMS dans `infinite` ; `haloapitest` : enregistreur de tests, public) ; l'exploitation reste dans `platform/auth`, `games/halo_infinite/haloadapter`, `games/halo_5`, `sync/filmfetch` |
 | Coquille Windows (ADR 0045) | **Rust / Tauri 2** : fenêtre, sidecar Go, updater ; aucune logique métier | `apps/desktop/` |
 | Stockage | **DuckDB** par titre + Parquet (archives) | `data/titles/{slug}/` |
 | Config | JSON + TOML | `db_profiles.json`, `app_settings.json`, `.env.local`, `config/titles/` |
@@ -157,7 +157,7 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
   `data/auth/watcher_tokens.json` (celui-ci ne porte plus que l'état du watcher RTA :
   access_token + XSTS). Un joueur absent du store n'a pas de token.
 - **Chaîne d'échange (ADR 0042)** : jeton d'accès Microsoft -> XBL -> XSTS -> Spartan vit dans
-  `libs/haloapi/xblauth`, qui ne lit ni env ni fichier ni `sync_meta` (client Azure et descripteur de
+  `xblauth` (brique `halo-api`), qui ne lit ni env ni fichier ni `sync_meta` (client Azure et descripteur de
   titre passés par l'appelant) ; le magasin, la mise en commun et la politique de rafraîchissement restent dans
   `platform/auth`, helper canonique et ratchets inchangés. Cache de jetons par joueur :
   `platform/auth/tokencache`.
@@ -219,10 +219,9 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
 make go-api-test            # tests Go rapides (domain/analysis/contracttest)
 cd apps/go-api && go test ./...                      # suite complète
 cd apps/go-api && go test -tags=integration ./...    # inclut les tests persist anti-ART (OBLIGATOIRE avant livraison sync/persist)
-make go-api-test-gamefiles  # corpus cartes libs/himap + internal/gamefilescorpus (tag `gamefiles`, EXIGE Halo installe, ~6 min)
+make go-api-test-gamefiles  # corpus cartes de la brique himap + internal/gamefilescorpus (tag `gamefiles`, EXIGE Halo installe, ~6 min)
 make go-api-lint            # golangci-lint
 make desktop-test           # coquille Rust (apps/desktop) : cargo test contre le faux serveur Go, clippy, fmt
-make libs-test              # vet + tests des modules libs/ (ADR 0041 ; `./...` de go-api ne les couvre pas)
 make gate-push              # filet local avant merge vers main (~25 min) : ratchet lint Go + typecheck/lint web + baseline de tests (voies film et DuckDB en parallèle) ; la CI reste le gate d'autorité
 powershell -File scripts/disk-hygiene.ps1                  # disque : simulation (caches Go dédiés, dossiers de session, C:\t) ; -Apply supprime
 powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply # clôture de lot : supprime go-build-<lot> / golangci-<lot> (convention : skill plan-execution §5)
@@ -244,11 +243,11 @@ go run apps/go-api/cmd/inspect_bp/main.go            # outil Go (CGO : gcc msys6
 go run ./apps/go-api/cmd/levelup --help              # sync, backfill, diag
 ```
 
-**Tag `gamefiles` (2026-09-05)** : les 34 `*_gamefiles_test.go` de `libs/himap/himap/` (module `libs/himap`) lisent
+**Tag `gamefiles` (2026-09-05)** : les 34 `*_gamefiles_test.go` du paquet `himap` de la brique des cartes lisent
 l'installation locale de Halo Infinite et coûtent des dizaines de minutes
 (`TestBalayageCoquille` seul : 203 s pour 26 cartes ; 1 246 s avant le passage du lecteur
  de modules en projection mémoire le 2026-09-05). Ils sont derrière
-`//go:build gamefiles` — sans quoi `go test ./himap/` (depuis `libs/himap`) ne terminait jamais sur un
+`//go:build gamefiles` — sans quoi le `go test` du paquet ne terminait jamais sur un
 poste où le jeu est installé, alors que la CI (pas de jeu → `t.Skip`) restait verte. Un test
 qui ouvre le jeu se nomme `*_gamefiles_test.go` ET porte le tag : garde-rails dans
 `internal/archlint/gamefiles_tag_test.go` (ratchet sur tout l'espace de travail Go, 2026-09-06 ; remplace l'ancien `corpus_tag_test.go` de la brique).

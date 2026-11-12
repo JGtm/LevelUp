@@ -9,18 +9,17 @@
  * Et chaque action de la liste a son libellé dans CHAQUE langue du rejeu.
  */
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
 import { KNOWN_LOCALES } from '@/lib/i18n/locale'
 
 import { REPLAY_TEXT } from '../i18n/i18n'
-import { racineDuDepot } from '../test/featureFiles'
+import { instantaneFilm } from '../test/featureFiles'
 import { OBJECTIVE_FEED_STATS, objectiveFamilyOfFeedStat } from './objectiveFeedLogic'
 import { OBJECTIVE_FAMILIES } from './objectiveFamilies'
 
-const NAMED_GO = resolve(racineDuDepot(), 'libs/film/internal/facts/objectives/named.go')
+const NAMED_GO = instantaneFilm('internal/facts/objectives/named.go.txt')
 
 /** Les statistiques qui ne sont pas des objectifs : ancre d'identité du balayage et son contrôle croisé. */
 const NOT_OBJECTIVES = new Set(['kills', 'assists'])

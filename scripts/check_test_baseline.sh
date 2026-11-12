@@ -387,11 +387,12 @@
 # qui rend aussi la politique de marquage ; ses cas sont repris, avec cette politique, par
 # `TestResolveMediaBase` (`internal/service/media_index_base_test.go`).
 #
-# TROIS BASELINES, UNE PAR MODULE DES LOTS CI (ADR 0041) : `tests_pre_migration.jsonl` pour `apps/go-api`
-# (défaut), `tests_libs_film.jsonl` pour `libs/film` (`--baseline .ai/baselines/tests_libs_film.jsonl`),
-# `tests_libs_haloapi.jsonl` pour `libs/haloapi`. `./...` ne franchit pas la frontière d'un module : chaque
-# baseline se juge contre le JSONL de SON module. Le mode AUTONOME ne joue que les voies go-api et film ;
-# `libs/haloapi` s'y joue par `make libs-test` (appelé par `make gate-push`), sans jugement de présence.
+# TROIS BASELINES, UNE PAR MODULE DES LOTS CI : `tests_pre_migration.jsonl` pour `apps/go-api` (défaut),
+# `tests_halo-infinite-film-decoder.jsonl` pour la brique du décodeur de film et `tests_halo-api.jsonl`
+# pour celle de l'API Halo (dépendances publiées, ADR 0043, jouées à la version que fixe go.mod).
+# Chaque baseline se juge contre le JSONL de SON module. Le mode AUTONOME joue deux voies : go-api, et
+# les quatre briques (jugées contre les deux baselines de briques ; les briques de cartes n'en ont pas,
+# leurs échecs comptent).
 #
 # DEUX MODES (le code de vérification est le MÊME — verify_tests_jsonl) :
 #   - AUTONOME (défaut) : le script lance lui-même la suite. C'est le mode du
@@ -422,17 +423,18 @@
 #   bash scripts/check_test_baseline.sh tests                        # tests uniquement (lance la suite)
 #   bash scripts/check_test_baseline.sh coverage                     # coverage uniquement (lance la suite)
 #   bash scripts/check_test_baseline.sh tests --from-jsonl <fichier> # vérifie un JSONL déjà produit
-#   bash scripts/check_test_baseline.sh tests --from-jsonl <fichier> --baseline .ai/baselines/tests_libs_film.jsonl
-#                                                                    # idem pour le module libs/film
+#   bash scripts/check_test_baseline.sh tests --from-jsonl <fichier> --baseline .ai/baselines/tests_halo-infinite-film-decoder.jsonl
+#                                                                    # idem pour la brique du décodeur
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BASELINE_DIR="$REPO_ROOT/.ai/baselines"
 BASELINE_TESTS="$BASELINE_DIR/tests_pre_migration.jsonl"
-# BASELINE_FILM : la baseline du module `libs/film` (le décodeur de film, ADR 0041), jugée contre le
-# JSONL de la voie film en mode autonome.
-BASELINE_FILM="$BASELINE_DIR/tests_libs_film.jsonl"
+# BASELINE_FILM et BASELINE_HALOAPI : les baselines des briques du décodeur de film et de l'API Halo,
+# jugées contre le JSONL de la voie des briques en mode autonome.
+BASELINE_FILM="$BASELINE_DIR/tests_halo-infinite-film-decoder.jsonl"
+BASELINE_HALOAPI="$BASELINE_DIR/tests_halo-api.jsonl"
 BASELINE_COV_TXT="$BASELINE_DIR/coverage_pre_migration.txt"
 
 # JSONL du run courant (mode autonome) — chemin STABLE (pas un mktemp détruit à la
@@ -440,8 +442,8 @@ BASELINE_COV_TXT="$BASELINE_DIR/coverage_pre_migration.txt"
 # trace des tests en cause). Ignoré par git (.gitignore), uploadé en artefact par
 # la CI si échec.
 CURRENT_TESTS_JSONL="$REPO_ROOT/apps/go-api/baseline_current.jsonl"
-# JSONL de la voie film (module `libs/film`) en mode autonome, même régime que ci-dessus.
-CURRENT_FILM_JSONL="$REPO_ROOT/apps/go-api/baseline_current_libs_film.jsonl"
+# JSONL de la voie des briques en mode autonome, même régime que ci-dessus.
+CURRENT_FILM_JSONL="$REPO_ROOT/apps/go-api/baseline_current_briques.jsonl"
 
 usage() {
   echo "Usage: $0 [tests|coverage|all] [--from-jsonl <fichier>] [--baseline <fichier>]"
@@ -641,17 +643,22 @@ print_failure_output() {
 }
 
 # VOIES du mode AUTONOME (b1016, E1.7) : la suite se joue en DEUX processus `go test`
-# parallèles, un par module (ADR 0041), chacun jugé contre SA baseline :
-#   - la voie film : le module `libs/film` (FILM_LANE_MODULE, motif FILM_LANE_PATTERN depuis sa
-#     racine), jugé contre BASELINE_FILM ; aucun paquet ne dépend du driver DuckDB, tests
-#     compris — garde-rail archlint/film_lane_duckdb_free_test.go, qui juge CE motif ;
+# parallèles, chacun jugé contre SES baselines :
+#   - la voie des briques : les quatre briques publiées (motifs FILM_LANE_PATTERNS, joués depuis
+#     apps/go-api à la version que fixe go.mod), jugée contre BASELINE_FILM et BASELINE_HALOAPI ;
+#     aucun paquet ne dépend du driver DuckDB, tests compris — garde-rail
+#     archlint/film_lane_duckdb_free_test.go, qui juge CES motifs ;
 #   - la voie DuckDB : tout le module `apps/go-api`, en `-p 1` (driver mono-process, ADR 0013),
 #     jugé contre BASELINE_TESTS.
 # Le parallélisme ne partage donc aucune base. Il partage le cache de build Go : sur ce poste,
 # deux commandes `go` concurrentes ont déjà corrompu le cache Windows ; un échec de compilation
 # inexplicable en gate-push se rejoue avec un GOCACHE neuf avant de conclure.
-FILM_LANE_MODULE='libs/film'
-FILM_LANE_PATTERN='./...'
+FILM_LANE_PATTERNS=(
+  'github.com/JGtm/halo-infinite-film-decoder/...'
+  'github.com/JGtm/halo-api/...'
+  'github.com/JGtm/halo-infinite-files-reader/...'
+  'github.com/JGtm/halo-infinite-map-images/...'
+)
 
 # run_current_suite — mode AUTONOME : exécute la suite complète et écrit les JSONL des deux voies.
 # `-timeout=300s` : budget par package d'un run NON instrumenté. La CI, elle,
@@ -674,19 +681,20 @@ run_current_suite() {
     export CGO_ENABLED=1
 
     local film duckdb
-    mapfile -t film < <(cd "$REPO_ROOT/$FILM_LANE_MODULE" && go list -tags=integration "$FILM_LANE_PATTERN" | tr -d '\r' | sort)
+    mapfile -t film < <(cd "$REPO_ROOT/apps/go-api" && go list -tags=integration "${FILM_LANE_PATTERNS[@]}" | tr -d '\r' | sort)
     mapfile -t duckdb < <(cd "$REPO_ROOT/apps/go-api" && go list -tags=integration ./... | tr -d '\r' | sort)
     if [[ ${#film[@]} -eq 0 || ${#duckdb[@]} -eq 0 ]]; then
       echo "[ECHEC] énumération des voies impossible (film=${#film[@]}, DuckDB=${#duckdb[@]} paquet(s))" > "$out"
       exit 1
     fi
-    echo "  voie film : ${#film[@]} paquet(s), voie DuckDB : ${#duckdb[@]} paquet(s)"
+    echo "  voie des briques : ${#film[@]} paquet(s), voie DuckDB : ${#duckdb[@]} paquet(s)"
 
     (
-      cd "$REPO_ROOT/$FILM_LANE_MODULE"
+      cd "$REPO_ROOT/apps/go-api"
       start=$SECONDS
-      go test -tags=integration -count=1 -timeout=300s -p 1 -json "$FILM_LANE_PATTERN" > "$out_film" 2>&1
-      echo "  [voie film] terminée en $((SECONDS - start)) s"
+      # Les tests du décodeur qui lisent des données de ce dépôt les trouvent par cette variable.
+      DECODEUR_FILM_RACINE_DONNEES="$REPO_ROOT" go test -tags=integration -count=1 -timeout=300s -p 1 -json "${FILM_LANE_PATTERNS[@]}" > "$out_film" 2>&1
+      echo "  [voie des briques] terminée en $((SECONDS - start)) s"
     ) &
     pid_film=$!
     (
@@ -844,18 +852,23 @@ check_tests() {
   mkdir -p "$(dirname "$current_jsonl")"
   echo "  JSONL du run courant : $current_jsonl"
 
-  echo "  JSONL de la voie film (module libs/film, baseline $BASELINE_FILM) : $CURRENT_FILM_JSONL"
-  if [[ ! -f "$BASELINE_FILM" ]]; then
-    echo "[ECHEC] Baseline du module libs/film introuvable : $BASELINE_FILM"
-    return 2
-  fi
+  echo "  JSONL de la voie des briques (baselines $BASELINE_FILM, $BASELINE_HALOAPI) : $CURRENT_FILM_JSONL"
+  local b
+  for b in "$BASELINE_FILM" "$BASELINE_HALOAPI"; do
+    if [[ ! -f "$b" ]]; then
+      echo "[ECHEC] Baseline de brique introuvable : $b"
+      return 2
+    fi
+  done
 
   run_current_suite "$current_jsonl" "$CURRENT_FILM_JSONL"
   local rc=0
   echo "[BASELINE] module apps/go-api"
   verify_tests_jsonl "$current_jsonl" "$BASELINE_TESTS" || rc=$?
-  echo "[BASELINE] module libs/film"
+  echo "[BASELINE] brique du décodeur de film"
   verify_tests_jsonl "$CURRENT_FILM_JSONL" "$BASELINE_FILM" || rc=$?
+  echo "[BASELINE] brique de l'API Halo"
+  verify_tests_jsonl "$CURRENT_FILM_JSONL" "$BASELINE_HALOAPI" || rc=$?
   return "$rc"
 }
 

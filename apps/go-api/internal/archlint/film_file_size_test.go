@@ -46,30 +46,20 @@ import (
 // seuilLignesParFichier : le seuil du depot (CLAUDE.md regle 5).
 const seuilLignesParFichier = 500
 
-// racinesSurveilleesTaille : les arborescences que ce ratchet couvre, au double repere de
-// [surDisque] (go-api, puis les briques sous `libs/`). Ce sont celles du chantier du decodeur de
-// film — le perimetre du lot 2.7 — et, depuis le 2026-11-08 (ADR 0041 D7), les trois autres
-// briques : le seuil est celui du depot, la regle ne s arrete pas au dossier d un module. Le
-// ratchet `film_function_length_test.go` lit la meme liste.
-//
-// LA QUATRIEME RACINE A DISPARU LE 2026-09-16 (lot 2.5.d.2) : `internal/analysis/objectiveevents`
-// est descendu sous `libs/film/internal/facts/objectives`, donc SOUS la premiere
-// racine. La garder aurait fait compter ses fichiers DEUX FOIS dans le plancher — un plancher
-// qu on gonfle est un plancher qui ne mesure plus rien.
+// racinesSurveilleesTaille : les arborescences que ce ratchet couvre, relatives a apps/go-api : les
+// voisins LevelUp du decodeur de film (le perimetre du lot 2.7). Le ratchet ne couvre que l'arbre de
+// LevelUp : les briques sont des dependances publiees (ADR 0043), leur code vit dans le cache de modules
+// et leurs seuils se tiennent dans leur depot. Le ratchet `film_function_length_test.go` lit la meme liste.
 var racinesSurveilleesTaille = []string{
-	racineBriqueFilm,
 	"internal/replaybuild",
 	"internal/sync/killcollector",
-	"libs/gamefiles",
-	"libs/haloapi",
-	"libs/himap",
 }
 
-// plancherFichiersBalayesTaille : LE PLANCHER CONTRE UN BALAYAGE MUET. 1 298 fichiers `.go`
-// mesures le 2026-09-16 dans les trois premieres racines ci-dessus ; un balayage qui en rend nettement
-// moins n a pas trouve l arborescence (racine renommee, chemin relatif casse) et ne garde plus
-// rien. Il doit ECHOUER bruyamment, pas rendre vert sur du vide.
-const plancherFichiersBalayesTaille = 1200
+// plancherFichiersBalayesTaille : LE PLANCHER CONTRE UN BALAYAGE MUET. 174 fichiers `.go` dans les
+// racines ci-dessus a la bascule sur les briques publiees ; un balayage qui en rend nettement moins n a
+// pas trouve l arborescence (racine renommee, chemin relatif casse) et ne garde plus rien. Il doit
+// ECHOUER bruyamment, pas rendre vert sur du vide.
+const plancherFichiersBalayesTaille = 160
 
 // plafondsParFichier — LA TABLE DATEE DES FICHIERS DEJA AU-DELA DU SEUIL, avec leur taille du
 // 2026-09-16 (lot 2.7, apres la scission de `grammar` et de `killcollector`). Chemin relatif a
@@ -327,7 +317,6 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 108 NON PUBLIE (2026-11-10), +8 : l entree v108 recoit son troisieme volet (la table du film a
 	// siege vacant intercale, employee quand les records de creation confirment le rang absolu). Meme
 	// exception ecrite : la chronique de la version que la branche monte, avant sa publication.
-	"libs/film/replay/document_chronicle.go": 3761,
 	// `film_scan.go` N ENTRE PAS EN TABLE (2026-10-22, lot detonations, correction CI) : l appel a
 	// `grammar.ScanProjectileDetonations` (item 1) l avait fait passer de 500 a 504 lignes, mais
 	// « mettre le fichier dans plafondsParFichier n est pas une reponse » (cette table est close au
@@ -346,9 +335,7 @@ var plafondsParFichier = map[string]int{
 	// vague 2 de la famille 1.9 et le schema 60, avant que le ratchet n existe ici. Meme regle :
 	// chaque valeur ne peut que descendre. `document_vehicles.go` et `score_timeline.go` sont dans
 	// le perimetre du volet 2.7p (scission en cours) et sortiront de la table a sa fusion.
-	"libs/film/internal/facts/killsource/e197_identite_paquet_mesure_research_test.go": 649,
-	"libs/film/internal/facts/objectives/e1911_manches_mesure_research_test.go":        523,
-	"internal/replaybuild/replaybuild.go":                                              562,
+	"internal/replaybuild/replaybuild.go": 562,
 	// `equipment_creation.go` EST SORTI DE CETTE TABLE LE 2026-09-17 (lot 2.6.2, volet grammaire /
 	// rejeu), pour la meme raison qu `assist.go` au volet facts : `EquipmentCreation` et
 	// `EquipmentCreationStats` ont descendu dans `film/types`, le fichier est passe de 508 a 434
@@ -363,8 +350,6 @@ var plafondsParFichier = map[string]int{
 	// de la seule exception nommee en tete (document_chronicle.go, structure_test.go) — « un
 	// plafond ne monte pas ». `countShotsWithAim`/`countShotsWithWeapon` en sont sortis par
 	// DEPLACEMENT PUR vers `golden_assembly_counts_test.go` pour compenser.
-	"libs/film/replay/golden_assembly_test.go":      1184,
-	"libs/film/internal/grammar/i59_anchor_test.go": 1138,
 	// SCHEMA 61 -> 62 (2026-09-17, lot 4.2.1-b) : 1168 -> 1183, la raison ecrite de v62 que
 	// `TestStructureIsOptionalInDocument` exige au-dessus de son epinglage dur.
 	// SCHEMA 62 -> 63 (2026-09-19, post-chantier lot 5.1) : 1183 -> 1200, la raison ECRITE de la
@@ -471,40 +456,16 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 105 -> 106 (2026-10-28) : 1486 -> 1491, la justification de la montee (durees d effets).
 	// SCHEMA 106 -> 107 (2026-11-08) : +4, la justification de la montee (fin de vie a la mort ecrite).
 	// SCHEMA 107 -> 108 (2026-11-09) : +5, la justification de la montee (tourelle fixe generique, slots sans creation).
-	"libs/film/replay/structure_test.go":             1488,
-	"libs/film/replay/t0_mouvement_research_test.go": 866,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).
-	"libs/film/internal/grammar/inventory_position_i22_test.go":           824,
-	"libs/film/replay/ground_link_research_test.go":                       811,
-	"libs/film/replay/ctf_retour_zone_research_test.go":                   804,
-	"libs/film/replay/assaut_manches_research_test.go":                    633,
-	"libs/film/killicon/killicon_test.go":                                 610,
-	"libs/film/internal/grammar/components_hooks_test.go":                 600,
-	"libs/film/replay/closures_test.go":                                   598,
-	"libs/film/replay/vehicules_v1a_test.go":                              577,
-	"libs/film/internal/grammar/vehicules_v13_deadstate_test.go":          580,
-	"libs/film/replay/minifilm_test.go":                                   579,
-	"libs/film/internal/grammar/ground_weapon_lifecycle_research_test.go": 564,
-	"libs/film/replay/equipment_uses_join_test.go":                        571,
-	"libs/film/internal/facts/objectives/assaut_pied_ancre_test.go":       556,
-	"internal/sync/killcollector/positions_test.go":                       557,
-	"libs/film/internal/grammar/golden_minibobine_test.go":                549,
-	"libs/film/internal/grammar/vehicules_v2_items_test.go":               533,
-	"libs/film/replay/attachement_phase0_bord_test.go":                    522,
-	"internal/sync/killcollector/collector_test.go":                       524,
+	"internal/sync/killcollector/positions_test.go": 557,
+	"internal/sync/killcollector/collector_test.go": 524,
 
 	// --- BRIQUES VOISINES, ENTREES EN TABLE LE 2026-11-08 (lot 3.2 de la fin du decouplage, ADR 0041
 	// D7) : la racine du ratchet est passee a l espace de travail, ces six fichiers etaient deja au-dela
 	// du seuil dans `himap` et `gamefiles`. Taille du jour, qui ne peut que descendre ; aucune autre
 	// entree ne s ajoute (la regle de la table, ecrite plus haut, vaut pour elles). Retrait : la
 	// scission du fichier, ou la sortie du fichier de recherche du depot.
-	"libs/himap/himap/cuisson_forge.go":                      1048,
-	"libs/himap/himap/cartes_forge.go":                       719,
-	"libs/himap/himap/cuisson.go":                            619,
-	"libs/himap/himap/sonde_locs_research_test.go":           818,
-	"libs/himap/himap/physique_sonde_gamefiles_test.go":      530,
-	"libs/gamefiles/mapvar/noms_lieux_hunt_research_test.go": 622,
 }
 
 // TestTailleDesFichiersDuFilmNeCroitPas : aucun fichier des racines surveillees ne depasse son

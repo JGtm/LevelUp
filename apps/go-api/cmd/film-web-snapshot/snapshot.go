@@ -2,8 +2,8 @@ package main
 
 // snapshot.go — LES FICHIERS DE LA BRIQUE DU DECODEUR DE FILM QUE LES TESTS WEB RELISENT.
 //
-// Quatre tests web (`deltaLayersContract`, `replaySchemaStatus`, `vehicleCycleTime`,
-// `replaySoundAssets`) confrontent des valeurs du client a leur source Go : balises `json:` des
+// Les tests web (`deltaLayersContract`, `replaySchemaStatus`, `vehicleCycleTime`,
+// `replaySoundAssets`, `objectiveFeedStats`) confrontent des valeurs du client a leur source Go : balises `json:` des
 // calques du document de rejeu, constantes, version de schema declaree par la chronique, regles des
 // icones de mort. Cette source vit dans la brique `libs/film`, dont le dossier est celui que l'outil
 // Go designe pour le module (espace de travail, puis cache de modules) : un test web ne sait pas le
@@ -41,7 +41,7 @@ type source struct {
 	extrait func([]byte) []byte // nil : copie telle quelle
 }
 
-// sources : exactement ce que lisent les quatre tests web. Ajouter une lecture a un test web, c'est
+// sources : exactement ce que lisent les tests web. Ajouter une lecture a un test web, c'est
 // ajouter une ligne ici puis regenerer.
 var sources = []source{
 	{chemin: "replay/document.go", sortie: "replay/document.go.txt"},
@@ -50,6 +50,7 @@ var sources = []source{
 	{chemin: "replay/document_weapon_changes.go", sortie: "replay/document_weapon_changes.go.txt"},
 	{chemin: "replay/vehicle_cycles.go", sortie: "replay/vehicle_cycles.go.txt"},
 	{chemin: "internal/grammar/components_biped_ability.go", sortie: "internal/grammar/components_biped_ability.go.txt"},
+	{chemin: "internal/facts/objectives/named.go", sortie: "internal/facts/objectives/named.go.txt"},
 	{chemin: "killicon/data/rules.tsv", sortie: "killicon/data/rules.tsv"},
 	{chemin: "replay/document_chronicle.go", sortie: "replay/document_chronicle.entetes.txt", extrait: entetesDeChronique},
 }

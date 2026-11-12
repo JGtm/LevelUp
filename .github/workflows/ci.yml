@@ -104,7 +104,7 @@ jobs:
   # Classement des fichiers modifiés (prédicat `some-with-excludes` : au moins un motif retenu et
   # aucun motif exclu). Conservateur : dans le doute, les deux piles tournent.
   #   web      apps/web/**
-  #   go       apps/go-api/**, libs/** et go.work* (modules Go de l'espace de travail, ADR 0041) hors openapi.yaml
+  #   go       apps/go-api/** hors openapi.yaml (les briques sont des dépendances de son go.mod, ADR 0043)
   #   desktop  la coquille Tauri (apps/desktop/**) et les deux fichiers dont son build.rs tire le
   #            catalogue de repli (desktop.toml, locales.toml) ; `autre` la couvre aussi : un push
   #            qui ne touche que la coquille rejoue donc aussi les deux autres piles (conservateur,
@@ -152,9 +152,6 @@ jobs:
               - 'apps/web/**'
             go:
               - 'apps/go-api/**'
-              - 'libs/**'
-              - 'go.work'
-              - 'go.work.sum'
               - '!**/openapi.yaml'
             desktop:
               - 'apps/desktop/**'
@@ -169,18 +166,11 @@ jobs:
               - 'apps/go-api/internal/testfixtures/testdata/cartes/nommage_zone_cas.json'
               - 'apps/go-api/internal/analysis/leadshare/testdata/meneur_cas.json'
               - 'apps/go-api/go.mod'
-              - 'libs/film/replay/**'
-              - 'libs/film/internal/grammar/**'
-              - 'libs/film/internal/facts/**'
-              - 'libs/film/killicon/data/**'
               - 'apps/go-api/internal/games/mappings/loader_replay_labels*.go'
             autre:
               - '**'
               - '!apps/web/**'
               - '!apps/go-api/**'
-              - '!libs/**'
-              - '!go.work'
-              - '!go.work.sum'
 
   frontend:
     name: Frontend (TypeScript + Vite build)
@@ -436,10 +426,6 @@ jobs:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: |
             apps/go-api/go.sum
-            libs/film/go.sum
-            libs/gamefiles/go.sum
-            libs/haloapi/go.sum
-            libs/himap/go.sum
 
       - name: go vet (domain + analysis — sans CGo)
         run: go vet ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/...
@@ -465,7 +451,7 @@ jobs:
       # n'avait pas suivi. Un tag sans vet est un fichier qui pourrit en silence.
       #
       # CGO OBLIGATOIRE, ET SUR LINUX SEULEMENT (correctif du 2026-09-05). `himap` importe
-      # `himodule`, qui importe `libs/gamefiles/ooz` — un paquet CGO (décodeur Oodle C++). Avec
+      # `himodule`, qui importe `ooz` (brique gamefiles) — un paquet CGO (décodeur Oodle C++). Avec
       # CGO_ENABLED=0, ooz n'a AUCUN fichier compilable : le vet meurt sur « build
       # constraints exclude all Go files », ce qui a rougi le job ubuntu et fait annuler le
       # job windows par fail-fast dès l'ajout de cette étape. Le toolchain C++ est garanti
@@ -484,121 +470,74 @@ jobs:
         env:
           CGO_ENABLED: "1"
 
-      # BRIQUE `libs/himap` (ADR 0041, plan D1 lot 4) : même schéma que `libs/gamefiles` ci-dessus,
-      # module séparé. `himap` importe `himodule` donc `ooz` : CGO actif, Linux seulement. Les quatre
-      # vet couvrent le build par défaut, les instruments `research`, le corpus `gamefiles` (les
-      # `*_gamefiles_test.go` de la brique ; compilation seule, le runner n'a pas le jeu) et les
-      # instruments qui ouvrent le jeu (`gamefiles && research`). `go list -deps` ne doit montrer
-      # aucun paquet `levelup/go-api` : l'autonomie du module, doublée par
-      # archlint/briques_imports_test.go. Le test tourne SANS jeu : les tests qui l'exigent sont
-      # sous le tag `gamefiles` et se sautent ou n'existent pas dans le build par défaut.
-      - name: go vet + go test (brique himap — module libs/himap)
+      # BRIQUES (ADR 0043) : dépendances publiées, à la version que fixe apps/go-api/go.mod. Leur dépôt
+      # porte leur propre CI (lint, vet, tests, Windows) ; LevelUp rejoue ici, depuis le cache de modules,
+      # leur vet (build par défaut et tags `research` / `gamefiles`, compilation seule : le runner n'a pas
+      # le jeu) et leurs tests, pour juger la version qu'il consomme. Les tests du décodeur qui lisent des
+      # données de ce dépôt (catalogues de référence, sources du front) les trouvent par
+      # DECODEUR_FILM_RACINE_DONNEES. `himap` importe `ooz`, un paquet CGo (décodeur Oodle C++) : les
+      # deux briques de cartes se jouent sur Linux, CGo actif.
+      - name: go vet + go test (briques de cartes, CGo)
         if: runner.os == 'Linux'
-        working-directory: libs/himap
         run: |
-          go vet ./...
-          go vet -tags=research ./...
-          go vet -tags=gamefiles ./...
-          go vet -tags=gamefiles,research ./...
-          go test ./... -timeout 600s -count=1
-          if go list -deps -test ./... | grep -E 'levelup/go-api'; then
-            echo "::error::libs/himap importe le module levelup/go-api"
-            exit 1
-          fi
+          set -e
+          for m in github.com/JGtm/halo-infinite-files-reader github.com/JGtm/halo-infinite-map-images; do
+            go vet "$m/..."
+            go vet -tags=research "$m/..."
+            go vet -tags=gamefiles "$m/..."
+            go vet -tags=gamefiles,research "$m/..."
+            go test "$m/..." -timeout 600s -count=1
+          done
         env:
           CGO_ENABLED: "1"
 
-      # BRIQUE `libs/gamefiles` (ADR 0041, plan D1 lot 3) : module Go séparé, relié à go-api par
-      # `go.work`. `./...` ne franchit JAMAIS la frontière d'un module : sans ce pas, les quatre
-      # paquets (himodule, ooz, hinavmesh, mapvar) ne seraient ni compilés ni testés par aucun job
-      # (les `go vet`/`go test` de ce job tournent dans apps/go-api). Linux seulement, CGO actif :
-      # `ooz` est un paquet C++ (cf. le pas du corpus ci-dessus). Les trois vet couvrent le build
-      # par défaut, les instruments `research` et ceux qui ouvrent le jeu (`gamefiles && research`,
-      # compilation seule, jamais exécutés). `go list -deps` ne doit montrer aucun paquet
-      # `levelup/go-api` : l'autonomie du module, doublée par archlint/briques_imports_test.go.
-      - name: go vet + go test (brique gamefiles — module libs/gamefiles)
-        if: runner.os == 'Linux'
-        working-directory: libs/gamefiles
-        run: |
-          go vet ./...
-          go vet -tags=research ./...
-          go vet -tags=gamefiles,research ./...
-          go test ./... -timeout 600s -count=1
-          if go list -deps -test ./... | grep -E 'levelup/go-api'; then
-            echo "::error::libs/gamefiles importe le module levelup/go-api"
-            exit 1
-          fi
-        env:
-          CGO_ENABLED: "1"
-
-      # Les paquets de la brique SANS cgo (`mapvar`, `hinavmesh`) tournent aussi sans CGo, sur les
-      # deux systèmes : ils étaient sous `film/replay/...` dans le pas « go test (unit, no CGo DB) »
-      # ci-dessous, qui n'ouvre plus le module libs/gamefiles.
+      # Les paquets de la brique de fichiers SANS CGo (`mapvar`, `hinavmesh`) tournent aussi sans CGo,
+      # sur les deux systèmes.
       - name: go vet + go test (brique gamefiles, paquets sans CGo)
-        working-directory: libs/gamefiles
         shell: bash
         run: |
           set -e
-          go vet ./hinavmesh/ ./mapvar/
-          go test ./hinavmesh/ ./mapvar/ -timeout 600s -count=1
+          go vet github.com/JGtm/halo-infinite-files-reader/hinavmesh/ github.com/JGtm/halo-infinite-files-reader/mapvar/
+          go test github.com/JGtm/halo-infinite-files-reader/hinavmesh/ github.com/JGtm/halo-infinite-files-reader/mapvar/ -timeout 600s -count=1
         env:
           CGO_ENABLED: "0"
 
-      # BRIQUE `libs/film` (le décodeur de film, ADR 0041, plan D2 lot 3) : module séparé. Ses tests
-      # tournent en entier dans les lots `film*` du job go-coverage (Linux, CGO, couverture) ; ce pas
-      # garde ce que le job go-build faisait du décodeur quand il vivait dans go-api : le vet sans CGo
-      # et les tests unitaires des couches (`profile`, `grammar`, `facts`, `replay`) sur les DEUX
-      # systèmes. La production du module n'importe rien de CGo (`go list -deps ./...` sans `ooz`) ;
-      # seuls des tests tirent `himap` (donc `ooz`) et ils sont sous tag.
-      - name: go vet + go test (brique film — module libs/film, sans CGo)
-        working-directory: libs/film
+      # Décodeur de film : ses tests tournent en entier dans les lots `film*` du job go-coverage (Linux,
+      # CGO, couverture) ; ce pas joue le vet sans CGo et les tests unitaires des couches (`profile`,
+      # `grammar`, `facts`, `replay`) sur les DEUX systèmes.
+      - name: go vet + go test (brique film, sans CGo)
         shell: bash
         run: |
           set -e
-          go vet ./...
-          go test ./internal/profile/... ./internal/grammar/... ./internal/facts/... ./replay/... -timeout 600s -count=1
+          m=github.com/JGtm/halo-infinite-film-decoder
+          go vet "$m/..."
+          go test "$m/internal/profile/..." "$m/internal/grammar/..." "$m/internal/facts/..." "$m/replay/..." -timeout 600s -count=1
         env:
           CGO_ENABLED: "0"
+          DECODEUR_FILM_RACINE_DONNEES: ${{ github.workspace }}
 
-      # Même brique, Linux et CGo : les instruments `research` (compilation seule, jamais exécutés)
-      # et l'autonomie du module —
-      # `go list -deps -test` ne doit montrer aucun paquet `levelup/go-api`, doublée par
-      # archlint/briques_imports_test.go.
-      - name: go vet research + autonomie (brique film — module libs/film)
+      # Même brique, Linux et CGo : les instruments `research` (compilation seule, jamais exécutés).
+      - name: go vet research (brique film)
         if: runner.os == 'Linux'
-        working-directory: libs/film
-        run: |
-          go vet -tags=research ./...
-          if go list -deps -test ./... | grep -E 'levelup/go-api'; then
-            echo "::error::libs/film importe le module levelup/go-api"
-            exit 1
-          fi
+        run: go vet -tags=research github.com/JGtm/halo-infinite-film-decoder/...
         env:
           CGO_ENABLED: "1"
 
-      # BRIQUE `libs/haloapi` (l'API Halo : protocole sans état ni politique, ADR 0041 et 0042, plan
-      # PUBLICATION lot 3) : module séparé, SANS CGo (bibliothèque standard, `errgroup`, `rate` en
-      # test). Ses tests tournent en entier dans le lot `haloapi` du job go-coverage (Linux) ; ce pas
-      # les joue sur les DEUX systèmes, avec le vet et l'autonomie du module — `go list -deps -test` ne
-      # doit montrer aucun paquet `levelup/go-api`, doublée par archlint/briques_imports_test.go.
-      - name: go vet + go test + autonomie (brique haloapi — module libs/haloapi, sans CGo)
-        working-directory: libs/haloapi
+      # API Halo : sans CGo, sur les DEUX systèmes (le lot `haloapi` du job go-coverage la rejoue sous
+      # couverture, Linux).
+      - name: go vet + go test (brique haloapi, sans CGo)
         shell: bash
         run: |
           set -e
-          go vet ./...
-          go test ./... -timeout 600s -count=1
-          if go list -deps -test ./... | grep -E 'levelup/go-api'; then
-            echo "::error::libs/haloapi importe le module levelup/go-api"
-            exit 1
-          fi
+          go vet github.com/JGtm/halo-api/...
+          go test github.com/JGtm/halo-api/... -timeout 600s -count=1
         env:
           CGO_ENABLED: "0"
 
       # INSTRUMENTS `research` (2026-09-16, chantier du decodeur de film). Les instruments de
       # recherche qui REBALAYENT les 7 bobines versionnees (`e191b_carte_ti37_*`, `e191c_*` dans
       # `filmdec`) sont derriere `//go:build research` : ils tournent a la demande
-      # (`go test -tags research ./internal/grammar/ -run TestE191` depuis `libs/film`),
+      # (`go test -tags research github.com/JGtm/halo-infinite-film-decoder/internal/grammar/ -run TestE191`),
       # jamais en CI. Chiffres du jour : le paquet `filmdec` valait 26,1 s avant le lot 1.9.1 bis,
       # 89,9 s apres (dont 72 s pour ces instruments), et le job de couverture Linux — atomic,
       # coverpkg ./... — a rougi a `-timeout 600s` (run 34978931976 : `FAIL filmdec 600.236s`,
@@ -641,7 +580,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: libs/film
+        working-directory: apps/go-api
     steps:
       - uses: actions/checkout@v6.1.0
 
@@ -651,13 +590,9 @@ jobs:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: |
             apps/go-api/go.sum
-            libs/film/go.sum
-            libs/gamefiles/go.sum
-            libs/haloapi/go.sum
-            libs/himap/go.sum
 
       - name: go test -race (deux films en parallele)
-        run: go test -race -count=1 -run TestDeuxFilmsEnParallele ./internal/grammar/
+        run: go test -race -count=1 -run TestDeuxFilmsEnParallele github.com/JGtm/halo-infinite-film-decoder/internal/grammar/
         env:
           CGO_ENABLED: "1"
 
@@ -695,9 +630,6 @@ jobs:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: |
             apps/go-api/go.sum
-            libs/film/go.sum
-            libs/gamefiles/go.sum
-            libs/himap/go.sum
 
       - name: Build du serveur (CGO, DuckDB lié)
         run: go build ./cmd/server
@@ -705,13 +637,11 @@ jobs:
       - name: Tests apps/go-api (serveur, lanceur de dev, espace disque, entrée de démarrage, lanceur de films, verrou de fichier, CLI)
         run: go test -count=1 ./cmd/server/... ./cmd/devlaunch/... ./internal/platform/diskfree/... ./internal/platform/startupentry/... ./internal/platform/filelock/... ./internal/filmrun/... ./cmd/levelup/...
 
-      - name: Tests libs/film (verrou de fichier, priorite des instruments)
-        working-directory: libs/film
-        run: go test -count=1 ./internal/filelock/ ./internal/decodelock/
+      - name: Tests de la brique film (verrou de fichier, priorite des instruments)
+        run: go test -count=1 github.com/JGtm/halo-infinite-film-decoder/internal/filelock/ github.com/JGtm/halo-infinite-film-decoder/internal/decodelock/
 
-      - name: Tests libs/gamefiles (projection mémoire des modules)
-        working-directory: libs/gamefiles
-        run: go test -count=1 ./himodule/
+      - name: Tests de la brique gamefiles (projection mémoire des modules)
+        run: go test -count=1 github.com/JGtm/halo-infinite-files-reader/himodule/
 
       - name: "Bout en bout : arrêt propre"
         run: go test -count=1 -tags=e2e_windows -run 'TestE2E' ./cmd/server/
@@ -828,10 +758,6 @@ jobs:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: |
             apps/go-api/go.sum
-            libs/film/go.sum
-            libs/gamefiles/go.sum
-            libs/haloapi/go.sum
-            libs/himap/go.sum
 
       # golangci-lint : équivalent ruff + ruff-format + enforce_size_limits + McCabe pour Go
       # Règles : gocyclo max 12 / funlen 80L / lll 100c / revive argument-limit 5
@@ -877,43 +803,8 @@ jobs:
           # par les flags --new-from-* ci-dessous, jamais par l'API GitHub.
           args: --timeout 5m ${{ steps.lint_base.outputs.args }}
 
-      # Brique `libs/gamefiles` (ADR 0041) : un module séparé, donc un second passage. MÊME config
-      # que go-api (`--config` relatif au working-directory), MÊME ratchet. Les chemins y sont rapportés
-      # depuis le dossier de la config (`../../libs/gamefiles/...`) : aucune règle `path:` ni l'exclusion
-      # `apps` ne les vise ; une mutation locale (fonction inutilisée dans mapvar) rougit bien ce pas.
-      - name: golangci-lint (ratchet, brique libs/gamefiles)
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.12.2
-          working-directory: libs/gamefiles
-          args: --config ../../apps/go-api/.golangci.yml --timeout 5m ${{ steps.lint_base.outputs.args }}
-
-      # Brique `libs/himap` (ADR 0041, lot 4) : troisième passage, même config, même ratchet.
-      - name: golangci-lint (ratchet, brique libs/himap)
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.12.2
-          working-directory: libs/himap
-          args: --config ../../apps/go-api/.golangci.yml --timeout 5m ${{ steps.lint_base.outputs.args }}
-
-      # Brique `libs/film` (ADR 0041, plan D2 lot 3) : quatrième passage, même config, même ratchet. La
-      # règle `path:` des couches du décodeur (.golangci.yml) vise les chemins RAPPORTÉS depuis le dossier
-      # de la config (`../../libs/film/...`) : elle a été réécrite pour le module et prouvée active.
-      - name: golangci-lint (ratchet, brique libs/film)
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.12.2
-          working-directory: libs/film
-          args: --config ../../apps/go-api/.golangci.yml --timeout 5m ${{ steps.lint_base.outputs.args }}
-
-      # Brique `libs/haloapi` (ADR 0041, plan PUBLICATION lot 3) : cinquième passage, même config, même
-      # ratchet. Aucune règle `path:` de la config ne visait `internal/haloapi` : rien à réécrire.
-      - name: golangci-lint (ratchet, brique libs/haloapi)
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.12.2
-          working-directory: libs/haloapi
-          args: --config ../../apps/go-api/.golangci.yml --timeout 5m ${{ steps.lint_base.outputs.args }}
+      # Les briques sont des dépendances publiées (ADR 0043) : leur lint tourne dans la CI de leur dépôt,
+      # avec la configuration de ce dépôt.
 
   go-lease-enforcement:
     name: Go Lease Enforcement (ADR 0013)
@@ -957,10 +848,6 @@ jobs:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: |
             apps/go-api/go.sum
-            libs/film/go.sum
-            libs/gamefiles/go.sum
-            libs/haloapi/go.sum
-            libs/himap/go.sum
 
       # Version exacte : un outil de sécurité flottant changerait de verdict sans commit.
       # La monter volontairement, avec un run vert pour preuve.
@@ -975,39 +862,16 @@ jobs:
         env:
           CGO_ENABLED: "1"
 
-      # Brique `libs/gamefiles` (ADR 0041) : `./...` ne franchit pas la frontière du module, et
-      # go-api ne tire que les paquets qu'il importe (himodule, ooz, hinavmesh, mapvar via himap
-      # et le décodeur). Un module destiné à l'import externe répond de TOUTES ses dépendances.
-      - name: govulncheck libs/gamefiles
-        working-directory: libs/gamefiles
+      # Briques (ADR 0043) : `./...` ne tire que les paquets qu'apps/go-api importe. Une brique destinée à
+      # l'import externe répond de TOUTES ses dépendances : chacune est jugée en entier, à la version
+      # que fixe go.mod.
+      - name: govulncheck des briques
         run: |
-          "$(go env GOPATH)/bin/govulncheck" ./...
+          for m in github.com/JGtm/halo-infinite-files-reader github.com/JGtm/halo-infinite-map-images github.com/JGtm/halo-infinite-film-decoder github.com/JGtm/halo-api; do
+            "$(go env GOPATH)/bin/govulncheck" "$m/..." || exit 1
+          done
         env:
           CGO_ENABLED: "1"
-
-      # Brique `libs/himap` (ADR 0041, lot 4) : même raison que `libs/gamefiles` ci-dessus.
-      - name: govulncheck libs/himap
-        working-directory: libs/himap
-        run: |
-          "$(go env GOPATH)/bin/govulncheck" ./...
-        env:
-          CGO_ENABLED: "1"
-
-      # Brique `libs/film` (ADR 0041, plan D2 lot 3) : même raison.
-      - name: govulncheck libs/film
-        working-directory: libs/film
-        run: |
-          "$(go env GOPATH)/bin/govulncheck" ./...
-        env:
-          CGO_ENABLED: "1"
-
-      # Brique `libs/haloapi` (ADR 0041, plan PUBLICATION lot 3) : même raison ; aucun paquet CGo.
-      - name: govulncheck libs/haloapi
-        working-directory: libs/haloapi
-        run: |
-          "$(go env GOPATH)/bin/govulncheck" ./...
-        env:
-          CGO_ENABLED: "0"
 
   npm-audit:
     name: npm audit (dépendances de production)
@@ -1036,9 +900,9 @@ jobs:
   # job go-baseline-tests qui la rejouait est supprimé).
   #
   # DÉCOUPAGE : .github/ci/go-shards.txt (lots, durées, listes de tests lourds de `grammar`), lu
-  # par scripts/ci_go_shard.sh. Chaque lot appartient à un MODULE (`apps/go-api`, `libs/film`,
-  # `libs/haloapi`, ADR 0041) et se joue depuis lui ; le dernier lot d'un module est le COMPLÉMENT de son `go list
-  # -tags=integration ./...` : l'union des lots couvre chaque module par construction, et le job de
+  # par scripts/ci_go_shard.sh. Chaque lot appartient à un MODULE (`apps/go-api`, ou une brique publiée
+  # dont il dépend, ADR 0043, jouée depuis apps/go-api) ; le dernier lot d'un module est le COMPLÉMENT de son `go list
+  # -tags=integration` : l'union des lots couvre chaque module par construction, et le job de
   # fusion le revérifie contre le JSONL, module par module. La liste des lots ci-dessous est celle du fichier (archlint/ci_go_shards_test.go).
   #
   # `-p 1` PAR MACHINE, NON NÉGOCIABLE (M2, 2026-07-05) : le driver DuckDB est mono-process ; en
@@ -1076,10 +940,6 @@ jobs:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: |
             apps/go-api/go.sum
-            libs/film/go.sum
-            libs/gamefiles/go.sum
-            libs/haloapi/go.sum
-            libs/himap/go.sum
 
       # S45 T8 — décision : CGO=0 fast-check = job go-build ; CGO=1 full = ce job.
       - name: Vérifier GCC (CGO requis pour DuckDB)
@@ -1093,9 +953,9 @@ jobs:
           LOT: ${{ matrix.lot }}
           CGO_ENABLED: "1"
           LEVELUP_DEMO_MODE: "true"
-          # Les tests de la brique `libs/film` qui lisent le depot hote (catalogues de reference,
+          # Les tests de la brique du decodeur qui lisent le depot hote (catalogues de reference,
           # sources du front : `internal/depottest`) le trouvent par cette variable : la CI les rejoue
-          # tous, sans dependre de la presence d'un `go.work`.
+          # tous.
           DECODEUR_FILM_RACINE_DONNEES: ${{ github.workspace }}
         run: |
           set -uo pipefail
@@ -1107,18 +967,20 @@ jobs:
             echo "::error::ci_go_shard.sh ne rend pas le module du lot $LOT"
             exit 1
           }
+          dossier=$(bash ../../scripts/ci_go_shard.sh --dossier "$LOT")
+          coverpkg=$(bash ../../scripts/ci_go_shard.sh --coverpkg "$LOT")
           mapfile -t args <<< "$out"
-          # Le lot se joue DEPUIS son module (`./...` et `-coverpkg=./...` ne franchissent pas la
-          # frontière d'un module) ; ses pièces s'écrivent ici (apps/go-api), où l'upload les prend.
+          # Le lot se joue depuis son dossier (`-coverpkg` couvre tout SON module) ; ses pièces
+          # s'écrivent ici (apps/go-api), où l'upload les prend.
           pieces="$PWD"
-          cd "../../$mod"
+          cd "../../$dossier"
           echo "lot $LOT (module $mod) : go test ${args[*]}"
           set +e
           go test \
             -json \
             -coverprofile="$pieces/coverage.$LOT.raw" \
             -covermode=atomic \
-            -coverpkg=./... \
+            -coverpkg="$coverpkg" \
             -tags=integration \
             -count=1 \
             -p 1 \
@@ -1166,10 +1028,6 @@ jobs:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: |
             apps/go-api/go.sum
-            libs/film/go.sum
-            libs/gamefiles/go.sum
-            libs/haloapi/go.sum
-            libs/himap/go.sum
 
       - name: Télécharger les artefacts des lots
         uses: actions/download-artifact@v4
@@ -1178,14 +1036,14 @@ jobs:
           merge-multiple: true
           path: apps/go-api/lots
 
-      # Contrôle d'ensemble (D-3), MODULE PAR MODULE (ADR 0041 : `apps/go-api`, `libs/film`, `libs/haloapi`) : un lot
+      # Contrôle d'ensemble (D-3), MODULE PAR MODULE (`apps/go-api` et les briques de go-shards.txt) : un lot
       # sans artefact, un paquet que personne n'a exécuté ou un paquet exécuté qui n'existe plus dans
       # son module = échec nommé, jamais une suite plus petite qui passe au vert. L'ensemble de
-      # référence d'un module est son `go list -tags=integration ./...`, la même énumération que
-      # `go test ... ./...` depuis ce module. Tout paquet apparaît dans le JSONL (même sans test :
+      # référence d'un module est son `go list -tags=integration`, la même énumération que son
+      # `go test`. Tout paquet apparaît dans le JSONL (même sans test :
       # événement `skip` « no test files »), dont ceux qui ne compilent pas (`build-fail`, `fail`),
       # d'où la lecture du champ `Package` de tous les événements. Le JSONL de `apps/go-api` reste
-      # `baseline_current.jsonl` ; celui d'un autre module est `baseline_<module, / en _>.jsonl`.
+      # `baseline_current.jsonl` ; celui d'une brique est `baseline_<dernier élément du module>.jsonl`.
       - name: Concaténer les JSONL et contrôler l'ensemble des paquets
         env:
           CGO_ENABLED: "1"
@@ -1203,14 +1061,18 @@ jobs:
           ecarts=0
           for mod in $(bash ../../scripts/ci_go_shard.sh --modules); do
             nom=baseline_current.jsonl
-            [ "$mod" = apps/go-api ] || nom="baseline_$(printf '%s' "$mod" | tr '/' '_').jsonl"
-            cle=$(printf '%s' "$mod" | tr '/' '_')
+            [ "$mod" = apps/go-api ] || nom="baseline_$(basename "$mod").jsonl"
+            cle=$(basename "$mod")
             : > "$nom"
             for lot in $(bash ../../scripts/ci_go_shard.sh --lots-du-module "$mod"); do
               [ ! -f "lots/baseline_$lot.jsonl" ] || cat "lots/baseline_$lot.jsonl" >> "$nom"
             done
             grep -a -o '"Package":"[^"]*"' "$nom" | sed 's/^"Package":"//; s/"$//' | sort -u > "paquets_executes_$cle.txt" || true
-            (cd "../../$mod" && go list -tags=integration ./...) | tr -d '\r' | sort -u > "paquets_module_$cle.txt"
+            if [ -f "../../$mod/go.mod" ]; then
+              (cd "../../$mod" && go list -tags=integration ./...)
+            else
+              go list -tags=integration "$mod/..."
+            fi | tr -d '\r' | sort -u > "paquets_module_$cle.txt"
             comm -23 "paquets_module_$cle.txt" "paquets_executes_$cle.txt" > "paquets_non_executes_$cle.txt"
             comm -13 "paquets_module_$cle.txt" "paquets_executes_$cle.txt" > "paquets_en_trop_$cle.txt"
             echo "module $mod : paquets $(wc -l < "paquets_module_$cle.txt"), exécutés $(wc -l < "paquets_executes_$cle.txt") ($nom)"
@@ -1255,8 +1117,8 @@ jobs:
 
       # Gate de NON-RÉGRESSION — ex-job `go-baseline-tests`, fusionné ici (D3).
       # Contrôles : présence de TOUS les tests de la baseline de chaque module
-      # (.ai/baselines/tests_pre_migration.jsonl pour apps/go-api, tests_libs_film.jsonl pour
-      # libs/film, tests_libs_haloapi.jsonl pour libs/haloapi), aucun test en échec, aucun package en échec hors test. Mode CONSOMMATEUR
+      # (.ai/baselines/tests_pre_migration.jsonl pour apps/go-api, tests_<dernier élément du module>.jsonl
+      # pour une brique), aucun test en échec, aucun package en échec hors test. Mode CONSOMMATEUR
       # (`--from-jsonl`) : analyse le JSONL concaténé des lots de chaque module, ne relance RIEN.
       #
       # `!cancelled()` NON NÉGOCIABLE : ce gate doit rendre son verdict même quand un lot est
@@ -1271,8 +1133,8 @@ jobs:
             nom=baseline_current.jsonl
             base=../../.ai/baselines/tests_pre_migration.jsonl
             if [ "$mod" != apps/go-api ]; then
-              nom="baseline_$(printf '%s' "$mod" | tr '/' '_').jsonl"
-              base="../../.ai/baselines/tests_$(printf '%s' "$mod" | tr '/' '_').jsonl"
+              nom="baseline_$(basename "$mod").jsonl"
+              base="../../.ai/baselines/tests_$(basename "$mod").jsonl"
             fi
             if [ ! -s "$nom" ]; then
               for lot in $(bash ../../scripts/ci_go_shard.sh --lots-du-module "$mod"); do
@@ -1293,16 +1155,16 @@ jobs:
           name: go-baseline-current-jsonl
           path: |
             apps/go-api/baseline_current.jsonl
-            apps/go-api/baseline_libs_film.jsonl
-            apps/go-api/baseline_libs_haloapi.jsonl
+            apps/go-api/baseline_halo-infinite-film-decoder.jsonl
+            apps/go-api/baseline_halo-api.jsonl
           if-no-files-found: warn
           retention-days: 7
 
       # Fusion des profils (D-4) : UNE ligne `mode: atomic`, puis tous les blocs des lots du module
       # `apps/go-api`. `go tool cover` additionne les blocs identiques (chaque lot instrumente tout le
       # module ; un bloc couvert dans un lot et pas dans l'autre compte comme couvert). Un profil d'un
-      # autre mode ferait un total faux : refusé. Les profils des lots d'un AUTRE module (libs/film,
-      # libs/haloapi) n'entrent pas dans le ratchet de go-api : ils s'affichent à part (étapes suivantes).
+      # autre mode ferait un total faux : refusé. Les profils des lots d'une brique n'entrent pas dans le
+      # ratchet de go-api : ils s'affichent à part (étape suivante).
       - name: Fusionner les profils de couverture
         if: ${{ !cancelled() }}
         run: |
@@ -1321,31 +1183,21 @@ jobs:
           { echo "mode: atomic"; for f in "${profils[@]}"; do tail -n +2 "$f"; done; } > coverage.raw
           echo "profil fusionné : $(wc -l < coverage.raw) lignes pour ${#profils[@]} lot(s)"
 
-      # Couverture du module libs/film (le décodeur, ADR 0041) : affichage seul, ce n'est pas un gate
-      # (le ratchet de couverture est celui de go-api, coverage_baseline.txt).
-      - name: Afficher couverture libs/film
+      # Couverture des briques : affichage seul, ce n'est pas un gate (le ratchet de couverture est celui
+      # de go-api, coverage_baseline.txt). `go tool cover` retrouve leurs sources dans le cache de modules.
+      - name: Afficher couverture des briques
         if: ${{ !cancelled() }}
         run: |
-          profils=()
-          for lot in $(bash ../../scripts/ci_go_shard.sh --lots-du-module libs/film); do
-            [ ! -f "lots/coverage.$lot.raw" ] || profils+=("lots/coverage.$lot.raw")
+          for mod in $(bash ../../scripts/ci_go_shard.sh --modules); do
+            [ "$mod" != apps/go-api ] || continue
+            profils=()
+            for lot in $(bash ../../scripts/ci_go_shard.sh --lots-du-module "$mod"); do
+              [ ! -f "lots/coverage.$lot.raw" ] || profils+=("lots/coverage.$lot.raw")
+            done
+            [ "${#profils[@]}" -gt 0 ] || { echo "aucun profil des lots de $mod — sauté"; continue; }
+            { echo "mode: atomic"; for f in "${profils[@]}"; do tail -n +2 "$f"; done; } > "coverage_$(basename "$mod").raw"
+            echo "$mod : $(go tool cover -func="coverage_$(basename "$mod").raw" | tail -1)"
           done
-          [ "${#profils[@]}" -gt 0 ] || { echo "aucun profil des lots libs/film — étape sautée"; exit 0; }
-          { echo "mode: atomic"; for f in "${profils[@]}"; do tail -n +2 "$f"; done; } > coverage_libs_film.raw
-          (cd ../../libs/film && go tool cover -func="$OLDPWD/coverage_libs_film.raw" | tail -1)
-
-      # Couverture du module libs/haloapi (l'API Halo, ADR 0041 et 0042) : affichage seul, comme libs/film.
-      # Ses paquets ont quitté le dénominateur du ratchet de go-api au lot 3 du plan PUBLICATION.
-      - name: Afficher couverture libs/haloapi
-        if: ${{ !cancelled() }}
-        run: |
-          profils=()
-          for lot in $(bash ../../scripts/ci_go_shard.sh --lots-du-module libs/haloapi); do
-            [ ! -f "lots/coverage.$lot.raw" ] || profils+=("lots/coverage.$lot.raw")
-          done
-          [ "${#profils[@]}" -gt 0 ] || { echo "aucun profil des lots libs/haloapi — étape sautée"; exit 0; }
-          { echo "mode: atomic"; for f in "${profils[@]}"; do tail -n +2 "$f"; done; } > coverage_libs_haloapi.raw
-          (cd ../../libs/haloapi && go tool cover -func="$OLDPWD/coverage_libs_haloapi.raw" | tail -1)
 
       # S45 T3 : filtrer internal/api/gen/ et cmd/msal-poc/ du profil
       - name: Filtrer exclusions (gen/ + msal-poc/)
@@ -1441,10 +1293,6 @@ jobs:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: |
             apps/go-api/go.sum
-            libs/film/go.sum
-            libs/gamefiles/go.sum
-            libs/haloapi/go.sum
-            libs/himap/go.sum
 
       # Tests YAML-only : vérifie que openapi.yaml est valide, complet (≥20 paths)
       # et que les paths obligatoires (health, bootstrap, settings…) sont présents.
@@ -1494,10 +1342,6 @@ jobs:
           go-version-file: apps/go-api/go.mod
           cache-dependency-path: |
             apps/go-api/go.sum
-            libs/film/go.sum
-            libs/gamefiles/go.sum
-            libs/haloapi/go.sum
-            libs/himap/go.sum
 
       - name: Build Go backend
         working-directory: apps/go-api
