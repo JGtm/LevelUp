@@ -346,9 +346,9 @@ Gate : gate de l'étape 2 ; `go test -tags=integration -p 1 ./...` code de sorti
 Effort : lourd. Revue adversariale obligatoire. Chaque déplacement garde les signatures HTTP et les
 réponses à l'identique (témoins).
 
-- [ ] 4.1 (DEP-P2-2) Sortir de `worldenrich/wiring.go` l'import de `service` (le câblage monte dans
+- [x] 4.1 (DEP-P2-2) Sortir de `worldenrich/wiring.go` l'import de `service` (le câblage monte dans
       `api/wire` ou `cmd/server`), pour que `service` puisse importer le suivi en direct sans cycle.
-- [ ] 4.2 (API-2) Créer le port des jobs de synchronisation dans `internal/port/` (lancer une sync,
+- [x] 4.2 (API-2) Créer le port des jobs de synchronisation dans `internal/port/` (lancer une sync,
       un rattrapage, un alignement, un recalcul de sessions ; résolution du profil comprise) et son
       service. `handlers/backfill.go`, `sync_handler.go`, `sync_handler_align.go`,
       `settings_sessions_recalc.go` n'importent plus ni `sync` ni `games/halo_5/livesync`. La
@@ -547,6 +547,8 @@ deux graphes de 7.3.
   maintenant huit, dont la projection dans la vue. Non traité (étape 8.4).
 - (étape 3) `internal/sync/schema.go` (`OpenPlayerDB`, `OpenSharedDB`, une trentaine d'appelants) : l'allowlist de
   `OpenReadWrite` ne dit rien de leur bail d'écriture ; aucun test ne vérifie qu'un appelant le prend. Non traité.
+
+- Étape 4 (4.1, 4.2, 2026-11-12). `persist.BatchBuilder.SetLeadShare` n est appelée que par un test (arrivée par #200). `SyncJobService.WithProfiles` et `WithManualSyncCooldown` ne servent qu aux tests. Le moteur d auto-sync reste un type concret derrière `EngineBuilder` : le service ne se teste avec de faux lanceurs que par deux coutures non exportées. `notifications.EmitterFactory` a remplacé trois copies du type de fabrique sans garde-rail contre une nouvelle copie. `internal/port/post_sync_runner.go` cite encore `WithPostSyncDeltaHook`, supprimé. Garde-rail `archlint` du niveau de journal : les outils compilés sans cgo (`replay-build`, `replay-verite`) ne doivent pas importer `internal/config` (régression de 2.4, réparée le 2026-11-12). Non traités.
 
 ## 13. Hors périmètre
 
