@@ -76,10 +76,11 @@ func versionsAnterieures(t *testing.T) []int {
 // fichier laisse sur disque par un binaire d'hier.
 func artefactAuSchema(version int, matchID string, avecCompteurs bool) []byte {
 	corps := map[string]any{
-		"schemaVersion": version,
-		"matchId":       matchID,
-		"titleSlug":     title.DefaultSlug,
-		"tracks":        []map[string]any{{"xuid": "2533491259474651"}},
+		"schemaVersion":   version,
+		"frameIntervalMs": CookFrameIntervalMS(),
+		"matchId":         matchID,
+		"titleSlug":       title.DefaultSlug,
+		"tracks":          []map[string]any{{"xuid": "2533491259474651"}},
 	}
 	if avecCompteurs {
 		corps["scoreTimeline"] = map[string]any{

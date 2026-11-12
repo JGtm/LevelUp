@@ -15,7 +15,7 @@ func (b *Builder) buildReplayOptions(ctx context.Context,
 	entry decfilm.MapQuantEntry, facts port.MatchFacts, cat entreesCatalogue, stats *filmStats,
 ) replay.Options {
 	return replay.Options{
-		FrameIntervalMS: b.pasDuRejeu(),
+		FrameIntervalMS: b.frameInterval(),
 		Geometry:        b.geometryFor(ctx, entry.Module),
 		Structure:       b.structureFor(ctx, entry.Module),
 		Labels:          b.labels,
@@ -71,15 +71,4 @@ func (b *Builder) buildReplayOptions(ctx context.Context,
 		SpawnPoints:      cat.spawnPts,
 		SpawnPointsState: cat.spawnPointsState,
 	}
-}
-
-// pasDuRejeu rend le pas de temps de la cuisson : celui que l'appelant a réglé
-// ([Builder.WithFrameInterval]), sinon le pas que la page lit, `replay.HistoricalFrameIntervalMS`.
-// Le défaut de construction du décodeur (`replay.DefaultFrameIntervalMS`) est plus fin que ce pas :
-// le laisser décider changerait la grille de tout artefact cuit sans que la page suive.
-func (b *Builder) pasDuRejeu() int {
-	if b.interval > 0 {
-		return b.interval
-	}
-	return replay.HistoricalFrameIntervalMS
 }

@@ -161,6 +161,12 @@ func validateArtifact(titleSlug, matchID string, blob []byte) error {
 		return fmt.Errorf("%w (schéma %d, attendu %d)",
 			domain.ErrBuildArtifactInvalid, doc.SchemaVersion, replay.SchemaVersion)
 	}
+	// LE PAS EST UNE MARQUE DE FRAICHEUR COMME LE SCHEMA (cf. cadence.go) : un ouvrier d'une autre
+	// cadence depose un artefact que le critere jugerait aussitot a recuire.
+	if !CadenceUpToDate(doc.FrameIntervalMS) {
+		return fmt.Errorf("%w (pas %d ms, attendu %d)", domain.ErrBuildArtifactInvalid,
+			FrameIntervalOrHistorical(doc.FrameIntervalMS), CookFrameIntervalMS())
+	}
 	// La comparaison porte sur la forme COURTE : c'est l'identité sous laquelle
 	// l'artefact est rangé (ReplayArtifactPath), donc la seule qui décide où le
 	// fichier atterrit. Un ouvrier qui rend l'id complet et un job qui porte la

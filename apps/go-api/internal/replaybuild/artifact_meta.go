@@ -8,7 +8,7 @@ package replaybuild
 // fichier voisin, `<short8>.meta`, ecrit par l'ecrivain d'artefact ([writeArtifactBytes]) a chaque
 // ecriture reelle.
 //
-// CE QUE PORTE LE FICHIER : la version de schema, les revisions de couche, la taille de l'artefact
+// CE QUE PORTE LE FICHIER : la version de schema, le pas de l artefact (absent = 100 ms), les revisions de couche, la taille de l'artefact
 // qu'il decrit, et la VERSION DE L'APPLICATION qui l'a produit (absente = inconnue, jamais « trop
 // recente »).
 //
@@ -56,9 +56,12 @@ func MetaPath(artifactPath string) string {
 
 // artifactMeta : le contenu du fichier d'en-tete.
 type artifactMeta struct {
-	MatchID       string            `json:"matchId,omitempty"`
-	SchemaVersion int               `json:"schemaVersion"`
-	Layers        map[string]string `json:"layers,omitempty"`
+	MatchID       string `json:"matchId,omitempty"`
+	SchemaVersion int    `json:"schemaVersion"`
+	// FrameIntervalMS : le pas de l artefact decrit ; absent (0) = 100 ms, comme un document sans `frameIntervalMs`
+	// (une meta d avant ce champ decrit un artefact de cette grille).
+	FrameIntervalMS int               `json:"frameIntervalMs,omitempty"`
+	Layers          map[string]string `json:"layers,omitempty"`
 	// Bytes : la TAILLE STOCKEE de l'artefact decrit (celle du fichier sur disque, compresse le cas echeant, cf.
 	// internal/replayartifact/gate.go) ; un artefact de taille differente n'est pas celui-la.
 	Bytes int64 `json:"bytes"`
@@ -126,7 +129,7 @@ func lireEntete(path string, st os.FileInfo) (Header, bool) {
 		return Header{}, false
 	}
 	return Header{
-		Digest:     Digest{MatchID: m.MatchID, SchemaVersion: m.SchemaVersion, Layers: m.Layers, Bytes: int(m.Bytes)},
+		Digest:     Digest{MatchID: m.MatchID, SchemaVersion: m.SchemaVersion, FrameIntervalMS: m.FrameIntervalMS, Layers: m.Layers, Bytes: int(m.Bytes)},
 		AppVersion: m.AppVersion,
 	}, true
 }
@@ -140,7 +143,7 @@ var metaDejaAvertie atomic.Bool
 // se journalise.
 func ecrireEntete(ctx context.Context, artifactPath string, d Digest, appVersion string) {
 	blob, err := json.Marshal(artifactMeta{
-		MatchID: d.MatchID, SchemaVersion: d.SchemaVersion, Layers: d.Layers,
+		MatchID: d.MatchID, SchemaVersion: d.SchemaVersion, FrameIntervalMS: d.FrameIntervalMS, Layers: d.Layers,
 		Bytes: int64(d.Bytes), AppVersion: appVersion,
 	})
 	if err == nil {

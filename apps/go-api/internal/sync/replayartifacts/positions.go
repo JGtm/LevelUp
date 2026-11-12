@@ -71,6 +71,7 @@ import (
 	"levelup/go-api/internal/persist"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -87,7 +88,7 @@ const GrainPositionsMS = 20_000
 // l'histoire des fichiers, distinct de la cadence a laquelle le decodeur cuit aujourd'hui : elle
 // ne suit pas `replay.DefaultFrameIntervalMS`. Seule ecriture de ce defaut de relecture ici : les
 // projections de positions et de rasters la partagent.
-const cadenceHistoriqueMS = 100
+const cadenceHistoriqueMS = replaybuild.HistoricalFrameIntervalMS
 
 // EquipeInconnue : la valeur que porte une position dont on ne sait pas le camp. C'est une
 // valeur PLEINE, pas un trou : le lecteur (`MatchPositionsHeatmap.tsx`) la reconnait et range

@@ -28,7 +28,7 @@ func ecrireArtefact(t *testing.T, repoRoot, slug, matchID string, schema int) {
 	// LES COUCHES SONT DECLAREES (schema 62, lot 4.4.1) : depuis que `UpToDate` juge AUSSI les
 	// revisions, un artefact muet sur ses couches se lit « a redecoder » — c est la regle, et un
 	// fixture qui l ignorerait testerait l inverse de ce qu il annonce.
-	raw, err := json.Marshal(map[string]any{"schemaVersion": schema, "layers": couchesDeTest()})
+	raw, err := json.Marshal(map[string]any{"schemaVersion": schema, "frameIntervalMs": replaybuild.CookFrameIntervalMS(), "layers": couchesDeTest()})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}

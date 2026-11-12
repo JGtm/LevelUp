@@ -57,7 +57,7 @@ func main() {
 	// LE CONTEXTE DE L OUTIL NAIT ICI, ET NULLE PART AILLEURS (lot J12.3).
 	ctx := context.Background()
 	titleFlag := flag.String("title", title.DefaultSlug, "slug du titre")
-	interval := flag.Int("interval", 0, "pas de temps du rejeu, en ms (0 = défaut)")
+	interval := flag.Int("interval", 0, "pas de temps du rejeu, en ms (0 = le pas de cuisson courant de LevelUp)")
 	geomDir := flag.String("geometry", "",
 		"répertoire des props Forge d'une carte, imposé pour toutes (défaut : "+
 			"PathResolver.MapGeometryDir du titre ET du module de la carte)")
