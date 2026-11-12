@@ -111,3 +111,4 @@
 // v106 (2026-10-28, lot durees d effets). Le rejeu dessinait
 // v107 (2026-11-08, fin de vie a la mort ecrite ; equipement porte : l identite se lit sur l objet).
 // v108 (2026-11-09, tourelle fixe generique ; slots sans creation). Aucun champ neuf : le CONTENU change.
+// v109 (2026-11-12, destruction de vehicule : destructeur, cause, occupant, occupants tues). Un champ neuf
