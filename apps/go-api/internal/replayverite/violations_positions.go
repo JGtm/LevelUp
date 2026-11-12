@@ -68,6 +68,10 @@ func surUnePorte(portes [][3]float64, p Point) bool {
 // margeEmpriseObjetsM de l'enveloppe publiee des pistes. Les tirs, grenades et projectiles n'y sont
 // PAS : ils volent legitimement au-dela de l'enveloppe des joueurs (mesure : des centaines sur les
 // cartes BTB a 20 m).
+//
+// Un vehicule se compte par PASSAGE hors emprise : les echantillons consecutifs d'un meme vehicule
+// hors de l'enveloppe forment une seule instance (datee du premier). Compter les echantillons
+// ferait varier le total avec la densite de la grille, sans qu'aucun vehicule n'ait bouge.
 func violationsHorsEmprise(d *Document) Violation {
 	var out Violation
 	if d.Bounds == nil {
@@ -86,10 +90,13 @@ func violationsHorsEmprise(d *Document) Violation {
 		}
 	}
 	for _, v := range d.Vehicles {
+		dehors := false
 		for _, s := range v.Samples {
-			if hors(s.X, s.Y) {
+			h := hors(s.X, s.Y)
+			if h && !dehors {
 				out.Instances = append(out.Instances, fmt.Sprintf("vehicule %d @%d", v.Slot, s.T))
 			}
+			dehors = h
 		}
 	}
 	sort.Strings(out.Instances)
