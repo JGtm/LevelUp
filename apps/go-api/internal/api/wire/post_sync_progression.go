@@ -1,5 +1,5 @@
 // Package api — post_sync_progression.go : orchestrateur de la couche
-// progression V2 (Ascension), appelé après sync_handler succès.
+// progression V2 (Ascension), appelé après une sync réussie.
 //
 // Pipeline complet en 7 étapes :
 //

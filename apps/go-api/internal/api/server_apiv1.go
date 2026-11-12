@@ -594,8 +594,39 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// liste d'amis d'un joueur (handlers/friends.go), avec SA liste.
 	friendsOrchestrator := service.NewFriendsOrchestratorService(cfg, friendStore.Get).
 		WithNotifier(reg.NotificationsEmitter)
+	// Jobs de synchronisation lancés depuis l'API (sync initiale, delta, rattrapage, recalcul des
+	// sessions) : un seul service derrière port.SyncJobService, partagé par les handlers sync, backfill
+	// et réglages.
+	syncJobs := service.NewSyncJobService(cfg, settingsStore, jobStore, tokenProvider).
+		WithFriendStore(friendStore)
+	// Branche le hook Prestige post-sync (best-effort, no-op si flag off ou bundle nil).
+	if prestigeBundle != nil {
+		syncJobs = syncJobs.WithPrestigeHook(prestigeBundle.RunPostSync)
+	}
+	// Branche la factory d'émetteurs de notifications (match_synced / sync_error).
+	syncJobs = syncJobs.WithNotificationsEmitterFactory(reg.NotificationsEmitter)
+	// Branche le runner post-sync (season_pass_level / objective_completed / challenge_completed).
+	syncJobs = syncJobs.WithPostSyncRunner(wire.NewPostSyncRunner(reg))
+	// Branche la mise en file des rejeux (placement « worker ») sur le moteur de la sync initiale :
+	// sans elle, un sync HTTP tombant sur ce chemin n'enfilerait rien alors que l'auto-sync le fait.
+	syncJobs = syncJobs.WithReplayEnqueuer(reg.EnqueueReplayBuildJob)
+	// Dédup cross-source : le gate provient du Coordinator partagé du watcher, exposé via le
+	// scheduler. Si le watcher est désactivé, Gate() renvoie le NopSyncGate par défaut (le bail reste
+	// le seul rempart cross-source).
+	if autoSyncScheduler != nil {
+		syncJobs = syncJobs.WithSyncGate(autoSyncScheduler.Gate())
+		// Alignement sync manuel / auto-sync : le sync HTTP delta (/sync/all, /players/{slug}/sync)
+		// construit son moteur via le MÊME BuildEngine que l'auto-sync → même PooledHaloClient (pool de
+		// jetons partagé, source unique ADR 0023), post-sync runner, batch queue. L'auth ne dépend plus
+		// des HaloTokens de session (le store a le RT).
+		syncJobs = syncJobs.WithEngineBuilder(autoSyncScheduler.BuildEngine)
+	}
+	// serverCtx (annulé au shutdown) : les jobs en dérivent leur contexte pour être annulés proprement
+	// à l'arrêt (avant duckdb.CloseAll).
+	syncJobs = syncJobs.WithServerContext(serverCtx)
+
 	settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore).
-		WithFriendStore(friendStore).
+		WithSessionsRecalc(syncJobs).
 		WithBackupScheduler(backupScheduler).
 		WithUserLookup(users)
 	// Fraîcheur A4.2 : le runner monitoring lit l'âge du dernier backup depuis
@@ -639,36 +670,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	registerJobsHuma(
 		newHumaAPI(r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)), apiOpt),
 		handlers.NewJobsHandler(jobStore))
-	syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore, tokenProvider).
-		WithFriendStore(friendStore)
-	// Branche le hook Prestige post-sync (best-effort, no-op si flag off ou bundle nil).
-	if prestigeBundle != nil {
-		syncH = syncH.WithPrestigeHook(prestigeBundle.RunPostSync)
-	}
-	// Branche la factory d'émetteurs de notifications (match_synced / sync_error).
-	syncH = syncH.WithNotificationsEmitterFactory(reg.NotificationsEmitter)
-	// Branche le hook delta-detection post-sync (season_pass_level / objective_completed / challenge_completed).
-	syncH = syncH.WithPostSyncDeltaHook(wire.BuildPostSyncDeltaHook(reg))
-	// Branche la mise en file des rejeux (placement « worker ») sur le moteur legacy
-	// du handler : sans elle, un sync HTTP tombant sur ce chemin n'enfilerait rien
-	// alors que l'auto-sync le fait — un trou que rien ne signalerait.
-	syncH = syncH.WithReplayEnqueuer(reg.EnqueueReplayBuildJob)
-	// Dédup cross-source (unification 2026-06-02) : le gate provient du
-	// Coordinator partagé du watcher, exposé via le scheduler (main.go a injecté
-	// autoScheduler.SyncGate). Si le watcher est désactivé, Gate() renvoie le
-	// NopSyncGate par défaut → comportement legacy (lease seul rempart).
-	if autoSyncScheduler != nil {
-		syncH = syncH.WithSyncGate(autoSyncScheduler.Gate())
-		// Alignement sync manuel ↔ auto-sync (2026-06-14) : le sync HTTP delta
-		// (/sync/all, /players/{slug}/sync) construit son moteur via le MÊME
-		// BuildEngine que l'auto-sync → même PooledHaloClient (pool de tokens
-		// partagé, source unique ADR 0023), post-sync runner, batch queue.
-		// L'auth ne dépend plus des HaloTokens de session (le store a le RT).
-		syncH = syncH.WithEngineBuilder(autoSyncScheduler.BuildEngine)
-	}
-	// serverCtx (annulé au shutdown) : les syncs HTTP en dérivent leur bgCtx
-	// pour être annulés proprement à l'arrêt (avant duckdb.CloseAll).
-	syncH = syncH.WithServerContext(serverCtx)
+	syncH := handlers.NewSyncHandler(syncJobs)
 	// D3-01 (revue 2026-06-01) : /sync/initial et /sync/all sont des opérations
 	// admin/setup (sync d'un joueur arbitraire lu dans le body / de TOUS les
 	// joueurs). Auparavant montées sous /api/v1 SANS auth → contournaient
@@ -684,7 +686,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// Audit ownership 2026-06-08 (PR-A) : backfill lit player_slug dans le BODY
 		// (hors chokepoint /players/{slug}) → opération lourde sur un joueur arbitraire.
 		// Aligné sur /sync/* : admin-gated (no-op en single-user ; refusé en démo).
-		handlers.NewBackfillHandler(cfg, jobStore).Mount(r, apiOpt) // POST /backfill/start
+		handlers.NewBackfillHandler(syncJobs).Mount(r, apiOpt) // POST /backfill/start
 	})
 
 	// OpenSpartan import (Sprint OpenSpartan PR 3.B + commit 15 sprint B1) :

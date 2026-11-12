@@ -32,9 +32,9 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/pkg/duckdbbackup"
@@ -42,14 +42,14 @@ import (
 
 // SettingsHandler gère les endpoints de configuration.
 type SettingsHandler struct {
-	cfg           *config.AppConfig
-	settingsStore *settings_platform.Store
-	friendStore   *friendstore.FriendStore // nil = aucun ami résolu au recalcul des sessions
-	jobStore      *jobs.Store
-	mediaIndexer  service.MediaIndexer
-	backupSched   *duckdbbackup.Scheduler // nil = backup désactivé
-	users         authz.UserLookup        // relecture du rôle admin (settings_admin.go)
-	filmMeter     filmArchiveMeter        // occupation de l'archive des films, en cache (settings_film_archive.go)
+	cfg            *config.AppConfig
+	settingsStore  *settings_platform.Store
+	sessionsRecalc port.SessionsRecalcService // recalcul des sessions de tous les joueurs (settings_sessions_recalc.go)
+	jobStore       *jobs.Store
+	mediaIndexer   service.MediaIndexer
+	backupSched    *duckdbbackup.Scheduler // nil = backup désactivé
+	users          authz.UserLookup        // relecture du rôle admin (settings_admin.go)
+	filmMeter      filmArchiveMeter        // occupation de l'archive des films, en cache (settings_film_archive.go)
 }
 
 // NewSettingsHandler crée un SettingsHandler avec le DirMediaIndexer par défaut.
@@ -73,10 +73,10 @@ func NewSettingsHandlerWithIndexer(
 	}
 }
 
-// WithFriendStore branche le store des amis par joueur, lu par le recalcul des
-// sessions (chaque joueur est recalculé avec SA liste). Nil → aucun ami résolu.
-func (h *SettingsHandler) WithFriendStore(store *friendstore.FriendStore) *SettingsHandler {
-	h.friendStore = store
+// WithSessionsRecalc branche le service qui lance le recalcul des sessions de tous les joueurs
+// (POST /settings/sessions/recalculate).
+func (h *SettingsHandler) WithSessionsRecalc(svc port.SessionsRecalcService) *SettingsHandler {
+	h.sessionsRecalc = svc
 	return h
 }
 

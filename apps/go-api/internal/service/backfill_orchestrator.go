@@ -14,7 +14,6 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/jobs"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -22,7 +21,7 @@ import (
 // le handler avec un SyncEngine déjà wiré (RepoRoot, gamertag, xuid, tokens, provider).
 type BackfillOrchestrator struct {
 	engine   *go_sync.SyncEngine
-	jobStore *jobs.Store
+	jobStore SyncJobStore
 	scope    *go_sync.SyncScope
 	tokens   *domain.HaloTokens
 	dryRun   bool
@@ -30,7 +29,7 @@ type BackfillOrchestrator struct {
 
 // NewBackfillOrchestrator assemble l'orchestrateur. engine doit être déjà construit
 // (WithSharedProvider appliqué si disponible) par l'appelant.
-func NewBackfillOrchestrator(engine *go_sync.SyncEngine, jobStore *jobs.Store,
+func NewBackfillOrchestrator(engine *go_sync.SyncEngine, jobStore SyncJobStore,
 	scope *go_sync.SyncScope, tokens *domain.HaloTokens, dryRun bool) *BackfillOrchestrator {
 	return &BackfillOrchestrator{engine: engine, jobStore: jobStore, scope: scope, tokens: tokens, dryRun: dryRun}
 }

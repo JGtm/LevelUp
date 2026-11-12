@@ -1,54 +1,39 @@
-// Package handlers — backfill.go : lancement du pipeline de backfill (Sprint 51-B3).
+// Package handlers — backfill.go : lancement du pipeline de backfill.
 //
 // POST /backfill/start → crée un job "backfill" et retourne 202 immédiatement.
 // Règles :
 //   - 400 si player_slug absent ou scope entièrement vide
-//   - 401 si tokens Halo absents (requis pour weapon kills)
-//   - 404 si le joueur est introuvable dans db_profiles.json
+//   - 404 si le joueur est introuvable dans db_profiles.json (pour le titre demandé)
 //   - 409 si un job backfill actif existe déjà pour ce player_slug
 //
-// MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le routeur chi
-// (point de montage /backfill/start, middleware RequireAuth/RequireAdmin hérités)
-// et enregistre le POST via huma.Post. Le corps est lu via RawBody (pas de Body
-// typé) pour reproduire EXACTEMENT le contrat de décodage d'origine : un JSON
-// invalide (corps absent inclus) renvoie 400 {invalid_body} et non le 422 de
-// validation Huma. Logique métier inchangée, seul le wrapping HTTP change.
-//
-// K1f (2026-07-06) : l'orchestration multi-phase (détection + N backfills) est
-// extraite dans service.BackfillOrchestrator ; ce handler ne garde que validation,
-// wiring du SyncEngine, création du job et 202.
+// Mount crée humacore.NewAPI(r) sur le routeur chi (point de montage /backfill/start, middleware
+// RequireAuth/RequireAdmin hérités) et enregistre le POST via huma.Post. Le corps est lu via RawBody
+// (pas de Body typé) : un JSON invalide renvoie 400 {invalid_body} et non le 422 de validation Huma ;
+// un corps absent est refusé par Huma avant le handler (400 bad_request). Le handler ne garde que le décodage, la validation du slug et le 202 ; le
+// joueur, le moteur et l'orchestration multi-phase vivent derrière port.BackfillService.
 package handlers
 
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
-	"levelup/go-api/internal/api/middleware"
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
-	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/observability/logging"
-	"levelup/go-api/internal/platform/jobs"
-	"levelup/go-api/internal/service"
-	go_sync "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/port"
 )
 
-// BackfillHandler gère le pipeline de backfill des données manquantes.
+// BackfillHandler expose le lancement du pipeline de backfill.
 type BackfillHandler struct {
-	cfg      *config.AppConfig
-	jobStore *jobs.Store
+	svc port.BackfillService
 }
 
 // NewBackfillHandler crée un BackfillHandler.
-func NewBackfillHandler(cfg *config.AppConfig, jobStore *jobs.Store) *BackfillHandler {
-	return &BackfillHandler{cfg: cfg, jobStore: jobStore}
+func NewBackfillHandler(svc port.BackfillService) *BackfillHandler {
+	return &BackfillHandler{svc: svc}
 }
 
 // Mount enregistre la route via Huma sur le routeur chi (point de montage
@@ -62,8 +47,8 @@ func (h *BackfillHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
 
 // backfillStartInput : corps brut décodé maison. RawBody (pas Body typé) →
-// préserve le contrat 400 {invalid_body} sur JSON invalide ou corps absent (un
-// Body typé renverrait le 422 de validation Huma).
+// préserve le contrat 400 {invalid_body} sur JSON invalide (un Body typé
+// renverrait le 422 de validation Huma).
 type backfillStartInput struct {
 	RawBody []byte
 }
@@ -77,147 +62,18 @@ type backfillStartOutput struct {
 // ─── Endpoint ────────────────────────────────────────────────────────────────
 
 // handleStartBackfill déclenche le pipeline backfill pour un joueur.
-// POST /backfill/start → 202 AsyncJobStatus. Validation + wiring uniquement :
-// l'orchestration vit dans service.BackfillOrchestrator (lancé en goroutine).
+// POST /backfill/start → 202 AsyncJobStatus.
 func (h *BackfillHandler) handleStartBackfill(ctx context.Context, in *backfillStartInput) (*backfillStartOutput, error) {
 	var req domain.BackfillStartRequest
 	if err := json.Unmarshal(in.RawBody, &req); err != nil {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
 	}
-
-	if req.PlayerSlug == "" || len(req.PlayerSlug) > 50 {
-		return nil, humacore.NewError(http.StatusBadRequest, "invalid_player_slug", "player_slug vide ou trop long.")
+	if err := checkPlayerSlug(req.PlayerSlug); err != nil {
+		return nil, err
 	}
-
-	// Un titre absent vaut le titre par défaut, résolu AVANT la recherche du joueur : le moteur ouvre
-	// les bases de ce titre, la recherche doit donc porter sur ses profils (et non sur tous les
-	// titres, où un joueur suivi ailleurs seulement passerait).
-	if req.Title == "" {
-		req.Title = titlePkg.DefaultSlug
-	}
-
-	// Chercher le joueur dans db_profiles.json, parmi les profils de CE titre : un titre inconnu, ou
-	// où le joueur n'est pas suivi, répond 404 sans rien lancer.
-	players, err := h.cfg.LoadPlayers(req.Title)
+	job, err := h.svc.StartBackfill(ctx, syncCaller(ctx), req)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "profiles_load_error",
-			"Impossible de charger db_profiles.json.")
+		return nil, syncJobHTTPError(ctx, err)
 	}
-	var gamertag, xuid string
-	for _, p := range players {
-		if p.PlayerSlug == req.PlayerSlug {
-			gamertag = p.Gamertag
-			xuid = p.XUID
-			break
-		}
-	}
-	if gamertag == "" {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found",
-			fmt.Sprintf("Joueur %q introuvable dans db_profiles.json.", req.PlayerSlug))
-	}
-
-	// 409 si un job backfill est déjà actif pour ce joueur.
-	if active := h.jobStore.FindActiveJob(domain.JobTypeBackfill, req.PlayerSlug); active != nil {
-		return nil, humacore.NewError(http.StatusConflict, "backfill_already_active",
-			"Un backfill est déjà en cours pour ce joueur.")
-	}
-
-	// Sprint B1 commit 17 : event_id pour tracer le backfill HTTP-triggered.
-	// Log immédiat sans muter le contexte requête (data race avec chi middleware).
-	_, evID := logging.WithEvent(ctx, "http.backfill:"+req.PlayerSlug)
-	slog.InfoContext(ctx, "backfill_handler: StartBackfill démarré",
-		"player_slug", req.PlayerSlug, "gamertag", gamertag, "event", evID)
-
-	// Les weapons backfill nécessitent les tokens Halo.
-	sess := middleware.GetSession(ctx)
-	var tokens *domain.HaloTokens
-	if sess != nil {
-		tokens = sess.HaloTokens
-	}
-
-	// Construire le SyncScope depuis la requête.
-	scope := buildSyncScope(req)
-
-	// Wiring du SyncEngine (DI). Sprint B1 commit 11b : aligner le backfill
-	// HTTP-triggered sur auto_sync via Provider (le double-dblease dans
-	// acquireSharedWriter rend ce wire sûr) — sans Provider, RunBackfill*
-	// utiliseraient OpenSharedDB direct (mode legacy) en parallèle des syncs auto
-	// → conflit "different configuration" pour les readers HTTP.
-	// Moteur DU TITRE demandé (req.Title, résolu plus haut) et provider shared de ce titre : le provider
-	// du boot est celui du titre par défaut, il ferait écrire un autre titre dans la mauvaise base.
-	engine := go_sync.NewSyncEngineForTitle(h.cfg.RepoRoot, req.Title, gamertag, xuid, tokens, nil).
-		WithSessionOptionsFromConfig(h.cfg)
-	if provider := h.cfg.SharedProviderForTitle(req.Title); provider != nil {
-		engine = engine.WithSharedProvider(provider)
-	}
-
-	job := h.jobStore.Create(domain.JobTypeBackfill, req.PlayerSlug)
-	// Snapshot avant le lancement : la goroutine modifie in-place le job dans le store.
-	jobSnapshot := *job
-
-	orch := service.NewBackfillOrchestrator(engine, h.jobStore, scope, tokens, req.DryRun)
-	go orch.Run(job.JobID)
-
-	return &backfillStartOutput{Body: &jobSnapshot}, nil
-}
-
-// buildSyncScope construit un SyncScope depuis le payload de requête.
-func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
-	scope := &go_sync.SyncScope{
-		DetectionMode: "or",
-		MaxMatches:    req.MaxMatches,
-	}
-
-	noExplicitScope := !req.Medals && !req.Events && !req.Skill &&
-		!req.PersonalScores && !req.PerformanceScores &&
-		!req.Aliases && !req.LUSR && !req.CSR && !req.EngagementScores &&
-		!req.EngagementCoefficients && !req.ComebackBadges && !req.Citations
-	if req.AllData || noExplicitScope {
-		// Aucun scope explicite → activer tout
-		scope.AllData = true
-		scope.Medals = true
-		scope.Events = true
-		scope.Skill = true
-		scope.PersonalScores = true
-		scope.PerformanceScores = true
-		scope.Aliases = true
-		scope.LUSR = true
-		scope.CSR = true
-		scope.EngagementScores = true
-		scope.ComebackBadges = true
-		scope.Citations = true
-		// EngagementCoefficients implicite : les coefs sont recomputes en
-		// queue de RunBackfillEngagementScores, pas besoin d'activer le flag.
-	} else {
-		scope.Medals = req.Medals
-		scope.Events = req.Events
-		scope.Skill = req.Skill
-		scope.PersonalScores = req.PersonalScores
-		scope.PerformanceScores = req.PerformanceScores
-		scope.Aliases = req.Aliases
-		scope.LUSR = req.LUSR
-		scope.CSR = req.CSR
-		scope.EngagementScores = req.EngagementScores
-		scope.EngagementCoefficients = req.EngagementCoefficients
-		scope.ComebackBadges = req.ComebackBadges
-		scope.Citations = req.Citations
-	}
-
-	if req.ForceRescan {
-		scope.ForceMedals = req.Medals || req.AllData
-		scope.ForceEvents = req.Events || req.AllData
-		scope.ForceSkill = req.Skill || req.AllData
-		scope.ForcePersonalScores = req.PersonalScores || req.AllData
-		scope.ForcePerformanceScores = req.PerformanceScores || req.AllData
-		scope.ForceAliases = req.Aliases || req.AllData
-		scope.ForceLUSR = req.LUSR || req.AllData
-		scope.ForceCSR = req.CSR || req.AllData
-		scope.ForceEngagementScores = req.EngagementScores || req.AllData
-		scope.ForceEngagementCoefficients = req.EngagementCoefficients
-		scope.ForceComebackBadges = req.ComebackBadges || req.AllData
-		scope.ForceCitations = req.Citations || req.AllData
-	}
-
-	scope.Resolve()
-	return scope
+	return &backfillStartOutput{Body: job}, nil
 }

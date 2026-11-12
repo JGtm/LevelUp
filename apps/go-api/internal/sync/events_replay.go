@@ -14,7 +14,7 @@
 //
 // Le helper extrait une boucle clear+process idempotente partagée par :
 //   - `cmd/levelup replay-events` (sous-commande CLI)
-//   - `internal/api/handlers/backfill.go` (HTTP `/backfill/start` avec
+//   - `internal/service/sync_jobs_backfill.go` (HTTP `/backfill/start` avec
 //     `events:true` et `force_events:true`)
 //
 // Il consomme `ProcessHighlightEvents` (engine.go), donc bénéficie du parser

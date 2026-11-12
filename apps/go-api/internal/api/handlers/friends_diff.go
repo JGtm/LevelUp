@@ -60,7 +60,7 @@ func normalizeGamertag(gt string) string {
 //
 // `slug` est le joueur dont la liste a changé (destinataire des notifications) ;
 // `appSettingsPath` sert au chargement de la config Discord.
-func emitFriendsAdded(ctx context.Context, notifierFor NotificationsEmitterFactory,
+func emitFriendsAdded(ctx context.Context, notifierFor notifications.EmitterFactory,
 	appSettingsPath, slug, source string, added []string,
 ) {
 	if notifierFor == nil {

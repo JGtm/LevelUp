@@ -234,34 +234,3 @@ func TestSettingsHandler_Patch_AnalyseRoundTrip(t *testing.T) {
 		t.Errorf("outcome_badge_sensitivity = %v, want 'relaxed'", got["outcome_badge_sensitivity"])
 	}
 }
-
-func TestSettingsHandler_PostRecalculateSessions_Accepted(t *testing.T) {
-	r, jobStore := newSettingsRouter(t, false)
-
-	req := httptest.NewRequest(http.MethodPost, "/settings/sessions/recalculate", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusAccepted {
-		t.Fatalf("expected 202 Accepted, got %d: %s", w.Code, w.Body.String())
-	}
-
-	var body map[string]interface{}
-	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-		t.Fatalf("invalid JSON response: %v", err)
-	}
-	if body["job_id"] == "" || body["job_id"] == nil {
-		t.Errorf("expected non-empty job_id in response, got %v", body)
-	}
-	if body["status"] != "queued" {
-		t.Errorf("expected status=queued, got %v", body["status"])
-	}
-	if body["job_type"] != "sessions_recalculate" {
-		t.Errorf("expected job_type=sessions_recalculate, got %v", body["job_type"])
-	}
-
-	// Attendre la fin du job background avant que t.TempDir() cleanup le dossier.
-	if id, ok := body["job_id"].(string); ok && id != "" {
-		pollJobSucceeded(t, jobStore, id)
-	}
-}

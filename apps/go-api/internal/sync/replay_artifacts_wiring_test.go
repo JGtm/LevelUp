@@ -158,9 +158,9 @@ func TestReplayArtifactsNeFiltrePasSurLesInseres(t *testing.T) {
 // nulle part — c est la lecon de la revue du 2026-08-29. Le test lit les trois fichiers.
 func TestReplayArtifactsHookInstalleParLesTroisChemins(t *testing.T) {
 	sites := map[string]string{
-		"scheduler (auto-sync)": "../scheduler/auto_sync_engine.go",
-		"handler HTTP (legacy)": "../api/handlers/sync_handler.go",
-		"cablage V2 (serveur)":  "../../cmd/server/sync_v2_wiring.go",
+		"scheduler (auto-sync)":    "../scheduler/auto_sync_engine.go",
+		"service des jobs de sync": "../service/sync_jobs_engine.go",
+		"cablage V2 (serveur)":     "../../cmd/server/sync_v2_wiring.go",
 	}
 	for nom, chemin := range sites {
 		src, err := os.ReadFile(chemin)

@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+// EmitterFactory construit l'émetteur de notifications d'un joueur (par slug). Les consommateurs
+// l'acceptent optionnelle : sans fabrique, aucune notification n'est émise.
+type EmitterFactory func(ctx context.Context, slug string) (Emitter, error)
+
 // Emitter est l'interface réduite reçue par les hooks (sync engine, media handler...).
 // Permet de déclencher une notification sans connaître l'impl ni avoir accès
 // au reste de l'API (List/MarkRead/...).

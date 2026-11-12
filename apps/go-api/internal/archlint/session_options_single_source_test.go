@@ -55,7 +55,7 @@ var sitesAvecStoreDeReglages = map[string]bool{
 	engineConstructorsFile:                    true, // WithSessionOptionsFromConfig s'y appuie
 	"internal/scheduler/auto_sync_engine.go":  true,
 	"cmd/server/sync_v2_wiring.go":            true,
-	"internal/api/handlers/sync_handler.go":   true,
+	"internal/service/sync_jobs_engine.go":    true,
 	"internal/api/wire/registry_lusr_gaps.go": true,
 }
 

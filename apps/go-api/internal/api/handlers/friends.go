@@ -40,6 +40,7 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/friendstore"
 )
 
@@ -62,9 +63,9 @@ type FriendsHandler struct {
 	resolveGT    func(ctx context.Context, slug string) (string, bool)
 	demoMode     bool
 	authMode     string
-	recomputer   FriendsRecomputer           // nil → pas de recompute (dégradation silencieuse assumée : le CLI reste)
-	notifierFor  NotificationsEmitterFactory // nil → pas de notif friend_added
-	settingsPath string                      // pour la config Discord des notifications
+	recomputer   FriendsRecomputer            // nil → pas de recompute (dégradation silencieuse assumée : le CLI reste)
+	notifierFor  notifications.EmitterFactory // nil → pas de notif friend_added
+	settingsPath string                       // pour la config Discord des notifications
 }
 
 // NewFriendsHandler crée un FriendsHandler. `resolveXUID` et `resolveGT`
@@ -96,7 +97,7 @@ func (h *FriendsHandler) WithRecomputer(r FriendsRecomputer) *FriendsHandler {
 
 // WithNotifications branche la factory d'émetteurs (notif friend_added) et le
 // chemin d'app_settings.json (webhook Discord).
-func (h *FriendsHandler) WithNotifications(f NotificationsEmitterFactory, appSettingsPath string) *FriendsHandler {
+func (h *FriendsHandler) WithNotifications(f notifications.EmitterFactory, appSettingsPath string) *FriendsHandler {
 	h.notifierFor = f
 	h.settingsPath = appSettingsPath
 	return h

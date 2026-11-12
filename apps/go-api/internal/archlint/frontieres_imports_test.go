@@ -69,3 +69,84 @@ func TestWorldenrichSansService(t *testing.T) {
 			strings.Join(violations, "\n  "))
 	}
 }
+
+// importsSousArbre rend, triés, les imports du fichier qui sont l'un des chemins donnés ou un paquet
+// situé dessous (`racine` et `racine/...`), sous n'importe quel alias.
+func importsSousArbre(src goSource, racines []string) []string {
+	var trouves []string
+	for _, imp := range src.File.Imports {
+		chemin, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			continue
+		}
+		for _, r := range racines {
+			if chemin == r || strings.HasPrefix(chemin, r+"/") {
+				trouves = append(trouves, chemin)
+				break
+			}
+		}
+	}
+	sort.Strings(trouves)
+	return trouves
+}
+
+// racinesInterditesAuxHandlers : le moteur de synchronisation et le suivi en direct de Halo 5. Un handler
+// lance une sync par un port (`port.SyncJobService`) ; il n'importe ni le moteur, ni ses sous-paquets,
+// ni le suivi en direct.
+var racinesInterditesAuxHandlers = []string{
+	cheminModuleAPI + "sync",
+	cheminModuleAPI + "games/halo_5/livesync",
+}
+
+// handlersAvecMoteurDeSyncAutorises : handlers qui importent encore l'une de ces racines, avec la date et
+// la raison. Vide : plus aucun ne le fait ; une entrée ne s'ajoute pas, elle se supprime avec le code qui
+// la justifiait.
+var handlersAvecMoteurDeSyncAutorises = map[string]string{}
+
+func TestOutilImportsSousArbre(t *testing.T) {
+	src := parseGoSnippet(t, "x.go", `package x
+
+import (
+	gosync "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
+	"levelup/go-api/internal/synchro"
+	"levelup/go-api/internal/games/halo_5/livesync"
+	"levelup/go-api/internal/games/halo_5"
+)
+`)
+	got := importsSousArbre(src, racinesInterditesAuxHandlers)
+	want := []string{
+		cheminModuleAPI + "games/halo_5/livesync",
+		cheminModuleAPI + "sync",
+		cheminModuleAPI + "sync/replayartifacts",
+	}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("imports détectés %v, attendu %v (ni internal/synchro, ni internal/games/halo_5)", got, want)
+	}
+}
+
+// TestHandlersSansMoteurDeSync : aucun handler HTTP n'importe le moteur de synchronisation ni le suivi
+// en direct de Halo 5. Les jobs de sync (sync initiale ou delta, rattrapage, recalcul des sessions) se
+// lancent par `port.SyncJobService`, que `service.SyncJobService` implémente : changer de moteur ne
+// touche pas la couche HTTP.
+func TestHandlersSansMoteurDeSync(t *testing.T) {
+	var violations []string
+	vus := map[string]bool{}
+	for _, src := range goSourcesUnder(t, "internal/api/handlers") {
+		vus[src.Rel] = true
+		trouves := importsSousArbre(src, racinesInterditesAuxHandlers)
+		if _, ok := handlersAvecMoteurDeSyncAutorises[src.Rel]; ok || len(trouves) == 0 {
+			continue
+		}
+		violations = append(violations, src.Rel+" importe "+strings.Join(trouves, ", "))
+	}
+	for rel := range handlersAvecMoteurDeSyncAutorises {
+		if !vus[rel] {
+			violations = append(violations, rel+" : entrée autorisée sans fichier — la retirer de handlersAvecMoteurDeSyncAutorises")
+		}
+	}
+	if len(violations) > 0 {
+		t.Errorf("un handler importe le moteur de sync ou le suivi en direct — passer par port.SyncJobService :\n  %s",
+			strings.Join(violations, "\n  "))
+	}
+}

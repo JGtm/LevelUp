@@ -361,7 +361,7 @@ const (
 
 // resolveInitialMaxMatches borne le plafond de matchs du re-import initial :
 // valeur demandée > défaut profil (initial_max_matches) > 200, clampée
-// [1, initialSyncMaxMatchesCap]. Aligné sur StartInitialSync (sync_handler.go).
+// [1, initialSyncMaxMatchesCap]. Aligné sur service.SyncJobService.StartInitialSync.
 func resolveInitialMaxMatches(requested, profileDefault int) int {
 	m := requested
 	if m <= 0 {

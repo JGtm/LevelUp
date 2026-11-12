@@ -87,6 +87,11 @@ var accentedLiteralRE = regexp.MustCompile(`[éèêàùçÉÈÊÀÙÇ]`)
 // 3 → 0, retirés (alertes de comportement rendues par le catalogue de messages) — 128 fichiers,
 // 472 littéraux. L'en-tête précédent (500) n'était plus exact : la somme mesurée des entrées
 // était 477 avant cette mise à jour.
+// Mise à jour 2026-11-12 (plan architecture, 4.2) : les messages des refus des jobs de sync et le
+// libellé du job de recalcul des sessions quittent api/handlers/{sync_handler,sync_handler_align,
+// backfill,settings_sessions_recalc}.go (11 littéraux) pour api/handlers/sync_job_errors.go,
+// service/sync_jobs_recalc.go et ce qui reste de backfill.go et sync_handler.go (9 littéraux) : un
+// déplacement, le compte baisse, aucun libellé nouveau.
 // Familles connues (cf. plan libellés §2) annotées ; le reste (essentiel : messages
 // d'erreur des handlers, famille F/D6) attend la décision utilisateur D6 avant tri fin.
 var frenchLabelAllowlist = map[string]int{
@@ -170,7 +175,7 @@ var frenchLabelAllowlist = map[string]int{
 	"api/handlers/assets.go":                      2,
 	"api/handlers/assets_metadata.go":             5,
 	"api/handlers/auth.go":                        5,
-	"api/handlers/backfill.go":                    2,
+	"api/handlers/backfill.go":                    1,
 	"api/handlers/build_worker.go":                8,
 	"api/handlers/build_worker_artifact.go":       4,
 	"api/handlers/campaign.go":                    4,
@@ -212,14 +217,13 @@ var frenchLabelAllowlist = map[string]int{
 	"api/handlers/session_page.go":                1,
 	"api/handlers/sessions.go":                    1,
 	"api/handlers/settings.go":                    17,
-	"api/handlers/settings_sessions_recalc.go":    2, // 2026-10-19 : les 2 libellés du job, déplacés de settings.go
 	"api/handlers/settings_backup.go":             1,
 	"api/handlers/settings_replay_sound.go":       1,
 	"api/handlers/setup.go":                       12,
 	"api/handlers/squad_v2.go":                    1,
 	"api/handlers/stats.go":                       1,
-	"api/handlers/sync_handler.go":                6,
-	"api/handlers/sync_handler_align.go":          1,
+	"api/handlers/sync_handler.go":                1,
+	"api/handlers/sync_job_errors.go":             6, // 2026-11-12 : messages des refus des jobs de sync, déplacés de sync_handler.go, sync_handler_align.go, backfill.go
 	"api/handlers/synthesis.go":                   1,
 	"api/handlers/teammates.go":                   1,
 	"api/handlers/timeseries.go":                  1,
@@ -265,6 +269,7 @@ var frenchLabelAllowlist = map[string]int{
 	"service/seasons_catalog.go":                            3,
 	"service/session_compare_service.go":                    2,
 	"service/session_compare_table_helpers.go":              1,
+	"service/sync_jobs_recalc.go":                           1, // 2026-11-12 : libellé du job de recalcul des sessions, déplacé de api/handlers/settings_sessions_recalc.go
 	"service/session_page_service.go":                       7,
 	"service/skill_v2_service.go":                           1,
 	"service/squad_service_v2_intersect.go":                 1,

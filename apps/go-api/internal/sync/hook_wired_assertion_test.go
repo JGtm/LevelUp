@@ -27,7 +27,7 @@ import (
 //
 // Codes :
 //   - "wired"        : WithPostSyncRunner câblé directement dans la fonction
-//   - "legacy-hook"  : utilise SyncHandler.WithPostSyncDeltaHook (path HTTP)
+//   - "legacy-hook"  : utilise SyncJobService.WithPostSyncRunner (path HTTP)
 //   - "no-runner-ok" : path qui ne nécessite pas le runner (backfill explicite,
 //     script offline) — justifié par un commentaire au site
 type syncCallSite struct {
@@ -41,14 +41,14 @@ var expectedSyncCallSites = []syncCallSite{
 	// NewSyncEngineForTitle) sous les alias d'import de internal/. Les sites de cmd/
 	// (CLI, cmd/server/sync_v2_wiring.go) sont hors du balayage de ce test.
 	{
-		pathSuffix: "internal/api/handlers/backfill.go",
+		pathSuffix: "internal/service/sync_jobs_backfill.go",
 		status:     "no-runner-ok",
 		reason:     "Backfill HTTP explicite — pas un sync nominal, progression V2 hors-scope",
 	},
 	{
-		pathSuffix: "internal/api/handlers/sync_handler.go",
+		pathSuffix: "internal/service/sync_jobs_engine.go",
 		status:     "legacy-hook",
-		reason:     "Sync HTTP « Sync now » : progression par SyncHandler.WithPostSyncDeltaHook (chemin legacy, hors engineBuilder)",
+		reason:     "Sync initiale HTTP : progression par le runner post-sync du service (SyncJobService.WithPostSyncRunner, chemin hors engineBuilder)",
 	},
 	{
 		pathSuffix: "internal/api/wire/registry_lusr_gaps.go",
@@ -142,7 +142,7 @@ func TestAssertProgressionDeps_HookWiredOnAllSyncPaths(t *testing.T) {
 		}
 		t.Errorf("\nAction : ajouter une entrée dans expectedSyncCallSites avec le statut adéquat :")
 		t.Errorf("  - 'wired'        si WithPostSyncRunner câblé directement")
-		t.Errorf("  - 'legacy-hook'  si SyncHandler.WithPostSyncDeltaHook utilisé (transition)")
+		t.Errorf("  - 'legacy-hook'  si SyncJobService.WithPostSyncRunner utilisé (path HTTP)")
 		t.Errorf("  - 'no-runner-ok' si path offline justifié (ajouter un commentaire au site)")
 		t.Errorf("\nSinon, ce path déclenchera la régression page Ascension vide + notifications muettes")
 		t.Errorf("(cf. AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21 cause B).")
