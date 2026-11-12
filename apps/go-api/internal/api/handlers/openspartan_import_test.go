@@ -18,6 +18,8 @@ import (
 
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/importstore"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/platform/jobs"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync"
@@ -29,6 +31,12 @@ const testHandlerXUID = "2603225103667623"
 func newJobStoreForTest(t *testing.T) *jobs.Store {
 	t.Helper()
 	return jobs.NewStore(filepath.Join(t.TempDir(), "jobs.json"))
+}
+
+// importServiceOn rend un service d'import qui écrit dans la base partagée donnée, sans coordination de
+// fournisseur (sharedprovider.FromInMemoryDB).
+func importServiceOn(db *sql.DB) *service.OpenSpartanImportService {
+	return service.NewOpenSpartanImportService(importstore.NewSharedAcquirer(sharedprovider.FromInMemoryDB(db, ""), ""))
 }
 
 // newSharedDuckDBForTest opens a temporary DuckDB shared database with the
@@ -129,7 +137,7 @@ func sessionWithXUID(xuid string) *domain.SessionData {
 func newHandlerForTest(t *testing.T) *OpenSpartanImportHandler {
 	t.Helper()
 	sharedDB := newSharedDuckDBForTest(t)
-	svc := service.NewOpenSpartanImportServiceForTest(sharedDB)
+	svc := importServiceOn(sharedDB)
 	return NewOpenSpartanImportHandler(OpenSpartanImportConfig{
 		ImportService: svc,
 		JobStore:      newJobStoreForTest(t),

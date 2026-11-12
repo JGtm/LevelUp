@@ -36,8 +36,9 @@ var writerAcquiringCalls = map[string]bool{
 	"NewSharedWriterAcquirer": true,
 }
 
-// requestPathRoots — paquets dont le code tourne sous une requête HTTP.
-var requestPathRoots = []string{"internal/api", "internal/service"}
+// requestPathRoots — paquets dont le code tourne sous une requête HTTP. internal/importstore (stockage des
+// services d'import, ajouté le 2026-11-12 quand les prises de writer ont quitté internal/service) en fait partie.
+var requestPathRoots = []string{"internal/api", "internal/service", "internal/importstore"}
 
 // requestPathExtraFiles — fichiers de internal/sync appelés directement par une requête.
 var requestPathExtraFiles = []string{
@@ -60,9 +61,13 @@ var requestPathWriterAllowlist = map[string]struct {
 	"internal/service/sync_jobs_recalc.go":                  {1, "POST /settings/sessions/recalculate : recalcul des sessions, réglage d'administration (extrait de settings.go le 2026-10-19, passé du handler au service des jobs de sync le 2026-11-12)"},
 	// 2026-10-16 : import OpenSpartan, RequireAuth, un import à la fois par compte, fichier
 	// validé avant la prise du writer (L5-4).
-	"internal/service/openspartan_import_service.go":      {1, "import OpenSpartan : writer pris après validation du fichier"},
-	"internal/service/openspartan_post_import_service.go": {6, "suite de l'import OpenSpartan : un import à la fois par compte"},
-	"internal/service/site_import.go":                     {1, "import depuis le site (lot L22.b, 2026-11-03) : writer pris après la vérification de l'archive, un import à la fois, lancé par l'utilisateur de l'application de bureau (capacité ImportFromSite, profil desktop seul)"},
+	// 2026-11-12 : les prises de writer de l'import OpenSpartan et de l'import depuis le site ont quitté
+	// internal/service pour internal/importstore (ports de internal/port) ; mêmes raisons, comptes inchangés ou
+	// abaissés (les quatre prises du writer partagé du recalcul d'après-import passent par un seul helper).
+	"internal/importstore/openspartan_shared.go":          {1, "import OpenSpartan : writer pris après validation du fichier"},
+	"internal/importstore/openspartan_post_import.go":     {2, "suite de l'import OpenSpartan : un import à la fois par compte"},
+	"internal/service/openspartan_post_import_service.go": {1, "suite de l'import OpenSpartan : recalcul des sessions, un import à la fois par compte"},
+	"internal/importstore/site.go":                        {1, "import depuis le site (lot L22.b, 2026-11-03) : writer pris après la vérification de l'archive, un import à la fois, lancé par l'utilisateur de l'application de bureau (capacité ImportFromSite, profil desktop seul)"},
 	// 2026-10-17 : exclusion de match (PATCH …/matches/{id}/exclusion, RequireAuth). Le rejeu
 	// LUSR v2 écrit l'état du joueur côté shared : décision D-6 du plan backlog 2026-10-16
 	// (utilisateur) — le recalcul prend l'écrivain par RAFALES COURTES (sentinelle de reset, puis

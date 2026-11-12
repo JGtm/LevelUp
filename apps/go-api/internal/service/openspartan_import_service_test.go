@@ -13,6 +13,9 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 	_ "modernc.org/sqlite"
 
+	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/importstore"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/matchflags"
@@ -157,6 +160,17 @@ func buildMinimalFixtureDB(t *testing.T, dir, filename, ownerXUID string) string
 	return abs
 }
 
+// importServiceOn rend un service d'import qui écrit dans la base partagée en mémoire donnée, sans
+// coordination de fournisseur (sharedprovider.FromInMemoryDB).
+func importServiceOn(db *sql.DB) *OpenSpartanImportService {
+	return NewOpenSpartanImportService(importstore.NewSharedAcquirer(sharedprovider.FromInMemoryDB(db, ""), ""))
+}
+
+// postImportOn rend un service d'après-import adossé au stockage de production de cfg.
+func postImportOn(cfg *config.AppConfig) *OpenSpartanPostImportService {
+	return NewOpenSpartanPostImportService(cfg, importstore.NewPostImportStore(cfg.SharedProvider))
+}
+
 func setupSharedDB(t *testing.T) *sql.DB {
 	t.Helper()
 	tmpPath := filepath.Join(t.TempDir(), "shared.duckdb")
@@ -216,7 +230,7 @@ func TestOpenSpartanImport_EndToEnd_WritesAllRowFamilies(t *testing.T) {
 	sharedDB := setupSharedDB(t)
 	stashDir := filepath.Join(dir, "stash")
 
-	svc := NewOpenSpartanImportServiceForTest(sharedDB)
+	svc := importServiceOn(sharedDB)
 	result, err := svc.Import(context.Background(), testOwnerXUID, fixturePath, port.OpenSpartanImportOptions{
 		Source: "test", StashDir: stashDir,
 	})
@@ -320,7 +334,7 @@ func TestOpenSpartanImport_RejectsXUIDMismatch(t *testing.T) {
 	fixturePath := buildMinimalFixtureDB(t, dir, testOwnerXUID+".db", testOwnerXUID)
 	sharedDB := setupSharedDB(t)
 
-	svc := NewOpenSpartanImportServiceForTest(sharedDB)
+	svc := importServiceOn(sharedDB)
 	_, err := svc.Import(context.Background(), "9999999999999999", fixturePath, port.OpenSpartanImportOptions{StashDir: dir})
 	if !errors.Is(err, port.ErrOpenSpartanXUIDMismatch) {
 		t.Fatalf("want port.ErrOpenSpartanXUIDMismatch, got %v", err)
@@ -334,7 +348,7 @@ func TestOpenSpartanImport_DryRunCountsButDoesNotWrite(t *testing.T) {
 	fixturePath := buildMinimalFixtureDB(t, dir, testOwnerXUID+".db", testOwnerXUID)
 	sharedDB := setupSharedDB(t)
 
-	svc := NewOpenSpartanImportServiceForTest(sharedDB)
+	svc := importServiceOn(sharedDB)
 	result, err := svc.Import(context.Background(), testOwnerXUID, fixturePath, port.OpenSpartanImportOptions{
 		DryRun: true, StashDir: filepath.Join(dir, "stash"),
 	})
@@ -355,7 +369,7 @@ func TestOpenSpartanImport_OnProgressInvokedPerMatch(t *testing.T) {
 	dir := t.TempDir()
 	fixturePath := buildMinimalFixtureDB(t, dir, testOwnerXUID+".db", testOwnerXUID)
 	sharedDB := setupSharedDB(t)
-	svc := NewOpenSpartanImportServiceForTest(sharedDB)
+	svc := importServiceOn(sharedDB)
 	calls := 0
 	_, err := svc.Import(context.Background(), testOwnerXUID, fixturePath, port.OpenSpartanImportOptions{
 		StashDir: filepath.Join(dir, "stash"),

@@ -40,6 +40,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/importstore"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 	auth_platform "levelup/go-api/internal/platform/auth"
@@ -701,8 +702,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// échouait). OpenSpartan import = flow d'onboarding rare (un user qui
 	// importe ses données), pas de raison d'ouvrir RW au boot.
 	if !cfg.DemoMode {
-		osImportSvc := service.NewOpenSpartanImportService(cfg.SharedProvider, config.SharedDBPath(cfg, ""))
-		osPostImportSvc := service.NewOpenSpartanPostImportService(cfg)
+		osImportSvc := service.NewOpenSpartanImportService(importstore.NewSharedAcquirer(cfg.SharedProvider, config.SharedDBPath(cfg, "")))
+		osPostImportSvc := service.NewOpenSpartanPostImportService(cfg, importstore.NewPostImportStore(cfg.SharedProvider))
 		osCfg := handlers.OpenSpartanImportConfig{
 			ImportService:     osImportSvc,
 			PostImportService: osPostImportSvc,

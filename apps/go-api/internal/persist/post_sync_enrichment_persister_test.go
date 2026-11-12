@@ -192,3 +192,110 @@ func TestPostSyncEnrichmentPersister_BatchUpdateColumn_HandlesNilValue(t *testin
 		t.Errorf("dominance_flag = %+v, want NULL", dom)
 	}
 }
+
+// openPrimeBaselineDB : une table player_match_enrichment minimale dont l'identifiant « bad » est refusé,
+// et sa vue _latest, pour éprouver PrimeBaseline sans le schéma complet.
+func openPrimeBaselineDB(t *testing.T) *sql.DB {
+	t.Helper()
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	t.Cleanup(func() { _ = db.Close() })
+	if _, err := db.Exec(`
+		CREATE TABLE player_match_enrichment (
+			match_id VARCHAR CHECK (match_id <> 'bad'),
+			stage VARCHAR
+		);
+		CREATE VIEW player_match_enrichment_latest AS SELECT DISTINCT match_id FROM player_match_enrichment;
+	`); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	return db
+}
+
+func countBaselineRows(t *testing.T, db *sql.DB, matchID string) int {
+	t.Helper()
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment WHERE match_id = ? AND stage = 'live'`, matchID).Scan(&n); err != nil {
+		t.Fatalf("count %s: %v", matchID, err)
+	}
+	return n
+}
+
+func TestPrimeBaseline_InsereSeulementLesMatchsSansLigne(t *testing.T) {
+	db := openPrimeBaselineDB(t)
+	if _, err := db.Exec(`INSERT INTO player_match_enrichment (match_id, stage) VALUES ('m1', 'perf')`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	p := NewPostSyncEnrichmentPersister(db)
+
+	inserted, failures, err := p.PrimeBaseline(context.Background(), []string{"m1", "m2", "m3"})
+	if err != nil || len(failures) != 0 {
+		t.Fatalf("PrimeBaseline: err=%v failures=%v", err, failures)
+	}
+	if inserted != 2 {
+		t.Errorf("inserted = %d, attendu 2 (m1 a déjà une ligne)", inserted)
+	}
+	if n := countBaselineRows(t, db, "m1"); n != 0 {
+		t.Errorf("m1 a déjà une ligne : aucune ligne de base ajoutée, obtenu %d", n)
+	}
+	for _, id := range []string{"m2", "m3"} {
+		if n := countBaselineRows(t, db, id); n != 1 {
+			t.Errorf("%s : %d ligne(s) de base, attendu 1", id, n)
+		}
+	}
+
+	// Idempotent : un second passage n'écrit rien.
+	inserted, failures, err = p.PrimeBaseline(context.Background(), []string{"m1", "m2", "m3"})
+	if err != nil || len(failures) != 0 || inserted != 0 {
+		t.Fatalf("second passage : inserted=%d failures=%v err=%v, attendu aucune écriture", inserted, failures, err)
+	}
+}
+
+func TestPrimeBaseline_NArretePasALaPremiereErreur(t *testing.T) {
+	db := openPrimeBaselineDB(t)
+	p := NewPostSyncEnrichmentPersister(db)
+
+	inserted, failures, err := p.PrimeBaseline(context.Background(), []string{"m1", "bad", "m3", "bad", "m5"})
+	if err != nil {
+		t.Fatalf("PrimeBaseline: %v", err)
+	}
+	if inserted != 3 {
+		t.Errorf("inserted = %d, attendu 3 (les matchs après l'échec sont écrits)", inserted)
+	}
+	if len(failures) != 2 {
+		t.Fatalf("failures = %v, attendu 2 échecs comptés", failures)
+	}
+	for _, f := range failures {
+		if f.MatchID != "bad" || f.Err == nil {
+			t.Errorf("échec inattendu : %+v", f)
+		}
+	}
+	for _, id := range []string{"m1", "m3", "m5"} {
+		if n := countBaselineRows(t, db, id); n != 1 {
+			t.Errorf("%s : %d ligne(s) de base, attendu 1", id, n)
+		}
+	}
+}
+
+func TestPrimeBaseline_AucunMatch(t *testing.T) {
+	db := openPrimeBaselineDB(t)
+	inserted, failures, err := NewPostSyncEnrichmentPersister(db).PrimeBaseline(context.Background(), nil)
+	if inserted != 0 || failures != nil || err != nil {
+		t.Fatalf("liste vide : %d %v %v", inserted, failures, err)
+	}
+}
+
+func TestPrimeBaseline_LectureImpossibleRendLErreurSansEcrire(t *testing.T) {
+	db, err := sql.Open("duckdb", ":memory:") // pas de table : la lecture préalable échoue
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	inserted, failures, err := NewPostSyncEnrichmentPersister(db).PrimeBaseline(context.Background(), []string{"m1"})
+	if err == nil || inserted != 0 || len(failures) != 0 {
+		t.Fatalf("attendu l'erreur de lecture seule : inserted=%d failures=%v err=%v", inserted, failures, err)
+	}
+}

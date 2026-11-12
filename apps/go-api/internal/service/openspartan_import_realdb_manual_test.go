@@ -105,8 +105,8 @@ func TestRealDB_FullPipeline(t *testing.T) {
 		t.Fatalf("create metadata: %v", err)
 	}
 
-	importSvc := NewOpenSpartanImportServiceForTest(sharedDB)
-	postImportSvc := NewOpenSpartanPostImportService(cfg)
+	importSvc := importServiceOn(sharedDB)
+	postImportSvc := postImportOn(cfg)
 
 	// ─── STAGE 1 — IMPORT ────────────────────────────────────────────────────
 	t.Log("=== STAGE 1: Import (raw rows into shared DuckDB) ===")
@@ -226,7 +226,7 @@ func TestRealDB_OpenSpartanImport_DryRun(t *testing.T) {
 		count, hl, len(aliases), len(friends))
 
 	// Run the service in DryRun mode — sharedDB is unused (no writes).
-	svc := NewOpenSpartanImportServiceForTest(nil)
+	svc := NewOpenSpartanImportService(nil)
 	result, err := svc.Import(context.Background(), owner, path, port.OpenSpartanImportOptions{
 		DryRun:   true,
 		Source:   "dry_run",
@@ -281,7 +281,7 @@ func TestRealDB_OpenSpartanImport(t *testing.T) {
 
 	sharedDB := setupSharedDB(t)
 	dir := t.TempDir()
-	svc := NewOpenSpartanImportServiceForTest(sharedDB)
+	svc := importServiceOn(sharedDB)
 
 	result, err := svc.Import(context.Background(), owner, path, port.OpenSpartanImportOptions{
 		Source:   "smoke_test",

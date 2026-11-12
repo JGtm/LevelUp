@@ -20,7 +20,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 	"time"
 
@@ -28,9 +27,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/openspartan"
 	"levelup/go-api/internal/openspartan/mapper"
-	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
-	"levelup/go-api/internal/sync"
 )
 
 // importScope porte le périmètre d'un import : l'importeur, les options de
@@ -68,15 +65,15 @@ func (sc *importScope) admit(ctx context.Context, pm *openspartan.ParsedMatch, m
 
 // thirdPartyAliases rend les alias PROPOSÉS pour les autres participants humains
 // d'un match retenu (INSERT OR IGNORE via le batch : jamais de réécriture).
-func (sc *importScope) thirdPartyAliases(parts []mapper.MatchParticipantRow) []persist.XUIDAliasInsert {
+func (sc *importScope) thirdPartyAliases(parts []mapper.MatchParticipantRow) []port.OpenSpartanAlias {
 	now := time.Now().UTC()
-	var out []persist.XUIDAliasInsert
+	var out []port.OpenSpartanAlias
 	for _, p := range parts {
 		if p.XUID == "" || p.XUID == sc.owner || analysis.IsBot(p.XUID) {
 			continue
 		}
 		if gt := sc.alias(p.XUID); gt != "" {
-			out = append(out, persist.XUIDAliasInsert{XUID: p.XUID, Gamertag: gt, LastSeen: now})
+			out = append(out, port.OpenSpartanAlias{XUID: p.XUID, Gamertag: gt, LastSeen: now})
 		}
 	}
 	return out
@@ -97,7 +94,7 @@ func rejectMatchID(ctx context.Context, matchID string, result *port.OpenSpartan
 // sont proposés par le batch de chaque match retenu (thirdPartyAliases).
 func (s *OpenSpartanImportService) importOwnerAlias(
 	ctx context.Context,
-	sharedDB *sql.DB,
+	store port.OpenSpartanSharedStore,
 	r *openspartan.Reader,
 	scope *importScope,
 	result *port.OpenSpartanImportResult,
@@ -115,7 +112,7 @@ func (s *OpenSpartanImportService) importOwnerAlias(
 			result.InsertedAliases++
 			return
 		}
-		if err := sync.UpsertXUIDAlias(ctx, sharedDB, a.XUID, a.Gamertag); err != nil {
+		if err := store.UpsertOwnerAlias(ctx, a.XUID, a.Gamertag); err != nil {
 			result.Errors = append(result.Errors, port.OpenSpartanImportError{Stage: "upsert_alias", Err: err.Error()})
 			return
 		}

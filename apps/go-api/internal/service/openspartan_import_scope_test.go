@@ -103,7 +103,7 @@ func TestOpenSpartanImport_WritesOnlyOwnerMatches(t *testing.T) {
 		t.Fatalf("seed alias: %v", err)
 	}
 
-	res, err := NewOpenSpartanImportServiceForTest(sharedDB).Import(context.Background(), testOwnerXUID, path,
+	res, err := importServiceOn(sharedDB).Import(context.Background(), testOwnerXUID, path,
 		port.OpenSpartanImportOptions{StashDir: filepath.Join(dir, "stash")})
 	if err != nil {
 		t.Fatalf("Import: %v", err)

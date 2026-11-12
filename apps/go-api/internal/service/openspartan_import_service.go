@@ -14,7 +14,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -22,13 +21,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain/highlightevent"
-	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/openspartan"
 	"levelup/go-api/internal/openspartan/mapper"
-	"levelup/go-api/internal/persist"
-	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync"
 )
@@ -36,47 +31,19 @@ import (
 // OpenSpartanImportService orchestrates one import from an OpenSpartan
 // SQLite database into the shared DuckDB.
 //
-// Sprint B1 commit 15 : acquisition on-demand du writer shared via le
-// Provider, plutôt qu'un handle RW persistant ouvert au boot.
-//
-// Pourquoi : OpenSpartan import est un flow d'onboarding RARE (un user qui
-// veut importer ses données depuis OpenSpartan vers LevelUp). Garder un
-// handle RW shared ouvert pour la vie du process créait un conflit avec
-// le Provider qui tient shared en RO en steady state ("different
-// configuration" au boot).
-//
-// Modes :
-//   - Production (provider != nil) : acquisition à chaque Import via
-//     Provider.AcquireWriter. Coordination automatique avec auto_sync.
-//   - Tests in-memory (legacyDB != nil) : utilise le handle injecté sans
-//     coordination Provider. Utiliser uniquement pour les tests.
+// L'écriture de la base partagée passe par port.OpenSpartanSharedAcquirer, pris à chaque Import (flow
+// d'onboarding RARE) : le service ne tient aucun handle persistant, ce qui évite le conflit
+// « different configuration » avec le fournisseur qui tient la base partagée en lecture seule en régime
+// établi. En production l'acquisition est coordonnée avec auto_sync (Provider.AcquireWriter, bascule B-swap).
 type OpenSpartanImportService struct {
-	provider     sharedprovider.Provider // mode B-swap (production)
-	legacyDB     *sql.DB                 // tests in-memory uniquement
-	sharedDBPath string                  // utilisé en mode legacy si provider nil
-	log          *slog.Logger
+	shared port.OpenSpartanSharedAcquirer
+	log    *slog.Logger
 }
 
-// NewOpenSpartanImportService construit un service en mode production —
-// l'écriture shared passe par Provider.AcquireWriter à chaque Import.
-// sharedDBPath conservé pour mode kill-switch (provider nil, dblease + open).
-func NewOpenSpartanImportService(provider sharedprovider.Provider, sharedDBPath string) *OpenSpartanImportService {
-	return &OpenSpartanImportService{
-		provider:     provider,
-		sharedDBPath: sharedDBPath,
-		log:          slog.Default(),
-	}
-}
-
-// NewOpenSpartanImportServiceForTest construit un service avec un handle
-// shared in-memory injecté. PAS DE COORDINATION avec Provider — usage tests
-// uniquement, où un sharedDB DuckDB in-memory est partagé entre setup et
-// service. Ne PAS utiliser en production.
-func NewOpenSpartanImportServiceForTest(sharedDB *sql.DB) *OpenSpartanImportService {
-	return &OpenSpartanImportService{
-		legacyDB: sharedDB,
-		log:      slog.Default(),
-	}
+// NewOpenSpartanImportService construit le service ; shared prend l'écriture de la base partagée à chaque
+// Import non simulé (nil admis tant que seul DryRun est utilisé).
+func NewOpenSpartanImportService(shared port.OpenSpartanSharedAcquirer) *OpenSpartanImportService {
+	return &OpenSpartanImportService{shared: shared, log: slog.Default()}
 }
 
 // SetLogger swaps the default slog logger. Useful for tests and integration.
@@ -86,22 +53,14 @@ func (s *OpenSpartanImportService) SetLogger(log *slog.Logger) {
 	}
 }
 
-// acquireShared retourne un *sql.DB pour les écritures shared + une fonction
-// release à appeler via defer. Stratégie selon la configuration du service :
-//   - Tests (legacyDB != nil) : retourne le handle injecté, release no-op.
-//   - DryRun : aucun handle nécessaire (pas d'écriture), release no-op.
-//   - Production (provider != nil) : Provider.AcquireWriter (coordonné B-swap).
-//   - Fallback legacy (sharedDBPath != ""): AcquireSharedWriterStandalone.
-func (s *OpenSpartanImportService) acquireShared(ctx context.Context, dryRun bool) (*sql.DB, func(), error) {
-	if s.legacyDB != nil {
-		return s.legacyDB, func() {}, nil
-	}
+// acquireShared prend le magasin d'écriture partagé + sa fonction de libération (à appeler via defer).
+// DryRun : aucune écriture, donc aucun magasin (nil, libération sans effet) ; les helpers ne le
+// déréférencent pas sur ce chemin.
+func (s *OpenSpartanImportService) acquireShared(ctx context.Context, dryRun bool) (port.OpenSpartanSharedStore, func(), error) {
 	if dryRun {
-		// Pas d'écriture en dryRun — retourne nil + no-op release, les helpers
-		// ne dereferencent pas le handle sur le code path dryRun.
 		return nil, func() {}, nil
 	}
-	return sync.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "openspartan_import"), s.provider, s.sharedDBPath)
+	return s.shared.AcquireShared(ctx)
 }
 
 // Import is the entry point. expectedOwnerXUID comes from the caller's SSO
@@ -146,15 +105,9 @@ func (s *OpenSpartanImportService) Import(
 		return result, fmt.Errorf("load aliases: %w", err)
 	}
 
-	// Acquisition on-demand du writer shared, une fois le fichier validé et lu :
-	//   - Mode B-swap (provider != nil) : Provider.AcquireWriter coordonne
-	//     avec auto_sync et les readers HTTP (PreSwap → DETACH pool, OpenRW,
-	//     puis re-OpenRO post-Release). Aucun handle RW persistant.
-	//   - Mode legacy (provider nil, sharedDBPath != "") : sync.AcquireSharedWriterStandalone
-	//     (dblease + OpenSharedDB direct).
-	//   - Mode tests (legacyDB != nil) : utilise le handle injecté tel quel.
-	//   - DryRun : skip toute acquisition (pas d'écriture).
-	sharedDB, releaseShared, err := s.acquireShared(ctx, opts.DryRun)
+	// Acquisition on-demand du writer shared, une fois le fichier validé et lu (DryRun : aucune
+	// acquisition, pas d'écriture). Aucun handle RW persistant.
+	store, releaseShared, err := s.acquireShared(ctx, opts.DryRun)
 	if err != nil {
 		return result, fmt.Errorf("openspartan import acquire shared: %w", err)
 	}
@@ -165,13 +118,13 @@ func (s *OpenSpartanImportService) Import(
 		Source:        opts.Source,
 	}, opts.DryRun)
 
-	if err := s.importMatches(ctx, sharedDB, r, scope, opts, &result); err != nil {
+	if err := s.importMatches(ctx, store, r, scope, opts, &result); err != nil {
 		return result, err
 	}
-	if err := s.importHighlights(ctx, sharedDB, r, scope, &result); err != nil {
+	if err := s.importHighlights(ctx, store, r, scope, &result); err != nil {
 		return result, err
 	}
-	s.importOwnerAlias(ctx, sharedDB, r, scope, &result)
+	s.importOwnerAlias(ctx, store, r, scope, &result)
 	s.stashFriends(ctx, r, expectedOwnerXUID, opts, &result)
 
 	s.log.Info("openspartan_import_completed",
@@ -219,7 +172,7 @@ func (s *OpenSpartanImportService) validateOwner(
 //nolint:unparam // err maintenu pour signature cohérente avec import* siblings ;
 func (s *OpenSpartanImportService) importMatches(
 	ctx context.Context,
-	sharedDB *sql.DB,
+	store port.OpenSpartanSharedStore,
 	r *openspartan.Reader,
 	scope *importScope,
 	opts port.OpenSpartanImportOptions,
@@ -235,7 +188,7 @@ func (s *OpenSpartanImportService) importMatches(
 		if opts.OnProgress != nil {
 			opts.OnProgress(parsed, result.TotalMatches)
 		}
-		s.writeOneMatch(ctx, sharedDB, pm, scope, result)
+		s.writeOneMatch(ctx, store, pm, scope, result)
 	}
 	return nil
 }
@@ -246,7 +199,7 @@ func (s *OpenSpartanImportService) importMatches(
 // whole import.
 func (s *OpenSpartanImportService) writeOneMatch(
 	ctx context.Context,
-	sharedDB *sql.DB,
+	store port.OpenSpartanSharedStore,
 	pm *openspartan.ParsedMatch,
 	scope *importScope,
 	result *port.OpenSpartanImportResult,
@@ -278,30 +231,17 @@ func (s *OpenSpartanImportService) writeOneMatch(
 	csrs, ranked := s.extractMatchCSRRows(pm, &syncReg, result)
 	syncReg.IsRanked = ranked
 
-	// Écriture per-match INSERT-only + atomique via persist.SharedPersister (ADR
-	// 0019/0026, anti-ART #23645) : registry + participants + medals + match_csrs
-	// dans UNE transaction, jamais d'ON CONFLICT DO UPDATE per-helper (l'ancien
-	// chemin sync.Insert*/Upsert* pouvait laisser un état partiel). Idempotent :
-	// si le match existe déjà, Persist no-op. Modèle identique au livesync H5.
-	builder := persist.NewBatchBuilder(title.DefaultSlug, "", "", "openspartan_import")
-	builder.SetMatch(&syncReg)
-	if len(parts) > 0 {
-		builder.AddParticipants(parts)
+	// Écriture per-match INSERT-only + atomique (ADR 0019/0026, anti-ART #23645) : registry + participants
+	// + medals + match_csrs dans UNE transaction, jamais d'ON CONFLICT DO UPDATE per-helper. Idempotent :
+	// si le match existe déjà, l'écriture est un no-op. Modèle identique au livesync H5.
+	write := port.OpenSpartanMatchWrite{
+		Registry:     syncReg,
+		Participants: parts,
+		Medals:       toSyncMedals(mm.Medals),
+		CSRs:         toPortCSRs(csrs),
+		Aliases:      thirdPartyAliases,
 	}
-	if medals := toSyncMedals(mm.Medals); len(medals) > 0 {
-		builder.AddMedals(medals)
-	}
-	if len(csrs) > 0 {
-		mcInserts := make([]persist.MatchCSRInsert, 0, len(csrs))
-		for _, c := range csrs {
-			mcInserts = append(mcInserts, sync.SharedCSRRowToMatchCSRInsert(c))
-		}
-		builder.AddMatchCSRs(mcInserts)
-	}
-	if len(thirdPartyAliases) > 0 {
-		builder.AddXUIDAliases(thirdPartyAliases)
-	}
-	if err := persist.NewSharedPersister(sharedDB).Persist(ctx, builder.Build()); err != nil {
+	if err := store.PersistMatch(ctx, write); err != nil {
 		result.Errors = append(result.Errors, port.OpenSpartanImportError{MatchID: pm.MatchID, Stage: "persist_match", Err: err.Error()})
 		return
 	}
@@ -342,7 +282,7 @@ func (s *OpenSpartanImportService) extractMatchCSRRows(
 //nolint:unparam // err maintenu pour signature cohérente avec import* siblings ;
 func (s *OpenSpartanImportService) importHighlights(
 	ctx context.Context,
-	sharedDB *sql.DB,
+	store port.OpenSpartanSharedStore,
 	r *openspartan.Reader,
 	scope *importScope,
 	result *port.OpenSpartanImportResult,
@@ -365,7 +305,7 @@ func (s *OpenSpartanImportService) importHighlights(
 			continue
 		}
 		event := toAnalysisEvent(row)
-		n, err := sync.InsertHighlightEvents(ctx, sharedDB, row.MatchID, []highlightevent.HighlightEvent{event})
+		n, err := store.InsertHighlightEvents(ctx, row.MatchID, []highlightevent.HighlightEvent{event})
 		if err != nil {
 			result.Errors = append(result.Errors, port.OpenSpartanImportError{MatchID: hl.MatchID, Stage: "insert_highlight", Err: err.Error()})
 			continue
