@@ -259,7 +259,9 @@ migrations themselves — including under `--dry-run`.
 
 ```bash
 # 1. RE-COOK the artifacts first — schema 39 makes every earlier artifact stale, and this is
-#    the pass that makes `bombStats` exist in them at all.
+#    the pass that makes `bombStats` exist in them at all. An artifact is up to date when its
+#    schema is current AND its step (`frameIntervalMs`, absent = 100 ms) is LevelUp's current
+#    cooking step (`replaybuild.CookFrameIntervalMS`): a replay baked on another grid is stale too.
 go run ./cmd/levelup backfill-replay [--dry-run] [--force] [--limit N] [--only-existing]
 
 # 2. Equipment and pad usage -> match_usage_players + match_usage_films.

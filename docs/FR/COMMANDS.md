@@ -266,7 +266,10 @@ sur la DB partagée et jouent elles-mêmes les migrations — y compris sous `--
 
 ```bash
 # 1. RE-CUIRE les artefacts d'abord — le schéma 39 périme tout artefact antérieur, et c'est
-#    cette passe-là qui fait NAÎTRE `bombStats` dedans.
+#    cette passe-là qui fait NAÎTRE `bombStats` dedans. Un artefact est à jour quand son schéma
+#    est le courant ET que son pas (`frameIntervalMs`, absent = 100 ms) est le pas de cuisson
+#    courant de LevelUp (`replaybuild.CookFrameIntervalMS`) : un rejeu cuit sur une autre grille
+#    est périmé aussi.
 go run ./cmd/levelup backfill-replay [--dry-run] [--force] [--limit N] [--only-existing]
 
 # 2. Usages d'équipement et de socles -> match_usage_players + match_usage_films.
