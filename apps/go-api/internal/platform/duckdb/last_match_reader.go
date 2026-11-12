@@ -33,12 +33,12 @@ type LastMatchReader struct {
 // forcé). Ne résout AUCUNE player-DB : un profil auth_only (sans match) est simplement absent du résultat, et
 // AUCUNE DB n'est créée pour lui (E3). Best-effort : base absente ou illisible → ErrLastMatchRead, jamais de
 // panic.
-func (r LastMatchReader) LastMatchByXUID(ctx context.Context, dbPath, titleSlug string, xuids []string) (map[string]time.Time, error) {
+func (r LastMatchReader) LastMatchByXUID(ctx context.Context, sharedDBPath, titleSlug string, xuids []string) (map[string]time.Time, error) {
 	out := map[string]time.Time{}
 	if len(xuids) == 0 {
 		return out, nil
 	}
-	sqlDB, release, err := OpenReadForQuery(dbPath)
+	sqlDB, release, err := OpenReadForQuery(sharedDBPath)
 	if err != nil {
 		r.Log.WarnContext(ctx, "admin_freshness: shared reader indisponible",
 			"title", titleSlug, "err", err)

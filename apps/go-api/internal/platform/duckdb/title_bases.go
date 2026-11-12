@@ -115,21 +115,21 @@ func (b TitleBases) Open(ctx context.Context, titleSlug string) (TitleHandles, e
 
 // ReadShared ouvre la base partagée du titre en lecture ; release la rend.
 func (b TitleBases) ReadShared(ctx context.Context, titleSlug string) (*sql.DB, func(), error) {
-	sharedPath := b.Paths.SharedDBPath(titleSlug)
-	if _, statErr := os.Stat(sharedPath); statErr != nil {
+	sharedDBPath := b.Paths.SharedDBPath(titleSlug)
+	if _, statErr := os.Stat(sharedDBPath); statErr != nil {
 		return nil, nil, fmt.Errorf("shared DB absente pour %s: %w", titleSlug, statErr)
 	}
 	// Lecture partagée B-swap-safe : si le fournisseur tient CE fichier (titre par défaut), passer par lui
 	// (drain RO <-> RW, résilient à la synchronisation concurrente) ; sinon OpenReadOnly direct (aucune
 	// fenêtre RW dans le processus pour ce titre).
-	if b.SharedProvider != nil && b.SharedProvider.Path() == sharedPath {
+	if b.SharedProvider != nil && b.SharedProvider.Path() == sharedDBPath {
 		db, release, gerr := AcquireSharedRead(ctx, b.SharedProvider)
 		if gerr != nil {
 			return nil, nil, fmt.Errorf("acquire shared read (provider): %w", gerr)
 		}
 		return db, release, nil
 	}
-	shared, oerr := OpenReadOnly(sharedPath)
+	shared, oerr := OpenReadOnly(sharedDBPath)
 	if oerr != nil {
 		return nil, nil, fmt.Errorf("open shared RO: %w", oerr)
 	}
