@@ -23,7 +23,7 @@ type runner struct {
 	zones    *replay.MapObjectivesCatalog
 	role     mapvar.Role
 	offset   mapvar.Vec3
-	maxGap   int
+	maxGapMS int
 	rejects  rejects
 	results  []result
 }
@@ -53,6 +53,9 @@ type result struct {
 	zones      []replay.Zone
 	roster     []replay.RosterEntry
 	frameCount int
+	// intervalMS : pas de la grille du document, en millisecondes : le seul pont entre les durees de
+	// l outil (tolerance, decalages) et les frames des pistes.
+	intervalMS int
 	err        error
 }
 
@@ -64,13 +67,14 @@ var zoneStats = map[string]bool{
 	decfilm.StatZoneSecures:  true,
 }
 
-// nullShiftFrames : decalage du TEMOIN TEMPOREL, en frames de 100 ms (30 s).
+// nullShiftMS : decalage du TEMOIN TEMPOREL, en millisecondes (30 s), converti en frames avec le pas
+// du document.
 //
 // Le temoin translate deplace les ZONES ; celui-ci deplace les INSTANTS. Il repond a une
 // objection que le premier ne couvre pas : « les joueurs de Bastion passent leur partie
 // autour des zones, donc n'importe quel instant marcherait ». Si c'etait vrai, decaler
 // l'action de 30 s ne changerait pas le taux.
-const nullShiftFrames = 300
+const nullShiftMS = 30_000
 
 // measure croise un match : film -> trajectoires + actions, puis prepare les temoins.
 func (r *runner) measure(ctx context.Context, m eligible) result {
@@ -106,12 +110,13 @@ func (r *runner) measure(ctx context.Context, m eligible) result {
 	res.slotXUID = slotBridgeOf(doc.Tracks)
 	res.roster = doc.Roster
 	res.frameCount = doc.FrameCount
-	res.nullAction = shiftBy(doc.Objectives, doc.FrameCount, nullShiftFrames)
+	res.intervalMS = doc.FrameIntervalMS
+	res.nullAction = shiftBy(doc.Objectives, doc.FrameCount, nullShiftMS/doc.FrameIntervalMS)
 	if doc.OriginMs != nil {
 		res.originMS, res.hasOrigin = *doc.OriginMs, true
 		res.corrected = correctedActions(identified, *doc.OriginMs,
 			doc.FrameIntervalMS, doc.FrameCount, doc.Tracks)
-		res.correctedNull = shiftBy(res.corrected, doc.FrameCount, nullShiftFrames)
+		res.correctedNull = shiftBy(res.corrected, doc.FrameCount, nullShiftMS/doc.FrameIntervalMS)
 	}
 	return res
 }
