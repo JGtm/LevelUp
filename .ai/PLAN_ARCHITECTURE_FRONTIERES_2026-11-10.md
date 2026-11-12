@@ -362,16 +362,29 @@ réponses à l'identique (témoins).
       `post_sync_progression_queries.go:231-236` passe par la fonction existante d'`analysis/`
       (vérifier l'existant, skill `go-features`). `ExpandPlaylistChildren` et la couverture des
       armes deviennent des services.
-- [ ] 4.5 (API-4) Déplacer `commendation_handler.go`, `spa_handler.go`, `static_files.go` et
+- [x] 4.5 (API-4) Déplacer `commendation_handler.go`, `spa_handler.go`, `static_files.go` et
       `serveStaticFile` dans `api/handlers/` ; `media_audience.go` dans un service ;
       `startSessionPurgeLoop` dans `scheduler/`, déclaré comme tâche de fond par profil (ADR 0044).
-- [ ] 4.6 (API-P2-1) Interfaces de `port/` pour `BootstrapService`, `PresenceService`, `SiteImport`,
+- [x] 4.6 (API-P2-1) Interfaces de `port/` pour `BootstrapService`, `PresenceService`, `SiteImport`,
       l'import OpenSpartan, `PlayerEngagementService`, `MediaIndexer`, la sync de titre.
-- [ ] 4.7 Garde-rails `archlint`, plafond 0 : (a) `api/handlers` n'importe ni `platform/duckdb`
+- [x] 4.7 Garde-rails `archlint`, plafond 0 : (a) `api/handlers` n'importe ni `platform/duckdb`
       (hors types d'erreur listés), ni `sync`, ni `persist`, ni `games/{slug}` ; (b) aucun littéral
       SQL dans `api/wire` ni à la racine `api/` ; (c) aucun `*service.X` dans `api/handlers`.
-- [ ] 4.8 Tests : `httptest` avec faux port pour chaque handler touché ; faux dépôt pour chaque
+- [x] 4.8 Tests : `httptest` avec faux port pour chaque handler touché ; faux dépôt pour chaque
       service créé ; DuckDB en mémoire pour chaque dépôt créé.
+
+Résultat de l'étape 4 (2026-11-12). 4.1 à 4.4 : voir §12 (une ronde de revue adversariale, 0 P0, P1 corrigé).
+4.5 : fichiers statiques, page web et distinctions dans `api/handlers` (62 requêtes comparées octet pour octet
+entre l'ancien code et le code déplacé : statut, en-têtes, corps, aucune différence) ; règle d'audience des médias
+dans `service.MediaAudienceService` ; purge des sessions = tâche de fond déclarée (`scheduler.RunSessionPurgeLoop`).
+4.6 : les handlers tiennent des interfaces de `port/` (présence, import depuis le site, import OpenSpartan,
+engagement, indexeur de médias, sync de titre, bootstrap). 4.7 : trois gardes à plafond 0 et allowlists vides
+(stockage, `persist` et paquets de titre ; SQL dans `api` ; paquet `service`) ; `home.go` classe une panne de
+lecture par `platform/dbfault`. 4.8 : faux ports et faux dépôts pour chaque handler et service touché. Gate :
+build, vet (avec et sans `integration`), gofmt, `archlint`, `-tags=integration -p 1` sur api, service, port,
+platform/duckdb, dbfault, session, scheduler, sync, cmd/server : code de sortie 0 ; code sans appelant : 4 entrées
+de moins, aucune nouveauté ; mesures « cadre HTTP » : toutes à 0 (relues par le pilote) ; témoins : 90 routes,
+`diff -r avant-4 apres-4e` vide. Non lancés en local : `golangci-lint` et la baseline de tests (laissés à la CI).
 
 Gate : gate de l'étape 3 ; mesures « cadre HTTP » du §0 à zéro ; témoins identiques.
 
@@ -485,7 +498,7 @@ deux graphes de 7.3.
 | 1 | close | `91727b0c30` (PR #191) | fusionnée le 2026-11-11 |
 | 2 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-11 |
 | 3 | close | `dd5f4de69c` sur `release/v8.2.0` | close le 2026-11-12, CI verte ; une ronde de revue, P1 corrigé |
-| 4 | à faire | | |
+| 4 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-12 ; une ronde de revue (lots 4.1 à 4.4), P1 corrigé |
 | 5 | à faire | | |
 | 6 | à faire | | |
 | 7 | à faire | | |
@@ -553,6 +566,8 @@ deux graphes de 7.3.
 - Étape 4 (4.3, 2026-11-12). `api/handlers/home.go` importe encore `platform/duckdb` et `sharedprovider` pour classer une panne de lecture (allowlist datée du garde-rail) : à traiter en 4.7. L interface du profil joueur vit dans `progression/profile` et non dans `port/` (`profile` importe `port` : cycle) ; en sortir demande de déplacer les types de réponse vers `domain`. `settings.go` : 512 lignes. `SettingsHandler` sans `WithDatabaseMemory` n applique pas le plafond (avertissement au journal) : dépendance facultative, seul le serveur la branche. Pas de service pour la limite mémoire (aucune règle à y loger). Routes hors témoins : `GET /campaigns/{id}` et toutes les écritures (campagnes, `memory_limit_mb`, sauvegarde). Non traités.
 
 - Étape 4 (4.4 et revue adversariale des lots 4.1 à 4.4, 2026-11-12). Revue : 0 P0 ; P1 « garde du writer partagé sur le chemin requête aveugle à `sync.NewSharedWriterAcquirer` » corrigé ; P1 « messages des 500 changés » réfuté sur pièces (`humacore.NewError` remplaçait déjà tout message 5xx par « internal error ») ; P2 corrigés : garde du pool (deux ouvertures nommées et inscrites en allowlist datée), étiquette Halo de la langue de repli liée en paramètre, garde anti-SQL élargi. Restent, non traités : `service.PlaylistExpansionService` ignore l erreur de `RecordWeight` (préexistant) ; `MediaRecipientsRepo.MatchParticipantXUIDs` ouvre la base partagée par `OpenReadForQuery` sous un nom que le garde du pool ne reconnaît pas ; aucune contrainte n impose `WithSessionsRecalc` et `WithDatabaseMemory` sur `SettingsHandler` ; `scripts/check_lease_enforcement.sh` cite deux chemins d avant `api/wire/` ; whitelist de `TestNoUnauthorizedSharedSocialMention` sans contrôle de péremption ; `port/dbexecutor.go` et `dbwriter.go` exposent `database/sql` (étape 5) ; KPM et PSPM : aucune fonction d `analysis` équivalente au bit près, formule déplacée telle quelle dans `analysis.PerMinute`.
+
+- Étape 4 (4.5 à 4.8, 2026-11-12). `NewRouter` garde 9 paramètres et `ServiceRegistry` porte le magasin de sessions pour le seul relais vers `cmd/server`. La purge des sessions s'arrête désormais avec le contexte des tâches de fond (avant : contexte sans fin quand le watcher est absent), toujours hors du groupe d'attente. `port` importe maintenant `openspartan` et `platform/jobs` (`MediaIndexer` expose `*jobs.Store`) : à reprendre à l'étape 5 si `port` doit rester sans dépendance vers `platform`. `home.go` dépend encore de `platform/duckdb` par transitivité (`dbfault`) : le garde ne lit que les imports directs. Le passage `transfer.ErrImportRunning` vers `port.ErrSiteImportRunning` n'est testé que par un faux côté handler (pas de point d'injection dans le `Runner`). `port/repository_data.go` (649 lignes), `repository.go` (572) et `services.go` (544) dépassent 500 lignes : dette antérieure, non traitée. `docs/CHANGELOG.md` cite `NewSettingsHandlerWithIndexer` : historique, laissé. Non traités.
 
 ## 13. Hors périmètre
 

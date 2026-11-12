@@ -1,3 +1,9 @@
+## [2026-11-12] Plan architecture, étape 4 : la couche HTTP — Complété (branche `feat/812-architecture`, poussée sur `release/v8.2.0`)
+
+- Décision : la couche HTTP ne tient plus que des interfaces de `internal/port` ; le SQL de `api/wire` part dans des dépôts de `platform/duckdb`, les jobs de synchronisation et la progression dans des services, les fichiers statiques dans `api/handlers`, la purge des sessions dans les tâches de fond déclarées. Trois garde-rails `archlint` à plafond 0, allowlists vides.
+- Résultats : gate vert (build, vet, archlint, intégration en série), témoins d'API identiques sur 90 routes à chaque lot, fichiers statiques identiques octet pour octet sur 62 requêtes. Une ronde de revue adversariale sur les lots 4.1 à 4.4 : 0 P0, un P1 corrigé (garde du writer partagé aveugle au nouvel acquéreur), un P1 réfuté sur pièces. Écritures, post-sync et rejeu hors témoins : couverts par tests seulement.
+- Prochaine étape : étape 5 (stockage), avec revue adversariale. `port` importe désormais `platform/jobs` et `openspartan` : à statuer en étape 5.
+
 ## [2026-11-12] `replay-equiv -update` accepte un clone de brique hors du dépôt — Complété (branche `fix/replay-equiv-update-clone`, PR vers `release/v8.2.0`)
 
 - Décision : `briques.Modifiable` ne juge plus « dans le dépôt » (plus aucune brique n'y vit depuis la bascule, #201) mais « hors du cache de modules » (`go env GOMODCACHE`, chemins comparés après résolution des liens). Un clone listé dans l'espace de travail actif (`GOWORK`, `scripts/briques-workspace.sh`) est accepté où qu'il soit ; le cache de modules (en lecture seule, destination de toute brique sans `GOWORK`) reste refusé avec un message qui nomme le script. `resoudre` est scindée en `resoudreAvec(racine, env)` (sans cache, testable sous un `GOWORK` de test). Les autres appelants de `Modifiable` (`refresh_golden_fixture`, instantané du catalogue de `filmcorpus`) suivent la même règle.
