@@ -142,25 +142,39 @@ import (
 // sessions) se lancent par `port.SyncJobService`, que `service.SyncJobService` implémente : changer de
 // moteur, ou ajouter un titre, ne touche pas la couche HTTP.
 func TestHandlersSansMoteurDeSync(t *testing.T) {
-	var violations []string
-	vus := map[string]bool{}
-	for _, src := range goSourcesUnder(t, "internal/api/handlers") {
-		vus[src.Rel] = true
-		trouves := importsSousArbre(src, racinesInterditesAuxHandlers)
-		if _, ok := handlersAvecMoteurDeSyncAutorises[src.Rel]; ok || len(trouves) == 0 {
-			continue
-		}
-		violations = append(violations, src.Rel+" importe "+strings.Join(trouves, ", "))
-	}
-	for rel := range handlersAvecMoteurDeSyncAutorises {
-		if !vus[rel] {
-			violations = append(violations, rel+" : entrée autorisée sans fichier — la retirer de handlersAvecMoteurDeSyncAutorises")
-		}
-	}
+	violations := violationsImportsHandlers(t, racinesInterditesAuxHandlers, handlersAvecMoteurDeSyncAutorises, "handlersAvecMoteurDeSyncAutorises")
 	if len(violations) > 0 {
 		t.Errorf("un handler importe le moteur de sync, persist ou un paquet de titre — passer par un port de internal/port :\n  %s",
 			strings.Join(violations, "\n  "))
 	}
+}
+
+// violationsImportsHandlers rend, une par ligne, les fichiers non-test de `internal/api/handlers` qui
+// importent l'une des racines interdites (sous-paquets compris), hors `autorises` ; une entrée de
+// `autorises` sans fichier ou sans violation est périmée et compte aussi (elle se retire avec le code qui
+// la justifiait : une allowlist ne survit pas à sa raison d'être).
+func violationsImportsHandlers(t *testing.T, racines []string, autorises map[string]string, nomAllowlist string) []string {
+	t.Helper()
+	var violations []string
+	vus := map[string]bool{}
+	for _, src := range goSourcesUnder(t, "internal/api/handlers") {
+		vus[src.Rel] = true
+		trouves := importsSousArbre(src, racines)
+		_, autorise := autorises[src.Rel]
+		switch {
+		case len(trouves) == 0 && autorise:
+			violations = append(violations, src.Rel+" : entrée autorisée sans violation — la retirer de "+nomAllowlist)
+		case len(trouves) > 0 && !autorise:
+			violations = append(violations, src.Rel+" importe "+strings.Join(trouves, ", "))
+		}
+	}
+	for rel := range autorises {
+		if !vus[rel] {
+			violations = append(violations, rel+" : entrée autorisée sans fichier — la retirer de "+nomAllowlist)
+		}
+	}
+	sort.Strings(violations)
+	return violations
 }
 
 // racinesStockageInterditesAuxHandlers : le stockage DuckDB et ses sous-paquets. Un handler lit et écrit
@@ -200,23 +214,49 @@ import (
 // `port.ProgressionService`, `port.CampaignService` et `profile.PlayerProfileService` ; le plafond mémoire
 // des bases par `port.DatabaseMemory`.
 func TestHandlersSansStockageDuckDB(t *testing.T) {
-	var violations []string
-	vus := map[string]bool{}
-	for _, src := range goSourcesUnder(t, "internal/api/handlers") {
-		vus[src.Rel] = true
-		trouves := importsSousArbre(src, racinesStockageInterditesAuxHandlers)
-		if _, ok := handlersAvecStockageAutorises[src.Rel]; ok || len(trouves) == 0 {
-			continue
-		}
-		violations = append(violations, src.Rel+" importe "+strings.Join(trouves, ", "))
-	}
-	for rel := range handlersAvecStockageAutorises {
-		if !vus[rel] {
-			violations = append(violations, rel+" : entrée autorisée sans fichier — la retirer de handlersAvecStockageAutorises")
-		}
-	}
+	violations := violationsImportsHandlers(t, racinesStockageInterditesAuxHandlers, handlersAvecStockageAutorises, "handlersAvecStockageAutorises")
 	if len(violations) > 0 {
 		t.Errorf("un handler importe le stockage DuckDB — passer par un port de internal/port :\n  %s",
+			strings.Join(violations, "\n  "))
+	}
+}
+
+// racinesServiceInterditesAuxHandlers : le paquet `service` et ses sous-paquets. Un handler tient une
+// interface de `internal/port` (ou un type de `domain`) ; il ne nomme aucun type concret de `service` :
+// ni service, ni résultat, ni erreur sentinelle, ni constructeur. Les erreurs que la couche HTTP classe
+// et les types qu'elle échange sont déclarés avec le port qui les rend.
+var racinesServiceInterditesAuxHandlers = []string{
+	cheminModuleAPI + "service",
+}
+
+// handlersAvecServiceAutorises : handlers qui importent encore `service`, avec la date et la raison. Vide
+// depuis le 2026-11-12 ; une entrée ne s'ajoute pas, elle se supprime avec le code qui la justifiait.
+var handlersAvecServiceAutorises = map[string]string{}
+
+func TestOutilImportsSousArbreService(t *testing.T) {
+	src := parseGoSnippet(t, "x.go", `package x
+
+import (
+	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/service/replayview"
+	"levelup/go-api/internal/servicemesh"
+	"levelup/go-api/internal/port"
+)
+`)
+	got := importsSousArbre(src, racinesServiceInterditesAuxHandlers)
+	want := []string{cheminModuleAPI + "service", cheminModuleAPI + "service/replayview"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("imports détectés %v, attendu %v (ni internal/servicemesh, ni internal/port)", got, want)
+	}
+}
+
+// TestHandlersSansTypeConcretDeService : aucun handler HTTP n'importe `service` ni ses sous-paquets,
+// hors `handlersAvecServiceAutorises`. Changer l'implémentation d'un service, ou la remplacer par un
+// faux, ne touche pas la couche HTTP.
+func TestHandlersSansTypeConcretDeService(t *testing.T) {
+	violations := violationsImportsHandlers(t, racinesServiceInterditesAuxHandlers, handlersAvecServiceAutorises, "handlersAvecServiceAutorises")
+	if len(violations) > 0 {
+		t.Errorf("un handler importe le paquet service — passer par un port de internal/port :\n  %s",
 			strings.Join(violations, "\n  "))
 	}
 }
