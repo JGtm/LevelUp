@@ -30,6 +30,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/platform/duckdb/worldrepo"
 )
 
 // stubScraper retourne des entrées canned et compte les appels.
@@ -198,7 +199,7 @@ func countSnapshots(t *testing.T, db *sql.DB, season string) int {
 }
 
 func newTestCron(provider sharedprovider.Provider, scraper LeaderboardScraperPort) *WorldLeaderboardCron {
-	c := NewWorldLeaderboardCron(provider, scraper, 0)
+	c := NewWorldLeaderboardCron(worldrepo.ForProvider(provider), scraper, 0)
 	c.playlists = func() []string { return []string{"pl-a", "pl-b"} } // 2 playlists déterministes
 	c.minEntries = 1                                                  // neutralise le plancher (testé séparément)
 	// Registre frais (halo_infinite seul, avec CapWorldLeaderboard) : isole les

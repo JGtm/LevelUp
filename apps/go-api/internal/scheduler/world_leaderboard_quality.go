@@ -33,7 +33,6 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
-	"levelup/go-api/internal/platform/duckdb"
 )
 
 const (
@@ -96,7 +95,7 @@ func (r *refusalStreaks) streak(playlist string) int {
 func (c *WorldLeaderboardCron) batchIsDegraded(
 	ctx context.Context, titleSlug, season, playlist string, entries []domain.LeaderboardEntry,
 ) bool {
-	served, ok, err := c.servedBatchStats(ctx, titleSlug, season, playlist)
+	verdict, err := c.store.AssessBatch(ctx, titleSlug, season, playlist, entries, c.limit)
 	if err != nil {
 		slog.WarnContext(ctx, "world_leaderboard_cron: qualité du lot servi illisible — garde-fou non appliqué (lot accepté)",
 			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug,
@@ -104,14 +103,13 @@ func (c *WorldLeaderboardCron) batchIsDegraded(
 		c.batchRefusals.reset(playlist)
 		return false
 	}
-	if !ok {
+	if !verdict.HasServed {
 		c.batchRefusals.reset(playlist)
 		return false // première capture de cette playlist : rien à protéger.
 	}
-	candidate := duckdb.WorldCSRStatsOfEntries(entries)
 	// c.limit = profondeur que CE cycle avait le droit de ramener : sans elle, un lot
 	// servi plus profond (archive CLI) refuserait éternellement le top nominal du cron.
-	reason := duckdb.DegradedBatchReason(served, candidate, c.limit)
+	served, candidate, reason := verdict.Served, verdict.Candidate, verdict.Degraded
 	if reason == "" {
 		c.batchRefusals.reset(playlist)
 		return false
@@ -134,17 +132,4 @@ func (c *WorldLeaderboardCron) batchIsDegraded(
 	slog.WarnContext(ctx, "world_leaderboard_cron: lot dégradé REFUSÉ — le classement servi est conservé (aucune écriture pour cette playlist)",
 		attrs...)
 	return true
-}
-
-// servedBatchStats lit la qualité du lot servi via un reader RO court (même discipline
-// que snapshotIsFresh : jamais de lease writer pendant la phase de scrape).
-func (c *WorldLeaderboardCron) servedBatchStats(
-	ctx context.Context, titleSlug, season, playlist string,
-) (duckdb.WorldCSRBatchStats, bool, error) {
-	db, release, err := c.provider.Get(ctx)
-	if err != nil {
-		return duckdb.WorldCSRBatchStats{}, false, err
-	}
-	defer release()
-	return duckdb.WorldCSRServedBatchStats(ctx, db, titleSlug, season, playlist)
 }

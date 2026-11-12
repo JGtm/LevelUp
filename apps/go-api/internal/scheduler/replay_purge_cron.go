@@ -23,7 +23,6 @@ package scheduler
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -34,7 +33,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 )
@@ -52,6 +51,8 @@ type ReplayPurgeCron struct {
 	retention func() int
 	registry  *titlePkg.Registry
 	interval  time.Duration
+	// dates lit l'âge des matchs (début canonique du registre partagé).
+	dates port.MatchDatesReader
 	// now rend l'instant de référence du cycle. NIL EN PRODUCTION (= time.Now) ;
 	// injecté par les tests — sans cette couture, la FRONTIÈRE de la fenêtre de
 	// rétention n'est pas testable : un test ne peut que fabriquer des matchs très
@@ -60,8 +61,8 @@ type ReplayPurgeCron struct {
 	now func() time.Time
 }
 
-// NewReplayPurgeCron construit le cron. retention requis (nil → noop).
-func NewReplayPurgeCron(repoRoot string, retention func() int, interval time.Duration) *ReplayPurgeCron {
+// NewReplayPurgeCron construit le cron. retention requis (nil → noop) ; dates lit les dates des matchs.
+func NewReplayPurgeCron(repoRoot string, retention func() int, interval time.Duration, dates port.MatchDatesReader) *ReplayPurgeCron {
 	if interval <= 0 {
 		interval = DefaultReplayPurgeInterval
 	}
@@ -70,6 +71,7 @@ func NewReplayPurgeCron(repoRoot string, retention func() int, interval time.Dur
 		retention: retention,
 		registry:  titlePkg.DefaultRegistry(),
 		interval:  interval,
+		dates:     dates,
 	}
 }
 
@@ -121,7 +123,7 @@ func (c *ReplayPurgeCron) RunOnce(ctx context.Context) {
 		if desc == nil {
 			continue
 		}
-		purged, kept, unknown, err := purgeReplayArtifactsForTitle(ctx,
+		purged, kept, unknown, err := purgeReplayArtifactsForTitle(ctx, c.dates,
 			pr.SharedDBPath(desc.Slug), pr.ReplayArtifactsDir(desc.Slug), cutoff)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", desc.Slug, err))
@@ -152,7 +154,7 @@ func (c *ReplayPurgeCron) nowUTC() time.Time {
 // (purgés, conservés, sans-registre). Un dossier d'artefacts absent est nominal (aucun
 // artefact construit pour ce titre) : (0, 0, 0, nil).
 func purgeReplayArtifactsForTitle(
-	ctx context.Context, sharedPath, artifactsDir string, cutoff time.Time,
+	ctx context.Context, dates port.MatchDatesReader, sharedPath, artifactsDir string, cutoff time.Time,
 ) (purged, kept, unknown int, err error) {
 	entries, rerr := os.ReadDir(artifactsDir)
 	if os.IsNotExist(rerr) {
@@ -168,7 +170,7 @@ func purgeReplayArtifactsForTitle(
 	if !contientUnArtefact(entries) {
 		return 0, 0, 0, nil
 	}
-	dates, derr := matchDatesByShortID(ctx, sharedPath)
+	matchDates, derr := dates.MatchDatesByShortID(ctx, sharedPath)
 	if derr != nil {
 		return 0, 0, 0, derr
 	}
@@ -188,7 +190,7 @@ func purgeReplayArtifactsForTitle(
 	}
 	for _, a := range artefacts {
 		name, short := a.Name, a.Short
-		at, ok := dates[short]
+		at, ok := matchDates[short]
 		if !ok || at.IsZero() {
 			unknown++ // indatable : on ne détruit pas ce qu'on ne sait pas dater
 			continue
@@ -274,36 +276,4 @@ func supprimerMarqueOrpheline(ctx context.Context, artifactsDir, name string) {
 	}
 	slog.InfoContext(ctx, "replay_purge_cron: marque de dérivation orpheline supprimée",
 		"marque", name, "raison", "son artefact n'existe plus")
-}
-
-// matchDatesByShortID lit (forme courte -> start_time canonique) de tout le registre.
-// OpenReadForQuery : la shared peut être tenue par le serveur (RO ou fenêtre RW B-swap),
-// le handle process-wide est réutilisé — jamais un second open concurrent.
-func matchDatesByShortID(ctx context.Context, sharedPath string) (map[string]time.Time, error) {
-	if _, err := os.Stat(sharedPath); err != nil {
-		return nil, fmt.Errorf("shared introuvable: %w", err)
-	}
-	db, release, err := duckdb.OpenReadForQuery(sharedPath)
-	if err != nil {
-		return nil, fmt.Errorf("open shared (lecture): %w", err)
-	}
-	defer release()
-	q := `SELECT match_id, ` + analysis.SQLStartTimeCanonical("match_registry") + ` FROM match_registry`
-	rows, err := db.QueryContext(ctx, q)
-	if err != nil {
-		return nil, fmt.Errorf("lecture match_registry: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	out := map[string]time.Time{}
-	for rows.Next() {
-		var id string
-		var at sql.NullTime
-		if err := rows.Scan(&id, &at); err != nil {
-			return nil, fmt.Errorf("lecture match_registry (scan): %w", err)
-		}
-		if at.Valid {
-			out[titlePkg.FilmShortMatchID(id)] = at.Time
-		}
-	}
-	return out, rows.Err()
 }

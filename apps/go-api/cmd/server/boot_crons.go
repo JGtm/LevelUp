@@ -10,12 +10,14 @@ import (
 	"time"
 
 	"levelup/go-api/internal/assetnames"
+	"levelup/go-api/internal/cronstore"
 	"levelup/go-api/internal/domain"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/platform/duckdb/worldrepo"
 	"levelup/go-api/internal/scheduler"
 )
 
@@ -196,7 +198,7 @@ func launchWorldLeaderboardCron(st *bootState) {
 	// "different configuration" — on désactive donc le cron in-process.
 	if cfg.SharedProvider != nil {
 		lbScraper := haloadapter.NewLeaderboardScraper(800 * time.Millisecond)
-		worldLbCron := scheduler.NewWorldLeaderboardCron(cfg.SharedProvider, lbScraper, 0)
+		worldLbCron := scheduler.NewWorldLeaderboardCron(worldrepo.ForProvider(cfg.SharedProvider), lbScraper, 0)
 		worldLbTask := loopTask(taskWorldLeaderbd, true, schedulerCtx, func(sctx context.Context) {
 			// Enrichissement des stats joueur (ranked-only, dédup match-centric,
 			// append-only) : TOUJOURS actif, via le POOL multi-token (comptes db_profiles
@@ -253,7 +255,7 @@ func launchReplayPurgeCron(st *bootState) {
 				return s.ReplayRetentionMonths
 			}
 			return 0
-		}, 0)
+		}, 0, cronstore.New(nil))
 		if boot.launch(loopTask(taskReplayPurge, true, schedulerCtx, replayPurgeCron.Run)) {
 			slog.InfoContext(ctx, "replay_purge_cron: scheduled",
 				"interval", scheduler.DefaultReplayPurgeInterval)

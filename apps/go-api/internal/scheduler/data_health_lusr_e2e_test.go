@@ -14,6 +14,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/cronstore"
 	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
@@ -114,7 +115,7 @@ func TestHealthScheduler_E2E_LUSRInteriorGap_Detected(t *testing.T) {
 	repoRoot := healthE2ESetup(t)
 	seedLUSRInteriorGaps(t, repoRoot, "GapPlayer", "2533274811111111", 1)
 
-	res := scheduler.NewDataHealthScheduler(repoRoot).RunOnce(context.Background())
+	res := scheduler.NewDataHealthScheduler(repoRoot, cronstore.New(nil)).RunOnce(context.Background())
 	if res == nil {
 		t.Fatal("RunOnce a retourné nil")
 	}
@@ -149,7 +150,7 @@ func TestHealthScheduler_E2E_LUSRUnmeasured_GaugeFrozen(t *testing.T) {
 	skill.SetLUSRInteriorGapsGauge(sentinel)
 	t.Cleanup(func() { skill.SetLUSRInteriorGapsGauge(0) })
 
-	res := scheduler.NewDataHealthScheduler(repoRoot).RunOnce(context.Background())
+	res := scheduler.NewDataHealthScheduler(repoRoot, cronstore.New(nil)).RunOnce(context.Background())
 	if res == nil {
 		t.Fatal("RunOnce a retourné nil")
 	}

@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/cronstore"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/groupstore"
@@ -111,8 +112,8 @@ func tachesDeTest(ctx context.Context, cfg *config.AppConfig, doublures map[stri
 		janitorTask(ctx, pr, nil),
 		socialCheckpointTask(ctx, cfg.DemoLayout().SharedSocialDBPath(title.DefaultSlug)),
 		poolRescanTask(ctx, cfg, nil),
-		loopTask(taskDataHealth, true, ctx, scheduler.NewDataHealthScheduler(cfg.RepoRoot).Run),
-		loopTask(taskReplayPurge, true, ctx, scheduler.NewReplayPurgeCron(cfg.RepoRoot, func() int { return 1 }, 0).Run),
+		loopTask(taskDataHealth, true, ctx, scheduler.NewDataHealthScheduler(cfg.RepoRoot, cronstore.New(nil)).Run),
+		loopTask(taskReplayPurge, true, ctx, scheduler.NewReplayPurgeCron(cfg.RepoRoot, func() int { return 1 }, 0, cronstore.New(nil)).Run),
 		heartbeatTask(ctx, time.Now()),
 		loopTask(taskSessionPurge, false, ctx, func(c context.Context) {
 			scheduler.RunSessionPurgeLoop(c, session_platform.NewStore(cfg.SessionDir, time.Hour, "test-secret-32-bytesXXXXXXXXXX"))

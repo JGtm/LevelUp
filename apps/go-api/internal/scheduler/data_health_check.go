@@ -26,16 +26,16 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	gosync "sync"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/skill"
 )
 
@@ -93,10 +93,10 @@ type HealthScheduler struct {
 	intervalHours int
 	enabled       bool
 
-	// sharedReader : lecteur de la base partagée de la jauge des passes (nil = OpenReadForQuery) ;
+	// store : lectures des bases de l'audit (sondes, trous LUSR, jauge des passes) ;
 	// now : horloge du fichier de jauge (data_health_passes.go).
-	sharedReader SharedReaderFunc
-	now          func() time.Time
+	store port.DataHealthStore
+	now   func() time.Time
 
 	// Dernier audit COMPLET (dashboard monitoring admin). Les cycles avortés
 	// (shared absente/illisible) ne l'écrasent pas : on garde le dernier
@@ -109,9 +109,10 @@ type HealthScheduler struct {
 // Le volet « garde-fou trous LUSR » (scan par joueur)
 // vit dans data_health_lusr.go — même package.
 
-// NewDataHealthScheduler crée un scheduler avec les défauts (24h, enabled).
-func NewDataHealthScheduler(repoRoot string) *HealthScheduler {
+// NewDataHealthScheduler crée un scheduler avec les défauts (24h, enabled) ; store lit les bases de l'audit.
+func NewDataHealthScheduler(repoRoot string, store port.DataHealthStore) *HealthScheduler {
 	return &HealthScheduler{
+		store:         store,
 		repoRoot:      repoRoot,
 		intervalHours: 24,
 		enabled:       true,
@@ -296,7 +297,7 @@ func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResol
 		return false
 	}
 
-	db, err := openDBShared(sharedPath)
+	db, err := s.store.OpenShared(sharedPath)
 	if err != nil {
 		slog.WarnContext(ctx, "data_health: ouverture shared DB échouée",
 			"titleSlug", slug, "err", err)
@@ -305,37 +306,15 @@ func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResol
 	defer db.Close() //nolint:errcheck // ref-count : best-effort
 
 	// 1. UUIDs bruts résiduels (map_name + pair_name)
-	const uuidPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`
-	res.UUIDsRawCount += scanCount(ctx, db, slug, "uuids_map_name", `SELECT COUNT(*) FROM match_registry WHERE map_name ~ ?`, &res.ProbeErrors, uuidPattern)
-	res.UUIDsRawCount += scanCount(ctx, db, slug, "uuids_pair_name", `SELECT COUNT(*) FROM match_registry WHERE pair_name ~ ?`, &res.ProbeErrors, uuidPattern)
+	res.UUIDsRawCount += s.countShared(ctx, db, slug, port.ProbeUUIDsMapName, &res.ProbeErrors)
+	res.UUIDsRawCount += s.countShared(ctx, db, slug, port.ProbeUUIDsPairName, &res.ProbeErrors)
 
-	// 2. Bits menteurs
-	const mbitEvents = 1 << 16
-	const mbitWeaponKills = 1 << 21
-	res.LyingBitsEvents += scanCount(ctx, db, slug, "lying_bits_events", fmt.Sprintf(`
-		SELECT COUNT(*) FROM match_registry r
-		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
-		  AND NOT EXISTS (SELECT 1 FROM highlight_events h WHERE h.match_id = r.match_id)
-	`, mbitEvents), &res.ProbeErrors)
-	// La PREUVE du detail des armes change de table selon le titre : `weapon_kills` la
-	// porte encore la ou l arme est native de l API, `match_kill_events_latest` la porte
-	// la ou elle vient du film. On sonde celle que la base CONTIENT, jamais un slug.
-	if evidence := analysis.WeaponEvidenceTable(ctx, db.SQLDb()); evidence != "" {
-		res.LyingBitsWeaponKills += scanCount(ctx, db, slug, "lying_bits_weapons", fmt.Sprintf(`
-		SELECT COUNT(*) FROM match_registry r
-		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
-		  AND NOT EXISTS (SELECT 1 FROM %s w WHERE w.match_id = r.match_id)
-	`, mbitWeaponKills, evidence), &res.ProbeErrors)
-	}
+	// 2. Bits menteurs (la sonde des armes ne s'applique que si la base porte la table de preuve)
+	res.LyingBitsEvents += s.countShared(ctx, db, slug, port.ProbeLyingBitsEvents, &res.ProbeErrors)
+	res.LyingBitsWeaponKills += s.countShared(ctx, db, slug, port.ProbeLyingBitsWeapons, &res.ProbeErrors)
 
 	// 3. xuids orphelins (alias absent shared)
-	res.OrphanXUIDs += scanCount(ctx, db, slug, "orphan_xuids", `
-		SELECT COUNT(DISTINCT mp.xuid)
-		FROM match_participants mp
-		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
-		WHERE `+analysis.SQLIsNotBotCol("mp.xuid")+`
-		  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
-	`, &res.ProbeErrors)
+	res.OrphanXUIDs += s.countShared(ctx, db, slug, port.ProbeOrphanXUIDs, &res.ProbeErrors)
 
 	// 4. Banner garbage URLs (toutes les player DBs du titre)
 	res.GarbageBannerURLs += s.auditPlayerBanners(ctx, pr, slug, &res.ProbeErrors)
@@ -368,17 +347,14 @@ func (s *HealthScheduler) auditPlayerBanners(ctx context.Context, pr *titlePkg.P
 		if _, err := os.Stat(playerPath); err != nil {
 			continue
 		}
-		pdb, err := openDBShared(playerPath)
-		if err != nil {
-			continue
+		n, err := s.store.CountPlayerProbe(ctx, port.ProbeGarbageBannerURLs, playerPath)
+		switch {
+		case errors.Is(err, port.ErrDataHealthUnavailable):
+			continue // player DB inouvrable : ignorée (best-effort)
+		case err != nil:
+			s.probeFailed(ctx, slug, port.ProbeGarbageBannerURLs, err, probeErrors)
 		}
-		total += scanCount(ctx, pdb, slug, "garbage_banner_urls", `
-			SELECT COUNT(*) FROM career_progression
-			WHERE banner_image_url LIKE '%/Waypoint/file/images/%'
-			   OR emblem_image_url LIKE '%/Waypoint/file/images/%'
-			   OR backdrop_image_url LIKE '%/Waypoint/file/images/%'
-		`, probeErrors)
-		_ = pdb.Close() //nolint:errcheck // ref-count : best-effort
+		total += n
 	}
 	return total
 }
@@ -400,16 +376,25 @@ func publishLUSRGaugeIfComplete(ctx context.Context, res *DataHealthCheckResult)
 		"lusr_interior_gaps_scanned", res.LUSRInteriorGaps)
 }
 
-// scanCount exécute une sonde COUNT(*) data-health. Sur erreur, la LOGGUE (Warn)
-// et incrémente *probeErrors (Lot B, audit #10 : plus de sonde avalée en silence
-// → un cycle qui n'a rien pu mesurer ne passe plus pour « sain »). Retourne 0.
-func scanCount(ctx context.Context, db *duckdb.DB, slug, label, query string, probeErrors *int, args ...any) int {
-	var n int
-	if err := db.QueryRow(ctx, query, args...).Scan(&n); err != nil {
-		slog.WarnContext(ctx, "data_health: sonde échouée", "probe", label, "titleSlug", slug, "err", err)
-		*probeErrors++
+// countShared exécute une sonde de la base partagée. Sur erreur, la LOGGUE (Warn) et incrémente
+// *probeErrors (Lot B, audit #10 : plus de sonde avalée en silence → un cycle qui n'a rien pu mesurer ne passe
+// plus pour « sain »). Retourne 0, aussi pour une sonde qui ne s'applique pas à cette base.
+func (s *HealthScheduler) countShared(ctx context.Context, db port.DataHealthShared, slug string, probe port.HealthProbe, probeErrors *int) int {
+	n, applicable, err := db.CountProbe(ctx, probe)
+	if err != nil {
+		s.probeFailed(ctx, slug, probe, err, probeErrors)
+		return 0
+	}
+	if !applicable {
+		return 0
 	}
 	return n
+}
+
+// probeFailed journalise une sonde en échec et la compte dans *probeErrors.
+func (s *HealthScheduler) probeFailed(ctx context.Context, slug string, probe port.HealthProbe, err error, probeErrors *int) {
+	slog.WarnContext(ctx, "data_health: sonde échouée", "probe", string(probe), "titleSlug", slug, "err", err)
+	*probeErrors++
 }
 
 // storeLastResult mémorise le dernier audit complet (thread-safe).
@@ -432,16 +417,4 @@ func (s *HealthScheduler) LastResult() (*DataHealthCheckResult, time.Time) {
 	}
 	cp := *s.lastResult
 	return &cp, s.lastRunAt
-}
-
-// openDBShared ouvre une DuckDB via le cache de connexions partagé du package
-// duckdb (clé "ro:path"). Le data_health ne fait que des SELECT, donc RO suffit.
-// Aligné sur OpenReadOnly comme main.go::sharedDB et openPlayerDB::sharedDB
-// pour partager la même instance et éviter le conflit "different configuration".
-// Voir commentaire dans cmd/server/main.go pour le trade-off RO vs RW.
-//
-// La connexion retournée est ref-comptée : Close() décrémente le compteur
-// sans fermer la DB si d'autres handles sont en cours d'utilisation.
-func openDBShared(path string) (*duckdb.DB, error) {
-	return duckdb.OpenReadOnly(path)
 }

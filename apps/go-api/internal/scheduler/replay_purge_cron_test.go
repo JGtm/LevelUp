@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/cronstore"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/replaybuild"
@@ -61,7 +62,7 @@ func TestPurgeReplayArtifacts(t *testing.T) {
 	cutoff := time.Now().UTC().AddDate(0, -6, 0)
 
 	purged, kept, unknown, err := purgeReplayArtifactsForTitle(
-		context.Background(), sharedPath, artifactsDir, cutoff)
+		context.Background(), cronstore.New(nil), sharedPath, artifactsDir, cutoff)
 	if err != nil {
 		t.Fatalf("purge: %v", err)
 	}
@@ -82,7 +83,7 @@ func TestPurgeReplayArtifacts(t *testing.T) {
 func TestPurgeReplayArtifacts_DossierAbsent(t *testing.T) {
 	sharedPath, _ := prepareReplayPurgeFixture(t)
 	purged, kept, unknown, err := purgeReplayArtifactsForTitle(
-		context.Background(), sharedPath, filepath.Join(t.TempDir(), "inexistant"), time.Now())
+		context.Background(), cronstore.New(nil), sharedPath, filepath.Join(t.TempDir(), "inexistant"), time.Now())
 	if err != nil || purged != 0 || kept != 0 || unknown != 0 {
 		t.Errorf("dossier absent = (%d, %d, %d, %v), attendu (0, 0, 0, nil)", purged, kept, unknown, err)
 	}
@@ -112,7 +113,7 @@ func TestPurge_ArtefactPurgeEmporteSonSidecar(t *testing.T) {
 	}
 
 	purged, kept, _, err := purgeReplayArtifactsForTitle(
-		context.Background(), sharedPath, artifactsDir, time.Now().UTC().AddDate(0, -6, 0))
+		context.Background(), cronstore.New(nil), sharedPath, artifactsDir, time.Now().UTC().AddDate(0, -6, 0))
 	if err != nil {
 		t.Fatalf("purge: %v", err)
 	}
@@ -148,7 +149,7 @@ func TestPurge_DossierSansArtefactNOuvrePasLaBase(t *testing.T) {
 	sharedInexistant := filepath.Join(t.TempDir(), "pas_de_shared.duckdb")
 
 	purged, kept, unknown, err := purgeReplayArtifactsForTitle(
-		context.Background(), sharedInexistant, artifactsDir, time.Now().UTC())
+		context.Background(), cronstore.New(nil), sharedInexistant, artifactsDir, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("un dossier sans aucun artefact ne doit rien ouvrir : %v", err)
 	}
@@ -178,7 +179,7 @@ func TestPurgeReplayArtifacts_MarquesDeDerivation(t *testing.T) {
 	cutoff := time.Now().UTC().AddDate(0, -6, 0)
 
 	purged, kept, unknown, err := purgeReplayArtifactsForTitle(
-		context.Background(), sharedPath, artifactsDir, cutoff)
+		context.Background(), cronstore.New(nil), sharedPath, artifactsDir, cutoff)
 	if err != nil {
 		t.Fatalf("purge: %v", err)
 	}
@@ -226,7 +227,7 @@ func TestPurgeReplayArtifacts_MarqueOrpheline(t *testing.T) {
 	cutoff := time.Now().UTC().AddDate(0, -6, 0)
 
 	purged, kept, unknown, err := purgeReplayArtifactsForTitle(
-		context.Background(), sharedPath, artifactsDir, cutoff)
+		context.Background(), cronstore.New(nil), sharedPath, artifactsDir, cutoff)
 	if err != nil {
 		t.Fatalf("purge: %v", err)
 	}

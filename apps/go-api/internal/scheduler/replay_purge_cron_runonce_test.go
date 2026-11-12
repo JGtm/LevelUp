@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/cronstore"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -141,7 +142,7 @@ func ecrireFichier(t *testing.T, chemin string) {
 
 // cronDeTest monte le cron sur le dépôt temporaire, horloge fixée.
 func cronDeTest(fx runOnceFixture, mois int) *ReplayPurgeCron {
-	c := NewReplayPurgeCron(fx.repoRoot, func() int { return mois }, time.Hour)
+	c := NewReplayPurgeCron(fx.repoRoot, func() int { return mois }, time.Hour, cronstore.New(nil))
 	c.now = func() time.Time { return horlogeFixe }
 	return c
 }
@@ -212,7 +213,7 @@ func TestRunOnce_FenetreIllimitee(t *testing.T) {
 // panique pas : c'est le contrat écrit de `NewReplayPurgeCron(..., nil, ...)`.
 func TestRunOnce_SansRetention(t *testing.T) {
 	fx := prepareRunOnceFixture(t, 6)
-	NewReplayPurgeCron(fx.repoRoot, nil, time.Hour).RunOnce(context.Background())
+	NewReplayPurgeCron(fx.repoRoot, nil, time.Hour, cronstore.New(nil)).RunOnce(context.Background())
 
 	if got := len(presents(t, fx.artifactsDir)); got != 4 {
 		t.Errorf("%d artefacts restants, attendu 4 (retention nil = noop)", got)

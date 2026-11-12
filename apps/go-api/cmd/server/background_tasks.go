@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/cronstore"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/ops"
@@ -32,7 +33,6 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
-	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service/citationsrelance"
 	"levelup/go-api/internal/service/scoringrevision"
 	syncpkg "levelup/go-api/internal/sync"
@@ -464,7 +464,7 @@ func bootFriendStore(cfg *config.AppConfig) *friendstore.FriendStore {
 // healthSharedReader : le lecteur de la base partagée de la jauge des passes du contrôle de santé
 // — le provider B-swap du titre (lecture suivie, drainée avant un swap du sync), ou, sans
 // provider, OpenReadForQuery. Jamais un écrivain.
-func healthSharedReader(cfg *config.AppConfig, pr *title.PathResolver) scheduler.SharedReaderFunc {
+func healthSharedReader(cfg *config.AppConfig, pr *title.PathResolver) cronstore.SharedReaderFunc {
 	return func(ctx context.Context, slug string) (*sql.DB, func(), error) {
 		if p := cfg.SharedProviderForTitle(slug); p != nil {
 			return p.Get(ctx)

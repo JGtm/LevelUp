@@ -260,3 +260,40 @@ func TestHandlersSansTypeConcretDeService(t *testing.T) {
 			strings.Join(violations, "\n  "))
 	}
 }
+
+// schedulerAvecStockageAutorises : fichiers du scheduler qui importent encore `platform/duckdb`, avec la
+// date et la raison. Vide depuis le 2026-11-12 : les sondes du contrôle de santé et la purge des rejeux
+// lisent par `port.DataHealthStore` et `port.MatchDatesReader` (paquet `cronstore`), le cron du classement
+// mondial par `port.WorldLeaderboardStore` (`platform/duckdb/worldrepo`), la contention fichier se classe
+// par `platform/dbfault`. Une entrée ne s'ajoute pas : elle se supprime avec le code qui la justifiait.
+var schedulerAvecStockageAutorises = map[string]string{}
+
+// TestSchedulerSansStockageDuckDB : aucun fichier du scheduler n'importe le paquet `platform/duckdb`
+// (chemin exact : `platform/duckdb/sharedprovider`, la politique de reprise du writer du cron mondial,
+// reste permis), hors `schedulerAvecStockageAutorises`. Changer de moteur de base ne touche pas les
+// tâches de fond.
+func TestSchedulerSansStockageDuckDB(t *testing.T) {
+	var violations []string
+	vus := map[string]bool{}
+	for _, src := range goSourcesUnder(t, "internal/scheduler") {
+		vus[src.Rel] = true
+		trouves := importsInterdits(src, []string{cheminModuleAPI + "platform/duckdb"})
+		_, autorise := schedulerAvecStockageAutorises[src.Rel]
+		switch {
+		case len(trouves) == 0 && autorise:
+			violations = append(violations, src.Rel+" : entrée autorisée sans violation — la retirer de schedulerAvecStockageAutorises")
+		case len(trouves) > 0 && !autorise:
+			violations = append(violations, src.Rel+" importe "+strings.Join(trouves, ", "))
+		}
+	}
+	for rel := range schedulerAvecStockageAutorises {
+		if !vus[rel] {
+			violations = append(violations, rel+" : entrée autorisée sans fichier — la retirer de schedulerAvecStockageAutorises")
+		}
+	}
+	sort.Strings(violations)
+	if len(violations) > 0 {
+		t.Errorf("le scheduler importe platform/duckdb — passer par un port de internal/port :\n  %s",
+			strings.Join(violations, "\n  "))
+	}
+}

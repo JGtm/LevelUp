@@ -36,9 +36,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
-	"levelup/go-api/internal/ops"
-	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/port"
 )
 
 // LeaderboardScraperPort abstrait halo.LeaderboardScraper pour le mocking en test.
@@ -95,7 +93,7 @@ const (
 // WorldLeaderboardCron capture périodiquement le classement CSR mondial de la
 // saison active pour toutes les playlists classées et le persiste en append-only.
 type WorldLeaderboardCron struct {
-	provider   sharedprovider.Provider
+	store      port.WorldLeaderboardStore
 	scraper    LeaderboardScraperPort
 	enricher   WorldStatsEnricherPort // optionnel (Phase C) ; nil → pas d'enrichissement
 	playlists  func() []string        // asset IDs des playlists classées à scraper
@@ -129,11 +127,11 @@ func (c *WorldLeaderboardCron) WithStatsEnricher(e WorldStatsEnricherPort) *Worl
 	return c
 }
 
-// NewWorldLeaderboardCron construit le cron. provider/scraper requis (nil → noop).
+// NewWorldLeaderboardCron construit le cron. store/scraper requis (nil → noop).
 // Si interval <= 0, DefaultWorldLeaderboardInterval est utilisé. La liste des
 // playlists est dérivée de rankedplaylists.Active() (playlists classées actives).
 func NewWorldLeaderboardCron(
-	provider sharedprovider.Provider,
+	store port.WorldLeaderboardStore,
 	scraper LeaderboardScraperPort,
 	interval time.Duration,
 ) *WorldLeaderboardCron {
@@ -141,7 +139,7 @@ func NewWorldLeaderboardCron(
 		interval = DefaultWorldLeaderboardInterval
 	}
 	return &WorldLeaderboardCron{
-		provider:   provider,
+		store:      store,
 		scraper:    scraper,
 		playlists:  activeRankedPlaylistIDs,
 		registry:   titlePkg.DefaultRegistry(),
@@ -167,7 +165,7 @@ func activeRankedPlaylistIDs() []string {
 // sans manip manuelle, une fois passée la rafale de lectures du démarrage qui faisait
 // expirer la vidange du writer), puis toutes les `interval`. Bloque jusqu'à ctx.Done().
 func (c *WorldLeaderboardCron) Run(ctx context.Context) {
-	if c == nil || c.provider == nil || c.scraper == nil {
+	if c == nil || c.store == nil || c.scraper == nil {
 		slog.WarnContext(ctx, "world_leaderboard_cron: noop (provider/scraper nil)",
 			"module", logging.ModuleLeaderboard)
 		return
@@ -207,7 +205,7 @@ func (c *WorldLeaderboardCron) Run(ctx context.Context) {
 // reste Infinite-spécifique par construction : la brique itère mais n'invente
 // aucune source pour un titre qui n'a pas la capability.
 func (c *WorldLeaderboardCron) RunOnce(ctx context.Context) {
-	if c == nil || c.provider == nil || c.scraper == nil {
+	if c == nil || c.store == nil || c.scraper == nil {
 		return
 	}
 	// Statut des crons (A6/DC-5, décision D1) : le cycle rapporte l'erreur AGRÉGÉE
@@ -371,39 +369,30 @@ func (c *WorldLeaderboardCron) enrich(ctx context.Context, season string) {
 
 // seasonPlayers lit les joueurs distincts de la saison (gamertag + xuid, reader RO).
 func (c *WorldLeaderboardCron) seasonPlayers(ctx context.Context, season string) ([]domain.WorldPlayerRef, error) {
-	db, release, err := c.provider.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer release()
-	// Top N par playlist = profondeur affichée : l'enrichissement auto ne fetch pas
-	// les rangs jamais montrés (cf. duckdb.WorldLeaderboardTopN).
-	return duckdb.WorldSeasonPlayers(ctx, db, season, duckdb.WorldLeaderboardTopN)
+	return c.store.SeasonPlayers(ctx, season)
 }
 
 // persistStats acquiert le writer shared (acquireWriterRetry, comme persist) et insère
 // les stats agrégées (append-only).
 func (c *WorldLeaderboardCron) persistStats(ctx context.Context, stats []domain.WorldPlayerSeasonStats) (int, error) {
-	wh, err := c.acquireWriterRetry(ctx, "world_enrich_stats")
+	w, release, err := c.acquireWriterRetry(ctx, "world_enrich_stats")
 	if err != nil {
 		return 0, err
 	}
-	defer wh.Release()
-	return duckdb.InsertPlayerSeasonStats(ctx, wh.DB(), stats)
+	defer release()
+	return w.InsertPlayerSeasonStats(ctx, stats)
 }
 
 // snapshotIsFresh indique si un snapshot de la saison date de moins de freshness.
 // En cas d'erreur de lecture, retourne false (on préfère re-scraper que sauter).
 func (c *WorldLeaderboardCron) snapshotIsFresh(ctx context.Context, season string) bool {
-	db, release, err := c.provider.Get(ctx)
+	age, ok, err := c.store.SnapshotAge(ctx, season)
 	if err != nil {
-		slog.WarnContext(ctx, "world_leaderboard_cron: lecture fraîcheur impossible (shared reader)",
+		slog.WarnContext(ctx, "world_leaderboard_cron: lecture fraîcheur impossible",
 			"module", logging.ModuleLeaderboard, "err", err)
 		return false
 	}
-	defer release()
-	age, ok, err := duckdb.WorldCSRSnapshotAge(ctx, db, season)
-	if err != nil || !ok {
+	if !ok {
 		return false
 	}
 	return age < c.freshness
@@ -458,17 +447,17 @@ func (c *WorldLeaderboardCron) scrapeAll(ctx context.Context, titleSlug, season 
 // Upsert aussi season_catalog (C2) dans la MÊME fenêtre writer — best-effort : un
 // échec de l'upsert saisons est loggé mais ne fait pas échouer le snapshot CSR.
 func (c *WorldLeaderboardCron) persist(ctx context.Context, titleSlug string, entries []domain.LeaderboardEntry, seasons []domain.WorldSeasonRef) (int, error) {
-	wh, err := c.acquireWriterRetry(ctx, "world_leaderboard_snapshot")
+	w, release, err := c.acquireWriterRetry(ctx, "world_leaderboard_snapshot")
 	if err != nil {
 		return 0, err
 	}
-	defer wh.Release()
-	inserted, err := duckdb.InsertWorldCSRSnapshot(ctx, wh.DB(), titleSlug, entries)
+	defer release()
+	inserted, err := w.InsertCSRSnapshot(ctx, titleSlug, entries)
 	if err != nil {
 		return inserted, err
 	}
 	if len(seasons) > 0 {
-		if n, serr := ops.RefreshSeasonCatalog(ctx, wh.DB(), titleSlug, seasons); serr != nil {
+		if n, serr := w.RefreshSeasonCatalog(ctx, titleSlug, seasons); serr != nil {
 			slog.WarnContext(ctx, "world_leaderboard_cron: upsert season_catalog échoué (snapshot CSR conservé)",
 				"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "err", serr)
 		} else {

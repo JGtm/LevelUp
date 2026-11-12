@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/cronstore"
 	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
@@ -70,7 +71,7 @@ func TestHealthScheduler_E2E_ResumesDuJournal_Jauge(t *testing.T) {
 		}
 		ecrirePasseSante(t, db, "passe-supplantee", 3)
 	})
-	sched := scheduler.NewDataHealthScheduler(repoRoot)
+	sched := scheduler.NewDataHealthScheduler(repoRoot, cronstore.New(nil))
 
 	res := sched.RunOnce(ctx)
 	if res.ProbeErrors != 0 || res.KillSummariesPending != 0 || jaugeResumes(t) != 0 {

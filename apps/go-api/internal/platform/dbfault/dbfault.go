@@ -37,3 +37,9 @@ func IsSharedSwapContention(err error) bool {
 		errors.Is(err, sharedprovider.ErrSwapFailed) ||
 		errors.Is(err, sharedprovider.ErrProviderClosed)
 }
+
+// IsFileLock reconnaît la contention fichier : un AUTRE détenteur tient la base (autre process, handle pas
+// encore libérée). Transitoire : l'appelant la compte à part d'une panne.
+func IsFileLock(err error) bool {
+	return duckdbpkg.IsFileLockError(err)
+}

@@ -18,7 +18,6 @@ package scheduler
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"expvar"
 	"fmt"
@@ -31,7 +30,6 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/atomicfile"
-	"levelup/go-api/internal/platform/duckdb"
 )
 
 var (
@@ -42,21 +40,10 @@ var (
 // formatHorodatageJauge : format de `mesure_utc` dans le fichier de jauge (lu par `date -d`).
 const formatHorodatageJauge = time.RFC3339
 
-// SharedReaderFunc ouvre une lecture de la base partagée d'un titre et rend sa fonction release
-// (à appeler une fois la lecture finie). En production : le provider B-swap du titre.
-type SharedReaderFunc func(ctx context.Context, titleSlug string) (*sql.DB, func(), error)
-
 // PassesTitre : la jauge d'une table du registre, pour un titre.
 type PassesTitre struct {
 	TitleSlug string
 	migration.JaugePasses
-}
-
-// WithSharedReader branche le lecteur de la base partagée de la jauge des passes. Sans lui, la
-// jauge lit par duckdb.OpenReadForQuery (réutilise le handle tenu par le process s'il existe).
-func (s *HealthScheduler) WithSharedReader(r SharedReaderFunc) *HealthScheduler {
-	s.sharedReader = r
-	return s
 }
 
 // WithClock remplace l'horloge qui date le fichier de jauge (tests).
@@ -92,19 +79,7 @@ func (s *HealthScheduler) auditTitlePasses(ctx context.Context, pr *titlePkg.Pat
 }
 
 func (s *HealthScheduler) mesurerUneTable(ctx context.Context, pr *titlePkg.PathResolver, slug, table string) (migration.JaugePasses, bool, error) {
-	db, release, err := s.lecteurShared(ctx, pr, slug)
-	if err != nil {
-		return migration.JaugePasses{Table: table}, false, fmt.Errorf("lecture de la base partagée: %w", err)
-	}
-	defer release()
-	return migration.MesurerPasses(ctx, db, table)
-}
-
-func (s *HealthScheduler) lecteurShared(ctx context.Context, pr *titlePkg.PathResolver, slug string) (*sql.DB, func(), error) {
-	if s.sharedReader != nil {
-		return s.sharedReader(ctx, slug)
-	}
-	return duckdb.OpenReadForQuery(pr.SharedDBPath(slug))
+	return s.store.MeasurePasses(ctx, slug, pr.SharedDBPath(slug), table)
 }
 
 // publierJaugePasses : expvar, WARN par table au-delà du seuil, fichier de jauge — seulement

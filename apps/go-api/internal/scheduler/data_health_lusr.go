@@ -1,13 +1,14 @@
 package scheduler
 
 // data_health_lusr.go — volet « garde-fou trous LUSR » du HealthScheduler :
-// scan read-only par joueur (skill.ScanLUSRGaps), qui alimente la jauge et l'alerte.
+// scan read-only par joueur (port.DataHealthShared.ScanLUSRGaps), qui alimente la jauge et l'alerte.
 // Aucune réparation automatique : le recalcul d'un joueur est l'action manuelle du
 // panneau de monitoring. Extrait de data_health_check.go pour tenir la limite de
 // taille de fichier (CLAUDE.md n°5).
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -16,8 +17,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/sync/skill"
+	"levelup/go-api/internal/port"
 )
 
 // auditTitleLUSRGaps scanne les trous LUSR de tous les joueurs d'un titre
@@ -32,9 +32,8 @@ import (
 //     scan devient PARTIEL (la jauge ne sera pas republiée, cf. runCycle) ;
 //   - scan SQL en échec → WARN + res.LUSRPlayersUnmeasured ET res.ProbeErrors (une
 //     sonde SQL ratée = cron non « sain », en plus du scan partiel).
-func (s *HealthScheduler) auditTitleLUSRGaps(ctx context.Context, pr *titlePkg.PathResolver, slug string, sharedDB *duckdb.DB, res *DataHealthCheckResult) {
+func (s *HealthScheduler) auditTitleLUSRGaps(ctx context.Context, pr *titlePkg.PathResolver, slug string, sharedDB port.DataHealthShared, res *DataHealthCheckResult) {
 	titleCtx := ctxkeys.WithTitleSlug(ctx, slug)
-	sharedSQL := sharedDB.SQLDb()
 	entries, err := os.ReadDir(pr.PlayersRootDir(slug))
 	if err != nil {
 		// Répertoire joueurs illisible → AUCUN joueur du titre n'a pu être scanné. Un
@@ -58,22 +57,20 @@ func (s *HealthScheduler) auditTitleLUSRGaps(ctx context.Context, pr *titlePkg.P
 		if _, err := os.Stat(playerPath); err != nil {
 			continue
 		}
-		pdb, err := openDBShared(playerPath)
-		if err != nil {
+		scanCtx, cancel := context.WithTimeout(titleCtx, 60*time.Second)
+		rep, serr := sharedDB.ScanLUSRGaps(scanCtx, playerPath, xuid)
+		cancel()
+		if errors.Is(serr, port.ErrDataHealthUnavailable) {
 			// Player DB présente mais inouvrable (typiquement tenue RW par un sync en
 			// cours) → joueur NON mesuré ce cycle. WARN + compteur : le scan devient
 			// partiel (jauge gelée par runCycle) plutôt qu'un sous-comptage muet. Pas
 			// de ProbeErrors : une DB tenue RW est transitoire, elle ne fait pas
 			// échouer le cron.
 			slog.WarnContext(ctx, "data_health: player DB inouvrable pour scan LUSR (non mesuré)",
-				"titleSlug", slug, "gamertag", gamertag, "err", err)
+				"titleSlug", slug, "gamertag", gamertag, "err", serr)
 			res.LUSRPlayersUnmeasured++
 			continue
 		}
-		scanCtx, cancel := context.WithTimeout(titleCtx, 60*time.Second)
-		rep, serr := skill.ScanLUSRGaps(scanCtx, pdb.SQLDb(), sharedSQL, xuid)
-		cancel()
-		_ = pdb.Close() //nolint:errcheck // ref-count : best-effort
 		if serr != nil {
 			// Sonde SQL ratée : cron non « sain » (ProbeErrors) ET joueur non mesuré
 			// (Unmeasured → jauge gelée). Les deux compteurs sont incrémentés.
@@ -83,8 +80,8 @@ func (s *HealthScheduler) auditTitleLUSRGaps(ctx context.Context, pr *titlePkg.P
 			res.LUSRPlayersUnmeasured++
 			continue
 		}
-		res.LUSRInteriorGaps += rep.TotalInteriorGaps
-		res.LUSRPendingRecent += rep.TotalPendingRecent
+		res.LUSRInteriorGaps += rep.InteriorGaps
+		res.LUSRPendingRecent += rep.PendingRecent
 		res.LUSRPlayersScanned++
 	}
 }
