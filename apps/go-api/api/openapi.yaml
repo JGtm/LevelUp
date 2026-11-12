@@ -33089,13 +33089,16 @@ components:
         causeUnresolved:
           format: int64
           type: integer
-        clockUnknown:
-          format: int64
-          type: integer
         destroyed:
           format: int64
           type: integer
         killed:
+          format: int64
+          type: integer
+        killedCleanup:
+          format: int64
+          type: integer
+        killedNoIdentity:
           format: int64
           type: integer
         killedOccupants:
@@ -33134,7 +33137,8 @@ components:
         - occupant
         - killed
         - killedOccupants
-        - clockUnknown
+        - killedNoIdentity
+        - killedCleanup
       type: object
     VehicleLabel:
       additionalProperties: false

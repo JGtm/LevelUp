@@ -183,5 +183,6 @@ type VehicleDestructionCoverage struct {
 	Occupant          int `json:"occupant"`
 	Killed            int `json:"killed"`
 	KilledOccupants   int `json:"killedOccupants"`
-	ClockUnknown      int `json:"clockUnknown"`
+	KilledNoIdentity  int `json:"killedNoIdentity"`
+	KilledCleanup     int `json:"killedCleanup"`
 }

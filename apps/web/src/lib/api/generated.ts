@@ -14780,11 +14780,13 @@ export interface components {
             /** Format: int64 */
             causeUnresolved: number;
             /** Format: int64 */
-            clockUnknown: number;
-            /** Format: int64 */
             destroyed: number;
             /** Format: int64 */
             killed: number;
+            /** Format: int64 */
+            killedCleanup: number;
+            /** Format: int64 */
+            killedNoIdentity: number;
             /** Format: int64 */
             killedOccupants: number;
             /** Format: int64 */

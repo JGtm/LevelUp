@@ -186,6 +186,7 @@ func toVehicleDestructionCoverage(v replay.VehicleDestructionCoverage) replaydoc
 		Occupant:          v.Occupant,
 		Killed:            v.Killed,
 		KilledOccupants:   v.KilledOccupants,
-		ClockUnknown:      v.ClockUnknown,
+		KilledNoIdentity:  v.KilledNoIdentity,
+		KilledCleanup:     v.KilledCleanup,
 	}
 }
