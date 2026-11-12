@@ -64,7 +64,6 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/briques"
-	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/observability/logging"
@@ -123,7 +122,7 @@ func main() {
 // digests de vide sans qu'une seule ligne ne le dise. Le tube du lanceur fusionne stdout et
 // stderr de l'enfant : le journal de l'enfant remonte donc dans celui du parent.
 func executer(ctx context.Context, o options) int {
-	defer logging.InstallCLILevel(o.repoRoot, config.ConsoleLogLevel())()
+	defer logging.InstallCLILevel(o.repoRoot, logging.ConsoleLevelFromEnv())()
 	if o.child {
 		return enfantEquivalence(ctx, o)
 	}

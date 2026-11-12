@@ -1,12 +1,13 @@
 package config
 
 // env_reads.go — lectures d'environnement qui ne vivent pas dans AppConfig parce que leurs
-// appelants tournent avant, ou hors, du chargement de la configuration (journal du serveur, outils
-// en ligne de commande, moteur de sync, notification de version). Chaque variable se lit ICI, une
-// seule fois ; le garde-rail `env_centralization_test.go` interdit de la relire ailleurs.
+// appelants tournent avant, ou hors, du chargement de la configuration (outils en ligne de
+// commande, moteur de sync, notification de version). Le niveau du journal (LEVELUP_LOG_LEVEL) se
+// lit dans internal/observability/logging, que les outils compilés sans cgo peuvent importer.
+// Chaque variable se lit ICI, une seule fois ; le garde-rail `env_centralization_test.go` interdit
+// de la relire ailleurs.
 
 import (
-	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -15,7 +16,6 @@ import (
 
 // Noms des variables lues par ce fichier.
 const (
-	envLogLevel            = "LEVELUP_LOG_LEVEL"
 	envOAuthClientID       = "LEVELUP_OAUTH_CLIENT_ID"
 	envLegacyFilmCacheDir  = "LEVELUP_LEGACY_FILM_CACHE_DIR"
 	envEventsConvChunk     = "LEVELUP_EVENTS_CONVERGENCE_CHUNK"
@@ -23,23 +23,6 @@ const (
 	envNotifyVersions      = "LEVELUP_NOTIFY_VERSIONS"
 	notifyVersionsOptInVal = "1"
 )
-
-// ConsoleLogLevel rend le niveau de la console demandé par LEVELUP_LOG_LEVEL
-// (debug | info | warn | error ; absent ou inconnu : info). Le serveur et les outils en ligne de
-// commande qui installent leur journal (`logging.InstallCLILevel`) lisent le niveau ici : la
-// même table pour tous. À appeler après `BootstrapEnvLocal` pour que `.env.local` compte.
-func ConsoleLogLevel() slog.Level {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv(envLogLevel))) {
-	case "debug":
-		return slog.LevelDebug
-	case "warn":
-		return slog.LevelWarn
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelInfo
-	}
-}
 
 // OAuthClientIDFromEnv rend l'identifiant du client Azure demandé par LEVELUP_OAUTH_CLIENT_ID, ou
 // "" quand la variable est absente (l'appelant retombe alors sur l'application canonique). Le

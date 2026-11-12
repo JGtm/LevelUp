@@ -1,31 +1,9 @@
 package config
 
 import (
-	"log/slog"
 	"testing"
 	"time"
 )
-
-func TestConsoleLogLevel(t *testing.T) {
-	cases := []struct {
-		raw  string
-		want slog.Level
-	}{
-		{"", slog.LevelInfo},
-		{"info", slog.LevelInfo},
-		{"debug", slog.LevelDebug},
-		{" DEBUG ", slog.LevelDebug},
-		{"warn", slog.LevelWarn},
-		{"error", slog.LevelError},
-		{"verbeux", slog.LevelInfo},
-	}
-	for _, c := range cases {
-		t.Setenv(envLogLevel, c.raw)
-		if got := ConsoleLogLevel(); got != c.want {
-			t.Errorf("LEVELUP_LOG_LEVEL=%q : %v, attendu %v", c.raw, got, c.want)
-		}
-	}
-}
 
 func TestOAuthClientIDFromEnv(t *testing.T) {
 	t.Setenv(envOAuthClientID, "")

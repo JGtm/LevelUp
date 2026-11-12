@@ -175,3 +175,14 @@ func parseLevelEnv(key string, def slog.Level) slog.Level {
 	}
 	return def
 }
+
+// ConsoleLevelFromEnv rend le niveau de la console demandé par LEVELUP_LOG_LEVEL
+// (debug | info | warn | error ; absent ou inconnu : info). Le serveur et les outils en ligne de
+// commande qui installent leur journal (InstallCLILevel) lisent le niveau ici : la même table pour
+// tous. Il vit dans ce paquet, et pas dans internal/config, parce que les outils de cuisson des
+// rejeux se compilent sans cgo : internal/config tire DuckDB, ce paquet non
+// (archlint/outils_sans_cgo_test.go). Côté serveur, à appeler après config.BootstrapEnvLocal pour
+// que .env.local compte.
+func ConsoleLevelFromEnv() slog.Level {
+	return parseLevelEnv("LEVELUP_LOG_LEVEL", slog.LevelInfo)
+}

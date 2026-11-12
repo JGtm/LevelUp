@@ -188,7 +188,7 @@ func setupLogging(st *bootState) {
 	//   - text             : slog.NewTextHandler natif (verbose, pre-sprint).
 	//   - json             : slog.NewJSONHandler (prod).
 	// Niveau via LEVELUP_LOG_LEVEL (défaut INFO).
-	logLevel := config.ConsoleLogLevel()
+	logLevel := logging.ConsoleLevelFromEnv()
 
 	// Les racines se lisent dans l'environnement seul (config.ResolveRoots) : la même résolution
 	// que config.LoadServer, donc le même dossier de journaux que celui de la configuration.

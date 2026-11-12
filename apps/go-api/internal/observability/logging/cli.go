@@ -6,7 +6,7 @@ import (
 )
 
 // InstallCLILevel configure le logging pour un binaire CLI (cmd/*) : console compacte
-// sur stderr, au niveau consoleLevel (les outils le lisent par config.ConsoleLogLevel : la même
+// sur stderr, au niveau consoleLevel (les outils le lisent par ConsoleLevelFromEnv : la même
 // convention que le serveur), + fichiers `logs/{module}.log` (comme le serveur).
 // Permet aux jobs one-shot de tracer dans le dossier logs/ dédié, et pas seulement sur stderr.
 //
