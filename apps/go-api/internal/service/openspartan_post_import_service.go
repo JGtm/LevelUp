@@ -152,7 +152,7 @@ func (s *OpenSpartanPostImportService) recomputeLUSR(
 	n, err := sync.RecomputeLUSRCanonicalForPlayer(ctx, playerDB, sharedDB, xuid,
 		sync.MedalExploitOption(metadataDBPath, xuid))
 	if err != nil {
-		result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: "lusr", Err: err.Error()})
+		result.Errors = append(result.Errors, port.OpenSpartanPostImportError{Stage: stageLUSR, Err: err.Error()})
 		s.log.Warn("post_import_lusr_failed", "xuid", xuid, "err", err)
 		return
 	}
@@ -162,6 +162,9 @@ func (s *OpenSpartanPostImportService) recomputeLUSR(
 // stagePrimeEnrichment : libellé de l'étape « prime enrichment » dans les
 // port.OpenSpartanPostImportError (constante pour éviter la répétition du littéral — goconst).
 const stagePrimeEnrichment = "prime_enrichment"
+
+// stageLUSR : libellé de l'étape du rejeu de la note LUSR dans les port.OpenSpartanPostImportError.
+const stageLUSR = "lusr"
 
 // ensureEnrichmentRows primes player_match_enrichment with one baseline row
 // (stage='live') per imported match_id. Required because the recompute stages
