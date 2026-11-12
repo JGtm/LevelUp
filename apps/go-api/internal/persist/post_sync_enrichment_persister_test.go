@@ -5,6 +5,7 @@ package persist
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 
 	"levelup/go-api/internal/migration"
@@ -297,5 +298,26 @@ func TestPrimeBaseline_LectureImpossibleRendLErreurSansEcrire(t *testing.T) {
 	inserted, failures, err := NewPostSyncEnrichmentPersister(db).PrimeBaseline(context.Background(), []string{"m1"})
 	if err == nil || inserted != 0 || len(failures) != 0 {
 		t.Fatalf("attendu l'erreur de lecture seule : inserted=%d failures=%v err=%v", inserted, failures, err)
+	}
+}
+
+// Un contexte annulé arrête l'amorçage : une seule erreur (celle du contexte), aucune insertion, pas une entrée
+// d'échec par match.
+func TestPrimeBaseline_ContexteAnnuleRendUneSeuleErreur(t *testing.T) {
+	db := openPrimeBaselineDB(t)
+	p := NewPostSyncEnrichmentPersister(db)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	inserted, failures, err := p.PrimeBaseline(ctx, []string{"m1", "m2", "m3", "m4"})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, attendu context.Canceled", err)
+	}
+	if inserted != 0 || len(failures) != 0 {
+		t.Errorf("inserted=%d failures=%v, attendu aucune insertion ni entrée d'échec", inserted, failures)
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment`).Scan(&n); err != nil || n != 0 {
+		t.Errorf("lignes écrites = %d (err %v), attendu 0", n, err)
 	}
 }

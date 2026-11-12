@@ -233,17 +233,25 @@ type BaselineFailure struct {
 //
 // Chaque insertion est sa propre transaction : l'échec d'un match n'arrête pas les suivants. Les échecs
 // par match sont rendus dans failures, l'appelant les journalise et les compte ; err ne rend que
-// l'échec de la lecture des lignes existantes (rien n'est alors inséré). inserted est le nombre de
+// l'échec de la lecture des lignes existantes (rien n'est alors inséré) ou l'annulation du contexte (les lignes déjà écrites
+// restent, inserted les compte). inserted est le nombre de
 // lignes écrites. Les erreurs sont rendues telles que la base les a produites.
 func (p *PostSyncEnrichmentPersister) PrimeBaseline(ctx context.Context, matchIDs []string) (inserted int, failures []BaselineFailure, err error) {
 	if len(matchIDs) == 0 {
 		return 0, nil, nil
+	}
+	if err := ctx.Err(); err != nil {
+		return 0, nil, err
 	}
 	existing, err := p.loadExistingMatchIDs(ctx)
 	if err != nil {
 		return 0, nil, err
 	}
 	for _, id := range matchIDs {
+		// Contexte annulé : on s'arrête et on le rend UNE fois, au lieu d'une entrée d'échec par match restant.
+		if err := ctx.Err(); err != nil {
+			return inserted, failures, err
+		}
 		if _, ok := existing[id]; ok {
 			continue
 		}
