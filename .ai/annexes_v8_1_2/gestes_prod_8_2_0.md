@@ -1,0 +1,194 @@
+# Gestes de production, LevelUp 8.2.0 (BROUILLON du 2026-11-12)
+
+Base lue : `origin/release/v8.2.0` à `20b8f386a6` (PR #181 à #204 fusionnées). Sources : plan
+`.ai/PLAN_V8_1_2_2026-11-09.md` (7.5), `docs/RUNBOOK_DEPLOY_CHECKLIST.md` (conventions `LU`, fenêtres,
+R7 et R8), `docs/COMMANDS.md`, journal `.ai/thought_log.md`.
+
+Marque **À CONFIRMER** : dépend d'une PR encore ouverte ou d'un point non prouvé sur pièces.
+Trois PR en attente : #203 (décodeur v1.2.x, destructions de véhicule, `SchemaVersion` 109), la cadence à
+30 images/s (`SchemaVersion` 110, branche `feat/rejeu-30ips-bascule`, pas de PR), et l'étape 4 du plan
+architecture (4.1 à 4.3 fusionnés, 4.4 à 4.8 ouverts).
+
+## Règles qui valent pour toute la liste
+
+- **JAMAIS de copie d'une base locale vers la prod.** La base locale n'est jamais alignée sur la prod. Seuls
+  les rejeux se copient (dossier `data/cache/replays/<titre>/`), sans suppression côté VPS. Les dérivés se
+  réécrivent sur le serveur par les passes `backfill-*`, qui lisent les rejeux copiés. `backfill-killsource`
+  reste local : aucune base n'est copiée (D-17 du plan).
+- Aucune cuisson en lot sans ton accord explicite, une fenêtre à part, un film à la fois.
+- Push sur `main` = déploiement automatique : tu es prévenu avant, et c'est ton geste.
+- `LU` = `docker compose run --rm --no-deps levelup levelup` (depuis `/opt/levelup`). Toute passe qui écrit
+  la base partagée exige le serveur arrêté (`docker compose stop levelup`), `--dry-run` compris pour celles
+  qui jouent les migrations.
+
+## Avant les gestes (pré-requis, pas des gestes de production)
+
+| # | Contrôle | Commande ou preuve | Durée | Risque |
+|---|---|---|---|---|
+| P1 | CI verte sur `release/v8.2.0`, dont `desktop-e2e` | page Actions | selon la CI | un déploiement lancé sur CI rouge est refusé par `attente-ci` |
+| P2 | Montée en 8.2.0 faite à la clôture : `apps/desktop/src-tauri/Cargo.toml`, `Cargo.lock`, `tauri.conf.json` ; blocs de notes `**v8.2 — ...**` posés en tête de `docs/RELEASE_NOTES.md` et `docs/FR/RELEASE_NOTES.md` ; `## [8.2.0]` dans les deux changelogs | brouillons : `brouillon_versions_8_2_0_FR.md`, `brouillon_versions_8_2_0_EN.md` (même dossier) | 15 min | `release.yml` refuse le tag si la première section des notes ne porte pas `v8.2` ; deux tests Go de cohérence notes / changelog |
+| P3 | Aucun `backfill` hôte en cours | `pgrep -f '[b]ackfill'` vide | secondes | le job `deploy-demo` saute la régénération si un backfill tient le verrou |
+| P4 | Sauvegarde restic fraîche | `scripts/RESTIC_BACKUP.md` | quelques minutes | sans elle, pas de retour arrière si une base est touchée |
+| P5 | Purge des `film_chunks` du VPS vérifiée | liste du dossier d'archive | secondes | un reste de chunks fait décoder le VPS lors d'une recuisson |
+| P6 | Fenêtre annoncée | message | — | — |
+
+## Gestes, dans l'ordre
+
+| # | Geste | Serveur | Durée estimée | Risque |
+|---|---|---|---|---|
+| G1 | Fusion squash vers `main` et tag `v8.2.0` | déploiement auto | CI 15 à 25 min puis déploiement | moyen |
+| G2 | Migration `shared_match_lead_share_v1` | au boot, automatique | secondes | faible |
+| G3 | Journaux du serveur en JSON, à vérifier | actif | 2 min | faible |
+| G4 | Recalcul LUSR et note de performance au premier démarrage | actif, automatique | non mesuré en prod ; 47 s pour un joueur de 1 108 matchs (mesure du runbook) | moyen, visible |
+| G5 | Recuisson des rejeux, en LOCAL | serveur local arrêté | heures, à ton go | élevé en mémoire |
+| G6 | Copie des rejeux vers le VPS, sans suppression | arrêté pendant la copie | 16 min d'arrêt en 8.1.0 | élevé |
+| G7 | Passes de dérivés sur le serveur, dont `backfill-lead-share` | arrêté | lead-share environ 5 min à 10 min ; autres non chiffrées | moyen |
+| G8 | `levelup replay compress` | arrêté (recommandé) | environ 3 à 4 min de compression, non mesuré en entier | faible |
+| G9 | Redémarrage, santé, sessions | actif | 5 min | faible |
+| G10 | Application Windows : release, notes, mise à jour | — | 30 min | moyen |
+| G11 | Vérifications à l'écran | actif | à ta main | — |
+
+### G1. Fusion vers `main` et tag `v8.2.0`
+
+- Commande : PR `release/v8.2.0` vers `main`, **Squash and merge** (seul mode activé), titre en Conventional
+  Commits ; puis tag `v8.2.0` posé sur le commit de `main` (jamais avant le squash). Les tags `libs/<brique>/...`
+  n'existent plus à poser : les briques sont consommées en v1.0.1 depuis leurs dépôts.
+- Durée : le déploiement attend la CI du même sha (sonde toutes les 30 s), soit 15 à 25 min, puis le
+  déploiement. `release.yml` compile l'installeur Windows, signe l'updater, joue `desktop-e2e` et publie
+  `updates/latest.json`.
+- Risque : moyen. Retour arrière = `git revert` du squash et push ; la migration du G2 est additive (une table
+  et une vue), donc pas de restauration restic nécessaire pour elle. **Attention** : après un retour arrière,
+  l'ancien binaire porte une autre révision de notes (`lusr-2026-11-08`) ; la comparaison se fait sur
+  « différent » (ADR 0047), donc le prochain démarrage rejouerait le recalcul sous l'ancienne formule.
+
+### G2. Migration `shared_match_lead_share_v1` (au boot)
+
+- Commande : aucune, elle s'applique au démarrage du serveur. Crée la table append-only `match_lead_share` et sa
+  vue `match_lead_share_latest` dans la base partagée de Halo Infinite.
+- Durée : secondes. Pendant le boot `/health` répond 503 `server_starting` : normal.
+- Risque : faible (création seule, aucune table existante touchée). Vérifier : `/health` 200,
+  `grep -riE 'FATAL|panic' /opt/levelup/data/logs/*.log`, et dans `migration.log` la fin du cycle
+  (`migration: cycle terminé`, avec `applied` au moins égal à 1).
+
+### G3. Journaux du serveur en JSON
+
+- Contexte : la variable héritée `LEVELUP_LOG_JSON` est supprimée ; l'image pose désormais
+  `LEVELUP_LOG_FORMAT=json` (`Dockerfile`). La prod était déjà en JSON par l'ancienne variable : la sortie doit
+  rester identique. Aucun des interrupteurs retirés en même temps n'était posé en prod (mesure du plan).
+- Commande : `docker compose logs --tail 5 levelup` : chaque ligne doit être un objet JSON
+  (`{"time":...`). Contrôler aussi qu'un fichier de `data/logs/` reste lisible par l'outil de lecture habituel.
+- Durée : 2 min. Risque : faible ; seul effet d'un oubli, des lignes en format compact au lieu de JSON, ce qui
+  casserait un analyseur de logs. Remède : poser `LEVELUP_LOG_FORMAT=json` dans l'environnement du service.
+
+### G4. Recalcul des notes au premier démarrage (automatique, ADR 0047)
+
+- Contexte : `LUSRRev` passe à `lusr-2026-11-09` (repli du solveur sans les comptes de frags et de morts quand
+  il ne converge pas : un match non résolu reçoit enfin une note). Chaque joueur voit son historique rejoué une
+  fois, joueur par joueur, au démarrage ; la valeur stockée est `sync_meta.scoring_revision`.
+- Commande : aucune. Vérifier ensuite qu'un second redémarrage ne relance pas le recalcul (révision rangée).
+- Durée : non mesurée en prod. Repère : 47 s pour un joueur de 1 108 matchs sur copie locale (runbook, E4.6).
+- Risque : moyen et visible. D'après l'analyse du plan, environ 70 % des notes déjà posées bougent (jusqu'à
+  130 points sur un match, sur un joueur), le plus souvent de peu. Le dire dans les notes de version (fait dans
+  les brouillons). Ne pas redémarrer en boucle pendant le recalcul.
+
+### G5. Recuisson des rejeux, en LOCAL (à ton go, jamais en lot sans accord)
+
+- Contexte : le schéma des rejeux est à **108** sur la branche ; la lecture complète du film (#198) a monté les
+  révisions de grammaire (`grammar-2026-11-10.3`), de source des éliminations (`killsource-2026-11-10`) et de
+  profil : les faits de film déjà rangés sont donc périmés et la recuisson **redécode** au lieu de republier,
+  tant que le `--dry-run` n'annonce pas « republier ».
+  **À CONFIRMER** : #203 monterait le schéma à 109 et la cadence à 30 images/s à 110. Ne recuire qu'**une seule
+  fois, au schéma final** de la release ; si ces deux PR ne sont pas fusionnées à la clôture, c'est 108.
+- Commandes, serveur local arrêté, depuis `apps/go-api` :
+  `go run ./cmd/levelup backfill-replay --only-existing --dry-run`, puis
+  `go run ./cmd/levelup backfill-replay --only-existing` (séquentiel, un enfant par film, `--mem-limit-gib`
+  pour relever le plafond). Sur le bureau, c'est la file de régénération lancée depuis l'application
+  (bandeau d'offre), jamais automatique.
+- Durée : non mesurée sur le parc. Repère : 12 films recuits en 78 s (environ 6,5 s par film), soit de l'ordre de
+  2 h 40 pour 1 445 films ; davantage si redécodage complet. Fenêtre à part.
+- Risque : élevé côté mémoire (bombe RAM connue : jamais de balayage du corpus en parallèle). Les rejeux
+  produits sont déjà écrits en `.json.gz`.
+- `backfill-killsource` : en local seulement, base non copiée (D-17). En prod les anciens matchs gardent leurs
+  lignes actuelles, les nouveaux films profitent de la correction.
+
+### G6. Copie des rejeux vers le VPS, sans suppression
+
+- Commande : copie du dossier des rejeux uniquement (`data/cache/replays/halo_infinite/`), sans l'option de
+  suppression de `rsync`, serveur de prod arrêté (`docker compose stop levelup`) pendant la copie. La liste
+  exacte des fichiers (`.json.gz`, `.meta`, `.derived.json`) est celle de la copie de la 8.1.0.
+  **À CONFIRMER** : rouvrir la commande employée le 2026-11-09 avant de la rejouer, elle n'est pas écrite au
+  runbook.
+- Durée : 16 min d'arrêt du site en 8.1.0, pour un parc au schéma 107 ; plus long ici, les rejeux étant
+  recuits.
+- Risque : élevé : cette copie remplace des artefacts en prod ; jamais de base dans cette copie. Déployer
+  serveur et ouvrier ensemble (`deploy-worker`) : un ouvrier à un schéma antérieur voit ses dépôts refusés.
+  Constat de la 8.1.0 : 2 079 rejeux n'existent qu'en prod, à l'ancien schéma, sans film pour les refaire.
+
+### G7. Passes de dérivés sur le serveur (serveur arrêté, une fenêtre)
+
+À jouer **après** la copie du G6 : les passes lisent les rejeux tels quels, et `backfill-lead-share` reprend sur
+la présence d'une ligne, donc l'écrire avant la recuisson imposerait `--force` ensuite.
+
+```bash
+LU() { docker compose run --rm --no-deps levelup levelup "$@"; }
+LU backfill-lead-share --dry-run          # lecture seule, aucune migration, une ligne par match et un bilan
+LU backfill-lead-share                    # reprenable ; ajouter --force après une recuisson ou un changement de règle
+LU backfill-usage-summary                 # À CONFIRMER : révision montée (us8) avec la cadence à 30 images/s
+LU backfill-pad-tiers --force             # niveaux d'armes de socle : les lignes écrites gardent l'ancienne jointure
+LU backfill-vehicle-takes --force         # familles de véhicules changées (tourelle fixe, schéma 108)
+```
+
+- Durée : `backfill-lead-share` environ 5 min pour 1 600 artefacts (0,15 s par match, échantillon de 133
+  rejeux) ; le parc de la prod en compte au moins 3 524 d'après la 8.1.0, soit de l'ordre de 10 min
+  (extrapolation, non mesurée). Les trois autres passes : non chiffrées (en 8.1.0 : 1 445 résumés, 3 514 niveaux
+  d'armes, 3 524 prises de véhicule, 0 échec).
+- Risque : moyen. Les passes sont INSERT seul (anti-ART) et reprenables ; une ligne `failed` non nulle rend la
+  commande non nulle. Les matchs de modes à peu de points (drapeau, colline, bombe) sont écrits « sans chiffre »
+  avec leur raison, jamais zéro : environ 79 % mesurés sur l'échantillon.
+- Les nouveaux matchs synchronisés ensuite reçoivent leur Mainmise par la chaîne post-synchronisation.
+
+### G8. `levelup replay compress`
+
+- Commandes, depuis `/opt/levelup` : `LU replay compress --dry-run` (lit, compresse en mémoire, affiche le gain,
+  n'écrit rien), puis `LU replay compress`. Convertit sur place les `.json` bruts restants (surtout les 2 079
+  rejeux présents seulement en prod), jamais lancé automatiquement.
+- Durée : compression de l'ordre de 110 ms par artefact (plan), soit 3 à 4 min pour 3 500 artefacts, relecture
+  et disque en plus, non mesuré en entier. Gain mesuré en local : 3,6 Gio vers 746 Mio (rapport 0,20).
+- Risque : faible. Pose exclusive du `.json.gz` (jamais d'écrasement), relecture identique avant la suppression
+  du `.json`, idempotent, un échec est compté et laisse le fichier (code de sortie non nul : à relancer). Jouer
+  la commande dans la fenêtre où le serveur est déjà arrêté est une recommandation de prudence, pas une
+  exigence trouvée dans les sources. Contrôler l'espace libre du VPS avant et après.
+
+### G9. Redémarrage, santé, sessions
+
+- Commandes : `docker compose up -d levelup`, `curl -sf http://127.0.0.1:8000/health` (200 avant de continuer).
+  **À CONFIRMER** : recalcul des sessions par la route admin `POST /api/v1/settings/sessions/recalculate`
+  (étape R8 du runbook) : à décider selon l'effet du G4 sur les sessions, non établi dans les sources.
+- Durée : 5 min. Risque : faible.
+- Démo : le job `deploy-demo` la régénère ; vérifier qu'elle répond 200.
+
+### G10. Application Windows
+
+- La release GitHub porte l'installeur, `updates/latest.json` (notes FR et EN tirées de la première section des
+  deux fichiers de notes) et un paquet de ressources qui change (icônes de grenades et de capacités).
+- À faire : essai de mise à jour depuis une 8.1.2 installée (offre, notes, redémarrage, données intactes) ;
+  vérifier que les anciens fichiers de l'interface sont retirés ; première ouverture d'un ancien rejeu (lisible
+  sans rien faire) et offre de régénération, qui ne démarre jamais seule.
+- Durée : 30 min. Risque : moyen (installeur non signé, SmartScreen avertit à chaque installation).
+
+### G11. Vérifications à l'écran (à ajouter à l'artefact des vérifications, collection `verifs`)
+
+Rejeu : filtre du fil, clic sur une élimination, bouton Vue, fiche en panneau (Suivre, Seul, Masquer, Échap).
+Vue du match : Écart de score, Supériorité numérique, Mainmise (tiret, « 0 retournement »). Sessions, Séries
+temporelles, Escouade : Mainmise. Aperçu de lien Discord : lien copié depuis l'application (langue du partageur)
+et lien nu (anglais).
+
+## Récapitulatif des points À CONFIRMER
+
+| Point | Dépend de | Effet sur les gestes |
+|---|---|---|
+| Schéma 109, destructions de véhicule, décodeur v1.2.3 | PR #203 (brouillon) | G5 : schéma final ; notes : ligne véhicules détruits ; G7 : `backfill-vehicle-takes` déjà prévu |
+| Cadence à 30 images/s, schéma 110 | branche `feat/rejeu-30ips-bascule`, sans PR | G5 : une seule recuisson ; G7 : `usage-summary` (révision us8) ; ouvrier et serveur déployés ensemble |
+| Étape 4 du plan architecture (4.4 à 4.8) | travaux restants de `feat/812-architecture` | aucun geste de production ; seulement les notes pour contributeurs |
+| Commande exacte de copie des rejeux | journal de la 8.1.0 non détaillé | G6 |
+| Recalcul des sessions | effet du G4 | G9 |
