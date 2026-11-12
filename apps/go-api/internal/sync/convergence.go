@@ -116,14 +116,17 @@ func hasConvergenceBacklog(ctx context.Context, playerDB, sharedDB *sql.DB, xuid
 }
 
 // selectMatchesMissingPSA retourne les matchs enrichis dont les
-// personal_score_awards n'ont JAMAIS été tentés (psa_checked_at IS NULL) et
-// qui n'ont aucune row PSA. Cas nominal : matchs delta-skippés (insérés en
+// personal_score_awards n'ont pas été traités : ni marqueur terminal
+// (psa_checked_at IS NULL) ni row PSA. Cas nominal : matchs delta-skippés (insérés en
 // shared par un coéquipier) — seul le traitement per-match écrivait les PSA,
 // confirmé par le gate invariants (psa_missing, 2026-06-10).
 //
-// Le marqueur terminal psa_checked_at garantit qu'un match sans PersonalScores
-// extractibles (NameIds inconnus, vieux matchs) n'est tenté qu'UNE fois.
-// Borné par convergenceHorizon comme les autres sélections.
+// Une row PSA sort le match de la sélection, marqueur posé ou non : le chemin per-match écrit
+// des awards sans marqueur, et la convergence n'écrit les siens (settlePSA) qu'après l'écriture
+// des alias. Un match n'est donc retenté que tant que ni awards ni marqueur n'existent ; le
+// marqueur terminal garantit qu'un match sans PersonalScores extractibles (NameIds inconnus,
+// vieux matchs) cesse d'être tenté une fois ses alias écrits. Borné par convergenceHorizon
+// comme les autres sélections.
 func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
 	// match_id IS NOT NULL dans le sous-select : défense contre les player DB
 	// legacy sans contraintes (un NULL rendrait le NOT IN faux pour TOUTES les
@@ -160,12 +163,13 @@ func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
 	return out
 }
 
-// convergePSA re-fetch le JSON match des matchs sans PSA et extrait les
-// PersonalScores du joueur (ExtractPersonalScoreAwards + InsertPersonalScoreAwards,
-// append-only par génération : ré-exécutable). Pose le marqueur terminal
-// psa_checked_at quand le fetch a réussi (même 0 award) ET que les alias du match
-// sont écrits dans shared.xuid_aliases — état terminal. Fetch ou écriture d'alias
-// en échec : pas de marqueur, le match est retenté au cycle suivant.
+// convergePSA re-fetch le JSON match des matchs sans PSA, écrit les alias de ses participants
+// dans shared.xuid_aliases, puis écrit les PersonalScores du joueur
+// (ExtractPersonalScoreAwards + InsertPersonalScoreAwards, append-only par génération) et pose le
+// marqueur terminal psa_checked_at (même avec 0 award) : état terminal. Ordre imposé : les awards et
+// le marqueur ne sont écrits qu'APRÈS l'écriture des alias. Un match dont le fetch, les alias ou
+// l'écriture des awards échouent n'a donc aucun award : selectMatchesMissingPSA le rend au cycle
+// suivant, qui retente tout sans jamais empiler une génération d'awards de plus.
 //
 // Convergence OPPORTUNISTE des alias (2026-06-10) : le JSON fetché contient le
 // gamertag de TOUS les participants — on upserte shared.xuid_aliases au
@@ -174,9 +178,12 @@ func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
 // xbox_aliases a été consolidé puis supprimé) : ce chemin convergent en est
 // l'alimentation principale, avec match_participants/killer_victim_pairs (lus
 // par v_gamertag_lookup).
+//
+// Enrobage des phases collect → flush → settle, sans appelant de production : le post-sync
+// (runPSAConvergence) enchaîne les mêmes phases autour de son burst d'écriture shared.
 func convergePSA(ctx context.Context, playerDB, sharedDB *sql.DB, client HaloClient, xuid string, ids []string) int {
-	fetched := convergePSACollect(ctx, playerDB, client, xuid, ids)
-	return stampPSAChecked(ctx, playerDB, flushAliasPairs(ctx, sharedDB, xuid, fetched))
+	fetched := convergePSACollect(ctx, client, xuid, ids)
+	return settlePSA(ctx, playerDB, xuid, flushAliasPairs(ctx, sharedDB, xuid, fetched))
 }
 
 // aliasPair : upsert shared.xuid_aliases différé (étape 1 contention — le fetch
@@ -184,20 +191,18 @@ func convergePSA(ctx context.Context, playerDB, sharedDB *sql.DB, client HaloCli
 // flushés en burst court par le caller).
 type aliasPair struct{ xuid, gamertag string }
 
-// psaFetchedMatch : match dont les PersonalScores sont écrits côté joueur. Son marqueur
-// terminal n'est posé qu'après l'écriture de ses alias : un flush perdu ne doit pas
-// condamner ces alias à ne jamais être retentés.
+// psaFetchedMatch : match fetché dont les écritures sont différées. Les alias partent d'abord vers
+// shared ; les awards et le marqueur terminal ne sont écrits (settlePSA) que si ce flush a abouti.
 type psaFetchedMatch struct {
-	matchID       string
-	pairs         []aliasPair
-	awardsWritten bool // faux : l'écriture des awards a échoué, le match est retenté sans marqueur
+	matchID string
+	pairs   []aliasPair
+	awards  []PersonalScoreAwardRow
 }
 
-// convergePSACollect : phase fetch + écritures PLAYER (awards) de la convergence PSA.
-// AUCUNE écriture shared et AUCUN marqueur — les alias extraits des JSONs sont RETOURNÉS,
-// par match, pour un flush en burst par le caller, qui pose ensuite le marqueur
-// (stampPSAChecked) des seuls matchs dont les alias sont écrits.
-func convergePSACollect(ctx context.Context, playerDB *sql.DB, client HaloClient, xuid string, ids []string) []psaFetchedMatch {
+// convergePSACollect : phase fetch de la convergence PSA. AUCUNE écriture (ni shared, ni player) :
+// alias et awards extraits des JSONs sont RETOURNÉS, par match, pour le flush en burst puis
+// settlePSA.
+func convergePSACollect(ctx context.Context, client HaloClient, xuid string, ids []string) []psaFetchedMatch {
 	var out []psaFetchedMatch
 	for _, mid := range ids {
 		if ctx.Err() != nil {
@@ -208,14 +213,11 @@ func convergePSACollect(ctx context.Context, playerDB *sql.DB, client HaloClient
 			slog.WarnContext(ctx, "convergence: PSA fetch échoué", "match_id", mid, "err", err)
 			continue
 		}
-		m := psaFetchedMatch{matchID: mid, pairs: extractAliasPairsFromMatchJSON(matchJSON), awardsWritten: true}
-		if awards := ExtractPersonalScoreAwards(matchJSON, mid, xuid); len(awards) > 0 {
-			if err := InsertPersonalScoreAwards(ctx, playerDB, mid, xuid, awards); err != nil {
-				slog.WarnContext(ctx, "convergence: PSA insert échoué", "match_id", mid, "err", err)
-				m.awardsWritten = false
-			}
-		}
-		out = append(out, m)
+		out = append(out, psaFetchedMatch{
+			matchID: mid,
+			pairs:   extractAliasPairsFromMatchJSON(matchJSON),
+			awards:  ExtractPersonalScoreAwards(matchJSON, mid, xuid),
+		})
 	}
 	return out
 }
@@ -223,7 +225,8 @@ func convergePSACollect(ctx context.Context, playerDB *sql.DB, client HaloClient
 // flushAliasPairs upserte les alias bufferisés dans shared.xuid_aliases (burst
 // court, SQL UpsertXUIDAlias INCHANGÉ) et rend les matchs dont TOUS les alias sont
 // écrits (un match sans alias n'a rien à écrire). Chaque échec est journalisé et
-// compté ; un match laissé de côté est compté comme différé. sharedDB nil : seuls
+// compté ; un match laissé de côté reste sélectionné pour le cycle suivant (aucun award
+// écrit) et est compté comme tel (convergence_psa_deferred_total). sharedDB nil : seuls
 // les matchs sans alias sont rendus.
 func flushAliasPairs(ctx context.Context, sharedDB *sql.DB, xuid string, fetched []psaFetchedMatch) []psaFetchedMatch {
 	title := ctxkeys.TitleSlug(ctx)
@@ -263,15 +266,20 @@ func flushAliasPairs(ctx context.Context, sharedDB *sql.DB, xuid string, fetched
 	return flushed
 }
 
-// stampPSAChecked pose le marqueur terminal psa_checked_at des matchs donnés dont les
-// awards sont écrits et rend leur nombre. Append-only #23645 : INSERT pur stage='psa' ; la vue merge expose
-// psa_checked_at par match et selectMatchesMissingPSA lit _latest. Un échec est
-// journalisé : le match est retenté au cycle suivant.
-func stampPSAChecked(ctx context.Context, playerDB *sql.DB, matches []psaFetchedMatch) int {
+// settlePSA écrit, pour les matchs dont les alias sont écrits, les awards puis le marqueur
+// terminal psa_checked_at, et rend le nombre de matchs marqués. Append-only #23645 : INSERT pur,
+// stage='psa' pour le marqueur ; la vue merge expose psa_checked_at par match et
+// selectMatchesMissingPSA lit _latest. Awards en échec : pas de marqueur, aucun award écrit
+// (transaction unique), le match est retenté. Marqueur en échec : journalisé ; les awards déjà
+// écrits sortent le match de la sélection (même état qu'un match du chemin per-match).
+func settlePSA(ctx context.Context, playerDB *sql.DB, xuid string, matches []psaFetchedMatch) int {
 	done := 0
 	for _, m := range matches {
-		if !m.awardsWritten {
-			continue
+		if len(m.awards) > 0 {
+			if err := InsertPersonalScoreAwards(ctx, playerDB, m.matchID, xuid, m.awards); err != nil {
+				slog.WarnContext(ctx, "convergence: PSA insert échoué", "match_id", m.matchID, "err", err)
+				continue
+			}
 		}
 		if _, err := playerDB.ExecContext(ctx,
 			`INSERT INTO player_match_enrichment (match_id, psa_checked_at, stage) VALUES (?, now(), 'psa')`, m.matchID); err != nil {

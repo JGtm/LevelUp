@@ -222,19 +222,21 @@ func (e *SyncEngine) runDualRowSentinelBestEffort(ctx context.Context, playerDB 
 
 // runPSAConvergence — étape 1.56 : convergence des personal_score_awards. Cas nominal :
 // matchs delta-skippés (insérés en shared par un coéquipier) dont seul le traitement
-// per-match écrivait les PSA (gate invariants psa_missing, 2026-06-10). Marqueur terminal
-// psa_checked_at : chaque match n'est fetché qu'une fois, borné par convergenceHorizon.
+// per-match écrivait les PSA (gate invariants psa_missing, 2026-06-10). Un match est fetché de
+// nouveau tant que ses alias ne sont pas écrits (ni awards ni marqueur terminal psa_checked_at
+// avant), borné par convergenceHorizon à chaque cycle.
 func (e *SyncEngine) runPSAConvergence(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, client HaloClient, r *domain.PostSyncResult) {
 	psaWork := selectMatchesMissingPSA(ctx, playerDB)
 	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_psa_pending_total", int64(len(psaWork)))
 	if len(psaWork) == 0 {
 		return
 	}
-	// Split 4b : fetch réseau + écritures PLAYER hors de tout lease shared ; seul le flush
-	// des alias (shared.xuid_aliases) passe en burst court. Le marqueur terminal n'est posé
-	// qu'après ce flush : un match dont les alias ne sont pas écrits est retenté.
-	fetched := convergePSACollect(ctx, playerDB, client, e.xuid, psaWork)
-	n := stampPSAChecked(ctx, playerDB, e.flushPSAAliases(ctx, shared, fetched))
+	// Split 4b : fetch réseau hors de tout lease shared, puis flush des alias (shared.xuid_aliases)
+	// en burst court, puis écritures PLAYER (awards et marqueur terminal) hors lease. Awards et
+	// marqueur ne sont écrits qu'après le flush : un match dont les alias ne sont pas écrits n'a
+	// aucun award et est retenté au cycle suivant.
+	fetched := convergePSACollect(ctx, client, e.xuid, psaWork)
+	n := settlePSA(ctx, playerDB, e.xuid, e.flushPSAAliases(ctx, shared, fetched))
 	r.ConvergedPSA = n
 	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_psa_processed_total", int64(n))
 	slog.InfoContext(ctx, "post-sync: convergence PSA",
@@ -243,7 +245,8 @@ func (e *SyncEngine) runPSAConvergence(ctx context.Context, playerDB *sql.DB, sh
 
 // flushPSAAliases ouvre le burst d'écriture shared (psa_aliases) et rend les matchs dont les
 // alias sont écrits. Sans alias à écrire, le burst n'est pas ouvert ; burst indisponible : aucun
-// match avec alias n'est rendu, ils sont comptés comme différés et retentés au prochain cycle.
+// match avec alias n'est rendu, ils sont comptés comme différés et retentés au prochain cycle
+// (aucun award écrit, donc toujours sélectionnés).
 func (e *SyncEngine) flushPSAAliases(ctx context.Context, shared *SharedAccess, fetched []psaFetchedMatch) []psaFetchedMatch {
 	var noAlias, withAlias []psaFetchedMatch
 	for _, m := range fetched {
