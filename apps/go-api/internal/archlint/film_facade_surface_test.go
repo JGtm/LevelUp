@@ -437,7 +437,11 @@ const plafondSurfaceFacade = 182 // 2026-11-10 — item 4.3 : 181 + 1 (ResultatD
 //	                                           destruction du schema 109 que le document servi projette
 //	                                           (`service/replayview`) ; la parite exige une decision par
 //	                                           champ du document du decodeur. Aucun retrait.
-const plafondSurfaceReplay = 319 // 2026-11-12 — base 923644b919 re-mesuree a 316 + 3 (blocs de destruction de vehicule) ; cf. l historique ci-dessus
+//	320  pas de la page (2026-11-13)             base `6bb63bff25` re-mesuree a 319. +1 :
+//	                                           `replay.HistoricalFrameIntervalMS`, le pas que la page lit ; la cuisson
+//	                                           le pose (`replaybuild.pasDuRejeu`) depuis que le defaut de construction
+//	                                           du decodeur est plus fin. Aucun retrait.
+const plafondSurfaceReplay = 320 // 2026-11-13 — base 6bb63bff25 re-mesuree a 319 + 1 (HistoricalFrameIntervalMS) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //
