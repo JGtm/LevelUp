@@ -50,6 +50,8 @@ package archlint
 // jamais ce suffixe.
 
 import (
+	resolveur "levelup/go-api/internal/briques"
+
 	"os"
 	"path"
 	"path/filepath"
@@ -260,11 +262,14 @@ func TestCibleMakefileGamefilesCouvreLeCorpus(t *testing.T) {
 
 	recette := recetteMakefile(t, cibleMakefileGamefiles)
 	for paquet := range paquets {
-		cite := cheminDansLeModule(paquet)
-		if !strings.Contains(recette, "./"+cite+"/") {
+		cite := "./" + cheminDansLeModule(paquet) + "/"
+		// Un paquet de brique publiée (ADR 0043) se joue depuis apps/go-api par son chemin d import.
+		if imp, ok := resolveur.ImportDeGardeRail(paquet); ok {
+			cite = imp + "/"
+		}
+		if !strings.Contains(recette, cite) {
 			t.Errorf("le paquet %s porte des *_gamefiles_test.go mais la cible %s ne le nomme pas "+
-				"— ces tests ne tournent nulle part ; ajouter `./%s/` à la recette (dans la ligne "+
-				"`cd <module>` de son module)", paquet, cibleMakefileGamefiles, cite)
+				"— ces tests ne tournent nulle part ; ajouter `%s` à la recette", paquet, cibleMakefileGamefiles, cite)
 		}
 	}
 }

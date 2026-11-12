@@ -59,7 +59,14 @@ var nombresHorsXuid = map[string]string{}
 var extensionsTexte = map[string]bool{
 	".go": true, ".json": true, ".golden": true, ".txt": true, ".tsv": true, ".md": true,
 	".mod": true, ".sum": true,
+	// Fichiers propres au depot dedie d une brique publiee (ADR 0043), presents dans son dossier du cache
+	// de modules : configuration de CI et de git, lus comme du texte.
+	".yml": true, ".gitignore": true, ".gitattributes": true,
 }
+
+// textesSansExtension : fichiers sans extension lus comme du texte, par nom exact (la licence d un
+// depot dedie). Tout autre fichier sans extension reste hors du texte, donc signale s il n est pas couvert.
+var textesSansExtension = map[string]bool{"LICENSE": true}
 
 // lireRegistre rend les xuids du registre, et refuse un registre incoherent : une ligne mal
 // formee, un xuid hors plage ou en double, un registre vide.
@@ -113,6 +120,9 @@ var extensionsTexteApps = map[string]bool{
 // extensionDuTexte rend l extension qui dit ce qu un fichier contient : celle du fichier, ou celle sous le
 // `.gz` pour un fichier compresse.
 func extensionDuTexte(chemin string) string {
+	if textesSansExtension[filepath.Base(chemin)] {
+		return ".txt"
+	}
 	if ext := filepath.Ext(chemin); ext != ".gz" {
 		return ext
 	}

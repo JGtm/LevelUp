@@ -5,19 +5,22 @@
 #   bash scripts/ci_go_shard.sh <lot>                un argument par ligne : `-timeout` et sa durée,
 #                                                    filtre éventuel (-run/-skip et son motif), puis les
 #                                                    paquets du lot (./chemin, relatifs à SON module)
-#   bash scripts/ci_go_shard.sh --module <lot>       le module du lot (dossier relatif à la racine du
-#                                                    dépôt) : le `go test` du lot se lance depuis lui
+#   bash scripts/ci_go_shard.sh --module <lot>       le module du lot, tel qu'écrit dans la définition
+#   bash scripts/ci_go_shard.sh --dossier <lot>      le dossier (relatif à la racine du dépôt) d'où le
+#                                                    `go test` du lot se lance
+#   bash scripts/ci_go_shard.sh --coverpkg <lot>     la valeur de `-coverpkg` du lot (tout SON module)
 #   bash scripts/ci_go_shard.sh --lots               noms des lots, un par ligne
 #   bash scripts/ci_go_shard.sh --lots-du-module <m> noms des lots du module <m>, un par ligne
 #   bash scripts/ci_go_shard.sh --modules            modules de la définition, un par ligne
 #   bash scripts/ci_go_shard.sh --verifier           prouve la partition (cf. ci-dessous) et la résume
 #
 # La définition des lots vit dans .github/ci/go-shards.txt (syntaxe documentée en tête de ce
-# fichier). Chaque lot appartient à un MODULE Go de l'espace de travail (directive `module`, ADR
-# 0041 ; `apps/go-api` par défaut) : `./...` ne franchit jamais la frontière d'un module, donc la
-# partition se prouve MODULE PAR MODULE. Ce script confronte la définition à
-# `go list -tags=integration ./...` de chaque module — la MÊME énumération que
-# `go test -tags=integration ./...` depuis ce module — et refuse (code 1, message sur stderr) toute
+# fichier). Chaque lot appartient à un MODULE Go (directive `module` ; `apps/go-api` par défaut) :
+# soit un dossier du dépôt qui porte un go.mod, soit le chemin d'un module dont apps/go-api dépend
+# (une brique publiée, ADR 0043), dont les tests se jouent depuis apps/go-api, à la version que fixe
+# son go.mod. La partition se prouve MODULE PAR MODULE. Ce script confronte la définition à
+# `go list -tags=integration <module>/...` de chaque module — la MÊME énumération que le
+# `go test -tags=integration` du module — et refuse (code 1, message sur stderr) toute
 # définition qui perdrait ou dupliquerait un paquet ou des tests :
 #   - un motif qui ne désigne aucun paquet de son module (lot périmé) ;
 #   - un paquet dans plusieurs lots, hors partition complémentaire (`run:L1`, ..., `run:Ln` et un
@@ -29,7 +32,7 @@
 # calcule, pas une liste écrite à la main.
 #
 # La sortie se consomme sans passer par le shell pour la découpe :
-#   cd "$(bash scripts/ci_go_shard.sh --module "$LOT")"
+#   cd "$(bash scripts/ci_go_shard.sh --dossier "$LOT")"
 #   out=$(bash ../../scripts/ci_go_shard.sh "$LOT") || exit 1
 #   mapfile -t args <<< "$out"
 #   go test ... "${args[@]}"
@@ -41,11 +44,11 @@ DEF_FILE="${CI_GO_SHARDS_FILE:-$REPO_ROOT/.github/ci/go-shards.txt}"
 MODULE_PAR_DEFAUT="apps/go-api"
 
 usage() {
-  echo "usage: $0 <lot> | --module <lot> | --lots | --lots-du-module <module> | --modules | --verifier" >&2
+  echo "usage: $0 <lot> | --module <lot> | --dossier <lot> | --coverpkg <lot> | --lots | --lots-du-module <module> | --modules | --verifier" >&2
   exit 2
 }
 case "${1:-}" in
-  --module | --lots-du-module)
+  --module | --dossier | --coverpkg | --lots-du-module)
     [[ $# -eq 2 ]] || usage
     MODE="$1:$2"
     ;;
@@ -73,17 +76,28 @@ mapfile -t MODULES < <(
     awk '!vu[$0]++'
 )
 
-# Paquets de chaque module, « <module> <chemin relatif au module> » par ligne. `go list -m` rend
-# TOUS les modules de l'espace de travail (go.work) : le chemin d'un module se lit dans son go.mod.
+# Un module de la définition est un dossier du dépôt (il porte un go.mod) ou le chemin d'un module
+# dont apps/go-api dépend (premier élément avec un point : `github.com/...`), listé depuis apps/go-api.
+est_dependance() { [[ "${1%%/*}" == *.* ]]; }
+
+# Paquets de chaque module, « <module> <chemin relatif au module> » par ligne.
 PKG_FILE="$(mktemp)"
 trap 'rm -f "$PKG_FILE"' EXIT
 for mod in "${MODULES[@]}"; do
-  if [[ ! -f "$REPO_ROOT/$mod/go.mod" ]]; then
-    echo "ci_go_shard: module $mod sans go.mod ($REPO_ROOT/$mod/go.mod)" >&2
-    exit 1
+  if est_dependance "$mod"; then
+    chemin="$mod"
+    dossier="$MODULE_PAR_DEFAUT"
+    cible="$mod/..."
+  else
+    if [[ ! -f "$REPO_ROOT/$mod/go.mod" ]]; then
+      echo "ci_go_shard: module $mod sans go.mod ($REPO_ROOT/$mod/go.mod)" >&2
+      exit 1
+    fi
+    chemin="$(awk '$1 == "module" { print $2; exit }' "$REPO_ROOT/$mod/go.mod" | tr -d '\r')"
+    dossier="$mod"
+    cible="./..."
   fi
-  chemin="$(awk '$1 == "module" { print $2; exit }' "$REPO_ROOT/$mod/go.mod" | tr -d '\r')"
-  (cd "$REPO_ROOT/$mod" && CGO_ENABLED=1 go list -tags=integration ./...) | tr -d '\r' |
+  (cd "$REPO_ROOT/$dossier" && CGO_ENABLED=1 go list -tags=integration "$cible") | tr -d '\r' |
     awk -v mod="$mod" -v chemin="$chemin" '{ p = $0; if (p == chemin) p = "."; else if (index(p, chemin "/") == 1) p = substr(p, length(chemin) + 2); print mod, p }' >> "$PKG_FILE"
 done
 if [[ ! -s "$PKG_FILE" ]]; then
@@ -96,6 +110,12 @@ awk -v mode="$MODE" -v defmod="$MODULE_PAR_DEFAUT" '
     print "ci_go_shard: " msg > "/dev/stderr"
     failed = 1
     exit 1
+  }
+  # Le module m est-il un module dépendance (premier élément avec un point) plutôt qu un dossier ?
+  function dependance(m,    premier) {
+    premier = m
+    sub(/\/.*/, "", premier)
+    return (index(premier, ".") > 0)
   }
   # Le paquet p (chemin relatif au module) est-il désigné par le motif pat (./a/b ou ./a/b/...) ?
   function matches(pat, p,    base) {
@@ -112,7 +132,7 @@ awk -v mode="$MODE" -v defmod="$MODULE_PAR_DEFAUT" '
     sub(/#.*/, ""); sub(/\r$/, "")
     if (NF == 0) next
     if ($1 == "module") {
-      if (NF != 2) die("module attend un dossier relatif à la racine du dépôt")
+      if (NF != 2) die("module attend un dossier relatif à la racine du dépôt ou le chemin d un module")
       cur = $2
       next
     }
@@ -274,9 +294,15 @@ awk -v mode="$MODE" -v defmod="$MODULE_PAR_DEFAUT" '
       for (m in rest) printf "  module %s : complément de %d paquets (lot %s)\n", m, nrest[m], lname[rest[m]]
       exit 0
     }
-    if (index(mode, "--module:") == 1) {
-      name = substr(mode, length("--module:") + 1)
-      for (l = 1; l <= nl; l++) if (lname[l] == name) { print lmod[l]; exit 0 }
+    if (index(mode, "--module:") == 1 || index(mode, "--dossier:") == 1 || index(mode, "--coverpkg:") == 1) {
+      quoi = substr(mode, 1, index(mode, ":") - 1)
+      name = substr(mode, length(quoi) + 2)
+      for (l = 1; l <= nl; l++) if (lname[l] == name) {
+        if (quoi == "--module") print lmod[l]
+        else if (quoi == "--dossier") print (dependance(lmod[l]) ? defmod : lmod[l])
+        else print (dependance(lmod[l]) ? lmod[l] "/..." : "./...")
+        exit 0
+      }
       die("lot inconnu : " name " (lots : voir --lots)")
     }
     for (l = 1; l <= nl; l++) if (lname[l] == mode) target = l
@@ -292,6 +318,10 @@ awk -v mode="$MODE" -v defmod="$MODULE_PAR_DEFAUT" '
       for (j = 1; j <= nn; j++) motif = motif (j > 1 ? "|" : "") heavy[names[j]]
       print "^(" motif ")$"
     }
-    for (i = 1; i <= np; i++) if (in_lot[target, i]) print (pk[i] == "." ? "." : "./" pk[i])
+    tm = lmod[target]
+    for (i = 1; i <= np; i++) if (in_lot[target, i]) {
+      if (dependance(tm)) print (pk[i] == "." ? tm : tm "/" pk[i])
+      else print (pk[i] == "." ? "." : "./" pk[i])
+    }
   }
 ' "$PKG_FILE" "$DEF_FILE"
