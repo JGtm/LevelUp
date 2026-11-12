@@ -282,6 +282,7 @@ var openReadWriteAllowlist = map[string]openReadWriteSite{
 	"cmd/levelup/cmd_backfill_h5_kill_mechanics.go": cli(1),
 	"cmd/levelup/cmd_backfill_is_ranked.go":         cli(1),
 	"cmd/levelup/cmd_backfill_killsource.go":        cli(1),
+	"cmd/levelup/cmd_backfill_lead_share.go":        cli(1),
 	"cmd/levelup/cmd_backfill_match_summaries.go":   cli(1),
 	"cmd/levelup/cmd_backfill_medailles_feed.go":    cli(1),
 	"cmd/levelup/cmd_backfill_pad_tiers.go":         cli(1),
