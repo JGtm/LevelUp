@@ -7,7 +7,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -16,11 +15,12 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/port"
 )
 
 // loadMatchMeta lit les métadonnées du match (Q11), préalable bloquant des deux réponses.
 //
-// L'ABSENCE ET LA PANNE NE SONT PAS LE MÊME 404. Absence (sql.ErrNoRows, préservé par le
+// L'ABSENCE ET LA PANNE NE SONT PAS LE MÊME 404. Absence (port.ErrNotFound, préservé par le
 // wrapping %w du repo) : match jamais synchronisé, domain.ErrNotFound (404 propre, aucun fetch
 // live vers l'API du titre depuis ces pages). Panne technique (schéma en retard, timeout,
 // verrou, I/O) : erreur rendue telle quelle (500) et journal ERREUR — la déguiser en « pas
@@ -30,7 +30,7 @@ func (s *MatchViewService) loadMatchMeta(ctx context.Context, matchID string) (*
 	if err == nil {
 		return meta, nil
 	}
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, port.ErrNotFound) {
 		slog.InfoContext(ctx, "match_view: match absent du substrat local (pas encore synchronisé)",
 			"match_id", matchID, "err", err)
 		return nil, domain.ErrNotFound("match", matchID)

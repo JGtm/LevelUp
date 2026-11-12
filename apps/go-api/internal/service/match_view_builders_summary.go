@@ -5,7 +5,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log/slog"
 	"math"
@@ -148,7 +147,7 @@ func computeExpectedAssists(
 		// Aucune ligne `__global__` : le modèle populationnel n'est pas seedé (donnée manquante,
 		// WARN). Toute autre erreur est une panne de lecture (ERROR, DEBUG si requête abandonnée).
 		level := observability.LevelUnlessCanceled(ctx, err, slog.LevelError)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, port.ErrNotFound) {
 			level = slog.LevelWarn
 		}
 		slog.Log(ctx, level, "match_view: modèle populationnel d'assists attendus illisible, valeur omise",

@@ -45104,8 +45104,6 @@
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestConvertEncounters_DegradesGracefullyWhenStatsMissing","Elapsed":0}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"cont","Package":"levelup/go-api/internal/service","Test":"TestBuildMatchHeader_MapImageRegistry"}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildMatchHeader_MapImageRegistry","Output":"=== CONT  TestBuildMatchHeader_MapImageRegistry\n"}
-{"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestLogBestEffortErr_LevelByErrorType/sql.ErrNoRows_→_DEBUG"}
-{"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestLogBestEffortErr_LevelByErrorType/sql.ErrNoRows_→_DEBUG","Output":"=== RUN   TestLogBestEffortErr_LevelByErrorType/sql.ErrNoRows_→_DEBUG\n"}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"cont","Package":"levelup/go-api/internal/service","Test":"TestBuildImpactRolesMatrix_PreservesSquadOrder"}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildImpactRolesMatrix_PreservesSquadOrder","Output":"=== CONT  TestBuildImpactRolesMatrix_PreservesSquadOrder\n"}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"cont","Package":"levelup/go-api/internal/service","Test":"TestBuildKillingSpreeMax_SkipsNilSpree"}
@@ -45114,8 +45112,6 @@
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestExplorerService_PlayerIntersection_DataAdapterParity","Output":"=== CONT  TestExplorerService_PlayerIntersection_DataAdapterParity\n"}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"cont","Package":"levelup/go-api/internal/service","Test":"TestBuildContributions_EmptyInputs"}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildContributions_EmptyInputs","Output":"=== CONT  TestBuildContributions_EmptyInputs\n"}
-{"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestLogBestEffortErr_LevelByErrorType/sql.ErrNoRows_→_DEBUG","Output":"--- PASS: TestLogBestEffortErr_LevelByErrorType/sql.ErrNoRows_→_DEBUG (0.00s)\n"}
-{"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestLogBestEffortErr_LevelByErrorType/sql.ErrNoRows_→_DEBUG","Elapsed":0}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"cont","Package":"levelup/go-api/internal/service","Test":"TestBuildKillingSpreeMax_SmoothsValues"}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildKillingSpreeMax_SmoothsValues","Output":"=== CONT  TestBuildKillingSpreeMax_SmoothsValues\n"}
 {"Time":"2026-06-26T23:51:38.1096217+02:00","Action":"cont","Package":"levelup/go-api/internal/service","Test":"TestBuildHsPkStacked"}
@@ -45566,16 +45562,12 @@
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildHsPkStacked","Elapsed":0}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildFragsDeathsCombined","Output":"--- PASS: TestBuildFragsDeathsCombined (0.00s)\n"}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildFragsDeathsCombined","Elapsed":0}
-{"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestLogBestEffortErr_LevelByErrorType/wrapped_sql.ErrNoRows_→_DEBUG"}
-{"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestLogBestEffortErr_LevelByErrorType/wrapped_sql.ErrNoRows_→_DEBUG","Output":"=== RUN   TestLogBestEffortErr_LevelByErrorType/wrapped_sql.ErrNoRows_→_DEBUG\n"}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_PartialResults","Output":"--- PASS: TestNewFriendsExtrasResolver_PartialResults (0.00s)\n"}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestNewFriendsExtrasResolver_PartialResults","Elapsed":0}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildMedalsGallery_GroupsByMatchAndPlayer","Output":"--- PASS: TestBuildMedalsGallery_GroupsByMatchAndPlayer (0.00s)\n"}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildMedalsGallery_GroupsByMatchAndPlayer","Elapsed":0}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildMedalsGallery_RemapsXUIDToGamertag","Output":"--- PASS: TestBuildMedalsGallery_RemapsXUIDToGamertag (0.00s)\n"}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildMedalsGallery_RemapsXUIDToGamertag","Elapsed":0}
-{"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestLogBestEffortErr_LevelByErrorType/wrapped_sql.ErrNoRows_→_DEBUG","Output":"--- PASS: TestLogBestEffortErr_LevelByErrorType/wrapped_sql.ErrNoRows_→_DEBUG (0.00s)\n"}
-{"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestLogBestEffortErr_LevelByErrorType/wrapped_sql.ErrNoRows_→_DEBUG","Elapsed":0}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildPerMinuteStats_AggregatesByPlayer","Output":"--- PASS: TestBuildPerMinuteStats_AggregatesByPlayer (0.00s)\n"}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildPerMinuteStats_AggregatesByPlayer","Elapsed":0}
 {"Time":"2026-06-26T23:51:38.1111804+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildAssistsChart_OneTracePerPlayer","Output":"--- PASS: TestBuildAssistsChart_OneTracePerPlayer (0.00s)\n"}

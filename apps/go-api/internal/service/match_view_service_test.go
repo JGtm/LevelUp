@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,6 +10,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/port"
 )
 
 // --- mock ---
@@ -275,13 +275,13 @@ func TestMatchViewService_GetMatchView_OK(t *testing.T) {
 // L'ABSENCE ET LA PANNE NE SONT PAS LE MÊME 404 (correctif 2026-08-29).
 //
 // L'ancien test de ce nom fabriquait `errors.New("no rows in result set")` — une erreur qui
-// N'EST PAS sql.ErrNoRows — et exigeait un not_found : il VERROUILLAIT le masquage qui a
+// N'EST PAS port.ErrNotFound — et exigeait un not_found : il VERROUILLAIT le masquage qui a
 // transformé une panne totale (Binder Error sur snapshot au schéma en retard) en « match pas
 // encore synchronisé » sur tous les matchs, sans une trace en Error. Même patron que le test
 // de triggerDownload qui exigeait la révocation synchrone : un test vert qui protège le bug.
 func TestMatchViewService_GetMatchView_MetaAbsent(t *testing.T) {
-	// L'ABSENCE se signale par sql.ErrNoRows, wrappé comme le fait le vrai repo (%w).
-	repo := &mockMatchViewRepo{metaErr: fmt.Errorf("MatchViewRepo.GetMatchMeta: %w", sql.ErrNoRows)}
+	// L'ABSENCE se signale par port.ErrNotFound, wrappé comme le fait le vrai repo (%w).
+	repo := &mockMatchViewRepo{metaErr: fmt.Errorf("MatchViewRepo.GetMatchMeta: %w", port.ErrNotFound)}
 	svc := NewMatchViewService(repo, "xuid1")
 
 	_, err := svc.GetMatchView(context.Background(), "m1")

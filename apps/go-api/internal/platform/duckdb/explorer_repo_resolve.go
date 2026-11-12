@@ -39,7 +39,7 @@ func (r *ExplorerRepo) ResolveXUIDByGamertag(ctx context.Context, gamertag strin
 			return "", fmt.Errorf("ExplorerRepo.ResolveXUIDByGamertag(%q): %w", gamertag, err)
 		}
 	}
-	return "", fmt.Errorf("ExplorerRepo.ResolveXUIDByGamertag(%q): %w", gamertag, sql.ErrNoRows)
+	return "", fmt.Errorf("ExplorerRepo.ResolveXUIDByGamertag(%q): %w", gamertag, NotFound(sql.ErrNoRows))
 }
 
 // qResolveParAlias : niveau 1 de la cascade — un alias non vide gagne toujours.

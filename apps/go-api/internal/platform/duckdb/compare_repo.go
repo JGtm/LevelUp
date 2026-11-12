@@ -149,11 +149,11 @@ func (r *CompareRepo) GetPlayerATH(ctx context.Context) (*domain.PlayerATH, erro
 	var careerRank int64
 	rows, err := r.pdb.Player.QueryRowRecovered(ctx, q)
 	if err != nil {
-		return nil, fmt.Errorf("CompareRepo.GetPlayerATH: %w", err)
+		return nil, fmt.Errorf("CompareRepo.GetPlayerATH: %w", NotFound(err))
 	}
 	defer rows.Close()
 	if err := rows.Scan(&careerRank, &perfATH, &lusrATH); err != nil {
-		return nil, fmt.Errorf("CompareRepo.GetPlayerATH: %w", err)
+		return nil, fmt.Errorf("CompareRepo.GetPlayerATH: %w", NotFound(err))
 	}
 	return &domain.PlayerATH{
 		CareerRank: int(careerRank),
@@ -194,11 +194,11 @@ func (r *CompareRepo) GetPlayerATHFor(ctx context.Context, gamertag, titleSlug s
 	var careerRank int64
 	rows, err := pdb.Player.QueryRowRecovered(ctx, q)
 	if err != nil {
-		return nil, fmt.Errorf("CompareRepo.GetPlayerATHFor %s: %w", gamertag, err)
+		return nil, fmt.Errorf("CompareRepo.GetPlayerATHFor %s: %w", gamertag, NotFound(err))
 	}
 	defer rows.Close()
 	if err := rows.Scan(&careerRank, &perfATH, &lusrATH); err != nil {
-		return nil, fmt.Errorf("CompareRepo.GetPlayerATHFor %s: %w", gamertag, err)
+		return nil, fmt.Errorf("CompareRepo.GetPlayerATHFor %s: %w", gamertag, NotFound(err))
 	}
 	return &domain.PlayerATH{
 		CareerRank: int(careerRank),

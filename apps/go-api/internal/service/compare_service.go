@@ -7,7 +7,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -243,12 +242,12 @@ func applyCSRSummary(s *domain.NormalizedPlayerStats, sum csrSummary) {
 	s.HighestCSRAllTimeLabel = sum.allTimeLabel
 }
 
-// logBestEffortErr distingue les erreurs "pas de data" (sql.ErrNoRows, attendu)
+// logBestEffortErr distingue les erreurs "pas de data" (port.ErrNotFound, attendu)
 // des anomalies SQL/conn (anormal). Pattern motivé par le bug 2026-05-26 où
 // un Catalog Error a vécu ~1 semaine sous Debug silencieux. Cf. thought_log
 // "Fix shared.X via SharedReader — 10 sites cassés en silence".
 func logBestEffortErr(ctx context.Context, msg string, err error, kv ...any) {
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, port.ErrNotFound) {
 		slog.DebugContext(ctx, msg+" (no rows)", kv...)
 		return
 	}

@@ -5,7 +5,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -351,7 +350,7 @@ func (s *ExplorerService) GetCommonMatches(
 		switch {
 		case err == nil:
 			otherXUID = resolved
-		case errors.Is(err, sql.ErrNoRows) && s.liveResolver != nil:
+		case errors.Is(err, port.ErrNotFound) && s.liveResolver != nil:
 			// Joueur JAMAIS croisé (absent de v_gamertag_lookup) : fallback live
 			// (PeopleHub→profil Xbox). Sur succès, le profil cible PUBLIC est servi
 			// (buildTargetProfile fonctionne pour tout xuid) ; l'intersection « matchs

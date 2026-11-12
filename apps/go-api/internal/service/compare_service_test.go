@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -13,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/port"
 )
 
 // --- mocks ---
@@ -594,7 +594,7 @@ func sortDurations(d []time.Duration) {
 }
 
 // TestLogBestEffortErr_LevelByErrorType vérifie que logBestEffortErr remonte
-// `sql.ErrNoRows` en Debug (cas attendu : pas de data) mais toute autre erreur
+// `port.ErrNotFound` en Debug (cas attendu : pas de data) mais toute autre erreur
 // en Warn (anomalie). Anti-régression du bug 2026-05-26 où un Catalog Error
 // SharedReader vivait sous Debug silencieux.
 func TestLogBestEffortErr_LevelByErrorType(t *testing.T) {
@@ -610,8 +610,8 @@ func TestLogBestEffortErr_LevelByErrorType(t *testing.T) {
 		err       error
 		wantLevel string
 	}{
-		{"sql.ErrNoRows → DEBUG", sql.ErrNoRows, "DEBUG"},
-		{"wrapped sql.ErrNoRows → DEBUG", fmt.Errorf("query: %w", sql.ErrNoRows), "DEBUG"},
+		{"port.ErrNotFound → DEBUG", port.ErrNotFound, "DEBUG"},
+		{"wrapped port.ErrNotFound → DEBUG", fmt.Errorf("query: %w", port.ErrNotFound), "DEBUG"},
 		{"generic err → WARN", errors.New("connection refused"), "WARN"},
 		{"Catalog Error → WARN", errors.New("Catalog Error: Table does not exist"), "WARN"},
 	}

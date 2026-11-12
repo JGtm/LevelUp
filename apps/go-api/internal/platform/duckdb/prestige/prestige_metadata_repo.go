@@ -368,8 +368,9 @@ func (r *PrestigePresetArcRepo) GetByID(ctx context.Context, id string) (prestig
 		FROM preset_arc WHERE id = ?
 	`, id)
 	if err != nil {
-		// Inclut sql.ErrNoRows : contrat inchangé (AdoptPresetArc mappe ErrArcNotFound).
-		return p, translateLockErr(ctx, err)
+		// L'absence (sql.ErrNoRows) est rendue reconnaissable comme port.ErrNotFound (duckdb.NotFound) :
+		// contrat inchangé pour ceux qui testent sql.ErrNoRows (AdoptPresetArc mappe ErrArcNotFound).
+		return p, duckdb.NotFound(translateLockErr(ctx, err))
 	}
 	defer rows.Close()
 	err = rows.Scan(&p.ID, &p.TitleSlug, &p.SchemaVersion, &p.UpdatedAt)

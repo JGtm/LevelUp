@@ -2,8 +2,8 @@ package prestige
 
 import (
 	"context"
-	"database/sql"
 	"errors"
+	"levelup/go-api/internal/domain"
 	"log/slog"
 
 	"levelup/go-api/internal/i18n"
@@ -107,7 +107,7 @@ func (s *service) loadPresetForTitle(ctx context.Context, id string) *PresetArc 
 // (modèle retiré) est un cas normal (Debug), une lecture en échec est une anomalie (Warn).
 func logUnresolvedOrigin(ctx context.Context, kind, id string, err error) {
 	level := slog.LevelWarn
-	if errors.Is(err, ErrChallengeNotFound) || errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, ErrChallengeNotFound) || errors.Is(err, domain.ErrRecordNotFound) {
 		level = slog.LevelDebug
 	}
 	slog.Log(ctx, level, "prestige: origine du texte stocké illisible, texte stocké servi",

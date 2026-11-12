@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"reflect"
@@ -349,7 +348,7 @@ func TestGetReplayContext_AucunChargementLourd(t *testing.T) {
 // non participant → match_not_participant (avant tout chargement), panne de métadonnées → erreur.
 func TestGetReplayContext_ErreursCommeLaVueComplete(t *testing.T) {
 	absent := replayFixture()
-	absent.meta, absent.metaErr = nil, fmt.Errorf("lecture : %w", sql.ErrNoRows)
+	absent.meta, absent.metaErr = nil, fmt.Errorf("lecture : %w", port.ErrNotFound)
 	svc, _ := replayFixtureService(absent)
 	var apiErr *domain.APIError
 	if _, err := svc.GetReplayContext(context.Background(), "m1"); !errors.As(err, &apiErr) || apiErr.Code != "not_found" {
