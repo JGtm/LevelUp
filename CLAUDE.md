@@ -13,7 +13,7 @@
 |---|---|---|
 | API + sync + analyse | **Go** (chi + Huma, slog, DuckDB) | `apps/go-api/` |
 | Frontend | **React/TypeScript** (Vite, TanStack Router/Query/Table, ECharts) | `apps/web/` |
-| Briques Go (ADR 0041 ; publication, ADR 0043) | **Go**, dépendances publiées de `apps/go-api/go.mod` (aucun `go.work` versionné ; espace de travail local : `scripts/briques-workspace.sh` + `GOWORK`) | dépôts dédiés `github.com/JGtm/halo-infinite-files-reader` (lecteurs de fichiers du jeu), `halo-infinite-map-images` (images de carte), `halo-infinite-film-decoder` (décodeur de film), `halo-api` (API Halo) ; plus de `libs/` dans ce dépôt depuis la bascule de la 8.1.2 |
+| Briques Go (ADR 0041 ; publication, ADR 0043) | **Go**, dépendances publiées de `apps/go-api/go.mod` (aucun `go.work` versionné ; espace de travail local : `scripts/briques-workspace.sh` + `GOWORK`) | dépôts dédiés `github.com/JGtm/halo-infinite-files-reader` (lecteurs de fichiers du jeu), `halo-infinite-map-images` (images de carte), `halo-infinite-film-decoder` (décodeur de film), `halo-api` (API Halo) ; plus de `libs/` dans ce dépôt depuis la bascule de la 8.1.2 : le code d'une brique se modifie dans son dépôt dédié, jamais ici ; nouvelle version = un tag là-bas, puis une montée du `require` (ADR 0043, amendement du 2026-11-12) |
 | API Halo (protocole, ADR 0042) | **Go**, paquets sans état ni politique | brique `github.com/JGtm/halo-api` (`xblauth` : chaîne d'échange ; `infinite` : services Halo Infinite ; `halo5` : services Halo 5 ; `xboxlive` : succès Xbox ; services UGC cartes et fichiers GameCMS dans `infinite` ; `haloapitest` : enregistreur de tests, public) ; l'exploitation reste dans `platform/auth`, `games/halo_infinite/haloadapter`, `games/halo_5`, `sync/filmfetch` |
 | Coquille Windows (ADR 0045) | **Rust / Tauri 2** : fenêtre, sidecar Go, updater ; aucune logique métier | `apps/desktop/` |
 | Stockage | **DuckDB** par titre + Parquet (archives) | `data/titles/{slug}/` |
@@ -219,12 +219,16 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
 make go-api-test            # tests Go rapides (domain/analysis/contracttest)
 cd apps/go-api && go test ./...                      # suite complète
 cd apps/go-api && go test -tags=integration ./...    # inclut les tests persist anti-ART (OBLIGATOIRE avant livraison sync/persist)
-make go-api-test-gamefiles  # corpus cartes de la brique himap + internal/gamefilescorpus (tag `gamefiles`, EXIGE Halo installe, ~6 min)
+make go-api-test-gamefiles  # corpus cartes (paquet himap de la brique images de carte, par chemin d import) + internal/gamefilescorpus (tag `gamefiles`, EXIGE Halo installe, ~6 min)
 make go-api-lint            # golangci-lint
 make desktop-test           # coquille Rust (apps/desktop) : cargo test contre le faux serveur Go, clippy, fmt
-make gate-push              # filet local avant merge vers main (~25 min) : ratchet lint Go + typecheck/lint web + baseline de tests (voies film et DuckDB en parallèle) ; la CI reste le gate d'autorité
+make gate-push              # filet local avant merge vers main (~25 min) : ratchet lint Go + typecheck/lint web + baseline de tests (voies briques et DuckDB en parallèle ; GOWORK=off) ; la CI reste le gate d'autorité
 powershell -File scripts/disk-hygiene.ps1                  # disque : simulation (caches Go dédiés, dossiers de session, C:\t) ; -Apply supprime
 powershell -File scripts/disk-hygiene.ps1 -Lot <lot> -Apply # clôture de lot : supprime go-build-<lot> / golangci-<lot> (convention : skill plan-execution §5)
+
+# Briques (dépôts dédiés ; détail : docs/COMMANDS.md § « Développer une brique »)
+bash scripts/briques-workspace.sh ../<clone-de-brique>     # engendre levelup-briques.work (LOCAL, jamais versionné) ; puis GOWORK="$PWD/levelup-briques.work"
+cd apps/go-api && go get github.com/JGtm/<brique>@vX.Y.Z && make tidy   # monter le require après le tag posé sur le dépôt dédié
 
 # Frontend
 make check-types            # tsc
@@ -379,8 +383,8 @@ git commit -m "refactor(phase2): ..."
   fin — quitter un match n'est pas quitter la session ; `composition_sessions[].match_count`
   seule source d'un compte de session, `/filters/resolve` en repli de chargement seulement ;
   2 ratchets) · `0034` **décodeur de film** (profil immuable par build ; cinq couches
-  `source`→`profile`→`grammar`→`facts`→`replay`, les quatre premières sous `libs/film/internal/`,
-  fermées par le compilateur ; hors du module `libs/film`, on passe par la façade `libs/film/decfilm`, dont la
+  `source`→`profile`→`grammar`→`facts`→`replay`, les quatre premières sous `internal/` du dépôt du décodeur (`halo-infinite-film-decoder`),
+  fermées par le compilateur ; hors du module du décodeur, on passe par sa façade `decfilm`, dont la
   surface est tenue par `archlint/film_facade_surface_test.go` (186 symboles et 277
   identifiants `replay.X` hors du décodeur au 2026-09-30 ; réduction non retenue, V25) ;
   porte unique aux octets ; build inconnu = erreur typée + film mis de côté + compteur ; une
@@ -408,23 +412,25 @@ git commit -m "refactor(phase2): ..."
   `internal/i18n/locales_gen.go` ; un `normalizeLocale` / `i18n.Parse` par côté, jamais de repli binaire
   fr/en ; le serveur renvoie le libellé résolu ; langue complète ou refusée, repli `en` admis pour les
   noms de jeu seulement ; compteurs gelés à garde-rail ; amende 0003). ·
-  `0041` **modules Go sous `libs/`** (une brique = un module `github.com/JGtm/LevelUp/libs/<brique>`, paquets au
-  premier niveau, relié à `apps/go-api` par `go.work` sans `replace` ni `require` ; critère d'autonomie =
-  `go list -deps` sans `levelup/go-api` ; table `archlint/briques_imports_test.go` ; ratchets à règle générale
-  racinés sur l'espace de travail ; aucun fichier extrait du jeu dans une brique ; `./...` ne franchit pas un
-  module : `make libs-test`, pas de `go mod tidy` dans `apps/go-api` ; modules au rang
-  `film` → `himap` → `gamefiles`, plus `haloapi` qui n'importe aucune brique ; le décodeur de film garde ses
-  empreintes de couche par un cadre historique) ·
+  `0041` **briques Go = modules à part** (une brique = un module, paquets au premier niveau ; critère
+  d'autonomie = `go list -deps` sans `levelup/go-api` ; table `archlint/briques_imports_test.go` ; aucun fichier
+  extrait du jeu dans une brique ; modules au rang `film` → `himap` → `gamefiles`, plus `haloapi` qui n'importe
+  aucune brique ; le décodeur de film garde ses empreintes de couche par un cadre historique ; amendé le
+  2026-11-12 : les briques vivent dans leurs dépôts dédiés, `libs/` et `go.work` ont quitté ce dépôt, `./...` de
+  `apps/go-api` ne couvre que LevelUp, un espace de travail LOCAL non versionné `levelup-briques.work` désigné par
+  `GOWORK` sert au développement) ·
   `0042` **API Halo : protocole et exploitation** (paquets `xblauth`, `infinite`, `halo5` et
-  `xboxlive` de `libs/haloapi`, sans état ni politique ni import de LevelUp hors d'eux ; tout est passé :
+  `xboxlive` de la brique `halo-api`, sans état ni politique ni import de LevelUp hors d'eux ; tout est passé :
   `Doer` gardé par surface `netguard` et consulté avant le limiteur, `Retry` en valeur — trois politiques
   conservées —, `Endpoints`, `ClientAzure`, `Descriptor`, jetons et langue en paramètres ; octets de film
   COMPRESSÉS, `filmfetch` décompresse ; conversions DTO -> domaine dans `games/halo_infinite/haloadapter` et `games/halo_5` ;
-  ligne `haloapi` de `archlint/briques_imports_test.go` (module `libs/haloapi` depuis le 2026-11-01, avec
+  ligne `haloapi` de `archlint/briques_imports_test.go` (brique `halo-api` depuis le 2026-11-01, avec
   `halo5`, `xboxlive`, et les services UGC cartes et fichiers GameCMS dans `infinite`) ; amende 0031 D-1,
   précise 0023) ·
-  `0043` **publication des briques** (quatre modules publiables, `libs/gamefiles`, `libs/himap`, `libs/film` et `libs/haloapi`,
-  depuis le dépôt unique, `libs/film` ajouté par l'amendement du 2026-11-08 (README, exemple compilé, `NOTICE.md`, `require` sur les tags de `gamefiles` et `himap`) ; tags `libs/<brique>/vX.Y.Z` posés par l'utilisateur seul,
+  `0043` **publication des briques** (quatre modules publiables, `halo-infinite-files-reader`, `halo-infinite-map-images`,
+  `halo-infinite-film-decoder` et `halo-api` (`github.com/JGtm/<dépôt>`), d'abord depuis le dépôt unique (`libs/`), depuis la bascule du
+  2026-11-12 depuis leurs seuls dépôts dédiés, que LevelUp exige à `v1.0.1` (`halo-api` retire `v0.1.0` et `v1.0.0`) ; une nouvelle version = un tag sur le dépôt dédié, posé par l'utilisateur seul,
+  puis une montée du `require` dans `apps/go-api/go.mod` ; pseudo-version permise sur une branche de travail, tag obligatoire avant `main` ;
   `v1.0.0` depuis le 2026-11-09 (promesse de compatibilité semver, changement cassant = `/v2`), un numéro par module ; un README modèle unique par brique, exemple compilé
   par `example_test.go` ; licences : `gamefiles` GPL-3.0 à cause de `ooz`, `himap`, `film` et `haloapi` AGPL-3.0 ;
   critère de séparation en dépôt : contributeur externe, ou cadence indépendante, ou CI qui pèse, décision finale de

@@ -9,7 +9,8 @@ Xbox Live achievements, UGC map assets and GameCMS files, and is a module).
 Relates to: ADR 0023 and 0038 (tokens stay in LevelUp), ADR 0031 (data-source boundary), ADR 0012 (title adapters
 under `games/<slug>/`).
 Amended: 2026-11-08 (D-1, D-2, D-4, D-5): the film decoder `libs/film` becomes the fourth publishable brick; see the
-amendment before the references.
+amendment before the references. Amended: 2026-11-12: LevelUp requires the published bricks, `libs/` and `go.work` are gone (last amendment before the
+references).
 
 ## Vocabulary
 
@@ -342,6 +343,41 @@ the "Experimental" status no longer described them).
   in a commit after the tag below it, with its `go.sum` lines: `himap` after `libs/gamefiles/v1.0.0`, `film` after
   `libs/himap/v1.0.0`; the tag of an upper module is set on the commit that carries its bump.
 - The deprecation tags foreseen for the old path become `v1.0.1` instead of `v0.1.1` when that step is executed.
+
+## Amendment of 2026-11-12 — LevelUp requires the published bricks; `libs/` and `go.work` leave the repository
+
+Source: the 8.1.2 switch (commit `bc24c1dd22`, #201), executing the second half of D-5 that the amendment of 2026-11-09
+left undone.
+
+**Done.** `apps/go-api/go.mod` requires `github.com/JGtm/halo-infinite-files-reader`,
+`github.com/JGtm/halo-infinite-map-images`, `github.com/JGtm/halo-api` and
+`github.com/JGtm/halo-infinite-film-decoder`, all at `v1.0.1`. `libs/`, `go.work` and `go.work.sum` are deleted. The
+`v1.0.1` is the same number for the four repositories: the cause is
+`halo-api`, whose published `v1.0.0` still carried a ranking capture with the XUIDs and gamertags of third parties,
+pseudonymised in `v1.0.1`; `halo-api` retracts `v0.1.0` and `v1.0.0` (`retract [v0.1.0, v1.0.0]`). A retraction does not purge the history nor the Go proxy, and a
+published tag is never rewritten. No tag `libs/<brick>/v1.0.0` was set (the "Tag `libs/<brick>/v1.0.0`" bullet of the
+v1.0.0 amendment is not executed); the old path receives deprecation tags only, `v1.0.1`.
+
+**Superseded.** The rule of the amendment of 2026-11-09 "the dedicated repositories are published copies, produced from
+LevelUp by the recipe, never edited directly" ends with the switch: **the dedicated repository is the source**, the
+recipe (subtree split, path rewrite) is retired, and the `libs/<brick>` tags are no longer how a version is made.
+
+**Rules from now on.**
+
+- The code of a brick changes in its dedicated repository (its CI is its gate). One version = one tag `vX.Y.Z` on that
+  repository, set by the maintainer alone, one number per repository, a tag is never moved.
+- LevelUp adopts a version by bumping the `require` of the brick in `apps/go-api/go.mod` (`go get
+  github.com/JGtm/<brick>@vX.Y.Z`, then `make tidy`, which runs `GOWORK=off go mod tidy`). A pseudo-version (`@<sha>`) is
+  allowed on a working branch; a tag is required before the branch reaches `main`.
+- The local development loop is a workspace that is never versioned: `scripts/briques-workspace.sh` writes
+  `levelup-briques.work`, designated by `GOWORK` only; a versioned `go.work` is refused by
+  `archlint/no_go_work_versionne_test.go`. See ADR 0041, amendment of 2026-11-12, and `docs/COMMANDS.md` § "Developing
+  a brick".
+- The licences of D-4 are unchanged, and the switch changes nothing for LevelUp's own licence: `cmd/server` already
+  linked `gamefiles/mapvar` (GPL-3.0-only) before it, which is compatible with AGPL section 13, and the `ooz` guard-rail
+  stays.
+- Every `libs/<brick>` path written above in this ADR designates the root of the dedicated repository (ADR 0041,
+  amendment of 2026-11-12). The text above is left as it was written.
 
 ## References
 

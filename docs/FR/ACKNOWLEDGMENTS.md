@@ -18,11 +18,11 @@ des références dont nous avons appris, pas du code que nous embarquons, sauf l
   Halo, et la voie d'import des données OpenSpartan.
 - **Gravemind2401** ([Gravemind2401](https://github.com/Gravemind2401)) pour [Reclaimer](https://github.com/Gravemind2401/Reclaimer) —
   sa lecture des formats de fichiers de cartes Halo est la référence derrière notre décodeur de
-  géométrie (`libs/himap/himap/` : sections SBSP, filtres de maillage, groupes SDDT).
+  géométrie (`halo-infinite-map-images/himap/` : sections SBSP, filtres de maillage, groupes SDDT).
 - **Gamergotten** ([Gamergotten](https://github.com/Gamergotten)) et les contributeurs de
   [Infinite Runtime Tag Viewer](https://github.com/Gamergotten/Infinite-runtime-tagviewer), avec
   **Lord Zedd** et **Exhibit** qui ont extrait les définitions de tags qu'il porte : les fichiers de
-  disposition `libs/himap/himap/sbsp.xml` et les deux `weap.xml` de `apps/go-api/cmd/` sont des copies
+  disposition `halo-infinite-map-images/himap/sbsp.xml` et les deux `weap.xml` de `apps/go-api/cmd/` sont des copies
   non modifiées de ses fichiers `Plugins/` (voir `NOTICE`).
 
 Si vous utilisez ce projet, pensez à soutenir aussi les projets amont en les « star » sur GitHub.

@@ -5,6 +5,8 @@ Status: accepted (2026-10-28); implementation tracked in
 and `.ai/V8/PLAN_DECOUPLAGE_BRIQUES_D2_2026-10-28.md` (lot 3 creates the third, `libs/film`, 2026-10-29); the fourth,
 `libs/haloapi`, comes with the publication plan (amendment of 2026-11-01 at the end of this ADR, ADR 0043).
 Source: `.ai/AUDIT_DECOUPLAGE_BRIQUES_2026-10-27.md` (decision 1 and the addendum of 2026-10-28).
+Amended: 2026-11-12 (location and workspace): the bricks left `libs/` for dedicated repositories and `go.work` is gone; see the
+last section.
 Relates to: ADR 0012 (title-specific adapters live under `games/<slug>/`), ADR 0034 (film decoder,
 its façade and layers), ADR 0011 (canonical / semantic / asset-URL boundary).
 
@@ -205,3 +207,38 @@ Plan: `.ai/V8/PLAN_PUBLICATION_BRIQUES_2026-10-30.md` (lots 3 and 4).
   is then tagged first. The workspace keeps resolving the local copy. `libs/film` is not published (ADR 0043 D-1).
   Licences of the published modules are in ADR 0043 D-4 (D5's GPL note on `ooz` is unchanged).
 - **Amendment of 2026-11-08 (ADR 0043).** `libs/film` is published as the fourth brick (README, compiled example, `NOTICE.md`, `require` on the tags of `libs/gamefiles` and `libs/himap`, repository `JGtm/halo-infinite-film-decoder`); the sentence above, "`libs/film` is not published", is superseded.
+
+## Amendment of 2026-11-12 (ADR 0043) — the bricks leave the repository; `libs/` and `go.work` are gone
+
+Source: the 8.1.2 switch (commit `bc24c1dd22`, #201), which executes the second half of ADR 0043 D-5.
+
+**What changed.** `apps/go-api/go.mod` requires the four bricks at their published version (v1.0.1:
+`github.com/JGtm/halo-infinite-files-reader`, `github.com/JGtm/halo-infinite-map-images`,
+`github.com/JGtm/halo-api`, `github.com/JGtm/halo-infinite-film-decoder`); `libs/`, `go.work` and `go.work.sum` no longer
+exist in this repository. The decisions of this ADR about the **form** of a brick hold unchanged (one module, packages at
+the first level, autonomy tested by `go list -deps`, rank `film` → `himap` → `gamefiles` and `haloapi` alone, no
+file extracted from the game inside a brick, the historical frame of the decoder's layer fingerprints). What is
+superseded:
+
+- The decisions that tie a brick to the repository: the location under `libs/<brick>/`, the module path
+  `github.com/JGtm/LevelUp/libs/<brick>`, the `go.work` at the root, "no `require` line for a workspace module",
+  `make libs-test` (removed), the single `go` line shared by the workspace and the bricks, and the checklist
+  items that create a directory under `libs/`. Wherever this ADR, or ADR 0034, 0042 and 0045, writes
+  `libs/<brick>/...`, read the root of the dedicated repository: `libs/film` is `halo-infinite-film-decoder`,
+  `libs/gamefiles` is `halo-infinite-files-reader`, `libs/himap` is `halo-infinite-map-images`, `libs/haloapi` is
+  `halo-api`, with the same packages below (for instance `libs/himap/himap/` is `himap/` in the map-images repository).
+  The history above is left as written.
+- `./...` of `apps/go-api` covers LevelUp only. A brick's tests run in its repository and in its CI; LevelUp plays the
+  packages it needs by import path (Windows lane, `gamefiles` corpus, coverage shards, the bricks lane of the test
+  baseline) and keeps the tests that need its data.
+- The sources of the bricks that the architecture ratchets walk are found by the resolver `internal/briques`
+  (`go list -m -f {{.Dir}}`), the module cache unless a local workspace is active. The string `libs/<brick>/<path>`
+  survives only as the **logical key** of the ratchet tables, no longer a directory. The file-size and
+  function-length ratchets of the decoder now cover LevelUp's own tree only; the bricks' lint lives in their repositories.
+
+**Developing a brick.** The code of a brick is changed in its dedicated repository, never in LevelUp. To see the change
+in LevelUp before it is published, `scripts/briques-workspace.sh <clone> [<clone> ...]` writes `levelup-briques.work` at
+the root of LevelUp (git-ignored, never named `go.work`; the guard-rail `archlint/no_go_work_versionne_test.go` fails a
+committed workspace) and only the `GOWORK` environment variable designates it: without it every Go tool judges the
+published versions. `make gate-push` and `scripts/gate-push.ps1` set `GOWORK=off`. `docs/COMMANDS.md` § "Developing a
+brick" gives the sequence.

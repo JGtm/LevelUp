@@ -19,14 +19,14 @@ Related files:
   a build.
 - `apps/go-api/cmd/film-profiles-build/` — the fabrication chain for the **derived** block, and
   its `gamefiles` gate.
-- `libs/film/internal/profile/profile_table.go` — the lot 2.1
+- `halo-infinite-film-decoder/internal/profile/profile_table.go` — the lot 2.1
   table, the source of truth for the **content** of `entries`.
   `TestCatalogueConformeALaTableDuLot21` keeps the two equal, line for line.
-- `libs/film/internal/profile/registre_empreintes.go` — since
+- `halo-infinite-film-decoder/internal/profile/registre_empreintes.go` — since
   lot 3.1.1, the decoder's **copy** of `registryFingerprints` (nine keys), kept equal by
   `TestCatalogueConformeALaTableDesEmpreintes`. The decoder copies rather than reads: importing a
   catalogue package from a layer is what the one-way rule forbids (ADR 0034, D-1).
-- `libs/film/internal/profile/classement_registre.go` — the
+- `halo-infinite-film-decoder/internal/profile/classement_registre.go` — the
   three runtime states of a registry fingerprint, defined in one place (§6).
 - `config/replay_corpus.toml` — the witness corpus (one `[[temoin]]` per grammar family, and
   since lot 3.2.3 at least one per registry key).

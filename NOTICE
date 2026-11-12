@@ -75,17 +75,17 @@ lets them reuse:
     apps/web/public/titles/ (Halo 5 emblems and nameplates), and the reference
     images under data/titles/.
   - Test fixtures that carry game content, kept in the tree only because tests read
-    them: three map variants (libs/gamefiles/mapvar/testdata/cliffhanger_map.mvar,
+    them (the paths starting with halo- are in the dedicated repositories since 8.1.2): three map variants (halo-infinite-files-reader/mapvar/testdata/cliffhanger_map.mvar,
     cliffhanger_ridgeline.mvar, vagabond_fo08_wetland.mvar) and two navigation meshes
-    (libs/gamefiles/hinavmesh/testdata/*.navmesh.blob), all five being files of the public Halo UGC
-    service (origin and hashes in libs/gamefiles/NOTICE.md), the reference map image
-    libs/himap/himap/testdata/carte_validee_v1.png and the callout zones dump
+    (halo-infinite-files-reader/hinavmesh/testdata/*.navmesh.blob), all five being files of the public Halo UGC
+    service (origin and hashes in halo-infinite-files-reader/NOTICE.md), the reference map image
+    halo-infinite-map-images/himap/testdata/carte_validee_v1.png and the callout zones dump
     apps/go-api/internal/testfixtures/testdata/cartes/callout_zones_ridgeline_clipped.json. The
     content is Microsoft's, or that of the authors of the maps; it is kept for the tests and is not
     licensed for any other use.
   - Tag layout definitions copied unmodified from the Infinite Runtime Tag Viewer project
     (https://github.com/Gamergotten/Infinite-runtime-tagviewer, folder Plugins/):
-    libs/himap/himap/sbsp.xml, apps/go-api/cmd/weapon-icons-build/weap.xml and
+    halo-infinite-map-images/himap/sbsp.xml, apps/go-api/cmd/weapon-icons-build/weap.xml and
     apps/go-api/cmd/weapon-sounds/weap.xml. The upstream repository states no licence; the
     definitions remain the work of their authors (the upstream README credits Lord Zedd and Exhibit
     for dumping them). They are read at run time to find fields in game files, and are outside
@@ -104,7 +104,7 @@ lets them reuse:
     names left are those of players who agreed to appear. Numeric account
     identifiers (XUID) and gamertags in the test fixtures and test sources of this
     repository and of its dedicated repositories are invented since version 8.1.2 of LevelUp and
-    version 0.1.1 of those repositories (registers: libs/film/testdata/IDENTITES.tsv and
+    version 0.1.1 of those repositories (registers: halo-infinite-film-decoder/testdata/IDENTITES.tsv and
     apps/go-api/cmd/anonymise-gamertags/testdata/IDENTITES_APPS.tsv). One fixture keeps real
     identifiers because its bytes cannot be rewritten without corrupting it: the capture of a
     production DuckDB database under

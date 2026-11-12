@@ -18,11 +18,11 @@ art we learned from, not code we ship, except the data files named below:
   services, and the import path for OpenSpartan data.
 - **Gravemind2401** ([Gravemind2401](https://github.com/Gravemind2401)) for [Reclaimer](https://github.com/Gravemind2401/Reclaimer) —
   its reading of the Halo map file formats is the reference behind our geometry decoder
-  (`libs/himap/himap/`: SBSP sections, mesh filters, SDDT groups).
+  (`halo-infinite-map-images/himap/`: SBSP sections, mesh filters, SDDT groups).
 - **Gamergotten** ([Gamergotten](https://github.com/Gamergotten)) and the contributors of
   [Infinite Runtime Tag Viewer](https://github.com/Gamergotten/Infinite-runtime-tagviewer), with
   **Lord Zedd** and **Exhibit** who dumped the tag definitions it carries: the tag layout files
-  `libs/himap/himap/sbsp.xml` and the two `weap.xml` of `apps/go-api/cmd/` are unmodified copies of
+  `halo-infinite-map-images/himap/sbsp.xml` and the two `weap.xml` of `apps/go-api/cmd/` are unmodified copies of
   its `Plugins/` files (see `NOTICE`).
 
 If you use this project, consider starring the upstream projects too.

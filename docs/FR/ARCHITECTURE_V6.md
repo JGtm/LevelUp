@@ -233,44 +233,48 @@ Chaque `TitleDataAdapter` expose une `Capabilities() games.CapabilityMap` reflé
 
 Voir [`.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md`](../../.ai/V7/PLAN_MULTI_TITLE_ADAPTERS_AND_MAPPINGS.md) pour le rationnel de conception et [`tools/mappings/CHANGELOG.md`](../../tools/mappings/CHANGELOG.md) pour l'historique de versioning du schéma TOML.
 
-## Briques / libs (ADR 0041)
+## Briques (ADR 0041, 0043)
 
 Le code autonome par nature (un format de fichier, un décodeur de flux, un protocole) vit dans des
-**modules Go à part** sous `libs/<brique>/`, dans ce dépôt, reliés à l'application par le `go.work` de
-la racine (aucune directive `replace`). L'application reste le module `levelup/go-api` (`apps/go-api`) ;
-une brique est `github.com/JGtm/LevelUp/libs/<brique>`, ses paquets au premier niveau du module (un
-paquet `internal/` ne serait pas importable par l'application).
+**modules Go à part**, publiés depuis des **dépôts dédiés** et exigés par `apps/go-api/go.mod` à une version
+publiée. Jusqu'à la bascule de la 8.1.2, les briques vivaient sous `libs/` de ce dépôt, reliées par un `go.work` ;
+depuis, ce dépôt ne porte plus ni l'un ni l'autre. L'application reste le module `levelup/go-api` (`apps/go-api`) ;
+une brique est un module dont les paquets sont au premier niveau (un paquet `internal/` ne serait pas importable par
+l'application).
 
 ```text
-go.work                  use ./apps/go-api ./libs/film ./libs/gamefiles ./libs/haloapi ./libs/himap
-apps/go-api/             l'application (module levelup/go-api)
-libs/film/               la brique « décodeur de film » (ADR 0034) : la façade decfilm, la couche de
-                         publication replay, les couches fermées sous internal/ (source, profile,
-                         grammar, facts) et ses catalogues — n'importe que libs/gamefiles et libs/himap
-libs/gamefiles/          la brique « fichiers du jeu » : himodule, ooz (GPLv3, jamais linké par cmd/server),
-                         hinavmesh, mapvar — n'importe rien de LevelUp
-libs/haloapi/            la brique « API Halo » (ADR 0042) : xblauth, infinite, halo5, xboxlive —
-                         n'importe rien de LevelUp ni d'aucune autre brique
-libs/himap/              la brique « images de carte » : paquet himap (géométrie des cartes et fonds vus du
-                         dessus, lus dans les fichiers du jeu) — n'importe que libs/gamefiles
+apps/go-api/                          l'application (module levelup/go-api)
+halo-infinite-film-decoder            la brique « décodeur de film » (ADR 0034) : la façade decfilm, la couche
+                                      de publication replay, les couches fermées sous internal/ (source,
+                                      profile, grammar, facts) et ses catalogues — n'importe que les deux
+                                      briques ci-dessous
+halo-infinite-files-reader            la brique « fichiers du jeu » : himodule, ooz (GPLv3, jamais linké par
+                                      cmd/server), hinavmesh, mapvar — n'importe rien de LevelUp
+halo-api                              la brique « API Halo » (ADR 0042) : xblauth, infinite, halo5, xboxlive —
+                                      n'importe rien de LevelUp ni d'aucune autre brique
+halo-infinite-map-images              la brique « images de carte » : paquet himap (géométrie des cartes et
+                                      fonds vus du dessus, lus dans les fichiers du jeu) — n'importe que la
+                                      brique des fichiers du jeu
 ```
 
-Règles, tenues par des garde-rails : une brique n'importe rien de `levelup/go-api` et seulement des briques de
-rang inférieur (`archlint/briques_imports_test.go`, tests compris) ; `go list -deps` dans le module ne montre
-aucun paquet `levelup/go-api` ; aucun fichier extrait du jeu installé n'entre dans une brique ; la ligne `go` est
-la même dans `go.work`, `apps/go-api/go.mod`, chaque `libs/*/go.mod` et l'image du `Dockerfile`. `./...` ne
-franchit jamais la frontière d'un module : `make libs-test` et les pas CI « brique film », « brique gamefiles », « brique haloapi » et « brique himap »
-(plus les lots `film*` et `haloapi` de la matrice de couverture) couvrent les briques,
-`go mod tidy` ne tourne pas dans `apps/go-api`. Une brique est importable de l'extérieur par le tag
-`libs/<brique>/vX.Y.Z`. Commandes : [`COMMANDS.md`](COMMANDS.md) § « Modules Go sous `libs/` » ; décision et liste à
-suivre pour ajouter une brique : [`adr/0041-go-modules-under-libs.md`](../adr/0041-go-modules-under-libs.md).
+(Chemins de module : `github.com/JGtm/<dépôt>`.) Règles, tenues par des garde-rails : une brique n'importe rien de
+`levelup/go-api` et seulement des briques de rang inférieur (`archlint/briques_imports_test.go`, tests compris) ;
+aucun fichier extrait du jeu installé n'entre dans une brique ; la ligne `go` de `apps/go-api/go.mod` et l'image du
+`Dockerfile` restent identiques. Le `./...` d'`apps/go-api` ne couvre que LevelUp : les tests d'une brique se jouent
+dans son propre dépôt, et la CI de LevelUp joue par chemin d'import les paquets dont elle a besoin (voie Windows,
+compilation du corpus gamefiles, lots de couverture des briques). Un changement de brique = un tag sur son dépôt, puis
+une montée du `require` dans `apps/go-api/go.mod` ; pour voir un changement dans LevelUp avant de publier, un espace de
+travail local, jamais versionné, est engendré par `scripts/briques-workspace.sh` et désigné par `GOWORK`. Commandes :
+[`COMMANDS.md`](COMMANDS.md) § « Briques Go » et « Développer une brique » ; décision, amendements et liste à suivre
+pour ajouter une brique : [`adr/0041-go-modules-under-libs.md`](../adr/0041-go-modules-under-libs.md) et
+[`adr/0043-publishing-the-bricks.md`](../adr/0043-publishing-the-bricks.md).
 
 ### Brique API Halo (ADR 0042)
 
-Le code qui **parle aux** services Halo est le module `libs/haloapi` (depuis le 2026-11-01 ; c'étaient avant
-des paquets internes d'`apps/go-api`) : `libs/haloapi/xblauth` (la chaîne d'échange jeton Microsoft -> Xbox Live
--> XSTS -> Spartan), `libs/haloapi/infinite` (adresses, transport, un fichier par service, DTO JSON bruts, octets
-de film compressés), `libs/haloapi/halo5` (services Halo 5) et `libs/haloapi/xboxlive` (succès Xbox Live). Ils
+Le code qui **parle aux** services Halo est le module `github.com/JGtm/halo-api` (des paquets internes d'`apps/go-api`
+avant le 2026-11-01) : `xblauth` (la chaîne d'échange jeton Microsoft -> Xbox Live
+-> XSTS -> Spartan), `infinite` (adresses, transport, un fichier par service, DTO JSON bruts, octets
+de film compressés), `halo5` (services Halo 5) et `xboxlive` (succès Xbox Live). Ils
 n'ont ni état ni politique et n'importent rien de LevelUp : le
 `Doer` HTTP (gardé par surface `netguard`, consulté avant le limiteur), la politique de reprise (`Retry`, trois
 politiques conservées), les adresses, le client Azure, le descripteur de titre, les jetons et la langue leur
