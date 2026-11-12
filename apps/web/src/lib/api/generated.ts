@@ -14646,6 +14646,7 @@ export interface components {
             deathsTailDesync: number;
             /** Format: int64 */
             deathsUnmatched: number;
+            destructions?: components["schemas"]["VehicleDestructionCoverage"];
             /** Format: int64 */
             echantillonsAuTraversDUnSilence: number;
             /** Format: int64 */
@@ -14754,6 +14755,51 @@ export interface components {
             /** Format: float */
             y: number;
         };
+        VehicleDestroyer: {
+            bot?: boolean;
+            /** Format: int64 */
+            i: number;
+            xuid?: string;
+        };
+        VehicleDestruction: {
+            by?: components["schemas"]["VehicleDestroyer"];
+            /** Format: int32 */
+            cause?: number;
+            killed?: string[] | null;
+            occupant?: string;
+        };
+        VehicleDestructionCoverage: {
+            /** Format: int64 */
+            byBot: number;
+            /** Format: int64 */
+            byHuman: number;
+            /** Format: int64 */
+            cause: number;
+            /** Format: int64 */
+            causeAbsent: number;
+            /** Format: int64 */
+            causeUnresolved: number;
+            /** Format: int64 */
+            clockUnknown: number;
+            /** Format: int64 */
+            destroyed: number;
+            /** Format: int64 */
+            killed: number;
+            /** Format: int64 */
+            killedOccupants: number;
+            /** Format: int64 */
+            killerAbsent: number;
+            /** Format: int64 */
+            killerAmbiguous: number;
+            /** Format: int64 */
+            killerOutOfRoster: number;
+            /** Format: int64 */
+            occupant: number;
+            /** Format: int64 */
+            pieces: number;
+            /** Format: int64 */
+            published: number;
+        };
         VehicleLabel: {
             en?: string;
             fr?: string;
@@ -14826,6 +14872,7 @@ export interface components {
         VehicleTrack: {
             carrier?: components["schemas"]["VehicleLifeRef"];
             chassis?: string;
+            destruction?: components["schemas"]["VehicleDestruction"];
             end: string;
             family?: string;
             /** Format: int32 */

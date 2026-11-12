@@ -166,5 +166,26 @@ func toVehicleCoverage(v replay.VehicleCoverage) replaydoc.VehicleCoverage {
 		Cycles:         v.Cycles,
 		CycleGaps:      v.CycleGaps,
 		CycleMissing:   v.CycleMissing,
+		Destructions:   ptrOf(v.Destructions, toVehicleDestructionCoverage),
+	}
+}
+
+func toVehicleDestructionCoverage(v replay.VehicleDestructionCoverage) replaydoc.VehicleDestructionCoverage {
+	return replaydoc.VehicleDestructionCoverage{
+		Destroyed:         v.Destroyed,
+		Pieces:            v.Pieces,
+		Published:         v.Published,
+		ByHuman:           v.ByHuman,
+		ByBot:             v.ByBot,
+		KillerAbsent:      v.KillerAbsent,
+		KillerOutOfRoster: v.KillerOutOfRoster,
+		KillerAmbiguous:   v.KillerAmbiguous,
+		Cause:             v.Cause,
+		CauseUnresolved:   v.CauseUnresolved,
+		CauseAbsent:       v.CauseAbsent,
+		Occupant:          v.Occupant,
+		Killed:            v.Killed,
+		KilledOccupants:   v.KilledOccupants,
+		ClockUnknown:      v.ClockUnknown,
 	}
 }

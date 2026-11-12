@@ -40,17 +40,8 @@ export interface VehicleDestruction {
   aboardXuids: readonly string[]
 }
 
-type Track = ReplayDocumentReady['vehicles'][number]
-
 /** La forme servie de `vehicles[].destruction` : chaque champ est facultatif. */
-interface DestructionWire {
-  by?: { i: number; xuid?: string; bot?: boolean }
-  cause?: number
-  occupant?: string
-  killed?: string[]
-}
-
-type TrackWithDestruction = Track & { destruction?: DestructionWire }
+type Destruction = NonNullable<ReplayDocumentReady['vehicles'][number]['destruction']>
 
 /** La fin que le film écrit pour une destruction. */
 const END_DESTROYED = 'destroyed'
@@ -65,7 +56,7 @@ function botNamesByFilmIndex(doc: ReplayDocumentReady): ReadonlyMap<number, stri
 }
 
 /** Les joueurs connus à bord : l'occupant d'abord, puis les tués, chacun une fois. */
-function aboardOf(d: DestructionWire | undefined): string[] {
+function aboardOf(d: Destruction | undefined): string[] {
   const out: string[] = []
   for (const xuid of [d?.occupant, ...(d?.killed ?? [])]) {
     if (xuid && !out.includes(xuid)) out.push(xuid)
@@ -76,7 +67,7 @@ function aboardOf(d: DestructionWire | undefined): string[] {
 export function vehicleDestructionsOf(doc: ReplayDocumentReady): readonly VehicleDestruction[] {
   let bots: ReadonlyMap<number, string> | null = null
   const out: VehicleDestruction[] = []
-  for (const track of doc.vehicles as readonly TrackWithDestruction[]) {
+  for (const track of doc.vehicles) {
     if (track.end !== END_DESTROYED || track.part || track.scenery || track.tEnd == null) continue
     const by = track.destruction?.by
     let botName: string | null = null

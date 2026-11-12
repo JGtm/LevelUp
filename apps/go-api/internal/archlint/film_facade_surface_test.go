@@ -431,7 +431,13 @@ const plafondSurfaceFacade = 182 // 2026-11-10 — item 4.3 : 181 + 1 (ResultatD
 //	                                           (`internal/filmcorpus/armes_continues_registre_test.go`) la
 //	                                           confronte au registre du titre, que la brique ne charge plus.
 //	                                           Aucun retrait.
-const plafondSurfaceReplay = 316 // 2026-10-29 — base 0bfe57feb re-mesuree a 315 + 1 (ContinuousWeaponKeys) ; cf. l historique ci-dessus
+//	319  destructions de vehicule (2026-11-12)  base `923644b919` re-mesuree a 316. +3 :
+//	                                           `replay.VehicleDestruction`, `replay.VehicleDestroyer` et
+//	                                           `replay.VehicleDestructionCoverage`, les trois types du bloc de
+//	                                           destruction du schema 109 que le document servi projette
+//	                                           (`service/replayview`) ; la parite exige une decision par
+//	                                           champ du document du decodeur. Aucun retrait.
+const plafondSurfaceReplay = 319 // 2026-11-12 — base 923644b919 re-mesuree a 316 + 3 (blocs de destruction de vehicule) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //
