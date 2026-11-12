@@ -1,3 +1,9 @@
+## [2026-11-12] Gate du corpus des rejeux réparé (régression de l'étape 2.4) — Complété (branche `feat/812-architecture`)
+
+- Décision : le lecteur de `LEVELUP_LOG_LEVEL` retourne dans `internal/observability/logging` (`ConsoleLevelFromEnv`), paquet sans DuckDB, plutôt que de scinder `internal/config`. L'étape 2.4 l'avait déplacé dans `internal/config`, qui importe `internal/platform/duckdb` : `cmd/replay-build` ne se compilait plus avec `CGO_ENABLED=0`, ce que fait `cmd/replay-corpus-gate`. Ni la compilation ordinaire ni la CI ne le voyaient.
+- Résultats : `replay-build` et `replay-verite` se compilent sans cgo ; garde-rail `archlint/outils_sans_cgo_test.go` (fermeture des imports sans le pilote DuckDB). Seul écart de comportement : « warning » accepté comme « warn ».
+- Prochaine étape : étape 4 du plan (couche HTTP). Leçon : un déplacement de lecture vers `internal/config` se vérifie aussi sur les outils compilés sans cgo.
+
 ## [2026-11-12] Plan v8.1.2, étape 6.5 : bascule sur les briques publiées — Complété (PR #201, gate de corpus bloqué)
 
 - Décision : apps/go-api exige les quatre briques v1.0.1 ; libs/, go.work, go.work.sum supprimés ; les tests des briques se jouent depuis apps/go-api par chemin de module (lots de CI, voie du gate local, Windows, film-race, govulncheck), leur lint reste dans leur dépôt ; script `scripts/briques-workspace.sh` pour un espace de travail local, garde-rail « aucun go.work versionné ». Ratchets de taille et de longueur de fonction ramenés à l arbre de LevelUp (consigne du pilote). Corrigés en route : `valider()` de replay-equiv, test web `objectiveFeedStats` (lisait libs/, passé à l instantané), résolveur des briques (télécharge un module absent du cache), fichiers propres aux dépôts dédiés dans le balayage d anonymise-gamertags.
