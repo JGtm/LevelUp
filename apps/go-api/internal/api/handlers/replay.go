@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -79,6 +80,9 @@ type replayInput struct {
 type replayOutput struct {
 	Body                replaydoc.ReplayDocument
 	LatestSchemaVersion int `header:"X-Replay-Latest-Schema-Version"`
+	// CadenceStale : le pas du document servi n est pas le pas de cuisson courant (`replaybuild.CadenceUpToDate`).
+	// Le serveur decide, le badge affiche : aucune seconde regle cote web.
+	CadenceStale bool `header:"X-Replay-Cadence-Stale"`
 }
 
 // handleGetReplay retourne le document de rejeu 2D d'un match (404 si absent).
@@ -99,7 +103,10 @@ func (h *ReplayHandler) handleGetReplay(ctx context.Context, in *replayInput) (*
 	if err != nil {
 		return nil, humacore.NewErrorFrom(ctx, http.StatusInternalServerError, "replay_error", err)
 	}
-	return &replayOutput{Body: doc, LatestSchemaVersion: replay.SchemaVersion}, nil
+	return &replayOutput{
+		Body: doc, LatestSchemaVersion: replay.SchemaVersion,
+		CadenceStale: !replaybuild.CadenceUpToDate(doc.FrameIntervalMS),
+	}, nil
 }
 
 type backgroundOutput struct{ Body replaydoc.MapBackground }

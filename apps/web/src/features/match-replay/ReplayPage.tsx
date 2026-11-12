@@ -200,6 +200,7 @@ export function ReplayPage() {
                 schemaVersion={data.schemaVersion}
                 latestSchemaVersion={data.latestSchemaVersion}
                 contractIssue={data.contractIssue}
+                cadenceStale={data.cadenceStale}
                 locale={locale}
                 layers={data.layers}
               />

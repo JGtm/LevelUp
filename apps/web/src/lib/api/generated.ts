@@ -19793,6 +19793,7 @@ export interface operations {
             /** @description OK */
             200: {
                 headers: {
+                    "X-Replay-Cadence-Stale"?: boolean;
                     "X-Replay-Latest-Schema-Version"?: number;
                     [name: string]: unknown;
                 };

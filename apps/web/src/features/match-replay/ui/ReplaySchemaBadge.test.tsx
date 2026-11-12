@@ -239,3 +239,36 @@ describe('ReplaySchemaBadge — la couche de publication', () => {
     expect(screen.getByText(/à jour/)).toBeInTheDocument()
   })
 })
+
+describe('ReplaySchemaBadge — la cadence périmée, dite par le serveur', () => {
+  it('garde le libellé « à recuire » existant, en FR et en EN, pour un artefact au schéma courant', () => {
+    const layers = { tracks: `publication-${PRODUCTEUR}` }
+    const { unmount } = render(
+      <ReplaySchemaBadge
+        isAdmin
+        schemaVersion={PRODUCTEUR}
+        latestSchemaVersion={PRODUCTEUR}
+        cadenceStale
+        layers={layers}
+        locale="fr"
+      />,
+    )
+    expect(
+      screen.getByText(`Schéma ${PRODUCTEUR} · à recuire (dernier : ${PRODUCTEUR}) — seule la publication a changé`),
+    ).toBeInTheDocument()
+    unmount()
+    render(
+      <ReplaySchemaBadge
+        isAdmin
+        schemaVersion={PRODUCTEUR}
+        latestSchemaVersion={PRODUCTEUR}
+        cadenceStale
+        layers={layers}
+        locale="en"
+      />,
+    )
+    expect(
+      screen.getByText(`Schema ${PRODUCTEUR} · rebuild needed (latest: ${PRODUCTEUR}) — publication layer only`),
+    ).toBeInTheDocument()
+  })
+})

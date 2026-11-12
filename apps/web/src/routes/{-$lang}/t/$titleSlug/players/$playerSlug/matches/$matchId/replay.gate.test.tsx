@@ -30,15 +30,15 @@ import { renderWithProviders } from '@/test/render-utils'
 import { goFixtureSchemaVersion } from '@/features/match-replay/test/goFixtures'
 
 vi.mock('@/lib/api/client', () => ({
-  api: { get: vi.fn(), getWithHeader: vi.fn() },
+  api: { get: vi.fn(), getWithHeaders: vi.fn() },
   getApiTitleSlug: () => 'halo_infinite',
   setApiTitleSlug: vi.fn(),
   setApiLocale: vi.fn(),
 }))
 
-// Le document de rejeu est demande par `getWithHeader` (lot A, 2026-09-11 : la version courante du
+// Le document de rejeu est demande par `getWithHeaders` (lot A, 2026-09-11 : la version courante du
 // producteur voyage en en-tete X-Replay-Latest-Schema-Version), plus par `get`.
-const apiGet = vi.mocked(api.getWithHeader)
+const apiGet = vi.mocked(api.getWithHeaders)
 
 /** Le titre courant du magasin d'app, avec la liste de capabilities qu'on veut éprouver. */
 function titreAvecCapabilities(caps: string[]) {
@@ -87,7 +87,7 @@ afterEach(() => {
 describe('page de rejeu — porte de titre `replay`', () => {
   it('titre SANS la clé : aucune requête de rejeu, et l’écran dit pourquoi', async () => {
     titreAvecCapabilities(['matchmaking'])
-    apiGet.mockResolvedValue({ data: {}, header: null })
+    apiGet.mockResolvedValue({ data: {}, responseHeaders: {} })
 
     renderWithProviders(<SousLesDeuxPortes />)
 
@@ -111,7 +111,7 @@ describe('page de rejeu — porte de titre `replay`', () => {
 
   it('titre AVEC la clé : la page est montée et demande son artefact', async () => {
     titreAvecCapabilities(['matchmaking', 'replay'])
-    apiGet.mockResolvedValue({ data: { schemaVersion: goFixtureSchemaVersion(), tracks: [] }, header: null })
+    apiGet.mockResolvedValue({ data: { schemaVersion: goFixtureSchemaVersion(), tracks: [] }, responseHeaders: {} })
 
     renderWithProviders(<SousLesDeuxPortes />)
 
@@ -119,7 +119,7 @@ describe('page de rejeu — porte de titre `replay`', () => {
     await waitFor(() =>
       expect(apiGet).toHaveBeenCalledWith(
         '/players/jgtm/matches/match-1/replay',
-        'X-Replay-Latest-Schema-Version',
+        ['X-Replay-Latest-Schema-Version', 'X-Replay-Cadence-Stale'],
       ),
     )
   })

@@ -271,3 +271,42 @@ describe('la présence d’un calque — le troisième axe de la matrice (schém
     }
   })
 })
+
+describe('la cadence, décidée par le serveur (même schéma, autre grille)', () => {
+  const LAYERS = { tracks: `publication-${PRODUCTEUR}` }
+
+  it('un artefact au schéma courant que le serveur dit de cadence périmée est « à recuire »', () => {
+    expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, undefined, LAYERS, true)).toEqual({
+      kind: 'stale',
+      schemaVersion: PRODUCTEUR,
+      latestSchemaVersion: PRODUCTEUR,
+      couches: ['publication'],
+    })
+  })
+
+  it('sans verdict de cadence, le même artefact reste « à jour » : le web ne compare aucun pas', () => {
+    expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, undefined, LAYERS)).toEqual({
+      kind: 'upToDate',
+      schemaVersion: PRODUCTEUR,
+    })
+    expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, undefined, LAYERS, false).kind).toBe('upToDate')
+  })
+
+  it('sans table de calques, aucune couche n’est nommée, mais le statut reste « à recuire »', () => {
+    expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, undefined, undefined, true)).toEqual({
+      kind: 'stale',
+      schemaVersion: PRODUCTEUR,
+      latestSchemaVersion: PRODUCTEUR,
+      couches: [],
+    })
+  })
+
+  it('sans en-tête de version, le verdict du serveur suffit', () => {
+    expect(computeReplaySchemaStatus(PRODUCTEUR, undefined, undefined, undefined, true).kind).toBe('stale')
+  })
+
+  it('un document non conforme reste « invalide » : la conformité prime', () => {
+    const issue: ReplayContractIssue = { kind: 'malformed' }
+    expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, issue, LAYERS, true).kind).toBe('invalid')
+  })
+})

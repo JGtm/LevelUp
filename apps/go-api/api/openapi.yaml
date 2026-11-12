@@ -3762,6 +3762,9 @@ paths:
                 $ref: '#/components/schemas/ReplayDocument'
           description: OK
           headers:
+            X-Replay-Cadence-Stale:
+              schema:
+                type: boolean
             X-Replay-Latest-Schema-Version:
               schema:
                 format: int64
