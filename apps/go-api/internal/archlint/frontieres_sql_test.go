@@ -6,7 +6,10 @@
 // Changer de moteur de base ne doit pas toucher la couche HTTP.
 //
 // Le garde-rail lit l'AST : il refuse (1) l'import de `database/sql`, (2) un littéral de chaîne qui est une
-// instruction SQL, (3) l'appel d'une méthode d'exécution de requête (QueryContext, ExecContext...).
+// instruction SQL (toute casse, WITH, MERGE et TRUNCATE compris), (3) l'appel d'une méthode d'exécution de
+// requête : avec contexte (QueryContext, ExecContext...) ou sans (Query, QueryRow, Exec, Prepare, reconnus par
+// heuristique : voir requeteSansContexte). Limite assumée : un SQL assemblé à l'exécution à partir de morceaux
+// qui ne sont pas des instructions ne se voit pas.
 package archlint
 
 import (
@@ -28,19 +31,52 @@ var racinesApiSansSQL = []string{"internal/api", "internal/api/wire"}
 // une entrée sans violation ou sans fichier fait échouer le test.
 var apiAvecSQLAutorises = map[string]string{}
 
-// instructionSQL reconnaît un littéral qui COMMENCE par une instruction SQL (majuscules : c'est l'écriture de
-// tout le dépôt), ou qui contient un `SELECT ... FROM`. Un texte français ou un message de journal ne les
-// satisfait pas.
+// instructionSQL reconnaît un littéral qui COMMENCE par une instruction SQL, quelle que soit la casse : INSERT
+// INTO, UPDATE x SET, DELETE FROM, CREATE / ALTER / DROP, WITH x AS (, MERGE INTO, TRUNCATE TABLE, un SELECT qui
+// désigne ses colonnes (`*`, DISTINCT, COUNT(, liste, ou colonne puis FROM), PRAGMA, ATTACH, DETACH, CHECKPOINT,
+// COPY x TO. Chaque forme exige son second mot-clé : un texte français ou anglais (« Select a player from the
+// list ») ne les satisfait pas.
 var instructionSQL = regexp.MustCompile(
-	`^\s*(SELECT|INSERT\s+(OR\s+\w+\s+)?INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|` +
-		`CREATE\s+(OR\s+REPLACE\s+)?(TEMP\s+|TEMPORARY\s+)?(TABLE|VIEW|INDEX|SEQUENCE)|ALTER\s+TABLE|` +
-		`DROP\s+(TABLE|VIEW|INDEX|SEQUENCE)|WITH\s+\w+\s+AS|PRAGMA|ATTACH|DETACH|CHECKPOINT|COPY\s+\w+\s+TO)\b` +
-		`|\bSELECT\b[\s\S]*\bFROM\b`)
+	`(?i)^\s*(INSERT\s+(OR\s+\w+\s+)?INTO\s|UPDATE\s+\w+\s+SET\s|DELETE\s+FROM\s|` +
+		`CREATE\s+(OR\s+REPLACE\s+)?(TEMP\s+|TEMPORARY\s+)?(TABLE|VIEW|INDEX|SEQUENCE)\s|ALTER\s+TABLE\s|` +
+		`DROP\s+(TABLE|VIEW|INDEX|SEQUENCE)\s|WITH\s+(RECURSIVE\s+)?\w+\s+AS\s*\(|MERGE\s+INTO\s|TRUNCATE\s+TABLE\s|` +
+		`SELECT\s+(\*|DISTINCT\s|COUNT\s*\(|[\w.]+(\s+AS\s+\w+)?\s*,|[\w.]+\s+FROM\s)|` +
+		`PRAGMA\s+\w|ATTACH\s+['"]|DETACH\s+\w|CHECKPOINT\s*;?\s*$|COPY\s+\w+\s+TO\s)` +
+		`|(?-i:^\s*SELECT\b|\bSELECT\b[\s\S]*\bFROM\b)`)
 
-// methodesDeRequete : les méthodes qui exécutent une requête sur un handle de base.
+// methodesDeRequete : les méthodes qui exécutent une requête sur un handle de base, avec contexte.
 var methodesDeRequete = map[string]bool{
 	"QueryContext": true, "ExecContext": true, "QueryRowContext": true,
 	"QueryRecovered": true, "QueryRowRecovered": true, "PrepareContext": true, "BeginTx": true,
+}
+
+// methodesDeRequeteSansContexte : les mêmes sans contexte (`database/sql` : Query, QueryRow, Exec, Prepare ;
+// l'enveloppe `duckdb.DB` les prend avec un contexte en premier argument).
+var methodesDeRequeteSansContexte = map[string]bool{"Query": true, "QueryRow": true, "Exec": true, "Prepare": true}
+
+// recepteurDeBase reconnaît, par son dernier nom, un récepteur qui est un handle de base : `db`, `sqlDB`,
+// `sharedSQL`, `metaDB`, `tx`, `conn`, `pdb.Player`, `Shared`, `Metadata`, `SharedSocial`.
+var recepteurDeBase = regexp.MustCompile(`(?i)(db|sql|tx|conn|player|shared|metadata|social)$`)
+
+// requeteSansContexte dit si un appel Query / QueryRow / Exec / Prepare est une requête de base. HEURISTIQUE sans
+// types : il faut au moins un argument (`r.URL.Query()` de net/http n'en a pas), et soit un premier argument qui
+// n'est pas un contexte (forme de `database/sql`), soit un récepteur nommé comme un handle de base (forme
+// `db.Query(ctx, requête)`). Un faux positif connu est écarté par construction : `h.Query(ctx, q, live)` d'un
+// handler de recherche (api/huma_routes.go) n'a pas de récepteur de base et passe un contexte.
+func requeteSansContexte(sel *ast.SelectorExpr, args []ast.Expr) bool {
+	if !methodesDeRequeteSansContexte[sel.Sel.Name] || len(args) == 0 {
+		return false
+	}
+	if id, ok := args[0].(*ast.Ident); !ok || id.Name != "ctx" {
+		return true
+	}
+	switch x := sel.X.(type) {
+	case *ast.Ident:
+		return recepteurDeBase.MatchString(x.Name)
+	case *ast.SelectorExpr:
+		return recepteurDeBase.MatchString(x.Sel.Name)
+	}
+	return false
 }
 
 // sqlDansSource rend, triées, les formes de SQL d'un fichier : import de database/sql, littéral SQL (avec
@@ -62,7 +98,8 @@ func sqlDansSource(src goSource) []string {
 				out = append(out, "littéral SQL ligne "+strconv.Itoa(src.Fset.Position(v.Pos()).Line))
 			}
 		case *ast.CallExpr:
-			if sel, ok := v.Fun.(*ast.SelectorExpr); ok && methodesDeRequete[sel.Sel.Name] {
+			sel, ok := v.Fun.(*ast.SelectorExpr)
+			if ok && (methodesDeRequete[sel.Sel.Name] || requeteSansContexte(sel, v.Args)) {
 				out = append(out, "appel de "+sel.Sel.Name+" ligne "+strconv.Itoa(src.Fset.Position(v.Pos()).Line))
 			}
 		}
@@ -81,22 +118,38 @@ import (
 )
 
 // SELECT x FROM y : un commentaire n'est pas du SQL
-func f(db *sql.DB) {
+func f(db *sql.DB, r *http.Request) {
 	_ = fmt.Sprint("load players: SELECT en minuscules ou texte, select * from t")
 	_, _ = db.QueryContext(nil, "SELECT 1")
 	_, _ = db.ExecContext(nil, "insert into t values (1)")
 	_ = "CREATE TABLE IF NOT EXISTS t (a INT)"
 	_ = "WITH base AS (SELECT 1) SELECT * FROM base"
 	_ = "x " + "SELECT a" + "FROM t"
+	_, _ = db.Query("x")
+	_ = db.QueryRow("x")
+	_, _ = db.Exec("x")
+	_, _ = db.Prepare("x")
+	_ = r.URL.Query()
+	_, _ = pdb.Player.Query(ctx, q)
+	_, _ = h.Query(ctx, q, live)
+	_ = "merge into t using u on (1=1)"
+	_ = "truncate table t"
+	_ = "with recursive r as (select 1)"
+	_ = "select a, b from t"
+	_ = "Select a player from the list"
+	_ = "with it as a guide"
+	_ = "Update the settings"
 }
 `)
 	got := strings.Join(sqlDansSource(src), "|")
 	want := strings.Join([]string{
-		"appel de ExecContext ligne 12", "appel de QueryContext ligne 11", "import de database/sql",
-		"littéral SQL ligne 11", "littéral SQL ligne 13", "littéral SQL ligne 14", "littéral SQL ligne 15",
+		"appel de Exec ligne 18", "appel de ExecContext ligne 12", "appel de Prepare ligne 19", "appel de Query ligne 16",
+		"appel de Query ligne 21", "appel de QueryContext ligne 11", "appel de QueryRow ligne 17", "import de database/sql",
+		"littéral SQL ligne 11", "littéral SQL ligne 12", "littéral SQL ligne 13", "littéral SQL ligne 14", "littéral SQL ligne 15",
+		"littéral SQL ligne 23", "littéral SQL ligne 24", "littéral SQL ligne 25", "littéral SQL ligne 26",
 	}, "|")
 	if got != want {
-		t.Fatalf("détecté\n  %s\nattendu\n  %s\n(ni le commentaire, ni le texte, ni le SQL en minuscules d'une chaîne ne sont du SQL)", got, want)
+		t.Fatalf("détecté\n  %s\nattendu\n  %s\n(ni le commentaire, ni la prose, ni r.URL.Query(), ni h.Query(ctx, ...) d'un handler ne sont du SQL)", got, want)
 	}
 }
 
