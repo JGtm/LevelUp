@@ -42,12 +42,15 @@ func newRepo(t *testing.T) (*Repo, *sql.DB) {
 	return New(sharedprovider.FromInMemoryDB(db, dbPath)), db
 }
 
+// entries fabrique un lot de n entrées. Un SEUL instant pour tout le lot : la vue world_csr_leaderboard_latest ne
+// garde que les lignes du dernier fetched_at du couple, un instant par ligne en ferait des lots d'une ligne.
 func entries(n, withXUID int, season, playlist string) []domain.LeaderboardEntry {
+	fetchedAt := time.Now().UTC()
 	out := make([]domain.LeaderboardEntry, 0, n)
 	for i := 0; i < n; i++ {
 		e := domain.LeaderboardEntry{
 			Season: season, Playlist: playlist, Rank: i + 1,
-			Gamertag: fmt.Sprintf("P%d", i+1), CSRValue: 2000 - i, FetchedAt: time.Now().UTC(),
+			Gamertag: fmt.Sprintf("P%d", i+1), CSRValue: 2000 - i, FetchedAt: fetchedAt,
 		}
 		if i < withXUID {
 			e.XUID = fmt.Sprintf("253500000000%04d", i+1)
