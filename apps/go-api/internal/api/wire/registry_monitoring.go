@@ -15,7 +15,6 @@ package wire
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"time"
@@ -23,6 +22,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/adminstate"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/scheduler"
 	sync_pkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/skill"
@@ -232,15 +232,15 @@ func (r *ServiceRegistry) ConvergenceReport(ctx context.Context, titleSlug strin
 			Gamertag:   p.Gamertag,
 			XUID:       p.XUID,
 		}
-		playerSQL, sharedSQL, release, errMsg := r.resolveMonitoringDBs(ctx, titleSlug, p.Gamertag, p.XUID)
+		handles, errMsg := r.resolveMonitoringDBs(ctx, titleSlug, p.Gamertag, p.XUID)
 		if errMsg != "" {
 			report.CheckError = errMsg
 		} else {
-			counts := sync_pkg.ConvergenceBacklog(ctx, playerSQL, sharedSQL, p.XUID)
+			counts := sync_pkg.ConvergenceBacklog(ctx, handles.Player, handles.Shared, p.XUID)
 			report.MissingEnrichment = counts.MissingEnrichment
 			report.MissingPSA = counts.MissingPSA
 			report.MissingEvents = counts.MissingEvents
-			release()
+			handles.Release()
 		}
 		resp.Players = append(resp.Players, report)
 	}
@@ -248,26 +248,26 @@ func (r *ServiceRegistry) ConvergenceReport(ctx context.Context, titleSlug strin
 }
 
 // resolveMonitoringDBs résout les handles DB d'un joueur (best-effort, miroir
-// de resolveInvariantDBs avec retour d'erreur libre). release() après usage.
+// de resolveInvariantDBs avec retour d'erreur libre). Release() après usage des handles.
 func (r *ServiceRegistry) resolveMonitoringDBs(
 	ctx context.Context, titleSlug, gamertag, xuid string,
-) (playerSQL, sharedSQL *sql.DB, release func(), errMsg string) {
+) (handles duckdb.ReadHandles, errMsg string) {
 	if r.resolveByGT == nil || gamertag == "" || xuid == "" {
-		return nil, nil, nil, "resolver ou identité joueur indisponible"
+		return duckdb.ReadHandles{}, "resolver ou identité joueur indisponible"
 	}
 	tpdb, err := r.resolveByGT(ctx, titleSlug, gamertag)
 	if err != nil || tpdb == nil || tpdb.Player == nil {
 		monitoringLog.WarnContext(ctx, "admin_monitoring: resolve player failed",
 			"gamertag", gamertag, "err", err)
-		return nil, nil, nil, "player DB inaccessible"
+		return duckdb.ReadHandles{}, "player DB inaccessible"
 	}
-	shared, rel, err := tpdb.SharedReadDB().Get(ctx)
+	handles, err = tpdb.ReadHandles(ctx)
 	if err != nil {
 		monitoringLog.WarnContext(ctx, "admin_monitoring: shared reader failed",
 			"gamertag", gamertag, "err", err)
-		return nil, nil, nil, "shared DB inaccessible"
+		return duckdb.ReadHandles{}, "shared DB inaccessible"
 	}
-	return tpdb.Player.SQLDb(), shared, rel, ""
+	return handles, ""
 }
 
 // persistPhaseNames : phases d'écriture instrumentées (combined persister).

@@ -1,23 +1,22 @@
-// Package api — post_sync_progression_queries.go : queries de support pour
+// Package api — post_sync_progression_queries.go : lectures de support pour
 // l'orchestrateur post-sync de la couche progression (V2 Ascension).
 //
-// Toutes les queries sont read-only. Depuis ADR 0016 (retrait final
-// d'attachShared, P2), les queries cross-DB sont scindées en 2 phases :
-// la partie shared (match_participants, match_registry) lue via SharedReader,
-// la partie player (player_match_enrichment) lue sur pdb.Player, jointure
-// faite côté Go.
+// Les requêtes (read-only) vivent dans duckdb.PostSyncProgressionStore ; ce fichier fixe les budgets de temps,
+// les seuils de comptage et compose les vues que les détecteurs consomment. Depuis ADR 0016 (retrait final
+// d'attachShared, P2), les lectures cross-DB sont scindées en 2 phases : la partie shared (match_participants,
+// match_registry) lue via SharedReader, la partie player (player_match_enrichment) lue sur pdb.Player,
+// jointure faite côté Go.
 package wire
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/progression/milestones"
 	"levelup/go-api/internal/progression/records"
 	"levelup/go-api/internal/progression/streaks"
@@ -28,61 +27,10 @@ import (
 // « au moins 1 match du jour a accuracy >= 0.50 ».
 const AccuracyThresholdForDays = 0.50
 
-// Budgets de la lecture progression. Déclarés en var (pas const) pour être
-// raccourcis dans les tests d'unité du retry (cf. post_sync_progression_retry_test.go).
-var (
-	// progressionLoadBudget borne la lecture complète des matchs de progression
-	// (acquisition shared + queries). Généreux car le pipeline tourne hors du
-	// chemin user-facing (post-sync / backfill), jamais sur une requête HTTP.
-	progressionLoadBudget = 60 * time.Second
-
-	// progressionSharedReadBudget borne l'acquisition résiliente d'une connexion
-	// lecture shared (toutes tentatives confondues).
-	progressionSharedReadBudget = 45 * time.Second
-
-	// progressionSharedReadAttempt borne UNE tentative Get (le provider peut
-	// attendre un retour RO le temps d'un swap ; au-delà on réessaie).
-	progressionSharedReadAttempt = 10 * time.Second
-
-	// progressionSharedReadBackoff sépare deux tentatives Get.
-	progressionSharedReadBackoff = 500 * time.Millisecond
-)
-
-// acquireProgressionSharedRead acquiert une connexion lecture shared, résiliente
-// à la fenêtre de swap RO↔RW d'un sync concurrent (ADR 0016) : pendant qu'un
-// sync tient le writer RW, un Get lecteur attend le retour RO. Plutôt que de
-// renoncer au premier dépassement, on réessaie avec backoff jusqu'à
-// progressionSharedReadBudget.
-//
-// Le ctx est détaché du parent (context.WithoutCancel) : le post-sync est un
-// traitement best-effort en arrière-plan qui ne doit pas être tué si le run de
-// sync appelant se termine et annule son ctx juste après.
-//
-// Le caller DOIT appeler la fonction release retournée (typiquement via defer).
-// Si err != nil, release est nil.
-func acquireProgressionSharedRead(parent context.Context, reader duckdb.SharedReader) (*sql.DB, func(), error) {
-	overall, cancelOverall := context.WithTimeout(context.WithoutCancel(parent), progressionSharedReadBudget)
-	var lastErr error
-	for attempt := 1; ; attempt++ {
-		attemptCtx, cancelAttempt := context.WithTimeout(overall, progressionSharedReadAttempt)
-		db, release, err := reader.Get(attemptCtx)
-		if err == nil {
-			return db, func() {
-				release()
-				cancelAttempt()
-				cancelOverall()
-			}, nil
-		}
-		cancelAttempt()
-		lastErr = err
-		select {
-		case <-overall.Done():
-			cancelOverall()
-			return nil, nil, fmt.Errorf("shared reader unavailable after %d attempt(s): %w", attempt, lastErr)
-		case <-time.After(progressionSharedReadBackoff):
-		}
-	}
-}
+// progressionLoadBudget borne la lecture complète d'une famille de lectures de progression (acquisition
+// shared + requêtes). Généreux car le pipeline tourne hors du chemin user-facing (post-sync / backfill),
+// jamais sur une requête HTTP. La résilience à la fenêtre de swap RO↔RW est celle de duckdb.AcquireSharedRead.
+const progressionLoadBudget = 60 * time.Second
 
 // loadProgressionMatches lit les matchs récents avec les métriques nécessaires
 // aux détecteurs streaks (KDA pour les types perf-based) et records.
@@ -92,36 +40,27 @@ func acquireProgressionSharedRead(parent context.Context, reader duckdb.SharedRe
 //
 // Sortie : 2 vues du même set de matchs — streaks.MatchActivity (timing +
 // KDA pour predicates perf) et records.MatchInput (5 métriques pour PB).
-type progressionMatchRow struct {
-	matchID   string
-	startTime time.Time
-	kda       float64
-	kills     float64
-	deaths    float64
-	assists   float64
-	accuracy  float64
-	personal  float64
-	timeSec   float64
-	dmgDealt  float64
-	dmgTaken  float64
-}
-
 func loadProgressionMatches(ctx context.Context, pdb *duckdb.PlayerDB, lookbackDays int, now time.Time) ([]streaks.MatchActivity, []records.MatchInput, error) {
 	if pdb == nil || pdb.Player == nil {
 		return nil, nil, fmt.Errorf("loadProgressionMatches: player DB not attached")
 	}
 	since := now.AddDate(0, 0, -lookbackDays)
 	// Détaché du parent + budget généreux : la résilience à la fenêtre de swap
-	// RO↔RW est gérée par acquireProgressionSharedRead ci-dessous.
+	// RO↔RW est gérée par duckdb.AcquireSharedRead dans le dépôt.
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), progressionLoadBudget)
 	defer cancel()
 
-	loaded, matchIDs, err := loadProgressionSharedMatches(ctx, pdb, since)
+	var reader port.PostSyncProgressionReader = duckdb.NewPostSyncProgressionStore(pdb)
+	loaded, err := reader.MatchRows(ctx, since)
 	if err != nil {
 		return nil, nil, err
 	}
+	matchIDs := make([]string, 0, len(loaded))
+	for _, r := range loaded {
+		matchIDs = append(matchIDs, r.MatchID)
+	}
 
-	perfByMatch, err := loadProgressionPerfScores(ctx, pdb, matchIDs)
+	perfByMatch, err := reader.PerformanceScores(ctx, matchIDs)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -130,152 +69,45 @@ func loadProgressionMatches(ctx context.Context, pdb *duckdb.PlayerDB, lookbackD
 	return activities, inputs, nil
 }
 
-// loadProgressionSharedMatches charge participants + registry depuis shared via SharedReader.
-func loadProgressionSharedMatches(ctx context.Context, pdb *duckdb.PlayerDB, since time.Time) ([]progressionMatchRow, []string, error) {
-	sharedDB, release, err := acquireProgressionSharedRead(ctx, pdb.SharedReadDB())
-	if err != nil {
-		return nil, nil, fmt.Errorf("loadProgressionMatches: %w", err)
-	}
-	defer release()
-
-	// start_time via le fragment timezone canonique (règle CLAUDE.md n°8) : SELECT,
-	// filtre et tri passent tous par COALESCE(start_time_utc, start_time AT TIME
-	// ZONE 'UTC') — un start_time brut mal-classe/exclut les imports OpenSpartan à
-	// start_time NULL/TZ-décalé mais start_time_utc renseigné (alignement G1).
-	rows, err := sharedDB.QueryContext(ctx, `
-		SELECT
-			mp.match_id,
-			`+analysis.SQLStartTimeCanonical("mr")+` AS start_time,
-			COALESCE(mp.kda, 0) AS kda,
-			COALESCE(mp.kills, 0) AS kills,
-			COALESCE(mp.deaths, 0) AS deaths,
-			COALESCE(mp.assists, 0) AS assists,
-			COALESCE(mp.accuracy, 0) AS accuracy,
-			COALESCE(mp.personal_score, 0) AS personal_score,
-			COALESCE(mp.time_played_seconds, 0) AS time_played_seconds,
-			COALESCE(mp.damage_dealt, 0) AS damage_dealt,
-			COALESCE(mp.damage_taken, 0) AS damage_taken
-		FROM match_participants mp
-		JOIN match_registry mr ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ? AND `+analysis.SQLStartTimeCanonical("mr")+` >= ?`+
-		analysis.SQLExcludeCampaignVariants(pdb.TitleSlug, "mr")+`
-		ORDER BY start_time ASC
-	`, pdb.XUID, since.UTC())
-	if err != nil {
-		return nil, nil, fmt.Errorf("query progression matches: %w", err)
-	}
-	defer rows.Close()
-
-	var loaded []progressionMatchRow
-	matchIDs := make([]string, 0)
-	for rows.Next() {
-		var (
-			r         progressionMatchRow
-			startTime sql.NullTime
-		)
-		if err := rows.Scan(&r.matchID, &startTime, &r.kda, &r.kills, &r.deaths, &r.assists, &r.accuracy, &r.personal, &r.timeSec, &r.dmgDealt, &r.dmgTaken); err != nil {
-			return nil, nil, fmt.Errorf("scan progression match: %w", err)
-		}
-		if !startTime.Valid {
-			continue
-		}
-		r.startTime = startTime.Time
-		loaded = append(loaded, r)
-		matchIDs = append(matchIDs, r.matchID)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, nil, err
-	}
-	return loaded, matchIDs, nil
-}
-
-// loadProgressionPerfScores charge performance_score depuis player_match_enrichment.
-func loadProgressionPerfScores(ctx context.Context, pdb *duckdb.PlayerDB, matchIDs []string) (map[string]float64, error) {
-	perfByMatch := make(map[string]float64, len(matchIDs))
-	if len(matchIDs) == 0 {
-		return perfByMatch, nil
-	}
-	placeholders := make([]string, len(matchIDs))
-	args := make([]any, len(matchIDs))
-	for i, id := range matchIDs {
-		placeholders[i] = "?"
-		args[i] = id
-	}
-	pmeRows, err := pdb.Player.QueryRecovered(ctx, `
-		SELECT match_id, COALESCE(performance_score, 0)
-		FROM player_match_enrichment_latest
-		WHERE match_id IN (`+joinProgressionPlaceholders(placeholders)+`)
-	`, args...)
-	if err != nil {
-		return nil, fmt.Errorf("query performance_score: %w", err)
-	}
-	defer pmeRows.Close()
-	for pmeRows.Next() {
-		var mid string
-		var perf float64
-		if err := pmeRows.Scan(&mid, &perf); err != nil {
-			return nil, fmt.Errorf("scan performance_score: %w", err)
-		}
-		perfByMatch[mid] = perf
-	}
-	return perfByMatch, nil
-}
-
 // assembleProgressionResults compose les 2 vues (activities + inputs) à partir des rows + perf scores.
-func assembleProgressionResults(loaded []progressionMatchRow, perfByMatch map[string]float64, effectiveHpToKill float64) ([]streaks.MatchActivity, []records.MatchInput) {
+func assembleProgressionResults(loaded []port.ProgressionMatchRow, perfByMatch map[string]float64, effectiveHpToKill float64) ([]streaks.MatchActivity, []records.MatchInput) {
 	activities := make([]streaks.MatchActivity, 0, len(loaded))
 	inputs := make([]records.MatchInput, 0, len(loaded))
 	for _, r := range loaded {
-		perfScore := perfByMatch[r.matchID]
-		kpm := 0.0
-		pspm := 0.0
-		if r.timeSec > 0 {
-			minutes := r.timeSec / 60
-			kpm = r.kills / minutes
-			pspm = r.personal / minutes
-		}
+		perfScore := perfByMatch[r.MatchID]
+		// Cadences par minute (frags, score personnel) : analysis.PerMinute, 0 quand la durée est inconnue.
+		kpm := analysis.PerMinute(r.Kills, r.TimeSeconds)
+		pspm := analysis.PerMinute(r.PersonalScore, r.TimeSeconds)
 		// OC/DR via le calcul canonique analysis.ComputeCombatYieldFloat (K1a :
 		// formules produit → analysis/) plutôt qu'un recalcul inline dupliqué.
 		// Respecte AssistsExcludedFromYield ; byte-identique en mode par défaut. On
 		// ne pose la clé que si la métrique est définie (dmg > 0) — un predicate
 		// distingue « absent » de « 0 ».
-		cy := analysis.ComputeCombatYieldFloat(r.kills, r.assists, r.dmgDealt, r.dmgTaken, r.deaths, effectiveHpToKill)
-		matchStats := map[string]float64{"kda": r.kda}
-		if r.dmgDealt > 0 {
+		cy := analysis.ComputeCombatYieldFloat(r.Kills, r.Assists, r.DamageDealt, r.DamageTaken, r.Deaths, effectiveHpToKill)
+		matchStats := map[string]float64{"kda": r.KDA}
+		if r.DamageDealt > 0 {
 			matchStats["oc"] = cy.OffensiveConversion
 		}
-		if r.dmgTaken > 0 && r.deaths > 0 {
+		if r.DamageTaken > 0 && r.Deaths > 0 {
 			matchStats["dr"] = cy.DefensiveResistance
 		}
 		activities = append(activities, streaks.MatchActivity{
-			PlayedAt: r.startTime,
+			PlayedAt: r.StartTime,
 			Stats:    matchStats,
 		})
 		inputs = append(inputs, records.MatchInput{
-			MatchID:  r.matchID,
-			PlayedAt: r.startTime,
+			MatchID:  r.MatchID,
+			PlayedAt: r.StartTime,
 			Metrics: map[records.TrackedMetric]float64{
 				records.MetricPerformanceScore: perfScore,
-				records.MetricKDA:              r.kda,
+				records.MetricKDA:              r.KDA,
 				records.MetricKPM:              kpm,
-				records.MetricAccuracy:         r.accuracy,
+				records.MetricAccuracy:         r.Accuracy,
 				records.MetricPSPM:             pspm,
 			},
 		})
 	}
 	return activities, inputs
-}
-
-// joinProgressionPlaceholders compose une chaîne `?,?,...` pour clause IN.
-func joinProgressionPlaceholders(placeholders []string) string {
-	out := ""
-	for i, p := range placeholders {
-		if i > 0 {
-			out += ","
-		}
-		out += p
-	}
-	return out
 }
 
 // loadPlayerStats agrège les compteurs cumulatifs nécessaires aux milestones.
@@ -291,63 +123,6 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), progressionLoadBudget)
 	defer cancel()
 
-	sharedDB, release, err := acquireProgressionSharedRead(ctx, pdb.SharedReadDB())
-	if err != nil {
-		return out, fmt.Errorf("loadPlayerStats: %w", err)
-	}
-	defer release()
-
-	var (
-		matchesPlayed int64
-		wins          int64
-		kills         int64
-		headshots     int64
-		assists       int64
-	)
-	// « wins » via le seam d'issues title-aware (K1a) plutôt qu'un `outcome = 2`
-	// codé en dur : byte-identique pour halo_infinite, correct pour tout titre au
-	// raw_code différent. Slug explicite (pdb.TitleSlug) car le ctx post-sync
-	// détaché ne porte pas forcément le titleSlug.
-	winExpr := duckdb.OutcomeSQLEqSlug(pdb.TitleSlug, "outcome", canonical.OutcomeWin, "outcome = 2")
-	// Campagne exclue des trois agrégats (D-5, backlog B4 ; no-op pour un titre sans
-	// variante de Campagne) : sous-requête par match_id là où le registre n'est pas joint.
-	campagneExclue := analysis.SQLExcludeCampaignByMatchID(pdb.TitleSlug, "match_id")
-	campagneExclueMR := analysis.SQLExcludeCampaignVariants(pdb.TitleSlug, "mr")
-	statsQuery := `
-		SELECT
-			COUNT(*),
-			COALESCE(SUM(CASE WHEN ` + winExpr + ` THEN 1 ELSE 0 END), 0),
-			COALESCE(SUM(kills), 0),
-			COALESCE(SUM(headshot_kills), 0),
-			COALESCE(SUM(assists), 0)
-		FROM match_participants
-		WHERE xuid = ?` + campagneExclue + `
-	`
-	if err := sharedDB.QueryRowContext(ctx, statsQuery, pdb.XUID).Scan(&matchesPlayed, &wins, &kills, &headshots, &assists); err != nil {
-		return out, fmt.Errorf("aggregate stats: %w", err)
-	}
-
-	// accuracy_threshold_days : COUNT(DISTINCT jour UTC) où au moins 1 match a
-	// accuracy >= seuil. Le bucket jour passe par le fragment timezone canonique
-	// (règle CLAUDE.md n°8) — cohérent avec le backfill A6 (ops.ComputeMilestoneCrossings) ;
-	// un CAST(start_time AS DATE) brut décalerait les jours aux frontières de fuseau.
-	var accuracyDays int64
-	if err := sharedDB.QueryRowContext(ctx, `
-		SELECT COUNT(DISTINCT CAST(`+analysis.SQLStartTimeCanonical("mr")+` AS DATE))
-		FROM match_participants mp
-		JOIN match_registry mr ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ? AND mp.accuracy >= ?`+campagneExclueMR+`
-	`, pdb.XUID, AccuracyThresholdForDays).Scan(&accuracyDays); err != nil {
-		return out, fmt.Errorf("aggregate accuracy days: %w", err)
-	}
-
-	out.Metrics["matches_played"] = float64(matchesPlayed)
-	out.Metrics["wins"] = float64(wins)
-	out.Metrics["kills"] = float64(kills)
-	out.Metrics["headshots"] = float64(headshots)
-	out.Metrics["assists"] = float64(assists)
-	out.Metrics["accuracy_threshold_days"] = float64(accuracyDays)
-
 	// Seuils de comptage des MILESTONES combat. Volontairement DISTINCTS des
 	// frontières élite analysis.OffensiveConversionP80 (0,90) et
 	// analysis.DefensiveResistanceP80 (1,65), qui servent à normaliser l'échelle
@@ -360,39 +135,32 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 	// combat_precision_matches  : matchs avec OC >= 0,83.
 	// combat_endurance_matches  : matchs avec DR >= 1,59.
 	// combat_excellence_matches : matchs avec OC >= 0,83 ET DR >= 1,59.
-	const ocMilestoneThreshold = analysis.CombatOCReferenceThreshold
-	const drMilestoneThreshold = analysis.CombatDRReferenceThreshold
-	// effectiveHpToKill = baseline PV-pour-tuer du titre (225 Infinite ; 115 Halo 5).
-	// Float de confiance issu de la config → injecté via Sprintf (%g), pas une
-	// entrée utilisateur. Les seuils de milestone restent en bind params (?).
-	hp := games.EffectiveHpToKill(pdb.TitleSlug)
-	combatMetricsQuery := fmt.Sprintf(`
-		SELECT
-			COUNT(CASE WHEN damage_dealt > 0
-				AND %[1]g * (COALESCE(kills,0) + COALESCE(assists,0)/3.0) / damage_dealt >= ? THEN 1 END),
-			COUNT(CASE WHEN damage_taken > 0 AND COALESCE(deaths,0) > 0
-				AND damage_taken / (%[1]g * deaths) >= ? THEN 1 END),
-			COUNT(CASE WHEN damage_dealt > 0 AND damage_taken > 0 AND COALESCE(deaths,0) > 0
-				AND %[1]g * (COALESCE(kills,0) + COALESCE(assists,0)/3.0) / damage_dealt >= ?
-				AND damage_taken / (%[1]g * deaths) >= ? THEN 1 END)
-		FROM match_participants
-		WHERE xuid = ?%[2]s
-	`, hp, campagneExclue)
-	var precisionMatches, enduranceMatches, excellenceMatches int64
-	if err := sharedDB.QueryRowContext(ctx, combatMetricsQuery,
-		ocMilestoneThreshold, drMilestoneThreshold, ocMilestoneThreshold, drMilestoneThreshold,
-		pdb.XUID).Scan(&precisionMatches, &enduranceMatches, &excellenceMatches); err != nil {
-		return out, fmt.Errorf("aggregate combat metrics: %w", err)
+	agg, err := duckdb.NewPostSyncProgressionStore(pdb).Aggregates(ctx, port.ProgressionAggregateParams{
+		AccuracyThreshold: AccuracyThresholdForDays,
+		OCThreshold:       analysis.CombatOCReferenceThreshold,
+		DRThreshold:       analysis.CombatDRReferenceThreshold,
+		// effectiveHpToKill = baseline PV-pour-tuer du titre (225 Infinite ; 115 Halo 5).
+		HPToKill: games.EffectiveHpToKill(pdb.TitleSlug),
+	})
+	if err != nil {
+		return out, err
 	}
-	out.Metrics["combat_precision_matches"] = float64(precisionMatches)
+
+	out.Metrics["matches_played"] = float64(agg.MatchesPlayed)
+	out.Metrics["wins"] = float64(agg.Wins)
+	out.Metrics["kills"] = float64(agg.Kills)
+	out.Metrics["headshots"] = float64(agg.Headshots)
+	out.Metrics["assists"] = float64(agg.Assists)
+	out.Metrics["accuracy_threshold_days"] = float64(agg.AccuracyDays)
+	out.Metrics["combat_precision_matches"] = float64(agg.PrecisionMatches)
 	// Endurance / excellence dépendent de la résistance (damage_taken). Un titre
 	// sans dégâts subis (ex. Halo 5) ne peut JAMAIS les atteindre (0 à vie) → on
 	// n'émet PAS ces métriques pour lui (milestones masqués) plutôt que de les
 	// bloquer à 0 inatteignable. La précision (OC) reste : elle ne dépend que des
 	// dégâts infligés. Title-agnostic via games.ProvidesDamageTaken (config).
 	if games.ProvidesDamageTaken(pdb.TitleSlug) {
-		out.Metrics["combat_endurance_matches"] = float64(enduranceMatches)
-		out.Metrics["combat_excellence_matches"] = float64(excellenceMatches)
+		out.Metrics["combat_endurance_matches"] = float64(agg.EnduranceMatches)
+		out.Metrics["combat_excellence_matches"] = float64(agg.ExcellenceMatches)
 	}
 	return out, nil
 }
@@ -416,36 +184,9 @@ func loadComebackContext(ctx context.Context, pdb *duckdb.PlayerDB, now time.Tim
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), progressionLoadBudget)
 	defer cancel()
-	sharedDB, release, err := acquireProgressionSharedRead(ctx, pdb.SharedReadDB())
-	if err != nil {
-		return out, fmt.Errorf("loadComebackContext: %w", err)
-	}
-	defer release()
-	// start_time via le fragment timezone canonique (règle CLAUDE.md n°8), SELECT +
-	// filtre NOT NULL + tri : un match à start_time NULL mais start_time_utc
-	// renseigné compte comme activité valide (alignement G1).
-	rows, err := sharedDB.QueryContext(ctx, `
-		SELECT `+analysis.SQLStartTimeCanonical("mr")+` AS start_time
-		FROM match_participants mp
-		JOIN match_registry mr ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ? AND `+analysis.SQLStartTimeCanonical("mr")+` IS NOT NULL`+
-		analysis.SQLExcludeCampaignVariants(pdb.TitleSlug, "mr")+`
-		ORDER BY start_time DESC
-		LIMIT 2
-	`, pdb.XUID)
-	if err != nil {
-		return out, fmt.Errorf("query last matches: %w", err)
-	}
-	defer rows.Close()
-	var times []time.Time
-	for rows.Next() {
-		var t sql.NullTime
-		if err := rows.Scan(&t); err != nil {
-			return out, err
-		}
-		if t.Valid {
-			times = append(times, t.Time)
-		}
+	times, err := duckdb.NewPostSyncProgressionStore(pdb).LastMatchTimes(ctx)
+	if err != nil && len(times) == 0 {
+		return out, err
 	}
 	if len(times) >= 1 {
 		t := times[0]
@@ -458,5 +199,5 @@ func loadComebackContext(ctx context.Context, pdb *duckdb.PlayerDB, now time.Tim
 		t := times[1]
 		out.PrevMatchAt = &t
 	}
-	return out, rows.Err()
+	return out, err
 }

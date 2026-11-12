@@ -72,7 +72,7 @@ var weaponKillsSQLAllowlist = map[string]string{
 	"internal/platform/duckdb/queries_home_citations.go": "repli arme favorite de l'accueil (branche sans classifier)",
 	"internal/platform/duckdb/explorer_repo.go":          "repli top armes de la cible (branche sans classifier)",
 	"internal/sync/citations.go":                         "repli de la statistique weapon_stat du moteur de citations",
-	"internal/api/wire/registry_weapon_coverage.go":      "repli de la page admin de couverture (titre sans décodeur)",
+	"internal/platform/duckdb/weapon_coverage_repo.go":   "repli de la page admin de couverture (titre sans décodeur), déplacé de api/wire le 2026-11-12",
 	"internal/sync/writes.go":                            "InsertWeaponKills : écriture du producteur natif Halo 5",
 	"internal/persist/shared_persister.go":               "persister partagé : insertion des lignes natives Halo 5",
 	// Outils d'ops et de diagnostic — hors flux applicatif, exécution manuelle.

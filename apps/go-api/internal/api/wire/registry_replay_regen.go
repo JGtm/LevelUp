@@ -9,15 +9,14 @@ package wire
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmrun"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/gameproc"
 	"levelup/go-api/internal/replayregen"
 
@@ -43,34 +42,24 @@ func (r *ServiceRegistry) ReplayRegenDeps(pending replayregen.PendingStore) repl
 }
 
 // unmanagedModeMatches rend les matchs (forme courte) dont le mode n'est pas géré par le rejeu : le MÊME prédicat que
-// le refus de la cuisson (analysis.SQLModeNonGere, lu au registre ; replayMatchIdentity en tire replaybuild.ErrModeNonGere).
-// Le décompte de la file s'en sert pour écarter d'emblée ces rejeux (Firefight d'avant la décision du 2026-10-15) au lieu
-// de les compter « en retard » jusqu'à leur premier refus.
+// le refus de la cuisson (analysis.SQLModeNonGere, lu au registre par duckdb.ReplayRegistryRepo ; replayMatchIdentity en
+// tire replaybuild.ErrModeNonGere). Le décompte de la file s'en sert pour écarter d'emblée ces rejeux (Firefight d'avant la
+// décision du 2026-10-15) au lieu de les compter « en retard » jusqu'à leur premier refus.
 func (r *ServiceRegistry) unmanagedModeMatches(ctx context.Context, titleSlug string) (map[string]struct{}, error) {
-	sharedSQL, release, err := r.lectureSharedDuTitre(ctx, titleSlug)
+	sharedSQL, release, err := r.titleBases().ReadShared(ctx, titleSlug)
 	if err != nil {
 		return nil, err
 	}
 	defer release()
-	return queryUnmanagedModeMatches(ctx, sharedSQL)
-}
-
-// queryUnmanagedModeMatches lit les matchs de match_registry refusés par règle, en forme courte.
-func queryUnmanagedModeMatches(ctx context.Context, db *sql.DB) (map[string]struct{}, error) {
-	rows, err := db.QueryContext(ctx, `SELECT match_id FROM match_registry WHERE `+analysis.SQLModeNonGere(""))
+	ids, err := duckdb.NewReplayRegistryRepo(sharedSQL, nil).UnmanagedModeMatchIDs(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("registre des matchs (modes non gérés): %w", err)
+		return nil, err
 	}
-	defer func() { _ = rows.Close() }()
-	out := map[string]struct{}{}
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("registre des matchs (modes non gérés, scan): %w", err)
-		}
+	out := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
 		out[title.FilmShortMatchID(id)] = struct{}{}
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // titlesWithReplay : les titres actifs qui déclarent la capacité `film.replay_artifact`. Une configuration de

@@ -449,3 +449,14 @@ type RecalculCitations struct {
 	MetaDB, SharedDB, PlayerDB *sql.DB
 	MatchIDs                   []string
 }
+
+// RecalculerCitationsDuTitre rend le calcul que la relance des citations du film appelle pour un joueur :
+// [RecalculerCitations] sur les bases fournies, pour le titre et le dépôt donnés.
+func RecalculerCitationsDuTitre(repoRoot, titleSlug string) func(ctx context.Context, metaDB, sharedDB, playerDB *sql.DB, xuid string, matchIDs []string) error {
+	return func(ctx context.Context, metaDB, sharedDB, playerDB *sql.DB, xuid string, matchIDs []string) error {
+		return RecalculerCitations(ctx, RecalculCitations{
+			RepoRoot: repoRoot, TitleSlug: titleSlug, XUID: xuid,
+			MetaDB: metaDB, SharedDB: sharedDB, PlayerDB: playerDB, MatchIDs: matchIDs,
+		})
+	}
+}

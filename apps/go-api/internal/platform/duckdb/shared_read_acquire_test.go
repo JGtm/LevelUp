@@ -1,8 +1,8 @@
-// Package api — post_sync_progression_retry_test.go : couverture du retry
+// Package duckdb — shared_read_acquire_test.go : couverture du retry
 // résilient d'acquisition de la connexion lecture shared (fix 2026-05-30 :
 // la fenêtre de swap RO↔RW d'un sync concurrent faisait échouer en deadline
 // la lecture progression → tables streaks/records/milestones vides).
-package wire
+package duckdb
 
 import (
 	"context"
@@ -28,13 +28,13 @@ func (f *flakySharedReader) Get(_ context.Context) (*sql.DB, func(), error) {
 	return &sql.DB{}, func() { f.releaseCalls++ }, nil
 }
 
-func TestAcquireProgressionSharedRead_RetriesThenSucceeds(t *testing.T) {
-	orig := progressionSharedReadBackoff
-	progressionSharedReadBackoff = 2 * time.Millisecond
-	defer func() { progressionSharedReadBackoff = orig }()
+func TestAcquireSharedRead_RetriesThenSucceeds(t *testing.T) {
+	orig := sharedReadBackoff
+	sharedReadBackoff = 2 * time.Millisecond
+	defer func() { sharedReadBackoff = orig }()
 
 	reader := &flakySharedReader{failuresBeforeSuccess: 2}
-	db, release, err := acquireProgressionSharedRead(context.Background(), reader)
+	db, release, err := AcquireSharedRead(context.Background(), reader)
 	if err != nil {
 		t.Fatalf("attendu succès après retries, got err: %v", err)
 	}
@@ -50,18 +50,18 @@ func TestAcquireProgressionSharedRead_RetriesThenSucceeds(t *testing.T) {
 	}
 }
 
-func TestAcquireProgressionSharedRead_GivesUpAfterBudget(t *testing.T) {
-	origBackoff := progressionSharedReadBackoff
-	origBudget := progressionSharedReadBudget
-	progressionSharedReadBackoff = 2 * time.Millisecond
-	progressionSharedReadBudget = 25 * time.Millisecond
+func TestAcquireSharedRead_GivesUpAfterBudget(t *testing.T) {
+	origBackoff := sharedReadBackoff
+	origBudget := sharedReadBudget
+	sharedReadBackoff = 2 * time.Millisecond
+	sharedReadBudget = 25 * time.Millisecond
 	defer func() {
-		progressionSharedReadBackoff = origBackoff
-		progressionSharedReadBudget = origBudget
+		sharedReadBackoff = origBackoff
+		sharedReadBudget = origBudget
 	}()
 
 	reader := &flakySharedReader{failuresBeforeSuccess: 1_000_000} // échoue toujours
-	_, _, err := acquireProgressionSharedRead(context.Background(), reader)
+	_, _, err := AcquireSharedRead(context.Background(), reader)
 	if err == nil {
 		t.Fatal("attendu erreur après dépassement du budget")
 	}
@@ -70,18 +70,18 @@ func TestAcquireProgressionSharedRead_GivesUpAfterBudget(t *testing.T) {
 	}
 }
 
-// TestAcquireProgressionSharedRead_DetachesParentCancel : le ctx parent annulé
+// TestAcquireSharedRead_DetachesParentCancel : le ctx parent annulé
 // ne doit pas tuer l'acquisition (post-sync best-effort en arrière-plan).
-func TestAcquireProgressionSharedRead_DetachesParentCancel(t *testing.T) {
-	orig := progressionSharedReadBackoff
-	progressionSharedReadBackoff = 2 * time.Millisecond
-	defer func() { progressionSharedReadBackoff = orig }()
+func TestAcquireSharedRead_DetachesParentCancel(t *testing.T) {
+	orig := sharedReadBackoff
+	sharedReadBackoff = 2 * time.Millisecond
+	defer func() { sharedReadBackoff = orig }()
 
 	parent, cancel := context.WithCancel(context.Background())
 	cancel() // parent déjà annulé
 
 	reader := &flakySharedReader{failuresBeforeSuccess: 1}
-	db, release, err := acquireProgressionSharedRead(parent, reader)
+	db, release, err := AcquireSharedRead(parent, reader)
 	if err != nil {
 		t.Fatalf("le ctx parent annulé ne doit pas faire échouer (détaché), got: %v", err)
 	}

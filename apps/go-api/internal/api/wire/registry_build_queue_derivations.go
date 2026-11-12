@@ -5,11 +5,9 @@ package wire
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/replayartifacts"
@@ -103,17 +101,9 @@ func (r *ServiceRegistry) sharedProviderForTitle(titleSlug string) sharedprovide
 // chemin-ci vit dans un handler HTTP dont le serveur ferme l'écriture à 30 s (constat C7).
 func (r *ServiceRegistry) sharedWriterForTitle(
 	provider sharedprovider.Provider, titleSlug string,
-) func(context.Context) (*sql.DB, func(), error) {
-	if provider == nil {
-		return nil
-	}
-	return func(ctx context.Context) (*sql.DB, func(), error) {
-		acquireCtx, cancel := context.WithTimeout(ctx, acquireWriterDepot)
-		defer cancel()
-		return syncpkg.AcquireSharedWriterStandalone(
-			ctxkeys.WithDBWriterLabel(acquireCtx, "replay_derivations"),
-			provider, config.SharedDBPath(r.cfg, titleSlug))
-	}
+) syncpkg.SharedWriterAcquirer {
+	return syncpkg.NewSharedWriterAcquirer(provider, config.SharedDBPath(r.cfg, titleSlug),
+		"replay_derivations", acquireWriterDepot)
 }
 
 // sharedReadDepot rend le segment de LECTURE shared du titre que les dérivations empruntent
@@ -123,18 +113,9 @@ func (r *ServiceRegistry) sharedWriterForTitle(
 // L'ATTENTE D'UN SWAP EST BORNÉE PAR [acquireWriterDepot], comme celle du writer, et pour la
 // même raison (constat C7) : les deux attentes sont successives — la lecture a lieu AVANT la
 // première écriture — et leur somme est ce que borne `build_queue_writer_budget_test.go`.
-func sharedReadDepot(provider sharedprovider.Provider, titleSlug string) func(context.Context, string, func(*sql.DB)) {
-	if provider == nil {
-		return nil
-	}
-	return func(ctx context.Context, step string, fn func(*sql.DB)) {
-		db, release, err := provider.Get(sharedprovider.WithSwapWaitBudget(ctx, acquireWriterDepot))
-		if err != nil {
-			monitoringLog.WarnContext(ctx, "build queue: lecture shared indisponible — étape de dérivation sautée",
-				"title", titleSlug, "step", step, "err", err)
-			return
-		}
-		defer release()
-		fn(db)
-	}
+func sharedReadDepot(provider sharedprovider.Provider, titleSlug string) sharedprovider.ReadSegmentFunc {
+	return sharedprovider.ReadSegment(provider, acquireWriterDepot, func(ctx context.Context, step string, err error) {
+		monitoringLog.WarnContext(ctx, "build queue: lecture shared indisponible — étape de dérivation sautée",
+			"title", titleSlug, "step", step, "err", err)
+	})
 }

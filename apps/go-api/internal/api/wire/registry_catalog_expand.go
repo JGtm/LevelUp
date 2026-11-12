@@ -1,174 +1,63 @@
-// Package api — registry_catalog_expand.go : découverte « A à Z » des couples map-mode
-// ENFANTS d'une playlist (même jamais joués), via la config playlist discovery-infiniteugc
+// Package api — registry_catalog_expand.go : le câblage de la découverte « A à Z » des couples
+// map-mode ENFANTS d'une playlist (même jamais joués), via la config playlist discovery-infiniteugc
 // (sync.GetPlaylistConfig). Le drain (RunCatalogUGCDrain) ne part que de match_registry
-// (joué) ; cette étape enfile en plus les enfants déclarés dans la config de chaque
-// playlist, pour que le drain les nomme. Stocke aussi les poids de rotation.
+// (joué) ; l'expansion enfile en plus les enfants déclarés dans la config de chaque
+// playlist, pour que le drain les nomme, et stocke les poids de rotation. La règle est dans
+// service.PlaylistExpansionService ; ce fichier branche ses ports sur les bases et le client Halo.
 package wire
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
-	"log/slog"
-	"time"
 
-	"levelup/go-api/internal/observability"
-	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
 // playlistExpandRPS : débit du fetch config playlist (discovery-infiniteugc). Conservateur.
 const playlistExpandRPS = 3
 
-// ExpandPlaylistChildren lit la config de chaque playlist vue en match (avec sa version,
-// requise par l'API) et enfile ses couples map-mode enfants dans catalog_fetch_queue
-// (le drain les nommera ensuite), en stockant les poids de rotation. Best-effort par
-// playlist : un fetch raté est loggé et n'interrompt pas les autres. Retourne le nombre
-// de couples enfants enfilés. In-process (handles DB du serveur) → pas de lock.
+// ExpandPlaylistChildren enfile les couples map-mode enfants des playlists vues en match (cf.
+// service.PlaylistExpansionService). Rend le nombre de couples enfants enfilés.
 func (r *ServiceRegistry) ExpandPlaylistChildren(ctx context.Context, titleSlug string) (int, error) {
-	// La base partagée n'est lue que le temps de lister les playlists, puis rendue : la boucle
-	// réseau qui suit dure plusieurs minutes (320 playlists à 3 req/s) et un lecteur en vol fait
-	// échouer toute prise d'écriture de la base (ADR 0016).
-	playlists, err := r.playlistsVuesEnMatch(ctx, titleSlug)
-	if err != nil {
-		return 0, err
-	}
-	metaSQL, closeMeta := r.metadataDuTitre(ctx, titleSlug)
-	defer closeMeta()
+	return service.NewPlaylistExpansionService(service.PlaylistExpansionDeps{
+		Playlists:    duckdb.PlaylistsSeenReader{Bases: r.titleBases()},
+		OpenChildren: r.openPlaylistChildStore,
+		OpenFetcher:  r.openPlaylistConfigFetcher,
+	}).ExpandPlaylistChildren(ctx, titleSlug)
+}
+
+// openPlaylistChildStore ouvre metadata du titre (écriture partagée) ; release décrémente son compteur de
+// références.
+func (r *ServiceRegistry) openPlaylistChildStore(ctx context.Context, titleSlug string) (port.PlaylistChildStore, func(), error) {
+	metaSQL, closeMeta := r.titleBases().Metadata(ctx, titleSlug)
 	if metaSQL == nil {
-		return 0, fmt.Errorf("DBs indisponibles pour %s", titleSlug)
+		closeMeta()
+		return nil, nil, fmt.Errorf("DBs indisponibles pour %s", titleSlug)
 	}
-	if err := ensurePlaylistWeightsTable(ctx, metaSQL); err != nil {
-		return 0, err
-	}
+	return persist.NewPlaylistChildrenPersister(metaSQL), closeMeta, nil
+}
 
+// openPlaylistConfigFetcher prend les jetons Halo du catalogue et construit le client qui lit la configuration
+// d'une playlist.
+func (r *ServiceRegistry) openPlaylistConfigFetcher(ctx context.Context, titleSlug string) (port.PlaylistConfigFetcher, error) {
 	tokens, err := jetonsCatalogue(r, ctx, titleSlug)
-	if err != nil {
-		return 0, err
-	}
-	client := syncpkg.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, playlistExpandRPS)
-
-	slog.InfoContext(ctx, "catalog_expand: démarré", "module", logging.ModuleCatalog,
-		"title", titleSlug, "playlists", len(playlists))
-
-	enqueued, failed := 0, 0
-	for _, p := range playlists {
-		if err := ctx.Err(); err != nil {
-			return enqueued, err
-		}
-		cfg, ferr := client.GetPlaylistConfig(ctx, p.id, p.ver)
-		if ferr != nil {
-			failed++
-			// Best-effort par-playlist : DEBUG. Le total est remonté une fois en fin
-			// de cycle (WARN si failed>0), pas N WARN ici. Un fetch raté au boot est
-			// souvent un simple 429 transitoire (cf. cooldown pool).
-			slog.DebugContext(ctx, "catalog_expand: config playlist échouée (best-effort)",
-				"module", logging.ModuleCatalog, "playlist", p.id, "err", ferr)
-			continue
-		}
-		for _, e := range cfg.Entries {
-			if e.MapModePairAssetID == "" {
-				continue
-			}
-			// ART-safe / PK-less (#23645) : catalog_fetch_queue n'a plus de PK
-			// (rebuild_catalog_fetch_queue_drop_art_indexes) → INSERT OR IGNORE
-			// échouait EN DUR ("no UNIQUE/PRIMARY KEY ... specify ON CONFLICT columns")
-			// → expansion playlists morte. SELECT-then-INSERT (NOT EXISTS), comme
-			// ops/catalog_queue.go + enqueueCatalogChild.
-			if _, eerr := metaSQL.ExecContext(ctx,
-				`INSERT INTO catalog_fetch_queue (title_slug, asset_type, asset_id, version_id)
-				 SELECT ?, 'pair', ?, ?
-				 WHERE NOT EXISTS (
-				   SELECT 1 FROM catalog_fetch_queue
-				   WHERE title_slug = ? AND asset_type = 'pair' AND asset_id = ?
-				 )`,
-				titleSlug, e.MapModePairAssetID, e.VersionID,
-				titleSlug, e.MapModePairAssetID,
-			); eerr != nil {
-				slog.WarnContext(ctx, "catalog_expand: enqueue enfant échoué",
-					"module", logging.ModuleCatalog, "pair", e.MapModePairAssetID, "err", eerr)
-				continue
-			}
-			enqueued++
-			upsertPlaylistWeight(ctx, metaSQL, titleSlug, p.id, e.MapModePairAssetID, e.Weight)
-		}
-	}
-	observability.IncCounter("catalog_playlist_expand_total")
-	// Résumé unique de fin de cycle : WARN si au moins une playlist a échoué
-	// (signal agrégé visible), INFO sinon.
-	if failed > 0 {
-		slog.WarnContext(ctx, "catalog_expand: terminé avec échecs", "module", logging.ModuleCatalog,
-			"playlists", len(playlists), "children_enqueued", enqueued, "playlists_failed", failed)
-	} else {
-		slog.InfoContext(ctx, "catalog_expand: terminé", "module", logging.ModuleCatalog,
-			"playlists", len(playlists), "children_enqueued", enqueued, "playlists_failed", failed)
-	}
-	return enqueued, nil
-}
-
-// ensurePlaylistWeightsTable crée la table des poids si absente (idempotent).
-func ensurePlaylistWeightsTable(ctx context.Context, db *sql.DB) error {
-	_, err := db.ExecContext(ctx, `
-		CREATE TABLE IF NOT EXISTS playlist_map_mode_weights (
-			title_slug        VARCHAR NOT NULL,
-			playlist_asset_id VARCHAR NOT NULL,
-			pair_asset_id     VARCHAR NOT NULL,
-			weight            DOUBLE,
-			updated_at        TIMESTAMP,
-			PRIMARY KEY (title_slug, playlist_asset_id, pair_asset_id)
-		)`)
-	if err != nil {
-		return fmt.Errorf("create playlist_map_mode_weights: %w", err)
-	}
-	return nil
-}
-
-// upsertPlaylistWeight : wrapper best-effort de l'upsert ART-safe canonique
-// (duckdb.UpsertRowNoConflict — SELECT-then-write, JAMAIS d'ON CONFLICT sur metadata,
-// bug ART #23645). L'erreur est délibérément ignorée (poids best-effort, recalculé au
-// prochain cycle catalog_expand).
-func upsertPlaylistWeight(ctx context.Context, db *sql.DB, titleSlug, playlistID, pairID string, weight float64) {
-	now := time.Now().UTC()
-	_ = duckdb.UpsertRowNoConflict(ctx, db,
-		`SELECT 1 FROM playlist_map_mode_weights WHERE title_slug=? AND playlist_asset_id=? AND pair_asset_id=?`,
-		[]any{titleSlug, playlistID, pairID},
-		`UPDATE playlist_map_mode_weights SET weight=?, updated_at=? WHERE title_slug=? AND playlist_asset_id=? AND pair_asset_id=?`,
-		[]any{weight, now, titleSlug, playlistID, pairID},
-		`INSERT INTO playlist_map_mode_weights (title_slug, playlist_asset_id, pair_asset_id, weight, updated_at) VALUES (?,?,?,?,?)`,
-		[]any{titleSlug, playlistID, pairID, weight, now},
-	)
-}
-
-// playlistVersionnee : une playlist vue en match, avec sa version (l'API la requiert : 404 sans
-// version, 400 sur "latest").
-type playlistVersionnee struct{ id, ver string }
-
-// playlistsVuesEnMatch lit les playlists distinctes de match_registry, dans une lecture de la base
-// partagée rendue en sortant.
-func (r *ServiceRegistry) playlistsVuesEnMatch(ctx context.Context, titleSlug string) ([]playlistVersionnee, error) {
-	sharedSQL, release, err := r.lectureSharedDuTitre(ctx, titleSlug)
 	if err != nil {
 		return nil, err
 	}
-	defer release()
-	rows, err := sharedSQL.QueryContext(ctx, `
-		SELECT DISTINCT playlist_id, playlist_version_id
-		FROM match_registry
-		WHERE playlist_id IS NOT NULL AND playlist_id != ''
-		  AND playlist_version_id IS NOT NULL AND playlist_version_id != ''`)
-	if err != nil {
-		return nil, fmt.Errorf("query playlists: %w", err)
-	}
-	defer rows.Close()
-	var playlists []playlistVersionnee
-	for rows.Next() {
-		var p playlistVersionnee
-		if err := rows.Scan(&p.id, &p.ver); err != nil {
-			signalerLigneIllisible(ctx, titleSlug, "catalog_expand_playlists", err)
-			continue
+	client := syncpkg.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, playlistExpandRPS)
+	return port.PlaylistConfigFetcherFunc(func(ctx context.Context, p port.PlaylistRef) ([]port.PlaylistChild, error) {
+		cfg, err := client.GetPlaylistConfig(ctx, p.ID, p.Version)
+		if err != nil {
+			return nil, err
 		}
-		playlists = append(playlists, p)
-	}
-	return playlists, rows.Err()
+		children := make([]port.PlaylistChild, 0, len(cfg.Entries))
+		for _, e := range cfg.Entries {
+			children = append(children, port.PlaylistChild{PairAssetID: e.MapModePairAssetID, VersionID: e.VersionID, Weight: e.Weight})
+		}
+		return children, nil
+	}), nil
 }

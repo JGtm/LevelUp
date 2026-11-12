@@ -16,12 +16,12 @@ package wire
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync/invariants"
 )
 
@@ -51,16 +51,16 @@ func (r *ServiceRegistry) RunDataInvariants(ctx context.Context, titleSlug strin
 			XUID:       p.XUID,
 			Violations: []domain.InvariantViolation{},
 		}
-		playerSQL, sharedSQL, release := r.resolveInvariantDBs(ctx, titleSlug, &report)
-		if playerSQL != nil {
+		handles, ok := r.resolveInvariantDBs(ctx, titleSlug, &report)
+		if ok {
 			// Invariants globaux : une seule fois, portés par la première
 			// player DB résolvable (ATTACH global nécessaire au check alias).
 			if !sharedDone {
-				r.fillSharedInvariants(ctx, &resp, playerSQL, sharedSQL)
+				r.fillSharedInvariants(ctx, &resp, handles)
 				sharedDone = true
 			}
-			r.fillPlayerInvariants(ctx, &report, playerSQL, sharedSQL)
-			release()
+			r.fillPlayerInvariants(ctx, &report, handles)
+			handles.Release()
 		}
 		totalFail += report.FailCount
 		totalWarn += report.WarnCount
@@ -89,39 +89,39 @@ func (r *ServiceRegistry) RunDataInvariants(ctx context.Context, titleSlug strin
 }
 
 // resolveInvariantDBs résout les handles DB d'un joueur (best-effort). En cas
-// d'échec, report.CheckError est posé, le WARN loggé, et (nil, nil, nil) est
-// retourné. release() doit être appelé après usage du sharedSQL.
+// d'échec, report.CheckError est posé, le WARN loggé, et ok vaut false. Release() doit être
+// appelé après usage des handles.
 func (r *ServiceRegistry) resolveInvariantDBs(
 	ctx context.Context, titleSlug string, report *domain.PlayerInvariantsReport,
-) (playerSQL, sharedSQL *sql.DB, release func()) {
+) (handles duckdb.ReadHandles, ok bool) {
 	if r.resolveByGT == nil || report.Gamertag == "" || report.XUID == "" {
 		report.CheckError = "resolver ou identité joueur indisponible"
 		invariantsLog.WarnContext(ctx, "admin_invariants: resolver ou identité indisponible",
 			"gamertag", report.Gamertag, "xuid", report.XUID)
-		return nil, nil, nil
+		return duckdb.ReadHandles{}, false
 	}
 	tpdb, err := r.resolveByGT(ctx, titleSlug, report.Gamertag)
 	if err != nil || tpdb == nil || tpdb.Player == nil {
 		report.CheckError = "player DB inaccessible"
 		invariantsLog.WarnContext(ctx, "admin_invariants: resolve player failed",
 			"gamertag", report.Gamertag, "err", err)
-		return nil, nil, nil
+		return duckdb.ReadHandles{}, false
 	}
-	shared, rel, err := tpdb.SharedReadDB().Get(ctx)
+	handles, err = tpdb.ReadHandles(ctx)
 	if err != nil {
 		report.CheckError = "shared DB inaccessible"
 		invariantsLog.WarnContext(ctx, "admin_invariants: shared reader failed",
 			"gamertag", report.Gamertag, "err", err)
-		return nil, nil, nil
+		return duckdb.ReadHandles{}, false
 	}
-	return tpdb.Player.SQLDb(), shared, rel
+	return handles, true
 }
 
 // fillPlayerInvariants exécute les invariants par joueur (best-effort).
 func (r *ServiceRegistry) fillPlayerInvariants(
-	ctx context.Context, report *domain.PlayerInvariantsReport, playerSQL, sharedSQL *sql.DB,
+	ctx context.Context, report *domain.PlayerInvariantsReport, h duckdb.ReadHandles,
 ) {
-	rep, err := invariants.CheckPlayer(ctx, playerSQL, sharedSQL, report.XUID)
+	rep, err := invariants.CheckPlayer(ctx, h.Player, h.Shared, report.XUID)
 	if err != nil {
 		report.CheckError = err.Error()
 		invariantsLog.WarnContext(ctx, "admin_invariants: check player failed",
@@ -141,9 +141,9 @@ func (r *ServiceRegistry) fillPlayerInvariants(
 
 // fillSharedInvariants exécute les invariants globaux (une fois par run).
 func (r *ServiceRegistry) fillSharedInvariants(
-	ctx context.Context, resp *domain.AdminInvariantsResponse, playerSQL, sharedSQL *sql.DB,
+	ctx context.Context, resp *domain.AdminInvariantsResponse, h duckdb.ReadHandles,
 ) {
-	rep, err := invariants.CheckShared(ctx, playerSQL, sharedSQL)
+	rep, err := invariants.CheckShared(ctx, h.Player, h.Shared)
 	if err != nil {
 		resp.SharedCheckError = err.Error()
 		invariantsLog.WarnContext(ctx, "admin_invariants: check shared failed", "err", err)

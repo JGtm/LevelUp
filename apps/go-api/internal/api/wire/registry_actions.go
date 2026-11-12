@@ -55,12 +55,12 @@ const acquireWriterTimeout = 60 * time.Second
 func (r *ServiceRegistry) RunRegistryNamesBackfill(ctx context.Context, titleSlug string, dryRun bool) (res domain.RegistryNamesBackfillResult, err error) {
 	res = domain.RegistryNamesBackfillResult{DryRun: dryRun}
 	if dryRun {
-		sharedSQL, metaSQL, closeAll, hErr := r.dataQualityHandles(ctx, titleSlug)
+		h, hErr := r.dataQualityHandles(ctx, titleSlug)
 		if hErr != nil {
 			return res, hErr
 		}
-		defer closeAll()
-		stats, bErr := sync_pkg.BackfillRegistryNames(ctx, sharedSQL, metaSQL,
+		defer h.Close()
+		stats, bErr := sync_pkg.BackfillRegistryNames(ctx, h.Shared, h.Meta,
 			sync_pkg.RegistryNamesOptions{DryRun: true})
 		if bErr != nil {
 			return res, bErr
@@ -96,12 +96,12 @@ func (r *ServiceRegistry) RunLyingBitsReset(ctx context.Context, titleSlug strin
 	res = domain.LyingBitsResetResult{DryRun: dryRun}
 
 	if dryRun {
-		sharedSQL, _, closeAll, dErr := r.dataQualityHandles(ctx, titleSlug)
+		h, dErr := r.dataQualityHandles(ctx, titleSlug)
 		if dErr != nil {
 			return res, dErr
 		}
-		defer closeAll()
-		opsRes, rErr := ops.ResetLyingBits(ctx, sharedSQL, true)
+		defer h.Close()
+		opsRes, rErr := ops.ResetLyingBits(ctx, h.Shared, true)
 		if rErr != nil {
 			return res, rErr
 		}
@@ -263,16 +263,16 @@ func (r *ServiceRegistry) RunCatalogRefresh(ctx context.Context, titleSlug strin
 	// avant ce defer). err = erreur finale nommée.
 	defer func() { r.journalAction(ctx, adminstate.ActionCatalogRefresh, err) }()
 
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
+	h, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {
 		return out, err
 	}
-	defer closeAll()
-	if metaSQL == nil {
+	defer h.Close()
+	if h.Meta == nil {
 		return out, fmt.Errorf("metadata indisponible pour %s", titleSlug)
 	}
 
-	res, err := ops.CatalogRefreshFromRegistry(ctx, metaSQL, sharedSQL, titleSlug)
+	res, err := ops.CatalogRefreshFromRegistry(ctx, h.Meta, h.Shared, titleSlug)
 	if err != nil {
 		return out, err
 	}

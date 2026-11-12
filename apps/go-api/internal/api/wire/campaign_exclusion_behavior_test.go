@@ -68,12 +68,16 @@ func newB4Env(t *testing.T, titleSlug string) *duckdb.PlayerDB {
 	return pdb
 }
 
-// B4.2.6 — loadProgressionSharedMatches (séries et records).
+// B4.2.6 — duckdb.PostSyncProgressionStore.MatchRows (séries et records).
 func TestCampaignExclusion_LoadProgressionSharedMatches(t *testing.T) {
 	for _, tc := range b4Titres {
-		_, ids, err := loadProgressionSharedMatches(context.Background(), newB4Env(t, tc.slug), b4Arene.AddDate(0, -1, 0))
+		rows, err := duckdb.NewPostSyncProgressionStore(newB4Env(t, tc.slug)).MatchRows(context.Background(), b4Arene.AddDate(0, -1, 0))
 		if err != nil {
 			t.Fatalf("%s : %v", tc.slug, err)
+		}
+		ids := make([]string, 0, len(rows))
+		for _, r := range rows {
+			ids = append(ids, r.MatchID)
 		}
 		if want := b4Attendu(tc.masquee, "[arena1]", "[arena1 camp1]"); fmt.Sprint(ids) != want {
 			t.Errorf("%s : matchs %v, attendu %s", tc.slug, ids, want)

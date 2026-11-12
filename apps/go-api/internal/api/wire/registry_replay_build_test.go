@@ -17,6 +17,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/replayartifacts"
@@ -69,40 +70,12 @@ func TestReplayMatchIdentity_RefuseLeModeNonGere(t *testing.T) {
 		}
 	}
 	ctx := context.Background()
-	if _, _, err := replayMatchIdentity(ctx, db, nil, "edc5daf6"); !errors.Is(err, replaybuild.ErrModeNonGere) {
+	repo := duckdb.NewReplayRegistryRepo(db, nil)
+	if _, _, err := replayMatchIdentity(ctx, repo, "edc5daf6"); !errors.Is(err, replaybuild.ErrModeNonGere) {
 		t.Fatalf("Firefight (forme courte) : %v, attendu ErrModeNonGere", err)
 	}
-	id, names, err := replayMatchIdentity(ctx, db, nil, "39910eb1-8c01-4e26-bc60-965cb2dcc789")
+	id, names, err := replayMatchIdentity(ctx, repo, "39910eb1-8c01-4e26-bc60-965cb2dcc789")
 	if err != nil || id == "" || len(names) != 1 || names[0] != "Recharge" {
 		t.Fatalf("match gere : %q %v %v", id, names, err)
-	}
-}
-
-// TestQueryUnmanagedModeMatches_MemePredicatQueLaCuisson — le décompte de la file de régénération écarte d'emblée
-// les matchs que la cuisson refuse par règle : le même prédicat (analysis.SQLModeNonGere) que replayMatchIdentity,
-// rendu en forme courte (celle du nom du fichier rangé).
-func TestQueryUnmanagedModeMatches_MemePredicatQueLaCuisson(t *testing.T) {
-	db, err := sql.Open("duckdb", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	for _, q := range []string{
-		`CREATE TABLE match_registry (match_id VARCHAR, map_name VARCHAR, map_id VARCHAR, is_firefight BOOLEAN)`,
-		`INSERT INTO match_registry VALUES
-			('edc5daf6-0df8-4eb0-b578-b8eb892ce184', 'Cole Protocol', 'b', TRUE),
-			('39910eb1-8c01-4e26-bc60-965cb2dcc789', 'Recharge', 'a', FALSE),
-			('7b7b7b7b-0000-4000-8000-000000000000', 'Sans drapeau', 'c', NULL)`,
-	} {
-		if _, err := db.Exec(q); err != nil {
-			t.Fatal(err)
-		}
-	}
-	got, err := queryUnmanagedModeMatches(context.Background(), db)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := got[title.FilmShortMatchID("edc5daf6-0df8-4eb0-b578-b8eb892ce184")]; !ok || len(got) != 1 {
-		t.Fatalf("modes non gérés = %v, attendu le seul Firefight (forme courte)", got)
 	}
 }

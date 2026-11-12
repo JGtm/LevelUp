@@ -16,12 +16,10 @@ package wire
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strings"
 	gosync "sync"
 
-	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
@@ -44,18 +42,18 @@ func (r *ServiceRegistry) RunReplayBuild(ctx context.Context, titleSlug, matchID
 	}
 	defer replayBuildMu.Unlock()
 
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
+	h, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {
 		return nil, err
 	}
-	fullID, names, err := replayMatchIdentity(ctx, sharedSQL, metaSQL, matchID)
+	fullID, names, err := replayMatchIdentity(ctx, duckdb.NewReplayRegistryRepo(h.Shared, h.Meta), matchID)
 	// LES FAITS SE LISENT AVANT DE RELÂCHER LES HANDLES, et jamais pendant le décodage : deux
 	// SELECT courts, puis la base n'est plus tenue (le décodage dure des secondes à minutes).
 	var facts port.MatchFacts
 	if err == nil {
-		facts = replayMatchFacts(ctx, sharedSQL, fullID)
+		facts = replayMatchFacts(ctx, duckdb.NewReplayFactsRepo(h.Shared), fullID)
 	}
-	closeAll()
+	h.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -100,38 +98,14 @@ func construireRejeuAdmin(ctx context.Context, build replayartifacts.BuildOneFun
 // replayMatchIdentity résout le match (forme courte ACCEPTÉE — piège lot 4 :
 // match_registry est indexé par match_id COMPLET) et rend ses identités de carte
 // candidates, du plus fiable au moins fiable (nom d'asset EN puis map_name brut, même
-// ordre que ReplayMapRepo). metaSQL peut être nil (dégradation : brut seul).
-func replayMatchIdentity(ctx context.Context, sharedSQL, metaSQL *sql.DB, matchID string) (string, []string, error) {
+// ordre que ReplayMapRepo). Sans metadata, le repo ne rend aucun nom EN (dégradation : brut seul).
+func replayMatchIdentity(ctx context.Context, repo port.ReplayRegistryRepo, matchID string) (string, []string, error) {
 	matchID = strings.TrimSpace(matchID)
 	if matchID == "" {
 		return "", nil, fmt.Errorf("match_id vide")
 	}
-	rows, err := sharedSQL.QueryContext(ctx,
-		`SELECT match_id, map_name, map_id, `+analysis.SQLModeNonGere("")+` FROM match_registry
-		 WHERE match_id = ? OR match_id LIKE ? LIMIT 3`,
-		matchID, matchID+"%")
+	hits, err := repo.MatchesByIDOrPrefix(ctx, matchID)
 	if err != nil {
-		return "", nil, fmt.Errorf("lecture match_registry: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	type hit struct {
-		id      string
-		rawName string
-		mapID   string
-		nonGere bool
-	}
-	var hits []hit
-	for rows.Next() {
-		var id string
-		var rawName, mapID sql.NullString
-		var nonGere bool
-		if err := rows.Scan(&id, &rawName, &mapID, &nonGere); err != nil {
-			return "", nil, fmt.Errorf("lecture match_registry (scan): %w", err)
-		}
-		hits = append(hits, hit{id: id, rawName: strings.TrimSpace(rawName.String),
-			mapID: strings.TrimSpace(mapID.String), nonGere: nonGere})
-	}
-	if err := rows.Err(); err != nil {
 		return "", nil, err
 	}
 	if len(hits) == 0 {
@@ -141,33 +115,28 @@ func replayMatchIdentity(ctx context.Context, sharedSQL, metaSQL *sql.DB, matchI
 		return "", nil, fmt.Errorf("préfixe ambigu %s (%d matchs) — donner le match_id complet", matchID, len(hits))
 	}
 	h := hits[0]
-	if h.nonGere {
+	if h.UnmanagedMode {
 		// LE REJEU NE FABRIQUE PAS CE MODE : ni l'action admin ni la mise en file n'y font
 		// exception (decision du 2026-10-15).
-		return "", nil, fmt.Errorf("match %s : %w", h.id, replaybuild.ErrModeNonGere)
+		return "", nil, fmt.Errorf("match %s : %w", h.ID, replaybuild.ErrModeNonGere)
 	}
 	var names []string
-	if h.mapID != "" && metaSQL != nil {
-		var en string
-		if err := metaSQL.QueryRowContext(ctx,
-			`SELECT name FROM asset_translations WHERE asset_type = 'map' AND asset_id = ? AND lang = 'en-US'`,
-			h.mapID).Scan(&en); err == nil && strings.TrimSpace(en) != "" {
+	if h.MapID != "" {
+		if en, err := repo.EnglishMapName(ctx, h.MapID); err == nil && strings.TrimSpace(en) != "" {
 			names = append(names, strings.TrimSpace(en))
 		}
 	}
-	if h.rawName != "" {
-		names = append(names, h.rawName)
+	if h.RawMapName != "" {
+		names = append(names, h.RawMapName)
 	}
-	return h.id, names, nil
+	return h.ID, names, nil
 }
 
 // replayMatchFacts lit CE QUE LA BASE SAIT DU MATCH et que le film ne dit pas : les lignes de
 // match (pont d'identité des joueurs), les scores des deux camps (identité des camps) et le nom
 // de variante (famille d'objectif). Dégradation journalisée, jamais fatale : un artefact sans
 // ces faits reste valide, seulement sans compteurs de joueur ni actions d'objectif.
-func replayMatchFacts(ctx context.Context, sharedSQL *sql.DB, matchID string) port.MatchFacts {
-	// Le type concret ne sort pas d ici : l appelant ne connait que le port.
-	var repo port.ReplayFactsRepo = duckdb.NewReplayFactsRepo(sharedSQL)
+func replayMatchFacts(ctx context.Context, repo port.ReplayFactsRepo, matchID string) port.MatchFacts {
 	facts, err := repo.FactsForMatch(ctx, matchID)
 	if err != nil {
 		// DEGRADATION, PAS ECHEC : un artefact sans ces faits reste valide et servi ; refuser de

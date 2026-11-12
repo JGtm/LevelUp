@@ -218,3 +218,27 @@ func TestTier_Token(t *testing.T) {
 		})
 	}
 }
+
+// TestPerMinute_MemeValeurQueLeCalculEnLigne : PerMinute rend, bit pour bit, ce que le pipeline de progression
+// calculait en ligne (minutes := secondes/60 ; valeur/minutes, 0 sans durée).
+func TestPerMinute_MemeValeurQueLeCalculEnLigne(t *testing.T) {
+	enLigne := func(total, secs float64) float64 {
+		if secs > 0 {
+			minutes := secs / 60
+			return total / minutes
+		}
+		return 0
+	}
+	totaux := []float64{0, 1, 7, 12, 25.5, 1500, 1234.5678, 0.1}
+	durees := []float64{-5, 0, 1, 59, 60, 61, 300, 600, 777.7, 1199.999, 3600}
+	for _, v := range totaux {
+		for _, s := range durees {
+			if got, want := PerMinute(v, s), enLigne(v, s); got != want {
+				t.Fatalf("PerMinute(%v, %v) = %v, calcul en ligne %v", v, s, got, want)
+			}
+		}
+	}
+	if got := PerMinute(12, 600); got != 1.2 {
+		t.Errorf("PerMinute(12, 600) = %v, attendu 1,2", got)
+	}
+}

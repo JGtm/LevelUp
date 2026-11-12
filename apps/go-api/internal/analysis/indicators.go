@@ -138,3 +138,15 @@ func PerfTier(score float64) Tier {
 		return TierMauvais
 	}
 }
+
+// PerMinute retourne total rapporté à la minute de jeu : total / (seconds / 60). Renvoie 0 si seconds <= 0
+// (durée inconnue). Le calcul est celui, valeur pour valeur, des cadences par minute d'un match (frags et
+// score personnel) du pipeline de progression : la division se fait par les minutes, jamais par
+// total * 60 / seconds, dont l'arrondi diffère.
+func PerMinute(total, seconds float64) float64 {
+	if seconds <= 0 {
+		return 0
+	}
+	minutes := seconds / 60
+	return total / minutes
+}

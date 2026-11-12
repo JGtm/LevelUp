@@ -44,7 +44,7 @@ var resolutionsGelees = map[string]string{
 	"internal/platform/duckdb/queries_home_citations.go":    "accueil (citations)",
 	"internal/platform/duckdb/queries_relations_moments.go": "relations",
 	"internal/platform/duckdb/queries_squad.go":             "escouade",
-	"internal/api/wire/registry_replay_build.go":            "rejeu : nom EN technique de la carte (cuisson)",
+	"internal/platform/duckdb/replay_registry_repo.go":      "rejeu : nom EN technique de la carte (cuisson), déplacé de api/wire/registry_replay_build.go le 2026-11-12",
 	"internal/sync/replayartifacts/backlog.go":              "rejeu : nom EN technique de la carte (file de cuisson)",
 	"cmd/diag_db_health/main.go":                            "outil de diagnostic",
 	"cmd/levelup/cmd_backfill_replay.go":                    "rejeu : nom EN technique de la carte (rattrapage)",

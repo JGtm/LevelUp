@@ -27,6 +27,7 @@ var fichiersDuRejeu = []string{
 	"cmd/levelup/cmd_backfill_replay*.go",
 	"internal/api/wire/registry_replay_build.go",
 	"internal/api/wire/registry_build_queue*.go",
+	"internal/platform/duckdb/replay_registry_repo.go",
 	"internal/service/replay_service.go",
 	"internal/platform/duckdb/replay_mode_gate.go",
 	"internal/platform/duckdb/replay_map_repo.go",
@@ -40,7 +41,7 @@ var consommateursDuFragment = []string{
 	"internal/sync/replayartifacts/zones_cartes.go",
 	"cmd/levelup/cmd_backfill_replay.go",
 	"cmd/levelup/cmd_backfill_replay_nongeres.go",
-	"internal/api/wire/registry_replay_build.go",
+	"internal/platform/duckdb/replay_registry_repo.go",
 	"internal/platform/duckdb/replay_mode_gate.go",
 	"internal/ops/seed_demo_replay_picks.go",
 }

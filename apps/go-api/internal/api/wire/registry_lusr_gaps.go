@@ -75,13 +75,13 @@ func (r *ServiceRegistry) LUSRGapsReport(ctx context.Context, titleSlug string) 
 // scanPlayerLUSRGaps scanne un joueur (best-effort → CheckError si DB inaccessible).
 func (r *ServiceRegistry) scanPlayerLUSRGaps(ctx context.Context, titleSlug string, p domain.PlayerSummary) domain.LUSRGapPlayer {
 	out := domain.LUSRGapPlayer{PlayerSlug: p.PlayerSlug, Gamertag: p.Gamertag, XUID: p.XUID, TopGaps: []domain.LUSRGapItem{}}
-	playerSQL, sharedSQL, release, errMsg := r.resolveMonitoringDBs(ctx, titleSlug, p.Gamertag, p.XUID)
+	handles, errMsg := r.resolveMonitoringDBs(ctx, titleSlug, p.Gamertag, p.XUID)
 	if errMsg != "" {
 		out.CheckError = errMsg
 		return out
 	}
-	defer release()
-	rep, err := skill.ScanLUSRGaps(ctx, playerSQL, sharedSQL, p.XUID)
+	defer handles.Release()
+	rep, err := skill.ScanLUSRGaps(ctx, handles.Player, handles.Shared, p.XUID)
 	if err != nil {
 		// Log AVANT la dégradation best-effort (CLAUDE.md n°3) — sinon un scan qui
 		// échoue en boucle serait invisible (seul CheckError du DTO le porterait).

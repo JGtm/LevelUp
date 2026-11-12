@@ -145,3 +145,18 @@ func preVerifier(ctx context.Context, d RelanceDeps, j RelanceJoueur, matchID st
 	}
 	return aFaire, err
 }
+
+// ParticipantsLus rend les xuid des participants d'un match, lus dans un segment de lecture partagé prêté
+// par `lire`. Quand le segment ne s'exécute pas (base partagée indisponible), l'erreur le dit.
+func ParticipantsLus(
+	ctx context.Context, lire func(ctx context.Context, step string, fn func(sharedDB *sql.DB)), matchID string,
+) ([]string, error) {
+	var (
+		out []string
+		err = errors.New("base partagée indisponible")
+	)
+	lire(ctx, "citations_relance_participants", func(db *sql.DB) {
+		out, err = ParticipantsDuMatch(ctx, db, matchID)
+	})
+	return out, err
+}
