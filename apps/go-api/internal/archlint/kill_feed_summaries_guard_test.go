@@ -55,7 +55,7 @@ var lecteursDeLignesDuJournal = map[string]string{
 	// Autres titres et noms.
 	"internal/platform/duckdb/halo5/halo5_match_events_source.go:h5KillFeedQuery": "2026-10-21 : source des events de match de Halo 5, une ligne par mort avec son instant.",
 	"internal/analysis/identity.go:gamertagKillFeedLegs":                          "2026-10-21 : annuaire des noms, les gamertags du journal (noms seulement, pas un agrégat) ; à reprendre dans le chantier « annuaire » si mesuré coûteux.",
-	"internal/analysis/weapon_evidence.go:WeaponEvidenceTable":                    "2026-10-21 : sonde d'existence (information_schema) qui NOMME la table de preuve des armes ; ne lit aucune ligne.",
+	"internal/platform/duckdb/weapon_evidence.go:WeaponEvidenceTable":             "2026-10-21 : sonde d'existence (information_schema) qui NOMME la table de preuve des armes ; ne lit aucune ligne.",
 }
 
 // plafondAllowlistJournal : taille de l'allowlist au 2026-10-21. Elle ne peut que décroître

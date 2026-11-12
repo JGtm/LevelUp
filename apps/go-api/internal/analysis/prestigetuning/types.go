@@ -91,6 +91,15 @@ type SourceAcceptance struct {
 	AcceptanceRate float64 `json:"acceptance_rate"`
 }
 
+// NewSourceAcceptance construit l'acceptance d'une source depuis ses comptes (la lecture des comptes est
+// dans platform/duckdb.CollectPrestigeTelemetry ; le taux se calcule ici).
+func NewSourceAcceptance(source string, created, rejected int) SourceAcceptance {
+	return SourceAcceptance{
+		Source: source, Created: created, Rejected: rejected,
+		AcceptanceRate: rate(created, created+rejected),
+	}
+}
+
 // WindowBreakdown détaille la complétion d'une fenêtre d'une métrique — permet
 // de cibler quelle(s) fenêtre(s) réduire dans une recommandation.
 type WindowBreakdown struct {

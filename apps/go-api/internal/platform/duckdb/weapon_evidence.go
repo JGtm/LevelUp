@@ -1,4 +1,4 @@
-// Package analysis — weapon_evidence.go : QUELLE TABLE prouve qu'un match porte bien sa
+// Package duckdb — weapon_evidence.go : QUELLE TABLE prouve qu'un match porte bien sa
 // donnée d'arme.
 //
 // # Le problème
@@ -17,7 +17,7 @@
 // On regarde ce que la base CONTIENT. Un fichier qui porte encore `weapon_kills` se sonde
 // là ; un fichier où elle a été supprimée se sonde sur la source de dégât. Aucune
 // comparaison de slug, aucune capability à câbler jusque dans un scheduler.
-package analysis
+package duckdb
 
 import (
 	"context"

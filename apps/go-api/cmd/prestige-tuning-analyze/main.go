@@ -172,7 +172,7 @@ func collectAll(ctx context.Context, cfg *config.AppConfig, titleSlug string, pl
 				"player", p.Gamertag, "path", dbPath, "err", err)
 			continue
 		}
-		c, a, err := prestigetuning.CollectFromDB(ctx, db)
+		c, a, err := duckdb.CollectPrestigeTelemetry(ctx, db)
 		release()
 		if err != nil {
 			tuningLog.WarnContext(ctx, "agrégation télémétrie échouée, joueur ignoré",

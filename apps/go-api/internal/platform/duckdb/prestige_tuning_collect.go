@@ -1,12 +1,14 @@
-package prestigetuning
+package duckdb
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"levelup/go-api/internal/analysis/prestigetuning"
 )
 
-// collect.go — accès LECTURE SEULE à une player DB (stats.duckdb). Deux requêtes
+// prestige_tuning_collect.go — accès LECTURE SEULE à une player DB (stats.duckdb). Deux requêtes
 // d'agrégation GROUP BY (aucune écriture) :
 //   - metricWindowQuery : jointure prestige_telemetry ⋈ challenge → comptes par
 //     (source, métrique, fenêtre). Attribue created/completed/expired/abandoned à
@@ -44,13 +46,13 @@ const acceptanceQueryTmpl = `
 	GROUP BY src
 	ORDER BY src`
 
-// CollectFromDB agrège la télémétrie d'une player DB. Best-effort et tolérant aux
+// CollectPrestigeTelemetry agrège la télémétrie d'une player DB. Best-effort et tolérant aux
 // DBs legacy : si la table prestige_telemetry est absente, retourne un résultat
 // vide sans erreur (le joueur n'a simplement pas de télémétrie). Si la colonne
 // source est absente (DB antérieure à la migration prestige_add_source_columns_v1),
 // les événements sont agrégés sous "unknown" plutôt que de perdre le joueur. Une
 // vraie erreur de requête (autre cause) remonte pour être tracée (jamais avalée).
-func CollectFromDB(ctx context.Context, db *sql.DB) ([]MetricWindowCount, []SourceAcceptance, error) {
+func CollectPrestigeTelemetry(ctx context.Context, db *sql.DB) ([]prestigetuning.MetricWindowCount, []prestigetuning.SourceAcceptance, error) {
 	present, hasSource, err := probeTelemetry(ctx, db)
 	if err != nil {
 		return nil, nil, fmt.Errorf("probe prestige_telemetry schema: %w", err)
@@ -100,16 +102,16 @@ func probeTelemetry(ctx context.Context, db *sql.DB) (present, hasSource bool, e
 	return present, hasSource, rows.Err()
 }
 
-func queryMetricWindows(ctx context.Context, db *sql.DB, query string) ([]MetricWindowCount, error) {
+func queryMetricWindows(ctx context.Context, db *sql.DB, query string) ([]prestigetuning.MetricWindowCount, error) {
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var out []MetricWindowCount
+	var out []prestigetuning.MetricWindowCount
 	for rows.Next() {
-		var c MetricWindowCount
+		var c prestigetuning.MetricWindowCount
 		if err := rows.Scan(&c.Source, &c.Metric, &c.WindowType, &c.WindowValue,
 			&c.Created, &c.Completed, &c.Expired, &c.Abandoned); err != nil {
 			return nil, fmt.Errorf("scan metric/window row: %w", err)
@@ -119,21 +121,21 @@ func queryMetricWindows(ctx context.Context, db *sql.DB, query string) ([]Metric
 	return out, rows.Err()
 }
 
-func queryAcceptance(ctx context.Context, db *sql.DB, query string) ([]SourceAcceptance, error) {
+func queryAcceptance(ctx context.Context, db *sql.DB, query string) ([]prestigetuning.SourceAcceptance, error) {
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var out []SourceAcceptance
+	var out []prestigetuning.SourceAcceptance
 	for rows.Next() {
-		var a SourceAcceptance
-		if err := rows.Scan(&a.Source, &a.Created, &a.Rejected); err != nil {
+		var source string
+		var created, rejected int
+		if err := rows.Scan(&source, &created, &rejected); err != nil {
 			return nil, fmt.Errorf("scan acceptance row: %w", err)
 		}
-		a.AcceptanceRate = rate(a.Created, a.Created+a.Rejected)
-		out = append(out, a)
+		out = append(out, prestigetuning.NewSourceAcceptance(source, created, rejected))
 	}
 	return out, rows.Err()
 }

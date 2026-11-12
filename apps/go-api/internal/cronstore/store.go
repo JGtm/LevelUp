@@ -159,7 +159,7 @@ func (h *sharedHandle) CountProbe(ctx context.Context, probe port.HealthProbe) (
 		// La PREUVE du detail des armes change de table selon le titre : `weapon_kills` la porte encore la ou
 		// l arme est native de l API, `match_kill_events_latest` la porte la ou elle vient du film. On sonde
 		// celle que la base CONTIENT, jamais un slug.
-		evidence := analysis.WeaponEvidenceTable(ctx, h.db.SQLDb())
+		evidence := duckdb.WeaponEvidenceTable(ctx, h.db.SQLDb())
 		if evidence == "" {
 			return 0, false, nil
 		}

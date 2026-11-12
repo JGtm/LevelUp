@@ -1,13 +1,16 @@
 //go:build cgo
 
-package prestigetuning
+package duckdb
 
 import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/analysis/prestigetuning"
 )
 
 // setupTelemetryDB crée les tables minimales (challenge + prestige_telemetry) et
@@ -64,11 +67,11 @@ func setupTelemetryDB(t *testing.T) *sql.DB {
 	return db
 }
 
-func TestCollectFromDB_JoinAndAcceptance(t *testing.T) {
+func TestCollectPrestigeTelemetry_JoinAndAcceptance(t *testing.T) {
 	db := setupTelemetryDB(t)
 	ctx := context.Background()
 
-	counts, accept, err := CollectFromDB(ctx, db)
+	counts, accept, err := CollectPrestigeTelemetry(ctx, db)
 	if err != nil {
 		t.Fatalf("CollectFromDB: %v", err)
 	}
@@ -101,7 +104,7 @@ func TestCollectFromDB_JoinAndAcceptance(t *testing.T) {
 
 // DB legacy sans colonne source : les événements sont agrégés sous "unknown"
 // (le joueur n'est pas perdu), pas d'erreur.
-func TestCollectFromDB_LegacyNoSourceColumn(t *testing.T) {
+func TestCollectPrestigeTelemetry_LegacyNoSourceColumn(t *testing.T) {
 	db, err := sql.Open("duckdb", ":memory:")
 	if err != nil {
 		t.Fatalf("open: %v", err)
@@ -116,7 +119,7 @@ func TestCollectFromDB_LegacyNoSourceColumn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	counts, accept, err := CollectFromDB(ctx, db)
+	counts, accept, err := CollectPrestigeTelemetry(ctx, db)
 	if err != nil {
 		t.Fatalf("CollectFromDB legacy: %v", err)
 	}
@@ -132,13 +135,13 @@ func TestCollectFromDB_LegacyNoSourceColumn(t *testing.T) {
 }
 
 // DB sans table prestige_telemetry : résultat vide, aucune erreur (best-effort).
-func TestCollectFromDB_NoTelemetryTable(t *testing.T) {
+func TestCollectPrestigeTelemetry_NoTelemetryTable(t *testing.T) {
 	db, err := sql.Open("duckdb", ":memory:")
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
-	counts, accept, err := CollectFromDB(context.Background(), db)
+	counts, accept, err := CollectPrestigeTelemetry(context.Background(), db)
 	if err != nil {
 		t.Fatalf("want nil error on legacy DB, got %v", err)
 	}
@@ -152,21 +155,34 @@ func TestCollectFromDB_NoTelemetryTable(t *testing.T) {
 func TestCollectAndAnalyze_EndToEnd(t *testing.T) {
 	db := setupTelemetryDB(t)
 	ctx := context.Background()
-	counts, accept, err := CollectFromDB(ctx, db)
+	counts, accept, err := CollectPrestigeTelemetry(ctx, db)
 	if err != nil {
 		t.Fatalf("collect: %v", err)
 	}
-	grammar := NewGrammarView(map[string][]string{"accuracy": {"last_n_matches:10"}})
+	grammar := prestigetuning.NewGrammarView(map[string][]string{"accuracy": {"last_n_matches:10"}})
 	// Seuil échantillon abaissé à 3 pour statuer sur ce petit fixture ; complétion
 	// 1/3 = 33% < 40% → recommandation.
-	thr := Thresholds{MinCompletionRate: 0.40, MinSample: 3, Source: "coach"}
-	rep := Analyze(counts, accept, grammar, thr, fixedNow)
+	thr := prestigetuning.Thresholds{MinCompletionRate: 0.40, MinSample: 3, Source: "coach"}
+	rep := prestigetuning.Analyze(counts, accept, grammar, thr, prestigeTuningNow)
 
-	m := findMetric(t, rep.Metrics, "accuracy")
-	if m.Status != StatusRecommendAdjust {
+	m := findPrestigeMetric(t, rep.Metrics, "accuracy")
+	if m.Status != prestigetuning.StatusRecommendAdjust {
 		t.Fatalf("status = %q, want recommend_adjust", m.Status)
 	}
 	if rep.SourceAcceptance[0].Source != "coach" {
 		t.Errorf("source acceptance manquante")
 	}
+}
+
+var prestigeTuningNow = time.Date(2026, 7, 17, 12, 0, 0, 0, time.UTC)
+
+func findPrestigeMetric(t *testing.T, metrics []prestigetuning.MetricRecommendation, name string) prestigetuning.MetricRecommendation {
+	t.Helper()
+	for _, m := range metrics {
+		if m.Metric == name {
+			return m
+		}
+	}
+	t.Fatalf("métrique %q absente du rapport", name)
+	return prestigetuning.MetricRecommendation{}
 }

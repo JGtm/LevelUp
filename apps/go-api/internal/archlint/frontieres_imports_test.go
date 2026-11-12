@@ -297,3 +297,39 @@ func TestSchedulerSansStockageDuckDB(t *testing.T) {
 			strings.Join(violations, "\n  "))
 	}
 }
+
+// analysisAvecStockageAutorises : fichiers de `analysis/` qui importent encore `database/sql` ou le stockage
+// DuckDB, avec la date et la raison. Vide depuis le 2026-11-12 : la sonde de la table de preuve des armes et
+// la collecte de télémétrie du réglage Prestige vivent dans `platform/duckdb` ; `analysis/` calcule. Une
+// entrée ne s'ajoute pas : elle se supprime avec le code qui la justifiait.
+var analysisAvecStockageAutorises = map[string]string{}
+
+// TestAnalysisSansStockage : aucun fichier de `analysis/` (sous-paquets compris) n'importe `database/sql` ni
+// `platform/duckdb` (sous-paquets compris). Les algorithmes se testent sans base ; seul `analysis/tactical`
+// et `analysis/coordination` étaient gardés avant (tactical_pure_test.go).
+func TestAnalysisSansStockage(t *testing.T) {
+	racines := []string{cheminModuleAPI + "platform/duckdb", "database/sql"}
+	var violations []string
+	vus := map[string]bool{}
+	for _, src := range goSourcesUnder(t, "internal/analysis") {
+		vus[src.Rel] = true
+		trouves := importsSousArbre(src, racines)
+		_, autorise := analysisAvecStockageAutorises[src.Rel]
+		switch {
+		case len(trouves) == 0 && autorise:
+			violations = append(violations, src.Rel+" : entrée autorisée sans violation — la retirer de analysisAvecStockageAutorises")
+		case len(trouves) > 0 && !autorise:
+			violations = append(violations, src.Rel+" importe "+strings.Join(trouves, ", "))
+		}
+	}
+	for rel := range analysisAvecStockageAutorises {
+		if !vus[rel] {
+			violations = append(violations, rel+" : entrée autorisée sans fichier — la retirer de analysisAvecStockageAutorises")
+		}
+	}
+	sort.Strings(violations)
+	if len(violations) > 0 {
+		t.Errorf("analysis importe le stockage — la requête va dans platform/duckdb, le calcul reste :\n  %s",
+			strings.Join(violations, "\n  "))
+	}
+}

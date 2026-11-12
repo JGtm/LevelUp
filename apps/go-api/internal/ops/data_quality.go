@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // Bits du ledger match_registry.backfill_completed — miroir de
@@ -131,8 +132,8 @@ func CountDataQuality(ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug, 
 		return c, fmt.Errorf("count lying bits events: %w", err)
 	}
 	// La PREUVE du detail des armes change de table selon le titre (cf.
-	// analysis.WeaponEvidenceTable) : on sonde celle que la base CONTIENT.
-	if evidence := analysis.WeaponEvidenceTable(ctx, sharedDB); evidence != "" {
+	// duckdb.WeaponEvidenceTable) : on sonde celle que la base CONTIENT.
+	if evidence := duckdb.WeaponEvidenceTable(ctx, sharedDB); evidence != "" {
 		if err := sharedDB.QueryRowContext(ctx, fmt.Sprintf(`
 		SELECT COUNT(*) FROM match_registry r
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
