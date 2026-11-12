@@ -68,7 +68,7 @@ export function vehicleDestructionEntries(
         destroyed: true,
         xuid: d.authorXuid,
         botName: d.authorBotName,
-        aboardXuids: d.aboardXuids,
+        killedXuids: d.killedXuids,
         name,
       }),
     )

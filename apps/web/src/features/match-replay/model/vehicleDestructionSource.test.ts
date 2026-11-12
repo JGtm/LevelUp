@@ -3,8 +3,8 @@
  *
  * Ce qu'ils protègent : UNE destruction par véhicule `destroyed` qui n'est pas une pièce montée,
  * datée par `tEnd` ; l'auteur humain par son xuid, l'auteur BOT par le nom de son entrée de roster
- * (jointure `by.i` = `roster[].filmIndex`), jamais un joueur supposé ; les joueurs à bord
- * (l'occupant puis les tués, sans doublon) ; et tout champ absent reste absent (forme neutre).
+ * (jointure `by.i` = `roster[].filmIndex`), jamais un joueur supposé ; les tués avec le véhicule
+ * (`killed` seul, sans doublon : l'occupant n'y entre pas) ; et tout champ absent reste absent.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -28,7 +28,7 @@ describe('vehicleDestructionsOf', () => {
     expect(vehicleDestructionsOf(docWith([]))).toEqual([])
   })
 
-  it('une destruction complète : instant tEnd, famille, auteur humain, occupant et tués à bord', () => {
+  it('une destruction complète : instant tEnd, famille, auteur humain et tués', () => {
     const out = vehicleDestructionsOf(
       docWith([
         life({
@@ -42,17 +42,23 @@ describe('vehicleDestructionsOf', () => {
       ]),
     )
     expect(out).toEqual([
-      { t: 300, family: 'Ghost', authorXuid: '2534182457688434', authorBotName: null, aboardXuids: ['x2', 'x3'] },
+      { t: 300, family: 'Ghost', authorXuid: '2534182457688434', authorBotName: null, killedXuids: ['x2', 'x3'] },
     ])
   })
 
-  it('l’occupant passe devant les tués, sans doublon ; un tué sans occupant nommé reste à bord', () => {
+  it('seule la liste `killed` compte : l’occupant n’y est pas ajouté, un tué sans occupant nommé reste ; sans doublon', () => {
     const out = vehicleDestructionsOf(
       docWith([life({ destruction: { by: { i: 1, xuid: 'a' }, occupant: 'x2', killed: ['x3', 'x2'] } })]),
     )
-    expect(out[0].aboardXuids).toEqual(['x2', 'x3'])
+    expect(out[0].killedXuids).toEqual(['x3', 'x2'])
+    const occupantSeul = vehicleDestructionsOf(
+      docWith([life({ destruction: { by: { i: 1, xuid: 'a' }, occupant: 'x2' } })]),
+    )
+    expect(occupantSeul[0].killedXuids).toEqual([])
+    const doublon = vehicleDestructionsOf(docWith([life({ destruction: { killed: ['x2', 'x2'] } })]))
+    expect(doublon[0].killedXuids).toEqual(['x2'])
     const seul = vehicleDestructionsOf(docWith([life({ destruction: { by: { i: 1, xuid: 'a' }, killed: ['x3'] } })]))
-    expect(seul[0].aboardXuids).toEqual(['x3'])
+    expect(seul[0].killedXuids).toEqual(['x3'])
   })
 
   it('un destructeur BOT se nomme par le roster (filmIndex), jamais par un xuid', () => {
@@ -64,7 +70,7 @@ describe('vehicleDestructionsOf', () => {
       docWith([life({ destruction: { by: { i: 5, bot: true } } })], roster),
     )
     expect(out).toEqual([
-      { t: 300, family: 'Ghost', authorXuid: null, authorBotName: 'Cobra07 [bot]', aboardXuids: [] },
+      { t: 300, family: 'Ghost', authorXuid: null, authorBotName: 'Cobra07 [bot]', killedXuids: [] },
     ])
   })
 
@@ -93,9 +99,9 @@ describe('vehicleDestructionsOf', () => {
     const out = vehicleDestructionsOf(
       docWith([life({ slot: 1 }), life({ slot: 2, destruction: { cause: 5, occupant: 'x2' } })]),
     )
-    expect(out.map((d) => [d.authorXuid, d.authorBotName, d.aboardXuids])).toEqual([
+    expect(out.map((d) => [d.authorXuid, d.authorBotName, d.killedXuids])).toEqual([
       [null, null, []],
-      [null, null, ['x2']],
+      [null, null, []],
     ])
   })
 

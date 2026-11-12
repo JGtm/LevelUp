@@ -39,9 +39,9 @@ export interface VehicleEventLine {
 }
 
 /**
- * Une DESTRUCTION de véhicule. L'auteur et les joueurs à bord sont facultatifs : un destructeur
+ * Une DESTRUCTION de véhicule. L'auteur et les joueurs tués avec le véhicule sont facultatifs : un destructeur
  * humain porte son xuid (`xuid`), un destructeur bot son nom de roster (`botName`), et sans l'un ni
- * l'autre la ligne dit seulement que le véhicule est détruit ; sans joueur à bord elle n'en nomme
+ * l'autre la ligne dit seulement que le véhicule est détruit ; sans joueur tué elle n'en nomme
  * aucun. Le NOM est celui de la famille, comme pour une montée.
  */
 export interface VehicleDestroyedEventLine {
@@ -49,7 +49,7 @@ export interface VehicleDestroyedEventLine {
   destroyed: true
   xuid: string | null
   botName: string | null
-  aboardXuids: readonly string[]
+  killedXuids: readonly string[]
   name: string
 }
 

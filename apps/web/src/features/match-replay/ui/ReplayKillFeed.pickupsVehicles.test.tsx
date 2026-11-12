@@ -6,8 +6,8 @@
  *  1. LES ARMES AU SOL entrent dans « Armes et bonus » quand elles ne sont pas de base : la ligne
  *     dit « a ramassé : » (et non « a pris : » d'un socle), l'arme de base ramassée n'apparaît pas,
  *     le compte du menu suit.
- *  2. LES DESTRUCTIONS DE VÉHICULE, fabriquées : avec auteur et un joueur à bord, avec auteur
- *     seul, avec un destructeur bot, avec plusieurs joueurs à bord (leur nombre), sans auteur
+ *  2. LES DESTRUCTIONS DE VÉHICULE, fabriquées : avec auteur et un tué, avec auteur
+ *     seul, avec un destructeur bot, avec plusieurs tués (leur nombre), sans auteur
  *     (« Ghost détruit »), FR et EN ; elles sont de la famille Véhicules (filtre et compte) et
  *     tiennent les règles du fil (une seule ligne sans retour, pictogramme `shrink-0`).
  *  3. LE FIL DE LA PAGE reste intact : le filtre ne porte que sur la liste affichée.
@@ -72,11 +72,11 @@ const PLAIN_DOC = testReplayDoc({ frameIntervalMs: FRAME_MS, roster: ROSTER })
 const ALLEGIANCE = filmAllegianceOf(GROUND_DOC, [], 'me')
 
 function destroyed(
-  over: Partial<{ xuid: string | null; botName: string | null; aboardXuids: string[]; name: string }>,
+  over: Partial<{ xuid: string | null; botName: string | null; killedXuids: string[]; name: string }>,
   ms: number,
 ) {
   return eventFeedEntry(`vd-${ms}`, ms, {
-    family: 'vehicles', destroyed: true, xuid: 'me', botName: null, aboardXuids: [], name: 'Ghost', ...over,
+    family: 'vehicles', destroyed: true, xuid: 'me', botName: null, killedXuids: [], name: 'Ghost', ...over,
   })
 }
 
@@ -154,17 +154,17 @@ describe('armes ramassées au sol dans « Armes et bonus »', () => {
 
 describe('destructions de véhicule (événements fabriqués)', () => {
   const entries = [
-    destroyed({ aboardXuids: ['foe'] }, 10_000),
+    destroyed({ killedXuids: ['foe'] }, 10_000),
     destroyed({ xuid: 'foe', name: 'Warthog' }, 20_000),
     destroyed({ xuid: null, name: 'Ghost' }, 30_000),
   ]
 
-  it('Véhicules les montre, avec auteur et joueur à bord, avec auteur seul, sans auteur (FR)', () => {
+  it('Véhicules les montre, avec auteur et tué, avec auteur seul, sans auteur (FR)', () => {
     renderFeed({ doc: PLAIN_DOC, entries })
     choose(/Véhicules/)
     const texts = screen.getAllByRole('listitem').map((r) => r.textContent)
     expect(texts).toHaveLength(3)
-    expect(texts.some((x) => x?.includes('JGtm') && x.includes('a détruit : Ghost (Cobra01 à bord)'))).toBe(true)
+    expect(texts.some((x) => x?.includes('JGtm') && x.includes('a détruit : Ghost (Cobra01 tué avec le véhicule)'))).toBe(true)
     expect(texts.some((x) => x?.includes('Cobra01') && x.includes('a détruit : Warthog'))).toBe(true)
     const neutral = screen.getAllByRole('listitem').find((r) => r.textContent?.includes('Ghost détruit'))
     expect(neutral).toBeTruthy()
@@ -175,7 +175,7 @@ describe('destructions de véhicule (événements fabriqués)', () => {
   it('EN : « destroyed: » et « Ghost destroyed »', () => {
     renderFeed({ doc: PLAIN_DOC, entries, locale: 'en' })
     choose(/Vehicles/)
-    expect(screen.getByText(/destroyed: Ghost \(Cobra01 aboard\)/)).toBeTruthy()
+    expect(screen.getByText(/destroyed: Ghost \(Cobra01 killed with the vehicle\)/)).toBeTruthy()
     expect(screen.getByText('Ghost destroyed')).toBeTruthy()
   })
 
@@ -215,30 +215,30 @@ describe('destructions de véhicule (événements fabriqués)', () => {
     expect(entries).toHaveLength(3)
   })
 
-  it('un destructeur bot se nomme par le roster, sans encre de joueur ; plusieurs joueurs à bord : leur nombre', () => {
+  it('un destructeur bot se nomme par le roster, sans encre de joueur ; plusieurs tués : leur nombre', () => {
     renderFeed({
       doc: PLAIN_DOC,
-      entries: [destroyed({ xuid: null, botName: 'Cobra07 [bot]', aboardXuids: ['me', 'foe', 'x9'] }, 10_000)],
+      entries: [destroyed({ xuid: null, botName: 'Cobra07 [bot]', killedXuids: ['me', 'foe', 'x9'] }, 10_000)],
     })
     choose(/Véhicules/)
     const text = screen.getByRole('listitem').textContent
     expect(text).toContain('Cobra07')
     expect(text).not.toContain('[bot]')
-    expect(text).toContain('a détruit : Ghost (3 à bord)')
+    expect(text).toContain('a détruit : Ghost (3 tués avec le véhicule)')
   })
 
-  it('EN : le nombre à bord', () => {
+  it('EN : le nombre de tués', () => {
     renderFeed({
       doc: PLAIN_DOC,
-      entries: [destroyed({ xuid: null, aboardXuids: ['me', 'foe'] }, 10_000)],
+      entries: [destroyed({ xuid: null, killedXuids: ['me', 'foe'] }, 10_000)],
       locale: 'en',
     })
     choose(/Vehicles/)
-    expect(screen.getByText('Ghost destroyed (2 aboard)')).toBeTruthy()
+    expect(screen.getByText('Ghost destroyed (2 killed with the vehicle)')).toBeTruthy()
   })
 
-  it('un nom de joueur à bord inconnu de la feuille ne laisse jamais un xuid brut', () => {
-    renderFeed({ doc: PLAIN_DOC, entries: [destroyed({ aboardXuids: ['2533274812345678'] }, 10_000)] })
+  it('un nom de joueur tué inconnu de la feuille ne laisse jamais un xuid brut', () => {
+    renderFeed({ doc: PLAIN_DOC, entries: [destroyed({ killedXuids: ['2533274812345678'] }, 10_000)] })
     choose(/Véhicules/)
     expect(screen.getByRole('listitem').textContent).not.toContain('2533274812345678')
   })

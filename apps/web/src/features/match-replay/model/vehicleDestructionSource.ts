@@ -7,11 +7,15 @@
  *  - `by` : le destructeur. `by.i` est l'index de joueur du film, joint à `roster[].filmIndex` ;
  *    `by.xuid` nomme un humain ; un BOT n'a pas de xuid et porte `by.bot` ; `by` absent = non établi ;
  *  - `cause` : l'identifiant d'effet de dégât, dans le même espace que la source d'un frag ;
- *  - `occupant` : le xuid de l'occupant à l'instant (le conducteur de préférence) ;
- *  - `killed` : les xuids des occupants tués.
+ *  - `occupant` : le xuid de l'occupant à l'instant (le conducteur de préférence) ; il n'est pas lu ici :
+ *    son attribution vient des trajets, dont la couverture est partielle, et la ligne ne s'appuie que
+ *    sur `killed` ;
+ *  - `killed` : les xuids des joueurs morts AVEC le véhicule, LUS dans le film (ni les trajets ni le fil
+ *    des morts n'y entrent) : un tué peut ne pas être `occupant`, et un joueur sorti avant la destruction
+ *    n'y figure pas.
  * Toute absence est une absence : un champ non établi n'est jamais une valeur par défaut, et rien ne
  * se déduit ici. Un rejeu cuit avant ce bloc, ou dont le film n'est plus archivé, n'en porte pas : la
- * liste est alors celle des seules fins `destroyed` datées, sans auteur ni occupant, ou vide.
+ * liste est alors celle des seules fins `destroyed` datées, sans auteur ni tué, ou vide.
  *
  * UNE DESTRUCTION PAR VÉHICULE. Une pièce montée (tourelle, `part` non vide) meurt avec son porteur
  * et ne porte jamais le bloc : elle ne fait aucune ligne. Une vie de décor, et une fin `destroyed`
@@ -36,8 +40,8 @@ export interface VehicleDestructionView {
   authorXuid: string | null
   /** Le nom du destructeur BOT, tel que le roster l'écrit ; `null` quand il n'est pas nommé. */
   authorBotName: string | null
-  /** Les xuids des joueurs connus à bord à l'instant : l'occupant, puis les tués, sans doublon. */
-  aboardXuids: readonly string[]
+  /** Les xuids des joueurs morts avec le véhicule (`killed`), sans doublon ; vide quand le film n'en nomme aucun. */
+  killedXuids: readonly string[]
 }
 
 /** La forme servie de `vehicles[].destruction` : chaque champ est facultatif. */
@@ -55,13 +59,9 @@ function botNamesByFilmIndex(doc: ReplayDocumentReady): ReadonlyMap<number, stri
   return names
 }
 
-/** Les joueurs connus à bord : l'occupant d'abord, puis les tués, chacun une fois. */
-function aboardOf(d: Destruction | undefined): string[] {
-  const out: string[] = []
-  for (const xuid of [d?.occupant, ...(d?.killed ?? [])]) {
-    if (xuid && !out.includes(xuid)) out.push(xuid)
-  }
-  return out
+/** Les joueurs morts avec le véhicule : `killed`, chacun une fois ; rien quand le bloc ou la liste manque. */
+function killedOf(d: Destruction | undefined): string[] {
+  return [...new Set((d?.killed ?? []).filter((xuid) => !!xuid))]
 }
 
 export function vehicleDestructionsOf(doc: ReplayDocumentReady): readonly VehicleDestructionView[] {
@@ -80,7 +80,7 @@ export function vehicleDestructionsOf(doc: ReplayDocumentReady): readonly Vehicl
       family: track.family ?? '',
       authorXuid: by?.xuid ? by.xuid : null,
       authorBotName: botName,
-      aboardXuids: aboardOf(track.destruction),
+      killedXuids: killedOf(track.destruction),
     })
   }
   return out
