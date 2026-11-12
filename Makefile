@@ -312,7 +312,7 @@ replay-corpus-gate:
 ## references figees (replay/testdata/equivalence du decodeur, a la version que fixe go.mod). EXIGE le
 ## parc local, ~12 min ; code 1 = ecart. Liste des xuids d origine : data/film_identites/xuids_originaux.txt
 ## (local, hors depot ; sinon -originaux ou LEVELUP_IDENTITES_ORIGINALES). Re-figer les references
-## (`-update`) se fait sur un clone du decodeur designe par un espace de travail local
+## (`-update`) se fait sur un clone du decodeur (ou qu il soit sur le disque) designe par un espace de travail local
 ## (scripts/briques-workspace.sh), puis par une nouvelle version publiee.
 replay-equiv:
 	cd $(GO_API_DIR) && go run ./cmd/replay-equiv

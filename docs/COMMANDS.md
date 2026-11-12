@@ -1261,6 +1261,11 @@ go run ./cmd/replay-equiv                            # whole corpus (CORPUS.txt)
 go run ./cmd/replay-equiv -films 000d5950 -update    # (re-)freeze the references of one film
 # flags: -corpus F  -films a,b (replaces the corpus)  -update  -mem-gib N (default 3, 0 = off)
 #        -title slug  -out-dir D (keep the child TSVs instead of a wiped temp dir)
+# -update writes into the decoder brick: run it on a clone of its repository linked by the local workspace,
+# wherever the clone sits on disk:
+#   bash scripts/briques-workspace.sh ../halo-infinite-film-decoder
+#   export GOWORK="$PWD/levelup-briques.work"   # PowerShell: $env:GOWORK = "$PWD\levelup-briques.work"
+# Without GOWORK the brick resolves to the module cache (read-only): -update refuses and names the script.
 ```
 
 The equivalence harness of the build chain: it hashes the output of **every** scan, not just the
@@ -1806,7 +1811,8 @@ make gate-push               # golangci-lint ratchet + replay-equiv harness + we
 `replay/testdata/equivalence` of the film decoder (read at the version `go.mod` requires) drifted unnoticed
 from v8.0.0 until the 2026-10-30 re-freeze because no gate played them. It needs the local film park; to
 re-freeze after a proof of equivalence, run `go run ./cmd/replay-equiv -update` from `apps/go-api` with
-`GOWORK` pointing at a clone of the decoder (see "Developing a brick"), then publish the decoder's new
+`GOWORK` pointing at a clone of the decoder (see "Developing a brick"; the clone may sit anywhere on disk, only the
+module cache is refused), then publish the decoder's new
 version and bump the `require`.
 
 The test baseline plays two lanes in parallel (ADR 0041): the bricks lane (the packages of the published
