@@ -1,7 +1,7 @@
 //go:build integration
 
 // campaign_exclusion_medals_behavior_test.go — le set des médailles « déjà obtenues » du
-// snapshot post-sync exclut la Campagne : une médaille décrochée seulement en Campagne n'est pas « déjà
+// snapshot post-sync (PlayerSnapshot.EarnedMedalIDs) exclut la Campagne : une médaille décrochée seulement en Campagne n'est pas « déjà
 // obtenue », sinon sa première obtention en PvP ne notifierait jamais « médaille inédite ».
 
 package wire
@@ -25,7 +25,11 @@ func TestCampaignExclusion_LoadEarnedMedalIDs(t *testing.T) {
 				t.Fatalf("%s : seed medals_earned : %v", tc.slug, err)
 			}
 		}
-		got := loadEarnedMedalIDs(ctx, pdb.Shared.SQLDb(), testXUID, tc.slug)
+		snap, err := SnapshotPlayerState(ctx, pdb, nil)
+		if err != nil {
+			t.Fatalf("%s : %v", tc.slug, err)
+		}
+		got := snap.EarnedMedalIDs
 		if got == nil {
 			t.Fatalf("%s : set nil (invalide) sur une lecture saine", tc.slug)
 		}

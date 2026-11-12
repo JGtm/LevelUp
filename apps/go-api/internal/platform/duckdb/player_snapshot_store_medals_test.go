@@ -1,8 +1,8 @@
 //go:build cgo
 
-package wire
+package duckdb
 
-// post_sync_deltas_snapshot_medals_test.go — contrat d'INVALIDITÉ du set
+// player_snapshot_store_medals_test.go — contrat d'INVALIDITÉ du set
 // EarnedMedalIDs (contre-revue V7.2, 2026-07-25).
 //
 // Enjeu : un set TRONQUÉ côté snapshot « before » fait passer des médailles déjà
