@@ -31,8 +31,8 @@ import (
 	"fmt"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // matchTimeWindow représente la fenêtre temporelle d'un match. Tous les
@@ -98,10 +98,10 @@ func loadMatchTimeWindows(ctx context.Context, sharedMatchesPath string) ([]matc
 	q := `
 		SELECT
 			match_id,
-			` + analysis.SQLStartTimeCanonical("") + ` AS start_utc,
+			` + sqlfrag.SQLStartTimeCanonical("") + ` AS start_utc,
 			COALESCE(end_time_utc,   end_time   AT TIME ZONE 'UTC') AS end_utc
 		FROM match_registry
-		WHERE ` + analysis.SQLStartTimeCanonical("") + ` IS NOT NULL
+		WHERE ` + sqlfrag.SQLStartTimeCanonical("") + ` IS NOT NULL
 		  AND COALESCE(end_time_utc,   end_time   AT TIME ZONE 'UTC') IS NOT NULL
 	`
 

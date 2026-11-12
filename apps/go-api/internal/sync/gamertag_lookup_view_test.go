@@ -1,13 +1,13 @@
 //go:build integration
 
 // Package sync — gamertag_lookup_view_test.go : garde-rail anti-régression sur
-// le résolveur xuid → gamertag (analysis.GamertagLookupViewSQL).
+// le résolveur xuid → gamertag (sqlfrag.GamertagLookupViewSQL).
 //
 // Contexte (fix 2026-05-30) : deux définitions divergentes de v_gamertag_lookup
 // coexistaient (sync/schema.go simplifiée avec `WHERE gamertag IS NOT NULL` vs
 // migration/steps_shared.go robuste). La version simplifiée — recréée à CHAQUE
 // boot — gagnait, et des xuids bruts réapparaissaient à l'affichage. Désormais
-// boot + migrations partagent analysis.GamertagLookupViewSQL.
+// boot + migrations partagent sqlfrag.GamertagLookupViewSQL.
 //
 // Ce test vérifie l'INVARIANT métier : la colonne gamertag de la vue ne contient
 // JAMAIS un identifiant au format xuid brut (numérique long ou "xuid(...)").
@@ -24,8 +24,8 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // rawXuidRe détecte un identifiant au format xuid brut joueur : soit "xuid(...)",
@@ -94,7 +94,7 @@ func TestGamertagLookupView_NeverLeaksRawXuid(t *testing.T) {
 	if err := migration.EnsureMatchKillEvents(db); err != nil {
 		t.Fatalf("ensure match_kill_events: %v", err)
 	}
-	if _, err := db.Exec(analysis.GamertagLookupViewSQL()); err != nil {
+	if _, err := db.Exec(sqlfrag.GamertagLookupViewSQL()); err != nil {
 		t.Fatalf("create v_gamertag_lookup: %v", err)
 	}
 

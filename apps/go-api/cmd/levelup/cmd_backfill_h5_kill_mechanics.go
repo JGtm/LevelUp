@@ -55,12 +55,12 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 
 	h5api "github.com/JGtm/halo-api/halo5"
 )
@@ -233,8 +233,8 @@ func loadZeroMechanicMatches(ctx context.Context, db *sql.DB, titleSlug string, 
 	      FROM match_participants mp
 	      JOIN match_registry mr ON mr.match_id = mp.match_id
 	      WHERE ` + where +
-		analysis.SQLExcludeCampaignVariants(titleSlug, "mr") +
-		` ORDER BY ` + analysis.SQLStartTimeCanonical("mr") + ` DESC`
+		sqlfrag.SQLExcludeCampaignVariants(titleSlug, "mr") +
+		` ORDER BY ` + sqlfrag.SQLStartTimeCanonical("mr") + ` DESC`
 	if limit > 0 {
 		q += fmt.Sprintf(" LIMIT %d", limit)
 	}

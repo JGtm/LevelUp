@@ -35,9 +35,9 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -665,7 +665,7 @@ func selectRecentMatchIDs(ctx context.Context, sharedDBPath, xuid, titleSlug str
 		SELECT mr.match_id
 		FROM match_registry mr
 		JOIN match_participants mp ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ?`+analysis.SQLExcludeCampaignVariants(titleSlug, "mr")+`
+		WHERE mp.xuid = ?`+sqlfrag.SQLExcludeCampaignVariants(titleSlug, "mr")+`
 		ORDER BY mr.start_time DESC
 		LIMIT ?`, xuid, limit)
 	if err != nil {
@@ -928,9 +928,9 @@ func extractPlayerTables(
 // recreateSharedViews recrée v_gamertag_lookup, v_match_full, v_weapon_kills
 // requis par les pages analytics. Tolère l'absence de tables sources.
 func recreateSharedViews(ctx context.Context, db *sql.DB) error {
-	// v_gamertag_lookup : DDL partagé via analysis.GamertagLookupViewSQL
+	// v_gamertag_lookup : DDL partagé via sqlfrag.GamertagLookupViewSQL
 	// (SOURCE UNIQUE — même résolveur que le boot et les migrations).
-	if _, err := db.ExecContext(ctx, analysis.GamertagLookupViewSQL()); err != nil {
+	if _, err := db.ExecContext(ctx, sqlfrag.GamertagLookupViewSQL()); err != nil {
 		return fmt.Errorf("v_gamertag_lookup: %w", err)
 	}
 	if _, err := db.ExecContext(ctx, migration.VMatchFullViewSQL); err != nil {

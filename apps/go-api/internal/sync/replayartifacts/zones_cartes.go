@@ -17,7 +17,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // CarteJouee : une carte du registre, ses noms candidats et le nombre de ses matchs.
@@ -31,7 +31,7 @@ type CarteJouee struct {
 var requeteCartesJouees = `
 	SELECT map_id, max(map_name), count(*) AS matchs
 	FROM match_registry
-	WHERE map_id IS NOT NULL AND map_id <> '' AND NOT ` + analysis.SQLModeNonGere("") + `
+	WHERE map_id IS NOT NULL AND map_id <> '' AND NOT ` + sqlfrag.SQLModeNonGere("") + `
 	GROUP BY map_id
 	ORDER BY matchs DESC, map_id`
 

@@ -2,7 +2,7 @@
 // registre − début canonique » (T0, countdown d'avant-match).
 //
 // L'expression `epoch_ms(<alias>.real_start_time AT TIME ZONE 'UTC') - epoch_ms(<début canonique>)`
-// s'écrit UNE fois, dans `analysis.SQLRealStartOffsetMs` / `analysis.SQLT0Ms` (délégué local
+// s'écrit UNE fois, dans `sqlfrag.SQLRealStartOffsetMs` / `sqlfrag.SQLT0Ms` (délégué local
 // `duckdb.T0MsSQL`). Cinq lectures la recopiaient mot pour mot ; une copie qui dérive date le T0
 // autrement que ses voisines et décale les horloges du match (règle CLAUDE.md n°6, ≤ 2 copies).
 package archlint
@@ -22,7 +22,7 @@ const realStartAtTZ = "real_start_time AT TIME ZONE"
 // realStartOffsetAllowlist : la DÉFINITION de l'expression. Toute autre entrée exige une
 // justification datée expliquant pourquoi le helper ne convient pas.
 var realStartOffsetAllowlist = map[string]bool{
-	"internal/analysis/sql_fragments.go": true,
+	"internal/platform/duckdb/sqlfrag/sql_fragments.go": true,
 }
 
 func TestNoRawRealStartOffsetExpression(t *testing.T) {
@@ -73,7 +73,7 @@ func TestNoRawRealStartOffsetExpression(t *testing.T) {
 	}
 	if len(violations) > 0 {
 		t.Errorf("expression brute de l'écart real_start_time interdite — utiliser "+
-			"analysis.SQLT0Ms(alias) (T0, NULL sans coup d'envoi) ou analysis.SQLRealStartOffsetMs(alias) "+
+			"sqlfrag.SQLT0Ms(alias) (T0, NULL sans coup d'envoi) ou sqlfrag.SQLRealStartOffsetMs(alias) "+
 			"(écart seul), ou le délégué duckdb.T0MsSQL :\n  %s", strings.Join(violations, "\n  "))
 	}
 }

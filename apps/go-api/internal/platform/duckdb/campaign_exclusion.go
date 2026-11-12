@@ -20,19 +20,19 @@ package duckdb
 import (
 	"strings"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // campaignExclusionToken : marqueur inséré dans les constantes SQL, résolu par
-// resolveCampaignExclusion. Alias de analysis.CampaignExclusionToken.
-const campaignExclusionToken = analysis.CampaignExclusionToken
+// resolveCampaignExclusion. Alias de sqlfrag.CampaignExclusionToken.
+const campaignExclusionToken = sqlfrag.CampaignExclusionToken
 
 // resolveCampaignExclusion remplace le token campagne d'une requête par la clause
 // d'exclusion du titre (no-op si le titre n'a aucun mode masqué, ex. Infinite).
-// Délègue à la source unique analysis.SQLResolveCampaignExclusion. `alias` =
+// Délègue à la source unique sqlfrag.SQLResolveCampaignExclusion. `alias` =
 // alias de match_registry / v_match_full / mv_player_matches dans la requête.
 func resolveCampaignExclusion(query, titleSlug, alias string) string {
-	return analysis.SQLResolveCampaignExclusion(query, titleSlug, alias)
+	return sqlfrag.SQLResolveCampaignExclusion(query, titleSlug, alias)
 }
 
 // resolveCampaignExclusionByMatchID remplace le token campagne par la clause
@@ -50,21 +50,21 @@ func resolveCampaignExclusionByMatchID(query, titleSlug, matchIDCol string) stri
 // game_variant_id,”) NOT IN (...)` (ou "" si le titre n'a aucun mode masqué), à
 // concaténer directement quand le caller compose la requête en Go (SQL inline)
 // ET que match_registry est déjà joint sous cet alias.
-// Délègue à la source unique analysis.SQLExcludeCampaignVariants.
+// Délègue à la source unique sqlfrag.SQLExcludeCampaignVariants.
 func excludeCampaignClause(titleSlug, alias string) string {
-	return analysis.SQLExcludeCampaignVariants(titleSlug, alias)
+	return sqlfrag.SQLExcludeCampaignVariants(titleSlug, alias)
 }
 
 // excludeCampaignByMatchID retourne la clause sous-requête ` AND <matchIDCol> NOT
 // IN (SELECT match_id FROM match_registry WHERE game_variant_id IN (...))` (ou "" ),
 // pour les requêtes participants-only / v_weapon_kills SANS jointure registre.
-// Délègue à la source unique analysis.SQLExcludeCampaignByMatchID.
+// Délègue à la source unique sqlfrag.SQLExcludeCampaignByMatchID.
 func excludeCampaignByMatchID(titleSlug, matchIDCol string) string {
-	return analysis.SQLExcludeCampaignByMatchID(titleSlug, matchIDCol)
+	return sqlfrag.SQLExcludeCampaignByMatchID(titleSlug, matchIDCol)
 }
 
 // excludeAllCampaignByMatchID : variante TITLE-AGNOSTIC pour les lecteurs sans
-// contexte de titre (GamertagRepo). Délègue à analysis.SQLExcludeAllCampaignByMatchID.
+// contexte de titre (GamertagRepo). Délègue à sqlfrag.SQLExcludeAllCampaignByMatchID.
 func excludeAllCampaignByMatchID(matchIDCol string) string {
-	return analysis.SQLExcludeAllCampaignByMatchID(matchIDCol)
+	return sqlfrag.SQLExcludeAllCampaignByMatchID(matchIDCol)
 }

@@ -13,9 +13,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/migration"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/sync/schemadrift"
 )
 
@@ -446,13 +446,13 @@ func EnsureSharedSchema(ctx context.Context, db *sql.DB) error {
 	if err := migration.EnsureMatchKillEvents(db); err != nil {
 		return err
 	}
-	// v_gamertag_lookup : SOURCE UNIQUE DE VÉRITÉ (analysis.GamertagLookupViewSQL).
+	// v_gamertag_lookup : SOURCE UNIQUE DE VÉRITÉ (sqlfrag.GamertagLookupViewSQL).
 	// AVANT le fix 2026-05-30 ce boot recréait une version simplifiée (filtre
 	// `WHERE gamertag IS NOT NULL`, pas de CASE bot, fallback xuid brut) qui
 	// écrasait à chaque boot la version robuste posée par les migrations →
 	// xuids bruts réapparaissaient à l'affichage. Désormais boot et migrations
 	// partagent le même DDL.
-	if err := execScript(ctx, db, analysis.GamertagLookupViewSQL()+";"); err != nil {
+	if err := execScript(ctx, db, sqlfrag.GamertagLookupViewSQL()+";"); err != nil {
 		return err
 	}
 	return execScript(ctx, db, sharedViewsSQL)
@@ -463,7 +463,7 @@ func EnsureSharedSchema(ctx context.Context, db *sql.DB) error {
 // AVANT le fix 2026-05-27 ces VIEW étaient recreées par refreshSharedViews
 // dans le post-sync ; voir godoc EnsureSharedSchema pour le contexte.
 // v_gamertag_lookup est posée séparément (cf. EnsureSharedSchema) car son DDL
-// est généré par analysis.GamertagLookupViewSQL (source unique).
+// est généré par sqlfrag.GamertagLookupViewSQL (source unique).
 const sharedViewsSQL = migration.VMatchFullViewSQL + ";"
 
 // OpenPlayerDB ouvre stats.duckdb d'un joueur en lecture/écriture via le cache process-level.

@@ -5,7 +5,7 @@
 //   - candidats : les matchs du registre dont le cache de films porte le film, et où le
 //     joueur SOURCE de la démo a joué (le rejeu s'ouvre depuis sa vue match) ;
 //   - exclus d'office : les matchs de mode non géré par le rejeu (Firefight, décision du
-//     2026-10-15) — le drapeau du registre (`analysis.SQLModeNonGere`), pas le nom de variante ;
+//     2026-10-15) — le drapeau du registre (`sqlfrag.SQLModeNonGere`), pas le nom de variante ;
 //   - famille : demoReplayFamilyOf(game_variant_name) ; un nom qu'aucune famille ne
 //     reconnaît est journalisé et écarté ;
 //   - par famille de mode : d'abord un match dont l'artefact du dépôt est déjà au dernier
@@ -28,9 +28,9 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
@@ -229,9 +229,9 @@ func loadDemoReplayCandidates(ctx context.Context, opts SeedDemoOptions) ([]demo
 	defer func() { _ = shared.Close() }()
 	rows, err := shared.SQLDb().QueryContext(ctx, vehicleDemoReplayClauses()+`
 		SELECT r.match_id, COALESCE(r.game_variant_name, ''),
-			COALESCE(r.map_name, ''), `+analysis.SQLStartTimeCanonical("r")+qDemoReplayVehicleSelect+`
+			COALESCE(r.map_name, ''), `+sqlfrag.SQLStartTimeCanonical("r")+qDemoReplayVehicleSelect+`
 		FROM match_registry r`+qDemoReplayVehicleJoins+`
-		WHERE NOT `+analysis.SQLModeNonGere("r")+`
+		WHERE NOT `+sqlfrag.SQLModeNonGere("r")+`
 		  AND EXISTS (SELECT 1 FROM match_participants p WHERE p.match_id = r.match_id AND p.xuid = ?)`,
 		opts.SourceXUID)
 	if err != nil {

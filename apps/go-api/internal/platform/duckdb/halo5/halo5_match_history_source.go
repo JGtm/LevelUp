@@ -22,11 +22,11 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // Halo5MatchHistorySource lit l'historique h5 d'un joueur (fixé à la construction)
@@ -129,9 +129,9 @@ func (s *Halo5MatchHistorySource) loadRows(ctx context.Context, matchIDs []strin
 	query := h5MatchSummarySelect
 	args := []any{s.gamertag}
 	// Masquage read-side des matchs Campagne (source unique
-	// analysis.SQLExcludeCampaignVariants). Source h5-only → titre fixe "halo_5".
+	// sqlfrag.SQLExcludeCampaignVariants). Source h5-only → titre fixe "halo_5".
 	// Alias "r" = match_registry dans le SELECT. Clause littérale (aucun arg).
-	query += analysis.SQLExcludeCampaignVariants("halo_5", "r")
+	query += sqlfrag.SQLExcludeCampaignVariants("halo_5", "r")
 	if len(matchIDs) > 0 {
 		query += fmt.Sprintf(" AND p.match_id IN (%s)", duckdb.Placeholders(len(matchIDs)))
 		args = append(args, duckdb.ToAnySlice(matchIDs)...)

@@ -17,6 +17,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/port"
 )
 
@@ -92,8 +93,8 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 	// Charger NTeam et NHumansLobby separement (bots = xuid LIKE 'bid(%').
 	var sizeQ = `
 		SELECT
-			SUM(CASE WHEN team_id = ? AND ` + analysis.SQLIsNotBotCol("xuid") + ` THEN 1 ELSE 0 END),
-			SUM(CASE WHEN ` + analysis.SQLIsNotBotCol("xuid") + ` THEN 1 ELSE 0 END)
+			SUM(CASE WHEN team_id = ? AND ` + sqlfrag.SQLIsNotBotCol("xuid") + ` THEN 1 ELSE 0 END),
+			SUM(CASE WHEN ` + sqlfrag.SQLIsNotBotCol("xuid") + ` THEN 1 ELSE 0 END)
 		FROM match_participants WHERE match_id = ?
 	`
 	var nTeam, nLobby sql.NullInt64
@@ -230,7 +231,7 @@ func (r *EngagementScoreRepo) LoadTeamXUIDs(
 		SELECT xuid FROM match_participants
 		WHERE match_id = ?
 		  AND team_id = ?
-		  AND ` + analysis.SQLIsNotBotCol("xuid") + `
+		  AND ` + sqlfrag.SQLIsNotBotCol("xuid") + `
 		  AND xuid <> ?
 	`
 	rows, err := sharedDB.QueryContext(ctx, q, matchID, teamID, targetXUID)

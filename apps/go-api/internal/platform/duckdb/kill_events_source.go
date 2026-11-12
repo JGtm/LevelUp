@@ -1,6 +1,6 @@
 package duckdb
 
-import "levelup/go-api/internal/analysis"
+import "levelup/go-api/internal/platform/duckdb/sqlfrag"
 
 // kill_events_source.go — LE SUBSTRAT DE LECTURE DU KILL-FEED, en un seul endroit.
 //
@@ -76,7 +76,7 @@ const KillEventsCanonicalTable = "match_kill_events_latest"
 //
 // Paramètres : ?1 = tueur A, ?2 = victime B, ?3 = tueur B, ?4 = victime A, ?5 = liste.
 // Retourne 2 colonnes : kills_dealt, deaths_suffered.
-var QKillsBetweenPlayers = killsBetweenPlayersSQL(analysis.SQLDansListe("match_id"))
+var QKillsBetweenPlayers = killsBetweenPlayersSQL(sqlfrag.SQLDansListe("match_id"))
 
 // killsBetweenPlayersSQL rend le texte des frags échangés entre deux joueurs ; `borne` est le
 // prédicat WHERE du balayage, suivi du jeton d'exclusion de la Campagne.

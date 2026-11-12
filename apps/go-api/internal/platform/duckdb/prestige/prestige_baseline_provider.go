@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/prestige"
 )
 
@@ -136,7 +136,7 @@ func (p *HaloBaselineProvider) RecentMatches(ctx context.Context, titleSlug, met
 		WHERE mp.xuid = ?%s
 		ORDER BY %s DESC
 		LIMIT ?
-	`, startTime, col, analysis.SQLExcludeCampaignVariants(titleSlug, "mr"), startTime)
+	`, startTime, col, sqlfrag.SQLExcludeCampaignVariants(titleSlug, "mr"), startTime)
 
 	db, release, err := p.reader.Get(ctx)
 	if err != nil {
@@ -202,7 +202,7 @@ func (p *HaloBaselineProvider) CumulativeSince(ctx context.Context, titleSlug, m
 	// et « requête xuid » DANS UNE MÊME fonction — extraire la requête le
 	// rendrait aveugle. Timestamp : fragment canonique partagé (CLAUDE.md n°8).
 	startTime := duckdb.StartTimeCanonicalSQL("mr")
-	where := "mp.xuid = ?" + analysis.SQLExcludeCampaignVariants(titleSlug, "mr")
+	where := "mp.xuid = ?" + sqlfrag.SQLExcludeCampaignVariants(titleSlug, "mr")
 	args := []any{p.xuid}
 	if !since.IsZero() {
 		where += " AND " + startTime + " >= ?"

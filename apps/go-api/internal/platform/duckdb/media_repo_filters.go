@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 func (r *MediaRepo) LoadMediaFilterOptions(ctx context.Context, filters domain.MediaFilters) (domain.MediaFilterOptions, error) {
@@ -486,7 +487,7 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 	}
 	// Résolveur canonique : v_gamertag_lookup gère bots + cascade
 	// xuid_aliases / match_participants. Fallback masqué "Joueur ####" (jamais de
-	// xuid brut, miroir analysis.MaskedXuidLabelSQL) pour les orphelins + garantit
+	// xuid brut, miroir sqlfrag.MaskedXuidLabelSQL) pour les orphelins + garantit
 	// gamertag NON NULL pour le scan. Le JOIN xuid_aliases est devenu redondant
 	// (la vue intègre déjà xuid_aliases) → supprimé.
 	// is_bot : aligné sur Q12 (queries_match.go) — pour badge "Bot" dans le picker.
@@ -496,7 +497,7 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 			COALESCE(vg.gamertag, ('Joueur ' || RIGHT(mp.xuid, 4))) AS gamertag,
 			mp.team_id,
 			(mp.xuid = ?) AS is_self,
-			(` + analysis.SQLIsBotCol("mp.xuid") + `) AS is_bot
+			(` + sqlfrag.SQLIsBotCol("mp.xuid") + `) AS is_bot
 		FROM match_participants mp
 		LEFT JOIN v_gamertag_lookup vg ON vg.xuid = mp.xuid
 		WHERE mp.match_id IN (` + joinStrings(placeholders) + `)

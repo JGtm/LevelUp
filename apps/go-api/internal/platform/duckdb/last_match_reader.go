@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/port"
 )
 
@@ -52,7 +52,7 @@ func (r LastMatchReader) LastMatchByXUID(ctx context.Context, sharedDBPath, titl
 		placeholders[i] = "?"
 		args[i] = x
 	}
-	q := `SELECT mp.xuid, MAX(` + analysis.SQLStartTimeCanonical("mr") + `)
+	q := `SELECT mp.xuid, MAX(` + sqlfrag.SQLStartTimeCanonical("mr") + `)
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
 		WHERE mp.xuid IN (` + strings.Join(placeholders, ", ") + `)

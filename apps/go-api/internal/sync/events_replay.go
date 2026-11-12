@@ -29,9 +29,9 @@ import (
 	"log/slog"
 	"sort"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // ReplayResult agrège les compteurs d'un cycle de replay highlight events.
@@ -77,7 +77,7 @@ func FindBrokenHighlightEventMatches(ctx context.Context, db *sql.DB, limit int)
 		      AND NOT EXISTS (SELECT 1 FROM match_kill_events_latest kvp WHERE kvp.match_id = mr.match_id)
 		    )
 		  )
-		ORDER BY `+analysis.SQLStartTimeCanonical("mr")+` DESC NULLS LAST
+		ORDER BY `+sqlfrag.SQLStartTimeCanonical("mr")+` DESC NULLS LAST
 		LIMIT ?
 	`, limit)
 	if err != nil {

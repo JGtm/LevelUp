@@ -19,10 +19,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/observability"
 	"log/slog"
 	"time"
+
+	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 
 	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
@@ -153,7 +154,7 @@ func (r *SharedRoster) participantsForMatch(ctx context.Context, matchID string,
 	if r == nil || r.db == nil {
 		return fmt.Errorf("SharedRoster: db nil")
 	}
-	start := analysis.SQLStartTimeCanonical("mr")
+	start := sqlfrag.SQLStartTimeCanonical("mr")
 	// LA FEUILLE ET LA VARIANTE VIENNENT DANS LA MEME LECTURE (plan Emprise vies, lot V2) : les
 	// porteurs d'objectif lus au sync en ont besoin, et une seconde requete par match aurait ete
 	// un second passage derriere la porte de la base pour les memes deux tables.

@@ -6,7 +6,7 @@
 // joignent plus v_gamertag_lookup : leurs noms viennent de l'annuaire de la lecture
 // (squad_repo_annuaire.go). La reference de ces tests est l'ANCIENNE expression des lecteurs,
 // `COALESCE(vg.gamertag, 'Joueur ' || RIGHT(xuid, 4))` sur la VRAIE vue canonique
-// (analysis.GamertagLookupViewSQL — le schema de test n'en porte qu'une version reduite aux
+// (sqlfrag.GamertagLookupViewSQL — le schema de test n'en porte qu'une version reduite aux
 // alias), evaluee sur la meme base : chaque ligne rendue doit porter le nom que la jointure
 // lui aurait donne.
 package duckdb
@@ -15,7 +15,7 @@ import (
 	"context"
 	"testing"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // seedAnnuaire pose un niveau de la cascade par xuid (tous dans l'equipe 0 du joueur, sauf
@@ -23,7 +23,7 @@ import (
 func seedAnnuaire(t *testing.T, pdb *PlayerDB) {
 	t.Helper()
 	ctx := context.Background()
-	if _, err := pdb.Player.Exec(ctx, analysis.GamertagLookupViewSQL()); err != nil {
+	if _, err := pdb.Player.Exec(ctx, sqlfrag.GamertagLookupViewSQL()); err != nil {
 		t.Fatalf("vue canonique : %v", err)
 	}
 	participant := `INSERT INTO shared.match_participants (match_id, xuid, gamertag, outcome, team_id) VALUES (?, ?, ?, 2, ?)`

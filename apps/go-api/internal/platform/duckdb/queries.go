@@ -12,7 +12,7 @@
 //   - queries_home_citations.go : Q26-Q27, Q34 (home, citations)
 package duckdb
 
-import "levelup/go-api/internal/analysis"
+import "levelup/go-api/internal/platform/duckdb/sqlfrag"
 
 // Q1 : Bootstrap — nombre de matchs dans shared_matches_v2. Le compteur exclut
 // les matchs Campagne (Halo 5) : le token est résolu par le caller avec le titre.
@@ -56,7 +56,7 @@ matched AS (
       + CAST(jaro_winkler_similarity(lower(xa.gamertag), p.q) * 100 AS INTEGER) AS score
     FROM xuid_aliases xa
     CROSS JOIN params p
-    WHERE ` + analysis.SQLIsNotBotCol("xa.xuid") + `
+    WHERE ` + sqlfrag.SQLIsNotBotCol("xa.xuid") + `
       AND (   lower(xa.gamertag) LIKE '%' || p.q || '%'
            OR jaro_winkler_similarity(lower(xa.gamertag), p.q) > 0.80)
 )

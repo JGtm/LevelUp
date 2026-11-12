@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/observability/timing"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // qAmisToken : la place des VALUES des gamertags cherchés dans QAmisParGamertagTpl.
@@ -49,7 +49,7 @@ par_participant AS (
 )
 SELECT nom, xuid
 FROM (SELECT * FROM par_alias UNION ALL SELECT * FROM par_participant) c
-WHERE ` + analysis.SQLIsNotBotCol("xuid") + `
+WHERE ` + sqlfrag.SQLIsNotBotCol("xuid") + `
 QUALIFY ROW_NUMBER() OVER (PARTITION BY nom ORDER BY niveau, xuid) = 1`
 
 // careerFriendsTimeout : plafond de la lecture des amis (une lecture, quelques ms mesurées).

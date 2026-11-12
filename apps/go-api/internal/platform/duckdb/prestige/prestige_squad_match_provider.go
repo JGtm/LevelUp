@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/prestige"
 )
 
@@ -126,7 +127,7 @@ type candidateQuery struct {
 func (p *PrestigeSquadMatchProvider) candidateMatches(ctx context.Context, db *sql.DB, cq candidateQuery) ([]string, error) {
 	roster, limit := cq.roster, cq.limit
 	args := toAnyArgs(roster)
-	sinceClause := analysis.SQLExcludeCampaignVariants(cq.titleSlug, "mr")
+	sinceClause := sqlfrag.SQLExcludeCampaignVariants(cq.titleSlug, "mr")
 	if !cq.since.IsZero() {
 		sinceClause += " AND " + duckdb.StartTimeCanonicalSQL("mr") + " >= ?"
 		args = append(args, cq.since)
@@ -244,7 +245,7 @@ func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, ros
 			COALESCE(NULLIF(r.pair_name_fr, ''), r.pair_name, '')         AS mode
 		FROM cm
 		JOIN v_match_full r ON r.match_id = cm.match_id
-	`, sqlInPlaceholders(len(rosterXUIDs)), analysis.SQLExcludeCampaignVariants(titleSlug, "mr"), len(rosterXUIDs), limit)
+	`, sqlInPlaceholders(len(rosterXUIDs)), sqlfrag.SQLExcludeCampaignVariants(titleSlug, "mr"), len(rosterXUIDs), limit)
 
 	rows, err := db.QueryContext(ctx, q, toAnyArgs(rosterXUIDs)...)
 	if err != nil {

@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 const minAssistsSamples = 15
@@ -77,7 +78,7 @@ func loadAssistsSamples(ctx context.Context, sharedDB *sql.DB, xuid string) ([]a
 		  AND p.outcome != ?
 		  AND NOT isnan(COALESCE(CAST(p.damage_dealt AS DOUBLE), 0.0))
 		  AND NOT isnan(COALESCE(CAST(p.damage_taken AS DOUBLE), 0.0))` +
-		analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "p.match_id") + `
+		sqlfrag.SQLExcludeCampaignByMatchIDCtx(ctx, "p.match_id") + `
 		ORDER BY r.game_variant_name
 	`
 	// PMT-5 : le code DNF (exclu de la régression) est lié comme PARAMÈTRE depuis la

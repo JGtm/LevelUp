@@ -23,8 +23,8 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // CSRBackfillResult résume l'exécution d'un BackfillCSRFromAPI : utile pour
@@ -172,7 +172,7 @@ func loadRankedMatchesForCSRBackfill(ctx context.Context, sharedDB *sql.DB, xuid
 	ph, args := rankedCandidatePlaylistIDs()
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT match_id, start_time FROM (
-		SELECT DISTINCT r.match_id, r.start_time, `+analysis.SQLStartTimeCanonical("r")+` AS start_canonique
+		SELECT DISTINCT r.match_id, r.start_time, `+sqlfrag.SQLStartTimeCanonical("r")+` AS start_canonique
 		FROM match_registry r
 		JOIN match_participants mp ON mp.match_id = r.match_id
 		WHERE mp.xuid = ?

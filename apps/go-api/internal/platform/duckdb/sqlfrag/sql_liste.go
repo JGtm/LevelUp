@@ -1,4 +1,4 @@
-package analysis
+package sqlfrag
 
 // sql_liste.go — UNE LISTE LIÉE EN UN SEUL PARAMÈTRE `VARCHAR[]` (lot B du plan perf
 // « compaction et périmètre joueur », 2026-09-27, ADR 0036 I2 et sa conséquence sur les longues
@@ -19,7 +19,7 @@ package analysis
 //	                         le reste (listes de xuids, filtres sur des TABLES). Elle ne descend PAS
 //	                         sous une fenêtre (mutation M1a du lot B) : jamais sur une vue `_latest`.
 //
-// SOURCE UNIQUE du texte : les gabarits d'`analysis` (annuaire des noms) appellent ces fonctions,
+// SOURCE UNIQUE du texte : les gabarits de ce paquet (annuaire des noms) appellent ces fonctions,
 // les lectures de `platform/duckdb` passent par `clauseListe…` (perimetre_liste.go), qui y ajoute
 // l'argument. Aucun autre `?::VARCHAR[]` ne s'écrit à la main (ratchet
 // archlint/liste_liee_ratchet_test.go ; deux copies antérieures y sont consignées).

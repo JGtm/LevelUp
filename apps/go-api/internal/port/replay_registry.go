@@ -14,7 +14,7 @@ type ReplayRegistryMatch struct {
 	// MapID est l'identifiant de carte, sans espaces de bord ; vide si absent.
 	MapID string
 	// UnmanagedMode dit que le rejeu ne fabrique pas le mode du match (règle du prédicat
-	// analysis.SQLModeNonGere).
+	// sqlfrag.SQLModeNonGere).
 	UnmanagedMode bool
 }
 

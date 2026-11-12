@@ -16,7 +16,7 @@
 // comptait « en attente » des matchs dont le FILM EST PERDU, parce qu'elle ne reprenait que
 // la fenetre et pas le marqueur terminal.
 //
-// La regle vit dans `analysis.SQLEligibleALaCuisson`, `analysis.SQLDansFenetreRetention` et
+// La regle vit dans `sqlfrag.SQLEligibleALaCuisson`, `sqlfrag.SQLDansFenetreRetention` et
 // `analysis.BorneRetention`.
 package archlint
 
@@ -43,8 +43,16 @@ var formulationsDeLaFenetre = []string{
 	"backfill_completed, 0) & ?",
 }
 
-// paquetProprietaireDeLaFenetre : le seul endroit ou ces formes sont legitimes.
-const paquetProprietaireDeLaFenetre = "internal/analysis/sql_fragments.go"
+// proprietairesDeLaFenetre : les seuls endroits ou ces formes sont legitimes — la borne (calcul de date,
+// analysis/retention.go) et les predicats qui l'emploient (platform/duckdb/sqlfrag/sql_fragments.go), reunis
+// avant le 2026-11-12 dans un seul fichier. Chaque forme doit s'y voir au moins une fois.
+var proprietairesDeLaFenetre = map[string]bool{
+	"internal/analysis/retention.go":                    true,
+	"internal/platform/duckdb/sqlfrag/sql_fragments.go": true,
+}
+
+// paquetProprietaireDeLaFenetre : libelle des proprietaires pour les messages.
+const paquetProprietaireDeLaFenetre = "internal/analysis/retention.go + internal/platform/duckdb/sqlfrag/sql_fragments.go"
 
 // motsRetention BORNE le balayage aux fichiers qui parlent de retention.
 //
@@ -100,7 +108,7 @@ func TestUneSeuleDefinitionDeLaFenetreDeRetention(t *testing.T) {
 		if readErr != nil {
 			return readErr
 		}
-		proprietaire := rel == paquetProprietaireDeLaFenetre
+		proprietaire := proprietairesDeLaFenetre[rel]
 		if !proprietaire && !nommeLaRetention(string(data)) {
 			return nil
 		}
@@ -132,7 +140,7 @@ func TestUneSeuleDefinitionDeLaFenetreDeRetention(t *testing.T) {
 	}
 	if len(violations) > 0 {
 		t.Errorf("fenetre de retention recopiee hors de %s (%d) — appeler "+
-			"analysis.SQLDansFenetreRetention / analysis.BorneRetention : deux definitions font "+
+			"sqlfrag.SQLDansFenetreRetention / analysis.BorneRetention : deux definitions font "+
 			"que la page annonce une cuisson que la file ne fera pas :\n  %s",
 			paquetProprietaireDeLaFenetre, len(violations), strings.Join(violations, "\n  "))
 	}

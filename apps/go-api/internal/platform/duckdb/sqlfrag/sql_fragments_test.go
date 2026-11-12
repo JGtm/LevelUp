@@ -4,7 +4,7 @@
 // Ces tests ne valident pas la sémantique SQL (DuckDB :memory: ferait
 // l'affaire pour ça, voir platform/duckdb tests) mais figent les chaînes
 // publiées pour empêcher une dérive silencieuse.
-package analysis
+package sqlfrag
 
 import "testing"
 

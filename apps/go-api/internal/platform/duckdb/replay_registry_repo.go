@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"strings"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/port"
 )
 
@@ -33,7 +33,7 @@ func NewReplayRegistryRepo(shared, meta *sql.DB) *ReplayRegistryRepo {
 // courte acceptée : match_registry est indexé par le match_id COMPLET).
 func (r *ReplayRegistryRepo) MatchesByIDOrPrefix(ctx context.Context, matchID string) ([]port.ReplayRegistryMatch, error) {
 	rows, err := r.shared.QueryContext(ctx,
-		`SELECT match_id, map_name, map_id, `+analysis.SQLModeNonGere("")+` FROM match_registry
+		`SELECT match_id, map_name, map_id, `+sqlfrag.SQLModeNonGere("")+` FROM match_registry
 		 WHERE match_id = ? OR match_id LIKE ? LIMIT 3`,
 		matchID, matchID+"%")
 	if err != nil {
@@ -74,9 +74,9 @@ func (r *ReplayRegistryRepo) EnglishMapName(ctx context.Context, mapID string) (
 }
 
 // UnmanagedModeMatchIDs rend les identifiants complets des matchs refusés par règle : le MÊME prédicat
-// (analysis.SQLModeNonGere, lu au registre) que le refus de la cuisson.
+// (sqlfrag.SQLModeNonGere, lu au registre) que le refus de la cuisson.
 func (r *ReplayRegistryRepo) UnmanagedModeMatchIDs(ctx context.Context) ([]string, error) {
-	rows, err := r.shared.QueryContext(ctx, `SELECT match_id FROM match_registry WHERE `+analysis.SQLModeNonGere(""))
+	rows, err := r.shared.QueryContext(ctx, `SELECT match_id FROM match_registry WHERE `+sqlfrag.SQLModeNonGere(""))
 	if err != nil {
 		return nil, fmt.Errorf("registre des matchs (modes non gérés): %w", err)
 	}

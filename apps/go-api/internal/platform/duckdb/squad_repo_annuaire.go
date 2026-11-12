@@ -79,6 +79,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // accesLigne : ce que nommerLignes lit et ecrit sur une ligne de lecture.
@@ -288,10 +289,10 @@ func xuidsSansNom(xuids []string, a analysis.AnnuaireGamertags) []string {
 func lireAliasEtParticipants(
 	ctx context.Context, db *sql.DB, xuids []string, lecture lectureANommer, a *analysis.AnnuaireGamertags,
 ) error {
-	q := analysis.AnnuaireNomsBaseSQL()
+	q := sqlfrag.AnnuaireNomsBaseSQL()
 	args := []any{argListe(xuids), argListe(xuids)}
 	if !lecture.porteeBase {
-		q = analysis.AnnuaireNomsSQL()
+		q = sqlfrag.AnnuaireNomsSQL()
 		args = append(args, argListe(lecture.matchIDs))
 	}
 	rows, err := db.QueryContext(ctx, q, args...)
@@ -305,9 +306,9 @@ func lireAliasEtParticipants(
 			return fmt.Errorf("annuaire (alias, participants) scan: %w", err)
 		}
 		switch niveau {
-		case analysis.AnnuaireNiveauAlias:
+		case sqlfrag.AnnuaireNiveauAlias:
 			a.Alias[xuid] = gamertag
-		case analysis.AnnuaireNiveauParticipant:
+		case sqlfrag.AnnuaireNiveauParticipant:
 			a.Participants[xuid] = gamertag
 		}
 	}
@@ -318,12 +319,12 @@ func lireAliasEtParticipants(
 func lireKillFeed(
 	ctx context.Context, db *sql.DB, xuids, matchIDs []string, a *analysis.AnnuaireGamertags,
 ) error {
-	args := make([]any, 0, analysis.AnnuaireKillFeedJambes+1)
-	for range analysis.AnnuaireKillFeedJambes {
+	args := make([]any, 0, sqlfrag.AnnuaireKillFeedJambes+1)
+	for range sqlfrag.AnnuaireKillFeedJambes {
 		args = append(args, argListe(matchIDs))
 	}
 	args = append(args, argListe(xuids))
-	rows, err := db.QueryContext(ctx, analysis.AnnuaireKillFeedSQL(), args...)
+	rows, err := db.QueryContext(ctx, sqlfrag.AnnuaireKillFeedSQL(), args...)
 	if err != nil {
 		return fmt.Errorf("annuaire (kill-feed): %w", err)
 	}
@@ -351,11 +352,11 @@ func lireKillFeedBase(ctx context.Context, db *sql.DB, xuids []string, a *analys
 	return lireKillFeed(ctx, db, xuids, matchs, a)
 }
 
-// localiserKillFeed : les matchs candidats des xuids (analysis.AnnuaireKillFeedLocaliserSQL).
+// localiserKillFeed : les matchs candidats des xuids (sqlfrag.AnnuaireKillFeedLocaliserSQL).
 // LECTURE DE LOCALISATION de la table append-only `match_kill_events` (ADR 0036, « locating
 // read » ; site unique) : elle ne rend que des match_id, aucune valeur n'en est lue.
 func localiserKillFeed(ctx context.Context, db *sql.DB, xuids []string) ([]string, error) {
-	rows, err := db.QueryContext(ctx, analysis.AnnuaireKillFeedLocaliserSQL(), argListe(xuids))
+	rows, err := db.QueryContext(ctx, sqlfrag.AnnuaireKillFeedLocaliserSQL(), argListe(xuids))
 	if err != nil {
 		return nil, fmt.Errorf("annuaire (kill-feed, localisation): %w", err)
 	}

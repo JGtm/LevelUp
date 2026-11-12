@@ -60,12 +60,12 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/filmarchive"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	go_sync "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/matchflags"
 
@@ -289,7 +289,7 @@ func filmsManquants(ctx context.Context, cfg *config.AppConfig, o archiveOptions
 		SELECT match_id
 		FROM match_registry
 		WHERE COALESCE(backfill_completed, 0) & ? = 0
-		ORDER BY `+analysis.SQLStartTimeCanonical("")+`, match_id`, filtre)
+		ORDER BY `+sqlfrag.SQLStartTimeCanonical("")+`, match_id`, filtre)
 	if err != nil {
 		return nil, fmt.Errorf("registre des matchs: %w", err)
 	}

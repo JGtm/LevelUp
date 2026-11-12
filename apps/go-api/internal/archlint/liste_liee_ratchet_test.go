@@ -24,7 +24,7 @@ import (
 // listeLieeAutorisee : fichier (relatif à apps/go-api) -> littéraux permis, datée du 2026-09-27.
 var listeLieeAutorisee = map[string]int{
 	// La source unique des deux formes.
-	"internal/analysis/sql_liste.go": 1,
+	"internal/platform/duckdb/sqlfrag/sql_liste.go": 1,
 }
 
 func TestListeLiee_TexteEnUnSeulEndroit(t *testing.T) {

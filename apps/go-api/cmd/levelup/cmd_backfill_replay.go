@@ -39,7 +39,7 @@ package main
 // # ELLE NE CUIT PAS LES MODES QUE LE REJEU NE GERE PAS
 //
 // Le Firefight (PvE) n'a pas de rejeu (decision du 2026-10-15) : le registre le dit
-// (`analysis.SQLModeNonGere`), la passe ecarte ces matchs et les compte « mode non gere »,
+// (`sqlfrag.SQLModeNonGere`), la passe ecarte ces matchs et les compte « mode non gere »,
 // `--force` et `--only-existing` compris, et `--one` sur l'un d'eux refuse. Les artefacts
 // deja cuits se retirent par `--purge-non-geres` (`--dry-run` : liste sans supprimer).
 //
@@ -118,10 +118,10 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/replaybuild"
 
@@ -377,7 +377,7 @@ func registreParShort(ctx context.Context, pr *titlePkg.PathResolver, titleSlug 
 
 	enParMapID := nomsCartesCanoniques(ctx, pr, titleSlug)
 
-	rows, err := db.QueryContext(ctx, `SELECT match_id, map_name, map_id, `+analysis.SQLModeNonGere("")+
+	rows, err := db.QueryContext(ctx, `SELECT match_id, map_name, map_id, `+sqlfrag.SQLModeNonGere("")+
 		` FROM match_registry ORDER BY match_id`)
 	if err != nil {
 		return nil, fmt.Errorf("registre des matchs: %w", err)

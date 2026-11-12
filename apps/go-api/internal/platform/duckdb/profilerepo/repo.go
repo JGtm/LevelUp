@@ -14,11 +14,11 @@ import (
 	"fmt"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/platform/duckdb"
 	duckdbprestige "levelup/go-api/internal/platform/duckdb/prestige"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/prestige"
 )
@@ -45,10 +45,10 @@ func New(pdb *duckdb.PlayerDB) *Repo {
 func (r *Repo) TitleSlug() string { return r.pdb.TitleSlug }
 
 // campaignExclMR retourne la clause littérale de masquage des matchs Campagne pour l'alias registre `mr`
-// (title-aware via le titre du joueur ; no-op Infinite). Source unique analysis.SQLExcludeCampaignVariants :
+// (title-aware via le titre du joueur ; no-op Infinite). Source unique sqlfrag.SQLExcludeCampaignVariants :
 // sans ce filtre les matchs Campagne (Halo 5) biaiseraient les axes et compteurs de la page Ascension.
 func (r *Repo) campaignExclMR() string {
-	return analysis.SQLExcludeCampaignVariants(r.pdb.TitleSlug, "mr")
+	return sqlfrag.SQLExcludeCampaignVariants(r.pdb.TitleSlug, "mr")
 }
 
 // CountWindowMatches retourne le nombre de matchs distincts du joueur dans la fenêtre. Source :

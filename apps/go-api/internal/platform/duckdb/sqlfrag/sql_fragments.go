@@ -1,4 +1,4 @@
-// Package analysis — sql_fragments.go : fragments SQL canoniques.
+// Package sqlfrag — sql_fragments.go : fragments SQL canoniques.
 //
 // Centralise les expressions SQL répétées dans les repositories DuckDB pour
 // éviter les divergences (revue 2026-04-29 axe 6 DETTE 11 — `IsBot` SQL
@@ -13,9 +13,9 @@
 //     (mp.xuid, opp.xuid), un const nu re-divergeait (34 copies constatées).
 //   - Toujours utiliser ces fragments via concaténation explicite, pas via
 //     fmt.Sprintf (lisibilité + audit grep).
-package analysis
+package sqlfrag
 
-import "time"
+import "levelup/go-api/internal/analysis"
 
 // SQLIsBotCol construit le prédicat SQL « colonne = xuid de bot » pour la colonne
 // donnée (préfixe d'alias inclus : "xuid", "mp.xuid", "opp.xuid"…). Source unique
@@ -24,7 +24,7 @@ import "time"
 //
 // Deux régimes d'usage selon le consommateur :
 //   - chaîne backtick exécutée directement : concaténer
-//     `... WHERE ` + analysis.SQLIsNotBotCol("mp.xuid") + ` ...`
+//     `... WHERE ` + sqlfrag.SQLIsNotBotCol("mp.xuid") + ` ...`
 //   - template fmt.Sprintf : l'injecter comme ARGUMENT %s (le `%` interne de
 //     'bid(%' n'est PAS réinterprété par Sprintf), JAMAIS dans la chaîne de format.
 //
@@ -68,7 +68,7 @@ const SQLKDRExpr = `CAST(SUM(kills) AS DOUBLE) / NULLIF(SUM(deaths), 0)`
 //
 // Usage :
 //
-//	`... ORDER BY ` + analysis.SQLStartTimeCanonical("mr") + ` DESC`
+//	`... ORDER BY ` + sqlfrag.SQLStartTimeCanonical("mr") + ` DESC`
 func SQLStartTimeCanonical(alias string) string {
 	prefix := ""
 	if alias != "" {
@@ -174,31 +174,9 @@ func SQLEligibleALaCuisson(alias string, mois int, bitFilmAbsent int64) (string,
 		" AND NOT " + SQLModeNonGere(alias) +
 		" AND " + SQLStartTimeCanonical(alias) + " IS NOT NULL"
 	args := []any{bitFilmAbsent}
-	if borne, bornee := BorneRetention(mois); bornee {
+	if borne, bornee := analysis.BorneRetention(mois); bornee {
 		sql += " AND " + SQLDansFenetreRetention(alias)
 		args = append(args, borne)
 	}
 	return sql, args
-}
-
-// BorneRetention rend l'instant a partir duquel un match est DANS la fenetre, et `true` si
-// la fenetre est bornee.
-//
-// `mois <= 0` VEUT DIRE ILLIMITEE, jamais « zero mois » : c'est le reglage par defaut
-// (`ReplayRetentionMonths`), et un match n'en sort alors jamais.
-func BorneRetention(mois int) (time.Time, bool) {
-	return BorneRetentionDepuis(time.Now().UTC(), mois)
-}
-
-// BorneRetentionDepuis est [BorneRetention] avec un instant de reference explicite.
-//
-// ELLE EXISTE POUR L'HORLOGE INJECTEE du cron de purge, qui doit pouvoir se placer a une
-// date choisie dans ses tests. Le calcul reste ICI : c'est lui, et non l'appel a
-// `time.Now`, qui doit rester unique — un `AddDate` recopie chez l'appelant est exactement
-// la divergence que le garde-rail `no_retention_window_inline_test` interdit.
-func BorneRetentionDepuis(now time.Time, mois int) (time.Time, bool) {
-	if mois <= 0 {
-		return time.Time{}, false
-	}
-	return now.AddDate(0, -mois, 0), true
 }

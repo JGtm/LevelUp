@@ -1,7 +1,10 @@
 // Package duckdb — queries_match.go : requêtes vue match (scoreboard, events, armes).
 package duckdb
 
-import "levelup/go-api/internal/analysis"
+import (
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
+)
 
 // Q10 : Career — encounters (adversaires et coéquipiers fréquents).
 // Paramètre : ? = xuid du joueur.
@@ -60,7 +63,7 @@ WITH me_perfect AS (
 )
 SELECT
     p.xuid,
-    (` + analysis.SQLIsBotCol("p.xuid") + `) AS is_bot,
+    (` + sqlfrag.SQLIsBotCol("p.xuid") + `) AS is_bot,
     p.team_id,
     p.rank              AS rank_in_team,
     COALESCE(p.outcome, 0)         AS outcome,
@@ -579,7 +582,7 @@ LIMIT 1`
 
 // Q25NeighborMatchesTemplate : version paramétrable de Q25 pour Phase 2b
 // (filtres MatchFilterSpec). Le marqueur `/*EXTRA_WHERE*/` est remplacé par
-// le fragment SQL produit par analysis.BuildNeighborsWhereClause (vide ou
+// le fragment SQL produit par sqlfrag.BuildNeighborsWhereClause (vide ou
 // commençant par ' AND ').
 //
 // Paramètres positionnels : xuid, [filtres...], match_id.

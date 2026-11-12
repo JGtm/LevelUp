@@ -14,11 +14,11 @@ import (
 	"os"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/skill"
 )
@@ -104,7 +104,7 @@ func (s *Store) MatchDatesByShortID(ctx context.Context, sharedPath string) (map
 		return nil, fmt.Errorf("open shared (lecture): %w", err)
 	}
 	defer release()
-	q := `SELECT match_id, ` + analysis.SQLStartTimeCanonical("match_registry") + ` FROM match_registry`
+	q := `SELECT match_id, ` + sqlfrag.SQLStartTimeCanonical("match_registry") + ` FROM match_registry`
 	rows, err := db.QueryContext(ctx, q)
 	if err != nil {
 		return nil, fmt.Errorf("lecture match_registry: %w", err)
@@ -173,7 +173,7 @@ func (h *sharedHandle) CountProbe(ctx context.Context, probe port.HealthProbe) (
 		SELECT COUNT(DISTINCT mp.xuid)
 		FROM match_participants mp
 		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
-		WHERE ` + analysis.SQLIsNotBotCol("mp.xuid") + `
+		WHERE ` + sqlfrag.SQLIsNotBotCol("mp.xuid") + `
 		  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
 	`
 	default:

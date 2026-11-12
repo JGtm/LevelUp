@@ -167,7 +167,7 @@ type TacticalRaster struct {
 	//	                    terminal), registre incapable de le dater, ou plus ancien que la
 	//	                    fenetre. C'est une DONNEE NON DISPONIBLE.
 	//
-	// LE PREDICAT EST CELUI DE LA FILE ELLE-MEME (`analysis.SQLEligibleALaCuisson`). Une
+	// LE PREDICAT EST CELUI DE LA FILE ELLE-MEME (`sqlfrag.SQLEligibleALaCuisson`). Une
 	// version anterieure comptait « en attente » tout match dans la fenetre, y compris ceux
 	// dont le FILM EST PERDU : la page envoyait alors attendre indefiniment une cuisson que
 	// rien n'allait faire. Une promesse plus large que ce que la file tient est pire que

@@ -267,7 +267,7 @@ type ReplayMapNameRepo interface {
 // rejeu 2D ne gere pas (PvE Firefight, decision du 2026-10-15). Le service de rejeu la detecte
 // par assertion : sans elle, aucun mode n'est ecarte (tests, outils sans base).
 //
-// LE VERDICT VIENT DU REGISTRE (`analysis.SQLModeNonGere`), jamais d'un nom de mode ni d'un slug.
+// LE VERDICT VIENT DU REGISTRE (`sqlfrag.SQLModeNonGere`), jamais d'un nom de mode ni d'un slug.
 type ReplayModeGate interface {
 	// ModeNonGere dit si ce match (identifiant complet) est d'un mode non gere. Un match absent
 	// du registre n'est pas non gere.

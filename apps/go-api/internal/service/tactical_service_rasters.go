@@ -158,7 +158,7 @@ func (s *TacticalService) rasterArtefact(ctx context.Context, out *domain.Tactic
 // et celui qui regarde ses matchs d'il y a deux ans, dont les films ont expire cote serveur
 // et ne seront jamais cuits. Le premier doit attendre, le second n'a rien a attendre.
 //
-// LE PREDICAT EST CELUI DE LA FILE ELLE-MEME (`analysis.SQLEligibleALaCuisson`, applique
+// LE PREDICAT EST CELUI DE LA FILE ELLE-MEME (`sqlfrag.SQLEligibleALaCuisson`, applique
 // par le lecteur) : film pas perdu, horodatage exploitable, dans la fenetre. Annoncer une
 // cuisson que la file ne fera pas est pire que se taire — l'utilisateur attend un ecran qui
 // ne se remplira jamais.

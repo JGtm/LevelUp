@@ -22,7 +22,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // LE TEXTE DU PRÉDICAT VIT DANS `analysis` (sql_liste.go, source unique partagée avec les gabarits
@@ -35,13 +35,13 @@ import (
 // Une liste vide ne retient aucun match (le prédicat vaut faux, jamais « tous ») ; les lecteurs
 // rendent la main avant de toute façon.
 func clauseListeMatchs(col string, ids []string) (string, any) {
-	return analysis.SQLDansListe(col), argListe(ids)
+	return sqlfrag.SQLDansListe(col), argListe(ids)
 }
 
 // clauseListeParJointure : la même liste en SEMI-JOINTURE (listes de xuids, filtres sur des
 // tables ; jamais sous une fenêtre `_latest`).
 func clauseListeParJointure(col string, ids []string) (string, any) {
-	return analysis.SQLDansListeParJointure(col), argListe(ids)
+	return sqlfrag.SQLDansListeParJointure(col), argListe(ids)
 }
 
 // argListe rend l'argument d'une liste liée : la liste elle-même, jamais nil (un `nil` se lierait

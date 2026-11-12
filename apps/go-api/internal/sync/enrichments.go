@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // ensureGamertagForSelf garantit que le ParticipantRow correspondant au xuid
@@ -119,7 +119,7 @@ func queryAnyBotMatchIDs(ctx context.Context, sharedDB *sql.DB, xuid string) ([]
 		 AND mp_self.team_id = mp_other.team_id
 		 AND mp_other.xuid <> mp_self.xuid
 		WHERE mp_self.xuid = ?
-		  AND `+analysis.SQLIsBotCol("mp_other.xuid")+`
+		  AND `+sqlfrag.SQLIsBotCol("mp_other.xuid")+`
 	`, xuid)
 	if err != nil {
 		return nil, err
@@ -160,7 +160,7 @@ func querySignificantBotMatchIDs(ctx context.Context, sharedDB *sql.DB, xuid str
 		    JOIN match_registry r
 		      ON r.match_id = mp_self.match_id
 		    WHERE mp_self.xuid = ?
-		      AND `+analysis.SQLIsBotCol("mp_bot.xuid")+`
+		      AND `+sqlfrag.SQLIsBotCol("mp_bot.xuid")+`
 		    GROUP BY mp_self.match_id
 		)
 		SELECT match_id

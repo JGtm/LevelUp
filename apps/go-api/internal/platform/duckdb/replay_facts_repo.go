@@ -27,7 +27,7 @@ import (
 	"fmt"
 	"strings"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/port"
 )
 
@@ -109,7 +109,7 @@ func (r *ReplayFactsRepo) registryFacts(ctx context.Context, matchID string) (po
 // COALESCE — un NULL changé en « présent » ou en « parti » fabriquerait la fin d'une vie du
 // rejeu. `Deaths` vaut zéro sur une colonne NULL : `DeathsDeclared` dit si ce zéro est une valeur.
 func (r *ReplayFactsRepo) playerFacts(ctx context.Context, matchID string) ([]port.MatchPlayerFact, error) {
-	start := analysis.SQLStartTimeCanonical("mr")
+	start := sqlfrag.SQLStartTimeCanonical("mr")
 	rows, err := r.shared.QueryContext(ctx,
 		`SELECT p.xuid, COALESCE(p.kills, 0), COALESCE(p.deaths, 0), COALESCE(p.assists, 0),
 		        COALESCE(p.team_id, -1),

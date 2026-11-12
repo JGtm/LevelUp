@@ -39,7 +39,7 @@ var ErrNoTracks = errors.New("replaybuild: aucune trajectoire décodée — arte
 
 // ErrModeNonGere : le match est d'un mode que le rejeu 2D ne gère pas (PvE Firefight, décision
 // du 2026-10-15 : « ça n'aurait jamais dû être le cas »). Aucun artefact n'est cuit, aucun n'est
-// servi. La décision se lit au REGISTRE (`analysis.SQLModeNonGere`), jamais dans le film ni dans
+// servi. La décision se lit au REGISTRE (`sqlfrag.SQLModeNonGere`), jamais dans le film ni dans
 // un nom de mode. Même famille que les refus ci-dessous : un écart voulu, pas une panne — les
 // producteurs le classent en ÉCARTÉ.
 var ErrModeNonGere = errors.New("replaybuild: mode non géré par le rejeu (Firefight) — match écarté")

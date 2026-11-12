@@ -54,7 +54,7 @@ var lecteursDeLignesDuJournal = map[string]string{
 	"internal/platform/duckdb/tactical_repo_morts_par_carte.go:QTacticalMortsParCarte": "2026-10-21 : morts par carte de la Tactique, jointure aux positions.",
 	// Autres titres et noms.
 	"internal/platform/duckdb/halo5/halo5_match_events_source.go:h5KillFeedQuery": "2026-10-21 : source des events de match de Halo 5, une ligne par mort avec son instant.",
-	"internal/analysis/identity.go:gamertagKillFeedLegs":                          "2026-10-21 : annuaire des noms, les gamertags du journal (noms seulement, pas un agrégat) ; à reprendre dans le chantier « annuaire » si mesuré coûteux.",
+	"internal/platform/duckdb/sqlfrag/identity.go:gamertagKillFeedLegs":           "2026-10-21 : annuaire des noms, les gamertags du journal (noms seulement, pas un agrégat) ; à reprendre dans le chantier « annuaire » si mesuré coûteux.",
 	"internal/platform/duckdb/weapon_evidence.go:WeaponEvidenceTable":             "2026-10-21 : sonde d'existence (information_schema) qui NOMME la table de preuve des armes ; ne lit aucune ligne.",
 }
 

@@ -1,7 +1,10 @@
 // Package duckdb — queries_squad.go : requêtes page Escouade et Synthèse.
 package duckdb
 
-import "levelup/go-api/internal/analysis"
+import (
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
+)
 
 // Q29TopTeammatesSharedTpl : (ADR 0016) — partie shared du split
 // LoadTopTeammates. Découpé en :
@@ -86,7 +89,7 @@ SELECT
     -- Vraie durée de gameplay (countdown pré-match retranché via real_start_time).
     GREATEST(0, COALESCE(r.duration_seconds, 0) - CASE
         WHEN r.real_start_time IS NOT NULL THEN CAST(round(
-            (` + analysis.SQLRealStartOffsetMs("r") + `) / 1000.0
+            (` + sqlfrag.SQLRealStartOffsetMs("r") + `) / 1000.0
         ) AS INTEGER) ELSE 0 END)                                AS gameplay_duration_seconds,
     -- T0 offset (Match Timeline T0, §4.A-bis) : countdown pré-match en ms.
     -- NULL si real_start_time absent → fallback runtime T0=0. Même formule

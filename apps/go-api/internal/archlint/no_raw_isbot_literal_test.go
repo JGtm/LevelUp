@@ -2,7 +2,7 @@
 //
 // Interdit toute NOUVELLE occurrence du littéral SQL brut du prédicat bot sur
 // une colonne xuid — `<col>xuid [NOT ]LIKE 'bid(%'` (ou '%%' en template Sprintf).
-// La source unique est analysis.SQLIsBotCol(col) / SQLIsNotBotCol(col). Le prédicat
+// La source unique est sqlfrag.SQLIsBotCol(col) / SQLIsNotBotCol(col). Le prédicat
 // avait été « centralisé » en const nue SQLIsBot (0 consommateur SQL) puis re-divergé
 // en 34 copies littérales — leçon CLAUDE.md règle 6.
 //
@@ -68,7 +68,7 @@ func TestNoNewRawIsBotLiteral(t *testing.T) {
 			rel, _ := filepath.Rel(goAPIRoot, path)
 			rel = filepath.ToSlash(rel)
 			// sql_fragments.go = définition du helper (source unique).
-			if rel == "internal/analysis/sql_fragments.go" || rawIsBotAllowlist[rel] {
+			if rel == "internal/platform/duckdb/sqlfrag/sql_fragments.go" || rawIsBotAllowlist[rel] {
 				return nil
 			}
 			data, readErr := os.ReadFile(path)
@@ -92,7 +92,7 @@ func TestNoNewRawIsBotLiteral(t *testing.T) {
 	}
 	if len(violations) > 0 {
 		t.Errorf("littéral SQL brut du prédicat bot xuid interdit (H2) — utiliser "+
-			"analysis.SQLIsBotCol(col)/SQLIsNotBotCol(col) (arg %%s en contexte Sprintf), "+
+			"sqlfrag.SQLIsBotCol(col)/SQLIsNotBotCol(col) (arg %%s en contexte Sprintf), "+
 			"ou allowlister transitoirement si threading requis :\n  %s",
 			strings.Join(violations, "\n  "))
 	}

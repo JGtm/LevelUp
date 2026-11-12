@@ -27,9 +27,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/halo_5/ingest"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // KillKindBackfillStats résume une passe de backfill kill_kind.
@@ -124,7 +124,7 @@ func matchesForKillKind(ctx context.Context, shared *sql.DB, titleSlug string, m
 	}
 	q := `SELECT r.match_id FROM match_registry r
 	      WHERE EXISTS (SELECT 1 FROM v_weapon_kills w WHERE w.match_id = r.match_id` + killKindFilter + `)` +
-		analysis.SQLExcludeCampaignVariants(titleSlug, "r") +
+		sqlfrag.SQLExcludeCampaignVariants(titleSlug, "r") +
 		` ORDER BY COALESCE(r.start_time_utc, r.start_time) DESC`
 	if maxMatches > 0 {
 		q += fmt.Sprintf(" LIMIT %d", maxMatches)

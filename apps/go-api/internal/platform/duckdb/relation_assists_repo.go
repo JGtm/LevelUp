@@ -11,8 +11,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // Q28cRelationAssistsTpl : pour chaque coéquipier, les assistances reçues et données,
@@ -32,7 +32,7 @@ import (
 // (`team_id` égal ; un team_id NULL ne s'égale à rien) ET porteurs. Un match porteur sans
 // aucune assistance entre eux compte quand même dans les bases.
 //
-// BOTS : un bot ne devient pas une ligne (prédicat analysis.SQLIsNotBotCol sur le
+// BOTS : un bot ne devient pas une ligne (prédicat sqlfrag.SQLIsNotBotCol sur le
 // coéquipier) ; ses victimes et ses frags restent dans les bases.
 //
 // Titres sans décodeur de film : `porteuses` est vide, donc aucune ligne ne sort — pas de
@@ -56,7 +56,7 @@ import (
 // jointure par boucles imbriquées, l'essentiel du coût de la lecture.
 //
 // Format string, DANS CET ORDRE : borne de `lues`, borne de `porteuses`, prédicat d'exclusion des
-// bots (analysis.SQLIsNotBotCol), scopeClause (" AND mp.match_id IN (?,…)" ou ""), partnerClause
+// bots (sqlfrag.SQLIsNotBotCol), scopeClause (" AND mp.match_id IN (?,…)" ou ""), partnerClause
 // (" AND p.xuid IN (…)" ou ""). Les tranches de part viennent des colonnes `n_low` / `n_mid` /
 // `n_high` du résumé (bornes de `domain.AssistTier*`, liées à `summary_rev`).
 // Placeholders ? : ?1 = xuid du joueur, ?2 = liste de `lues`, ?3 = liste de `porteuses`, puis ceux
@@ -154,7 +154,7 @@ func buildRelationAssistsQuery(q assistExchangeQuery) (string, []any) {
 		partnerClause = " AND p.xuid IN (SELECT xuid FROM match_participants WHERE match_id = ?)"
 		args = append(args, q.partnersOfMatch)
 	}
-	sqlText := fmt.Sprintf(Q28cRelationAssistsTpl, borneClause, porteusesClause, analysis.SQLIsNotBotCol("p.xuid"),
+	sqlText := fmt.Sprintf(Q28cRelationAssistsTpl, borneClause, porteusesClause, sqlfrag.SQLIsNotBotCol("p.xuid"),
 		scopeClause, partnerClause)
 	return sqlText, args
 }

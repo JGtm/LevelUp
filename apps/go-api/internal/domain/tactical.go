@@ -303,7 +303,7 @@ type TacticalMatch struct {
 
 	// EligibleALaCuisson dit que la FILE DE CUISSON des artefacts de rejeu reprendra ce
 	// match : film pas definitivement perdu, horodatage exploitable, et dans la fenetre de
-	// retention (`analysis.SQLEligibleALaCuisson`, le predicat de la file elle-meme).
+	// retention (`sqlfrag.SQLEligibleALaCuisson`, le predicat de la file elle-meme).
 	//
 	// IL DISTINGUE DEUX ABSENCES QUI NE SE DISENT PAS PAREIL. Un match sans artefact mais
 	// eligible sera cuit au fil de l'eau — c'est un traitement en cours, il suffit

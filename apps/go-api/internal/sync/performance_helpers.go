@@ -11,6 +11,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 func computeRankPerformance(rank, teamMMR, enemyMMR float64, histMetrics map[string][]float64) *float64 {
@@ -230,7 +231,7 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 		WHERE mp.xuid = ?
 		  AND mr.start_time IS NOT NULL
 		  AND COALESCE(mp.outcome, 0) != 4`+
-		analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
+		sqlfrag.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
 		ORDER BY mr.start_time ASC`, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("loadHistoryForPerf: %w", err)

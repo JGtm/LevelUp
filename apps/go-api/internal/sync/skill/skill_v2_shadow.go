@@ -17,10 +17,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/port"
 )
 
@@ -432,14 +432,14 @@ func concurrentTeamSize(team []rosterMember) int {
 func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]shadowMatch, error) {
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT mr.match_id,
-		       `+analysis.SQLStartTimeCanonical("mr")+` AS ts,
+		       `+sqlfrag.SQLStartTimeCanonical("mr")+` AS ts,
 		       COALESCE(mr.pair_name, ''),
 		       COALESCE(mp.outcome, 0),
 		       mp.team_id,
 		       -- vraie durée gameplay en ms (countdown retranché via real_start_time)
 		       GREATEST(0, COALESCE(mr.duration_seconds, 0) * 1000 - CASE
 		           WHEN mr.real_start_time IS NOT NULL THEN
-		               `+analysis.SQLRealStartOffsetMs("mr")+`
+		               `+sqlfrag.SQLRealStartOffsetMs("mr")+`
 		           ELSE 0 END) AS gameplay_dur_ms
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
@@ -449,7 +449,7 @@ func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]sh
 		  -- title-generic : les titres canoniques (Halo 5) renseignent start_time_utc
 		  -- et laissent start_time (legacy) NULL ; filtrer sur le COALESCE comme le SELECT.
 		  AND COALESCE(mr.start_time_utc, mr.start_time) IS NOT NULL
-		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)`+analysis.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
+		  AND (mr.duration_seconds IS NULL OR mr.duration_seconds >= 30)`+sqlfrag.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
 		ORDER BY ts ASC`, xuid)
 	if err != nil {
 		return nil, err

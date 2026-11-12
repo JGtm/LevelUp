@@ -12,8 +12,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/port"
 )
 
@@ -174,7 +174,7 @@ func (st *PlayerSnapshotStore) FillSharedAggregates(ctx context.Context, s *port
 	}
 	// Campagne exclue des trois lectures (D-5, backlog B4 ; no-op pour un titre sans variante de Campagne) :
 	// les deltas notifiés suivent les agrégats affichés.
-	campagneExclue := analysis.SQLExcludeCampaignByMatchID(pdb.TitleSlug, "match_id")
+	campagneExclue := sqlfrag.SQLExcludeCampaignByMatchID(pdb.TitleSlug, "match_id")
 	var kd, winrate sql.NullFloat64
 	err := sharedDB.QueryRowContext(ctx, `
 				SELECT
@@ -230,7 +230,7 @@ func (st *PlayerSnapshotStore) FillSharedAggregates(ctx context.Context, s *port
 				SELECT MAX(`+StartTimeCanonicalSQL("r")+`)
 				FROM match_participants p
 				JOIN match_registry r ON r.match_id = p.match_id
-				WHERE p.xuid = ?`+analysis.SQLExcludeCampaignVariants(pdb.TitleSlug, "r"), pdb.XUID).Scan(&lastStart)
+				WHERE p.xuid = ?`+sqlfrag.SQLExcludeCampaignVariants(pdb.TitleSlug, "r"), pdb.XUID).Scan(&lastStart)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		slog.DebugContext(ctx, "snapshot: last_match_start", "err", err)
 	}
@@ -262,7 +262,7 @@ func loadEarnedMedalIDs(ctx context.Context, sharedDB *sql.DB, xuid, titleSlug s
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT medal_name_id
 		FROM medals_earned
-		WHERE xuid = ?`+analysis.SQLExcludeCampaignByMatchID(titleSlug, "match_id")+`
+		WHERE xuid = ?`+sqlfrag.SQLExcludeCampaignByMatchID(titleSlug, "match_id")+`
 		GROUP BY medal_name_id
 		HAVING SUM(count) > 0`, xuid)
 	if err != nil {

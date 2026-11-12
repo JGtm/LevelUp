@@ -11,7 +11,7 @@ import (
 )
 
 // TestUnmanagedModeMatches_MemePredicatQueLaCuisson — le décompte de la file de régénération écarte d'emblée
-// les matchs que la cuisson refuse par règle : le même prédicat (analysis.SQLModeNonGere) que replayMatchIdentity,
+// les matchs que la cuisson refuse par règle : le même prédicat (sqlfrag.SQLModeNonGere) que replayMatchIdentity,
 // rendu en forme courte (celle du nom du fichier rangé).
 func TestUnmanagedModeMatches_MemePredicatQueLaCuisson(t *testing.T) {
 	repoRoot := t.TempDir()

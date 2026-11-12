@@ -39,7 +39,7 @@ var identifiantDeLaVueDesNoms = regexp.MustCompile(`\bv_gamertag_lookup\b`)
 // pourquoi elles restent. Datée du 2026-09-23 (lots L7 et L9-go), descendue le 2026-09-26 (lot A).
 var occurrencesDeLaVueRestantes = map[string]int{
 	// ── DDL et migrations : la vue se crée, se répare et se vérifie quelque part.
-	"analysis/identity.go":                                1, // CREATE OR REPLACE VIEW : la SOURCE UNIQUE du DDL
+	"platform/duckdb/sqlfrag/identity.go":                 1, // CREATE OR REPLACE VIEW : la SOURCE UNIQUE du DDL
 	"games/halo_infinite/migrations/steps_shared_core.go": 3, // descriptions de trois étapes de migration (leurs NOMS contiennent l'identifiant sans le nommer seul : non comptés)
 	"migration/steps_shared.go":                           2, // messages d'erreur de la création de la vue
 	"migration/steps_shared_kill_events_from_pairs.go":    1, // message d'erreur de sa recréation

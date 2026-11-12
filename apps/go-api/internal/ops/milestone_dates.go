@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // Constantes de qualification par match, ALIGNÉES sur le detector milestones
@@ -287,14 +288,14 @@ func loadCrossingMatches(ctx context.Context, sharedDB *sql.DB, xuid, titleSlug 
 	// Fragment timezone canonique OBLIGATOIRE (CLAUDE.md n°8) via le helper partagé.
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT
-			`+analysis.SQLStartTimeCanonical("mr")+` AS played_at,
+			`+sqlfrag.SQLStartTimeCanonical("mr")+` AS played_at,
 			mp.outcome,
 			COALESCE(mp.kills, 0), COALESCE(mp.headshot_kills, 0), COALESCE(mp.assists, 0),
 			COALESCE(mp.deaths, 0), COALESCE(mp.accuracy, 0),
 			COALESCE(mp.damage_dealt, 0), COALESCE(mp.damage_taken, 0)
 		FROM match_participants mp
 		JOIN match_registry mr ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ?`+analysis.SQLExcludeCampaignVariants(titleSlug, "mr")+`
+		WHERE mp.xuid = ?`+sqlfrag.SQLExcludeCampaignVariants(titleSlug, "mr")+`
 		ORDER BY played_at ASC`, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("load matches for %s: %w", xuid, err)

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // DropAssistsExpectedShared supprime les colonnes assists_expected / assists_stddev
@@ -199,7 +199,7 @@ func ApplyDropHighlightEventsGamertag(db *sql.DB) error {
 // ApplyResolutionViews crée les vues SQL v6 garanties (v_gamertag_lookup résolveur unifié,
 // v_match_full). Appelée par les steps title-owned ET par RebuildMatchParticipantsART (qui
 // recrée les vues post-rebuild). DDL de v_gamertag_lookup généré par
-// analysis.GamertagLookupViewSQL (source unique partagée avec le boot).
+// sqlfrag.GamertagLookupViewSQL (source unique partagée avec le boot).
 //
 // BASCULE DU 2026-08-02 — deux changements, et le second est une suppression :
 //
@@ -229,7 +229,7 @@ func ApplyResolutionViews(db *sql.DB) error {
 	)`); err != nil {
 		return fmt.Errorf("ensure killer_victim_pairs (lue par Q20 et ~20 sites): %w", err)
 	}
-	if _, err := db.ExecContext(bootCtx(), analysis.GamertagLookupViewSQL()); err != nil {
+	if _, err := db.ExecContext(bootCtx(), sqlfrag.GamertagLookupViewSQL()); err != nil {
 		return fmt.Errorf("create v_gamertag_lookup: %w", err)
 	}
 

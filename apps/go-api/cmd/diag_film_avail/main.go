@@ -21,10 +21,10 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	gosync "levelup/go-api/internal/sync"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -42,7 +42,7 @@ func voiesDeFilm() string {
 }
 
 // startTimeCanon : le fragment canonique (regle 8). Jamais `start_time` brut.
-var startTimeCanon = analysis.SQLStartTimeCanonical("r")
+var startTimeCanon = sqlfrag.SQLStartTimeCanonical("r")
 
 type candidat struct {
 	mois    string

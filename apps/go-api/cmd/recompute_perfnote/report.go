@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // sectionsFor rend les requêtes de contrôle d'un joueur, dans l'ordre du rapport.
@@ -100,7 +100,7 @@ func runSQL(ctx context.Context, env runEnv, query string) error {
 	}
 	return forEachPlayerRO(ctx, env, func(gt, xuid string, db *sql.DB) error {
 		q := strings.ReplaceAll(query, "{{xuid}}", "'"+xuid+"'")
-		q = strings.ReplaceAll(q, "{{start_time}}", analysis.SQLStartTimeCanonical("r"))
+		q = strings.ReplaceAll(q, "{{start_time}}", sqlfrag.SQLStartTimeCanonical("r"))
 		fmt.Printf("---------- %s (xuid=%s) ----------\n", gt, xuid)
 		if err := printQuery(ctx, db, q); err != nil {
 			return fmt.Errorf("%s: %w", gt, err)

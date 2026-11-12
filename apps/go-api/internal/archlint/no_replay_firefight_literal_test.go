@@ -5,7 +5,7 @@
 //
 // Tout ce qui FABRIQUE un rejeu (file post-sync, `backfill-replay`, action admin, mise en file,
 // choix des rejeux de la demo) ou le SERT (service de rejeu) doit poser la meme question au
-// registre : `analysis.SQLModeNonGere`. Une formulation recopiee (`is_firefight` ecrit a la main)
+// registre : `sqlfrag.SQLModeNonGere`. Une formulation recopiee (`is_firefight` ecrit a la main)
 // diverge au premier ajustement — un NULL oublie, un mode ajoute d'un cote seulement — et le
 // rejeu se remet a fabriquer ou a servir ce qu'il ne gere pas. Le litteral n'est legitime que
 // dans le fragment proprietaire.
@@ -47,7 +47,7 @@ var consommateursDuFragment = []string{
 }
 
 const (
-	fragmentProprietaire = "internal/analysis/sql_fragments.go"
+	fragmentProprietaire = "internal/platform/duckdb/sqlfrag/sql_fragments.go"
 	litteralFirefight    = "is_firefight"
 	nomDuFragment        = "SQLModeNonGere"
 )

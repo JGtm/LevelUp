@@ -17,8 +17,8 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 	"levelup/go-api/internal/port"
 )
 
@@ -52,7 +52,7 @@ func (st *PostSyncProgressionStore) MatchRows(ctx context.Context, since time.Ti
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT
 			mp.match_id,
-			`+analysis.SQLStartTimeCanonical("mr")+` AS start_time,
+			`+sqlfrag.SQLStartTimeCanonical("mr")+` AS start_time,
 			COALESCE(mp.kda, 0) AS kda,
 			COALESCE(mp.kills, 0) AS kills,
 			COALESCE(mp.deaths, 0) AS deaths,
@@ -64,8 +64,8 @@ func (st *PostSyncProgressionStore) MatchRows(ctx context.Context, since time.Ti
 			COALESCE(mp.damage_taken, 0) AS damage_taken
 		FROM match_participants mp
 		JOIN match_registry mr ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ? AND `+analysis.SQLStartTimeCanonical("mr")+` >= ?`+
-		analysis.SQLExcludeCampaignVariants(pdb.TitleSlug, "mr")+`
+		WHERE mp.xuid = ? AND `+sqlfrag.SQLStartTimeCanonical("mr")+` >= ?`+
+		sqlfrag.SQLExcludeCampaignVariants(pdb.TitleSlug, "mr")+`
 		ORDER BY start_time ASC
 	`, pdb.XUID, since.UTC())
 	if err != nil {
@@ -147,8 +147,8 @@ func (st *PostSyncProgressionStore) Aggregates(ctx context.Context, p port.Progr
 	winExpr := OutcomeSQLEqSlug(pdb.TitleSlug, "outcome", canonical.OutcomeWin, "outcome = 2")
 	// Campagne exclue des trois agrégats (D-5, backlog B4 ; no-op pour un titre sans
 	// variante de Campagne) : sous-requête par match_id là où le registre n'est pas joint.
-	campagneExclue := analysis.SQLExcludeCampaignByMatchID(pdb.TitleSlug, "match_id")
-	campagneExclueMR := analysis.SQLExcludeCampaignVariants(pdb.TitleSlug, "mr")
+	campagneExclue := sqlfrag.SQLExcludeCampaignByMatchID(pdb.TitleSlug, "match_id")
+	campagneExclueMR := sqlfrag.SQLExcludeCampaignVariants(pdb.TitleSlug, "mr")
 	statsQuery := `
 		SELECT
 			COUNT(*),
@@ -168,7 +168,7 @@ func (st *PostSyncProgressionStore) Aggregates(ctx context.Context, p port.Progr
 	// (règle CLAUDE.md n°8) — cohérent avec le backfill A6 (ops.ComputeMilestoneCrossings) ;
 	// un CAST(start_time AS DATE) brut décalerait les jours aux frontières de fuseau.
 	if err := sharedDB.QueryRowContext(ctx, `
-		SELECT COUNT(DISTINCT CAST(`+analysis.SQLStartTimeCanonical("mr")+` AS DATE))
+		SELECT COUNT(DISTINCT CAST(`+sqlfrag.SQLStartTimeCanonical("mr")+` AS DATE))
 		FROM match_participants mp
 		JOIN match_registry mr ON mp.match_id = mr.match_id
 		WHERE mp.xuid = ? AND mp.accuracy >= ?`+campagneExclueMR+`
@@ -212,11 +212,11 @@ func (st *PostSyncProgressionStore) LastMatchTimes(ctx context.Context) ([]time.
 	}
 	defer release()
 	rows, err := sharedDB.QueryContext(ctx, `
-		SELECT `+analysis.SQLStartTimeCanonical("mr")+` AS start_time
+		SELECT `+sqlfrag.SQLStartTimeCanonical("mr")+` AS start_time
 		FROM match_participants mp
 		JOIN match_registry mr ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ? AND `+analysis.SQLStartTimeCanonical("mr")+` IS NOT NULL`+
-		analysis.SQLExcludeCampaignVariants(pdb.TitleSlug, "mr")+`
+		WHERE mp.xuid = ? AND `+sqlfrag.SQLStartTimeCanonical("mr")+` IS NOT NULL`+
+		sqlfrag.SQLExcludeCampaignVariants(pdb.TitleSlug, "mr")+`
 		ORDER BY start_time DESC
 		LIMIT 2
 	`, pdb.XUID)

@@ -42,7 +42,7 @@ func (r *ServiceRegistry) ReplayRegenDeps(pending replayregen.PendingStore) repl
 }
 
 // unmanagedModeMatches rend les matchs (forme courte) dont le mode n'est pas géré par le rejeu : le MÊME prédicat que
-// le refus de la cuisson (analysis.SQLModeNonGere, lu au registre par duckdb.ReplayRegistryRepo ; replayMatchIdentity en
+// le refus de la cuisson (sqlfrag.SQLModeNonGere, lu au registre par duckdb.ReplayRegistryRepo ; replayMatchIdentity en
 // tire replaybuild.ErrModeNonGere). Le décompte de la file s'en sert pour écarter d'emblée ces rejeux (Firefight d'avant la
 // décision du 2026-10-15) au lieu de les compter « en retard » jusqu'à leur premier refus.
 func (r *ServiceRegistry) unmanagedModeMatches(ctx context.Context, titleSlug string) (map[string]struct{}, error) {
