@@ -51,7 +51,7 @@ func (s *MediaService) requireMissingWrites() error {
 	if s.fileRemover == nil {
 		return domain.ErrInternal("missing media not configured (no disk access)")
 	}
-	if s.acquireWriter == nil {
+	if s.txOpener == nil {
 		return domain.ErrInternal("missing media not configured (no writer)")
 	}
 	return nil
@@ -146,7 +146,7 @@ func (s *MediaService) MergeMissingMedia(
 	if err != nil {
 		return nil, err
 	}
-	if err := s.commitMerge(ctx, store, missing, target); err != nil {
+	if err := s.commitMerge(ctx, missing, target); err != nil {
 		return nil, err
 	}
 	removed, err := s.fileRemover.RemoveMediaFiles(ctx, withoutPaths(missing.ForgetPaths(), target.StoredPaths()))
@@ -197,27 +197,22 @@ func (s *MediaService) loadMergePair(
 // WAL ressusciterait la fiche introuvable alors que ses fichiers vont être effacés).
 func (s *MediaService) commitMerge(
 	ctx context.Context,
-	store port.MediaMissingStore,
 	missing, target domain.MediaFileRef,
 ) error {
-	w, err := s.acquireWriter()
+	tx, err := s.txOpener.BeginMediaTx(ctx, "media_merge")
 	if err != nil {
 		return err
 	}
-	defer w.Release()
-
-	tx, err := w.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("media_merge begin tx: %w", err)
-	}
-	if err := store.ApplyMediaMerge(ctx, tx, missing, target); err != nil {
+	// Le writer est rendu même si une écriture panique : Rollback est sans effet après Commit ou Rollback.
+	defer func() { _ = tx.Rollback() }()
+	if err := tx.ApplyMediaMerge(ctx, missing, target); err != nil {
 		if rbErr := tx.Rollback(); rbErr != nil {
 			slog.WarnContext(ctx, "media_merge: rollback échoué", "err", rbErr, "file_path", missing.FilePath)
 		}
 		slog.WarnContext(ctx, "media_merge rollback", "err", err, "file_path", missing.FilePath)
 		return err
 	}
-	if err := w.CommitWithCheckpoint(ctx, tx); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("media_merge commit: %w", err)
 	}
 	return nil
@@ -237,8 +232,7 @@ func (s *MediaService) ForgetMissingMedia(
 	if err != nil {
 		return nil, err
 	}
-	deleter, ok := s.repo.(port.MediaDeleter)
-	if !ok {
+	if _, ok := s.repo.(port.MediaDeleter); !ok {
 		return nil, domain.ErrInternal("forgetting media not supported by this repository")
 	}
 	if err := s.requireMissingWrites(); err != nil {
@@ -251,7 +245,7 @@ func (s *MediaService) ForgetMissingMedia(
 	if !req.CanModify(missing.OwnerSlug) {
 		return nil, forbidMissing(ctx, "forget", req.FilePath, missing.OwnerSlug, req.MediaRequester)
 	}
-	if err := s.markMediaDeleted(ctx, deleter, req.FilePath); err != nil {
+	if err := s.markMediaDeleted(ctx, req.FilePath); err != nil {
 		return nil, err
 	}
 	removed, err := s.fileRemover.RemoveMediaFiles(ctx, missing.ForgetPaths())

@@ -72,7 +72,7 @@ func mediaWriterAcquirerFor(pdb *duckdb.PlayerDB) func() (*dblease.LeasedWriter,
 
 // Media retourne un MediaService pour le joueur.
 //
-// Configure WithMediaWriterAcquirer pour activer le chemin atomique de
+// Configure WithMediaTxOpener pour activer le chemin atomique de
 // SetMediaLike (transaction unique sur shared_social.duckdb), et WithAssetURL
 // pour le fallback name-based d'image map dans le picker de réassociation
 // (aligné sur HomeRepo / MatchViewService).
@@ -88,7 +88,7 @@ func (r *ServiceRegistry) Media(ctx context.Context, slug string) (port.MediaSer
 		repo = repo.WithAssetURL(a)
 	}
 	opts := []service.MediaOption{
-		service.WithMediaWriterAcquirer(mediaWriterAcquirerFor(pdb)),
+		service.WithMediaTxOpener(duckdb.NewMediaTxOpener(repo, mediaWriterAcquirerFor(pdb))),
 		service.WithMediaFileRemover(r.mediaFileRemover()),
 	}
 	var caps config.DeploymentCapabilities
@@ -166,7 +166,7 @@ func (r *ServiceRegistry) MediaUpload(ctx context.Context, slug string) (
 	if a := r.assetURLFor(pdb.TitleSlug); a != nil {
 		repo = repo.WithAssetURL(a)
 	}
-	mediaOpts := []service.MediaOption{service.WithMediaWriterAcquirer(mediaWriterAcquirerFor(pdb))}
+	mediaOpts := []service.MediaOption{service.WithMediaTxOpener(duckdb.NewMediaTxOpener(repo, mediaWriterAcquirerFor(pdb)))}
 	if r.jobStore != nil {
 		// Transcoding HLS async à l'upload : feed-bump rafraîchit la galerie
 		// quand un clip 'processing' devient 'ready'.

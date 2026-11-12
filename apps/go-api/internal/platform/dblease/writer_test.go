@@ -10,20 +10,18 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"levelup/go-api/internal/port"
 )
 
 // Compile-time interface checks — ces déclarations échouent à la compilation
-// si les contrats de port.DBExecutor / port.DBWriter ne sont pas satisfaits.
+// si les contrats de DBExecutor / DBWriter ne sont pas satisfaits.
 // Ce sont des invariants critiques du refactor (cf. plan §Stratégie de tests).
 var (
-	_ port.DBExecutor = (*LeasedWriter)(nil)
-	_ port.DBWriter   = (*LeasedWriter)(nil)
-	_ port.DBExecutor = (*sql.DB)(nil)
-	_ port.DBWriter   = (*sql.DB)(nil)
-	_ port.DBExecutor = (*sql.Tx)(nil)
-	// *sql.Tx ne doit PAS satisfaire port.DBWriter (pas de BeginTx).
+	_ DBExecutor = (*LeasedWriter)(nil)
+	_ DBWriter   = (*LeasedWriter)(nil)
+	_ DBExecutor = (*sql.DB)(nil)
+	_ DBWriter   = (*sql.DB)(nil)
+	_ DBExecutor = (*sql.Tx)(nil)
+	// *sql.Tx ne doit PAS satisfaire DBWriter (pas de BeginTx).
 	// Cette vérification est négative — testée explicitement dans TestSqlTxIsNotDBWriter.
 )
 
@@ -430,7 +428,7 @@ func TestAcquireReleaseBalance(t *testing.T) {
 }
 
 // TestSqlTxIsNotDBWriter vérifie qu'un *sql.Tx ne peut pas être passé là où
-// port.DBWriter est attendu — invariant compile-time du refactor.
+// DBWriter est attendu — invariant compile-time du refactor.
 //
 // On ne peut pas tester l'absence de satisfaction d'interface au runtime
 // (Go n'expose pas cette info), mais on peut vérifier que la conversion
@@ -438,11 +436,11 @@ func TestAcquireReleaseBalance(t *testing.T) {
 func TestSqlTxIsNotDBWriter(t *testing.T) {
 	var tx *sql.Tx // nil
 	// Cette ligne compile, vérifiant que *sql.Tx satisfait DBExecutor.
-	var _ port.DBExecutor = tx
+	var _ DBExecutor = tx
 	// Si la ligne suivante (commentée) était décommentée, le compile devrait
 	// échouer — c'est l'invariant à protéger. On vérifie ici la garantie
 	// indirectement : DBWriter exige BeginTx, qui n'existe pas sur *sql.Tx.
-	//   var _ port.DBWriter = tx  // <-- doit échouer la compilation
+	//   var _ DBWriter = tx  // <-- doit échouer la compilation
 	_ = tx
 }
 

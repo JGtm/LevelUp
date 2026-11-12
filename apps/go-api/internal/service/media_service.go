@@ -9,7 +9,6 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/ops"
-	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/jobs"
 	"levelup/go-api/internal/port"
 )
@@ -17,40 +16,31 @@ import (
 const defaultMediaPageSize = 24
 const maxMediaPageSize = 100
 
-// atomicMediaLiker est l'interface optionnelle satisfaite par platform/duckdb.MediaRepo
-// (méthode SetMediaLikeAtomic). Permet au service de basculer en mode atomique
-// (transaction) quand le repo concret la supporte, sans modifier l'interface
-// publique port.MediaRepository — cf. commit 6 du refactor leased-writer-enforcement.
-type atomicMediaLiker interface {
-	SetMediaLikeAtomic(ctx context.Context, exec port.DBExecutor,
-		filePath, likerSlug, likerGamertag string, liked bool) (bool, error)
-}
-
 // MediaService orchestre les données de la galerie médias.
 type MediaService struct {
-	repo          port.MediaRepository
-	timezone      string                                // IANA assaini à la construction (ex: "Europe/Paris")
-	acquireWriter func() (*dblease.LeasedWriter, error) // optionnel
-	jobStore      *jobs.Store                           // optionnel : si nil, pas de transcoding HLS
-	feedBump      func()                                // optionnel : notifie la galerie (BumpMediaFeedVersion)
-	fileRemover   port.MediaFileRemover                 // optionnel : si nil, DeleteMedia refuse d'agir
-	fileTrasher   port.MediaFileTrasher                 // optionnel : l'original part à la Corbeille (desktop) au lieu d'être effacé
-	fileRevealer  port.MediaFileRevealer                // optionnel : ouvre l'explorateur (desktop) ; si nil, RevealMedia répond 404
-	capturesBase  func() string                         // dossier des captures relu à chaque appel (RevealMedia)
+	repo         port.MediaRepository
+	timezone     string                 // IANA assaini à la construction (ex: "Europe/Paris")
+	txOpener     port.MediaTxOpener     // optionnel : sans lui, like non atomique et écritures durables refusées
+	jobStore     *jobs.Store            // optionnel : si nil, pas de transcoding HLS
+	feedBump     func()                 // optionnel : notifie la galerie (BumpMediaFeedVersion)
+	fileRemover  port.MediaFileRemover  // optionnel : si nil, DeleteMedia refuse d'agir
+	fileTrasher  port.MediaFileTrasher  // optionnel : l'original part à la Corbeille (desktop) au lieu d'être effacé
+	fileRevealer port.MediaFileRevealer // optionnel : ouvre l'explorateur (desktop) ; si nil, RevealMedia répond 404
+	capturesBase func() string          // dossier des captures relu à chaque appel (RevealMedia)
 }
 
 // MediaOption configure un MediaService à la construction.
 type MediaOption func(*MediaService)
 
-// WithMediaWriterAcquirer configure l'acquisition d'un *LeasedWriter sur
-// shared_social.duckdb pour rendre SetMediaLike atomique : le service ouvre
-// une transaction via writer.BeginTx et appelle repo.SetMediaLikeAtomic.
+// WithMediaTxOpener configure l'ouverture des transactions d'écriture média sur shared_social.duckdb (port.MediaTxOpener) :
+// SetMediaLike devient atomique (contrôle d'existence et événement de like dans une même transaction) et
+// la suppression et la fusion de fiches introuvables deviennent possibles. Le dépôt ouvre la transaction,
+// la valide avec CHECKPOINT et libère le writer.
 //
-// Si nil, ou si le repo concret n'expose pas SetMediaLikeAtomic, le service
-// retombe sur le chemin legacy non-atomique (SetMediaLike + ToggleSharedLike
-// séparés). Garantit la non-régression pour les tests existants.
-func WithMediaWriterAcquirer(f func() (*dblease.LeasedWriter, error)) MediaOption {
-	return func(s *MediaService) { s.acquireWriter = f }
+// Si nil, le service retombe sur le chemin legacy non atomique du like (SetMediaLike + ToggleSharedLike
+// séparés) et refuse la suppression et la fusion.
+func WithMediaTxOpener(o port.MediaTxOpener) MediaOption {
+	return func(s *MediaService) { s.txOpener = o }
 }
 
 // WithMediaTranscoding active le transcoding HLS asynchrone à l'upload. jobStore
@@ -235,10 +225,10 @@ func (s *MediaService) AssociateMediaToMatch(ctx context.Context, req domain.Med
 // seul likait, a été droppée du schéma le 2026-08-04.
 //
 // Deux chemins :
-//   - **Atomique** (commit 6 db-concurrency) : si un WriterAcquirer est
-//     configuré ET le repo concret expose SetMediaLikeAtomic, le service ouvre
-//     une transaction via writer.BeginTx ; le contrôle d'existence du média et
-//     l'INSERT de l'event y vivent ensemble (rollback si l'un échoue).
+//   - **Atomique** (commit 6 db-concurrency) : si un port.MediaTxOpener est
+//     configuré, le service ouvre une transaction du dépôt ; le contrôle
+//     d'existence du média et l'INSERT de l'event y vivent ensemble (rollback
+//     si l'un échoue).
 //   - **Legacy** : sinon (tests existants, mock repo), exécute MediaExists puis
 //     ToggleSharedLike séparément. Erreur ToggleSharedLike non-bloquante.
 func (s *MediaService) SetMediaLike(
@@ -249,35 +239,29 @@ func (s *MediaService) SetMediaLike(
 		return nil, domain.ErrBadRequest("file_path est requis")
 	}
 
-	if atomic, ok := s.repo.(atomicMediaLiker); ok && s.acquireWriter != nil {
-		return s.setMediaLikeAtomic(ctx, atomic, req)
+	if s.txOpener != nil {
+		return s.setMediaLikeAtomic(ctx, req)
 	}
 	return s.setMediaLikeLegacy(ctx, req)
 }
 
 // setMediaLikeAtomic exécute les deux writes (media_files + media_likes) dans
-// une transaction unique sous un *LeasedWriter acquis. Rollback si l'un
-// des deux SQL échoue.
+// une transaction unique du dépôt. Rollback si l'un des deux échoue.
 func (s *MediaService) setMediaLikeAtomic(
 	ctx context.Context,
-	atomic atomicMediaLiker,
 	req domain.MediaLikeRequest,
 ) (*domain.MediaLikeResponse, error) {
-	w, err := s.acquireWriter()
+	tx, err := s.txOpener.BeginMediaTx(ctx, "media_like")
 	if err != nil {
 		return nil, err
 	}
-	defer w.Release()
-
-	tx, err := w.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("media_like begin tx: %w", err)
-	}
+	// Le writer est rendu même si une écriture panique : Rollback est sans effet après Commit ou Rollback.
+	defer func() { _ = tx.Rollback() }()
 	likerGamertag := req.LikerGamertag
 	if likerGamertag == "" && req.LikerSlug != "" {
 		likerGamertag = req.LikerSlug
 	}
-	updated, err := atomic.SetMediaLikeAtomic(ctx, tx, req.FilePath, req.LikerSlug, likerGamertag, req.Liked)
+	updated, err := tx.SetMediaLike(ctx, req.FilePath, req.LikerSlug, likerGamertag, req.Liked)
 	if err != nil {
 		_ = tx.Rollback()
 		slog.WarnContext(ctx, "media_like atomic rollback", "err", err, "file_path", req.FilePath)
@@ -290,8 +274,8 @@ func (s *MediaService) setMediaLikeAtomic(
 	// GARANTIE DE DURABILITÉ DU LIKE (lecture-après-écriture) — v7.3 lot 2, item 1.5.
 	//
 	// Le like N'EST PAS confirmé au client tant que la transaction n'est pas
-	// commitée ET le WAL shared_social flushé sur disque : CommitWithCheckpoint
-	// (ADR 0021 Phase 3.2 bis / ADR 0022) enchaîne Commit puis CHECKPOINT
+	// commitée ET le WAL shared_social flushé sur disque : MediaTx.Commit (CommitWithCheckpoint
+	// ; ADR 0021 Phase 3.2 bis / ADR 0022) enchaîne Commit puis CHECKPOINT
 	// immédiat. Toute réponse 200 vaut donc « écrit et durable ».
 	//
 	// Pourquoi c'est indispensable ICI et pas un détail de perf : un tx.Commit()
@@ -307,14 +291,14 @@ func (s *MediaService) setMediaLikeAtomic(
 	//
 	// Ne pas revenir à tx.Commit() ici : verrouillé par
 	// TestMediaService_SetMediaLike_Atomic_SurvivesWALLoss.
-	if err := w.CommitWithCheckpoint(ctx, tx); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("media_like commit: %w", err)
 	}
 	return s.buildLikeResponse(ctx, req), nil
 }
 
 // setMediaLikeLegacy conserve le comportement pré-commit-6 (non-atomique).
-// Les tests existants qui passent un mock sans SetMediaLikeAtomic continuent
+// Les tests existants qui ne configurent aucun port.MediaTxOpener continuent
 // à exercer ce chemin.
 func (s *MediaService) setMediaLikeLegacy(
 	ctx context.Context,

@@ -63,7 +63,7 @@ func (s *MediaService) DeleteMedia(
 	if s.fileRemover == nil {
 		return nil, domain.ErrInternal("suppression de média non configurée (aucun accès disque)")
 	}
-	if s.acquireWriter == nil {
+	if s.txOpener == nil {
 		return nil, domain.ErrInternal("suppression de média non configurée (aucun writer)")
 	}
 
@@ -91,7 +91,7 @@ func (s *MediaService) DeleteMedia(
 	}
 
 	// 4. Masquage durable.
-	if err := s.markMediaDeleted(ctx, deleter, req.FilePath); err != nil {
+	if err := s.markMediaDeleted(ctx, req.FilePath); err != nil {
 		if disposal.trashedCount > 0 {
 			slog.WarnContext(ctx, "media_delete: originaux dans la Corbeille, média non masqué",
 				"err", err, "file_path", req.FilePath, "trashed", disposal.trashedCount)
@@ -186,20 +186,15 @@ func (s *MediaService) removeRemaining(
 // TestMediaService_DeleteMedia_CommitsWithCheckpoint.
 func (s *MediaService) markMediaDeleted(
 	ctx context.Context,
-	deleter port.MediaDeleter,
 	filePath string,
 ) error {
-	w, err := s.acquireWriter()
+	tx, err := s.txOpener.BeginMediaTx(ctx, "media_delete")
 	if err != nil {
 		return err
 	}
-	defer w.Release()
-
-	tx, err := w.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("media_delete begin tx: %w", err)
-	}
-	updated, err := deleter.MarkMediaDeleted(ctx, tx, filePath)
+	// Le writer est rendu même si une écriture panique : Rollback est sans effet après Commit ou Rollback.
+	defer func() { _ = tx.Rollback() }()
+	updated, err := tx.MarkMediaDeleted(ctx, filePath)
 	if err != nil {
 		_ = tx.Rollback()
 		slog.WarnContext(ctx, "media_delete rollback", "err", err, "file_path", filePath)
@@ -211,7 +206,7 @@ func (s *MediaService) markMediaDeleted(
 		_ = tx.Rollback()
 		return domain.ErrNotFound("media", filePath)
 	}
-	if err := w.CommitWithCheckpoint(ctx, tx); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("media_delete commit: %w", err)
 	}
 	return nil

@@ -33,11 +33,6 @@ type MediaMissingStore interface {
 	// propriétaire et de même nature, de la plus proche en date de capture à la plus éloignée, limit
 	// au plus.
 	ListMergeCandidates(ctx context.Context, ref domain.MediaFileRef, limit int) ([]domain.MediaMergeCandidate, error)
-
-	// ApplyMediaMerge fond la fiche introuvable missing dans la fiche présente target, dans la
-	// transaction exec de l'appelant (qui la valide et la CHECKPOINTe) : likes transférés, rattachement
-	// manuel repris, fiche introuvable masquée. Aucune ligne n'est supprimée.
-	ApplyMediaMerge(ctx context.Context, exec DBExecutor, missing, target domain.MediaFileRef) error
 }
 
 // MediaFileRevealer ouvre l'explorateur du système sur un fichier.

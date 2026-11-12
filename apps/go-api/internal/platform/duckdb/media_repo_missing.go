@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // mediaMissingPredicate sélectionne les seules fiches introuvables.
@@ -173,7 +173,7 @@ func (r *MediaRepo) ListMergeCandidates(
 //
 // Aucune ligne affectée par le masquage (la fiche a changé d'état entre le chargement et l'écriture)
 // est une erreur : l'appelant annule la transaction.
-func (r *MediaRepo) ApplyMediaMerge(ctx context.Context, exec port.DBExecutor, missing, target domain.MediaFileRef) error {
+func (r *MediaRepo) ApplyMediaMerge(ctx context.Context, exec dblease.DBExecutor, missing, target domain.MediaFileRef) error {
 	if err := TransferMediaLikes(ctx, exec, missing.FilePath, target.FilePath); err != nil {
 		return err
 	}
@@ -203,7 +203,7 @@ func (r *MediaRepo) ApplyMediaMerge(ctx context.Context, exec port.DBExecutor, m
 // d'association lui avait trouvé est le seul acquis à ne pas perdre. Rien n'est écrit quand fromID n'a
 // pas de rattachement, ni quand toID a déjà un rattachement manuel : le choix de l'utilisateur sur la
 // cible prime.
-func carryMatchAssociation(ctx context.Context, exec port.DBExecutor, fromID, toID int64) error {
+func carryMatchAssociation(ctx context.Context, exec dblease.DBExecutor, fromID, toID int64) error {
 	var targetManual int
 	if err := exec.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM media_match_associations_latest

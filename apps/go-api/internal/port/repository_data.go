@@ -260,12 +260,6 @@ type MediaDeleter interface {
 	// média encore visible. Retourne domain.ErrNotFound si le chemin est inconnu
 	// ou si le média est DÉJÀ supprimé (une suppression n'est pas rejouable).
 	LoadMediaForDeletion(ctx context.Context, filePath string) (domain.MediaDeletionTarget, error)
-
-	// MarkMediaDeleted masque un média (status='deleted'), sans jamais supprimer
-	// la ligne ni toucher aux tables append-only (cf. domain/media_delete.go).
-	// exec permet d'exécuter dans la transaction du LeasedWriter appelant.
-	// Retourne false si aucune ligne visible ne correspondait.
-	MarkMediaDeleted(ctx context.Context, exec DBExecutor, filePath string) (bool, error)
 }
 
 // MediaFileRemover retire des fichiers média du disque.

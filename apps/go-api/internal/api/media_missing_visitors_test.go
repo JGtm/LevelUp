@@ -25,6 +25,7 @@ import (
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 )
@@ -64,19 +65,9 @@ func (r *missingRepoStub) ListMergeCandidates(context.Context, domain.MediaFileR
 	return nil, nil
 }
 
-func (r *missingRepoStub) ApplyMediaMerge(context.Context, port.DBExecutor, domain.MediaFileRef, domain.MediaFileRef) error {
-	r.reads++
-	return nil
-}
-
 func (r *missingRepoStub) LoadMediaForDeletion(_ context.Context, p string) (domain.MediaDeletionTarget, error) {
 	r.reads++
 	return domain.MediaDeletionTarget{ID: 1, OwnerSlug: "JGtm", FilePath: p}, nil
-}
-
-func (r *missingRepoStub) MarkMediaDeleted(context.Context, port.DBExecutor, string) (bool, error) {
-	r.reads++
-	return true, nil
 }
 
 type noRemover struct{}
@@ -104,7 +95,7 @@ func missingStack(t *testing.T, withReveal bool) (http.Handler, *missingRepoStub
 	repo := &missingRepoStub{}
 	rev := &countingRevealer{}
 	opts := []service.MediaOption{
-		service.WithMediaWriterAcquirer(func() (*dblease.LeasedWriter, error) { return nil, context.Canceled }),
+		service.WithMediaTxOpener(duckdb.NewMediaTxOpener(nil, func() (*dblease.LeasedWriter, error) { return nil, context.Canceled })),
 		service.WithMediaFileRemover(noRemover{}),
 	}
 	if withReveal {

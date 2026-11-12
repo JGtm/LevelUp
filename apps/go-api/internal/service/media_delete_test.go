@@ -118,9 +118,9 @@ func newDeleteFixture(t *testing.T) *deleteFixture {
 
 	pdb := &duckdb.PlayerDB{SharedSocial: db, Gamertag: "JGtm"}
 	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "",
-		WithMediaWriterAcquirer(func() (*dblease.LeasedWriter, error) {
+		WithMediaTxOpener(duckdb.NewMediaTxOpener(duckdb.NewMediaRepo(pdb), func() (*dblease.LeasedWriter, error) {
 			return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
-		}),
+		})),
 		WithMediaFileRemover(ops.NewOSMediaFileRemover(func() string { return capturesBase })))
 
 	t.Cleanup(func() { _ = db.Close() })
@@ -353,9 +353,9 @@ func TestMediaService_AssociateMedia_OwnerOnly(t *testing.T) {
 	// match_registry, la carte reste vide).
 	pdb := &duckdb.PlayerDB{SharedSocial: f.db, Shared: f.db, Gamertag: "JGtm"}
 	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "",
-		WithMediaWriterAcquirer(func() (*dblease.LeasedWriter, error) {
+		WithMediaTxOpener(duckdb.NewMediaTxOpener(duckdb.NewMediaRepo(pdb), func() (*dblease.LeasedWriter, error) {
 			return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
-		}))
+		})))
 	countAssoc := func() int {
 		var n int
 		if err := f.db.SQLDb().QueryRow(`SELECT count(*) FROM media_match_associations_history`).Scan(&n); err != nil {

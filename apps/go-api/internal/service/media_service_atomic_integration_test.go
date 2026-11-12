@@ -9,7 +9,7 @@
 // Ce fichier a passé près de trois mois derrière un tag `atomic_legacy` posé le
 // 2026-05-15 « le temps de le migrer vers la nouvelle API LeasedWriter ». Entre
 // les deux, le chemin qu'il couvre — celui que la PRODUCTION emprunte, puisque
-// wire/registry_media.go câble toujours WithMediaWriterAcquirer — n'avait plus
+// wire/registry_media.go câble toujours WithMediaTxOpener — n'avait plus
 // aucun test actif, et trois régressions du like s'y sont succédé. Un test
 // désactivé « temporairement » ne protège de rien : il donne seulement
 // l'impression que la couverture existe.
@@ -83,7 +83,7 @@ func countAllEvents(t *testing.T, db *duckdb.DB) int {
 // commité et n'appartient QU'À son liker.
 func TestMediaServiceAtomic_Success(t *testing.T) {
 	db, pdb := atomicLikeFixture(t)
-	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "", WithMediaWriterAcquirer(acquirerFor(pdb)))
+	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "", WithMediaTxOpener(duckdb.NewMediaTxOpener(duckdb.NewMediaRepo(pdb), acquirerFor(pdb))))
 
 	resp, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
 		FilePath:      "JGtm/clip.mp4",
@@ -115,7 +115,7 @@ func TestMediaServiceAtomic_Success(t *testing.T) {
 // il resterait à vie dans les compteurs sociaux d'un média fantôme.
 func TestMediaServiceAtomic_UnknownMedia_WritesNothing(t *testing.T) {
 	db, pdb := atomicLikeFixture(t)
-	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "", WithMediaWriterAcquirer(acquirerFor(pdb)))
+	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "", WithMediaTxOpener(duckdb.NewMediaTxOpener(duckdb.NewMediaRepo(pdb), acquirerFor(pdb))))
 
 	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
 		FilePath:  "JGtm/nexiste-pas.mp4",
@@ -139,8 +139,8 @@ func TestMediaServiceAtomic_UnknownMedia_WritesNothing(t *testing.T) {
 func TestMediaServiceAtomic_RepoError_RollsBack(t *testing.T) {
 	db, pdb := atomicLikeFixture(t)
 	sentinel := errors.New("échec simulé en cours de transaction")
-	svc := NewMediaService(&mockAtomicMediaRepo{atomicErr: sentinel}, "",
-		WithMediaWriterAcquirer(acquirerFor(pdb)))
+	svc := NewMediaService(&mockMediaRepo{}, "",
+		WithMediaTxOpener(faultyTxOpener{acquire: acquirerFor(pdb), err: sentinel}))
 
 	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
 		FilePath:  "JGtm/clip.mp4",
@@ -165,7 +165,7 @@ func TestMediaServiceAtomic_RepoError_RollsBack(t *testing.T) {
 // il garantit seulement, via defer, que le lease est rendu au passage.
 func TestMediaServiceAtomic_PanicMidTx_ReleasesWriter(t *testing.T) {
 	_, pdb := atomicLikeFixture(t)
-	svc := NewMediaService(&panicAtomicMediaRepo{}, "", WithMediaWriterAcquirer(acquirerFor(pdb)))
+	svc := NewMediaService(&mockMediaRepo{}, "", WithMediaTxOpener(faultyTxOpener{acquire: acquirerFor(pdb), panics: true}))
 
 	func() {
 		defer func() {
@@ -189,9 +189,9 @@ func TestMediaServiceAtomic_PanicMidTx_ReleasesWriter(t *testing.T) {
 func TestMediaServiceAtomic_LeaseTimeout_NoLeak(t *testing.T) {
 	db, pdb := atomicLikeFixture(t)
 	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "",
-		WithMediaWriterAcquirer(func() (*dblease.LeasedWriter, error) {
+		WithMediaTxOpener(duckdb.NewMediaTxOpener(nil, func() (*dblease.LeasedWriter, error) {
 			return nil, fmt.Errorf("lease timeout: %w", dblease.ErrDBLocked)
-		}))
+		})))
 
 	_, err := svc.SetMediaLike(context.Background(), domain.MediaLikeRequest{
 		FilePath:  "JGtm/clip.mp4",
@@ -218,16 +218,37 @@ func assertWriterAvailable(t *testing.T, pdb *duckdb.PlayerDB, when string) {
 	w.Release()
 }
 
-// panicAtomicMediaRepo — repo qui panique au cœur de la transaction.
-type panicAtomicMediaRepo struct {
-	mockAtomicMediaRepo
+// faultyTxOpener — ouvre une vraie transaction sur le writer partagé dont l'écriture échoue (err) ou panique
+// (panics) en cours de route.
+type faultyTxOpener struct {
+	acquire func() (*dblease.LeasedWriter, error)
+	err     error
+	panics  bool
 }
 
-func (m *panicAtomicMediaRepo) SetMediaLikeAtomic(
-	_ context.Context,
-	_ port.DBExecutor,
-	_, _, _ string,
-	_ bool,
-) (bool, error) {
-	panic("panique simulée en cours de transaction")
+func (o faultyTxOpener) BeginMediaTx(_ context.Context, _ string) (port.MediaTx, error) {
+	w, err := o.acquire()
+	if err != nil {
+		return nil, err
+	}
+	return &faultyTx{w: w, err: o.err, panics: o.panics}, nil
 }
+
+type faultyTx struct {
+	w      *dblease.LeasedWriter
+	err    error
+	panics bool
+}
+
+func (t *faultyTx) SetMediaLike(context.Context, string, string, string, bool) (bool, error) {
+	if t.panics {
+		panic("panique simulée en cours de transaction")
+	}
+	return false, t.err
+}
+func (t *faultyTx) MarkMediaDeleted(context.Context, string) (bool, error) { return false, t.err }
+func (t *faultyTx) ApplyMediaMerge(context.Context, domain.MediaFileRef, domain.MediaFileRef) error {
+	return t.err
+}
+func (t *faultyTx) Commit(context.Context) error { t.w.Release(); return nil }
+func (t *faultyTx) Rollback() error              { t.w.Release(); return nil }

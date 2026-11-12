@@ -30,7 +30,7 @@ var ErrDBLocked = errors.New("dblease: database write lease unavailable")
 // la garantie compile-time du refactor : un repo qui prend un *LeasedWriter
 // ne peut être appelé que par un caller qui a explicitement acquis le lease.
 //
-// Le type implémente port.DBWriter et port.DBExecutor (cf. compile-time
+// Le type implémente DBWriter et DBExecutor (cf. compile-time
 // checks dans writer_test.go).
 //
 // release() est idempotent (sync.Once) — un double appel est sûr.
@@ -50,23 +50,23 @@ func (w *LeasedWriter) Path() string { return w.path }
 // Kind retourne le Kind de la DB ciblée.
 func (w *LeasedWriter) Kind() Kind { return w.kind }
 
-// ExecContext implémente port.DBExecutor.
+// ExecContext implémente DBExecutor.
 func (w *LeasedWriter) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
 	return w.db.ExecContext(ctx, query, args...)
 }
 
-// QueryContext implémente port.DBExecutor.
+// QueryContext implémente DBExecutor.
 func (w *LeasedWriter) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	return w.db.QueryContext(ctx, query, args...)
 }
 
-// QueryRowContext implémente port.DBExecutor.
+// QueryRowContext implémente DBExecutor.
 func (w *LeasedWriter) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
 	return w.db.QueryRowContext(ctx, query, args...)
 }
 
-// BeginTx implémente port.DBWriter — ouvre une transaction sur la DB sous-jacente.
-// Le *sql.Tx retourné satisfait port.DBExecutor mais pas port.DBWriter (pas de
+// BeginTx implémente DBWriter — ouvre une transaction sur la DB sous-jacente.
+// Le *sql.Tx retourné satisfait DBExecutor mais pas DBWriter (pas de
 // sous-transaction possible avec database/sql).
 func (w *LeasedWriter) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
 	return w.db.BeginTx(ctx, opts)

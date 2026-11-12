@@ -39,9 +39,9 @@ func mediaServiceForViewer(db *duckdb.DB, viewerSlug string) *MediaService {
 	pdb := &duckdb.PlayerDB{SharedSocial: db, Gamertag: "JGtm"}
 	repo := duckdb.NewMediaRepo(pdb).WithViewer(viewerSlug)
 	return NewMediaService(repo, "",
-		WithMediaWriterAcquirer(func() (*dblease.LeasedWriter, error) {
+		WithMediaTxOpener(duckdb.NewMediaTxOpener(duckdb.NewMediaRepo(pdb), func() (*dblease.LeasedWriter, error) {
 			return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
-		}))
+		})))
 }
 
 // firstMediaItem retourne l'unique média de la galerie servie à ce viewer.

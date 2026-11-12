@@ -115,9 +115,9 @@ func TestMediaService_SetMediaLike_Atomic_SurvivesWALLoss(t *testing.T) {
 
 	pdb := &duckdb.PlayerDB{SharedSocial: db, Gamertag: "JGtm"}
 	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "",
-		WithMediaWriterAcquirer(func() (*dblease.LeasedWriter, error) {
+		WithMediaTxOpener(duckdb.NewMediaTxOpener(duckdb.NewMediaRepo(pdb), func() (*dblease.LeasedWriter, error) {
 			return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
-		}))
+		})))
 
 	resp, err := svc.SetMediaLike(ctx, domain.MediaLikeRequest{
 		FilePath:      "JGtm/clip.mp4",

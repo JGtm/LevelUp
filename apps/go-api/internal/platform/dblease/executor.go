@@ -1,4 +1,4 @@
-package port
+package dblease
 
 import (
 	"context"
@@ -16,9 +16,10 @@ import (
 //     (cf. media.SetMediaLikeAtomic au commit 6) ;
 //   - de mocker l'interface dans les tests service sans DuckDB réel.
 //
-// La règle de couches reste : seuls platform/duckdb et platform/dblease
-// fournissent une implémentation. Les services et handlers ne doivent jamais
-// instancier un *sql.DB directement.
+// Ce type vit dans platform/dblease, avec LeasedWriter : il porte des types
+// database/sql et n'a donc rien à faire dans internal/port. Seuls platform/duckdb,
+// platform/dblease et ops le consomment ; les services passent par les transactions
+// de port.MediaTx.
 type DBExecutor interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)

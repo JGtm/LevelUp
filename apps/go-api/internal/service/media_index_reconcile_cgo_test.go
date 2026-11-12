@@ -97,9 +97,9 @@ func TestDeleteConvertedMediaThenIndex_ComesBackWithOriginal(t *testing.T) {
 	// Suppression depuis l'app : l'original part avec la version convertie.
 	pdb := &duckdb.PlayerDB{SharedSocial: db, Gamertag: gamertag}
 	svc := NewMediaService(duckdb.NewMediaRepo(pdb), "",
-		WithMediaWriterAcquirer(func() (*dblease.LeasedWriter, error) {
+		WithMediaTxOpener(duckdb.NewMediaTxOpener(duckdb.NewMediaRepo(pdb), func() (*dblease.LeasedWriter, error) {
 			return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
-		}),
+		})),
 		WithMediaFileRemover(ops.NewOSMediaFileRemover(func() string { return base })))
 	if _, err := svc.DeleteMedia(ctx, domain.MediaDeleteRequest{FilePath: hlsRel, RequesterSlug: gamertag}); err != nil {
 		t.Fatalf("DeleteMedia: %v", err)

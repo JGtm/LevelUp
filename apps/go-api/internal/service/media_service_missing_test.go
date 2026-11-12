@@ -13,7 +13,6 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/ops"
-	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
 )
 
@@ -54,20 +53,11 @@ func (r *fauxMissingRepo) ListMergeCandidates(_ context.Context, _ domain.MediaF
 	return r.candidates, nil
 }
 
-func (r *fauxMissingRepo) ApplyMediaMerge(context.Context, port.DBExecutor, domain.MediaFileRef, domain.MediaFileRef) error {
-	r.merges++
-	return nil
-}
-
 func (r *fauxMissingRepo) LoadMediaForDeletion(_ context.Context, p string) (domain.MediaDeletionTarget, error) {
 	if t, ok := r.loadable[p]; ok {
 		return t, nil
 	}
 	return domain.MediaDeletionTarget{}, domain.ErrNotFound("media", p)
-}
-
-func (r *fauxMissingRepo) MarkMediaDeleted(context.Context, port.DBExecutor, string) (bool, error) {
-	return true, nil
 }
 
 func ref(path, owner, kind string) domain.MediaFileRef {
@@ -88,9 +78,7 @@ func apiCode(err error) string {
 // serviceOver monte un service dont le writer échoue s'il est demandé : un refus ne l'atteint pas.
 func serviceOver(repo port.MediaRepository, rem *fauxRemover) *MediaService {
 	return NewMediaService(repo, "",
-		WithMediaWriterAcquirer(func() (*dblease.LeasedWriter, error) {
-			return nil, errors.New("le writer ne doit pas être demandé")
-		}),
+		WithMediaTxOpener(failingTxOpener{err: errors.New("le writer ne doit pas être demandé")}),
 		WithMediaFileRemover(rem))
 }
 
@@ -172,7 +160,7 @@ func TestMergeMissingMedia_RequiresWriterAndRemover(t *testing.T) {
 	repo := &fauxMissingRepo{player: "JGtm"}
 	req := domain.MediaMergeRequest{MediaRequester: enforced("JGtm"), FilePath: "JGtm/a.mp4", TargetFilePath: "JGtm/b.mp4"}
 	for name, svc := range map[string]*MediaService{
-		"sans retrait disque": NewMediaService(repo, "", WithMediaWriterAcquirer(func() (*dblease.LeasedWriter, error) { return nil, nil })),
+		"sans retrait disque": NewMediaService(repo, "", WithMediaTxOpener(failingTxOpener{})),
 		"sans writer":         NewMediaService(repo, "", WithMediaFileRemover(&fauxRemover{})),
 	} {
 		if _, err := svc.MergeMissingMedia(context.Background(), req); apiCode(err) != "internal_error" {
@@ -339,4 +327,15 @@ func TestRevealMedia_WithoutCapabilityIsNotFound(t *testing.T) {
 	if apiCode(err) != "not_found" {
 		t.Errorf("err = %v, attendu not_found", err)
 	}
+}
+
+// failingTxOpener : un ouvreur de transactions dont l'ouverture échoue (ou rend l'erreur donnée) ; il prouve
+// qu'un refus ne demande pas le writer.
+type failingTxOpener struct{ err error }
+
+func (o failingTxOpener) BeginMediaTx(context.Context, string) (port.MediaTx, error) {
+	if o.err != nil {
+		return nil, o.err
+	}
+	return nil, errors.New("transaction indisponible")
 }
