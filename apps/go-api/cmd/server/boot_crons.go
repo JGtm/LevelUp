@@ -17,7 +17,6 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/scheduler"
-	"levelup/go-api/internal/worldenrich"
 )
 
 // launchMonitoring ouvre le store monitoring puis lance les boucles de détection, de surveillance
@@ -207,7 +206,7 @@ func launchWorldLeaderboardCron(st *bootState) {
 			// ÉLIMINE les comptes au RT mort (invalid_grant). Indispensable — sinon le
 			// round-robin taperait des sources mortes et raterait des fetchs. Un build en
 			// échec (aucun compte résolu) dégrade en scrape-only sans paniquer.
-			enr, gts, eerr := worldenrich.BuildEnricher(sctx, cfg, worldenrich.EnricherOptions{
+			enr, gts, eerr := buildWorldEnricher(sctx, cfg, enricherOptions{
 				RPS:   5,
 				Eager: true, // filtre les comptes db_profiles dont le RT ne résout pas
 			})
