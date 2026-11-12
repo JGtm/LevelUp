@@ -1,7 +1,6 @@
 // Package api — registry_notifications_test.go : tests des helpers purs du
-// MediaRecipientResolver (xuidsToSlugs + joinComma). Les helpers DB-bound
-// (loadRecentMediaMatchIDs, loadParticipantXUIDs) sont couverts via les
-// tests d'intégration repo (DuckDB).
+// MediaRecipientResolver (xuidsToSlugs). Les lectures DB (duckdb.MediaRecipientsRepo) sont couvertes
+// par les tests d'intégration du dépôt (DuckDB).
 package wire
 
 import (
@@ -11,24 +10,6 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 )
-
-func TestJoinComma(t *testing.T) {
-	cases := []struct {
-		in   []string
-		want string
-	}{
-		{[]string{}, ""},
-		{[]string{"?"}, "?"},
-		{[]string{"?", "?"}, "?,?"},
-		{[]string{"a", "b", "c"}, "a,b,c"},
-	}
-	for _, tc := range cases {
-		got := joinComma(tc.in)
-		if got != tc.want {
-			t.Errorf("joinComma(%v) = %q, want %q", tc.in, got, tc.want)
-		}
-	}
-}
 
 // writeFakeProfiles construit un db_profiles.json v2 minimal avec les joueurs fournis.
 // Format v2 : {"profiles": {"gamertag": {"xuid": "..."}}}.

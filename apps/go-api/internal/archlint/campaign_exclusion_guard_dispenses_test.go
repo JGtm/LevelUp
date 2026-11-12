@@ -55,8 +55,8 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 		"contrôle croisé référence des playlists classées <-> CSR par match (alerte A3) : la Campagne n'a ni playlist de la référence ni CSR, elle ne contribue à aucun des deux compteurs. Diagnostic de couverture, pas un affichage."},
 	"internal/platform/duckdb/media_repo_filters.go:MediaRepo.LoadMatchCandidatesForMedia": {dispenseSemantique, "2026-09-27",
 		"appariement clip → match par fenêtre de capture (media_repo_filters.go:255) : un clip tourné en Campagne doit pouvoir se rattacher à son match."},
-	"internal/api/wire/registry_monitoring_freshness.go:ServiceRegistry.lastMatchByXUID": {dispenseSemantique, "2026-09-27",
-		"fraîcheur admin, dernier match persisté par joueur (registry_monitoring_freshness.go:173) : la Campagne est une activité réelle du compte."},
+	"internal/platform/duckdb/last_match_reader.go:LastMatchReader.LastMatchByXUID": {dispenseSemantique, "2026-09-27",
+		"fraîcheur admin, dernier match persisté par joueur (last_match_reader.go, déplacé depuis api/wire/registry_monitoring_freshness.go le 2026-11-12) : la Campagne est une activité réelle du compte."},
 	"internal/analysis/match_filter.go:BuildNeighborsWhereClause": {dispenseCallSite, "2026-09-27",
 		"faux positif : fragment WithPlayerXuid (match_filter.go:196) injecté dans /*EXTRA_WHERE*/ avec excludeCampaignClause " +
 			"(platform/duckdb/match_view_repo_neighbors_skill.go:72)."},

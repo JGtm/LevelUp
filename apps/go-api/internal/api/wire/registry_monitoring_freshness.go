@@ -17,11 +17,8 @@ package wire
 
 import (
 	"context"
-	"database/sql"
-	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
@@ -140,60 +137,12 @@ func (r *ServiceRegistry) titleFreshness(
 	return report
 }
 
-// lastMatchByXUID lit, en UNE requête groupée par titre, le dernier match
-// persisté de chaque joueur (timestamp canonique, règle CLAUDE.md n°8 — jamais
-// start_time brut). Lit le shared reader du titre via OpenReadForQuery (réutilise
-// le handle en cache RO/RW s'il est tenu — B-swap-safe, jamais OpenReadOnly
-// forcé). Ne résout AUCUNE player-DB : un profil auth_only (sans match) est
-// simplement absent du résultat, et AUCUNE DB n'est créée pour lui (E3). Best-
-// effort : shared absent/illisible → message d'erreur global, jamais de panic.
+// lastMatchByXUID rend le dernier match persisté de chaque joueur d'un titre (duckdb.LastMatchReader : UNE
+// requête groupée sur la base partagée, aucune player-DB résolue, E3). Best-effort : base absente ou illisible
+// → message d'erreur global, jamais de panic.
 func (r *ServiceRegistry) lastMatchByXUID(ctx context.Context, titleSlug string, xuids []string) (map[string]time.Time, string) {
-	out := map[string]time.Time{}
-	if len(xuids) == 0 {
-		return out, ""
-	}
-	sharedPath := r.cfg.PathResolver().SharedDBPath(titleSlug)
-	sqlDB, release, err := duckdb.OpenReadForQuery(sharedPath)
+	out, err := duckdb.LastMatchReader{Log: monitoringLog}.LastMatchByXUID(ctx, r.cfg.PathResolver().SharedDBPath(titleSlug), titleSlug, xuids)
 	if err != nil {
-		monitoringLog.WarnContext(ctx, "admin_freshness: shared reader indisponible",
-			"title", titleSlug, "err", err)
-		return out, freshnessLastMatchReadErr
-	}
-	defer release()
-
-	placeholders := make([]string, len(xuids))
-	args := make([]any, len(xuids))
-	for i, x := range xuids {
-		placeholders[i] = "?"
-		args[i] = x
-	}
-	q := `SELECT mp.xuid, MAX(` + analysis.SQLStartTimeCanonical("mr") + `)
-		FROM match_registry mr
-		JOIN match_participants mp ON mr.match_id = mp.match_id
-		WHERE mp.xuid IN (` + strings.Join(placeholders, ", ") + `)
-		GROUP BY mp.xuid`
-	rows, err := sqlDB.QueryContext(ctx, q, args...)
-	if err != nil {
-		monitoringLog.WarnContext(ctx, "admin_freshness: requête groupée dernier match échouée",
-			"title", titleSlug, "err", err)
-		return out, freshnessLastMatchReadErr
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var xuid string
-		var last sql.NullTime
-		if err := rows.Scan(&xuid, &last); err != nil {
-			monitoringLog.WarnContext(ctx, "admin_freshness: scan dernier match",
-				"title", titleSlug, "err", err)
-			return out, freshnessLastMatchReadErr
-		}
-		if last.Valid {
-			out[xuid] = last.Time
-		}
-	}
-	if err := rows.Err(); err != nil {
-		monitoringLog.WarnContext(ctx, "admin_freshness: itération dernier match",
-			"title", titleSlug, "err", err)
 		return out, freshnessLastMatchReadErr
 	}
 	return out, ""
