@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games/mappings"
-	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 )
 
@@ -24,8 +23,9 @@ type PlayerProfileService interface {
 	ActivityCalendar(ctx context.Context, playerSlug string, since, until time.Time) (ActivityCalendar, error)
 }
 
-// PlayerResolver résout un slug de joueur en ses bases ; une erreur = joueur introuvable.
-type PlayerResolver func(ctx context.Context, slug string) (*duckdb.PlayerDB, error)
+// PlayerResolver résout un slug de joueur en son magasin de profil et son xuid ; une erreur = joueur
+// introuvable.
+type PlayerResolver func(ctx context.Context, slug string) (store port.ProfileStore, xuid string, err error)
 
 // PlayerService implémente PlayerProfileService.
 type PlayerService struct {
@@ -43,15 +43,15 @@ func NewPlayerService(resolve PlayerResolver, awards *mappings.AwardMappingSet) 
 
 // service résout le joueur ; rend aussi son identifiant.
 func (s *PlayerService) service(ctx context.Context, playerSlug string) (*Service, string, error) {
-	pdb, err := s.resolve(ctx, playerSlug)
+	store, xuid, err := s.resolve(ctx, playerSlug)
 	if err != nil {
 		return nil, "", &port.ProgressionError{Kind: port.ProgErrPlayerNotFound, Err: err}
 	}
-	svc := NewServiceFromPlayerDB(pdb)
+	svc := NewService(store)
 	if s.awards != nil {
 		svc = svc.WithAwardMapping(s.awards)
 	}
-	return svc, pdb.XUID, nil
+	return svc, xuid, nil
 }
 
 // Build assemble le profil complet du joueur.

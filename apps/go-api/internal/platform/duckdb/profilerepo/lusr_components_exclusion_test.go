@@ -1,4 +1,4 @@
-package profile
+package profilerepo
 
 // lusr_components_exclusion_test.go — la composante LUSR d'un match exclu ne pèse plus
 // dans les agrégats du profil.
@@ -18,9 +18,31 @@ import (
 
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 )
 
 const exclusionComponent = "win_factor"
+
+func component(rows []port.ProfileComponentAggregate, name string) (port.ProfileComponentAggregate, bool) {
+	for _, r := range rows {
+		if r.Name == name {
+			return r, true
+		}
+	}
+	return port.ProfileComponentAggregate{}, false
+}
+
+func avgOf(a port.ProfileComponentAggregate) float64 {
+	if a.Avg == nil {
+		return 0
+	}
+	return *a.Avg
+}
+
+func avgOfName(rows []port.ProfileComponentAggregate, name string) float64 {
+	a, _ := component(rows, name)
+	return avgOf(a)
+}
 
 func newExclusionPlayerDB(t *testing.T) *duckdb.DB {
 	t.Helper()
@@ -70,16 +92,16 @@ func TestLoadLUSRComponentsBreakdown_ExcludedMatchDoesNotWeigh(t *testing.T) {
 	seedComponentValue(t, db, "m3", 0.9, day.Add(48*time.Hour))
 	seedExclusion(t, db, "m3")
 
-	rows, err := NewService(db).loadLUSRComponentsBreakdown(context.Background(), "u")
+	rows, err := New(&duckdb.PlayerDB{Player: db}).LUSRComponents(context.Background())
 	if err != nil {
 		t.Fatalf("loadLUSRComponentsBreakdown: %v", err)
 	}
-	got, ok := rows[exclusionComponent]
+	got, ok := component(rows, exclusionComponent)
 	if !ok {
 		t.Fatalf("composante %s absente : %v", exclusionComponent, rows)
 	}
-	if math.Abs(got.currentAvg-0.3) > 1e-9 {
-		t.Errorf("moyenne = %v, want 0.3 (m3 exclu ; avec lui : 0.5)", got.currentAvg)
+	if math.Abs(avgOf(got)-0.3) > 1e-9 {
+		t.Errorf("moyenne = %v, want 0.3 (m3 exclu ; avec lui : 0.5)", avgOf(got))
 	}
 }
 
@@ -90,11 +112,11 @@ func TestLoadLUSRComponentsBreakdown_NoExclusionKeepsEveryMatch(t *testing.T) {
 	seedComponentValue(t, db, "m2", 0.4, day.Add(24*time.Hour))
 	seedComponentValue(t, db, "m3", 0.9, day.Add(48*time.Hour))
 
-	rows, err := NewService(db).loadLUSRComponentsBreakdown(context.Background(), "u")
+	rows, err := New(&duckdb.PlayerDB{Player: db}).LUSRComponents(context.Background())
 	if err != nil {
 		t.Fatalf("loadLUSRComponentsBreakdown: %v", err)
 	}
-	if got := rows[exclusionComponent].currentAvg; math.Abs(got-0.5) > 1e-9 {
+	if got := avgOfName(rows, exclusionComponent); math.Abs(got-0.5) > 1e-9 {
 		t.Errorf("moyenne = %v, want 0.5 (aucun match exclu : liste vide, aucune clause)", got)
 	}
 }
@@ -139,7 +161,7 @@ func TestLoadLUSRComponentsBreakdown_ExclusionReadFailureIsReturned(t *testing.T
 	seedExclusion(t, db, "m3")
 	breakExclusionRead(t, db)
 
-	rows, err := NewService(db).loadLUSRComponentsBreakdown(context.Background(), "u")
+	rows, err := New(&duckdb.PlayerDB{Player: db}).LUSRComponents(context.Background())
 	if err == nil {
 		t.Fatalf("erreur nil, want l'échec de lecture des exclusions ; composantes servies : %v", rows)
 	}
@@ -162,11 +184,11 @@ func TestLoadLUSRComponentsBreakdown_MissingEnrichmentViewMeansNoExclusion(t *te
 		t.Fatalf("drop view: %v", err)
 	}
 
-	rows, err := NewService(db).loadLUSRComponentsBreakdown(context.Background(), "u")
+	rows, err := New(&duckdb.PlayerDB{Player: db}).LUSRComponents(context.Background())
 	if err != nil {
 		t.Fatalf("loadLUSRComponentsBreakdown: %v", err)
 	}
-	if got := rows[exclusionComponent].currentAvg; math.Abs(got-0.3) > 1e-9 {
+	if got := avgOfName(rows, exclusionComponent); math.Abs(got-0.3) > 1e-9 {
 		t.Errorf("moyenne = %v, want 0.3 (aucune exclusion lisible)", got)
 	}
 }

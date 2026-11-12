@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/profilerepo"
 )
 
 // seedFKFDMatch pose un match du registre dans la fenêtre, avec le joueur du test (et un
@@ -74,7 +75,7 @@ func TestComputeFKFD_Infinite(t *testing.T) {
 	seedHighlight(t, pdb, "m_hors_fenetre", "kill", testXUID, 100)
 	seedHighlight(t, pdb, "m_hors_fenetre", "death", testXUID, 100)
 
-	svc := NewServiceFromPlayerDB(pdb)
+	svc := NewService(profilerepo.ForPlayer(pdb))
 	fk, fd, err := svc.computeFKFD(context.Background(), testXUID, now.AddDate(0, 0, -30), now)
 	if err != nil {
 		t.Fatalf("computeFKFD: %v", err)
@@ -116,7 +117,7 @@ func TestComputeFKFD_Halo5RepliSurLesFrags(t *testing.T) {
 		}
 	}
 
-	svc := NewServiceFromPlayerDB(pdb)
+	svc := NewService(profilerepo.ForPlayer(pdb))
 	fk, fd, err := svc.computeFKFD(ctx, testXUID, now.AddDate(0, 0, -30), now)
 	if err != nil {
 		t.Fatalf("computeFKFD: %v", err)

@@ -45,6 +45,7 @@ import (
 	"levelup/go-api/internal/ops"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/profilerepo"
 	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
@@ -1050,6 +1051,13 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		progressionResolve := func(ctx context.Context, slug string) (*platform_duckdb.PlayerDB, error) {
 			return reg.Resolve()(ctx, slug)
 		}
+		profileResolve := func(ctx context.Context, slug string) (port.ProfileStore, string, error) {
+			pdb, err := reg.Resolve()(ctx, slug)
+			if err != nil {
+				return nil, "", err
+			}
+			return profilerepo.ForPlayer(pdb), pdb.XUID, nil
+		}
 		progressionH := handlers.NewProgressionHandler(service.NewProgressionService(progressionStoreResolver(reg.Resolve())), titlePkg.DefaultSlug)
 		progressionH.Mount(r, playerOpt)
 
@@ -1091,7 +1099,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 				"path", awardsPath, "awards_count", len(loaded.All()))
 			awardSet = loaded
 		}
-		profileH := handlers.NewPlayerProfileHandler(profile.NewPlayerService(progressionResolve, awardSet), titlePkg.DefaultSlug)
+		profileH := handlers.NewPlayerProfileHandler(profile.NewPlayerService(profileResolve, awardSet), titlePkg.DefaultSlug)
 		profileH.Mount(r, playerOpt)
 
 		// Pattern Engine v3 (PLAN_PATTERN_ENGINE.md phases 1-3).

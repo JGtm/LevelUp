@@ -34,6 +34,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/profilerepo"
 	"levelup/go-api/internal/progression/coach"
 	"levelup/go-api/internal/progression/coach_advisor"
 	"levelup/go-api/internal/progression/milestones"
@@ -400,7 +401,7 @@ func BuildPlayerProgressionDeps(pdb *duckdb.PlayerDB, emitter notifications.Emit
 	}
 	if pdb.Player != nil {
 		deps.StreaksEvaluator = streaks.NewEvaluator(duckdb.NewStreaksRepo(pdb.Player))
-		deps.ProfileService = profile.NewService(pdb.Player)
+		deps.ProfileService = profile.NewService(profilerepo.ForPlayer(pdb))
 		// V2 §4 : LeverageProvider câblé depuis le ProfileService pour
 		// permettre à campaign.Evaluate de checker R5 condition 2
 		// ("axe sort des leviers prioritaires").
@@ -545,7 +546,7 @@ func newProfileLeverageProvider(pdb *duckdb.PlayerDB) *profileLeverageProvider {
 func (p *profileLeverageProvider) CurrentLeverageComponents(
 	ctx context.Context, userID, titleSlug string,
 ) ([]string, error) {
-	svc := profile.NewServiceFromPlayerDB(p.pdb)
+	svc := profile.NewService(profilerepo.ForPlayer(p.pdb))
 	prof, err := svc.BuildProfile(ctx, userID, titleSlug, 30, time.Now().UTC())
 	if err != nil {
 		return nil, err

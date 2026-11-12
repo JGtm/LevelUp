@@ -2,7 +2,6 @@ package profile
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -13,43 +12,27 @@ import (
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/i18n"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/prestige"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
-// service.go — orchestre les queries DuckDB pour bâtir un PlayerProfile.
+// service.go — orchestre les lectures de port.ProfileStore pour bâtir un PlayerProfile.
 //
-// Deux constructeurs :
-//
-//   - NewService(db) : variante minimale, utilisée par le hook post-sync
-//     (post_sync_progression.go) qui n'a besoin que de Load() pour récupérer
-//     LUSR + tier + tendance.
-//   - NewServiceFromPlayerDB(pdb) : variante V1 complète, utilisée par
-//     l'endpoint HTTP. Permet d'accéder à Metadata (catalogue prestige) pour
-//     suggérer des défis.
+// Un seul constructeur : NewService(store). Le hook post-sync (post_sync_progression.go) n'appelle que
+// Load() (LUSR + tier + tendance) ; l'endpoint HTTP appelle BuildProfile(). Le magasin porte le joueur ;
+// ses modèles de défis (référentiels) sont facultatifs, sans eux aucune suggestion n'est faite.
 
 // Service expose les lectures du profil de progression.
 type Service struct {
-	db     *duckdb.DB
-	pdb    *duckdb.PlayerDB
+	store  port.ProfileStore
 	awards *mappings.AwardMappingSet // optionnel — Section A1 radar fidèle (V2 §2)
 }
 
-// NewService construit un Service minimal pour V2 (Load uniquement).
-func NewService(db *duckdb.DB) *Service {
-	return &Service{db: db}
-}
-
-// NewServiceFromPlayerDB construit un Service complet pour V1 (BuildProfile).
-// pdb.Player est requis ; pdb.Metadata est optionnel (suggestions désactivées
-// sans Metadata).
-func NewServiceFromPlayerDB(pdb *duckdb.PlayerDB) *Service {
-	if pdb == nil || pdb.Player == nil {
-		return &Service{}
-	}
-	s := &Service{db: pdb.Player, pdb: pdb}
-	return s
+// NewService construit le service sur un magasin de profil. store nil : Load() ne peut pas servir et
+// BuildProfile() rend une erreur.
+func NewService(store port.ProfileStore) *Service {
+	return &Service{store: store}
 }
 
 // WithAwardMapping injecte un AwardMappingSet pour la Section A1 radar (V2 §2).
@@ -59,19 +42,6 @@ func (s *Service) WithAwardMapping(set *mappings.AwardMappingSet) *Service {
 	s.awards = set
 	return s
 }
-
-// templateRepo retourne le repo prestige.TemplateRepo si Metadata est dispo.
-func (s *Service) templateRepo() *duckdbRepo {
-	if s.pdb == nil || s.pdb.Metadata == nil {
-		return nil
-	}
-	return &duckdbRepo{db: s.pdb.Metadata}
-}
-
-// duckdbRepo wrappe Metadata pour les queries templates (évite la dépendance
-// circulaire api ↔ duckdb : on requête directement plutôt que d'importer
-// platform/duckdb/prestige.NewPrestigeTemplateRepo qui exposerait le type complet).
-type duckdbRepo struct{ db *duckdb.DB }
 
 // Load construit le PlayerProfile minimal (V2-compat) avec LUSR + tier + MuTrend.
 //
@@ -116,7 +86,7 @@ func (s *Service) Load(ctx context.Context, userID, titleSlug string, lowessWind
 // et les sections A2/B/C sont vides ou partielles ; A1 (radar) dégrade
 // gracieusement (axes calculables uniquement).
 func (s *Service) BuildProfile(ctx context.Context, userID, titleSlug string, lowessWindowDays int, now time.Time) (*PlayerProfile, error) {
-	if s.pdb == nil {
+	if s.store == nil {
 		return nil, errors.New("BuildProfile: service constructed without PlayerDB")
 	}
 	profile := &PlayerProfile{
@@ -311,7 +281,7 @@ func (s *Service) computeEngagement(ctx context.Context, profile *PlayerProfile,
 // analysis.RequiredCompositeForTier. La même cible s'applique aux 8
 // composantes (le composite est leur moyenne pondérée — affichage compact).
 func (s *Service) computeLUSRComponents(ctx context.Context, profile *PlayerProfile, userID string) error {
-	rows, err := s.loadLUSRComponentsBreakdown(ctx, userID)
+	rows, err := s.loadLUSRComponentsBreakdown(ctx)
 	if err != nil {
 		return err
 	}
@@ -368,15 +338,11 @@ func identifyLeverages(components []LUSRComponentBreakdown) []ProgressionLeverag
 // selectSuggestedChallenges sélectionne 3 templates dont les lusr_components
 // recoupent les leviers identifiés. Triés par : long-terme prioritaires.
 func (s *Service) selectSuggestedChallenges(ctx context.Context, profile *PlayerProfile, titleSlug string) error {
-	repo := s.templateRepo()
-	if repo == nil {
-		return nil
-	}
 	leverageSet := make(map[string]struct{}, len(profile.Leverages))
 	for _, lv := range profile.Leverages {
 		leverageSet[lv.Component] = struct{}{}
 	}
-	templates, err := repo.listTemplatesByLUSRComponents(ctx, titleSlug, leverageSet)
+	templates, err := s.templatesByLUSRComponents(ctx, titleSlug, leverageSet)
 	if err != nil {
 		return err
 	}
@@ -398,6 +364,34 @@ func (s *Service) selectSuggestedChallenges(ctx context.Context, profile *Player
 	}
 	profile.SuggestedChallenges = out
 	return nil
+}
+
+// templatesByLUSRComponents retourne les modèles du titre dont les lusr_components recoupent l'ensemble
+// fourni (filtre côté Go : au moins une composante du modèle est dans l'ensemble des leviers). Sans levier,
+// ou sans base de référentiels, la liste est vide et aucune lecture n'a lieu.
+func (s *Service) templatesByLUSRComponents(ctx context.Context, titleSlug string, components map[string]struct{}) ([]prestige.Template, error) {
+	if len(components) == 0 {
+		return nil, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
+	defer cancel()
+	all, available, err := s.store.SuggestionTemplates(ctx, titleSlug)
+	if err != nil {
+		return nil, fmt.Errorf("listTemplatesByLUSRComponents: %w", err)
+	}
+	if !available {
+		return nil, nil
+	}
+	var out []prestige.Template
+	for _, t := range all {
+		for _, c := range t.LUSRComponents {
+			if _, ok := components[c]; ok {
+				out = append(out, t)
+				break
+			}
+		}
+	}
+	return out, nil
 }
 
 // suggestedChallengeFromTemplate construit la suggestion d'un template. V2 §3 : hydrate le libellé et la
@@ -552,131 +546,35 @@ func classifyStyle(fk, fd int, ratio float64) string {
 	return "passive"
 }
 
-// nullStringToString convertit sql.NullString vers string (vide si NULL).
-func nullStringToString(s sql.NullString) string {
-	if s.Valid {
-		return s.String
-	}
-	return ""
-}
-
 // ─── Existing helpers (V2 compat) ───────────────────────────────────────────
 
 // loadLUSRSnapshot lit le dernier rating LUSR + count total.
 func (s *Service) loadLUSRSnapshot(ctx context.Context) (LUSRState, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-
-	var (
-		lusr        LUSRState
-		rating      sql.NullFloat64
-		deviation   sql.NullFloat64
-		lastMatchAt sql.NullTime
-	)
-	// Lecture via la vue _latest (1 row/match, dédup append-only) ordonnée par
-	// written_at : match_skill_rank.start_time est 100% NULL sur les rows LUSR
-	// (aucun writer ne le renseigne — seul CSR l'a), donc ORDER BY start_time
-	// renvoyait une row arbitraire. written_at (NOT NULL) donne le rating le plus
-	// récemment écrit = LUSR courant. lastMatchAt = COALESCE(start_time, written_at).
-	// Cf. mémoire reference_lusr_v2_readers_latest_view.
-	err := s.db.QueryRow(ctx, `
-		SELECT rating_value, rating_deviation, COALESCE(start_time, written_at)
-		FROM match_skill_rank_latest
-		WHERE rating_type = 'LUSR' AND rating_value IS NOT NULL
-		ORDER BY written_at DESC
-		LIMIT 1
-	`).Scan(&rating, &deviation, &lastMatchAt)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return lusr, fmt.Errorf("query latest rating: %w", err)
-	}
-	if rating.Valid {
-		lusr.Mu = rating.Float64
-	}
-	if deviation.Valid {
-		lusr.Sigma = deviation.Float64
-	}
-	if lastMatchAt.Valid {
-		t := lastMatchAt.Time
-		lusr.LastMatchAt = &t
-	}
-
-	if err := s.db.QueryRow(ctx, `
-		SELECT COUNT(*) FROM match_skill_rank_latest
-		WHERE rating_type = 'LUSR' AND rating_value IS NOT NULL
-	`).Scan(&lusr.MatchesCount); err != nil {
-		return lusr, fmt.Errorf("query count: %w", err)
-	}
-	return lusr, nil
+	l, err := s.store.LatestLUSR(ctx)
+	return LUSRState{Mu: l.Mu, Sigma: l.Sigma, MatchesCount: l.MatchesCount, LastMatchAt: l.LastMatchAt}, err
 }
 
-// loadMuSeriesPoints retourne les ratings LUSR DATÉS (ASC) sur la fenêtre — même
-// source ART-safe que loadMuSeries (vue `_latest`, règle n°2) mais en conservant le
-// timestamp `COALESCE(start_time, written_at)` pour dater chaque point de la
-// sparkline (DEC-5/D2). Les rows LUSR ont `start_time` souvent NULL → written_at
-// sert de proxy temporel (cf. loadMuSeries).
+// loadMuSeriesPoints retourne les ratings LUSR DATÉS (ASC) sur la fenêtre, pour dater chaque point de la
+// sparkline (DEC-5/D2).
 func (s *Service) loadMuSeriesPoints(ctx context.Context, since, until time.Time) ([]muPoint, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	rows, err := s.db.Query(ctx, `
-		SELECT rating_value, COALESCE(start_time, written_at)
-		FROM match_skill_rank_latest
-		WHERE rating_type = 'LUSR' AND rating_value IS NOT NULL
-		  AND COALESCE(start_time, written_at) >= ? AND COALESCE(start_time, written_at) <= ?
-		ORDER BY COALESCE(start_time, written_at) ASC
-	`, since, until)
+	pts, err := s.store.LUSRSeriesPoints(ctx, since, until)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	var out []muPoint
-	for rows.Next() {
-		var (
-			v  sql.NullFloat64
-			at sql.NullTime
-		)
-		if err := rows.Scan(&v, &at); err != nil {
-			return nil, err
-		}
-		if v.Valid && at.Valid {
-			out = append(out, muPoint{at: at.Time, value: v.Float64})
-		}
+	for _, p := range pts {
+		out = append(out, muPoint{at: p.At, value: p.Value})
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // loadMuSeries retourne la série de μ ordonnée chronologiquement (ASC).
 func (s *Service) loadMuSeries(ctx context.Context, since, until time.Time) ([]float64, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	// Vue _latest + COALESCE(start_time, written_at) : les rows LUSR ont
-	// start_time NULL (cf. loadLUSRSnapshot) ; sans COALESCE le filtre temporel
-	// excluait TOUT → série μ vide (« pas de tendance »). written_at sert de
-	// proxy temporel pour l'historique ; start_time (renseigné côté écriture
-	// désormais) est préféré quand présent.
-	rows, err := s.db.Query(ctx, `
-		SELECT rating_value
-		FROM match_skill_rank_latest
-		WHERE rating_type = 'LUSR' AND rating_value IS NOT NULL
-		  AND COALESCE(start_time, written_at) >= ? AND COALESCE(start_time, written_at) <= ?
-		ORDER BY COALESCE(start_time, written_at) ASC
-	`, since, until)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []float64
-	for rows.Next() {
-		var v sql.NullFloat64
-		if err := rows.Scan(&v); err != nil {
-			return nil, err
-		}
-		if v.Valid {
-			out = append(out, v.Float64)
-		}
-	}
-	return out, rows.Err()
+	return s.store.LUSRSeries(ctx, since, until)
 }
-
-// _ = nullStringToString placeholder retiré : helper conservé pour V2
-// (suggestion enrichie depuis personal_score_awards.award_category).
-var _ = nullStringToString

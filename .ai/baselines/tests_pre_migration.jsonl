@@ -39184,10 +39184,6 @@
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"output","Package":"levelup/go-api/internal/progression/profile","Test":"TestCompositeWeightsExternal_DefensiveCopy","Output":"=== RUN   TestCompositeWeightsExternal_DefensiveCopy\n"}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"output","Package":"levelup/go-api/internal/progression/profile","Test":"TestCompositeWeightsExternal_DefensiveCopy","Output":"--- PASS: TestCompositeWeightsExternal_DefensiveCopy (0.00s)\n"}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"pass","Package":"levelup/go-api/internal/progression/profile","Test":"TestCompositeWeightsExternal_DefensiveCopy","Elapsed":0}
-{"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"run","Package":"levelup/go-api/internal/progression/profile","Test":"TestNullStringToString"}
-{"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"output","Package":"levelup/go-api/internal/progression/profile","Test":"TestNullStringToString","Output":"=== RUN   TestNullStringToString\n"}
-{"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"output","Package":"levelup/go-api/internal/progression/profile","Test":"TestNullStringToString","Output":"--- PASS: TestNullStringToString (0.00s)\n"}
-{"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"pass","Package":"levelup/go-api/internal/progression/profile","Test":"TestNullStringToString","Elapsed":0}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"run","Package":"levelup/go-api/internal/progression/profile","Test":"TestLOWESSTrend_IsPositive"}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"output","Package":"levelup/go-api/internal/progression/profile","Test":"TestLOWESSTrend_IsPositive","Output":"=== RUN   TestLOWESSTrend_IsPositive\n"}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"run","Package":"levelup/go-api/internal/progression/profile","Test":"TestLOWESSTrend_IsPositive/slope\u003e0_et_window_suffisant"}
@@ -39212,8 +39208,6 @@
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"pass","Package":"levelup/go-api/internal/progression/profile","Test":"TestLOWESSTrend_IsPositive/window_pile_au_seuil_→_vrai","Elapsed":0}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"output","Package":"levelup/go-api/internal/progression/profile","Test":"TestLOWESSTrend_IsPositive","Output":"--- PASS: TestLOWESSTrend_IsPositive (0.00s)\n"}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"pass","Package":"levelup/go-api/internal/progression/profile","Test":"TestLOWESSTrend_IsPositive","Elapsed":0}
-{"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"run","Package":"levelup/go-api/internal/progression/profile","Test":"TestDecodeStringListLocal"}
-{"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"output","Package":"levelup/go-api/internal/progression/profile","Test":"TestDecodeStringListLocal","Output":"=== RUN   TestDecodeStringListLocal\n"}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"run","Package":"levelup/go-api/internal/progression/profile","Test":"TestDecodeStringListLocal/vide_→_nil"}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"output","Package":"levelup/go-api/internal/progression/profile","Test":"TestDecodeStringListLocal/vide_→_nil","Output":"=== RUN   TestDecodeStringListLocal/vide_→_nil\n"}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"output","Package":"levelup/go-api/internal/progression/profile","Test":"TestDecodeStringListLocal/vide_→_nil","Output":"--- PASS: TestDecodeStringListLocal/vide_→_nil (0.00s)\n"}
@@ -39230,8 +39224,6 @@
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"output","Package":"levelup/go-api/internal/progression/profile","Test":"TestDecodeStringListLocal/virgule_finale_→_élément_vide_conservé","Output":"=== RUN   TestDecodeStringListLocal/virgule_finale_→_élément_vide_conservé\n"}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"output","Package":"levelup/go-api/internal/progression/profile","Test":"TestDecodeStringListLocal/virgule_finale_→_élément_vide_conservé","Output":"--- PASS: TestDecodeStringListLocal/virgule_finale_→_élément_vide_conservé (0.00s)\n"}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"pass","Package":"levelup/go-api/internal/progression/profile","Test":"TestDecodeStringListLocal/virgule_finale_→_élément_vide_conservé","Elapsed":0}
-{"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"output","Package":"levelup/go-api/internal/progression/profile","Test":"TestDecodeStringListLocal","Output":"--- PASS: TestDecodeStringListLocal (0.00s)\n"}
-{"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"pass","Package":"levelup/go-api/internal/progression/profile","Test":"TestDecodeStringListLocal","Elapsed":0}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"run","Package":"levelup/go-api/internal/progression/profile","Test":"TestDefaultTargetTierForTemplate_AlwaysNormal"}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"output","Package":"levelup/go-api/internal/progression/profile","Test":"TestDefaultTargetTierForTemplate_AlwaysNormal","Output":"=== RUN   TestDefaultTargetTierForTemplate_AlwaysNormal\n"}
 {"Time":"2026-06-26T23:51:12.0763176+02:00","Action":"output","Package":"levelup/go-api/internal/progression/profile","Test":"TestDefaultTargetTierForTemplate_AlwaysNormal","Output":"--- PASS: TestDefaultTargetTierForTemplate_AlwaysNormal (0.00s)\n"}

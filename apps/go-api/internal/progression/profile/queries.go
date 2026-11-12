@@ -2,73 +2,30 @@ package profile
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
-	"strings"
+	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/platform/duckdb"
-	"levelup/go-api/internal/prestige"
 )
 
-// queries.go — helpers SQL pour BuildProfile() (Sections A1/A2/B/C V1).
+// queries.go — calculs de BuildProfile() (Sections A1/A2/B/C V1) sur les lectures de port.ProfileStore.
 //
-// Toutes les queries acceptent une fenêtre [since, until] cohérente avec la
-// fenêtre LOWESS du caller. Depuis ADR 0016, les accès cross-DB
-// (match_registry, match_participants, highlight_events) passent par
-// SharedReader (s.pdb.SharedReadDB) sans préfixe `shared.`. Les tables player
-// (`lusr_component_history`, `personal_score_awards`) restent lues sur s.db
-// (= pdb.Player).
+// Toutes les lectures acceptent une fenêtre [since, until] cohérente avec la fenêtre LOWESS du caller ; le
+// SQL (SharedReader ADR 0016, fragment timezone canonique, exclusion Campagne) vit dans le dépôt de
+// platform/duckdb/profilerepo.
 
 const queryTimeout = 10 * time.Second
 
-// startTimeCanonicalMR : expression timezone-canonique du début de match pour
-// l'alias `mr` (E5) — jamais de `start_time` brut dans un filtre/tri temporel
-// (piège start_time_utc NULL / start_time naïf). Source unique :
-// duckdb.StartTimeCanonicalSQL (cf. reference_timezone_canonical_pattern).
-var startTimeCanonicalMR = duckdb.StartTimeCanonicalSQL("mr")
-
-// campaignExcl retourne la clause littérale de masquage des matchs Campagne pour
-// l'alias registre donné (title-aware via le titre du joueur ; no-op Infinite).
-// Source unique analysis.SQLExcludeCampaignVariants (item H1). La page Ascension
-// (profil radar / engagement / cadence) agrège les matchs de la fenêtre → sans ce
-// filtre les matchs Campagne (Halo 5) biaiseraient les axes et compteurs.
-func (s *Service) campaignExcl(alias string) string {
-	if s.pdb == nil {
-		return ""
-	}
-	return analysis.SQLExcludeCampaignVariants(s.pdb.TitleSlug, alias)
-}
-
-// countMatchesInWindow retourne le nombre de matchs distincts du joueur dans
-// la fenêtre. Source : match_participants côté shared (filtré par xuid),
-// lu via SharedReader (ADR 0016).
+// countMatchesInWindow retourne le nombre de matchs distincts du joueur dans la fenêtre.
 func (s *Service) countMatchesInWindow(ctx context.Context, userID string, since, until time.Time) (int, error) {
-	if s.pdb == nil {
+	if s.store == nil {
 		return 0, fmt.Errorf("countMatchesInWindow: PlayerDB non initialisée")
 	}
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
-	sharedDB, release, err := s.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("countMatchesInWindow: shared reader: %w", err)
-	}
-	defer release()
-	var count int
-	err = sharedDB.QueryRowContext(ctx, `
-		SELECT COUNT(DISTINCT mp.match_id)
-		FROM match_participants mp
-		JOIN match_registry mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid = ?`+s.campaignExcl("mr")+`
-		  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
-	`, userID, since, until).Scan(&count)
-	if err != nil {
-		return 0, fmt.Errorf("countMatchesInWindow: %w", err)
-	}
-	return count, nil
+	return s.store.CountWindowMatches(ctx, userID, since, until)
 }
 
 // computeRadarAxes calcule les 6 axes radar narrative en agrégeant les stats
@@ -106,89 +63,49 @@ func (s *Service) computeRadarAxesBase(
 ) (map[narrative.ParticipationAxis]float64, int, error) {
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
-	var (
-		avgKills        sql.NullFloat64
-		avgDeaths       sql.NullFloat64
-		avgAssists      sql.NullFloat64
-		avgScore        sql.NullFloat64
-		avgKillingSpree sql.NullFloat64
-		matchCount      int
-	)
-	sharedDB, release, err := s.pdb.SharedReadDB().Get(ctx)
+	base, err := s.store.RadarBase(ctx, userID, since, until)
 	if err != nil {
-		return nil, 0, fmt.Errorf("computeRadarAxesBase: shared reader: %w", err)
-	}
-	defer release()
-	err = sharedDB.QueryRowContext(ctx, `
-		SELECT
-			AVG(mp.kills),
-			AVG(mp.deaths),
-			AVG(mp.assists),
-			AVG(mp.personal_score),
-			AVG(mp.max_killing_spree),
-			COUNT(*)
-		FROM match_participants mp
-		JOIN match_registry mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid = ?`+s.campaignExcl("mr")+`
-		  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
-	`, userID, since, until).Scan(&avgKills, &avgDeaths, &avgAssists, &avgScore, &avgKillingSpree, &matchCount)
-	if err != nil {
-		return nil, 0, fmt.Errorf("computeRadarAxesBase: %w", err)
+		return nil, 0, err
 	}
 	out := map[narrative.ParticipationAxis]float64{}
-	if matchCount == 0 {
+	if base.MatchCount == 0 {
 		return out, 0, nil
 	}
-	if avgKills.Valid {
-		out[narrative.AxisCombat] = avgKills.Float64
+	if base.AvgKills != nil {
+		out[narrative.AxisCombat] = *base.AvgKills
 	}
-	if avgKills.Valid && avgDeaths.Valid {
-		survival := avgKills.Float64 - avgDeaths.Float64
+	if base.AvgKills != nil && base.AvgDeaths != nil {
+		survival := *base.AvgKills - *base.AvgDeaths
 		if survival < 0 {
 			survival = 0
 		}
 		out[narrative.AxisSurvival] = survival
 	}
-	if avgAssists.Valid {
-		out[narrative.AxisSupport] = avgAssists.Float64
+	if base.AvgAssists != nil {
+		out[narrative.AxisSupport] = *base.AvgAssists
 	}
-	if avgScore.Valid {
-		out[narrative.AxisScore] = avgScore.Float64
+	if base.AvgScore != nil {
+		out[narrative.AxisScore] = *base.AvgScore
 	}
-	if avgKillingSpree.Valid {
-		out[narrative.AxisImpact] = avgKillingSpree.Float64 * 10
+	if base.AvgKillingSpree != nil {
+		out[narrative.AxisImpact] = *base.AvgKillingSpree * 10
 	}
-	return out, matchCount, nil
+	return out, base.MatchCount, nil
 }
 
 // windowMatchIDs retourne les match_id du registre partagé dans la fenêtre
 // (Campagne exclue). Source commune de applyAwardsRadarAxes (Phase A) et de
 // computeObjectiveIndexAxis — règle ≤ 2 copies. Best-effort : erreur → nil.
 func (s *Service) windowMatchIDs(ctx context.Context, since, until time.Time) []string {
-	sharedDB, release, err := s.pdb.SharedReadDB().Get(ctx)
+	ids, err := s.store.WindowMatchIDs(ctx, since, until)
 	if err != nil {
+		slog.WarnContext(ctx, "profile: matchs de la fenêtre illisibles, section dégradée", "err", err)
 		return nil
 	}
-	defer release()
-	matchRows, err := sharedDB.QueryContext(ctx, `
-		SELECT match_id FROM match_registry mr
-		WHERE `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?`+s.campaignExcl("mr")+`
-	`, since, until)
-	if err != nil {
-		return nil
-	}
-	defer matchRows.Close()
-	var matchIDs []string
-	for matchRows.Next() {
-		var id string
-		if err := matchRows.Scan(&id); err == nil && id != "" {
-			matchIDs = append(matchIDs, id)
-		}
-	}
-	return matchIDs
+	return ids
 }
 
-// applyAwardsRadarAxes lit personal_score_awards dans la fenêtre, somme par
+// applyAwardsRadarAxes lit les awards du joueur dans la fenêtre, somme par
 // award_name, applique le mapping (axes + weight) et accumule par axe en
 // moyenne par match. Mutates out in place. L'axe OBJECTIVE est ignoré ici :
 // il est alimenté par l'index par opportunité (computeObjectiveIndexAxis) —
@@ -196,8 +113,7 @@ func (s *Service) windowMatchIDs(ctx context.Context, since, until time.Time) []
 // du plan PLAN_AXE_OBJECTIFS_INDEX.
 //
 // Split cross-DB (ADR 0016) : Phase A charge les match_ids dans la fenêtre
-// via SharedReader (windowMatchIDs), Phase B agrège personal_score_awards sur
-// Player avec WHERE match_id IN (...).
+// (windowMatchIDs), Phase B agrège les awards du joueur sur ces matchs.
 func (s *Service) applyAwardsRadarAxes(
 	ctx context.Context, userID string, since, until time.Time,
 	matchCount int, out map[narrative.ParticipationAxis]float64,
@@ -212,39 +128,17 @@ func (s *Service) applyAwardsRadarAxes(
 		return
 	}
 
-	// Phase B : agrégat sur personal_score_awards (player) avec IN.
-	placeholders := make([]string, len(matchIDs))
-	args := make([]any, 0, len(matchIDs)+1)
-	args = append(args, userID)
-	for i, id := range matchIDs {
-		placeholders[i] = "?"
-		args = append(args, id)
-	}
-	rows, err := s.db.Query(ctx, `
-		SELECT psa.award_name, SUM(psa.award_count)
-		FROM personal_score_awards_latest psa
-		WHERE psa.xuid = ?
-		  AND psa.match_id IN (`+strings.Join(placeholders, ",")+`)
-		GROUP BY psa.award_name
-	`, args...)
+	totals, err := s.store.AwardTotals(ctx, userID, matchIDs)
 	if err != nil {
-		return
+		// Les cumuls lus avant l'erreur s'appliquent quand même (lecture partielle).
+		slog.WarnContext(ctx, "profile: awards du radar illisibles ou partiels", "err", err)
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var name string
-		var total sql.NullInt64
-		if err := rows.Scan(&name, &total); err != nil {
-			return
-		}
-		if !total.Valid || total.Int64 <= 0 {
-			continue
-		}
-		mapping, ok := s.awards.Get(name)
+	for _, t := range totals {
+		mapping, ok := s.awards.Get(t.Name)
 		if !ok {
 			continue
 		}
-		contribution := float64(total.Int64) * mapping.Weight / float64(matchCount)
+		contribution := float64(t.Total) * mapping.Weight / float64(matchCount)
 		for _, axis := range mapping.Axes {
 			if narrative.ParticipationAxis(axis) == narrative.AxisObjective {
 				continue // remplacé par l'index par opportunité
@@ -255,19 +149,18 @@ func (s *Service) applyAwardsRadarAxes(
 }
 
 // computeObjectiveIndexAxis calcule l'axe « Objectifs » par opportunité sur la
-// fenêtre : agrégats par famille via ObjectiveStatsRepo (shared,
-// match_objective_stats_latest) → narrative.ComputeObjectiveIndex. Retourne
-// (raw, n_obj) ; n_obj == 0 (titre sans capability match.objective.stats,
-// fenêtre sans match à objectif, erreur best-effort) → l'axe est RETIRÉ du
-// radar par le caller (aggregateNarrative).
+// fenêtre : agrégats par famille (match_objective_stats_latest) →
+// narrative.ComputeObjectiveIndex. Retourne (raw, n_obj) ; n_obj == 0 (titre
+// sans capability match.objective.stats, fenêtre sans match à objectif, erreur
+// best-effort) → l'axe est RETIRÉ du radar par le caller (aggregateNarrative).
 func (s *Service) computeObjectiveIndexAxis(
 	ctx context.Context, userID string, since, until time.Time,
 ) (float64, int) {
-	if s.pdb == nil || userID == "" {
+	if s.store == nil || userID == "" {
 		return 0, 0
 	}
 	// Gating capability (décision 4) — jamais de slug== (ratchet no_slug_comparison).
-	if !games.ProvidesObjectiveStats(s.pdb.TitleSlug) {
+	if !games.ProvidesObjectiveStats(s.store.TitleSlug()) {
 		return 0, 0
 	}
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
@@ -276,9 +169,9 @@ func (s *Service) computeObjectiveIndexAxis(
 	if len(matchIDs) == 0 {
 		return 0, 0
 	}
-	inputs, err := duckdb.NewObjectiveStatsRepo(s.pdb).
-		LoadObjectiveIndexInputs(ctx, matchIDs, []string{userID})
+	inputs, err := s.store.ObjectiveIndexInputs(ctx, matchIDs, []string{userID})
 	if err != nil {
+		slog.WarnContext(ctx, "profile: index des objectifs illisible, axe retiré", "err", err)
 		return 0, 0
 	}
 	return narrative.ComputeObjectiveIndex(inputs[userID])
@@ -294,35 +187,9 @@ func (s *Service) computeEngagementSimple(ctx context.Context, userID string, si
 	defer cancel()
 	var snap EngagementSnapshot
 
-	sharedDB, release, err := s.pdb.SharedReadDB().Get(ctx)
+	times, err := s.store.MatchStartTimes(ctx, userID, since, until)
 	if err != nil {
-		return snap, fmt.Errorf("computeEngagementSimple: shared reader: %w", err)
-	}
-	defer release()
-	rows, err := sharedDB.QueryContext(ctx, `
-		SELECT `+startTimeCanonicalMR+`
-		FROM match_participants mp
-		JOIN match_registry mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid = ?`+s.campaignExcl("mr")+`
-		  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
-		ORDER BY `+startTimeCanonicalMR+` ASC
-	`, userID, since, until)
-	if err != nil {
-		return snap, fmt.Errorf("computeEngagementSimple: %w", err)
-	}
-	defer rows.Close()
-	var times []time.Time
-	for rows.Next() {
-		var t sql.NullTime
-		if err := rows.Scan(&t); err != nil {
-			return snap, err
-		}
-		if t.Valid {
-			times = append(times, t.Time)
-		}
-	}
-	if rerr := rows.Err(); rerr != nil {
-		return snap, rerr
+		return snap, err
 	}
 	if len(times) == 0 {
 		return snap, nil
@@ -379,159 +246,33 @@ type componentRow struct {
 //     matchs et la moyenne des 10 plus anciens dans la fenêtre — ≥ 20 matchs
 //     requis pour significativité).
 //
-// Source : table `lusr_component_history` (V2 §1) alimentée live par le
-// LUSR v2 (sync/skill, componentTracker) et, au rattrapage, par son rejeu complet
-// (RecomputeLUSRCanonicalForPlayer).
-//
-// Les matchs exclus (is_excluded) ne pèsent pas : leurs identifiants sont lus d'abord
-// (loadExcludedMatchIDs), puis écartés par paramètres constants (lusrComponentsQuery).
-// Une erreur de lecture des exclusions est remontée.
-//
-// Une seule query CTE batchée groupe AVG / QUANTILE / trend pour les 8
-// composantes (V2 §1 polish — évite les 8 round-trips initiaux). Si la table
-// est vide ou la query échoue, retourne map vide silencieusement (UI dégrade
-// gracieusement avec current=0/top20=0/target).
-func (s *Service) loadLUSRComponentsBreakdown(ctx context.Context, _userID string) (map[string]componentRow, error) {
+// Les matchs exclus (is_excluded) ne pèsent pas ; une erreur de lecture des exclusions est remontée. Si la
+// table est vide ou la requête échoue, la map est vide silencieusement (UI dégrade gracieusement avec
+// current=0/top20=0/target). Le SQL est celui de profilerepo.LUSRComponents.
+func (s *Service) loadLUSRComponentsBreakdown(ctx context.Context) (map[string]componentRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
 
 	out := make(map[string]componentRow, 8)
-	excluded, err := s.loadExcludedMatchIDs(ctx)
+	aggregates, err := s.store.LUSRComponents(ctx)
 	if err != nil {
 		return out, err
 	}
-	query, args := lusrComponentsQuery(excluded)
-	rows, err := s.db.Query(ctx, query, args...)
-	if err != nil {
-		return out, nil
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var name string
-		var avg, top20, lastAvg, firstAvg sql.NullFloat64
-		var n int
-		if err := rows.Scan(&name, &avg, &top20, &lastAvg, &firstAvg, &n); err != nil {
-			return out, err
-		}
-		if n == 0 {
+	for _, a := range aggregates {
+		if a.N == 0 {
 			continue
 		}
 		row := componentRow{}
-		if avg.Valid {
-			row.currentAvg = avg.Float64
+		if a.Avg != nil {
+			row.currentAvg = *a.Avg
 		}
-		if top20.Valid {
-			row.top20 = top20.Float64
+		if a.Top20 != nil {
+			row.top20 = *a.Top20
 		}
-		if lastAvg.Valid && firstAvg.Valid {
-			row.trend = lastAvg.Float64 - firstAvg.Float64
+		if a.LastAvg != nil && a.FirstAvg != nil {
+			row.trend = *a.LastAvg - *a.FirstAvg
 		}
-		out[name] = row
+		out[a.Name] = row
 	}
-	return out, rows.Err()
-}
-
-// listTemplatesByLUSRComponents retourne les templates dont les
-// lusr_components recoupent l'ensemble fourni. Lecture directe depuis
-// metadata.duckdb (CSV-encoded).
-func (r *duckdbRepo) listTemplatesByLUSRComponents(ctx context.Context, titleSlug string, components map[string]struct{}) ([]prestige.Template, error) {
-	if r == nil || r.db == nil {
-		return nil, nil
-	}
-	if len(components) == 0 {
-		return nil, nil
-	}
-	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
-	defer cancel()
-
-	rows, err := r.db.Query(ctx, `
-		SELECT id, title_slug, metric, window_type, COALESCE(window_value, ''),
-		       cadence, eval_type, COALESCE(mode_filter, 'universal'),
-		       normal_target, heroic_target, legendary_target, mythic_target,
-		       COALESCE(lusr_components, ''), COALESCE(radar_axes, ''),
-		       COALESCE(is_long_term, FALSE),
-		       schema_version, updated_at
-		FROM challenge_template
-		WHERE title_slug = ?
-	`, titleSlug)
-	if err != nil {
-		return nil, fmt.Errorf("listTemplatesByLUSRComponents: %w", err)
-	}
-	defer rows.Close()
-	var out []prestige.Template
-	for rows.Next() {
-		t, err := scanTemplateRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		// Filtre côté Go : on garde si au moins une composante du template
-		// est dans l'ensemble des leviers.
-		matched := false
-		for _, c := range t.LUSRComponents {
-			if _, ok := components[c]; ok {
-				matched = true
-				break
-			}
-		}
-		if matched {
-			out = append(out, t)
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return out, r.attachTemplateTexts(ctx, out)
-}
-
-// attachTemplateTexts pose sur chaque modèle son libellé et sa description dans chaque langue qui
-// en porte un (asset_translations, type challenge_template ; ADR 0040 D-15).
-func (r *duckdbRepo) attachTemplateTexts(ctx context.Context, ts []prestige.Template) error {
-	if len(ts) == 0 {
-		return nil
-	}
-	ids := make([]string, len(ts))
-	for i := range ts {
-		ids[i] = ts[i].ID
-	}
-	texts, err := duckdb.LoadAssetTexts(ctx, r.db, duckdb.AssetTypeChallengeTemplate, ids)
-	if err != nil {
-		return fmt.Errorf("listTemplatesByLUSRComponents: %w", err)
-	}
-	for i := range ts {
-		ts[i].Labels = texts[ts[i].ID].Name
-		ts[i].Descriptions = texts[ts[i].ID].Description
-	}
-	return nil
-}
-
-// scanTemplateRow scanne une ligne challenge_template depuis un *sql.Rows.
-// Volontairement dupliqué de platform/duckdb.scanTemplate pour éviter d'élever
-// ce dernier en exporté (et la dépendance circulaire qui en résulterait).
-func scanTemplateRow(row *sql.Rows) (prestige.Template, error) {
-	var t prestige.Template
-	var windowType, cadence, evalType string
-	var lusrJSON, radarJSON string
-	err := row.Scan(
-		&t.ID, &t.TitleSlug, &t.Metric, &windowType, &t.WindowValue,
-		&cadence, &evalType, &t.ModeFilter,
-		&t.NormalTarget, &t.HeroicTarget, &t.LegendaryTarget, &t.MythicTarget,
-		&lusrJSON, &radarJSON, &t.IsLongTerm,
-		&t.SchemaVersion, &t.UpdatedAt,
-	)
-	if err != nil {
-		return t, err
-	}
-	t.WindowType = prestige.WindowType(windowType)
-	t.Cadence = prestige.Cadence(cadence)
-	t.EvalType = prestige.EvalType(evalType)
-	t.LUSRComponents = decodeStringListLocal(lusrJSON)
-	t.RadarAxes = decodeStringListLocal(radarJSON)
-	return t, nil
-}
-
-func decodeStringListLocal(s string) []string {
-	if s == "" {
-		return nil
-	}
-	return strings.Split(s, ",")
+	return out, nil
 }

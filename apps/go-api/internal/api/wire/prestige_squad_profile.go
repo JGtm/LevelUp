@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/duckdb/profilerepo"
 	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/progression/profile"
 )
@@ -91,7 +92,7 @@ func (p *squadPerfProfileProvider) memberAxes(ctx context.Context, slug string, 
 	if err != nil || pdb == nil || pdb.Player == nil {
 		return nil
 	}
-	prof, err := profile.NewServiceFromPlayerDB(pdb).BuildProfile(ctx, pdb.XUID, p.titleSlug, profileWindowDaysSquad, now)
+	prof, err := profile.NewService(profilerepo.ForPlayer(pdb)).BuildProfile(ctx, pdb.XUID, p.titleSlug, profileWindowDaysSquad, now)
 	if err != nil || !prof.HasEnoughData {
 		return nil
 	}
