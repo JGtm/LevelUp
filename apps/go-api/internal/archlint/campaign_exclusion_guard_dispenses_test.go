@@ -57,8 +57,8 @@ var dispensesExclusionCampagne = map[string]dispenseCampagne{
 		"appariement clip → match par fenêtre de capture (media_repo_filters.go:255) : un clip tourné en Campagne doit pouvoir se rattacher à son match."},
 	"internal/platform/duckdb/last_match_reader.go:LastMatchReader.LastMatchByXUID": {dispenseSemantique, "2026-09-27",
 		"fraîcheur admin, dernier match persisté par joueur (last_match_reader.go, déplacé depuis api/wire/registry_monitoring_freshness.go le 2026-11-12) : la Campagne est une activité réelle du compte."},
-	"internal/platform/duckdb/sqlfrag/match_filter.go:BuildNeighborsWhereClause": {dispenseCallSite, "2026-09-27",
-		"faux positif : fragment WithPlayerXuid (match_filter.go:196) injecté dans /*EXTRA_WHERE*/ avec excludeCampaignClause " +
+	"internal/platform/duckdb/sqlfrag/match_filter.go:neighborsBuilder.withPlayer": {dispenseCallSite, "2026-09-27",
+		"faux positif : fragment WithPlayerXuid (match_filter.go, withPlayer ; extrait de BuildNeighborsWhereClause le 2026-11-12) injecté dans /*EXTRA_WHERE*/ avec excludeCampaignClause " +
 			"(platform/duckdb/match_view_repo_neighbors_skill.go:72)."},
 
 	// ── B4.5 : autres entrants révélés par le balayage ──
