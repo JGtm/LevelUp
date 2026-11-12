@@ -1862,6 +1862,13 @@ unités appariées SUR l'oracle lui-même (slots statborg `triplet_feuille`, cam
 `teamIdentity` `a`/`a0`) sont exclues, jamais comptées en vrais positifs. `-oracle
 <short8>.oracle.json` ajoute O-S3 (score personnel).
 
+Toute tolérance de temps du banc est une DURÉE en millisecondes, convertie en images avec le
+`frameIntervalMs` de l'artefact (arrondi vers le bas) : un même verdict tient sur la grille de 100 ms
+et sur celle de 33 ms (30,3 images/s). Mesurées sur 12 témoins aux deux grilles : tolérance de vie
+650 ms (V-3, V-5), de mort 250 ms (V-8). V-2 compte une instance par PASSAGE de véhicule hors
+emprise (les échantillons consécutifs d'un même véhicule forment une seule instance), non par
+échantillon : un compte par échantillon suit la densité de la grille.
+
 **Dans `replay-corpus-gate` (2026-09-30), le verdict EST celui du banc.** Chaque témoin comparé est
 jugé par le banc (référence et HEAD, mêmes faits, même oracle — le gate exporte désormais
 `<short8>.oracle.json` à côté des faits par `replay-facts-export --oracle`). Le statut du témoin est

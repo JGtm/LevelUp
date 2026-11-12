@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Changed
+- **Replay at 30 images per second** — replays are published on a 33 ms grid (30.3 images/s) instead of 100 ms, every point included (position, aim, shield). Replays baked at 100 ms stay readable and are flagged "to re-bake"; no batch re-bake starts by itself. The truth bench (`internal/replayverite`) states its time tolerances as durations (life 650 ms, death 250 ms) and counts a vehicle outside the envelope once per pass, so one verdict holds on both grids. `cmd/zone-attribution` takes `-max-gap-ms` (default `replay.DefaultMaxGapMS`) in place of `-max-gap` in frames. The replay contract fixtures move to schema 111.
 - **Game icons for grenades and abilities** — the grenade and ability thumbnails of the replay are now extracted from the game's own interface atlases, at the same paths. The resource pack changes: a single download for the desktop application. The unused `static/abilities-assets` folder is removed.
 
 ## [8.1.2] - 2026-11-11

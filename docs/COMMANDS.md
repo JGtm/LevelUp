@@ -1787,6 +1787,13 @@ the delta decides: absolute values are printed for information. Units matched ON
 (`triplet_feuille` statborg slots, teams resolved by `teamIdentity` `a`/`a0`) are excluded, never
 counted as true positives. `-oracle <short8>.oracle.json` adds O-S3 (personal score).
 
+Every time tolerance of the bench is a DURATION in milliseconds, converted to frames with the
+artifact's own `frameIntervalMs` (rounded down), so one verdict holds on the 100 ms grid and on the
+33 ms grid (30.3 images/s). Measured on 12 witnesses on both grids: life tolerance 650 ms (V-3, V-5),
+death tolerance 250 ms (V-8). V-2 counts one instance per vehicle PASS outside the envelope
+(consecutive samples of a vehicle form one instance), not one per sample: a per-sample count follows
+the grid density.
+
 **Inside `replay-corpus-gate` (2026-09-30), the bench IS the verdict.** Every compared witness is
 judged by the bench (reference and HEAD, same facts, same oracle — the gate now exports
 `<short8>.oracle.json` next to the facts with `replay-facts-export --oracle`). The witness status is
