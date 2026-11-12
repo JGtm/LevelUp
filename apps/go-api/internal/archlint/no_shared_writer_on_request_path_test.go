@@ -30,6 +30,10 @@ var writerAcquiringCalls = map[string]bool{
 	"AcquireSharedWriterStandalone":   true,
 	"AcquireMetadataWriterStandalone": true,
 	"RecalculatePlayerSessions":       true,
+	// NewSharedWriterAcquirer construit l'acquisition d'un writer partagé pour le compte de l'appelant
+	// (sync/engine_acquire.go) : la prise a lieu à chaque appel de la fonction rendue, sur le chemin de
+	// requête de l'appelant.
+	"NewSharedWriterAcquirer": true,
 }
 
 // requestPathRoots — paquets dont le code tourne sous une requête HTTP.
@@ -50,9 +54,10 @@ var requestPathWriterAllowlist = map[string]struct {
 }{
 	// 2026-10-16 : routes d'administration (RequireAdmin) ou de protocole ouvrier (jeton
 	// dédié), jamais /players ni anonymes.
-	"internal/api/wire/registry_actions.go":           {1, "reset des lying bits : action admin (RequireAdmin), single-flight"},
-	"internal/api/wire/registry_asset_names_sweep.go": {1, "balayage des noms d'assets : action admin, sérialisée"},
-	"internal/service/sync_jobs_recalc.go":            {1, "POST /settings/sessions/recalculate : recalcul des sessions, réglage d'administration (extrait de settings.go le 2026-10-19, passé du handler au service des jobs de sync le 2026-11-12)"},
+	"internal/api/wire/registry_actions.go":                 {1, "reset des lying bits : action admin (RequireAdmin), single-flight"},
+	"internal/api/wire/registry_asset_names_sweep.go":       {1, "balayage des noms d'assets : action admin, sérialisée"},
+	"internal/api/wire/registry_build_queue_derivations.go": {1, "protocole ouvrier de rejeu (jeton dédié RequireWorkerToken) : dérivations d'un artefact déposé, writer pris par sync.NewSharedWriterAcquirer, attente bornée à acquireWriterDepot (8 s, constat C7), un artefact à la fois"},
+	"internal/service/sync_jobs_recalc.go":                  {1, "POST /settings/sessions/recalculate : recalcul des sessions, réglage d'administration (extrait de settings.go le 2026-10-19, passé du handler au service des jobs de sync le 2026-11-12)"},
 	// 2026-10-16 : import OpenSpartan, RequireAuth, un import à la fois par compte, fichier
 	// validé avant la prise du writer (L5-4).
 	"internal/service/openspartan_import_service.go":      {1, "import OpenSpartan : writer pris après validation du fichier"},
