@@ -353,7 +353,7 @@ réponses à l'identique (témoins).
       service. `handlers/backfill.go`, `sync_handler.go`, `sync_handler_align.go`,
       `settings_sessions_recalc.go` n'importent plus ni `sync` ni `games/halo_5/livesync`. La
       recherche de profil recopiée trois fois devient une fonction du service.
-- [ ] 4.3 (API-1) Ports et services pour la progression (séries, records, historique, jalons : la
+- [x] 4.3 (API-1) Ports et services pour la progression (séries, records, historique, jalons : la
       jointure catalogue × jalons va dans le service), la campagne, le profil joueur, et la limite
       mémoire des bases (`settings_data.go`). Les quatre handlers n'importent plus `platform/duckdb`.
 - [ ] 4.4 (API-3) Sortir le SQL des 9 fichiers de `api/wire` vers des dépôts de `platform/duckdb`
@@ -549,6 +549,8 @@ deux graphes de 7.3.
   `OpenReadWrite` ne dit rien de leur bail d'écriture ; aucun test ne vérifie qu'un appelant le prend. Non traité.
 
 - Étape 4 (4.1, 4.2, 2026-11-12). `persist.BatchBuilder.SetLeadShare` n est appelée que par un test (arrivée par #200). `SyncJobService.WithProfiles` et `WithManualSyncCooldown` ne servent qu aux tests. Le moteur d auto-sync reste un type concret derrière `EngineBuilder` : le service ne se teste avec de faux lanceurs que par deux coutures non exportées. `notifications.EmitterFactory` a remplacé trois copies du type de fabrique sans garde-rail contre une nouvelle copie. `internal/port/post_sync_runner.go` cite encore `WithPostSyncDeltaHook`, supprimé. Garde-rail `archlint` du niveau de journal : les outils compilés sans cgo (`replay-build`, `replay-verite`) ne doivent pas importer `internal/config` (régression de 2.4, réparée le 2026-11-12). Non traités.
+
+- Étape 4 (4.3, 2026-11-12). `api/handlers/home.go` importe encore `platform/duckdb` et `sharedprovider` pour classer une panne de lecture (allowlist datée du garde-rail) : à traiter en 4.7. L interface du profil joueur vit dans `progression/profile` et non dans `port/` (`profile` importe `port` : cycle) ; en sortir demande de déplacer les types de réponse vers `domain`. `settings.go` : 512 lignes. `SettingsHandler` sans `WithDatabaseMemory` n applique pas le plafond (avertissement au journal) : dépendance facultative, seul le serveur la branche. Pas de service pour la limite mémoire (aucune règle à y loger). Routes hors témoins : `GET /campaigns/{id}` et toutes les écritures (campagnes, `memory_limit_mb`, sauvegarde). Non traités.
 
 ## 13. Hors périmètre
 
