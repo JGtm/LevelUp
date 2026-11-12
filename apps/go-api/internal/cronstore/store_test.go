@@ -50,8 +50,8 @@ func TestCountProbe_Compte(t *testing.T) {
 		// m1 pose le bit des événements sans aucun événement derrière.
 		`UPDATE match_registry SET backfill_completed = 65536 WHERE match_id = 'm1'`,
 		// 1 humain sans alias, 1 humain avec alias.
-		`INSERT INTO match_participants (match_id, xuid, gamertag) VALUES ('m1', '2603225103667623', 'A'), ('m1', '2603225103667624', 'B')`,
-		`INSERT INTO xuid_aliases (xuid, gamertag, last_seen) VALUES ('2603225103667624', 'B', now())`,
+		`INSERT INTO match_participants (match_id, xuid, gamertag) VALUES ('m1', '2603225103667623', 'A'), ('m1', '2699999999999999', 'B')`,
+		`INSERT INTO xuid_aliases (xuid, gamertag, last_seen) VALUES ('2699999999999999', 'B', now())`,
 	)
 	h, err := New(nil).OpenShared(path)
 	if err != nil {

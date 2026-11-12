@@ -94,7 +94,7 @@ func (s *service) DeleteArc(ctx context.Context, userID, id string, opts DeleteA
 			return err
 		}
 	} else if err := s.deps.Challenges.DetachFromArc(ctx, id); err != nil {
-		return fmt.Errorf("unlink objectives from arc: %w", err)
+		return fmt.Errorf("objectives unlink failed: %w", err)
 	}
 
 	if err := s.deps.Arcs.Delete(ctx, id); err != nil {
