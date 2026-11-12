@@ -18,6 +18,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/replayartifact"
 	"levelup/go-api/internal/testutil"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
@@ -70,7 +71,7 @@ func lsArtefact(t *testing.T, racine, id string) {
 		t.Fatal(err)
 	}
 	blob, _ := json.Marshal(doc)
-	if err := os.WriteFile(path, blob, 0o600); err != nil {
+	if _, _, err := replayartifact.Write(context.Background(), path, blob); err != nil {
 		t.Fatal(err)
 	}
 }
