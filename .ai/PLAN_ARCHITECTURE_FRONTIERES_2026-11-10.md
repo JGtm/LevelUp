@@ -278,22 +278,49 @@ vide ; témoins identiques.
 Touche `persist/` et `sync/` : revue adversariale obligatoire, tests d'intégration obligatoires.
 Effort : moyen.
 
-- [ ] 3.1 (ART-2) Alias de joueurs : compter et journaliser chaque échec d'écriture ; ne poser le
+- [x] 3.1 (ART-2) Alias de joueurs : compter et journaliser chaque échec d'écriture ; ne poser le
       marqueur `psa_checked_at` qu'après un flush réussi, de sorte que le match soit repris au cycle
       suivant. Supprimer `upsertAliasesFromMatchJSON` (sans appelant). Test : un flush en échec
       laisse le match dans `selectMatchesMissingPSA`.
-- [ ] 3.2 (ART-1) `persistMatchIntensities` : journal et compteur sur chaque échec.
-- [ ] 3.3 (API-3, partie erreurs) `wire/registry_weapon_coverage.go:97-98` et
+- [x] 3.2 (ART-1) `persistMatchIntensities` : journal et compteur sur chaque échec.
+- [x] 3.3 (API-3, partie erreurs) `wire/registry_weapon_coverage.go:97-98` et
       `registry_catalog_expand.go:171-172` : journaliser les erreurs de `rows.Scan`.
-- [ ] 3.4 (ART-3) Étendre `archlint/no_bare_duckdb_rw_open_test.go` à `duckdb.OpenReadWrite`, avec
+- [x] 3.4 (ART-3) Étendre `archlint/no_bare_duckdb_rw_open_test.go` à `duckdb.OpenReadWrite`, avec
       l'allowlist datée de l'ADR 0030 D-3.
-- [ ] 3.5 (ART-4) Dater et rejustifier les entrées de `sync/shared_write_guard_test.go`,
+- [x] 3.5 (ART-4) Dater et rejustifier les entrées de `sync/shared_write_guard_test.go`,
       `sync/append_only_state_guard_test.go`, `platform/duckdb/no_raw_rating_reads_test.go` ; clé
       par chemin complet et non par nom de base ; corriger le motif périmé de `writes.go` et le
       commentaire de `writes.go:123`. Poser un test de forme : toute entrée d'allowlist de ces
       fichiers commence par une date.
-- [ ] 3.6 (ART-P2-1) Compléter la recette de `persist/doc.go` (liste des colonnes de la vue) et
+- [x] 3.6 (ART-P2-1) Compléter la recette de `persist/doc.go` (liste des colonnes de la vue) et
       poser un test qui lie `pmeColumnStage` et `enrichmentColumnStage`.
+
+Résultat de l'étape 3 (2026-11-12). Sept commits sur `feat/812-architecture` (`f5729e4deb` à `fc984ada37`).
+3.1 : `convergePSACollect` ne pose plus le marqueur ; `stampPSAChecked` le pose après `flushAliasPairs`, pour les
+seuls matchs dont tous les alias sont écrits (et dont les awards le sont). Chaque échec d'alias est journalisé et
+compté (`convergence_alias_upsert_failed_total`), chaque match laissé de côté aussi (`convergence_psa_deferred_total`) ;
+`upsertAliasesFromMatchJSON` supprimée (`git grep` et `deadcode` : aucun appelant, aucun test). Preuve du test : écrits
+avant le code, `TestConvergePSA_FlushAliasEnEchec` et `TestConvergePSA_SharedNilAvecAlias` ÉCHOUENT sur l'ancien
+code (`done = 1, want 0`) et passent après ; `TestRunPSAConvergence_BurstIndisponible` couvre la fenêtre refusée.
+3.2 : `persistMatchIntensities` journalise et compte (`match_intensity_write_failed_total`) ; SQL inchangé. 3.3 :
+les deux sites du plan plus `classifyWeaponLabelsOnly` (même motif, même fichier) passent par
+`signalerLigneIllisible` (journal et `wire_rows_scan_failed_total`) ; un `rows.Scan` ne peut pas être mis en échec
+par les données d'un schéma valide : seul le compteur du helper est testé. 3.4 : second test d'`archlint` sur les
+appels de `duckdb.OpenReadWrite` (alias d'import quelconque), allowlist de 43 fichiers et 49 appels, chaque entrée
+datée et justifiée sur pièces ; mutation vérifiée (un appel de plus est refusé) ; `OpenReadWriteShared` non couvert.
+3.5 : toutes les raisons des trois fichiers commencent par une date (tirée de git) puis « revu 2026-11-12 » ;
+`writes.go` : motif périmé corrigé, commentaire de `InsertWeaponKills` corrigé ; `no_raw_rating_reads_test.go` :
+clé par chemin complet (l'entrée `identity_annuaire.go` vivait sous `internal/analysis/`) ; trois tests de forme.
+Les onze entrées d'allowlist existantes (cinq, deux et quatre) sont gardées, aucune retirée ; une porte la mention « non revérifié »
+(`queries_career_encounters.go`, voir §12). 3.6 : recette de `persist/doc.go` portée à huit étapes (projection dans la
+vue), les deux copies de `player_persister.go` y renvoient ; `TestEnrichmentColumnStage_LieALaVueMergeOnRead` échoue
+sur un stage divergent et sur une colonne absente (mutations vérifiées). Gate : `go build ./...` et `go vet ./...` code
+0 ; `go test -timeout 30m ./internal/archlint/...` code 0 (une première passe a échoué : le littéral `"scan"` de mon test
+de 3.3 est un littéral de portée interdit, corrigé en `fc984ada37`, repassé à 0) ; `go test -tags=integration -p 1
+-timeout 120m ./...` code 0 en une seule passe (216 paquets `ok`, aucun `--- FAIL`) ; code sans appelant : 0
+nouveauté ; témoins : 90 routes, une seule différence (fenêtre `since`/`until` de `activity_calendar.json` décalée d'un
+jour : la date UTC a changé entre la référence, 23 h 06 UTC le 11, et la reprise, 00 h 38 UTC le 12). Revue
+adversariale : en attente.
 
 Gate : gate de l'étape 2 ; `go test -tags=integration -p 1 ./...` code de sortie 0.
 
@@ -440,7 +467,7 @@ deux graphes de 7.3.
 | 0 | close | (commit de clôture de l'étape 0) | témoins et compteurs relevés le 2026-11-10 |
 | 1 | close | `91727b0c30` (PR #191) | fusionnée le 2026-11-11 |
 | 2 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-11 |
-| 3 | à faire | | |
+| 3 | exécutée, revue en attente | `f5729e4deb` à `fc984ada37` | gate vert le 2026-11-12 ; revue adversariale à faire |
 | 4 | à faire | | |
 | 5 | à faire | | |
 | 6 | à faire | | |
@@ -480,6 +507,24 @@ deux graphes de 7.3.
   erreur à chaque passage. Non traité.
 - (étape 0) En profil dev, le premier démarrage rejoue les formules de note du jeu de démo (révision vide) :
   le harnais attend la fin de ce rejeu avant de capturer.
+- (étape 3) `duckdb.OpenReadWriteShared` (même clé de cache que `OpenReadWrite`, pool de lecture : `internal/api/server.go`,
+  `cmd/server/boot_providers.go`, `cmd/populate-career-rank-images`, `cmd/recompute_perfnote`, `internal/api/server_apiv1.go`)
+  n'est couvert par aucun garde ; l'ADR 0030 D-3 ne nomme que `OpenReadWrite`. Non traité.
+- (étape 3) `queries_career_encounters.go` (`Q24LUSRHistory`, lue par `StatsRepo.LoadLUSRHistory`) : lecture BRUTE de
+  `match_skill_rank` sans filtre `rating_type` ni départage `written_at`. L'entrée d'allowlist (décision B7, 2026-07-10)
+  est gardée, datée, avec la mention « non revérifié » : rien dans la requête ne dédoublonne les versions d'un match après
+  un rejeu append-only, et le consommateur n'a pas été relu. Non traité.
+- (étape 3) `engine_postsync_scoring.go` : si le burst d'écriture `match_intensity` est indisponible, le journal dit
+  « retenté au prochain cycle ». Les intensités ne sont calculées que pour les matchs dont l'engagement est calculé
+  dans la passe ; l'engagement tenté n'est pas recalculé (`force=false`), donc ce rejeu est vraisemblablement faux (même
+  forme que ART-2). Non vérifié, non traité.
+- (étape 3) `convergence.go` fait 691 lignes (666 au départ de l'étape, exemption connue du fichier) : le découpage vers un
+  sous-paquet reste à faire (ADR 0027). Un alias dont l'upsert échoue en permanence fait désormais refetcher son match à chaque cycle jusqu'à `convergenceHorizon` ; le compteur
+  `convergence_alias_upsert_failed_total` le rend visible. Non traité.
+- (étape 3) `CLAUDE.md` règle 7 (écritures) parle d'une recette d'enrichissement « en 3 étapes » : `persist/doc.go` en compte
+  maintenant huit, dont la projection dans la vue. Non traité (étape 8.4).
+- (étape 3) `internal/sync/schema.go` (`OpenPlayerDB`, `OpenSharedDB`, une trentaine d'appelants) : l'allowlist de
+  `OpenReadWrite` ne dit rien de leur bail d'écriture ; aucun test ne vérifie qu'un appelant le prend. Non traité.
 
 ## 13. Hors périmètre
 

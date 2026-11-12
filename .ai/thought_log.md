@@ -1,3 +1,9 @@
+## [2026-11-12] Plan architecture, étape 3 : écritures — En cours (revue en attente)
+
+- Décision : le marqueur terminal `psa_checked_at` n'est posé qu'après l'écriture des alias du match (`stampPSAChecked` après `flushAliasPairs`) ; tout échec d'écriture best-effort des trois chemins visés (alias, intensités de match, lignes illisibles de `api/wire`) est journalisé et compté ; la surface de `duckdb.OpenReadWrite` est gelée par une allowlist datée de 43 fichiers ; les allowlists d'écriture et de lecture brute sont datées, rejustifiées sur pièces et clés par chemin complet ; la recette d'un enrichissement dit enfin de projeter la colonne dans la vue, et un test lie les deux tables de stages.
+- Résultats : le test de 3.1 échoue sur l'ancien code et passe après ; build, vet, `archlint` et `-tags=integration -p 1 ./...` en code 0 (216 paquets), code sans appelant inchangé, témoins identiques à une fenêtre de date près (`activity_calendar`, changement de jour UTC entre les deux captures). Découvertes au §12 du plan : `OpenReadWriteShared` non gardé, une lecture brute de `match_skill_rank` à revérifier (Q24), le « retenté au prochain cycle » des intensités vraisemblablement faux.
+- Prochaine étape : revue adversariale (un relecteur Sonnet), puis étape 4.
+
 ## [2026-11-11] Plan architecture, étape 2 : interrupteurs — Complété (branche `feat/812-architecture`)
 
 - Décision : retirer les huit interrupteurs en gardant le défaut lu dans le code (pas celui des commentaires), supprimer la réparation automatique des trous de note, faire lire six variables par `internal/config` et poser le garde-rail `archlint` dans le même commit.
