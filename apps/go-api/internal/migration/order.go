@@ -230,6 +230,8 @@ var canonicalOrder = []string{
 	"shared_match_kill_summaries_v1", // shared (resumes par match du journal des morts S0-S2, append-only + vues _latest decidees par la tete)
 	// steps_shared_kv_drop_legacy_indexes.go trie entre steps_shared_kill_events_sans_killfeed.go et steps_shared_match_lives.go.
 	"shared_killer_victim_pairs_drop_legacy_indexes_v1", // shared (index ART herites de killer_victim_pairs retires : la table se reecrit par DELETE + INSERT)
+	// steps_shared_lead_share.go trie entre steps_shared_kv_drop_legacy_indexes.go et steps_shared_match_lives.go.
+	"shared_match_lead_share_v1", // shared (Mainmise : temps en tête du score par camp, append-only + vue _latest par passe)
 	// steps_shared_match_lives.go : init() suit le nom de fichier, donc APRES les trois
 	// steps_shared_kill_events*.go — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
 	"shared_match_lives_v1",             // shared (vies nommées du film + contexte de voisinage d une mort, append-only + vues _latest par passe)

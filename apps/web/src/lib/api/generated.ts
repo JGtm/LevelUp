@@ -8595,6 +8595,16 @@ export interface components {
             /** Format: int64 */
             unpublished: number;
         };
+        LeadSharePeriodPoint: {
+            /** Format: double */
+            lead_share?: number;
+            /** Format: int64 */
+            matches: number;
+            /** Format: int64 */
+            measured_matches: number;
+            month: string;
+            start_date: string;
+        };
         LeaderboardCatalog: {
             playlists: components["schemas"]["LeaderboardCatalogRef"][] | null;
             seasons: components["schemas"]["LeaderboardCatalogRef"][] | null;
@@ -8848,12 +8858,20 @@ export interface components {
             waterVolumes: number;
         };
         MapBreakdownRow: {
+            /** Format: double */
+            historical_lead_share?: number;
+            /** Format: int64 */
+            historical_lead_share_matches?: number;
             /** Format: int64 */
             historical_match_count?: number;
             /** Format: double */
             historical_performance_avg?: number;
             /** Format: double */
             historical_win_rate?: number;
+            /** Format: double */
+            lead_share?: number;
+            /** Format: int64 */
+            lead_share_matches?: number;
             map_ui: string;
             /** Format: int64 */
             match_count: number;
@@ -9822,6 +9840,10 @@ export interface components {
             is_favorite: boolean;
             is_overtime?: boolean;
             is_ranked: boolean;
+            /** Format: int64 */
+            lead_changes?: number;
+            /** Format: double */
+            lead_share?: number;
             map_id?: string;
             map_image_url?: string;
             map_ui: string;
@@ -11944,6 +11966,10 @@ export interface components {
             kills_per_match: number;
             /** Format: double */
             last_skill_rating?: number;
+            /** Format: double */
+            lead_share?: number;
+            /** Format: int64 */
+            lead_share_matches?: number;
             /** Format: int64 */
             losses: number;
             match_series: components["schemas"]["SessionMatchPoint"][] | null;
@@ -12039,6 +12065,10 @@ export interface components {
             kills: number;
             /** Format: double */
             kills_expected?: number;
+            /** Format: int64 */
+            lead_changes?: number;
+            /** Format: double */
+            lead_share?: number;
             /** Format: int64 */
             lobby_size?: number;
             map_name?: string;
@@ -12782,6 +12812,18 @@ export interface components {
         SquadKillMechanics: {
             bars: components["schemas"]["SquadKillMechanicBar"][] | null;
             players: string[] | null;
+        };
+        SquadLeadSharePoint: {
+            /** Format: int64 */
+            lead_changes?: number;
+            /** Format: double */
+            lead_share?: number;
+            map_name?: string;
+            match_id: string;
+            /** Format: int64 */
+            outcome: number;
+            session_label?: string;
+            start_time: string;
         };
         SquadMapHeatmap: {
             cells: components["schemas"]["SquadMapHeatmapCell"][] | null;
@@ -13858,6 +13900,7 @@ export interface components {
             impact_matrix?: components["schemas"]["SquadImpactMatrix"];
             intensity_profile?: components["schemas"]["SquadIntensityProfile"];
             latest_composition_session?: string;
+            lead_share_series?: components["schemas"]["SquadLeadSharePoint"][] | null;
             main_player?: string;
             map_breakdown?: components["schemas"]["MapBreakdownRow"][] | null;
             map_heatmap?: components["schemas"]["SquadMapHeatmap"];
@@ -14044,6 +14087,10 @@ export interface components {
             kills: number;
             /** Format: double */
             kills_expected?: number;
+            /** Format: int64 */
+            lead_changes?: number;
+            /** Format: double */
+            lead_share?: number;
             map_label?: string;
             map_name?: string;
             match_id: string;
@@ -14089,6 +14136,7 @@ export interface components {
             intensity_rows_team?: components["schemas"]["IntensityMatchRow"][] | null;
             intensity_tab: components["schemas"]["TimeseriesIntensityTab"];
             kill_types?: components["schemas"]["TimeseriesKillTypes"];
+            lead_share_by_month?: components["schemas"]["LeadSharePeriodPoint"][] | null;
             lives_near_teammate?: components["schemas"]["TimeseriesLivesNearTeammate"];
             map_breakdown: components["schemas"]["MapBreakdownRow"][] | null;
             match_rows: components["schemas"]["TimeseriesMatchRow"][] | null;

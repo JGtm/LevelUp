@@ -203,6 +203,13 @@ var appendOnlyStateTables = []string{
 	// prise. Ecriture = INSERT pur (persist/vehicle_takes_persister.go, un seul statement) ; aucun
 	// DELETE / ON CONFLICT / INSERT OR REPLACE|IGNORE tolere. Lecture via _latest UNIQUEMENT.
 	"match_vehicle_takes",
+	// match_lead_share (Mainmise, 2026-11-11) : creee directement append-only (id PK seq +
+	// decode_pass + written_at + vue match_lead_share_latest, derniere PASSE ENTIERE par match). Une
+	// passe porte toujours une ligne `match` de couverture : la vue ne peut donc jamais servir les
+	// camps d une passe precedente pour un match re-projete et refuse. Ecriture = INSERT pur
+	// (persist/lead_share_persister.go, un seul statement) ; aucun DELETE / ON CONFLICT / INSERT OR
+	// REPLACE|IGNORE tolere. Lecture via _latest UNIQUEMENT.
+	"match_lead_share",
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors

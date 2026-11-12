@@ -126,6 +126,10 @@ vi.mock('./MatchKDCumulChart', () => ({ MatchKDCumulChart: () => <div data-testi
 vi.mock('./MatchScoreCurveChart', () => ({
   MatchScoreCurveChart: () => <div data-testid="score-curve" />,
 }))
+vi.mock('./MatchScoreDeltaChart', () => ({ MatchScoreDeltaChart: () => <div data-testid="score-delta" /> }))
+vi.mock('./MatchNumbersAdvantageChart', () => ({
+  MatchNumbersAdvantageChart: () => <div data-testid="numbers-advantage" />,
+}))
 vi.mock('./MatchTugOfWarChart', () => ({ MatchTugOfWarChart: () => <div data-testid="tug-of-war" /> }))
 vi.mock('./MatchCadenceChart', () => ({ MatchCadenceChart: () => <div data-testid="cadence" /> }))
 vi.mock('@/features/engagement/EngagementMatchSection', () => ({
@@ -322,7 +326,7 @@ describe('MatchViewPage — contenu par onglet', () => {
     renderWithProviders(<MatchViewPage />)
 
     expect(screen.getByText(SECTION_FLOW)).toBeInTheDocument()
-    for (const id of ['impact-badges', 'kd-cumul', 'score-curve', 'tug-of-war', 'cadence', 'engagement']) {
+    for (const id of ['impact-badges', 'kd-cumul', 'score-curve', 'score-delta', 'numbers-advantage', 'tug-of-war', 'cadence', 'engagement']) {
       expect(screen.getByTestId(id)).toBeInTheDocument()
     }
     // Les blocs d'« Armes et terrain » ne sont pas sur cet onglet.

@@ -195,6 +195,7 @@ type MatchViewService struct {
 	semantic        games.TitleSemanticAdapter
 	emprise         matchViewEmpriseDeps     // blocs de l'Emprise (match_view_emprise.go)
 	analysisPending *AnalysisPendingResolver // signal analysis_pending de l'en-tête (analysis_pending.go)
+	leadShareRepo   port.LeadShareRepository // Mainmise de l'en-tête (match_view_lead_share.go) ; nil = non mesurée
 }
 
 // NewMatchViewService crée un MatchViewService.

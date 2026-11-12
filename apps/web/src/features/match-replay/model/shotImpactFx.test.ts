@@ -63,6 +63,12 @@ describe('buildShotImpactFx', () => {
     expect(fx[1]).toMatchObject({ frame: 29, x: 8, y: 0, tint: 'plasma_hot', impactStem: 'impact_wraith_mortar' })
   })
 
+  it('chaque explosion porte l’auteur de son tir : le slot et l’image du tir (Seul, Masquer)', () => {
+    const fx = buildShotImpactFx(doc())
+    expect(fx[0].owner).toEqual({ slot: 1, frame: 10 })
+    expect(fx[fx.length - 1].owner).toEqual({ slot: 3, frame: 20 })
+  })
+
   it('le germe suit la même formule que les grenades', () => {
     expect(buildShotImpactFx(doc())[0]?.seed).toBe(explosionSeedOf(15))
   })

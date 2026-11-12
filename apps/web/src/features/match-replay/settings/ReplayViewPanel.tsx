@@ -1,38 +1,29 @@
 /**
- * ReplaySettingsDrawer — LE TIROIR DE RÉGLAGES du rejeu (décision utilisateur du 16/08) :
- * lecture, calques, effets d'événement, son (+ filtre par catégorie), vitesse. Regroupe ce qui
- * vivait éparpillé dans la barre du canvas — AUCUN réglage n'est réinventé ici, chacun garde sa
- * règle et sa persistance (lecture/calques/effets/vitesse : useReplaySettings ; son et
- * catégories : useReplaySound).
+ * ReplayViewPanel — LE PANNEAU DE LA VUE du rejeu : les préréglages de calques d'abord, puis les
+ * calques un par un, puis les effets d'événement, la carte de chaleur, la couleur des points et
+ * le filtre de son. Il REMPLACE le tiroir de réglages (plan « maquettes du rejeu », lot 3,
+ * décision du 2026-11-09) : AUCUN réglage n'est réinventé ni perdu, chacun garde sa règle et sa
+ * persistance (calques, effets, chaleur, couleur : useReplaySettings ; son et catégories :
+ * useReplaySound ; vue : useReplayViewMenu).
  *
- * PANNEAU EN SURIMPRESSION, PAS UNE MODALE (retour de planche du 16/08 : « je vois plus un
- * panneau par dessus »). Il se pose SUR le rejeu — le canvas ne se retaille donc pas à
- * l'ouverture, et le rendu ne saute pas. Ce qui reste d'une modale : on en sort par Échap, par
- * le bouton, ou en cliquant dehors, et le focus entre au panneau à l'ouverture. Ce qui n'en est
- * pas : ni fond assombri, ni piège de focus, ni lecture suspendue — le rejeu tourne derrière.
+ * PANNEAU EN SURIMPRESSION, PAS UNE MODALE. Il se pose SUR le rejeu — le canvas ne se retaille
+ * donc pas à l'ouverture, et le rendu ne saute pas. Ce qui reste d'une modale : on en sort par
+ * Échap, par le bouton, ou en cliquant dehors, et le focus entre au panneau à l'ouverture. Ce
+ * qui n'en est pas : ni fond assombri, ni piège de focus, ni lecture suspendue — le rejeu
+ * tourne derrière.
  *
- * IL A QUITTÉ LE CADRE LE 2026-09-02 (demande utilisateur : « est-ce que ce tiroir sort du
- * cadre ? […] si la taille de l'écran le permet, c'est bien qu'il puisse s'afficher au-dessus
- * du killfeed ou des fiches »). Il vivait en `absolute inset-y-0 right-0` DANS la carte du
- * rejeu, que son `overflow-hidden` découpait au bord : ni débordement sur la colonne de droite,
- * ni largeur supérieure à ce que la carte lui laissait. Il se rend désormais en PORTAIL sur
- * `body`, en position fixe, centré sur le bouton qui l'ouvre (`useAnchoredPanel`) — aucun
- * `z-index` ne fait sortir un enfant d'un ancêtre en `overflow-hidden`, il faut quitter le
- * sous-arbre. C'est ce qui a rendu la largeur de 416 px possible, donc les calques sur deux
- * colonnes, qui butaient depuis le 2026-08-29 sur les 264 px utiles de l'ancien tiroir.
+ * IL SORT DU CADRE : la carte porte `overflow-hidden`, que ne franchit aucun `z-index`. Il se
+ * rend en PORTAIL sur `body`, en position fixe, sous le bouton « Vue » qui l'ouvre
+ * (`useAnchoredPanel`), et défile EN INTERNE quand l'écran est bas : il ne couvre de la carte que
+ * ce qu'il lui faut.
  *
- * DES INTERRUPTEURS, PLUS DES BOUTONS (retour utilisateur du 2026-08-29 : « pour les réglages
- * je préfère un toggle plutôt que des boutons comme aujourd'hui »). Tout ce qui est un OUI/NON
- * passe par `SettingsToggle`, devenu un vrai interrupteur `role="switch"` ; les CHOIX EXCLUSIFS
- * (lecture et portée de la carte de chaleur, couleur des points) gardent le bouton pressé sous
- * le nom `SettingsChoice` — la nuance et sa raison sont dans `ReplaySettingsToggle.tsx`.
+ * DES INTERRUPTEURS, PLUS DES BOUTONS pour tout OUI/NON (`SettingsToggle`, `role="switch"`) ; les
+ * CHOIX EXCLUSIFS (préréglages, lecture et portée de la chaleur, couleur des points) gardent le
+ * bouton pressé ou le segmenté — la nuance et sa raison sont dans `ReplaySettingsToggle.tsx`.
  *
- * DÉCOUPÉ EN SECTIONS (Playback/Layers/Effects/Heatmap/Colors/Sound), chacune sa propre
- * fonction : un seul corps de composant pour toutes dépassait le seuil de lisibilité
- * (CLAUDE.md n°5, fonction ≤ 80 lignes) sans y gagner en clarté — des blocs indépendants s'y
- * prêtent mieux. Les deux plus lourdes vivent dans leur propre fichier (`ReplayHeatmapSection`
- * le 2026-08-18, `ReplaySettingsLayers` le 2026-08-29) : c'est ce qui tient ce fichier sous
- * les 500 lignes du dépôt.
+ * DÉCOUPÉ EN SECTIONS, chacune sa propre fonction (CLAUDE.md n°5, fonction ≤ 80 lignes). Les
+ * plus lourdes vivent dans leur fichier : `ReplayViewPresets`, `ReplayHeatmapSection`,
+ * `ReplaySettingsLayers`.
  */
 import { useEffect, useRef, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
@@ -42,19 +33,21 @@ import { useAnchoredPanel } from './useAnchoredPanel'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { HeatmapSection, type ReplayHeatmapControls } from '../ui/ReplayHeatmapSection'
 import { LayersSection } from './ReplaySettingsLayers'
+import { ViewPresetsSection } from './ReplayViewPresets'
+import type { ViewId, ViewPresetId } from './viewPresetLogic'
 import { SOUND_CATEGORIES } from '../sound/replaySound'
 import { MARKER_COLORS_MODES, type MarkerColorsMode } from './useReplaySettings'
 import type { ReplaySound } from '../sound/useReplaySound'
 
 /**
- * LA LARGEUR DU PANNEAU, en px et pas en classe : le hook de placement en a besoin pour le
- * centrer sur son declencheur, et deux sources pour une meme largeur divergeraient au premier
- * ajustement. 416 px moins les marges internes laissent ~190 px par colonne de calques — c est
+ * LA LARGEUR DU PANNEAU, en px et pas en classe : le hook de placement en a besoin pour aligner
+ * son bord droit sur celui du bouton, et deux sources pour une meme largeur divergeraient au
+ * premier ajustement. 416 px moins les marges internes laissent ~190 px par colonne de calques — c est
  * ce qui rend enfin possible la grille a deux colonnes (cf. l en-tete de LayerGroup).
  */
 const PANEL_WIDTH = 416
 
-/** Réexportés : les sections ont déménagé, la surface d'appel du tiroir n'a pas bougé. */
+/** Réexportés : les sections ont déménagé, la surface d'appel du panneau n'a pas bougé. */
 export type { ReplayHeatmapControls } from '../ui/ReplayHeatmapSection'
 export type {
   ReplayBombCarrierControls,
@@ -80,15 +73,11 @@ import type {
   ReplayWeaponPadControls,
 } from './ReplaySettingsLayers'
 
-interface ReplaySettingsDrawerProps {
+interface ReplayViewPanelProps {
   locale: ReplayLocale
   onClose: () => void
-  /**
-   * LA LECTURE DÉMARRE-T-ELLE SEULE à l'ouverture du rejeu (demande utilisateur du 2026-08-29,
-   * point 22) ? ÉTEINT par défaut. Réglage persisté comme les autres, MAIS il ne commande pas
-   * le lecteur ouvert : il décide de son état de départ, lu une fois au montage (cf.
-   * `useReplayPlayback`).
-   */
+  /** La vue active (déduite de l'état des calques) et le choix d'un préréglage. */
+  view: { active: ViewId; onSelect: (id: ViewPresetId) => void }
   showAim: boolean
   onToggleAim: () => void
   showZones: boolean
@@ -123,7 +112,7 @@ interface ReplaySettingsDrawerProps {
   onToggleShotFx: () => void
   showKillFx: boolean
   onToggleKillFx: () => void
-  /** Le tiroir ne garde du son que le FILTRE PAR CATÉGORIE : l'interrupteur et le volume
+  /** Le panneau ne garde du son que le FILTRE PAR CATÉGORIE : l'interrupteur et le volume
    *  vivent à la barre de lecture depuis le 2026-08-24 (ReplayTransport). */
   sound: ReplaySound
   /** Couleur des points des joueurs : par équipe (défaut) ou distincte par joueur. */
@@ -219,7 +208,7 @@ function ColorsSection({
 }
 
 /**
- * Le tiroir ne garde du son que le FILTRE PAR CATÉGORIE (l'interrupteur et le volume sont à
+ * Le panneau ne garde du son que le FILTRE PAR CATÉGORIE (l'interrupteur et le volume sont à
  * la barre de lecture, 2026-08-24). Même règle que partout : pas de commande quand il n'y a
  * rien à commander — un match sans un seul son ne montre pas de filtre.
  *
@@ -249,7 +238,7 @@ function SoundSection({ locale, sound }: { locale: ReplayLocale; sound: ReplaySo
 }
 
 /**
- * useDrawerDismiss — LES TROIS SORTIES du panneau, et l'entrée du focus.
+ * usePanelDismiss — LES TROIS SORTIES du panneau, et l'entrée du focus.
  *
  *  - ÉCHAP, comme tout panneau du dépôt ;
  *  - CLIC DEHORS, écouté au document plutôt que par un voile transparent posé sur la page :
@@ -261,7 +250,7 @@ function SoundSection({ locale, sound }: { locale: ReplayLocale; sound: ReplaySo
  * ET LE FOCUS ENTRE À L'OUVERTURE : le panneau se pose SUR la carte ; sans cela un lecteur
  * au clavier resterait derrière lui, à parcourir des commandes qu'il ne voit plus.
  */
-function useDrawerDismiss(
+function usePanelDismiss(
   panelRef: RefObject<HTMLDivElement | null>,
   triggerRef: RefObject<HTMLElement | null> | undefined,
   onClose: () => void,
@@ -287,9 +276,10 @@ function useDrawerDismiss(
   }, [panelRef, triggerRef, onClose])
 }
 
-export function ReplaySettingsDrawer({
+export function ReplayViewPanel({
   locale,
   onClose,
+  view,
   showAim,
   onToggleAim,
   showZones,
@@ -315,21 +305,16 @@ export function ReplaySettingsDrawer({
   markerColors,
   onSetMarkerColors,
   triggerRef,
-}: ReplaySettingsDrawerProps) {
+}: ReplayViewPanelProps) {
   const t = REPLAY_TEXT[locale]
   // `tabIndex={-1}` rend le panneau focusable sans l'insérer dans l'ordre de tabulation.
   const panelRef = useRef<HTMLDivElement>(null)
-  useDrawerDismiss(panelRef, triggerRef, onClose)
+  usePanelDismiss(panelRef, triggerRef, onClose)
   const pos = useAnchoredPanel(triggerRef, PANEL_WIDTH)
 
-  // IL SORT DU CADRE DEPUIS LE 2026-09-02 (demande utilisateur). Il vivait en
-  // `absolute inset-y-0 right-0` DANS la carte du rejeu, que son `overflow-hidden` découpait au
-  // bord : il ne pouvait ni déborder sur la colonne de droite, ni être plus large que ce que la
-  // carte lui laissait — et c'est cette largeur qui interdisait les calques sur deux colonnes.
-  //
-  // LE PORTAIL EST LA CONDITION, PAS UN DÉTAIL D'IMPLÉMENTATION : aucune valeur de `z-index` ne
-  // fait sortir un enfant d'un ancêtre en `overflow-hidden`. Il faut quitter le sous-arbre.
-  //
+  // LE PORTAIL EST LA CONDITION, PAS UN DÉTAIL D'IMPLÉMENTATION : la carte porte
+  // `overflow-hidden` et aucune valeur de `z-index` ne fait sortir un enfant d'un ancêtre qui
+  // découpe. Il faut quitter le sous-arbre.
   return createPortal(
     <div
       ref={panelRef}
@@ -337,22 +322,23 @@ export function ReplaySettingsDrawer({
       role="region"
       // UNE COUCHE QU'ÉCHAP FERME AVANT LE MODE PLEIN ÉCRAN (cf. useReplayFullscreen).
       data-replay-escape-layer=""
-      aria-label={t.settingsButton}
-      style={{ left: pos.left, bottom: pos.bottom, width: PANEL_WIDTH, maxHeight: pos.maxHeight }}
-      className="fixed z-50 flex flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-card px-3 py-3 text-sm shadow-xl outline-none"
+      aria-label={t.viewButton}
+      style={{ left: pos.left, top: pos.top, width: PANEL_WIDTH, maxHeight: pos.maxHeight }}
+      className="fixed z-50 flex max-w-[calc(100vw-1rem)] flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-card px-3 py-3 text-sm shadow-xl outline-none"
     >
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">{t.settingsButton}</h2>
+        <h2 className="text-sm font-semibold">{t.viewButton}</h2>
         <button
           type="button"
           onClick={onClose}
           className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          aria-label={t.settingsClose}
+          aria-label={t.viewClose}
         >
           ×
         </button>
       </div>
 
+      <ViewPresetsSection locale={locale} active={view.active} onSelect={view.onSelect} />
       <LayersSection
         locale={locale}
         showAim={showAim}

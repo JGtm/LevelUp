@@ -41,7 +41,10 @@ describe('garde-rail : la hauteur des fiches ne dépend plus de celle de la cart
     // Sans le second terme, une colonne courte donnerait tout aux fiches et rien au fil ;
     // sans le premier, un BTB à 24 fiches remplirait toute la colonne.
     expect(src).toContain('xl:max-h-[30rem]')
-    expect(src).toContain('xl:min-h-[12rem]')
+    // Le plancher du fil vit dans la CELLULE DU FIL (`ReplayFeedOrPanel`, lot 4 du plan « maquettes du
+    // rejeu » : le panneau de joueur y prend la place du fil), que la route monte à sa place.
+    expect(src).toContain('<ReplayFeedOrPanel')
+    expect(readFileSync(resolve(__dirname, 'ReplayFeedOrPanel.tsx'), 'utf8')).toContain('xl:min-h-[12rem]')
   })
 
   // LA LEÇON DU 2026-09-02, ET ELLE A COÛTÉ UNE LIVRAISON POUR RIEN. La première version de ce

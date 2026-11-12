@@ -1,5 +1,6 @@
 /** Textes du rejeu 2D en anglais (contrat : `i18nContract.ts`). */
 import type { ReplayText } from './i18nContract'
+import { EN_PLAYER_PANEL } from './playerPanel.i18n'
 
 export const EN_TEXT = {
   title: '2D replay',
@@ -36,9 +37,43 @@ export const EN_TEXT = {
   speedNormal: 'normal',
   speedMuted: 'sound off',
   keySpace: 'Space',
-  killFeedTitle: 'Kills',
+  feedFilterLabel: {
+    tout: 'All',
+    kills: 'Kills',
+    objectives: 'Objectives',
+    pickups: 'Weapons and power-ups',
+    vehicles: 'Vehicles',
+    medals: 'Medals',
+    assists: 'Assists',
+  },
+  feedFilterMenuLabel: 'Filter the feed',
+  feedFilterMoreHeading: 'Also available',
   killFeedEmpty: 'Nothing at this point of the match.',
+  killFeedEmptyHint: 'This filter has lines later in the match: they appear as the replay plays.',
+  feedEmptyMatch: 'No entry for this match',
+  feedEmptyMatchHint: 'This match has no line for this filter.',
+  feedObjectiveAction: {
+    flag_captures: 'captured the flag',
+    flag_capture_assists: 'helped capture the flag',
+    flag_grabs: 'grabbed the flag',
+    flag_secures: 'secured the flag',
+    flag_returns: 'returned the flag',
+    flag_steals: 'stole the flag',
+    flag_carriers_killed: 'killed a flag carrier',
+    zone_captures: 'captured a stronghold',
+    zone_secures: 'secured a stronghold',
+    vip_selected: 'was selected as VIP',
+    bomb_detonations: 'detonated the bomb',
+  },
+  feedPickupAction: (name) => `picked up: ${name}`,
+  feedVehicleAction: (name) => `boarded: ${name}`,
+  feedGroundPickupAction: (name) => `picked up off the ground: ${name}`,
+  feedVehicleDestroyedBy: (name) => `destroyed: ${name}`,
+  feedVehicleDestroyed: (name) => `${name} destroyed`,
+  feedVehicleOccupant: (who) => `(${who} aboard)`,
   killFeedUnknownWeapon: 'Unidentified weapon',
+  killFeedFocusHint: 'Go to this moment and highlight the killer and the victim on the map',
+  playerPanel: EN_PLAYER_PANEL,
   killFeedNoAssistHint:
     'Death without an assist: the death carries its event in the film, and it names no one.',
   killFeedAssistHint:
@@ -84,8 +119,23 @@ export const EN_TEXT = {
   stopRecording: 'Stop recording',
   recordHint:
     'Recording films the replay as it plays: changing speed or moving the cursor shows up in the file. Starting resumes playback if it is paused; pausing, or letting the film end, stops the recording and downloads the clip.',
-  settingsButton: 'Settings',
-  settingsClose: 'Close settings',
+  viewButton: 'View',
+  viewClose: 'Close view',
+  viewPresetsTitle: 'Presets',
+  viewPreset: {
+    complet: 'Full',
+    combat: 'Combat',
+    deplacements: 'Movement',
+    objectif: 'Objective',
+    personnalise: 'Custom',
+  },
+  viewPresetHint: {
+    complet: 'All layers',
+    combat: 'Aim, trails, vehicles, objectives',
+    deplacements: 'Trails and zones',
+    objectif: 'Trails, zones, objectives',
+  },
+  viewCustomNote: 'The layers match none of the presets.',
   fullscreenEnter: 'Full screen',
   fullscreenExit: 'Exit full screen',
   autoPlay: 'Auto-play',

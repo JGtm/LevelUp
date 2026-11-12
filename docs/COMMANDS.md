@@ -302,6 +302,18 @@ go run ./cmd/levelup backfill-vehicle-takes [--force] [--match ID[,ID...]] [--li
 #    against the registry like backfill-killsource; unknown / ambiguous / too short = refused,
 #    nothing written.
 
+# 4 ter bis. LEAD SHARE ("Mainmise": the share of the played time a side is alone in the lead of
+#    the score, and the number of lead changes) -> match_lead_share (append-only). Same motif as
+#    (4 ter): it reads the artifacts AS THEY ARE, no decoding, NO RE-COOK, one artifact at a
+#    time; the only database read is the match's mode and duration in the registry. A match the
+#    measure refuses (few-points mode such as flag/hill/bomb, score not covered, clock without
+#    origin, ...) is written as "not measured" with its reason, never as zero. RESUME KEYS ON
+#    PRESENCE, so AFTER A RE-BAKE (or a rule change) --force IS REQUIRED. SERVER STOPPED.
+#    --dry-run opens the shared database READ-ONLY (nothing written, no migration, the table
+#    need not exist): one line per match and a tally with the measured rate and refusals by reason.
+go run ./cmd/levelup backfill-lead-share --dry-run [--limit N]
+go run ./cmd/levelup backfill-lead-share [--force] [--match ID[,ID...]] [--limit N] [--title S]
+
 # 4 quater. Named zones (callouts) of the Forge maps played that have none -> the GENERATED
 #    catalogue reference/generated/map_callouts.json (git-ignored; the committed
 #    map_callouts.json is never written). Each map's variant (.mvar) is read from the cache

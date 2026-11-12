@@ -2,7 +2,7 @@
  * ReplaySettingsToggle — LES DEUX COMMANDES du tiroir de reglages, et la marque « (i) » de
  * reserve de mesure qui les accompagne parfois.
  *
- * EXTRAIT DE `ReplaySettingsDrawer.tsx` LE 2026-08-18 (lot R2-V) : le tiroir a franchi le seuil
+ * EXTRAIT DE `ReplaySettingsDrawer.tsx` (devenu `ReplayViewPanel.tsx`) LE 2026-08-18 (lot R2-V) : le tiroir a franchi le seuil
  * de taille du depot (CLAUDE.md n°5) en recevant la bascule de la trainee et la portee de la
  * carte de chaleur. La decoupe tombe sur une frontiere nette — ce fichier ne connait AUCUN
  * reglage du rejeu, il ne sait que dessiner un interrupteur ; le tiroir, lui, ne sait plus
@@ -184,12 +184,17 @@ export function SettingsSegments<T extends string>({
 }
 
 export function SettingsChoice({
-  label, pressed, onToggle, hint,
+  label, pressed, onToggle, hint, description,
 }: {
   label: string
   pressed: boolean
   onToggle: () => void
   hint?: string
+  /**
+   * Une seconde ligne sous le libellé (les préréglages de vue disent ce qu'ils montrent) : la
+   * commande passe alors sur deux lignes, le libellé reste le nom accessible.
+   */
+  description?: string
 }) {
   return (
     <Button
@@ -197,11 +202,21 @@ export function SettingsChoice({
       variant={pressed ? 'default' : 'ghost'}
       size="sm"
       onClick={onToggle}
-      className="h-7 justify-start px-2 text-xs"
+      className={
+        description === undefined
+          ? 'h-7 justify-start px-2 text-xs'
+          : 'h-auto flex-col items-start justify-start gap-0 px-2 py-1.5 text-left text-xs'
+      }
       title={hint}
       aria-pressed={pressed}
+      aria-label={description === undefined ? undefined : label}
     >
       {label}
+      {description !== undefined && (
+        <span className="block whitespace-normal text-[11px] font-normal opacity-80">
+          {description}
+        </span>
+      )}
     </Button>
   )
 }

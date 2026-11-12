@@ -29,7 +29,7 @@ import { coversPlayedArea } from '../layers/mapBackground'
 import { frameBounds, sceneBounds, usefulHeight, visibleBounds } from '../../../lib/replay/replayLogic'
 import { type CanvasView } from '../model/replayView'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { lockedZoom, useReplayZoom, type ReplayZoom } from './useReplayZoom'
+import { lockedZoom, useReplayZoom, withManualMove, type ReplayZoom } from './useReplayZoom'
 import { useExportLayout } from '../export/exportLayoutStore'
 
 // LA HAUTEUR DE DESSIN N'EST PLUS FIXE (2026-09-02) : elle est le moindre de ce que l'écran
@@ -82,6 +82,12 @@ export interface ReplayViewOptions {
    * quelle hauteur on n'ajoute plus que du vide.
    */
   freeHeight: number
+  /**
+   * Appelé à chaque geste MANUEL de cadrage (croix, molette, clavier, glisser, retour) : c'est ce
+   * qui arrête « Suivre » (panneau de joueur). Absent = aucun écouteur. Le cadrage programmé
+   * (`zoom.focusOn`) ne l'appelle pas.
+   */
+  onManualMove?: () => void
 }
 
 /** Le cadrage complet, dans l'ordre où il se décide. */
@@ -119,6 +125,7 @@ export function useReplayView({
   background,
   width,
   freeHeight,
+  onManualMove,
 }: ReplayViewOptions): ReplayView {
   // LE FOND DE CARTE PREND LA PLACE DU SOL RECONSTRUIT, il ne s'y ajoute pas : l'image
   // porte la carte telle que le jeu la dessine, la trame d'altitudes n'en est que
@@ -189,7 +196,8 @@ export function useReplayView({
   // cadrage « carte entière » rend la fenêtre à 1x SANS toucher à l'état du zoom — l'utilisateur
   // le retrouve tel quel à la fin. « Cadrage actuel » garde palier et centre.
   const exporting = exportLayout !== null
-  const zoom = exporting ? lockedZoom(userZoom) : userZoom
+  const gestureZoom = exporting ? lockedZoom(userZoom) : userZoom
+  const zoom = onManualMove ? withManualMove(gestureZoom, onManualMove) : gestureZoom
   const shownLevel = exportLayout?.framing === 'whole' ? 1 : zoom.level
   const viewBounds = useMemo(
     () => visibleBounds(frame, shownLevel, zoom.center.x, zoom.center.y),

@@ -42,6 +42,8 @@ export interface AbilityFxHookInput {
   grappleInk: string
   /** Couleur d'équipe de la vie, à une image donnée — le dash porte celle de son porteur. */
   colorOfSlot: (slot: number, frame: number) => string | null
+  /** Seul et Masquer (panneau de joueur) : le sillage du propulseur part avec son porteur. Absent = tout. */
+  shownAtSlot?: (slot: number, frame: number) => boolean
   reducedMotion: boolean
 }
 
@@ -69,6 +71,7 @@ export function useReplayAbilityFx({
   view,
   grappleInk,
   colorOfSlot,
+  shownAtSlot,
   reducedMotion,
 }: AbilityFxHookInput): ReplayAbilityFx {
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
@@ -94,7 +97,7 @@ export function useReplayAbilityFx({
       // déplacement lu autour de l'instant publié.
       if (dashFx.length > 0) {
         drawThrusterDashLayer(ctx, dashFx, view, { frame, frameMs, k, reducedMotion }, {
-          colorOfSlot,
+          colorOfSlot, shownAtSlot,
         })
       }
       // LA POUSSÉE DU RÉPULSEUR : un geste sur des joueurs, pas un objet posé — même calque.
@@ -104,7 +107,7 @@ export function useReplayAbilityFx({
         })
       }
     },
-    [grappleFx, dashFx, knockbackFx, view, grappleInk, frameMs, reducedMotion, colorOfSlot],
+    [grappleFx, dashFx, knockbackFx, view, grappleInk, frameMs, reducedMotion, colorOfSlot, shownAtSlot],
   )
 
   return { id: 'gestes-capacite', paint }

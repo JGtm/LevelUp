@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Maquettes du rejeu</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&amp;display=swap">
+<style>body{margin:0;background:#050505}</style>
+</helmet>
+<div style="min-height: 100vh; background: #050505; color: #fafafa; font-family: Roboto, system-ui, sans-serif; font-size: 14px">
+  <div style="max-width: 1320px; margin: 0 auto; padding: 16px 20px 40px">
+    <h1 style="margin: 0 0 12px; font-size: 20px; font-weight: 900">Maquettes du rejeu</h1>
+
+    <div role="group" aria-label="Sujets" style="display: flex; flex-wrap: wrap; gap: 6px">
+      <sc-for list="{{subjects}}" as="s" hint-placeholder-count="6">
+        <button type="button" onClick="{{s.pick}}" aria-pressed="{{s.on}}" style="height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid {{s.bd}}; background: {{s.bg}}; color: {{s.fg}}; font: inherit; font-weight: 700; cursor: pointer">{{s.label}}</button>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 14px">
+      <sc-for list="{{options}}" as="o" hint-placeholder-count="2">
+        <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.on}}" style="height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid {{o.bd}}; background: {{o.bg}}; color: {{o.fg}}; font: inherit; cursor: pointer">{{o.label}}</button>
+      </sc-for>
+      <div style="margin-left: auto; display: flex; gap: 6px">
+        <button type="button" onClick="{{prev}}" style="height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #333; background: #141414; color: #fafafa; font: inherit; cursor: pointer">Précédent</button>
+        <button type="button" onClick="{{next}}" style="height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #333; background: #141414; color: #fafafa; font: inherit; cursor: pointer">Suivant</button>
+      </div>
+    </div>
+
+    <p style="margin: 12px 0 14px; color: #d4d4d4">{{hint}}</p>
+
+    <div style="overflow-x: auto; border: 1px solid #262626; border-radius: 8px">
+      <sc-if value="{{show.base}}" hint-placeholder-val="{{ false }}"><dc-import name="ReplayPage" hint-size="1280px,880px"></dc-import></sc-if>
+      <sc-if value="{{show.k2}}" hint-placeholder-val="{{ true }}"><dc-import name="ReplayPage" kill-variant="projecteur" hint-size="1280px,880px"></dc-import></sc-if>
+      <sc-if value="{{show.p3}}" hint-placeholder-val="{{ false }}"><dc-import name="ReplayPage" preset-variant="auto" hint-size="1280px,880px"></dc-import></sc-if>
+      <sc-if value="{{show.f3}}" hint-placeholder-val="{{ false }}"><dc-import name="ReplayPage" feed-variant="bandeaux" hint-size="1280px,880px"></dc-import></sc-if>
+      <sc-if value="{{show.s1}}" hint-placeholder-val="{{ false }}"><dc-import name="ReplayPage" fiche-variant="dock" hint-size="1280px,880px"></dc-import></sc-if>
+      <sc-if value="{{show.c0}}" hint-placeholder-val="{{ false }}"><dc-import name="ChronoPage" variant="base" hint-size="1280px,1040px"></dc-import></sc-if>
+      <sc-if value="{{show.c2}}" hint-placeholder-val="{{ false }}"><dc-import name="ChronoPage" variant="superiorite" hint-size="1280px,1040px"></dc-import></sc-if>
+      <sc-if value="{{show.c4}}" hint-placeholder-val="{{ false }}"><dc-import name="ChronoPage" variant="delta" hint-size="1280px,1040px"></dc-import></sc-if>
+      <sc-if value="{{show.c3}}" hint-placeholder-val="{{ false }}"><dc-import name="ChronoPage" variant="courses" hint-size="1280px,1040px"></dc-import></sc-if>
+      <sc-if value="{{show.cr}}" hint-placeholder-val="{{ false }}"><dc-import name="ChronoReel" hint-size="1280px,880px"></dc-import></sc-if>
+      <sc-if value="{{show.m0}}" hint-placeholder-val="{{ false }}"><dc-import name="MainmisePage" variant="match" hint-size="1280px,800px"></dc-import></sc-if>
+      <sc-if value="{{show.m1}}" hint-placeholder-val="{{ false }}"><dc-import name="MainmisePage" variant="sessions" hint-size="1280px,800px"></dc-import></sc-if>
+      <sc-if value="{{show.m2}}" hint-placeholder-val="{{ false }}"><dc-import name="MainmisePage" variant="compare" hint-size="1280px,800px"></dc-import></sc-if>
+      <sc-if value="{{show.m3}}" hint-placeholder-val="{{ false }}"><dc-import name="MainmisePage" variant="timeseries" hint-size="1280px,800px"></dc-import></sc-if>
+      <sc-if value="{{show.m4}}" hint-placeholder-val="{{ false }}"><dc-import name="MainmisePage" variant="squad" hint-size="1280px,800px"></dc-import></sc-if>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1240}}'>
+const SUBJECTS = [
+  { label: "1 · Clic sur un kill", hint: "Clique sur une ligne du fil : les équerres se verrouillent et les noms changent de forme. Le bouton Lecture retire tout.", base: "base", opts: [["k2", "Projecteur, version 2"]] },
+  { label: "2 · Réglages de vue", hint: "Clique sur un préréglage, puis sur un calque : la vue passe en Personnalisé. Le bouton Vue ouvre et ferme le panneau.", base: "base", opts: [["p3", "Bouton Vue, version 2"]] },
+  { label: "3 · Fil d'événements", hint: "Ouvre le titre du fil, à droite : Médailles et Assistances sont ajoutées.", base: "base", opts: [["f3", "Bandeaux, version 2"]] },
+  { label: "4 · Fiche de joueur", hint: "Clique sur une fiche à droite, puis sur Suivre pour voir ce que ça ferait sur la carte.", base: "base", opts: [["s1", "Panneau, version 2"]] },
+  { label: "5 · Graphiques", hint: "Survole les graphiques. « Trois vrais matchs » montre le score, l'écart et la supériorité alignés sur le même temps, pour juger la redondance.", base: "c0", opts: [["cr", "Trois vrais matchs, tout aligné"], ["c2", "Supériorité numérique, graphique seul"], ["c4", "Écart de score (le delta)"], ["c3", "Courses de drapeau"]] },
+  { label: "6 · Mainmise", hint: "La part du match passée en tête du score, sur la vue du match, les trois pages et la comparaison de sessions.", base: null, opts: [["m0", "Vue du match"], ["m1", "Sessions"], ["m2", "Comparaison de sessions"], ["m3", "Timeseries"], ["m4", "Escouade"]] }
+];
+const KEYS = ["base", "k2", "p3", "f3", "s1", "c0", "cr", "c2", "c4", "c3", "m0", "m1", "m2", "m3", "m4"];
+class Component extends DCLogic {
+  state = { subject: 0, option: 1 };
+  renderVals() {
+    const { subject, option } = this.state;
+    const entriesOf = (s) => (s.base ? [[s.base, "Aujourd'hui"], ...s.opts] : s.opts);
+    const sub = SUBJECTS[subject];
+    const entries = entriesOf(sub);
+    const current = entries[Math.min(option, entries.length - 1)][0];
+    const show = {};
+    KEYS.forEach((k) => { show[k] = k === current; });
+    const flat = [];
+    SUBJECTS.forEach((s, si) => { entriesOf(s).forEach((_, oi) => flat.push([si, oi])); });
+    const pos = flat.findIndex(([si, oi]) => si === subject && oi === option);
+    const go = (d) => () => { const [si, oi] = flat[(pos + d + flat.length) % flat.length]; this.setState({ subject: si, option: oi }); };
+    return {
+      subjects: SUBJECTS.map((s, i) => ({ label: s.label, on: i === subject, bg: i === subject ? "#efefef" : "#141414", fg: i === subject ? "#0a0a0a" : "#fafafa", bd: i === subject ? "#efefef" : "#333", pick: () => this.setState({ subject: i, option: s.base ? 1 : 0 }) })),
+      options: entries.map(([, label], i) => ({ label, on: i === option, bg: i === option ? "#26303f" : "transparent", fg: "#fafafa", bd: i === option ? "#7fb3ff" : "#333", pick: () => this.setState({ option: i }) })),
+      hint: sub.base && option === 0 ? "L'écran tel qu'il est aujourd'hui, avec des données fictives." : sub.hint,
+      show, prev: go(-1), next: go(1)
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -23,7 +23,9 @@ import { DetailSection } from '@/components/ui/detail-section'
 import { MatchCadenceChart } from './MatchCadenceChart'
 import { MatchImpactBadgesBar } from './MatchImpactBadgesBar'
 import { MatchKDCumulChart } from './MatchKDCumulChart'
+import { MatchNumbersAdvantageChart } from './MatchNumbersAdvantageChart'
 import { MatchScoreCurveChart } from './MatchScoreCurveChart'
+import { MatchScoreDeltaChart } from './MatchScoreDeltaChart'
 import { MatchScoreEventsChart } from './MatchScoreEventsChart'
 import { MatchTugOfWarChart } from './MatchTugOfWarChart'
 import type { MatchViewText } from './i18n'
@@ -55,6 +57,9 @@ interface Props {
    * −24 à +4,5 s (registre 2026-09-05, P0-7). La conversion vit dans `lib/replay/matchClock`.
    */
   t0Ms?: number
+  /** `header.lead_share` / `header.lead_changes` — la Mainmise, rappelée sous « Écart de score ». */
+  leadShare?: number
+  leadChanges?: number
   t: MatchViewText
 }
 
@@ -71,6 +76,8 @@ export function MatchViewTabChronology({
   cadence,
   scoreTimelineKind,
   t0Ms,
+  leadShare,
+  leadChanges,
   t,
 }: Props) {
   return (
@@ -130,6 +137,32 @@ export function MatchViewTabChronology({
           t={t}
         />
       )}
+
+      {/* L'ÉCART DE SCORE puis la SUPÉRIORITÉ NUMÉRIQUE : deux angles de lecture du même film,
+          pleine largeur, sous le score et sur le même axe des temps (`t0Ms`). L'écart ne
+          consulte PAS `scoreTimelineKind` : il vit du score du rejeu dans tous les modes, Assassin
+          compris (plan 8.1.2, D-9) — c'est la courbe, et elle seule, que `hidden` efface.
+          Sans film, les deux restent à l'écran avec le bloc vide canonique. */}
+      <MatchScoreDeltaChart
+        playerSlug={playerSlug}
+        matchId={matchId}
+        replayAvailable={replayAvailable}
+        scoreboard={scoreboard}
+        meXUID={meXUID}
+        t0Ms={t0Ms}
+        leadShare={leadShare}
+        leadChanges={leadChanges}
+        t={t}
+      />
+      <MatchNumbersAdvantageChart
+        playerSlug={playerSlug}
+        matchId={matchId}
+        replayAvailable={replayAvailable}
+        scoreboard={scoreboard}
+        meXUID={meXUID}
+        t0Ms={t0Ms}
+        t={t}
+      />
 
       {/* Dominance | Cadence des frags */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

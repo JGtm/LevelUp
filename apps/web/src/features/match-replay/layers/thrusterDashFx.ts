@@ -219,6 +219,11 @@ interface DashTime {
 /** Le style : la couleur d'équipe de la vie qui pousse. `null` = vie sans propriétaire. */
 export interface DashStyle {
   colorOfSlot: (slot: number, frame: number) => string | null
+  /**
+   * SEUL ET MASQUER (panneau de joueur, lot 4) : faux quand ce que porte ce slot à cette image est
+   * retiré de la carte. Le sillage est celui du porteur : il part avec son pion. Absent = tout se dessine.
+   */
+  shownAtSlot?: (slot: number, frame: number) => boolean
 }
 
 /**
@@ -240,6 +245,7 @@ export function drawThrusterDashLayer(
     if (!prog) continue
     const color = style.colorOfSlot(f.slot, f.frame)
     if (!color) continue
+    if (style.shownAtSlot && !style.shownAtSlot(f.slot, f.frame)) continue
     const head = positionAt(f.points, time.frame)
     if (!head) continue
     const dir = screenDirection(f, view)

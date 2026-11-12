@@ -10,6 +10,9 @@
  * LA PARITÉ FR/EN RESTE TENUE PAR LE TYPAGE : `Record<ReplayLocale, ReplayText>` dans
  * `i18n.ts` refuse toute langue à laquelle il manque un champ.
  */
+import type { FeedFilterId } from '../model/feedFilterLogic'
+import type { ObjectiveFeedStat } from '../model/objectiveFeedLogic'
+import type { PlayerPanelText } from './playerPanel.i18n'
 import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
 
 /**
@@ -180,9 +183,52 @@ export interface ReplayText {
    */
   keySpace: string
   /** Kill feed synchronisé sur l'horloge du rejeu. */
-  killFeedTitle: string
+  /**
+   * Le MENU DU FIL : le titre est le bouton qui ouvre la liste des filtres, et porte le nom du
+   * filtre actif. Un libellé par filtre (`FeedFilterId`) ; le typage refuse un filtre sans nom.
+   */
+  feedFilterLabel: Record<FeedFilterId, string>
+  /** Nom accessible du menu de filtre du fil (déclencheur et liste). */
+  feedFilterMenuLabel: string
+  /** Séparateur du menu, avant les familles proposées en plus de Tout / Éliminations / Objectifs. */
+  feedFilterMoreHeading: string
+  /**
+   * LES DEUX ÉTATS VIDES DU FIL, DEUX TEXTES (le bloc vide en pointillé du projet). « Rien à cet
+   * instant » : le match a des lignes pour ce filtre, mais plus tard dans la lecture. « Aucune
+   * entrée pour ce match » : aucune ligne de ce filtre dans tout le match — ne pas les confondre,
+   * le premier se résout en lisant, le second jamais.
+   */
   killFeedEmpty: string
+  killFeedEmptyHint: string
+  feedEmptyMatch: string
+  feedEmptyMatchHint: string
+  /**
+   * L'action d'une ligne d'OBJECTIF, après le nom du joueur : un libellé pour CHAQUE action de la
+   * liste fermée du décodeur (`ObjectiveFeedStat`, tenue par un garde-rail qui relit `named.go`).
+   * Strongholds se dit « bases » ; aucun possessif, aucun anglicisme.
+   */
+  feedObjectiveAction: Record<ObjectiveFeedStat, string>
+  /** La prise d'une arme ou d'un bonus sur un socle : `name` est le nom de ce qui a été pris. */
+  feedPickupAction: (name: string) => string
+  /** La montée à bord d'un véhicule : `name` est le nom du véhicule. */
+  feedVehicleAction: (name: string) => string
+  /** Une arme ramassée au sol (pas sur un socle) : `name` est le nom de l'arme. */
+  feedGroundPickupAction: (name: string) => string
+  /** La destruction d'un véhicule par un auteur connu, nommé devant la phrase : `name` est le véhicule. */
+  feedVehicleDestroyedBy: (name: string) => string
+  /** La destruction d'un véhicule sans auteur connu : `name` est le véhicule. */
+  feedVehicleDestroyed: (name: string) => string
+  /** Le joueur à bord à l'instant de la destruction, en fin de phrase : `who` est son nom. */
+  feedVehicleOccupant: (who: string) => string
   killFeedUnknownWeapon: string
+  /**
+   * L'infobulle d'une ligne de frag, qui est un BOUTON : ce que le clic fait — poser la lecture en
+   * pause à l'instant du frag et mettre le tueur et la victime en valeur sur la carte. Elle précède
+   * l'éventuelle explication d'absence d'assistant.
+   */
+  killFeedFocusHint: string
+  /** Le panneau de joueur (lot 4) : ses textes vivent dans `playerPanel.i18n.ts`. */
+  playerPanel: PlayerPanelText
   killFeedNoAssistHint: string
   killFeedAssistHint: string
   killFeedKillerShare: (pct: number) => string
@@ -270,10 +316,20 @@ export interface ReplayText {
    * d'écran annonce. Ce mot-ci est ce que l'ŒIL lit sans survoler : trois icônes muettes côte
    * à côte se ressemblent toutes, un mot les départage d'un coup.
    */
-  /** Le tiroir de réglages (décision utilisateur du 16/08) : bouton et panneau partagent
-   *  le même intitulé — ouvrir dit ce qu'on va trouver derrière. */
-  settingsButton: string
-  settingsClose: string
+  /**
+   * LE BOUTON « VUE » et son panneau (plan « maquettes du rejeu », lot 3) : ils remplacent le
+   * tiroir de réglages. Bouton et panneau partagent le même intitulé — ouvrir dit ce qu'on va
+   * trouver derrière : les préréglages de calques, puis les calques, les effets, la chaleur, la
+   * couleur des points et le son.
+   */
+  viewButton: string
+  viewClose: string
+  viewPresetsTitle: string
+  /** Le nom d'un préréglage, et ce qu'il montre en une phrase courte (infobulle comprise). */
+  viewPreset: Record<'complet' | 'combat' | 'deplacements' | 'objectif' | 'personnalise', string>
+  viewPresetHint: Record<'complet' | 'combat' | 'deplacements' | 'objectif', string>
+  /** Dit pourquoi la vue est « Personnalisé » : un calque a été basculé à la main. */
+  viewCustomNote: string
   /**
    * LE MODE PLEIN ÉCRAN (bouton de la barre de lecture, touche F) : un bouton à état, comme
    * lecture/pause — le nom accessible dit ce que le CLIC va faire. L'infobulle y ajoute le

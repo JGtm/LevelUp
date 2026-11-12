@@ -179,6 +179,14 @@ type SharedBatch struct {
 	// Table cible `match_vehicle_takes` : append-only, lecture par la vue
 	// `match_vehicle_takes_latest` UNIQUEMENT (ADR 0026).
 	VehicleTakes *VehicleTakesBatch `json:"vehicle_takes,omitempty"`
+
+	// LeadShare : LA MAINMISE (temps en tete du score par camp, retournements), calculee de la
+	// courbe de score de l'artefact range. Meme regime que VehicleTakes : produite par l'etape
+	// post-sync (`sync/replayartifacts/leadshare.go`), jamais au sync primaire.
+	//
+	// Table cible `match_lead_share` : append-only, lecture par la vue `match_lead_share_latest`
+	// UNIQUEMENT (ADR 0026).
+	LeadShare *LeadShareBatch `json:"lead_share,omitempty"`
 }
 
 // PlayerBatch contient les écritures pour stats.duckdb (du joueur Player).

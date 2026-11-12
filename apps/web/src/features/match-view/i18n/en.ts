@@ -123,6 +123,27 @@ export const EN_TEXT = {
   scoreEventsTitle: 'Scoring moments',
   scoreEventsScoredFmt: (points) => `+${points} point${points > 1 ? 's' : ''}`,
   scoreEventsTotalFmt: (total) => `Score: ${total}`,
+  scoreDeltaTitle: 'Score gap',
+  scoreDeltaInfo:
+    'The player’s team score minus the opposing team’s, as dated by the match film. Above zero the player’s team leads; below, the opponents do. The score only changes when points are scored, so the gap moves in steps.',
+  divergentNeedsReplay: 'This chart needs the match replay, which is not available.',
+  scoreDeltaUnavailableFilm: 'The match film does not date the score: the gap is not drawn.',
+  scoreDeltaUnavailableCamps:
+    'The player’s team is not established for this match: the gap is not drawn.',
+  numbersAdvantageTitle: 'Numerical advantage',
+  numbersAdvantageInfo:
+    'Players alive on the player’s team minus players alive on the opposing team, bots included, sampled every second from the film’s lives. Above zero the player’s team has the numbers; below, the opponents do.',
+  numbersAdvantageLegendAlly: 'Team outnumbering',
+  numbersAdvantageLegendEnemy: 'Opponents outnumbering',
+  numbersAdvantageAliveFmt: (n) => `${n} alive`,
+  numbersAdvantageUnavailableFilm:
+    'Players’ lives are not dated for this match: numerical advantage is not drawn.',
+  numbersAdvantageUnavailableCamps:
+    'The player’s team is not established for this match: numerical advantage is not drawn.',
+  divergentGapLabel: 'Gap',
+  divergentMultiTeamNote:
+    'With more than two teams, the comparison is against the best opposing team at each moment.',
+  divergentBestOpponent: 'Best opposing team',
   combatCadenceTitle: 'Kill cadence',
   combatKillsLabel: 'Kills',
   combatDeathsLabel: 'Deaths',

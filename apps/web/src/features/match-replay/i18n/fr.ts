@@ -1,5 +1,6 @@
 /** Textes du rejeu 2D en français (contrat : `i18nContract.ts`). */
 import type { ReplayText } from './i18nContract'
+import { FR_PLAYER_PANEL } from './playerPanel.i18n'
 
 export const FR_TEXT = {
   title: 'Rejeu 2D',
@@ -36,9 +37,43 @@ export const FR_TEXT = {
   speedNormal: 'normal',
   speedMuted: 'son coupé',
   keySpace: 'Espace',
-  killFeedTitle: 'Éliminations',
+  feedFilterLabel: {
+    tout: 'Tout',
+    kills: 'Éliminations',
+    objectives: 'Objectifs',
+    pickups: 'Armes et bonus',
+    vehicles: 'Véhicules',
+    medals: 'Médailles',
+    assists: 'Assistances',
+  },
+  feedFilterMenuLabel: 'Filtrer le fil',
+  feedFilterMoreHeading: 'Proposées en plus',
   killFeedEmpty: 'Rien à cet instant du match.',
+  killFeedEmptyHint: 'Ce filtre a des lignes plus loin dans le match : elles apparaissent au fil de la lecture.',
+  feedEmptyMatch: 'Aucune entrée pour ce match',
+  feedEmptyMatchHint: "Ce match n'a aucune ligne pour ce filtre.",
+  feedObjectiveAction: {
+    flag_captures: 'a capturé le drapeau',
+    flag_capture_assists: 'a aidé à capturer le drapeau',
+    flag_grabs: 'a pris le drapeau',
+    flag_secures: 'a sécurisé le drapeau',
+    flag_returns: 'a rendu le drapeau',
+    flag_steals: 'a volé le drapeau',
+    flag_carriers_killed: 'a éliminé un porteur de drapeau',
+    zone_captures: 'a capturé une base',
+    zone_secures: 'a sécurisé une base',
+    vip_selected: 'a été désigné VIP',
+    bomb_detonations: 'a fait exploser la bombe',
+  },
+  feedPickupAction: (name) => `a pris : ${name}`,
+  feedVehicleAction: (name) => `est monté à bord : ${name}`,
+  feedGroundPickupAction: (name) => `a ramassé : ${name}`,
+  feedVehicleDestroyedBy: (name) => `a détruit : ${name}`,
+  feedVehicleDestroyed: (name) => `${name} détruit`,
+  feedVehicleOccupant: (who) => `(${who} à bord)`,
   killFeedUnknownWeapon: 'Arme non identifiée',
+  killFeedFocusHint: 'Aller à cet instant et mettre en valeur le tueur et la victime sur la carte',
+  playerPanel: FR_PLAYER_PANEL,
   killFeedNoAssistHint:
     'Mort sans assistant : la mort porte son événement dans le film, et il ne déclare personne.',
   killFeedAssistHint:
@@ -86,8 +121,23 @@ export const FR_TEXT = {
     "L'enregistrement filme le rejeu tel qu'il défile : changer de vitesse ou déplacer le curseur se voit dans le fichier. Démarrer relance la lecture si elle est en pause ; mettre en pause ou laisser le film finir arrête l'enregistrement et télécharge le clip.",
   // « REC » et « Arrêter » : la convention des lecteurs, identique dans les deux langues
   // pour la première — c'est le mot qu'on cherche du regard sur un bouton d'enregistrement.
-  settingsButton: 'Réglages',
-  settingsClose: 'Fermer les réglages',
+  viewButton: 'Vue',
+  viewClose: 'Fermer la vue',
+  viewPresetsTitle: 'Préréglages',
+  viewPreset: {
+    complet: 'Complet',
+    combat: 'Combat',
+    deplacements: 'Déplacements',
+    objectif: 'Objectif',
+    personnalise: 'Personnalisé',
+  },
+  viewPresetHint: {
+    complet: 'Tous les calques',
+    combat: 'Visée, traînées, véhicules, objectifs',
+    deplacements: 'Traînées et zones',
+    objectif: 'Traînées, zones, objectifs',
+  },
+  viewCustomNote: 'Les calques ne correspondent à aucun préréglage.',
   fullscreenEnter: 'Plein écran',
   fullscreenExit: 'Quitter le plein écran',
   autoPlay: 'Lecture automatique',

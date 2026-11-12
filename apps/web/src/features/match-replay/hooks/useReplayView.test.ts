@@ -6,7 +6,7 @@
  * ne bouge pas (la page ne saute pas). Et tout revient a l'ecran quand l'export se retire.
  */
 import { act, renderHook } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { exportFormatOf, exportLayoutFor } from '../export/exportFormats'
 import { canvasPixelRatio, isExportLayoutApplied, requestExportLayout } from '../export/exportLayoutStore'
@@ -109,5 +109,26 @@ describe('useReplayView — le cadrage et les gestes pendant l’export (D6/D7)'
     expect(result.current.zoom.canZoomOut).toBe(true)
     act(() => result.current.zoom.zoomOut())
     expect(result.current.zoom.level).toBe(1.5)
+  })
+})
+
+describe('useReplayView — la main reprend le cadrage (Suivre, lot 4)', () => {
+  it('un geste manuel prévient l’écouteur ; le cadrage programmé, non', () => {
+    const onManualMove = vi.fn()
+    const { result } = renderHook(() => useReplayView({ doc: DOC, width: 1200, freeHeight: 600, onManualMove }))
+    act(() => result.current.zoom.focusOn({ x: 5, y: 5 }, 2))
+    expect(result.current.zoom.level).toBe(2)
+    expect(onManualMove).not.toHaveBeenCalled()
+    act(() => result.current.zoom.panStep(1, 0))
+    expect(onManualMove).toHaveBeenCalledTimes(1)
+    act(() => result.current.zoom.zoomIn())
+    expect(onManualMove).toHaveBeenCalledTimes(2)
+  })
+
+  it('pendant un export, ni geste ni cadrage programmé ne bougent la carte', () => {
+    const { result } = renderHook(() => useReplayView({ doc: DOC, width: 1200, freeHeight: 600 }))
+    act(() => requestExportLayout(exportLayoutFor(exportFormatOf('1080p'), 'current')))
+    act(() => result.current.zoom.focusOn({ x: 5, y: 5 }, 2))
+    expect(result.current.zoom.level).toBe(1)
   })
 })

@@ -24,6 +24,16 @@ import { describe, expect, it } from 'vitest'
 import { bindPainters, LAYER_ORDER, type LayerPaint, type ReplayLayerId } from './replayCompose'
 import { fichierNomme, lire } from '../test/featureFiles'
 
+/**
+ * Les deux calques de la mise en valeur d'une élimination : UN hook les câble, et lui seul — une
+ * seule résolution pour deux peintres, dans deux places de l'ordre de la scène. Chacun porte son
+ * `id` à côté de son `paint`, comme les onze autres.
+ */
+const CABLES_PAR_LE_MEME_HOOK: ReadonlyArray<[ReplayLayerId, string]> = [
+  ['mise-en-valeur', 'useReplayKillFocus.ts'],
+  ['etiquettes-mise-en-valeur', 'useReplayKillFocus.ts'],
+]
+
 /** Les onze calques dont le hook porte l'identité (id -> hook qui le câble). */
 const CABLES_PAR_HOOK: ReadonlyArray<[ReplayLayerId, string]> = [
   ['socles-armes', 'useReplayWeaponPads.ts'],
@@ -83,8 +93,12 @@ function entreeDeTable(table: string, id: ReplayLayerId): string {
   return fin > 0 ? suite.slice(0, fin) : suite.slice(0, 600)
 }
 describe('garde-rail : la liaison id -> peintre', () => {
-  it('les 25 ids de LAYER_ORDER sont couverts, une fois chacun', () => {
-    const couverts = [...CABLES_PAR_HOOK.map(([id]) => id), ...FERMETURES.map(([id]) => id)]
+  it('tous les ids de LAYER_ORDER sont couverts, une fois chacun', () => {
+    const couverts = [
+      ...CABLES_PAR_HOOK.map(([id]) => id),
+      ...CABLES_PAR_LE_MEME_HOOK.map(([id]) => id),
+      ...FERMETURES.map(([id]) => id),
+    ]
     expect(couverts).toHaveLength(LAYER_ORDER.length)
     expect([...couverts].sort()).toEqual([...LAYER_ORDER].sort())
   })
@@ -108,9 +122,16 @@ describe('garde-rail : la liaison id -> peintre', () => {
     }
   })
 
-  it('le canvas ne renomme AUCUN des onze : il dérive la liaison', () => {
+  it('le hook de la mise en valeur déclare l’id de ses deux calques, chacun à côté de son peintre', () => {
+    for (const [id, hook] of CABLES_PAR_LE_MEME_HOOK) {
+      const src = lire(fichierNomme(hook))
+      expect(src, `${hook} ne déclare pas l'id ${id}`).toContain(`id: '${id}' as const, paint:`)
+    }
+  })
+
+  it('le canvas ne renomme AUCUN des calques câblés par hook : il dérive la liaison', () => {
     const table = tableDeLiaison()
-    for (const [id] of CABLES_PAR_HOOK) {
+    for (const [id] of [...CABLES_PAR_HOOK, ...CABLES_PAR_LE_MEME_HOOK]) {
       // La clé telle qu'elle s'écrirait dans la table, à son indentation exacte. Pas de
       // RegExp construite : dans un gabarit JS, `\s` vaut `s` — le motif serait inerte.
       const cle = id.includes('-') ? "'" + id + "':" : id + ':'

@@ -63,7 +63,7 @@ func TestNoRawAppendOnlyReads(t *testing.T) {
 	// `match_kill_heads` / `match_kill_pairs` / `match_assist_pairs` AJOUTÉES LE 2026-10-21 (ADR
 	// 0039) : résumés par match du journal, vues `_latest` décidées par la tête ; enrôlées à leur
 	// création, avant tout lecteur.
-	rawRe := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+(match_skill_rank|match_csrs|player_csr_snapshots|pve_match_stats|match_lives|match_death_context|match_death_mates|match_life_placement|match_kill_events|kill_positions|match_bomb_stats|match_flag_grabs_net|match_pad_pickups_by_tier|match_vehicle_takes|match_kill_heads|match_kill_pairs|match_assist_pairs)(_latest(?:_by_type)?)?\b`)
+	rawRe := regexp.MustCompile(`(?i)\b(?:FROM|JOIN)\s+(match_skill_rank|match_csrs|player_csr_snapshots|pve_match_stats|match_lives|match_death_context|match_death_mates|match_life_placement|match_kill_events|kill_positions|match_bomb_stats|match_flag_grabs_net|match_pad_pickups_by_tier|match_vehicle_takes|match_lead_share|match_kill_heads|match_kill_pairs|match_assist_pairs)(_latest(?:_by_type)?)?\b`)
 
 	// Allowlist datée (2026-07-02) — lectures brutes VOLONTAIRES et documentées.
 	// 2026-09-13 (lot finitions LUSR, C.3 bis) : `queries_career.go` RETIRÉ de l'allowlist.

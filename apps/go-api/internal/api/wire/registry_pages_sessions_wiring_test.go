@@ -63,6 +63,7 @@ func TestSessionPage_SourcesSousLeurPorte(t *testing.T) {
 		"WithSessionLives":        {"duckdb.NewSoloLivesRepo(pdb)", "games.CapFilmKillPositions"},
 		"WithSessionVehicleUsage": {"duckdb.NewSquadVehicleRepo", "games.CapFilmVehicleUsage"},
 		"WithSessionObjectives":   {"duckdb.NewObjectiveStatsRepo(pdb)", "games.CapMatchObjectiveStats"},
+		"WithSessionLeadShare":    {"duckdb.NewLeadShareRepo(pdb)", "games.CapFilmLeadShare"},
 	} {
 		appels := appelsDansBlocsSessions(t, methode)
 		if len(appels) != 1 || !strings.Contains(strings.Join(appels[0].args, ""), cas.arg) ||

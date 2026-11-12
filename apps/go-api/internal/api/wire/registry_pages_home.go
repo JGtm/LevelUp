@@ -289,6 +289,11 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmVehicleUsage) {
 		svc = svc.WithVehicleUsage(duckdb.NewSquadVehicleRepo(pdb, r.killSourceClassifierFor(pdb)))
 	}
+	// Mainmise de la section Dynamique (part du temps en tete du score, par match) : la capability
+	// fine film.lead_share (absente pour Halo 5 -> serie absente). Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapFilmLeadShare) {
+		svc = svc.WithLeadShare(duckdb.NewLeadShareRepo(pdb))
+	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 

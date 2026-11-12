@@ -6,11 +6,11 @@
  * dérivait — c'est précisément pour ça qu'il faut un test : le défaut serait silencieux, et le
  * calcul suivant repartirait de la valeur fausse.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 
 import { ZOOM_LEVELS, sceneCenter, visibleBounds } from '../../../lib/replay/replayLogic'
-import { useReplayZoom } from './useReplayZoom'
+import { lockedZoom, useReplayZoom, withManualMove } from './useReplayZoom'
 
 const SCENE = { minX: 0, minY: 0, maxX: 100, maxY: 60 }
 
@@ -161,5 +161,61 @@ describe('useReplayZoom — la molette', () => {
     act(() => result.current.zoomAt(1, avant))
     expect(result.current.center.x).toBeCloseTo(avant.x, 9)
     expect(result.current.center.y).toBeCloseTo(avant.y, 9)
+  })
+})
+
+describe('useReplayZoom — cadrer un point (Suivre)', () => {
+  it('monte au palier demandé et centre sur le point', () => {
+    const { result } = render()
+    act(() => result.current.focusOn({ x: 40, y: 30 }, 2))
+    expect(result.current.level).toBe(2)
+    expect(result.current.center).toEqual({ x: 40, y: 30 })
+  })
+
+  it('un palier déjà plus haut que le minimum reste tel quel', () => {
+    const { result } = render()
+    for (let i = 0; i < 3; i += 1) act(() => result.current.zoomIn()) // 3x
+    act(() => result.current.focusOn({ x: 50, y: 30 }, 2))
+    expect(result.current.level).toBe(3)
+  })
+
+  it('le centre est reborné : un point dans un coin ne sort pas la fenêtre de la scène', () => {
+    const { result } = render()
+    act(() => result.current.focusOn({ x: 0, y: 0 }, 2))
+    expect(dansLaScene(result.current.level, result.current.center)).toBe(true)
+    expect(result.current.center).toEqual({ x: 25, y: 15 })
+  })
+
+  it('verrouillé (export), il ne fait rien', () => {
+    const { result } = render()
+    const locked = lockedZoom(result.current)
+    act(() => locked.focusOn({ x: 40, y: 30 }, 2))
+    expect(result.current.level).toBe(1)
+  })
+})
+
+describe('withManualMove — la main reprend la carte', () => {
+  it('chaque geste de l’utilisateur prévient avant d’agir ; focusOn, non', () => {
+    const { result } = render()
+    const onManual = vi.fn()
+    const wrapped = withManualMove(result.current, onManual)
+    act(() => wrapped.focusOn({ x: 40, y: 30 }, 2))
+    expect(onManual).not.toHaveBeenCalled()
+    expect(result.current.level).toBe(2)
+
+    act(() => wrapped.zoomIn())
+    act(() => wrapped.zoomOut())
+    act(() => wrapped.panStep(1, 0))
+    act(() => wrapped.panBy(1, 1))
+    act(() => wrapped.zoomAt(1, { x: 10, y: 10 }))
+    act(() => wrapped.reset())
+    expect(onManual).toHaveBeenCalledTimes(6)
+  })
+
+  it('le geste agit toujours : il prévient puis fait ce qu’il faisait', () => {
+    const { result } = render()
+    const wrapped = withManualMove(result.current, () => {})
+    act(() => wrapped.zoomIn())
+    expect(result.current.level).toBe(1.5)
   })
 })

@@ -31,7 +31,7 @@
  *      une toutes les ~20 s, et le faire passer pour l'instant courant était un défaut réel.
  *   3. Aucun littéral de couleur : les rôles passent par des tokens sémantiques.
  */
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, KeyboardEvent, ReactNode } from 'react'
 
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { ReplayScoreTimelineReady } from '@/lib/replay/scoreTimeline'
@@ -41,6 +41,7 @@ import { ReplayCountersBadge } from './ReplayCountersBadge'
 import { ReplayInventoryRow } from './ReplayInventoryRow'
 import { EliminatedBox, VitalityBar } from './ReplayVitality'
 import { ReplayWeaponsRow } from './ReplayWeaponsRow'
+import { PRESS_GUARDS } from './replayPressGuards'
 import type { CardGabarit } from '../model/cardGabarit'
 import { SHROUD_BOLT_OFFSETS_S } from '../layers/placementShroud'
 import type { ZonePresence } from '../model/equipmentZones'
@@ -140,6 +141,48 @@ function nameClass(gabarit: CardGabarit, eteint: boolean): string {
   }`
 }
 
+/**
+ * LA FICHE EN BOUTON (panneau de joueur, lot 4) : ce que la page donne à une fiche pour qu'un clic
+ * ouvre le panneau du joueur. `selected` = son panneau est ouvert (`aria-pressed`), `label` = son
+ * nom accessible. SANS `press`, la tuile reste une boîte inerte, nœud pour nœud (fixation
+ * `__fixtures__/replayTeams.4v4.html`) : les attributs de bouton ne s'ajoutent que quand la page
+ * le demande.
+ */
+export interface TilePress {
+  label: string
+  selected: boolean
+  onActivate: () => void
+}
+
+/**
+ * LES ATTRIBUTS D'UNE TUILE-BOUTON : un `div` `role="button"` plutôt qu'un `<button>` — la tuile
+ * contient des boîtes (jauges, rangées), qu'un bouton HTML n'admet pas. Entrée et Espace
+ * activent ; la souris ne prend pas le focus et Espace ne remonte pas au raccourci de lecture
+ * (`PRESS_GUARDS`). La tuile choisie porte un anneau (ombre, aucune cote ne bouge).
+ */
+function pressProps(press: TilePress) {
+  return {
+    role: 'button' as const,
+    // Repère de la fiche : le panneau de joueur lui rend le focus à sa fermeture.
+    'data-replay-player-card': '',
+    tabIndex: 0,
+    'aria-pressed': press.selected,
+    'aria-label': press.label,
+    onClick: press.onActivate,
+    onMouseDown: PRESS_GUARDS.onMouseDown,
+    onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+      PRESS_GUARDS.onKeyDown(e)
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        press.onActivate()
+      }
+    },
+  }
+}
+
+const PRESS_CLASS = 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+const SELECTED_CLASS = 'ring-2 ring-ring'
+
 interface TileFrameProps {
   gabarit: CardGabarit
   /** L'habit de la tuile : fond et bordure (`cardChrome`, `SEAT_WAITING_CHROME`). */
@@ -153,6 +196,8 @@ interface TileFrameProps {
   body: ReactNode
   /** L'incrustation posée PAR-DESSUS le contenu : après le corps. */
   over?: ReactNode
+  /** Rend la tuile cliquable (panneau de joueur). Absent = boîte inerte. */
+  press?: TilePress
 }
 
 /**
@@ -160,10 +205,11 @@ interface TileFrameProps {
  * fixe. Les trois sortes de tuile y passent ; aucune ne réécrit une cote (garde-rail
  * `cardGabarit.guard.test.ts`, test DOM `ReplayTeams.places.test.tsx`).
  */
-function TileFrame({ gabarit, chrome, title, under, nameLine, body, over }: TileFrameProps) {
+function TileFrame({ gabarit, chrome, title, under, nameLine, body, over, press }: TileFrameProps) {
   const L = TILE_LAYOUT[gabarit.bodyPx]
+  const className = press ? `${L.tile} ${PRESS_CLASS}${press.selected ? ` ${SELECTED_CLASS}` : ''}` : L.tile
   return (
-    <div className={L.tile} style={chrome} title={title}>
+    <div className={className} style={chrome} title={title} {...(press ? pressProps(press) : {})}>
       {under}
       <div className={L.nameLine}>{nameLine}</div>
       <div className={`${L.body} ${BODY_CLASS[gabarit.bodyPx]} overflow-hidden`}>{body}</div>
@@ -185,10 +231,15 @@ interface ReplayPlayerCardProps {
   scoreTimeline?: ReplayScoreTimelineReady
   fxScene: CardFxScene
   gabarit: CardGabarit
+  /**
+   * Le panneau de joueur : la fiche devient un bouton qui l'ouvre. `selected` = le panneau de CE joueur
+   * est ouvert. Absent = fiche inerte (page sans panneau).
+   */
+  panel?: { selected: boolean; onSelect: () => void }
 }
 
 export function ReplayPlayerCard({
-  player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, scoreTimeline, fxScene, gabarit,
+  player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, scoreTimeline, fxScene, gabarit, panel,
 }: ReplayPlayerCardProps) {
   const t = REPLAY_TEXT[locale]
   const { live, state, name, equipped, filmIndex, zones, objective, fx } = playerCardReadings({
@@ -215,6 +266,7 @@ export function ReplayPlayerCard({
       gabarit={gabarit}
       chrome={cardChrome(state.alive)}
       title={fx.title}
+      press={panel ? { label: t.playerPanel.cardOpenFmt(name), selected: panel.selected, onActivate: panel.onSelect } : undefined}
       under={<CardUnderLayers fx={fx} objective={objective} gabarit={gabarit} />}
       nameLine={
         <>

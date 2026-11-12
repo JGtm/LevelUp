@@ -178,6 +178,13 @@ type MatchViewHeader struct {
 	// C'est un OFFSET, pas une durée d'affichage : rien ne l'affiche, il sert à remettre
 	// deux horloges l'une sur l'autre (`msFilm = event_time_ms + t0_ms`).
 	T0Ms int64 `json:"t0_ms,omitempty"`
+	// LeadShare : la MAINMISE du match pour l'équipe du joueur de la page — part de la durée jouée
+	// passée EN TÊTE du score, FRACTION 0..1 (ADR 0006). ABSENT = non mesuré (mode à peu de points, score
+	// non couvert, film absent) : jamais zéro. Calculé de la courbe de score du rejeu
+	// (analysis/leadshare), lu de match_lead_share_latest.
+	LeadShare *float64 `json:"lead_share,omitempty"`
+	// LeadChanges : retournements du match (changements de meneur). Absent avec LeadShare.
+	LeadChanges *int `json:"lead_changes,omitempty"`
 }
 
 // MatchViewRank : rang CSR ou LUSR pour ce match.

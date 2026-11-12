@@ -339,7 +339,7 @@ export function framesPerSecond(doc: ReplayDocumentReady): number {
 }
 
 /** frameToMs convertit une frame en millisecondes écoulées depuis le début du rejeu. */
-export function frameToMs(frame: number, doc: ReplayDocumentReady): number {
+export function frameToMs(frame: number, doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>): number {
   const interval = doc.frameIntervalMs ?? 0
   return interval > 0 ? frame * interval : (frame / FALLBACK_FPS) * 1000
 }

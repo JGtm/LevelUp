@@ -347,11 +347,14 @@ export interface LeadChange {
  * Mesure sur les trois témoins (2026-08-18) : Slayer `000d5950` 0 retournement (le camp
  * gagnant mène de bout en bout, deux égalités à 1 et à 2), CTF `530820e5` 0 (un seul camp
  * marque), Oddball `24dbb67d` 3 — c'est le témoin de cette marque.
+ *
+ * `campCount` : le même que celui de `leaderStates` (nombre de camps du roster, 0 = inconnu) ; le
+ * serveur le passe toujours (`leadshare.Measure`), et le jeu de cas partagé aussi.
  */
-export function leadChanges(timeline: ReplayScoreTimelineReady | undefined): LeadChange[] {
+export function leadChanges(timeline: ReplayScoreTimelineReady | undefined, campCount = 0): LeadChange[] {
   const out: LeadChange[] = []
   let previous: number | null = null
-  for (const state of leaderStates(timeline)) {
+  for (const state of leaderStates(timeline, campCount)) {
     // UNE ÉGALITÉ NE FERME PAS LE MENEUR PRÉCÉDENT ici : elle le suspend (cf. l'en-tête). Le
     // comparatif se fait au dernier meneur CONNU, pas au dernier état.
     if (state.teamId == null) continue

@@ -1,0 +1,215 @@
+{
+  "description": "Jeu de cas PARTAGE du meneur du score : lu par leadshare (Go) et par scoreTimeline.leaderStates (web). Les deux cotes doivent rendre les memes etats et les memes retournements. team_id null dans etats = egalite (personne en tete). Une frame = un palier du document.",
+  "cas": [
+    {
+      "nom": "un camp mene de bout en bout, deux egalites, aucun retournement",
+      "camp_count": 2,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 1 }, { "t": 20, "v": 2 }, { "t": 40, "v": 3 }] },
+        { "team_id": 1, "total": [{ "t": 15, "v": 1 }, { "t": 30, "v": 2 }] }
+      ],
+      "etats": [
+        { "frame": 10, "team_id": 0 },
+        { "frame": 15, "team_id": null },
+        { "frame": 20, "team_id": 0 },
+        { "frame": 30, "team_id": null },
+        { "frame": 40, "team_id": 0 }
+      ],
+      "retournements": []
+    },
+    {
+      "nom": "trois retournements sans egalite",
+      "camp_count": 2,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 1 }, { "t": 30, "v": 3 }] },
+        { "team_id": 1, "total": [{ "t": 20, "v": 2 }, { "t": 40, "v": 4 }] }
+      ],
+      "etats": [
+        { "frame": 10, "team_id": 0 },
+        { "frame": 20, "team_id": 1 },
+        { "frame": 30, "team_id": 0 },
+        { "frame": 40, "team_id": 1 }
+      ],
+      "retournements": [
+        { "frame": 20, "team_id": 1 },
+        { "frame": 30, "team_id": 0 },
+        { "frame": 40, "team_id": 1 }
+      ]
+    },
+    {
+      "nom": "une egalite suspend le meneur : le meme camp qui reprend la tete n'est pas un retournement",
+      "camp_count": 2,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 1 }, { "t": 20, "v": 2 }, { "t": 30, "v": 3 }] },
+        { "team_id": 1, "total": [{ "t": 15, "v": 1 }, { "t": 25, "v": 2 }] }
+      ],
+      "etats": [
+        { "frame": 10, "team_id": 0 },
+        { "frame": 15, "team_id": null },
+        { "frame": 20, "team_id": 0 },
+        { "frame": 25, "team_id": null },
+        { "frame": 30, "team_id": 0 }
+      ],
+      "retournements": []
+    },
+    {
+      "nom": "une egalite puis l'autre camp prend la tete : un retournement",
+      "camp_count": 2,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 1 }] },
+        { "team_id": 1, "total": [{ "t": 20, "v": 1 }, { "t": 30, "v": 2 }] }
+      ],
+      "etats": [
+        { "frame": 10, "team_id": 0 },
+        { "frame": 20, "team_id": null },
+        { "frame": 30, "team_id": 1 }
+      ],
+      "retournements": [{ "frame": 30, "team_id": 1 }]
+    },
+    {
+      "nom": "un camp muet (une seule serie publiee, deux camps au roster) concourt a zero",
+      "camp_count": 2,
+      "teams": [{ "team_id": 0, "total": [{ "t": 10, "v": 1 }, { "t": 30, "v": 2 }] }],
+      "etats": [{ "frame": 10, "team_id": 0 }],
+      "retournements": []
+    },
+    {
+      "nom": "une seule serie publiee sans nombre de camps : rien ne dit qui marque",
+      "camp_count": 0,
+      "teams": [{ "team_id": 0, "total": [{ "t": 10, "v": 1 }] }],
+      "etats": [],
+      "retournements": []
+    },
+    {
+      "nom": "une serie sans camp : identite non resolue, personne ne mene",
+      "camp_count": 2,
+      "teams": [
+        { "team_id": null, "total": [{ "t": 10, "v": 3 }] },
+        { "team_id": 1, "total": [{ "t": 20, "v": 1 }] }
+      ],
+      "etats": [],
+      "retournements": []
+    },
+    {
+      "nom": "trois camps, deux a egalite en tete : personne ne mene, puis un camp seul",
+      "camp_count": 3,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 2 }] },
+        { "team_id": 1, "total": [{ "t": 10, "v": 2 }] },
+        { "team_id": 2, "total": [{ "t": 10, "v": 1 }, { "t": 20, "v": 3 }] }
+      ],
+      "etats": [
+        { "frame": 10, "team_id": null },
+        { "frame": 20, "team_id": 2 }
+      ],
+      "retournements": []
+    },
+    {
+      "nom": "trois camps, meneur unique qui change",
+      "camp_count": 3,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 3 }] },
+        { "team_id": 1, "total": [{ "t": 20, "v": 4 }] },
+        { "team_id": 2, "total": [] }
+      ],
+      "etats": [
+        { "frame": 10, "team_id": 0 },
+        { "frame": 20, "team_id": 1 }
+      ],
+      "retournements": [{ "frame": 20, "team_id": 1 }]
+    },
+    {
+      "nom": "le premier marqueur n'est pas un retournement, le second qui passe devant en est un",
+      "camp_count": 2,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 1 }] },
+        { "team_id": 1, "total": [{ "t": 20, "v": 2 }] }
+      ],
+      "etats": [
+        { "frame": 10, "team_id": 0 },
+        { "frame": 20, "team_id": 1 }
+      ],
+      "retournements": [{ "frame": 20, "team_id": 1 }]
+    },
+    {
+      "nom": "aucun palier publie : aucun etat",
+      "camp_count": 2,
+      "teams": [
+        { "team_id": 0, "total": [] },
+        { "team_id": 1, "total": [] }
+      ],
+      "etats": [],
+      "retournements": []
+    },
+    {
+      "nom": "deux camps qui changent a la meme frame restent a egalite",
+      "camp_count": 2,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 1 }, { "t": 20, "v": 2 }] },
+        { "team_id": 1, "total": [{ "t": 10, "v": 1 }, { "t": 20, "v": 2 }] }
+      ],
+      "etats": [{ "frame": 10, "team_id": null }],
+      "retournements": []
+    },
+    {
+      "nom": "le score decroit (penalite) : l'autre camp passe devant sans marquer, c'est un retournement",
+      "camp_count": 2,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 3 }, { "t": 30, "v": 1 }] },
+        { "team_id": 1, "total": [{ "t": 20, "v": 2 }] }
+      ],
+      "etats": [
+        { "frame": 10, "team_id": 0 },
+        { "frame": 30, "team_id": 1 }
+      ],
+      "retournements": [{ "frame": 30, "team_id": 1 }]
+    },
+    {
+      "nom": "camp muet avec deux series nommees : il concourt a zero, ne mene jamais",
+      "camp_count": 3,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 1 }] },
+        { "team_id": 1, "total": [{ "t": 20, "v": 1 }, { "t": 30, "v": 2 }] }
+      ],
+      "etats": [
+        { "frame": 10, "team_id": 0 },
+        { "frame": 20, "team_id": null },
+        { "frame": 30, "team_id": 1 }
+      ],
+      "retournements": [{ "frame": 30, "team_id": 1 }]
+    },
+    {
+      "nom": "une serie publiee a zero face a un camp muet : egalite mesuree, puis le marqueur prend la tete",
+      "camp_count": 2,
+      "teams": [{ "team_id": 0, "total": [{ "t": 10, "v": 0 }, { "t": 20, "v": 1 }] }],
+      "etats": [
+        { "frame": 10, "team_id": null },
+        { "frame": 20, "team_id": 0 }
+      ],
+      "retournements": []
+    },
+    {
+      "nom": "deux camps changent a la meme image a des valeurs differentes : le plus haut mene",
+      "camp_count": 2,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 1 }, { "t": 20, "v": 2 }] },
+        { "team_id": 1, "total": [{ "t": 10, "v": 2 }, { "t": 20, "v": 1 }] }
+      ],
+      "etats": [
+        { "frame": 10, "team_id": 1 },
+        { "frame": 20, "team_id": 0 }
+      ],
+      "retournements": [{ "frame": 20, "team_id": 0 }]
+    },
+    {
+      "nom": "deux paliers d'un meme camp a la meme image : le dernier gagne",
+      "camp_count": 2,
+      "teams": [
+        { "team_id": 0, "total": [{ "t": 10, "v": 1 }, { "t": 10, "v": 3 }] },
+        { "team_id": 1, "total": [{ "t": 10, "v": 2 }] }
+      ],
+      "etats": [{ "frame": 10, "team_id": 0 }],
+      "retournements": []
+    }
+  ]
+}

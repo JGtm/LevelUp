@@ -43,7 +43,7 @@ import { useExportActive } from '../export/exportLayoutStore'
 
 /**
  * L'ATTRIBUT D'UNE COUCHE QU'ÉCHAP FERME AVANT LE MODE. Posé en clair (`data-replay-escape-layer=""`)
- * sur la racine du tiroir, du média agrandi et du menu de vitesse ; le garde-rail
+ * sur la racine du panneau de la vue, de la fiche de joueur, du média agrandi et des menus ; le garde-rail
  * `escapeLayers.guard.test.ts` exige qu'aucun écouteur d'Échap du rejeu ne s'en passe.
  */
 export const REPLAY_ESCAPE_LAYER_ATTR = 'data-replay-escape-layer'

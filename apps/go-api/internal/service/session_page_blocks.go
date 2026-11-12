@@ -36,6 +36,8 @@ type sessionBlocksDeps struct {
 	empriseRepo port.SquadEmpriseRepository
 	// vehicleRepo : la ressource véhicules, câblée sous film.vehicle_usage ; nil = non mesurée.
 	vehicleRepo port.SquadVehicleRepository
+	// leadShareRepo : la Mainmise (câblée sous film.lead_share) ; nil = non mesurée.
+	leadShareRepo port.LeadShareRepository
 	// emblemLoader : l'emblème du joueur de la page ; nil = initiale côté web.
 	emblemLoader port.EmblemURLLoader
 	// livesRepo : les vies (câblé sous film.kill_positions) ; radarRange : game_variant_name -> m.
@@ -132,6 +134,7 @@ func (s *SessionPageService) attachSessionBlocks(
 	s.attachSessionLives(ctx, resp, sc)
 	s.attachSessionFormes(ctx, resp, sc, canon, lus)
 	s.attachSessionEmblem(ctx, resp)
+	s.attachSessionLeadShare(ctx, resp)
 }
 
 // lireUsageDeSession fait les trois lectures du résumé d'usage d'une session ; nil sans résumé

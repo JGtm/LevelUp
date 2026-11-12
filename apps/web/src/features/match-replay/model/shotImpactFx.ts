@@ -76,6 +76,7 @@ export function buildShotImpactFx(doc: ReplayDocumentReady): GrenadeRestFx[] {
       seed: explosionSeedOf(pr.detoT),
       tint: impact.tint,
       impactStem: impact.impactStem,
+      owner: { slot: shot.slot, frame: shot.t },
     })
   }
   return out

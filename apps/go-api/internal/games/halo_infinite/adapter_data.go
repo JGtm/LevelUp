@@ -245,6 +245,10 @@ func fallbackCapabilities() games.CapabilityMap {
 		// vehicules de l artefact -> shared.match_vehicle_takes. Gouverne la production post-sync
 		// (replayartifacts), le backfill CLI et l exposition (cf. capabilities.toml).
 		games.CapFilmVehicleUsage: games.CapSupported,
+		// La MAINMISE (part du temps en tete du score, retournements) lue de la courbe de score de
+		// l artefact -> shared.match_lead_share. Gouverne la production post-sync (replayartifacts),
+		// le backfill CLI et l exposition (cf. capabilities.toml).
+		games.CapFilmLeadShare: games.CapSupported,
 		// L ARTEFACT DE REJEU 2D lui-meme (data/cache/replays/{slug}/{match}.json) : la
 		// SOURCE dont les quatre cles film.* ci-dessus sont des projections. Gouverne la
 		// PRODUCTION (etape post-sync replayartifacts : sans la cle, rien n est mis en

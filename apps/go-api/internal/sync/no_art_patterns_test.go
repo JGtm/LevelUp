@@ -175,6 +175,12 @@ var tablesProtegees = []string{
 	// unique — aucune entree d allowlist a prevoir. Remplacer une passe = en ecrire une nouvelle ;
 	// la vue match_vehicle_takes_latest ne rend que la derniere PASSE ENTIERE par match.
 	"match_vehicle_takes",
+	// match_lead_share (Mainmise, 2026-11-11) : table append-only NET-NEUVE (temps en tete du score
+	// par camp, plus une ligne `match` de couverture, calcules de la courbe de score de l artefact
+	// range). Son persister (internal/persist/lead_share_persister.go) n emet que des INSERT dans une
+	// transaction unique — aucune entree d allowlist a prevoir. Remplacer une passe = en ecrire une
+	// nouvelle ; la vue match_lead_share_latest ne rend que la derniere PASSE ENTIERE par match.
+	"match_lead_share",
 	// kill_positions / match_weapon_hit_distance (G4 du registre v2, enrôlement 2026-09-05) :
 	// les deux dernières tables du film restées HORS des deux listes anti-ART alors qu'elles
 	// sont append-only avec vue _latest depuis leur migration. Vérifié sur pièces avant

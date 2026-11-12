@@ -76,6 +76,8 @@ func (s *MatchViewService) assembleMatchHeader(
 	applyMatchHeaderReplay(ctx, &header, matchID, s.replaySvc)
 	// « Analyse du film en cours » : lit ReplayAvailable posé juste au-dessus.
 	s.applyHeaderAnalysisPending(ctx, &header)
+	// Mainmise du match pour l'équipe du joueur : absente = non mesurée.
+	s.applyHeaderLeadShare(ctx, &header)
 	// Catégorie custom du mode (taxonomie injectée) : la garde Fiesta du rejeu s'y corrèle.
 	applyMatchHeaderModeCategory(&header, meta, s.modeTaxonomy)
 	return header, outcomes

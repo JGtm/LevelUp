@@ -76,8 +76,13 @@ export const LAYER_ORDER = [
   'bombe-portee',
   'deflagration',
   'pulses-objectif',
-  // LES MORTS EN DERNIER : l'événement le plus lourd de sens du calque.
+  // LES MORTS : l'événement le plus lourd de sens du calque.
   'morts',
+  // LA MISE EN VALEUR D'UNE ÉLIMINATION (clic sur une ligne de frag du fil), tout en haut : le
+  // voile et les équerres au-dessus des pions et des événements, puis les étiquettes de nom
+  // au-dessus de tout — un nom de tueur ne passe jamais sous une équerre ni sous le voile.
+  'mise-en-valeur',
+  'etiquettes-mise-en-valeur',
 ] as const
 
 export type ReplayLayerId = (typeof LAYER_ORDER)[number]
@@ -214,6 +219,9 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
     deflagration: true,
     'pulses-objectif': t.modeObjectives && h.objectivePulses,
     morts: t.killFx && h.killFx,
+    // Sans condition : le peintre ne pose rien tant qu'aucune élimination n'est mise en valeur.
+    'mise-en-valeur': true,
+    'etiquettes-mise-en-valeur': true,
   }
   return LAYER_ORDER.map((id) => ({ id, on: on[id], paint: paint[id] }))
 }

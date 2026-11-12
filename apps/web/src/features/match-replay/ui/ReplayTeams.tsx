@@ -112,10 +112,17 @@ interface ReplayTeamsProps {
    * gabarit normal. Les relais de place, eux, viennent du document (`roster[].presence`).
    */
   header?: PresenceHeader | null
+  /**
+   * LE PANNEAU DE JOUEUR (lot 4 du plan « maquettes du rejeu ») : chaque fiche d'un joueur PRÉSENT
+   * devient un bouton qui l'ouvre à la place du fil. `xuid` est le joueur dont le panneau est ouvert
+   * (clé de roster), `onSelect` reçoit celui d'une fiche cliquée. Absent = fiches inertes, nœud pour
+   * nœud. Les fiches ne sont JAMAIS filtrées par Seul ou Masquer : un joueur présent y reste.
+   */
+  panel?: { xuid: string | null; onSelect: (xuid: string) => void }
 }
 
 export function ReplayTeams({
-  doc, scoreboard, frame, locale, allegiance, header,
+  doc, scoreboard, frame, locale, allegiance, header, panel,
 }: ReplayTeamsProps) {
   const t = REPLAY_TEXT[locale]
   const players = useMemo(() => buildPlayers(doc, scoreboard), [doc, scoreboard])
@@ -232,6 +239,7 @@ export function ReplayTeams({
               if (lu.kind !== 'present' || lu.player === null) {
                 return <ReplaySeatWaiting key={seat.key} occupant={lu.player} gabarit={gabarit} locale={locale} />
               }
+              const playerXuid = lu.player.xuid
               return (
                 <ReplayPlayerCard
                   key={seat.key}
@@ -246,6 +254,11 @@ export function ReplayTeams({
                   scoreTimeline={scoreTimeline}
                   fxScene={fxScene}
                   gabarit={gabarit}
+                  panel={
+                    panel
+                      ? { selected: panel.xuid === playerXuid, onSelect: () => panel.onSelect(playerXuid) }
+                      : undefined
+                  }
                 />
               )
             })}

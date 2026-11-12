@@ -211,6 +211,20 @@ export interface MarkerStyle {
    * QUE composer la géométrie et poser le texte qu'on lui donne.
    */
   offscreenLabelOf: (name: string, meters: number) => string
+  /**
+   * LA MISE EN VALEUR D'UNE ÉLIMINATION (plan « maquettes du rejeu », lot 2) : vrai pour un slot dont
+   * l'étiquette pleine du tueur ou de la victime REMPLACE le nom sous le pion — le même nom écrit deux
+   * fois sur le même pion est ce qu'on écarte. Ne vaut QUE pour le nom SOUS le pion : la flèche d'un
+   * joueur hors cadre garde le sien, et le pion reste dessiné. Absent = tous les noms s'écrivent.
+   */
+  nameHiddenAtSlot?: (slot: number) => boolean
+  /**
+   * SEUL ET MASQUER (panneau de joueur, lot 4) : faux quand la vie VIVANTE d'un slot à cette image est
+   * retirée de la carte — pion, nom, cône de visée et traînée d'un seul geste. La croix de mort n'y
+   * passe pas : une mort est un événement du match, ni Seul ni Masquer ne l'efface. Absent = tout se
+   * dessine.
+   */
+  shownAtSlot?: (slot: number, frame: number) => boolean
 }
 
 /**
@@ -268,6 +282,7 @@ export function drawTracksLayer(
       drawDeathMark(ctx, track, view, style)
       return
     }
+    if (style.shownAtSlot && !style.shownAtSlot(track.slot, style.frame)) return
     drawLivingTrack(ctx, track, view, style, color)
   })
   ctx.globalAlpha = 1
@@ -365,7 +380,9 @@ function drawLivingTrack(
   // LE NOM SOUS LE POINT, jamais à côté d'une croix de mort : la ligne ci-dessus n'est
   // atteinte que pour une vie EN COURS (drawDeathMark rend avant).
   const name = style.nameOfSlot(track.slot, style.frame)
-  if (name) drawNameLabel(ctx, c, name, style, color, markerEdge(fl, style.k, shape))
+  if (name && !style.nameHiddenAtSlot?.(track.slot)) {
+    drawNameLabel(ctx, c, name, style, color, markerEdge(fl, style.k, shape))
+  }
 }
 
 /**

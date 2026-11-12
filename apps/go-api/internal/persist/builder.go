@@ -162,6 +162,13 @@ func (b *BatchBuilder) SetVehicleTakes(pass *VehicleTakesBatch) *BatchBuilder {
 	return b
 }
 
+// SetLeadShare fixe la Mainmise d une passe de lecture d artefact pour ce match. Set et non Add :
+// l unite de production est l ARTEFACT ENTIER (une passe = un decode_pass).
+func (b *BatchBuilder) SetLeadShare(pass *LeadShareBatch) *BatchBuilder {
+	b.batch.Shared.LeadShare = pass
+	return b
+}
+
 // AddXUIDAliases ajoute les rows xuid_aliases.
 func (b *BatchBuilder) AddXUIDAliases(rows []XUIDAliasInsert) *BatchBuilder {
 	b.batch.Shared.XUIDAliases = append(b.batch.Shared.XUIDAliases, rows...)

@@ -197,6 +197,22 @@ export interface ReplayPlaybackOptions {
    * garde `appliedOpenAtFrameRef`.
    */
   openAtFrame?: number | null
+  /**
+   * LE CANAL DE SAUT DE LA PAGE (`playbackStore.onSeekRequest`, plan « maquettes du rejeu », D-5) :
+   * inscription de l'EXÉCUTEUR, désinscrit au démontage. Une demande met la lecture en PAUSE puis
+   * la pose sur l'image, par le même `seekTo` borné que tout saut — et ne compte PAS comme un
+   * geste de l'utilisateur (`onUserMove` ne part pas) : le clic qui demande ce saut pose lui-même
+   * la mise en valeur qu'un geste manuel effacerait. Absent = aucun canal.
+   */
+  onSeekRequest?: (executer: (frame: number) => void) => () => void
+  /**
+   * L'UTILISATEUR VIENT DE DÉPLACER OU RELANCER LA LECTURE À LA MAIN : « Lecture » (la reprise,
+   * pas la pause), « Recommencer », glissé de frise, sauts de ±N secondes, pas d'image, saut vers
+   * un repère — donc aussi leurs raccourcis clavier, qui passent par ces commandes. La mise en
+   * valeur d'une élimination s'y efface (`playbackStore.clearFocus`). Ni le saut d'un lien
+   * tactique, ni une demande de la page, ni la fin du film n'en font partie.
+   */
+  onUserMove?: () => void
 }
 
 /** Ce que la barre de lecture reçoit — l'état à afficher et les commandes. */
@@ -243,6 +259,7 @@ export interface ReplayPlayback {
 export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   const { doc, playWindow, baseFps, speed, renderWidth, frameRef, draw, openAtFrame } = o
   const { soundTick, soundSeek, onEnded, onTransportGesture, onPlayingChange, onStarted } = o
+  const { onSeekRequest, onUserMove } = o
   // POSÉ VRAI DÈS QUE `openAtFrame` A ÉTÉ APPLIQUÉ (voir l'effet plus bas) : empêche le
   // cadrage au coup d'envoi (juste en dessous) d'écraser un lien tactique déjà positionné si
   // la fenêtre de gameplay arrive PLUS TARD (Match View asynchrone) sur un instant antérieur
@@ -383,6 +400,7 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
    * une LECTURE qui atterrit, et entendre ce qui se joue à l'arrivée est ce qu'on attend.
    */
   const onScrub = (e: ChangeEvent<HTMLInputElement>) => {
+    onUserMove?.()
     frameRef.current = Number(e.currentTarget.value)
     // LE REMPLISSAGE SUIT LE GLISSÉ : le champ porte déjà sa valeur (c'est lui qui l'émet),
     // mais `--played` ne se met à jour pour personne — sans cet appel, la piste resterait
@@ -429,9 +447,32 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openAtFrame])
 
-  const seekBy = (seconds: number) => seekTo(frameRef.current + seconds * baseFps)
+  // LE CANAL DE SAUT (cf. `onSeekRequest`). La référence tient le `seekTo` du dernier rendu — il se
+  // recrée à chaque rendu — sans réinscrire l'exécuteur à chaque fois.
+  const seekToRef = useRef(seekTo)
+  useEffect(() => {
+    seekToRef.current = seekTo
+  })
+  useEffect(() => {
+    if (!onSeekRequest) return
+    return onSeekRequest((frame) => {
+      setPlaying(false)
+      seekToRef.current(frame)
+    })
+  }, [onSeekRequest])
+
+  const seekBy = (seconds: number) => {
+    onUserMove?.()
+    seekTo(frameRef.current + seconds * baseFps)
+  }
+
+  const seekToFrame = (frame: number) => {
+    onUserMove?.()
+    seekTo(frame)
+  }
 
   const stepFrames = (frames: number) => {
+    onUserMove?.()
     // EN PAUSE D'ABORD (cf. l'en-tête) : sous la boucle, le pas d'image serait écrasé à la
     // frame suivante et le geste n'aurait aucun effet visible.
     setPlaying(false)
@@ -442,6 +483,7 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   // utilisateur, la seule fenêtre où un AudioContext démarre en marche. C'est ce qui rend son
   // son à un rejeu rechargé dont la préférence était restée à « activé » (cf. useReplaySound).
   const restart = () => {
+    onUserMove?.()
     onTransportGesture()
     rewind()
     onStarted?.() // toujours au préambule après le rembobinage
@@ -450,6 +492,8 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
 
   const togglePlay = () => {
     onTransportGesture()
+    // LA REPRISE EFFACE LA MISE EN VALEUR, PAS LA PAUSE (cf. `onUserMove`).
+    if (!playing) onUserMove?.()
     // REPARTIR DU DÉBUT SUR UN REJEU TERMINÉ (cf. l'en-tête) : sans ce rembobinage, la boucle
     // relancée à `endFrame` conclurait « fin » à son premier pas et se rendormirait — le bouton
     // « Lecture » n'aurait aucun effet visible.
@@ -459,5 +503,5 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     setPlaying((p) => !p)
   }
 
-  return { playing, startFrame, endFrame, sliderRef, togglePlay, restart, onScrub, seekBy, stepFrames, seekToFrame: seekTo }
+  return { playing, startFrame, endFrame, sliderRef, togglePlay, restart, onScrub, seekBy, stepFrames, seekToFrame }
 }

@@ -42,6 +42,10 @@ func (r *ServiceRegistry) cablerFilmMatchView(svc *service.MatchViewService, pdb
 	if caps.Has(games.CapFilmVehicleUsage) {
 		svc = svc.WithEmpriseVehicles(duckdb.NewSquadVehicleRepo(pdb, r.killSourceClassifierFor(pdb)))
 	}
+	// La Mainmise du match (part du temps en tete du score) : la capability fine film.lead_share.
+	if caps.Has(games.CapFilmLeadShare) {
+		svc = svc.WithLeadShare(duckdb.NewLeadShareRepo(pdb))
+	}
 	return svc
 }
 

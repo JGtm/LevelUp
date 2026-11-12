@@ -2,7 +2,7 @@
  * ReplaySettingsLayers — la section CALQUES du tiroir de réglages, et ce que chaque calque
  * demande au film pour seulement s'afficher.
  *
- * EXTRAITE DE `ReplaySettingsDrawer.tsx` LE 2026-08-29, deuxième extraction du tiroir après
+ * EXTRAITE DE `ReplaySettingsDrawer.tsx` (devenu `ReplayViewPanel.tsx`) LE 2026-08-29, deuxième extraction du tiroir après
  * la carte de chaleur (2026-08-18) et pour la même raison : le tiroir gagnait une section —
  * la LECTURE (lecture automatique) — et repassait au-dessus du seuil de 500 lignes du dépôt
  * (CLAUDE.md n°5). La règle du dépôt est d'extraire, pas de relever le plafond.

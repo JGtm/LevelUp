@@ -17863,6 +17863,28 @@ components:
         - outOfWindow
         - unpublished
       type: object
+    LeadSharePeriodPoint:
+      additionalProperties: false
+      properties:
+        lead_share:
+          format: double
+          type: number
+        matches:
+          format: int64
+          type: integer
+        measured_matches:
+          format: int64
+          type: integer
+        month:
+          type: string
+        start_date:
+          type: string
+      required:
+        - month
+        - start_date
+        - measured_matches
+        - matches
+      type: object
     LeaderboardCatalog:
       additionalProperties: false
       properties:
@@ -18423,6 +18445,12 @@ components:
     MapBreakdownRow:
       additionalProperties: false
       properties:
+        historical_lead_share:
+          format: double
+          type: number
+        historical_lead_share_matches:
+          format: int64
+          type: integer
         historical_match_count:
           format: int64
           type: integer
@@ -18432,6 +18460,12 @@ components:
         historical_win_rate:
           format: double
           type: number
+        lead_share:
+          format: double
+          type: number
+        lead_share_matches:
+          format: int64
+          type: integer
         map_ui:
           type: string
         match_count:
@@ -20743,6 +20777,12 @@ components:
           type: boolean
         is_ranked:
           type: boolean
+        lead_changes:
+          format: int64
+          type: integer
+        lead_share:
+          format: double
+          type: number
         map_id:
           type: string
         map_image_url:
@@ -25943,6 +25983,12 @@ components:
         last_skill_rating:
           format: double
           type: number
+        lead_share:
+          format: double
+          type: number
+        lead_share_matches:
+          format: int64
+          type: integer
         losses:
           format: int64
           type: integer
@@ -26175,6 +26221,12 @@ components:
           format: int64
           type: integer
         kills_expected:
+          format: double
+          type: number
+        lead_changes:
+          format: int64
+          type: integer
+        lead_share:
           format: double
           type: number
         lobby_size:
@@ -28201,6 +28253,31 @@ components:
       required:
         - players
         - bars
+      type: object
+    SquadLeadSharePoint:
+      additionalProperties: false
+      properties:
+        lead_changes:
+          format: int64
+          type: integer
+        lead_share:
+          format: double
+          type: number
+        map_name:
+          type: string
+        match_id:
+          type: string
+        outcome:
+          format: int64
+          type: integer
+        session_label:
+          type: string
+        start_time:
+          type: string
+      required:
+        - match_id
+        - start_time
+        - outcome
       type: object
     SquadMapHeatmap:
       additionalProperties: false
@@ -30736,6 +30813,12 @@ components:
           $ref: '#/components/schemas/SquadIntensityProfile'
         latest_composition_session:
           type: string
+        lead_share_series:
+          items:
+            $ref: '#/components/schemas/SquadLeadSharePoint'
+          type:
+            - array
+            - "null"
         main_player:
           type: string
         map_breakdown:
@@ -31253,6 +31336,12 @@ components:
         kills_expected:
           format: double
           type: number
+        lead_changes:
+          format: int64
+          type: integer
+        lead_share:
+          format: double
+          type: number
         map_label:
           type: string
         map_name:
@@ -31374,6 +31463,12 @@ components:
           $ref: '#/components/schemas/TimeseriesIntensityTab'
         kill_types:
           $ref: '#/components/schemas/TimeseriesKillTypes'
+        lead_share_by_month:
+          items:
+            $ref: '#/components/schemas/LeadSharePeriodPoint'
+          type:
+            - array
+            - "null"
         lives_near_teammate:
           $ref: '#/components/schemas/TimeseriesLivesNearTeammate'
         map_breakdown:
