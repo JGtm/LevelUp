@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -156,9 +155,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(groupStore, users))
 	ownershipMW := middleware.RequirePlayerOwnership(playerAccess)
 	// Auteurs visibles des médias (galerie, fichiers, onglet Médias du match et du rejeu).
-	mediaAudience := mediaAudienceResolver(authz.Enforced(cfg.DemoMode, cfg.AuthMode) && users != nil,
+	mediaAudience := mediaAudienceResolver(service.NewMediaAudienceService(
+		authz.Enforced(cfg.DemoMode, cfg.AuthMode) && users != nil,
 		func(titleSlug string) ([]domain.PlayerSummary, error) { return cfg.LoadPlayers(titleSlug) },
-		groupCoMembers(groupStore), users)
+		groupCoMembers(groupStore), users))
 	var xboxOAuthRoot *handlers.XboxOAuthHandler
 	// V72-01 / H1 : option de document PARTAGÉ pour toutes les routes Huma montées
 	// directement sous /api/v1 (r nu, r.With(mw), r.Group(mw) — préfixe de path
@@ -1465,6 +1465,8 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// Transcoding média HLS asynchrone : le registry partage le jobStore process-wide
 	// (cf. service.WithMediaTranscoding, injecté dans MediaUpload).
 	reg.WithJobStore(jobStore)
+	// Le magasin de sessions du routeur : la tâche de fond qui purge les sessions expirées (cmd/server) le lit ici.
+	reg.WithSessionStore(sessionStore)
 
 	var gamertagSvc port.GamertagSearchService
 	// Sprint B1 commit 11a : route via cfg.SharedProvider (sharedprovider.Provider)
@@ -1617,7 +1619,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	service.RegisterGhostMedalIDs(halo5.TitleSlug, halo5.GhostMedalIDs)
 
 	// Fichiers statiques (images maps, médailles, armes…), sans listing de dossier.
-	registerStaticRoutes(r, filepath.Join(cfg.RepoRoot, "static"))
+	handlers.RegisterStaticRoutes(r, filepath.Join(cfg.RepoRoot, "static"))
 
 	// Health check (pas de préfixe /api/v1 — sondage infrastructurel).
 	//
@@ -1694,53 +1696,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	}
 }
 
-// immutableAssetCacheControl : politique de cache des assets Vite au nom hashé.
-// max-age 1 an + immutable — sûr car le hash de contenu change à chaque build,
-// donc l'URL elle-même est un cache-buster (le navigateur ne revalide jamais).
-const immutableAssetCacheControl = "public, max-age=31536000, immutable"
-
-// publicAssetCacheControl : politique de cache des fichiers statiques NON
-// fingerprintés du dist (recopiés depuis apps/web/public/ : /logo.png, icônes,
-// /titles/**, polices...). 1 h, sans `immutable` : leur URL est stable d'un build
-// à l'autre, donc un cache long empêcherait de livrer une image corrigée — mais
-// sans aucun Cache-Control (état d'avant le 2026-07-26) chaque navigation
-// re-tirait la centaine d'images d'une page, ce qui vidait le bucket rate limit.
-// Le validateur Last-Modified posé par le FileServer permet un 304 peu coûteux
-// après expiration.
-const publicAssetCacheControl = "public, max-age=3600"
-
-// viteHashedAssetPattern reconnaît les fichiers émis par Vite avec un hash de
-// contenu : `/assets/<nom>-<hash>.<ext>`. Le hash par défaut de Vite fait 8
-// caractères base64url ([A-Za-z0-9_-]) ; on exige >= 8 pour ne PAS confondre un
-// simple nom à tirets (`/assets/mon-fichier.css`) avec un asset hashé. index.html
-// et tout fichier non hashé (racine, /favicon.ico…) ne matchent pas → jamais
-// marqués immutable (ils DOIVENT rester revalidables pour livrer un nouveau build).
-var viteHashedAssetPattern = regexp.MustCompile(`^/assets/.+-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$`)
-
-// isViteHashedAsset indique si le chemin URL cible un asset Vite au nom hashé.
-func isViteHashedAsset(urlPath string) bool {
-	return viteHashedAssetPattern.MatchString(urlPath)
-}
-
-// serveStaticFile délègue au FileServer (qui pose ETag/Last-Modified/Content-Type)
-// après avoir posé le Cache-Control adapté :
-//   - asset Vite hashé → immutable 1 an (l'URL EST le cache-buster) ;
-//   - autre fichier statique (public/ recopié à la racine du dist) → 1 h ;
-//   - index.html et tout ce qui n'est pas un fichier statique → aucun header,
-//     donc revalidation systématique (un nouveau build doit être livré).
-//
-// Le header est posé AVANT ServeHTTP : il survit aussi bien au 200 qu'au 304.
-func serveStaticFile(w http.ResponseWriter, req *http.Request, fileServer http.Handler) {
-	switch {
-	case isViteHashedAsset(req.URL.Path):
-		w.Header().Set("Cache-Control", immutableAssetCacheControl)
-	case middleware.IsStaticAssetPath(req.URL.Path):
-		w.Header().Set("Cache-Control", publicAssetCacheControl)
-	}
-	fileServer.ServeHTTP(w, req)
-}
-
-// mountSPA sert le build Vite (LEVELUP_WEB_DIST) en catch-all /* (cf. newSPAHandler), avec
+// mountSPA sert le build Vite (LEVELUP_WEB_DIST) en catch-all /* (cf. handlers.NewSPAHandler), avec
 // injection Open Graph sur index.html. Les routes /api/v1 sont montees AVANT (r.Route dans
 // server.go) : un chemin /api/v1/* inconnu tombe sur le NotFound du sous-routeur, jamais
 // ici. Inactif si WebDistDir vide ou index.html absent. Extrait de NewRouter (K2a).
@@ -1749,7 +1705,7 @@ func mountSPA(r chi.Router, serverCtx context.Context, cfg *config.AppConfig, re
 	if dist == "" {
 		return
 	}
-	spa, ok := newSPAHandler(dist, reg.ServeIndexWithOG)
+	spa, ok := handlers.NewSPAHandler(dist, reg.ServeIndexWithOG)
 	if !ok {
 		slog.WarnContext(serverCtx, "LEVELUP_WEB_DIST défini mais index.html introuvable — SPA non montée", "dir", dist)
 		return

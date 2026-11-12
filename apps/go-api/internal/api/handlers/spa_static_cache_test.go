@@ -7,7 +7,7 @@
 // (`/assets/<nom>-<hash>.<ext>`), et JAMAIS sur index.html ni les fichiers non
 // hashés — sinon un nouveau build ne serait pas livré (le navigateur garderait
 // l'ancien index.html un an).
-package api
+package handlers
 
 import (
 	"net/http"
@@ -178,11 +178,11 @@ func TestSPAHandler_ImagesWebPDeLaPage(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeFile(t, filepath.Join(webp, "001.webp"), "RIFF\x04\x00\x00\x00WEBP")
-	h, ok := newSPAHandler(dist, func(http.ResponseWriter, *http.Request, string) {
+	h, ok := NewSPAHandler(dist, func(http.ResponseWriter, *http.Request, string) {
 		t.Error("une image du dist ne doit pas retomber sur index.html")
 	})
 	if !ok {
-		t.Fatal("newSPAHandler : dist sans page")
+		t.Fatal("NewSPAHandler : dist sans page")
 	}
 	rec := httptest.NewRecorder()
 	h(rec, httptest.NewRequest(http.MethodGet, "/titles/halo_5/spartan/emblems/001.webp", nil))

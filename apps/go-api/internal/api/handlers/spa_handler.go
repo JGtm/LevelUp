@@ -1,4 +1,6 @@
-package api
+// Package handlers — spa_handler.go : la page web (build Vite) et la page servie pendant le
+// démarrage du serveur.
+package handlers
 
 import (
 	"log/slog"
@@ -8,19 +10,18 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/api/middleware"
-	"levelup/go-api/internal/api/wire"
 	"levelup/go-api/internal/config"
 )
 
-// indexServer sert index.html (chemin donné) pour une route client-side de la page.
-type indexServer func(w http.ResponseWriter, req *http.Request, indexPath string)
+// IndexServer sert index.html (chemin donné) pour une route client-side de la page.
+type IndexServer func(w http.ResponseWriter, req *http.Request, indexPath string)
 
-// newSPAHandler rend le catch-all du build Vite servi depuis dist : un fichier du dist est
+// NewSPAHandler rend le catch-all du build Vite servi depuis dist : un fichier du dist est
 // servi tel quel (Cache-Control selon serveStaticFile) ; un chemin à extension statique
 // absent du dist rend un 404 franc (cf. middleware.IsStaticAssetPath) ; tout autre chemin
 // est une route client-side React et reçoit index.html par serveIndex. ok=false si dist est
 // vide ou sans index.html.
-func newSPAHandler(dist string, serveIndex indexServer) (h http.HandlerFunc, ok bool) {
+func NewSPAHandler(dist string, serveIndex IndexServer) (h http.HandlerFunc, ok bool) {
 	if dist == "" {
 		return nil, false
 	}
@@ -57,8 +58,8 @@ var serverRoutePaths = map[string]struct{}{
 	"/health": {}, "/healthz": {}, "/readyz": {}, "/docs": {},
 }
 
-// isServerRoutePath indique si urlPath relève d'une route du routeur et non de la page web.
-func isServerRoutePath(urlPath string) bool {
+// IsServerRoutePath indique si urlPath relève d'une route du routeur et non de la page web.
+func IsServerRoutePath(urlPath string) bool {
 	if _, ok := serverRoutePaths[urlPath]; ok {
 		return true
 	}
@@ -73,21 +74,21 @@ func isServerRoutePath(urlPath string) bool {
 // NewBootPageHandler rend le handler servi PENDANT le démarrage du serveur, avant que le
 // routeur soit prêt : les fichiers du build Vite (cfg.WebDistDir) et index.html pour les
 // routes de la page, pour que la page s'affiche et attende l'API. Toute autre requête —
-// route du routeur (isServerRoutePath), méthode autre que GET/HEAD — va à starting. Sans
+// route du routeur (IsServerRoutePath), méthode autre que GET/HEAD — va à starting. Sans
 // page à servir (dist vide ou sans index.html : en dev, Vite sert la page), tout va à
 // starting. Toutes ses réponses portent les en-têtes de sécurité du routeur
 // (middleware.SecurityHeaders).
 //
-// index.html y reçoit la carte Open Graph générique (registre nil : cf. serveIndexWithOG).
-func NewBootPageHandler(cfg *config.AppConfig, starting http.Handler) http.Handler {
+// serveIndex sert index.html ; pendant le démarrage aucun registre n'existe encore, l'appelant
+// passe l'injection Open Graph générique (wire.ServiceRegistry.ServeIndexWithOG sur un registre nil).
+func NewBootPageHandler(cfg *config.AppConfig, starting http.Handler, serveIndex IndexServer) http.Handler {
 	secure := middleware.SecurityHeaders(cfg.TrustProxyHeaders)
-	var noRegistry *wire.ServiceRegistry
-	spa, ok := newSPAHandler(cfg.WebDistDir, noRegistry.ServeIndexWithOG)
+	spa, ok := NewSPAHandler(cfg.WebDistDir, serveIndex)
 	if !ok {
 		return secure(starting)
 	}
 	return secure(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if (req.Method != http.MethodGet && req.Method != http.MethodHead) || isServerRoutePath(req.URL.Path) {
+		if (req.Method != http.MethodGet && req.Method != http.MethodHead) || IsServerRoutePath(req.URL.Path) {
 			starting.ServeHTTP(w, req)
 			return
 		}

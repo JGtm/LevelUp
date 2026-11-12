@@ -14,6 +14,7 @@ import (
 	"levelup/go-api/internal/api/wire"
 	"levelup/go-api/internal/notifications/external"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/scheduler"
 )
 
 // buildRouter construit le routeur HTTP et branche le registre de services (jetons, journal
@@ -40,6 +41,13 @@ func buildRouter(st *bootState) {
 	// stade (DocsPath/OpenAPIPath désactivés), réservé à la génération hors-ligne (H6).
 	router, reg, _ = api.NewRouter(routerCtx, cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler, backupSched, groupStore)
 	st.router, st.reg = router, reg
+
+	// Purge périodique des sessions expirées, sur le magasin du routeur. Gardée dans les quatre
+	// profils (elle ne touche que le dossier des sessions du profil) ; non suivie : aucune base
+	// à fermer derrière elle, la boucle s'arrête avec schedulerCtx.
+	st.boot.launch(loopTask(taskSessionPurge, false, schedulerCtx, func(c context.Context) {
+		scheduler.RunSessionPurgeLoop(c, reg.SessionStore())
+	}))
 
 	// Câble le hook global de re-dérivation des tokens per-player : le cache
 	// expiry-aware (tokencache.ResolveFreshPlayerTokens) re-minte via le registry quand un

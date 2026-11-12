@@ -1,7 +1,7 @@
 //go:build cgo
 
 // spa_handler_test.go — page web servie pendant le démarrage du serveur (NewBootPageHandler)
-// et frontière « route du routeur / route de la page » (isServerRoutePath).
+// et frontière « route du routeur / route de la page » (handlers.IsServerRoutePath).
 package api
 
 import (
@@ -12,8 +12,24 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/api/wire"
 	"levelup/go-api/internal/config"
 )
+
+// noRegistry : la page de démarrage sert index.html avant que le registre existe (carte Open Graph
+// générique) ; c'est le même registre nil que câble cmd/server.
+var noRegistry *wire.ServiceRegistry
+
+// immutableAssetCacheControl : le Cache-Control d'un asset Vite hashé (handlers.serveStaticFile).
+const immutableAssetCacheControl = "public, max-age=31536000, immutable"
+
+func writeFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
 
 // startingMarker : réponse de la doublure « serveur en démarrage ».
 const startingMarker = "starting-handler"
@@ -44,7 +60,7 @@ func bootGet(h http.Handler, method, path string) *httptest.ResponseRecorder {
 
 func TestNewBootPageHandler_SansPageAServir_ToutVaAuDemarrage(t *testing.T) {
 	for name, dist := range map[string]string{"dist vide": "", "dist sans index.html": t.TempDir()} {
-		h := NewBootPageHandler(&config.AppConfig{WebDistDir: dist}, startingStub())
+		h := handlers.NewBootPageHandler(&config.AppConfig{WebDistDir: dist}, startingStub(), noRegistry.ServeIndexWithOG)
 		for _, path := range []string{"/", "/players/x/home", "/api/v1/bootstrap", "/health"} {
 			if w := bootGet(h, http.MethodGet, path); w.Code != http.StatusServiceUnavailable || w.Body.String() != startingMarker {
 				t.Errorf("%s, GET %s : %d %q, attendu la réponse de démarrage", name, path, w.Code, w.Body.String())
@@ -54,7 +70,7 @@ func TestNewBootPageHandler_SansPageAServir_ToutVaAuDemarrage(t *testing.T) {
 }
 
 func TestNewBootPageHandler_ServeLaPageEtRenvoieLeResteAuDemarrage(t *testing.T) {
-	h := NewBootPageHandler(&config.AppConfig{WebDistDir: newBootDist(t)}, startingStub())
+	h := handlers.NewBootPageHandler(&config.AppConfig{WebDistDir: newBootDist(t)}, startingStub(), noRegistry.ServeIndexWithOG)
 
 	for _, path := range []string{"/", "/players/JGtm/home", "/login"} {
 		w := bootGet(h, http.MethodGet, path)

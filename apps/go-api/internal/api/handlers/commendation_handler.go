@@ -1,7 +1,7 @@
-// Package api — commendation_handler.go : handler pour les images de citations/commendations.
+// Package handlers — commendation_handler.go : handler pour les images de citations/commendations.
 // Utilise os.Open + http.ServeContent pour éviter les redirects de http.ServeFile
 // lorsque RawPath != Path (caractères spéciaux URL-encodés dans le nom de fichier).
-package api
+package handlers
 
 import (
 	"net/http"

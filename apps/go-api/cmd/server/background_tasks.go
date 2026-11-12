@@ -72,6 +72,7 @@ const (
 	taskReplayPurge      = "purge des rejeux"
 	taskAppRelease       = "notification de version (app_release)"
 	taskHeartbeat        = "heartbeat"
+	taskSessionPurge     = "purge des sessions expirées"
 	stepFriendsMigr      = "migration des amis par joueur"
 	stepGroupMigr        = "migration du groupe par défaut"
 	stepTokenPool        = "pool de tokens (auto-sync)"
@@ -134,6 +135,7 @@ var taskPolicies = map[string]profilePolicies{
 	taskReplayPurge:      exceptDemo,
 	taskAppRelease:       everywhere,
 	taskHeartbeat:        everywhere,
+	taskSessionPurge:     everywhere,
 	stepFriendsMigr:      exceptDemo,
 	stepGroupMigr:        exceptDemo,
 	stepTokenPool:        exceptDemo,

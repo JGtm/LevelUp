@@ -114,6 +114,9 @@ func tachesDeTest(ctx context.Context, cfg *config.AppConfig, doublures map[stri
 		loopTask(taskDataHealth, true, ctx, scheduler.NewDataHealthScheduler(cfg.RepoRoot).Run),
 		loopTask(taskReplayPurge, true, ctx, scheduler.NewReplayPurgeCron(cfg.RepoRoot, func() int { return 1 }, 0).Run),
 		heartbeatTask(ctx, time.Now()),
+		loopTask(taskSessionPurge, false, ctx, func(c context.Context) {
+			scheduler.RunSessionPurgeLoop(c, session_platform.NewStore(cfg.SessionDir, time.Hour, "test-secret-32-bytesXXXXXXXXXX"))
+		}),
 	}
 	for _, nom := range []string{taskAutoSync, taskDetectionFlush, taskDiskWatch, taskReplayNotify, taskCitationsRelance,
 		taskMediaReconcile, taskScoringRevision, taskCatalogCron, taskAssetNameSweep, taskSpartanCron, taskWorldLeaderbd,
@@ -159,9 +162,9 @@ func TestBackgroundTasks_Demo_ManifesteDuDepotInchange(t *testing.T) {
 		t.Errorf("fermeture du magasin monitoring : %v", err)
 	}
 	// Écritures du serveur démo sous ses chemins d'exécution (lot B-C10) : répertoire et purge
-	// des sessions au boot (api/server.go), file des jobs (jobs.json). Elles ne restent hors du
-	// dépôt que si la configuration du serveur (LoadServer) redirige ses chemins d'état.
-	session_platform.NewStore(cfg.SessionDir, time.Hour, "test-secret-32-bytesXXXXXXXXXX").PurgeExpired()
+	// des sessions au boot (tâche taskSessionPurge, lancée ci-dessus), file des jobs (jobs.json).
+	// Elles ne restent hors du dépôt que si la configuration du serveur (LoadServer) redirige
+	// ses chemins d'état.
 	jobs_platform.NewStore(cfg.RuntimePaths().JobsCachePath()).Create(domain.JobTypeScanMedia, "")
 
 	apres := manifeste(t, depot)
@@ -245,6 +248,7 @@ var nomsDeclares = []string{
 	taskJanitor, taskWALRecovery, taskSocialCkpt, taskPeriodicCkpt, taskPoolRescan, taskAutoSync, taskDataHealth,
 	taskDetectionFlush, taskDiskWatch, taskReplayNotify, taskCitationsRelance, taskMediaReconcile, taskScoringRevision,
 	taskCatalogCron, taskAssetNameSweep, taskSpartanCron, taskWorldLeaderbd, taskReplayPurge, taskAppRelease, taskHeartbeat,
+	taskSessionPurge,
 	stepFriendsMigr, stepGroupMigr, stepTokenPool, stepPersistQueue, stepWatcher,
 }
 
@@ -275,10 +279,11 @@ func TestBackgroundTasks_DeclarationParProfil(t *testing.T) {
 
 // TestBackgroundTasks_ColonneDemoInchangee : non-régression de la généralisation (A17) — la
 // colonne demo reproduit exactement l'ancienne table demoPolicies (tableau B5.0 : seules
-// quatre tâches sont gardées en démo).
+// quatre tâches sont gardées en démo), plus la purge des sessions, qui tournait déjà en démo
+// avant de devenir une tâche déclarée (lancée alors par le montage du routeur).
 func TestBackgroundTasks_ColonneDemoInchangee(t *testing.T) {
 	gardeesEnDemo := map[string]bool{
-		taskSocialCkpt: true, taskDetectionFlush: true, taskAppRelease: true, taskHeartbeat: true,
+		taskSocialCkpt: true, taskDetectionFlush: true, taskAppRelease: true, taskHeartbeat: true, taskSessionPurge: true,
 	}
 	for _, nom := range nomsDeclares {
 		want := taskCut

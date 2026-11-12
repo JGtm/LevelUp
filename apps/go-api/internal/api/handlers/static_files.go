@@ -1,5 +1,5 @@
-// Package api — static_files.go : service des fichiers de static/ sous /static/.
-package api
+// Package handlers — static_files.go : service des fichiers de static/ sous /static/.
+package handlers
 
 import (
 	"io/fs"
@@ -8,11 +8,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// registerStaticRoutes monte /static/* sur staticDir (images de cartes, médailles, armes,
+// RegisterStaticRoutes monte /static/* sur staticDir (images de cartes, médailles, armes,
 // sons...). /static/commendations/* passe par son handler dédié (noms de fichiers encodés).
 // Un dossier n'est jamais listé : il répond 404 (noDirListingFS), les fichiers restent
 // servis.
-func registerStaticRoutes(r chi.Router, staticDir string) {
+func RegisterStaticRoutes(r chi.Router, staticDir string) {
 	r.Handle("/static/commendations/*", newCommendationHandler(staticDir))
 	r.Handle("/static/*", http.StripPrefix("/static/",
 		http.FileServer(noDirListingFS{http.Dir(staticDir)})))

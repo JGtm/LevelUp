@@ -1,4 +1,4 @@
-package api
+package handlers
 
 import (
 	"net/http"
@@ -11,7 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// staticRouter monte /static/* comme le routeur réel (registerStaticRoutes).
+// staticRouter monte /static/* comme le routeur réel (RegisterStaticRoutes).
 func staticRouter(t *testing.T) (*chi.Mux, string) {
 	t.Helper()
 	dir := t.TempDir()
@@ -30,7 +30,7 @@ func staticRouter(t *testing.T) (*chi.Mux, string) {
 		}
 	}
 	r := chi.NewRouter()
-	registerStaticRoutes(r, dir)
+	RegisterStaticRoutes(r, dir)
 	return r, dir
 }
 

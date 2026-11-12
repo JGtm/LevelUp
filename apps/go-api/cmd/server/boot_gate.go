@@ -36,7 +36,8 @@ import (
 	"syscall"
 	"time"
 
-	"levelup/go-api/internal/api"
+	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/api/wire"
 	"levelup/go-api/internal/config"
 )
 
@@ -112,7 +113,7 @@ type startingDetails struct {
 type routerRef struct{ h http.Handler }
 
 // bootGate : handler HTTP du serveur dès l'ouverture du port. Avant open, il sert la page
-// web et répond 503 server_starting au reste (cf. api.NewBootPageHandler) ; après open,
+// web et répond 503 server_starting au reste (cf. handlers.NewBootPageHandler) ; après open,
 // tout va au routeur.
 type bootGate struct {
 	router  atomic.Pointer[routerRef]
@@ -133,7 +134,9 @@ func newBootGate(cfg *config.AppConfig) *bootGate {
 	g := &bootGate{started: now, stepStarted: now}
 	first := bootStepMigrations
 	g.step.Store(&first)
-	g.booting = api.NewBootPageHandler(cfg, http.HandlerFunc(g.writeStarting))
+	// Aucun registre n'existe encore : l'index porte la carte Open Graph générique (registre nil).
+	var noRegistry *wire.ServiceRegistry
+	g.booting = handlers.NewBootPageHandler(cfg, http.HandlerFunc(g.writeStarting), noRegistry.ServeIndexWithOG)
 	return g
 }
 
