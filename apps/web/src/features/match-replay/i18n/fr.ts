@@ -263,7 +263,7 @@ export const FR_TEXT = {
     `≈ ${mag} au chargeur et ${res} en réserve, lues ${age} avant le lâcher`,
   layerVehicles: 'Véhicules',
   layerVehiclesHint:
-    "Les véhicules du match, lus dans le film : leur naissance, leur trajectoire orientée dans le sens du déplacement (le dernier cap connu à l'arrêt), et qui est à bord. Un véhicule sans occupant connu reste neutre ; un châssis que la table ne nomme pas encore se dessine en petit repère neutre, jamais avec le véhicule d'un voisin. LA DISPARITION DU SPRITE N'EST PAS UNE DESTRUCTION : le film ne date aucune destruction — le véhicule reste dessiné jusqu'à la PREMIÈRE preuve mesurée de son absence (fenêtre d'environ 20 s après la dernière preuve de présence), puis s'efface — rien de plus.",
+    "Les véhicules du match, lus dans le film : leur naissance, leur trajectoire orientée dans le sens du déplacement (le dernier cap connu à l'arrêt), et qui est à bord. Un véhicule sans occupant connu reste neutre ; un châssis que la table ne nomme pas encore se dessine en petit repère neutre, jamais avec le véhicule d'un voisin. Quand le film date la destruction d'un véhicule, le sprite cesse à cet instant, une explosion se joue à sa position et une ligne s'ajoute au fil (filtre Véhicules). Sans cette date, LA DISPARITION DU SPRITE N'EST PAS UNE DESTRUCTION : le véhicule reste dessiné jusqu'à la PREMIÈRE preuve mesurée de son absence (fenêtre d'environ 20 s après la dernière preuve de présence), puis s'efface — rien de plus.",
   padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
   padRespawnMeasuredFmt: (seconds) => `Réapparition dans ${Math.ceil(seconds)} s`,
   padRespawnExpectedFmt: (seconds) => `Réapparition dans ≈ ${Math.ceil(seconds)} s`,

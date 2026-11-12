@@ -260,7 +260,7 @@ export const EN_TEXT = {
     `≈ ${mag} in the magazine and ${res} in reserve, read ${age} before the drop`,
   layerVehicles: 'Vehicles',
   layerVehiclesHint:
-    "The match's vehicles, read from the film: their birth, their trajectory oriented in the direction of travel (the last known heading while stopped), and who is aboard. A vehicle with no known occupant stays neutral; a chassis the table doesn't name yet is drawn as a small neutral marker, never with a neighbor's vehicle. THE SPRITE DISAPPEARING IS NOT A DESTRUCTION: the film dates no destruction — the vehicle stays drawn until the FIRST measured proof of its absence (a window of about 20 s past the last proof of presence), then vanishes — nothing more.",
+    "The match's vehicles, read from the film: their birth, their trajectory oriented in the direction of travel (the last known heading while stopped), and who is aboard. A vehicle with no known occupant stays neutral; a chassis the table doesn't name yet is drawn as a small neutral marker, never with a neighbor's vehicle. When the film dates a vehicle's destruction, the sprite stops at that moment, an explosion plays at its position and a line is added to the feed (Vehicles filter). Without that date, THE SPRITE DISAPPEARING IS NOT A DESTRUCTION: the vehicle stays drawn until the FIRST measured proof of its absence (a window of about 20 s past the last proof of presence), then vanishes — nothing more.",
   padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
   padRespawnMeasuredFmt: (seconds) => `Respawn in ${Math.ceil(seconds)} s`,
   padRespawnExpectedFmt: (seconds) => `Respawn in ≈ ${Math.ceil(seconds)} s`,
