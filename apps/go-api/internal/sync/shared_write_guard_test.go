@@ -45,14 +45,15 @@ func sharedWritePattern(table string) *regexp.Regexp {
 // (depuis apps/go-api/) → raison. Le package internal/persist/ est autorisé en bloc (c'est la
 // couche d'orchestration). Toute autre écriture doit être listée ici avec justification, sinon le
 // test échoue. Chaque raison COMMENCE par la date de l'entrée, puis « (revu AAAA-MM-JJ) » : la
-// dernière vérification sur pièces (TestAllowlistsEcritureDatees).
+// dernière vérification sur pièces (TestAllowlistsEcritureDatees). Date de l'entrée = celle du premier
+// commit où la clé apparaît : git log --reverse --format=%as -S'"<clé>"' -- <fichier de garde>.
 //
 // Garder cette liste COURTE : une entrée = une dette documentée. Quand un site est migré vers
 // persist, retirer son entrée (le test n'exige PAS qu'une entrée corresponde à un write réel,
 // mais une liste qui grossit signale une dérive).
 var allowedSharedWriteFiles = map[string]map[string]string{
 	"match_registry": {
-		"internal/sync/killcollector/registry_flags.go": "2026-09-01 (revu 2026-11-12) : marquerRegistre, UPDATE backfill_completed (bitmask post-complétion), row par row sous le bail d'écriture dblease ; match_registry n'est pas append-only",
+		"internal/sync/killcollector/registry_flags.go": "2026-10-20 (premier commit de l'entrée, squash v8.0.0 ; déménagement daté 2026-09-01 par le texte d'origine ; revu 2026-11-12) : marquerRegistre, UPDATE backfill_completed (bitmask post-complétion), row par row sous le bail d'écriture dblease ; match_registry n'est pas append-only",
 		"internal/sync/engagement.go":                   "2026-06-01 (revu 2026-11-12) : persistMatchIntensity, UPDATE match_intensity, row par row dans le burst d'écriture shared de l'engagement",
 		"internal/sync/pve.go":                          "2026-06-01 (revu 2026-11-12) : MarkPveStatsDone, UPDATE backfill_completed (bit MBitPVEStats) post-complétion, sous le bail d'écriture",
 		"internal/sync/events_replay.go":                "2026-06-01 (revu 2026-11-12) : clearEventsLoaded, UPDATE events_loaded et bit MBitEvents ; outil de rejeu des événements, hors flux primaire",

@@ -24,7 +24,7 @@ import (
 // 2026-11-10 (plan architecture, 1.6) : `queries_squad.go` RETIRÉ, sa seule lecture brute (la probabilité
 // de victoire d'Escouade) ayant disparu avec son affichage : 5 → 4 entrées.
 var rawAppendOnlyReadAllowlist = map[string]string{
-	"internal/analysis/identity_annuaire.go": "2026-09-26 (revu 2026-11-12) : lot A, DA.10, ADR 0036 « locating read ». " +
+	"internal/analysis/identity_annuaire.go": "2026-10-20 (premier commit de l'entrée, squash v8.0.0 ; lot A daté 2026-09-26 par le texte d'origine ; revu 2026-11-12) : DA.10, ADR 0036 « locating read ». " +
 		"AnnuaireKillFeedLocaliserSQL lit match_kill_events BRUTE pour localiser des match_id — lecture de localisation, " +
 		"sur-ensemble de matchs, aucune valeur lue ; valeurs par `_latest` (AnnuaireKillFeedSQL sur ces seuls matchs).",
 	"internal/platform/duckdb/queries_home_citations.go": "2026-07-02 (revu 2026-11-12) : Q26g, lecture brute de " +
