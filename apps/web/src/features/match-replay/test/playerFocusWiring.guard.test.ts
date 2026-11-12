@@ -32,12 +32,19 @@ describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque él
     ['marques de tir', /k, embarkedAtSlot: vehicles\.isEmbarkedAt, shownAtSlot,/],
     ['éclairs de bouche', /vehicleSizeOf: vehicles\.sizeOf, shownAtSlot,/],
     ['sillage du propulseur', /useReplayAbilityFx\(\{[^}]*shownAtSlot[^}]*\}\)/],
+    ['vols de projectile (grenades, tirs)', /drawProjectilesLayer\([^)]*shownProjectile\)/],
+    ['fins de vol des grenades', /useReplayGrenadeRest\(\{[^}]*shownAtSlot[^}]*\}\)/],
+    ['mise en valeur d’une élimination', /useReplayKillFocus\(\{[^}]*shownAtSlot[^}]*\}\)/],
   ])('%s', (_nom, motif) => {
     expect(canvas()).toMatch(motif)
   })
 
+  it('Suivre gèle la cuisson des calques statiques comme le glisser (pas de recuisson par image)', () => {
+    expect(canvas()).toMatch(/useReplayStaticLayers\(\{[^]*?frozen: drag\.dragging,\s*follow: playerFocus\?\.follow \?\? false,/)
+  })
+
   it('la scène se relie quand le prédicat change (dépendance de buildScene)', () => {
-    expect(canvas()).toMatch(/campOfSlot, seatedAtSlot, shownAtSlot,/)
+    expect(canvas()).toMatch(/campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile,/)
   })
 })
 

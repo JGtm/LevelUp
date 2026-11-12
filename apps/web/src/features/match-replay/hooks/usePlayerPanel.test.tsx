@@ -70,6 +70,21 @@ describe('usePlayerPanel', () => {
     expect(result.current.focus).toMatchObject({ hide: false })
   })
 
+  it('aller du match A au match B puis revenir à A ne rouvre rien : ni panneau ni actions d’avant', () => {
+    const { result, rerender } = renderHook(({ scope }) => usePlayerPanel(scope, [A, B]), {
+      initialProps: { scope: 'A' },
+    })
+    act(() => result.current.onCard('A'))
+    act(() => result.current.onToggle('follow'))
+    act(() => result.current.onToggle('solo'))
+    rerender({ scope: 'B' })
+    rerender({ scope: 'A' })
+    expect(result.current.state.open).toBe(false)
+    expect(result.current.focus).toBeNull()
+    act(() => result.current.onCard('A'))
+    expect(result.current.focus).toMatchObject({ follow: false, solo: false, hide: false })
+  })
+
   it('les gestes gardent leur identité d’un rendu à l’autre', () => {
     const { result, rerender } = renderHook(() => usePlayerPanel('m1', [A, B]))
     const first = result.current

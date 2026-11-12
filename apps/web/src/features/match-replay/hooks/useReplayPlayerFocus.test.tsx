@@ -68,6 +68,41 @@ describe('useReplayPlayerFocus', () => {
     expect(result.current.shownAtSlot?.(2, 10)).toBe(false)
   })
 
+  describe('projectiles et grenades du joueur', () => {
+    const DOC_P = testReplayDoc({
+      frameIntervalMs: 100,
+      frameCount: 200,
+      shots: [{ slot: 1, t: 10, x: 0, y: 0, w: '0xW' }, { slot: 2, t: 10, x: 0, y: 0, w: '0xW' }],
+      projectiles: [
+        { t0: 10, p: [[0, 0, 0], [5, 1, 1]], detoT: 15, detoX: 1, detoY: 1, shot: 0 },
+        { t0: 10, p: [[0, 0, 0], [5, 1, 1]], detoT: 15, detoX: 1, detoY: 1, shot: 1 },
+        { t0: 10, p: [[0, 0, 0], [5, 1, 1]], detoT: 15, detoX: 1, detoY: 1 },
+      ],
+    })
+    const shown = (f: PlayerFocus | null) =>
+      renderHook(() => useReplayPlayerFocus({ doc: DOC_P, focus: f, frameRef: { current: 10 }, zoom: zoom() }))
+        .result.current.shownProjectile
+
+    it('rien n’est filtré sans Seul ni Masquer', () => {
+      expect(shown(null)).toBeUndefined()
+      expect(shown(focus({ follow: true }))).toBeUndefined()
+    })
+
+    it('Masquer retire les projectiles du joueur ; ceux des autres et sans auteur restent', () => {
+      const s = shown(focus({ hide: true }))
+      expect(s?.(0)).toBe(false)
+      expect(s?.(1)).toBe(true)
+      expect(s?.(2)).toBe(true)
+    })
+
+    it('Seul ne garde que les projectiles du joueur : un auteur inconnu n’est pas prouvé le sien, il est retiré', () => {
+      const s = shown(focus({ solo: true }))
+      expect(s?.(0)).toBe(true)
+      expect(s?.(1)).toBe(false)
+      expect(s?.(2)).toBe(false)
+    })
+  })
+
   it('Suivre allumé : la carte se cadre sur le joueur ; éteint, elle ne bouge pas', () => {
     const on = zoom()
     const f = focus({ follow: true })

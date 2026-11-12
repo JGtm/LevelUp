@@ -43,18 +43,27 @@ const CIBLE: KillFocusTarget = {
 }
 
 let maintenant = 0
-let rafs: Array<() => void> = []
+let rafs = new Map<number, () => void>()
+let prochainId = 0
+let annules: number[] = []
 
 beforeEach(() => {
   maintenant = 1_000
-  rafs = []
+  rafs = new Map()
+  prochainId = 0
+  annules = []
   loaded.withLoadedImage.mockReset()
   vi.spyOn(performance, 'now').mockImplementation(() => maintenant)
   vi.stubGlobal('requestAnimationFrame', (cb: () => void) => {
-    rafs.push(cb)
-    return rafs.length
+    prochainId += 1
+    rafs.set(prochainId, cb)
+    return prochainId
   })
-  vi.stubGlobal('cancelAnimationFrame', () => {})
+  // Un vrai cancel : la demande annulée ne tourne plus (son rappel est retiré), et l'id est tracé.
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+    annules.push(id)
+    rafs.delete(id)
+  })
 })
 
 afterEach(() => {
@@ -62,7 +71,9 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function monter(over: { reducedMotion?: boolean; doc?: typeof DOC } = {}) {
+function monter(
+  over: { reducedMotion?: boolean; doc?: typeof DOC; shownAtSlot?: (slot: number, frame: number) => boolean } = {},
+) {
   const store = createPlaybackStore()
   const redraw = vi.fn()
   const view = renderHook(
@@ -77,6 +88,7 @@ function monter(over: { reducedMotion?: boolean; doc?: typeof DOC } = {}) {
         colorOfXuid: (x) => (x === 'k' ? 'kc' : 'vc'),
         nameOfXuid: (x) => (x === 'k' ? 'Tueur' : 'Victime'),
         reducedMotion: over.reducedMotion ?? false,
+        shownAtSlot: over.shownAtSlot,
         redraw,
       }),
     { initialProps: { doc: over.doc ?? DOC } },
@@ -86,10 +98,13 @@ function monter(over: { reducedMotion?: boolean; doc?: typeof DOC } = {}) {
 
 /** Joue un tour de la boucle d'images d'écran : exécute les rappels en attente. */
 function tourDEcran() {
-  const attente = rafs
-  rafs = []
+  const attente = [...rafs.values()]
+  rafs = new Map()
   attente.forEach((cb) => cb())
 }
+
+/** Les rappels d'images d'écran encore en attente (non annulés). */
+const enAttente = () => [...rafs.values()]
 
 function ops(paint: (ctx: CanvasRenderingContext2D, f: number, k: number) => void) {
   const { ctx, ops: all } = recordingContext()
@@ -155,22 +170,61 @@ describe('les deux calques', () => {
   })
 })
 
+describe('Seul et Masquer : un joueur non affiché n’est pas mis en valeur', () => {
+  it('le tueur masqué : ni équerre, ni trou, ni étiquette, ni nom retiré ; la victime reste', () => {
+    const { result, store } = monter({ shownAtSlot: (slot) => slot !== 1 })
+    act(() => store.focusKill(CIBLE))
+    const veil = ops(result.current.veil.paint)
+    expect(veil.filter((o) => o.op === 'arc')).toHaveLength(1)
+    expect(veil.filter((o) => o.op === 'stroke')).toHaveLength(1)
+    expect(ops(result.current.labels.paint).filter((o) => o.op === 'fillText').map((o) => o.args[0])).toEqual(['Victime'])
+    expect(result.current.nameHiddenAtSlot(1)).toBe(false)
+    expect(result.current.nameHiddenAtSlot(2)).toBe(true)
+  })
+
+  it('Seul sur un autre joueur : pas de voile du tout', () => {
+    const { result, store } = monter({ shownAtSlot: (slot) => slot === 99 })
+    act(() => store.focusKill(CIBLE))
+    expect(ops(result.current.veil.paint).filter((o) => o.op !== 'set measureText')).toHaveLength(0)
+    expect(ops(result.current.labels.paint).filter((o) => o.op === 'fillText')).toHaveLength(0)
+    expect(result.current.nameHiddenAtSlot(1)).toBe(false)
+  })
+
+  it('le filtre posé APRÈS le clic retire aussitôt l’acteur (le calque suit le prédicat)', () => {
+    const store = createPlaybackStore()
+    const vue = renderHook(
+      (p: { shown?: (slot: number, frame: number) => boolean }) =>
+        useReplayKillFocus({
+          doc: DOC, view: VIEW, store, scrimInk: 'scrim', labelInk: 'label-ink',
+          seatedOfXuid: () => true, colorOfXuid: (x) => (x === 'k' ? 'kc' : 'vc'),
+          nameOfXuid: (x) => (x === 'k' ? 'Tueur' : 'Victime'),
+          reducedMotion: false, shownAtSlot: p.shown, redraw: vi.fn(),
+        }),
+      { initialProps: {} as { shown?: (slot: number, frame: number) => boolean } },
+    )
+    act(() => store.focusKill(CIBLE))
+    expect(ops(vue.result.current.veil.paint).filter((o) => o.op === 'stroke')).toHaveLength(2)
+    vue.rerender({ shown: (slot) => slot !== 1 })
+    expect(ops(vue.result.current.veil.paint).filter((o) => o.op === 'stroke')).toHaveLength(1)
+  })
+})
+
 describe('l’animation — le temps réel, une boucle qui s’arrête', () => {
   it('repeint à chaque image d’écran PENDANT l’animation, puis s’arrête d’elle-même', () => {
     const { store, redraw } = monter()
     act(() => store.focusKill(CIBLE))
     redraw.mockClear()
-    expect(rafs).toHaveLength(1)
+    expect(enAttente()).toHaveLength(1)
 
     maintenant += 100
     tourDEcran()
     expect(redraw).toHaveBeenCalledTimes(1)
-    expect(rafs).toHaveLength(1) // elle se rappelle : 100 ms < 340 ms
+    expect(enAttente()).toHaveLength(1) // elle se rappelle : 100 ms < 340 ms
 
     maintenant += FOCUS_MOTION_MS
     tourDEcran()
     expect(redraw).toHaveBeenCalledTimes(2)
-    expect(rafs).toHaveLength(0) // fini : plus rien ne tourne
+    expect(enAttente()).toHaveLength(0) // fini : plus rien ne tourne
   })
 
   it('chaque clic rejoue : le même clic répété relance une boucle', () => {
@@ -178,10 +232,43 @@ describe('l’animation — le temps réel, une boucle qui s’arrête', () => {
     act(() => store.focusKill(CIBLE))
     maintenant += FOCUS_MOTION_MS * 2
     tourDEcran()
-    expect(rafs).toHaveLength(0)
+    expect(enAttente()).toHaveLength(0)
     redraw.mockClear()
     act(() => store.focusKill(CIBLE))
-    expect(rafs).toHaveLength(1)
+    expect(enAttente()).toHaveLength(1)
+  })
+
+  it('un autre clic annule la boucle du précédent (le jeton change), puis en lance une neuve', () => {
+    const { store, redraw } = monter()
+    act(() => store.focusKill(CIBLE))
+    const premiere = prochainId
+    expect(enAttente()).toHaveLength(1)
+    act(() => store.focusKill({ ...CIBLE, entryKey: 'e2', frame: 20 }))
+    expect(annules).toEqual([premiere])
+    expect(enAttente()).toHaveLength(1) // seule la boucle neuve reste
+    redraw.mockClear()
+    tourDEcran()
+    expect(redraw).toHaveBeenCalledTimes(1) // et une seule : la première ne tourne plus
+  })
+
+  it('le démontage annule la boucle en cours : plus aucune repeinte', () => {
+    const { store, redraw, unmount } = monter()
+    act(() => store.focusKill(CIBLE))
+    const id = prochainId
+    redraw.mockClear()
+    unmount()
+    expect(annules).toContain(id)
+    tourDEcran()
+    expect(redraw).not.toHaveBeenCalled()
+  })
+
+  it('l’effacement (Lecture) annule la boucle : plus aucune repeinte', () => {
+    const { store, redraw } = monter()
+    act(() => store.focusKill(CIBLE))
+    redraw.mockClear()
+    act(() => store.clearFocus())
+    tourDEcran()
+    expect(redraw).not.toHaveBeenCalled()
   })
 
   it('au départ la pose est celle du départ, à la fin celle d’arrivée', () => {
@@ -197,7 +284,7 @@ describe('l’animation — le temps réel, une boucle qui s’arrête', () => {
   it('prefers-reduced-motion : aucune boucle, équerres posées tout de suite', () => {
     const { result, store } = monter({ reducedMotion: true })
     act(() => store.focusKill(CIBLE))
-    expect(rafs).toHaveLength(0)
+    expect(enAttente()).toHaveLength(0)
     const veil = ops(result.current.veil.paint)
     expect((veil.filter((o) => o.op === 'set globalAlpha').pop() as { args: number[] }).args[0]).toBe(1)
     expect(veil.filter((o) => o.op === 'scale').every((o) => o.args[0] === 1)).toBe(true)

@@ -30,6 +30,8 @@ export interface ProjectileWindow {
  * LE DERNIER POINT N'EST PAS UN IMPACT : le film ne porte aucun événement de détonation. C'est
  * la dernière position RÉPLIQUÉE — pour une grenade, la réplication cesse ~1,4 s après le
  * lancer alors que la mèche court jusqu'à ~3 s. Le vol s'efface donc, il n'explose pas.
+ *
+ * `shown` (Seul, Masquer) : faux pour l'index d'un projectile = le vol n'est pas tracé.
  */
 export function drawProjectilesLayer(
   ctx: CanvasRenderingContext2D,
@@ -37,11 +39,13 @@ export function drawProjectilesLayer(
   view: CanvasView,
   win: ProjectileWindow,
   color: string,
+  shown?: (index: number) => boolean,
 ): void {
   const { frame, tailFrames } = win
   ctx.strokeStyle = color
   ctx.lineWidth = PROJECTILE_WIDTH
-  for (const pr of projectiles) {
+  for (const [index, pr] of projectiles.entries()) {
+    if (shown && !shown(index)) continue
     const pts = pr.p
     if (pts.length < 2) continue
     const end = pr.t0 + pts[pts.length - 1][0]

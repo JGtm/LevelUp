@@ -298,7 +298,7 @@ export function ReplayCanvas({
     doc, background, width, freeHeight, onManualMove: onFollowStop,
   })
   // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
-  const { shownAtSlot } = useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom })
+  const { shownAtSlot, shownProjectile } = useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom })
 
   // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
   const calloutZones = callouts ?? EMPTY_ZONES
@@ -350,7 +350,7 @@ export function ReplayCanvas({
   // calques tout en haut de la scène, et le nom du pion qui lui cède la place (cf. le hook).
   const killFocus = useReplayKillFocus({
     doc, view: canvasView, store: playbackStore, scrimInk: scrim, labelInk: labelStroke,
-    seatedOfXuid, colorOfXuid, nameOfXuid, reducedMotion, redraw,
+    seatedOfXuid, colorOfXuid, nameOfXuid, reducedMotion, shownAtSlot, redraw,
   })
   // LES CALQUES STATIQUES (sol, zones nommées, chaleur, objectifs), cuits hors écran et
   // recopiés par la boucle : quatre effets qui partageaient la même amorce et recopiaient
@@ -359,6 +359,7 @@ export function ReplayCanvas({
     view: canvasView,
     redraw,
     frozen: drag.dragging,
+    follow: playerFocus?.follow ?? false,
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
     heat: { grid: heat.grid, ramp: heat.ramp },
     objectives: { elements: zones.staticElements, colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline, z: zRange },
@@ -424,7 +425,7 @@ export function ReplayCanvas({
   // LA BOMBE d'Assaut (schéma 30) : portée sur son porteur, au sol au dernier point du lâcheur.
   const bombCarrier = useReplayBombCarrier({ doc, view: canvasView, enabled: showBombCarrier, ink: neutralInk, outline: markInk.outline, reducedMotion })
   // LA FIN DE VOL des grenades (dix-septième extraction — elle paie la déflagration ci-dessous).
-  const grenadeRest = useReplayGrenadeRest({ doc, view: canvasView, fx: grenadeRestFx, window: restWindow, ink: fxInk, smoke: floorStyle.edge, halo: grenadeColor, reducedMotion })
+  const grenadeRest = useReplayGrenadeRest({ doc, view: canvasView, fx: grenadeRestFx, window: restWindow, ink: fxInk, smoke: floorStyle.edge, halo: grenadeColor, reducedMotion, shownAtSlot })
   // LA DÉFLAGRATION D'ASSAUT, où et quand elle a eu lieu — seul un match d'Assaut publie la stat.
   const bombBlast = useReplayBombBlast({ doc, view: canvasView, allegiance, teamColorOf, neutral: floorStyle.edge, reducedMotion })
 
@@ -515,6 +516,7 @@ export function ReplayCanvas({
               view,
               { frame: fr, tailFrames: durationToFrames(PROJECTILE_TAIL_MS, doc) },
               grenadeColor,
+              shownProjectile,
             ),
           // La fenetre d'une pose n'est PAS [t0, t1] : `t1` date la mise au repos, pas la
           // disparition (placementEndFrame) ; le ping bat en TEMPS de match, pas en images.
@@ -617,7 +619,7 @@ export function ReplayCanvas({
     floorStyle.edge,
     colorOfSlot,
     colorOfSlotOrLast,
-    campOfSlot, seatedAtSlot, shownAtSlot,
+    campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile,
     markOfSlot,
     nameOfSlot,
     showTrail,

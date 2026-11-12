@@ -6,8 +6,9 @@
  *
  * RIEN N'EST MÉMORISÉ (D-4) : ni dans le navigateur, ni d'un match à l'autre. La route garde le même
  * composant quand seul `$matchId` change, donc l'état est rangé AVEC la clé du match (`scopeKey`) et
- * lu comme vide dès qu'elle diffère : un autre match ne rouvre jamais le panneau du précédent, même
- * quand le même joueur y figure au roster.
+ * REMIS À ZÉRO dès qu'elle diffère : un autre match ne rouvre jamais le panneau du précédent, même
+ * quand le même joueur y figure au roster, et revenir au match d'avant ne le ressuscite pas non
+ * plus (lire « vide » sans effacer laisserait l'ancien état revenir avec l'ancienne clé).
  *
  * LES GESTES GARDENT LEUR IDENTITÉ : ils descendent en props jusqu'au canvas et aux fiches.
  */
@@ -45,6 +46,8 @@ interface Scoped {
 
 export function usePlayerPanel(scopeKey: string, players: readonly ReplayPlayer[]): PlayerPanel {
   const [stored, setStored] = useState<Scoped>({ scopeKey, state: NO_PLAYER_PANEL })
+  // L'effacement se fait AU RENDU, pas dans un effet : aucune image ne montre l'état d'un autre match.
+  if (stored.scopeKey !== scopeKey) setStored({ scopeKey, state: NO_PLAYER_PANEL })
   const state = stored.scopeKey === scopeKey ? stored.state : NO_PLAYER_PANEL
 
   const dispatch = useCallback(

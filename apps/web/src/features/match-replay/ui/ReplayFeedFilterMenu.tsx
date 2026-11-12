@@ -10,7 +10,8 @@
  * bas, Début et Fin déplacent le focus (en boucle) ; Entrée choisit ; Échap et Tab ferment, et
  * Échap rend le focus au déclencheur. Un clic dehors ferme (au `pointerdown`, comme le menu de
  * vitesse). La couche se signale au mode plein écran (`data-replay-escape-layer`) : Échap ferme
- * le menu AVANT de quitter le mode.
+ * le menu AVANT de quitter le mode. Menu ouvert, AUCUNE touche ne traverse vers le clavier du
+ * lecteur (`useReplayShortcuts`) : ni les flèches gauche et droite, ni J, L, F, M, R.
  */
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 
@@ -83,8 +84,9 @@ export function ReplayFeedFilterMenu({ options, active, onChange, locale }: Prop
       triggerRef.current?.focus()
     } else if (e.key === 'Tab') {
       setOpen(false)
-    } else if (e.key === ' ') {
-      // Espace choisit l'entrée : il ne doit pas aussi lancer ou arrêter la lecture (touche du lecteur).
+    } else {
+      // MENU OUVERT, LE CLAVIER EST AU MENU : Espace choisit l'entrée, et aucune autre touche
+      // (flèches gauche et droite, J, L, F, M, R...) ne doit atteindre le clavier du lecteur.
       e.stopPropagation()
     }
   }
@@ -93,7 +95,9 @@ export function ReplayFeedFilterMenu({ options, active, onChange, locale }: Prop
     if (e.key === 'ArrowDown' && !open) {
       e.preventDefault()
       setOpen(true)
-    } else if (e.key === ' ') {
+    } else if (open || e.key === ' ') {
+      // Menu ouvert (focus resté sur le déclencheur) : rien ne traverse vers le clavier du lecteur.
+      // Menu fermé, seul Espace est retenu (il active le bouton).
       e.stopPropagation()
     }
   }

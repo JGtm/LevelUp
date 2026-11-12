@@ -146,3 +146,31 @@ describe('nappe Dynamo — déterminisme et mouvement réduit', () => {
     expect(trace(19, style).length).toBeGreaterThan(0)
   })
 })
+
+describe('Seul et Masquer — la fin de vol d’une grenade du joueur retiré', () => {
+  const owned = (slot: number, frame = 0) => dynamo({ rank: 0, owner: { slot, frame } })
+  const painted = (fx: GrenadeRestFx, shownAtSlot?: (slot: number, frame: number) => boolean) =>
+    trace(4, { shownAtSlot }, fx).filter((o) => o.op === 'stroke' || o.op === 'fill' || o.op === 'arc').length
+
+  it('sans filtre, l’effet se dessine comme avant', () => {
+    expect(painted(owned(5))).toBeGreaterThan(0)
+  })
+
+  it('l’auteur masqué : rien ne se dessine', () => {
+    expect(painted(owned(5), (slot) => slot !== 5)).toBe(0)
+  })
+
+  it('un autre joueur masqué : l’effet reste', () => {
+    expect(painted(owned(5), (slot) => slot !== 9)).toBeGreaterThan(0)
+  })
+
+  it('le prédicat est interrogé à l’image du lancer, pas à celle de l’explosion', () => {
+    const vus: Array<[number, number]> = []
+    painted(owned(5, 2), (slot, frame) => (vus.push([slot, frame]), true))
+    expect(vus).toEqual([[5, 2]])
+  })
+
+  it('un effet sans auteur connu reste affiché : rien n’est deviné', () => {
+    expect(painted(dynamo({ rank: 0 }), () => false)).toBeGreaterThan(0)
+  })
+})

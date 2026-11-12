@@ -307,6 +307,55 @@ describe('le menu au clavier', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /Filtrer le fil/ }))
   })
 
+  describe('menu ouvert : aucune touche ne traverse vers le clavier du lecteur', () => {
+    // Les touches du lecteur (`useReplayShortcuts`) : flèches gauche et droite, J, L, F, M, R, K, Espace,
+    // « , » et « . », plus le cadrage. Aucune ne doit arriver à `window` pendant que le menu est ouvert.
+    const TOUCHES = ['ArrowLeft', 'ArrowRight', 'j', 'l', 'f', 'm', 'r', 'k', 'J', 'L', ' ', ',', '.', '+', '0']
+
+    function ecouterLaFenetre() {
+      const global = vi.fn()
+      window.addEventListener('keydown', global)
+      return { global, fin: () => window.removeEventListener('keydown', global) }
+    }
+
+    it.each(TOUCHES)('« %s », focus sur une entrée du menu', (key) => {
+      renderFeed({ doc: CTF_DOC, nowMs: 100_000 })
+      openMenu()
+      const { global, fin } = ecouterLaFenetre()
+      try {
+        fireEvent.keyDown(document.activeElement as Element, { key })
+        expect(global).not.toHaveBeenCalled()
+      } finally {
+        fin()
+      }
+    })
+
+    it.each(TOUCHES)('« %s », focus resté sur le déclencheur', (key) => {
+      renderFeed({ doc: CTF_DOC, nowMs: 100_000 })
+      openMenu()
+      const trigger = screen.getByRole('button', { name: /Filtrer le fil/ })
+      const { global, fin } = ecouterLaFenetre()
+      try {
+        fireEvent.keyDown(trigger, { key })
+        expect(global).not.toHaveBeenCalled()
+      } finally {
+        fin()
+      }
+    })
+
+    it('menu fermé, le clavier du lecteur reste libre (les touches traversent)', () => {
+      renderFeed({ doc: CTF_DOC, nowMs: 100_000 })
+      const trigger = screen.getByRole('button', { name: /Filtrer le fil/ })
+      const { global, fin } = ecouterLaFenetre()
+      try {
+        fireEvent.keyDown(trigger, { key: 'ArrowLeft' })
+        expect(global).toHaveBeenCalledTimes(1)
+      } finally {
+        fin()
+      }
+    })
+  })
+
   it('l’entrée active est annoncée par aria-checked', () => {
     renderFeed({ doc: CTF_DOC, nowMs: 100_000 })
     const items = within(openMenu()).getAllByRole('menuitemradio')

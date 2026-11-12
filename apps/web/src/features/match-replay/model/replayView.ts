@@ -25,7 +25,7 @@
  */
 import type { ReplayBounds } from '@/lib/api/types'
 
-import { canvasScale, worldToCanvas, type XY } from '../../../lib/replay/replayLogic'
+import { canvasScale, layerOffset, worldToCanvas, type XY } from '../../../lib/replay/replayLogic'
 
 /**
  * Le CADRAGE : quelle portion du monde on montre, dans quelle toile, avec quelle marge.
@@ -60,4 +60,26 @@ export function projectTo(view: CanvasView, p: XY): XY {
  */
 export function scaleOf(view: CanvasView): number {
   return canvasScale(view.bounds, view.width, view.height, view.pad)
+}
+
+/**
+ * FOLLOW_COOK_MARGIN — la part de la toile (par axe) dont un calque cuit peut être décalé avant
+ * qu'on le recuise : au-delà, la bande non peinte au bord d'attaque deviendrait gênante. Un
+ * glisser n'a pas de marge (le geste est bref) ; Suivre dure, il en a une.
+ */
+export const FOLLOW_COOK_MARGIN = 0.1
+
+/**
+ * cookIsReusable dit si un calque cuit pour `cooked` se recopie encore tel quel, décalé, pour
+ * `view` : même toile, même ÉCHELLE (un zoom change l'échelle, et un décalage ne replace plus une
+ * image cuite pour une autre), et un décalage qui reste dans la marge. C'est ce qui laisse Suivre
+ * cadrer un joueur à chaque image sans recuire les calques statiques à chaque image.
+ */
+export function cookIsReusable(cooked: CanvasView, view: CanvasView): boolean {
+  if (cooked.width !== view.width || cooked.height !== view.height || cooked.pad !== view.pad) return false
+  const before = scaleOf(cooked)
+  const after = scaleOf(view)
+  if (!(before > 0) || !(after > 0) || Math.abs(before - after) > before * 1e-9) return false
+  const off = layerOffset(cooked, view)
+  return Math.abs(off.x) <= FOLLOW_COOK_MARGIN * view.width && Math.abs(off.y) <= FOLLOW_COOK_MARGIN * view.height
 }

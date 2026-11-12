@@ -11,7 +11,7 @@
  *     bloc pointillé — jamais un zéro. Un bot sans feuille est dans ce cas ; avec une feuille, il a ses listes.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
@@ -72,6 +72,66 @@ describe('ReplayPlayerPanel — la tête', () => {
   it('en anglais, « Back to the feed »', () => {
     setup({ locale: 'en' })
     expect(screen.getByRole('button', { name: 'Back to the feed' })).toBeTruthy()
+  })
+})
+
+describe('ReplayPlayerPanel — Échap', () => {
+  const echap = () => fireEvent.keyDown(window, { key: 'Escape' })
+
+  it('est une couche qu’Échap ferme avant le plein écran : elle porte le marqueur', () => {
+    setup()
+    expect(screen.getByRole('region', { name: 'Fiche de Alpha' }).hasAttribute('data-replay-escape-layer')).toBe(true)
+  })
+
+  it('Échap ferme le panneau, une fois', () => {
+    const props = setup()
+    echap()
+    expect(props.onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('une autre touche ne le ferme pas', () => {
+    const props = setup()
+    fireEvent.keyDown(window, { key: 'Enter' })
+    expect(props.onClose).not.toHaveBeenCalled()
+  })
+
+  it('une couche plus intérieure ouverte (menu, panneau de la vue) se ferme d’abord : le panneau reste', () => {
+    const props = setup()
+    const autre = document.createElement('div')
+    autre.setAttribute('data-replay-escape-layer', '')
+    document.body.appendChild(autre)
+    try {
+      echap()
+      expect(props.onClose).not.toHaveBeenCalled()
+    } finally {
+      autre.remove()
+    }
+  })
+
+  it('le focus est rendu à la fiche du joueur, à Échap comme à « Retour au fil »', () => {
+    const fiche = document.createElement('div')
+    fiche.setAttribute('role', 'button')
+    fiche.setAttribute('aria-pressed', 'true')
+    fiche.setAttribute('data-replay-player-card', '')
+    fiche.tabIndex = 0
+    document.body.appendChild(fiche)
+    try {
+      setup()
+      echap()
+      expect(document.activeElement).toBe(fiche)
+      ;(fiche as HTMLElement).blur()
+      fireEvent.click(screen.getByRole('button', { name: 'Retour au fil' }))
+      expect(document.activeElement).toBe(fiche)
+    } finally {
+      fiche.remove()
+    }
+  })
+
+  it('le panneau retiré, plus d’écouteur : Échap ne rappelle plus la page', () => {
+    const props = setup()
+    cleanup()
+    echap()
+    expect(props.onClose).not.toHaveBeenCalled()
   })
 })
 

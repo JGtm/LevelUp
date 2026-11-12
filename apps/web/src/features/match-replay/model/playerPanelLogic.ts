@@ -109,7 +109,7 @@ export function panelFocusOf(
  * qui n'a pas de xuid mais a des vies.
  *
  * IL NE SERT QU'AUX ÉLÉMENTS PROPRES AU JOUEUR (pion, nom, cône de visée, traînée, tirs, marques de
- * tir, poussée du propulseur). Les morts, les objectifs, les véhicules et les objets posés sont des
+ * tir, poussée du propulseur, projectiles et grenades). Les morts, les objectifs, les véhicules et les objets posés sont des
  * événements du match : ni Seul ni Masquer ne les retirent.
  */
 export function shownSlotPredicate(

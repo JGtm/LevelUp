@@ -201,6 +201,64 @@ describe('resolveKillFocus — jamais de position inventée', () => {
     expect(r?.killer?.name).toBeNull()
   })
 
+  describe('Seul et Masquer : un acteur non affiché n’est pas mis en valeur', () => {
+    const SLOT_TUEUR = 7
+    const SLOT_VICTIME = 8
+    const sans = (cache: number): KillFocusResolvers['shownAtSlot'] => (slot) => slot !== cache
+    const seul = (garde: number): KillFocusResolvers['shownAtSlot'] => (slot) => slot === garde
+
+    it('sans prédicat (ni Seul ni Masquer), les deux acteurs restent', () => {
+      const r = resolveKillFocus(request, base)
+      expect(r?.killer).not.toBeNull()
+      expect(r?.victim).not.toBeNull()
+    })
+
+    it('le tueur masqué n’a ni équerre ni étiquette ; la victime reste', () => {
+      const r = resolveKillFocus(request, { ...base, shownAtSlot: sans(SLOT_TUEUR) })
+      expect(r?.killer).toBeNull()
+      expect(r?.victim?.slot).toBe(SLOT_VICTIME)
+    })
+
+    it('Seul sur un autre joueur : ni le tueur ni la victime, donc pas de voile', () => {
+      expect(resolveKillFocus(request, { ...base, shownAtSlot: seul(99) })).toBeNull()
+    })
+
+    it('Seul sur la victime : seule la victime est mise en valeur', () => {
+      const r = resolveKillFocus(request, { ...base, shownAtSlot: seul(SLOT_VICTIME) })
+      expect(r?.killer).toBeNull()
+      expect(r?.victim).not.toBeNull()
+    })
+
+    it('le tueur et la victime masqués : pas de voile', () => {
+      const r = resolveKillFocus(request, {
+        ...base,
+        shownAtSlot: (slot) => slot !== SLOT_TUEUR && slot !== SLOT_VICTIME,
+      })
+      expect(r).toBeNull()
+    })
+
+    it('le prédicat est interrogé à l’image du frag', () => {
+      const images: number[] = []
+      resolveKillFocus(request, { ...base, shownAtSlot: (_s, f) => (images.push(f), true) })
+      expect(new Set(images)).toEqual(new Set([120]))
+    })
+
+    it('un acteur sans slot ne peut pas être prouvé affiché : écarté tant qu’un filtre est actif', () => {
+      const r = resolveKillFocus(request, {
+        ...base,
+        slotOf: (x) => (x === 'killer' ? null : SLOT_VICTIME),
+        shownAtSlot: () => true,
+      })
+      expect(r?.killer).toBeNull()
+      expect(r?.victim).not.toBeNull()
+    })
+
+    it('les noms masqués ne comptent que les acteurs affichés', () => {
+      const r = resolveKillFocus(request, { ...base, shownAtSlot: sans(SLOT_TUEUR) })
+      expect([...hiddenNameSlots(r)]).toEqual([SLOT_VICTIME])
+    })
+  })
+
   it('les positions se lisent à l’image du frag', () => {
     const images: number[] = []
     const posOf: KillFocusResolvers['posOf'] = (x, f) => {

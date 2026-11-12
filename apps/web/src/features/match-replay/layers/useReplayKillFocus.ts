@@ -53,6 +53,8 @@ export interface KillFocusOptions {
   colorOfXuid: KillFocusResolvers['colorOf']
   nameOfXuid: KillFocusResolvers['nameOf']
   reducedMotion: boolean
+  /** Seul et Masquer (`useReplayPlayerFocus`) : un acteur non affiché n'est pas mis en valeur. */
+  shownAtSlot?: KillFocusResolvers['shownAtSlot']
   /** Repeindre la scène (hors boucle de lecture) : le canvas la fournit. */
   redraw: () => void
 }
@@ -66,7 +68,7 @@ export interface KillFocusLayers {
 
 export function useReplayKillFocus(o: KillFocusOptions): KillFocusLayers {
   const { doc, view, store, scrimInk, labelInk, seatedOfXuid, colorOfXuid, nameOfXuid } = o
-  const { reducedMotion, redraw } = o
+  const { reducedMotion, redraw, shownAtSlot } = o
   const ink = useMemo<KillFocusInk>(() => ({ veil: scrimInk, label: labelInk }), [scrimInk, labelInk])
   const request = usePlaybackFocus(store)
   const posOf = useCarrierPosAt(doc)
@@ -80,8 +82,9 @@ export function useReplayKillFocus(o: KillFocusOptions): KillFocusLayers {
       colorOf: colorOfXuid,
       nameOf: nameOfXuid,
       slotOf: (xuid, frame) => lives.get(xuid)?.find((life) => isAliveAt(life, frame))?.slot ?? null,
+      shownAtSlot,
     })
-  }, [request, posOf, lives, seatedOfXuid, colorOfXuid, nameOfXuid])
+  }, [request, posOf, lives, seatedOfXuid, colorOfXuid, nameOfXuid, shownAtSlot])
 
   // UN AUTRE MATCH OU LE DÉMONTAGE : la mise en valeur d'un document n'a pas de sens dans un autre.
   useEffect(() => () => store.clearFocus(), [doc, store])

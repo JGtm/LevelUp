@@ -19,9 +19,14 @@
  * Ses boutons suivent la règle des boutons du rejeu : la souris ne prend pas le focus, Espace reste
  * « Lecture » (`PRESS_GUARDS`).
  *
+ * ÉCHAP LE FERME, AVANT LE MODE PLEIN ÉCRAN : le panneau est une couche (`data-replay-escape-layer`,
+ * cf. `useReplayFullscreen`), et rend le focus à la fiche du joueur, qu'il quitte par Échap ou par
+ * « Retour au fil ». Une couche plus intérieure ouverte (menu de vitesse, de filtre, panneau de la
+ * vue) se ferme d'abord : Échap ne ferme qu'une couche à la fois.
+ *
  * Aucun littéral de couleur : l'encre du camp et les neutres sont des jetons sémantiques.
  */
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
@@ -61,10 +66,42 @@ export interface ReplayPlayerPanelProps {
   locale: ReplayLocale
 }
 
+/** La fiche du joueur dont le panneau est ouvert : la tuile-bouton choisie (`aria-pressed`). */
+const OPEN_CARD_SELECTOR = '[data-replay-player-card][aria-pressed="true"]'
+
+/** Une AUTRE couche d'Échap est-elle ouverte que ce panneau ? Elle se ferme avant lui. */
+function innerLayerOpen(self: Element | null): boolean {
+  return Array.from(document.querySelectorAll('[data-replay-escape-layer]')).some((layer) => layer !== self)
+}
+
+/**
+ * usePanelClose — LA SORTIE DU PANNEAU : « Retour au fil » et Échap ferment par le même chemin, qui
+ * rend le focus à la fiche (sans quoi il tomberait sur la page avec le panneau retiré). Échap ne
+ * ferme que si aucune AUTRE couche d'Échap n'est ouverte : elle se ferme la première, par son
+ * propre écouteur.
+ */
+function usePanelClose(rootRef: RefObject<HTMLElement | null>, onClose: () => void): () => void {
+  const close = useCallback(() => {
+    const card = document.querySelector<HTMLElement>(OPEN_CARD_SELECTOR)
+    onClose()
+    card?.focus({ preventScroll: true })
+  }, [onClose])
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !innerLayerOpen(rootRef.current)) close()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [rootRef, close])
+  return close
+}
+
 export function ReplayPlayerPanel({
   player, actions, onToggle, onClose, doc, frame, nowMs, playWindow, allegiance, locale,
 }: ReplayPlayerPanelProps) {
   const t = REPLAY_TEXT[locale]
+  const rootRef = useRef<HTMLElement>(null)
+  const close = usePanelClose(rootRef, onClose)
   const text = t.playerPanel
   const name = cardName(player, t)
   const scoreTimeline = useMemo(() => scoreTimelineOf(doc), [doc])
@@ -76,6 +113,9 @@ export function ReplayPlayerPanel({
 
   return (
     <section
+      ref={rootRef}
+      // UNE COUCHE QU'ÉCHAP FERME AVANT LE MODE PLEIN ÉCRAN (cf. useReplayFullscreen).
+      data-replay-escape-layer=""
       aria-label={text.labelFmt(name)}
       className="flex h-full min-h-0 flex-col gap-2 overflow-hidden rounded-lg border border-border bg-card p-2"
     >
@@ -92,7 +132,7 @@ export function ReplayPlayerPanel({
             {caption}
           </span>
         </div>
-        <Button type="button" variant="outline" size="sm" className="shrink-0" {...PRESS_GUARDS} onClick={onClose}>
+        <Button type="button" variant="outline" size="sm" className="shrink-0" {...PRESS_GUARDS} onClick={close}>
           {text.back}
         </Button>
       </div>

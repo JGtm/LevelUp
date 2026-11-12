@@ -163,6 +163,8 @@ export interface TilePress {
 function pressProps(press: TilePress) {
   return {
     role: 'button' as const,
+    // Repère de la fiche : le panneau de joueur lui rend le focus à sa fermeture.
+    'data-replay-player-card': '',
     tabIndex: 0,
     'aria-pressed': press.selected,
     'aria-label': press.label,

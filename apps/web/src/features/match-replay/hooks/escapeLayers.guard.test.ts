@@ -4,7 +4,7 @@
  * Garde-rail : TOUTE COUCHE DU REJEU QUI SE FERME À ÉCHAP SE SIGNALE AU MODE PLEIN ÉCRAN.
  *
  * POURQUOI. En superposition seule, Échap ferme d'abord ce qui est ouvert le plus à l'intérieur
- * (panneau de la vue, média agrandi, menu de vitesse), le mode ensuite. Le mode ne connaît pas ces couches :
+ * (panneau de la vue, fiche de joueur, média agrandi, menu de vitesse), le mode ensuite. Le mode ne connaît pas ces couches :
  * il voit seulement, dans le DOM, une racine porteuse de `data-replay-escape-layer`
  * (`REPLAY_ESCAPE_LAYER_ATTR`, cf. useReplayFullscreen). Une couche neuve qui écoute Échap sans
  * porter l'attribut ferait sortir du mode ET se fermerait d'une seule frappe — la faute ne se
@@ -37,11 +37,12 @@ describe('garde-rail : les couches fermées à Échap se signalent au mode plein
     ).toEqual([])
   })
 
-  it('et il y en a bien — panneau de la vue, média agrandi, menu de vitesse — sans quoi ce garde ne garderait rien', () => {
+  it('et il y en a bien — panneau de la vue, fiche de joueur, média agrandi, menu de vitesse — sans quoi ce garde ne garderait rien', () => {
     expect(couchesQuiEcoutentEchap().map(cheminCourt).sort()).toEqual(
       expect.arrayContaining([
         'settings/ReplayViewPanel.tsx',
         'ui/ReplayMediaLightbox.tsx',
+        'ui/ReplayPlayerPanel.tsx',
         'ui/ReplaySpeedMenu.tsx',
       ]),
     )

@@ -112,6 +112,12 @@ export interface KillFocusResolvers {
   nameOf: (xuid: string) => string | null
   /** Slot de la vie qui porte son pion à l'image : sert à retirer le nom normal du pion. */
   slotOf: (xuid: string, frame: number) => number | null
+  /**
+   * Seul et Masquer : ce que porte un slot à une image se dessine-t-il ? Absent = aucun filtre. Un
+   * acteur que le filtre écarte n'a ni équerre, ni trou au voile, ni étiquette ; un acteur sans
+   * slot ne peut être prouvé affiché, il est écarté tant qu'un filtre est actif.
+   */
+  shownAtSlot?: (slot: number, frame: number) => boolean
 }
 
 /** Un joueur mis en valeur : positionné, coloré, et son nom pour l'étiquette. */
@@ -132,13 +138,18 @@ export interface ResolvedKillFocus {
   weapon: KillFocusWeapon
 }
 
-/** Un acteur n'est résolu que s'il est positionné, assis à une fiche et coloré : rien n'est inventé. */
+/**
+ * Un acteur n'est résolu que s'il est positionné, assis à une fiche, coloré et AFFICHÉ (Seul,
+ * Masquer) : rien n'est inventé, et rien n'est désigné que la carte ne montre pas.
+ */
 function resolveActor(xuid: string, frame: number, r: KillFocusResolvers): FocusActor | null {
   if (!xuid || !r.seated(xuid, frame)) return null
   const pos = r.posOf(xuid, frame)
   const color = r.colorOf(xuid)
   if (!pos || !color) return null
-  return { xuid, pos, color, name: r.nameOf(xuid), slot: r.slotOf(xuid, frame) }
+  const slot = r.slotOf(xuid, frame)
+  if (r.shownAtSlot && (slot === null || !r.shownAtSlot(slot, frame))) return null
+  return { xuid, pos, color, name: r.nameOf(xuid), slot }
 }
 
 /**
