@@ -185,11 +185,6 @@ func lireDrapeaux() (options, error) {
 // valider refuse une ligne de commande incoherente. SEPAREE de la lecture des drapeaux pour etre
 // testable sans toucher a `flag` (dont l etat est global au processus).
 func valider(o options) error {
-	if o.update {
-		if err := verifierMiseAJourPossible(); err != nil {
-			return err
-		}
-	}
 	if o.child && o.film == "" {
 		return errors.New("role d enfant sans -film : rien a traiter")
 	}
@@ -201,6 +196,10 @@ func valider(o options) error {
 	case "", passeFilm, passeFaits:
 	default:
 		return fmt.Errorf("-passe %q inconnue : %q ou %q", o.passe, passeFilm, passeFaits)
+	}
+	// L'emplacement de la brique se contrôle en dernier : un refus d'options ne dépend pas du disque.
+	if o.update {
+		return verifierMiseAJourPossible()
 	}
 	return nil
 }
