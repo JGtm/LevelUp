@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "note": "Avis du user, carte par carte, sur le croisement du fond publie avec le maillage de navigation (planche du 2026-11-13, 111 cartes, trois versions : publie / faces / silhouette). Source de verite pour la regle de cuisson par carte du prochain lot. Defaut = la valeur de `defaut` ; `exceptions` ne liste que les cartes qui s en ecartent ou qui portent un commentaire. Cle = cle du fond publie (module natif ou map_id Forge). Magasin d origine : artefact NWhq6zEKK4XZiREqCNLViJ, collection `avis`.",
+  "date": "2026-11-13",
+  "defaut": "silhouette",
+  "definitions": {
+    "publie": "garder le fond tel qu il est publie aujourd hui, sans croisement",
+    "faces": "garder le fond dans les faces du maillage (marge 1 m, composante principale), les trous interieurs vides",
+    "silhouette": "garder le fond dans la silhouette exterieure du maillage (marge 1 m, composante principale), les trous interieurs restent dessines",
+    "aucune": "aucune des trois versions ne convient ; a reprendre",
+    "": "pas de choix, commentaire seul"
+  },
+  "sans_avis": ["bb7b78ae-3468-46ce-b5ba-cca61c3a338a", "c10c7e79-ec91-4f07-92e8-e570ed9ce79c"],
+  "sans_maillage": ["sgh_interlock", "28a3ac28-f69d-4fa9-9ebf-a0449c89c8da", "37bc3df6-93e8-4d74-b16e-5ceaa30ebc23"],
+  "exceptions": {
+    "b6c7bdfa-0021-4ef7-b99f-332084f1060c": {"carte": "Yuletide", "etat": "publie", "commentaire": ""},
+    "sgh_blueprint": {"carte": "Recharge", "etat": "publie", "commentaire": "en vrai la silhouette est bien mais il manque une petit carré au nord ouest qui est une zone jouable avec un socle de power weapon dessus, ce carré est visible sur le publié par contre"},
+    "133c0185-24ed-4bc2-b834-62db5c936257": {"carte": "Rat's Nest", "etat": "aucune", "commentaire": "rendus tous blancs pour les croisé"},
+    "50a1a3b5-c54d-4e40-8744-b92051d48897": {"carte": "Diminished", "etat": "aucune", "commentaire": "rendus \"croisé\" foireux, tous blancs"},
+    "6c433ed1-d56b-4ea1-9520-423ddf8e0f11": {"carte": "Alpha Site", "etat": "aucune", "commentaire": "rendus \"croisé\" foireux"},
+    "7097bc4f-efcf-4c5a-a96e-4ddb03e84d2a": {"carte": "Flood Gulch", "etat": "aucune", "commentaire": "rendus un peu bizarre pour les croisés"},
+    "8cf45707-ced1-4722-b736-c139cbf0d1e2": {"carte": "Ardent Prayer", "etat": "aucune", "commentaire": "rendus \"croisé\" foireux"},
+    "921aebb1-783d-45e4-bacd-7ad869fa8dae": {"carte": "Domicile", "etat": "aucune", "commentaire": "rendus identiques"},
+    "cf034ec8-ee47-43c2-b2e8-4751c22b3d4d": {"carte": "Houseki", "etat": "aucune", "commentaire": "rendus blancs pour les croisés"},
+    "d39600e2-3c35-4a3a-bdf5-7b3cbdde98e1": {"carte": "Detachment", "etat": "aucune", "commentaire": "rendus \"croisé\" foireux, tous blancs"},
+    "e4bb06db-065f-4902-b93b-d8dac315eac4": {"carte": "Dredge", "etat": "aucune", "commentaire": "lignes exterieure en trop hors de la zone jouable, c'est bizarre"},
+    "1042b738-30d6-453b-a057-cec8bda009b3": {"carte": "Showdown Arena", "etat": "", "commentaire": "rendus compeltement ratés pour les croisés, mais la carte a l'air complexe, je la connais pas mais on dirait plusieurs ilots"},
+    "2890782c-0a33-4f2c-a468-e3a7d6cd6db4": {"carte": "Shiro", "etat": "", "commentaire": "rendus tous blancs pour les croisés"},
+    "33075df7-01c8-40e1-8b3e-1baee0054c76": {"carte": "Shogun", "etat": "", "commentaire": "rendus compeltement ratés pour les croisés"},
+    "98783453-ce40-4020-9e87-62099a290b62": {"carte": "Smallhalla", "etat": "", "commentaire": "rendus compeltement ratés pour les croisés"},
+    "be848f91-3d87-4b80-8eb9-df3b52cb8d10": {"carte": "Urban Raid", "etat": "", "commentaire": "rendus un peu raté, il y a une zone au nord des croisés qui semblent en trop, à voir si ce sont des zones jouables ou non, je connais pas cette carte"},
+    "e8268e75-6583-42ad-9e0c-2d2f043f5f0f": {"carte": "Vallaheim Firefight", "etat": "", "commentaire": "rendus à revoir, beaucoup de onnes non jouables dessinées a priori"}
+  }
+}
