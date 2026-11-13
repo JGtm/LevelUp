@@ -11,7 +11,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'
 import ts from 'typescript'
 
-export const SRC_ROOT = resolve(process.cwd(), 'src')
+const SRC_ROOT = resolve(process.cwd(), 'src')
 
 const GENERATED_FILES = new Set(['generated.ts', 'routeTree.gen.ts'])
 
