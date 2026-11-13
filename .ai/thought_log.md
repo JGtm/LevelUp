@@ -1,3 +1,10 @@
+## [2026-11-13] Alertes Dependabot : undici, minimatch, @vitest/mocker corrigés, glib (Rust) non corrigeable — Complété (branche `chore/deps-securite-820`)
+
+- **Décision** : `npm update` pour undici (8.12.4 via jsdom) et vitest 4.1.12 (qui tire `@vitest/mocker` 4.1.12), sans toucher aux plages de `package.json` ; minimatch 11 imposé par trois surcharges ciblées (`eslint`, `@eslint/config-array`, `@typescript-eslint/typescript-estree`) car ces paquets exigent `^10` ; le `minimatch` 5 de `@redocly/openapi-core` (hors plage vulnérable 7 à 11.0.0) reste intact.
+- **Rust** : `glib` 0.18.5 vient de `gtk` 0.18 (tauri 2.11.6, tao, wry, webkit2gtk, tray-icon, muda), cibles Linux seulement ; `cargo tree --target x86_64-pc-windows-msvc` ne le trouve pas, il n'est donc pas compilé sur Windows. `cargo update -p glib --precise 0.20.0` échoue (`gtk` exige `^0.18`) : il faudrait une montée de tauri vers gtk-rs 0.20, non faite.
+- **Résultats** : `npm audit` 0 vulnérabilité, `tsc -b` propre, eslint 0 erreur, vitest 1184 fichiers et 12207 tests verts.
+- **Conclusion** : alerte glib à fermer comme non applicable (Windows seul, ADR 0045) ou à suivre avec la prochaine montée de tauri.
+
 ## [2026-11-13] ADR 0048, amendement 0043, guide des fondations EN/FR : fonds tenus par le maillage — Complété (branche `feat/fonds-navmesh-natif`, non poussée)
 
 - **Décision** : l'ADR 0048 (EN) consigne huit décisions D-1 à D-8 (deux sources, un décodeur ; fond riche = base, maillage = cadrage et référence ; plan = vecteur du sidecar ; orientation dans la projection, par carte, partagée ; carte sans maillage = dégradation nommée ; secondaire ignoré et compté ; `-plan-seul` ; `mapfondsidecar` seul lecteur-écrivain). Amendement du 2026-11-13 à l'ADR 0043 : premier usage de la règle « le dépôt dédié est la source », pseudo-version sur branche de travail, tags mineurs avant `main`. Section 3.6 du guide des fondations, EN et FR.
