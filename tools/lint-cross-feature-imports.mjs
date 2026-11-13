@@ -130,6 +130,12 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   //  - `model/equipmentUsageLogic` : `equipmentKillBadges` y lit `EPISODE_FAMILIES`, les deux
   //    familles dont l'usage forme un episode. Le module ne peut pas descendre dans `lib/`
   //    (il depend d'un calque), la constante ne peut pas se recopier (regle n° 6).
+  // La page du Rejeu 2D (`match-replay/ReplayPage`, descendue de la route le 2026-11-13) reprend le fil d'Ariane et le titre de la
+  // Vue match (même en-tête, même libellé de match) et la liste d'amis pour colorer le fil des éliminations : ces trois
+  // dépendances existaient déjà, cachées dans le fichier de route que le lint ne balaie pas. Modules nommés.
+  'match-replay=>match-view/MatchHeader',
+  'match-replay=>match-view/format',
+  'match-replay=>friends/queries',
   'match-view=>match-replay/MatchEquipmentUsageSection',
   'match-view=>match-replay/i18n/i18n',
   'match-view=>match-replay/model/equipmentUsageLogic',

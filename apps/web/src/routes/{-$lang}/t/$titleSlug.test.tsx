@@ -50,6 +50,9 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 
 vi.mock('sonner', () => ({ toast: { error: toastErrorMock } }))
 
+// La convergence vit dans useTitleConvergence, qui importe applyActiveTitle de son module.
+vi.mock('@/lib/title-routing/applyActiveTitle', () => ({ applyActiveTitle: applyActiveTitleMock }))
+
 vi.mock('@/lib/title-routing', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/title-routing')>()
   return { ...actual, applyActiveTitle: applyActiveTitleMock }

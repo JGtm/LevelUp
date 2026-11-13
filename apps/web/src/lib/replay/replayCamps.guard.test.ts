@@ -31,7 +31,7 @@ const PERIMETRE = import.meta.glob(['/src/features/match-replay/**/*.{ts,tsx}', 
   import: 'default',
   eager: true,
 }) as Record<string, string>
-const ROUTE = import.meta.glob('/src/routes/**/replay.tsx', {
+const ROUTE = import.meta.glob('/src/features/match-replay/ReplayPage.tsx', {
   query: '?raw',
   import: 'default',
   eager: true,
@@ -105,7 +105,7 @@ describe('garde-rail : l’appartenance d’un joueur du rejeu vient du film seu
     // 271 sources hors tests au 2026-10-06 : un balayage qui n'en verrait qu'une poignée serait
     // vert et inerte.
     expect(chemins.length).toBeGreaterThan(200)
-    expect(Object.keys(ROUTE).some((c) => c.endsWith('/matches/$matchId/replay.tsx'))).toBe(true)
+    expect(Object.keys(ROUTE).some((c) => c.endsWith('/match-replay/ReplayPage.tsx'))).toBe(true)
   })
 
   it('(a) aucune lecture de `team_side` hors du helper de libellé et de l’allowlist comptée', () => {

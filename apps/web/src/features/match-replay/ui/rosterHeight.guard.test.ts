@@ -25,7 +25,7 @@ import { racineWeb } from '../test/featureFiles'
 
 const ROUTE = resolve(
   racineWeb(),
-  'src/routes/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId/replay.tsx',
+  'src/features/match-replay/ReplayPage.tsx',
 )
 
 describe('garde-rail : la hauteur des fiches ne dépend plus de celle de la carte', () => {
