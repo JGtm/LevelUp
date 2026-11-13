@@ -124,7 +124,7 @@ export function ReplayKillFeed({
 
   // LA LISTE AFFICHÉE : le fil complet plus les lignes d'événement, puis le filtre. `entries`
   // (le fil de la page) n'est jamais modifié.
-  const events = useFeedEventEntries(doc, locale)
+  const events = useFeedEventEntries(doc, locale, entries)
   const fullFeed = useMemo(() => withEventLines(entries, events), [entries, events])
   const options = useMemo(() => availableFeedFilters(fullFeed), [fullFeed])
   const [storedFilter, chooseFilter] = useFeedFilter()

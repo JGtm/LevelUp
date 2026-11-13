@@ -9,6 +9,10 @@
  * (« Ghost détruit »). Avec un auteur, il ouvre la phrase comme pour toute autre ligne ; les joueurs
  * tués avec le véhicule, quand le film en nomme, la ferment entre parenthèses (leur nom s'il n'y en
  * a qu'un, leur nombre sinon : `vehicleKilledLabel`).
+ *
+ * LE PICTOGRAMME DE LA CAUSE (destruction seulement) : quand la ligne porte l'arme qui a détruit le
+ * véhicule, son dessin prend la place entre l'auteur et la phrase, au même gabarit et à la même encre
+ * que sur une ligne d'élimination. Sans arme résolue, aucun repère n'est dessiné.
  */
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { PickupEventLine, VehicleDestroyedEventLine, VehicleEventLine } from '../model/feedEventLines'
@@ -17,6 +21,7 @@ import { FEED_ROW } from '../model/feedRow'
 import { vehicleKilledLabel } from '../model/vehicleKilledLabel'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { FeedName } from './ReplayFeedName'
+import { FeedWeaponIcon } from './ReplayKillLineParts'
 import { EventGlyph } from './ReplayEventGlyph'
 import { FeedClock } from './ReplayFeedClock'
 
@@ -51,6 +56,7 @@ export function ReplayEventLine({ line, replayMs, color, mark, name, killedNames
   const t = REPLAY_TEXT[locale]
   const action = actionOf(line, t, killedNames, locale)
   const hasActor = name !== ''
+  const weapon = 'destroyed' in line ? line.weapon : undefined
   return (
     <li className={FEED_ROW} title={hasActor ? `${name} ${action}` : action} data-feed-family={line.family}>
       <FeedClock ms={replayMs} />
@@ -58,6 +64,14 @@ export function ReplayEventLine({ line, replayMs, color, mark, name, killedNames
         <EventGlyph glyph={FEED_FILTER_GLYPH[line.family]} />
       </span>
       {hasActor && <FeedName kind={mark} color={color} locale={locale} className="font-medium" name={name} />}
+      {weapon && (
+        <FeedWeaponIcon
+          imageUrl={weapon.imageUrl}
+          tinted={weapon.tinted}
+          label={weapon.label || t.killFeedUnknownWeapon}
+          color={color}
+        />
+      )}
       <span className="min-w-0 truncate text-muted-foreground">{action}</span>
     </li>
   )

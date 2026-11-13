@@ -7,6 +7,9 @@
  * Les armes ramassées au sol se bâtissent APRÈS les prises de socle, contre lesquelles elles
  * écartent leurs doublons.
  *
+ * Le pictogramme de la cause d'une destruction de véhicule se retrouve par weapon_key dans le fil des
+ * éliminations reçu (`feed`), cf. `weaponIconsByKey`.
+ *
  * Sans document (tests, chargement), aucune ligne : le fil reste celui des éliminations.
  */
 import { useMemo } from 'react'
@@ -19,10 +22,13 @@ import type { ReplayFeedEntry } from '../model/killFeedLogic'
 import { objectiveFeedEntries } from '../model/objectiveFeedLogic'
 import { pickupFeedEntries } from '../model/pickupFeedLogic'
 import { vehicleFeedEntries } from '../model/vehicleFeedLogic'
+import { vehicleDestructionsOf } from '../model/vehicleDestructionSource'
+import { weaponIconsByKey } from '../model/weaponIconsByKey'
 
 export function useFeedEventEntries(
   doc: ReplayDocumentReady | null | undefined,
   locale: ReplayLocale,
+  feed: readonly ReplayFeedEntry[],
 ): ReplayFeedEntry[] {
   return useMemo(() => {
     if (!doc) return []
@@ -33,7 +39,7 @@ export function useFeedEventEntries(
       ...objectiveFeedEntries(doc).entries,
       ...padPickups,
       ...groundPickupFeedEntries(doc, nameOf, padPickups),
-      ...vehicleFeedEntries(doc, locale),
+      ...vehicleFeedEntries(doc, locale, vehicleDestructionsOf(doc), weaponIconsByKey(feed)),
     ]
-  }, [doc, locale])
+  }, [doc, locale, feed])
 }

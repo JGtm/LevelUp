@@ -7,6 +7,9 @@
  *  - `by` : le destructeur. `by.i` est l'index de joueur du film, joint à `roster[].filmIndex` ;
  *    `by.xuid` nomme un humain ; un BOT n'a pas de xuid et porte `by.bot` ; `by` absent = non établi ;
  *  - `cause` : l'identifiant d'effet de dégât, dans le même espace que la source d'un frag ;
+ *  - `causeKey` : le weapon_key de la cause, posé à la requête par le serveur (même vocabulaire que
+ *    `weaponLabels[].key` et que la `weaponKey` d'un frag) ; absent quand la cause n'est pas une arme
+ *    que le titre sait nommer sans ambiguïté ;
  *  - `occupant` : le xuid de l'occupant à l'instant (le conducteur de préférence) ; il n'est pas lu ici :
  *    son attribution vient des trajets, dont la couverture est partielle, et la ligne ne s'appuie que
  *    sur `killed` ;
@@ -22,8 +25,8 @@
  * sans `tEnd`, n'en font pas non plus : sans instant, rien ne se date.
  *
  * CE QUE LA SOURCE NE PORTE PAS. Le siège (`rides[].seat`) n'est pas lu : sa fiabilité n'est pas
- * établie. La cause n'est pas lue non plus : son pictogramme se résout côté serveur, par la table des
- * armes des frags, et aucun canal du document ne l'apporte à la page pour une destruction.
+ * établie. L'identifiant brut de la cause (`cause`) n'est pas lu non plus : la page ne décode aucun
+ * effet de dégât, elle ne lit que le `causeKey` que le serveur a résolu.
  *
  * LA LIGNE ET LE FILTRE CONSOMMENT CETTE LISTE : `vehicleDestructionEntries`
  * (`model/vehicleFeedLogic.ts`) la range dans le fil, `ui/ReplayEventLine` la dit.
@@ -42,6 +45,8 @@ export interface VehicleDestructionView {
   authorBotName: string | null
   /** Les xuids des joueurs morts avec le véhicule (`killed`), sans doublon ; vide quand le film n'en nomme aucun. */
   killedXuids: readonly string[]
+  /** Le weapon_key de la cause (`destruction.causeKey`) ; `null` quand le serveur n'en a pas résolu. */
+  causeKey: string | null
 }
 
 /** La forme servie de `vehicles[].destruction` : chaque champ est facultatif. */
@@ -81,6 +86,7 @@ export function vehicleDestructionsOf(doc: ReplayDocumentReady): readonly Vehicl
       authorXuid: by?.xuid ? by.xuid : null,
       authorBotName: botName,
       killedXuids: killedOf(track.destruction),
+      causeKey: track.destruction?.causeKey ? track.destruction.causeKey : null,
     })
   }
   return out

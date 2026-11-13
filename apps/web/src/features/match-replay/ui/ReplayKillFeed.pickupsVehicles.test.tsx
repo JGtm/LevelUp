@@ -15,6 +15,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 
+import type { KillEvent } from '@/features/match-view/_momentum'
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 
 import { eventFeedEntry } from '../model/feedEventLines'
@@ -72,7 +73,13 @@ const PLAIN_DOC = testReplayDoc({ frameIntervalMs: FRAME_MS, roster: ROSTER })
 const ALLEGIANCE = filmAllegianceOf(GROUND_DOC, [], 'me')
 
 function destroyed(
-  over: Partial<{ xuid: string | null; botName: string | null; killedXuids: string[]; name: string }>,
+  over: Partial<{
+    xuid: string | null
+    botName: string | null
+    killedXuids: string[]
+    name: string
+    weapon: { imageUrl: string; tinted: boolean; label: string }
+  }>,
   ms: number,
 ) {
   return eventFeedEntry(`vd-${ms}`, ms, {
@@ -235,6 +242,66 @@ describe('destructions de véhicule (événements fabriqués)', () => {
     })
     choose(/Vehicles/)
     expect(screen.getByText('Ghost destroyed (2 killed with the vehicle)')).toBeTruthy()
+  })
+
+  it('le pictogramme de l’arme qui a détruit le véhicule est dessiné, nommé par l’arme', () => {
+    const weapon = { imageUrl: '/static/weapons/spartan-laser.png', tinted: true, label: 'Spartan Laser' }
+    renderFeed({ doc: PLAIN_DOC, entries: [destroyed({ weapon }, 10_000)] })
+    choose(/Véhicules/)
+    const row = screen.getByRole('listitem')
+    expect(within(row).getByRole('img', { name: 'Spartan Laser' })).toBeTruthy()
+    expect(row.textContent).toContain('a détruit : Ghost')
+  })
+
+  it('une arme sans nom propre porte le texte alternatif des lignes d’élimination', () => {
+    const weapon = { imageUrl: '/static/weapons/x.png', tinted: true, label: '' }
+    renderFeed({ doc: PLAIN_DOC, entries: [destroyed({ weapon }, 10_000)] })
+    choose(/Véhicules/)
+    expect(within(screen.getByRole('listitem')).getByRole('img', { name: 'Arme non identifiée' })).toBeTruthy()
+  })
+
+  it('sans arme résolue, la ligne ne dessine aucun pictogramme d’arme', () => {
+    renderFeed({ doc: PLAIN_DOC, entries: [destroyed({}, 10_000)] })
+    choose(/Véhicules/)
+    const row = screen.getByRole('listitem')
+    expect(row.querySelector('img, [style*="mask"]')).toBeNull()
+  })
+
+  describe('de bout en bout : du `causeKey` du document au pictogramme du fil', () => {
+    const laser: KillEvent = {
+      tMs: 1_000, xuid: 'me', ally: true, teamID: 0, assistState: '', assistGamertag: '', assistTeamID: null,
+      killerDamagePct: null, assistDamagePct: null, victimXuid: 'foe', victimGamertag: 'Cobra01',
+      weaponKey: 'hinf_spartan_laser', weaponLabel: 'Spartan Laser',
+      weaponImageUrl: '/static/weapons/spartan-laser.png', weaponTinted: true,
+    }
+    const docWithCause = (causeKey?: string) =>
+      testReplayDoc({
+        frameIntervalMs: FRAME_MS,
+        roster: ROSTER,
+        vehicles: [
+          {
+            slot: 7, gen: 0, family: 'Ghost', end: 'destroyed', tEnd: 300, t0: 0, t1: 300, t1max: 300,
+            samples: [], rides: [],
+            destruction: { by: { i: 0, xuid: 'me' }, cause: 123, ...(causeKey ? { causeKey } : {}) },
+          },
+        ] as never,
+      })
+
+    it('la ligne de destruction dessine l’arme que le fil des éliminations dessine pour cette clé', () => {
+      renderFeed({ doc: docWithCause('hinf_spartan_laser'), entries: buildFeedEntries([laser], [], 0, null) })
+      choose(/Véhicules/)
+      const row = screen.getByRole('listitem')
+      expect(within(row).getByRole('img', { name: 'Spartan Laser' })).toBeTruthy()
+    })
+
+    it.each([
+      ['sans clé (cause non résolue)', undefined],
+      ['dont la clé n’a aucun dessin dans le fil', 'hinf_autre_arme'],
+    ])('une cause %s : aucun pictogramme, jamais celui de l’arme du fil', (_nom, causeKey) => {
+      renderFeed({ doc: docWithCause(causeKey), entries: buildFeedEntries([laser], [], 0, null) })
+      choose(/Véhicules/)
+      expect(within(screen.getByRole('listitem')).queryByRole('img', { name: 'Spartan Laser' })).toBeNull()
+    })
   })
 
   it('un nom de joueur tué inconnu de la feuille ne laisse jamais un xuid brut', () => {

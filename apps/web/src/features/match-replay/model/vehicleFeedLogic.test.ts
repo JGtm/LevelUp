@@ -95,7 +95,7 @@ describe('vehicleFeedEntries', () => {
 
 describe('vehicleDestructionEntries — destructions fabriquées', () => {
   const destruction = (over: Record<string, unknown> = {}) => ({
-    t: 300, family: 'Ghost', authorXuid: 'x1', authorBotName: null, killedXuids: [], ...over,
+    t: 300, family: 'Ghost', authorXuid: 'x1', authorBotName: null, killedXuids: [], causeKey: null, ...over,
   })
 
   it('une ligne par destruction, à son instant, au nom de la famille, avec son auteur', () => {
@@ -144,13 +144,38 @@ describe('vehicleDestructionEntries — destructions fabriquées', () => {
   it('une liste vide ne fait aucune ligne', () => {
     expect(vehicleDestructionEntries([], docWith([]), 'fr')).toEqual([])
   })
+
+  describe('le pictogramme de la cause', () => {
+    const LASER = { imageUrl: '/static/weapons/laser.png', tinted: true, label: 'Spartan Laser' }
+    const icons = new Map([['hinf_spartan_laser', LASER]])
+
+    it('une clé connue du fil porte le pictogramme de cette arme', () => {
+      const out = vehicleDestructionEntries([destruction({ causeKey: 'hinf_spartan_laser' })], docWith([]), 'fr', icons)
+      expect(out[0].event).toHaveProperty('weapon', LASER)
+    })
+
+    it('une cause sans clé (code non résolu) ne porte aucun pictogramme, même quand le fil en connaît', () => {
+      const out = vehicleDestructionEntries([destruction({ causeKey: null })], docWith([]), 'fr', icons)
+      expect(out[0].event).not.toHaveProperty('weapon')
+    })
+
+    it('une clé que le fil ne dessine pas ne porte aucun pictogramme, jamais celui d’une arme voisine', () => {
+      const out = vehicleDestructionEntries([destruction({ causeKey: 'hinf_other' })], docWith([]), 'fr', icons)
+      expect(out[0].event).not.toHaveProperty('weapon')
+    })
+
+    it('sans table de pictogrammes, aucune ligne n’en porte', () => {
+      const out = vehicleDestructionEntries([destruction({ causeKey: 'hinf_spartan_laser' })], docWith([]), 'fr')
+      expect(out[0].event).not.toHaveProperty('weapon')
+    })
+  })
 })
 
 describe('vehicleFeedEntries — montées et destructions dans un même fil trié', () => {
   it('une destruction s’insère à son instant parmi les montées', () => {
     const doc = docWith([life({ rides: [ride({ t0: 100 }), ride({ t0: 500, t1: 600 })] })])
     const out = vehicleFeedEntries(doc, 'fr', [
-      { t: 300, family: 'Warthog', authorXuid: 'x2', authorBotName: null, killedXuids: ['x1'] },
+      { t: 300, family: 'Warthog', authorXuid: 'x2', authorBotName: null, killedXuids: ['x1'], causeKey: null },
     ])
     expect(out.map((e) => e.replayMs)).toEqual([10_000, 30_000, 50_000])
     expect(out.map((e) => 'destroyed' in (e.event ?? {}))).toEqual([false, true, false])

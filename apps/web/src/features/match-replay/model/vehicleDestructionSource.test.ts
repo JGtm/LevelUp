@@ -35,6 +35,7 @@ describe('vehicleDestructionsOf', () => {
           destruction: {
             by: { i: 21, xuid: '2534182457688434' },
             cause: 2899431412,
+            causeKey: 'hinf_spartan_laser',
             occupant: 'x2',
             killed: ['x2', 'x3'],
           },
@@ -42,7 +43,10 @@ describe('vehicleDestructionsOf', () => {
       ]),
     )
     expect(out).toEqual([
-      { t: 300, family: 'Ghost', authorXuid: '2534182457688434', authorBotName: null, killedXuids: ['x2', 'x3'] },
+      {
+        t: 300, family: 'Ghost', authorXuid: '2534182457688434', authorBotName: null, killedXuids: ['x2', 'x3'],
+        causeKey: 'hinf_spartan_laser',
+      },
     ])
   })
 
@@ -70,7 +74,7 @@ describe('vehicleDestructionsOf', () => {
       docWith([life({ destruction: { by: { i: 5, bot: true } } })], roster),
     )
     expect(out).toEqual([
-      { t: 300, family: 'Ghost', authorXuid: null, authorBotName: 'Cobra07 [bot]', killedXuids: [] },
+      { t: 300, family: 'Ghost', authorXuid: null, authorBotName: 'Cobra07 [bot]', killedXuids: [], causeKey: null },
     ])
   })
 
@@ -118,6 +122,18 @@ describe('vehicleDestructionsOf', () => {
       docWith([life({ tEnd: undefined }), life({ slot: 2, scenery: true }), life({ slot: 3, end: 'vanished' })]),
     )
     expect(out).toEqual([])
+  })
+
+  it('la clé de la cause se lit telle que le serveur l’a posée ; absente ou vide : nulle, jamais devinée de `cause`', () => {
+    const out = vehicleDestructionsOf(
+      docWith([
+        life({ slot: 1, destruction: { cause: 2899431412, causeKey: 'hinf_spartan_laser' } }),
+        life({ slot: 2, destruction: { cause: 2899431412 } }),
+        life({ slot: 3, destruction: { cause: 36, causeKey: '' } }),
+        life({ slot: 4 }),
+      ]),
+    )
+    expect(out.map((d) => d.causeKey)).toEqual(['hinf_spartan_laser', null, null, null])
   })
 
   it('une famille absente garde une destruction de famille vide (la ligne la refusera, aucun nom inventé)', () => {
