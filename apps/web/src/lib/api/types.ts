@@ -570,14 +570,7 @@ export type ExportHint = components['schemas']['ExportHint']
 
 export type MatchHistoryPageResponse = components['schemas']['MatchHistoryPageResponse']
 
-export interface MatchHistoryQueryRequest {
-  filters?: FilterContextInput
-  pagination?: PaginationRequest
-  columns?: string[] | null
-  include_export_hint?: boolean
-  /** §5 plan Squad/Sessions : filtre multi-sessions solo. */
-  picked_solo_session_labels?: string[]
-}
+export type MatchHistoryQueryRequest = Omit<components['schemas']['MatchHistoryQueryRequest'], 'filters'> & { filters?: FilterContextInput }
 
 export type FileTokenResponse = components['schemas']['FileTokenResponse']
 
@@ -691,39 +684,9 @@ export type ExplorerPlayerTarget = components['schemas']['ExplorerPlayerTarget']
 
 export type ExplorerPlayerSummary = components['schemas']['ExplorerPlayerSummary']
 
-export interface ExplorerMatchesQueryRequest {
-  filters?: FilterContextInput
-  pagination?: PaginationRequest
-  sort_field?: string
-  sort_dir?: string
-  include_export_hint?: boolean
-  perf_tiers?: number[]
-  skill_tiers?: string[]
-  ranked_context?: 'ranked' | 'unranked' | ''
-  outcome_filter?: number[]
-  // Explorer-specific match filters
-  match_start_date?: string | null
-  match_end_date?: string | null
-  experience_types?: string[]
-  playlists?: string[]
-  map_names?: string[]
-  mode_names?: string[]
-  squad_scope?: 'solo' | 'squad' | ''
-  /** Présence d'un rejeu 2D : '' (tous) | 'with' | 'without'. Filtré côté Go. */
-  replay_scope?: 'with' | 'without' | ''
-  match_id_search?: string
-  /** Whitelist exacte de match_id (mode Joueur : matchs en commun). */
-  match_ids?: string[]
-  /** Opt-in du bandeau de briefing (mode Matchs) : le mode Matchs l'envoie à true. */
-  include_briefing?: boolean
-}
+export type ExplorerMatchesQueryRequest = Omit<components['schemas']['ExplorerMatchesQueryRequest'], 'filters'> & { filters?: FilterContextInput }
 
-export interface ExplorerPlayerQueryRequest {
-  target_gamertag: string
-  /** xuid optionnel : court-circuite la résolution gamertag→xuid locale (joueur du Classement). */
-  target_xuid?: string
-  page?: number
-}
+export type ExplorerPlayerQueryRequest = components['schemas']['ExplorerPlayerQueryRequest']
 
 export interface ExplorerCommonMatchRow {
   match_id: string
@@ -1984,9 +1947,7 @@ export type NormalizedPlayerStats = components['schemas']['NormalizedPlayerStats
 
 export type CompareMetricRow = components['schemas']['CompareMetricRow']
 
-export interface CompareRequest {
-  target_gamertag: string
-}
+export type CompareRequest = components['schemas']['CompareRequest']
 
 export interface CompareResponse {
   player_a: NormalizedPlayerStats

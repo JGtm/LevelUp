@@ -210,14 +210,6 @@ const KEPT_MANUAL_HOMONYMS: Readonly<Record<string, string>> = {
   FilterContextInput:
     "producteur : period, sessions et cascade facultatifs côté front, requis dans le contrat ; les rendre requis change les corps envoyés et le format du lien ?f=",
   EngagementTimeseriesRequest: 'porte FilterContextInput (producteur)',
-  MatchHistoryQueryRequest:
-    "porte FilterContextInput ; le contrat omet picked_solo_session_labels, que le serveur lit (domain/match_history.go)",
-  ExplorerMatchesQueryRequest:
-    "porte FilterContextInput ; le contrat omet 17 champs de requête que le serveur lit (tris, paliers, plages de dates, scopes)",
-  ExplorerPlayerQueryRequest:
-    "le contrat porte un champ filters que la structure Go n'a pas, et omet page et target_xuid qu'elle lit (domain/explorer.go)",
-  CompareRequest:
-    "le contrat exige title_slug, que la structure Go n'a pas et que le front n'envoie pas (domain/compare.go)",
   MediaItemRow:
     "view-model normalisé (null au lieu d'absent, section et compteurs par défaut), fabriqué par normalizeMediaItem ; le schéma MediaItem du contrat est la forme brute",
 }

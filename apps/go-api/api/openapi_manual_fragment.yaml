@@ -2898,6 +2898,10 @@ components:
           $ref: '#/components/schemas/FilterContextInput'
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
+        sort_field:
+          type: string
+        sort_dir:
+          type: string
         columns:
           type: array
           items:
@@ -2906,6 +2910,70 @@ components:
         include_export_hint:
           type: boolean
           default: false
+        picked_solo_session_labels:
+          type: array
+          items:
+            type: string
+          nullable: true
+        perf_tiers:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        skill_tiers:
+          type: array
+          items:
+            type: string
+          nullable: true
+        ranked_context:
+          type: string
+          enum: ['', ranked, unranked]
+        outcome_filter:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        match_start_date:
+          type: string
+          format: date-time
+          nullable: true
+        match_end_date:
+          type: string
+          format: date-time
+          nullable: true
+        experience_types:
+          type: array
+          items:
+            type: string
+          nullable: true
+        playlists:
+          type: array
+          items:
+            type: string
+          nullable: true
+        map_names:
+          type: array
+          items:
+            type: string
+          nullable: true
+        mode_names:
+          type: array
+          items:
+            type: string
+          nullable: true
+        squad_scope:
+          type: string
+          enum: ['', solo, squad]
+        replay_scope:
+          type: string
+          enum: ['', with, without]
+        match_id_search:
+          type: string
+        match_ids:
+          type: array
+          items:
+            type: string
+          nullable: true
     MatchHistoryExportRequest:
       type: object
       properties:
@@ -3061,10 +3129,75 @@ components:
       properties:
         filters:
           $ref: '#/components/schemas/FilterContextInput'
-        match_filters:
-          $ref: '#/components/schemas/ExplorerMatchFilters'
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
+        sort_field:
+          type: string
+        sort_dir:
+          type: string
+        include_export_hint:
+          type: boolean
+        perf_tiers:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        skill_tiers:
+          type: array
+          items:
+            type: string
+          nullable: true
+        ranked_context:
+          type: string
+          enum: ['', ranked, unranked]
+        outcome_filter:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        match_start_date:
+          type: string
+          format: date-time
+          nullable: true
+        match_end_date:
+          type: string
+          format: date-time
+          nullable: true
+        experience_types:
+          type: array
+          items:
+            type: string
+          nullable: true
+        playlists:
+          type: array
+          items:
+            type: string
+          nullable: true
+        map_names:
+          type: array
+          items:
+            type: string
+          nullable: true
+        mode_names:
+          type: array
+          items:
+            type: string
+          nullable: true
+        squad_scope:
+          type: string
+          enum: ['', solo, squad]
+        replay_scope:
+          type: string
+          enum: ['', with, without]
+        match_id_search:
+          type: string
+        match_ids:
+          type: array
+          items:
+            type: string
+          nullable: true
+        include_briefing:
+          type: boolean
     ExplorerPlayerQueryRequest:
       type: object
       required:
@@ -3074,10 +3207,9 @@ components:
           type: string
         target_xuid:
           type: string
-        filters:
-          nullable: true
-          allOf:
-            - $ref: '#/components/schemas/FilterContextInput'
+        page:
+          type: integer
+          description: Page 1-indexée (défaut 1).
     MatchScoreboardObjective:
       description: Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP/Assaut) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
     ObjectiveAggregate:
@@ -3354,9 +3486,6 @@ components:
       properties:
         target_gamertag:
           type: string
-        title_slug:
-          type: string
-          default: hi
     PlayerMediaAudioConfig:
       description: 'Réglage par joueur du rôle des pistes audio de ses médias. mode=auto : analyse acoustique automatique à l''ingestion (NNLS). mode=manual : rôles déclarés (track_roles, indexé par piste audio source dans l''ordre ffprobe) — l''analyse est court-circuitée.'
     EngagementCoefficient:

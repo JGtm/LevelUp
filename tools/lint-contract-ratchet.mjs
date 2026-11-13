@@ -42,20 +42,16 @@ const BASELINE_COLLISIONS = new Set([
   // migrés en ré-export du contrat généré (plus de collision hand-written).
   'CareerHighlightMatchesResponse',
   'CareerPageResponse',
-  'CompareRequest',
   'CompareResponse',
   'DeviceFlowStartResponse',
   'EngagementTimeseriesRequest',
   // 2026-08-04 (merge post-lot2) : ExplorerMatchRow retiré — le schéma OpenAPI
   // orphelin homonyme a été supprimé du fragment manuel, plus de collision
   // (le type manuel front subsiste, sans pendant contractuel).
-  'ExplorerMatchesQueryRequest',
-  'ExplorerPlayerQueryRequest',
   'FilterContextInput',
   'HealthResponse',
   // 2026-07-10 (A3.5) : LabWaypointResponse retiré de la baseline — le type manuel
   // ET son endpoint /lab/waypoint sont supprimés avec le retrait du Lab (DC-9).
-  'MatchHistoryQueryRequest',
   'MatchViewResponse',
   'MediaItemRow',
   // 2026-08-04 (merge post-lot2) : MediaLikeRequest/MediaLikeResponse retirés —

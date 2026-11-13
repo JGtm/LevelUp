@@ -6203,8 +6203,6 @@ export interface components {
         };
         CompareRequest: {
             target_gamertag: string;
-            /** @default hi */
-            title_slug: string;
         };
         CompareResponse: {
             encounter_badges?: components["schemas"]["MatchEncounterBadge"][] | null;
@@ -7277,9 +7275,31 @@ export interface components {
             squad_scope: "all" | "solo" | "squad";
         };
         ExplorerMatchesQueryRequest: {
+            experience_types?: string[] | null;
             filters?: components["schemas"]["FilterContextInput"];
-            match_filters?: components["schemas"]["ExplorerMatchFilters"];
+            include_briefing?: boolean;
+            include_export_hint?: boolean;
+            map_names?: string[] | null;
+            /** Format: date-time */
+            match_end_date?: string | null;
+            match_id_search?: string;
+            match_ids?: string[] | null;
+            /** Format: date-time */
+            match_start_date?: string | null;
+            mode_names?: string[] | null;
+            outcome_filter?: number[] | null;
             pagination?: components["schemas"]["PaginationRequest"];
+            perf_tiers?: number[] | null;
+            playlists?: string[] | null;
+            /** @enum {string} */
+            ranked_context?: "" | "ranked" | "unranked";
+            /** @enum {string} */
+            replay_scope?: "" | "with" | "without";
+            skill_tiers?: string[] | null;
+            sort_dir?: string;
+            sort_field?: string;
+            /** @enum {string} */
+            squad_scope?: "" | "solo" | "squad";
         };
         ExplorerMatchesQueryResponse: {
             briefing?: components["schemas"]["ExplorerBriefing"];
@@ -7371,7 +7391,8 @@ export interface components {
             pagination: components["schemas"]["PaginationMeta"];
         };
         ExplorerPlayerQueryRequest: {
-            filters?: components["schemas"]["FilterContextInput"] | null;
+            /** @description Page 1-indexée (défaut 1). */
+            page?: number;
             target_gamertag: string;
             target_xuid?: string;
         };
@@ -9195,10 +9216,32 @@ export interface components {
         };
         MatchHistoryQueryRequest: {
             columns?: string[] | null;
+            experience_types?: string[] | null;
             filters?: components["schemas"]["FilterContextInput"];
             /** @default false */
             include_export_hint: boolean;
+            map_names?: string[] | null;
+            /** Format: date-time */
+            match_end_date?: string | null;
+            match_id_search?: string;
+            match_ids?: string[] | null;
+            /** Format: date-time */
+            match_start_date?: string | null;
+            mode_names?: string[] | null;
+            outcome_filter?: number[] | null;
             pagination?: components["schemas"]["PaginationRequest"];
+            perf_tiers?: number[] | null;
+            picked_solo_session_labels?: string[] | null;
+            playlists?: string[] | null;
+            /** @enum {string} */
+            ranked_context?: "" | "ranked" | "unranked";
+            /** @enum {string} */
+            replay_scope?: "" | "with" | "without";
+            skill_tiers?: string[] | null;
+            sort_dir?: string;
+            sort_field?: string;
+            /** @enum {string} */
+            squad_scope?: "" | "solo" | "squad";
         };
         MatchHistoryQuerySummary: {
             active_filter_mode: string;

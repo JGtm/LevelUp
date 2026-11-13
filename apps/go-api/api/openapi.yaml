@@ -12402,9 +12402,6 @@ components:
       properties:
         target_gamertag:
           type: string
-        title_slug:
-          default: hi
-          type: string
       required:
         - target_gamertag
       type: object
@@ -14773,12 +14770,86 @@ components:
       type: object
     ExplorerMatchesQueryRequest:
       properties:
+        experience_types:
+          items:
+            type: string
+          nullable: true
+          type: array
         filters:
           $ref: '#/components/schemas/FilterContextInput'
-        match_filters:
-          $ref: '#/components/schemas/ExplorerMatchFilters'
+        include_briefing:
+          type: boolean
+        include_export_hint:
+          type: boolean
+        map_names:
+          items:
+            type: string
+          nullable: true
+          type: array
+        match_end_date:
+          format: date-time
+          nullable: true
+          type: string
+        match_id_search:
+          type: string
+        match_ids:
+          items:
+            type: string
+          nullable: true
+          type: array
+        match_start_date:
+          format: date-time
+          nullable: true
+          type: string
+        mode_names:
+          items:
+            type: string
+          nullable: true
+          type: array
+        outcome_filter:
+          items:
+            type: integer
+          nullable: true
+          type: array
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
+        perf_tiers:
+          items:
+            type: integer
+          nullable: true
+          type: array
+        playlists:
+          items:
+            type: string
+          nullable: true
+          type: array
+        ranked_context:
+          enum:
+            - ""
+            - ranked
+            - unranked
+          type: string
+        replay_scope:
+          enum:
+            - ""
+            - with
+            - without
+          type: string
+        skill_tiers:
+          items:
+            type: string
+          nullable: true
+          type: array
+        sort_dir:
+          type: string
+        sort_field:
+          type: string
+        squad_scope:
+          enum:
+            - ""
+            - solo
+            - squad
+          type: string
       type: object
     ExplorerMatchesQueryResponse:
       additionalProperties: false
@@ -15008,10 +15079,9 @@ components:
       type: object
     ExplorerPlayerQueryRequest:
       properties:
-        filters:
-          allOf:
-            - $ref: '#/components/schemas/FilterContextInput'
-          nullable: true
+        page:
+          description: Page 1-indexée (défaut 1).
+          type: integer
         target_gamertag:
           type: string
         target_xuid:
@@ -19290,13 +19360,90 @@ components:
             type: string
           nullable: true
           type: array
+        experience_types:
+          items:
+            type: string
+          nullable: true
+          type: array
         filters:
           $ref: '#/components/schemas/FilterContextInput'
         include_export_hint:
           default: false
           type: boolean
+        map_names:
+          items:
+            type: string
+          nullable: true
+          type: array
+        match_end_date:
+          format: date-time
+          nullable: true
+          type: string
+        match_id_search:
+          type: string
+        match_ids:
+          items:
+            type: string
+          nullable: true
+          type: array
+        match_start_date:
+          format: date-time
+          nullable: true
+          type: string
+        mode_names:
+          items:
+            type: string
+          nullable: true
+          type: array
+        outcome_filter:
+          items:
+            type: integer
+          nullable: true
+          type: array
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
+        perf_tiers:
+          items:
+            type: integer
+          nullable: true
+          type: array
+        picked_solo_session_labels:
+          items:
+            type: string
+          nullable: true
+          type: array
+        playlists:
+          items:
+            type: string
+          nullable: true
+          type: array
+        ranked_context:
+          enum:
+            - ""
+            - ranked
+            - unranked
+          type: string
+        replay_scope:
+          enum:
+            - ""
+            - with
+            - without
+          type: string
+        skill_tiers:
+          items:
+            type: string
+          nullable: true
+          type: array
+        sort_dir:
+          type: string
+        sort_field:
+          type: string
+        squad_scope:
+          enum:
+            - ""
+            - solo
+            - squad
+          type: string
       type: object
     MatchHistoryQuerySummary:
       additionalProperties: false
