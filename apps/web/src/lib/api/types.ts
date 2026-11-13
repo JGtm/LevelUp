@@ -1855,6 +1855,9 @@ export interface WatcherAuthStatus {
 // vides pour maps/armes), plus besoin de shim manuel.
 export type AssetMeta = components['schemas']['AssetMeta']
 
+// Référentiel des pictogrammes d'arme d'un titre (GET /assets/{titre}/kill-sources).
+export type KillSourceIconEntry = components['schemas']['KillSourceIconEntry']
+
 // ---------------------------------------------------------------------------
 // Achievements Xbox (bilingues EN/FR)
 // ---------------------------------------------------------------------------

@@ -29,7 +29,7 @@ import { eventFeedEntry } from './feedEventLines'
 import type { ReplayFeedEntry } from './killFeedLogic'
 import { vehicleDestructionsOf, type VehicleDestructionView } from './vehicleDestructionSource'
 import { vehicleIsDecor, vehicleIsMapElement } from './vehiclesLayer'
-import { NO_WEAPON_ICONS, type WeaponIconsByKey } from './weaponIconsByKey'
+import { NO_WEAPON_ICONS, type WeaponIconsByKey } from './killSourceIcons'
 
 /** L'épisode d'occupation, tel que le document le publie. */
 type Ride = ReplayDocumentReady['vehicles'][number]['rides'][number]

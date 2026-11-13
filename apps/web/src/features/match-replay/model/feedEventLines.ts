@@ -51,8 +51,8 @@ export interface FeedWeaponIcon {
  * humain porte son xuid (`xuid`), un destructeur bot son nom de roster (`botName`), et sans l'un ni
  * l'autre la ligne dit seulement que le véhicule est détruit ; sans joueur tué elle n'en nomme
  * aucun. Le NOM est celui de la famille, comme pour une montée. `weapon` est le pictogramme de
- * l'arme qui a détruit le véhicule ; absent quand la cause n'est pas résolue ou que le fil n'en
- * montre aucun dessin : la ligne ne porte alors aucun pictogramme.
+ * l'arme qui a détruit le véhicule ; absent quand la cause n'est pas résolue ou que le référentiel
+ * du titre n'a aucun dessin pour elle : la ligne ne porte alors aucun pictogramme.
  */
 export interface VehicleDestroyedEventLine {
   family: 'vehicles'

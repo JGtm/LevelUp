@@ -47,6 +47,7 @@ import {
 } from '../model/feedFilterLogic'
 import { feedAt, type ReplayFeedEntry } from '../model/killFeedLogic'
 import { focusTargetOf } from '../model/killFocusLogic'
+import { NO_WEAPON_ICONS, type WeaponIconsByKey } from '../model/killSourceIcons'
 import { usePlaybackFocus, type PlaybackStore } from '../model/playbackStore'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
 import { useFeedFilter } from '../settings/useFeedFilter'
@@ -100,10 +101,16 @@ interface Props {
    * une image : le fil reste en lecture seule.
    */
   playbackStore?: PlaybackStore
+  /**
+   * Les pictogrammes d'arme du titre par weapon_key (`useKillSourceIcons`) : la ligne « a détruit »
+   * y prend le dessin de l'arme qui a détruit le véhicule. Absent ou vide (chargement, erreur) : les
+   * lignes s'affichent sans pictogramme.
+   */
+  weaponIcons?: WeaponIconsByKey
 }
 
 export function ReplayKillFeed({
-  entries, nowMs, playWindow, scoreboard, xuidMeta, allegiance, locale, marks, zoneOf, doc, playbackStore,
+  entries, nowMs, playWindow, scoreboard, xuidMeta, allegiance, locale, marks, zoneOf, doc, playbackStore, weaponIcons = NO_WEAPON_ICONS,
 }: Props) {
   const t = REPLAY_TEXT[locale]
   // UNE SEULE RÈGLE POUR TOUTES LES FORMES DE LIGNE : l'allégeance du film, `team-ally` /
@@ -124,7 +131,7 @@ export function ReplayKillFeed({
 
   // LA LISTE AFFICHÉE : le fil complet plus les lignes d'événement, puis le filtre. `entries`
   // (le fil de la page) n'est jamais modifié.
-  const events = useFeedEventEntries(doc, locale, entries)
+  const events = useFeedEventEntries(doc, locale, weaponIcons)
   const fullFeed = useMemo(() => withEventLines(entries, events), [entries, events])
   const options = useMemo(() => availableFeedFilters(fullFeed), [fullFeed])
   const [storedFilter, chooseFilter] = useFeedFilter()

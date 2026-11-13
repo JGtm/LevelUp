@@ -15,10 +15,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 
-import type { KillEvent } from '@/features/match-view/_momentum'
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 
 import { eventFeedEntry } from '../model/feedEventLines'
+import { weaponIconsOf, type WeaponIconsByKey } from '../model/killSourceIcons'
 import { buildFeedEntries, type ReplayFeedEntry } from '../model/killFeedLogic'
 import { FEED_FILTER_KEY } from '../settings/replayPreferences'
 import { testReplayDoc } from '../test/testDoc'
@@ -87,7 +87,13 @@ function destroyed(
   })
 }
 
-function renderFeed(opts: { doc: typeof GROUND_DOC; entries?: ReplayFeedEntry[]; locale?: 'fr' | 'en'; nowMs?: number }) {
+function renderFeed(opts: {
+  doc: typeof GROUND_DOC
+  entries?: ReplayFeedEntry[]
+  locale?: 'fr' | 'en'
+  nowMs?: number
+  weaponIcons?: WeaponIconsByKey
+}) {
   const entries = opts.entries ?? buildFeedEntries([], [], 0, null)
   return render(
     <ReplayKillFeed
@@ -99,6 +105,7 @@ function renderFeed(opts: { doc: typeof GROUND_DOC; entries?: ReplayFeedEntry[];
       allegiance={ALLEGIANCE}
       locale={opts.locale ?? 'fr'}
       doc={opts.doc}
+      weaponIcons={opts.weaponIcons}
     />,
   )
 }
@@ -267,13 +274,11 @@ describe('destructions de véhicule (événements fabriqués)', () => {
     expect(row.querySelector('img, [style*="mask"]')).toBeNull()
   })
 
-  describe('de bout en bout : du `causeKey` du document au pictogramme du fil', () => {
-    const laser: KillEvent = {
-      tMs: 1_000, xuid: 'me', ally: true, teamID: 0, assistState: '', assistGamertag: '', assistTeamID: null,
-      killerDamagePct: null, assistDamagePct: null, victimXuid: 'foe', victimGamertag: 'Cobra01',
-      weaponKey: 'hinf_spartan_laser', weaponLabel: 'Spartan Laser',
-      weaponImageUrl: '/static/weapons/spartan-laser.png', weaponTinted: true,
-    }
+  describe('de bout en bout : du causeKey du document au pictogramme, par le référentiel du titre', () => {
+    // Le référentiel du titre : une entrée par arme, que l'arme ait éliminé quelqu'un ou non.
+    const REFERENTIEL = weaponIconsOf([
+      { key: 'hinf_spartan_laser', label: 'Spartan Laser', image_url: '/static/weapons/spartan-laser.png', tinted: true },
+    ])
     const docWithCause = (causeKey?: string) =>
       testReplayDoc({
         frameIntervalMs: FRAME_MS,
@@ -287,20 +292,30 @@ describe('destructions de véhicule (événements fabriqués)', () => {
         ] as never,
       })
 
-    it('la ligne de destruction dessine l’arme que le fil des éliminations dessine pour cette clé', () => {
-      renderFeed({ doc: docWithCause('hinf_spartan_laser'), entries: buildFeedEntries([laser], [], 0, null) })
+    it('la ligne dessine l’arme de la cause, même quand aucune élimination du fil ne l’a utilisée', () => {
+      // Fil des éliminations VIDE : le dessin vient du seul référentiel.
+      renderFeed({ doc: docWithCause('hinf_spartan_laser'), weaponIcons: REFERENTIEL })
       choose(/Véhicules/)
-      const row = screen.getByRole('listitem')
-      expect(within(row).getByRole('img', { name: 'Spartan Laser' })).toBeTruthy()
+      expect(within(screen.getByRole('listitem')).getByRole('img', { name: 'Spartan Laser' })).toBeTruthy()
     })
 
     it.each([
       ['sans clé (cause non résolue)', undefined],
-      ['dont la clé n’a aucun dessin dans le fil', 'hinf_autre_arme'],
-    ])('une cause %s : aucun pictogramme, jamais celui de l’arme du fil', (_nom, causeKey) => {
-      renderFeed({ doc: docWithCause(causeKey), entries: buildFeedEntries([laser], [], 0, null) })
+      ['dont la clé n’est pas au référentiel', 'hinf_autre_arme'],
+    ])('une cause %s : aucun pictogramme, la ligne s’affiche', (_nom, causeKey) => {
+      renderFeed({ doc: docWithCause(causeKey), weaponIcons: REFERENTIEL })
       choose(/Véhicules/)
-      expect(within(screen.getByRole('listitem')).queryByRole('img', { name: 'Spartan Laser' })).toBeNull()
+      const row = screen.getByRole('listitem')
+      expect(row.textContent).toContain('a détruit : Ghost')
+      expect(row.querySelector('img, [style*="mask"]')).toBeNull()
+    })
+
+    it('référentiel absent (chargement, erreur) : la ligne s’affiche sans pictogramme', () => {
+      renderFeed({ doc: docWithCause('hinf_spartan_laser') })
+      choose(/Véhicules/)
+      const row = screen.getByRole('listitem')
+      expect(row.textContent).toContain('a détruit : Ghost')
+      expect(row.querySelector('img, [style*="mask"]')).toBeNull()
     })
   })
 
