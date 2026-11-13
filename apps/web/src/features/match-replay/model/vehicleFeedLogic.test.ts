@@ -95,22 +95,22 @@ describe('vehicleFeedEntries', () => {
 
 describe('vehicleDestructionEntries — destructions fabriquées', () => {
   const destruction = (over: Record<string, unknown> = {}) => ({
-    t: 300, family: 'Ghost', authorXuid: 'x1', authorBotName: null, aboardXuids: [], ...over,
+    t: 300, family: 'Ghost', authorXuid: 'x1', authorBotName: null, killedXuids: [], causeKey: null, ...over,
   })
 
   it('une ligne par destruction, à son instant, au nom de la famille, avec son auteur', () => {
-    const out = vehicleDestructionEntries([destruction({ aboardXuids: ['x2'] })], docWith([]), 'fr')
+    const out = vehicleDestructionEntries([destruction({ killedXuids: ['x2'] })], docWith([]), 'fr')
     expect(out).toHaveLength(1)
     expect(out[0].replayMs).toBe(30_000)
     expect(out[0].event).toEqual({
-      family: 'vehicles', destroyed: true, xuid: 'x1', botName: null, aboardXuids: ['x2'], name: 'Ghost',
+      family: 'vehicles', destroyed: true, xuid: 'x1', botName: null, killedXuids: ['x2'], name: 'Ghost',
     })
   })
 
   it('sans auteur connu : l’auteur est nul, la ligne existe quand même', () => {
     const out = vehicleDestructionEntries([destruction({ authorXuid: null })], docWith([]), 'fr')
     expect(out.map((e) => e.event)).toEqual([
-      { family: 'vehicles', destroyed: true, xuid: null, botName: null, aboardXuids: [], name: 'Ghost' },
+      { family: 'vehicles', destroyed: true, xuid: null, botName: null, killedXuids: [], name: 'Ghost' },
     ])
   })
 
@@ -121,7 +121,7 @@ describe('vehicleDestructionEntries — destructions fabriquées', () => {
       'fr',
     )
     expect(out.map((e) => e.event)).toEqual([
-      { family: 'vehicles', destroyed: true, xuid: null, botName: 'Cobra07 [bot]', aboardXuids: [], name: 'Ghost' },
+      { family: 'vehicles', destroyed: true, xuid: null, botName: 'Cobra07 [bot]', killedXuids: [], name: 'Ghost' },
     ])
   })
 
@@ -144,13 +144,38 @@ describe('vehicleDestructionEntries — destructions fabriquées', () => {
   it('une liste vide ne fait aucune ligne', () => {
     expect(vehicleDestructionEntries([], docWith([]), 'fr')).toEqual([])
   })
+
+  describe('le pictogramme de la cause', () => {
+    const LASER = { imageUrl: '/static/weapons/laser.png', tinted: true, label: 'Spartan Laser' }
+    const icons = new Map([['hinf_spartan_laser', LASER]])
+
+    it('une clé connue du fil porte le pictogramme de cette arme', () => {
+      const out = vehicleDestructionEntries([destruction({ causeKey: 'hinf_spartan_laser' })], docWith([]), 'fr', icons)
+      expect(out[0].event).toHaveProperty('weapon', LASER)
+    })
+
+    it('une cause sans clé (code non résolu) ne porte aucun pictogramme, même quand le fil en connaît', () => {
+      const out = vehicleDestructionEntries([destruction({ causeKey: null })], docWith([]), 'fr', icons)
+      expect(out[0].event).not.toHaveProperty('weapon')
+    })
+
+    it('une clé que le fil ne dessine pas ne porte aucun pictogramme, jamais celui d’une arme voisine', () => {
+      const out = vehicleDestructionEntries([destruction({ causeKey: 'hinf_other' })], docWith([]), 'fr', icons)
+      expect(out[0].event).not.toHaveProperty('weapon')
+    })
+
+    it('sans table de pictogrammes, aucune ligne n’en porte', () => {
+      const out = vehicleDestructionEntries([destruction({ causeKey: 'hinf_spartan_laser' })], docWith([]), 'fr')
+      expect(out[0].event).not.toHaveProperty('weapon')
+    })
+  })
 })
 
 describe('vehicleFeedEntries — montées et destructions dans un même fil trié', () => {
   it('une destruction s’insère à son instant parmi les montées', () => {
     const doc = docWith([life({ rides: [ride({ t0: 100 }), ride({ t0: 500, t1: 600 })] })])
     const out = vehicleFeedEntries(doc, 'fr', [
-      { t: 300, family: 'Warthog', authorXuid: 'x2', authorBotName: null, aboardXuids: ['x1'] },
+      { t: 300, family: 'Warthog', authorXuid: 'x2', authorBotName: null, killedXuids: ['x1'], causeKey: null },
     ])
     expect(out.map((e) => e.replayMs)).toEqual([10_000, 30_000, 50_000])
     expect(out.map((e) => 'destroyed' in (e.event ?? {}))).toEqual([false, true, false])
@@ -161,7 +186,7 @@ describe('vehicleFeedEntries — montées et destructions dans un même fil tri�
     expect(vehicleFeedEntries(docWith([life()]), 'fr')).toHaveLength(1)
   })
 
-  it('le document lu de bout en bout : une vie détruite devient une ligne datée, avec auteur et occupant', () => {
+  it('le document lu de bout en bout : une vie détruite devient une ligne datée, avec auteur et tués', () => {
     const doc = docWith([
       life({
         rides: [],
@@ -174,7 +199,7 @@ describe('vehicleFeedEntries — montées et destructions dans un même fil tri�
     expect(out).toHaveLength(1)
     expect(out[0].replayMs).toBe(30_000)
     expect(out[0].event).toEqual({
-      family: 'vehicles', destroyed: true, xuid: 'x2', botName: null, aboardXuids: ['x1'], name: 'Warthog',
+      family: 'vehicles', destroyed: true, xuid: 'x2', botName: null, killedXuids: ['x1'], name: 'Warthog',
     })
   })
 })

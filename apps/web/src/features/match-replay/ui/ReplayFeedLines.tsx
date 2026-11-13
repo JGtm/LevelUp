@@ -357,12 +357,12 @@ function EventFeedLine({
     locale,
   }
   if (event.family === 'objectives') return <ReplayObjectiveLine line={event} {...shared} />
-  const aboard = 'destroyed' in event ? event.aboardXuids : []
+  const killed = 'destroyed' in event ? event.killedXuids : []
   return (
     <ReplayEventLine
       line={event}
       {...shared}
-      aboardNames={aboard.map((xuid) => displayPlayerName(xuidMeta.get(xuid)?.gamertag, xuid))}
+      killedNames={killed.map((xuid) => displayPlayerName(xuidMeta.get(xuid)?.gamertag, xuid))}
     />
   )
 }

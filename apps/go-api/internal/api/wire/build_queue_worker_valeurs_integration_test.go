@@ -58,6 +58,7 @@ import (
 
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaybuild"
 )
 
 // oracleJoueur est une ligne de `facts.players[]` du fixture, RECOPIÉE À LA MAIN.
@@ -96,9 +97,6 @@ var oracleScoresCamps = [2]int{3, 0}
 
 // Mesures du film, relevées le 2026-09-05 sur ce fixture (cf. en-tête).
 const (
-	valeurFrameCount   = 781
-	valeurIntervalleMS = 100
-	valeurDureeMS      = 78100
 	// valeurNbTracks : 22 -> 21 au schema 60 (lot 1.9.13, fusionne le 2026-09-17) : une vie finit a une
 	// MORT ECRITE, une fin de manche ou la fin du film — plus a un trou de replication de 5 s. Sur ce
 	// fixture, une des 22 pistes etait la seconde moitie d une vie coupee par un tel trou sans mort
@@ -123,9 +121,6 @@ const (
 	// C'EST LA VALEUR QUE TOUT LE RECALAGE CLIENT SOUSTRAIT (`replayMs = event_time_ms +
 	// t0_ms − originMs`) : la décaler d'une seule milliseconde décale tout le rejeu.
 	valeurOriginMS int64 = 34870
-	// valeurT0FilmMS : le coup d'envoi mesuré dans le film, sur la même horloge — 300 ms
-	// (3 frames) après l'origine sur ce match.
-	valeurT0FilmMS int64 = 35170
 )
 
 // valeurViesParXUID : combien de VIES NOMMÉES le film attribue à chaque joueur.
@@ -172,9 +167,33 @@ var valeurJoueursApparies = []string{
 	"2805158871119453",
 }
 
-// valeurCourbeCamp : la SEULE courbe d'équipe publiée sur ce film, frame par frame — les trois
-// captures. Son dernier point vaut le score du vainqueur à l'API (3).
-var valeurCourbeCamp = []replaydoc.ScoreTick{{T: 195, V: 1}, {T: 485, V: 2}, {T: 706, V: 3}}
+// valeursDeGrille : ce que la grille du document change sur ce film, mesuré à chaque pas de cuisson que LevelUp a
+// pratiqué. FrameCount et DurationMS suivent le pas ; T0FilmMS est le coup d envoi mesuré dans le film (le premier
+// mouvement, daté à l image du pas) ; Courbe est la SEULE courbe d équipe publiée sur ce film, frame par frame — les
+// trois captures, dont le dernier point vaut le score du vainqueur à l API (3). Un pas sans mesure fait échouer le
+// test : la figer avant de changer la cadence.
+type valeursDeGrille struct {
+	FrameCount int
+	DureeMS    int
+	T0FilmMS   int64
+	Courbe     []replaydoc.ScoreTick
+}
+
+var valeursParPas = map[int]valeursDeGrille{
+	100: {781, 78100, 35170, []replaydoc.ScoreTick{{T: 195, V: 1}, {T: 485, V: 2}, {T: 706, V: 3}}},
+	33:  {2366, 78078, 35167, []replaydoc.ScoreTick{{T: 591, V: 1}, {T: 1470, V: 2}, {T: 2141, V: 3}}},
+}
+
+// valeursDeLaCuisson rend les valeurs figées du pas de cuisson courant.
+func valeursDeLaCuisson(t *testing.T) (int, valeursDeGrille) {
+	t.Helper()
+	pas := replaybuild.CookFrameIntervalMS()
+	v, ok := valeursParPas[pas]
+	if !ok {
+		t.Fatalf("aucune valeur figée pour le pas de cuisson %d ms : mesurer ce film à ce pas et l ajouter à valeursParPas", pas)
+	}
+	return pas, v
+}
 
 // valeurObjectifsParStat : le calque des actions d'objectif, par nom de statistique.
 //
@@ -243,9 +262,10 @@ func assertHorlogeEtGrille(t *testing.T, doc replaydoc.ReplayDocument) {
 	if doc.MatchID != "c0a82e88-7b3b-419c-a984-13385af99259" {
 		t.Errorf("matchId servi %q, attendu celui du fixture", doc.MatchID)
 	}
-	if doc.FrameCount != valeurFrameCount || doc.FrameIntervalMS != valeurIntervalleMS || doc.DurationMS != valeurDureeMS {
+	pas, v := valeursDeLaCuisson(t)
+	if doc.FrameCount != v.FrameCount || doc.FrameIntervalMS != pas || doc.DurationMS != v.DureeMS {
 		t.Errorf("grille : %d frames à %d ms pour %d ms, attendu %d/%d/%d",
-			doc.FrameCount, doc.FrameIntervalMS, doc.DurationMS, valeurFrameCount, valeurIntervalleMS, valeurDureeMS)
+			doc.FrameCount, doc.FrameIntervalMS, doc.DurationMS, v.FrameCount, pas, v.DureeMS)
 	}
 	if doc.OriginMs == nil {
 		t.Errorf("originMs ABSENT : l'origine n'est plus établie sur ce film (attendu %d ms)", valeurOriginMS)
@@ -254,9 +274,9 @@ func assertHorlogeEtGrille(t *testing.T, doc replaydoc.ReplayDocument) {
 			*doc.OriginMs, valeurOriginMS)
 	}
 	if doc.T0FilmMs == nil {
-		t.Errorf("t0FilmMs ABSENT : le coup d'envoi n'est plus mesuré (attendu %d ms)", valeurT0FilmMS)
-	} else if *doc.T0FilmMs != valeurT0FilmMS {
-		t.Errorf("t0FilmMs = %d ms, attendu %d ms", *doc.T0FilmMs, valeurT0FilmMS)
+		t.Errorf("t0FilmMs ABSENT : le coup d'envoi n'est plus mesuré (attendu %d ms)", v.T0FilmMS)
+	} else if *doc.T0FilmMs != v.T0FilmMS {
+		t.Errorf("t0FilmMs = %d ms, attendu %d ms", *doc.T0FilmMs, v.T0FilmMS)
 	}
 }
 
@@ -379,10 +399,11 @@ func assertScoreCamp(t *testing.T, doc replaydoc.ReplayDocument) {
 		t.Errorf("la courbe du match à sens unique doit porter le camp 0 (vainqueur 3-0 au registre), obtenu %v",
 			camp.TeamID)
 	}
-	if len(camp.Total) != len(valeurCourbeCamp) {
-		t.Fatalf("courbe d'équipe : %d points, attendu %d (%v)", len(camp.Total), len(valeurCourbeCamp), camp.Total)
+	_, vals := valeursDeLaCuisson(t)
+	if len(camp.Total) != len(vals.Courbe) {
+		t.Fatalf("courbe d'équipe : %d points, attendu %d (%v)", len(camp.Total), len(vals.Courbe), camp.Total)
 	}
-	for i, attendu := range valeurCourbeCamp {
+	for i, attendu := range vals.Courbe {
 		if camp.Total[i] != attendu {
 			t.Errorf("courbe d'équipe, point %d : frame %d valeur %d, attendu frame %d valeur %d",
 				i, camp.Total[i].T, camp.Total[i].V, attendu.T, attendu.V)

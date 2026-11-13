@@ -10,7 +10,12 @@
 // arsenal ne sont plus deux voies a departager, mais une seule lecture).
 package port
 
-import "context"
+import (
+	"context"
+
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
+)
 
 // KillSourceClassifier traduit une SOURCE DE DEGAT du film en cle du registre d'armes.
 //
@@ -20,6 +25,37 @@ import "context"
 type KillSourceClassifier interface {
 	// KillSourceRegistryKey rend la weapon_key du registre pour une source de degat.
 	KillSourceRegistryKey(sourceTag uint32) (string, bool)
+}
+
+// KillSourceIconResolver traduit une SOURCE DE DEGAT du film en icône d'arme, avec la
+// weapon_key du registre quand l'arme y figure.
+//
+// C'est la méthode `KillSourceIcon` de l'adapter d'assets du titre, rendue seule : le service
+// de rejeu n'a besoin que d'elle, et un titre sans décodeur de film n'en fournit aucune. Même
+// contrat que `games.TitleAssetURLAdapter.KillSourceIcon` : second retour faux quand la source
+// n'est pas identifiée sans ambiguïté.
+type KillSourceIconResolver interface {
+	KillSourceIcon(sourceTag uint32) (canonical.KillSourceIcon, bool)
+}
+
+// KillSourceIconCatalog ÉNUMÈRE les pictogrammes d'arme du titre : une entrée par weapon_key, pour
+// toutes les sources de dégât qui ont à la fois une clé de registre ET une image.
+//
+// INTERFACE OPTIONNELLE de l'adapter d'assets, découverte par assertion : un titre sans décodeur
+// de film ne l'implémente pas et son référentiel est vide (jamais une erreur).
+//
+// CONTRAT NON NÉGOCIABLE : la clé et l'image d'une entrée sont EXACTEMENT celles que
+// `KillSourceIcon` rend pour une source de dégât de cette arme — l'énumération est la même
+// résolution, parcourue, pas une seconde table. Entrées triées par clé.
+type KillSourceIconCatalog interface {
+	KillSourceIconsByKey() []canonical.KillSourceIcon
+}
+
+// KillSourceIconService sert le référentiel des pictogrammes d'arme d'un titre.
+type KillSourceIconService interface {
+	// ListKillSourceIcons rend les entrées du titre, noms dans la langue de la requête. Un titre sans
+	// capacité, ou non résolu, rend une liste vide.
+	ListKillSourceIcons(ctx context.Context, titleID string) ([]domain.KillSourceIconEntry, error)
 }
 
 // KillSourceDescriber NOMME la classe d'une source de degat, pour la JOURNALISATION

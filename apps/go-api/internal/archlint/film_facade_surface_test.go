@@ -438,9 +438,9 @@ const plafondSurfaceFacade = 182 // 2026-11-10 — item 4.3 : 181 + 1 (ResultatD
 //	                                           (`service/replayview`) ; la parite exige une decision par
 //	                                           champ du document du decodeur. Aucun retrait.
 //	320  pas de la page (2026-11-13)             base `6bb63bff25` re-mesuree a 319. +1 :
-//	                                           `replay.HistoricalFrameIntervalMS`, le pas que la page lit ; la cuisson
-//	                                           le pose (`replaybuild.pasDuRejeu`) depuis que le defaut de construction
-//	                                           du decodeur est plus fin. Aucun retrait.
+//	                                           `replay.HistoricalFrameIntervalMS`, le pas d'un document sans
+//	                                           `frameIntervalMs` ; `replaybuild.HistoricalFrameIntervalMS` le relit
+//	                                           (le pas de cuisson, lui, est `CookFrameIntervalMS`). Aucun retrait.
 const plafondSurfaceReplay = 320 // 2026-11-13 — base 6bb63bff25 re-mesuree a 319 + 1 (HistoricalFrameIntervalMS) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.

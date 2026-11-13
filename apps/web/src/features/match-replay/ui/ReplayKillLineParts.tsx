@@ -39,6 +39,27 @@ export function KillZone({ name, locale }: { name: string; locale: ReplayLocale 
 }
 
 /**
+ * FeedWeaponIcon — le pictogramme d'une arme au gabarit du fil : masque teint par `color` (l'encre du
+ * camp de celui qui agit) ou image finie. Partagé par la ligne de frag et la ligne de destruction,
+ * pour qu'une arme se dessine de la même façon partout. Sans URL, il ne rend rien.
+ */
+export function FeedWeaponIcon({
+  imageUrl,
+  tinted,
+  label,
+  color,
+}: {
+  imageUrl: string
+  tinted: boolean
+  label: string
+  color: string
+}) {
+  return (
+    <WeaponIcon imageUrl={imageUrl} tinted={tinted} label={label} width={ICON_W} height={ICON_H} style={{ color }} />
+  )
+}
+
+/**
  * KillWeapon — L'ARME entre le tueur et la victime : elle remplace la croix (POC). L'icône
  * extraite du jeu est un masque teint par currentColor (cf. WeaponIcon) : la couleur d'équipe du
  * TUEUR est posée sur l'icône elle-même.
@@ -46,13 +67,11 @@ export function KillZone({ name, locale }: { name: string; locale: ReplayLocale 
 export function KillWeapon({ kill: k, color, locale }: { kill: ReplayKill; color: string; locale: ReplayLocale }) {
   const t = REPLAY_TEXT[locale]
   return k.weaponImageUrl ? (
-    <WeaponIcon
+    <FeedWeaponIcon
       imageUrl={k.weaponImageUrl}
       tinted={k.weaponTinted}
       label={k.weaponLabel || t.killFeedUnknownWeapon}
-      width={ICON_W}
-      height={ICON_H}
-      style={{ color }}
+      color={color}
     />
   ) : (
     /* Repli assumé : la source du dégât n'est pas identifiable sans ambiguïté. */

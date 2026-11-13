@@ -44,6 +44,9 @@ type replayService struct {
 	// qualifiées). Nil, ou un titre sans rejeu : le document se sert sans ces libellés, jamais avec ceux
 	// d'un autre titre.
 	labels port.ReplayLabelSource
+	// killIcons traduit la source de dégât d'une destruction de véhicule en weapon_key
+	// (replay_destruction_causes.go). Nil = le titre n'en fournit pas : aucune clé posée.
+	killIcons port.KillSourceIconResolver
 }
 
 // NewReplayService construit le service de rejeu pour un titre (résolu depuis le joueur).
@@ -55,16 +58,22 @@ type replayService struct {
 // service à deux formes de construction finit toujours par n'en avoir qu'une de testée.
 //
 // Données versionnées ET artefacts du même dépôt (cas hors démo, CLI, tests).
-func NewReplayService(titleSlug, repoRoot string, maps port.ReplayMapNameRepo, labels port.ReplayLabelSource) port.ReplayService {
-	return &replayService{titleSlug: titleSlug, repoRoot: repoRoot,
-		artifactsDir: title.NewPathResolver(repoRoot).ReplayArtifactsDir(titleSlug), maps: maps, labels: labels}
+//
+// `opts` : les capacités facultatives du titre ([ReplayOption]) ; sans option, le service sert le
+// document sans ce que le titre résout à la requête par elles.
+func NewReplayService(titleSlug, repoRoot string, maps port.ReplayMapNameRepo, labels port.ReplayLabelSource,
+	opts ...ReplayOption) port.ReplayService {
+	return applyReplayOptions(&replayService{titleSlug: titleSlug, repoRoot: repoRoot,
+		artifactsDir: title.NewPathResolver(repoRoot).ReplayArtifactsDir(titleSlug), maps: maps, labels: labels}, opts)
 }
 
 // NewDemoReplayService construit le service de la DÉMO : données versionnées du dépôt,
 // artefacts et index des rejeux figés de la disposition démo, identités masquées.
-func NewDemoReplayService(titleSlug, repoRoot string, layout title.DemoLayout, maps port.ReplayMapNameRepo, labels port.ReplayLabelSource) port.ReplayService {
-	return &replayService{titleSlug: titleSlug, repoRoot: repoRoot,
-		artifactsDir: layout.ReplayArtifactsDir(titleSlug), demoIndexPath: layout.ReplayIndexPath(titleSlug), maps: maps, labels: labels}
+func NewDemoReplayService(titleSlug, repoRoot string, layout title.DemoLayout, maps port.ReplayMapNameRepo,
+	labels port.ReplayLabelSource, opts ...ReplayOption) port.ReplayService {
+	return applyReplayOptions(&replayService{titleSlug: titleSlug, repoRoot: repoRoot,
+		artifactsDir: layout.ReplayArtifactsDir(titleSlug), demoIndexPath: layout.ReplayIndexPath(titleSlug), maps: maps,
+		labels: labels}, opts)
 }
 
 // modeNonGere dit si le registre classe ce match dans un mode que le rejeu ne gere pas
@@ -219,6 +228,9 @@ func (s *replayService) GetReplay(ctx context.Context, matchID string) (replaydo
 	// statique dépend du titre, et ne se fige donc pas dans l'artefact (cf.
 	// replay_vehicle_labels.go).
 	s.resolveVehicleLabels(ctx, &doc)
+	// LA CLÉ D'ARME DE LA CAUSE DE CHAQUE DESTRUCTION DE VÉHICULE, même règle et même raison
+	// (cf. replay_destruction_causes.go).
+	s.resolveDestructionCauses(ctx, &doc)
 	// LE REGISTRE DES ARMES DE VÉHICULE, même règle et même raison : une résolution du titre qui
 	// s'améliore (cf. replay_vehicle_weapons.go).
 	s.resolveVehicleWeapons(ctx, &doc)

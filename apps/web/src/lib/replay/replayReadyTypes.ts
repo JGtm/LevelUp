@@ -493,6 +493,12 @@ export type ReplayDocumentReady = Omit<
    */
   latestSchemaVersion?: number
   /**
+   * Le SERVEUR dit que le pas du document n'est plus le pas de cuisson courant (même schéma, autre
+   * grille) : en-tête `X-Replay-Cadence-Stale`, posé à la frontière transport. Absent = rien à dire.
+   * Le web ne compare aucun pas lui-même : le badge admin affiche ce verdict.
+   */
+  cadenceStale?: boolean
+  /**
    * LE PREMIER MANQUEMENT AU CONTRAT, s'il y en a un (lot 0.B, 2026-09-13) : posé par
    * `validateReplayDocument` à la frontière de transport (`lib/replay/queries.ts`), sur le
    * document AVANT normalisation. Absent = le document respecte le contrat.

@@ -166,6 +166,9 @@ Gate A :
 - [x] B3 **Convertir les 11 constantes web** et vérifier `placementWall.ts:110`.
   Fait, 13 constantes (les 11 du plan, `skullSound.ts` et `zoneSound.ts` en portant chacun une ou deux) : `BOMB_BLAST_HOLD_MS` 1200 (`bombBlastHoldFrames(doc)`), `FLAG_CAPTURE_HOLD_MS` 600 (`flagCaptureHoldFrames(doc)`), `PROJECTILE_TAIL_MS` 700 (fenêtre `{frame, tailFrames}` de `drawProjectilesLayer`), `CARRIED_PULSE_PERIOD_MS` 2600 et `BLINK_PERIOD_MS` 1000 (le pas descend par le `style.frameMs` des quatre calques de glyphes portés), `HEADING_INTERP_MAX_SPAN_MS` et `VEHICLE_AIM_HOLD_MS` 1000 (paramètre `frameMs` des fonctions de cap et de visée, `time.frameMs` du calque), `TOLERANCE_MS` 1200 et `RETOMBEE_MS` 6000 (crâne), `TOLERANCE_MS` 2000 (zone), `NATIVE_PICKUP_MATCH_MS` 500 (arme), convertis par `msToFrames(…, doc)`. Durée à 100 ms identique à l'ancienne en images. `placementWall.ts:110` : seuil en mètres (distance au dernier point), indépendant du pas : commentaire corrigé seulement. `padPresenceRefine.ts` : `PAD_BETWEEN_FRAMES = 1/64` est une fraction d'image qui garde le sentinel libre, pas une durée : renommée `PAD_BETWEEN_EPSILON` (commentaire corrigé) ; de même `ETA_MIN_FRAMES` (nombre d'images encodées d'un export) devient `ETA_MIN_ENCODED`, pour que le garde-rail D-6 ait une allowlist vide.
 - [ ] B4 **Re-mesurer à 33 ms** les seuils qui sont des mesures de corpus : `replayverite/seuils.go` et le plancher de bruit de `t0_film.go`. Les valeurs retenues et leur mesure vont dans le commit. Si une mesure contredit la valeur historique convertie, remonter au user avant de trancher.
+  Mesures de préparation faites le 2026-11-11 (aucun code livré) : section 10. Restent les décisions du user sur `toleranceVieMS`, le comptage V-2 et `t0FilmCumulM`, puis les valeurs retenues dans le commit.
+  - [x] côté LevelUp, 2026-11-12 (branche `feat/rejeu-30ips-bascule`, local) : `replayverite` `toleranceVieMS` 650, `toleranceMortMS` 250, V-2 par passage ; les 12 témoins à 33 ms contre 100 ms rendent 12 « ok » (journal) ;
+  - [~] `t0FilmCumulM` (0,5 m conservé) et `t0FilmJumpM` (50 m/s) : côté décodeur, déjà dans la v1.3.0 (`replay/t0_film.go`) ; à reconfirmer au gate du corpus.
 - [x] B5 **Garde-rail D-6.** Aucune constante numérique suffixée `Frames` / `Images` / `_FRAMES` dans `libs/film/replay`, `analysis/tactical`, `replayverite` et `features/match-replay`. Allowlist vide, sauf les outils de recherche.
   Fait, hors `libs/film/replay`, traité par le lot `feat/812-seuils-ms` (le périmètre `libs/film/replay` s'ajoutera à `racinesSeuilsEnMillisecondes` quand ce lot aura fusionné). Go : `archlint/no_seuil_en_images_go_test.go` (`analysis/tactical`, `replayverite`, `sync/replayartifacts` ; constante ou variable à valeur numérique suffixée `Frames`/`Images` ; allowlist vide ; auto-preuve du détecteur ; limite lexicale écrite en tête). Web : `features/match-replay/test/seuilsEnMs.guard.test.ts` (const/let/var `*_FRAMES` ou `…Frames` initialisée par un littéral numérique, sources hors tests ; allowlist vide ; auto-preuve). Les outils de recherche sous `cmd/` ne sont pas balayés.
 - [ ] B6 **Bascule.**
@@ -174,6 +177,7 @@ Gate A :
   - `SchemaVersion` à 109, avec son entrée de chronique ;
   - les commentaires périmés listés par l'inventaire sont corrigés ;
   - les goldens sont régénérés, chaque écart expliqué.
+  État au 2026-11-12 : le côté décodeur est livré dans `halo-infinite-film-decoder` v1.3.0 (`DefaultFrameIntervalMS` 33, `HistoricalFrameIntervalMS` 100, `SchemaVersion` 111). Côté LevelUp, préparé en local : fixtures de contrat 111 et instantané des sources, tolérances du banc, `zone-attribution`, tests de cadence web ; reste la montée du `require` (dernier commit, au recalage).
 - [ ] B7 **Recuire la liste fermée** par `backfill-replay --match` (et non `replay-build`). Vérifier que les compteurs de joueur sont présents. Si ce n'est pas le cas, en trouver la cause avant d'aller plus loin.
 - [ ] B8 **Témoins APRÈS sur la liste fermée.**
   - Différences attendues seulement : axe `T` et nombre de points. Effets attendus : vies et tirs, rattachements, comptes de dérivés à ± 1 image de quantification.
@@ -277,6 +281,13 @@ Courses de drapeau (non validé). Mainmise, préréglages de vue, fil d'événem
   - **Un brut en échec reste compté** : `raw > 0` après une passe tant qu'un `.json` illisible traîne, donc l'offre de compression reparaît (au pire à chaque lancement) ; « Plus tard » la masque pour la session.
   - **`internal/archlint` dépasse 10 minutes** sous charge (processeur saturé par d'autres sessions) : lancé seul avec `-timeout 40m`.
 
+- **2026-11-12, préparation locale du côté LevelUp : découvertes** (aucune corrigée).
+  - **Le rebase demandé sur `origin/feat/decodeur-v1.2.2` rejouait aussi huit commits d'architecture (lot 4.4) de `release/v8.2.0`**, absents de cette branche : refait avec `--onto` pour ne rejouer que le commit de doc du plan.
+  - **Fixtures de contrat : 7 sur 8 ne gardent qu'un point de piste sur 15** (`pointsStride` du manifeste) : seul `000d5950` porte le poids réel des pistes ; les mesures de poids sur fixtures sont donc à lire avec cette réserve.
+  - **`replayartifact/gate_test.go`** écrit `"schemaVersion":108` en littéral dans des octets opaques (la porte ne lit pas le schéma) : laissé.
+  - **Commentaires qui citent encore 100 ms comme mesure historique** (`positions.go`, `isolation_facts.go`, `squad_emprise_placement.go`, `steps_shared_match_lives_placement.go` : grille de 100 ms propre au calcul, sans lien avec la cadence du rejeu) : laissés, ils décrivent des mesures datées ou une grille de calcul distincte.
+  - **`MIN_RENDERABLE_SCHEMA_VERSION` (27)** non relevé : les rejeux 108 à 110 restent affichables et marqués « à recuire ».
+
 ## 9. Journal
 
 - **2026-11-10, lancement.** Go du user (« vas-y orchestre l'implem, revue adversariale à la fin »). Le plan v8.1.2 n'est pas clos : ses étapes 1, 2, 4, 5 sont fusionnées dans `release/v8.1.2`, son étape 6 (bascule sur les modules publiés, qui retire `libs/`) reste à faire par une autre session. Aménagement de la dépendance de la section 3 : branche `feat/rejeu-30ips` créée depuis `origin/release/v8.1.2` (`afb963994c`), worktree dédié `LevelUp-wt-30ips`. Les étapes 0 et A (hors `libs/film`, sauf un test) s'exécutent maintenant ; l'étape B, qui modifie `libs/film/replay`, attend la bascule de l'étape 6 de la v8.1.2 (dépendance explicite, report valide). `SchemaVersion` vaut déjà 108 sur cette base : la bascule de cadence le portera à 109.
@@ -317,3 +328,177 @@ Courses de drapeau (non validé). Mainmise, préréglages de vue, fil d'événem
   - **Test faible.** `TestCompression_UnFichierALaFois` retiré de `replayregen` (la file ne fait qu'appeler la conversion) ; remplacé par `TestCompressDirWith_UnFichierALaFois` au niveau de la conversion : la porte du fichier suivant n'est consultée qu'après le compte rendu du précédent. `TestCompression_PauseEntreDeuxFichiers` rendu robuste à la charge (attend la fin du deuxième fichier).
   - **Gates lancés après le dernier rebase** (`fe4579354b`, processeur saturé par d'autres sessions ; sorties dans le dossier temporaire du poste) : `go test ./... -count=1` : première passe 211 paquets ok, deux échecs, `archlint` (délai de 10 min dépassé sous charge, ok seul avec `-timeout 40m`, 837 s) et `replayregen` `TestCompression_PauseEntreDeuxFichiers` (test trop pressé sous charge, corrigé, 10 passes sous `-race` vertes) ; `go test -tags=integration -p 1 -count=1 -timeout 60m ./...` : exit 0, 215 paquets ok ; `golangci-lint` sur `apps/go-api` avec les options du `make` : 0 issues (le `make` lui-même expire sur la boucle `libs/`, cache froid : relancée à la main, film, gamefiles, haloapi, himap : 0 issues) ; `make libs-test` : exit 0, 39 paquets ok ; `make check-types` : exit 0 ; `make test-web` équivalent (`vitest run`, suite entière) : 1 081 fichiers ok, 5 sautés, 11 208 tests ok, 23 sautés par construction ; `make openapi-gen` : aucun diff (la route de la file n'est pas au contrat). `grep -rn "JGtm/LevelUp/libs" apps libs --include=*.go` : vide.
 
+
+- **2026-11-12, préparation locale du côté LevelUp (B4, B6 partiel ; branche `feat/rejeu-30ips-bascule` sur `origin/feat/decodeur-v1.2.2`, rien poussé, `go.mod` intact).** Décodeur v1.3.0 (`32a7c3c`) lu par un espace de travail local ; `go build`, `go vet` et les paquets du rejeu verts avant tout changement (la cadence ne casse aucun test LevelUp).
+  - `replayverite` : `toleranceVieMS` 650, `toleranceMortMS` 250, V-2 par passage de véhicule ; bulletin figé `bcb6d393` inchangé ; 12 témoins 33 ms contre 100 ms : 12 « ok ». Sortie à 100 ms modifiée là où la mesure l'impose : tolérance de vie de 5 à 6 images, V-2 par passage.
+  - `cmd/zone-attribution` : `-max-gap-ms`, `nullShiftMS`, `clockOffsetsMS`.
+  - Fixtures de contrat 111 (8 fichiers + manifeste, 4,54 Mio) et instantané `film-source` régénérés ; tests de cadence web (`model/cadenceEquivalence.test.ts`, `lib/replay/cadenceEquivalence.test.ts`).
+  - Poids servi (gzip 5 de la réponse projetée, `replayview.FromArtifact`) : `be565134` 1,06 Mo (100 ms, schéma 109) -> 2,59 Mo (33 ms), `tracks` 85 %, `vehicles` 8 %, `projectiles` 3 % ; fixture `000d5950` (1 point sur 1) 1,0 Mo, `tracks` 90 % ; `e5adf7b2` (1 point sur 15) 0,93 Mo, `vehicles` 50 %, `tracks` 25 % ; `bcb6d393` 0,11 Mo. Dans `tracks`, par colonne (gzip 5, `be565134`) : `x` 330 Ko, `y` 325 Ko, `h` 224 Ko (présent sur 66 % des points), `p` 120 Ko, `z` 115 Ko, `t` 80 Ko, `sh` 6 Ko : ces colonnes gzippées à part font environ 1,2 Mo, contre 2,2 Mo entrelacées. D2 : seuil de 2 Mo franchi sur le plus gros ; décision du user, rien implémenté.
+
+- **2026-11-12, le pas entre dans le critère « à recuire » (décision du pilote : la PR 203 monte à v1.3.1 en forçant 100 ms, un rejeu cuit entre les deux fusions porte le même schéma à 100 ms puis à 33 ms).** Règle unique : à jour = schéma courant ET pas (absent = 100 ms) égal au pas de cuisson courant ; source `replaybuild.CookFrameIntervalMS` (`cadence.go`), lue par la cuisson et par `Digest.Verdict`, pas écrit dans `.meta` ; refus du dépôt d'un autre pas ; le serveur pose `X-Replay-Cadence-Stale`, le badge admin le recopie (libellé existant). Points de décision et tests : entrée du 2026-11-12 du thought_log. À l'étape B6 : un rejeu à 100 ms au schéma courant sort « à recuire » dès que la cadence courante passe à 33 ms, sans nouvelle montée de schéma.
+
+## 10. Mesures à 33 ms (B4, préparation)
+
+Faites le 2026-11-11 sur la branche `feat/rejeu-30ips-bascule` (base `release/v8.2.0`, tête `0627a64b65`), sans aucune modification de code versionné (le décodeur n'a pas été touché, la cadence reste à 100 ms dans le dépôt). Témoins et outils rangés sous `data/investigation/gate_30ips/mesure_33ms/` (ignoré par git) : `artefacts/` (33 ms), `artefacts_100/` (100 ms, même binaire), `empreintes/`, `verite/`, `derives_100/`, `derives_33/`, `outil/` (scripts jetables, dont une copie du test jetable `zz_mesure33_jetable_test.go.txt`), `sorties/` (journaux, tableaux). Les 12 matchs de l'étape 0, un à un, jamais sur le parc.
+
+### 10.1 Comment cuire à 33 ms, avec les compteurs de joueur
+
+- **`backfill-replay` n'a aucun réglage de pas** : il prend `replay.DefaultFrameIntervalMS` (100 aujourd'hui). Il ne produira du 33 ms qu'après le changement de la constante (B6). Voie d'avant bascule : `cmd/replay-build --interval 33`, qui existe toujours (aucune commande n'a été ajoutée au dépôt).
+- **Cause des compteurs absents (B7, levée).** `replay-build` sans `--facts` appelle `BuildMatch` avec `port.MatchFacts{}` (`cmd/replay-build/main.go`, `loadFacts`) : pas de lignes de match, donc pas de pont d'identité ni de `scoreTimeline.players`. Constaté : cuisson de `0076ebdc` à 100 ms sans `--facts` : `scoreTimeline` n'a que `teams`, 0 joueur ; avec `--facts` : 8 joueurs. L'aide de l'option le dit (« sans lui : artefact sans compteurs de joueur ni actions d'objectif »). Ce n'est donc ni un défaut des faits de film ni des identités : c'est l'entrée « faits du match » (celle de la base) que l'essai du 2026-11-09 n'a pas fournie.
+- **Voie qui donne les compteurs** : les faits du match exportés par `levelup replay-facts-export` (déjà rangés dans `avant/faits/<short8>.facts.json`) passés à `--facts`. Vérifié **octet pour octet** que cette voie rend le même document que `levelup backfill-replay --match <id> --force` à 100 ms (4 matchs : `0076ebdc`, `ef8cb72b`, `82f29378`, `e157a672`, sha256 du JSON décompressé identiques). Commande exacte (racine « bac à sable » pour ne pas écrire dans `data/cache/replays`, voir `outil/cuire.ps1`) :
+
+      LEVELUP_REPO_ROOT=<mesure_33ms>/racine \
+        replay-build.exe --map <nom de carte> --interval 33 \
+        --facts <avant>/faits/<short8>.facts.json <matchId complet>
+
+  `racine/` = `config/` et `data/titles/` en jonctions vers le worktree, `data/cache/{film_chunks,film_manifests}` et `data/film_identites` en jonctions de lecture vers `LevelUp/`, `data/cache/replays` et `film_facts` propres à la racine. Le nom de carte est le premier de `mapNames` du fichier de faits.
+- **Cuisson depuis les faits de film (C2).** Les `.filmfacts.bin` écrits par une cuisson à 100 ms servent tels quels à 33 ms : sur 3 matchs, le document cuit à 33 ms depuis les faits (100 ms) est identique octet pour octet au document cuit à 33 ms par décodage complet (`e157a672` 2,0 s, `ef8cb72b` 2,4 s, `82f29378` 0,5 s). Les faits ne dépendent pas de la cadence : la recuisson du parc peut partir des faits.
+
+### 10.2 Taille et volume (12 matchs, 100 ms puis 33 ms, même code)
+
+| match | brut Ko | gzip Ko | points de piste | tirs | échant. véhicule | frameCount | durationMs |
+|---|---|---|---|---|---|---|---|
+| 0076ebdc | 2 107 -> 5 523 | 445 -> 1 112 | 29 357 -> 87 912 | 973 = | 0 | 5 043 -> 15 282 | 504 300 -> 504 306 |
+| ef8cb72b | 1 479 -> 3 753 | 295 -> 719 | 19 625 -> 58 666 | 1 608 = | 0 | 3 397 -> 10 292 | 339 700 -> 339 636 |
+| 008e1bba | 565 -> 1 403 | 117 -> 277 | 7 710 -> 23 043 | 572 = | 0 | 1 701 -> 5 155 | 170 100 -> 170 115 |
+| d2b74083 | 805 -> 1 926 | 164 -> 384 | 11 228 -> 32 877 | 716 = | 0 | 2 506 -> 7 593 | 250 600 -> 250 569 |
+| de3cec8b | 906 -> 2 295 | 175 -> 417 | 11 525 -> 34 356 | 924 = | 0 | 2 258 -> 6 841 | 225 800 -> 225 753 |
+| 43716616 | 1 189 -> 2 875 | 238 -> 568 | 15 187 -> 45 034 | 1 557 = | 0 | 3 144 -> 9 527 | 314 400 -> 314 391 |
+| c75f33b8 | 1 499 -> 3 831 | 288 -> 703 | 21 434 -> 64 096 | 1 413 = | 0 | 4 117 -> 12 474 | 411 700 -> 411 642 |
+| e157a672 | 331 -> 786 | 69 -> 157 | 4 066 -> 12 184 | 265 = | 0 | 997 -> 3 019 | 99 700 -> 99 627 |
+| 82f29378 | 2 049 -> 5 439 | 442 -> 1 095 | 22 162 -> 65 119 | 728 = | 7 836 -> 22 480 | 1 988 -> 6 023 | 198 800 -> 198 759 |
+| ce927bd2 | 711 -> 1 760 | 147 -> 345 | 9 817 -> 29 189 | 554 = | 0 | 2 102 -> 6 370 | 210 200 -> 210 210 |
+| be565134 | 5 276 -> 13 866 | 1 051 -> 2 571 | 71 076 -> 205 697 | 2 831 = | 5 430 -> 15 058 | 4 600 -> 13 938 | 460 000 -> 459 954 |
+| 4f862258 | 1 631 -> 4 383 | 323 -> 814 | 24 576 -> 73 721 | 974 = | 0 | 4 287 -> 12 990 | 428 700 -> 428 670 |
+| **total** | 18 548 -> 47 841 (x2,58) | 3 754 -> 9 160 (x2,44) | x2,89 à x3,00 | identiques | x2,77 à x2,87 | x3,03 | écart <= 73 ms |
+
+- Les tirs ne sont pas échantillonnés sur la grille : leur nombre ne bouge pas. Les points de piste, les échantillons de véhicule, les trajectoires de projectile et les courbes de zone suivent la grille (x3).
+- `durationMs` varie de quelques dizaines de ms (la grille de 33 ms ne tombe pas sur la même image de fin) : `frameCount * 33`, pas `frameCount * 100`.
+- **Disque.** Gzip niveau 6 : x2,44 sur le fichier compressé. Le parc mesuré à l'étape A (1 445 artefacts, 745,9 Mio compressés à 100 ms) passerait à **environ 1,8 Gio** à 33 ms (le chiffre de la section 0 se retrouve), contre 3,6 Gio bruts aujourd'hui.
+- **Réseau (étape D).** Proxy : le document de l'artefact ré-encodé puis compressé niveau 5, sans la projection `replayview`. Le plus gros (`be565134`) passe de **1,06 Mo à 2,59 Mo** compressé : il franchit le seuil de 2 Mo de D2. La médiane des 12 : 0,27 Mo -> 0,64 Mo. À confirmer en D1 sur la réponse réelle, mais D2 ne sera probablement pas clos `[!]`.
+
+### 10.3 Ce qui change dans le contenu (hors axe du temps)
+
+Méthode : `replay-diff` contre `{}` donne l'empreinte de chaque document, comparée métrique par métrique entre 100 et 33 ms (`outil/comparer*.py`, durées ramenées en ms) ; 666 métriques diffèrent sur au moins un match, dont l'essentiel est la densité de grille. Vérifié par ailleurs : **la longueur de chaque calque est identique** (vies par joueur, tirs par slot, grenades, ramassages, objectifs, portages de drapeau, de crâne et de bombe, états de zone, véhicules, roster, changements d'arme, capacités, épisodes d'équipement, tractions) **sauf** `projectiles`, `equipmentPlacements`, `bursts` (-1 sur `82f29378`) et `stances` (-1 sur `4f862258`). Scores finals d'équipe et totaux par joueur (score, frags, morts, assistances) : **identiques sur les 12**.
+
+| Changement | Ordre de grandeur | Explication, vérifiée dans le code |
+|---|---|---|
+| Points de piste, `h`/`p`/`s`/`sh`/`hp`, échantillons de véhicule et de visée, `objectiveObjects.pts`, `zoneStates.gauge`, `projectiles.p` | x2,8 à x3,0 | densité de la grille |
+| `frameCount` | x3,03 | idem |
+| `projectiles` publiés | `0076ebdc` 689 -> 1 004, `ef8cb72b` 174 -> 339, `d2b74083` 128 -> 176, `ce927bd2` 42 -> 76, `43716616` 97 -> 113 ; `be565134` 285 -> 283, `de3cec8b` 59 -> 58 | **gain** : `buildProjectiles` écarte une trajectoire d'un seul point de grille (« ne se dessine pas ») ; à 100 ms les vols de moins de 100 ms disparaissaient. Les deux baisses sont des vols coupés plus tôt : `coverage.projectiles.truncated` 4 -> 6 et 0 -> 1, le pas maximal étant 100 m/s x pas (10 m à 100 ms, 3,3 m à 33 ms) |
+| `coverage.projectiles.shotLinked` | 235 -> 249, 14 -> 33, 1 -> 11 | suit les projectiles publiés en plus |
+| `equipmentPlacements` | `d2b74083` 111 -> 96, `c75f33b8` 151 -> 137, `ce927bd2` 61 -> 68 | **bord de film** : tous les écarts sont des poses nées à la dernière image (`t0 = t1 = dernière frame`, fin `open`) vues par le dernier relevé. À 33 ms la dernière image de grille tombe avant ou après ce relevé ; `endOpen` 19 -> 4, 16 -> 2, 1 -> 3. Aucune pose en cours de match ne change |
+| `grappleLines` durées | -6 % à -15 % (`de3cec8b` 1 700 ms -> 1 287 ms) | l'arrivée est la frame de plus grande proximité de l'ancre (`grappleArrival`) : plus précise à 33 ms. Nombre de tractions identique |
+| `bounds` | jusqu'à 0,6 m (`0076ebdc` minZ -2,61 -> -3,24) | enveloppe des points : l'extrême est plus souvent échantillonné |
+| `t0FilmMs` | -96 à +5 ms | quantisation du premier mouvement, voir 10.5 |
+| `coverage.birthLoadouts.snapped` | 23 -> 48, 14 -> 24, 6 -> 17, 5 -> 16 | compteur de quantisation (instant de création ramené dans la fenêtre de la vie) ; `published` n'a pas bougé |
+| `coverage.placements.*`, `coverage.pickups.origin*` | +-1 à +-3 | bord de film et quantisation (`pickups.originGround` 9 -> 10 sur `c75f33b8`, 4 -> 3 sur `ce927bd2`) |
+| `coverage.continuousFire.shots` | 432 -> 412 (`0076ebdc`), 208 -> 210, 2 035 -> 2 012, 1 338 -> 1 332 | frontières des rafales ; `bursts` `82f29378` 67 -> 66 ; durées des rafales -2,9 % à +1,9 % |
+| `coverage.flagCarries.closedByHome/closedByObject` | `008e1bba` 1 -> 0 et 14 -> 13 | les états de drapeau (mêmes porteurs, mêmes états, mêmes bornes à une image près) sont identiques ; seul le compteur de cause de fermeture bouge. À regarder |
+| `coverage.zones.ownerChecked` | `ce927bd2` 17 -> 12, `ownerVoteDisagreed` 0 -> 1 | **à expliquer dans le lot** : `checkOwnerAgreement` lit la valeur du canal propriétaire à la première image à ou après la capture (`zoneValueAfter`) ; à 33 ms cette image tombe plus souvent avant que le canal ait changé (neutre, donc hors dénominateur). Captures attribuées (23 sur 24), états de zone et durées identiques : le nom reste retenu, aucun effet visible attendu |
+| `stances` | `4f862258` 693 -> 692 | un intervalle de moins (sprint) |
+| `coverage.carriedEquipment.tracked*` | `ce927bd2` : 0 -> 2 positionnés | gain de positions |
+| `coverage.vehicles.samplesAfterEnd` | 164 -> 490, 213 -> 566 | densité |
+| `coverage.score.points` | +2 (`e157a672`, `ce927bd2`) | points de courbe, scores finals identiques |
+| Durées cumulées (`duree-totale`, en ms) | de -0,2 % à +0,8 % pour les calques à intervalles ; `grappleLines` et `bursts` plus larges | convention T1 inclus : une image de plus par intervalle (100 ms contre 33 ms) |
+
+Aucun changement n'est une perte de données. Les « poses de bord » et les contrôles de zone sont les seuls effets à faire valider ; les projectiles en plus sont un gain visible (plus de traînées).
+
+**Les témoins AVANT de l'étape 0 ne valent plus pour B8.** Recuits au code actuel (`0627a64b65`) à 100 ms, les 12 documents diffèrent de `avant/artefacts/` (le code a avancé depuis `8b5fc378c7`, par exemple 5 -> 12 `bursts`, `carriedEquipment` +30 sur `0076ebdc`). Pour B8, la référence à 100 ms est `mesure_33ms/artefacts_100/` (même binaire que le 33 ms, mêmes faits). Les sorties `avant/derives/` restent égales à celles du code actuel (voir 10.6).
+
+### 10.4 `replay-verite` sur les 12 à 33 ms (avant = 100 ms, après = 33 ms, mêmes faits et oracles)
+
+Résultat avec les seuils actuels : **10 « ok », 2 « FAUX »** ; les scores d'oracle (O-K1..3, O-V1, O-V2, O-S1, O-S3, O-T1) et V-1, V-4, V-5, V-6, V-7, V-8 sont identiques sur les 12. Le contrôle « 100 ms contre 100 ms » rend 12 « ok ». Les valeurs absolues ne sont pas 0 sur la référence (par exemple V-2 = 2 sur `0076ebdc`, V-3 = 4) : « 0 violation » veut dire « aucune hausse ».
+
+| Règle | 100 ms -> 33 ms | Lecture |
+|---|---|---|
+| V-3 `0076ebdc` | 4 -> 5 | une capacité 561 ms avant le début de la vie : à 100 ms le début de vie est arrondi vers le bas et l'écart mesuré tombait à 500 ms, dans la tolérance. Le début de vie est mesuré plus finement à 33 ms |
+| V-2 `82f29378` | 424 -> 1 236 | la règle compte des **échantillons** de véhicule hors emprise : x2,9 comme la densité (7 836 -> 22 480 échantillons). Même véhicule, mêmes passages. C'est un défaut de comparaison, pas une dérive |
+
+Tolérances de `replayverite/seuils.go` (distribution mesurée à 33 ms ; entre parenthèses 100 ms) :
+
+| Seuil | Valeur actuelle (effective à 33 ms) | Mesure | Valeur proposée |
+|---|---|---|---|
+| `vitesseSautMaxMPS` (V-1) | 100 m/s | aucun pas de piste à plus de 40 m/s sur les 12, aux deux cadences : aucun bruit de quantisation à 33 ms | inchangée (pas une durée) |
+| `toleranceTranslocationMS` | 200 (198) | aucun saut hors portes de carte sur les 12 : **non mesurable ici** ; à refaire sur les 19 témoins du corpus | inchangée en millisecondes |
+| `toleranceVieMS` (V-3, V-5) | 500 (495) | écarts hors vie (12 matchs, 80 actions à 33 ms, 52 à 100 ms) : tirs <= 132 ms (<= 200 ms), grenades <= 99 ms ; capacités : 99, 198, 264, 330, 363, 429, 462, **561 x3, 594, 627**, 726, 957 ms, puis 12 606 ms (capacité) et 16 467 et 100 683 ms (ramassages) (100 ms : 600 x4, 800, 900, 12 700, 16 500, 100 700). Violations sur 12 matchs : **9 à 100 ms, 10 à 33 ms** ; à 630 ms : **5 et 5** | **à trancher par le user.** 630-650 ms donne les mêmes 5 violations aux deux cadences (726, 957 et les trois de plus de 12 s, vrais défauts) ; garder 500 ms accepte une hausse de 1 (la capacité de `0076ebdc`) qui ne tient qu'à l'arrondi de 100 ms |
+| `rayonTrajetM`, `rayonPorteM`, `margeEmpriseObjetsM` | mètres | indépendants de la cadence | inchangés |
+| `toleranceEchantillonMS` (V-6) | 100 (99) | toutes les instances « passager loin du véhicule » ont leur point de passager le plus proche à >= 330 ms : la tolérance de 100 ms n'en juge aucune, 0 violation | inchangée |
+| `toleranceMortMS` (V-8) | 200 (198) | 536 morts statborg : écart à la fin de vie la plus proche 0 ms x198, 33 ms x314, 66 ms x16, 132 ms x1, 165 ms x5, **198 ms x2** (100 ms : 0 x421, 100 x109, **200 x6**). 0 violation dès 198 ms | 200 ms convient mais **sans marge** (la conversion arrondit vers le bas : 6 images = 198 ms, le maximum observé). 250 ms (7 images, 231 ms) laisse une image de marge, sans changer le verdict à 100 ms |
+| `margeFinDeFilmMS` (O-V2) | 200 | toutes les fins de piste voisines de la fin du film tombent à 0 ms (dernière image) | inchangée |
+| V-2 (comptage) | -- | voir ci-dessus | **compter autrement** : par véhicule, ou par intervalle continu hors emprise, pas par échantillon ; sinon toute bascule de cadence déclenche « FAUX » |
+
+### 10.5 `t0_film` : coup d'envoi à 100 et à 33 ms
+
+| match | 100 ms | 33 ms | écart |
+|---|---|---|---|
+| 0076ebdc | 22 800 | 22 737 | -63 |
+| ef8cb72b | 400 | 330 | -70 |
+| 008e1bba | 22 700 | 22 671 | -29 |
+| d2b74083 | 300 | 297 | -3 |
+| de3cec8b | 22 800 | 22 770 | -30 |
+| 43716616 | 22 700 | 22 704 | +4 |
+| c75f33b8 | 22 700 | 22 638 | -62 |
+| e157a672 | 22 700 | 22 638 | -62 |
+| 82f29378 | 22 500 | 22 473 | -27 |
+| ce927bd2 | 22 700 | 22 638 | -62 |
+| be565134 | 22 600 | 22 605 | +5 |
+| 4f862258 | 22 800 | 22 704 | -96 |
+
+(Marge à la frame 0 du film, `coverage.t0Film.marginMs`.) Les 12 coups d'envoi sont détectés aux deux cadences, avec la même rafale. L'écart est la quantisation : la grille de 100 ms date le premier mouvement à l'image suivante (retard moyen 41 ms, jusqu'à 100 ms) ; deux matchs sont à +4 et +5 ms.
+
+Plancher de bruit de la fenêtre calme (de la frame 0 à 1 s avant le coup d'envoi ; `d2b74083` et `ef8cb72b` n'ont pas de fenêtre calme, le film commence sur le départ) :
+
+| | médiane du cumul max par piste | max sur les pistes | pas max | seuil actuel |
+|---|---|---|---|---|
+| 100 ms | 0,000 m | 0,25 m (`be565134`), sinon <= 0,07 m | 0,14 m (1,40 m/s) | `t0FilmCumulM` 0,5 m ; `t0FilmJumpM` 5 m par pas |
+| 33 ms | 0,000 m | **0,36 m** (`be565134`), sinon <= 0,09 m | 0,06 m (1,82 m/s) | idem |
+
+- **`t0FilmCumulM` (0,5 m).** Le bruit cumulé croît avec le nombre de pas de la fenêtre : la marge sur le pire film passe de x2,0 à **x1,4**. À 0,3 m, `be565134` date un faux coup d'envoi à 561 ms. Effet du seuil sur la date (33 ms) : chaque +0,1 m retarde d'environ 33 ms (0,5 : 22 737 ; 0,6 : 22 770 ; 0,75 : 22 836 ; 1,0 : 22 935 sur `0076ebdc`). **Proposition : conserver 0,5 m** (12 coups d'envoi corrects, plus précis que 100 ms) ; **0,6 m** si l'on veut une marge de x1,7 pour un retard de 33 ms. Décision du user.
+- **`t0FilmJumpM` (5 m par pas).** À 33 ms, 5 m par pas valent 150 m/s, contre 50 m/s à 100 ms. Essai avec 1,65 m (50 m/s) : dates identiques sur les 12 : aucun effet mesurable. **Proposition : l'écrire en vitesse (50 m/s) et le convertir avec le pas**, pour garder le sens « téléportation ». La fenêtre de 1 000 ms et `t0FilmMaxDelayMS` sont déjà en millisecondes.
+
+### 10.6 Dérivés en simulation sur les artefacts à 33 ms (aucune écriture en base)
+
+`backfill-usage-summary`, `backfill-vehicle-takes`, `backfill-flag-grabs-net`, `backfill-pad-tiers` (`--dry-run --force --match <id complet>`, 12 matchs) et `tactical-rasters --backfill --dry-run` : sorties à 33 ms **identiques ligne pour ligne** aux sorties à 100 ms du même code, et aux `avant/derives/` de l'étape 0 (hors durée). Aucun écart à chiffrer (mêmes prises nommées et anonymes, mêmes lignes de prises de véhicule `82f29378` 20 / `be565134` 21, mêmes prises de drapeau brutes et nettes `008e1bba` 17 / 7, mêmes niveaux d'armes). `backfill-lead-share` n'existe plus sur cette branche. Séquence de mort Tactique (substitut `TestMesureLectureDesPistes`) : même nombre de pistes (12 matchs), points x2,9 à x3, **corps de la séquence 3,1 à 3,4 Ko aux deux cadences** (écart <= 2 %) : la fenêtre de séquence est en millisecondes. Limite : ces simulations ne lisent pas toutes les couches (la plupart des matchs n'ont aucune prise de véhicule ni de drapeau) ; elles ne démontrent l'égalité que sur la matière présente.
+
+### 10.7 Coût
+
+| | 100 ms | 33 ms |
+|---|---|---|
+| Cuisson par décodage complet, somme des 12 (durée interne, machine chargée par d'autres agents, bruit de +-30 %) | 166 s | 160 s |
+| Le plus long (`be565134`) | 51 s | 36 s |
+| Pic mémoire du process, 12 matchs (échantillonné) | 84 à 449 Mio | 85 à 478 Mio (le plus gros +6 %) |
+| Cuisson depuis les faits (33 ms) | -- | 0,5 à 2,4 s |
+| Lecture : gunzip + décodage `replay.ReplayDocument` + ré-encodage (`be565134`) | 19 + 113 + 34 ms | 44 + 282 + 92 ms |
+| Compression gzip 6 à l'écriture (`be565134`) | 249 ms | 634 ms |
+| Compression réseau niveau 5 (`be565134`) | 140 ms | 333 ms |
+
+La grille ne coûte presque rien à la cuisson (le décodage domine) ; elle triple la lecture, l'écriture et le transfert, comme la taille.
+
+### 10.8 Surprises
+
+1. Les témoins AVANT ne valent plus pour B8 (voir 10.3) : à reconstituer à 100 ms avec le binaire de la bascule.
+2. `replay-verite` n'est pas cadence-neutre sur V-2 (comptage par échantillon) : la bascule déclencherait « FAUX » sur tout match à véhicules.
+3. La cause de B7 est une entrée manquante (`--facts`), pas un défaut du décodeur.
+4. Les faits de film sont indépendants de la cadence : la recuisson de C2 peut se faire depuis les faits.
+5. Les poses de bord de film changent de nombre (-15 à +7) : pas de perte en cours de match, mais le compte du calque bouge.
+6. `be565134` franchit 2 Mo compressé à 33 ms (D2).
+7. `TestViesDUnEchantillonOntLeurOracle` : les trois vies d'un seul échantillon mesurées le 2026-09-14 sur les huit builds disparaissent à 33 ms (la vie compte plus d'un point de grille) ; le test attend `{3,0,3,0}` et mesure `{0,0,0,0}`.
+8. Une première passe de dérivés a été lancée deux fois en parallèle par erreur de ma part (verrou de base) ; les sorties retenues viennent d'une passe unique, séquentielle.
+
+### 10.9 Contenu probable du lot final
+
+Sur une copie hors dépôt des modules `libs/film`, `libs/himap`, `libs/gamefiles` (jonctions vers la configuration et les données du worktree), `DefaultFrameIntervalMS = 33` seul : `go test ./film/...` : **11 tests de premier niveau échouent dans `replay`** (en plus de 4 échecs d'environnement qui existent aussi à 100 ms : `TestTableStatborgConcordeAvecNamedStatSlots`, trois tests de `killicon` qui lisent des fichiers absents de la copie) :
+
+| Test | Nature |
+|---|---|
+| `TestGoldenAssembly`, `TestGoldenBuildsAssembly` (8 builds), `TestProjectilesAndInventoryCounts` | goldens `testdata/assembly_*.golden` à régénérer (8) ; projectiles 463 -> 607 sur le build de référence |
+| `TestContractFixturesMatchCommitted` | les 8 fixtures `apps/web/.../fixtures/go/replay_schema_108_*.json.gz` (2,97 Mo compressés, environ 7,3 Mo à 33 ms) à régénérer en 109 ; le test les lit depuis `apps/web` : à voir comment le dépôt dédié les reçoit |
+| `TestFramesOfMS`, `TestPasHistoriqueDistinctDuDefautDeConstruction`, `TestToleranceDePositionDeZoneParDefautVaut200ms`, `TestLaToleranceDEchantillonnageEstBornee` | attendus écrits pour 100 ms (2 images pour 200 ms, défaut 100) ; décisions inchangées en millisecondes |
+| `TestLinkShots_FenetreDUneFrame`, `TestReposNeAPeuPresBornes` | tests écrits en images (fenêtre d'une image, tolérance de 3 images) : à réécrire en durées |
+| `TestViesDUnEchantillonOntLeurOracle` | voir 10.8 |
+
+- **Dépôt du décodeur** (dépôt dédié) : `replay/build.go` (constante et commentaires), `replay/document.go` (`SchemaVersion` 109) et sa chronique, 7 à 8 fichiers de tests, 8 goldens, éventuellement `replay/t0_film.go` (si `t0FilmJumpM` passe en vitesse ou `t0FilmCumulM` à 0,6 m) : **environ 17 fichiers**, plus un tag de module posé par le user (nouvelle version de `libs/film`).
+- **Dépôt LevelUp** : `go.mod`/`go.sum` (nouvelle version du décodeur, ou rien tant que `libs/film` est dans l'arbre), `internal/replayverite/` (`seuils.go`, `violations_positions.go` pour V-2, `seuils_cadence_test.go`, le golden `testdata/bcb6d393.bulletin.golden` à vérifier), 8 fixtures web et `manifest.json`, `docs/COMMANDS.md` + `docs/FR/COMMANDS.md`, ADR 0034 (cadence), `.ai/thought_log.md` : **environ 15 fichiers**. Aucun code applicatif Go ne lit `DefaultFrameIntervalMS` (seulement des tests) ; `raster.go` et `positions.go` lisent déjà la cadence historique. Côté web, la page lit `frameIntervalMs` du document : aucun changement de code identifié par cette mesure (non testée avec des fixtures à 33 ms).
+- **Pas de code** pour : stockage, porte `replayartifact`, dérivés (identiques), séquence Tactique.
+- Ordre pour que le lot reste court : (1) décisions du user sur `toleranceVieMS`, `toleranceMortMS`, `t0FilmCumulM`, comptage V-2 ; (2) décodeur : constante, version, tests, goldens, tag ; (3) LevelUp : montée de version, `replayverite`, fixtures web, docs ; (4) B7/B8 sur la liste fermée avec `--facts` ou `backfill-replay` ; (5) gates.

@@ -27,9 +27,10 @@ import (
 func docJSON(t *testing.T, matchID string, avecCompteurs bool) []byte {
 	t.Helper()
 	doc := replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion,
-		MatchID:       matchID,
-		TitleSlug:     title.DefaultSlug,
+		SchemaVersion:   replay.SchemaVersion,
+		FrameIntervalMS: CookFrameIntervalMS(),
+		MatchID:         matchID,
+		TitleSlug:       title.DefaultSlug,
 		// Une trajectoire au moins : validateArtifact refuse un document sans piste.
 		Tracks: []replay.Track{{XUID: "2533491259474651"}},
 	}
@@ -86,10 +87,11 @@ func TestWriteArtifact_NEcrasePasUnArtefactRiche(t *testing.T) {
 	avant := compteurRefus(t)
 	// Ce que fait BuildMatch avec des faits vides : un document sans compteurs de joueur.
 	appauvri := replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion,
-		MatchID:       "000d5950",
-		TitleSlug:     title.DefaultSlug,
-		Tracks:        []replay.Track{{XUID: "2533491259474651"}},
+		SchemaVersion:   replay.SchemaVersion,
+		FrameIntervalMS: CookFrameIntervalMS(),
+		MatchID:         "000d5950",
+		TitleSlug:       title.DefaultSlug,
+		Tracks:          []replay.Track{{XUID: "2533491259474651"}},
 	}
 	taille, err := writeArtifact(context.Background(), path, title.DefaultSlug, "000d5950", appauvri)
 	if err != nil {
@@ -129,10 +131,11 @@ func TestWriteArtifact_MonteeDeSchemaToujoursEcrite(t *testing.T) {
 		t.Fatalf("pose: %v", err)
 	}
 	nouveau := replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion,
-		MatchID:       "000d5950",
-		TitleSlug:     title.DefaultSlug,
-		Tracks:        []replay.Track{{XUID: "2533491259474651"}},
+		SchemaVersion:   replay.SchemaVersion,
+		FrameIntervalMS: CookFrameIntervalMS(),
+		MatchID:         "000d5950",
+		TitleSlug:       title.DefaultSlug,
+		Tracks:          []replay.Track{{XUID: "2533491259474651"}},
 	}
 	if _, err := writeArtifact(context.Background(), path, title.DefaultSlug, "000d5950", nouveau); err != nil {
 		t.Fatalf("writeArtifact: %v", err)

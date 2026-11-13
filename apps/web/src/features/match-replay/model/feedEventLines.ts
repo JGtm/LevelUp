@@ -38,19 +38,30 @@ export interface VehicleEventLine {
   name: string
 }
 
+/** Le pictogramme d'une arme, tel que le fil des éliminations le sert (masque à teindre ou image). */
+export interface FeedWeaponIcon {
+  imageUrl: string
+  tinted: boolean
+  /** Le nom propre de l'arme ; vide quand le titre ne le nomme pas. */
+  label: string
+}
+
 /**
- * Une DESTRUCTION de véhicule. L'auteur et les joueurs à bord sont facultatifs : un destructeur
+ * Une DESTRUCTION de véhicule. L'auteur et les joueurs tués avec le véhicule sont facultatifs : un destructeur
  * humain porte son xuid (`xuid`), un destructeur bot son nom de roster (`botName`), et sans l'un ni
- * l'autre la ligne dit seulement que le véhicule est détruit ; sans joueur à bord elle n'en nomme
- * aucun. Le NOM est celui de la famille, comme pour une montée.
+ * l'autre la ligne dit seulement que le véhicule est détruit ; sans joueur tué elle n'en nomme
+ * aucun. Le NOM est celui de la famille, comme pour une montée. `weapon` est le pictogramme de
+ * l'arme qui a détruit le véhicule ; absent quand la cause n'est pas résolue ou que le référentiel
+ * du titre n'a aucun dessin pour elle : la ligne ne porte alors aucun pictogramme.
  */
 export interface VehicleDestroyedEventLine {
   family: 'vehicles'
   destroyed: true
   xuid: string | null
   botName: string | null
-  aboardXuids: readonly string[]
+  killedXuids: readonly string[]
   name: string
+  weapon?: FeedWeaponIcon
 }
 
 export type FeedEventLine =

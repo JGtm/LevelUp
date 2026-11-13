@@ -19,7 +19,13 @@ import (
 // elle est passée au service, jamais reconstruite ailleurs.
 func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayService {
 	maps := duckdb.NewReplayMapRepo(pdb.SharedReadDB(), pdb.Metadata)
-	return replayServiceFrom(r.cfg, pdb.TitleSlug, maps)
+	// La source de dégât d'une destruction de véhicule se traduit par l'adapter d'assets du titre,
+	// celui qui nomme l'arme des lignes d'élimination de la Match View. Titre sans adapter : nil.
+	var icons port.KillSourceIconResolver
+	if a := r.assetURLFor(pdb.TitleSlug); a != nil {
+		icons = a
+	}
+	return replayServiceFrom(r.cfg, pdb.TitleSlug, maps, service.WithReplayKillSourceIcons(icons))
 }
 
 // replayServiceFrom : la construction elle-même, sans base, pour qu'un test l'exerce telle
@@ -30,13 +36,14 @@ func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayServ
 // ailleurs. Les ARTEFACTS se lisent hors démo dans le cache du dépôt ; en DÉMO, ce sont les
 // rejeux FIGÉS de la disposition démo (title.DemoLayout.ReplayArtifactsDir), servis avec les
 // joueurs réels masqués (décisions D-1/D-2 du plan des recommandations du 2026-10-09).
-func replayServiceFrom(cfg *config.AppConfig, titleSlug string, maps port.ReplayMapNameRepo) port.ReplayService {
+func replayServiceFrom(cfg *config.AppConfig, titleSlug string, maps port.ReplayMapNameRepo,
+	opts ...service.ReplayOption) port.ReplayService {
 	root := cfg.RepoRoot
 	labels := NewReplayLabelSource(root)
 	if cfg.DemoMode {
-		return service.NewDemoReplayService(titleSlug, root, cfg.DemoLayout(), maps, labels)
+		return service.NewDemoReplayService(titleSlug, root, cfg.DemoLayout(), maps, labels, opts...)
 	}
-	return service.NewReplayService(titleSlug, root, maps, labels)
+	return service.NewReplayService(titleSlug, root, maps, labels, opts...)
 }
 
 // replayLabels rend la source des catalogues de libellés du rejeu, lus sous la racine du dépôt.

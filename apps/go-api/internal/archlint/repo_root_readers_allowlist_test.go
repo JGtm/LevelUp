@@ -40,7 +40,6 @@ var repoRootLecteursAllowlist = map[string]int{
 	"cmd/server/boot_migrations.go":                         1,
 	"cmd/server/boot_tasks.go":                              1,
 	"cmd/server/boot_watcher.go":                            2,
-	"cmd/server/provision_title.go":                         1,
 	"cmd/server/sync_v2_wiring.go":                          1,
 	"internal/api/handlers/settings.go":                     2,
 	"internal/api/server.go":                                1,

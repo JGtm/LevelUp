@@ -34,7 +34,7 @@ func printActionDump(res []result, tune runTuning) {
 		fmt.Printf("DETAIL PAR ACTION — %s (%s), origine %d ms\n", r.m.short, r.m.mapName, r.originMS)
 		fmt.Printf("%9s %-18s %-16s %8s %6s %9s\n",
 			"t film", "joueur", "statistique", "attribue", "rang", "distance")
-		att, _ := r.attribute(r.corrected, r.zones, tune.maxGap, 0)
+		att, _ := r.attribute(r.corrected, r.zones, tune.maxGapMS, 0)
 		rows := append([]replay.ZoneAttribution(nil), att...)
 		sort.SliceStable(rows, func(i, j int) bool { return rows[i].Action.TimeMS < rows[j].Action.TimeMS })
 		names := namesByXUID(r.roster)
@@ -86,8 +86,8 @@ func printAgreement(res []result, tune runTuning) {
 		if r.err != nil || !r.hasOrigin {
 			continue
 		}
-		att, _ := r.attribute(r.corrected, r.zones, tune.maxGap, 0)
-		nul, _ := r.attribute(r.correctedNull, r.zones, tune.maxGap, 0)
+		att, _ := r.attribute(r.corrected, r.zones, tune.maxGapMS, 0)
+		nul, _ := r.attribute(r.correctedNull, r.zones, tune.maxGapMS, 0)
 		ok, grp := agreementOf(att)
 		okN, grpN := agreementOf(nul)
 		okTot, grpTot, okNull, grpNull = okTot+ok, grpTot+grp, okNull+okN, grpNull+grpN

@@ -92,8 +92,11 @@ func TestLeRapportDuContexteDuPontEstVerseALaPasse(t *testing.T) {
 	avant := observability.LoadCounter(publie)
 	cloreLaPasse(context.Background(), ctx, "m")
 	verserLesContextesDeLaPasse(ctx) // la sortie ne verse qu une fois, meme rejouee
-	if got := decfilm.Texte(passe.Rapport()); got != "repli_temps_forts_dernier_numero=1" {
-		t.Fatalf("compteur de la passe = %q, attendu le seul repli du fil des morts, une fois", got)
+	// La mini-bobine n'a ni manifeste ni section d'identification : la lecture du fil des morts compte donc
+	// le repli du dernier numero ET celui du controle de corruption lu a sa valeur de repli, chacun une fois.
+	const attendu = "repli_controle_corruption_section_absente=1 repli_temps_forts_dernier_numero=1"
+	if got := decfilm.Texte(passe.Rapport()); got != attendu {
+		t.Fatalf("compteur de la passe = %q, attendu %q (les replis de la mini-bobine, une fois chacun)", got, attendu)
 	}
 	if got := observability.LoadCounter(publie) - avant; got != 1 {
 		t.Fatalf("%s a bouge de %d, attendu 1 : le rapport du contexte n est pas publie", publie, got)

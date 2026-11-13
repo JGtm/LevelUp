@@ -72,10 +72,11 @@ func TestPuits_ConstructionLocalePublieUnEvenement(t *testing.T) {
 	dir := t.TempDir()
 	path := dir + "/000d5950.json.gz"
 	doc := replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion,
-		MatchID:       "000d5950",
-		TitleSlug:     title.DefaultSlug,
-		Tracks:        []replay.Track{{XUID: "2533491259474651"}},
+		SchemaVersion:   replay.SchemaVersion,
+		FrameIntervalMS: CookFrameIntervalMS(),
+		MatchID:         "000d5950",
+		TitleSlug:       title.DefaultSlug,
+		Tracks:          []replay.Track{{XUID: "2533491259474651"}},
 	}
 
 	if _, err := writeArtifact(context.Background(), path, title.DefaultSlug, "000d5950", doc); err != nil {

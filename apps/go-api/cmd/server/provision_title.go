@@ -17,9 +17,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"path/filepath"
 
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
@@ -162,7 +162,7 @@ func provisionOneTarget(pr *title.PathResolver, slug string, t provisionTarget) 
 	}
 	// V72-06 : source unique des noms d'armes du titre additionnel (idempotent).
 	if _, err := weapons.ReconcileNameLabels(db.SQLDb(), slug,
-		filepath.Join(pr.RepoRoot(), "config", "titles", slug, "mappings", "weapon_names.toml")); err != nil {
+		mappings.WeaponNamesPath(pr.TitleMappingsDir(slug))); err != nil {
 		return fmt.Errorf("reconcile weapon name labels: %w", err)
 	}
 	return nil

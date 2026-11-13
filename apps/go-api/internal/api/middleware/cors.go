@@ -15,6 +15,10 @@ import (
 // version courante et ne dit jamais « a recuire » (revue de vague, 2026-09-12).
 const ReplayLatestSchemaHeader = "X-Replay-Latest-Schema-Version"
 
+// ReplayCadenceStaleHeader porte le verdict du SERVEUR sur la cadence du rejeu servi (meme schema, autre
+// grille que la cuisson courante). Expose pour la meme raison que ReplayLatestSchemaHeader.
+const ReplayCadenceStaleHeader = "X-Replay-Cadence-Stale"
+
 // CORS retourne un middleware CORS configuré avec les origines autorisées.
 // En développement, les origines par défaut sont localhost:5173 (Vite dev server).
 func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
@@ -25,7 +29,7 @@ func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 		// ResolvedTitleHeader doit être LISIBLE par le client cross-origin (fetch ne
 		// voit un header de réponse que s'il est exposé) : le garde anti-fuite
 		// cross-titre du client API le lit pour rejeter les réponses d'un autre titre.
-		ExposedHeaders:   []string{"X-Request-ID", ResolvedTitleHeader, ReplayLatestSchemaHeader},
+		ExposedHeaders:   []string{"X-Request-ID", ResolvedTitleHeader, ReplayLatestSchemaHeader, ReplayCadenceStaleHeader},
 		AllowCredentials: true,
 		MaxAge:           300,
 	})

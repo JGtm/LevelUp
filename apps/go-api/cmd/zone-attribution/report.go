@@ -62,9 +62,9 @@ func printOriginCorrection(res []result, tune runTuning) {
 				r.m.short, r.m.mapName, "-")
 			continue
 		}
-		_, av := r.attribute(r.actions, r.zones, tune.maxGap, 0)
-		_, ap := r.attribute(r.corrected, r.zones, tune.maxGap, 0)
-		_, nu := r.attribute(r.correctedNull, r.zones, tune.maxGap, 0)
+		_, av := r.attribute(r.actions, r.zones, tune.maxGapMS, 0)
+		_, ap := r.attribute(r.corrected, r.zones, tune.maxGapMS, 0)
+		_, nu := r.attribute(r.correctedNull, r.zones, tune.maxGapMS, 0)
 		totAV, totAP, totNull = addCoverage(totAV, av), addCoverage(totAP, ap), addCoverage(totNull, nu)
 		fmt.Printf("%-9s %-14s %9d %6d %6d %6d %6d %7d %7d %6.1f%% %6.1f%%\n",
 			r.m.short, r.m.mapName, r.originMS,
@@ -91,7 +91,7 @@ func ratioOf(real, witness float64) string {
 	return fmt.Sprintf("%.1f", real/witness)
 }
 
-// clockOffsets : decalages appliques a l'INSTANT des actions, en frames de 100 ms.
+// clockOffsetsMS : decalages appliques a l INSTANT des actions, en millisecondes.
 //
 // Ils testent le confondant le plus probable d'un taux d'appartenance faible : le
 // statborg replique ses compteurs a SON rythme (intervalles mesures de 1 a 31 s), donc
@@ -113,7 +113,7 @@ func ratioOf(real, witness float64) string {
 // balayage reste donc un DIAGNOSTIC de confirmation (la borne elargie retrouve-t-elle bien
 // un pic INTERIEUR pres de l'origine lue de chaque film ?), plus jamais le mecanisme de
 // correction — voir printOriginCorrection pour celui-ci.
-var clockOffsets = []int{-600, -500, -400, -300, -200, -150, -100, -50, -30, -20, -10, -5, 0, 10}
+var clockOffsetsMS = []int{-60_000, -50_000, -40_000, -30_000, -20_000, -15_000, -10_000, -5_000, -3_000, -2_000, -1_000, -500, 0, 1_000}
 
 // clockThresholdsM : deux seuils suffisent — l'appartenance stricte et un seuil relache
 // representatif. Balayer les deux axes en entier n'apprendrait rien de plus.
@@ -124,7 +124,7 @@ func printClockSweep(res []result, tune runTuning) {
 	fmt.Println("BALAYAGE D'HORLOGE — l'instant du statborg est-il en retard sur l'action ?")
 	fmt.Printf("%10s %12s %12s %12s %12s\n",
 		"decalage", "reel 0 m", "temoin 0 m", "reel 5 m", "temoin 5 m")
-	for _, off := range clockOffsets {
+	for _, off := range clockOffsetsMS {
 		cells := make([]string, 0, 4)
 		for _, th := range clockThresholdsM {
 			var real, null replay.ZoneCoverage
@@ -132,13 +132,13 @@ func printClockSweep(res []result, tune runTuning) {
 				if r.err != nil {
 					continue
 				}
-				_, a := r.attribute(shiftBy(r.actions, r.frameCount, off), r.zones, tune.maxGap, th)
-				_, b := r.attribute(shiftBy(r.nullAction, r.frameCount, off), r.zones, tune.maxGap, th)
+				_, a := r.attribute(r.shifted(r.actions, off), r.zones, tune.maxGapMS, th)
+				_, b := r.attribute(r.shifted(r.nullAction, off), r.zones, tune.maxGapMS, th)
 				real, null = addCoverage(real, a), addCoverage(null, b)
 			}
 			cells = append(cells, fmt.Sprintf("%11.1f%%", pct(real)), fmt.Sprintf("%11.1f%%", pct(null)))
 		}
-		fmt.Printf("%9.1fs %s %s %s %s\n", float64(off)/10, cells[0], cells[1], cells[2], cells[3])
+		fmt.Printf("%9.1fs %s %s %s %s\n", float64(off)/1000, cells[0], cells[1], cells[2], cells[3])
 	}
 	fmt.Println()
 	printPerMatchPeak(res, tune)
@@ -158,8 +158,8 @@ func printPerMatchPeak(res []result, tune runTuning) {
 			continue
 		}
 		bestOff, bestRate, atZero := 0, -1.0, 0.0
-		for _, off := range clockOffsets {
-			_, cov := r.attribute(shiftBy(r.actions, r.frameCount, off), r.zones, tune.maxGap, 0)
+		for _, off := range clockOffsetsMS {
+			_, cov := r.attribute(r.shifted(r.actions, off), r.zones, tune.maxGapMS, 0)
 			rate := pct(cov)
 			if off == 0 {
 				atZero = rate
@@ -169,7 +169,7 @@ func printPerMatchPeak(res []result, tune runTuning) {
 			}
 		}
 		fmt.Printf("  %-9s %-14s %9.1fs %9.1f%% %9.1f%%\n",
-			r.m.short, r.m.mapName, float64(bestOff)/10, bestRate, atZero)
+			r.m.short, r.m.mapName, float64(bestOff)/1000, bestRate, atZero)
 	}
 	fmt.Println()
 }
@@ -177,8 +177,8 @@ func printPerMatchPeak(res []result, tune runTuning) {
 // printPerMatch imprime le detail au seuil STRICT : c'est la proposition forte, celle qui
 // dit « il etait dedans ».
 func printPerMatch(res []result, tune runTuning) {
-	fmt.Printf("ATTRIBUTION STRICTE (tolerance %d frame(s), temoin spatial a %.0f m)\n",
-		tune.maxGap, tune.witness)
+	fmt.Printf("ATTRIBUTION STRICTE (tolerance %d ms, temoin spatial a %.0f m)\n",
+		tune.maxGapMS, tune.witness)
 	fmt.Printf("%-9s %-14s %7s %7s %7s %7s %7s %7s\n",
 		"film", "carte", "ident", "posees", "dedans", "dehors", "sansPos", "ambig")
 	for _, r := range res {
@@ -186,7 +186,7 @@ func printPerMatch(res []result, tune runTuning) {
 			fmt.Printf("%-9s %-14s ERREUR: %v\n", r.m.short, r.m.mapName, r.err)
 			continue
 		}
-		_, cov := r.attribute(r.actions, r.zones, tune.maxGap, 0)
+		_, cov := r.attribute(r.actions, r.zones, tune.maxGapMS, 0)
 		fmt.Printf("%-9s %-14s %7d %7d %7d %7d %7d %7d\n",
 			r.m.short, r.m.mapName, r.identified, cov.Actions,
 			cov.Attributed, cov.Outside, cov.NoPosition, cov.Ambiguous)
@@ -196,9 +196,26 @@ func printPerMatch(res []result, tune runTuning) {
 
 // attribute est le croisement d'un match a un seuil donne.
 func (r result) attribute(actions []replay.ObjectiveAction, zones []replay.Zone,
-	maxGap int, maxDist float64) ([]replay.ZoneAttribution, replay.ZoneCoverage) {
+	maxGapMS int, maxDist float64) ([]replay.ZoneAttribution, replay.ZoneCoverage) {
 	return replay.AttributeZones(actions, r.tracks, zones, r.slotXUID,
-		replay.AttributeOptions{MaxGapFrames: maxGap, MaxDistanceM: maxDist})
+		replay.AttributeOptions{MaxGapFrames: r.framesOf(maxGapMS), MaxDistanceM: maxDist})
+}
+
+// framesOf convertit une duree en frames du document, au moins une : zero voudrait dire la tolerance
+// par defaut pour le croisement.
+func (r result) framesOf(ms int) int {
+	if r.intervalMS <= 0 {
+		return 1
+	}
+	return max(1, ms/r.intervalMS)
+}
+
+// shifted rend les memes actions decalees de ms (signe compris), converti avec le pas du document.
+func (r result) shifted(actions []replay.ObjectiveAction, ms int) []replay.ObjectiveAction {
+	if r.intervalMS <= 0 {
+		return nil
+	}
+	return shiftBy(actions, r.frameCount, ms/r.intervalMS)
 }
 
 func sweep(res []result, tune runTuning) []sweepRow {
@@ -210,9 +227,9 @@ func sweep(res []result, tune runTuning) []sweepRow {
 				continue
 			}
 			moved := replay.TranslateZones(r.zones, mapvarOffset(tune.witness))
-			_, a := r.attribute(r.actions, r.zones, tune.maxGap, th)
-			_, b := r.attribute(r.nullAction, r.zones, tune.maxGap, th)
-			_, c := r.attribute(r.actions, moved, tune.maxGap, th)
+			_, a := r.attribute(r.actions, r.zones, tune.maxGapMS, th)
+			_, b := r.attribute(r.nullAction, r.zones, tune.maxGapMS, th)
+			_, c := r.attribute(r.actions, moved, tune.maxGapMS, th)
 			row.real = addCoverage(row.real, a)
 			row.shifted = addCoverage(row.shifted, b)
 			row.moved = addCoverage(row.moved, c)
@@ -255,7 +272,7 @@ func printDiagnostics(res []result) {
 		if r.err != nil {
 			continue
 		}
-		att, _ := r.attribute(r.actions, r.zones, replay.DefaultMaxGapFrames, 0)
+		att, _ := r.attribute(r.actions, r.zones, replay.DefaultMaxGapMS, 0)
 		for _, a := range att {
 			diag.add(a, r.zones)
 		}

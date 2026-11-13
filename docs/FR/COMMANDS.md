@@ -266,7 +266,10 @@ sur la DB partagée et jouent elles-mêmes les migrations — y compris sous `--
 
 ```bash
 # 1. RE-CUIRE les artefacts d'abord — le schéma 39 périme tout artefact antérieur, et c'est
-#    cette passe-là qui fait NAÎTRE `bombStats` dedans.
+#    cette passe-là qui fait NAÎTRE `bombStats` dedans. Un artefact est à jour quand son schéma
+#    est le courant ET que son pas (`frameIntervalMs`, absent = 100 ms) est le pas de cuisson
+#    courant de LevelUp (`replaybuild.CookFrameIntervalMS`) : un rejeu cuit sur une autre grille
+#    est périmé aussi.
 go run ./cmd/levelup backfill-replay [--dry-run] [--force] [--limit N] [--only-existing]
 
 # 2. Usages d'équipement et de socles -> match_usage_players + match_usage_films.
@@ -1710,7 +1713,13 @@ gate qui échoue toujours ne gate rien) :
 Dans les deux modes, la racine de travail est jetable (entrées copiées, config/catalogues
 depuis la branche extraite ou le worktree de base, chunks de film depuis le parc de
 développement — **jamais d'écriture dans le parc**), et le gate ne bumpe jamais un schéma — il
-ne fait que comparer.
+ne fait que comparer. Config et catalogues sont copiés **tels que Git les voit** (fichiers suivis,
+plus fichiers non suivis non ignorés, pour pouvoir essayer un catalogue non commis) : un fichier de
+référence ignoré par git (les overlays du runtime sous `data/titles/{slug}/reference/generated/`)
+n'est fourni à AUCUNE des deux racines. La racine de la base est extraite d'une révision et ne l'a
+jamais ; le donner au seul HEAD faisait apparaître, sur une carte rattrapée par l'overlay, un écart
+sans rapport avec le diff (`pickups.mapCatalogPoints` 0 -> 54). Une racine source hors d'un dépôt
+Git est refusée.
 
 ```bash
 make replay-corpus-gate                                      # defaut : mode base, manifeste complet
@@ -1861,6 +1870,18 @@ branché) ; `MANQUE` quand un faux négatif d'oracle monte ou qu'une preuve inte
 unités appariées SUR l'oracle lui-même (slots statborg `triplet_feuille`, camps rattachés par
 `teamIdentity` `a`/`a0`) sont exclues, jamais comptées en vrais positifs. `-oracle
 <short8>.oracle.json` ajoute O-S3 (score personnel).
+
+Toute tolérance de temps du banc est une DURÉE en millisecondes, convertie en images avec le
+`frameIntervalMs` de l'artefact (arrondi vers le bas) : un même verdict tient sur la grille de 100 ms
+et sur celle de 33 ms (30,3 images/s). Mesurées sur 12 témoins aux deux grilles : tolérance de vie
+650 ms (V-3, V-5), de mort 250 ms (V-8). V-2 compte une instance par PASSAGE de véhicule hors
+emprise (les échantillons consécutifs d'un même véhicule forment une seule instance), non par
+échantillon : un compte par échantillon suit la densité de la grille. V-6 compte une instance par
+PASSAGE d'un passager loin du véhicule dans un trajet (les échantillons évalués consécutifs au-delà
+du rayon forment une instance, datée du premier ; un échantillon sans point du passager à portée
+n'est pas jugé et ne clôt pas le passage, un échantillon évalué dans le rayon le clôt) : à la montée,
+le corps du passager cesse de répliquer et son dernier point reste le seul apparié, si bien qu'un
+compte par échantillon triplait entre 100 et 33 ms pour un même passage.
 
 **Dans `replay-corpus-gate` (2026-09-30), le verdict EST celui du banc.** Chaque témoin comparé est
 jugé par le banc (référence et HEAD, mêmes faits, même oracle — le gate exporte désormais
