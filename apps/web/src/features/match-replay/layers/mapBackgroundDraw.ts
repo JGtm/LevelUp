@@ -6,12 +6,17 @@
  * (`CanvasView`) et sur un contexte de dessin. C'est aussi le seul endroit qui sait POSER
  * l'image dans la toile — le canvas ne fait que demander « où ? » puis « peins ».
  *
+ * LA CARTE TOURNÉE (`CanvasView.orient`) : le rectangle de pose est l'emprise de l'image une fois
+ * tournée, et l'image se dessine tournée d'autant autour du centre de ce rectangle (le contexte
+ * est tourné le temps du `drawImage`, puis rendu). À 0 quart de tour le dessin est celui
+ * d'avant, sans `save` ni rotation.
+ *
  * La pose se lit sur `canvasView` (bornes de la fenêtre, taille de la toile, marge) : le fond
  * suit la fenêtre, pas la scène, sinon il resterait cadré large pendant que les joueurs zooment.
  */
 import type { ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
-import type { CanvasView } from '../model/replayView'
+import { turnsOfView, type CanvasView } from '../model/replayView'
 import { backgroundRect, type BackgroundRect } from './mapBackground'
 
 /** Le fond retenu : l'image cuite et le calage qui la pose dans le repère monde. */
@@ -29,18 +34,35 @@ export function placeMapBackground(
   view: CanvasView,
 ): BackgroundRect | null {
   if (!background) return null
-  return backgroundRect(background.calibration, view.bounds, view.width, view.height, view.pad)
+  return backgroundRect(background.calibration, view)
 }
 
 /**
- * drawMapBackground peint l'image ENTIÈRE sur son rectangle ; la toile rogne le débord. Sans
- * fond ou sans rectangle, il ne peint rien.
+ * drawMapBackground peint l'image ENTIÈRE sur son rectangle, tournée comme la carte du cadrage
+ * (`view.orient`, quarts de tour antihoraires) ; la toile rogne le débord. Sans fond ou sans rectangle, il ne peint rien.
+ *
+ * Le rectangle est celui de l'image TOURNÉE : pour un quart ou trois quarts de tour, l'image est
+ * dessinée avec les dimensions échangées, dans le repère tourné autour du centre du rectangle.
  */
 export function drawMapBackground(
   ctx: CanvasRenderingContext2D,
   background: MapBackgroundSource | null,
   rect: BackgroundRect | null,
+  view: Pick<CanvasView, 'orient'>,
 ): void {
   if (!background || !rect) return
-  ctx.drawImage(background.image, rect.x, rect.y, rect.width, rect.height)
+  const turns = turnsOfView(view)
+  if (turns === 0) {
+    ctx.drawImage(background.image, rect.x, rect.y, rect.width, rect.height)
+    return
+  }
+  const w = turns % 2 === 1 ? rect.height : rect.width
+  const h = turns % 2 === 1 ? rect.width : rect.height
+  ctx.save()
+  ctx.translate(rect.x + rect.width / 2, rect.y + rect.height / 2)
+  // L'axe Y de la toile descend : un quart de tour antihoraire vu à l'écran est un angle négatif.
+  ctx.rotate((-turns * Math.PI) / 2)
+  ctx.drawImage(background.image, -w / 2, -h / 2, w, h)
+  ctx.restore()
 }
+

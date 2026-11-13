@@ -44,11 +44,12 @@ const SLAYER_FILM: FilmLayerAvailability = {
 
 const SOUND = { available: false, categories: {} } as unknown as ReplaySound
 const HEAT = { mode: 'presence' as const, killsAvailable: true }
+const ORIENTATION = { turns: 0 as const, setTurns: () => {}, available: true }
 
 function mount(available: FilmLayerAvailability) {
   return renderHook(() => {
     const settings = useReplaySettings()
-    const menu = useReplayViewMenu({ settings, sound: SOUND, available, heat: HEAT, locale: 'fr' })
+    const menu = useReplayViewMenu({ settings, orientation: ORIENTATION, sound: SOUND, available, heat: HEAT, locale: 'fr' })
     return { settings, menu }
   })
 }

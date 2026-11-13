@@ -167,6 +167,9 @@ export const FR_TEXT = {
   layerWallPlan: 'Plan des murs',
   layerWallPlanHint:
     "Le dessin exact des murs de la carte, en traits fins par-dessus son image. Disponible pour les cartes dont le plan a pu être extrait du jeu.",
+  orientationTitle: 'Orientation',
+  orientationHint:
+    "Tourne la carte par quarts de tour, dans le sens inverse des aiguilles d'une montre. Le choix est retenu pour cette carte.",
   layerTrail: 'Traînée',
   layerTrailHint:
     "Les sept dernières secondes parcourues, derrière chaque marqueur. L'opacité monte vers la tête : la trace la plus visible est celle de l'instant, et c'est ce qui donne le sens du déplacement.",

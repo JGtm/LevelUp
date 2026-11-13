@@ -29,6 +29,7 @@ import type { ReplayLocale } from '../i18n/i18n'
 import type { ReplayViewPanel } from './ReplayViewPanel'
 import { persistViewPreset, readViewPreset } from './replayPreferences'
 import type { ReplaySettings } from './useReplaySettings'
+import type { ReplayOrientation } from './useReplayOrientation'
 import {
   activeView,
   layerAvailability,
@@ -44,6 +45,8 @@ import type { ReplaySound } from '../sound/useReplaySound'
 /** Ce que le canvas prête au panneau : les réglages, ce que le film porte, et les sorties. */
 export interface ReplayViewMenuOptions {
   settings: ReplaySettings
+  /** L'orientation de la carte, retenue par carte (`useReplayOrientation`). */
+  orientation: ReplayOrientation
   sound: ReplaySound
   /** Ce que le film porte réellement, calque par calque (cf. l'en-tête). */
   available: FilmLayerAvailability
@@ -120,7 +123,7 @@ interface PanelInput extends ReplayViewMenuOptions {
  * elles TRANSPORTENT les états et les bascules de `useReplaySettings` vers les commandes.
  */
 function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
-  const { settings: s, sound, available, heat, locale, onClose, view } = o
+  const { settings: s, orientation, sound, available, heat, locale, onClose, view } = o
   return {
     locale,
     onClose,
@@ -192,6 +195,7 @@ function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
       show: s.showWallPlan,
       onToggle: s.toggleWallPlan,
     },
+    orientation: { available: orientation.available, turns: orientation.turns, onSelect: orientation.setTurns },
     heatmap: {
       show: s.showHeatmap,
       onToggle: s.toggleHeatmap,

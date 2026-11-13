@@ -76,6 +76,7 @@ import { useReplayClock } from '../hooks/useReplayClock'
 import { useReplayPlayback } from '../hooks/useReplayPlayback'
 import { useReplayStaticLayers } from '../layers/useReplayStaticLayers'
 import { useReplaySettings } from '../settings/useReplaySettings'
+import { useReplayOrientation } from '../settings/useReplayOrientation'
 import { useReplaySound } from '../sound/useReplaySound'
 import { drawMapBackground, placeMapBackground } from '../layers/mapBackgroundDraw'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -143,6 +144,11 @@ interface ReplayCanvasProps {
    * les rendrait utilisables ici. (Il a longtemps dit « seules 21 en ont » : il y en a 106.)
    */
   background?: ReplayMapBackgroundLayer | null
+  /**
+   * L'identité de la carte (`header.map_id`) : la clé sous laquelle l'orientation choisie est
+   * retenue (`useReplayOrientation`). Absente = pas de commande d'orientation.
+   */
+  mapId?: string | null
   /**
    * Zones nommées de la carte (callouts officiels), déjà normalisées par la route —
    * la même liste nomme la zone du tueur dans le fil des éliminations. Vide = la carte n'en a pas (cas
@@ -225,7 +231,7 @@ interface ReplayCanvasProps {
 }
 
 export function ReplayCanvas({
-  doc, locale, playWindow, playbackStore, openAtFrame, background, callouts, scoreboard, marks,
+  doc, locale, playWindow, playbackStore, openAtFrame, background, mapId, callouts, scoreboard, marks,
   allegiance, viewpoint, fullscreen, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
   players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, onFollowStop,
 }: ReplayCanvasProps) {
@@ -254,6 +260,8 @@ export function ReplayCanvas({
   // L'OBJET DE RÉGLAGES RESTE ENTIER (2026-08-28) : le panneau de la vue en consomme la quasi-totalité ;
   // le dessin ne lit que les valeurs — d'où cette destructuration-là (cf. useReplayViewMenu).
   const settings = useReplaySettings()
+  // L'ORIENTATION DE LA CARTE, retenue par carte : le cadrage la prend, le panneau de la vue la commande.
+  const orientation = useReplayOrientation(mapId)
   const {
     showAim, showZones, showTrail, showHeatmap, heatmapMode, heatmapSpan,
     showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
@@ -295,7 +303,7 @@ export function ReplayCanvas({
   // vit dans `useReplayView` (neuvième extraction imposée par le cliquet de taille). Les noms
   // sortent inchangés : le dessin en dessous lit exactement les mêmes valeurs qu'avant.
   const { mapImage, bounds, renderWidth, renderHeight: viewH, screen, zRange, canvasView, zoom } = useReplayView({
-    doc, background, width, freeHeight, onManualMove: onFollowStop,
+    doc, background, turns: orientation.turns, width, freeHeight, onManualMove: onFollowStop,
   })
   // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
   const { shownAtSlot, shownProjectile } = useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom })
@@ -498,7 +506,7 @@ export function ReplayCanvas({
             killFocus.labels,
           ),
           // L'image ENTIERE sur son emprise monde, le canvas rogne le debord (mapBackgroundDraw.ts).
-          'fond-carte': () => drawMapBackground(ctx, mapImage, bgRect),
+          'fond-carte': () => drawMapBackground(ctx, mapImage, bgRect, canvasView),
           'sol-forge': () =>
             drawGeometryLayer(ctx, doc.geometry ?? [], view, { color: geometryColor, z: zRange }),
           'plan-murs': cuit(wallPlanRef.current),
@@ -680,7 +688,7 @@ export function ReplayCanvas({
   // LE BOUTON « VUE » ET SON PANNEAU, groupés de même (useReplayViewMenu) : les disponibilités
   // viennent des calques, les bascules de `useReplaySettings`, et l'ouverture du hook lui-même.
   const viewMenu = useReplayViewMenu({
-    settings, sound, locale,
+    settings, orientation, sound, locale,
     heat: { mode: heat.mode, killsAvailable: heat.killsAvailable },
     available: {
       zones: calloutZones.length > 0,

@@ -10,6 +10,8 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayBounds, ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
+import { QUARTER_TURNS, viewOrientation } from '../model/orientation'
+import { projectTo, type CanvasView } from '../model/replayView'
 import { backgroundRect, coversPlayedArea, worldExtent, worldToPixel } from './mapBackground'
 
 const RIDGELINE: ReplayMapBackgroundCalibration = {
@@ -83,7 +85,7 @@ describe('backgroundRect', () => {
   const PAD = 24
 
   it('pose les deux coins de l\'image dans le même cadrage que les trajectoires', () => {
-    const rect = backgroundRect(RIDGELINE, JOUE, W, H, PAD)
+    const rect = backgroundRect(RIDGELINE, { bounds: JOUE, width: W, height: H, pad: PAD })
     expect(rect).not.toBeNull()
     if (!rect) return
     // L'image couvre 150 m de large pour une zone jouée de 50,8 m : le rectangle dessiné
@@ -96,7 +98,7 @@ describe('backgroundRect', () => {
   })
 
   it("garde le ratio de l'image : un pixel reste carré", () => {
-    const rect = backgroundRect(RIDGELINE, JOUE, W, H, PAD)
+    const rect = backgroundRect(RIDGELINE, { bounds: JOUE, width: W, height: H, pad: PAD })
     if (!rect) throw new Error('rect attendu')
     const ratioImage = RIDGELINE.widthPx / RIDGELINE.heightPx
     expect(rect.width / rect.height).toBeCloseTo(ratioImage, 5)
@@ -106,7 +108,7 @@ describe('backgroundRect', () => {
     // LE CONTRÔLE QUI COMPTE : le coin bas-gauche de la zone jouée doit retomber, dans le
     // rectangle du fond, à la position que la convention pixel lui assigne. C'est ce qui
     // dit que le fond et les trajectoires parlent du même repère.
-    const rect = backgroundRect(RIDGELINE, JOUE, W, H, PAD)
+    const rect = backgroundRect(RIDGELINE, { bounds: JOUE, width: W, height: H, pad: PAD })
     if (!rect) throw new Error('rect attendu')
     const { px, py } = worldToPixel(RIDGELINE, JOUE.minX, JOUE.minY)
     const attenduX = rect.x + (px / RIDGELINE.widthPx) * rect.width
@@ -129,8 +131,44 @@ describe('backgroundRect', () => {
   })
 
   it('rend null sur un calage inexploitable plutôt que de poser le fond au hasard', () => {
-    expect(backgroundRect({ ...RIDGELINE, metersPerPixel: 0 }, JOUE, W, H, PAD)).toBeNull()
-    expect(backgroundRect({ ...RIDGELINE, widthPx: 0 }, JOUE, W, H, PAD)).toBeNull()
-    expect(backgroundRect({ ...RIDGELINE, heightPx: 0 }, JOUE, W, H, PAD)).toBeNull()
+    expect(backgroundRect({ ...RIDGELINE, metersPerPixel: 0 }, { bounds: JOUE, width: W, height: H, pad: PAD })).toBeNull()
+    expect(backgroundRect({ ...RIDGELINE, widthPx: 0 }, { bounds: JOUE, width: W, height: H, pad: PAD })).toBeNull()
+    expect(backgroundRect({ ...RIDGELINE, heightPx: 0 }, { bounds: JOUE, width: W, height: H, pad: PAD })).toBeNull()
+  })
+})
+
+describe('backgroundRect — carte tournée', () => {
+  const SCENE: ReplayBounds = { minX: -57.3, minY: -70, maxX: 93.1, maxY: 79 }
+  const view = (orient?: CanvasView['orient']): CanvasView => ({ bounds: SCENE, width: 900, height: 900, pad: 20, orient })
+
+  it('sans orientation, la pose est celle d’avant : coin haut-gauche projeté', () => {
+    const rect = backgroundRect(RIDGELINE, view())!
+    const ext = worldExtent(RIDGELINE)
+    const tl = projectTo(view(), { x: ext.minX, y: ext.maxY })
+    expect(rect.x).toBeCloseTo(tl.x, 9)
+    expect(rect.y).toBeCloseTo(tl.y, 9)
+  })
+
+  it('à chaque quart de tour, le rectangle est l’emprise des deux coins tournés, projetés', () => {
+    const ext = worldExtent(RIDGELINE)
+    for (const turns of QUARTER_TURNS) {
+      const v = view(viewOrientation(turns, SCENE))
+      const rect = backgroundRect(RIDGELINE, v)!
+      const a = projectTo(v, { x: ext.minX, y: ext.maxY })
+      const b = projectTo(v, { x: ext.maxX, y: ext.minY })
+      expect(rect.x).toBeCloseTo(Math.min(a.x, b.x), 9)
+      expect(rect.y).toBeCloseTo(Math.min(a.y, b.y), 9)
+      expect(rect.width).toBeCloseTo(Math.abs(b.x - a.x), 9)
+      expect(rect.height).toBeCloseTo(Math.abs(b.y - a.y), 9)
+    }
+  })
+
+  it('à 1 et 3 quarts de tour, largeur et hauteur de l’image sont échangées', () => {
+    const droit = backgroundRect(RIDGELINE, view())!
+    for (const turns of [1, 3] as const) {
+      const r = backgroundRect(RIDGELINE, view(viewOrientation(turns, SCENE)))!
+      expect(r.width).toBeCloseTo(droit.height, 6)
+      expect(r.height).toBeCloseTo(droit.width, 6)
+    }
   })
 })

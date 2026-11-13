@@ -67,6 +67,8 @@ export function useReplayWheelZoom(
         acc -= Math.sign(acc) * WHEEL_STEP
         const r = el.getBoundingClientRect()
         const { zoom: z, view: v } = live.current
+        // CE POINT EST DANS LE REPÈRE DE LA CARTE TOURNÉE (celui de `view.bounds`, où le zoom raisonne) :
+        // aucune rotation à défaire ici, le zoom et la projection parlent le même repère.
         // LE POINT VISÉ SE RELIT À CHAQUE CRAN, et pas une fois pour le geste : après un palier
         // la projection a changé, donc les mêmes coordonnées d'écran désignent un autre endroit
         // du monde. Le relire est ce qui garde le curseur ancré sur ce qu'il montrait.

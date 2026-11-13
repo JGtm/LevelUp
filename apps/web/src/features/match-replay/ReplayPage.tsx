@@ -313,6 +313,7 @@ export function ReplayPage() {
               playbackStore={playbackStore}
               openAtFrame={openAtFrame}
               background={mapBackground}
+              mapId={replayContext?.header.map_id}
               callouts={callouts}
               scoreboard={scoreboard}
               allegiance={model.allegiance}

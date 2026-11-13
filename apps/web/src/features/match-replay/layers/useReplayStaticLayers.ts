@@ -28,7 +28,8 @@ import type { ReplayLocale } from '../i18n/i18n'
 import { drawObjectivesLayer, type ObjectiveElementReady } from './objectivesLayer'
 import { drawWallPlanLayer } from './wallPlanLayer'
 import type { WallPlanReady } from '../model/wallPlan'
-import { cookIsReusable, projectTo, scaleOf as viewScale, type CanvasView } from '../model/replayView'
+import { cookIsReusable, projectFrameTo, projectTo, scaleOf as viewScale, type CanvasView } from '../model/replayView'
+import { orientHeatGrid } from '../model/orientation'
 import { canvasPixelRatio } from '../export/exportLayoutStore'
 
 /** Ce que chaque calque statique a besoin de savoir, regroupé par calque. */
@@ -180,11 +181,15 @@ export function useReplayStaticLayers({
     heatRef.current = cookLayer(cookView, (ctx, dpr) => {
       // Le noyau partagé (`lib/replay/heatPaint`) ne connaît pas `CanvasView` (une feature) :
       // c'est cet adaptateur qui projette le coin de la grille et son pas en pixels canvas.
+      // LA GRILLE TOURNE AVEC LA CARTE (`orientHeatGrid`) : ses cellules restent alignées sur les
+      // axes de la toile, et son coin se projette dans le repère déjà tourné (`projectFrameTo`).
+      const o = cookView.orient
+      const grid = o ? orientHeatGrid(heatGrid, o.turns, o.pivot) : heatGrid
       const heatView = {
-        topLeft: projectTo(cookView, { x: heatGrid.minX, y: heatGrid.minY + heatGrid.ny * heatGrid.cell }),
-        step: heatGrid.cell * viewScale(cookView),
+        topLeft: projectFrameTo(cookView, { x: grid.minX, y: grid.minY + grid.ny * grid.cell }),
+        step: grid.cell * viewScale(cookView),
       }
-      drawHeatmapLayer(ctx, heatGrid, heatView, { ramp, k: dpr })
+      drawHeatmapLayer(ctx, grid, heatView, { ramp, k: dpr })
     })
     redraw()
   }, [heatGrid, ramp, cookView, redraw])

@@ -11,13 +11,15 @@
  *   yMonde = originY - (py + 0.5) * metersPerPixel
  *
  * L'IMAGE DESCEND EN Y QUAND LE MONDE MONTE — même sens que le canvas, ce qui rend la pose
- * du fond purement affine : deux coins suffisent, aucune rotation, aucun miroir.
+ * du fond purement affine : deux coins suffisent, aucun miroir. La rotation de la carte par quarts
+ * de tour (`model/orientation`) n'y ajoute qu'un quart de tour de l'image entière autour du centre
+ * de son rectangle (`layers/mapBackgroundDraw.ts`).
  *
  * Pas de React, pas de canvas : géométrie pure, testable (mapBackground.test.ts).
  */
 import type { ReplayBounds, ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
-import { worldToCanvas } from '../../../lib/replay/replayLogic'
+import { projectTo, type CanvasView } from '../model/replayView'
 
 /** Rectangle de dessin dans le repère canvas (pixels CSS). */
 export interface BackgroundRect {
@@ -71,30 +73,31 @@ export function worldToPixel(
  * backgroundRect place l'image entière dans le canvas, pour le MÊME cadrage que les
  * trajectoires (`worldToCanvas`).
  *
- * POURQUOI L'IMAGE ENTIÈRE ET PAS UN DÉCOUPAGE. La projection est affine et sans rotation :
- * poser les deux coins opposés suffit, et le canvas se charge de rogner ce qui déborde. Un
- * découpage en pixels source ajouterait une seconde arithmétique — donc un second endroit
- * où se tromper — sans rien gagner à l'écran.
+ * POURQUOI L'IMAGE ENTIÈRE ET PAS UN DÉCOUPAGE. La projection est affine : poser les deux
+ * coins opposés suffit, et le canvas se charge de rogner ce qui déborde. Un découpage en pixels
+ * source ajouterait une seconde arithmétique — donc un second endroit où se tromper — sans rien
+ * gagner à l'écran.
+ *
+ * AVEC UNE CARTE TOURNÉE (`orient`), les deux coins sont tournés avant d'être projetés : le
+ * rectangle rendu est celui que l'image occupe À L'ÉCRAN une fois tournée — l'emprise axiale de
+ * l'image tournée, de largeur et hauteur échangées pour un quart de tour.
  *
  * Rend null si le calage est inexploitable (m/px nul, image vide) : pas de fond plutôt qu'un
  * fond posé n'importe où.
  */
 export function backgroundRect(
   cal: ReplayMapBackgroundCalibration,
-  bounds: ReplayBounds,
-  width: number,
-  height: number,
-  pad: number,
+  view: CanvasView,
 ): BackgroundRect | null {
   if (cal.metersPerPixel <= 0 || cal.widthPx <= 0 || cal.heightPx <= 0) return null
   const ext = worldExtent(cal)
   // Coin haut-gauche de l'image = (minX monde, maxY monde) ; coin bas-droit = (maxX, minY).
-  const tl = worldToCanvas({ x: ext.minX, y: ext.maxY }, bounds, width, height, pad)
-  const br = worldToCanvas({ x: ext.maxX, y: ext.minY }, bounds, width, height, pad)
-  const w = br.x - tl.x
-  const h = br.y - tl.y
+  const a = projectTo(view, { x: ext.minX, y: ext.maxY })
+  const b = projectTo(view, { x: ext.maxX, y: ext.minY })
+  const w = Math.abs(b.x - a.x)
+  const h = Math.abs(b.y - a.y)
   if (!(w > 0) || !(h > 0)) return null
-  return { x: tl.x, y: tl.y, width: w, height: h }
+  return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: w, height: h }
 }
 
 /**

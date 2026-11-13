@@ -377,6 +377,9 @@ export interface ReplayText {
   /** « Plan des murs » : le trait fin des murs de la carte sur son fond (n'existe qu'avec un plan). */
   layerWallPlan: string
   layerWallPlanHint: string
+  /** « Orientation » : la commande à quatre positions (0°, 90°, 180°, 270°) qui tourne la carte. */
+  orientationTitle: string
+  orientationHint: string
   /** Noms des joueurs sous leur marqueur (calque éteignable — un BTB à 24 joueurs). */
   /**
    * TRAÎNÉE derrière chaque marqueur (V1, retour utilisateur du 2026-08-18 : « avoir la

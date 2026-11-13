@@ -28,11 +28,13 @@ const FILM: FilmLayerAvailability = {
 }
 
 const SOUND = { available: false, categories: {} } as unknown as ReplaySound
+const ORIENTATION = { turns: 0 as const, setTurns: () => {}, available: true }
 
 function Harness({ locale }: { locale: ReplayLocale }) {
   const settings = useReplaySettings()
   const view = useReplayViewMenu({
     settings,
+    orientation: ORIENTATION,
     sound: SOUND,
     available: FILM,
     heat: { mode: 'presence', killsAvailable: true },

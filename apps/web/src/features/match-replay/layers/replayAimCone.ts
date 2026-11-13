@@ -9,6 +9,7 @@
  * (`h` et `p`) plutôt qu'une position.
  */
 import type { MarkerStyle } from "./replayMarkers";
+import { shiftHeadingDeg } from "../model/orientation";
 import { freshness, heldReading, type XY } from "../../../lib/replay/replayLogic";
 import type { ReplayTrackReady } from "../../../lib/replay/replayNormalize";
 
@@ -112,8 +113,9 @@ export function drawAimCone(
   );
   if (!read) return;
   const fresh = freshness(read.age, style.timing.aimHold, AIM_FADE);
-  // Monde -> canevas : l'axe Y est inversé, donc l'angle l'est aussi.
-  const ang = (-read.value * Math.PI) / 180;
+  // Monde -> canevas : l'axe Y est inversé, donc l'angle l'est aussi. Le cap gagne la rotation de la
+  // carte (`style.turns`, posée par `drawTracksLayer` d'après le cadrage) : le cône tourne avec le terrain.
+  const ang = (-shiftHeadingDeg(read.value, style.turns ?? 0) * Math.PI) / 180;
   // LA LUNETTE agit sur l'OUVERTURE, jamais sur la longueur : celle-ci est deja portee par
   // l'elevation. Les deux mecaniques restent ainsi lisibles ensemble.
   const palier = heldScoped(track.points, style, read.age);
