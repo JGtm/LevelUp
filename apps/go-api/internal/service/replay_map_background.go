@@ -45,6 +45,7 @@ import (
 
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/mapfondsidecar"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/replayview"
 
@@ -75,11 +76,7 @@ func (s *replayService) MapBackground(ctx context.Context, matchID string) (*rep
 	if err != nil {
 		return nil, err
 	}
-	bg, err := s.loadMapBackground(ctx, key)
-	if err != nil {
-		return nil, err
-	}
-	return replayview.MapBackgroundOf(bg), nil
+	return s.servedMapBackground(ctx, key)
 }
 
 // MapBackgroundImage retourne les octets du fond de carte du match, et le type MIME sous
@@ -107,11 +104,7 @@ func (s *replayService) MapBackgroundForMap(ctx context.Context, mapID string) (
 	if err != nil {
 		return nil, err
 	}
-	bg, err := s.loadMapBackground(ctx, key)
-	if err != nil {
-		return nil, err
-	}
-	return replayview.MapBackgroundOf(bg), nil
+	return s.servedMapBackground(ctx, key)
 }
 
 // MapBackgroundImageForMap retourne les octets du fond d'une CARTE, et son type MIME.
@@ -274,6 +267,27 @@ func cleDeFondSure(cle string) bool {
 		return false
 	}
 	return !strings.Contains(cle, "..")
+}
+
+// servedMapBackground rend le calage d'une clé de fond dans sa forme SERVIE : le calage du
+// décodeur projeté sur le contrat public, plus le plan des murs que le sidecar porte à côté et
+// que le décodeur ne connaît pas (`internal/mapfondsidecar`). Un plan illisible est journalisé
+// et laissé de côté : le calage et l'image restent servis.
+func (s *replayService) servedMapBackground(ctx context.Context, key string) (*replaydoc.MapBackground, error) {
+	bg, err := s.loadMapBackground(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	out := replayview.MapBackgroundOf(bg)
+	path := title.NewPathResolver(s.repoRoot).MapBackgroundMetaPath(s.titleSlug, key)
+	plan, err := mapfondsidecar.LoadPlan(path)
+	if err != nil {
+		slog.WarnContext(ctx, "rejeu 2D : plan des murs illisible — fond servi sans plan",
+			"err", err, "cle", key, "path", path, "titleSlug", s.titleSlug)
+		return out, nil
+	}
+	out.Plan = plan
+	return out, nil
 }
 
 // loadMapBackground lit le sidecar de calage d'une clé de fond (module installé ou map_id).
