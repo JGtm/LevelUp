@@ -10,9 +10,9 @@ go 1.26.11
 require (
 	github.com/HugoSmits86/nativewebp v1.3.0
 	github.com/JGtm/halo-api v1.0.1
-	github.com/JGtm/halo-infinite-files-reader v1.0.2-0.20261113114944-0a8f7b8b1cb6
+	github.com/JGtm/halo-infinite-files-reader v1.0.2-0.20261113125521-a2397d65489e
 	github.com/JGtm/halo-infinite-film-decoder v1.3.4
-	github.com/JGtm/halo-infinite-map-images v1.0.2-0.20261113121632-17bbd5b8e124
+	github.com/JGtm/halo-infinite-map-images v1.0.2-0.20261113125520-196f8de3af10
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/duckdb/duckdb-go/v2 v2.10506.0
 	github.com/getkin/kin-openapi v0.151.0

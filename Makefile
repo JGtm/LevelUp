@@ -244,9 +244,12 @@ go-api-test:
 ##
 ## Sans installation du jeu, chaque test prend son `t.Skip` et la cible est vide en 1 s.
 ## Cibler une carte : BALAYAGE_CARTES=aquarius_map ; installation ailleurs :
-## LEVELUP_HALO_DEPLOY=<chemin>.
+## LEVELUP_HALO_DEPLOY=<chemin>. Les tests natifs de `hinavmesh` (brique des fichiers du jeu) ne
+## cherchent pas l'installation : sans LEVELUP_HALO_DEPLOY ils prennent leur t.Skip ; la cible
+## transmet la variable telle qu'elle est posee dans l'environnement.
 go-api-test-gamefiles:
-	cd $(GO_API_DIR) && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s github.com/JGtm/halo-infinite-map-images/himap/ -v
+	@[ -n "$$LEVELUP_HALO_DEPLOY" ] || echo "LEVELUP_HALO_DEPLOY non posee : les tests natifs de hinavmesh prennent leur t.Skip (le dossier deploy de Halo Infinite)"
+	cd $(GO_API_DIR) && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s github.com/JGtm/halo-infinite-map-images/himap/ github.com/JGtm/halo-infinite-files-reader/hinavmesh/ -v
 	cd $(GO_API_DIR) && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
 		./internal/gamefilescorpus/ \
 		./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
