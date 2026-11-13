@@ -2,10 +2,10 @@
  * DBContentionSection — Contention DB (B-swap shared, diagnostic du stall
  * pendant le sync). Extraction 1:1 depuis l'ancienne AdminPage.
  */
-import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { SortableTh } from '@/components/ui/sortable-th'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import { useColumnSort, type SortColumn } from '@/lib/table/useColumnSort'
 import type { DBContentionResponse } from '@/lib/api/types'
 import { useAdminDBContention } from '../queries'
 import { useT } from '../useAdminText'
@@ -17,15 +17,13 @@ type DBContentionHolder = NonNullable<DBContentionResponse['holders']>[number]
 
 type HolderSortKey = 'label' | 'count' | 'total_ms' | 'avg_ms' | 'max_ms' | 'watchdog_fired'
 
-function holderRawValue(h: DBContentionHolder, key: HolderSortKey): string | number {
-  return h[key]
-}
-
-function compareHolders(a: DBContentionHolder, b: DBContentionHolder, key: HolderSortKey, dir: 'asc' | 'desc'): number {
-  const va = holderRawValue(a, key)
-  const vb = holderRawValue(b, key)
-  const cmp = typeof va === 'string' && typeof vb === 'string' ? va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' }) : (va as number) - (vb as number)
-  return dir === 'asc' ? cmp : -cmp
+const SORT_COLUMNS: Record<HolderSortKey, SortColumn<DBContentionHolder>> = {
+  label: { value: (h) => h.label, firstDir: 'asc' },
+  count: { value: (h) => h.count },
+  total_ms: { value: (h) => h.total_ms },
+  avg_ms: { value: (h) => h.avg_ms },
+  max_ms: { value: (h) => h.max_ms },
+  watchdog_fired: { value: (h) => h.watchdog_fired },
 }
 
 export function DBContentionSection() {
@@ -34,21 +32,8 @@ export function DBContentionSection() {
   // I16 : tri CLIENT — table entièrement chargée. Aucun tri actif par défaut :
   // l'ordre serveur (total_ms DESC) reste affiché tant qu'aucun en-tête n'a été
   // cliqué (cf. commentaire ci-dessous « trié total desc côté API »).
-  const [sortKey, setSortKey] = useState<HolderSortKey | null>(null)
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
-  function toggleSort(key: HolderSortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortKey(key)
-      setSortDir(key === 'label' ? 'asc' : 'desc')
-    }
-  }
-  const sortedHolders = useMemo(() => {
-    const holders = data?.holders ?? []
-    if (!sortKey) return holders
-    return [...holders].sort((a, b) => compareHolders(a, b, sortKey, sortDir))
-  }, [data?.holders, sortKey, sortDir])
+  const sort = useColumnSort(data?.holders ?? [], SORT_COLUMNS)
+  const sortedHolders = sort.rows
 
   return (
     <section className="space-y-3">
@@ -115,12 +100,12 @@ export function DBContentionSection() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs text-muted-foreground">
-                    <SortableTh label={t('common.admin.contention_holder_label')} active={sortKey === 'label'} dir={sortDir} onClick={() => toggleSort('label')} className="py-1 pr-2 font-medium" />
-                    <SortableTh label={t('common.admin.contention_holder_count')} active={sortKey === 'count'} dir={sortDir} onClick={() => toggleSort('count')} className="py-1 pr-2 font-medium" />
-                    <SortableTh label={t('common.admin.contention_holder_total')} active={sortKey === 'total_ms'} dir={sortDir} onClick={() => toggleSort('total_ms')} className="py-1 pr-2 font-medium" />
-                    <SortableTh label={t('common.admin.contention_holder_avg')} active={sortKey === 'avg_ms'} dir={sortDir} onClick={() => toggleSort('avg_ms')} className="py-1 pr-2 font-medium" />
-                    <SortableTh label={t('common.admin.contention_holder_max')} active={sortKey === 'max_ms'} dir={sortDir} onClick={() => toggleSort('max_ms')} className="py-1 pr-2 font-medium" />
-                    <SortableTh label={t('common.admin.contention_watchdog')} active={sortKey === 'watchdog_fired'} dir={sortDir} onClick={() => toggleSort('watchdog_fired')} className="py-1 font-medium" />
+                    <SortableTh label={t('common.admin.contention_holder_label')} {...sort.header('label')} className="py-1 pr-2 font-medium" />
+                    <SortableTh label={t('common.admin.contention_holder_count')} {...sort.header('count')} className="py-1 pr-2 font-medium" />
+                    <SortableTh label={t('common.admin.contention_holder_total')} {...sort.header('total_ms')} className="py-1 pr-2 font-medium" />
+                    <SortableTh label={t('common.admin.contention_holder_avg')} {...sort.header('avg_ms')} className="py-1 pr-2 font-medium" />
+                    <SortableTh label={t('common.admin.contention_holder_max')} {...sort.header('max_ms')} className="py-1 pr-2 font-medium" />
+                    <SortableTh label={t('common.admin.contention_watchdog')} {...sort.header('watchdog_fired')} className="py-1 font-medium" />
                   </tr>
                 </thead>
                 <tbody>

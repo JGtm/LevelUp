@@ -3,10 +3,11 @@
  * "hand-rolled" (pas TanStack Table) : petites tables admin + tableaux Carrière
  * (I16 — tri par en-têtes généralisé à tout l'app).
  *
- * Foyer canonique (règle ≤2 copies, CLAUDE.md n°6) : le state de tri (sortKey/
- * sortDir + fonction toggleSort) reste LOCAL à chaque consommateur (la logique de
- * comparaison diffère par colonne) — seul le RENDU de l'en-tête (bouton + flèche +
- * aria-sort) est centralisé ici. Garde-rail : sortable-th.guard.test.ts.
+ * Foyer canonique (règle ≤2 copies, CLAUDE.md n°6) : le RENDU de l'en-tête (bouton + flèche +
+ * aria-sort) est centralisé ici ; l'état de tri, la règle de bascule et l'ordre des lignes le sont
+ * dans `lib/table/useColumnSort`, dont `header(clé)` fournit `active`, `dir` et `onClick`. La
+ * comparaison propre à chaque colonne se déclare dans le tableau (`SortColumn`). Garde-rails :
+ * sortable-th.guard.test.ts et lib/table/noLocalSortToggle.guard.test.ts.
  *
  * Pattern DISTINCT de MatchScoreboard/MatchEncountersTable (features/match-view/
  * sortHeader.ts) : ces 2 tableaux TanStack cliquent directement le <th> (pas de

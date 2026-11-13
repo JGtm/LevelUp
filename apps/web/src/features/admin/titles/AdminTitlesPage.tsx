@@ -7,10 +7,11 @@
  * GET /admin/titles[/{slug}] qui réutilise la logique capabilities/feature-matrix
  * (1.7a/b) côté Go. Couleurs via tokens sémantiques (foreground/muted/destructive).
  */
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { SortableTh } from '@/components/ui/sortable-th'
+import { useColumnSort, type SortColumn } from '@/lib/table/useColumnSort'
 import type { AdminManifestKey } from '@/lib/i18n/generated/admin'
 
 import { useAdminT } from '../useAdminText'
@@ -30,24 +31,11 @@ function statusKey(s: TitleStatus): AdminManifestKey {
 
 type TitleSortKey = 'name' | 'status' | 'capabilities' | 'has_mappings'
 
-function titleRawValue(t: AdminTitleSummary, key: TitleSortKey): string | number {
-  switch (key) {
-    case 'name':
-      return t.name
-    case 'status':
-      return t.status
-    case 'capabilities':
-      return t.capabilities?.length ?? 0
-    case 'has_mappings':
-      return t.has_mappings ? 1 : 0
-  }
-}
-
-function compareTitles(a: AdminTitleSummary, b: AdminTitleSummary, key: TitleSortKey, dir: 'asc' | 'desc'): number {
-  const va = titleRawValue(a, key)
-  const vb = titleRawValue(b, key)
-  const cmp = typeof va === 'string' && typeof vb === 'string' ? va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' }) : (va as number) - (vb as number)
-  return dir === 'asc' ? cmp : -cmp
+const SORT_COLUMNS: Record<TitleSortKey, SortColumn<AdminTitleSummary>> = {
+  name: { value: (t) => t.name, firstDir: 'asc' },
+  status: { value: (t) => t.status, firstDir: 'asc' },
+  capabilities: { value: (t) => t.capabilities?.length ?? 0 },
+  has_mappings: { value: (t) => (t.has_mappings ? 1 : 0) },
 }
 
 export function AdminTitlesPage() {
@@ -56,23 +44,9 @@ export function AdminTitlesPage() {
   const [selected, setSelected] = useState<string | null>(null)
   // I16 : tri CLIENT — registre statique (peu de titres), aucun tri actif par
   // défaut (ordre serveur conservé).
-  const [sortKey, setSortKey] = useState<TitleSortKey | null>(null)
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
-  function toggleSort(key: TitleSortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortKey(key)
-      setSortDir(key === 'name' || key === 'status' ? 'asc' : 'desc')
-    }
-  }
-
   const titles = data?.titles ?? []
-  const sortedTitles = useMemo(() => {
-    if (!sortKey) return titles
-    return [...titles].sort((a, b) => compareTitles(a, b, sortKey, sortDir))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [titles, sortKey, sortDir])
+  const sort = useColumnSort(titles, SORT_COLUMNS)
+  const sortedTitles = sort.rows
   const activeSlug = selected ?? titles[0]?.slug ?? null
 
   return (
@@ -92,10 +66,10 @@ export function AdminTitlesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs text-muted-foreground">
-                    <SortableTh label={tA('admin.titles.col_title')} active={sortKey === 'name'} dir={sortDir} onClick={() => toggleSort('name')} className="py-2 pr-4 font-medium" />
-                    <SortableTh label={tA('admin.titles.col_status')} active={sortKey === 'status'} dir={sortDir} onClick={() => toggleSort('status')} className="py-2 pr-4 font-medium" />
-                    <SortableTh label={tA('admin.titles.col_capabilities')} active={sortKey === 'capabilities'} dir={sortDir} onClick={() => toggleSort('capabilities')} className="py-2 pr-4 font-medium" tooltip={tA('admin.titles.col_capabilities_tooltip')} />
-                    <SortableTh label={tA('admin.titles.col_mappings')} active={sortKey === 'has_mappings'} dir={sortDir} onClick={() => toggleSort('has_mappings')} className="py-2 pr-4 font-medium" tooltip={tA('admin.titles.col_mappings_tooltip')} />
+                    <SortableTh label={tA('admin.titles.col_title')} {...sort.header('name')} className="py-2 pr-4 font-medium" />
+                    <SortableTh label={tA('admin.titles.col_status')} {...sort.header('status')} className="py-2 pr-4 font-medium" />
+                    <SortableTh label={tA('admin.titles.col_capabilities')} {...sort.header('capabilities')} className="py-2 pr-4 font-medium" tooltip={tA('admin.titles.col_capabilities_tooltip')} />
+                    <SortableTh label={tA('admin.titles.col_mappings')} {...sort.header('has_mappings')} className="py-2 pr-4 font-medium" tooltip={tA('admin.titles.col_mappings_tooltip')} />
                   </tr>
                 </thead>
                 <tbody>

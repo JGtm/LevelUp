@@ -3,11 +3,11 @@
  * Sync & Jobs : daemon / RTA / token + état FSM par joueur surveillé.
  * Réutilise useWatcherStatus (polling 10 s, features/settings).
  */
-import { useMemo, useState } from 'react'
 import { useWatcherStatus } from '@/features/settings/watcher-queries'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { SortableTh } from '@/components/ui/sortable-th'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import { useColumnSort, type SortColumn } from '@/lib/table/useColumnSort'
 import type { WatcherPlayerStatus } from '@/lib/api/types'
 import { StatusBadge } from '../components/StatusBadge'
 import { adminAbsoluteTime, adminRelativeTime } from '../format'
@@ -18,29 +18,12 @@ import type { Locale } from '@/lib/i18n/locale'
 
 type WatcherSortKey = 'gamertag' | 'state' | 'presence_state' | 'state_since' | 'last_event_at'
 
-function watcherRawValue(p: WatcherPlayerStatus, key: WatcherSortKey): string | number | null {
-  switch (key) {
-    case 'gamertag':
-      return p.gamertag
-    case 'state':
-      return p.state
-    case 'presence_state':
-      return p.presence_state ?? null
-    case 'state_since':
-      return Date.parse(p.state_since)
-    case 'last_event_at':
-      return p.last_event_at ? Date.parse(p.last_event_at) : null
-  }
-}
-
-function compareWatcherPlayers(a: WatcherPlayerStatus, b: WatcherPlayerStatus, key: WatcherSortKey, dir: 'asc' | 'desc'): number {
-  const va = watcherRawValue(a, key)
-  const vb = watcherRawValue(b, key)
-  if (va == null && vb == null) return 0
-  if (va == null) return 1
-  if (vb == null) return -1
-  const cmp = typeof va === 'string' && typeof vb === 'string' ? va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' }) : (va as number) - (vb as number)
-  return dir === 'asc' ? cmp : -cmp
+const SORT_COLUMNS: Record<WatcherSortKey, SortColumn<WatcherPlayerStatus>> = {
+  gamertag: { value: (p) => p.gamertag, firstDir: 'asc' },
+  state: { value: (p) => p.state, firstDir: 'asc' },
+  presence_state: { value: (p) => p.presence_state ?? null, firstDir: 'asc' },
+  state_since: { value: (p) => Date.parse(p.state_since) },
+  last_event_at: { value: (p) => (p.last_event_at ? Date.parse(p.last_event_at) : null) },
 }
 
 /** État FSM watcher → statut de badge (Watching/Syncing actifs, Cooling warn). */
@@ -119,31 +102,19 @@ function WatcherPlayersTable({
 }) {
   // I16 : tri CLIENT — liste watcher entièrement chargée (peu de joueurs
   // surveillés), aucun tri actif par défaut (ordre serveur conservé).
-  const [sortKey, setSortKey] = useState<WatcherSortKey | null>(null)
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
-  function toggleSort(key: WatcherSortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortKey(key)
-      setSortDir(key === 'state_since' || key === 'last_event_at' ? 'desc' : 'asc')
-    }
-  }
-  const sortedPlayers = useMemo(() => {
-    if (!sortKey) return players
-    return [...players].sort((a, b) => compareWatcherPlayers(a, b, sortKey, sortDir))
-  }, [players, sortKey, sortDir])
+  const sort = useColumnSort(players, SORT_COLUMNS)
+  const sortedPlayers = sort.rows
 
   return (
     <div className="overflow-x-auto rounded-md border">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <SortableTh label={tA('admin.sync.col_player')} active={sortKey === 'gamertag'} dir={sortDir} onClick={() => toggleSort('gamertag')} className="px-3 py-2 font-medium" />
-            <SortableTh label={tA('admin.watcher.col_state')} active={sortKey === 'state'} dir={sortDir} onClick={() => toggleSort('state')} className="px-3 py-2 font-medium" tooltip={tA('admin.watcher.col_state_tooltip')} />
-            <SortableTh label={tA('admin.watcher.col_presence')} active={sortKey === 'presence_state'} dir={sortDir} onClick={() => toggleSort('presence_state')} className="px-3 py-2 font-medium" tooltip={tA('admin.watcher.col_presence_tooltip')} />
-            <SortableTh label={tA('admin.watcher.col_since')} active={sortKey === 'state_since'} dir={sortDir} onClick={() => toggleSort('state_since')} className="px-3 py-2 font-medium" />
-            <SortableTh label={tA('admin.watcher.col_last_event')} active={sortKey === 'last_event_at'} dir={sortDir} onClick={() => toggleSort('last_event_at')} className="px-3 py-2 font-medium" />
+            <SortableTh label={tA('admin.sync.col_player')} {...sort.header('gamertag')} className="px-3 py-2 font-medium" />
+            <SortableTh label={tA('admin.watcher.col_state')} {...sort.header('state')} className="px-3 py-2 font-medium" tooltip={tA('admin.watcher.col_state_tooltip')} />
+            <SortableTh label={tA('admin.watcher.col_presence')} {...sort.header('presence_state')} className="px-3 py-2 font-medium" tooltip={tA('admin.watcher.col_presence_tooltip')} />
+            <SortableTh label={tA('admin.watcher.col_since')} {...sort.header('state_since')} className="px-3 py-2 font-medium" />
+            <SortableTh label={tA('admin.watcher.col_last_event')} {...sort.header('last_event_at')} className="px-3 py-2 font-medium" />
           </tr>
         </thead>
         <tbody>
