@@ -349,6 +349,10 @@ const NULLABLE_ARRAY_PATHS = [
   // (`ReplayVehicleRideReady`) : un épisode sans lecture arrive à vide, et le cône retombe alors
   // sur le cap du châssis au lieu de tomber à l'exécution.
   'vehicles[].rides[].aim',
+  // Schéma 109 : les xuids des occupants TUÉS d'une destruction de véhicule. Le bloc `destruction`
+  // est facultatif (absent d'un rejeu cuit avant lui, et d'une pièce montée) ; quand il est là, sa
+  // liste est comblée à VIDE par la frontière, comme `rides[].aim` : « aucun occupant tué nommé ».
+  'vehicles[].destruction.killed',
   // Schéma 60 (lot 1.9.11) : les DÉSIGNATEURS DE MANCHE écrits (`roundsWritten`) et contredits
   // (`roundsContradicted`) sont deux tableaux de nombres du bloc `coverage.score`, publiés seulement
   // à partir de deux désignateurs (`omitempty`). Le bloc `coverage` reste OPAQUE pour la frontière
@@ -530,6 +534,14 @@ describe('la frontière du document de rejeu', () => {
     expect(ready.flagCarries[0].spans, 'flagCarries[].spans').toEqual([])
     expect(ready.vehicles[0].samples, 'vehicles[].samples').toEqual([])
     expect(ready.vehicles[0].rides, 'vehicles[].rides').toEqual([])
+    // LA DESTRUCTION : absente reste absente (jamais un bloc inventé) ; présente, sa liste de tués
+    // nullable est comblée à vide.
+    expect(ready.vehicles[0].destruction ?? null).toBeNull()
+    const avecBloc = normalizeReplayDocument({
+      vehicles: [{ slot: 6, gen: 0, t0: 0, t1: 100, t1max: 100, end: 'destroyed', destruction: { occupant: 'x1' } }],
+    } as unknown as ReplayDocument)
+    expect(avecBloc.vehicles[0].destruction?.killed, 'vehicles[].destruction.killed').toEqual([])
+    expect(avecBloc.vehicles[0].destruction?.occupant).toBe('x1')
     // `spawn` N'EST PAS un tableau : absent reste absent, jamais un objet inventé qui se lirait
     // comme une naissance que le film ne montre pas.
     expect(ready.vehicles[0].spawn ?? null).toBeNull()

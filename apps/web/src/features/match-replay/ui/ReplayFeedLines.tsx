@@ -346,21 +346,23 @@ function EventFeedLine({
   locale: ReplayLocale
 }) {
   // UNE DESTRUCTION SANS AUTEUR n'a pas d'acteur : ni nom ni encre de camp (neutre), la phrase seule.
+  // Un destructeur BOT n'a pas de xuid : son nom est celui du roster, à l'encre neutre.
   const actor = event.xuid
+  const botName = 'destroyed' in event ? event.botName : null
   const shared = {
     replayMs,
     color: actor ? inkOf(actor) : inkOf(''),
     mark: actor ? marks.get(actor) : undefined,
-    name: actor ? displayPlayerName(xuidMeta.get(actor)?.gamertag, actor) : '',
+    name: actor ? displayPlayerName(xuidMeta.get(actor)?.gamertag, actor) : botName ? displayPlayerName(botName) : '',
     locale,
   }
   if (event.family === 'objectives') return <ReplayObjectiveLine line={event} {...shared} />
-  const occupant = 'destroyed' in event ? event.occupantXuid : null
+  const aboard = 'destroyed' in event ? event.aboardXuids : []
   return (
     <ReplayEventLine
       line={event}
       {...shared}
-      occupantName={occupant ? displayPlayerName(xuidMeta.get(occupant)?.gamertag, occupant) : undefined}
+      aboardNames={aboard.map((xuid) => displayPlayerName(xuidMeta.get(xuid)?.gamertag, xuid))}
     />
   )
 }

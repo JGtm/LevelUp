@@ -60,7 +60,7 @@ type Builder struct {
 	// gagne sur la resolution par carte, pour toutes les cartes ; c'est l'echappatoire de
 	// l'operateur qui teste une extraction.
 	geometryOverride []replay.MapObject
-	// interval : pas de temps du rejeu en ms ; 0 = défaut de replay.Options.
+	// interval : pas de temps du rejeu en ms ; 0 = pas de la page ([pasDuRejeu]).
 	interval int
 	// structures : cache par module du fond structurel (une carte revient N fois dans une
 	// passe de masse ; recharger le fichier à chaque match serait du pur gaspillage).
@@ -142,7 +142,7 @@ func NewBuilder(ctx context.Context, repoRoot, titleSlug string) (*Builder, erro
 	}, nil
 }
 
-// WithFrameInterval règle le pas de temps du rejeu en ms (0 = défaut). Chaînable.
+// WithFrameInterval règle le pas de temps du rejeu en ms (0 = pas de la page, [pasDuRejeu]). Chaînable.
 func (b *Builder) WithFrameInterval(ms int) *Builder {
 	b.interval = ms
 	return b

@@ -111,3 +111,8 @@
 // v106 (2026-10-28, lot durees d effets). Le rejeu dessinait
 // v107 (2026-11-08, fin de vie a la mort ecrite ; equipement porte : l identite se lit sur l objet).
 // v108 (2026-11-09, tourelle fixe generique ; slots sans creation). Aucun champ neuf : le CONTENU change.
+// v109 (2026-11-12, destruction de vehicule : destructeur, cause, occupant, occupants tues). Un champ neuf
+// v110 (2026-11-12, occupants tues lus). Le film ecrit QUI EST MORT AVEC UN VEHICULE DETRUIT ; `vehicles[].destruction.killed`
+// v111 (2026-11-12, cadence du rejeu : 100 ms -> 33 ms). La grille du document passe de 10 a 30,3 images par
+// v112 (2026-11-12, creation des records NEW et charges de la vue A selon le build). Aucun champ neuf, aucune forme qui change :
+// v113 (2026-11-13, poses datees apres la fin de l axe de nouveau ecartees). Aucun champ neuf, aucune forme qui change : c est le

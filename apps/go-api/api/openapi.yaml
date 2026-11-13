@@ -32809,6 +32809,8 @@ components:
         deathsUnmatched:
           format: int64
           type: integer
+        destructions:
+          $ref: '#/components/schemas/VehicleDestructionCoverage'
         echantillonsAuTraversDUnSilence:
           format: int64
           type: integer
@@ -33038,6 +33040,108 @@ components:
         - gaps
         - missing
       type: object
+    VehicleDestroyer:
+      additionalProperties: false
+      properties:
+        bot:
+          type: boolean
+        i:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - i
+      type: object
+    VehicleDestruction:
+      additionalProperties: false
+      properties:
+        by:
+          $ref: '#/components/schemas/VehicleDestroyer'
+        cause:
+          format: int32
+          minimum: 0
+          type: integer
+        causeKey:
+          type: string
+        killed:
+          items:
+            type: string
+          type:
+            - array
+            - "null"
+        occupant:
+          type: string
+      type: object
+    VehicleDestructionCoverage:
+      additionalProperties: false
+      properties:
+        byBot:
+          format: int64
+          type: integer
+        byHuman:
+          format: int64
+          type: integer
+        cause:
+          format: int64
+          type: integer
+        causeAbsent:
+          format: int64
+          type: integer
+        causeUnresolved:
+          format: int64
+          type: integer
+        destroyed:
+          format: int64
+          type: integer
+        killed:
+          format: int64
+          type: integer
+        killedCleanup:
+          format: int64
+          type: integer
+        killedNoIdentity:
+          format: int64
+          type: integer
+        killedOccupants:
+          format: int64
+          type: integer
+        killerAbsent:
+          format: int64
+          type: integer
+        killerAmbiguous:
+          format: int64
+          type: integer
+        killerOutOfRoster:
+          format: int64
+          type: integer
+        occupant:
+          format: int64
+          type: integer
+        pieces:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+      required:
+        - destroyed
+        - pieces
+        - published
+        - byHuman
+        - byBot
+        - killerAbsent
+        - killerOutOfRoster
+        - killerAmbiguous
+        - cause
+        - causeUnresolved
+        - causeAbsent
+        - occupant
+        - killed
+        - killedOccupants
+        - killedNoIdentity
+        - killedCleanup
+      type: object
     VehicleLabel:
       additionalProperties: false
       properties:
@@ -33200,6 +33304,8 @@ components:
           $ref: '#/components/schemas/VehicleLifeRef'
         chassis:
           type: string
+        destruction:
+          $ref: '#/components/schemas/VehicleDestruction'
         end:
           type: string
         family:

@@ -6,6 +6,14 @@ github.com/JGtm/halo-infinite-files-reader v1.0.1 h1:sqD4leKw4x9yC+JdXWAVHOio6LO
 github.com/JGtm/halo-infinite-files-reader v1.0.1/go.mod h1:fDmZrBN1FdwdNpixkG1yRqhokOfkV2D4AkFyEE5d2Rs=
 github.com/JGtm/halo-infinite-film-decoder v1.0.1 h1:aLH9vnOq+tYs8QKZ3UvZjEZ+leIq9/fEFd7nKK0f2Zs=
 github.com/JGtm/halo-infinite-film-decoder v1.0.1/go.mod h1:oQSy/0Wid3nwl4ScIztAgz23d7iUAgk5pE9ofOYA2lI=
+github.com/JGtm/halo-infinite-film-decoder v1.2.2 h1:FvqfMs6uE5KDKR5Vsw8eYqZbkm0mPcfBg90PXAjYlL0=
+github.com/JGtm/halo-infinite-film-decoder v1.2.2/go.mod h1:oQSy/0Wid3nwl4ScIztAgz23d7iUAgk5pE9ofOYA2lI=
+github.com/JGtm/halo-infinite-film-decoder v1.2.3 h1:etReq3izsbQ4TUPS4bngIcZ+qiADCCSqB4iUx2v6TnI=
+github.com/JGtm/halo-infinite-film-decoder v1.2.3/go.mod h1:oQSy/0Wid3nwl4ScIztAgz23d7iUAgk5pE9ofOYA2lI=
+github.com/JGtm/halo-infinite-film-decoder v1.2.4 h1:2u+7G9x8jqIYcjsRTXtWYuDEap86+XLP1ezOAYevgkI=
+github.com/JGtm/halo-infinite-film-decoder v1.2.4/go.mod h1:oQSy/0Wid3nwl4ScIztAgz23d7iUAgk5pE9ofOYA2lI=
+github.com/JGtm/halo-infinite-film-decoder v1.3.4 h1:47p4hwSkTm0vTzIODKTSdUqnFQHtNUzSxsJ5+dfiQ30=
+github.com/JGtm/halo-infinite-film-decoder v1.3.4/go.mod h1:oQSy/0Wid3nwl4ScIztAgz23d7iUAgk5pE9ofOYA2lI=
 github.com/JGtm/halo-infinite-map-images v1.0.1 h1:Op1TrnECQKrCxOjWkI2CbQ9WGf+S5nOikyap5eGZdPA=
 github.com/JGtm/halo-infinite-map-images v1.0.1/go.mod h1:XlLu0qVg3w9zyrZEu82GpmbNONR/s2Rvtro4pJjVj5o=
 github.com/andybalholm/brotli v1.2.2 h1:HzTuoo2ErYQqf5qvcJInB8uvqSVxRttzkFexPWtnceM=

@@ -221,6 +221,15 @@ var tablePolarites = []blocPolarites{
 			"variants vehiclesRidden withChassis withHeading withSpawn",
 		Neutres: "aimRideFrames cycleLocations endFilmEnd endsPastEmptiedKeyframe merged ridesProximity shotsByUnitNoRide " +
 			"shotsOnCarrier"},
+	// Les destructions de vehicule : un denominateur (`destroyed`) et deux partitions. Le
+	// destructeur nomme (`byHuman`, `byBot`) et la cause lue (`cause`) sont des succes ; un destructeur
+	// absent, hors roster ou ambigu, une cause inconnue ou absente et une victime sans joueur nommable sont des
+	// echecs ; la population (`destroyed`, `pieces`), le total des occupants tues et les morts de nettoyage
+	// ecartees sont neutres.
+	{Blocs: []string{"coverage.vehicles.destructions."},
+		Echecs:  "causeAbsent causeUnresolved killedNoIdentity killerAbsent killerAmbiguous killerOutOfRoster",
+		Succes:  "byBot byHuman cause killed occupant published",
+		Neutres: "destroyed killedCleanup killedOccupants pieces"},
 	{Blocs: []string{"coverage.vipCrown."},
 		Echecs:  "noBridge open outOfWindow",
 		Succes:  "closed periods",

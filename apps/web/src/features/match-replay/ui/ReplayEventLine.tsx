@@ -6,13 +6,15 @@
  * tournants du match.
  *
  * UNE DESTRUCTION SANS AUTEUR n'a pas de nom de joueur : la ligne ne porte que la phrase
- * (« Ghost détruit »). Avec un auteur, il ouvre la phrase comme pour toute autre ligne ; le joueur
- * à bord, quand il est nommé, la ferme entre parenthèses.
+ * (« Ghost détruit »). Avec un auteur, il ouvre la phrase comme pour toute autre ligne ; les joueurs
+ * connus à bord, quand il y en a, la ferment entre parenthèses (leur nom s'il n'y en a qu'un, leur
+ * nombre sinon : `vehicleAboardLabel`).
  */
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { PickupEventLine, VehicleDestroyedEventLine, VehicleEventLine } from '../model/feedEventLines'
 import { FEED_FILTER_GLYPH } from '../model/feedGlyphs'
 import { FEED_ROW } from '../model/feedRow'
+import { vehicleAboardLabel } from '../model/vehicleAboardLabel'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { FeedName } from './ReplayFeedName'
 import { EventGlyph } from './ReplayEventGlyph'
@@ -26,8 +28,8 @@ interface Props {
   mark: PlayerMarkKind | undefined
   /** Le joueur qui ouvre la phrase ; vide pour une destruction sans auteur. */
   name: string
-  /** Le joueur à bord à l'instant d'une destruction, quand il est nommé. */
-  occupantName?: string
+  /** Les noms des joueurs connus à bord à l'instant d'une destruction ; absent ou vide : aucun. */
+  aboardNames?: readonly string[]
   locale: ReplayLocale
 }
 
@@ -35,17 +37,19 @@ interface Props {
 function actionOf(
   line: Props['line'],
   t: (typeof REPLAY_TEXT)['fr'],
-  occupantName: string | undefined,
+  aboardNames: readonly string[],
+  locale: ReplayLocale,
 ): string {
   if (line.family === 'pickups') return line.ground ? t.feedGroundPickupAction(line.name) : t.feedPickupAction(line.name)
   if (!('destroyed' in line)) return t.feedVehicleAction(line.name)
-  const sentence = line.xuid ? t.feedVehicleDestroyedBy(line.name) : t.feedVehicleDestroyed(line.name)
-  return occupantName ? `${sentence} ${t.feedVehicleOccupant(occupantName)}` : sentence
+  const sentence = line.xuid || line.botName ? t.feedVehicleDestroyedBy(line.name) : t.feedVehicleDestroyed(line.name)
+  const aboard = vehicleAboardLabel(aboardNames, locale)
+  return aboard ? `${sentence} ${aboard}` : sentence
 }
 
-export function ReplayEventLine({ line, replayMs, color, mark, name, occupantName, locale }: Props) {
+export function ReplayEventLine({ line, replayMs, color, mark, name, aboardNames = [], locale }: Props) {
   const t = REPLAY_TEXT[locale]
-  const action = actionOf(line, t, occupantName)
+  const action = actionOf(line, t, aboardNames, locale)
   const hasActor = name !== ''
   return (
     <li className={FEED_ROW} title={hasActor ? `${name} ${action}` : action} data-feed-family={line.family}>

@@ -25,6 +25,35 @@ type VehicleTrack struct {
 	Part    string          `json:"part,omitempty"`
 	Carrier *VehicleLifeRef `json:"carrier,omitempty"`
 	Variant string          `json:"variant,omitempty"`
+	// Destruction : qui a detruit le vehicule, avec quelle cause, et qui etait a bord (cf.
+	// `replay.VehicleDestruction`). Present sur une vie `destroyed` qui n'est pas une piece
+	// montee, quand au moins un de ses champs est etabli ; l'instant est `TEnd`. Absent des
+	// artefacts cuits avant ce bloc : c'est un cas normal et durable.
+	Destruction *VehicleDestruction `json:"destruction,omitempty"`
+}
+
+// VehicleDestruction est ce que le film ecrit de la destruction d'un vehicule, et ce qu'on en
+// deduit. Chaque champ absent veut dire « non etabli », jamais 0 ni chaine vide.
+type VehicleDestruction struct {
+	// By est le destructeur ; absent quand le film n'en nomme aucun.
+	By *VehicleDestroyer `json:"by,omitempty"`
+	// Cause : identifiant d'effet de degat, meme espace que la source d'un frag.
+	Cause *uint32 `json:"cause,omitempty"`
+	// CauseKey : cle d'arme de la cause, d'ou la page tire le pictogramme. Remplie a la requete, jamais
+	// ecrite dans l'artefact ; vide quand aucun pictogramme ne correspond a la cause.
+	CauseKey string `json:"causeKey,omitempty"`
+	// Occupant : xuid de l'occupant a l'instant, le conducteur de preference.
+	Occupant string `json:"occupant,omitempty"`
+	// Killed : xuids des occupants tues, tries.
+	Killed []string `json:"killed,omitempty"`
+}
+
+// VehicleDestroyer designe le joueur qui a detruit le vehicule : `I` est son index de joueur du
+// film (`roster[].filmIndex`), `XUID` son identite humaine, `Bot` vrai pour un bot (sans xuid).
+type VehicleDestroyer struct {
+	I    int    `json:"i"`
+	XUID string `json:"xuid,omitempty"`
+	Bot  bool   `json:"bot,omitempty"`
 }
 
 // VehicleLifeRef designe une vie de vehicule par `(slot, gen)` (schema 69).

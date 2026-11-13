@@ -39,15 +39,17 @@ export interface VehicleEventLine {
 }
 
 /**
- * Une DESTRUCTION de véhicule. L'auteur et le joueur à bord à l'instant sont facultatifs : sans
- * auteur connu la ligne dit seulement que le véhicule est détruit (`xuid` nul), sans occupant elle
- * ne le nomme pas. Le NOM est celui de la famille, comme pour une montée.
+ * Une DESTRUCTION de véhicule. L'auteur et les joueurs à bord sont facultatifs : un destructeur
+ * humain porte son xuid (`xuid`), un destructeur bot son nom de roster (`botName`), et sans l'un ni
+ * l'autre la ligne dit seulement que le véhicule est détruit ; sans joueur à bord elle n'en nomme
+ * aucun. Le NOM est celui de la famille, comme pour une montée.
  */
 export interface VehicleDestroyedEventLine {
   family: 'vehicles'
   destroyed: true
   xuid: string | null
-  occupantXuid: string | null
+  botName: string | null
+  aboardXuids: readonly string[]
   name: string
 }
 

@@ -289,6 +289,78 @@
       "provenance": "mesuree",
       "proof": "`50247b26` : sous le motif 0x260600 ce film rend TREIZE marqueurs sur 22 Mio de flux delta, alors que l identifiant de la grenade a fragmentation y apparait 79 fois contre 0,17 attendue par hasard. La mesure de ce qui PRECEDE l identifiant rend 0xA60400 sur 95/95, constante a 24 bits et dispersee a 25 : l amorce vaut 0x20400, et la largeur seule ne decrit donc pas la grammaire. Index a +99, 21 valeurs distinctes / maximum 23",
       "date": "2026-09-17"
+    },
+    {
+      "key": "build=HI_1_13_0",
+      "field": "VueA.ChargesMesurees",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "86 paquets dont la vue A est lue au-dela d un message de genre 12, 14 ou 106, fermes au bit 86 sur 86 (53 films) ; fin de vue A egale au debut de vue B du decodeur tiers sur 4 paquets sur 4",
+      "date": "2026-11-12"
+    },
+    {
+      "key": "build=HI_1_12_0",
+      "field": "VueA.ChargesMesurees",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "99 paquets a charge mesuree fermes au bit 99 sur 99 (96 films) ; fin de vue A egale au debut de vue B du decodeur tiers sur 10 paquets sur 10 de cinq films",
+      "date": "2026-11-12"
+    },
+    {
+      "key": "build=HI_1_11_0",
+      "field": "VueA.ChargesMesurees",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "56 paquets a charge mesuree fermes au bit 56 sur 56 (38 films) ; fin de vue A egale au debut de vue B du decodeur tiers sur 5 paquets sur 5 d un film. Le build HI_1_10_0 (562 paquets sur 760) et HI_1_9_0 (9 sur 18) n y sont pas : la fin de vue A lue y contredit le debut de vue B donne par la signature du slot 123 dans 47 cas testables sur 47, et aucune largeur constante ne le retrouve",
+      "date": "2026-11-12"
+    },
+    {
+      "key": "build=HI_1_13_0",
+      "field": "Creation.ParPorte",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "chaine des records egale a celle du decodeur tiers sur 43 512 paquets sur 43 513 d un film ; paquets fermes 99,955 % -> 99,985 % sur 53 films, aucune perte",
+      "date": "2026-11-12"
+    },
+    {
+      "key": "build=HI_1_12_0",
+      "field": "Creation.ParPorte",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "chaine des records egale a celle du decodeur tiers sur 100 % des paquets de cinq films ; paquets fermes 99,917 % -> 99,942 % sur 96 films, une perte qui est une fermeture fausse (debut de vue B different de celui du decodeur tiers)",
+      "date": "2026-11-12"
+    },
+    {
+      "key": "build=HI_1_11_0",
+      "field": "Creation.ParPorte",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "chaine des records plus proche de celle du decodeur tiers que sous la lecture precedente sur cinq films sur cinq ; paquets fermes 99,498 % -> 99,699 % sur 38 films, six pertes qui sont des fermetures fausses (debut de vue B a plus de mille bits de celui du decodeur tiers). Sur HI_1_10_0 la meme lecture ferme 3 571 paquets de plus et en perd 420, sur HI_1_8_0 810 et 172 : elle n y est pas prouvee",
+      "date": "2026-11-12"
+    },
+    {
+      "key": "build=HI_1_13_0",
+      "field": "Creation.ProprieteGereeComplete",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "le gain propre a la charge des etiquettes est de 56 paquets fermes sur 49 films, aucune perte",
+      "date": "2026-11-12"
+    },
+    {
+      "key": "build=HI_1_12_0",
+      "field": "Creation.ProprieteGereeComplete",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "113 paquets fermes de plus sur 96 films, aucune perte ; un paquet que la lecture precedente ne fermait pas (un record de ti=13 de 1 218 bits, lu sur 195) se ferme au bit",
+      "date": "2026-11-12"
+    },
+    {
+      "key": "build=HI_1_11_0",
+      "field": "Creation.ProprieteGereeComplete",
+      "value": "vrai",
+      "provenance": "mesuree",
+      "proof": "33 paquets fermes de plus sur 38 films, aucune perte. Sur HI_1_10_0 la meme lecture ferme 62 paquets de plus et en perd 22 : elle n y est pas prouvee",
+      "date": "2026-11-12"
     }
   ],
   "registryFingerprints": [

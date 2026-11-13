@@ -71,6 +71,8 @@ export const EN_TEXT = {
   feedVehicleDestroyedBy: (name) => `destroyed: ${name}`,
   feedVehicleDestroyed: (name) => `${name} destroyed`,
   feedVehicleOccupant: (who) => `(${who} aboard)`,
+  feedVehicleAboardOne: '({n} aboard)',
+  feedVehicleAboardOther: '({n} aboard)',
   killFeedUnknownWeapon: 'Unidentified weapon',
   killFeedFocusHint: 'Go to this moment and highlight the killer and the victim on the map',
   playerPanel: EN_PLAYER_PANEL,

@@ -151,20 +151,24 @@ export type ReplayIdentityReady = Filled<
  * n'est pas un tableau mais un objet optionnel (absent quand le record de création n'a pas été
  * lu), et un objet vide inventerait une naissance que le film ne montre pas.
  */
-export type ReplayVehicleTrackReady = Omit<Filled<ReplayVehicleTrack, 'samples'>, 'rides'> & {
+export type ReplayVehicleTrackReady = Omit<Filled<ReplayVehicleTrack, 'samples'>, 'rides' | 'destruction'> & {
   rides: ReplayVehicleRideReady[]
+  /** La destruction (schéma 109), liste des tués comblée ; absente : non écrite, ou pièce montée. */
+  destruction?: ReplayVehicleDestructionReady
   /** Vie déclarée DÉCOR DE CARTE par le serveur (`doc.vehicleScenery.hidden`) : jamais
    *  dessinée. Absent = pas de verdict de décor pour cette vie. */
   scenery?: boolean
 }
+/** Le bloc de destruction d'un véhicule, sa liste de tués comblée. */
+type ReplayVehicleDestructionReady = Filled<NonNullable<ReplayVehicleTrack['destruction']>, 'killed'>
 /**
  * ReplayVehicleRideReady — un épisode d'occupation dont la SÉRIE DE VISÉE est comblée (schéma 39).
  *
  * TROISIÈME NIVEAU DE COMBLEMENT, et le premier du document : `aim` est un tableau nullable
- * imbriqué DANS un tableau imbriqué. Le combler ici plutôt que de le laisser passer garde la
- * garde de contrat (`replayContract.test.ts`) au même régime pour tout l'artefact — un tableau
- * nullable de plus, à n'importe quelle profondeur, doit être comblé ou justifié, jamais oublié.
- * Le coût est nul en pratique : une poignée d'épisodes par match, comblés une fois au chargement.
+ * imbriqué DANS un tableau imbriqué. Le combler ici garde la garde de contrat
+ * (`replayContract.test.ts`) au même régime pour tout l'artefact : un tableau nullable de plus, à
+ * n'importe quelle profondeur, est comblé ou justifié, jamais oublié. Coût nul : une poignée
+ * d'épisodes par match.
  */
 export type ReplayVehicleRideReady = Filled<ReplayVehicleRide, 'aim'>
 

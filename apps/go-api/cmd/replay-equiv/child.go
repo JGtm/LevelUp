@@ -38,6 +38,7 @@ import (
 	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 	"github.com/JGtm/halo-infinite-film-decoder/memguard"
+	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
 // attenteVerrouMax : combien de temps un enfant attend son tour de decodage avant de refuser
@@ -150,6 +151,9 @@ func digestsDuFilm(ctx context.Context, o options, archiveRoot string) ([]string
 		return nil, err
 	}
 	b.WithPadsCatalog(socles)
+	// LES REFERENCES SONT FIGEES AU PAS DE CONSTRUCTION DU DECODEUR, pas a celui de la page : le harnais juge
+	// le decodeur contre ses propres references, et seule l etape `artifact` depend du pas.
+	b.WithFrameInterval(replay.DefaultFrameIntervalMS)
 	var col collecteur
 	b.WithObserver(col.etape)
 	// LE DECODAGE EST FORCE PARTOUT SAUF DANS LA PASSE `faits`, ET C EST UNE CORRECTION MESUREE

@@ -12,22 +12,37 @@ import (
 
 func toVehicleTrack(v replay.VehicleTrack) replaydoc.VehicleTrack {
 	return replaydoc.VehicleTrack{
-		Slot:    v.Slot,
-		Gen:     v.Gen,
-		Chassis: v.Chassis,
-		Family:  v.Family,
-		T0:      v.T0,
-		T1:      v.T1,
-		T1Max:   v.T1Max,
-		End:     v.End,
-		TEnd:    v.TEnd,
-		Spawn:   ptrOf(v.Spawn, toVehicleSpawn),
-		Samples: sliceOf(v.Samples, toVehicleSample),
-		Rides:   sliceOf(v.Rides, toVehicleRide),
-		Part:    v.Part,
-		Carrier: ptrOf(v.Carrier, toVehicleLifeRef),
-		Variant: v.Variant,
+		Slot:        v.Slot,
+		Gen:         v.Gen,
+		Chassis:     v.Chassis,
+		Family:      v.Family,
+		T0:          v.T0,
+		T1:          v.T1,
+		T1Max:       v.T1Max,
+		End:         v.End,
+		TEnd:        v.TEnd,
+		Spawn:       ptrOf(v.Spawn, toVehicleSpawn),
+		Samples:     sliceOf(v.Samples, toVehicleSample),
+		Rides:       sliceOf(v.Rides, toVehicleRide),
+		Part:        v.Part,
+		Carrier:     ptrOf(v.Carrier, toVehicleLifeRef),
+		Variant:     v.Variant,
+		Destruction: ptrOf(v.Destruction, toVehicleDestruction),
 	}
+}
+
+func toVehicleDestruction(v replay.VehicleDestruction) replaydoc.VehicleDestruction {
+	return replaydoc.VehicleDestruction{
+		By:       ptrOf(v.By, toVehicleDestroyer),
+		Cause:    v.Cause,
+		CauseKey: v.CauseKey,
+		Occupant: v.Occupant,
+		Killed:   v.Killed,
+	}
+}
+
+func toVehicleDestroyer(v replay.VehicleDestroyer) replaydoc.VehicleDestroyer {
+	return replaydoc.VehicleDestroyer{I: v.I, XUID: v.XUID, Bot: v.Bot}
 }
 
 func toVehicleLifeRef(v replay.VehicleLifeRef) replaydoc.VehicleLifeRef {
