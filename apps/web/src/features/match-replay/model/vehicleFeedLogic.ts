@@ -27,7 +27,7 @@ import type { Locale } from '@/lib/i18n/locale'
 
 import { eventFeedEntry } from './feedEventLines'
 import type { ReplayFeedEntry } from './killFeedLogic'
-import { vehicleDestructionsOf, type VehicleDestruction } from './vehicleDestructionSource'
+import { vehicleDestructionsOf, type VehicleDestructionView } from './vehicleDestructionSource'
 import { vehicleIsDecor, vehicleIsMapElement } from './vehiclesLayer'
 
 /** L'épisode d'occupation, tel que le document le publie. */
@@ -54,7 +54,7 @@ function vehicleNameOf(doc: ReplayDocumentReady, family: string | undefined, loc
  * que la ligne, le filtre et le compte se testent avec des événements fabriqués.
  */
 export function vehicleDestructionEntries(
-  destructions: readonly VehicleDestruction[],
+  destructions: readonly VehicleDestructionView[],
   doc: ReplayDocumentReady,
   locale: Locale,
 ): ReplayFeedEntry[] {
@@ -79,7 +79,7 @@ export function vehicleDestructionEntries(
 export function vehicleFeedEntries(
   doc: ReplayDocumentReady,
   locale: Locale,
-  destructions: readonly VehicleDestruction[] = vehicleDestructionsOf(doc),
+  destructions: readonly VehicleDestructionView[] = vehicleDestructionsOf(doc),
 ): ReplayFeedEntry[] {
   const entries: ReplayFeedEntry[] = vehicleDestructionEntries(destructions, doc, locale)
   doc.vehicles.forEach((track, ti) => {

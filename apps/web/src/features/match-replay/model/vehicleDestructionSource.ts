@@ -27,7 +27,7 @@
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /** Une destruction de véhicule, telle que la source la rend à la page. */
-export interface VehicleDestruction {
+export interface VehicleDestructionView {
   /** L'image de la destruction, sur l'axe de `Point.t`. */
   t: number
   /** La clé de famille de `vehicles[].family` ('' quand le châssis n'est pas résolu). */
@@ -64,9 +64,9 @@ function aboardOf(d: Destruction | undefined): string[] {
   return out
 }
 
-export function vehicleDestructionsOf(doc: ReplayDocumentReady): readonly VehicleDestruction[] {
+export function vehicleDestructionsOf(doc: ReplayDocumentReady): readonly VehicleDestructionView[] {
   let bots: ReadonlyMap<number, string> | null = null
-  const out: VehicleDestruction[] = []
+  const out: VehicleDestructionView[] = []
   for (const track of doc.vehicles) {
     if (track.end !== END_DESTROYED || track.part || track.scenery || track.tEnd == null) continue
     const by = track.destruction?.by
