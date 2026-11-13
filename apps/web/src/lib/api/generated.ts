@@ -954,6 +954,23 @@ export interface paths {
         patch: operations["patchAdminUserRole"];
         trace?: never;
     };
+    "/assets/{title_id}/kill-sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les pictogrammes d'arme du titre par weapon_key (noms dans la langue de la requete) */
+        get: operations["listKillSourceIcons"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/assets/{title_id}/maps": {
         parameters: {
             query?: never;
@@ -8447,6 +8464,12 @@ export interface components {
             resyncs: number;
             /** Format: int64 */
             slides: number;
+        };
+        KillSourceIconEntry: {
+            image_url: string;
+            key: string;
+            label: string;
+            tinted: boolean;
         };
         Knockback: {
             /** Format: int32 */
@@ -17248,6 +17271,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listKillSourceIcons: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KillSourceIconEntry"][] | null;
+                };
             };
             /** @description Error */
             default: {
