@@ -241,6 +241,11 @@ interface RequestOptions {
    * serveur arrête son calcul (contexte Go annulé → 499 `client_closed`).
    */
   signal?: AbortSignal
+  /**
+   * `path` part de la racine du site (fichier statique servi par l'application), pas du préfixe de l'API.
+   * Voir `api.getStatic`.
+   */
+  absolute?: boolean
 }
 
 /**
@@ -266,7 +271,7 @@ async function sendRequest(
   path: string,
   options?: RequestOptions,
 ): Promise<Response> {
-  const url = `${BASE_URL}${path}`
+  const url = options?.absolute ? path : `${BASE_URL}${path}`
   // Titre affirmé sur CETTE requête (peut être nul : page agnostique au boot). Capturé
   // avant le fetch pour la garde anti-fuite cross-titre (guardResolvedTitle).
   const sentTitle = _currentTitleSlug
@@ -325,6 +330,22 @@ async function request<T>(method: string, path: string, options?: RequestOptions
 export const api = {
   get: <T>(path: string, headers?: Record<string, string>, options?: CallOptions) =>
     request<T>('GET', path, { headers, signal: options?.signal }),
+
+  /**
+   * GET d'une ressource TEXTE (non JSON) de l'API, ex. le brouillon TOML d'un titre. Même client que
+   * `get` : mêmes en-têtes de titre et de locale, mêmes cookies, même mapping d'erreurs ; seul
+   * `Accept` change.
+   */
+  getText: async (path: string, headers?: Record<string, string>): Promise<string> =>
+    (await sendRequest('GET', path, { headers: { Accept: 'text/plain', ...headers } })).text(),
+
+  /**
+   * GET JSON d'un fichier STATIQUE du site (même origine, hors préfixe de l'API), ex. un catalogue publié
+   * avec l'application. `path` commence par `/`. Une réponse en erreur lève une `ApiError`, comme pour
+   * un appel d'API.
+   */
+  getStatic: <T>(path: string, options?: CallOptions) =>
+    request<T>('GET', path, { absolute: true, signal: options?.signal }),
 
   /**
    * GET d'une ressource BINAIRE (image, export). Même client que `get` — donc mêmes

@@ -7,7 +7,7 @@
  */
 import { useQuery } from '@tanstack/react-query'
 
-import { api, API_BASE_URL } from '@/lib/api/client'
+import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 
 export type TitleStatus = 'active' | 'coming_soon' | 'archived'
@@ -87,15 +87,8 @@ export function useAdminTitleDiagnostic(slug: string | null) {
 
 // --- Brouillon capabilities.toml (D10 : presse-papier, zéro écriture serveur) ---
 
-// Réponse text/plain (pas JSON) → fetch dédié plutôt que le client api.
-// Le slug est dans le path (route admin title-agnostic) ; cookie de session via
-// credentials. À copier côté front avec navigator.clipboard.
-export async function fetchTitleTomlDraft(slug: string): Promise<string> {
-  const res = await fetch(`${API_BASE_URL}/admin/titles/${slug}/toml-draft`, {
-    credentials: 'include',
-  })
-  if (!res.ok) {
-    throw new Error(`toml-draft ${res.status}`)
-  }
-  return res.text()
+// Réponse text/plain (pas JSON) → api.getText. Le slug est dans le path (route admin
+// title-agnostic) ; cookie de session via le client. À copier côté front avec navigator.clipboard.
+export function fetchTitleTomlDraft(slug: string): Promise<string> {
+  return api.getText(`/admin/titles/${slug}/toml-draft`)
 }

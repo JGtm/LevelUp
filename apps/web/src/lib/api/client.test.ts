@@ -13,7 +13,7 @@
  * resolveTitleSlug côté backend : header > session > défaut.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { api, setApiTitleSlug, TITLE_MISMATCH_CODE } from './client'
+import { api, API_BASE_URL, setApiTitleSlug, TITLE_MISMATCH_CODE } from './client'
 
 describe('api client — header X-LevelUp-Title', () => {
   let fetchSpy: ReturnType<typeof vi.spyOn>
@@ -263,5 +263,59 @@ describe('api client — signal d’annulation transmis à fetch', () => {
     const pending = api.post('/players/p/pages/synthesis', {}, undefined, { signal: controller.signal })
     controller.abort()
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+  })
+})
+
+/**
+ * Ressources hors JSON de l'API (`getText`) et fichiers statiques du site (`getStatic`) : elles
+ * passent par le MÊME client que les appels JSON (étape 7.6) — en-têtes de titre et de locale,
+ * cookies, erreurs mappées — au lieu d'un `fetch` écrit à la main dans une feature.
+ */
+describe('api client — getText et getStatic', () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    setApiTitleSlug('halo_5')
+    fetchSpy = vi.spyOn(globalThis, 'fetch')
+  })
+
+  afterEach(() => {
+    fetchSpy.mockRestore()
+    setApiTitleSlug(null)
+  })
+
+  function lastCall(): { url: string; init: RequestInit } {
+    const call = fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1]
+    return { url: String(call[0]), init: call[1] as RequestInit }
+  }
+
+  it('getText lit un corps texte, sous le préfixe de l’API, avec titre, locale, cookies et Accept texte', async () => {
+    fetchSpy.mockResolvedValue(new Response('[capabilities]\n', { status: 200, headers: { 'Content-Type': 'text/plain' } }))
+    const body = await api.getText('/admin/titles/halo_5/toml-draft')
+    expect(body).toBe('[capabilities]\n')
+    const { url, init } = lastCall()
+    expect(url).toBe(`${API_BASE_URL}/admin/titles/halo_5/toml-draft`)
+    expect(init.credentials).toBe('include')
+    const headers = new Headers(init.headers)
+    expect(headers.get('Accept')).toBe('text/plain')
+    expect(headers.get('X-LevelUp-Title')).toBe('halo_5')
+    expect(headers.has('X-LevelUp-Locale')).toBe(true)
+  })
+
+  it('getText rejette une erreur HTTP par une ApiError', async () => {
+    fetchSpy.mockResolvedValue(new Response(JSON.stringify({ code: 'title_not_found', message: 'inconnu' }), { status: 404 }))
+    await expect(api.getText('/admin/titles/x/toml-draft')).rejects.toMatchObject({ code: 'title_not_found', status: 404 })
+  })
+
+  it('getStatic lit un JSON à la racine du site, SANS le préfixe de l’API', async () => {
+    fetchSpy.mockResolvedValue(new Response(JSON.stringify({ emblem_ids: ['a'] }), { status: 200 }))
+    const body = await api.getStatic<{ emblem_ids: string[] }>('/titles/halo_5/spartan/spartan-catalog.json')
+    expect(body).toEqual({ emblem_ids: ['a'] })
+    expect(lastCall().url).toBe('/titles/halo_5/spartan/spartan-catalog.json')
+  })
+
+  it('getStatic rejette un fichier absent par une ApiError', async () => {
+    fetchSpy.mockResolvedValue(new Response('<html></html>', { status: 404 }))
+    await expect(api.getStatic('/titles/halo_5/spartan/absent.json')).rejects.toMatchObject({ status: 404 })
   })
 })
