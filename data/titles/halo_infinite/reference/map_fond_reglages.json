@@ -125,8 +125,9 @@
     "ridgeline": {
       "carte": "Cliffhanger",
       "style": "encre",
-      "raison": "Gate du 2026-08-26, carte 1, VALIDEE. L'utilisateur a compare les deux habillages sur planche et retenu l'encre pour cette carte. Le fond en production etait en style jeu (fond noir, arene claire) ; sur une arene a ciel ouvert bordee de rochers hauts, l'encre garde les rochers lisibles en gris au lieu de les noyer dans le noir, et la riviere reste le seul aplat colore.",
-      "gateLe": "2026-08-26"
+      "raison": "Gate du 2026-08-26, carte 1, VALIDEE. L'utilisateur a compare les deux habillages sur planche et retenu l'encre pour cette carte. Le fond en production etait en style jeu (fond noir, arene claire) ; sur une arene a ciel ouvert bordee de rochers hauts, l'encre garde les rochers lisibles en gris au lieu de les noyer dans le noir, et la riviere reste le seul aplat colore. Mise a jour du 2026-11-13 : le fond a ete cuit avec le maillage de navigation (rognage), valide sur planche, puis REFUSE par l'oracle de decoupage des zones nommees (`internal/mapdecoupe`, TestOracleIoUContreLeDecoupePOC) : IoU median 0,775 contre le decoupe du POC d'aout, sous le seuil de 0,85 fixe avant mesure. Des marges de 3, 5 et 8 m donnent 0,746, 0,701 et 0,788 : aucune ne passe. Les rochers non praticables, que le maillage retire, font partie des zones nommees. La carte revient a sa cuisson d'aout (sans maillage) et garde le plan des murs tire du maillage.",
+      "sansNavmesh": true,
+      "gateLe": "2026-11-13"
     },
     "sgh_streets": {
       "carte": "Streets",
