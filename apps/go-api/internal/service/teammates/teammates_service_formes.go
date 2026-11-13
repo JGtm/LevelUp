@@ -25,17 +25,17 @@ import (
 	"levelup/go-api/internal/service/squadagg"
 )
 
-// WithSquadFormes injecte les deux sources du bloc et la racine du dépôt (les catalogues du titre
-// que lit l'Emprise s'y lisent à la requête). Câblé gated par les mêmes
+// WithSquadFormes injecte les deux sources du bloc et la source des catalogues du titre (ceux
+// que lit l'Emprise se lisent à la requête). Câblé gated par les mêmes
 // capabilities que les blocs qu'il prolonge (film.usage_summary pour l'usage,
 // les stats d'objectif pour les colonnes) ; nil ⇒ bloc servi avec Available=false
 // et raison machine, ou sans ses cartes d'objectif.
 func (s *TeammatesService) WithSquadFormes(
-	usage port.SessionUsageRepository, objectives port.SquadFormesObjectiveRepository, repoRoot string,
+	usage port.SessionUsageRepository, objectives port.SquadFormesObjectiveRepository, labels port.ReplayLabelSource,
 ) *TeammatesService {
 	s.formesUsageRepo = usage
 	s.formesObjectiveRepo = objectives
-	s.repoRoot = repoRoot
+	s.labels = labels
 	return s
 }
 

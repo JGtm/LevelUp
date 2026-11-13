@@ -54,9 +54,9 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/mapcatalog"
+	"levelup/go-api/internal/replaytext"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 
@@ -449,7 +449,7 @@ func construitEntree(module string, cs []himap.Callout, labels libelles) (replay
 		z := replay.CalloutZone{
 			VolumeIndex: c.VolumeIndex,
 			Name:        c.Name,
-			Text:        replaylabels.TexteVersFilm(i18n.Text{i18n.LocaleEN: lbl.en, i18n.LocaleFR: lbl.fr}),
+			Text:        replaytext.TexteVersFilm(i18n.Text{i18n.LocaleEN: lbl.en, i18n.LocaleFR: lbl.fr}),
 			X:           c.Pos[0],
 			Y:           c.Pos[1],
 			Z:           c.Pos[2],

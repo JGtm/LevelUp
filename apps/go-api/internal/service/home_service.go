@@ -6,16 +6,28 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/haloadapter"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/teammates"
 )
+
+// HaloLiveProvider lit en direct la passe de combat et les défis du joueur du contexte (jetons et xuid
+// portés par le contexte). Le câblage injecte le fournisseur du titre ; le service ne connaît ni son
+// client ni ses endpoints.
+type HaloLiveProvider interface {
+	// GetBattlePassWithRaw rend la passe de combat et le JSON brut reçu (pour persistance) ; brut nil en
+	// cas d'erreur ou d'absence d'authentification.
+	GetBattlePassWithRaw(ctx context.Context) (domain.BattlePassResponse, []byte)
+	// GetChallengesWithRaw rend les défis et le JSON brut reçu, avec la même convention.
+	GetChallengesWithRaw(ctx context.Context) (domain.ChallengesResponse, []byte)
+	// FetchAndWarmTrack hydrate une définition de piste de récompenses et ses items.
+	FetchAndWarmTrack(ctx context.Context, trackPath string)
+}
 
 // HomeService orchestre les données de la page d'accueil.
 type HomeService struct {
 	repo       port.HomeRepository
 	cacheRepo  port.BattlePassCacheRepository
-	provider   *haloadapter.Provider
+	provider   HaloLiveProvider
 	sink       port.HomePersistSink // nil → pas de persistance (tests, joueurs sans auth)
 	socialRepo port.SocialRepository
 	playerSlug string
@@ -78,11 +90,13 @@ type HomeService struct {
 	analysisPending *AnalysisPendingResolver
 }
 
-// NewHomeService crée un HomeService avec le repository et le provider Halo.
-func NewHomeService(repo port.HomeRepository) *HomeService {
+// NewHomeService crée un HomeService avec le repository et le fournisseur de lecture en direct de la
+// passe de combat et des défis (configuré par joueur : cache local, titre). Un fournisseur nil est servi :
+// ni passe de combat ni défis en direct, le cache DB répond.
+func NewHomeService(repo port.HomeRepository, provider HaloLiveProvider) *HomeService {
 	return &HomeService{
 		repo:     repo,
-		provider: haloadapter.DefaultHaloProvider,
+		provider: provider,
 	}
 }
 
@@ -109,15 +123,6 @@ func (s *HomeService) WithSkillBadgeResolver(f func(tierEN string, subTier int) 
 // match si le titre en déclare : c'est pourquoi les TROIS factories l'injectent.
 func (s *HomeService) WithRoundsDecide(roundsDecide map[string]bool) *HomeService {
 	s.roundsDecide = roundsDecide
-	return s
-}
-
-// WithHaloProvider remplace le provider Halo utilisé par le service.
-// Utile pour injecter un provider configuré par joueur (cache local, tests).
-func (s *HomeService) WithHaloProvider(provider *haloadapter.Provider) *HomeService {
-	if provider != nil {
-		s.provider = provider
-	}
 	return s
 }
 

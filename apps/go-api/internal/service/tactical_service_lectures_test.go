@@ -15,9 +15,9 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaytext"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -439,9 +439,9 @@ func TestCallouts_ErreurNonAvalee(t *testing.T) {
 // encore tout le vocabulaire Forge).
 func TestZonesNommees_LesDeuxLanguesEtLeurRepli(t *testing.T) {
 	out := zonesNommees([]replay.CalloutZone{
-		{Name: "design_a", Text: replaylabels.TexteVersFilm(i18n.Text{i18n.LocaleEN: "Red base", i18n.LocaleFR: "Base rouge"}), X: 1, Y: 2},
-		{Name: "design_b", Text: replaylabels.TexteVersFilm(i18n.Text{i18n.LocaleEN: "Ramp"}), X: 3, Y: 4},  // FR manquant
-		{Name: "design_c", Text: replaylabels.TexteVersFilm(i18n.Text{i18n.LocaleFR: "Rampe"}), X: 5, Y: 6}, // EN manquant
+		{Name: "design_a", Text: replaytext.TexteVersFilm(i18n.Text{i18n.LocaleEN: "Red base", i18n.LocaleFR: "Base rouge"}), X: 1, Y: 2},
+		{Name: "design_b", Text: replaytext.TexteVersFilm(i18n.Text{i18n.LocaleEN: "Ramp"}), X: 3, Y: 4},  // FR manquant
+		{Name: "design_c", Text: replaytext.TexteVersFilm(i18n.Text{i18n.LocaleFR: "Rampe"}), X: 5, Y: 6}, // EN manquant
 		{Name: "design_d", X: 7, Y: 8}, // les deux manquants
 		{X: 9, Y: 10},                  // muette des trois cotes
 	})

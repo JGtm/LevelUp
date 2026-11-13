@@ -189,7 +189,7 @@ func TestTransport_DeBoutEnBout(t *testing.T) {
 	}
 
 	// ── Le service de rejeu le sert ──────────────────────────────────────────
-	doc, err := service.NewReplayService(titlePkg.DefaultSlug, repoRoot, nil).GetReplay(context.Background(), transportMatchID)
+	doc, err := service.NewReplayService(titlePkg.DefaultSlug, repoRoot, nil, nil).GetReplay(context.Background(), transportMatchID)
 	if err != nil {
 		t.Fatalf("le service de rejeu ne lit pas l'artefact reçu: %v", err)
 	}

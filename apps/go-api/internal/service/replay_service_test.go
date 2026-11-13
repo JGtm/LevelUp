@@ -31,7 +31,7 @@ func artefactAt(t *testing.T, titleSlug, matchID, body string) string {
 // lien que là où il mène quelque part.
 func TestIsAvailable_PresenceEtAbsence(t *testing.T) {
 	root := artefactAt(t, title.DefaultSlug, "abc123", `{"schemaVersion":1}`)
-	svc := NewReplayService(title.DefaultSlug, root, nil)
+	svc := NewReplayService(title.DefaultSlug, root, nil, nil)
 
 	if !svc.IsAvailable(context.Background(), "abc123") {
 		t.Error("artefact présent : IsAvailable devrait être vrai")
@@ -40,7 +40,7 @@ func TestIsAvailable_PresenceEtAbsence(t *testing.T) {
 		t.Error("artefact absent : IsAvailable devrait être faux")
 	}
 	// Racine sans aucun répertoire de rejeu : pas d'erreur, pas de lien.
-	if NewReplayService(title.DefaultSlug, t.TempDir(), nil).IsAvailable(context.Background(), "abc123") {
+	if NewReplayService(title.DefaultSlug, t.TempDir(), nil, nil).IsAvailable(context.Background(), "abc123") {
 		t.Error("répertoire de rejeu absent : IsAvailable devrait être faux")
 	}
 }
@@ -50,7 +50,7 @@ func TestIsAvailable_PresenceEtAbsence(t *testing.T) {
 // lisait ou désérialisait, elle ne pourrait pas répondre « oui ».
 func TestIsAvailable_NeLitPasLArtefact(t *testing.T) {
 	root := artefactAt(t, title.DefaultSlug, "0000b001", "ceci n'est pas du JSON")
-	svc := NewReplayService(title.DefaultSlug, root, nil)
+	svc := NewReplayService(title.DefaultSlug, root, nil, nil)
 
 	if !svc.IsAvailable(context.Background(), "0000b001") {
 		t.Fatal("IsAvailable doit répondre sur la PRÉSENCE, pas sur le contenu")
@@ -69,7 +69,7 @@ func TestIsAvailable_RepertoireNEstPasUnArtefact(t *testing.T) {
 	if err := os.MkdirAll(path, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	if NewReplayService(title.DefaultSlug, root, nil).IsAvailable(context.Background(), "0000be01") {
+	if NewReplayService(title.DefaultSlug, root, nil, nil).IsAvailable(context.Background(), "0000be01") {
 		t.Error("un répertoire ne doit pas passer pour un artefact")
 	}
 }
@@ -78,7 +78,7 @@ func TestIsAvailable_RepertoireNEstPasUnArtefact(t *testing.T) {
 // rend jamais l'autre disponible (isolation par chemin FS, ADR 0008).
 func TestIsAvailable_IsoleParTitre(t *testing.T) {
 	root := artefactAt(t, title.DefaultSlug, "0000a001", `{}`)
-	if NewReplayService("halo_5", root, nil).IsAvailable(context.Background(), "0000a001") {
+	if NewReplayService("halo_5", root, nil, nil).IsAvailable(context.Background(), "0000a001") {
 		t.Error("l'artefact d'un titre ne doit pas être vu par un autre titre")
 	}
 }
@@ -94,7 +94,7 @@ func TestIsAvailable_FormeCourteEtFormeComplete(t *testing.T) {
 	const court = "000d5950"
 	const complet = "000d5950-1234-4abc-9def-0123456789ab"
 	root := artefactAt(t, title.DefaultSlug, court, `{}`)
-	svc := NewReplayService(title.DefaultSlug, root, nil)
+	svc := NewReplayService(title.DefaultSlug, root, nil, nil)
 
 	if !svc.IsAvailable(context.Background(), court) {
 		t.Error("forme courte : l'artefact doit être trouvé")
@@ -115,7 +115,7 @@ func TestIsAvailable_FormeCourteEtFormeComplete(t *testing.T) {
 // TestApplyMatchHeaderReplay — le header publie la présence, et rien d'autre.
 func TestApplyMatchHeaderReplay(t *testing.T) {
 	root := artefactAt(t, title.DefaultSlug, "0000b002", `{}`)
-	svc := NewReplayService(title.DefaultSlug, root, nil)
+	svc := NewReplayService(title.DefaultSlug, root, nil, nil)
 
 	h := domain.MatchViewHeader{}
 	applyMatchHeaderReplay(context.Background(), &h, "0000b002", svc)
@@ -166,7 +166,7 @@ func TestAvailableSet_UnSeulListing(t *testing.T) {
 		t.Fatalf("mkdir: %v", err)
 	}
 
-	set, err := NewReplayService(title.DefaultSlug, root, nil).AvailableSet(context.Background())
+	set, err := NewReplayService(title.DefaultSlug, root, nil, nil).AvailableSet(context.Background())
 	if err != nil {
 		t.Fatalf("AvailableSet: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestAvailableSet_UnSeulListing(t *testing.T) {
 // TestAvailableSet_DossierAbsent — un titre sans aucun artefact construit est NOMINAL :
 // ensemble vide, aucune erreur (sinon la page de matchs tomberait en 500 pour une icône).
 func TestAvailableSet_DossierAbsent(t *testing.T) {
-	set, err := NewReplayService(title.DefaultSlug, t.TempDir(), nil).AvailableSet(context.Background())
+	set, err := NewReplayService(title.DefaultSlug, t.TempDir(), nil, nil).AvailableSet(context.Background())
 	if err != nil {
 		t.Fatalf("dossier absent : aucune erreur attendue, obtenu %v", err)
 	}
@@ -209,7 +209,7 @@ func TestAvailableSet_DossierAbsent(t *testing.T) {
 // n'est jamais vu par un autre (isolation par chemin FS, ADR 0008).
 func TestAvailableSet_IsoleParTitre(t *testing.T) {
 	root := artefactAt(t, title.DefaultSlug, "0000a001", `{}`)
-	set, err := NewReplayService("halo_5", root, nil).AvailableSet(context.Background())
+	set, err := NewReplayService("halo_5", root, nil, nil).AvailableSet(context.Background())
 	if err != nil {
 		t.Fatalf("AvailableSet: %v", err)
 	}

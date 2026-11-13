@@ -41,7 +41,7 @@ func TestWeaponLabels_CompleteUnArtefactCuitAvantLeRegistre(t *testing.T) {
 	mappingsReels(t, root, title.DefaultSlug)
 	artefactSocleMutilator(t, root, title.DefaultSlug, "a0000003")
 
-	doc, err := NewReplayService(title.DefaultSlug, root, nil).
+	doc, err := NewReplayService(title.DefaultSlug, root, nil, labelsDe(root)).
 		GetReplay(context.Background(), "a0000003")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
@@ -81,7 +81,7 @@ func TestWeaponLabels_CompleteUnArtefactSansAucunLibelle(t *testing.T) {
 		`"weaponPads":[{"x":0,"y":0,"weapon":"` + familleMutilator + `","spawns":[0]}]}`
 	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "a0000004"), doc)
 
-	served, err := NewReplayService(title.DefaultSlug, root, nil).
+	served, err := NewReplayService(title.DefaultSlug, root, nil, labelsDe(root)).
 		GetReplay(context.Background(), "a0000004")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
@@ -129,7 +129,7 @@ func TestWeaponLabels_ArtefactReelDuPoste(t *testing.T) {
 	const matchID = "bc60b4d9-40dc-4790-a533-3197aea9060a"
 	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, matchID), string(brut))
 
-	doc, err := NewReplayService(title.DefaultSlug, root, nil).
+	doc, err := NewReplayService(title.DefaultSlug, root, nil, labelsDe(root)).
 		GetReplay(context.Background(), matchID)
 	if err != nil {
 		t.Fatalf("lecture du rejeu réel : %v", err)

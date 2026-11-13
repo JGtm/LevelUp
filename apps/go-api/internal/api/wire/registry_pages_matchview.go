@@ -32,7 +32,7 @@ func (r *ServiceRegistry) cablerFilmMatchView(svc *service.MatchViewService, pdb
 	// Le resume d'usage : la porte film.usage_summary (absente pour Halo 5 -> l'Emprise dit
 	// film_unsupported, seule la feuille reste).
 	if caps.Has(games.CapFilmUsageSummary) {
-		svc = svc.WithEmpriseUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot)
+		svc = svc.WithEmpriseUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.replayLabels())
 	}
 	// Les vies de l'equipe : la porte des vies et du contexte des morts au sync, film.kill_positions.
 	if caps.Has(games.CapFilmKillPositions) {

@@ -25,8 +25,8 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/replaytext"
 
 	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
@@ -231,7 +231,7 @@ func moduleDeLEntree(e replay.MapObjectivesEntry, bornes *decfilm.MapQuantCatalo
 func nomZone(z replay.CalloutZone) string {
 	var noms []string
 	for _, l := range i18n.Chain(i18n.Default) {
-		noms = append(noms, replaylabels.TexteDepuisFilm(z.Text)[l])
+		noms = append(noms, replaytext.TexteDepuisFilm(z.Text)[l])
 	}
 	for _, n := range append(noms, z.Name) {
 		if s := strings.TrimSpace(n); s != "" {

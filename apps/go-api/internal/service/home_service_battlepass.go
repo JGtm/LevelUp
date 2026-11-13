@@ -14,7 +14,13 @@ import (
 const battlePassCacheTTLFallback = 24 * time.Hour
 
 func (s *HomeService) GetBattlePass(ctx context.Context) domain.BattlePassResponse {
-	resp, raw := s.provider.GetBattlePassWithRaw(ctx)
+	var (
+		resp domain.BattlePassResponse
+		raw  []byte
+	)
+	if s.provider != nil {
+		resp, raw = s.provider.GetBattlePassWithRaw(ctx)
+	}
 	if resp.Available && resp.RewardTrack != nil {
 		slog.DebugContext(ctx, "home: BattlePass obtenu depuis API live")
 		if s.sink != nil {
@@ -88,7 +94,13 @@ func (s *HomeService) GetChallenges(ctx context.Context) domain.ChallengesRespon
 	if s.demoMode {
 		return demoChallenges(ctx)
 	}
-	resp, raw := s.provider.GetChallengesWithRaw(ctx)
+	var (
+		resp domain.ChallengesResponse
+		raw  []byte
+	)
+	if s.provider != nil {
+		resp, raw = s.provider.GetChallengesWithRaw(ctx)
+	}
 	if resp.Available {
 		slog.DebugContext(ctx, "home: Challenges obtenus depuis API live")
 		if s.sink != nil {

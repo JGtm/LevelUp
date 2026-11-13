@@ -124,6 +124,39 @@ func TestFetchPlaylist_UsesFetcherAndClassifies(t *testing.T) {
 	}
 }
 
+// TestFetchPlaylist_ReferenceClasseePrime : une playlist de la référence des playlists classées est
+// rétablie en `ranked` même quand DiscoveryUGC la nomme comme une playlist sociale ; une playlist
+// hors référence garde sa classification par nom.
+func TestFetchPlaylist_ReferenceClasseePrime(t *testing.T) {
+	const assetClasse = "edfef3ac-9cbe-4fa2-b949-8f29deafd483" // playlist active de la référence
+	cas := []struct {
+		nom        string
+		assetID    string
+		publicName string
+		wantRanked bool
+		wantExp    canonical.Experience
+	}{
+		{"classée rangée en social par son nom", assetClasse, "Big Team Battle", true, canonical.ExperienceRanked},
+		{"hors référence, nom sociale", "p-hors-reference", "Big Team Battle", false, canonical.ExperienceBTB},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			fetcher := &stubFetcher{asset: &DiscoveryAssetRaw{AssetID: c.assetID, VersionID: "v-1", PublicName: c.publicName}}
+			a, err := NewCatalogAdapter(fetcher, rulesPath(t))
+			if err != nil {
+				t.Fatalf("NewCatalogAdapter: %v", err)
+			}
+			pl, err := a.FetchPlaylist(context.Background(), c.assetID, "v-1")
+			if err != nil {
+				t.Fatalf("FetchPlaylist: %v", err)
+			}
+			if pl.IsRanked != c.wantRanked || pl.Experience != c.wantExp {
+				t.Errorf("IsRanked = %v, Experience = %q ; attendu %v, %q", pl.IsRanked, pl.Experience, c.wantRanked, c.wantExp)
+			}
+		})
+	}
+}
+
 func TestFetchPair_ProducesModeCategoryAndLabel(t *testing.T) {
 	fetcher := &stubFetcher{
 		asset: &DiscoveryAssetRaw{

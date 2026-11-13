@@ -80,7 +80,7 @@ func TestSessionPage_LeResumeDUsageResteSousFilmUsageSummary(t *testing.T) {
 	if len(appels) != 1 || len(appels[0].portes) != 1 || !strings.Contains(appels[0].portes[0], "games.CapFilmUsageSummary") {
 		t.Fatalf("WithSessionUsageSummary = %+v : attendu un appel sous la seule porte games.CapFilmUsageSummary", appels)
 	}
-	if got := strings.Join(appels[0].args, ", "); got != "duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot" {
-		t.Errorf("WithSessionUsageSummary(%s) : attendu le résumé d'usage et la racine du dépôt", got)
+	if got := strings.Join(appels[0].args, ", "); got != "duckdb.NewSessionUsageRepo(pdb), r.replayLabels()" {
+		t.Errorf("WithSessionUsageSummary(%s) : attendu le résumé d'usage et la source des catalogues du titre", got)
 	}
 }

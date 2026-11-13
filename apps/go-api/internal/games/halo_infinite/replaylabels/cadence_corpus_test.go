@@ -28,6 +28,7 @@ import (
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/replayartifact"
+	"levelup/go-api/internal/replaytext"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -197,8 +198,8 @@ func TestCadenceDesArmesSurLeCorpus(t *testing.T) {
 	// Nom affichable par weapon_key : le catalogue nomme par FAMILLE, la mesure agrège par clé.
 	nomParCle := map[string]string{}
 	for fam, key := range cat.Keys {
-		if w, ok := cat.Weapons[fam]; ok && TexteDepuisFilm(w.Text)[i18n.LocaleFR] != "" {
-			nomParCle[key] = TexteDepuisFilm(w.Text)[i18n.LocaleFR]
+		if w, ok := cat.Weapons[fam]; ok && replaytext.TexteDepuisFilm(w.Text)[i18n.LocaleFR] != "" {
+			nomParCle[key] = replaytext.TexteDepuisFilm(w.Text)[i18n.LocaleFR]
 		}
 	}
 	type ligne struct {

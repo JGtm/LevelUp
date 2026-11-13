@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"testing"
@@ -38,7 +39,7 @@ func TestEnrichSeason_TargetsRequestedSeason(t *testing.T) {
 		},
 	}
 	enr := NewWorldStatsEnricher(src, &fakeResolver{m: map[string]string{"Neo": xuid}},
-		WorldStatsAggregatorConfig{Concurrency: 2})
+		WorldStatsAggregatorConfig{Concurrency: 2, RankedPlaylists: map[string]bool{tArena: true}})
 
 	// Demande la saison 13-2 (chemin brut) → 12-1 doit être exclu. Neo est fourni SANS
 	// xuid → l'enricher retombe sur le résolveur (chemin fallback).
@@ -71,7 +72,7 @@ func TestEnrichSeason_SeededXUIDSkipsResolver(t *testing.T) {
 		},
 	}
 	res := &countingResolver{m: map[string]string{"Neo": xuid}}
-	enr := NewWorldStatsEnricher(src, res, WorldStatsAggregatorConfig{Concurrency: 2})
+	enr := NewWorldStatsEnricher(src, res, WorldStatsAggregatorConfig{Concurrency: 2, RankedPlaylists: map[string]bool{tArena: true}})
 
 	// Neo fourni AVEC son xuid → le résolveur ne doit jamais être appelé.
 	stats, errs := enr.EnrichSeason(context.Background(), "csrseason13-2",
@@ -84,5 +85,25 @@ func TestEnrichSeason_SeededXUIDSkipsResolver(t *testing.T) {
 	}
 	if n := atomic.LoadInt64(&res.calls); n != 0 {
 		t.Errorf("ResolveXUID appelé %d fois, attendu 0 (xuid pré-seedé, B1)", n)
+	}
+}
+
+// TestEnrichSeason_RefuseSansPlaylistsClassees : l'ensemble des playlists classées vient du câblage du
+// titre. Sans lui l'agrégateur ne filtrerait rien et mêlerait le social au classé : l'enrichissement
+// refuse, et ne touche ni la source ni le résolveur.
+func TestEnrichSeason_RefuseSansPlaylistsClassees(t *testing.T) {
+	res := &countingResolver{m: map[string]string{"Neo": "42"}}
+	enr := NewWorldStatsEnricher(&fakeMatchSource{}, res, WorldStatsAggregatorConfig{Concurrency: 2})
+
+	stats, errs := enr.EnrichSeason(context.Background(), "csrseason13-2",
+		[]domain.WorldPlayerRef{{Gamertag: "Neo", XUID: "42"}})
+	if stats != nil {
+		t.Errorf("stats = %+v, attendu nil", stats)
+	}
+	if len(errs) != 1 || !errors.Is(errs[0], errWorldRankedPlaylistsMissing) {
+		t.Fatalf("erreurs = %v, attendu errWorldRankedPlaylistsMissing", errs)
+	}
+	if n := atomic.LoadInt64(&res.calls); n != 0 {
+		t.Errorf("ResolveXUID appelé %d fois, attendu 0", n)
 	}
 }

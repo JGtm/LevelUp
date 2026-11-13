@@ -48,7 +48,7 @@ func soclesFixture(t *testing.T) string {
 
 func TestMapWeaponPads_AllumesSeulement(t *testing.T) {
 	root := soclesFixture(t)
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: "map-pads"})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: "map-pads"}, nil)
 
 	doc, err := svc.GetReplay(context.Background(), "0000a001")
 	if err != nil {
@@ -78,7 +78,7 @@ func TestMapWeaponPads_AllumesSeulement(t *testing.T) {
 // emplacements ; le film n'en a servi aucun ; il ne doit RIEN s'afficher.
 func TestMapWeaponPads_SansSocleAuFilm(t *testing.T) {
 	root := soclesFixture(t)
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: "map-pads"})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: "map-pads"}, nil)
 
 	doc, err := svc.GetReplay(context.Background(), "0000a002")
 	if err != nil {
@@ -100,7 +100,7 @@ func TestMapWeaponPads_AbsencesPropres(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			svc := NewReplayService(title.DefaultSlug, root, c.repo)
+			svc := NewReplayService(title.DefaultSlug, root, c.repo, nil)
 			doc, err := svc.GetReplay(context.Background(), "0000a001")
 			if err != nil {
 				t.Fatalf("GetReplay: %v", err)
@@ -121,7 +121,7 @@ func TestMapWeaponPads_AbsencesPropres(t *testing.T) {
 func TestMapWeaponPads_SansCatalogue(t *testing.T) {
 	root := t.TempDir()
 	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "0000a001"), artefactAvecSocles)
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: "map-pads"})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: "map-pads"}, nil)
 
 	doc, err := svc.GetReplay(context.Background(), "0000a001")
 	if err != nil {
@@ -140,7 +140,7 @@ func TestMapWeaponPads_SansCatalogue(t *testing.T) {
 func TestMapWeaponPads_UneSeuleLectureDesCles(t *testing.T) {
 	root := soclesFixture(t)
 	repo := &mapNamesStub{mapID: "map-pads", pairName: "Arena:Slayer"}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 
 	if _, err := svc.GetReplay(context.Background(), "0000a001"); err != nil {
 		t.Fatalf("GetReplay: %v", err)

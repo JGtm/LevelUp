@@ -21,6 +21,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 )
 
 // AssetType identifie le type d'asset à fetcher (miroir local de haloadapter.AssetType
@@ -119,6 +120,8 @@ func (a *CatalogAdapter) TitleSlug() string {
 
 // FetchPlaylist enveloppe FetchAsset(AssetTypePlaylist) en mono-lang EN.
 //
+// La référence des playlists classées (`rankedplaylists`) fait autorité sur `IsRanked` et `Experience`.
+//
 // Phase D minimal : ne parse pas CustomData.PlaylistEntries (donc PairLinks vide).
 // Le parsing complet est en Phase F (drain queue).
 func (a *CatalogAdapter) FetchPlaylist(ctx context.Context, assetID, versionID string) (canonical.CanonicalPlaylist, error) {
@@ -137,6 +140,12 @@ func (a *CatalogAdapter) FetchPlaylist(ctx context.Context, assetID, versionID s
 	}
 	pl.Experience = a.ClassifyExperience(pl)
 	pl.IsRanked = pl.Experience == canonical.ExperienceRanked
+	// La référence des playlists classées prime sur la classification par nom : DiscoveryUGC peut ranger à
+	// tort une playlist classée en `social`, et la valeur fausse ne doit pas se propager au catalogue.
+	if rankedplaylists.IsRanked(pl.AssetID) {
+		pl.IsRanked = true
+		pl.Experience = canonical.ExperienceRanked
+	}
 	return pl, nil
 }
 

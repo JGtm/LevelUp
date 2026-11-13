@@ -34,7 +34,6 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/assets/static"
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -124,10 +123,9 @@ func vehicleLabelOf(famille string, info replay.VehicleFamilyInfo, titleSlug str
 // artefact deja cuit. Best-effort ET DIT : un catalogue illisible est une erreur de
 // configuration, pas un document sans vehicules.
 func (s *replayService) vehicleFamiliesQualifiees(ctx context.Context) map[string]replay.VehicleFamilyInfo {
-	cat, err := replaylabels.Load(s.repoRoot, s.titleSlug)
-	if err != nil {
-		slog.WarnContext(ctx, "rejeu 2D : manifeste du titre illisible — familles de chassis non"+
-			" qualifiees (ni nature, ni libelle)", "err", err, "titleSlug", s.titleSlug)
+	cat, ok := s.labelCatalogue(ctx, "rejeu 2D : manifeste du titre illisible — familles de chassis non"+
+		" qualifiees (ni nature, ni libelle)")
+	if !ok {
 		return nil
 	}
 	return cat.VehicleFamilies

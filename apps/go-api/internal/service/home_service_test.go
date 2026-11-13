@@ -210,7 +210,7 @@ func TestHomeService_GetHomePage_OK(t *testing.T) {
 			{MatchID: "m1", SessionLabel: strPtr("Session 1"), StartTime: &now},
 		},
 	}
-	svc := withHomeMock(NewHomeService(repo), repo)
+	svc := withHomeMock(NewHomeService(repo, nil), repo)
 
 	resp, err := svc.GetHomePage(context.Background(), "TestGT", "fr")
 	if err != nil {
@@ -232,7 +232,7 @@ func TestHomeService_GetHomePage_Empty(t *testing.T) {
 		matches:  []legacymatch.HomeMatchRow{},
 		sessions: []legacymatch.HomeSessionRow{},
 	}
-	svc := withHomeMock(NewHomeService(repo), repo)
+	svc := withHomeMock(NewHomeService(repo, nil), repo)
 
 	resp, err := svc.GetHomePage(context.Background(), "TestGT", "fr")
 	if err != nil {
@@ -245,7 +245,7 @@ func TestHomeService_GetHomePage_Empty(t *testing.T) {
 
 func TestHomeService_GetHomePage_MatchesError(t *testing.T) {
 	repo := &mockHomeRepo{matchErr: errors.New("fail")}
-	svc := withHomeMock(NewHomeService(repo), repo)
+	svc := withHomeMock(NewHomeService(repo, nil), repo)
 
 	_, err := svc.GetHomePage(context.Background(), "GT", "fr")
 	if err == nil {
@@ -269,7 +269,7 @@ func TestHomeService_GetHomePage_RespectsLocale(t *testing.T) {
 			Outcome:      2,
 		}},
 	}
-	svc := withHomeMock(NewHomeService(repo), repo)
+	svc := withHomeMock(NewHomeService(repo, nil), repo)
 
 	respFR, err := svc.GetHomePage(context.Background(), "GT", "fr")
 	if err != nil {
@@ -332,7 +332,7 @@ group         = "combat"
 		t.Fatalf("load fields: %v", ferr)
 	}
 	semantic := halo_infinite.NewSemanticAdapter(fields, ranks, nil, nil)
-	svc := withHomeMock(NewHomeService(repo).WithSemanticAdapter(semantic), repo)
+	svc := withHomeMock(NewHomeService(repo, nil).WithSemanticAdapter(semantic), repo)
 
 	resp, err := svc.GetHomePage(context.Background(), "GT", "fr")
 	if err != nil {
@@ -377,7 +377,7 @@ func TestHomeService_GetHomePage_SpartanIdentityErrorGraceful(t *testing.T) {
 		sessions:    []legacymatch.HomeSessionRow{},
 		identityErr: errors.New("career_progression table missing"),
 	}
-	svc := withHomeMock(NewHomeService(repo), repo)
+	svc := withHomeMock(NewHomeService(repo, nil), repo)
 
 	resp, err := svc.GetHomePage(context.Background(), "GT", "fr")
 	if err != nil {
@@ -399,7 +399,7 @@ func TestHomeService_GetHomePage_CountMatchesFallback(t *testing.T) {
 		sessions: []legacymatch.HomeSessionRow{},
 		countErr: errors.New("count failed"),
 	}
-	svc := withHomeMock(NewHomeService(repo), repo)
+	svc := withHomeMock(NewHomeService(repo, nil), repo)
 
 	resp, err := svc.GetHomePage(context.Background(), "GT", "fr")
 	if err != nil {
@@ -419,7 +419,7 @@ func TestHomeService_GetHomePage_NoCacheNoPanic(t *testing.T) {
 		sessions: []legacymatch.HomeSessionRow{},
 	}
 	// Sans cache → comportement identique à avant.
-	svc := withHomeMock(NewHomeService(repo), repo)
+	svc := withHomeMock(NewHomeService(repo, nil), repo)
 	if _, err := svc.GetHomePage(context.Background(), "GT", "fr"); err != nil {
 		t.Fatalf("unexpected error without cache: %v", err)
 	}
@@ -427,7 +427,7 @@ func TestHomeService_GetHomePage_NoCacheNoPanic(t *testing.T) {
 
 func TestHomeService_GetBattlePass(t *testing.T) {
 	repo := &mockHomeRepo{}
-	svc := withHomeMock(NewHomeService(repo), repo)
+	svc := withHomeMock(NewHomeService(repo, nil), repo)
 	bp := svc.GetBattlePass(context.Background())
 	// Default provider returns available=false
 	if bp.Available {
@@ -437,7 +437,7 @@ func TestHomeService_GetBattlePass(t *testing.T) {
 
 func TestHomeService_GetChallenges(t *testing.T) {
 	repo := &mockHomeRepo{}
-	svc := withHomeMock(NewHomeService(repo), repo)
+	svc := withHomeMock(NewHomeService(repo, nil), repo)
 	ch := svc.GetChallenges(context.Background())
 	if ch.Available {
 		t.Error("expected Available=false from default provider")
@@ -488,7 +488,7 @@ func TestHomeService_GetBattlePass_CacheHit(t *testing.T) {
 		bpHit: true,
 	}
 
-	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	svc := NewHomeService(&mockHomeRepo{}, nil).WithCacheRepo(cacheRepo)
 	resp := svc.GetBattlePass(context.Background())
 
 	if !resp.Available {
@@ -511,7 +511,7 @@ func TestHomeService_GetBattlePass_CacheMiss(t *testing.T) {
 		bpHit:  false,
 	}
 
-	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	svc := NewHomeService(&mockHomeRepo{}, nil).WithCacheRepo(cacheRepo)
 	// Le provider live retourne available=false (pas de tokens)
 	resp := svc.GetBattlePass(context.Background())
 
@@ -546,7 +546,7 @@ func TestHomeService_GetChallenges_CacheHit(t *testing.T) {
 		chHit: true,
 	}
 
-	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	svc := NewHomeService(&mockHomeRepo{}, nil).WithCacheRepo(cacheRepo)
 	resp := svc.GetChallenges(context.Background())
 
 	if !resp.Available {
@@ -576,7 +576,7 @@ func TestHomeService_GetChallenges_CacheHitWithoutItems_StillReturnsCache(t *tes
 		chHit: true,
 	}
 
-	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	svc := NewHomeService(&mockHomeRepo{}, nil).WithCacheRepo(cacheRepo)
 	resp := svc.GetChallenges(context.Background())
 
 	if !resp.Available {
@@ -598,7 +598,7 @@ func TestHomeService_GetChallenges_CacheMiss(t *testing.T) {
 		chHit: false,
 	}
 
-	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	svc := NewHomeService(&mockHomeRepo{}, nil).WithCacheRepo(cacheRepo)
 	resp := svc.GetChallenges(context.Background())
 
 	if resp.FromCache {
@@ -611,7 +611,7 @@ func TestHomeService_GetChallenges_CacheMiss(t *testing.T) {
 
 func TestHomeService_GetBattlePass_NoCacheRepo(t *testing.T) {
 	// Sans WithCacheRepo → live direct, pas de panique
-	svc := NewHomeService(&mockHomeRepo{})
+	svc := NewHomeService(&mockHomeRepo{}, nil)
 	resp := svc.GetBattlePass(context.Background())
 	if resp.FromCache {
 		t.Error("expected FromCache=false when no cache repo")
@@ -638,7 +638,7 @@ func TestHomeService_GetBattlePass_CacheHitPreservesSnapshotAt(t *testing.T) {
 		bpHit: true,
 	}
 
-	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	svc := NewHomeService(&mockHomeRepo{}, nil).WithCacheRepo(cacheRepo)
 	resp := svc.GetBattlePass(context.Background())
 
 	if !resp.FromCache {
@@ -675,7 +675,7 @@ func TestHomeService_GetChallenges_CacheHitPreservesSnapshotAt(t *testing.T) {
 		chHit: true,
 	}
 
-	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	svc := NewHomeService(&mockHomeRepo{}, nil).WithCacheRepo(cacheRepo)
 	resp := svc.GetChallenges(context.Background())
 
 	if !resp.FromCache {
@@ -708,7 +708,7 @@ func TestSnapshotAgeHours_HandlesNilAndMalformed(t *testing.T) {
 
 func TestHomeService_DefaultTTL_Is1Hour(t *testing.T) {
 	// SetSessionActive est no-op mais ne doit pas paniquer.
-	svc := NewHomeService(&mockHomeRepo{})
+	svc := NewHomeService(&mockHomeRepo{}, nil)
 	svc.SetSessionActive(true)
 	svc.SetSessionActive(false)
 }
@@ -721,7 +721,7 @@ func TestGetBattlePass_CallsLive_Always(t *testing.T) {
 	track := "path/to/track"
 	cached := &domain.BattlePassResponse{Available: true, RewardTrack: &track}
 	cacheRepo := &mockBattlePassCacheRepo{bpResp: cached, bpHit: true}
-	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	svc := NewHomeService(&mockHomeRepo{}, nil).WithCacheRepo(cacheRepo)
 	// Live sans tokens → Available=false → fallback cache → Available=true
 	resp := svc.GetBattlePass(context.Background())
 	if !resp.Available {
@@ -737,7 +737,7 @@ func TestGetBattlePass_FallsBackToCache_WhenLiveUnavailable(t *testing.T) {
 	track := "path/to/track"
 	cached := &domain.BattlePassResponse{Available: true, RewardTrack: &track}
 	cacheRepo := &mockBattlePassCacheRepo{bpResp: cached, bpHit: true}
-	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	svc := NewHomeService(&mockHomeRepo{}, nil).WithCacheRepo(cacheRepo)
 	// provider par défaut : pas de tokens → Available=false
 	resp := svc.GetBattlePass(context.Background())
 	if !resp.Available {
@@ -752,7 +752,7 @@ func TestGetChallenges_FallsBackToCache_WhenLiveUnavailable(t *testing.T) {
 	// ChallengesResponse depuis le cache → toujours rendu (parité Battle Pass).
 	cached := &domain.ChallengesResponse{Available: true, Items: []domain.ChallengeItem{{}}}
 	cacheRepo := &mockBattlePassCacheRepo{chResp: cached, chHit: true}
-	svc := NewHomeService(&mockHomeRepo{}).WithCacheRepo(cacheRepo)
+	svc := NewHomeService(&mockHomeRepo{}, nil).WithCacheRepo(cacheRepo)
 	resp := svc.GetChallenges(context.Background())
 	if !resp.Available {
 		t.Error("fallback cache attendu quand live indisponible")
@@ -760,17 +760,17 @@ func TestGetChallenges_FallsBackToCache_WhenLiveUnavailable(t *testing.T) {
 }
 
 func TestGetBattlePass_NoSink_DoesNotPanic(t *testing.T) {
-	svc := NewHomeService(&mockHomeRepo{})
+	svc := NewHomeService(&mockHomeRepo{}, nil)
 	_ = svc.GetBattlePass(context.Background())
 }
 
 func TestGetChallenges_NoSink_DoesNotPanic(t *testing.T) {
-	svc := NewHomeService(&mockHomeRepo{})
+	svc := NewHomeService(&mockHomeRepo{}, nil)
 	_ = svc.GetChallenges(context.Background())
 }
 
 func TestHomeService_ConcurrentSetSessionActive(t *testing.T) {
-	svc := NewHomeService(&mockHomeRepo{})
+	svc := NewHomeService(&mockHomeRepo{}, nil)
 	for i := 0; i < 20; i++ {
 		go func(i int) {
 			svc.SetSessionActive(i%2 == 0)

@@ -28,8 +28,8 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/replaytext"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -111,7 +111,7 @@ func vehicleWeaponTagOf(key string) (string, bool) {
 // vehicleWeaponOf projette une entree du registre vers la forme du document.
 func vehicleWeaponOf(w mappings.VehicleWeapon) replay.VehicleWeapon {
 	out := replay.VehicleWeapon{
-		Vehicle: w.Vehicle, Text: replaylabels.TexteVersFilm(w.Label), Fire: w.Fire, Fx: w.Fx, Tint: w.Tint, Sound: w.Sound,
+		Vehicle: w.Vehicle, Text: replaytext.TexteVersFilm(w.Label), Fire: w.Fire, Fx: w.Fx, Tint: w.Tint, Sound: w.Sound,
 		Loop: w.Loop, Impact: w.Impact, ImpactSound: w.ImpactSound,
 	}
 	if w.Mount != nil {

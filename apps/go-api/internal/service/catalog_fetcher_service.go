@@ -16,8 +16,6 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/port"
 )
 
@@ -105,7 +103,9 @@ func (s *CatalogFetcherService) processEntry(ctx context.Context, adapter games.
 		if err != nil {
 			return err
 		}
-		return s.upsertPlaylist(ctx, titleSlug, pl)
+		// `IsRanked` et `Experience` sont de l'adapter du titre (la référence des playlists classées
+		// d'un titre y fait autorité) : le service persiste ce qu'il reçoit.
+		return s.repo.UpsertPlaylist(ctx, titleSlug, pl, pl.IsRanked, string(pl.Experience))
 	case games.AssetKindPair:
 		pair, err := adapter.FetchPair(ctx, assetID, versionID)
 		if err != nil {
@@ -126,17 +126,4 @@ func (s *CatalogFetcherService) processEntry(ctx context.Context, adapter games.
 		return s.repo.UpsertGameVariant(ctx, titleSlug, gv)
 	}
 	return fmt.Errorf("asset_type inconnu: %q", assetType)
-}
-
-// upsertPlaylist applique la POLICY is_ranked (la référence rankedplaylists est la source
-// de vérité : si DiscoveryUGC classe à tort une playlist classée en 'social', on rétablit
-// ici plutôt que de propager une valeur fausse) puis délègue la persistance au repo.
-func (s *CatalogFetcherService) upsertPlaylist(ctx context.Context, titleSlug string, pl canonical.CanonicalPlaylist) error {
-	isRanked := pl.IsRanked
-	experience := string(pl.Experience)
-	if rankedplaylists.IsRanked(pl.AssetID) {
-		isRanked = true
-		experience = "ranked"
-	}
-	return s.repo.UpsertPlaylist(ctx, titleSlug, pl, isRanked, experience)
 }

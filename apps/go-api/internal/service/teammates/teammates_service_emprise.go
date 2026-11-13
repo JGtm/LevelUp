@@ -52,10 +52,10 @@ func (s *TeammatesService) loadEmprise(
 	}
 	in := squademprise.Input{
 		PlayerXUID: playerXUID, Current: current, Timeline: timeline,
-		Weapons:            squadagg.WeaponCatalog(ctx, s.repoRoot, s.titleSlug, req.Locale),
+		Weapons:            squadagg.WeaponCatalog(ctx, s.labels, s.titleSlug, req.Locale),
 		SessionMatchCounts: compositionCounts(p.compositionSessions),
 	}
-	lecteur := squadagg.EmpriseLecteur{Page: "teammates", Player: s.gamertag, RepoRoot: s.repoRoot, TitleSlug: s.titleSlug}
+	lecteur := squadagg.EmpriseLecteur{Page: "teammates", Player: s.gamertag, Labels: s.labels, TitleSlug: s.titleSlug}
 	scopeIDs := teammatesMatchIDs(scope)
 	in.PowerKills, in.SheetUnavailable = lecteur.Feuille(ctx, s.empriseRepo, scopeIDs)
 	in.Journal = lecteur.Journal(ctx, s.empriseRepo, scopeIDs, in.Weapons)

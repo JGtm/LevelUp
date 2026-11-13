@@ -122,7 +122,7 @@ func chargeInventaireRegistre(t *testing.T) inventaireRegistre {
 func resoutFondDeCarte(t *testing.T, root string, c carteJouee) (string, error) {
 	t.Helper()
 	svc := NewReplayService(title.DefaultSlug, root,
-		&mapNamesStub{mapID: c.MapID, names: c.Noms})
+		&mapNamesStub{mapID: c.MapID, names: c.Noms}, nil)
 	bg, err := svc.MapBackground(context.Background(), "m")
 	if err != nil {
 		return "", err

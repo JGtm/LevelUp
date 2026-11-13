@@ -213,7 +213,7 @@ func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domai
 			len(blobRecu), rendu.SHA256)
 	}
 
-	doc, err := service.NewReplayService(titlePkg.DefaultSlug, serveurRepo, nil).
+	doc, err := service.NewReplayService(titlePkg.DefaultSlug, serveurRepo, nil, nil).
 		GetReplay(context.Background(), fixtureShort)
 	if err != nil {
 		t.Fatalf("le service de rejeu ne lit pas l'artefact livré: %v", err)

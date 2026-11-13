@@ -25,9 +25,10 @@ const matchViewPage = "match_view"
 type matchViewEmpriseDeps struct {
 	// empriseRepo : la feuille de match (frags aux armes spéciales), câblée pour tout titre.
 	empriseRepo port.SquadEmpriseRepository
-	// usageRepo / repoRoot : le résumé d'usage (câblé sous `film.usage_summary`) ; nil = sans film.
+	// usageRepo / labels : le résumé d'usage (câblé sous `film.usage_summary`) ; nil = sans film. labels : les
+	// catalogues du titre (noms d'armes et de véhicules) ; nil = les objets gardent leur clé.
 	usageRepo port.SessionUsageRepository
-	repoRoot  string
+	labels    port.ReplayLabelSource
 	// vehicleRepo : la ressource véhicules (câblée sous `film.vehicle_usage`) ; nil = non mesurée.
 	vehicleRepo port.SquadVehicleRepository
 	// livesRepo / radarRange : les vies de l'équipe (câblées sous `film.kill_positions`) et la portée
@@ -45,10 +46,10 @@ func (s *MatchViewService) WithEmpriseSheet(repo port.SquadEmpriseRepository) *M
 	return s
 }
 
-// WithEmpriseUsageSummary injecte le résumé d'usage et la racine du dépôt (catalogue d'armes, noms de
+// WithEmpriseUsageSummary injecte le résumé d'usage et la source des catalogues du titre (noms d'armes, noms de
 // véhicules) — câblé sous `film.usage_summary`.
-func (s *MatchViewService) WithEmpriseUsageSummary(repo port.SessionUsageRepository, repoRoot string) *MatchViewService {
-	s.emprise.usageRepo, s.emprise.repoRoot = repo, repoRoot
+func (s *MatchViewService) WithEmpriseUsageSummary(repo port.SessionUsageRepository, labels port.ReplayLabelSource) *MatchViewService {
+	s.emprise.usageRepo, s.emprise.labels = repo, labels
 	return s
 }
 
@@ -103,7 +104,7 @@ func (s *MatchViewService) matchEmpriseBlock(
 	}
 	solo := buildSoloEmpriseBlock(ctx, soloEmpriseQuery{
 		Page: matchViewPage, Player: players[0].Gamertag, PlayerXUID: s.xuid,
-		RepoRoot: s.emprise.repoRoot, TitleSlug: s.titleSlug, Locale: ctxkeys.Locale(ctx),
+		Labels: s.emprise.labels, TitleSlug: s.titleSlug, Locale: ctxkeys.Locale(ctx),
 		Current: []squademprise.Match{m}, UsageRepo: s.emprise.usageRepo, EmpriseRepo: s.emprise.empriseRepo,
 		VehicleRepo: s.emprise.vehicleRepo, Players: players,
 	})

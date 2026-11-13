@@ -58,7 +58,7 @@ neutral = true
 func TestMapObjectives_CTF(t *testing.T) {
 	root := objectifsFixture(t)
 	repo := &mapNamesStub{mapID: "map-ctf", pairName: "Arena:CTF on Testmap"}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 
 	doc, err := svc.GetReplay(context.Background(), "0000a001")
 	if err != nil {
@@ -96,7 +96,7 @@ func TestMapObjectives_CTF(t *testing.T) {
 func TestMapObjectives_StrongholdsNeutre(t *testing.T) {
 	root := objectifsFixture(t)
 	repo := &mapNamesStub{mapID: "map-ctf", pairName: "Arena:Strongholds on Testmap"}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 
 	doc, err := svc.GetReplay(context.Background(), "0000a001")
 	if err != nil {
@@ -132,7 +132,7 @@ func TestMapObjectives_Absences(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			svc := NewReplayService(title.DefaultSlug, objectifsFixture(t), c.stub)
+			svc := NewReplayService(title.DefaultSlug, objectifsFixture(t), c.stub, nil)
 			doc, err := svc.GetReplay(context.Background(), "0000a001")
 			if err != nil {
 				t.Fatalf("GetReplay doit servir le document: %v", err)
@@ -156,13 +156,13 @@ func TestMapObjectives_TitreSansTable(t *testing.T) {
 	if err := os.Remove(res.TitleMappingsDir(title.DefaultSlug) + "/objective_roles.toml"); err != nil {
 		t.Fatal(err)
 	}
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: "map-ctf", pairName: "Arena:CTF on Testmap"})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: "map-ctf", pairName: "Arena:CTF on Testmap"}, nil)
 	doc, err := svc.GetReplay(context.Background(), "0000a001")
 	if err != nil || doc.MapObjectives != nil {
 		t.Errorf("attendu document entier sans calque, reçu err=%v mo=%+v", err, doc.MapObjectives)
 	}
 
-	sansRepo := NewReplayService(title.DefaultSlug, root, nil)
+	sansRepo := NewReplayService(title.DefaultSlug, root, nil, nil)
 	doc, err = sansRepo.GetReplay(context.Background(), "0000a001")
 	if err != nil || doc.MapObjectives != nil {
 		t.Errorf("maps nil : attendu document entier sans calque, reçu err=%v mo=%+v", err, doc.MapObjectives)

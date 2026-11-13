@@ -22,18 +22,39 @@ package service
 // Et la règle du dépôt le dit : on ne stocke jamais une résolution qui peut s'améliorer.
 //
 // TITLE-AGNOSTIC PAR CONSTRUCTION : le catalogue est chargé POUR LE TITRE du service
-// (`replaylabels.Load(repoRoot, slug)` lit `config/titles/{slug}/mappings/`), exactement
+// (la source `port.ReplayLabelSource` rend celui de `config/titles/{slug}/mappings/`), exactement
 // comme le fait l'assemblage hors ligne. Un titre sans ces tables ne reçoit aucune clé —
 // absence propre, jamais une erreur, jamais la clé d'un autre titre.
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/games"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
+
+// labelCatalogue rend le catalogue de libellés du rejeu du titre du service, ou faux quand il
+// manque : source absente, titre sans rejeu (`games.ErrCapabilityNotSupported`, dégradation voulue)
+// ou catalogue illisible (dit sous `message`). Le document se sert alors sans les libellés du titre.
+func (s *replayService) labelCatalogue(ctx context.Context, message string) (replay.LabelCatalog, bool) {
+	if s.labels == nil {
+		return replay.LabelCatalog{}, false
+	}
+	cat, err := s.labels.LabelCatalogue(s.titleSlug)
+	switch {
+	case err == nil:
+		return cat, true
+	case errors.Is(err, games.ErrCapabilityNotSupported):
+		slog.DebugContext(ctx, "rejeu 2D : titre sans catalogue de libellés du rejeu",
+			"titleSlug", s.titleSlug, "err", err)
+	default:
+		slog.WarnContext(ctx, message, "err", err, "titleSlug", s.titleSlug)
+	}
+	return replay.LabelCatalog{}, false
+}
 
 // resolveWeaponLabels pose `Key` et `Tint` sur chaque libellé d'arme du document.
 //
@@ -48,13 +69,8 @@ func (s *replayService) resolveWeaponLabels(ctx context.Context, doc *replay.Rep
 		len(doc.Loadouts) == 0 && len(doc.Shots) == 0 && len(doc.WeaponPads) == 0 {
 		return
 	}
-	cat, err := replaylabels.Load(s.repoRoot, s.titleSlug)
-	if err != nil {
-		slog.WarnContext(ctx, "rejeu 2D : catalogue d'armes illisible — ni son ni teinte de tir",
-			"err", err, "titleSlug", s.titleSlug)
-		return
-	}
-	if len(cat.Keys) == 0 {
+	cat, ok := s.labelCatalogue(ctx, "rejeu 2D : catalogue d'armes illisible — ni son ni teinte de tir")
+	if !ok || len(cat.Keys) == 0 {
 		return
 	}
 	// COMBLER D'ABORD, RÉSOUDRE ENSUITE. Une arme entrée au registre APRÈS la cuisson de

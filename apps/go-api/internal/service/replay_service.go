@@ -40,26 +40,31 @@ type replayService struct {
 	// maps nomme la carte d'un match (fond de carte). Nil = pas de fond servi, jamais
 	// d'erreur : le rejeu reste lisible sur son sol structurel.
 	maps port.ReplayMapNameRepo
+	// labels : le catalogue de libellés du rejeu du titre (noms et clés des armes, familles de châssis
+	// qualifiées). Nil, ou un titre sans rejeu : le document se sert sans ces libellés, jamais avec ceux
+	// d'un autre titre.
+	labels port.ReplayLabelSource
 }
 
 // NewReplayService construit le service de rejeu pour un titre (résolu depuis le joueur).
 //
 // `maps` est la SEULE dépendance base du service — elle nomme la carte du match, ce que
 // l'artefact ne sait pas faire. Nil est un cas servi : pas de fond de carte, le rejeu garde
-// son sol structurel. Un paramètre plutôt qu'un `With*` : un service à deux formes de
-// construction finit toujours par n'en avoir qu'une de testée.
+// son sol structurel. `labels` est la source des catalogues de libellés du titre ; nil est un cas
+// servi aussi (armes et châssis sans libellé du titre). Des paramètres plutôt que des `With*` : un
+// service à deux formes de construction finit toujours par n'en avoir qu'une de testée.
 //
 // Données versionnées ET artefacts du même dépôt (cas hors démo, CLI, tests).
-func NewReplayService(titleSlug, repoRoot string, maps port.ReplayMapNameRepo) port.ReplayService {
+func NewReplayService(titleSlug, repoRoot string, maps port.ReplayMapNameRepo, labels port.ReplayLabelSource) port.ReplayService {
 	return &replayService{titleSlug: titleSlug, repoRoot: repoRoot,
-		artifactsDir: title.NewPathResolver(repoRoot).ReplayArtifactsDir(titleSlug), maps: maps}
+		artifactsDir: title.NewPathResolver(repoRoot).ReplayArtifactsDir(titleSlug), maps: maps, labels: labels}
 }
 
 // NewDemoReplayService construit le service de la DÉMO : données versionnées du dépôt,
 // artefacts et index des rejeux figés de la disposition démo, identités masquées.
-func NewDemoReplayService(titleSlug, repoRoot string, layout title.DemoLayout, maps port.ReplayMapNameRepo) port.ReplayService {
+func NewDemoReplayService(titleSlug, repoRoot string, layout title.DemoLayout, maps port.ReplayMapNameRepo, labels port.ReplayLabelSource) port.ReplayService {
 	return &replayService{titleSlug: titleSlug, repoRoot: repoRoot,
-		artifactsDir: layout.ReplayArtifactsDir(titleSlug), demoIndexPath: layout.ReplayIndexPath(titleSlug), maps: maps}
+		artifactsDir: layout.ReplayArtifactsDir(titleSlug), demoIndexPath: layout.ReplayIndexPath(titleSlug), maps: maps, labels: labels}
 }
 
 // modeNonGere dit si le registre classe ce match dans un mode que le rejeu ne gere pas

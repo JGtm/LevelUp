@@ -38,7 +38,7 @@ func TestFondsDesCartesJoueesSousUnAssetSansFondPropre(t *testing.T) {
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
 			svc := NewReplayService(title.DefaultSlug, root,
-				&mapNamesStub{mapID: c.mapIDJoue, names: []string{c.nom}})
+				&mapNamesStub{mapID: c.mapIDJoue, names: []string{c.nom}}, nil)
 			bg, err := svc.MapBackground(context.Background(), "m")
 			if err != nil {
 				t.Fatalf("aucun fond pour %s (%s) : %v", c.nom, c.mapIDJoue, err)

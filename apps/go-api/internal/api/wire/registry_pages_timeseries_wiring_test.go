@@ -87,11 +87,11 @@ func TestTimeseries_CableLesViesEtLaPorteeDuRadar(t *testing.T) {
 }
 
 // Le résumé d'usage n'a plus de résolveur d'amis (le bloc « servi ou gâché » qui le lisait a quitté
-// la page) : le repo et la racine du dépôt, rien d'autre.
+// la page) : le repo et la source des catalogues du titre, rien d'autre.
 func TestTimeseries_LeResumeDUsageSansResolveurDAmis(t *testing.T) {
 	appels := appelsDansTimeseries(t, "WithUsageSummary")
-	if len(appels) != 1 || strings.Join(appels[0].args, ", ") != "duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot" {
-		t.Errorf("WithUsageSummary = %+v : attendu WithUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot)", appels)
+	if len(appels) != 1 || strings.Join(appels[0].args, ", ") != "duckdb.NewSessionUsageRepo(pdb), r.replayLabels()" {
+		t.Errorf("WithUsageSummary = %+v : attendu WithUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.replayLabels())", appels)
 	}
 }
 

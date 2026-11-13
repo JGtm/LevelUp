@@ -86,7 +86,7 @@ func TestTeammatesService_GetPage_PublieLesBlocsDUsageSurLePerimetreEscouade(t *
 	svc := NewTeammatesService(repo, nil).
 		WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Main").
 		WithUsageSummary(usageRepo).
-		WithSquadFormes(usageRepo, nil, "")
+		WithSquadFormes(usageRepo, nil, nil)
 
 	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{
 		SelectedGamertags: []string{"Ally1"},
@@ -125,7 +125,7 @@ func TestTeammatesService_GetPage_CoequipierSansGamertagDeParticipant(t *testing
 	svc := NewTeammatesService(repo, nil).
 		WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Main").
 		WithUsageSummary(usageRepo).
-		WithSquadFormes(usageRepo, nil, "").
+		WithSquadFormes(usageRepo, nil, nil).
 		WithEmprise(feuilleM1())
 
 	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{
@@ -152,7 +152,7 @@ func TestTeammatesService_GetPage_SansSelectionLePerimetreEstLeScopeFiltre(t *te
 	svc := NewTeammatesService(repo, nil).
 		WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Main").
 		WithUsageSummary(usageRepo).
-		WithSquadFormes(usageRepo, nil, "")
+		WithSquadFormes(usageRepo, nil, nil)
 
 	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{})
 	if err != nil {
@@ -240,7 +240,7 @@ func TestTeammatesService_GetPage_UsageEtFormesPartagentLeursLectures(t *testing
 	svc := NewTeammatesService(repo, nil).
 		WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, nil), "halo_infinite", "Main").
 		WithUsageSummary(usage).
-		WithSquadFormes(usage, nil, "")
+		WithSquadFormes(usage, nil, nil)
 	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{})
 	if err != nil {
 		t.Fatalf("GetPage : %v", err)

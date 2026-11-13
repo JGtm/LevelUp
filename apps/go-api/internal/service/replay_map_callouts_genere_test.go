@@ -38,7 +38,7 @@ func TestMapCallouts_CatalogueGenere(t *testing.T) {
 	res := title.NewPathResolver(root)
 	ecrire(t, res.MapCalloutsOverlayPath(title.DefaultSlug), catalogueGenereFixture(mapIDRattrapee, "Bridge", "Pont"))
 
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: mapIDRattrapee, names: []string{"Lattice - Ranked"}})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: mapIDRattrapee, names: []string{"Lattice - Ranked"}}, nil)
 	entry, err := svc.MapCallouts(context.Background(), "m1")
 	if err != nil {
 		t.Fatalf("carte rattrapée : %v", err)
@@ -55,7 +55,7 @@ func TestMapCallouts_VersionnePrimeSurGenere(t *testing.T) {
 	res := title.NewPathResolver(root)
 	ecrire(t, res.MapCalloutsOverlayPath(title.DefaultSlug), catalogueGenereFixture(mapIDForgeTest, "AUTRE", "AUTRE"))
 
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: mapIDForgeTest})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: mapIDForgeTest}, nil)
 	entry, err := svc.MapCallouts(context.Background(), "m1")
 	if err != nil {
 		t.Fatalf("MapCallouts : %v", err)
@@ -70,7 +70,7 @@ func TestMapCallouts_VersionnePrimeSurGenere(t *testing.T) {
 func TestMapCallouts_CatalogueGenereSuitLeFilDeLEau(t *testing.T) {
 	root := calloutsFixture(t)
 	res := title.NewPathResolver(root)
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: mapIDRattrapee})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: mapIDRattrapee}, nil)
 	if _, err := svc.MapCallouts(context.Background(), "m1"); !errors.Is(err, port.ErrMapCalloutsNotAvailable) {
 		t.Fatalf("avant rattrapage : err = %v, attendu une absence", err)
 	}
@@ -86,11 +86,11 @@ func TestMapCallouts_CatalogueGenereSuitLeFilDeLEau(t *testing.T) {
 func TestMapCallouts_CatalogueGenereIllisible(t *testing.T) {
 	root := calloutsFixture(t)
 	ecrire(t, title.NewPathResolver(root).MapCalloutsOverlayPath(title.DefaultSlug), "{abîmé")
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: mapIDForgeTest})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: mapIDForgeTest}, nil)
 	if _, err := svc.MapCallouts(context.Background(), "m1"); err != nil {
 		t.Errorf("carte versionnée : %v", err)
 	}
-	svc = NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: mapIDRattrapee})
+	svc = NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: mapIDRattrapee}, nil)
 	if _, err := svc.MapCallouts(context.Background(), "m1"); !errors.Is(err, port.ErrMapCalloutsNotAvailable) {
 		t.Errorf("carte du catalogue illisible : err = %v, attendu une absence", err)
 	}
@@ -104,7 +104,7 @@ func TestMapCallouts_MapIDAuCatalogueDesBornes(t *testing.T) {
 	ecrire(t, title.NewPathResolver(root).MapQuantBoundsPath(title.DefaultSlug),
 		`{"schemaVersion":1,"source":"test","maps":{`+
 			`"`+idNative+`":{"module":"ridgeline","min":[-10,-10,-10],"max":[10,10,10],"axisWidths":[11,11,11]}}}`)
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: idNative, names: []string{"Nom inconnu"}})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: idNative, names: []string{"Nom inconnu"}}, nil)
 	entry, err := svc.MapCallouts(context.Background(), "m1")
 	if err != nil || entry.Module != "ridgeline" {
 		t.Fatalf("map_id au catalogue des bornes : %+v / %v", entry, err)
@@ -122,7 +122,7 @@ func TestMapCallouts_IdentiteDeclareeParUnFond(t *testing.T) {
 		`"widthPx":1633,"heightPx":1627,"convention":"x = originX + (px+0.5)*mpp"},` +
 		`"stats":{"anchors":14,"anchorsInFrame":14,"anchorsWithGround":14}}`
 	ecrire(t, title.NewPathResolver(root).MapBackgroundMetaPath(title.DefaultSlug, "ridgeline"), sidecar)
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Ridgeline Sentry Defense"}})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Ridgeline Sentry Defense"}}, nil)
 	entry, err := svc.MapCallouts(context.Background(), "m1")
 	if err != nil || entry.Module != "ridgeline" {
 		t.Fatalf("identité déclarée : %+v / %v", entry, err)

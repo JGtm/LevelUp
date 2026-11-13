@@ -1,4 +1,4 @@
-package replaylabels_test
+package replaytext_test
 
 // fil_jumeau_test.go — LE CODEC « À PLAT » DU DÉCODEUR ÉCRIT ET LIT LE FIL DE `i18n` (plan D2,
 // item 2.9 ; règle 6 de CLAUDE.md ; ADR 0040 D-9).
@@ -25,8 +25,8 @@ import (
 	"reflect"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/replaytext"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -91,7 +91,7 @@ func TestFilJumeau_MemesOctetsEtRelectureCroisee(t *testing.T) {
 
 func verifierFilJumeau(t *testing.T, d dispositionDuFil, tx i18n.Text) {
 	t.Helper()
-	film := avecTexte(t, d.valeur, replaylabels.TexteVersFilm(tx))
+	film := avecTexte(t, d.valeur, replaytext.TexteVersFilm(tx))
 	miroir := miroirI18n(t, d.valeur, tx)
 
 	// 1. Mêmes octets.
@@ -110,14 +110,14 @@ func verifierFilJumeau(t *testing.T, d dispositionDuFil, tx i18n.Text) {
 	// 2. Le fil d'i18n relu par le décodeur rend le texte et les champs qu'i18n en relit.
 	luFilm := relireParLeDecodeur(t, d.valeur, filI18n)
 	luI18n := relireParI18n(t, d.valeur, filI18n)
-	if got, want := replaylabels.TexteDepuisFilm(texteDe(luFilm)), texteI18nDe(luI18n); !got.Equal(want) {
+	if got, want := replaytext.TexteDepuisFilm(texteDe(luFilm)), texteI18nDe(luI18n); !got.Equal(want) {
 		t.Errorf("fil d'i18n relu : décodeur %v, i18n %v", got, want)
 	}
 	comparerHorsTexte(t, luFilm, luI18n)
 
 	// 3. Le fil du décodeur relu par i18n rend le même texte.
 	luI18nDuFilm := relireParI18n(t, d.valeur, filFilm)
-	if got, want := texteI18nDe(luI18nDuFilm), replaylabels.TexteDepuisFilm(texteDe(relireParLeDecodeur(t, d.valeur, filFilm))); !got.Equal(want) {
+	if got, want := texteI18nDe(luI18nDuFilm), replaytext.TexteDepuisFilm(texteDe(relireParLeDecodeur(t, d.valeur, filFilm))); !got.Equal(want) {
 		t.Errorf("fil du décodeur relu : i18n %v, décodeur %v", got, want)
 	}
 }
@@ -137,7 +137,7 @@ func TestFilJumeau_MembresQueSeulI18nIgnore(t *testing.T) {
 	for _, fil := range fils {
 		luFilm := relireParLeDecodeur(t, label, []byte(fil))
 		luI18n := relireParI18n(t, label, []byte(fil))
-		if got, want := replaylabels.TexteDepuisFilm(texteDe(luFilm)), texteI18nDe(luI18n); !got.Equal(want) {
+		if got, want := replaytext.TexteDepuisFilm(texteDe(luFilm)), texteI18nDe(luI18n); !got.Equal(want) {
 			t.Errorf("fil %s : décodeur %v, i18n %v", fil, got, want)
 		}
 		comparerHorsTexte(t, luFilm, luI18n)
@@ -160,7 +160,7 @@ func TestFilJumeau_MembreDuContrat(t *testing.T) {
 // liste.
 func TestTexteVersFilm_ChaqueLangueDeLaListe(t *testing.T) {
 	codes := i18n.FlatCodes()
-	film := replaylabels.TexteVersFilm(i18n.Text{codes[0]: "a", i18n.Locale("zz"): "b"})
+	film := replaytext.TexteVersFilm(i18n.Text{codes[0]: "a", i18n.Locale("zz"): "b"})
 	if len(film) != len(codes) {
 		t.Fatalf("TexteVersFilm = %v, attendu les %d langues de la liste", film, len(codes))
 	}
@@ -172,11 +172,11 @@ func TestTexteVersFilm_ChaqueLangueDeLaListe(t *testing.T) {
 	if film[string(codes[0])] != "a" {
 		t.Errorf("valeur perdue : %v", film)
 	}
-	retour := replaylabels.TexteDepuisFilm(replay.Text{string(codes[0]): "a", "zz": "b"})
+	retour := replaytext.TexteDepuisFilm(replay.Text{string(codes[0]): "a", "zz": "b"})
 	if len(retour) != 1 || retour[codes[0]] != "a" {
 		t.Errorf("TexteDepuisFilm = %v, attendu la seule langue de la liste", retour)
 	}
-	if replaylabels.TexteDepuisFilm(nil) != nil {
+	if replaytext.TexteDepuisFilm(nil) != nil {
 		t.Error("TexteDepuisFilm(nil) doit rester nil")
 	}
 }

@@ -7,7 +7,6 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_5/livesync"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	go_sync "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/replayartifacts"
@@ -47,12 +46,14 @@ func (s *SyncJobService) newEngineFor(titleSlug, gamertag, xuid string, tokens *
 }
 
 // defaultRunnerFor choisit le runner d'une sync initiale d'après le registre des titres, jamais d'après
-// le slug : un titre en suivi live seul (Halo 5) reçoit son runner dédié et un contexte portant le
-// jeton Spartan (l'adapter le lit du contexte) ; les autres reçoivent le moteur de sync, le contexte
-// inchangé.
-func (s *SyncJobService) defaultRunnerFor(ctx context.Context, titleSlug, gamertag, xuid string, tokens *domain.HaloTokens) (syncDeltaRunner, context.Context) {
-	if r := livesync.RunnerForTitle(titleSlug, s.cfg, gamertag, xuid); r != nil {
-		return r, ctxkeys.WithHaloAuth(ctx, tokens, xuid)
+// le slug : un titre en suivi live seul (Halo 5) reçoit le runner dédié que rend le `LiveRunnerBuilder`
+// et un contexte portant le jeton Spartan (l'adapter le lit du contexte) ; les autres reçoivent le
+// moteur de sync, le contexte inchangé.
+func (s *SyncJobService) defaultRunnerFor(ctx context.Context, titleSlug, gamertag, xuid string, tokens *domain.HaloTokens) (DeltaRunner, context.Context) {
+	if s.liveRunner != nil {
+		if r := s.liveRunner(titleSlug, gamertag, xuid); r != nil {
+			return r, ctxkeys.WithHaloAuth(ctx, tokens, xuid)
+		}
 	}
 	return s.newEngineFor(titleSlug, gamertag, xuid, tokens), ctx
 }

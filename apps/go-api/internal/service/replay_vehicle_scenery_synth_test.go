@@ -56,7 +56,7 @@ func fondSynthetique(t *testing.T, root string) {
 
 func decorSynthetique(t *testing.T, root string, vies ...replay.VehicleTrack) *replay.VehicleScenery {
 	t.Helper()
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: cleFondSynthetique}).(*replayService)
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: cleFondSynthetique}, nil).(*replayService)
 	doc := docJoue(0, vies...)
 	svc.resolveVehicleScenery(context.Background(), doc, "m7", svc.matchMapKeys(context.Background(), "m7"))
 	return doc.VehicleScenery

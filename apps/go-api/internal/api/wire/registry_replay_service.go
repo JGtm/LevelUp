@@ -31,10 +31,17 @@ func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayServ
 // rejeux FIGÉS de la disposition démo (title.DemoLayout.ReplayArtifactsDir), servis avec les
 // joueurs réels masqués (décisions D-1/D-2 du plan des recommandations du 2026-10-09).
 func replayServiceFrom(cfg *config.AppConfig, titleSlug string, maps port.ReplayMapNameRepo) port.ReplayService {
+	root := cfg.RepoRoot
+	labels := NewReplayLabelSource(root)
 	if cfg.DemoMode {
-		return service.NewDemoReplayService(titleSlug, cfg.RepoRoot, cfg.DemoLayout(), maps)
+		return service.NewDemoReplayService(titleSlug, root, cfg.DemoLayout(), maps, labels)
 	}
-	return service.NewReplayService(titleSlug, cfg.RepoRoot, maps)
+	return service.NewReplayService(titleSlug, root, maps, labels)
+}
+
+// replayLabels rend la source des catalogues de libellés du rejeu, lus sous la racine du dépôt.
+func (r *ServiceRegistry) replayLabels() port.ReplayLabelSource {
+	return NewReplayLabelSource(r.cfg.RepoRoot)
 }
 
 // DemoReplayAllowlist rend, en DÉMO, la liste blanche des rejeux figés que la garde des routes

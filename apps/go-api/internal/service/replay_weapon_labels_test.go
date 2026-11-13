@@ -67,7 +67,7 @@ func TestWeaponLabels_PoseLaTeinteDeLaDecharge(t *testing.T) {
 	mappingsReels(t, root, title.DefaultSlug)
 	artefactArmes(t, root, title.DefaultSlug, "a0000001")
 
-	doc, err := NewReplayService(title.DefaultSlug, root, nil).
+	doc, err := NewReplayService(title.DefaultSlug, root, nil, labelsDe(root)).
 		GetReplay(context.Background(), "a0000001")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
@@ -95,7 +95,7 @@ func TestWeaponLabels_PoseLExplosionALImpact(t *testing.T) {
 		`"0xDEADBEEF":{"en":"?","fr":"?"}}}`
 	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "a0000002"), doc)
 
-	got, err := NewReplayService(title.DefaultSlug, root, nil).GetReplay(context.Background(), "a0000002")
+	got, err := NewReplayService(title.DefaultSlug, root, nil, labelsDe(root)).GetReplay(context.Background(), "a0000002")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}
@@ -116,7 +116,7 @@ func TestWeaponKeys_PoseLaCleDuRegistre(t *testing.T) {
 	mappingsReels(t, root, title.DefaultSlug)
 	artefactArmes(t, root, title.DefaultSlug, "a0000001")
 
-	doc, err := NewReplayService(title.DefaultSlug, root, nil).
+	doc, err := NewReplayService(title.DefaultSlug, root, nil, labelsDe(root)).
 		GetReplay(context.Background(), "a0000001")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
@@ -136,7 +136,7 @@ func TestWeaponKeys_ArmeHorsRegistreResteMuette(t *testing.T) {
 	mappingsReels(t, root, title.DefaultSlug)
 	artefactArmes(t, root, title.DefaultSlug, "a0000001")
 
-	doc, err := NewReplayService(title.DefaultSlug, root, nil).
+	doc, err := NewReplayService(title.DefaultSlug, root, nil, labelsDe(root)).
 		GetReplay(context.Background(), "a0000001")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
@@ -157,7 +157,7 @@ func TestWeaponRoles_PoseLeRoleDuRegistre(t *testing.T) {
 	mappingsReels(t, root, title.DefaultSlug)
 	artefactArmes(t, root, title.DefaultSlug, "a0000001")
 
-	doc, err := NewReplayService(title.DefaultSlug, root, nil).
+	doc, err := NewReplayService(title.DefaultSlug, root, nil, labelsDe(root)).
 		GetReplay(context.Background(), "a0000001")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
@@ -179,7 +179,7 @@ func TestWeaponKeys_TitreSansCatalogue(t *testing.T) {
 	root := t.TempDir()
 	artefactArmes(t, root, title.DefaultSlug, "a0000001")
 
-	doc, err := NewReplayService(title.DefaultSlug, root, nil).
+	doc, err := NewReplayService(title.DefaultSlug, root, nil, labelsDe(root)).
 		GetReplay(context.Background(), "a0000001")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)

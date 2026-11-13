@@ -3,8 +3,8 @@ package mapcatalog
 import (
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/replaytext"
 
 	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
@@ -78,7 +78,7 @@ func TestResoudreSuitLaCascade(t *testing.T) {
 	}
 	for _, c := range cas {
 		e, origine, ok := s.Resoudre(c.id)
-		if !ok || origine != c.origine || replaylabels.TexteDepuisFilm(e.Zones[0].Text)[i18n.LocaleEN] != c.en {
+		if !ok || origine != c.origine || replaytext.TexteDepuisFilm(e.Zones[0].Text)[i18n.LocaleEN] != c.en {
 			t.Errorf("%s : ok=%v origine=%q zone=%q ; attendu %q par %q", c.nom, ok, origine, firstEN(e), c.en, c.origine)
 		}
 	}
@@ -105,5 +105,5 @@ func firstEN(e replay.MapCalloutsEntry) string {
 	if len(e.Zones) == 0 {
 		return ""
 	}
-	return replaylabels.TexteDepuisFilm(e.Zones[0].Text)[i18n.LocaleEN]
+	return replaytext.TexteDepuisFilm(e.Zones[0].Text)[i18n.LocaleEN]
 }

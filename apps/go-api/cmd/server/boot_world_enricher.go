@@ -9,9 +9,22 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/worldenrich"
 )
+
+// rankedPlaylistSet rend l'ensemble des asset IDs des playlists CLASSÉES actives de Halo Infinite : le
+// classement mondial est CSR (classé), alors que l'historique matchmaking mêle classé et social. Le
+// câblage fournit cet ensemble à l'enricher, qui n'importe aucun paquet de titre.
+func rankedPlaylistSet() map[string]bool {
+	pls := rankedplaylists.Active()
+	out := make(map[string]bool, len(pls))
+	for _, pl := range pls {
+		out[pl.AssetID] = true
+	}
+	return out
+}
 
 // enricherOptions paramètre buildWorldEnricher.
 type enricherOptions struct {
@@ -21,7 +34,7 @@ type enricherOptions struct {
 }
 
 // buildWorldEnricher compose source de fetch + résolveur xuid + enricher (ranked-only via
-// RankedPlaylistSet). En mode multi-token, le header PeopleHub est dérivé du 1er compte résolu
+// rankedPlaylistSet). En mode multi-token, le header PeopleHub est dérivé du 1er compte résolu
 // (sauf TokenGamertag explicite). Retourne aussi la liste des gamertags de tokens actifs (pour le
 // log de boot).
 func buildWorldEnricher(ctx context.Context, cfg *config.AppConfig, opts enricherOptions) (*service.WorldStatsEnricher, []string, error) {
@@ -52,7 +65,7 @@ func buildWorldEnricher(ctx context.Context, cfg *config.AppConfig, opts enriche
 		return nil, nil, err
 	}
 	enr := service.NewWorldStatsEnricher(src, resolver, service.WorldStatsAggregatorConfig{
-		RankedPlaylists: service.RankedPlaylistSet(),
+		RankedPlaylists: rankedPlaylistSet(),
 	})
 	return enr, gts, nil
 }

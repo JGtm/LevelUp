@@ -26,7 +26,7 @@ func (r *ServiceRegistry) cablerBlocsSessions(svc *service.SessionPageService, p
 	// Résumé d'usage (Emprise, objectif, effectif de camp de la coordination) et catalogues du
 	// titre : film.usage_summary.
 	if caps.Has(games.CapFilmUsageSummary) {
-		svc = svc.WithSessionUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot)
+		svc = svc.WithSessionUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.replayLabels())
 	}
 	// Les vies du joueur : MÊME porte que les vies au sync, film.kill_positions.
 	if caps.Has(games.CapFilmKillPositions) {

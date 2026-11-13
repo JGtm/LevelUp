@@ -77,7 +77,7 @@ func (s *TimeseriesService) attachEmprise(
 	defer timing.FromContext(ctx).Section("emprise")()
 	resp.Emprise = buildSoloEmpriseBlock(ctx, soloEmpriseQuery{
 		Page: "timeseries", Player: s.gamertag, PlayerXUID: s.playerXUID,
-		RepoRoot: s.repoRoot, TitleSlug: s.titleSlug, Locale: locale,
+		Labels: s.labels, TitleSlug: s.titleSlug, Locale: locale,
 		Current: timeseriesEmpriseMatches(filteredCanon, locale, mapgroups.Load(ctx, s.mapGroups)), Lectures: lu,
 		UsageRepo: s.sessionUsageRepo, EmpriseRepo: s.usages.empriseRepo, VehicleRepo: s.usages.vehicleRepo,
 		WithMaps: true, Pending: s.usages.analysisPending,

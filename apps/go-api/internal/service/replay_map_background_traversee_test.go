@@ -45,7 +45,7 @@ func TestResolveBackgroundKey_RefuseUnMapIDHostile(t *testing.T) {
 	root := fondDeCarte(t, title.DefaultSlug, "cliffhanger", "ridgeline", true)
 	for _, hostile := range clesHostiles {
 		repo := &mapNamesStub{mapID: hostile, names: []string{"Cliffhanger"}}
-		svc := NewReplayService(title.DefaultSlug, root, repo)
+		svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 
 		if _, err := svc.MapBackgroundForMap(context.Background(), hostile); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 			t.Errorf("cle %q : err = %v, attendu ErrMapBackgroundNotAvailable", hostile, err)
@@ -111,7 +111,7 @@ func TestResolveBackgroundKey_RefuseUneCleDIndexHostile(t *testing.T) {
 	}
 
 	repo := &mapNamesStub{names: []string{"piege"}}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 	if _, err := svc.MapBackgroundForMap(context.Background(), "asset-x"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Fatalf("err = %v, attendu ErrMapBackgroundNotAvailable", err)
 	}
@@ -220,7 +220,7 @@ func TestReadBackgroundImage_RefuseImageHostile(t *testing.T) {
 					`"stats":{"anchors":1}}`)
 			ecrire(t, res.MapBackgroundPath(title.DefaultSlug, "ridgeline"), "\x89PNG\r\n\x1a\nfaux")
 
-			svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}})
+			svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}}, nil)
 			if _, _, err := svc.MapBackgroundImage(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 				t.Errorf("image=%q : err = %v, attendu ErrMapBackgroundNotAvailable", c.image, err)
 			}

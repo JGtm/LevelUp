@@ -140,7 +140,7 @@ func suffixeDryRun(dryRun bool) string {
 // L'ordre est stable (tri des cles) : une passe interrompue reprend au meme endroit, et
 // deux passes se comparent ligne a ligne.
 func artefactsDuTitre(ctx context.Context, cfg *config.AppConfig, slug string) ([]string, error) {
-	set, err := service.NewReplayService(slug, cfg.RepoRoot, nil).AvailableSet(ctx)
+	set, err := service.NewReplayService(slug, cfg.RepoRoot, nil, nil).AvailableSet(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listing des artefacts de %s: %w", slug, err)
 	}

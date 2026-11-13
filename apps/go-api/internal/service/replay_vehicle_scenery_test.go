@@ -31,7 +31,7 @@ func sceneryService(t *testing.T, noms ...string) *replayService {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: noms}).(*replayService)
+	return NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: noms}, nil).(*replayService)
 }
 
 // viePosee rend une vie qui remplit les cinq conditions de pose.
@@ -192,7 +192,7 @@ func TestGetReplay_DecorDeStarboardParLeMapID(t *testing.T) {
 		t.Fatal(err)
 	}
 	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "ab526724"), string(blob))
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: cleFondStarboard})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: cleFondStarboard}, nil)
 
 	doc, err := svc.GetReplay(context.Background(), "ab526724")
 	if err != nil {
@@ -222,7 +222,7 @@ func TestVehicleScenery_LeCadreDecideSansDecoder(t *testing.T) {
 		t.Fatal(err)
 	}
 	ecrire(t, res.MapBackgroundImageFilePath(title.DefaultSlug, meta.Image), "RIFF-indecodable")
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: cleFondStarboard}).(*replayService)
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: cleFondStarboard}, nil).(*replayService)
 	keys := svc.matchMapKeys(context.Background(), "m7")
 
 	horsCadre := docJoue(80.61, decorsStarboard()...)

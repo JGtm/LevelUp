@@ -55,7 +55,7 @@ func serviceAvecDeuxArtefacts(t *testing.T, maps port.ReplayMapNameRepo) port.Re
 		root2 := artefactAt(t, title.DefaultSlug, id, `{"schemaVersion":1}`)
 		copierArtefact(t, root2, root, id)
 	}
-	return NewReplayService(title.DefaultSlug, root, maps)
+	return NewReplayService(title.DefaultSlug, root, maps, nil)
 }
 
 func TestReplayService_ModeNonGere_IndisponibleMemeAvecArtefact(t *testing.T) {

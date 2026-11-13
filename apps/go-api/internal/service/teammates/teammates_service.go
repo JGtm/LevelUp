@@ -92,11 +92,11 @@ type TeammatesService struct {
 	// film.usage_summary ; nil → bloc servi avec Available=false et raison
 	// machine. Cf. teammates_service_usage.go.
 	sessionUsageRepo port.SessionUsageRepository
-	// formesUsageRepo / formesObjectiveRepo / repoRoot (lot D2) : les deux sources du bloc
-	// « formes retenues » et la racine du dépôt (catalogue d'armes), cf. teammates_service_formes.go.
+	// formesUsageRepo / formesObjectiveRepo / labels (lot D2) : les deux sources du bloc
+	// « formes retenues » et la source des catalogues du titre (noms d'armes), cf. teammates_service_formes.go.
 	formesUsageRepo     port.SessionUsageRepository
 	formesObjectiveRepo port.SquadFormesObjectiveRepository
-	repoRoot            string
+	labels              port.ReplayLabelSource
 	objectiveModeEcarte func(pairName string) bool  // D6, cf. teammates_service_objective_history.go
 	empriseRepo         port.SquadEmpriseRepository // feuille de match de l'Emprise, cf. teammates_service_emprise.go
 	vehicleRepo         port.SquadVehicleRepository // ressource véhicules de l'Emprise, cf. teammates_service_emprise_vehicles.go

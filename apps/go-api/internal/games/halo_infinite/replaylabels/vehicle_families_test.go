@@ -25,6 +25,7 @@ import (
 
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/replaytext"
 )
 
 // spriteIndexEntry — le sous-ensemble de `index.json` que ce garde-rail lit.
@@ -85,9 +86,9 @@ func TestTourelleAutoBannieQualifieeParLeTitre(t *testing.T) {
 	if info.Kind != mappings.VehicleFamilyKindMapElement {
 		t.Errorf("nature = %q, attendu %q", info.Kind, mappings.VehicleFamilyKindMapElement)
 	}
-	if TexteDepuisFilm(info.Label)[i18n.LocaleEN] == "" || TexteDepuisFilm(info.Label)[i18n.LocaleFR] == "" {
+	if replaytext.TexteDepuisFilm(info.Label)[i18n.LocaleEN] == "" || replaytext.TexteDepuisFilm(info.Label)[i18n.LocaleFR] == "" {
 		t.Errorf("libelle incomplet (en=%q fr=%q) : les deux langues sont obligatoires",
-			TexteDepuisFilm(info.Label)[i18n.LocaleEN], TexteDepuisFilm(info.Label)[i18n.LocaleFR])
+			replaytext.TexteDepuisFilm(info.Label)[i18n.LocaleEN], replaytext.TexteDepuisFilm(info.Label)[i18n.LocaleFR])
 	}
 	if info.Sprite {
 		t.Error("`sprite = true` : aucun asset n existe pour cette famille a ce jour — le jour ou " +
@@ -107,7 +108,7 @@ func TestTourelleFixeQualifieeParLeTitre(t *testing.T) {
 	if !ok {
 		t.Fatal("famille `tourelle_fixe` non qualifiee par replay_labels.toml")
 	}
-	if info.Kind != mappings.VehicleFamilyKindFixedTurret || TexteDepuisFilm(info.Label)[i18n.LocaleEN] == "" || TexteDepuisFilm(info.Label)[i18n.LocaleFR] == "" || info.Sprite {
+	if info.Kind != mappings.VehicleFamilyKindFixedTurret || replaytext.TexteDepuisFilm(info.Label)[i18n.LocaleEN] == "" || replaytext.TexteDepuisFilm(info.Label)[i18n.LocaleFR] == "" || info.Sprite {
 		t.Errorf("tourelle fixe = %+v, attendu fixed_turret bilingue sans sprite", info)
 	}
 }

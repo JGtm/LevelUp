@@ -67,7 +67,7 @@ func homeTileRows(n int, start time.Time) []canonical.PlayerMatchRow {
 
 func newTilesService(slug string, rows []canonical.PlayerMatchRow, favorites map[string]bool) (*HomeService, *fixedHomeMatches) {
 	pm := &fixedHomeMatches{rows: rows}
-	svc := NewHomeService(&mockHomeRepo{}).WithPlayerMatchesRepo(pm, slug, "TestGT")
+	svc := NewHomeService(&mockHomeRepo{}, nil).WithPlayerMatchesRepo(pm, slug, "TestGT")
 	if favorites != nil {
 		svc = svc.WithSocial(fixedFavorites{ids: favorites}, "testgt")
 	}

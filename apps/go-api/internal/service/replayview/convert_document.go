@@ -7,7 +7,7 @@ import (
 	"maps"
 
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/replaytext"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -216,7 +216,7 @@ func toNeutralDeath(v replay.NeutralDeath) replaydoc.NeutralDeath {
 
 func toLabel(v replay.Label) replaydoc.Label {
 	return replaydoc.Label{
-		Text:   replaylabels.TexteDepuisFilm(v.Text),
+		Text:   replaytext.TexteDepuisFilm(v.Text),
 		Img:    v.Img,
 		Tinted: v.Tinted,
 		Family: v.Family,
@@ -225,7 +225,7 @@ func toLabel(v replay.Label) replaydoc.Label {
 
 func toWeaponLabel(v replay.WeaponLabel) replaydoc.WeaponLabel {
 	return replaydoc.WeaponLabel{
-		Text:   replaylabels.TexteDepuisFilm(v.Text),
+		Text:   replaytext.TexteDepuisFilm(v.Text),
 		Fx:     v.Fx,
 		Key:    v.Key,
 		Role:   v.Role,
@@ -241,6 +241,6 @@ func toVehicleLabel(v replay.VehicleLabel) replaydoc.VehicleLabel {
 		Img:    v.Img,
 		Tinted: v.Tinted,
 		Kind:   v.Kind,
-		Text:   replaylabels.TexteDepuisFilm(v.Text),
+		Text:   replaytext.TexteDepuisFilm(v.Text),
 	}
 }

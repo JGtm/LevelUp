@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/replaytext"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -46,7 +46,7 @@ func TestVehicleLabels_PoseLUrlDuSprite(t *testing.T) {
 	root := t.TempDir()
 	artefactVehicules(t, root, title.DefaultSlug, "a0000002")
 
-	doc, err := NewReplayService(title.DefaultSlug, root, nil).
+	doc, err := NewReplayService(title.DefaultSlug, root, nil, labelsDe(root)).
 		GetReplay(context.Background(), "a0000002")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
@@ -75,7 +75,7 @@ func TestVehicleLabels_FamilleVideNAPasDEntree(t *testing.T) {
 	root := t.TempDir()
 	artefactVehicules(t, root, title.DefaultSlug, "a0000002")
 
-	doc, err := NewReplayService(title.DefaultSlug, root, nil).
+	doc, err := NewReplayService(title.DefaultSlug, root, nil, labelsDe(root)).
 		GetReplay(context.Background(), "a0000002")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
@@ -99,7 +99,7 @@ func TestVehicleLabels_DocumentSansVehiculeNaPasDeTable(t *testing.T) {
 	root := t.TempDir()
 	artefactArmes(t, root, title.DefaultSlug, "a0000001")
 
-	doc, err := NewReplayService(title.DefaultSlug, root, nil).
+	doc, err := NewReplayService(title.DefaultSlug, root, nil, labelsDe(root)).
 		GetReplay(context.Background(), "a0000001")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
@@ -119,7 +119,7 @@ func TestVehicleLabels_ToutesLesFamillesInconnuesNeServentRien(t *testing.T) {
 		`"end":"inconnue"}]}`
 	ecrire(t, title.NewPathResolver(root).ReplayArtifactPath(title.DefaultSlug, "0000a000"), doc)
 
-	got, err := NewReplayService(title.DefaultSlug, root, nil).GetReplay(context.Background(), "0000a000")
+	got, err := NewReplayService(title.DefaultSlug, root, nil, labelsDe(root)).GetReplay(context.Background(), "0000a000")
 	if err != nil {
 		t.Fatalf("lecture du rejeu : %v", err)
 	}
@@ -157,7 +157,7 @@ func TestVehicleLabelOf_FamilleNonQualifiee(t *testing.T) {
 	if !strings.HasSuffix(lbl.Img, "/replay/ghost.png") || !lbl.Tinted {
 		t.Errorf("libelle = %+v : une famille non qualifiee garde son URL de sprite teintable", lbl)
 	}
-	if lbl.Kind != "" || replaylabels.TexteDepuisFilm(lbl.Text)[i18n.LocaleEN] != "" || replaylabels.TexteDepuisFilm(lbl.Text)[i18n.LocaleFR] != "" {
+	if lbl.Kind != "" || replaytext.TexteDepuisFilm(lbl.Text)[i18n.LocaleEN] != "" || replaytext.TexteDepuisFilm(lbl.Text)[i18n.LocaleFR] != "" {
 		t.Errorf("libelle = %+v : rien ne qualifie cette famille, aucun champ ne doit se remplir", lbl)
 	}
 }
@@ -167,7 +167,7 @@ func TestVehicleLabelOf_FamilleNonQualifiee(t *testing.T) {
 // de lui dessiner un pictogramme dedie au lieu du marqueur neutre des chassis non resolus.
 func TestVehicleLabelOf_ElementDeCarteSansAsset(t *testing.T) {
 	info := replay.VehicleFamilyInfo{
-		Label: replaylabels.TexteVersFilm(i18n.FromColumns("Banished auto-turret", "Tourelle automatique bannie")), Kind: "map_element", Sprite: false,
+		Label: replaytext.TexteVersFilm(i18n.FromColumns("Banished auto-turret", "Tourelle automatique bannie")), Kind: "map_element", Sprite: false,
 	}
 	lbl, ok := vehicleLabelOf("tourelle_auto_bannie", info, title.DefaultSlug)
 	if !ok {
@@ -177,7 +177,7 @@ func TestVehicleLabelOf_ElementDeCarteSansAsset(t *testing.T) {
 	if lbl.Img != "" || lbl.Tinted {
 		t.Errorf("libelle = %+v : aucun asset n est servi, composer une URL ferait un 404 par match", lbl)
 	}
-	if lbl.Kind != "map_element" || replaylabels.TexteDepuisFilm(lbl.Text)[i18n.LocaleEN] != replaylabels.TexteDepuisFilm(info.Label)[i18n.LocaleEN] || replaylabels.TexteDepuisFilm(lbl.Text)[i18n.LocaleFR] != replaylabels.TexteDepuisFilm(info.Label)[i18n.LocaleFR] {
+	if lbl.Kind != "map_element" || replaytext.TexteDepuisFilm(lbl.Text)[i18n.LocaleEN] != replaytext.TexteDepuisFilm(info.Label)[i18n.LocaleEN] || replaytext.TexteDepuisFilm(lbl.Text)[i18n.LocaleFR] != replaytext.TexteDepuisFilm(info.Label)[i18n.LocaleFR] {
 		t.Errorf("libelle = %+v : la nature et les deux langues doivent traverser telles quelles", lbl)
 	}
 }
@@ -187,7 +187,7 @@ func TestVehicleLabelOf_ElementDeCarteSansAsset(t *testing.T) {
 // pour n importe quelle famille, et la nature reste publiee.
 func TestVehicleLabelOf_ElementDeCarteAvecAsset(t *testing.T) {
 	info := replay.VehicleFamilyInfo{
-		Label: replaylabels.TexteVersFilm(i18n.FromColumns("Banished auto-turret", "Tourelle automatique bannie")), Kind: "map_element", Sprite: true,
+		Label: replaytext.TexteVersFilm(i18n.FromColumns("Banished auto-turret", "Tourelle automatique bannie")), Kind: "map_element", Sprite: true,
 	}
 	lbl, ok := vehicleLabelOf("tourelle_auto_bannie", info, title.DefaultSlug)
 	if !ok {

@@ -602,7 +602,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// sessions) : un seul service derrière port.SyncJobService, partagé par les handlers sync, backfill
 	// et réglages.
 	syncJobs := service.NewSyncJobService(cfg, settingsStore, jobStore, tokenProvider).
-		WithFriendStore(friendStore)
+		WithFriendStore(friendStore).
+		WithLiveRunnerBuilder(wire.NewLiveRunnerBuilder(cfg))
 	// Branche le hook Prestige post-sync (best-effort, no-op si flag off ou bundle nil).
 	if prestigeBundle != nil {
 		syncJobs = syncJobs.WithPrestigeHook(prestigeBundle.RunPostSync)

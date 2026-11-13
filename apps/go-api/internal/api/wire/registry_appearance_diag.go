@@ -59,7 +59,7 @@ func (r *ServiceRegistry) newAppearanceDiagService() *service.AppearanceDiagServ
 			}
 			return res.Tokens.SpartanToken, res.Tokens.ClearanceToken, nil
 		},
-		NewFetcher: service.NewHaloAppearanceFetcher(appearanceDiagRPS),
+		NewFetcher: newHaloAppearanceFetcher(appearanceDiagRPS),
 		HasSpartanCustomizer: func(ts string) bool {
 			desc := titlePkg.DefaultRegistry().Get(ts)
 			return desc != nil && desc.HasCapability(titlePkg.CapSpartanCustomizer)

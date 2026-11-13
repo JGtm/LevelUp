@@ -46,7 +46,7 @@ const mapIDForgeTest = "d5c5eb4f-0dcb-4677-a866-eae0dcbfde9b"
 func TestMapCallouts_ChaineComplete(t *testing.T) {
 	root := calloutsFixture(t)
 	repo := &mapNamesStub{names: []string{"Cliffhanger"}}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 
 	entry, err := svc.MapCallouts(context.Background(), "m1")
 	if err != nil {
@@ -71,7 +71,7 @@ func TestMapCallouts_ChaineComplete(t *testing.T) {
 // l'absence propre — jamais les zones d'une autre carte, jamais une erreur.
 func TestMapCallouts_ForgeSansZones(t *testing.T) {
 	root := calloutsFixture(t)
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Dynasty"}})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Dynasty"}}, nil)
 	if _, err := svc.MapCallouts(context.Background(), "m1"); !errors.Is(err, port.ErrMapCalloutsNotAvailable) {
 		t.Errorf("err = %v, attendu ErrMapCalloutsNotAvailable", err)
 	}
@@ -85,7 +85,7 @@ func TestMapCallouts_ForgeSansZones(t *testing.T) {
 func TestMapCallouts_ForgeParMapID(t *testing.T) {
 	root := calloutsFixture(t)
 	repo := &mapNamesStub{mapID: mapIDForgeTest, names: []string{"Dynasty"}}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 
 	entry, err := svc.MapCallouts(context.Background(), "m1")
 	if err != nil {
@@ -110,7 +110,7 @@ func TestMapCallouts_ForgeParMapID(t *testing.T) {
 func TestMapCallouts_ModuleGagneSurMapID(t *testing.T) {
 	root := calloutsFixture(t)
 	repo := &mapNamesStub{mapID: mapIDForgeTest, names: []string{"Cliffhanger"}}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 
 	entry, err := svc.MapCallouts(context.Background(), "m1")
 	if err != nil {
@@ -126,7 +126,7 @@ func TestMapCallouts_ModuleGagneSurMapID(t *testing.T) {
 func TestMapCallouts_MapIDHorsCatalogue(t *testing.T) {
 	root := calloutsFixture(t)
 	repo := &mapNamesStub{mapID: "00000000-0000-0000-0000-000000000000", names: []string{"Dynasty"}}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 	if _, err := svc.MapCallouts(context.Background(), "m1"); !errors.Is(err, port.ErrMapCalloutsNotAvailable) {
 		t.Errorf("err = %v, attendu ErrMapCalloutsNotAvailable", err)
 	}
@@ -136,7 +136,7 @@ func TestMapCallouts_MapIDHorsCatalogue(t *testing.T) {
 // carte) trouve quand même ses zones : l'essai par module est sauté, pas bloquant.
 func TestMapCallouts_MapIDSeul(t *testing.T) {
 	root := calloutsFixture(t)
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: mapIDForgeTest})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: mapIDForgeTest}, nil)
 	entry, err := svc.MapCallouts(context.Background(), "m1")
 	if err != nil {
 		t.Fatalf("MapCallouts: %v", err)
@@ -162,7 +162,7 @@ func TestMapCallouts_ForgeDonneesReelles(t *testing.T) {
 		t.Fatalf("catalogue de callouts versionné absent : %v", statErr)
 	}
 	// Aucun nom de carte : le rattrapage par map_id est le SEUL chemin possible.
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: mapIDForgeTest})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: mapIDForgeTest}, nil)
 	entry, err := svc.MapCallouts(context.Background(), "m1")
 	if err != nil {
 		t.Fatalf("zones d'Insolence : %v", err)
@@ -214,7 +214,7 @@ func TestMapCallouts_Absences(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			svc := NewReplayService(title.DefaultSlug, c.root(t), c.repo)
+			svc := NewReplayService(title.DefaultSlug, c.root(t), c.repo, nil)
 			if _, err := svc.MapCallouts(context.Background(), "m1"); !errors.Is(err, port.ErrMapCalloutsNotAvailable) {
 				t.Errorf("err = %v, attendu ErrMapCalloutsNotAvailable", err)
 			}
@@ -226,7 +226,7 @@ func TestMapCallouts_Absences(t *testing.T) {
 // (isolation par chemin FS, ADR 0008).
 func TestMapCallouts_IsoleParTitre(t *testing.T) {
 	root := calloutsFixture(t)
-	svc := NewReplayService("halo_5", root, &mapNamesStub{names: []string{"Cliffhanger"}})
+	svc := NewReplayService("halo_5", root, &mapNamesStub{names: []string{"Cliffhanger"}}, nil)
 	if _, err := svc.MapCallouts(context.Background(), "m1"); !errors.Is(err, port.ErrMapCalloutsNotAvailable) {
 		t.Errorf("err = %v, attendu ErrMapCalloutsNotAvailable", err)
 	}
@@ -249,7 +249,7 @@ func TestMapCallouts_DonneesReelles(t *testing.T) {
 	if _, statErr := os.Stat(res.MapCalloutsPath(title.DefaultSlug)); statErr != nil {
 		t.Fatalf("catalogue de callouts versionné absent : %v", statErr)
 	}
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}}, nil)
 	entry, err := svc.MapCallouts(context.Background(), "000d5950")
 	if err != nil {
 		t.Fatalf("zones de Cliffhanger : %v", err)

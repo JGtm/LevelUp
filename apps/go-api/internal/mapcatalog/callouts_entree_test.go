@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/replaytext"
 	"levelup/go-api/internal/testfixtures"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
@@ -51,11 +51,11 @@ func TestEntreeForgeJointLesLibellesParStringID(t *testing.T) {
 	}
 	// LA ZONE MUETTE EST PUBLIÉE, SANS NOM INVENTÉ : sa géométrie est mesurée.
 	muette := entry.Zones[0]
-	if replaylabels.TexteDepuisFilm(muette.Text)[i18n.LocaleEN] != "" || replaylabels.TexteDepuisFilm(muette.Text)[i18n.LocaleFR] != "" || muette.Name != "" || len(muette.Polygon) != 4 {
-		t.Errorf("zone muette : en=%q fr=%q nom=%q polygone=%d sommets", replaylabels.TexteDepuisFilm(muette.Text)[i18n.LocaleEN], replaylabels.TexteDepuisFilm(muette.Text)[i18n.LocaleFR], muette.Name, len(muette.Polygon))
+	if replaytext.TexteDepuisFilm(muette.Text)[i18n.LocaleEN] != "" || replaytext.TexteDepuisFilm(muette.Text)[i18n.LocaleFR] != "" || muette.Name != "" || len(muette.Polygon) != 4 {
+		t.Errorf("zone muette : en=%q fr=%q nom=%q polygone=%d sommets", replaytext.TexteDepuisFilm(muette.Text)[i18n.LocaleEN], replaytext.TexteDepuisFilm(muette.Text)[i18n.LocaleFR], muette.Name, len(muette.Polygon))
 	}
 	nommee := entry.Zones[1]
-	if replaylabels.TexteDepuisFilm(nommee.Text)[i18n.LocaleEN] != "Cave" || replaylabels.TexteDepuisFilm(nommee.Text)[i18n.LocaleFR] != "Grotte" || nommee.Z != 2 || nommee.ZTop != 5 {
+	if replaytext.TexteDepuisFilm(nommee.Text)[i18n.LocaleEN] != "Cave" || replaytext.TexteDepuisFilm(nommee.Text)[i18n.LocaleFR] != "Grotte" || nommee.Z != 2 || nommee.ZTop != 5 {
 		t.Errorf("zone nommée : %+v", nommee)
 	}
 	if couv.Verdict() != VerdictPubliable || couv.SansLibelle() != 1 {
@@ -105,7 +105,7 @@ func TestZoneSansLibelleResteUneZone(t *testing.T) {
 		t.Fatalf("zones = %d dont %d nommées, verdict %q ; attendu 1 dont 0, sans libellé",
 			len(entry.Zones), couv.Nommees, couv.Verdict())
 	}
-	if z := entry.Zones[0]; replaylabels.TexteDepuisFilm(z.Text)[i18n.LocaleEN] != "" || replaylabels.TexteDepuisFilm(z.Text)[i18n.LocaleFR] != "" || z.Name != "" || len(z.Polygon) != 4 {
+	if z := entry.Zones[0]; replaytext.TexteDepuisFilm(z.Text)[i18n.LocaleEN] != "" || replaytext.TexteDepuisFilm(z.Text)[i18n.LocaleFR] != "" || z.Name != "" || len(z.Polygon) != 4 {
 		t.Errorf("libellé inventé ou géométrie perdue sur une zone muette : %+v", z)
 	}
 }

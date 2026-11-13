@@ -108,7 +108,7 @@ func fondSousCle(t *testing.T, root, titleSlug, cle string) {
 func TestMapBackground_ChaineComplete(t *testing.T) {
 	root := fondDeCarte(t, title.DefaultSlug, "cliffhanger", "ridgeline", true)
 	repo := &mapNamesStub{names: []string{"Cliffhanger"}}
-	svc := NewReplayService(title.DefaultSlug, root, repo)
+	svc := NewReplayService(title.DefaultSlug, root, repo, nil)
 
 	bg, err := svc.MapBackground(context.Background(), "m1")
 	if err != nil {
@@ -160,7 +160,7 @@ func TestMapBackground_ForgeParMapID(t *testing.T) {
 		{"map_id sans nom (map_name NULL)", &mapNamesStub{mapID: mapID}},
 	} {
 		t.Run(c.nom, func(t *testing.T) {
-			svc := NewReplayService(title.DefaultSlug, root, c.stub)
+			svc := NewReplayService(title.DefaultSlug, root, c.stub, nil)
 			bg, err := svc.MapBackground(context.Background(), "m1")
 			if err != nil {
 				t.Fatalf("MapBackground: %v", err)
@@ -190,7 +190,7 @@ func TestMapBackground_ForgeJamaisViaCanevas(t *testing.T) {
 	fondSousCle(t, root, title.DefaultSlug, "105f5d84-8de1-4908-af3a-1c4f3bf9d642")
 
 	svc := NewReplayService(title.DefaultSlug, root,
-		&mapNamesStub{mapID: "cfd90b63-62fd-441a-8015-8d7804b9c3c3", names: []string{"Dynasty"}})
+		&mapNamesStub{mapID: "cfd90b63-62fd-441a-8015-8d7804b9c3c3", names: []string{"Dynasty"}}, nil)
 	if _, err := svc.MapBackground(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Errorf("le canevas ne doit servir aucun fond Forge : err = %v", err)
 	}
@@ -220,7 +220,7 @@ func TestMapBackground_NomDeVarianteDeclare(t *testing.T) {
 			`"style":"encre","calibration":{"metersPerPixel":0.05,"originX":-1,"originY":1,`+
 			`"widthPx":10,"heightPx":10,"convention":"test"},"stats":{"anchors":1}}`)
 
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Aquarius - Ranked"}})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Aquarius - Ranked"}}, nil)
 	bg, err := svc.MapBackground(context.Background(), "m1")
 	if err != nil {
 		t.Fatalf("MapBackground: %v", err)
@@ -244,7 +244,7 @@ func TestMapBackground_VarianteHeaviesNeVolePasSonAine(t *testing.T) {
 
 	cas := map[string]string{"Insolence": cleBase, "Insolence Heavies": cleHeavies}
 	for nom, veut := range cas {
-		svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{nom}})
+		svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{nom}}, nil)
 		bg, err := svc.MapBackground(context.Background(), "m1")
 		if err != nil {
 			t.Fatalf("MapBackground(%q) : %v", nom, err)
@@ -269,7 +269,7 @@ func fondJSON(cle, mapNames string) string {
 func TestMapBackground_SecondCandidat(t *testing.T) {
 	root := fondDeCarte(t, title.DefaultSlug, "catalyst", "catalyst", true)
 	svc := NewReplayService(title.DefaultSlug, root,
-		&mapNamesStub{names: []string{"Catalyseur", "Catalyst"}})
+		&mapNamesStub{names: []string{"Catalyseur", "Catalyst"}}, nil)
 
 	bg, err := svc.MapBackground(context.Background(), "m1")
 	if err != nil {
@@ -311,7 +311,7 @@ func TestMapBackground_Absences(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			svc := NewReplayService(title.DefaultSlug, c.root(t), c.repo)
+			svc := NewReplayService(title.DefaultSlug, c.root(t), c.repo, nil)
 			if _, err := svc.MapBackground(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 				t.Errorf("MapBackground: err = %v, attendu ErrMapBackgroundNotAvailable", err)
 			}
@@ -333,14 +333,14 @@ func TestMapBackgroundImage_SansCalage(t *testing.T) {
 	if err := os.Remove(res.MapBackgroundMetaPath(title.DefaultSlug, "ridgeline")); err != nil {
 		t.Fatalf("remove sidecar: %v", err)
 	}
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}}, nil)
 
 	if _, _, err := svc.MapBackgroundImage(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Errorf("image sans calage servie : err = %v", err)
 	}
 	// Contre-épreuve : avec son sidecar, la même image est servie.
 	root2 := fondDeCarte(t, title.DefaultSlug, "cliffhanger", "ridgeline", true)
-	svc2 := NewReplayService(title.DefaultSlug, root2, &mapNamesStub{names: []string{"Cliffhanger"}})
+	svc2 := NewReplayService(title.DefaultSlug, root2, &mapNamesStub{names: []string{"Cliffhanger"}}, nil)
 	if _, _, err := svc2.MapBackgroundImage(context.Background(), "m1"); err != nil {
 		t.Errorf("image avec calage : %v", err)
 	}
@@ -350,7 +350,7 @@ func TestMapBackgroundImage_SansCalage(t *testing.T) {
 // (il est exact), l'image seule manque.
 func TestMapBackground_ImageAbsente(t *testing.T) {
 	root := fondDeCarte(t, title.DefaultSlug, "cliffhanger", "ridgeline", false)
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}}, nil)
 
 	if _, err := svc.MapBackground(context.Background(), "m1"); err != nil {
 		t.Errorf("le calage doit rester servi : %v", err)
@@ -364,7 +364,7 @@ func TestMapBackground_ImageAbsente(t *testing.T) {
 // (isolation par chemin FS, ADR 0008).
 func TestMapBackground_IsoleParTitre(t *testing.T) {
 	root := fondDeCarte(t, title.DefaultSlug, "cliffhanger", "ridgeline", true)
-	svc := NewReplayService("halo_5", root, &mapNamesStub{names: []string{"Cliffhanger"}})
+	svc := NewReplayService("halo_5", root, &mapNamesStub{names: []string{"Cliffhanger"}}, nil)
 
 	if _, err := svc.MapBackground(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		t.Errorf("le fond d'un titre ne doit pas être vu par un autre : err = %v", err)
@@ -395,7 +395,7 @@ func TestMapBackground_DonneesReelles(t *testing.T) {
 
 	// Cliffhanger -> ridgeline : le seul appariement dont on possède un artefact de rejeu,
 	// donc le seul que le gate visuel peut confronter à l'écran.
-	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}})
+	svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}}, nil)
 	bg, err := svc.MapBackground(context.Background(), "000d5950")
 	if err != nil {
 		t.Fatalf("fond de Cliffhanger : %v", err)
@@ -476,7 +476,7 @@ func TestMapBackground_TousLesModulesDuCatalogue(t *testing.T) {
 	avecFond := 0
 	for nom, entry := range cat.Maps {
 		t.Run(nom, func(t *testing.T) {
-			svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{nom}})
+			svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{nom}}, nil)
 			bg, err := svc.MapBackground(context.Background(), "m")
 			if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 				// Cas NORMAL et documenté : toutes les cartes n'ont pas de fond cuit.
@@ -538,7 +538,7 @@ func TestMapBackground_TousLesFondsMapID(t *testing.T) {
 		}
 		n++
 		t.Run(cle, func(t *testing.T) {
-			svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: cle})
+			svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{mapID: cle}, nil)
 			bg, err := svc.MapBackground(context.Background(), "m")
 			if err != nil {
 				t.Fatalf("fond %s : %v", cle, err)

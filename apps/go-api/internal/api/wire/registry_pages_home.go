@@ -24,7 +24,7 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 		return nil, "", "", err
 	}
 	homeRepo := r.newHomeRepo(pdb)
-	svc := service.NewHomeService(homeRepo).
+	svc := service.NewHomeService(homeRepo, haloProvider).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithSemanticAdapter(r.semanticFor(pdb.TitleSlug)).
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
@@ -267,7 +267,7 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 			objectives = duckdb.NewObjectiveStatsRepo(pdb)
 		}
-		svc = svc.WithSquadFormes(duckdb.NewSessionUsageRepo(pdb), objectives, r.cfg.RepoRoot)
+		svc = svc.WithSquadFormes(duckdb.NewSessionUsageRepo(pdb), objectives, r.replayLabels())
 	}
 	// Historique d'objectif (« Rapport de force, soirée après soirée », D6) : le titre qui
 	// publie les stats d'objectif dit aussi quels modes l'historique écarte (le drapeau neutre,

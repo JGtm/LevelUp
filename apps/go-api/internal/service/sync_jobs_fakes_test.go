@@ -162,7 +162,7 @@ func (g *fakeSyncGate) releasedCount() int {
 	return g.released
 }
 
-// fakeDeltaRunner est un syncDeltaRunner qui rend un résultat fixé et garde les options reçues.
+// fakeDeltaRunner est un DeltaRunner qui rend un résultat fixé et garde les options reçues.
 type fakeDeltaRunner struct {
 	result domain.SyncResult
 	err    error
@@ -278,10 +278,10 @@ func newSyncJobsFixture(t *testing.T) *syncJobsFixture {
 		WithProfiles(f.profiles).
 		WithSyncGate(f.gate).
 		WithManualSyncCooldown(0)
-	f.svc.runnerFor = func(ctx context.Context, _, _, _ string, _ *domain.HaloTokens) (syncDeltaRunner, context.Context) {
+	f.svc.runnerFor = func(ctx context.Context, _, _, _ string, _ *domain.HaloTokens) (DeltaRunner, context.Context) {
 		return f.runner, ctx
 	}
-	f.svc.pooledRunnerFor = func(context.Context, string, string) syncDeltaRunner { return f.runner }
+	f.svc.pooledRunnerFor = func(context.Context, string, string) DeltaRunner { return f.runner }
 	return f
 }
 

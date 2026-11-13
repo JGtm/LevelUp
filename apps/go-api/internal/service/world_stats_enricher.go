@@ -8,13 +8,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"expvar"
 	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 )
 
 // worldEnrichXUIDFromSnapshot compte les xuid réutilisés du snapshot Waypoint (donc
@@ -22,17 +22,10 @@ import (
 // court-circuit du goulot de résolution.
 var worldEnrichXUIDFromSnapshot = expvar.NewInt("world_enrich.xuid_from_snapshot")
 
-// RankedPlaylistSet retourne l'ensemble des asset IDs des playlists CLASSÉES
-// actives. Sert à filtrer le backfill/enrichissement en ranked-only (l'historique
-// matchmaking mêle classé et social ; le classement mondial est CSR/classé).
-func RankedPlaylistSet() map[string]bool {
-	pls := rankedplaylists.Active()
-	out := make(map[string]bool, len(pls))
-	for _, pl := range pls {
-		out[pl.AssetID] = true
-	}
-	return out
-}
+// errWorldRankedPlaylistsMissing : la config de l'enricher ne porte aucune playlist classée. Sans cet
+// ensemble l'agrégateur ne filtrerait rien et mêlerait le social au classé : le classement mondial est
+// CSR, donc l'enrichissement refuse plutôt que d'agréger sans filtre.
+var errWorldRankedPlaylistsMissing = errors.New("world_enrich: aucune playlist classee fournie (baseCfg.RankedPlaylists)")
 
 // WorldStatsEnricher produit les stats agrégées des joueurs d'une saison donnée.
 type WorldStatsEnricher struct {
@@ -43,8 +36,9 @@ type WorldStatsEnricher struct {
 
 // NewWorldStatsEnricher construit l'enricher. `src` est typiquement un
 // *syncpkg.PooledHaloClient (multi-tokens, PolicyAnyPublic). baseCfg fournit les
-// bornes (Concurrency, MaxPages, StopAfterNonTarget) ; TargetSeasons est ignoré
-// (fixé par EnrichSeason à la saison demandée).
+// bornes (Concurrency, MaxPages, StopAfterNonTarget) et l'ensemble des playlists classées
+// (RankedPlaylists, fourni par le câblage du titre) ; TargetSeasons est ignoré (fixé par
+// EnrichSeason à la saison demandée).
 func NewWorldStatsEnricher(src WorldMatchSource, resolver WorldXUIDResolver, baseCfg WorldStatsAggregatorConfig) *WorldStatsEnricher {
 	return &WorldStatsEnricher{src: src, resolver: resolver, baseCfg: baseCfg}
 }
@@ -58,11 +52,11 @@ func (e *WorldStatsEnricher) EnrichSeason(ctx context.Context, season string, pl
 	if e == nil || len(players) == 0 {
 		return nil, nil
 	}
+	if len(e.baseCfg.RankedPlaylists) == 0 {
+		return nil, []error{errWorldRankedPlaylistsMissing}
+	}
 	cfg := e.baseCfg
 	cfg.TargetSeasons = map[string]bool{analysis.NormalizeSeasonID(season): true}
-	if len(cfg.RankedPlaylists) == 0 {
-		cfg.RankedPlaylists = RankedPlaylistSet() // ranked-only (cron : toujours classé)
-	}
 	if cfg.XUIDResolveDelay <= 0 {
 		// Throttle PeopleHub (~10 req/15s/compte) : l'enrichissement auto cape le débit
 		// de résolution xuid, sinon une saison à 200+ joueurs SANS xuid pré-seedé

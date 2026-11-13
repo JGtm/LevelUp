@@ -13,7 +13,7 @@ import (
 // TestGetChallenges_DemoMode : en DemoMode, GetChallenges sert la fixture embarquée
 // (bypass provider live + cache) avec des items renderables.
 func TestGetChallenges_DemoMode(t *testing.T) {
-	svc := NewHomeService(nil).WithDemoMode(true)
+	svc := NewHomeService(nil, nil).WithDemoMode(true)
 
 	resp := svc.GetChallenges(context.Background())
 
@@ -42,7 +42,7 @@ func TestGetChallenges_DemoMode(t *testing.T) {
 // quand l'UI est en anglais » : sans sélection par locale, EN retombait sur la
 // fixture FR-only.
 func TestGetChallenges_DemoMode_LocaleSelectsFixture(t *testing.T) {
-	svc := NewHomeService(nil).WithDemoMode(true)
+	svc := NewHomeService(nil, nil).WithDemoMode(true)
 
 	fr := svc.GetChallenges(ctxkeys.WithLocale(context.Background(), "fr"))
 	en := svc.GetChallenges(ctxkeys.WithLocale(context.Background(), "en"))
@@ -75,7 +75,7 @@ func TestGetChallenges_DemoMode_ImagesServable(t *testing.T) {
 	staticDir := filepath.Join("..", "..", "..", "..", "static")
 
 	for _, locale := range []string{"fr", "en"} {
-		resp := NewHomeService(nil).WithDemoMode(true).
+		resp := NewHomeService(nil, nil).WithDemoMode(true).
 			GetChallenges(ctxkeys.WithLocale(context.Background(), locale))
 		if len(resp.Items) == 0 {
 			t.Fatalf("%s: fixture sans item", locale)

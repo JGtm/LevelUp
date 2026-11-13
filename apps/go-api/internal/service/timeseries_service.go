@@ -72,9 +72,9 @@ type TimeseriesService struct {
 	gamertag          string
 	// mapGroups : groupes de cartes (une variante compte sous sa carte de base). nil : cartes seules.
 	mapGroups port.MapGroupReader
-	// repoRoot : racine du depot, pour les catalogues du titre (noms d'armes des formes retenues
-	// et de l'Emprise). Vide = les armes s'affichent sous leur cle, jamais un nom approchant.
-	repoRoot string
+	// labels : source des catalogues du titre (noms d'armes des formes retenues
+	// et de l'Emprise). Nil = les armes s'affichent sous leur cle, jamais un nom approchant.
+	labels port.ReplayLabelSource
 	// weaponKillsRepo (chart .04 Top weapons) : optionnel, degradation gracieuse.
 	// Si nil, TopWeapons reste vide.
 	weaponKillsRepo port.WeaponKillsRepository

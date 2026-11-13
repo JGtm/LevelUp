@@ -375,7 +375,7 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 	// d'identifiants change d'une page à l'autre. Gated par film.usage_summary (absente pour
 	// Halo 5 → l'Emprise dit film_unsupported). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
-		svc = svc.WithUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.cfg.RepoRoot)
+		svc = svc.WithUsageSummary(duckdb.NewSessionUsageRepo(pdb), r.replayLabels())
 		// Bloc « Les formes retenues », contexte SOLO (migré de l'Escouade le
 		// 2026-09-19) : MÊME repo d'usage, plus les colonnes d'objectif quand le titre
 		// les publie — deux gates indépendantes, la seconde ne retirant que les cartes

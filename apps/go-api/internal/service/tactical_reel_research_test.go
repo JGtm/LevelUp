@@ -125,7 +125,7 @@ func reelService(t *testing.T, e reelEnv, pdb *duckdb.PlayerDB) *TacticalService
 	return NewTacticalService(duckdb.NewTacticalRepo(pdb), caps, pdb.XUID).
 		WithRadarRange(reg.RadarRangeMap()).
 		WithPlayerMatches(duckdb.NewCachedPlayerMatchesRepo(pdb), pdb.TitleSlug, pdb.Gamertag).
-		WithReplay(NewReplayService(pdb.TitleSlug, e.runtimeRoot, nil)).
+		WithReplay(NewReplayService(pdb.TitleSlug, e.runtimeRoot, nil, nil)).
 		WithSequenceStore(NewTacticalSequenceStore(e.runtimeRoot, pdb.TitleSlug))
 }
 

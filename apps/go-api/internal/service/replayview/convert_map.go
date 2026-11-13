@@ -5,7 +5,7 @@ package replayview
 
 import (
 	"levelup/go-api/internal/domain/replaydoc"
-	"levelup/go-api/internal/games/halo_infinite/replaylabels"
+	"levelup/go-api/internal/replaytext"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -148,7 +148,7 @@ func toCalloutZone(v replay.CalloutZone) replaydoc.CalloutZone {
 	return replaydoc.CalloutZone{
 		VolumeIndex: v.VolumeIndex,
 		Name:        v.Name,
-		Text:        replaylabels.TexteDepuisFilm(v.Text),
+		Text:        replaytext.TexteDepuisFilm(v.Text),
 		X:           v.X,
 		Y:           v.Y,
 		Z:           v.Z,

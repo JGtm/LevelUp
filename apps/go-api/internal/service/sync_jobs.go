@@ -57,10 +57,15 @@ type PrestigeHook func(ctx context.Context, playerSlug, titleSlug string)
 // celui de l'auto-sync, de sorte que le sync manuel delta partage son pool de jetons.
 type EngineBuilder func(ctx context.Context, gamertag, xuid string) *go_sync.SyncEngine
 
-// syncDeltaRunner : la surface commune du moteur de sync et du runner de suivi en direct d'un titre.
-type syncDeltaRunner interface {
+// DeltaRunner : la surface commune du moteur de sync et du runner de suivi en direct d'un titre.
+type DeltaRunner interface {
 	RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.SyncResult, error)
 }
+
+// LiveRunnerBuilder rend le runner de suivi en direct d'un titre servi hors du moteur de sync, ou nil
+// quand le titre passe par le moteur. Le câblage en décide d'après le registre des titres : le service
+// n'importe aucun paquet de titre. Le résultat est une interface nil, jamais un pointeur nil typé.
+type LiveRunnerBuilder func(titleSlug, gamertag, xuid string) DeltaRunner
 
 // SyncJobService implémente port.SyncJobService.
 type SyncJobService struct {
@@ -76,6 +81,7 @@ type SyncJobService struct {
 	prestigeHook  PrestigeHook
 	replayEnqueue replayartifacts.EnqueueFunc
 	engineBuilder EngineBuilder
+	liveRunner    LiveRunnerBuilder // nil : tous les titres passent par le moteur de sync
 
 	// syncGate déduplique les syncs entre sources : un job cède quand le joueur est déjà en vol
 	// (watcher ou auto-sync).
@@ -89,8 +95,8 @@ type SyncJobService struct {
 	lastManualAt map[string]time.Time
 
 	// Coutures des tests : le runner d'une sync initiale et celui d'une sync delta.
-	runnerFor       func(ctx context.Context, titleSlug, gamertag, xuid string, tokens *domain.HaloTokens) (syncDeltaRunner, context.Context)
-	pooledRunnerFor func(ctx context.Context, gamertag, xuid string) syncDeltaRunner
+	runnerFor       func(ctx context.Context, titleSlug, gamertag, xuid string, tokens *domain.HaloTokens) (DeltaRunner, context.Context)
+	pooledRunnerFor func(ctx context.Context, gamertag, xuid string) DeltaRunner
 }
 
 var _ port.SyncJobService = (*SyncJobService)(nil)
@@ -115,7 +121,7 @@ func NewSyncJobService(
 		lastManualAt:  make(map[string]time.Time),
 	}
 	s.runnerFor = s.defaultRunnerFor
-	s.pooledRunnerFor = func(ctx context.Context, gamertag, xuid string) syncDeltaRunner {
+	s.pooledRunnerFor = func(ctx context.Context, gamertag, xuid string) DeltaRunner {
 		return s.newPooledEngine(ctx, gamertag, xuid)
 	}
 	return s
@@ -187,6 +193,13 @@ func (s *SyncJobService) WithPrestigeHook(hook PrestigeHook) *SyncJobService {
 // de la sync initiale, avec des jetons vides.
 func (s *SyncJobService) WithEngineBuilder(b EngineBuilder) *SyncJobService {
 	s.engineBuilder = b
+	return s
+}
+
+// WithLiveRunnerBuilder branche la sélection du runner de suivi en direct des titres qui ne passent pas
+// par le moteur de sync (sync initiale). Nil : tous les titres reçoivent le moteur de sync.
+func (s *SyncJobService) WithLiveRunnerBuilder(b LiveRunnerBuilder) *SyncJobService {
+	s.liveRunner = b
 	return s
 }
 

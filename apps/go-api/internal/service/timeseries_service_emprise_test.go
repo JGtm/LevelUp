@@ -85,7 +85,7 @@ func serviceEmprise(usage *mockSessionUsageRepo, feuille feuilleFixe) *Timeserie
 		WithHighlightEventsRepo(nil, "P").
 		WithEmprise(feuille)
 	if usage != nil {
-		svc = svc.WithUsageSummary(usage, "")
+		svc = svc.WithUsageSummary(usage, nil)
 	}
 	return svc
 }
@@ -162,7 +162,7 @@ func TestAttachMigratedSections_UneLectureDuResumeDUsage(t *testing.T) {
 		WithPlayerMatchesRepo(nil, "halo_infinite", "Papa").
 		WithHighlightEventsRepo(nil, "P").
 		WithEmprise(feuilleDeTest()).
-		WithUsageSummary(usage, "").
+		WithUsageSummary(usage, nil).
 		WithSquadFormes(usage, nil)
 	var resp domain.TimeseriesPageResponse
 	svc.attachMigratedSections(context.Background(), &resp, fenetreDeTest(), "fr", equipesDuScope{})

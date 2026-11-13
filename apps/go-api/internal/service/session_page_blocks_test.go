@@ -26,7 +26,7 @@ func serviceDeBlocs(usage *mockSessionUsageRepo) *SessionPageService {
 		WithPlayerMatchesRepo(nil, "halo_infinite", "Papa").
 		WithSessionEmprise(feuilleDeTest(), "P")
 	if usage != nil {
-		svc = svc.WithSessionUsageSummary(usage, "")
+		svc = svc.WithSessionUsageSummary(usage, nil)
 	}
 	return svc
 }
@@ -53,7 +53,7 @@ func TestAttachSessionBlocks_UneLectureDuResumeDUsageParSession(t *testing.T) {
 		svc := NewSessionPageService(nil).
 			WithPlayerMatchesRepo(nil, "halo_infinite", "Papa").
 			WithSessionEmprise(feuilleDeTest(), "P").
-			WithSessionUsageSummary(usage, "")
+			WithSessionUsageSummary(usage, nil)
 		sc, canon := sessionsDeTest(cas.compare)
 		var resp domain.SessionPageResponse
 		svc.attachSessionBlocks(context.Background(), &resp, sc, canon)
@@ -192,7 +192,7 @@ func TestAttachSessionBlocks_EmpriseDegradations(t *testing.T) {
 	} {
 		var resp domain.SessionPageResponse
 		NewSessionPageService(nil).WithPlayerMatchesRepo(nil, "halo_infinite", "Papa").
-			WithSessionEmprise(feuilleFixe{err: cas.err}, "P").WithSessionUsageSummary(usageTestRepoMock(), "").
+			WithSessionEmprise(feuilleFixe{err: cas.err}, "P").WithSessionUsageSummary(usageTestRepoMock(), nil).
 			attachSessionBlocks(context.Background(), &resp, sc, canon)
 		if resp.Emprise == nil || resp.Emprise.SheetUnavailable != cas.want {
 			t.Errorf("feuille %v : emprise = %+v, attendu %q", cas.err, resp.Emprise, cas.want)

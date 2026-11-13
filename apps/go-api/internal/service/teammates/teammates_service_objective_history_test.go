@@ -79,7 +79,7 @@ func TestTeammatesService_GetPage_HistoriqueObjectif(t *testing.T) {
 	repo, obj := historiqueFixture()
 	svc := NewTeammatesService(repo, nil).
 		WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, nil), "halo_infinite", "Main").
-		WithSquadFormes(nil, obj, "").
+		WithSquadFormes(nil, obj, nil).
 		WithObjectiveHistory(estNeutre)
 	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{SelectedGamertags: []string{"Ally1"}})
 	if err != nil {
@@ -112,7 +112,7 @@ func TestTeammatesService_GetPage_HistoriqueObjectifDegrade(t *testing.T) {
 		svc := NewTeammatesService(repo, nil).
 			WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, nil), "halo_infinite", "Main")
 		if cas.obj != nil {
-			svc = svc.WithSquadFormes(nil, cas.obj, "")
+			svc = svc.WithSquadFormes(nil, cas.obj, nil)
 		}
 		resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{SelectedGamertags: []string{"Ally1"}})
 		if err != nil {
@@ -134,7 +134,7 @@ func TestTeammatesService_GetPage_FilEtHistoriqueEcartentLeMemeMatch(t *testing.
 	usage := &compteurUsageRepo{lectures: map[string]int{}, mockTeammatesUsageRepo: &mockTeammatesUsageRepo{}}
 	svc := NewTeammatesService(repo, nil).
 		WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, nil), "halo_infinite", "Main").
-		WithSquadFormes(usage, obj, "").
+		WithSquadFormes(usage, obj, nil).
 		WithObjectiveHistory(estNeutre)
 	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{SelectedGamertags: []string{"Ally1"}})
 	if err != nil {

@@ -1,4 +1,7 @@
-package replaylabels
+// Package replaytext convertit un libellé par langue entre LevelUp (`i18n.Text`) et le décodeur de
+// film (`replay.Text`). Aucune dépendance vers un titre : tout producteur ou lecteur d'un libellé du
+// rejeu passe par ici.
+package replaytext
 
 import (
 	"levelup/go-api/internal/i18n"

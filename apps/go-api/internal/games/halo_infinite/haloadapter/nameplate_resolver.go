@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/netguard"
 
@@ -102,18 +103,18 @@ func ResolveNameplateURL(ctx context.Context, emblemPath string, cfg int64, spar
 // Verdicts : ok (table ou configuration positive) ; upstream_missing (absent de la table et
 // descripteur lu SANS configuration positive : absence durable, emblème de nouvelle génération) ;
 // transient (échec indéterminé, se répare au rafraîchissement suivant).
-func resolveNameplate(ctx context.Context, emblemPath string, cfg int64, spartanToken, clearanceToken string) (url string, verdict Verdict, detail Detail) {
+func resolveNameplate(ctx context.Context, emblemPath string, cfg int64, spartanToken, clearanceToken string) (url string, verdict domain.AppearanceVerdict, detail domain.AppearanceDetail) {
 	trimmed := strings.TrimSpace(emblemPath)
 	if trimmed == "" {
-		return "", VerdictTransient, DetailNoEmblemPath
+		return "", domain.AppearanceVerdictTransient, domain.AppearanceDetailNoEmblemPath
 	}
 	stem := infinite.ExtractEmblemStem(trimmed)
 	if stem == "" {
-		return "", VerdictTransient, DetailNonEmblemPath
+		return "", domain.AppearanceVerdictTransient, domain.AppearanceDetailNonEmblemPath
 	}
 	auth := infinite.Auth{Spartan: spartanToken, Clearance: clearanceToken}
 	if entry, ok := getEmblemMappingEntry(ctx, stem, cfg, auth); ok && entry.NameplateCmsPath != "" {
-		return infinite.NameplateURLDepuisMapping(nameplateAPI(ctx, surfaceNameplateMapping).Endpoints(), entry.NameplateCmsPath), VerdictOK, DetailMappingHit
+		return infinite.NameplateURLDepuisMapping(nameplateAPI(ctx, surfaceNameplateMapping).Endpoints(), entry.NameplateCmsPath), domain.AppearanceVerdictOK, domain.AppearanceDetailMappingHit
 	}
 	resolvedCfg := cfg
 	if resolvedCfg <= 0 {
@@ -126,14 +127,14 @@ func resolveNameplate(ctx context.Context, emblemPath string, cfg int64, spartan
 				// bannière connue (jamais vide).
 				slog.InfoContext(ctx, "nameplate_resolver: emblème sans nameplate upstream (mapping.json miss + aucune cfg positive) — la dernière bannière connue sera servie",
 					"emblem_path", trimmed, "stem", stem, "original_cfg", cfg, "xuid", ctxkeys.HaloXUID(ctx))
-				return "", VerdictUpstreamMissing, DetailNoPositiveCfg
+				return "", domain.AppearanceVerdictUpstreamMissing, domain.AppearanceDetailNoPositiveCfg
 			}
 			slog.WarnContext(ctx, "nameplate_resolver: résolution nameplate échouée (fetch CMS emblem KO, indéterminé)",
 				"emblem_path", trimmed, "stem", stem, "original_cfg", cfg, "xuid", ctxkeys.HaloXUID(ctx))
-			return "", VerdictTransient, DetailCMSHTTPError
+			return "", domain.AppearanceVerdictTransient, domain.AppearanceDetailCMSHTTPError
 		}
 	}
-	return infinite.NameplateURLDepuisCfg(nameplateAPI(ctx, surfaceNameplateEmblem).Endpoints(), stem, resolvedCfg), VerdictOK, DetailMappingMiss
+	return infinite.NameplateURLDepuisCfg(nameplateAPI(ctx, surfaceNameplateEmblem).Endpoints(), stem, resolvedCfg), domain.AppearanceVerdictOK, domain.AppearanceDetailMappingMiss
 }
 
 // resolvePositiveEmblemCfg lit le descripteur CMS de l'emblème et rend sa première configuration
