@@ -49,7 +49,6 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync/replayartifacts"
 
@@ -206,14 +205,14 @@ func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 // kilooctets. Sans lui, une passe de controle sur un corpus de milliers de matchs relirait
 // des gigaoctets pour n'ecrire rien. Il est SUR parce qu'un artefact ne peut pas porter un
 // schema superieur ni a un pas plus recent que ceux que le binaire courant sait produire : un sidecar
-// qui declare deja `replay.SchemaVersion` ET le pas de cuisson courant ([replaybuild.CadenceUpToDate])
+// qui declare deja `replay.SchemaVersion` ET le pas de cuisson courant ([aLaCadenceCourante])
 // ne peut pas etre en retard sur son artefact.
 //
 // Tous les autres cas — sidecar absent, illisible, d'un autre format, ou projete d'un
 // artefact plus ancien — retombent sur la comparaison complete (dejaProjete).
 func sidecarAJour(ctx context.Context, path string) bool {
 	s, ok := lireSidecarRaster(ctx, path)
-	return ok && s.ArtifactSchemaVersion == replay.SchemaVersion && replaybuild.CadenceUpToDate(s.FrameIntervalMs)
+	return ok && s.ArtifactSchemaVersion == replay.SchemaVersion && aLaCadenceCourante(s.FrameIntervalMs)
 }
 
 // dejaProjete compare le sidecar en place au schema ET au pas de l'artefact qui vient d'etre lu :
@@ -221,7 +220,7 @@ func sidecarAJour(ctx context.Context, path string) bool {
 // refait son sidecar, a schema egal).
 func dejaProjete(ctx context.Context, path string, schemaArtefact, pasArtefact int) bool {
 	s, ok := lireSidecarRaster(ctx, path)
-	return ok && s.ArtifactSchemaVersion == schemaArtefact && replaybuild.SameCadence(s.FrameIntervalMs, pasArtefact)
+	return ok && s.ArtifactSchemaVersion == schemaArtefact && memeCadence(s.FrameIntervalMs, pasArtefact)
 }
 
 // lireSidecarRaster lit le sidecar en place et dit s'il est exploitable EN L'ETAT.
