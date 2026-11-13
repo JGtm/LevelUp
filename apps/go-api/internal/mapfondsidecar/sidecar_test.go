@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/domain/replaydoc"
 
@@ -19,6 +20,7 @@ func sidecarDeTest(plan *replaydoc.MapBackgroundPlan) Sidecar {
 			Image:         "ctf_bazaar.png",
 			Source:        "test",
 			Style:         "encre",
+			GeneratedAt:   time.Date(2026, 8, 12, 23, 0, 51, 920448200, time.UTC),
 			Calibration:   replay.MapBackgroundCalibration{MetersPerPixel: 0.034, WidthPx: 10, HeightPx: 12, Convention: "c"},
 		},
 		Plan: plan,
@@ -46,6 +48,9 @@ func TestSidecar_LePlanSurvitAUneReecriture(t *testing.T) {
 	}
 	if relu.Image != "ctf_bazaar.webp" {
 		t.Errorf("image = %q", relu.Image)
+	}
+	if !relu.GeneratedAt.Equal(s.GeneratedAt) {
+		t.Errorf("generatedAt = %v, attendu %v", relu.GeneratedAt, s.GeneratedAt)
 	}
 	if relu.Plan == nil || len(relu.Plan.Edges) != 2 || relu.Plan.Vertices != 4 || relu.Plan.Faces != 2 {
 		t.Fatalf("plan perdu a la reecriture : %+v", relu.Plan)

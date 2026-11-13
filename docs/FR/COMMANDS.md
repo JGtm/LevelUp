@@ -700,7 +700,7 @@ CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only     # + lexi
 
 ```bash
 CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--title slug] \
-  [--out-dir DIR] [--style jeu] [--natives=false] [--forge=false] [--rapport FILE]
+  [--out-dir DIR] [--style jeu] [--natives=false] [--forge=false] [--rapport FILE] [--plan-seul]
 ```
 
 - Sortie : `data/titles/{slug}/reference/map_backgrounds/{cle}.png` + `{cle}.json` (sidecar de
@@ -717,6 +717,10 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--titl
   natives) retire le maillage entier (ni référence, ni rognage, ni plan). Une carte Forge reçoit
   aussi `navmeshReference`, et publie un `plan` dès que le dépôt porte son `navmesh.blob`
   (`mapnav-fetch`), que la cuisson s'en serve ou non.
+- `--plan-seul` ne cuit rien : pour chaque carte Forge dont le `navmesh.blob` est au dépôt, il
+  ajoute le `plan` au sidecar publié et laisse tout le reste (image, calage, statistiques,
+  dégradations, `generatedAt`) tel quel. Une carte sans blob, ou sans sidecar, est laissée
+  intacte. C'est ainsi qu'une carte dont la variante `.mvar` manque obtient son plan.
 - Après la cuisson, lancer `go run ./cmd/mapfond-webp -convertir` : il réécrit chaque sidecar par
   `internal/mapfondsidecar`, qui conserve le `plan` (le `replay.MapBackground` du décodeur de film
   ne le connaît pas).

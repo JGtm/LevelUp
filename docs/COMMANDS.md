@@ -677,7 +677,7 @@ CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only      # + str
 
 ```bash
 CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--title slug] \
-  [--out-dir DIR] [--style jeu] [--natives=false] [--forge=false] [--rapport FILE]
+  [--out-dir DIR] [--style jeu] [--natives=false] [--forge=false] [--rapport FILE] [--plan-seul]
 ```
 
 - Output: `data/titles/{slug}/reference/map_backgrounds/{key}.png` + `{key}.json` sidecar per
@@ -694,6 +694,10 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--titl
   altogether (no reference, no clipping, no plan). A Forge map also takes `navmeshReference`, and
   publishes a `plan` whenever the repository holds its `navmesh.blob` (`mapnav-fetch`), whether
   or not the cooking uses it.
+- `--plan-seul` cooks nothing: for each Forge map whose `navmesh.blob` is in the repository, it
+  adds the `plan` to the published sidecar and leaves everything else (image, calibration, stats,
+  degradations, `generatedAt`) as it was. A map with no blob, or no sidecar, is left untouched.
+  It is how a map whose `.mvar` variant is not at hand gets its plan.
 - After cooking, run `go run ./cmd/mapfond-webp -convertir`: it rewrites each sidecar through
   `internal/mapfondsidecar`, which keeps the `plan` (the film decoder's `replay.MapBackground`
   does not know it).

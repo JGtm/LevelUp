@@ -21,7 +21,7 @@
 //
 //	CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "ridgeline,catalyst"] [--title slug]
 //	                                         [--out-dir DIR] [--style jeu] [--rapport FILE]
-//	                                         [--natives=false] [--forge=false]
+//	                                         [--natives=false] [--forge=false] [--plan-seul]
 //
 // --maps vide = toutes les cartes du catalogue d'objectifs installées localement. Une carte
 // NATIVE se désigne par son dossier installé (`ridgeline`), une carte FORGE par son map_id
@@ -56,6 +56,7 @@ func main() {
 	rapport := flag.String("rapport", "", "écrit un rapport Markdown à ce chemin")
 	natives := flag.Bool("natives", true, "cuire les cartes cuites dans un module")
 	forge := flag.Bool("forge", true, "cuire les cartes Forge (posées depuis leur .mvar)")
+	planSeul := flag.Bool("plan-seul", false, "ajoute le plan des murs aux sidecars Forge publies, depuis leur navmesh.blob, sans recuire")
 	flag.Parse()
 
 	ctx := context.Background()
@@ -71,6 +72,10 @@ func main() {
 	env.style = himap.StyleFond(*style)
 	env.filtre = filtreDe(*maps)
 	env.echelle = *mpp
+
+	if *planSeul {
+		os.Exit(executePlanSeul(ctx, env))
+	}
 
 	var bilans []bilanAsset
 	if *natives {
