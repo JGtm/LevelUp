@@ -477,38 +477,57 @@ deux titres.
 
 Effort : lourd par le nombre de fichiers, faible en risque.
 
-- [ ] 7.1 (WEB-1) `tools/lint-cross-feature-imports.mjs` : reconnaître `_shared`, contrôler les
+- [x] 7.1 (WEB-1) `tools/lint-cross-feature-imports.mjs` : reconnaître `_shared`, contrôler les
       imports relatifs, marqueur d'exemption par ligne et non par fichier. Corriger ce que le lint
       révèle : `_shared/useLocalFilterBar.tsx` (descendre `MultiSelectFilter`, `useActiveSeason` et
       `useFiltersPreview` dans `components/` ou `lib/`), `scoreTimelineKind` vers `lib/`,
       l'import de `ascension/AscensionCoachingTab.tsx:20`, les types de `squad/v2/types` lus par
       `_shared`.
-- [ ] 7.2 (WEB-2) `HomePrestigeSection.tsx` et `PrestigeSquadProgress.tsx` appellent les hooks de
+- [x] 7.2 (WEB-2) `HomePrestigeSection.tsx` et `PrestigeSquadProgress.tsx` appellent les hooks de
       `prestige/hooks/`. Garde : aucun `useQuery` ni `useQueries` dans un `.tsx` de `features/`.
-- [ ] 7.3 (TEC-1) `CumulativeFragGapChart.tsx` et `OutcomeSequenceTape.tsx` passent par `ChartCard`
+- [x] 7.3 (TEC-1) `CumulativeFragGapChart.tsx` et `OutcomeSequenceTape.tsx` passent par `ChartCard`
       (ou écoutent la palette). Garde : `<LazyECharts` monté seulement dans `components/charts/`.
       Contrôle : changer de palette, les deux graphes suivent sans rechargement.
-- [ ] 7.4 (TEC-2) Les 30 types manuels homonymes restants de `lib/api/types.ts` deviennent des
+- [x] 7.4 (TEC-2) Les 30 types manuels homonymes restants de `lib/api/types.ts` deviennent des
       réexports de `generated.ts` ; chaque écart de nullabilité ou de champ est corrigé chez les
       consommateurs. Étendre `response-types.guard.test.ts` à tous les schémas.
-- [ ] 7.5 (TEC-P2-3) `components/charts/` réexporte le type d'option ; les 72 fichiers l'importent
+- [x] 7.5 (TEC-P2-3) `components/charts/` réexporte le type d'option ; les 72 fichiers l'importent
       de là. Garde : aucun import de `echarts` hors `components/charts/`.
-- [ ] 7.6 (TEC-P2-2) Les `fetch` de `admin/titles/queries.ts:94` et
+- [x] 7.6 (TEC-P2-2) Les `fetch` de `admin/titles/queries.ts:94` et
       `spartan-customizer/SpartanCustomizerModal.tsx:85` passent par le client ;
       `explorer/explorerTableRows.ts:54` lit `API_BASE_URL`. Garde : `fetch` hors `lib/api/` et
       `lib/desktop/` sous allowlist datée (GitHub, sons et fichiers statiques du rejeu).
-- [ ] 7.7 (TEC-P2-1) Les 11 tableaux triés à la main passent sur TanStack Table. Garde : aucun
+- [x] 7.7 (TEC-P2-1) Les 11 tableaux triés à la main passent sur TanStack Table. Garde : aucun
       `toggleSort` local dans `features/`.
-- [ ] 7.8 (WEB-P2-3) Moyenne, médiane, moyenne mobile : une seule implémentation dans `lib/charts/`
+- [x] 7.8 (WEB-P2-3) Moyenne, médiane, moyenne mobile : une seule implémentation dans `lib/charts/`
       (`meanOfValid` existe), les 9 moyennes inline et les deux moyennes mobiles s'y branchent ; la
       logique de `TimeseriesKdaDensity.tsx:57-105` va dans un fichier de logique testé.
-- [ ] 7.9 (WEB-P2-4) Le corps de `routes/.../replay.tsx` devient une page de `features/match-replay`
+- [x] 7.9 (WEB-P2-4) Le corps de `routes/.../replay.tsx` devient une page de `features/match-replay`
       ; la convergence de titre de `routes/.../$titleSlug.tsx:55-90` devient un hook.
-- [ ] 7.10 (WEB-P2-5, WEB-P2-6) Les 4 clés dérivées entrent dans `lib/query/keys.ts` ; un seul hook
+- [x] 7.10 (WEB-P2-5, WEB-P2-6) Les 4 clés dérivées entrent dans `lib/query/keys.ts` ; un seul hook
       de bootstrap, les quatre sites s'y branchent.
-- [ ] 7.11 (WEB-P2-1, WEB-P2-2) `components/ui/match-card-assisted-frags.tsx` rejoint
+- [x] 7.11 (WEB-P2-1, WEB-P2-2) `components/ui/match-card-assisted-frags.tsx` rejoint
       `features/_shared/assists/` (ou les quatre modules d'assistance descendent dans
       `components/`) ; `JoinPage.tsx` lit sa route par `getRouteApi` et n'importe plus `@/routes`.
+
+Résultat de l'étape 7 (2026-11-13). 7.1 : lint des frontières à plafond 0, exemption par ligne, socle `_shared` sans
+dépendance vers une feature (`MultiSelectFilter` dans `components/filters`, saisons dans `lib/seasons`). 7.2 : Accueil et
+Prestige lisent par les hooks de Prestige ; garde « aucun `useQuery` dans un `.tsx` de `features/` ». 7.3 : les deux
+graphes écoutent la palette (test automatique ; rendu à contrôler à l'écran). 7.4 : 21 types de `types.ts` puis 11
+réponses rejoignent le contrat ; quatre corps de requête corrigés à la source dans le YAML du contrat (le serveur ne
+change pas) ; homonymes hors `types.ts` de 78 à 5. Mesure « 0 type manuel homonyme » NON tenue au sens strict : restent,
+en listes datées, 4 types d'entrée (`PeriodInput`, `SessionsInput`, `FilterContextInput`,
+`EngagementTimeseriesRequest`), 2 réponses où le contrat diffère du serveur (`CareerHighlightMatchesResponse`,
+`MediaPageResponse`) et 5 hors `types.ts` ; garde à plafond 0 hors listes. 7.5 : imports d'`echarts` hors
+`components/charts/` 74 puis 0. 7.6 : `fetch` hors client 6 puis 4, tous en liste datée (GitHub, deux sons du rejeu, un
+fichier statique). 7.7 : onze tableaux dans dix fichiers (`ApiHaloSection` en porte deux) convertis par `lib/table/useColumnSort`,
+garde `noLocalSortToggle` à 0, dix tests d'ordre. 7.8 : `lib/charts/stats`.
+7.9 : `ReplayPage` dans la feature, `useTitleConvergence`. 7.10 : 4 clés dérivées dans `queryKeys`, lecture unique du
+bootstrap, deux gardes. 7.11 : les quatre modules d'assistance descendent dans `components/assists/`,
+`REVERSE_SHARED_ALLOWED` supprimée, garde « aucune feature n'importe `@/routes` ». Gate (cache `node_modules/.tmp`
+purgé) : typecheck, lint, 11979 tests, lint des frontières, knip, ratchet du contrat, couleurs, champs, build : code 0 ;
+côté Go (YAML du contrat et un commentaire seulement) : `golangci-lint --new-from-rev`, `openapi-gen -check`, tests de
+`internal/api` : code 0. Chaque garde prouvé rouge par mutation. Aucun contrôle à l'écran fait par les agents.
 
 Gate : `make check-types` (cache `node_modules/.tmp` purgé), `npm run lint`, `make test-web`,
 `node tools/lint-cross-feature-imports.mjs` ; mesures « front », « graphes » et « client HTTP » du
@@ -537,7 +556,7 @@ deux graphes de 7.3.
 | 4 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-12 ; une ronde de revue (lots 4.1 à 4.4), P1 corrigé |
 | 5 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-13 ; une ronde de revue, 0 P0, 0 P1, quatre P2 corrigés |
 | 6 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-13 |
-| 7 | à faire | | |
+| 7 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-13 ; contrôle à l'écran par l'utilisateur en attente |
 | 8 | à faire | | |
 
 ## 12. Découvertes d'exécution
@@ -608,6 +627,8 @@ deux graphes de 7.3.
 - Étape 5 (2026-11-13). Changements assumés, hors « à l'identique » : le dépôt de profil lit par `QueryRecovered` (une reprise sur handle invalidé, exigée par le garde de reprise) ; l'amorçage de l'import rend une erreur de lecture de la vue au lieu de l'ignorer ; les modèles de défis suggérés passent par `ListByTitle` (lecture des textes de tous les modèles du titre, réponse identique) ; clés de journal de l'après-import dérivées du nom d'étape (`post_import_metadata_unavailable` devient `post_import_open_metadata_failed`) ; une lecture en échec du classement mondial et de la fenêtre de profil est désormais journalisée ; le writer média est rendu avant la construction de la réponse. Deux messages d'erreur (Prestige « detach objectives », joueur de démo) ont été reformulés parce que le détecteur de SQL et le linter les refusaient : journal et 500 masqué seulement. Restes non traités : `port` importe `platform/jobs`, `openspartan` et `prestige` (`MediaIndexer` expose `*jobs.Store`, pas un type SQL) ; `config` importe encore `platform/duckdb/sharedprovider`, donc n'est pas importable sans cgo ; `scheduler` importe `sharedprovider` dans deux fichiers (`ErrDrainTimeout`) ; `analysis.SQLKnownMMR` reste dans `mmr_known.go`, invisible du détecteur ; `progression/profile/service.go` 580 lignes (dette antérieure, réduite) ; la vraie `mediaTx.Rollback` n'a pas de test d'échec en cours de transaction (faux seulement) ; le contrôle de contexte en cours de boucle de `PrimeBaseline` n'a pas de test ; 9 tests du scheduler importent `platform/duckdb` pour semer leurs bases ; `scripts/disk-hygiene.ps1` lit `origin/feat/v75`, branche disparue (erreur affichée, simulation rendue quand même). Disque du poste tombé à 1,7 Go libres pendant le lot (cache Go partagé : 57 Go).
 
 - Étape 6 (2026-11-13). `TestHandlersSansMoteurDeSync` nomme `halo_infinite` et `halo_5` : un troisième titre ne serait pas refusé côté handlers (le garde de `service/` est-il général ? à vérifier à l'étape 8). Dix fichiers de test de `service/` et `api/handlers` importent des paquets de titre pour semer de vraies bases : les gardes ne lisent que le code hors tests. Le service de rejeu lit le catalogue mémoïsé (`Catalogue`) au lieu de le recharger à chaque requête. `WorldStatsEnricher.EnrichSeason` refuse un ensemble de playlists classées vide au lieu de retomber sur celui de Halo Infinite (le démarrage le fournit toujours). `scheduler` garde le même schéma `livesync` / `DeltaRunner`. `HomeService` accepte un fournisseur nul (cache puis « indisponible »). Non traités.
+
+- Étape 7 (2026-11-13). Changements assumés : l'Accueil n'appelle plus les défis sans joueur choisi ; un palier inconnu retombe sur le palier calculé ; le brouillon TOML d'un titre envoie titre et langue ; une valeur non finie est traitée comme absente dans les moyennes (un ancien site pouvait la propager). Restes non traités : 11 types manuels en listes datées (voir le résultat de 7.4), dont 2 réponses où c'est le contrat qui est en retard sur le serveur ; le schéma de contrat `MediaItemRow` existe toujours, sans rapport avec le type renommé `NormalizedMediaItem` ; le lint des frontières ne balaie ni `lib/` ni `stores/` ; `medianSeconds` et `bucketMedian` ne sont pas branchés sur `lib/charts/stats` ; le fichier statique des véhicules est lu par `fetch` direct (liste datée) alors que celui des Spartan passe par le client ; `lib/playerProfile.ts` et `features/ascension/types.ts` dupliquent des définitions ; `heatmapColors.guard.test.ts` a un délai de 5 s fragile sous charge. À contrôler à l'écran par l'utilisateur : tri de trois tableaux (Carrière « rencontres », Classement, Admin « tâches »), les deux graphes de 7.3 sous changement de palette, le Rejeu 2D, `/join`, la connexion Xbox.
 
 ## 13. Hors périmètre
 

@@ -1,3 +1,9 @@
+## [2026-11-13] Plan architecture, étape 7 : front — Complété (branche `feat/812-architecture`, poussée sur `release/v8.2.0`)
+
+- Décision : frontières de features contrôlées sans exception de fichier, `echarts` importé d'un seul dossier, appels réseau par le client commun, tri des tableaux par `useColumnSort` (TanStack Table), statistiques de graphes dans `lib/charts/stats`, types d'API manuels remplacés par le contrat (le contrat est corrigé à la source quand il était en retard sur le serveur).
+- Résultats : imports d'`echarts` hors du dossier des graphes 74 puis 0 ; `fetch` hors client 6 puis 4 datés ; homonymes manuels ramenés à 11 en listes datées (objectif 0 non tenu au sens strict) ; 11979 tests web verts, build vert. Aucun contrôle à l'écran par les agents.
+- Prochaine étape : étape 8 (clôture) ; contrôles à l'écran par l'utilisateur (tableaux triés, palette, Rejeu 2D, `/join`, connexion Xbox).
+
 ## [2026-11-13] Plan architecture, étape 6 : multi-titre — Complété (branche `feat/812-architecture`, poussée sur `release/v8.2.0`)
 
 - Décision : `service/` n'importe plus aucun paquet de titre. Le catalogue de libellés du rejeu reste dans le paquet du titre derrière `port.ReplayLabelSource` (il dépend des icônes et des clés d'armes du titre), la conversion de textes part dans `internal/replaytext` ; un titre sans rejeu reçoit `ErrCapabilityNotSupported`.
