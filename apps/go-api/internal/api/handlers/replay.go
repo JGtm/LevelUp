@@ -152,7 +152,7 @@ func (h *ReplayHandler) handleGetCallouts(ctx context.Context, in *replayInput) 
 	return &calloutsOutput{Body: *entry}, nil
 }
 
-// handleGetBackgroundImage sert le PNG du fond de carte.
+// handleGetBackgroundImage sert l'image du fond de carte, ou son image plan avec `?variante=plan`.
 //
 // Route chi nue (cf. Mount) : la charge utile est binaire. Elle rend les mêmes 404 que le
 // calage, et pour les mêmes raisons — l'image et son calage vont toujours ensemble.
@@ -169,7 +169,13 @@ func (h *ReplayHandler) handleGetBackgroundImage(w http.ResponseWriter, r *http.
 		writeError(ctx, w, http.StatusBadRequest, "missing_match_id", "match_id est requis")
 		return
 	}
-	blob, contentType, err := svc.MapBackgroundImage(ctx, matchID)
+	plan, ok := varianteFond(ctx, w, r)
+	if !ok {
+		return
+	}
+	blob, contentType, err := imageDeFond(plan,
+		func() ([]byte, string, error) { return svc.MapBackgroundImage(ctx, matchID) },
+		func() ([]byte, string, error) { return svc.MapBackgroundPlanImage(ctx, matchID) })
 	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
 			"aucun fond de carte pour ce match")

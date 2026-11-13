@@ -279,7 +279,8 @@ func (h *TacticalHandler) handleGetMapBackground(
 	return &tacticalMapBackgroundOutput{Body: *bg}, nil
 }
 
-// handleGetMapBackgroundImage sert le PNG du fond d'une carte, avec le meme cache que le
+// handleGetMapBackgroundImage sert l'image du fond d'une carte (ou son image plan avec
+// `?variante=plan`), avec le meme cache que le
 // fond par match : donnee de REFERENCE versionnee, qui ne change qu'a une re-cuisson.
 // `private` parce que la route est derriere l'ownership joueur.
 func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *http.Request) {
@@ -298,7 +299,13 @@ func (h *TacticalHandler) handleGetMapBackgroundImage(w http.ResponseWriter, r *
 		writeErrorFrom(ctx, w, http.StatusNotFound, "player_not_found", err)
 		return
 	}
-	blob, contentType, err := svc.MapBackgroundImageForMap(ctx, mapID)
+	plan, ok := varianteFond(ctx, w, r)
+	if !ok {
+		return
+	}
+	blob, contentType, err := imageDeFond(plan,
+		func() ([]byte, string, error) { return svc.MapBackgroundImageForMap(ctx, mapID) },
+		func() ([]byte, string, error) { return svc.MapBackgroundPlanImageForMap(ctx, mapID) })
 	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
 			messageSansFond)

@@ -1995,6 +1995,17 @@ paths:
           required: true
           schema:
             type: string
+        - name: variante
+          in: query
+          required: false
+          description: |
+            Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
+            des composantes du maillage de navigation, mêmes dimensions et même calage que le
+            fond, à superposer). Toute autre valeur est refusée.
+          schema:
+            type: string
+            enum:
+              - plan
       summary: Sert l'image du fond de carte du rejeu 2D
       description: |
         Image vue du dessus de la carte du match (PNG), cuite hors ligne par
@@ -2003,9 +2014,11 @@ paths:
         superpose à rien.
       responses:
         '200':
-          description: Image PNG du fond de carte
+          description: Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan`
+        '400':
+          description: Valeur de `variante` inconnue
         '404':
-          description: Aucun fond de carte figé pour la carte de ce match
+          description: Aucun fond de carte figé pour la carte de ce match (ou, avec `variante=plan`, aucun plan)
   # Même route, keyée par CARTE : la grille de l'onglet Tactique liste des cartes et n'a
   # aucun match sous la main. Même charge utile binaire, donc même traitement manuel.
   /players/{player_slug}/tactical/{map_id}/background.png:
@@ -2024,6 +2037,17 @@ paths:
           required: true
           schema:
             type: string
+        - name: variante
+          in: query
+          required: false
+          description: |
+            Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
+            des composantes du maillage de navigation, mêmes dimensions et même calage que le
+            fond, à superposer). Toute autre valeur est refusée.
+          schema:
+            type: string
+            enum:
+              - plan
       summary: Sert l'image du fond d'une carte de l'onglet Tactique
       description: |
         Image vue du dessus d'une carte (PNG), cuite hors ligne par `cmd/mapfond-build`.
@@ -2034,9 +2058,11 @@ paths:
         donnée de référence versionnée, pas une trajectoire décodée d'un film.
       responses:
         '200':
-          description: Image PNG du fond de carte
+          description: Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan`
+        '400':
+          description: Valeur de `variante` inconnue
         '404':
-          description: Aucun fond de carte figé pour cette carte
+          description: Aucun fond de carte figé pour cette carte (ou, avec `variante=plan`, aucun plan)
   /players/{player_slug}/pages/squad/v2:
     get:
       responses:

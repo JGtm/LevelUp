@@ -70,8 +70,51 @@ func TestSidecar_SansPlanPasDeChamp(t *testing.T) {
 	if strings.Contains(string(blob), `"plan"`) {
 		t.Errorf("champ plan ecrit sans plan : %s", blob)
 	}
-	plan, err := lirePlan(chemin)
-	if err != nil || plan != nil {
-		t.Errorf("lirePlan = %+v, %v ; attendu nil, nil", plan, err)
+	ext, err := lireExtensions(chemin)
+	if err != nil || ext.Plan != nil || ext.PlanImage != "" {
+		t.Errorf("lireExtensions = %+v, %v ; attendu des extensions vides", ext, err)
+	}
+}
+
+// L'image plan voyage avec le plan : nom ecrit, relu, et sans plan ni image le fichier n'a pas
+// de champ `planImage`.
+func TestSidecar_ImagePlanAllerRetour(t *testing.T) {
+	chemin := filepath.Join(t.TempDir(), "x.json")
+	s := sidecarDeTest(&replaydoc.MapBackgroundPlan{Source: "t", Vertices: 4, Faces: 2, Edges: [][4]float64{{0, 0, 1, 0}}})
+	s.PlanImage = "x.plan.webp"
+	if err := Write(chemin, s); err != nil {
+		t.Fatal(err)
+	}
+	relu, err := Load(chemin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if relu.PlanImage != "x.plan.webp" || relu.Plan == nil {
+		t.Errorf("image plan ou plan perdu : %q, %+v", relu.PlanImage, relu.Plan)
+	}
+	if err := Write(chemin, sidecarDeTest(nil)); err != nil {
+		t.Fatal(err)
+	}
+	blob, err := os.ReadFile(chemin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(blob), "planImage") {
+		t.Errorf("champ planImage ecrit sans image plan : %s", blob)
+	}
+}
+
+// Le nom de l'image plan se fabrique et se relit par le meme couple de fonctions.
+func TestNomImagePlanEtCle(t *testing.T) {
+	for _, ext := range []string{".png", ".webp"} {
+		nom := NomImagePlan("ridgeline", ext)
+		if cle, ok := CleDeImagePlan(nom); !ok || cle != "ridgeline" {
+			t.Errorf("CleDeImagePlan(%q) = %q, %v", nom, cle, ok)
+		}
+	}
+	for _, nom := range []string{"ridgeline.png", "ridgeline.webp", ".plan.png", "a.b.png"} {
+		if cle, ok := CleDeImagePlan(nom); ok {
+			t.Errorf("CleDeImagePlan(%q) = %q, attendu un refus", nom, cle)
+		}
 	}
 }

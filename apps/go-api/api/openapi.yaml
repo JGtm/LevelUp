@@ -3824,11 +3824,24 @@ paths:
           required: true
           schema:
             type: string
+        - description: |
+            Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
+            des composantes du maillage de navigation, mêmes dimensions et même calage que le
+            fond, à superposer). Toute autre valeur est refusée.
+          in: query
+          name: variante
+          required: false
+          schema:
+            enum:
+              - plan
+            type: string
       responses:
         "200":
-          description: Image PNG du fond de carte
+          description: Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan`
+        "400":
+          description: Valeur de `variante` inconnue
         "404":
-          description: Aucun fond de carte figé pour la carte de ce match
+          description: Aucun fond de carte figé pour la carte de ce match (ou, avec `variante=plan`, aucun plan)
       summary: Sert l'image du fond de carte du rejeu 2D
       tags:
         - match-view
@@ -6763,11 +6776,24 @@ paths:
           required: true
           schema:
             type: string
+        - description: |
+            Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
+            des composantes du maillage de navigation, mêmes dimensions et même calage que le
+            fond, à superposer). Toute autre valeur est refusée.
+          in: query
+          name: variante
+          required: false
+          schema:
+            enum:
+              - plan
+            type: string
       responses:
         "200":
-          description: Image PNG du fond de carte
+          description: Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan`
+        "400":
+          description: Valeur de `variante` inconnue
         "404":
-          description: Aucun fond de carte figé pour cette carte
+          description: Aucun fond de carte figé pour cette carte (ou, avec `variante=plan`, aucun plan)
       summary: Sert l'image du fond d'une carte de l'onglet Tactique
       tags:
         - tactical
@@ -18388,6 +18414,8 @@ components:
           type: string
         plan:
           $ref: '#/components/schemas/MapBackgroundPlan'
+        planImage:
+          type: string
         schemaVersion:
           format: int64
           type: integer

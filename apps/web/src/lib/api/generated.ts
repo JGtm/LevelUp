@@ -8818,6 +8818,7 @@ export interface components {
             mapNames?: string[] | null;
             module: string;
             plan?: components["schemas"]["MapBackgroundPlan"];
+            planImage?: string;
             /** Format: int64 */
             schemaVersion: number;
             source: string;
@@ -19845,7 +19846,14 @@ export interface operations {
     };
     getMatchReplayBackgroundImage: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
+                 *     des composantes du maillage de navigation, mêmes dimensions et même calage que le
+                 *     fond, à superposer). Toute autre valeur est refusée.
+                 */
+                variante?: "plan";
+            };
             header?: never;
             path: {
                 player_slug: string;
@@ -19855,14 +19863,21 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Image PNG du fond de carte */
+            /** @description Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Aucun fond de carte figé pour la carte de ce match */
+            /** @description Valeur de `variante` inconnue */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun fond de carte figé pour la carte de ce match (ou, avec `variante=plan`, aucun plan) */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -22934,7 +22949,14 @@ export interface operations {
     };
     getTacticalMapBackgroundImage: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Image servie : absent, l'image du fond ; `plan`, l'image plan de la même carte (plan
+                 *     des composantes du maillage de navigation, mêmes dimensions et même calage que le
+                 *     fond, à superposer). Toute autre valeur est refusée.
+                 */
+                variante?: "plan";
+            };
             header?: never;
             path: {
                 player_slug: string;
@@ -22944,14 +22966,21 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Image PNG du fond de carte */
+            /** @description Image du fond de carte (PNG ou WebP), ou son image plan avec `variante=plan` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Aucun fond de carte figé pour cette carte */
+            /** @description Valeur de `variante` inconnue */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun fond de carte figé pour cette carte (ou, avec `variante=plan`, aucun plan) */
             404: {
                 headers: {
                     [name: string]: unknown;

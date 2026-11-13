@@ -108,6 +108,10 @@ type MapBackground struct {
 	// Plan est le plan des murs tiré du maillage de navigation de la carte : absent quand la
 	// carte n'a pas de maillage ou que son fond a été cuit sans.
 	Plan *MapBackgroundPlan `json:"plan,omitempty"`
+	// PlanImage : nom du fichier de l'image plan de la carte (même cadre et même calage que
+	// l'image du fond), servie par la route de l'image du fond avec `?variante=plan`. Vide quand
+	// la carte n'a pas de plan : la route répond alors comme pour un fond absent.
+	PlanImage string `json:"planImage,omitempty"`
 }
 
 // MapBackgroundPlan est le plan d'une carte tiré de son maillage de navigation : les arêtes de
