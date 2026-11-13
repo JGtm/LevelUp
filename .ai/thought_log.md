@@ -1,3 +1,9 @@
+## [2026-11-13] Plan architecture, étape 6 : multi-titre — Complété (branche `feat/812-architecture`, poussée sur `release/v8.2.0`)
+
+- Décision : `service/` n'importe plus aucun paquet de titre. Le catalogue de libellés du rejeu reste dans le paquet du titre derrière `port.ReplayLabelSource` (il dépend des icônes et des clés d'armes du titre), la conversion de textes part dans `internal/replaytext` ; un titre sans rejeu reçoit `ErrCapabilityNotSupported`.
+- Résultats : 16 imports ramenés à 0, garde à plafond 0 prouvé par mutation, gate vert, témoins identiques sur 90 routes dont 12 pour Halo 5 (fenêtre glissante du calendrier neutralisée dans le harnais).
+- Prochaine étape : étape 7 (front), puis clôture.
+
 ## [2026-11-13] Plan architecture, étape 5 : le stockage — Complété (branche `feat/812-architecture`, poussée sur `release/v8.2.0`)
 
 - Décision : tout SQL et tout `database/sql` quittent `service/`, `analysis/`, `progression/`, `scheduler/`, `prestige/` et `port/` pour des dépôts derrière des ports (`importstore`, `cronstore`, `profilerepo`, `worldrepo`, `sqlfrag`, `playerresolve`) ; la transaction média devient une méthode du dépôt ; erreur de domaine « introuvable ». Quatre garde-rails à plafond 0, allowlists vides. Le linter Go est rejoué en local avant chaque push (la CI de l'étape 4 était rouge sur goconst, corrigée par `0daede9946`).

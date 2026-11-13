@@ -445,15 +445,30 @@ Gate : gate de l'étape 4 ; `go test -tags=integration -p 1 ./...` ; mesures « 
 
 Effort : moyen.
 
-- [ ] 6.1 (DEP-1) Les 15 imports de `games/halo_infinite` dans `service/` disparaissent :
+- [x] 6.1 (DEP-1) Les 15 imports de `games/halo_infinite` dans `service/` disparaissent :
       `haloadapter.DefaultHaloProvider` est injecté au câblage (`NewHomeService` reçoit son
       fournisseur) ; `rankedplaylists` passe par l'adapter sémantique du titre ; `replaylabels`, déjà
       paramétré par titre (`Catalogue(repoRoot, titleSlug)`), quitte `games/halo_infinite` pour un
       paquet neutre ou passe par l'adapter (choix à écrire dans le compte rendu, sur pièces). Un
       titre sans rejeu rend `ErrCapabilityNotSupported`, jamais les libellés d'un autre titre.
-- [ ] 6.2 Garde-rail : étendre `no_title_package_in_analysis_test.go` à `service/` et
+- [x] 6.2 Garde-rail : étendre `no_title_package_in_analysis_test.go` à `service/` et
       `api/handlers`, plafond 0.
-- [ ] 6.3 Tests : cas de dégradation pour `halo_5` sur chaque service touché.
+- [x] 6.3 Tests : cas de dégradation pour `halo_5` sur chaque service touché.
+
+Résultat de l'étape 6 (2026-11-13). 6.1 : imports de paquets de titre dans `service/` hors tests : 15 de
+`games/halo_infinite` (3 `haloadapter`, 2 `rankedplaylists`, 10 `replaylabels`) plus 1 de `games/halo_5/livesync`,
+tous à 0. `NewHomeService(repo, provider)` reçoit son fournisseur au câblage. `replaylabels` : choix « par
+l'adapter » pour le catalogue (il dépend du titre : icônes d'armes, clés d'armes du film), derrière
+`port.ReplayLabelSource` dont l'implémentation de `api/wire` rend `games.ErrCapabilityNotSupported` pour un titre
+sans rejeu ; la conversion de textes, indépendante du titre, part dans le paquet neutre `internal/replaytext`. Les
+playlists classées sont appliquées par le `CatalogAdapter` du titre ; l'ensemble du classement mondial est fourni par
+`cmd/server`. Le diagnostic d'apparence (verdicts) passe dans `domain`, son client Halo dans `api/wire`. 6.2 :
+`TestServiceImporteAucunPaquetDeTitre`, plafond 0, allowlist vide, prouvé rouge par trois mutations ; `api/handlers`
+reste tenu par `TestHandlersSansMoteurDeSync` (pas de doublon). 6.3 : cas `halo_5` sur chaque service touché. Gate :
+gofmt, build, vet (avec et sans `integration`), `golangci-lint --new-from-rev` 0 défaut, `archlint`,
+`-tags=integration -p 1` sur 53 paquets : code de sortie 0 ; code sans appelant : aucune nouveauté. Témoins : 90 routes
+dont 12 `halo_5`, `diff -r avant-4 apres-6` vide après neutralisation de `since` / `until` du calendrier d'activité
+(fenêtre glissante calculée depuis la date du jour : la référence datait de la veille).
 
 Gate : gate de l'étape 5 ; mesure « ajouter un titre » du §0 à zéro ; témoins identiques pour les
 deux titres.
@@ -521,7 +536,7 @@ deux graphes de 7.3.
 | 3 | close | `dd5f4de69c` sur `release/v8.2.0` | close le 2026-11-12, CI verte ; une ronde de revue, P1 corrigé |
 | 4 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-12 ; une ronde de revue (lots 4.1 à 4.4), P1 corrigé |
 | 5 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-13 ; une ronde de revue, 0 P0, 0 P1, quatre P2 corrigés |
-| 6 | à faire | | |
+| 6 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-13 |
 | 7 | à faire | | |
 | 8 | à faire | | |
 
@@ -591,6 +606,8 @@ deux graphes de 7.3.
 - Étape 4 (4.5 à 4.8, 2026-11-12). `NewRouter` garde 9 paramètres et `ServiceRegistry` porte le magasin de sessions pour le seul relais vers `cmd/server`. La purge des sessions s'arrête désormais avec le contexte des tâches de fond (avant : contexte sans fin quand le watcher est absent), toujours hors du groupe d'attente. `port` importe maintenant `openspartan` et `platform/jobs` (`MediaIndexer` expose `*jobs.Store`) : à reprendre à l'étape 5 si `port` doit rester sans dépendance vers `platform`. `home.go` dépend encore de `platform/duckdb` par transitivité (`dbfault`) : le garde ne lit que les imports directs. Le passage `transfer.ErrImportRunning` vers `port.ErrSiteImportRunning` n'est testé que par un faux côté handler (pas de point d'injection dans le `Runner`). `port/repository_data.go` (649 lignes), `repository.go` (572) et `services.go` (544) dépassent 500 lignes : dette antérieure, non traitée. `docs/CHANGELOG.md` cite `NewSettingsHandlerWithIndexer` : historique, laissé. Non traités.
 
 - Étape 5 (2026-11-13). Changements assumés, hors « à l'identique » : le dépôt de profil lit par `QueryRecovered` (une reprise sur handle invalidé, exigée par le garde de reprise) ; l'amorçage de l'import rend une erreur de lecture de la vue au lieu de l'ignorer ; les modèles de défis suggérés passent par `ListByTitle` (lecture des textes de tous les modèles du titre, réponse identique) ; clés de journal de l'après-import dérivées du nom d'étape (`post_import_metadata_unavailable` devient `post_import_open_metadata_failed`) ; une lecture en échec du classement mondial et de la fenêtre de profil est désormais journalisée ; le writer média est rendu avant la construction de la réponse. Deux messages d'erreur (Prestige « detach objectives », joueur de démo) ont été reformulés parce que le détecteur de SQL et le linter les refusaient : journal et 500 masqué seulement. Restes non traités : `port` importe `platform/jobs`, `openspartan` et `prestige` (`MediaIndexer` expose `*jobs.Store`, pas un type SQL) ; `config` importe encore `platform/duckdb/sharedprovider`, donc n'est pas importable sans cgo ; `scheduler` importe `sharedprovider` dans deux fichiers (`ErrDrainTimeout`) ; `analysis.SQLKnownMMR` reste dans `mmr_known.go`, invisible du détecteur ; `progression/profile/service.go` 580 lignes (dette antérieure, réduite) ; la vraie `mediaTx.Rollback` n'a pas de test d'échec en cours de transaction (faux seulement) ; le contrôle de contexte en cours de boucle de `PrimeBaseline` n'a pas de test ; 9 tests du scheduler importent `platform/duckdb` pour semer leurs bases ; `scripts/disk-hygiene.ps1` lit `origin/feat/v75`, branche disparue (erreur affichée, simulation rendue quand même). Disque du poste tombé à 1,7 Go libres pendant le lot (cache Go partagé : 57 Go).
+
+- Étape 6 (2026-11-13). `TestHandlersSansMoteurDeSync` nomme `halo_infinite` et `halo_5` : un troisième titre ne serait pas refusé côté handlers (le garde de `service/` est-il général ? à vérifier à l'étape 8). Dix fichiers de test de `service/` et `api/handlers` importent des paquets de titre pour semer de vraies bases : les gardes ne lisent que le code hors tests. Le service de rejeu lit le catalogue mémoïsé (`Catalogue`) au lieu de le recharger à chaque requête. `WorldStatsEnricher.EnrichSeason` refuse un ensemble de playlists classées vide au lieu de retomber sur celui de Halo Infinite (le démarrage le fournit toujours). `scheduler` garde le même schéma `livesync` / `DeltaRunner`. `HomeService` accepte un fournisseur nul (cache puis « indisponible »). Non traités.
 
 ## 13. Hors périmètre
 
