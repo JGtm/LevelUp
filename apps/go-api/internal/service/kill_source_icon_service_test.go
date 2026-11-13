@@ -6,7 +6,6 @@ package service
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
@@ -89,7 +88,7 @@ func sourceDeLaCle(t *testing.T, a *halo_infinite.AssetURLAdapter, key string) u
 // Le nom est celui de la langue de la requête, lu dans weapon_names.toml du titre.
 func TestKillSourceIconService_LibelleDansLaLangueDeLaRequete(t *testing.T) {
 	paths := cheminsDuDepot(t)
-	set, err := mappings.LoadWeaponNamesFromFile(filepath.Join(paths.TitleMappingsDir(title.DefaultSlug), "weapon_names.toml"))
+	set, err := mappings.LoadWeaponNamesInDir(paths.TitleMappingsDir(title.DefaultSlug))
 	if err != nil {
 		t.Fatalf("weapon_names.toml : %v", err)
 	}

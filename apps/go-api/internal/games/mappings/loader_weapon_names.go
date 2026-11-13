@@ -3,6 +3,7 @@ package mappings
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
@@ -63,6 +64,22 @@ func (s *WeaponNameSet) SchemaVersion() int {
 		return 0
 	}
 	return s.schemaVersion
+}
+
+// weaponNamesFile est le nom du fichier des noms d'armes dans le dossier de mappings d'un titre.
+// Le litteral n'existe qu'ici : tout appelant passe par [WeaponNamesPath] ou [LoadWeaponNamesInDir]
+// (garde-rail archlint TestLeFichierDesNomsDArmesNEstNommeQueParSonHelper).
+const weaponNamesFile = "weapon_names.toml"
+
+// WeaponNamesPath rend le chemin du fichier des noms d'armes dans `mappingsDir`, le dossier de
+// mappings d'un titre (`title.PathResolver.TitleMappingsDir`).
+func WeaponNamesPath(mappingsDir string) string {
+	return filepath.Join(mappingsDir, weaponNamesFile)
+}
+
+// LoadWeaponNamesInDir lit et valide le fichier des noms d'armes du dossier de mappings d'un titre.
+func LoadWeaponNamesInDir(mappingsDir string) (*WeaponNameSet, error) {
+	return LoadWeaponNamesFromFile(WeaponNamesPath(mappingsDir))
 }
 
 // LoadWeaponNamesFromFile lit et valide un weapon_names.toml a un chemin donne.

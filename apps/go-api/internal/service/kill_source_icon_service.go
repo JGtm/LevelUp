@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"path/filepath"
 	"sync"
 
 	"levelup/go-api/internal/domain"
@@ -90,7 +89,7 @@ func (s *KillSourceIconService) weaponNames(ctx context.Context, titleID string)
 	if names, ok := s.names[titleID]; ok {
 		return names
 	}
-	set, err := mappings.LoadWeaponNamesFromFile(filepath.Join(s.paths.TitleMappingsDir(titleID), "weapon_names.toml"))
+	set, err := mappings.LoadWeaponNamesInDir(s.paths.TitleMappingsDir(titleID))
 	if err != nil {
 		slog.WarnContext(ctx, "pictogrammes d'arme : noms d'armes du titre illisibles, noms propres des sources servis",
 			"err", err, "titleSlug", titleID)
