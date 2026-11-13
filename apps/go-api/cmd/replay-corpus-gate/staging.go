@@ -19,7 +19,13 @@ package main
 //   - `config/titles/{slug}` et `data/titles/{slug}/reference` : depuis `sourceRoot` (le depot
 //     ou ce binaire tourne) — c'est le CODE ET LES CATALOGUES DE REFERENCE au HEAD qu'on
 //     verifie, pas ceux, potentiellement differents, du parc. Copies UNE FOIS par execution du
-//     gate (~54 Mio, quelques secondes), partages par tous les temoins.
+//     gate (~54 Mio, quelques secondes), partages par tous les temoins. SEULS LES FICHIERS QUE GIT
+//     VOIT sont copies (suivis, ou non suivis et non ignores) : les deux cuissons lisent ainsi le
+//     MEME jeu de catalogues, quel que soit le poste. Un fichier de reference ignore par git (les
+//     overlays que le runtime ecrit sous `reference/generated/`) n'est fourni a AUCUNE des deux
+//     racines : la racine de la base, extraite d'une revision, ne l'a jamais, et le donner au seul
+//     HEAD imputerait au diff de revision l'ecart qu'il cree. Meme principe que le catalogue
+//     hermetique de `cmd/replay-equiv`.
 //   - `data/cache/film_chunks/{short}` et `film_manifests/{short}.json` : depuis `parcRoot` —
 //     seule source qui les porte (non verses, jamais dans un checkout frais). Copies PAR
 //     TEMOIN, jamais le parc entier.
@@ -79,25 +85,75 @@ func avertirSiCatalogueModifie(ctx context.Context, sourceRoot, titleSlug string
 	}
 }
 
-// stageReferenceOnce copie UNE FOIS, vers `workRoot`, les catalogues VERSIONNES du titre lus
-// depuis `sourceRoot` : config/titles/{slug} et data/titles/{slug}/reference.
-func stageReferenceOnce(sourceRoot, workRoot, titleSlug string) error {
-	src := title.NewPathResolver(sourceRoot)
-	dst := title.NewPathResolver(workRoot)
-
-	if err := copierArbre(
-		filepath.Join(sourceRoot, "config", "titles", titleSlug),
-		filepath.Join(workRoot, "config", "titles", titleSlug),
-	); err != nil {
-		return fmt.Errorf("config du titre %s : %w", titleSlug, err)
-	}
-	if err := copierArbre(
-		filepath.Join(src.TitleDataDir(titleSlug), "reference"),
-		filepath.Join(dst.TitleDataDir(titleSlug), "reference"),
-	); err != nil {
+// stageReferenceOnce copie UNE FOIS, vers `workRoot`, les catalogues du titre lus depuis `racine` :
+// config/titles/{slug} et data/titles/{slug}/reference, LIMITES AUX FICHIERS QUE GIT VOIT (cf.
+// l'en-tete). `racine` doit etre un depot Git : sans lui, le gate ne sait pas ce qui est ignore et
+// refuse plutot que de deviner. Les fichiers ignores laisses de cote sont journalises.
+func stageReferenceOnce(ctx context.Context, racine, workRoot, titleSlug string) error {
+	relRef, err := filepath.Rel(racine, filepath.Join(title.NewPathResolver(racine).TitleDataDir(titleSlug), "reference"))
+	if err != nil {
 		return fmt.Errorf("catalogues de reference du titre %s : %w", titleSlug, err)
 	}
+	for _, c := range []struct{ rel, libelle string }{
+		{filepath.Join("config", "titles", titleSlug), "config du titre"},
+		{relRef, "catalogues de reference du titre"},
+	} {
+		if err := copierFichiersVisiblesParGit(ctx, racine, workRoot, c.rel); err != nil {
+			return fmt.Errorf("%s %s : %w", c.libelle, titleSlug, err)
+		}
+	}
 	return nil
+}
+
+// copierFichiersVisiblesParGit copie, de `racine` vers `dstRoot` (meme chemin relatif `rel`), les
+// fichiers suivis et les fichiers non suivis NON ignores : l'arbre de travail tel que Git le voit,
+// modifications non commises comprises, jamais ce qu'il ignore. Un fichier suivi mais supprime de
+// l'arbre de travail n'est pas copie (suppression non commise). Un dossier absent ne copie rien.
+func copierFichiersVisiblesParGit(ctx context.Context, racine, dstRoot, rel string) error {
+	visibles, err := gitListerFichiers(ctx, racine, rel, "--cached", "--others", "--exclude-standard")
+	if err != nil {
+		return err
+	}
+	ignores, err := gitListerFichiers(ctx, racine, rel, "--others", "--ignored", "--exclude-standard")
+	if err != nil {
+		return err
+	}
+	if len(ignores) > 0 {
+		slog.InfoContext(ctx, "replay-corpus-gate: fichiers de reference ignores par git, fournis a aucune "+
+			"des deux racines de cuisson", "racine", racine, "dossier", rel, "nombre", len(ignores), "premier", ignores[0])
+	}
+	for _, f := range visibles {
+		src := filepath.Join(racine, f)
+		if _, err := os.Stat(src); errors.Is(err, fs.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		if err := copierFichier(src, filepath.Join(dstRoot, f)); err != nil {
+			return fmt.Errorf("copie de %s : %w", f, err)
+		}
+	}
+	return nil
+}
+
+// gitListerFichiers rend les chemins (relatifs a `racine`, separateur natif) que `git ls-files`
+// liste sous `rel` pour les options donnees. Un echec de git (pas un depot) est une erreur.
+func gitListerFichiers(ctx context.Context, racine, rel string, options ...string) ([]string, error) {
+	args := append([]string{"ls-files", "-z"}, options...)
+	args = append(args, "--", filepath.ToSlash(rel))
+	cmd := exec.CommandContext(ctx, "git", args...) //nolint:gosec // options constantes, chemin interne derive du titre
+	cmd.Dir = racine
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git ls-files sous %s (%s) : %w — la racine doit etre un depot Git", rel, racine, err)
+	}
+	var fichiers []string
+	for _, f := range strings.Split(string(out), "\x00") {
+		if f != "" {
+			fichiers = append(fichiers, filepath.FromSlash(f))
+		}
+	}
+	return fichiers, nil
 }
 
 // stageFilm copie le manifeste et les chunks d'UN film depuis le parc reel vers la racine de
@@ -132,16 +188,9 @@ func stageFilm(parcRoot, workRoot, short string) error {
 	return nil
 }
 
-// copierArbre copie recursivement un repertoire. Un repertoire source absent n'est PAS une
-// erreur (certains titres n'ont pas de reference — cf. capability film.replay_artifact) : le
-// gate refuse alors la cuisson faute de catalogue, avec un message qui le dit.
-func copierArbre(src, dst string) error {
-	_, err := copierArbreCompte(src, dst)
-	return err
-}
-
 // copierArbreCompte copie recursivement et rend le nombre de FICHIERS copies (0 si `src`
-// n'existe pas — un repertoire absent n'est pas une erreur, cf. copierArbre).
+// n'existe pas : certains titres n'ont pas de reference — cf. capability film.replay_artifact — et le gate
+// refuse alors la cuisson faute de catalogue, avec un message qui le dit).
 func copierArbreCompte(src, dst string) (int, error) {
 	info, err := os.Stat(src)
 	if err != nil {
