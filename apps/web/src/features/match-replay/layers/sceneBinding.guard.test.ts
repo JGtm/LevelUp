@@ -54,7 +54,7 @@ const CABLES_PAR_HOOK: ReadonlyArray<[ReplayLayerId, string]> = [
  * main : chaque id est suivi du symbole que son peintre doit nommer.
  */
 const FERMETURES: ReadonlyArray<[ReplayLayerId, string]> = [
-  ['fond-carte', 'ctx.drawImage(mapImage.image'],
+  ['fond-carte', 'drawMapBackground('],
   ['sol-forge', 'drawGeometryLayer('],
   ['chaleur', 'cuit(heatRef.current)'],
   ['zones-nommees', 'cuit(zonesRef.current)'],

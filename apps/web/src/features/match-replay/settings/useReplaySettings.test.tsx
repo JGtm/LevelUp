@@ -11,9 +11,9 @@ import {
   AUTOPLAY_KEY,
   SPEED_MULTIPLIERS,
   TIMELINE_EXPANDED_KEY,
-  usePersistedFlag,
   useReplaySettings,
 } from './useReplaySettings'
+import { usePersistedFlag } from './usePersistedFlag'
 
 describe('useReplaySettings — valeurs par défaut', () => {
   it("visée et zones allumées, vitesse à 1x — comportement inchangé sans préférence stockée", () => {

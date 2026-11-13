@@ -77,7 +77,7 @@ import { useReplayPlayback } from '../hooks/useReplayPlayback'
 import { useReplayStaticLayers } from '../layers/useReplayStaticLayers'
 import { useReplaySettings } from '../settings/useReplaySettings'
 import { useReplaySound } from '../sound/useReplaySound'
-import { backgroundRect } from '../layers/mapBackground'
+import { drawMapBackground, placeMapBackground } from '../layers/mapBackgroundDraw'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   drawGeometryLayer,
@@ -96,7 +96,7 @@ import type { ReplayWindowBounds } from '../model/replayWindow'
 import { drawProjectilesLayer, PROJECTILE_TAIL_MS } from '../layers/replayProjectiles'
 import { drawTracksLayer } from '../layers/replayMarkers'
 import { useReplayTiming } from '../hooks/useReplayTiming'
-import { CANVAS_PAD, useReplayView, type ReplayMapBackgroundLayer } from '../hooks/useReplayView'
+import { useReplayView, type ReplayMapBackgroundLayer } from '../hooks/useReplayView'
 import { useReplayViewport } from '../hooks/useReplayViewport'
 import type { ReplayFullscreen } from '../hooks/useReplayFullscreen'
 import { useReplayWheelZoom } from '../hooks/useReplayWheelZoom'
@@ -447,9 +447,7 @@ export function ReplayCanvas({
       // joueurs zooment, et l'image cesserait de designer le meme endroit qu'eux.
       // Pendant un glisser, cuisson gelee : les calques se recopient DECALES (layerOffset).
       const lo = layerOffset(cookedRef.current, canvasView)
-      const bgRect = mapImage
-        ? backgroundRect(mapImage.calibration, canvasView.bounds, renderWidth, viewH, CANVAS_PAD)
-        : null
+      const bgRect = placeMapBackground(mapImage, canvasView)
       // La FENETRE D'EVENEMENT, commune aux tirs, aux pulses et aux morts.
       const win = { frame, hold: eventHoldFrames, frameMs: frameToMs(1, doc) }
       // Un calque CUIT se repose tel quel, decale de `lo` : sa geometrie ne bouge pas.
@@ -497,13 +495,8 @@ export function ReplayCanvas({
             killFocus.veil,
             killFocus.labels,
           ),
-          // L'image ENTIERE sur son emprise monde, le canvas rogne le debord : projection
-          // affine sans rotation, donc deux coins suffisent (mapBackground.ts).
-          'fond-carte': () => {
-            if (mapImage && bgRect) {
-              ctx.drawImage(mapImage.image, bgRect.x, bgRect.y, bgRect.width, bgRect.height)
-            }
-          },
+          // L'image ENTIERE sur son emprise monde, le canvas rogne le debord (mapBackgroundDraw.ts).
+          'fond-carte': () => drawMapBackground(ctx, mapImage, bgRect),
           'sol-forge': () =>
             drawGeometryLayer(ctx, doc.geometry ?? [], view, { color: geometryColor, z: zRange }),
           chaleur: cuit(heatRef.current),
