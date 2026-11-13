@@ -153,6 +153,8 @@ func TestSansLevierReconnaitChaqueLevier(t *testing.T) {
 			v.SetFloat(1)
 		case reflect.Slice:
 			v.Set(reflect.MakeSlice(champ.Type, 1, 1))
+		case reflect.Pointer:
+			v.Set(reflect.New(champ.Type.Elem()))
 		default:
 			t.Fatalf("champ %s de type %s non couvert par ce témoin", champ.Name, champ.Type)
 		}
@@ -162,5 +164,33 @@ func TestSansLevierReconnaitChaqueLevier(t *testing.T) {
 	}
 	if leviers < 10 {
 		t.Fatalf("%d leviers balayés : le témoin ne lit pas la structure", leviers)
+	}
+}
+
+// `rogneAuNavmesh` : defaut vrai pour une carte native, faux pour une carte Forge ; `false`
+// explicite desarme le rognage natif, `true` explicite arme le Forge.
+func TestRogneAuNavmeshDefautsNatifEtForge(t *testing.T) {
+	vrai, faux := true, false
+	e := &environnement{reglages: &reglagesFond{Cartes: map[string]reglageCarte{
+		"vrai": {RogneAuNavmesh: &vrai, GateLe: "2026-11-13"},
+		"faux": {RogneAuNavmesh: &faux, GateLe: "2026-11-13"},
+		"nul":  {GateLe: "2026-11-13"},
+	}}}
+	cas := []struct {
+		cle          string
+		natif, forge bool
+	}{
+		{"vrai", true, true},
+		{"faux", false, false},
+		{"nul", true, false},
+		{"absente", true, false},
+	}
+	for _, c := range cas {
+		if got := e.rogneAuNavmeshNatifDe(c.cle); got != c.natif {
+			t.Errorf("%s : natif = %v, attendu %v", c.cle, got, c.natif)
+		}
+		if got := e.rogneAuNavmeshDe(c.cle); got != c.forge {
+			t.Errorf("%s : Forge = %v, attendu %v", c.cle, got, c.forge)
+		}
 	}
 }

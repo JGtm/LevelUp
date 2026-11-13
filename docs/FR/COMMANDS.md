@@ -711,10 +711,12 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--titl
   millimètre). Un module sans maillage (Live Fire, le tutoriel de l'Académie) est cuit comme avant
   et porte « aucun maillage de navigation dans le module any » dans `degradations`, sans `plan`.
   Leviers par carte de `map_fond_reglages.json` (chaque entrée garde sa `raison` et son `gateLe`) :
-  `margeNavmesh` (dilatation, en mètres), `toleranceNavmesh`, `maillageNiveauHaut` ; sur une
-  carte native le rognage est toujours actif, et `sansNavmesh: true` retire le maillage entier
-  (ni rognage ni plan). Une carte Forge reçoit les mêmes leviers (`navmeshReference`,
-  `rogneAuNavmesh`, ...) et publie un `plan` quand son `navmesh.blob` est chargé.
+  `rogneAuNavmesh` (sur une carte native : actif par défaut, `false` garde le maillage comme
+  surface de référence sans rogner ; sur une carte Forge : inactif par défaut), `margeNavmesh`
+  (dilatation, en mètres), `toleranceNavmesh`, `maillageNiveauHaut` ; `sansNavmesh: true` (cartes
+  natives) retire le maillage entier (ni référence, ni rognage, ni plan). Une carte Forge reçoit
+  aussi `navmeshReference`, et publie un `plan` dès que le dépôt porte son `navmesh.blob`
+  (`mapnav-fetch`), que la cuisson s'en serve ou non.
 - Après la cuisson, lancer `go run ./cmd/mapfond-webp -convertir` : il réécrit chaque sidecar par
   `internal/mapfondsidecar`, qui conserve le `plan` (le `replay.MapBackground` du décodeur de film
   ne le connaît pas).
@@ -1615,7 +1617,7 @@ Deux familles de tests lisent le **jeu installé**, toutes deux derrière `//go:
   installé et le comparent à l'octet : `cmd/film-profiles-build/`, `cmd/mapfond-build/`,
   `cmd/mapstruct-build/` (9,0 s à eux trois, mesuré le 2026-09-17).
 
-`make go-api-test-gamefiles` joue **les cinq paquets** (le paquet `himap` de la brique des images de carte, par chemin d'import, les quatre autres depuis
+`make go-api-test-gamefiles` joue **les six paquets** (le paquet `himap` de la brique des images de carte et le paquet `hinavmesh` de la brique des fichiers du jeu, par chemin d'import, les quatre autres depuis
 `apps/go-api`). Jusqu'au 2026-09-17 la cible ne jouait que la brique : les trois tests `cmd/` n'étaient joués par AUCUNE commande du dépôt
 (découverte D1 (3.1.2) ; le plus ancien est tagué depuis le 2026-09-05). La liste des paquets est
 explicite et non `./cmd/...` : sous le tag, un paquet sans fichier `gamefiles` n'apporte que du
@@ -1640,6 +1642,10 @@ BALAYAGE_CARTES=aquarius_map go test -tags=gamefiles -timeout 300s \
 # Jeu installé ailleurs :
 cd apps/go-api && LEVELUP_HALO_DEPLOY=/chemin/vers/Halo Infinite/deploy go test -tags=gamefiles github.com/JGtm/halo-infinite-map-images/himap/
 ```
+
+Les tests natifs de `hinavmesh` ne cherchent pas l'installation eux-mêmes : ils exigent
+`LEVELUP_HALO_DEPLOY` (le dossier `deploy` du jeu), que la cible transmet depuis l'environnement
+(elle affiche un avertissement s'il n'est pas posé), et prennent leur `t.Skip` sinon.
 
 Sans installation du jeu, chaque test prend son `t.Skip` et le corpus est vide en une
 seconde — c'est exactement ce qui se passe en CI. La CI se contente donc de le **compiler**

@@ -141,8 +141,10 @@ type reglageCarte struct {
 	// geometrie ordinaire comme source du dessin.
 	NavmeshReference bool `json:"navmeshReference,omitempty"`
 	// RogneAuNavmesh efface la matiere hors du maillage de navigation : le pendant Forge du
-	// masque des callouts, sans rien a dessiner a la main.
-	RogneAuNavmesh bool `json:"rogneAuNavmesh,omitempty"`
+	// masque des callouts, sans rien a dessiner a la main. Absent = defaut de la chaine (faux
+	// sur une carte Forge, vrai sur une carte native) ; `false` explicite desarme le rognage
+	// d'une carte native en lui laissant le maillage comme surface de reference.
+	RogneAuNavmesh *bool `json:"rogneAuNavmesh,omitempty"`
 	// ToleranceNavmesh vide les surfaces qui s ecartent de plus de N metres du sol donne par le
 	// maillage de navigation. C est ce qui fait un PLAN D ETAGE plutot qu une vue de dessus.
 	ToleranceNavmesh float64 `json:"toleranceNavmesh,omitempty"`
@@ -603,11 +605,25 @@ func (e *environnement) rogneAuNavmeshDe(cle string) bool {
 		return false
 	}
 	c, ok := e.reglages.Cartes[cle]
-	if !ok || !c.RogneAuNavmesh {
+	if !ok || c.RogneAuNavmesh == nil || !*c.RogneAuNavmesh {
 		return false
 	}
 	slog.Info("mapfond: rognage au maillage de navigation", "carte", cle, "gateLe", c.GateLe)
 	return true
+}
+
+// rogneAuNavmeshNatifDe dit si une carte native se rogne a son maillage : oui, sauf si son
+// reglage dit `rogneAuNavmesh: false`.
+func (e *environnement) rogneAuNavmeshNatifDe(cle string) bool {
+	if e.reglages == nil {
+		return true
+	}
+	c, ok := e.reglages.Cartes[cle]
+	if !ok || c.RogneAuNavmesh == nil || *c.RogneAuNavmesh {
+		return true
+	}
+	slog.Info("mapfond: rognage au maillage desarme pour cette carte native", "carte", cle, "gateLe", c.GateLe)
+	return false
 }
 
 // toleranceNavmeshDe rend l ecart au sol au-dela duquel une surface est videe.

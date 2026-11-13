@@ -51,9 +51,9 @@ func (e *environnement) sansNavmeshDe(cle string) bool {
 }
 
 // optionsNavmeshNatif rend ce qu'une carte native fait de son maillage : rognage à 1,5 m, sans
-// tolérance ni niveau haut, sauf réglage de la carte (`margeNavmesh`, `toleranceNavmesh`,
-// `maillageNiveauHaut`). Le rognage est toujours armé : une carte qui n'en veut pas déclare
-// `sansNavmesh`, qui retire le maillage entier.
+// tolérance ni niveau haut, sauf réglage de la carte (`rogneAuNavmesh`, `margeNavmesh`,
+// `toleranceNavmesh`, `maillageNiveauHaut`). `rogneAuNavmesh: false` garde le maillage comme
+// référence sans rogner ; `sansNavmesh` le retire entièrement.
 func (e *environnement) optionsNavmeshNatif(cle string, m *hinavmesh.Maillage) himap.OptionsNavmesh {
 	marge := e.margeNavmeshDe(cle)
 	if marge <= 0 {
@@ -61,7 +61,7 @@ func (e *environnement) optionsNavmeshNatif(cle string, m *hinavmesh.Maillage) h
 	}
 	return himap.OptionsNavmesh{
 		Maillage:   m,
-		Rogne:      true,
+		Rogne:      e.rogneAuNavmeshNatifDe(cle),
 		Marge:      marge,
 		Tolerance:  e.toleranceNavmeshDe(cle),
 		NiveauHaut: e.maillageNiveauHautDe(cle),

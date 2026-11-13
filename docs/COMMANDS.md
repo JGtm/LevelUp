@@ -688,10 +688,12 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--titl
   A module without a mesh (Live Fire, the Academy tutorial) is cooked as before and reports
   "aucun maillage de navigation dans le module any" in `degradations`, with no `plan`. Per-map
   levers in `map_fond_reglages.json` (each entry still carries its `raison` and `gateLe`):
-  `margeNavmesh` (dilation, metres), `toleranceNavmesh`, `maillageNiveauHaut` ; on a native map
-  clipping is always on, and `sansNavmesh: true` drops the mesh altogether (no clipping, no
-  plan). A Forge map takes the same levers (`navmeshReference`, `rogneAuNavmesh`, ...) and
-  publishes a `plan` when its `navmesh.blob` is loaded.
+  `rogneAuNavmesh` (on a native map: on by default, `false` keeps the mesh as the reference
+  surface without clipping ; on a Forge map: off by default), `margeNavmesh` (dilation, metres),
+  `toleranceNavmesh`, `maillageNiveauHaut` ; `sansNavmesh: true` (native maps) drops the mesh
+  altogether (no reference, no clipping, no plan). A Forge map also takes `navmeshReference`, and
+  publishes a `plan` whenever the repository holds its `navmesh.blob` (`mapnav-fetch`), whether
+  or not the cooking uses it.
 - After cooking, run `go run ./cmd/mapfond-webp -convertir`: it rewrites each sidecar through
   `internal/mapfondsidecar`, which keeps the `plan` (the film decoder's `replay.MapBackground`
   does not know it).
@@ -1547,7 +1549,7 @@ Two families of tests read the **installed game**, and both sit behind `//go:bui
   game and compare it byte for byte: `cmd/film-profiles-build/`, `cmd/mapfond-build/`,
   `cmd/mapstruct-build/` (9.0 s for the three, measured 2026-09-17).
 
-`make go-api-test-gamefiles` runs **all five packages** (the `himap` package of the map-images brick, by import path; the four others from
+`make go-api-test-gamefiles` runs **all six packages** (the `himap` package of the map-images brick and the `hinavmesh` package of the game-files brick, by import path; the four others from
 `apps/go-api`). Until 2026-09-17 it only ran the brick, so the three `cmd/` tests were run by no command in the repository
 (discovery D1 (3.1.2), the oldest of them tagged since 2026-09-05). The package list is
 explicit rather than `./cmd/...`: under the tag, a package with no `gamefiles` file only adds
@@ -1572,6 +1574,10 @@ BALAYAGE_CARTES=aquarius_map go test -tags=gamefiles -timeout 300s \
 # Game installed somewhere else:
 cd apps/go-api && LEVELUP_HALO_DEPLOY=/path/to/Halo Infinite/deploy go test -tags=gamefiles github.com/JGtm/halo-infinite-map-images/himap/
 ```
+
+The native tests of `hinavmesh` do not look for the installation themselves: they need
+`LEVELUP_HALO_DEPLOY` (the game's `deploy` folder), which the target passes through from the
+environment (it prints a warning when it is unset), and take their `t.Skip` otherwise.
 
 Without the game installed every test takes its `t.Skip` and the corpus is empty in a
 second — which is exactly what happens in CI. CI therefore only **compiles** it
