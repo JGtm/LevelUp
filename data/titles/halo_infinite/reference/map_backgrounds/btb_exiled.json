@@ -2,14 +2,18 @@
   "schemaVersion": 1,
   "module": "btb_exiled",
   "mapNames": [
-    "Oasis",
+    "Oasis Sentry Defense",
+    "oasis",
+    "Oasis Heavies",
     "Oasis Firefight",
+    "oasis_sentry_defense_map",
     "btb_exiled",
+    "oasis_heavies_map",
     "btb_exiled"
   ],
   "image": "btb_exiled.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T12:42:28.9388004Z",
+  "generatedAt": "2026-11-13T13:24:53.3615089Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.06756666692097982,
@@ -20,21 +24,21 @@
     "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
   },
   "stats": {
-    "anchors": 34,
-    "anchorsInFrame": 34,
-    "anchorsWithGround": 28,
-    "anchorMedianGapM": -3.972120773962761,
+    "anchors": 53,
+    "anchorsInFrame": 53,
+    "anchorsWithGround": 43,
+    "anchorMedianGapM": -4.259673898258555,
     "instancesDrawn": 9076,
     "instancesScenery": 656,
-    "playLevelZ": 24.2789697265625,
+    "playLevelZ": 24.448630294799806,
     "boundaryApplied": true,
     "boundaryPlanes": 12,
     "boundaryCellsCleared": 3240636,
     "waterVolumes": 12,
-    "waterCells": 176797,
-    "coveredShare": 0.2682111312539772,
+    "waterCells": 176684,
+    "coveredShare": 0.2685676051826285,
     "covered": false,
-    "cellsAssumedFloor": 810700
+    "cellsAssumedFloor": 810624
   },
   "plan": {
     "source": "navmesh module any",

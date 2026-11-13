@@ -11,7 +11,7 @@
   ],
   "image": "sgh_interlock.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T12:41:28.7222164Z",
+  "generatedAt": "2026-11-13T13:26:34.3657201Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.04478166611989339,

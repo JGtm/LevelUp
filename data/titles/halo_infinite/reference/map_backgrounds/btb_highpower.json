@@ -11,7 +11,7 @@
   ],
   "image": "btb_highpower.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T12:40:51.5544446Z",
+  "generatedAt": "2026-11-13T13:25:51.6171819Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.06298965406417846,

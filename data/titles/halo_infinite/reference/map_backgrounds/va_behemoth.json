@@ -7,7 +7,7 @@
   ],
   "image": "va_behemoth.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T12:44:29.6163813Z",
+  "generatedAt": "2026-11-13T13:29:22.5907297Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.049644819895426434,

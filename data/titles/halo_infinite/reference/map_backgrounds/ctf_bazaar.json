@@ -7,7 +7,7 @@
   ],
   "image": "ctf_bazaar.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T12:41:40.0340439Z",
+  "generatedAt": "2026-11-13T13:26:43.8210207Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.034,

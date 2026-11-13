@@ -9,7 +9,7 @@
   ],
   "image": "ctf_breaker.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T12:42:52.8517981Z",
+  "generatedAt": "2026-11-13T13:27:44.8125156Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.06250227228800456,

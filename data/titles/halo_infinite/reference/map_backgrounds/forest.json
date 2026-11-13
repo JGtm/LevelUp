@@ -9,7 +9,7 @@
   ],
   "image": "forest.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T12:40:14.8893789Z",
+  "generatedAt": "2026-11-13T13:24:43.1403343Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.04787398211161296,

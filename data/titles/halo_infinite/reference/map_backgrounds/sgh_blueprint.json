@@ -10,7 +10,7 @@
   ],
   "image": "sgh_blueprint.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T12:41:04.7816756Z",
+  "generatedAt": "2026-11-13T13:26:17.7464629Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.029,

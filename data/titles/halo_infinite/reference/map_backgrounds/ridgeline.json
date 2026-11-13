@@ -7,7 +7,7 @@
   ],
   "image": "ridgeline.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T12:41:54.9652627Z",
+  "generatedAt": "2026-11-13T13:26:57.6012144Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.050068010965983074,
