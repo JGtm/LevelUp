@@ -36,7 +36,8 @@ import {
 } from '@/components/charts/_utils'
 import { tipNumberUpTo } from '@/components/charts/tipNumber'
 import { titleWithInfo } from '@/components/ui/title-with-info'
-import { cumulativeSigned, meanOfValid } from '@/lib/charts/cumulativeSeries'
+import { cumulativeSigned } from '@/lib/charts/cumulativeSeries'
+import { meanOfValid } from '@/lib/charts/stats'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { netLives } from '@/lib/charts/netLives'
 import {

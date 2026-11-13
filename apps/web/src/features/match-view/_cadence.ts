@@ -18,6 +18,7 @@ import type { MatchViewCadence } from '@/lib/api/types'
 
 import { formatBinSeconds } from './_chartSeries'
 import type { XuidMeta } from './xuidMeta'
+import { movingMean } from '@/lib/charts/stats'
 
 /** Durée d'une phase, en secondes, quand le serveur ne la déclare pas. */
 export const CADENCE_PHASE_SECONDS_DEFAULT = 30
@@ -104,12 +105,7 @@ export function buildCadence(input: CadenceInput): Cadence | null {
  * Arrondi au dixième — la moyenne d'un compte entier n'a pas plus de précision que ça.
  */
 export function movingAverage(values: readonly number[], window = CADENCE_MA_WINDOW): number[] {
-  return values.map((_, i) => {
-    const start = Math.max(0, i - (window - 1))
-    let sum = 0
-    for (let j = start; j <= i; j++) sum += values[j]
-    return Math.round((sum / (i - start + 1)) * 10) / 10
-  })
+  return movingMean(values, window).map((mean) => (mean == null ? Number.NaN : Math.round(mean * 10) / 10))
 }
 
 /**

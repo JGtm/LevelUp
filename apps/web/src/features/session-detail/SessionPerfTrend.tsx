@@ -17,6 +17,7 @@ import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { perfTierFromScore, sessionMatchAxisLabel, useSessionT } from './_shared'
+import { meanOfValid } from '@/lib/charts/stats'
 
 interface Props {
   title: string
@@ -46,7 +47,7 @@ export function buildSessionPerfOption(series: ChartSeries<PerfPoint>[], opts: P
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
 
-  const mean = round1(points.reduce((acc, p) => acc + p.score, 0) / points.length)
+  const mean = round1(meanOfValid(points.map((p) => p.score)) ?? 0)
   // Moyenne colorée par SA propre couleur de grading (cf. demande utilisateur) :
   // distincte des barres et indique directement le tier moyen de la session.
   const meanColor = resolveToken(`perf-tier-${perfTierFromScore(mean)}` as SemanticToken)

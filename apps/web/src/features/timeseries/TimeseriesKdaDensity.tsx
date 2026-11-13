@@ -21,6 +21,7 @@ import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { DistributionBucket, TimeseriesMatchRow } from '@/lib/api/types'
 import { ChartFromOption } from './ChartFromOption'
+import { buildKdaDensityModel } from './kdaDensity.logic'
 
 export interface TimeseriesKdaDensityProps {
   buckets: DistributionBucket[]
@@ -53,56 +54,12 @@ export function TimeseriesKdaDensity({
     const tc = getEChartsThemeColors()
     const accent = resolveToken('chart-series-1')
 
-    // Total des matchs pour normaliser en pourcentage.
-    const total = buckets.reduce((s, b) => s + b.count, 0)
-    if (total === 0) return null
-
-    // Densité : (midpoint, %) → série lisse avec area. Restreint à la plage
-    // réelle des données pour ne pas afficher des buckets vides au-delà.
-    const densityPoints = buckets.map((b) => [
-      (b.bucket_lower + b.bucket_upper) / 2,
-      Math.round((b.count / total) * 1000) / 10, // % avec 1 décimale
-    ])
-
-    const xMax = buckets.reduce(
-      (m, b) => (b.bucket_upper > m ? b.bucket_upper : m),
-      0,
-    )
-
-    // Rug : valeurs FDA individuelles (r.kda — colonne BDD, sync ADR 0006).
-    // On collecte aussi les valeurs full-range (sans clamp xMax) pour le calcul
-    // mean/median, qui doit refléter toutes les données — y compris la queue.
-    const rugValues: number[] = []
-    const allKds: number[] = []
-    for (const r of rows) {
-      if (r.kda == null || !Number.isFinite(r.kda)) continue
-      const kda = r.kda
-      allKds.push(kda)
-      if (kda <= xMax) rugValues.push(Math.round(kda * 1000) / 1000)
-    }
-
-    // Mean et median sur l'ensemble des matchs (population, pas sample).
-    let mean: number | null = null
-    let median: number | null = null
-    if (allKds.length > 0) {
-      mean = allKds.reduce((s, v) => s + v, 0) / allKds.length
-      const sorted = [...allKds].sort((a, b) => a - b)
-      const mid = Math.floor(sorted.length / 2)
-      median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
-    }
-    const meanRounded = mean != null ? Math.round(mean * 100) / 100 : null
-    const medianRounded = median != null ? Math.round(median * 100) / 100 : null
-
-    const yMaxPct = densityPoints.reduce((m, p) => (p[1] > m ? p[1] : m), 0)
-    const rugYTop = -(yMaxPct * 0.05)
-    const rugYBot = -(yMaxPct * 0.14)
-    const rugScatter = rugValues.map((v) => [v, rugYBot])
-
+    // Le modèle (densité, tapis, moyenne et médiane, repères) vit dans kdaDensity.logic.
+    const model = buildKdaDensityModel(buckets, rows)
+    if (model == null) return null
+    const { densityPoints, xMax, meanRounded, medianRounded, meanX, medianX, rugScatter, rugYTop, rugYBot } = model
     const meanColor = resolveToken('outcome-win')
     const medianColor = resolveToken('outcome-loss')
-    // Position du label : clamp dans la plage X visible pour rester lisible.
-    const meanX = meanRounded != null ? Math.min(meanRounded, xMax) : null
-    const medianX = medianRounded != null ? Math.min(medianRounded, xMax) : null
 
     return {
       backgroundColor: CHART_BG,

@@ -42,6 +42,7 @@ import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
 
 import type { PlacementText } from './placementStrings'
+import { meanOfValid } from '@/lib/charts/stats'
 
 /** Les quatre quarts, dans l'ordre des segments de la barre et des textes. */
 export const QUADRANT_ORDER: readonly SquadEmprisePlacementQuadrant[] = [
@@ -243,7 +244,7 @@ export function medianOffsets(players: readonly Player[]): Map<string, number> {
   const order = new Map(spots.map((s, i) => [s.xuid, i]))
   for (const g of groups) {
     g.sort((a, b) => (order.get(a.xuid) ?? 0) - (order.get(b.xuid) ?? 0))
-    const centre = g.reduce((acc, m) => acc + m.y, 0) / g.length
+    const centre = meanOfValid(g.map((m) => m.y)) ?? 0
     const half = ((g.length - 1) * MEDIAN_SPREAD) / 2
     const lo = Math.min(Math.max(centre - half, Y_MIN + JITTER_MAX), Y_MAX - JITTER_MAX - 2 * half)
     g.forEach((m, i) => out.set(m.xuid, g.length > 1 ? lo + i * MEDIAN_SPREAD - m.y : 0))

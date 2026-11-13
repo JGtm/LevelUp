@@ -31,29 +31,9 @@ import { buildMatchCategories } from './matchLabels'
 import { buildCareerXpSeries } from '@/lib/charts/careerXpSeries'
 import { matchAvgLifeSeconds } from '@/lib/charts/avgLife'
 import { ChartFromOption } from './ChartFromOption'
+import { movingMean } from '@/lib/charts/stats'
 
 // ─── Helpers numériques ───────────────────────────────────────────────────────
-
-/** Moyenne mobile centrée fenêtre `window` (smoothing). NaN ignorés. */
-function rollingMean(values: (number | null | undefined)[], window: number): (number | null)[] {
-  const out: (number | null)[] = new Array(values.length).fill(null)
-  if (window <= 1) return values.map((v) => (v == null ? null : v))
-  const half = Math.floor(window / 2)
-  for (let i = 0; i < values.length; i++) {
-    const lo = Math.max(0, i - half)
-    const hi = Math.min(values.length - 1, i + half)
-    let sum = 0
-    let n = 0
-    for (let k = lo; k <= hi; k++) {
-      const v = values[k]
-      if (v == null || !Number.isFinite(v)) continue
-      sum += v
-      n++
-    }
-    out[i] = n > 0 ? sum / n : null
-  }
-  return out
-}
 
 /**
  * Seuil de lecture du FDA : autant de frags + assistances/3 que de morts (ADR 0006).
@@ -133,9 +113,10 @@ export function TimeseriesKdaValueTrend({
     // construction (une valeur est d'un seul côté du seuil), donc jamais côte à côte.
     const above = values.map((v) => (v == null || v < FDA_THRESHOLD ? null : v))
     const below = values.map((v) => (v == null || v >= FDA_THRESHOLD ? null : v))
-    const smooth = rollingMean(
+    const smooth = movingMean(
       rows.map((r) => (r.kda != null && Number.isFinite(r.kda) ? r.kda : null)),
       5,
+      { align: 'centered' },
     )
     const smoothValues = smooth.map((v) => (v == null ? null : Math.round(v * 100) / 100))
     const aboveLabel = `${fdaLabel} ≥ ${FDA_THRESHOLD}`
@@ -241,7 +222,7 @@ export function TimeseriesPerformanceTrend({
         itemStyle: { color: resolveToken(perfScale(v)), opacity: 0.85 },
       }
     })
-    const smooth = rollingMean(scores, 5)
+    const smooth = movingMean(scores, 5, { align: 'centered' })
     const smoothValues = smooth.map((v) => (v == null ? null : Math.round(v * 10) / 10))
 
     return {
@@ -308,7 +289,7 @@ export function TimeseriesAssistsTrend({
     const assists = rows.map((r) => r.assists)
     const accent = resolveToken('chart-series-3')
     const smoothColor = resolveToken('chart-series-1')
-    const smooth = rollingMean(assists, 10)
+    const smooth = movingMean(assists, 10, { align: 'centered' })
     const smoothValues = smooth.map((v) => (v == null ? null : Math.round(v * 100) / 100))
     return {
       backgroundColor: CHART_BG,

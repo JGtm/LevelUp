@@ -22,6 +22,7 @@
  */
 import { truncateMap } from '@/lib/charts/matchLabels'
 import type { MatchRangeProfile } from '@/lib/api/types'
+import { movingMean } from '@/lib/charts/stats'
 
 /** Frags mesurés minimaux pour qu'une médiane de match compte (point plein). */
 export const PLANCHER_MESURE = 5
@@ -189,12 +190,11 @@ export function moyenneGlissante(
   points: PointPortee[],
   fenetre: number = FENETRE_ROLE,
 ): (number | null)[] {
-  return points.map((_, i) => {
-    if (i < fenetre - 1) return null
-    const pleins = points.slice(i - fenetre + 1, i + 1).filter((p) => p.plein)
-    if (pleins.length === 0) return null
-    return pleins.reduce((s, p) => s + p.ecartM, 0) / pleins.length
-  })
+  return movingMean(
+    points.map((p) => (p.plein ? p.ecartM : null)),
+    fenetre,
+    { fullWindowOnly: true },
+  )
 }
 
 /** Diamètres (px) des points du nuage — les deux bouts de l'échelle de `measured`. */

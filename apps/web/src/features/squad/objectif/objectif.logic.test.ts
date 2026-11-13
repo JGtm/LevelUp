@@ -7,7 +7,6 @@ import {
   buildSessionFil,
   buildSoloObjectiveSheet,
   familyMix,
-  median,
   squadSheetsOnly,
 } from './objectif.logic'
 import {
@@ -227,11 +226,6 @@ describe('buildEveningsView — rapport de force, soirée après soirée', () =>
 })
 
 describe('utilitaires', () => {
-  it('median', () => {
-    expect(median([])).toBeNull()
-    expect(median([3, 1, 2])).toBe(2)
-    expect(median([4, 1, 2, 3])).toBe(2.5)
-  })
   it('familyMix', () => {
     expect(familyMix([{ family: 'zones_strongholds', matches: 4 }, { family: 'ctf', matches: 3 }], { zones_strongholds: 'B', ctf: 'D' })).toBe(
       '4 B · 3 D',

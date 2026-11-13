@@ -16,6 +16,7 @@ import { resolveToken } from '@/lib/accessibility'
 import type { SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
 
 import { sessionMatchAxisLabel, useSessionT } from './_shared'
+import { meanOfValid } from '@/lib/charts/stats'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
@@ -43,7 +44,7 @@ export function buildSessionEngagementOption(
 
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
-  const mean = round2(points.reduce((acc, p) => acc + p.value, 0) / points.length)
+  const mean = round2(meanOfValid(points.map((p) => p.value)) ?? 0)
   const meanColor = resolveToken(mean >= 0 ? 'divergent-pos' : 'divergent-neg')
   const interval = points.length > 30 ? Math.floor(points.length / 12) : 0
 

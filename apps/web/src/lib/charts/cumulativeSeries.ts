@@ -39,20 +39,3 @@ export function cumulativeSigned(values: Array<number | null | undefined>): Cumu
     return { value: value != null ? round2(value) : null, cumulative: carryForward }
   })
 }
-
-/**
- * Moyenne des contributions valides (non-null, finies) — `null` si aucune.
- * Sert les pastilles KPI « moyenne par match » des charts cumulés.
- */
-export function meanOfValid(values: Array<number | null | undefined>): number | null {
-  let sum = 0
-  let count = 0
-  for (const raw of values) {
-    const v = finiteOrNull(raw)
-    if (v != null) {
-      sum += v
-      count += 1
-    }
-  }
-  return count === 0 ? null : sum / count
-}

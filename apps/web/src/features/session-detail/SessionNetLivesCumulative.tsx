@@ -24,7 +24,8 @@ import {
   getTooltipBase,
 } from '@/components/charts/_utils'
 import { tipNumberUpTo } from '@/components/charts/tipNumber'
-import { cumulativeSigned, meanOfValid } from '@/lib/charts/cumulativeSeries'
+import { cumulativeSigned } from '@/lib/charts/cumulativeSeries'
+import { meanOfValid } from '@/lib/charts/stats'
 import { netLives } from '@/lib/charts/netLives'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { useEffectiveHpToKill, substituteHpToken, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
