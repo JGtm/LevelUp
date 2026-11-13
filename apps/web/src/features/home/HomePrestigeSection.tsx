@@ -14,17 +14,16 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { ArcSummary } from '@/features/prestige/components/ArcSummary'
 import { ObjectiveRow } from '@/features/prestige/components/ObjectiveRow'
 import { useMyPrestige } from '@/features/prestige/hooks/usePrestige'
-import { queryKeys } from '@/lib/query/keys'
+import { useChallenges } from '@/features/prestige/hooks/useChallenges'
 import { intlLocale } from '@/lib/formatters'
 import { useArcs } from '@/features/prestige/hooks/useArcs'
-import { prestigeApi, type Challenge } from '@/lib/prestige'
+import type { Challenge } from '@/lib/prestige'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 
@@ -35,6 +34,8 @@ interface HomePrestigeSectionProps {
 }
 
 const VISIBLE_OBJECTIVES = 3
+/** Fraîcheur de la liste des défis actifs sur l'Accueil (le défaut du client est de 5 minutes). */
+const CHALLENGES_STALE_MS = 30_000
 const ROTATION_MS = 4500
 const FADE_MS = 250
 
@@ -73,12 +74,7 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
 
   const prestige = useMyPrestige(playerSlug, titleSlug)
   const arcsQ = useArcs(playerSlug, titleSlug)
-  const challengesQ = useQuery({
-    queryKey: queryKeys.challenge.list(playerSlug, titleSlug, locale),
-    queryFn: () => prestigeApi.listActiveChallenges(playerSlug, titleSlug),
-    retry: false,
-    staleTime: 30_000,
-  })
+  const challengesQ = useChallenges(playerSlug, titleSlug, { staleTime: CHALLENGES_STALE_MS })
 
   const challenges = useMemo(() => challengesQ.data?.challenges ?? [], [challengesQ.data?.challenges])
   const filteredObjectives = useMemo(

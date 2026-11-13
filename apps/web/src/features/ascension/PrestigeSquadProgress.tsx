@@ -14,15 +14,14 @@
  * ou squad vide), le bloc ne s'affiche pas.
  */
 import { useMemo } from 'react'
-import { useQueries } from '@tanstack/react-query'
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
 import { useFriendGamertags } from '@/features/friends/queries'
-import { queryKeys } from '@/lib/query/keys'
+import { useMyPrestigeMany } from '@/features/prestige/hooks/usePrestige'
 import { getAscensionText } from './i18n'
 import { interpolate } from './format'
-import { prestigeApi, type UserPrestige } from '@/lib/prestige'
+import type { UserPrestige } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import type { PlayerSummary } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
@@ -72,14 +71,7 @@ export function PrestigeSquadProgress() {
     [meSlug, friendGts, availablePlayers],
   )
 
-  const results = useQueries({
-    queries: slugs.map((slug) => ({
-      queryKey: queryKeys.prestige.me(slug, titleSlug),
-      queryFn: () => prestigeApi.getMyPrestige(slug, titleSlug),
-      retry: false,
-      enabled: !!slug,
-    })),
-  })
+  const results = useMyPrestigeMany(slugs, titleSlug)
 
   if (results.some((r) => r.isLoading)) {
     return <BarsSkeleton count={slugs.length} />

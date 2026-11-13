@@ -1,18 +1,28 @@
 /**
  * Hooks React Query — Prestige (PP, niveau, templates, squad).
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { prestigeApi, type Tier } from '@/lib/prestige'
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-export function useMyPrestige(userId: string, titleSlug?: string) {
-  return useQuery({
+function myPrestigeOptions(userId: string, titleSlug?: string) {
+  return {
     queryKey: queryKeys.prestige.me(userId, titleSlug),
     queryFn: () => prestigeApi.getMyPrestige(userId, titleSlug),
     retry: false,
     enabled: !!userId,
-  })
+  }
+}
+
+export function useMyPrestige(userId: string, titleSlug?: string) {
+  return useQuery(myPrestigeOptions(userId, titleSlug))
+}
+
+/** Les PP de plusieurs joueurs (moi et l'escouade), une requête par joueur, même clé que
+ *  `useMyPrestige` : le cache est partagé. */
+export function useMyPrestigeMany(userIds: readonly string[], titleSlug?: string) {
+  return useQueries({ queries: userIds.map((userId) => myPrestigeOptions(userId, titleSlug)) })
 }
 
 export function useSuggestedTemplates(userId: string, titleSlug: string, count = 3) {

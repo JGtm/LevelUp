@@ -16,12 +16,14 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 // ─── Queries ───
 
-export function useChallenges(userId: string, titleSlug: string) {
+/** `staleTime` : fraîcheur propre à l'appelant (l'Accueil relit plus souvent que le défaut). */
+export function useChallenges(userId: string, titleSlug: string, { staleTime }: { staleTime?: number } = {}) {
   const locale = useAppShellStore((s) => s.locale)
   return useQuery({
     queryKey: queryKeys.challenge.list(userId, titleSlug, locale),
     queryFn: () => prestigeApi.listActiveChallenges(userId, titleSlug),
     retry: false,
+    ...(staleTime !== undefined && { staleTime }),
     enabled: !!userId && !!titleSlug,
   })
 }
