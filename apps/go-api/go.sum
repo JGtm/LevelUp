@@ -2,12 +2,12 @@ github.com/HugoSmits86/nativewebp v1.3.0 h1:n1egtEzSV4KwFtealr7dzdYq1wI/uj/bOQ/Q
 github.com/HugoSmits86/nativewebp v1.3.0/go.mod h1:YNQuWenlVmSUUASVNhTDwf4d7FwYQGbGhklC8p72Vr8=
 github.com/JGtm/halo-api v1.0.1 h1:8O/5SkMTMb9/M2xNCrGxBJDZfSlDwO8jLMirVgm9sBI=
 github.com/JGtm/halo-api v1.0.1/go.mod h1:rAmCVWvzjCz06IWLe+SlTh+RzWvFIVQaBONFYHn+bt0=
-github.com/JGtm/halo-infinite-files-reader v1.0.2-0.20261113125521-a2397d65489e h1:9eEWKDSVEtQcFV0/eJ5BGgzv5QpeBu/H5QQgz7BzWqA=
-github.com/JGtm/halo-infinite-files-reader v1.0.2-0.20261113125521-a2397d65489e/go.mod h1:fDmZrBN1FdwdNpixkG1yRqhokOfkV2D4AkFyEE5d2Rs=
+github.com/JGtm/halo-infinite-files-reader v1.1.0 h1:Wpted2omyUCbGXjUsb7V//X3jOqfsNDiqDiVoBC4LSY=
+github.com/JGtm/halo-infinite-files-reader v1.1.0/go.mod h1:fDmZrBN1FdwdNpixkG1yRqhokOfkV2D4AkFyEE5d2Rs=
 github.com/JGtm/halo-infinite-film-decoder v1.3.4 h1:47p4hwSkTm0vTzIODKTSdUqnFQHtNUzSxsJ5+dfiQ30=
 github.com/JGtm/halo-infinite-film-decoder v1.3.4/go.mod h1:oQSy/0Wid3nwl4ScIztAgz23d7iUAgk5pE9ofOYA2lI=
-github.com/JGtm/halo-infinite-map-images v1.0.2-0.20261113125520-196f8de3af10 h1:GatVWkMCAWpSuijc0UC0WlbuoOpbkrMp3PdhRL9w0rI=
-github.com/JGtm/halo-infinite-map-images v1.0.2-0.20261113125520-196f8de3af10/go.mod h1:iYP6rqIM8rHh7oe7eFOQ1xlJ8VzyZxCrBY1toI5VmgA=
+github.com/JGtm/halo-infinite-map-images v1.1.0 h1:xzzMNF0004lk1a6bO+E9P6lqs7JiQK4vvaPDZzREF+I=
+github.com/JGtm/halo-infinite-map-images v1.1.0/go.mod h1:2WbCgfEEzLf4Da5P1+rHcMOIXuNStlrNgFMxRbx8Lsc=
 github.com/andybalholm/brotli v1.2.2 h1:HzTuoo2ErYQqf5qvcJInB8uvqSVxRttzkFexPWtnceM=
 github.com/andybalholm/brotli v1.2.2/go.mod h1:rzTDkvFWvIrjDXZHkuS16NPggd91W3kUSvPlQ1pLaKY=
 github.com/apache/arrow-go/v18 v18.5.1 h1:yaQ6zxMGgf9YCYw4/oaeOU3AULySDlAYDOcnr4LdHdI=
