@@ -15,7 +15,7 @@
  *
  * Échelle perf 0..100 (cf. SCORE_THRESHOLDS Python : 75/60/45/30).
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { resolveToken } from '@/lib/accessibility'
 import { perfSessionScale } from '@/lib/accessibility/scales'
 import {
@@ -74,7 +74,7 @@ function joinAndSort(rows: MapBreakdownRow[]): JoinedRow[] {
 export function buildMapPerfVsHistoryOption(
   series: ChartSeries<MapBreakdownRow>[],
   opts: MapPerfVsHistoryOpts,
-): EChartsCoreOption {
+): ChartOption {
   const rows = series[0]?.datapoints ?? []
   if (rows.length === 0) return { backgroundColor: CHART_BG }
 

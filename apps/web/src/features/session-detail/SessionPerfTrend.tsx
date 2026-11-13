@@ -8,7 +8,7 @@
  * sur le graphe FDA. Couleurs via `resolveToken` (valeurs hex pour le canvas ECharts).
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
@@ -39,7 +39,7 @@ interface PerfOpts {
 const round1 = (n: number) => Math.round(n * 10) / 10
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function buildSessionPerfOption(series: ChartSeries<PerfPoint>[], opts: PerfOpts): EChartsCoreOption {
+export function buildSessionPerfOption(series: ChartSeries<PerfPoint>[], opts: PerfOpts): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 

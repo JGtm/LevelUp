@@ -12,7 +12,7 @@
  * données en passant `option={null}`.
  */
 import type { ReactNode } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 
@@ -26,7 +26,7 @@ export interface ChartFromOptionProps {
   /** Titre affiché en tête du bloc (resté visible même à l'état vide). */
   title?: ReactNode
   /** Option ECharts pré-construite, ou `null` si pas de données. */
-  option: EChartsCoreOption | null
+  option: ChartOption | null
   /** Hauteur fixe en pixels. */
   height: number
   /** Message affiché à l'état vide (défaut ChartCard : « Aucune donnée à afficher »). */
@@ -55,7 +55,7 @@ export function ChartFromOption({
     <ChartCard
       title={title}
       series={option ? NON_EMPTY_SERIES : EMPTY_SERIES}
-      buildOption={() => option ?? ({} as EChartsCoreOption)}
+      buildOption={() => option ?? ({} as ChartOption)}
       emptyMessage={emptyMessage}
       height={height}
       className={className}

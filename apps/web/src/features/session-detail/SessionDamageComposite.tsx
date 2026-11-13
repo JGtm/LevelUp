@@ -6,7 +6,7 @@
  * longueur totale = implication aux dégâts du match, le partage = ratio infligés/subis.
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { barLabel } from '@/components/charts/barLabel'
@@ -41,7 +41,7 @@ interface DamageOpts {
 export function buildSessionDamageOption(
   series: ChartSeries<DamagePoint>[],
   opts: DamageOpts,
-): EChartsCoreOption {
+): ChartOption {
   const showTaken = opts.showTaken ?? true
   const fmtInt = (n: number) => Math.round(n).toLocaleString(opts.numLoc ?? intlLocale(DEFAULT_LOCALE))
   const points = series[0]?.datapoints ?? []

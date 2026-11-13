@@ -6,7 +6,7 @@
  * calculée sur tous les points (cf. mock timeseries.10).
  */
 import { useMemo, type ReactNode } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -85,7 +85,7 @@ export function TimeseriesScatterWithTrend({
   )
 
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (filtered.length === 0) return null
     const tc = getEChartsThemeColors()
     const colWin = resolveToken('outcome-win')

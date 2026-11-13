@@ -27,7 +27,7 @@
  *
  * Zéro dépendance React : testable en pur (`_divergentStepOption.test.ts`).
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -175,7 +175,7 @@ function divergentAxes(
 export function buildDivergentStepOption(
   input: DivergentStepInput,
   tc: EChartsThemeColors,
-): EChartsCoreOption {
+): ChartOption {
   const { points, endMs, positiveName, negativeName, tooltipHtml } = input
   // L'appel se fait ICI, dans le constructeur d'option : le rebuild sur changement de palette
   // rafraîchit la teinte.

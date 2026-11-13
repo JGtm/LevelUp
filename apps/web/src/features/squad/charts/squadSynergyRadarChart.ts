@@ -9,7 +9,7 @@
  * Le builder consomme directement `SquadSynergyRadarSeries[]` (pas de
  * passage par `ChartSeries<T>` — payload trop spécifique).
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import {
   CHART_BG,
   escapeHtml,
@@ -48,7 +48,7 @@ function formatRaw(v: number): string {
 export function buildSquadSynergyRadarOption(
   series: SquadSynergyRadarSeries[],
   opts: SquadSynergyRadarOpts,
-): EChartsCoreOption {
+): ChartOption {
   if (series.length === 0) return { backgroundColor: CHART_BG }
 
   const tc = getEChartsThemeColors()

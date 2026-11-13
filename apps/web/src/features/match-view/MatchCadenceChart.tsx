@@ -14,7 +14,7 @@
  * l'HABILLAGE — les couleurs, qui dépendent de la palette d'accessibilité au moment du
  * rendu, l'ordre de superposition et les libellés d'axe.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase, type EChartsThemeColors } from '@/components/charts/_utils'
@@ -53,7 +53,7 @@ export function MatchCadenceChart({ cadence, scoreboard, meXUID, t }: Props) {
   )
 
   const buildOption = useCallback(
-    (s: ChartSeries<unknown>[]): EChartsCoreOption => {
+    (s: ChartSeries<unknown>[]): ChartOption => {
       if (s.length === 0 || !model) return { backgroundColor: CHART_BG }
       return cadenceOption(model, getEChartsThemeColors(), t)
     },
@@ -83,7 +83,7 @@ const MA_INNER_WIDTH = 3
  * LES COULEURS SE RÉSOLVENT ICI, dans le builder : leur valeur calculée change avec la
  * palette d'accessibilité, et c'est ce rebuild qui la rafraîchit (cf. ChartCard).
  */
-function cadenceOption(model: Cadence, tc: EChartsThemeColors, t: MatchViewText): EChartsCoreOption {
+function cadenceOption(model: Cadence, tc: EChartsThemeColors, t: MatchViewText): ChartOption {
   const axis = getAxisBase(tc)
   return {
     backgroundColor: CHART_BG,

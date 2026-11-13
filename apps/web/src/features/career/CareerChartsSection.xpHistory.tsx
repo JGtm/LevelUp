@@ -12,7 +12,7 @@
  *   DAILY_CHALLENGE_XP = 500 XP/jour
  *   XP_BOOST_MULTIPLIER = 2.0 (consommable Double XP)
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { intlLocale as toIntlLocale } from '@/lib/formatters'
 import {
@@ -248,7 +248,7 @@ function buildXpHistoryOption(
   locale: ManifestLocale,
   maxXp: number,
   maxRankName: string,
-): EChartsCoreOption {
+): ChartOption {
   const tc = getEChartsThemeColors()
   const axisBase = getAxisBase(tc)
   const intlLocale = toIntlLocale(locale)

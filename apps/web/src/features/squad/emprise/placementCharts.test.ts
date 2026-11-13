@@ -5,9 +5,9 @@
  * (seuils du bloc), quatre quarts dont un seul teinté, légende native, couleurs par jeton, seuil
  * de 8 %, infobulles FR et EN.
  */
-import * as echarts from 'echarts'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
+import { renderOptionToSvg } from '@/components/charts/svgRender.testutil'
 import { _resetActivePalette, applyPalette } from '@/lib/accessibility/applyPalette'
 import { defaultPalette } from '@/lib/accessibility/palettes/default'
 import type { SquadEmprisePlacement } from '@/lib/api/types'
@@ -125,10 +125,8 @@ describe('buildPlacementLifeOption — axes et plafonds', () => {
   })
 
   it('Y : le rendu écrit les six libellés (les graduations calculées, sur les demi-unités, n’en écrivaient aucun)', () => {
-    const chart = echarts.init(null, null, { renderer: 'svg', ssr: true, width: 900, height: 420 })
-    chart.setOption(buildPlacementLifeOption(PLACEMENT_2209, COLORS, opts()))
-    const texts = [...chart.renderToSVGString().matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1])
-    chart.dispose()
+    const svg = renderOptionToSvg(buildPlacementLifeOption(PLACEMENT_2209, COLORS, opts()), 900, 420)
+    const texts = [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1])
     for (const label of ['0', '1', '2', '3', '4', '5+', 'frags dans la vie']) expect(texts).toContain(label)
   })
 

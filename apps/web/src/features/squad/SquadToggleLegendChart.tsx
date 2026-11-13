@@ -9,7 +9,7 @@
  * scrollable jugée trop dense.
  */
 import { Fragment, useCallback, useState, type ReactNode } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 
@@ -43,7 +43,7 @@ interface SquadToggleLegendChartProps {
   /** Types masqués par défaut au montage. */
   initialHiddenTypes?: Set<string>
   /** Builder qui reçoit l'état masqué et renvoie l'option ECharts. */
-  buildOption: (hidden: HiddenState) => EChartsCoreOption
+  buildOption: (hidden: HiddenState) => ChartOption
   height?: number
   emptyMessage?: string
 }

@@ -23,7 +23,7 @@
  * (kills : détection des vagues + recompute des counts par équipe), scoreboard
  * (team_side).
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
@@ -378,7 +378,7 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, objective
   )
 
   const buildOption = useCallback(
-    (s: ChartSeries<MatchTugOfWarBin>[]): EChartsCoreOption => {
+    (s: ChartSeries<MatchTugOfWarBin>[]): ChartOption => {
       if (s.length === 0 || !bins || bins.length === 0) return { backgroundColor: CHART_BG }
 
       const colorTeam = resolveToken('team-ally')

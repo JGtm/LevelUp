@@ -9,7 +9,7 @@
  * calcul côté front).
  */
 import { useMemo, type ReactNode } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -51,7 +51,7 @@ import { buildMatchCategories } from './matchLabels'
 
 interface RenderProps {
   height: number
-  option: EChartsCoreOption | null
+  option: ChartOption | null
   title?: ReactNode
   emptyMessage?: string
   /** Clé de tournée de revue (badge inerte hors tournée, cf. lib/review). */
@@ -105,7 +105,7 @@ export function TimeseriesSessionPerformance({
   const themeVersion = useThemeVersion()
   const locale = useAppShellStore((s) => s.locale)
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (points.length === 0) return null
     const tc = getEChartsThemeColors()
     const colPerf = resolveToken('chart-series-2')
@@ -336,7 +336,7 @@ export function TimeseriesIntensityProfile({
   const themeVersion = useThemeVersion()
   const locale = useAppShellStore((s) => s.locale)
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const color = resolveToken('chart-series-2')
     const overlays: IntensityOverlay[] = []
@@ -462,7 +462,7 @@ export function TimeseriesEfficiency({
   // on retire entièrement la courbe + son entrée de légende (pas de ligne vide).
   const providesDamageTaken = useProvidesDamageTaken()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const colRef = resolveToken('divergent-neutral')

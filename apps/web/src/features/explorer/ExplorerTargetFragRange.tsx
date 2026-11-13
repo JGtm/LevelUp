@@ -32,7 +32,7 @@
  * portée fabriquée.
  */
 import { useCallback, useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard } from '@/components/charts/ChartCard'
 import {
@@ -89,7 +89,7 @@ export function ExplorerTargetFragRange({ encounterStats, gamertag }: Props) {
   // Les jetons ne sont résolus QU'ICI, à l'appel : ECharts peint dans un canvas, qui n'accepte
   // pas de variable CSS. ChartCard rappelle ce builder à chaque bascule de thème ou de palette,
   // et les couleurs suivent — une valeur résolue une fois au montage resterait périmée.
-  const buildOption = useCallback((): EChartsCoreOption => {
+  const buildOption = useCallback((): ChartOption => {
     const tc = getEChartsThemeColors()
     return buildWeaponRangeOption({
       lines,

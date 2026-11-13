@@ -10,7 +10,7 @@
  * tokens sémantiques sont résolus via `resolveToken()`.
  */
 import { useMemo, type ReactNode } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   getEChartsThemeColors,
@@ -73,7 +73,7 @@ const FDA_TIP = axisTooltipFormatter({ value: (r) => tipNumber(r.value, 2) })
 
 interface CommonRenderProps {
   height: number
-  option: EChartsCoreOption | null
+  option: ChartOption | null
   title?: ReactNode
   emptyMessage?: string
   /** Clé de tournée de revue (badge inerte hors tournée, cf. lib/review). */
@@ -113,7 +113,7 @@ export function TimeseriesKdaValueTrend({
 }: TimeseriesKdaValueTrendProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     // FDA < 1 → barre rouge (plus de morts que de frags+assists), sinon vert.
@@ -228,7 +228,7 @@ export function TimeseriesPerformanceTrend({
 }: TimeseriesPerformanceTrendProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const categories = buildMatchCategories(rows)
@@ -301,7 +301,7 @@ export function TimeseriesAssistsTrend({
 }: TimeseriesAssistsTrendProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const categories = buildMatchCategories(rows)
@@ -372,7 +372,7 @@ export function TimeseriesPerMinuteTrend({
 }: TimeseriesPerMinuteTrendProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const colKills = resolveToken('stat-kills')
@@ -479,7 +479,7 @@ export function TimeseriesAvgLifeTrend({
 }: TimeseriesAvgLifeTrendProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const accent = resolveToken('chart-series-3')
@@ -550,7 +550,7 @@ export function TimeseriesSpreeHeadshots({
 }: TimeseriesSpreeHeadshotsProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const categories = buildMatchCategories(rows)
@@ -624,7 +624,7 @@ export function TimeseriesSkillRankPerformance({
 }: TimeseriesSkillRankPerformanceProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const colRating = resolveToken('chart-series-2')
@@ -732,7 +732,7 @@ export function TimeseriesRankScore({
 }: TimeseriesRankScoreProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const categories = buildMatchCategories(rows)
@@ -826,7 +826,7 @@ export function TimeseriesCareerXP({
 }: TimeseriesCareerXPProps) {
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     const { hasData, perMatch, cumulative } = buildCareerXpSeries(rows)
     if (!hasData) return null
     const tc = getEChartsThemeColors()

@@ -7,7 +7,7 @@
  *  - Série 2 : ticks verticaux (rug) — un par match à sa valeur r.kda.
  */
 import { useMemo, type ReactNode } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -48,7 +48,7 @@ export function TimeseriesKdaDensity({
   const themeVersion = useThemeVersion()
 
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (buckets.length === 0) return null
     const tc = getEChartsThemeColors()
     const accent = resolveToken('chart-series-1')

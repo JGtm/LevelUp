@@ -13,7 +13,7 @@
  * Source de donnees : payload backend SquadEngagementSession.
  */
 import { useCallback, useMemo, useState } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { axisTooltipFormatter } from '@/components/charts/axisTooltip'
 import { tipNumber } from '@/components/charts/tipNumber'
@@ -88,7 +88,7 @@ export function SquadEngagementView(props: SquadEngagementViewProps) {
   )
 
   const buildOption = useCallback(
-    (): EChartsCoreOption => buildSquadEngagementOption(session, overlayPlayer, seriesLabels),
+    (): ChartOption => buildSquadEngagementOption(session, overlayPlayer, seriesLabels),
     [session, overlayPlayer, seriesLabels],
   )
 
@@ -159,9 +159,9 @@ function buildSquadEngagementOption(
   session: SquadEngagementSession,
   overlay: SquadPlayerEngagement | null,
   labels: SquadEngagementSeriesLabels,
-): EChartsCoreOption {
+): ChartOption {
   if (session.labels.length === 0) {
-    return {} as EChartsCoreOption
+    return {} as ChartOption
   }
 
   // Étiquettes X sur 2 lignes : "#N\nMapName" comme les charts timeseries.

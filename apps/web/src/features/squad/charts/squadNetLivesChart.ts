@@ -14,7 +14,7 @@
  * Calqué sur `squadFdaGapChart.ts` : réutilise ses helpers partagés
  * (`orderedPlayers` / `maxLength` / `xAxisLabels`).
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -73,7 +73,7 @@ function fmtSigned(v: number, decimals: number): string {
 export function buildNetLivesCumulativeOption(
   rows: Record<string, SquadPerformanceSeriesPoint[]>,
   opts: NetLivesCumulativeOpts,
-): EChartsCoreOption {
+): ChartOption {
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
   const players = orderedPlayers(rows, opts.playerOrder)

@@ -10,7 +10,7 @@
  * Report D5 (délégué à `cumulativeSigned` / `engagementGapEvents`) : un match
  * sans résidu ou sans durée ne fait pas avancer le cumul.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -53,7 +53,7 @@ export function cumulativeEngagementGapSeries(
 export function buildSquadEngagementGapOption(
   session: SquadEngagementSessionAPI,
   opts: SquadEngagementGapOpts,
-): EChartsCoreOption {
+): ChartOption {
   const n = session.labels.length
   if (n === 0 || session.players.length === 0) return { backgroundColor: CHART_BG }
 

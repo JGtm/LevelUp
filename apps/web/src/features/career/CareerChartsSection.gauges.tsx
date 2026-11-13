@@ -4,7 +4,7 @@
  * Découpé depuis CareerChartsSection.tsx (audit #6 god-file split).
  * Sortie : 2 ChartCard<GaugePoint> avec leur footer enrichi.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
   getEChartsThemeColors,
@@ -34,7 +34,7 @@ function rankGaugeSeries(summary: CareerSummary, numLoc: string): ChartSeries<Ga
   }
 }
 
-function buildRankGaugeOption(series: ChartSeries<GaugePoint>[]): EChartsCoreOption {
+function buildRankGaugeOption(series: ChartSeries<GaugePoint>[]): ChartOption {
   const point = series[0]?.datapoints[0]
   if (!point) return {}
   return buildGaugeOption(point, resolveToken('chart-series-1'), getEChartsThemeColors())
@@ -67,7 +67,7 @@ function heroGaugeSeries(hero: HeroProgress, numLoc: string, locale: ManifestLoc
   }
 }
 
-function buildHeroGaugeOption(series: ChartSeries<GaugePoint>[]): EChartsCoreOption {
+function buildHeroGaugeOption(series: ChartSeries<GaugePoint>[]): ChartOption {
   const point = series[0]?.datapoints[0]
   if (!point) return {}
   return buildGaugeOption(point, resolveToken('perf-tier-2'), getEChartsThemeColors())
@@ -79,7 +79,7 @@ function buildGaugeOption(
   point: GaugePoint,
   progressColor: string,
   tc: ReturnType<typeof getEChartsThemeColors>,
-): EChartsCoreOption {
+): ChartOption {
   const trackColors: [number, string][] = [
     [0.25, resolveToken('perf-tier-1') + '30'],
     [0.5,  resolveToken('perf-tier-2') + '30'],

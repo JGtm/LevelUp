@@ -10,7 +10,7 @@
  * divergent-neutral (DR), cohérentes avec CombatYieldBar et la KPI session.
  */
 import { useMemo, type ReactNode } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
@@ -55,7 +55,7 @@ interface OcdrOpts {
 export function buildSessionOcdrBarsOption(
   series: ChartSeries<OcdrPoint>[],
   opts: OcdrOpts,
-): EChartsCoreOption {
+): ChartOption {
   const showDr = opts.showDr ?? true
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }

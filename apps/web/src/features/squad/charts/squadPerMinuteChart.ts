@@ -17,7 +17,7 @@
  *   - Label sur barre = valeur ABSOLUE (frags positifs, morts négatifs vers le bas
  *     mais lus en valeur positive).
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import {
   CHART_BG,
   getAxisBase,
@@ -50,7 +50,7 @@ function fmt(v: number): string {
 export function buildSquadPerMinuteOption(
   series: ChartSeries<SquadPerMinuteEntry>[],
   opts: SquadPerMinuteOpts,
-): EChartsCoreOption {
+): ChartOption {
   const rows = series[0]?.datapoints ?? []
   if (rows.length === 0) return { backgroundColor: CHART_BG }
 

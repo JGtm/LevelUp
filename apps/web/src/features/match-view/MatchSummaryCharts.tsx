@@ -11,7 +11,7 @@
  */
 import { useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { buildRadarOption } from '@/components/charts/RadarChart'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
@@ -128,7 +128,7 @@ export function MatchKdaExpectedChart({ kpis, expectedStats, t }: MatchKdaExpect
   const hasHist = expectedStats.has_hist_avg ?? false
 
   const buildOption = useCallback(
-    (): EChartsCoreOption => {
+    (): ChartOption => {
       const tc = getEChartsThemeColors()
       const cats = [t.labelKills, t.labelDeaths, t.labelAssists]
       // Famille dédiée des stats de combat (2026-09-17) — mêmes couleurs que partout.
@@ -190,7 +190,7 @@ export function MatchKdaExpectedChart({ kpis, expectedStats, t }: MatchKdaExpect
         legend: { ...getLegendBase(tc), data: legendData },
         xAxis: { ...getAxisBase(tc), type: 'category' as const, data: cats },
         yAxis: { ...getAxisBase(tc), type: 'value' as const, minInterval: 1, min: 0 },
-        series: seriesList as EChartsCoreOption['series'],
+        series: seriesList as ChartOption['series'],
       }
     },
 
@@ -222,7 +222,7 @@ export function MatchSpreeChart({ kpis, expectedStats, t }: MatchSpreeChartProps
   const hasHist = expectedStats.has_hist_avg ?? false
 
   const buildOption = useCallback(
-    (): EChartsCoreOption => {
+    (): ChartOption => {
       const tc = getEChartsThemeColors()
       const cats = [t.labelSpree, t.labelHeadshots, t.labelPerfectKills]
       // color-allow: hex en commentaires de documentation token→couleur
@@ -276,7 +276,7 @@ export function MatchSpreeChart({ kpis, expectedStats, t }: MatchSpreeChartProps
         },
         xAxis: { ...getAxisBase(tc), type: 'category' as const, data: cats },
         yAxis: { ...getAxisBase(tc), type: 'value' as const, minInterval: 1, min: 0 },
-        series: seriesList as EChartsCoreOption['series'],
+        series: seriesList as ChartOption['series'],
       }
     },
 
@@ -332,11 +332,11 @@ export function MatchSummaryRadarChart({ radar, meXUID, t }: MatchSummaryRadarCh
     : []
 
   const buildOption = useCallback(
-    (): EChartsCoreOption => {
+    (): ChartOption => {
       const opt = buildRadarOption(radarPayload, { axisLabels }) as Record<string, unknown>
       // Serie unique (joueur actif) : aucune legende a afficher.
       opt.legend = { show: false }
-      return opt as EChartsCoreOption
+      return opt as ChartOption
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [radar, meXUID, t],

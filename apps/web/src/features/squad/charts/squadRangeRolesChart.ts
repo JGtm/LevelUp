@@ -12,7 +12,7 @@
  * (`squadEfficiencyChart` : même séparateur, même troncature, même fontSize, même
  * intervalle).
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -235,7 +235,7 @@ function formatTooltip(opts: RangeRolesChartOpts) {
 export function buildSquadRangeRolesOption(
   series: SeriePortee[],
   opts: RangeRolesChartOpts,
-): EChartsCoreOption {
+): ChartOption {
   if (series.length === 0) return { backgroundColor: CHART_BG }
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)

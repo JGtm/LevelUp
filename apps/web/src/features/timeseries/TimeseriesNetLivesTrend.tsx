@@ -24,7 +24,7 @@
  * dégâts subis et la carte s'y retire d'elle-même).
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -106,7 +106,7 @@ function fmtBalance(v: number | null): string {
 export function buildTimeseriesNetLivesOption(
   points: TimeseriesNetLivesPoint[],
   labels: TimeseriesNetLivesLabels,
-): EChartsCoreOption | null {
+): ChartOption | null {
   // Aucun match, ou aucun match portant les deux dégâts → état vide (pas une courbe
   // plate à zéro, qui se lirait comme un équilibre parfait).
   if (points.length === 0 || points.every((p) => p.value == null)) return null
@@ -211,7 +211,7 @@ export function TimeseriesNetLivesTrend({
     () => computeTimeseriesNetLives(rows, hp, locale),
     [rows, hp, locale],
   )
-  const option = useMemo<EChartsCoreOption | null>(
+  const option = useMemo<ChartOption | null>(
     () => buildTimeseriesNetLivesOption(points, labels),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [points, labels, themeVersion],

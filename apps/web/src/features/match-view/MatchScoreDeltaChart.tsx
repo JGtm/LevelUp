@@ -19,7 +19,7 @@
  * La projection vit dans `_scoreDelta.ts`, l'option ECharts dans `_divergentStepOption.ts` : pur
  * et testé.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { useCallback, useMemo } from 'react'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
@@ -100,7 +100,7 @@ export function MatchScoreDeltaChart({
   )
 
   const buildOption = useCallback(
-    (s: ChartSeries<DivergentStepPoint>[]): EChartsCoreOption => {
+    (s: ChartSeries<DivergentStepPoint>[]): ChartOption => {
       if (s.length === 0 || !delta) return { backgroundColor: CHART_BG }
       return buildDivergentStepOption(
         {

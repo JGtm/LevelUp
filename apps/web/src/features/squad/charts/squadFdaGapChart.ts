@@ -22,7 +22,7 @@
  * que gonfler le fichier voisin. Réutilise ses helpers partagés
  * (`orderedPlayers` / `maxLength` / `xAxisLabels`).
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -151,7 +151,7 @@ function fdaGapPlayerSeries(
 export function buildFdaGapCumulativeOption(
   rows: Record<string, SquadPerformanceSeriesPoint[]>,
   opts: FdaGapCumulativeOpts,
-): EChartsCoreOption {
+): ChartOption {
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
   const players = orderedPlayers(rows, opts.playerOrder)

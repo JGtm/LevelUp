@@ -25,7 +25,7 @@
  * d'où la soustraction de `lib/replay/matchClock` (registre 2026-09-05, P0-7). Rien à
  * convertir ici : toute correction ajoutée à ces abscisses les décalerait de la référence.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase, type EChartsThemeColors } from '@/components/charts/_utils'
@@ -78,7 +78,7 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, objectiv
   )
 
   const buildOption = useCallback(
-    (s: ChartSeries<MatchHighlightEvent>[]): EChartsCoreOption => {
+    (s: ChartSeries<MatchHighlightEvent>[]): ChartOption => {
       if (s.length === 0 || !model) return { backgroundColor: CHART_BG }
       return kdCumulOption(model, getEChartsThemeColors(), t)
     },
@@ -110,7 +110,7 @@ interface BadgeMarks {
  * palette d'accessibilité, et c'est ce rebuild qui la rafraîchit (cf. ChartCard,
  * dépendance `paletteVersion`).
  */
-function kdCumulOption(model: KdCumul, tc: EChartsThemeColors, t: MatchViewText): EChartsCoreOption {
+function kdCumulOption(model: KdCumul, tc: EChartsThemeColors, t: MatchViewText): ChartOption {
   const colorAlly = resolveToken('team-ally')
   const colorEnemy = resolveToken('team-enemy')
   const accents = { good: resolveToken('success'), bad: resolveToken('warning') }

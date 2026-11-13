@@ -26,7 +26,7 @@
  * gras et une bande `markArea` qui court sur toute la largeur du graphe — c'est le séparateur
  * de section, il ne code aucune grandeur.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -167,7 +167,7 @@ export function buildKillDistanceOption({
   avgColor,
   fmtDistance,
   labels,
-}: KillDistanceOptionInput): EChartsCoreOption {
+}: KillDistanceOptionInput): ChartOption {
   // Première ligne du modèle = EN HAUT : l'axe Y d'ECharts empile du bas vers le haut, donc
   // la liste se lit à l'envers au montage.
   const ordered = [...rows].reverse()

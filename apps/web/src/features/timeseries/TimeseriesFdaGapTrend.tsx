@@ -23,7 +23,7 @@
  * match (« — » si absent).
  */
 import { useMemo, type ReactNode } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { FdaGapTooltipText } from '@/components/charts/FdaGapTooltipText'
@@ -73,7 +73,7 @@ function fmtGap(v: number | null, signed = false): string {
 export function buildFdaGapCumulativeOption(
   rows: TimeseriesMatchRow[],
   labels: FdaGapCumulativeLabels,
-): EChartsCoreOption | null {
+): ChartOption | null {
   if (rows.length === 0) return null
   // Ordre du service conservé (déjà trié ASC) — pas de re-tri.
   const points = cumulativeFdaGap(
@@ -187,7 +187,7 @@ export function TimeseriesFdaGapTrend({
   const hasExpectedStats = useCapability('expected_stats')
   const themeVersion = useThemeVersion()
 
-  const option = useMemo<EChartsCoreOption | null>(
+  const option = useMemo<ChartOption | null>(
     () => buildFdaGapCumulativeOption(rows, labels),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rows, labels, themeVersion],

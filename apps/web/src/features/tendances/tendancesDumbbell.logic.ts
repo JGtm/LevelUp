@@ -12,7 +12,7 @@
  *
  * LÉGENDE. En bas, centrée, limitée aux séries qui ont au moins un point.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -201,7 +201,7 @@ function segmentSeries(segments: number[][], linkColor: string): object {
 }
 
 /** Option ECharts d'un graphique en haltères ; sans ligne, option vide (le cadre dit « vide »). */
-export function buildTendancesDumbbellOption(input: TendancesDumbbellInput): EChartsCoreOption {
+export function buildTendancesDumbbellOption(input: TendancesDumbbellInput): ChartOption {
   const { rows } = input
   if (rows.length === 0) return { backgroundColor: CHART_BG }
 

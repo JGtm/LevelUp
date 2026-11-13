@@ -12,7 +12,7 @@
  * sémantiques uniquement (rampe centralisée `heatmapColors`), i18n FR/EN.
  */
 import { useCallback } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { heatmapRampTokens } from '@/components/charts/heatmapColors'
@@ -96,7 +96,7 @@ interface BuildOpts {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function buildActivityCalendarOption(opts: BuildOpts): EChartsCoreOption {
+export function buildActivityCalendarOption(opts: BuildOpts): ChartOption {
   const { since, until, days, locale } = opts
   const tc = getEChartsThemeColors()
   const DOW = dowLabels(locale)
@@ -212,7 +212,7 @@ export function ActivityCalendarChart({ since, until, days, height }: ActivityCa
         title={t.activityCalendarTitle}
         series={series}
         emptyMessage={t.activityCalendarEmpty}
-        buildOption={buildOption as (s: ChartSeries<ActivityDay>[]) => EChartsCoreOption}
+        buildOption={buildOption as (s: ChartSeries<ActivityDay>[]) => ChartOption}
         height={height ?? 180}
       />
     </section>

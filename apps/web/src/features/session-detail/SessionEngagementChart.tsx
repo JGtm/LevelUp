@@ -7,7 +7,7 @@
  * Axe X "#N + carte" aligné sur "Score de performance" ; axe Y étiqueté pour la lisibilité.
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
@@ -37,7 +37,7 @@ interface Props {
 export function buildSessionEngagementOption(
   series: ChartSeries<EngagementPoint>[],
   opts: { meanLabel: string; axisName: string; yDomain?: [number, number] },
-): EChartsCoreOption {
+): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 

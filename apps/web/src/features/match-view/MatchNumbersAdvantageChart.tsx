@@ -15,7 +15,7 @@
  * Avec un film mais sans camp établi pour le joueur, l'état vide dit pourquoi — jamais un
  * effectif deviné.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { useCallback, useMemo } from 'react'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
@@ -68,7 +68,7 @@ export function MatchNumbersAdvantageChart({
   const legend = useMemo(() => teamLegend(board, meXUID, t), [board, meXUID, t])
 
   const buildOption = useCallback(
-    (s: ChartSeries<DivergentStepPoint>[]): EChartsCoreOption => {
+    (s: ChartSeries<DivergentStepPoint>[]): ChartOption => {
       if (s.length === 0 || !balance) return { backgroundColor: CHART_BG }
       return buildDivergentStepOption(
         {

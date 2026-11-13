@@ -15,7 +15,7 @@
  *   - Y : lignes, la PREMIÈRE en BAS (l'appelant ordonne) ; bandes zébrées par ligne.
  *   - X : frags (caché — les valeurs sont écrites au bout des barres).
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import {
   CHART_BG,
   escapeHtml,
@@ -102,7 +102,7 @@ function axisLabelStyle(rows: SquadBarRow[], textColor: string) {
 export function buildSquadWeaponKillsOption(
   data: SquadBarRows | null | undefined,
   opts: SquadWeaponKillsOpts,
-): EChartsCoreOption {
+): ChartOption {
   const rows = data?.rows ?? []
   const players = data?.players ?? []
   if (!data || rows.length === 0 || players.length === 0) {

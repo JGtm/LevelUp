@@ -10,7 +10,7 @@
  *  plus lisible pour une seule session.)
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
@@ -44,7 +44,7 @@ const STAT_TOKEN: Record<FdaPoint['key'], SemanticToken> = {
 export function buildSessionFdaBarsOption(
   series: ChartSeries<FdaPoint>[],
   opts: { decimals: number; yDomain?: [number, number] },
-): EChartsCoreOption {
+): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 

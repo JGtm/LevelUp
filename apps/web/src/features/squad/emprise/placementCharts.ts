@@ -17,7 +17,7 @@
  * (déterministe, dérivé de la clé de la vie : aucun hasard) sont ceux de la spécification.
  * Couleurs : jetons seulement (joueurs d'escouade, `perf-tier-1/2/4/5`, neutres du thème).
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -370,7 +370,7 @@ function quadrantsMarker(block: PlacementBlock, c: PlacementColors, t: Placement
 const tipOf = (p: { data?: { tip?: string } }) => p.data?.tip ?? ''
 
 /** « Placement et rendement de chaque vie » : le nuage (hauteur 420 côté carte). */
-export function buildPlacementLifeOption(block: PlacementBlock, c: PlacementColors, o: PlacementChartOpts): EChartsCoreOption {
+export function buildPlacementLifeOption(block: PlacementBlock, c: PlacementColors, o: PlacementChartOpts): ChartOption {
   const players = block.players ?? []
   if (players.length === 0) return { backgroundColor: CHART_BG }
   const { t, formats } = o
@@ -422,7 +422,7 @@ export function buildPlacementLifeOption(block: PlacementBlock, c: PlacementColo
 }
 
 /** « Part des vies par placement » : une barre à 100 % par joueur, le premier en haut (hauteur 230). */
-export function buildPlacementQuartsOption(block: PlacementBlock, c: PlacementColors, o: PlacementChartOpts): EChartsCoreOption {
+export function buildPlacementQuartsOption(block: PlacementBlock, c: PlacementColors, o: PlacementChartOpts): ChartOption {
   const players = block.players ?? []
   if (players.length === 0) return { backgroundColor: CHART_BG }
   const { t } = o

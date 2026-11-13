@@ -12,7 +12,7 @@
  * (capability `damage_taken` — Halo 5 n'a pas de dégâts subis).
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
@@ -73,7 +73,7 @@ export interface NetLivesLabels {
 export function buildSessionNetLivesOption(
   series: ChartSeries<NetLivesPoint>[],
   opts: NetLivesLabels,
-): EChartsCoreOption {
+): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 

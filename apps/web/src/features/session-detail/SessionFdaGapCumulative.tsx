@@ -19,7 +19,7 @@
  * `useCapability('expected_stats')` (Halo 5 = pas d'attendu → null).
  */
 import { useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { resolveToken } from '@/lib/accessibility'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
@@ -80,7 +80,7 @@ export interface FdaGapCumulativeLabels {
 export function buildSessionFdaGapOption(
   series: ChartSeries<FdaGapPoint>[],
   opts: FdaGapCumulativeLabels,
-): EChartsCoreOption {
+): ChartOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 

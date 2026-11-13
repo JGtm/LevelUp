@@ -9,7 +9,7 @@
  * Tous consomment `Record<gamertag, SquadPerformanceSeriesPoint[]>` aligné côté
  * serveur sur les matchs partagés (intersection). xAxis = match_order 0..N-1.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import {
   CHART_BG,
   getAxisBase,
@@ -129,7 +129,7 @@ export function xAxisLabels(n: number): string[] {
 export function buildPerformanceLineOption(
   rows: Record<string, SquadPerformanceSeriesPoint[]>,
   opts: PerformanceLineOpts,
-): EChartsCoreOption {
+): ChartOption {
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
   const players = orderedPlayers(rows, opts.playerOrder)
@@ -261,7 +261,7 @@ export interface KillsDeathsButterflyOpts extends CommonOpts {
 export function buildKillsDeathsButterflyOption(
   rows: Record<string, SquadPerformanceSeriesPoint[]>,
   opts: KillsDeathsButterflyOpts,
-): EChartsCoreOption {
+): ChartOption {
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
   const players = orderedPlayers(rows, opts.playerOrder)
@@ -376,7 +376,7 @@ export interface HsPerfectOpts extends CommonOpts {
 export function buildHsPerfectOption(
   rows: Record<string, SquadPerformanceSeriesPoint[]>,
   opts: HsPerfectOpts,
-): EChartsCoreOption {
+): ChartOption {
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
   const players = orderedPlayers(rows, opts.playerOrder)
@@ -460,7 +460,7 @@ export interface TeamMMROpts extends CommonOpts {
 export function buildTeamMMROption(
   rows: Record<string, SquadPerformanceSeriesPoint[]>,
   opts: TeamMMROpts,
-): EChartsCoreOption {
+): ChartOption {
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
   const players = orderedPlayers(rows, opts.playerOrder)

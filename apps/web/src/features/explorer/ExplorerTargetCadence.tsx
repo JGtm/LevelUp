@@ -5,7 +5,7 @@
  * joués ensemble » (1/3 de largeur).
  */
 import { useCallback } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -41,7 +41,7 @@ export function ExplorerTargetCadence({ sampleStats }: Props) {
 
   const n = sampleStats.sample_size
   const buildPerMatch = useCallback(
-    (): EChartsCoreOption =>
+    (): ChartOption =>
       buildCadenceBarsOption(
         {
           kills: n > 0 ? sampleStats.kills / n : 0,
@@ -55,7 +55,7 @@ export function ExplorerTargetCadence({ sampleStats }: Props) {
     [sampleStats, appLocale],
   )
   const buildPerMinute = useCallback(
-    (): EChartsCoreOption =>
+    (): ChartOption =>
       buildCadenceBarsOption(
         {
           kills: sampleStats.kills_per_min ?? 0,

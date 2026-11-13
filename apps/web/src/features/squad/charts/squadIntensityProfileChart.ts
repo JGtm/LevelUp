@@ -16,7 +16,7 @@
  * `MIN_MATCHES_FOR_ENVELOPE` manches, le panneau n'affiche que la médiane
  * (enveloppe dégénérée). Le calcul agrégé vit dans `lib/charts/phaseProfile`.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import {
   CHART_BG,
   escapeHtml,
@@ -384,7 +384,7 @@ function buildTooltipFormatter(medianLabel: string, envelopeLabel: string, range
  * buildSquadIntensityProfileOption — option ECharts multi-panneaux. Retourne une
  * option minimale (fond seul) si aucun joueur n'a de manche exploitable.
  */
-export function buildSquadIntensityProfileOption(opts: IntensityProfileOpts): EChartsCoreOption {
+export function buildSquadIntensityProfileOption(opts: IntensityProfileOpts): ChartOption {
   const resolved: ResolvedPanel[] = opts.panels
     .map((p) => ({ ...p, profile: phaseProfile(p.rows) }))
     .filter((p) => p.profile.nMatches > 0)

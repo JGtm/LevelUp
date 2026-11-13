@@ -27,7 +27,7 @@
  * Asymétrie assumée : la résistance vit généralement au-dessus de 100 % et le
  * rendement en dessous — c'est une information, pas un défaut d'axe.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import {
   CHART_BG,
   escapeHtml,
@@ -187,7 +187,7 @@ export function buildSquadEfficiencyOption(
   rowsByPlayer: Record<string, SquadPerformanceSeriesPoint[]>,
   players: string[],
   opts: EfficiencyChartOpts,
-): EChartsCoreOption {
+): ChartOption {
   let n = 0
   const mapByOrder = new Map<number, string>()
   for (const p of players) {

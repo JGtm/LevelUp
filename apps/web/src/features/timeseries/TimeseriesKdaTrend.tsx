@@ -5,7 +5,7 @@
  * La courbe FDA Y2 a été retirée (chart "FDA" dédié sur la même page).
  */
 import { useMemo, useState, type ReactNode } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 
 import {
   CHART_BG,
@@ -57,7 +57,7 @@ export function TimeseriesKdaTrend({ rows, height = 360, title, emptyMessage, la
   const themeVersion = useThemeVersion()
   const [showBonus, setShowBonus] = useState(false)
 
-  const option = useMemo<EChartsCoreOption | null>(() => {
+  const option = useMemo<ChartOption | null>(() => {
     if (rows.length === 0) return null
     const tc = getEChartsThemeColors()
     const colKills = resolveToken('stat-kills')

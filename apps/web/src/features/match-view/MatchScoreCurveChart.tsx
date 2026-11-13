@@ -22,7 +22,7 @@
  *
  * La projection (paliers, bornes, retournements) vit dans `_scoreCurve.ts`, pur et testé.
  */
-import type { EChartsCoreOption } from 'echarts/core'
+import type { ChartOption } from '@/components/charts/chartOption'
 import { useCallback, useMemo } from 'react'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
@@ -116,7 +116,7 @@ export function MatchScoreCurveChart({
   )
 
   const buildOption = useCallback(
-    (s: ChartSeries<ScoreCurveSeries>[]): EChartsCoreOption => {
+    (s: ChartSeries<ScoreCurveSeries>[]): ChartOption => {
       if (s.length === 0 || !curve) return { backgroundColor: CHART_BG }
       return scoreCurveOption(curve, getEChartsThemeColors(), t)
     },
@@ -161,7 +161,7 @@ function scoreCurveOption(
   curve: ScoreCurve,
   tc: EChartsThemeColors,
   t: MatchViewText,
-): EChartsCoreOption {
+): ChartOption {
   const couleurs = new Map(curve.series.map((s) => [s.teamId, teamSeriesColor(s.ally, tc)]))
   return {
     backgroundColor: CHART_BG,
