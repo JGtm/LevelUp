@@ -429,9 +429,9 @@ func TestHomeService_GetBattlePass(t *testing.T) {
 	repo := &mockHomeRepo{}
 	svc := withHomeMock(NewHomeService(repo, nil), repo)
 	bp := svc.GetBattlePass(context.Background())
-	// Default provider returns available=false
+	// Sans fournisseur de lecture en direct : available=false
 	if bp.Available {
-		t.Error("expected Available=false from default provider")
+		t.Error("expected Available=false sans fournisseur")
 	}
 }
 
@@ -440,7 +440,7 @@ func TestHomeService_GetChallenges(t *testing.T) {
 	svc := withHomeMock(NewHomeService(repo, nil), repo)
 	ch := svc.GetChallenges(context.Background())
 	if ch.Available {
-		t.Error("expected Available=false from default provider")
+		t.Error("expected Available=false sans fournisseur")
 	}
 }
 
@@ -469,9 +469,6 @@ func (m *mockBattlePassCacheRepo) LoadCachedChallenges(_ context.Context, _ time
 	m.chCalls++
 	return m.chResp, m.chHit, m.chErr
 }
-
-// stubProviderHit est un provider nul qui panique si appelé (vérifie que le cache a pris le dessus).
-// (utilise la valeur par défaut de HaloProvider qui retourne available=false)
 
 func TestHomeService_GetBattlePass_CacheHit(t *testing.T) {
 	rank := 42
@@ -512,10 +509,10 @@ func TestHomeService_GetBattlePass_CacheMiss(t *testing.T) {
 	}
 
 	svc := NewHomeService(&mockHomeRepo{}, nil).WithCacheRepo(cacheRepo)
-	// Le provider live retourne available=false (pas de tokens)
+	// Sans fournisseur de lecture en direct : available=false
 	resp := svc.GetBattlePass(context.Background())
 
-	// Cache miss → live provider appelé → available=false (pas de tokens)
+	// Cache miss → pas de lecture en direct → available=false
 	if resp.FromCache {
 		t.Error("expected FromCache=false on cache miss")
 	}
@@ -738,7 +735,7 @@ func TestGetBattlePass_FallsBackToCache_WhenLiveUnavailable(t *testing.T) {
 	cached := &domain.BattlePassResponse{Available: true, RewardTrack: &track}
 	cacheRepo := &mockBattlePassCacheRepo{bpResp: cached, bpHit: true}
 	svc := NewHomeService(&mockHomeRepo{}, nil).WithCacheRepo(cacheRepo)
-	// provider par défaut : pas de tokens → Available=false
+	// sans fournisseur de lecture en direct : Available=false
 	resp := svc.GetBattlePass(context.Background())
 	if !resp.Available {
 		t.Error("fallback cache attendu quand live indisponible")

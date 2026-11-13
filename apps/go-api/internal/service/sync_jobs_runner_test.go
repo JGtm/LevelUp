@@ -41,9 +41,14 @@ func TestSyncJobService_runnerFor(t *testing.T) {
 		t.Error("le contexte d'un titre servi par le moteur ne doit PAS être muté (jetons passés en argument)")
 	}
 
+	// Câblage absent : Halo 5 reçoit le moteur de sync, et
+	// son contexte reste intact — jamais le runner ni les jetons d'un autre titre.
 	sans := NewSyncJobService(&config.AppConfig{RepoRoot: t.TempDir()}, nil, nil, nil)
-	r3, _ := sans.runnerFor(context.Background(), "titre_live", "JGtm", "xJG", &domain.HaloTokens{})
+	r3, ctx3 := sans.runnerFor(context.Background(), "halo_5", "JGtm", "xJG", &domain.HaloTokens{SpartanToken: "v4=token"})
 	if _, ok := r3.(*go_sync.SyncEngine); !ok {
 		t.Errorf("sans constructeur → *go_sync.SyncEngine attendu, got %T", r3)
+	}
+	if ctxkeys.HaloTokens(ctx3) != nil {
+		t.Error("sans constructeur, le contexte ne doit PAS être muté")
 	}
 }

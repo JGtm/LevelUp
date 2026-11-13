@@ -24,7 +24,7 @@ type CatalogWriter interface {
 	// PAS encore dans la table catalogue de son type (append-only : file jamais mutée).
 	SelectPending(ctx context.Context, titleSlug string) ([]domain.CatalogQueueEntry, error)
 	// UpsertPlaylist persiste une playlist + ses pair_links + ré-enqueue les pairs.
-	// isRanked/experience sont déjà résolus par le caller (gate rankedplaylists).
+	// isRanked/experience sont déjà résolus par l'adapter du titre (sa référence des playlists classées y fait autorité).
 	UpsertPlaylist(ctx context.Context, titleSlug string, pl canonical.CanonicalPlaylist, isRanked bool, experience string) error
 	// UpsertPair persiste un pair + ses labels multi-langues + ré-enqueue map/game_variant.
 	UpsertPair(ctx context.Context, titleSlug string, p canonical.CanonicalPair) error
