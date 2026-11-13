@@ -48,7 +48,7 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import { buildScoreCurve, formatClock, teamIdsOf, type ScoreCurve, type ScoreCurveSeries } from './_scoreCurve'
 import { tipNumberAuto } from '@/components/charts/tipNumber'
 import type { MatchViewText } from './i18n'
-import { SCORE_TIMELINE_HIDDEN } from './scoreTimelineKind'
+import { SCORE_TIMELINE_HIDDEN } from '@/lib/halo/scoreTimelineKind'
 import { teamSeriesColor } from './teamSeriesColor'
 import { allyOfTeamId, resolveXuidMeta } from './xuidMeta'
 

@@ -1,5 +1,3 @@
-// cross-feature-allow: tab orchestrateur Entraînement — agrège les composants
-// coach (proposals) et les pistes de progression Ascension.
 /**
  * AscensionCoachingTab — onglet "Entraînement" (couche coaching d'amélioration).
  *

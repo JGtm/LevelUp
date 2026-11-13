@@ -2,21 +2,35 @@
 /**
  * Lint custom — frontières features/ et components/.
  *
- * P8.5 (revue 2026-04-29 axe 4 + gap #14) : interdit deux patterns d'import
- * problématiques :
+ * Trois frontières, plafond 0 (aucune violation tolérée, aucun seuil à relever) :
  *
  * 1. **Cross-feature** : un fichier dans `apps/web/src/features/{Y}/` ne doit
- *    pas importer depuis `@/features/{X}/` quand X ≠ Y. Les composants
- *    partagés doivent vivre dans `apps/web/src/components/` ou
- *    `apps/web/src/lib/`. Les exceptions documentées (ex: shell/ orchestre
- *    les features, prestige consommé par home, etc.) sont déclarées dans
- *    ALLOWED_CROSS_IMPORTS.
+ *    pas importer depuis `features/{X}/` quand X ≠ Y, que l'import soit écrit
+ *    par l'alias (`@/features/X/...`) ou par un chemin relatif (`../../X/...`).
+ *    Les composants partagés vivent dans `apps/web/src/components/` ou
+ *    `apps/web/src/lib/`. Les dépendances durables sont déclarées dans
+ *    ALLOWED_CROSS_IMPORTS ; une exception ponctuelle porte le marqueur
+ *    `cross-feature-allow: <raison>` SUR la ligne de l'import (ou sur le
+ *    commentaire `//` qui la précède immédiatement), jamais sur le fichier.
  *
- * 2. **Frontière inversée** (gap #14) : un fichier dans
- *    `apps/web/src/components/` ne doit pas importer depuis `@/features/`.
- *    Les composants UI génériques doivent recevoir leurs données par props.
+ * 2. **`_shared` est un socle, pas une feature** : `features/_shared/` est lu par
+ *    toutes les features et ne doit donc dépendre d'aucune. Tout import d'une
+ *    autre feature depuis `_shared` est une violation (aucune paire déclarable) ;
+ *    sans cela `squad -> _shared -> squad` forme un cycle que ni le lint ni
+ *    le compilateur ne voient. Les features importent `_shared` librement.
+ *
+ * 3. **Frontière inversée** (gap #14) : un fichier dans
+ *    `apps/web/src/components/` ne doit pas importer depuis `features/`.
+ *    Les composants UI génériques reçoivent leurs données par props.
  *    Seul `apps/web/src/components/shell/` peut importer features/ (il
- *    orchestre l'app entière).
+ *    orchestre l'app entière). Les imports de `features/_shared` depuis
+ *    `components/` sont comptés comme les autres ; la liste
+ *    REVERSE_SHARED_ALLOWED nomme les fichiers qui en gardent un en attendant
+ *    que leur dépendance descende.
+ *
+ * Deux dérives sont aussi des erreurs : une entrée d'ALLOWED_CROSS_IMPORTS
+ * (ou de REVERSE_SHARED_ALLOWED) qu'aucun import ne sert plus, et un marqueur
+ * `cross-feature-allow` qui ne couvre aucun import hors allowlist (ou sans raison).
  *
  * Usage :
  *   node tools/lint-cross-feature-imports.mjs
@@ -34,10 +48,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '..')
 const WEB_SRC = join(REPO_ROOT, 'apps/web/src')
 
-// Pattern : extrait `featureName` de `@/features/featureName/...`, et le CHEMIN du module
-// importé (2e groupe) — une exception peut ainsi porter sur un module nommé plutôt que sur
-// une feature entière (cf. ALLOWED_CROSS_IMPORTS ci-dessous).
-const FEATURE_IMPORT_RE = /@\/features\/([a-z0-9-]+)((?:\/[A-Za-z0-9._-]+)*)/g
+// Le socle partagé : lu par toutes les features, ne dépend d'aucune.
+const SHARED_FEATURE = '_shared'
+
+// Une cible de feature : `features/<nom>` suivi du chemin du module importé. Le chemin est
+// gardé pour qu'une exception puisse porter sur un module nommé plutôt que sur une
+// feature entière (cf. ALLOWED_CROSS_IMPORTS ci-dessous).
+const FEATURE_TARGET_RE = /^features\/([a-z0-9_-]+)((?:\/[A-Za-z0-9._-]+)*)$/
+
+// Un spécificateur d'import entre guillemets : alias `@/...` ou chemin relatif. Les
+// importations statiques, dynamiques (`import('...')`) et les réexportations (`export ...
+// from '...'`) y passent toutes.
+const QUOTED_SPECIFIER_RE = /(['"`])((?:@\/|\.{1,2}\/)[^'"`\s]*)\1/g
 
 // Exceptions cross-feature documentées.
 //
@@ -162,17 +184,12 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // SquadLayout orchestre la barre filtres unifiée Squad (cf. commit 26111a3a)
   'squad=>filters',
   'squad=>friends',
-  // Synthesis embarque squad sub-views
-  'synthesis=>squad',
   // TimeseriesPage embarque la section engagement, réutilise les wrappers
   // Squad (WinRate vs History, Map perf vs History, intensity heatmap, builder
   // efficiency) et le tableau Explorer pour l'historique des matchs.
   'timeseries=>engagement',
   'timeseries=>squad',
   'timeseries=>explorer',
-  // Explorer mode "Joueur" réutilise des composants Squad (synergy table,
-  // visualisations partagées) — feature durable.
-  'explorer=>squad',
   // Home embarque le SyncIndicator + auto-sync triggers de settings.
   'home=>settings',
   // Match-view réutilise des wrappers Squad (colors hash joueur, impact badges)
@@ -194,9 +211,6 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // Explorer réutilise la bannière d'identité joueur de Home
   // (ExplorerTargetIdentityBanner).
   'explorer=>home',
-  // Synthesis agrège filters + explorer (vue consolidée transverse).
-  'synthesis=>filters',
-  'synthesis=>explorer',
   // TimeseriesSkillProgression réutilise le contexte rating Carrière (LUSR/CSR).
   'timeseries=>career',
   // Accueil + Explorer affichent le bandeau d'identité Spartan (emblème + nameplate
@@ -252,13 +266,57 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // memes textes (`usagesText`, `usagesCardsText`) : une carte, trois pages — durable, analogue a
   // session-detail=>timeseries.
   'match-view=>timeseries',
+  // --- Déclarées le 2026-11-13 (étape 7.1) : ces dépendances existaient déjà, couvertes
+  // soit par le plafond de 7 du lint, soit par un marqueur posé sur le fichier entier
+  // (le marqueur ne couvre plus qu'UNE ligne). Chacune est nommée par module : elle
+  // n'ouvre pas la feature voisine.
+  // La page Escouade, la Tactique et les Tendances montent le MÊME sélecteur de composition et
+  // lisent la MÊME sélection d'escouade (clé de stockage, libellés, couleurs de joueur) : une
+  // seconde copie donnerait deux sélections et deux palettes d'identité pour la même personne.
+  'tactical=>squad/SquadCompositionPicker',
+  'tactical=>squad/useCompositionOptions',
+  'tendances=>squad/SquadCompositionPicker',
+  'tendances=>squad/useCompositionOptions',
+  'tendances=>squad/exactComposition',
+  'tendances=>squad/squadSelectionStorage',
+  'tendances=>squad/i18n',
+  'tendances=>squad/colors',
+  // Une seule table de noms et de couleurs de chaînes LUSR dans l'app (celle de la Carrière).
+  'tendances=>career/lusr-chains',
+  // L'onglet Entraînement de l'Ascension agrège les cartes du coach et lit le réglage du mode
+  // proactif par le hook que la section d'administration qui l'édite lit aussi ; la
+  // progression Prestige lit la liste d'amis du joueur (même source que la page Amis).
+  'ascension=>coach',
+  'ascension=>settings/queries',
+  'ascension=>friends/queries',
+  // Les liens profonds de l'Ascension vers les Séries temporelles se construisent avec
+  // l'encodeur UNIQUE du paramètre ?f= (filterLink).
+  'ascension=>filters/filterLink',
+  // Les deux donuts du Versus de l'Explorateur sont ceux de Palmarès (relations, écart de frags).
+  'explorer=>palmares/RelationWinRateDonut',
+  'explorer=>palmares/CumulativeFragGapChart',
+  // Le tri client des lignes de l'Explorateur sert aussi les tableaux de rencontres, du
+  // classement de match et de l'historique des synergies : une seule règle de tri.
+  'match-view=>explorer/explorerMatchesClientSort',
+  'squad=>explorer/explorerMatchesClientSort',
+])
+
+// Fichiers de `components/` qui importent encore `features/_shared` (frontière inversée) :
+// chaque entrée tombe quand la dépendance descend dans `components/` ou `lib/`, et une
+// entrée qu'aucun import ne sert plus fait échouer le lint.
+const REVERSE_SHARED_ALLOWED = new Set([
+  // Les quatre modules d'assistance (barre de répartition, teinte, échange, textes) vivent
+  // dans `features/_shared/assists/` ; la carte de match les monte. Déclaré le 2026-11-13.
+  'apps/web/src/components/ui/match-card-assisted-frags.tsx',
 ])
 
 // Fichiers shell autorisés à importer @/features/ (orchestration globale).
 const SHELL_PATH_PREFIX = 'apps/web/src/components/shell/'
 
-// Marqueur inline pour exception ponctuelle.
+// Marqueur d'exception ponctuelle : `cross-feature-allow: <raison>`, sur la ligne de
+// l'import ou sur le commentaire `//` qui la précède immédiatement.
 const ALLOWED_INLINE_MARKER = 'cross-feature-allow'
+const MARKER_WITH_REASON_RE = /cross-feature-allow:\s*\S/
 
 function* walk(dir) {
   for (const entry of readdirSync(dir)) {
@@ -279,152 +337,210 @@ function* walk(dir) {
 }
 
 function getFeatureNameFromPath(relPath) {
-  // apps/web/src/features/foo/bar.tsx → "foo"
-  const match = relPath.match(/^apps\/web\/src\/features\/([a-z0-9-]+)\//)
+  // apps/web/src/features/foo/bar.tsx → "foo" ; features/_shared/x.ts → "_shared"
+  const match = relPath.match(/^apps\/web\/src\/features\/([a-z0-9_-]+)\//)
   return match ? match[1] : null
 }
 
+/**
+ * Cible `features/` d'un spécificateur d'import, ou null. L'alias `@/features/X/...` et le
+ * chemin relatif qui y aboutit (`../../X/...`, `../../../features/X/...`) donnent le même
+ * résultat : écrire l'import autrement ne le sort pas du contrôle.
+ */
+function featureTarget(file, specifier) {
+  let fromSrc
+  if (specifier.startsWith('@/')) {
+    fromSrc = specifier.slice(2)
+  } else {
+    fromSrc = relative(WEB_SRC, resolve(dirname(file), specifier)).replaceAll('\\', '/')
+  }
+  const m = fromSrc.match(FEATURE_TARGET_RE)
+  return m ? { feature: m[1], modulePath: m[2] ?? '' } : null
+}
+
+const isCommentLine = (line) => /^\s*(\/\/|\/\*|\*)/.test(line)
+
+/**
+ * Index (0-based) de la ligne du marqueur qui couvre l'import écrit à `idx`, ou -1 : la
+ * ligne elle-même, ou le bloc de commentaires `//` qui la précède sans ligne vide.
+ */
+function markerLineFor(lines, idx) {
+  if (MARKER_WITH_REASON_RE.test(lines[idx])) return idx
+  for (let i = idx - 1; i >= 0 && /^\s*\/\//.test(lines[i]); i--) {
+    if (MARKER_WITH_REASON_RE.test(lines[i])) return i
+  }
+  return -1
+}
+
 const crossViolations = []
+const sharedViolations = []
 const reverseViolations = []
-// A3.1 (2026-09-27) : entrées d'ALLOWED_CROSS_IMPORTS réellement servies pendant le
-// balayage — même logique de saut que la ligne du marqueur `cross-feature-allow`
-// ci-dessus (un fichier marqué n'alimente ni les violations ni les usages). Sert à
-// détecter les dérogations mortes (déclarées mais jamais appariées à un import réel).
+const deadMarkers = []
+// Entrées d'ALLOWED_CROSS_IMPORTS réellement servies pendant le balayage : sert à détecter les
+// dérogations mortes (déclarées mais jamais appariées à un import réel).
 const usedAllowEntries = new Set()
+const usedReverseEntries = new Set()
+let markedImports = 0
 
 const featuresDir = join(WEB_SRC, 'features')
 const componentsDir = join(WEB_SRC, 'components')
 
-// 1. Cross-feature scan
+// Tous les imports d'un fichier qui visent `features/` : [{ idx, target }].
+function featureImports(file, lines) {
+  const found = []
+  lines.forEach((line, idx) => {
+    if (isCommentLine(line)) return
+    QUOTED_SPECIFIER_RE.lastIndex = 0
+    let m
+    while ((m = QUOTED_SPECIFIER_RE.exec(line)) !== null) {
+      const target = featureTarget(file, m[2])
+      if (target) found.push({ idx, target })
+    }
+  })
+  return found
+}
+
+// Marqueurs d'un fichier : ceux qui couvrent un import hors allowlist sont consommés ; les
+// autres sont signalés (le marqueur d'un fichier entier ne couvre plus rien).
+function reportDeadMarkers(relPath, lines, consumed) {
+  lines.forEach((line, idx) => {
+    if (!line.includes(ALLOWED_INLINE_MARKER) || consumed.has(idx)) return
+    deadMarkers.push({ file: relPath, line: idx + 1 })
+  })
+}
+
+// 1 et 2. features/ : cross-feature et socle `_shared`
 try {
   for (const file of walk(featuresDir)) {
     const relPath = relative(REPO_ROOT, file).replaceAll('\\', '/')
     const consumerFeature = getFeatureNameFromPath(relPath)
     if (!consumerFeature) continue
 
-    const text = readFileSync(file, 'utf8')
-    if (text.includes(ALLOWED_INLINE_MARKER)) continue
+    const lines = readFileSync(file, 'utf8').split('\n')
+    const consumedMarkers = new Set()
 
-    let m
-    FEATURE_IMPORT_RE.lastIndex = 0
-    while ((m = FEATURE_IMPORT_RE.exec(text)) !== null) {
-      const importedFeature = m[1]
-      if (importedFeature === consumerFeature) continue
-      const importedModule = `${importedFeature}${m[2] ?? ''}`
-      // Deux formes d'exception, et la seconde est la seule qui dise la vérité quand une
-      // feature n'emprunte que trois modules à sa voisine : la PAIRE (`a=>b`, toute la
-      // feature) et le MODULE NOMMÉ (`a=>b/dossier/module`). Un module autorisé n'ouvre pas
-      // sa feature ; ajouter un import ailleurs dans la même voisine fait rougir le lint.
-      const paire = `${consumerFeature}=>${importedFeature}`
-      const module = `${consumerFeature}=>${importedModule}`
-      if (ALLOWED_CROSS_IMPORTS.has(paire)) {
-        usedAllowEntries.add(paire)
+    for (const { idx, target } of featureImports(file, lines)) {
+      const importedFeature = target.feature
+      // Importer le socle est libre ; se lire soi-même aussi.
+      if (importedFeature === consumerFeature || importedFeature === SHARED_FEATURE) continue
+
+      const importedModule = `${importedFeature}${target.modulePath}`
+      const where = `${relPath}:${idx + 1}`
+
+      if (consumerFeature !== SHARED_FEATURE) {
+        // Deux formes d'exception durable : la PAIRE (`a=>b`, toute la feature) et le MODULE
+        // NOMMÉ (`a=>b/dossier/module`), la seule qui dise la vérité quand une feature
+        // n'emprunte que trois modules à sa voisine. Un module autorisé n'ouvre pas sa
+        // feature ; ajouter un import ailleurs dans la même voisine fait rougir le lint.
+        const paire = `${consumerFeature}=>${importedFeature}`
+        const module = `${consumerFeature}=>${importedModule}`
+        if (ALLOWED_CROSS_IMPORTS.has(paire)) {
+          usedAllowEntries.add(paire)
+          continue
+        }
+        if (ALLOWED_CROSS_IMPORTS.has(module)) {
+          usedAllowEntries.add(module)
+          continue
+        }
+      }
+
+      const marker = markerLineFor(lines, idx)
+      if (marker >= 0) {
+        consumedMarkers.add(marker)
+        markedImports++
         continue
       }
-      if (ALLOWED_CROSS_IMPORTS.has(module)) {
-        usedAllowEntries.add(module)
-        continue
-      }
-      crossViolations.push({ file: relPath, key: module, importedFeature: importedModule })
+      const violation = { file: relPath, where, importedFeature: importedModule }
+      if (consumerFeature === SHARED_FEATURE) sharedViolations.push(violation)
+      else crossViolations.push(violation)
     }
+    reportDeadMarkers(relPath, lines, consumedMarkers)
   }
 } catch (err) {
   console.error('cross-feature scan error:', err.message)
+  process.exit(2)
 }
 
-// 2. Reverse boundary scan (components/ → features/)
+// 3. Frontière inversée (components/ → features/)
 try {
   for (const file of walk(componentsDir)) {
     const relPath = relative(REPO_ROOT, file).replaceAll('\\', '/')
     if (relPath.startsWith(SHELL_PATH_PREFIX)) continue // shell orchestre
 
-    const text = readFileSync(file, 'utf8')
-    if (text.includes(ALLOWED_INLINE_MARKER)) continue
+    const lines = readFileSync(file, 'utf8').split('\n')
+    const consumedMarkers = new Set()
 
-    if (text.match(FEATURE_IMPORT_RE)) {
-      let m
-      FEATURE_IMPORT_RE.lastIndex = 0
-      while ((m = FEATURE_IMPORT_RE.exec(text)) !== null) {
-        reverseViolations.push({ file: relPath, importedFeature: m[1] })
+    for (const { idx, target } of featureImports(file, lines)) {
+      if (target.feature === SHARED_FEATURE && REVERSE_SHARED_ALLOWED.has(relPath)) {
+        usedReverseEntries.add(relPath)
+        continue
       }
+      const marker = markerLineFor(lines, idx)
+      if (marker >= 0) {
+        consumedMarkers.add(marker)
+        markedImports++
+        continue
+      }
+      reverseViolations.push({
+        file: relPath,
+        where: `${relPath}:${idx + 1}`,
+        importedFeature: `${target.feature}${target.modulePath}`,
+      })
     }
+    reportDeadMarkers(relPath, lines, consumedMarkers)
   }
 } catch (err) {
   console.error('reverse boundary scan error:', err.message)
+  process.exit(2)
 }
 
-// A3.1 (2026-09-27) : dérogations mortes — déclarées dans ALLOWED_CROSS_IMPORTS mais
-// jamais appariées à un import réel pendant le balayage ci-dessus. Une entrée morte
-// documente une dépendance qui n'existe plus : elle ment sur l'architecture réelle et
-// personne ne l'a retirée (D-6, item 5 du backlog 2026-09-26).
 const deadAllowEntries = [...ALLOWED_CROSS_IMPORTS].filter((entry) => !usedAllowEntries.has(entry))
+const deadReverseEntries = [...REVERSE_SHARED_ALLOWED].filter((entry) => !usedReverseEntries.has(entry))
 
-if (deadAllowEntries.length > 0) {
-  console.log(`\n# Dérogations mortes dans ALLOWED_CROSS_IMPORTS (${deadAllowEntries.length}) :`)
-  for (const entry of deadAllowEntries) console.log(`  ${entry}`)
+function printGroup(title, violations, hint) {
+  if (violations.length === 0) return
+  console.log(`\n# ${title} (${violations.length}) :`)
+  for (const v of violations) console.log(`  ${v.where}  → ${v.importedFeature}${hint ? `  (${hint})` : ''}`)
+}
+
+printGroup('Cross-feature imports', crossViolations)
+printGroup('Socle _shared important une feature', sharedViolations, '_shared ne dépend d\'aucune feature')
+printGroup('Frontière inversée (gap #14)', reverseViolations, 'components/ ne doit pas importer features/')
+
+if (deadMarkers.length > 0) {
+  console.log(`\n# Marqueurs ${ALLOWED_INLINE_MARKER} qui ne couvrent aucun import (${deadMarkers.length}) :`)
+  for (const m of deadMarkers) console.log(`  ${m.file}:${m.line}`)
   console.log(
-    '\nERREUR : ces entrées ne correspondent plus à aucun import réel. Les retirer ' +
-      '(avec leur commentaire devenu orphelin) avant de relancer ce script.',
+    `\nUn marqueur se pose sur la ligne de l'import (ou le commentaire // qui la précède) ` +
+      `et porte une raison : \`${ALLOWED_INLINE_MARKER}: <raison>\`.`,
+  )
+}
+
+if (deadAllowEntries.length > 0 || deadReverseEntries.length > 0) {
+  console.log(`\n# Dérogations mortes (${deadAllowEntries.length + deadReverseEntries.length}) :`)
+  for (const entry of [...deadAllowEntries, ...deadReverseEntries]) console.log(`  ${entry}`)
+  console.log(
+    '\nCes entrées ne correspondent plus à aucun import réel. Les retirer (avec leur ' +
+      'commentaire devenu orphelin).',
+  )
+}
+
+const total =
+  crossViolations.length +
+  sharedViolations.length +
+  reverseViolations.length +
+  deadMarkers.length +
+  deadAllowEntries.length +
+  deadReverseEntries.length
+
+if (total > 0) {
+  console.log(
+    `\nERREUR : ${total} violation(s), plafond 0. Descendre la dépendance dans components/ ou lib/, ` +
+      `ou déclarer une dépendance durable dans ALLOWED_CROSS_IMPORTS (hors _shared), ou marquer ` +
+      `l'import \`// ${ALLOWED_INLINE_MARKER}: <raison>\`.`,
   )
   process.exit(1)
 }
 
-// Report
-let totalViolations = crossViolations.length + reverseViolations.length
-
-if (totalViolations === 0) {
-  console.log('lint-cross-feature-imports: clean (0 violation)')
-  process.exit(0)
-}
-
-if (crossViolations.length > 0) {
-  console.log(`\n# Cross-feature imports (${crossViolations.length}) :`)
-  const byConsumer = new Map()
-  for (const v of crossViolations) {
-    if (!byConsumer.has(v.file)) byConsumer.set(v.file, new Set())
-    byConsumer.get(v.file).add(v.importedFeature)
-  }
-  for (const [file, set] of byConsumer.entries()) {
-    console.log(`  ${file}`)
-    for (const imp of set) console.log(`    → @/features/${imp}/...`)
-  }
-}
-
-if (reverseViolations.length > 0) {
-  console.log(`\n# Frontière inversée (${reverseViolations.length}, gap #14) :`)
-  const byFile = new Map()
-  for (const v of reverseViolations) {
-    if (!byFile.has(v.file)) byFile.set(v.file, new Set())
-    byFile.get(v.file).add(v.importedFeature)
-  }
-  for (const [file, set] of byFile.entries()) {
-    console.log(`  ${file}`)
-    for (const imp of set) console.log(`    → @/features/${imp}/... (composants/ ne doit pas importer features/)`)
-  }
-}
-
-console.log(
-  `\nUtilisez \`// cross-feature-allow: <raison>\` en tête de fichier pour ` +
-    `marquer une exception ponctuelle, ou ajoutez la paire dans ` +
-    `ALLOWED_CROSS_IMPORTS si la dépendance est durable.`,
-)
-
-// Ratchet : abaissé progressivement, JAMAIS relevé. Chaque baisse verrouille le
-// gain obtenu (déclaration d'une dépendance durable ou suppression d'un import).
-// État 2026-08-04 : 7 occurrences cross-feature non déclarées sur 6 fichiers,
-// 0 reverse boundary — après déclaration des 3 paires *=>squad.
-const RATCHET_THRESHOLD = 7
-
-if (totalViolations > RATCHET_THRESHOLD) {
-  console.log(
-    `\nERREUR : ${totalViolations} > plafond P8.5 (${RATCHET_THRESHOLD}). ` +
-      'Cleanup requis avant merge.',
-  )
-  process.exit(1)
-}
-
-console.log(
-  `\nInfo : ${totalViolations} <= plafond P8.5 (${RATCHET_THRESHOLD}). ` +
-    'Pas d\'échec — ratchet en place pour bloquer toute régression.',
-)
+console.log(`lint-cross-feature-imports: clean (0 violation, ${markedImports} import(s) marqué(s) par ligne)`)
 process.exit(0)

@@ -23,7 +23,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
-import { useFiltersPreview } from '@/features/filters/queries'
+import { useFiltersPreview } from '@/lib/query/useFiltersPreview'
 import {
   DEFAULT_CASCADE,
   DEFAULT_SESSIONS,
@@ -49,7 +49,7 @@ import {
   squadSessionCount,
   squadSessionShownCount,
 } from './squadSessionCounts'
-import { useActiveSeason } from './useActiveSeason'
+import { useActiveSeason } from '@/lib/seasons/useActiveSeason'
 
 /** Popover actuellement ouvert dans la barre (un seul à la fois). */
 export type SquadActivePopover = 'filtres' | 'periode' | 'saison' | null

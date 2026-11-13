@@ -1,5 +1,3 @@
-// cross-feature-allow: tab Réalisations Ascension — agrège StatsGlobales,
-// MomentCard et useChallenges depuis features/prestige.
 /**
  * AscensionRealisationsTab — tab "Réalisations" (refonte 2026-05-26).
  *

@@ -1,5 +1,3 @@
-// cross-feature-allow: section Historique Réalisations — agrège les défis
-// terminaux (features/prestige) + arcs + campagnes closes (features/ascension).
 /**
  * HistorySection — mémoire complète datée de l'onglet Réalisations (Lot C).
  *

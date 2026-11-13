@@ -8,7 +8,7 @@
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import { MultiSelectFilter, type MultiSelectOption } from './MultiSelectFilter'
+import { MultiSelectFilter, type MultiSelectOption } from '@/components/filters/MultiSelectFilter'
 import { ExplorerMatchesTable } from './ExplorerMatchesTable'
 import { ExplorerBriefingStrip } from './ExplorerBriefingStrip'
 import { SaisonPill } from '@/components/shell/FilterOmnibar'

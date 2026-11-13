@@ -1,6 +1,3 @@
-// cross-feature-allow: bloc Progression Prestige de la tab Réalisations —
-// consomme queryKeys.prestige (lib/query) et usePlayerFriends (liste d'amis du
-// joueur) depuis features/friends.
 /**
  * PrestigeSquadProgress — bloc "Progression Prestige" de la tab Réalisations.
  *

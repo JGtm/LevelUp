@@ -1,5 +1,3 @@
-// cross-feature-allow: jetons de couleur des chaînes LUSR (`LUSR_GROUP_TOKENS`) partagés avec
-// l'onglet Carrière — une seule table de chaînes dans l'app.
 /**
  * tendancesCharts.logic — les définitions PURES des graphiques de la section « Évolution » :
  * de la réponse de l'API, de l'horizon et du pas, aux deux grilles de graphiques à tracer.

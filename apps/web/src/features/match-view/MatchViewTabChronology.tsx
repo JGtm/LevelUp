@@ -29,7 +29,7 @@ import { MatchScoreDeltaChart } from './MatchScoreDeltaChart'
 import { MatchScoreEventsChart } from './MatchScoreEventsChart'
 import { MatchTugOfWarChart } from './MatchTugOfWarChart'
 import type { MatchViewText } from './i18n'
-import { SCORE_TIMELINE_EVENTS } from './scoreTimelineKind'
+import { SCORE_TIMELINE_EVENTS } from '@/lib/halo/scoreTimelineKind'
 
 interface Props {
   playerSlug: string

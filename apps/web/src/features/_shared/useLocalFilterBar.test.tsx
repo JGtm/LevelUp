@@ -14,7 +14,7 @@ import { renderHook, act, render, screen, fireEvent } from '@testing-library/rea
 import { useLocalFilterBar, type LocalFilterBarLabels } from './useLocalFilterBar'
 
 // Mock useFiltersPreview : retourne un dataset stable, pas d'appel réseau.
-vi.mock('@/features/filters/queries', () => ({
+vi.mock('@/lib/query/useFiltersPreview', () => ({
   useFiltersPreview: () => ({
     data: {
       effective: {
@@ -42,7 +42,7 @@ vi.mock('@/features/filters/queries', () => ({
 }))
 
 // Mock useActiveSeason pour éviter de dépendre du catalog des saisons en env test.
-vi.mock('@/features/squad/useActiveSeason', () => ({
+vi.mock('@/lib/seasons/useActiveSeason', () => ({
   useActiveSeason: () => ({ seasons: [], activeSeason: null }),
   seasonToPeriod: (s: { startDate: Date; endDate: Date | null }) => ({
     start_date: s.startDate.toISOString().slice(0, 10),

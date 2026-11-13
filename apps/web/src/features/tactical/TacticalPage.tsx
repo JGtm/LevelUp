@@ -1,5 +1,3 @@
-// cross-feature-allow: la liste de composition de la page Escouade (`useCompositionOptions`), celle
-// du sélecteur partagé `SquadCompositionPicker` que monte la barre de l'onglet.
 /**
  * TacticalPage — L'ÉCRAN UNIQUE de l'onglet Tactique : sous la barre de filtres, la grille
  * « cockpit » — à gauche les cartes jouées, au centre et à droite la lecture de la carte affichée.

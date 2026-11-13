@@ -15,7 +15,7 @@
  * Libellés outcomes : tirés de outcomes.toml via useOutcomeLabel() (multi-titres).
  */
 import type { KPIStats } from '@/lib/api/types'
-import type { PlayerScoreCard, SquadScoreCard } from '@/features/squad/v2/types'
+import type { PlayerScoreCard, SquadScoreCard } from '@/lib/api/types'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { useOutcomeLabel } from '@/lib/i18n/fieldMappings'
 
@@ -38,8 +38,13 @@ interface SquadVerdictProps {
   texts: BriefingTexts
 }
 
+/** `label` est une chaîne libre du contrat : seul un palier connu sert de clé de libellé. */
+function isTierKey(label: string, tiers: Record<TierKey, string>): label is TierKey {
+  return Object.hasOwn(tiers, label)
+}
+
 function tierLabelOf(card: PlayerScoreCard, tiers: Record<TierKey, string>): string {
-  if (card.label) return tiers[card.label]
+  if (isTierKey(card.label, tiers)) return tiers[card.label]
   return tiers[getScoreTier(card.score).key]
 }
 

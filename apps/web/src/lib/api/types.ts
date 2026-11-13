@@ -2187,6 +2187,11 @@ export type RankDelta = components['schemas']['RankDelta']
 /** KPIStats — agreges du joueur sur le scope filtre. Miroir Go domain.KPIStats. */
 export type KPIStats = components['schemas']['KPIStats']
 
+/** Verdict escouade et cartes joueur du bandeau de session (SessionBriefing). `label` et
+ *  `comparison` sont des chaînes libres du contrat : les lecteurs les restreignent eux-mêmes. */
+export type SquadScoreCard = components['schemas']['SquadScoreCard']
+export type PlayerScoreCard = components['schemas']['PlayerScoreCard']
+
 export type TimeseriesWeaponKill = components['schemas']['TimeseriesWeaponKill']
 
 /** Répartition des frags par type sur la période (donut 1er onglet, Halo 5). */

@@ -28,7 +28,7 @@ import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import type { Locale } from '@/lib/i18n/locale'
 import type { SessionLabelEntry, TeammateOption, TeammateRow } from '@/lib/api/types'
 
-import { seasonToPeriod } from './useActiveSeason'
+import { seasonToPeriod } from '@/lib/seasons/useActiveSeason'
 import { useSquadFilterBarState } from './useSquadFilterBarState'
 import { SquadCompositionPicker } from './SquadCompositionPicker'
 import { SquadExactCompositionOption } from './SquadExactCompositionOption'

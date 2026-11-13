@@ -1,5 +1,3 @@
-// cross-feature-allow: le sélecteur de composition de la page Escouade (`SquadCompositionPicker`)
-// et le type de sa liste (`useCompositionOptions`) — le même sélecteur sur toutes les pages.
 /**
  * TacticalFilterBar — la barre L2 de l'onglet Tactique.
  *

@@ -9,7 +9,7 @@ import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { SKILL_TIER_VALUES } from '@/lib/skillTiers'
 import type { ExplorerMatchesQueryResponse, LabelValue } from '@/lib/api/types'
-import type { MultiSelectOption } from './MultiSelectFilter'
+import type { MultiSelectOption } from '@/components/filters/MultiSelectFilter'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 
 type Translator = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string

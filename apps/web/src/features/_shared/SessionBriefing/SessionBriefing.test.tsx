@@ -18,7 +18,7 @@ import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import * as fieldMappingsModule from '@/lib/i18n/fieldMappings'
 import type { KPIStats } from '@/lib/api/types'
-import type { PlayerScoreCard, SquadScoreCard } from '@/features/squad/v2/types'
+import type { PlayerScoreCard, SquadScoreCard } from '@/lib/api/types'
 
 import { SessionBriefing } from './SessionBriefing'
 

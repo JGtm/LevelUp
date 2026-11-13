@@ -13,7 +13,8 @@ import { server } from '@/test/setup'
 import { queryKeys } from '@/lib/query/keys'
 import { createFilterStore } from '@/stores/createFilterStore'
 import type { FilterContextInput } from '@/lib/api/types'
-import { useFiltersPreview, useFiltersResolve } from './queries'
+import { useFiltersResolve } from './queries'
+import { useFiltersPreview } from '@/lib/query/useFiltersPreview'
 
 const corps: FilterContextInput[] = []
 let n = 0

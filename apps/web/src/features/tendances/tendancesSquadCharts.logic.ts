@@ -1,6 +1,3 @@
-// cross-feature-allow: jetons de couleur des joueurs d'escouade (`SQUAD_MAIN_PLAYER_TOKEN`,
-// `SQUAD_TEAMMATE_COLOR_TOKENS`) partagés avec la page Escouade — une seule palette d'identité
-// joueur dans l'app, celle de la pastille et du sélecteur.
 /**
  * tendancesSquadCharts.logic — les définitions PURES des six graphiques de la vue Escouade :
  * de la réponse de l'API, de l'horizon et du pas, à UNE grille de graphiques.

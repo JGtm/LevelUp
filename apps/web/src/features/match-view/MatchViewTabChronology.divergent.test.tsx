@@ -12,7 +12,7 @@ import { renderWithProviders } from '@/test/render-utils'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import { MATCH_VIEW_TEXT } from './i18n'
-import { SCORE_TIMELINE_EVENTS, SCORE_TIMELINE_HIDDEN } from './scoreTimelineKind'
+import { SCORE_TIMELINE_EVENTS, SCORE_TIMELINE_HIDDEN } from '@/lib/halo/scoreTimelineKind'
 
 const props = vi.hoisted(() => ({
   delta: [] as Record<string, unknown>[],
