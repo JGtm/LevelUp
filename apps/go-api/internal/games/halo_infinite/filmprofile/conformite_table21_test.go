@@ -43,6 +43,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain/title"
@@ -69,6 +70,7 @@ var tablesDuProfil = []struct {
 	{"tableProfilInvariants", 12},        // 12 depuis la fusion du lot 2.2 (2026-09-17) : `Movement.WorldObject` entre dans la table
 	{"tableProfilGrenade", 7},            // lot 3.3.1 (2026-09-17) : l amorce du record de creation de projectile, par BUILD
 	{"tableProfilGrenadeSansSection", 2}, // lot 3.3.1 : les deux majeures sans section d identification
+	{"tableProfilEcriture", 9},           // trois dispositions d ecriture par build, sur trois builds
 }
 
 // lignesAttenduesParTable : le total des quatre, calcule une fois.
@@ -114,19 +116,48 @@ func TestCatalogueConformeALaTableDuLot21(t *testing.T) {
 	}
 }
 
-// lireTableProfil analyse `profile_table.go` et rend ses lignes, dans l ordre de la table.
+// fichiersDuPaquet analyse les fichiers Go hors test du dossier `dir`, dans l ordre des noms : les sous-tables
+// et leurs constantes ne vivent pas toutes dans `profile_table.go`.
+func fichiersDuPaquet(t *testing.T, dir string) []*ast.File {
+	t.Helper()
+	noms, err := filepath.Glob(filepath.Join(dir, "*.go"))
+	if err != nil || len(noms) == 0 {
+		t.Fatalf("aucun fichier Go lu sous %s (%v)", dir, err)
+	}
+	fset := token.NewFileSet()
+	var out []*ast.File
+	for _, nom := range noms {
+		if strings.HasSuffix(nom, "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(fset, nom, nil, 0)
+		if err != nil {
+			t.Fatalf("analyse de %s : %v", nom, err)
+		}
+		out = append(out, f)
+	}
+	return out
+}
+
+// lireTableProfil analyse le paquet de `profile_table.go` et rend les lignes de la table, dans son ordre.
 func lireTableProfil(t *testing.T, chemin string) []filmprofile.Entree {
 	t.Helper()
-	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, chemin, nil, 0)
-	if err != nil {
-		t.Fatalf("analyse de %s : %v", chemin, err)
-	}
-	constantes := constantesDuFichier(f)
+	fichiers := fichiersDuPaquet(t, filepath.Dir(chemin))
+	constantes := map[string]string{}
 	corps := map[string]*ast.FuncDecl{}
-	for _, d := range f.Decls {
-		if fn, ok := d.(*ast.FuncDecl); ok && fn.Recv == nil {
-			corps[fn.Name.Name] = fn
+	// Deux passes sur les constantes : une constante peut citer celle d un fichier lu apres le sien.
+	for range 2 {
+		for _, f := range fichiers {
+			for nom, v := range constantesDuFichierAvec(f, constantes) {
+				constantes[nom] = v
+			}
+		}
+	}
+	for _, f := range fichiers {
+		for _, d := range f.Decls {
+			if fn, ok := d.(*ast.FuncDecl); ok && fn.Recv == nil {
+				corps[fn.Name.Name] = fn
+			}
 		}
 	}
 	verifierTablesConcatenees(t, chemin, corps)
@@ -149,7 +180,16 @@ func lireTableProfil(t *testing.T, chemin string) []filmprofile.Entree {
 // constantesDuFichier releve les constantes de chaine declarees au niveau du fichier — les
 // libelles repetes de la table (`cleToutes`, `champSlotsPerso`, les dates, les provenances).
 func constantesDuFichier(f *ast.File) map[string]string {
+	return constantesDuFichierAvec(f, nil)
+}
+
+// constantesDuFichierAvec est [constantesDuFichier] quand une constante peut citer celles, deja connues,
+// d un autre fichier du paquet.
+func constantesDuFichierAvec(f *ast.File, connues map[string]string) map[string]string {
 	out := map[string]string{}
+	for nom, v := range connues {
+		out[nom] = v
+	}
 	for _, d := range f.Decls {
 		gen, ok := d.(*ast.GenDecl)
 		if !ok || gen.Tok != token.CONST {
@@ -309,11 +349,35 @@ func verifierTablesConcatenees(t *testing.T, chemin string, corps map[string]*as
 }
 
 // fonctionsConcatenees rend, DANS L ORDRE, le nom des fonctions que le corps de `fn` concatene
-// par `append(out, xxx()...)` — la forme exacte de `TableProfil()`. Tout autre appel est ignore
-// plutot que devine ; une forme inconnue rend une liste vide ou courte, que
-// [verifierTablesConcatenees] refuse au lieu de la prendre pour un accord.
+// — les deux formes de `TableProfil()` : `append(out, xxx()...)` ligne a ligne, ou le parcours d un
+// litteral `[][]LigneProfil{xxx(), yyy()}`. Tout autre appel est ignore plutot que devine ; une forme
+// inconnue rend une liste vide ou courte, que [verifierTablesConcatenees] refuse au lieu de la prendre
+// pour un accord.
 func fonctionsConcatenees(fn *ast.FuncDecl) []string {
 	var out []string
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		boucle, ok := n.(*ast.RangeStmt)
+		if !ok {
+			return true
+		}
+		lit, ok := boucle.X.(*ast.CompositeLit)
+		if !ok {
+			return true
+		}
+		for _, elt := range lit.Elts {
+			appel, ok := elt.(*ast.CallExpr)
+			if !ok || len(appel.Args) != 0 {
+				continue
+			}
+			if nom, ok := appel.Fun.(*ast.Ident); ok {
+				out = append(out, nom.Name)
+			}
+		}
+		return false
+	})
+	if len(out) > 0 {
+		return out
+	}
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
 		appel, ok := n.(*ast.CallExpr)
 		if !ok || appel.Ellipsis == token.NoPos || len(appel.Args) != 2 {
