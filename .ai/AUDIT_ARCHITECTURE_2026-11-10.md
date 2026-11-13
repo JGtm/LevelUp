@@ -2,6 +2,9 @@
 
 > Registre d'audit (skill `adversarial-audit`). L'audit ne corrige rien : il produit ce registre,
 > qui devient un plan. Commit audité : `afb963994c` (tête de `release/v8.1.2`).
+> **Statuts à la clôture (2026-11-13)** : chaque constat est statué dans la section « Statut des constats »
+> en fin de fichier (plan `.ai/PLAN_ARCHITECTURE_FRONTIERES_2026-11-10.md`, étape 8.5). Les champs
+> « Décision » des constats ci-dessous sont ceux du jour de l'audit.
 
 ## Cadrage
 
@@ -327,3 +330,84 @@ Chaque ligne est une règle écrite qu'aucun test ne tient ; c'est là que se tr
 - **Chantier candidat « ménage »** : MORT-1, MORT-2, ART-5, FLG-3 à FLG-5, ART-3, ART-4.
 - **Chantier candidat « front »** : WEB-1, WEB-2, TEC-1, TEC-2.
 - Tout chantier se cadre sous `plan-review`, s'exécute sous `plan-execution`, se relit sous `adversarial-review`.
+
+## Statut des constats (clôture, 2026-11-13)
+
+Plan `.ai/PLAN_ARCHITECTURE_FRONTIERES_2026-11-10.md`. Statuts : **traité** (étape et item du plan), **traité
+avec reste** (le reste est nommé), **couvert ailleurs**, **non traité** (justification). Bilan : 25 P1 et 22 P2
+traités (dont 3 avec reste : TEC-2, FLG-P2-2, TEC-P2-2), 12 écartés ou requalifiés (dont 1 requalifié P1 vers P2 traité),
+aucun constat sans statut.
+
+### P1
+
+| Réf. | Statut | Où | Note |
+|---|---|---|---|
+| ART-5 | traité | 1.6 (D2, D9) | capability, affichage, champs d'API et lecteurs retirés ; le calcul et la colonne `match_skill_rank.expected_win_prob` restent (D2) |
+| ART-2 | traité | 3.1 | `convergePSACollect` / `flushAliasPairs` / `settlePSA`, marqueur après les alias, échecs comptés ; `convergePSA` sorti de la production le 2026-11-13 (8.5) |
+| ART-1 | traité | 3.2 | journal et compteur `match_intensity_write_failed_total` |
+| STO-1 | traité | 5.1 | amorçage par `PostSyncEnrichmentPersister.PrimeBaseline`, sans arrêt à la première erreur |
+| API-1 | traité | 4.3 | progression, campagne, profil joueur et limite mémoire derrière des ports ; `TestHandlersSansStockageDuckDB` |
+| API-2 | traité | 4.2 | `port.SyncJobService` et `service.SyncJobService` ; `TestHandlersSansMoteurDeSync` |
+| API-3 | traité | 3.3 (erreurs de `rows.Scan`), 4.4 | SQL, écritures et KPM/PSPM sortis de `api/wire` ; `TestApiSansSQL` |
+| API-4 | traité | 4.5 | handlers et fichiers statiques dans `api/handlers/`, règle d'audience en service, purge des sessions dans `scheduler/` |
+| DEP-1 | traité | 6.1, 6.2 | 15 imports (plus 1 de `livesync`) à 0 ; `TestServiceImporteAucunPaquetDeTitre` |
+| STO-2 | traité | 5.2 | `platform/duckdb/profilerepo` derrière `port.ProfileStore` |
+| STO-3 | traité | 5.3 | `cronstore`, `worldrepo` ; `TestSchedulerSansStockageDuckDB` |
+| STO-4 | traité | 5.4 | `TestAnalysisSansStockage` |
+| ART-3 | traité | 3.4 | `TestOpenReadWriteHorsDuPointUniqueSurAllowlist` ; `duckdb.OpenReadWriteShared` reste non gardé (§12 du plan) |
+| ART-4 | traité | 3.5 | dates, clé par chemin complet, tests de forme |
+| FLG-1 | traité | 2.1 | interrupteur retiré (D3) |
+| FLG-2 | traité | 2.2 | réparation automatique supprimée (D4) ; détection, jauge, alerte et recalcul manuel intacts |
+| FLG-3 | traité | 2.3 | sept interrupteurs retirés (D5), `LUSRRev` inchangée |
+| FLG-4 | traité | 1.7 | deux commentaires corrigés |
+| FLG-5 | traité | 1.4 | code mort supprimé |
+| WEB-1 | traité | 7.1 | `lint-cross-feature-imports.mjs` à plafond 0 |
+| WEB-2 | traité | 7.2 | `featureTsxNoQuery.guard.test.ts` |
+| TEC-1 | traité | 7.3 | `lazyEchartsMount.guard.test.ts` ; rendu sous changement de palette à contrôler à l'écran (utilisateur) |
+| TEC-2 | traité avec reste | 1.8, 7.4 | 31 types manuels homonymes : 11 restent en listes datées (4 types d'entrée, 2 réponses où le contrat diffère du serveur, 5 hors `types.ts`), garde à plafond 0 hors listes |
+| MORT-1 | traité | 1.1, 1.9 | 180 commandes, 98 restantes (D8 révisée, décisions du 2026-11-10 et du 2026-11-11) |
+| MORT-2 | traité | 1.2 | `steam_poller.go` et `domain/chart/` supprimés |
+
+### P2
+
+| Réf. | Statut | Où | Note |
+|---|---|---|---|
+| API-P2-1 | traité | 4.6 | interfaces de `port/` pour les sept services |
+| STO-P2-1 | traité | 5.5 | `DBExecutor` et `DBWriter` dans `platform/dblease` ; `TestPortSansTypeSQL` |
+| STO-P2-2 | traité | 5.1 | `*sql.DB` hors des signatures des services d'import (`importstore`) |
+| STO-P2-3 | traité | 1.5 | import du pilote retiré |
+| STO-P2-4 | traité | 5.6 | `domain.ErrRecordNotFound` / `port.ErrNotFound`, cinq comparaisons (le plan en comptait six) |
+| STO-P2-5 | traité | 5.7 | `platform/duckdb/sqlfrag` |
+| DEP-P2-1 | traité | 5.8 | `playerresolve` ; `config` n'importe plus `platform/duckdb` ni `prestige` |
+| DEP-P2-2 | traité | 4.1 | `TestWorldenrichSansService` |
+| ART-P2-1 | traité | 3.6 | recette de `persist/doc.go` et `TestEnrichmentColumnStage_LieALaVueMergeOnRead` |
+| FLG-P2-1 | traité | 2.3 | `LEVELUP_LOG_JSON` retirée, image sur `LEVELUP_LOG_FORMAT=json` |
+| FLG-P2-2 | traité avec reste | 2.5 | les deux branches sont datées (retrait cible 2026-12-31, critère écrit), non retirées : la mesure de production ne les prouve pas inutilisées ; le retrait est à décider à l'échéance |
+| FLG-P2-3 | traité | 2.4, 2.6 | six variables lues par `internal/config` ; `TestAucuneLectureEnvHorsConfig`, 13 fichiers en allowlist datée |
+| WEB-P2-1 | traité | 7.11 | modules d'assistance dans `components/assists/` |
+| WEB-P2-2 | traité | 7.11 | `noRouteImport.guard.test.ts` |
+| WEB-P2-3 | traité | 7.8 | `lib/charts/stats` ; `medianSeconds` et `bucketMedian` non branchés (§12) |
+| WEB-P2-4 | traité | 7.9 | `ReplayPage`, `useTitleConvergence` |
+| WEB-P2-5 | traité | 7.10 | clés dérivées dans `queryKeys`, `keys.guard.test.ts` |
+| WEB-P2-6 | traité | 7.10 | `lib/query/bootstrap.ts`, `bootstrap.guard.test.ts` |
+| TEC-P2-1 | traité | 7.7 | `lib/table/useColumnSort`, `noLocalSortToggle.guard.test.ts` |
+| TEC-P2-2 | traité avec reste | 7.6 | `fetch` hors client de 7 à 4, tous en liste datée (GitHub, deux sons du rejeu, un fichier statique) ; base URL une seule fois |
+| TEC-P2-3 | traité | 7.5 | `chartsImportBoundary.guard.test.ts` ; imports d'`echarts` hors `components/charts/` de 72 à 0 |
+| MORT-P2-1 | traité | 1.1, 1.3 | entrées d'allowlist retirées, deux fonctions supprimées |
+
+### Écartés ou requalifiés
+
+| Constat | Statut | Note |
+|---|---|---|
+| STO-1 « sans bail » | requalifié, sans objet | le contournement de `persist` est traité par 5.1 |
+| WEB : `components/ui` vers `_shared`, `JoinPage` vers la route | requalifiés P2, traités | WEB-P2-1 et WEB-P2-2 (7.11) |
+| API-3 : erreur de `upsertPlaylistWeight` | écarté, sans changement | commentaire de justification ; la revue de 4.4 note que `PlaylistExpansionService` ignore l'erreur de `RecordWeight` (§12 du plan, non traité) |
+| Taille de `server_apiv1.go` | dette assumée, non traité | baseline lint |
+| 74 paires feature vers feature et 8 cycles | couvert ailleurs | déclarés dans l'allowlist du lint, dont le marqueur d'exemption est par ligne depuis 7.1 |
+| 83 lectures de `.DemoMode` / `.AuthMode` | dette assumée, non traité | allowlist du ratchet de l'ADR 0044 |
+| `LEVELUP_SYNC_RESOLVE_ASSETS` échu | couvert ailleurs | `.ai/REGISTRE_REPORTS.md` ; lecture encore en allowlist datée de `TestAucuneLectureEnvHorsConfig` |
+| `backfill_t0`, `backfill_t0_film`, `diag_weapons_v3` | couvert ailleurs | `.ai/REGISTRE_REPORTS.md` |
+| 13 binaires cités par un plan actif | non traité | conservés (D8) |
+| Lecture brute `Q24LUSRHistory` | non traité | exemption datée du 2026-07-10, « non revérifié » (§12 du plan, étape 3) |
+| État global zustand hors `stores/` | non traité | aucune règle écrite |
+| `analysis` vers `games/mappings` | dette assumée, non traité | autorisé par `no_title_package_in_analysis_test.go` |
