@@ -10,7 +10,11 @@
 // arsenal ne sont plus deux voies a departager, mais une seule lecture).
 package port
 
-import "context"
+import (
+	"context"
+
+	"levelup/go-api/internal/games/canonical"
+)
 
 // KillSourceClassifier traduit une SOURCE DE DEGAT du film en cle du registre d'armes.
 //
@@ -20,6 +24,17 @@ import "context"
 type KillSourceClassifier interface {
 	// KillSourceRegistryKey rend la weapon_key du registre pour une source de degat.
 	KillSourceRegistryKey(sourceTag uint32) (string, bool)
+}
+
+// KillSourceIconResolver traduit une SOURCE DE DEGAT du film en icône d'arme, avec la
+// weapon_key du registre quand l'arme y figure.
+//
+// C'est la méthode `KillSourceIcon` de l'adapter d'assets du titre, rendue seule : le service
+// de rejeu n'a besoin que d'elle, et un titre sans décodeur de film n'en fournit aucune. Même
+// contrat que `games.TitleAssetURLAdapter.KillSourceIcon` : second retour faux quand la source
+// n'est pas identifiée sans ambiguïté.
+type KillSourceIconResolver interface {
+	KillSourceIcon(sourceTag uint32) (canonical.KillSourceIcon, bool)
 }
 
 // KillSourceDescriber NOMME la classe d'une source de degat, pour la JOURNALISATION
