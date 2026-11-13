@@ -21,29 +21,31 @@ import (
 // le plan s'insère juste avant.
 const finObjet = "\n}"
 
-// Sidecar est le fichier `<cle>.json` d'un fond : le calage du décodeur, aplati, suivi du plan.
-// Sans plan, la sérialisation est celle de `replay.MapBackground` seule.
-type Sidecar struct {
+// MapBackground est le fichier `<cle>.json` d'un fond : le calage du décodeur, aplati, suivi du plan.
+// Sans plan, la sérialisation est celle de `replay.MapBackground` seule. C'est le document
+// STOCKÉ de la racine « fond de carte » : il porte le nom de son jumeau servi
+// (`replaydoc.MapBackground`) et la projection `replayview.MapBackgroundOf` en part tout entière.
+type MapBackground struct {
 	replay.MapBackground
 	Plan *replaydoc.MapBackgroundPlan `json:"plan,omitempty"`
 }
 
 // Load lit un sidecar complet. Les contrôles du calage (version de schéma) sont ceux de
 // `replay.LoadMapBackground`.
-func Load(chemin string) (*Sidecar, error) {
+func Load(chemin string) (*MapBackground, error) {
 	bg, err := replay.LoadMapBackground(chemin)
 	if err != nil {
 		return nil, err
 	}
-	plan, err := LoadPlan(chemin)
+	plan, err := lirePlan(chemin)
 	if err != nil {
 		return nil, err
 	}
-	return &Sidecar{MapBackground: *bg, Plan: plan}, nil
+	return &MapBackground{MapBackground: *bg, Plan: plan}, nil
 }
 
-// LoadPlan ne lit que le plan d'un sidecar : nil quand il n'en porte pas.
-func LoadPlan(chemin string) (*replaydoc.MapBackgroundPlan, error) {
+// lirePlan ne lit que le plan d'un sidecar : nil quand il n'en porte pas.
+func lirePlan(chemin string) (*replaydoc.MapBackgroundPlan, error) {
 	blob, err := os.ReadFile(chemin) //nolint:gosec // asset versionné, chemin résolu par PathResolver
 	if err != nil {
 		return nil, fmt.Errorf("fond de carte illisible (%s) : %w", chemin, err)
@@ -60,7 +62,7 @@ func LoadPlan(chemin string) (*replaydoc.MapBackgroundPlan, error) {
 // Write écrit le sidecar avec l'indentation de la cuisson, sauf les arêtes du plan : une par
 // ligne, `[x1,y1,x2,y2]` en clair. L'indentation complète en poserait un nombre par ligne
 // (plus d'un mégaoctet sur une carte de grand gabarit) et rendrait le diff illisible.
-func Write(chemin string, s Sidecar) error {
+func Write(chemin string, s MapBackground) error {
 	plan := s.Plan
 	s.Plan = nil
 	blob, err := json.MarshalIndent(s, "", "  ")

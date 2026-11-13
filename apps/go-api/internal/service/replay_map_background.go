@@ -269,25 +269,24 @@ func cleDeFondSure(cle string) bool {
 	return !strings.Contains(cle, "..")
 }
 
-// servedMapBackground rend le calage d'une clé de fond dans sa forme SERVIE : le calage du
-// décodeur projeté sur le contrat public, plus le plan des murs que le sidecar porte à côté et
-// que le décodeur ne connaît pas (`internal/mapfondsidecar`). Un plan illisible est journalisé
-// et laissé de côté : le calage et l'image restent servis.
+// servedMapBackground rend le calage d'une clé de fond dans sa forme SERVIE : le sidecar complet
+// (calage du décodeur et plan des murs, `internal/mapfondsidecar`) projeté une fois sur le contrat
+// public. Un plan illisible est journalisé et laissé de côté : le calage et l'image restent servis.
 func (s *replayService) servedMapBackground(ctx context.Context, key string) (*replaydoc.MapBackground, error) {
-	bg, err := s.loadMapBackground(ctx, key)
-	if err != nil {
-		return nil, err
-	}
-	out := replayview.MapBackgroundOf(bg)
 	path := title.NewPathResolver(s.repoRoot).MapBackgroundMetaPath(s.titleSlug, key)
-	plan, err := mapfondsidecar.LoadPlan(path)
-	if err != nil {
-		slog.WarnContext(ctx, "rejeu 2D : plan des murs illisible — fond servi sans plan",
-			"err", err, "cle", key, "path", path, "titleSlug", s.titleSlug)
-		return out, nil
+	full, err := mapfondsidecar.Load(path)
+	if err == nil {
+		return replayview.MapBackgroundOf(full), nil
 	}
-	out.Plan = plan
-	return out, nil
+	// Le sidecar complet ne se lit pas : le calage seul dit si c'est lui (fond absent ou
+	// illisible, journalisé et refusé par loadMapBackground) ou le plan.
+	bg, errCalage := s.loadMapBackground(ctx, key)
+	if errCalage != nil {
+		return nil, errCalage
+	}
+	slog.WarnContext(ctx, "rejeu 2D : plan des murs illisible — fond servi sans plan",
+		"err", err, "cle", key, "path", path, "titleSlug", s.titleSlug)
+	return replayview.MapBackgroundOf(&mapfondsidecar.MapBackground{MapBackground: *bg}), nil
 }
 
 // loadMapBackground lit le sidecar de calage d'une clé de fond (module installé ou map_id).

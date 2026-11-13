@@ -12,8 +12,8 @@ import (
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
-func sidecarDeTest(plan *replaydoc.MapBackgroundPlan) Sidecar {
-	return Sidecar{
+func sidecarDeTest(plan *replaydoc.MapBackgroundPlan) MapBackground {
+	return MapBackground{
 		MapBackground: replay.MapBackground{
 			SchemaVersion: replay.MapBackgroundSchemaVersion,
 			Module:        "ctf_bazaar",
@@ -70,8 +70,8 @@ func TestSidecar_SansPlanPasDeChamp(t *testing.T) {
 	if strings.Contains(string(blob), `"plan"`) {
 		t.Errorf("champ plan ecrit sans plan : %s", blob)
 	}
-	plan, err := LoadPlan(chemin)
+	plan, err := lirePlan(chemin)
 	if err != nil || plan != nil {
-		t.Errorf("LoadPlan = %+v, %v ; attendu nil, nil", plan, err)
+		t.Errorf("lirePlan = %+v, %v ; attendu nil, nil", plan, err)
 	}
 }

@@ -208,7 +208,7 @@ func (e *environnement) ecritSidecar(c cible, rendu *himap.Rendu, b himap.BilanC
 	x0, y1, mpp := himap.CalageDuRendu(rendu)
 	// Le PNG publie est ROGNE a la matiere : l'origine suit, l'echelle NON (cadre_utile.go).
 	x0, y1 = himap.CalageRogne(x0, y1, mpp, rogne)
-	meta := mapfondsidecar.Sidecar{MapBackground: replay.MapBackground{
+	meta := mapfondsidecar.MapBackground{MapBackground: replay.MapBackground{
 		SchemaVersion: replay.MapBackgroundSchemaVersion,
 		Module:        c.cle,
 		MapNames:      append(append([]string{}, c.noms...), c.sources...),
