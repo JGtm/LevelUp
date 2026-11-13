@@ -22,7 +22,7 @@
 //	CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "ridgeline,catalyst"] [--title slug]
 //	                                         [--out-dir DIR] [--style jeu] [--rapport FILE]
 //	                                         [--natives=false] [--forge=false] [--plan-seul]
-//	                                         [--avis FILE] [--rapport-tsv FILE] [--avant-dir DIR]
+//	                                         [--avis FILE] [--rogne-publie] [--rapport-tsv FILE] [--avant-dir DIR]
 //
 // --maps vide = toutes les cartes du catalogue d'objectifs installées localement. Une carte
 // NATIVE se désigne par son dossier installé (`ridgeline`), une carte FORGE par son map_id
@@ -31,7 +31,8 @@
 // --avis lit l'avis du user carte par carte sur le croisement fond / maillage de navigation (voir
 // avis.go) : le rognage au maillage s'arme dans la forme que l'avis donne, une carte « publiee »
 // n'est pas recuite. --plan-seul refait le plan et l'image plan des sidecars publiés sans toucher
-// au fond. --rapport-tsv écrit une ligne par carte traitée ; --avant-dir porte les sidecars
+// au fond ; avec --rogne-publie il rogne aussi le fond publié à la silhouette du maillage
+// (rogne_publie.go). --rapport-tsv écrit une ligne par carte traitée ; --avant-dir porte les sidecars
 // d'avant, pour comparer les ancres au sol.
 package main
 
@@ -64,6 +65,7 @@ func main() {
 	natives := flag.Bool("natives", true, "cuire les cartes cuites dans un module")
 	forge := flag.Bool("forge", true, "cuire les cartes Forge (posées depuis leur .mvar)")
 	planSeul := flag.Bool("plan-seul", false, "refait le plan des murs et l'image plan des sidecars publies, depuis leur maillage de navigation, sans recuire")
+	roguePublie := flag.Bool("rogne-publie", false, "avec -plan-seul et -avis : rogne aussi le fond publie a la silhouette du maillage, sans recuire (cartes dont l'avis est silhouette)")
 	avis := flag.String("avis", "", "fichier d'avis du user (forme du rognage au maillage par carte) ; vide = comportement d'avant")
 	rapports := rapportsDemandes{}
 	flag.StringVar(&rapports.tsv, "rapport-tsv", "", "ecrit le rapport de recuisson en TSV a ce chemin")
@@ -84,6 +86,11 @@ func main() {
 	env.filtre = filtreDe(*maps)
 	env.echelle = *mpp
 	env.sansNatives, env.sansForge = !*natives, !*forge
+	env.rognePublie = *roguePublie
+	if *roguePublie && (!*planSeul || *avis == "") {
+		slog.ErrorContext(ctx, "-rogne-publie exige -plan-seul et -avis")
+		os.Exit(1)
+	}
 	if *avis != "" {
 		if env.avis, err = chargeAvis(*avis); err != nil {
 			slog.ErrorContext(ctx, "avis", "err", err, "path", *avis)
@@ -149,6 +156,8 @@ type environnement struct {
 	filtre  map[string]bool
 	// avis : l'avis du user sur le croisement fond / maillage (`-avis`). Nil sans l'option.
 	avis *avisFond
+	// rognePublie : `-rogne-publie`, voir rogne_publie.go.
+	rognePublie bool
 	// sansNatives et sansForge : `-natives=false` et `-forge=false`.
 	sansNatives, sansForge bool
 	// nomsAffiches : module installé -> noms de carte affichés, lus dans

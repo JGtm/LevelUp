@@ -22,7 +22,9 @@ import (
 const (
 	actionRecuite  = "recuite"
 	actionPlanSeul = "plan seul"
-	actionSautee   = "sautee"
+	// actionPublieRogne : plan seul, et le fond publié rogné à la silhouette du maillage.
+	actionPublieRogne = "publie rogne"
+	actionSautee      = "sautee"
 )
 
 // suiviFond est ce que la recuisson a décidé et mesuré pour une carte.
@@ -33,6 +35,8 @@ type suiviFond struct {
 	PartRognee *float64
 	// Plan : le plan écrit au sidecar ; nil quand la carte n'en a pas.
 	Plan *planFond
+	// Rognage : ce que le rognage du fond publié a retiré ; nil sans rognage.
+	Rognage *rognagePublie
 }
 
 // planDeCible calcule le plan d'une carte qu'on vient de cuire. Un plan impossible est journalisé
@@ -137,8 +141,11 @@ func ligneTSV(b bilanAsset, avantDir string, env *environnement) string {
 			mode, marge = string(nav.Mode), fmt.Sprintf("%g", nav.Marge)
 		}
 		gardees, ecartees = fmt.Sprint(nav.Gardees), fmt.Sprint(nav.Ecartees)
-	case s.Action == actionPlanSeul && s.Plan != nil:
+	case (s.Action == actionPlanSeul || s.Action == actionPublieRogne) && s.Plan != nil:
 		gardees, ecartees = fmt.Sprint(s.Plan.Retenues.Gardees), fmt.Sprint(s.Plan.Retenues.Ecartees)
+	}
+	if s.Rognage != nil {
+		mode, marge = string(s.Decision.Mode), fmt.Sprintf("%g", s.Rognage.Marge)
 	}
 	if s.PartRognee != nil {
 		part = fmt.Sprintf("%.1f", 100**s.PartRognee)

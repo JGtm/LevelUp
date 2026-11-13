@@ -144,11 +144,16 @@ func (e *environnement) refaitLePlan(ctx context.Context, c carteDuPlan, b *bila
 	if s.Plan == nil {
 		return errors.New("image plan impossible")
 	}
+	suivi := suiviFond{Decision: e.decisionFond(c.cle), Action: actionPlanSeul, Plan: pf}
+	if e.rognePublie {
+		if err := e.rogneLePublie(ctx, c, s, fond, cal, &suivi); err != nil {
+			return err
+		}
+	}
 	if err := mapfondsidecar.Write(chemin, *s); err != nil {
 		return err
 	}
-	b.Bilans = append(b.Bilans, bilanAsset{Cle: c.cle, Noms: c.noms,
-		Suivi: suiviFond{Decision: e.decisionFond(c.cle), Action: actionPlanSeul, Plan: pf}})
+	b.Bilans = append(b.Bilans, bilanAsset{Cle: c.cle, Noms: c.noms, Suivi: suivi})
 	return nil
 }
 
