@@ -1,13 +1,16 @@
-# Gestes de production, LevelUp 8.2.0 (BROUILLON du 2026-11-12)
+# Gestes de production, LevelUp 8.2.0 (BROUILLON du 2026-11-12, mis à jour le 2026-11-13)
 
-Base lue : `origin/release/v8.2.0` à `20b8f386a6` (PR #181 à #204 fusionnées). Sources : plan
+Base lue : `origin/release/v8.2.0` à `31f91a79e8` (PR #181 à #206 fusionnées). Sources : plan
 `.ai/PLAN_V8_1_2_2026-11-09.md` (7.5), `docs/RUNBOOK_DEPLOY_CHECKLIST.md` (conventions `LU`, fenêtres,
-R7 et R8), `docs/COMMANDS.md`, journal `.ai/thought_log.md`.
+R7 et R8), `docs/COMMANDS.md`, journal `.ai/thought_log.md`, code de `cmd/levelup` et de `internal/`.
 
 Marque **À CONFIRMER** : dépend d'une PR encore ouverte ou d'un point non prouvé sur pièces.
-Trois PR en attente : #203 (décodeur v1.2.x, destructions de véhicule, `SchemaVersion` 109), la cadence à
-30 images/s (`SchemaVersion` 110, branche `feat/rejeu-30ips-bascule`, pas de PR), et l'étape 4 du plan
-architecture (4.1 à 4.3 fusionnés, 4.4 à 4.8 ouverts).
+Une seule PR reste en attente : la **#207** (cuisson à 30 images/s, décodeur v1.3.6, `SchemaVersion` 115 ; branche
+`feat/rejeu-33ms-et-destructions`), suspendue au verdict de cinq lignes « non établi » du gate du corpus. Sont
+fusionnées depuis le premier brouillon : #203 (décodeur v1.3.4, destructions de véhicule, `SchemaVersion` 113),
+#205 (fonds de carte par le maillage de navigation), #206 (alertes de sécurité des dépendances, aucun geste) et
+les étapes 4 à 8 du plan d'architecture (aucun geste de production). Sans la #207, la release part au schéma 113
+et la cuisson reste à 100 ms (10 images/s).
 
 ## Règles qui valent pour toute la liste
 
@@ -52,7 +55,12 @@ architecture (4.1 à 4.3 fusionnés, 4.4 à 4.8 ouverts).
 
 - Commande : PR `release/v8.2.0` vers `main`, **Squash and merge** (seul mode activé), titre en Conventional
   Commits ; puis tag `v8.2.0` posé sur le commit de `main` (jamais avant le squash). Les tags `libs/<brique>/...`
-  n'existent plus à poser : les briques sont consommées en v1.0.1 depuis leurs dépôts.
+  n'existent plus à poser : les briques sont consommées depuis leurs dépôts (`halo-api` v1.0.1,
+  `halo-infinite-files-reader` et `halo-infinite-map-images` v1.1.0, `halo-infinite-film-decoder` v1.3.4 ; v1.3.6
+  avec la #207). À la lecture du 2026-11-13, le `go.mod` de la release ne porte que des tags (les pseudo-versions
+  de travail de la #205 ont été remplacées par `v1.1.0`) ; à relire au moment du squash. Les fonds de
+  carte recuits et leur plan des murs (`data/titles/halo_infinite/reference/map_backgrounds/`) sont des données
+  versionnées : ils partent avec le déploiement, aucun geste de production ne les concerne.
 - Durée : le déploiement attend la CI du même sha (sonde toutes les 30 s), soit 15 à 25 min, puis le
   déploiement. `release.yml` compile l'installeur Windows, signe l'updater, joue `desktop-e2e` et publie
   `updates/latest.json`.
@@ -93,12 +101,17 @@ architecture (4.1 à 4.3 fusionnés, 4.4 à 4.8 ouverts).
 
 ### G5. Recuisson des rejeux, en LOCAL (à ton go, jamais en lot sans accord)
 
-- Contexte : le schéma des rejeux est à **108** sur la branche ; la lecture complète du film (#198) a monté les
-  révisions de grammaire (`grammar-2026-11-10.3`), de source des éliminations (`killsource-2026-11-10`) et de
-  profil : les faits de film déjà rangés sont donc périmés et la recuisson **redécode** au lieu de republier,
-  tant que le `--dry-run` n'annonce pas « republier ».
-  **À CONFIRMER** : #203 monterait le schéma à 109 et la cadence à 30 images/s à 110. Ne recuire qu'**une seule
-  fois, au schéma final** de la release ; si ces deux PR ne sont pas fusionnées à la clôture, c'est 108.
+- Contexte : le schéma des rejeux est à **113** sur la release (décodeur v1.3.4, prod au 107 depuis la 8.1.0) ;
+  la lecture complète du film (#198) et les montées de décodeur de la #203 ont changé les révisions de grammaire
+  (`grammar-2026-11-12.4`), de source des éliminations (`killsource-2026-11-10`) et de profil
+  (`profile-2026-11-12.2`) : les faits de film déjà rangés sont donc périmés et la recuisson **redécode** au lieu
+  de republier, tant que le `--dry-run` n'annonce pas « republier ». Les destructions de véhicule, les occupants
+  tués avec leur véhicule et les corrections de lecture (postures, armes au sol) n'existent que dans un rejeu
+  recuit : sans recuisson, la prod garde l'ancien contenu.
+  **À CONFIRMER, #207** : elle monterait le schéma à **115** et la cuisson à 30 images/s (pas de 33 ms ; un rejeu
+  resté à 100 ms est alors signalé « cadence périmée »). Ne recuire qu'**une seule fois, au schéma final** de la
+  release : trancher la #207 AVANT de lancer la recuisson. Fusionnée, c'est 115 ; écartée de la 8.2.0, c'est 113
+  et le passage ultérieur à 30 images/s imposerait une seconde recuisson complète.
 - Commandes, serveur local arrêté, depuis `apps/go-api` :
   `go run ./cmd/levelup backfill-replay --only-existing --dry-run`, puis
   `go run ./cmd/levelup backfill-replay --only-existing` (séquentiel, un enfant par film, `--mem-limit-gib`
@@ -113,16 +126,33 @@ architecture (4.1 à 4.3 fusionnés, 4.4 à 4.8 ouverts).
 
 ### G6. Copie des rejeux vers le VPS, sans suppression
 
-- Commande : copie du dossier des rejeux uniquement (`data/cache/replays/halo_infinite/`), sans l'option de
-  suppression de `rsync`, serveur de prod arrêté (`docker compose stop levelup`) pendant la copie. La liste
-  exacte des fichiers (`.json.gz`, `.meta`, `.derived.json`) est celle de la copie de la 8.1.0.
-  **À CONFIRMER** : rouvrir la commande employée le 2026-11-09 avant de la rejouer, elle n'est pas écrite au
-  runbook.
+- Commande : copie des rejeux uniquement (`data/cache/replays/halo_infinite/`), sans `--delete`, serveur de prod
+  arrêté (`docker compose stop levelup`) pendant la copie. Construite sur le patron du runbook
+  (`docs/RUNBOOK_DEPLOY_CHECKLIST.md`, copie des rejeux de la démo : liste de fichiers et `--files-from`), qui
+  fixe le dossier cible `/opt/levelup/data/cache/replays/<titre>/` et les trois fichiers d'un artefact. La liste
+  ne reprend que les identifiants qui ont un `.json.gz` local, pour qu'un `.meta` ou une marque `.derived.json`
+  n'arrive jamais sans l'artefact qu'ils décrivent, et laisse de côté le sous-dossier `rasters/` (dérivés de la
+  Tactique, recalculés par le serveur) :
+
+  ```bash
+  cd data/cache/replays/halo_infinite
+  for f in *.json.gz; do id="${f%.json.gz}"; echo "$id.json.gz"; echo "$id.meta"; echo "$id.derived.json"; done > /tmp/rejeux_a_copier.txt
+  rsync -a --ignore-missing-args --files-from=/tmp/rejeux_a_copier.txt ./ deploy@<vps>:/opt/levelup/data/cache/replays/halo_infinite/
+  ```
+
+  Piège relevé le 2026-09-23 sur ce poste : le `rsync` de msys64 ne lance pas le `ssh` de Git Bash (erreur IPC 14) ;
+  employer celui de msys64 (`-e "ssh -F ~/.ssh/config -i ~/.ssh/id_ed25519"`). L'invocation exacte du 2026-11-09 n'a
+  jamais été consignée ; la commande ci-dessus est reconstituée, à relire une fois avant de la jouer.
 - Durée : 16 min d'arrêt du site en 8.1.0, pour un parc au schéma 107 ; plus long ici, les rejeux étant
   recuits.
 - Risque : élevé : cette copie remplace des artefacts en prod ; jamais de base dans cette copie. Déployer
   serveur et ouvrier ensemble (`deploy-worker`) : un ouvrier à un schéma antérieur voit ses dépôts refusés.
   Constat de la 8.1.0 : 2 079 rejeux n'existent qu'en prod, à l'ancien schéma, sans film pour les refaire.
+  Conséquence de la copie : pour chaque match recuit, la prod porte alors le `.json.gz` neuf ET l'ancien `.json`
+  (contenus différents). La porte de lecture sert le `.json.gz` et signale le doublon (un WARN par match et par
+  processus, compteur `replay_artifact_duplicate_files_total`) : état attendu après cette copie, pas une anomalie
+  de la copie ; le G8 les compte « doublons de contenus différents » et ne supprime rien, le ménage des anciens
+  `.json` est une décision à prendre à la main.
 
 ### G7. Passes de dérivés sur le serveur (serveur arrêté, une fenêtre)
 
@@ -133,10 +163,15 @@ la présence d'une ligne, donc l'écrire avant la recuisson imposerait `--force`
 LU() { docker compose run --rm --no-deps levelup levelup "$@"; }
 LU backfill-lead-share --dry-run          # lecture seule, aucune migration, une ligne par match et un bilan
 LU backfill-lead-share                    # reprenable ; ajouter --force après une recuisson ou un changement de règle
-LU backfill-usage-summary                 # À CONFIRMER : révision montée (us8) avec la cadence à 30 images/s
+LU backfill-usage-summary                 # sans --force : le changement de schéma des artefacts suffit
 LU backfill-pad-tiers --force             # niveaux d'armes de socle : les lignes écrites gardent l'ancienne jointure
-LU backfill-vehicle-takes --force         # familles de véhicules changées (tourelle fixe, schéma 108)
+LU backfill-vehicle-takes --force         # familles de véhicules changées (tourelle fixe), prises relues au schéma final
 ```
+
+- `backfill-usage-summary` : la reprise saute un match seulement si la révision de projection ET le schéma de
+  l'artefact sont ceux d'aujourd'hui (`cmd_backfill_usage_summary.go`) ; les artefacts recuits changent de
+  schéma (113, ou 115 avec la #207), donc tout est re-résumé sans option. La révision `UsageSummaryRev` reste
+  `us7` dans le décodeur v1.3.4 comme v1.3.6 : l'hypothèse d'une révision `us8` du premier brouillon est fausse.
 
 - Durée : `backfill-lead-share` environ 5 min pour 1 600 artefacts (0,15 s par match, échantillon de 133
   rejeux) ; le parc de la prod en compte au moins 3 524 d'après la 8.1.0, soit de l'ordre de 10 min
@@ -155,22 +190,32 @@ LU backfill-vehicle-takes --force         # familles de véhicules changées (to
 - Durée : compression de l'ordre de 110 ms par artefact (plan), soit 3 à 4 min pour 3 500 artefacts, relecture
   et disque en plus, non mesuré en entier. Gain mesuré en local : 3,6 Gio vers 746 Mio (rapport 0,20).
 - Risque : faible. Pose exclusive du `.json.gz` (jamais d'écrasement), relecture identique avant la suppression
-  du `.json`, idempotent, un échec est compté et laisse le fichier (code de sortie non nul : à relancer). Jouer
-  la commande dans la fenêtre où le serveur est déjà arrêté est une recommandation de prudence, pas une
-  exigence trouvée dans les sources. Contrôler l'espace libre du VPS avant et après.
+  du `.json`, idempotent, un échec est compté et laisse le fichier (code de sortie non nul : à relancer). Le
+  serveur peut rester actif : la pose d'un `.json.gz` est exclusive et atomique, un `.json.gz` posé par le serveur
+  pendant la conversion n'est jamais remplacé (en-tête de `cmd_replay.go`) ; la rejouer dans la fenêtre où le
+  serveur est déjà arrêté reste une prudence, pas une exigence. Un match qui porte les deux formes se juge sur le
+  contenu : identique, le `.json` est supprimé ; différent (cas des rejeux copiés au G6), rien n'est supprimé et
+  la commande le compte. Contrôler l'espace libre du VPS avant et après.
 
 ### G9. Redémarrage, santé, sessions
 
 - Commandes : `docker compose up -d levelup`, `curl -sf http://127.0.0.1:8000/health` (200 avant de continuer).
-  **À CONFIRMER** : recalcul des sessions par la route admin `POST /api/v1/settings/sessions/recalculate`
-  (étape R8 du runbook) : à décider selon l'effet du G4 sur les sessions, non établi dans les sources.
+  Recalcul des sessions (route admin `POST /api/v1/settings/sessions/recalculate`, étape R8 du runbook) : **non
+  nécessaire pour la 8.2.0**. Le recalcul ne lit que l'heure de début, les coéquipiers, le drapeau classé et la
+  durée jouée de `match_registry` et `match_participants` et n'écrit que `session_id` et `session_label`
+  (`sync/session_recalc.go`) : ni le recalcul LUSR du G4 ni les rejeux recuits ne les changent, et le code des
+  sessions (`analysis/sessions.go`, `domain/session_*`) n'a reçu depuis `main` que des renommages d'import, le retrait
+  de la probabilité de victoire et les champs de Mainmise, lus à la requête. À rejouer seulement si une règle de découpage change dans une release
+  future.
 - Durée : 5 min. Risque : faible.
 - Démo : le job `deploy-demo` la régénère ; vérifier qu'elle répond 200.
 
 ### G10. Application Windows
 
 - La release GitHub porte l'installeur, `updates/latest.json` (notes FR et EN tirées de la première section des
-  deux fichiers de notes) et un paquet de ressources qui change (icônes de grenades et de capacités).
+  deux fichiers de notes) et un paquet de ressources qui change (icônes de grenades et de capacités, fonds de
+  carte recuits et plan des murs de la #205 : les images et leurs fichiers de calage pèsent plus lourd, un
+  téléchargement unique à la mise à jour).
 - À faire : essai de mise à jour depuis une 8.1.2 installée (offre, notes, redémarrage, données intactes) ;
   vérifier que les anciens fichiers de l'interface sont retirés ; première ouverture d'un ancien rejeu (lisible
   sans rien faire) et offre de régénération, qui ne démarre jamais seule.
@@ -181,14 +226,27 @@ LU backfill-vehicle-takes --force         # familles de véhicules changées (to
 Rejeu : filtre du fil, clic sur une élimination, bouton Vue, fiche en panneau (Suivre, Seul, Masquer, Échap).
 Vue du match : Écart de score, Supériorité numérique, Mainmise (tiret, « 0 retournement »). Sessions, Séries
 temporelles, Escouade : Mainmise. Aperçu de lien Discord : lien copié depuis l'application (langue du partageur)
-et lien nu (anglais).
+et lien nu (anglais). Après la recuisson : destructions de véhicule dans le fil et le filtre « Véhicules » (ligne
+« détruit », parenthèse « à bord ») sur un match à véhicules. Fonds de carte : calque « Plan des murs » et
+orientation par quarts de tour dans le panneau « Vue » sur une carte native et sur une carte Forge, Live Fire sans
+plan, puis les mêmes réglages sur la Tactique et « Occupation du terrain ». Tableaux triés (administration, joueurs
+croisés de la Carrière, Classement : sens du premier clic, valeurs absentes en dernier) et les deux graphes à
+palette d'accessibilité. Avec la #207 : rejeu à 30 images/s en lecture, badge « cadence périmée » sur un rejeu
+resté à 10 images/s.
 
 ## Récapitulatif des points À CONFIRMER
 
 | Point | Dépend de | Effet sur les gestes |
 |---|---|---|
-| Schéma 109, destructions de véhicule, décodeur v1.2.3 | PR #203 (brouillon) | G5 : schéma final ; notes : ligne véhicules détruits ; G7 : `backfill-vehicle-takes` déjà prévu |
-| Cadence à 30 images/s, schéma 110 | branche `feat/rejeu-30ips-bascule`, sans PR | G5 : une seule recuisson ; G7 : `usage-summary` (révision us8) ; ouvrier et serveur déployés ensemble |
-| Étape 4 du plan architecture (4.4 à 4.8) | travaux restants de `feat/812-architecture` | aucun geste de production ; seulement les notes pour contributeurs |
-| Commande exacte de copie des rejeux | journal de la 8.1.0 non détaillé | G6 |
-| Recalcul des sessions | effet du G4 | G9 |
+| Cuisson à 30 images/s, schéma 115, décodeur v1.3.6, pictogramme et tués sur les destructions | PR #207, ouverte ; fusion suspendue aux cinq lignes « non établi » du gate et à l'acceptation de deux FAUX attribués à la grille | G5 : trancher AVANT la recuisson, qui ne se fait qu'une fois au schéma final (115 fusionnée, 113 sinon) ; G6 et G7 : ouvrier et serveur déployés ensemble ; notes : deux lignes marquées |
+
+Points levés depuis le premier brouillon, sur pièces :
+
+| Point | Verdict | Source |
+|---|---|---|
+| Schéma 109, destructions de véhicule (#203) | fusionnée ; le schéma de la release est 113 (décodeur v1.3.4) | `replay/document.go` du décodeur v1.3.4, PR #203 |
+| Étape 4 du plan d'architecture (4.4 à 4.8) | close, ainsi que les étapes 5 à 8 ; aucun geste de production | journal du 2026-11-13, historique de la release |
+| Commande de copie des rejeux | écrite au G6 (patron du runbook, sans `--delete`), reconstituée faute d'invocation consignée en 8.1.0 | `docs/RUNBOOK_DEPLOY_CHECKLIST.md`, gestes de la 8.1.0 |
+| Révision des résumés d'usage (« us8 ») | n'existe pas : `us7` dans v1.3.4 et v1.3.6 ; le schéma d'artefact suffit à re-résumer | `replay/usage_summary.go` du décodeur, `cmd_backfill_usage_summary.go` |
+| Recalcul des sessions | non nécessaire : les sessions ne dépendent ni des notes ni des rejeux | `sync/session_recalc.go`, comparaison de `analysis/sessions.go` avec `main` |
+| `replay compress` : serveur arrêté ? | non exigé : pose exclusive et atomique, serveur actif toléré | en-tête de `cmd_replay.go` |
