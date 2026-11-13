@@ -53,7 +53,10 @@ var dossiersNonSuivis = map[string]bool{".git": true, "node_modules": true, "tar
 // un a un avec leur raison. Une ligne n exempte que le nombre exact. Les parties decimales d un flottant
 // (`0.2857142857142857`) ne sont pas listees : le balayage les ignore, une suite de chiffres precedee de
 // `<chiffre>.` n etant pas un entier.
-var nombresHorsXuid = map[string]string{}
+var nombresHorsXuid = map[string]string{
+	"00090000DEADBEEF": "motif de bits d'un test du resolveur de familles du decodeur (weaponv3/pi_resolver_bits_test.go), " +
+		"lu par le balayage du module du decodeur : une constante, pas un identifiant",
+}
 
 // extensionsTexte : les fichiers que le garde-rail lit (les films, binaires, n en font pas partie).
 var extensionsTexte = map[string]bool{
