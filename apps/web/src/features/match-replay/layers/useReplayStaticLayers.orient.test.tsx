@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { HeatGrid } from '../../../lib/replay/heatPaint'
 import type { ReplayBounds } from '@/lib/api/types'
-import { orientBounds, QUARTER_TURNS, viewOrientation, type QuarterTurns } from '../model/orientation'
+import { orientBounds, QUARTER_TURNS, viewOrientation, type QuarterTurns } from '@/lib/replay/orientation'
 import { projectTo, type CanvasView } from '../model/replayView'
 import { recordingContext } from '../test/recordingContext'
 import { useReplayStaticLayers } from './useReplayStaticLayers'

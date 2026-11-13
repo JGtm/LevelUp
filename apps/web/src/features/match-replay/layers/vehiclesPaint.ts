@@ -26,7 +26,7 @@ import type { XY } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { edgeMarkFor, OFFSCREEN_MARGIN_PX, type EdgeMark } from '../model/edgeClamp'
 import { vehicleChassisHeadingAt, vehicleOccupantAimAt } from '../model/vehiclesAim'
-import type { QuarterTurns } from '../model/orientation'
+import type { QuarterTurns } from '@/lib/replay/orientation'
 import { turnsOfView } from '../model/replayView'
 import {
   vehicleActiveRides,

@@ -14,7 +14,7 @@ import type { ReplayBounds } from '@/lib/api/types'
 
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
-import { QUARTER_TURNS, viewOrientation, type QuarterTurns } from '../model/orientation'
+import { QUARTER_TURNS, viewOrientation, type QuarterTurns } from '@/lib/replay/orientation'
 import type { CanvasView } from '../model/replayView'
 import { vehicleAimAngle, vehicleScreenAngle } from '../model/vehiclesLayer'
 import { vehicleShotOrigin, type VehicleWeaponMountEntry } from '../model/vehicleWeaponMounts'

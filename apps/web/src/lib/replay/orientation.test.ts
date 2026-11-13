@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayBounds } from '@/lib/api/types'
 
-import type { HeatGrid } from '../../../lib/replay/heatPaint'
+import type { HeatGrid } from './heatPaint'
 import {
   normalizeTurns,
   orientBounds,

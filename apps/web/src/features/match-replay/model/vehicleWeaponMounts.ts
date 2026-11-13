@@ -29,7 +29,7 @@
  */
 import { vehicleAimAngle, vehicleScreenAngle, vehicleSpriteScale } from './vehiclesLayer'
 import type { XY } from '../../../lib/replay/replayLogic'
-import { shiftHeadingDeg, type QuarterTurns } from './orientation'
+import { shiftHeadingDeg, type QuarterTurns } from '@/lib/replay/orientation'
 
 /** `fixe` = solidaire du nez, vise où pointe le véhicule. `tourelle` = visée indépendante, inconnue. */
 export type VehicleMountClass = 'fixe' | 'tourelle'
@@ -215,7 +215,7 @@ export function vehicleShotOrigin(args: {
   scalePxPerM: number
   /** Plafond doux de la toile (`vehicleCeilPx`) : le montage suit le sprite tel qu'il est dessiné. */
   ceilPx?: number
-  /** La rotation de la carte (`model/orientation`) : les caps du film gagnent 90° par quart de tour. */
+  /** La rotation de la carte (`lib/replay/orientation`) : les caps du film perdent 90° par quart de tour (rotation horaire). */
   turns?: QuarterTurns
 }): { origin: XY; angle: number | null } {
   const { h, vehicleShot, center, sizeOf, k } = args

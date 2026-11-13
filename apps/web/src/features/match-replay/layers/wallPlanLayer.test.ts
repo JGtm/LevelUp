@@ -6,13 +6,14 @@
 import { describe, expect, it } from 'vitest'
 
 import { worldToCanvas } from '../../../lib/replay/replayLogic'
-import { orientBounds, QUARTER_TURNS, viewOrientation } from '../model/orientation'
+import { orientBounds, QUARTER_TURNS, viewOrientation } from '@/lib/replay/orientation'
 import type { CanvasView } from '../model/replayView'
 import { turnWorld } from '../test/orientationOracle'
-import type { WallPlanReady } from '../model/wallPlan'
+import type { WallPlanReady } from '@/lib/replay/wallPlan'
 import { composeScene, LAYER_ORDER, sceneLayers, type LayerPaint, type ReplayScene } from './replayCompose'
 import { recordingContext } from '../test/recordingContext'
-import { drawWallPlanLayer, WALL_PLAN_ALPHA, WALL_PLAN_LINE_WIDTH } from './wallPlanLayer'
+import { WALL_PLAN_ALPHA, WALL_PLAN_LINE_WIDTH } from '@/lib/replay/wallPlanPaint'
+import { drawWallPlanLayer } from './wallPlanLayer'
 
 /** Un cadrage connu : 200 x 100 m, toile 1000 x 600, marge 20. */
 const VIEW: CanvasView = {

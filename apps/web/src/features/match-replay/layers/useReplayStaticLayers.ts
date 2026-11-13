@@ -27,9 +27,9 @@ import { drawHeatmapLayer, type HeatGrid } from '../../../lib/replay/heatPaint'
 import type { ReplayLocale } from '../i18n/i18n'
 import { drawObjectivesLayer, type ObjectiveElementReady } from './objectivesLayer'
 import { drawWallPlanLayer } from './wallPlanLayer'
-import type { WallPlanReady } from '../model/wallPlan'
+import type { WallPlanReady } from '@/lib/replay/wallPlan'
 import { cookIsReusable, projectFrameTo, projectTo, scaleOf as viewScale, type CanvasView } from '../model/replayView'
-import { orientHeatGrid } from '../model/orientation'
+import { orientHeatGrid } from '@/lib/replay/orientation'
 import { canvasPixelRatio } from '../export/exportLayoutStore'
 
 /** Ce que chaque calque statique a besoin de savoir, regroupé par calque. */

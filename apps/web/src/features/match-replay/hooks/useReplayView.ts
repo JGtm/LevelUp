@@ -21,15 +21,16 @@
  * LES NOMS SORTENT INCHANGÉS, et c'est délibéré : l'appelant les déstructure tels quels, donc
  * l'extraction n'a pas touché une seule ligne du dessin qui les lit.
  */
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 import type { ReplayBounds, ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
 import { coversPlayedArea } from '../layers/mapBackground'
 import { frameBounds, sceneBounds, usefulHeight, visibleBounds } from '../../../lib/replay/replayLogic'
 import { type CanvasView } from '../model/replayView'
-import type { WallPlanReady } from '../model/wallPlan'
-import { orientAbout, orientBounds, viewOrientation, type QuarterTurns } from '../model/orientation'
+import type { WallPlanReady } from '@/lib/replay/wallPlan'
+import { orientAbout, orientBounds, viewOrientation, type QuarterTurns } from '@/lib/replay/orientation'
+import { useZoomResetOnTurns } from '@/lib/replay/useZoomResetOnTurns'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { lockedZoom, useReplayZoom, withManualMove, type ReplayZoom } from './useReplayZoom'
 import { useExportLayout } from '../export/exportLayoutStore'
@@ -69,7 +70,7 @@ export const CANVAS_PAD = 24
 export interface ReplayMapBackgroundLayer {
   calibration: ReplayMapBackgroundCalibration
   image: HTMLImageElement
-  /** Le plan des murs de la carte, normalisé ; `null` = la carte n'en a pas (cf. `model/wallPlan`). */
+  /** Le plan des murs de la carte, normalisé ; `null` = la carte n'en a pas (cf. `lib/replay/wallPlan`). */
   plan: WallPlanReady | null
 }
 
@@ -80,7 +81,7 @@ export interface ReplayViewOptions {
   /**
    * L'ORIENTATION DE LA CARTE, en quarts de tour horaires (0 = non tournée). Les bornes du
    * cadrage et `canvasView` la portent : tout ce qui projette par le cadrage — dessin, survol,
-   * export, chaleur — suit sans la connaître (cf. `model/orientation`).
+   * export, chaleur — suit sans la connaître (cf. `lib/replay/orientation`).
    */
   turns?: QuarterTurns
   /** Largeur mesurée du conteneur, en px CSS. 0 = le canvas n'est pas encore mesuré. */
@@ -213,14 +214,8 @@ export function useReplayView({
     [sceneTurned, renderWidth, renderHeight],
   )
   const userZoom = useReplayZoom(frame)
-  // UN CHANGEMENT D'ORIENTATION REVIENT À LA CARTE ENTIÈRE : le palier et le centre de l'ancienne
-  // orientation ne désignent plus le même endroit dans le nouveau repère. L'état propre au hook
-  // se corrige pendant le rendu (jamais depuis un effet), comme `useReplayStaticLayers` le fait.
-  const [seenTurns, setSeenTurns] = useState(turns)
-  if (seenTurns !== turns) {
-    setSeenTurns(turns)
-    userZoom.reset()
-  }
+  // UN CHANGEMENT D'ORIENTATION REVIENT À LA CARTE ENTIÈRE (règle partagée avec les autres vues 2D).
+  useZoomResetOnTurns(turns, userZoom.reset)
   // PENDANT UN EXPORT (décisions D6/D7, 2026-09-16) : les gestes de cadrage sont éteints, et le
   // cadrage « carte entière » rend la fenêtre à 1x SANS toucher à l'état du zoom — l'utilisateur
   // le retrouve tel quel à la fin. « Cadrage actuel » garde palier et centre.

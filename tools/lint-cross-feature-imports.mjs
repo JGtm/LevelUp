@@ -163,6 +163,12 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   //    « la hauteur que l'écran laisse à une carte » ; la descendre dans `lib/` emmènerait les
   //    constantes du cadrage du rejeu. Dépendance durable, même raison que les hooks de zoom.
   'tactical=>match-replay/hooks/useReplayViewport',
+  //  - les REGLAGES DE CARTE du rejeu 2D lus par les autres vues 2D (2026-11-13) : l'orientation retenue
+  //    par carte et l'interrupteur du plan des murs. Une carte tournee dans le rejeu l'est partout, et ces
+  //    pages n'ont aucun reglage propre : les clés, leur stockage et l'abonnement vivent dans les
+  //    preferences du rejeu, que ce module (lecture seule) est le seul à exposer. Une copie serait une
+  //    seconde clé de stockage pour la même préférence.
+  'tactical=>match-replay/settings/useMapViewPreferences',
   // Engagement orchestre des sous-vues squad
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history

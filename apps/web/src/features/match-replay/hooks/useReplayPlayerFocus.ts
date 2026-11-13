@@ -18,7 +18,7 @@ import { useMemo } from 'react'
 import { shownSlotPredicate, type PlayerFocus } from '../model/playerPanelLogic'
 import { projectileOwners } from '../model/projectileOwners'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import type { QuarterTurns } from '../model/orientation'
+import type { QuarterTurns } from '@/lib/replay/orientation'
 import { useReplayFollow } from './useReplayFollow'
 import type { ReplayZoom } from './useReplayZoom'
 

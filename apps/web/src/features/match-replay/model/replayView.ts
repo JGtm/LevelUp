@@ -26,7 +26,7 @@
 import type { ReplayBounds } from '@/lib/api/types'
 
 import { canvasScale, layerOffset, worldToCanvas, type XY } from '../../../lib/replay/replayLogic'
-import { orientAbout, turnsOf, type QuarterTurns, type ViewOrientation } from './orientation'
+import { orientAbout, turnsOf, type QuarterTurns, type ViewOrientation } from '@/lib/replay/orientation'
 
 /**
  * Le CADRAGE : quelle portion du monde on montre, dans quelle toile, avec quelle marge.

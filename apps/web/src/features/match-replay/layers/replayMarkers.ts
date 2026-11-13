@@ -47,7 +47,7 @@ import {
   type XY,
 } from '../../../lib/replay/replayLogic'
 import { type CanvasView, projectTo, turnsOfView } from '../model/replayView'
-import type { QuarterTurns } from '../model/orientation'
+import type { QuarterTurns } from '@/lib/replay/orientation'
 import { edgeMarkFor, OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
 import { drawOffscreenChevron, drawOffscreenLabel } from './offscreenChevron'
 

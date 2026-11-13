@@ -10,7 +10,7 @@
  * carte est connue (`available`).
  */
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
-import { normalizeTurns, QUARTER_TURNS, turnsToDegrees, type QuarterTurns } from '../model/orientation'
+import { normalizeTurns, QUARTER_TURNS, turnsToDegrees, type QuarterTurns } from '@/lib/replay/orientation'
 import { SettingsSegments } from './ReplaySettingsToggle'
 
 /** Ce que le panneau sait de l'orientation : la position, le geste, et si la carte la porte. */

@@ -12,7 +12,7 @@
  */
 import { useCallback, useState } from 'react'
 
-import type { QuarterTurns } from '../model/orientation'
+import type { QuarterTurns } from '@/lib/replay/orientation'
 import { persistOrientation, readOrientation } from './replayPreferences'
 
 export interface ReplayOrientation {

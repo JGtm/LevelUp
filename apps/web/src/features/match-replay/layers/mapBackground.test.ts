@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayBounds, ReplayMapBackgroundCalibration } from '@/lib/api/types'
 
-import { QUARTER_TURNS, viewOrientation } from '../model/orientation'
+import { QUARTER_TURNS, viewOrientation } from '@/lib/replay/orientation'
 import { projectTo, type CanvasView } from '../model/replayView'
 import { backgroundRect, coversPlayedArea, worldExtent, worldToPixel } from './mapBackground'
 

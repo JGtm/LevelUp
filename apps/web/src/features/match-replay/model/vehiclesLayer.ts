@@ -69,7 +69,7 @@ import { lastIndexAt, positionAt, type XY } from '../../../lib/replay/replayLogi
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { covers } from './replaySpans'
 import { HEADING_INTERP_MAX_SPAN_MS, headingTowardNext } from './headingInterp'
-import { shiftHeadingDeg, type QuarterTurns } from './orientation'
+import { shiftHeadingDeg, type QuarterTurns } from '@/lib/replay/orientation'
 
 // --- FAMILLES REFUSÉES ------------------------------------------------------------------------
 
@@ -508,8 +508,8 @@ export function vehicleHeadingAt(
  * radians CANEVAS pour un sprite dessiné NEZ EN HAUT. Voir l'en-tête du fichier pour la dérivation
  * complète ; le résultat tient en une ligne : `(90° − cap) → radians`.
  *
- * `turns` est la rotation de la carte (`model/orientation`) : le cap monde gagne 90° par quart de
- * tour avant la conversion, le sprite tourne avec le terrain.
+ * `turns` est la rotation de la carte (`lib/replay/orientation`) : le cap monde perd 90° par quart de
+ * tour (rotation horaire) avant la conversion, le sprite tourne avec le terrain.
  */
 export function vehicleScreenAngle(headingDeg: number, turns: QuarterTurns = 0): number {
   return ((90 - shiftHeadingDeg(headingDeg, turns)) * Math.PI) / 180

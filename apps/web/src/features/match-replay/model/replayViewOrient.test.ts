@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 import type { ReplayBounds } from '@/lib/api/types'
 
 import { worldToCanvas } from '../../../lib/replay/replayLogic'
-import { orientBounds, QUARTER_TURNS, viewOrientation, type QuarterTurns } from './orientation'
+import { orientBounds, QUARTER_TURNS, viewOrientation, type QuarterTurns } from '@/lib/replay/orientation'
 import { turnWorld } from '../test/orientationOracle'
 import { cookIsReusable, projectFrameTo, projectTo, scaleOf, turnsOfView, type CanvasView } from './replayView'
 

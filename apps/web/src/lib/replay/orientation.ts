@@ -20,8 +20,8 @@
  */
 import type { ReplayBounds } from '@/lib/api/types'
 
-import type { HeatGrid } from '../../../lib/replay/heatPaint'
-import type { XY } from '../../../lib/replay/replayLogic'
+import type { HeatGrid } from './heatPaint'
+import type { XY } from './replayLogic'
 
 /** Le nombre de quarts de tour horaires : 0, 90, 180 ou 270 degrés. */
 export type QuarterTurns = 0 | 1 | 2 | 3
@@ -74,25 +74,30 @@ export function orientAbout(p: XY, turns: QuarterTurns, pivot: XY): XY {
 }
 
 /**
- * orientBounds rend les bornes de la scène une fois tournée : même centre, largeur et hauteur
- * échangées pour un quart ou trois quarts de tour. L'altitude ne tourne pas.
+ * orientBoundsAbout rend l'emprise axiale d'un rectangle une fois tourné de `turns` quarts de tour
+ * autour de `pivot` (l'emprise des quatre coins tournés). L'altitude ne tourne pas. Avec
+ * `normalizeTurns(4 - turns)` et le même pivot, elle défait la rotation d'une fenêtre.
  */
-export function orientBounds(bounds: ReplayBounds, turns: QuarterTurns): ReplayBounds {
+export function orientBoundsAbout(bounds: ReplayBounds, turns: QuarterTurns, pivot: XY): ReplayBounds {
   if (turns === 0) return bounds
-  const c = pivotOf(bounds)
-  const w = bounds.maxX - bounds.minX
-  const h = bounds.maxY - bounds.minY
-  // Pour un nombre pair de quarts de tour l'emprise garde ses dimensions, sinon elles s'échangent.
-  const halfW = (turns % 2 === 0 ? w : h) / 2
-  const halfH = (turns % 2 === 0 ? h : w) / 2
+  const a = orientAbout({ x: bounds.minX, y: bounds.minY }, turns, pivot)
+  const b = orientAbout({ x: bounds.maxX, y: bounds.maxY }, turns, pivot)
   return {
-    minX: c.x - halfW,
-    maxX: c.x + halfW,
-    minY: c.y - halfH,
-    maxY: c.y + halfH,
+    minX: Math.min(a.x, b.x),
+    maxX: Math.max(a.x, b.x),
+    minY: Math.min(a.y, b.y),
+    maxY: Math.max(a.y, b.y),
     minZ: bounds.minZ,
     maxZ: bounds.maxZ,
   }
+}
+
+/**
+ * orientBounds rend les bornes de la scène une fois tournée autour de son propre centre : même
+ * centre, largeur et hauteur échangées pour un quart ou trois quarts de tour.
+ */
+export function orientBounds(bounds: ReplayBounds, turns: QuarterTurns): ReplayBounds {
+  return orientBoundsAbout(bounds, turns, pivotOf(bounds))
 }
 
 /**

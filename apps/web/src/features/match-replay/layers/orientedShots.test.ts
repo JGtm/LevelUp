@@ -7,7 +7,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ShotFxEntry } from '../model/shotFx'
-import { QUARTER_TURNS, viewOrientation, type QuarterTurns } from '../model/orientation'
+import { QUARTER_TURNS, viewOrientation, type QuarterTurns } from '@/lib/replay/orientation'
 import { projectTo, type CanvasView } from '../model/replayView'
 import { recordingContext } from '../test/recordingContext'
 import { sameDirection, screenDirection } from '../test/screenDirection'

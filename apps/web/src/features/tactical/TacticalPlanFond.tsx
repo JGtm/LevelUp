@@ -40,6 +40,7 @@ export function TacticalPlanFond({ playerSlug, mapId, aspect, hauteurMax, cadrag
       style={boiteDuPlan(aspect, hauteurMax)}
       data-testid="tactical-plan-frame"
     >
+      {/* `cadrage` porte la rotation de la carte (`transform`) : l'image tourne autour de son centre. */}
       {fond && <img src={fond} alt="" aria-hidden className="absolute max-w-none" style={cadrage} />}
       {children}
     </div>

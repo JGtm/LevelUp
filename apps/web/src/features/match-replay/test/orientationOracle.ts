@@ -8,7 +8,7 @@
 import type { ReplayBounds } from '@/lib/api/types'
 
 import type { XY } from '../../../lib/replay/replayLogic'
-import { normalizeTurns, orientAbout, pivotOf, type QuarterTurns } from '../model/orientation'
+import { normalizeTurns, orientAbout, pivotOf, type QuarterTurns } from '@/lib/replay/orientation'
 
 /** Une position monde tournée de `turns` quarts de tour horaires autour du centre de `scene`. */
 export function turnWorld(p: XY, turns: QuarterTurns, scene: ReplayBounds): XY {

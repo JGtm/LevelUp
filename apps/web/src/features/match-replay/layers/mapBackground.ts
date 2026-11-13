@@ -12,7 +12,7 @@
  *
  * L'IMAGE DESCEND EN Y QUAND LE MONDE MONTE — même sens que le canvas, ce qui rend la pose
  * du fond purement affine : deux coins suffisent, aucun miroir. La rotation de la carte par quarts
- * de tour (`model/orientation`) n'y ajoute qu'un quart de tour de l'image entière autour du centre
+ * de tour (`lib/replay/orientation`) n'y ajoute qu'un quart de tour de l'image entière autour du centre
  * de son rectangle (`layers/mapBackgroundDraw.ts`).
  *
  * Pas de React, pas de canvas : géométrie pure, testable (mapBackground.test.ts).

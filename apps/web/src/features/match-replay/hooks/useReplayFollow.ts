@@ -26,7 +26,7 @@ import { deathWindowFrames } from '../model/livesPosition'
 import type { XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
-import type { QuarterTurns } from '../model/orientation'
+import type { QuarterTurns } from '@/lib/replay/orientation'
 import type { ReplayZoom } from './useReplayZoom'
 
 export interface ReplayFollowOptions {

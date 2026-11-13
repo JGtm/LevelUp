@@ -25,7 +25,7 @@
 import type { ReplayVehicleAim, ReplayVehicleRide } from '@/lib/api/types'
 
 import { headingTowardNext } from './headingInterp'
-import type { QuarterTurns } from './orientation'
+import type { QuarterTurns } from '@/lib/replay/orientation'
 import { lastIndexAt } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import {

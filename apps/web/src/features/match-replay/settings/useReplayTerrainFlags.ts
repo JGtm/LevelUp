@@ -21,7 +21,7 @@ const SHOW_VIP_CROWN_KEY = 'replay-show-vip-crown'
 const SHOW_SKULL_CARRIER_KEY = 'replay-show-skull-carrier'
 const SHOW_BOMB_CARRIER_KEY = 'replay-show-bomb-carrier'
 const SHOW_VEHICLES_KEY = 'replay-show-vehicles'
-const SHOW_WALL_PLAN_KEY = 'replay-show-wall-plan'
+export const SHOW_WALL_PLAN_KEY = 'replay-show-wall-plan'
 
 /**
  * LES DEUX BASCULES DES POSES D'ÉQUIPEMENT, et leurs défauts OPPOSÉS eux aussi (décision
@@ -129,7 +129,7 @@ const SHOW_MODE_OBJECTIVES_DEFAULT = true
  * vecteurs, que l'image du fond ne donne qu'en pixels. L'interrupteur est un réglage d'affichage
  * (CLAUDE.md n°11), offert quand le fond retenu porte un plan.
  */
-const SHOW_WALL_PLAN_DEFAULT = true
+export const SHOW_WALL_PLAN_DEFAULT = true
 
 /** Les interrupteurs de calques du terrain : un état et sa bascule par calque. */
 export interface ReplayTerrainFlags {
