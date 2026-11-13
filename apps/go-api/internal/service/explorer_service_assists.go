@@ -9,7 +9,7 @@
 //   - la borne de l'échelle logarithmique des barres papillon est le plus gros volume
 //     d'un sens parmi TOUTES les relations mesurées. Se borner à la paire affichée
 //     remplirait toujours la demi-barre — échec constaté et documenté côté web
-//     (apps/web/src/features/_shared/assists/assistExchange.ts).
+//     (apps/web/src/components/assists/assistExchange.ts).
 //
 // Titre sans décodeur de film : aucune ligne mesurée, la map revient vide, le bloc
 // affiche « — ». Aucun branchement par slug (ADR 0025).

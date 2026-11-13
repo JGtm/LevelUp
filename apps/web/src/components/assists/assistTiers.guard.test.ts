@@ -24,10 +24,10 @@ import { join, relative } from 'node:path'
 const SRC = join(process.cwd(), 'src')
 
 /** Fichiers (chemins relatifs à src/, ou préfixe de dossier) où la borne est INTERDITE. */
-const GUARDED: RegExp[] = [/^components\/ui\/match-card[^/]*\.tsx$/, /^features\/_shared\/assists\/AssistTierBar\.tsx$/]
+const GUARDED: RegExp[] = [/^components\/ui\/match-card[^/]*\.tsx$/, /^components\/assists\/AssistTierBar\.tsx$/]
 
 /** Le seul foyer web qui ÉCRIT la borne (assistExchange.ts n'en porte aucune : témoin du motif). */
-const ALLOWED = 'features/_shared/assists/assistsI18n.ts'
+const ALLOWED = 'components/assists/assistsI18n.ts'
 
 /** « 25 » ou « 50 » comme nombre isolé : ni chiffre, point, « / » (opacité Tailwind `/50`)
  *  ni « - » (classe utilitaire) collé avant, ni chiffre après. */
@@ -52,7 +52,7 @@ function guardedFiles(): string[] {
 describe('bornes des tranches d’assistance — deux foyers, jamais recopiées', () => {
   it('témoin : le balayage voit bien la tuile et la barre à trois tons', () => {
     expect(guardedFiles()).toEqual(
-      expect.arrayContaining(['components/ui/match-card.tsx', 'features/_shared/assists/AssistTierBar.tsx']),
+      expect.arrayContaining(['components/ui/match-card.tsx', 'components/assists/AssistTierBar.tsx']),
     )
   })
 

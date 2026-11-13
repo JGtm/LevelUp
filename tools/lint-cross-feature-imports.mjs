@@ -24,12 +24,11 @@
  *    Les composants UI génériques reçoivent leurs données par props.
  *    Seul `apps/web/src/components/shell/` peut importer features/ (il
  *    orchestre l'app entière). Les imports de `features/_shared` depuis
- *    `components/` sont comptés comme les autres ; la liste
- *    REVERSE_SHARED_ALLOWED nomme les fichiers qui en gardent un en attendant
- *    que leur dépendance descende.
+ *    `components/` sont comptés comme les autres, sans exemption : ce qui sert
+ *    `components/` vit dans `components/` ou `lib/`.
  *
  * Deux dérives sont aussi des erreurs : une entrée d'ALLOWED_CROSS_IMPORTS
- * (ou de REVERSE_SHARED_ALLOWED) qu'aucun import ne sert plus, et un marqueur
+ * qu'aucun import ne sert plus, et un marqueur
  * `cross-feature-allow` qui ne couvre aucun import hors allowlist (ou sans raison).
  *
  * Usage :
@@ -306,15 +305,6 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'squad=>explorer/explorerMatchesClientSort',
 ])
 
-// Fichiers de `components/` qui importent encore `features/_shared` (frontière inversée) :
-// chaque entrée tombe quand la dépendance descend dans `components/` ou `lib/`, et une
-// entrée qu'aucun import ne sert plus fait échouer le lint.
-const REVERSE_SHARED_ALLOWED = new Set([
-  // Les quatre modules d'assistance (barre de répartition, teinte, échange, textes) vivent
-  // dans `features/_shared/assists/` ; la carte de match les monte. Déclaré le 2026-11-13.
-  'apps/web/src/components/ui/match-card-assisted-frags.tsx',
-])
-
 // Fichiers shell autorisés à importer @/features/ (orchestration globale).
 const SHELL_PATH_PREFIX = 'apps/web/src/components/shell/'
 
@@ -384,7 +374,6 @@ const deadMarkers = []
 // Entrées d'ALLOWED_CROSS_IMPORTS réellement servies pendant le balayage : sert à détecter les
 // dérogations mortes (déclarées mais jamais appariées à un import réel).
 const usedAllowEntries = new Set()
-const usedReverseEntries = new Set()
 let markedImports = 0
 
 const featuresDir = join(WEB_SRC, 'features')
@@ -476,10 +465,6 @@ try {
     const consumedMarkers = new Set()
 
     for (const { idx, target } of featureImports(file, lines)) {
-      if (target.feature === SHARED_FEATURE && REVERSE_SHARED_ALLOWED.has(relPath)) {
-        usedReverseEntries.add(relPath)
-        continue
-      }
       const marker = markerLineFor(lines, idx)
       if (marker >= 0) {
         consumedMarkers.add(marker)
@@ -500,7 +485,6 @@ try {
 }
 
 const deadAllowEntries = [...ALLOWED_CROSS_IMPORTS].filter((entry) => !usedAllowEntries.has(entry))
-const deadReverseEntries = [...REVERSE_SHARED_ALLOWED].filter((entry) => !usedReverseEntries.has(entry))
 
 function printGroup(title, violations, hint) {
   if (violations.length === 0) return
@@ -521,9 +505,9 @@ if (deadMarkers.length > 0) {
   )
 }
 
-if (deadAllowEntries.length > 0 || deadReverseEntries.length > 0) {
-  console.log(`\n# Dérogations mortes (${deadAllowEntries.length + deadReverseEntries.length}) :`)
-  for (const entry of [...deadAllowEntries, ...deadReverseEntries]) console.log(`  ${entry}`)
+if (deadAllowEntries.length > 0) {
+  console.log(`\n# Dérogations mortes (${deadAllowEntries.length}) :`)
+  for (const entry of deadAllowEntries) console.log(`  ${entry}`)
   console.log(
     '\nCes entrées ne correspondent plus à aucun import réel. Les retirer (avec leur ' +
       'commentaire devenu orphelin).',
@@ -535,8 +519,7 @@ const total =
   sharedViolations.length +
   reverseViolations.length +
   deadMarkers.length +
-  deadAllowEntries.length +
-  deadReverseEntries.length
+  deadAllowEntries.length
 
 if (total > 0) {
   console.log(

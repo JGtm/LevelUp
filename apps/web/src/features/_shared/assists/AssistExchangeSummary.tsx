@@ -17,9 +17,9 @@ import type { RelationAssists } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
 import { AssistButterflyBar } from './AssistButterflyBar'
-import { ASSIST_GIVEN_TOKEN, ASSIST_RECEIVED_TOKEN } from './AssistTierBar'
-import { givenShare, receivedShare } from './assistExchange'
-import { ASSISTS_TEXT } from './assistsI18n'
+import { ASSIST_GIVEN_TOKEN, ASSIST_RECEIVED_TOKEN } from '@/components/assists/AssistTierBar'
+import { givenShare, receivedShare } from '@/components/assists/assistExchange'
+import { ASSISTS_TEXT } from '@/components/assists/assistsI18n'
 
 export function AssistExchangeSummary({
   assists,

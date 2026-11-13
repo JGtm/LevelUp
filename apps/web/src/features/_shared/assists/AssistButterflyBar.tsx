@@ -15,9 +15,9 @@ import { tokenCssVar } from '@/lib/accessibility'
 import type { AssistTiers, RelationAssists } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
-import { ASSIST_GIVEN_TOKEN, ASSIST_RECEIVED_TOKEN, AssistTierBar } from './AssistTierBar'
-import { assistSegments } from './assistExchange'
-import type { AssistsText } from './assistsI18n'
+import { ASSIST_GIVEN_TOKEN, ASSIST_RECEIVED_TOKEN, AssistTierBar } from '@/components/assists/AssistTierBar'
+import { assistSegments } from '@/components/assists/assistExchange'
+import type { AssistsText } from '@/components/assists/assistsI18n'
 
 type Variant = 'card' | 'row'
 

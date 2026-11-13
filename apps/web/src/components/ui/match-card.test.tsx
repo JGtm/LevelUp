@@ -35,7 +35,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 })
 
 import { MatchCard } from './match-card'
-import { assistTierTone } from '@/features/_shared/assists/assistTierTone'
+import { assistTierTone } from '@/components/assists/assistTierTone'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { RecentMatchItem } from '@/lib/api/types'
 

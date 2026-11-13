@@ -17,16 +17,16 @@
  * (`palmares/RelationAssistsCards`).
  */
 import { tokenCssVar } from '@/lib/accessibility'
-import { ASSIST_GIVEN_TOKEN, ASSIST_RECEIVED_TOKEN } from '@/features/_shared/assists/AssistTierBar'
-import { assistTierTone } from '@/features/_shared/assists/assistTierTone'
+import { ASSIST_GIVEN_TOKEN, ASSIST_RECEIVED_TOKEN } from '@/components/assists/AssistTierBar'
+import { assistTierTone } from '@/components/assists/assistTierTone'
 import {
   assistLinearSegments,
   assistPairBound,
   assistParityPct,
   givenShare,
   receivedShare,
-} from '@/features/_shared/assists/assistExchange'
-import { ASSISTS_TEXT, type AssistTier } from '@/features/_shared/assists/assistsI18n'
+} from '@/components/assists/assistExchange'
+import { ASSISTS_TEXT, type AssistTier } from '@/components/assists/assistsI18n'
 import { formatPercent } from '@/lib/formatters'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
