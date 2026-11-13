@@ -536,14 +536,76 @@ deux graphes de 7.3.
 
 ## 11. Étape 8 — Clôture
 
-- [ ] 8.1 Rejouer les mesures du §0 et remplir le tableau « après ».
-- [ ] 8.2 Rejouer tous les témoins de 0.2 : identiques.
-- [ ] 8.3 `make gate-push`, `go test -tags=integration -p 1 ./...`, `make desktop-test`, CI verte.
-- [ ] 8.4 Mettre à jour `CLAUDE.md` et le skill `arch-rules` (nouveaux garde-rails, variables
-      retirées), `docs/COMMANDS.md` et son pendant français, `.ai/project_map.md`.
-- [ ] 8.5 Statuer chaque constat dans `.ai/AUDIT_ARCHITECTURE_2026-11-10.md` (champ « Décision ») ;
-      alimenter `.ai/REGISTRE_REPORTS.md` avec tout item `[!]`.
-- [ ] 8.6 Entrée de `.ai/thought_log.md` ; `scripts/disk-hygiene.ps1 -Lot <lot> -Apply`.
+- [x] 8.1 Rejouer les mesures du §0 et remplir le tableau « après » (tableau ci-dessous).
+- [x] 8.2 Rejouer tous les témoins de 0.2 : identiques.
+- [!] 8.3 `make gate-push`, `go test -tags=integration -p 1 ./...`, `make desktop-test`, CI verte. Partiel, voir le
+      résultat : lint, replay-equiv, typecheck et lint web verts ; voie DuckDB de la baseline : 295 paquets sur 296 verts, un
+      paquet (`platform/duckdb`) coupé par le délai local de 300 s ; `desktop-test` non lancé et reprise de
+      `platform/duckdb` avec un délai large interrompue, l'un et l'autre pour cause de disque (moins de 4 Go libres) :
+      reste au pilote. La CI est lue par le pilote.
+- [x] 8.4 Mettre à jour `CLAUDE.md` et le skill `arch-rules` (nouveaux garde-rails, variables retirées),
+      `docs/COMMANDS.md` et son pendant français, `.ai/project_map.md`. `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` : rien à
+      changer (couvert par 1.1 et 2.7 : toutes les commandes citées existent, aucune variable retirée n'y figure).
+- [x] 8.5 Statuer chaque constat dans `.ai/AUDIT_ARCHITECTURE_2026-11-10.md` (section « Statut des constats » : 25 P1, 22 P2,
+      12 écartés). `.ai/REGISTRE_REPORTS.md` : aucun item `[!]` des étapes 1 à 7 à y inscrire (les restes sont au §12).
+- [x] 8.6 Entrée de `.ai/thought_log.md`.
+- [!] 8.6 (suite) `scripts/disk-hygiene.ps1 -Lot 812-archi -Apply` : non lancé (consigne du pilote, qui le fait à la
+      clôture ; caches `go-build-812-archi` et `golangci-812-archi` à supprimer par lui).
+
+Résultat de 8.1 (2026-11-13, tête `3401008057` plus les commits de l'étape 8).
+
+| Mesure | Départ (0.3) | Après | Tenue |
+|---|---|---|---|
+| fichiers de `api/handlers` important `platform/duckdb`, `persist` ou `sync` | 9 | 0 | oui (`TestHandlersSansStockageDuckDB`, `TestHandlersSansMoteurDeSync`) |
+| fichiers de `service/` et `api/handlers` important `games/halo_infinite` ou `games/halo_5` | 16 | 0 | oui (`TestServiceImporteAucunPaquetDeTitre`, `TestHandlersSansMoteurDeSync`) |
+| fichiers de `api/wire` et de la racine `api/` portant du SQL | 9 | 0 | oui (`TestApiSansSQL`) ; la recherche textuelle rend 2 commentaires (« SELECT courts »), pas du SQL |
+| occurrences de `*service.X` dans `api/handlers` | 20 | 0 en code | oui (`TestHandlersSansTypeConcretDeService` : aucun import de `service`) ; 2 commentaires citent encore le nom d'un type |
+| fichiers important `database/sql` dans `service`, `analysis`, `progression`, `scheduler`, `prestige`, `port` | 19 | 0 | oui (`TestMetierSansSQL`, `TestPortSansTypeSQL`) ; types `sql.` dans `port/` : 0 en code, 1 commentaire |
+| fichiers lisant `os.Getenv` / `os.LookupEnv` hors `internal/config` | 22 | 13, tous en allowlist datée | oui au sens du garde (`TestAucuneLectureEnvHorsConfig`, 0 hors allowlist) ; non au sens « 0 fichier » |
+| fichiers web important `echarts` hors `components/charts/` | 72 | 0 (tests compris) | oui (`chartsImportBoundary.guard.test.ts`) ; `<LazyECharts` hors `components/charts/` : 0 |
+| `fetch` hors `lib/api/` et `lib/desktop/` | 7 | 4, tous en liste datée | oui au sens du garde (`rawFetch.guard.test.ts`) ; non au sens « 0 » : feedback GitHub, deux sons du rejeu, un fichier statique des véhicules |
+| types manuels homonymes d'un schéma du contrat | 31 | 11 en listes datées (4 types d'entrée et 2 réponses dans `lib/api/types.ts`, 5 hors de ce fichier) | NON tenue au sens strict ; garde à plafond 0 hors listes (`response-types.guard.test.ts`) |
+| commandes de `cmd/` | 180 | 98 | sans cible chiffrée ; décisions D8 |
+| une seule source de la base URL du client | plusieurs | 1 (`lib/api/client.ts`) | oui |
+| `toggleSort` local, `useQuery` dans un `.tsx` de `features/` | 11, 2 | 0, 0 | oui (`noLocalSortToggle`, `featureTsxNoQuery`) |
+
+Résultat de 8.2 : `bash C:/t/812-archi/capture.sh C:/t/812-archi/apres-8`, 90 routes toutes en 200, `diff -r avant-4 apres-8` vide
+(après `renorm.sh` de `avant-4` pour la neutralisation du calendrier d'activité, ajoutée le 2026-11-13).
+
+Résultat de 8.3 (2026-11-13). `make gate-push` (GOWORK=off), étape par étape : `golangci-lint --new-from-merge-base=origin/main`
+code 0, 0 défaut (une première passe avait rendu un `unused` sur l'enrobage de test de `convergePSA`, corrigé par le tag
+`integration` de ses appelants) ; `replay-equiv` code 0 : 20 films identiques (deux premières passes à 20 échecs, causes du
+poste : liste des xuids d'origine absente de ce worktree, puis parc de films non monté ; réglées par `LEVELUP_IDENTITES_ORIGINALES`
+vers le fichier du dépôt principal et deux jonctions temporaires `data/cache/film_chunks` et `film_manifests`, retirées ensuite) ;
+typecheck et lint web code 0 ; `check_test_baseline.sh tests` code 1 : voie des briques 218 s, tout présent, aucun échec ; voie
+DuckDB 2 219 s, 295 paquets sur 296 verts, aucun test en échec ; le paquet `platform/duckdb` est coupé par le délai local de
+300 s (`panic: test timed out after 5m0s`), d'où 71 tests de la baseline « absents » (tous encore paquets en pause au moment de la
+coupure : `TestBuildPlaylistRankItem_*`, `TestCSRThresholdsRepo_*`, `TestUnrankedBadgeURL_*`, etc. ; ils existent tous dans le
+code). Même cause que l'étape 5 (poste chargé, délai de 300 s pour ce paquet), non liée à ce chantier. Reprise de ce seul paquet
+avec `-timeout 30m` : interrompue par mes soins quand le disque est passé sous 4 Go ; sa preuve reste à faire. Le
+`go test -tags=integration -p 1 ./...` séparé n'a pas été lancé : la voie DuckDB du gate est la même commande (même
+étiquette, `-p 1`, délai de 300 s). `make desktop-test` : non lancé (aucun dossier `target` Rust dans ce worktree, une
+compilation à froid dépasse 4 Go). CI : lue par le pilote.
+
+Résultat de 8.4 (2026-11-13). `CLAUDE.md` : section « Frontières de couches » (gardes Go et gardes web, où va le code), règle
+multi-titre étendue à `service/` et `api/handlers`, règle ART 3 (dates d'allowlist, `OpenReadWrite`), recette d'enrichissement
+à huit étapes (ART 7), modèle de kill-switch (`scheduler/auto_sync_convergence.go` : `shared_reader_legacy.go` n'en porte plus),
+règle 13 (tri, bootstrap, graphes). Skill `arch-rules` : couches et paquets nouveaux (`importstore`, `cronstore`, `profilerepo`,
+`worldrepo`, `sqlfrag`, `playerresolve`, `replaytext`, `dbfault`, `api/wire`), tableau des gardes, étape « ajouter un titre ».
+`delivery-checklist` : même citation du modèle de kill-switch corrigée. `.ai/project_map.md` : îlot de fraîcheur du 2026-11-13.
+
+Résultat de 8.5 (2026-11-13). 25 P1 et 22 P2 traités (TEC-2, FLG-P2-2 et TEC-P2-2 avec un reste nommé), 12 constats écartés
+ou requalifiés statués, aucun sans statut. `convergePSA` : aucun appelant de production (relevé par l'étape 3, confirmé sur
+pièces), seul enrobage de test des phases `convergePSACollect`, `flushAliasPairs`, `settlePSA` que `runPSAConvergence` enchaîne
+en production ; décision : ne pas le garder dans la production (règle 7), il devient `convergence_psa_helper_test.go` (même
+étiquette `integration` que ses quatre appelants), tests inchangés ; deux commentaires qui le citaient pointent vers
+`settlePSA` et `runPSAConvergence`. Généralité des gardes multi-titre : `TestServiceImporteAucunPaquetDeTitre` était
+général (tout répertoire d'`internal/games/` hors `paquetsInterTitres` est un titre) ; `TestHandlersSansMoteurDeSync`
+nommait `halo_infinite` et `halo_5` : rendu général (`titresDeInternalGames`, `racinesInterditesAuxHandlers(titres)`),
+`TestTitresDeInternalGames` empêche un parcours vide, mutation prouvée (un paquet `games/titre_hypothetique` importé par un
+fichier de `api/handlers` puis de `service/` rougit les deux gardes ; retiré, vert). Plafonds et allowlists des gardes : inchangés.
+Le paquet `archlint` a tourné vert dans la voie DuckDB du gate-push, après le dernier changement de code et les modifications de
+documentation (`go test ./internal/archlint/... -timeout 30m` n'a pas été rejoué à part : disque sous 4 Go).
 
 ### Avancement
 
@@ -557,7 +619,7 @@ deux graphes de 7.3.
 | 5 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-13 ; une ronde de revue, 0 P0, 0 P1, quatre P2 corrigés |
 | 6 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-13 |
 | 7 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-13 ; contrôle à l'écran par l'utilisateur en attente |
-| 8 | à faire | | |
+| 8 | close, avec réserves (8.3 et 8.6 : voir leur résultat) | `44a3929ea7`, `c2f8a39ec3`, `4c9e8f008d` et le commit de clôture | close le 2026-11-13 ; reste au pilote : preuve de `platform/duckdb` sans délai de 300 s, `desktop-test`, CI, nettoyage disque |
 
 ## 12. Découvertes d'exécution
 
@@ -629,6 +691,13 @@ deux graphes de 7.3.
 - Étape 6 (2026-11-13). `TestHandlersSansMoteurDeSync` nomme `halo_infinite` et `halo_5` : un troisième titre ne serait pas refusé côté handlers (le garde de `service/` est-il général ? à vérifier à l'étape 8). Dix fichiers de test de `service/` et `api/handlers` importent des paquets de titre pour semer de vraies bases : les gardes ne lisent que le code hors tests. Le service de rejeu lit le catalogue mémoïsé (`Catalogue`) au lieu de le recharger à chaque requête. `WorldStatsEnricher.EnrichSeason` refuse un ensemble de playlists classées vide au lieu de retomber sur celui de Halo Infinite (le démarrage le fournit toujours). `scheduler` garde le même schéma `livesync` / `DeltaRunner`. `HomeService` accepte un fournisseur nul (cache puis « indisponible »). Non traités.
 
 - Étape 7 (2026-11-13). Changements assumés : l'Accueil n'appelle plus les défis sans joueur choisi ; un palier inconnu retombe sur le palier calculé ; le brouillon TOML d'un titre envoie titre et langue ; une valeur non finie est traitée comme absente dans les moyennes (un ancien site pouvait la propager). Restes non traités : 11 types manuels en listes datées (voir le résultat de 7.4), dont 2 réponses où c'est le contrat qui est en retard sur le serveur ; le schéma de contrat `MediaItemRow` existe toujours, sans rapport avec le type renommé `NormalizedMediaItem` ; le lint des frontières ne balaie ni `lib/` ni `stores/` ; `medianSeconds` et `bucketMedian` ne sont pas branchés sur `lib/charts/stats` ; le fichier statique des véhicules est lu par `fetch` direct (liste datée) alors que celui des Spartan passe par le client ; `lib/playerProfile.ts` et `features/ascension/types.ts` dupliquent des définitions ; `heatmapColors.guard.test.ts` a un délai de 5 s fragile sous charge. À contrôler à l'écran par l'utilisateur : tri de trois tableaux (Carrière « rencontres », Classement, Admin « tâches »), les deux graphes de 7.3 sous changement de palette, le Rejeu 2D, `/join`, la connexion Xbox.
+
+- Étape 8 (2026-11-13). Environnement : `make replay-equiv` (donc `gate-push`) exige dans un worktree la liste des xuids
+  d'origine (`LEVELUP_IDENTITES_ORIGINALES` ou `data/film_identites/xuids_originaux.txt`) ET le parc de films
+  (`data/cache/film_chunks`, `film_manifests`) : un worktree neuf n'a ni l'un ni l'autre et le gate rend 20 échecs. La voie DuckDB de `check_test_baseline.sh` coupe `platform/duckdb` à 300 s sur ce poste (aussi à l'étape 5) : le
+  gate local ne passe pas sans réglage du délai. Disque : un `gate-push` complet a fait baisser C: d'environ 2 Go (observé) ; un dossier `go-build<N>` de 5,7 Go d'un autre processus traînait dans `%TEMP%` (non touché). `delivery-checklist` citait
+  comme modèle de kill-switch un fichier qui n'en porte plus : corrigé avec 8.4. Non traités : `duckdb.OpenReadWriteShared`
+  (déjà noté), `docs/COMMANDS.md` ne décrit pas les gardes d'`archlint`.
 
 ## 13. Hors périmètre
 
