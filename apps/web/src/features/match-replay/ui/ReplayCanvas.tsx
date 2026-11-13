@@ -257,7 +257,7 @@ export function ReplayCanvas({
   const {
     showAim, showZones, showTrail, showHeatmap, heatmapMode, heatmapSpan,
     showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
-    showWeaponPads, showGroundWeapons, showGroundWeaponsSpecialOnly, showGroundWeaponsStarting, showModeObjectives, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, speed: multiplier,
+    showWeaponPads, showGroundWeapons, showGroundWeaponsSpecialOnly, showGroundWeaponsStarting, showModeObjectives, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, showWallPlan, speed: multiplier,
     markerColors,
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
@@ -271,7 +271,7 @@ export function ReplayCanvas({
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
     floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, scrim, self: selfInk, wall: wallInk, rift: riftInk, shroud: shroudInk, mark: markInk,
-    zone: zoneInk,
+    zone: zoneInk, wallPlan: wallPlanInk,
   } = useReplayInks(paletteVersion)
   // COULEURS DISTINCTES PAR JOUEUR (option du panneau de la vue, 2026-08-24) : une série stable par joueur
   // à la place de la couleur d'équipe — le camp reste dit par les fiches, le fil et le bandeau.
@@ -355,13 +355,14 @@ export function ReplayCanvas({
   // LES CALQUES STATIQUES (sol, zones nommées, chaleur, objectifs), cuits hors écran et
   // recopiés par la boucle : quatre effets qui partageaient la même amorce et recopiaient
   // chacun le cadrage — ils vivent dans useReplayStaticLayers, qui lit `canvasView`.
-  const { zonesRef, heatRef, objectivesRef, cookedRef } = useReplayStaticLayers({
+  const { wallPlanRef, zonesRef, heatRef, objectivesRef, cookedRef } = useReplayStaticLayers({
     view: canvasView,
     redraw,
     frozen: drag.dragging,
     follow: playerFocus?.follow ?? false,
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
     heat: { grid: heat.grid, ramp: heat.ramp },
+    wallPlan: { plan: mapImage?.plan ?? null, ink: wallPlanInk },
     objectives: { elements: zones.staticElements, colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline, z: zRange },
   })
 
@@ -458,11 +459,12 @@ export function ReplayCanvas({
       return {
         toggles: {
           zones: showZones, shotFx: showShotFx, placements: showPlacements, killFx: showKillFx,
-          modeObjectives: showModeObjectives,
+          modeObjectives: showModeObjectives, wallPlan: showWallPlan,
         },
         has: {
           background: !!mapImage && !!bgRect,
           floor: !!doc.geometry?.length,
+          wallPlan: !!wallPlanRef.current,
           heat: !!heatRef.current,
           zoneNames: !!zonesRef.current,
           objectivesCooked: !!objectivesRef.current,
@@ -499,6 +501,7 @@ export function ReplayCanvas({
           'fond-carte': () => drawMapBackground(ctx, mapImage, bgRect),
           'sol-forge': () =>
             drawGeometryLayer(ctx, doc.geometry ?? [], view, { color: geometryColor, z: zRange }),
+          'plan-murs': cuit(wallPlanRef.current),
           chaleur: cuit(heatRef.current),
           'zones-nommees': cuit(zonesRef.current),
           'objectifs-cuits': cuit(objectivesRef.current),
@@ -579,7 +582,7 @@ export function ReplayCanvas({
     [
       doc, geometryColor, zRange, timing, wallInk, riftInk, shroudInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
-    zonesRef, heatRef, objectivesRef, cookedRef,
+    wallPlanRef, zonesRef, heatRef, objectivesRef, cookedRef,
     renderWidth, viewH, canvasView,
     placements.counts.drawable,
     placements.all,
@@ -622,6 +625,7 @@ export function ReplayCanvas({
     showAim,
     showZones,
     showModeObjectives,
+    showWallPlan,
     showShotFx,
     showKillFx,
     mapImage,

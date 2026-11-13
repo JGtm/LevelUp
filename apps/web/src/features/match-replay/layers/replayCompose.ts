@@ -45,6 +45,9 @@ export const LAYER_ORDER = [
   // Forge — 3,4 % du terrain, et c'est mieux qu'un fond vide.
   'fond-carte',
   'sol-forge',
+  // LE PLAN DES MURS, en vecteurs par-dessus l'image du fond : il se lit comme un trait de
+  // dessin sur la carte, donc au-dessus d'elle et sous tout ce que le terrain porte.
+  'plan-murs',
   // LE TERRAIN LU. La chaleur sous tout ce qui nomme ou se déplace ; les zones nommées sous
   // ce qui bouge (du vocabulaire, pas un événement) ; les objectifs par-dessus le
   // vocabulaire, l'enjeu primant sur les noms de lieux.
@@ -105,6 +108,8 @@ export interface SceneToggles {
    * crâne, bombe) restent hors de cette bascule : ils ont la leur.
    */
   modeObjectives: boolean
+  /** « Plan des murs » (clé `replay-show-wall-plan`) — le trait fin des murs sur le fond. */
+  wallPlan: boolean
 }
 
 /**
@@ -117,6 +122,8 @@ export interface SceneMatter {
   background: boolean
   /** Le repli Forge : la carte n'a pas de sol figé mais le document porte des props. */
   floor: boolean
+  /** Le fond retenu porte un plan des murs et il est cuit (`useReplayStaticLayers`). */
+  wallPlan: boolean
   heat: boolean
   zoneNames: boolean
   objectivesCooked: boolean
@@ -196,6 +203,7 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
   const on: Record<ReplayLayerId, boolean> = {
     'fond-carte': h.background,
     'sol-forge': !h.background && h.floor,
+    'plan-murs': t.wallPlan && h.wallPlan,
     chaleur: h.heat,
     'zones-nommees': t.zones && h.zoneNames,
     'objectifs-cuits': t.modeObjectives && h.objectivesCooked,

@@ -1,8 +1,8 @@
 /**
  * useReplayStaticLayers — LES CALQUES QUI NE BOUGENT PAS, cuits hors écran une fois.
  *
- * POURQUOI ILS SONT ENSEMBLE. Les zones nommées, la carte de chaleur et les objectifs statiques
- * ne dépendent NI de l'image courante NI de la lecture : ils ne changent que si leur donnée, le
+ * POURQUOI ILS SONT ENSEMBLE. Le plan des murs, les zones nommées, la carte de chaleur et les
+ * objectifs statiques ne dépendent NI de l'image courante NI de la lecture : ils ne changent que si leur donnée, le
  * cadrage ou leurs encres changent. Chacun se peint donc sur un canvas hors écran, que la boucle
  * d'animation se contente de RECOPIER.
  *
@@ -26,6 +26,8 @@ import { drawCalloutsLayer, type CalloutZoneReady } from '../../../lib/replay/ca
 import { drawHeatmapLayer, type HeatGrid } from '../../../lib/replay/heatPaint'
 import type { ReplayLocale } from '../i18n/i18n'
 import { drawObjectivesLayer, type ObjectiveElementReady } from './objectivesLayer'
+import { drawWallPlanLayer } from './wallPlanLayer'
+import type { WallPlanReady } from '../model/wallPlan'
 import { cookIsReusable, projectTo, scaleOf as viewScale, type CanvasView } from '../model/replayView'
 import { canvasPixelRatio } from '../export/exportLayoutStore'
 
@@ -61,6 +63,8 @@ export interface StaticLayersInput {
     locale: ReplayLocale
   }
   heat: { grid: HeatGrid | null; ramp: string[] }
+  /** Le plan des murs du fond retenu (`null` = pas de plan) et son encre. */
+  wallPlan: { plan: WallPlanReady | null; ink: string }
   objectives: {
     elements: readonly ObjectiveElementReady[]
     colorOfTeam: (team: number) => string
@@ -75,7 +79,7 @@ export interface StaticLayersInput {
   }
 }
 
-/** Les TROIS canvas hors écran, dans l'ordre où ils se recopient (le sol est mort le 2026-09-03). */
+/** Les QUATRE canvas hors écran, dans l'ordre où ils se recopient (le sol est mort le 2026-09-03). */
 export interface StaticLayers {
   /**
    * LE CADRAGE AVEC LEQUEL LES CALQUES ONT ÉTÉ CUITS — `null` tant qu'aucune cuisson n'a eu
@@ -84,6 +88,7 @@ export interface StaticLayers {
    * décor resterait immobile pendant que les joueurs se déplacent.
    */
   cookedRef: RefObject<CanvasView | null>
+  wallPlanRef: RefObject<HTMLCanvasElement | null>
   zonesRef: RefObject<HTMLCanvasElement | null>
   heatRef: RefObject<HTMLCanvasElement | null>
   objectivesRef: RefObject<HTMLCanvasElement | null>
@@ -114,6 +119,7 @@ export function useReplayStaticLayers({
   redraw,
   zones,
   heat,
+  wallPlan,
   objectives,
   frozen = false,
   follow = false,
@@ -131,9 +137,23 @@ export function useReplayStaticLayers({
   useEffect(() => {
     cookedRef.current = cookView
   }, [cookView])
+  const wallPlanRef = useRef<HTMLCanvasElement | null>(null)
   const zonesRef = useRef<HTMLCanvasElement | null>(null)
   const heatRef = useRef<HTMLCanvasElement | null>(null)
   const objectivesRef = useRef<HTMLCanvasElement | null>(null)
+
+  const { plan, ink: wallInk } = wallPlan
+  useEffect(() => {
+    if (!plan || cookView.width === 0) {
+      wallPlanRef.current = null
+      redraw()
+      return
+    }
+    wallPlanRef.current = cookLayer(cookView, (ctx) =>
+      drawWallPlanLayer(ctx, plan, cookView, { ink: wallInk }),
+    )
+    redraw()
+  }, [plan, wallInk, cookView, redraw])
 
   const { zones: zoneList, bigColors, fineInk, locale } = zones
   useEffect(() => {
@@ -181,5 +201,5 @@ export function useReplayStaticLayers({
     redraw()
   }, [elements, colorOfTeam, neutralOutline, z, cookView, redraw])
 
-  return { zonesRef, heatRef, objectivesRef, cookedRef }
+  return { wallPlanRef, zonesRef, heatRef, objectivesRef, cookedRef }
 }

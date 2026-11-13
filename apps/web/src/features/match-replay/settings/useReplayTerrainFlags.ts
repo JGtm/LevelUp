@@ -21,6 +21,7 @@ const SHOW_VIP_CROWN_KEY = 'replay-show-vip-crown'
 const SHOW_SKULL_CARRIER_KEY = 'replay-show-skull-carrier'
 const SHOW_BOMB_CARRIER_KEY = 'replay-show-bomb-carrier'
 const SHOW_VEHICLES_KEY = 'replay-show-vehicles'
+const SHOW_WALL_PLAN_KEY = 'replay-show-wall-plan'
 
 /**
  * LES DEUX BASCULES DES POSES D'ÉQUIPEMENT, et leurs défauts OPPOSÉS eux aussi (décision
@@ -123,6 +124,13 @@ const SHOW_VEHICLES_DEFAULT = true
  */
 const SHOW_MODE_OBJECTIVES_DEFAULT = true
 
+/**
+ * LE PLAN DES MURS EST ALLUMÉ PAR DÉFAUT : c'est le dessin exact des murs de la carte, en
+ * vecteurs, que l'image du fond ne donne qu'en pixels. L'interrupteur est un réglage d'affichage
+ * (CLAUDE.md n°11), offert quand le fond retenu porte un plan.
+ */
+const SHOW_WALL_PLAN_DEFAULT = true
+
 /** Les interrupteurs de calques du terrain : un état et sa bascule par calque. */
 export interface ReplayTerrainFlags {
   /** Calque des POSES d'équipement (mur, capteur). Allumé par défaut. */
@@ -191,6 +199,9 @@ export interface ReplayTerrainFlags {
   /** Calque des VÉHICULES (schéma 39). Allumé par défaut (cf. SHOW_VEHICLES_DEFAULT). */
   showVehicles: boolean
   toggleVehicles: () => void
+  /** Le PLAN DES MURS sur le fond de carte. Allumé par défaut (cf. SHOW_WALL_PLAN_DEFAULT). */
+  showWallPlan: boolean
+  toggleWallPlan: () => void
 }
 
 export function useReplayTerrainFlags(): ReplayTerrainFlags {
@@ -243,6 +254,7 @@ export function useReplayTerrainFlags(): ReplayTerrainFlags {
     SHOW_BOMB_CARRIER_DEFAULT,
   )
   const [showVehicles, toggleVehicles] = usePersistedFlag(SHOW_VEHICLES_KEY, SHOW_VEHICLES_DEFAULT)
+  const [showWallPlan, toggleWallPlan] = usePersistedFlag(SHOW_WALL_PLAN_KEY, SHOW_WALL_PLAN_DEFAULT)
 
   return {
     showPlacements,
@@ -271,5 +283,7 @@ export function useReplayTerrainFlags(): ReplayTerrainFlags {
     toggleBombCarrier,
     showVehicles,
     toggleVehicles,
+    showWallPlan,
+    toggleWallPlan,
   }
 }

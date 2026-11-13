@@ -19,6 +19,8 @@ import { useReplayStaticLayers, type StaticLayersInput } from './useReplayStatic
 
 const paintObjectives = vi.hoisted(() => vi.fn())
 vi.mock('./objectivesLayer', () => ({ drawObjectivesLayer: paintObjectives }))
+const paintWallPlan = vi.hoisted(() => vi.fn())
+vi.mock('./wallPlanLayer', () => ({ drawWallPlanLayer: paintWallPlan }))
 
 /** Un cadrage de 400 x 400 px sur 100 x 100 unités : 4 px par unité, marge de 10 % = 40 px. */
 function viewAt(dx: number, span = 100): CanvasView {
@@ -29,6 +31,8 @@ function viewAt(dx: number, span = 100): CanvasView {
 const REDRAW = () => {}
 const ZONES = { zones: [], bigColors: [], fineInk: 'i', locale: 'fr' } as const
 const HEAT = { grid: null, ramp: [] }
+const NO_WALL_PLAN = { plan: null, ink: 'w' }
+const WALL_PLAN = { plan: { edges: [[0, 0, 10, 10]], dropped: 0 }, ink: 'w' } as const
 const COLOR_OF_TEAM = () => 'c'
 const Z = { min: 0, max: 1 }
 const ELEMENT: ObjectiveElementReady = { role: 'zone', team: 0, x: 10, y: 10, z: 0, kind: 'zone', halfX: 1, halfY: 1 } as ObjectiveElementReady
@@ -40,6 +44,7 @@ function entree(view: CanvasView, over: Partial<StaticLayersInput> = {}): Static
     redraw: REDRAW,
     zones: ZONES as never,
     heat: HEAT,
+    wallPlan: NO_WALL_PLAN,
     objectives: { elements: ELEMENTS, colorOfTeam: COLOR_OF_TEAM, neutralOutline: 'o', z: Z },
     ...over,
   }
@@ -47,6 +52,7 @@ function entree(view: CanvasView, over: Partial<StaticLayersInput> = {}): Static
 
 beforeEach(() => {
   paintObjectives.mockReset()
+  paintWallPlan.mockReset()
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
     () => recordingContext().ctx as never,
   )
@@ -136,5 +142,39 @@ describe('Suivre : le cadrage glisse, la cuisson est gardée', () => {
     h.rerender(entree(viewAt(15), { frozen: false }))
     expect(paintObjectives).toHaveBeenCalledTimes(2)
     expect(h.result.current.cookedRef.current).toEqual(viewAt(15))
+  })
+})
+
+describe('le plan des murs est un calque statique comme les autres', () => {
+  it('sans plan, rien n’est cuit et la référence reste vide', () => {
+    const h = monter(entree(viewAt(0)))
+    expect(paintWallPlan).not.toHaveBeenCalled()
+    expect(h.result.current.wallPlanRef.current).toBeNull()
+  })
+
+  it('avec un plan, il est cuit une fois contre le cadrage courant', () => {
+    const h = monter(entree(viewAt(0), { wallPlan: WALL_PLAN }))
+    expect(paintWallPlan).toHaveBeenCalledTimes(1)
+    expect(paintWallPlan.mock.calls[0][1]).toBe(WALL_PLAN.plan)
+    expect(paintWallPlan.mock.calls[0][3]).toEqual({ ink: 'w' })
+    expect(h.result.current.wallPlanRef.current).not.toBeNull()
+  })
+
+  it('il se recuit au changement de cadrage (zoom, déplacement), comme les autres', () => {
+    const h = monter(entree(viewAt(0), { wallPlan: WALL_PLAN }))
+    h.rerender(entree(viewAt(0, 50), { wallPlan: WALL_PLAN }))
+    expect(paintWallPlan).toHaveBeenCalledTimes(2)
+  })
+
+  it('pendant un glisser, il garde sa cuisson (recopié décalé)', () => {
+    const h = monter(entree(viewAt(0), { wallPlan: WALL_PLAN }))
+    for (let i = 1; i <= 10; i++) h.rerender(entree(viewAt(i * 1.5), { wallPlan: WALL_PLAN, frozen: true }))
+    expect(paintWallPlan).toHaveBeenCalledTimes(1)
+  })
+
+  it('le plan qui disparaît (autre carte) vide le calque', () => {
+    const h = monter(entree(viewAt(0), { wallPlan: WALL_PLAN }))
+    h.rerender(entree(viewAt(0), { wallPlan: NO_WALL_PLAN }))
+    expect(h.result.current.wallPlanRef.current).toBeNull()
   })
 })
