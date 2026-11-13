@@ -134,7 +134,11 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
    documenté ADR 0026). Recette d'ajout d'une table : ADR 0026 +
    `internal/migration/append_only_rebuild.go`.
 3. **Garde-rails** : `internal/sync/no_art_patterns_test.go` (allowlist explicite) — ne
-   jamais allowlister sans justification datée.
+   jamais allowlister sans justification datée. Toute entrée d'allowlist d'écriture ou de
+   lecture brute commence par une date (`sync` : `TestAllowlistsEcritureDatees` ;
+   `platform/duckdb` : `TestAllowlistLecturesBrutesDatee`) ; `duckdb.OpenReadWrite` n'est
+   appelé que depuis l'allowlist datée de l'ADR 0030 D-3
+   (`archlint/no_bare_duckdb_rw_open_test.go`).
 4. **Un seul process writer par DB** (ADR 0013 dblease + ADR 0016 B-swap) : RO et RW sur
    le même fichier dans deux process = interdit. Pour lire une DB potentiellement tenue
    RW : `OpenReadForQuery` (jamais `OpenReadOnly` forcé). Écritures `sync_meta` : sous
@@ -144,9 +148,10 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
 6. Piège : `CREATE TABLE IF NOT EXISTS` n'ajoute jamais une PK à une table existante →
    `ON CONFLICT` échoue. Player DBs legacy sans contraintes : pattern
    `SELECT-then-UPDATE-or-INSERT`.
-7. **Ajout d'un enrichment local** sur `player_match_enrichment` : 3 étapes (migration
-   ALTER + champ pointer dans `EnrichmentRow` + if-block dans `enrichmentFields()`) —
-   ADR 0019 + `internal/persist/doc.go`.
+7. **Ajout d'un enrichment local** sur `player_match_enrichment` : la recette de
+   `internal/persist/doc.go` (huit étapes : migration ALTER, champ pointer dans
+   `EnrichmentRow`, if-block dans `enrichmentFields()`, projection dans la vue ; les deux
+   tables de stages sont liées par `TestEnrichmentColumnStage_LieALaVueMergeOnRead`) — ADR 0019.
 
 ## Règle auth tokens (ADR 0023)
 
@@ -188,7 +193,41 @@ des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON N�
   — jamais de label FR/EN en dur côté Go.
 - Dégradation gracieuse : `ErrCapabilityNotSupported` → réponse partielle/503 propre,
   jamais de panic ni de données d'un autre titre.
+- Aucun import d'un paquet de titre (`internal/games/<titre>/...`) dans `analysis/`, `service/`
+  ni `api/handlers` : ce qui dépend du titre arrive par un port que `api/wire` ou `cmd/` injecte.
+  Les gardes lisent les titres sur `internal/games/` (hors `paquetsInterTitres`) : un titre ajouté
+  est refusé sans éditer un test (`TestAnalysisImporteAucunPaquetDeTitre`,
+  `TestServiceImporteAucunPaquetDeTitre`, `TestHandlersSansMoteurDeSync`).
 - Détail : skill `arch-rules` (adapters, PathResolver, TitleRegistry).
+
+## Frontières de couches — garde-rails (plafond 0)
+
+Une règle de couche est tenue par un test, allowlist vide ou datée. Gardes Go dans
+`apps/go-api/internal/archlint/` (`frontieres_imports_test.go`, `frontieres_sql_test.go`) :
+
+| Règle | Garde-rail |
+|---|---|
+| `api/handlers` sans `sync`, `persist` ni paquet de titre ; sans `platform/duckdb` (une panne de lecture se classe par `platform/dbfault`) ; sans type concret de `service` (interfaces de `port/`) | `TestHandlersSansMoteurDeSync`, `TestHandlersSansStockageDuckDB`, `TestHandlersSansTypeConcretDeService` |
+| `scheduler/` sans `platform/duckdb` ; `analysis/` sans `database/sql` ni stockage ; `worldenrich` sans `service` | `TestSchedulerSansStockageDuckDB`, `TestAnalysisSansStockage`, `TestWorldenrichSansService` |
+| ni SQL ni `database/sql` dans `api/` (racine, `wire/`, `handlers/`, `middleware/`), `service/`, `analysis/`, `progression/`, `scheduler/`, `prestige/` ; aucun type `sql.` dans `port/` | `TestApiSansSQL`, `TestMetierSansSQL`, `TestPortSansTypeSQL` |
+| `os.Getenv` / `os.LookupEnv` seulement dans `internal/config`, `cmd/` et l'allowlist datée de données de déploiement | `TestAucuneLectureEnvHorsConfig` |
+
+Où va le code : une lecture SQL vit sous `platform/duckdb/` (`profilerepo`, `worldrepo`, `sqlfrag`
+pour les fragments dont le fuseau canonique) ou dans `importstore` (services d'import) et
+`cronstore` (tâches de fond du scheduler), derrière un port de `port/` ; une absence de ligne se
+rend par `platform/duckdb.NotFound` et se reconnaît par `errors.Is(err, port.ErrNotFound)`
+(`domain.ErrRecordNotFound`), jamais par `sql.ErrNoRows` ; `playerresolve` ouvre le PlayerDB d'un
+joueur (câblage, que `config` n'importe plus) ; `replaytext` convertit les libellés du rejeu entre
+`i18n.Text` et le décodeur ; `api/wire` et la racine `api/` assemblent, sans SQL ni logique métier.
+
+Front (`apps/web`) : `node tools/lint-cross-feature-imports.mjs` (imports entre features, `_shared`
+sans dépendance vers une feature, `components/` sans `features/`) ; gardes `*.guard.test.ts` :
+`echarts` et `<LazyECharts` seulement sous `components/charts/`
+(`chartsImportBoundary`, `lazyEchartsMount`), `fetch` seulement dans `lib/api/` et `lib/desktop/`
+(`rawFetch`, liste datée), types de contrat réexportés de `generated.ts`
+(`response-types`), aucun `useQuery` dans un `.tsx` de `features/` (`featureTsxNoQuery`), aucun
+`toggleSort` local (`noLocalSortToggle`), une seule lecture du bootstrap (`bootstrap`), aucune
+feature qui importe `@/routes` (`noRouteImport`).
 
 ## i18n — N langues (ADR 0040)
 
@@ -297,11 +336,13 @@ Référence complète des commandes : `docs/COMMANDS.md`. Déploiement : `docs/R
 11. **Feature flags** : pas de flag qui laisse une feature OFF « pour plus tard » —
     corriger la cause et livrer actif. Tout kill-switch porte en commentaire : date du
     basculement de défaut + date cible de retrait + critère mesurable (modèle :
-    `platform/duckdb/shared_reader_legacy.go`).
+    `scheduler/auto_sync_convergence.go`). Une variable d'environnement se lit UNE fois,
+    dans `internal/config`.
 12. **Couleurs web** : aucune valeur hex ni classe Tailwind couleur dans `features/` /
     `components/` — tokens sémantiques uniquement (skill `color-tokens`).
-13. **Tableaux interactifs** : TanStack Table. **Query keys** : `lib/query/keys.ts`,
-    jamais inline. **Routes** : file-based, ne jamais éditer `routeTree.gen.ts`.
+13. **Tableaux interactifs** : TanStack Table (tri : `lib/table/useColumnSort`). **Query keys** :
+    `lib/query/keys.ts`, jamais inline ni dérivées sur place ; **bootstrap** : `lib/query/bootstrap.ts`.
+    **Graphes** : `components/charts/` seul importe `echarts`. **Routes** : file-based, ne jamais éditer `routeTree.gen.ts`.
 14. **Vérifier l'existant avant d'implémenter** : `internal/analysis/` + skill
     `go-features` + grep des exports. Beaucoup d'algos existent déjà.
 15. **docs/FR — politique** : guides majeurs (`FOUNDATIONS_GUIDE`, `COMMANDS`,

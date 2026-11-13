@@ -108,7 +108,7 @@ Critères :
 - [ ] Pas de code mort laissé (fonctions jamais appelées, branches toujours fausses)
 - [ ] Feature flags nettoyés si la feature est en prod ; tout kill-switch conservé porte
       date de basculement de défaut + date cible de retrait + critère mesurable
-      (modèle : `platform/duckdb/shared_reader_legacy.go`)
+      (modèle : `scheduler/auto_sync_convergence.go`)
 - [ ] Écritures per-match via `persist.BatchBuilder`/Persister (jamais d'UPSERT concurrent
       sur les tables critiques) ; lectures de tables append-only via les vues `_latest`
 - [ ] Si un défaut de flag a basculé dans ce diff : les commentaires/doc du flag sont mis

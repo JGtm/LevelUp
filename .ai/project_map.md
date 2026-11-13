@@ -38,6 +38,27 @@
 | Noms par langue en base (une ligne par identifiant et langue) | `metadata.duckdb` : `asset_translations`, `medal_translations`, `weapon_name_labels`, `weapon_label_names`, `mode_name_tr`, `career_rank_translations` (skill `db-schema`) |
 | Garde-rails | web : `apps/web/src/lib/i18n/*.guard.test.ts`, `locale.ratchet.test.ts` ; Go : `apps/go-api/internal/archlint/i18n_*_test.go`, `no_locale_literal_test.go` |
 
+## Frontières de couches — cartographie À JOUR AU 2026-11-13 (îlot de fraîcheur)
+
+> Mesurée à la clôture de l'étape 8 du plan `.ai/PLAN_ARCHITECTURE_FRONTIERES_2026-11-10.md`. Le code fait
+> foi ; les règles et les noms des gardes vivent dans `CLAUDE.md` (« Frontières de couches ») et le skill
+> `arch-rules`. Chemins sous `apps/go-api/internal/` sauf mention contraire.
+
+| Rôle | Chemin réel |
+|---|---|
+| Lectures du profil de progression (13 requêtes) derrière `port.ProfileStore` | `platform/duckdb/profilerepo/` |
+| Classement mondial derrière `port.WorldLeaderboardStore` (fournisseur partagé, bascule B-swap) | `platform/duckdb/worldrepo/` |
+| Fragments SQL partagés (fuseau canonique, listes, annuaire des noms), sortis d'`analysis/` | `platform/duckdb/sqlfrag/` |
+| Classement des pannes de lecture pour la couche HTTP (503 retentable) | `platform/dbfault/` |
+| `DBExecutor` et `DBWriter` (les types SQL ne sont plus dans `port/`) | `platform/dblease/` |
+| Stockage des services d'import (OpenSpartan, import depuis le site) derrière des ports | `importstore/` |
+| Lectures des tâches de fond du scheduler (sondes de santé, purge des rejeux) | `cronstore/` |
+| Ouverture du PlayerDB d'un joueur et du lecteur partagé d'un titre (câblage, hors `config`) | `playerresolve/` |
+| Conversion des libellés du rejeu entre `i18n.Text` et le décodeur | `replaytext/` |
+| Câblage HTTP : dépôts, services, tâches de fond ; ni SQL ni logique métier | `api/wire/` |
+| Gardes d'imports et de SQL | `archlint/frontieres_imports_test.go`, `archlint/frontieres_sql_test.go`, `archlint/no_env_read_outside_config_test.go`, `archlint/no_title_package_in_analysis_test.go` |
+| Gardes web | `tools/lint-cross-feature-imports.mjs` ; `apps/web/src/**/*.guard.test.ts` (graphes, `fetch`, contrat, requêtes, tris, routes) |
+
 ## Décodeur de film — cartographie À JOUR AU 2026-09-18 (îlot de fraîcheur)
 
 > Le reste de ce fichier est gelé (bandeau ci-dessus). Cette section-ci est mesurée sur l'arbre
