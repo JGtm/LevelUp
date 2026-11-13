@@ -28,6 +28,7 @@ import type { ReplayBounds, ReplayMapBackgroundCalibration } from '@/lib/api/typ
 import { coversPlayedArea } from '../layers/mapBackground'
 import { frameBounds, sceneBounds, usefulHeight, visibleBounds } from '../../../lib/replay/replayLogic'
 import { type CanvasView } from '../model/replayView'
+import type { WallPlanReady } from '../model/wallPlan'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { lockedZoom, useReplayZoom, withManualMove, type ReplayZoom } from './useReplayZoom'
 import { useExportLayout } from '../export/exportLayoutStore'
@@ -67,6 +68,8 @@ export const CANVAS_PAD = 24
 export interface ReplayMapBackgroundLayer {
   calibration: ReplayMapBackgroundCalibration
   image: HTMLImageElement
+  /** Le plan des murs de la carte, normalisé ; `null` = la carte n'en a pas (cf. `model/wallPlan`). */
+  plan: WallPlanReady | null
 }
 
 export interface ReplayViewOptions {
