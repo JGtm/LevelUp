@@ -124,7 +124,7 @@ export function OpenSpartanImportCard() {
         )}
         {isPolling && <PollingStage job={job} />}
         {jobId && status === 'succeeded' && (
-          <SuccessStage result={job?.result as OpenSpartanImportResult | null} onReset={handleReset} />
+          <SuccessStage result={(job?.result ?? null) as OpenSpartanImportResult | null} onReset={handleReset} />
         )}
         {jobId && (status === 'failed' || status === 'cancelled' || status === 'interrupted') && (
           <FailureStage error={job?.error ?? null} status={status} onReset={handleReset} />

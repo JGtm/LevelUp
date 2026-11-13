@@ -193,7 +193,7 @@ function objectiveRows(objective: MatchScoreboardRow['objective']): PanelRow[] {
   return OBJECTIVE_ROW_KEYS.filter((k) => typeof stats[k] === 'number').map((k) => row(k, stats[k] as number))
 }
 
-function weaponsOf(rows: readonly PlayerWeaponKillRow[] | undefined): PanelWeapon[] {
+function weaponsOf(rows: readonly PlayerWeaponKillRow[] | null | undefined): PanelWeapon[] {
   return [...(rows ?? [])]
     .filter((w) => w.kills > 0)
     .sort((a, b) => b.kills - a.kills)

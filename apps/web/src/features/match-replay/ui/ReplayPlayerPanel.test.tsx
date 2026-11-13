@@ -206,7 +206,7 @@ describe('ReplayPlayerPanel — les listes : des totaux de fin de match', () => 
   })
 
   it('une valeur non lue est un tiret, pas un zéro', () => {
-    setup({ player: player(scoreboardRow('A', 'Alpha', 'a', { accuracy: 40, shots_hit: null, shots_fired: 100 })) })
+    setup({ player: player(scoreboardRow('A', 'Alpha', 'a', { accuracy: 40, shots_hit: undefined, shots_fired: 100 })) })
     const liste = screen.getByRole('region', { name: 'Précision sur le match' })
     expect(within(liste).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
       'Précision40,0 %',
@@ -239,7 +239,7 @@ describe('ReplayPlayerPanel — rien d’inventé', () => {
   })
 
   it('une feuille entièrement non lue : le même bloc, pas des listes de tirets', () => {
-    setup({ player: player(scoreboardRow('A', 'Alpha', 'a', { score: null })) })
+    setup({ player: player(scoreboardRow('A', 'Alpha', 'a', { score: undefined })) })
     expect(screen.getByText('Pas de statistiques de match pour ce joueur')).toBeTruthy()
   })
 

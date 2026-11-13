@@ -64,7 +64,8 @@ export interface CadenceInput {
  */
 export function buildCadence(input: CadenceInput): Cadence | null {
   const { cadence, meXUID, xuidMeta } = input
-  if (!cadence || cadence.datapoints.length === 0) return null
+  const datapoints = cadence?.datapoints ?? []
+  if (!cadence || datapoints.length === 0) return null
 
   // Le `xuid === meXUID` est conservé pour le cas — anormal — où le joueur de la page n'a
   // pas de ligne au scoreboard : il reste son propre allié.
@@ -74,7 +75,7 @@ export function buildCadence(input: CadenceInput): Cadence | null {
 
   const ally: number[] = []
   const enemy: number[] = []
-  for (const dp of cadence.datapoints) {
+  for (const dp of datapoints) {
     let amis = 0
     let adverses = 0
     for (const [xuid, count] of Object.entries(dp.components)) {
@@ -86,7 +87,7 @@ export function buildCadence(input: CadenceInput): Cadence | null {
   }
 
   return {
-    categories: cadence.datapoints.map((_, i) => formatBinSeconds(i * phaseSeconds)),
+    categories: datapoints.map((_, i) => formatBinSeconds(i * phaseSeconds)),
     ally,
     enemy,
     allyMA: movingAverage(ally, CADENCE_MA_WINDOW),

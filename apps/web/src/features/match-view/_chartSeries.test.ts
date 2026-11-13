@@ -67,11 +67,11 @@ describe('allPlayersFragDiffSeries', () => {
 
   it('calcule cumulatif kill +1 / death -1, ordre joueur principal en premier', () => {
     const events: MatchHighlightEvent[] = [
-      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
-      { event_type: 'death', event_time_ms: 2000, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
-      { event_type: 'kill', event_time_ms: 3000, actor_xuid: 'X2', target_xuid: null, weapon_id: null },
-      { event_type: 'kill', event_time_ms: 4000, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
-      { event_type: 'kill', event_time_ms: 5000, actor_xuid: 'X2', target_xuid: null, weapon_id: null },
+      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'X1', },
+      { event_type: 'death', event_time_ms: 2000, actor_xuid: 'X1', },
+      { event_type: 'kill', event_time_ms: 3000, actor_xuid: 'X2', },
+      { event_type: 'kill', event_time_ms: 4000, actor_xuid: 'X1', },
+      { event_type: 'kill', event_time_ms: 5000, actor_xuid: 'X2', },
     ]
     const series = allPlayersFragDiffSeries(events, xuidToGamertag, 'X1')
     expect(series).toHaveLength(2)
@@ -92,9 +92,9 @@ describe('allPlayersFragDiffSeries', () => {
 
   it('ignore les events sans time_ms ou actor_xuid', () => {
     const events: MatchHighlightEvent[] = [
-      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
-      { event_type: 'kill', event_time_ms: null, actor_xuid: 'X2', target_xuid: null, weapon_id: null },
-      { event_type: 'kill', event_time_ms: 2000, actor_xuid: null, target_xuid: null, weapon_id: null },
+      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'X1', },
+      { event_type: 'kill', event_time_ms: undefined, actor_xuid: 'X2', },
+      { event_type: 'kill', event_time_ms: 2000, actor_xuid: undefined, },
     ]
     const series = allPlayersFragDiffSeries(events, xuidToGamertag, null)
     expect(series).toHaveLength(1)
@@ -106,9 +106,9 @@ describe('allPlayersFragDiffSeries', () => {
 
   it('ignore les events autres que kill/death', () => {
     const events: MatchHighlightEvent[] = [
-      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
-      { event_type: 'medal', event_time_ms: 1500, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
-      { event_type: 'death', event_time_ms: 2000, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
+      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'X1', },
+      { event_type: 'medal', event_time_ms: 1500, actor_xuid: 'X1', },
+      { event_type: 'death', event_time_ms: 2000, actor_xuid: 'X1', },
     ]
     const series = allPlayersFragDiffSeries(events, xuidToGamertag, 'X1')
     expect(series[0].datapoints).toEqual([
@@ -120,8 +120,8 @@ describe('allPlayersFragDiffSeries', () => {
 
   it("propage le colorToken sur chaque série quand colorByXUID est fourni", () => {
     const events: MatchHighlightEvent[] = [
-      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'X1', target_xuid: null, weapon_id: null },
-      { event_type: 'kill', event_time_ms: 2000, actor_xuid: 'X2', target_xuid: null, weapon_id: null },
+      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'X1', },
+      { event_type: 'kill', event_time_ms: 2000, actor_xuid: 'X2', },
     ]
     const colorByXUID = new Map<string, 'compare-a' | 'outcome-loss'>([
       ['X1', 'compare-a'],
@@ -134,7 +134,7 @@ describe('allPlayersFragDiffSeries', () => {
 
   it("fallback `Joueur XXXX` quand l'xuid n'est pas dans la map", () => {
     const events: MatchHighlightEvent[] = [
-      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'XX_unknown_aaaa', target_xuid: null, weapon_id: null },
+      { event_type: 'kill', event_time_ms: 1000, actor_xuid: 'XX_unknown_aaaa', },
     ]
     const series = allPlayersFragDiffSeries(events, new Map(), null)
     expect(series[0].meta?.gamertag).toBe('Joueur aaaa')

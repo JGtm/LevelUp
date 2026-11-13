@@ -36,19 +36,12 @@ const BASELINE_COLLISIONS = new Set([
   // est devenu fidèle (tag `enum:"owner,member"` sur Role, `nullable:"false"` sur Members,
   // invariant nil → [] tenu par groupstore) et types.ts les ré-exporte du contrat.
   'AdminJobsResponse',
-  'AdminLogEntry',
   'AdminSchedulerStatusResponse',
-  'AsyncJobStatus',
   'BackupStatusResponse',
   // V8b (2026-07-07) : CareerEncountersResponse / CareerTopMatchesResponse retirés —
   // migrés en ré-export du contrat généré (plus de collision hand-written).
   'CareerHighlightMatchesResponse',
-  'CareerHistoryPoint',
-  'CareerLusrCheckpoint',
-  'CareerLusrSection',
   'CareerPageResponse',
-  'CareerSummary',
-  'CascadeInput',
   'CompareRequest',
   'CompareResponse',
   'DeviceFlowStartResponse',
@@ -57,36 +50,22 @@ const BASELINE_COLLISIONS = new Set([
   // orphelin homonyme a été supprimé du fragment manuel, plus de collision
   // (le type manuel front subsiste, sans pendant contractuel).
   'ExplorerMatchesQueryRequest',
-  'ExplorerMatchesQuerySummary',
   'ExplorerPlayerQueryRequest',
   'FilterContextInput',
   'HealthResponse',
   // 2026-07-10 (A3.5) : LabWaypointResponse retiré de la baseline — le type manuel
   // ET son endpoint /lab/waypoint sont supprimés avec le retrait du Lab (DC-9).
-  'MatchCombatTab',
-  'MatchEncounterBadge',
-  'MatchHighlightEvent',
   'MatchHistoryQueryRequest',
-  'MatchScoreboardRow',
-  'MatchTeamTab',
   'MatchViewResponse',
   'MediaItemRow',
   // 2026-08-04 (merge post-lot2) : MediaLikeRequest/MediaLikeResponse retirés —
   // shimés en ré-exports du contrat (les manuels divergeaient : total_likers
   // faussement optionnel, liker_slug jamais envoyé).
   'MediaPageResponse',
-  'NormalizedPlayerStats',
-  'PaginationRequest',
   'PeriodInput',
-  'SchedulerSnapshot',
-  'SeasonPassContentSummary',
-  'SessionContextRequest',
   'SessionContextResponse',
   'SessionsInput',
   'SettingsResponse',
-  'SquadIntensityProfile',
-  'SquadTimeseriesPoint',
-  'TeammateKPIs',
   'TeammatesPageResponse',
   // 2026-08-05 (R2) : TeammatesQueryRequest RETIRÉ — re-shimé. La collision venait de
   // `filters`, qui pointait le schéma `FilterContextInput` dérivé du type Go : une forme de

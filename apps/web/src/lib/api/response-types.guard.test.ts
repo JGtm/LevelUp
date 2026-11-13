@@ -186,6 +186,71 @@ function collectContractReexports(typesTs: string): Map<string, string> {
   return out
 }
 
+// --- Extension (plan architecture, étape 7.4) : TOUS les schémas, pas seulement les *Response ---
+//
+// Un type écrit à la main sous le nom d'un schéma du contrat dit une chose que le contrat dit autrement :
+// c'est la classe de bug A2 (champ lu côté front, absent côté Go), pour chaque nom et pas seulement pour
+// les réponses. Dans `lib/api/types.ts`, toute déclaration manuelle homonyme d'un schéma est donc interdite
+// hors de l'ALLOWLIST des réponses (ci-dessus) et de KEPT_MANUAL_HOMONYMS (ci-dessous). Une déclaration
+// dérivée du contrat (`components['schemas'][…]`, y compris `Omit<…> & { … }`) n'est pas manuelle. Hors de
+// `types.ts`, le nombre de déclarations homonymes est plafonné à sa valeur du 2026-11-13 (dette antérieure,
+// à résorber, jamais relevée).
+const DECLARATION_RE = /^(?:export\s+)?(interface|type)\s+(\w+)/gm
+const NEXT_DECLARATION_RE = /\n(?:export\s+|type\s|interface\s|const\s|function\s)/
+
+/** Plafond des homonymes manuels hors `lib/api/types.ts` (mesuré le 2026-11-13). */
+const HOMONYMS_OUTSIDE_TYPES_CEILING = 78
+
+// Types NON *Response de `lib/api/types.ts` laissés à la main (étape 7.4, 2026-11-13). Liste décroissante :
+// chaque entrée dit pourquoi le contrat généré ne peut pas être ré-exporté tel quel, et reste tant que la cause tient.
+const KEPT_MANUAL_HOMONYMS: Readonly<Record<string, string>> = {
+  PeriodInput:
+    "producteur : le contrat décrit la forme de RÉPONSE (champs requis, DTO Go sans omitempty) ; le store et le lien ?f= portent des fenêtres partielles",
+  SessionsInput: "producteur, même cause que PeriodInput (picked_* absents tant que rien n'est choisi)",
+  FilterContextInput:
+    "producteur : period, sessions et cascade facultatifs côté front, requis dans le contrat ; les rendre requis change les corps envoyés et le format du lien ?f=",
+  EngagementTimeseriesRequest: 'porte FilterContextInput (producteur)',
+  MatchHistoryQueryRequest:
+    "porte FilterContextInput ; le contrat omet picked_solo_session_labels, que le serveur lit (domain/match_history.go)",
+  ExplorerMatchesQueryRequest:
+    "porte FilterContextInput ; le contrat omet 17 champs de requête que le serveur lit (tris, paliers, plages de dates, scopes)",
+  ExplorerPlayerQueryRequest:
+    "le contrat porte un champ filters que la structure Go n'a pas, et omet page et target_xuid qu'elle lit (domain/explorer.go)",
+  CompareRequest:
+    "le contrat exige title_slug, que la structure Go n'a pas et que le front n'envoie pas (domain/compare.go)",
+  MediaItemRow:
+    "view-model normalisé (null au lieu d'absent, section et compteurs par défaut), fabriqué par normalizeMediaItem ; le schéma MediaItem du contrat est la forme brute",
+}
+
+interface ManualDeclaration {
+  file: string
+  name: string
+}
+
+/** Déclarations manuelles (interface, ou alias qui ne dérive pas du contrat) dont le nom est un schéma. */
+function manualSchemaHomonyms(
+  files: string[],
+  schemaNames: ReadonlySet<string>,
+  root: string,
+): ManualDeclaration[] {
+  const out: ManualDeclaration[] = []
+  for (const file of files) {
+    const src = readFileSync(file, 'utf8')
+    for (const m of src.matchAll(DECLARATION_RE)) {
+      const [, kind, name] = m
+      if (!schemaNames.has(name)) continue
+      if (kind === 'type') {
+        const rest = src.slice(m.index + m[0].length)
+        const stop = rest.search(NEXT_DECLARATION_RE)
+        const body = stop === -1 ? rest : rest.slice(0, stop)
+        if (body.includes("components['schemas']")) continue
+      }
+      out.push({ file: file.slice(root.length + 1).replaceAll('\\', '/'), name })
+    }
+  }
+  return out
+}
+
 describe('garde-rail types de réponse API (V8d — source unique generated.ts)', () => {
   const srcRoot = resolve(process.cwd(), 'src')
   const files = walk(srcRoot)
@@ -266,5 +331,67 @@ describe('garde-rail types de réponse API (V8d — source unique generated.ts)'
         `(champ lu côté front, absent côté Go). Rétablir ` +
         `\`export type X = components['schemas']['X']\` dans lib/api/types.ts.`,
     ).toEqual([])
+  })
+
+  // --- Extension 7.4 : tous les noms de schéma ------------------------------------------
+  const typesFile = join(srcRoot, 'lib/api/types.ts')
+  const homonymsInTypes = manualSchemaHomonyms([typesFile], schemas, srcRoot).map((d) => d.name)
+
+  it('lib/api/types.ts : aucune déclaration manuelle homonyme d’un schéma hors des deux listes', () => {
+    const unexpected = homonymsInTypes.filter((n) => !ALLOWLIST.has(n) && !(n in KEPT_MANUAL_HOMONYMS)).sort()
+    expect(
+      unexpected,
+      `Déclaration(s) manuelle(s) homonyme(s) d'un schéma du contrat : ${unexpected.join(', ')}. ` +
+        `Ré-exporter le schéma (type X = components['schemas']['X']), ou le dériver d'un schéma qui le porte ` +
+        `réellement ; sinon l'ajouter à KEPT_MANUAL_HOMONYMS avec la cause écrite.`,
+    ).toEqual([])
+  })
+
+  it('KEPT_MANUAL_HOMONYMS décroissante : aucune entrée périmée', () => {
+    const stale = Object.keys(KEPT_MANUAL_HOMONYMS)
+      .filter((n) => !homonymsInTypes.includes(n))
+      .sort()
+    expect(
+      stale,
+      `Entrée(s) de KEPT_MANUAL_HOMONYMS sans déclaration manuelle correspondante dans types.ts : ${stale.join(', ')}. ` +
+        `Retirer la ligne.`,
+    ).toEqual([])
+  })
+
+  it('hors lib/api/types.ts : le nombre de déclarations homonymes d’un schéma ne dépasse pas le plafond daté', () => {
+    const outside = manualSchemaHomonyms(
+      files.filter((f) => f !== typesFile && !f.endsWith(join('lib', 'api', 'generated.ts'))),
+      schemas,
+      srcRoot,
+    )
+    expect(
+      outside.length,
+      `${outside.length} déclaration(s) homonyme(s) hors types.ts pour un plafond de ${HOMONYMS_OUTSIDE_TYPES_CEILING} :\n  ` +
+        outside.map((d) => `${d.file} ${d.name}`).join('\n  '),
+    ).toBeLessThanOrEqual(HOMONYMS_OUTSIDE_TYPES_CEILING)
+  })
+
+  it('auto-preuve : la détection voit interface et alias manuels, ignore les dérivations du contrat', () => {
+    const detect = (code: string): string[] => {
+      const names = new Set(['Foo'])
+      const found: string[] = []
+      for (const m of code.matchAll(DECLARATION_RE)) {
+        const [, kind, name] = m
+        if (!names.has(name)) continue
+        if (kind === 'type') {
+          const rest = code.slice(m.index + m[0].length)
+          const stop = rest.search(NEXT_DECLARATION_RE)
+          if ((stop === -1 ? rest : rest.slice(0, stop)).includes("components['schemas']")) continue
+        }
+        found.push(name)
+      }
+      return found
+    }
+    expect(detect('export interface Foo { a: 1 }')).toEqual(['Foo'])
+    expect(detect('export type Foo = { a: 1 }')).toEqual(['Foo'])
+    expect(detect("export type Foo = components['schemas']['Foo']")).toEqual([])
+    expect(detect("export type Foo = Omit<components['schemas']['Foo'], 'a'> & { b: 1 }")).toEqual([])
+    expect(detect("export type Foo =\n  components['schemas']['Bar']\n\nexport interface Baz {}")).toEqual([])
+    expect(detect('export interface Other { a: 1 }')).toEqual([])
   })
 })

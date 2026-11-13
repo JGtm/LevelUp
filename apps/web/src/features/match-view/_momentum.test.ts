@@ -16,10 +16,8 @@ function bin(start: number, end: number): MatchTugOfWarBin {
 function killEvent(actorXuid: string | null, timeMs: number | null): MatchHighlightEvent {
   return {
     event_type: 'kill',
-    actor_xuid: actorXuid,
-    event_time_ms: timeMs,
-    target_xuid: null,
-    weapon_id: null,
+    actor_xuid: actorXuid ?? undefined,
+    event_time_ms: timeMs ?? undefined,
   }
 }
 

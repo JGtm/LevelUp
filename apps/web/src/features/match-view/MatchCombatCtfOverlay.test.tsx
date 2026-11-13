@@ -58,9 +58,9 @@ const SCOREBOARD: MatchScoreboardRow[] = [
 
 /** Trois frags : moi à 5 s, l'adversaire à 12 s, mon allié à 20 s. */
 const KILLS: MatchHighlightEvent[] = [
-  { event_time_ms: 5000, event_type: 'kill', actor_xuid: 'me', target_xuid: 'enemy1', weapon_id: null },
-  { event_time_ms: 12000, event_type: 'kill', actor_xuid: 'enemy1', target_xuid: 'ally1', weapon_id: null },
-  { event_time_ms: 20000, event_type: 'kill', actor_xuid: 'ally1', target_xuid: 'enemy1', weapon_id: null },
+  { event_time_ms: 5000, event_type: 'kill', actor_xuid: 'me', },
+  { event_time_ms: 12000, event_type: 'kill', actor_xuid: 'enemy1', },
+  { event_time_ms: 20000, event_type: 'kill', actor_xuid: 'ally1', },
 ]
 
 /** Deux captures : la mienne à 8 s, celle d'en face à 18 s. */

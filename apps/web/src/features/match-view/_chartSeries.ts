@@ -57,7 +57,7 @@ export function antagonistStackedSeries(
   const sb = scoreboard ?? []
   const meRow = meXUID ? sb.find((r) => r.xuid === meXUID) : undefined
   const allyTeam = meRow?.team_side ?? null
-  const xuidToTeam = new Map<string, string | null>(sb.map((r) => [r.xuid, r.team_side]))
+  const xuidToTeam = new Map<string, string | undefined>(sb.map((r) => [r.xuid, r.team_side]))
 
   const isEnemy = (xuid: string): boolean => {
     if (allyTeam == null) return false
@@ -133,7 +133,7 @@ export function assistStackedSeries(
   const sb = scoreboard ?? []
   const meRow = meXUID ? sb.find((r) => r.xuid === meXUID) : undefined
   const allyTeam = meRow?.team_side ?? null
-  const xuidToTeam = new Map<string, string | null>(sb.map((r) => [r.xuid, r.team_side]))
+  const xuidToTeam = new Map<string, string | undefined>(sb.map((r) => [r.xuid, r.team_side]))
 
   const isEnemy = ({ xuid, killers }: { xuid: string; killers: string[] }): boolean => {
     if (allyTeam == null) return false

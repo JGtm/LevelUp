@@ -22,6 +22,7 @@ function postSync(overrides: Partial<PostSyncCounters> = {}): PostSyncCounters {
     dominance_flags_computed: 0,
     converged_events: 0,
     converged_psa: 0,
+    snapshot_ready_marked: 0,
     duration_ms: 0,
     ...overrides,
   }

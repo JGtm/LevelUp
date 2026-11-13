@@ -76,11 +76,11 @@ export function SquadIntensityProfileChart({
   playerOrder,
 }: SquadIntensityProfileChartProps) {
   const panels = useMemo<IntensityPanelInput[]>(() => {
-    const labelByKey = new Map(profile.options.map((o) => [o.key, o.label]))
+    const labelByKey = new Map((profile.options ?? []).map((o) => [o.key, o.label]))
     const order =
       playerOrder && playerOrder.length > 0
         ? playerOrder
-        : profile.options.filter((o) => !isIntensityOverlayKey(o.key)).map((o) => o.key)
+        : (profile.options ?? []).filter((o) => !isIntensityOverlayKey(o.key)).map((o) => o.key)
     const seen = new Set<string>()
     const out: IntensityPanelInput[] = []
     for (const key of order) {

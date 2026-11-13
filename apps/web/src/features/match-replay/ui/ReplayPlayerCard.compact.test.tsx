@@ -186,7 +186,7 @@ function tableauBTB(parCamp: 12 | 7) {
   const lignes = [
     ...CAMP_A.slice(0, parCamp).map((nom) =>
       // Hotel : une assistance NON LUE dans la base — le triplet dit « ? ».
-      scoreboardRow(nom, nom, 't0', nom === 'Hotel' ? { assists: null } : {}),
+      scoreboardRow(nom, nom, 't0', nom === 'Hotel' ? { assists: undefined } : {}),
     ),
     ...CAMP_B.slice(0, parCamp).map((nom) =>
       // Mike : déficitaire (0 / 3 / 0) — le palier `destructive` du fond FDA.

@@ -351,8 +351,6 @@ describe('collectMedalEvents', () => {
     event_type: 'medal',
     event_time_ms: 1_000,
     actor_xuid: 'x1',
-    target_xuid: null,
-    weapon_id: null,
     medal_name: 'No Scope',
     ...over,
   })
@@ -381,9 +379,9 @@ describe('collectMedalEvents', () => {
     expect(
       collectMedalEvents([
         ev({ event_type: 'kill' }),
-        ev({ actor_xuid: null }),
-        ev({ event_time_ms: null }),
-        ev({ medal_name: null }),
+        ev({ actor_xuid: undefined }),
+        ev({ event_time_ms: undefined }),
+        ev({ medal_name: undefined }),
       ]),
     ).toEqual([])
   })

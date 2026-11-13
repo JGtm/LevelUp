@@ -10,19 +10,6 @@ import { AdminJobsTable } from './AdminJobsTable'
 function makeJob(overrides: Partial<AsyncJobStatus> & { job_id: string; job_type: string }): AsyncJobStatus {
   return {
     status: 'succeeded',
-    progress_pct: null,
-    current_step: null,
-    started_at: null,
-    finished_at: null,
-    result: null,
-    error: null,
-    phase_key: null,
-    phase_label: null,
-    matches_done: null,
-    matches_total: null,
-    subtasks_done: null,
-    subtasks_total: null,
-    eta_seconds: null,
     warnings: [],
     ...overrides,
   }

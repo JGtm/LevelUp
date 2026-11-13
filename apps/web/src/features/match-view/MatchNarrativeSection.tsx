@@ -90,7 +90,7 @@ export function MatchNarrativeSection({
         />
       )}
 
-      {cadence && cadence.datapoints.length > 0 && (
+      {cadence && (cadence.datapoints?.length ?? 0) > 0 && (
         <BarStackedChart
           title={labels.cadenceTitle}
           series={[asCadenceSeries(cadence)]}
@@ -114,7 +114,7 @@ function asCadenceSeries(cadence: MatchViewCadence): ChartSeries<ChartPointStack
   return {
     key: cadence.key,
     labelKey: cadence.label_key,
-    datapoints: cadence.datapoints,
+    datapoints: cadence.datapoints ?? [],
     meta: cadence.meta,
   }
 }

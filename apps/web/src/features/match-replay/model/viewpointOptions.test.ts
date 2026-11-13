@@ -171,7 +171,7 @@ describe('buildViewpointOptions — l’option inerte (décision 7 bis)', () => 
     // Le camp est celui du film ; la ligne sans côté ne le nomme pas (plancher « Équipe 0 »),
     // mais l'option, elle, marche : les deux conditions ne sont pas la même.
     const groups = buildViewpointOptions(
-      [player({ xuid: '9', board: board({ xuid: '9', gamertag: 'Nomade', team_side: null }) })],
+      [player({ xuid: '9', board: board({ xuid: '9', gamertag: 'Nomade', team_side: undefined }) })],
       LABELS,
     )
     expect(groups.map((g) => g.label)).toEqual(['Équipe 0'])

@@ -176,7 +176,7 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
           )}
 
           {/* Warnings */}
-          {job.warnings.length > 0 && (
+          {job.warnings != null && job.warnings.length > 0 && (
             <ul className="text-xs text-warning space-y-0.5">
               {job.warnings.map((w) => <li key={w}>{w}</li>)}
             </ul>

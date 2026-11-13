@@ -158,7 +158,7 @@ describe('playerPanelSheet — les totaux de fin de match, sans rien inventer', 
   })
 
   it('une feuille entièrement non lue ne produit AUCUNE section — jamais de zéro', () => {
-    const r = playerPanelSheet(sheet({ score: null, headshot_kills: null, power_weapon_kills: null, melee_kills: null }))
+    const r = playerPanelSheet(sheet({ score: undefined, headshot_kills: undefined, power_weapon_kills: undefined, melee_kills: undefined }))
     expect(r.hasSheet).toBe(true)
     expect(r.sections).toEqual([])
   })
@@ -176,7 +176,7 @@ describe('playerPanelSheet — les totaux de fin de match, sans rien inventer', 
   })
 
   it('une valeur non lue AU MILIEU d’une section est une lacune (null), pas un zéro', () => {
-    const r = playerPanelSheet(sheet({ accuracy: 40, shots_hit: null, shots_fired: 100 }))
+    const r = playerPanelSheet(sheet({ accuracy: 40, shots_hit: undefined, shots_fired: 100 }))
     expect(r.sections[0].rows.map((x) => x.value)).toEqual([40, null, 100])
   })
 
@@ -210,7 +210,7 @@ describe('playerPanelSheet — les totaux de fin de match, sans rien inventer', 
   })
 
   it('sans objectif sur la feuille, pas de section d’objectif', () => {
-    expect(playerPanelSheet(sheet({ objective: null })).sections.find((s) => s.id === 'objective')).toBeUndefined()
+    expect(playerPanelSheet(sheet({ objective: undefined })).sections.find((s) => s.id === 'objective')).toBeUndefined()
   })
 
   it('les armes : les cinq plus meurtrières, les zéros écartés', () => {

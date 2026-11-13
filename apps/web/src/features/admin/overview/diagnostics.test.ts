@@ -162,6 +162,7 @@ describe('evaluateDiagnostics', () => {
           dominance_flags_computed: 0,
           converged_events: 0,
           converged_psa: 0,
+          snapshot_ready_marked: 0,
           duration_ms: 65_000,
           step_timings: [
             { step: 'weapon_kills', duration_ms: 50_000, items: 12 },
