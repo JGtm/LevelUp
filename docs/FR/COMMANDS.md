@@ -1713,7 +1713,13 @@ gate qui échoue toujours ne gate rien) :
 Dans les deux modes, la racine de travail est jetable (entrées copiées, config/catalogues
 depuis la branche extraite ou le worktree de base, chunks de film depuis le parc de
 développement — **jamais d'écriture dans le parc**), et le gate ne bumpe jamais un schéma — il
-ne fait que comparer.
+ne fait que comparer. Config et catalogues sont copiés **tels que Git les voit** (fichiers suivis,
+plus fichiers non suivis non ignorés, pour pouvoir essayer un catalogue non commis) : un fichier de
+référence ignoré par git (les overlays du runtime sous `data/titles/{slug}/reference/generated/`)
+n'est fourni à AUCUNE des deux racines. La racine de la base est extraite d'une révision et ne l'a
+jamais ; le donner au seul HEAD faisait apparaître, sur une carte rattrapée par l'overlay, un écart
+sans rapport avec le diff (`pickups.mapCatalogPoints` 0 -> 54). Une racine source hors d'un dépôt
+Git est refusée.
 
 ```bash
 make replay-corpus-gate                                      # defaut : mode base, manifeste complet
@@ -1870,7 +1876,12 @@ Toute tolérance de temps du banc est une DURÉE en millisecondes, convertie en 
 et sur celle de 33 ms (30,3 images/s). Mesurées sur 12 témoins aux deux grilles : tolérance de vie
 650 ms (V-3, V-5), de mort 250 ms (V-8). V-2 compte une instance par PASSAGE de véhicule hors
 emprise (les échantillons consécutifs d'un même véhicule forment une seule instance), non par
-échantillon : un compte par échantillon suit la densité de la grille.
+échantillon : un compte par échantillon suit la densité de la grille. V-6 compte une instance par
+PASSAGE d'un passager loin du véhicule dans un trajet (les échantillons évalués consécutifs au-delà
+du rayon forment une instance, datée du premier ; un échantillon sans point du passager à portée
+n'est pas jugé et ne clôt pas le passage, un échantillon évalué dans le rayon le clôt) : à la montée,
+le corps du passager cesse de répliquer et son dernier point reste le seul apparié, si bien qu'un
+compte par échantillon triplait entre 100 et 33 ms pour un même passage.
 
 **Dans `replay-corpus-gate` (2026-09-30), le verdict EST celui du banc.** Chaque témoin comparé est
 jugé par le banc (référence et HEAD, mêmes faits, même oracle — le gate exporte désormais
