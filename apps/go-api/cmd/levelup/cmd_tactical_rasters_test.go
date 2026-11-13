@@ -25,6 +25,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -252,7 +253,7 @@ func trSidecarCourant(short string) domain.TacticalRasterSidecar {
 		ShortID:               short,
 		ArtifactSchemaVersion: replay.SchemaVersion,
 		PasM:                  domain.TacticalRasterPasM,
-		FrameIntervalMs:       100,
+		FrameIntervalMs:       replaybuild.CookFrameIntervalMS(),
 		PasEchantillonMs:      domain.TacticalRasterPasEchantillonMs,
 		Joueurs:               []domain.TacticalRasterJoueur{},
 	}
@@ -368,5 +369,66 @@ func TestTacticalRasters_SidecarV2Reecrit(t *testing.T) {
 	}
 	if len(relu.Joueurs) != 2 {
 		t.Fatalf("sidecar reecrit sans joueurs : %+v", relu)
+	}
+}
+
+// TestTacticalRasters_LePasEstUneMarqueDeFraicheur : un sidecar projeté d'un artefact à 100 ms n'est
+// refait que si l'artefact change de pas, à schéma égal ; il ne l'est pas tant que l'artefact garde son
+// pas, même quand ce pas n'est plus le pas de cuisson courant (le remède est la régénération de
+// l'artefact, pas de ses dérivés). Mutation : retirer la comparaison du pas de `dejaProjete` rend la
+// seconde passe muette et ce test rouge.
+func TestTacticalRasters_LePasEstUneMarqueDeFraicheur(t *testing.T) {
+	root := t.TempDir()
+	trPoserArtefacts(t, root, "aaaaaaaa")
+	cfg := &config.AppConfig{RepoRoot: root}
+	ctx := context.Background()
+	if b := projeterCorpusRasters(ctx, cfg, trOptions(false), []string{"aaaaaaaa"}); b.ecrits != 1 {
+		t.Fatalf("première passe = %+v, attendu 1 écrit", b)
+	}
+	if b := projeterCorpusRasters(ctx, cfg, trOptions(false), []string{"aaaaaaaa"}); b.sautes != 1 || b.ecrits != 0 {
+		t.Fatalf("même artefact, même pas = %+v, attendu 1 sauté", b)
+	}
+	// L'artefact est régénéré au même schéma, à un autre pas : le sidecar suit.
+	pr := titlePkg.NewPathResolver(root)
+	autrePas := strings.ReplaceAll(strings.ReplaceAll(trArtefact, "%ID%", "aaaaaaaa"),
+		`"frameIntervalMs":100`, `"frameIntervalMs":33`)
+	if err := poserCompresse(pr.ReplayArtifactPath(titlePkg.DefaultSlug, "aaaaaaaa"), []byte(autrePas), 0o644); err != nil {
+		t.Fatalf("écrire l'artefact régénéré: %v", err)
+	}
+	if b := projeterCorpusRasters(ctx, cfg, trOptions(false), []string{"aaaaaaaa"}); b.ecrits != 1 || b.sautes != 0 {
+		t.Fatalf("artefact à un autre pas = %+v, attendu 1 écrit (le sidecar était à 100 ms)", b)
+	}
+	if s, ok := lireSidecarRaster(ctx, pr.TacticalRasterPath(titlePkg.DefaultSlug, "aaaaaaaa")); !ok || s.FrameIntervalMs != 33 {
+		t.Fatalf("sidecar refait = %+v (ok=%v), attendu à 33 ms", s, ok)
+	}
+}
+
+// TestTacticalRasters_RaccourciExigeLePasCourant : le raccourci qui évite d'ouvrir l'artefact ne vaut que
+// pour un sidecar au schéma ET au pas de cuisson courants. Mutation : retirer `CadenceUpToDate` du
+// raccourci le rend vrai à 100 ms et ce test rouge.
+func TestTacticalRasters_RaccourciExigeLePasCourant(t *testing.T) {
+	root := t.TempDir()
+	cible := trSidecarAuBonSchema(t, root, "aaaaaaaa")
+	sc := trSidecarCourant("aaaaaaaa")
+	ecrireSidecarBrut(t, cible, sc)
+	if !sidecarAJour(context.Background(), cible) {
+		t.Fatal("un sidecar au schéma et au pas courants doit être à jour")
+	}
+	sc.FrameIntervalMs = replaybuild.HistoricalFrameIntervalMS
+	ecrireSidecarBrut(t, cible, sc)
+	if sidecarAJour(context.Background(), cible) {
+		t.Fatal("un sidecar à un pas périmé a été pris pour à jour par le raccourci")
+	}
+}
+
+// ecrireSidecarBrut pose un sidecar en JSON clair, tel que `lireSidecarRaster` le relit.
+func ecrireSidecarBrut(t *testing.T, path string, sc domain.TacticalRasterSidecar) {
+	t.Helper()
+	raw, err := json.Marshal(sc)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if err := os.WriteFile(path, raw, 0o644); err != nil {
+		t.Fatalf("write: %v", err)
 	}
 }

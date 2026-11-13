@@ -58,6 +58,12 @@ func CadenceUpToDate(frameIntervalMS int) bool {
 	return FrameIntervalOrHistorical(frameIntervalMS) == CookFrameIntervalMS()
 }
 
+// SameCadence dit si deux pas (0 = absent, lu a 100 ms) sont la meme grille : la marque de fraicheur d'un
+// derive projete d'un artefact (resume d'usage, raster tactique) face a l'artefact dont il vient.
+func SameCadence(a, b int) bool {
+	return FrameIntervalOrHistorical(a) == FrameIntervalOrHistorical(b)
+}
+
 // cadenceCourante : le pas de cet artefact est-il le pas de cuisson courant ?
 func (d Digest) cadenceCourante() bool { return CadenceUpToDate(d.FrameIntervalMS) }
 

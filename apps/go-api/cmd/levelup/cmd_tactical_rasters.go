@@ -49,6 +49,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync/replayartifacts"
 
@@ -177,7 +178,7 @@ func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 			b.echecs++
 			continue
 		}
-		if dejaProjete(ctx, cible, s.ArtifactSchemaVersion) {
+		if dejaProjete(ctx, cible, s.ArtifactSchemaVersion, s.FrameIntervalMs) {
 			b.sautes++
 			continue
 		}
@@ -204,20 +205,23 @@ func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 // POURQUOI CE RACCOURCI EXISTE : un artefact pese quelques megaoctets, un sidecar quelques
 // kilooctets. Sans lui, une passe de controle sur un corpus de milliers de matchs relirait
 // des gigaoctets pour n'ecrire rien. Il est SUR parce qu'un artefact ne peut pas porter un
-// schema superieur a celui que le binaire courant sait produire : un sidecar qui declare
-// deja `replay.SchemaVersion` ne peut pas etre en retard sur son artefact.
+// schema superieur ni a un pas plus recent que ceux que le binaire courant sait produire : un sidecar
+// qui declare deja `replay.SchemaVersion` ET le pas de cuisson courant ([replaybuild.CadenceUpToDate])
+// ne peut pas etre en retard sur son artefact.
 //
 // Tous les autres cas — sidecar absent, illisible, d'un autre format, ou projete d'un
 // artefact plus ancien — retombent sur la comparaison complete (dejaProjete).
 func sidecarAJour(ctx context.Context, path string) bool {
 	s, ok := lireSidecarRaster(ctx, path)
-	return ok && s.ArtifactSchemaVersion == replay.SchemaVersion
+	return ok && s.ArtifactSchemaVersion == replay.SchemaVersion && replaybuild.CadenceUpToDate(s.FrameIntervalMs)
 }
 
-// dejaProjete compare le sidecar en place au schema de l'artefact qui vient d'etre lu.
-func dejaProjete(ctx context.Context, path string, schemaArtefact int) bool {
+// dejaProjete compare le sidecar en place au schema ET au pas de l'artefact qui vient d'etre lu :
+// le pas est une marque de fraicheur au meme titre que le schema (un artefact regenere a un autre pas
+// refait son sidecar, a schema egal).
+func dejaProjete(ctx context.Context, path string, schemaArtefact, pasArtefact int) bool {
 	s, ok := lireSidecarRaster(ctx, path)
-	return ok && s.ArtifactSchemaVersion == schemaArtefact
+	return ok && s.ArtifactSchemaVersion == schemaArtefact && replaybuild.SameCadence(s.FrameIntervalMs, pasArtefact)
 }
 
 // lireSidecarRaster lit le sidecar en place et dit s'il est exploitable EN L'ETAT.

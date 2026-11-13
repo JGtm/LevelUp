@@ -117,6 +117,17 @@ func wouldDowngrade(outPath string, blob []byte) (enPlace Digest, oui bool) {
 	if current.decodageIntact() && !incoming.decodageIntact() {
 		return current, true
 	}
+	// LE PAS EST UNE MARQUE DE FRAÎCHEUR AU MÊME TITRE QUE LE SCHÉMA ([CadenceUpToDate], la source
+	// unique). Un artefact au pas courant ne se laisse pas écraser par un candidat à un autre pas (un
+	// retour à une grille périmée), et un artefact à un pas périmé se laisse remplacer par un candidat au
+	// pas courant : c'est la reconstruction voulue, comme une montée de schéma, que le garde de compteurs
+	// ci-dessous ne doit pas arrêter.
+	switch {
+	case CadenceUpToDate(current.FrameIntervalMS) && !CadenceUpToDate(incoming.FrameIntervalMS):
+		return current, true
+	case !CadenceUpToDate(current.FrameIntervalMS) && CadenceUpToDate(incoming.FrameIntervalMS):
+		return current, false
+	}
 	if current.Players == 0 {
 		return current, false // rien à protéger sur l'axe des compteurs
 	}
