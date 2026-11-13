@@ -117,7 +117,7 @@ export function useStartBackfill() {
 
 export function useBackupStatus() {
   return useQuery({
-    queryKey: [...queryKeys.settings, 'backup-status'],
+    queryKey: queryKeys.settingsBackupStatus,
     queryFn: () => api.get<BackupStatusResponse>('/settings/backup/status'),
     staleTime: 30 * 1000,
   })
@@ -128,7 +128,7 @@ export function useRunBackup() {
   return useMutation({
     mutationFn: () => api.post<BackupRunResult>('/settings/backup/run', {}),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: [...queryKeys.settings, 'backup-status'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.settingsBackupStatus })
     },
   })
 }

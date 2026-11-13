@@ -158,6 +158,8 @@ describe('query keys des noms de jeu servis dans la langue de la requête (item 
     engagementTimeseries: (l) => queryKeys.engagementTimeseries(P, T, 'h', 50, l),
     engagementSquadSession: (l) => queryKeys.engagementSquadSession(P, T, ['m'], ['x'], l),
     palmaresRelations: (l) => queryKeys.palmaresRelations(P, T, l),
+    palmaresRelationsPage: (l) => queryKeys.palmaresRelationsPage(P, T, l, 'h'),
+    palmaresRelationsMoments: (l) => queryKeys.palmaresRelationsMoments(P, T, l, 'h'),
   }
 
   for (const [nom, fabrique] of Object.entries(fabriques)) {
@@ -216,6 +218,8 @@ const dependDeLaLangue: Record<string, () => readonly unknown[]> = {
   homeFavorites: () => queryKeys.homeFavorites(PL, TI, L),
   seasonPass: () => queryKeys.seasonPass(PL, TI, L),
   palmaresRelations: () => queryKeys.palmaresRelations(PL, TI, L),
+  palmaresRelationsPage: () => queryKeys.palmaresRelationsPage(PL, TI, L, 'h'),
+  palmaresRelationsMoments: () => queryKeys.palmaresRelationsMoments(PL, TI, L, 'h'),
   teammates: () => queryKeys.teammates(PL, TI, 'h', [], L),
   teammatesTop: () => queryKeys.teammatesTop(PL, TI, L),
   tacticalMaps: () => queryKeys.tacticalMaps(PL, TI, 'h', L),
@@ -262,6 +266,7 @@ const nePasDependreDeLaLangue: Record<string, string> = {
   sessionContext: 'contexte de session (identifiants)',
   health: "état du serveur",
   settings: "réglages d'instance (valeurs)",
+  settingsBackupStatus: 'état du scheduler de sauvegarde (dates, nombres, codes fixes ; aucun libellé)',
   filmArchive: "occupation de l'archive des films (nombres et chemins, aucun libellé)",
   desktopStatus: "état vivant de l'intégration au poste (un booléen : le jeu tourne, aucun libellé)",
   dataStatus: 'sauvegarde et mémoire du poste (nombres, dates et codes fixes ; aucun libellé)',

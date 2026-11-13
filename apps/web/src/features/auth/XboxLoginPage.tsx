@@ -20,8 +20,9 @@ import { useLogin } from '@/features/auth/queries'
 import { storePasswordCredential } from '@/features/auth/credentials'
 import { deviceFlowFailureKey, isTooManyLoginAttempts } from '@/features/auth/loginError'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { bootstrapQueryOptions } from '@/lib/query/bootstrap'
 import { queryKeys } from '@/lib/query/keys'
-import { api, API_BASE_URL, apiErrorCode, type ApiError } from '@/lib/api/client'
+import { API_BASE_URL, apiErrorCode, type ApiError } from '@/lib/api/client'
 import type { BootstrapResponse } from '@/lib/api/types'
 import { postLoginDestination } from '@/features/auth/postLoginDestination'
 import { verificationLinkLabel } from '@/lib/formatters'
@@ -83,11 +84,7 @@ export function XboxLoginPage({ oauthError }: XboxLoginPageProps = {}) {
                   // reste coincé sur l'onboarding. On force une lecture réseau.
                   let boot: BootstrapResponse | null = null
                   try {
-                    boot = await queryClient.fetchQuery({
-                      queryKey: queryKeys.bootstrap,
-                      queryFn: () => api.get<BootstrapResponse>('/bootstrap'),
-                      staleTime: 0,
-                    })
+                    boot = await queryClient.fetchQuery({ ...bootstrapQueryOptions(), staleTime: 0 })
                   } catch {
                     // Bootstrap injoignable : ne pas bloquer le login abouti —
                     // l'onboarding reste un atterrissage sûr (CTA « Continuer »).

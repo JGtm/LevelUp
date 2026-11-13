@@ -3,7 +3,7 @@ import { queryClient } from '@/app/queryClient'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
-import type { BootstrapResponse } from '@/lib/api/types'
+import { fetchBootstrap } from '@/lib/query/bootstrap'
 
 /**
  * applyActiveTitle — UNIQUE fonction effectful du module title-routing (D-10),
@@ -56,7 +56,7 @@ export async function applyActiveTitle(slug: string): Promise<void> {
     //    titre ne survit ni ne se re-peuple sous une clé du nouveau.
     queryClient.clear()
     // 6. Re-bootstrap → données du nouveau titre + réhydratation (header = nouveau).
-    const bootstrap = await api.get<BootstrapResponse>('/bootstrap')
+    const bootstrap = await fetchBootstrap()
     store.getState().hydrateFromBootstrap(bootstrap)
     // 7. Filet joueur : si le bootstrap n'a pas désigné de joueur courant alors que
     //    des joueurs existent, sélectionner le premier (sinon la NavL1 reste vide).

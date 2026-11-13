@@ -73,6 +73,8 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   homeFavorites: () => queryKeys.homeFavorites(P, T, 'fr'),
   seasonPass: () => queryKeys.seasonPass(P, T, 'fr'),
   palmaresRelations: () => queryKeys.palmaresRelations(P, T),
+  palmaresRelationsPage: () => queryKeys.palmaresRelationsPage(P, T, 'fr', 'h'),
+  palmaresRelationsMoments: () => queryKeys.palmaresRelationsMoments(P, T, 'fr', 'h'),
   // Onglet Tactique : une carte n'existe que dans son titre, et la grille compte les
   // matchs du titre courant.
   tacticalMaps: () => queryKeys.tacticalMaps(P, T, 'h', 'fr'),
@@ -170,6 +172,7 @@ const agnosticKeys = new Set<string>([
   'deviceFlow',
   'job',
   'settings',
+  'settingsBackupStatus', // sauvegarde de l'instance : un scheduler pour tous les titres
   'filmArchive', // archive des films : une par instance, tous titres confondus
   'desktopStatus', // intégration au poste : état du poste, indépendant du titre
   'dataStatus', // sauvegarde et mémoire du processus : état du poste, indépendant du titre

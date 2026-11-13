@@ -43,6 +43,8 @@ export const queryKeys = {
   deviceFlow: (attemptId: string) => ['device-flow', attemptId] as const,
   job: (jobId: string) => ['job', jobId] as const,
   settings: ['settings'] as const,
+  // État du scheduler de sauvegarde (GET /settings/backup/status) — sous la clé des réglages.
+  settingsBackupStatus: ['settings', 'backup-status'] as const,
   // Occupation et emplacement de l'archive des films (GET /settings/film-archive).
   filmArchive: ['film-archive'] as const,
   // État vivant de l'intégration au poste (GET /settings/desktop) : le jeu tourne-t-il.
@@ -230,6 +232,11 @@ export const queryKeys = {
   // Le nom de la carte de chaque duel est servi dans la langue de la requête.
   palmaresRelations: (playerSlug: string, titleSlug: string, locale = '') =>
     ['palmares', playerSlug, titleSlug, 'relations', locale] as const,
+  // Page Relations et section « Moments & Rivalités », segmentées par le contexte de filtre committed (`hash`).
+  palmaresRelationsPage: (playerSlug: string, titleSlug: string, locale: string, hash: string) =>
+    ['palmares', playerSlug, titleSlug, 'relations', locale, hash] as const,
+  palmaresRelationsMoments: (playerSlug: string, titleSlug: string, locale: string, hash: string) =>
+    ['palmares', playerSlug, titleSlug, 'relations', locale, 'moments', hash] as const,
 
   // Escouade / Teammates (Slice 6)
   // exactComposition : l'option « composition exacte » change la POPULATION servie
