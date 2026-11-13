@@ -36,8 +36,8 @@ const (
 	millimetre = 1000.0
 )
 
-// sansNavmeshDe dit si cette carte renonce au maillage de navigation. Journalisé : c'est ce qui
-// décide si la carte est rognée à son maillage et si elle publie un plan.
+// sansNavmeshDe dit si cette carte cuit sans s'appuyer sur son maillage de navigation (ni
+// référence, ni rognage). Journalisé. Le maillage reste chargé : le plan des murs n'en dépend pas.
 func (e *environnement) sansNavmeshDe(cle string) bool {
 	if e.reglages == nil {
 		return false
@@ -53,8 +53,12 @@ func (e *environnement) sansNavmeshDe(cle string) bool {
 // optionsNavmeshNatif rend ce qu'une carte native fait de son maillage : rognage à 1,5 m, sans
 // tolérance ni niveau haut, sauf réglage de la carte (`rogneAuNavmesh`, `margeNavmesh`,
 // `toleranceNavmesh`, `maillageNiveauHaut`). `rogneAuNavmesh: false` garde le maillage comme
-// référence sans rogner ; `sansNavmesh` le retire entièrement.
+// référence sans rogner ; `sansNavmesh` rend des options nulles (le maillage ne sert plus qu'au
+// plan des murs).
 func (e *environnement) optionsNavmeshNatif(cle string, m *hinavmesh.Maillage) himap.OptionsNavmesh {
+	if e.sansNavmeshDe(cle) {
+		return himap.OptionsNavmesh{}
+	}
 	marge := e.margeNavmeshDe(cle)
 	if marge <= 0 {
 		marge = margeNavmeshNatifM
@@ -80,13 +84,11 @@ func (e *environnement) optionsNavmeshForge(cle string, m *hinavmesh.Maillage) h
 	}
 }
 
-// maillageNatif charge le maillage d'une carte native. Rend nil, sans erreur, quand la carte
-// n'en a pas ou y renonce (`sansNavmesh`) ; la dégradation à publier est alors rendue à part.
-// Une lecture qui échoue est une erreur : la carte serait cuite sans un maillage qu'elle a.
+// maillageNatif charge le maillage d'une carte native, y compris quand elle cuit `sansNavmesh` :
+// il sert alors au seul plan des murs. Rend nil, sans erreur, quand la carte n'en a pas ; la
+// dégradation à publier est alors rendue à part. Une lecture qui échoue est une erreur : la carte
+// serait cuite sans un maillage qu'elle a.
 func (e *environnement) maillageNatif(ctx context.Context, cle string) (m *hinavmesh.Maillage, degradation string, err error) {
-	if e.sansNavmeshDe(cle) {
-		return nil, "", nil
-	}
 	m, bilan, err := himap.ChargeMaillageNatif(ctx, e.racineJeu, cle)
 	if errors.Is(err, himap.ErrSansMaillage) {
 		slog.InfoContext(ctx, "mapfond: carte sans maillage de navigation, cuite comme avant", "carte", cle)

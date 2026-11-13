@@ -714,7 +714,7 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--titl
   `rogneAuNavmesh` (sur une carte native : actif par défaut, `false` garde le maillage comme
   surface de référence sans rogner ; sur une carte Forge : inactif par défaut), `margeNavmesh`
   (dilatation, en mètres), `toleranceNavmesh`, `maillageNiveauHaut` ; `sansNavmesh: true` (cartes
-  natives) retire le maillage entier (ni référence, ni rognage, ni plan). Une carte Forge reçoit
+  natives) cuit sans le maillage (ni référence, ni rognage) mais publie quand même son `plan`. Une carte Forge reçoit
   aussi `navmeshReference`, et publie un `plan` dès que le dépôt porte son `navmesh.blob`
   (`mapnav-fetch`), que la cuisson s'en serve ou non.
 - `--plan-seul` ne cuit rien : pour chaque carte Forge dont le `navmesh.blob` est au dépôt, il

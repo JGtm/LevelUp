@@ -320,7 +320,7 @@ déclare que là où la carte a été jugée à l'œil) :
 | `margeNavmesh` | dilatation du masque de rognage, en mètres (0 = le défaut de la source) |
 | `toleranceNavmesh` | vider les cellules dont la surface retenue s'écarte de plus de N mètres du sol du maillage (0 = rien) ; fait un plan d'étage plutôt qu'une vue de dessus |
 | `maillageNiveauHaut` | là où deux niveaux se superposent, prendre le plus haut du maillage comme référence, pour que étages et passerelles survivent à la substitution |
-| `sansNavmesh` | carte native seulement : renoncer au maillage (ni référence, ni rognage, ni plan) |
+| `sansNavmesh` | carte native seulement : cuire sans le maillage (ni référence, ni rognage), le `plan` des murs reste publié |
 
 **Le plan des murs.** `plan { source, vertices, faces, edges }` dans le sidecar porte les arêtes de bord du maillage
 (celles qu'une seule face porte : murs, vides, bords de plateforme) en `[x1, y1, x2, y2]`, en mètres monde, au

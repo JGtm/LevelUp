@@ -313,7 +313,7 @@ where a map was judged by eye):
 | `margeNavmesh` | dilation of the clipping mask, in metres (0 = the source default) |
 | `toleranceNavmesh` | empty the cells whose retained surface is more than N metres from the mesh ground (0 = none); it makes a floor plan rather than a top view |
 | `maillageNiveauHaut` | where two levels overlap, take the highest one of the mesh as the reference, so floors and walkways survive the substitution |
-| `sansNavmesh` | native map only: drop the mesh altogether (no reference, no clipping, no plan) |
+| `sansNavmesh` | native map only: cook without the mesh (no reference, no clipping), the wall `plan` is still published |
 
 **The wall plan.** `plan { source, vertices, faces, edges }` in the sidecar holds the boundary edges of the mesh (the
 edges one face carries: walls, voids, platform edges) as `[x1, y1, x2, y2]` in world metres, to the millimetre. It is a

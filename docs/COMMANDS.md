@@ -690,8 +690,8 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--titl
   levers in `map_fond_reglages.json` (each entry still carries its `raison` and `gateLe`):
   `rogneAuNavmesh` (on a native map: on by default, `false` keeps the mesh as the reference
   surface without clipping ; on a Forge map: off by default), `margeNavmesh` (dilation, metres),
-  `toleranceNavmesh`, `maillageNiveauHaut` ; `sansNavmesh: true` (native maps) drops the mesh
-  altogether (no reference, no clipping, no plan). A Forge map also takes `navmeshReference`, and
+  `toleranceNavmesh`, `maillageNiveauHaut` ; `sansNavmesh: true` (native maps) cooks without the mesh
+  (no reference, no clipping) but still publishes its `plan`. A Forge map also takes `navmeshReference`, and
   publishes a `plan` whenever the repository holds its `navmesh.blob` (`mapnav-fetch`), whether
   or not the cooking uses it.
 - `--plan-seul` cooks nothing: for each Forge map whose `navmesh.blob` is in the repository, it

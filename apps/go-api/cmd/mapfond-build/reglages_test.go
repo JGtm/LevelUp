@@ -10,6 +10,7 @@ package main
 // Ce test lit l'asset PUBLIÉ, celui que la cuisson consomme.
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,6 +22,8 @@ import (
 	"levelup/go-api/internal/testutil"
 
 	"github.com/JGtm/halo-infinite-map-images/himap"
+
+	"github.com/JGtm/halo-infinite-files-reader/hinavmesh"
 )
 
 // cheminReglagesPublies, relatif a la RACINE du depot — la racine se demande a
@@ -192,5 +195,28 @@ func TestRogneAuNavmeshDefautsNatifEtForge(t *testing.T) {
 		if got := e.rogneAuNavmeshDe(c.cle); got != c.forge {
 			t.Errorf("%s : Forge = %v, attendu %v", c.cle, got, c.forge)
 		}
+	}
+}
+
+// `sansNavmesh` cuit sans le maillage mais publie quand meme le plan des murs : les options de
+// cuisson sont nulles, le plan se tire du maillage charge.
+func TestSansNavmeshGardeLePlanDesMurs(t *testing.T) {
+	maillage := &hinavmesh.Maillage{
+		Sommets: []hinavmesh.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 1}},
+		Faces:   []hinavmesh.Face{{Sommets: []int32{0, 1, 2, 3}}},
+	}
+	e := &environnement{reglages: &reglagesFond{Cartes: map[string]reglageCarte{
+		"sans": {SansNavmesh: true, GateLe: "2026-11-13"},
+	}}}
+
+	if opts := e.optionsNavmeshNatif("sans", maillage); opts != (himap.OptionsNavmesh{}) {
+		t.Errorf("sansNavmesh : options navmesh = %+v, attendu nulles", opts)
+	}
+	if opts := e.optionsNavmeshNatif("autre", maillage); opts.Maillage != maillage || !opts.Rogne {
+		t.Errorf("une carte sans reglage doit etre rognee a son maillage : %+v", opts)
+	}
+	plan := planDeMaillage(context.Background(), "sans", sourcePlanNatif, maillage)
+	if plan == nil || len(plan.Edges) != 4 {
+		t.Errorf("plan = %+v, attendu les 4 aretes du carre", plan)
 	}
 }
