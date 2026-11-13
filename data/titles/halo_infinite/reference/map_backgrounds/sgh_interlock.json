@@ -11,7 +11,7 @@
   ],
   "image": "sgh_interlock.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-09-03T09:14:06.9035965Z",
+  "generatedAt": "2026-11-13T12:41:28.7222164Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.04478166611989339,
@@ -38,10 +38,11 @@
     "covered": false,
     "cellsSubstituted": 93058,
     "cellsClipped": 51818,
-    "cellsAssumedFloor": 195030
+    "cellsAssumedFloor": 194671
   },
   "degradations": [
-    "sddt : module any/globals introuvable : GetFileAttributesEx D:\\SteamLibrary\\steamapps\\common\\Halo Infinite\\deploy\\any\\levels\\multi\\globals\\common-rtx-new.module: Le chemin d’accès spécifié est introuvable.",
-    "eau : module any/globals introuvable : GetFileAttributesEx D:\\SteamLibrary\\steamapps\\common\\Halo Infinite\\deploy\\any\\levels\\multi\\globals\\common-rtx-new.module: Le chemin d’accès spécifié est introuvable."
+    "sddt : module any/globals introuvable : GetFileAttributesEx C:\\XboxGames\\Halo Infinite\\Content\\deploy\\any\\levels\\multi\\globals\\common-rtx-new.module: Le chemin d’accès spécifié est introuvable.",
+    "eau : module any/globals introuvable : GetFileAttributesEx C:\\XboxGames\\Halo Infinite\\Content\\deploy\\any\\levels\\multi\\globals\\common-rtx-new.module: Le chemin d’accès spécifié est introuvable.",
+    "aucun maillage de navigation dans le module any"
   ]
 }
