@@ -15,11 +15,12 @@
 import { Suspense, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
+import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 
-import { LazyECharts } from '@/components/charts/LazyECharts'
-import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase, outcomeColor, tickInterval } from '@/components/charts/_utils'
+import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase, outcomeColor, tickInterval } from './_utils'
+import { LazyECharts } from './LazyECharts'
 
 export interface CumulativeFragPoint {
   cumulative: number
@@ -45,6 +46,9 @@ function outcomeKey(o: string): 'win' | 'loss' | 'tie' {
 
 export function CumulativeFragGapChart({ points, height = 120, showXAxis = false }: CumulativeFragGapChartProps) {
   const themeVersion = useThemeVersion()
+  // La palette d'accessibilité change sans toucher `data-theme` : sans cette version, les
+  // couleurs lues à l'appel resteraient celles de l'ancienne palette jusqu'au remontage.
+  const paletteVersion = useColorPaletteVersion()
 
   const option = useMemo((): EChartsCoreOption => {
     if (points.length === 0) return {}
@@ -106,9 +110,10 @@ export function CumulativeFragGapChart({ points, height = 120, showXAxis = false
         },
       ],
     }
-    // themeVersion force le recalcul de l'option au changement de thème.
+    // themeVersion et paletteVersion forcent le recalcul de l'option au changement de thème
+    // ou de palette.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [points, showXAxis, themeVersion])
+  }, [points, showXAxis, themeVersion, paletteVersion])
 
   if (points.length === 0) return null
 

@@ -17,7 +17,7 @@
  * affrontés en ennemi) → les donuts passent alors côte à côte, pleine largeur.
  */
 import { RelationWinRateDonut } from '@/features/palmares/RelationWinRateDonut'
-import { CumulativeFragGapChart } from '@/features/palmares/CumulativeFragGapChart'
+import { CumulativeFragGapChart } from '@/components/charts/CumulativeFragGapChart'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'

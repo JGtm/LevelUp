@@ -292,9 +292,8 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // Les liens profonds de l'Ascension vers les Séries temporelles se construisent avec
   // l'encodeur UNIQUE du paramètre ?f= (filterLink).
   'ascension=>filters/filterLink',
-  // Les deux donuts du Versus de l'Explorateur sont ceux de Palmarès (relations, écart de frags).
+  // Le donut de victoires du Versus de l'Explorateur est celui de Palmarès (relations).
   'explorer=>palmares/RelationWinRateDonut',
-  'explorer=>palmares/CumulativeFragGapChart',
   // Le tri client des lignes de l'Explorateur sert aussi les tableaux de rencontres, du
   // classement de match et de l'historique des synergies : une seule règle de tri.
   'match-view=>explorer/explorerMatchesClientSort',

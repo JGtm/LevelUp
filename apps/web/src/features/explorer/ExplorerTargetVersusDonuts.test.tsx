@@ -25,7 +25,7 @@ vi.mock('@/features/palmares/RelationWinRateDonut', () => ({
     </div>
   ),
 }))
-vi.mock('@/features/palmares/CumulativeFragGapChart', () => ({
+vi.mock('@/components/charts/CumulativeFragGapChart', () => ({
   CumulativeFragGapChart: ({ points }: { points: unknown[] }) => (
     <div data-testid="frag-chart">{points.length}</div>
   ),

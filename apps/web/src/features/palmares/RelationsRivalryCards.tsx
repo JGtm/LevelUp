@@ -23,7 +23,7 @@ import { formatPercent } from '@/lib/formatters'
 import type { RelationRivalry } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { CumulativeFragGapChart } from './CumulativeFragGapChart'
+import { CumulativeFragGapChart } from '@/components/charts/CumulativeFragGapChart'
 import { type PalmaresText } from './i18n'
 import type { Locale } from '@/lib/i18n/locale'
 

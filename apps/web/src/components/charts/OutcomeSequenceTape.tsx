@@ -18,6 +18,7 @@
 import { Suspense, useCallback, useMemo, useRef } from 'react'
 import type { EChartsCoreOption, EChartsType } from 'echarts/core'
 
+import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 
 import { resolveToken } from '@/lib/accessibility'
@@ -150,6 +151,9 @@ export function OutcomeSequenceTape({
   const runs = useMemo(() => toRuns(matches), [matches])
   const xMax = runs.reduce((s, r) => s + r.count, 0)
   const themeVersion = useThemeVersion()
+  // La palette d'accessibilité change SANS toucher `data-theme` : sans cette version, les
+  // couleurs lues à l'appel resteraient celles de l'ancienne palette jusqu'au remontage.
+  const paletteVersion = useColorPaletteVersion()
   const interactive = !!onMatchClick
   const chartRef = useRef<EChartsType | null>(null)
 
@@ -189,11 +193,12 @@ export function OutcomeSequenceTape({
 
   const option = useMemo((): EChartsCoreOption => {
     if (xMax === 0) return {}
-    // themeVersion force le recalcul quand le thème bascule : les couleurs
-    // (CHART_BG, outcomeColor, getEChartsThemeColors) sont lues à l'appel via des
-    // variables CSS, invisibles pour exhaustive-deps. Référence réelle pour garder
-    // la dépendance légitime sans disable.
+    // themeVersion et paletteVersion forcent le recalcul quand le thème ou la palette
+    // basculent : les couleurs (CHART_BG, outcomeColor, getEChartsThemeColors) sont lues
+    // à l'appel via des variables CSS, invisibles pour exhaustive-deps. Références réelles
+    // pour garder les dépendances légitimes sans disable.
     void themeVersion
+    void paletteVersion
     const tc = getEChartsThemeColors()
     return {
       backgroundColor: CHART_BG,
@@ -319,7 +324,7 @@ export function OutcomeSequenceTape({
         },
       ],
     }
-  }, [runs, xMax, labels, themeVersion, interactive, dominanceLabels])
+  }, [runs, xMax, labels, themeVersion, paletteVersion, interactive, dominanceLabels])
 
   if (loading || xMax === 0) return null
 
