@@ -705,6 +705,19 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--titl
 
 - Sortie : `data/titles/{slug}/reference/map_backgrounds/{cle}.png` + `{cle}.json` (sidecar de
   calage) par carte — 218 fichiers aujourd'hui.
+- Maillage de navigation : une carte native est cuite avec le maillage de navigation de son
+  module `any` (`himap.ChargeMaillageNatif`) : la matière hors du maillage, dilaté de 1,5 m, est
+  effacée, et le sidecar publie un `plan` (les arêtes de bord du maillage, en mètres monde, au
+  millimètre). Un module sans maillage (Live Fire, le tutoriel de l'Académie) est cuit comme avant
+  et porte « aucun maillage de navigation dans le module any » dans `degradations`, sans `plan`.
+  Leviers par carte de `map_fond_reglages.json` (chaque entrée garde sa `raison` et son `gateLe`) :
+  `margeNavmesh` (dilatation, en mètres), `toleranceNavmesh`, `maillageNiveauHaut` ; sur une
+  carte native le rognage est toujours actif, et `sansNavmesh: true` retire le maillage entier
+  (ni rognage ni plan). Une carte Forge reçoit les mêmes leviers (`navmeshReference`,
+  `rogneAuNavmesh`, ...) et publie un `plan` quand son `navmesh.blob` est chargé.
+- Après la cuisson, lancer `go run ./cmd/mapfond-webp -convertir` : il réécrit chaque sidecar par
+  `internal/mapfondsidecar`, qui conserve le `plan` (le `replay.MapBackground` du décodeur de film
+  ne le connaît pas).
 - Prérequis : jeu installé — TOUJOURS, aucun flag ne permet de l'éviter, même en Forge seul ;
   chaîne cgo/GPLv3 (`halo-infinite-map-images/himap` -> `halo-infinite-files-reader/himodule` -> `halo-infinite-files-reader/ooz`, jamais liée
   dans `cmd/server`) ; exige `map_objectives.json` déjà construit (dépendance dure, échoue

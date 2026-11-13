@@ -682,6 +682,19 @@ CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--titl
 
 - Output: `data/titles/{slug}/reference/map_backgrounds/{key}.png` + `{key}.json` sidecar per
   map (218 files today) — the top-down background image and its calibration.
+- Navigation mesh: a native map is cooked with the navmesh of its `any` module
+  (`himap.ChargeMaillageNatif`): the matter outside the mesh, dilated by 1.5 m, is erased, and the
+  sidecar publishes a `plan` (the boundary edges of the mesh, in world metres, to the millimetre).
+  A module without a mesh (Live Fire, the Academy tutorial) is cooked as before and reports
+  "aucun maillage de navigation dans le module any" in `degradations`, with no `plan`. Per-map
+  levers in `map_fond_reglages.json` (each entry still carries its `raison` and `gateLe`):
+  `margeNavmesh` (dilation, metres), `toleranceNavmesh`, `maillageNiveauHaut` ; on a native map
+  clipping is always on, and `sansNavmesh: true` drops the mesh altogether (no clipping, no
+  plan). A Forge map takes the same levers (`navmeshReference`, `rogneAuNavmesh`, ...) and
+  publishes a `plan` when its `navmesh.blob` is loaded.
+- After cooking, run `go run ./cmd/mapfond-webp -convertir`: it rewrites each sidecar through
+  `internal/mapfondsidecar`, which keeps the `plan` (the film decoder's `replay.MapBackground`
+  does not know it).
 - Prereq: game installed — **always**, no flag bypasses it, even a Forge-only run ; cgo/GPLv3
   chain (`halo-infinite-map-images/himap` → `halo-infinite-files-reader/himodule` → `halo-infinite-files-reader/ooz`, never linked into
   `cmd/server`) ; requires `map_objectives.json` already built (hard dependency, fails
