@@ -10,7 +10,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { MediaItemRow } from '@/lib/api/types'
+import type { NormalizedMediaItem } from '@/lib/api/types'
 import { useHlsVideo, type HlsAudioTrack } from '@/lib/media/useHlsVideo'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
@@ -23,8 +23,8 @@ import { getMediaModalsText } from './i18n-modals'
 import { log } from './_logger'
 
 interface CoverFlowModalProps {
-  items: MediaItemRow[]
-  onToggleLike: (item: MediaItemRow) => void
+  items: NormalizedMediaItem[]
+  onToggleLike: (item: NormalizedMediaItem) => void
   startIndex: number
   onClose: () => void
   likeDisabled?: boolean
@@ -34,9 +34,9 @@ interface CoverFlowModalProps {
   globalTotal?: number
   /** Callback ouvrant le picker d'(ré)association. Le label affiché passe
    *  automatiquement de "Associer" à "Réassocier" selon `item.match_id`. */
-  onReassociate?: (item: MediaItemRow) => void
+  onReassociate?: (item: NormalizedMediaItem) => void
   /** Callback ouvrant l'explorateur de fichiers sur le média. Non fourni = bouton absent. */
-  onReveal?: (item: MediaItemRow) => void
+  onReveal?: (item: NormalizedMediaItem) => void
   /** Gamertag du joueur actif — masque le bouton (ré)association sur les médias
    *  qui ne lui appartiennent pas. */
   currentPlayerGamertag?: string
@@ -54,7 +54,7 @@ interface CoverFlowModalProps {
   /** Callback de SUPPRESSION DÉFINITIVE (item 3.1). Non fourni = action absente.
    *  Le composant n'affiche l'action qu'au propriétaire (ou à un admin) et exige
    *  une confirmation ; l'autorité reste le backend, ce filtrage est cosmétique. */
-  onDelete?: (item: MediaItemRow) => void
+  onDelete?: (item: NormalizedMediaItem) => void
   /** Suppression en cours : fige les deux boutons de la confirmation. */
   deleteBusy?: boolean
 }
@@ -73,7 +73,7 @@ const ANIM_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 const WINDOW_RADIUS = 2
 const IMAGE_AUTOCHAIN_DELAY_MS = 7000
 
-function formatHeading(item: MediaItemRow, index: number, total: number, locale: ManifestLocale) {
+function formatHeading(item: NormalizedMediaItem, index: number, total: number, locale: ManifestLocale) {
   // Format court HH:MM JJ/MM/AA (cohérent avec formatMediaDate des thumbnails).
   const raw = item.capture_end_utc ?? item.match_start_time
   let dateStr: string | null = null
@@ -578,7 +578,7 @@ export function CoverFlowModal({
   }, [autoChain, currentItem, isCurrentClip, canAdvanceFurther, pendingPageAdvance])
 
   const slots = useMemo(() => {
-    const result: { item: MediaItemRow; relPos: number; absIdx: number }[] = []
+    const result: { item: NormalizedMediaItem; relPos: number; absIdx: number }[] = []
     for (let off = -WINDOW_RADIUS; off <= WINDOW_RADIUS; off++) {
       const idx = committedIdx + off
       if (idx >= 0 && idx < items.length) {

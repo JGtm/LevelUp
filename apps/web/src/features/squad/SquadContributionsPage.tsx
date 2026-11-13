@@ -12,6 +12,7 @@
  *
  * Multi-titres : strings UI via getSquadText.
  */
+import { withoutNullRows } from './withoutNullRows'
 import { useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { SectionTitle } from '@/components/ui/detail-section'
@@ -45,7 +46,7 @@ export function SquadContributionsPage() {
   const perMinuteRows = useMemo(() => pageData?.per_minute_stats ?? [], [pageData?.per_minute_stats])
   const synergyRadar = useMemo(() => pageData?.synergy_radar ?? [], [pageData?.synergy_radar])
   const performanceSeries = pageData?.performance_series
-  const perfSeriesByPlayer = useMemo(() => performanceSeries ?? {}, [performanceSeries])
+  const perfSeriesByPlayer = useMemo(() => withoutNullRows(performanceSeries), [performanceSeries])
   // Le backend renvoie s.gamertag (casse mixte ex "Joueur90002") tandis que
   // playerSlug est l'URL param (souvent lowercase). On aligne sur main_player
   // pour que l'ordre des joueurs matche les clés des SquadPerMinuteEntry.player
@@ -60,7 +61,7 @@ export function SquadContributionsPage() {
   // Frags et armes : joueurs ayant des classes de frags OU une série de performance
   // (même prédicat que l'onglet Usages qui les montait jusqu'au lot L2).
   const fragClasses = pageData?.frag_classes
-  const fragClassesByPlayer = useMemo(() => fragClasses ?? {}, [fragClasses])
+  const fragClassesByPlayer = useMemo(() => withoutNullRows(fragClasses), [fragClasses])
   const fragPlayerOrder = useMemo(
     () => [mainPlayerKey, ...confirmedGamertags].filter((p) => fragClasses?.[p] || performanceSeries?.[p]),
     [mainPlayerKey, confirmedGamertags, fragClasses, performanceSeries],

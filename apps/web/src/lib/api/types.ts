@@ -54,26 +54,13 @@ export type PlayerPresence = components['schemas']['PlayerPresence']
 
 export type SessionContextRequest = components['schemas']['SessionContextRequest']
 
-export interface SessionContextResponse {
-  current_player: PlayerSummary | null
-  current_title_slug: string  // Sprint 44
-  locale: string
-  hints_visible: boolean
-  capabilities: CapabilityMap
-  /** Sprint 44 : titres disponibles pour le titre switcher. */
-  available_titles?: TitleSummary[]
-}
+export type SessionContextResponse = components['schemas']['SessionContextResponse']
 
 // ---------------------------------------------------------------------------
 // Health
 // ---------------------------------------------------------------------------
 
-export interface HealthResponse {
-  status: 'ok' | 'degraded' | 'down'
-  version: string
-  uptime_seconds: number
-  checks: Record<string, string>
-}
+export type HealthResponse = components['schemas']['HealthResponse']
 
 // ---------------------------------------------------------------------------
 // Filtres
@@ -137,17 +124,7 @@ export interface SetupPlayerInfo {
 
 export type SetupNextStep = 'choose_mode' | 'auth' | 'player' | 'initial_sync' | 'smoke_test' | 'done'
 
-export interface DeviceFlowStartResponse {
-  attempt_id: string
-  user_code: string
-  verification_uri: string
-  verification_uri_complete: string | null
-  /** Durée de validité en secondes depuis l'émission. */
-  expires_in: number
-  /** @deprecated Alias de expires_in pour compatibilité backend. */
-  expires_in_seconds?: number
-  poll_interval_seconds: number
-}
+export type DeviceFlowStartResponse = components['schemas']['DeviceFlowStartResponse']
 
 export type DeviceFlowStatus = 'pending' | 'authorized' | 'provisioned' | 'failed' | 'expired'
 
@@ -352,87 +329,7 @@ export interface BackfillStartRequest {
 // Settings (Slice 1)
 // ---------------------------------------------------------------------------
 
-export interface SettingsResponse {
-  lang: string
-  discord_lang: string
-  user_timezone: string
-  normalize_mode_labels: boolean
-  show_records: boolean
-  refresh_clears_caches: boolean
-  media_captures_base_dir: string
-  // Valeur effective résolue (env > réglage > défaut prod). PATCH persiste le réglage.
-  media_delete_source_after_transcode: boolean
-  media_tolerance_minutes: number
-  media_watcher_enabled: boolean
-  media_watcher_debounce_seconds: number
-  discord_notifications_enabled: boolean
-  discord_webhook_url_present: boolean
-  discord_notify_sync: boolean
-  discord_notify_backfill: boolean
-  discord_notify_new_version: boolean
-  discord_notify_friends: boolean
-  spnkr_auto_sync_enabled: boolean
-  spnkr_auto_sync_interval_hours: number
-  spnkr_auto_sync_interval_minutes: number
-  watcher_presence_enabled: boolean
-  watcher_subscribed_players: string[]
-  // --- Règles de sessions ---
-  session_gap_minutes: number
-  session_split_on_ranked_change: boolean
-  session_team_change_mode: 'ignore' | 'group' | 'friends'
-  // --- Rejeu 2D : fenêtre de rétention des artefacts (0 = illimité) ---
-  replay_retention_months: number
-  // --- Rejeu 2D : où se construit un rejeu. '' = défaut de l'instance
-  // (ouvrier en production, ce serveur en développement). ---
-  replay_build_location: '' | 'local' | 'worker' | 'off'
-  // --- Règles de badges narratifs ---
-  outcome_exclude_bot_matches_from_badges: boolean
-  outcome_exclude_bot_matches_from_records: boolean
-  outcome_badge_sensitivity: 'relaxed' | 'standard' | 'strict'
-  // --- Rendement combat (OffensiveConversion) ---
-  rendement_exclude_assists: boolean
-  // --- Affichage Objectifs/Prestige ---
-  show_progression: boolean
-  // --- Coach proactif (pont coach → Prestige, cf. ADR 0020) ---
-  coach_proactive_mode: boolean
-  // --- Fournisseur d'authentification (admin uniquement) ---
-  auth_provider: string
-  // --- Verrou d'instance (admin uniquement, ADR 0035 D5) ---
-  // Instance fermée : un compte Xbox inconnu ne peut plus créer de compte ni de
-  // profil. Le serveur l'expose (domain.SettingsResponse:87) et accepte son
-  // PATCH sous rôle admin depuis le verrou centralisé — il manquait ici, donc
-  // aucune page ne pouvait le proposer (la prod a dû être verrouillée à la main).
-  instance_locked: boolean
-  // --- Sons d'armes du rejeu 2D (réglages d'instance, page admin) ---
-  // Les .wav extraits du jeu sont purs : ces deux pourcentages rejouent côté app ce que
-  // le moteur fait à chaque coup. Variation 100 = fourchettes du jeu telles quelles ;
-  // distance 0 = son pur, aucun traitement dans le chemin du signal.
-  replay_sound_variation_percent: number
-  replay_sound_distance_percent: number
-  // --- Archive des films (ADR 0045 D-12) ---
-  // Conserver les chunks des films après la cuisson du rejeu (défaut vrai). Faux : retirés
-  // après cuisson, et la fenêtre de rétention des rejeux doit rester illimitée (0).
-  archive_films: boolean
-  // Dossier de l'archive (chemin absolu) ; '' = emplacement par défaut. Pris en compte au
-  // redémarrage. L'occupation se lit par GET /settings/film-archive.
-  film_archive_dir: string
-  // --- Intégration au poste de l'application de bureau (lot L21) ---
-  // Détecter le jeu en cours (défaut vrai), notifications Windows, croix vers la zone de
-  // notification, démarrage avec Windows, tâche planifiée de rafraîchissement (défaut faux).
-  game_process_watch: boolean
-  native_notifications: boolean
-  close_to_tray: boolean
-  start_with_windows: boolean
-  scheduled_refresh: boolean
-  // --- Données de l'application de bureau (lot L22) ---
-  // Sauvegarde périodique en Parquet : dossier (chemin absolu, '' = désactivée), fréquence
-  // ('1h' à '168h'), nombre de jeux conservés (1 à 60) ; plafond mémoire de chaque base en Mo
-  // (0 = valeur par défaut du serveur, sinon 1024 à 32768).
-  backup_dir: string
-  backup_interval: string
-  backup_keep: number
-  memory_limit_mb: number
-}
+export type SettingsResponse = components['schemas']['SettingsResponse']
 
 export type UpdateSettingsRequest = Partial<
   Omit<SettingsResponse, 'discord_webhook_url_present'> & {
@@ -476,14 +373,7 @@ export type EncounterDTO = components['schemas']['EncounterDTO']
 // CareerLusrCheckpoint = LUSRCheckpointDTO. CareerPageResponse reste une interface manuelle
 // (allowlist du garde des réponses) ; le fix V8b a retiré les DEUX champs fantômes
 // (top_matches_preview / encounters_preview) absents du CareerPageResponse Go.
-export interface CareerPageResponse {
-  summary: CareerSummary | null
-  hero_progress: HeroProgress | null
-  projections: CareerProjections | null
-  xp_history: CareerHistoryPoint[]
-  lusr: CareerLusrSection | null
-  friends_xp_history?: FriendXPHistory[]
-}
+export type CareerPageResponse = components['schemas']['CareerPageResponse']
 
 export type CareerEncountersResponse = components['schemas']['CareerEncountersResponse']
 
@@ -1243,92 +1133,7 @@ export type MatchRangePlayer = components['schemas']['MatchRangePlayer']
 // fenêtre de la page (joueur consulté seul, lobby entier pour la médiane).
 export type RangeReferenceBlock = components['schemas']['RangeReferenceBlock']
 
-export interface TeammatesPageResponse {
-  options: TeammateOption[]
-  teammates: TeammateRow[]
-  total_matches: number
-  session_labels: SessionLabelsList
-  /** Nombre total d'amis configurés du joueur. Sert au label UI "parmi N amis". */
-  friends_count: number
-  timeseries?: SquadTimeseriesPoint[]
-  map_breakdown?: MapBreakdownRow[]
-  match_series?: Record<string, SquadMatchSeriesPoint[]>
-  match_history?: SquadMatchHistoryRow[]
-  session_timeline?: SquadSessionPoint[]
-  map_heatmap?: SquadMapHeatmap
-  impact_matrix?: SquadImpactMatrix
-  /**
-   * « Points d'impact par soirée et par rôle » : la soirée affichée et les soirées précédentes
-   * de la composition, mêmes rôles et même barème que la matrice. Absent sans coéquipier
-   * sélectionné ou quand aucun rôle ne tombe sur l'escouade.
-   */
-  squad_impact_history?: SquadImpactHistory
-  per_minute_stats?: SquadPerMinuteEntry[]
-  synergy_radar?: SquadSynergyRadarSeries[]
-  intensity_profile?: SquadIntensityProfile
-  performance_series?: Record<string, SquadPerformanceSeriesPoint[]>
-  /** La Mainmise de chaque match du périmètre pour l'équipe du joueur principal (section Dynamique). */
-  lead_share_series?: SquadLeadSharePoint[]
-  /** Répartition des frags PAR CLASSE (D8) par gamertag — barres empilées du
-   *  sous-chart « Répartition des frags » de teammates.16. */
-  frag_classes?: Record<string, FragClassEntry[]>
-  /** « Outils de destruction » (D8) : chaque frag nommé, par outil et par joueur. */
-  weapon_tools?: SquadWeaponTools
-  /** Comparatif « Précision par arme » multi-joueurs (barres groupées horizontales).
-   *  Précision native Halo 5 ; absent sur Infinite (capability weapon_accuracy). */
-  weapon_accuracy?: SquadWeaponAccuracy
-  native_kill_mechanics?: SquadKillMechanics
-  /** Premiers frag/mort PAR MATCH, une série par joueur de l'escouade (onglet Dynamique). */
-  first_blood?: FirstBloodPlayerSeriesDTO[]
-  /** Paires (assistant → tueur assisté) INTERNES à l'escouade + couverture de la
-   *  mesure. Absent quand aucun match de la sélection n'a d'assistance mesurée. */
-  assist_pairs?: SquadAssistPairs
-  /** Header alimente <SessionBriefing> (mode solo si pas de coéquipier sélectionné, mode squad sinon). */
-  header?: import('@/features/squad/v2/types').SquadHeader
-  /** Gamertag du joueur principal — sert à identifier le card "moi" dans header.player_cards. */
-  main_player?: string
-  /** MedalDigest alimente <MedalDigest> en bas de SquadSynergiesPage. */
-  medal_digest?: MedalDigestEntry[]
-  /** Sessions où la composition EXACTE (joueur principal + tous les coéquipiers
-   *  sélectionnés) a joué ensemble. Alimente le SessionMultiSelect + le
-   *  ré-ancrage. Sans coéquipier : sessions squad du joueur principal. */
-  composition_sessions?: SessionLabelEntry[]
-  /** Label de la session la plus récente de la composition exacte (1re entrée de
-   *  composition_sessions). Vide si la composition n'a jamais joué ensemble. */
-  latest_composition_session?: string
-  /** Chargements best-effort qui ont échoué : les nombres affichés sont partiels.
-   *  Non vide => l'UI doit le signaler (fin des chiffres non reproductibles). */
-  data_issues?: DataIssue[]
-  /**
-   * Profils de PORTÉE par match (lot N2) : tous les joueurs mesurés de chaque match, leur
-   * médiane et leur écart à la médiane du lobby. Alimente la carte « Rôles de portée » de
-   * l'onglet Synergies. Absent = aucun film décodé sur la sélection.
-   */
-  range_profiles?: MatchRangeBlock
-  /**
-   * Bloc « formes retenues » — la MATIÈRE des cartes d'objectif : une feuille d'objectif par
-   * match à objectif, les deux camps. Publié par `TeammatesService.WithSquadFormes` sur le
-   * périmètre D2 de la page ; lu par les cartes d'objectif de Contributions.
-   * Absent = périmètre sans match ; `available:false` avec raison machine pour un titre sans
-   * `film.usage_summary`.
-   */
-  formes_retenues?: SquadFormesBlock
-  /**
-   * « Rapport de force, soirée après soirée » (lot L3 du plan
-   * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, D6/D7) : la soirée affichée (périmètre D2) et
-   * les dix soirées précédentes de la composition d’au moins trois matchs à objectif. Parts en
-   * 0..1. Absent sans coéquipier sélectionné ou sans stats d’objectif.
-   */
-  squad_objective_history?: SquadObjectiveHistory
-  /**
-   * Bloc « Emprise » (lot L4 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : les prises de
-   * chaque ressource (bonus, armes spéciales, armes de râtelier) par notre camp et par
-   * l’adversaire, sur le périmètre D2 — bilan, match par match, objet par objet, qui chez nous,
-   * production et habitude. Résultat, score et dominance se joignent depuis `match_history`.
-   * Absent = périmètre sans match. Lu par l’onglet Emprise (lot L5).
-   */
-  squad_emprise?: SquadEmpriseBlock
-}
+export type TeammatesPageResponse = components['schemas']['TeammatesPageResponse']
 
 /** Dégradation d'un chargement best-effort. `code` est une clé stable traduite
  *  côté front ; `detail` (ex. gamertag) sert au diagnostic. */
@@ -1494,7 +1299,7 @@ export type SynthesisBreakdowns = components['schemas']['SynthesisBreakdowns']
 // Médias (Slice 8)
 // ---------------------------------------------------------------------------
 
-export interface MediaItemRow {
+export interface NormalizedMediaItem {
   basename: string
   file_path: string
   kind: string
@@ -1537,7 +1342,7 @@ export interface MediaQueryRequest {
 }
 
 export interface MediaPageResponse {
-  items: PaginatedResponse<MediaItemRow>
+  items: PaginatedResponse<NormalizedMediaItem>
   total_mine: number
   total_teammates: number
   total_unassigned: number
@@ -1729,37 +1534,7 @@ export type MatchCitationsTab = components['schemas']['MatchCitationsTab']
 /** Commendation NATIVE (Halo 5) gagnée sur un match — affichée telle quelle. */
 export type MatchNativeCommendation = components['schemas']['MatchNativeCommendation']
 
-export interface MatchViewResponse {
-  header: MatchViewHeader
-  rank: MatchViewRank
-  summary_tab: MatchSummaryTab
-  combat_tab: MatchCombatTab
-  team_tab: MatchTeamTab
-  media_tab: MatchMediaTab
-  citations_tab: MatchCitationsTab
-  /** Phase 1 MV4.B : radar 6 axes par joueur (vide si awards absents). */
-  radar?: MatchViewRadarSeries[]
-  /** Sprint 54-B : avertissement privacy */
-  privacy_warning?: MatchPrivacyWarning | null
-  /**
-   * RC6 — true quand le match a son `match_registry` peuplé mais qu'au moins
-   * une source secondaire critique est vide (scoreboard / events / stats /
-   * medals). Le 404 strict reste pour les match_id totalement absents en DB.
-   * Le front affiche un bandeau dégradé au lieu de l'écran d'erreur.
-   */
-  is_partial?: boolean
-  /**
-   * Codes stables des raisons de la partialité. Utilisés pour traduire en
-   * messages i18n côté front (« sync incomplet », « film expiré », etc.).
-   * Codes : "<source>_empty" (scoreboard, events, player_stats, medals : lecture réussie, rien à afficher),
-   * "<source>_unavailable" et "section_unavailable" (lecture EN ÉCHEC : vue transitoire, jamais conservée).
-   */
-  partial_reasons?: string[]
-  /** L'Emprise du match, fiches = les joueurs de l'équipe du joueur de la page (absente sans lui). */
-  emprise?: MatchEmpriseBlock | null
-  /** « Isolement » de chaque joueur de l'équipe, dans l'ordre des fiches de l'Emprise. */
-  lives_near_teammate?: MatchLivesNearTeammate | null
-}
+export type MatchViewResponse = components['schemas']['MatchViewResponse']
 
 export type MatchEmpriseBlock = components['schemas']['MatchEmpriseBlock']
 export type MatchLivesNearTeammate = components['schemas']['MatchLivesNearTeammate']
@@ -1945,32 +1720,12 @@ export type TimeseriesLivesNearTeammate = components['schemas']['TimeseriesLives
 
 export type NormalizedPlayerStats = components['schemas']['NormalizedPlayerStats']
 
-export type CompareMetricRow = components['schemas']['CompareMetricRow']
+/** Ligne de la comparaison : celle que porte `CompareResponse.metrics` (le schéma homonyme décrit un autre type Go). */
+export type CompareMetricRow = NonNullable<components['schemas']['CompareResponse']['metrics']>[number]
 
 export type CompareRequest = components['schemas']['CompareRequest']
 
-export interface CompareResponse {
-  player_a: NormalizedPlayerStats
-  player_b: NormalizedPlayerStats
-  metrics: CompareMetricRow[]
-  title_slug: string
-  /** Badges narratifs ally_plus / tough_enemy / ordinal pour joueur B (best-effort). */
-  encounter_badges?: MatchEncounterBadge[]
-  /** C3.6 : avertissement si joueur B est privé ou introuvable. */
-  privacy_warning?: MatchPrivacyWarning | null
-  /** C3.6 : indique si les données de joueur B sont partielles (champs null). */
-  player_b_partial?: boolean
-  /**
-   * Profil d'armes des deux joueurs.
-   * ADDITIF et absent quand il n'est pas lisible : titre sans registre d'armes, joueur B
-   * absent de la base partagée, câblage manquant.
-   *
-   * Typé DEPUIS LE GÉNÉRÉ, contrairement au reste de cette interface manuscrite : le champ
-   * neuf n'a aucune raison de re-diverger du contrat, et migrer l'interface entière est un
-   * lot à part (consigné en Découverte au plan).
-   */
-  weapons?: components['schemas']['CompareWeaponProfile']
-}
+export type CompareResponse = components['schemas']['CompareResponse']
 
 /** Un côté du profil d'armes — le scope, les classes, la portée par rôle, le top 3. */
 export type CompareWeaponSide = components['schemas']['CompareWeaponSide']
@@ -2114,29 +1869,9 @@ export type AchievementsPageResponse = components['schemas']['AchievementsPageRe
 // Backup (pkg/duckdbbackup)
 // ---------------------------------------------------------------------------
 
-export interface IntegrityResult {
-  ok: boolean
-  detail?: string      // premier message d'erreur si !ok
-  checked_at: string   // ISO 8601 UTC
-}
+export type IntegrityResult = components['schemas']['IntegrityCheckResult']
 
-export interface BackupConfig {
-  interval: string
-  keep_daily: number
-  keep_weekly: number
-  keep_monthly: number
-}
-
-export interface BackupStatusResponse {
-  enabled: boolean
-  available: boolean
-  last_backup_at?: string   // ISO 8601, absent si jamais sauvegardé
-  last_snapshot_id?: string
-  last_exported?: string[]
-  last_duration_ms?: number
-  integrity_checks?: Record<string, IntegrityResult>
-  config?: BackupConfig     // absent quand le scheduler est nil (backup non configuré)
-}
+export type BackupStatusResponse = components['schemas']['BackupStatusResponse']
 
 export type BackupRunResult = components['schemas']['BackupRunResult']
 
@@ -2236,41 +1971,11 @@ export type SchedulerSnapshot = components['schemas']['SchedulerSnapshot']
 export type AdminActionJournalEntry = components['schemas']['AdminActionJournalEntry']
 export type AdminActionJournalResponse = components['schemas']['AdminActionJournalResponse']
 
-export interface SchedulerCycleRecord {
-  /** RFC3339 */
-  at: string
-  trigger: 'tick' | 'manual'
-  total: number
-  synced: number
-  skipped: number
-  failed: number
-  duration_ms: number
-  /** Fenêtre cumulée d'INDISPONIBILITÉ des lectures shared pendant ce cycle
-   *  (drain + maintien RW + reopen, B-swap). */
-  blocked_ms: number
-  /** Swaps RO→RW complets pendant ce cycle. */
-  swap_count: number
-  /** Lectures rejetées en 503 pendant ce cycle. */
-  reads_rejected: number
-  /** Temps cumulé d'appels API Halo pendant ce cycle (toutes goroutines). */
-  api_ms: number
-  /** Temps cumulé d'écriture persist (shared + player) pendant ce cycle. */
-  persist_write_ms: number
-}
+export type SchedulerCycleRecord = components['schemas']['CycleRecord']
 
-export interface AdminSchedulerStatusResponse {
-  available: boolean
-  snapshot?: SchedulerSnapshot
-  /** Plus récent en premier — ring mémoire, perdu au restart serveur. */
-  history: SchedulerCycleRecord[]
-  history_since_boot: boolean
-  zero_insert_warn_threshold: number
-}
+export type AdminSchedulerStatusResponse = components['schemas']['AdminSchedulerStatusResponse']
 
-export interface AdminJobsResponse {
-  generated_at: string
-  jobs: AsyncJobStatus[]
-}
+export type AdminJobsResponse = components['schemas']['AdminJobsResponse']
 
 // ─── Admin — Convergence (backlog d'enrichissement par joueur) ────────────────
 // Miroir de domain.AdminConvergenceReport (GET /admin/monitoring/convergence).

@@ -12298,40 +12298,86 @@ export interface components {
         };
         /** @description Configuration de l'application (GET/PATCH /settings) */
         SettingsResponse: {
+            /** @description Conserver les films (chunks) après la cuisson du rejeu. Non : les chunks sont retirés après cuisson et la rétention des rejeux est illimitée. */
+            archive_films: boolean;
+            auth_provider: string;
+            /** @description Dossier de la sauvegarde périodique des données en Parquet (chemin absolu). Vide = désactivée. Application de bureau seulement. */
+            backup_dir: string;
+            /** @description Délai entre deux sauvegardes, en heures entières (1h à 168h). Vide = 24h. Application de bureau seulement. */
+            backup_interval: string;
+            /** @description Nombre de jeux de sauvegarde conservés dans le dossier choisi (1 à 60). Défaut 7. Application de bureau seulement. */
+            backup_keep: number;
+            /** @description La croix de la fenêtre réduit l'application dans la zone de notification au lieu de la quitter ; le serveur continue. Application de bureau seulement. */
+            close_to_tray: boolean;
+            coach_proactive_mode: boolean;
             /** @enum {string} */
-            discord_lang?: "fr" | "en";
-            discord_notifications_enabled?: boolean;
-            discord_notify_backfill?: boolean;
-            discord_notify_new_version?: boolean;
-            discord_notify_sync?: boolean;
-            discord_webhook_url_present?: boolean;
+            discord_lang: "fr" | "en";
+            discord_notifications_enabled: boolean;
+            discord_notify_backfill: boolean;
+            discord_notify_friends: boolean;
+            discord_notify_new_version: boolean;
+            discord_notify_sync: boolean;
+            discord_webhook_url_present: boolean;
+            /** @description Dossier de l'archive des films (chemin absolu). Vide = emplacement par défaut. Appliqué tout de suite tant que l'archive est vide. */
+            film_archive_dir: string;
+            /** @description Détecter le jeu en cours : pendant une partie, cuisson des rejeux et tâches lourdes en attente ; synchronisation à la fermeture du jeu. Application de bureau. */
+            game_process_watch: boolean;
+            instance_locked: boolean;
             /** @enum {string} */
             lang: "fr" | "en";
-            media_captures_base_dir?: string;
+            media_captures_base_dir: string;
             /** @description Supprimer le fichier source (.mkv/.avi…) après un transcodage HLS réussi. GET renvoie la valeur effective résolue (env > réglage > défaut prod). PATCH persiste le réglage (omis = auto). */
-            media_delete_source_after_transcode?: boolean;
-            media_tolerance_minutes?: number;
-            media_watcher_debounce_seconds?: number;
-            media_watcher_enabled?: boolean;
-            normalize_mode_labels?: boolean;
-            refresh_clears_caches?: boolean;
+            media_delete_source_after_transcode: boolean;
+            media_tolerance_minutes: number;
+            media_watcher_debounce_seconds: number;
+            media_watcher_enabled: boolean;
+            /** @description Plafond mémoire de chaque base DuckDB, en Mo (1024 à 32768). 0 = valeur par défaut du serveur. Application de bureau seulement. */
+            memory_limit_mb: number;
+            /** @description Afficher les notifications de la cloche comme notifications Windows quand la fenêtre n'est pas au premier plan. Application de bureau seulement. */
+            native_notifications: boolean;
+            normalize_mode_labels: boolean;
+            /** @enum {string} */
+            outcome_badge_sensitivity: "relaxed" | "standard" | "strict";
+            outcome_exclude_bot_matches_from_badges: boolean;
+            outcome_exclude_bot_matches_from_records: boolean;
+            refresh_clears_caches: boolean;
+            rendement_exclude_assists: boolean;
+            /**
+             * @description Lieu de construction des rejeux 2D : local | worker | off. Vide = défaut de l'instance.
+             * @enum {string}
+             */
+            replay_build_location: "" | "local" | "worker" | "off";
+            /** @description Fenêtre de rétention des artefacts de rejeu 2D en mois. 0 = illimité. */
+            replay_retention_months: number;
+            /** @description Effet de distance des sons d'armes du rejeu 2D (0-100 %). 0 = son pur. */
+            replay_sound_distance_percent: number;
+            /** @description Variation des sons d'armes du rejeu 2D (0-100 %). 100 = fourchettes du jeu telles quelles. */
+            replay_sound_variation_percent: number;
+            /** @description Poser une tâche planifiée Windows qui rafraîchit les jetons quand l'application est fermée. Application de bureau seulement. */
+            scheduled_refresh: boolean;
+            session_gap_minutes: number;
+            session_split_on_ranked_change: boolean;
+            /** @enum {string} */
+            session_team_change_mode: "ignore" | "group" | "friends";
             /** @description Affichage du système Objectifs/Prestige (section Accueil + nav L1). */
-            show_progression?: boolean;
-            show_records?: boolean;
-            spnkr_auto_sync_enabled?: boolean;
-            spnkr_auto_sync_interval_hours?: number;
-            spnkr_auto_sync_interval_minutes?: number;
-            spnkr_refresh_backfill_aliases?: boolean;
-            spnkr_refresh_backfill_events?: boolean;
-            spnkr_refresh_backfill_lusr?: boolean;
-            spnkr_refresh_backfill_medals?: boolean;
-            spnkr_refresh_backfill_performance_scores?: boolean;
-            spnkr_refresh_backfill_personal_scores?: boolean;
-            spnkr_refresh_backfill_skill?: boolean;
-            spnkr_refresh_with_backfill?: boolean;
+            show_progression: boolean;
+            show_records: boolean;
+            spnkr_auto_sync_enabled: boolean;
+            spnkr_auto_sync_interval_hours: number;
+            spnkr_auto_sync_interval_minutes: number;
+            spnkr_refresh_backfill_aliases: boolean;
+            spnkr_refresh_backfill_events: boolean;
+            spnkr_refresh_backfill_lusr: boolean;
+            spnkr_refresh_backfill_medals: boolean;
+            spnkr_refresh_backfill_performance_scores: boolean;
+            spnkr_refresh_backfill_personal_scores: boolean;
+            spnkr_refresh_backfill_skill: boolean;
+            spnkr_refresh_with_backfill: boolean;
+            /** @description Lancer l'application, réduite dans la zone de notification, à l'ouverture de la session Windows. Application de bureau seulement. */
+            start_with_windows: boolean;
             user_timezone: string;
-            watcher_presence_enabled?: boolean;
-            watcher_subscribed_players?: string[];
+            watcher_presence_enabled: boolean;
+            watcher_subscribed_players: string[];
         };
         Shot: {
             /** Format: float */

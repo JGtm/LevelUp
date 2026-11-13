@@ -13,10 +13,10 @@ import { act, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { CoverFlowModal } from './CoverFlowModal'
-import type { MediaItemRow } from '@/lib/api/types'
+import type { NormalizedMediaItem } from '@/lib/api/types'
 import { testCapabilities } from '@/test/capabilities'
 
-function makeItem(overrides: Partial<MediaItemRow> = {}): MediaItemRow {
+function makeItem(overrides: Partial<NormalizedMediaItem> = {}): NormalizedMediaItem {
   return {
     basename: 'clip.mp4',
     file_path: '/media/clip.mp4',
@@ -241,7 +241,7 @@ describe('CoverFlowModal — explorateur de fichiers et Corbeille', () => {
     })
   }
 
-  function renderModal(props: { onReveal?: (item: MediaItemRow) => void; onDelete?: () => void } = {}) {
+  function renderModal(props: { onReveal?: (item: NormalizedMediaItem) => void; onDelete?: () => void } = {}) {
     return renderWithProviders(
       <CoverFlowModal
         items={[OWN_ITEM]}

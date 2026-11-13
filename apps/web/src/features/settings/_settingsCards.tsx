@@ -17,7 +17,7 @@ import { Select } from '@/components/ui/select'
 import { useScanMedia } from '@/features/settings/queries'
 import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import { useDeploymentCapability } from '@/stores/useDeploymentCapability'
-import { DEFAULT_LOCALE } from '@/lib/i18n/locale'
+import { DEFAULT_LOCALE, normalizeLocale } from '@/lib/i18n/locale'
 import { ToggleRow, type TabProps } from './_settingsShared'
 
 export function InterfaceCard({ merged, handleChange, t, frozen }: TabProps) {
@@ -39,7 +39,7 @@ export function InterfaceCard({ merged, handleChange, t, frozen }: TabProps) {
           <span className="text-sm text-foreground">{t.langLabel}</span>
           <Select
             value={merged.lang ?? DEFAULT_LOCALE}
-            onChange={(e) => handleChange('lang', e.target.value)}
+            onChange={(e) => handleChange('lang', normalizeLocale(e.target.value))}
             className="w-auto"
           >
             <option value="fr">{t.langFr}</option>

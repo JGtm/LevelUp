@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import type { MatchAssociatedMedia, MediaItemRow } from '@/lib/api/types'
+import type { MatchAssociatedMedia, NormalizedMediaItem } from '@/lib/api/types'
 import { MediaThumbnailCard, MediaLightbox } from '@/features/media/MediaViewer'
 import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
 import { useMediaPicker } from '@/features/media/useMediaPicker'
@@ -23,7 +23,7 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
     () => items.map((item) => toMediaItemRow(item, matchId)),
     [items, matchId],
   )
-  const [mediaRows, setMediaRows] = useState<MediaItemRow[]>(initialRows)
+  const [mediaRows, setMediaRows] = useState<NormalizedMediaItem[]>(initialRows)
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
   const [autoChain, setAutoChain] = useState(false)
   const picker = useMediaPicker()
@@ -36,7 +36,7 @@ export function MatchMediaTab({ items, playerSlug, matchId, t }: MatchMediaTabPr
   const currentPlayerGamertag = usePlayerGamertag(playerSlug)
   const likeDisabled = toggleLike.isPending
 
-  function handleToggleLike(item: MediaItemRow) {
+  function handleToggleLike(item: NormalizedMediaItem) {
     const nextLiked = !item.liked
     const delta = nextLiked ? 1 : -1
     setMediaRows((prev) =>

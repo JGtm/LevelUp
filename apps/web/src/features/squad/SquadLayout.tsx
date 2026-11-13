@@ -41,8 +41,7 @@ import { log } from './_logger'
 import { SquadContext, type SquadContextValue } from './SquadContext'
 import { SquadFilterBar } from './SquadFilterBar'
 import { SquadFocusStrip } from './SquadFocusStrip'
-import type { KPIStats, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
-import type { KPIStats as V2KPIStats } from './v2/types'
+import type { TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 import { formatDataIssues } from './squadDataIssues'
 import { readStoredExactComposition, writeStoredExactComposition } from './exactComposition'
@@ -53,22 +52,6 @@ import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContex
 import { labelsOfOptions } from '@/lib/match-nav/navContext'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-
-/**
- * Le DTO local v2/types.ts::KPIStats déclare avg_offensive_conversion /
- * avg_defensive_resistance / combat_profile en `T | null` (le Go peut renvoyer
- * null), alors que le contrat OpenAPI (KPIStats) les expose en `T | undefined`.
- * SessionBriefing consomme le type du contrat → on normalise null→undefined au
- * passage (le consommateur traite déjà null et undefined comme « absent »).
- */
-function toContractKpis(k: V2KPIStats): KPIStats {
-  return {
-    ...k,
-    avg_offensive_conversion: k.avg_offensive_conversion ?? undefined,
-    avg_defensive_resistance: k.avg_defensive_resistance ?? undefined,
-    combat_profile: k.combat_profile ?? undefined,
-  }
-}
 
 function formatError(err: unknown): string {
   if (err == null) return 'Erreur inconnue'
@@ -178,7 +161,7 @@ export function SquadLayout() {
 
   // Dégradations remontées par l'API (chargements best-effort en échec) :
   // affichées telles quelles — un chiffre partiel doit se voir, pas se deviner.
-  const dataIssueMessages = useMemo(() => formatDataIssues(data?.data_issues, t), [data?.data_issues, t])
+  const dataIssueMessages = useMemo(() => formatDataIssues(data?.data_issues ?? undefined, t), [data?.data_issues, t])
 
   // Bouton "Voir les matchs" (L2) : la liste de matchs de la composition est
   // déjà chargée ici (data.match_history, DESC), donc zéro aller-retour serveur.
@@ -399,14 +382,12 @@ export function SquadLayout() {
                 ? {
                     score: header.squad_score,
                     players: header.player_cards,
-                    kpisByXuid: Object.fromEntries(
-                      Object.entries(header.kpis_by_xuid).map(([x, k]) => [x, toContractKpis(k)]),
-                    ),
-                    teamAvgKpis: toContractKpis(header.team_avg_kpis),
+                    kpisByXuid: header.kpis_by_xuid,
+                    teamAvgKpis: header.team_avg_kpis,
                     activeXuid: currentPlayerXuid,
                   }
                 : undefined
-            return <SessionBriefing kpis={toContractKpis(soloKpis)} squad={briefingSquad} />
+            return <SessionBriefing kpis={soloKpis} squad={briefingSquad} />
           })()}
 
           {/* « Cap d'escouade » (Enregistrer cette compo) — remonté AU-DESSUS de la

@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, screen, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { CoverFlowModal } from './CoverFlowModal'
-import type { MediaItemRow } from '@/lib/api/types'
+import type { NormalizedMediaItem } from '@/lib/api/types'
 
 interface MockHlsInstance {
   loadSource: ReturnType<typeof vi.fn>
@@ -51,7 +51,7 @@ vi.mock('hls.js', () => {
   return { default: Hls }
 })
 
-function makeClip(filePath: string): MediaItemRow {
+function makeClip(filePath: string): NormalizedMediaItem {
   return {
     basename: 'clip',
     file_path: filePath,

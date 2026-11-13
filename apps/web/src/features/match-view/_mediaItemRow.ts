@@ -1,7 +1,7 @@
 /**
  * _mediaItemRow.ts — projection d'un media associe a un match (`MatchAssociatedMedia`,
  * ce que `media_tab.media_items` sert reellement) vers la ligne de galerie partagee
- * (`MediaItemRow`), consommee par `MediaThumbnailCard` / `MediaLightbox`.
+ * (`NormalizedMediaItem`), consommee par `MediaThumbnailCard` / `MediaLightbox`.
  *
  * Le seul point non trivial est le `kind` : il est REQUIS au contrat, donc le chemin
  * nominal passe toujours par `normalizeMediaKind` ('video' -> 'clip', 'image' ->
@@ -14,9 +14,9 @@
  * sans kind en 'clip'. Couvert par `_mediaItemRow.test.ts` (cas mute).
  */
 import { normalizeMediaKind } from '@/features/media/queries'
-import type { MatchAssociatedMedia, MediaItemRow } from '@/lib/api/types'
+import type { MatchAssociatedMedia, NormalizedMediaItem } from '@/lib/api/types'
 
-export function toMediaItemRow(item: MatchAssociatedMedia, matchId: string): MediaItemRow {
+export function toMediaItemRow(item: MatchAssociatedMedia, matchId: string): NormalizedMediaItem {
   return {
     basename: item.file_name,
     file_path: item.file_path,

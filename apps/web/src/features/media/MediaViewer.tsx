@@ -9,7 +9,7 @@ import { playerScopedHref, useTitleSlug } from '@/lib/title-routing'
 import { looksLikeAssetId } from '@/lib/halo/assetId'
 import { intlLocale } from '@/lib/formatters'
 import type { ManifestLocale } from '@/lib/i18n/format'
-import type { MediaItemRow } from '@/lib/api/types'
+import type { NormalizedMediaItem } from '@/lib/api/types'
 import { ownerTagColor } from './mediaOwnerColors'
 
 export { CoverFlowModal as MediaLightbox }
@@ -141,8 +141,8 @@ export function MediaLikeButton({
 }
 
 interface MediaThumbnailCardProps {
-  item: MediaItemRow
-  onToggleLike: (item: MediaItemRow) => void
+  item: NormalizedMediaItem
+  onToggleLike: (item: NormalizedMediaItem) => void
   onOpen: () => void
   likeDisabled?: boolean
   /** Slug du joueur courant pour construire le lien vers la page du match. */
@@ -159,7 +159,7 @@ interface MediaThumbnailCardProps {
   playerColorMap?: Record<string, string>
   /** Callback pour ouvrir le picker d'association (Associer ou Réassocier).
    *  Si absent, aucun lien d'(ré)association n'est rendu. */
-  onAssociate?: (item: MediaItemRow) => void
+  onAssociate?: (item: NormalizedMediaItem) => void
   /** Callback pour naviguer vers la page du match. Si fourni, remplace le
    *  comportement par défaut (lien `<a>`) pour permettre au consommateur
    *  d'attacher un MatchNavContext (cf. useNavigateToMatch). */

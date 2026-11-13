@@ -51,25 +51,14 @@ const TYPE_ALIAS_RE = /export\s+type\s+(\w*Response)\s*=\s*(.*)/g
 // NE PAS ajouter d'entrée sans justification ; retirer l'entrée dès la migration.
 const ALLOWLIST = new Set<string>([
   // --- lib/api/types.ts : view-models / endpoints hors OpenAPI Huma ---
-  'SessionContextResponse',     // POST /session/context — non migré Huma
-  'HealthResponse',             // GET /health — endpoint infra hors openapi.yaml
   'FilterMatchIdsResponse',     // POST /filters/match-ids — wrapper trivial { match_ids }
-  'DeviceFlowStartResponse',    // POST /auth/device-flow/start — champ deprecated alias
   'BrowserLoginStartResponse',  // GET /auth/xbox/login (2026-11-02, L21.00) — route montée sous la capacité LoginViaBrowser seulement, donc hors du document généré (comme /desktop/strings) ; à migrer si le générateur monte un jour les routes de bureau
-  'SettingsResponse',           // GET /settings — large struct settings, non migrée
-  'CareerPageResponse',         // sous-types view-model (CareerSummary/LusrSection) hors schéma
-  'CareerHighlightMatchesResponse', // agrégat composite ExplorerMatchRow + cascade counts
+  'CareerHighlightMatchesResponse', // porte ExplorerMatchRow, view-model du tableau de matchs (null → '' pour les libellés)
   'PaginatedResponse',          // générique <T> — wrapper de pagination
   'HomePageResponse',           // page composite — sous-types view-model locaux
-  'TeammatesPageResponse',      // page composite squad — sous-types view-model locaux
   'SynthesisPageResponse',      // page composite — sous-types view-model locaux
-  'MediaPageResponse',          // page composite média
+  'MediaPageResponse',          // porte NormalizedMediaItem, view-model normalisé fabriqué par normalizeMediaItem
   'MediaUploadResponse',        // POST /media/upload — non migré Huma
-  'MatchViewResponse',          // page composite Match View — nombreux tabs view-model
-  'CompareResponse',            // POST /pages/compare — NormalizedPlayerStats live-fetch
-  'BackupStatusResponse',       // GET /settings/backup/status — pkg duckdbbackup hors Huma
-  'AdminSchedulerStatusResponse', // GET /admin/monitoring/scheduler — types pkg scheduler
-  'AdminJobsResponse',          // GET /admin/monitoring/jobs — wrapper AsyncJobStatus[]
   // --- fichiers feature-locaux ---
   'StreaksResponse',            // features/ascension/types.ts — Ascension V2
   'RecordsResponse',            // features/ascension/types.ts
@@ -120,6 +109,18 @@ const CRITICAL_CONTRACT_TYPES = [
   'DeviceFlowStatusResponse',
   'WatcherStatusResponse',
   'LoginResponse',
+  // Entrées le 2026-11-13 (étape 7.4, complément A1) : ré-exports du contrat.
+  'AdminJobsResponse',
+  'AdminSchedulerStatusResponse',
+  'BackupStatusResponse',
+  'CareerPageResponse',
+  'CompareResponse',
+  'DeviceFlowStartResponse',
+  'HealthResponse',
+  'MatchViewResponse',
+  'SessionContextResponse',
+  'SettingsResponse',
+  'TeammatesPageResponse',
   // Sorti de l'ALLOWLIST le 2026-08-03 : le type manuel déclarait `total_likers`
   // optionnel alors que le DTO Go l'émet toujours (compteur de likers lu à
   // l'écran) — exactement la classe de bug A2.
@@ -210,8 +211,6 @@ const KEPT_MANUAL_HOMONYMS: Readonly<Record<string, string>> = {
   FilterContextInput:
     "producteur : period, sessions et cascade facultatifs côté front, requis dans le contrat ; les rendre requis change les corps envoyés et le format du lien ?f=",
   EngagementTimeseriesRequest: 'porte FilterContextInput (producteur)',
-  MediaItemRow:
-    "view-model normalisé (null au lieu d'absent, section et compteurs par défaut), fabriqué par normalizeMediaItem ; le schéma MediaItem du contrat est la forme brute",
 }
 
 interface ManualDeclaration {

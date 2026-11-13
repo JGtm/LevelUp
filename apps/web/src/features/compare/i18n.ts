@@ -13,7 +13,6 @@ export interface CompareText {
   notFoundDescription: string
   errorTitle: string
   errorDescription: string
-  partialWarning: (gamertag: string) => string
   ariaWinner: (name: string) => string
   ariaEqual: string
   sampleSize: (n: number) => string
@@ -55,7 +54,6 @@ const FR_TEXT: CompareText = {
   notFoundDescription: 'Ce joueur n\'existe pas ou n\'a aucune donnée accessible.',
   errorTitle: 'Erreur',
   errorDescription: 'Impossible de récupérer la comparaison.',
-  partialWarning: (gamertag) => `Les données de ${gamertag} sont partielles — certaines métriques peuvent être absentes.`,
   ariaWinner: (name) => `${name} domine cette métrique`,
   ariaEqual: 'Égalité',
   sampleSize: (n) => `(sur ${n} matchs)`,
@@ -97,7 +95,6 @@ const EN_TEXT: CompareText = {
   notFoundDescription: 'This player does not exist or no accessible data was found.',
   errorTitle: 'Error',
   errorDescription: 'Unable to load the comparison.',
-  partialWarning: (gamertag) => `${gamertag} has partial data — some metrics may be missing.`,
   ariaWinner: (name) => `${name} leads`,
   ariaEqual: 'Tied',
   sampleSize: (n) => `(${n} matches)`,

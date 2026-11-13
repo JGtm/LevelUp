@@ -6,9 +6,9 @@
 import { describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useMediaPicker } from './useMediaPicker'
-import type { MediaItemRow } from '@/lib/api/types'
+import type { NormalizedMediaItem } from '@/lib/api/types'
 
-function makeItem(overrides: Partial<MediaItemRow>): MediaItemRow {
+function makeItem(overrides: Partial<NormalizedMediaItem>): NormalizedMediaItem {
   return {
     basename: 'x.mp4',
     file_path: '/x.mp4',

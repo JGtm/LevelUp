@@ -35,34 +35,22 @@ const BASELINE_COLLISIONS = new Set([
   // V72-01 H7 (2026-07-25) : Group/GroupMember RETIRÉS de la baseline — le schéma généré
   // est devenu fidèle (tag `enum:"owner,member"` sur Role, `nullable:"false"` sur Members,
   // invariant nil → [] tenu par groupstore) et types.ts les ré-exporte du contrat.
-  'AdminJobsResponse',
-  'AdminSchedulerStatusResponse',
-  'BackupStatusResponse',
   // V8b (2026-07-07) : CareerEncountersResponse / CareerTopMatchesResponse retirés —
   // migrés en ré-export du contrat généré (plus de collision hand-written).
   'CareerHighlightMatchesResponse',
-  'CareerPageResponse',
-  'CompareResponse',
-  'DeviceFlowStartResponse',
   'EngagementTimeseriesRequest',
   // 2026-08-04 (merge post-lot2) : ExplorerMatchRow retiré — le schéma OpenAPI
   // orphelin homonyme a été supprimé du fragment manuel, plus de collision
   // (le type manuel front subsiste, sans pendant contractuel).
   'FilterContextInput',
-  'HealthResponse',
   // 2026-07-10 (A3.5) : LabWaypointResponse retiré de la baseline — le type manuel
   // ET son endpoint /lab/waypoint sont supprimés avec le retrait du Lab (DC-9).
-  'MatchViewResponse',
-  'MediaItemRow',
   // 2026-08-04 (merge post-lot2) : MediaLikeRequest/MediaLikeResponse retirés —
   // shimés en ré-exports du contrat (les manuels divergeaient : total_likers
   // faussement optionnel, liker_slug jamais envoyé).
   'MediaPageResponse',
   'PeriodInput',
-  'SessionContextResponse',
   'SessionsInput',
-  'SettingsResponse',
-  'TeammatesPageResponse',
   // 2026-08-05 (R2) : TeammatesQueryRequest RETIRÉ — re-shimé. La collision venait de
   // `filters`, qui pointait le schéma `FilterContextInput` dérivé du type Go : une forme de
   // RÉPONSE, où period/sessions/cascade sont requis parce que le serveur les émet toujours.

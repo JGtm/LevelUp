@@ -11,6 +11,7 @@
  * Multi-titres : strings UI via getSquadText ; SquadEngagementSection gardée
  * derrière FeatureGate capability="engagement".
  */
+import { withoutNullRows } from './withoutNullRows'
 import { useMemo } from 'react'
 import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
 import { intensityTooltipText } from '@/components/charts/intensityTooltipText'
@@ -49,7 +50,7 @@ export function SquadDynamiquePage() {
     () => pageData?.intensity_profile ?? { options: [], rows: {} },
     [pageData?.intensity_profile],
   )
-  const perfSeriesByPlayer = useMemo(() => performanceSeries ?? {}, [performanceSeries])
+  const perfSeriesByPlayer = useMemo(() => withoutNullRows(performanceSeries), [performanceSeries])
   // Le backend renvoie s.gamertag (casse mixte ex "Joueur90002") tandis que
   // playerSlug est l'URL param (souvent lowercase). On aligne sur main_player
   // pour que l'ordre des joueurs matche les clés des séries par joueur.

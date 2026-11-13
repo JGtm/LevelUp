@@ -3406,9 +3406,96 @@ components:
       type: object
       description: Configuration de l'application (GET/PATCH /settings)
       required:
+        - archive_films
+        - film_archive_dir
+        - game_process_watch
+        - native_notifications
+        - close_to_tray
+        - start_with_windows
+        - scheduled_refresh
+        - backup_dir
+        - backup_interval
+        - backup_keep
+        - memory_limit_mb
         - lang
+        - discord_lang
         - user_timezone
+        - normalize_mode_labels
+        - show_records
+        - refresh_clears_caches
+        - media_captures_base_dir
+        - media_delete_source_after_transcode
+        - media_tolerance_minutes
+        - media_watcher_enabled
+        - media_watcher_debounce_seconds
+        - discord_notifications_enabled
+        - discord_webhook_url_present
+        - discord_notify_sync
+        - discord_notify_backfill
+        - discord_notify_new_version
+        - discord_notify_friends
+        - spnkr_auto_sync_enabled
+        - spnkr_auto_sync_interval_hours
+        - spnkr_auto_sync_interval_minutes
+        - watcher_presence_enabled
+        - watcher_subscribed_players
+        - spnkr_refresh_with_backfill
+        - spnkr_refresh_backfill_medals
+        - spnkr_refresh_backfill_skill
+        - spnkr_refresh_backfill_aliases
+        - spnkr_refresh_backfill_personal_scores
+        - spnkr_refresh_backfill_performance_scores
+        - spnkr_refresh_backfill_lusr
+        - spnkr_refresh_backfill_events
+        - session_gap_minutes
+        - session_split_on_ranked_change
+        - session_team_change_mode
+        - replay_retention_months
+        - replay_build_location
+        - outcome_exclude_bot_matches_from_badges
+        - outcome_exclude_bot_matches_from_records
+        - outcome_badge_sensitivity
+        - rendement_exclude_assists
+        - show_progression
+        - coach_proactive_mode
+        - auth_provider
+        - instance_locked
+        - replay_sound_variation_percent
+        - replay_sound_distance_percent
       properties:
+        archive_films:
+          type: boolean
+          description: 'Conserver les films (chunks) après la cuisson du rejeu. Non : les chunks sont retirés après cuisson et la rétention des rejeux est illimitée.'
+        film_archive_dir:
+          type: string
+          description: 'Dossier de l''archive des films (chemin absolu). Vide = emplacement par défaut. Appliqué tout de suite tant que l''archive est vide.'
+        game_process_watch:
+          type: boolean
+          description: 'Détecter le jeu en cours : pendant une partie, cuisson des rejeux et tâches lourdes en attente ; synchronisation à la fermeture du jeu. Application de bureau.'
+        native_notifications:
+          type: boolean
+          description: 'Afficher les notifications de la cloche comme notifications Windows quand la fenêtre n''est pas au premier plan. Application de bureau seulement.'
+        close_to_tray:
+          type: boolean
+          description: 'La croix de la fenêtre réduit l''application dans la zone de notification au lieu de la quitter ; le serveur continue. Application de bureau seulement.'
+        start_with_windows:
+          type: boolean
+          description: 'Lancer l''application, réduite dans la zone de notification, à l''ouverture de la session Windows. Application de bureau seulement.'
+        scheduled_refresh:
+          type: boolean
+          description: 'Poser une tâche planifiée Windows qui rafraîchit les jetons quand l''application est fermée. Application de bureau seulement.'
+        backup_dir:
+          type: string
+          description: Dossier de la sauvegarde périodique des données en Parquet (chemin absolu). Vide = désactivée. Application de bureau seulement.
+        backup_interval:
+          type: string
+          description: Délai entre deux sauvegardes, en heures entières (1h à 168h). Vide = 24h. Application de bureau seulement.
+        backup_keep:
+          type: integer
+          description: Nombre de jeux de sauvegarde conservés dans le dossier choisi (1 à 60). Défaut 7. Application de bureau seulement.
+        memory_limit_mb:
+          type: integer
+          description: Plafond mémoire de chaque base DuckDB, en Mo (1024 à 32768). 0 = valeur par défaut du serveur. Application de bureau seulement.
         lang:
           type: string
           enum:
@@ -3448,6 +3535,8 @@ components:
           type: boolean
         discord_notify_new_version:
           type: boolean
+        discord_notify_friends:
+          type: boolean
         spnkr_auto_sync_enabled:
           type: boolean
         spnkr_auto_sync_interval_hours:
@@ -3476,9 +3565,54 @@ components:
           type: boolean
         spnkr_refresh_backfill_events:
           type: boolean
+        session_gap_minutes:
+          type: integer
+        session_split_on_ranked_change:
+          type: boolean
+        session_team_change_mode:
+          type: string
+          enum:
+            - ignore
+            - group
+            - friends
+        replay_retention_months:
+          type: integer
+          description: Fenêtre de rétention des artefacts de rejeu 2D en mois. 0 = illimité.
+        replay_build_location:
+          type: string
+          enum:
+            - ''
+            - local
+            - worker
+            - off
+          description: 'Lieu de construction des rejeux 2D : local | worker | off. Vide = défaut de l''instance.'
+        outcome_exclude_bot_matches_from_badges:
+          type: boolean
+        outcome_exclude_bot_matches_from_records:
+          type: boolean
+        outcome_badge_sensitivity:
+          type: string
+          enum:
+            - relaxed
+            - standard
+            - strict
+        rendement_exclude_assists:
+          type: boolean
         show_progression:
           type: boolean
           description: Affichage du système Objectifs/Prestige (section Accueil + nav L1).
+        coach_proactive_mode:
+          type: boolean
+        auth_provider:
+          type: string
+        instance_locked:
+          type: boolean
+        replay_sound_variation_percent:
+          type: integer
+          description: 'Variation des sons d''armes du rejeu 2D (0-100 %). 100 = fourchettes du jeu telles quelles.'
+        replay_sound_distance_percent:
+          type: integer
+          description: 'Effet de distance des sons d''armes du rejeu 2D (0-100 %). 0 = son pur.'
     CompareRequest:
       type: object
       required:

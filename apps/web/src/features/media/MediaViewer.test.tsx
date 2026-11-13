@@ -7,11 +7,11 @@ import { renderWithProviders } from '@/test/render-utils'
 import { focusByKeyboard } from '@/test/focus'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { MediaThumbnailCard } from './MediaViewer'
-import type { MediaItemRow } from '@/lib/api/types'
+import type { NormalizedMediaItem } from '@/lib/api/types'
 
 // ─── MediaThumbnailCard — fallback "Pas de match associé" ───────────────────
 
-function makeItem(overrides: Partial<MediaItemRow>): MediaItemRow {
+function makeItem(overrides: Partial<NormalizedMediaItem>): NormalizedMediaItem {
   return {
     basename: 'shot.png',
     file_path: '/media/shot.png',
@@ -343,7 +343,7 @@ describe("MediaThumbnailCard — infobulle des mentions « J'aime »", () => {
     })
   })
 
-  function renderCard(overrides: Partial<MediaItemRow>) {
+  function renderCard(overrides: Partial<NormalizedMediaItem>) {
     return renderWithProviders(
       <MediaThumbnailCard item={makeItem(overrides)} onToggleLike={vi.fn()} onOpen={vi.fn()} />,
     )

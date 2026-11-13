@@ -14,7 +14,7 @@ import type {
   MediaAssociateResponse,
   MediaAuthorsResponse,
   MediaDeleteResponse,
-  MediaItemRow,
+  NormalizedMediaItem,
   MediaLikeRequest,
   MediaLikeResponse,
   MediaMatchCandidatesResponse,
@@ -41,8 +41,8 @@ function basenameFromPath(filePath: string) {
 }
 
 // Les champs optionnels du contrat (`omitempty` côté Go) arrivent en `undefined` :
-// on les ramène aux valeurs par défaut attendues par MediaItemRow (null / 0 / 'mine').
-function normalizeMediaItem(item: MediaItemRow): MediaItemRow {
+// on les ramène aux valeurs par défaut attendues par NormalizedMediaItem (null / 0 / 'mine').
+function normalizeMediaItem(item: NormalizedMediaItem): NormalizedMediaItem {
   const liked = item.liked ?? false
   return {
     basename: item.basename ?? basenameFromPath(item.file_path),

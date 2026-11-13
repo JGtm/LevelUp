@@ -3,14 +3,14 @@ import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { RecentMediaRail } from './RecentMediaRail'
 import { useAppShellStore } from '@/stores/appShellStore'
-import type { MediaItemRow, PlayerSummary } from '@/lib/api/types'
+import type { NormalizedMediaItem, PlayerSummary } from '@/lib/api/types'
 
 // Règle serveur (domain.CanModifyMedia) : réassocier un média est réservé à son propriétaire
 // ou à un admin. Le rail de l'accueil mêle les médias de plusieurs auteurs.
 
 const ME = 'Moi'
 
-function row(owner: string): MediaItemRow {
+function row(owner: string): NormalizedMediaItem {
   return {
     basename: `${owner}.mp4`,
     file_path: `/media/${owner}/clip.mp4`,
@@ -28,7 +28,7 @@ function row(owner: string): MediaItemRow {
   }
 }
 
-const rail = vi.hoisted(() => ({ items: [] as MediaItemRow[] }))
+const rail = vi.hoisted(() => ({ items: [] as NormalizedMediaItem[] }))
 
 vi.mock('@/features/media/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/media/queries')>()
