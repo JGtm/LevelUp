@@ -29,7 +29,7 @@ export const EN_TEXT = {
   offscreenGroupMarkerFmt: (count, meters) => `${count} players · ${Math.round(meters)} m`,
   openAtNoOriginTitle: 'Instant not calibrated on this artifact',
   openAtNoOriginDescription:
-    'The link asked for a precise instant, but the film origin is not established for this replay: the instant cannot be reached exactly. Recook needed — the replay opens from the start.',
+    'The link asked for a precise instant, but the film origin is not established for this replay: the instant cannot be reached exactly. Regeneration needed — the replay opens from the start.',
   speed: 'Speed',
   time: 'Match time',
   skipBackFmt: (seconds) => `Back ${seconds} s`,

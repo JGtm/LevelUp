@@ -15,10 +15,10 @@ export const FR_TEXT = {
   loadErrorRetry: 'Réessayer',
   schemaBadgeUpToDateFmt: (schemaVersion) => `Schéma ${schemaVersion} · à jour`,
   schemaBadgeStaleFmt: (schemaVersion, latestSchemaVersion) =>
-    `Schéma ${schemaVersion} · à recuire (dernier : ${latestSchemaVersion})`,
-  schemaBadgeStaleNoTargetFmt: (schemaVersion) => `Schéma ${schemaVersion} · à recuire`,
+    `Schéma ${schemaVersion} · à régénérer (dernier : ${latestSchemaVersion})`,
+  schemaBadgeStaleNoTargetFmt: (schemaVersion) => `Schéma ${schemaVersion} · à régénérer`,
   schemaBadgeStalePublicationFmt: (schemaVersion, latestSchemaVersion) =>
-    `Schéma ${schemaVersion} · à recuire (dernier : ${latestSchemaVersion}) — seule la publication a changé`,
+    `Schéma ${schemaVersion} · à régénérer (dernier : ${latestSchemaVersion}) — seule la publication a changé`,
   schemaBadgeUnknownFmt: (schemaVersion) => `Schéma ${schemaVersion}`,
   schemaBadgeInvalidFmt: (schemaVersion, detail) =>
     `Schéma ${schemaVersion} · contrat non respecté (${detail})`,
@@ -29,7 +29,7 @@ export const FR_TEXT = {
   offscreenGroupMarkerFmt: (count, meters) => `${count} joueurs · ${Math.round(meters)} m`,
   openAtNoOriginTitle: 'Instant non calé sur cet artefact',
   openAtNoOriginDescription:
-    'Le lien demandait un instant précis, mais l’origine du film n’est pas établie pour ce rejeu : l’instant ne peut pas être atteint exactement. Recuisson nécessaire — le rejeu s’ouvre au début.',
+    'Le lien demandait un instant précis, mais l’origine du film n’est pas établie pour ce rejeu : l’instant ne peut pas être atteint exactement. Régénération nécessaire — le rejeu s’ouvre au début.',
   speed: 'Vitesse',
   time: 'Temps de match',
   skipBackFmt: (seconds) => `Reculer de ${seconds} s`,
