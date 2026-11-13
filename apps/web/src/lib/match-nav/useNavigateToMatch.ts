@@ -29,7 +29,7 @@ import {
 } from './navContext'
 
 /**
- * Convertit un MatchFilterSpec en object `search` compatible TanStack Router.
+ * Convertit un MatchNavFilterSpec en object `search` compatible TanStack Router.
  * Pas de filterSpec ou spec vide → undefined (URL non polluée).
  */
 function searchFromFilterSpec(ctx?: MatchNavContext): Record<string, string> | undefined {

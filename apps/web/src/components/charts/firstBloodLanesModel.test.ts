@@ -18,7 +18,7 @@ import {
   medianSeconds,
   quantileSorted,
   sanitizeRichText,
-  type FirstBloodPlayerSeries,
+  type FirstBloodLaneSeries,
 } from './firstBloodLanesModel'
 
 describe('quantileSorted / medianSeconds', () => {
@@ -44,7 +44,7 @@ describe('quantileSorted / medianSeconds', () => {
 })
 
 describe('buildFirstBloodLanes', () => {
-  const data: FirstBloodPlayerSeries[] = [
+  const data: FirstBloodLaneSeries[] = [
     {
       player: 'Slow',
       matches: [

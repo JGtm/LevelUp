@@ -26,7 +26,7 @@ import {
   labelsFor,
   type MatchFilterLabels,
   type MatchFilterOutcome,
-  type MatchFilterSpec,
+  type MatchNavFilterSpec,
 } from '@/lib/match-nav/navContext'
 
 export type SquadScope = '' | 'solo' | 'squad'
@@ -146,7 +146,7 @@ export const explorerSearchSchema = z.object({
   outcome: z.string().optional(),
 })
 
-/** Code outcome (DuckDB) → label canonique MatchFilterSpec. */
+/** Code outcome (DuckDB) → label canonique MatchNavFilterSpec. */
 const OUTCOME_CODE_TO_LABEL: Record<string, MatchFilterOutcome> = {
   '2': 'win',
   '3': 'loss',
@@ -155,7 +155,7 @@ const OUTCOME_CODE_TO_LABEL: Record<string, MatchFilterOutcome> = {
 }
 
 /**
- * Construit un `MatchFilterSpec` (nav match-view) depuis le scope Explorer —
+ * Construit un `MatchNavFilterSpec` (nav match-view) depuis le scope Explorer —
  * Phase 4 (connexion des filtres Explorer à la navigation contextuelle).
  *
  * Avant : ExplorerMatchesTable dérivait son filterSpec du `soloFilterStore`
@@ -170,7 +170,7 @@ const OUTCOME_CODE_TO_LABEL: Record<string, MatchFilterOutcome> = {
  *     traite déjà modeNames comme catégorie ; catégorie non résolue = ignorée
  *     côté backend, dégradation gracieuse)
  *   - dates        → date_from/date_to (T00:00:00Z / T23:59:59Z inclusif)
- *   - outcome      → seulement si exactement 1 sélectionné (MatchFilterSpec.outcome
+ *   - outcome      → seulement si exactement 1 sélectionné (MatchNavFilterSpec.outcome
  *     est mono-valeur ; multi-outcome → on n'applique pas le filtre)
  *
  * `labels` : libellés affichés (langue de la page) des clés ci-dessus, posés à côté d'elles pour que le
@@ -183,8 +183,8 @@ const OUTCOME_CODE_TO_LABEL: Record<string, MatchFilterOutcome> = {
 export function explorerScopeToFilterSpec(
   s: ExplorerScope,
   labels?: { playlists?: MatchFilterLabels; modes?: MatchFilterLabels },
-): MatchFilterSpec | undefined {
-  const spec: MatchFilterSpec = {}
+): MatchNavFilterSpec | undefined {
+  const spec: MatchNavFilterSpec = {}
   if (s.playlists.size > 0) {
     spec.playlist_names = [...s.playlists]
     const names = labelsFor(spec.playlist_names, labels?.playlists)

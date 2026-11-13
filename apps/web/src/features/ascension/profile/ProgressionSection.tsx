@@ -64,8 +64,8 @@ function LeveragesList({ leverages, onStartCampaign }: LeveragesListProps) {
         {leverages.map((lv) => {
           const labelKey = `profile.lusr.${lv.component}` as ProfileManifestKey
           const axesLabel =
-            lv.narrative_axes.length > 0
-              ? lv.narrative_axes
+            (lv.narrative_axes?.length ?? 0) > 0
+              ? (lv.narrative_axes ?? [])
                   .map((axis) => t(`profile.axis.${axis}` as ProfileManifestKey))
                   .join(' · ')
               : t('profile.leverages.axes_empty')

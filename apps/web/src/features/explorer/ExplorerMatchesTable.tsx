@@ -56,7 +56,7 @@ import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
 import { formatDate, formatDurationMMSS, displayRatingLabel, intlLocale as toIntlLocale } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
-import { labelsOfOptions, type ContextDescriptor, type MatchFilterSpec } from '@/lib/match-nav/navContext'
+import { labelsOfOptions, type ContextDescriptor, type MatchNavFilterSpec } from '@/lib/match-nav/navContext'
 import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
 import { MatchReplayLink } from '@/lib/match-nav/MatchReplayLink'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
@@ -116,7 +116,7 @@ interface Props {
    *  l'Explorer de piloter la nav contextuelle depuis SES filtres locaux (et
    *  non le store global, vide en contexte Explorer). Les tables mode Joueur
    *  ne le passent pas → fallback soloFilterStore inchangé. */
-  filterSpecOverride?: MatchFilterSpec
+  filterSpecOverride?: MatchNavFilterSpec
   /** Forcer l'affichage du bloc pagination même si rows.length ≤ PAGE_SIZE.
    *  Utile en mode Joueur (tableaux ally/enemy) pour rendre la pagination
    *  toujours visible indépendamment du volume de données. */

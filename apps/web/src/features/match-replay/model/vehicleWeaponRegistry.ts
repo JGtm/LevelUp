@@ -22,7 +22,7 @@ import type { ReplayVehicleWeapon } from '@/lib/api/types'
 
 import type { FxTint } from '../layers/fxInk'
 import type { ShotFamily } from '../layers/shotEffects'
-import type { VehicleMountClass, VehicleWeaponMount } from './vehicleWeaponMounts'
+import type { VehicleMountClass, VehicleWeaponMountEntry } from './vehicleWeaponMounts'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /** Le style d'un tir : la FORME de l'éclair et la NATURE de la décharge (listes du titre). */
@@ -84,7 +84,7 @@ export function vehicleShotSoundStem(
 export function vehicleWeaponMountOf(
   doc: Pick<ReplayDocumentReady, 'vehicleWeapons'>,
   w: string | undefined,
-): VehicleWeaponMount | null {
+): VehicleWeaponMountEntry | null {
   const m = vehicleWeaponOf(doc, w)?.mount
   if (!m) return null
   const classe = VEHICLE_WEAPON_AIM_CLASS[m.aim]

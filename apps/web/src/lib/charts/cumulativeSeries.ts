@@ -19,7 +19,7 @@ export function finiteOrNull(v: number | null | undefined): number | null {
   return v != null && Number.isFinite(v) ? v : null
 }
 
-export interface CumulativePoint {
+export interface CumulativeSeriesPoint {
   /** Contribution du point (arrondie 2 déc.), `null` si absente/non-finie (D5). */
   value: number | null
   /** Cumul signé courant (reporte la dernière valeur si `value === null`). */
@@ -31,7 +31,7 @@ export interface CumulativePoint {
  * courant, reporté tel quel quand une contribution est absente (D5). Valeurs
  * arrondies à 2 décimales.
  */
-export function cumulativeSigned(values: Array<number | null | undefined>): CumulativePoint[] {
+export function cumulativeSigned(values: Array<number | null | undefined>): CumulativeSeriesPoint[] {
   let carryForward = 0
   return values.map((raw) => {
     const value = finiteOrNull(raw)

@@ -35,7 +35,7 @@ function notif(id: number, readAt: string | null = null): Notification {
     title_key: 'notif.personal_record.title',
     source: 'test',
     created_at: new Date().toISOString(),
-    read_at: readAt,
+    read_at: readAt ?? undefined,
   }
 }
 

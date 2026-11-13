@@ -12,6 +12,7 @@
 import { api } from './api/client'
 import type { Locale } from '@/lib/i18n/locale'
 
+import type { components } from '@/lib/api/generated'
 // ──────────────────────── Enums ────────────────────────
 
 export type ChallengeStatus =
@@ -75,56 +76,18 @@ export const TIER_LABELS: Record<Locale, Record<Tier, string>> = { fr: TIER_LABE
 
 // ──────────────────────── Domaine ────────────────────────
 
-export interface Challenge {
-  id: string
-  user_id: string
-  title_slug: string
-  arc_id?: string
-  position?: number
-  template_id?: string
-  metric: string
-  target: number
-  target_per_member?: number
+export type Challenge = Omit<components['schemas']['Challenge'], 'window_type' | 'cadence' | 'eval_type' | 'mode' | 'tier' | 'data_tier' | 'status' | 'is_squad'> & {
   window_type: WindowType
-  window_value?: string
   cadence: Cadence
   eval_type: EvalType
   mode: ChallengeMode
   tier?: Tier
   data_tier: DataTier
-  label?: string
   status: ChallengeStatus
-  /** Valeur courante mesurée (calculée par l'évaluateur dans ListActiveChallenges). 0 si non renseignée. */
-  current_value?: number
-  /** PP crédités à la complétion (PPForCompletion par tier/data_tier). 0/absent si data_tier=tracking. */
-  pp_reward?: number
-  expires_at?: string
-  created_at: string
-  committed_at?: string
-  completed_at?: string
-  expired_at?: string
-  abandoned_at?: string
-  last_palier_recompute_at?: string
-  is_private: boolean
-  /** true si ce défi provient d'un SquadChallenge. Absent/null pour les défis perso. */
   is_squad?: boolean
 }
 
-export interface Arc {
-  id: string
-  user_id: string
-  title_slug: string
-  title: string
-  description?: string
-  is_preset: boolean
-  preset_id?: string
-  created_at: string
-  completed_at?: string
-  /** Somme des PP des objectifs de l'arc (enrichi en lecture par le backend). */
-  objectives_pp?: number
-  /** Bonus PP crédité à la complétion de l'arc — distinct des PP des objectifs. */
-  completion_bonus_pp?: number
-}
+export type Arc = components['schemas']['Arc']
 
 // Non exporté : référencé via PresetArc.steps (exposé structurellement), aucun
 // consommateur ne l'importe par son nom → évite un export inutilisé (knip).
@@ -162,60 +125,21 @@ export interface PrestigeLevel {
   progress_ratio: number
 }
 
-export interface UserPrestige {
-  user_id: string
-  title_slug: string
-  total_pp: number
-  current_level: number
-  updated_at: string
-  /** Détails du niveau courant (nom, prochain seuil, ratio). Présent depuis 2026-05-01. */
-  level?: PrestigeLevel
-}
+export type UserPrestige = components['schemas']['UserPrestige']
 
 /** Réponse de POST /pilot-mode/enable (auto-attribution mode pilote). */
-export interface PilotModeAttribution {
-  daily?: Challenge | null
-  weekly_forced?: Challenge | null
-  weekly_choices: Template[]
-}
+export type PilotModeAttribution = components['schemas']['PilotModeAttribution']
 
-export interface Template {
-  id: string
-  title_slug: string
-  metric: string
+export type Template = Omit<components['schemas']['Template'], 'window_type' | 'cadence' | 'eval_type'> & {
   window_type: WindowType
-  window_value?: string
   cadence: Cadence
   eval_type: EvalType
-  mode_filter: string
-  /** Libellé et description dans la langue de la requête (le serveur choisit, repli anglais). */
-  label: string
-  description?: string
-  normal_target: number
-  heroic_target: number
-  legendary_target: number
-  mythic_target: number
-  schema_version: number
-  updated_at: string
-  /** Fin du cooldown anti-farming sur la métrique pour le joueur courant
-   *  (ISO 8601). Absent si aucun cooldown actif. Enrichi par le backend
-   *  (SuggestTemplates) ; permet d'afficher un badge + désactiver le choix. */
-  cooldown_ends_at?: string
 }
 
-export interface SquadChallenge {
-  id: string
-  squad_id: string
-  template_id?: string
-  title_slug: string
+export type SquadChallenge = Omit<components['schemas']['SquadChallenge'], 'mode' | 'eval_type' | 'window_type'> & {
   mode: SquadMode
   eval_type: EvalType
   window_type: WindowType
-  window_value?: string
-  target_per_member?: number
-  expires_at?: string
-  created_by: string
-  created_at: string
 }
 
 /** Participation d'un membre à un défi d'escouade (réponse enrichie). */
@@ -241,12 +165,7 @@ export interface SquadChallengeView extends SquadChallenge {
 }
 
 /** Escouade (roster) — entité Squad côté backend (clé xuid). */
-export interface Squad {
-  id: string
-  name: string
-  created_by: string
-  created_at: string
-}
+export type Squad = components['schemas']['Squad']
 
 /** Membre d'escouade. `user_id` (player_slug) renseigné si le membre est un
  *  utilisateur de l'app (accès lecture/écriture aux objectifs) ; vide sinon.

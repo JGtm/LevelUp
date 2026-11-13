@@ -1,3 +1,4 @@
+import type { components } from '@/lib/api/generated'
 /**
  * Types DTO du coach_advisor (ADR 0020 Phase 9 HTTP).
  *
@@ -39,13 +40,10 @@ export interface ProposalsListResponse {
   items: CoachProposal[]
 }
 
-export interface AcceptResponse {
+export type AcceptResponse = Omit<components['schemas']['AcceptResponse'], 'status'> & {
   status: 'accepted'
-  challenge_id?: string
-  arc_id?: string
-  challenge_ids?: string[]
 }
 
-export interface DismissResponse {
+export type DismissResponse = Omit<components['schemas']['DismissResponse'], 'status'> & {
   status: 'dismissed'
 }

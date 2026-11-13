@@ -60,7 +60,7 @@ export interface FirstBloodMatch {
   startTime?: string
 }
 
-export interface FirstBloodPlayerSeries {
+export interface FirstBloodLaneSeries {
   player: string
   matches: FirstBloodMatch[]
 }
@@ -127,7 +127,7 @@ function isUsable(sec: number | null | undefined): sec is number {
  * premier frag sont reléguées en fin de liste (ordre d'entrée conservé entre
  * elles : `Array.prototype.sort` est stable).
  */
-export function buildFirstBloodLanes(data: FirstBloodPlayerSeries[]): FirstBloodLane[] {
+export function buildFirstBloodLanes(data: FirstBloodLaneSeries[]): FirstBloodLane[] {
   const lanes: FirstBloodLane[] = data.map((s) => {
     const matches = s.matches ?? []
     const kills: FirstBloodEventPoint[] = []

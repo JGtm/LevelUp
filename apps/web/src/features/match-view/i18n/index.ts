@@ -9,7 +9,7 @@
 
 import { intlLocale } from '@/lib/formatters/intlLocale'
 import type { Locale } from '@/lib/i18n/locale'
-import { labelOfKey, type MatchFilterSpec } from '@/lib/match-nav/navContext'
+import { labelOfKey, type MatchNavFilterSpec } from '@/lib/match-nav/navContext'
 import type { MatchViewText } from './contract'
 import { EN_TEXT } from './en'
 import { FR_TEXT } from './fr'
@@ -25,14 +25,14 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
 }
 
 /**
- * buildContextLabel — produit un label localisé depuis un MatchFilterSpec.
+ * buildContextLabel — produit un label localisé depuis un MatchNavFilterSpec.
  *
  * Phase 2b : utilisé quand la cascade tombe sur l'API avec spec URL (pas de
  * filtersLabel pré-localisé dans le matchNavContext). Format compact :
  *   "Classée Arena · Victoires · Depuis 01/04/2026"
  */
 export function buildContextLabel(
-  spec: MatchFilterSpec | null | undefined,
+  spec: MatchNavFilterSpec | null | undefined,
   locale: MatchViewLocale,
 ): string {
   if (!spec) return ''

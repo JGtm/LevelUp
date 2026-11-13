@@ -14,7 +14,7 @@
  * TOUTES LES CASES SONT ÉMISES, dans l'ordre des colonnes puis des lignes : le wrapper déduit
  * ses axes de l'ordre d'apparition des points, en omettre une décalerait les catégories.
  */
-import type { ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import type { HeatmapCellPoint } from '@/components/charts/Heatmap2DChart'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import { escapeHtml } from '@/components/charts/_utils'
 import { intlLocale } from '@/lib/formatters'
@@ -63,7 +63,7 @@ export interface MatrixGrid {
   group: MatrixGroup
   /** Nombre de lignes (hauteur proportionnelle). */
   rows: number
-  series: ChartSeries<ChartPointHeatmap>[]
+  series: ChartSeries<HeatmapCellPoint>[]
 }
 
 /** Nom court du mois d'une clé `AAAA-MM`, dans la locale. */
@@ -93,7 +93,7 @@ function monthPoint(
   monthKey: string,
   label: string,
   locale: Locale,
-): ChartPointHeatmap {
+): HeatmapCellPoint {
   const x = monthShortLabel(monthKey, locale)
   const value = cell?.value
   if (cell == null || value == null) return { x, y: label, value: null }
@@ -117,7 +117,7 @@ function horizonPoint(
   days: number,
   label: string,
   locale: Locale,
-): ChartPointHeatmap {
+): HeatmapCellPoint {
   const t = getTendancesText(locale)
   const x = t.horizonShort(days)
   const value = cell?.value
@@ -155,7 +155,7 @@ export function buildMatrixGrids(
     const lignes = (indicators ?? []).filter((i) => i.in_matrix && i.group === group)
     if (lignes.length === 0) continue
     const libelles = lignes.map((i) => labelOf(i.key, i.variant))
-    const datapoints: ChartPointHeatmap[] = []
+    const datapoints: HeatmapCellPoint[] = []
     cles.forEach((monthKey, idx) => {
       lignes.forEach((ind, r) => {
         datapoints.push(monthPoint(ind, ind.months?.[idx], monthKey, libelles[r], locale))
@@ -187,7 +187,7 @@ export function matrixLeftMargin(grids: readonly MatrixGrid[]): number {
 }
 
 /** Les lignes de l'infobulle d'une case, texte échappé. */
-export function formatMatrixTooltip(point: ChartPointHeatmap, locale: Locale): string {
+export function formatMatrixTooltip(point: HeatmapCellPoint, locale: Locale): string {
   const d = point.detail as MatrixCellDetail | undefined
   if (!d) return ''
   const t = getTendancesText(locale)

@@ -23,6 +23,7 @@ import type {
   AdminSchedulerStatusResponse,
 } from '@/lib/api/types'
 
+import type { components } from '@/lib/api/generated'
 export function useMonitoringOverview() {
   return useQuery({
     queryKey: queryKeys.adminMonitoringOverview,
@@ -84,23 +85,10 @@ export function useMonitoringDetections() {
 }
 
 /** Un weapon_id non résolu + son volume de kills (id en string : > 2^53). */
-export interface AdminWeaponCoverageItem {
-  weapon_id: string
-  kills: number
-}
+export type AdminWeaponCoverageItem = components['schemas']['AdminWeaponCoverageItem']
 
 /** Couverture de la résolution d'arme d'un titre (diagnostic registre/labels). */
-export interface AdminWeaponCoverage {
-  title_slug: string
-  generated_at: string
-  distinct_weapons: number
-  resolved_registry: number
-  resolved_label: number
-  unresolved: number
-  coverage_percent: number
-  registry_percent: number
-  top_unresolved: AdminWeaponCoverageItem[]
-}
+export type AdminWeaponCoverage = components['schemas']['AdminWeaponCoverage']
 
 /**
  * Couverture de résolution d'arme pour un titre donné. Le slug est passé en

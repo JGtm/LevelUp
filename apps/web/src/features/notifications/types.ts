@@ -1,3 +1,4 @@
+import type { components } from '@/lib/api/generated'
 /**
  * Types TypeScript miroir de l'API backend Go (internal/notifications/types.go).
  *
@@ -87,19 +88,11 @@ export interface NotificationActor {
   name: string
 }
 
-export interface Notification {
-  id: number
+export type Notification = Omit<components['schemas']['Notification'], 'category' | 'severity' | 'params' | 'target_search'> & {
   category: NotificationCategory
   severity: NotificationSeverity
-  title_key: string
-  body_key?: string
   params?: Record<string, unknown>
-  target_route?: string
   target_search?: Record<string, unknown>
-  actor?: NotificationActor
-  source: string
-  created_at: string // ISO timestamp UTC
-  read_at?: string | null
 }
 
 export interface NotificationListResult {
@@ -107,12 +100,7 @@ export interface NotificationListResult {
   next_cursor?: number | null
 }
 
-export interface UnreadCount {
-  count: number
-  /** Non-lues de severity != 'info' — alimente le badge cloche (DP6). */
-  badge_count: number
-  by_category: Record<string, number>
-}
+export type UnreadCount = components['schemas']['UnreadCount']
 
 export interface NotificationPreference {
   category: NotificationCategory
@@ -127,6 +115,4 @@ export interface NotificationListFilter {
   before_id?: number
 }
 
-export interface MarkResult {
-  updated: number
-}
+export type MarkResult = components['schemas']['MarkResult']

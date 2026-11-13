@@ -13,7 +13,7 @@
 import { render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
-import { EngagementCurve, type EngagementPoint } from './EngagementCurve'
+import { EngagementCurve, type EngagementCurvePoint } from './EngagementCurve'
 
 vi.mock('@/lib/accessibility', () => ({
   resolveToken: (token: string) => `var(${token})`,
@@ -34,7 +34,7 @@ vi.mock('echarts/core', () => ({
 }))
 
 describe('EngagementCurve', () => {
-  const samplePoints: EngagementPoint[] = [
+  const samplePoints: EngagementCurvePoint[] = [
     { x: 0, paceTeam: 10, paceAttendu: 11, paceJoueur: 9, paceLobby: 10.5 },
     { x: 60_000, paceTeam: 12, paceAttendu: 13, paceJoueur: 14, paceLobby: 12.2 },
     { x: 120_000, paceTeam: 11, paceAttendu: 12, paceJoueur: 13, paceLobby: 11.4 },

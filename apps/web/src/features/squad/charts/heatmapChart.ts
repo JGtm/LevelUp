@@ -1,7 +1,7 @@
 /**
  * heatmapChart — Win rate par carte.
  *
- * Produit un ChartSeries<ChartPointHeatmap>[], consommé par Heatmap2DChart.
+ * Produit un ChartSeries<HeatmapCellPoint>[], consommé par Heatmap2DChart.
  * Remplace l'ancien builder Plotly heatmap 1D.
  *
  * Multi-titres : winAxisLabel et noms de cartes (via mapLabelOf) passés
@@ -9,7 +9,7 @@
  * dans le mapping du titre courant.
  */
 import type { ChartSeries } from '@/components/charts/ChartCard'
-import type { ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import type { HeatmapCellPoint } from '@/components/charts/Heatmap2DChart'
 import type { MapBreakdownRow } from '@/lib/api/types'
 
 export interface HeatmapSeriesArgs {
@@ -22,11 +22,11 @@ export function buildHeatmapSeries({
   rows,
   winAxisLabel,
   mapLabelOf,
-}: HeatmapSeriesArgs): ChartSeries<ChartPointHeatmap>[] {
+}: HeatmapSeriesArgs): ChartSeries<HeatmapCellPoint>[] {
   if (rows.length === 0) return []
 
   const sorted = [...rows].sort((a, b) => b.win_rate - a.win_rate)
-  const datapoints: ChartPointHeatmap[] = sorted.map((r) => ({
+  const datapoints: HeatmapCellPoint[] = sorted.map((r) => ({
     x: mapLabelOf(r.map_ui),
     y: winAxisLabel,
     value: r.win_rate * 100,

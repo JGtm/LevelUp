@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 
 import {
   buildHeatmap2DOption,
-  type ChartPointHeatmap,
+  type HeatmapCellPoint,
 } from './Heatmap2DChart'
 import type { ChartSeries } from './ChartCard'
 
@@ -11,7 +11,7 @@ vi.mock('@/lib/accessibility', () => ({
 }))
 
 describe('buildHeatmap2DOption', () => {
-  const series: ChartSeries<ChartPointHeatmap>[] = [
+  const series: ChartSeries<HeatmapCellPoint>[] = [
     {
       key: 'heatmap.test',
       datapoints: [
@@ -102,8 +102,8 @@ describe('buildHeatmap2DOption', () => {
 // le signale. Ces tests figent le contrat : émettez toutes les cases dans l'ordre,
 // et les deux axes coïncident.
 
-function matriceCarree(noms: string[]): ChartSeries<ChartPointHeatmap>[] {
-  const datapoints: ChartPointHeatmap[] = []
+function matriceCarree(noms: string[]): ChartSeries<HeatmapCellPoint>[] {
+  const datapoints: HeatmapCellPoint[] = []
   for (const y of noms) {
     for (const x of noms) {
       datapoints.push({ x, y, value: x === y ? null : 1 })
@@ -153,7 +153,7 @@ describe('buildHeatmap2DOption — axes d’une matrice carrée', () => {
   })
 
   it('exclut les cases vides de l’échelle (une case absente n’est pas un zéro)', () => {
-    const series: ChartSeries<ChartPointHeatmap>[] = [
+    const series: ChartSeries<HeatmapCellPoint>[] = [
       {
         key: 'm',
         datapoints: [
@@ -173,7 +173,7 @@ describe('buildHeatmap2DOption — axes d’une matrice carrée', () => {
 // ─── LE TOOLTIP AU CHOIX DE L'APPELANT (correction W5) ────────────────────────
 
 describe('buildHeatmap2DOption — formatTooltip', () => {
-  const cellule: ChartSeries<ChartPointHeatmap>[] = [
+  const cellule: ChartSeries<HeatmapCellPoint>[] = [
     { key: 'm', datapoints: [{ x: 'Bob', y: 'Alice', value: 4, detail: { count: 4 } }] },
   ]
   type Fmt = { tooltip: { formatter: (p: { data: unknown[] }) => string } }
@@ -214,7 +214,7 @@ describe('buildHeatmap2DOption — formatTooltip', () => {
 // ─── C1 — PADDING DES CASES ET ABSENCE VISIBLE (plan vague C formes, D2/D3) ────
 
 describe('buildHeatmap2DOption — padding des cases (D2)', () => {
-  const series: ChartSeries<ChartPointHeatmap>[] = [
+  const series: ChartSeries<HeatmapCellPoint>[] = [
     { key: 'm', datapoints: [{ x: 'A', y: 'A', value: 1 }, { x: 'B', y: 'A', value: 2 }] },
   ]
 
@@ -251,7 +251,7 @@ describe('buildHeatmap2DOption — absence visible (D3)', () => {
   })
 
   it('une case mesurée garde son étiquette (le compte), inchangée', () => {
-    const series: ChartSeries<ChartPointHeatmap>[] = [
+    const series: ChartSeries<HeatmapCellPoint>[] = [
       { key: 'm', datapoints: [{ x: 'A', y: 'A', value: 4, detail: { count: 4 } }] },
     ]
     const opt = buildHeatmap2DOption(series) as {
@@ -269,7 +269,7 @@ describe('buildHeatmap2DOption — absence visible (D3)', () => {
 // ─── C1 — PLAFOND DE SATURATION OPTIONNEL (sans régression par défaut) ────────
 
 describe('buildHeatmap2DOption — saturationCap (optionnel)', () => {
-  const series: ChartSeries<ChartPointHeatmap>[] = [
+  const series: ChartSeries<HeatmapCellPoint>[] = [
     { key: 'm', datapoints: [{ x: 'A', y: 'y', value: 10 }, { x: 'B', y: 'y', value: 80 }] },
   ]
 
@@ -299,7 +299,7 @@ describe('buildHeatmap2DOption — saturationCap (optionnel)', () => {
 // (calendrier jour × heure) : la case reste ÉMISE — sans quoi les axes, déduits de l'ordre
 // d'apparition, se décaleraient — mais ne porte plus ni style propre ni étiquette.
 describe('buildHeatmap2DOption — cases sans mesure', () => {
-  const avecVide: ChartSeries<ChartPointHeatmap>[] = [
+  const avecVide: ChartSeries<HeatmapCellPoint>[] = [
     {
       key: 'm',
       datapoints: [

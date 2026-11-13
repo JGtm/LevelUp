@@ -14,7 +14,7 @@
  */
 import { useCallback, useMemo } from 'react'
 
-import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import { Heatmap2DChart, type HeatmapCellPoint } from '@/components/charts/Heatmap2DChart'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import { escapeHtml, getEChartsThemeColors } from '@/components/charts/_utils'
 import { dowLabels, HOUR_LABELS, calendarChartText } from '@/lib/formatters'
@@ -33,7 +33,7 @@ interface Props {
  * en haut, l'ordre des DONNÉES ne porte donc pas de décision d'affichage. Une heure sans
  * match croisé vaut `null` (case sans mesure), jamais 0.
  */
-function buildPoints(cells: HeatmapCell[], dowLabelsList: readonly string[]): ChartPointHeatmap[] {
+function buildPoints(cells: HeatmapCell[], dowLabelsList: readonly string[]): HeatmapCellPoint[] {
   const lookup = new Map<string, { count: number; win_rate: number }>()
   for (const c of cells) {
     if (c.count > 0) {
@@ -41,7 +41,7 @@ function buildPoints(cells: HeatmapCell[], dowLabelsList: readonly string[]): Ch
     }
   }
 
-  const points: ChartPointHeatmap[] = []
+  const points: HeatmapCellPoint[] = []
   for (let d = 0; d < 7; d++) {
     for (let h = 0; h < 24; h++) {
       const cell = lookup.get(`${d}-${h}`)
@@ -61,13 +61,13 @@ export function ExplorerActivityHeatmapChart({ cells, title, height }: Props) {
   const txt = calendarChartText(locale)
   const dowLabelsList = dowLabels(locale)
 
-  const series: ChartSeries<ChartPointHeatmap>[] = useMemo(
+  const series: ChartSeries<HeatmapCellPoint>[] = useMemo(
     () => (cells.length > 0 ? [{ key: 'heatmap', datapoints: buildPoints(cells, dowLabelsList) }] : []),
     [cells, dowLabelsList],
   )
 
   const formatTooltip = useCallback(
-    (point: ChartPointHeatmap) => {
+    (point: HeatmapCellPoint) => {
       const count = (point.detail?.count as number | undefined) ?? 0
       const winRate = (point.detail?.winRate as number | undefined) ?? 0
       const wrStr = `${(winRate * 100).toFixed(1)}%`

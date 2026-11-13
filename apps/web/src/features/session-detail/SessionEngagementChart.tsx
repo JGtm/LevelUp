@@ -19,7 +19,7 @@ import { sessionMatchAxisLabel, useSessionT } from './_shared'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
-interface EngagementPoint {
+interface SessionEngagementPoint {
   label: string
   value: number
 }
@@ -35,7 +35,7 @@ interface Props {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildSessionEngagementOption(
-  series: ChartSeries<EngagementPoint>[],
+  series: ChartSeries<SessionEngagementPoint>[],
   opts: { meanLabel: string; axisName: string; yDomain?: [number, number] },
 ): ChartOption {
   const points = series[0]?.datapoints ?? []
@@ -101,12 +101,12 @@ export function buildSessionEngagementOption(
 export function SessionEngagementChart({ title, matches, entry, height = 260, yDomain }: Props) {
   const t = useSessionT()
 
-  const series = useMemo<ChartSeries<EngagementPoint>[]>(() => {
+  const series = useMemo<ChartSeries<SessionEngagementPoint>[]>(() => {
     const ms = [...(entry?.match_series ?? [])].sort((a, b) => a.index - b.index)
     if (ms.length === 0) return []
     // Les matchs (pour la carte) sont zippés par ordre chronologique avec la série.
     const sorted = [...matches].sort((a, b) => a.start_time.localeCompare(b.start_time))
-    const points: EngagementPoint[] = []
+    const points: SessionEngagementPoint[] = []
     ms.forEach((p, i) => {
       if (p.engagement_score == null) return
       const m = sorted[i]

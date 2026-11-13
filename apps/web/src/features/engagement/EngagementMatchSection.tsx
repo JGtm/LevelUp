@@ -2,14 +2,14 @@
  * EngagementMatchSection — section Match View tab "team" / Timeseries intensity tab.
  *
  * Charge le score + courbe via /matches/{id}/engagement et adapte les points
- * API en EngagementPoint pour le composant EngagementCurve.
+ * API en EngagementCurvePoint pour le composant EngagementCurve.
  *
  * Mode 'intra' : Match View intra-match (smooth, X = mm:ss).
  * Mode 'session' : Timeseries / Session (linear avec markers, X = label match).
  */
 import { useMemo } from 'react'
 
-import { EngagementCurve, type EngagementPoint } from '@/components/charts/EngagementCurve'
+import { EngagementCurve, type EngagementCurvePoint } from '@/components/charts/EngagementCurve'
 import { buildSubtitle } from '@/features/engagement/engagementSubtitle'
 import { useMatchEngagement } from '@/features/engagement/queries'
 import type { ApiError } from '@/lib/api/client'
@@ -48,7 +48,7 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
   const locale = useAppShellStore((s) => s.locale)
   const query = useMatchEngagement(playerSlug, matchId)
 
-  const points: EngagementPoint[] = useMemo(
+  const points: EngagementCurvePoint[] = useMemo(
     () => mapApiPointsToCurve(query.data),
     [query.data],
   )
@@ -118,12 +118,12 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
 // Adapters
 // ---------------------------------------------------------------------------
 
-function mapApiPointsToCurve(data: EngagementScoreResultAPI | undefined): EngagementPoint[] {
+function mapApiPointsToCurve(data: EngagementScoreResultAPI | undefined): EngagementCurvePoint[] {
   if (!data || !data.engagement_curve) return []
   return data.engagement_curve.map(toEngagementPoint)
 }
 
-function toEngagementPoint(p: EngagementPointAPI): EngagementPoint {
+function toEngagementPoint(p: EngagementPointAPI): EngagementCurvePoint {
   return {
     x: p.time_ms,
     paceTeam: p.pace_team,

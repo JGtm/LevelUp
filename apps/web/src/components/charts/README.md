@@ -41,7 +41,7 @@ interface ChartSeries<T> {
 }
 ```
 
-Each chart kind has its own datapoint type (`ChartPoint2D`, `ChartPointStacked`, `ChartPointHeatmap`, `ChartPointHistogram`, `ChartPointScatter`, `ChartPointDonut`).
+Each chart kind has its own datapoint type (`ChartPoint2D`, `ChartPointStacked`, `HeatmapCellPoint`, `ChartPointHistogram`, `ChartPointScatter`, `ChartPointDonut`).
 
 ## Wrapper details
 
@@ -100,7 +100,7 @@ Single-series pie/donut from `ChartSeries<ChartPointDonut>[]` (`{ name, value }`
 
 ### `<Heatmap2DChart>`
 
-Single-series 2D grid from `ChartSeries<ChartPointHeatmap>[]` (`{ x, y, value, detail? }`). THE single implementation of a categorical heatmap in this app — guarded by `heatmapSingleImpl.guard.test.ts`, which fails on any `type: 'heatmap'` ECharts series written outside this wrapper and its dated allowlist.
+Single-series 2D grid from `ChartSeries<HeatmapCellPoint>[]` (`{ x, y, value, detail? }`). THE single implementation of a categorical heatmap in this app — guarded by `heatmapSingleImpl.guard.test.ts`, which fails on any `type: 'heatmap'` ECharts series written outside this wrapper and its dated allowlist.
 
 The option builder lives next door in `heatmap2DOption.ts` (the component file was over the 500-line threshold); `Heatmap2DChart.tsx` re-exports `buildHeatmap2DOption` and the types, so importers are unchanged.
 

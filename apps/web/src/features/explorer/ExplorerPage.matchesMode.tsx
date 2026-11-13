@@ -13,7 +13,7 @@ import { ExplorerMatchesTable } from './ExplorerMatchesTable'
 import { ExplorerBriefingStrip } from './ExplorerBriefingStrip'
 import { SaisonPill } from '@/components/shell/FilterOmnibar'
 import { useCapability } from '@/lib/capabilities/capabilities'
-import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navContext'
+import type { ContextDescriptor, MatchNavFilterSpec } from '@/lib/match-nav/navContext'
 import type { ExplorerMatchesQueryResponse } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import type { SeasonEntry } from '@/lib/i18n/fieldMappings'
@@ -86,7 +86,7 @@ export interface ExplorerMatchesModeProps {
   matchesContextDescriptor: ContextDescriptor | undefined
   /** filterSpec dérivé des filtres Explorer locaux (Phase 4) — propagé à la
    *  nav contextuelle prev/next via ExplorerMatchesTable.filterSpecOverride. */
-  matchesFilterSpec?: MatchFilterSpec
+  matchesFilterSpec?: MatchNavFilterSpec
 }
 
 export function ExplorerMatchesMode(props: ExplorerMatchesModeProps) {
@@ -325,7 +325,7 @@ interface ResultsBlockProps {
   t: (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
   matchesQuery: ExplorerMatchesModeProps['matchesQuery']
   matchesContextDescriptor: ContextDescriptor | undefined
-  matchesFilterSpec?: MatchFilterSpec
+  matchesFilterSpec?: MatchNavFilterSpec
 }
 
 // Exporté pour tester la mise en page (compteur « N matchs trouvés » retiré, export CSV

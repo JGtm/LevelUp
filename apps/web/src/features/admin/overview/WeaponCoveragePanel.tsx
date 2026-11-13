@@ -129,7 +129,7 @@ function UnresolvedList({ data, tA }: { data: AdminWeaponCoverage; tA: TAdmin })
         {tA('admin.overview.weapon_coverage_top_unresolved')}
       </div>
       <ul className="divide-y divide-border/60 rounded-sm border border-border/60">
-        {data.top_unresolved.map((it) => (
+        {(data.top_unresolved ?? []).map((it) => (
           <li
             key={it.weapon_id}
             className="flex items-center justify-between px-2 py-1 text-xs tabular-nums"

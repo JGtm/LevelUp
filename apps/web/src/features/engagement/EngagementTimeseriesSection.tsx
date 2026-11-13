@@ -7,7 +7,7 @@
  */
 import { useMemo } from 'react'
 
-import { EngagementCurve, type EngagementPoint } from '@/components/charts/EngagementCurve'
+import { EngagementCurve, type EngagementCurvePoint } from '@/components/charts/EngagementCurve'
 import { useEngagementTimeseries } from '@/features/engagement/queries'
 import { truncateMap } from '@/lib/charts/matchLabels'
 import type { EngagementGranularity, FilterContextInput } from '@/lib/api/types'
@@ -42,7 +42,7 @@ export function EngagementTimeseriesSection(props: EngagementTimeseriesSectionPr
   const data = query.data
   const pointsAPI = useMemo(() => data?.points ?? [], [data?.points])
 
-  const points: EngagementPoint[] = useMemo(() => {
+  const points: EngagementCurvePoint[] = useMemo(() => {
     return pointsAPI.map((m, i) => ({
       x: i,
       paceTeam: m.pace_team,

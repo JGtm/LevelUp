@@ -40,7 +40,7 @@
  * pour ce seul consommateur, le défaut du wrapper ne bouge pas.
  */
 import { useCallback, useMemo } from 'react'
-import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import { Heatmap2DChart, type HeatmapCellPoint } from '@/components/charts/Heatmap2DChart'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import { escapeHtml } from '@/components/charts/_utils'
 import { tipNumber, tipNumberAuto } from '@/components/charts/tipNumber'
@@ -57,7 +57,7 @@ interface Props {
 
 /** Construit les 168 points (24 h × 7 j), Lundi → Dimanche (l'axe Y inversé du
  *  wrapper place Lundi en haut — cf. doc de tête). */
-function buildPoints(cells: HeatmapCell[], dowLabelsList: readonly string[]): ChartPointHeatmap[] {
+function buildPoints(cells: HeatmapCell[], dowLabelsList: readonly string[]): HeatmapCellPoint[] {
   const lookup = new Map<string, { win_rate: number; count: number }>()
   for (const c of cells) {
     if (c.count > 0) {
@@ -65,7 +65,7 @@ function buildPoints(cells: HeatmapCell[], dowLabelsList: readonly string[]): Ch
     }
   }
 
-  const points: ChartPointHeatmap[] = []
+  const points: HeatmapCellPoint[] = []
   for (let d = 0; d < 7; d++) {
     for (let h = 0; h < 24; h++) {
       const cell = lookup.get(`${d}-${h}`)
@@ -85,13 +85,13 @@ export function SynthesisHeatmapChart({ cells, title, height }: Props) {
   const txt = calendarChartText(locale)
   const dowLabelsList = dowLabels(locale)
 
-  const series: ChartSeries<ChartPointHeatmap>[] = useMemo(
+  const series: ChartSeries<HeatmapCellPoint>[] = useMemo(
     () => (cells.length > 0 ? [{ key: 'heatmap', datapoints: buildPoints(cells, dowLabelsList) }] : []),
     [cells, dowLabelsList],
   )
 
   const formatTooltip = useCallback(
-    (point: ChartPointHeatmap) => {
+    (point: HeatmapCellPoint) => {
       const count = (point.detail?.count as number | undefined) ?? 0
       const wrStr = `${tipNumber((point.value ?? 0) * 100, 1)} %`
       return `${escapeHtml(point.y)} ${escapeHtml(point.x)}<br/>${txt.winRate} : ${wrStr}<br/>${txt.matches} : ${tipNumberAuto(count)}`

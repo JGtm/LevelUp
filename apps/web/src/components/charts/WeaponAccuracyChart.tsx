@@ -40,7 +40,7 @@ interface Props {
   onClassHover?: (classKey: string | null) => void
 }
 
-interface AccuracyPoint {
+interface WeaponAccuracyBarPoint {
   label: string
   /** Précision en pourcentage (0..100) — l'API fournit 0..1, converti ici. */
   accuracyPct: number
@@ -52,7 +52,7 @@ interface AccuracyPoint {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildWeaponAccuracyOption(
-  series: ChartSeries<AccuracyPoint>[],
+  series: ChartSeries<WeaponAccuracyBarPoint>[],
   locale: ManifestLocale,
   hoveredClass?: string | null,
 ): EChartsCoreOption {
@@ -126,7 +126,7 @@ export function WeaponAccuracyChart({ weapons, weaponKills, height, fillHeight, 
   }
 
   // Série VIDE (et non datapoints vides) quand aucune arme → ChartCard rend le placeholder.
-  const series: ChartSeries<AccuracyPoint>[] =
+  const series: ChartSeries<WeaponAccuracyBarPoint>[] =
     list.length > 0
       ? [{
           key: 'weapon-accuracy',
@@ -141,7 +141,7 @@ export function WeaponAccuracyChart({ weapons, weaponKills, height, fillHeight, 
       : []
 
   const buildOption = useCallback(
-    (s: ChartSeries<AccuracyPoint>[]) => buildWeaponAccuracyOption(s, locale, hoveredClass),
+    (s: ChartSeries<WeaponAccuracyBarPoint>[]) => buildWeaponAccuracyOption(s, locale, hoveredClass),
     // hoveredClass force le rebuild de l'estompage lié.
     [locale, hoveredClass]
   )

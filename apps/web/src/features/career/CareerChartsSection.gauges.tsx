@@ -2,7 +2,7 @@
  * CareerChartsSection — jauges career.01 (rang) + career.02 (rang max, title-agnostic).
  *
  * Découpé depuis CareerChartsSection.tsx (audit #6 god-file split).
- * Sortie : 2 ChartCard<GaugePoint> avec leur footer enrichi.
+ * Sortie : 2 ChartCard<CareerGaugePoint> avec leur footer enrichi.
  */
 import type { ChartOption } from '@/components/charts/chartOption'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
@@ -17,11 +17,11 @@ import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import type { CareerSummary, HeroProgress } from '@/lib/api/types'
 
-interface GaugePoint { value: number; label: string; detail: string }
+interface CareerGaugePoint { value: number; label: string; detail: string }
 
 // ── career.01 — jauge rang ─────────────────────────────────────────────────
 
-function rankGaugeSeries(summary: CareerSummary, numLoc: string): ChartSeries<GaugePoint> {
+function rankGaugeSeries(summary: CareerSummary, numLoc: string): ChartSeries<CareerGaugePoint> {
   // progress_pct est déjà en 0..100 côté API Go
   const pct = Math.min(100, summary.progress_pct)
   return {
@@ -34,7 +34,7 @@ function rankGaugeSeries(summary: CareerSummary, numLoc: string): ChartSeries<Ga
   }
 }
 
-function buildRankGaugeOption(series: ChartSeries<GaugePoint>[]): ChartOption {
+function buildRankGaugeOption(series: ChartSeries<CareerGaugePoint>[]): ChartOption {
   const point = series[0]?.datapoints[0]
   if (!point) return {}
   return buildGaugeOption(point, resolveToken('chart-series-1'), getEChartsThemeColors())
@@ -50,7 +50,7 @@ export function heroMaxRankName(hero: HeroProgress, locale: ManifestLocale): str
   return hero.max_rank_name || formatMessage(careerManifest, 'career.charts.max_rank_generic', locale)
 }
 
-function heroGaugeSeries(hero: HeroProgress, numLoc: string, locale: ManifestLocale): ChartSeries<GaugePoint> {
+function heroGaugeSeries(hero: HeroProgress, numLoc: string, locale: ManifestLocale): ChartSeries<CareerGaugePoint> {
   // percentage est déjà en 0..100 côté API Go (× 100 fait côté service)
   const pct = Math.min(100, hero.percentage)
   const acquired = hero.xp_total_required - hero.xp_remaining
@@ -67,7 +67,7 @@ function heroGaugeSeries(hero: HeroProgress, numLoc: string, locale: ManifestLoc
   }
 }
 
-function buildHeroGaugeOption(series: ChartSeries<GaugePoint>[]): ChartOption {
+function buildHeroGaugeOption(series: ChartSeries<CareerGaugePoint>[]): ChartOption {
   const point = series[0]?.datapoints[0]
   if (!point) return {}
   return buildGaugeOption(point, resolveToken('perf-tier-2'), getEChartsThemeColors())
@@ -76,7 +76,7 @@ function buildHeroGaugeOption(series: ChartSeries<GaugePoint>[]): ChartOption {
 // ── Gauge builder partagé ──────────────────────────────────────────────────
 
 function buildGaugeOption(
-  point: GaugePoint,
+  point: CareerGaugePoint,
   progressColor: string,
   tc: ReturnType<typeof getEChartsThemeColors>,
 ): ChartOption {
@@ -224,7 +224,7 @@ export interface CareerRankGaugeChartProps {
 
 export function CareerRankGaugeChart({ summary, locale, intlLocale }: CareerRankGaugeChartProps) {
   return (
-    <ChartCard<GaugePoint>
+    <ChartCard<CareerGaugePoint>
       title={careerManifest['career.charts.rank_gauge_title'][locale]}
       series={summary ? [rankGaugeSeries(summary, intlLocale)] : []}
       height={280}
@@ -250,7 +250,7 @@ export function CareerHeroGaugeChart({ heroProgress, locale, intlLocale }: Caree
   const hasCareer = useCapability('career')
   if (!hasCareer) return null
   return (
-    <ChartCard<GaugePoint>
+    <ChartCard<CareerGaugePoint>
       // Titre AVEC le nom du rang sommet du titre (« Progression vers Héros » /
       // « … SR 152 ») — la version la plus visible du libellé, pas seulement le
       // label interne de la jauge. Repli générique sans payload.

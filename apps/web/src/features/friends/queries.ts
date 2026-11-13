@@ -12,12 +12,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 
-export interface PlayerFriends {
-  xuid: string
-  gamertags: string[]
-  updated_at?: string
-  can_edit: boolean
-}
+import type { components } from '@/lib/api/generated'
+export type PlayerFriends = components['schemas']['PlayerFriends']
 
 /**
  * Liste d'amis du joueur `slug`. Slug vide → requête désactivée.

@@ -9,20 +9,12 @@
 
 import type { Locale } from '@/lib/i18n/locale'
 
-export interface ApiError {
-  code: string
-  message: string
-  retryable: boolean
-  details?: unknown
-  field_errors?: FieldError[]
+import type { components } from '@/lib/api/generated'
+export type ApiError = Omit<components['schemas']['ApiError'], 'status'> & {
   status: number
 }
 
-export interface FieldError {
-  field: string
-  message: string
-  code?: string
-}
+export type FieldError = components['schemas']['FieldError']
 
 /**
  * Extrait un message lisible d'une erreur catchée par TanStack Query ou un

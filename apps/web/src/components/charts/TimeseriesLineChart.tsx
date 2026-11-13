@@ -33,10 +33,9 @@ import {
 } from './_utils'
 import { tipNumberAuto } from './tipNumber'
 
-export interface ChartPoint2D {
+import type { components } from '@/lib/api/generated'
+export type ChartPoint2D = Omit<components['schemas']['ChartPoint2D'], 'x'> & {
   x: string | number | Date
-  y: number
-  label?: string
 }
 
 export interface TimeseriesLineChartProps {

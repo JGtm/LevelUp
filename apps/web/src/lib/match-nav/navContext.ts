@@ -19,7 +19,7 @@
  */
 
 /**
- * `filterSpec` — miroir TS du `domain.MatchFilterSpec` Go (Phase 2b).
+ * `filterSpec` — miroir TS du `domain.MatchNavFilterSpec` Go (Phase 2b).
  * Sérialisé en query params pour le fallback API (?playlist=...&mode=...).
  *
  * Toutes les chaînes sont validées côté backend (whitelist + regex) — un
@@ -65,7 +65,7 @@ export function labelOfKey(key: string, labels: MatchFilterLabels | undefined): 
   return labels?.[key] || key
 }
 
-export interface MatchFilterSpec {
+export interface MatchNavFilterSpec {
   /** Playlists (multi, Phase 3). Sérialisées en `?playlist=A,B` : ce sont des CLÉS de filtre. */
   playlist_names?: string[]
   /** Catégories de mode (multi, Phase 3). Sérialisées en `?mode=X,Y` : ce sont des CLÉS de filtre. */
@@ -83,7 +83,7 @@ export interface MatchFilterSpec {
 }
 
 /**
- * Sérialise un MatchFilterSpec en query string (sans le `?` initial).
+ * Sérialise un MatchNavFilterSpec en query string (sans le `?` initial).
  *
  * Mapping vers les noms de query params attendus par le handler Go :
  *   playlist_names   → playlist (valeurs jointes par virgule)
@@ -96,7 +96,7 @@ export interface MatchFilterSpec {
  *
  * Retourne une chaîne vide si la spec est vide ou nulle.
  */
-export function filterSpecToQueryString(spec: MatchFilterSpec | null | undefined): string {
+export function filterSpecToQueryString(spec: MatchNavFilterSpec | null | undefined): string {
   if (!spec) return ''
   const params = new URLSearchParams()
   if (spec.playlist_names?.length) params.set('playlist', spec.playlist_names.join(','))
@@ -110,12 +110,12 @@ export function filterSpecToQueryString(spec: MatchFilterSpec | null | undefined
 }
 
 /**
- * Parse un MatchFilterSpec depuis un objet `search` (TanStack Router) ou
+ * Parse un MatchNavFilterSpec depuis un objet `search` (TanStack Router) ou
  * URLSearchParams. Retourne null si rien de pertinent.
  */
 export function parseFilterSpecFromSearch(
   search: Record<string, unknown> | URLSearchParams | null | undefined,
-): MatchFilterSpec | null {
+): MatchNavFilterSpec | null {
   if (!search) return null
   const get = (key: string): string | undefined => {
     if (search instanceof URLSearchParams) {
@@ -125,7 +125,7 @@ export function parseFilterSpecFromSearch(
     return typeof v === 'string' ? v : undefined
   }
 
-  const spec: MatchFilterSpec = {}
+  const spec: MatchNavFilterSpec = {}
   const playlist = get('playlist')
   if (playlist) {
     const names = playlist.split(',').map((s) => s.trim()).filter(Boolean)
@@ -228,7 +228,7 @@ export interface MatchNavContext {
    */
   filtersLabel?: string
   /** Pré-rempli pour Phase 2b — filtres canoniques pour le fallback API. */
-  filterSpec?: MatchFilterSpec
+  filterSpec?: MatchNavFilterSpec
 }
 
 const STORAGE_PREFIX = 'levelup:matchNav:'

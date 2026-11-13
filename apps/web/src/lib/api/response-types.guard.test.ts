@@ -62,11 +62,7 @@ const ALLOWLIST = new Set<string>([
   // --- fichiers feature-locaux ---
   'StreaksResponse',            // features/ascension/types.ts — Ascension V2
   'RecordsResponse',            // features/ascension/types.ts
-  'MilestonesResponse',         // features/ascension/types.ts
-  'AdminTitlesListResponse',    // features/admin/titles/queries.ts
   'ProposalsListResponse',      // features/coach/types.ts — coach proactif
-  'AcceptResponse',             // features/coach/types.ts
-  'DismissResponse',            // features/coach/types.ts
   'NotificationsListResponse',  // features/notifications/queries.ts — alias NotificationListResult
   'ImportStartResponse',        // features/onboarding/queries.ts — OpenSpartan import
   'FieldMappingsResponse',      // lib/i18n/fieldMappings.ts — mappings TOML backend-driven
@@ -159,7 +155,7 @@ function collectHandWrittenResponses(files: string[]): Set<string> {
       const name = m[1]
       const rhs = (m[2] ?? '').trim()
       // Un ré-export du contrat généré est la forme AUTORISÉE : on ne le compte pas.
-      if (rhs.startsWith("components['schemas']") || rhs.startsWith('components["schemas"]')) {
+      if (rhs.includes("components['schemas']") || rhs.includes('components["schemas"]')) {
         continue
       }
       found.add(name)
@@ -194,13 +190,26 @@ function collectContractReexports(typesTs: string): Map<string, string> {
 // les réponses. Dans `lib/api/types.ts`, toute déclaration manuelle homonyme d'un schéma est donc interdite
 // hors de l'ALLOWLIST des réponses (ci-dessus) et de KEPT_MANUAL_HOMONYMS (ci-dessous). Une déclaration
 // dérivée du contrat (`components['schemas'][…]`, y compris `Omit<…> & { … }`) n'est pas manuelle. Hors de
-// `types.ts`, le nombre de déclarations homonymes est plafonné à sa valeur du 2026-11-13 (dette antérieure,
-// à résorber, jamais relevée).
+// `types.ts`, même règle (plafond 0) avec sa propre liste datée, KEPT_MANUAL_HOMONYMS_OUTSIDE_TYPES, qui ne peut que
+// rétrécir.
 const DECLARATION_RE = /^(?:export\s+)?(interface|type)\s+(\w+)/gm
 const NEXT_DECLARATION_RE = /\n(?:export\s+|type\s|interface\s|const\s|function\s)/
 
-/** Plafond des homonymes manuels hors `lib/api/types.ts` (mesuré le 2026-11-13). */
-const HOMONYMS_OUTSIDE_TYPES_CEILING = 78
+// Déclarations manuelles homonymes d'un schéma, HORS `lib/api/types.ts`, laissées à la main (2026-11-13). Plafond 0 hors de
+// cette liste, qui ne peut que rétrécir : chaque entrée (`fichier:Nom`) dit pourquoi le contrat ne peut pas être
+// réexporté tel quel.
+const KEPT_MANUAL_HOMONYMS_OUTSIDE_TYPES: Readonly<Record<string, string>> = {
+  'features/ascension/types.ts:StreaksResponse':
+    "porte Streak, view-model dont type et statut sont des unions de littéraux que le contrat sert en chaînes",
+  'features/ascension/types.ts:RecordsResponse':
+    "porte PersonalBest et RecordHistory, view-models à période en union de littéraux",
+  'features/ascension/types.ts:PatternReport':
+    "porte ContextualPattern, BehavioralPattern et PatternLever, view-models à unions de littéraux",
+  'features/coach/types.ts:ProposalsListResponse':
+    "porte Proposal, view-model à genre et origine en unions de littéraux",
+  'features/media/queries.ts:PlayerMediaAudioConfig':
+    "corps du PUT : le front n'envoie ni updated_at (fixé par le serveur) ni les rôles hors mode manuel, le contrat les exige",
+}
 
 // Types NON *Response de `lib/api/types.ts` laissés à la main (étape 7.4, 2026-11-13). Liste décroissante :
 // chaque entrée dit pourquoi le contrat généré ne peut pas être ré-exporté tel quel, et reste tant que la cause tient.
@@ -234,7 +243,7 @@ function manualSchemaHomonyms(
         const rest = src.slice(m.index + m[0].length)
         const stop = rest.search(NEXT_DECLARATION_RE)
         const body = stop === -1 ? rest : rest.slice(0, stop)
-        if (body.includes("components['schemas']")) continue
+        if (body.includes("components['schemas']") || !body.includes('{')) continue
       }
       out.push({ file: file.slice(root.length + 1).replaceAll('\\', '/'), name })
     }
@@ -349,17 +358,31 @@ describe('garde-rail types de réponse API (V8d — source unique generated.ts)'
     ).toEqual([])
   })
 
-  it('hors lib/api/types.ts : le nombre de déclarations homonymes d’un schéma ne dépasse pas le plafond daté', () => {
+  it('hors lib/api/types.ts : aucune déclaration manuelle homonyme d’un schéma hors de la liste datée', () => {
     const outside = manualSchemaHomonyms(
       files.filter((f) => f !== typesFile && !f.endsWith(join('lib', 'api', 'generated.ts'))),
       schemas,
       srcRoot,
-    )
+    ).map((d) => `${d.file}:${d.name}`)
+    const unexpected = outside.filter((k) => !(k in KEPT_MANUAL_HOMONYMS_OUTSIDE_TYPES)).sort()
     expect(
-      outside.length,
-      `${outside.length} déclaration(s) homonyme(s) hors types.ts pour un plafond de ${HOMONYMS_OUTSIDE_TYPES_CEILING} :\n  ` +
-        outside.map((d) => `${d.file} ${d.name}`).join('\n  '),
-    ).toBeLessThanOrEqual(HOMONYMS_OUTSIDE_TYPES_CEILING)
+      unexpected,
+      `Déclaration(s) manuelle(s) homonyme(s) d'un schéma du contrat : ${unexpected.join(', ')}. Dériver du contrat ` +
+        `(type X = components['schemas']['X'], ou Omit<…> & { … } pour une union de littéraux), renommer le view-model, ou l'ajouter ` +
+        `à KEPT_MANUAL_HOMONYMS_OUTSIDE_TYPES avec la cause écrite.`,
+    ).toEqual([])
+  })
+
+  it('KEPT_MANUAL_HOMONYMS_OUTSIDE_TYPES décroissante : aucune entrée périmée', () => {
+    const outside = new Set(
+      manualSchemaHomonyms(
+        files.filter((f) => f !== typesFile && !f.endsWith(join('lib', 'api', 'generated.ts'))),
+        schemas,
+        srcRoot,
+      ).map((d) => `${d.file}:${d.name}`),
+    )
+    const stale = Object.keys(KEPT_MANUAL_HOMONYMS_OUTSIDE_TYPES).filter((k) => !outside.has(k)).sort()
+    expect(stale, `Entrée(s) sans déclaration manuelle correspondante : ${stale.join(', ')}. Retirer la ligne.`).toEqual([])
   })
 
   it('auto-preuve : la détection voit interface et alias manuels, ignore les dérivations du contrat', () => {
@@ -372,7 +395,8 @@ describe('garde-rail types de réponse API (V8d — source unique generated.ts)'
         if (kind === 'type') {
           const rest = code.slice(m.index + m[0].length)
           const stop = rest.search(NEXT_DECLARATION_RE)
-          if ((stop === -1 ? rest : rest.slice(0, stop)).includes("components['schemas']")) continue
+          const body = stop === -1 ? rest : rest.slice(0, stop)
+          if (body.includes("components['schemas']") || !body.includes('{')) continue
         }
         found.push(name)
       }

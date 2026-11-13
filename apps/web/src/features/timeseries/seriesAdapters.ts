@@ -13,7 +13,7 @@ import type {
 } from '@/lib/api/types'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { ChartPoint2D } from '@/components/charts/TimeseriesLineChart'
-import type { ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import type { HeatmapCellPoint } from '@/components/charts/Heatmap2DChart'
 import type { ChartPointHistogram } from '@/components/charts/HistogramChart'
 import type { ChartPointScatter } from '@/components/charts/ScatterChart'
 
@@ -139,7 +139,7 @@ export function correlationPointsToSeries(
 
 /**
  * Convertit un tableau de IntensityHeatmapPoint (day_of_week/hour/count) en
- * ChartSeries<ChartPointHeatmap>[] mono-série. day_of_week est résolu en
+ * ChartSeries<HeatmapCellPoint>[] mono-série. day_of_week est résolu en
  * libellé via `dowLabels`. hour reste sous forme "00".."23".
  */
 export function heatmapCellsToSeries(
@@ -149,7 +149,7 @@ export function heatmapCellsToSeries(
     name: string
     dowLabels: readonly string[]
   },
-): ChartSeries<ChartPointHeatmap>[] {
+): ChartSeries<HeatmapCellPoint>[] {
   if (!cells || cells.length === 0) {
     return [
       {

@@ -1,6 +1,6 @@
 /**
  * fromFilterContext — convertit le `FilterContextInput` du globalFilterStore
- * en `MatchFilterSpec` consommable par /neighbors (Phase 2c).
+ * en `MatchNavFilterSpec` consommable par /neighbors (Phase 2c).
  *
  * Mapping :
  *   - cascade.playlists → playlist_names (multi, Phase 3 — IN (...) côté backend)
@@ -10,7 +10,7 @@
  *   - sessions.picked_session_label → session_id (si présent)
  *
  * Cas non gérés (volontaire) :
- *   - cascade.experience_types et cascade.maps : pas mappables vers MatchFilterSpec.
+ *   - cascade.experience_types et cascade.maps : pas mappables vers MatchNavFilterSpec.
  *   - outcome : pas dans filterContext global, c'est un filtre spécifique
  *     match-history/explorer (à brancher au cas par cas).
  *
@@ -18,10 +18,10 @@
  * (le backend ignore silencieusement mode_category inconnu côté title).
  */
 import type { FilterContextInput } from '@/lib/api/types'
-import { labelsFor, type MatchFilterLabels, type MatchFilterSpec } from './navContext'
+import { labelsFor, type MatchFilterLabels, type MatchNavFilterSpec } from './navContext'
 
 /**
- * Construit un MatchFilterSpec à partir du contexte de filtres global.
+ * Construit un MatchNavFilterSpec à partir du contexte de filtres global.
  * Retourne null si aucun champ n'est mappable.
  */
 export function filterContextToMatchFilterSpec(
@@ -33,10 +33,10 @@ export function filterContextToMatchFilterSpec(
     playlistLabels?: MatchFilterLabels
     modeLabels?: MatchFilterLabels
   },
-): MatchFilterSpec | null {
+): MatchNavFilterSpec | null {
   if (!ctx) return null
 
-  const spec: MatchFilterSpec = {}
+  const spec: MatchNavFilterSpec = {}
 
   // Playlists (multi) : toutes les playlists sélectionnées (Phase 3).
   const playlists = (ctx.cascade?.playlists ?? []).filter(Boolean)

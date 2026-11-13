@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import type { HeatmapCellPoint } from '@/components/charts/Heatmap2DChart'
 
 import { MONTHS, horizonCells, indicator, monthCells } from './tendances.fixture'
 import {
@@ -17,7 +17,7 @@ import {
 
 const labelOf = (key: string, variant?: string) => (variant ? `${key}/${variant}` : key)
 
-function points(grid: { series: { datapoints: ChartPointHeatmap[] }[] }) {
+function points(grid: { series: { datapoints: HeatmapCellPoint[] }[] }) {
   return grid.series[0].datapoints
 }
 
@@ -185,7 +185,7 @@ describe('formatMatrixTooltip', () => {
       'fr',
       labelOf,
     )
-    return points(grids[0]).find((p) => p.x === x) as ChartPointHeatmap
+    return points(grids[0]).find((p) => p.x === x) as HeatmapCellPoint
   }
 
   it('horizon comparé : valeur, période d’avant, variation signée', () => {

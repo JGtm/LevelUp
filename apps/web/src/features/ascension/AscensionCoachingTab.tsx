@@ -99,8 +99,8 @@ function ProgressionLeadsSection({ playerSlug, onStartCampaign }: ProgressionLea
   if (isLoading || !profile || !profile.has_enough_data) return null
   return (
     <ProgressionSection
-      leverages={profile.leverages}
-      suggestions={profile.suggested_challenges}
+      leverages={profile.leverages ?? undefined}
+      suggestions={profile.suggested_challenges ?? undefined}
       onStartCampaign={onStartCampaign}
     />
   )

@@ -14,7 +14,7 @@
  * ET chaque palier porte un label texte qui désambiguïse même à teintes proches. C'est le
  * mode `visualMapPieces` du wrapper : la migration ne change pas ce que les couleurs disent.
  */
-import type { ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import type { HeatmapCellPoint } from '@/components/charts/Heatmap2DChart'
 import type { SquadMapHeatmap, SquadMapHeatmapCell } from '@/lib/api/types'
 import { truncateMap } from '@/lib/charts/matchLabels'
 
@@ -64,7 +64,7 @@ export interface SquadMapHeatmapOpts {
 export function buildSquadMapHeatmapPoints(
   data: SquadMapHeatmap | null | undefined,
   mapLabelOf: (mapUI: string) => string,
-): ChartPointHeatmap[] {
+): HeatmapCellPoint[] {
   const players = data?.players ?? []
   const mapsTopn = data?.maps_topn ?? []
   if (players.length === 0 || mapsTopn.length === 0) return []
@@ -77,7 +77,7 @@ export function buildSquadMapHeatmapPoints(
     cellByKey.set(`${c.player}|${c.map_ui}`, c)
   }
 
-  const points: ChartPointHeatmap[] = []
+  const points: HeatmapCellPoint[] = []
   for (let yi = 0; yi < players.length; yi += 1) {
     for (let xi = 0; xi < mapsTopn.length; xi += 1) {
       const c = cellByKey.get(`${players[yi]}|${mapsTopn[xi]}`)

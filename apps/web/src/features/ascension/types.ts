@@ -1,3 +1,4 @@
+import type { components } from '@/lib/api/generated'
 /**
  * Types TypeScript miroir de l'API backend Go pour la couche progression V2.
  *
@@ -73,117 +74,39 @@ export interface MilestoneItem {
   earned_at?: string | null
 }
 
-export interface MilestonesResponse {
-  items: MilestoneItem[]
-}
+export type MilestonesResponse = components['schemas']['MilestonesResponse']
 
 // ── Profile (sections A1/A2/B/C) ─────────────────────────────────────────────
 
-export interface ParticipationAxisValue {
-  axis: string  // "combat" | "survival" | "support" | "score" | "objective" | "impact"
-  value: number // 0..100
-  raw?: number
-}
+export type ParticipationAxisValue = components['schemas']['ParticipationAxisValue']
 
-export interface RadarAxisInsight {
-  axis: string
-  value: number
-  message?: string
-}
+export type RadarAxisInsight = components['schemas']['RadarAxisInsight']
 
-export interface StyleSignature {
-  first_kill_count: number
-  first_death_count: number
-  fkfd_ratio: number
-  style_key?: string // "opportunistic_finisher" | "overextended" | "hyper_engaged" | "passive"
-}
+export type StyleSignature = components['schemas']['StyleSignature']
 
-export interface EngagementSnapshot {
-  score: number
+export type EngagementSnapshot = Omit<components['schemas']['EngagementSnapshot'], 'tier'> & {
   tier: 'low' | 'regular' | 'high' | 'intense'
-  matches_per_day_avg: number
-  max_gap_days: number
-  regularity_coach?: string
 }
 
-export interface SkillRatingSnapshot {
-  /** Nom du tier dans la langue de la requête. */
-  tier_name: string
-  sub_tier: number
-  label: string
-  mu: number
-  sigma: number
-  next_tier_label?: string
-  next_tier_mu?: number
-  gap_to_next?: number
-  progress_ratio?: number
-}
+export type SkillRatingSnapshot = components['schemas']['SkillRatingSnapshot']
 
-export interface LUSRComponentBreakdown {
-  name: string
-  weight: number
-  current_avg: number
-  personal_top_20: number
-  target_for_tier: number
-  trend: number
-}
+export type LUSRComponentBreakdown = components['schemas']['LUSRComponentBreakdown']
 
-export interface ProgressionLeverage {
-  component: string
-  leverage_value: number
-  narrative_axes: string[]
-  coaching_message: string
-}
+export type ProgressionLeverage = components['schemas']['ProgressionLeverage']
 
-export interface SuggestedChallenge {
-  template_id: string
+export type SuggestedChallenge = Omit<components['schemas']['SuggestedChallenge'], 'target_tier'> & {
   target_tier: 'normal' | 'heroic' | 'legendary'
-  historical_streak: number
-  is_arc_step: boolean
-  arc_id?: string
-  /** Libellé et description du template, dans la langue de la requête. */
-  label?: string
-  description?: string
 }
 
-export interface PlayerProfile {
-  user_id: string
-  title_slug: string
-  updated_at: string
-  has_enough_data: boolean
-  matches_analyzed: number
-  // A1 — narrative
-  dominant_role?: string
-  secondary_role?: string
-  radar_axes?: ParticipationAxisValue[]
-  strengths?: RadarAxisInsight[]
-  improvement_areas?: RadarAxisInsight[]
-  // A2 — style & discipline
-  style_signature: StyleSignature
-  engagement_snap: EngagementSnapshot
-  // B — LUSR
-  skill_rating: SkillRatingSnapshot
-  lusr_components?: LUSRComponentBreakdown[]
-  mu_trend: { metric: string; slope: number; window: number }
-  // C — coaching
-  leverages?: ProgressionLeverage[]
-  suggested_challenges?: SuggestedChallenge[]
-}
+export type PlayerProfile = components['schemas']['PlayerProfile']
 
 // ── Calendrier d'activité (DEC-5/D3) ─────────────────────────────────────────
 
 /** Un jour joué (>= 1 match). Les jours vides sont omis par le backend. */
-export interface ActivityDay {
-  date: string // jour UTC (YYYY-MM-DD)
-  count: number // nb de matchs distincts ce jour-là
-}
+export type ActivityDay = components['schemas']['ActivityDay']
 
 /** Réponse GET /activity-calendar — miroir de profile.ActivityCalendar. */
-export interface ActivityCalendar {
-  since: string // jour UTC (YYYY-MM-DD) inclus
-  until: string // jour UTC (YYYY-MM-DD) inclus
-  days: ActivityDay[] // uniquement les jours avec count > 0, triés ASC
-}
+export type ActivityCalendar = components['schemas']['ActivityCalendar']
 
 // ── Patterns contextuels / comportementaux (phases 1-3) ──────────────────────
 
@@ -192,34 +115,14 @@ export type PatternSignal = 'strength' | 'weakness' | 'neutral'
 export type BehaviorType = 'tilt' | 'session_fatigue' | 'engagement_drop' | 'accuracy_plateau' | 'perf_ceiling'
 export type PatternSeverity = 'low' | 'medium' | 'high'
 
-export interface ContextualPattern {
+export type ContextualPattern = Omit<components['schemas']['ContextualPattern'], 'type' | 'signal'> & {
   type: ContextType
-  key: string
-  /** Libellé lisible résolu côté backend (nom de carte pour by_map). Absent
-   *  pour by_mode (clé déjà lisible) et by_squad (libellé i18n front). */
-  label?: string
-  /** Clé de filtrage STABLE d'un lien pattern→Solo (F7) : valeur exacte que le
-   *  pipeline de filtres matche, indépendante de la locale (by_map : nom FR-first ;
-   *  by_mode : mode normalisé). À utiliser pour construire le lien, jamais `label`. */
-  filter_key?: string
-  match_count: number
-  win_rate: number
-  avg_kda: number
-  avg_oc: number
-  avg_dr: number
-  avg_perf?: number
-  avg_delta_csr?: number
-  avg_delta_lusr?: number
-  delta: number
   signal: PatternSignal
 }
 
-export interface BehavioralPattern {
+export type BehavioralPattern = Omit<components['schemas']['BehavioralPattern'], 'type' | 'severity'> & {
   type: BehaviorType
-  trigger: string
-  evidence: string
   severity: PatternSeverity
-  confirmed: boolean
 }
 
 export interface PatternLever {

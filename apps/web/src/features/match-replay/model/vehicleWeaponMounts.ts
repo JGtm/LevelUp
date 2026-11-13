@@ -34,7 +34,7 @@ import type { XY } from '../../../lib/replay/replayLogic'
 export type VehicleMountClass = 'fixe' | 'tourelle'
 
 /** Une ancre de montage : classe de visée + position en fractions du sprite (repère nez en haut). */
-export interface VehicleWeaponMount {
+export interface VehicleWeaponMountEntry {
   classe: VehicleMountClass
   /** Latéral : -0,5 (bord gauche du sprite) .. +0,5 (bord droit). */
   ax: number
@@ -110,7 +110,7 @@ export interface VehicleShotCaps {
  * tireur). Sans visée lue, pas de direction : le tir reste au pivot.
  */
 export function vehicleShotPlacement(
-  mount: VehicleWeaponMount | null,
+  mount: VehicleWeaponMountEntry | null,
   caps: VehicleShotCaps,
   size: VehicleMountSpriteSize,
   k: number,
@@ -140,7 +140,7 @@ export function vehicleShotPlacement(
  * de la direction de la décharge. Nul pour une arme fixe (son ancre est la bouche) et pour une
  * tourelle sans visée lue (aucune direction, le tir reste au pivot).
  */
-function tourelleBarrelOffset(mount: VehicleWeaponMount, angle: number | null, spriteLengthPx: number): XY {
+function tourelleBarrelOffset(mount: VehicleWeaponMountEntry, angle: number | null, spriteLengthPx: number): XY {
   if (mount.classe !== 'tourelle' || angle === null) return { x: 0, y: 0 }
   const length = (mount.reach ?? 0) * spriteLengthPx
   return { x: length * Math.cos(angle), y: length * Math.sin(angle) }
@@ -156,7 +156,7 @@ function tourelleBarrelOffset(mount: VehicleWeaponMount, angle: number | null, s
  *   - `tourelle` : la visée MESURÉE du tireur quand elle est en vigueur (lot 5.5), sinon `null` —
  *     le repli d'avant, la bouffée ronde, parce qu'une tourelle ne pointe pas là où le nez pointe.
  */
-function vehicleMountAngle(mount: VehicleWeaponMount, caps: VehicleShotCaps): number | null {
+function vehicleMountAngle(mount: VehicleWeaponMountEntry, caps: VehicleShotCaps): number | null {
   if (mount.classe !== 'tourelle') return vehicleAimAngle(caps.chassisDeg)
   return caps.tireurDeg === null ? null : vehicleAimAngle(caps.tireurDeg)
 }
@@ -199,7 +199,7 @@ function vehicleSansMontageAngle(caps: VehicleShotCaps): number | null {
 export function vehicleShotOrigin(args: {
   h: number | null
   vehicleShot: {
-    mount: VehicleWeaponMount | null
+    mount: VehicleWeaponMountEntry | null
     /** Ce qui a tiré (lot 5.8.5) — cf. `VehicleShotCaps.arme`. */
     arme: 'vehicule' | 'joueur'
     family: string | undefined

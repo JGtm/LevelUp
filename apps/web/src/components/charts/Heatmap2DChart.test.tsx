@@ -11,7 +11,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
-import { Heatmap2DChart, type ChartPointHeatmap } from './Heatmap2DChart'
+import { Heatmap2DChart, type HeatmapCellPoint } from './Heatmap2DChart'
 import type { ChartSeries } from './ChartCard'
 
 vi.mock('@/lib/accessibility', async (importOriginal) => ({
@@ -23,7 +23,7 @@ vi.mock('echarts-for-react', () => ({
   default: () => <div data-testid="heatmap-echarts-stub" />,
 }))
 
-const SERIES_AVEC_CASE_VIDE: ChartSeries<ChartPointHeatmap>[] = [
+const SERIES_AVEC_CASE_VIDE: ChartSeries<HeatmapCellPoint>[] = [
   {
     key: 'matrice',
     datapoints: [
@@ -33,7 +33,7 @@ const SERIES_AVEC_CASE_VIDE: ChartSeries<ChartPointHeatmap>[] = [
   },
 ]
 
-const SERIES_SANS_CASE_VIDE: ChartSeries<ChartPointHeatmap>[] = [
+const SERIES_SANS_CASE_VIDE: ChartSeries<HeatmapCellPoint>[] = [
   {
     key: 'heatmap-map',
     datapoints: [{ x: 'Aquarius', y: 'main', value: 75 }],

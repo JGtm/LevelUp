@@ -10,7 +10,7 @@
  *
  * Auto-zoom Y dynamique selon presence de l'overlay (cf §8.6 doc).
  *
- * Source de donnees : payload backend SquadEngagementSession.
+ * Source de donnees : payload backend SquadEngagementSessionView.
  */
 import { useCallback, useMemo, useState } from 'react'
 import type { ChartOption } from '@/components/charts/chartOption'
@@ -27,7 +27,7 @@ import {
 } from '@/components/charts/_utils'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 
-export interface SquadEngagementSession {
+export interface SquadEngagementSessionView {
   /** Labels matchs (ex. M1, M2, ... ou date). */
   labels: string[]
   /** Noms de carte par match (parallèle à labels). */
@@ -39,10 +39,10 @@ export interface SquadEngagementSession {
   /** Pace equipe observee per_player. */
   teamObserved: number[]
   /** Joueurs du squad avec leur pace observe par match. */
-  players: SquadPlayerEngagement[]
+  players: SquadPlayerEngagementView[]
 }
 
-export interface SquadPlayerEngagement {
+export interface SquadPlayerEngagementView {
   xuid: string
   gamertag: string
   /** Pace observe par match (longueur = labels.length). */
@@ -63,7 +63,7 @@ export interface SquadEngagementSeriesLabels {
 
 export interface SquadEngagementViewProps {
   /** Donnees de la session ou periode. */
-  session: SquadEngagementSession
+  session: SquadEngagementSessionView
   /** Etat externe. */
   state?: 'loading' | 'error' | 'empty' | 'ready'
   /** Hauteur du chart. Default 280. */
@@ -156,8 +156,8 @@ function truncateMapName(s: string, max = 14): string {
 }
 
 function buildSquadEngagementOption(
-  session: SquadEngagementSession,
-  overlay: SquadPlayerEngagement | null,
+  session: SquadEngagementSessionView,
+  overlay: SquadPlayerEngagementView | null,
   labels: SquadEngagementSeriesLabels,
 ): ChartOption {
   if (session.labels.length === 0) {

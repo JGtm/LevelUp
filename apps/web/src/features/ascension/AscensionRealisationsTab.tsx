@@ -75,7 +75,7 @@ export function AscensionRealisationsTab() {
         <ActivityCalendarChart
           since={activity.since}
           until={activity.until}
-          days={activity.days}
+          days={activity.days ?? []}
         />
       ) : (
         activityFailed && <ActivityCalendarUnavailable />

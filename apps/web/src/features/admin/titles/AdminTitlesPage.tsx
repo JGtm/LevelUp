@@ -37,7 +37,7 @@ function titleRawValue(t: AdminTitleSummary, key: TitleSortKey): string | number
     case 'status':
       return t.status
     case 'capabilities':
-      return t.capabilities.length
+      return t.capabilities?.length ?? 0
     case 'has_mappings':
       return t.has_mappings ? 1 : 0
   }
@@ -179,7 +179,7 @@ function TitleRow({
       <td className="py-2 pr-4">
         <span className="rounded-sm bg-muted px-2 py-0.5 text-xs text-foreground">{statusLabel}</span>
       </td>
-      <td className="py-2 pr-4 tabular-nums text-muted-foreground">{title.capabilities.length}</td>
+      <td className="py-2 pr-4 tabular-nums text-muted-foreground">{title.capabilities?.length ?? 0}</td>
       <td className="py-2 pr-4 text-muted-foreground">{title.has_mappings ? yes : no}</td>
     </tr>
   )

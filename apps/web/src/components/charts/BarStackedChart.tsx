@@ -36,6 +36,7 @@ import {
 } from './_utils'
 import { tipNumberAuto } from './tipNumber'
 
+import type { components } from '@/lib/api/generated'
 /** Distance (px) entre les étiquettes d'un axe et son titre, quand il en a un. */
 const AXIS_NAME_GAP = 28
 
@@ -76,10 +77,7 @@ export function categoryLabelBandPx(categories: readonly string[]): number {
   return Math.min(AXIS_LABEL_BAND_MAX_PX, plusLong * AXIS_LABEL_CHAR_PX) + AXIS_LABEL_MARGIN_PX
 }
 
-export interface ChartPointStacked {
-  category: string
-  components: Record<string, number>
-}
+export type ChartPointStacked = components['schemas']['ChartPointStacked']
 
 export interface BarStackedChartProps {
   title?: string

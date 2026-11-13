@@ -39,7 +39,7 @@ import { frameToMs, heldReading } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { vehicleChassisHeadingAt, vehicleShooterAimAt } from './vehiclesAim'
 import { vehicleShotStyleOf, vehicleWeaponMountOf } from './vehicleWeaponRegistry'
-import type { VehicleWeaponMount } from './vehicleWeaponMounts'
+import type { VehicleWeaponMountEntry } from './vehicleWeaponMounts'
 import { vehicleSpriteFamily } from './vehiclesLayer'
 import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 import { fireBurstShots } from './fireBursts'
@@ -59,7 +59,7 @@ export interface VehicleShotSource {
    * `null` ne fait PLUS perdre la source : l'éclair reste au CENTRE du véhicule, mais il garde sa
    * DIRECTION (cf. `vehicleShotPlacement`).
    */
-  mount: VehicleWeaponMount | null
+  mount: VehicleWeaponMountEntry | null
   /**
    * CE QUI A TIRÉ, ET C'EST LA CLÉ DE LA RÈGLE DE DIRECTION (lot 5.8.5) : une arme DE VÉHICULE est
    * solidaire du châssis (son cap est donc un repli légitime), une arme DE JOUEUR tirée depuis un

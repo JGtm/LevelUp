@@ -12,7 +12,7 @@
  */
 import { useMemo } from 'react'
 
-import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import { Heatmap2DChart, type HeatmapCellPoint } from '@/components/charts/Heatmap2DChart'
 import { getEChartsThemeColors } from '@/components/charts/_utils'
 import { SectionTitle } from '@/components/ui/detail-section'
 import { SectionCard } from '@/components/ui/section-card'
@@ -51,7 +51,7 @@ export function TendancesMatrix({ locale, data }: TendancesMatrixProps) {
     [grids],
   )
   const formatTooltip = useMemo(
-    () => (point: ChartPointHeatmap) => formatMatrixTooltip(point, locale),
+    () => (point: HeatmapCellPoint) => formatMatrixTooltip(point, locale),
     [locale],
   )
   // Encre des nombres : celle du thème, lisible sur toute la rampe divergente.

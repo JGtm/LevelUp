@@ -22,7 +22,7 @@
  * et sont du texte selectionnable.
  */
 import { useMemo } from 'react'
-import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
+import { Heatmap2DChart, type HeatmapCellPoint } from '@/components/charts/Heatmap2DChart'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import { ChartLegend } from '@/components/charts/ChartLegend'
 import { tipRowHtml, tipTitleHtml } from '@/components/charts/axisTooltip'
@@ -84,7 +84,7 @@ export function SquadMapHeatmapChart({
   yAxisName,
 }: SquadMapHeatmapChartProps) {
   const points = useMemo(() => buildSquadMapHeatmapPoints(data, mapLabelOf), [data, mapLabelOf])
-  const series = useMemo<ChartSeries<ChartPointHeatmap>[]>(
+  const series = useMemo<ChartSeries<HeatmapCellPoint>[]>(
     () => (points.length > 0 ? [{ key: 'squad-map-heatmap', datapoints: points }] : []),
     [points],
   )
@@ -109,7 +109,7 @@ export function SquadMapHeatmapChart({
   )
 
   const formatTooltip = useMemo(
-    () => (point: ChartPointHeatmap) => {
+    () => (point: HeatmapCellPoint) => {
       const mapName = (point.detail?.mapName as string | undefined) ?? ''
       const n = (point.detail?.matchCount as number | undefined) ?? 0
       const perf = point.value == null ? noScoreLabel : tipNumber(point.value, 1)
