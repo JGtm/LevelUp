@@ -39,6 +39,7 @@
     "forgeObjectsWithoutModel": 9,
     "forgeDeathVolumes": 3
   },
+  "planImage": "8be179f7-8940-4868-b881-44cad1ca8711.plan.webp",
   "plan": {
     "source": "navmesh.blob",
     "vertices": 352,
