@@ -538,7 +538,10 @@ deux graphes de 7.3.
 
 - [x] 8.1 Rejouer les mesures du §0 et remplir le tableau « après » (tableau ci-dessous).
 - [x] 8.2 Rejouer tous les témoins de 0.2 : identiques.
-- [!] 8.3 `make gate-push`, `go test -tags=integration -p 1 ./...`, `make desktop-test`, CI verte. Partiel, voir le
+- [x] 8.3 `make gate-push`, `go test -tags=integration -p 1 ./...`, `make desktop-test`, CI verte. Réserves levées le
+      2026-11-13 par le pilote (disque revenu à 179 Go libres) : `go test -tags=integration -p 1 -timeout 30m
+      ./internal/platform/duckdb/...` code 0, 7 paquets verts (470 s pour `platform/duckdb`, au-delà du délai de 300 s du
+      script de baseline) ; `make desktop-test` code 0 ; CI verte sur `07ceec0691`, les 29 jobs. Premier passage : voir le
       résultat : lint, replay-equiv, typecheck et lint web verts ; voie DuckDB de la baseline : 295 paquets sur 296 verts, un
       paquet (`platform/duckdb`) coupé par le délai local de 300 s ; `desktop-test` non lancé et reprise de
       `platform/duckdb` avec un délai large interrompue, l'un et l'autre pour cause de disque (moins de 4 Go libres) :
@@ -549,8 +552,8 @@ deux graphes de 7.3.
 - [x] 8.5 Statuer chaque constat dans `.ai/AUDIT_ARCHITECTURE_2026-11-10.md` (section « Statut des constats » : 25 P1, 22 P2,
       12 écartés). `.ai/REGISTRE_REPORTS.md` : aucun item `[!]` des étapes 1 à 7 à y inscrire (les restes sont au §12).
 - [x] 8.6 Entrée de `.ai/thought_log.md`.
-- [!] 8.6 (suite) `scripts/disk-hygiene.ps1 -Lot 812-archi -Apply` : non lancé (consigne du pilote, qui le fait à la
-      clôture ; caches `go-build-812-archi` et `golangci-812-archi` à supprimer par lui).
+- [x] 8.6 (suite) `scripts/disk-hygiene.ps1 -Lot 812-archi -Apply` : lancé par le pilote le 2026-11-13 après lecture de la
+      CI, 33 Go libérés (`go-build-812-archi`, `golangci-812-archi`).
 
 Résultat de 8.1 (2026-11-13, tête `3401008057` plus les commits de l'étape 8).
 
@@ -619,7 +622,7 @@ documentation (`go test ./internal/archlint/... -timeout 30m` n'a pas été rejo
 | 5 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-13 ; une ronde de revue, 0 P0, 0 P1, quatre P2 corrigés |
 | 6 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-13 |
 | 7 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-13 ; contrôle à l'écran par l'utilisateur en attente |
-| 8 | close, avec réserves (8.3 et 8.6 : voir leur résultat) | `44a3929ea7`, `c2f8a39ec3`, `4c9e8f008d` et le commit de clôture | close le 2026-11-13 ; reste au pilote : preuve de `platform/duckdb` sans délai de 300 s, `desktop-test`, CI, nettoyage disque |
+| 8 | close | poussée directement sur `release/v8.2.0` | close le 2026-11-13, CI verte ; réserves de 8.3 et 8.6 levées le même jour ; reste le contrôle à l'écran par l'utilisateur |
 
 ## 12. Découvertes d'exécution
 
