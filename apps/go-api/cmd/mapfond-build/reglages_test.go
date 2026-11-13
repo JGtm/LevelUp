@@ -209,7 +209,7 @@ func TestSansNavmeshGardeLePlanDesMurs(t *testing.T) {
 		"sans": {SansNavmesh: true, GateLe: "2026-11-13"},
 	}}}
 
-	if opts := e.optionsNavmeshNatif("sans", maillage); opts != (himap.OptionsNavmesh{}) {
+	if opts := e.optionsNavmeshNatif("sans", maillage); !reflect.DeepEqual(opts, himap.OptionsNavmesh{}) {
 		t.Errorf("sansNavmesh : options navmesh = %+v, attendu nulles", opts)
 	}
 	if opts := e.optionsNavmeshNatif("autre", maillage); opts.Maillage != maillage || !opts.Rogne {

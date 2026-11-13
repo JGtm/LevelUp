@@ -109,7 +109,7 @@ func planDeMaillage(ctx context.Context, cle, source string, m *hinavmesh.Mailla
 	if m == nil {
 		return nil
 	}
-	plan, err := himap.PlanDesMurs(m)
+	plan, err := himap.PlanDesMurs(m, nil)
 	if err != nil {
 		slog.ErrorContext(ctx, "mapfond: plan des murs impossible, fond publie sans plan", "err", err, "carte", cle)
 		return nil
