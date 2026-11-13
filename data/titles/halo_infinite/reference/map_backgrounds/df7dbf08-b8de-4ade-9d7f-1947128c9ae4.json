@@ -6,8 +6,8 @@
     "kiken'na_map"
   ],
   "image": "df7dbf08-b8de-4ade-9d7f-1947128c9ae4.webp",
-  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-27T23:15:24.8093601Z",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 34.9 % de la matiere retiree)",
+  "generatedAt": "2026-11-13T23:02:57.0543477Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.042116664965947466,
@@ -33,6 +33,7 @@
     "coveredShare": 1,
     "covered": true,
     "cellsSubstituted": 310834,
+    "cellsClipped": 247167,
     "forgeObjects": 5570,
     "forgeObjectsDrawn": 5505,
     "forgeObjectsWithoutModel": 19,

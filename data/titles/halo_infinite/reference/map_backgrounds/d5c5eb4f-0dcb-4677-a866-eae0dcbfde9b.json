@@ -6,8 +6,8 @@
     "insolence_map"
   ],
   "image": "d5c5eb4f-0dcb-4677-a866-eae0dcbfde9b.webp",
-  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-30T22:36:22.3566787Z",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 12.5 % de la matiere retiree)",
+  "generatedAt": "2026-11-13T23:03:00.524717Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.05905832036336263,
@@ -33,6 +33,7 @@
     "coveredShare": 0.7795769172495584,
     "covered": true,
     "cellsSubstituted": 1954961,
+    "cellsClipped": 342824,
     "forgeObjects": 5376,
     "forgeObjectsDrawn": 5237,
     "forgeObjectsWithoutModel": 84,

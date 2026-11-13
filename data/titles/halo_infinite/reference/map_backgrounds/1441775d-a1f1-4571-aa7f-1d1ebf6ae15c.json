@@ -6,8 +6,8 @@
     "1441775d-a1f1-4571-aa7f-1d1ebf6ae15c_map"
   ],
   "image": "1441775d-a1f1-4571-aa7f-1d1ebf6ae15c.webp",
-  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-28T11:55:17.2981352Z",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 32.4 % de la matiere retiree)",
+  "generatedAt": "2026-11-13T23:03:03.895452Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.043411463419596355,
@@ -33,6 +33,7 @@
     "coveredShare": 0.8692487279257707,
     "covered": true,
     "cellsSubstituted": 247330,
+    "cellsClipped": 174509,
     "forgeObjects": 5466,
     "forgeObjectsDrawn": 5396,
     "forgeObjectsWithoutModel": 57,

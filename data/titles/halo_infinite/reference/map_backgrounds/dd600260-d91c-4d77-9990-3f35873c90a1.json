@@ -6,8 +6,8 @@
     "argyle_map"
   ],
   "image": "dd600260-d91c-4d77-9990-3f35873c90a1.webp",
-  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-09-03T09:57:51.7781741Z",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 28.1 % de la matiere retiree)",
+  "generatedAt": "2026-11-13T23:03:06.9916715Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.04570486450195312,
@@ -33,6 +33,7 @@
     "coveredShare": 0.531900838314754,
     "covered": true,
     "cellsSubstituted": 425438,
+    "cellsClipped": 247478,
     "cellsAssumedFloor": 454571,
     "forgeObjects": 5002,
     "forgeObjectsDrawn": 4962,

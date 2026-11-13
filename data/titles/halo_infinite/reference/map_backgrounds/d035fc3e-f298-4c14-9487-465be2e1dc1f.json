@@ -6,8 +6,8 @@
     "empyrean_map"
   ],
   "image": "d035fc3e-f298-4c14-9487-465be2e1dc1f.webp",
-  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-30T13:26:14.0011Z",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 26.6 % de la matiere retiree)",
+  "generatedAt": "2026-11-13T23:02:55.3671082Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.046106136322021485,
@@ -33,6 +33,7 @@
     "coveredShare": 0.9141766594268981,
     "covered": true,
     "cellsSubstituted": 514174,
+    "cellsClipped": 229273,
     "cellsAssumedFloor": 104981,
     "forgeObjects": 5297,
     "forgeObjectsDrawn": 5255,

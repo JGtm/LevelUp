@@ -6,8 +6,8 @@
     "obituary_map"
   ],
   "image": "a289bafe-102e-4363-98f7-80b596007338.webp",
-  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-27T23:01:27.6595415Z",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 12.5 % de la matiere retiree)",
+  "generatedAt": "2026-11-13T23:02:57.9943153Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.06510899607340495,
@@ -33,6 +33,7 @@
     "coveredShare": 0.8576278201168227,
     "covered": true,
     "cellsSubstituted": 1557112,
+    "cellsClipped": 271337,
     "forgeObjects": 5397,
     "forgeObjectsDrawn": 5291,
     "forgeObjectsWithoutModel": 67,

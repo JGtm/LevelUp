@@ -6,8 +6,8 @@
     "fortitude_map"
   ],
   "image": "1ede38fa-4d30-4dfa-a8b7-5d08bf4e46e3.webp",
-  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-27T22:21:53.195449Z",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 15.2 % de la matiere retiree)",
+  "generatedAt": "2026-11-13T23:02:58.773681Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.05543337949117025,
@@ -33,6 +33,7 @@
     "coveredShare": 0.8736441221201342,
     "covered": true,
     "cellsSubstituted": 1630912,
+    "cellsClipped": 362735,
     "forgeObjects": 5418,
     "forgeObjectsDrawn": 5331,
     "forgeObjectsWithoutModel": 44,

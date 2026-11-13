@@ -6,8 +6,8 @@
     "vallaheim_firefight_map"
   ],
   "image": "e8268e75-6583-42ad-9e0c-2d2f043f5f0f.webp",
-  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-08-30T12:16:47.4438948Z",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 31.3 % de la matiere retiree)",
+  "generatedAt": "2026-11-13T23:03:01.1523464Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.06187918090820312,
@@ -32,6 +32,7 @@
     "waterCells": 0,
     "coveredShare": 0.0007015203959460855,
     "covered": false,
+    "cellsClipped": 595633,
     "forgeObjects": 5238,
     "forgeObjectsDrawn": 5134,
     "forgeObjectsWithoutModel": 56,
