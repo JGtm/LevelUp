@@ -22,12 +22,13 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/mapfondsidecar"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 
 	"github.com/JGtm/halo-infinite-map-images/himap"
+
+	"github.com/JGtm/halo-infinite-files-reader/hinavmesh"
 )
 
 // sourceCuisson documente la chaîne dans chaque sidecar.
@@ -42,8 +43,10 @@ type cible struct {
 	noms        []string
 	ancres      [][3]float64
 	ancreConnue map[[3]float64]bool
-	// plan : plan des murs tiré du maillage de navigation, publié au sidecar. Nil sans maillage.
-	plan *replaydoc.MapBackgroundPlan
+	// maillage et sourcePlan : le maillage de navigation dont le plan des murs est tiré à la
+	// publication (nil sans maillage), et son origine pour `plan.source`.
+	maillage   *hinavmesh.Maillage
+	sourcePlan string
 }
 
 // ajouteNom ajoute un nom affiche s'il est non vide et pas deja present.
@@ -78,6 +81,8 @@ type bilanAsset struct {
 	// `moduleGeometrie` l'y envoie. Un module sans sbsp qui atterrit ici est donc désormais une
 	// carte dont on n'a pas encore trouvé où la géométrie est rangée, pas une fatalité.
 	NonCuisinable bool
+	// Suivi : ce que la cuisson a décidé et mesuré pour le rapport de recuisson.
+	Suivi suiviFond
 }
 
 // ciblesNatives regroupe les entrées du catalogue par dossier de module installé.
@@ -161,6 +166,7 @@ func (e *environnement) publie(ctx context.Context, c cible, rendu *himap.Rendu,
 			"apres", fmt.Sprintf("%dx%d", rogne.Dx(), rogne.Dy()))
 	}
 	img = extraitSousImage(img, rogne)
+	cal := calageDuFond(rendu, rogne)
 	ba.LargeurPx, ba.HauteurPx = img.Bounds().Dx(), img.Bounds().Dy()
 	cheminPNG := filepath.Join(e.sortieDir, c.cle+".png")
 	octets, err := ecritPNG(cheminPNG, img)
@@ -170,7 +176,9 @@ func (e *environnement) publie(ctx context.Context, c cible, rendu *himap.Rendu,
 		return ba
 	}
 	ba.OctetsPNG = octets
-	if err := e.ecritSidecar(c, rendu, b, rogne); err != nil {
+	pf := e.planDeCible(ctx, c, b, img, cal)
+	ba.Suivi = suiviFond{Decision: e.decisionFond(c.cle), Action: actionRecuite, Plan: pf, PartRognee: partRognee(b, img)}
+	if err := e.ecritSidecar(ctx, c, b, cal, pf); err != nil {
 		ba.Err = err
 		slog.ErrorContext(ctx, "écriture sidecar", "err", err, "carte", c.cle)
 		return ba
@@ -203,11 +211,10 @@ func ecritPNG(chemin string, img image.Image) (int64, error) {
 	return st.Size(), nil
 }
 
-// ecritSidecar écrit le calage et les stats à côté du PNG.
-func (e *environnement) ecritSidecar(c cible, rendu *himap.Rendu, b himap.BilanCuisson, rogne image.Rectangle) error {
-	x0, y1, mpp := himap.CalageDuRendu(rendu)
-	// Le PNG publie est ROGNE a la matiere : l'origine suit, l'echelle NON (cadre_utile.go).
-	x0, y1 = himap.CalageRogne(x0, y1, mpp, rogne)
+// ecritSidecar écrit le calage et les stats à côté du PNG, plan des murs et image plan compris.
+// `cal` est le calage du PNG publié, rogné à la matière : l'origine suit le rognage, l'échelle non
+// (cadre_utile.go).
+func (e *environnement) ecritSidecar(ctx context.Context, c cible, b himap.BilanCuisson, cal himap.CalageFond, pf *planFond) error {
 	meta := mapfondsidecar.MapBackground{MapBackground: replay.MapBackground{
 		SchemaVersion: replay.MapBackgroundSchemaVersion,
 		Module:        c.cle,
@@ -217,12 +224,13 @@ func (e *environnement) ecritSidecar(c cible, rendu *himap.Rendu, b himap.BilanC
 		GeneratedAt:   time.Now().UTC(),
 		Style:         string(e.styleDe(c.cle)),
 		Calibration: replay.MapBackgroundCalibration{
-			MetersPerPixel: mpp, OriginX: x0, OriginY: y1,
-			WidthPx: rogne.Dx(), HeightPx: rogne.Dy(), Convention: himap.ConventionCalage,
+			MetersPerPixel: cal.MetresParPixel, OriginX: cal.OrigineX, OriginY: cal.OrigineY,
+			WidthPx: cal.Largeur, HeightPx: cal.Hauteur, Convention: himap.ConventionCalage,
 		},
 		Stats:        statsDeBilan(b),
 		Degradations: b.Degradations,
-	}, Plan: c.plan}
+	}}
+	poseLePlan(ctx, e.sortieDir, c.cle, pf, &meta)
 	return mapfondsidecar.Write(filepath.Join(e.sortieDir, c.cle+".json"), meta)
 }
 
@@ -271,6 +279,11 @@ func ecritRapport(chemin string, bilans []bilanAsset, env *environnement) error 
 	fmt.Fprintln(&sb, "| carte | noms | px | Ko | ancres avec sol | matiere | frontiere | eau | toits | degradations |")
 	fmt.Fprintln(&sb, "|---|---|---|---:|---|---|---|---:|---|---|")
 	for _, b := range bilans {
+		if b.Suivi.Action == actionSautee {
+			fmt.Fprintf(&sb, "| `%s` | %s | SAUTEE (%s) | | | | | | | |\n",
+				b.Cle, strings.Join(b.Noms, ", "), b.Suivi.Decision.Etat)
+			continue
+		}
 		if b.Err != nil {
 			etat := "ECHEC"
 			if b.NonCuisinable {

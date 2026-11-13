@@ -86,8 +86,12 @@ type reglageCarte struct {
 	// carte dont l ecart median ancre -> surface dessinee montre des toits ; la substitution est
 	// invariante en silhouette, elle ne peut donc pas couter d ancre.
 	SeuilCouverture float64 `json:"seuilCouverture,omitempty"`
-	// MargeNavmesh : dilatation du masque de rognage au maillage, en metres (0 = 3 m)
+	// MargeNavmesh : dilatation du masque de rognage au maillage, en metres (0 = himap.MargeNavmesh,
+	// 0,5 m)
 	MargeNavmesh float64 `json:"margeNavmesh,omitempty"`
+	// NavmeshMode : forme du masque de rognage au maillage (`faces` ou `silhouette`). Prime sur
+	// l avis du user (`-avis`), y compris sur un `publie` : la carte est alors cuite.
+	NavmeshMode string `json:"navmeshMode,omitempty"`
 	// MargeSolBas : profondeur acceptee sous le niveau de jeu pour le sol vu du dessous
 	MargeSolBas float64 `json:"margeSolBas,omitempty"`
 	// RogneAuxAltitudesProches : ne garder que ce qui est proche du niveau de jeu, plus une marge
@@ -214,6 +218,9 @@ func chargeReglages(chemin string) (*reglagesFond, error) {
 	for cle, c := range r.Cartes {
 		if c.Style != "" && !himap.StyleFondValide(himap.StyleFond(c.Style)) {
 			return nil, fmt.Errorf("réglage %q : habillage inconnu %q", cle, c.Style)
+		}
+		if !modeNavmeshValide(c.NavmeshMode) {
+			return nil, fmt.Errorf("réglage %q : navmeshMode inconnu %q (faces ou silhouette)", cle, c.NavmeshMode)
 		}
 	}
 	return &r, nil

@@ -15,6 +15,11 @@ import (
 func (e *environnement) cuitNatives(ctx context.Context) []bilanAsset {
 	var out []bilanAsset
 	for _, c := range e.ciblesNatives() {
+		if d := e.decisionFond(c.cle); d.Saute {
+			slog.InfoContext(ctx, "mapfond: carte laissee telle que publiee par l'avis", "carte", c.cle, "etat", d.Etat)
+			out = append(out, bilanSaute(c.cle, c.noms, d))
+			continue
+		}
 		out = append(out, e.cuitNative(ctx, c))
 	}
 	return out
@@ -41,7 +46,7 @@ func (e *environnement) cuitNative(ctx context.Context, c cible) bilanAsset {
 	if degradation != "" {
 		bilan.Degradations = append(bilan.Degradations, degradation)
 	}
-	c.plan = planDeMaillage(ctx, c.cle, sourcePlanNatif, maillage)
+	c.maillage, c.sourcePlan = maillage, sourcePlanNatif
 	return e.publie(ctx, c, rendu, bilan)
 }
 

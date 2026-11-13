@@ -7,9 +7,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"math"
-
-	"levelup/go-api/internal/domain/replaydoc"
 
 	"github.com/JGtm/halo-infinite-map-images/himap"
 
@@ -17,12 +14,6 @@ import (
 )
 
 const (
-	// margeNavmeshNatifM : dilatation du masque de rognage d'une carte native, en mètres.
-	// `himap.MargeNavmesh` (3 m) a été mesurée sur les cartes Forge ; sur une carte native à
-	// zones de callout, 1,5 m garde les murs qui bordent le sol sans garder les masses qui le
-	// touchent.
-	margeNavmeshNatifM = 1.5
-
 	// sourcePlanNatif et sourcePlanForge nomment l'origine du maillage dans `plan.source`.
 	sourcePlanNatif = "navmesh module any"
 	sourcePlanForge = "navmesh.blob"
@@ -31,8 +22,7 @@ const (
 	// maillage de navigation.
 	degradationSansMaillage = "aucun maillage de navigation dans le module any"
 
-	// millimetre : le plan est publié au millimètre, ce qui tient le sidecar à une taille
-	// raisonnable sans que le trait se voie à aucune échelle du fond.
+	// millimetre : le plan est publié au millimètre (voir aretesAuMillimetre).
 	millimetre = 1000.0
 )
 
@@ -50,34 +40,36 @@ func (e *environnement) sansNavmeshDe(cle string) bool {
 	return true
 }
 
-// optionsNavmeshNatif rend ce qu'une carte native fait de son maillage : rognage à 1,5 m, sans
-// tolérance ni niveau haut, sauf réglage de la carte (`rogneAuNavmesh`, `margeNavmesh`,
-// `toleranceNavmesh`, `maillageNiveauHaut`). `rogneAuNavmesh: false` garde le maillage comme
-// référence sans rogner ; `sansNavmesh` rend des options nulles (le maillage ne sert plus qu'au
-// plan des murs).
+// optionsNavmeshNatif rend ce qu'une carte native fait de son maillage : rognage à la marge par
+// défaut de la brique (0,5 m), sans tolérance ni niveau haut, sauf réglage de la carte
+// (`rogneAuNavmesh`, `margeNavmesh`, `toleranceNavmesh`, `maillageNiveauHaut`). `rogneAuNavmesh:
+// false` garde le maillage comme référence sans rogner ; `sansNavmesh` rend des options nulles (le
+// maillage ne sert plus qu'au plan des murs). Un avis (`-avis`) arme le rognage et fixe sa forme.
 func (e *environnement) optionsNavmeshNatif(cle string, m *hinavmesh.Maillage) himap.OptionsNavmesh {
 	if e.sansNavmeshDe(cle) {
 		return himap.OptionsNavmesh{}
 	}
-	marge := e.margeNavmeshDe(cle)
-	if marge <= 0 {
-		marge = margeNavmeshNatifM
-	}
+	d := e.decisionFond(cle)
+	rogne := d.Rogne || e.rogneAuNavmeshNatifDe(cle)
 	return himap.OptionsNavmesh{
 		Maillage:   m,
-		Rogne:      e.rogneAuNavmeshNatifDe(cle),
-		Marge:      marge,
+		Rogne:      rogne,
+		Mode:       d.Mode,
+		Marge:      e.margeNavmeshDe(cle),
 		Tolerance:  e.toleranceNavmeshDe(cle),
 		NiveauHaut: e.maillageNiveauHautDe(cle),
 	}
 }
 
 // optionsNavmeshForge rend les réglages navmesh d'une carte Forge : ceux du fichier de réglages,
-// rien d'autre. Le maillage est nil quand la carte ne prend pas sa référence sur lui.
+// que l'avis (`-avis`) complète en armant le rognage et en fixant sa forme. Le maillage est nil
+// quand la carte ne prend pas sa référence sur lui et n'est pas rognée par un avis.
 func (e *environnement) optionsNavmeshForge(cle string, m *hinavmesh.Maillage) himap.OptionsNavmesh {
+	d := e.decisionFond(cle)
 	return himap.OptionsNavmesh{
 		Maillage:   m,
-		Rogne:      e.rogneAuNavmeshDe(cle),
+		Rogne:      d.Rogne || e.rogneAuNavmeshDe(cle),
+		Mode:       d.Mode,
 		Marge:      e.margeNavmeshDe(cle),
 		Tolerance:  e.toleranceNavmeshDe(cle),
 		NiveauHaut: e.maillageNiveauHautDe(cle),
@@ -101,28 +93,4 @@ func (e *environnement) maillageNatif(ctx context.Context, cle string) (m *hinav
 		"ressource", bilan.Ressource, "octets", bilan.Octets,
 		"secondaires", bilan.Secondaires, "illisibles", bilan.Illisibles)
 	return m, "", nil
-}
-
-// planDeMaillage tire le plan des murs d'un maillage pour le sidecar. Nil quand le maillage est
-// absent ou incohérent : l'erreur est journalisée, le fond reste publié sans plan.
-func planDeMaillage(ctx context.Context, cle, source string, m *hinavmesh.Maillage) *replaydoc.MapBackgroundPlan {
-	if m == nil {
-		return nil
-	}
-	plan, err := himap.PlanDesMurs(m, nil)
-	if err != nil {
-		slog.ErrorContext(ctx, "mapfond: plan des murs impossible, fond publie sans plan", "err", err, "carte", cle)
-		return nil
-	}
-	aretes := make([][4]float64, len(plan.Aretes))
-	for i, a := range plan.Aretes {
-		for k, v := range a {
-			r := math.Round(v*millimetre) / millimetre
-			if r == 0 {
-				r = 0 // ecarte le zero negatif, que JSON ecrirait « -0 »
-			}
-			aretes[i][k] = r
-		}
-	}
-	return &replaydoc.MapBackgroundPlan{Source: source, Vertices: plan.Sommets, Faces: plan.Faces, Edges: aretes}
 }
