@@ -10,10 +10,12 @@ package main
 // Ce test lit l'asset PUBLIÉ, celui que la cuisson consomme.
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/testutil"
@@ -49,24 +51,51 @@ func TestReglagesFondJustifies(t *testing.T) {
 		t.Fatal("fichier de réglages présent mais vide : le supprimer plutôt que le garder")
 	}
 	for cle, c := range reg.Cartes {
-		if len(c.Raison) < raisonMinimale {
-			t.Errorf("réglage %q : raison de %d caractères (minimum %d).\n"+
-				"Un réglage par carte sans justification écrite est un réglage orphelin.",
-				cle, len(c.Raison), raisonMinimale)
+		for _, probleme := range problemesReglage(cle, c) {
+			t.Error(probleme)
 		}
-		if !formatDateGate.MatchString(c.GateLe) {
-			t.Errorf("réglage %q : gateLe = %q, attendu AAAA-MM-JJ — la date du gate qui l'a décidé",
-				cle, c.GateLe)
-		}
-		// Le contrôle vit dans `reglageCarte.sansLevier` : la liste de champs qui était
-		// énumérée ici avait cessé de suivre la structure et refusait une entrée qui ne
-		// déclare que `moduleGeometrie`.
-		if c.sansLevier() {
-			t.Errorf("réglage %q : ne déclare aucun levier — entrée sans effet, à retirer", cle)
-		}
-		if c.Style != "" && !himap.StyleFondValide(himap.StyleFond(c.Style)) {
-			t.Errorf("réglage %q : habillage inconnu %q", cle, c.Style)
-		}
+	}
+}
+
+// problemesReglage rend ce qui interdit de garder une entree de reglage : raison trop courte,
+// date de gate mal formee, entree sans levier, habillage inconnu.
+func problemesReglage(cle string, c reglageCarte) []string {
+	var out []string
+	if len(c.Raison) < raisonMinimale {
+		out = append(out, fmt.Sprintf("réglage %q : raison de %d caractères (minimum %d).\n"+
+			"Un réglage par carte sans justification écrite est un réglage orphelin.",
+			cle, len(c.Raison), raisonMinimale))
+	}
+	if !formatDateGate.MatchString(c.GateLe) {
+		out = append(out, fmt.Sprintf("réglage %q : gateLe = %q, attendu AAAA-MM-JJ — la date du gate qui l'a décidé",
+			cle, c.GateLe))
+	}
+	// Le contrôle vit dans `reglageCarte.sansLevier` : la liste de champs qui était
+	// énumérée ici avait cessé de suivre la structure et refusait une entrée qui ne
+	// déclare que `moduleGeometrie`.
+	if c.sansLevier() {
+		out = append(out, fmt.Sprintf("réglage %q : ne déclare aucun levier — entrée sans effet, à retirer", cle))
+	}
+	if c.Style != "" && !himap.StyleFondValide(himap.StyleFond(c.Style)) {
+		out = append(out, fmt.Sprintf("réglage %q : habillage inconnu %q", cle, c.Style))
+	}
+	return out
+}
+
+// `sansNavmesh` retire le maillage d'une carte native : comme tout levier, il exige sa raison
+// et la date de son gate. Une entree qui ne porte que ce levier, sans raison, est refusee.
+func TestReglageSansNavmeshExigeRaisonEtDate(t *testing.T) {
+	nue := reglageCarte{SansNavmesh: true}
+	if len(problemesReglage("ctf_x", nue)) < 2 {
+		t.Errorf("une entree sansNavmesh sans raison ni date doit etre refusee : %v", problemesReglage("ctf_x", nue))
+	}
+	if nue.sansLevier() {
+		t.Error("sansNavmesh est un levier : l'entree ne doit pas etre vue comme sans effet")
+	}
+	raison := strings.Repeat("Le maillage de cette carte rogne un pont jouable ; mesure et gate decrits ici. ", 2)
+	ok := reglageCarte{SansNavmesh: true, Raison: raison, GateLe: "2026-11-13"}
+	if p := problemesReglage("ctf_x", ok); len(p) != 0 {
+		t.Errorf("entree complete refusee : %v", p)
 	}
 }
 

@@ -11,8 +11,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"image"
 	"image/draw"
@@ -23,6 +21,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/mapfondsidecar"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 
@@ -44,6 +45,8 @@ type cible struct {
 	noms        []string
 	ancres      [][3]float64
 	ancreConnue map[[3]float64]bool
+	// plan : plan des murs tiré du maillage de navigation, publié au sidecar. Nil sans maillage.
+	plan *replaydoc.MapBackgroundPlan
 }
 
 // ajouteNom ajoute un nom affiche s'il est non vide et pas deja present.
@@ -78,48 +81,6 @@ type bilanAsset struct {
 	// `moduleGeometrie` l'y envoie. Un module sans sbsp qui atterrit ici est donc désormais une
 	// carte dont on n'a pas encore trouvé où la géométrie est rangée, pas une fatalité.
 	NonCuisinable bool
-}
-
-func (e *environnement) cuitNatives(ctx context.Context) []bilanAsset {
-	var out []bilanAsset
-	for _, c := range e.ciblesNatives() {
-		rendu, bilan, err := himap.CuitCarteNative(ctx, himap.OptionsCuisson{
-			RacineDeploy:           e.racineJeu,
-			CheminModule:           e.moduleDeCuisson(c),
-			Ancres:                 c.ancres,
-			Echelle:                e.echelleDe(c.cle),
-			CibleCadrePx:           himap.CibleCadrePx,
-			EcreteToits:            e.ecreteToitsDe(c.cle),
-			PlafondArene:           e.plafondAreneDe(c.cle),
-			SansEau:                e.sansEauDe(c.cle),
-			SubstitutionSansPortee: e.substitutionSansPorteeDe(c.cle),
-			CombleTrous:            e.combleTrousDe(c.cle),
-			CombleZonesEntieres:    e.combleZonesEntieresDe(c.cle),
-			PlancherTranche:        e.plancherTrancheDe(c.cle),
-			PlafondTranche:         e.plafondTrancheDe(c.cle),
-			SeuilArete:             e.seuilAreteDe(c.cle),
-			ZonesNommees:           e.zonesNommeesDe(c.cle),
-			RogneAuxZones:          e.rogneAuxZonesDe(c.cle),
-			MargeZones:             e.margeZonesDe(c.cle),
-			BoiteUtile:             e.boiteUtileDe(c.cle),
-			// Le MEME reglage que sur le chemin Forge, et c est tout le point : il est declare
-			// pour toutes les cartes et n etait cable que la, donc sans effet et en silence sur
-			// une carte native.
-			RogneAuxComposantesAncrees: e.rogneAuxComposantesAncreesDe(c.cle),
-		})
-		if err != nil {
-			if errors.Is(err, himap.ErrAucunTagSbsp) {
-				slog.WarnContext(ctx, "carte non cuisinable", "err", err, "carte", c.cle)
-				out = append(out, bilanAsset{Cle: c.cle, Noms: c.noms, Err: err, NonCuisinable: true})
-				continue
-			}
-			slog.ErrorContext(ctx, "cuisson", "err", err, "carte", c.cle)
-			out = append(out, bilanAsset{Cle: c.cle, Noms: c.noms, Err: err})
-			continue
-		}
-		out = append(out, e.publie(ctx, c, rendu, bilan))
-	}
-	return out
 }
 
 // ciblesNatives regroupe les entrées du catalogue par dossier de module installé.
@@ -203,7 +164,7 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			continue
 		}
 		if e.sourceNavmeshDe(carte.MapID) {
-			rendu, bilan, err := e.cuitDepuisNavmesh(ctx, carte, c)
+			rendu, bilan, err := e.cuitDepuisNavmesh(ctx, carte, &c)
 			if err != nil {
 				slog.ErrorContext(ctx, "cuisson depuis le navmesh", "err", err, "carte", carte.Nom)
 				out = append(out, bilanAsset{Cle: carte.MapID, Noms: c.noms, Err: err})
@@ -221,12 +182,11 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 				navRef = m
 			}
 		}
+		c.plan = planDeMaillage(ctx, carte.MapID, sourcePlanForge, navRef)
 		rogneAlt, seuilAlt, margeAlt := e.rogneAuxAltitudesProchesDe(carte.MapID)
 		posJouees, rayonPos := e.positionsJoueesDe(carte.MapID)
 		rendu, bilan, err := himap.CuitCarteForge(ctx, himap.OptionsCuissonForge{
-			NavmeshReference:    navRef,
-			RogneAuNavmesh:      e.rogneAuNavmeshDe(carte.MapID),
-			ToleranceNavmesh:    e.toleranceNavmeshDe(carte.MapID),
+			Navmesh:             e.optionsNavmeshForge(carte.MapID, navRef),
 			RacineDeploy:        e.racineJeu,
 			Objets:              objets,
 			Ancres:              c.ancres,
@@ -259,11 +219,9 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 			CadreAuxZones:              e.cadreAuxZonesDe(carte.MapID),
 			CadreAuxAncres:             e.cadreAuxAncresDe(carte.MapID),
 			MargeAncres:                e.margeAncresDe(carte.MapID),
-			MaillageNiveauHaut:         e.maillageNiveauHautDe(carte.MapID),
 			SansSubstitution:           e.sansSubstitutionDe(carte.MapID),
 			SeuilSubstitution:          e.seuilSubstitutionDe(carte.MapID),
 			SeuilCouverture:            e.seuilCouvertureDe(carte.MapID),
-			MargeNavmeshCarte:          e.margeNavmeshDe(carte.MapID),
 			MargeSolBas:                e.margeSolBasDe(carte.MapID),
 			PositionsJouees:            posJouees,
 			RayonPositions:             rayonPos,
@@ -376,7 +334,7 @@ func (e *environnement) ecritSidecar(c cible, rendu *himap.Rendu, b himap.BilanC
 	x0, y1, mpp := himap.CalageDuRendu(rendu)
 	// Le PNG publie est ROGNE a la matiere : l'origine suit, l'echelle NON (cadre_utile.go).
 	x0, y1 = himap.CalageRogne(x0, y1, mpp, rogne)
-	meta := replay.MapBackground{
+	meta := mapfondsidecar.Sidecar{MapBackground: replay.MapBackground{
 		SchemaVersion: replay.MapBackgroundSchemaVersion,
 		Module:        c.cle,
 		MapNames:      append(append([]string{}, c.noms...), c.sources...),
@@ -390,12 +348,8 @@ func (e *environnement) ecritSidecar(c cible, rendu *himap.Rendu, b himap.BilanC
 		},
 		Stats:        statsDeBilan(b),
 		Degradations: b.Degradations,
-	}
-	blob, err := json.MarshalIndent(meta, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(e.sortieDir, c.cle+".json"), append(blob, '\n'), 0o644) //nolint:gosec // asset versionné
+	}, Plan: c.plan}
+	return mapfondsidecar.Write(filepath.Join(e.sortieDir, c.cle+".json"), meta)
 }
 
 func statsDeBilan(b himap.BilanCuisson) replay.MapBackgroundStats {
@@ -504,11 +458,16 @@ func (e *environnement) moduleDeCuisson(c cible) string {
 // C'est la seule source qui ne demande rien a soustraire : sur une carte a ciel ferme, le
 // maillage vit sous les coques et ne les contient pas. Le blob vit dans le depot hors ligne,
 // a cote des variantes.
-func (e *environnement) cuitDepuisNavmesh(ctx context.Context, carte himap.CarteForge, c cible) (*himap.Rendu, himap.BilanCuisson, error) {
+func (e *environnement) cuitDepuisNavmesh(ctx context.Context, carte himap.CarteForge, c *cible) (*himap.Rendu, himap.BilanCuisson, error) {
 	chemin := filepath.Join(e.repoRoot, himap.DepotNavmesh, carte.MapID+".blob")
 	blob, err := os.ReadFile(chemin) //nolint:gosec // entrée d'outillage hors ligne
 	if err != nil {
 		return nil, himap.BilanCuisson{}, fmt.Errorf("maillage de navigation illisible (%s) : %w", chemin, err)
+	}
+	if m, errDecode := hinavmesh.Decode(blob); errDecode != nil {
+		slog.WarnContext(ctx, "mapfond: maillage de navigation illisible, fond publie sans plan", "err", errDecode, "carte", carte.Nom)
+	} else {
+		c.plan = planDeMaillage(ctx, carte.MapID, sourcePlanForge, m)
 	}
 	return himap.CuitCarteNavmesh(ctx, himap.OptionsCuissonNavmesh{
 		Blob:         blob,

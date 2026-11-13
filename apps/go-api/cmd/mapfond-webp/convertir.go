@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"image/png"
 	"log/slog"
@@ -10,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/JGtm/halo-infinite-film-decoder/replay"
+	"levelup/go-api/internal/mapfondsidecar"
 )
 
 // executeConvertir ecrit le WebP, met a jour le sidecar (champ `image`, D3) et supprime le PNG
@@ -73,18 +72,15 @@ func convertitUnFond(ctx context.Context, f fondPNG) error {
 
 // metAJourSidecarImage relit le sidecar, remplace son champ `image` par nomImage (D3 : le
 // format sert par l'image est une propriete de la donnee, pas du code) et le reecrit avec le
-// meme style d'indentation que la cuisson (cmd/mapfond-build/cuisson.go).
+// meme style d'indentation que la cuisson (cmd/mapfond-build/cuisson.go), plan des murs compris
+// (le decodeur de film ne le connait pas : `internal/mapfondsidecar`).
 func metAJourSidecarImage(chemin, nomImage string) error {
-	meta, err := replay.LoadMapBackground(chemin)
+	meta, err := mapfondsidecar.Load(chemin)
 	if err != nil {
 		return fmt.Errorf("lecture sidecar %s: %w", chemin, err)
 	}
 	meta.Image = nomImage
-	blob, err := json.MarshalIndent(meta, "", "  ")
-	if err != nil {
-		return fmt.Errorf("serialisation sidecar %s: %w", chemin, err)
-	}
-	if err := os.WriteFile(chemin, blob, 0o644); err != nil {
+	if err := mapfondsidecar.Write(chemin, *meta); err != nil {
 		return fmt.Errorf("ecriture sidecar %s: %w", chemin, err)
 	}
 	return nil

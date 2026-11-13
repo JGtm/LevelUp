@@ -149,6 +149,9 @@ type reglageCarte struct {
 	// SourceNavmesh cuit la carte depuis son MAILLAGE DE NAVIGATION au lieu de sa geometrie de
 	// rendu. Reservee aux cartes Forge : elles seules publient un navmesh.blob.
 	SourceNavmesh bool `json:"sourceNavmesh,omitempty"`
+	// SansNavmesh : une carte NATIVE renonce au maillage de navigation, donc a son rognage et au
+	// plan des murs publie au sidecar. Par defaut une carte native est rognee a son maillage.
+	SansNavmesh bool `json:"sansNavmesh,omitempty"`
 	// SolVuDuDessous : retenir la surface la plus BASSE au-dessus du sol joue. Pour les cartes
 	// a ciel ferme, ou la voie haute ne montre que le plafond.
 	SolVuDuDessous bool `json:"solVuDuDessous,omitempty"`
