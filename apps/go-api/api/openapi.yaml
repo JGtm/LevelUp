@@ -33062,6 +33062,8 @@ components:
           format: int32
           minimum: 0
           type: integer
+        causeKey:
+          type: string
         killed:
           items:
             type: string

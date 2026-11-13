@@ -14765,6 +14765,7 @@ export interface components {
             by?: components["schemas"]["VehicleDestroyer"];
             /** Format: int32 */
             cause?: number;
+            causeKey?: string;
             killed?: string[] | null;
             occupant?: string;
         };

@@ -115,3 +115,4 @@
 // v110 (2026-11-12, occupants tues lus). Le film ecrit QUI EST MORT AVEC UN VEHICULE DETRUIT ; `vehicles[].destruction.killed`
 // v111 (2026-11-12, cadence du rejeu : 100 ms -> 33 ms). La grille du document passe de 10 a 30,3 images par
 // v112 (2026-11-12, creation des records NEW et charges de la vue A selon le build). Aucun champ neuf, aucune forme qui change :
+// v113 (2026-11-13, poses datees apres la fin de l axe de nouveau ecartees). Aucun champ neuf, aucune forme qui change : c est le

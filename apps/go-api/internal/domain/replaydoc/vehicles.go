@@ -39,6 +39,9 @@ type VehicleDestruction struct {
 	By *VehicleDestroyer `json:"by,omitempty"`
 	// Cause : identifiant d'effet de degat, meme espace que la source d'un frag.
 	Cause *uint32 `json:"cause,omitempty"`
+	// CauseKey : cle d'arme de la cause, d'ou la page tire le pictogramme. Remplie a la requete, jamais
+	// ecrite dans l'artefact ; vide quand aucun pictogramme ne correspond a la cause.
+	CauseKey string `json:"causeKey,omitempty"`
 	// Occupant : xuid de l'occupant a l'instant, le conducteur de preference.
 	Occupant string `json:"occupant,omitempty"`
 	// Killed : xuids des occupants tues, tries.

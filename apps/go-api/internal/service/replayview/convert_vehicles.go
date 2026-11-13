@@ -35,6 +35,7 @@ func toVehicleDestruction(v replay.VehicleDestruction) replaydoc.VehicleDestruct
 	return replaydoc.VehicleDestruction{
 		By:       ptrOf(v.By, toVehicleDestroyer),
 		Cause:    v.Cause,
+		CauseKey: v.CauseKey,
 		Occupant: v.Occupant,
 		Killed:   v.Killed,
 	}
