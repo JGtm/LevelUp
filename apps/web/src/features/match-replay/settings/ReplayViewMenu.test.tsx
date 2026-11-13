@@ -24,6 +24,7 @@ const FILM: FilmLayerAvailability = {
   skullCarrier: false,
   bombCarrier: false,
   vehicles: true,
+  wallPlan: true,
 }
 
 const SOUND = { available: false, categories: {} } as unknown as ReplaySound

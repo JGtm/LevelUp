@@ -88,6 +88,7 @@ describe('layerAvailability : ce que le film porte, calque par calque', () => {
     skullCarrier: false,
     bombCarrier: false,
     vehicles: true,
+    wallPlan: true,
   }
 
   it('la visée et la traînée sont toujours disponibles', () => {

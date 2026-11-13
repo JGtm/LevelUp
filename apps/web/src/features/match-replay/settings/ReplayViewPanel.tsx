@@ -58,6 +58,7 @@ export type {
   ReplaySkullCarrierControls,
   ReplayVehicleControls,
   ReplayVipCrownControls,
+  ReplayWallPlanControls,
   ReplayWeaponPadControls,
 } from './ReplaySettingsLayers'
 
@@ -70,6 +71,7 @@ import type {
   ReplaySkullCarrierControls,
   ReplayVehicleControls,
   ReplayVipCrownControls,
+  ReplayWallPlanControls,
   ReplayWeaponPadControls,
 } from './ReplaySettingsLayers'
 
@@ -106,6 +108,8 @@ interface ReplayViewPanelProps {
   bombCarrier: ReplayBombCarrierControls
   /** Les VÉHICULES (schéma 39) : un seul calque, allumé par défaut. */
   vehicles: ReplayVehicleControls
+  /** Le PLAN DES MURS du fond (clé `replay-show-wall-plan`) : n'existe qu'avec un fond qui en porte un. */
+  wallPlan: ReplayWallPlanControls
   heatmap: ReplayHeatmapControls
   /** Éclairs de bouche (tous les tirs) et trait tueur -> victime : deux réglages distincts. */
   showShotFx: boolean
@@ -296,6 +300,7 @@ export function ReplayViewPanel({
   skullCarrier,
   bombCarrier,
   vehicles,
+  wallPlan,
   heatmap,
   showShotFx,
   onToggleShotFx,
@@ -357,6 +362,7 @@ export function ReplayViewPanel({
         skullCarrier={skullCarrier}
         bombCarrier={bombCarrier}
         vehicles={vehicles}
+        wallPlan={wallPlan}
       />
       <EffectsSection
         locale={locale}

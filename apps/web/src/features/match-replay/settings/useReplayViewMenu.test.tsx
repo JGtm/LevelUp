@@ -24,6 +24,7 @@ const FULL_FILM: FilmLayerAvailability = {
   skullCarrier: true,
   bombCarrier: true,
   vehicles: true,
+  wallPlan: true,
 }
 
 /** Un Assassin : ni zone, ni socle, ni objectif ; la visée et la traînée restent. */
@@ -38,6 +39,7 @@ const SLAYER_FILM: FilmLayerAvailability = {
   skullCarrier: false,
   bombCarrier: false,
   vehicles: false,
+  wallPlan: false,
 }
 
 const SOUND = { available: false, categories: {} } as unknown as ReplaySound

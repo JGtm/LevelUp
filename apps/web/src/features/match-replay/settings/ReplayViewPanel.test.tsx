@@ -15,6 +15,7 @@ import {
   type ReplayModeObjectivesControls,
   type ReplayPlacementControls,
   type ReplayFlagControls,
+  type ReplayWallPlanControls,
   type ReplayWeaponPadControls,
 } from './ReplayViewPanel'
 import type { ReplaySound } from '../sound/useReplaySound'
@@ -51,6 +52,10 @@ function makeGroundWeapons(
     onToggleStarting: vi.fn(),
     ...over,
   }
+}
+
+function makeWallPlan(over: Partial<ReplayWallPlanControls> = {}): ReplayWallPlanControls {
+  return { available: true, show: true, onToggle: vi.fn(), ...over }
 }
 
 function makeFlagCarries(over: Partial<ReplayFlagControls> = {}): ReplayFlagControls {
@@ -129,6 +134,7 @@ function renderPanel(over: Partial<Parameters<typeof ReplayViewPanel>[0]> = {}) 
       skullCarrier={makeFlagCarries()}
       bombCarrier={makeFlagCarries()}
       vehicles={makeWeaponPads()}
+      wallPlan={makeWallPlan()}
       heatmap={makeHeatmap()}
       showShotFx
       onToggleShotFx={onToggleShotFx}
@@ -218,6 +224,28 @@ describe('ReplayViewPanel — calques', () => {
     expect(btn).toHaveAttribute('aria-checked', 'false')
     fireEvent.click(btn)
     expect(onToggleZones).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('ReplayViewPanel — plan des murs', () => {
+  it('carte dont le fond porte un plan : la bascule est proposée, reflète son état et appelle SON callback', () => {
+    const onToggle = vi.fn()
+    const { onToggleZones } = renderPanel({ wallPlan: makeWallPlan({ show: false, onToggle }) })
+    const btn = screen.getByRole('switch', { name: 'Plan des murs' })
+    expect(btn).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(btn)
+    expect(onToggle).toHaveBeenCalledTimes(1)
+    expect(onToggleZones).not.toHaveBeenCalled()
+  })
+
+  it('carte sans plan (Live Fire, deux cartes Forge) : la bascule est absente', () => {
+    renderPanel({ wallPlan: makeWallPlan({ available: false }) })
+    expect(screen.queryByRole('switch', { name: 'Plan des murs' })).toBeNull()
+  })
+
+  it('en anglais, la bascule se nomme Wall plan', () => {
+    renderPanel({ locale: 'en' })
+    expect(screen.getByRole('switch', { name: 'Wall plan' })).toBeTruthy()
   })
 })
 

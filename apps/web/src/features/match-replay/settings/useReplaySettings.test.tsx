@@ -106,6 +106,25 @@ describe('useReplaySettings — bascules', () => {
   })
 })
 
+describe('useReplaySettings — plan des murs', () => {
+  it('allumé par défaut, bascule et persiste sous replay-show-wall-plan', () => {
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.showWallPlan).toBe(true)
+    act(() => result.current.toggleWallPlan())
+    expect(result.current.showWallPlan).toBe(false)
+    expect(localStorage.getItem('replay-show-wall-plan')).toBe('false')
+    act(() => result.current.toggleWallPlan())
+    expect(result.current.showWallPlan).toBe(true)
+    expect(localStorage.getItem('replay-show-wall-plan')).toBe('true')
+  })
+
+  it('un choix déjà stocké est relu au montage', () => {
+    localStorage.setItem('replay-show-wall-plan', 'false')
+    const { result } = renderHook(() => useReplaySettings())
+    expect(result.current.showWallPlan).toBe(false)
+  })
+})
+
 describe('useReplaySettings — préférences persistées (localStorage, comme le son)', () => {
   it('survivent au remontage', () => {
     const first = renderHook(() => useReplaySettings())

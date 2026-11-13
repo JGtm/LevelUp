@@ -696,6 +696,7 @@ export function ReplayCanvas({
       vipCrown: vipCrown.available,
       skullCarrier: skullCarrier.available,
       bombCarrier: bombCarrier.available, vehicles: vehicles.available,
+      wallPlan: !!mapImage?.plan,
     },
   })
   // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son

@@ -101,6 +101,11 @@ export interface FilmLayerAvailability {
   skullCarrier: boolean
   bombCarrier: boolean
   vehicles: boolean
+  /**
+   * Le fond retenu porte un plan des murs. Ce n'est pas un calque de préréglage (`LAYER_KEYS`) :
+   * il ne fait que conditionner l'affichage de sa bascule.
+   */
+  wallPlan: boolean
 }
 
 /**

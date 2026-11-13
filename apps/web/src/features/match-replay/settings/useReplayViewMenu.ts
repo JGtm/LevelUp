@@ -187,6 +187,11 @@ function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
       show: s.showVehicles,
       onToggle: s.toggleVehicles,
     },
+    wallPlan: {
+      available: available.wallPlan,
+      show: s.showWallPlan,
+      onToggle: s.toggleWallPlan,
+    },
     heatmap: {
       show: s.showHeatmap,
       onToggle: s.toggleHeatmap,
