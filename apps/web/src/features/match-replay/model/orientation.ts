@@ -9,10 +9,12 @@
  * ferait tourner aussi les noms, les icônes et les libellés ; ici seul le TERRAIN tourne — les
  * positions, les zones, les murs, le fond — et tout ce qui est dessiné en pixels reste debout.
  *
- * SENS : un quart de tour est un quart de tour ANTIHORAIRE vu à l'écran (l'est du monde, à droite
- * à 0°, passe en haut à 90°), autour du CENTRE de la scène. Dans le plan XY monde (+Y en haut),
- * `(dx, dy)` devient `(-dy, dx)`. Les caps (degrés, 0° = +X, 90° = +Y) gagnent donc 90° par quart
- * de tour (`shiftHeadingDeg`).
+ * SENS : un quart de tour est un quart de tour HORAIRE vu à l'écran (le nord du monde, en haut à
+ * 0°, passe à droite à 90°), autour du CENTRE de la scène. Dans le plan XY monde (+Y en haut),
+ * `(dx, dy)` devient `(dy, -dx)`. Les caps (degrés, 0° = +X, 90° = +Y) PERDENT donc 90° par quart
+ * de tour (`shiftHeadingDeg`). C'est ICI, et dans `orientAbout`, que le sens est défini : le
+ * dessin du fond (`mapBackgroundDraw`) et la table des cellules de chaleur (`cellAfterTurns`) n'en
+ * sont que la traduction.
  *
  * Pas de React, pas de canvas : géométrie pure, testée dans `orientation.test.ts`.
  */
@@ -21,7 +23,7 @@ import type { ReplayBounds } from '@/lib/api/types'
 import type { HeatGrid } from '../../../lib/replay/heatPaint'
 import type { XY } from '../../../lib/replay/replayLogic'
 
-/** Le nombre de quarts de tour antihoraires : 0, 90, 180 ou 270 degrés. */
+/** Le nombre de quarts de tour horaires : 0, 90, 180 ou 270 degrés. */
 export type QuarterTurns = 0 | 1 | 2 | 3
 
 /** Les quatre positions, dans l'ordre où la commande les propose. */
@@ -52,38 +54,23 @@ export function pivotOf(bounds: ReplayBounds): XY {
   return { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2 }
 }
 
-/** orientAbout tourne `p` de `turns` quarts de tour antihoraires autour de `pivot`. */
+/**
+ * orientAbout tourne `p` de `turns` quarts de tour horaires autour de `pivot` (la définition du
+ * sens). Son inverse est la rotation de `4 - turns` quarts de tour.
+ */
 export function orientAbout(p: XY, turns: QuarterTurns, pivot: XY): XY {
   const dx = p.x - pivot.x
   const dy = p.y - pivot.y
   switch (turns) {
     case 1:
-      return { x: pivot.x - dy, y: pivot.y + dx }
+      return { x: pivot.x + dy, y: pivot.y - dx }
     case 2:
       return { x: pivot.x - dx, y: pivot.y - dy }
     case 3:
-      return { x: pivot.x + dy, y: pivot.y - dx }
+      return { x: pivot.x - dy, y: pivot.y + dx }
     default:
       return { x: p.x, y: p.y }
   }
-}
-
-/** unorientAbout est la réciproque exacte de `orientAbout`. */
-export function unorientAbout(p: XY, turns: QuarterTurns, pivot: XY): XY {
-  return orientAbout(p, normalizeTurns(4 - turns), pivot)
-}
-
-/**
- * orientWorld tourne une position monde de `turns` quarts de tour autour du CENTRE de `bounds`
- * (les bornes de la scène, avant rotation).
- */
-export function orientWorld(p: XY, turns: QuarterTurns, bounds: ReplayBounds): XY {
-  return orientAbout(p, turns, pivotOf(bounds))
-}
-
-/** unorientWorld rend la position monde d'origine d'un point tourné : l'inverse d'`orientWorld`. */
-export function unorientWorld(p: XY, turns: QuarterTurns, bounds: ReplayBounds): XY {
-  return unorientAbout(p, turns, pivotOf(bounds))
 }
 
 /**
@@ -122,11 +109,12 @@ export function turnsOf(orient: ViewOrientation | undefined): QuarterTurns {
 }
 
 /**
- * shiftHeadingDeg ajoute à un cap monde (degrés, 0° = +X, 90° = +Y) la rotation de la carte : un
- * cap qui désigne l'est à 0 quart de tour désigne le nord à un quart de tour.
+ * shiftHeadingDeg applique à un cap monde (degrés, 0° = +X, 90° = +Y) la rotation de la carte :
+ * la carte tourne dans le sens horaire, le cap perd donc 90° par quart de tour (un cap qui
+ * désigne le nord désigne l'est à un quart de tour).
  */
 export function shiftHeadingDeg(headingDeg: number, turns: QuarterTurns): number {
-  return headingDeg + turns * 90
+  return headingDeg - turns * 90
 }
 
 /**
@@ -166,11 +154,11 @@ export function orientHeatGrid(grid: HeatGrid, turns: QuarterTurns, pivot: XY): 
 function cellAfterTurns(col: number, row: number, nx: number, ny: number, turns: QuarterTurns): [number, number] {
   switch (turns) {
     case 1:
-      return [ny - 1 - row, col]
+      return [row, nx - 1 - col]
     case 2:
       return [nx - 1 - col, ny - 1 - row]
     case 3:
-      return [row, nx - 1 - col]
+      return [ny - 1 - row, col]
     default:
       return [col, row]
   }

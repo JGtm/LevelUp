@@ -306,7 +306,7 @@ export function ReplayCanvas({
     doc, background, turns: orientation.turns, width, freeHeight, onManualMove: onFollowStop,
   })
   // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
-  const { shownAtSlot, shownProjectile } = useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom })
+  const { shownAtSlot, shownProjectile } = useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom, turns: orientation.turns })
 
   // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
   const calloutZones = callouts ?? EMPTY_ZONES
@@ -370,7 +370,8 @@ export function ReplayCanvas({
     follow: playerFocus?.follow ?? false,
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
     heat: { grid: heat.grid, ramp: heat.ramp },
-    wallPlan: { plan: mapImage?.plan ?? null, ink: wallPlanInk },
+    // Éteint, le plan n'est pas cuit : rien à recuire au zoom ni à l'orientation pour un calque invisible.
+    wallPlan: { plan: showWallPlan ? (mapImage?.plan ?? null) : null, ink: wallPlanInk },
     objectives: { elements: zones.staticElements, colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline, z: zRange },
   })
 

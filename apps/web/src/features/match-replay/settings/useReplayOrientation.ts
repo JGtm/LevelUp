@@ -16,7 +16,7 @@ import type { QuarterTurns } from '../model/orientation'
 import { persistOrientation, readOrientation } from './replayPreferences'
 
 export interface ReplayOrientation {
-  /** L'orientation courante, en quarts de tour antihoraires. */
+  /** L'orientation courante, en quarts de tour horaires. */
   turns: QuarterTurns
   /** Retient une orientation pour la carte courante (sans effet sans carte). */
   setTurns: (turns: QuarterTurns) => void

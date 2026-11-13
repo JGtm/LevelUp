@@ -1,7 +1,7 @@
 /**
  * ReplayOrientationSection — LA COMMANDE D'ORIENTATION DE LA CARTE dans le panneau de la vue.
  *
- * Un CHOIX EXCLUSIF à quatre positions (0°, 90°, 180°, 270° — quarts de tour antihoraires), donc un
+ * Un CHOIX EXCLUSIF à quatre positions (0°, 90°, 180°, 270° — quarts de tour horaires), donc un
  * segmenté (`SettingsSegments`, `role="radiogroup"`) et pas quatre interrupteurs : exactement une
  * position est vraie. Les degrés ne portent aucun mot : ils s'écrivent pareil dans toutes les
  * langues, seul le titre est traduit.

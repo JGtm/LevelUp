@@ -11,7 +11,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { exportFormatOf, exportLayoutFor } from '../export/exportFormats'
 import { canvasPixelRatio, isExportLayoutApplied, requestExportLayout } from '../export/exportLayoutStore'
 import { canvasToWorld, worldToCanvas } from '../../../lib/replay/replayLogic'
-import { orientWorld, QUARTER_TURNS, unorientWorld, type QuarterTurns } from '../model/orientation'
+import { QUARTER_TURNS, type QuarterTurns } from '../model/orientation'
+import { turnWorld, unturnWorld } from '../test/orientationOracle'
 import { projectTo } from '../model/replayView'
 import { testReplayDoc } from '../test/testDoc'
 import { useReplayView } from './useReplayView'
@@ -155,13 +156,13 @@ describe('useReplayView — l’orientation de la carte', () => {
     const { result } = renderHook(() => useReplayView({ doc: LONG, turns, width: 1200, freeHeight: 600 }))
     const v = result.current.canvasView
     for (const p of POINTS) {
-      const turned = orientWorld(p, turns, SCENE)
+      const turned = turnWorld(p, turns, SCENE)
       const attendu = worldToCanvas(turned, v.bounds, v.width, v.height, v.pad)
       const got = projectTo(v, p)
       expect(got.x).toBeCloseTo(attendu.x, 9)
       expect(got.y).toBeCloseTo(attendu.y, 9)
       // L'inverse : du pixel au monde, puis défaire la rotation.
-      const back = unorientWorld(canvasToWorld(got, v.bounds, v.width, v.height, v.pad), turns, SCENE)
+      const back = unturnWorld(canvasToWorld(got, v.bounds, v.width, v.height, v.pad), turns, SCENE)
       expect(back.x).toBeCloseTo(p.x, 9)
       expect(back.y).toBeCloseTo(p.y, 9)
     }
@@ -221,7 +222,7 @@ describe('useReplayView — l’orientation de la carte', () => {
       const visee = { x: v.width * 0.7, y: v.height * 0.4 }
       // Ce que fait `useReplayWheelZoom` : le point de la fenêtre sous le pointeur, dans le repère de la carte tournée.
       const sous = canvasToWorld(visee, v.bounds, v.width, v.height, v.pad)
-      const monde = unorientWorld(sous, turns, SCENE)
+      const monde = unturnWorld(sous, turns, SCENE)
       act(() => result.current.zoom.zoomAt(1, sous))
       const apres = projectTo(result.current.canvasView, monde)
       expect(apres.x).toBeCloseTo(visee.x, 6)

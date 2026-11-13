@@ -10,13 +10,12 @@ import type { HeatGrid } from '../../../lib/replay/heatPaint'
 import {
   normalizeTurns,
   orientBounds,
+  orientAbout,
   orientHeatGrid,
-  orientWorld,
   pivotOf,
   QUARTER_TURNS,
   shiftHeadingDeg,
   turnsToDegrees,
-  unorientWorld,
   viewOrientation,
   type QuarterTurns,
 } from './orientation'
@@ -31,36 +30,27 @@ const POINTS = [
   { x: 16, y: 4 },
 ]
 
-describe('orientWorld / unorientWorld', () => {
-  it.each(QUARTER_TURNS)('aller-retour EXACT à %i quart(s) de tour', (turns) => {
-    for (const p of POINTS) {
-      const there = orientWorld(p, turns, BOUNDS)
-      expect(unorientWorld(there, turns, BOUNDS)).toEqual(p)
-      // Et l'autre sens : défaire puis refaire.
-      expect(orientWorld(unorientWorld(p, turns, BOUNDS), turns, BOUNDS)).toEqual(p)
-    }
-  })
+describe('orientAbout — le sens et le pivot', () => {
+  const c = pivotOf(BOUNDS)
 
   it('à 0 quart de tour, la position ne bouge pas', () => {
-    for (const p of POINTS) expect(orientWorld(p, 0, BOUNDS)).toEqual(p)
+    for (const p of POINTS) expect(orientAbout(p, 0, c)).toEqual(p)
   })
 
-  it('tourne dans le sens ANTIHORAIRE autour du centre : l’est passe au nord', () => {
-    const c = pivotOf(BOUNDS)
-    const est = { x: c.x + 10, y: c.y }
-    expect(orientWorld(est, 1, BOUNDS)).toEqual({ x: c.x, y: c.y + 10 })
-    expect(orientWorld(est, 2, BOUNDS)).toEqual({ x: c.x - 10, y: c.y })
-    expect(orientWorld(est, 3, BOUNDS)).toEqual({ x: c.x, y: c.y - 10 })
+  it('tourne dans le sens HORAIRE autour du centre : le nord passe à droite', () => {
+    const nord = { x: c.x, y: c.y + 10 }
+    expect(orientAbout(nord, 1, c)).toEqual({ x: c.x + 10, y: c.y })
+    expect(orientAbout(nord, 2, c)).toEqual({ x: c.x, y: c.y - 10 })
+    expect(orientAbout(nord, 3, c)).toEqual({ x: c.x - 10, y: c.y })
   })
 
   it('le centre est le point fixe de toutes les rotations', () => {
-    const c = pivotOf(BOUNDS)
-    for (const t of QUARTER_TURNS) expect(orientWorld(c, t, BOUNDS)).toEqual(c)
+    for (const t of QUARTER_TURNS) expect(orientAbout(c, t, c)).toEqual(c)
   })
 
   it('quatre quarts de tour successifs ramènent le point', () => {
     let p = { x: 3.5, y: -1.25 }
-    for (let i = 0; i < 4; i++) p = orientWorld(p, 1, BOUNDS)
+    for (let i = 0; i < 4; i++) p = orientAbout(p, 1, c)
     expect(p).toEqual({ x: 3.5, y: -1.25 })
   })
 })
@@ -91,7 +81,7 @@ describe('orientBounds', () => {
       { x: BOUNDS.minX, y: BOUNDS.maxY },
     ]
     for (const turns of QUARTER_TURNS) {
-      const turned = corners.map((p) => orientWorld(p, turns, BOUNDS))
+      const turned = corners.map((p) => orientAbout(p, turns, pivotOf(BOUNDS)))
       const b = orientBounds(BOUNDS, turns)
       expect(Math.min(...turned.map((p) => p.x))).toBe(b.minX)
       expect(Math.max(...turned.map((p) => p.x))).toBe(b.maxX)
@@ -117,13 +107,14 @@ describe('viewOrientation, normalizeTurns, degrés, caps', () => {
     expect(QUARTER_TURNS.map(turnsToDegrees)).toEqual([0, 90, 180, 270])
   })
 
-  it('un cap gagne 90 degrés par quart de tour, comme la position tourne', () => {
+  it('un cap perd 90 degrés par quart de tour, comme la position tourne', () => {
     const c = pivotOf(BOUNDS)
     for (const turns of QUARTER_TURNS) {
       // Un point à l'est du centre : après rotation il est dans la direction du cap `turns x 90`.
-      const au = orientWorld({ x: c.x + 4, y: c.y }, turns, BOUNDS)
+      const au = orientAbout({ x: c.x + 4, y: c.y }, turns, c)
       const rad = (shiftHeadingDeg(0, turns) * Math.PI) / 180
-      expect(Math.atan2(au.y - c.y, au.x - c.x)).toBeCloseTo(Math.atan2(Math.sin(rad), Math.cos(rad)), 12)
+      expect(au.x - c.x).toBeCloseTo(4 * Math.cos(rad), 12)
+      expect(au.y - c.y).toBeCloseTo(4 * Math.sin(rad), 12)
     }
   })
 })
@@ -163,7 +154,7 @@ describe('orientHeatGrid', () => {
     for (let row = 0; row < grid.ny; row++) {
       for (let col = 0; col < grid.nx; col++) {
         const centre = { x: grid.minX + (col + 0.5) * grid.cell, y: grid.minY + (row + 0.5) * grid.cell }
-        expect(valueAt(turned, orientWorld(centre, turns, BOUNDS))).toBe(grid.value[row * grid.nx + col])
+        expect(valueAt(turned, orientAbout(centre, turns, pivot))).toBe(grid.value[row * grid.nx + col])
       }
     }
   })

@@ -78,7 +78,7 @@ export interface ReplayViewOptions {
   /** Fond de carte figé, tel que la page l'a chargé. Absent = la carte n'en a pas. */
   background?: ReplayMapBackgroundLayer | null
   /**
-   * L'ORIENTATION DE LA CARTE, en quarts de tour antihoraires (0 = non tournée). Les bornes du
+   * L'ORIENTATION DE LA CARTE, en quarts de tour horaires (0 = non tournée). Les bornes du
    * cadrage et `canvasView` la portent : tout ce qui projette par le cadrage — dessin, survol,
    * export, chaleur — suit sans la connaître (cf. `model/orientation`).
    */

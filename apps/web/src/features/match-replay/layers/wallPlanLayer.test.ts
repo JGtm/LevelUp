@@ -6,7 +6,9 @@
 import { describe, expect, it } from 'vitest'
 
 import { worldToCanvas } from '../../../lib/replay/replayLogic'
+import { orientBounds, QUARTER_TURNS, viewOrientation } from '../model/orientation'
 import type { CanvasView } from '../model/replayView'
+import { turnWorld } from '../test/orientationOracle'
 import type { WallPlanReady } from '../model/wallPlan'
 import { composeScene, LAYER_ORDER, sceneLayers, type LayerPaint, type ReplayScene } from './replayCompose'
 import { recordingContext } from '../test/recordingContext'
@@ -63,6 +65,23 @@ describe('drawWallPlanLayer', () => {
       drawWallPlanLayer(ctx, plan, VIEW, { ink: 'rgb(1 2 3)' })
       expect(ops).toEqual([])
     }
+  })
+
+  it.each(QUARTER_TURNS)('sous orientation (%i quart(s) de tour), les arêtes suivent la carte tournée', (turns) => {
+    const turned: CanvasView = {
+      ...VIEW,
+      bounds: orientBounds(VIEW.bounds, turns),
+      orient: viewOrientation(turns, VIEW.bounds),
+    }
+    const { ops, ctx } = recordingContext()
+    drawWallPlanLayer(ctx, PLAN, turned, { ink: 'rgb(1 2 3)' })
+    const segments = ops.filter((o) => o.op === 'moveTo' || o.op === 'lineTo')
+    PLAN.edges.forEach(([x1, y1, x2, y2], i) => {
+      const a = worldToCanvas(turnWorld({ x: x1, y: y1 }, turns, VIEW.bounds), turned.bounds, turned.width, turned.height, turned.pad)
+      const b = worldToCanvas(turnWorld({ x: x2, y: y2 }, turns, VIEW.bounds), turned.bounds, turned.width, turned.height, turned.pad)
+      expect(segments[2 * i].args).toEqual([a.x, a.y])
+      expect(segments[2 * i + 1].args).toEqual([b.x, b.y])
+    })
   })
 
   it('suit le cadrage : un zoom déplace et agrandit les arêtes comme worldToCanvas', () => {

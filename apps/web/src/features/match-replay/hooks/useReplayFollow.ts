@@ -26,6 +26,7 @@ import { deathWindowFrames } from '../model/livesPosition'
 import type { XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
+import type { QuarterTurns } from '../model/orientation'
 import type { ReplayZoom } from './useReplayZoom'
 
 export interface ReplayFollowOptions {
@@ -37,9 +38,15 @@ export interface ReplayFollowOptions {
   /** La cellule de dessin du canvas : l'image montrée, fractionnaire en lecture. Lue, jamais écrite. */
   frameRef: { readonly current: number }
   zoom: ReplayZoom
+  /**
+   * L'orientation de la carte : un changement d'orientation ramène le zoom à la carte entière, et le
+   * suivi doit alors recadrer le joueur sur sa position COURANTE sans attendre qu'il bouge. Elle ne
+   * sert que de déclencheur (la conversion monde -> carte tournée est faite par le zoom).
+   */
+  turns?: QuarterTurns
 }
 
-export function useReplayFollow({ doc, player, enabled, frameRef, zoom }: ReplayFollowOptions): void {
+export function useReplayFollow({ doc, player, enabled, frameRef, zoom, turns = 0 }: ReplayFollowOptions): void {
   const embarkedAt = useMemo(() => buildEmbarkedPosAt(doc.vehicles), [doc.vehicles])
   const deathFrames = useMemo(() => deathWindowFrames(doc), [doc])
   // L'action de cadrage change de visage à chaque palier : la boucle lit la dernière, sans se relancer.
@@ -62,5 +69,6 @@ export function useReplayFollow({ doc, player, enabled, frameRef, zoom }: Replay
     }
     step()
     return () => cancelAnimationFrame(raf)
-  }, [enabled, player, frameRef, embarkedAt, deathFrames])
+    // `turns` relance la boucle : `last` repart de zéro, donc la position courante est redemandée.
+  }, [enabled, player, frameRef, embarkedAt, deathFrames, turns])
 }

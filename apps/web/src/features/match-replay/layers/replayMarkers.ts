@@ -227,7 +227,7 @@ export interface MarkerStyle {
    */
   shownAtSlot?: (slot: number, frame: number) => boolean
   /**
-   * La rotation de la carte (quarts de tour antihoraires), qui fait tourner le cône de visée avec le
+   * La rotation de la carte (quarts de tour horaires), qui fait tourner le cône de visée avec le
    * terrain. Posée par `drawTracksLayer` d'après le cadrage (`view.orient`), jamais par l'appelant :
    * une seule source. Absent = 0.
    */

@@ -72,7 +72,7 @@ export interface VehicleTime {
    */
   durationFrameMs?: number
   /**
-   * La rotation de la carte (quarts de tour antihoraires) : le sprite, le cône et le montage des
+   * La rotation de la carte (quarts de tour horaires) : le sprite, le cône et le montage des
    * armes suivent le terrain. Posée par `drawVehiclesLayer` d'après le cadrage (`view.orient`),
    * jamais par l'appelant : une seule source. Absent = 0.
    */

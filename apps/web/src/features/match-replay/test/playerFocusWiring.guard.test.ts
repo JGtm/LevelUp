@@ -23,7 +23,7 @@ const canvas = () => lire(fichierNomme('ReplayCanvas.tsx'))
 describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque élément propre au joueur', () => {
   it('le panneau de joueur est branché, et la main reprend le cadrage', () => {
     const src = canvas()
-    expect(src).toContain('useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom })')
+    expect(src).toContain('useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom, turns: orientation.turns })')
     expect(src).toContain('onManualMove: onFollowStop')
   })
 

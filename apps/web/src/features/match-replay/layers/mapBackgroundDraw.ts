@@ -39,7 +39,7 @@ export function placeMapBackground(
 
 /**
  * drawMapBackground peint l'image ENTIÈRE sur son rectangle, tournée comme la carte du cadrage
- * (`view.orient`, quarts de tour antihoraires) ; la toile rogne le débord. Sans fond ou sans rectangle, il ne peint rien.
+ * (`view.orient`, quarts de tour horaires) ; la toile rogne le débord. Sans fond ou sans rectangle, il ne peint rien.
  *
  * Le rectangle est celui de l'image TOURNÉE : pour un quart ou trois quarts de tour, l'image est
  * dessinée avec les dimensions échangées, dans le repère tourné autour du centre du rectangle.
@@ -60,8 +60,8 @@ export function drawMapBackground(
   const h = turns % 2 === 1 ? rect.width : rect.height
   ctx.save()
   ctx.translate(rect.x + rect.width / 2, rect.y + rect.height / 2)
-  // L'axe Y de la toile descend : un quart de tour antihoraire vu à l'écran est un angle négatif.
-  ctx.rotate((-turns * Math.PI) / 2)
+  // L'axe Y de la toile descend : un angle positif tourne dans le sens horaire vu à l'écran.
+  ctx.rotate((turns * Math.PI) / 2)
   ctx.drawImage(background.image, -w / 2, -h / 2, w, h)
   ctx.restore()
 }

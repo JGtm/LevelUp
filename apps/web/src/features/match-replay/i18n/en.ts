@@ -167,7 +167,7 @@ export const EN_TEXT = {
     'The exact outline of the map walls, as thin lines over its image. Available for maps whose plan could be extracted from the game.',
   orientationTitle: 'Orientation',
   orientationHint:
-    'Rotates the map in quarter turns, counter-clockwise. The choice is remembered for this map.',
+    'Rotates the map in quarter turns, clockwise. The choice is remembered for this map.',
   layerTrail: 'Trail',
   layerTrailHint:
     'The last seven seconds travelled, behind every marker. Opacity rises towards the head: the most visible trace is always the current one, and that is what gives the direction of travel.',

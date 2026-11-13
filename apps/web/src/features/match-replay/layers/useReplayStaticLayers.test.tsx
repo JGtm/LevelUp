@@ -172,6 +172,19 @@ describe('le plan des murs est un calque statique comme les autres', () => {
     expect(paintWallPlan).toHaveBeenCalledTimes(1)
   })
 
+  it('il est cuit avec le cadrage TOURNÉ, et se recuit quand l’orientation change', () => {
+    const turned = (turns: 0 | 1): CanvasView => ({
+      ...viewAt(0),
+      orient: turns === 0 ? undefined : { turns, pivot: { x: 50, y: 50 } },
+    })
+    const h = monter(entree(turned(1), { wallPlan: WALL_PLAN }))
+    expect(paintWallPlan).toHaveBeenCalledTimes(1)
+    expect((paintWallPlan.mock.calls[0][2] as CanvasView).orient).toEqual({ turns: 1, pivot: { x: 50, y: 50 } })
+    h.rerender(entree(turned(0), { wallPlan: WALL_PLAN }))
+    expect(paintWallPlan).toHaveBeenCalledTimes(2)
+    expect((paintWallPlan.mock.calls[1][2] as CanvasView).orient).toBeUndefined()
+  })
+
   it('le plan qui disparaît (autre carte) vide le calque', () => {
     const h = monter(entree(viewAt(0), { wallPlan: WALL_PLAN }))
     h.rerender(entree(viewAt(0), { wallPlan: NO_WALL_PLAN }))

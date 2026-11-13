@@ -2,9 +2,8 @@
  * wallPlan.test.ts — la normalisation du plan des murs : pas de plan, arêtes bien formées,
  * arêtes refusées (comptées et signalées une seule fois).
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { log } from '@/lib/accessibility/_logger'
 import type { ReplayMapBackgroundPlan } from '@/lib/api/types'
 
 import { normalizeWallPlan } from './wallPlan'
@@ -14,7 +13,6 @@ function plan(edges: ReplayMapBackgroundPlan['edges'], source = 'test'): ReplayM
 }
 
 describe('normalizeWallPlan', () => {
-  beforeEach(() => log._resetForTests())
   afterEach(() => vi.restoreAllMocks())
 
   it('rend null sans plan, sans liste ou avec une liste vide', () => {

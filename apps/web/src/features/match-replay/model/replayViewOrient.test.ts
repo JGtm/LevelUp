@@ -8,7 +8,8 @@ import { describe, expect, it } from 'vitest'
 import type { ReplayBounds } from '@/lib/api/types'
 
 import { worldToCanvas } from '../../../lib/replay/replayLogic'
-import { orientBounds, orientWorld, QUARTER_TURNS, viewOrientation, type QuarterTurns } from './orientation'
+import { orientBounds, QUARTER_TURNS, viewOrientation, type QuarterTurns } from './orientation'
+import { turnWorld } from '../test/orientationOracle'
 import { cookIsReusable, projectFrameTo, projectTo, scaleOf, turnsOfView, type CanvasView } from './replayView'
 
 const SCENE: ReplayBounds = { minX: -20, maxX: 60, minY: 0, maxY: 40 }
@@ -29,7 +30,7 @@ describe('projectTo — carte tournée', () => {
   it.each(QUARTER_TURNS)('à %i quart(s) de tour : rotation puis worldToCanvas', (turns) => {
     const v = viewAt(turns)
     for (const p of [{ x: -20, y: 0 }, { x: 60, y: 40 }, { x: 5, y: 30 }]) {
-      const attendu = worldToCanvas(orientWorld(p, turns, SCENE), v.bounds, v.width, v.height, v.pad)
+      const attendu = worldToCanvas(turnWorld(p, turns, SCENE), v.bounds, v.width, v.height, v.pad)
       expect(projectTo(v, p)).toEqual(attendu)
     }
   })
@@ -50,7 +51,7 @@ describe('projectTo — carte tournée', () => {
   it('projectFrameTo ne tourne pas : elle lit un point déjà dans le repère tourné', () => {
     const v = viewAt(1)
     const p = { x: 5, y: 30 }
-    expect(projectFrameTo(v, orientWorld(p, 1, SCENE))).toEqual(projectTo(v, p))
+    expect(projectFrameTo(v, turnWorld(p, 1, SCENE))).toEqual(projectTo(v, p))
   })
 })
 

@@ -13,8 +13,10 @@
  *
  * Pas de React, pas de canvas : logique pure, testée dans `wallPlan.test.ts`.
  */
-import { log } from '@/lib/accessibility/_logger'
 import type { ReplayMapBackgroundPlan } from '@/lib/api/types'
+
+/** Les plans déjà signalés : un plan mal formé ne journalise qu'une fois, pas à chaque appel. */
+const signaled = new Set<string>()
 
 /** Une arête monde : x1, y1, x2, y2 en mètres. */
 export type WallEdge = readonly [number, number, number, number]
@@ -38,8 +40,8 @@ function wellFormed(edge: readonly number[] | null | undefined): edge is readonl
  * normalizeWallPlan lit le plan du sidecar. Rend null sans plan, ou quand aucune arête n'est
  * exploitable ; sinon les arêtes bien formées, et le nombre de celles qui ont été refusées.
  *
- * Le refus est journalisé UNE fois par plan (`log.error` déduplique par clé : la source, le
- * nombre de sommets et de faces identifient le plan d'un document).
+ * Le refus est journalisé UNE fois par plan, au préfixe `[replay-wall-plan]` comme les autres
+ * journaux du rejeu : la source, le nombre de sommets et de faces identifient le plan d'un document.
  */
 export function normalizeWallPlan(plan: ReplayMapBackgroundPlan | null | undefined): WallPlanReady | null {
   if (!plan?.edges) return null
@@ -50,10 +52,11 @@ export function normalizeWallPlan(plan: ReplayMapBackgroundPlan | null | undefin
     else dropped++
   }
   if (dropped > 0) {
-    log.error(
-      `replay-wall-plan:${plan.source}:${plan.vertices}:${plan.faces}`,
-      `Plan des murs : ${dropped} arête(s) mal formée(s) écartée(s) sur ${plan.edges.length}.`,
-    )
+    const key = `${plan.source}:${plan.vertices}:${plan.faces}`
+    if (!signaled.has(key)) {
+      signaled.add(key)
+      console.error(`[replay-wall-plan] ${dropped} arête(s) mal formée(s) écartée(s) sur ${plan.edges.length} (plan ${key})`)
+    }
   }
   return edges.length > 0 ? { edges, dropped } : null
 }

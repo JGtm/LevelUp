@@ -15,10 +15,11 @@ import type { ReplayBounds } from '@/lib/api/types'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import { QUARTER_TURNS, viewOrientation, type QuarterTurns } from '../model/orientation'
-import { projectTo, type CanvasView } from '../model/replayView'
+import type { CanvasView } from '../model/replayView'
 import { vehicleAimAngle, vehicleScreenAngle } from '../model/vehiclesLayer'
 import { vehicleShotOrigin, type VehicleWeaponMountEntry } from '../model/vehicleWeaponMounts'
 import { recordingContext } from '../test/recordingContext'
+import { sameDirection, screenDirection as direction } from '../test/screenDirection'
 import { drawTracksLayer, type MarkerStyle } from './replayMarkers'
 
 const SCENE: ReplayBounds = { minX: 0, minY: 0, maxX: 40, maxY: 20 }
@@ -29,19 +30,7 @@ function viewAt(turns: QuarterTurns): CanvasView {
   return { bounds: SCENE, width: 800, height: 800, pad: 20, orient: viewOrientation(turns, SCENE) }
 }
 
-/** L'angle écran (radians canevas) du déplacement de 3 m le long d'un cap monde. */
-function screenDirection(view: CanvasView, headingDeg: number): number {
-  const rad = (headingDeg * Math.PI) / 180
-  const a = projectTo(view, ORIGIN)
-  const b = projectTo(view, { x: ORIGIN.x + 3 * Math.cos(rad), y: ORIGIN.y + 3 * Math.sin(rad) })
-  return Math.atan2(b.y - a.y, b.x - a.x)
-}
-
-/** Vrai quand deux angles désignent la même direction (modulo un tour). */
-function sameDirection(a: number, b: number): boolean {
-  const d = Math.atan2(Math.sin(a - b), Math.cos(a - b))
-  return Math.abs(d) < 1e-9
-}
+const screenDirection = (view: CanvasView, h: number) => direction(view, h, ORIGIN)
 
 describe('les caps suivent la rotation de la carte', () => {
   it.each(QUARTER_TURNS)('cône de visée d’un pion, à %i quart(s) de tour', (turns) => {
