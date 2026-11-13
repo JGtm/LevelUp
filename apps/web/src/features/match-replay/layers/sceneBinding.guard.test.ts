@@ -50,12 +50,13 @@ const CABLES_PAR_HOOK: ReadonlyArray<[ReplayLayerId, string]> = [
 ]
 
 /**
- * Les quatorze fermetures de la table, et CE QU'ELLES DOIVENT PEINDRE. Oracle écrit à la
+ * Les quinze fermetures de la table, et CE QU'ELLES DOIVENT PEINDRE. Oracle écrit à la
  * main : chaque id est suivi du symbole que son peintre doit nommer.
  */
 const FERMETURES: ReadonlyArray<[ReplayLayerId, string]> = [
-  ['fond-carte', 'ctx.drawImage(mapImage.image'],
+  ['fond-carte', 'drawMapBackground('],
   ['sol-forge', 'drawGeometryLayer('],
+  ['plan-murs', 'cuit(wallPlanRef.current)'],
   ['chaleur', 'cuit(heatRef.current)'],
   ['zones-nommees', 'cuit(zonesRef.current)'],
   ['objectifs-cuits', 'cuit(objectivesRef.current)'],
@@ -143,7 +144,7 @@ describe('garde-rail : la liaison id -> peintre', () => {
     expect(table).toContain('...bindPainters(')
   })
 
-  it('chacune des quatorze fermetures peint bien ce que son id annonce', () => {
+  it('chacune des quinze fermetures peint bien ce que son id annonce', () => {
     const table = tableDeLiaison()
     for (const [id, attendu] of FERMETURES) {
       expect(entreeDeTable(table, id), `l'entrée ${id} ne peint pas ${attendu}`).toContain(attendu)

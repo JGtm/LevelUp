@@ -2548,6 +2548,9 @@ export type ReplayDocument = components['schemas']['ReplayDocument'] &
 // calage a dû être retrouvé à la main sur des trajectoires de joueur.
 export type ReplayMapBackground = components['schemas']['MapBackground']
 export type ReplayMapBackgroundCalibration = components['schemas']['MapBackgroundCalibration']
+// Le PLAN DES MURS du fond : des arêtes monde [x1, y1, x2, y2] dans le repère du rejeu, absent des
+// cartes dont le plan n'a pas pu être extrait (Live Fire, deux cartes Forge).
+export type ReplayMapBackgroundPlan = components['schemas']['MapBackgroundPlan']
 
 // Les ZONES NOMMÉES (« callouts ») de la carte du match : polygones monde + libellés
 // FR/EN officiels, servies à part du document (résolution par carte au service, comme le

@@ -8817,6 +8817,7 @@ export interface components {
             image: string;
             mapNames?: string[] | null;
             module: string;
+            plan?: components["schemas"]["MapBackgroundPlan"];
             /** Format: int64 */
             schemaVersion: number;
             source: string;
@@ -8835,6 +8836,14 @@ export interface components {
             originY: number;
             /** Format: int64 */
             widthPx: number;
+        };
+        MapBackgroundPlan: {
+            edges: (number[] | null)[] | null;
+            /** Format: int64 */
+            faces: number;
+            source: string;
+            /** Format: int64 */
+            vertices: number;
         };
         MapBackgroundStats: {
             /** Format: double */

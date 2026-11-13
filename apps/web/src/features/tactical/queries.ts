@@ -29,7 +29,7 @@
  * — la liste de `match_id` de A partait alors sur les lectures de B, et la réponse
  * s'affichait comme celle de B.
  */
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
@@ -47,6 +47,7 @@ import { ANALYSIS_PENDING_REFETCH_MS } from '@/lib/analysis-pending/analysisPend
 import { queryKeys } from '@/lib/query/keys'
 import { SANS_BARRE_META } from '@/lib/query/sansBarre'
 import { mapFrame, type MapFrame } from '@/lib/replay/heatPaint'
+import { normalizeWallPlan, type WallPlanReady } from '@/lib/replay/wallPlan'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { causeDeLErreur } from './sequenceCause.logic'
@@ -212,6 +213,22 @@ export function useTacticalMapBackgroundUrl(playerSlug: string, mapId: string, a
  * propres bornes.
  */
 export function useTacticalMapBackgroundFrame(playerSlug: string, mapId: string): MapFrame | null {
+  const data = useTacticalMapBackgroundSidecar(playerSlug, mapId)
+  return data?.calibration ? mapFrame(data.calibration) : null
+}
+
+/**
+ * useTacticalMapBackgroundPlan — LE PLAN DES MURS du fond d'une carte, ou `null` (carte sans plan,
+ * sans fond figé). Il vient du MÊME sidecar que le calage (`/tactical/{map_id}/background`) : la
+ * requête est partagée, rien de plus n'est chargé. Normalisé une fois (`normalizeWallPlan`).
+ */
+export function useTacticalMapBackgroundPlan(playerSlug: string, mapId: string): WallPlanReady | null {
+  const data = useTacticalMapBackgroundSidecar(playerSlug, mapId)
+  return useMemo(() => normalizeWallPlan(data?.plan), [data])
+}
+
+/** Le sidecar du fond (calage et plan des murs) : UNE requête, lue par les deux hooks ci-dessus. */
+function useTacticalMapBackgroundSidecar(playerSlug: string, mapId: string): ReplayMapBackground | undefined {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const { data } = useQuery({
     queryKey: queryKeys.tacticalMapBackgroundFrame(titleSlug, mapId),
@@ -224,7 +241,7 @@ export function useTacticalMapBackgroundFrame(playerSlug: string, mapId: string)
     enabled: !!playerSlug && !!mapId,
     retry: false,
   })
-  return data?.calibration ? mapFrame(data.calibration) : null
+  return data
 }
 
 /** Les paramètres d'une lecture du plan (le corps de `/tactical/{map}/raster`, périmètre non résolu = `null`). */

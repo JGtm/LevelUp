@@ -49,7 +49,8 @@ import type { FilmAllegiance } from '../../../lib/replay/filmAllegiance'
 import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { displayClockMs, type ReplayWindowBounds } from '../model/replayWindow'
-import { usePersistedFlag, TIMELINE_EXPANDED_KEY } from '../settings/useReplaySettings'
+import { TIMELINE_EXPANDED_KEY } from '../settings/useReplaySettings'
+import { usePersistedFlag } from '../settings/usePersistedFlag'
 import { useReplayShortcuts, type ReplayShortcutHandlers } from './useReplayShortcuts'
 
 /** Ce que le canvas prête à la frise : le document, le cadrage, le fil et la lecture. */

@@ -33,6 +33,7 @@ import { useAnchoredPanel } from './useAnchoredPanel'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { HeatmapSection, type ReplayHeatmapControls } from '../ui/ReplayHeatmapSection'
 import { LayersSection } from './ReplaySettingsLayers'
+import { OrientationSection, type ReplayOrientationControls } from './ReplayOrientationSection'
 import { ViewPresetsSection } from './ReplayViewPresets'
 import type { ViewId, ViewPresetId } from './viewPresetLogic'
 import { SOUND_CATEGORIES } from '../sound/replaySound'
@@ -49,6 +50,7 @@ const PANEL_WIDTH = 416
 
 /** Réexportés : les sections ont déménagé, la surface d'appel du panneau n'a pas bougé. */
 export type { ReplayHeatmapControls } from '../ui/ReplayHeatmapSection'
+export type { ReplayOrientationControls } from './ReplayOrientationSection'
 export type {
   ReplayBombCarrierControls,
   ReplayFlagControls,
@@ -58,6 +60,7 @@ export type {
   ReplaySkullCarrierControls,
   ReplayVehicleControls,
   ReplayVipCrownControls,
+  ReplayWallPlanControls,
   ReplayWeaponPadControls,
 } from './ReplaySettingsLayers'
 
@@ -70,6 +73,7 @@ import type {
   ReplaySkullCarrierControls,
   ReplayVehicleControls,
   ReplayVipCrownControls,
+  ReplayWallPlanControls,
   ReplayWeaponPadControls,
 } from './ReplaySettingsLayers'
 
@@ -106,6 +110,10 @@ interface ReplayViewPanelProps {
   bombCarrier: ReplayBombCarrierControls
   /** Les VÉHICULES (schéma 39) : un seul calque, allumé par défaut. */
   vehicles: ReplayVehicleControls
+  /** Le PLAN DES MURS du fond (clé `replay-show-wall-plan`) : n'existe qu'avec un fond qui en porte un. */
+  wallPlan: ReplayWallPlanControls
+  /** L'ORIENTATION de la carte (quarts de tour), retenue par carte : n'existe qu'avec une carte connue. */
+  orientation: ReplayOrientationControls
   heatmap: ReplayHeatmapControls
   /** Éclairs de bouche (tous les tirs) et trait tueur -> victime : deux réglages distincts. */
   showShotFx: boolean
@@ -296,6 +304,8 @@ export function ReplayViewPanel({
   skullCarrier,
   bombCarrier,
   vehicles,
+  wallPlan,
+  orientation,
   heatmap,
   showShotFx,
   onToggleShotFx,
@@ -357,7 +367,9 @@ export function ReplayViewPanel({
         skullCarrier={skullCarrier}
         bombCarrier={bombCarrier}
         vehicles={vehicles}
+        wallPlan={wallPlan}
       />
+      <OrientationSection locale={locale} orientation={orientation} />
       <EffectsSection
         locale={locale}
         showShotFx={showShotFx}

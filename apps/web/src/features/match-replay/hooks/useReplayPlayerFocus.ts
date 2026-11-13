@@ -18,6 +18,7 @@ import { useMemo } from 'react'
 import { shownSlotPredicate, type PlayerFocus } from '../model/playerPanelLogic'
 import { projectileOwners } from '../model/projectileOwners'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { QuarterTurns } from '@/lib/replay/orientation'
 import { useReplayFollow } from './useReplayFollow'
 import type { ReplayZoom } from './useReplayZoom'
 
@@ -28,6 +29,8 @@ export interface ReplayPlayerFocusOptions {
   /** La cellule de dessin du canvas (l'image montrée) : lue par Suivre, jamais écrite. */
   frameRef: { readonly current: number }
   zoom: ReplayZoom
+  /** L'orientation de la carte : un changement fait recadrer Suivre sur la position courante. */
+  turns?: QuarterTurns
 }
 
 export interface ReplayPlayerFocusLayers {
@@ -43,9 +46,9 @@ export interface ReplayPlayerFocusLayers {
   shownProjectile: ((index: number) => boolean) | undefined
 }
 
-export function useReplayPlayerFocus({ doc, focus, frameRef, zoom }: ReplayPlayerFocusOptions): ReplayPlayerFocusLayers {
+export function useReplayPlayerFocus({ doc, focus, frameRef, zoom, turns }: ReplayPlayerFocusOptions): ReplayPlayerFocusLayers {
   const shownAtSlot = useMemo(() => shownSlotPredicate(focus) ?? undefined, [focus])
-  useReplayFollow({ doc, player: focus?.player ?? null, enabled: focus?.follow ?? false, frameRef, zoom })
+  useReplayFollow({ doc, player: focus?.player ?? null, enabled: focus?.follow ?? false, frameRef, zoom, turns })
   const owners = useMemo(() => (shownAtSlot ? projectileOwners(doc) : []), [doc, shownAtSlot])
   const solo = focus?.solo ?? false
   const shownProjectile = useMemo(() => {

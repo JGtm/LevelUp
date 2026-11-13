@@ -46,7 +46,8 @@ import {
   trailAt,
   type XY,
 } from '../../../lib/replay/replayLogic'
-import { type CanvasView, projectTo } from '../model/replayView'
+import { type CanvasView, projectTo, turnsOfView } from '../model/replayView'
+import type { QuarterTurns } from '@/lib/replay/orientation'
 import { edgeMarkFor, OFFSCREEN_MARGIN_PX } from '../model/edgeClamp'
 import { drawOffscreenChevron, drawOffscreenLabel } from './offscreenChevron'
 
@@ -225,6 +226,12 @@ export interface MarkerStyle {
    * dessine.
    */
   shownAtSlot?: (slot: number, frame: number) => boolean
+  /**
+   * La rotation de la carte (quarts de tour horaires), qui fait tourner le cône de visée avec le
+   * terrain. Posée par `drawTracksLayer` d'après le cadrage (`view.orient`), jamais par l'appelant :
+   * une seule source. Absent = 0.
+   */
+  turns?: QuarterTurns
 }
 
 /**
@@ -255,8 +262,10 @@ export function drawTracksLayer(
   ctx: CanvasRenderingContext2D,
   tracks: ReplayTrackReady[],
   view: CanvasView,
-  style: MarkerStyle,
+  baseStyle: MarkerStyle,
 ): void {
+  const turns = turnsOfView(view)
+  const style: MarkerStyle = turns === 0 ? baseStyle : { ...baseStyle, turns }
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   tracks.forEach((track) => {

@@ -16,6 +16,7 @@ import { REPLAY_TEXT } from '@/features/match-replay/i18n/i18n'
 import { usePlaybackFrame, usePlaybackStore } from '@/features/match-replay/model/playbackStore'
 import { replayLoadState } from '@/features/match-replay/model/replayLoadState'
 import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
+import { normalizeWallPlan } from '@/lib/replay/wallPlan'
 import { useKillerZones } from '@/features/match-replay/hooks/useKillerZones'
 import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
 import { usePlayerPanel } from '@/features/match-replay/hooks/usePlayerPanel'
@@ -93,7 +94,10 @@ export function ReplayPage() {
   const { data: background } = useReplayMapBackground(playerSlug, matchId)
   const mapImage = useReplayMapImage(playerSlug, matchId, !!background)
   const mapBackground = useMemo(
-    () => (background && mapImage ? { calibration: background.calibration, image: mapImage } : null),
+    () =>
+      background && mapImage
+        ? { calibration: background.calibration, image: mapImage, plan: normalizeWallPlan(background.plan) }
+        : null,
     [background, mapImage],
   )
   // LES ZONES NOMMÉES, normalisées UNE fois : la même liste sert le calque du canvas et
@@ -309,6 +313,7 @@ export function ReplayPage() {
               playbackStore={playbackStore}
               openAtFrame={openAtFrame}
               background={mapBackground}
+              mapId={replayContext?.header.map_id}
               callouts={callouts}
               scoreboard={scoreboard}
               allegiance={model.allegiance}

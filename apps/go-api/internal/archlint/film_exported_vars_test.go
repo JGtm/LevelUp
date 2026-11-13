@@ -57,18 +57,17 @@ import (
 //
 // Deux familles, toutes dans `libs/himap/himap`. Les TABLES (`CartesForge`, `TypesVolumesDeMort`,
 // `ModulesDesEquipements`, `StylesFond`) sont lues sans etre ecrites : des accesseurs rendant une
-// copie les remplaceraient. Les REGLAGES (`LumiereRendu`, `NiveauHautNavmesh`,
+// copie les remplaceraient. Les REGLAGES (`LumiereRendu`,
 // `MargeSolVuDuDessousCarte`, `SeuilSubstitution`, `SeuilCouvertureCarte`) sont poses puis rendus
 // par la cuisson d une carte (`CuitCarteForge`), ce qui n est pas sur entre deux cuissons
 // concurrentes d un meme processus. Retrait : le jour ou la cuisson passe ses reglages en
-// parametre (les cinq reglages) et ou les tables deviennent des accesseurs.
+// parametre (les quatre reglages) et ou les tables deviennent des accesseurs.
 var varsExporteesAdmises = map[string]string{
 	"libs/himap/himap.CartesForge":              "table de cartes, lue seule (2026-11-08)",
 	"libs/himap/himap.TypesVolumesDeMort":       "table de types de volumes, lue seule (2026-11-08)",
 	"libs/himap/himap.ModulesDesEquipements":    "liste de modules, lue seule (2026-11-08)",
 	"libs/himap/himap.StylesFond":               "liste de styles, lue seule (2026-11-08)",
 	"libs/himap/himap.LumiereRendu":             "reglage de rendu, pose par la cuisson (2026-11-08)",
-	"libs/himap/himap.NiveauHautNavmesh":        "reglage de rendu, pose par la cuisson (2026-11-08)",
 	"libs/himap/himap.MargeSolVuDuDessousCarte": "reglage de rendu, pose par la cuisson (2026-11-08)",
 	"libs/himap/himap.SeuilSubstitution":        "reglage de rendu, pose par la cuisson (2026-11-08)",
 	"libs/himap/himap.SeuilCouvertureCarte":     "reglage de rendu, pose par la cuisson (2026-11-08)",

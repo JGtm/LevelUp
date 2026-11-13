@@ -25,6 +25,7 @@
 import type { ReplayVehicleAim, ReplayVehicleRide } from '@/lib/api/types'
 
 import { headingTowardNext } from './headingInterp'
+import type { QuarterTurns } from '@/lib/replay/orientation'
 import { lastIndexAt } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import {
@@ -157,14 +158,15 @@ export function vehicleOccupantAimAt(
   ride: ReplayVehicleRide,
   frame: number,
   frameMs: number,
+  turns: QuarterTurns = 0,
 ): VehicleOccupantAim {
   const read = vehicleRideAimReading(ride, frame, frameMs)
   if (read && read.h !== undefined) {
-    return { ang: vehicleAimAngle(read.h), pitchDeg: read.p ?? 0, measured: true }
+    return { ang: vehicleAimAngle(read.h, turns), pitchDeg: read.p ?? 0, measured: true }
   }
   // À PLAT EN REPLI, et c'est une mesure : le cap du châssis est la direction d'un DÉPLACEMENT,
   // qui est horizontal — lui prêter une élévation inventerait un second angle.
-  return { ang: vehicleAimAngle(vehicleHeadingAt(track, frame, frameMs)), pitchDeg: 0, measured: false }
+  return { ang: vehicleAimAngle(vehicleHeadingAt(track, frame, frameMs), turns), pitchDeg: 0, measured: false }
 }
 /**
  * vehicleChassisHeadingAt — LE CAP AUQUEL LE CHÂSSIS SE DESSINE : la visée du CONDUCTEUR sur les

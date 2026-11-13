@@ -58,7 +58,8 @@ import {
   type BornesDeLegende,
   type EtatDuPlan,
 } from './plan.logic'
-import { useTacticalMapBackgroundFrame } from './queries'
+import { useMapViewPreferences } from '@/features/match-replay/settings/useMapViewPreferences'
+import { useTacticalMapBackgroundFrame, useTacticalMapBackgroundPlan } from './queries'
 import { aspectDuPlan, ESTOMPE } from './tacticalLecture.logic'
 import { AvisSurLeFond, IndicateurDeLecture } from './TacticalPlanAvis'
 import { CalqueDuPlan, EtiquetteDeZone } from './TacticalPlanCalque'
@@ -162,9 +163,16 @@ export function TacticalPlanCard({
 }: TacticalPlanCardProps) {
   // LE CADRE DU FOND EST LE REPÈRE, quand il existe. Sans lecture, il donne encore le rapport.
   const cadreFond = useTacticalMapBackgroundFrame(playerSlug, mapId)
+  // L'ORIENTATION ET LE PLAN DES MURS SONT CEUX DU REJEU 2D (mêmes préférences, lues seulement) : une carte
+  // tournée dans le rejeu l'est ici, et son plan des murs s'y allume et s'éteint avec lui.
+  const { turns, showWallPlan } = useMapViewPreferences(mapId)
+  const planDesMurs = useTacticalMapBackgroundPlan(playerSlug, mapId)
   const lue = etat === 'pret' || etat === 'relecture' ? lecture : undefined
-  const repere = useMemo(() => (lue ? repereDuPlan(cadreFond, lue.bornes, lue.pas_m) : null), [cadreFond, lue])
-  const { scene, zoom, fenetre } = useCadrageDuPlan(repere, cadreFond)
+  const repere = useMemo(
+    () => (lue ? repereDuPlan(cadreFond, lue.bornes, lue.pas_m, turns) : null),
+    [cadreFond, lue, turns],
+  )
+  const { scene, zoom, fenetre } = useCadrageDuPlan(repere, cadreFond, turns)
   const peinture = usePeinture(t, locale, question, lue, repere)
   const zones = useMemo(() => normalizeCalloutZones(lue?.zones), [lue?.zones])
   const zonesPeintes = reglages.zonesVisibles ? zones : AUCUNE_ZONE
@@ -219,10 +227,10 @@ export function TacticalPlanCard({
           <TacticalPlanFond
             playerSlug={playerSlug}
             mapId={mapId}
-            aspect={aspectDuPlan(cadreFond, repere)}
+            aspect={aspectDuPlan(cadreFond, repere, turns)}
             hauteurMax={hauteurMax}
             cadreRef={cadreRef}
-            cadrage={cadrageDuFond(scene, fenetre)}
+            cadrage={cadrageDuFond(scene, fenetre, turns)}
           >
             {lue && raisonVide === null && (
               <CalqueDuPlan
@@ -232,6 +240,7 @@ export function TacticalPlanCard({
                 zoom={zoom}
                 ramp={peinture.ramp}
                 zones={zonesPeintes}
+                plan={showWallPlan ? planDesMurs : null}
                 locale={locale}
                 selected={selected}
                 onPointSelect={onPointSelect}

@@ -12,6 +12,11 @@
 //  3. la projection COPIE effectivement — un document stocke rempli de valeurs distinctes
 //     se serialise a l'octet pres comme sa projection, une fois retires les champs de la
 //     liste. Un champ oublie dans un `to*` est attrape ici, pas en production.
+//
+// APLATISSEMENT. Le document stocke du fond de carte est `mapfondsidecar.MapBackground`, qui
+// EMBARQUE le calage du decodeur (`replay.MapBackground`) sans tag json : comme `encoding/json`,
+// le parcours et les boucles de champs lisent les champs de l'embarque comme les siens
+// (`champsSerialises`), si bien que le plan et le calage ont la meme source, un seul fichier.
 package replayview_test
 
 import (
@@ -25,6 +30,7 @@ import (
 
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/i18n"
+	"levelup/go-api/internal/mapfondsidecar"
 	"levelup/go-api/internal/replaytext"
 	"levelup/go-api/internal/service/replayview"
 
@@ -63,7 +69,7 @@ var racines = []struct {
 	servi  reflect.Type
 }{
 	{"ReplayDocument", reflect.TypeOf(replay.ReplayDocument{}), reflect.TypeOf(replaydoc.ReplayDocument{})},
-	{"MapBackground", reflect.TypeOf(replay.MapBackground{}), reflect.TypeOf(replaydoc.MapBackground{})},
+	{"MapBackground", reflect.TypeOf(mapfondsidecar.MapBackground{}), reflect.TypeOf(replaydoc.MapBackground{})},
 	{"MapCalloutsEntry", reflect.TypeOf(replay.MapCalloutsEntry{}), reflect.TypeOf(replaydoc.MapCalloutsEntry{})},
 }
 
@@ -87,11 +93,7 @@ func TestChaqueChampStockeAUneDecision(t *testing.T) {
 				"typesNonServis avec sa date et son motif", ts.Name())
 			return
 		}
-		for i := 0; i < ts.NumField(); i++ {
-			f := ts.Field(i)
-			if f.PkgPath != "" {
-				continue // champ non exporte : jamais serialise
-			}
+		for _, f := range champsSerialises(ts) {
 			cle := ts.Name() + "." + f.Name
 			vus[cle] = true
 			if motif, exclu := champsNonServis[cle]; exclu {
@@ -136,11 +138,7 @@ func TestChaqueChampServiAUneSource(t *testing.T) {
 				"rien ne remplit", ts.Name())
 			return
 		}
-		for i := 0; i < ts.NumField(); i++ {
-			f := ts.Field(i)
-			if f.PkgPath != "" {
-				continue
-			}
+		for _, f := range champsSerialises(ts) {
 			if _, ok := source.FieldByName(f.Name); !ok {
 				t.Errorf("%s.%s est decrit par le contrat et n'a AUCUNE source dans l'artefact — "+
 					"une promesse morte que le client lira comme optionnelle", ts.Name(), f.Name)
@@ -191,7 +189,7 @@ func comparerLesTroisRacines(t *testing.T, f *remplisseur) {
 	f.remplir(co, 0)
 
 	stocke := doc.Interface().(replay.ReplayDocument)
-	fond := bg.Interface().(replay.MapBackground)
+	fond := bg.Interface().(mapfondsidecar.MapBackground)
 	zones := co.Interface().(replay.MapCalloutsEntry)
 
 	comparer(t, "ReplayDocument", stocke, replayview.FromArtifact(stocke), racines[0].stocke)
@@ -276,16 +274,41 @@ func parcourir(racines []reflect.Type, exclus map[string]string, visite func(ref
 		if _, exclu := exclus[t.Name()]; exclu {
 			return // type non servi : ce qu'il porte ne l'est pas davantage
 		}
-		for i := 0; i < t.NumField(); i++ {
-			if t.Field(i).PkgPath != "" {
-				continue // champ non exporte : jamais serialise
-			}
-			walk(t.Field(i).Type)
+		for _, f := range champsSerialises(t) {
+			walk(f.Type)
 		}
 	}
 	for _, r := range racines {
 		walk(r)
 	}
+}
+
+// champsSerialises rend les champs que `encoding/json` ecrit pour une struct : les champs
+// exportes, ceux d'un champ embarque sans tag json REMONTES a plat a sa place. Un embarque
+// n'est donc jamais un type a part : ses champs sont ceux de l'objet.
+func champsSerialises(t reflect.Type) []reflect.StructField {
+	var out []reflect.StructField
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		if f.PkgPath != "" && !f.Anonymous {
+			continue // champ non exporte : jamais serialise
+		}
+		if f.Anonymous && f.Tag.Get("json") == "" {
+			et := f.Type
+			if et.Kind() == reflect.Pointer {
+				et = et.Elem()
+			}
+			if et.Kind() == reflect.Struct {
+				out = append(out, champsSerialises(et)...)
+				continue
+			}
+		}
+		if f.PkgPath != "" {
+			continue
+		}
+		out = append(out, f)
+	}
+	return out
 }
 
 // indexerTypes nomme chaque type struct atteignable depuis les racines.
@@ -340,11 +363,7 @@ func elaguer(node any, t reflect.Type) any {
 		if !ok {
 			return node
 		}
-		for i := 0; i < t.NumField(); i++ {
-			f := t.Field(i)
-			if f.PkgPath != "" {
-				continue
-			}
+		for _, f := range champsSerialises(t) {
 			nom := nomJSON(f)
 			if nom == "" {
 				continue

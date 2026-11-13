@@ -47,17 +47,22 @@ import { useReplayDrag } from '@/features/match-replay/hooks/useReplayDrag'
 import { useReplayWheelZoom } from '@/features/match-replay/hooks/useReplayWheelZoom'
 import { useReplayZoom } from '@/features/match-replay/hooks/useReplayZoom'
 import { useReplayZoomKeys } from '@/features/match-replay/hooks/useReplayZoomKeys'
+import { useMapViewPreferences } from '@/features/match-replay/settings/useMapViewPreferences'
 import { ReplayZoomControl } from '@/features/match-replay/ui/ReplayZoomControl'
 import type { ReplayBounds } from '@/lib/api/types'
-import { flouDeLaChaleur, lisserLaGrille, peindreLaChaleurLissee } from '@/lib/replay/chaleurLissee'
+import { lisserLaGrille } from '@/lib/replay/chaleurLissee'
 import { heatRamp } from '@/lib/replay/heatPaint'
+import { orientBounds, pivotOf } from '@/lib/replay/orientation'
 import { visibleBounds } from '@/lib/replay/replayLogic'
+import { normalizeWallPlan } from '@/lib/replay/wallPlan'
+import { useZoomResetOnTurns } from '@/lib/replay/useZoomResetOnTurns'
 import { useReplayMapBackground, useReplayMapImage } from '@/lib/replay/queries'
 import { useTitleSlug } from '@/lib/title-routing'
 
 import { hasPositions } from './blockPredicates'
 
 import { buildPositionsGrid, hasTeamSplit, mapFrame } from './_positionsHeat'
+import { peindreLesPositions } from './_positionsPaint'
 import { useMatchView } from './queries'
 
 /**
@@ -149,7 +154,7 @@ export function MatchPositionsHeatmap({
   // LA SCÈNE DU CADRAGE EST LE CADRE DU FOND, en unités monde : c'est le seul repère où le
   // calque et son image coïncident (cf. `MapFrame`). Y croît vers le HAUT — `originY` est le
   // coin haut-gauche, donc la borne haute.
-  const scene: ReplayBounds = useMemo(
+  const monde: ReplayBounds = useMemo(
     () =>
       frame
         ? {
@@ -163,6 +168,13 @@ export function MatchPositionsHeatmap({
         : { minX: 0, maxX: 1, minY: 0, maxY: 1, minZ: 0, maxZ: 0 },
     [frame],
   )
+  // L'ORIENTATION ET LE PLAN DES MURS SONT CEUX DU REJEU 2D (mêmes préférences, lues seulement, aucun
+  // réglage propre à ce bloc) : une carte tournée au rejeu l'est ici. La scène du zoom est celle de la
+  // carte TOURNÉE, et le cadre prend son rapport (largeur et hauteur échangées pour un quart de tour).
+  const { turns, showWallPlan } = useMapViewPreferences(useMatchView(playerSlug, matchId).data?.header.map_id)
+  const plan = useMemo(() => (showWallPlan ? normalizeWallPlan(background?.plan) : null), [showWallPlan, background])
+  const scene: ReplayBounds = useMemo(() => orientBounds(monde, turns), [monde, turns])
+  const pivot = useMemo(() => pivotOf(monde), [monde])
 
   // LA TAILLE DE LA TOILE EST UN ÉTAT, et pas une lecture faite dans l'effet de tracé : le
   // glisser et la molette ont besoin du facteur pixels/mètre AU RENDU pour convertir un
@@ -186,6 +198,7 @@ export function MatchPositionsHeatmap({
   // Aucun n'a été modifié : ils ne connaissent qu'une scène, un cadrage et une toile, jamais le
   // rejeu lui-même. Le plan hérite donc du même comportement, aux mêmes paliers.
   const zoom = useReplayZoom(scene)
+  useZoomResetOnTurns(turns, zoom.reset)
   const bounds = useMemo(
     () => visibleBounds(scene, zoom.level, zoom.center.x, zoom.center.y),
     [scene, zoom.level, zoom.center],
@@ -210,38 +223,10 @@ export function MatchPositionsHeatmap({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.clearRect(0, 0, width, height)
-    // LE FOND ET LE CALQUE PARTAGENT LE MÊME CADRE, ET C'EST LA FENÊTRE VISIBLE. À 1x elle vaut
-    // la scène et l'on retrouve exactement le tracé d'avant le zoom ; au-delà, l'image est
-    // découpée à la source (la portion monde visible, convertie en pixels d'image) et le calque
-    // reçoit la MÊME origine et la MÊME échelle. Les deux ne peuvent donc pas se désaligner.
-    const k = width / Math.max(bounds.maxX - bounds.minX, 1e-6)
-    const pxParM = image.width / Math.max(frame.widthM, 1e-6)
-    ctx.drawImage(
-      image,
-      (bounds.minX - frame.originX) * pxParM,
-      (frame.originY - bounds.maxY) * pxParM,
-      (bounds.maxX - bounds.minX) * pxParM,
-      (bounds.maxY - bounds.minY) * pxParM,
-      0,
-      0,
-      width,
-      height,
-    )
-    if (!lissee) return
-    peindreLaChaleurLissee(
-      ctx,
-      lissee,
-      {
-        topLeftWorld: {
-          x: (frame.originX - bounds.minX) * k,
-          y: (bounds.maxY - frame.originY) * k,
-        },
-        scale: k,
-      },
-      ramp,
-      flouDeLaChaleur(grid.cell, k),
-    )
-  }, [grid, lissee, frame, image, ramp, bounds])
+    peindreLesPositions(ctx, width, height, {
+      frame, image, lissee, cell: grid.cell, ramp, bounds, turns, pivot, plan, ink: getComputedStyle(canvas).color,
+    })
+  }, [grid, lissee, frame, image, ramp, bounds, turns, pivot, plan])
 
   // Portes 1 à 3 : rien à montrer, et rien à promettre. La première est le prédicat que le
   // parent lit aussi pour poser (ou non) son titre de section.
@@ -286,8 +271,8 @@ export function MatchPositionsHeatmap({
         <div
           className="relative mx-auto w-full overflow-hidden rounded-md bg-muted"
           style={{
-            aspectRatio: `${frame.widthM} / ${frame.heightM}`,
-            maxWidth: `min(${PLAN_MAX_WIDTH_PCT}%, calc(${PLAN_MAX_HEIGHT_REM}rem * ${frame.widthM} / ${frame.heightM}))`,
+            aspectRatio: `${scene.maxX - scene.minX} / ${scene.maxY - scene.minY}`,
+            maxWidth: `min(${PLAN_MAX_WIDTH_PCT}%, calc(${PLAN_MAX_HEIGHT_REM}rem * ${scene.maxX - scene.minX} / ${scene.maxY - scene.minY}))`,
           }}
           data-testid="match-positions-frame"
         >

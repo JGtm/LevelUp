@@ -43,11 +43,13 @@ const TOUT_ALLUME: ReplayScene['toggles'] = {
   placements: true,
   killFx: true,
   modeObjectives: true,
+  wallPlan: true,
 }
 
 const TOUT_A_PEINDRE: ReplayScene['has'] = {
   background: true,
   floor: true,
+  wallPlan: true,
   heat: true,
   zoneNames: true,
   objectivesCooked: true,
@@ -95,6 +97,7 @@ function peints(s: ReplayScene, frame = 42, dpr = 2): string[] {
 const ORDRE_ATTENDU = [
   'fond-carte',
   'sol-forge',
+  'plan-murs',
   'chaleur',
   'zones-nommees',
   'objectifs-cuits',
@@ -123,7 +126,7 @@ const ORDRE_ATTENDU = [
 ] as const
 
 describe('sceneLayers — l’ordre de la scène', () => {
-  it('rend les vingt-sept calques, dans l’ordre attendu, sans doublon ni oubli', () => {
+  it('rend les vingt-huit calques, dans l’ordre attendu, sans doublon ni oubli', () => {
     const layers = sceneLayers(scene())
     expect(layers.map((l) => l.id)).toEqual([...ORDRE_ATTENDU])
     // La table de la source ne s'écarte pas de l'oracle : le second garde le premier.
@@ -184,6 +187,8 @@ describe('sceneLayers — chaque interrupteur du tiroir coupe SES calques, et eu
     // Les failles du translocateur suivent la bascule des poses : un seul geste les éteint.
     ['placements', ['poses-equipement', 'failles']],
     ['killFx', ['morts']],
+    // Le plan des murs a son interrupteur, et rien d'autre ne le coupe.
+    ['wallPlan', ['plan-murs']],
     // Trois calques pour UN objet (2026-09-18) : la géométrie cuite, l'état vivant des zones
     // et les pulses d'action. Les objets PORTÉS (drapeaux, couronne, crâne, bombe) ne sont
     // PAS dans cette liste : ils ont leur propre bascule, et le « exactement » le prouve.
@@ -208,6 +213,7 @@ describe('sceneLayers — chaque interrupteur du tiroir coupe SES calques, et eu
 describe('sceneLayers — un calque sans matière ne s’ouvre pas', () => {
   /** Ce que chaque absence de matière doit retirer, exactement. */
   const SANS: Array<[keyof ReplayScene['has'], ReplayLayerId[]]> = [
+    ['wallPlan', ['plan-murs']],
     ['heat', ['chaleur']],
     ['zoneNames', ['zones-nommees']],
     ['objectivesCooked', ['objectifs-cuits']],

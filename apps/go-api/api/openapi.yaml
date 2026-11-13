@@ -18386,6 +18386,8 @@ components:
             - "null"
         module:
           type: string
+        plan:
+          $ref: '#/components/schemas/MapBackgroundPlan'
         schemaVersion:
           format: int64
           type: integer
@@ -18432,6 +18434,36 @@ components:
         - widthPx
         - heightPx
         - convention
+      type: object
+    MapBackgroundPlan:
+      additionalProperties: false
+      properties:
+        edges:
+          items:
+            items:
+              format: double
+              type: number
+            maxItems: 4
+            minItems: 4
+            type:
+              - array
+              - "null"
+          type:
+            - array
+            - "null"
+        faces:
+          format: int64
+          type: integer
+        source:
+          type: string
+        vertices:
+          format: int64
+          type: integer
+      required:
+        - source
+        - vertices
+        - faces
+        - edges
       type: object
     MapBackgroundStats:
       additionalProperties: false

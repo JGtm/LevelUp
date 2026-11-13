@@ -109,6 +109,21 @@ describe('useReplayFollow', () => {
     expect(zoom.focusOn).not.toHaveBeenCalled()
   })
 
+  it('un changement d’orientation redemande la position COURANTE, sans attendre que le joueur bouge', () => {
+    const zoom = fakeZoom()
+    const frameRef = { current: 20 }
+    const { rerender } = renderHook(
+      ({ turns }) => useReplayFollow({ doc: DOC, player: PLAYER, enabled: true, frameRef, zoom, turns }),
+      { initialProps: { turns: 0 as 0 | 1 } },
+    )
+    expect(zoom.focusOn).toHaveBeenCalledTimes(1)
+    tick()
+    expect(zoom.focusOn).toHaveBeenCalledTimes(1)
+    rerender({ turns: 1 })
+    expect(zoom.focusOn).toHaveBeenCalledTimes(2)
+    expect(zoom.focusOn).toHaveBeenLastCalledWith({ x: 20, y: 10 }, 2)
+  })
+
   it('l’extinction arrête la boucle', () => {
     const zoom = fakeZoom()
     const frameRef = { current: 20 }

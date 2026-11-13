@@ -10,6 +10,14 @@ import type { BornesMonde, CelluleTactique, EchelleTactique } from '@/lib/api/ty
 import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
 import type { ProjectionMonde } from '@/lib/replay/calloutsPaint'
+import {
+  normalizeTurns,
+  orientAbout,
+  orientBoundsAbout,
+  pivotOf,
+  type QuarterTurns,
+  type ViewOrientation,
+} from '@/lib/replay/orientation'
 import { buildTacticalGrid, type MapFrame, type TacticalGrid } from '@/lib/replay/heatPaint'
 import type { TacticalText } from './i18n'
 
@@ -212,6 +220,13 @@ function formatDistanceM(metres: number, locale: Locale): string {
  * Il vient du CADRE DU FOND quand la carte en a un (le cas normal : c'est lui qui aligne le
  * calque sur l'image), et de la boîte englobante des cellules sinon — une carte sans fond
  * figé n'affiche aucune image, le calque s'y lit seul et son cadrage propre reste le bon.
+ *
+ * LA CARTE TOURNÉE (`orient`, l'orientation retenue pour la carte — la même que le rejeu 2D) : le
+ * rectangle ci-dessous est alors celui de la carte APRÈS rotation, le repère dans lequel le zoom,
+ * la fenêtre, les cellules et les gestes raisonnent ; `orient` garde le pivot (le centre du cadre du
+ * monde) et le nombre de quarts de tour pour tourner une position monde AVANT de la projeter
+ * (`projectionDuPlan`, `adresseDansLeRepere`) et défaire la rotation d'un clic (`versLeMonde`).
+ * Absent = la carte n'est pas tournée.
  */
 export interface RepereTactique {
   minX: number
@@ -220,31 +235,62 @@ export interface RepereTactique {
   maxY: number
   minY: number
   pasM: number
+  orient?: ViewOrientation
+}
+
+/**
+ * orienterLeRepere tourne le cadre d'un repère de `turns` quarts de tour autour de son centre :
+ * même centre, largeur et hauteur échangées pour un quart ou trois quarts de tour. À 0 quart de tour
+ * le repère est rendu tel quel, sans champ de plus.
+ */
+function orienterLeRepere(repere: RepereTactique, turns: QuarterTurns): RepereTactique {
+  if (turns === 0) return repere
+  const pivot = pivotOf({ minX: repere.minX, maxX: repere.maxX, minY: repere.minY, maxY: repere.maxY })
+  const b = orientBoundsAbout({ minX: repere.minX, maxX: repere.maxX, minY: repere.minY, maxY: repere.maxY }, turns, pivot)
+  return { minX: b.minX, maxX: b.maxX, minY: b.minY, maxY: b.maxY, pasM: repere.pasM, orient: { turns, pivot } }
+}
+
+/**
+ * versLeMonde défait la rotation de la carte pour un point du repère tourné (un clic, converti par
+ * `pointDuClic`) : la position MONDE d'origine, celle que le serveur adresse. Sans orientation, le
+ * point est rendu tel quel.
+ */
+export function versLeMonde(repere: RepereTactique, p: { x: number; y: number }): { x: number; y: number } {
+  const o = repere.orient
+  return o ? orientAbout(p, normalizeTurns(4 - o.turns), o.pivot) : p
 }
 
 /**
  * repereDuPlan — le repère de projection : le cadre du fond s'il est connu, la boîte
- * englobante des cellules sinon. `null` quand ni l'un ni l'autre n'est exploitable.
+ * englobante des cellules sinon. `null` quand ni l'un ni l'autre n'est exploitable. `turns` est
+ * l'orientation de la carte (0 par défaut) : le repère rendu est celui de la carte tournée.
  */
 export function repereDuPlan(
   fond: MapFrame | null,
   bornes: BornesMonde,
   pasM: number,
+  turns: QuarterTurns = 0,
 ): RepereTactique | null {
   if (!(pasM > 0)) return null
   if (fond && fond.widthM > 0 && fond.heightM > 0) {
-    return {
-      minX: fond.originX,
-      maxX: fond.originX + fond.widthM,
-      maxY: fond.originY,
-      minY: fond.originY - fond.heightM,
-      pasM,
-    }
+    return orienterLeRepere(
+      {
+        minX: fond.originX,
+        maxX: fond.originX + fond.widthM,
+        maxY: fond.originY,
+        minY: fond.originY - fond.heightM,
+        pasM,
+      },
+      turns,
+    )
   }
   const largeur = bornes.max_x - bornes.min_x
   const hauteur = bornes.max_y - bornes.min_y
   if (!bornes.valide || !(largeur > 0) || !(hauteur > 0)) return null
-  return { minX: bornes.min_x, maxX: bornes.max_x, maxY: bornes.max_y, minY: bornes.min_y, pasM }
+  return orienterLeRepere(
+    { minX: bornes.min_x, maxX: bornes.max_x, maxY: bornes.max_y, minY: bornes.min_y, pasM },
+    turns,
+  )
 }
 
 /** Le rapport largeur/hauteur du repère — celui que prend le cadre de la carte. */
@@ -266,11 +312,12 @@ function adresseDansLeRepere(
   lig: number,
   repere: RepereTactique,
 ): { col: number; row: number } {
-  const centreX = (col + 0.5) * repere.pasM
-  const centreY = (lig + 0.5) * repere.pasM
+  const centre = { x: (col + 0.5) * repere.pasM, y: (lig + 0.5) * repere.pasM }
+  // La carte tournée : le centre MONDE de la cellule tourne, puis s'adresse dans le cadre tourné.
+  const c = repere.orient ? orientAbout(centre, repere.orient.turns, repere.orient.pivot) : centre
   return {
-    col: Math.floor((centreX - repere.minX) / repere.pasM),
-    row: Math.floor((repere.maxY - centreY) / repere.pasM),
+    col: Math.floor((c.x - repere.minX) / repere.pasM),
+    row: Math.floor((repere.maxY - c.y) / repere.pasM),
   }
 }
 
@@ -347,12 +394,18 @@ export function projectionDuPlan(
 ): ProjectionMonde | null {
   const vue = vueDuPlan(repere, canvasWidth, fenetre)
   if (!vue) return null
-  return (p) => ({ x: (p.x - fenetre.minX) * vue.scale, y: (fenetre.maxY - p.y) * vue.scale })
+  const o = repere.orient
+  return (p) => {
+    // La carte tournée : la position monde tourne AVANT d'être projetée dans la fenêtre.
+    const q = o ? orientAbout(p, o.turns, o.pivot) : p
+    return { x: (q.x - fenetre.minX) * vue.scale, y: (fenetre.maxY - q.y) * vue.scale }
+  }
 }
 
 /**
- * pointDuClic — le point MONDE sous un clic sur le canvas (la fenêtre visible, Y inversé), ou
- * `null` si le clic tombe hors du canvas.
+ * pointDuClic — le point sous un clic sur le canvas (la fenêtre visible, Y inversé), ou `null` si
+ * le clic tombe hors du canvas. Il est dans le repère de la FENÊTRE — celui de la carte tournée : un
+ * appelant qui veut la position monde passe par `versLeMonde`.
  */
 export function pointDuClic(
   clickX: number,
@@ -383,8 +436,9 @@ export function celluleDuClic(
   repere: RepereTactique,
   fenetre: FenetreDuPlan = repere,
 ): { col: number; row: number } | null {
-  const point = pointDuClic(clickX, clickY, canvas, fenetre)
-  if (!point) return null
+  const clic = pointDuClic(clickX, clickY, canvas, fenetre)
+  if (!clic) return null
+  const point = versLeMonde(repere, clic)
   return { col: Math.floor(point.x / repere.pasM), row: Math.floor(point.y / repere.pasM) }
 }
 

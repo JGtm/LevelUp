@@ -26,6 +26,8 @@ import type { XY } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { edgeMarkFor, OFFSCREEN_MARGIN_PX, type EdgeMark } from '../model/edgeClamp'
 import { vehicleChassisHeadingAt, vehicleOccupantAimAt } from '../model/vehiclesAim'
+import type { QuarterTurns } from '@/lib/replay/orientation'
+import { turnsOfView } from '../model/replayView'
 import {
   vehicleActiveRides,
   vehicleDestructionFrame,
@@ -69,6 +71,12 @@ export interface VehicleTime {
    * document, sinon le pas historique. Absent = `frameMs`.
    */
   durationFrameMs?: number
+  /**
+   * La rotation de la carte (quarts de tour horaires) : le sprite, le cône et le montage des
+   * armes suivent le terrain. Posée par `drawVehiclesLayer` d'après le cadrage (`view.orient`),
+   * jamais par l'appelant : une seule source. Absent = 0.
+   */
+  turns?: QuarterTurns
 }
 
 /**
@@ -399,7 +407,7 @@ function drawVehicleAimCones(
     // couleur ne se dessine pas). Un occupant non résolu ne reçoit donc aucun cône.
     const color = vehicleRideColor(ride, time.frame, style)
     if (!color) continue
-    const aim = vehicleOccupantAimAt(track, ride, time.frame, time.durationFrameMs ?? time.frameMs)
+    const aim = vehicleOccupantAimAt(track, ride, time.frame, time.durationFrameMs ?? time.frameMs, time.turns ?? 0)
     drawAimSector(ctx, c, aim.ang, time.k, color, { lengthScale: aimLengthScale(aim.pitchDeg) })
   }
 }
@@ -505,10 +513,13 @@ export function drawVehiclesLayer(
   ctx: CanvasRenderingContext2D,
   tracks: readonly ReplayVehicleTrackReady[],
   view: PlacementView,
-  time: VehicleTime,
+  frameTime: VehicleTime,
   style: VehicleStyle,
 ): void {
   if (tracks.length === 0 || view.width === 0) return
+  // LA ROTATION DE LA CARTE SE LIT SUR LE CADRAGE, une fois, et voyage avec l'instant.
+  const turns = turnsOfView(view)
+  const time: VehicleTime = turns === 0 ? frameTime : { ...frameTime, turns }
   // L'ÉCHELLE DU CADRAGE, LUE UNE FOIS PAR IMAGE : c'est elle qui donne aux véhicules leur
   // taille RÉELLE quand elle le permet (cf. `lib/replay/screenSizes.ts`). Elle ne dépend que de la
   // vue, jamais du véhicule — la relire par véhicule serait un doublon de travail.
@@ -561,7 +572,7 @@ export function drawVehiclesLayer(
           const size = style.sizeOf(dessin)
           const sprite = size ? style.spriteOf(dessin, color) : null
           if (size && sprite) {
-            const angle = vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame, time.durationFrameMs ?? time.frameMs))
+            const angle = vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame, time.durationFrameMs ?? time.frameMs), time.turns ?? 0)
             const scaleRatio = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, echelle, ceilPx)
             ctx.globalAlpha = 1
             drawRotatedSprite(ctx, sprite, c.x, c.y, angle, scaleRatio * time.k)
@@ -573,7 +584,7 @@ export function drawVehiclesLayer(
             // l'emporte d'elle-même : seule la table d'assets aura changé.
             const demi = vehicleTurretHalfPx(echelle)
             drawMapElementTurret(ctx, c, color, time.k,
-              vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame, time.durationFrameMs ?? time.frameMs)), demi)
+              vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame, time.durationFrameMs ?? time.frameMs), time.turns ?? 0), demi)
             edgePx = demi * time.k
           }
           // Sinon : image ou manifeste pas encore chargés — rien ne remplace le sprite (même

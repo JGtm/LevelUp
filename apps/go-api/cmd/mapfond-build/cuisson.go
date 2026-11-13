@@ -11,8 +11,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"image"
 	"image/draw"
@@ -24,12 +22,12 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/mapfondsidecar"
+
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 
 	"github.com/JGtm/halo-infinite-map-images/himap"
-
-	"github.com/JGtm/halo-infinite-files-reader/hinavmesh"
-	"github.com/JGtm/halo-infinite-files-reader/mapvar"
 )
 
 // sourceCuisson documente la chaîne dans chaque sidecar.
@@ -44,6 +42,8 @@ type cible struct {
 	noms        []string
 	ancres      [][3]float64
 	ancreConnue map[[3]float64]bool
+	// plan : plan des murs tiré du maillage de navigation, publié au sidecar. Nil sans maillage.
+	plan *replaydoc.MapBackgroundPlan
 }
 
 // ajouteNom ajoute un nom affiche s'il est non vide et pas deja present.
@@ -78,48 +78,6 @@ type bilanAsset struct {
 	// `moduleGeometrie` l'y envoie. Un module sans sbsp qui atterrit ici est donc désormais une
 	// carte dont on n'a pas encore trouvé où la géométrie est rangée, pas une fatalité.
 	NonCuisinable bool
-}
-
-func (e *environnement) cuitNatives(ctx context.Context) []bilanAsset {
-	var out []bilanAsset
-	for _, c := range e.ciblesNatives() {
-		rendu, bilan, err := himap.CuitCarteNative(ctx, himap.OptionsCuisson{
-			RacineDeploy:           e.racineJeu,
-			CheminModule:           e.moduleDeCuisson(c),
-			Ancres:                 c.ancres,
-			Echelle:                e.echelleDe(c.cle),
-			CibleCadrePx:           himap.CibleCadrePx,
-			EcreteToits:            e.ecreteToitsDe(c.cle),
-			PlafondArene:           e.plafondAreneDe(c.cle),
-			SansEau:                e.sansEauDe(c.cle),
-			SubstitutionSansPortee: e.substitutionSansPorteeDe(c.cle),
-			CombleTrous:            e.combleTrousDe(c.cle),
-			CombleZonesEntieres:    e.combleZonesEntieresDe(c.cle),
-			PlancherTranche:        e.plancherTrancheDe(c.cle),
-			PlafondTranche:         e.plafondTrancheDe(c.cle),
-			SeuilArete:             e.seuilAreteDe(c.cle),
-			ZonesNommees:           e.zonesNommeesDe(c.cle),
-			RogneAuxZones:          e.rogneAuxZonesDe(c.cle),
-			MargeZones:             e.margeZonesDe(c.cle),
-			BoiteUtile:             e.boiteUtileDe(c.cle),
-			// Le MEME reglage que sur le chemin Forge, et c est tout le point : il est declare
-			// pour toutes les cartes et n etait cable que la, donc sans effet et en silence sur
-			// une carte native.
-			RogneAuxComposantesAncrees: e.rogneAuxComposantesAncreesDe(c.cle),
-		})
-		if err != nil {
-			if errors.Is(err, himap.ErrAucunTagSbsp) {
-				slog.WarnContext(ctx, "carte non cuisinable", "err", err, "carte", c.cle)
-				out = append(out, bilanAsset{Cle: c.cle, Noms: c.noms, Err: err, NonCuisinable: true})
-				continue
-			}
-			slog.ErrorContext(ctx, "cuisson", "err", err, "carte", c.cle)
-			out = append(out, bilanAsset{Cle: c.cle, Noms: c.noms, Err: err})
-			continue
-		}
-		out = append(out, e.publie(ctx, c, rendu, bilan))
-	}
-	return out
 }
 
 // ciblesNatives regroupe les entrées du catalogue par dossier de module installé.
@@ -188,132 +146,6 @@ func (e *environnement) ciblesNatives() []cible {
 	return out
 }
 
-func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
-	var out []bilanAsset
-	for _, carte := range himap.CartesForge {
-		// La cle de selection ET de publication d'une carte Forge est son map_id : un
-		// canevas porte des dizaines de cartes, il ne peut keyer ni l'une ni l'autre.
-		if !e.retenue(carte.MapID) {
-			continue
-		}
-		c, objets, err := e.cibleForge(carte)
-		if err != nil {
-			slog.ErrorContext(ctx, "carte Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
-			out = append(out, bilanAsset{Cle: carte.MapID, Noms: []string{carte.Nom}, Err: err})
-			continue
-		}
-		if e.sourceNavmeshDe(carte.MapID) {
-			rendu, bilan, err := e.cuitDepuisNavmesh(ctx, carte, c)
-			if err != nil {
-				slog.ErrorContext(ctx, "cuisson depuis le navmesh", "err", err, "carte", carte.Nom)
-				out = append(out, bilanAsset{Cle: carte.MapID, Noms: c.noms, Err: err})
-				continue
-			}
-			out = append(out, e.publie(ctx, c, rendu, bilan))
-			continue
-		}
-		var navRef *hinavmesh.Maillage
-		if e.navmeshReferenceDe(carte.MapID) {
-			m, errNav := e.chargeNavmesh(carte)
-			if errNav != nil {
-				slog.WarnContext(ctx, "maillage de navigation indisponible, reference laissee aux ancres", "err", errNav, "carte", carte.Nom)
-			} else {
-				navRef = m
-			}
-		}
-		rogneAlt, seuilAlt, margeAlt := e.rogneAuxAltitudesProchesDe(carte.MapID)
-		posJouees, rayonPos := e.positionsJoueesDe(carte.MapID)
-		rendu, bilan, err := himap.CuitCarteForge(ctx, himap.OptionsCuissonForge{
-			NavmeshReference:    navRef,
-			RogneAuNavmesh:      e.rogneAuNavmeshDe(carte.MapID),
-			ToleranceNavmesh:    e.toleranceNavmeshDe(carte.MapID),
-			RacineDeploy:        e.racineJeu,
-			Objets:              objets,
-			Ancres:              c.ancres,
-			CheminModuleCanevas: himap.CheminCanevasForge(carte),
-			Cle:                 carte.MapID,
-			Echelle:             e.echelleDe(carte.MapID),
-			CibleCadrePx:        himap.CibleCadrePx,
-			// Les memes leviers que la chaine native : jusqu au 2026-08-27 une carte Forge
-			// n en recevait aucun, et un reglage declare pour elle etait silencieusement
-			// ignore — trois cuissons d Isolation a trois plafonds ont rendu le MEME octet.
-			EcreteToits:                e.ecreteToitsDe(carte.MapID),
-			PlafondArene:               e.plafondAreneDe(carte.MapID),
-			SubstitutionSansPortee:     e.substitutionSansPorteeDe(carte.MapID),
-			BoiteUtile:                 e.boiteUtileDe(carte.MapID),
-			RogneAuxVolumesDeMort:      e.rogneAuxVolumesDeMortDe(carte.MapID),
-			TypesExclus:                e.typesExclusDe(carte.MapID),
-			MinceurMin:                 e.minceurMinDe(carte.MapID),
-			SolVuDuDessous:             e.solVuDuDessousDe(carte.MapID),
-			PlafondObjets:              e.plafondObjetsDe(carte.MapID),
-			DrapeauxExclus:             e.drapeauxExclusDe(carte.MapID),
-			PlancherTranche:            e.plancherTrancheDe(carte.MapID),
-			PlafondTranche:             e.plafondTrancheDe(carte.MapID),
-			DessineCanevas:             e.dessineCanevasDe(carte.MapID),
-			SeuilArete:                 e.seuilAreteDe(carte.MapID),
-			RogneAuxZones:              e.rogneAuxZonesDe(carte.MapID),
-			MargeZones:                 e.margeZonesDe(carte.MapID),
-			CombleTrous:                e.combleTrousDe(carte.MapID),
-			CombleAuMaillage:           e.combleAuMaillageDe(carte.MapID),
-			RogneAuxComposantesAncrees: e.rogneAuxComposantesAncreesDe(carte.MapID),
-			CadreAuxZones:              e.cadreAuxZonesDe(carte.MapID),
-			CadreAuxAncres:             e.cadreAuxAncresDe(carte.MapID),
-			MargeAncres:                e.margeAncresDe(carte.MapID),
-			MaillageNiveauHaut:         e.maillageNiveauHautDe(carte.MapID),
-			SansSubstitution:           e.sansSubstitutionDe(carte.MapID),
-			SeuilSubstitution:          e.seuilSubstitutionDe(carte.MapID),
-			SeuilCouverture:            e.seuilCouvertureDe(carte.MapID),
-			MargeNavmeshCarte:          e.margeNavmeshDe(carte.MapID),
-			MargeSolBas:                e.margeSolBasDe(carte.MapID),
-			PositionsJouees:            posJouees,
-			RayonPositions:             rayonPos,
-			SeuilRecollement:           e.seuilRecollementDe(carte.MapID),
-			RogneAuxAltitudesProches:   rogneAlt,
-			SeuilAltitude:              seuilAlt,
-			MargeAltitude:              margeAlt,
-		})
-		if err != nil {
-			slog.ErrorContext(ctx, "cuisson Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
-			out = append(out, bilanAsset{Cle: carte.MapID, Noms: c.noms, Err: err})
-			continue
-		}
-		out = append(out, e.publie(ctx, c, rendu, bilan))
-	}
-	return out
-}
-
-// cibleForge lit le .mvar d'une carte Forge et VÉRIFIE sa jointure au catalogue par le compte
-// d'objets — sans quoi on cuirait la carte d'une autre.
-func (e *environnement) cibleForge(carte himap.CarteForge) (cible, []mapvar.Object, error) {
-	entree, err := e.catalogue.Lookup(carte.MapID)
-	if err != nil {
-		return cible{}, nil, err
-	}
-	chemin := filepath.Join(e.repoRoot, himap.DepotVariantesCarte, carte.FichierMvar)
-	brut, err := os.ReadFile(chemin) //nolint:gosec // entrée d'outillage hors ligne
-	if err != nil {
-		return cible{}, nil, fmt.Errorf("variante de carte illisible (%s) : %w", chemin, err)
-	}
-	v, err := mapvar.Parse(brut)
-	if err != nil {
-		return cible{}, nil, fmt.Errorf("variante de carte invalide (%s) : %w", chemin, err)
-	}
-	if entree.ObjectsN != len(v.Objects) {
-		return cible{}, nil, fmt.Errorf("jointure catalogue<->mvar cassée : %d objets au catalogue, %d dans %s",
-			entree.ObjectsN, len(v.Objects), filepath.Base(chemin))
-	}
-	c := cible{cle: carte.MapID, sources: []string{entree.Module}}
-	c.ajouteNom(entree.PublicName)
-	// Le nom vient de la DECLARATION, jamais du catalogue de bornes : ce catalogue est keye
-	// par nom -> module de CANEVAS, et un canevas porte les noms de toutes les cartes qui y
-	// sont baties — le lire ici attacherait a Vagabond les noms de Dynasty et d'Origin.
-	c.ajouteNom(carte.Nom)
-	for _, o := range entree.Objectives {
-		c.ancres = append(c.ancres, [3]float64{o.Pos.X, o.Pos.Y, o.Pos.Z})
-	}
-	return c, v.Objects, nil
-}
-
 // publie écrit le PNG et son sidecar de calage.
 func (e *environnement) publie(ctx context.Context, c cible, rendu *himap.Rendu, b himap.BilanCuisson) bilanAsset {
 	ba := bilanAsset{Cle: c.cle, Noms: c.noms, Bilan: b}
@@ -376,7 +208,7 @@ func (e *environnement) ecritSidecar(c cible, rendu *himap.Rendu, b himap.BilanC
 	x0, y1, mpp := himap.CalageDuRendu(rendu)
 	// Le PNG publie est ROGNE a la matiere : l'origine suit, l'echelle NON (cadre_utile.go).
 	x0, y1 = himap.CalageRogne(x0, y1, mpp, rogne)
-	meta := replay.MapBackground{
+	meta := mapfondsidecar.MapBackground{MapBackground: replay.MapBackground{
 		SchemaVersion: replay.MapBackgroundSchemaVersion,
 		Module:        c.cle,
 		MapNames:      append(append([]string{}, c.noms...), c.sources...),
@@ -390,12 +222,8 @@ func (e *environnement) ecritSidecar(c cible, rendu *himap.Rendu, b himap.BilanC
 		},
 		Stats:        statsDeBilan(b),
 		Degradations: b.Degradations,
-	}
-	blob, err := json.MarshalIndent(meta, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(e.sortieDir, c.cle+".json"), append(blob, '\n'), 0o644) //nolint:gosec // asset versionné
+	}, Plan: c.plan}
+	return mapfondsidecar.Write(filepath.Join(e.sortieDir, c.cle+".json"), meta)
 }
 
 func statsDeBilan(b himap.BilanCuisson) replay.MapBackgroundStats {
@@ -497,43 +325,4 @@ func (e *environnement) moduleDeCuisson(c cible) string {
 		return p
 	}
 	return c.chemin
-}
-
-// cuitDepuisNavmesh rend le fond d'une carte Forge a partir de son MAILLAGE DE NAVIGATION.
-//
-// C'est la seule source qui ne demande rien a soustraire : sur une carte a ciel ferme, le
-// maillage vit sous les coques et ne les contient pas. Le blob vit dans le depot hors ligne,
-// a cote des variantes.
-func (e *environnement) cuitDepuisNavmesh(ctx context.Context, carte himap.CarteForge, c cible) (*himap.Rendu, himap.BilanCuisson, error) {
-	chemin := filepath.Join(e.repoRoot, himap.DepotNavmesh, carte.MapID+".blob")
-	blob, err := os.ReadFile(chemin) //nolint:gosec // entrée d'outillage hors ligne
-	if err != nil {
-		return nil, himap.BilanCuisson{}, fmt.Errorf("maillage de navigation illisible (%s) : %w", chemin, err)
-	}
-	return himap.CuitCarteNavmesh(ctx, himap.OptionsCuissonNavmesh{
-		Blob:         blob,
-		Ancres:       c.ancres,
-		Cle:          carte.MapID,
-		Echelle:      e.echelleDe(carte.MapID),
-		CibleCadrePx: himap.CibleCadrePx,
-	})
-}
-
-// blobNavmesh lit le navmesh.blob d'une carte dans le depot hors ligne.
-func (e *environnement) blobNavmesh(carte himap.CarteForge) ([]byte, error) {
-	chemin := filepath.Join(e.repoRoot, himap.DepotNavmesh, carte.MapID+".blob")
-	blob, err := os.ReadFile(chemin) //nolint:gosec // entree d'outillage hors ligne
-	if err != nil {
-		return nil, fmt.Errorf("maillage de navigation illisible (%s) : %w", chemin, err)
-	}
-	return blob, nil
-}
-
-// chargeNavmesh lit et decode le maillage de navigation d'une carte.
-func (e *environnement) chargeNavmesh(carte himap.CarteForge) (*hinavmesh.Maillage, error) {
-	blob, err := e.blobNavmesh(carte)
-	if err != nil {
-		return nil, err
-	}
-	return hinavmesh.Decode(blob)
 }

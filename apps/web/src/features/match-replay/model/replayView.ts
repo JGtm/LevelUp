@@ -26,6 +26,7 @@
 import type { ReplayBounds } from '@/lib/api/types'
 
 import { canvasScale, layerOffset, worldToCanvas, type XY } from '../../../lib/replay/replayLogic'
+import { orientAbout, turnsOf, type QuarterTurns, type ViewOrientation } from '@/lib/replay/orientation'
 
 /**
  * Le CADRAGE : quelle portion du monde on montre, dans quelle toile, avec quelle marge.
@@ -34,21 +35,47 @@ import { canvasScale, layerOffset, worldToCanvas, type XY } from '../../../lib/r
  * plusieurs écrivaient `bounds` en littéral plutôt qu'en `ReplayBounds`) l'importent.
  */
 export interface CanvasView {
+  /**
+   * Les bornes de la fenêtre, dans le repère de la carte APRÈS rotation (`orient`) : c'est le
+   * repère dans lequel le zoom, le déplacement et le glisser raisonnent.
+   */
   bounds: ReplayBounds
   width: number
   height: number
   pad: number
+  /**
+   * L'orientation de la carte (quarts de tour autour du centre de la scène). Absente = la carte
+   * n'est pas tournée. `projectTo` la applique AVANT de projeter : tout ce qui projette par le
+   * cadrage la suit sans le savoir.
+   */
+  orient?: ViewOrientation
 }
 
 /**
- * projectTo projette une position MONDE dans la toile, selon le cadrage.
+ * projectTo projette une position MONDE dans la toile, selon le cadrage — la rotation de la
+ * carte (`view.orient`) comprise.
  *
  * Y EST INVERSÉ (le monde a +Y vers le haut, la toile vers le bas), l'ajustement préserve le
  * ratio et centre — tout cela vit dans `worldToCanvas`, que cette fonction ne fait qu'alimenter
  * avec le cadrage entier.
  */
 export function projectTo(view: CanvasView, p: XY): XY {
+  const o = view.orient
+  return worldToCanvas(o ? orientAbout(p, o.turns, o.pivot) : p, view.bounds, view.width, view.height, view.pad)
+}
+
+/**
+ * projectFrameTo projette une position DÉJÀ DANS LE REPÈRE DE LA CARTE TOURNÉE (celui de
+ * `view.bounds`) : sans rotation de plus. Pour ce qui a été tourné en amont — la grille de
+ * chaleur, que `orientHeatGrid` transpose avec la carte —, jamais pour une position du film.
+ */
+export function projectFrameTo(view: CanvasView, p: XY): XY {
   return worldToCanvas(p, view.bounds, view.width, view.height, view.pad)
+}
+
+/** Le nombre de quarts de tour d'un cadrage : 0 quand la carte n'est pas tournée. */
+export function turnsOfView(view: Pick<CanvasView, 'orient'>): QuarterTurns {
+  return turnsOf(view.orient)
 }
 
 /**
@@ -77,6 +104,9 @@ export const FOLLOW_COOK_MARGIN = 0.1
  */
 export function cookIsReusable(cooked: CanvasView, view: CanvasView): boolean {
   if (cooked.width !== view.width || cooked.height !== view.height || cooked.pad !== view.pad) return false
+  // Un calque cuit pour une autre orientation (ou un autre pivot) n'est pas le même dessin décalé.
+  if (turnsOfView(cooked) !== turnsOfView(view)) return false
+  if (cooked.orient?.pivot.x !== view.orient?.pivot.x || cooked.orient?.pivot.y !== view.orient?.pivot.y) return false
   const before = scaleOf(cooked)
   const after = scaleOf(view)
   if (!(before > 0) || !(after > 0) || Math.abs(before - after) > before * 1e-9) return false

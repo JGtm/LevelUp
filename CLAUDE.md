@@ -471,7 +471,7 @@ git commit -m "refactor(phase2): ..."
   `0043` **publication des briques** (quatre modules publiables, `halo-infinite-files-reader`, `halo-infinite-map-images`,
   `halo-infinite-film-decoder` et `halo-api` (`github.com/JGtm/<dépôt>`), d'abord depuis le dépôt unique (`libs/`), depuis la bascule du
   2026-11-12 depuis leurs seuls dépôts dédiés, que LevelUp exige à `v1.0.1` (`halo-api` retire `v0.1.0` et `v1.0.0`) ; une nouvelle version = un tag sur le dépôt dédié, posé par l'utilisateur seul,
-  puis une montée du `require` dans `apps/go-api/go.mod` ; pseudo-version permise sur une branche de travail, tag obligatoire avant `main` ;
+  puis une montée du `require` dans `apps/go-api/go.mod` ; pseudo-version permise sur une branche de travail, tag obligatoire avant `main` (amendement du 2026-11-13 : premier usage, ADR 0048) ;
   `v1.0.0` depuis le 2026-11-09 (promesse de compatibilité semver, changement cassant = `/v2`), un numéro par module ; un README modèle unique par brique, exemple compilé
   par `example_test.go` ; licences : `gamefiles` GPL-3.0 à cause de `ooz`, `himap`, `film` et `haloapi` AGPL-3.0 ;
   critère de séparation en dépôt : contributeur externe, ou cadence indépendante, ou CI qui pèse, décision finale de
@@ -494,7 +494,13 @@ git commit -m "refactor(phase2): ..."
   `0047` **révision des formules de notation et rejeu au démarrage** (deux constantes de révision dans `sync/skill` ;
   une valeur par joueur dans `sync_meta`, comparée sur « différent » ; rien n'est noté avant un recalcul réussi ; rejeu
   au démarrage joueur par joueur ; garde-rail par empreinte des paramètres, qui ne voit pas un changement de logique sans
-  changement de nombre : la révision se change alors à la main ; échec partiel = pas de révision rangée).
+  changement de nombre : la révision se change alors à la main ; échec partiel = pas de révision rangée) ·
+  `0048` **fonds de carte tenus par le maillage de navigation** (même décodeur pour le natif, module `any`, et le Forge,
+  `navmesh.blob` ; le fond riche reste la base, le maillage cadre par rognage et arbitre par la référence de sol ; plan des
+  murs = vecteur `plan` du sidecar, jamais une seconde image ; orientation par quarts de tour horaires dans la projection
+  unique, par carte, partagée par le rejeu, la Tactique et « Occupation du terrain » ; carte sans maillage = dégradation
+  nommée, chaîne historique, pas de plan ; maillage secondaire ignoré et compté ; `-plan-seul` ajoute le plan sans recuire ;
+  `internal/mapfondsidecar` seul lecteur et écrivain du sidecar complet).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

@@ -76,8 +76,9 @@ import { useReplayClock } from '../hooks/useReplayClock'
 import { useReplayPlayback } from '../hooks/useReplayPlayback'
 import { useReplayStaticLayers } from '../layers/useReplayStaticLayers'
 import { useReplaySettings } from '../settings/useReplaySettings'
+import { useReplayOrientation } from '../settings/useReplayOrientation'
 import { useReplaySound } from '../sound/useReplaySound'
-import { backgroundRect } from '../layers/mapBackground'
+import { drawMapBackground, placeMapBackground } from '../layers/mapBackgroundDraw'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   drawGeometryLayer,
@@ -96,7 +97,7 @@ import type { ReplayWindowBounds } from '../model/replayWindow'
 import { drawProjectilesLayer, PROJECTILE_TAIL_MS } from '../layers/replayProjectiles'
 import { drawTracksLayer } from '../layers/replayMarkers'
 import { useReplayTiming } from '../hooks/useReplayTiming'
-import { CANVAS_PAD, useReplayView, type ReplayMapBackgroundLayer } from '../hooks/useReplayView'
+import { useReplayView, type ReplayMapBackgroundLayer } from '../hooks/useReplayView'
 import { useReplayViewport } from '../hooks/useReplayViewport'
 import type { ReplayFullscreen } from '../hooks/useReplayFullscreen'
 import { useReplayWheelZoom } from '../hooks/useReplayWheelZoom'
@@ -143,6 +144,11 @@ interface ReplayCanvasProps {
    * les rendrait utilisables ici. (Il a longtemps dit « seules 21 en ont » : il y en a 106.)
    */
   background?: ReplayMapBackgroundLayer | null
+  /**
+   * L'identité de la carte (`header.map_id`) : la clé sous laquelle l'orientation choisie est
+   * retenue (`useReplayOrientation`). Absente = pas de commande d'orientation.
+   */
+  mapId?: string | null
   /**
    * Zones nommées de la carte (callouts officiels), déjà normalisées par la route —
    * la même liste nomme la zone du tueur dans le fil des éliminations. Vide = la carte n'en a pas (cas
@@ -225,7 +231,7 @@ interface ReplayCanvasProps {
 }
 
 export function ReplayCanvas({
-  doc, locale, playWindow, playbackStore, openAtFrame, background, callouts, scoreboard, marks,
+  doc, locale, playWindow, playbackStore, openAtFrame, background, mapId, callouts, scoreboard, marks,
   allegiance, viewpoint, fullscreen, endMatch, outcome, feedEntries = EMPTY_FEED, media = EMPTY_MEDIA, scoreTimelineKind,
   players = EMPTY_PLAYERS, onSelectViewpoint = NO_VIEWPOINT_SELECT, mapOverlays = null, playerFocus = null, onFollowStop,
 }: ReplayCanvasProps) {
@@ -254,10 +260,12 @@ export function ReplayCanvas({
   // L'OBJET DE RÉGLAGES RESTE ENTIER (2026-08-28) : le panneau de la vue en consomme la quasi-totalité ;
   // le dessin ne lit que les valeurs — d'où cette destructuration-là (cf. useReplayViewMenu).
   const settings = useReplaySettings()
+  // L'ORIENTATION DE LA CARTE, retenue par carte : le cadrage la prend, le panneau de la vue la commande.
+  const orientation = useReplayOrientation(mapId)
   const {
     showAim, showZones, showTrail, showHeatmap, heatmapMode, heatmapSpan,
     showShotFx, showKillFx, showPlacements, showUnnamedPlacements, showDroppedPlacements,
-    showWeaponPads, showGroundWeapons, showGroundWeaponsSpecialOnly, showGroundWeaponsStarting, showModeObjectives, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, speed: multiplier,
+    showWeaponPads, showGroundWeapons, showGroundWeaponsSpecialOnly, showGroundWeaponsStarting, showModeObjectives, showFlagCarries, showVipCrown, showSkullCarrier, showBombCarrier, showVehicles, showWallPlan, speed: multiplier,
     markerColors,
   } = settings
   // SON : coupé par défaut, câblage dans le hook (replaySound.ts, lecture replayAudio.ts, camps
@@ -271,7 +279,7 @@ export function ReplayCanvas({
   const {
     teamColorOf, geometry: geometryColor, shot: shotColor, grenade: grenadeColor, neutral: neutralInk, pad: padInk,
     floor: floorStyle, fx: fxInk, grapple: grappleInk, labelStroke, scrim, self: selfInk, wall: wallInk, rift: riftInk, shroud: shroudInk, mark: markInk,
-    zone: zoneInk,
+    zone: zoneInk, wallPlan: wallPlanInk,
   } = useReplayInks(paletteVersion)
   // COULEURS DISTINCTES PAR JOUEUR (option du panneau de la vue, 2026-08-24) : une série stable par joueur
   // à la place de la couleur d'équipe — le camp reste dit par les fiches, le fil et le bandeau.
@@ -295,10 +303,10 @@ export function ReplayCanvas({
   // vit dans `useReplayView` (neuvième extraction imposée par le cliquet de taille). Les noms
   // sortent inchangés : le dessin en dessous lit exactement les mêmes valeurs qu'avant.
   const { mapImage, bounds, renderWidth, renderHeight: viewH, screen, zRange, canvasView, zoom } = useReplayView({
-    doc, background, width, freeHeight, onManualMove: onFollowStop,
+    doc, background, turns: orientation.turns, width, freeHeight, onManualMove: onFollowStop,
   })
   // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
-  const { shownAtSlot, shownProjectile } = useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom })
+  const { shownAtSlot, shownProjectile } = useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom, turns: orientation.turns })
 
   // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
   const calloutZones = callouts ?? EMPTY_ZONES
@@ -355,13 +363,15 @@ export function ReplayCanvas({
   // LES CALQUES STATIQUES (sol, zones nommées, chaleur, objectifs), cuits hors écran et
   // recopiés par la boucle : quatre effets qui partageaient la même amorce et recopiaient
   // chacun le cadrage — ils vivent dans useReplayStaticLayers, qui lit `canvasView`.
-  const { zonesRef, heatRef, objectivesRef, cookedRef } = useReplayStaticLayers({
+  const { wallPlanRef, zonesRef, heatRef, objectivesRef, cookedRef } = useReplayStaticLayers({
     view: canvasView,
     redraw,
     frozen: drag.dragging,
     follow: playerFocus?.follow ?? false,
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
     heat: { grid: heat.grid, ramp: heat.ramp },
+    // Éteint, le plan n'est pas cuit : rien à recuire au zoom ni à l'orientation pour un calque invisible.
+    wallPlan: { plan: showWallPlan ? (mapImage?.plan ?? null) : null, ink: wallPlanInk },
     objectives: { elements: zones.staticElements, colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline, z: zRange },
   })
 
@@ -447,9 +457,7 @@ export function ReplayCanvas({
       // joueurs zooment, et l'image cesserait de designer le meme endroit qu'eux.
       // Pendant un glisser, cuisson gelee : les calques se recopient DECALES (layerOffset).
       const lo = layerOffset(cookedRef.current, canvasView)
-      const bgRect = mapImage
-        ? backgroundRect(mapImage.calibration, canvasView.bounds, renderWidth, viewH, CANVAS_PAD)
-        : null
+      const bgRect = placeMapBackground(mapImage, canvasView)
       // La FENETRE D'EVENEMENT, commune aux tirs, aux pulses et aux morts.
       const win = { frame, hold: eventHoldFrames, frameMs: frameToMs(1, doc) }
       // Un calque CUIT se repose tel quel, decale de `lo` : sa geometrie ne bouge pas.
@@ -460,11 +468,12 @@ export function ReplayCanvas({
       return {
         toggles: {
           zones: showZones, shotFx: showShotFx, placements: showPlacements, killFx: showKillFx,
-          modeObjectives: showModeObjectives,
+          modeObjectives: showModeObjectives, wallPlan: showWallPlan,
         },
         has: {
           background: !!mapImage && !!bgRect,
           floor: !!doc.geometry?.length,
+          wallPlan: !!wallPlanRef.current,
           heat: !!heatRef.current,
           zoneNames: !!zonesRef.current,
           objectivesCooked: !!objectivesRef.current,
@@ -497,15 +506,11 @@ export function ReplayCanvas({
             killFocus.veil,
             killFocus.labels,
           ),
-          // L'image ENTIERE sur son emprise monde, le canvas rogne le debord : projection
-          // affine sans rotation, donc deux coins suffisent (mapBackground.ts).
-          'fond-carte': () => {
-            if (mapImage && bgRect) {
-              ctx.drawImage(mapImage.image, bgRect.x, bgRect.y, bgRect.width, bgRect.height)
-            }
-          },
+          // L'image ENTIERE sur son emprise monde, le canvas rogne le debord (mapBackgroundDraw.ts).
+          'fond-carte': () => drawMapBackground(ctx, mapImage, bgRect, canvasView),
           'sol-forge': () =>
             drawGeometryLayer(ctx, doc.geometry ?? [], view, { color: geometryColor, z: zRange }),
+          'plan-murs': cuit(wallPlanRef.current),
           chaleur: cuit(heatRef.current),
           'zones-nommees': cuit(zonesRef.current),
           'objectifs-cuits': cuit(objectivesRef.current),
@@ -586,7 +591,7 @@ export function ReplayCanvas({
     [
       doc, geometryColor, zRange, timing, wallInk, riftInk, shroudInk,
     // Refs STABLES : la regle de dependances ne le sait pas d'un hook maison.
-    zonesRef, heatRef, objectivesRef, cookedRef,
+    wallPlanRef, zonesRef, heatRef, objectivesRef, cookedRef,
     renderWidth, viewH, canvasView,
     placements.counts.drawable,
     placements.all,
@@ -629,6 +634,7 @@ export function ReplayCanvas({
     showAim,
     showZones,
     showModeObjectives,
+    showWallPlan,
     showShotFx,
     showKillFx,
     mapImage,
@@ -683,7 +689,7 @@ export function ReplayCanvas({
   // LE BOUTON « VUE » ET SON PANNEAU, groupés de même (useReplayViewMenu) : les disponibilités
   // viennent des calques, les bascules de `useReplaySettings`, et l'ouverture du hook lui-même.
   const viewMenu = useReplayViewMenu({
-    settings, sound, locale,
+    settings, orientation, sound, locale,
     heat: { mode: heat.mode, killsAvailable: heat.killsAvailable },
     available: {
       zones: calloutZones.length > 0,
@@ -699,6 +705,7 @@ export function ReplayCanvas({
       vipCrown: vipCrown.available,
       skullCarrier: skullCarrier.available,
       bombCarrier: bombCarrier.available, vehicles: vehicles.available,
+      wallPlan: !!mapImage?.plan,
     },
   })
   // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son

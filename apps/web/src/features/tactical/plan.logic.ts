@@ -10,6 +10,8 @@
 import type { EchelleTactique, TacticalRaster } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
+import type { QuarterTurns } from '@/lib/replay/orientation'
+
 import { LEGENDE_MARGE_PX, type CarteEffective } from './cockpit.logic'
 import type { TacticalText } from './i18n'
 import type { TacticalEtatLecture } from './tacticalLecture.logic'
@@ -17,6 +19,7 @@ import {
   lectureDeRejeu,
   libelleRayons,
   planLegend,
+  repereAspect,
   TACTICAL_CELL_FLOOR,
   type FenetreDuPlan,
   type TacticalQuestion,
@@ -102,12 +105,14 @@ export function boiteDuPlan(
   return { aspectRatio: aspect, width: '100%', maxWidth: `${Math.round(aspect * hauteurMax)}px` }
 }
 
-/** La place de l'image du fond dans le cadre, en pourcentages du cadre. */
+/** La place de l'image du fond dans le cadre, en pourcentages du cadre (et sa rotation, carte tournée). */
 export interface CadrageDuFond {
   left: string
   top: string
   width: string
   height: string
+  /** `rotate(<turns x 90>deg)` autour du centre de l'image : absent à 0 quart de tour. */
+  transform?: string
 }
 
 /**
@@ -116,17 +121,34 @@ export interface CadrageDuFond {
  * rapport scène / fenêtre et décalée du coin de la fenêtre, en pourcentages du cadre. À 1x : le
  * cadre entier, exactement l'image d'avant le zoom. Le calque se projette sur la même fenêtre
  * (`vueDuPlan`), les deux ne peuvent donc pas se désaligner.
+ *
+ * LA CARTE TOURNÉE (`turns` quarts de tour horaires, l'orientation retenue pour la carte) : `scene`
+ * et `fenetre` sont ceux de la carte APRÈS rotation, et le rectangle calculé est celui de l'image
+ * tournée. L'`<img>` garde ses dimensions d'origine — échangées pour un quart ou trois quarts de
+ * tour —, posées autour du MÊME centre, puis tournées par CSS autour de ce centre : le fond et le
+ * calque (projection tournée) coïncident exactement. Le cadre prend le rapport de la scène tournée,
+ * d'où le passage des pourcentages de hauteur aux pourcentages de largeur par ce rapport.
  */
-export function cadrageDuFond(scene: FenetreDuPlan, fenetre: FenetreDuPlan): CadrageDuFond {
+export function cadrageDuFond(scene: FenetreDuPlan, fenetre: FenetreDuPlan, turns: QuarterTurns = 0): CadrageDuFond {
   const lf = fenetre.maxX - fenetre.minX
   const hf = fenetre.maxY - fenetre.minY
   if (!(lf > 0) || !(hf > 0)) return { left: '0%', top: '0%', width: '100%', height: '100%' }
   const pct = (v: number) => `${Math.round(v * 10000) / 100}%`
+  const left = (scene.minX - fenetre.minX) / lf
+  const top = (fenetre.maxY - scene.maxY) / hf
+  const width = (scene.maxX - scene.minX) / lf
+  const height = (scene.maxY - scene.minY) / hf
+  if (turns === 0) return { left: pct(left), top: pct(top), width: pct(width), height: pct(height) }
+  const aspect = repereAspect(fenetre)
+  // Dimensions de l'image avant rotation, en fraction du cadre : échangées pour un nombre impair de quarts.
+  const w0 = turns % 2 === 1 ? height / aspect : width
+  const h0 = turns % 2 === 1 ? width * aspect : height
   return {
-    left: pct((scene.minX - fenetre.minX) / lf),
-    top: pct((fenetre.maxY - scene.maxY) / hf),
-    width: pct((scene.maxX - scene.minX) / lf),
-    height: pct((scene.maxY - scene.minY) / hf),
+    left: pct(left + width / 2 - w0 / 2),
+    top: pct(top + height / 2 - h0 / 2),
+    width: pct(w0),
+    height: pct(h0),
+    transform: `rotate(${turns * 90}deg)`,
   }
 }
 

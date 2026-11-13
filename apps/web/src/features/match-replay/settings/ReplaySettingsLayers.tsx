@@ -127,6 +127,16 @@ export interface ReplayBombCarrierControls {
   onToggle: () => void
 }
 
+/**
+ * Le PLAN DES MURS du fond de carte : un seul calque, allumé par défaut. `available` = le fond
+ * retenu porte un plan (Live Fire et deux cartes Forge n'en ont pas, et n'affichent pas la bascule).
+ */
+export interface ReplayWallPlanControls {
+  available: boolean
+  show: boolean
+  onToggle: () => void
+}
+
 /** Les VÉHICULES (schéma 39) : un seul calque, allumé par défaut. */
 export interface ReplayVehicleControls {
   available: boolean
@@ -152,12 +162,13 @@ export interface LayersSectionProps {
   skullCarrier: ReplaySkullCarrierControls
   bombCarrier: ReplayBombCarrierControls
   vehicles: ReplayVehicleControls
+  wallPlan: ReplayWallPlanControls
 }
 
 export function LayersSection({
   locale, showAim, onToggleAim, showZones, onToggleZones,
   showTrail, onToggleTrail, zonesAvailable, placements, weaponPads, groundWeapons, modeObjectives,
-  flagCarries, vipCrown, skullCarrier, bombCarrier, vehicles,
+  flagCarries, vipCrown, skullCarrier, bombCarrier, vehicles, wallPlan,
 }: LayersSectionProps) {
   const t = REPLAY_TEXT[locale]
   return (
@@ -182,7 +193,7 @@ export function LayersSection({
       {/* LE TERRAIN : des lieux et des objets, pas des gens. Les EMPLACEMENTS D'ARME sont une
           récurrence spatiale mesurée ; les ARMES AU SOL sont des objets qui gisent là où ils
           sont tombés — on peut vouloir les socles sans le fouillis, et l'inverse. */}
-      {(zonesAvailable || weaponPads.available || groundWeapons.available || vehicles.available) && (
+      {(zonesAvailable || wallPlan.available || weaponPads.available || groundWeapons.available || vehicles.available) && (
         <LayerGroup title={t.layerGroupTerrain}>
           {zonesAvailable && (
             <SettingsToggle
@@ -190,6 +201,14 @@ export function LayersSection({
               pressed={showZones}
               onToggle={onToggleZones}
               hint={t.layerZonesHint}
+            />
+          )}
+          {wallPlan.available && (
+            <SettingsToggle
+              label={t.layerWallPlan}
+              pressed={wallPlan.show}
+              onToggle={wallPlan.onToggle}
+              hint={t.layerWallPlanHint}
             />
           )}
           {weaponPads.available && (

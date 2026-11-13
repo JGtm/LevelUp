@@ -20,7 +20,6 @@
  * Pas de React, pas de couleur écrite : géométrie pure + un CanvasRenderingContext2D. L'encre
  * arrive du calque appelant, qui la tient des tokens du thème.
  */
-import type { ReplayBounds } from '@/lib/api/types'
 
 import { type XY } from '../../../lib/replay/replayLogic'
 import {
@@ -31,15 +30,10 @@ import {
   SENSOR_PING_ALPHA,
   SENSOR_SWEEP_MS,
 } from '../model/threatSensor'
-import { projectTo, scaleOf } from '../model/replayView'
+import { projectTo, scaleOf, type CanvasView } from '../model/replayView'
 
-/** Cadrage du canvas (mêmes paramètres que worldToCanvas). */
-export interface PlacementView {
-  bounds: ReplayBounds
-  width: number
-  height: number
-  pad: number
-}
+/** Cadrage du canvas : le cadrage partagé, rotation de la carte comprise. */
+export type PlacementView = CanvasView
 
 /** project — un point monde vers les pixels du canvas (la chaîne des tracks). */
 export function project(p: XY, view: PlacementView): XY {

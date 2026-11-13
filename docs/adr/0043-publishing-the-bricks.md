@@ -9,8 +9,8 @@ Xbox Live achievements, UGC map assets and GameCMS files, and is a module).
 Relates to: ADR 0023 and 0038 (tokens stay in LevelUp), ADR 0031 (data-source boundary), ADR 0012 (title adapters
 under `games/<slug>/`).
 Amended: 2026-11-08 (D-1, D-2, D-4, D-5): the film decoder `libs/film` becomes the fourth publishable brick; see the
-amendment before the references. Amended: 2026-11-12: LevelUp requires the published bricks, `libs/` and `go.work` are gone (last amendment before the
-references).
+amendment before the references. Amended: 2026-11-12: LevelUp requires the published bricks, `libs/` and `go.work` are gone. Amended: 2026-11-13: first
+use of the new rule, pseudo-versions on a working branch (last amendment before the references).
 
 ## Vocabulary
 
@@ -378,6 +378,21 @@ recipe (subtree split, path rewrite) is retired, and the `libs/<brick>` tags are
   stays.
 - Every `libs/<brick>` path written above in this ADR designates the root of the dedicated repository (ADR 0041,
   amendment of 2026-11-12). The text above is left as it was written.
+
+## Amendment of 2026-11-13 — the rule of the dedicated repositories, first applied
+
+Source: the navigation-mesh work of 2026-11-13 (ADR 0048), the first change of a brick made after the switch.
+
+The sentence of the amendment of 2026-11-09, "the dedicated repositories are published copies, produced from `libs/`
+by the recipe, never edited directly", is out of date: `libs/` does not exist on the release branches since the switch of
+2026-11-12, and the dedicated repository is the only source of a brick. The text above is left as it was written.
+
+**Applied.** The new exports (`hinavmesh.DecodeNatif` and `himodule.RessourcesNavmesh` in
+`halo-infinite-files-reader`; `OptionsNavmesh`, `ChargeMaillageNatif`, `PlanDesMurs` and `StylePlan` in
+`halo-infinite-map-images`, which also replaces the global `NiveauHautNavmesh` by a parameter) were written in the
+dedicated repositories. `apps/go-api/go.mod` requires them by pseudo-version (`@<sha>`), which the rule allows on a
+working branch. They are additions, so the maintainer's tags are minor versions (`v1.1.0`); the `require` lines move to
+those tags before the branch reaches `main`, and a branch that still carries a pseudo-version is not merged.
 
 ## References
 

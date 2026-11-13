@@ -677,11 +677,30 @@ CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only      # + str
 
 ```bash
 CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--title slug] \
-  [--out-dir DIR] [--style jeu] [--natives=false] [--forge=false] [--rapport FILE]
+  [--out-dir DIR] [--style jeu] [--natives=false] [--forge=false] [--rapport FILE] [--plan-seul]
 ```
 
 - Output: `data/titles/{slug}/reference/map_backgrounds/{key}.png` + `{key}.json` sidecar per
   map (218 files today) — the top-down background image and its calibration.
+- Navigation mesh: a native map is cooked with the navmesh of its `any` module
+  (`himap.ChargeMaillageNatif`): the matter outside the mesh, dilated by 1.5 m, is erased, and the
+  sidecar publishes a `plan` (the boundary edges of the mesh, in world metres, to the millimetre).
+  A module without a mesh (Live Fire, the Academy tutorial) is cooked as before and reports
+  "aucun maillage de navigation dans le module any" in `degradations`, with no `plan`. Per-map
+  levers in `map_fond_reglages.json` (each entry still carries its `raison` and `gateLe`):
+  `rogneAuNavmesh` (on a native map: on by default, `false` keeps the mesh as the reference
+  surface without clipping ; on a Forge map: off by default), `margeNavmesh` (dilation, metres),
+  `toleranceNavmesh`, `maillageNiveauHaut` ; `sansNavmesh: true` (native maps) cooks without the mesh
+  (no reference, no clipping) but still publishes its `plan`. A Forge map also takes `navmeshReference`, and
+  publishes a `plan` whenever the repository holds its `navmesh.blob` (`mapnav-fetch`), whether
+  or not the cooking uses it.
+- `--plan-seul` cooks nothing: for each Forge map whose `navmesh.blob` is in the repository, it
+  adds the `plan` to the published sidecar and leaves everything else (image, calibration, stats,
+  degradations, `generatedAt`) as it was. A map with no blob, or no sidecar, is left untouched.
+  It is how a map whose `.mvar` variant is not at hand gets its plan.
+- After cooking, run `go run ./cmd/mapfond-webp -convertir`: it rewrites each sidecar through
+  `internal/mapfondsidecar`, which keeps the `plan` (the film decoder's `replay.MapBackground`
+  does not know it).
 - Prereq: game installed — **always**, no flag bypasses it, even a Forge-only run ; cgo/GPLv3
   chain (`halo-infinite-map-images/himap` → `halo-infinite-files-reader/himodule` → `halo-infinite-files-reader/ooz`, never linked into
   `cmd/server`) ; requires `map_objectives.json` already built (hard dependency, fails
@@ -1534,7 +1553,7 @@ Two families of tests read the **installed game**, and both sit behind `//go:bui
   game and compare it byte for byte: `cmd/film-profiles-build/`, `cmd/mapfond-build/`,
   `cmd/mapstruct-build/` (9.0 s for the three, measured 2026-09-17).
 
-`make go-api-test-gamefiles` runs **all five packages** (the `himap` package of the map-images brick, by import path; the four others from
+`make go-api-test-gamefiles` runs **all six packages** (the `himap` package of the map-images brick and the `hinavmesh` package of the game-files brick, by import path; the four others from
 `apps/go-api`). Until 2026-09-17 it only ran the brick, so the three `cmd/` tests were run by no command in the repository
 (discovery D1 (3.1.2), the oldest of them tagged since 2026-09-05). The package list is
 explicit rather than `./cmd/...`: under the tag, a package with no `gamefiles` file only adds
@@ -1559,6 +1578,10 @@ BALAYAGE_CARTES=aquarius_map go test -tags=gamefiles -timeout 300s \
 # Game installed somewhere else:
 cd apps/go-api && LEVELUP_HALO_DEPLOY=/path/to/Halo Infinite/deploy go test -tags=gamefiles github.com/JGtm/halo-infinite-map-images/himap/
 ```
+
+The native tests of `hinavmesh` do not look for the installation themselves: they need
+`LEVELUP_HALO_DEPLOY` (the game's `deploy` folder), which the target passes through from the
+environment (it prints a warning when it is unset), and take their `t.Skip` otherwise.
 
 Without the game installed every test takes its `t.Skip` and the corpus is empty in a
 second — which is exactly what happens in CI. CI therefore only **compiles** it

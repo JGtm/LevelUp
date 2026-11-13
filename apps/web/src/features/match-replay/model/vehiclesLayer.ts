@@ -69,6 +69,7 @@ import { lastIndexAt, positionAt, type XY } from '../../../lib/replay/replayLogi
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { covers } from './replaySpans'
 import { HEADING_INTERP_MAX_SPAN_MS, headingTowardNext } from './headingInterp'
+import { shiftHeadingDeg, type QuarterTurns } from '@/lib/replay/orientation'
 
 // --- FAMILLES REFUSÉES ------------------------------------------------------------------------
 
@@ -506,9 +507,12 @@ export function vehicleHeadingAt(
  * vehicleScreenAngle — LA CONSTANTE D'ÉCART D'ÉCRAN (gate C6) : convertit un cap MONDE en
  * radians CANEVAS pour un sprite dessiné NEZ EN HAUT. Voir l'en-tête du fichier pour la dérivation
  * complète ; le résultat tient en une ligne : `(90° − cap) → radians`.
+ *
+ * `turns` est la rotation de la carte (`lib/replay/orientation`) : le cap monde perd 90° par quart de
+ * tour (rotation horaire) avant la conversion, le sprite tourne avec le terrain.
  */
-export function vehicleScreenAngle(headingDeg: number): number {
-  return ((90 - headingDeg) * Math.PI) / 180
+export function vehicleScreenAngle(headingDeg: number, turns: QuarterTurns = 0): number {
+  return ((90 - shiftHeadingDeg(headingDeg, turns)) * Math.PI) / 180
 }
 
 /**
@@ -520,8 +524,8 @@ export function vehicleScreenAngle(headingDeg: number): number {
  * aussi »), il n'a besoin QUE de l'inversion de signe. Confondre les deux ferait pointer le cône
  * à 90° du nez du véhicule : d'où deux fonctions nommées, et pas une constante partagée.
  */
-export function vehicleAimAngle(headingDeg: number): number {
-  return (-headingDeg * Math.PI) / 180
+export function vehicleAimAngle(headingDeg: number, turns: QuarterTurns = 0): number {
+  return (-shiftHeadingDeg(headingDeg, turns) * Math.PI) / 180
 }
 
 // --- POSITION ET FENÊTRE D'AFFICHAGE ---------------------------------------------------------

@@ -10,6 +10,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { exportFormatOf, exportLayoutFor } from '../export/exportFormats'
 import { canvasPixelRatio, isExportLayoutApplied, requestExportLayout } from '../export/exportLayoutStore'
+import { canvasToWorld, worldToCanvas } from '../../../lib/replay/replayLogic'
+import { QUARTER_TURNS, type QuarterTurns } from '@/lib/replay/orientation'
+import { turnWorld, unturnWorld } from '../test/orientationOracle'
+import { projectTo } from '../model/replayView'
 import { testReplayDoc } from '../test/testDoc'
 import { useReplayView } from './useReplayView'
 
@@ -130,5 +134,111 @@ describe('useReplayView — la main reprend le cadrage (Suivre, lot 4)', () => {
     act(() => requestExportLayout(exportLayoutFor(exportFormatOf('1080p'), 'current')))
     act(() => result.current.zoom.focusOn({ x: 5, y: 5 }, 2))
     expect(result.current.zoom.level).toBe(1)
+  })
+})
+
+describe('useReplayView — l’orientation de la carte', () => {
+  // Une carte allongée : la rotation d'un quart de tour échange sa largeur et sa hauteur.
+  const LONG = testReplayDoc({
+    frameIntervalMs: 50,
+    frameCount: 10,
+    bounds: { minX: 0, minY: 0, maxX: 40, maxY: 10 },
+  })
+  const SCENE = LONG.bounds
+  const POINTS = [
+    { x: 0, y: 0 },
+    { x: 40, y: 10 },
+    { x: 12, y: 7.5 },
+    { x: 33, y: 2 },
+  ]
+
+  it.each(QUARTER_TURNS)('à %i quart(s) de tour, un point monde tombe au pixel que worldToCanvas donne, et l’inverse le rend', (turns) => {
+    const { result } = renderHook(() => useReplayView({ doc: LONG, turns, width: 1200, freeHeight: 600 }))
+    const v = result.current.canvasView
+    for (const p of POINTS) {
+      const turned = turnWorld(p, turns, SCENE)
+      const attendu = worldToCanvas(turned, v.bounds, v.width, v.height, v.pad)
+      const got = projectTo(v, p)
+      expect(got.x).toBeCloseTo(attendu.x, 9)
+      expect(got.y).toBeCloseTo(attendu.y, 9)
+      // L'inverse : du pixel au monde, puis défaire la rotation.
+      const back = unturnWorld(canvasToWorld(got, v.bounds, v.width, v.height, v.pad), turns, SCENE)
+      expect(back.x).toBeCloseTo(p.x, 9)
+      expect(back.y).toBeCloseTo(p.y, 9)
+    }
+  })
+
+  it('un quart de tour échange la largeur et la hauteur de la scène cadrée, autour du même centre', () => {
+    const droit = renderHook(() => useReplayView({ doc: LONG, turns: 0, width: 1200, freeHeight: 600 }))
+    const tourne = renderHook(() => useReplayView({ doc: LONG, turns: 1, width: 1200, freeHeight: 600 }))
+    const a = droit.result.current.canvasView.bounds
+    const b = tourne.result.current.canvasView.bounds
+    expect((a.minX + a.maxX) / 2).toBeCloseTo((b.minX + b.maxX) / 2, 9)
+    expect((a.minY + a.maxY) / 2).toBeCloseTo((b.minY + b.maxY) / 2, 9)
+    // La carte tournée est plus haute que large : la hauteur utile suit, elle n'est plus celle d'avant.
+    expect(tourne.result.current.renderHeight).toBeGreaterThan(droit.result.current.renderHeight)
+    // `bounds` reste le repère MONDE des données du film.
+    expect(tourne.result.current.bounds).toEqual(droit.result.current.bounds)
+  })
+
+  it('l’export garde son cadre 16:9 quelle que soit l’orientation', () => {
+    for (const turns of QUARTER_TURNS) {
+      const { result } = renderHook(() => useReplayView({ doc: LONG, turns, width: 1200, freeHeight: 600 }))
+      act(() => requestExportLayout(exportLayoutFor(exportFormatOf('720p'))))
+      expect(result.current.renderWidth).toBe(960)
+      expect(result.current.renderHeight).toBe(540)
+      const v = result.current.canvasView
+      expect(v).toMatchObject({ width: 960, height: 540 })
+      expect((v.bounds.maxX - v.bounds.minX) / (v.bounds.maxY - v.bounds.minY)).toBeCloseTo(
+        (960 - 2 * v.pad) / (540 - 2 * v.pad),
+        6,
+      )
+      // La carte entière tient dans le cadre tourné, et la rotation est bien celle de la page.
+      const coin = projectTo(v, { x: SCENE.minX, y: SCENE.minY })
+      expect(coin.x).toBeGreaterThanOrEqual(0)
+      expect(coin.x).toBeLessThanOrEqual(960)
+      expect(coin.y).toBeGreaterThanOrEqual(0)
+      expect(coin.y).toBeLessThanOrEqual(540)
+      act(() => requestExportLayout(null))
+    }
+  })
+
+  it('changer d’orientation revient à la carte entière', () => {
+    const { result, rerender } = renderHook(
+      ({ turns }: { turns: QuarterTurns }) => useReplayView({ doc: LONG, turns, width: 1200, freeHeight: 600 }),
+      { initialProps: { turns: 0 as QuarterTurns } },
+    )
+    act(() => result.current.zoom.zoomIn())
+    act(() => result.current.zoom.zoomIn())
+    expect(result.current.zoom.level).toBe(2)
+    rerender({ turns: 1 })
+    expect(result.current.zoom.level).toBe(1)
+  })
+
+  it('la molette garde le point visé immobile à l’écran, sous toute orientation', () => {
+    for (const turns of QUARTER_TURNS) {
+      const { result } = renderHook(() => useReplayView({ doc: LONG, turns, width: 1200, freeHeight: 600 }))
+      const v = result.current.canvasView
+      const visee = { x: v.width * 0.7, y: v.height * 0.4 }
+      // Ce que fait `useReplayWheelZoom` : le point de la fenêtre sous le pointeur, dans le repère de la carte tournée.
+      const sous = canvasToWorld(visee, v.bounds, v.width, v.height, v.pad)
+      const monde = unturnWorld(sous, turns, SCENE)
+      act(() => result.current.zoom.zoomAt(1, sous))
+      const apres = projectTo(result.current.canvasView, monde)
+      expect(apres.x).toBeCloseTo(visee.x, 6)
+      expect(apres.y).toBeCloseTo(visee.y, 6)
+    }
+  })
+
+  it('le cadrage programmé (Suivre) parle monde : le joueur suivi tombe au centre de la toile', () => {
+    for (const turns of QUARTER_TURNS) {
+      const { result } = renderHook(() => useReplayView({ doc: LONG, turns, width: 1200, freeHeight: 600 }))
+      const joueur = { x: 21, y: 6 }
+      act(() => result.current.zoom.focusOn(joueur, 2))
+      const v = result.current.canvasView
+      const px = projectTo(v, joueur)
+      expect(px.x).toBeCloseTo(v.width / 2, 6)
+      expect(px.y).toBeCloseTo(v.height / 2, 6)
+    }
   })
 })

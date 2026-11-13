@@ -291,6 +291,63 @@ l'application en `xx`, il faut les mêmes fichiers qu'une vraie langue (étapes 
 (procédure de la branche jetable et résultats : `.ai/V8/PLAN_I18N_MULTILANGUE.md`, étape 10). Le code de langue
 inconnue des tests est `zz`, jamais `xx`.
 
+### 3.6 Fonds de carte, plan des murs et orientation (ADR 0048)
+
+Les vues 2D (rejeu, onglet Tactique, « Occupation du terrain ») se dessinent sur une image de fond vue de dessus, une
+par carte. Tout ce qui la concerne tient en trois endroits : l'outil de cuisson, le sidecar posé à côté de chaque image,
+et une projection partagée côté web.
+
+**Les fichiers.** `data/titles/{slug}/reference/map_backgrounds/{key}.webp` est l'image ; `{key}.json` est son sidecar :
+le calage de `replay.MapBackground` du décodeur de film, plus un `plan` facultatif. Le sidecar ne se lit et ne s'écrit
+que par `internal/mapfondsidecar`, parce que le type du décodeur ignore `plan` et le perdrait sans bruit à la réécriture.
+
+**Le maillage de navigation cadre le fond.** Le fond riche (cuit depuis la géométrie de la carte) reste la base. Le
+maillage de navigation Havok de la carte, lu par le même décodeur pour les deux sources, lui fait deux choses : il
+**rogne** la matière hors du maillage (dilaté d'une marge) et il fournit la **référence de sol** sur laquelle une
+surface haute est projetée.
+
+| Source | D'où vient le maillage | Rognage par défaut |
+|---|---|---|
+| Carte native | une ressource du module `any` de la carte (`himap.ChargeMaillageNatif`) | actif, 1,5 m |
+| Carte Forge | `navmesh.blob` du dépôt (`cmd/mapnav-fetch`) ; référence seulement là où la carte pose `navmeshReference` | inactif |
+
+**Réglages par carte** (`map_fond_reglages.json` ; chaque entrée garde sa `raison` et son `gateLe`, et un réglage ne se
+déclare que là où la carte a été jugée à l'œil) :
+
+| Réglage | Effet |
+|---|---|
+| `rogneAuNavmesh` | `true` / `false` : rogner au maillage, ou ne le garder que comme référence (absent garde le défaut de la source ci-dessus) |
+| `margeNavmesh` | dilatation du masque de rognage, en mètres (0 = le défaut de la source) |
+| `toleranceNavmesh` | vider les cellules dont la surface retenue s'écarte de plus de N mètres du sol du maillage (0 = rien) ; fait un plan d'étage plutôt qu'une vue de dessus |
+| `maillageNiveauHaut` | là où deux niveaux se superposent, prendre le plus haut du maillage comme référence, pour que étages et passerelles survivent à la substitution |
+| `sansNavmesh` | carte native seulement : cuire sans le maillage (ni référence, ni rognage), le `plan` des murs reste publié |
+
+**Le plan des murs.** `plan { source, vertices, faces, edges }` dans le sidecar porte les arêtes de bord du maillage
+(celles qu'une seule face porte : murs, vides, bords de plateforme) en `[x1, y1, x2, y2]`, en mètres monde, au
+millimètre. C'est un vecteur, jamais une seconde image. Une carte dont le module n'a pas de maillage (Live Fire) est
+cuite par la chaîne historique, consigne la dégradation dans `degradations` et n'a pas de `plan` ; le web le traite
+comme normal.
+
+**Côté web.** `lib/replay/wallPlan.ts` normalise une fois le transport nullable ; le calque
+`features/match-replay/layers/wallPlanLayer.ts` dessine le plan en couche statique entre le fond et les zones.
+L'orientation (`lib/replay/orientation.ts`) tourne le monde par quarts de tour, dans le sens horaire à l'écran,
+**avant** la projection unique (`CanvasView.orient`) : textes et icônes restent droits. Les deux choix sont des
+préférences par visiteur (`replay-orientation.<mapId>` et `replay-show-wall-plan`) ; le rejeu porte la commande, l'onglet
+Tactique et « Occupation du terrain » ne font que les lire par `useMapViewPreferences`. Une nouvelle vue 2D lit le même
+hook et dessine par la même projection ; elle ne définit jamais sa propre orientation.
+
+**Ajouter une carte.** Aucun changement de code.
+
+1. Carte Forge : `go run ./cmd/mapnav-fetch ...` rapporte son `navmesh.blob`.
+2. `CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "<nom>"` cuit l'image et le sidecar (le jeu doit être installé).
+   `--plan-seul` ajoute seulement le plan au sidecar publié d'une carte Forge, sans recuire.
+3. `go run ./cmd/mapfond-webp -convertir` convertit l'image et réécrit le sidecar par `mapfondsidecar`.
+4. Si le résultat est jugé faux à l'écran, ajouter le réglage à `map_fond_reglages.json` avec sa `raison` et son `gateLe`.
+5. Un changement du décodeur de maillage ou des options de cuisson se fait dans les dépôts des briques
+   (`halo-infinite-files-reader`, `halo-infinite-map-images`) et s'adopte par une montée de `require` (ADR 0043).
+
+Référence : `docs/adr/0048-map-backgrounds-held-by-navigation-mesh.md`, `docs/COMMANDS.md` section « mapfond-build ».
+
 ---
 
 ## 4. Exemple de bout en bout
@@ -456,6 +513,7 @@ composants locaux (garde-rail : `admin-ui.guard.test.ts`) :
 | `docs/adr/0003-i18n-manifest-and-linter.md` | Pourquoi les manifests TOML + lint |
 | `docs/adr/0040-i18n-n-locales.md` | Pourquoi une seule liste de langues (`config/locales.toml`) et comment ajouter une langue (§ 3.5) |
 | `docs/adr/0004-narrative-engine.md` | Pourquoi 8 rôles + radar 6 axes |
+| `docs/adr/0048-map-backgrounds-held-by-navigation-mesh.md` | Fonds de carte tenus par le maillage de navigation, plan des murs, orientation (§ 3.6) |
 | `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` | Plan maître (Phases 0–4) |
 | `.claude/skills/arch-rules/SKILL.md` | Règles de couches + contrat multi-titres |
 | `.claude/skills/canonical-types/SKILL.md` | Catalogue des types |

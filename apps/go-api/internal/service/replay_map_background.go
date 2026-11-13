@@ -45,6 +45,7 @@ import (
 
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/mapfondsidecar"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/replayview"
 
@@ -75,11 +76,7 @@ func (s *replayService) MapBackground(ctx context.Context, matchID string) (*rep
 	if err != nil {
 		return nil, err
 	}
-	bg, err := s.loadMapBackground(ctx, key)
-	if err != nil {
-		return nil, err
-	}
-	return replayview.MapBackgroundOf(bg), nil
+	return s.servedMapBackground(ctx, key)
 }
 
 // MapBackgroundImage retourne les octets du fond de carte du match, et le type MIME sous
@@ -107,11 +104,7 @@ func (s *replayService) MapBackgroundForMap(ctx context.Context, mapID string) (
 	if err != nil {
 		return nil, err
 	}
-	bg, err := s.loadMapBackground(ctx, key)
-	if err != nil {
-		return nil, err
-	}
-	return replayview.MapBackgroundOf(bg), nil
+	return s.servedMapBackground(ctx, key)
 }
 
 // MapBackgroundImageForMap retourne les octets du fond d'une CARTE, et son type MIME.
@@ -274,6 +267,26 @@ func cleDeFondSure(cle string) bool {
 		return false
 	}
 	return !strings.Contains(cle, "..")
+}
+
+// servedMapBackground rend le calage d'une clé de fond dans sa forme SERVIE : le sidecar complet
+// (calage du décodeur et plan des murs, `internal/mapfondsidecar`) projeté une fois sur le contrat
+// public. Un plan illisible est journalisé et laissé de côté : le calage et l'image restent servis.
+func (s *replayService) servedMapBackground(ctx context.Context, key string) (*replaydoc.MapBackground, error) {
+	path := title.NewPathResolver(s.repoRoot).MapBackgroundMetaPath(s.titleSlug, key)
+	full, err := mapfondsidecar.Load(path)
+	if err == nil {
+		return replayview.MapBackgroundOf(full), nil
+	}
+	// Le sidecar complet ne se lit pas : le calage seul dit si c'est lui (fond absent ou
+	// illisible, journalisé et refusé par loadMapBackground) ou le plan.
+	bg, errCalage := s.loadMapBackground(ctx, key)
+	if errCalage != nil {
+		return nil, errCalage
+	}
+	slog.WarnContext(ctx, "rejeu 2D : plan des murs illisible — fond servi sans plan",
+		"err", err, "cle", key, "path", path, "titleSlug", s.titleSlug)
+	return replayview.MapBackgroundOf(&mapfondsidecar.MapBackground{MapBackground: *bg}), nil
 }
 
 // loadMapBackground lit le sidecar de calage d'une clé de fond (module installé ou map_id).

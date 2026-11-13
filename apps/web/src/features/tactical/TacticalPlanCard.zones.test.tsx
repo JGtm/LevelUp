@@ -23,6 +23,7 @@ vi.mock('./queries', async (importOriginal) => {
   return {
     ...actual,
     useTacticalMapBackgroundFrame: () => null,
+    useTacticalMapBackgroundPlan: () => null,
     useTacticalMapBackgroundUrl: () => null,
   }
 })

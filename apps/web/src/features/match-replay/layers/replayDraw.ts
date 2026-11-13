@@ -19,7 +19,7 @@ import { MELEE_LINK_MAX_M, type KillFxEntry } from '../model/killFx'
 import { drawMeleeStar, meleeStarProgress } from './meleeStar'
 import { altitudeRatio, footprint } from '../../../lib/replay/replayLogic'
 import { vehicleShotOrigin, type VehicleMountSpriteSize } from '../model/vehicleWeaponMounts'
-import { type CanvasView, projectTo, scaleOf } from '../model/replayView'
+import { type CanvasView, projectTo, scaleOf, turnsOfView } from '../model/replayView'
 import { vehicleCeilPx } from '../../../lib/replay/screenSizes'
 
 /** Amplitude verticale utilisée pour l'indication d'étage. */
@@ -139,7 +139,7 @@ export function drawShotsLayer(
     const c = projectTo(view, s)
     const { origin, angle } = vehicleShotOrigin({
       h: s.h, vehicleShot: s.vehicleShot, center: c, sizeOf: style.vehicleSizeOf, k: style.k,
-      scalePxPerM, ceilPx,
+      scalePxPerM, ceilPx, turns: turnsOfView(view),
     })
     drawMuzzleFlash(ctx, s.fam, s.tint, {
       x: origin.x,

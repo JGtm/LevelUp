@@ -12,6 +12,7 @@
  */
 import { DEFAULT_EXPORT_FORMAT_ID, EXPORT_FORMAT_IDS, type ExportFormatId } from '../export/exportFormats'
 import { DEFAULT_FEED_FILTER, FEED_FILTER_IDS, type FeedFilterId } from '../model/feedFilterLogic'
+import { normalizeTurns, QUARTER_TURNS, type QuarterTurns } from '@/lib/replay/orientation'
 import { VIEW_PRESET_IDS, type ViewPresetId } from './viewPresetLogic'
 
 /** Lit un booléen persisté ; absent ou storage indisponible -> `fallback`. */
@@ -154,4 +155,31 @@ export function readViewPreset(): ViewPresetId | undefined {
 /** Retient le préréglage choisi. Stockage refusé : le choix vaut pour la session, sans erreur. */
 export function persistViewPreset(id: ViewPresetId): void {
   persistPreference(VIEW_PRESET_KEY, id)
+}
+
+/**
+ * L'ORIENTATION DE LA CARTE (`lib/replay/orientation`) est un réglage PAR CARTE : retenue dans CE
+ * navigateur sous `replay-orientation.<mapId>`, jamais côté serveur. Une carte dont l'utilisateur
+ * a tourné la vue s'ouvre ainsi toujours tournée, sans toucher aux autres. La lecture est
+ * VALIDÉE contre les quatre positions : absente, hors liste ou écrite par une autre version ->
+ * 0 quart de tour.
+ */
+export const ORIENTATION_KEY_PREFIX = 'replay-orientation.'
+
+/** Les valeurs écrites : le nombre de quarts de tour, en chaîne (`readStoredChoice` compare des chaînes). */
+const ORIENTATION_VALUES: readonly string[] = QUARTER_TURNS.map(String)
+
+/** La clé de stockage de l'orientation d'une carte. */
+export function orientationKey(mapId: string): string {
+  return `${ORIENTATION_KEY_PREFIX}${mapId}`
+}
+
+/** L'orientation retenue pour cette carte, ou 0 quart de tour. */
+export function readOrientation(mapId: string): QuarterTurns {
+  return normalizeTurns(Number(readStoredChoice(orientationKey(mapId), '0', ORIENTATION_VALUES)))
+}
+
+/** Retient l'orientation choisie pour cette carte. Stockage refusé : le choix vaut pour la session. */
+export function persistOrientation(mapId: string, turns: QuarterTurns): void {
+  persistPreference(orientationKey(mapId), String(turns))
 }
