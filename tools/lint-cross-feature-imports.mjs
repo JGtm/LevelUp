@@ -169,6 +169,7 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   //    preferences du rejeu, que ce module (lecture seule) est le seul à exposer. Une copie serait une
   //    seconde clé de stockage pour la même préférence.
   'tactical=>match-replay/settings/useMapViewPreferences',
+  'match-view=>match-replay/settings/useMapViewPreferences',
   // Engagement orchestre des sous-vues squad
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history
