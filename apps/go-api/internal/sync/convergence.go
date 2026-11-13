@@ -163,29 +163,6 @@ func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
 	return out
 }
 
-// convergePSA re-fetch le JSON match des matchs sans PSA, écrit les alias de ses participants
-// dans shared.xuid_aliases, puis écrit les PersonalScores du joueur
-// (ExtractPersonalScoreAwards + InsertPersonalScoreAwards, append-only par génération) et pose le
-// marqueur terminal psa_checked_at (même avec 0 award) : état terminal. Ordre imposé : les awards et
-// le marqueur ne sont écrits qu'APRÈS l'écriture des alias. Un match dont le fetch, les alias ou
-// l'écriture des awards échouent n'a donc aucun award : selectMatchesMissingPSA le rend au cycle
-// suivant, qui retente tout sans jamais empiler une génération d'awards de plus.
-//
-// Convergence OPPORTUNISTE des alias (2026-06-10) : le JSON fetché contient le
-// gamertag de TOUS les participants — on upserte shared.xuid_aliases au
-// passage, à coût API nul. Résorbe le backlog d'alias des vieux matchs. Depuis
-// 2026-06-19, shared.xuid_aliases est l'unique store (le store global
-// xbox_aliases a été consolidé puis supprimé) : ce chemin convergent en est
-// l'alimentation principale, avec match_participants/killer_victim_pairs (lus
-// par v_gamertag_lookup).
-//
-// Enrobage des phases collect → flush → settle, sans appelant de production : le post-sync
-// (runPSAConvergence) enchaîne les mêmes phases autour de son burst d'écriture shared.
-func convergePSA(ctx context.Context, playerDB, sharedDB *sql.DB, client HaloClient, xuid string, ids []string) int {
-	fetched := convergePSACollect(ctx, client, xuid, ids)
-	return settlePSA(ctx, playerDB, xuid, flushAliasPairs(ctx, sharedDB, xuid, fetched))
-}
-
 // aliasPair : upsert shared.xuid_aliases différé (étape 1 contention — le fetch
 // réseau PSA ne tient plus le writer shared ; les alias sont bufferisés puis
 // flushés en burst court par le caller).

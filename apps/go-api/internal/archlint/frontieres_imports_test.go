@@ -7,6 +7,8 @@
 package archlint
 
 import (
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -90,16 +92,59 @@ func importsSousArbre(src goSource, racines []string) []string {
 	return trouves
 }
 
-// racinesInterditesAuxHandlers : le moteur de synchronisation, ses écritures (`persist`) et le code
-// propre à un titre (`games/halo_infinite`, `games/halo_5` et leurs sous-paquets, suivi en direct
-// compris). Un handler lance une sync par un port (`port.SyncJobService`), lit et écrit par les ports de
-// `internal/port` et passe par les adaptateurs sémantiques et les capacités pour tout ce qui dépend du
-// titre ; il n'importe aucun de ces paquets.
-var racinesInterditesAuxHandlers = []string{
+// racinesFixesInterditesAuxHandlers : le moteur de synchronisation et ses écritures (`persist`).
+var racinesFixesInterditesAuxHandlers = []string{
 	cheminModuleAPI + "sync",
 	cheminModuleAPI + "persist",
-	cheminModuleAPI + "games/halo_infinite",
-	cheminModuleAPI + "games/halo_5",
+}
+
+// racinesInterditesAuxHandlers : le moteur de synchronisation, ses écritures (`persist`) et le code
+// propre à un titre (`games/<titre>` et ses sous-paquets, suivi en direct compris), pour chaque titre
+// donné. Un handler lance une sync par un port (`port.SyncJobService`), lit et écrit par les ports de
+// `internal/port` et passe par les adaptateurs sémantiques et les capacités pour tout ce qui dépend du
+// titre ; il n'importe aucun de ces paquets.
+func racinesInterditesAuxHandlers(titres []string) []string {
+	racines := append([]string(nil), racinesFixesInterditesAuxHandlers...)
+	for _, titre := range titres {
+		racines = append(racines, cheminModuleAPI+"games/"+titre)
+	}
+	return racines
+}
+
+// titresDeInternalGames rend, triés, les répertoires d'`internal/games/` qui ne sont pas des paquets
+// inter-titres (`paquetsInterTitres`) : un répertoire neuf y est un titre par défaut, comme pour
+// `TestServiceImporteAucunPaquetDeTitre`, de sorte qu'un titre ajouté est refusé aux handlers sans
+// qu'on édite ce test.
+func titresDeInternalGames(t *testing.T) []string {
+	t.Helper()
+	entrees, err := os.ReadDir(filepath.Join(apiRootDepuisIci(t), "internal", "games"))
+	if err != nil {
+		t.Fatalf("lecture d'internal/games : %v", err)
+	}
+	var titres []string
+	for _, e := range entrees {
+		if e.IsDir() && !paquetsInterTitres[e.Name()] {
+			titres = append(titres, e.Name())
+		}
+	}
+	sort.Strings(titres)
+	return titres
+}
+
+// TestTitresDeInternalGames : le parcours voit les titres connus et aucun paquet inter-titres ; sans
+// quoi `TestHandlersSansMoteurDeSync` ne garderait plus rien.
+func TestTitresDeInternalGames(t *testing.T) {
+	titres := strings.Join(titresDeInternalGames(t), ",")
+	for _, attendu := range []string{"halo_5", "halo_infinite"} {
+		if !strings.Contains(","+titres+",", ","+attendu+",") {
+			t.Errorf("titre %q absent de la liste des titres d'internal/games : %s", attendu, titres)
+		}
+	}
+	for interdit := range paquetsInterTitres {
+		if strings.Contains(","+titres+",", ","+interdit+",") {
+			t.Errorf("paquet inter-titres %q pris pour un titre : %s", interdit, titres)
+		}
+	}
 }
 
 // handlersAvecMoteurDeSyncAutorises : handlers qui importent encore l'une de ces racines, avec la date et
@@ -118,16 +163,18 @@ import (
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_infinite/haloadapter"
+	"levelup/go-api/internal/games/titre_a_venir/adapter"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/persistance"
 )
 `)
-	got := importsSousArbre(src, racinesInterditesAuxHandlers)
+	got := importsSousArbre(src, racinesInterditesAuxHandlers([]string{"halo_5", "halo_infinite", "titre_a_venir"}))
 	want := []string{
 		cheminModuleAPI + "games/halo_5",
 		cheminModuleAPI + "games/halo_5/livesync",
 		cheminModuleAPI + "games/halo_infinite/haloadapter",
+		cheminModuleAPI + "games/titre_a_venir/adapter",
 		cheminModuleAPI + "persist",
 		cheminModuleAPI + "sync",
 		cheminModuleAPI + "sync/replayartifacts",
@@ -142,7 +189,7 @@ import (
 // sessions) se lancent par `port.SyncJobService`, que `service.SyncJobService` implémente : changer de
 // moteur, ou ajouter un titre, ne touche pas la couche HTTP.
 func TestHandlersSansMoteurDeSync(t *testing.T) {
-	violations := violationsImportsHandlers(t, racinesInterditesAuxHandlers, handlersAvecMoteurDeSyncAutorises, "handlersAvecMoteurDeSyncAutorises")
+	violations := violationsImportsHandlers(t, racinesInterditesAuxHandlers(titresDeInternalGames(t)), handlersAvecMoteurDeSyncAutorises, "handlersAvecMoteurDeSyncAutorises")
 	if len(violations) > 0 {
 		t.Errorf("un handler importe le moteur de sync, persist ou un paquet de titre — passer par un port de internal/port :\n  %s",
 			strings.Join(violations, "\n  "))
