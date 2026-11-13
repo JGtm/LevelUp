@@ -286,6 +286,60 @@ application in `xx`, the same files as for a real language (steps 1 to 6) are ne
 (throwaway-branch procedure and results: `.ai/V8/PLAN_I18N_MULTILANGUE.md`, step 10). The unknown-language
 code used by the tests is `zz`, never `xx`.
 
+### 3.6 Map backgrounds, wall plan and orientation (ADR 0048)
+
+The 2D views (replay, Tactical tab, "Terrain occupation") draw on a top-down background image per map. Everything about
+it lives in three places: the cooking tool, the sidecar next to each image, and one shared projection on the web side.
+
+**The files.** `data/titles/{slug}/reference/map_backgrounds/{key}.webp` is the image; `{key}.json` is its sidecar: the
+calibration of the film decoder's `replay.MapBackground` plus an optional `plan`. The sidecar is read and written only
+through `internal/mapfondsidecar`, because the decoder's type ignores `plan` and would silently drop it on a rewrite.
+
+**The navigation mesh frames the background.** The rich background (cooked from the map geometry) stays the base. The
+Havok navigation mesh of the map, read by the same decoder for both sources, does two things to it: it **clips** the
+matter outside the mesh (dilated by a margin) and it gives the **ground reference** that a high surface is projected onto.
+
+| Source | Where the mesh comes from | Clipping by default |
+|---|---|---|
+| Native map | a resource of the `any` module of the map (`himap.ChargeMaillageNatif`) | on, 1.5 m |
+| Forge map | `navmesh.blob` in the repository (`cmd/mapnav-fetch`); it is the reference only where the map sets `navmeshReference` | off |
+
+**Per-map levers** (`map_fond_reglages.json`; each entry keeps its `raison` and `gateLe`, and a lever is declared only
+where a map was judged by eye):
+
+| Lever | Effect |
+|---|---|
+| `rogneAuNavmesh` | `true` / `false`: clip to the mesh, or keep it as the reference only (absent keeps the source default above) |
+| `margeNavmesh` | dilation of the clipping mask, in metres (0 = the source default) |
+| `toleranceNavmesh` | empty the cells whose retained surface is more than N metres from the mesh ground (0 = none); it makes a floor plan rather than a top view |
+| `maillageNiveauHaut` | where two levels overlap, take the highest one of the mesh as the reference, so floors and walkways survive the substitution |
+| `sansNavmesh` | native map only: drop the mesh altogether (no reference, no clipping, no plan) |
+
+**The wall plan.** `plan { source, vertices, faces, edges }` in the sidecar holds the boundary edges of the mesh (the
+edges one face carries: walls, voids, platform edges) as `[x1, y1, x2, y2]` in world metres, to the millimetre. It is a
+vector, never a second image. A map whose module has no mesh (Live Fire) is cooked by the historical chain, lists the
+degradation in `degradations` and has no `plan`; the web side treats that as normal.
+
+**On the web side.** `lib/replay/wallPlan.ts` normalizes the nullable transport once; the layer
+`features/match-replay/layers/wallPlanLayer.ts` draws the plan as a static layer between the background and the zones.
+The orientation (`lib/replay/orientation.ts`) turns the world by quarter turns, clockwise on screen, **before** the
+single projection (`CanvasView.orient`), so text and icons stay upright. Both choices are per-viewer preferences
+(`replay-orientation.<mapId>` and `replay-show-wall-plan`); the replay holds the control, and the Tactical tab and
+"Terrain occupation" only read them through `useMapViewPreferences`. A new 2D view reads the same hook and draws through
+the same projection; it never defines its own orientation.
+
+**Adding a map.** No code change.
+
+1. Forge map: `go run ./cmd/mapnav-fetch ...` brings its `navmesh.blob`.
+2. `CGO_ENABLED=1 go run ./cmd/mapfond-build --maps "<name>"` cooks the image and the sidecar (the game must be
+   installed). `--plan-seul` only adds the plan to the published sidecar of a Forge map, without recooking.
+3. `go run ./cmd/mapfond-webp -convertir` converts the image and rewrites the sidecar through `mapfondsidecar`.
+4. If the result is judged wrong on screen, add the lever to `map_fond_reglages.json` with its `raison` and `gateLe`.
+5. A change of the mesh decoder or of the cooking options is made in the brick repositories
+   (`halo-infinite-files-reader`, `halo-infinite-map-images`) and adopted by a `require` bump (ADR 0043).
+
+Reference: `docs/adr/0048-map-backgrounds-held-by-navigation-mesh.md`, `docs/COMMANDS.md` section "mapfond-build".
+
 ---
 
 ## 4. End-to-end example
@@ -451,6 +505,7 @@ A: The admin dashboard (2026-07 overhaul) has its own canonical primitives under
 | `docs/adr/0003-i18n-manifest-and-linter.md` | Why TOML manifests + lint |
 | `docs/adr/0040-i18n-n-locales.md` | Why one list of languages (`config/locales.toml`) and how to add a language (§ 3.5) |
 | `docs/adr/0004-narrative-engine.md` | Why 8 roles + 6-axis radar |
+| `docs/adr/0048-map-backgrounds-held-by-navigation-mesh.md` | Map backgrounds held by the navigation mesh, wall plan, orientation (§ 3.6) |
 | `.ai/V7/PLAN_META_FOUNDATIONS_GO.md` | Master plan (Phases 0–4) |
 | `.claude/skills/arch-rules/SKILL.md` | Layer rules + multi-title contract |
 | `.claude/skills/canonical-types/SKILL.md` | Type catalog |

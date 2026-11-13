@@ -1,3 +1,9 @@
+## [2026-11-13] ADR 0048, amendement 0043, guide des fondations EN/FR : fonds tenus par le maillage — Complété (branche `feat/fonds-navmesh-natif`, non poussée)
+
+- **Décision** : l'ADR 0048 (EN) consigne huit décisions D-1 à D-8 (deux sources, un décodeur ; fond riche = base, maillage = cadrage et référence ; plan = vecteur du sidecar ; orientation dans la projection, par carte, partagée ; carte sans maillage = dégradation nommée ; secondaire ignoré et compté ; `-plan-seul` ; `mapfondsidecar` seul lecteur-écrivain). Amendement du 2026-11-13 à l'ADR 0043 : premier usage de la règle « le dépôt dédié est la source », pseudo-version sur branche de travail, tags mineurs avant `main`. Section 3.6 du guide des fondations, EN et FR.
+- **Résultats** : `go test ./internal/archlint -run 'Doc|Adr|Citation|Chemin'` vert. La ligne « briques » de CLAUDE.md et l'entrée 0043 étaient déjà à jour depuis l'amendement du 2026-11-12 ; seule la mention du 2026-11-13 et l'entrée 0048 s'ajoutent.
+- **Conclusion** : il reste les tags `v1.1.0` des deux dépôts de briques, puis la montée des `require` hors pseudo-version avant tout passage sur `main`.
+
 ## [2026-11-13] Rejeu 2D : corrections de revue, puis plan des murs et orientation sur la Tactique et « Occupation du terrain » — Complété (branche `feat/fonds-navmesh-natif`, non poussée, web seul)
 
 - Décision : le sens de rotation est HORAIRE, défini en un seul endroit (`orientAbout`) ; l'orientation, le plan des murs, son trait (`strokeWallPlan`) et le retour du zoom à la carte entière (`useZoomResetOnTurns`) descendent sous `lib/replay/` pour être partagés par les trois vues 2D. Une seule préférence par carte (`replay-orientation.<map_id>`) et un seul interrupteur (`replay-show-wall-plan`), lus seulement par la Tactique et « Occupation du terrain » (`useMapViewPreferences`, deux entrées d'allowlist inter-features, datées) : aucun réglage propre à ces pages.
