@@ -50,6 +50,9 @@
 **The interface and the Windows app**
 - **Accuracy records are recorded again** — a match's accuracy was read as a percentage where a ratio was expected, so no new accuracy record could be set; existing records are converted at the first start
 - **No more lost career snapshot during the score recalculation** — the career save now waits for the recalculation instead of giving up
+- **A clearer sign-in failure** — when Halo's services do not answer during a sign-in with a code, the message says so and asks to try again later, instead of showing the message given to an account Halo refuses
+- **A home page that says where the sync stands** — a player with no match yet no longer reads "Sync in progress" by default: the page says whether a sync is running, waiting for the sign-in, paused, failed (with the cause) or finished without any match, and offers to start or retry it when that is possible
+- **The app version in feedback reports** — feedback sent from the Windows app now carries its version
 - **The Windows app tidies its database at start-up** — when replay data has piled up, it is compacted before the app opens (about ten seconds, once in a while); a copy is made first
 - **A much shorter start-up log** — repeated warnings during a recalculation are summed up in one line, Halo service outages and rate limits in one line per pass
 - **A more compact sidebar** — the foot becomes a row of icons, folded it keeps a "More" menu, and a tooltip opens on focus only when the focus comes from the keyboard

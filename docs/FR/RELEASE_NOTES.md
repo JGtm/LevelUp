@@ -50,6 +50,9 @@
 **L'interface et l'application Windows**
 - **Les records de précision se posent de nouveau** — la précision d'un match était lue en pourcentage là où un rapport était attendu, et aucun nouveau record de précision ne pouvait se poser ; les records existants sont convertis au premier démarrage
 - **Plus d'instantané de carrière perdu pendant le recalcul des notes** — l'enregistrement de la carrière attend la fin du recalcul au lieu d'abandonner
+- **Un échec de connexion plus clair** — quand les services Halo ne répondent pas pendant une connexion par code, le message le dit et invite à réessayer plus tard, au lieu du message donné à un compte que Halo refuse
+- **Un accueil qui dit où en est la synchronisation** — un joueur sans match ne lit plus « Synchronisation en cours » par défaut : la page dit si une synchronisation est en cours, en attente de connexion, en pause, en échec (avec la cause) ou terminée sans aucun match, et propose de la lancer ou de la relancer quand c'est possible
+- **La version de l'application dans les signalements** — un signalement envoyé depuis l'application Windows porte désormais sa version
 - **L'application Windows range sa base au démarrage** — quand les données de rejeu se sont accumulées, elles sont compactées avant l'ouverture (une dizaine de secondes, de temps en temps), après une copie de sécurité
 - **Un journal de démarrage beaucoup plus court** — les avertissements répétés pendant un recalcul sont résumés en une ligne, les pannes et limites des services Halo en une ligne par passe
 - **Une barre latérale plus compacte** — le pied devient une rangée d'icônes, replié il garde un menu « Plus », et une infobulle ne s'ouvre au focus que si le focus vient du clavier
