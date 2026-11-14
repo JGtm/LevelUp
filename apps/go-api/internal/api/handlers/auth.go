@@ -293,9 +293,13 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		// que dans la tentative en mémoire, affichée au navigateur puis purgée.
 		slog.ErrorContext(ctx, "auth: échange en jetons Halo refusé après le device-flow",
 			"attempt_id", attemptID, "err", err)
+		code := errCodeHaloExchange
+		if auth_platform.HaloServicesUnreachable(err) {
+			code = errCodeHaloUnreachable
+		}
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
-			a.ErrorCode = "halo_exchange_error"
+			a.ErrorCode = code
 		})
 		return
 	}

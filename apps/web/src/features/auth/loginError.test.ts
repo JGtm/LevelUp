@@ -103,6 +103,7 @@ describe('deviceFlowFailureKey', () => {
     ['expiré', 'expired', null, 'common.device_code.err_expired'],
     ["code expiré malgré un code d'erreur", 'expired', 'halo_exchange_error', 'common.device_code.err_expired'],
     ['échange Halo', 'failed', 'halo_exchange_error', 'common.device_code.err_halo'],
+    ['services Halo injoignables', 'failed', 'halo_unreachable', 'common.device_code.err_halo_unreachable'],
     ['attente Microsoft', 'failed', 'device_flow_acquire_error', 'common.device_code.err_ms'],
     ['identité absente', 'failed', 'identity_missing', 'common.device_code.err_identity'],
     ['instance verrouillée', 'failed', 'instance_locked', 'common.auth.register_instance_closed'],

@@ -322,7 +322,11 @@ describe('XboxLoginPage', () => {
       failWith({ status: 'failed', error_code: 'halo_exchange_error', error_detail: 'jeton=abc123' })
       renderWithProviders(<XboxLoginPage />)
       expect(
-        await screen.findByText("Impossible d'obtenir un accès Halo. Veuillez réessayer.", {}, { timeout: 8000 }),
+        await screen.findByText(
+          "Halo a refusé l'accès à ce compte. Vérifiez le compte choisi et son profil Xbox.",
+          {},
+          { timeout: 8000 },
+        ),
       ).toBeInTheDocument()
       expect(screen.queryByText(/abc123/)).not.toBeInTheDocument()
     })

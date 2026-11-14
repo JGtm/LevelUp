@@ -90,6 +90,7 @@ export function registerErrorKey(err: unknown): RegisterErrorKey {
 export type DeviceFlowFailureKey =
   | 'common.device_code.err_expired'
   | 'common.device_code.err_halo'
+  | 'common.device_code.err_halo_unreachable'
   | 'common.device_code.err_ms'
   | 'common.device_code.err_identity'
   | 'common.device_code.err_generic'
@@ -98,6 +99,7 @@ export type DeviceFlowFailureKey =
 /** Code d'échec posé par le serveur (`error_code`) → message de l'écran. */
 const DEVICE_FLOW_FAILURE_KEYS: Readonly<Record<string, DeviceFlowFailureKey>> = {
   halo_exchange_error: 'common.device_code.err_halo',
+  halo_unreachable: 'common.device_code.err_halo_unreachable',
   device_flow_acquire_error: 'common.device_code.err_ms',
   identity_missing: 'common.device_code.err_identity',
   // Connexion par le navigateur (retour de Microsoft, handlers/auth_browser_login.go).

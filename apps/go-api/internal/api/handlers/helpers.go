@@ -30,6 +30,12 @@ const (
 	// Codes d'erreur partagés (device-code flow SISU).
 	errCodeDeviceFlowAcquire = "device_flow_acquire_error"
 
+	// errCodeHaloExchange : l'échange Halo est refusé pour le compte (pas de profil Xbox, mauvais
+	// compte). errCodeHaloUnreachable : les services Halo ne répondent pas (délai, réseau, 5xx),
+	// réessayer plus tard.
+	errCodeHaloExchange    = "halo_exchange_error"
+	errCodeHaloUnreachable = "halo_unreachable"
+
 	// Modes auth.
 	authModeXbox = "xbox"
 
