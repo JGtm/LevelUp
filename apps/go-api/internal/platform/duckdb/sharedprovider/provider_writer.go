@@ -179,6 +179,7 @@ func (p *providerImpl) swapToRW(ctx context.Context, swapStart time.Time) (*duck
 	// fire UNE fois par acquisition — il attrape aussi un writer jamais release,
 	// qu'un check passif au release raterait.
 	p.rwHolderLabel = ctxkeys.DBWriterLabel(ctx)
+	p.rwHold = &rwHoldRecord{}
 	p.armRWWatchdogLocked()
 	swapTotal.Add(swapDirRoToRw, 1)
 	swapDurationMsTotal.Add(swapDirRoToRw, time.Since(swapStart).Milliseconds())
@@ -204,21 +205,43 @@ func (p *providerImpl) refusOuvertureRWLocked(ctx context.Context, err error) er
 }
 
 // armRWWatchdogLocked arme le timer de surveillance de détention du writer.
-// Doit être appelé avec p.mu tenu, juste après la pose de rwWindowStart et
-// rwHolderLabel. No-op si le seuil est <= 0 (désactivation explicite).
+// Doit être appelé avec p.mu tenu, juste après la pose de rwWindowStart, rwHolderLabel et rwHold.
+// No-op si le seuil est <= 0 (désactivation explicite).
+//
+// Le timer compte chaque dépassement (expvar) mais n'écrit une ligne que si le journal l'accorde
+// (un épisode de dépassements du même détenteur = une ligne, hold_journal.go) ; la ligne de
+// libération (releaseWriter) suit la ligne de dépassement de la même acquisition.
 func (p *providerImpl) armRWWatchdogLocked() {
 	if p.rwHoldWatchdog <= 0 {
 		return
 	}
 	label, path, threshold, start := p.rwHolderLabel, p.path, p.rwHoldWatchdog, p.rwWindowStart
+	hold, journal := p.rwHold, &p.holdJournal
 	p.rwWatchdog = time.AfterFunc(threshold, func() {
 		watchdogFiredTotal.Add(1)
 		recordHolderWatchdog(label)
-		slog.Warn("sharedprovider: writer RW tenu au-delà du seuil — lectures gatées pendant ce temps",
+		journaliser, tus := journal.signaler(label)
+		if !journaliser {
+			return
+		}
+		hold.annonce.Store(true)
+		slog.Warn("sharedprovider: writer RW tenu au-delà du seuil — lectures gatées jusqu'à sa libération",
 			"label", label, "path", path,
 			"threshold_ms", threshold.Milliseconds(),
-			"held_ms", time.Since(start).Milliseconds())
+			"held_ms", time.Since(start).Milliseconds(),
+			"depassements_tus_episode_precedent", tus)
 	})
+}
+
+// logHoldRelease écrit la ligne de libération d'un writer dont le dépassement a été annoncé :
+// durée totale de la prise et nombre de lectures qui ont dû attendre.
+func (p *providerImpl) logHoldRelease(label string, heldMs int64, hold *rwHoldRecord) {
+	if hold == nil || !hold.annonce.Load() {
+		return
+	}
+	slog.Warn("sharedprovider: writer RW libéré après dépassement du seuil",
+		"label", label, "path", p.path, "held_ms", heldMs,
+		"lectures_retenues", hold.lecturesRetenues.Load())
 }
 
 // disarmRWWatchdogLocked stoppe le watchdog et efface le label du détenteur.
@@ -300,8 +323,11 @@ func (p *providerImpl) releaseWriter(ctx context.Context, rwHandle *duckdbpkg.DB
 	// Étape 0 attribution : la même fenêtre est ventilée PAR DÉTENTEUR (label
 	// capturé au swapToRW) et le watchdog est désarmé.
 	holderLabel := p.disarmRWWatchdogLocked()
+	hold := p.rwHold
+	p.rwHold = nil
 	if !p.rwWindowStart.IsZero() {
 		heldMs := time.Since(p.rwWindowStart).Milliseconds()
+		p.logHoldRelease(holderLabel, heldMs, hold)
 		observability.RecordDurationMS("shared_provider_rw_window_ms", heldMs)
 		recordHolderWindow(holderLabel, heldMs)
 		p.rwWindowStart = time.Time{}

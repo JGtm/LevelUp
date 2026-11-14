@@ -153,6 +153,12 @@ type providerImpl struct {
 	// Désarmé au releaseWriter. Protégé par p.mu ; le callback du timer ne prend
 	// AUCUN lock (valeurs capturées) — pas de deadlock possible.
 	rwWatchdog *time.Timer
+	// rwHold : suivi de l'acquisition RW en cours (lectures retenues, dépassement annoncé).
+	// Posé au swapToRW, lu au releaseWriter ; protégé par p.mu.
+	rwHold *rwHoldRecord
+	// holdJournal et readerJournal : un épisode de dépassement = une ligne (hold_journal.go).
+	holdJournal   journalDepassements
+	readerJournal journalDepassements
 
 	// readers compte les Get en vol : incrémenté sous p.mu quand state=RO,
 	// décrémenté par le release retourné. AcquireWriter attend qu'il retombe à
@@ -234,6 +240,7 @@ func (p *providerImpl) Get(ctx context.Context) (*sql.DB, func(), error) {
 	// (état non-RO) ; le defer ajoute la durée totale d'attente UNE fois à la
 	// sortie (évite le double-comptage entre itérations de la boucle).
 	var waitStart time.Time
+	compteeRetenue := false
 	defer func() {
 		if !waitStart.IsZero() {
 			readerStallNsTotal.Add(time.Since(waitStart).Nanoseconds())
@@ -269,6 +276,10 @@ func (p *providerImpl) Get(ctx context.Context) (*sql.DB, func(), error) {
 		if waitStart.IsZero() {
 			waitStart = time.Now()
 			readerDelayedTotal.Add(1)
+		}
+		if s == StateRW && !compteeRetenue && p.rwHold != nil {
+			compteeRetenue = true
+			p.rwHold.lecturesRetenues.Add(1)
 		}
 		ready := p.ready
 		p.mu.Unlock()

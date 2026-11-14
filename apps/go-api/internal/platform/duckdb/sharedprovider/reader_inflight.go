@@ -6,8 +6,9 @@ package sharedprovider
 // drainTimeout, puis abandonne). Le compteur seul ne dit pas QUI : le provider retient donc, pour
 // chaque lecteur en vol, l'instant de son Get et les adresses des appels qui l'ont demandé
 // (résolues en noms de fonctions seulement au moment d'écrire un journal). Deux usages :
-//   - au relâchement, un lecteur tenu au-delà de slowReaderThreshold est journalisé en WARN avec
-//     son appelant et sa durée, et compté (shared_provider_reader_slow_total) ;
+//   - au relâchement, un lecteur tenu au-delà de slowReaderThreshold est compté
+//     (shared_provider_reader_slow_total) et, une fois par épisode et par appelant
+//     (hold_journal.go), journalisé en WARN avec son appelant et sa durée ;
 //   - à l'expiration d'un drain, le WARN « drain timeout » nomme les lecteurs encore en vol.
 //
 // Coût sur le chemin chaud : une capture de pile bornée (runtime.Callers) et une entrée de map
@@ -98,9 +99,15 @@ func (p *providerImpl) releaseReader(id uint64) {
 	}
 	if tenu := time.Since(l.depuis); tenu >= seuil {
 		readerSlowTotal.Add(1)
+		appelant := l.appelant()
+		journaliser, tus := p.readerJournal.signaler(appelant)
+		if !journaliser {
+			return
+		}
 		slog.Warn("sharedprovider: lecture tenue longtemps — toute écriture de la base attend sa fin",
-			"path", p.path, "appelant", l.appelant(),
-			"held_ms", tenu.Milliseconds(), "threshold_ms", seuil.Milliseconds())
+			"path", p.path, "appelant", appelant,
+			"held_ms", tenu.Milliseconds(), "threshold_ms", seuil.Milliseconds(),
+			"depassements_tus_episode_precedent", tus)
 	}
 }
 
