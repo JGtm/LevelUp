@@ -38,13 +38,20 @@ interface Props {
   testId?: string
 }
 
+/**
+ * Remplissage horizontal du contenu d'un `ChartCard` (`p-3`, deux fois 12 px) : le canvas est plus
+ * étroit que le conteneur mesuré de cette valeur, et `flowLayout` doit raisonner sur la largeur du canvas.
+ */
+export const CHART_CARD_PADDING_X = 24
+
 /** Le sens de lecture : de l'assistant vers le finisseur. */
 const FLOW_ARROW = '→'
 
 export function AssistFlowChart({ flow, chart, headers, emptyMessage, frame, testId }: Props) {
   const series = useMemo(() => (flow.links.length > 0 ? [{ key: 'assist-flow', datapoints: flow.links }] : []), [flow.links])
   const ref = useRef<HTMLDivElement>(null)
-  const width = useElementWidth(ref, DEFAULT_FLOW_WIDTH)
+  // Le conteneur mesuré englobe le remplissage du ChartCard : la largeur du canvas est plus étroite.
+  const width = useElementWidth(ref, DEFAULT_FLOW_WIDTH + CHART_CARD_PADDING_X) - CHART_CARD_PADDING_X
   const buildOption = useMemo(() => () => buildAssistFlowOption(flow, { ...chart, width }), [flow, chart, width])
   const body = (
     <div ref={ref} data-testid={testId}>
