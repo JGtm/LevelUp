@@ -56,8 +56,11 @@ describe('regenPhase et visibilité', () => {
     // La compression des rejeux bruts, en fin de passe, même quand il n'y avait aucun rejeu à refaire (total 0).
     expect(regenPhase({ ...IDLE, running: true, total: 4, done: 4, compressing: true })).toBe('compressing')
     expect(regenPhase({ ...IDLE, running: true, compressing: true })).toBe('compressing')
-    expect(regenPhase({ ...IDLE, running: true, compressing: true, paused: true })).toBe('paused')
-    expect(regenPhase({ ...IDLE, running: true, compressing: true, waiting_for_game: true })).toBe('waitingGame')
+    // Pause et attente de partie pendant la compression : phases distinctes de celles de la refonte.
+    expect(regenPhase({ ...IDLE, running: true, compressing: true, paused: true })).toBe('compressionPaused')
+    expect(regenPhase({ ...IDLE, running: true, compressing: true, waiting_for_game: true })).toBe(
+      'compressionWaitingGame',
+    )
   })
 
   it('« Plus tard » ne masque que l’offre, jamais une file lancée', () => {
@@ -177,6 +180,32 @@ describe('ReplayRegenBanner', () => {
     useAppShellStore.setState({ locale: 'en' })
     renderWithProviders(<ReplayRegenBanner />)
     expect(await screen.findByText('Compressing replays on disk: 7 done.')).toBeInTheDocument()
+  })
+
+  it('décrit la pause et l’attente de partie comme celles de la compression, jamais « 0 sur 0 »', async () => {
+    const s = serveur({ running: true, total: 0, compressing: true, compressed: 3, paused: true })
+    renderWithProviders(<ReplayRegenBanner />)
+    expect(await screen.findByText('Compression des rejeux en pause : 3 faits.')).toBeInTheDocument()
+    expect(screen.queryByText(/sur 0/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reprendre' })).toBeInTheDocument()
+    cleanup()
+    s.set({ paused: false, waiting_for_game: true })
+    renderWithProviders(<ReplayRegenBanner />)
+    expect(
+      await screen.findByText('Compression des rejeux en attente de la fin de la partie : 3 faits.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/sur 0/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument()
+    cleanup()
+    useAppShellStore.setState({ locale: 'en' })
+    renderWithProviders(<ReplayRegenBanner />)
+    expect(
+      await screen.findByText('Replay compression waiting for the game to end: 3 done.'),
+    ).toBeInTheDocument()
+    cleanup()
+    s.set({ waiting_for_game: false, paused: true })
+    renderWithProviders(<ReplayRegenBanner />)
+    expect(await screen.findByText('Replay compression paused: 3 done.')).toBeInTheDocument()
   })
 
   it('dit quand la file attend la fin de la partie', async () => {
