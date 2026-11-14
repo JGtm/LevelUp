@@ -21,12 +21,16 @@ import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 import { useProvidesMaxKillingSpree } from '@/lib/damage/effectiveHp'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
+import { intlLocale } from '@/lib/formatters'
+import { useAppShellStore } from '@/stores/appShellStore'
 import {
   buildHsPerfectOption,
   buildKillsDeathsButterflyOption,
   buildPerformanceLineOption,
-  buildTeamMMROption,
+  maxLength,
+  orderedPlayers,
 } from './charts/squadPerformanceLineCharts'
+import { buildRankStripsOption, rankStripsCount, rankStripsHeight } from './charts/squadRankStripsChart'
 import { SquadToggleLegendChart } from './SquadToggleLegendChart'
 
 interface I18nLabels {
@@ -46,6 +50,9 @@ interface I18nLabels {
   perfectLabel: string
   rankTitle: string
   mmrLabel: string
+  rankUpLabel: string
+  rankDownLabel: string
+  rankChange: (delta: string) => string
 }
 
 interface SquadPerformanceChartsProps {
@@ -70,6 +77,7 @@ export function SquadPerformanceCharts({
   emptyMessage,
 }: SquadPerformanceChartsProps) {
   const isMobile = useMediaQuery('(max-width: 768px)')
+  const numLoc = intlLocale(useAppShellStore((s) => s.locale))
   // Title-agnostic : la série « Folie meurtrière max » n'est masquée que pour un
   // titre sans events horodatés (provides_max_killing_spree=false). Pour Halo 5
   // le backend CALCULE la spree depuis les events → flag true → série affichée.
@@ -210,14 +218,34 @@ export function SquadPerformanceCharts({
     [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels],
   )
 
+  // Rang : un bandeau par joueur (nombres avec les séparateurs de la langue, écart signé).
+  const rankFmt = useMemo(
+    () => ({
+      int: new Intl.NumberFormat(numLoc, { maximumFractionDigits: 0 }),
+      delta: new Intl.NumberFormat(numLoc, { maximumFractionDigits: 0, signDisplay: 'exceptZero' }),
+    }),
+    [numLoc],
+  )
+  const rankPlayers = useMemo(() => orderedPlayers(rowsByPlayer, playerOrder), [rowsByPlayer, playerOrder])
+  const matchCount = useMemo(() => maxLength(rowsByPlayer, rankPlayers), [rowsByPlayer, rankPlayers])
+  const rankHeight = useMemo(
+    () => rankStripsHeight(rankStripsCount(rowsByPlayer, rankPlayers, matchCount)),
+    [rowsByPlayer, rankPlayers, matchCount],
+  )
+
   const buildRank = useCallback(
     () =>
-      buildTeamMMROption(rowsByPlayer, {
-        ...commonOpts,
+      buildRankStripsOption(rowsByPlayer, rankPlayers, matchCount, {
+        colorByPlayer,
+        xLabels: xMatchLabels,
         mmrLabel: labels.mmrLabel,
+        upLabel: labels.rankUpLabel,
+        downLabel: labels.rankDownLabel,
+        changeLabel: labels.rankChange,
+        fmtInt: (v) => rankFmt.int.format(v),
+        fmtDelta: (v) => rankFmt.delta.format(v),
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rowsByPlayer, colorByPlayer, playerOrder, xMatchLabels, labels.mmrLabel],
+    [rowsByPlayer, rankPlayers, matchCount, colorByPlayer, xMatchLabels, labels.mmrLabel, labels.rankUpLabel, labels.rankDownLabel, labels.rankChange, rankFmt],
   )
 
   const buildMaxSpree = useCallback(
@@ -316,7 +344,7 @@ export function SquadPerformanceCharts({
           title={labels.rankTitle}
           series={series}
           buildOption={buildRank}
-          height={SUBCHART_HEIGHT}
+          height={rankHeight}
           emptyMessage={emptyMessage}
         />
       </div>

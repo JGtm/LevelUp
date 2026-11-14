@@ -5,6 +5,7 @@
  *   - buildPerformanceLineOption        : 1 line par joueur sur une métrique simple.
  *   - buildKillsDeathsButterflyOption   : sous-chart spécial #1 (kills positifs / deaths négatifs).
  *   - buildHsPerfectOption              : sous-chart #8 — HS line normale + perfect_kills emphasés.
+ * Le sous-graphe « Rang » vit dans squadRankStripsChart.ts (un bandeau par joueur).
  *
  * Tous consomment `Record<gamertag, SquadPerformanceSeriesPoint[]>` aligné côté
  * serveur sur les matchs partagés (intersection). xAxis = match_order 0..N-1.
@@ -18,7 +19,6 @@ import {
   getTooltipBase,
   legendEntries,
   stackedAxisExtent,
-  LEGEND_ITEM_WIDTH_LINE,
 } from '@/components/charts/_utils'
 import { axisTooltipFormatter, stackTopFirstOrder } from '@/components/charts/axisTooltip'
 import { tipNumber } from '@/components/charts/tipNumber'
@@ -445,124 +445,5 @@ export function buildHsPerfectOption(
       axisLabel: { ...axis.axisLabel },
     },
     series,
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Sous-chart Rang — MMR équipe par match (courbe par joueur)
-// ---------------------------------------------------------------------------
-
-export interface TeamMMROpts extends CommonOpts {
-  /** Label pour la courbe MMR d'équipe (partagée par tous les joueurs). */
-  mmrLabel: string
-}
-
-export function buildTeamMMROption(
-  rows: Record<string, SquadPerformanceSeriesPoint[]>,
-  opts: TeamMMROpts,
-): ChartOption {
-  const tc = getEChartsThemeColors()
-  const axis = getAxisBase(tc)
-  const players = orderedPlayers(rows, opts.playerOrder)
-  if (players.length === 0) return { backgroundColor: CHART_BG }
-  const n = maxLength(rows, players)
-  if (n === 0) return { backgroundColor: CHART_BG }
-  const xLabels = opts.xLabels ?? xAxisLabels(n)
-
-  const allSeries: Array<Record<string, unknown>> = []
-
-  // MMR équipe — valeur identique pour tous les joueurs d'une même escouade sur un match.
-  // On agrège la première valeur non-nulle par match_order (toutes identiques).
-  const sharedMmrData = new Array<number | null>(n).fill(null)
-  for (const player of players) {
-    for (const p of rows[player]) {
-      if (p.team_mmr != null && sharedMmrData[p.match_order] === null) {
-        sharedMmrData[p.match_order] = p.team_mmr
-      }
-    }
-  }
-
-  // CSR et LUSR sont mutuellement exclusifs par match.
-  // On ne crée une série que si le joueur a au moins un point de cette nature.
-  type BarItem = { value: number | null; itemStyle: { color: string; opacity: number } }
-  const nullItem = (c: string): BarItem => ({ value: null, itemStyle: { color: c, opacity: 0 } })
-  // Entrées de légende AVEC leur couleur : les barres CSR/LUSR sont colorées au point (couleur
-  // du joueur, ou son opposé quand le rang recule) et la courbe MMR est tiretée — sans couleur
-  // explicite ici, la légende annonçait la palette par défaut d'ECharts.
-  const legendData: Array<{ name: string; color: string; dashed?: boolean }> = []
-
-  for (const player of players) {
-    const color = opts.colorByPlayer[player] ?? NO_PLAYER_COLOR
-    const negColor = hexComplement(color)
-
-    const csrData: BarItem[] = Array.from({ length: n }, () => nullItem(color))
-    const lusrData: BarItem[] = Array.from({ length: n }, () => nullItem(color))
-    let hasCsr = false
-    let hasLusr = false
-
-    for (const p of rows[player]) {
-      const val = p.skill_rating ?? null
-      if (val === null) continue
-      const barColor = p.skill_delta !== undefined && p.skill_delta < 0 ? negColor : color
-      const item: BarItem = { value: val, itemStyle: { color: barColor, opacity: 0.85 } }
-      if (p.skill_rating_type === 'csr') { csrData[p.match_order] = item; hasCsr = true }
-      else { lusrData[p.match_order] = item; hasLusr = true } // "lusr" ou type inconnu
-    }
-
-    if (hasCsr)  { allSeries.push({ name: `${player} — CSR`,  type: 'bar', barMaxWidth: 12, data: csrData,  z: 2 }); legendData.push({ name: `${player} — CSR`,  color }) }
-    if (hasLusr) { allSeries.push({ name: `${player} — LUSR`, type: 'bar', barMaxWidth: 12, data: lusrData, z: 2 }); legendData.push({ name: `${player} — LUSR`, color }) }
-  }
-
-  // Une seule courbe pour le MMR d'équipe (partagé par tous les joueurs de l'escouade).
-  const hasMmr = sharedMmrData.some((v) => v !== null)
-  if (hasMmr) {
-    allSeries.push({
-      name: opts.mmrLabel,
-      type: 'line',
-      data: sharedMmrData,
-      lineStyle: { color: tc.text, width: 2, type: 'dashed' }, // color-allow: blanc neutre pour ligne partagée MMR équipe
-      itemStyle: { color: tc.text },
-      symbol: 'circle',
-      symbolSize: 4,
-      connectNulls: false,
-      z: 3,
-    })
-    legendData.push({ name: opts.mmrLabel, color: tc.text, dashed: true })
-  }
-
-  if (allSeries.length === 0) return { backgroundColor: CHART_BG }
-
-  return {
-    backgroundColor: CHART_BG,
-    grid: { top: 36, bottom: 36, left: 8, right: 24, containLabel: true },
-    tooltip: {
-      ...getTooltipBase(tc),
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      // Rang par joueur (barres, ordre de la légende) puis MMR d'équipe ; les matchs sans rang n'ont pas de ligne.
-      formatter: axisTooltipFormatter({ value: (r) => tipNumber(r.value, 0) }),
-    },
-    // Pastille élargie : la courbe « MMR équipe » est tiretée, illisible à 12 px.
-    legend: {
-      ...getLegendBase(tc),
-      itemWidth: LEGEND_ITEM_WIDTH_LINE,
-      data: legendEntries(legendData),
-      type: 'scroll',
-    },
-    xAxis: {
-      ...axis,
-      type: 'category',
-      data: xLabels,
-      axisLabel: {
-        ...axis.axisLabel,
-        interval: n > 30 ? Math.floor(n / 12) : 0,
-      },
-    },
-    yAxis: {
-      ...axis,
-      type: 'value',
-      axisLabel: { ...axis.axisLabel, formatter: (v: number) => tipNumber(v, 0) },
-    },
-    series: allSeries,
   }
 }

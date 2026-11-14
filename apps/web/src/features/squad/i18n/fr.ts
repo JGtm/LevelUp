@@ -301,6 +301,9 @@ export const FR_TEXT = {
     perfectLabel: 'Frags parfaits',
     rankTitle: 'Rang & MMR équipe',
     mmrLabel: 'MMR équipe',
+    rankUpLabel: 'rang tenu ou gagné',
+    rankDownLabel: 'rang perdu',
+    rankChange: (delta) => `variation ${delta}`,
     fragBreakdownTitle: 'Répartition des frags',
     fragBreakdownInfo:
       'Les frags de chacun sur la soirée, par classe d\'arme. Le nombre écrit dans un segment est son compte de frags ; le total est au bout de la barre.',

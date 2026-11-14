@@ -33,10 +33,8 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { buildSessionOcdrBarsOption } from '@/features/session-detail/SessionOcdrBars'
 import { buildMapPerfVsHistoryOption } from '@/features/squad/charts/mapPerfVsHistoryChart'
-import {
-  buildPerformanceLineOption,
-  buildTeamMMROption,
-} from '@/features/squad/charts/squadPerformanceLineCharts'
+import { buildPerformanceLineOption } from '@/features/squad/charts/squadPerformanceLineCharts'
+import { buildRankStripsOption } from '@/features/squad/charts/squadRankStripsChart'
 import { buildSquadPerMinuteOption } from '@/features/squad/charts/squadPerMinuteChart'
 import { buildSquadEfficiencyOption } from '@/features/squad/charts/squadEfficiencyChart'
 import { buildWinRateVsHistoryBulletOption } from '@/features/squad/charts/winRateVsHistoryBulletChart'
@@ -191,12 +189,16 @@ const CHARTS: Array<{ name: string; build: () => EChartsCoreOption }> = [
       }),
   },
   {
-    name: 'Escouade — Rang & MMR équipe',
+    name: 'Escouade — Rang en bandeaux & MMR équipe',
     build: () =>
-      buildTeamMMROption(ROWS_BY_PLAYER, {
+      buildRankStripsOption(ROWS_BY_PLAYER, PLAYERS, 2, {
         colorByPlayer: COLOR_BY_PLAYER,
-        playerOrder: PLAYERS,
         mmrLabel: 'MMR équipe',
+        upLabel: 'rang tenu ou gagné',
+        downLabel: 'rang perdu',
+        changeLabel: (d) => `variation ${d}`,
+        fmtInt: String,
+        fmtDelta: String,
       }),
   },
   {

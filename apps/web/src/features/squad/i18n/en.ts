@@ -300,6 +300,9 @@ export const EN_TEXT = {
     perfectLabel: 'Perfect kills',
     rankTitle: 'Rank & Team MMR',
     mmrLabel: 'Team MMR',
+    rankUpLabel: 'rank held or gained',
+    rankDownLabel: 'rank lost',
+    rankChange: (delta) => `change ${delta}`,
     fragBreakdownTitle: 'Kill type distribution',
     fragBreakdownInfo:
       'Everyone\'s kills over the evening, by weapon class. The number written in a segment is its kill count; the total sits at the end of the bar.',

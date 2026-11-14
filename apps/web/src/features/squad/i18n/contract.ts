@@ -310,6 +310,11 @@ export interface SquadText {
     perfectLabel: string
     rankTitle: string
     mmrLabel: string
+    /** Légende du rang : marqueur plein vers le haut (rang tenu ou gagné) et creux vers le bas (rang perdu). */
+    rankUpLabel: string
+    rankDownLabel: string
+    /** Infobulle d'un marqueur de rang : la variation sur le match (déjà signée et formatée). */
+    rankChange: (delta: string) => string
     fragBreakdownTitle: string
     /** Aide ⓘ de « Répartition des frags » (texte de la maquette C3EW). */
     fragBreakdownInfo: string
