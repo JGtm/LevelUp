@@ -120,12 +120,14 @@ func runLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccesso
 	// pour tous les candidats en attente : la dépendance séquentielle des états EP
 	// impose de persister au fil de l'eau, dans l'ordre chronologique, rafale après
 	// rafale, dans ce même cycle.
+	ctx, repli := withRepliTally(ctx)
 	base := newShadowRunContext(playerDB, xuid, canonical, cfg.ownerOnly)
 	base.excluded = excluded
 	base.matchFailures = cfg.matchFailures
 	base.components.medals = work.medals
 	bursts, err := runWriterBursts(ctx, shared, base, work, &s)
 	logShadowBurstDone(ctx, xuid, work, s, bursts)
+	repli.logSummary(ctx, xuid, s.processed)
 	if err != nil {
 		return s.processed, fmt.Errorf("RunLUSRV2Shadow: %w", err)
 	}

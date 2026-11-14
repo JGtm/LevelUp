@@ -19,6 +19,7 @@ import (
 	"expvar"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 )
@@ -28,6 +29,53 @@ import (
 // cycle, rejeu), le compteur dépasse alors le nombre de matchs distincts. Publié sous /debug/vars ;
 // un second échec du recalcul est compté en plus par le classement de noteComputeFailure.
 var solverCountFallbackTotal = expvar.NewInt("levelup.lusr_v2.solver_count_fallback_total")
+
+// repliExemplesMax borne les identifiants de match cités par la ligne de synthèse d'un rejeu.
+const repliExemplesMax = 3
+
+// repliTally compte, pour UN rejeu d'un joueur, les matchs recalculés sans frags ni morts. Posé
+// sur le ctx du rejeu (withRepliTally) : le repli d'un match s'y inscrit au lieu d'écrire une ligne
+// par match, et la fin du rejeu écrit une seule synthèse (logSummary). Sans tally sur le ctx
+// (appel direct, outil d'étude), le repli journalise lui-même chaque match en WARN.
+type repliTally struct {
+	mu       sync.Mutex
+	matchs   int
+	exemples []string
+}
+
+type repliTallyKey struct{}
+
+func withRepliTally(ctx context.Context) (context.Context, *repliTally) {
+	t := &repliTally{}
+	return context.WithValue(ctx, repliTallyKey{}, t), t
+}
+
+func repliTallyFrom(ctx context.Context) *repliTally {
+	t, _ := ctx.Value(repliTallyKey{}).(*repliTally)
+	return t
+}
+
+func (t *repliTally) noter(matchID string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.matchs++
+	if len(t.exemples) < repliExemplesMax {
+		t.exemples = append(t.exemples, matchID)
+	}
+}
+
+// logSummary écrit la synthèse du rejeu s'il y a eu au moins un repli : matchs rejoués, matchs en
+// repli, quelques identifiants d'exemple. Le détail par match est en DEBUG (solveWithCountFallback).
+func (t *repliTally) logSummary(ctx context.Context, xuid string, rejoues int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.matchs == 0 {
+		return
+	}
+	slog.WarnContext(ctx, "LUSR v2: matchs recalculés sans frags ni morts, solveur non convergé avec les comptes",
+		"xuid", xuid, "matchs_rejoues", rejoues, "matchs_en_repli", t.matchs,
+		"exemples_match_id", t.exemples)
+}
 
 // twoTeamSolver est la signature de skillv2.UpdateTwoTeamWithCountsEP, passée en paramètre pour
 // que le repli se teste sans fabriquer un match qui diverge.
@@ -58,8 +106,14 @@ func solveWithCountFallback(ctx context.Context, solve twoTeamSolver, in counted
 		return teamA, teamB, err
 	}
 	solverCountFallbackTotal.Add(1)
-	slog.WarnContext(ctx, "LUSR v2: solveur non convergé avec les comptes, recalcul sans frags ni morts",
-		"match_id", in.matchID, "err", err)
+	if t := repliTallyFrom(ctx); t != nil {
+		t.noter(in.matchID)
+		slog.DebugContext(ctx, "LUSR v2: solveur non convergé avec les comptes, recalcul sans frags ni morts",
+			"match_id", in.matchID, "err", err)
+	} else {
+		slog.WarnContext(ctx, "LUSR v2: solveur non convergé avec les comptes, recalcul sans frags ni morts",
+			"match_id", in.matchID, "err", err)
+	}
 	teamA, teamB, err = solve(in.match, withoutCountObservations(in.counts), in.priors)
 	if err != nil {
 		return nil, nil, fmt.Errorf("recalcul sans comptes: %w", err)
