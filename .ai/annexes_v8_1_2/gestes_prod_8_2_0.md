@@ -1,4 +1,4 @@
-# Gestes de production, LevelUp 8.2.0 (BROUILLON du 2026-11-12, mis à jour le 2026-11-13)
+# Gestes de production, LevelUp 8.2.0 (BROUILLON du 2026-11-12, mis à jour le 2026-11-13 ; G5 à G7 le 2026-11-14)
 
 Base lue : `origin/release/v8.2.0` à `31f91a79e8` (PR #181 à #206 fusionnées). Sources : plan
 `.ai/PLAN_V8_1_2_2026-11-09.md` (7.5), `docs/RUNBOOK_DEPLOY_CHECKLIST.md` (conventions `LU`, fenêtres,
@@ -15,7 +15,8 @@ et la cuisson reste à 100 ms (10 images/s).
 ## Règles qui valent pour toute la liste
 
 - **JAMAIS de copie d'une base locale vers la prod.** La base locale n'est jamais alignée sur la prod. Seuls
-  les rejeux se copient (dossier `data/cache/replays/<titre>/`), sans suppression côté VPS. Les dérivés se
+  les rejeux se copient (dossier `data/cache/replays/<titre>/`) ; la seule suppression côté VPS est celle des
+  anciens `.json` bruts remplacés par leur `.json.gz` régénéré (G6). Les dérivés se
   réécrivent sur le serveur par les passes `backfill-*`, qui lisent les rejeux copiés. `backfill-killsource`
   reste local : aucune base n'est copiée (D-17 du plan).
 - Aucune cuisson en lot sans ton accord explicite, une fenêtre à part, un film à la fois.
@@ -43,8 +44,8 @@ et la cuisson reste à 100 ms (10 images/s).
 | G2 | Migration `shared_match_lead_share_v1` | au boot, automatique | secondes | faible |
 | G3 | Journaux du serveur en JSON, à vérifier | actif | 2 min | faible |
 | G4 | Recalcul LUSR et note de performance au premier démarrage | actif, automatique | non mesuré en prod ; 47 s pour un joueur de 1 108 matchs (mesure du runbook) | moyen, visible |
-| G5 | Recuisson des rejeux, en LOCAL | serveur local arrêté | heures, à ton go | élevé en mémoire |
-| G6 | Copie des rejeux vers le VPS, sans suppression | arrêté pendant la copie | 16 min d'arrêt en 8.1.0 | élevé |
+| G5 | Recuisson des rejeux, en LOCAL | serveur local arrêté | FAIT le 2026-11-14 (1 h 36) | — |
+| G6 | Mise en place des rejeux régénérés (dossier d'attente déjà sur le VPS, `BASCULE.sh`) | actif | quelques minutes | moyen |
 | G7 | Passes de dérivés sur le serveur, dont `backfill-lead-share` | arrêté | lead-share environ 5 min à 10 min ; autres non chiffrées | moyen |
 | G8 | `levelup replay compress` | arrêté (recommandé) | environ 3 à 4 min de compression, non mesuré en entier | faible |
 | G9 | Redémarrage, santé, sessions | actif | 5 min | faible |
@@ -130,6 +131,10 @@ et la cuisson reste à 100 ms (10 images/s).
 
 ### G5. Recuisson des rejeux, en LOCAL (à ton go, jamais en lot sans accord)
 
+**FAIT le 2026-11-14** (go du user du 2026-11-13) : une seule passe `backfill-replay`, binaire de `release/v8.2.0`
+à `76da40dc4f` (décodeur v1.3.7, schéma **116**, 33 ms), 1 455 rejeux en 1 h 36, archive des films intacte
+(1 614) ; dérivés rejoués en local ensuite (killsource compris). Le texte qui suit garde la préparation.
+
 - Contexte : le schéma des rejeux est à **113** sur la release (décodeur v1.3.4, prod au 107 depuis la 8.1.0) ;
   la lecture complète du film (#198) et les montées de décodeur de la #203 ont changé les révisions de grammaire
   (`grammar-2026-11-12.4`), de source des éliminations (`killsource-2026-11-10`) et de profil
@@ -153,63 +158,76 @@ et la cuisson reste à 100 ms (10 images/s).
 - `backfill-killsource` : en local seulement, base non copiée (D-17). En prod les anciens matchs gardent leurs
   lignes actuelles, les nouveaux films profitent de la correction.
 
-### G6. Copie des rejeux vers le VPS, sans suppression
+### G6. Mise en place des rejeux régénérés (dossier d'attente, `BASCULE.sh`)
 
-- Commande : copie des rejeux uniquement (`data/cache/replays/halo_infinite/`), sans `--delete`, serveur de prod
-  arrêté (`docker compose stop levelup`) pendant la copie. Construite sur le patron du runbook
-  (`docs/RUNBOOK_DEPLOY_CHECKLIST.md`, copie des rejeux de la démo : liste de fichiers et `--files-from`), qui
-  fixe le dossier cible `/opt/levelup/data/cache/replays/<titre>/` et les trois fichiers d'un artefact. La liste
-  ne reprend que les identifiants qui ont un `.json.gz` local, pour qu'un `.meta` ou une marque `.derived.json`
-  n'arrive jamais sans l'artefact qu'ils décrivent, et laisse de côté le sous-dossier `rasters/` (dérivés de la
-  Tactique, recalculés par le serveur) :
+**Déjà fait (2026-11-14, accord du user)** : les 1 455 rejeux régénérés (`.json.gz`, schéma 116, 33 ms) et leurs
+1 455 `.meta` sont sur le VPS, dans un dossier d'attente SOUS `data/` (à l'abri du `git clean` du déploiement) :
+`/opt/levelup/data/replays-staging-v8.2.0/halo_infinite/` (1,9 Go, `deploy:deploy`). Rien n'a été écrit dans le
+dossier servi : la prod 8.1.3 ne lit pas les `.json.gz`, et un `.meta` neuf à côté d'un ancien `.json` y décrirait
+un fichier absent. Ni marque `.derived.json` (elle dirait faits des dérivés de la base LOCALE), ni `rasters/`, ni
+le seul rejeu brut local (match d'un joueur tiers sans film) ne sont dans le dossier d'attente. Aucune base.
 
-  ```bash
-  cd data/cache/replays/halo_infinite
-  for f in *.json.gz; do id="${f%.json.gz}"; echo "$id.json.gz"; echo "$id.meta"; echo "$id.derived.json"; done > /tmp/rejeux_a_copier.txt
-  rsync -a --ignore-missing-args --files-from=/tmp/rejeux_a_copier.txt ./ deploy@<vps>:/opt/levelup/data/cache/replays/halo_infinite/
-  ```
+**Quand** : juste après le déploiement de la 8.2.0 (G1), une fois le premier démarrage fini (G2, G4, G4b, G4c :
+`MatchRecomputer: terminé` pour chaque joueur au journal). Serveur ACTIF toléré : chaque fichier est posé par
+copie vers un temporaire puis renommage, et le serveur de prod ne cuit pas (pas de films).
 
-  Piège relevé le 2026-09-23 sur ce poste : le `rsync` de msys64 ne lance pas le `ssh` de Git Bash (erreur IPC 14) ;
-  employer celui de msys64 (`-e "ssh -F ~/.ssh/config -i ~/.ssh/id_ed25519"`). L'invocation exacte du 2026-11-09 n'a
-  jamais été consignée ; la commande ci-dessus est reconstituée, à relire une fois avant de la jouer.
-- Durée : 16 min d'arrêt du site en 8.1.0, pour un parc au schéma 107 ; plus long ici, les rejeux étant
-  recuits.
-- Risque : élevé : cette copie remplace des artefacts en prod ; jamais de base dans cette copie. Déployer
-  serveur et ouvrier ensemble (`deploy-worker`) : un ouvrier à un schéma antérieur voit ses dépôts refusés.
-  Constat de la 8.1.0 : 2 079 rejeux n'existent qu'en prod, à l'ancien schéma, sans film pour les refaire.
-  Conséquence de la copie : pour chaque match recuit, la prod porte alors le `.json.gz` neuf ET l'ancien `.json`
-  (contenus différents). La porte de lecture sert le `.json.gz` et signale le doublon (un WARN par match et par
-  processus, compteur `replay_artifact_duplicate_files_total`) : état attendu après cette copie, pas une anomalie
-  de la copie ; le G8 les compte « doublons de contenus différents » et ne supprime rien, le ménage des anciens
-  `.json` est une décision à prendre à la main.
+```bash
+cd /opt/levelup
+bash data/replays-staging-v8.2.0/BASCULE.sh            # simulation : ne touche à rien
+# attendu (mesuré le 2026-11-14) : « 1455 rejeux copiés, 1455 anciens .json bruts retirés, 0 erreurs »
+bash data/replays-staging-v8.2.0/BASCULE.sh --apply    # copie, puis retire les .json remplacés
+```
+
+- **Ce que `--apply` retire, et seulement cela** : pour chaque match du dossier d'attente, l'ancien
+  `<id>.json` brut du MÊME match, après la copie vérifiée (même taille) de son `<id>.json.gz`. Les 1 455 `.json`
+  retirés sont donc tous remplacés par leur `.json.gz` régénéré. Les rejeux de prod SANS équivalent régénéré
+  (matchs de joueurs présents seulement en prod, environ 2 080, à l'ancien schéma, sans film pour les refaire)
+  ne sont PAS touchés : ils restent en `.json` et passent par le G8 (`replay compress`). Leurs `.meta` et leurs
+  marques `.derived.json` restent aussi.
+- **Pourquoi retirer l'ancien `.json`** : laissé à côté du `.json.gz`, il ferait un doublon de contenus
+  différents à chaque match (WARN par match, compteur `replay_artifact_duplicate_files_total`), que le G8 ne
+  résorbe pas (il ne supprime que les doublons identiques) ; la place occupée resterait celle d'aujourd'hui
+  (8,7 Go pour 3 537 `.json`).
+- Risque : moyen. Retour arrière possible tant que le dossier d'attente existe, pas pour les `.json` retirés
+  (restic du P4). Le script s'arrête à la première erreur de copie (`set -e`).
 
 ### G7. Passes de dérivés sur le serveur (serveur arrêté, une fenêtre)
 
-À jouer **après** la copie du G6 : les passes lisent les rejeux tels quels, et `backfill-lead-share` reprend sur
-la présence d'une ligne, donc l'écrire avant la recuisson imposerait `--force` ensuite.
+**Ordre dans la fenêtre** (un seul écrivain par base, ADR 0013) : G1 déployé, premier démarrage fini (G2, G4,
+G4b, G4c au journal), puis G6 serveur actif ; ENSUITE `docker compose stop levelup`, les passes ci-dessous dans
+l'ordre, puis le G8 dans la même fenêtre, puis le G9 (redémarrage). Jamais de passe pendant le premier démarrage :
+G4b et G4c sont des migrations du démarrage, et le recalcul du G4 tient les bases joueur.
 
 ```bash
+cd /opt/levelup && docker compose stop levelup
 LU() { docker compose run --rm --no-deps levelup levelup "$@"; }
+LU backfill-usage-summary                 # sans --force : le schéma 116 des rejeux suffit à tout re-résumer
+LU backfill-pad-tiers --force             # niveaux d'armes de socle, relus au schéma 116
+LU backfill-vehicle-takes --force         # prises de véhicule, obligatoire après une recuisson
+LU backfill-flag-grabs-net --force        # prises de drapeau nettes, relues au schéma 116
+LU tactical-rasters --backfill            # calques de la Tactique (fichiers sous rasters/, idempotent)
 LU backfill-lead-share --dry-run          # lecture seule, aucune migration, une ligne par match et un bilan
-LU backfill-lead-share                    # reprenable ; ajouter --force après une recuisson ou un changement de règle
-LU backfill-usage-summary                 # sans --force : le changement de schéma des artefacts suffit
-LU backfill-pad-tiers --force             # niveaux d'armes de socle : les lignes écrites gardent l'ancienne jointure
-LU backfill-vehicle-takes --force         # familles de véhicules changées (tourelle fixe), prises relues au schéma final
+LU backfill-lead-share                    # la table est neuve (G2) : pas de --force
 ```
 
+- `backfill-killsource` : SANS OBJET en prod (aucun film ; il décode les films). Fait en local le 2026-11-14.
+- Mesures locales du 2026-11-14 (1 455 rejeux, poste chargé) : `usage-summary` 3 min 33, `pad-tiers --force`
+  4 min 05, `vehicle-takes --force` 6 min 52, `flag-grabs-net --force` 7 min, `tactical-rasters --backfill`
+  8 min 45, `backfill-lead-share` 7 min 20 en simulation ; tous à 0 échec. La prod compte environ 3 500 rejeux
+  (les anciens, non régénérés, sont relus tels quels) : compter de l'ordre de 1 h de fenêtre sur 2 vCPU,
+  extrapolation non mesurée.
 - `backfill-usage-summary` : la reprise saute un match seulement si la révision de projection ET le schéma de
-  l'artefact sont ceux d'aujourd'hui (`cmd_backfill_usage_summary.go`) ; les artefacts recuits changent de
-  schéma (113, ou 115 avec la #207), donc tout est re-résumé sans option. La révision `UsageSummaryRev` reste
-  `us7` dans le décodeur v1.3.4 comme v1.3.6 : l'hypothèse d'une révision `us8` du premier brouillon est fausse.
-
-- Durée : `backfill-lead-share` environ 5 min pour 1 600 artefacts (0,15 s par match, échantillon de 133
-  rejeux) ; le parc de la prod en compte au moins 3 524 d'après la 8.1.0, soit de l'ordre de 10 min
-  (extrapolation, non mesurée). Les trois autres passes : non chiffrées (en 8.1.0 : 1 445 résumés, 3 514 niveaux
-  d'armes, 3 524 prises de véhicule, 0 échec).
+  l'artefact sont ceux d'aujourd'hui (`cmd_backfill_usage_summary.go`) ; la révision reste `us7` (décodeur
+  v1.3.7).
 - Risque : moyen. Les passes sont INSERT seul (anti-ART) et reprenables ; une ligne `failed` non nulle rend la
   commande non nulle. Les matchs de modes à peu de points (drapeau, colline, bombe) sont écrits « sans chiffre »
-  avec leur raison, jamais zéro : environ 79 % mesurés sur l'échantillon.
-- Les nouveaux matchs synchronisés ensuite reçoivent leur Mainmise par la chaîne post-synchronisation.
+  avec leur raison, jamais zéro (78 % mesurés en local).
+- Les nouveaux matchs synchronisés ensuite reçoivent leurs dérivés par la chaîne post-synchronisation.
+
+**Suppression du dossier d'attente : seulement après un contrôle écrit**, consigné dans le journal de la release :
+(1) compte des rejeux servis, `ls /opt/levelup/data/cache/replays/halo_infinite | grep -c '\.json\.gz$'`, au moins
+1 455 (plus ceux du G8) ; (2) un rejeu régénéré ouvert à l'écran en prod (lecture fluide à 30 images/s). Ensuite :
+`rm -rf /opt/levelup/data/replays-staging-v8.2.0`.
 
 ### G8. `levelup replay compress`
 
@@ -223,8 +241,9 @@ LU backfill-vehicle-takes --force         # familles de véhicules changées (to
   serveur peut rester actif : la pose d'un `.json.gz` est exclusive et atomique, un `.json.gz` posé par le serveur
   pendant la conversion n'est jamais remplacé (en-tête de `cmd_replay.go`) ; la rejouer dans la fenêtre où le
   serveur est déjà arrêté reste une prudence, pas une exigence. Un match qui porte les deux formes se juge sur le
-  contenu : identique, le `.json` est supprimé ; différent (cas des rejeux copiés au G6), rien n'est supprimé et
-  la commande le compte. Contrôler l'espace libre du VPS avant et après.
+  contenu : identique, le `.json` est supprimé ; différent, rien n'est supprimé et la commande le compte (aucun
+  cas attendu : le G6 retire lui-même l'ancien `.json` de chaque rejeu régénéré). Dans la fenêtre du G7, après
+  ses passes. Contrôler l'espace libre du VPS avant et après.
 
 ### G9. Redémarrage, santé, sessions
 
@@ -275,7 +294,7 @@ Points levés depuis le premier brouillon, sur pièces :
 |---|---|---|
 | Schéma 109, destructions de véhicule (#203) | fusionnée ; le schéma de la release est 113 (décodeur v1.3.4) | `replay/document.go` du décodeur v1.3.4, PR #203 |
 | Étape 4 du plan d'architecture (4.4 à 4.8) | close, ainsi que les étapes 5 à 8 ; aucun geste de production | journal du 2026-11-13, historique de la release |
-| Commande de copie des rejeux | écrite au G6 (patron du runbook, sans `--delete`), reconstituée faute d'invocation consignée en 8.1.0 | `docs/RUNBOOK_DEPLOY_CHECKLIST.md`, gestes de la 8.1.0 |
+| Commande de copie des rejeux | remplacée le 2026-11-14 : dossier d'attente déjà en place sur le VPS, `BASCULE.sh` en simulation puis `--apply` juste après le déploiement (G6) | simulation sur le VPS du 2026-11-14 : 1 455 copiés, 1 455 `.json` remplacés, 0 erreur |
 | Révision des résumés d'usage (« us8 ») | n'existe pas : `us7` dans v1.3.4 et v1.3.6 ; le schéma d'artefact suffit à re-résumer | `replay/usage_summary.go` du décodeur, `cmd_backfill_usage_summary.go` |
 | Recalcul des sessions | non nécessaire : les sessions ne dépendent ni des notes ni des rejeux | `sync/session_recalc.go`, comparaison de `analysis/sessions.go` avec `main` |
 | `replay compress` : serveur arrêté ? | non exigé : pose exclusive et atomique, serveur actif toléré | en-tête de `cmd_replay.go` |
