@@ -279,3 +279,30 @@ famille = "koth_collines"
 mode    = "Ranked:King of the Hill"
 carte   = "Solitude - Ranked"
 raison  = "seul temoin a COLLINE UNIQUE : 3 zones, 72 intervalles `active` et zero point de jauge — le regime ou `buildHillStates` decoupe une periode par changement de proprietaire (`hillSpansOf`), et ou la jauge est ABSENTE par construction. C'est la moitie du calque des zones que le Bastion ne couvre pas, et celle dont depend le son de deplacement de colline (`newZone`, lot 5.2a.1). Choisi parmi les sept KOTH du cache pour sa densite d'intervalles et parce qu'il n'est PAS dans le corpus d'equivalence des 20 films (01e1f945 y est deja) : il ajoute de la matiere au lieu d'en doubler. ~30 s de gate"
+
+# --- Decisions de l utilisateur --------------------------------------------------------------
+# Un FAUX du banc que l utilisateur a accepte (une lecture qui change expres) s inscrit ici :
+# le gate le classe « accepte » au lieu de FAUX (cmd/replay-corpus-gate/decisions.go). `mesure`
+# est le nom que le rapport du banc donne a la mesure ; `temoins` vide = tous les temoins. Une
+# decision que le gate signale « sans effet » (la reference porte deja le changement) se retire.
+
+[[decision]]
+mesure   = "R-1 repli repli_visee_du_tir_lue_dans_le_record"
+decodeur = "v1.3.7"
+date     = "2026-11-14"
+raison   = "la direction d un tir vient de la visee du tireur ; le champ de l enregistrement de tir ne sert plus qu en repli, quand le tireur n a aucune visee tenable (0 a 3 tirs par film). Mesure : visee tenue a 1,3 degre en mediane du cap vers l ennemi le plus proche, champ de l enregistrement au niveau du hasard."
+
+# Les deux compteurs de la source de la direction des tirs (schema 116) naissent avec la meme
+# decision : sur une reference d avant v1.3.7 ils apparaissent, et leur polarite d echec en fait une
+# perte du filet. Sans effet des que la reference porte v1.3.7.
+[[decision]]
+mesure   = "coverage.shots.aim.record"
+decodeur = "v1.3.7"
+date     = "2026-11-14"
+raison   = "compteur du repli de visee du tir accepte le meme jour : les tirs dont la direction vient du champ de l enregistrement."
+
+[[decision]]
+mesure   = "coverage.shots.aim.none"
+decodeur = "v1.3.7"
+date     = "2026-11-14"
+raison   = "compteur ne avec la direction des tirs par la visee du tireur : les tirs publies sans direction, qui existaient sans etre comptes."

@@ -44,7 +44,7 @@ package replay
 // donc aux deux : le retrait de ces notes-ci a fait disparaitre la seule description de la v51,
 // restauree a la chronique le meme jour. Une entree de chronique se pose DANS LE COMMIT qui
 // monte la version, jamais apres.
-const SchemaVersion = 115
+const SchemaVersion = 116
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {

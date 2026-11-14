@@ -8620,6 +8620,7 @@ export interface components {
             title_name: string;
         };
         LayerCoverage: {
+            aim?: components["schemas"]["ShotAimCoverage"];
             /** Format: int64 */
             ambiguous: number;
             /** Format: int64 */
@@ -12414,6 +12415,8 @@ export interface components {
         Shot: {
             /** Format: float */
             h?: number;
+            /** Format: float */
+            p?: number;
             /** Format: int32 */
             slot: number;
             /** Format: int64 */
@@ -12425,6 +12428,16 @@ export interface components {
             x: number;
             /** Format: float */
             y: number;
+        };
+        ShotAimCoverage: {
+            /** Format: int64 */
+            none: number;
+            /** Format: int64 */
+            record: number;
+            /** Format: int64 */
+            sameTick: number;
+            /** Format: int64 */
+            track: number;
         };
         SkillRatingSnapshot: {
             /** Format: double */

@@ -163,6 +163,7 @@ func toShot(v replay.Shot) replaydoc.Shot {
 		X:       v.X,
 		Y:       v.Y,
 		H:       v.H,
+		P:       v.P,
 		Weapon:  v.Weapon,
 		Vehicle: v.Vehicle,
 	}

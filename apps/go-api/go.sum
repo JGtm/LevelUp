@@ -8,6 +8,8 @@ github.com/JGtm/halo-infinite-film-decoder v1.3.4 h1:47p4hwSkTm0vTzIODKTSdUqnFQH
 github.com/JGtm/halo-infinite-film-decoder v1.3.4/go.mod h1:oQSy/0Wid3nwl4ScIztAgz23d7iUAgk5pE9ofOYA2lI=
 github.com/JGtm/halo-infinite-film-decoder v1.3.6 h1:CP7zIqapzMcHHam2aKBMsXAsaNgJCzjTWk27petIpxc=
 github.com/JGtm/halo-infinite-film-decoder v1.3.6/go.mod h1:oQSy/0Wid3nwl4ScIztAgz23d7iUAgk5pE9ofOYA2lI=
+github.com/JGtm/halo-infinite-film-decoder v1.3.7 h1:16GEWJuYdEAH35ZkoM/YSnzyNWmb/Z4uFYEJHz908tg=
+github.com/JGtm/halo-infinite-film-decoder v1.3.7/go.mod h1:oQSy/0Wid3nwl4ScIztAgz23d7iUAgk5pE9ofOYA2lI=
 github.com/JGtm/halo-infinite-map-images v1.1.0 h1:xzzMNF0004lk1a6bO+E9P6lqs7JiQK4vvaPDZzREF+I=
 github.com/JGtm/halo-infinite-map-images v1.1.0/go.mod h1:2WbCgfEEzLf4Da5P1+rHcMOIXuNStlrNgFMxRbx8Lsc=
 github.com/andybalholm/brotli v1.2.2 h1:HzTuoo2ErYQqf5qvcJInB8uvqSVxRttzkFexPWtnceM=

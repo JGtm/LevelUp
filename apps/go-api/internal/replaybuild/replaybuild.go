@@ -297,9 +297,9 @@ type entreesCatalogue struct {
 	matchKills  replay.MatchKillsInput
 	bots        []replay.BotIdentity
 	successions []replay.Succession
-	// killsource : le resultat du kill-feed, ou nil. Il ne voyage ici que pour son PROFIL DE
-	// BALAYAGE (lot 2.3 — cf. profilDeBalayageDeLaCuisson).
+	// killsource, contexte : le kill-feed (ou nil, cf. profilDeBalayageDeLaCuisson) et le contexte de film partagé.
 	killsource *decfilm.Result
+	contexte   *decfilm.FilmContext
 	// replis : le compteur des replis de la construction de CETTE cuisson (lot J8.7).
 	replis *decfilm.Compteur
 }
@@ -361,8 +361,8 @@ func (b *Builder) collecterEntreesCatalogue(ctx context.Context,
 	bots := replayidentity.BotIdentities(ksRes)
 	successions := botSuccessions(ctx, matchID, facts, ksRes, fb)
 	return entreesCatalogue{
-		killsource: ksRes,
-		zones:      zones, zoneRoles: zoneRoles,
+		killsource: ksRes, contexte: src.contexte,
+		zones: zones, zoneRoles: zoneRoles,
 		spawnPts: spawnPts, spawnPointsState: mapState,
 		neutral: neutral, kills: kills, matchKills: matchKills,
 		bots: bots, successions: successions,
