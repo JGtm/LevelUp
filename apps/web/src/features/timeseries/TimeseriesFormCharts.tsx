@@ -2,7 +2,7 @@
 /**
  * TimeseriesFormCharts — wrappers locaux pour les charts du tab Forme.
  *
- * Couvre timeseries.12, .13, .14, .15, .16, .19 (chart .11 traité via un
+ * Couvre timeseries.12, .13, .15, .16, .19 (.14 : TimeseriesPerMinuteTrend.tsx) (chart .11 traité via un
  * composant dédié quand l'agrégation backend sera disponible).
  *
  * Tous les composants consomment `TimeseriesMatchRow[]` et calculent leurs
@@ -325,115 +325,6 @@ export function TimeseriesAssistsTrend({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, assistsLabel, smoothingLabel, themeVersion])
-  return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
-}
-
-// ─── timeseries.14 — Stats par minute (groupées par match) ───────────────────
-
-export interface TimeseriesPerMinuteTrendProps {
-  rows: TimeseriesMatchRow[]
-  height?: number
-  title?: ReactNode
-  emptyMessage?: string
-  killsLabel: string
-  deathsLabel: string
-  assistsLabel: string
-  perMinuteSuffix: string
-}
-
-export function TimeseriesPerMinuteTrend({
-  rows,
-  title,
-  emptyMessage,
-  height = 360,
-  killsLabel,
-  deathsLabel,
-  assistsLabel,
-  perMinuteSuffix,
-}: TimeseriesPerMinuteTrendProps) {
-  const themeVersion = useThemeVersion()
-
-  const option = useMemo<ChartOption | null>(() => {
-    if (rows.length === 0) return null
-    const tc = getEChartsThemeColors()
-    const colKills = resolveToken('stat-kills')
-    const colDeaths = resolveToken('stat-deaths')
-    const colAssists = resolveToken('stat-assists')
-
-    // Étiquettes X au format `#N\nMap` (style SquadPerformanceCharts).
-    const categories = buildMatchCategories(rows)
-
-    const perMin = (v: number, sec: number | null | undefined) => {
-      if (sec == null || sec <= 0) return null
-      return v / (sec / 60)
-    }
-    const round2 = (v: number | null) => (v == null ? null : Math.round(v * 100) / 100)
-
-    const kills = rows.map((r) => round2(perMin(r.kills, r.time_played_seconds)))
-    const deaths = rows.map((r) => {
-      const v = perMin(r.deaths, r.time_played_seconds)
-      return v == null ? null : -Math.round(v * 100) / 100 // négatif (sous l'axe)
-    })
-    const assists = rows.map((r) => round2(perMin(r.assists, r.time_played_seconds)))
-
-    return {
-      backgroundColor: CHART_BG,
-      grid: getGridBase({ top: 24 }),
-      tooltip: {
-        ...getTooltipBase(tc),
-        trigger: 'axis',
-        axisPointer: { type: 'shadow' },
-        // Les morts sont tracées sous l'axe (négatives) : la bulle écrit leur valeur absolue.
-        formatter: axisTooltipFormatter({
-          value: (r) => `${tipNumber(Math.abs(r.value), 2)}${perMinuteSuffix}`,
-        }),
-      },
-      legend: { ...getLegendBase(tc), bottom: 0 },
-      xAxis: {
-        ...getAxisBase(tc),
-        type: 'category',
-        data: categories,
-        axisLine: { lineStyle: { color: tc.text, width: 1.5 } },
-        axisLabel: {
-          ...getAxisBase(tc).axisLabel,
-          interval: 0,
-          fontSize: 9,
-        },
-      },
-      yAxis: {
-        ...getAxisBase(tc),
-        type: 'value',
-        axisLabel: {
-          ...getAxisBase(tc).axisLabel,
-          formatter: (v: number) => tipNumber(Math.abs(v), 1),
-        },
-      },
-      series: [
-        {
-          type: 'bar',
-          name: killsLabel,
-          data: kills,
-          itemStyle: { color: colKills, opacity: 0.85 },
-          barMaxWidth: 14,
-        },
-        {
-          type: 'bar',
-          name: deathsLabel,
-          data: deaths,
-          itemStyle: { color: colDeaths, opacity: 0.85 },
-          barMaxWidth: 14,
-        },
-        {
-          type: 'bar',
-          name: assistsLabel,
-          data: assists,
-          itemStyle: { color: colAssists, opacity: 0.85 },
-          barMaxWidth: 14,
-        },
-      ],
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, killsLabel, deathsLabel, assistsLabel, perMinuteSuffix, themeVersion])
   return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 

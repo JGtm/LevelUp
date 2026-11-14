@@ -20,12 +20,13 @@ import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
 import { firstBloodMaxSec, toFirstBloodSeries } from '@/features/_shared/firstBlood'
 import {
   TimeseriesPerformanceTrend,
-  TimeseriesPerMinuteTrend,
   TimeseriesSpreeHeadshots,
   TimeseriesRankScore,
   TimeseriesSkillRankPerformance,
   TimeseriesCareerXP,
 } from './TimeseriesFormCharts'
+import { TimeseriesPerMinuteTrend, type PerMinuteTrendLabels } from './TimeseriesPerMinuteTrend'
+import { paceHasDamage } from './timeseriesPerMinute.logic'
 import {
   TimeseriesEfficiency,
   TimeseriesIntensityProfile,
@@ -36,6 +37,7 @@ import { TimeseriesCoordinationSection } from './TimeseriesCoordinationSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
+import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
 import { TimeseriesSkillProgression } from './TimeseriesSkillProgression'
 import type { FilterContextInput, TimeseriesPageResponse, ExplorerMatchRow } from '@/lib/api/types'
@@ -75,6 +77,31 @@ export function TimeseriesProgressionTab({
   // « Premier frag / première mort » : série solo servie par le payload de page —
   // même scope (filtres L2) que tous les autres blocs Progression.
   const firstBlood = useMemo(() => toFirstBloodSeries(data.first_blood), [data.first_blood])
+  // « Stats par minute » : les dégâts par minute s'ajoutent en courbes (axe de droite) quand les matchs
+  // en portent ; le titre les nomme alors, avec une aide sur le calcul. Les dégâts subis sont retirés
+  // d'un titre qui ne les fournit pas (Halo 5).
+  const withDamageTaken = useProvidesDamageTaken()
+  const matchRows = data.match_rows
+  const perMinuteHasDamage = useMemo(() => paceHasDamage(matchRows ?? [], withDamageTaken), [matchRows, withDamageTaken])
+  const killsLabel = fieldMappings?.fields['kills_per_minute']?.label ?? 'Frags / min'
+  const deathsLabel = fieldMappings?.fields['deaths_per_minute']?.label ?? 'Morts / min'
+  const assistsLabel = fieldMappings?.fields['assists_per_minute']?.label ?? 'Assistances / min'
+  const damageDealtLabel = t('timeseries.progression.damage_dealt_per_minute')
+  const damageTakenLabel = t('timeseries.progression.damage_taken_per_minute')
+  const damageAxis = t('timeseries.progression.per_minute_damage_axis')
+  const perMinuteSuffix = t('timeseries.progression.per_minute_suffix')
+  const perMinuteLabels = useMemo<PerMinuteTrendLabels>(
+    () => ({
+      kills: killsLabel,
+      deaths: deathsLabel,
+      assists: assistsLabel,
+      damageDealt: damageDealtLabel,
+      damageTaken: damageTakenLabel,
+      damageAxis,
+      suffix: perMinuteSuffix,
+    }),
+    [killsLabel, deathsLabel, assistsLabel, damageDealtLabel, damageTakenLabel, damageAxis, perMinuteSuffix],
+  )
   // Charts dépendant du rating de skill (CSR/LUSR) : masqués pour un titre sans
   // système de rang. NO-OP halo_infinite (déclare 'ranked' + 'lusr'). RankScore
   // (score + placement de match) reste générique. Les deux hooks sont appelés
@@ -106,13 +133,20 @@ export function TimeseriesProgressionTab({
         />
 
         <TimeseriesPerMinuteTrend
-          title={t('timeseries.progression.per_minute_title')}
+          title={
+            perMinuteHasDamage ? (
+              <span className="flex items-center gap-1.5">
+                {t('timeseries.progression.per_minute_damage_title')}
+                <InfoTooltip content={t('timeseries.progression.per_minute_damage_info')} />
+              </span>
+            ) : (
+              t('timeseries.progression.per_minute_title')
+            )
+          }
           emptyMessage={emptyMsg}
-          rows={data.match_rows ?? []}
-          killsLabel={fieldMappings?.fields['kills_per_minute']?.label ?? 'Frags / min'}
-          deathsLabel={fieldMappings?.fields['deaths_per_minute']?.label ?? 'Morts / min'}
-          assistsLabel={fieldMappings?.fields['assists_per_minute']?.label ?? 'Assistances / min'}
-          perMinuteSuffix={t('timeseries.progression.per_minute_suffix')}
+          rows={matchRows ?? []}
+          labels={perMinuteLabels}
+          withTaken={withDamageTaken}
         />
       </div>
 

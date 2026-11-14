@@ -524,6 +524,26 @@ en = "Performance per map — Session vs History"
 fr = "Stats par minute"
 en = "Stats per minute"
 
+[timeseries.progression.per_minute_damage_title]
+fr = "Stats par minute — Frags / Morts / Assistances / Dégâts"
+en = "Stats per minute — Kills / Deaths / Assists / Damage"
+
+[timeseries.progression.per_minute_damage_axis]
+fr = "Dégâts / min"
+en = "Damage / min"
+
+[timeseries.progression.damage_dealt_per_minute]
+fr = "Dégâts infligés / min"
+en = "Damage dealt / min"
+
+[timeseries.progression.damage_taken_per_minute]
+fr = "Dégâts subis / min"
+en = "Damage taken / min"
+
+[timeseries.progression.per_minute_damage_info]
+fr = "Chaque cadence est le compte du match divisé par ses minutes jouées. Les dégâts se lisent sur l'axe de droite ; un match dont les dégâts sont inconnus laisse un trou dans la courbe, pas un zéro. Les morts sont tracées sous la ligne zéro."
+en = "Each rate is the match count divided by its minutes played. Damage is read on the right axis; a match whose damage is unknown leaves a gap in the curve, not a zero. Deaths are drawn below the zero line."
+
 [timeseries.progression.per_minute_suffix]
 fr = " /min"
 en = " /min"
