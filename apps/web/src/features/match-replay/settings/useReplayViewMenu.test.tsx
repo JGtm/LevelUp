@@ -241,6 +241,35 @@ describe('useReplayViewMenu', () => {
     expect(deplacements.result.current.settings.showSpawns).toBe(true)
   })
 
+  it('UN PRÉRÉGLAGE QUITTÉ À LA MAIN NE PROLONGE PAS SES DÉFAUTS AUX VIES : Personnalisé le reste', () => {
+    // Combat retenu, puis un calque basculé à la main (la vue passe en Personnalisé sans effacer le
+    // préréglage retenu) : les treize calques ne sont plus ceux de Combat.
+    const combatQuitte = {
+      'replay-show-zones': false,
+      'replay-show-weapon-pads': false,
+      'replay-show-ground-weapons': false,
+      'replay-show-placements': false,
+      'replay-show-dropped-placements': false,
+      'replay-show-aim': false,
+    }
+    window.localStorage.clear()
+    window.localStorage.setItem(VIEW_PRESET_KEY, 'combat')
+    for (const [cle, valeur] of Object.entries(combatQuitte)) window.localStorage.setItem(cle, String(valeur))
+    const combat = mount(FULL_FILM)
+    expect([combat.result.current.settings.showDeaths, combat.result.current.settings.showKillers]).toEqual([false, false])
+    expect(combat.result.current.menu.active).toBe('personnalise')
+
+    // Déplacements retenu, puis les zones éteintes à la main.
+    window.localStorage.clear()
+    window.localStorage.setItem(VIEW_PRESET_KEY, 'deplacements')
+    for (const cle of ['aim', 'vehicles', 'weapon-pads', 'ground-weapons', 'placements', 'dropped-placements', 'mode-objectives', 'flag-carries', 'vip-crown', 'skull-carrier', 'bomb-carrier', 'zones']) {
+      window.localStorage.setItem('replay-show-' + cle, 'false')
+    }
+    const deplacements = mount(FULL_FILM)
+    expect(deplacements.result.current.settings.showSpawns).toBe(false)
+    expect(deplacements.result.current.menu.active).toBe('personnalise')
+  })
+
   it('un état d’avant sans préréglage retenu, ou retenu Complet ou Objectif, garde les vies éteintes', () => {
     window.localStorage.clear()
     expect(mount(FULL_FILM).result.current.settings.showDeaths).toBe(false)
@@ -253,6 +282,9 @@ describe('useReplayViewMenu', () => {
 
   it('un interrupteur des vies écrit à la main prime sur le préréglage retenu', () => {
     window.localStorage.setItem(VIEW_PRESET_KEY, 'combat')
+    for (const cle of ['zones', 'weapon-pads', 'ground-weapons', 'placements', 'dropped-placements']) {
+      window.localStorage.setItem('replay-show-' + cle, 'false')
+    }
     window.localStorage.setItem('replay-show-deaths', 'false')
     const s = mount(FULL_FILM).result.current.settings
     expect([s.showDeaths, s.showKillers]).toEqual([false, true])

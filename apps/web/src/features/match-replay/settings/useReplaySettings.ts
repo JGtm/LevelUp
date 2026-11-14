@@ -181,7 +181,14 @@ export function useReplaySettings(): ReplaySettings {
   const [showShotFx, toggleShotFx] = usePersistedFlag(SHOW_SHOT_FX_KEY, SHOW_SHOT_FX_DEFAULT)
   const [showKillFx, toggleKillFx] = usePersistedFlag(SHOW_KILL_FX_KEY, SHOW_KILL_FX_DEFAULT)
   const terrain = useReplayTerrainFlags()
-  const lives = useReplayLivesFlags()
+  // L'état des treize calques d'avant le lot : il décide si le préréglage retenu prolonge ses défauts aux vies.
+  const lives = useReplayLivesFlags({
+    aim: showAim, trail: showTrail, zones: showZones, weaponPads: terrain.showWeaponPads,
+    groundWeapons: terrain.showGroundWeapons, vehicles: terrain.showVehicles, placements: terrain.showPlacements,
+    droppedPlacements: terrain.showDroppedPlacements, modeObjectives: terrain.showModeObjectives,
+    flagCarries: terrain.showFlagCarries, vipCrown: terrain.showVipCrown, skullCarrier: terrain.showSkullCarrier,
+    bombCarrier: terrain.showBombCarrier,
+  })
   const [heatmapMode, setHeatmapModeState] = useState(() =>
     readStoredChoice(HEATMAP_MODE_KEY, HEATMAP_MODE_DEFAULT, HEATMAP_MODES),
   )

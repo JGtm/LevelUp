@@ -216,6 +216,11 @@ interface DeathFact {
  * dont le film ÉTABLIT la cause (`kind` : chute, hors-limites, suicide — lue dans le composant
  * dead-state, `doc.neutralDeaths`) est une vraie mort ; sans cause établie (`kind` vide) la ligne peut
  * être une fin de manche, et on ne pose pas de croix. Elle est comptée dans les morts non posées.
+ *
+ * LA LIMITE, NOMMÉE : une vraie mort sans type (source de dégât sans pictogramme, refus d'attribution
+ * ligne par ligne) n'a pas non plus de croix. Le document ne porte aucune fin de manche lue vie par vie : sa
+ * `scoreTimeline` date le dernier palier de chaque manche, les vies se ferment plus tard, et une fenêtre
+ * entre les deux serait une heuristique. Distinguer les deux demande un champ publié par le décodeur.
  */
 function deathFacts(
   entries: readonly ReplayFeedEntry[],

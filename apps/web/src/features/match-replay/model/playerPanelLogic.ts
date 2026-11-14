@@ -108,9 +108,12 @@ export function panelFocusOf(
  * joueur choisi — son slot ET l'image qu'elle couvre — et c'est ce qui le rend juste pour un bot,
  * qui n'a pas de xuid mais a des vies.
  *
- * IL NE SERT QU'AUX ÉLÉMENTS PROPRES AU JOUEUR (pion, nom, cône de visée, traînée, tirs, marques de
- * tir, poussée du propulseur, projectiles et grenades). Les morts, les objectifs, les véhicules et les objets posés sont des
- * événements du match : ni Seul ni Masquer ne les retirent.
+ * IL NE SERT QU'AUX ÉLÉMENTS PROPRES AU JOUEUR : pion, nom, cône de visée, traînée, tirs, marques de
+ * tir, poussée du propulseur, projectiles et grenades, et les TRACES DES VIES (apparitions, croix des
+ * morts, triangles des tueurs : chaque marque porte le slot et une image de la vie de son auteur, et se
+ * tait quand un filtre est actif et ne peut la prouver affichée). Les objectifs, les véhicules, les objets
+ * posés et les EFFETS de mort (calque `morts`, tueur -> victime) sont des événements du match : ni Seul ni
+ * Masquer ne les retirent.
  */
 export function shownSlotPredicate(
   focus: PlayerFocus | null,

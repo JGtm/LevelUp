@@ -15,6 +15,11 @@
 - **Décision** : B9 coché sur le message du user du 2026-11-14 (« je valide tout, j'ai tout regardé et c'est bon »), après les trois rejeux ouverts sur l'application 8.2.0 lancée sur le parc régénéré (serveur prêt, les trois au schéma 116 et à 33 ms, compteurs de joueur présents, aucune erreur au journal du serveur).
 - **Résultats** : gate B passé ; document `30ips-rejeu` de la page des vérifications à « bon ».
 - **Suite** : C4 (copie des rejeux vers la prod puis passes `backfill-*` sur le serveur), geste du user avec la fusion vers `main` ; ensuite archivage du plan.
+## [2026-11-14] Compléments 8.2.0, étape 8, ronde 2 bis : limite des morts sans type, défaut des vies après bascule à la main — Complété (branche `feat/c820-rejeu`, pas de push)
+
+- **Décision** : (1) aucune fin de manche lue vie par vie dans le document : critère « cause établie par le film » gardé, limite écrite en commentaire, notes de version FR et EN, entrée de backlog M (champ publié par le décodeur, régénération). (2) le préréglage retenu ne prolonge ses défauts aux vies que si les treize calques d'avant le lot sont encore à son état. (3) commentaire de `shownSlotPredicate` corrigé.
+- **Résultats** : test du point 2 rouge sans la correction ; test des notes de version Go.
+- **Conclusion** : contrôle à l'écran inchangé.
 
 ## [2026-11-14] Rejeu à 30 images/s et maquettes du rejeu : dérivés rejoués, clôture des deux plans — Complété (docs `.ai` et ADR 0034, poussé sur `release/v8.2.0`)
 
