@@ -246,7 +246,7 @@ describe('SquadSynergiesPage — section Assistances', () => {
     renderWithProviders(<SquadSynergiesPage />)
     expect(screen.getAllByText("Appui").length).toBeGreaterThan(0)
     // La phrase de lecture a quitté l'écran pour l'infobulle du titre.
-    expect(screen.queryByText(/^Une barre par larbin/)).toBeNull()
+    expect(screen.queryByText(/^Chaque ruban relie/)).toBeNull()
   })
 
   it('bloc absent : aucun titre, aucune section vide', () => {

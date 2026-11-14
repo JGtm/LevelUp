@@ -19,7 +19,7 @@ export const EN_TEXT = {
     fragsArmes: 'Kills and weapons',
     appuiPortee: 'Support and range',
     appuiPorteeHelp: [
-      'Support: assists between squad players, from the minion who sets up the kill to the boss who gets the credit, on the matches of the selection.',
+      'Support: assists between squad players, from the assister who sets up the kill to the finisher who completes it, on the matches of the selection.',
       "Range: gap between each player's median kill distance and the lobby's, match by match, on decoded films.",
     ],
   },
@@ -157,13 +157,9 @@ export const EN_TEXT = {
   assists: {
     title: 'Support',
     description:
-      'One bar per minion (who sets up the kill), one segment per boss (who gets the credit), across the selected matches.',
-    roleAssistant: 'Minion',
-    roleBeneficiary: 'Boss',
-    valueAxis: 'Assists per boss',
+      'Each ribbon links an assister, who sets up the kill, to a finisher, who completes it; its width is the number of assists, across the selected matches.',
     noPairs: 'No assists between squad members across the matches of the selection.',
-    tooltipShare: (share) => `share ${share}`,
-    tooltipAssistantOutdamaged: (n) => `${n} where the minion dealt more damage than the boss`,
+    tooltipShare: (share) => `${share} of the squad's assists`,
   },
   timeline: {
     title: 'Squad performance by session',

@@ -1,34 +1,33 @@
 /**
  * SquadAppuiCard — « Appui », la première carte de la section « Appui et portée » de Synergies.
  *
- * BARRES HORIZONTALES EMPILÉES, une par ASSISTANT — le LARBIN —, segments = les
- * BÉNÉFICIAIRES qu'il a servis — les PATRONS (vocabulaire de l'écran, décision utilisateur
- * du 2026-09-17 : titre d'axe, infobulle et description nomment les deux rôles). C'est la
- * forme déjà retenue pour le même fait sur la page Match (`MatchAssistChart`) : à question
- * identique, forme identique — un tableau ici et un graphe là obligeaient à réapprendre la
- * lecture d'un écran à l'autre.
+ * DIAGRAMME DE FLUX « ASSISTANT -> FINISSEUR » : à gauche les ASSISTANTS (« Assistant : prépare
+ * le frag »), à droite les FINISSEURS (« Finisseur : conclut le frag »), un ruban par couple dont
+ * la largeur est le nombre d'assistances. Chaque joueur apparaît des deux côtés ; le nœud porte
+ * la couleur du joueur et le ruban celle de l'assistant. C'est la même forme que sur la page Match
+ * (`MatchAssistChart`, via `features/_shared/assists/AssistFlowChart`) : à question identique,
+ * forme identique.
  *
- * Remplace `SquadAssistPairsTable` (retiré le 2026-09-13, décision utilisateur). Les deux
- * grandeurs du tableau survivent, dans l'infobulle : le COMPTE (hauteur du segment) ET LA
- * PART dans les assistances mesurées de l'escouade — « 3 assistances sur 6 n'est pas 3 sur
- * 300 » —, plus les éliminations volées quand il y en a.
+ * Les deux grandeurs de l'ancien tableau survivent dans l'infobulle d'un ruban : le COMPTE (sa
+ * largeur) ET LA PART dans les assistances de l'escouade (sur le total serveur — « 3 assistances
+ * sur 6 n'est pas 3 sur 300 »), plus les assistances où l'assistant a fait plus de dégâts que le
+ * finisseur quand il y en a. Phrases à la voix active, sujet = l'assistant.
  *
  * COULEURS PAR JOUEUR (`colorByPlayer`, palette de la page `useSquadPlayerPalette`) : un joueur
- * garde la même teinte partout sur la page. Un segment désigne donc le bénéficiaire par sa couleur, sans lecture de légende.
+ * garde la même teinte partout sur la page.
  *
- * STYLE DE BLOC CANONIQUE (`SectionCard`) ET LECTURE EN INFOBULLE ⓘ (2026-09-19) : le bloc
- * se rend comme les autres de la page, et la phrase qui dit ce qu'on lit vit dans l'aide du
- * titre — plus de bandeau de couverture ni de description en texte gris.
+ * STYLE DE BLOC CANONIQUE (`SectionCard`) ET LECTURE EN INFOBULLE ⓘ : la phrase qui dit ce
+ * qu'on lit vit dans l'aide du titre — ni bandeau de couverture ni description en texte gris.
  *
- * TITRE « APPUI » : la notion se dit « appui » ; le mot « assistance » désigne la
- * statistique du jeu qu'elle compte (garde-rail `vocabulaireCoordination.guard.test.ts`).
- *
- * PLUS DE PHRASE DE LECTEUR (D22-verbosité, LOI du 2026-09-21) : graphe et légende
- * seulement, l'explication tient dans l'infobulle (i) du titre.
+ * TITRE « APPUI » : la notion se dit « appui » ; le mot « assistance » désigne la statistique du
+ * jeu qu'elle compte (garde-rail `vocabulaireCoordination.guard.test.ts`).
  */
 import { useMemo } from 'react'
 
-import { BarStackedChart } from '@/components/charts/BarStackedChart'
+import { AssistFlowChart } from '@/features/_shared/assists/AssistFlowChart'
+import type { AssistFlowChartOpts } from '@/features/_shared/assists/assistFlowOption'
+import { ASSIST_FLOW_TEXT } from '@/features/_shared/assists/assistFlowStrings'
+import { resolveToken } from '@/lib/accessibility'
 import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { intlLocale } from '@/lib/formatters'
@@ -36,13 +35,7 @@ import type { SquadAssistPairs } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { getSquadText } from './i18n'
-import {
-  assistBeneficiaires,
-  assistCle,
-  assistPairsSeries,
-  assistPartParCouple,
-  assistVoleesParCouple,
-} from './squadAssistPairs.logic'
+import { squadAssistFlow } from './squadAssistPairs.logic'
 
 export interface SquadAppuiCardProps {
   block: SquadAssistPairs
@@ -54,88 +47,40 @@ export interface SquadAppuiCardProps {
 
 export function SquadAppuiCard({ block, roster, colorByPlayer }: SquadAppuiCardProps) {
   const locale = useAppShellStore((s) => s.locale)
-  const t = getSquadText(locale)
-  const labels = t.assists
+  const labels = getSquadText(locale).assists
+  const flowText = ASSIST_FLOW_TEXT[locale]
   const numLoc = intlLocale(locale)
 
-  // `pairs` est un tableau NULLABLE au contrat (toute tranche Go sort ainsi) : comblé ici,
-  // à la frontière, une seule fois.
-  const pairs = useMemo(() => block.pairs ?? [], [block.pairs])
-
+  // Une part s'écrit sans décimale inutile (« 25 % », « 12,5 % »), séparateurs de la langue.
   const pctFmt = useMemo(
-    () =>
-      new Intl.NumberFormat(numLoc, {
-        style: 'percent',
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1,
-      }),
+    () => new Intl.NumberFormat(numLoc, { style: 'percent', minimumFractionDigits: 0, maximumFractionDigits: 1 }),
     [numLoc],
   )
+  const flow = useMemo(() => squadAssistFlow(block, roster), [block, roster])
 
-  const series = useMemo(() => assistPairsSeries(pairs, roster), [pairs, roster])
-  const beneficiaires = useMemo(() => assistBeneficiaires(pairs, roster), [pairs, roster])
-  const volees = useMemo(() => assistVoleesParCouple(pairs), [pairs])
-  const parts = useMemo(() => assistPartParCouple(block), [block])
-
-  // Couleurs par joueur : celles de la page, restreintes aux bénéficiaires (les segments).
-  const componentHexColors = useMemo(() => {
-    const out: Record<string, string> = {}
-    for (const gt of beneficiaires) {
-      const couleur = colorByPlayer[gt]
-      if (couleur) out[gt] = couleur
-    }
-    return out
-  }, [colorByPlayer, beneficiaires])
-
-  // Les deux rôles du graphe, nommés (décision utilisateur 2026-09-17) : la barre est le
-  // LARBIN (il a assisté), le segment le PATRON (il a eu le frag crédité). Les titres
-  // d'axes les portent (catégories = larbin, valeurs = assistances par patron), l'infobulle
-  // aussi.
-  const tooltipRoles = useMemo(
-    () => ({ category: labels.roleAssistant, component: labels.roleBeneficiary }),
-    [labels],
-  )
-
-  const tooltipComponentNote = useMemo(
-    () => (assistant: string, beneficiaire: string) => {
-      const cle = assistCle(assistant, beneficiaire)
-      const notes: string[] = []
-      const part = parts.get(cle)
-      if (part != null) notes.push(labels.tooltipShare(pctFmt.format(part)))
-      const volee = volees.get(cle)
-      if (volee) notes.push(labels.tooltipAssistantOutdamaged(volee))
-      return notes.length > 0 ? notes.join(' · ') : undefined
-    },
-    [parts, volees, labels, pctFmt],
+  // Un joueur hors palette (absent de la sélection) prend l'encre achromatique (zone-neutral), jamais une teinte empruntée.
+  const chart = useMemo<AssistFlowChartOpts>(
+    () => ({
+      colorOf: (name) => colorByPlayer[name] ?? resolveToken('zone-neutral'),
+      fmtShare: (v) => pctFmt.format(v),
+      texts: { ...flowText, share: labels.tooltipShare },
+    }),
+    [colorByPlayer, pctFmt, flowText, labels],
   )
 
   return (
-    <SectionCard
-      title={labels.title}
-      titleAdornment={titleWithInfo(labels.description)}
-      className="h-full"
-    >
+    <SectionCard title={labels.title} titleAdornment={titleWithInfo(labels.description)} className="h-full">
       {/* GRAPHE CENTRÉ EN HAUTEUR DANS SON BLOC : `h-full` sur la carte, corps
           `flex flex-1 flex-col justify-center`, AUCUNE hauteur minimale — dans une rangée
           plus haute que lui, le graphe garde sa taille et le vide se répartit au-dessus et
           en dessous au lieu de tomber entièrement en bas. */}
-      <div
-        className="flex flex-1 flex-col justify-center px-3 py-2"
-        data-testid="squad-appui"
-      >
-        <BarStackedChart
-          series={series}
-          height={320}
-          orientation="horizontal"
+      <div className="flex flex-1 flex-col justify-center px-3 py-2">
+        <AssistFlowChart
+          flow={flow}
+          chart={chart}
+          headers={{ assistant: flowText.assistantHeader, finisher: flowText.finisherHeader }}
           emptyMessage={labels.noPairs}
-          componentOrder={beneficiaires}
-          componentHexColors={componentHexColors}
-          tooltipHideZero
-          tooltipComponentNote={tooltipComponentNote}
-          categoryAxisName={labels.roleAssistant}
-          valueAxisName={labels.valueAxis}
-          tooltipRoles={tooltipRoles}
-          frameless
+          testId="squad-appui"
         />
       </div>
     </SectionCard>

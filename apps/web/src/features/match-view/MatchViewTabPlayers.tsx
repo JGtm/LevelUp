@@ -79,6 +79,7 @@ export function MatchViewTabPlayers({
             assistPairs={assistPairs}
             scoreboard={scoreboard}
             meXUID={meXUID}
+            locale={locale}
             t={t}
           />
         </div>
@@ -143,12 +144,14 @@ function DuelsRow({
   assistPairs,
   scoreboard,
   meXUID,
+  locale,
   t,
 }: {
   killerVictim: MatchKillerVictimPair[]
   assistPairs: MatchAssistPairs | undefined
   scoreboard: MatchScoreboardRow[]
   meXUID: string | null
+  locale: Locale
   t: MatchViewText
 }) {
   const antagonistes = (
@@ -158,7 +161,7 @@ function DuelsRow({
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       {antagonistes}
-      <MatchAssistChart block={assistPairs} scoreboard={scoreboard} meXUID={meXUID} t={t} />
+      <MatchAssistChart block={assistPairs} scoreboard={scoreboard} meXUID={meXUID} locale={locale} t={t} />
     </div>
   )
 }

@@ -1,16 +1,17 @@
 /**
- * MatchAssistChart — le graphe des assistances, ses deux états vides et ses bots.
+ * MatchAssistChart — le diagramme de flux des assistances, ses deux états vides et ses bots.
  *
  * Ce que ces tests cadenassent : un bloc absent (pas de film porteur de l'assistance) ne
  * rend rien du tout — aucune mention « non mesuré » ; un bloc à liste vide dit « aucune
- * assistance » ; un bot assistant ou tueur compte comme un joueur.
+ * assistance » ; un bot assistant ou finisseur compte comme un joueur ; les deux colonnes sont
+ * nommées en mini-phrases (« Assistant : prépare le frag » / « Finisseur : conclut le frag »)
+ * avec une flèche de sens ; les phrases d'infobulle sont à la voix active, sujet = l'assistant.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import { MatchAssistChart } from './MatchAssistChart'
 import { MATCH_VIEW_TEXT } from './i18n'
-import { assistAvgPctLookup, assistStackedSeries, assistStolenKey, assistStolenLookup } from './_chartSeries'
 import type { MatchAssistPair, MatchAssistPairs, MatchScoreboardRow } from '@/lib/api/types'
 
 vi.mock('@/lib/accessibility', () => ({
@@ -41,10 +42,23 @@ const block = (over: Partial<MatchAssistPairs> = {}): MatchAssistPairs => ({
 
 const emptyScoreboard: MatchScoreboardRow[] = []
 
+type SankeyOption = {
+  series: Array<{
+    type: string
+    data: Array<{ name: string; value: number; tip: string; label: { position: string; formatter: string } }>
+    links: Array<{ source: string; target: string; value: number; tip: string }>
+  }>
+}
+
+async function sankey(): Promise<SankeyOption['series'][number]> {
+  const text = (await screen.findByTestId('echarts-stub')).textContent ?? ''
+  return (JSON.parse(text) as SankeyOption).series[0]
+}
+
 describe('MatchAssistChart — états vides', () => {
   it('ne rend RIEN quand le bloc est absent (aucune ligne de film)', () => {
     const { container } = render(
-      <MatchAssistChart block={undefined} scoreboard={emptyScoreboard} meXUID={null} t={MATCH_VIEW_TEXT.fr} />,
+      <MatchAssistChart block={undefined} scoreboard={emptyScoreboard} meXUID={null} locale="fr" t={MATCH_VIEW_TEXT.fr} />,
     )
     expect(container.firstChild).toBeNull()
   })
@@ -55,11 +69,14 @@ describe('MatchAssistChart — états vides', () => {
         block={block({ pairs: [] })}
         scoreboard={emptyScoreboard}
         meXUID={null}
+        locale="fr"
         t={MATCH_VIEW_TEXT.fr}
       />,
     )
     expect(screen.getByText(MATCH_VIEW_TEXT.fr.assistNoData)).toBeTruthy()
     expect(container.textContent).not.toMatch(/mesur/i)
+    // Aucune colonne à nommer quand il n'y a rien à relier.
+    expect(screen.queryByTestId('assist-flow-headers')).toBeNull()
   })
 
   it('traite `pairs: null` (tableau nullable du contrat) comme une liste vide', () => {
@@ -68,6 +85,7 @@ describe('MatchAssistChart — états vides', () => {
         block={{ pairs: null } as unknown as MatchAssistPairs}
         scoreboard={emptyScoreboard}
         meXUID={null}
+        locale="fr"
         t={MATCH_VIEW_TEXT.fr}
       />,
     )
@@ -78,128 +96,87 @@ describe('MatchAssistChart — états vides', () => {
 describe('MatchAssistChart — rendu', () => {
   // ChartCard charge ECharts en différé (React.lazy) : le stub n'apparaît qu'après
   // résolution — d'où le `findByTestId` plutôt qu'un `getByTestId` synchrone.
-  it('rend le graphe avec son titre et une barre par assistant', async () => {
+  it('rend le titre, les deux en-têtes de colonne avec leur flèche, et un nœud par joueur et par côté', async () => {
     render(
       <MatchAssistChart
         block={block({
-          pairs: [
-            pair({ assist_count: 3 }),
-            pair({ assist_xuid: 'X_C', assist_gamertag: 'Carol', assist_count: 1 }),
-          ],
+          pairs: [pair({ assist_count: 3 }), pair({ assist_xuid: 'X_C', assist_gamertag: 'Carol', assist_count: 1 })],
         })}
         scoreboard={emptyScoreboard}
         meXUID={null}
+        locale="fr"
         t={MATCH_VIEW_TEXT.fr}
       />,
     )
     expect(screen.getByText(MATCH_VIEW_TEXT.fr.assistTitle)).toBeTruthy()
-    const option = (await screen.findByTestId('echarts-stub')).textContent ?? ''
-    expect(option).toContain('Alice')
-    expect(option).toContain('Carol')
-  })
-})
-
-describe('assistStackedSeries', () => {
-  it('retourne [] sans paire', () => {
-    expect(assistStackedSeries([])).toEqual([])
-  })
-
-  it('agrège par ASSISTANT (et non par tueur), total décroissant', () => {
-    const series = assistStackedSeries([
-      pair({ assist_xuid: 'X_A', assist_gamertag: 'Alice', killer_xuid: 'X_B', killer_gamertag: 'Bob', assist_count: 1 }),
-      pair({ assist_xuid: 'X_C', assist_gamertag: 'Carol', killer_xuid: 'X_B', killer_gamertag: 'Bob', assist_count: 4 }),
-      pair({ assist_xuid: 'X_A', assist_gamertag: 'Alice', killer_xuid: 'X_D', killer_gamertag: 'Dave', assist_count: 2 }),
-    ])
-    expect(series).toHaveLength(1)
-    const dps = series[0].datapoints
-    // Carol (4) devant Alice (1+2=3).
-    expect(dps.map((d) => d.category)).toEqual(['Carol', 'Alice'])
-    expect(dps[1].components).toEqual({ Bob: 1, Dave: 2 })
+    const headers = screen.getByTestId('assist-flow-headers')
+    expect(headers.textContent).toContain('Assistant : prépare le frag')
+    expect(headers.textContent).toContain('Finisseur : conclut le frag')
+    expect(headers.textContent).toContain('→')
+    const s = await sankey()
+    expect(s.type).toBe('sankey')
+    // Alice et Carol à gauche, Bob à droite : trois nœuds, deux rubans.
+    expect(s.data.map((n) => n.name)).toEqual(['assistant:X_A', 'assistant:X_C', 'finisher:X_B'])
+    expect(s.links.map((l) => l.value)).toEqual([3, 1])
   })
 
-  it('met les ENNEMIS en tête, comme le graphe des antagonistes', () => {
-    const scoreboard = [
-      { xuid: 'X_ME', team_side: 'ally' },
-      { xuid: 'X_ALLY', team_side: 'ally' },
-      { xuid: 'X_FOE', team_side: 'enemy' },
-    ] as unknown as MatchScoreboardRow[]
-    const series = assistStackedSeries(
-      [
-        pair({ assist_xuid: 'X_ALLY', assist_gamertag: 'Ally', assist_count: 9 }),
-        pair({ assist_xuid: 'X_FOE', assist_gamertag: 'Foe', assist_count: 1 }),
-      ],
-      scoreboard,
-      'X_ME',
+  it('étiquette de nœud : nom et total ; côté gauche pour les assistants, côté droit pour les finisseurs', async () => {
+    render(
+      <MatchAssistChart block={block({ pairs: [pair({ assist_count: 3 })] })} scoreboard={emptyScoreboard} meXUID={null} locale="fr" t={MATCH_VIEW_TEXT.fr} />,
     )
-    expect(series[0].datapoints.map((d) => d.category)).toEqual(['Foe', 'Ally'])
+    const [left, right] = (await sankey()).data
+    expect(left.label).toEqual({ position: 'left', formatter: 'Alice · 3' })
+    expect(right.label).toEqual({ position: 'right', formatter: 'Bob · 3' })
   })
 
-  it('compte les BOTS : assistant sans xuid nommé par le film, rangé au camp des tueurs qu’il assiste', () => {
-    const scoreboard = [
-      { xuid: 'X_ME', team_side: 'ally' },
-      { xuid: 'X_FOE', team_side: 'enemy' },
-    ] as unknown as MatchScoreboardRow[]
-    const series = assistStackedSeries(
-      [
-        pair({ assist_xuid: '', assist_gamertag: '343 Oscar [bot]', killer_xuid: 'X_ME', killer_gamertag: 'Moi', assist_count: 5 }),
-        pair({ assist_xuid: '', assist_gamertag: '343 Ritzy [bot]', killer_xuid: 'X_FOE', killer_gamertag: 'Foe', assist_count: 1 }),
-        pair({ assist_xuid: 'X_ME', assist_gamertag: 'Moi', killer_xuid: '', killer_gamertag: '343 Cosmo [bot]', assist_count: 2 }),
-      ],
-      scoreboard,
-      'X_ME',
+  it('infobulle d’un ruban : voix active, sujet = l’assistant ; « dont N… » seulement s’il y en a ; part moyenne mesurée', async () => {
+    render(
+      <MatchAssistChart
+        block={block({ pairs: [pair({ assist_count: 14, stolen_count: 3, avg_assist_pct: 45 })] })}
+        scoreboard={emptyScoreboard}
+        meXUID={null}
+        locale="fr"
+        t={MATCH_VIEW_TEXT.fr}
+      />,
     )
-    const dps = series[0].datapoints
-    // Ritzy assiste un ennemi : en tête ; puis les alliés, total décroissant.
-    expect(dps.map((d) => d.category)).toEqual(['343 Ritzy', '343 Oscar', 'Moi'])
-    expect(dps[2].components).toEqual({ '343 Cosmo': 2 })
+    const [link] = (await sankey()).links
+    expect(link.tip).toBe(
+      'Alice a assisté Bob sur 14 frags<br/>dont 3 où l’assistant a fait plus de dégâts que le finisseur<br/>part moyenne 45 %',
+    )
+    expect(link.tip).not.toMatch(/été assisté/)
   })
 
-  it('replie un tueur sans gamertag sur le nom masqué, jamais sur le xuid brut', () => {
-    const series = assistStackedSeries([
-      pair({ killer_gamertag: undefined, killer_xuid: 'X_SECRET1234' }),
-    ])
-    const keys = Object.keys(series[0].datapoints[0].components)
-    expect(keys[0]).not.toBe('X_SECRET1234')
-    expect(keys[0]).toContain('1234')
-  })
-})
-
-describe('assistStolenLookup', () => {
-  it('n\'indexe QUE les couples ayant au moins une élimination volée', () => {
-    const lookup = assistStolenLookup([
-      pair({ stolen_count: 0 }),
-      pair({ assist_gamertag: 'Carol', killer_gamertag: 'Dave', stolen_count: 2 }),
-    ])
-    expect(lookup.size).toBe(1)
-    expect(lookup.get(assistStolenKey('Carol', 'Dave'))).toBe(2)
-    expect(lookup.get(assistStolenKey('Alice', 'Bob'))).toBeUndefined()
+  it('infobulle d’un ruban sans élimination volée ni part moyenne : la seule phrase', async () => {
+    render(
+      <MatchAssistChart block={block({ pairs: [pair({ assist_count: 1 })] })} scoreboard={emptyScoreboard} meXUID={null} locale="fr" t={MATCH_VIEW_TEXT.fr} />,
+    )
+    expect((await sankey()).links[0].tip).toBe('Alice a assisté Bob sur 1 frag')
   })
 
-  it('ne confond pas deux couples dont les noms contiennent des espaces', () => {
-    const lookup = assistStolenLookup([
-      pair({ assist_gamertag: 'A B', killer_gamertag: 'C', stolen_count: 1 }),
-      pair({ assist_gamertag: 'A', killer_gamertag: 'B C', stolen_count: 5 }),
-    ])
-    expect(lookup.get(assistStolenKey('A B', 'C'))).toBe(1)
-    expect(lookup.get(assistStolenKey('A', 'B C'))).toBe(5)
-  })
-})
-
-describe('assistAvgPctLookup', () => {
-  it("n'indexe QUE les couples portant une part moyenne mesurée — jamais de 0 % fabriqué", () => {
-    const lookup = assistAvgPctLookup([
-      pair(), // avg_assist_pct absent du contrat : la paire n'entre pas dans la map
-      pair({ assist_gamertag: 'Carol', killer_gamertag: 'Dave', avg_assist_pct: 45 }),
-    ])
-    expect(lookup.size).toBe(1)
-    expect(lookup.get(assistStolenKey('Carol', 'Dave'))).toBe(45)
-    expect(lookup.get(assistStolenKey('Alice', 'Bob'))).toBeUndefined()
+  it('infobulle d’un nœud : assistances données (gauche) / frags conclus sur une assistance (droite)', async () => {
+    render(
+      <MatchAssistChart block={block({ pairs: [pair({ assist_count: 9 })] })} scoreboard={emptyScoreboard} meXUID={null} locale="fr" t={MATCH_VIEW_TEXT.fr} />,
+    )
+    const [left, right] = (await sankey()).data
+    expect(left.tip).toBe('Alice : 9 assistances données')
+    expect(right.tip).toBe('Bob : 9 frags conclus sur une assistance')
   })
 
-  it('transmet la valeur SANS la plafonner (mesures réelles au-delà de 100)', () => {
-    const lookup = assistAvgPctLookup([
-      pair({ assist_gamertag: 'Carol', killer_gamertag: 'Dave', avg_assist_pct: 228 }),
-    ])
-    expect(lookup.get(assistStolenKey('Carol', 'Dave'))).toBe(228)
+  it('EN : « assister » / « finisher », mêmes phrases à la voix active', async () => {
+    render(
+      <MatchAssistChart
+        block={block({ pairs: [pair({ assist_count: 2, stolen_count: 1 })] })}
+        scoreboard={emptyScoreboard}
+        meXUID={null}
+        locale="en"
+        t={MATCH_VIEW_TEXT.en}
+      />,
+    )
+    expect(screen.getByTestId('assist-flow-headers').textContent).toContain('Assister: sets up the kill')
+    expect(screen.getByTestId('assist-flow-headers').textContent).toContain('Finisher: completes the kill')
+    const s = await sankey()
+    expect(s.links[0].tip).toBe('Alice assisted Bob on 2 kills<br/>including 1 where the assister dealt more damage than the finisher')
+    expect(s.data[0].tip).toBe('Alice: 2 assists given')
+    expect(s.data[1].tip).toBe('Bob: 2 kills finished on an assist')
   })
 })

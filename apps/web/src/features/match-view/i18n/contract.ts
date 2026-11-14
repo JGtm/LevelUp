@@ -220,23 +220,12 @@ export interface MatchViewText {
   tabPlayers: string
   // Titre du chart Antagonistes (GH2-B2)
   antagonistTitle: string
-  // Graphe des ASSISTANCES (assistant -> tueur assisté). Un match dont le film ne porte pas
+  // Diagramme de flux des ASSISTANCES (assistant -> finisseur ; les textes du flux sont partagés avec
+  // l'Escouade : features/_shared/assists/assistFlowStrings.ts). Un match dont le film ne porte pas
   // l'assistance n'a pas de bloc (rien n'est rendu) : le seul état vide écrit est « aucune »,
   // le film lu sans aucune assistance.
   assistTitle: string
   assistNoData: string
-  // Note d'infobulle d'un segment : les éliminations volées de ce couple
-  // (part de dégâts de l'assistant supérieure à celle du tueur crédité).
-  assistStolenNote: (n: number) => string
-  // Note d'infobulle d'un segment : la part moyenne de participation de l'assistant sur
-  // ce couple. Vocabulaire « part » (comme le kill feed du rejeu), jamais « dégâts ».
-  assistAvgShareNote: (pct: number) => string
-  // Les deux rôles du graphe (décision utilisateur 2026-09-17, même vocabulaire que la page
-  // Escouade) : la barre est le LARBIN (il a assisté), le segment le PATRON (frag crédité).
-  // Titres d'axes et infobulle.
-  assistRoleAssistant: string
-  assistRoleBeneficiary: string
-  assistValueAxis: string
   // Sections des onglets Chronologie et Joueurs (titres type-1 du catalogue
   // d'harmonisation)
   sectionFlow: string

@@ -19,7 +19,7 @@ export const FR_TEXT = {
     fragsArmes: 'Frags et armes',
     appuiPortee: 'Appui et portée',
     appuiPorteeHelp: [
-      "Appui : assistances entre joueurs de l'escouade, du larbin qui prépare le frag au patron qui l'encaisse, sur les matchs de la sélection.",
+      "Appui : assistances entre joueurs de l'escouade, de l'assistant qui prépare le frag au finisseur qui le conclut, sur les matchs de la sélection.",
       'Portée : écart de la distance médiane des frags de chaque joueur à celle du lobby, match par match, sur les films décodés.',
     ],
   },
@@ -158,13 +158,9 @@ export const FR_TEXT = {
   assists: {
     title: 'Appui',
     description:
-      'Une barre par larbin (celui qui prépare le frag), un segment par patron (celui qui l\'encaisse), sur les matchs de la sélection.',
-    roleAssistant: 'Larbin',
-    roleBeneficiary: 'Patron',
-    valueAxis: 'Assistances par patron',
-    noPairs: 'Aucune assistance entre membres de l\'escouade sur les matchs de la sélection.',
-    tooltipShare: (share) => `part ${share}`,
-    tooltipAssistantOutdamaged: (n) => `dont ${n} où le larbin a fait plus de dégâts que le patron`,
+      'Chaque ruban relie un assistant, qui prépare le frag, à un finisseur, qui le conclut ; sa largeur est le nombre d\'assistances, sur les matchs de la sélection.',
+    noPairs: "Aucune assistance entre membres de l'escouade sur les matchs de la sélection.",
+    tooltipShare: (share) => `${share} des assistances de l'escouade`,
   },
   timeline: {
     title: 'Performance d\'escouade par session',

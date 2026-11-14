@@ -171,27 +171,15 @@ export interface SquadText {
     enemyMmrTooltip: string
     deltaMmrTooltip: string
   }
-  /** Graphe « Appui » (larbin -> patron), page Synergies. */
+  /** Diagramme de flux « Appui » (assistant -> finisseur), page Synergies. */
   assists: {
     title: string
+    /** Aide ⓘ du titre : ce que dit un ruban et ce que dit sa largeur. */
     description: string
-    /** Rôle de la BARRE : celui qui a assisté (le larbin). Titre d'axe et infobulle. */
-    roleAssistant: string
-    /** Rôle du SEGMENT : celui qui a eu le frag crédité (le patron). Infobulle. */
-    roleBeneficiary: string
-    /** Titre de l'axe des valeurs : ce que la hauteur des segments compte. */
-    valueAxis: string
     /** Mesuré, mais aucune assistance interne à l'escouade. */
     noPairs: string
-    /** Infobulle d'un segment : la PART de la paire dans les assistances mesurées. */
+    /** La part d'un ruban, dite après la phrase de l'infobulle : « 25 % des assistances de l'escouade » (la part arrive formatée). */
     tooltipShare: (share: string) => string
-    /** Infobulle d'un segment : les assistances de la paire où le larbin a fait plus de
-     *  dégâts que le patron (champ `stolen_count` de l'API, requête Q32d côté Go :
-     *  `assist_damage_pct > killer_damage_pct`), quand il y en a.
-     *  À NE PAS confondre avec le badge « Voleur » de la matrice, dont le critère est
-     *  autre (le tueur a fait 10 % des dégâts ou moins) : deux mesures distinctes, d'où
-     *  l'absence du mot « volé » ici. */
-    tooltipAssistantOutdamaged: (n: number) => string
   }
   timeline: {
     title: string
