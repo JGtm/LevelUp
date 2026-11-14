@@ -193,6 +193,7 @@ const CHARTS: Array<{ name: string; build: () => EChartsCoreOption }> = [
     build: () =>
       buildRankStripsOption(ROWS_BY_PLAYER, PLAYERS, 2, {
         colorByPlayer: COLOR_BY_PLAYER,
+        chain: 'ranked',
         mmrLabel: 'MMR équipe',
         upLabel: 'rang tenu ou gagné',
         downLabel: 'rang perdu',

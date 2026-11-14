@@ -299,6 +299,7 @@ export const FR_TEXT = {
     mmrLabel: 'MMR équipe',
     rankUpLabel: 'rang tenu ou gagné',
     rankDownLabel: 'rang perdu',
+    rankChainLabel: 'Chaîne de rang',
     rankChange: (delta) => `variation ${delta}`,
     fragBreakdownTitle: 'Répartition des frags',
     fragBreakdownInfo:

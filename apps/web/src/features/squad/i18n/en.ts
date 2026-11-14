@@ -298,6 +298,7 @@ export const EN_TEXT = {
     mmrLabel: 'Team MMR',
     rankUpLabel: 'rank held or gained',
     rankDownLabel: 'rank lost',
+    rankChainLabel: 'Rank chain',
     rankChange: (delta) => `change ${delta}`,
     fragBreakdownTitle: 'Kill type distribution',
     fragBreakdownInfo:

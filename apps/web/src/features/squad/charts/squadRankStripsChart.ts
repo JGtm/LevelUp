@@ -45,6 +45,8 @@ export interface RankStripsOpts {
   playerOrder?: string[]
   /** Étiquettes des matchs (« #1\nCarte »), indexées par `match_order`. */
   xLabels?: string[]
+  /** La chaîne de rang affichée (`chainKeyOf`) : seuls ses points se tracent. */
+  chain: string
   mmrLabel: string
   /** Légende des deux marqueurs. */
   upLabel: string
@@ -221,8 +223,9 @@ export function rankStripsCount(
   rows: Record<string, SquadPerformanceSeriesPoint[]>,
   players: string[],
   n: number,
+  chain: string,
 ): number {
-  return rankStrips(rows, players).length + (mmrBounds(teamMmrByMatch(rows, players, n)) ? 1 : 0)
+  return rankStrips(rows, players, chain).length + (mmrBounds(teamMmrByMatch(rows, players, n)) ? 1 : 0)
 }
 
 export function buildRankStripsOption(
@@ -231,7 +234,7 @@ export function buildRankStripsOption(
   n: number,
   opts: RankStripsOpts,
 ): ChartOption {
-  const strips = rankStrips(rows, players)
+  const strips = rankStrips(rows, players, opts.chain)
   const xLabels = opts.xLabels ?? Array.from({ length: n }, (_, i) => `#${i + 1}`)
   const mmr = teamMmrByMatch(rows, players, n)
   const mmrRange = mmrBounds(mmr)

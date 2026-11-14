@@ -42,6 +42,7 @@ const ROWS = {
 const PLAYERS = ['JGtm', 'Kaya']
 const OPTS: RankStripsOpts = {
   colorByPlayer: { JGtm: '#112233', Kaya: '#445566' },
+  chain: 'ranked',
   xLabels: ['#1\nStreets', '#2\nBazaar', '#3'],
   mmrLabel: 'MMR équipe',
   upLabel: 'rang tenu ou gagné',
@@ -92,7 +93,7 @@ describe('buildRankStripsOption', () => {
     expect(o.grid.map((g) => g.height)).toEqual([STRIP_HEIGHT, STRIP_HEIGHT, STRIP_HEIGHT])
     expect(o.grid[1].top - o.grid[0].top).toBe(STRIP_HEIGHT + STRIP_GAP)
     expect(o.xAxis.map((a) => a.axisLabel.show)).toEqual([false, false, true])
-    expect(rankStripsCount(ROWS, PLAYERS, 3)).toBe(3)
+    expect(rankStripsCount(ROWS, PLAYERS, 3, 'ranked')).toBe(3)
     expect(rankStripsHeight(3)).toBeGreaterThan(rankStripsHeight(2))
   })
 
@@ -185,5 +186,37 @@ describe('buildRankStripsOption', () => {
     const o = buildRankStripsOption(rows, ['A', 'B'], 1, OPTS) as unknown as Opt
     expect(o.title.map((t) => t.text)).toEqual(['A'])
     expect(o.grid).toHaveLength(1)
+  })
+})
+
+describe('buildRankStripsOption — chaîne choisie', () => {
+  const lusrPt = (order: number, rating: number, group: string, delta: number) =>
+    ({
+      match_order: order,
+      match_id: `m${order}`,
+      start_time: '2026-09-10T20:00:00Z',
+      kills: 1,
+      deaths: 1,
+      assists: 1,
+      skill_rating: rating,
+      skill_rating_type: 'lusr',
+      skill_playlist_group: group,
+      skill_delta: delta,
+    }) as SquadPerformanceSeriesPoint
+  const rows = {
+    JGtm: [lusrPt(0, 60, 'arena_slayer', 2), lusrPt(1, 62, 'arena_slayer', 2), lusrPt(2, 140, 'arena_objectif', 5)],
+  }
+
+  it('aucune ligne ne relie deux chaînes : la série ne porte que les points de la chaîne choisie', () => {
+    const slayer = buildRankStripsOption(rows, ['JGtm'], 3, { ...OPTS, chain: 'arena_slayer' }) as unknown as Opt
+    const s = slayer.series.find((x) => x.name.startsWith('JGtm'))!
+    expect(s.data.map((d) => d?.value ?? null)).toEqual([60, 62, null])
+    const objectif = buildRankStripsOption(rows, ['JGtm'], 3, { ...OPTS, chain: 'arena_objectif' }) as unknown as Opt
+    expect(objectif.series.find((x) => x.name.startsWith('JGtm'))!.data.map((d) => d?.value ?? null)).toEqual([null, null, 140])
+  })
+
+  it('l’échelle ne voit que la chaîne choisie : 60 à 62 tient dans un bandeau étroit, pas dans 60 à 140', () => {
+    const o = buildRankStripsOption(rows, ['JGtm'], 3, { ...OPTS, chain: 'arena_slayer' }) as unknown as Opt
+    expect(o.yAxis[0].max - o.yAxis[0].min).toBeLessThan(20)
   })
 })

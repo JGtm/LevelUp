@@ -8,6 +8,12 @@
  * se comparent d'un bandeau à l'autre, et des rangs proches ne se recouvrent pas. Le MMR d'équipe,
  * dans un dernier bandeau, a sa propre échelle (il ne se compare pas à un rang individuel).
  *
+ * UNE CHAÎNE À LA FOIS. Un rang ne se compare qu'à l'intérieur de sa chaîne : le CSR classé en est
+ * une, chaque `skill_playlist_group` du LUSR en est une autre (« pas sur la même échelle » ; jamais de
+ * flèche entre deux chaînes). Le graphe montre la chaîne choisie : l'écart de session, l'étendue et
+ * l'amplitude commune ne se calculent QUE sur ses points, et aucune ligne ne traverse deux chaînes.
+ * La chaîne par défaut est la plus jouée de la session.
+ *
  * Aucune dépendance React/ECharts : `squadRankStripsChart.ts` ne fait que peindre ce que ce
  * module décide.
  */
@@ -35,9 +41,9 @@ export interface RankPoint {
 export interface RankStrip {
   gamertag: string
   points: RankPoint[]
-  /** Nature la plus fréquente de la session (à égalité : la plus récente) : celle de l'étiquette. */
+  /** Nature de la chaîne affichée. */
   kind: RankKind
-  /** Rang du dernier match de cette nature. */
+  /** Rang du dernier match de la chaîne. */
   endRating: number
   /** Variation nette sur la session, première variation comprise : fin − (début − variation du début). */
   sessionDelta: number
@@ -55,19 +61,69 @@ function kindOf(p: SquadPerformanceSeriesPoint): RankKind {
   return p.skill_rating_type === 'csr' ? 'csr' : 'lusr'
 }
 
+/** Clé de la chaîne CSR : celle du libellé « Classé » du manifeste de la Carrière (`career.lusr.chain.ranked`). */
+export const CSR_CHAIN_KEY = 'ranked'
+/** Clé d'une chaîne LUSR dont le serveur ne dit pas le groupe. */
+export const UNKNOWN_LUSR_CHAIN_KEY = 'lusr'
+
+/** La chaîne d'un point : « ranked » pour le CSR, sinon son `skill_playlist_group`. */
+export function chainKeyOf(p: SquadPerformanceSeriesPoint): string {
+  if (kindOf(p) === 'csr') return CSR_CHAIN_KEY
+  return p.skill_playlist_group || UNKNOWN_LUSR_CHAIN_KEY
+}
+
+/** Une chaîne de la session, avec son nombre de matchs. */
+export interface RankChain {
+  key: string
+  kind: RankKind
+  /** Matchs de la session où au moins un joueur a un rang dans cette chaîne. */
+  matches: number
+}
+
+/**
+ * rankChains — les chaînes présentes dans la session, la plus jouée d'abord (à égalité : l'ordre
+ * alphabétique des clés, pour un défaut déterministe). Vide sans aucun rang.
+ */
+export function rankChains(
+  rows: Record<string, SquadPerformanceSeriesPoint[]>,
+  players: readonly string[],
+): RankChain[] {
+  const orders = new Map<string, Set<number>>()
+  const kinds = new Map<string, RankKind>()
+  for (const gamertag of players) {
+    for (const p of rows[gamertag] ?? []) {
+      if (p.skill_rating == null) continue
+      const key = chainKeyOf(p)
+      kinds.set(key, kindOf(p))
+      const set = orders.get(key) ?? new Set<number>()
+      set.add(p.match_order)
+      orders.set(key, set)
+    }
+  }
+  return [...orders.entries()]
+    .map(([key, set]) => ({ key, kind: kinds.get(key) as RankKind, matches: set.size }))
+    .sort((a, b) => b.matches - a.matches || a.key.localeCompare(b.key))
+}
+
+/** La chaîne affichée : le choix s'il est encore présent, sinon la plus jouée ; `''` sans chaîne. */
+export function selectedChain(chains: readonly RankChain[], choice: string | null): string {
+  return chains.find((c) => c.key === choice)?.key ?? chains[0]?.key ?? ''
+}
+
 /**
  * rankStrips construit les bandeaux des joueurs (dans l'ordre donné) qui ont au moins un rang
- * sur la session. `rows` est la série par joueur servie par la page ; un joueur sans rang n'a pas
+ * dans la CHAÎNE `chain` de la session. `rows` est la série par joueur servie par la page ; un joueur sans rang n'a pas
  * de bandeau.
  */
 export function rankStrips(
   rows: Record<string, SquadPerformanceSeriesPoint[]>,
   players: readonly string[],
+  chain: string,
 ): RankStrip[] {
   const out: RankStrip[] = []
   for (const gamertag of players) {
     const points: RankPoint[] = (rows[gamertag] ?? [])
-      .filter((p) => p.skill_rating != null)
+      .filter((p) => p.skill_rating != null && chainKeyOf(p) === chain)
       .map((p) => ({
         order: p.match_order,
         rating: p.skill_rating as number,
@@ -76,18 +132,13 @@ export function rankStrips(
       }))
       .sort((a, b) => a.order - b.order)
     if (points.length === 0) continue
-    const csr = points.filter((p) => p.kind === 'csr').length
-    const lusr = points.length - csr
-    const last = points[points.length - 1]
-    const kind: RankKind = csr === lusr ? last.kind : csr > lusr ? 'csr' : 'lusr'
-    const ofKind = points.filter((p) => p.kind === kind)
-    const first = ofKind[0]
-    const end = ofKind[ofKind.length - 1]
+    const first = points[0]
+    const end = points[points.length - 1]
     const values = points.map((p) => p.rating)
     out.push({
       gamertag,
       points,
-      kind,
+      kind: first.kind,
       endRating: end.rating,
       sessionDelta: end.rating - (first.rating - (first.delta ?? 0)),
       center: Math.round((Math.min(...values) + Math.max(...values)) / 2),

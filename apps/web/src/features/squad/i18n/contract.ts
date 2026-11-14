@@ -301,6 +301,8 @@ export interface SquadText {
     /** Légende du rang : marqueur plein vers le haut (rang tenu ou gagné) et creux vers le bas (rang perdu). */
     rankUpLabel: string
     rankDownLabel: string
+    /** Nom accessible du sélecteur de chaîne de rang (CSR classé, un groupe LUSR par chaîne). */
+    rankChainLabel: string
     /** Infobulle d'un marqueur de rang : la variation sur le match (déjà signée et formatée). */
     rankChange: (delta: string) => string
     fragBreakdownTitle: string

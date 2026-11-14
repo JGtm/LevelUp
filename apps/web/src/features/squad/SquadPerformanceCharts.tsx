@@ -16,11 +16,13 @@
  * tooltips et légendes restent isolés à leur grille, contrairement à la
  * version dual-grid précédente qui fusionnait les deux dans un canvas unique.
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 import { useProvidesMaxKillingSpree } from '@/lib/damage/effectiveHp'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
+import { Segmented } from '@/components/ui/segmented'
+import { lusrChainLabel } from '@/features/career/lusr-chains'
 import { intlLocale } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 import {
@@ -31,6 +33,7 @@ import {
   orderedPlayers,
 } from './charts/squadPerformanceLineCharts'
 import { buildRankStripsOption, rankStripsCount, rankStripsHeight } from './charts/squadRankStripsChart'
+import { rankChains, selectedChain } from './charts/squadRankStrips.logic'
 import { SquadToggleLegendChart } from './SquadToggleLegendChart'
 
 interface I18nLabels {
@@ -53,6 +56,7 @@ interface I18nLabels {
   rankUpLabel: string
   rankDownLabel: string
   rankChange: (delta: string) => string
+  rankChainLabel: string
 }
 
 interface SquadPerformanceChartsProps {
@@ -77,7 +81,8 @@ export function SquadPerformanceCharts({
   emptyMessage,
 }: SquadPerformanceChartsProps) {
   const isMobile = useMediaQuery('(max-width: 768px)')
-  const numLoc = intlLocale(useAppShellStore((s) => s.locale))
+  const locale = useAppShellStore((s) => s.locale)
+  const numLoc = intlLocale(locale)
   // Title-agnostic : la série « Folie meurtrière max » n'est masquée que pour un
   // titre sans events horodatés (provides_max_killing_spree=false). Pour Halo 5
   // le backend CALCULE la spree depuis les events → flag true → série affichée.
@@ -228,9 +233,18 @@ export function SquadPerformanceCharts({
   )
   const rankPlayers = useMemo(() => orderedPlayers(rowsByPlayer, playerOrder), [rowsByPlayer, playerOrder])
   const matchCount = useMemo(() => maxLength(rowsByPlayer, rankPlayers), [rowsByPlayer, rankPlayers])
+  // Un rang ne se compare qu'à l'intérieur de sa chaîne : une chaîne à la fois, la plus jouée par défaut,
+  // le choix retenu par l'état de la page seulement.
+  const chains = useMemo(() => rankChains(rowsByPlayer, rankPlayers), [rowsByPlayer, rankPlayers])
+  const [chainChoice, setChainChoice] = useState<string | null>(null)
+  const chain = selectedChain(chains, chainChoice)
+  const chainOptions = useMemo(
+    () => chains.map((c) => ({ value: c.key, label: `${lusrChainLabel(c.key, locale)} (${c.matches})` })),
+    [chains, locale],
+  )
   const rankHeight = useMemo(
-    () => rankStripsHeight(rankStripsCount(rowsByPlayer, rankPlayers, matchCount)),
-    [rowsByPlayer, rankPlayers, matchCount],
+    () => rankStripsHeight(rankStripsCount(rowsByPlayer, rankPlayers, matchCount, chain)),
+    [rowsByPlayer, rankPlayers, matchCount, chain],
   )
 
   const buildRank = useCallback(
@@ -238,6 +252,7 @@ export function SquadPerformanceCharts({
       buildRankStripsOption(rowsByPlayer, rankPlayers, matchCount, {
         colorByPlayer,
         xLabels: xMatchLabels,
+        chain,
         mmrLabel: labels.mmrLabel,
         upLabel: labels.rankUpLabel,
         downLabel: labels.rankDownLabel,
@@ -245,7 +260,7 @@ export function SquadPerformanceCharts({
         fmtInt: (v) => rankFmt.int.format(v),
         fmtDelta: (v) => rankFmt.delta.format(v),
       }),
-    [rowsByPlayer, rankPlayers, matchCount, colorByPlayer, xMatchLabels, labels.mmrLabel, labels.rankUpLabel, labels.rankDownLabel, labels.rankChange, rankFmt],
+    [rowsByPlayer, rankPlayers, matchCount, colorByPlayer, xMatchLabels, chain, labels.mmrLabel, labels.rankUpLabel, labels.rankDownLabel, labels.rankChange, rankFmt],
   )
 
   const buildMaxSpree = useCallback(
@@ -341,7 +356,16 @@ export function SquadPerformanceCharts({
           emptyMessage={emptyMessage}
         />
         <ChartCard
-          title={labels.rankTitle}
+          title={
+            chainOptions.length > 1 ? (
+              <span className="flex flex-wrap items-center justify-between gap-2">
+                {labels.rankTitle}
+                <Segmented options={chainOptions} value={chain} onChange={setChainChoice} ariaLabel={labels.rankChainLabel} />
+              </span>
+            ) : (
+              labels.rankTitle
+            )
+          }
           series={series}
           buildOption={buildRank}
           height={rankHeight}
