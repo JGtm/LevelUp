@@ -1,3 +1,10 @@
+## [2026-11-14] Plan 8.1.2, item 7.3 : ménage du backlog, du plan desktop et de la carte du projet — Complété (branche `chore/cloture-820`)
+
+- **Décision** : retrait de 22 entrées du backlog traitées par la 8.2.0 (preuve : items du plan à `[x]` et code relu : `killerZone.ts`, `sidebarScroll.ts`, `focusVisible.ts`, `folder_pick.rs`, `skill_v2_solver_fallback.go`, `catalogue_hermetique_test.go`, `hud.go`, `uninstall_cleanup_engine.go`, garde-rail des couleurs, `internal/briques`, NOTICE des briques en v1.1.0), dont les points 1 et 19 du plan (série Go « reste », dépôts dédiés). Gardées : points 17 et 18, découvertes de la section 7 déjà notées, entrées du correctif 8.1.2 (auth navigateur, accueil, version des signalements).
+- **Versé** : budget `-timeout` du gate, badge du rejeu non testé de bout en bout, alerte glib, binaire de serveur vide laissé par `make desktop-test`. Une découverte de la section 7 (gate de corpus sans cgo) est réglée depuis (`5b3736375a`), non versée.
+- **Aussi** : ligne « Récemment complété » de la 8.2.0, section « En cours » réécrite, statut du plan desktop passé à « clos », carte du projet mise à jour (îlot « Briques Go »).
+- **Conclusion** : l'item 7.3 du plan reste à cocher par le pilote.
+
 ## [2026-11-13] Alertes Dependabot : undici, minimatch, @vitest/mocker corrigés, glib (Rust) non corrigeable — Complété (branche `chore/deps-securite-820`)
 
 - **Décision** : `npm update` pour undici (8.12.4 via jsdom) et vitest 4.1.12 (qui tire `@vitest/mocker` 4.1.12), sans toucher aux plages de `package.json` ; minimatch 11 imposé par trois surcharges ciblées (`eslint`, `@eslint/config-array`, `@typescript-eslint/typescript-estree`) car ces paquets exigent `^10` ; le `minimatch` 5 de `@redocly/openapi-core` (hors plage vulnérable 7 à 11.0.0) reste intact.

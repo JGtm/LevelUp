@@ -11,7 +11,7 @@
 > anciennes URLs redirigent via un splat). Ne pas s'appuyer
 > sur les sections ci-dessous sans re-vérifier dans le code.
 >
-> **Dernière mise à jour : 2026-11-08** — îlot « i18n à N langues » ajouté (ci-dessous) ; section « Documentation IA
+> **Dernière mise à jour : 2026-11-14** (clôture de la 8.2.0 : `libs/` et `go.work` supprimés au profit des modules publiés, îlot « Briques Go » ajouté ; îlot « Frontières de couches » du 2026-11-13) — îlot « i18n à N langues » ajouté (ci-dessous) ; section « Documentation IA
 > (.ai/) » réécrite le 2026-09-23 sur l'état final de la racine après le lot d'archivage (îlot du décodeur de film :
 > 2026-09-18).
 
@@ -67,6 +67,10 @@
 > encore des chemins morts.
 > Doctrine inchangée : le code fait foi, l'ADR 0034 porte les décisions et l'état atteint.
 
+> **Mise à jour 2026-11-14** : les chemins `internal/games/halo_infinite/film/` de ce tableau n'existent plus dans ce dépôt ; ils vivent
+> dans le dépôt dédié `halo-infinite-film-decoder` (voir « Briques Go » plus bas), et les nombres (`SchemaVersion` 62, façade de 166
+> symboles) sont ceux du 2026-09-18 : le schéma est à 115 avec le décodeur v1.3.6.
+
 Chemins sous `apps/go-api/` sauf mention contraire.
 
 | Rôle | Chemin réel |
@@ -99,6 +103,22 @@ Chemins sous `apps/go-api/` sauf mention contraire.
 `KillSourceDecoderRev` (devenue `facts.Rev`), `GrammarRev` (devenue `grammar.Rev`),
 `LockProcessDecode` et `decode_gate.go` (supprimés, et leur retour est interdit par un ratchet).
 `internal/analysis/` n'importe plus AUCUN paquet de titre, production et test comprises.
+
+## Briques Go : modules publiés — cartographie À JOUR AU 2026-11-14 (îlot de fraîcheur)
+
+> Depuis la bascule de la 8.2.0 (2026-11-12, PR #201), `libs/` et `go.work` n'existent plus dans ce dépôt : LevelUp consomme
+> les briques comme modules publiés (ADR 0041, 0042, 0043 amendés). Le code d'une brique se modifie dans son dépôt dédié, puis un
+> tag, puis une montée du `require`. Le code fait foi.
+
+| Rôle | Chemin réel |
+|---|---|
+| Quatre modules requis par `apps/go-api/go.mod` (versions du 2026-11-14 : `halo-api` v1.0.1, `halo-infinite-files-reader` v1.1.0, `halo-infinite-map-images` v1.1.0, `halo-infinite-film-decoder` v1.3.6) | `github.com/JGtm/{halo-api,halo-infinite-files-reader,halo-infinite-map-images,halo-infinite-film-decoder}` |
+| Résolveur unique du dossier d'une brique sur le disque (`go list -m -f {{.Dir}}`), pour les tests et les outils hors ligne ; le serveur ne l'importe pas | `apps/go-api/internal/briques/` |
+| Espace de travail LOCAL pour modifier une brique avant son tag (jamais versionné, désigné par `GOWORK`) | `scripts/briques-workspace.sh` -> `levelup-briques.work` ; garde-rail : `archlint/no_go_work_versionne_test.go` |
+| Frontières entre briques et LevelUp | `archlint/briques_imports_test.go`, `archlint/briques_notice_test.go` (chaque brique a un `NOTICE.md`) |
+| Corpus des cartes lu dans le jeu installé (tag `gamefiles`) | `apps/go-api/internal/gamefilescorpus/`, cible `make go-api-test-gamefiles` |
+| Tests des briques dans la CI de LevelUp | lots par module de `.github/ci/go-shards.txt` (directive `module <chemin de module>`, lancés depuis `apps/go-api`) |
+| Publier une version d'une brique | section « Go bricks » (« Developing a brick ») de `docs/COMMANDS.md` (et `docs/FR/COMMANDS.md`), amendement de l'ADR 0043 |
 
 ## Décodeur de film : brique et exploitation (2026-11-08)
 
