@@ -45,7 +45,7 @@ le catalogue Prestige (`TemplateRepo.ListByTitle()`), et produit des
 post-sync hook (existant, ADR 0014)
    ├─ coach.Generate()         → []Alert (inchangé)
    ├─ coach_advisor.GenerateProposals()  → []Proposal (NOUVEAU)
-   │     ↳ lit TemplateRepo + LUSRSnapshot + PatternReport + UserSettings
+   │     ↳ lit TemplateRepo + LUSRSnapshot + PatternReport + UserSettings   (inputs as designed; as built: see Amendment 2026-11-14)
    │     ↳ filtre selon coach_proactive_mode
    │     ↳ persiste dans coach_proposal (status=pending)
    ├─ coach.emitter.Emit()     → player_notifications
@@ -253,6 +253,18 @@ catalogue Prestige sera seed.
   arrêter le pipeline post-sync (best-effort, comme Prestige).
 - `expvar` (ADR 0009) : compteurs optionnels V2.1 si volume justifie
   (`coach_proposals_generated_total{kind=challenge|arc, origin=catalog|synthesized}`).
+
+## Amendment 2026-11-14 — what the advisor actually reads
+
+**Relates to** — the architecture diagram above, `internal/progression/coach_advisor/`.
+
+The diagram names `LUSRSnapshot` and `PatternReport` as inputs of `coach_advisor.GenerateProposals()`. Neither is read by the advisor. As built, the advisor reads three things:
+
+- the **coach alerts**, converted to signals by `SignalsFromAlerts` and passed as `GenerateInput.Signals`. Everything the coach detects reaches the advisor in that form, the LUSR tier approach (`AlertTypeLUSRTierApproach`) and the combat patterns (`AlertTypeCombatPattern*`) included;
+- the Prestige **template catalogue** (`ServiceDeps.Templates`, a `prestige.TemplateRepo`);
+- the **toggle** `coach_proactive_mode`, passed as `GenerateInput.ProactiveEnabled`.
+
+`LUSRSnapshot` is an input of the **coach** (`coach.GenerateInput.LUSR`), which turns it into alerts upstream of the advisor. `PatternReport` (`analysis/patterns`) feeds the patterns page only: the coach's combat-pattern alerts are computed by its own generator from the combat medians (`coach.GenerateInput.CombatMedians`), not from that report. The invariants I1-I5, the schema and the limits above are unchanged.
 
 ## Decisions log
 
