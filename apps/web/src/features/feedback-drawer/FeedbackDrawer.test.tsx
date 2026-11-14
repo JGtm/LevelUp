@@ -109,6 +109,31 @@ describe('FeedbackDrawer — interactions', () => {
     expect(document.body.querySelector('a[target="_blank"][hidden]')).toBeNull()
   })
 
+  function submittedBody(): string {
+    useFeedbackDrawerStore.setState({ isOpen: true })
+    renderWithProviders(<FeedbackDrawer />)
+    fireEvent.change(screen.getByPlaceholderText(/Résume ton retour/i), { target: { value: 'mon retour' } })
+    fireEvent.click(screen.getByRole('button', { name: /Ouvrir sur GitHub/i }))
+    expect(clickedLinks).toHaveLength(1)
+    return new URL(clickedLinks[0].href).searchParams.get('body') ?? ''
+  }
+
+  it("le signalement porte la version de l'application publiée par /bootstrap (application de bureau)", async () => {
+    act(() => useAppShellStore.setState({ appInfo: { version: '8.2.0', data_root: 'C:\\LevelUp' } }))
+    try {
+      const body = submittedBody()
+      expect(body).toContain('**Version app** : 8.2.0')
+      expect(body).not.toContain('unknown')
+    } finally {
+      act(() => useAppShellStore.setState({ appInfo: null }))
+    }
+  })
+
+  it("sans version publiée (site), le signalement garde « unknown »", async () => {
+    act(() => useAppShellStore.setState({ appInfo: null }))
+    expect(submittedBody()).toContain('**Version app** : unknown')
+  })
+
   it("change de type via segmented control", () => {
     useFeedbackDrawerStore.setState({ isOpen: true })
     renderWithProviders(<FeedbackDrawer />)

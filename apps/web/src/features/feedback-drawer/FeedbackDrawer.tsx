@@ -46,6 +46,8 @@ export function FeedbackDrawer() {
   const locale = useAppShellStore((s) => s.locale)
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
+  // Version de l'application : publiée par /bootstrap pour l'application de bureau (`app_info`), absente sur le site.
+  const appVersion = useAppShellStore((s) => s.appInfo?.version ?? null)
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
   // Capture les deux stores ; le contexte effectif inclus dans le ticket est
   // choisi selon la route au moment du build de l'URL (squad pathname →
@@ -118,7 +120,7 @@ export function FeedbackDrawer() {
       shell: {
         titleSlug,
         playerSlug: currentPlayer?.gamertag ?? null,
-        appVersion: null,
+        appVersion,
       },
       filters: activeFilterContext,
       console: getRecentConsoleEntries(),
@@ -141,6 +143,7 @@ export function FeedbackDrawer() {
     theme,
     titleSlug,
     currentPlayer,
+    appVersion,
     soloFilterContext,
     squadFilterContext,
     pickedType,
