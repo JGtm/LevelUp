@@ -29,7 +29,7 @@ const OPTS: RangeRolesRibbonOpts = {
     tooltipNoRole: 'pas encore de rôle',
     tooltipDelta: (d) => `écart ${d} m`,
     tooltipMeasured: (n) => `${n} frags`,
-    tooltipUnsure: (n) => `${n} frags, match peu sûr`,
+    tooltipUnsure: (n) => `${n} frags, données insuffisantes`,
   },
   fmtDeltaM: (v) => (v > 0 ? `+${v}` : String(v)),
 }
@@ -121,7 +121,7 @@ describe('buildRangeRolesRibbonOption', () => {
     const o = build()
     const [fenetre, creux] = o.series[3].data
     expect(o.tooltip.formatter({ data: fenetre })).toBe('<b>JGtm</b><br/>#1 · A<br/>pas encore de rôle<br/>écart +1 m<br/>10 frags')
-    expect(o.tooltip.formatter({ data: creux })).toBe('<b>Kaya</b><br/>#1 · A<br/>écart +4 m<br/>3 frags, match peu sûr')
+    expect(o.tooltip.formatter({ data: creux })).toBe('<b>Kaya</b><br/>#1 · A<br/>écart +4 m<br/>3 frags, données insuffisantes')
   })
 
   it('le gamertag est échappé', () => {

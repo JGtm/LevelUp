@@ -117,9 +117,9 @@ describe('SquadRangeRolesCard', () => {
     const o = await option()
     const derniere = o.series[3].data.filter((d) => d.value[0] === 5)
     expect(derniere).toHaveLength(2)
-    expect(derniere[0].tip).toContain('3 frags, match peu sûr')
+    expect(derniere[0].tip).toContain('3 frags, données insuffisantes')
     // Aucune case avec rôle ne porte la mention : seul un match sous le plancher la porte.
-    expect(o.series.slice(0, 3).flatMap((s) => s.data).some((d) => d.tip.includes('peu sûr'))).toBe(false)
+    expect(o.series.slice(0, 3).flatMap((s) => s.data).some((d) => d.tip.includes('données insuffisantes'))).toBe(false)
   })
 
   it('rien sous le graphe : ni légende ajoutée, ni bande repliable, ni compte de frags mesurés', () => {

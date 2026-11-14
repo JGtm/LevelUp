@@ -678,5 +678,5 @@ fr = "pas encore de rôle"
 en = "no role yet"
 
 [squad.portee.tooltip_unsure]
-fr = "{n, plural, one {# frag} other {# frags}}, match peu sûr"
-en = "{n, plural, one {# kill} other {# kills}}, uncertain match"
+fr = "{n, plural, one {# frag} other {# frags}}, données insuffisantes"
+en = "{n, plural, one {# kill} other {# kills}}, not enough data"

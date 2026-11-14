@@ -7,7 +7,7 @@
  *
  * Une case sans rôle reste VIDE (fond de la carte, sans motif) : fenêtre incomplète ou match sous
  * `PLANCHER_MESURE` frags mesurés. Aucun marquage visuel du petit échantillon : il se lit dans
- * l'infobulle de la case (« 3 frags mesurés, match peu sûr »). Une case vide reste survolable, une
+ * l'infobulle de la case (« 3 frags, données insuffisantes »). Une case vide reste survolable, une
  * série transparente la porte.
  *
  * Le nuage de rôles du Résumé solo et des Sessions garde `squadRangeRolesChart.ts` : ce ruban est

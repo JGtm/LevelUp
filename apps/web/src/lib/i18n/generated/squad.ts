@@ -114,7 +114,7 @@ export const squadManifest = {
   "squad.portee.tooltip_measured": { fr: "{n, plural, one {# frag} other {# frags}}", en: "{n, plural, one {# kill} other {# kills}}" },
   "squad.portee.tooltip_no_role": { fr: "pas encore de rôle", en: "no role yet" },
   "squad.portee.tooltip_role": { fr: "rôle : {role}", en: "role: {role}" },
-  "squad.portee.tooltip_unsure": { fr: "{n, plural, one {# frag} other {# frags}}, match peu sûr", en: "{n, plural, one {# kill} other {# kills}}, uncertain match" },
+  "squad.portee.tooltip_unsure": { fr: "{n, plural, one {# frag} other {# frags}}, données insuffisantes", en: "{n, plural, one {# kill} other {# kills}}, not enough data" },
   "squad.portee.x_axis": { fr: "Matchs, du plus ancien au plus récent", en: "Matches, oldest to most recent" },
   "squad.radar.axis_combat": { fr: "Combat", en: "Combat" },
   "squad.radar.axis_impact": { fr: "Impact", en: "Impact" },
