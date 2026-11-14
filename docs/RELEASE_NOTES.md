@@ -38,6 +38,12 @@
 - **Behaviour alerts in your language** — eleven sentences written in French by the server now go through the language catalogue
 - **Win probability removed** — an abandoned statistic, removed from the Synergies and Progression tables and from the match detail
 
+**The Squad**
+- **Grouped or isolated, as a heat map** — each life lands in a cell (distance to the nearest teammate × kills in the life), with the four quarters, the radar range and one dot per player; the section is renamed "Grouped or isolated"
+- **Range roles as a ribbon** — one row per player, one column per match, coloured by role (front line, versatile, marksman): a column reads as the squad composition of that match. A match with too few kills to measure shows an empty cell, "not enough data"
+- **Rank in bands** — one band per player at the same scale, the curve in the player's colour only, a filled triangle when the rank goes up and a hollow one when it goes down, and the session gain on the left. Close ranks no longer overlap
+- **Assists as a flow** — "Assister: sets up the kill → Finisher: lands it", on the Squad and on the match view, with sentences that always name the assister first
+
 **The interface and the Windows app**
 - **A more compact sidebar** — the foot becomes a row of icons, folded it keeps a "More" menu, and a tooltip opens on focus only when the focus comes from the keyboard
 - **Tooltips visible when you share your screen** — every tooltip of the app is now drawn by the app itself: a listener on Discord or Teams sees it when you share the window, which the system tooltips did not allow

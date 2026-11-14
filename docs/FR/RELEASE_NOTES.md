@@ -38,6 +38,12 @@
 - **Les alertes de comportement dans ta langue** — onze phrases composées en français par le serveur passent par le catalogue de langues
 - **Probabilité de victoire retirée** — statistique abandonnée, retirée des tableaux Synergies et Progression et du détail d'un match
 
+**L'Escouade**
+- **Groupé ou isolé, en carte de chaleur** — chaque vie tombe dans une case (distance au coéquipier le plus proche × frags dans la vie), avec les quatre quarts, la portée du radar et un point par joueur ; la section s'appelle désormais « Groupé ou isolé »
+- **Les rôles de portée en ruban** — une ligne par joueur, une colonne par match, couleur du rôle (ligne de front, polyvalent, tireur d'élite) : une colonne se lit comme la composition de l'escouade sur ce match. Un match où trop peu de frags permettent la mesure est une case vide, « données insuffisantes »
+- **Le rang en bandeaux** — un bandeau par joueur à la même échelle, la courbe à la seule couleur du joueur, un triangle plein quand le rang monte et creux quand il baisse, et le gain de la session à gauche. Des rangs proches ne se recouvrent plus
+- **L'appui en flux** — « Assistant : prépare le frag → Finisseur : conclut le frag », sur l'Escouade et sur la vue du match, avec des phrases qui nomment toujours l'assistant en premier
+
 **L'interface et l'application Windows**
 - **Une barre latérale plus compacte** — le pied devient une rangée d'icônes, replié il garde un menu « Plus », et une infobulle ne s'ouvre au focus que si le focus vient du clavier
 - **Des infobulles visibles en partage d'écran** — toutes les infobulles de l'application sont désormais dessinées par l'application elle-même : un auditeur sur Discord ou Teams les voit quand vous partagez la fenêtre, ce que les infobulles du système ne permettaient pas
