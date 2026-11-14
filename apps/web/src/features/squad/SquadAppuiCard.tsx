@@ -59,7 +59,7 @@ export function SquadAppuiCard({ block, roster, colorByPlayer }: SquadAppuiCardP
   const flow = useMemo(() => squadAssistFlow(block, roster), [block, roster])
 
   // Un joueur hors palette (absent de la sélection) prend l'encre achromatique (zone-neutral), jamais une teinte empruntée.
-  const chart = useMemo<AssistFlowChartOpts>(
+  const chart = useMemo<Omit<AssistFlowChartOpts, 'width'>>(
     () => ({
       colorOf: (name) => colorByPlayer[name] ?? resolveToken('zone-neutral'),
       fmtShare: (v) => pctFmt.format(v),

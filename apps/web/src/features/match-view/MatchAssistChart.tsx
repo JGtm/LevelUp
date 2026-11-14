@@ -68,7 +68,7 @@ export function MatchAssistChart({ block, scoreboard, meXUID, locale, t }: Props
 
   // Une teinte par joueur (par nom affiché), la même des deux côtés : cycle ASSIST_TOKENS, dans
   // l'ordre des nœuds (assistants puis finisseurs).
-  const chart = useMemo<AssistFlowChartOpts>(() => {
+  const chart = useMemo<Omit<AssistFlowChartOpts, 'width'>>(() => {
     const colors = new Map<string, string>()
     for (const n of flow.nodes) {
       if (!colors.has(n.name)) colors.set(n.name, resolveToken(ASSIST_TOKENS[colors.size % ASSIST_TOKENS.length]))

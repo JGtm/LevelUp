@@ -8,12 +8,18 @@
  * celui d'un `ChartCard` titré, pour la page Match où le graphe est une carte ; dans une
  * `SectionCard` (Escouade) le graphe est nu.
  */
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 
 import { ChartCard } from '@/components/charts/ChartCard'
 
 import type { AssistFlow } from './assistFlow.logic'
-import { assistFlowHeight, buildAssistFlowOption, type AssistFlowChartOpts } from './assistFlowOption'
+import {
+  assistFlowHeight,
+  buildAssistFlowOption,
+  DEFAULT_FLOW_WIDTH,
+  type AssistFlowChartOpts,
+} from './assistFlowOption'
+import { useElementWidth } from './useElementWidth'
 
 export interface AssistFlowHeaders {
   assistant: string
@@ -22,7 +28,8 @@ export interface AssistFlowHeaders {
 
 interface Props {
   flow: AssistFlow
-  chart: AssistFlowChartOpts
+  /** Les options du graphe, SANS la largeur : le composant la mesure. */
+  chart: Omit<AssistFlowChartOpts, 'width'>
   headers: AssistFlowHeaders
   /** Message de l'état vide (aucune assistance). */
   emptyMessage: string
@@ -36,9 +43,11 @@ const FLOW_ARROW = '→'
 
 export function AssistFlowChart({ flow, chart, headers, emptyMessage, frame, testId }: Props) {
   const series = useMemo(() => (flow.links.length > 0 ? [{ key: 'assist-flow', datapoints: flow.links }] : []), [flow.links])
-  const buildOption = useMemo(() => () => buildAssistFlowOption(flow, chart), [flow, chart])
+  const ref = useRef<HTMLDivElement>(null)
+  const width = useElementWidth(ref, DEFAULT_FLOW_WIDTH)
+  const buildOption = useMemo(() => () => buildAssistFlowOption(flow, { ...chart, width }), [flow, chart, width])
   const body = (
-    <div data-testid={testId}>
+    <div ref={ref} data-testid={testId}>
       {flow.links.length > 0 && (
         <div
           className="flex items-center justify-between gap-2 px-3 pt-2 text-xs font-medium text-muted-foreground"

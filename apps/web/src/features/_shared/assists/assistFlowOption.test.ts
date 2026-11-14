@@ -8,7 +8,14 @@ import { describe, expect, it } from 'vitest'
 import { renderOptionToSvg } from '@/components/charts/svgRender.testutil'
 
 import { buildAssistFlow, type FlowPair } from './assistFlow.logic'
-import { assistFlowHeight, buildAssistFlowOption, type AssistFlowChartOpts } from './assistFlowOption'
+import {
+  assistFlowHeight,
+  buildAssistFlowOption,
+  flowLayout,
+  LABEL_MARGIN,
+  NARROW_FLOW_WIDTH,
+  type AssistFlowChartOpts,
+} from './assistFlowOption'
 import { ASSIST_FLOW_TEXT } from './assistFlowStrings'
 
 const pair = (assistant: string, finisher: string, count: number, stolen = 0): FlowPair => ({
@@ -22,7 +29,8 @@ const pair = (assistant: string, finisher: string, count: number, stolen = 0): F
 
 const COLORS: Record<string, string> = { Madina: '#aa3322', JGtm: '#2255cc', Kaya: '#22aa55' }
 
-const opts = (locale: 'fr' | 'en' = 'fr'): AssistFlowChartOpts => ({
+const opts = (locale: 'fr' | 'en' = 'fr', width = 1000): AssistFlowChartOpts => ({
+  width,
   colorOf: (n) => COLORS[n],
   fmtShare: (v) => `${Math.round(v * 100)} %`,
   texts: { ...ASSIST_FLOW_TEXT[locale], share: (p) => `${p} des assistances de l’escouade` },
@@ -34,6 +42,9 @@ const FLOW = buildAssistFlow(PAIRS, { assistantOrder: ['JGtm', 'Madina', 'Kaya']
 type Opt = {
   series: {
     type: string
+    left: number
+    right: number
+    label: { width: number; overflow: string }
     layoutIterations: number
     data: { name: string; value: number; itemStyle: { color: string }; label: { position: string; formatter: string }; tip: string }[]
     links: { source: string; target: string; value: number; lineStyle: { color: string }; tip: string }[]
@@ -41,6 +52,36 @@ type Opt = {
   tooltip: { formatter: (p: unknown) => string }
 }
 const build = () => buildAssistFlowOption(FLOW, opts()) as unknown as Opt
+
+describe('mise en page selon la largeur réelle', () => {
+  it('large (1 000 px) : marges de libellés de 150 px, 700 px de flux, libellés dans les marges', () => {
+    const o = buildAssistFlowOption(FLOW, opts('fr', 1000)) as unknown as Opt
+    expect(o.series[0].left).toBe(LABEL_MARGIN)
+    expect(o.series[0].right).toBe(LABEL_MARGIN)
+    expect(flowLayout(1000)).toMatchObject({ narrow: false, flowWidth: 700 })
+    expect(o.series[0].data.find((n) => n.name === 'assistant:JGtm')!.label.position).toBe('left')
+    expect(o.series[0].data.find((n) => n.name === 'finisher:JGtm')!.label.position).toBe('right')
+  })
+
+  it('étroit (340 px) : marges réduites, le flux garde plus de 300 px, libellés sur les rubans contre leur nœud', () => {
+    const o = buildAssistFlowOption(FLOW, opts('fr', 340)) as unknown as Opt
+    const flow = 340 - o.series[0].left - o.series[0].right
+    expect(flow).toBeGreaterThan(300)
+    expect(o.series[0].left).toBeLessThan(LABEL_MARGIN)
+    expect(flowLayout(340).narrow).toBe(true)
+    expect(o.series[0].data.find((n) => n.name === 'assistant:JGtm')!.label.position).toBe('right')
+    expect(o.series[0].data.find((n) => n.name === 'finisher:JGtm')!.label.position).toBe('left')
+    expect(o.series[0].label.width).toBeLessThan(flow / 2)
+    expect(o.series[0].label.overflow).toBe('truncate')
+  })
+
+  it('le seuil est net : à NARROW_FLOW_WIDTH les marges reviennent, un pixel en dessous elles sont réduites', () => {
+    expect(flowLayout(NARROW_FLOW_WIDTH).narrow).toBe(false)
+    expect(flowLayout(NARROW_FLOW_WIDTH - 1).narrow).toBe(true)
+    // Aucune largeur ne laisse moins de 200 px de flux : c'était le défaut à 340 px (20 à 40 px).
+    for (const w of [320, 340, 400, 519, 520, 600, 1000]) expect(flowLayout(w).flowWidth).toBeGreaterThan(200)
+  })
+})
 
 describe('buildAssistFlowOption', () => {
   it('sans ruban : option vide', () => {
