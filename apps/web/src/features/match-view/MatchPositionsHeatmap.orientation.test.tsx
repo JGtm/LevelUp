@@ -17,7 +17,7 @@ const background = vi.hoisted(() => vi.fn())
 const image = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/replay/queries', () => ({
   useReplayMapBackground: () => background(),
-  useReplayMapImage: () => image(),
+  useReplayMapImage: (...args: unknown[]) => image(...args),
 }))
 vi.mock('./queries', () => ({ useMatchView: () => ({ data: { header: { map_id: 'map-streets' } } }) }))
 vi.mock('@tanstack/react-router', async (importOriginal) => ({
@@ -99,6 +99,28 @@ describe('MatchPositionsHeatmap — orientation et plan des murs du rejeu', () =
     window.localStorage.setItem('replay-show-wall-plan', 'false')
     rendre()
     expect(dernierTrace().peinture?.plan).toBeNull()
+  })
+
+  it('fond rendu par défaut : l’image est demandée en variante rendu', () => {
+    background.mockReturnValue({ data: { calibration: CAL, plan: PLAN, planImage: 'plan.png' } })
+    rendre()
+    expect(image.mock.calls.at(-1)?.[3]).toBe('rendu')
+    expect(dernierTrace().peinture?.plan?.edges).toEqual([[0, 0, 5, 5]])
+  })
+
+  it('réglage plan et carte avec image plan : variante plan demandée, murs déjà dans l’image donc aucun plan au tracé', () => {
+    window.localStorage.setItem('replay-background-style', 'plan')
+    background.mockReturnValue({ data: { calibration: CAL, plan: PLAN, planImage: 'plan.png' } })
+    rendre()
+    expect(image.mock.calls.at(-1)?.[3]).toBe('plan')
+    expect(dernierTrace().peinture?.plan).toBeNull()
+  })
+
+  it('réglage plan mais carte sans image plan : repli sur le rendu, plan des murs tracé', () => {
+    window.localStorage.setItem('replay-background-style', 'plan')
+    rendre()
+    expect(image.mock.calls.at(-1)?.[3]).toBe('rendu')
+    expect(dernierTrace().peinture?.plan?.edges).toEqual([[0, 0, 5, 5]])
   })
 
   it('carte sans plan : aucun plan donné au tracé', () => {

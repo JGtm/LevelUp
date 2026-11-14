@@ -56,6 +56,7 @@ import { orientBounds, pivotOf } from '@/lib/replay/orientation'
 import { visibleBounds } from '@/lib/replay/replayLogic'
 import { normalizeWallPlan } from '@/lib/replay/wallPlan'
 import { useZoomResetOnTurns } from '@/lib/replay/useZoomResetOnTurns'
+import { isWallPlanDrawn, resolveBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import { useReplayMapBackground, useReplayMapImage } from '@/lib/replay/queries'
 import { useTitleSlug } from '@/lib/title-routing'
 
@@ -128,7 +129,13 @@ export function MatchPositionsHeatmap({
 
   const all = useMemo(() => positions ?? [], [positions])
   const { data: background } = useReplayMapBackground(playerSlug, matchId)
-  const image = useReplayMapImage(playerSlug, matchId, !!background && all.length > 0)
+  // L'ORIENTATION, LE PLAN DES MURS ET LE STYLE DU FOND SONT CEUX DU REJEU 2D (mêmes préférences, lues
+  // seulement, aucun réglage propre à ce bloc) : une carte tournée au rejeu l'est ici, et le fond plan
+  // (même calage, mêmes dimensions que le rendu) se pose au même endroit. La scène du zoom est celle
+  // de la carte TOURNÉE, et le cadre prend son rapport (largeur et hauteur échangées pour un quart de tour).
+  const { turns, showWallPlan, backgroundStyle } = useMapViewPreferences(useMatchView(playerSlug, matchId).data?.header.map_id)
+  const variante = resolveBackgroundVariant(backgroundStyle, background?.planImage)
+  const image = useReplayMapImage(playerSlug, matchId, !!background && all.length > 0, variante)
 
   const frame = useMemo(() => (background ? mapFrame(background.calibration) : null), [background])
   const teamSplit = useMemo(() => hasTeamSplit(all), [all])
@@ -168,11 +175,11 @@ export function MatchPositionsHeatmap({
         : { minX: 0, maxX: 1, minY: 0, maxY: 1, minZ: 0, maxZ: 0 },
     [frame],
   )
-  // L'ORIENTATION ET LE PLAN DES MURS SONT CEUX DU REJEU 2D (mêmes préférences, lues seulement, aucun
-  // réglage propre à ce bloc) : une carte tournée au rejeu l'est ici. La scène du zoom est celle de la
-  // carte TOURNÉE, et le cadre prend son rapport (largeur et hauteur échangées pour un quart de tour).
-  const { turns, showWallPlan } = useMapViewPreferences(useMatchView(playerSlug, matchId).data?.header.map_id)
-  const plan = useMemo(() => (showWallPlan ? normalizeWallPlan(background?.plan) : null), [showWallPlan, background])
+  // Les murs sont déjà dans l'image plan : le calque des murs ne se trace que sur le rendu.
+  const plan = useMemo(
+    () => (isWallPlanDrawn(showWallPlan, variante) ? normalizeWallPlan(background?.plan) : null),
+    [showWallPlan, variante, background],
+  )
   const scene: ReplayBounds = useMemo(() => orientBounds(monde, turns), [monde, turns])
   const pivot = useMemo(() => pivotOf(monde), [monde])
 
