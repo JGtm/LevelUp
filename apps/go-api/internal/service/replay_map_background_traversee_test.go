@@ -219,6 +219,10 @@ func TestReadBackgroundImage_RefuseImageHostile(t *testing.T) {
 					`"widthPx":100,"heightPx":100,"convention":"test"},`+
 					`"stats":{"anchors":1}}`)
 			ecrire(t, res.MapBackgroundPath(title.DefaultSlug, "ridgeline"), "\x89PNG\r\n\x1a\nfaux")
+			// La cible existe la ou une lecture sans garde irait : le nom brut sous le dossier
+			// des fonds, et son nom de base. Sans la garde sur `Image`, l'image serait servie.
+			ecrire(t, res.MapBackgroundImageFilePath(title.DefaultSlug, c.image), "\x89PNG\r\n\x1a\nhostile")
+			ecrire(t, res.MapBackgroundImageFilePath(title.DefaultSlug, filepath.Base(c.image)), "\x89PNG\r\n\x1a\nhostile")
 
 			svc := NewReplayService(title.DefaultSlug, root, &mapNamesStub{names: []string{"Cliffhanger"}}, nil)
 			if _, _, err := svc.MapBackgroundImage(context.Background(), "m1"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {

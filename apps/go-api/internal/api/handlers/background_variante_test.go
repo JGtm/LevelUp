@@ -46,6 +46,19 @@ func TestFondParMatch_VarianteInconnueRefusee(t *testing.T) {
 	}
 }
 
+// Une valeur vide et un nom de paramètre d'une autre casse sont refusés comme une valeur
+// inconnue : seule l'absence du paramètre sert le fond.
+// Mutation jouee : traiter `?variante=` comme l'absence du paramètre.
+func TestFondParMatch_VarianteVideOuMalEcriteRefusee(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.ReplayService, error) { return fondMock(), nil }
+	for _, q := range []string{"?variante=", "?variante", "?Variante=plan", "?VARIANTE="} {
+		w := doReplayPath(newReplayRouter(factory), testPlayerSlug, "000d5950", "/background.png"+q)
+		if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "invalid_request") {
+			t.Errorf("%s : %d %s, attendu 400 invalid_request", q, w.Code, w.Body.String())
+		}
+	}
+}
+
 func TestFondParMatch_PlanAbsentEstUnFondAbsent(t *testing.T) {
 	mock := fondMock()
 	mock.planErr = port.ErrMapBackgroundNotAvailable

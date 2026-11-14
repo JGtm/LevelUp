@@ -1,3 +1,9 @@
+## [2026-11-14] Deux constats P2 de la relecture du lot 2 des fonds — Complété (poussé sur `release/v8.2.0`)
+
+- **Décision** : (1) `TestMapBackgroundPlanImage_RefuseUnNomDangereux` et `TestReadBackgroundImage_RefuseImageHostile` écrivent maintenant la cible là où une lecture sans garde irait (nom brut sous le dossier des fonds et nom de base) ; (2) `varianteFond` ne sert le fond que si `?variante` est absent (`Query().Has`) : valeur vide et paramètre d'une autre casse (`?Variante=plan`) sont refusés en 400, comme le contrat le dit. Entrées retirées de `.ai/BACKLOG.md`.
+- **Résultats** : mutations jouées : sans la garde `imageFileNamed`, les six cas rougissent ; `Get == ""` à la place de `Has`, le nouveau test rougit. `go test` et `go vet` de `internal/api/handlers` et `internal/service` verts.
+- **Suite** : rien.
+
 ## [2026-11-14] Restes des fonds au maillage : décisions du user sur Cliffhanger et Absolution — Complété (poussé sur `release/v8.2.0`)
 
 - **Décision** : page de décision des restes (artefact, collection `decisions`) : Cliffhanger « Prendre le fond coupé », Absolution « Garder tel quel ». Cliffhanger : `sansNavmesh` retiré de `map_fond_reglages.json`, recuite en silhouette avec les deux avis (`-maps ridgeline -forge=false`), WebP convertis. L'oracle `TestOracleIoUContreLeDecoupePOC` porte la décision : `iouMedianAccepteRidgeline` = 0,67 (mesuré 0,675 ; le découpé du POC comptait les rochers non praticables), `SeuilIoUMedian` 0,85 gardé et journalisé ; une baisse sous l'accord accepté reste une régression. Les callouts de Ridgeline viennent du dump du POC : les zones publiées ne changent pas.

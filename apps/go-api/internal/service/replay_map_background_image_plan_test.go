@@ -9,6 +9,7 @@ package service
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -73,10 +74,16 @@ func TestMapBackgroundPlanImage_AbsenceEstUnFondAbsent(t *testing.T) {
 }
 
 // Le nom de l'image plan est un contenu de fichier : meme garde que l'image du fond (nom simple,
-// extension en liste blanche).
+// extension en liste blanche). Un fichier est ecrit a chaque endroit ou une lecture sans garde
+// irait le chercher (le nom brut sous le dossier des fonds, et son nom de base) : sans la garde,
+// la lecture le trouverait et le test rougirait.
+// Mutation jouee : retirer le refus de imageFileNamed.
 func TestMapBackgroundPlanImage_RefuseUnNomDangereux(t *testing.T) {
 	for _, nom := range []string{"../ridgeline.webp", "ridgeline.plan.exe", "sous/dossier.webp"} {
-		_, svc := fondAvecImagePlan(t, strings.ReplaceAll(nom, `\`, ""), false)
+		root, svc := fondAvecImagePlan(t, strings.ReplaceAll(nom, `\`, ""), false)
+		res := title.NewPathResolver(root)
+		ecrire(t, res.MapBackgroundImageFilePath(title.DefaultSlug, nom), "RIFFhostile")
+		ecrire(t, res.MapBackgroundImageFilePath(title.DefaultSlug, filepath.Base(nom)), "RIFFhostile")
 		if _, _, err := svc.MapBackgroundPlanImageForMap(context.Background(), "asset-cliffhanger"); !errors.Is(err, port.ErrMapBackgroundNotAvailable) {
 			t.Errorf("%q accepte : %v", nom, err)
 		}

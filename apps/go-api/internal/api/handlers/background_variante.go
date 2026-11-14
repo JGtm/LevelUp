@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"strings"
 )
 
 // parametreVariante nomme le paramètre de requête qui choisit l'image servie par une route
@@ -14,13 +15,22 @@ const parametreVariante = "variante"
 const variantePlan = "plan"
 
 // varianteFond lit `?variante=` d'une route d'image de fond et dit si l'image plan est demandée.
-// Une valeur inconnue est refusée (400) : un client qui se trompe de nom doit le voir, pas
-// recevoir le fond à la place du plan. Rend ok=false quand la réponse est déjà écrite.
+// Seule l'absence du paramètre sert le fond. Toute autre forme est refusée (400) : une valeur
+// inconnue, une valeur vide, ou le paramètre écrit avec une autre casse (`?Variante=plan`). Un
+// client qui se trompe doit le voir, pas recevoir le fond à la place du plan. Rend ok=false
+// quand la réponse est déjà écrite.
 func varianteFond(ctx context.Context, w http.ResponseWriter, r *http.Request) (plan, ok bool) {
-	switch v := r.URL.Query().Get(parametreVariante); v {
-	case "":
+	q := r.URL.Query()
+	for cle := range q {
+		if cle != parametreVariante && strings.EqualFold(cle, parametreVariante) {
+			writeError(ctx, w, http.StatusBadRequest, "invalid_request", "paramètre « variante » mal écrit : attendu en minuscules")
+			return false, false
+		}
+	}
+	if !q.Has(parametreVariante) {
 		return false, true
-	case variantePlan:
+	}
+	if q.Get(parametreVariante) == variantePlan {
 		return true, true
 	}
 	writeError(ctx, w, http.StatusBadRequest, "invalid_request", "variante inconnue : attendu « plan » ou rien")
