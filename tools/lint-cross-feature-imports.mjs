@@ -295,6 +295,8 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'tendances=>squad/colors',
   // Une seule table de noms et de couleurs de chaînes LUSR dans l'app (celle de la Carrière).
   'tendances=>career/lusr-chains',
+  // Le rang par chaîne de l'Escouade (sélecteur de chaîne, 2026-11-14) nomme ses chaînes par la même table.
+  'squad=>career/lusr-chains',
   // L'onglet Entraînement de l'Ascension agrège les cartes du coach et lit le réglage du mode
   // proactif par le hook que la section d'administration qui l'édite lit aussi ; la
   // progression Prestige lit la liste d'amis du joueur (même source que la page Amis).
