@@ -173,9 +173,10 @@ func artefactCourantAvecCouches() string {
 		"matchId":    courantes["publication"],
 	}
 	blob, err := json.Marshal(map[string]any{
-		"schemaVersion": replay.SchemaVersion,
-		"matchId":       "m",
-		"layers":        layers,
+		"schemaVersion":   replay.SchemaVersion,
+		"frameIntervalMs": CookFrameIntervalMS(),
+		"matchId":         "m",
+		"layers":          layers,
 	})
 	if err != nil {
 		panic(fmt.Sprintf("artefactCourantAvecCouches: %v", err))

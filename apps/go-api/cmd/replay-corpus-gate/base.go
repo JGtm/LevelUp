@@ -200,7 +200,7 @@ func preparerReferenceBase(ctx context.Context, p basePrepParams, tc *temoinCont
 	nettoyeur.Ajouter(cleanupWt)
 
 	workRootBase := filepath.Join(p.WorkRoot, "cuisson-base")
-	if err := stageReferenceOnce(wtBase.Chemin, workRootBase, tc.TitleSlug); err != nil {
+	if err := stageReferenceOnce(ctx, wtBase.Chemin, workRootBase, tc.TitleSlug); err != nil {
 		return "", fmt.Errorf("catalogues de reference (base) : %w", err)
 	}
 	binBase := filepath.Join(p.WorkRoot, "bin", "replay-build-base"+exeSuffix())

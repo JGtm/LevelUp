@@ -21,6 +21,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -120,7 +121,7 @@ func TestBuildAndStoreOneRemonteLaMesure(t *testing.T) {
 	// UNE TRAJECTOIRE AU MOINS : `StoreArtifact` refuse un document vide (il se servirait comme
 	// le rejeu « propre » d'un match sans joueur).
 	blob, err := json.Marshal(replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion, MatchID: w.matchID,
+		SchemaVersion: replay.SchemaVersion, FrameIntervalMS: replaybuild.CookFrameIntervalMS(), MatchID: w.matchID,
 		Tracks: []replay.Track{{Slot: 1, Team: -1}},
 	})
 	if err != nil {

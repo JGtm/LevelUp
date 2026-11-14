@@ -48,6 +48,7 @@ func writeArtifact(t *testing.T, paths *title.PathResolver, matchID string, curr
 	doc := map[string]any{"matchId": matchID, "schemaVersion": 1}
 	if current {
 		doc["schemaVersion"] = replay.SchemaVersion
+		doc["frameIntervalMs"] = replaybuild.CookFrameIntervalMS()
 		layers := map[string]string{}
 		for fam, rev := range replay.RevisionsCourantesDesCouches() {
 			layers[fam] = rev
@@ -510,4 +511,47 @@ func TestScan_RefusParRegleIllisiblesRetombentSurLAncienComportement(t *testing.
 func poserCompresse(p string, raw []byte, _ os.FileMode) error {
 	_, _, err := replayartifact.Write(context.Background(), p, raw)
 	return err
+}
+
+// TestScan_LePasEntreDansLeCritereDuDecompte : au schéma et aux couches courants, un rejeu à 100 ms est en retard
+// (et refaisable, film présent) quand la cadence courante est 33 ms, à jour quand elle est 100 ms ; un en-tête
+// sans pas se lit à 100 ms.
+func TestScan_LePasEntreDansLeCritereDuDecompte(t *testing.T) {
+	for _, c := range []struct {
+		nom      string
+		courant  int
+		pas      any // nil = pas absent de l'en-tête
+		enRetard bool
+	}{
+		{"100 ms face à 33 ms", 33, 100, true},
+		{"100 ms face à 100 ms", 100, 100, false},
+		{"33 ms face à 33 ms", 33, 33, false},
+		{"pas absent face à 33 ms", 33, nil, true},
+		{"pas absent face à 100 ms", 100, nil, false},
+	} {
+		t.Run(c.nom, func(t *testing.T) {
+			defer replaybuild.ForceCookFrameIntervalMS(c.courant)()
+			f := newFixture(t)
+			writeArtifact(t, f.paths, "5af11111", true)
+			p := f.paths.ReplayArtifactPath(testSlug, "5af11111")
+			// Un artefact à jour par son schéma et ses couches, au pas voulu ; l'en-tête est réécrit à ce pas.
+			doc := map[string]any{"matchId": "5af11111", "schemaVersion": replay.SchemaVersion, "layers": replay.RevisionsCourantesDesCouches()}
+			if c.pas != nil {
+				doc["frameIntervalMs"] = c.pas
+			}
+			raw, _ := json.Marshal(doc)
+			if err := poserCompresse(p, raw, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			_ = os.Remove(replaybuild.MetaPath(p)) // l'en-tête se reconstruit de l'artefact
+			f.films["5af11111"] = true
+			cands, err := f.svc.scan(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if (len(cands) == 1) != c.enRetard {
+				t.Fatalf("candidats = %d, en retard attendu = %v", len(cands), c.enRetard)
+			}
+		})
+	}
 }

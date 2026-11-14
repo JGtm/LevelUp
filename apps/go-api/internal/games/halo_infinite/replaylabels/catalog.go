@@ -40,7 +40,7 @@ import (
 func Load(repoRoot, titleSlug string) (replay.LabelCatalog, error) {
 	dir := title.NewPathResolver(repoRoot).TitleMappingsDir(titleSlug)
 
-	names, err := mappings.LoadWeaponNamesFromFile(filepath.Join(dir, "weapon_names.toml"))
+	names, err := mappings.LoadWeaponNamesInDir(dir)
 	if err != nil {
 		return replay.LabelCatalog{}, fmt.Errorf("noms d'armes du titre %s: %w", titleSlug, err)
 	}

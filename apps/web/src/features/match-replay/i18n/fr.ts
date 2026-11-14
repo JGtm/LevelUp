@@ -15,10 +15,10 @@ export const FR_TEXT = {
   loadErrorRetry: 'Réessayer',
   schemaBadgeUpToDateFmt: (schemaVersion) => `Schéma ${schemaVersion} · à jour`,
   schemaBadgeStaleFmt: (schemaVersion, latestSchemaVersion) =>
-    `Schéma ${schemaVersion} · à recuire (dernier : ${latestSchemaVersion})`,
-  schemaBadgeStaleNoTargetFmt: (schemaVersion) => `Schéma ${schemaVersion} · à recuire`,
+    `Schéma ${schemaVersion} · à régénérer (dernier : ${latestSchemaVersion})`,
+  schemaBadgeStaleNoTargetFmt: (schemaVersion) => `Schéma ${schemaVersion} · à régénérer`,
   schemaBadgeStalePublicationFmt: (schemaVersion, latestSchemaVersion) =>
-    `Schéma ${schemaVersion} · à recuire (dernier : ${latestSchemaVersion}) — seule la publication a changé`,
+    `Schéma ${schemaVersion} · à régénérer (dernier : ${latestSchemaVersion}) — seule la publication a changé`,
   schemaBadgeUnknownFmt: (schemaVersion) => `Schéma ${schemaVersion}`,
   schemaBadgeInvalidFmt: (schemaVersion, detail) =>
     `Schéma ${schemaVersion} · contrat non respecté (${detail})`,
@@ -29,7 +29,7 @@ export const FR_TEXT = {
   offscreenGroupMarkerFmt: (count, meters) => `${count} joueurs · ${Math.round(meters)} m`,
   openAtNoOriginTitle: 'Instant non calé sur cet artefact',
   openAtNoOriginDescription:
-    'Le lien demandait un instant précis, mais l’origine du film n’est pas établie pour ce rejeu : l’instant ne peut pas être atteint exactement. Recuisson nécessaire — le rejeu s’ouvre au début.',
+    'Le lien demandait un instant précis, mais l’origine du film n’est pas établie pour ce rejeu : l’instant ne peut pas être atteint exactement. Régénération nécessaire — le rejeu s’ouvre au début.',
   speed: 'Vitesse',
   time: 'Temps de match',
   skipBackFmt: (seconds) => `Reculer de ${seconds} s`,
@@ -70,9 +70,9 @@ export const FR_TEXT = {
   feedGroundPickupAction: (name) => `a ramassé : ${name}`,
   feedVehicleDestroyedBy: (name) => `a détruit : ${name}`,
   feedVehicleDestroyed: (name) => `${name} détruit`,
-  feedVehicleOccupant: (who) => `(${who} à bord)`,
-  feedVehicleAboardOne: '({n} à bord)',
-  feedVehicleAboardOther: '({n} à bord)',
+  feedVehicleKilledWho: (who) => `(${who} tué avec le véhicule)`,
+  feedVehicleKilledOne: '({n} tué avec le véhicule)',
+  feedVehicleKilledOther: '({n} tués avec le véhicule)',
   killFeedUnknownWeapon: 'Arme non identifiée',
   killFeedFocusHint: 'Aller à cet instant et mettre en valeur le tueur et la victime sur la carte',
   playerPanel: FR_PLAYER_PANEL,
@@ -270,7 +270,7 @@ export const FR_TEXT = {
     `≈ ${mag} au chargeur et ${res} en réserve, lues ${age} avant le lâcher`,
   layerVehicles: 'Véhicules',
   layerVehiclesHint:
-    "Les véhicules du match, lus dans le film : leur naissance, leur trajectoire orientée dans le sens du déplacement (le dernier cap connu à l'arrêt), et qui est à bord. Un véhicule sans occupant connu reste neutre ; un châssis que la table ne nomme pas encore se dessine en petit repère neutre, jamais avec le véhicule d'un voisin. LA DISPARITION DU SPRITE N'EST PAS UNE DESTRUCTION : le film ne date aucune destruction — le véhicule reste dessiné jusqu'à la PREMIÈRE preuve mesurée de son absence (fenêtre d'environ 20 s après la dernière preuve de présence), puis s'efface — rien de plus.",
+    "Les véhicules du match, lus dans le film : leur naissance, leur trajectoire orientée dans le sens du déplacement (le dernier cap connu à l'arrêt), et qui est à bord. Un véhicule sans occupant connu reste neutre ; un châssis que la table ne nomme pas encore se dessine en petit repère neutre, jamais avec le véhicule d'un voisin. Quand le film date la destruction d'un véhicule, le sprite cesse à cet instant, une explosion se joue à sa position et une ligne s'ajoute au fil (filtre Véhicules). Sans cette date, LA DISPARITION DU SPRITE N'EST PAS UNE DESTRUCTION : le véhicule reste dessiné jusqu'à la PREMIÈRE preuve mesurée de son absence (fenêtre d'environ 20 s après la dernière preuve de présence), puis s'efface — rien de plus.",
   padCountdownFmt: (seconds) => `${Math.ceil(seconds)} s`,
   padRespawnMeasuredFmt: (seconds) => `Réapparition dans ${Math.ceil(seconds)} s`,
   padRespawnExpectedFmt: (seconds) => `Réapparition dans ≈ ${Math.ceil(seconds)} s`,

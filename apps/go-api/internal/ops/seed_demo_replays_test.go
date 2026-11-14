@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/replayartifact"
+	"levelup/go-api/internal/replaybuild"
 
 	"github.com/JGtm/halo-infinite-film-decoder/filmcache"
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
@@ -104,7 +105,7 @@ func TestValidateDemoManifest_RejeuxFiges(t *testing.T) {
 func artefactJSON(t *testing.T, matchID string, schema int) []byte {
 	t.Helper()
 	raw, err := json.Marshal(map[string]any{
-		"schemaVersion": schema, "matchId": matchID, "titleSlug": titlePkg.DefaultSlug,
+		"schemaVersion": schema, "frameIntervalMs": replaybuild.CookFrameIntervalMS(), "matchId": matchID, "titleSlug": titlePkg.DefaultSlug,
 		"tracks": []map[string]any{{"slot": 1, "points": []any{}}},
 		"layers": replay.RevisionsCourantesDesCouches(),
 	})

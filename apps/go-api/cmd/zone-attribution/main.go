@@ -54,7 +54,7 @@ func main() {
 	cacheDir := flag.String("cache", "", "racine du cache film (defaut : <repo>/data/cache)")
 	matchArg := flag.String("match", "", "restreindre a un match (forme courte ou complete)")
 	witness := flag.Float64("witness", defaultWitnessOffsetM, "decalage du temoin negatif, en metres")
-	maxGap := flag.Int("max-gap", replay.DefaultMaxGapFrames, "tolerance position/action, en frames")
+	maxGapMS := flag.Int("max-gap-ms", replay.DefaultMaxGapMS, "tolerance position/action, en millisecondes")
 	selectOnly := flag.Bool("select-only", false,
 		"dimensionner le corpus et s'arreter (aucun film decode)")
 	role := flag.String("role", string(mapvar.RoleStrongholdZone),
@@ -70,7 +70,7 @@ func main() {
 	flag.Parse()
 
 	code, err := run(*slug, *cacheDir, *matchArg, runTuning{
-		witness: *witness, maxGap: *maxGap, selectOnly: *selectOnly, dump: *dump,
+		witness: *witness, maxGapMS: *maxGapMS, selectOnly: *selectOnly, dump: *dump,
 		census: *census, role: *role, child: *child, cacheDir: *cacheDir,
 	})
 	if err != nil {
@@ -85,8 +85,8 @@ func main() {
 // runTuning regroupe les reglages numeriques : sans ce regroupement, run() depasserait
 // les 5 parametres du seuil projet.
 type runTuning struct {
-	witness float64
-	maxGap  int
+	witness  float64
+	maxGapMS int
 	// selectOnly arrete apres le dimensionnement du corpus. Le decodage d'un film coute
 	// des dizaines de secondes ; savoir COMBIEN de matchs sont mesurables ne doit pas
 	// exiger de tous les decoder.
@@ -152,10 +152,10 @@ func run(slug, cacheDir, matchArg string, tune runTuning) (int, error) {
 	r := &runner{
 		slug: slug, cacheDir: cacheDir, db: db,
 		bounds: bounds, zones: zonesCat,
-		role:    mapvar.Role(tune.role),
-		offset:  mapvar.Vec3{X: tune.witness, Y: tune.witness},
-		maxGap:  tune.maxGap,
-		results: nil,
+		role:     mapvar.Role(tune.role),
+		offset:   mapvar.Vec3{X: tune.witness, Y: tune.witness},
+		maxGapMS: tune.maxGapMS,
+		results:  nil,
 	}
 	eligible := r.selectEligible(candidates)
 	// L'ENFANT NE REIMPRIME PAS LA SELECTION : le parent l'a deja publiee, et la repeter par

@@ -89,6 +89,7 @@ export function computeReplaySchemaStatus(
   latestSchemaVersion: number | undefined,
   contractIssue?: ReplayContractIssue,
   layers?: Record<string, string>,
+  cadenceStale?: boolean,
 ): ReplaySchemaStatus {
   if (contractIssue) {
     return { kind: 'invalid', schemaVersion, issue: contractIssue }
@@ -102,6 +103,17 @@ export function computeReplaySchemaStatus(
     // génération dont des champs promis n'existent plus — dire « seule la publication a changé »
     // y serait faux, et son `layers` est de toute façon absent (le champ naît au schéma 62).
     return { kind: 'stale', schemaVersion, latestSchemaVersion, couches: [] }
+  }
+  // LA CADENCE, DÉCIDÉE PAR LE SERVEUR : même schéma, autre grille. Le web ne compare aucun pas ; il recopie
+  // le verdict. La grille est publiée par la couche de publication : elle est nommée quand la table des
+  // calques existe (même condition que `couchesPerimees`).
+  if (cadenceStale) {
+    return {
+      kind: 'stale',
+      schemaVersion,
+      latestSchemaVersion,
+      couches: layers ? [COUCHE_PUBLICATION] : [],
+    }
   }
   if (latestSchemaVersion === undefined) {
     return { kind: 'unknown', schemaVersion }

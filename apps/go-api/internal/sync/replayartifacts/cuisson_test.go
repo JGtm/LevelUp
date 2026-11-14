@@ -48,7 +48,7 @@ func poserArtefactCuisson(t *testing.T, repoRoot, matchID string, joueurs int) s
 	}
 	// LES COUCHES SONT DECLAREES (lot 4.4.1) : `UpToDate` juge desormais AUSSI les revisions, et
 	// un artefact muet sur les siennes se lit « a redecoder ».
-	doc := replay.ReplayDocument{SchemaVersion: replay.SchemaVersion, MatchID: matchID,
+	doc := replay.ReplayDocument{SchemaVersion: replay.SchemaVersion, FrameIntervalMS: replaybuild.CookFrameIntervalMS(), MatchID: matchID,
 		Tracks: []replay.Track{{Slot: 1, Team: -1}}, Layers: couchesDeTest()}
 	doc.ScoreTimeline = &replay.ScoreTimeline{}
 	for i := range joueurs {

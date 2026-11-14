@@ -12,7 +12,7 @@ package replayartifacts
 //
 // C'est l'inverse du choix de `bombstats.go`, et la difference est justifiee dans
 // `replay/flag_grabs_net_bridge.go` : le document porte DEJA la chronologie exacte du portage,
-// a une grille de 100 ms, la ou la fenetre vaut 1,5 s. Rien n'est reconstruit, et surtout : le
+// a la grille du document (au plus 100 ms), la ou la fenetre vaut 1,5 s. Rien n'est reconstruit, et surtout : le
 // parc entier devient lisible SANS RECUISSON — les artefacts publient `flagCarries` depuis le
 // schema 14, et la cuisson en lot est interdite.
 //

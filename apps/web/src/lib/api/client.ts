@@ -351,21 +351,23 @@ export const api = {
     (await sendRequest('GET', path, { headers })).blob(),
 
   /**
-   * GET JSON + UN en-tête de réponse choisi. Réservé aux endpoints qui publient une MÉTA
-   * HTTP hors du corps JSON (ex : `X-Replay-Latest-Schema-Version`, cf.
-   * `internal/api/handlers/replay.go` côté Go — la méta voyage en en-tête pour ne jamais
+   * GET JSON + des en-têtes de réponse choisis. Réservé aux endpoints qui publient une MÉTA
+   * HTTP hors du corps JSON (ex : `X-Replay-Latest-Schema-Version` et `X-Replay-Cadence-Stale`,
+   * cf. `internal/api/handlers/replay.go` côté Go — la méta voyage en en-tête pour ne jamais
    * toucher la forme de fil du document, verrouillée par `replayview/parity_test.go`).
-   * `header` rend `null` quand l'en-tête est absent de la réponse — jamais une erreur : une
-   * méta optionnelle qui manque n'est pas un échec de requête.
+   * Chaque valeur de `responseHeaders` rend `null` quand l'en-tête est absent de la réponse —
+   * jamais une erreur : une méta optionnelle qui manque n'est pas un échec de requête.
    */
-  getWithHeader: async <T>(
+  getWithHeaders: async <T>(
     path: string,
-    header: string,
+    names: readonly string[],
     headers?: Record<string, string>,
-  ): Promise<{ data: T; header: string | null }> => {
+  ): Promise<{ data: T; responseHeaders: Record<string, string | null> }> => {
     const response = await sendRequest('GET', path, { headers })
     const data = (await response.json()) as T
-    return { data, header: response.headers.get(header) }
+    const responseHeaders: Record<string, string | null> = {}
+    for (const name of names) responseHeaders[name] = response.headers.get(name)
+    return { data, responseHeaders }
   },
 
   post: <T>(path: string, body?: unknown, headers?: Record<string, string>, options?: CallOptions) =>

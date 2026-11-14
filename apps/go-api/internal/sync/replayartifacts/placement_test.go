@@ -238,10 +238,11 @@ func ecrireArtefactAvecFaits(t *testing.T, repoRoot, matchID string) {
 		t.Fatalf("mkdir: %v", err)
 	}
 	blob, err := json.Marshal(replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion,
-		MatchID:       matchID,
-		ScoreTimeline: &replay.ScoreTimeline{Players: []replay.PlayerScore{{XUID: "2533491259474651"}}},
-		Layers:        couchesDeTest(),
+		SchemaVersion:   replay.SchemaVersion,
+		FrameIntervalMS: replaybuild.CookFrameIntervalMS(),
+		MatchID:         matchID,
+		ScoreTimeline:   &replay.ScoreTimeline{Players: []replay.PlayerScore{{XUID: "2533491259474651"}}},
+		Layers:          couchesDeTest(),
 	})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
@@ -259,7 +260,7 @@ func ecrireArtefact(t *testing.T, repoRoot, matchID string) {
 		t.Fatalf("mkdir: %v", err)
 	}
 	blob, err := json.Marshal(replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion, MatchID: matchID, Layers: couchesDeTest(),
+		SchemaVersion: replay.SchemaVersion, FrameIntervalMS: replaybuild.CookFrameIntervalMS(), MatchID: matchID, Layers: couchesDeTest(),
 	})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)

@@ -38,6 +38,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/replayartifact"
+	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/service"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
@@ -76,8 +77,9 @@ func transportStack(t *testing.T) (*httptest.Server, *ServiceRegistry, string) {
 func transportDoc(matchID string) replay.ReplayDocument {
 	courantes := replay.RevisionsCourantesDesCouches()
 	return replay.ReplayDocument{
-		SchemaVersion: replay.SchemaVersion,
-		MatchID:       matchID,
+		SchemaVersion:   replay.SchemaVersion,
+		FrameIntervalMS: replaybuild.CookFrameIntervalMS(),
+		MatchID:         matchID,
 		// LES COUCHES SONT DECLAREES (lot 4.4.1) : le garde de fraicheur de la file juge desormais
 		// AUSSI les revisions, et un artefact muet sur les siennes se lit « a redecoder » — le job
 		// se faisait alors reprendre, et le compte rendu tombait en 409.

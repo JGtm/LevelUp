@@ -210,7 +210,10 @@ func assertPortsDeDrapeau(t *testing.T, doc replaydoc.ReplayDocument, fc *replay
 	if vol < 0 || capture < 0 {
 		t.Fatalf("actions de drapeau introuvables (vol %d, capture %d) : plus d'oracle indépendant", vol, capture)
 	}
-	if port.T0 > vol || port.T1 != capture {
+	// A UNE IMAGE PRES : le portage se date au changement d etat du drapeau, l action d objectif a l image de
+	// la statistique ; sur la grille de 100 ms les deux tombaient sur la meme image, sur une grille plus fine
+	// elles peuvent se suivre d une image.
+	if port.T0 > vol || port.T1 < capture-1 || port.T1 > capture+1 {
 		t.Errorf("portage publié sur [%d, %d] ; le calque des ACTIONS date le vol à %d et la capture "+
 			"à %d — les deux chaînes doivent tomber d'accord", port.T0, port.T1, vol, capture)
 	}

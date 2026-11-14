@@ -124,6 +124,7 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   assetMaps: () => queryKeys.assetMaps(T, 'q', 'fr'),
   assetWeapons: () => queryKeys.assetWeapons(T, 'q', 'fr'),
   assetMedals: () => queryKeys.assetMedals(T, 'q', 'fr'),
+  killSourceIcons: () => queryKeys.killSourceIcons(T, 'fr'),
   // Progression (Ascension).
   progressionStreaks: () => queryKeys.progressionStreaks(P, T),
   progressionRecords: () => queryKeys.progressionRecords(P, T),

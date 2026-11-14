@@ -218,14 +218,14 @@ export interface ReplayText {
   feedVehicleDestroyedBy: (name: string) => string
   /** La destruction d'un véhicule sans auteur connu : `name` est le véhicule. */
   feedVehicleDestroyed: (name: string) => string
-  /** Le joueur à bord à l'instant de la destruction, en fin de phrase : `who` est son nom. */
-  feedVehicleOccupant: (who: string) => string
+  /** Le joueur mort avec le véhicule (le seul que le film nomme), en fin de phrase : `who` est son nom. */
+  feedVehicleKilledWho: (who: string) => string
   /**
-   * Plusieurs joueurs connus à bord à l'instant de la destruction : leur nombre `{n}`, à la forme de
-   * pluriel `one` ou `other` de la langue (`Intl.PluralRules`). Sans possessif.
+   * Plusieurs joueurs morts avec le véhicule : leur nombre `{n}`, à la forme de pluriel `one` ou
+   * `other` de la langue (`Intl.PluralRules`). Sans possessif.
    */
-  feedVehicleAboardOne: string
-  feedVehicleAboardOther: string
+  feedVehicleKilledOne: string
+  feedVehicleKilledOther: string
   killFeedUnknownWeapon: string
   /**
    * L'infobulle d'une ligne de frag, qui est un BOUTON : ce que le clic fait — poser la lecture en

@@ -20,6 +20,7 @@ import { resolveBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import { normalizeWallPlan } from '@/lib/replay/wallPlan'
 import { useBackgroundStyle } from '@/features/match-replay/settings/useBackgroundStyle'
 import { useKillerZones } from '@/features/match-replay/hooks/useKillerZones'
+import { useKillSourceIcons } from '@/features/match-replay/hooks/useKillSourceIcons'
 import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
 import { usePlayerPanel } from '@/features/match-replay/hooks/usePlayerPanel'
 import {
@@ -143,6 +144,8 @@ export function ReplayPage() {
   const playerPanel = usePlayerPanel(matchId, model.players)
   // LA ZONE DU TUEUR de chaque frag du fil : calculée UNE fois sur le fil aligné (instant brut).
   const killerZoneOf = useKillerZones(feedEntries, data, callouts, locale, scoreboard)
+  // Les pictogrammes d'arme du titre : les lignes « a détruit » du fil y retrouvent l'arme de la cause.
+  const weaponIcons = useKillSourceIcons(params.titleSlug, locale)
   // LA PAGE PARLE D'UNE SEULE VOIX (décision D1) : sur le rejeu, les points, les titres de
   // colonnes et les noms du fil prennent les MÊMES tokens d'accessibilité — allié / adverse,
   // surchargeables par les réglages — et la MÊME allégeance, lue dans le film et vue du point de
@@ -213,6 +216,7 @@ export function ReplayPage() {
                 schemaVersion={data.schemaVersion}
                 latestSchemaVersion={data.latestSchemaVersion}
                 contractIssue={data.contractIssue}
+                cadenceStale={data.cadenceStale}
                 locale={locale}
                 layers={data.layers}
               />
@@ -438,6 +442,7 @@ export function ReplayPage() {
                     zoneOf={killerZoneOf}
                     doc={data}
                     playbackStore={playbackStore}
+                    weaponIcons={weaponIcons}
                   />
                 }
                 panel={

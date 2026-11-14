@@ -71,7 +71,7 @@ func poserArtefact(t *testing.T, repoRoot, matchID string) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	blob, err := json.Marshal(replay.ReplayDocument{SchemaVersion: replay.SchemaVersion, MatchID: matchID})
+	blob, err := json.Marshal(replay.ReplayDocument{SchemaVersion: replay.SchemaVersion, FrameIntervalMS: replaybuild.CookFrameIntervalMS(), MatchID: matchID})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}

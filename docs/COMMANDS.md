@@ -259,7 +259,9 @@ migrations themselves — including under `--dry-run`.
 
 ```bash
 # 1. RE-COOK the artifacts first — schema 39 makes every earlier artifact stale, and this is
-#    the pass that makes `bombStats` exist in them at all.
+#    the pass that makes `bombStats` exist in them at all. An artifact is up to date when its
+#    schema is current AND its step (`frameIntervalMs`, absent = 100 ms) is LevelUp's current
+#    cooking step (`replaybuild.CookFrameIntervalMS`): a replay baked on another grid is stale too.
 go run ./cmd/levelup backfill-replay [--dry-run] [--force] [--limit N] [--only-existing]
 
 # 2. Equipment and pad usage -> match_usage_players + match_usage_films.
@@ -1641,7 +1643,13 @@ gates nothing):
 
 In both modes the working root is disposable (copied inputs only, config/catalogs from the
 checked-out branch or the base worktree, film chunks from the dev parc — **never writes into
-the parc**), and the gate never bumps a schema — it only compares.
+the parc**), and the gate never bumps a schema — it only compares. Config and catalogs are
+copied **as Git sees them** (tracked files, plus untracked files that are not ignored, so an
+uncommitted catalog change can be tried): a git-ignored reference file (the runtime overlays
+under `data/titles/{slug}/reference/generated/`) is given to NEITHER root. The base root is
+extracted from a revision and never has it; giving it to HEAD alone made a map caught up by the
+overlay show a difference unrelated to the diff (`pickups.mapCatalogPoints` 0 -> 54). A source
+root outside a Git repository is refused.
 
 ```bash
 make replay-corpus-gate                                      # default: base mode, whole manifest
@@ -1786,6 +1794,17 @@ up, or a NEW fallback fires (unless the before-registry says its counter was not
 the delta decides: absolute values are printed for information. Units matched ON the oracle itself
 (`triplet_feuille` statborg slots, teams resolved by `teamIdentity` `a`/`a0`) are excluded, never
 counted as true positives. `-oracle <short8>.oracle.json` adds O-S3 (personal score).
+
+Every time tolerance of the bench is a DURATION in milliseconds, converted to frames with the
+artifact's own `frameIntervalMs` (rounded down), so one verdict holds on the 100 ms grid and on the
+33 ms grid (30.3 images/s). Measured on 12 witnesses on both grids: life tolerance 650 ms (V-3, V-5),
+death tolerance 250 ms (V-8). V-2 counts one instance per vehicle PASS outside the envelope
+(consecutive samples of a vehicle form one instance), not one per sample: a per-sample count follows
+the grid density. V-6 counts one instance per PASS of a passenger far from the vehicle in a ride
+(consecutive evaluated samples over the radius form one instance, dated by the first; a sample with no
+passenger point in range is not judged and does not end the pass, a sample evaluated within the radius
+does): when a passenger boards, its body stops replicating and its last point stays the only match, so
+a per-sample count tripled between 100 and 33 ms for the same pass.
 
 **Inside `replay-corpus-gate` (2026-09-30), the bench IS the verdict.** Every compared witness is
 judged by the bench (reference and HEAD, same facts, same oracle — the gate now exports

@@ -57,6 +57,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/replayartifacts"
 
 	"github.com/JGtm/halo-infinite-film-decoder/decfilm"
@@ -79,6 +80,8 @@ type usageSummaryOptions struct {
 type passeCouranteUsage struct {
 	rev    string
 	schema int
+	// frameIntervalMs : le pas de l'artefact tel que le résumé l'a lu (`frame_interval_ms` de la ligne film).
+	frameIntervalMs int
 }
 
 // bilanUsageBackfill : ce que la passe a fait — et pourquoi elle a saute ce qu elle a saute.
@@ -222,7 +225,7 @@ func candidatsUsage(ctx context.Context, db *sql.DB, o usageSummaryOptions) ([]s
 // ancienne, deja supplantee, ne doit pas faire sauter un match).
 func passesCourantesUsage(ctx context.Context, db *sql.DB) (map[string]passeCouranteUsage, error) {
 	rows, err := db.QueryContext(ctx,
-		`SELECT DISTINCT match_id, summary_rev, artifact_schema FROM match_usage_films_latest`)
+		`SELECT DISTINCT match_id, summary_rev, artifact_schema, frame_interval_ms FROM match_usage_films_latest`)
 	if err != nil {
 		return nil, fmt.Errorf("matchs deja resumes: %w", err)
 	}
@@ -231,7 +234,7 @@ func passesCourantesUsage(ctx context.Context, db *sql.DB) (map[string]passeCour
 	for rows.Next() {
 		var id string
 		var p passeCouranteUsage
-		if err := rows.Scan(&id, &p.rev, &p.schema); err != nil {
+		if err := rows.Scan(&id, &p.rev, &p.schema, &p.frameIntervalMs); err != nil {
 			return nil, fmt.Errorf("matchs deja resumes (scan): %w", err)
 		}
 		out[id] = p
@@ -351,7 +354,8 @@ func projeterUnArtefact(
 	// un schema plus recent que la passe courante doit etre re-resume.
 	if !o.force {
 		if rec, ok := dejaResumes[matchID]; ok &&
-			rec.rev == replay.UsageSummaryRev && rec.schema == doc.SchemaVersion {
+			rec.rev == replay.UsageSummaryRev && rec.schema == doc.SchemaVersion &&
+			replaybuild.SameCadence(rec.frameIntervalMs, doc.FrameIntervalMS) {
 			return nil, usageDejaAJour
 		}
 	}

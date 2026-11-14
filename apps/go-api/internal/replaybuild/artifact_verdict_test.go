@@ -41,7 +41,7 @@ func couchesCourantes() map[string]string {
 
 // digestDeTest rend le digest d un artefact au schema donne portant ces couches.
 func digestDeTest(schema int, layers map[string]string) Digest {
-	return Digest{MatchID: "m", SchemaVersion: schema, Tracks: 1, Layers: layers}
+	return Digest{MatchID: "m", SchemaVersion: schema, FrameIntervalMS: CookFrameIntervalMS(), Tracks: 1, Layers: layers}
 }
 
 // TestVerdictAJourExigeLeSchemaETLesCouches : les deux conditions, chacune prouvee par sa mutation.
@@ -171,10 +171,11 @@ func TestWriteArtifactRefuseUneRegressionDeDecodage(t *testing.T) {
 	repo := t.TempDir()
 	out := filepath.Join(repo, "artefact.json")
 	enPlace, err := json.Marshal(map[string]any{
-		"schemaVersion": replay.SchemaVersion,
-		"matchId":       "m",
-		"tracks":        []map[string]any{{"xuid": "1"}},
-		"layers":        couchesCourantes(),
+		"schemaVersion":   replay.SchemaVersion,
+		"frameIntervalMs": CookFrameIntervalMS(),
+		"matchId":         "m",
+		"tracks":          []map[string]any{{"xuid": "1"}},
+		"layers":          couchesCourantes(),
 	})
 	if err != nil {
 		t.Fatalf("serialisation : %v", err)
@@ -185,10 +186,11 @@ func TestWriteArtifactRefuseUneRegressionDeDecodage(t *testing.T) {
 	perimees := couchesCourantes()
 	perimees["tracks"] = "grammar-1999-01-01"
 	candidat, err := json.Marshal(map[string]any{
-		"schemaVersion": replay.SchemaVersion + 1, // une montee de schema, qui passait sans un mot
-		"matchId":       "m",
-		"tracks":        []map[string]any{{"xuid": "1"}},
-		"layers":        perimees,
+		"schemaVersion":   replay.SchemaVersion + 1, // une montee de schema, qui passait sans un mot
+		"frameIntervalMs": CookFrameIntervalMS(),
+		"matchId":         "m",
+		"tracks":          []map[string]any{{"xuid": "1"}},
+		"layers":          perimees,
 	})
 	if err != nil {
 		t.Fatalf("serialisation : %v", err)
@@ -199,10 +201,11 @@ func TestWriteArtifactRefuseUneRegressionDeDecodage(t *testing.T) {
 	}
 	// RETOUR : le meme candidat, couches courantes, doit passer.
 	bon, err := json.Marshal(map[string]any{
-		"schemaVersion": replay.SchemaVersion + 1,
-		"matchId":       "m",
-		"tracks":        []map[string]any{{"xuid": "1"}},
-		"layers":        couchesCourantes(),
+		"schemaVersion":   replay.SchemaVersion + 1,
+		"frameIntervalMs": CookFrameIntervalMS(), // un candidat porte son pas : le garde le lit comme le schéma
+		"matchId":         "m",
+		"tracks":          []map[string]any{{"xuid": "1"}},
+		"layers":          couchesCourantes(),
 	})
 	if err != nil {
 		t.Fatalf("serialisation : %v", err)

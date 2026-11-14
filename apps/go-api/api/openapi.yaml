@@ -1618,6 +1618,35 @@ paths:
       summary: Modifie le rôle d'un utilisateur (admin/user)
       tags:
         - admin
+  /assets/{title_id}/kill-sources:
+    get:
+      operationId: listKillSourceIcons
+      parameters:
+        - in: path
+          name: title_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/KillSourceIconEntry'
+                type:
+                  - array
+                  - "null"
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Liste les pictogrammes d'arme du titre par weapon_key (noms dans la langue de la requete)
+      tags:
+        - assets
   /assets/{title_id}/maps:
     get:
       operationId: listMapsMetadata
@@ -3762,6 +3791,9 @@ paths:
                 $ref: '#/components/schemas/ReplayDocument'
           description: OK
           headers:
+            X-Replay-Cadence-Stale:
+              schema:
+                type: boolean
             X-Replay-Latest-Schema-Version:
               schema:
                 format: int64
@@ -17554,6 +17586,23 @@ components:
         - contradictoryProofs
         - slides
         - framedAbsentBipeds
+      type: object
+    KillSourceIconEntry:
+      additionalProperties: false
+      properties:
+        image_url:
+          type: string
+        key:
+          type: string
+        label:
+          type: string
+        tinted:
+          type: boolean
+      required:
+        - key
+        - label
+        - image_url
+        - tinted
       type: object
     Knockback:
       additionalProperties: false

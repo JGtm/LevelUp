@@ -33,14 +33,14 @@ func TestImages_ConvertitUneDureeAvecLePasDuDocument(t *testing.T) {
 
 // TestSeuils_MemeDureeReelleAuxDeuxCadences : pour chaque seuil, le nombre d'images rendu couvre
 // au plus la duree voulue, et l'image suivante la depasse (aucun seuil ne derive d'une cadence a
-// l'autre) ; a 100 ms, les valeurs sont celles d'avant la conversion.
+// l'autre) ; a 100 ms, le nombre d images est fixe (vie 6 pour 650 ms, mort 2 pour 250 ms).
 func TestSeuils_MemeDureeReelleAuxDeuxCadences(t *testing.T) {
 	seuils := map[string]struct {
-		ms       int
-		historic int
+		ms        int
+		images100 int
 	}{
 		"translocation": {toleranceTranslocationMS, 2},
-		"vie":           {toleranceVieMS, 5},
+		"vie":           {toleranceVieMS, 6},
 		"echantillon":   {toleranceEchantillonMS, 1},
 		"mort":          {toleranceMortMS, 2},
 		"fin de film":   {margeFinDeFilmMS, 2},
@@ -52,8 +52,8 @@ func TestSeuils_MemeDureeReelleAuxDeuxCadences(t *testing.T) {
 				t.Errorf("%s a %d ms : %d images = %d ms pour un seuil de %d ms", nom, pas, n, n*pas, s.ms)
 			}
 		}
-		if got := documentAuPas(100).images(s.ms); got != s.historic {
-			t.Errorf("%s a 100 ms : %d images, veut la valeur historique %d", nom, got, s.historic)
+		if got := documentAuPas(100).images(s.ms); got != s.images100 {
+			t.Errorf("%s a 100 ms : %d images, veut %d (images au pas de 100 ms)", nom, got, s.images100)
 		}
 	}
 }
@@ -156,5 +156,90 @@ func TestTrajet_ToleranceDEchantillonEstUneDuree(t *testing.T) {
 func TestLireDocument_RefuseUnPasAbsent(t *testing.T) {
 	if _, err := LireDocument([]byte(`{"matchId":"m","tracks":[]}`)); err == nil {
 		t.Fatal("un artefact sans frameIntervalMs doit etre refuse")
+	}
+}
+
+// TestHorsEmprise_UnVehiculeSeCompteParPassage : un meme passage hors emprise donne une seule
+// violation quelle que soit la densite de la grille ; deux passages separes par un retour dans
+// l'emprise en donnent deux.
+func TestHorsEmprise_UnVehiculeSeCompteParPassage(t *testing.T) {
+	for _, pas := range cadencesEssayees {
+		hors := func(t0 int) Echantillon { return Echantillon{T: t0, X: -500, Y: 0} }
+		dedans := func(t0 int) Echantillon { return Echantillon{T: t0, X: 5, Y: 5} }
+		// Un passage de 900 ms : autant d'echantillons que le pas en met dans cette duree.
+		var passage []Echantillon
+		for ms := 0; ms < 900; ms += pas {
+			passage = append(passage, hors(ms/pas))
+		}
+		d := documentAuPas(pas)
+		d.Vehicles = []Vehicule{{Slot: 700, Samples: passage}}
+		exigerViolations(t, Noter(d, faitsJustes(), nil), ViolHorsEmprise, 1)
+
+		d = documentAuPas(pas)
+		deuxPassages := append(append(append([]Echantillon{}, passage...), dedans(1000)), passage...)
+		d.Vehicles = []Vehicule{{Slot: 700, Samples: deuxPassages}}
+		exigerViolations(t, Noter(d, faitsJustes(), nil), ViolHorsEmprise, 2)
+	}
+}
+
+// trajetAuPas rend un document dont le passager du slot 512 reste a l'origine (un point a chaque
+// image de la grille, sur 3 s) et un vehicule dont l'echantillon de chaque image est a la distance
+// donnee par `loin(ms)` ; le trajet couvre toute la duree.
+func trajetAuPas(pas int, loin func(ms int) bool) *Document {
+	d := documentAuPas(pas)
+	var pts []Point
+	var ech []Echantillon
+	for ms := 0; ms < 3000; ms += pas {
+		t := ms / pas
+		pts = append(pts, Point{T: t, X: 0, Y: 0})
+		x := 1.0
+		if loin(ms) {
+			x = rayonTrajetM + 7
+		}
+		ech = append(ech, Echantillon{T: t, X: x, Y: 0})
+	}
+	d.Tracks[0].Points = pts
+	d.Vehicles = []Vehicule{{Slot: 700, Samples: ech, Rides: []Trajet{{T0: 0, T1: 3000 / pas, Slot: 512}}}}
+	return d
+}
+
+// TestTrajet_UnPassageLoinSeCompteUneFoisQuelqueSoitLePas : un meme passage loin du vehicule (900
+// ms) donne une seule violation aux deux grilles ; deux passages separes par un retour evalue a
+// portee en donnent deux ; un retour sans point de passager a portee ne separe rien.
+func TestTrajet_UnPassageLoinSeCompteUneFoisQuelqueSoitLePas(t *testing.T) {
+	for _, pas := range cadencesEssayees {
+		un := func(ms int) bool { return ms >= 500 && ms < 1400 }
+		exigerViolations(t, Noter(trajetAuPas(pas, un), faitsJustes(), nil), ViolTrajetLoin, 1)
+
+		deux := func(ms int) bool { return (ms >= 500 && ms < 1400) || (ms >= 2000 && ms < 2900) }
+		exigerViolations(t, Noter(trajetAuPas(pas, deux), faitsJustes(), nil), ViolTrajetLoin, 2)
+
+		// Le retour tombe hors de portee de tout point du passager : rien ne le prouve, un seul passage.
+		d := trajetAuPas(pas, deux)
+		var gardes []Point
+		for _, p := range d.Tracks[0].Points {
+			if ms := p.T * pas; ms < 1300 || ms >= 2600 {
+				gardes = append(gardes, p)
+			}
+		}
+		d.Tracks[0].Points = gardes
+		exigerViolations(t, Noter(d, faitsJustes(), nil), ViolTrajetLoin, 1)
+	}
+}
+
+// TestTrajet_LePassageDuCorpsQuiCesseDeRepliquerEstUnSeulFaux : a la montee le corps du passager
+// cesse de repliquer, son dernier point reste le seul apparie ; tous les echantillons du vehicule a
+// portee de ce point et a plus du rayon forment un seul passage, a 100 comme a 33 ms.
+func TestTrajet_LePassageDuCorpsQuiCesseDeRepliquerEstUnSeulFaux(t *testing.T) {
+	for _, pas := range cadencesEssayees {
+		d := documentAuPas(pas)
+		d.Tracks[0].Points = []Point{{T: 300 / pas, X: 0, Y: 0}}
+		var ech []Echantillon
+		for ms := 0; ms < 600; ms += pas {
+			// le vehicule s'eloigne de 0,33 m par image de 33 ms
+			ech = append(ech, Echantillon{T: ms / pas, X: rayonTrajetM + 0.5 + 0.01*float64(ms), Y: 0})
+		}
+		d.Vehicles = []Vehicule{{Slot: 700, Samples: ech, Rides: []Trajet{{T0: 0, T1: 600 / pas, Slot: 512}}}}
+		exigerViolations(t, Noter(d, faitsJustes(), nil), ViolTrajetLoin, 1)
 	}
 }

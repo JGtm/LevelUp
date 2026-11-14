@@ -290,7 +290,7 @@ func chargerEnvironnement(ctx context.Context, o executerOptions) (environnement
 // le code au HEAD.
 func preparerCuissonHead(ctx context.Context, sourceRoot, workRoot, titleSlug string) (binHead string, err error) {
 	avertirSiCatalogueModifie(ctx, sourceRoot, titleSlug)
-	if err := stageReferenceOnce(sourceRoot, workRoot, titleSlug); err != nil {
+	if err := stageReferenceOnce(ctx, sourceRoot, workRoot, titleSlug); err != nil {
 		return "", fmt.Errorf("catalogues de reference (HEAD) : %w", err)
 	}
 	binHead = filepath.Join(workRoot, "bin", "replay-build-head"+exeSuffix())

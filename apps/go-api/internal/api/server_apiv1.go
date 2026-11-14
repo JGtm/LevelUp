@@ -102,6 +102,7 @@ type apiV1Deps struct {
 	settingsStore         *settings_platform.Store
 	assetHandler          *handlers.AssetHandler
 	assetMetaHandler      *handlers.AssetMetadataHandler
+	killIconsHandler      *handlers.KillSourceIconsHandler
 	gamertagSvc           port.GamertagSearchService
 	prestigeBundle        *wire.PrestigeBundle
 	serverCtx             context.Context
@@ -749,6 +750,8 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	} else {
 		handlers.NewEmptyAssetMetadataHandler().Mount(r, apiOpt) // fallback Huma → []
 	}
+	// Référentiel des pictogrammes d'arme : indépendant de la metadata DB, toujours monté.
+	d.killIconsHandler.Mount(r, apiOpt) // GET /assets/{title_id}/kill-sources
 
 	// Sélection par titre (Pass B.5) : activer / mettre en pause / purger un
 	// titre d'un joueur. Owner-gated SANS RequireActiveTitle (doit fonctionner
@@ -1612,6 +1615,8 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// AssetMetadataHandler (drawer) — construit hors NewRouter (K2a). nil si metadata
 	// indisponible après retries (non fatal).
 	assetMetaHandler := buildAssetMetadataHandler(cfg, hiAssetURL, titleRegistry, h5Maps, h5Weapons, h5Medals)
+	killIconsHandler := handlers.NewKillSourceIconsHandler(
+		service.NewKillSourceIconService(titleResolver.AssetURL, cfg.PathResolver()))
 
 	// Résolveurs d'assets title-aware Halo 5 (badge CSR + AssetURLAdapter + sprites
 	// médailles), extraits en helper (K2a). Best-effort : nil/vide → HINF inchangé.
@@ -1693,6 +1698,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 		settingsStore:         settingsStore,
 		assetHandler:          assetHandler,
 		assetMetaHandler:      assetMetaHandler,
+		killIconsHandler:      killIconsHandler,
 		gamertagSvc:           gamertagSvc,
 		prestigeBundle:        prestigeBundle,
 		serverCtx:             serverCtx,

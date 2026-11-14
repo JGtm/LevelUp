@@ -121,6 +121,7 @@ var publicRoutesAllowlist = map[string]publicRoute{
 	"GET /api/v1/assets/maps/{title_id}/{map_id}/image":        outbound("référentiel images maps", "TestAssetRoutes_MapImage_NewVariantCallsOutOnlyForTrustedCallers"),
 	"GET /api/v1/assets/medals/{title_id}/{medal_id}/image":    outbound("référentiel images médailles", "TestAssetRoutes_UnknownIDDoesNotCallOut"),
 	"GET /api/v1/assets/spartan/{image_type}/{title_id}/*":     outbound("référentiel images spartan", "TestAssetRoutes_UnverifiableKindNeedsTrust"),
+	"GET /api/v1/assets/{title_id}/kill-sources":               cheap("référentiel pictogrammes d'arme (table en mémoire, aucune lecture de base)"),
 	"GET /api/v1/assets/{title_id}/maps":                       cheap("référentiel catalogue maps"),
 	"GET /api/v1/assets/{title_id}/medals":                     cheap("référentiel catalogue médailles"),
 	"GET /api/v1/assets/{title_id}/weapons":                    cheap("référentiel catalogue armes"),

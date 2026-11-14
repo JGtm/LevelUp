@@ -447,6 +447,9 @@ export const queryKeys = {
     ['assets', titleSlug, 'weapons', q, locale] as const,
   assetMedals: (titleSlug: string, q: string, locale: string) =>
     ['assets', titleSlug, 'medals', q, locale] as const,
+  // Pictogrammes d'arme du titre par weapon_key (GET /assets/{titre}/kill-sources) : le nom est
+  // résolu dans la langue de la requête, la langue est le dernier segment.
+  killSourceIcons: (titleSlug: string, locale: string) => ['assets', titleSlug, 'kill-sources', locale] as const,
 
   // Progression V2 (Ascension) — cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
   // Dérivée des matchs du titre → titleSlug scope la clé.

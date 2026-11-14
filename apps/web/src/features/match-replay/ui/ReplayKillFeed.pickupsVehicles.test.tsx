@@ -6,8 +6,8 @@
  *  1. LES ARMES AU SOL entrent dans « Armes et bonus » quand elles ne sont pas de base : la ligne
  *     dit « a ramassé : » (et non « a pris : » d'un socle), l'arme de base ramassée n'apparaît pas,
  *     le compte du menu suit.
- *  2. LES DESTRUCTIONS DE VÉHICULE, fabriquées : avec auteur et un joueur à bord, avec auteur
- *     seul, avec un destructeur bot, avec plusieurs joueurs à bord (leur nombre), sans auteur
+ *  2. LES DESTRUCTIONS DE VÉHICULE, fabriquées : avec auteur et un tué, avec auteur
+ *     seul, avec un destructeur bot, avec plusieurs tués (leur nombre), sans auteur
  *     (« Ghost détruit »), FR et EN ; elles sont de la famille Véhicules (filtre et compte) et
  *     tiennent les règles du fil (une seule ligne sans retour, pictogramme `shrink-0`).
  *  3. LE FIL DE LA PAGE reste intact : le filtre ne porte que sur la liste affichée.
@@ -18,6 +18,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 
 import { eventFeedEntry } from '../model/feedEventLines'
+import { weaponIconsOf, type WeaponIconsByKey } from '../model/killSourceIcons'
 import { buildFeedEntries, type ReplayFeedEntry } from '../model/killFeedLogic'
 import { FEED_FILTER_KEY } from '../settings/replayPreferences'
 import { testReplayDoc } from '../test/testDoc'
@@ -72,15 +73,27 @@ const PLAIN_DOC = testReplayDoc({ frameIntervalMs: FRAME_MS, roster: ROSTER })
 const ALLEGIANCE = filmAllegianceOf(GROUND_DOC, [], 'me')
 
 function destroyed(
-  over: Partial<{ xuid: string | null; botName: string | null; aboardXuids: string[]; name: string }>,
+  over: Partial<{
+    xuid: string | null
+    botName: string | null
+    killedXuids: string[]
+    name: string
+    weapon: { imageUrl: string; tinted: boolean; label: string }
+  }>,
   ms: number,
 ) {
   return eventFeedEntry(`vd-${ms}`, ms, {
-    family: 'vehicles', destroyed: true, xuid: 'me', botName: null, aboardXuids: [], name: 'Ghost', ...over,
+    family: 'vehicles', destroyed: true, xuid: 'me', botName: null, killedXuids: [], name: 'Ghost', ...over,
   })
 }
 
-function renderFeed(opts: { doc: typeof GROUND_DOC; entries?: ReplayFeedEntry[]; locale?: 'fr' | 'en'; nowMs?: number }) {
+function renderFeed(opts: {
+  doc: typeof GROUND_DOC
+  entries?: ReplayFeedEntry[]
+  locale?: 'fr' | 'en'
+  nowMs?: number
+  weaponIcons?: WeaponIconsByKey
+}) {
   const entries = opts.entries ?? buildFeedEntries([], [], 0, null)
   return render(
     <ReplayKillFeed
@@ -92,6 +105,7 @@ function renderFeed(opts: { doc: typeof GROUND_DOC; entries?: ReplayFeedEntry[];
       allegiance={ALLEGIANCE}
       locale={opts.locale ?? 'fr'}
       doc={opts.doc}
+      weaponIcons={opts.weaponIcons}
     />,
   )
 }
@@ -154,17 +168,17 @@ describe('armes ramassées au sol dans « Armes et bonus »', () => {
 
 describe('destructions de véhicule (événements fabriqués)', () => {
   const entries = [
-    destroyed({ aboardXuids: ['foe'] }, 10_000),
+    destroyed({ killedXuids: ['foe'] }, 10_000),
     destroyed({ xuid: 'foe', name: 'Warthog' }, 20_000),
     destroyed({ xuid: null, name: 'Ghost' }, 30_000),
   ]
 
-  it('Véhicules les montre, avec auteur et joueur à bord, avec auteur seul, sans auteur (FR)', () => {
+  it('Véhicules les montre, avec auteur et tué, avec auteur seul, sans auteur (FR)', () => {
     renderFeed({ doc: PLAIN_DOC, entries })
     choose(/Véhicules/)
     const texts = screen.getAllByRole('listitem').map((r) => r.textContent)
     expect(texts).toHaveLength(3)
-    expect(texts.some((x) => x?.includes('JGtm') && x.includes('a détruit : Ghost (Cobra01 à bord)'))).toBe(true)
+    expect(texts.some((x) => x?.includes('JGtm') && x.includes('a détruit : Ghost (Cobra01 tué avec le véhicule)'))).toBe(true)
     expect(texts.some((x) => x?.includes('Cobra01') && x.includes('a détruit : Warthog'))).toBe(true)
     const neutral = screen.getAllByRole('listitem').find((r) => r.textContent?.includes('Ghost détruit'))
     expect(neutral).toBeTruthy()
@@ -175,7 +189,7 @@ describe('destructions de véhicule (événements fabriqués)', () => {
   it('EN : « destroyed: » et « Ghost destroyed »', () => {
     renderFeed({ doc: PLAIN_DOC, entries, locale: 'en' })
     choose(/Vehicles/)
-    expect(screen.getByText(/destroyed: Ghost \(Cobra01 aboard\)/)).toBeTruthy()
+    expect(screen.getByText(/destroyed: Ghost \(Cobra01 killed with the vehicle\)/)).toBeTruthy()
     expect(screen.getByText('Ghost destroyed')).toBeTruthy()
   })
 
@@ -215,30 +229,98 @@ describe('destructions de véhicule (événements fabriqués)', () => {
     expect(entries).toHaveLength(3)
   })
 
-  it('un destructeur bot se nomme par le roster, sans encre de joueur ; plusieurs joueurs à bord : leur nombre', () => {
+  it('un destructeur bot se nomme par le roster, sans encre de joueur ; plusieurs tués : leur nombre', () => {
     renderFeed({
       doc: PLAIN_DOC,
-      entries: [destroyed({ xuid: null, botName: 'Cobra07 [bot]', aboardXuids: ['me', 'foe', 'x9'] }, 10_000)],
+      entries: [destroyed({ xuid: null, botName: 'Cobra07 [bot]', killedXuids: ['me', 'foe', 'x9'] }, 10_000)],
     })
     choose(/Véhicules/)
     const text = screen.getByRole('listitem').textContent
     expect(text).toContain('Cobra07')
     expect(text).not.toContain('[bot]')
-    expect(text).toContain('a détruit : Ghost (3 à bord)')
+    expect(text).toContain('a détruit : Ghost (3 tués avec le véhicule)')
   })
 
-  it('EN : le nombre à bord', () => {
+  it('EN : le nombre de tués', () => {
     renderFeed({
       doc: PLAIN_DOC,
-      entries: [destroyed({ xuid: null, aboardXuids: ['me', 'foe'] }, 10_000)],
+      entries: [destroyed({ xuid: null, killedXuids: ['me', 'foe'] }, 10_000)],
       locale: 'en',
     })
     choose(/Vehicles/)
-    expect(screen.getByText('Ghost destroyed (2 aboard)')).toBeTruthy()
+    expect(screen.getByText('Ghost destroyed (2 killed with the vehicle)')).toBeTruthy()
   })
 
-  it('un nom de joueur à bord inconnu de la feuille ne laisse jamais un xuid brut', () => {
-    renderFeed({ doc: PLAIN_DOC, entries: [destroyed({ aboardXuids: ['2533274812345678'] }, 10_000)] })
+  it('le pictogramme de l’arme qui a détruit le véhicule est dessiné, nommé par l’arme', () => {
+    const weapon = { imageUrl: '/static/weapons/spartan-laser.png', tinted: true, label: 'Spartan Laser' }
+    renderFeed({ doc: PLAIN_DOC, entries: [destroyed({ weapon }, 10_000)] })
+    choose(/Véhicules/)
+    const row = screen.getByRole('listitem')
+    expect(within(row).getByRole('img', { name: 'Spartan Laser' })).toBeTruthy()
+    expect(row.textContent).toContain('a détruit : Ghost')
+  })
+
+  it('une arme sans nom propre porte le texte alternatif des lignes d’élimination', () => {
+    const weapon = { imageUrl: '/static/weapons/x.png', tinted: true, label: '' }
+    renderFeed({ doc: PLAIN_DOC, entries: [destroyed({ weapon }, 10_000)] })
+    choose(/Véhicules/)
+    expect(within(screen.getByRole('listitem')).getByRole('img', { name: 'Arme non identifiée' })).toBeTruthy()
+  })
+
+  it('sans arme résolue, la ligne ne dessine aucun pictogramme d’arme', () => {
+    renderFeed({ doc: PLAIN_DOC, entries: [destroyed({}, 10_000)] })
+    choose(/Véhicules/)
+    const row = screen.getByRole('listitem')
+    expect(row.querySelector('img, [style*="mask"]')).toBeNull()
+  })
+
+  describe('de bout en bout : du causeKey du document au pictogramme, par le référentiel du titre', () => {
+    // Le référentiel du titre : une entrée par arme, que l'arme ait éliminé quelqu'un ou non.
+    const REFERENTIEL = weaponIconsOf([
+      { key: 'hinf_spartan_laser', label: 'Spartan Laser', image_url: '/static/weapons/spartan-laser.png', tinted: true },
+    ])
+    const docWithCause = (causeKey?: string) =>
+      testReplayDoc({
+        frameIntervalMs: FRAME_MS,
+        roster: ROSTER,
+        vehicles: [
+          {
+            slot: 7, gen: 0, family: 'Ghost', end: 'destroyed', tEnd: 300, t0: 0, t1: 300, t1max: 300,
+            samples: [], rides: [],
+            destruction: { by: { i: 0, xuid: 'me' }, cause: 123, ...(causeKey ? { causeKey } : {}) },
+          },
+        ] as never,
+      })
+
+    it('la ligne dessine l’arme de la cause, même quand aucune élimination du fil ne l’a utilisée', () => {
+      // Fil des éliminations VIDE : le dessin vient du seul référentiel.
+      renderFeed({ doc: docWithCause('hinf_spartan_laser'), weaponIcons: REFERENTIEL })
+      choose(/Véhicules/)
+      expect(within(screen.getByRole('listitem')).getByRole('img', { name: 'Spartan Laser' })).toBeTruthy()
+    })
+
+    it.each([
+      ['sans clé (cause non résolue)', undefined],
+      ['dont la clé n’est pas au référentiel', 'hinf_autre_arme'],
+    ])('une cause %s : aucun pictogramme, la ligne s’affiche', (_nom, causeKey) => {
+      renderFeed({ doc: docWithCause(causeKey), weaponIcons: REFERENTIEL })
+      choose(/Véhicules/)
+      const row = screen.getByRole('listitem')
+      expect(row.textContent).toContain('a détruit : Ghost')
+      expect(row.querySelector('img, [style*="mask"]')).toBeNull()
+    })
+
+    it('référentiel absent (chargement, erreur) : la ligne s’affiche sans pictogramme', () => {
+      renderFeed({ doc: docWithCause('hinf_spartan_laser') })
+      choose(/Véhicules/)
+      const row = screen.getByRole('listitem')
+      expect(row.textContent).toContain('a détruit : Ghost')
+      expect(row.querySelector('img, [style*="mask"]')).toBeNull()
+    })
+  })
+
+  it('un nom de joueur tué inconnu de la feuille ne laisse jamais un xuid brut', () => {
+    renderFeed({ doc: PLAIN_DOC, entries: [destroyed({ killedXuids: ['2533274812345678'] }, 10_000)] })
     choose(/Véhicules/)
     expect(screen.getByRole('listitem').textContent).not.toContain('2533274812345678')
   })

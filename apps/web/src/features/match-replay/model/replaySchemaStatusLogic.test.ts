@@ -65,7 +65,7 @@ describe('computeReplaySchemaStatus', () => {
 })
 
 describe('la matrice de compatibilité (MIN_RENDERABLE_SCHEMA_VERSION)', () => {
-  it('dit "à recuire" sous le seuil MÊME sans en-tête à comparer, jamais "inconnu"', () => {
+  it('dit "à régénérer" sous le seuil MÊME sans en-tête à comparer, jamais "inconnu"', () => {
     const status = computeReplaySchemaStatus(MIN_RENDERABLE_SCHEMA_VERSION - 1, undefined)
     expect(status.kind).toBe('stale')
     // Aucune cible n'est inventée : le seuil de compatibilité n'est pas la version du jour.
@@ -206,7 +206,7 @@ describe('la matrice appliquée à CHAQUE fixture publiée par Go', () => {
         })
       })
 
-      it('se dirait « à recuire » si le producteur prenait de l’avance', () => {
+      it('se dirait « à régénérer » si le producteur prenait de l’avance', () => {
         const apres = f.schemaVersion + 1
         expect(computeReplaySchemaStatus(f.schemaVersion, apres)).toEqual({
           kind: 'stale',
@@ -269,5 +269,44 @@ describe('la présence d’un calque — le troisième axe de la matrice (schém
     for (const f of goFixtureEntries()) {
       expect(f.schemaVersion, `${f.file} : version de la fixture`).toBe(PRODUCTEUR)
     }
+  })
+})
+
+describe('la cadence, décidée par le serveur (même schéma, autre grille)', () => {
+  const LAYERS = { tracks: `publication-${PRODUCTEUR}` }
+
+  it('un artefact au schéma courant que le serveur dit de cadence périmée est « à régénérer »', () => {
+    expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, undefined, LAYERS, true)).toEqual({
+      kind: 'stale',
+      schemaVersion: PRODUCTEUR,
+      latestSchemaVersion: PRODUCTEUR,
+      couches: ['publication'],
+    })
+  })
+
+  it('sans verdict de cadence, le même artefact reste « à jour » : le web ne compare aucun pas', () => {
+    expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, undefined, LAYERS)).toEqual({
+      kind: 'upToDate',
+      schemaVersion: PRODUCTEUR,
+    })
+    expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, undefined, LAYERS, false).kind).toBe('upToDate')
+  })
+
+  it('sans table de calques, aucune couche n’est nommée, mais le statut reste « à régénérer »', () => {
+    expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, undefined, undefined, true)).toEqual({
+      kind: 'stale',
+      schemaVersion: PRODUCTEUR,
+      latestSchemaVersion: PRODUCTEUR,
+      couches: [],
+    })
+  })
+
+  it('sans en-tête de version, le verdict du serveur suffit', () => {
+    expect(computeReplaySchemaStatus(PRODUCTEUR, undefined, undefined, undefined, true).kind).toBe('stale')
+  })
+
+  it('un document non conforme reste « invalide » : la conformité prime', () => {
+    const issue: ReplayContractIssue = { kind: 'malformed' }
+    expect(computeReplaySchemaStatus(PRODUCTEUR, PRODUCTEUR, issue, LAYERS, true).kind).toBe('invalid')
   })
 })
