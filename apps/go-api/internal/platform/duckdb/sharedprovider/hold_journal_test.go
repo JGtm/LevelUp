@@ -42,3 +42,23 @@ func TestJournalDepassements_TableBornee(t *testing.T) {
 		t.Errorf("table non bornée : %d entrées (max %d)", len(j.episodes), episodesMax)
 	}
 }
+
+// vider rend les dépassements tus de l'épisode en cours et remet le journal à zéro.
+func TestJournalDepassements_ViderRendLesTus(t *testing.T) {
+	horloge := time.Date(2026, 11, 14, 8, 0, 0, 0, time.UTC)
+	j := &journalDepassements{now: func() time.Time { return horloge }}
+	for i := 0; i < 5; i++ {
+		horloge = horloge.Add(time.Second)
+		j.signaler("a")
+	}
+	j.signaler("b") // un seul dépassement : rien de tu
+	if got := j.vider(); len(got) != 1 || got["a"] != 4 {
+		t.Errorf("vider = %v, attendu {a:4}", got)
+	}
+	if got := j.vider(); len(got) != 0 {
+		t.Errorf("second vider = %v, attendu vide", got)
+	}
+	if ok, _ := j.signaler("a"); !ok {
+		t.Error("après vider, le dépassement suivant doit ouvrir un épisode")
+	}
+}

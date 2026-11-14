@@ -91,7 +91,7 @@ func (p *providerImpl) releaseReader(id uint64) {
 		close(p.drainCh)
 		p.drainCh = nil
 	}
-	seuil := p.slowReaderThreshold
+	seuil, alarme := p.slowReaderThreshold, p.readerAlarm
 	p.mu.Unlock()
 	readersInUse.Add(-1)
 	if !connu || seuil <= 0 {
@@ -101,7 +101,8 @@ func (p *providerImpl) releaseReader(id uint64) {
 		readerSlowTotal.Add(1)
 		appelant := l.appelant()
 		journaliser, tus := p.readerJournal.signaler(appelant)
-		if !journaliser {
+		// Une lecture au-delà du second seuil est journalisée quel que soit l'épisode en cours.
+		if !journaliser && (alarme <= 0 || tenu < alarme) {
 			return
 		}
 		slog.Warn("sharedprovider: lecture tenue longtemps — toute écriture de la base attend sa fin",

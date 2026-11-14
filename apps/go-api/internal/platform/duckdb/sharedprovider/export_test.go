@@ -71,3 +71,10 @@ func SlowReadersForTest() int64 {
 	initMetrics()
 	return readerSlowTotal.Value()
 }
+
+// SetHoldAlarmForTest configure le second seuil (prise du writer et lecture) au-delà duquel une ligne est
+// écrite quel que soit l'épisode en cours. d <= 0 le désactive.
+func SetHoldAlarmForTest(p Provider, d time.Duration) {
+	impl := p.(*providerImpl)
+	impl.rwHoldAlarm, impl.readerAlarm = d, d
+}

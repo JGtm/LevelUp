@@ -210,13 +210,24 @@ func (p *providerImpl) refusOuvertureRWLocked(ctx context.Context, err error) er
 //
 // Le timer compte chaque dépassement (expvar) mais n'écrit une ligne que si le journal l'accorde
 // (un épisode de dépassements du même détenteur = une ligne, hold_journal.go) ; la ligne de
-// libération (releaseWriter) suit la ligne de dépassement de la même acquisition.
+// libération (releaseWriter) suit la ligne de dépassement de la même acquisition. Le second seuil
+// (rwHoldAlarm) écrit sa ligne quoi qu'ait décidé le journal : une prise que personne ne libère ne
+// reste jamais silencieuse sous un épisode déjà annoncé.
 func (p *providerImpl) armRWWatchdogLocked() {
 	if p.rwHoldWatchdog <= 0 {
 		return
 	}
 	label, path, threshold, start := p.rwHolderLabel, p.path, p.rwHoldWatchdog, p.rwWindowStart
 	hold, journal := p.rwHold, &p.holdJournal
+	if alarm := p.rwHoldAlarm; alarm > threshold {
+		p.rwAlarm = time.AfterFunc(alarm, func() {
+			hold.annonce.Store(true)
+			slog.Warn("sharedprovider: writer RW tenu anormalement longtemps — lectures gatées, toujours pas libéré",
+				"label", label, "path", path, "alarm_ms", alarm.Milliseconds(),
+				"held_ms", time.Since(start).Milliseconds(),
+				"lectures_retenues", hold.lecturesRetenues.Load())
+		})
+	}
 	p.rwWatchdog = time.AfterFunc(threshold, func() {
 		watchdogFiredTotal.Add(1)
 		recordHolderWatchdog(label)
@@ -252,6 +263,10 @@ func (p *providerImpl) disarmRWWatchdogLocked() string {
 	if p.rwWatchdog != nil {
 		p.rwWatchdog.Stop()
 		p.rwWatchdog = nil
+	}
+	if p.rwAlarm != nil {
+		p.rwAlarm.Stop()
+		p.rwAlarm = nil
 	}
 	p.rwHolderLabel = ""
 	return label

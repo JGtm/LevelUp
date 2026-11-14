@@ -10,6 +10,7 @@ package sharedprovider
 // nombre est rendu avec la première ligne de l'épisode d'après.
 
 import (
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -65,4 +66,32 @@ func (j *journalDepassements) signaler(cle string) (journaliser bool, tusAvant i
 type rwHoldRecord struct {
 	annonce          atomic.Bool
 	lecturesRetenues atomic.Int64
+}
+
+// vider rend, par clé, les dépassements tus de l'épisode en cours (clés sans dépassement tu omises) et
+// remet le journal à zéro : à l'arrêt, ce décompte ne se rendrait plus avec l'épisode suivant.
+func (j *journalDepassements) vider() map[string]int {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	out := make(map[string]int)
+	for cle, ep := range j.episodes {
+		if ep.tus > 0 {
+			out[cle] = ep.tus
+		}
+	}
+	j.episodes = nil
+	return out
+}
+
+// flushJournals écrit, à la fermeture du provider, les dépassements tus des épisodes en cours.
+func (p *providerImpl) flushJournals() {
+	for _, j := range []struct {
+		quoi    string
+		journal *journalDepassements
+	}{{"writer", &p.holdJournal}, {"lecture", &p.readerJournal}} {
+		for cle, tus := range j.journal.vider() {
+			slog.Warn("sharedprovider: dépassements tus à la fermeture",
+				"path", p.path, "nature", j.quoi, "cle", cle, "depassements_tus", tus)
+		}
+	}
 }
