@@ -34,10 +34,10 @@ func (c *Comparaison) Accepter(mesure, motif string) int {
 func statutDes(cs []Constat) Statut {
 	s := StatutOK
 	for _, x := range cs {
-		switch {
-		case x.Sens == StatutFaux:
+		switch x.Sens {
+		case StatutFaux:
 			return StatutFaux
-		case x.Sens == StatutManque:
+		case StatutManque:
 			s = StatutManque
 		}
 	}
