@@ -407,7 +407,9 @@ go-api-test-shared-social-gate:
 ##      suite complète avec -tags=integration, en DEUX voies parallèles — la voie film
 ##      (la brique du décodeur à la version de go.mod, sans DuckDB, jugée contre
 ##      .ai/baselines/tests_halo-infinite-film-decoder.jsonl) et la voie DuckDB (tout apps/go-api,
-##      en -p 1). La durée est celle de la voie DuckDB ; voir le script.
+##      en -p 1). La durée est celle de la voie DuckDB ; voir le script. Budget par paquet :
+##      -timeout=300s, sauf archlint, ops et sync, lourds sous charge, rejoués à part avec
+##      GATE_PUSH_HEAVY_TIMEOUT (40m par défaut).
 ## NON reproduit : le ratchet de COUVERTURE (il rejouerait toute la suite une 2e
 ## fois avec -coverprofile, doublant la durée) — il reste au job CI go-coverage.
 ##

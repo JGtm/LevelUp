@@ -671,9 +671,38 @@ FILM_LANE_PATTERNS=(
   'github.com/JGtm/halo-infinite-map-images/...'
 )
 
+# Paquets LOURDS de la voie DuckDB : leur durée, sous la charge d'un poste qui fait aussi tourner
+# la voie des briques, dépasse `-timeout=300s` sans qu'aucun test échoue (archlint 428 s,
+# ops 249 s, sync 699 s mesurés seuls sous charge, tous verts). Ils se jouent dans une exécution
+# séparée, avec un budget à eux (`GATE_PUSH_HEAVY_TIMEOUT`, 40m par défaut) ; tous les autres
+# paquets gardent `-timeout=300s`. Un paquet qui devient lourd s'ajoute ICI, il ne relâche pas le
+# budget des autres. Motif de fin d'import path (`go list`).
+GATE_HEAVY_PKG_RE='/internal/(archlint|ops|sync)$'
+GATE_PUSH_LIGHT_TIMEOUT="300s"
+GATE_PUSH_HEAVY_TIMEOUT="${GATE_PUSH_HEAVY_TIMEOUT:-40m}"
+
+# run_duckdb_lane — la voie DuckDB en deux exécutions `go test` (légers puis lourds), un seul JSONL.
+# $1 = fichier JSONL, $2... = chemins d'import des paquets de la voie (`go list`). Les paquets sont
+# passés en chemins relatifs au module (`./internal/x`) : la ligne de commande de `go test` reste
+# sous la limite de 32 Ko de Windows.
+run_duckdb_lane() {
+  local out="$1"; shift
+  local prefix light heavy
+  prefix="$(go list -m | tr -d '\r')/"
+  mapfile -t heavy < <(printf '%s\n' "$@" | grep -E "$GATE_HEAVY_PKG_RE" | sed "s|^$prefix|./|")
+  mapfile -t light < <(printf '%s\n' "$@" | grep -Ev "$GATE_HEAVY_PKG_RE" | sed "s|^$prefix|./|")
+  if [[ ${#heavy[@]} -eq 0 || ${#light[@]} -eq 0 ]]; then
+    echo "[ECHEC] voie DuckDB : partition légers/lourds vide (légers=${#light[@]}, lourds=${#heavy[@]})" > "$out"
+    return 1
+  fi
+  go test -tags=integration -count=1 -timeout="$GATE_PUSH_LIGHT_TIMEOUT" -p 1 -json "${light[@]}" > "$out" 2>&1 || true
+  go test -tags=integration -count=1 -timeout="$GATE_PUSH_HEAVY_TIMEOUT" -p 1 -json "${heavy[@]}" >> "$out" 2>&1 || true
+}
+
 # run_current_suite — mode AUTONOME : exécute la suite complète et écrit les JSONL des deux voies.
-# `-timeout=300s` : budget par package d'un run NON instrumenté. La CI, elle,
-# instrumente la couverture dans la même exécution et utilise 600s (cf. ci.yml).
+# `-timeout=300s` : budget par package d'un run NON instrumenté (voie des briques, et voie DuckDB
+# hors paquets lourds, cf. run_duckdb_lane). La CI, elle, instrumente la couverture dans la même
+# exécution et utilise 600s (cf. ci.yml).
 run_current_suite() {
   local out="$1" out_film="$2"
   echo "  Lancement de la suite courante : voie film et voie DuckDB en parallèle (plusieurs minutes)..."
@@ -711,7 +740,7 @@ run_current_suite() {
     (
       cd "$REPO_ROOT/apps/go-api"
       start=$SECONDS
-      go test -tags=integration -count=1 -timeout=300s -p 1 -json ./... > "$out" 2>&1
+      run_duckdb_lane "$out" "${duckdb[@]}"
       echo "  [voie DuckDB] terminée en $((SECONDS - start)) s"
     ) &
     pid_duckdb=$!
