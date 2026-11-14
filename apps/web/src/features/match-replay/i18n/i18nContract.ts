@@ -12,6 +12,7 @@
  */
 import type { FeedFilterId } from '../model/feedFilterLogic'
 import type { ObjectiveFeedStat } from '../model/objectiveFeedLogic'
+import type { LivesText } from './lives.i18n'
 import type { PlayerPanelText } from './playerPanel.i18n'
 import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
 
@@ -235,6 +236,8 @@ export interface ReplayText {
   killFeedFocusHint: string
   /** Le panneau de joueur (lot 4) : ses textes vivent dans `playerPanel.i18n.ts`. */
   playerPanel: PlayerPanelText
+  /** Le groupe « Vies » du panneau de la vue : ses textes vivent dans `lives.i18n.ts`. */
+  lives: LivesText
   killFeedNoAssistHint: string
   killFeedAssistHint: string
   killFeedKillerShare: (pct: number) => string

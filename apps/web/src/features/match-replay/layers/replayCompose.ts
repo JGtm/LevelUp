@@ -33,6 +33,13 @@
  * détruire pour uniformiser aurait coûté leurs tests sans rien apporter à la composition.
  */
 
+/** Un booléen par calque des vies. */
+export interface LivesFlags {
+  spawns: boolean
+  deaths: boolean
+  killers: boolean
+}
+
 /** Le contrat de calque, celui que portent déjà les `paint` des hooks du rejeu. */
 export type LayerPaint = (ctx: CanvasRenderingContext2D, frame: number, dpr: number) => void
 
@@ -60,6 +67,11 @@ export const LAYER_ORDER = [
   'armes-au-sol',
   'poses-equipement',
   'vehicules',
+  // LES TRACES DES VIES (apparitions, morts, tueurs) : creuses et fines, SOUS les pions qu'elles ne
+  // doivent jamais recouvrir ni se laisser prendre pour (ce qui vit est plein, une trace est creuse).
+  'vies-apparitions',
+  'vies-morts',
+  'vies-tueurs',
   // LES JOUEURS, puis ce qui se lit SUR eux.
   'trajectoires',
   // LES FAILLES DU TRANSLOCATEUR, AU-DESSUS DES PISTES : une faille est un événement, pas un
@@ -110,6 +122,8 @@ export interface SceneToggles {
   modeObjectives: boolean
   /** « Plan des murs » (clé `replay-show-wall-plan`) — le trait fin des murs sur le fond. */
   wallPlan: boolean
+  /** « Apparitions », « Morts », « Tueurs » (groupe « Vies ») : trois calques, trois interrupteurs. */
+  lives: LivesFlags
 }
 
 /**
@@ -136,6 +150,8 @@ export interface SceneMatter {
   zoneStates: boolean
   objectivePulses: boolean
   killFx: boolean
+  /** Les marques de chaque calque des vies : sans marque, le calque ne s'ouvre pas. */
+  lives: LivesFlags
 }
 
 /** La scène : ce qu'il y a à peindre, ce qui est allumé, et comment peindre chaque calque. */
@@ -212,6 +228,9 @@ export function sceneLayers(scene: ReplayScene): ReplayLayer[] {
     'armes-au-sol': true,
     'poses-equipement': t.placements && h.placements,
     vehicules: true,
+    'vies-apparitions': t.lives.spawns && h.lives.spawns,
+    'vies-morts': t.lives.deaths && h.lives.deaths,
+    'vies-tueurs': t.lives.killers && h.lives.killers,
     trajectoires: true,
     failles: t.placements && h.rifts,
     'marques-de-tir': t.shotFx && h.fireMarks,

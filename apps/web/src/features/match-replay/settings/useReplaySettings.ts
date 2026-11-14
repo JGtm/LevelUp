@@ -14,6 +14,7 @@ import { useCallback, useState } from 'react'
 import type { HeatmapMode, HeatmapSpan } from '../../../lib/replay/heatPaint'
 import { persistPreference, readStoredChoice, readStoredNumber } from './replayPreferences'
 import { usePersistedFlag } from './usePersistedFlag'
+import { useReplayLivesFlags, type ReplayLivesFlags } from './useReplayLivesFlags'
 import { useReplayTerrainFlags, type ReplayTerrainFlags } from './useReplayTerrainFlags'
 
 const SHOW_AIM_KEY = 'replay-show-aim'
@@ -119,7 +120,7 @@ const MARKER_COLORS_DEFAULT: MarkerColorsMode = 'team'
 // « fiches compactes va devenir la seule et unique option donc on va virer le réglage ») :
 // la fiche compacte est devenue LA fiche, la variante longue est partie avec sa clé.
 
-export interface ReplaySettings extends ReplayTerrainFlags {
+export interface ReplaySettings extends ReplayTerrainFlags, ReplayLivesFlags {
   /** Calque de visée (direction du regard). Allumé par défaut, comme aujourd'hui. */
   showAim: boolean
   toggleAim: () => void
@@ -180,6 +181,7 @@ export function useReplaySettings(): ReplaySettings {
   const [showShotFx, toggleShotFx] = usePersistedFlag(SHOW_SHOT_FX_KEY, SHOW_SHOT_FX_DEFAULT)
   const [showKillFx, toggleKillFx] = usePersistedFlag(SHOW_KILL_FX_KEY, SHOW_KILL_FX_DEFAULT)
   const terrain = useReplayTerrainFlags()
+  const lives = useReplayLivesFlags()
   const [heatmapMode, setHeatmapModeState] = useState(() =>
     readStoredChoice(HEATMAP_MODE_KEY, HEATMAP_MODE_DEFAULT, HEATMAP_MODES),
   )
@@ -232,6 +234,7 @@ export function useReplaySettings(): ReplaySettings {
     showKillFx,
     toggleKillFx,
     ...terrain,
+    ...lives,
     markerColors,
     setMarkerColors,
     autoPlay,

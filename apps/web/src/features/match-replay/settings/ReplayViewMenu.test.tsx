@@ -25,6 +25,7 @@ const FILM: FilmLayerAvailability = {
   bombCarrier: false,
   vehicles: true,
   wallPlan: true,
+  lives: { spawns: true, deaths: true, killers: true, followedKnown: true },
 }
 
 const SOUND = { available: false, categories: {} } as unknown as ReplaySound

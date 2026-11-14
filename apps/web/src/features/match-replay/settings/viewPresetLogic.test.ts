@@ -18,6 +18,9 @@ import {
   type LayerKey,
 } from './viewPresetLogic'
 
+/** Les trois calques du groupe « Vies », dans l'ordre de `LAYER_KEYS`. */
+const LIVES_KEYS: readonly LayerKey[] = ['spawns', 'deaths', 'killers']
+
 const ALL_AVAILABLE = Object.fromEntries(LAYER_KEYS.map((k) => [k, true])) as LayerFlags
 
 function flags(on: readonly LayerKey[]): LayerFlags {
@@ -37,16 +40,32 @@ function applied(current: LayerFlags, toggled: readonly LayerKey[]): LayerFlags 
 }
 
 describe('la table des préréglages (pièce à valider : une ligne par calque réel)', () => {
-  it('Complet allume TOUS les calques, Déplacements seulement traînée et zones', () => {
-    expect([...PRESET_LAYERS.complet].sort()).toEqual([...LAYER_KEYS].sort())
-    expect([...PRESET_LAYERS.deplacements].sort()).toEqual(['trail', 'zones'])
+  it('Complet allume tout SAUF les traces des vies (état d’ouverture), Déplacements traînée, zones et apparitions', () => {
+    expect([...PRESET_LAYERS.complet].sort()).toEqual(
+      LAYER_KEYS.filter((k) => !LIVES_KEYS.includes(k)).sort(),
+    )
+    expect([...PRESET_LAYERS.deplacements].sort()).toEqual(['spawns', 'trail', 'zones'])
   })
 
-  it('Combat : visée, traînée, véhicules et tous les objectifs ; ni terrain ni poses', () => {
+  it('LAYER_KEYS compte seize calques, dont les trois des vies en dernier', () => {
+    expect(LAYER_KEYS).toHaveLength(16)
+    expect(LAYER_KEYS.slice(-3)).toEqual(LIVES_KEYS)
+  })
+
+  it('les trois calques des vies sont éteints dans Complet et Objectif, Combat allume morts et tueurs', () => {
+    for (const id of ['complet', 'objectif'] as const) {
+      for (const k of LIVES_KEYS) expect(PRESET_LAYERS[id]).not.toContain(k)
+    }
+    expect(PRESET_LAYERS.combat).toEqual(expect.arrayContaining(['deaths', 'killers']))
+    expect(PRESET_LAYERS.combat).not.toContain('spawns')
+  })
+
+  it('Combat : visée, traînée, véhicules, objectifs, morts et tueurs ; ni terrain ni poses', () => {
     expect([...PRESET_LAYERS.combat].sort()).toEqual(
       [
         'aim', 'trail', 'vehicles',
         'modeObjectives', 'flagCarries', 'vipCrown', 'skullCarrier', 'bombCarrier',
+        'deaths', 'killers',
       ].sort(),
     )
   })
@@ -89,6 +108,7 @@ describe('layerAvailability : ce que le film porte, calque par calque', () => {
     bombCarrier: false,
     vehicles: true,
     wallPlan: true,
+    lives: { spawns: true, deaths: false, killers: true, followedKnown: false },
   }
 
   it('la visée et la traînée sont toujours disponibles', () => {
@@ -105,6 +125,12 @@ describe('layerAvailability : ce que le film porte, calque par calque', () => {
     expect(a.modeObjectives).toBe(false)
     expect(a.flagCarries).toBe(true)
     expect(a.vehicles).toBe(true)
+  })
+
+  it('chaque calque des vies suit ses marques ; « joueur suivi » n’est pas un calque', () => {
+    const a = layerAvailability(film)
+    expect([a.spawns, a.deaths, a.killers]).toEqual([true, false, true])
+    expect(Object.keys(a)).not.toContain('followedKnown')
   })
 
   it('les objets lâchés n existent que si les poses sont dessinables ET qu un objet est lâché', () => {
@@ -128,13 +154,21 @@ describe('layersToToggle : un préréglage ne touche que ce qui diffère', () =>
   it('Combat depuis tout allumé : éteint exactement ce que Combat n allume pas', () => {
     const toggled = layersToToggle('combat', flags(LAYER_KEYS), ALL_AVAILABLE)
     expect([...toggled].sort()).toEqual(
-      ['zones', 'weaponPads', 'groundWeapons', 'placements', 'droppedPlacements'].sort(),
+      ['zones', 'weaponPads', 'groundWeapons', 'placements', 'droppedPlacements', 'spawns'].sort(),
     )
   })
 
-  it('Complet depuis tout éteint : allume tout', () => {
+  it('Complet depuis tout éteint : allume tout sauf les traces des vies', () => {
     const toggled = layersToToggle('complet', flags([]), ALL_AVAILABLE)
-    expect([...toggled].sort()).toEqual([...LAYER_KEYS].sort())
+    expect([...toggled].sort()).toEqual(LAYER_KEYS.filter((k) => !LIVES_KEYS.includes(k)).sort())
+  })
+
+  it('Combat allume morts et tueurs depuis l’ouverture, jamais un calque des vies indisponible', () => {
+    const ouverture = presetFlags('complet')
+    expect([...layersToToggle('combat', ouverture, ALL_AVAILABLE)].filter((k) => LIVES_KEYS.includes(k)).sort()).toEqual(['deaths', 'killers'])
+    const sansMarques = { ...ALL_AVAILABLE, deaths: false, killers: false, spawns: false }
+    expect(layersToToggle('combat', ouverture, sansMarques).filter((k) => LIVES_KEYS.includes(k))).toEqual([])
+    expect(layersToToggle('deplacements', ouverture, sansMarques).filter((k) => LIVES_KEYS.includes(k))).toEqual([])
   })
 
   it('JAMAIS un calque indisponible : aucun n est basculé, quel que soit le préréglage', () => {

@@ -34,6 +34,7 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { HeatmapSection, type ReplayHeatmapControls } from '../ui/ReplayHeatmapSection'
 import { LayersSection } from './ReplaySettingsLayers'
 import { OrientationSection, type ReplayOrientationControls } from './ReplayOrientationSection'
+import { LivesSection, type ReplayLivesControls } from './ReplayLivesSection'
 import { ViewPresetsSection } from './ReplayViewPresets'
 import type { ViewId, ViewPresetId } from './viewPresetLogic'
 import { SOUND_CATEGORIES } from '../sound/replaySound'
@@ -51,6 +52,7 @@ const PANEL_WIDTH = 416
 /** Réexportés : les sections ont déménagé, la surface d'appel du panneau n'a pas bougé. */
 export type { ReplayHeatmapControls } from '../ui/ReplayHeatmapSection'
 export type { ReplayOrientationControls } from './ReplayOrientationSection'
+export type { ReplayLivesControls, ReplayLivesLayerControls } from './ReplayLivesSection'
 export type {
   ReplayBackgroundControls,
   ReplayBombCarrierControls,
@@ -114,6 +116,8 @@ interface ReplayViewPanelProps {
   vehicles: ReplayVehicleControls
   /** Le PLAN DES MURS du fond (clé `replay-show-wall-plan`) : n'existe qu'avec un fond qui en porte un. */
   wallPlan: ReplayWallPlanControls
+  /** Les TRACES DES VIES (apparitions, morts, tueurs) : un groupe qui se replie, et deux affinages communs. */
+  lives: ReplayLivesControls
   /** Le STYLE DU FOND (rendu ou plan) : n'existe qu'avec un fond qui porte une image plan. */
   background: ReplayBackgroundControls
   /** L'ORIENTATION de la carte (quarts de tour), retenue par carte : n'existe qu'avec une carte connue. */
@@ -310,6 +314,7 @@ export function ReplayViewPanel({
   vehicles,
   wallPlan,
   background,
+  lives,
   orientation,
   heatmap,
   showShotFx,
@@ -375,6 +380,7 @@ export function ReplayViewPanel({
         wallPlan={wallPlan}
         background={background}
       />
+      <LivesSection locale={locale} lives={lives} />
       <OrientationSection locale={locale} orientation={orientation} />
       <EffectsSection
         locale={locale}

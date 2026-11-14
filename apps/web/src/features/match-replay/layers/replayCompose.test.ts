@@ -44,6 +44,7 @@ const TOUT_ALLUME: ReplayScene['toggles'] = {
   killFx: true,
   modeObjectives: true,
   wallPlan: true,
+  lives: { spawns: true, deaths: true, killers: true },
 }
 
 const TOUT_A_PEINDRE: ReplayScene['has'] = {
@@ -61,6 +62,7 @@ const TOUT_A_PEINDRE: ReplayScene['has'] = {
   zoneStates: true,
   objectivePulses: true,
   killFx: true,
+  lives: { spawns: true, deaths: true, killers: true },
 }
 
 function scene(over: Partial<ReplayScene> = {}): ReplayScene {
@@ -106,6 +108,9 @@ const ORDRE_ATTENDU = [
   'armes-au-sol',
   'poses-equipement',
   'vehicules',
+  'vies-apparitions',
+  'vies-morts',
+  'vies-tueurs',
   'trajectoires',
   'failles',
   'marques-de-tir',
@@ -126,7 +131,7 @@ const ORDRE_ATTENDU = [
 ] as const
 
 describe('sceneLayers — l’ordre de la scène', () => {
-  it('rend les vingt-huit calques, dans l’ordre attendu, sans doublon ni oubli', () => {
+  it('rend les trente et un calques, dans l’ordre attendu, sans doublon ni oubli', () => {
     const layers = sceneLayers(scene())
     expect(layers.map((l) => l.id)).toEqual([...ORDRE_ATTENDU])
     // La table de la source ne s'écarte pas de l'oracle : le second garde le premier.
@@ -147,6 +152,11 @@ describe('sceneLayers — l’ordre de la scène', () => {
     expect(ordre.indexOf('chaleur')).toBeLessThan(ordre.indexOf('trajectoires'))
     expect(ordre.indexOf('zones-nommees')).toBeLessThan(ordre.indexOf('trajectoires'))
     expect(ordre.indexOf('vehicules')).toBeLessThan(ordre.indexOf('trajectoires'))
+    // Les traces des vies (creuses, fines) passent SOUS les pions, au-dessus du terrain et des objets.
+    for (const trace of ['vies-apparitions', 'vies-morts', 'vies-tueurs']) {
+      expect(ordre.indexOf('vehicules')).toBeLessThan(ordre.indexOf(trace))
+      expect(ordre.indexOf(trace)).toBeLessThan(ordre.indexOf('trajectoires'))
+    }
     expect(ordre.indexOf('trajectoires')).toBeLessThan(ordre.indexOf('tirs'))
     expect(ordre.indexOf('tirs')).toBeLessThan(ordre.indexOf('morts'))
   })
@@ -210,6 +220,29 @@ describe('sceneLayers — chaque interrupteur du tiroir coupe SES calques, et eu
   })
 })
 
+describe('sceneLayers — les trois calques des vies', () => {
+  /** Chaque calque a son interrupteur et sa matière : couper l'un ne touche pas les deux autres. */
+  const VIES: Array<[keyof ReplayScene['toggles']['lives'], ReplayLayerId]> = [
+    ['spawns', 'vies-apparitions'],
+    ['deaths', 'vies-morts'],
+    ['killers', 'vies-tueurs'],
+  ]
+
+  it.each(VIES)('« %s » coupé retire exactement %s', (bascule, attendu) => {
+    const complet = peints(scene())
+    const toggles = { ...TOUT_ALLUME, lives: { ...TOUT_ALLUME.lives, [bascule]: false } }
+    const coupe = peints(scene({ toggles }))
+    expect(complet.filter((id) => !coupe.includes(id))).toEqual([attendu])
+  })
+
+  it.each(VIES)('sans marque « %s », %s ne se peint pas', (matiere, attendu) => {
+    const complet = peints(scene())
+    const has = { ...TOUT_A_PEINDRE, lives: { ...TOUT_A_PEINDRE.lives, [matiere]: false } }
+    const sans = peints(scene({ has }))
+    expect(complet.filter((id) => !sans.includes(id))).toEqual([attendu])
+  })
+})
+
 describe('sceneLayers — un calque sans matière ne s’ouvre pas', () => {
   /** Ce que chaque absence de matière doit retirer, exactement. */
   const SANS: Array<[keyof ReplayScene['has'], ReplayLayerId[]]> = [
@@ -234,9 +267,10 @@ describe('sceneLayers — un calque sans matière ne s’ouvre pas', () => {
   })
 
   it('les calques SANS condition se peignent toujours, même sur une scène vide de matière', () => {
-    const vide = Object.fromEntries(
-      Object.keys(TOUT_A_PEINDRE).map((k) => [k, false]),
-    ) as unknown as ReplayScene['has']
+    const vide = {
+      ...(Object.fromEntries(Object.keys(TOUT_A_PEINDRE).map((k) => [k, false])) as unknown as ReplayScene['has']),
+      lives: { spawns: false, deaths: false, killers: false },
+    }
     expect(peints(scene({ has: vide }))).toEqual([
       'socles-armes',
       'armes-au-sol',

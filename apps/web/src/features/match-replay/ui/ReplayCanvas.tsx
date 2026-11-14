@@ -54,6 +54,7 @@ import { useReplayFlagCarries } from '../layers/useReplayFlagCarries'
 import { useZoneStates } from '../layers/useZoneStates'
 import { useReplayWeaponPads } from '../layers/useReplayWeaponPads'
 import { useReplayKillFocus } from '../layers/useReplayKillFocus'
+import { useReplayLives } from '../layers/useReplayLives'
 import { prepareStage } from '../layers/canvasStage'
 import { useReplayGroundWeapons } from '../layers/useReplayGroundWeapons'
 import { useReplayVehicles } from '../layers/useReplayVehicles'
@@ -412,6 +413,11 @@ export function ReplayCanvas({
     offscreenGroupLabelOf: (n, meters) => REPLAY_TEXT[locale].offscreenGroupMarkerFmt(n, meters),
     neutralInk, mapElementInk: zoneInk.fill, labelStroke, markInk, explosionInk: fxInk, reducedMotion, redraw, frameRef,
   }) // schéma 39 ; prédicat embarqué C7 ; cône du conducteur + nom ET couleur par xuid (2026-09-02) ; explosion de destruction (2026-09-03, en avance de phase).
+  // LES TRACES DES VIES (apparitions, morts, tueurs) : marques bâties une fois, filtre qui / quand des réglages.
+  const lives = useReplayLives({
+    doc, view: canvasView, feedEntries, settings, allegiance, marks, ink: labelStroke,
+    identity: { colorOfSlot, colorOfXuid, campOfSlot, markOfSlot, seatedOfXuid },
+  })
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un
   // seul hook (useReplayPlacements). Les LÂCHÉS DE PUISSANCE suivent leur bascule, et rien
   // d'autre — plus de garde de mode par-dessus (2026-08-20).
@@ -471,7 +477,7 @@ export function ReplayCanvas({
       return {
         toggles: {
           zones: showZones, shotFx: showShotFx, placements: showPlacements, killFx: showKillFx,
-          modeObjectives: showModeObjectives, wallPlan: wallPlanOn,
+          modeObjectives: showModeObjectives, wallPlan: wallPlanOn, lives: lives.show,
         },
         has: {
           background: !!mapImage && !!bgRect,
@@ -488,6 +494,7 @@ export function ReplayCanvas({
           zoneStates: doc.zoneStates.length > 0,
           objectivePulses: objectivePulses.length > 0,
           killFx: killFx.length > 0,
+          lives: lives.available,
         },
         paint: {
           // LES ONZE CALQUES CABLES PAR HOOK SE NOMMENT EUX-MEMES (revue R1, C2) : leur `id`
@@ -508,6 +515,7 @@ export function ReplayCanvas({
             bombBlast,
             killFocus.veil,
             killFocus.labels,
+            ...lives.layers,
           ),
           // L'image ENTIERE sur son emprise monde, le canvas rogne le debord (mapBackgroundDraw.ts).
           'fond-carte': () => drawMapBackground(ctx, mapImage, bgRect, canvasView),
@@ -623,7 +631,7 @@ export function ReplayCanvas({
     vipCrown,
     skullCarrier,
     bombCarrier,
-    bombBlast, killFocus,
+    bombBlast, killFocus, lives,
     floorStyle.edge,
     colorOfSlot,
     colorOfSlotOrLast,
@@ -711,6 +719,7 @@ export function ReplayCanvas({
       skullCarrier: skullCarrier.available,
       bombCarrier: bombCarrier.available, vehicles: vehicles.available,
       wallPlan: !!mapImage?.plan,
+      lives: lives.available,
     },
   })
   // CE QUI SORT DU REJEU (image, vidéo) vit dans useReplayCapture : le canvas prête sa TOILE, son

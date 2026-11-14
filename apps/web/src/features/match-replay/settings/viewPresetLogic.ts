@@ -5,9 +5,10 @@
  * LOGIQUE PURE : aucune lecture de stockage, aucun React. Le hook `useReplayView` branche cette
  * table sur les bascules réelles de `useReplaySettings`.
  *
- * UN « CALQUE », ICI, EST UNE BASCULE QUI MONTRE OU CACHE UNE FAMILLE D'OBJETS (treize au
+ * UN « CALQUE », ICI, EST UNE BASCULE QUI MONTRE OU CACHE UNE FAMILLE D'OBJETS (seize au
  * total). Les AFFINAGES d'un calque ne sont pas des calques et un préréglage ne les touche pas :
- * objets non identifiés des poses, armes spéciales seulement, armes de départ au sol. Ils
+ * objets non identifiés des poses, armes spéciales seulement, armes de départ au sol, et les
+ * deux filtres du groupe « Vies » (qui, quand). Ils
  * restreignent ou élargissent ce qu'un calque montre, et leurs défauts (éteints) sont ce qui
  * garde « Complet » égal à l'état d'ouverture de la page — les allumer noierait un
  * Grande Bataille de points neutres.
@@ -22,7 +23,10 @@
  *    dès qu'un calque diffère de tous les préréglages.
  */
 
-/** Les treize calques, dans l'ordre où le panneau les propose. */
+/**
+ * Les seize calques, dans l'ordre où le panneau les propose. Les trois derniers forment le groupe
+ * « Vies » (traces des vies : apparitions, morts, tueurs), éteint par défaut.
+ */
 export const LAYER_KEYS = [
   'aim',
   'trail',
@@ -37,6 +41,9 @@ export const LAYER_KEYS = [
   'vipCrown',
   'skullCarrier',
   'bombCarrier',
+  'spawns',
+  'deaths',
+  'killers',
 ] as const
 
 export type LayerKey = (typeof LAYER_KEYS)[number]
@@ -67,19 +74,24 @@ const OBJECTIVE_LAYERS: readonly LayerKey[] = [
   'bombCarrier',
 ]
 
+/** Les traces des vies : trois calques d'un même groupe, éteints dans « Complet » et « Objectif ». */
+const LIVES_LAYERS: readonly LayerKey[] = ['spawns', 'deaths', 'killers']
+
 /**
  * LA TABLE : pour chaque préréglage, les calques ALLUMÉS ; tous les autres sont éteints.
  *
- *  - Complet : tout.
- *  - Combat : visée, traînée, véhicules, objectifs.
- *  - Déplacements : traînée et zones. Le réglage « traînée longue / vies entières » de la
- *    maquette n'existe pas dans l'application : la traînée existante en tient lieu.
- *  - Objectif : traînée, zones, objectifs.
+ *  - Complet : tout, SAUF les traces des vies. « Complet » est l'état d'ouverture de la page, et
+ *    les trois calques « Vies » y sont éteints par défaut : les allumer ajouterait des traces à
+ *    des pions déjà nombreux.
+ *  - Combat : visée, traînée, véhicules, objectifs, et les morts et les tueurs.
+ *  - Déplacements : traînée et zones, et les apparitions. Le réglage « traînée longue / vies
+ *    entières » de la maquette n'existe pas dans l'application : la traînée existante en tient lieu.
+ *  - Objectif : traînée, zones, objectifs (traces des vies éteintes).
  */
 export const PRESET_LAYERS: Readonly<Record<ViewPresetId, readonly LayerKey[]>> = {
-  complet: LAYER_KEYS,
-  combat: ['aim', 'trail', 'vehicles', ...OBJECTIVE_LAYERS],
-  deplacements: ['trail', 'zones'],
+  complet: LAYER_KEYS.filter((k) => !LIVES_LAYERS.includes(k)),
+  combat: ['aim', 'trail', 'vehicles', ...OBJECTIVE_LAYERS, 'deaths', 'killers'],
+  deplacements: ['trail', 'zones', 'spawns'],
   objectif: ['trail', 'zones', ...OBJECTIVE_LAYERS],
 }
 
@@ -101,6 +113,11 @@ export interface FilmLayerAvailability {
   skullCarrier: boolean
   bombCarrier: boolean
   vehicles: boolean
+  /**
+   * Les traces des vies : chaque calque se propose dès qu'il a au moins une marque à poser.
+   * `followedKnown` n'est pas un calque : il ne conditionne que l'option « Joueur suivi » de l'affinage.
+   */
+  lives: { spawns: boolean; deaths: boolean; killers: boolean; followedKnown: boolean }
   /**
    * Le fond retenu porte un plan des murs. Ce n'est pas un calque de préréglage (`LAYER_KEYS`) :
    * il ne fait que conditionner l'affichage de sa bascule.
@@ -128,6 +145,9 @@ export function layerAvailability(film: FilmLayerAvailability): LayerFlags {
     vipCrown: film.vipCrown,
     skullCarrier: film.skullCarrier,
     bombCarrier: film.bombCarrier,
+    spawns: film.lives.spawns,
+    deaths: film.lives.deaths,
+    killers: film.lives.killers,
   }
 }
 

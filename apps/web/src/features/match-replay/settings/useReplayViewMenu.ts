@@ -27,6 +27,7 @@ import { useCallback, useRef, useState, type ComponentProps, type RefObject } fr
 
 import type { ReplayLocale } from '../i18n/i18n'
 import type { ReplayViewPanel } from './ReplayViewPanel'
+import { effectiveLivesWho } from '../model/livesMarks'
 import { persistViewPreset, readViewPreset } from './replayPreferences'
 import type { ReplaySettings } from './useReplaySettings'
 import type { ReplayOrientation } from './useReplayOrientation'
@@ -79,7 +80,7 @@ export interface ReplayViewMenuState {
   panel: ReplayViewPanelProps
 }
 
-/** L'état des treize calques, lu des réglages. */
+/** L'état des seize calques, lu des réglages. */
 function layerFlagsOf(s: ReplaySettings): LayerFlags {
   return {
     aim: s.showAim,
@@ -95,6 +96,9 @@ function layerFlagsOf(s: ReplaySettings): LayerFlags {
     vipCrown: s.showVipCrown,
     skullCarrier: s.showSkullCarrier,
     bombCarrier: s.showBombCarrier,
+    spawns: s.showSpawns,
+    deaths: s.showDeaths,
+    killers: s.showKillers,
   }
 }
 
@@ -114,6 +118,9 @@ function layerTogglesOf(s: ReplaySettings): Record<LayerKey, () => void> {
     vipCrown: s.toggleVipCrown,
     skullCarrier: s.toggleSkullCarrier,
     bombCarrier: s.toggleBombCarrier,
+    spawns: s.toggleSpawns,
+    deaths: s.toggleDeaths,
+    killers: s.toggleKillers,
   }
 }
 
@@ -200,6 +207,17 @@ function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
       show: s.showWallPlan,
       onToggle: s.toggleWallPlan,
       inPlan: planBackground.shown,
+    },
+    lives: {
+      spawns: { available: available.lives.spawns, show: s.showSpawns, onToggle: s.toggleSpawns },
+      deaths: { available: available.lives.deaths, show: s.showDeaths, onToggle: s.toggleDeaths },
+      killers: { available: available.lives.killers, show: s.showKillers, onToggle: s.toggleKillers },
+      // Le choix mémorisé 'joueur suivi' retombe sur 'tous' pour un match sans joueur suivi (la préférence reste).
+      who: effectiveLivesWho(s.livesWho, available.lives.followedKnown),
+      onSelectWho: s.setLivesWho,
+      followedAvailable: available.lives.followedKnown,
+      when: s.livesWhen,
+      onSelectWhen: s.setLivesWhen,
     },
     background: {
       available: planBackground.available,

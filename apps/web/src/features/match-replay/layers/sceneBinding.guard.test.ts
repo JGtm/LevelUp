@@ -34,6 +34,16 @@ const CABLES_PAR_LE_MEME_HOOK: ReadonlyArray<[ReplayLayerId, string]> = [
   ['etiquettes-mise-en-valeur', 'useReplayKillFocus.ts'],
 ]
 
+/**
+ * Les trois calques des vies : UN hook les câble, et lui seul — une construction des marques pour
+ * trois peintres. Chacun porte son `id` à côté de son `paint`, comme les autres.
+ */
+const CABLES_PAR_LE_HOOK_DES_VIES: ReadonlyArray<[ReplayLayerId, string]> = [
+  ['vies-apparitions', 'useReplayLives.ts'],
+  ['vies-morts', 'useReplayLives.ts'],
+  ['vies-tueurs', 'useReplayLives.ts'],
+]
+
 /** Les onze calques dont le hook porte l'identité (id -> hook qui le câble). */
 const CABLES_PAR_HOOK: ReadonlyArray<[ReplayLayerId, string]> = [
   ['socles-armes', 'useReplayWeaponPads.ts'],
@@ -98,6 +108,7 @@ describe('garde-rail : la liaison id -> peintre', () => {
     const couverts = [
       ...CABLES_PAR_HOOK.map(([id]) => id),
       ...CABLES_PAR_LE_MEME_HOOK.map(([id]) => id),
+      ...CABLES_PAR_LE_HOOK_DES_VIES.map(([id]) => id),
       ...FERMETURES.map(([id]) => id),
     ]
     expect(couverts).toHaveLength(LAYER_ORDER.length)
@@ -130,9 +141,16 @@ describe('garde-rail : la liaison id -> peintre', () => {
     }
   })
 
+  it('le hook des vies déclare l’id de ses trois calques, chacun à côté de son peintre', () => {
+    for (const [id, hook] of CABLES_PAR_LE_HOOK_DES_VIES) {
+      const src = lire(fichierNomme(hook))
+      expect(src, `${hook} ne déclare pas l'id ${id}`).toContain(`id: '${id}', paint:`)
+    }
+  })
+
   it('le canvas ne renomme AUCUN des calques câblés par hook : il dérive la liaison', () => {
     const table = tableDeLiaison()
-    for (const [id] of [...CABLES_PAR_HOOK, ...CABLES_PAR_LE_MEME_HOOK]) {
+    for (const [id] of [...CABLES_PAR_HOOK, ...CABLES_PAR_LE_MEME_HOOK, ...CABLES_PAR_LE_HOOK_DES_VIES]) {
       // La clé telle qu'elle s'écrirait dans la table, à son indentation exacte. Pas de
       // RegExp construite : dans un gabarit JS, `\s` vaut `s` — le motif serait inerte.
       const cle = id.includes('-') ? "'" + id + "':" : id + ':'

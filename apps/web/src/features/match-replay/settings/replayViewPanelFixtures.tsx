@@ -15,6 +15,7 @@ import {
   type ReplayPlacementControls,
   type ReplayFlagControls,
   type ReplayBackgroundControls,
+  type ReplayLivesControls,
   type ReplayWallPlanControls,
   type ReplayWeaponPadControls,
 } from './ReplayViewPanel'
@@ -56,6 +57,20 @@ export function makeGroundWeapons(
 
 export function makeWallPlan(over: Partial<ReplayWallPlanControls> = {}): ReplayWallPlanControls {
   return { available: true, show: true, onToggle: vi.fn(), inPlan: false, ...over }
+}
+
+export function makeLives(over: Partial<ReplayLivesControls> = {}): ReplayLivesControls {
+  return {
+    spawns: { available: true, show: false, onToggle: vi.fn() },
+    deaths: { available: true, show: false, onToggle: vi.fn() },
+    killers: { available: true, show: false, onToggle: vi.fn() },
+    who: 'all',
+    onSelectWho: vi.fn(),
+    followedAvailable: true,
+    when: 'all',
+    onSelectWhen: vi.fn(),
+    ...over,
+  }
 }
 
 export function makeBackground(over: Partial<ReplayBackgroundControls> = {}): ReplayBackgroundControls {
@@ -144,6 +159,7 @@ export function renderPanel(over: Partial<Parameters<typeof ReplayViewPanel>[0]>
       vehicles={makeWeaponPads()}
       wallPlan={makeWallPlan()}
       background={makeBackground()}
+      lives={makeLives()}
       orientation={makeOrientation()}
       heatmap={makeHeatmap()}
       showShotFx

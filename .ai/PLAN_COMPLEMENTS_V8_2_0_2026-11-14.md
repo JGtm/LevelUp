@@ -144,9 +144,9 @@ avant/après capturé) ; relecture indépendante sans P0/P1 ; notes de version e
 - [ ] 7.5 `PerformanceScoreRev` et `LUSRRev` changés une fois (D-14 : test d'un seul recalcul pour deux montées ; phrase des notes de version réécrite avec les chiffres de 7.4) ; ADR 0047 et 0006 amendés ; textes d'aide de la note et de « 1 vie ≈ 225 points » ; `/bootstrap` (`effective_hp_to_kill`).
 
 ### Étape 8 — Rejeu, calque « Vies »
-- [ ] 8.1 Données : apparition = première image de chaque vie et cap de visée de cette image ; mort = position de la victime ; tueur = position du tueur à l'image du frag ; rien sans position (compté).
-- [ ] 8.2 Trois calques `spawns`, `deaths`, `killers` dans `viewPresetLogic.ts` (16 calques), groupe « Vies » dans le panneau (`ReplayViewPanel.tsx`), affinages communs qui / quand ; préréglages selon D-9 ; garde-rails de calques mis à jour.
-- [ ] 8.3 Peintre canvas : goutte creuse orientée, croix, triangle creux, trait tueur → victime ; fondu par âge en « jusqu'ici » ; encres d'équipe (`canvasInk`) ; textes FR/EN.
+- [x] 8.1 Données : apparition = première image de chaque vie et cap de visée de cette image ; mort = position de la victime ; tueur = position du tueur à l'image du frag ; rien sans position (compté). `model/livesMarks.ts` (`buildLivesMarks`, compteur `skipped`), aucun champ ajouté au document (D-13 tenu).
+- [x] 8.2 Trois calques `spawns`, `deaths`, `killers` dans `viewPresetLogic.ts` (16 calques), groupe « Vies » dans le panneau (`ReplayViewPanel.tsx`, `ReplayLivesSection.tsx`), affinages communs qui / quand ; préréglages selon D-9 ; garde-rails de calques mis à jour.
+- [x] 8.3 Peintre canvas : goutte creuse orientée, croix, triangle creux, trait tueur → victime ; fondu par âge en « jusqu'ici » ; encres d'équipe (`canvasInk`) ; textes FR/EN. `layers/livesLayer.ts` (couleur d'équipe des pions + liseré `labelStroke`), `layers/useReplayLives.ts`, `i18n/lives.i18n.ts`.
 
 ### Étape 9 — Appui
 - [ ] 9.1 `SquadAppuiCard.tsx` en flux assistant → finisseur (D-10), même forme sur la page Match (`MatchAssistChart`) ; textes FR/EN à la voix active ; garde-rail `vocabulaireCoordination.guard.test.ts` ajusté ; infobulles de ruban et de joueur.
@@ -201,9 +201,11 @@ Entrées film (`levelup-1f`), pseudos réels, alerte glib, toute recuisson.
 - 2026-11-14 (voie infobulles) : 23 marqueurs `color-allow` nus restants n'excusent plus rien (marqueur placé sur une autre ligne que la couleur, ou ligne sans couleur) : commentaires à retirer dans une passe de nettoyage, non traités ici.
 - 2026-11-14 (voie infobulles) : le lint des couleurs ne balaie pas les préfixes `shadow`, `from`, `via`, `to` avec une couleur nommée (seulement le noir et le blanc absolus) ; hors de l'entrée du backlog, non traité.
 - 2026-11-14 (voie infobulles) : un bouton `disabled` ne reçoit pas `pointerover` dans tous les navigateurs ; la couche ne peut pas y prendre en charge le `title` (l'infobulle native y reste). À contrôler à l'écran dans WebView2 (point 5.3) ; non relevé site par site.
+- Voie rejeu (étape 8) : la goutte des apparitions n'a une pointe que si le premier point de la vie porte un cap (`Point.h` non nul : le champ est `omitempty`, un cap exactement nul est absent). Sinon anneau seul, par construction (règle « sans cap lu à cette image »). À constater à l'écran sur un rejeu réel ; non traité ici.
 
 ### Journal
 
 - 2026-11-14 : plan relu par la grille `plan-review` (gates, reprise, multi-titre ajoutés) ; voies `escouade`,
   `infobulles`, `rejeu` ouvertes.
 - 2026-11-14 (voie infobulles, branche `feat/c820-infobulles`) : 5.1 et 5.2 faits. Couche `TitleTooltipLayer` montée dans `AppProviders` (couvre connexion et pages hors coquille) ; `Tooltip` et `InfoTooltip` marqués `data-lu-tooltip` (pas de double infobulle) ; `InfoTooltip` ouvert au focus clavier seulement ; lint des couleurs étendu (cinq préfixes) et `color-allow(<genre>)` borné au genre nommé (76 lignes migrées, aucune allowlist élargie). 5.3 reste au user.
+- 2026-11-14 : voie rejeu (étape 8) faite sur `feat/c820-rejeu` : trois calques « Vies » (apparitions, morts, tueurs), seize calques, affinages qui / quand, préréglages D-9, textes FR/EN, aucun changement du document de rejeu (D-13). Contrôle à l'écran remis au user.

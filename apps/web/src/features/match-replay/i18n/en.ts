@@ -1,5 +1,6 @@
 /** Textes du rejeu 2D en anglais (contrat : `i18nContract.ts`). */
 import type { ReplayText } from './i18nContract'
+import { EN_LIVES } from './lives.i18n'
 import { EN_PLAYER_PANEL } from './playerPanel.i18n'
 
 export const EN_TEXT = {
@@ -76,6 +77,7 @@ export const EN_TEXT = {
   killFeedUnknownWeapon: 'Unidentified weapon',
   killFeedFocusHint: 'Go to this moment and highlight the killer and the victim on the map',
   playerPanel: EN_PLAYER_PANEL,
+  lives: EN_LIVES,
   killFeedNoAssistHint:
     'Death without an assist: the death carries its event in the film, and it names no one.',
   killFeedAssistHint:

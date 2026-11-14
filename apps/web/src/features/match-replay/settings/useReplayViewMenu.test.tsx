@@ -25,6 +25,7 @@ const FULL_FILM: FilmLayerAvailability = {
   bombCarrier: true,
   vehicles: true,
   wallPlan: true,
+  lives: { spawns: true, deaths: true, killers: true, followedKnown: true },
 }
 
 /** Un Assassin : ni zone, ni socle, ni objectif ; la visée et la traînée restent. */
@@ -40,6 +41,7 @@ const SLAYER_FILM: FilmLayerAvailability = {
   bombCarrier: false,
   vehicles: false,
   wallPlan: false,
+  lives: { spawns: false, deaths: false, killers: false, followedKnown: false },
 }
 
 const SOUND = { available: false, categories: {} } as unknown as ReplaySound
@@ -193,5 +195,87 @@ describe('useReplayViewMenu', () => {
   it('le plan des murs est désactivé quand le fond posé est le plan, et seulement alors', () => {
     expect(mount(FULL_FILM, { available: true, shown: false }).result.current.menu.panel.wallPlan.inPlan).toBe(false)
     expect(mount(FULL_FILM, { available: true, shown: true }).result.current.menu.panel.wallPlan.inPlan).toBe(true)
+  })
+
+  it('les trois calques des vies sont éteints à l’ouverture : Complet est l’état d’ouverture', () => {
+    const { result } = mount(FULL_FILM)
+    const s = result.current.settings
+    expect([s.showSpawns, s.showDeaths, s.showKillers]).toEqual([false, false, false])
+    expect(result.current.menu.active).toBe('complet')
+  })
+
+  it('Combat allume morts et tueurs, Déplacements les apparitions, Complet et Objectif les éteignent', () => {
+    const { result } = mount(FULL_FILM)
+    const vies = () => {
+      const s = result.current.settings
+      return [s.showSpawns, s.showDeaths, s.showKillers]
+    }
+    act(() => result.current.menu.panel.view.onSelect('combat'))
+    expect(vies()).toEqual([false, true, true])
+    act(() => result.current.menu.panel.view.onSelect('deplacements'))
+    expect(vies()).toEqual([true, false, false])
+    act(() => result.current.menu.panel.view.onSelect('combat'))
+    act(() => result.current.menu.panel.view.onSelect('objectif'))
+    expect(vies()).toEqual([false, false, false])
+    act(() => result.current.menu.panel.view.onSelect('combat'))
+    act(() => result.current.menu.panel.view.onSelect('complet'))
+    expect(vies()).toEqual([false, false, false])
+    expect(result.current.menu.active).toBe('complet')
+  })
+
+  it('un calque des vies sans marque n’est jamais activé par un préréglage', () => {
+    const { result } = mount({ ...FULL_FILM, lives: { spawns: false, deaths: false, killers: false, followedKnown: false } })
+    act(() => result.current.menu.panel.view.onSelect('combat'))
+    act(() => result.current.menu.panel.view.onSelect('deplacements'))
+    const s = result.current.settings
+    expect([s.showSpawns, s.showDeaths, s.showKillers]).toEqual([false, false, false])
+  })
+
+  it('les affinages des vies ne sont pas des calques : un préréglage ne les touche pas, la vue non plus', () => {
+    const { result } = mount(FULL_FILM)
+    act(() => result.current.settings.setLivesWho('team'))
+    act(() => result.current.settings.setLivesWhen('sofar'))
+    act(() => result.current.menu.panel.view.onSelect('combat'))
+    expect([result.current.settings.livesWho, result.current.settings.livesWhen]).toEqual(['team', 'sofar'])
+    expect(result.current.menu.active).toBe('combat')
+  })
+
+  it('le panneau expose le groupe des vies : disponibilité, état, et « joueur suivi » seulement avec un joueur suivi', () => {
+    const { result } = mount(FULL_FILM)
+    expect(result.current.menu.panel.lives).toMatchObject({
+      spawns: { available: true, show: false },
+      deaths: { available: true, show: false },
+      killers: { available: true, show: false },
+      who: 'all',
+      when: 'all',
+      followedAvailable: true,
+    })
+    const sans = mount({ ...FULL_FILM, lives: { ...FULL_FILM.lives, followedKnown: false } })
+    expect(sans.result.current.menu.panel.lives.followedAvailable).toBe(false)
+  })
+
+  it('« joueur suivi » mémorisé retombe sur « tous » dans un match sans joueur suivi, sans effacer la préférence', () => {
+    window.localStorage.setItem('replay-lives-who', 'followed')
+    const sans = mount({ ...FULL_FILM, lives: { ...FULL_FILM.lives, followedKnown: false } })
+    expect(sans.result.current.menu.panel.lives.who).toBe('all')
+    expect(sans.result.current.settings.livesWho).toBe('followed')
+    const avec = mount(FULL_FILM)
+    expect(avec.result.current.menu.panel.lives.who).toBe('followed')
+  })
+
+  it('les affinages et calques des vies sont retenus, et une valeur invalide est ignorée', () => {
+    const { result } = mount(FULL_FILM)
+    act(() => result.current.settings.toggleDeaths())
+    act(() => result.current.settings.setLivesWho('team'))
+    act(() => result.current.settings.setLivesWhen('sofar'))
+    expect(window.localStorage.getItem('replay-show-deaths')).toBe('true')
+    expect(window.localStorage.getItem('replay-lives-who')).toBe('team')
+    expect(window.localStorage.getItem('replay-lives-when')).toBe('sofar')
+    const reouvert = mount(FULL_FILM)
+    expect([reouvert.result.current.settings.showDeaths, reouvert.result.current.settings.livesWho, reouvert.result.current.settings.livesWhen]).toEqual([true, 'team', 'sofar'])
+    window.localStorage.setItem('replay-lives-who', 'n-importe-quoi')
+    window.localStorage.setItem('replay-lives-when', '')
+    const invalide = mount(FULL_FILM)
+    expect([invalide.result.current.settings.livesWho, invalide.result.current.settings.livesWhen]).toEqual(['all', 'all'])
   })
 })
