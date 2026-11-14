@@ -47,9 +47,9 @@ function phaseLine(t: ReplayRegenText, phase: RegenPhase, s: ReplayRegenStatus |
     case 'waitingGame':
       return fill(t.waitingGame, { done, total })
     case 'compressionPaused':
-      return fill(t.compressionPaused, { count: s?.compressed ?? 0 })
+      return t.compressionPaused
     case 'compressionWaitingGame':
-      return fill(t.compressionWaitingGame, { count: s?.compressed ?? 0 })
+      return t.compressionWaitingGame
   }
 }
 
