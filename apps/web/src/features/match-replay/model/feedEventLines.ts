@@ -11,6 +11,7 @@
  */
 import type { ReplayFeedEntry } from './killFeedLogic'
 import type { ObjectiveFeedStat } from './objectiveFeedLogic'
+import type { PadFamily } from './weaponPadFamilies'
 
 /** Une action d'objectif nommée (liste fermée : cf. `objectiveFeedLogic`). */
 export interface ObjectiveEventLine {
@@ -27,6 +28,11 @@ export interface PickupEventLine {
   family: 'pickups'
   xuid: string
   name: string
+  /**
+   * La nature de ce qui est pris, celle qui teinte les socles de la carte (`padFamilyOf`) : arme de
+   * râtelier, arme spéciale ou équipement. Elle choisit le pictogramme de la ligne.
+   */
+  nature: PadFamily
   /** Vrai pour une arme ramassée au sol ; absent pour une prise sur socle. */
   ground?: true
 }

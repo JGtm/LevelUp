@@ -59,7 +59,13 @@ describe('groundPickupFeedEntries — ce qui fait une ligne', () => {
     const out = groundPickupFeedEntries(docWith([ground()]), nameOf, [])
     expect(out).toHaveLength(1)
     expect(out[0].replayMs).toBe(20_000)
-    expect(out[0].event).toEqual({ family: 'pickups', xuid: 'x1', name: 'arme 0000bbbb', ground: true })
+    expect(out[0].event).toEqual({ family: 'pickups', xuid: 'x1', name: 'arme 0000bbbb', nature: 'classic', ground: true })
+  })
+
+  it('la nature de l’arme ramassée suit la clé canonique du titre : arme spéciale si elle est au registre', () => {
+    const labels = { ...LABELS, [SNIPER]: { ...LABELS[SNIPER], key: 'hinf_s7_sniper' } }
+    const out = groundPickupFeedEntries(docWith([ground()], { weaponLabels: labels }), nameOf, [])
+    expect((out[0].event as { nature: string }).nature).toBe('power')
   })
 
   it('une arme de base (dotation de naissance) ramassée au sol n’apparaît pas', () => {
@@ -74,7 +80,9 @@ describe('groundPickupFeedEntries — ce qui fait une ligne', () => {
       nameOf,
       [],
     )
-    expect(out.map((e) => e.event)).toEqual([{ family: 'pickups', xuid: 'x2', name: 'arme 0000cccc', ground: true }])
+    expect(out.map((e) => e.event)).toEqual([
+      { family: 'pickups', xuid: 'x2', name: 'arme 0000cccc', nature: 'classic', ground: true },
+    ])
   })
 
   it('écarte une arme jamais reprise ou dont la reprise n’est pas datée (fins `seen` et `open`)', () => {
@@ -132,7 +140,7 @@ describe('groundPickupFeedEntries — la base doit être établie', () => {
 
 describe('groundPickupFeedEntries — pas de doublon avec une prise sur socle', () => {
   const pad = (ms: number, xuid: string, name: string) =>
-    eventFeedEntry(`u-${xuid}-${ms}`, ms, { family: 'pickups', xuid, name })
+    eventFeedEntry(`u-${xuid}-${ms}`, ms, { family: 'pickups', xuid, name, nature: 'classic' })
 
   it('écarte la ligne du même joueur, même arme, à moins de cinq images d’une prise de socle', () => {
     const out = groundPickupFeedEntries(docWith([ground()]), nameOf, [pad(20_300, 'x1', 'arme 0000bbbb')])

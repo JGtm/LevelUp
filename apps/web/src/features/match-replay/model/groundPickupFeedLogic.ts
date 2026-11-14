@@ -29,7 +29,7 @@ import { weaponLabelKeyOf } from '../layers/useReplayWeaponPads'
 
 import { eventFeedEntry } from './feedEventLines'
 import type { ReplayFeedEntry } from './killFeedLogic'
-import type { PadNameOf } from './pickupFeedLogic'
+import { pickupNatureOf, type PadNameOf } from './pickupFeedLogic'
 import { startingWeaponKeys } from './startingWeaponsOnGround'
 
 /** La fin d'une arme au sol qui porte un ramassage daté (`ReplayGroundWeapon.end`). */
@@ -89,7 +89,13 @@ export function groundPickupFeedEntries(
     )
     if (duplicate) return
     entries.push(
-      eventFeedEntry(`g-${xuid}-${g.w}-${g.t1}-${i}`, replayMs, { family: 'pickups', xuid, name, ground: true }),
+      eventFeedEntry(`g-${xuid}-${g.w}-${g.t1}-${i}`, replayMs, {
+        family: 'pickups',
+        xuid,
+        name,
+        nature: pickupNatureOf(doc, g.w),
+        ground: true,
+      }),
     )
   })
   entries.sort((a, b) => a.replayMs - b.replayMs)

@@ -18,6 +18,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { filmAllegianceOf } from '@/lib/replay/filmAllegiance'
 
 import { eventFeedEntry } from '../model/feedEventLines'
+import { FEED_GLYPH_PATH, PICKUP_NATURE_GLYPH } from '../model/feedGlyphs'
 import { weaponIconsOf, type WeaponIconsByKey } from '../model/killSourceIcons'
 import { buildFeedEntries, type ReplayFeedEntry } from '../model/killFeedLogic'
 import { FEED_FILTER_KEY } from '../settings/replayPreferences'
@@ -163,6 +164,23 @@ describe('armes ramassées au sol dans « Armes et bonus »', () => {
     renderFeed({ doc: GROUND_DOC, nowMs: 20_000 })
     choose(/Armes et bonus/)
     expect(screen.queryByText(/a ramassé/)).toBeNull()
+  })
+})
+
+describe('le pictogramme d’une prise dit sa nature', () => {
+  const prise = (nature: 'classic' | 'power' | 'powerup', ms: number) =>
+    eventFeedEntry(`p-${nature}`, ms, { family: 'pickups', xuid: 'me', name: nature, nature })
+
+  it('arme de râtelier, arme spéciale et équipement : trois tracés distincts, ceux de la table', () => {
+    renderFeed({ doc: PLAIN_DOC, entries: [prise('classic', 10_000), prise('power', 20_000), prise('powerup', 30_000)] })
+    choose(/Armes et bonus/)
+    const tracePar = new Map(
+      screen.getAllByRole('listitem').map((r) => [r.textContent?.match(/classic|power(?:up)?/)?.[0], r.querySelector('path')?.getAttribute('d')]),
+    )
+    expect(tracePar.get('classic')).toBe(FEED_GLYPH_PATH[PICKUP_NATURE_GLYPH.classic])
+    expect(tracePar.get('power')).toBe(FEED_GLYPH_PATH[PICKUP_NATURE_GLYPH.power])
+    expect(tracePar.get('powerup')).toBe(FEED_GLYPH_PATH[PICKUP_NATURE_GLYPH.powerup])
+    expect(new Set(tracePar.values()).size).toBe(3)
   })
 })
 

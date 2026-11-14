@@ -1,7 +1,8 @@
 /**
  * ReplayEventLine — la ligne d'une PRISE d'arme ou de bonus (sur socle ou au sol), d'une MONTÉE en
  * véhicule ou d'une DESTRUCTION de véhicule : un pictogramme, le joueur à l'encre de son camp, et
- * une phrase. Même rangée que toutes les lignes du fil (une seule ligne, sans retour, pictogramme
+ * une phrase. Le pictogramme d'une prise dit sa nature (râtelier, arme spéciale, équipement :
+ * `PICKUP_NATURE_GLYPH`) ; celui des autres lignes est celui de leur famille. Même rangée que toutes les lignes du fil (une seule ligne, sans retour, pictogramme
  * `shrink-0`) ; contrairement à l'objectif, elle n'est pas un bandeau : ce ne sont pas des
  * tournants du match.
  *
@@ -16,7 +17,7 @@
  */
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { PickupEventLine, VehicleDestroyedEventLine, VehicleEventLine } from '../model/feedEventLines'
-import { FEED_FILTER_GLYPH } from '../model/feedGlyphs'
+import { FEED_FILTER_GLYPH, PICKUP_NATURE_GLYPH } from '../model/feedGlyphs'
 import { FEED_ROW } from '../model/feedRow'
 import { vehicleKilledLabel } from '../model/vehicleKilledLabel'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
@@ -57,11 +58,12 @@ export function ReplayEventLine({ line, replayMs, color, mark, name, killedNames
   const action = actionOf(line, t, killedNames, locale)
   const hasActor = name !== ''
   const weapon = 'destroyed' in line ? line.weapon : undefined
+  const glyph = line.family === 'pickups' ? PICKUP_NATURE_GLYPH[line.nature] : FEED_FILTER_GLYPH[line.family]
   return (
     <li className={FEED_ROW} title={hasActor ? `${name} ${action}` : action} data-feed-family={line.family}>
       <FeedClock ms={replayMs} />
       <span className="shrink-0" style={{ color }}>
-        <EventGlyph glyph={FEED_FILTER_GLYPH[line.family]} />
+        <EventGlyph glyph={glyph} />
       </span>
       {hasActor && <FeedName kind={mark} color={color} locale={locale} className="font-medium" name={name} />}
       {weapon && (

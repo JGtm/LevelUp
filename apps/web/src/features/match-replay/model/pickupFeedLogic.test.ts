@@ -38,8 +38,33 @@ describe('pickupFeedEntries', () => {
     )
     expect(out.map((e) => e.replayMs)).toEqual([10_000, 20_000])
     expect(out.map((e) => e.event)).toEqual([
-      { family: 'pickups', xuid: 'x1', name: 'arme 0x0000AAAA' },
-      { family: 'pickups', xuid: 'x2', name: 'Surbouclier' },
+      { family: 'pickups', xuid: 'x1', name: 'arme 0x0000AAAA', nature: 'classic' },
+      { family: 'pickups', xuid: 'x2', name: 'Surbouclier', nature: 'powerup' },
+    ])
+  })
+
+  it('la nature suit la règle des socles : arme spéciale par la clé canonique du titre, râtelier sinon', () => {
+    const doc = testReplayDoc({
+      frameIntervalMs: FRAME_MS,
+      padPickups: [
+        { pad: 0, t: 100, tLow: 50, tHigh: 150, xuid: 'x1' },
+        { pad: 1, t: 200, tLow: 150, tHigh: 250, xuid: 'x2' },
+        { pad: 2, t: 300, tLow: 250, tHigh: 350, xuid: 'x3' },
+      ],
+      weaponPads: [
+        { x: 0, y: 0, weapon: '0x0000AAAA', spawns: [], presence: [] },
+        { x: 1, y: 1, weapon: '0x0000BBBB', spawns: [], presence: [] },
+        { x: 2, y: 2, weapon: 'powerup_camo', spawns: [], presence: [] },
+      ],
+      weaponLabels: {
+        '0x0000AAAA': { fr: 'Sniper', en: 'Sniper', key: 'hinf_s7_sniper' },
+        '0x0000BBBB': { fr: 'Commando', en: 'Commando', key: 'hinf_vk78_commando' },
+      },
+    } as never)
+    expect(pickupFeedEntries(doc, nameOf).map((e) => (e.event as { nature: string }).nature)).toEqual([
+      'power',
+      'classic',
+      'powerup',
     ])
   })
 

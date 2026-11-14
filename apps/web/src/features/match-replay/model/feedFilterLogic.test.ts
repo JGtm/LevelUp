@@ -53,7 +53,7 @@ const KILL_ASSIST = entry('ka', { kill: kill({ assistState: 'named', assistGamer
 const MEDAL_ALONE = entry('m', { medal: MEDAL })
 const DEATH = entry('d', { death: { replayMs: 0, xuid: 'a', kind: '', img: '', tinted: false } })
 const OBJECTIVE = entry('o', { event: { family: 'objectives', xuid: 'a', stat: 'flag_captures' } })
-const PICKUP = entry('p', { event: { family: 'pickups', xuid: 'a', name: 'S7 Sniper' } })
+const PICKUP = entry('p', { event: { family: 'pickups', xuid: 'a', name: 'S7 Sniper', nature: 'power' } })
 const VEHICLE = entry('v', { event: { family: 'vehicles', xuid: 'a', name: 'Warthog' } })
 const ALL = [KILL, KILL_MEDAL, KILL_ASSIST, MEDAL_ALONE, DEATH, OBJECTIVE, PICKUP, VEHICLE]
 

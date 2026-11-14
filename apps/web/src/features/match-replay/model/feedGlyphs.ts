@@ -7,9 +7,14 @@
  * véhicule, liste, silhouette, médaille) ; les autres familles d'objectif (zone, colline, crâne,
  * couronne, bombe) suivent le même trait. Aucune vignette d'atlas dont l'index bouge par saison :
  * un trait vectoriel ne dépend d'aucun asset.
+ *
+ * UNE PRISE SE DESSINE SELON LA NATURE DE CE QUI EST PRIS, la même que celle qui teinte les socles
+ * de la carte (`PadFamily`) : arme de râtelier (l'arme seule), arme spéciale (l'arme et une étoile),
+ * équipement (un bouclier). Le menu de filtre garde l'arme seule pour toute la famille.
  */
 import type { FeedFilterId } from './feedFilterLogic'
 import type { ObjectiveFamily } from './objectiveFamilies'
+import type { PadFamily } from './weaponPadFamilies'
 
 export type FeedGlyphKey =
   | 'all'
@@ -21,6 +26,8 @@ export type FeedGlyphKey =
   | 'vip'
   | 'bomb'
   | 'pickup'
+  | 'pickupPower'
+  | 'pickupEquipment'
   | 'vehicle'
   | 'medal'
   | 'assist'
@@ -36,6 +43,8 @@ export const FEED_GLYPH_PATH: Readonly<Record<FeedGlyphKey, string>> = {
   vip: 'M3 18 5 7l4.5 5L12 5l2.5 7L19 7l2 11Z',
   bomb: 'M11 9a6 6 0 1 0 0 12 6 6 0 0 0 0-12ZM15 8l3-3M18 5l1-2',
   pickup: 'M3 9h13l2 2h3v3h-9l-2 4H7l1-4H3Z',
+  pickupPower: 'M2 11h12l2 2h3v3h-8l-2 4H6l1-4H2ZM19 2v6M16 5h6',
+  pickupEquipment: 'M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6Z',
   vehicle: 'M4 15l2-6h12l2 6v3H4ZM7 18v2M17 18v2',
   medal: 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12ZM8.5 14 7 21l5-3 5 3-1.5-7',
   assist: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM5 21a7 7 0 0 1 14 0',
@@ -49,6 +58,13 @@ export const OBJECTIVE_FAMILY_GLYPH: Readonly<Record<ObjectiveFamily, FeedGlyphK
   skull: 'skull',
   vip: 'vip',
   bomb: 'bomb',
+}
+
+/** Le pictogramme d'une ligne de prise, selon la nature de ce qui est pris. */
+export const PICKUP_NATURE_GLYPH: Readonly<Record<PadFamily, FeedGlyphKey>> = {
+  classic: 'pickup',
+  power: 'pickupPower',
+  powerup: 'pickupEquipment',
 }
 
 /** Le pictogramme de chaque entrée du menu de filtre. */
