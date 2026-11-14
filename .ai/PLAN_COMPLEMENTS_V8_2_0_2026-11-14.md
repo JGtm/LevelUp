@@ -174,3 +174,33 @@ avant/après capturé) ; relecture indépendante sans P0/P1 ; notes de version e
 
 ## 6. Hors périmètre
 Entrées film (`levelup-1f`), pseudos réels, alerte glib, toute recuisson.
+
+## 7. Gates par voie (commandes exactes)
+
+- Web (étapes 3, 4, 5, 6, 8, 9, et la part web de 2 et 10) : depuis `apps/web`, `npx tsc --noEmit -p .`,
+  `npx vitest run <dossiers touchés>` puis `npx vitest run` complet avant le rebase, `node tools/lint-no-hardcoded-colors.mjs`,
+  `node tools/knip-ratchet.mjs` ; manifests i18n régénérés (`node scripts/build_i18n_manifests.mjs`) et leur test de
+  fraîcheur vert.
+- Go (étapes 1, 2, 7, 10) : `go test ./internal/<paquets touchés>/...`, puis `go test -tags=integration` sur `persist`,
+  `sync`, `migration`, `platform/duckdb` quand ils sont touchés (budget `-timeout 40m`, entrée gate-push) ;
+  `golangci-lint run` sans nouvelle violation ; `make generate-types` puis typecheck web si le contrat change.
+- Avant chaque push sur `release/v8.2.0` : hooks `pre-push` verts (sans `--no-verify`), `TestReleaseNotesDocs_*` verts si
+  les notes bougent, puis CI verte attendue ; SHA annoncé à `levelup-dd`.
+- Multi-titre : les nouveaux indicateurs (2) et la note (7) se branchent sur les capacités du titre (Halo 5 sans
+  `match_objective_stats` : métrique absente et poids renormalisé, jamais de panique) ; test du cas Halo 5 dans chaque voie
+  Go.
+
+## 8. Reprise, découvertes, journal
+
+- Reprise : ce fichier fait foi ; relire le skill `plan-execution`, puis le journal ci-dessous, reprendre à la première case
+  non statuée de chaque voie ouverte.
+- Découvertes : consignées ici, non traitées sauf si elles bloquent un gate.
+
+### Découvertes
+
+(aucune)
+
+### Journal
+
+- 2026-11-14 : plan relu par la grille `plan-review` (gates, reprise, multi-titre ajoutés) ; voies `escouade`,
+  `infobulles`, `rejeu` ouvertes.
