@@ -1,11 +1,11 @@
 /**
- * placementCharts.test.ts — « Placement et rendement de chaque vie » et « Part des vies par
- * placement » (lot V4 du plan PLAN_EMPRISE_VIES_2026-09-28, spécification §2) : bornes des axes,
- * plafonds d'affichage, tailles, décalage vertical déterministe, repère du radar et frontière
- * (seuils du bloc), quatre quarts dont un seul teinté, légende native, couleurs par jeton, seuil
- * de 8 %, infobulles FR et EN.
+ * placementCharts.test.ts — « Distance au coéquipier le plus proche et frags, par vie » (carte de
+ * chaleur) et « Part des vies par placement » (spécification §2) : bornes des axes, cases (part,
+ * étiquette à partir de 1,5 %, infobulle), gros points (distance médiane, frags moyens),
+ * repère du radar et frontière (seuils du bloc), quatre quarts dont un seul teinté, légende
+ * native, couleurs par jeton, seuil de 8 %, infobulles FR et EN.
  */
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { renderOptionToSvg } from '@/components/charts/svgRender.testutil'
 import { _resetActivePalette, applyPalette } from '@/lib/accessibility/applyPalette'
@@ -17,9 +17,6 @@ import { PLACEMENT_2209 } from './placement.fixtures'
 import {
   buildPlacementLifeOption,
   buildPlacementQuartsOption,
-  JITTER_MAX,
-  lifeJitter,
-  lifeSymbolSize,
   MEDIAN_SPREAD,
   medianOffsets,
   medianSymbolSize,
@@ -39,6 +36,7 @@ const COLORS: PlacementColors = {
     isolated_costly: '#404040',
   },
   radar: 'radar',
+  heat: '#60a5fa',
   theme: {
     axisLabel: 'axis',
     axisLine: 'line',
@@ -57,12 +55,19 @@ type Loc = 'fr' | 'en'
 const opts = (locale: Loc = 'fr') => ({ t: PLACEMENT_TEXT[locale], formats: placementFormats(locale) })
 
 type Datum = { value: [number, number]; symbolSize: number; tip: string }
-type Item = { name?: string; xAxis?: number; yAxis?: number; itemStyle?: { color: string }; label?: { color: string } }
+type HeatDatum = { value: [number, number, number]; tip: string }
+type Item = {
+  name?: string
+  xAxis?: number
+  yAxis?: number
+  itemStyle?: { color: string }
+  label?: { color?: string; position?: string }
+}
 type Series = {
   type: string
   name?: string
   z?: number
-  data: (Datum | number)[]
+  data: (Datum | HeatDatum | number)[]
   itemStyle?: { color: string; borderColor: string; borderWidth: number }
   silent?: boolean
   stack?: string
@@ -98,13 +103,14 @@ const life = (block: SquadEmprisePlacement = PLACEMENT_2209, locale: Loc = 'fr')
 const quarts = (block: SquadEmprisePlacement = PLACEMENT_2209, locale: Loc = 'fr') =>
   buildPlacementQuartsOption(block, COLORS, opts(locale)) as unknown as Opt
 
-const scatterOf = (o: Opt, name: string) => o.series.filter((s) => s.type === 'scatter' && s.name === name)
-const tip = (o: Opt, d: Datum) => o.tooltip.formatter({ data: d })
-const overlay = (o: Opt) => o.series.filter((s) => s.silent)
+const dotsOf = (o: Opt, name: string) => o.series.filter((s) => s.type === 'scatter' && s.name === name)
+const heatOf = (o: Opt) => o.series.find((s) => s.type === 'custom')!
+const tip = (o: Opt, d: { tip: string }) => o.tooltip.formatter({ data: d })
+const overlay = (o: Opt) => o.series.filter((s) => s.silent && s.type === 'line')
 const radarOf = (o: Opt) => overlay(o).find((s) => s.markLine?.data[0]?.xAxis != null)!
 const frontierOf = (o: Opt) => overlay(o).find((s) => s.markLine?.data[0]?.yAxis != null)!
 
-describe('buildPlacementLifeOption — axes et plafonds', () => {
+describe('buildPlacementLifeOption — axes', () => {
   it('X : 0 à 2 par pas de 0,25, titre centré sous l’axe, libellés à deux décimales (virgule en FR, point en EN)', () => {
     const o = life()
     expect(o.xAxis).toMatchObject({ min: 0, max: 2, interval: 0.25, nameLocation: 'middle' })
@@ -115,7 +121,7 @@ describe('buildPlacementLifeOption — axes et plafonds', () => {
     expect(life(PLACEMENT_2209, 'en').xAxis.name).toBe('median distance to the nearest teammate during the life, in radar ranges')
   })
 
-  it('Y : étendue −0,5 à 5,5, graduations et libellés posés sur 0 à 5 (« 5+ » au plafond), titre vertical', () => {
+  it('Y : étendue −0,5 à 5,5, graduations et libellés posés sur 0 à 5 (« 5+ » à la dernière ligne), titre vertical', () => {
     const o = life()
     expect(o.yAxis).toMatchObject({ min: -0.5, max: 5.5, nameLocation: 'middle' })
     expect(o.yAxis.name).toBe('frags dans la vie')
@@ -125,92 +131,90 @@ describe('buildPlacementLifeOption — axes et plafonds', () => {
   })
 
   it('Y : le rendu écrit les six libellés (les graduations calculées, sur les demi-unités, n’en écrivaient aucun)', () => {
-    const svg = renderOptionToSvg(buildPlacementLifeOption(PLACEMENT_2209, COLORS, opts()), 900, 420)
+    const svg = renderOptionToSvg(buildPlacementLifeOption(PLACEMENT_2209, COLORS, opts()), 900, 520)
     const texts = [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1])
     for (const label of ['0', '1', '2', '3', '4', '5+', 'frags dans la vie']) expect(texts).toContain(label)
   })
+})
 
-  it('une vie à 2,80 portées et 7 frags est posée à 2 et à 5 (± décalage) ; l’infobulle garde les vraies valeurs', () => {
+describe('buildPlacementLifeOption — la carte de chaleur', () => {
+  it('une série de cases sous les repères et sous les gros points, une case par couple (distance, frags) non vide', () => {
     const o = life()
-    const far = scatterOf(o, 'JGtm')[0].data[5] as Datum
-    expect(far.value[0]).toBe(2)
-    expect(far.value[1]).toBeGreaterThanOrEqual(5 - JITTER_MAX)
-    expect(far.value[1]).toBeLessThanOrEqual(5 + JITTER_MAX)
-    const html = tip(o, far)
-    expect(html).toContain('2,80 radar')
-    expect(html).toContain('7 frags')
-    expect(html).toContain('2:30')
+    const heat = heatOf(o)
+    expect(heat.z).toBeLessThan(radarOf(o).z ?? 0)
+    expect(heat.z).toBeLessThan(dotsOf(o, 'JGtm')[0].z ?? 0)
+    // 14 vies mesurées dans la soirée figée, réparties en cases : jamais plus de cases que de vies.
+    const lives = PLACEMENT_2209.players!.reduce((n, p) => n + p.lives!.length, 0)
+    expect(lives).toBe(14)
+    expect(heat.data.length).toBeGreaterThan(0)
+    expect(heat.data.length).toBeLessThanOrEqual(lives)
   })
 
-  it('un point sous le plafond garde sa position vraie en X', () => {
-    const jg = scatterOf(life(), 'JGtm')[0]
-    expect((jg.data[0] as Datum).value[0]).toBe(0.3)
-    expect((jg.data[3] as Datum).value[0]).toBe(1.2)
+  it('une case porte ses bornes en X (x0, x1) et sa ligne de frags', () => {
+    const data = heatOf(life()).data as HeatDatum[]
+    // JGtm : une vie à 0,3 portée et 2 frags -> colonne [0,25 ; 0,5[, ligne 2.
+    expect(data.some((d) => d.value[0] === 0.25 && d.value[1] === 0.5 && d.value[2] === 2)).toBe(true)
+    // La vie à 2,8 portées et 7 frags tombe dans la dernière case : [1,75 ; 2[, ligne 5.
+    expect(data.some((d) => d.value[0] === 1.75 && d.value[1] === 2 && d.value[2] === 5)).toBe(true)
+  })
+
+  it('infobulle d’une case : part, nombre de vies, bornes (FR, pluriel et singulier)', () => {
+    const o = life()
+    const data = heatOf(o).data as HeatDatum[]
+    const mid = data.find((d) => d.value[0] === 0.25 && d.value[2] === 2)!
+    // 1 vie sur 14 : 7,1 %.
+    expect(tip(o, mid)).toBe('7,1 % des vies de l’escouade · 1 vie<br>distance de 0,25 à 0,50 radar · 2 frags')
+    const last = data.find((d) => d.value[0] === 1.75 && d.value[2] === 5)!
+    expect(tip(o, last)).toBe('7,1 % des vies de l’escouade · 1 vie<br>distance de 1,75 radar ou plus · 5 frags ou plus')
+  })
+
+  it('infobulle d’une case : parallèle EN', () => {
+    const o = life(PLACEMENT_2209, 'en')
+    const last = (heatOf(o).data as HeatDatum[]).find((d) => d.value[0] === 1.75 && d.value[2] === 5)!
+    expect(tip(o, last)).toBe('7.1% of the squad’s lives · 1 life<br>distance 1.75 radar or more · 5 kills or more')
+  })
+
+  it('le rendu écrit la part dans les cases qui atteignent 1,5 % (« 7 % » : une vie sur quatorze)', () => {
+    const svg = renderOptionToSvg(buildPlacementLifeOption(PLACEMENT_2209, COLORS, opts()), 900, 520)
+    const texts = [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1])
+    expect(texts).toContain('7 %')
+  })
+
+  it('aucune vie dans la grille : aucune case, jamais de division par zéro', () => {
+    const block: SquadEmprisePlacement = {
+      ...PLACEMENT_2209,
+      players: [{ xuid: 'x', gamertag: 'Vide', lives_total: 2, lives_measured: 0, quadrants: [], lives: [] }],
+    }
+    expect(heatOf(life(block)).data).toHaveLength(0)
+  })
+
+  it('aucun hasard, aucune position décalée : deux constructions donnent la même option', () => {
+    expect(JSON.stringify(life())).toBe(JSON.stringify(life()))
   })
 })
 
-describe('buildPlacementLifeOption — tailles', () => {
-  it('point de vie : 6 + min(durée en s, 90) / 9', () => {
-    expect(lifeSymbolSize(0)).toBe(6)
-    expect(lifeSymbolSize(45_000)).toBe(11)
-    expect(lifeSymbolSize(90_000)).toBe(16)
-    expect(lifeSymbolSize(150_000)).toBe(16)
-    const jg = scatterOf(life(), 'JGtm')[0]
-    expect((jg.data[0] as Datum).symbolSize).toBeCloseTo(6 + 62 / 9, 10)
-    expect((jg.data[5] as Datum).symbolSize).toBe(16)
-  })
-
+describe('buildPlacementLifeOption — taille des gros points', () => {
   it('gros point : 18 + min(nombre de vies, 200) / 10', () => {
     expect(medianSymbolSize(0)).toBe(18)
     expect(medianSymbolSize(146)).toBeCloseTo(32.6, 10)
     expect(medianSymbolSize(200)).toBe(38)
     expect(medianSymbolSize(500)).toBe(38)
-    const big = scatterOf(life(), 'JGtm')[1]
+    const big = dotsOf(life(), 'JGtm')[0]
     expect((big.data[0] as Datum).symbolSize).toBeCloseTo(18 + 6 / 10, 10)
   })
 })
 
-describe('buildPlacementLifeOption — décalage vertical déterministe', () => {
-  it('même clé (match, xuid, début) : même décalage, toujours dans ± 0,25', () => {
-    expect(lifeJitter('m1', 'x1', 1000)).toBe(lifeJitter('m1', 'x1', 1000))
-    for (let i = 0; i < 200; i++) {
-      expect(Math.abs(lifeJitter(`m${i}`, 'x1', i * 977))).toBeLessThanOrEqual(JITTER_MAX)
-    }
-  })
-
-  it('la clé compte : match, joueur et début changent le décalage, qui décolle bien des points de même compte', () => {
-    const base = lifeJitter('m1', 'x1', 1000)
-    expect(lifeJitter('m2', 'x1', 1000)).not.toBe(base)
-    expect(lifeJitter('m1', 'x2', 1000)).not.toBe(base)
-    expect(lifeJitter('m1', 'x1', 1001)).not.toBe(base)
-    const spread = new Set(Array.from({ length: 50 }, (_, i) => lifeJitter('m', 'x', i).toFixed(3)))
-    expect(spread.size).toBeGreaterThan(40)
-  })
-
-  it('aucun hasard : deux constructions donnent la même option, Math.random n’est pas appelé', () => {
-    const rnd = vi.spyOn(Math, 'random')
-    expect(JSON.stringify(life())).toBe(JSON.stringify(life()))
-    expect(rnd).not.toHaveBeenCalled()
-    rnd.mockRestore()
-  })
-
-  it('l’ordonnée d’une vie est son compte plus le décalage de sa clé', () => {
-    const jg = scatterOf(life(), 'JGtm')[0]
-    const p = PLACEMENT_2209.players![0]
-    const l = p.lives![0]
-    expect((jg.data[0] as Datum).value[1]).toBeCloseTo(l.kills + lifeJitter(l.match_id, p.xuid, l.start_ms), 10)
-  })
-})
-
 describe('medianOffsets — les gros points qui se recouvrent sont écartés (Escouade OKLM, 22/09)', () => {
-  // Les médianes relevées sur la soirée du 22/09 : Joueur90002 et Joueur90001 à 0,0025 portée
-  // l'un de l'autre, au même compte de frags — le second tracé cachait le premier.
+  // Les positions relevées sur la soirée du 22/09 : Joueur90002 et Joueur90001 à 0,0025 portée
+  // l'un de l'autre, au même compte de frags — le second tracé cachait le premier. Sans liste de
+  // vies, la médiane du contrat tient lieu de moyenne.
   const spot = (xuid: string, gamertag: string, ratio: number, kills: number) => ({
     ...PLACEMENT_2209.players![0],
     xuid,
     gamertag,
     median_radar_ratio: ratio,
     median_kills: kills,
+    lives: [],
   })
   const oklm = [spot('xj', 'JGtm', 0.4394, 0), spot('xm', 'Joueur90002', 0.4256, 1), spot('xc', 'Joueur90001', 0.4231, 1)]
 
@@ -230,10 +234,10 @@ describe('medianOffsets — les gros points qui se recouvrent sont écartés (Es
     expect(Math.min(...ys)).toBeGreaterThanOrEqual(-0.25 - 1e-9)
   })
 
-  it('le nuage pose le gros point décalé ; l’infobulle garde la vraie médiane', () => {
+  it('la carte pose le gros point décalé ; l’infobulle garde la vraie distance', () => {
     const block = { ...PLACEMENT_2209, players: oklm }
-    const madina = scatterOf(life(block), 'Joueur90002')[1]
-    const choco = scatterOf(life(block), 'Joueur90001')[1]
+    const madina = dotsOf(life(block), 'Joueur90002')[0]
+    const choco = dotsOf(life(block), 'Joueur90001')[0]
     const yM = (madina.data[0] as Datum).value[1]
     const yC = (choco.data[0] as Datum).value[1]
     expect(yC - yM).toBeCloseTo(MEDIAN_SPREAD, 10)
@@ -259,14 +263,20 @@ describe('buildPlacementLifeOption — repères et quarts', () => {
     expect(frontierOf(life({ ...PLACEMENT_2209, productive_from_kills: 2 })).markLine!.data).toEqual([{ yAxis: 1.5 }])
   })
 
-  it('quatre quarts nommés (titre en capitales, sous-titre), texte gris 12 px, aux coins du seuil et de la frontière', () => {
+  it('quatre quarts nommés (titre en capitales, sous-titre), texte gris 12 px, aux coins extérieurs de la carte', () => {
     const area = life().series.find((s) => s.markArea)!.markArea!
     expect(area.label).toMatchObject({ color: 'axis', fontSize: 12 })
     expect(area.data.map((d) => d[0].name)).toEqual([
-      'À PORTÉE ET RENTABLE\nsûr',
+      'GROUPÉ ET RENTABLE\nsûr',
       'ISOLÉ ET RENTABLE\nflanqueur, surveiller la régularité',
-      'À PORTÉE ET COÛTEUX\nduel à travailler, pas le placement',
+      'GROUPÉ ET COÛTEUX\nduel à travailler, pas le placement',
       'ISOLÉ ET COÛTEUX\nvie donnée pour rien, seul',
+    ])
+    expect(area.data.map((d) => d[0].label!.position)).toEqual([
+      'insideTopLeft',
+      'insideTopRight',
+      'insideBottomLeft',
+      'insideBottomRight',
     ])
     expect(area.data.map((d) => [d[0].xAxis, d[0].yAxis, d[1].xAxis, d[1].yAxis])).toEqual([
       [0, 5.5, 1, 0.5],
@@ -276,9 +286,9 @@ describe('buildPlacementLifeOption — repères et quarts', () => {
     ])
     const en = life(PLACEMENT_2209, 'en').series.find((s) => s.markArea)!.markArea!
     expect(en.data.map((d) => d[0].name)).toEqual([
-      'IN RANGE AND PRODUCTIVE\nsafe',
+      'GROUPED AND PRODUCTIVE\nsafe',
       'ISOLATED AND PRODUCTIVE\nflanker, watch the consistency',
-      'IN RANGE AND COSTLY\na duel to work on, not the placement',
+      'GROUPED AND COSTLY\na duel to work on, not the placement',
       'ISOLATED AND COSTLY\na life given away, alone',
     ])
   })
@@ -298,7 +308,7 @@ describe('buildPlacementLifeOption — repères et quarts', () => {
     const [a, b, c, d] = area.data.map((x) => x[0])
     for (const q of [a, b, c]) {
       expect(q.itemStyle).toBeUndefined()
-      expect(q.label).toBeUndefined()
+      expect(q.label!.color).toBeUndefined()
     }
     expect(d.itemStyle!.color).toBe('rgba(64,64,64,0.1)')
     expect(d.label!.color).toBe('#404040')
@@ -310,33 +320,37 @@ describe('buildPlacementLifeOption — repères et quarts', () => {
 })
 
 describe('buildPlacementLifeOption — joueurs, légende, gros point', () => {
-  it('un semis et un gros point par joueur, MÊME nom de série (le clic sur la légende isole les deux) ; le gros point est au-dessus', () => {
+  it('un gros point par joueur, à la couleur du joueur, au-dessus des cases et des repères', () => {
     const o = life()
     for (const gt of ['JGtm', 'Joueur90001', 'Joueur90002']) {
-      const [semis, gros] = scatterOf(o, gt)
-      expect(semis.data.length).toBeGreaterThan(0)
-      expect(gros.data).toHaveLength(1)
-      expect(gros.z).toBeGreaterThan(semis.z ?? 0)
-      expect(semis.itemStyle).toMatchObject({ color: `joueur-${gt}`, borderColor: 'card', borderWidth: 1 })
-      expect(gros.itemStyle).toMatchObject({ color: `joueur-${gt}`, borderColor: 'text', borderWidth: 2 })
+      const dots = dotsOf(o, gt)
+      expect(dots).toHaveLength(1)
+      expect(dots[0].data).toHaveLength(1)
+      expect(dots[0].z).toBeGreaterThan(heatOf(o).z ?? 0)
+      expect(dots[0].z).toBeGreaterThan(radarOf(o).z ?? 0)
+      expect(dots[0].itemStyle).toMatchObject({ color: `joueur-${gt}`, borderColor: 'text', borderWidth: 2 })
     }
   })
 
-  it('le gros point : médiane X × médiane des frags', () => {
-    // Seul dans le nuage : aucun autre gros point ne le recouvre, rien ne l’écarte (medianOffsets).
+  it('le gros point : distance médiane en X, MOYENNE des frags par vie en Y', () => {
+    // Seul sur la carte : aucun autre gros point ne le recouvre, rien ne l’écarte (medianOffsets).
     const choco = PLACEMENT_2209.players!.find((p) => p.gamertag === 'Joueur90001')!
-    const big = scatterOf(life({ ...PLACEMENT_2209, players: [choco] }), 'Joueur90001')[1].data[0] as Datum
-    // Vies à 0,4 / 0,5 / 1,1 / 1,4 : médiane 0,8 ; frags 0, 1, 0, 2 : médiane 0,5.
+    const big = dotsOf(life({ ...PLACEMENT_2209, players: [choco] }), 'Joueur90001')[0].data[0] as Datum
+    // Vies à 0,4 / 0,5 / 1,1 / 1,4 : médiane 0,8 ; frags 0, 1, 0, 2 : moyenne 0,75.
     expect(big.value[0]).toBeCloseTo(0.8, 10)
-    expect(big.value[1]).toBe(0.5)
+    expect(big.value[1]).toBeCloseTo(0.75, 10)
   })
 
-  it('le gros point est posé aux plafonds (2 portées, 5 frags), l’infobulle garde les vraies médianes', () => {
-    const far = { ...PLACEMENT_2209.players![0], median_radar_ratio: 2.5, median_kills: 8 }
+  it('le gros point est posé aux plafonds (2 portées, 5 frags), l’infobulle garde les vraies valeurs', () => {
+    const far = {
+      ...PLACEMENT_2209.players![0],
+      median_radar_ratio: 2.5,
+      lives: [{ ...PLACEMENT_2209.players![0].lives![0], kills: 8 }],
+    }
     const o = life({ ...PLACEMENT_2209, players: [far] })
-    const big = scatterOf(o, 'JGtm')[1].data[0] as Datum
+    const big = dotsOf(o, 'JGtm')[0].data[0] as Datum
     expect(big.value).toEqual([2, 5])
-    expect(tip(o, big)).toContain('médiane 2,50 radar · 8 frags par vie')
+    expect(tip(o, big)).toContain('distance médiane 2,50 radar · 8 frags par vie en moyenne')
   })
 
   it('légende native en bas, centrée, une entrée par joueur à la couleur du joueur', () => {
@@ -346,7 +360,7 @@ describe('buildPlacementLifeOption — joueurs, légende, gros point', () => {
     expect(l.data.map((d) => d.itemStyle.color)).toEqual(['joueur-JGtm', 'joueur-Joueur90001', 'joueur-Joueur90002'])
   })
 
-  it('sans vie mesurée, un joueur garde son semis (vide) mais n’a pas de gros point', () => {
+  it('sans vie mesurée, un joueur n’a pas de gros point (série vide), les autres gardent le leur', () => {
     const block: SquadEmprisePlacement = {
       ...PLACEMENT_2209,
       players: [
@@ -355,9 +369,8 @@ describe('buildPlacementLifeOption — joueurs, légende, gros point', () => {
       ],
     }
     const o = life(block)
-    expect(scatterOf(o, 'Vide')).toHaveLength(1)
-    expect(scatterOf(o, 'Vide')[0].data).toHaveLength(0)
-    expect(scatterOf(o, 'JGtm')).toHaveLength(2)
+    expect(dotsOf(o, 'Vide')[0].data).toHaveLength(0)
+    expect(dotsOf(o, 'JGtm')[0].data).toHaveLength(1)
   })
 
   it('sans joueur : option vide, jamais un graphe à zéro série', () => {
@@ -366,30 +379,16 @@ describe('buildPlacementLifeOption — joueurs, légende, gros point', () => {
   })
 })
 
-describe('buildPlacementLifeOption — infobulles', () => {
-  it('vie : « Joueur · une vie de m:ss » puis distance, part hors radar, frags (FR, pluriel et singulier)', () => {
+describe('buildPlacementLifeOption — infobulle du gros point', () => {
+  it('« Joueur · N vies », distance médiane et frags moyens, part des vies isolées et sans frag', () => {
     const o = life()
-    const d = scatterOf(o, 'JGtm')[0].data[3] as Datum
-    expect(tip(o, d)).toBe('<b>JGtm</b> · une vie de 1:15<br>distance médiane 1,20 radar · 60 % de la vie hors radar · 3 frags')
-    const one = scatterOf(o, 'JGtm')[0].data[1] as Datum
-    expect(tip(o, one)).toMatch(/ · 1 frag$/)
-  })
-
-  it('vie : parallèle EN', () => {
-    const o = life(PLACEMENT_2209, 'en')
-    const d = scatterOf(o, 'JGtm')[0].data[3] as Datum
-    expect(tip(o, d)).toBe('<b>JGtm</b> · a life of 1:15<br>median distance 1.20 radar · 60% of the life out of radar · 3 kills')
-  })
-
-  it('gros point : « Joueur · N vies », médiane, part des vies isolées et sans frag', () => {
-    const o = life()
-    // 6 vies mesurées, une isolée et sans frag (1,6 radar, 0 frag) : 17 %.
-    expect(tip(o, scatterOf(o, 'JGtm')[1].data[0] as Datum)).toBe(
-      '<b>JGtm</b> · 6 vies<br>médiane 1,05 radar · 1,5 frags par vie<br>17 % des vies isolées et sans frag',
+    // 6 vies mesurées, une isolée et sans frag (1,6 radar, 0 frag) : 17 % ; frags 2, 1, 0, 3, 0, 7 : moyenne 2,17 (plafonnée à 5 sur la carte seulement).
+    expect(tip(o, dotsOf(o, 'JGtm')[0].data[0] as Datum)).toBe(
+      '<b>JGtm</b> · 6 vies<br>distance médiane 1,05 radar · 2,17 frags par vie en moyenne<br>17 % des vies isolées et sans frag',
     )
     const en = life(PLACEMENT_2209, 'en')
-    expect(tip(en, scatterOf(en, 'JGtm')[1].data[0] as Datum)).toBe(
-      '<b>JGtm</b> · 6 lives<br>median 1.05 radar · 1.5 kills per life<br>17% of lives isolated and without a kill',
+    expect(tip(en, dotsOf(en, 'JGtm')[0].data[0] as Datum)).toBe(
+      '<b>JGtm</b> · 6 lives<br>median distance 1.05 radar · 2.17 kills per life on average<br>17% of lives isolated and without a kill',
     )
   })
 
@@ -399,14 +398,14 @@ describe('buildPlacementLifeOption — infobulles', () => {
       players: [{ ...PLACEMENT_2209.players![0], gamertag: '<i>x</i>' }],
     }
     const o = life(block)
-    expect(tip(o, scatterOf(o, '<i>x</i>')[0].data[0] as Datum)).toContain('<b>&lt;i&gt;x&lt;/i&gt;</b>')
+    expect(tip(o, dotsOf(o, '<i>x</i>')[0].data[0] as Datum)).toContain('<b>&lt;i&gt;x&lt;/i&gt;</b>')
   })
 })
 
 describe('buildPlacementQuartsOption', () => {
   it('quatre segments empilés, dans l’ordre, aux teintes perf-tier-1, 2, 4 et 5 (jamais perf-tier-3), épaisseur 22, séparateur couleur de carte', () => {
     const s = quarts().series
-    expect(s.map((x) => x.name)).toEqual(['à portée et rentable', 'isolé et rentable', 'à portée et coûteux', 'isolé et coûteux'])
+    expect(s.map((x) => x.name)).toEqual(['groupé et rentable', 'isolé et rentable', 'groupé et coûteux', 'isolé et coûteux'])
     expect(s.map((x) => x.itemStyle!.color)).toEqual(['#101010', '#202020', '#303030', '#404040'])
     for (const x of s) {
       expect(x.type).toBe('bar')
@@ -448,10 +447,10 @@ describe('buildPlacementQuartsOption', () => {
   it('infobulle : « Joueur · N vies » puis une ligne « nom : v % » par quart', () => {
     const o = quarts()
     const html = o.tooltip.formatter([
-      { axisValue: 'JGtm', marker: '<m/>', seriesName: 'à portée et rentable', value: 33.3 },
+      { axisValue: 'JGtm', marker: '<m/>', seriesName: 'groupé et rentable', value: 33.3 },
       { axisValue: 'JGtm', marker: '<m/>', seriesName: 'isolé et coûteux', value: 16.7 },
     ])
-    expect(html).toBe('<b>JGtm</b> · 6 vies<br><m/> à portée et rentable : 33 %<br><m/> isolé et coûteux : 17 %')
+    expect(html).toBe('<b>JGtm</b> · 6 vies<br><m/> groupé et rentable : 33 %<br><m/> isolé et coûteux : 17 %')
     const en = quarts(PLACEMENT_2209, 'en').tooltip.formatter([{ axisValue: 'JGtm', marker: '<m/>', seriesName: 'isolated and costly', value: 16.7 }])
     expect(en).toBe('<b>JGtm</b> · 6 lives<br><m/> isolated and costly: 17%')
     expect(o.tooltip.formatter([{ axisValue: 'Inconnu', marker: '', seriesName: 'x', value: 1 }])).toBe('')
@@ -460,7 +459,7 @@ describe('buildPlacementQuartsOption', () => {
   it('légende native en bas, centrée, une entrée par quart à sa couleur', () => {
     const l = quarts().legend
     expect(l).toMatchObject({ bottom: 4, left: 'center' })
-    expect(l.data.map((d) => d.name)).toEqual(['à portée et rentable', 'isolé et rentable', 'à portée et coûteux', 'isolé et coûteux'])
+    expect(l.data.map((d) => d.name)).toEqual(['groupé et rentable', 'isolé et rentable', 'groupé et coûteux', 'isolé et coûteux'])
     expect(l.data.map((d) => d.itemStyle.color)).toEqual(['#101010', '#202020', '#303030', '#404040'])
   })
 })
@@ -472,7 +471,7 @@ describe('resolvePlacementColors', () => {
     document.documentElement.style.removeProperty('--warning-foreground')
   })
 
-  it('joueurs : palette de la page (ordre de la SÉLECTION, pas du bloc) ; quarts : jetons perf-tier ; repère : jeton', () => {
+  it('joueurs : palette de la page (ordre de la SÉLECTION, pas du bloc) ; quarts : jetons perf-tier ; repère : jeton ; cases : haut de la rampe de fréquence', () => {
     // Sélection Joueur90002 puis Joueur90001 : l’ordre du bloc (JGtm, Joueur90001, Joueur90002) ne compte pas.
     const palette = squadPlayerPalette('JGtm', ['Joueur90002', 'Joueur90001'])
     const c = resolvePlacementColors(palette.tokenOf)
@@ -486,5 +485,6 @@ describe('resolvePlacementColors', () => {
     expect(c.quadrant.in_range_costly).toBe(defaultPalette['perf-tier-4'])
     expect(c.quadrant.isolated_costly).toBe(defaultPalette['perf-tier-5'])
     expect(c.radar).toBe(defaultPalette.extreme)
+    expect(c.heat).toBe(defaultPalette['heatmap-freq-high'])
   })
 })
