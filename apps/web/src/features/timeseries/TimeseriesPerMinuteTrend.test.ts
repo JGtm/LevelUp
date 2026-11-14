@@ -82,6 +82,19 @@ describe('buildPerMinuteTrendOption', () => {
     expect(assists.data).toEqual([0.2, 0.33, 0, null])
   })
 
+  it('arrondi à deux décimales par Math.round, comme avant : 1 frag en 800 s vaut 0,08 (pas 0,07)', () => {
+    // 1 / (800 / 60) = 0,075 : Math.round(7,5) = 8 alors que toFixed lit la valeur binaire sous 0,075.
+    const opt = buildPerMinuteTrendOption(
+      [row({ kills: 1, deaths: 1, assists: 1, time_played_seconds: 800 })],
+      LABELS,
+      true,
+    ) as unknown as Opt
+    const [kills, deaths, assists] = opt.series
+    expect(kills.data).toEqual([0.08])
+    expect(deaths.data).toEqual([-0.08])
+    expect(assists.data).toEqual([0.08])
+  })
+
   it('deux courbes de dégâts sur l axe de droite ; match sans dégâts = trou', () => {
     const opt = buildPerMinuteTrendOption(ROWS, LABELS, true) as unknown as Opt
     expect(opt.series).toHaveLength(5)

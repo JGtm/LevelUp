@@ -41,7 +41,15 @@ export interface PerMinuteTrendLabels {
 /** Rang des courbes de dégâts dans le tableau de séries (après les trois colonnes). */
 const DAMAGE_SERIES_FROM = 3
 
-const round = (v: number | null, decimals: number) => (v == null ? null : Number(v.toFixed(decimals)))
+/**
+ * Arrondi à `decimals` décimales par `Math.round(v * 10^d) / 10^d`, celui du graphe depuis sa création :
+ * `Number(v.toFixed(d))` arrondit la valeur binaire (0,075 devient 0,07) et ferait changer des points.
+ */
+const round = (v: number | null, decimals: number) => {
+  if (v == null) return null
+  const scale = 10 ** decimals
+  return Math.round(v * scale) / scale
+}
 
 /** Plus grande valeur d'une liste de cadences (les absentes comptent pour rien). */
 const peak = (values: (number | null)[]) => Math.max(...values.map((v) => v ?? 0), 0)
@@ -63,7 +71,7 @@ export function buildPerMinuteTrendOption(
 
   const kills = paces.map((p) => round(p.kills, 2))
   // Les morts sont tracées sous l'axe zéro (négatives), comme sur Sessions et Escouade.
-  const deaths = paces.map((p) => (p.deaths == null ? null : -Number(p.deaths.toFixed(2))))
+  const deaths = paces.map((p) => (p.deaths == null ? null : -(round(p.deaths, 2) ?? 0)))
   const assists = paces.map((p) => round(p.assists, 2))
   const dealt = paces.map((p) => round(p.damageDealt, 0))
   const taken = paces.map((p) => round(p.damageTaken, 0))
