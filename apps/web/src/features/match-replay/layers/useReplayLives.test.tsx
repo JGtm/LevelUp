@@ -103,6 +103,25 @@ describe('useReplayLives', () => {
     expect(count(b.ops, 'moveTo')).toBe(2) // retombé sur « tous »
   })
 
+  it('Seul et Masquer : le calque se tait pour les vies que la carte ne montre pas (shownAtSlot)', () => {
+    const seulK = (slot: number) => slot === 1
+    const { result } = renderHook(() => useReplayLives(options({ shownAtSlot: seulK })))
+    const [spawns, deaths, killers] = result.current.layers
+    const s = recordingContext()
+    spawns.paint(s.ctx, 0, 1)
+    expect(count(s.ops, 'moveTo')).toBe(1) // la goutte de k seule
+    const d = recordingContext()
+    deaths.paint(d.ctx, 0, 1)
+    expect(count(d.ops, 'moveTo')).toBe(0) // la victime est v : sa croix se tait
+    const k = recordingContext()
+    killers.paint(k.ctx, 0, 1)
+    expect(count(k.ops, 'closePath')).toBe(1) // le triangle de k reste
+    const sans = renderHook(() => useReplayLives(options()))
+    const d2 = recordingContext()
+    sans.result.current.layers[1].paint(d2.ctx, 0, 1)
+    expect(count(d2.ops, 'moveTo')).toBe(2) // sans filtre, la croix revient
+  })
+
   it('« mon équipe » suit l’allégeance du film : sans camp connu, aucune marque n’est des miennes', () => {
     const { result } = renderHook(() =>
       useReplayLives(options({ settings: { ...options().settings, livesWho: 'team' } })),

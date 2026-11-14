@@ -21,8 +21,8 @@
  * l'âge, jusqu'à un plancher). En « jusqu'ici », l'apparition d'une vie EN COURS reste à pleine
  * opacité : c'est la vie qu'on regarde, pas une trace.
  */
-import { heldReading, msToFrames, positionAt, trackWindow, type XY } from '../../../lib/replay/replayLogic'
-import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import { heldReading, isAliveAt, msToFrames, positionAt, trackWindow, type XY } from '../../../lib/replay/replayLogic'
+import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayFeedEntry } from './killFeedLogic'
 
 /** Les trois lectures du filtre « qui », dans l'ordre où le panneau les propose. */
@@ -49,6 +49,13 @@ export interface LivesActor {
   mine: boolean
   /** Le joueur suivi : celui que la carte marque « moi ». */
   followed: boolean
+  /**
+   * La vie de celui qui a fait la marque, pour « Seul » et « Masquer » du panneau de joueur : son slot
+   * et une image DANS cette vie (`shownAtSlot` ne lit que des vies). `null` = aucune vie retrouvée :
+   * la marque ne peut pas être prouvée affichée, elle se tait tant qu'un filtre est actif.
+   */
+  slot: number | null
+  slotFrame: number
 }
 
 /** L'apparition d'une vie : sa première image visible, et le regard à cette image. */
@@ -103,6 +110,42 @@ export interface LivesResolvers {
   /** Le joueur suivi (marque « moi ») ? */
   followedOfXuid: (xuid: string) => boolean
   followedOfSlot: (slot: number, frame: number) => boolean
+  /** La vie du joueur à une image (ou la dernière, juste close) : son slot et une image dans la vie. */
+  slotAt: (xuid: string, frame: number) => { slot: number; frame: number } | null
+}
+
+/**
+ * lifeSlotAt — la vie d'un joueur à une image : celle qui la couvre, sinon la dernière close depuis moins
+ * de `deathFrames` (la victime vient de mourir, par construction). L'image rendue est ramenée DANS la
+ * vie : une mort datée une image après la fin de la vie reste la mort de CETTE vie.
+ */
+export function lifeSlotAt(
+  lives: readonly ReplayTrackReady[] | undefined,
+  frame: number,
+  deathFrames: number,
+): { slot: number; frame: number } | null {
+  const alive = lives?.find((l) => isAliveAt(l, frame))
+  if (alive) return { slot: alive.slot, frame }
+  let best: { slot: number; frame: number } | null = null
+  let bestAge = Number.POSITIVE_INFINITY
+  for (const l of lives ?? []) {
+    const end = trackWindow(l).end
+    const age = frame - end
+    if (age >= 0 && age <= deathFrames && age < bestAge) {
+      bestAge = age
+      best = { slot: l.slot, frame: end }
+    }
+  }
+  return best
+}
+
+/** Le filtre « Seul / Masquer » : la marque est-elle de ce que la carte montre ? Sans filtre, tout. */
+export function passesShown(
+  mark: Pick<LivesActor, 'slot' | 'slotFrame'>,
+  shownAtSlot: ((slot: number, frame: number) => boolean) | undefined,
+): boolean {
+  if (!shownAtSlot) return true
+  return mark.slot !== null && shownAtSlot(mark.slot, mark.slotFrame)
 }
 
 /**
@@ -136,6 +179,8 @@ function buildSpawns(
       color,
       mine: r.mineOfSlot(life.slot, frame),
       followed: r.followedOfSlot(life.slot, frame),
+      slot: life.slot,
+      slotFrame: frame,
     })
   }
   return { marks, skipped }
@@ -162,28 +207,47 @@ interface DeathFact {
   frame: number
 }
 
-/** Les morts du fil : les frags (victime nommée) et les morts sans tueur, sur l'image du fil. */
+/**
+ * Les morts du fil : les frags (victime nommée) et les morts sans tueur, sur l'image du fil.
+ *
+ * UNE FIN DE VIE N'EST PAS UNE MORT. Dans un match à manches, les vies des survivants se ferment SANS
+ * mort à chaque fin de manche (tous les joueurs repartent au point de départ de leur équipe), et le
+ * fil en fait des lignes neutres : une fin de vie qu'aucun frag ne revendique. Seule une mort neutre
+ * dont le film ÉTABLIT la cause (`kind` : chute, hors-limites, suicide — lue dans le composant
+ * dead-state, `doc.neutralDeaths`) est une vraie mort ; sans cause établie (`kind` vide) la ligne peut
+ * être une fin de manche, et on ne pose pas de croix. Elle est comptée dans les morts non posées.
+ */
 function deathFacts(
   entries: readonly ReplayFeedEntry[],
   doc: Pick<ReplayDocumentReady, 'frameIntervalMs'>,
-): { facts: DeathFact[]; unnamedVictims: number } {
+): { facts: DeathFact[]; unplacedDeaths: number } {
   const facts: DeathFact[] = []
-  let unnamedVictims = 0
+  let unplacedDeaths = 0
   for (const e of entries) {
     if (e.kill) {
       const frame = Math.round(msToFrames(e.kill.replayMs, doc))
       if (e.kill.victimXuid) {
         facts.push({ victimXuid: e.kill.victimXuid, killerXuid: e.kill.xuid, frame })
       } else {
-        unnamedVictims++
+        unplacedDeaths++
         facts.push({ victimXuid: '', killerXuid: e.kill.xuid, frame })
       }
     } else if (e.death) {
+      if (e.death.kind === '') {
+        unplacedDeaths++
+        continue
+      }
       const frame = Math.round(msToFrames(e.death.replayMs, doc))
       facts.push({ victimXuid: e.death.xuid, killerXuid: '', frame })
     }
   }
-  return { facts, unnamedVictims }
+  return { facts, unplacedDeaths }
+}
+
+/** La vie d'un acteur à l'image d'une marque, dans la forme des marques. */
+function slotOf(xuid: string, frame: number, r: LivesResolvers): Pick<LivesActor, 'slot' | 'slotFrame'> {
+  const life = r.slotAt(xuid, frame)
+  return { slot: life?.slot ?? null, slotFrame: life?.frame ?? frame }
 }
 
 /** La croix d'une mort : le lieu où la victime a été relue, à son encre. */
@@ -195,6 +259,7 @@ function deathMarkOf(f: DeathFact, victim: PlacedActor, r: LivesResolvers): Deat
     color: victim.color,
     mine: r.mineOfXuid(f.victimXuid),
     followed: r.followedOfXuid(f.victimXuid),
+    ...slotOf(f.victimXuid, f.frame, r),
   }
 }
 
@@ -213,6 +278,7 @@ function killerMarkOf(
     color: killer.color,
     mine: r.mineOfXuid(f.killerXuid),
     followed: r.followedOfXuid(f.killerXuid),
+    ...slotOf(f.killerXuid, f.frame, r),
   }
 }
 
@@ -229,10 +295,10 @@ export function buildLivesMarks(
   r: LivesResolvers,
 ): LivesMarks {
   const spawn = buildSpawns(doc, r)
-  const { facts, unnamedVictims } = deathFacts(entries, doc)
+  const { facts, unplacedDeaths } = deathFacts(entries, doc)
   const deaths: DeathMark[] = []
   const killers: KillerMark[] = []
-  let skippedDeaths = unnamedVictims
+  let skippedDeaths = unplacedDeaths
   let skippedKillers = 0
   for (const f of facts) {
     const victim = f.victimXuid ? placeActor(f.victimXuid, f.frame, r) : null
@@ -264,7 +330,7 @@ export function effectiveLivesWho(who: LivesWho, followedKnown: boolean): LivesW
 }
 
 /** Le filtre « qui » : la marque est-elle de ceux qu'on veut voir ? */
-export function passesWho(mark: LivesActor, who: LivesWho): boolean {
+export function passesWho(mark: Pick<LivesActor, 'mine' | 'followed'>, who: LivesWho): boolean {
   if (who === 'team') return mark.mine
   if (who === 'followed') return mark.followed
   return true

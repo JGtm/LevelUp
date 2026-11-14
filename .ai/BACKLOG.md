@@ -148,6 +148,12 @@ Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Les faits act
 
 ---
 
+### [rejeu] Les effets de mort ignorent « Seul » et « Masquer » du panneau de joueur
+
+Relevé le 2026-11-14 par la relecture du calque « Vies ». `drawKillFxLayer` (calque `morts` de `layers/replayCompose.ts`, bâti par `useReplayFx` / `model/killFx.ts`) ne reçoit pas `shownAtSlot` : « Seul » et « Masquer » de la fiche joueur n'y filtrent rien, alors que les pions, les tirs et les traces des vies s'y plient (`useReplayPlayerFocus`). Les autres calques d'événement de la carte (`shownSlotPredicate`, commentaire de `model/playerPanelLogic.ts`) disent pourtant que seuls les morts, objectifs, véhicules et objets posés restent hors filtre : la règle est à trancher avec le user avant de câbler, car elle est écrite comme voulue. Fichiers : `apps/web/src/features/match-replay/ui/ReplayCanvas.tsx` (liaison `morts`), `layers/replayDraw.ts` (`drawKillFxLayer`), `model/playerPanelLogic.ts`. **Condition de reprise :** décision du user (le filtre doit-il couper l'effet de mort ?). **Effort : S.**
+
+---
+
 ### [web/couleurs] Infobulle `info-tooltip` ouverte au focus sans filtre clavier ; garde-rail de couleurs incomplet
 
 Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. `components/ui/info-tooltip.tsx` ouvre aussi au focus sans filtre clavier. Le garde-rail de couleurs ne couvre pas `ring-offset`, `outline`, `decoration`, `accent` ni `caret`, et un `color-allow` masque toute couleur de sa ligne. **Condition de reprise :** à planifier après la 8.1.2. **Effort : S.**

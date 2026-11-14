@@ -136,9 +136,9 @@ export const FR_TEXT = {
     personnalise: 'Personnalisé',
   },
   viewPresetHint: {
-    complet: 'Tous les calques',
-    combat: 'Visée, traînées, véhicules, objectifs',
-    deplacements: 'Traînées et zones',
+    complet: 'Tous les calques, sauf le groupe Vies',
+    combat: 'Visée, traînées, véhicules, objectifs, morts et tueurs',
+    deplacements: 'Traînées, zones et apparitions',
     objectif: 'Traînées, zones, objectifs',
   },
   viewCustomNote: 'Les calques ne correspondent à aucun préréglage.',

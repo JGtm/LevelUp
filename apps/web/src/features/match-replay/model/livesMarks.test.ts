@@ -10,14 +10,17 @@ import type { ReplayDocument } from '@/lib/api/types'
 
 import { testReplayDoc } from '../test/testDoc'
 import { buildCarrierPosAt } from './carrierPosition'
+import { buildLivesByXuid, deathWindowFrames } from './livesPosition'
 import type { ReplayFeedEntry, ReplayKill } from './killFeedLogic'
 import {
   buildLivesMarks,
   effectiveLivesWho,
   fadeByAge,
+  lifeSlotAt,
   LIVES_FADE_FLOOR,
   LIVES_FADE_MS,
   markAlpha,
+  passesShown,
   passesWho,
   type LivesResolvers,
 } from './livesMarks'
@@ -84,6 +87,7 @@ function resolvers(d: ReturnType<typeof doc>, over: Partial<LivesResolvers> = {}
     mineOfSlot: (slot) => slot === 1,
     followedOfXuid: (x) => x === 'K',
     followedOfSlot: (slot) => slot === 1,
+    slotAt: (xuid, frame) => lifeSlotAt(buildLivesByXuid(d.tracks).get(xuid), frame, deathWindowFrames(d)),
     ...over,
   }
 }
@@ -139,20 +143,36 @@ describe('buildLivesMarks — les morts et les tueurs', () => {
     const m = buildLivesMarks(d, [entry({ kill: kill() })], resolvers(d))
     // Image 20 : K est interpolé en (2, 0) ; V est en (5, 4) à sa dernière position.
     expect(m.deaths).toEqual([
-      { frame: 20, x: 5, y: 4, color: 'ink-enemy', mine: false, followed: false },
+      { frame: 20, x: 5, y: 4, color: 'ink-enemy', mine: false, followed: false, slot: 2, slotFrame: 20 },
     ])
     expect(m.killers).toEqual([
-      { frame: 20, x: 2, y: 0, victim: { x: 5, y: 4 }, color: 'ink-ally', mine: true, followed: true },
+      { frame: 20, x: 2, y: 0, victim: { x: 5, y: 4 }, color: 'ink-ally', mine: true, followed: true, slot: 1, slotFrame: 20 },
     ])
   })
 
-  it('une mort sans tueur donne une croix, jamais un triangle', () => {
+  it('une mort sans tueur dont le film établit la cause donne une croix, jamais un triangle', () => {
     const d = doc()
-    const death = { replayMs: 9_000, xuid: 'V', kind: '', img: '', tinted: false }
-    const m = buildLivesMarks(d, [entry({ death })], resolvers(d))
-    expect(m.deaths).toHaveLength(1)
-    expect(m.deaths[0]).toMatchObject({ frame: 90, x: 8, y: 6 })
+    for (const kind of ['environment', 'suicide']) {
+      const death = { replayMs: 9_000, xuid: 'V', kind, img: '', tinted: false }
+      const m = buildLivesMarks(d, [entry({ death })], resolvers(d))
+      expect(m.deaths).toHaveLength(1)
+      expect(m.deaths[0]).toMatchObject({ frame: 90, x: 8, y: 6 })
+      expect(m.killers).toEqual([])
+    }
+  })
+
+  it('UNE FIN DE MANCHE N’EST PAS UNE MORT : une fin de vie sans cause établie ne donne aucune croix, et elle est comptée', () => {
+    // Les vies des survivants se ferment sans mort à chaque fin de manche ; le fil en fait des
+    // lignes neutres (`kind` vide : le film n'établit aucune cause). Aucune croix à leur place.
+    const d = doc()
+    const finDeManche = [
+      entry({ death: { replayMs: 2_000, xuid: 'V', kind: '', img: '', tinted: false } }),
+      entry({ death: { replayMs: 10_000, xuid: 'K', kind: '', img: '', tinted: false } }),
+    ]
+    const m = buildLivesMarks(d, finDeManche, resolvers(d))
+    expect(m.deaths).toEqual([])
     expect(m.killers).toEqual([])
+    expect(m.skipped.deaths).toBe(2)
   })
 
   it('un frag sans victime nommée donne le tueur, sans trait, et compte une croix manquante', () => {
@@ -196,6 +216,35 @@ describe('buildLivesMarks — les morts et les tueurs', () => {
     expect(buildLivesMarks(d, [], resolvers(d)).followedKnown).toBe(true)
     const nobody = resolvers(d, { followedOfXuid: () => false, followedOfSlot: () => false })
     expect(buildLivesMarks(d, [entry({ kill: kill() })], nobody).followedKnown).toBe(false)
+  })
+})
+
+describe('Seul et Masquer : la vie de chaque marque', () => {
+  it('chaque marque porte le slot de la vie de celui qui l’a faite, et une image dans cette vie', () => {
+    const d = doc()
+    const m = buildLivesMarks(d, [entry({ kill: kill() })], resolvers(d))
+    expect(m.spawns.map((s) => [s.slot, s.slotFrame])).toEqual([[1, 0], [2, 0], [2, 50]])
+    expect([m.deaths[0].slot, m.deaths[0].slotFrame]).toEqual([2, 20])
+    expect([m.killers[0].slot, m.killers[0].slotFrame]).toEqual([1, 20])
+  })
+
+  it('une mort datée une image après la fin de la vie reste la mort de CETTE vie', () => {
+    const d = doc()
+    const lives = buildLivesByXuid(d.tracks).get('V')
+    // La vie de V finit à l’image 20 : à 21, elle est « juste close », ramenée DANS la vie.
+    expect(lifeSlotAt(lives, 21, 15)).toEqual({ slot: 2, frame: 20 })
+    // Hors de la fenêtre après-mort : aucune vie, rien d’inventé.
+    expect(lifeSlotAt(lives, 40, 15)).toBeNull()
+    expect(lifeSlotAt(undefined, 21, 15)).toBeNull()
+  })
+
+  it('passesShown : sans filtre tout passe ; avec filtre, une marque sans vie se tait', () => {
+    const shown = (slot: number) => slot === 2
+    expect(passesShown({ slot: 1, slotFrame: 0 }, undefined)).toBe(true)
+    expect(passesShown({ slot: null, slotFrame: 0 }, undefined)).toBe(true)
+    expect(passesShown({ slot: 2, slotFrame: 0 }, shown)).toBe(true)
+    expect(passesShown({ slot: 1, slotFrame: 0 }, shown)).toBe(false)
+    expect(passesShown({ slot: null, slotFrame: 0 }, shown)).toBe(false)
   })
 })
 

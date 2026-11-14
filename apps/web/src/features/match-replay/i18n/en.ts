@@ -134,9 +134,9 @@ export const EN_TEXT = {
     personnalise: 'Custom',
   },
   viewPresetHint: {
-    complet: 'All layers',
-    combat: 'Aim, trails, vehicles, objectives',
-    deplacements: 'Trails and zones',
+    complet: 'All layers, except the Lives group',
+    combat: 'Aim, trails, vehicles, objectives, deaths and killers',
+    deplacements: 'Trails, zones and spawns',
     objectif: 'Trails, zones, objectives',
   },
   viewCustomNote: 'The layers match none of the presets.',

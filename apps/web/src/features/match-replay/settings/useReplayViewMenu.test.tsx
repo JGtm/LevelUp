@@ -197,6 +197,67 @@ describe('useReplayViewMenu', () => {
     expect(mount(FULL_FILM, { available: true, shown: true }).result.current.menu.panel.wallPlan.inPlan).toBe(true)
   })
 
+  it('UN PRÉRÉGLAGE CHOISI AVANT LES CALQUES DES VIES RESTE RECONNU : Combat et Déplacements ne passent pas en Personnalisé', () => {
+    // L'état enregistré par une version d'avant : douze calques à l'état du préréglage, les trois
+    // clés des vies ABSENTES.
+    const avant = (cles: Record<string, boolean>, preset: string) => {
+      window.localStorage.clear()
+      window.localStorage.setItem(VIEW_PRESET_KEY, preset)
+      for (const [cle, valeur] of Object.entries(cles)) window.localStorage.setItem(cle, String(valeur))
+    }
+    avant(
+      {
+        'replay-show-zones': false,
+        'replay-show-weapon-pads': false,
+        'replay-show-ground-weapons': false,
+        'replay-show-placements': false,
+        'replay-show-dropped-placements': false,
+      },
+      'combat',
+    )
+    const combat = mount(FULL_FILM)
+    expect(combat.result.current.menu.active).toBe('combat')
+    expect([combat.result.current.settings.showDeaths, combat.result.current.settings.showKillers]).toEqual([true, true])
+    expect(window.localStorage.getItem('replay-show-deaths')).toBeNull()
+
+    avant(
+      {
+        'replay-show-aim': false,
+        'replay-show-vehicles': false,
+        'replay-show-weapon-pads': false,
+        'replay-show-ground-weapons': false,
+        'replay-show-placements': false,
+        'replay-show-dropped-placements': false,
+        'replay-show-mode-objectives': false,
+        'replay-show-flag-carries': false,
+        'replay-show-vip-crown': false,
+        'replay-show-skull-carrier': false,
+        'replay-show-bomb-carrier': false,
+      },
+      'deplacements',
+    )
+    const deplacements = mount(FULL_FILM)
+    expect(deplacements.result.current.menu.active).toBe('deplacements')
+    expect(deplacements.result.current.settings.showSpawns).toBe(true)
+  })
+
+  it('un état d’avant sans préréglage retenu, ou retenu Complet ou Objectif, garde les vies éteintes', () => {
+    window.localStorage.clear()
+    expect(mount(FULL_FILM).result.current.settings.showDeaths).toBe(false)
+    for (const preset of ['complet', 'objectif']) {
+      window.localStorage.setItem(VIEW_PRESET_KEY, preset)
+      const s = mount(FULL_FILM).result.current.settings
+      expect([s.showSpawns, s.showDeaths, s.showKillers]).toEqual([false, false, false])
+    }
+  })
+
+  it('un interrupteur des vies écrit à la main prime sur le préréglage retenu', () => {
+    window.localStorage.setItem(VIEW_PRESET_KEY, 'combat')
+    window.localStorage.setItem('replay-show-deaths', 'false')
+    const s = mount(FULL_FILM).result.current.settings
+    expect([s.showDeaths, s.showKillers]).toEqual([false, true])
+  })
+
   it('les trois calques des vies sont éteints à l’ouverture : Complet est l’état d’ouverture', () => {
     const { result } = mount(FULL_FILM)
     const s = result.current.settings

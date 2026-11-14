@@ -33,15 +33,15 @@ function paint(over: Partial<LivesPaint> = {}): LivesPaint {
 }
 
 function spawn(over: Partial<SpawnMark> = {}): SpawnMark {
-  return { frame: 0, endFrame: 100, x: 25, y: 25, headingDeg: 0, color: 'team-ink', mine: true, followed: false, ...over }
+  return { frame: 0, endFrame: 100, x: 25, y: 25, headingDeg: 0, color: 'team-ink', mine: true, followed: false, slot: 1, slotFrame: 0, ...over }
 }
 
 function death(over: Partial<DeathMark> = {}): DeathMark {
-  return { frame: 0, x: 25, y: 25, color: 'victim-ink', mine: true, followed: false, ...over }
+  return { frame: 0, x: 25, y: 25, color: 'victim-ink', mine: true, followed: false, slot: 1, slotFrame: 0, ...over }
 }
 
 function killer(over: Partial<KillerMark> = {}): KillerMark {
-  return { frame: 0, x: 25, y: 25, victim: { x: 75, y: 25 }, color: 'killer-ink', mine: true, followed: false, ...over }
+  return { frame: 0, x: 25, y: 25, victim: { x: 75, y: 25 }, color: 'killer-ink', mine: true, followed: false, slot: 1, slotFrame: 0, ...over }
 }
 
 /** Les couleurs de trait posées, dans l'ordre. */
@@ -150,6 +150,42 @@ describe('drawKillerMarks — le triangle creux et son trait', () => {
     const { ctx, ops } = recordingContext()
     drawKillerMarks(ctx, [killer()], VIEW, paint())
     expect(new Set(strokes(ops))).toEqual(new Set(['under-ink', 'killer-ink']))
+  })
+})
+
+describe('Seul et Masquer, vus du dessin', () => {
+  const seulSlot2 = (slot: number) => slot === 2
+
+  it('les trois calques ne peignent que les marques des vies que la carte montre', () => {
+    const peint = (draw: (ctx: CanvasRenderingContext2D, p: LivesPaint) => void, shownAtSlot?: LivesPaint['shownAtSlot']) => {
+      const { ctx, ops } = recordingContext()
+      draw(ctx, paint({ shownAtSlot }))
+      return count(ops, 'stroke')
+    }
+    const draws = {
+      spawns: (ctx: CanvasRenderingContext2D, p: LivesPaint) => drawSpawnMarks(ctx, [spawn({ slot: 1 }), spawn({ slot: 2 })], VIEW, p),
+      deaths: (ctx: CanvasRenderingContext2D, p: LivesPaint) => drawDeathMarks(ctx, [death({ slot: 1 }), death({ slot: 2 })], VIEW, p),
+      killers: (ctx: CanvasRenderingContext2D, p: LivesPaint) =>
+        drawKillerMarks(ctx, [killer({ slot: 1, victim: null }), killer({ slot: 2, victim: null })], VIEW, p),
+    }
+    for (const draw of Object.values(draws)) {
+      // Sans filtre : deux marques, deux passes de trait chacune ; filtre posé sur le slot 2 : une seule.
+      expect(peint(draw)).toBe(4)
+      expect(peint(draw, seulSlot2)).toBe(2)
+    }
+  })
+
+  it('un filtre actif écarte la marque dont on ne retrouve aucune vie', () => {
+    const { ctx, ops } = recordingContext()
+    drawDeathMarks(ctx, [death({ slot: null })], VIEW, paint({ shownAtSlot: () => true }))
+    expect(count(ops, 'stroke')).toBe(0)
+  })
+
+  it('le filtre lit l’image DANS la vie de la marque', () => {
+    const vu: Array<[number, number]> = []
+    const { ctx } = recordingContext()
+    drawDeathMarks(ctx, [death({ slot: 3, slotFrame: 20, frame: 21 })], VIEW, paint({ shownAtSlot: (s, f) => (vu.push([s, f]), true) }))
+    expect(vu).toEqual([[3, 20]])
   })
 })
 

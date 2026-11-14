@@ -415,7 +415,7 @@ export function ReplayCanvas({
   }) // schéma 39 ; prédicat embarqué C7 ; cône du conducteur + nom ET couleur par xuid (2026-09-02) ; explosion de destruction (2026-09-03, en avance de phase).
   // LES TRACES DES VIES (apparitions, morts, tueurs) : marques bâties une fois, filtre qui / quand des réglages.
   const lives = useReplayLives({
-    doc, view: canvasView, feedEntries, settings, allegiance, marks, ink: labelStroke,
+    doc, view: canvasView, feedEntries, settings, allegiance, marks, ink: labelStroke, shownAtSlot,
     identity: { colorOfSlot, colorOfXuid, campOfSlot, markOfSlot, seatedOfXuid },
   })
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un

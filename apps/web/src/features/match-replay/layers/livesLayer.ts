@@ -16,7 +16,7 @@
  */
 import { shiftHeadingDeg } from '@/lib/replay/orientation'
 
-import { markAlpha, passesWho, type DeathMark, type KillerMark, type LivesTime, type LivesWho, type SpawnMark } from '../model/livesMarks'
+import { markAlpha, passesShown, passesWho, type DeathMark, type KillerMark, type LivesTime, type LivesWho, type SpawnMark } from '../model/livesMarks'
 import { projectTo, turnsOfView, type CanvasView } from '../model/replayView'
 
 /** La goutte reste plus petite que le pion (rayon 3,4 px) : anneau de 2,4 px, pointe à 5,2 px. */
@@ -39,6 +39,17 @@ export interface LivesPaint {
   /** Encre du liseré sombre sous le trait de couleur. */
   underlay: string
   k: number
+  /** « Seul » et « Masquer » du panneau de joueur : ce que porte une vie se dessine-t-il ? Absent = aucun filtre. */
+  shownAtSlot?: (slot: number, frame: number) => boolean
+}
+
+/** Une marque se peint si elle est visible à cette image, du camp voulu et de ce que la carte montre. */
+function shown(
+  m: Pick<SpawnMark, 'slot' | 'slotFrame' | 'mine' | 'followed'>,
+  alpha: number,
+  p: LivesPaint,
+): boolean {
+  return alpha > 0 && passesWho(m, p.who) && passesShown(m, p.shownAtSlot)
 }
 
 /** Passe un trait deux fois : le liseré sombre, puis la couleur d'équipe. */
@@ -87,7 +98,7 @@ export function drawSpawnMarks(
   const turns = turnsOfView(view)
   for (const m of marks) {
     const alpha = markAlpha(m.frame, p.time, m.endFrame)
-    if (alpha <= 0 || !passesWho(m, p.who)) continue
+    if (!shown(m, alpha, p)) continue
     const c = projectTo(view, m)
     const r = DROP_RING_RADIUS * p.k
     if (m.headingDeg === null) {
@@ -111,7 +122,7 @@ export function drawDeathMarks(
 ): void {
   for (const m of marks) {
     const alpha = markAlpha(m.frame, p.time)
-    if (alpha <= 0 || !passesWho(m, p.who)) continue
+    if (!shown(m, alpha, p)) continue
     const c = projectTo(view, m)
     const a = CROSS_ARM * p.k
     ctx.beginPath()
@@ -155,7 +166,7 @@ export function drawKillerMarks(
 ): void {
   for (const m of marks) {
     const alpha = markAlpha(m.frame, p.time)
-    if (alpha <= 0 || !passesWho(m, p.who)) continue
+    if (!shown(m, alpha, p)) continue
     const c = projectTo(view, m)
     const v = m.victim ? projectTo(view, m.victim) : null
     if (v && traceLink(ctx, c, v)) strokeTwice(ctx, m.color, LINK_WIDTH, alpha, p)

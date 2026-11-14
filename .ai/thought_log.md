@@ -28,6 +28,11 @@
 - Décision : une seule passe `backfill-replay` (sans `--force`), binaire construit depuis `release/v8.2.0` à 76da40dc4f (décodeur v1.3.7), ressources d'un worktree détaché sans jonction (`C:\t\regen116`), données du dépôt principal (`LEVELUP_DATA_DIR`), serveur local arrêté ; feu vert de la session pilote et go du user du 13/11.
 - Résultats : 1 455 rejeux générés (tous redécodés : faits au schéma 19, lus au 22), 4 cartes hors catalogue (échec voulu), 2 erreurs de décodage sur des dossiers de film vides sans rejeu antérieur, 0 mort mémoire (pic 2,58 Gio), 1 h 36. Un rejeu reste au schéma 107 (match d'un joueur tiers, film absent de l'archive). Archive 1 614 films / 2 267 manifestes avant et après ; nombre de fichiers du dossier des rejeux inchangé (3 052).
 - Suite : vérifications à l'écran du user (artefact verifs : 30ips-rejeu, maquettes-07-destructions, via `C:\t\regen116-bin\lancer_8_2_0.ps1`) ; copie des rejeux vers la prod = geste du user ; clôture des plans 30 images/s et maquettes après la revue du pilote.
+## [2026-11-14] Compléments 8.2.0, étape 8, ronde 2 : correctifs de la relecture des calques « Vies » — Complété (branche `feat/c820-rejeu`, pas de push)
+
+- **Décision** : (P1) une mort neutre du fil ne donne une croix que si le film en établit la cause (`kind` non vide, `doc.neutralDeaths`) : les vies des survivants se ferment sans mort à chaque fin de manche et le fil en fait des lignes neutres sans cause ; le signal existe, aucune heuristique de fenêtre ajoutée. (P2-a) le défaut des trois calques est tiré du préréglage retenu tant que la clé n'a jamais été écrite : Combat ou Déplacements choisi avant le lot reste reconnu. (P2-b) descriptions des préréglages corrigées. (P2-c) `shownAtSlot` passé au calque, la marque porte le slot et une image dans sa vie.
+- **Résultats** : un test par constat, rouge sans la correction ; entrée de backlog pour les effets de mort.
+- **Conclusion** : contrôle à l'écran dans un match à manches (Oddball, Drapeau) : aucune croix à la fin de manche.
 
 ## [2026-11-14] Compléments 8.2.0, étape 8 : calques « Vies » du rejeu (apparitions, morts, tueurs) — Complété (branche `feat/c820-rejeu`, web seul, pas de push)
 
