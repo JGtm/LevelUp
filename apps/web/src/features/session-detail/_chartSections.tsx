@@ -58,6 +58,8 @@ import { SessionEngagementCumulative } from './SessionEngagementCumulative'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { SessionDamageComposite } from './SessionDamageComposite'
+import { sessionPerMinuteRates } from './sessionPerMinute.logic'
+import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import { SessionOcdrBars } from './SessionOcdrBars'
 import { SessionCareerXP } from './SessionCareerXP'
 
@@ -154,12 +156,27 @@ export function useSessionChartSections({
   )
   const fdaRadar = <SessionFdaRadar title={t('session.detail.chart_fda_per_game_title')} matches={matches} />
   const fragsRadar = <SessionFragsRadar title={t('session.detail.chart_frags_radar_title')} entry={entry} />
+  // « Stats par minute » : les dégâts par minute s'ajoutent au graphe (axe de droite) quand la
+  // session en porte ; son titre les nomme alors, avec une aide qui dit comment la cadence est
+  // calculée.
+  const perMinute = sessionPerMinuteRates(matches, useProvidesDamageTaken())
+  const perMinuteHasDamage = perMinute?.damageDealt != null || perMinute?.damageTaken != null
   const fdaBars = (
     <SessionFdaBars
-      title={t('session.detail.chart_fda_per_minute_title')}
+      title={
+        perMinuteHasDamage ? (
+          <span className="flex items-center gap-1.5">
+            {t('session.detail.chart_fda_damage_per_minute_title')}
+            <InfoTooltip content={t('session.detail.chart_fda_damage_info')} />
+          </span>
+        ) : (
+          t('session.detail.chart_fda_per_minute_title')
+        )
+      }
       matches={matches}
       mode="minute"
       yDomain={scale?.fdaMinute}
+      yDomainRight={scale?.damageMinute}
     />
   )
   const participation = (

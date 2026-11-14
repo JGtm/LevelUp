@@ -286,6 +286,18 @@ en = "Kills / Deaths / Assists per game"
 fr = "Stats par minute — Frags / Morts / Assistances"
 en = "Per-minute stats — Kills / Deaths / Assists"
 
+[session.detail.chart_fda_damage_per_minute_title]
+fr = "Stats par minute — Frags / Morts / Assistances / Dégâts"
+en = "Per-minute stats — Kills / Deaths / Assists / Damage"
+
+[session.detail.chart_fda_damage_axis]
+fr = "Dégâts / min"
+en = "Damage / min"
+
+[session.detail.chart_fda_damage_info]
+fr = "Chaque cadence est la somme des comptes divisée par la somme des minutes jouées. Les dégâts se lisent sur l'axe de droite, sur les matchs dont les dégâts sont connus ; les morts et les dégâts subis sont tracés sous la ligne zéro."
+en = "Each rate is the sum of the counts divided by the sum of the minutes played. Damage is read on the right axis, over the matches whose damage is known; deaths and damage taken are drawn below the zero line."
+
 [session.detail.chart_fda_radar_series]
 fr = "Moyenne / match"
 en = "Avg / game"

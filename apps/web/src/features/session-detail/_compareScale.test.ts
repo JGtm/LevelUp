@@ -58,8 +58,8 @@ describe('computeCompareScale', () => {
 
     // Net cumulé : A=[+3, 0], B=[+8] → [min∪0, max] = [0, 8].
     expect(s.netScore).toEqual([0, 8])
-    // FDA/min : A frags 3/assists 2/morts 3 ; B frags 5/assists 2.5/morts 1 → [−3, 5].
-    expect(s.fdaMinute).toEqual([-3, 5])
+    // Les cadences par minute ne sont pas dans cette échelle : la page les compose (perMinuteDomains).
+    expect(s.fdaMinute).toBeUndefined()
     // Engagement : valeurs A+B = [-1.2, 2, 0.5] → [min∪0, max∪0] = [-1.2, 2].
     expect(s.engagement).toEqual([-1.2, 2])
     // Placements : max compte = 1 ; axe X commun = max(8, 12) = 12.
@@ -72,7 +72,6 @@ describe('computeCompareScale', () => {
   it('sessions vides → aucune borne (auto-scale partout)', () => {
     const s = computeCompareScale([], null, [], null, 225)
     expect(s.netScore).toBeUndefined()
-    expect(s.fdaMinute).toBeUndefined()
     expect(s.engagement).toBeUndefined()
     expect(s.placementMaxCount).toBeUndefined()
     expect(s.modeMaxCount).toBeUndefined()

@@ -34,7 +34,7 @@ import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSessionContextStore } from '@/stores/sessionContextStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { useEffectiveHpToKill } from '@/lib/damage/effectiveHp'
+import { useEffectiveHpToKill, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 
 import { useSessionDetailPage } from './queries'
 import { useSessionT } from './_shared'
@@ -44,6 +44,7 @@ import { useCapability } from '@/lib/capabilities/capabilities'
 import { sessionRowKeys } from './_sections'
 import { sessionColumnBlocks } from './sessionEmprise.logic'
 import { computeCompareScale, rangeDeltaDomain, type CompareScale } from './_compareScale'
+import { perMinuteDomains } from './sessionPerMinute.logic'
 
 export function SessionDetailPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -133,6 +134,7 @@ export function SessionDetailPage() {
   // Barème PV-pour-tuer du titre courant (225 Infinite, 115 H5) → conversion des
   // dégâts en vies pour le domaine partagé de la balance des dégâts cumulée.
   const hp = useEffectiveHpToKill()
+  const withDamageTaken = useProvidesDamageTaken()
   const compareScale = useMemo<CompareScale | undefined>(() => {
     if (!enableCompare || !data?.compare_session) return undefined
     return {
@@ -146,8 +148,11 @@ export function SessionDetailPage() {
       // L'axe Y de la portée se calcule sur les BLOCS, pas sur les matchs : composé ici
       // plutôt que passé à `computeCompareScale` (cf. son en-tête, seuil de paramètres).
       rangeDelta: rangeDeltaDomain(data.range_profiles, data.compare_range_profiles),
+      // Même raison pour les cadences par minute : le choix « dégâts subis fournis ou non » est un
+      // paramètre de plus. Les deux axes (comptes à gauche, dégâts à droite) se bornent ensemble.
+      ...perMinuteDomains([data.matches ?? [], data.compare_matches ?? []], withDamageTaken),
     }
-  }, [enableCompare, data, hp])
+  }, [enableCompare, data, hp, withDamageTaken])
   // Les blocs de chaque colonne, stables tant que la réponse ne change pas (modèles mémoïsés des cartes).
   const currentBlocks = useMemo(() => (data ? sessionColumnBlocks(data, 'current') : null), [data])
   const compareBlocks = useMemo(() => (data ? sessionColumnBlocks(data, 'compare') : null), [data])
