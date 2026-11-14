@@ -45,7 +45,7 @@ export interface CardGabarit {
    * Les MARQUES SOUPLES de la rangée d'inventaire rendues en texte à côté des cellules (vrai) —
    * « Mort » / « Inventaire indisponible », « ×N » / « plein » des charges — ou reportées dans
    * les infobulles des cellules concernées (faux, décision D5). Les deux autres marques
-   * (« dégainée ? », « sél. ? ») suivent la cellule qui les porte : `showAmmo`,
+   * (« dégainée ? », « grenade en main : inconnue ») suivent la cellule qui les porte : `showAmmo`,
    * `showGrenadeStock`.
    */
   showInventoryMarks: boolean

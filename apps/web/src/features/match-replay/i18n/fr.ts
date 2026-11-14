@@ -396,7 +396,7 @@ export const FR_TEXT = {
   grenadeSelected: 'Type équipé : le seul porté, donc celui qui partira au prochain lancer.',
   grenadeSelectedRead:
     'Type équipé, LU dans le film (sélecteur de grenade de l’image-clé) : celui qui partira au prochain lancer.',
-  grenadeSelUnknown: 'sél. ?',
+  grenadeSelUnknown: 'Grenade en main : inconnue',
   grenadeAge: 'Grenades lues il y a',
   grenadeAhead: 'Grenades lues dans',
   abilityUnidentified: (rank) => `capacité non identifiée (rang ${rank})`,

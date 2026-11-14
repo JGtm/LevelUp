@@ -391,7 +391,7 @@ export const EN_TEXT = {
   grenadeSelected: 'Equipped type: the only one carried, so the one the next throw will use.',
   grenadeSelectedRead:
     'Equipped type, READ from the film (keyframe grenade selector): the one the next throw will use.',
-  grenadeSelUnknown: 'sel. ?',
+  grenadeSelUnknown: 'Grenade in hand: unknown',
   grenadeAge: 'Grenades read',
   grenadeAhead: 'Grenades read in',
   abilityUnidentified: (rank) => `unidentified ability (rank ${rank})`,

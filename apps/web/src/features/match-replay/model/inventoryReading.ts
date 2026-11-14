@@ -172,7 +172,7 @@ export function inventoryEmptyHint(
  *   - { rank, read: true }  : LU dans le film (sélecteur i47 de l'image-clé) ;
  *   - { rank, read: false } : DÉDUIT — un seul type porté, donc c'est lui ;
  *   - 'indeterminate'       : plusieurs types portés et sélecteur non lu — l'écran doit le
- *     DIRE (« sél. ? »), pas choisir ;
+ *     DIRE (« grenade en main : inconnue », dans l'infobulle), pas choisir ;
  *   - null                  : rien à désigner (compteurs non lus, ou aucun type porté).
  */
 export type GrenadeSelection = { rank: number; read: boolean } | 'indeterminate' | null

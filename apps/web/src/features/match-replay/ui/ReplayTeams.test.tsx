@@ -194,12 +194,13 @@ describe('ReplayTeams — grenade SÉLECTIONNÉE', () => {
     expect(screen.getByTitle(/^Plasma — .*le seul porté/)).toBeTruthy()
   })
 
-  it('deux types sans lecture : « sél. ? » — l’indétermination se dit, elle ne se devine pas', () => {
+  it('deux types sans lecture : l’indétermination se dit dans l’infobulle, jamais en texte sur la fiche', () => {
     renderTeams({
       grenadeLabels: LABELS,
       inventory: [{ t: 0, slot: 512, g: [1, 2] }],
     })
-    expect(screen.getByText('sél. ?')).toBeTruthy()
+    expect(screen.queryByText(/Grenade en main/)).toBeNull()
+    expect(screen.getByTitle(/^Grenade en main : inconnue/)).toBeTruthy()
     // Aucun des deux types n'est marqué sélectionné (title = nom seul).
     expect(screen.getByTitle('Plasma')).toBeTruthy()
     expect(screen.getByTitle('Fragmentation')).toBeTruthy()

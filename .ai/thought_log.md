@@ -1,3 +1,9 @@
+## [2026-11-14] Fiche de joueur : « sél. ? » retiré de l'écran, dit dans l'infobulle — Complété (poussé sur `release/v8.2.0`)
+
+- **Décision** : retour du user (capture : « sel. » coupé sur une fiche), proposition acceptée (« oui ») : la fiche complète n'écrit plus `grenadeSelUnknown` à côté des grenades ; il ouvre l'infobulle de la boîte des grenades, comme sur la tuile compacte (décision D5). Les deux types restent dessinés, aucun mis en avant. Libellé clair : « Grenade en main : inconnue » / « Grenade in hand: unknown » (les deux fiches).
+- **Résultats** : fixations DOM 4v4 et 6v6 régénérées, diff relu : seuls le `span` du texte et le `title` de la boîte changent ; suite `features/match-replay` 4 282 tests verts, gardes i18n verts, typecheck et ESLint 0.
+- **Suite** : vérification à l'écran par le user sur une fiche à deux sortes de grenades.
+
 ## [2026-11-14] Fil du rejeu : un pictogramme par nature de prise — Complété (poussé sur `release/v8.2.0`)
 
 - **Décision** : demande du user (14/11), formes validées (« oui ok ») : la ligne d'une prise porte la nature de ce qui est pris, par la règle qui teinte déjà les socles de la carte (`padFamilyOf` : famille d'équipement, puis clé canonique du titre dans `weaponLabels`, repli râtelier). `PickupEventLine.nature` posé par `pickupFeedLogic` (socle) et `groundPickupFeedLogic` (sol) via `pickupNatureOf` ; `PICKUP_NATURE_GLYPH` : râtelier = l'arme (tracé d'avant), arme spéciale = l'arme et une étoile, équipement = un bouclier. Couleur inchangée (encre du camp du joueur) ; le menu de filtre garde une seule entrée « Armes et bonus ». Une arme ordinaire ramassée au sol porte le pictogramme du râtelier, comme sa couleur sur la carte.

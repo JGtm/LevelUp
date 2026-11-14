@@ -60,7 +60,7 @@ function loadoutDe(nom: string, slot: number) {
  *  - Juliett : charge consommée à 25 % → « Charge restante : 75 % » ;
  *  - Hotel : emplacement de la main jamais écrit → « Munitions pleines » ;
  *  - India : armes RANGÉES (D=2) → aucune munition ;
- *  - Charlie : sélecteur NON LU, deux types de grenade → « dégainée ? » et « sél. ? » ;
+ *  - Charlie : sélecteur NON LU, deux types de grenade → « dégainée ? » et « grenade en main : inconnue » ;
  *  - Oscar : lecture pleine, puis lecture VIDE corroborée « mort » à l'image 50 ;
  *  - Papa : sélecteur non lu, un seul type → « dégainée ? », sélection DÉDUITE ;
  *  - Quebec : première lecture À VENIR (image 150) → âges négatifs, « dans X s ».
@@ -294,7 +294,7 @@ describe('ReplayPlayerCard — la tuile compacte (mode_category BTB) : gate 2', 
     const bravo = tuile(vue, 'Bravo')
     expect(within(bravo).queryByText(/×/)).toBeNull()
     expect(within(bravo).queryByTitle(/Grenades lues/)).toBeNull()
-    expect(within(bravo).queryByText('sél. ?')).toBeNull()
+    expect(within(bravo).queryByText(/Grenade en main/)).toBeNull()
   })
 
   it('(f) capacité hors table → glyphe neutre de 16 px, rang dans le `title`', () => {
@@ -462,7 +462,7 @@ describe('ReplayPlayerCard — la tuile compacte : gate 3 (ce qui quitte la tuil
     expect(vue.queryByLabelText('Munitions pleines')).toBeNull()
   })
 
-  it('stock des grenades dans le `title` de la cellule de grenade (grenadeBoxHint), sélection LUE / DÉDUITE / « sél. ? » ; cellule de 14 px', () => {
+  it('stock des grenades dans le `title` de la cellule de grenade (grenadeBoxHint), sélection LUE / DÉDUITE / inconnue ; cellule de 14 px', () => {
     const { vue } = renderBTB(12)
     const alpha = tuile(vue, 'Alpha')
     const cellule = within(alpha).getByTitle(/Fragmentation ×1 · Plasma ×2 · Grenades lues il y a/)
@@ -474,12 +474,12 @@ describe('ReplayPlayerCard — la tuile compacte : gate 3 (ce qui quitte la tuil
     // Un seul type porté, sans sélecteur : DÉDUITE, et dite déduite.
     const golf = within(tuile(vue, 'Golf')).getByTitle(/Grenades lues il y a/)
     expect(golf.title).toContain('Type équipé : le seul porté')
-    // Deux types sans sélecteur : la cellule reste VIDE, « sél. ? » dans son infobulle.
+    // Deux types sans sélecteur : la cellule reste VIDE, « grenade en main : inconnue » dans son infobulle.
     const charlie = within(tuile(vue, 'Charlie')).getByTitle(/Grenades lues il y a/)
-    expect(charlie.title).toContain('sél. ?')
+    expect(charlie.title).toContain('Grenade en main : inconnue')
     expect(charlie.textContent).toBe('')
     expect(charlie.querySelector('[role="img"]')).toBeNull()
-    expect(vue.queryByText('sél. ?')).toBeNull()
+    expect(vue.queryByText(/Grenade en main/)).toBeNull()
   })
 
   it('score personnel dans le `title` du triplet (playerScoreLiveFmt), aucune cellule de score', () => {
