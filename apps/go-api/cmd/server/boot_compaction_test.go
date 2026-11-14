@@ -139,12 +139,10 @@ func TestCompactPassesAtBootAllTitles_GardeParLaCapacite(t *testing.T) {
 	for _, tc := range []struct {
 		nom      string
 		capacite bool
-		demo     bool
 		appel    bool
 	}{
-		{"desktop", true, false, true},
-		{"heberge", false, false, false},
-		{"demo", true, true, false},
+		{"desktop", true, true},
+		{"heberge", false, false},
 	} {
 		t.Run(tc.nom, func(t *testing.T) {
 			var vus []string
@@ -157,7 +155,6 @@ func TestCompactPassesAtBootAllTitles_GardeParLaCapacite(t *testing.T) {
 
 			var cfg config.AppConfig
 			cfg.Capabilities.CompactPassesAtStartup = tc.capacite
-			cfg.DemoMode = tc.demo
 			compactPassesAtBootAllTitles(context.Background(), &cfg, pr, reg)
 
 			if tc.appel && len(vus) != len(reg.All()) {

@@ -159,7 +159,7 @@ func TestTitleStepsRunEndToEnd_Player(t *testing.T) {
 	for _, table := range []string{
 		"player_match_enrichment", "career_progression", "match_skill_rank", "sessions",
 		"match_citations", "arc", "challenge", "moment_card", "prestige_telemetry",
-		"baseline_state", "improvement_campaign", "streak", "record_history", "milestone_earned",
+		"baseline_state", "improvement_campaign", "streak_history", "record_history", "milestone_earned",
 	} {
 		var n int
 		if err := db.QueryRow(

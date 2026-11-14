@@ -94,6 +94,7 @@ var canonicalOrder = []string{
 	"msr_written_at_default_now_repair_v1",           // player
 	"player_append_only_personal_score_awards_v1",    // player
 	"create_streak_history_append_only",              // player
+	"drop_streak_legacy_v1",                          // player (retrait de la table streak héritée, après la recopie vers streak_history)
 	"add_player_assists_model",                       // player
 	"create_coach_proposal_player_schema",            // player
 	"dedup_record_history_v1",                        // player
@@ -382,6 +383,10 @@ var canonicalOrder = []string{
 	// changement de CLASSE sur une clé déjà semée n'atteint jamais une base de production
 	// sans ce step. Title-owned Halo Infinite (2026-09-01).
 	"metadata_reclass_sword_hammer_heavy_v1", // metadata
+	// Records de précision rangés en pourcentage (échelle fausse corrigée à la lecture) : une ligne
+	// neuve en ratio par dernier record, APRÈS les steps qui créent player_records_history et sa
+	// vue. Title-owned Halo Infinite (2026-11-14).
+	"shared_social_accuracy_records_ratio_v1", // shared_social
 }
 
 var canonicalIndex = func() map[string]int {

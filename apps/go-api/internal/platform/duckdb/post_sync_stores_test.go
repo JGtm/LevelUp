@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/progression/records"
 )
 
 const postSyncTestXUID = "xuid-post-sync-store"
@@ -39,9 +40,9 @@ func newPostSyncFixture(t *testing.T) (*PlayerDB, time.Time, time.Time) {
 		secs    int
 		dmg     int
 	}{
-		{"m1", &d1, 2, 10, 5, 1.5, 0.6, 600, 2000},
-		{"m2", &d2, 3, 4, 8, -0.5, 0.4, 300, 800},
-		{"m3", nil, 2, 99, 1, 9.0, 0.9, 600, 9000},
+		{"m1", &d1, 2, 10, 5, 1.5, 60, 600, 2000},
+		{"m2", &d2, 3, 4, 8, -0.5, 40, 300, 800},
+		{"m3", nil, 2, 99, 1, 9.0, 90, 600, 9000},
 	} {
 		if m.at != nil {
 			if _, err := shared.Exec(ctx, `INSERT INTO match_registry (match_id, start_time, start_time_utc) VALUES (?, ?, ?)`,
@@ -109,8 +110,9 @@ func TestPostSyncProgressionStore_MatchsScoresEtAgregats(t *testing.T) {
 	if agg.MatchesPlayed != 3 || agg.Wins != 2 || agg.Kills != 113 || agg.Headshots != 3 || agg.Assists != 6 {
 		t.Errorf("agrégats = %+v", agg)
 	}
-	if agg.AccuracyDays != 1 {
-		t.Errorf("jours de précision = %d, attendu 1 (m1 seul atteint 0,5 avec un début)", agg.AccuracyDays)
+	// La colonne est en pourcentage et le seuil en ratio : tout match à plus de 0,5 % compte (m1 et m2).
+	if agg.AccuracyDays != 2 {
+		t.Errorf("jours de précision = %d, attendu 2 (m1 et m2 ont un début ; seuil ratio contre colonne pourcentage)", agg.AccuracyDays)
 	}
 
 	times, err := st.LastMatchTimes(ctx)
@@ -164,5 +166,27 @@ func TestPlayerSnapshotStore_LitLeJoueurEtLaBasePartagee(t *testing.T) {
 	NewPlayerSnapshotStore(&PlayerDB{Player: pdb.Player, SharedReader: pdb.SharedReader}).FillSharedAggregates(ctx, empty)
 	if empty.KDRatio != 0 || empty.EarnedMedalIDs != nil {
 		t.Errorf("sans xuid : rien ne doit être lu, obtenu %+v", empty)
+	}
+}
+
+// La précision stockée en pourcentage (61,73 : la valeur du journal de démarrage) sort en ratio dans
+// les bornes des records ; sans la conversion, aucun record de précision ne se pose.
+func TestPostSyncProgressionStore_PrecisionEnRatio(t *testing.T) {
+	pdb, d1, _ := newPostSyncFixture(t)
+	ctx := context.Background()
+	if _, err := pdb.Shared.Exec(ctx, `UPDATE match_participants SET accuracy = 61.73 WHERE match_id = 'm1'`); err != nil {
+		t.Fatalf("maj précision: %v", err)
+	}
+	rows, err := NewPostSyncProgressionStore(pdb).MatchRows(ctx, d1.AddDate(0, -1, 0))
+	if err != nil || len(rows) != 2 {
+		t.Fatalf("MatchRows: %v (%d lignes)", err, len(rows))
+	}
+	if got := rows[0].Accuracy; got < 0.6172 || got > 0.6174 {
+		t.Errorf("précision de m1 = %v, attendu 0,6173 (ratio)", got)
+	}
+	for _, r := range rows {
+		if !records.IsPlausibleValue(records.MetricAccuracy, r.Accuracy) {
+			t.Errorf("précision %v de %s hors des bornes des records", r.Accuracy, r.MatchID)
+		}
 	}
 }

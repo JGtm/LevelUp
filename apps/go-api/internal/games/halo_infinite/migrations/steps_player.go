@@ -221,6 +221,13 @@ func playerSteps() []migration.Migration {
 				return nil
 			},
 		},
+		{
+			Name:     "drop_streak_legacy_v1",
+			TargetDB: migration.TargetPlayer,
+			Description: "Supprime la table héritée streak (remplacée par streak_history + la vue streak_latest) " +
+				"quand toutes ses lignes ont été recopiées dans streak_history ; sinon la laisse et le journalise.",
+			ApplySchema: dropLegacyStreakTable,
+		},
 	}
 }
 

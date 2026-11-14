@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -145,5 +146,35 @@ func TestPlaylistExpansion_ContexteAnnule(t *testing.T) {
 	n, err := svc.ExpandPlaylistChildren(ctx, "halo_infinite")
 	if !errors.Is(err, context.Canceled) || n != 1 {
 		t.Fatalf("%d, %v ; attendu 1 et context.Canceled", n, err)
+	}
+}
+
+// Une passe dont des configurations de playlist échouent en 500 écrit UNE ligne de synthèse WARN qui
+// dit la cause et le statut HTTP ; le détail par playlist reste en DEBUG.
+func TestPlaylistExpansion_SyntheseDitLaCauseEtLeStatut(t *testing.T) {
+	var buf strings.Builder
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	var trace []string
+	fetcher := port.PlaylistConfigFetcherFunc(func(context.Context, port.PlaylistRef) ([]port.PlaylistChild, error) {
+		return nil, errors.New("PlaylistChildren: HTTP 500: https://exemple/playlist")
+	})
+	svc := NewPlaylistExpansionService(depsDe(
+		fauxPlaylistsSeen{playlists: []port.PlaylistRef{{ID: "pl-1"}, {ID: "pl-2"}}},
+		&fauxChildStore{}, fetcher, &trace))
+
+	if _, err := svc.ExpandPlaylistChildren(context.Background(), "halo_infinite"); err != nil {
+		t.Fatalf("ExpandPlaylistChildren: %v", err)
+	}
+	logs := buf.String()
+	if n := strings.Count(logs, "level=WARN"); n != 1 {
+		t.Fatalf("%d lignes WARN, attendu 1 :\n%s", n, logs)
+	}
+	for _, want := range []string{"catalog_expand: terminé avec échecs", "playlists_failed=2", "statuts_http=[500]", "HTTP 500"} {
+		if !strings.Contains(logs, want) {
+			t.Errorf("synthèse sans %q :\n%s", want, logs)
+		}
 	}
 }

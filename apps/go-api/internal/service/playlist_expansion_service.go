@@ -9,10 +9,12 @@ package service
 import (
 	"context"
 	"log/slog"
+	"sort"
 
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/util/httpstatus"
 )
 
 // PlaylistExpansionDeps assemble ce que le service ne sait pas construire lui-même.
@@ -67,16 +69,18 @@ func (s *PlaylistExpansionService) ExpandPlaylistChildren(ctx context.Context, t
 	slog.InfoContext(ctx, "catalog_expand: démarré", "module", logging.ModuleCatalog,
 		"title", titleSlug, "playlists", len(playlists))
 
-	enqueued, failed, err := expandPlaylists(ctx, titleSlug, playlists, fetcher, store)
+	enqueued, failures, err := expandPlaylists(ctx, titleSlug, playlists, fetcher, store)
 	if err != nil {
 		return enqueued, err
 	}
 	observability.IncCounter("catalog_playlist_expand_total")
-	// Résumé unique de fin de cycle : WARN si au moins une playlist a échoué (signal agrégé visible), INFO
-	// sinon.
+	// Résumé unique de fin de cycle : WARN si au moins une playlist a échoué (signal agrégé visible, avec
+	// la cause et le statut HTTP), INFO sinon.
+	failed := failures.count
 	if failed > 0 {
 		slog.WarnContext(ctx, "catalog_expand: terminé avec échecs", "module", logging.ModuleCatalog,
-			"playlists", len(playlists), "children_enqueued", enqueued, "playlists_failed", failed)
+			"playlists", len(playlists), "children_enqueued", enqueued, "playlists_failed", failed,
+			"statuts_http", failures.statuses(), "cause", failures.example)
 	} else {
 		slog.InfoContext(ctx, "catalog_expand: terminé", "module", logging.ModuleCatalog,
 			"playlists", len(playlists), "children_enqueued", enqueued, "playlists_failed", failed)
@@ -85,19 +89,19 @@ func (s *PlaylistExpansionService) ExpandPlaylistChildren(ctx context.Context, t
 }
 
 // expandPlaylists parcourt les playlists : pour chacune, enfile ses couples enfants et inscrit leurs poids.
-// Rend les couples enfilés et le nombre de playlists dont la configuration n'a pas pu être lue ; l'erreur
-// n'est que l'annulation du contexte.
+// Rend les couples enfilés et les échecs de lecture de configuration (nombre, statuts HTTP, première cause) ;
+// l'erreur n'est que l'annulation du contexte.
 func expandPlaylists(
 	ctx context.Context, titleSlug string, playlists []port.PlaylistRef,
 	fetcher port.PlaylistConfigFetcher, store port.PlaylistChildStore,
-) (enqueued, failed int, err error) {
+) (enqueued int, failures expandFailures, err error) {
 	for _, p := range playlists {
 		if err := ctx.Err(); err != nil {
-			return enqueued, failed, err
+			return enqueued, failures, err
 		}
 		children, ferr := fetcher.PlaylistChildren(ctx, p)
 		if ferr != nil {
-			failed++
+			failures.add(ferr)
 			// Best-effort par playlist : DEBUG. Le total est remonté une fois en fin de cycle (WARN si
 			// failed>0), pas N WARN ici. Un fetch raté au boot est souvent un simple 429 transitoire (cf.
 			// cooldown pool).
@@ -122,5 +126,31 @@ func expandPlaylists(
 			_ = store.RecordWeight(ctx, titleSlug, p.ID, e.PairAssetID, e.Weight)
 		}
 	}
-	return enqueued, failed, nil
+	return enqueued, failures, nil
+}
+
+// expandFailures cumule les playlists dont la configuration n'a pas pu être lue pendant un cycle.
+type expandFailures struct {
+	count   int
+	example error // première cause rencontrée
+	byCode  map[int]int
+}
+
+func (f *expandFailures) add(err error) {
+	if f.byCode == nil {
+		f.byCode = make(map[int]int)
+		f.example = err
+	}
+	f.count++
+	f.byCode[httpstatus.FromError(err)]++
+}
+
+// statuses rend les statuts HTTP distincts rencontrés, triés ; 0 = échec sans statut HTTP.
+func (f *expandFailures) statuses() []int {
+	out := make([]int, 0, len(f.byCode))
+	for code := range f.byCode {
+		out = append(out, code)
+	}
+	sort.Ints(out)
+	return out
 }

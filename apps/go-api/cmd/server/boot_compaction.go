@@ -33,6 +33,7 @@ import (
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/diskfree"
 	"levelup/go-api/internal/platform/duckdb"
+	syncpkg "levelup/go-api/internal/sync"
 )
 
 // compactionBootBudget borne la compaction du démarrage : STARTUP_TIMEOUT de la coquille moins
@@ -81,7 +82,7 @@ var runCompactBoot = compactPassesAtBoot
 // jauge dépasse le seuil, si le profil l'offre. Jamais fatale. Le budget est celui du démarrage
 // entier, partagé entre les titres dans l'ordre du registre.
 func compactPassesAtBootAllTitles(ctx context.Context, cfg *config.AppConfig, pr *title.PathResolver, reg *title.Registry) {
-	if !cfg.Capabilities.CompactPassesAtStartup || cfg.DemoMode {
+	if !cfg.Capabilities.CompactPassesAtStartup {
 		return
 	}
 	ctx, cancel := context.WithTimeout(ctx, compactionBootBudget)
@@ -177,7 +178,9 @@ func mesurerTables(ctx context.Context, db *sql.DB) []migration.JaugePasses {
 
 // compactSharedPasses ouvre la base en écriture, compacte chaque table du registre, la referme.
 func compactSharedPasses(ctx context.Context, path string) ([]migration.CompactionTable, error) {
-	handle, err := duckdb.OpenReadWrite(path)
+	// Ouverture par le point d'entrée de la base partagée (sync.OpenSharedDB), le même que le moteur de
+	// sync : le schéma est déjà monté par les migrations qui précèdent, son contrôle est sans effet.
+	handle, err := syncpkg.OpenSharedDB(path)
 	if err != nil {
 		return nil, fmt.Errorf("ouverture en écriture: %w", err)
 	}

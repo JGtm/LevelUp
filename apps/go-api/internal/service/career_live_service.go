@@ -69,6 +69,12 @@ const CareerLiveBudget = 2500 * time.Millisecond
 // le caller ne nous attend plus.
 const careerLiveBgTimeout = 30 * time.Second
 
+// careerLivePersistWait borne l'attente de l'écrivain de la base joueur par l'écriture d'un instantané
+// de carrière. Le recalcul des notes (sync.MatchRecomputer) tient cet écrivain pendant tout le rejeu du
+// joueur, plusieurs minutes au démarrage : l'attente ne partage donc pas le budget de careerLiveBgTimeout,
+// déjà consommé par les appels à l'API, sans quoi l'instantané est perdu à chaque démarrage qui recalcule.
+const careerLivePersistWait = 5 * time.Minute
+
 const careerLiveLogModule = "career_live"
 
 // CareerFetcher abstrait les appels live Halo nécessaires au flow.
@@ -422,7 +428,9 @@ func (s *CareerLiveService) kickoffBackgroundRefresh(xuid, ownerXUID string, tok
 		// lecture conserve les valeurs historiques. Pas de pollution possible.
 		// Le status (Phase 6) trace l'issue du fetch pour diag.
 		status := computeFetchStatus(progress, custom)
-		s.persistPartial(bgCtx, xuid, progress, custom, status)
+		persistCtx, cancelPersist := context.WithTimeout(context.WithoutCancel(bgCtx), careerLivePersistWait)
+		defer cancelPersist()
+		s.persistPartial(persistCtx, xuid, progress, custom, status)
 
 		slog.DebugContext(bgCtx, careerLiveLogModule+": background refresh completed", "xuid", xuid)
 	}()

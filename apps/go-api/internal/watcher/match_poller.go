@@ -10,11 +10,16 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/util/httpstatus"
 )
 
 const (
 	// defaultPollInterval est l'intervalle par défaut entre deux polls.
 	defaultPollInterval = 30 * time.Second
+	// matchPoll429Counter compte les polls qui ont reçu un 429 et seront retentés.
+	matchPoll429Counter = "match_poller_429_total"
 )
 
 // MatchFetcher est l'interface pour récupérer les derniers match_ids d'un joueur.
@@ -101,6 +106,14 @@ func (p *MatchPoller) Run(ctx context.Context) {
 func (p *MatchPoller) poll(ctx context.Context, seedOnly bool) {
 	recentIDs, err := p.fetcher.FetchRecentMatchIDs(ctx, p.xuid, 25)
 	if err != nil {
+		if httpstatus.IsTooManyRequests(err) {
+			// Un 429 est déjà absorbé par le retrait du jeton (pool) et par la baisse de débit du compte ;
+			// le prochain poll, dans p.interval, retente : nominal sous charge, compté, pas un WARN.
+			observability.IncCounter(matchPoll429Counter)
+			slog.InfoContext(ctx, "match_poller: 429, nouvelle tentative au prochain poll",
+				"gamertag", p.gamertag, "interval", p.interval)
+			return
+		}
 		slog.WarnContext(ctx, "match_poller: erreur fetch",
 			"gamertag", p.gamertag,
 			"err", err,

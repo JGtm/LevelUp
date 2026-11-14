@@ -18,7 +18,8 @@ type ProgressionMatchRow struct {
 	Kills     float64
 	Deaths    float64
 	Assists   float64
-	Accuracy  float64
+	// Accuracy est la précision du match en ratio 0..1 (ADR 0006) ; la colonne source est en pourcentage.
+	Accuracy float64
 	// PersonalScore est le score personnel du match.
 	PersonalScore float64
 	// TimeSeconds est la durée jouée, en secondes.

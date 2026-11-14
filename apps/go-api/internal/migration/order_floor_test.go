@@ -9,7 +9,7 @@ import "testing"
 // récente que le binaire » sur TOUTES les installations et refuserait leur démarrage. Un
 // squash exige d'abord une révision de la garde (version explicite et monotone, ADR à écrire),
 // pas une baisse de ce plancher. Ajouter une étape : relever le plancher à la nouvelle longueur.
-const canonicalOrderFloor = 237
+const canonicalOrderFloor = 239
 
 func TestCanonicalOrderNeRaccourcitJamais(t *testing.T) {
 	got := len(canonicalOrder)

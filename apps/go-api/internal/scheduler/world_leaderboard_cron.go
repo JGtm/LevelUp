@@ -409,11 +409,12 @@ func (c *WorldLeaderboardCron) snapshotIsFresh(ctx context.Context, season strin
 func (c *WorldLeaderboardCron) scrapeAll(ctx context.Context, titleSlug, season string, playlists []string) ([]domain.LeaderboardEntry, int) {
 	all := make([]domain.LeaderboardEntry, 0, len(playlists)*c.limit)
 	total := 0
+	var echecs scrapeFailures
+	defer func() { echecs.log(ctx, season) }()
 	for _, pl := range playlists {
 		entries, err := c.scraper.FetchCSRLeaderboard(ctx, season, pl, c.limit)
 		if err != nil {
-			slog.ErrorContext(ctx, "world_leaderboard_cron: scrape playlist échoué",
-				"module", logging.ModuleLeaderboard, "season", season, "playlist", pl, "err", err)
+			echecs.add(pl, err)
 			continue
 		}
 		// Plancher de cohérence : un scrape non vide mais suspicieusement court est

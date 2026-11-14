@@ -35,6 +35,11 @@ func NewPostSyncProgressionStore(pdb *PlayerDB) *PostSyncProgressionStore {
 	return &PostSyncProgressionStore{pdb: pdb}
 }
 
+// accuracyPercentScale : match_participants.accuracy porte la précision native de l'API en pourcentage
+// (0..100, sync/transforms.go) ; le port et les métriques de records la lisent en ratio 0..1 (ADR 0006,
+// bornes de progression/records). La conversion se fait à cette lecture, la seule qui alimente les records.
+const accuracyPercentScale = "100.0"
+
 // MatchRows lit les participants et le registre depuis la base partagée : les matchs du joueur depuis `since`,
 // du plus ancien au plus récent. Un match sans instant de début est sauté.
 func (st *PostSyncProgressionStore) MatchRows(ctx context.Context, since time.Time) ([]port.ProgressionMatchRow, error) {
@@ -57,7 +62,7 @@ func (st *PostSyncProgressionStore) MatchRows(ctx context.Context, since time.Ti
 			COALESCE(mp.kills, 0) AS kills,
 			COALESCE(mp.deaths, 0) AS deaths,
 			COALESCE(mp.assists, 0) AS assists,
-			COALESCE(mp.accuracy, 0) AS accuracy,
+			COALESCE(mp.accuracy, 0) / `+accuracyPercentScale+` AS accuracy,
 			COALESCE(mp.personal_score, 0) AS personal_score,
 			COALESCE(mp.time_played_seconds, 0) AS time_played_seconds,
 			COALESCE(mp.damage_dealt, 0) AS damage_dealt,

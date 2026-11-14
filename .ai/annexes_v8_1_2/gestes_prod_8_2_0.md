@@ -99,6 +99,35 @@ et la cuisson reste à 100 ms (10 images/s).
   130 points sur un match, sur un joueur), le plus souvent de peu. Le dire dans les notes de version (fait dans
   les brouillons). Ne pas redémarrer en boucle pendant le recalcul.
 
+### G4b. Table héritée `streak` retirée des bases joueur (migration au démarrage, compléments de la 8.2.0)
+
+- Contexte : la table `streak`, remplacée depuis longtemps par `streak_history` et la vue `streak_latest`, faisait
+  refuser à chaque démarrage une réparation de clé (`clé déclarée absente, réparation refusée ... table=streak`).
+  La migration `drop_streak_legacy_v1` la supprime de chaque base joueur, seulement si toutes ses lignes sont déjà
+  dans `streak_history` ; sinon elle la laisse et le journal dit `streak héritée conservée` avec le nombre de
+  lignes non recopiées. Les bases neuves ne la créent plus.
+- Séquence : (1) la sauvegarde habituelle du VPS (restic) est faite avant le déploiement ; (2) démarrage du
+  serveur : les migrations s'appliquent seules, joueur par joueur ; (3) contrôle du journal : plus aucune ligne
+  `réparation refusée` avec `table=streak`, et, pour chaque joueur, `MatchRecomputer: terminé` (recalcul des notes
+  de G4 achevé) ; la jauge `levelup.compaction.passes_par_match` reste lue par le script de nuit du serveur, que ces
+  compléments ne changent pas.
+- Interdit : copier une base locale vers le VPS, pour `streak` comme pour le reste. Toute réparation de données en
+  prod passe par une migration au démarrage ou par une passe `backfill-*` lancée sur le serveur.
+- Durée : secondes par joueur. Risque : faible (suppression d'une table dont aucune lecture ne dépend, vérifiée
+  par la jauge de recopie du step).
+
+### G4c. Précision des records (compléments de la 8.2.0)
+
+- Contexte : la précision lue pour les records était en pourcentage (0 à 100) alors que ses bornes sont en ratio
+  (0 à 1) ; les records de précision étaient refusés (`records: valeur hors bornes ignorée`), et ceux déjà rangés
+  l'étaient en pourcentage. La lecture convertit désormais en ratio, et la migration
+  `shared_social_accuracy_records_ratio_v1` (au démarrage, INSERT seul) range en ratio une ligne neuve par dernier
+  record de précision rangé en pourcentage. La colonne des matchs n'est pas touchée.
+- Séquence : démarrage (le correctif et la migration sont dans le binaire), puis contrôle du journal : plus de ligne
+  `valeur hors bornes ignorée ... metric=accuracy` au post-sync, et, dans `migration.log`, la ligne
+  `records de précision convertis en ratio`.
+- Risque : faible. Toute autre réparation de données serait une migration au démarrage.
+
 ### G5. Recuisson des rejeux, en LOCAL (à ton go, jamais en lot sans accord)
 
 - Contexte : le schéma des rejeux est à **113** sur la release (décodeur v1.3.4, prod au 107 depuis la 8.1.0) ;

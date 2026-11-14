@@ -71,7 +71,7 @@ func TestHalo5Player_InheritsProgressionV2Schema(t *testing.T) {
 
 	// Tables Progression V2 (create_progression_player_schema) + racine career player.
 	for _, tbl := range []string{
-		"streak", "streak_history", "record_history", "milestone_earned",
+		"streak_history", "record_history", "milestone_earned",
 		"career_progression",
 	} {
 		if !tableExists(t, db, tbl) {

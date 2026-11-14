@@ -39,7 +39,7 @@ func primaryKeyCount(t *testing.T, db *sql.DB, table string) int {
 }
 
 // TestRepairDeclaredKeys_BaseJoueur : les tables d'une base joueur restaurée (registre des
-// migrations compris) retrouvent leur clé ; la table append-only `streak` n'est pas touchée.
+// migrations compris) retrouvent leur clé.
 func TestRepairDeclaredKeys_BaseJoueur(t *testing.T) {
 	db := freshProvision(t, migration.TargetPlayer)
 	if _, err := db.Exec(`INSERT INTO arc (id, user_id, title_slug, title)
@@ -47,7 +47,7 @@ func TestRepairDeclaredKeys_BaseJoueur(t *testing.T) {
 		t.Fatalf("seed arc: %v", err)
 	}
 	repaired := []string{"schema_migrations", "arc", "challenge", "sessions", "milestone_earned", "baseline_state"}
-	dropKeysLikeCTAS(t, db, append(repaired, "streak")...)
+	dropKeysLikeCTAS(t, db, repaired...)
 
 	if err := migration.RunForDB(db, migration.TargetPlayer); err != nil {
 		t.Fatalf("RunForDB: %v", err)
@@ -56,9 +56,6 @@ func TestRepairDeclaredKeys_BaseJoueur(t *testing.T) {
 		if primaryKeyCount(t, db, tb) != 1 {
 			t.Errorf("%s : clé primaire non rétablie", tb)
 		}
-	}
-	if primaryKeyCount(t, db, "streak") != 0 {
-		t.Error("streak (append-only, vue streak_latest) ne doit pas être réparée au démarrage")
 	}
 	var n int
 	if err := db.QueryRow(`SELECT count(*) FROM arc WHERE id = 'a1'`).Scan(&n); err != nil || n != 1 {

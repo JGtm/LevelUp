@@ -465,6 +465,9 @@ const (
 	perToken429BaseCooldown = 2 * time.Second
 	// perToken429MaxCooldown : plafond d'un cooldown per-token.
 	perToken429MaxCooldown = 60 * time.Second
+	// perToken429WarnCooldown : au-delà, la mise à l'écart d'un token n'est plus un simple ralentissement
+	// absorbé (INFO) mais une pause longue, signalée en WARN.
+	perToken429WarnCooldown = 30 * time.Second
 )
 
 // Refresh proactif near-expiry : la sonde de fond rafraîchit un token SAIN dont
@@ -639,7 +642,13 @@ func (p *poolImpl) On429ForToken(gamertag string, retryAfter time.Duration) {
 	// additive se fait au tick du refresher (comptes sains uniquement).
 	newRPS := ratebudget.HalveRPS(xuid)
 
-	slog.WarnContext(context.Background(), "pool: token rate-limité (429) — cooldown per-token + AIMD",
+	perToken429Absorbed.Add(1)
+	// Un 429 absorbé par la mise à l'écart du token est nominal (INFO, compté) ; une pause longue reste un WARN.
+	level := slog.LevelInfo
+	if cooldown > perToken429WarnCooldown {
+		level = slog.LevelWarn
+	}
+	slog.Log(context.Background(), level, "pool: token rate-limité (429) — cooldown per-token + AIMD",
 		"gamertag", gamertag, "cooldown_s", cooldown.Seconds(), "rps_after_halve", newRPS)
 }
 
