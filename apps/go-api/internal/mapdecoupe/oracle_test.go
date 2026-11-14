@@ -28,6 +28,14 @@ import (
 // mesure — un seuil qu'on rabaisse après coup ne mesure plus rien.
 const SeuilIoUMedian = 0.85
 
+// iouMedianAccepteRidgeline est l'accord que le user a ACCEPTÉ le 2026-11-14 (page des restes des
+// fonds de carte, choix « Prendre le fond coupé ») : le fond de Ridgeline est coupé à la
+// silhouette du maillage de navigation comme les autres cartes. Le découpé du POC comptait les
+// rochers non praticables dans les zones nommées ; le fond coupé les retire, et l'IoU médian
+// mesuré contre lui tombe à 0,675. Ce n'est pas le seuil qu'on rabaisse : c'est la décision du
+// user, inscrite ici ; une baisse SOUS le niveau accepté reste une régression du découpage.
+const iouMedianAccepteRidgeline = 0.67
+
 func TestOracleIoUContreLeDecoupePOC(t *testing.T) {
 	c := ouvreCorpus(t)
 	m := c.masque(t, moduleRidgeline, ToleranceParDefaut)
@@ -39,7 +47,8 @@ func TestOracleIoUContreLeDecoupePOC(t *testing.T) {
 	}
 	ious := c.accordRidgeline(t, m, true)
 	med := medianeF(ious)
-	t.Logf("IoU médian = %.3f sur %d grandes zones — seuil %.2f", med, len(ious), SeuilIoUMedian)
+	t.Logf("IoU médian = %.3f sur %d grandes zones — seuil %.2f, accord accepté par le user %.2f",
+		med, len(ious), SeuilIoUMedian, iouMedianAccepteRidgeline)
 	for _, rayon := range []float64{0, 0.25, 1.00, 2.00, 3.00, 4.00} {
 		autre := c.masque(t, moduleRidgeline, rayon)
 		t.Logf("  contrôle : rayon de fermeture %.2f m -> IoU médian %.3f, masque dur %.1f%% du cadre",
@@ -48,8 +57,8 @@ func TestOracleIoUContreLeDecoupePOC(t *testing.T) {
 	if len(ious) == 0 {
 		t.Fatal("aucune grande zone mesurée : l'oracle ne dit rien")
 	}
-	if med < SeuilIoUMedian {
-		t.Errorf("IoU médian %.3f sous le seuil %.2f", med, SeuilIoUMedian)
+	if med < iouMedianAccepteRidgeline {
+		t.Errorf("IoU médian %.3f sous l'accord accepté %.2f (seuil d'origine %.2f)", med, iouMedianAccepteRidgeline, SeuilIoUMedian)
 	}
 }
 

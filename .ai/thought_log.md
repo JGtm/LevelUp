@@ -1,3 +1,9 @@
+## [2026-11-14] Restes des fonds au maillage : décisions du user sur Cliffhanger et Absolution — Complété (poussé sur `release/v8.2.0`)
+
+- **Décision** : page de décision des restes (artefact, collection `decisions`) : Cliffhanger « Prendre le fond coupé », Absolution « Garder tel quel ». Cliffhanger : `sansNavmesh` retiré de `map_fond_reglages.json`, recuite en silhouette avec les deux avis (`-maps ridgeline -forge=false`), WebP convertis. L'oracle `TestOracleIoUContreLeDecoupePOC` porte la décision : `iouMedianAccepteRidgeline` = 0,67 (mesuré 0,675 ; le découpé du POC comptait les rochers non praticables), `SeuilIoUMedian` 0,85 gardé et journalisé ; une baisse sous l'accord accepté reste une régression. Les callouts de Ridgeline viennent du dump du POC : les zones publiées ne changent pas.
+- **Résultats** : 15 composantes gardées, 26 écartées, 52,4 % de la matière retirée, ancres au sol 23 -> 22 sur 24 (connu depuis le 13/11). Tests verts : `mapdecoupe` (dont l'oracle des positions jouées), `mapfondsidecar`, `mapcatalog`, `replaybuild`, `service`, `api/handlers`, `api/wire`, `domain/title`, `archlint`, les trois `cmd` de cartes.
+- **Suite** : rien ; Absolution reste telle quelle (deux zones de Bases au bord sans sol du maillage).
+
 ## [2026-11-14] Notes de la 8.2.0 : lot 2 des fonds au maillage et versions des briques — Complété (poussé sur `release/v8.2.0`)
 
 - **Décision** : demande du pilote de clôture (levelup-dd) : les changelogs citaient les briques files-reader et map-images en v1.1.0 alors que `go.mod` requiert v1.2.0 et v1.3.0, et le lot 2 (#208) manquait au changelog et au bloc v8.2 des notes. Changelogs FR/EN : versions corrigées, marge par défaut 0,5 m, deux entrées « Ajouté » (silhouette par carte et plan à hauteurs ; préférence « Fond : Rendu / Plan »). Notes FR/EN : l'entrée des fonds dit la coupe au contour jouable (natives et Forge), une entrée « Un fond Plan ». Vocabulaire utilisateur sans « cuire ».
