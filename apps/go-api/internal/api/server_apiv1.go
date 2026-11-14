@@ -58,6 +58,7 @@ import (
 	"levelup/go-api/internal/progression/profile"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/service/replayview"
 	"levelup/go-api/internal/watcher"
 	"levelup/go-api/internal/worldenrich"
 	"levelup/go-api/pkg/duckdbbackup"
@@ -883,7 +884,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapReplay))
 			r.Use(handlers.ReplayGate(demoReplayGate(reg)))
-			handlers.NewReplayHandler(reg.Replay).Mount(r.With(participated), playerOpt)
+			handlers.NewReplayHandler(reg.Replay, replayview.EncodeColumns).Mount(r.With(participated), playerOpt)
 			// Le CONTEXTE DE MATCH du rejeu (en-tête, tableau de score, fil, médias) : lu par la
 			// seule page de rejeu, il vit sous ses gardes — même handler que la vue match, dont
 			// il partage le service et la transformation des médias.

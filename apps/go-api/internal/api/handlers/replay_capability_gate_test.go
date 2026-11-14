@@ -69,7 +69,7 @@ func routeurRejeuGate(t *testing.T, serviceAppele *bool) *chi.Mux {
 		handlers.NewReplayHandler(func(context.Context, string) (port.ReplayService, error) {
 			*serviceAppele = true
 			return nil, errors.New("stub: aucun service de rejeu dans ce test")
-		}).Mount(r)
+		}, nil).Mount(r)
 	})
 	return r
 }
