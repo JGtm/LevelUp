@@ -29,6 +29,13 @@ describe('garde-rail : orientation et plan des murs câblés dans le canvas', ()
     expect(canvas()).toMatch(/useReplayViewMenu\(\{\s*settings, orientation,/)
   })
 
+  it('la variante du fond posé est celle RÉELLEMENT chargée, pas celle qui est demandée', () => {
+    const page = lire(fichierNomme('ReplayPage.tsx'))
+    expect(page).toMatch(/const \{ image: mapImage, variante \} = useReplayMapImage\(/)
+    expect(page).toMatch(/plan: normalizeWallPlan\(background\.plan\),\s*variante,/)
+    expect(canvas()).toContain("shown: mapImage?.variante === 'plan'")
+  })
+
   it('le plan des murs n’est cuit que quand son interrupteur est allumé et que le fond n’est pas déjà le plan', () => {
     expect(canvas()).toContain("const wallPlanOn = isWallPlanDrawn(showWallPlan, mapImage?.variante ?? 'rendu')")
     expect(canvas()).toContain('plan: wallPlanOn ? (mapImage?.plan ?? null) : null')

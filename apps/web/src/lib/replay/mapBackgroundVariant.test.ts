@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   backgroundImagePath,
   isWallPlanDrawn,
+  loadedBackground,
   normalizeBackgroundStyle,
   resolveBackgroundVariant,
 } from './mapBackgroundVariant'
@@ -54,5 +55,24 @@ describe('isWallPlanDrawn', () => {
 
   it('ne trace rien sur le rendu quand l’interrupteur est éteint', () => {
     expect(isWallPlanDrawn(false, 'rendu')).toBe(false)
+  })
+})
+
+describe('loadedBackground', () => {
+  it('plan demandé et chargé : le plan, variante plan', () => {
+    expect(loadedBackground('plan', 'P', 'R')).toEqual({ image: 'P', variante: 'plan' })
+  })
+
+  it('plan demandé mais échoué : le rendu en repli, variante rendu (les murs reviennent)', () => {
+    expect(loadedBackground('plan', undefined, 'R')).toEqual({ image: 'R', variante: 'rendu' })
+  })
+
+  it('rendu demandé : le rendu, même si un plan est en cache', () => {
+    expect(loadedBackground('rendu', 'P', 'R')).toEqual({ image: 'R', variante: 'rendu' })
+  })
+
+  it('rien de chargé : pas d’image, la variante demandée', () => {
+    expect(loadedBackground('plan', undefined, undefined)).toEqual({ image: null, variante: 'plan' })
+    expect(loadedBackground('rendu', undefined, undefined)).toEqual({ image: null, variante: 'rendu' })
   })
 })

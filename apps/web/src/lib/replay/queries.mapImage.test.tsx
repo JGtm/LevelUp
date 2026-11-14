@@ -60,14 +60,16 @@ afterEach(() => {
 describe('useReplayMapImage — variante', () => {
   it('sans variante : l’adresse du rendu, nue', async () => {
     const { result } = renderHook(() => useReplayMapImage('JGtm', 'm1', true), { wrapper })
-    await waitFor(() => expect(result.current).not.toBeNull())
+    await waitFor(() => expect(result.current.image).not.toBeNull())
+    expect(result.current.variante).toBe('rendu')
     expect(getBlob).toHaveBeenCalledTimes(1)
     expect(getBlob).toHaveBeenCalledWith(RENDU)
   })
 
   it('variante plan : l’adresse du plan, et le rendu n’est pas demandé', async () => {
     const { result } = renderHook(() => useReplayMapImage('JGtm', 'm1', true, 'plan'), { wrapper })
-    await waitFor(() => expect(result.current).not.toBeNull())
+    await waitFor(() => expect(result.current.image).not.toBeNull())
+    expect(result.current.variante).toBe('plan')
     expect(getBlob).toHaveBeenCalledTimes(1)
     expect(getBlob).toHaveBeenCalledWith(PLAN)
   })
@@ -77,26 +79,28 @@ describe('useReplayMapImage — variante', () => {
       ({ variante }: { variante: 'rendu' | 'plan' }) => useReplayMapImage('JGtm', 'm1', true, variante),
       { wrapper, initialProps: { variante: 'rendu' } },
     )
-    await waitFor(() => expect(result.current).not.toBeNull())
-    const rendu = result.current
+    await waitFor(() => expect(result.current.image).not.toBeNull())
+    const rendu = result.current.image
     rerender({ variante: 'plan' })
     await waitFor(() => expect(getBlob).toHaveBeenCalledWith(PLAN))
-    await waitFor(() => expect(result.current).not.toBe(rendu))
+    await waitFor(() => expect(result.current.image).not.toBe(rendu))
+    expect(result.current.variante).toBe('plan')
     expect(client.getQueryData(queryKeys.matchReplayBackgroundImage('JGtm', 'halo_infinite', 'm1', 'rendu'))).toBe(rendu)
     expect(client.getQueryData(queryKeys.matchReplayBackgroundImage('JGtm', 'halo_infinite', 'm1', 'plan'))).toBe(
-      result.current,
+      result.current.image,
     )
     expect(queryKeys.matchReplayBackgroundImage('JGtm', 'halo_infinite', 'm1', 'plan')).not.toEqual(
       queryKeys.matchReplayBackgroundImage('JGtm', 'halo_infinite', 'm1', 'rendu'),
     )
   })
 
-  it('l’image plan qui ne se charge pas : le rendu est servi, sans erreur', async () => {
+  it('l’image plan qui ne se charge pas : le rendu est servi, et la variante dite est le rendu (les murs reviennent)', async () => {
     getBlob.mockImplementation((path: string) =>
       path === PLAN ? Promise.reject(new Error('404')) : Promise.resolve(new Blob(['x'])),
     )
     const { result } = renderHook(() => useReplayMapImage('JGtm', 'm1', true, 'plan'), { wrapper })
-    await waitFor(() => expect(result.current).not.toBeNull())
+    await waitFor(() => expect(result.current.image).not.toBeNull())
+    expect(result.current.variante).toBe('rendu')
     expect(getBlob).toHaveBeenCalledWith(RENDU)
   })
 

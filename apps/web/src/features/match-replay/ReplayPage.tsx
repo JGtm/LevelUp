@@ -97,8 +97,9 @@ export function ReplayPage() {
   // LE STYLE DU FOND (réglage « Fond » du panneau Vue) : l'image plan se superpose au rendu (même calage,
   // mêmes dimensions) et n'est demandée que si le fond en porte une ; sinon le rendu, sans rien dire.
   const [backgroundStyle] = useBackgroundStyle()
-  const variante = resolveBackgroundVariant(backgroundStyle, background?.planImage)
-  const mapImage = useReplayMapImage(playerSlug, matchId, !!background, variante)
+  const demandee = resolveBackgroundVariant(backgroundStyle, background?.planImage)
+  // La variante qui compte pour les murs est celle RÉELLEMENT chargée (repli sur le rendu si le plan échoue).
+  const { image: mapImage, variante } = useReplayMapImage(playerSlug, matchId, !!background, demandee)
   const mapBackground = useMemo(
     () =>
       background && mapImage

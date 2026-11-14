@@ -14,7 +14,7 @@ import type { ReplayDocument, ReplayMapBackground, ReplayMapCallouts } from '@/l
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { backgroundImagePath, type MapBackgroundVariant } from './mapBackgroundVariant'
+import { backgroundImagePath, loadedBackground, type MapBackgroundVariant } from './mapBackgroundVariant'
 import { validateReplayDocument } from './replayDocumentSchema'
 import {
   normalizeReplayMatchContext,
@@ -141,13 +141,17 @@ export function useReplayMapBackground(playerSlug: string, matchId: string) {
  * et les mêmes dimensions que le rendu : l'appelant ne change rien d'autre. REPLI SILENCIEUX : si
  * l'image plan ne se charge pas, c'est le rendu qui est servi, sans erreur à l'écran ; pendant son
  * chargement, le rendu déjà en cache reste affiché.
+ *
+ * LA VARIANTE RENDUE EST CELLE QUI EST RÉELLEMENT CHARGÉE, pas celle qu'on a demandée : c'est d'elle
+ * que dépendent les murs (déjà dans l'image plan, à tracer sur le rendu de repli). Tant qu'aucune
+ * image n'est prête, elle vaut la variante demandée.
  */
 export function useReplayMapImage(
   playerSlug: string,
   matchId: string,
   enabled: boolean,
   variante: MapBackgroundVariant = 'rendu',
-): HTMLImageElement | null {
+): { image: HTMLImageElement | null; variante: MapBackgroundVariant } {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const load = (v: MapBackgroundVariant) => ({
     queryKey: queryKeys.matchReplayBackgroundImage(playerSlug, titleSlug, matchId, v),
@@ -173,7 +177,7 @@ export function useReplayMapImage(
   const ready = enabled && !!playerSlug && !!matchId
   const plan = useQuery({ ...load('plan'), enabled: ready && variante === 'plan' })
   const rendu = useQuery({ ...load('rendu'), enabled: ready && (variante === 'rendu' || plan.isError) })
-  return (variante === 'plan' ? plan.data : undefined) ?? rendu.data ?? null
+  return loadedBackground(variante, plan.data, rendu.data)
 }
 
 /**

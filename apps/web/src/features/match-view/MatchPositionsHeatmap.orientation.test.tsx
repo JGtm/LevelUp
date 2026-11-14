@@ -15,9 +15,11 @@ import { MatchPositionsHeatmap } from './MatchPositionsHeatmap'
 
 const background = vi.hoisted(() => vi.fn())
 const image = vi.hoisted(() => vi.fn())
+// La variante RÉELLEMENT chargée que renvoie le chargement de l'image (le plan demandé peut retomber sur le rendu).
+const chargee = vi.hoisted(() => vi.fn<() => 'rendu' | 'plan'>(() => 'rendu'))
 vi.mock('@/lib/replay/queries', () => ({
   useReplayMapBackground: () => background(),
-  useReplayMapImage: (...args: unknown[]) => image(...args),
+  useReplayMapImage: (...args: unknown[]) => ({ image: image(...args), variante: chargee() }),
 }))
 vi.mock('./queries', () => ({ useMatchView: () => ({ data: { header: { map_id: 'map-streets' } } }) }))
 vi.mock('@tanstack/react-router', async (importOriginal) => ({
@@ -52,6 +54,7 @@ beforeEach(() => {
   window.localStorage.clear()
   background.mockReset().mockReturnValue({ data: { calibration: CAL, plan: PLAN } })
   image.mockReset().mockReturnValue({ width: 20, height: 10 })
+  chargee.mockReset().mockReturnValue('rendu')
   useAppShellStore.setState({ currentTitleSlug: 'halo_infinite' })
   vi.spyOn(HTMLCanvasElement.prototype, 'clientWidth', 'get').mockReturnValue(200)
   vi.spyOn(HTMLCanvasElement.prototype, 'clientHeight', 'get').mockReturnValue(100)
@@ -108,12 +111,22 @@ describe('MatchPositionsHeatmap — orientation et plan des murs du rejeu', () =
     expect(dernierTrace().peinture?.plan?.edges).toEqual([[0, 0, 5, 5]])
   })
 
-  it('réglage plan et carte avec image plan : variante plan demandée, murs déjà dans l’image donc aucun plan au tracé', () => {
+  it('réglage plan et fond plan chargé : variante plan demandée, murs déjà dans l’image donc aucun plan au tracé', () => {
     window.localStorage.setItem('replay-background-style', 'plan')
+    chargee.mockReturnValue('plan')
     background.mockReturnValue({ data: { calibration: CAL, plan: PLAN, planImage: 'plan.png' } })
     rendre()
     expect(image.mock.calls.at(-1)?.[3]).toBe('plan')
     expect(dernierTrace().peinture?.plan).toBeNull()
+  })
+
+  it('plan demandé mais repli sur le rendu (l’image plan a échoué) : les murs sont dessinés', () => {
+    window.localStorage.setItem('replay-background-style', 'plan')
+    chargee.mockReturnValue('rendu')
+    background.mockReturnValue({ data: { calibration: CAL, plan: PLAN, planImage: 'plan.png' } })
+    rendre()
+    expect(image.mock.calls.at(-1)?.[3]).toBe('plan')
+    expect(dernierTrace().peinture?.plan?.edges).toEqual([[0, 0, 5, 5]])
   })
 
   it('réglage plan mais carte sans image plan : repli sur le rendu, plan des murs tracé', () => {

@@ -47,7 +47,7 @@ import { ANALYSIS_PENDING_REFETCH_MS } from '@/lib/analysis-pending/analysisPend
 import { queryKeys } from '@/lib/query/keys'
 import { SANS_BARRE_META } from '@/lib/query/sansBarre'
 import { mapFrame, type MapFrame } from '@/lib/replay/heatPaint'
-import { backgroundImagePath, type MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+import { backgroundImagePath, loadedBackground, type MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import { normalizeWallPlan, type WallPlanReady } from '@/lib/replay/wallPlan'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -188,6 +188,20 @@ export function useTacticalMapBackgroundUrl(
   actif = true,
   variante: MapBackgroundVariant = 'rendu',
 ): string | null {
+  return useTacticalMapBackgroundImage(playerSlug, mapId, actif, variante).url
+}
+
+/**
+ * useTacticalMapBackgroundImage — comme `useTacticalMapBackgroundUrl`, et dit en plus QUELLE variante est
+ * réellement chargée (le plan demandé mais en échec rend le rendu de repli) : les murs se décident sur
+ * cette variante-là, pas sur celle qu'on a demandée.
+ */
+export function useTacticalMapBackgroundImage(
+  playerSlug: string,
+  mapId: string,
+  actif = true,
+  variante: MapBackgroundVariant = 'rendu',
+): { url: string | null; variante: MapBackgroundVariant } {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const load = (v: MapBackgroundVariant) => ({
     queryKey: queryKeys.tacticalMapBackground(titleSlug, mapId, v),
@@ -209,7 +223,8 @@ export function useTacticalMapBackgroundUrl(
   // affichée ; pendant son chargement, le rendu déjà en cache reste en place.
   const plan = useQuery({ ...load('plan'), enabled: pret && variante === 'plan' })
   const rendu = useQuery({ ...load('rendu'), enabled: pret && (variante === 'rendu' || plan.isError) })
-  return (variante === 'plan' ? plan.data : undefined) ?? rendu.data ?? null
+  const { image, variante: chargee } = loadedBackground(variante, plan.data ?? undefined, rendu.data ?? undefined)
+  return { url: image, variante: chargee }
 }
 
 /**

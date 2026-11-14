@@ -183,6 +183,13 @@ describe('useReplayViewMenu', () => {
     expect(window.localStorage.getItem('replay-background-style')).toBe('plan')
   })
 
+  it('plan demandé mais repli sur le rendu (image plan en échec) : le fond posé est le rendu, l’interrupteur des murs reste actif', () => {
+    window.localStorage.setItem('replay-background-style', 'plan')
+    const { result } = mount(FULL_FILM, { available: true, shown: false })
+    expect(result.current.menu.panel.background.value).toBe('plan')
+    expect(result.current.menu.panel.wallPlan.inPlan).toBe(false)
+  })
+
   it('le plan des murs est désactivé quand le fond posé est le plan, et seulement alors', () => {
     expect(mount(FULL_FILM, { available: true, shown: false }).result.current.menu.panel.wallPlan.inPlan).toBe(false)
     expect(mount(FULL_FILM, { available: true, shown: true }).result.current.menu.panel.wallPlan.inPlan).toBe(true)

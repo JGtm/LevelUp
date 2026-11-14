@@ -19,7 +19,7 @@ const image = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/replay/queries', () => ({
   useReplayMapBackground: () => background(),
-  useReplayMapImage: () => image(),
+  useReplayMapImage: () => ({ image: image(), variante: 'rendu' }),
 }))
 
 // La réponse de la page (son en-tête porte `map_id`) et un double de `Link` qui expose sa cible.

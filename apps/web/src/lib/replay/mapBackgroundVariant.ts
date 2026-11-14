@@ -55,3 +55,18 @@ export function isWallPlanDrawn(showWallPlan: boolean, variante: MapBackgroundVa
 export function backgroundImagePath(path: string, variante: MapBackgroundVariant): string {
   return variante === 'plan' ? `${path}?${PLAN_QUERY}` : path
 }
+
+/**
+ * loadedBackground choisit ce qui est posé parmi les images chargées et dit quelle variante c'est :
+ * le plan quand il est demandé ET chargé, sinon le rendu (repli ou rendu demandé), sinon rien — la
+ * variante vaut alors celle qu'on a demandée. Les murs se décident sur cette variante RÉELLE.
+ */
+export function loadedBackground<T>(
+  demandee: MapBackgroundVariant,
+  plan: T | undefined,
+  rendu: T | undefined,
+): { image: T | null; variante: MapBackgroundVariant } {
+  if (demandee === 'plan' && plan !== undefined) return { image: plan, variante: 'plan' }
+  if (rendu !== undefined) return { image: rendu, variante: 'rendu' }
+  return { image: null, variante: demandee }
+}

@@ -134,8 +134,9 @@ export function MatchPositionsHeatmap({
   // (même calage, mêmes dimensions que le rendu) se pose au même endroit. La scène du zoom est celle
   // de la carte TOURNÉE, et le cadre prend son rapport (largeur et hauteur échangées pour un quart de tour).
   const { turns, showWallPlan, backgroundStyle } = useMapViewPreferences(useMatchView(playerSlug, matchId).data?.header.map_id)
-  const variante = resolveBackgroundVariant(backgroundStyle, background?.planImage)
-  const image = useReplayMapImage(playerSlug, matchId, !!background && all.length > 0, variante)
+  const demandee = resolveBackgroundVariant(backgroundStyle, background?.planImage)
+  // Les murs se décident sur la variante RÉELLEMENT chargée (repli sur le rendu si le plan échoue).
+  const { image, variante } = useReplayMapImage(playerSlug, matchId, !!background && all.length > 0, demandee)
 
   const frame = useMemo(() => (background ? mapFrame(background.calibration) : null), [background])
   const teamSplit = useMemo(() => hasTeamSplit(all), [all])
