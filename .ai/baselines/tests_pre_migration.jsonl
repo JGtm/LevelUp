@@ -45709,6 +45709,59 @@
 {"Time":"2026-06-26T23:51:38.1582586+02:00","Action":"output","Package":"levelup/go-api/internal/service","Output":"PASS\n"}
 {"Time":"2026-06-26T23:51:38.1670064+02:00","Action":"output","Package":"levelup/go-api/internal/service","Output":"ok  \tlevelup/go-api/internal/service\t17.733s\n"}
 {"Time":"2026-06-26T23:51:38.1670064+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Elapsed":17.733}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_AllData"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_AllData","Output":"=== RUN   TestBuildSyncScope_AllData\n"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_AllData","Output":"--- PASS: TestBuildSyncScope_AllData (0.00s)\n"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_AllData","Elapsed":0}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_NoFlags"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_NoFlags","Output":"=== RUN   TestBuildSyncScope_NoFlags\n"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_NoFlags","Output":"--- PASS: TestBuildSyncScope_NoFlags (0.00s)\n"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_NoFlags","Elapsed":0}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_PartialFlags"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_PartialFlags","Output":"=== RUN   TestBuildSyncScope_PartialFlags\n"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_PartialFlags","Output":"--- PASS: TestBuildSyncScope_PartialFlags (0.00s)\n"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_PartialFlags","Elapsed":0}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescan"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescan","Output":"=== RUN   TestBuildSyncScope_ForceRescan\n"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescan","Output":"--- PASS: TestBuildSyncScope_ForceRescan (0.00s)\n"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescan","Elapsed":0}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescanAllData"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescanAllData","Output":"=== RUN   TestBuildSyncScope_ForceRescanAllData\n"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescanAllData","Output":"--- PASS: TestBuildSyncScope_ForceRescanAllData (0.00s)\n"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescanAllData","Elapsed":0}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescanAliasesAndLUSR"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescanAliasesAndLUSR","Output":"=== RUN   TestBuildSyncScope_ForceRescanAliasesAndLUSR\n"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescanAliasesAndLUSR","Output":"--- PASS: TestBuildSyncScope_ForceRescanAliasesAndLUSR (0.00s)\n"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescanAliasesAndLUSR","Elapsed":0}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescanEventsAndPersonalScores"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescanEventsAndPersonalScores","Output":"=== RUN   TestBuildSyncScope_ForceRescanEventsAndPersonalScores\n"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescanEventsAndPersonalScores","Output":"--- PASS: TestBuildSyncScope_ForceRescanEventsAndPersonalScores (0.00s)\n"}
+{"Time":"2026-06-26T23:45:38.8984979+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_ForceRescanEventsAndPersonalScores","Elapsed":0}
+{"Time":"2026-06-26T23:45:38.9015928+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_EngagementCoefficientsOnly"}
+{"Time":"2026-06-26T23:45:38.9015928+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_EngagementCoefficientsOnly","Output":"=== RUN   TestBuildSyncScope_EngagementCoefficientsOnly\n"}
+{"Time":"2026-06-26T23:45:38.9015928+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_EngagementCoefficientsOnly","Output":"--- PASS: TestBuildSyncScope_EngagementCoefficientsOnly (0.00s)\n"}
+{"Time":"2026-06-26T23:45:38.9015928+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_EngagementCoefficientsOnly","Elapsed":0}
+{"Time":"2026-06-26T23:45:38.9015928+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_EngagementScoresImpliesCoefRecompute"}
+{"Time":"2026-06-26T23:45:38.9015928+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_EngagementScoresImpliesCoefRecompute","Output":"=== RUN   TestBuildSyncScope_EngagementScoresImpliesCoefRecompute\n"}
+{"Time":"2026-06-26T23:45:38.9015928+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_EngagementScoresImpliesCoefRecompute","Output":"--- PASS: TestBuildSyncScope_EngagementScoresImpliesCoefRecompute (0.00s)\n"}
+{"Time":"2026-06-26T23:45:38.9015928+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestBuildSyncScope_EngagementScoresImpliesCoefRecompute","Elapsed":0}
+{"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestTryManualSyncCooldown"}
+{"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestTryManualSyncCooldown","Output":"=== RUN   TestTryManualSyncCooldown\n"}
+{"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestTryManualSyncCooldown","Output":"--- PASS: TestTryManualSyncCooldown (0.00s)\n"}
+{"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestTryManualSyncCooldown","Elapsed":0}
+{"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestTryManualSyncCooldown_Disabled"}
+{"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestTryManualSyncCooldown_Disabled","Output":"=== RUN   TestTryManualSyncCooldown_Disabled\n"}
+{"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestTryManualSyncCooldown_Disabled","Output":"--- PASS: TestTryManualSyncCooldown_Disabled (0.00s)\n"}
+{"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestTryManualSyncCooldown_Disabled","Elapsed":0}
+{"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestNewPooledEngine_UsesInjectedBuilder"}
+{"Time":"2026-06-26T23:45:40.4868995+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewPooledEngine_UsesInjectedBuilder","Output":"=== RUN   TestNewPooledEngine_UsesInjectedBuilder\n"}
+{"Time":"2026-06-26T23:45:40.4879769+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewPooledEngine_UsesInjectedBuilder","Output":"--- PASS: TestNewPooledEngine_UsesInjectedBuilder (0.00s)\n"}
+{"Time":"2026-06-26T23:45:40.4879769+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestNewPooledEngine_UsesInjectedBuilder","Elapsed":0}
+{"Time":"2026-06-26T23:45:40.4879769+02:00","Action":"run","Package":"levelup/go-api/internal/service","Test":"TestNewPooledEngine_FallbackWhenNoBuilder"}
+{"Time":"2026-06-26T23:45:40.4879769+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewPooledEngine_FallbackWhenNoBuilder","Output":"=== RUN   TestNewPooledEngine_FallbackWhenNoBuilder\n"}
+{"Time":"2026-06-26T23:45:40.4879769+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewPooledEngine_FallbackWhenNoBuilder","Output":"2026/06/26 23:45:40 WARN sync_handler: EngineBuilder absent — fallback moteur legacy (tokens vides, auth probablement en échec) gamertag=DemoPlayer xuid=xuid-1\n"}
+{"Time":"2026-06-26T23:45:40.4885104+02:00","Action":"output","Package":"levelup/go-api/internal/service","Test":"TestNewPooledEngine_FallbackWhenNoBuilder","Output":"--- PASS: TestNewPooledEngine_FallbackWhenNoBuilder (0.00s)\n"}
+{"Time":"2026-06-26T23:45:40.4885104+02:00","Action":"pass","Package":"levelup/go-api/internal/service","Test":"TestNewPooledEngine_FallbackWhenNoBuilder","Elapsed":0}
 {"Time":"2026-06-26T23:51:39.8988028+02:00","Action":"run","Package":"levelup/go-api/internal/sync","Test":"TestSyncAchievements_Integration_UpsertInsertsRows"}
 {"Time":"2026-06-26T23:51:39.8988028+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestSyncAchievements_Integration_UpsertInsertsRows","Output":"=== RUN   TestSyncAchievements_Integration_UpsertInsertsRows\n"}
 {"Time":"2026-06-26T23:51:39.9193506+02:00","Action":"output","Package":"levelup/go-api/internal/sync","Test":"TestSyncAchievements_Integration_UpsertInsertsRows","Output":"2026/06/26 23:51:39 INFO migration: cycle démarré title=halo_infinite target=metadata event=migration.run:halo_infinite:metadata:a2b06c8658229455\n"}
