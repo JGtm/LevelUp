@@ -6,6 +6,9 @@
  * EXTRAIT DE `useReplaySettings.ts` sans changer un comportement : la clé, le défaut et la
  * bascule de chaque calque sont ceux d'avant. `useReplaySettings` en reprend l'objet tel quel.
  */
+import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+
+import { useBackgroundStyle } from './useBackgroundStyle'
 import { usePersistedFlag } from './usePersistedFlag'
 
 const SHOW_PLACEMENTS_KEY = 'replay-show-placements'
@@ -202,6 +205,13 @@ export interface ReplayTerrainFlags {
   /** Le PLAN DES MURS sur le fond de carte. Allumé par défaut (cf. SHOW_WALL_PLAN_DEFAULT). */
   showWallPlan: boolean
   toggleWallPlan: () => void
+  /**
+   * Le STYLE DU FOND : `rendu` (défaut) ou `plan` (vue plan à hauteurs). Global, partagé avec la
+   * Tactique et « Occupation du terrain » (cf. `useMapViewPreferences`). Sans image plan sur le
+   * fond retenu, le rendu est servi quoi qu'il en soit.
+   */
+  backgroundStyle: MapBackgroundVariant
+  setBackgroundStyle: (style: MapBackgroundVariant) => void
 }
 
 export function useReplayTerrainFlags(): ReplayTerrainFlags {
@@ -255,6 +265,7 @@ export function useReplayTerrainFlags(): ReplayTerrainFlags {
   )
   const [showVehicles, toggleVehicles] = usePersistedFlag(SHOW_VEHICLES_KEY, SHOW_VEHICLES_DEFAULT)
   const [showWallPlan, toggleWallPlan] = usePersistedFlag(SHOW_WALL_PLAN_KEY, SHOW_WALL_PLAN_DEFAULT)
+  const [backgroundStyle, setBackgroundStyle] = useBackgroundStyle()
 
   return {
     showPlacements,
@@ -285,5 +296,7 @@ export function useReplayTerrainFlags(): ReplayTerrainFlags {
     toggleVehicles,
     showWallPlan,
     toggleWallPlan,
+    backgroundStyle,
+    setBackgroundStyle,
   }
 }

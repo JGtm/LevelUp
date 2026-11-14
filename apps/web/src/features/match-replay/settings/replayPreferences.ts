@@ -12,6 +12,7 @@
  */
 import { DEFAULT_EXPORT_FORMAT_ID, EXPORT_FORMAT_IDS, type ExportFormatId } from '../export/exportFormats'
 import { DEFAULT_FEED_FILTER, FEED_FILTER_IDS, type FeedFilterId } from '../model/feedFilterLogic'
+import { DEFAULT_MAP_BACKGROUND_VARIANT, MAP_BACKGROUND_VARIANTS, type MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import { normalizeTurns, QUARTER_TURNS, type QuarterTurns } from '@/lib/replay/orientation'
 import { VIEW_PRESET_IDS, type ViewPresetId } from './viewPresetLogic'
 
@@ -182,4 +183,23 @@ export function readOrientation(mapId: string): QuarterTurns {
 /** Retient l'orientation choisie pour cette carte. Stockage refusé : le choix vaut pour la session. */
 export function persistOrientation(mapId: string, turns: QuarterTurns): void {
   persistPreference(orientationKey(mapId), String(turns))
+}
+
+/**
+ * LE STYLE DU FOND DE CARTE (`lib/replay/mapBackgroundVariant`) : `rendu` (défaut) ou `plan` (la vue
+ * plan à hauteurs), un réglage GLOBAL — il vaut pour toutes les cartes et les trois vues 2D (rejeu,
+ * Tactique, « Occupation du terrain »). Retenu dans CE navigateur, jamais côté serveur. La lecture est
+ * VALIDÉE contre les deux valeurs : absente, inconnue ou écrite par une autre version -> `rendu`.
+ * Le choix `plan` ne s'applique qu'à un fond qui porte une image plan : sinon le rendu est servi.
+ */
+export const BACKGROUND_STYLE_KEY = 'replay-background-style'
+
+/** Le style de fond retenu, ou le rendu. */
+export function readBackgroundStyle(): MapBackgroundVariant {
+  return readStoredChoice(BACKGROUND_STYLE_KEY, DEFAULT_MAP_BACKGROUND_VARIANT, MAP_BACKGROUND_VARIANTS)
+}
+
+/** Retient le style choisi. Stockage refusé : le choix vaut pour la session, sans erreur. */
+export function persistBackgroundStyle(style: MapBackgroundVariant): void {
+  persistPreference(BACKGROUND_STYLE_KEY, style)
 }

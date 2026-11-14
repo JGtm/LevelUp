@@ -377,6 +377,14 @@ export interface ReplayText {
   /** « Plan des murs » : le trait fin des murs de la carte sur son fond (n'existe qu'avec un plan). */
   layerWallPlan: string
   layerWallPlanHint: string
+  /** Désactivé en mode plan : les murs sont déjà dans l'image du fond. */
+  layerWallPlanInPlanHint: string
+  /** « Fond : Rendu / Plan » : l'image posée sous la carte (le plan n'existe que pour les fonds qui en ont un). */
+  layerBackground: string
+  layerBackgroundRender: string
+  layerBackgroundRenderHint: string
+  layerBackgroundPlan: string
+  layerBackgroundPlanHint: string
   /** « Orientation » : la commande à quatre positions (0°, 90°, 180°, 270°) qui tourne la carte. */
   orientationTitle: string
   orientationHint: string

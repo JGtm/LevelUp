@@ -52,6 +52,7 @@ const PANEL_WIDTH = 416
 export type { ReplayHeatmapControls } from '../ui/ReplayHeatmapSection'
 export type { ReplayOrientationControls } from './ReplayOrientationSection'
 export type {
+  ReplayBackgroundControls,
   ReplayBombCarrierControls,
   ReplayFlagControls,
   ReplayGroundWeaponControls,
@@ -65,6 +66,7 @@ export type {
 } from './ReplaySettingsLayers'
 
 import type {
+  ReplayBackgroundControls,
   ReplayBombCarrierControls,
   ReplayFlagControls,
   ReplayGroundWeaponControls,
@@ -112,6 +114,8 @@ interface ReplayViewPanelProps {
   vehicles: ReplayVehicleControls
   /** Le PLAN DES MURS du fond (clé `replay-show-wall-plan`) : n'existe qu'avec un fond qui en porte un. */
   wallPlan: ReplayWallPlanControls
+  /** Le STYLE DU FOND (rendu ou plan) : n'existe qu'avec un fond qui porte une image plan. */
+  background: ReplayBackgroundControls
   /** L'ORIENTATION de la carte (quarts de tour), retenue par carte : n'existe qu'avec une carte connue. */
   orientation: ReplayOrientationControls
   heatmap: ReplayHeatmapControls
@@ -305,6 +309,7 @@ export function ReplayViewPanel({
   bombCarrier,
   vehicles,
   wallPlan,
+  background,
   orientation,
   heatmap,
   showShotFx,
@@ -368,6 +373,7 @@ export function ReplayViewPanel({
         bombCarrier={bombCarrier}
         vehicles={vehicles}
         wallPlan={wallPlan}
+        background={background}
       />
       <OrientationSection locale={locale} orientation={orientation} />
       <EffectsSection

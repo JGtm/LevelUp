@@ -73,12 +73,14 @@ export function InfoMark({ text }: { text: string }) {
  * bouton, et le doubler ferait entendre deux fois la même chose.
  */
 export function SettingsToggle({
-  label, pressed, onToggle, hint,
+  label, pressed, onToggle, hint, disabled = false,
 }: {
   label: string
   pressed: boolean
   onToggle: () => void
   hint?: string
+  /** Désactivé : le réglage ne peut pas être changé ici (la raison se dit dans `hint`). */
+  disabled?: boolean
 }) {
   return (
     <button
@@ -87,7 +89,8 @@ export function SettingsToggle({
       aria-checked={pressed}
       onClick={onToggle}
       title={hint}
-      className="flex h-7 w-full items-center justify-between gap-2 rounded px-2 text-left text-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      disabled={disabled}
+      className="flex h-7 w-full items-center justify-between gap-2 rounded px-2 text-left text-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
     >
       <span className="truncate">{label}</span>
       <ToggleTrack on={pressed} />

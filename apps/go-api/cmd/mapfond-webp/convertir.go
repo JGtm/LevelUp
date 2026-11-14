@@ -56,8 +56,8 @@ func convertitUnFond(ctx context.Context, f fondPNG) error {
 		return fmt.Errorf("ecriture %s: %w", cheminWebP, err)
 	}
 
-	cheminSidecar := strings.TrimSuffix(f.chemin, filepath.Ext(f.chemin)) + ".json"
-	if err := metAJourSidecarImage(cheminSidecar, filepath.Base(cheminWebP)); err != nil {
+	cheminSidecar, estPlan := sidecarDuFond(f.chemin)
+	if err := metAJourSidecarImage(cheminSidecar, filepath.Base(cheminWebP), estPlan); err != nil {
 		return err
 	}
 
@@ -70,16 +70,31 @@ func convertitUnFond(ctx context.Context, f fondPNG) error {
 	return nil
 }
 
-// metAJourSidecarImage relit le sidecar, remplace son champ `image` par nomImage (D3 : le
-// format sert par l'image est une propriete de la donnee, pas du code) et le reecrit avec le
-// meme style d'indentation que la cuisson (cmd/mapfond-build/cuisson.go), plan des murs compris
-// (le decodeur de film ne le connait pas : `internal/mapfondsidecar`).
-func metAJourSidecarImage(chemin, nomImage string) error {
+// sidecarDuFond rend le sidecar d'une image de fond et dit si c'est son image plan : l'image plan
+// `<cle>.plan.png` partage le sidecar `<cle>.json` du fond et ne le met à jour que par son champ
+// `planImage`.
+func sidecarDuFond(chemin string) (sidecar string, estPlan bool) {
+	dir, nom := filepath.Dir(chemin), filepath.Base(chemin)
+	if cle, ok := mapfondsidecar.CleDeImagePlan(nom); ok {
+		return filepath.Join(dir, cle+".json"), true
+	}
+	return strings.TrimSuffix(chemin, filepath.Ext(chemin)) + ".json", false
+}
+
+// metAJourSidecarImage relit le sidecar, remplace son champ `image` (ou `planImage` pour l'image
+// plan) par nomImage (D3 : le format servi par l'image est une propriete de la donnee, pas du
+// code) et le reecrit avec le meme style d'indentation que la cuisson (cmd/mapfond-build/cuisson.go),
+// plan des murs compris (le decodeur de film ne le connait pas : `internal/mapfondsidecar`).
+func metAJourSidecarImage(chemin, nomImage string, estPlan bool) error {
 	meta, err := mapfondsidecar.Load(chemin)
 	if err != nil {
 		return fmt.Errorf("lecture sidecar %s: %w", chemin, err)
 	}
-	meta.Image = nomImage
+	if estPlan {
+		meta.PlanImage = nomImage
+	} else {
+		meta.Image = nomImage
+	}
 	if err := mapfondsidecar.Write(chemin, *meta); err != nil {
 		return fmt.Errorf("ecriture sidecar %s: %w", chemin, err)
 	}

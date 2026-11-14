@@ -45,11 +45,12 @@ const SLAYER_FILM: FilmLayerAvailability = {
 const SOUND = { available: false, categories: {} } as unknown as ReplaySound
 const HEAT = { mode: 'presence' as const, killsAvailable: true }
 const ORIENTATION = { turns: 0 as const, setTurns: () => {}, available: true }
+const NO_PLAN_BACKGROUND = { available: false, shown: false }
 
-function mount(available: FilmLayerAvailability) {
+function mount(available: FilmLayerAvailability, planBackground = NO_PLAN_BACKGROUND) {
   return renderHook(() => {
     const settings = useReplaySettings()
-    const menu = useReplayViewMenu({ settings, orientation: ORIENTATION, sound: SOUND, available, heat: HEAT, locale: 'fr' })
+    const menu = useReplayViewMenu({ settings, orientation: ORIENTATION, sound: SOUND, available, heat: HEAT, locale: 'fr', planBackground })
     return { settings, menu }
   })
 }
@@ -170,5 +171,27 @@ describe('useReplayViewMenu', () => {
     window.localStorage.setItem(VIEW_PRESET_KEY, 'n-importe-quoi')
     const { result } = mount(FULL_FILM)
     expect(result.current.menu.active).toBe('complet')
+  })
+
+  it('le fond : la commande suit la présence d une image plan, et son choix est retenu', () => {
+    const sans = mount(FULL_FILM)
+    expect(sans.result.current.menu.panel.background.available).toBe(false)
+    const { result } = mount(FULL_FILM, { available: true, shown: false })
+    expect(result.current.menu.panel.background).toMatchObject({ available: true, value: 'rendu' })
+    act(() => result.current.menu.panel.background.onSelect('plan'))
+    expect(result.current.menu.panel.background.value).toBe('plan')
+    expect(window.localStorage.getItem('replay-background-style')).toBe('plan')
+  })
+
+  it('plan demandé mais repli sur le rendu (image plan en échec) : le fond posé est le rendu, l’interrupteur des murs reste actif', () => {
+    window.localStorage.setItem('replay-background-style', 'plan')
+    const { result } = mount(FULL_FILM, { available: true, shown: false })
+    expect(result.current.menu.panel.background.value).toBe('plan')
+    expect(result.current.menu.panel.wallPlan.inPlan).toBe(false)
+  })
+
+  it('le plan des murs est désactivé quand le fond posé est le plan, et seulement alors', () => {
+    expect(mount(FULL_FILM, { available: true, shown: false }).result.current.menu.panel.wallPlan.inPlan).toBe(false)
+    expect(mount(FULL_FILM, { available: true, shown: true }).result.current.menu.panel.wallPlan.inPlan).toBe(true)
   })
 })

@@ -204,6 +204,12 @@ type ReplayService interface {
 	// Mêmes sentinelles d'absence que leurs jumelles par match.
 	MapBackgroundForMap(ctx context.Context, mapID string) (*replaydoc.MapBackground, error)
 	MapBackgroundImageForMap(ctx context.Context, mapID string) ([]byte, string, error)
+	// MapBackgroundPlanImage et MapBackgroundPlanImageForMap servent l'IMAGE PLAN du même fond
+	// (plan des composantes du maillage de navigation, même cadre et même calage que l'image du
+	// fond), par match et par carte. ErrMapBackgroundNotAvailable quand le fond n'existe pas ou
+	// n'a pas de plan.
+	MapBackgroundPlanImage(ctx context.Context, matchID string) ([]byte, string, error)
+	MapBackgroundPlanImageForMap(ctx context.Context, mapID string) ([]byte, string, error)
 	// MapCallouts retourne les ZONES NOMMÉES officielles de la carte du match
 	// (polygones monde + libellés FR/EN, catalogue de référence versionné complété du
 	// catalogue généré au fil de l'eau). Retourne ErrMapCalloutsNotAvailable quand la

@@ -50,6 +50,11 @@ export interface ReplayViewMenuOptions {
   sound: ReplaySound
   /** Ce que le film porte réellement, calque par calque (cf. l'en-tête). */
   available: FilmLayerAvailability
+  /**
+   * Le fond de carte : porte-t-il une image plan (la commande « Fond » n'est proposée qu'alors), et
+   * l'image posée est-elle le plan (qui porte déjà les murs : leur calque se désactive) ?
+   */
+  planBackground: { available: boolean; shown: boolean }
   /** La lecture de la carte de chaleur RÉELLEMENT servie, et si les morts sont localisables. */
   heat: { mode: ReplayHeatmapMode; killsAvailable: boolean }
   locale: ReplayLocale
@@ -123,7 +128,7 @@ interface PanelInput extends ReplayViewMenuOptions {
  * elles TRANSPORTENT les états et les bascules de `useReplaySettings` vers les commandes.
  */
 function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
-  const { settings: s, orientation, sound, available, heat, locale, onClose, view } = o
+  const { settings: s, orientation, sound, available, heat, locale, onClose, view, planBackground } = o
   return {
     locale,
     onClose,
@@ -194,6 +199,12 @@ function panelPropsOf(o: PanelInput): ReplayViewPanelProps {
       available: available.wallPlan,
       show: s.showWallPlan,
       onToggle: s.toggleWallPlan,
+      inPlan: planBackground.shown,
+    },
+    background: {
+      available: planBackground.available,
+      value: s.backgroundStyle,
+      onSelect: s.setBackgroundStyle,
     },
     orientation: { available: orientation.available, turns: orientation.turns, onSelect: orientation.setTurns },
     heatmap: {

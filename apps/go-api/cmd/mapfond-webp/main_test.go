@@ -11,6 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/mapfondsidecar"
+
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
 
@@ -200,5 +203,55 @@ func TestSelectionnePNG_TrieParTailleDecroissanteEtLimite(t *testing.T) {
 	}
 	if filepath.Base(deux[1].chemin) != "moyen.png" {
 		t.Fatalf("second fichier attendu moyen.png, obtenu %s", filepath.Base(deux[1].chemin))
+	}
+}
+
+// L'image plan `<cle>.plan.png` se convertit avec le sidecar `<cle>.json` du fond : le champ
+// `planImage` prend le nom du WebP, le champ `image` et le plan ne bougent pas.
+func TestConvertitUnFond_ImagePlanMetAJourPlanImage(t *testing.T) {
+	dir := t.TempDir()
+	cheminPlan := filepath.Join(dir, "carte.plan.png")
+	f, err := os.Create(cheminPlan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := png.Encode(f, construitImageSynthetique()); err != nil {
+		f.Close()
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	cheminJSON := filepath.Join(dir, "carte.json")
+	avant := mapfondsidecar.MapBackground{
+		MapBackground: replay.MapBackground{
+			SchemaVersion: replay.MapBackgroundSchemaVersion, Module: "carte", Image: "carte.webp",
+			Source: "test", GeneratedAt: time.Now().UTC(), Style: "test",
+		},
+		PlanImage: "carte.plan.png",
+		Plan:      &replaydoc.MapBackgroundPlan{Source: "t", Vertices: 4, Faces: 1, Edges: [][4]float64{{0, 0, 1, 0}}},
+	}
+	if err := mapfondsidecar.Write(cheminJSON, avant); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(cheminPlan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := convertitUnFond(context.Background(), fondPNG{chemin: cheminPlan, octets: info.Size()}); err != nil {
+		t.Fatalf("convertitUnFond: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "carte.plan.webp")); err != nil {
+		t.Fatalf("le webp de l'image plan n'a pas ete ecrit: %v", err)
+	}
+	if _, err := os.Stat(cheminPlan); !os.IsNotExist(err) {
+		t.Fatalf("le PNG plan aurait du etre supprime (err=%v)", err)
+	}
+	relu, err := mapfondsidecar.Load(cheminJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if relu.PlanImage != "carte.plan.webp" || relu.Image != "carte.webp" || relu.Plan == nil {
+		t.Errorf("sidecar = image %q, planImage %q, plan %v", relu.Image, relu.PlanImage, relu.Plan)
 	}
 }

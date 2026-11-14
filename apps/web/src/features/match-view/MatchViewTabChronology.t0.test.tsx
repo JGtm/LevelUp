@@ -46,7 +46,7 @@ vi.mock('@/lib/replay/queries', () => ({
   useMatchReplay: () => ({ data: artefact.current, isLoading: false }),
   useReplayMapBackground: () => ({ data: undefined }),
   useReplayMapCallouts: () => ({ data: undefined }),
-  useReplayMapImage: () => ({ data: undefined }),
+  useReplayMapImage: () => ({ image: null, variante: 'rendu' }),
 }))
 
 // Hors périmètre de ce témoin : cette section ouvre sa propre requête.

@@ -14,6 +14,7 @@ import {
   type ReplayOrientationControls,
   type ReplayPlacementControls,
   type ReplayFlagControls,
+  type ReplayBackgroundControls,
   type ReplayWallPlanControls,
   type ReplayWeaponPadControls,
 } from './ReplayViewPanel'
@@ -54,7 +55,11 @@ export function makeGroundWeapons(
 }
 
 export function makeWallPlan(over: Partial<ReplayWallPlanControls> = {}): ReplayWallPlanControls {
-  return { available: true, show: true, onToggle: vi.fn(), ...over }
+  return { available: true, show: true, onToggle: vi.fn(), inPlan: false, ...over }
+}
+
+export function makeBackground(over: Partial<ReplayBackgroundControls> = {}): ReplayBackgroundControls {
+  return { available: true, value: 'rendu', onSelect: vi.fn(), ...over }
 }
 
 export function makeOrientation(over: Partial<ReplayOrientationControls> = {}): ReplayOrientationControls {
@@ -138,6 +143,7 @@ export function renderPanel(over: Partial<Parameters<typeof ReplayViewPanel>[0]>
       bombCarrier={makeFlagCarries()}
       vehicles={makeWeaponPads()}
       wallPlan={makeWallPlan()}
+      background={makeBackground()}
       orientation={makeOrientation()}
       heatmap={makeHeatmap()}
       showShotFx

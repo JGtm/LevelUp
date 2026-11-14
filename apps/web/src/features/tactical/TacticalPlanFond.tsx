@@ -15,7 +15,7 @@
 import type { ReactNode, RefObject } from 'react'
 
 import { boiteDuPlan, type CadrageDuFond } from './plan.logic'
-import { useTacticalMapBackgroundUrl } from './queries'
+import { useTacticalFondVariante } from './useTacticalFondVariante'
 
 export interface TacticalPlanFondProps {
   playerSlug: string
@@ -32,7 +32,8 @@ export interface TacticalPlanFondProps {
 }
 
 export function TacticalPlanFond({ playerSlug, mapId, aspect, hauteurMax, cadrage, cadreRef, children }: TacticalPlanFondProps) {
-  const fond = useTacticalMapBackgroundUrl(playerSlug, mapId)
+  // L'image plan se superpose exactement au rendu (même calage, mêmes dimensions) : seul l'`<img>` change.
+  const { url: fond } = useTacticalFondVariante(playerSlug, mapId)
   return (
     <div
       ref={cadreRef}

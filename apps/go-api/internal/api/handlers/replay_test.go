@@ -48,6 +48,8 @@ type mockReplayService struct {
 	imageMapContentType string
 	bgMapErr            error
 	vuMapID             string
+	// planErr : l'erreur des deux images plan (par match et par carte).
+	planErr error
 }
 
 // contentTypeOuDefaut rend "image/png" quand aucun type n'a été fixé explicitement — le
@@ -79,6 +81,17 @@ func (m *mockReplayService) MapBackgroundForMap(_ context.Context, mapID string)
 func (m *mockReplayService) MapBackgroundImageForMap(_ context.Context, mapID string) ([]byte, string, error) {
 	m.vuMapID = mapID
 	return m.imageMap, contentTypeOuDefaut(m.imageMapContentType), m.bgMapErr
+}
+
+// MapBackgroundPlanImage et sa jumelle par carte rendent des octets distincts de ceux du fond : un
+// handler qui servirait le fond à la place du plan se verrait.
+func (m *mockReplayService) MapBackgroundPlanImage(_ context.Context, _ string) ([]byte, string, error) {
+	return []byte("plan-match"), "image/webp", m.planErr
+}
+
+func (m *mockReplayService) MapBackgroundPlanImageForMap(_ context.Context, mapID string) ([]byte, string, error) {
+	m.vuMapID = mapID
+	return []byte("plan-carte"), "image/webp", m.planErr
 }
 
 func (m *mockReplayService) MapCallouts(_ context.Context, _ string) (*replaydoc.MapCalloutsEntry, error) {

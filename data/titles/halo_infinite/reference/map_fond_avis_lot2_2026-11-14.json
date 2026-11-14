@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "note": "Avis du user sur la planche du lot 2 (artefact 4Kv1566De6ViWN5Jed4VFa, collection `avis`, saisis le 2026-11-13 au soir) : nouveau fond rogne a la silhouette contre ancien. 111 nouveaux fonds valides, 3 a reprendre. Regle generale donnee par le user : la vue plan est le masque de reference, le rendu doit etre coupe a sa silhouette pour tout ce qui depasse (eau comprise), sur toutes les cartes.",
+  "date": "2026-11-14",
+  "defaut": "nouveau",
+  "regle_generale": "superposer la vue plan au rendu et couper ce qui depasse, valable pour toutes les cartes (commentaire sur Deadlock)",
+  "exceptions": {
+    "8cf45707-ced1-4722-b736-c139cbf0d1e2": {"carte": "Ardent Prayer", "etat": "reprendre", "commentaire": ""},
+    "be848f91-3d87-4b80-8eb9-df3b52cb8d10": {"carte": "Urban Raid", "etat": "reprendre", "commentaire": ""},
+    "e8268e75-6583-42ad-9e0c-2d2f043f5f0f": {"carte": "Vallaheim Firefight", "etat": "ignorer", "commentaire": "Ignorer, c'est du firefight et on supporte pas ce mode"},
+    "btb_drydock": {"carte": "Deadlock", "etat": "nouveau", "commentaire": "attention a l'etendue bleue qui est en trop, si on se refere a la vue plan, il faut bien dans tous les cas superposer la vue plan au rendu pour couper ce qui depasse (valide pour toutes les map globalement)"},
+    "catalyst": {"carte": "Catalyst", "etat": "nouveau", "commentaire": "attention au sud je vois une difference, il manque un bout si on se refere au plan"}
+  }
+}

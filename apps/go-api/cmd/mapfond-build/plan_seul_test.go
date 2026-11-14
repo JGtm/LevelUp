@@ -21,7 +21,7 @@ func TestAjoutePlansLaisseIntacteUneCarteSansBlob(t *testing.T) {
 	if err := os.WriteFile(chemin, contenu, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	e := &environnement{repoRoot: t.TempDir(), sortieDir: sortie, filtre: map[string]bool{carte.MapID: true}}
+	e := &environnement{repoRoot: t.TempDir(), sortieDir: sortie, filtre: map[string]bool{carte.MapID: true}, sansNatives: true}
 
 	b := e.ajoutePlans(context.Background())
 	if b.Ajoutes != 0 || b.Echecs != 0 || len(b.SansBlob) != 1 {

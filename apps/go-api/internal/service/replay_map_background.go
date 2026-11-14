@@ -133,6 +133,11 @@ func (s *replayService) readBackgroundImage(ctx context.Context, key string) ([]
 	if err != nil {
 		return nil, "", err
 	}
+	return lisFichierImage(path, mime, key)
+}
+
+// lisFichierImage lit l'image d'une clé de fond : une absence de fichier est l'absence du fond.
+func lisFichierImage(path, mime, key string) ([]byte, string, error) {
 	blob, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, "", port.ErrMapBackgroundNotAvailable
@@ -157,11 +162,17 @@ func (s *replayService) backgroundImageFile(ctx context.Context, key string) (st
 // type MIME. Seul point qui passe d'un sidecar à un fichier image : l'image SERVIE et le masque de
 // la zone jouable (replay_vehicle_scenery.go, qui garde le calage du même sidecar) le partagent.
 func (s *replayService) imageFileOf(ctx context.Context, key string, bg *replay.MapBackground) (string, string, error) {
-	nom := filepath.Base(bg.Image)
+	return s.imageFileNamed(ctx, key, bg.Image)
+}
+
+// imageFileNamed valide un nom de fichier image lu dans un sidecar (l'image du fond ou son image
+// plan) et rend son chemin et son type MIME : un nom simple, d'extension en liste blanche.
+func (s *replayService) imageFileNamed(ctx context.Context, key, image string) (string, string, error) {
+	nom := filepath.Base(image)
 	mime, connue := mimeParExtensionDeFond[strings.ToLower(filepath.Ext(nom))]
-	if nom != bg.Image || !connue {
+	if nom != image || !connue {
 		slog.ErrorContext(ctx, "fond de carte : nom de fichier image refusé",
-			"image", bg.Image, "cle", key, "titleSlug", s.titleSlug)
+			"image", image, "cle", key, "titleSlug", s.titleSlug)
 		return "", "", port.ErrMapBackgroundNotAvailable
 	}
 	return title.NewPathResolver(s.repoRoot).MapBackgroundImageFilePath(s.titleSlug, nom), mime, nil

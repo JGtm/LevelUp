@@ -47,6 +47,7 @@ import { ANALYSIS_PENDING_REFETCH_MS } from '@/lib/analysis-pending/analysisPend
 import { queryKeys } from '@/lib/query/keys'
 import { SANS_BARRE_META } from '@/lib/query/sansBarre'
 import { mapFrame, type MapFrame } from '@/lib/replay/heatPaint'
+import { backgroundImagePath, loadedBackground, type MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import { normalizeWallPlan, type WallPlanReady } from '@/lib/replay/wallPlan'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -176,14 +177,37 @@ export function useTacticalMaps(
  * carte porte un calage (`TacticalMapCard.calage_fond`). Un `<img src>` direct ne convient pas
  * ici : il n'emporte pas l'en-tête `X-LevelUp-Title` (cf. `api.getBlob`), et l'API résoudrait le
  * titre de la session au lieu de celui de la page. La clé de cache reste celle du plan principal.
+ *
+ * `variante` : `rendu` (défaut, l'image du fond) ou `plan` (la vue plan à hauteurs, même calage et mêmes
+ * dimensions, donc le cadre et le calque ne bougent pas). Une clé de cache par variante. Les vignettes
+ * de la grille gardent le rendu.
  */
-export function useTacticalMapBackgroundUrl(playerSlug: string, mapId: string, actif = true): string | null {
+export function useTacticalMapBackgroundUrl(
+  playerSlug: string,
+  mapId: string,
+  actif = true,
+  variante: MapBackgroundVariant = 'rendu',
+): string | null {
+  return useTacticalMapBackgroundImage(playerSlug, mapId, actif, variante).url
+}
+
+/**
+ * useTacticalMapBackgroundImage — comme `useTacticalMapBackgroundUrl`, et dit en plus QUELLE variante est
+ * réellement chargée (le plan demandé mais en échec rend le rendu de repli) : les murs se décident sur
+ * cette variante-là, pas sur celle qu'on a demandée.
+ */
+export function useTacticalMapBackgroundImage(
+  playerSlug: string,
+  mapId: string,
+  actif = true,
+  variante: MapBackgroundVariant = 'rendu',
+): { url: string | null; variante: MapBackgroundVariant } {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const { data } = useQuery({
-    queryKey: queryKeys.tacticalMapBackground(titleSlug, mapId),
+  const load = (v: MapBackgroundVariant) => ({
+    queryKey: queryKeys.tacticalMapBackground(titleSlug, mapId, v),
     queryFn: async () => {
       const blob = await api.getBlob(
-        `/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/background.png`,
+        backgroundImagePath(`/players/${playerSlug}/tactical/${encodeURIComponent(mapId)}/background.png`, v),
       )
       // `createObjectURL` manque dans certains environnements de test : l'absence de fond
       // n'est pas une panne de grille, la vignette s'affiche sans image.
@@ -192,10 +216,30 @@ export function useTacticalMapBackgroundUrl(playerSlug: string, mapId: string, a
     },
     staleTime: Infinity,
     gcTime: Infinity,
-    enabled: !!playerSlug && !!mapId && actif,
     retry: false,
   })
-  return data ?? null
+  const pret = !!playerSlug && !!mapId && actif
+  // REPLI SILENCIEUX sur le rendu : l'image plan qui ne se charge pas n'est jamais une erreur
+  // affichée ; pendant son chargement, le rendu déjà en cache reste en place.
+  const plan = useQuery({ ...load('plan'), enabled: pret && variante === 'plan' })
+  const rendu = useQuery({ ...load('rendu'), enabled: pret && (variante === 'rendu' || plan.isError) })
+  const { image, variante: chargee } = loadedBackground(variante, plan.data ?? undefined, rendu.data ?? undefined)
+  return { url: image, variante: chargee }
+}
+
+/**
+ * useTacticalMapPlanImage — la carte a-t-elle une IMAGE PLAN (`planImage` du sidecar du fond) ?
+ * Même requête que le calage et le plan des murs : rien de plus n'est chargé. C'est elle qui décide,
+ * avec la préférence de style, de l'image demandée (`resolveBackgroundVariant`). `pending` tant que le
+ * sidecar n'a répondu ni par une donnée ni par une absence (404 : carte sans fond figé) : l'image ne se
+ * demande pas avant, sans quoi le rendu serait téléchargé pour rien avant que le plan soit connu.
+ */
+export function useTacticalMapPlanImage(
+  playerSlug: string,
+  mapId: string,
+): { planImage: string | undefined; pending: boolean } {
+  const { data, isPending } = useTacticalMapBackgroundSidecarQuery(playerSlug, mapId)
+  return { planImage: data?.planImage, pending: isPending }
 }
 
 /**
@@ -229,8 +273,12 @@ export function useTacticalMapBackgroundPlan(playerSlug: string, mapId: string):
 
 /** Le sidecar du fond (calage et plan des murs) : UNE requête, lue par les deux hooks ci-dessus. */
 function useTacticalMapBackgroundSidecar(playerSlug: string, mapId: string): ReplayMapBackground | undefined {
+  return useTacticalMapBackgroundSidecarQuery(playerSlug, mapId).data
+}
+
+function useTacticalMapBackgroundSidecarQuery(playerSlug: string, mapId: string) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const { data } = useQuery({
+  return useQuery({
     queryKey: queryKeys.tacticalMapBackgroundFrame(titleSlug, mapId),
     queryFn: () =>
       api.get<ReplayMapBackground>(
@@ -241,7 +289,6 @@ function useTacticalMapBackgroundSidecar(playerSlug: string, mapId: string): Rep
     enabled: !!playerSlug && !!mapId,
     retry: false,
   })
-  return data
 }
 
 /** Les paramètres d'une lecture du plan (le corps de `/tactical/{map}/raster`, périmètre non résolu = `null`). */

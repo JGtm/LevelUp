@@ -24,7 +24,8 @@ vi.mock('./queries', async (importOriginal) => {
     ...actual,
     useTacticalMapBackgroundFrame: () => null,
     useTacticalMapBackgroundPlan: () => null,
-    useTacticalMapBackgroundUrl: () => null,
+    useTacticalMapBackgroundImage: () => ({ url: null, variante: 'rendu' }),
+    useTacticalMapPlanImage: () => ({ planImage: undefined, pending: false }),
   }
 })
 

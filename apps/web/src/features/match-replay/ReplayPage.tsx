@@ -16,7 +16,9 @@ import { REPLAY_TEXT } from '@/features/match-replay/i18n/i18n'
 import { usePlaybackFrame, usePlaybackStore } from '@/features/match-replay/model/playbackStore'
 import { replayLoadState } from '@/features/match-replay/model/replayLoadState'
 import { useReplayModel } from '@/features/match-replay/model/useReplayModel'
+import { resolveBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import { normalizeWallPlan } from '@/lib/replay/wallPlan'
+import { useBackgroundStyle } from '@/features/match-replay/settings/useBackgroundStyle'
 import { useKillerZones } from '@/features/match-replay/hooks/useKillerZones'
 import { useKillSourceIcons } from '@/features/match-replay/hooks/useKillSourceIcons'
 import { useReplayViewpoint } from '@/features/match-replay/hooks/useReplayViewpoint'
@@ -93,13 +95,24 @@ export function ReplayPage() {
   // d'octets, il dit si la carte a une image et où elle se pose), l'IMAGE ensuite —
   // jusqu'à 1,4 Mio, qu'on ne va chercher que si le calage existe.
   const { data: background } = useReplayMapBackground(playerSlug, matchId)
-  const mapImage = useReplayMapImage(playerSlug, matchId, !!background)
+  // LE STYLE DU FOND (réglage « Fond » du panneau Vue) : l'image plan se superpose au rendu (même calage,
+  // mêmes dimensions) et n'est demandée que si le fond en porte une ; sinon le rendu, sans rien dire.
+  const [backgroundStyle] = useBackgroundStyle()
+  const demandee = resolveBackgroundVariant(backgroundStyle, background?.planImage)
+  // La variante qui compte pour les murs est celle RÉELLEMENT chargée (repli sur le rendu si le plan échoue).
+  const { image: mapImage, variante } = useReplayMapImage(playerSlug, matchId, !!background, demandee)
   const mapBackground = useMemo(
     () =>
       background && mapImage
-        ? { calibration: background.calibration, image: mapImage, plan: normalizeWallPlan(background.plan) }
+        ? {
+            calibration: background.calibration,
+            image: mapImage,
+            plan: normalizeWallPlan(background.plan),
+            variante,
+            planAvailable: !!background.planImage,
+          }
         : null,
-    [background, mapImage],
+    [background, mapImage, variante],
   )
   // LES ZONES NOMMÉES, normalisées UNE fois : la même liste sert le calque du canvas et
   // la zone du tueur du fil des éliminations. 404 = la carte n'en a pas (Forge) — liste vide, rien.

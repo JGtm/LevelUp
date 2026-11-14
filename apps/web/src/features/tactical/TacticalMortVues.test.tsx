@@ -35,7 +35,7 @@ vi.mock('./tueursPaint', () => ({ peindreLaCouche: vi.fn() }))
 vi.mock('./coequipiersPaint', () => ({ peindreLaScene: vi.fn() }))
 vi.mock('./queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./queries')>()
-  return { ...actual, useTacticalMapBackgroundFrame: () => null, useTacticalMapBackgroundPlan: () => null, useTacticalMapBackgroundUrl: () => null }
+  return { ...actual, useTacticalMapBackgroundFrame: () => null, useTacticalMapBackgroundPlan: () => null, useTacticalMapBackgroundImage: () => ({ url: null, variante: 'rendu' }), useTacticalMapPlanImage: () => ({ planImage: undefined, pending: false }) }
 })
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()

@@ -10,8 +10,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"levelup/go-api/internal/domain/replaydoc"
-
 	"github.com/JGtm/halo-infinite-map-images/himap"
 
 	"github.com/JGtm/halo-infinite-files-reader/hinavmesh"
@@ -24,6 +22,11 @@ func (e *environnement) cuitForge(ctx context.Context) []bilanAsset {
 		// La cle de selection ET de publication d'une carte Forge est son map_id : un
 		// canevas porte des dizaines de cartes, il ne peut keyer ni l'une ni l'autre.
 		if !e.retenue(carte.MapID) {
+			continue
+		}
+		if d := e.decisionFond(carte.MapID); d.Saute {
+			slog.InfoContext(ctx, "mapfond: carte laissee telle que publiee par l'avis", "carte", carte.Nom, "map_id", carte.MapID, "etat", d.Etat)
+			out = append(out, bilanSaute(carte.MapID, []string{carte.Nom}, d))
 			continue
 		}
 		out = append(out, e.cuitUneForge(ctx, carte))
@@ -47,8 +50,8 @@ func (e *environnement) cuitUneForge(ctx context.Context, carte himap.CarteForge
 		}
 		return e.publie(ctx, c, rendu, bilan)
 	}
-	navRef, plan := e.maillageForge(ctx, carte)
-	c.plan = plan
+	navRef, tout := e.maillageForge(ctx, carte)
+	c.maillage, c.sourcePlan = tout, sourcePlanForge
 	rendu, bilan, err := himap.CuitCarteForge(ctx, e.optionsForge(carte, c, objets, navRef))
 	if err != nil {
 		slog.ErrorContext(ctx, "cuisson Forge", "err", err, "carte", carte.Nom, "map_id", carte.MapID)
@@ -57,12 +60,12 @@ func (e *environnement) cuitUneForge(ctx context.Context, carte himap.CarteForge
 	return e.publie(ctx, c, rendu, bilan)
 }
 
-// maillageForge charge le maillage de navigation d'une carte Forge qui en a un dans le dépôt
-// et rend, d'une part la surface de référence (nil si la carte ne la prend pas sur lui), d'autre
-// part son plan des murs (nil sans maillage). Le plan se publie pour toute carte qui a un blob,
-// que la cuisson s'en serve ou non.
-func (e *environnement) maillageForge(ctx context.Context, carte himap.CarteForge) (*hinavmesh.Maillage, *replaydoc.MapBackgroundPlan) {
-	reference := e.navmeshReferenceDe(carte.MapID)
+// maillageForge charge le maillage de navigation d'une carte Forge qui en a un dans le dépôt et
+// rend, d'une part la surface de référence et de rognage (nil si la carte ne la prend pas sur lui
+// et qu'aucun avis ne la rogne), d'autre part le maillage entier dont le plan est tiré (nil sans
+// maillage). Le plan se publie pour toute carte qui a un blob, que la cuisson s'en serve ou non.
+func (e *environnement) maillageForge(ctx context.Context, carte himap.CarteForge) (arme, tout *hinavmesh.Maillage) {
+	reference := e.navmeshReferenceDe(carte.MapID) || e.decisionFond(carte.MapID).Rogne
 	m, err := e.chargeNavmesh(carte)
 	switch {
 	case errors.Is(err, os.ErrNotExist) && !reference:
@@ -75,11 +78,10 @@ func (e *environnement) maillageForge(ctx context.Context, carte himap.CarteForg
 		slog.WarnContext(ctx, "maillage de navigation illisible, fond publie sans plan", "err", err, "carte", carte.Nom)
 		return nil, nil
 	}
-	plan := planDeMaillage(ctx, carte.MapID, sourcePlanForge, m)
 	if !reference {
-		return nil, plan
+		return nil, m
 	}
-	return m, plan
+	return m, m
 }
 
 // optionsForge assemble les options de cuisson d'une carte Forge.
@@ -179,7 +181,7 @@ func (e *environnement) cuitDepuisNavmesh(ctx context.Context, carte himap.Carte
 	if m, errDecode := hinavmesh.Decode(blob); errDecode != nil {
 		slog.WarnContext(ctx, "mapfond: maillage de navigation illisible, fond publie sans plan", "err", errDecode, "carte", carte.Nom)
 	} else {
-		c.plan = planDeMaillage(ctx, carte.MapID, sourcePlanForge, m)
+		c.maillage, c.sourcePlan = m, sourcePlanForge
 	}
 	return himap.CuitCarteNavmesh(ctx, himap.OptionsCuissonNavmesh{
 		Blob:         blob,

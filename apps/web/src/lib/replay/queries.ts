@@ -14,6 +14,7 @@ import type { ReplayDocument, ReplayMapBackground, ReplayMapCallouts } from '@/l
 import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { backgroundImagePath, loadedBackground, type MapBackgroundVariant } from './mapBackgroundVariant'
 import { validateReplayDocument } from './replayDocumentSchema'
 import {
   normalizeReplayMatchContext,
@@ -145,18 +146,29 @@ export function useReplayMapBackground(playerSlug: string, matchId: string) {
  *
  * `enabled` est piloté par l'appelant : sans calage, l'image ne sert à rien — la charger
  * serait 700 Kio pour un fond qu'on ne saurait pas placer.
+ *
+ * `variante` : l'image à demander (`resolveBackgroundVariant` la décide : `plan` seulement pour un
+ * fond qui porte une image plan). Chaque variante a sa clé de cache. L'image plan a le même calage
+ * et les mêmes dimensions que le rendu : l'appelant ne change rien d'autre. REPLI SILENCIEUX : si
+ * l'image plan ne se charge pas, c'est le rendu qui est servi, sans erreur à l'écran ; pendant son
+ * chargement, le rendu déjà en cache reste affiché.
+ *
+ * LA VARIANTE RENDUE EST CELLE QUI EST RÉELLEMENT CHARGÉE, pas celle qu'on a demandée : c'est d'elle
+ * que dépendent les murs (déjà dans l'image plan, à tracer sur le rendu de repli). Tant qu'aucune
+ * image n'est prête, elle vaut la variante demandée.
  */
 export function useReplayMapImage(
   playerSlug: string,
   matchId: string,
   enabled: boolean,
-): HTMLImageElement | null {
+  variante: MapBackgroundVariant = 'rendu',
+): { image: HTMLImageElement | null; variante: MapBackgroundVariant } {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const { data } = useQuery({
-    queryKey: queryKeys.matchReplayBackgroundImage(playerSlug, titleSlug, matchId),
+  const load = (v: MapBackgroundVariant) => ({
+    queryKey: queryKeys.matchReplayBackgroundImage(playerSlug, titleSlug, matchId, v),
     queryFn: async () => {
       const blob = await api.getBlob(
-        `/players/${playerSlug}/matches/${matchId}/replay/background.png`,
+        backgroundImagePath(`/players/${playerSlug}/matches/${matchId}/replay/background.png`, v),
       )
       const url = URL.createObjectURL(blob)
       try {
@@ -169,12 +181,14 @@ export function useReplayMapImage(
       }
     },
     staleTime: Infinity,
-    enabled: enabled && !!playerSlug && !!matchId,
     // Absence ou échec de chargement : pas de fond, le rejeu garde son sol reconstruit.
     // Rien à dire à l'utilisateur — la carte s'affiche quand même.
     retry: false,
   })
-  return data ?? null
+  const ready = enabled && !!playerSlug && !!matchId
+  const plan = useQuery({ ...load('plan'), enabled: ready && variante === 'plan' })
+  const rendu = useQuery({ ...load('rendu'), enabled: ready && (variante === 'rendu' || plan.isError) })
+  return loadedBackground(variante, plan.data, rendu.data)
 }
 
 /**

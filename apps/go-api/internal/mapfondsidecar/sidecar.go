@@ -11,6 +11,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"levelup/go-api/internal/domain/replaydoc"
 
@@ -21,6 +23,26 @@ import (
 // le plan s'insère juste avant.
 const finObjet = "\n}"
 
+// suffixeImagePlan sépare la clé de l'extension dans le nom de l'image plan d'un fond
+// (`<cle>.plan.webp`) : l'image plan se pose sur le fond avec le même calage et ne s'en distingue
+// que par ce suffixe.
+const suffixeImagePlan = ".plan"
+
+// NomImagePlan rend le nom du fichier image plan d'une clé de fond pour l'extension `ext`
+// (point compris : `.png`, `.webp`).
+func NomImagePlan(cle, ext string) string {
+	return cle + suffixeImagePlan + ext
+}
+
+// CleDeImagePlan rend la clé de fond dont `nomFichier` (sans dossier) est l'image plan, et dit si
+// c'en est une. Seul point qui sait lire le nom d'une image plan : l'outil de conversion en WebP
+// s'en sert pour retrouver le sidecar d'une image qu'il convertit.
+func CleDeImagePlan(nomFichier string) (cle string, ok bool) {
+	base := strings.TrimSuffix(nomFichier, filepath.Ext(nomFichier))
+	cle, ok = strings.CutSuffix(base, suffixeImagePlan)
+	return cle, ok && cle != ""
+}
+
 // MapBackground est le fichier `<cle>.json` d'un fond : le calage du décodeur, aplati, suivi du plan.
 // Sans plan, la sérialisation est celle de `replay.MapBackground` seule. C'est le document
 // STOCKÉ de la racine « fond de carte » : il porte le nom de son jumeau servi
@@ -28,6 +50,10 @@ const finObjet = "\n}"
 type MapBackground struct {
 	replay.MapBackground
 	Plan *replaydoc.MapBackgroundPlan `json:"plan,omitempty"`
+	// PlanImage : nom du fichier image plan du dossier des fonds, mêmes dimensions et même calage
+	// que l'image du fond ; vide sans plan. `Write` l'écrit avant le plan, que le plan à une arête
+	// par ligne suit en fin d'objet.
+	PlanImage string `json:"planImage,omitempty"`
 }
 
 // Load lit un sidecar complet. Les contrôles du calage (version de schéma) sont ceux de
@@ -37,26 +63,30 @@ func Load(chemin string) (*MapBackground, error) {
 	if err != nil {
 		return nil, err
 	}
-	plan, err := lirePlan(chemin)
+	ext, err := lireExtensions(chemin)
 	if err != nil {
 		return nil, err
 	}
-	return &MapBackground{MapBackground: *bg, Plan: plan}, nil
+	return &MapBackground{MapBackground: *bg, PlanImage: ext.PlanImage, Plan: ext.Plan}, nil
 }
 
-// lirePlan ne lit que le plan d'un sidecar : nil quand il n'en porte pas.
-func lirePlan(chemin string) (*replaydoc.MapBackgroundPlan, error) {
+// extensionsSidecar : ce que le sidecar porte en plus du calage du décodeur.
+type extensionsSidecar struct {
+	PlanImage string                       `json:"planImage"`
+	Plan      *replaydoc.MapBackgroundPlan `json:"plan"`
+}
+
+// lireExtensions ne lit que le plan et l'image plan d'un sidecar : vides quand il n'en porte pas.
+func lireExtensions(chemin string) (extensionsSidecar, error) {
 	blob, err := os.ReadFile(chemin) //nolint:gosec // asset versionné, chemin résolu par PathResolver
 	if err != nil {
-		return nil, fmt.Errorf("fond de carte illisible (%s) : %w", chemin, err)
+		return extensionsSidecar{}, fmt.Errorf("fond de carte illisible (%s) : %w", chemin, err)
 	}
-	var seul struct {
-		Plan *replaydoc.MapBackgroundPlan `json:"plan"`
+	var ext extensionsSidecar
+	if err := json.Unmarshal(blob, &ext); err != nil {
+		return extensionsSidecar{}, fmt.Errorf("fond de carte invalide (%s) : %w", chemin, err)
 	}
-	if err := json.Unmarshal(blob, &seul); err != nil {
-		return nil, fmt.Errorf("fond de carte invalide (%s) : %w", chemin, err)
-	}
-	return seul.Plan, nil
+	return ext, nil
 }
 
 // Write écrit le sidecar avec l'indentation de la cuisson, sauf les arêtes du plan : une par

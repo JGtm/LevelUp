@@ -10,7 +10,6 @@ package main
 // Ce test lit l'asset PUBLIÉ, celui que la cuisson consomme.
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -209,14 +208,15 @@ func TestSansNavmeshGardeLePlanDesMurs(t *testing.T) {
 		"sans": {SansNavmesh: true, GateLe: "2026-11-13"},
 	}}}
 
-	if opts := e.optionsNavmeshNatif("sans", maillage); opts != (himap.OptionsNavmesh{}) {
+	if opts := e.optionsNavmeshNatif("sans", maillage); !reflect.DeepEqual(opts, himap.OptionsNavmesh{}) {
 		t.Errorf("sansNavmesh : options navmesh = %+v, attendu nulles", opts)
 	}
 	if opts := e.optionsNavmeshNatif("autre", maillage); opts.Maillage != maillage || !opts.Rogne {
 		t.Errorf("une carte sans reglage doit etre rognee a son maillage : %+v", opts)
 	}
-	plan := planDeMaillage(context.Background(), "sans", sourcePlanNatif, maillage)
-	if plan == nil || len(plan.Edges) != 4 {
-		t.Errorf("plan = %+v, attendu les 4 aretes du carre", plan)
+	cadre := himap.CalageFond{OrigineX: -1, OrigineY: 2, MetresParPixel: 0.1, Largeur: 30, Hauteur: 30}
+	pf, err := calculePlan(sourcePlanNatif, maillage, nil, cadre, nil)
+	if err != nil || pf == nil || len(pf.Plan.Edges) != 4 {
+		t.Errorf("plan = %+v, %v ; attendu les 4 aretes du carre", pf, err)
 	}
 }

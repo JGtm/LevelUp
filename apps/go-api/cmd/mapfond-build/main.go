@@ -22,10 +22,18 @@
 //	CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "ridgeline,catalyst"] [--title slug]
 //	                                         [--out-dir DIR] [--style jeu] [--rapport FILE]
 //	                                         [--natives=false] [--forge=false] [--plan-seul]
+//	                                         [--avis FILE] [--rogne-publie] [--rapport-tsv FILE] [--avant-dir DIR]
 //
 // --maps vide = toutes les cartes du catalogue d'objectifs installées localement. Une carte
 // NATIVE se désigne par son dossier installé (`ridgeline`), une carte FORGE par son map_id
 // UGC (clé de sa déclaration `himap.CartesForge` et de son fond publié).
+//
+// --avis lit l'avis du user carte par carte sur le croisement fond / maillage de navigation (voir
+// avis.go) : le rognage au maillage s'arme dans la forme que l'avis donne, une carte « publiee »
+// n'est pas recuite. --plan-seul refait le plan et l'image plan des sidecars publiés sans toucher
+// au fond ; avec --rogne-publie il rogne aussi le fond publié à la silhouette du maillage
+// (rogne_publie.go). --rapport-tsv écrit une ligne par carte traitée ; --avant-dir porte les sidecars
+// d'avant, pour comparer les ancres au sol.
 package main
 
 import (
@@ -56,7 +64,12 @@ func main() {
 	rapport := flag.String("rapport", "", "écrit un rapport Markdown à ce chemin")
 	natives := flag.Bool("natives", true, "cuire les cartes cuites dans un module")
 	forge := flag.Bool("forge", true, "cuire les cartes Forge (posées depuis leur .mvar)")
-	planSeul := flag.Bool("plan-seul", false, "ajoute le plan des murs aux sidecars Forge publies, depuis leur navmesh.blob, sans recuire")
+	planSeul := flag.Bool("plan-seul", false, "refait le plan des murs et l'image plan des sidecars publies, depuis leur maillage de navigation, sans recuire")
+	roguePublie := flag.Bool("rogne-publie", false, "avec -plan-seul et -avis : rogne aussi le fond publie a la silhouette du maillage, sans recuire (cartes dont l'avis est silhouette)")
+	avis := flag.String("avis", "", "fichier(s) d'avis du user, separes par des virgules : le premier donne la regle (forme du rognage au maillage par carte), les suivants ignorer / reprendre ; vide = comportement d'avant")
+	rapports := rapportsDemandes{}
+	flag.StringVar(&rapports.tsv, "rapport-tsv", "", "ecrit le rapport de recuisson en TSV a ce chemin")
+	flag.StringVar(&rapports.avantDir, "avant-dir", "", "dossier des sidecars d'avant la recuisson (colonne « ancres avant » du rapport TSV)")
 	flag.Parse()
 
 	ctx := context.Background()
@@ -72,9 +85,21 @@ func main() {
 	env.style = himap.StyleFond(*style)
 	env.filtre = filtreDe(*maps)
 	env.echelle = *mpp
+	env.sansNatives, env.sansForge = !*natives, !*forge
+	env.rognePublie = *roguePublie
+	if *roguePublie && (!*planSeul || *avis == "") {
+		slog.ErrorContext(ctx, "-rogne-publie exige -plan-seul et -avis")
+		os.Exit(1)
+	}
+	if *avis != "" {
+		if env.avis, err = chargeAvis(strings.Split(*avis, ",")...); err != nil {
+			slog.ErrorContext(ctx, "avis", "err", err, "path", *avis)
+			os.Exit(1)
+		}
+	}
 
 	if *planSeul {
-		os.Exit(executePlanSeul(ctx, env))
+		os.Exit(executePlanSeul(ctx, env, rapports))
 	}
 
 	var bilans []bilanAsset
@@ -87,6 +112,12 @@ func main() {
 	sort.Slice(bilans, func(i, j int) bool { return bilans[i].Cle < bilans[j].Cle })
 
 	echecs := resume(ctx, bilans, env)
+	if rapports.tsv != "" {
+		if err := ecritRapportTSV(rapports.tsv, rapports.avantDir, bilans, env); err != nil {
+			slog.ErrorContext(ctx, "rapport tsv", "err", err, "path", rapports.tsv)
+			echecs++
+		}
+	}
 	if *rapport != "" {
 		if err := ecritRapport(*rapport, bilans, env); err != nil {
 			slog.ErrorContext(ctx, "rapport", "err", err, "path", *rapport)
@@ -96,6 +127,11 @@ func main() {
 	if echecs > 0 {
 		os.Exit(1)
 	}
+}
+
+// rapportsDemandes : où écrire le rapport de recuisson en TSV, et où lire les sidecars d'avant.
+type rapportsDemandes struct {
+	tsv, avantDir string
 }
 
 // environnement porte ce qui est résolu une fois pour toutes.
@@ -118,6 +154,12 @@ type environnement struct {
 	// Reglage PAR CARTE au sens du gate du 26/08 — ici il vaut pour toute la cuisson demandee.
 	echelle float64
 	filtre  map[string]bool
+	// avis : l'avis du user sur le croisement fond / maillage (`-avis`). Nil sans l'option.
+	avis *avisFond
+	// rognePublie : `-rogne-publie`, voir rogne_publie.go.
+	rognePublie bool
+	// sansNatives et sansForge : `-natives=false` et `-forge=false`.
+	sansNatives, sansForge bool
 	// nomsAffiches : module installé -> noms de carte affichés, lus dans
 	// map_quant_bounds.json. C'est LA table déclarée du lien nom affiché -> module ; on ne
 	// la recopie pas, on la lit.
@@ -243,10 +285,13 @@ func stylesConnus() string {
 
 // resume journalise le bilan global et rend le nombre d'échecs.
 func resume(ctx context.Context, bilans []bilanAsset, env *environnement) int {
-	echecs, degrades, ancres, avecSol, nonCuisinables := 0, 0, 0, 0, 0
+	echecs, degrades, ancres, avecSol, nonCuisinables, sautees := 0, 0, 0, 0, 0, 0
 	var octets int64
 	for _, b := range bilans {
 		switch {
+		case b.laissee():
+			sautees++
+			continue
 		case b.NonCuisinable:
 			nonCuisinables++
 			continue
@@ -266,7 +311,7 @@ func resume(ctx context.Context, bilans []bilanAsset, env *environnement) int {
 			"n", len(env.nonInstalle), "modules", strings.Join(env.nonInstalle, ", "))
 	}
 	slog.InfoContext(ctx, "cuisson terminée",
-		"cartes", len(bilans)-echecs-nonCuisinables, "échecs", echecs,
+		"cartes", len(bilans)-echecs-nonCuisinables-sautees, "sautées", sautees, "échecs", echecs,
 		"nonCuisinables", nonCuisinables, "dégradées", degrades,
 		"ancresAvecSol", fmt.Sprintf("%d/%d", avecSol, ancres),
 		"octets", octets, "style", string(env.style), "reglagesParCarte", len(env.reglages.Cartes),
