@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -21,20 +22,24 @@ const variantePlan = "plan"
 // quand la réponse est déjà écrite.
 func varianteFond(ctx context.Context, w http.ResponseWriter, r *http.Request) (plan, ok bool) {
 	q := r.URL.Query()
-	for cle := range q {
-		if cle != parametreVariante && strings.EqualFold(cle, parametreVariante) {
-			writeError(ctx, w, http.StatusBadRequest, "invalid_request", "paramètre « variante » mal écrit : attendu en minuscules")
-			return false, false
-		}
-	}
-	if !q.Has(parametreVariante) {
+	if !q.Has(parametreVariante) && !casseFausse(q) {
 		return false, true
 	}
-	if q.Get(parametreVariante) == variantePlan {
+	if q.Get(parametreVariante) == variantePlan && !casseFausse(q) {
 		return true, true
 	}
 	writeError(ctx, w, http.StatusBadRequest, "invalid_request", "variante inconnue : attendu « plan » ou rien")
 	return false, false
+}
+
+// casseFausse dit si la requête porte le paramètre de variante écrit avec une autre casse.
+func casseFausse(q url.Values) bool {
+	for cle := range q {
+		if cle != parametreVariante && strings.EqualFold(cle, parametreVariante) {
+			return true
+		}
+	}
+	return false
 }
 
 // imageDeFond sert l'image du fond ou, si `plan`, son image plan, par l'une ou l'autre des deux
