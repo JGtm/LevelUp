@@ -110,9 +110,12 @@ func TestPostSyncProgressionStore_MatchsScoresEtAgregats(t *testing.T) {
 	if agg.MatchesPlayed != 3 || agg.Wins != 2 || agg.Kills != 113 || agg.Headshots != 3 || agg.Assists != 6 {
 		t.Errorf("agrégats = %+v", agg)
 	}
-	// La colonne est en pourcentage et le seuil en ratio : tout match à plus de 0,5 % compte (m1 et m2).
+	// UNITÉ EN QUESTION, comportement actuel figé et non voulu : la colonne est en pourcentage et le seuil
+	// (0,50) en ratio, donc ce test constate que tout match à plus de 0,5 % compte (m1 et m2). Le seuil visé
+	// est vraisemblablement 50 % ; tant que la décision n'est pas prise (plan des compléments 8.2.0,
+	// Découvertes), ce nombre n'atteste PAS que le comportement est correct : à réviser avec la correction.
 	if agg.AccuracyDays != 2 {
-		t.Errorf("jours de précision = %d, attendu 2 (m1 et m2 ont un début ; seuil ratio contre colonne pourcentage)", agg.AccuracyDays)
+		t.Errorf("jours de précision = %d, attendu 2 en l'état (seuil ratio contre colonne pourcentage : unité en question)", agg.AccuracyDays)
 	}
 
 	times, err := st.LastMatchTimes(ctx)

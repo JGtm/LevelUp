@@ -54,7 +54,7 @@
 - **Un accueil qui dit où en est la synchronisation** — un joueur sans match ne lit plus « Synchronisation en cours » par défaut : la page dit si une synchronisation est en cours, en attente de connexion, en pause, en échec (avec la cause) ou terminée sans aucun match, et propose de la lancer ou de la relancer quand c'est possible
 - **La version de l'application dans les signalements** — un signalement envoyé depuis l'application Windows porte désormais sa version
 - **L'application Windows range sa base au démarrage** — quand les données de rejeu se sont accumulées, elles sont compactées avant l'ouverture (une dizaine de secondes, de temps en temps), après une copie de sécurité
-- **Un journal de démarrage beaucoup plus court** — les avertissements répétés pendant un recalcul sont résumés en une ligne, les pannes et limites des services Halo en une ligne par passe
+- **Un journal de démarrage beaucoup plus court** — les avertissements répétés pendant un recalcul sont résumés en une ligne, les pannes des services Halo (classement, catalogue) en une ligne par passe, et les limites de débit abaissées à une ligne d’information
 - **Une barre latérale plus compacte** — le pied devient une rangée d'icônes, replié il garde un menu « Plus », et une infobulle ne s'ouvre au focus que si le focus vient du clavier
 - **Des infobulles visibles en partage d'écran** — les infobulles des boutons, icônes et repères sont désormais dessinées par l'application elle-même : un auditeur sur Discord ou Teams les voit quand vous partagez la fenêtre, ce que les infobulles du système ne permettaient pas
 - **Un volet des référentiels qui glisse** — cartes, armes et médailles s'ouvrent par le côté, avec un mode épinglé

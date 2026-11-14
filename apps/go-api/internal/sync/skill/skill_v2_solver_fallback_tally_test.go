@@ -46,7 +46,8 @@ func TestSolveWithCountFallback_UneSyntheseParRejeu(t *testing.T) {
 			synthese = ligne
 		}
 	}
-	for _, want := range []string{"matchs_rejoues=120", "matchs_en_repli=36", "m_aa", "m_ba", "m_ca"} {
+	for _, want := range []string{"matchs_rejoues=120", "matchs_en_repli=36", "m_aa", "m_ba", "m_ca",
+		"cause_exemple=", "n'a pas convergé"} {
 		if !strings.Contains(synthese, want) {
 			t.Errorf("synthèse sans %q :\n%s", want, synthese)
 		}

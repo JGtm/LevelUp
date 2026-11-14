@@ -121154,3 +121154,8 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 - **Décision** : un dépassement de seuil ou un repli se dit une fois par épisode ou par rejeu (synthèse), un échec distant 5xx ou un 429 absorbé n'est plus une ERROR ou un WARN par occurrence ; les vraies causes sont corrigées : table `streak` héritée retirée (migration `drop_streak_legacy_v1`), précision lue en ratio pour les records (+ migration des records rangés en pourcentage), instantané de carrière qui attend l'écrivain au-delà du budget de fetch, compaction des passes au démarrage sur le profil desktop (capacité `CompactPassesAtStartup`, ADR 0026 et 0045 amendés).
 - **Résultats** : témoin avant/après sur deux copies à froid (serveur de `release/v8.2.0` contre la branche, 4 joueurs, recalcul forcé) : 230 WARN et ERROR contre 38, recalcul des notes terminé dans les deux cas ; compaction du démarrage mesurée à 11 s sur la copie (budget 75 s).
 - **Reste** : 1.6, la connexion fermée sous un lecteur n'a pas été corrigée (mécanisme décrit, proposition en Découvertes du plan) ; le jalon `accuracy_threshold_days` compare toujours un pourcentage à un ratio (Découvertes).
+
+## [2026-11-14] Compléments 8.2.0, voie logs, ronde 2 : constats des relectures corrigés — Complété (branche `feat/c820-logs-r2`)
+
+- **Décision** : un writer bloqué ne reste jamais silencieux (second seuil de 30 s écrit à coup sûr) ; la compaction du démarrage a sa propre copie par titre, hors de la rétention des copies d'avant migration.
+- **Résultats** : un test par constat, chacun rouge sans la correction ; gates des paquets touchés verts.

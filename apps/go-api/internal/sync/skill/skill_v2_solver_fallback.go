@@ -41,6 +41,7 @@ type repliTally struct {
 	mu       sync.Mutex
 	matchs   int
 	exemples []string
+	cause    error // cause du solveur du premier repli du rejeu
 }
 
 type repliTallyKey struct{}
@@ -55,9 +56,12 @@ func repliTallyFrom(ctx context.Context) *repliTally {
 	return t
 }
 
-func (t *repliTally) noter(matchID string) {
+func (t *repliTally) noter(matchID string, cause error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if t.matchs == 0 {
+		t.cause = cause
+	}
 	t.matchs++
 	if len(t.exemples) < repliExemplesMax {
 		t.exemples = append(t.exemples, matchID)
@@ -65,7 +69,7 @@ func (t *repliTally) noter(matchID string) {
 }
 
 // logSummary écrit la synthèse du rejeu s'il y a eu au moins un repli : matchs rejoués, matchs en
-// repli, quelques identifiants d'exemple. Le détail par match est en DEBUG (solveWithCountFallback).
+// repli, quelques identifiants d'exemple, la cause du solveur du premier repli. Le détail par match est en DEBUG (solveWithCountFallback).
 func (t *repliTally) logSummary(ctx context.Context, xuid string, rejoues int) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -74,7 +78,7 @@ func (t *repliTally) logSummary(ctx context.Context, xuid string, rejoues int) {
 	}
 	slog.WarnContext(ctx, "LUSR v2: matchs recalculés sans frags ni morts, solveur non convergé avec les comptes",
 		"xuid", xuid, "matchs_rejoues", rejoues, "matchs_en_repli", t.matchs,
-		"exemples_match_id", t.exemples)
+		"exemples_match_id", t.exemples, "cause_exemple", t.cause)
 }
 
 // twoTeamSolver est la signature de skillv2.UpdateTwoTeamWithCountsEP, passée en paramètre pour
@@ -107,7 +111,7 @@ func solveWithCountFallback(ctx context.Context, solve twoTeamSolver, in counted
 	}
 	solverCountFallbackTotal.Add(1)
 	if t := repliTallyFrom(ctx); t != nil {
-		t.noter(in.matchID)
+		t.noter(in.matchID, err)
 		slog.DebugContext(ctx, "LUSR v2: solveur non convergé avec les comptes, recalcul sans frags ni morts",
 			"match_id", in.matchID, "err", err)
 	} else {

@@ -20,8 +20,8 @@ import (
 type scrapeFailures struct {
 	playlists []string
 	statuts   map[int]int // statut HTTP -> nombre de playlists ; 0 = échec sans statut
-	exemple   error
-	horsPanne bool // au moins un échec qui n'est pas une panne 5xx du service distant
+	exemple   error       // premier échec ; ERROR : premier échec qui n'est pas une panne (exemple de la ligne)
+	horsPanne bool        // au moins un échec qui n'est pas une panne 5xx du service distant
 }
 
 func (f *scrapeFailures) add(playlist string, err error) {
@@ -33,6 +33,9 @@ func (f *scrapeFailures) add(playlist string, err error) {
 	f.statuts[statut]++
 	f.playlists = append(f.playlists, playlist)
 	if !httpstatus.IsServerError(statut) {
+		if !f.horsPanne {
+			f.exemple = err // la ligne ERROR cite la cause à investiguer, pas la panne qui l'a précédée
+		}
 		f.horsPanne = true
 	}
 }
