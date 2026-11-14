@@ -1,3 +1,9 @@
+## [2026-11-14] Rejeu à 30 images/s : porte visuelle validée par le user — Complété (poussé sur `release/v8.2.0`)
+
+- **Décision** : B9 coché sur le message du user du 2026-11-14 (« je valide tout, j'ai tout regardé et c'est bon »), après les trois rejeux ouverts sur l'application 8.2.0 lancée sur le parc régénéré (serveur prêt, les trois au schéma 116 et à 33 ms, compteurs de joueur présents, aucune erreur au journal du serveur).
+- **Résultats** : gate B passé ; document `30ips-rejeu` de la page des vérifications à « bon ».
+- **Suite** : C4 (copie des rejeux vers la prod puis passes `backfill-*` sur le serveur), geste du user avec la fusion vers `main` ; ensuite archivage du plan.
+
 ## [2026-11-14] Rejeu à 30 images/s et maquettes du rejeu : dérivés rejoués, clôture des deux plans — Complété (docs `.ai` et ADR 0034, poussé sur `release/v8.2.0`)
 
 - **Décision** : rejouer les dérivés du parc régénéré en série, dans l'ordre en vigueur, avec le binaire et les ressources de la régénération (worktree détaché sans jonction), serveur local arrêté. Clôture des deux plans sur pièces ; l'ADR 0034 ne disait rien de la cadence ni du stockage : amendement du 2026-11-14.

@@ -184,7 +184,7 @@ Gate A :
   - Différences attendues seulement : axe `T` et nombre de points. Effets attendus : vies et tirs, rattachements, comptes de dérivés à ± 1 image de quantification.
   - Toute autre différence est expliquée ou corrigée.
   - Le gate de corpus et `replay-equiv` passent.
-- [!] B9 **Porte visuelle du user** sur 3 matchs de la liste (Assassin, CTF, Bastions). Report valide (geste du user) : inscrite dans la page des vérifications (document `30ips-rejeu`), application de vérification relancée sur le parc régénéré le 2026-11-14 (`C:\t\regen116-bin\lancer_8_2_0.ps1`). Il vérifie quatre points :
+- [x] B9 **Porte visuelle du user** sur 3 matchs de la liste (Assassin, CTF, Bastions). Validée par le user le 2026-11-14 (« je valide tout, j'ai tout regardé et c'est bon ») sur l'application 8.2.0 lancée sur le parc régénéré : Assassin (Detachment), CTF (Banished Narrows), Bases (Perilous) ; document `30ips-rejeu` de la page des vérifications passé à « bon ». Il vérifie quatre points :
   - fluidité ;
   - durée des effets (explosion de bombe, capture de drapeau, clignotement, traînées) ;
   - sons (crâne, zone, ramassage) ;
@@ -201,7 +201,7 @@ Gate A :
 
 - [x] B10 bis **Offre de compression seule (décision du user, 2026-11-11).** Le décompte expose `raw` (rejeux encore en `.json`, comptés par le listage de la porte, sans ouvrir un fichier ; un match aux deux formes ne compte pas). L'offre apparaît si `stale > 0` OU `raw > 0` ; quand seuls des bruts restent, le texte et le bouton disent « compresser » (FR et EN), et la passe ne fait que compresser. Même geste, même file : le décompte ne compresse rien (`TestCompression_JamaisSansLeGeste`, garde-rail `no_auto_replay_compress_test.go` inchangés). Tests : `TestDecompte_ExposeLesBrutsSansLireLeurContenu`, `TestPasseDeCompressionSeule`, `TestDecompteFinal_LesBrutsEnEchecRestentComptes`, web `replayRegen.test.tsx`.
 
-Gate B : B9 validé par un message du user, plus les commandes du gate A.
+Gate B : B9 validé par un message du user, plus les commandes du gate A. Passé le 2026-11-14 (B9 ci-dessus ; gates de la PR 207 et de la montée v1.3.7 au thought_log).
 
 ### Étape C — Parc (gestes du user)
 - [~] C1 Le user lance `levelup replay compress` sur le parc local. Couvert par C2 : la régénération écrit chaque rejeu compressé (1 455 `.json.gz`). Reste un seul `.json` brut (match d'un joueur tiers, film absent de l'archive, schéma 107) : `levelup replay compress`, geste du user.
@@ -219,7 +219,7 @@ Gate B : B9 validé par un message du user, plus les commandes du gate A.
 
 ### Étape E — Clôture
 - [x] E1 Mettre à jour `docs/COMMANDS.md` (FR et EN) pour `replay compress`, l'ADR 0034 (cadence et stockage) et `.ai/thought_log.md`. Le 2026-11-14 : `replay compress` vérifié dans `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` (5 mentions chacun) ; l'ADR 0034 ne disait encore rien de la cadence ni du stockage : amendement du 2026-11-14 ajouté (pas de cuisson unique, document sans pas lu à 100 ms, seuils en durées, porte `replayartifact`, `.json.gz`, conversion sur geste seulement) ; entrées du thought_log de chaque étape.
-- [x] E2 Dresser la liste des reports et des découvertes. Reports : B9 et C4 (gestes du user), C1 (un rejeu brut), D (branche de la version suivante), `backfill-lead-share` ; inscrits au registre des reports le 2026-11-14 avec les découvertes de la clôture (section 8).
+- [x] E2 Dresser la liste des reports et des découvertes. Reports : C4 (geste du user ; B9 validé depuis, le 2026-11-14), C1 (un rejeu brut), D (branche de la version suivante), `backfill-lead-share` ; inscrits au registre des reports le 2026-11-14 avec les découvertes de la clôture (section 8).
 
 ## 5. Pour faire évoluer le décodeur (contrat d'évolutivité)
 
@@ -346,6 +346,8 @@ Courses de drapeau (non validé). Mainmise, préréglages de vue, fil d'événem
 - **2026-11-12, le pas entre dans le critère « à recuire » (décision du pilote : la PR 203 monte à v1.3.1 en forçant 100 ms, un rejeu cuit entre les deux fusions porte le même schéma à 100 ms puis à 33 ms).** Règle unique : à jour = schéma courant ET pas (absent = 100 ms) égal au pas de cuisson courant ; source `replaybuild.CookFrameIntervalMS` (`cadence.go`), lue par la cuisson et par `Digest.Verdict`, pas écrit dans `.meta` ; refus du dépôt d'un autre pas ; le serveur pose `X-Replay-Cadence-Stale`, le badge admin le recopie (libellé existant). Points de décision et tests : entrée du 2026-11-12 du thought_log. À l'étape B6 : un rejeu à 100 ms au schéma courant sort « à recuire » dès que la cadence courante passe à 33 ms, sans nouvelle montée de schéma.
 
 - **2026-11-14, régénération, dérivés et clôture.** Régénération unique du parc (C2) sur le go du user du 2026-11-13 et le feu vert de la session pilote : binaire de `release/v8.2.0` à `76da40dc4f` (décodeur v1.3.7, schéma 116), 1 455 rejeux en 1 h 36, archive des films intacte (1 614). Dérivés (C3), en série, code 0 chacun, de 10:36 à 14:56 : `usage-summary`, `pad-tiers --force`, `killsource --workers 1`, `vehicle-takes --force`, `flag-grabs-net --force`, `tactical-rasters --backfill` ; archive recomptée après (1 614). Liste fermée relue sur le parc (B7). ADR 0034 amendé (E1). Étape D exécutée sur la branche de la version suivante, `feat/rejeu-allegement-reseau`, sur le go du user du 2026-11-14 (revue adversariale sans défaut recevable). Restent au user : B9 (vérification à l'écran), C4 (copie des rejeux vers la prod), `replay compress` du dernier brut, `backfill-lead-share`.
+
+- **2026-11-14, porte visuelle B9 validée par le user** sur les trois rejeux (Assassin, CTF, Bases) : fluidité, durée des effets, sons, compteurs des fiches. Gate B passé. Reste ouvert : C4 (copie des rejeux vers la prod, geste du user), puis l'archivage de ce plan.
 
 ## 10. Mesures à 33 ms (B4, préparation)
 
