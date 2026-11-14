@@ -25,6 +25,7 @@ vi.mock('./queries', async (importOriginal) => {
     useTacticalMapBackgroundFrame: () => null,
     useTacticalMapBackgroundPlan: () => null,
     useTacticalMapBackgroundUrl: () => null,
+    useTacticalMapPlanImage: () => ({ planImage: undefined, pending: false }),
   }
 })
 

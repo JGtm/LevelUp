@@ -23,6 +23,7 @@ import { TacticalPlanCard, type ReglagesDuPlan } from './TacticalPlanCard'
 const PLAN: WallPlanReady = { edges: [[0, 0, 10, 10]], dropped: 0 }
 const FOND = { originX: 0, originY: 50, widthM: 100, heightM: 50 }
 
+const planImage = vi.hoisted(() => vi.fn((): string | undefined => undefined))
 vi.mock('./planPaint', () => ({ peindreLePlan: vi.fn() }))
 vi.mock('./queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./queries')>()
@@ -31,6 +32,7 @@ vi.mock('./queries', async (importOriginal) => {
     useTacticalMapBackgroundFrame: () => FOND,
     useTacticalMapBackgroundPlan: () => PLAN,
     useTacticalMapBackgroundUrl: () => 'blob:fond',
+    useTacticalMapPlanImage: () => ({ planImage: planImage(), pending: false }),
   }
 })
 
@@ -106,6 +108,7 @@ function hauteurDuCanvas(): number {
 
 beforeEach(() => {
   window.localStorage.clear()
+  planImage.mockReset().mockReturnValue(undefined)
   vi.spyOn(HTMLCanvasElement.prototype, 'clientWidth', 'get').mockReturnValue(200)
   vi.spyOn(HTMLCanvasElement.prototype, 'clientHeight', 'get').mockImplementation(hauteurDuCanvas)
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(contexteFactice as never)
@@ -157,6 +160,25 @@ describe('TacticalPlanCard — orientation et plan des murs du rejeu', () => {
     window.localStorage.setItem('replay-show-wall-plan', 'false')
     rendre()
     expect(dernierAppel().peinture?.plan).toBeNull()
+  })
+
+  it('fond plan (réglage plan, carte avec image plan) : le plan des murs est déjà dans l’image, aucun plan donné au peintre', () => {
+    window.localStorage.setItem('replay-background-style', 'plan')
+    planImage.mockReturnValue('plan.png')
+    rendre()
+    expect(dernierAppel().peinture?.plan).toBeNull()
+  })
+
+  it('réglage plan mais carte SANS image plan : repli sur le rendu, le plan des murs reste tracé', () => {
+    window.localStorage.setItem('replay-background-style', 'plan')
+    rendre()
+    expect(dernierAppel().peinture?.plan).toBe(PLAN)
+  })
+
+  it('réglage rendu avec une carte qui a une image plan : le plan des murs reste tracé', () => {
+    planImage.mockReturnValue('plan.png')
+    rendre()
+    expect(dernierAppel().peinture?.plan).toBe(PLAN)
   })
 
   it.each([0, 1, 2, 3] as const)('un clic sur le plan, à %i quart(s) de tour, rend la position MONDE du point visé', (turns) => {

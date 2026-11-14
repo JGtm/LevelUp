@@ -79,8 +79,10 @@ import {
 } from './tacticalView.logic'
 import { pointsDeLaCouche, rolesPresents } from './tueurs.logic'
 import type { EtatDeLaSequence } from './sequenceCause.logic'
+import { isWallPlanDrawn } from '@/lib/replay/mapBackgroundVariant'
 import { useCadrageDuPlan } from './useCadrageDuPlan'
 import { useHauteurDuPlan } from './useHauteurDuPlan'
+import { useTacticalFondVariante } from './useTacticalFondVariante'
 import { SCENE_VIDE } from './mort.logic'
 import { sceneDeLaVue, type VueDeMort } from './vueDeMort'
 
@@ -167,6 +169,8 @@ export function TacticalPlanCard({
   // tournée dans le rejeu l'est ici, et son plan des murs s'y allume et s'éteint avec lui.
   const { turns, showWallPlan } = useMapViewPreferences(mapId)
   const planDesMurs = useTacticalMapBackgroundPlan(playerSlug, mapId)
+  // En mode plan, les murs sont déjà dans l'image du fond : le calque des murs se retire.
+  const { variante } = useTacticalFondVariante(playerSlug, mapId)
   const lue = etat === 'pret' || etat === 'relecture' ? lecture : undefined
   const repere = useMemo(
     () => (lue ? repereDuPlan(cadreFond, lue.bornes, lue.pas_m, turns) : null),
@@ -240,7 +244,7 @@ export function TacticalPlanCard({
                 zoom={zoom}
                 ramp={peinture.ramp}
                 zones={zonesPeintes}
-                plan={showWallPlan ? planDesMurs : null}
+                plan={isWallPlanDrawn(showWallPlan, variante) ? planDesMurs : null}
                 locale={locale}
                 selected={selected}
                 onPointSelect={onPointSelect}
