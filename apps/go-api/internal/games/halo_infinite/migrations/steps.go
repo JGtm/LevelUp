@@ -1565,7 +1565,7 @@ func Steps() []migration.Migration {
 	// ALTER de la table — dont `shared_h5_weapon_kill_kind_v1`, qui reste au registre
 	// PARTAGÉ parce que Halo 5 en dépend. Cf. steps_shared_drop_weapon_kills.go.
 	steps = append(steps, stepDropWeaponKills())
-	// Records de précision rangés en pourcentage -> ratio (steps_shared_social_accuracy_ratio.go).
+	// Records de précision rangés en pourcentage -> ratio (steps_records_accuracy_ratio.go).
 	steps = append(steps, stepAccuracyRecordsToRatio())
 	return steps
 }

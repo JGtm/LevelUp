@@ -28,7 +28,7 @@ func TestAccuracyRecordsToRatio(t *testing.T) {
 			t.Fatalf("seed %v: %v", r, err)
 		}
 	}
-	if _, err := db.Exec(`DELETE FROM schema_migrations WHERE name = 'shared_social_accuracy_records_ratio_v1'`); err != nil {
+	if _, err := db.Exec(`DELETE FROM schema_migrations WHERE name = 'records_accuracy_to_ratio_v1'`); err != nil {
 		t.Fatalf("retrait du step du registre: %v", err)
 	}
 

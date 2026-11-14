@@ -44,9 +44,9 @@ var stepDependencies = map[string]string{
 	// drop_streak_legacy_v1 (2026-11-14) supprime la table streak après la recopie vers streak_history :
 	// il DOIT suivre create_streak_history_append_only, qui fait cette recopie.
 	"drop_streak_legacy_v1": "create_streak_history_append_only",
-	// shared_social_accuracy_records_ratio_v1 (2026-11-14) lit player_records_latest et écrit dans
+	// records_accuracy_to_ratio_v1 (2026-11-14) lit player_records_latest et écrit dans
 	// player_records_history : leur créateur et la vue DOIVENT précéder.
-	"shared_social_accuracy_records_ratio_v1": "player_records_history_previous_cols_v1",
+	"records_accuracy_to_ratio_v1": "player_records_history_previous_cols_v1",
 	// drop_media_files_liked_columns_v1 (2026-08-04) ne crée pas media_files : il en
 	// RETIRE liked/liked_at. Le créateur DOIT précéder — sinon, sur DB vierge, le step
 	// no-ope (garde tableExists) et les colonnes survivraient au provisioning, ce que

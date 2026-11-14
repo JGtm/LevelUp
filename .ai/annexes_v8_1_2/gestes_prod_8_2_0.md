@@ -121,7 +121,7 @@ et la cuisson reste à 100 ms (10 images/s).
 - Contexte : la précision lue pour les records était en pourcentage (0 à 100) alors que ses bornes sont en ratio
   (0 à 1) ; les records de précision étaient refusés (`records: valeur hors bornes ignorée`), et ceux déjà rangés
   l'étaient en pourcentage. La lecture convertit désormais en ratio, et la migration
-  `shared_social_accuracy_records_ratio_v1` (au démarrage, INSERT seul) range en ratio une ligne neuve par dernier
+  `records_accuracy_to_ratio_v1` (au démarrage, INSERT seul) range en ratio une ligne neuve par dernier
   record de précision rangé en pourcentage. La colonne des matchs n'est pas touchée.
 - Séquence : démarrage (le correctif et la migration sont dans le binaire), puis contrôle du journal : plus de ligne
   `valeur hors bornes ignorée ... metric=accuracy` au post-sync, et, dans `migration.log`, la ligne

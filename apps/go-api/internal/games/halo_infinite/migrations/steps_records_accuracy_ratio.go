@@ -1,6 +1,6 @@
 package migrations
 
-// steps_shared_social_accuracy_ratio.go — shared_social_accuracy_records_ratio_v1 : les records de
+// steps_records_accuracy_ratio.go — records_accuracy_to_ratio_v1 : les records de
 // précision posés avant la correction de l'échelle sont convertis du pourcentage vers le ratio.
 //
 // Avant la correction, la précision (match_participants.accuracy, en pourcentage 0 à 100) arrivait
@@ -21,7 +21,7 @@ import (
 
 func stepAccuracyRecordsToRatio() migration.Migration {
 	return migration.Migration{
-		Name:        "shared_social_accuracy_records_ratio_v1",
+		Name:        "records_accuracy_to_ratio_v1",
 		TargetDB:    migration.TargetSharedSocial,
 		Description: "Convertit en ratio (0..1) les records de précision rangés en pourcentage : une ligne neuve par dernier record concerné (INSERT seul).",
 		ApplySchema: func(db *sql.DB) error {
@@ -44,7 +44,7 @@ func stepAccuracyRecordsToRatio() migration.Migration {
 				return fmt.Errorf("accuracy_ratio: insert: %w", err)
 			}
 			if n, _ := res.RowsAffected(); n > 0 {
-				slog.InfoContext(migration.BootCtx(), "migration shared_social_accuracy_records_ratio_v1 : records de précision convertis en ratio",
+				slog.InfoContext(migration.BootCtx(), "migration records_accuracy_to_ratio_v1 : records de précision convertis en ratio",
 					"lignes", n)
 			}
 			return nil

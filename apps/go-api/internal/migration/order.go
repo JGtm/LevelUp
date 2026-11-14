@@ -386,7 +386,7 @@ var canonicalOrder = []string{
 	// Records de précision rangés en pourcentage (échelle fausse corrigée à la lecture) : une ligne
 	// neuve en ratio par dernier record, APRÈS les steps qui créent player_records_history et sa
 	// vue. Title-owned Halo Infinite (2026-11-14).
-	"shared_social_accuracy_records_ratio_v1", // shared_social
+	"records_accuracy_to_ratio_v1", // shared_social
 }
 
 var canonicalIndex = func() map[string]int {
