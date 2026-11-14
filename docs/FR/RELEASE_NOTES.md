@@ -47,6 +47,10 @@
 - **L'appui en flux** — « Assistant : prépare le frag → Finisseur : conclut le frag », sur l'Escouade et sur la vue du match, avec des phrases qui nomment toujours l'assistant en premier
 
 **L'interface et l'application Windows**
+- **Les records de précision se posent de nouveau** — la précision d'un match était lue en pourcentage là où un rapport était attendu, et aucun nouveau record de précision ne pouvait se poser ; les records existants sont convertis au premier démarrage
+- **Plus d'instantané de carrière perdu pendant le recalcul des notes** — l'enregistrement de la carrière attend la fin du recalcul au lieu d'abandonner
+- **L'application Windows range sa base au démarrage** — quand les données de rejeu se sont accumulées, elles sont compactées avant l'ouverture (une dizaine de secondes, de temps en temps), après une copie de sécurité
+- **Un journal de démarrage beaucoup plus court** — les avertissements répétés pendant un recalcul sont résumés en une ligne, les pannes et limites des services Halo en une ligne par passe
 - **Une barre latérale plus compacte** — le pied devient une rangée d'icônes, replié il garde un menu « Plus », et une infobulle ne s'ouvre au focus que si le focus vient du clavier
 - **Des infobulles visibles en partage d'écran** — les infobulles des boutons, icônes et repères sont désormais dessinées par l'application elle-même : un auditeur sur Discord ou Teams les voit quand vous partagez la fenêtre, ce que les infobulles du système ne permettaient pas
 - **Un volet des référentiels qui glisse** — cartes, armes et médailles s'ouvrent par le côté, avec un mode épinglé

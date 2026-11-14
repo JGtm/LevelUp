@@ -47,6 +47,10 @@
 - **Assists as a flow** — "Assister: sets up the kill → Finisher: completes the kill", on the Squad and on the match view, with sentences that always name the assister first
 
 **The interface and the Windows app**
+- **Accuracy records are recorded again** — a match's accuracy was read as a percentage where a ratio was expected, so no new accuracy record could be set; existing records are converted at the first start
+- **No more lost career snapshot during the score recalculation** — the career save now waits for the recalculation instead of giving up
+- **The Windows app tidies its database at start-up** — when replay data has piled up, it is compacted before the app opens (about ten seconds, once in a while); a copy is made first
+- **A much shorter start-up log** — repeated warnings during a recalculation are summed up in one line, Halo service outages and rate limits in one line per pass
 - **A more compact sidebar** — the foot becomes a row of icons, folded it keeps a "More" menu, and a tooltip opens on focus only when the focus comes from the keyboard
 - **Tooltips visible when you share your screen** — the tooltips of buttons, icons and markers are now drawn by the app itself: a listener on Discord or Teams sees them when you share the window, which the system tooltips did not allow
 - **A sliding references pane** — maps, weapons and medals open from the side, with a pinned mode

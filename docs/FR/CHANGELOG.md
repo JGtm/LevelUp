@@ -57,6 +57,7 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 - Alertes de motifs jamais alimentées du coach (`PatternReport`).
 
 ### Corrigé
+- **Journal et démarrage** — tenues d’écrivain et lectures longues journalisées une fois par épisode (`sharedprovider/hold_journal.go`), repli du solveur LUSR résumé par rejeu, table héritée `streak` supprimée (`drop_streak_legacy_v1`), précision lue en rapport pour les records (`records_accuracy_to_ratio_v1`), écriture de l’instantané de carrière sur son propre délai borné, 5xx et 429 absorbés de Halo résumés par passe, compaction des passes supersédées au démarrage du bureau (`CompactPassesAtStartup`, copie préalable, budget de 75 s, non fatale).
 - **Bandeau de régénération pendant la compression** — la pause ou l'attente de la partie d'une file qui ne fait que compresser disait « Régénération en pause : 0 sur 0 » ; deux phrases dédiées (fr, en) disent seulement que la compression est en pause ou attend la fin de la partie.
 - **Gate de corpus des rejeux** — `replay-build` se recompile sans cgo, le niveau du journal se lit dans `logging`.
 - **Décodeur (v1.3.1)** — création des records des builds HI_1_11_0 à HI_1_13_0 (le jeu saute le masque sous une porte à 0 et n'écrit aucune porte pour dix archétypes à masque de création vide : 35 paquets perdus depuis la v1.0.1 sont relus) et charges de la vue A (genres 12, 14, 106) limitées aux builds où elles sont prouvées. Sur HI_1_9_0 et HI_1_10_0 leur vraie disposition reste non établie.

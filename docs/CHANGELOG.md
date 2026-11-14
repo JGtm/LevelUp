@@ -57,6 +57,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Coach pattern alerts that were never fed (`PatternReport`).
 
 ### Fixed
+- **Logs and boot** — writer and long-read holds journaled once per episode (`sharedprovider/hold_journal.go`), LUSR solver fallback summed up per replay, legacy `streak` table dropped (`drop_streak_legacy_v1`), accuracy read as a ratio for records (`records_accuracy_to_ratio_v1`), career snapshot write on its own bounded context, Halo 5xx and absorbed 429 summed up per pass, desktop compaction of superseded passes at boot (`CompactPassesAtStartup`, backup first, 75 s budget, non fatal).
 - **Regeneration banner during compression** — the pause or game wait of a queue that only compresses read "Regeneration paused: 0 of 0"; two dedicated sentences (fr, en) only say that compression is paused or waiting for the game to end.
 - **Replay corpus gate** — `replay-build` recompiles without cgo, the log level is read in `logging`.
 - **Decoder (v1.3.1)** — record creation for builds HI_1_11_0 to HI_1_13_0 (the game skips the mask under a gate at 0 and writes no gate for ten archetypes with an empty creation mask: 35 packets lost since v1.0.1 are read again) and view A loads (genres 12, 14, 106) limited to the builds where they are proven. On HI_1_9_0 and HI_1_10_0 their real layout remains unestablished.
