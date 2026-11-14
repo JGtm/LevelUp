@@ -35,6 +35,7 @@
 
 **Notes et statistiques**
 - **Les stats par minute dans Tendances** — un groupe « Rythme » dans la matrice (frags, morts, assistances, dégâts infligés et subis par minute, sur le temps réellement joué, pour comparer à égalité une longue Grande Bataille et une arène courte) et deux graphiques par minute dans l'Évolution, en vue solo
+- **Les dégâts par minute dans Sessions, Séries temporelles et Escouade** — les dégâts infligés et subis par minute rejoignent le graphique par minute des Sessions (axe de droite, y compris dans la comparaison côte à côte, sur une échelle commune), celui des Séries temporelles (deux courbes sur l'axe de droite) et un graphique d'Escouade qui leur est propre ; un match dont les dégâts sont inconnus laisse un trou, jamais un zéro
 - **Les notes LUSR sont recalculées seules au premier démarrage** — rien à faire : un match que le calcul ne parvenait pas à résoudre reçoit enfin une note. Comme chaque note dépend des précédentes, la plupart de celles de ton historique bougent, le plus souvent de moins de cinq points
 - **FDA nette dans Solo contre Escouade et dans les alertes de comportement** — la FDA se lit en frags plus un tiers des assistances moins les morts, par match, et non plus en quotient ; la formule de l'Aide est corrigée dans chaque langue, et l'alerte de série de défaites se juge sur une chute de FDA en points
 - **Les alertes de comportement dans ta langue** — onze phrases composées en français par le serveur passent par le catalogue de langues

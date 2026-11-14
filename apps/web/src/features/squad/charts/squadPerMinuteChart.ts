@@ -167,10 +167,11 @@ export function buildSquadDamagePerMinuteOption(
   opts: SquadDamagePerMinuteOpts,
 ): ChartOption {
   const rows = series[0]?.datapoints ?? []
-  const metrics: PerMinuteMetric[] = [
+  const all: PerMinuteMetric[] = [
     { label: opts.metricLabels.dealt, value: (r) => r.damage_dealt_per_minute, negative: false },
     { label: opts.metricLabels.taken, value: (r) => r.damage_taken_per_minute, negative: true },
-  ].filter((m) => rows.some((r) => m.value(r) != null))
+  ]
+  const metrics = all.filter((m) => rows.some((r) => m.value(r) != null))
   return buildPerMinuteBars(
     series,
     { colorByPlayer: opts.colorByPlayer, perMinuteSuffix: opts.perMinuteSuffix, decimals: DAMAGE_DECIMALS },

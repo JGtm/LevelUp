@@ -35,6 +35,7 @@
 
 **Scores and statistics**
 - **Per-minute stats in Trends** — a "Pace" group in the matrix (kills, deaths, assists, damage dealt and taken per minute, over the time actually played, so a long Big Team Battle and a short arena compare fairly) and two per-minute charts in Evolution, in the solo view
+- **Damage per minute on Sessions, Time series and Squad** — damage dealt and taken per minute join the per-minute chart of Sessions (right-hand axis, also in the side-by-side comparison, on a shared scale), the per-minute chart of Time series (two curves on the right-hand axis) and a Squad chart of their own; a match whose damage is unknown leaves a gap, never a zero
 - **LUSR scores are recalculated on their own at the first start** — nothing to do: a match the calculation could not resolve finally gets a score. As each score depends on the previous ones, most of those in your history move, usually by less than five points
 - **Net FDA in Solo versus Squad and in behaviour alerts** — FDA is read as kills plus a third of assists minus deaths, per match, rather than as a quotient; the formula in Help is corrected in every language, and the losing-streak alert is judged on a drop in FDA points
 - **Behaviour alerts in your language** — eleven sentences written in French by the server now go through the language catalogue
