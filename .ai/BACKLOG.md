@@ -23,6 +23,12 @@
 
 ---
 
+### [kpi] Rendement et Résistance : la vie d'un Spartan vaut 229 ou 230 points, pas 225
+
+**Demande de l'utilisateur (2026-11-10).** Les formules du Rendement (`225 × (frags + assistances/3) / dégâts infligés`) et de la Résistance (`dégâts subis / (225 × morts)`) reposent sur la constante `games.DefaultEffectiveHpToKill = 225.0` (`apps/go-api/internal/games/damage_model.go:18`). Mesuré le 2026-11-10 dans trois films : le compteur « dégâts subis » du jeu monte de 229 points pour une vie sans recharge de bouclier ; la table des fichiers du jeu lue par libfilmshell donne 90 de santé + 140 de bouclier = 230. À instruire dans un petit lot : trancher entre 229 et 230 sur davantage de films, puis corriger la constante et tout ce qui la cite (commentaires des formules, texte de l'infobulle « 1 vie ≈ 225 points », valeur `effective_hp_to_kill` servie par `/bootstrap`). Attention : la note composite du LUSR lit ces deux indicateurs (`sync/skill/skill_rating_composite.go`), donc le changement relève de l'ADR 0047 (révision de notation, recalcul de tous les joueurs au premier démarrage, ligne dans les notes de version). Halo 5 (115) n'est pas concerné. **Condition de reprise :** décision du user de lancer le lot. **Effort : petit (une constante et ses citations), plus le recalcul des notes.** **Repris par le plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 7 (2026-11-14).**
+
+---
+
 ### [bureau/auth] Connexion Microsoft dans le navigateur : « redirect_uri » refusé par Azure
 
 **Constaté le 2026-11-11** (poste de l'utilisateur, v8.1.1). Le serveur construit `http://localhost:<port lié>/auth/xbox/callback` (`handlers/auth_browser_login.go`, port mémorisé dans `desktop/port`, 53891 sur ce poste). Microsoft répond `invalid_request … redirect_uri … not valid` : l'enregistrement Azure du client `e1cb35ab` ne porte pas `http://localhost/auth/xbox/callback` sous la plateforme « Applications mobiles et de bureau » (seule plateforme où le port est libre ; sous « Web » le port doit correspondre exactement). Rien dans le code ni dans les bases copiées ne change cette adresse. **Réglé côté Azure le 2026-11-11 par l'utilisateur** (adresse ajoutée à l'inscription) ; reste à vérifier depuis l'application une fois les services Halo revenus. Le code d'appareil avait échoué le même jour pour une autre raison : `settings.svc.halowaypoint.com/spartan-token` en dépassement de délai (service de jetons Halo injoignable ce jour-là, voir l'entrée du journal).
