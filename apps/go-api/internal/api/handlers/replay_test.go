@@ -112,7 +112,7 @@ func (m *mockReplayService) AvailableSet(_ context.Context) (port.ReplayAvailabi
 
 func newReplayRouter(factory handlers.ServiceFactory[port.ReplayService]) *chi.Mux {
 	r := chi.NewRouter()
-	h := handlers.NewReplayHandler(factory)
+	h := handlers.NewReplayHandler(factory, nil)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
 		h.Mount(r)
 	})

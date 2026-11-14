@@ -29,12 +29,15 @@ import (
 
 // ReplayHandler sert le rejeu 2D d'un match via un ReplayService résolu par joueur.
 type ReplayHandler struct {
-	newSvc ServiceFactory[port.ReplayService]
+	newSvc        ServiceFactory[port.ReplayService]
+	encodeColumns ReplayColumnEncoder
 }
 
-// NewReplayHandler construit le handler avec sa factory de service.
-func NewReplayHandler(newSvc ServiceFactory[port.ReplayService]) *ReplayHandler {
-	return &ReplayHandler{newSvc: newSvc}
+// NewReplayHandler construit le handler avec sa factory de service et l'encodeur de la forme en
+// colonnes. L'encodeur est un argument, pas une option : l'oublier au câblage ne compile pas ;
+// `nil` (tests de routes qui ne servent pas `encoding=columns`) sert toujours la forme normale.
+func NewReplayHandler(newSvc ServiceFactory[port.ReplayService], encodeColumns ReplayColumnEncoder) *ReplayHandler {
+	return &ReplayHandler{newSvc: newSvc, encodeColumns: encodeColumns}
 }
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
@@ -47,7 +50,11 @@ func NewReplayHandler(newSvc ServiceFactory[port.ReplayService]) *ReplayHandler 
 func (h *ReplayHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/matches/{match_id}/replay", h.handleGetReplay,
-		humacore.Op("getMatchReplay", "Rejeu 2D pré-construit d'un match", "match-view"))
+		humacore.Op("getMatchReplay", "Rejeu 2D pré-construit d'un match", "match-view"),
+		func(o *huma.Operation) {
+			o.Description = replayColumnsDescription
+			o.Middlewares = append(o.Middlewares, h.columnsMiddleware)
+		})
 	huma.Get(api, "/matches/{match_id}/replay/background", h.handleGetBackground,
 		humacore.Op("getMatchReplayBackground",
 			"Calage du fond de carte du rejeu 2D d'un match", "match-view"))
@@ -63,6 +70,24 @@ type replayInput struct {
 	PlayerSlug string `path:"player_slug"`
 	MatchID    string `path:"match_id"`
 }
+
+// replayDocumentInput : l'entrée de la SEULE route du document de rejeu. `encoding` est un encodage
+// de TRANSPORT du corps : le document logique est le même, absent la réponse est la forme normale.
+// Le paramètre est lu par le middleware d'opération (replay_columns.go) ; il n'est déclaré que sur
+// cette route, pas sur le calage, les zones ni les images du fond. Ses deux premiers champs sont ceux
+// de `replayInput` : Huma ne lit pas les champs d'une structure embarquée non exportée.
+type replayDocumentInput struct {
+	PlayerSlug string `path:"player_slug"`
+	MatchID    string `path:"match_id"`
+	Encoding   string `query:"encoding" enum:"columns" doc:"Body encoding: absent = normal form; columns = same document, lists of objects grouped into columns (root field $enc)"`
+}
+
+// replayColumnsDescription est la description OpenAPI de l'opération : elle dit ce que devient le
+// corps avec `encoding=columns`.
+const replayColumnsDescription = "With the `encoding=columns` parameter the body is the SAME document in its column form: " +
+	"its root carries `$enc`, and every list of at least 16 objects (or numeric tuples) is replaced by an object that carries " +
+	"`$c` (row count), `k` (field keys) and `c` (one column per field); the client undoes it before any use. Without the " +
+	"parameter the body is the document described by the response schema."
 
 // replayOutput : le corps est le document SERVI (`domain/replaydoc`), jamais le document
 // STOCKE. C'est cette frontiere qui rend `openapi.yaml` independant du format de fichier de
@@ -86,7 +111,7 @@ type replayOutput struct {
 }
 
 // handleGetReplay retourne le document de rejeu 2D d'un match (404 si absent).
-func (h *ReplayHandler) handleGetReplay(ctx context.Context, in *replayInput) (*replayOutput, error) {
+func (h *ReplayHandler) handleGetReplay(ctx context.Context, in *replayDocumentInput) (*replayOutput, error) {
 	svc, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
 		return nil, humacore.NewErrorFrom(ctx, http.StatusNotFound, "player_not_found", err)

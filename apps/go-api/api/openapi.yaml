@@ -3771,6 +3771,7 @@ paths:
         - match-view
   /players/{player_slug}/matches/{match_id}/replay:
     get:
+      description: 'With the `encoding=columns` parameter the body is the SAME document in its column form: its root carries `$enc`, and every list of at least 16 objects (or numeric tuples) is replaced by an object that carries `$c` (row count), `k` (field keys) and `c` (one column per field); the client undoes it before any use. Without the parameter the body is the document described by the response schema.'
       operationId: getMatchReplay
       parameters:
         - in: path
@@ -3782,6 +3783,15 @@ paths:
           name: match_id
           required: true
           schema:
+            type: string
+        - description: 'Body encoding: absent = normal form; columns = same document, lists of objects grouped into columns (root field $enc)'
+          explode: false
+          in: query
+          name: encoding
+          schema:
+            description: 'Body encoding: absent = normal form; columns = same document, lists of objects grouped into columns (root field $enc)'
+            enum:
+              - columns
             type: string
       responses:
         "200":
