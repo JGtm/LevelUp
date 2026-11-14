@@ -277,15 +277,17 @@ func ComputeObjectiveIndex(in ObjectiveIndexInput) (float64, int) {
 	return weighted / float64(nObj), nObj
 }
 
-// objectiveFamilySubScore calcule r_f ∈ [0, ObjectiveIndexClip] pour une famille.
-func objectiveFamilySubScore(fam ObjectiveFamily, st ObjectiveFamilyStats) float64 {
-	cal := objectiveCalibrations[fam]
-	if cal.actionsP80 <= 0 {
+// ObjectiveActionPoints calcule actions_f : la cadence d'actions pondérée par les
+// ObjectiveFamilyActionWeights de la famille, par match (Σ_col w_col × Σ stat_col / n_f ;
+// kills_as_vip rapporté aux sélections, pas à n_f). Sur un agrégat d'UN match
+// (Matches == 1) c'est la somme pondérée des actions de ce match. Une famille inconnue
+// ou Matches <= 0 rend 0. Source unique du terme « actions » de r_f ET de la part de
+// l'équipe (ComputeObjectiveTeamShare).
+func ObjectiveActionPoints(fam ObjectiveFamily, st ObjectiveFamilyStats) float64 {
+	if st.Matches <= 0 {
 		return 0
 	}
 	n := float64(st.Matches)
-
-	// actions_f : cadence pondérée par match ; kills_as_vip rapporté aux sélections.
 	var actions float64
 	for col, w := range ObjectiveFamilyActionWeights[fam] {
 		v := st.ColumnSums[col]
@@ -298,6 +300,16 @@ func objectiveFamilySubScore(fam ObjectiveFamily, st ObjectiveFamilyStats) float
 		}
 		actions += w * v / n
 	}
+	return actions
+}
+
+// objectiveFamilySubScore calcule r_f ∈ [0, ObjectiveIndexClip] pour une famille.
+func objectiveFamilySubScore(fam ObjectiveFamily, st ObjectiveFamilyStats) float64 {
+	cal := objectiveCalibrations[fam]
+	if cal.actionsP80 <= 0 {
+		return 0
+	}
+	actions := ObjectiveActionPoints(fam, st)
 
 	r := actions / cal.actionsP80
 	if cal.holdP80 > 0 {
