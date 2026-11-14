@@ -12,6 +12,8 @@ import type { ReactNode } from 'react'
 
 import { server } from '@/test/setup'
 
+import { goFixtureSchemaVersion } from '@/features/match-replay/test/goFixtures'
+
 import { useMatchReplay } from './queries'
 
 const URL_REJEU = '/api/v1/players/jgtm/matches/match-1/replay'
@@ -23,7 +25,7 @@ function wrapper({ children }: { children: ReactNode }) {
 
 /** Sert un document minimal avec les en-têtes donnés, puis lit ce que la requête en tire. */
 async function lire(headers: Record<string, string>) {
-  server.use(http.get(URL_REJEU, () => HttpResponse.json({ schemaVersion: 7, tracks: [] }, { headers })))
+  server.use(http.get(URL_REJEU, () => HttpResponse.json({ schemaVersion: goFixtureSchemaVersion(), tracks: [] }, { headers })))
   const { result } = renderHook(() => useMatchReplay('jgtm', 'match-1'), { wrapper })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   return result.current.data!

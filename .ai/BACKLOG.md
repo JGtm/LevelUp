@@ -4,32 +4,22 @@
 
 ## 🔄 En cours
 
-- **Application de bureau (Tauri 2 + serveur Go en sidecar)** : plan `.ai/V8/PLAN_DESKTOP_2026-11-01.md` (le plan fait
-  foi ; ADR 0044 et 0045). P0 et P1 clos, P2 en cours (L20 fusionné PR #138, L21 en cours). Remplace l'ancienne entrée
-  « Cible desktop Tauri web-first — V9 potentielle » du backlog (distribution GitHub Releases, racine de données sous
-  `%LOCALAPPDATA%`, flux de connexion : traités par le plan).
+- **Version 8.2.0 (branche `release/v8.2.0`, plan `.ai/PLAN_V8_1_2_2026-11-09.md`)** : plan exécuté et relu (relecture
+  finale sans P0 ni P1). Restent les gestes du user : contrôles à l'écran (items 5.9 et 7.2 du plan, artefact des
+  vérifications), fusion vers `main`, tag et gestes de production (`.ai/annexes_v8_1_2/gestes_prod_8_2_0.md`). L'item 7.4
+  du plan (numéros de version, notes de version, runbook) n'est pas statué au plan ; ses brouillons sont sous
+  `.ai/annexes_v8_1_2/brouillon_versions_8_2_0_{FR,EN}.md`.
+- **Plans de la racine de `.ai/` dont le statut dit encore « en cours » ou dont des cases restent vides** (relevé du
+  2026-11-14, cases non vérifiées une à une) : `PLAN_REJEU_30IPS_COMPRESSION_2026-11-10.md` (compression par la PR #199,
+  cuisson à 30 images par seconde par la PR #207 ; cases B4 à E2 à statuer par la session du chantier, C1 à C4 sont des
+  gestes du user), `PLAN_REJEU_MAQUETTES_2026-11-10.md` (livré par la PR #200 ; case 7.2 ouverte) et
+  `PLAN_MARCHE_COMPLETE_ET_CANAUX_2026-11-10.md` (lecture des paquets par la PR #198, décodeur v1.3.6 consommé par la PR #207 ;
+  cases A2 à Z ouvertes, dont la recuisson unique du parc, geste du user). Le chantier application de bureau est clos (plan `.ai/V8/PLAN_DESKTOP_2026-11-01.md`,
+  versions 8.1.0 et 8.1.1 publiées).
 
 ---
 
 ## 📋 Backlog
-
----
-
-### [ci] Série Go « reste » : blocages sans test en échec
-
-Le 2026-11-09, elle a échoué deux fois sans test rouge alors que le code n'était pas en cause, et a chaque fois réussi à la relance : tests de `api/handlers` absents (PR #176, lot terminé en code 1), puis arrêt à 30 minutes (PR #179, 12 minutes d'habitude). À établir : paquet qui se bloque, ou manque de ressources de la machine. Le lot dure déjà de 9 à 12 minutes pour un `-timeout 600s` par paquet. **Effort : S pour le diagnostic.**
-
----
-
-### [assets] Planches d'icônes de Dend : armes, grenades et équipements plus nets
-
-**Demande de l'utilisateur (2026-11-09).** Dend a les mêmes icônes d'armes que LevelUp, l'air plus nettes, réunies dans une seule image : `C:\Users\Guillaume\Downloads\feed.350c786f.png`. Une seconde planche, `C:\Users\Guillaume\Downloads\icons.18423eb2.png`, porte les images d'armes (netteté comparable à l'existant, à première vue) et surtout les icônes des grenades (de mauvaise qualité chez LevelUp) et des équipements (venues aujourd'hui d'images trouvées sur Internet). À instruire : comment découper ces planches et faire correspondre chaque icône à son arme ou équipement, si elles remplacent les images actuelles partout, et quelle est leur provenance (droit de les réutiliser, ou retrouver les mêmes images dans les fichiers du jeu). **Condition de reprise :** examen des deux planches. **Effort : à estimer après cet examen.**
-
----
-
-### [rejeu/killfeed] Zone de callout du tueur dans le killfeed
-
-**Demande de l'utilisateur (2026-11-09).** Ajouter à chaque ligne du killfeed la zone de callout où se trouve le tueur au moment du frag : horodatage, zone, frag. Point de départ : `features/match-replay/ui/ReplayKillFeed.tsx` pour l'affichage, `lib/replay/calloutsPaint.ts` pour les callouts déjà présents au rejeu. À instruire : tueur sans position connue, carte sans callouts (rien d'inventé, ligne sans zone), libellé de zone dans chaque langue. **Effort : à estimer.**
 
 ---
 
@@ -54,126 +44,6 @@ Le 2026-11-09, elle a échoué deux fois sans test rouge alors que le code n'ét
 ### [bureau/retours] « App version : unknown » dans les signalements envoyés depuis l'application
 
 **Constaté le 2026-11-11** (issue #192). Le tiroir de signalement ne connaît pas la version de l'application de bureau ; le navigateur se reconnaît à `Edg/` dans l'agent. Renseigner la version depuis `/bootstrap` ou la coquille.
-
----
-
-### [branches] `release/v8.1.2` à renommer `release/v8.2.0`
-
-**Décision de l'utilisateur du 2026-11-11.** Le correctif `hotfix/v8.1.2` (depuis `main`) prend le numéro 8.1.2 ; le travail des autres sessions sur `release/v8.1.2` (et ses branches `feat/812-*`) passera en 8.2.0. Renommer la branche et le plan `.ai/PLAN_V8_1_2_2026-11-09.md` quand ces sessions auront rendu la main ; rebaser sur `main` après la fusion du correctif.
-
----
-
-### [ui/navigation] Barre latérale trop haute pour la fenêtre : pas de grosse barre de défilement
-
-**Demande de l'utilisateur (2026-11-09).** Quand la fenêtre est trop petite pour tous les menus de premier niveau, la barre latérale (`components/shell/SidebarPanel.tsx:77`, et `SidebarRail.tsx:333` une fois repliée) affiche la barre de défilement standard, jugée très laide. Chercher d'abord une alternative qui évite le défilement (regrouper les entrées, réduire leur espacement selon la hauteur, reléguer les dernières dans un menu « Plus »). Si le défilement reste nécessaire : barre discrète, placée à gauche. Tenir le mode replié en icônes et tous les thèmes (tokens de couleur). **Effort : S à M.**
-
----
-
-### [bureau/ui] Volet des référentiels aussi fluide que « Signaler un problème »
-
-**Demande de l'utilisateur (2026-11-09).** Le volet des référentiels (`features/asset-drawer/AssetDockedPanel.tsx`) apparaît et disparaît d'un coup (`if (!isOpen) return null`), alors que le panneau de retour (`features/feedback-drawer/FeedbackDrawer.tsx`) reste monté et glisse par une transition. **Décision de l'utilisateur :** par défaut, le volet passe par-dessus la page, glisse et se ferme au clic dehors, comme le panneau de retour. Un bouton « épingler » le garde ouvert et décale alors la mise en page, avec une transition aussi fluide que le glissement. Point d'attention : animer la largeur de la page la recalcule à chaque image. Retarder le redimensionnement des graphiques à la fin de la transition, et mesurer sur les pages lourdes. État épinglé mémorisé comme l'est déjà le volet. **Effort : M.**
-
----
-
-### [bureau/ui] Choisir un dossier avec l'explorateur du système
-
-**Demande de l'utilisateur (2026-11-09).** Les réglages qui attendent un chemin de dossier (archive des films, sauvegarde, médias) se remplissent à la main dans l'application de bureau. Ajouter un bouton « Parcourir » qui ouvre le sélecteur de dossier du système, le champ restant modifiable. La coquille a déjà `rfd`, qui fonctionne aussi sur macOS (`rfd::FileDialog`, `apps/desktop/src-tauri/src/main.rs:376` pour « Enregistrer sous ») : exposer `pick_folder()` depuis la coquille. **Rester indépendant du système** : le web se branche sur une capacité de `/bootstrap` (ADR 0044), jamais sur le nom de l'OS, et aucun chemin ni séparateur propre à Windows n'entre dans le code ; sur le site hébergé, sans sélecteur natif, le champ texte reste seul. **Effort : S à M.**
-
----
-
-### [lusr] Matchs dont le calcul ne converge pas : sans note neuve et comptés comme trous réparables
-
-Depuis la 8.1.1, un match dont le solveur ne converge pas ne bloque plus l'enregistrement de la révision de notation, mais il reste sans note neuve (18 matchs relevés en prod le 2026-11-09, équipes de 4v6 à 16v16). Le détecteur de trous (`sync/skill/lusr_gap_scan.go:116-120`) le classe en trou d'intérieur « réparable par rejeu » dès qu'un match plus récent du groupe a avancé le filigrane : le panneau d'administration l'affiche, et le rejeu retombe sur la même non-convergence. Deux suites à arbitrer : distinguer ces matchs dans le rapport, ou faire converger le solveur (amortissement, `ep/match2team.go`), ce qui change des notes et impose de monter `LUSRRev`. **Effort : S pour le rapport, M pour le solveur.**
-
----
-
-### [bureau/ui] Infobulle du bouton de repli restée affichée après le clic
-
-`components/ui/tooltip.tsx:47` ouvre l'infobulle au focus ; après un repli à la souris, le bouton « Déplier la barre
-latérale » garde le focus, donc son infobulle reste visible à côté de celle de la section survolée. Ouvrir au focus
-seulement quand il vient du clavier (`:focus-visible`). **Effort : S.**
-
----
-
-### [kpi/ascension] FDA calculée en quotient sur Solo / Escouade
-
-`platform/duckdb/patterns_repo.go:455` calcule `(frags + assistances/2) / max(1, morts)`, repris par
-`analysis/patterns/context.go:102` et affiché comme « FDA » par `features/ascension/SquadVsSoloCard.tsx:38,50` : avec
-15/4/6 la carte montre 2,83 au lieu de 10,33 (ADR 0006). Le même quotient décide les alertes de contre-performance et de
-fatigue (`behavioral.go:48,60,137`) : leurs seuils sont à recalibrer en même temps. Présent depuis avant la v8.0.7,
-relevé par la revue globale de la v8.1.0 (2026-11-09). **Effort : M.**
-
----
-
-### [aide/kpi] Formule de la FDA fausse et différente par langue dans l'Aide
-
-`features/help/i18n/fr.ts:80` annonce `(frags + assistances/3) / max(1, morts)` et `en.ts:80`
-`(kills + assists) / max(1, deaths)`, exemples compris (lignes 82) ; la règle est `(frags + assistances/3) - morts`
-(`lib/fda.ts`, ADR 0006). À traiter avec l'entrée précédente. **Effort : S.**
-
----
-
-### [i18n] Alertes de comportement composées en français côté Go
-
-`analysis/patterns/behavioral.go:69,76,158,159` et `behavioral_engagement.go:70,71,104,105,163,164`, affichées telles
-quelles par `features/ascension/BehaviorAlertList.tsx:45` : phrases françaises sur l'interface anglaise, contraire à
-l'ADR 0040. Dette gelée par `archlint/no_french_label_literal_test.go:92-93`. Passer au catalogue
-`internal/i18n/messages` et retirer l'exception. **Effort : S.**
-
----
-
-### [web/couleurs] Fonds `bg-black/*` encore codés en dur
-
-`components/ui/analysis-pending-badge.tsx:91` (`bg-black/55`) et les autres `bg-black/*` de `components/` et `features/`
-(9 fichiers au 2026-11-09, dont `NavL1MobileActions.tsx:110` et `NavL1MobileMenu.tsx:79`) : à passer sur un token
-sémantique (règle web 12). **Effort : S.**
-
----
-
-### [bureau] Fichiers de l'ancienne version laissés par une mise à jour moteur seul
-
-L'installeur moteur seul part avec `/UPDATE` et n'appelle pas l'ancien désinstalleur ; `resourcepack/remove.go:33` ne
-retire que le manifeste du paquet (`windows/hooks.nsh:49-50`). Les `web\assets\*` à noms hachés des versions précédentes
-s'accumulent sous `%LOCALAPPDATA%\Programs\LevelUp` et survivent à la désinstallation. Sans effet avant la première mise
-à jour après la 8.1.0 : **à traiter avant la 8.1.1 de bureau.** L'étape 5 de `e2e-install.ps1` ne le voit pas (réinstalle
-la même version). **Effort : S.**
-
----
-
-### [outillage/rejeu] `replay-equiv` dépend d'un fichier local non versionné
-
-Les références du film `11de8353` (54 `spawn_points`) viennent de
-`data/titles/halo_infinite/reference/generated/map_weapon_pads.json`, git-ignoré (`replaybuild/spawnpoints.go:121`) : le
-harnais échoue à tort sur une machine sans ce fichier, et un `-update` lancé là y perd la branche « origine = point
-d'apparition ». Faire lire au harnais le seul catalogue versionné. **Effort : S.**
-
----
-
-### [rejeu/identité] Vies sans nom restantes dans les rejeux cuits (8 mesurées sur 2 films, 7 non mesurables)
-
-Reste du lot film E8.4 (plan `.ai/archive/V7.5/PLAN_BACKLOG_2026-10-16.md`) : sur les 36 films en cause (449 vies
-sans nom), 15 vies restent sans nom, aucune lecture du film ne les nomme : `72c48587` (7 vies, table
-d'identité refusée pour siège vacant intercalé, aucune lecture d'index dans les chunks), `5da6fd30`
-(6 vies, film de 38 s, trois bots que BOT_METADATA ne déclare jamais), `7aa132d1` (2 vies, pistes
-parasites hors plage des bipèdes, slots 36 et 292). Règle du user : aucune vie anonyme. Reprise : une
-mesure par film des enregistrements de création qui nomment ces pistes ; arrêt si aucune lecture n'en
-sort. Hors périmètre, déjà décidé : les 5 films de build inconnu (abandonnés par le user le
-2026-10-15) et les 2 films Firefight. **Effort : S.**
-**Mesure du 2026-11-08** (lecture seule, rejeux recuits au schéma 107 par la branche `fix/rejeu-vies-equipement`) : `5da6fd30` garde 6 vies sans nom et `7aa132d1` 2 ; `72c48587` n'est plus mesurable, ni artefact ni faits sur le poste. Les 5 films de build inconnu restent sans roster. Les 495 films qui déclarent des bots ne sont pas jugés par cette mesure : une piste sans `xuid` y est normale pour un bot, une vie anonyme y resterait invisible. Sur `5da6fd30`, trois pions manquent environ 22 s à l'écran.
-
----
-
-### [rejeu] Découvertes du lot film (E8) non traitées
-
-Relevées par E8.1, E8.3 et E8.4 (détail : section « Découvertes » du plan, hors périmètre de leur
-lot) : l'entame (`kill_openings`) ne lit pas le bord, donc un côté sans échantillon à l'instant décalé
-reste sans position alors que la tenue le placerait ; `siegesDe` donne un second corps vivant à 83 m
-à une victime (`4f77afc1`) et la mort perd son lieu ; des lectures d'occupation attachent un bipède à un
-parent qui n'est ni un véhicule échantillonné ni un bipède (`5676a9ba`) ; le châssis de véhicule
-`b857fb95` (`e449a696`, `99b8ba5c`) n'est pas dans la table des familles (marqueur neutre). **Effort : S
-chacune, à instruire une par une.**
-**Mesure du 2026-11-08** (lecture seule, rejeux recuits au schéma 107) : le châssis `b857fb95` reste sans famille sur 117 films et 455 vies, publiées en marqueur neutre immobile (453 sans échantillon de position, 265 avec occupant) ; sa nature reste à établir. Second corps de `4f77afc1` : non mesuré ce jour-là, le code alors lu ne lisait pas les faits au schéma 19. Entame sans position et parent non véhicule : non mesurés, il faut une copie à froid de la base partagée.
-**Suite (report décidé par le user le 2026-11-09 : après la sortie de la 8.1.0, publiée depuis)**. Ordre proposé : (1) établir la nature du châssis `b857fb95` ; (2) mesurer le second corps de `4f77afc1`, désormais possible (`fix/rejeu-vies-equipement` fusionnée, `SchemaDesFaits` = 19) : depuis `libs/film`, `L1_FAITS=<dossier des faits> L1_BORNES=<map_quant_bounds.json> go test -tags research -count=1 -run '^TestLieuUniqueDesMorts$' -v ./replay/` (`L1_DEPOT` seul ne mesure que les fixtures) ; (3) mesurer l'entame sans position et le parent non véhicule sur une copie à froid de la base partagée, serveur arrêté. Ne corriger que ce que ces mesures confirment, après accord du user.
 
 ---
 
@@ -233,67 +103,6 @@ manque de donnée, établi sur payloads réels (P0, 10 matchs interrogés) :
 Le patron existe alors en triple exemplaire — **effort : S par bloc**. Interdiction
 explicite d'inventer le schéma par analogie.
 
-
-
-### [archi] Dépôts dédiés des trois briques publiées — APRÈS le chantier application de bureau
-
-**Noté le** : 2026-10-30 ; modules, README et tags `v0.1.0` faits le 2026-11-01 (voir « Récemment complété »).
-
-Reste l'étape 3 du chantier publication : un dépôt dédié par brique (`git subtree split`, historique conservé),
-décidé par le user le 2026-11-01 pour les trois, **ensemble, après le chantier application de bureau, jamais
-seul**. Noms et descriptions fixés dans l'ADR 0043 D-5 : `JGtm/halo-api`, `JGtm/halo-infinite-map-images`,
-`JGtm/halo-infinite-files-reader` (`gamefiles` en GPL-3.0 à cause de `ooz`). Handoff :
-`.ai/HANDOFF_PUBLICATION_BRIQUES_2026-11-01.md`. Avant la création : trancher PUB-2.5-e et PUB-4-a (registre des
-reports, section du 2026-11-01). Coût assumé : versions épinglées, deux PR par changement transverse, deux CI.
-**Effort : L.**
-
----
-
-### [archi] LevelUp consomme les briques publiées (modules dédiés) — reporté
-
-**Noté le** : 2026-11-09.
-
-LevelUp importe encore les briques depuis `libs/`, alors que les quatre modules dédiés sont publiés en v0.1.0 :
-`github.com/JGtm/halo-infinite-files-reader`, `halo-infinite-map-images`, `halo-api` et `halo-infinite-film-decoder`.
-Reste à faire pointer LevelUp sur ces modules : réécrire les imports de `apps/go-api`, supprimer `libs/` et `go.work`,
-poser les tags dépréciés `libs/<brique>/v0.1.1`, réécrire ADR 0041, `ARCHITECTURE_V6` et `COMMANDS` (EN et FR).
-
-**Mise à jour 2026-11-09** : les briques passent en v1.0.0 (décision du mainteneur) ; les tags dépréciés de l'ancien chemin seront donc `libs/<brique>/v1.0.1`, pas `v0.1.1`.
-
-**Pourquoi reporté** : le relevé `.ai/RELEVE_LOT6_LIBS_2026-11-09.md` compte 565 fichiers d'imports, environ 90
-garde-rails qui lisent le code des briques sur le disque sous `libs/`, et environ 70 fichiers de tests des briques qui
-lisent des données de LevelUp. **Condition de reprise** : plan dédié relu par `plan-review`, puis go du user. En
-attendant, les dépôts dédiés sont des copies publiées depuis `libs/` par la recette écrite dans
-`.ai/PLAN_FIN_DECOUPLAGE_BRIQUE_FILM_2026-11-02.md` (section « Reproduire la publication d'une brique »), jamais
-modifiées sur place. **Effort : L.**
-
----
-
-### [archi/himap] Dépôt `halo-infinite-map-images` : image `coupe.png` sans usage, plugin `sbsp.xml` non crédité
-
-Dans le dépôt dédié `halo-infinite-map-images`, le fichier `himap/coupe.png` n'a aucun usage trouvé dans le code, et
-`himap/sbsp.xml` (plugin de disposition des tags venu du projet Reclaimer) n'est pas crédité. **À trancher par le
-user** : retirer l'image, ou créditer le plugin (NOTICE). **Condition de reprise** : cette décision. La correction se
-fait dans `libs/himap` de LevelUp, puis la brique est republiée en v0.1.1. **Effort : S.**
-Même republication : le `NOTICE.md` publié dans `halo-infinite-files-reader` v0.1.0 cite des hashes de branches compactées sans la convention `(branch)` (corrigé dans LevelUp le 2026-11-09, à reporter dans le dépôt dédié à la prochaine version).
-
----
-
-### [licences] Origine des octets non établie pour quatre fichiers de test de `libs/gamefiles`
-
-`libs/gamefiles/mapvar/testdata/cliffhanger_map.mvar`, `cliffhanger_ridgeline.mvar` et les deux
-`hinavmesh/testdata/*.navmesh.blob` : l'historique git ne cite pas leur source, et `libs/gamefiles/NOTICE.md` dit
-« origin to be stated by the maintainer ». Ils sont déjà publiés tels quels dans `halo-infinite-files-reader` v0.1.0.
-**Condition de reprise** : le user complète l'origine s'il s'en souvient. **Effort : S.**
-
----
-
-### [archi/licences] Ligne XUID de la section « Test fixtures » du NOTICE racine devenue fausse pour `libs/film`
-
-Dans le `NOTICE` racine, section « Test fixtures », la ligne « Numeric account identifiers (XUID) are still present »
-reste vraie pour les fixtures sous `apps/`, mais fausse pour `libs/film` depuis le remplacement par des identifiants
-fictifs (`libs/film/testdata/IDENTITES.tsv`). À amender avec le chantier de la brique `halo-infinite-files-reader` et
-des autres dépôts dédiés. **Effort : S.**
 
 ---
 
@@ -357,6 +166,44 @@ Relevé le 2026-11-10 au premier démarrage de la 8.1.2 : pendant le rejeu des n
 
 ---
 
+### [ci/gate-push] Budget `-timeout=300s` trop court en mode intégration
+
+`make gate-push` sur machine chargée : `internal/archlint`, `internal/sync` et `internal/platform/duckdb` atteignent 300,2 à
+300,3 s ; `internal/sync` en intégration a été observé à environ 24 minutes. Le 2026-11-14, `go test -tags=integration ./...`
+(limite par défaut de 10 minutes) coupe aussi `internal/archlint`, `internal/ops` et `internal/sync` sous charge, sans test en
+échec ; rejoués seuls avec `-timeout 40m` : 428 s, 249 s et 699 s, verts. Reprend le diagnostic de l'ancienne entrée « Série Go
+`reste` : blocages sans test en échec » (2026-11-09, retirée) : ni paquet qui se bloque ni test rouge, un manque de temps sous
+charge. À revoir : budget par paquet ou exécution séparée des trois paquets lourds. **Effort : S.**
+
+---
+
+### [web/tests] Le badge du rejeu n'est pas testé de bout en bout
+
+Le test `apps/web/src/lib/replay/queries.cadence.test.tsx` s'arrête à la valeur lue par la requête (l'en-tête de cadence). Retirer
+la prop `cadenceStale={data.cadenceStale}` de `ReplayPage.tsx` ne fait rougir aucun test : il faudrait monter toute la page.
+**Effort : S à M.**
+
+---
+
+### [sécurité/deps] Alerte Dependabot glib (Rust)
+
+`glib` 0.18.5 vient de `gtk` 0.18, dépendance Linux de Tauri (tauri 2.11.6, tao, wry, webkit2gtk, tray-icon, muda), non compilée
+sous Windows (`cargo tree --target x86_64-pc-windows-msvc` ne la trouve pas). `cargo update -p glib --precise 0.20.0` échoue (`gtk`
+exige `^0.18`). À écarter comme non applicable (Windows seul, ADR 0045) ou à régler à la prochaine montée de Tauri : décision du
+user. **Effort : S.**
+
+---
+
+### [bureau/tests] `make desktop-test` laisse un binaire de serveur vide sous `binaries/`
+
+Relevé pendant la 8.2.0 (plan 8.1.2, étape 6.5), non traité. `apps/desktop/src-tauri/build.rs` (autour de la ligne 170) écrit un
+`levelup-server-x86_64-pc-windows-msvc.exe` vide sous `apps/desktop/src-tauri/binaries/` (ignoré par git) quand il est absent ; le
+test `TestLesBinairesDeAppsSontCouverts` (`apps/go-api/cmd/anonymise-gamertags/binaires_couverts_test.go`) refuse ensuite ce
+fichier, et la baseline de tests rougit tant qu'il n'est pas retiré à la main. À faire : que le test l'ignore, ou que `make
+desktop-test` nettoie après lui. **Effort : S.**
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
@@ -377,10 +224,11 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 ## ✅ Récemment complété (référence)
 
 > Entrées antérieures à 2026-07 (ère Python/Streamlit, bascule vers Go) : `.ai/archive/BACKLOG_COMPLETE_avant_2026-07.md`.
-> Le chantier en cours (application de bureau) se suit dans son plan, pas ici.
+> Les chantiers en cours se suivent dans leurs plans (`.ai/PLAN_*.md`) et dans la section « En cours » ci-dessus.
 
 | Date | Item |
 |------|------|
+| 2026-11-14 | **[release] LevelUp 8.2.0** (plan `.ai/PLAN_V8_1_2_2026-11-09.md`, branche `release/v8.2.0`) : plan 8.1.2 exécuté (tous les points du backlog du 2026-11-09 sauf 17, 18, 24 et 25 : barre latérale, volet des référentiels, sélecteur de dossier, zone du tueur au killfeed, FDA nette, alertes localisées, notes des matchs non convergents, icônes du jeu, nettoyage de l'installeur, licences et identités fictives ; PR #181, #183, #184, #185, #186, #187, #189, #190), correctif 8.1.2 de synchronisation intégré (#193) ; plan d'architecture en 8 étapes (suppressions, interrupteurs, écritures, couche HTTP, stockage, multi-titre, front, clôture ; PR #191, poussé sur la release pour le reste) ; briques consommées comme modules publiés (`github.com/JGtm/...` en v1.0.1, `libs/` et `go.work` supprimés, paquet `internal/briques` ; PR #194, #201, #202, puis montées en v1.1.0 par la #205 et au décodeur v1.3.6 par la #207) ; rejeu à 30 images par seconde (#190, #207), rejeux compressés (#199), lecture complète des paquets du film (#198), fil filtrable, fiche en panneau et Mainmise (#200), destructions de véhicule et occupants tués (#203), fonds de carte tenus par le maillage de navigation (#205), alertes de sécurité des dépendances (#206). Relecture finale par trois relecteurs sans le plan : 0 P0, 0 P1, 3 P2 corrigés. Restent les gestes du user : contrôles à l'écran, fusion vers `main`, gestes de production. |
 | 2026-11-08 | **[archi] Décodeur de film : brique `libs/film` publiable** (plan `.ai/PLAN_FIN_DECOUPLAGE_BRIQUE_FILM_2026-11-02.md`) : réorganisation protocole/exploitation, identifiants fictifs dans les fixtures, README/NOTICE/exemple, ADR 0043 amendée, revue adversariale close (branche `refactor/brique-film-publication`, PR vers `release/v8.1.0`). Reste : tag `libs/film/v0.1.0` (geste du user), lot 5 (jeton Spartan sur redirection, NOTICE gamefiles) et lot 6 (quatre dépôts dédiés) après le bureau et `main`. |
 | 2026-11-08 | **[backlog] Lot du 2026-11-08** (plan `.ai/V8/PLAN_BACKLOG_2026-11-08.md`, branche `chore/backlog-2026-11-08`) : matchs exclus retirés du graphe de carrière et des composantes LUSR, rejeu LUSR complet en échec visible si une écriture est tenue ; moteurs servis par le provider de leur titre, profils `auth_only` écartés du recalcul de sessions, ratchet des slugs étendu à `cmd/` ; page Citations sans barre de filtres, noms sur deux lignes, erreur de règles remontée, citations réconciliées à chaque démarrage ; rafraîchissement OAuth par le dernier client ayant réussi (mémoire du processus) ; `reset-bitmasks` sur les constantes canoniques, relance de connexion gardée après succès, deux instruments sortis du corpus `gamefiles`. Clos sur preuve sans code, détail au §0 du plan : `weapon_resolver`, `match_bomb_stats`, `cmd/levelup` et étapes par titre, maillon de nom Halo 5, fixture `psa_index_repro`, lecture du précédent LUSR, filtre CI, `RunForDB`, passes CSR, première vérification de participation, `/tactical/maps`, banc Cliffhanger ; instruments `research` traités par la brique film. Revue indépendante du plan, relecture dédiée de l'authentification, relecture finale Opus. |
 | 2026-11-02 | **[qol] Citations `.ai/` retirées des commentaires de code** (PR #134, entrée de backlog ouverte par la PR #127) : nettoyage fait, ratchet à plafond 0. Même PR : moteur des véhicules au mouvement dans le rejeu, tuile seule des sessions récentes. |

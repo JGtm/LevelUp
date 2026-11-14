@@ -2,7 +2,7 @@
 name = "levelup-desktop"
 # Meme numero que `version` de tauri.conf.json (A9) : c'est ce fichier-la qui fait foi, la
 # verification d'egalite avec le tag git est une etape de release.yml (lot L17).
-version = "8.1.2"
+version = "8.2.0"
 description = "Coquille Tauri de LevelUp : fenetre, mise a jour et installeur, aucune logique metier (ADR 0045 D-18)."
 authors = ["Guillaume Sitbon"]
 license = "AGPL-3.0-or-later"
