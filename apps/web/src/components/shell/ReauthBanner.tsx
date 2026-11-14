@@ -9,30 +9,18 @@
  * ré-auth interactive → la bannière disparaît au prochain bootstrap, re-fetché
  * au retour sur l'onglet (refetchOnWindowFocus, cf. __root.tsx).
  */
-import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { API_BASE_URL } from '@/lib/api/client'
+import { useReconnectXbox } from '@/lib/auth/useReconnectXbox'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest } from '@/lib/i18n/generated/common'
 
 export function ReauthBanner() {
-  const navigate = useNavigate()
+  const handleReconnect = useReconnectXbox()
   const reauthRequired = useAppShellStore((s) => s.reauthRequired)
-  const oauthCodeFlowEnabled = useAppShellStore((s) => s.oauthCodeFlowEnabled)
   const locale = useAppShellStore((s) => s.locale)
 
   if (!reauthRequired) return null
-
-  function handleReconnect() {
-    if (oauthCodeFlowEnabled) {
-      // Redirect SSO 1-clic (re-sème les tokens puis revient).
-      window.location.assign(`${API_BASE_URL}/auth/xbox/login`)
-      return
-    }
-    // Device code (SISU / pas de redirect Azure) : la page de login relance le flow.
-    navigate({ to: '/login' })
-  }
 
   return (
     <div

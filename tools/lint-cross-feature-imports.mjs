@@ -218,6 +218,12 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // émises et les codes réels tombaient sur le message générique (2026-10-16, plan sécurité
   // L11-6). Module nommé seulement, dépendance durable.
   'setup=>auth/loginError',
+  // L'accueil d'un joueur sans match (HomeFirstSync) dit l'état réel du sync : il lit le job par
+  // les primitives de la feature setup (`useJobStatus`, `useStartDeltaSync`) et la cause d'un
+  // échec par la table partagée avec l'assistant (`syncJobErrorKey`), sans les dupliquer. Modules
+  // nommés, dépendance durable (2026-11-14, plan compléments 8.2.0, étape 10.2).
+  'home=>setup/queries',
+  'home=>setup/syncJobError',
   // Home dashboard agrège aussi le widget Ascension (HomeAscensionWidget).
   'home=>ascension',
   // Explorer réutilise la bannière d'identité joueur de Home
