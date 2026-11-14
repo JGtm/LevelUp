@@ -1,8 +1,9 @@
 package trends
 
-import "levelup/go-api/internal/domain"
-
-const secondsPerMinute = 60.0
+import (
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
+)
 
 // paceIndicators : le groupe « Rythme », cinq stats par minute jouée. Chacune est le
 // rapport de la SOMME des comptes à la SOMME des minutes jouées de l'ensemble évalué
@@ -54,6 +55,6 @@ func perMinute(count func(Match) (float64, bool)) evalFunc {
 		if seconds <= 0 {
 			return 0, false
 		}
-		return sum / (seconds / secondsPerMinute), true
+		return analysis.PerMinute(sum, seconds), true
 	}
 }

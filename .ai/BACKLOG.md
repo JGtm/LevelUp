@@ -23,6 +23,12 @@
 
 ---
 
+### [analysis] Six divisions « par minute » écrites à la main au lieu de `analysis.PerMinute`
+
+Relevé le 2026-11-14 par la relecture du groupe « Rythme » de Tendances (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 2). Le helper canonique `analysis.PerMinute(total, seconds)` (`internal/analysis/indicators.go:146`) existe, mais six sites refont la division : `kpi_stats.go:115`, `explorer_target_stats.go:122`, `home_canonical_highlights_tiles.go:86`, `squad_breakdown.go:373`, `squad_breakdown_canonical.go:59` et `:160`. Règle 6 : migrer les six sites vers le helper (valeurs identiques à vérifier par témoins avant/après, l'arrondi de `total * 60 / seconds` diffère) et poser un garde-rail grep qui interdit la division en ligne dans `internal/analysis`. Dette antérieure, hors du plan. **Effort : S.**
+
+---
+
 ### [kpi] Rendement et Résistance : la vie d'un Spartan vaut 229 ou 230 points, pas 225
 
 **Demande de l'utilisateur (2026-11-10).** Les formules du Rendement (`225 × (frags + assistances/3) / dégâts infligés`) et de la Résistance (`dégâts subis / (225 × morts)`) reposent sur la constante `games.DefaultEffectiveHpToKill = 225.0` (`apps/go-api/internal/games/damage_model.go:18`). Mesuré le 2026-11-10 dans trois films : le compteur « dégâts subis » du jeu monte de 229 points pour une vie sans recharge de bouclier ; la table des fichiers du jeu lue par libfilmshell donne 90 de santé + 140 de bouclier = 230. À instruire dans un petit lot : trancher entre 229 et 230 sur davantage de films, puis corriger la constante et tout ce qui la cite (commentaires des formules, texte de l'infobulle « 1 vie ≈ 225 points », valeur `effective_hp_to_kill` servie par `/bootstrap`). Attention : la note composite du LUSR lit ces deux indicateurs (`sync/skill/skill_rating_composite.go`), donc le changement relève de l'ADR 0047 (révision de notation, recalcul de tous les joueurs au premier démarrage, ligne dans les notes de version). Halo 5 (115) n'est pas concerné. **Condition de reprise :** décision du user de lancer le lot. **Effort : petit (une constante et ses citations), plus le recalcul des notes.** **Repris par le plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 7 (2026-11-14).**
