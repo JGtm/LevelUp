@@ -7,6 +7,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
+import { heatmapRampTokens } from '@/components/charts/heatmapColors'
 import { renderOptionToSvg } from '@/components/charts/svgRender.testutil'
 import { _resetActivePalette, applyPalette } from '@/lib/accessibility/applyPalette'
 import { defaultPalette } from '@/lib/accessibility/palettes/default'
@@ -485,6 +486,6 @@ describe('resolvePlacementColors', () => {
     expect(c.quadrant.in_range_costly).toBe(defaultPalette['perf-tier-4'])
     expect(c.quadrant.isolated_costly).toBe(defaultPalette['perf-tier-5'])
     expect(c.radar).toBe(defaultPalette.extreme)
-    expect(c.heat).toBe(defaultPalette['heatmap-freq-high'])
+    expect(c.heat).toBe(defaultPalette[heatmapRampTokens('frequency').at(-1)!])
   })
 })

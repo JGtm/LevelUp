@@ -110,7 +110,8 @@ export function buildAssistFlowOption(flow: AssistFlow, opts: AssistFlowChartOpt
         draggable: false,
         emphasis: { focus: 'adjacency' },
         lineStyle: { opacity: LINK_OPACITY, curveness: 0.5 },
-        label: { color: tc.text, fontSize: 12 },
+        // Un nom long est tronqué à la marge réservée plutôt que rogné par le bord du graphe.
+        label: { color: tc.text, fontSize: 12, width: LABEL_MARGIN - 16, overflow: 'truncate' },
         data: flow.nodes.map((n) => nodeDatum(n, opts)),
         links: flow.links.map((l) => linkDatum(l, opts)),
       },
