@@ -6,8 +6,8 @@
     "curfew_map"
   ],
   "image": "63d634be-0319-489d-8c21-9c4e012f664f.webp",
-  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 23.2 % de la matiere retiree)",
-  "generatedAt": "2026-11-13T23:02:55.7765352Z",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 23.4 % de la matiere retiree)",
+  "generatedAt": "2026-11-14T00:39:54.2864144Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.044638417541980745,
@@ -33,7 +33,7 @@
     "coveredShare": 0.9843161033013891,
     "covered": true,
     "cellsSubstituted": 456838,
-    "cellsClipped": 169274,
+    "cellsClipped": 170989,
     "forgeObjects": 4564,
     "forgeObjectsDrawn": 4539,
     "forgeObjectsWithoutModel": 24,

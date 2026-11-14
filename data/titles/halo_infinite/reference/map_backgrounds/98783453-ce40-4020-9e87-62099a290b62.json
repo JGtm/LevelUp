@@ -6,8 +6,8 @@
     "smallhalla_map"
   ],
   "image": "98783453-ce40-4020-9e87-62099a290b62.webp",
-  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 8.4 % de la matiere retiree)",
-  "generatedAt": "2026-11-13T23:02:59.7773754Z",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 8.6 % de la matiere retiree)",
+  "generatedAt": "2026-11-14T00:39:59.3100609Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.0433212890625,
@@ -33,7 +33,7 @@
     "coveredShare": 0.955143105235619,
     "covered": true,
     "cellsSubstituted": 644836,
-    "cellsClipped": 34238,
+    "cellsClipped": 34826,
     "forgeObjects": 3901,
     "forgeObjectsDrawn": 3751,
     "forgeObjectsWithoutModel": 122,

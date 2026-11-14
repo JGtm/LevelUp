@@ -6,8 +6,8 @@
     "solitude_map"
   ],
   "image": "f1cc3b4e-471c-4ec5-b855-1db7d9e6ce42.webp",
-  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 21.9 % de la matiere retiree)",
-  "generatedAt": "2026-11-13T23:02:56.4737389Z",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 22.2 % de la matiere retiree)",
+  "generatedAt": "2026-11-14T00:39:55.1443456Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.04249320983886719,
@@ -33,7 +33,7 @@
     "coveredShare": 0.9940881865743058,
     "covered": true,
     "cellsSubstituted": 411705,
-    "cellsClipped": 149096,
+    "cellsClipped": 150758,
     "forgeObjects": 3223,
     "forgeObjectsDrawn": 3153,
     "forgeObjectsWithoutModel": 53,

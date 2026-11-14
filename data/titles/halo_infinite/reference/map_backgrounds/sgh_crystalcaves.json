@@ -7,7 +7,7 @@
   ],
   "image": "sgh_crystalcaves.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T22:30:02.7344341Z",
+  "generatedAt": "2026-11-14T00:29:45.5539426Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.037,

@@ -7,7 +7,7 @@
   ],
   "image": "chasm.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T22:32:17.3634285Z",
+  "generatedAt": "2026-11-14T00:31:39.7894005Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.059,

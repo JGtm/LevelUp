@@ -7,7 +7,7 @@
   ],
   "image": "252e2a45-93fa-4661-a5cf-4a35803f9149.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T22:42:32.5977776Z",
+  "generatedAt": "2026-11-14T00:39:16.7431496Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.042944127400716146,
@@ -34,7 +34,7 @@
     "covered": true,
     "cellsSubstituted": 57344,
     "cellsClipped": 6489,
-    "cellsAssumedFloor": 109535,
+    "cellsAssumedFloor": 105740,
     "forgeObjects": 5381,
     "forgeObjectsDrawn": 5312,
     "forgeObjectsWithoutModel": 58,

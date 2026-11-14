@@ -9,7 +9,7 @@
   ],
   "image": "forest.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T22:28:24.6187017Z",
+  "generatedAt": "2026-11-14T00:28:07.5535493Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.04787398211161296,
@@ -31,7 +31,7 @@
     "boundaryPlanes": 12,
     "boundaryCellsCleared": 7005229,
     "waterVolumes": 51,
-    "waterCells": 136951,
+    "waterCells": 123253,
     "coveredShare": 0.24641928973386504,
     "covered": false
   },

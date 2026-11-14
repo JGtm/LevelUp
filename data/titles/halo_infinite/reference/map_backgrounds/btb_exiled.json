@@ -13,7 +13,7 @@
   ],
   "image": "btb_exiled.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T22:28:34.670236Z",
+  "generatedAt": "2026-11-14T00:28:18.2209077Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.06756666692097982,

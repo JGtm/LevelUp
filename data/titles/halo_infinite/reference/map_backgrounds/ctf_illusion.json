@@ -7,14 +7,14 @@
   ],
   "image": "ctf_illusion.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T22:32:09.7395534Z",
+  "generatedAt": "2026-11-14T00:31:32.1581523Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.031,
     "originX": -22.031434532165527,
-    "originY": 35.164999237060556,
+    "originY": 36.31199923706055,
     "widthPx": 1416,
-    "heightPx": 2224,
+    "heightPx": 2342,
     "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
   },
   "stats": {

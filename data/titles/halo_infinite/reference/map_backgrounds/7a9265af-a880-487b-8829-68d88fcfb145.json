@@ -6,8 +6,8 @@
     "starboard_map"
   ],
   "image": "7a9265af-a880-487b-8829-68d88fcfb145.webp",
-  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 11.1 % de la matiere retiree)",
-  "generatedAt": "2026-11-13T23:02:54.9018107Z",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 11.3 % de la matiere retiree)",
+  "generatedAt": "2026-11-14T00:39:53.337402Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.041625373204549156,
@@ -33,7 +33,7 @@
     "coveredShare": 0.7473304917168344,
     "covered": true,
     "cellsSubstituted": 447000,
-    "cellsClipped": 69598,
+    "cellsClipped": 70674,
     "forgeObjects": 3964,
     "forgeObjectsDrawn": 3902,
     "forgeObjectsWithoutModel": 42,

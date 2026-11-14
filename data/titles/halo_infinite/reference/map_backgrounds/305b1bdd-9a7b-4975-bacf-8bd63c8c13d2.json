@@ -7,7 +7,7 @@
   ],
   "image": "305b1bdd-9a7b-4975-bacf-8bd63c8c13d2.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T22:39:14.7430297Z",
+  "generatedAt": "2026-11-14T00:36:24.679725Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.05538444455464681,

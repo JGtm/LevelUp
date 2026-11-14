@@ -9,7 +9,7 @@
   ],
   "image": "btb_fragmentation.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T22:29:11.9603788Z",
+  "generatedAt": "2026-11-14T00:28:54.5715917Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.06331084060668946,

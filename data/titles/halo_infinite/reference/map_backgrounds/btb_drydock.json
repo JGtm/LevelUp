@@ -9,14 +9,14 @@
   ],
   "image": "btb_drydock.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T22:28:55.6375214Z",
+  "generatedAt": "2026-11-14T00:28:38.7449158Z",
   "style": "jeu",
   "calibration": {
     "metersPerPixel": 0.059798465092976885,
     "originX": -36.08499334589641,
-    "originY": 142.00065022850035,
+    "originY": 119.33703195826212,
     "widthPx": 1967,
-    "heightPx": 2209,
+    "heightPx": 1830,
     "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
   },
   "stats": {
@@ -31,7 +31,7 @@
     "boundaryPlanes": 76,
     "boundaryCellsCleared": 6031710,
     "waterVolumes": 26,
-    "waterCells": 425171,
+    "waterCells": 17993,
     "coveredShare": 0.11710167249474608,
     "covered": false
   },

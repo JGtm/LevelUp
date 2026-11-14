@@ -7,13 +7,13 @@
   ],
   "image": "ctf_forbidden.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T22:31:05.3614742Z",
+  "generatedAt": "2026-11-14T00:30:45.96332Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.045,
-    "originX": -32.21694282531739,
+    "originX": -36.986942825317385,
     "originY": 34.24499923706053,
-    "widthPx": 1354,
+    "widthPx": 1460,
     "heightPx": 1522,
     "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
   },

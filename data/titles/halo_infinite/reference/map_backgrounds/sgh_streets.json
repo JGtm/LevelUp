@@ -9,13 +9,13 @@
   ],
   "image": "sgh_streets.webp",
   "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
-  "generatedAt": "2026-11-13T22:31:40.6951729Z",
+  "generatedAt": "2026-11-14T00:31:16.584457Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.036,
     "originX": -27.446034645080566,
     "originY": 24.364478004455563,
-    "widthPx": 1635,
+    "widthPx": 1669,
     "heightPx": 1404,
     "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
   },

@@ -6,8 +6,8 @@
     "kaiketsu_map"
   ],
   "image": "98a83f87-2420-48c6-93f8-cc6b62d73235.webp",
-  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 33.4 % de la matiere retiree)",
-  "generatedAt": "2026-11-13T23:02:57.4128328Z",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu) ; fond publie rogne a la silhouette du maillage (marge 0.5 m, 33.7 % de la matiere retiree)",
+  "generatedAt": "2026-11-14T00:39:56.2565459Z",
   "style": "encre",
   "calibration": {
     "metersPerPixel": 0.043249995867411295,
@@ -33,7 +33,7 @@
     "coveredShare": 0.9477878304303888,
     "covered": true,
     "cellsSubstituted": 293897,
-    "cellsClipped": 198730,
+    "cellsClipped": 200470,
     "forgeObjects": 5497,
     "forgeObjectsDrawn": 5404,
     "forgeObjectsWithoutModel": 60,
