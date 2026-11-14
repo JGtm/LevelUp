@@ -32,6 +32,7 @@
 - **Compression from the Windows app** — the replay update launched from the app writes them compressed, and also offers to compress the ones that can no longer be rebuilt
 
 **Scores and statistics**
+- **Per-minute stats in Trends** — a "Pace" group in the matrix (kills, deaths, assists, damage dealt and taken per minute, over the time actually played, so a long Big Team Battle and a short arena compare fairly) and two per-minute charts in Evolution, in the solo view
 - **LUSR scores are recalculated on their own at the first start** — nothing to do: a match the calculation could not resolve finally gets a score. As each score depends on the previous ones, most of those in your history move, usually by less than five points
 - **Net FDA in Solo versus Squad and in behaviour alerts** — FDA is read as kills plus a third of assists minus deaths, per match, rather than as a quotient; the formula in Help is corrected in every language, and the losing-streak alert is judged on a drop in FDA points
 - **Behaviour alerts in your language** — eleven sentences written in French by the server now go through the language catalogue
