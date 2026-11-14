@@ -661,6 +661,14 @@ en = "gap to the lobby {delta} m"
 fr = "{n, plural, one {# frag} other {# frags}}"
 en = "{n, plural, one {# kill} other {# kills}}"
 
+[squad.portee.no_role_title]
+fr = "Pas encore de rôle"
+en = "No role yet"
+
+[squad.portee.no_role_description]
+fr = "Un rôle se lit sur une fenêtre de {window, number} matchs, le dernier comptant au moins {floor, number} frags."
+en = "A role is read over a window of {window, number} matches, the last one counting at least {floor, number} kills."
+
 [squad.portee.empty_title]
 fr = "Aucune distance de frag"
 en = "No kill distance"

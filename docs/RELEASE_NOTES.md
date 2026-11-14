@@ -42,9 +42,9 @@
 
 **The Squad**
 - **Grouped or isolated, as a heat map** — each life lands in a cell (distance to the nearest teammate × kills in the life), with the four quarters, the radar range and one dot per player; the section is renamed "Grouped or isolated"
-- **Range roles as a ribbon** — one row per player, one column per match, coloured by role (front line, versatile, marksman): a column reads as the squad composition of that match. A match with too few kills to measure shows an empty cell, "not enough data"
-- **Rank in bands** — one band per player at the same scale, the curve in the player's colour only, a filled triangle when the rank goes up and a hollow one when it goes down, and the session gain on the left. Close ranks no longer overlap
-- **Assists as a flow** — "Assister: sets up the kill → Finisher: lands it", on the Squad and on the match view, with sentences that always name the assister first
+- **Range roles as a ribbon** — one row per player, one column per match, coloured by role (Front line, All-rounder, Sharpshooter), read over the last five matches: a column reads as the squad composition of that match. A cell stays empty for the first four matches of a player (the five-match window is not complete yet) and for a match with too few kills to count; hovering it says which
+- **Rank in bands** — one band per player at the same scale, the curve in the player's colour only, a filled triangle when the rank holds or goes up, a hollow one when it goes down (a plain dot when the change is not available), and the rank at the end of the session with its gain on the left. Close ranks no longer overlap
+- **Assists as a flow** — "Assister: sets up the kill → Finisher: completes the kill", on the Squad and on the match view, with sentences that always name the assister first
 
 **The interface and the Windows app**
 - **A more compact sidebar** — the foot becomes a row of icons, folded it keeps a "More" menu, and a tooltip opens on focus only when the focus comes from the keyboard

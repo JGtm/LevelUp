@@ -13,6 +13,7 @@ import type { MatchRangeProfile } from '@/lib/api/types'
 
 import {
   categoriesMatchs,
+  aDesRoles,
   FENETRE_ROLE,
   lignesRuban,
   moyenneGlissante,
@@ -210,5 +211,19 @@ describe('lignesRuban', () => {
     ]
     const lignes = lignesRuban(seriesPortee(ordonnerProfils(profils), ['A', 'B']), seuils)
     expect(lignes.map((l) => l.cellules.map((c) => c.ordre))).toEqual([[0, 1], [0]])
+  })
+})
+
+describe('aDesRoles', () => {
+  const seuils = { bas: -2, haut: 2 }
+
+  it('faux tant qu’aucune fenêtre de cinq matchs n’est pleine, vrai dès le cinquième', () => {
+    expect(aDesRoles(lignesRuban([serieDe([6, 6, 6, 6])], seuils))).toBe(false)
+    expect(aDesRoles(lignesRuban([serieDe([6, 6, 6, 6, 6])], seuils))).toBe(true)
+  })
+
+  it('faux sans ligne, faux sans seuils', () => {
+    expect(aDesRoles([])).toBe(false)
+    expect(aDesRoles(lignesRuban([serieDe([6, 6, 6, 6, 6])], null))).toBe(false)
   })
 })

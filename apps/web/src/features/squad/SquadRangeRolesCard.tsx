@@ -31,6 +31,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { buildRangeRolesRibbonOption, hauteurRuban } from './charts/squadRangeRolesRibbon'
 import {
+  aDesRoles,
   categoriesMatchs,
   FENETRE_ROLE,
   lignesRuban,
@@ -91,7 +92,10 @@ export function SquadRangeRolesCard({ bloc, roster, colorByPlayer }: SquadRangeR
     [lignes, categories, colorByPlayer, t, deltaFmt],
   )
 
-  const vide = lignes.length === 0
+  // Aucun match filmé : l'état vide du film. Des matchs mais aucun rôle (fenêtre de cinq matchs jamais pleine, ou jamais
+  // assez de frags) : l'état vide du rôle, jamais une grille de cases transparentes.
+  const sansLigne = lignes.length === 0
+  const vide = sansLigne || !aDesRoles(lignes)
 
   return (
     <SectionCard
@@ -102,7 +106,10 @@ export function SquadRangeRolesCard({ bloc, roster, colorByPlayer }: SquadRangeR
     >
       <div className="flex flex-1 flex-col justify-center px-3 py-2" data-testid={`${TID}-roles`}>
         {vide ? (
-          <EmptyStateNotice title={t.emptyTitle} description={t.emptyDescription} />
+          <EmptyStateNotice
+            title={sansLigne ? t.emptyTitle : t.noRoleTitle}
+            description={sansLigne ? t.emptyDescription : t.noRoleDescription(PLANCHER_MESURE, FENETRE_ROLE)}
+          />
         ) : (
           <ChartCard series={chartSeries} buildOption={buildOption} height={hauteurRuban(lignes.length)} frameless />
         )}

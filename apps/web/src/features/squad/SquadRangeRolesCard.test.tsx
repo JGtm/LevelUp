@@ -72,17 +72,17 @@ describe('SquadRangeRolesCard', () => {
   it('porte les étiquettes « #N · carte » du plus ancien au plus récent', async () => {
     renderWithProviders(
       <SquadRangeRolesCard
-        bloc={bloc([profil(1, 12, 'Streets'), profil(0, 12, 'Fragmentation')])}
+        bloc={bloc([profil(1, 12, 'Streets'), profil(0, 12, 'Fragmentation'), ...[2, 3, 4, 5].map((i) => profil(i))])}
         roster={roster}
         colorByPlayer={COULEURS}
       />,
     )
-    expect((await option()).xAxis.data).toEqual(['#1 · Fragment…', '#2 · Streets'])
+    expect((await option()).xAxis.data).toEqual(['#1 · Fragment…', '#2 · Streets', '#3', '#4', '#5', '#6'])
   })
 
   it('une ligne par joueur dans l’ordre du roster, le premier en haut', async () => {
     renderWithProviders(
-      <SquadRangeRolesCard bloc={bloc([profil(0), profil(1)])} roster={roster} colorByPlayer={COULEURS} />,
+      <SquadRangeRolesCard bloc={bloc(Array.from({ length: 6 }, (_, i) => profil(i)))} roster={roster} colorByPlayer={COULEURS} />,
     )
     const o = await option()
     expect(o.yAxis.data).toEqual(['JGtm', 'Kaya'])
@@ -91,7 +91,7 @@ describe('SquadRangeRolesCard', () => {
 
   it('trois séries de rôle (une teinte chacune) et une série de cases sans rôle', async () => {
     renderWithProviders(
-      <SquadRangeRolesCard bloc={bloc([profil(0), profil(1)])} roster={roster} colorByPlayer={COULEURS} />,
+      <SquadRangeRolesCard bloc={bloc(Array.from({ length: 6 }, (_, i) => profil(i)))} roster={roster} colorByPlayer={COULEURS} />,
     )
     const o = await option()
     expect(o.series.map((s) => s.name)).toEqual(['Ligne de front', 'Polyvalent', "Tireur d'élite", ''])
@@ -120,6 +120,22 @@ describe('SquadRangeRolesCard', () => {
     expect(derniere[0].tip).toContain('3 frags, données insuffisantes')
     // Aucune case avec rôle ne porte la mention : seul un match sous le plancher la porte.
     expect(o.series.slice(0, 3).flatMap((s) => s.data).some((d) => d.tip.includes('données insuffisantes'))).toBe(false)
+  })
+
+  it('quatre matchs ou moins : aucun rôle, donc l’état vide du rôle, jamais une grille de cases transparentes', () => {
+    const profils = Array.from({ length: 4 }, (_, i) => profil(i))
+    renderWithProviders(<SquadRangeRolesCard bloc={bloc(profils)} roster={roster} colorByPlayer={COULEURS} />)
+    expect(screen.getByText('Pas encore de rôle')).toBeTruthy()
+    expect(screen.getByText(/fenêtre de 5 matchs, le dernier comptant au moins 5 frags/)).toBeTruthy()
+    expect(screen.queryByTestId('portee-ruban-stub')).toBeNull()
+  })
+
+  it('cinq matchs, le dernier assez fourni : le ruban s’affiche', async () => {
+    renderWithProviders(
+      <SquadRangeRolesCard bloc={bloc(Array.from({ length: 5 }, (_, i) => profil(i)))} roster={roster} colorByPlayer={COULEURS} />,
+    )
+    expect((await option()).series).toHaveLength(4)
+    expect(screen.queryByText('Pas encore de rôle')).toBeNull()
   })
 
   it('rien sous le graphe : ni légende ajoutée, ni bande repliable, ni compte de frags mesurés', () => {

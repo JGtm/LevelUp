@@ -254,6 +254,11 @@ export interface LigneRuban {
   cellules: CelluleRuban[]
 }
 
+/** Au moins une case du ruban porte un rôle : sinon le ruban n'est qu'une grille de cases vides. */
+export function aDesRoles(lignes: readonly LigneRuban[]): boolean {
+  return lignes.some((l) => l.cellules.some((c) => c.role !== null))
+}
+
 /**
  * lignesRuban projette les séries en lignes du ruban « Rôles de portée » : une case par match
  * joué, dont le rôle est LU SUR LA FENÊTRE GLISSANTE (`rolesFenetre`, règles inchangées). Un

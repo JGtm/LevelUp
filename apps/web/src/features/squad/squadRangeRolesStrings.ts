@@ -32,6 +32,8 @@ export function getSquadRangeRolesText(locale: Locale) {
     tooltipDelta: (delta: string) => m('squad.portee.tooltip_delta', { delta }),
     tooltipMeasured: (n: number) => m('squad.portee.tooltip_measured', { n }),
     tooltipUnsure: (n: number) => m('squad.portee.tooltip_unsure', { n }),
+    noRoleTitle: m('squad.portee.no_role_title'),
+    noRoleDescription: (floor: number, window: number) => m('squad.portee.no_role_description', { floor, window }),
     emptyTitle: m('squad.portee.empty_title'),
     emptyDescription: m('squad.portee.empty_description'),
   }
