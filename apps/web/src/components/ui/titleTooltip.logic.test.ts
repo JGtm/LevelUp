@@ -4,6 +4,7 @@ import {
   claimTitle,
   findTitleSource,
   isCoveredByTooltip,
+  refreshClaim,
   releaseTitle,
   removeDescribedBy,
   STASH_ATTRIBUTE,
@@ -62,7 +63,7 @@ describe('claimTitle / releaseTitle : restauration', () => {
     const b = document.getElementById('b') as HTMLElement
     const source = findTitleSource(b)!
     claimTitle(source)
-    expect(b.hasAttribute('title')).toBe(false)
+    expect(b.getAttribute('title')).toBe('')
     expect(b.getAttribute(STASH_ATTRIBUTE)).toBe('Aide')
     // Un élément pris en charge reste reconnu, y compris depuis un de ses enfants.
     expect(findTitleSource(b)?.text).toBe('Aide')
@@ -154,5 +155,52 @@ describe('isCoveredByTooltip', () => {
     mount(`<div ${TOOLTIP_OWNER_ATTRIBUTE}=""><button id="in" title="A">x</button></div><button id="out" title="B">y</button>`)
     expect(isCoveredByTooltip(document.getElementById('in') as HTMLElement)).toBe(true)
     expect(isCoveredByTooltip(document.getElementById('out') as HTMLElement)).toBe(false)
+  })
+})
+
+describe('refreshClaim : titre réécrit ou retiré par l’application', () => {
+  it('une réécriture remplace le texte retenu et revide le title', () => {
+    mount('<button id="b" title="Ancien"><svg></svg></button>')
+    const b = document.getElementById('b') as HTMLElement
+    claimTitle(findTitleSource(b)!)
+    b.setAttribute('title', 'Neuf')
+    expect(refreshClaim(b)).toEqual({ kind: 'text', text: 'Neuf' })
+    expect(b.getAttribute('title')).toBe('')
+    expect(b.getAttribute(STASH_ATTRIBUTE)).toBe('Neuf')
+    // Le nom accessible provisoire suit le texte neuf, puis disparaît.
+    expect(b.getAttribute('aria-label')).toBe('Neuf')
+    releaseTitle(b)
+    expect(b.getAttribute('title')).toBe('Neuf')
+    expect(b.hasAttribute('aria-label')).toBe(false)
+  })
+
+  it('un retrait oublie la prise en charge : rien n’est restitué', () => {
+    mount('<button id="b" title="Ancien">Ok</button>')
+    const b = document.getElementById('b') as HTMLElement
+    claimTitle(findTitleSource(b)!)
+    b.removeAttribute('title')
+    expect(refreshClaim(b)).toEqual({ kind: 'gone' })
+    expect(b.hasAttribute(STASH_ATTRIBUTE)).toBe(false)
+    releaseTitle(b)
+    expect(b.hasAttribute('title')).toBe(false)
+  })
+
+  it('sans changement : same', () => {
+    mount('<button id="b" title="Aide">Ok</button>')
+    const b = document.getElementById('b') as HTMLElement
+    claimTitle(findTitleSource(b)!)
+    expect(refreshClaim(b)).toEqual({ kind: 'same' })
+  })
+
+  it('relit le <title> SVG réécrit ou supprimé', () => {
+    mount('<svg><path id="p"><title>Arc 1</title></path></svg>')
+    const p = document.getElementById('p') as unknown as Element
+    claimTitle(findTitleSource(p)!)
+    p.querySelector('title')!.textContent = 'Arc 2'
+    expect(refreshClaim(p)).toEqual({ kind: 'text', text: 'Arc 2' })
+    expect(p.querySelector('title')?.textContent).toBe('')
+    p.querySelector('title')!.remove()
+    expect(refreshClaim(p)).toEqual({ kind: 'gone' })
+    expect(p.hasAttribute(STASH_ATTRIBUTE)).toBe(false)
   })
 })

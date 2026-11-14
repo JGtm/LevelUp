@@ -46,7 +46,7 @@
 
 **The interface and the Windows app**
 - **A more compact sidebar** — the foot becomes a row of icons, folded it keeps a "More" menu, and a tooltip opens on focus only when the focus comes from the keyboard
-- **Tooltips visible when you share your screen** — every tooltip of the app is now drawn by the app itself: a listener on Discord or Teams sees it when you share the window, which the system tooltips did not allow
+- **Tooltips visible when you share your screen** — the tooltips of buttons, icons and markers are now drawn by the app itself: a listener on Discord or Teams sees them when you share the window, which the system tooltips did not allow
 - **A sliding references pane** — maps, weapons and medals open from the side, with a pinned mode
 - **A "Browse" button** in the Windows app settings to choose a folder
 - **Cleaner updates** — the old interface files are removed on update and on uninstall

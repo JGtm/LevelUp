@@ -3,10 +3,10 @@
  *
  * Pourquoi : l'infobulle native d'un attribut `title` est dessinée par le navigateur ou WebView2 dans une
  * fenêtre système séparée, que le partage d'une FENÊTRE (Discord, Teams) ne capture pas. La couche retire
- * le `title` d'un élément pendant qu'il est survolé ou focalisé au clavier, et le fait afficher par une
+ * le `title` d'un élément (vidé, texte mis de côté) pendant qu'il est survolé ou focalisé au clavier, et le fait afficher par une
  * infobulle de l'application (visible dans le partage).
  *
- * Le texte retiré vit dans `data-lu-title` pendant la prise en charge : l'attribut sert aussi de marque, ce
+ * Le texte mis de côté vit dans `data-lu-title` pendant la prise en charge : l'attribut sert aussi de marque, ce
  * qui permet de retrouver la source d'un élément déjà pris en charge quand le pointeur passe d'un de ses
  * enfants à l'autre.
  */
@@ -81,8 +81,11 @@ function needsNameFallback(owner: Element): boolean {
 }
 
 /**
- * Prend en charge le `title` de `source` : le texte passe en `data-lu-title`, l'infobulle native disparaît.
- * Idempotent (un élément déjà pris en charge n'est pas retouché).
+ * Prend en charge le `title` de `source` : le texte passe en `data-lu-title` et l'infobulle native disparaît.
+ * Sur un élément HTML l'attribut est VIDÉ (`title=""`), pas retiré : un `title` vide supprime l'infobulle
+ * native, et l'attribut reste ainsi un témoin que `refreshClaim` sait relire (React le réécrit : valeur
+ * neuve ; React le retire : l'attribut disparaît, ce que `MutationObserver` voit, alors qu'un retrait d'un
+ * attribut déjà absent ne se voit pas). Idempotent (un élément déjà pris en charge n'est pas retouché).
  */
 export function claimTitle(source: TitleSource): void {
   const { owner, text } = source
@@ -91,16 +94,27 @@ export function claimTitle(source: TitleSource): void {
   owner.setAttribute(STASH_ATTRIBUTE, text)
   const svgTitle = svgTitleChild(owner)
   if (svgTitle) svgTitle.textContent = ''
-  else owner.removeAttribute('title')
+  else owner.setAttribute('title', '')
   if (nameless) {
     owner.setAttribute('aria-label', text.trim())
     owner.setAttribute(NAME_FALLBACK_ATTRIBUTE, '')
   }
 }
 
+/** Oublie la prise en charge SANS rendre le titre : retire le texte retenu et le nom accessible provisoire. */
+function forgetClaim(owner: Element): void {
+  const stash = owner.getAttribute(STASH_ATTRIBUTE)
+  if (owner.hasAttribute(NAME_FALLBACK_ATTRIBUTE)) {
+    if (stash !== null && owner.getAttribute('aria-label') === stash.trim()) owner.removeAttribute('aria-label')
+    owner.removeAttribute(NAME_FALLBACK_ATTRIBUTE)
+  }
+  owner.removeAttribute(STASH_ATTRIBUTE)
+}
+
 /**
- * Rend à `owner` son `title`. Si l'application a réécrit le titre entre-temps (rendu React pendant le
- * survol), la valeur neuve gagne : le texte retiré n'écrase jamais un titre posé après lui.
+ * Rend à `owner` son `title`. Si l'application l'a réécrit pendant la prise en charge (rendu React pendant le
+ * survol), la valeur neuve gagne ; si elle l'a retiré, rien n'est restitué : le texte retenu ne ressuscite
+ * jamais un titre que l'application a supprimé.
  */
 export function releaseTitle(owner: Element): void {
   const stash = owner.getAttribute(STASH_ATTRIBUTE)
@@ -108,14 +122,37 @@ export function releaseTitle(owner: Element): void {
   const svgTitle = svgTitleChild(owner)
   if (svgTitle) {
     if ((svgTitle.textContent ?? '') === '') svgTitle.textContent = stash
-  } else if (!owner.hasAttribute('title')) {
+  } else if (owner.getAttribute('title') === '') {
     owner.setAttribute('title', stash)
   }
-  if (owner.hasAttribute(NAME_FALLBACK_ATTRIBUTE)) {
-    if (owner.getAttribute('aria-label') === stash.trim()) owner.removeAttribute('aria-label')
-    owner.removeAttribute(NAME_FALLBACK_ATTRIBUTE)
+  forgetClaim(owner)
+}
+
+/** Ce que `refreshClaim` a trouvé : rien de changé, un texte neuf (déjà retenu, `title` re-vidé), ou plus de titre. */
+export type ClaimChange = { kind: 'same' } | { kind: 'text'; text: string } | { kind: 'gone' }
+
+/**
+ * Relit l'élément pris en charge après une mutation : l'application a pu réécrire son `title` (le texte neuf
+ * est retenu à la place de l'ancien et le `title` est re-vidé, le nom accessible provisoire suit) ou le retirer
+ * (la prise en charge est oubliée, rien ne sera restitué). Fonction d'état, pas de journal : sûre à appeler
+ * après nos propres écritures.
+ */
+export function refreshClaim(owner: Element): ClaimChange {
+  const svgTitle = svgTitleChild(owner)
+  const live = svgTitle ? svgTitle.textContent : owner.getAttribute('title')
+  if (live === null || (svgTitle === null && owner instanceof SVGElement)) {
+    forgetClaim(owner)
+    return { kind: 'gone' }
   }
-  owner.removeAttribute(STASH_ATTRIBUTE)
+  if (live === '') return { kind: 'same' }
+  const previous = owner.getAttribute(STASH_ATTRIBUTE)
+  owner.setAttribute(STASH_ATTRIBUTE, live)
+  if (svgTitle) svgTitle.textContent = ''
+  else owner.setAttribute('title', '')
+  if (owner.hasAttribute(NAME_FALLBACK_ATTRIBUTE) && owner.getAttribute('aria-label') === (previous ?? '').trim()) {
+    owner.setAttribute('aria-label', live.trim())
+  }
+  return { kind: 'text', text: live }
 }
 
 /** Relie `owner` à l'infobulle affichée (`aria-describedby`), sans perdre les références déjà posées. */
