@@ -204,6 +204,26 @@ desktop-test` nettoie après lui. **Effort : S.**
 
 ---
 
+### [fonds/tests] Le test de la garde du nom de l'image plan passe sans la garde
+
+Relevé par la relecture indépendante du lot 2 des fonds (8.2.0), non traité. `TestMapBackgroundPlanImage_RefuseUnNomDangereux`
+(`apps/go-api/internal/service/replay_map_background_image_plan_test.go:77-84`) n'écrit aucun fichier à l'endroit visé par
+`../ridgeline.webp` ou `sous/dossier.webp` : sans la garde `imageFileNamed` (`replay_map_background_plan.go:58`), la lecture tombe
+sur un fichier absent et le test reste vert. Le test frère `TestReadBackgroundImage_RefuseImageHostile`
+(`replay_map_background_traversee_test.go:201`) a le même angle mort. À faire : écrire la cible (par exemple sous le parent du
+dossier des fonds) pour que le test rougisse sans la garde. **Effort : S.**
+
+---
+
+### [fonds/api] `?variante=` vide ou mal nommé sert le fond au lieu d'un refus
+
+Relevé par la même relecture, non traité. `apps/go-api/internal/api/handlers/background_variante.go:20-22` traite `?variante=`
+(valeur vide) et `?Variante=plan` comme une variante absente et sert le fond (200), alors que le contrat
+(`api/openapi_manual_fragment.yaml`, autour des lignes 1998 et 2040) dit « toute autre valeur est refusée ». Le web n'émet jamais
+ces formes. À faire : distinguer paramètre absent et paramètre vide (`r.URL.Query().Has`), avec un test. **Effort : S.**
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
