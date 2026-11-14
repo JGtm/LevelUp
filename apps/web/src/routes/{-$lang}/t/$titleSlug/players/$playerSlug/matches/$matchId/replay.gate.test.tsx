@@ -130,7 +130,7 @@ describe('page de rejeu — porte de titre `replay`', () => {
     expect(screen.getByText('contenu du rejeu')).toBeInTheDocument()
     await waitFor(() =>
       expect(apiGet).toHaveBeenCalledWith(
-        '/players/jgtm/matches/match-1/replay',
+        '/players/jgtm/matches/match-1/replay?encoding=columns',
         ['X-Replay-Latest-Schema-Version', 'X-Replay-Cadence-Stale'],
       ),
     )

@@ -2181,7 +2181,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Rejeu 2D pré-construit d'un match */
+        /**
+         * Rejeu 2D pré-construit d'un match
+         * @description With the `encoding=columns` parameter the body is the SAME document in its column form: its root carries `$enc`, and every list of at least 16 objects (or numeric tuples) is replaced by an object that carries `$c` (row count), `k` (field keys) and `c` (one column per field); the client undoes it before any use. Without the parameter the body is the document described by the response schema.
+         */
         get: operations["getMatchReplay"];
         put?: never;
         post?: never;
@@ -19848,7 +19851,10 @@ export interface operations {
     };
     getMatchReplay: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Body encoding: absent = normal form; columns = same document, lists of objects grouped into columns (root field $enc) */
+                encoding?: "columns";
+            };
             header?: never;
             path: {
                 player_slug: string;

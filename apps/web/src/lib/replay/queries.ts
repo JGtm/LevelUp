@@ -22,11 +22,20 @@ import {
   replayContextStaleTime,
   type ReplayMatchContextWire,
 } from './replayMatchContext'
+import { decodeReplayColumns } from './replayColumns'
 import { normalizeReplayDocument } from './replayNormalize'
 
 /** Les deux métas HTTP du rejeu : la version courante du producteur, et le verdict de cadence du serveur. */
 const LATEST_SCHEMA_HEADER = 'X-Replay-Latest-Schema-Version'
 const CADENCE_STALE_HEADER = 'X-Replay-Cadence-Stale'
+
+/**
+ * Le document est demandé sous sa forme EN COLONNES : un encodage de transport qui réduit fortement
+ * le poids compressé des gros rejeux (`decodeReplayColumns` le défait, juste avant le contrôle du
+ * contrat). Le serveur peut répondre en forme normale (encodeur refusant le document) : le décodeur
+ * s'en aperçoit à l'absence de `$enc`.
+ */
+const COLUMNS_QUERY = '?encoding=columns'
 
 /**
  * useMatchReplay charge l'artefact du match, normalisé.
@@ -57,10 +66,11 @@ export function useMatchReplay(playerSlug: string, matchId: string, enabled = tr
       // `X-Replay-Cadence-Stale` : le SERVEUR dit si le pas du document n'est plus le pas de
       // cuisson courant (même schéma, autre grille). Le web n'a aucune règle de cadence : il
       // recopie ce verdict, que le badge met en mots.
-      const { data: raw, responseHeaders } = await api.getWithHeaders<ReplayDocument>(
-        `/players/${playerSlug}/matches/${matchId}/replay`,
+      const { data: transport, responseHeaders } = await api.getWithHeaders<ReplayDocument>(
+        `/players/${playerSlug}/matches/${matchId}/replay${COLUMNS_QUERY}`,
         [LATEST_SCHEMA_HEADER, CADENCE_STALE_HEADER],
       )
+      const raw = decodeReplayColumns(transport)
       const header = responseHeaders[LATEST_SCHEMA_HEADER]
       const cadence = responseHeaders[CADENCE_STALE_HEADER]
       // LE CONTRAT EST CONTRÔLÉ ICI, ET NULLE PART AILLEURS (lot 0.B, 2026-09-13). Les types
