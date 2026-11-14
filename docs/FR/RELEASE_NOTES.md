@@ -38,6 +38,7 @@
 
 **L'interface et l'application Windows**
 - **Une barre latérale plus compacte** — le pied devient une rangée d'icônes, replié il garde un menu « Plus », et une infobulle ne s'ouvre au focus que si le focus vient du clavier
+- **Des infobulles visibles en partage d'écran** — toutes les infobulles de l'application sont désormais dessinées par l'application elle-même : un auditeur sur Discord ou Teams les voit quand vous partagez la fenêtre, ce que les infobulles du système ne permettaient pas
 - **Un volet des référentiels qui glisse** — cartes, armes et médailles s'ouvrent par le côté, avec un mode épinglé
 - **Un bouton « Parcourir »** dans les réglages de l'application Windows pour choisir un dossier
 - **Des mises à jour plus propres** — les anciens fichiers de l'interface sont retirés à la mise à jour et à la désinstallation
