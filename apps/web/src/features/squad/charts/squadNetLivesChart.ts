@@ -88,7 +88,7 @@ export function buildNetLivesCumulativeOption(
   const emptyData = new Array<number | null>(n).fill(null)
 
   const series = players.map((player, idx) => {
-    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const color = opts.colorByPlayer[player] ?? '#888' // color-allow(hex): gris structurel pour joueur sans couleur attribuée
     const data = hiddenPlayers.has(player)
       ? emptyData
       : cumulativeNetLivesSeries(rows[player], n, opts.hp)

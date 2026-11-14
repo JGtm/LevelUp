@@ -40,7 +40,7 @@ export interface SquadPerMinuteOpts {
 }
 
 /** Repli quand aucune couleur n'est attribuée au joueur — gris structurel, pas une charte. */
-const NO_PLAYER_COLOR = '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+const NO_PLAYER_COLOR = '#888' // color-allow(hex): gris structurel pour joueur sans couleur attribuée
 
 /** Deux décimales, dans la langue de l'application (axe, étiquettes et infobulle). */
 function fmt(v: number): string {

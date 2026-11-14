@@ -14,7 +14,7 @@
  * Une 4e règle (15/10) : une étiquette de segment est toujours centrée sur sa barre — aucune ligne
  * de « repli » (`data-testid="...repli..."`) posée au-dessus d'une barre ; ce qui ne tient pas se
  * lit dans l'infobulle du segment.
- * Une ligne justifiée se marque `barLabel-allow: <raison>` (2) ou `color-allow: <raison>` (1) sur
+ * Une ligne justifiée se marque `barLabel-allow: <raison>` (2) ou `color-allow(tailwind): <raison>` (1) sur
  * elle ou la précédente ; toute entrée de `TEXT_ON_FIXED_BACKGROUND` porte sa raison datée.
  */
 import { describe, it, expect } from 'vitest'
@@ -58,7 +58,7 @@ function offenders(test: (line: string, prev: string) => boolean, owners: Readon
 
 describe('garde-rail encre des segments (segmentInk source unique)', () => {
   it('aucun text-white / text-black hors fond fixe justifié', () => {
-    const bad = offenders((l, p) => /\btext-(white|black)\b/.test(l) && !/color-allow:/.test(l + p), TEXT_ON_FIXED_BACKGROUND)
+    const bad = offenders((l, p) => /\btext-(white|black)\b/.test(l) && !/color-allow(?:\([^)]*\))?:/.test(l + p), TEXT_ON_FIXED_BACKGROUND)
     expect(bad, `Encre d'un segment : SegmentLabel (HTML) ou barLabel (ECharts) — ${bad.join(', ')}`).toEqual([])
   })
 

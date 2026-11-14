@@ -34,7 +34,7 @@ export function SquadSheetAvatar({
   return (
     <span
       className="h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
-      style={{ background: color, color: '#fff' }} // color-allow: blanc structurel sur fond joueur
+      style={{ background: color, color: '#fff' }} // color-allow(hex): blanc structurel sur fond joueur
     >
       {label.charAt(0).toUpperCase()}
     </span>

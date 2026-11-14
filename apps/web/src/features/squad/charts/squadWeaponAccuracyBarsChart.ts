@@ -59,7 +59,7 @@ export function buildSquadWeaponAccuracyBarsOption(
 
   // 1 série bar (horizontale, group) par joueur : précision 0..100 % alignée sur yLabels.
   const series = players.map((player) => {
-    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const color = opts.colorByPlayer[player] ?? '#888' // color-allow(hex): gris structurel pour joueur sans couleur attribuée
     const values = bars.map((b) => {
       const acc = b.accuracy_by_player[player]
       // Absent = pas de tir sur l'arme → null (pas de barre), distinct d'un vrai 0 %.

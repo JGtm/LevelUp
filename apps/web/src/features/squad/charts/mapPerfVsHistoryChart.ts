@@ -31,7 +31,7 @@ import { tipNumber } from '@/components/charts/tipNumber'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { MapBreakdownRow } from '@/lib/api/types'
 
-const PERF_HISTORY_COLOR = 'rgba(120, 120, 120, 0.45)' // color-allow: gris neutre comparable historique (sur les 2 thèmes)
+const PERF_HISTORY_COLOR = 'rgba(120, 120, 120, 0.45)' // color-allow(fonction-couleur): gris neutre comparable historique (sur les 2 thèmes)
 const MAX_MAPS = 20
 
 export interface MapPerfVsHistoryOpts {

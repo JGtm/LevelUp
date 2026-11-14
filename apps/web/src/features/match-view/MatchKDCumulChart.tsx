@@ -202,7 +202,7 @@ function badgeMarks(
       coord: [b.tMs, b.yAt],
       symbol: 'circle',
       symbolSize: 9,
-      itemStyle: { color: accent, borderColor: '#fff', borderWidth: 1.5 }, // color-allow: structural SVG border on colored dot markers
+      itemStyle: { color: accent, borderColor: '#fff', borderWidth: 1.5 }, // color-allow(hex): structural SVG border on colored dot markers
       label: { show: false },
     })
     marks.points.push({

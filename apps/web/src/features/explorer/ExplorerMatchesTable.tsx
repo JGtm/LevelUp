@@ -564,8 +564,8 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                 className="rounded-full px-2 py-0.5 text-2xs font-bold uppercase tracking-wider leading-none"
                 style={
                   isSquad
-                    ? { backgroundColor: 'rgba(56,189,248,0.15)', color: '#38bdf8' } // color-allow: bleu sky pour pill "Escouade"
-                    : { backgroundColor: 'rgba(168,85,247,0.15)', color: '#a855f7' } // color-allow: violet pour pill "Solo"
+                    ? { backgroundColor: 'rgba(56,189,248,0.15)', color: '#38bdf8' } // color-allow(hex, fonction-couleur): bleu sky pour pill "Escouade"
+                    : { backgroundColor: 'rgba(168,85,247,0.15)', color: '#a855f7' } // color-allow(hex, fonction-couleur): violet pour pill "Solo"
                 }
               >
                 {isSquad
@@ -575,7 +575,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
               {row.had_bot_teammate && (
                 <span
                   className="rounded-full px-2 py-0.5 text-2xs font-bold lowercase tracking-wider leading-none"
-                  style={{ backgroundColor: 'rgba(245,158,11,0.15)', color: '#f59e0b' }} // color-allow: amber pour badge d'état système
+                  style={{ backgroundColor: 'rgba(245,158,11,0.15)', color: '#f59e0b' }} // color-allow(hex, fonction-couleur): amber pour badge d'état système
                   title={t('explorer.matches.bot_pill_tooltip')}
                 >
                   {t('explorer.matches.bot_pill')}

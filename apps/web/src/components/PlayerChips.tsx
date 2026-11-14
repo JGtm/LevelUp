@@ -105,7 +105,7 @@ function PlayerChipButton(props: PlayerChipButtonProps) {
       aria-pressed={isActive}
       style={{
         background: isActive ? `color-mix(in srgb, ${accent} 18%, transparent)` : 'transparent',
-        color: isActive ? '#fff' : 'var(--muted-foreground)', // color-allow: blanc structurel pour contraste sur pill colorée active
+        color: isActive ? '#fff' : 'var(--muted-foreground)', // color-allow(hex): blanc structurel pour contraste sur pill colorée active
         border: `1px solid ${isActive ? accent : 'var(--border)'}`,
         padding: '5px 11px 5px 9px',
         fontFamily: 'inherit',

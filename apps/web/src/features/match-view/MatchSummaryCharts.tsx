@@ -57,7 +57,7 @@ const DECAL_HATCH: DecalConfig = {
   dashArrayX: [1, 0],
   dashArrayY: [4, 4],
   rotation: -Math.PI / 4,
-  color: 'rgba(255,255,255,0.35)', // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
+  color: 'rgba(255,255,255,0.35)', // color-allow(fonction-couleur): 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
 }
 
 // Décal cercles (série "Hist. Moy.")
@@ -66,7 +66,7 @@ const DECAL_DOTS: DecalConfig = {
   symbolSize: 1,
   dashArrayX: [4, 8],
   dashArrayY: [4, 8],
-  color: 'rgba(255,255,255,0.45)', // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
+  color: 'rgba(255,255,255,0.45)', // color-allow(fonction-couleur): 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
 }
 
 // option aria pour activer les décals par item
@@ -228,9 +228,9 @@ export function MatchSpreeChart({ kpis, expectedStats, t }: MatchSpreeChartProps
       // color-allow: hex en commentaires de documentation token→couleur
       // Spree=#8B5CF6  Headshots=#33D6FF  Perfect=#00DC82
       const tokens: SemanticToken[] = [
-        'outcome-dnf', // color-allow: doc token (violet #8B5CF6)
-        'narrative-contre-remontada', // color-allow: doc token (cyan #33D6FF)
-        'narrative-dominant', // color-allow: doc token (vert vif #00DC82)
+        'outcome-dnf', // color-allow(hex): doc token (violet #8B5CF6)
+        'narrative-contre-remontada', // color-allow(hex): doc token (cyan #33D6FF)
+        'narrative-dominant', // color-allow(hex): doc token (vert vif #00DC82)
       ]
 
       const seriesList: BarSeries[] = [

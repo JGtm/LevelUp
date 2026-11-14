@@ -126,7 +126,7 @@ export function buildSquadWeaponKillsOption(
   }
 
   const series = players.map((player) => {
-    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const color = opts.colorByPlayer[player] ?? '#888' // color-allow(hex): gris structurel pour joueur sans couleur attribuée
     const values = rows.map((r) => {
       const v = r.killsByPlayer[player] ?? 0
       return opts.soloByClass && r.cls ? { value: v, itemStyle: { color: fragClassColor(r.cls) } } : v

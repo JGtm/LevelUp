@@ -27,7 +27,7 @@ import type { ReplayDocumentReady } from './replayNormalize'
 // Rampe de couleur — IDENTIQUE pour les deux domaines.
 // ---------------------------------------------------------------------------------------
 
-/** Paliers de la rampe précalculée : un `rgba()` par palier, indexé pendant le dessin. — color-allow: 2026-09-06 (ronde 2, N1) — ligne de PROSE qui DECRIT la rampe du theme, elle n'en pose aucune. */
+/** Paliers de la rampe précalculée : un `rgba()` par palier, indexé pendant le dessin. — color-allow(fonction-couleur): 2026-09-06 (ronde 2, N1) — ligne de PROSE qui DECRIT la rampe du theme, elle n'en pose aucune. */
 export const HEAT_RAMP_STEPS = 64
 
 /** Opacités des extrémités de la rampe : les zones les plus faibles restent lisibles sur le fond.

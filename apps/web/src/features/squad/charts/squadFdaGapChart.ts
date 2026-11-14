@@ -167,7 +167,7 @@ export function buildFdaGapCumulativeOption(
 
   const series = players.map((player, idx) =>
     fdaGapPlayerSeries(player, idx, hiddenPlayers.has(player) ? emptyData : cumulativeFdaGapSeries(rows[player], n), {
-      color: opts.colorByPlayer[player] ?? '#888', // color-allow: gris structurel pour joueur sans couleur attribuée
+      color: opts.colorByPlayer[player] ?? '#888', // color-allow(hex): gris structurel pour joueur sans couleur attribuée
       tc,
       fmtSigned,
     }),

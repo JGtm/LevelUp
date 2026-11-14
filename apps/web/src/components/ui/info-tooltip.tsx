@@ -1,8 +1,10 @@
-import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, type FocusEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { isKeyboardFocus } from '@/lib/dom/focusVisible'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { TOOLTIP_OWNER_ATTRIBUTE } from './titleTooltip.logic'
 
 interface InfoTooltipProps {
   /** Texte ou contenu affiché dans le tooltip */
@@ -53,7 +55,8 @@ interface PanelPos {
  * pour échapper aux parents `overflow:hidden` (ex. `KpiCard`, cellules de tableau) qui
  * clippaient l'ancien rendu inline. Position calculée depuis le rect du bouton : centré
  * au-dessus, repli en dessous s'il n'y a pas la place. Fermeture : clic extérieur, scroll,
- * resize, blur/mouseleave. `role="tooltip"` + aria conservés.
+ * resize, blur/mouseleave. `role="tooltip"` + aria conservés. Ouverture au focus : clavier seulement.
+ * Le conteneur porte `TOOLTIP_OWNER_ATTRIBUTE` : un `title` natif en dessous ne double pas l'infobulle.
  */
 export function InfoTooltip({ content, iconClass = 'w-4 h-4', trigger, triggerFocusable }: InfoTooltipProps) {
   const [open, setOpen] = useState(false)
@@ -112,12 +115,15 @@ export function InfoTooltip({ content, iconClass = 'w-4 h-4', trigger, triggerFo
   const hoverHandlers = {
     onMouseEnter: () => setOpen(true),
     onMouseLeave: () => setOpen(false),
-    onFocus: () => setOpen(true),
+    // Focus CLAVIER seulement : un clic (le bouton ⓘ le bascule déjà) ou un focus rendu par programme ne l'ouvre pas.
+    onFocus: (e: FocusEvent<HTMLElement>) => {
+      if (isKeyboardFocus(e.target)) setOpen(true)
+    },
     onBlur: () => setOpen(false),
   }
 
   return (
-    <span className="inline-flex items-center">
+    <span {...{ [TOOLTIP_OWNER_ATTRIBUTE]: '' }} className="inline-flex items-center">
       {trigger !== undefined ? (
         <span
           ref={setTriggerRef}

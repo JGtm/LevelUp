@@ -68,7 +68,7 @@ export function buildSquadEngagementGapOption(
 
   const players = session.players
   const series = players.map((player, idx) => {
-    const color = opts.colorByPlayer[player.gamertag] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+    const color = opts.colorByPlayer[player.gamertag] ?? '#888' // color-allow(hex): gris structurel pour joueur sans couleur attribuée
     const data = cumulativeEngagementGapSeries(
       player.pace_observed,
       session.team_expected,

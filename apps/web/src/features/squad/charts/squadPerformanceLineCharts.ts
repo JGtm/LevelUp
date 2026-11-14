@@ -32,7 +32,7 @@ function withAlpha(hex: string, alpha: number): string {
   const g = parseInt(hex.slice(3, 5), 16)
   const b = parseInt(hex.slice(5, 7), 16)
   if (isNaN(r) || isNaN(g) || isNaN(b)) return hex
-  return `rgba(${r},${g},${b},${alpha})` // color-allow: 2026-09-06 (revue R1, C5) — CONVERSION d une couleur DEJA resolue (hex du theme) en rgba pour son alpha : ce helper ne nomme aucune couleur
+  return `rgba(${r},${g},${b},${alpha})` // color-allow(fonction-couleur): 2026-09-06 (revue R1, C5) — CONVERSION d une couleur DEJA resolue (hex du theme) en rgba pour son alpha : ce helper ne nomme aucune couleur
 }
 
 /**
@@ -40,7 +40,7 @@ function withAlpha(hex: string, alpha: number): string {
  * aucune couleur de charte. Constante et non littéral répété — il servait déjà cinq fois
  * dans ce fichier (règle CLAUDE.md n°6, ≤ 2 copies).
  */
-const NO_PLAYER_COLOR = '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
+const NO_PLAYER_COLOR = '#888' // color-allow(hex): gris structurel pour joueur sans couleur attribuée
 
 /** 5 zones Y de 20 pts chacune, du pire (tier-5) au meilleur (tier-1). */
 const PERF_ZONES: Array<{ yMin: number; yMax: number; token: SemanticToken }> = [

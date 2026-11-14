@@ -136,11 +136,11 @@ function MilestoneCard({ milestone: m, locale, t }: MilestoneCardProps) {
   const condition = m.condition
 
   const cardTone = m.earned
-    ? 'border-amber-500/40 bg-amber-500/10' // color-allow: amber distinction milestone earned (CLAUDE.md §20 badge UI)
+    ? 'border-amber-500/40 bg-amber-500/10' // color-allow(tailwind): amber distinction milestone earned (CLAUDE.md §20 badge UI)
     : 'border-border bg-card opacity-70'
 
   const titleTone = m.earned
-    ? 'text-amber-700 dark:text-amber-300' // color-allow: amber distinction milestone earned (CLAUDE.md §20)
+    ? 'text-amber-700 dark:text-amber-300' // color-allow(tailwind): amber distinction milestone earned (CLAUDE.md §20)
     : 'text-muted-foreground'
 
   return (
@@ -160,7 +160,7 @@ function MilestoneCard({ milestone: m, locale, t }: MilestoneCardProps) {
         <p className="text-2xs italic text-muted-foreground">{condition}</p>
       )}
       {m.earned && m.earned_at && (
-        <p className="mt-auto text-2xs text-amber-700 dark:text-amber-300"> {/* color-allow: amber distinction milestone earned (CLAUDE.md §20) */}
+        <p className="mt-auto text-2xs text-amber-700 dark:text-amber-300"> {/* color-allow(tailwind): amber distinction milestone earned (CLAUDE.md §20) */}
           {interpolate(t.milestonesEarnedAt, { date: formatAscensionDate(m.earned_at, locale) })}
         </p>
       )}
@@ -176,7 +176,7 @@ interface StatusBadgeProps {
 function MilestoneStatusBadge({ earned, t }: StatusBadgeProps) {
   const label = earned ? t.milestonesEarned : t.milestonesLocked
   const tone = earned
-    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300' // color-allow: amber badge earned (CLAUDE.md §20 badge UI)
+    ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300' // color-allow(tailwind): amber badge earned (CLAUDE.md §20 badge UI)
     : 'bg-muted text-muted-foreground'
   return (
     <span

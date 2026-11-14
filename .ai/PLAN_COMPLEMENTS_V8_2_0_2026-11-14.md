@@ -127,8 +127,8 @@ avant/après capturé) ; relecture indépendante sans P0/P1 ; notes de version e
 - [ ] 4.1 `SquadRangeRolesCard` + `squadRangeRolesChart.ts` : ruban joueur × match, rôle de la fenêtre glissante, case vide avant `FENETRE_ROLE`, échantillon selon Q-2 ; logique pure inchangée (`squadRangeRoles.logic.ts`). Résumé solo inchangé.
 
 ### Étape 5 — Infobulles
-- [ ] 5.1 Couche globale (`components/ui/`) montée dans la coquille : survol et focus clavier d'un `[title]`, titre déplacé en attribut de données pendant l'affichage, `aria-describedby`, style de `tooltip.tsx`, position bornée à la fenêtre ; SVG `<title>` (2) traités.
-- [ ] 5.2 `info-tooltip.tsx` : focus filtré au clavier (entrée du backlog) ; garde-rail de couleurs étendu (`ring-offset`, `outline`, `decoration`, `accent`, `caret`, portée de `color-allow`).
+- [x] 5.1 Couche globale (`components/ui/`) montée dans la coquille : survol et focus clavier d'un `[title]`, titre déplacé en attribut de données pendant l'affichage, `aria-describedby`, style de `tooltip.tsx`, position bornée à la fenêtre ; SVG `<title>` (2) traités.
+- [x] 5.2 `info-tooltip.tsx` : focus filtré au clavier (entrée du backlog) ; garde-rail de couleurs étendu (`ring-offset`, `outline`, `decoration`, `accent`, `caret`, portée de `color-allow`).
 - [ ] 5.3 Contrôle : partage de fenêtre Discord par le user (artefact des vérifications).
 
 ### Étape 6 — Rang de session C4
@@ -198,9 +198,12 @@ Entrées film (`levelup-1f`), pseudos réels, alerte glib, toute recuisson.
 
 ### Découvertes
 
-(aucune)
+- 2026-11-14 (voie infobulles) : 23 marqueurs `color-allow` nus restants n'excusent plus rien (marqueur placé sur une autre ligne que la couleur, ou ligne sans couleur) : commentaires à retirer dans une passe de nettoyage, non traités ici.
+- 2026-11-14 (voie infobulles) : le lint des couleurs ne balaie pas les préfixes `shadow`, `from`, `via`, `to` avec une couleur nommée (seulement le noir et le blanc absolus) ; hors de l'entrée du backlog, non traité.
+- 2026-11-14 (voie infobulles) : un bouton `disabled` ne reçoit pas `pointerover` dans tous les navigateurs ; la couche ne peut pas y prendre en charge le `title` (l'infobulle native y reste). À contrôler à l'écran dans WebView2 (point 5.3) ; non relevé site par site.
 
 ### Journal
 
 - 2026-11-14 : plan relu par la grille `plan-review` (gates, reprise, multi-titre ajoutés) ; voies `escouade`,
   `infobulles`, `rejeu` ouvertes.
+- 2026-11-14 (voie infobulles, branche `feat/c820-infobulles`) : 5.1 et 5.2 faits. Couche `TitleTooltipLayer` montée dans `AppProviders` (couvre connexion et pages hors coquille) ; `Tooltip` et `InfoTooltip` marqués `data-lu-tooltip` (pas de double infobulle) ; `InfoTooltip` ouvert au focus clavier seulement ; lint des couleurs étendu (cinq préfixes) et `color-allow(<genre>)` borné au genre nommé (76 lignes migrées, aucune allowlist élargie). 5.3 reste au user.

@@ -251,8 +251,8 @@ export function drawCalloutsLabels(
   // cerne porte le contraste dans les deux thèmes, comme le HUD du jeu. C'est une encre
   // STRUCTURELLE de calque (exception documentée du même ordre que canvasInk.ts), pas
   // une couleur qui dit quelque chose : rien ici ne distingue un rôle métier.
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.92)' // color-allow: 2026-09-06 (revue R1, C5) — couleur STRUCTURELLE de trace (ombre / contour de lisibilite), pas une couleur qui dit quelque chose : exception de la doctrine color-tokens, deja documentee en tete
-  ctx.fillStyle = 'rgba(255, 255, 255, 1)' // color-allow: 2026-09-06 (revue R1, C5) — couleur STRUCTURELLE de trace (ombre / contour de lisibilite), pas une couleur qui dit quelque chose : exception de la doctrine color-tokens, deja documentee en tete
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.92)' // color-allow(fonction-couleur): 2026-09-06 (revue R1, C5) — couleur STRUCTURELLE de trace (ombre / contour de lisibilite), pas une couleur qui dit quelque chose : exception de la doctrine color-tokens, deja documentee en tete
+  ctx.fillStyle = 'rgba(255, 255, 255, 1)' // color-allow(fonction-couleur): 2026-09-06 (revue R1, C5) — couleur STRUCTURELLE de trace (ombre / contour de lisibilite), pas une couleur qui dit quelque chose : exception de la doctrine color-tokens, deja documentee en tete
   const drawn = zones.filter((c) => c.polygon.length >= 3)
   drawn.sort((p, q) => q.z - p.z)
   for (const c of drawn) {
