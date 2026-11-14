@@ -1,26 +1,26 @@
 /**
- * La carte « Rôles de portée » — ce qu'elle montre et ce qu'elle tait.
+ * La carte « Rôles de portée » (ruban) — ce qu'elle montre et ce qu'elle tait.
  *
  * Ce que ces tests cadenassent : un bloc sans profil rend un ÉTAT VIDE NOMMÉ (film requis),
- * jamais un nuage à zéro point ; l'axe X porte les étiquettes « #N · carte » du plus ancien
- * au plus récent ; un point creux se dessine creux ; la couverture est en pied, en une
- * ligne ; et le repli de la bande des rôles laisse les quatre premiers matchs sans rôle.
+ * jamais un ruban à zéro ligne ; l'axe X porte les étiquettes « #N · carte » du plus ancien au
+ * plus récent ; une ligne par joueur dans l'ordre du roster, ses noms à sa couleur ; trois
+ * séries de rôle (une par teinte) et une série de cases vides ; les quatre premiers matchs sont
+ * sans rôle ; rien sous le graphe (pas de légende ajoutée, pas de bande repliable).
  */
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { MatchRangeBlock, MatchRangeProfile } from '@/lib/api/types'
 
 import { SquadRangeRolesCard } from './SquadRangeRolesCard'
-import { PLANCHER_MESURE } from './squadRangeRoles.logic'
 
 const captured: Array<Record<string, unknown>> = []
 vi.mock('echarts-for-react', () => ({
   default: (props: Record<string, unknown>) => {
     captured.push(props)
-    return <div data-testid="portee-nuage-stub" />
+    return <div data-testid="portee-ruban-stub" />
   },
 }))
 
@@ -50,19 +50,23 @@ function bloc(profiles: MatchRangeProfile[]): MatchRangeBlock {
 const roster = ['JGtm', 'Kaya']
 const COULEURS = { JGtm: '#111111', Kaya: '#222222' }
 
+type Option = {
+  xAxis: { data: string[] }
+  yAxis: { data: string[]; inverse: boolean }
+  series: Array<{ type: string; name: string; data: Array<{ value: [number, number, number]; tip: string }> }>
+}
+
 /** Le graphe est chargé en `lazy` : attendre son stub avant de lire l'option. */
-async function option(): Promise<Record<string, unknown>> {
-  await screen.findByTestId('portee-nuage-stub')
-  return captured[captured.length - 1].option as Record<string, unknown>
+async function option(): Promise<Option> {
+  await screen.findByTestId('portee-ruban-stub')
+  return captured[captured.length - 1].option as Option
 }
 
 describe('SquadRangeRolesCard', () => {
   it('rend un ÉTAT VIDE NOMMÉ quand aucun profil n’est servi', () => {
-    renderWithProviders(<SquadRangeRolesCard bloc={bloc([])} roster={roster}
-        colorByPlayer={COULEURS} />)
+    renderWithProviders(<SquadRangeRolesCard bloc={bloc([])} roster={roster} colorByPlayer={COULEURS} />)
     expect(screen.getByText('Aucune distance de frag')).toBeTruthy()
-    expect(screen.queryByTestId('portee-nuage-stub')).toBeNull()
-    expect(screen.queryByTestId('squad-portee-fold-bande')).toBeNull()
+    expect(screen.queryByTestId('portee-ruban-stub')).toBeNull()
   })
 
   it('porte les étiquettes « #N · carte » du plus ancien au plus récent', async () => {
@@ -73,98 +77,67 @@ describe('SquadRangeRolesCard', () => {
         colorByPlayer={COULEURS}
       />,
     )
-    const x = (await option()).xAxis as { data: string[] }
-    expect(x.data).toEqual(['#1 · Fragment…', '#2 · Streets'])
+    expect((await option()).xAxis.data).toEqual(['#1 · Fragment…', '#2 · Streets'])
   })
 
-  it('dessine CREUX un point sous le plancher de frags mesurés, plein au-dessus', async () => {
+  it('une ligne par joueur dans l’ordre du roster, le premier en haut', async () => {
     renderWithProviders(
-      <SquadRangeRolesCard
-        bloc={bloc([profil(0, PLANCHER_MESURE), profil(1, PLANCHER_MESURE - 1)])}
-        roster={roster}
-        colorByPlayer={COULEURS}
-      />,
+      <SquadRangeRolesCard bloc={bloc([profil(0), profil(1)])} roster={roster} colorByPlayer={COULEURS} />,
     )
-    const series = (await option()).series as Array<{
-      type: string
-      data: Array<{ itemStyle: Record<string, unknown> }>
-    }>
-    const nuage = series.filter((s) => s.type === 'scatter')
-    expect(nuage).toHaveLength(2)
-    expect(nuage[0].data[0].itemStyle.borderType).toBeUndefined()
-    expect(nuage[0].data[1].itemStyle.borderType).toBe('dashed')
-    expect(nuage[0].data[1].itemStyle.color).toBe('transparent')
+    const o = await option()
+    expect(o.yAxis.data).toEqual(['JGtm', 'Kaya'])
+    expect(o.yAxis.inverse).toBe(true)
   })
 
-  it('trace une TENDANCE par joueur et trois bandes de rôle, la ligne du lobby à zéro', async () => {
+  it('trois séries de rôle (une teinte chacune) et une série de cases sans rôle', async () => {
+    renderWithProviders(
+      <SquadRangeRolesCard bloc={bloc([profil(0), profil(1)])} roster={roster} colorByPlayer={COULEURS} />,
+    )
+    const o = await option()
+    expect(o.series.map((s) => s.name)).toEqual(['Ligne de front', 'Polyvalent', "Tireur d'élite", ''])
+    expect(o.series.every((s) => s.type === 'custom')).toBe(true)
+  })
+
+  it('les quatre premiers matchs sont SANS RÔLE (cases vides), le suivant porte un rôle', async () => {
     const profils = Array.from({ length: 6 }, (_, i) => profil(i))
-    renderWithProviders(<SquadRangeRolesCard bloc={bloc(profils)} roster={roster}
-        colorByPlayer={COULEURS} />)
-    const series = (await option()).series as Array<Record<string, unknown>>
-    expect(series.filter((s) => s.type === 'line')).toHaveLength(2)
-    const markArea = series[0].markArea as { data: unknown[] }
-    expect(markArea.data).toHaveLength(3)
-    const markLine = series[0].markLine as { data: Array<{ yAxis: number }> }
-    expect(markLine.data[0].yAxis).toBe(0)
+    renderWithProviders(<SquadRangeRolesCard bloc={bloc(profils)} roster={roster} colorByPlayer={COULEURS} />)
+    const o = await option()
+    const vides = o.series[3].data
+    const avecRole = o.series.slice(0, 3).flatMap((s) => s.data)
+    // 2 joueurs x 6 matchs : 8 cases vides (matchs 0 à 3), 4 cases avec rôle (matchs 4 et 5).
+    expect(vides).toHaveLength(8)
+    expect(avecRole).toHaveLength(4)
+    expect(vides.every((d) => d.value[0] <= 3)).toBe(true)
+    expect(avecRole.every((d) => d.value[0] >= 4)).toBe(true)
   })
 
-  it('rien sous le graphe : ni légende ajoutée (point creux, tendance), ni compte de frags mesurés', () => {
-    renderWithProviders(<SquadRangeRolesCard bloc={bloc([profil(0)])} roster={roster}
-        colorByPlayer={COULEURS} />)
+  it('un match sous le plancher : case vide, le petit échantillon se dit dans l’infobulle seulement', async () => {
+    const profils = Array.from({ length: 6 }, (_, i) => profil(i, i === 5 ? 3 : 12))
+    renderWithProviders(<SquadRangeRolesCard bloc={bloc(profils)} roster={roster} colorByPlayer={COULEURS} />)
+    const o = await option()
+    const derniere = o.series[3].data.filter((d) => d.value[0] === 5)
+    expect(derniere).toHaveLength(2)
+    expect(derniere[0].tip).toContain('3 frags, match peu sûr')
+    // Aucune case avec rôle ne porte la mention : seul un match sous le plancher la porte.
+    expect(o.series.slice(0, 3).flatMap((s) => s.data).some((d) => d.tip.includes('peu sûr'))).toBe(false)
+  })
+
+  it('rien sous le graphe : ni légende ajoutée, ni bande repliable, ni compte de frags mesurés', () => {
+    renderWithProviders(<SquadRangeRolesCard bloc={bloc([profil(0)])} roster={roster} colorByPlayer={COULEURS} />)
     expect(screen.queryByTestId('squad-portee-couverture')).toBeNull()
     expect(screen.queryByTestId('squad-portee-legende')).toBeNull()
+    expect(screen.queryByTestId('squad-portee-fold-bande')).toBeNull()
     expect(screen.queryByText(/frags mesurés/)).toBeNull()
-    expect(screen.queryByText(/tendance \(/)).toBeNull()
-  })
-
-  it('la bande des rôles laisse les quatre premiers matchs SANS RÔLE', () => {
-    const profils = Array.from({ length: 6 }, (_, i) => profil(i))
-    renderWithProviders(<SquadRangeRolesCard bloc={bloc(profils)} roster={roster}
-        colorByPlayer={COULEURS} />)
-    fireEvent.click(screen.getByText('Bande des rôles'))
-    const jetons = screen.getAllByTestId('squad-portee-jeton')
-    // 2 joueurs × 6 matchs, et les 4 premiers de chaque ligne sans rôle.
-    expect(jetons).toHaveLength(12)
-    expect(jetons.slice(0, 4).map((j) => j.getAttribute('data-role'))).toEqual([
-      'aucun',
-      'aucun',
-      'aucun',
-      'aucun',
-    ])
-    expect(jetons[4].getAttribute('data-role')).not.toBe('aucun')
   })
 
   it('rend deux textes distincts en FR et en EN', () => {
     const { unmount } = renderWithProviders(
-      <SquadRangeRolesCard bloc={bloc([])} roster={roster}
-        colorByPlayer={COULEURS} />,
+      <SquadRangeRolesCard bloc={bloc([])} roster={roster} colorByPlayer={COULEURS} />,
     )
     expect(screen.getByText('Aucune distance de frag')).toBeTruthy()
     unmount()
     useAppShellStore.setState({ locale: 'en' })
-    renderWithProviders(<SquadRangeRolesCard bloc={bloc([])} roster={roster}
-        colorByPlayer={COULEURS} />)
+    renderWithProviders(<SquadRangeRolesCard bloc={bloc([])} roster={roster} colorByPlayer={COULEURS} />)
     expect(screen.getByText('No kill distance')).toBeTruthy()
-  })
-})
-
-/**
- * L'encre du nuage : points et courbes de tendance en encre pleine, sans étiquette au bout
- * des courbes — la forme (point creux) dit l'échantillon faible, la légende dit le joueur.
- */
-describe('SquadRangeRolesCard — encre', () => {
-  it('points ET tendance en encre pleine, aucune étiquette de bout', async () => {
-    const profils = Array.from({ length: 5 }, (_, i) => profil(i))
-    renderWithProviders(<SquadRangeRolesCard bloc={bloc(profils)} roster={roster}
-        colorByPlayer={COULEURS} />)
-    const series = (await option()).series as Array<Record<string, unknown>>
-    const points = series[0].data as Array<{ itemStyle: { opacity?: number } }>
-    expect(points.every((p) => p.itemStyle.opacity === 1)).toBe(true)
-    const lignes = series.filter((s) => s.type === 'line')
-    expect(lignes.length).toBeGreaterThan(0)
-    expect(lignes.every((s) => s.endLabel === undefined)).toBe(true)
-    expect(
-      lignes.every((s) => (s.lineStyle as { opacity?: number } | undefined)?.opacity === 1),
-    ).toBe(true)
   })
 })

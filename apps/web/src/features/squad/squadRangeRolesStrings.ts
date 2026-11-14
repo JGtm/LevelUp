@@ -1,11 +1,11 @@
 /**
- * squadRangeRolesStrings — les libellés du nuage « Rôles de portée », résolus depuis le
+ * squadRangeRolesStrings — les libellés du ruban « Rôles de portée », résolus depuis le
  * manifest i18n `squad.portee.*` (source unique FR/EN, parité vérifiée par le build
  * manifest, ADR 0003). Les clés sont typées (`SquadManifestKey`) : une clé absente du
  * manifest ne compile pas.
  *
- * Même forme que `squadFocusStrings` : un objet `t` ergonomique consommé par la carte et sa
- * bande des rôles. Ne pas remettre de littéral FR/EN en dur ici.
+ * Même forme que `squadFocusStrings` : un objet `t` ergonomique consommé par la carte et par
+ * l'infobulle de ses cases. Ne pas remettre de littéral FR/EN en dur ici.
  */
 import { formatMessage } from '@/lib/i18n/format'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
@@ -24,18 +24,16 @@ export function getSquadRangeRolesText(locale: Locale) {
   return {
     cardTitle: m('squad.portee.card_title'),
     sectionLabel: m('squad.portee.section_label'),
-    help: (floor: number) => m('squad.portee.help', { floor }),
+    help: (floor: number, window: number) => m('squad.portee.help', { floor, window }),
     xAxis: m('squad.portee.x_axis'),
-    yAxis: m('squad.portee.y_axis'),
-    lobbyLine: m('squad.portee.lobby_line'),
     bandes,
-    tooltipMedian: (mValue: string) => m('squad.portee.tooltip_median', { m: mValue }),
+    tooltipRole: (role: string) => m('squad.portee.tooltip_role', { role }),
+    tooltipNoRole: m('squad.portee.tooltip_no_role'),
     tooltipDelta: (delta: string) => m('squad.portee.tooltip_delta', { delta }),
     tooltipMeasured: (n: number) => m('squad.portee.tooltip_measured', { n }),
+    tooltipUnsure: (n: number) => m('squad.portee.tooltip_unsure', { n }),
     emptyTitle: m('squad.portee.empty_title'),
     emptyDescription: m('squad.portee.empty_description'),
-    foldTape: m('squad.portee.fold_tape'),
-    tapeNoRole: m('squad.portee.tape_no_role'),
   }
 }
 

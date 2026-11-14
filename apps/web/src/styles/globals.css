@@ -304,6 +304,10 @@
   --ac-objective-role-take:    #6366F1;
   --ac-objective-role-defend:  #0891B2;
   --ac-objective-role-hold:    #A924BD;
+  /* Rôles de portée — Ligne de front / Polyvalent / Tireur d'élite (rampe chaude -> froide) */
+  --ac-range-role-front:       #D9480F;
+  --ac-range-role-mid:         #868E96;
+  --ac-range-role-far:         #1C7ED6;
   /* Rôles d'impact — rampes ordinales, thème clair (cf. palettes/_impactRoleColors.ts) */
   --ac-impact-gain-1: #003412;
   --ac-impact-gain-2: #1D6131;

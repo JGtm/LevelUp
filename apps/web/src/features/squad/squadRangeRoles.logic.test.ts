@@ -14,6 +14,7 @@ import type { MatchRangeProfile } from '@/lib/api/types'
 import {
   categoriesMatchs,
   FENETRE_ROLE,
+  lignesRuban,
   moyenneGlissante,
   ordonnerProfils,
   PLANCHER_MESURE,
@@ -176,5 +177,38 @@ describe('typage', () => {
     const p: PointPortee = serieDe([3])!.points[0]
     expect(p.medianeM).toBe(23)
     expect(p.ecartM).toBe(3)
+  })
+})
+
+describe('lignesRuban', () => {
+  const seuils = { bas: -2, haut: 2 }
+
+  it('une ligne par joueur, une case par match joué, le rôle lu sur la fenêtre glissante', () => {
+    const serie = serieDe([6, 6, 6, 6, 6, -6])
+    const [ligne] = lignesRuban([serie], seuils)
+    expect(ligne.gamertag).toBe('Kaya')
+    expect(ligne.cellules.map((c) => c.ordre)).toEqual([0, 1, 2, 3, 4, 5])
+    // Les quatre premiers matchs sans rôle, puis la fenêtre (6 à 5 fois, puis un match atypique).
+    expect(ligne.cellules.map((c) => c.role)).toEqual([null, null, null, null, 'sniper', 'sniper'])
+  })
+
+  it('la case porte écart, frags mesurés et plein : le petit échantillon se dit dans l’infobulle', () => {
+    const serie = serieDe([6, 6, 6, 6, 6], [10, 10, 10, 10, PLANCHER_MESURE - 1])
+    const dernier = lignesRuban([serie], seuils)[0].cellules[4]
+    expect(dernier).toMatchObject({ ordre: 4, plein: false, role: null, ecartM: 6, mesures: PLANCHER_MESURE - 1 })
+  })
+
+  it('sans seuils : aucun rôle, toutes les cases vides ; sans série : aucune ligne', () => {
+    expect(lignesRuban([serieDe([6, 6, 6, 6, 6])], null)[0].cellules.every((c) => c.role === null)).toBe(true)
+    expect(lignesRuban([], seuils)).toEqual([])
+  })
+
+  it('un match non joué n’a pas de case (la colonne reste, vide)', () => {
+    const profils = [
+      profil(0, [{ xuid: 'x1', gamertag: 'A', delta: 1 }, { xuid: 'x2', gamertag: 'B', delta: 2 }]),
+      profil(1, [{ xuid: 'x1', gamertag: 'A', delta: 1 }]),
+    ]
+    const lignes = lignesRuban(seriesPortee(ordonnerProfils(profils), ['A', 'B']), seuils)
+    expect(lignes.map((l) => l.cellules.map((c) => c.ordre))).toEqual([[0, 1], [0]])
   })
 })

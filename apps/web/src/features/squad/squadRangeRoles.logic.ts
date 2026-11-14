@@ -231,3 +231,48 @@ export function rolesFenetre(
     return moyenne == null ? null : roleDeEcart(moyenne, seuils)
   })
 }
+
+/** Une case du ruban : un (match, joueur), avec le rôle de sa fenêtre glissante. */
+export interface CelluleRuban {
+  /** Position du match dans la période, du plus ancien (0) au plus récent. */
+  ordre: number
+  matchId: string
+  /** `null` = case vide : fenêtre incomplète ou match sous le plancher de frags mesurés. */
+  role: RoleDePortee | null
+  /** `false` = sous `PLANCHER_MESURE` frags mesurés : aucun rôle, dit dans l'infobulle seulement. */
+  plein: boolean
+  /** Écart à la médiane du lobby, en mètres (signé). */
+  ecartM: number
+  /** Frags mesurés du joueur sur ce match. */
+  mesures: number
+}
+
+/** Une ligne du ruban : un joueur, ses matchs dans l'ordre. */
+export interface LigneRuban {
+  xuid: string
+  gamertag: string
+  cellules: CelluleRuban[]
+}
+
+/**
+ * lignesRuban projette les séries en lignes du ruban « Rôles de portée » : une case par match
+ * joué, dont le rôle est LU SUR LA FENÊTRE GLISSANTE (`rolesFenetre`, règles inchangées). Un
+ * match que le joueur n'a pas joué n'a pas de case.
+ */
+export function lignesRuban(series: SeriePortee[], seuils: SeuilsRoles | null): LigneRuban[] {
+  return series.map((serie) => {
+    const roles = rolesFenetre(serie.points, seuils)
+    return {
+      xuid: serie.xuid,
+      gamertag: serie.gamertag,
+      cellules: serie.points.map((p, i) => ({
+        ordre: p.ordre,
+        matchId: p.matchId,
+        role: roles[i],
+        plein: p.plein,
+        ecartM: p.ecartM,
+        mesures: p.mesures,
+      })),
+    }
+  })
+}

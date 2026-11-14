@@ -212,6 +212,11 @@ export const cividisPalette: Palette = {
   'objective-role-defend': '#009E73',              // Bluish Green
   'objective-role-hold':   ASSIST_RECEIVED_OLIVE,  // olive chaud
 
+  // ── Rôles de portée — rampe ordinale chaude -> neutre -> froide (rangeRoleTokens.test.ts) ──
+  'range-role-front': SAFE_VERMILLION, // Ligne de front
+  'range-role-mid':   SAFE_GREY,       // Polyvalent
+  'range-role-far':   SAFE_BLUE,       // Tireur d'élite
+
   // ── Heatmaps — axe blue/vermillion ────────────────────────────────────────
   'heatmap-cold':           SAFE_VERMILLION,
   'heatmap-hot':            SAFE_BLUE,
