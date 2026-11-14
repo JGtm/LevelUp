@@ -15,3 +15,11 @@ import "path/filepath"
 func (p *PathResolver) PassesGaugePath() string {
 	return filepath.Join(p.AdminStateDir(), "passes_par_match.txt")
 }
+
+// CompactionBackupsDir retourne le dossier des copies d'avant compaction (migration.BackupBeforeCompaction),
+// celui de la compaction du démarrage du profil desktop. Distinct de MigrationBackupsDir : la rétention d'une
+// compaction ne touche jamais les copies d'avant montée de schéma.
+// Ex: data/backups/compaction/
+func (p *PathResolver) CompactionBackupsDir() string {
+	return filepath.Join(p.roots.Data, "backups", "compaction")
+}

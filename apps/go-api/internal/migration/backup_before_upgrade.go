@@ -66,16 +66,8 @@ func BackupBeforeUpgrade(ctx context.Context, p BackupParams) (BackupResult, err
 	if err != nil {
 		return res, err
 	}
-	if err := os.MkdirAll(p.DestDir, 0o755); err != nil {
-		return res, fmt.Errorf("migration: création du dossier des copies %s: %w", p.DestDir, err)
-	}
-	free, err := p.FreeBytes(p.DestDir)
-	if err != nil {
-		return res, fmt.Errorf("migration: espace libre de %s: %w", p.DestDir, err)
-	}
-	if free < need {
-		return res, fmt.Errorf("%w : %d octets à copier, %d libres sur %s",
-			ErrInsufficientBackupSpace, need, free, p.DestDir)
+	if err := ensureBackupRoom(p.DestDir, need, p.FreeBytes); err != nil {
+		return res, err
 	}
 
 	base := strings.TrimSuffix(filepath.Base(p.DBPath), duckdbSuffix)
@@ -94,6 +86,22 @@ func BackupBeforeUpgrade(ctx context.Context, p BackupParams) (BackupResult, err
 		"base", base, "version", p.Version, "files", len(res.Copied), "bytes", need,
 		"removed", len(res.Removed))
 	return res, nil
+}
+
+// ensureBackupRoom crée le dossier des copies et refuse (ErrInsufficientBackupSpace) si le volume n'a pas
+// la place de `need` octets.
+func ensureBackupRoom(dir string, need uint64, freeBytes func(string) (uint64, error)) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("migration: création du dossier des copies %s: %w", dir, err)
+	}
+	free, err := freeBytes(dir)
+	if err != nil {
+		return fmt.Errorf("migration: espace libre de %s: %w", dir, err)
+	}
+	if free < need {
+		return fmt.Errorf("%w : %d octets à copier, %d libres sur %s", ErrInsufficientBackupSpace, need, free, dir)
+	}
+	return nil
 }
 
 // backupSources rend les fichiers à copier (base, puis WAL s'il existe) et leur taille totale.
@@ -160,13 +168,19 @@ func removeAll(ctx context.Context, paths []string) {
 // rend les fichiers retirés (.duckdb et .wal). Un échec de suppression est journalisé : il
 // laisse une copie de trop, jamais une copie de moins.
 func pruneBackups(ctx context.Context, dir, base string) []string {
+	re := regexp.MustCompile(`^` + regexp.QuoteMeta(base) + `\.v\d+\.(\d{8}-\d{6})\.duckdb$`)
+	part := regexp.MustCompile(`^` + regexp.QuoteMeta(base) + `\.v\d+\.\d{8}-\d{6}\.duckdb(\.wal)?` + regexp.QuoteMeta(partialSuffix) + `$`)
+	return pruneMatching(ctx, dir, re, part, BackupRetention)
+}
+
+// pruneMatching ne garde que les `keep` copies les plus récentes dont le nom .duckdb satisfait re
+// (le premier groupe capture l'horodatage) et retire les restes de copie interrompue (part).
+func pruneMatching(ctx context.Context, dir string, re, part *regexp.Regexp, keep int) []string {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		slog.WarnContext(ctx, "migration: rétention des copies illisible", "dir", dir, "err", err)
 		return nil
 	}
-	re := regexp.MustCompile(`^` + regexp.QuoteMeta(base) + `\.v\d+\.(\d{8}-\d{6})\.duckdb$`)
-	part := regexp.MustCompile(`^` + regexp.QuoteMeta(base) + `\.v\d+\.\d{8}-\d{6}\.duckdb(\.wal)?` + regexp.QuoteMeta(partialSuffix) + `$`)
 	var removed []string
 	var stems []string // noms .duckdb des copies de cette base
 	for _, e := range entries {
@@ -190,7 +204,7 @@ func pruneBackups(ctx context.Context, dir, base string) []string {
 	sort.Slice(stems, func(i, j int) bool {
 		return re.FindStringSubmatch(stems[i])[1] > re.FindStringSubmatch(stems[j])[1]
 	})
-	for _, name := range stems[min(BackupRetention, len(stems)):] {
+	for _, name := range stems[min(keep, len(stems)):] {
 		for _, f := range []string{name, name + walSuffix} {
 			path := filepath.Join(dir, f)
 			err := os.Remove(path)

@@ -85,10 +85,10 @@ func TestCompactPassesAtBoot_AuDessusDuSeuilCompacteApresCopie(t *testing.T) {
 func TestCompactPassesAtBoot_SousLeSeuilNeFaitRien(t *testing.T) {
 	deps := compactBootDeps{
 		slug: "s", path: "p", now: time.Now,
-		measure: func(context.Context, string, string) ([]migration.JaugePasses, int, error) {
-			return []migration.JaugePasses{{Table: "match_bomb_stats", Brutes: 10, Gardees: 10}}, 1, nil
+		measure: func(context.Context, string) ([]migration.JaugePasses, error) {
+			return []migration.JaugePasses{{Table: "match_bomb_stats", Brutes: 10, Gardees: 10}}, nil
 		},
-		backup: func(context.Context, migration.BackupParams) error {
+		backup: func(context.Context, migration.CompactionBackupParams) error {
 			t.Error("copie lancée sous le seuil")
 			return nil
 		},
@@ -106,10 +106,12 @@ func TestCompactPassesAtBoot_SousLeSeuilNeFaitRien(t *testing.T) {
 func TestCompactPassesAtBoot_CopieRefuseePasDeCompaction(t *testing.T) {
 	deps := compactBootDeps{
 		slug: "s", path: "p", now: time.Now,
-		measure: func(context.Context, string, string) ([]migration.JaugePasses, int, error) {
-			return []migration.JaugePasses{{Table: "match_bomb_stats", Brutes: 20, Gardees: 10}}, 1, nil
+		measure: func(context.Context, string) ([]migration.JaugePasses, error) {
+			return []migration.JaugePasses{{Table: "match_bomb_stats", Brutes: 20, Gardees: 10}}, nil
 		},
-		backup: func(context.Context, migration.BackupParams) error { return migration.ErrInsufficientBackupSpace },
+		backup: func(context.Context, migration.CompactionBackupParams) error {
+			return migration.ErrInsufficientBackupSpace
+		},
 		compact: func(context.Context, string) ([]migration.CompactionTable, error) {
 			t.Error("compaction lancée sans copie préalable")
 			return nil, nil

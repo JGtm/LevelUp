@@ -10,7 +10,8 @@
 //
 // Le travail est celui de `levelup compact-passes` : migration.CompactSupersededPasses (table
 // reconstruite à côté, échange transactionnel vérifié, jamais de DELETE), précédée de la même
-// copie du fichier fermé (migration.BackupBeforeUpgrade). Seul l'enchaînement diffère : mesure de
+// copie du fichier fermé, propre à la compaction (migration.BackupBeforeCompaction : dossier, nom et rétention par
+// titre distincts de ceux d'avant montée de schéma). Seul l'enchaînement diffère : mesure de
 // la jauge d'abord (rien ne se passe sous le seuil), budget de temps, journal structuré, et un
 // échec n'empêche jamais le démarrage (ERROR, démarrage normal).
 //
@@ -46,11 +47,10 @@ type compactBootDeps struct {
 	path       string
 	backupsDir string
 	now        func() time.Time
-	// measure rend la jauge de chaque table du registre présente dans la base, en lecture seule, et la
-	// version de schéma de la base (entre dans le nom de la copie).
-	measure func(ctx context.Context, path, slug string) (jauges []migration.JaugePasses, version int, err error)
-	// backup copie la base FERMÉE.
-	backup func(ctx context.Context, p migration.BackupParams) error
+	// measure rend la jauge de chaque table du registre présente dans la base, en lecture seule.
+	measure func(ctx context.Context, path string) ([]migration.JaugePasses, error)
+	// backup copie la base FERMÉE, hors de la rétention des copies d'avant migration (migration.BackupBeforeCompaction).
+	backup func(ctx context.Context, p migration.CompactionBackupParams) error
 	// compact ouvre la base en écriture, compacte chaque table du registre, la referme.
 	compact func(ctx context.Context, path string) ([]migration.CompactionTable, error)
 }
@@ -63,12 +63,12 @@ func newCompactBootDeps(slug, path, backupsDir string) compactBootDeps {
 		backupsDir: backupsDir,
 		now:        time.Now,
 		measure:    measureSharedPasses,
-		backup: func(ctx context.Context, p migration.BackupParams) error {
+		backup: func(ctx context.Context, p migration.CompactionBackupParams) error {
 			p.FreeBytes = func(path string) (uint64, error) {
 				free, _, err := diskfree.Free(path)
 				return free, err
 			}
-			_, err := migration.BackupBeforeUpgrade(ctx, p)
+			_, err := migration.BackupBeforeCompaction(ctx, p)
 			return err
 		},
 		compact: compactSharedPasses,
@@ -92,7 +92,7 @@ func compactPassesAtBootAllTitles(ctx context.Context, cfg *config.AppConfig, pr
 		if _, err := os.Stat(path); err != nil {
 			continue
 		}
-		deps := newCompactBootDeps(d.Slug, path, pr.MigrationBackupsDir())
+		deps := newCompactBootDeps(d.Slug, path, pr.CompactionBackupsDir())
 		if err := runCompactBoot(ctx, deps); err != nil {
 			slog.ErrorContext(ctx, "compaction au démarrage échouée, démarrage poursuivi",
 				"titleSlug", d.Slug, "path", path, "err", err)
@@ -104,7 +104,7 @@ func compactPassesAtBootAllTitles(ctx context.Context, cfg *config.AppConfig, pr
 // migration.SeuilPassesParMatch, la copie puis la compacte. Rend l'erreur de la première étape qui
 // échoue ; rien n'est compacté sans copie préalable réussie.
 func compactPassesAtBoot(ctx context.Context, d compactBootDeps) error {
-	jauges, version, err := d.measure(ctx, d.path, d.slug)
+	jauges, err := d.measure(ctx, d.path)
 	if err != nil {
 		return fmt.Errorf("mesure de la jauge des passes: %w", err)
 	}
@@ -121,8 +121,8 @@ func compactPassesAtBoot(ctx context.Context, d compactBootDeps) error {
 	debut := d.now()
 	slog.InfoContext(ctx, "compaction au démarrage : tables au-dessus du seuil",
 		"titleSlug", d.slug, "tables", tables, "seuil", migration.SeuilPassesParMatch)
-	if err := d.backup(ctx, migration.BackupParams{
-		DBPath: d.path, DestDir: d.backupsDir, Version: version, Now: d.now(),
+	if err := d.backup(ctx, migration.CompactionBackupParams{
+		DBPath: d.path, DestDir: d.backupsDir, Slug: d.slug, Now: d.now(),
 	}); err != nil {
 		return fmt.Errorf("copie préalable, rien n'est compacté: %w", err)
 	}
@@ -143,19 +143,14 @@ func compactPassesAtBoot(ctx context.Context, d compactBootDeps) error {
 	return nil
 }
 
-// measureSharedPasses lit la jauge de chaque table du registre sur une poignée de lecture, et la
-// version de schéma de la base partagée.
-func measureSharedPasses(ctx context.Context, path, slug string) ([]migration.JaugePasses, int, error) {
+// measureSharedPasses lit la jauge de chaque table du registre sur une poignée de lecture.
+func measureSharedPasses(ctx context.Context, path string) ([]migration.JaugePasses, error) {
 	db, release, err := duckdb.OpenReadForQuery(path)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	defer release()
-	st, err := migration.InspectSchema(ctx, db, slug, migration.TargetShared)
-	if err != nil {
-		return nil, 0, err
-	}
-	return mesurerTables(ctx, db), st.Version, nil
+	return mesurerTables(ctx, db), nil
 }
 
 // mesurerTables mesure chaque table du registre ; une mesure en échec est journalisée et la table
