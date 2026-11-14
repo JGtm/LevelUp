@@ -270,15 +270,21 @@ type SquadIntensityProfile struct {
 	Rows    map[string][]SquadIntensityMatchRow `json:"rows"` // optionKey → lignes (1 par match)
 }
 
-// SquadPerMinuteEntry est l'agrégat par joueur des stats /minute pour le
-// chart teammates.14. Calculé à partir de sum(kills/deaths/assists) / sum(time_played_secs / 60).
-// Si TimePlayedSecs == 0, les ratios sont nuls.
+// SquadPerMinuteEntry est l'agrégat par joueur des stats /minute pour les charts teammates.14
+// (frags, morts, assistances) et « dégâts par minute ». Chaque cadence est la somme des comptes
+// rapportée à la somme des minutes jouées (analysis.PerMinute) ; si TimePlayedSecs == 0, les
+// ratios sont nuls.
+//
+// Les dégâts sont des pointeurs : nil = aucun match du joueur n'en porte (dégâts subis non fournis
+// par le titre, Halo 5), jamais un zéro fabriqué.
 type SquadPerMinuteEntry struct {
-	Player           string  `json:"player"`
-	KillsPerMinute   float64 `json:"kills_per_minute"`
-	DeathsPerMinute  float64 `json:"deaths_per_minute"`
-	AssistsPerMinute float64 `json:"assists_per_minute"`
-	MatchCount       int     `json:"match_count"`
+	Player               string   `json:"player"`
+	KillsPerMinute       float64  `json:"kills_per_minute"`
+	DeathsPerMinute      float64  `json:"deaths_per_minute"`
+	AssistsPerMinute     float64  `json:"assists_per_minute"`
+	DamageDealtPerMinute *float64 `json:"damage_dealt_per_minute,omitempty"`
+	DamageTakenPerMinute *float64 `json:"damage_taken_per_minute,omitempty"`
+	MatchCount           int      `json:"match_count"`
 }
 
 // SquadSessionPoint est un point agrégé par session pour le chart timeline

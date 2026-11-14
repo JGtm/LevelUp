@@ -13086,6 +13086,10 @@ export interface components {
             /** Format: double */
             assists_per_minute: number;
             /** Format: double */
+            damage_dealt_per_minute?: number;
+            /** Format: double */
+            damage_taken_per_minute?: number;
+            /** Format: double */
             deaths_per_minute: number;
             /** Format: double */
             kills_per_minute: number;

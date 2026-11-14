@@ -28992,6 +28992,12 @@ components:
         assists_per_minute:
           format: double
           type: number
+        damage_dealt_per_minute:
+          format: double
+          type: number
+        damage_taken_per_minute:
+          format: double
+          type: number
         deaths_per_minute:
           format: double
           type: number

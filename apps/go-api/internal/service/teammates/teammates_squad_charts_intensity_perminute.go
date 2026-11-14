@@ -1,5 +1,5 @@
 // Package service - teammates_squad_charts_intensity_perminute.go : builders
-// squad intensity profile + per-minute stats. Decoupe de
+// squad intensity profile. Decoupe de
 // teammates_squad_charts.go (god-file split, refactor 2026-05-27).
 package teammates
 
@@ -12,7 +12,6 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/observability/timing"
-	"levelup/go-api/internal/port"
 )
 
 // intensityMatchMeta : métadonnées d'affichage d'un match du profil (date + carte).
@@ -218,122 +217,4 @@ func (s *TeammatesService) buildSquadIntensityProfile(
 	}
 
 	return &domain.SquadIntensityProfile{Options: options, Rows: rowsByOpt}
-}
-
-// ---------------------------------------------------------------------------
-// teammates.14 — Stats par minute (frags / morts / assists)
-// ---------------------------------------------------------------------------
-
-// buildSquadPerMinuteStats agrège sur le scope filtré, par joueur :
-//   - main : depuis allSquadRows dédupliqué par match_id (Kills/Deaths/Assists/TimePlayedSecs
-//     représentent le main player car c'est sa pipeline Q30).
-//   - teammates : LoadPlayerMatches + filtre sur match_ids escouade, lit r.Self.{Kills,Deaths,Assists,TimePlayed}.
-//
-// Retourne nil si aucun joueur n'a de matchs avec time_played > 0.
-func (s *TeammatesService) buildSquadPerMinuteStats(
-	ctx context.Context,
-	allSquadRows []domain.SquadMatchRow,
-	mainGamertag string,
-	selectedGamertags []string,
-	sessionMatchIDs map[string]bool,
-) []domain.SquadPerMinuteEntry {
-	defer timing.FromContext(ctx).Section("per_minute")()
-	if len(allSquadRows) == 0 {
-		return nil
-	}
-
-	// 1. Set des match_ids du scope (post-filtres + dédup).
-	matchIDsAllowed := make(map[string]struct{}, len(allSquadRows))
-	for _, m := range allSquadRows {
-		matchIDsAllowed[m.MatchID] = struct{}{}
-	}
-	if sessionMatchIDs != nil { // vide non nil : session piquée sans match → aucun match
-		filtered := make(map[string]struct{}, len(sessionMatchIDs))
-		for id := range matchIDsAllowed {
-			if sessionMatchIDs[id] {
-				filtered[id] = struct{}{}
-			}
-		}
-		matchIDsAllowed = filtered
-	}
-
-	// 2. Main : agrégat depuis allSquadRows dédup.
-	type sums struct {
-		k, d, a, secs, n int
-	}
-	mainSeen := make(map[string]struct{}, len(allSquadRows))
-	mainAgg := sums{}
-	for _, m := range allSquadRows {
-		if _, dup := mainSeen[m.MatchID]; dup {
-			continue
-		}
-		mainSeen[m.MatchID] = struct{}{}
-		if _, ok := matchIDsAllowed[m.MatchID]; !ok {
-			continue
-		}
-		mainAgg.k += m.Kills
-		mainAgg.d += m.Deaths
-		mainAgg.a += m.Assists
-		mainAgg.secs += m.TimePlayedSecs
-		mainAgg.n++
-	}
-
-	makeEntry := func(name string, agg sums) domain.SquadPerMinuteEntry {
-		entry := domain.SquadPerMinuteEntry{Player: name, MatchCount: agg.n}
-		if agg.secs > 0 {
-			minutes := float64(agg.secs) / 60.0
-			entry.KillsPerMinute = round2(float64(agg.k) / minutes)
-			entry.DeathsPerMinute = round2(float64(agg.d) / minutes)
-			entry.AssistsPerMinute = round2(float64(agg.a) / minutes)
-		}
-		return entry
-	}
-
-	entries := []domain.SquadPerMinuteEntry{makeEntry(mainGamertag, mainAgg)}
-
-	// 3. Teammates : squadLoader.LoadFor (résolution per-gamertag) → filter par
-	// match_ids → sum r.Self. squadLoader est obligatoire ici : playerMatchesRepo
-	// est bound au gamertag principal et ignore l'arg gt (cf. doc TeammatesService),
-	// l'utiliser ici réagrégeait les stats du main pour chaque coéquipier → toutes
-	// les barres avaient la même valeur.
-	for _, gt := range selectedGamertags {
-		if s.squadLoader == nil {
-			entries = append(entries, domain.SquadPerMinuteEntry{Player: gt})
-			continue
-		}
-		mateRows, err := s.squadLoader.LoadFor(
-			ctx, s.titleSlug, gt, port.PlayerMatchFilters{},
-		)
-		if err != nil {
-			slog.WarnContext(ctx, "teammates_per_minute_load_failed",
-				"gamertag", gt, "err", err)
-			entries = append(entries, domain.SquadPerMinuteEntry{Player: gt})
-			continue
-		}
-		mateAgg := sums{}
-		for _, r := range mateRows {
-			if _, ok := matchIDsAllowed[r.Summary.MatchID]; !ok {
-				continue
-			}
-			mateAgg.k += intPtrOrZero(r.Self.Kills)
-			mateAgg.d += intPtrOrZero(r.Self.Deaths)
-			mateAgg.a += intPtrOrZero(r.Self.Assists)
-			mateAgg.secs += intPtrOrZero(r.Self.TimePlayed)
-			mateAgg.n++
-		}
-		entries = append(entries, makeEntry(gt, mateAgg))
-	}
-
-	// Si tous les joueurs ont 0 secondes, retourner nil (insufficient data).
-	hasData := false
-	for _, e := range entries {
-		if e.KillsPerMinute > 0 || e.DeathsPerMinute > 0 || e.AssistsPerMinute > 0 {
-			hasData = true
-			break
-		}
-	}
-	if !hasData {
-		return nil
-	}
-	return entries
 }
