@@ -28,6 +28,7 @@ import type { ReplayBounds, ReplayMapBackgroundCalibration } from '@/lib/api/typ
 import { coversPlayedArea } from '../layers/mapBackground'
 import { frameBounds, sceneBounds, usefulHeight, visibleBounds } from '../../../lib/replay/replayLogic'
 import { type CanvasView } from '../model/replayView'
+import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
 import type { WallPlanReady } from '@/lib/replay/wallPlan'
 import { orientAbout, orientBounds, viewOrientation, type QuarterTurns } from '@/lib/replay/orientation'
 import { useZoomResetOnTurns } from '@/lib/replay/useZoomResetOnTurns'
@@ -72,6 +73,13 @@ export interface ReplayMapBackgroundLayer {
   image: HTMLImageElement
   /** Le plan des murs de la carte, normalisé ; `null` = la carte n'en a pas (cf. `lib/replay/wallPlan`). */
   plan: WallPlanReady | null
+  /**
+   * L'image posée : `plan` (vue plan à hauteurs, qui porte déjà les murs : le calque des murs se
+   * retire) ou `rendu`. Même calage, mêmes dimensions : rien d'autre ne dépend de cette valeur.
+   */
+  variante: MapBackgroundVariant
+  /** Le fond porte-t-il une image plan ? La commande « Fond » n'est proposée que s'il en a une. */
+  planAvailable: boolean
 }
 
 export interface ReplayViewOptions {

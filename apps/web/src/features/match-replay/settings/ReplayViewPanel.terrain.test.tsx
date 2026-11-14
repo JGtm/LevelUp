@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 
-import { makeOrientation, makeWallPlan, renderPanel } from './replayViewPanelFixtures'
+import { makeBackground, makeOrientation, makeWallPlan, renderPanel } from './replayViewPanelFixtures'
 
 describe('ReplayViewPanel — orientation de la carte', () => {
   it('propose les quatre positions en choix exclusif, la courante cochée', () => {
@@ -58,5 +58,58 @@ describe('ReplayViewPanel — plan des murs', () => {
   it('en anglais, la bascule se nomme Wall plan', () => {
     renderPanel({ locale: 'en' })
     expect(screen.getByRole('switch', { name: 'Wall plan' })).toBeTruthy()
+  })
+})
+
+describe('ReplayViewPanel — fond de carte (rendu ou plan)', () => {
+  it('fond avec image plan : « Fond » propose Rendu et Plan en choix exclusif, le courant coché', () => {
+    renderPanel({ background: makeBackground({ value: 'plan' }) })
+    expect(screen.getByRole('radiogroup', { name: 'Fond' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'Plan' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: 'Rendu' })).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('un clic choisit SA variante', () => {
+    const onSelect = vi.fn()
+    renderPanel({ background: makeBackground({ onSelect }) })
+    fireEvent.click(screen.getByRole('radio', { name: 'Plan' }))
+    expect(onSelect).toHaveBeenCalledWith('plan')
+    fireEvent.click(screen.getByRole('radio', { name: 'Rendu' }))
+    expect(onSelect).toHaveBeenLastCalledWith('rendu')
+  })
+
+  it('fond sans image plan : la commande est absente', () => {
+    renderPanel({ background: makeBackground({ available: false }) })
+    expect(screen.queryByRole('radiogroup', { name: 'Fond' })).toBeNull()
+  })
+
+  it('en anglais, la commande se nomme Background : Render / Plan', () => {
+    renderPanel({ locale: 'en' })
+    expect(screen.getByRole('radiogroup', { name: 'Background' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'Render' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'Plan' })).toBeTruthy()
+  })
+
+  it('en mode plan, le plan des murs est désactivé, éteint, avec « Déjà dans le plan » en infobulle', () => {
+    const onToggle = vi.fn()
+    renderPanel({ wallPlan: makeWallPlan({ show: true, inPlan: true, onToggle }) })
+    const btn = screen.getByRole('switch', { name: 'Plan des murs' })
+    expect(btn).toBeDisabled()
+    expect(btn).toHaveAttribute('aria-checked', 'false')
+    expect(btn).toHaveAttribute('title', 'Déjà dans le plan')
+    fireEvent.click(btn)
+    expect(onToggle).not.toHaveBeenCalled()
+  })
+
+  it('en mode plan et en anglais, l infobulle dit Already in the plan', () => {
+    renderPanel({ locale: 'en', wallPlan: makeWallPlan({ inPlan: true }) })
+    expect(screen.getByRole('switch', { name: 'Wall plan' })).toHaveAttribute('title', 'Already in the plan')
+  })
+
+  it('sur le rendu, le plan des murs reste actif et garde son état', () => {
+    renderPanel({ wallPlan: makeWallPlan({ show: true, inPlan: false }) })
+    const btn = screen.getByRole('switch', { name: 'Plan des murs' })
+    expect(btn).not.toBeDisabled()
+    expect(btn).toHaveAttribute('aria-checked', 'true')
   })
 })

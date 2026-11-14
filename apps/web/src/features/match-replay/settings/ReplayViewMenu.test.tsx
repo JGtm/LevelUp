@@ -38,6 +38,7 @@ function Harness({ locale }: { locale: ReplayLocale }) {
     sound: SOUND,
     available: FILM,
     heat: { mode: 'presence', killsAvailable: true },
+    planBackground: { available: false, shown: false },
     locale,
   })
   return (

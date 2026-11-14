@@ -25,6 +25,7 @@ import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersi
 import type { MatchScoreboardRow } from '@/lib/api/types'
 
 import type { FilmAllegiance } from '@/lib/replay/filmAllegiance'
+import { isWallPlanDrawn } from '@/lib/replay/mapBackgroundVariant'
 
 import type { CalloutZoneReady } from '@/lib/replay/calloutsPaint'
 
@@ -305,6 +306,8 @@ export function ReplayCanvas({
   const { mapImage, bounds, renderWidth, renderHeight: viewH, screen, zRange, canvasView, zoom } = useReplayView({
     doc, background, turns: orientation.turns, width, freeHeight, onManualMove: onFollowStop,
   })
+  // Les murs sont DÉJÀ dans l'image plan : posé le fond plan, le calque des murs se retire (et n'est pas cuit).
+  const wallPlanOn = isWallPlanDrawn(showWallPlan, mapImage?.variante ?? 'rendu')
   // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
   const { shownAtSlot, shownProjectile } = useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom, turns: orientation.turns })
 
@@ -371,7 +374,7 @@ export function ReplayCanvas({
     zones: { zones: calloutZones, bigColors: zoneColors, fineInk: floorStyle.edge, locale },
     heat: { grid: heat.grid, ramp: heat.ramp },
     // Éteint, le plan n'est pas cuit : rien à recuire au zoom ni à l'orientation pour un calque invisible.
-    wallPlan: { plan: showWallPlan ? (mapImage?.plan ?? null) : null, ink: wallPlanInk },
+    wallPlan: { plan: wallPlanOn ? (mapImage?.plan ?? null) : null, ink: wallPlanInk },
     objectives: { elements: zones.staticElements, colorOfTeam: zones.colorOfTeam, neutralOutline: zoneInk.outline, z: zRange },
   })
 
@@ -468,7 +471,7 @@ export function ReplayCanvas({
       return {
         toggles: {
           zones: showZones, shotFx: showShotFx, placements: showPlacements, killFx: showKillFx,
-          modeObjectives: showModeObjectives, wallPlan: showWallPlan,
+          modeObjectives: showModeObjectives, wallPlan: wallPlanOn,
         },
         has: {
           background: !!mapImage && !!bgRect,
@@ -634,7 +637,7 @@ export function ReplayCanvas({
     showAim,
     showZones,
     showModeObjectives,
-    showWallPlan,
+    wallPlanOn,
     showShotFx,
     showKillFx,
     mapImage,
@@ -690,6 +693,8 @@ export function ReplayCanvas({
   // viennent des calques, les bascules de `useReplaySettings`, et l'ouverture du hook lui-même.
   const viewMenu = useReplayViewMenu({
     settings, orientation, sound, locale,
+    // LE FOND : la commande n'est proposée que si le fond a une image plan ; posé, il retire le calque des murs.
+    planBackground: { available: !!mapImage?.planAvailable, shown: mapImage?.variante === 'plan' },
     heat: { mode: heat.mode, killsAvailable: heat.killsAvailable },
     available: {
       zones: calloutZones.length > 0,

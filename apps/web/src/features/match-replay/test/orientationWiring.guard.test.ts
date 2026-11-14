@@ -29,7 +29,8 @@ describe('garde-rail : orientation et plan des murs câblés dans le canvas', ()
     expect(canvas()).toMatch(/useReplayViewMenu\(\{\s*settings, orientation,/)
   })
 
-  it('le plan des murs n’est cuit que quand son interrupteur est allumé', () => {
-    expect(canvas()).toContain('plan: showWallPlan ? (mapImage?.plan ?? null) : null')
+  it('le plan des murs n’est cuit que quand son interrupteur est allumé et que le fond n’est pas déjà le plan', () => {
+    expect(canvas()).toContain("const wallPlanOn = isWallPlanDrawn(showWallPlan, mapImage?.variante ?? 'rendu')")
+    expect(canvas()).toContain('plan: wallPlanOn ? (mapImage?.plan ?? null) : null')
   })
 })

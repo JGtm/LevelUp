@@ -29,6 +29,8 @@
  * et échoue sur une fabrique non classée ou dont le paramètre de langue ne correspond pas à son classement.
  */
 
+import type { MapBackgroundVariant } from '@/lib/replay/mapBackgroundVariant'
+
 export const queryKeys = {
   bootstrap: ['bootstrap'] as const,
   players: ['players'] as const,
@@ -172,9 +174,15 @@ export const queryKeys = {
   // qu'à une re-cuisson.
   matchReplayBackground: (playerSlug: string, titleSlug: string, matchId: string) =>
     ['match-replay-background', playerSlug, titleSlug, matchId] as const,
-  // L'IMAGE a sa propre cle : elle pese jusqu'a 1,4 Mio et ne se charge qu'apres le calage.
-  matchReplayBackgroundImage: (playerSlug: string, titleSlug: string, matchId: string) =>
-    ['match-replay-background-image', playerSlug, titleSlug, matchId] as const,
+  // L'IMAGE a sa propre cle : elle pese jusqu'a 1,4 Mio et ne se charge qu'apres le calage. La
+  // VARIANTE (rendu ou plan) est le dernier segment : les deux images d'un meme fond ne se servent
+  // jamais l'une pour l'autre.
+  matchReplayBackgroundImage: (
+    playerSlug: string,
+    titleSlug: string,
+    matchId: string,
+    variante: MapBackgroundVariant = 'rendu',
+  ) => ['match-replay-background-image', playerSlug, titleSlug, matchId, variante] as const,
   // Zones nommées (callouts) : même logique que le fond — propres à la CARTE, servies par
   // match, figées entre deux régénérations du catalogue versionné.
   matchReplayCallouts: (playerSlug: string, titleSlug: string, matchId: string) =>
@@ -290,8 +298,9 @@ export const queryKeys = {
   // N images par joueur consulté dans la session, pour exactement le même contenu.
   // `titleSlug` reste en 1er segment — une carte n'existe que dans son titre — et l'URL de
   // fetch garde le joueur (la route est derrière l'ownership).
-  tacticalMapBackground: (titleSlug: string, mapId: string) =>
-    ['tactical-map-background', titleSlug, mapId] as const,
+  // La VARIANTE (rendu ou plan) est le dernier segment, comme pour l'image du fond du rejeu.
+  tacticalMapBackground: (titleSlug: string, mapId: string, variante: MapBackgroundVariant = 'rendu') =>
+    ['tactical-map-background', titleSlug, mapId, variante] as const,
   /** Calage monde du fond d'une carte — même donnée de référence que l'image, donc même
    *  régime : versionnée par titre, jamais par joueur. */
   tacticalMapBackgroundFrame: (titleSlug: string, mapId: string) =>

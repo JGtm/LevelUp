@@ -167,6 +167,13 @@ export const FR_TEXT = {
   layerWallPlan: 'Plan des murs',
   layerWallPlanHint:
     "Le dessin exact des murs de la carte, en traits fins par-dessus son image. Disponible pour les cartes dont le plan a pu être extrait du jeu.",
+  layerWallPlanInPlanHint: 'Déjà dans le plan',
+  layerBackground: 'Fond',
+  layerBackgroundRender: 'Rendu',
+  layerBackgroundRenderHint: 'Le fond de la carte, en image rendue.',
+  layerBackgroundPlan: 'Plan',
+  layerBackgroundPlanHint:
+    'La vue plan à hauteurs : silhouette du sol teintée par altitude, murs, étages recouverts en pointillé. Le choix vaut pour toutes les cartes et toutes les vues 2D.',
   orientationTitle: 'Orientation',
   orientationHint:
     "Tourne la carte par quarts de tour, dans le sens des aiguilles d'une montre. Le choix est retenu pour cette carte.",

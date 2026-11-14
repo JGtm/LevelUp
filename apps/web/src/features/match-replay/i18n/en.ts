@@ -165,6 +165,13 @@ export const EN_TEXT = {
   layerWallPlan: 'Wall plan',
   layerWallPlanHint:
     'The exact outline of the map walls, as thin lines over its image. Available for maps whose plan could be extracted from the game.',
+  layerWallPlanInPlanHint: 'Already in the plan',
+  layerBackground: 'Background',
+  layerBackgroundRender: 'Render',
+  layerBackgroundRenderHint: 'The map background, as a rendered image.',
+  layerBackgroundPlan: 'Plan',
+  layerBackgroundPlanHint:
+    'The height plan view: floor silhouette tinted by altitude, walls, covered floors dashed. The choice applies to every map and every 2D view.',
   orientationTitle: 'Orientation',
   orientationHint:
     'Rotates the map in quarter turns, clockwise. The choice is remembered for this map.',
