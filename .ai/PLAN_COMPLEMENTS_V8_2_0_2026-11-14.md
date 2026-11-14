@@ -116,8 +116,8 @@ avant/après capturé) ; relecture indépendante sans P0/P1 ; notes de version e
 - [ ] 1.9 Gate : témoin 0.3 rejoué, comparaison ligne à ligne ; restent seulement les replis nommés du décodeur et les cartes non résolues (normaux, D-10 ADR 0034).
 
 ### Étape 2 — Tendances, groupe « Rythme »
-- [ ] 2.1 `analysis/trends/indicators.go` : frags, morts, assistances, dégâts infligés et subis par minute (`Match.Seconds`), rapport des sommes, `inMatrix`, sens (morts : bas = mieux) ; groupe et clés de domaine ; vue escouade.
-- [ ] 2.2 Libellés FR/EN (manifeste `tendances`), unités ; tests Go et web ; `make generate-types` si le contrat change.
+- [x] 2.1 `analysis/trends/indicators.go` : frags, morts, assistances, dégâts infligés et subis par minute (`Match.Seconds`), rapport des sommes, `inMatrix`, sens (morts : bas = mieux) ; groupe et clés de domaine ; vue escouade (`[~]` : la vue escouade ne porte aucun indicateur de combat par membre, seulement FDA et part des frags ; un allié n'a ni secondes jouées ni dégâts dans `MemberStat` ; le groupe est absent de cette vue, test à l'appui). Code : `indicators_pace.go`, `TrendsGroupPace`, `TrendsUnitPerMin`, cinq clés `*_per_minute`.
+- [x] 2.2 Libellés FR/EN (manifeste `tendances`), unités ; tests Go et web ; `make generate-types` si le contrat change (inchangé : `group`, `unit` et `key` sont des chaînes libres dans `openapi.yaml`). Deux graphiques « Rythme » ajoutés à la grille « Niveau, combat et style » de l'Évolution.
 
 ### Étape 3 — Placement A1
 - [ ] 3.1 `features/squad/emprise/placementCharts.ts` : carte de chaleur (cases distance × frags, quarts, repère radar, médianes par joueur), infobulle de case (part, compte).
@@ -209,3 +209,4 @@ Entrées film (`levelup-1f`), pseudos réels, alerte glib, toute recuisson.
   `infobulles`, `rejeu` ouvertes.
 - 2026-11-14 (voie infobulles, branche `feat/c820-infobulles`) : 5.1 et 5.2 faits. Couche `TitleTooltipLayer` montée dans `AppProviders` (couvre connexion et pages hors coquille) ; `Tooltip` et `InfoTooltip` marqués `data-lu-tooltip` (pas de double infobulle) ; `InfoTooltip` ouvert au focus clavier seulement ; lint des couleurs étendu (cinq préfixes) et `color-allow(<genre>)` borné au genre nommé (76 lignes migrées, aucune allowlist élargie). 5.3 reste au user.
 - 2026-11-14 : voie rejeu (étape 8) faite sur `feat/c820-rejeu` : trois calques « Vies » (apparitions, morts, tueurs), seize calques, affinages qui / quand, préréglages D-9, textes FR/EN, aucun changement du document de rejeu (D-13). Contrôle à l'écran remis au user.
+- 2026-11-14 (voie `tendances`, branche `feat/c820-tendances`) : étape 2 faite. Groupe `pace` (« Rythme ») de la matrice et deux graphiques de l'Évolution ; agrégat somme des comptes / somme des minutes ; match sans seconde jouée exclu des deux termes ; dégâts absents (nil) = ligne absente, pas zéro. Vue escouade : non concernée (voir 2.1).

@@ -39,6 +39,22 @@ describe('buildMatrixGrids — groupes', () => {
     expect(grids.find((g) => g.group === 'combat')?.rows).toBe(1)
   })
 
+  it('le groupe « Rythme » (pace) suit « Combat » et précède « Façon de jouer »', () => {
+    const grids = buildMatrixGrids(
+      [
+        indicator({ key: 'avg_life_seconds', group: 'style' }),
+        indicator({ key: 'kills_per_minute', group: 'pace', unit: 'per_minute', decimals: 2 }),
+        indicator({ key: 'deaths_per_minute', group: 'pace', unit: 'per_minute', decimals: 2 }),
+        indicator({ key: 'kda', group: 'combat' }),
+      ],
+      MONTHS,
+      'fr',
+      labelOf,
+    )
+    expect(grids.map((g) => g.group)).toEqual(['combat', 'pace', 'style'])
+    expect(grids[1].rows).toBe(2)
+  })
+
   it('aucun indicateur en matrice : aucune grille', () => {
     expect(buildMatrixGrids([indicator({ in_matrix: false })], MONTHS, 'fr', labelOf)).toEqual([])
     expect(buildMatrixGrids(null, null, 'fr', labelOf)).toEqual([])

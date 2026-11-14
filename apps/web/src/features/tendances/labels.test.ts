@@ -5,6 +5,7 @@
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
+import { getTendancesText } from './i18n'
 import { useIndicatorLabeler, variantLabel } from './labels'
 
 vi.mock('@/lib/i18n/fieldMappings', () => ({ useFieldMappings: () => ({ data: undefined }) }))
@@ -25,6 +26,26 @@ describe('variantLabel', () => {
 
   it('un gamertag reste tel quel', () => {
     expect(variantLabel('kda', 'Alice', 'fr')).toBe('Alice')
+  })
+})
+
+describe('useIndicatorLabeler — groupe « Rythme »', () => {
+  const labeler = (locale: 'fr' | 'en') =>
+    renderHook(() => useIndicatorLabeler(locale)).result.current
+
+  it('les cinq stats par minute sont libellées dans les deux langues', () => {
+    expect(labeler('fr')('kills_per_minute')).toBe('Frags par minute')
+    expect(labeler('fr')('deaths_per_minute')).toBe('Morts par minute')
+    expect(labeler('fr')('assists_per_minute')).toBe('Assistances par minute')
+    expect(labeler('fr')('damage_dealt_per_minute')).toBe('Dégâts infligés par minute')
+    expect(labeler('fr')('damage_taken_per_minute')).toBe('Dégâts subis par minute')
+    expect(labeler('en')('kills_per_minute')).toBe('Kills per minute')
+    expect(labeler('en')('damage_taken_per_minute')).toBe('Damage taken per minute')
+  })
+
+  it('le nom du groupe : « Rythme » / « Pace »', () => {
+    expect(getTendancesText('fr').groupLabel('pace')).toBe('Rythme')
+    expect(getTendancesText('en').groupLabel('pace')).toBe('Pace')
   })
 })
 

@@ -41,6 +41,11 @@ const KEY = {
   lusr: 'lusr_value',
   damageDealt: 'avg_damage_dealt',
   damageTaken: 'avg_damage_taken',
+  killsPerMinute: 'kills_per_minute',
+  deathsPerMinute: 'deaths_per_minute',
+  assistsPerMinute: 'assists_per_minute',
+  damageDealtPerMinute: 'damage_dealt_per_minute',
+  damageTakenPerMinute: 'damage_taken_per_minute',
   take: 'objective_take_share',
   defend: 'objective_defend_share',
   hold: 'objective_hold_share',
@@ -309,6 +314,38 @@ function singleCurve(
   return curveOf(indicatorsOf(p.data, key)[0], p, { name: p.labelOf(key), ...options })
 }
 
+/**
+ * Graphiques du groupe « Rythme » : frags, morts et assistances par minute (jetons de combat), puis
+ * dégâts infligés et subis par minute. Un graphique sans courbe n'existe pas (titre sans dégâts
+ * connus : celui des dégâts disparaît seul).
+ */
+function paceCharts(p: TendancesChartsParams): (TendancesChartDef | undefined)[] {
+  const t = getTendancesText(p.locale)
+  const solid = { withPrevMean: true }
+  return [
+    levelChart(
+      p,
+      'pace',
+      t.chartPace,
+      compact([
+        singleCurve(p, KEY.killsPerMinute, { color: 'stat-kills', ...solid }),
+        singleCurve(p, KEY.deathsPerMinute, { color: 'stat-deaths', ...solid }),
+        singleCurve(p, KEY.assistsPerMinute, { color: 'stat-assists', ...solid }),
+      ]),
+      t.infoPace,
+    ),
+    levelChart(
+      p,
+      'pace-damage',
+      t.chartPaceDamage,
+      compact([
+        singleCurve(p, KEY.damageDealtPerMinute, solid),
+        singleCurve(p, KEY.damageTakenPerMinute, solid),
+      ]),
+    ),
+  ]
+}
+
 /** Grille « Niveau, combat et style ». */
 function levelGrid(p: TendancesChartsParams): TendancesGridDef | undefined {
   const t = getTendancesText(p.locale)
@@ -355,6 +392,7 @@ function levelGrid(p: TendancesChartsParams): TendancesGridDef | undefined {
       t.chartDamage,
       compact([singleCurve(p, KEY.damageDealt, solid), singleCurve(p, KEY.damageTaken, solid)]),
     ),
+    ...paceCharts(p),
     caps.objectives
       ? levelChart(
           p,

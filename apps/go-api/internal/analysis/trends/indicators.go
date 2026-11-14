@@ -24,7 +24,7 @@ const (
 	dayLayout       = "2006-01-02"
 	monthKeyLayout  = "2006-01"
 	// registryCapacity : taille initiale du registre (lignes fixes + variantes de classement usuelles).
-	registryCapacity = 40
+	registryCapacity = 45
 )
 
 // evalFunc calcule la valeur d'un indicateur sur un ensemble de matchs ; false
@@ -64,6 +64,7 @@ func registry(ms []Match, hpToKill float64) []indicator {
 	out = append(out, ratingIndicators(ms)...)
 	out = append(out, resultIndicators()...)
 	out = append(out, combatIndicators(hpToKill)...)
+	out = append(out, paceIndicators()...)
 	out = append(out, styleIndicators()...)
 	out = append(out, objectiveIndicators()...)
 	out = append(out, activityIndicators()...)

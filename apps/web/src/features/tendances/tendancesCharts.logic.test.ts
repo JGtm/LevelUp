@@ -222,6 +222,54 @@ describe('buildTendancesGrids — grille « Niveau, combat et style »', () => {
   })
 })
 
+describe('buildTendancesGrids — groupe « Rythme »', () => {
+  const PACE_KEYS = [
+    'kills_per_minute',
+    'deaths_per_minute',
+    'assists_per_minute',
+    'damage_dealt_per_minute',
+    'damage_taken_per_minute',
+  ]
+  const withPace = (keys = PACE_KEYS) =>
+    response({
+      indicators: [
+        ...fullIndicators(),
+        ...keys.map((k) => seriesIndicator(k, { prev: 2, unit: 'per_minute' })),
+      ],
+    })
+
+  it('deux graphiques après celui des dégâts par match, avec les jetons de combat', () => {
+    const grille = grids(withPace())[1]
+    expect(grille.charts.map((c) => c.id)).toEqual([
+      'csr',
+      'lusr',
+      'mmr-pair',
+      'damage',
+      'pace',
+      'pace-damage',
+      'objectives',
+    ])
+    const pace = grille.charts[4]
+    expect(pace.title).toBe('Frags, morts et assistances par minute')
+    expect(pace.input.curves.map((c) => c.color)).toEqual(['stat-kills', 'stat-deaths', 'stat-assists'])
+    expect(pace.input.unit).toBe('per_minute')
+    expect(pace.info).toBeDefined()
+    expect(grille.charts[5].title).toBe('Dégâts infligés et subis par minute')
+    expect(grille.charts[5].input.curves.every((c) => c.prevMean === 2)).toBe(true)
+  })
+
+  it('sans dégâts par minute (titre sans cette donnée) : seul le graphique des comptes reste', () => {
+    const grille = grids(withPace(PACE_KEYS.slice(0, 3)))[1]
+    expect(grille.charts.map((c) => c.id)).toEqual(['csr', 'lusr', 'mmr-pair', 'damage', 'pace', 'objectives'])
+  })
+
+  it('sans aucun indicateur de rythme : aucun graphique de rythme', () => {
+    const ids = grids(response({ indicators: fullIndicators() }))[1].charts.map((c) => c.id)
+    expect(ids).not.toContain('pace')
+    expect(ids).not.toContain('pace-damage')
+  })
+})
+
 describe('buildTendancesGrids — rien à tracer', () => {
   it('aucun indicateur tracé : aucune grille', () => {
     expect(grids(response({ indicators: [] }))).toEqual([])
