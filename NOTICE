@@ -104,7 +104,7 @@ lets them reuse:
     names left are those of players who agreed to appear. Numeric account
     identifiers (XUID) and gamertags in the test fixtures and test sources of this
     repository and of its dedicated repositories are invented since version 8.1.2 of LevelUp and
-    version 0.1.1 of those repositories (registers: halo-infinite-film-decoder/testdata/IDENTITES.tsv and
+    in the versions of those repositories that apps/go-api/go.mod requires (registers: halo-infinite-film-decoder/testdata/IDENTITES.tsv and
     apps/go-api/cmd/anonymise-gamertags/testdata/IDENTITES_APPS.tsv). One fixture keeps real
     identifiers because its bytes cannot be rewritten without corrupting it: the capture of a
     production DuckDB database under

@@ -1,5 +1,49 @@
 ## What's new
 
+**v8.2 — A fuller replay, truer map backgrounds, Lead share, new match charts and compressed replays**
+
+**The replay**
+- **A feed you can filter** — the feed title opens a menu: All, Kills, Objectives, Weapons and power-ups, Vehicles, Medals, Assists. Objective actions appear as banners, weapons picked up from the ground join the feed, and a filter with no line in the match says so instead of staying empty. Your choice is remembered
+- **Click a kill** — playback pauses at that moment, and the killer and the victim are highlighted on the map with their names and the weapon
+- **The zone of the kill** — each kill in the feed shows the map zone the killer stood in, when the map names one
+- **A "View" button** — in the corner of the map, four layer presets (Full, Combat, Movement, Objective) and a panel gathering effects, heat, dot colour and sound. The Settings button leaves the playback bar
+- **A player card in a panel** — a click on a card replaces the feed with their end-of-match totals (accuracy, damage, score breakdown, objective, weapons), with Follow, Solo and Hide. Esc closes the panel
+- **The film read more faithfully** — positions are read at the right widths on maps with several regions, and object types and the Spartan's abilities are recognised more rigorously: a regenerated replay gains in precision
+- **Fixed turrets, bots and places of death** — a fixed turret is recognised as such, stray tracks are no longer shown, the bots of a film without a kill feed keep their names, and kills that had no location get one
+- **Game icons for grenades and abilities** — the replay thumbnails come from the game's own interface sheets, in line art for grenades
+- **Destroyed vehicles** — the feed and its "Vehicles" filter list every vehicle destruction ("Ghost destroyed", or "destroyed: Ghost" when the destroyer is known), with the player aboard in brackets, or their number when there are several. Players who died with their vehicle are read from the film; a player ejected then killed, or killed just before the vehicle, is not counted. Destructions appear in a regenerated replay
+- **Postures and ground weapons read more accurately** — a sprint or a climb no longer stays open after the player's death, and a ground weapon is more often tied to the player who picks it up
+- **Map backgrounds held by the navigation mesh** — the twenty native maps are cropped to the area that is really playable, the reference floor comes from the game's mesh, and a new "Wall plan" layer draws the walls as vectors between the background and the zones (switch in the "View" panel, on by default, available for 111 backgrounds out of 114). Live Fire has no mesh: its background stays as before
+- **A map you can turn** — an "Orientation" setting in the "View" panel turns the map by quarter turns, clockwise, and remembers it for each map. Tactics and "Terrain occupation" read the same orientation and the same wall plan
+- **Replays at 30 frames per second** — movement is smoother, position, aim and shield included. A replay generated at 10 frames per second is recognised as "to redo" ("stale cadence"): in the Windows app, a banner offers to regenerate it, and nothing starts on its own
+- **Vehicle destructions, completed** — the "destroyed" feed line carries the icon of the weapon that destroyed the vehicle, and the brackets say "(N killed with the vehicle)" when players died with it
+- **The direction of shots** — the direction of each shot follows the shooter's real aim; it was wrong on most shots
+- **Vehicles and on-board aim read more accurately** — vehicle tracks are denser, and the on-board aim no longer has outlier readings
+- **Faster regeneration** — regenerating replays is faster on big matches (about 15 to 25% less time), with no change to what is displayed
+
+**The match view and Lead share**
+- **Two charts in the Timeline tab** — "Score gap" and "Numerical advantage" (players alive, bots included), drawn as areas around zero in the team colours. With more than two teams the comparison is against the best opposing team; without a replay, the card says so
+- **Lead share** — the share of the match time spent alone in the lead of the score, with the number of lead changes. On the match view, in Sessions, Time series (by match, by month, by map) and Squad, for Halo Infinite. A dash replaces the figure when it cannot be worked out, for example in a mode where the score moves too rarely (flag, hill, bomb)
+
+**Compressed replays**
+- **Five times less space** — replays are stored compressed, with identical content: on a local collection, 3.6 GB become 0.75 GB. Older replays stay readable with nothing to do
+- **Compression from the Windows app** — the replay update launched from the app writes them compressed, and also offers to compress the ones that can no longer be rebuilt
+
+**Scores and statistics**
+- **LUSR scores are recalculated on their own at the first start** — nothing to do: a match the calculation could not resolve finally gets a score. As each score depends on the previous ones, most of those in your history move, usually by less than five points
+- **Net FDA in Solo versus Squad and in behaviour alerts** — FDA is read as kills plus a third of assists minus deaths, per match, rather than as a quotient; the formula in Help is corrected in every language, and the losing-streak alert is judged on a drop in FDA points
+- **Behaviour alerts in your language** — eleven sentences written in French by the server now go through the language catalogue
+- **Win probability removed** — an abandoned statistic, removed from the Synergies and Progression tables and from the match detail
+
+**The interface and the Windows app**
+- **A more compact sidebar** — the foot becomes a row of icons, folded it keeps a "More" menu, and a tooltip opens on focus only when the focus comes from the keyboard
+- **A sliding references pane** — maps, weapons and medals open from the side, with a pinned mode
+- **A "Browse" button** in the Windows app settings to choose a folder
+- **Cleaner updates** — the old interface files are removed on update and on uninstall
+- **Link previews in your language** — a link copied from the app carries your language, a bare link shows in English
+- **One sort rule in the tables** — the administration tables, the crossed players of the Career and the Leaderboard sort by the same rule: first click in the column's own direction, then toggling between ascending and descending, missing values always last
+- **Two charts that follow the accessibility palette** — the cumulative frag gap (Honours, Explorer) and the sequence tape change colour as soon as the palette changes, without reloading the page
+
 **v8.1.2 — Every match gets synced, and the Windows app starts syncing on its own**
 
 - **Your whole history is fetched** — a first sync that stopped early (the app closed, a page lost on the way) left the older matches behind for good. The app now keeps going back through your history until it reaches the end, then returns to quick syncs.

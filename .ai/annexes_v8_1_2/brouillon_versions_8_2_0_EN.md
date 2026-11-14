@@ -1,5 +1,7 @@
 # Release notes 8.2.0, EN DRAFT (2026-11-12, updated 2026-11-13)
 
+> MERGED INTO `docs/` ON 2026-11-14 (`RELEASE_NOTES.md` and `CHANGELOG.md`, FR and EN). This draft is no longer authoritative: the texts in `docs/` are the source.
+
 Base: `origin/release/v8.2.0` at `31f91a79e8` (PRs #181 to #206 merged; PR #207 is open, see below).
 Nothing is placed in `docs/`: the two `TestReleaseNotesDocs_*`
 tests require the newest notes block to carry the number of the first versioned changelog entry, so the `v8.2`

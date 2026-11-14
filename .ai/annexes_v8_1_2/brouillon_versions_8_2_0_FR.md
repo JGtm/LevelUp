@@ -1,5 +1,7 @@
 # Notes de version 8.2.0, BROUILLON FR (2026-11-12, mis à jour le 2026-11-13)
 
+> VERSÉ DANS `docs/` LE 2026-11-14 (notes de version `RELEASE_NOTES.md`, changelog `CHANGELOG.md`, FR et EN). Ce brouillon ne fait plus foi : les textes de `docs/` sont la source.
+
 Base : `origin/release/v8.2.0` à `31f91a79e8` (PR #181 à #206 fusionnées ; la PR #207 est ouverte, voir plus bas).
 Rien n'est posé dans `docs/` : les deux tests
 `TestReleaseNotesDocs_*` exigent que le bloc le plus récent des notes porte le numéro de la première entrée

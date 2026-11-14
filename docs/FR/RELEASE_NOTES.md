@@ -1,5 +1,49 @@
 ## Dernières nouveautés
 
+**v8.2 — Un rejeu plus complet, des fonds de carte plus justes, la Mainmise, de nouveaux graphiques de match et des rejeux compressés**
+
+**Le rejeu**
+- **Un fil d'événements qui se filtre** — le titre du fil ouvre un menu : Tout, Éliminations, Objectifs, Armes et bonus, Véhicules, Médailles, Assistances. Les actions d'objectif apparaissent en bandeaux, les armes ramassées au sol entrent dans le fil, et un filtre sans aucune ligne dans le match le dit au lieu de rester vide. Ton choix est mémorisé
+- **Un clic sur une élimination** — la lecture se met en pause à cet instant, et le tueur et la victime sont mis en valeur sur la carte, avec leur nom et l'arme
+- **La zone de l'élimination** — chaque élimination du fil indique la zone de la carte où se tenait le tueur, quand la carte en nomme une
+- **Un bouton « Vue »** — dans le coin de la carte, quatre préréglages de calques (Complet, Combat, Déplacements, Objectif) et un panneau qui regroupe les effets, la chaleur, la couleur des points et le son. Le bouton Réglages de la barre de lecture disparaît
+- **La fiche d'un joueur dans un panneau** — un clic sur une fiche remplace le fil par ses totaux de fin de match (précision, dégâts, détail du score, objectif, armes), avec Suivre, Seul et Masquer. Échap referme le panneau
+- **Le film mieux lu** — les positions sont lues aux bonnes largeurs sur les cartes à plusieurs régions, le type des objets et les capacités du Spartan sont reconnus avec plus de rigueur : un rejeu régénéré gagne en précision
+- **Tourelles fixes, bots et lieux de mort** — une tourelle fixe est reconnue comme telle, des pistes parasites ne s'affichent plus, les bots d'un film sans fil d'éliminations gardent leur nom, et des éliminations qui n'avaient aucun lieu en retrouvent un
+- **Des icônes du jeu pour les grenades et les capacités** — les vignettes du rejeu viennent des planches d'interface du jeu, au trait pour les grenades
+- **Les véhicules détruits** — le fil et son filtre « Véhicules » listent chaque destruction de véhicule (« Ghost détruit », ou « a détruit : Ghost » quand le destructeur est connu), avec entre parenthèses le joueur à bord, ou leur nombre quand ils sont plusieurs. Les joueurs morts avec leur véhicule sont lus dans le film ; un joueur éjecté puis tué, ou tué juste avant le véhicule, n'est pas compté. Les destructions apparaissent dans un rejeu régénéré
+- **Des postures et des armes au sol lues plus justement** — un sprint ou une escalade ne reste plus ouvert après la mort du joueur, et une arme au sol est plus souvent reliée à celui qui la ramasse
+- **Des fonds de carte tenus par le maillage de navigation** — les vingt cartes natives sont recadrées sur la zone réellement jouable, le sol de référence vient du maillage du jeu, et un nouveau calque « Plan des murs » trace les murs en vecteurs entre le fond et les zones (interrupteur dans le panneau « Vue », allumé par défaut, présent pour 111 fonds sur 114). Live Fire n'a pas de maillage : son fond reste celui d'avant
+- **Une carte qu'on tourne** — un réglage « Orientation » du panneau « Vue » fait tourner la carte par quarts de tour, dans le sens horaire, et le retient pour chaque carte. La Tactique et « Occupation du terrain » lisent la même orientation et le même plan des murs
+- **Rejeux à 30 images par seconde** — les mouvements sont plus fluides, position, visée et bouclier compris. Un rejeu généré à 10 images par seconde est reconnu comme « à refaire » (« cadence périmée ») : dans l'application Windows, un bandeau propose de le régénérer, et rien n'est lancé seul
+- **Les destructions de véhicule, complétées** — la ligne « a détruit » du fil porte le pictogramme de l'arme qui a détruit le véhicule, et la parenthèse dit « (N tués avec le véhicule) » quand des joueurs sont morts avec lui
+- **La direction des tirs** — la direction de chaque tir suit la visée réelle du tireur ; elle était fausse sur la plupart des tirs
+- **Véhicules et visée à bord mieux lus** — les trajectoires de véhicule sont plus denses, et la visée à bord n'a plus de lectures aberrantes
+- **Une régénération plus rapide** — la régénération des rejeux est plus rapide sur les gros matchs (environ 15 à 25 % de moins), sans changement de ce qui s'affiche
+
+**La vue du match et la Mainmise**
+- **Deux graphiques dans l'onglet Chronologie** — « Écart de score » et « Supériorité numérique » (joueurs en vie, bots compris), en aires autour de zéro et aux couleurs des équipes. Avec plus de deux équipes, la comparaison se fait contre la meilleure équipe adverse ; sans rejeu, la carte le dit
+- **Mainmise** — la part de la durée du match passée seul en tête du score, avec le nombre de retournements. Sur la vue du match, dans Sessions, Séries temporelles (par match, par mois, par carte) et Escouade, pour Halo Infinite. Un tiret remplace le chiffre quand il ne peut pas être calculé, par exemple dans un mode où le score avance trop rarement (drapeau, colline, bombe)
+
+**Des rejeux compressés**
+- **Cinq fois moins de place** — les rejeux sont rangés compressés, contenu identique : sur un parc local, 3,6 Go deviennent 0,75 Go. Les anciens rejeux restent lisibles sans rien faire
+- **Compression depuis l'application Windows** — la mise à jour des rejeux lancée depuis l'application les écrit compressés, et propose aussi de compresser ceux qui ne peuvent plus être refaits
+
+**Notes et statistiques**
+- **Les notes LUSR sont recalculées seules au premier démarrage** — rien à faire : un match que le calcul ne parvenait pas à résoudre reçoit enfin une note. Comme chaque note dépend des précédentes, la plupart de celles de ton historique bougent, le plus souvent de moins de cinq points
+- **FDA nette dans Solo contre Escouade et dans les alertes de comportement** — la FDA se lit en frags plus un tiers des assistances moins les morts, par match, et non plus en quotient ; la formule de l'Aide est corrigée dans chaque langue, et l'alerte de série de défaites se juge sur une chute de FDA en points
+- **Les alertes de comportement dans ta langue** — onze phrases composées en français par le serveur passent par le catalogue de langues
+- **Probabilité de victoire retirée** — statistique abandonnée, retirée des tableaux Synergies et Progression et du détail d'un match
+
+**L'interface et l'application Windows**
+- **Une barre latérale plus compacte** — le pied devient une rangée d'icônes, replié il garde un menu « Plus », et une infobulle ne s'ouvre au focus que si le focus vient du clavier
+- **Un volet des référentiels qui glisse** — cartes, armes et médailles s'ouvrent par le côté, avec un mode épinglé
+- **Un bouton « Parcourir »** dans les réglages de l'application Windows pour choisir un dossier
+- **Des mises à jour plus propres** — les anciens fichiers de l'interface sont retirés à la mise à jour et à la désinstallation
+- **Des aperçus de liens dans ta langue** — un lien copié depuis l'application porte ta langue, un lien nu s'affiche en anglais
+- **Un même tri dans les tableaux** — les tableaux d'administration, les joueurs croisés de la Carrière et le Classement trient par la même règle : premier clic dans le sens propre à la colonne, bascule ensuite entre croissant et décroissant, valeurs absentes toujours en dernier
+- **Deux graphes qui suivent la palette d'accessibilité** — l'écart cumulé de frags (Palmarès, Explorateur) et la bande des séquences changent de couleur dès que la palette change, sans recharger la page
+
 **v8.1.2 — Tous les matchs se synchronisent, et l'application Windows démarre seule sa synchronisation**
 
 - **Tout ton historique est récupéré** — une première synchronisation arrêtée en route (application fermée, page perdue en chemin) laissait les matchs plus anciens de côté pour de bon. L'application remonte désormais ton historique jusqu'au bout, puis revient aux synchronisations rapides.
