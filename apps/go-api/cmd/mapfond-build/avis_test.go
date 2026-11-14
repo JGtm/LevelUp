@@ -168,3 +168,59 @@ func TestAvisArmeLeRognageSurLesDeuxChaines(t *testing.T) {
 		t.Error("sans avis, une carte native reste rognee")
 	}
 }
+
+// Un avis complementaire apporte ignorer (rien n'est touche) et reprendre (recuite comme les
+// autres, signalee a part) ; nouveau ne change rien ; tout autre etat est refuse.
+func TestAvisComplementaire(t *testing.T) {
+	regle := filepath.Join(t.TempDir(), "regle.json")
+	compl := filepath.Join(filepath.Dir(regle), "compl.json")
+	if err := os.WriteFile(regle, []byte(avisDeTest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	contenu := `{"defaut":"nouveau","exceptions":{"ignoree":{"etat":"ignorer"},"aucune":{"etat":"reprendre"},"x":{"etat":"nouveau"}}}`
+	if err := os.WriteFile(compl, []byte(contenu), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	a, err := chargeAvis(regle, compl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d := a.decide("ignoree"); !d.Ignore || !d.Saute || d.Rogne {
+		t.Errorf("ignorer : %+v", d)
+	}
+	if d := a.decide("aucune"); !d.Reprise || !d.Rogne || d.Saute || d.Mode != himap.ModeSilhouette {
+		t.Errorf("reprendre : %+v", d)
+	}
+	if d := a.decide("x"); d.Etat != etatDefaut || d.Reprise || d.Ignore {
+		t.Errorf("nouveau : %+v", d)
+	}
+	mauvais := filepath.Join(filepath.Dir(regle), "mauvais.json")
+	if err := os.WriteFile(mauvais, []byte(`{"exceptions":{"y":{"etat":"flou"}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := chargeAvis(regle, mauvais); err == nil {
+		t.Error("etat complementaire inconnu accepte")
+	}
+}
+
+// Les deux fichiers d'avis publies se chargent ensemble : Vallaheim Firefight est ignoree, Ardent
+// Prayer et Urban Raid sont a reprendre.
+func TestAvisPubliesEtComplementEnsemble(t *testing.T) {
+	racine, err := testutil.RepoRoot()
+	if err != nil {
+		t.Fatalf("racine du depot introuvable : %v", err)
+	}
+	ref := filepath.Join(racine, "data/titles/halo_infinite/reference")
+	a, err := chargeAvis(filepath.Join(ref, "map_fond_avis_2026-11-13.json"), filepath.Join(ref, "map_fond_avis_lot2_2026-11-14.json"))
+	if err != nil {
+		t.Fatalf("avis publies illisibles : %v", err)
+	}
+	if d := a.decide("e8268e75-6583-42ad-9e0c-2d2f043f5f0f"); !d.Ignore {
+		t.Errorf("Vallaheim Firefight doit etre ignoree : %+v", d)
+	}
+	for _, cle := range []string{"8cf45707-ced1-4722-b736-c139cbf0d1e2", "be848f91-3d87-4b80-8eb9-df3b52cb8d10"} {
+		if d := a.decide(cle); !d.Reprise || d.Saute {
+			t.Errorf("%s doit etre a reprendre : %+v", cle, d)
+		}
+	}
+}

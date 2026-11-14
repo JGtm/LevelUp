@@ -25,6 +25,8 @@ const (
 	// actionPublieRogne : plan seul, et le fond publié rogné à la silhouette du maillage.
 	actionPublieRogne = "publie rogne"
 	actionSautee      = "sautee"
+	// actionIgnoree : l'avis complémentaire demande de laisser la carte entièrement telle qu'elle est.
+	actionIgnoree = "ignoree (existant garde)"
 )
 
 // suiviFond est ce que la recuisson a décidé et mesuré pour une carte.
@@ -76,9 +78,18 @@ func partRognee(b himap.BilanCuisson, img *image.RGBA) *float64 {
 	return &p
 }
 
+// laissee dit si la carte n'a été ni cuite ni réécrite : l'avis la laisse, ou l'ignore.
+func (b bilanAsset) laissee() bool {
+	return b.Suivi.Action == actionSautee || b.Suivi.Action == actionIgnoree
+}
+
 // bilanSaute est le bilan d'une carte que l'avis laisse intacte.
 func bilanSaute(cle string, noms []string, d decisionFond) bilanAsset {
-	return bilanAsset{Cle: cle, Noms: noms, Suivi: suiviFond{Decision: d, Action: actionSautee}}
+	action := actionSautee
+	if d.Ignore {
+		action = actionIgnoree
+	}
+	return bilanAsset{Cle: cle, Noms: noms, Suivi: suiviFond{Decision: d, Action: action}}
 }
 
 // ancresSidecar est ce que le rapport lit des statistiques d'un sidecar.
@@ -104,7 +115,7 @@ func lisSidecarSuivi(dir, cle string) ancresSidecar {
 
 // enteteTSV nomme les colonnes du rapport de recuisson.
 const enteteTSV = "cle\tnom\tetat_avis\taction\tmode\tmarge_m\tcomposantes_gardees\tcomposantes_ecartees\t" +
-	"part_rognee_pct\tancres_sol_avant\tancres_sol_apres\taretes_plan\ta_revoir\tperd_ancres"
+	"part_rognee_pct\tancres_sol_avant\tancres_sol_apres\taretes_plan\ta_revoir\tperd_ancres\treprise\teau_retiree\tcellules_finales\tcellules_sauvees_zones"
 
 // ecritRapportTSV écrit une ligne par carte traitée, triées par clé. `avantDir` porte les sidecars
 // d'avant la recuisson ; vide, les colonnes « avant » restent vides.
@@ -132,6 +143,7 @@ func ligneTSV(b bilanAsset, avantDir string, env *environnement) string {
 	}
 	s := b.Suivi
 	action, mode, marge, gardees, ecartees, part := s.Action, "-", "-", "-", "-", "-"
+	eau, finales, sauvees := "-", "-", "-"
 	switch {
 	case b.Err != nil:
 		action = "ECHEC : " + strings.ReplaceAll(b.Err.Error(), "\t", " ")
@@ -141,6 +153,7 @@ func ligneTSV(b bilanAsset, avantDir string, env *environnement) string {
 			mode, marge = string(nav.Mode), fmt.Sprintf("%g", nav.Marge)
 		}
 		gardees, ecartees = fmt.Sprint(nav.Gardees), fmt.Sprint(nav.Ecartees)
+		eau, finales, sauvees = fmt.Sprint(nav.EauRetiree), fmt.Sprint(nav.CellulesFinales), fmt.Sprint(b.Bilan.CellulesSauveesParPlan)
 	case (s.Action == actionPlanSeul || s.Action == actionPublieRogne) && s.Plan != nil:
 		gardees, ecartees = fmt.Sprint(s.Plan.Retenues.Gardees), fmt.Sprint(s.Plan.Retenues.Ecartees)
 	}
@@ -157,6 +170,7 @@ func ligneTSV(b bilanAsset, avantDir string, env *environnement) string {
 	return strings.Join([]string{
 		b.Cle, nom, s.Decision.Etat, action, mode, marge, gardees, ecartees, part,
 		formatAncres(avant), formatAncres(apres), fmt.Sprint(apres.Aretes), ouiNon(s.Decision.ARevoir), perd,
+		ouiNon(s.Decision.Reprise), eau, finales, sauvees,
 	}, "\t")
 }
 

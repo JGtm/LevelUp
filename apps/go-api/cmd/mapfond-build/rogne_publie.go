@@ -5,15 +5,16 @@ package main
 // C'est le « fond publié croisé avec la silhouette du maillage » : la matière du fond déjà publié
 // qui sort du masque est effacée (alpha 0). Le masque est celui de la cuisson en mode silhouette :
 // les composantes retenues (ancres, matière du fond publié), dilatées de la marge résolue, trous
-// intérieurs remplis. La brique ne rasterise ni ne remplit en dehors d'une cuisson ; la silhouette
-// exacte (trous remplis) est celle de l'image plan (`himap.PlanPNG`), que l'on reprend ici et que
-// l'on dilate : aucun second algorithme de rasterisation.
+// intérieurs remplis. Il se tire du MAILLAGE, pas de l'image plan (dont les trous intérieurs sont du
+// papier) : la brique n'exporte pas la fonction qui le construit, mais l'étape de rognage d'un
+// rendu (`Rendu.EffaceHorsSilhouetteNavmesh`) l'applique ; on lui présente un rendu de la grille du
+// fond dont chaque cellule porte de la matière, et ce qui y reste est le masque. Aucun algorithme
+// n'est recopié.
 
 import (
 	"context"
 	"fmt"
 	"image"
-	"image/color"
 	"log/slog"
 	"math"
 	"path/filepath"
@@ -23,11 +24,9 @@ import (
 	"levelup/go-api/internal/mapfondsidecar"
 
 	"github.com/JGtm/halo-infinite-map-images/himap"
-)
 
-// papierPlan est la teinte de fond de `himap.PlanPNG` (pixel hors silhouette) ; un test garde
-// qu'elle est toujours celle de la brique.
-var papierPlan = color.RGBA{R: 245, G: 245, B: 242, A: 255}
+	"github.com/JGtm/halo-infinite-files-reader/hinavmesh"
+)
 
 // marqueRogne est le texte que `-rogne-publie` ajoute à `source` : il sert aussi à ne pas rogner deux fois.
 const marqueRogne = "fond publie rogne a la silhouette du maillage"
@@ -47,42 +46,35 @@ func (r rognagePublie) part() float64 {
 	return float64(r.Retire) / float64(r.Avant)
 }
 
-// masqueSilhouette rend le masque (indice py*largeur + px) des pixels du plan hors papier, dilatés
-// de `rayon` pixels : la silhouette des composantes retenues, trous remplis, élargie de la marge.
-func masqueSilhouette(plan *image.RGBA, rayon int) []bool {
-	b := plan.Bounds()
-	nx, ny := b.Dx(), b.Dy()
-	base := make([]bool, nx*ny)
-	for py := 0; py < ny; py++ {
-		for px := 0; px < nx; px++ {
-			o := plan.PixOffset(b.Min.X+px, b.Min.Y+py)
-			base[py*nx+px] = color.RGBA{R: plan.Pix[o], G: plan.Pix[o+1], B: plan.Pix[o+2], A: plan.Pix[o+3]} != papierPlan
+// masqueSilhouetteDuMaillage rend le masque (indice py*largeur + px, py vers le bas) que la
+// cuisson applique au rognage final : les faces `garde` du maillage, dilatées de `marge` mètres,
+// trous intérieurs remplis. La grille est celle du fond (`cal`) ; une erreur dit qu'elle ne se
+// laisse pas représenter par un rendu de la brique (le masque serait décalé).
+func masqueSilhouetteDuMaillage(m *hinavmesh.Maillage, garde []bool, cal himap.CalageFond, marge float64) ([]bool, error) {
+	c := cal.MetresParPixel
+	bas := cal.OrigineY - float64(cal.Hauteur)*c
+	min := [2]float64{cal.OrigineX, bas}
+	// NewRendu compte int((max-min)/cell)+1 cellules : une demi-cellule de moins que le fond y tombe.
+	r := himap.NewRendu(min, [2]float64{cal.OrigineX + (float64(cal.Largeur)-0.5)*c, bas + (float64(cal.Hauteur)-0.5)*c}, c)
+	if r.NX != cal.Largeur || r.NY != cal.Hauteur {
+		return nil, fmt.Errorf("grille du rendu %dx%d, fond %dx%d", r.NX, r.NY, cal.Largeur, cal.Hauteur)
+	}
+	// Deux triangles à plat couvrent tout le cadre : chaque cellule porte de la matière.
+	x0, x1, y0, y1 := min[0]-2*c, min[0]+float64(cal.Largeur+2)*c, bas-2*c, bas+float64(cal.Hauteur+2)*c
+	r.AddMesh(&himap.Mesh{
+		Vertices:  [][3]float64{{x0, y0, 0}, {x1, y0, 0}, {x1, y1, 0}, {x0, y1, 0}},
+		Triangles: [][3]int{{0, 1, 2}, {0, 2, 3}},
+	}, himap.Instance{Scale: [3]float64{1, 1, 1}, Forward: [3]float64{1, 0, 0}, Left: [3]float64{0, 1, 0}, Up: [3]float64{0, 0, 1}})
+	r.ArmeReferenceDepuisNavmesh(m, garde, false)
+	r.EffaceHorsSilhouetteNavmesh(marge)
+	masque := make([]bool, cal.Largeur*cal.Hauteur)
+	for py := 0; py < cal.Hauteur; py++ {
+		for px := 0; px < cal.Largeur; px++ {
+			_, matiere := r.Altitude(px, cal.Hauteur-1-py)
+			masque[py*cal.Largeur+px] = matiere
 		}
 	}
-	if rayon <= 0 {
-		return base
-	}
-	return dilate(dilate(base, nx, ny, rayon, true), nx, ny, rayon, false)
-}
-
-// dilate élargit un masque de `rayon` pixels le long des lignes (`enX`) ou des colonnes : deux
-// passes donnent la dilatation carrée de la brique.
-func dilate(base []bool, nx, ny, rayon int, enX bool) []bool {
-	out := make([]bool, len(base))
-	for py := 0; py < ny; py++ {
-		for px := 0; px < nx; px++ {
-			for d := -rayon; d <= rayon && !out[py*nx+px]; d++ {
-				x, y := px, py+d
-				if enX {
-					x, y = px+d, py
-				}
-				if x >= 0 && x < nx && y >= 0 && y < ny && base[y*nx+x] {
-					out[py*nx+px] = true
-				}
-			}
-		}
-	}
-	return out
+	return masque, nil
 }
 
 // effaceHorsMasque met à zéro les pixels de matière hors du masque et rend leur nombre.
@@ -153,10 +145,13 @@ func (e *environnement) rognePublieA(ctx context.Context, c carteDuPlan, fond *i
 	if marge <= 0 {
 		marge = himap.MargeNavmesh
 	}
-	rayon := int(marge/cal.MetresParPixel + 0.5)
+	masque, err := masqueSilhouetteDuMaillage(c.maillage, pf.Retenues.Garde, cal, marge)
+	if err != nil {
+		return rognagePublie{}, false, err
+	}
 	r := rognagePublie{Marge: marge, Avant: compteMatiere(fond)}
 	r.AncresAvant = ancresAvecMatiere(fond, cal, c.ancres, himap.RayonAncreComposante)
-	r.Retire = effaceHorsMasque(fond, masqueSilhouette(pf.Image, rayon))
+	r.Retire = effaceHorsMasque(fond, masque)
 	r.AncresApres = ancresAvecMatiere(fond, cal, c.ancres, himap.RayonAncreComposante)
 	return r, true, nil
 }

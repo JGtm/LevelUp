@@ -46,17 +46,31 @@ func (e *environnement) ajoutePlans(ctx context.Context) bilanPlanSeul {
 	var b bilanPlanSeul
 	if !e.sansForge {
 		for _, carte := range himap.CartesForge {
-			if e.retenue(carte.MapID) {
+			if e.retenue(carte.MapID) && !e.ignoree(ctx, carte.MapID, []string{carte.Nom}, &b) {
 				e.ajoutePlanForge(ctx, carte, &b)
 			}
 		}
 	}
 	if !e.sansNatives {
 		for _, c := range e.ciblesNatives() {
-			e.ajoutePlanNatif(ctx, c, &b)
+			if !e.ignoree(ctx, c.cle, c.noms, &b) {
+				e.ajoutePlanNatif(ctx, c, &b)
+			}
 		}
 	}
 	return b
+}
+
+// ignoree dit si l'avis demande de laisser la carte entièrement telle qu'elle est (ni fond ni
+// plan) et, dans ce cas, la note au rapport.
+func (e *environnement) ignoree(ctx context.Context, cle string, noms []string, b *bilanPlanSeul) bool {
+	d := e.decisionFond(cle)
+	if !d.Ignore {
+		return false
+	}
+	slog.InfoContext(ctx, "mapfond: carte ignoree par l'avis, rien n'est recalcule", "carte", cle)
+	b.Bilans = append(b.Bilans, bilanSaute(cle, noms, d))
+	return true
 }
 
 // ajoutePlanForge refait le plan d'une carte Forge.

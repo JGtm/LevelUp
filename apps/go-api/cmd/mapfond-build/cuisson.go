@@ -279,8 +279,8 @@ func ecritRapport(chemin string, bilans []bilanAsset, env *environnement) error 
 	fmt.Fprintln(&sb, "| carte | noms | px | Ko | ancres avec sol | matiere | frontiere | eau | toits | degradations |")
 	fmt.Fprintln(&sb, "|---|---|---|---:|---|---|---|---:|---|---|")
 	for _, b := range bilans {
-		if b.Suivi.Action == actionSautee {
-			fmt.Fprintf(&sb, "| `%s` | %s | SAUTEE (%s) | | | | | | | |\n",
+		if b.laissee() {
+			fmt.Fprintf(&sb, "| `%s` | %s | LAISSEE (%s) | | | | | | | |\n",
 				b.Cle, strings.Join(b.Noms, ", "), b.Suivi.Decision.Etat)
 			continue
 		}

@@ -6,6 +6,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -23,6 +24,13 @@ const (
 	etatSansMaillage = "sans_maillage"
 	etatDefaut       = "defaut"
 	etatReglage      = "reglage"
+
+	// États d'un fichier d'avis complémentaire : ignorer laisse la carte entièrement telle qu'elle
+	// est (ni fond ni plan recalculés), reprendre la recuit comme les autres et la signale à part,
+	// nouveau valide le résultat (rien à faire).
+	etatIgnorer   = "ignorer"
+	etatReprendre = "reprendre"
+	etatNouveau   = "nouveau"
 )
 
 // avisFond est le contenu du fichier d'avis. Les champs non lus (`definitions`, `note`, `date`)
@@ -33,6 +41,7 @@ type avisFond struct {
 	SansMaillage []string             `json:"sans_maillage"`
 	Exceptions   map[string]avisCarte `json:"exceptions"`
 	index        map[string]string    // cle -> etat dérivé des deux listes
+	complement   map[string]string    // cle -> ignorer ou reprendre, des fichiers d avis complementaires
 }
 
 // avisCarte est l'avis d'une carte qui s'écarte du défaut ou porte un commentaire.
@@ -52,21 +61,25 @@ type decisionFond struct {
 	Rogne bool
 	// Mode : forme du masque de rognage.
 	Mode himap.ModeNavmesh
+	// Ignore : la carte n'est touchée en rien, pas même son plan (avis `ignorer`).
+	Ignore bool
+	// Reprise : l'avis complémentaire demande de la reprendre ; le rapport la liste à part.
+	Reprise bool
 	// ARevoir : la carte est cuite faute d'avis exploitable ; le rapport et la planche la marquent.
 	ARevoir bool
 }
 
 // chargeAvis lit le fichier d'avis et refuse un défaut ou un état qu'il ne sait pas traduire :
 // une carte cuite dans un mode que le fichier ne demandait pas passerait le gate sous une fausse
-// identité.
-func chargeAvis(chemin string) (*avisFond, error) {
-	blob, err := os.ReadFile(chemin) //nolint:gosec // donnée versionnée passée en argument
-	if err != nil {
-		return nil, fmt.Errorf("fichier d'avis illisible : %w", err)
+// identité. Le premier fichier donne la règle ; chacun des suivants (avis complémentaires)
+// n'apporte que des états `ignorer`, `reprendre` ou `nouveau` par carte.
+func chargeAvis(chemins ...string) (*avisFond, error) {
+	if len(chemins) == 0 {
+		return nil, errors.New("aucun fichier d'avis")
 	}
-	var a avisFond
-	if err := json.Unmarshal(blob, &a); err != nil {
-		return nil, fmt.Errorf("fichier d'avis invalide (%s) : %w", chemin, err)
+	a, err := lisAvis(chemins[0])
+	if err != nil {
+		return nil, err
 	}
 	if !etatTraduisible(a.Defaut) || a.Defaut == "" || a.Defaut == etatAucune {
 		return nil, fmt.Errorf("fichier d'avis : défaut %q inconnu (silhouette, faces ou publie)", a.Defaut)
@@ -82,6 +95,35 @@ func chargeAvis(chemin string) (*avisFond, error) {
 	}
 	for _, cle := range a.SansMaillage {
 		a.index[cle] = etatSansMaillage
+	}
+	a.complement = map[string]string{}
+	for _, chemin := range chemins[1:] {
+		c, err := lisAvis(chemin)
+		if err != nil {
+			return nil, err
+		}
+		for cle, exc := range c.Exceptions {
+			switch exc.Etat {
+			case etatIgnorer, etatReprendre:
+				a.complement[cle] = exc.Etat
+			case etatNouveau:
+			default:
+				return nil, fmt.Errorf("avis complémentaire %s : état %q inconnu pour %q (ignorer, reprendre ou nouveau)", chemin, exc.Etat, cle)
+			}
+		}
+	}
+	return a, nil
+}
+
+// lisAvis lit un fichier d'avis sans le valider.
+func lisAvis(chemin string) (*avisFond, error) {
+	blob, err := os.ReadFile(chemin) //nolint:gosec // donnée versionnée passée en argument
+	if err != nil {
+		return nil, fmt.Errorf("fichier d'avis illisible : %w", err)
+	}
+	var a avisFond
+	if err := json.Unmarshal(blob, &a); err != nil {
+		return nil, fmt.Errorf("fichier d'avis invalide (%s) : %w", chemin, err)
 	}
 	return &a, nil
 }
@@ -103,6 +145,12 @@ func etatTraduisible(etat string) bool {
 // recuite en silhouette et marquée à revoir ; `sans_avis` = silhouette, à revoir ;
 // `sans_maillage` = rien à faire.
 func (a *avisFond) decide(cle string) decisionFond {
+	switch a.complement[cle] {
+	case etatIgnorer:
+		return decisionFond{Etat: etatIgnorer, Saute: true, Ignore: true}
+	case etatReprendre:
+		return decisionFond{Etat: etatReprendre, Rogne: true, Mode: himap.ModeSilhouette, ARevoir: true, Reprise: true}
+	}
 	if etat, ok := a.index[cle]; ok {
 		if etat == etatSansMaillage {
 			return decisionFond{Etat: etat, Saute: true}

@@ -66,7 +66,7 @@ func main() {
 	forge := flag.Bool("forge", true, "cuire les cartes Forge (posées depuis leur .mvar)")
 	planSeul := flag.Bool("plan-seul", false, "refait le plan des murs et l'image plan des sidecars publies, depuis leur maillage de navigation, sans recuire")
 	roguePublie := flag.Bool("rogne-publie", false, "avec -plan-seul et -avis : rogne aussi le fond publie a la silhouette du maillage, sans recuire (cartes dont l'avis est silhouette)")
-	avis := flag.String("avis", "", "fichier d'avis du user (forme du rognage au maillage par carte) ; vide = comportement d'avant")
+	avis := flag.String("avis", "", "fichier(s) d'avis du user, separes par des virgules : le premier donne la regle (forme du rognage au maillage par carte), les suivants ignorer / reprendre ; vide = comportement d'avant")
 	rapports := rapportsDemandes{}
 	flag.StringVar(&rapports.tsv, "rapport-tsv", "", "ecrit le rapport de recuisson en TSV a ce chemin")
 	flag.StringVar(&rapports.avantDir, "avant-dir", "", "dossier des sidecars d'avant la recuisson (colonne « ancres avant » du rapport TSV)")
@@ -92,7 +92,7 @@ func main() {
 		os.Exit(1)
 	}
 	if *avis != "" {
-		if env.avis, err = chargeAvis(*avis); err != nil {
+		if env.avis, err = chargeAvis(strings.Split(*avis, ",")...); err != nil {
 			slog.ErrorContext(ctx, "avis", "err", err, "path", *avis)
 			os.Exit(1)
 		}
@@ -289,7 +289,7 @@ func resume(ctx context.Context, bilans []bilanAsset, env *environnement) int {
 	var octets int64
 	for _, b := range bilans {
 		switch {
-		case b.Suivi.Action == actionSautee:
+		case b.laissee():
 			sautees++
 			continue
 		case b.NonCuisinable:

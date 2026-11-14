@@ -15,48 +15,55 @@ import (
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 	"github.com/JGtm/halo-infinite-map-images/himap"
+
+	"github.com/JGtm/halo-infinite-files-reader/hinavmesh"
 )
 
-// papierPlan doit rester la teinte de fond de himap.PlanPNG : le masque en dépend. Un pixel que
-// le plan ne couvre pas, loin de toute face, est du papier.
-func TestPapierPlanEstCeluiDeLaBrique(t *testing.T) {
-	cadre := himap.CalageFond{OrigineX: -5, OrigineY: 5, MetresParPixel: 0.1, Largeur: 100, Hauteur: 100}
-	img, err := himap.PlanPNG(maillageCarre(), nil, cadre)
+// anneau : un carre de 10 m percé d'un trou de 2 m en son centre, en quatre faces.
+func anneau() *hinavmesh.Maillage {
+	m := &hinavmesh.Maillage{}
+	for _, r := range [][4]float64{{0, 0, 10, 4}, {0, 6, 10, 10}, {0, 4, 4, 6}, {6, 4, 10, 6}} {
+		base := int32(len(m.Sommets))
+		m.Sommets = append(m.Sommets, hinavmesh.Point{X: r[0], Y: r[1]}, hinavmesh.Point{X: r[2], Y: r[1]},
+			hinavmesh.Point{X: r[2], Y: r[3]}, hinavmesh.Point{X: r[0], Y: r[3]})
+		m.Faces = append(m.Faces, hinavmesh.Face{Sommets: []int32{base, base + 1, base + 2, base + 3}})
+	}
+	return m
+}
+
+// Le masque vient du maillage : composantes gardees, marge resolue, trous interieurs remplis,
+// dans la grille du fond (py vers le bas). Un trou de l'anneau est dans le masque (le rocher
+// qui s'y dresse reste dessine) ; la marge de 1 m s'arrete a 1 m ; le nord du monde est en haut.
+func TestMasqueSilhouetteDuMaillageRempliLesTrousEtSuitLeCalage(t *testing.T) {
+	cal := himap.CalageFond{OrigineX: -2, OrigineY: 12, MetresParPixel: 0.5, Largeur: 28, Hauteur: 28}
+	masque, err := masqueSilhouetteDuMaillage(anneau(), nil, cal, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := img.RGBAAt(99, 99); got != papierPlan {
-		t.Fatalf("pixel hors silhouette = %v, attendu le papier %v", got, papierPlan)
+	dans := func(x, y float64) bool {
+		px, py := int((x-cal.OrigineX)/cal.MetresParPixel), int((cal.OrigineY-y)/cal.MetresParPixel)
+		return masque[py*cal.Largeur+px]
 	}
-	if got := img.RGBAAt(55, 45); got == papierPlan { // centre du carre (0,5 ; 0,5)
-		t.Fatal("le centre de la face est reste du papier")
-	}
-}
-
-func TestMasqueSilhouetteDilateEtRempliLesTrous(t *testing.T) {
-	plan := image.NewRGBA(image.Rect(0, 0, 20, 20))
-	for i := 0; i < len(plan.Pix); i += 4 {
-		plan.Pix[i], plan.Pix[i+1], plan.Pix[i+2], plan.Pix[i+3] = papierPlan.R, papierPlan.G, papierPlan.B, papierPlan.A
-	}
-	plan.SetRGBA(10, 10, color.RGBA{R: 1, A: 255})
-	m := masqueSilhouette(plan, 0)
-	n := 0
-	for _, v := range m {
-		if v {
-			n++
+	for nom, c := range map[string]struct {
+		x, y float64
+		want bool
+	}{
+		"centre du trou": {5, 5, true}, "face": {2, 2, true}, "marge": {-0.75, 5, true},
+		"hors marge": {-1.75, 5, false}, "loin": {11.9, 11.9, false}, "au nord": {5, 10.75, true}, "au nord hors marge": {5, 11.75, false},
+	} {
+		if got := dans(c.x, c.y); got != c.want {
+			t.Errorf("%s (%g, %g) : %v, attendu %v", nom, c.x, c.y, got, c.want)
 		}
 	}
-	if n != 1 {
-		t.Errorf("sans marge : %d pixels, attendu 1", n)
+	// Un maillage reduit aux faces gardees : le masque ne couvre pas les faces ecartees.
+	garde := []bool{true, false, false, false}
+	m2, err := masqueSilhouetteDuMaillage(anneau(), garde, cal, 0)
+	if err != nil {
+		t.Fatal(err)
 	}
-	m = masqueSilhouette(plan, 2)
-	for _, p := range [][2]int{{8, 8}, {12, 12}, {10, 12}} {
-		if !m[p[1]*20+p[0]] {
-			t.Errorf("pixel %v non dilate", p)
-		}
-	}
-	if m[13*20+10] || m[10*20+7] {
-		t.Error("dilatation au-dela du rayon")
+	if m2[int((cal.OrigineY-2)/cal.MetresParPixel)*cal.Largeur+int((2-cal.OrigineX)/cal.MetresParPixel)] != true ||
+		m2[int((cal.OrigineY-8)/cal.MetresParPixel)*cal.Largeur+int((2-cal.OrigineX)/cal.MetresParPixel)] {
+		t.Error("le masque ne suit pas les faces gardees")
 	}
 }
 
