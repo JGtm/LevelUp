@@ -25,6 +25,7 @@ import {
   legendEntries,
 } from '@/components/charts/_utils'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
+import { displayRatingLabel } from '@/lib/formatters/rating'
 
 import {
   halfAmplitude,
@@ -79,7 +80,8 @@ export function rankStripsHeight(strips: number): number {
 
 const stripTop = (i: number) => TOP + i * (STRIP_HEIGHT + STRIP_GAP)
 
-const kindLabel = (k: RankKind) => (k === 'csr' ? 'CSR' : 'LUSR')
+/** Libellé de la méthode de note : la normalisation canonique (CSR tel quel, toute la famille LUSR en « LUSR »). */
+const kindLabel = (k: RankKind) => displayRatingLabel(k) ?? k
 const oneLine = (label: string) => label.replace(/\n/g, ' · ')
 
 interface PointDatum {
