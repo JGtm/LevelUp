@@ -13,13 +13,17 @@ export type RegenPhase =
   | 'compressing' // fin de passe : compression des rejeux bruts que la file n'a pas pu refaire
   | 'paused'
   | 'waitingGame'
+  | 'compressionPaused' // la pause demandée retient la compression, pas une refonte
+  | 'compressionWaitingGame' // la partie en cours retient la compression, pas une refonte
 
 export function regenPhase(status: ReplayRegenStatus | undefined): RegenPhase {
   if (!status) return 'checking'
   if (status.running) {
     if (status.total === 0 && !status.compressing) return 'preparing'
-    if (status.paused) return 'paused'
-    if (status.waiting_for_game) return 'waitingGame'
+    // La compression passe par la même porte que la refonte (pause, partie en cours) : quand elle tourne, c'est
+    // elle qui attend, même si total vaut 0.
+    if (status.paused) return status.compressing ? 'compressionPaused' : 'paused'
+    if (status.waiting_for_game) return status.compressing ? 'compressionWaitingGame' : 'waitingGame'
     return status.compressing ? 'compressing' : 'running'
   }
   if (!status.checked) return 'checking'
@@ -33,7 +37,9 @@ export function regenPhaseActive(phase: RegenPhase): boolean {
     phase === 'running' ||
     phase === 'compressing' ||
     phase === 'paused' ||
-    phase === 'waitingGame'
+    phase === 'waitingGame' ||
+    phase === 'compressionPaused' ||
+    phase === 'compressionWaitingGame'
   )
 }
 

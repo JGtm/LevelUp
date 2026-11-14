@@ -46,6 +46,10 @@ function phaseLine(t: ReplayRegenText, phase: RegenPhase, s: ReplayRegenStatus |
       return fill(t.paused, { done, total })
     case 'waitingGame':
       return fill(t.waitingGame, { done, total })
+    case 'compressionPaused':
+      return t.compressionPaused
+    case 'compressionWaitingGame':
+      return t.compressionWaitingGame
   }
 }
 
@@ -84,12 +88,15 @@ export function ReplayRegenPanel({ status, variant, onLater }: PanelProps) {
               {t.later}
             </Button>
           )}
-          {(phase === 'running' || phase === 'compressing' || phase === 'waitingGame') && (
+          {(phase === 'running' ||
+            phase === 'compressing' ||
+            phase === 'waitingGame' ||
+            phase === 'compressionWaitingGame') && (
             <Button size="sm" variant="outline" disabled={command.isPending} onClick={() => command.mutate('pause')}>
               {t.pause}
             </Button>
           )}
-          {phase === 'paused' && (
+          {(phase === 'paused' || phase === 'compressionPaused') && (
             <Button size="sm" disabled={command.isPending} onClick={() => command.mutate('resume')}>
               {t.resume}
             </Button>

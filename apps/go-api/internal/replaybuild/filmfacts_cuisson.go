@@ -93,6 +93,9 @@ type entreesDeCuisson struct {
 	statborg replay.FilmStatborg
 	deaths   filmDeaths
 	kills    *decfilm.Result
+	// contexte : le contexte de film du décodage de la source de dégât, quand il a abouti sur le
+	// chemin du film ([Builder.decodeKillSource]). nil sur le chemin des faits.
+	contexte *decfilm.FilmContext
 }
 
 // entreesDeLaCuisson resout la bascule et rend les entrees de la branche retenue.
@@ -121,9 +124,9 @@ func (b *Builder) entreesDeLaCuisson(ctx context.Context, matchID, filmDir strin
 	// cuisson du rejeu — au lieu de deux, comme avant la jointure des frags sous effet actif
 	// (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1).
 	tKS := time.Now()
-	kills := b.decodeKillSource(ctx, matchID, entry, film)
+	kills, contexte := b.decodeKillSource(ctx, matchID, entry, film)
 	logPhase(ctx, "killsource", matchID, tKS)
-	return entreesDeCuisson{film: film, statborg: statborg, deaths: deaths, kills: kills}, nil
+	return entreesDeCuisson{film: film, statborg: statborg, deaths: deaths, kills: kills, contexte: contexte}, nil
 }
 
 // chargerLeFilmDeLaCuisson charge le film SOUS SES GARDES : manifeste finalise, morceaux decrits,

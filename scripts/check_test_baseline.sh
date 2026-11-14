@@ -36,6 +36,17 @@
 # `backfill-world-player-stats`, `backfill_bp_items` (28), sondeur Steam de `presence` (4),
 # `openspartan.IsOpenSpartanDB` (2), `domain/chart` (2), `games.ProvidesNativeKDA` (1), `logging.InstallCLI` (1).
 #
+# RELOCALISATION DU 2026-11-14 (plan architecture, étapes 4.2, 5.7 et 5.8 réinscrites) : 49 paires (Package, Test), 282
+# lignes JSONL, réinscrites sous leur nouveau paquet ; les retraits des trois étapes les avaient sorties de la baseline
+# alors qu'elles tournent toujours, sous le même nom. 4.2 : 13 paires de `internal/api/handlers` vers `internal/service`
+# (TestBuildSyncScope_*, TestNewPooledEngine_*, TestTryManualSyncCooldown{,_Disabled}). 5.7 : 29 paires de
+# `internal/analysis` vers `internal/platform/duckdb/sqlfrag` (TestBuildNeighborsWhereClause_* et leurs sous-tests,
+# TestBotSQLCase_*, TestSQLFragments_StableStrings et ses sous-tests). 5.8 : 7 paires de `internal/config` vers
+# `internal/playerresolve` (TestBuildPoolConfig_*, TestResolveDemoPlayer_*, TestSharedReaderForTitle_*). Lignes reprises à
+# l'identique de la baseline d'origine, seul le champ Package change ; vérifié par un run `-tags=integration` de
+# chaque paquet de destination (aucun échec, les 49 paires y figurent) et par différence des paires avant/après
+# (49 ajoutées, 0 perdue). Les sous-tests renommés par l'anonymisation des identités ne sont pas réinscrits.
+#
 # RENOMMAGE DU 2026-11-03 (lot Desktop L22b, revue U1) : `sync/replayartifacts` :
 # `TestBuildAll_VerrouTenuAilleurs_CompteEnEchec` devient `TestBuildAll_VerrouTenuAilleurs_ReporteSansEchec`,
 # parce que le contrat a changé : un verrou de décodage tenu ailleurs REPORTE le match au cycle suivant

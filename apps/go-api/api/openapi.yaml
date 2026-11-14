@@ -17973,6 +17973,8 @@ components:
     LayerCoverage:
       additionalProperties: false
       properties:
+        aim:
+          $ref: '#/components/schemas/ShotAimCoverage'
         ambiguous:
           format: int64
           type: integer
@@ -27185,6 +27187,9 @@ components:
         h:
           format: float
           type: number
+        p:
+          format: float
+          type: number
         slot:
           format: int32
           minimum: 0
@@ -27209,6 +27214,27 @@ components:
         - slot
         - x
         - "y"
+      type: object
+    ShotAimCoverage:
+      additionalProperties: false
+      properties:
+        none:
+          format: int64
+          type: integer
+        record:
+          format: int64
+          type: integer
+        sameTick:
+          format: int64
+          type: integer
+        track:
+          format: int64
+          type: integer
+      required:
+        - track
+        - sameTick
+        - record
+        - none
       type: object
     SkillRatingSnapshot:
       additionalProperties: false

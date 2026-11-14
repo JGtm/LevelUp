@@ -31,7 +31,13 @@ import (
 // balayages. `film` nil (chunks illisibles, déjà journalisé par `chargerFilm`) n'est plus une
 // lecture ratée ici mais un refus en amont — `decfilm.Decode` rend alors `ErrNoChunk`, et le
 // journal en Info ci-dessous reste la SEULE trace côté cuisson, au même niveau qu'avant.
-func (b *Builder) decodeKillSource(ctx context.Context, matchID string, entry decfilm.MapQuantEntry, film *decfilm.Film) *decfilm.Result {
+//
+// IL REND AUSSI LE CONTEXTE DE FILM sous lequel le décodage a marché les trames quand il a abouti : la
+// cuisson du rejeu le reprend (`replay.Options.Contexte`) et relit la marche qu'il garde au lieu de
+// remarcher le film. nil quand le décodage est refusé : la cuisson ouvre alors son propre contexte,
+// sous le profil de départ.
+func (b *Builder) decodeKillSource(ctx context.Context, matchID string, entry decfilm.MapQuantEntry,
+	film *decfilm.Film) (*decfilm.Result, *decfilm.FilmContext) {
 	opts := decfilm.DefaultOptions()
 	// LA CARTE DU MATCH DESCEND DANS LE DECODAGE DES MORTS (lot 3.4.1). Les largeurs d'axe du
 	// chemin absolu de position sont une constante PAR CARTE ; jusqu'à ce lot `killsource` les
@@ -45,6 +51,9 @@ func (b *Builder) decodeKillSource(ctx context.Context, matchID string, entry de
 	// branche « largeurs par défaut », ont disparu avec le repli — « le flux du film est la seule
 	// source fiable. Pas de repli. »
 	opts.Carte = &entry
+	if film != nil {
+		opts.Contexte = decfilm.NewFilmContextForMap(film, &entry, nil)
+	}
 	res, err := decfilm.Decode(ctx, matchID, film, &opts)
 	if res != nil {
 		replay.JournaliserDiagnostics(ctx, res.Diagnostics) // lot J12.3, ADR 0034 D-4
@@ -52,9 +61,9 @@ func (b *Builder) decodeKillSource(ctx context.Context, matchID string, entry de
 	if err != nil {
 		slog.InfoContext(ctx, "replaybuild: source de dégât non décodée — morts neutres et frags sous effet non décodés",
 			"err", err, "match_id", matchID)
-		return botsSansKillFeed(ctx, matchID, film, err)
+		return botsSansKillFeed(ctx, matchID, film, err), nil
 	}
-	return res
+	return res, opts.Contexte
 }
 
 // botsSansKillFeed rend le résultat minimal d'un film que le décodage refuse faute de kill-feed : le

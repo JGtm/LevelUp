@@ -74,7 +74,7 @@ func TestBotsDesFixturesDuRejeuRegenerate(t *testing.T) {
 		if err != nil || !ok {
 			t.Fatalf("%s : film absent du cache %s : %v", id, cache, err)
 		}
-		res := b.decodeKillSource(ctx, id, carte, film)
+		res, _ := b.decodeKillSource(ctx, id, carte, film)
 		if res == nil {
 			t.Fatalf("%s : kill-feed non decode", id)
 		}

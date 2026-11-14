@@ -20,6 +20,9 @@ export interface ReplayRegenText {
   running: string
   paused: string
   waitingGame: string
+  /** Pause et attente de partie pendant la compression des rejeux bruts. */
+  compressionPaused: string
+  compressionWaitingGame: string
   /** Offre quand il ne reste que des rejeux bruts (aucun à refaire) : gabarit {count}. */
   rawOne: string
   rawMany: string
@@ -59,6 +62,8 @@ export const REPLAY_REGEN_TEXT: Record<Locale, ReplayRegenText> = {
     running: 'Régénération des rejeux : {done} sur {total}.',
     paused: 'Régénération en pause : {done} sur {total}.',
     waitingGame: 'En attente de la fin de la partie : {done} sur {total}.',
+    compressionPaused: 'Compression des rejeux en pause.',
+    compressionWaitingGame: 'Compression des rejeux en attente de la fin de la partie.',
     rawOne: '1 rejeu à compresser pour libérer de la place sur le disque.',
     rawMany: '{count} rejeux à compresser pour libérer de la place sur le disque.',
     rawHint:
@@ -92,6 +97,8 @@ export const REPLAY_REGEN_TEXT: Record<Locale, ReplayRegenText> = {
     running: 'Regenerating replays: {done} of {total}.',
     paused: 'Regeneration paused: {done} of {total}.',
     waitingGame: 'Waiting for the game to end: {done} of {total}.',
+    compressionPaused: 'Replay compression paused.',
+    compressionWaitingGame: 'Replay compression waiting for the game to end.',
     rawOne: '1 replay to compress to free up disk space.',
     rawMany: '{count} replays to compress to free up disk space.',
     rawHint:

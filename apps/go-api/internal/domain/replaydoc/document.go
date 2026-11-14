@@ -184,11 +184,13 @@ type PresenceInterval struct {
 
 // Shot est un tir décodé, placé à la position de son tireur.
 type Shot struct {
-	T       int     `json:"t"`
-	Slot    uint32  `json:"slot"`
-	X       float32 `json:"x"`
-	Y       float32 `json:"y"`
-	H       float32 `json:"h,omitempty"`
+	T    int     `json:"t"`
+	Slot uint32  `json:"slot"`
+	X    float32 `json:"x"`
+	Y    float32 `json:"y"`
+	H    float32 `json:"h,omitempty"`
+	// P : l'élévation du tir, en degrés (visée du tireur à l'instant du tir).
+	P       float32 `json:"p,omitempty"`
 	Weapon  string  `json:"w,omitempty"`
 	Vehicle *uint32 `json:"v,omitempty"`
 }

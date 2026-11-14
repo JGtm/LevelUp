@@ -83,7 +83,17 @@ func toLayerCoverage(v replay.LayerCoverage) replaydoc.LayerCoverage {
 		RefusedByRoster: v.RefusedByRoster,
 		ByUnit:          v.ByUnit,
 		UnitOtherIndex:  v.UnitOtherIndex,
+		Aim:             toShotAimCoverage(v),
 	}
+}
+
+// toShotAimCoverage recopie la source de la direction des tirs d'une couverture de calque.
+func toShotAimCoverage(v replay.LayerCoverage) *replaydoc.ShotAimCoverage {
+	a := v.Aim
+	if a == nil {
+		return nil
+	}
+	return &replaydoc.ShotAimCoverage{Track: a.Track, SameTick: a.SameTick, Record: a.Record, None: a.None}
 }
 
 func toTrackCoverage(v replay.TrackCoverage) replaydoc.TrackCoverage {

@@ -40,6 +40,15 @@ vi.mock('@/lib/api/client', () => ({
 // producteur voyage en en-tete X-Replay-Latest-Schema-Version), plus par `get`.
 const apiGet = vi.mocked(api.getWithHeaders)
 
+/**
+ * Ce que le vrai client rend : une entrée par nom demandé, `null` quand l'en-tête manque (jamais une clé
+ * absente, qui ferait `Number(undefined)` = NaN pour la version courante).
+ */
+const ENTETES_DU_SERVEUR: Record<string, string | null> = {
+  'X-Replay-Latest-Schema-Version': String(goFixtureSchemaVersion()),
+  'X-Replay-Cadence-Stale': null,
+}
+
 /** Le titre courant du magasin d'app, avec la liste de capabilities qu'on veut éprouver. */
 function titreAvecCapabilities(caps: string[]) {
   useAppShellStore.setState({
@@ -87,7 +96,7 @@ afterEach(() => {
 describe('page de rejeu — porte de titre `replay`', () => {
   it('titre SANS la clé : aucune requête de rejeu, et l’écran dit pourquoi', async () => {
     titreAvecCapabilities(['matchmaking'])
-    apiGet.mockResolvedValue({ data: {}, responseHeaders: {} })
+    apiGet.mockResolvedValue({ data: {}, responseHeaders: ENTETES_DU_SERVEUR })
 
     renderWithProviders(<SousLesDeuxPortes />)
 
@@ -111,7 +120,10 @@ describe('page de rejeu — porte de titre `replay`', () => {
 
   it('titre AVEC la clé : la page est montée et demande son artefact', async () => {
     titreAvecCapabilities(['matchmaking', 'replay'])
-    apiGet.mockResolvedValue({ data: { schemaVersion: goFixtureSchemaVersion(), tracks: [] }, responseHeaders: {} })
+    apiGet.mockResolvedValue({
+      data: { schemaVersion: goFixtureSchemaVersion(), tracks: [] },
+      responseHeaders: ENTETES_DU_SERVEUR,
+    })
 
     renderWithProviders(<SousLesDeuxPortes />)
 
