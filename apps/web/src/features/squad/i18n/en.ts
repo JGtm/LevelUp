@@ -228,12 +228,11 @@ export const EN_TEXT = {
     deaths: 'Deaths/min',
     assists: 'Assists/min',
     suffix: ' /min',
-  },
-  damagePerMinute: {
-    title: 'Damage dealt and taken per minute',
-    info: 'Sum of damage divided by the sum of minutes played, over the matches whose damage is known. Damage taken is drawn below the axis. A player without known damage has no bar.',
-    dealt: 'Damage dealt/min',
-    taken: 'Damage taken/min',
+    titleWithDamage: 'Per-minute stats — Frags / Deaths / Assists / Damage',
+    damageInfo: 'Each rate is the sum of the counts divided by the sum of the minutes played. Damage is read on the right axis, over the matches whose damage is known; deaths and damage taken are drawn below the zero line. A player without known damage has no damage bar.',
+    damageDealt: 'Damage dealt/min',
+    damageTaken: 'Damage taken/min',
+    damageAxis: 'Damage / min',
   },
   synergyRadar: {
     title: 'Synergy radar',

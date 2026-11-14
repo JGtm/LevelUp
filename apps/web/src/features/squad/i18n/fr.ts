@@ -229,12 +229,11 @@ export const FR_TEXT = {
     deaths: 'Morts/min',
     assists: 'Assistances/min',
     suffix: ' /min',
-  },
-  damagePerMinute: {
-    title: 'Dégâts infligés et subis par minute',
-    info: "Somme des dégâts divisée par la somme des minutes jouées, sur les matchs dont les dégâts sont connus. Les dégâts subis sont tracés sous l'axe. Un joueur sans dégâts connus n'a pas de barre.",
-    dealt: 'Dégâts infligés/min',
-    taken: 'Dégâts subis/min',
+    titleWithDamage: 'Stats par minute — Frags / Morts / Assistances / Dégâts',
+    damageInfo: "Chaque cadence est la somme des comptes divisée par la somme des minutes jouées. Les dégâts se lisent sur l'axe de droite, sur les matchs dont les dégâts sont connus ; les morts et les dégâts subis sont tracés sous la ligne zéro. Un joueur sans dégâts connus n'a pas de barre de dégâts.",
+    damageDealt: 'Dégâts infligés/min',
+    damageTaken: 'Dégâts subis/min',
+    damageAxis: 'Dégâts / min',
   },
   synergyRadar: {
     title: 'Radar synergie',

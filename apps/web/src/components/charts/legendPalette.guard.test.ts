@@ -217,7 +217,14 @@ const CHARTS: Array<{ name: string; build: () => EChartsCoreOption }> = [
         ] as never,
         {
           colorByPlayer: COLOR_BY_PLAYER,
-          metricLabels: { frags: 'Frags/min', deaths: 'Morts/min', assists: 'Assistances/min' },
+          metricLabels: {
+            frags: 'Frags/min',
+            deaths: 'Morts/min',
+            assists: 'Assistances/min',
+            dealt: 'Dégâts infligés/min',
+            taken: 'Dégâts subis/min',
+          },
+          damageAxisName: 'Dégâts / min',
           perMinuteSuffix: ' /min',
         },
       ),

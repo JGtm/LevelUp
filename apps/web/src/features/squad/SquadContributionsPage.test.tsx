@@ -25,10 +25,7 @@ vi.mock('@/lib/capabilities/dataCapabilities', async (importOriginal) => ({
 
 // Stub des charts ECharts pour éviter les erreurs de résolution en env test.
 vi.mock('./SquadPerMinuteChart', () => ({
-  SquadPerMinuteChart: () => <div data-testid="per-minute-chart" />,
-}))
-vi.mock('./SquadDamagePerMinuteChart', () => ({
-  SquadDamagePerMinuteChart: () => <div data-testid="damage-per-minute-chart" />,
+  SquadPerMinuteChart: ({ title }: { title?: React.ReactNode }) => <div data-testid="per-minute-chart">{title}</div>,
 }))
 vi.mock('./SquadSynergyRadarChart', () => ({
   SquadSynergyRadarChart: () => <div data-testid="synergy-radar-chart" />,
@@ -83,34 +80,20 @@ describe('SquadContributionsPage', () => {
     expect(screen.getByTestId('per-minute-chart')).toBeInTheDocument()
   })
 
-  it('monte « Dégâts infligés et subis par minute » seulement quand un joueur porte des dégâts', () => {
-    mockSquadContext({
-      pageData: {
-        per_minute_stats: [
-          { player: 'test', kills_per_minute: 1, deaths_per_minute: 0.5, assists_per_minute: 0.2, match_count: 5 },
-        ],
-      } as unknown as TeammatesPageResponse,
-    })
+  it('« Stats par minute » : le titre nomme les dégâts seulement quand un joueur en porte', () => {
+    const base = { player: 'test', kills_per_minute: 1, deaths_per_minute: 0.5, assists_per_minute: 0.2, match_count: 5 }
+    mockSquadContext({ pageData: { per_minute_stats: [base] } as unknown as TeammatesPageResponse })
     const { unmount } = renderWithProviders(<SquadContributionsPage />)
-    expect(screen.queryByTestId('damage-per-minute-chart')).not.toBeInTheDocument()
+    expect(screen.getByTestId('per-minute-chart')).toHaveTextContent(/^Stats par minute — Frags \/ Morts \/ Assistances$/)
     unmount()
 
     mockSquadContext({
-      pageData: {
-        per_minute_stats: [
-          {
-            player: 'test',
-            kills_per_minute: 1,
-            deaths_per_minute: 0.5,
-            assists_per_minute: 0.2,
-            damage_dealt_per_minute: 310,
-            match_count: 5,
-          },
-        ],
-      } as unknown as TeammatesPageResponse,
+      pageData: { per_minute_stats: [{ ...base, damage_dealt_per_minute: 310 }] } as unknown as TeammatesPageResponse,
     })
     renderWithProviders(<SquadContributionsPage />)
-    expect(screen.getByTestId('damage-per-minute-chart')).toBeInTheDocument()
+    expect(screen.getByTestId('per-minute-chart')).toHaveTextContent(
+      'Stats par minute — Frags / Morts / Assistances / Dégâts',
+    )
   })
 
   // LOT 3 « sections » (2026-09-22) : l'impact des coéquipiers et les médailles ont

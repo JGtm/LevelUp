@@ -228,12 +228,11 @@ export interface SquadText {
     deaths: string
     assists: string
     suffix: string
-  }
-  damagePerMinute: {
-    title: string
-    info: string
-    dealt: string
-    taken: string
+    titleWithDamage: string
+    damageInfo: string
+    damageDealt: string
+    damageTaken: string
+    damageAxis: string
   }
   synergyRadar: {
     title: string
