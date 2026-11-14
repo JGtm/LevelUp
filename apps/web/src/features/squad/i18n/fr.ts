@@ -230,6 +230,12 @@ export const FR_TEXT = {
     assists: 'Assistances/min',
     suffix: ' /min',
   },
+  damagePerMinute: {
+    title: 'Dégâts infligés et subis par minute',
+    info: "Somme des dégâts divisée par la somme des minutes jouées, sur les matchs dont les dégâts sont connus. Les dégâts subis sont tracés sous l'axe. Un joueur sans dégâts connus n'a pas de barre.",
+    dealt: 'Dégâts infligés/min',
+    taken: 'Dégâts subis/min',
+  },
   synergyRadar: {
     title: 'Radar synergie',
     description: 'Profil de participation calculé sur les matchs où tous les coéquipiers sélectionnés étaient présents. Lignes seules (pas d\'aire), 4 profils superposés max.',

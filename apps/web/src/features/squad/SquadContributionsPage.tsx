@@ -24,6 +24,8 @@ import { useSquadContext } from './SquadContext'
 import { useSquadPlayerPalette } from './useSquadPlayerPalette'
 import { getSquadText, type SquadText } from './i18n'
 import { SquadPerMinuteChart } from './SquadPerMinuteChart'
+import { SquadDamagePerMinuteChart } from './SquadDamagePerMinuteChart'
+import { squadHasDamagePerMinute } from './charts/squadPerMinuteChart'
 import { SquadSynergyRadarChart } from './SquadSynergyRadarChart'
 import { SquadPerformanceCharts } from './SquadPerformanceCharts'
 import { SquadKillMechanicsChart } from './SquadKillMechanicsChart'
@@ -44,6 +46,13 @@ export function SquadContributionsPage() {
   // est la même. Les `?? []` / `?? {}` écrits à la volée en fabriquaient une
   // neuve à chaque rendu.
   const perMinuteRows = useMemo(() => pageData?.per_minute_stats ?? [], [pageData?.per_minute_stats])
+  // Graphe frère « Dégâts infligés et subis par minute » : monté seulement quand un joueur porte des dégâts
+  // (un titre sans dégâts n'a pas de carte vide).
+  const hasDamagePerMinute = useMemo(() => squadHasDamagePerMinute(perMinuteRows), [perMinuteRows])
+  const damageMetricLabels = useMemo(
+    () => ({ dealt: t.damagePerMinute.dealt, taken: t.damagePerMinute.taken }),
+    [t],
+  )
   const synergyRadar = useMemo(() => pageData?.synergy_radar ?? [], [pageData?.synergy_radar])
   const performanceSeries = pageData?.performance_series
   const perfSeriesByPlayer = useMemo(() => withoutNullRows(performanceSeries), [performanceSeries])
@@ -106,6 +115,22 @@ export function SquadContributionsPage() {
           rawLabel={t.synergyRadar.rawLabel}
         />
       </div>
+
+      {hasDamagePerMinute && (
+        <SquadDamagePerMinuteChart
+          title={
+            <span className="flex items-center gap-1.5">
+              {t.damagePerMinute.title}
+              <InfoTooltip content={t.damagePerMinute.info} />
+            </span>
+          }
+          emptyMessage={t.empty.noBlockData}
+          rows={perMinuteRows}
+          colorByPlayer={playerColors}
+          metricLabels={damageMetricLabels}
+          perMinuteSuffix={t.perMinute.suffix}
+        />
+      )}
 
       {/* FRAGS ET ARMES — arrivés d'Usages (lot L2 du plan
           PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : qui apporte quoi à l'escouade.

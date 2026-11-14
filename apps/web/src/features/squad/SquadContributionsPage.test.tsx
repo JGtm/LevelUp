@@ -27,6 +27,9 @@ vi.mock('@/lib/capabilities/dataCapabilities', async (importOriginal) => ({
 vi.mock('./SquadPerMinuteChart', () => ({
   SquadPerMinuteChart: () => <div data-testid="per-minute-chart" />,
 }))
+vi.mock('./SquadDamagePerMinuteChart', () => ({
+  SquadDamagePerMinuteChart: () => <div data-testid="damage-per-minute-chart" />,
+}))
 vi.mock('./SquadSynergyRadarChart', () => ({
   SquadSynergyRadarChart: () => <div data-testid="synergy-radar-chart" />,
 }))
@@ -78,6 +81,36 @@ describe('SquadContributionsPage', () => {
     })
     renderWithProviders(<SquadContributionsPage />)
     expect(screen.getByTestId('per-minute-chart')).toBeInTheDocument()
+  })
+
+  it('monte « Dégâts infligés et subis par minute » seulement quand un joueur porte des dégâts', () => {
+    mockSquadContext({
+      pageData: {
+        per_minute_stats: [
+          { player: 'test', kills_per_minute: 1, deaths_per_minute: 0.5, assists_per_minute: 0.2, match_count: 5 },
+        ],
+      } as unknown as TeammatesPageResponse,
+    })
+    const { unmount } = renderWithProviders(<SquadContributionsPage />)
+    expect(screen.queryByTestId('damage-per-minute-chart')).not.toBeInTheDocument()
+    unmount()
+
+    mockSquadContext({
+      pageData: {
+        per_minute_stats: [
+          {
+            player: 'test',
+            kills_per_minute: 1,
+            deaths_per_minute: 0.5,
+            assists_per_minute: 0.2,
+            damage_dealt_per_minute: 310,
+            match_count: 5,
+          },
+        ],
+      } as unknown as TeammatesPageResponse,
+    })
+    renderWithProviders(<SquadContributionsPage />)
+    expect(screen.getByTestId('damage-per-minute-chart')).toBeInTheDocument()
   })
 
   // LOT 3 « sections » (2026-09-22) : l'impact des coéquipiers et les médailles ont

@@ -229,6 +229,12 @@ export const EN_TEXT = {
     assists: 'Assists/min',
     suffix: ' /min',
   },
+  damagePerMinute: {
+    title: 'Damage dealt and taken per minute',
+    info: 'Sum of damage divided by the sum of minutes played, over the matches whose damage is known. Damage taken is drawn below the axis. A player without known damage has no bar.',
+    dealt: 'Damage dealt/min',
+    taken: 'Damage taken/min',
+  },
   synergyRadar: {
     title: 'Synergy radar',
     description: 'Participation profile computed on matches where all selected teammates were present. Lines only (no fill), max 4 overlaid profiles.',

@@ -229,6 +229,12 @@ export interface SquadText {
     assists: string
     suffix: string
   }
+  damagePerMinute: {
+    title: string
+    info: string
+    dealt: string
+    taken: string
+  }
   synergyRadar: {
     title: string
     description: string
