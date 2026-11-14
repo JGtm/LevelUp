@@ -1,3 +1,9 @@
+## [2026-11-14] Fil du rejeu : un pictogramme par nature de prise — Complété (poussé sur `release/v8.2.0`)
+
+- **Décision** : demande du user (14/11), formes validées (« oui ok ») : la ligne d'une prise porte la nature de ce qui est pris, par la règle qui teinte déjà les socles de la carte (`padFamilyOf` : famille d'équipement, puis clé canonique du titre dans `weaponLabels`, repli râtelier). `PickupEventLine.nature` posé par `pickupFeedLogic` (socle) et `groundPickupFeedLogic` (sol) via `pickupNatureOf` ; `PICKUP_NATURE_GLYPH` : râtelier = l'arme (tracé d'avant), arme spéciale = l'arme et une étoile, équipement = un bouclier. Couleur inchangée (encre du camp du joueur) ; le menu de filtre garde une seule entrée « Armes et bonus ». Une arme ordinaire ramassée au sol porte le pictogramme du râtelier, comme sa couleur sur la carte.
+- **Résultats** : `tsc -b --force` 0 ; ESLint des fichiers touchés 0 ; suite `features/match-replay` 311 fichiers, 4 282 tests verts ; tests neufs : nature par socle (spéciale, râtelier, équipement), nature au sol par la clé canonique, trois tracés distincts à l'écran (rouge si la ligne reprend le pictogramme de la famille).
+- **Suite** : vérification à l'écran par le user (fil filtré sur « Armes et bonus » d'un match à armes spéciales et bonus).
+
 ## [2026-11-14] Rejeu à 30 images/s : porte visuelle validée par le user — Complété (poussé sur `release/v8.2.0`)
 
 - **Décision** : B9 coché sur le message du user du 2026-11-14 (« je valide tout, j'ai tout regardé et c'est bon »), après les trois rejeux ouverts sur l'application 8.2.0 lancée sur le parc régénéré (serveur prêt, les trois au schéma 116 et à 33 ms, compteurs de joueur présents, aucune erreur au journal du serveur).
