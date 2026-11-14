@@ -630,6 +630,36 @@ latter writes the revision and perimeter goldens, under the gate).
 
 Publication: the decoder is published as the fourth brick by the amendment of 2026-11-08 of [ADR 0043](0043-publishing-the-bricks.md) (README, compiled example, `NOTICE.md`, AGPL-3.0).
 
+## Amendment of 2026-11-14 — replay cadence at 33 ms and compressed storage
+
+**Cadence.** The replay grid is 33 ms (about 30 frames per second), the decoder default
+`replay.DefaultFrameIntervalMS` since decoder v1.3.0. LevelUp decides its cook step in one place,
+`replaybuild.CookFrameIntervalMS()` (`internal/replaybuild/cadence.go`): it is the value every cook passes
+to the decoder and the value the freshness verdict requires. A replay is up to date when its schema is
+the current schema AND its `frameIntervalMs` is the current cook step; a document without the field is
+read at `HistoricalFrameIntervalMS` (100 ms, the grid of every artifact written before the field, taken
+from the decoder, no copy kept). Film facts do not depend on the cadence: facts written by a 100 ms cook
+rebuild the same 33 ms document as a full decode. Thresholds are durations, never frame counts: guard-rails
+`archlint/no_seuil_en_images_go_test.go` (Go) and `features/match-replay/test/seuilsEnMs.guard.test.ts`
+(web); the Go allowlist holds only the two vehicle-grid constants of the decoder, dated, the web one is
+empty.
+
+**Storage.** A replay artifact is written `{short8}.json.gz` (gzip). Every read and write of artifact bytes
+goes through one gate, `internal/replayartifact` (`Read`, `ReadBytes`, `Locate`, `Exists`, `List`,
+`Write`, `WriteIfAbsent`, `ValidateStored`): the form is detected by its magic bytes, not by the name; a
+legacy `.json` stays readable; when both forms exist the compressed one wins; `{short8}.meta` keeps its
+name and its `bytes` is the stored size. `WriteIfAbsent` never lays a file over an existing `.json.gz`
+(hard link, with an exclusive-create fallback on file systems without hard links, see ADR 0045). The
+conversion of a raw park is a user command, `levelup replay compress`, or the end of a replay update the
+user started in the desktop app; never at startup (guard-rail `archlint/no_auto_replay_compress_test.go`,
+two named callers). Reading artifact bytes outside the gate is refused by
+`archlint/no_artefact_bytes_outside_gate_test.go`.
+
+**Measured on the park (2026-11-14).** One regeneration of the local park at schema 116: 1 455 replays,
+every one at 33 ms and compressed. The served size grows about 2.5 times at 33 ms (tracks carry about
+85 % of the weight); the transport encoding that brings it back down is a separate lot for the next
+version.
+
 ## Non-goals
 
 - **Not a rewrite.** Every grammar acquired by reverse engineering stays as it is; only its

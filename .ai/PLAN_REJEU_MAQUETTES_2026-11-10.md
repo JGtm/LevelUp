@@ -146,7 +146,7 @@ Gate : gate Go et gate web. Vérification du user : Mainmise sur la vue d'un mat
 
 ### Lot 7 — Clôture
 - [x] 7.1 Revue adversariale du diff complet, une ronde (trois relecteurs indépendants, plus deux suites complètes). Chaque constat corrigé ou statué : section « Revue finale (7.1) » ci-dessous.
-- [ ] 7.2 `docs/` (guides bilingues touchés), `.ai/thought_log.md`, registre des reports.
+- [x] 7.2 `docs/` (guides bilingues touchés), `.ai/thought_log.md`, registre des reports. Le 2026-11-14 : `backfill-lead-share` dans `docs/COMMANDS.md` et `docs/FR/COMMANDS.md` (6.3) ; entrées du thought_log de chaque lot, dont la revue finale (7.1) ; les repères `__INT__ __LINT__ __WEB__` de l'entrée du lot 6 n'y sont plus ; registre des reports : rétro-remplissage de la Mainmise (geste du user) et découvertes de la revue finale.
 
 ### Revue finale (7.1)
 
