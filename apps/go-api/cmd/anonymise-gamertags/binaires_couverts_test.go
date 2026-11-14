@@ -65,6 +65,21 @@ var binairesCouvertsApps = []binaireCouvert{
 // profil de couverture) ; git ne les suit pas, le balayage ne les lit pas.
 var sortiesDeCINonSuivies = regexp.MustCompile(`^go-api/(baseline_[A-Za-z0-9_.-]+\.jsonl|coverage\.[A-Za-z0-9_.-]+\.raw)$`)
 
+// serveurDeLaCoquilleNonSuivi : le serveur Go que la coquille de bureau embarque comme sidecar
+// (`apps/desktop/src-tauri/binaries/*.exe`). Il n est jamais suivi par git (`.gitignore`, ligne
+// `apps/desktop/src-tauri/binaries/*.exe`, tenue par TestLeMotifDuServeurSuitLeGitignore) : c est une
+// sortie de build, que `make desktop-test` pose VIDE (`apps/desktop/src-tauri/build.rs`, serveur factice
+// hors release) et que `scripts/desktop-dev.ps1` remplace par le vrai serveur. Le balayage porte sur les
+// fichiers SUIVIS : ce chemin n y entre pas, qu il soit vide ou plein. Le retirer a la main apres chaque
+// `make desktop-test` (ancienne parade) ou ajouter une ligne de couverture a un fichier que git ignore
+// seraient deux facons de masquer le meme fait ; le motif suit donc l ignore de git, au chemin exact.
+var serveurDeLaCoquilleNonSuivi = regexp.MustCompile(`^desktop/src-tauri/binaries/[^/]+\.exe$`)
+
+// fichierNonSuivi dit si `rel` (relatif a la racine balayee) est une sortie que git ne suit pas.
+func fichierNonSuivi(rel string) bool {
+	return sortiesDeCINonSuivies.MatchString(rel) || serveurDeLaCoquilleNonSuivi.MatchString(rel)
+}
+
 // couvertureDuBinaire rend la ligne de `liste` qui couvre `rel`, ou -1.
 func couvertureDuBinaire(rel string, liste []binaireCouvert) int {
 	for i, b := range liste {
@@ -94,7 +109,7 @@ func binairesSansCouverture(racine string, extensions map[string]bool, liste []b
 			return err
 		}
 		rel = filepath.ToSlash(rel)
-		if sortiesDeCINonSuivies.MatchString(rel) {
+		if fichierNonSuivi(rel) {
 			return nil
 		}
 		if i := couvertureDuBinaire(rel, liste); i >= 0 {
@@ -164,6 +179,42 @@ func TestLaListeDesBinairesVoitUnBinaireNeuf(t *testing.T) {
 	if couverts[0] != 1 || couverts[len(couverts)-1] != 1 {
 		t.Fatalf("couverture par ligne inattendue : %v", couverts)
 	}
+}
+
+// TestLeServeurDeLaCoquilleNonSuiviNeRougitPas : le serveur factice vide que `make desktop-test` pose sous
+// `binaries/` (et le vrai serveur de `desktop-dev`) ne sont pas signales ; tout autre fichier du dossier,
+// ou un `.exe` ailleurs, l est.
+func TestLeServeurDeLaCoquilleNonSuiviNeRougitPas(t *testing.T) {
+	dossier := t.TempDir()
+	binaries := filepath.Join(dossier, "desktop", "src-tauri", "binaries")
+	ecrire(t, filepath.Join(binaries, "levelup-server-x86_64-pc-windows-msvc.exe"), "")
+	ecrire(t, filepath.Join(binaries, "autre-serveur.exe"), "MZ")
+	ecrire(t, filepath.Join(binaries, "inconnu.dat"), "x")
+	ecrire(t, filepath.Join(dossier, "desktop", "src-tauri", "ailleurs.exe"), "")
+	sans, _, err := binairesSansCouverture(dossier, extensionsTexteApps, binairesCouvertsApps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "[desktop/src-tauri/ailleurs.exe desktop/src-tauri/binaries/inconnu.dat]"
+	if got := fmt.Sprint(sans); got != want {
+		t.Fatalf("attendu %s, lu %s", want, got)
+	}
+}
+
+// TestLeMotifDuServeurSuitLeGitignore : le motif de serveurDeLaCoquilleNonSuivi n a de sens que tant que
+// git ignore ces fichiers ; si la ligne du `.gitignore` disparait, le motif doit disparaitre avec elle.
+func TestLeMotifDuServeurSuitLeGitignore(t *testing.T) {
+	brut, err := os.ReadFile(filepath.Join(racineDuDepot, ".gitignore"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range strings.Split(string(brut), "\n") {
+		if strings.TrimSpace(l) == "apps/desktop/src-tauri/binaries/*.exe" {
+			return
+		}
+	}
+	t.Fatal("le .gitignore n ignore plus apps/desktop/src-tauri/binaries/*.exe : retirer serveurDeLaCoquilleNonSuivi " +
+		"ou rétablir la ligne")
 }
 
 func extensionsTexteListe() string {
