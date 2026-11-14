@@ -18,9 +18,11 @@ package migration
 //   - les `id` gardés sont conservés et la séquence n'est pas touchée : le prochain `id` continue
 //     après le plus grand jamais tiré, aucun n'est réutilisé.
 //
-// C'est une opération d'ENTRETIEN : jamais au boot, ni après un sync, ni dans le processus serveur.
-// Elle exige l'écrivain exclusif (serveur arrêté) : `levelup compact-passes`, lancée la nuit par la
-// tâche hôte quand la jauge (compaction_jauge.go) dépasse le seuil, ou à la main.
+// C'est une opération d'ENTRETIEN : jamais après un sync ni pendant que le serveur sert des pages.
+// Elle exige l'écrivain exclusif : `levelup compact-passes`, serveur arrêté, lancée la nuit par la
+// tâche hôte quand la jauge (compaction_jauge.go) dépasse le seuil, ou à la main ; et, sur le profil
+// desktop seul, au démarrage avant l'ouverture des bases partagées (cmd/server/boot_compaction.go,
+// capacité CompactPassesAtStartup), où le processus est l'écrivain unique.
 
 import (
 	"context"

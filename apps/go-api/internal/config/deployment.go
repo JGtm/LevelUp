@@ -193,6 +193,13 @@ type DeploymentCapabilities struct {
 	// choisir un dossier (une seule commande IPC, limitée à la boucle locale, ADR 0045). Vraie sur le
 	// profil desktop seulement : un navigateur n'a pas ce pont, le champ reste alors un texte à saisir.
 	PickFolder bool
+	// CompactPassesAtStartup : au démarrage, après les migrations et avant l'ouverture des bases partagées
+	// (le processus en est alors l'écrivain unique), le serveur compacte les passes de décodage supersédées
+	// d'une base dont la jauge dépasse migration.SeuilPassesParMatch. Vraie sur le profil desktop, qui n'a
+	// ni la tâche de nuit d'un serveur hébergé (scripts/compact-passes-nuit.sh, serveur arrêté) ni de
+	// ligne de commande : sans elle les passes s'y accumulent. Faux ailleurs, où la compaction reste un
+	// entretien serveur arrêté.
+	CompactPassesAtStartup bool
 }
 
 // DeploymentProfile est embarqué dans AppConfig : le profil résolu et ses capacités.
@@ -307,6 +314,7 @@ func capabilitiesOf(cfg *AppConfig) DeploymentCapabilities {
 		RevealFilesInExplorer:  desktop,
 		TrashMediaSources:      desktop,
 		PickFolder:             desktop,
+		CompactPassesAtStartup: desktop,
 	}
 }
 

@@ -32,6 +32,8 @@ func bootMigrate(st *bootState) {
 	prepareWarehouse(st)
 	migrateSharedOrRefuse(st)
 	migrateAdditionalAndPlayerDBs(st)
+	// Les bases sont migrées et pas encore ouvertes par les fournisseurs : ce processus en est l'écrivain unique.
+	compactPassesAtBootAllTitles(st.ctx, st.cfg, st.pr, title.DefaultRegistry())
 }
 
 // resolveBootPaths résout le PathResolver, le slug par défaut et les chemins des bases ; en

@@ -7,8 +7,9 @@ package main
 // tables du film (INSERT-only, ADR 0019 / 0026) ; la vue `_latest` n'en sert qu'une, mais toute
 // lecture la paie en entier. La compaction reconstruit ces tables à leurs seules lignes servies
 // (migration.CompactSupersededPasses : jamais de DELETE, swap transactionnel vérifié). Elle exige
-// l'ÉCRIVAIN EXCLUSIF — le serveur arrêté — : jamais dans le processus serveur, ni au boot, ni
-// après un sync.
+// l'ÉCRIVAIN EXCLUSIF — le serveur arrêté — : jamais dans un serveur qui sert des pages, ni après
+// un sync. Le profil desktop, sans hôte ni ligne de commande, joue les mêmes primitives au démarrage,
+// avant l'ouverture des bases (cmd/server/boot_compaction.go).
 //
 // QUI LA LANCE. Chaque nuit, la tâche hôte `scripts/compact-passes-nuit.sh` (timer systemd) la
 // joue quand la jauge « passes par match » du serveur dépasse migration.SeuilPassesParMatch : elle

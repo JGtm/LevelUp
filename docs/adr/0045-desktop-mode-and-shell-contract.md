@@ -1064,6 +1064,14 @@ maintainer on a clean machine. A lot without a test at its level is not closed.
 - **Found and left** (both settled in L22c): Firefight replays built before the 2026-10-15 decision were counted until their first (refused) rebuild (the count now skips them by
   rule, see "Uninstalling and finishing touches"); the Data tab's film-archive panel kept its own "Saved." text (it now uses the shared badge).
 
+## Implementation notes (2026-11-14)
+
+- **Compaction at startup.** The desktop profile compacts superseded decode passes after the migrations and before the
+  shared databases are opened (capability `CompactPassesAtStartup`; ADR 0026, amendment of 2026-11-14). It runs under the
+  existing `migrations` boot step and adds no event to this contract: the shell's 120 s wait for `ready` is the
+  constraint, hence the 75 s bound. A dedicated `maintenance` step and event would be the answer if a measured
+  compaction needs longer; none is needed before that measurement.
+
 ## Alternatives rejected
 
 - **Wails** (D-1): no signed updater and a smaller plugin set than Tauri 2 for the NSIS and updater chain needed.

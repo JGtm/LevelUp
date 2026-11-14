@@ -98,6 +98,11 @@ type HealthScheduler struct {
 	store port.DataHealthStore
 	now   func() time.Time
 
+	// compactAtStartup : l'instance compacte elle-même les passes au démarrage (capacité
+	// CompactPassesAtStartup) ; sans elle, le script de nuit de l'hôte s'en charge. Ne change que le
+	// texte de l'avertissement d'une table au-delà du seuil.
+	compactAtStartup bool
+
 	// Dernier audit COMPLET (dashboard monitoring admin). Les cycles avortés
 	// (shared absente/illisible) ne l'écrasent pas : on garde le dernier
 	// signal réel plutôt qu'un faux « tout vert ».
@@ -125,6 +130,13 @@ func (s *HealthScheduler) WithInterval(hours int) *HealthScheduler {
 	if hours > 0 {
 		s.intervalHours = hours
 	}
+	return s
+}
+
+// WithCompactionAtStartup dit que l'instance compacte les passes au démarrage (et non la nuit) : le
+// texte de l'avertissement de la jauge nomme alors le prochain démarrage.
+func (s *HealthScheduler) WithCompactionAtStartup(at bool) *HealthScheduler {
+	s.compactAtStartup = at
 	return s
 }
 

@@ -99,7 +99,7 @@ func (s *HealthScheduler) publierJaugePasses(ctx context.Context, pr *titlePkg.P
 		rapportMax = max(rapportMax, p.Rapport())
 		if p.AuDessusDuSeuil() {
 			auDessus++
-			slog.WarnContext(ctx, "data_health: passes supersédées au-delà du seuil, compaction de nuit attendue",
+			slog.WarnContext(ctx, s.messageAuDessusDuSeuil(),
 				"titleSlug", p.TitleSlug, "table", p.Table, "brutes", p.Brutes, "gardees", p.Gardees,
 				"rapport", arrondi2(p.Rapport()), "seuil", migration.SeuilPassesParMatch)
 		}
@@ -111,6 +111,16 @@ func (s *HealthScheduler) publierJaugePasses(ctx context.Context, pr *titlePkg.P
 	if err := ecrireJaugePasses(pr.PassesGaugePath(), formaterJaugePasses(s.now().UTC(), res.Passes)); err != nil {
 		slog.ErrorContext(ctx, "data_health: écriture du fichier de jauge des passes", "path", pr.PassesGaugePath(), "err", err)
 	}
+}
+
+// messageAuDessusDuSeuil nomme la compaction qui est attendue : celle du prochain démarrage quand
+// l'instance compacte elle-même (CompactPassesAtStartup), celle de la nuit quand elle dépend du
+// script de l'hôte.
+func (s *HealthScheduler) messageAuDessusDuSeuil() string {
+	if s.compactAtStartup {
+		return "data_health: passes supersédées au-delà du seuil, compaction attendue au prochain démarrage"
+	}
+	return "data_health: passes supersédées au-delà du seuil, compaction de nuit attendue"
 }
 
 func ecrireJaugePasses(path string, contenu []byte) error {

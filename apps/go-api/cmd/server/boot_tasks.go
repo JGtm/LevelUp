@@ -214,7 +214,8 @@ func launchSchedulers(st *bootState) {
 	// admin se fait via `cmd/diag_db_health` ou la lecture des logs) — plus
 	// d'émission de notif `data_health_warning` (jargon dev sans intérêt
 	// pour un end user lambda sur une app de stats).
-	healthScheduler := scheduler.NewDataHealthScheduler(cfg.RepoRoot, cronstore.New(healthSharedReader(cfg, pr)))
+	healthScheduler := scheduler.NewDataHealthScheduler(cfg.RepoRoot, cronstore.New(healthSharedReader(cfg, pr))).
+		WithCompactionAtStartup(cfg.Capabilities.CompactPassesAtStartup)
 	boot.launch(loopTask(taskDataHealth, true, schedulerCtx, healthScheduler.Run))
 
 	// Backup restic des bases DuckDB (pkg/duckdbbackup).

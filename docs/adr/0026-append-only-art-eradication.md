@@ -209,3 +209,23 @@ table is swapped in its own transaction with cardinality, DDL, index and view-fi
 before COMMIT; an orphan build table is refused, never repaired. The manual
 `levelup compact-passes` remains the tool for an immediate compaction (e.g. right after a
 re-decode campaign), with `--dry-run` and `--rewrite-file`.
+
+## Amendment (2026-11-14) — Compaction at startup on the desktop profile
+
+The rule "never at boot, never in the server process" holds for the hosted profile. The desktop profile has no
+host script and no command line, so its passes only accumulate; it compacts at startup instead
+(`DeploymentCapabilities.CompactPassesAtStartup`, ADR 0044; `cmd/server/boot_compaction.go`).
+
+- **When.** After the migrations of every title and before any provider opens the shared databases: the process is
+  then the sole writer, no reader holds the file, so the rebuild blocks nothing (the objection above, a writer held
+  while pages wait, does not exist before the router opens).
+- **What.** The gauge is read first (read-only); nothing happens under `migration.SeuilPassesParMatch`. Above it,
+  the same primitives as the command run: `migration.BackupBeforeUpgrade` copies the closed file, then
+  `migration.CompactSupersededPasses` rebuilds and swaps each table in its own transaction with the same checks.
+  A refused copy forbids the compaction.
+- **Budget.** The shell waits for `ready` at most 120 s and the event contract has no maintenance phase (ADR 0045).
+  The compaction is bounded to 75 s: the cancelled context rolls back the table being rebuilt, tables already
+  compacted stay compacted, and the next startup resumes from the gauge.
+- **Failure.** Never fatal: an ERROR is logged and the startup continues on the uncompacted file.
+- **Message.** The data-health warning names the next startup instead of the night when the capability is on.
+
