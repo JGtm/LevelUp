@@ -1,0 +1,58 @@
+# config/titles/halo_infinite/mappings/spawn_families.toml
+#
+# FAMILLES DE MODES DU MODELE DE REAPPARITION. Le modele ajuste ses poids par famille (fichier
+# reference/spawn_model.json) : les armes, les cartes et les reapparitions d'une Arene Assassin ne
+# sont pas celles d'un Fiesta ou d'un Drapeau. Cette table dit a quelle famille appartient un match ;
+# elle est lue par la CLI `levelup spawn-model` (mesure et ajustement) et par tout lecteur qui doit
+# choisir le jeu de poids d'un match. Un titre sans fichier n'a pas de famille : sa prevision retombe
+# sur la famille « tous » (ou n'existe pas si le titre ne declare pas film.spawn_forecast).
+#
+# COMMENT UN MATCH TROUVE SA FAMILLE. Deux champs du registre des matchs, en minuscules :
+#   - la variante de jeu (match_registry.game_variant_name), le nom d'asset UGC servi par l'API ;
+#   - la categorie de mode (match_registry.mode_category).
+# 1. [exclusions] d'abord : un match exclu n'a AUCUNE famille (ni propre, ni « tous »).
+# 2. Puis les [[families]] DANS L'ORDRE DU FICHIER : la premiere dont un jeton est contenu dans la
+#    variante (variant_contains) ou dans la categorie (category_contains) l'emporte. L'ordre est donc
+#    une decision : Fiesta passe avant les modes d'objectif (une variante Fiesta reste Fiesta), et
+#    Assassin, mot le plus generique, passe en dernier.
+# 3. Aucune famille ne correspond : le match n'a pas de famille.
+#
+# Les jetons sont des sous-chaines (« bases » reconnait « Capture the Bases »), les noms anglais du jeu
+# et leurs equivalents francais. Le nom d'une variante bouge au fil des saisons : une variante qui ne
+# ressemble a rien n'est pas mesuree, elle ne tombe pas dans une famille par defaut. Le nom « tous » est
+# reserve (famille qui regroupe toutes les autres, repli des poids).
+
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+
+# Hors mesure : le BTB (cartes et effectifs differents de l'Arene) et les rotations Husky Raid.
+[exclusions]
+variant_prefixes = ["btb"]
+categories = ["btb"]
+category_contains = ["husky"]
+
+[[families]]
+id = "fiesta"
+variant_contains = ["fiesta"]
+category_contains = ["fiesta"]
+
+[[families]]
+id = "drapeau"
+variant_contains = ["ctf", "flag", "drapeau"]
+
+[[families]]
+id = "bases"
+variant_contains = ["stronghold", "bases"]
+
+[[families]]
+id = "colline"
+variant_contains = ["king of the hill", "koth", "colline"]
+
+[[families]]
+id = "oddball"
+variant_contains = ["oddball", "balle"]
+
+[[families]]
+id = "assassin"
+variant_contains = ["slayer", "assassin"]

@@ -227,3 +227,36 @@ func TestJoindreDebutsDeCompte(t *testing.T) {
 		t.Fatalf("debuts = %+v, sans xuid = %d", debuts, sans)
 	}
 }
+
+// Une vie sans equipe lue reprend celle de la premiere vie nommee du meme joueur : sa
+// reapparition porte un instantane, et ses autres joueurs sont partages en equipiers et
+// adversaires de cette equipe.
+func TestInstantane_EquipeReprise_DeLaPremiereVieNommee(t *testing.T) {
+	e := entreeTest(nil,
+		pisteTest("a", 2, 0, 100, 10, &FinLue{Raison: RaisonLiberee, Frame: 100}),
+		pisteTest("a", EquipeInconnue, 150, 300, 50, nil),
+		pisteTest("b", 1, 0, 400, 20, nil),
+	)
+	s := spawnDe(t, e, 1)
+	if !s.Reapparition || len(s.Instantane) != 1 || s.Instantane[0].XUID != "b" {
+		t.Fatalf("la vie sans equipe reprend celle de la vie precedente : instantane attendu, obtenu %+v", s)
+	}
+}
+
+func TestEquipeDuJoueur(t *testing.T) {
+	ix := NouvelIndexVies(entreeTest(nil,
+		pisteTest("a", EquipeInconnue, 0, 100, 10, nil),
+		pisteTest("a", 2, 150, 250, 20, nil),
+		pisteTest("a", 3, 300, 400, 30, nil),
+		pisteTest("sans", EquipeInconnue, 0, 100, 10, nil),
+	))
+	if got := ix.EquipeDuJoueur("a"); got != 2 {
+		t.Errorf("equipe de a = %d, attendu 2 (la premiere vie qui en porte une)", got)
+	}
+	if got := ix.EquipeDuJoueur("sans"); got != EquipeInconnue {
+		t.Errorf("equipe de sans = %d, attendu EquipeInconnue", got)
+	}
+	if got := ix.EquipeDuJoueur("absent"); got != EquipeInconnue {
+		t.Errorf("joueur inconnu : %d, attendu EquipeInconnue", got)
+	}
+}

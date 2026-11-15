@@ -33,10 +33,12 @@ const (
 // carte, et le candidat reel.
 type Echantillon struct {
 	Pli   int
+	Match string
 	Carte string
-	// Feats : une ligne par candidat de la carte.
+	// Feats : une ligne par candidat retenu pour le match de l'evenement.
 	Feats [][NbVariables]float64
-	// Pos et Zones sont PARTAGES par tous les echantillons d'une carte (ne pas les modifier).
+	// Pos et Zones : une entree par candidat de Feats. Ils sont PARTAGES avec les autres
+	// echantillons de la carte quand aucun candidat n'est retire (ne pas les modifier).
 	// Zones : l'indice de zone nommee de chaque candidat, nil si on n'a pas de zones.
 	Pos   []Point3
 	Zones []int
@@ -66,7 +68,9 @@ type ReglagesEchantillons struct {
 	Zone func(carte string, p Point3) int
 }
 
-// CandidatsParCarte deduit les candidats de chaque carte depuis TOUS les evenements donnes.
+// CandidatsParCarte deduit les candidats de chaque carte depuis TOUS les evenements donnes :
+// l'ensemble maximal, d'ou chaque evenement retire ensuite les points qu'il est seul a completer
+// (ConstruireEchantillons).
 func CandidatsParCarte(evts []EvenementReapparition) map[string][]Candidat {
 	par := map[string][]EvenementReapparition{}
 	for _, e := range evts {
@@ -79,8 +83,36 @@ func CandidatsParCarte(evts []EvenementReapparition) map[string][]Candidat {
 	return out
 }
 
-// ConstruireEchantillons note chaque evenement contre les candidats de sa carte. Un evenement
-// sans ennemi, ou dont la carte n'a pas assez de matchs ou moins de deux candidats, est ecarte.
+// geometrieCarte est ce que les echantillons d'une carte partagent : les positions et les
+// zones de l'ensemble maximal des candidats, et la visibilite.
+type geometrieCarte struct {
+	pos   []Point3
+	zones []int
+	vue   Visibilite
+}
+
+func geometriesDesCartes(cands map[string][]Candidat, r ReglagesEchantillons) map[string]geometrieCarte {
+	out := make(map[string]geometrieCarte, len(cands))
+	for carte, cs := range cands {
+		g := geometrieCarte{pos: make([]Point3, 0, len(cs))}
+		for _, c := range cs {
+			g.pos = append(g.pos, c.Pos)
+			if r.Zone != nil {
+				g.zones = append(g.zones, r.Zone(carte, c.Pos))
+			}
+		}
+		if r.Vue != nil {
+			g.vue = r.Vue(carte)
+		}
+		out[carte] = g
+	}
+	return out
+}
+
+// ConstruireEchantillons note chaque evenement contre les candidats de sa carte QUI RESTENT
+// CANDIDATS SANS SON MATCH (CandidatPour) : l'evaluation est hors echantillon pour les
+// candidats comme pour les poids et la frequence. Un evenement sans ennemi, ou dont la carte
+// n'a pas assez de matchs ou moins de deux candidats hors son match, est ecarte.
 func ConstruireEchantillons(evts []EvenementReapparition, cands map[string][]Candidat, r ReglagesEchantillons) []Echantillon {
 	matchs := map[string]map[string]bool{}
 	for _, e := range evts {
@@ -89,44 +121,60 @@ func ConstruireEchantillons(evts []EvenementReapparition, cands map[string][]Can
 		}
 		matchs[e.CarteID][e.MatchID] = true
 	}
-	pos := map[string][]Point3{}
-	zones := map[string][]int{}
-	vues := map[string]Visibilite{}
-	for carte, cs := range cands {
-		for _, c := range cs {
-			pos[carte] = append(pos[carte], c.Pos)
-			if r.Zone != nil {
-				zones[carte] = append(zones[carte], r.Zone(carte, c.Pos))
-			}
-		}
-		if r.Vue != nil {
-			vues[carte] = r.Vue(carte)
-		}
-	}
+	geo := geometriesDesCartes(cands, r)
 	var out []Echantillon
 	for _, e := range evts {
-		cs := cands[e.CarteID]
-		if len(matchs[e.CarteID]) < r.MatchsMinCarte || len(e.Ennemis) == 0 || len(cs) < 2 {
+		if len(matchs[e.CarteID]) < r.MatchsMinCarte || len(e.Ennemis) == 0 {
 			continue
 		}
-		s := Echantillon{
-			Pli: PliDuMatch(e.MatchID, PlisValidation), Carte: e.CarteID, Pos: pos[e.CarteID],
-			Zones: zones[e.CarteID], Reel: -1, Au: e.Reel, ZoneReelle: -1,
+		if s, ok := echantillonDe(e, cands[e.CarteID], geo[e.CarteID], r); ok {
+			out = append(out, s)
 		}
-		if r.Zone != nil {
-			s.ZoneReelle = r.Zone(e.CarteID, e.Reel)
-		}
-		cle := CleDe(e.Reel)
-		s.Feats = make([][NbVariables]float64, len(cs))
-		for i, c := range cs {
-			s.Feats[i] = Variables(e, c, c.Total-c.ParMatch[e.MatchID], vues[e.CarteID])
-			if c.Cle == cle {
-				s.Reel = i
-			}
-		}
-		out = append(out, s)
 	}
 	return out
+}
+
+// echantillonDe note un evenement contre les candidats qui le restent sans son match. Les
+// positions et les zones de la carte sont partagees tant qu'aucun candidat n'est retire.
+func echantillonDe(e EvenementReapparition, cs []Candidat, g geometrieCarte, r ReglagesEchantillons) (Echantillon, bool) {
+	retenus := make([]int, 0, len(cs))
+	for i, c := range cs {
+		if c.CandidatPour(e.MatchID) {
+			retenus = append(retenus, i)
+		}
+	}
+	if len(retenus) < 2 {
+		return Echantillon{}, false
+	}
+	s := Echantillon{
+		Pli: PliDuMatch(e.MatchID, PlisValidation), Match: e.MatchID, Carte: e.CarteID, Pos: g.pos, Zones: g.zones,
+		Reel: -1, Au: e.Reel, ZoneReelle: -1,
+	}
+	if len(retenus) < len(cs) {
+		s.Pos, s.Zones = make([]Point3, 0, len(retenus)), nil
+		if g.zones != nil {
+			s.Zones = make([]int, 0, len(retenus))
+		}
+		for _, i := range retenus {
+			s.Pos = append(s.Pos, g.pos[i])
+			if g.zones != nil {
+				s.Zones = append(s.Zones, g.zones[i])
+			}
+		}
+	}
+	if r.Zone != nil {
+		s.ZoneReelle = r.Zone(e.CarteID, e.Reel)
+	}
+	cle := CleDe(e.Reel)
+	s.Feats = make([][NbVariables]float64, len(retenus))
+	for j, i := range retenus {
+		c := cs[i]
+		s.Feats[j] = Variables(e, c, c.Total-c.ParMatch[e.MatchID], g.vue)
+		if c.Cle == cle {
+			s.Reel = j
+		}
+	}
+	return s, true
 }
 
 // Scores rend le score de chaque candidat d'un echantillon.

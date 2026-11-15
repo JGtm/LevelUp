@@ -221,6 +221,8 @@ LU backfill-lead-share                    # la table est neuve (G2) : pas de --f
   lourds. Contrôle après la passe : le nombre de fichiers en v7 égale le nombre de rejeux servis,
   `grep -l '"schema_version":7' /opt/levelup/data/cache/replays/halo_infinite/rasters/*.json | wc -l` contre le
   compte du contrôle (1) ci-dessous ; un écart = des rejeux sans calque tactique, à lister avant de rouvrir.
+  Entre le déploiement et ce G7, les matchs aux fichiers tactiques v6 apparaissent non mesurés dans la Tactique
+  (le v6 n'est plus courant) : le G7 suit de près le déploiement, sans attendre une fenêtre éloignée.
 - Mesures locales du 2026-11-14 (1 455 rejeux, poste chargé) : `usage-summary` 3 min 33, `pad-tiers --force`
   4 min 05, `vehicle-takes --force` 6 min 52, `flag-grabs-net --force` 7 min, `tactical-rasters --backfill`
   8 min 45, `backfill-lead-share` 7 min 20 en simulation ; tous à 0 échec. La prod compte environ 3 500 rejeux

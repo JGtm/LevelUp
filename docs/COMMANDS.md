@@ -339,9 +339,16 @@ go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--titl
 # 6. Respawn forecast model (capability film.spawn_forecast). Reads the replay ARTIFACTS one at a
 #    time and the match registry read-only (OpenReadForQuery; if another process holds the base
 #    for writing, it says so and stops). Nothing is written except, for `fit`, the versioned
-#    weights file data/titles/{slug}/reference/spawn_model.json.
+#    weights file data/titles/{slug}/reference/spawn_model.json. The mode families come from
+#    config/titles/{slug}/mappings/spawn_families.toml (a title without the file has no measure).
+#    --matchs-min-carte defaults to 8 for `evaluate` (the starting measure) and 3 for `fit`.
+#    `fit` only rewrites the reference file on the whole fleet and every family: with --famille or
+#    --limit it refuses, unless --sortie <file> writes elsewhere.
+#    The command that reproduces the shipped weights file (run from the repo root, LEVELUP_DATA_DIR
+#    pointing at the data folder that holds the replay artifacts):
+#      levelup spawn-model fit --matchs-min-carte 3
 go run ./cmd/levelup spawn-model evaluate [--sections m1,m2,m3,m4|poids] [--famille F] [--matchs-min-carte N] [--par-carte] [--variantes] [--limit N] [--title S]
-go run ./cmd/levelup spawn-model fit [--ligne-de-vue] [--famille F] [--matchs-min-carte N] [--title S]
+go run ./cmd/levelup spawn-model fit [--ligne-de-vue] [--matchs-min-carte N] [--famille F --sortie FILE] [--limit N --sortie FILE] [--title S]
 ```
 
 `backfill-replay` never cooks matches of a mode the replay does not handle (PvE Firefight —

@@ -10,8 +10,11 @@ package tactical
 //   - la ZONE NOMMEE : la zone du point reel est-elle la premiere, ou parmi les trois
 //     premieres, quand une zone recoit la SOMME des probabilites de ses candidats ?
 //
-// Le hasard de chaque echelle est l'esperance exacte d'un tirage uniforme parmi les candidats.
-// Les egalites de score partagent le rang (un rang fractionnaire), jamais en faveur du reel.
+// Le hasard de chaque echelle est l'esperance exacte d'un tirage uniforme parmi les candidats :
+// pour le rayon, la chance que le premier tirage (HasardRayon1), ou qu'au moins un des trois
+// tirages sans remise (HasardRayon3), tombe a moins de RayonEvaluationM du point reel.
+// Les egalites de score se partagent sans jamais favoriser le reel : un rang fractionnaire pour
+// le point exact et la zone, l'esperance d'un depart au hasard entre ex aequo pour le rayon.
 
 import (
 	"math"
@@ -26,20 +29,23 @@ type Metriques struct {
 	N             int
 	HorsCandidats int
 
-	Hasard1, Hasard3            float64
-	Top1, Top3                  float64
-	RangMoyen                   float64
-	HasardRayon, Rayon1, Rayon3 float64
-	ZonesMesurees               int
-	HasardZone1, HasardZone3    float64
-	Zone1, Zone3                float64
+	Hasard1, Hasard3 float64
+	Top1, Top3       float64
+	RangMoyen        float64
+	// HasardRayon1 : la part des candidats a moins de RayonEvaluationM du point reel (un tirage) ;
+	// HasardRayon3 : la chance que l'un des trois premiers tirages sans remise en soit.
+	HasardRayon1, HasardRayon3 float64
+	Rayon1, Rayon3             float64
+	ZonesMesurees              int
+	HasardZone1, HasardZone3   float64
+	Zone1, Zone3               float64
 }
 
 // Evaluer note des predictions (un tableau de scores par echantillon, dans l'ordre des
 // candidats). Les echantillons dont la prediction est nil sont ignores.
 func Evaluer(echs []Echantillon, scores [][]float64) Metriques {
 	var m Metriques
-	var h1, h3, t1, t3, rang, hr, r1, r3 float64
+	var h1, h3, t1, t3, rang, hr1, hr3, r1, r3 float64
 	var hz1, hz3, z1, z3 float64
 	for i, s := range echs {
 		if scores[i] == nil {
@@ -56,7 +62,9 @@ func Evaluer(echs []Echantillon, scores [][]float64) Metriques {
 			a, b, c := rangsExacts(scores[i], s.Reel)
 			t1, t3, rang = t1+a, t3+b, rang+c
 		}
-		hr += partRayon(s)
+		dedans, nCand := candidatsDansLeRayon(s), len(s.Pos)
+		hr1 += partTouchee(nCand, dedans, 1)
+		hr3 += partTouchee(nCand, dedans, 3)
 		r1 += toucheRayon(s, scores[i], 1)
 		r3 += toucheRayon(s, scores[i], 3)
 		if s.Zones != nil && s.ZoneReelle >= 0 {
@@ -73,7 +81,8 @@ func Evaluer(echs []Echantillon, scores [][]float64) Metriques {
 	n := float64(m.N)
 	m.Hasard1, m.Hasard3 = 100*h1/n, 100*h3/n
 	m.Top1, m.Top3, m.RangMoyen = 100*t1/n, 100*t3/n, rang/n
-	m.HasardRayon, m.Rayon1, m.Rayon3 = 100*hr/n, 100*r1/n, 100*r3/n
+	m.HasardRayon1, m.HasardRayon3 = 100*hr1/n, 100*hr3/n
+	m.Rayon1, m.Rayon3 = 100*r1/n, 100*r3/n
 	if m.ZonesMesurees > 0 {
 		nz := float64(m.ZonesMesurees)
 		m.HasardZone1, m.HasardZone3 = 100*hz1/nz, 100*hz3/nz
@@ -107,36 +116,63 @@ func rangsExacts(sc []float64, reel int) (top1, top3, rang float64) {
 	return top1, top3, r + 1
 }
 
-// partRayon est la part des candidats a moins de RayonEvaluationM du point reel : la chance
-// qu'un candidat tire au hasard le touche.
-func partRayon(s Echantillon) float64 {
-	dedans := 0.0
+// candidatsDansLeRayon compte les candidats a moins de RayonEvaluationM du point reel.
+func candidatsDansLeRayon(s Echantillon) int {
+	dedans := 0
 	for _, p := range s.Pos {
 		if p.Distance(s.Au) <= RayonEvaluationM {
 			dedans++
 		}
 	}
-	return dedans / float64(len(s.Pos))
+	return dedans
 }
 
-// premiers rend les indices des n meilleurs scores (egalites : l'ordre des candidats).
-func premiers(sc []float64, n int) []int {
+// partTouchee est la chance qu'au moins un de `tirages` candidats pris au hasard, sans remise,
+// parmi `n` dont `k` sont dans le rayon, y soit : 1 - C(n-k, m) / C(n, m), avec m = min(tirages, n).
+// Zero sans candidat dans le rayon, 1 quand les tirages epuisent les candidats et que k >= 1.
+func partTouchee(n, k, tirages int) float64 {
+	if n <= 0 || k <= 0 {
+		return 0
+	}
+	m := min(tirages, n)
+	rate := 1.0
+	for i := 0; i < m; i++ {
+		if n-k-i <= 0 {
+			return 1
+		}
+		rate *= float64(n-k-i) / float64(n-i)
+	}
+	return 1 - rate
+}
+
+// toucheRayon rend l'esperance que l'un des `n` premiers candidats soit dans le rayon du point
+// reel. Les candidats de meme score forment un groupe : un groupe entierement retenu compte pour
+// tous ses membres, le groupe a la frontiere se tire au hasard (partTouchee), de sorte que l'ordre
+// des candidats ne favorise personne, et le reel pas plus qu'un autre.
+func toucheRayon(s Echantillon, sc []float64, n int) float64 {
 	idx := make([]int, len(sc))
 	for i := range idx {
 		idx[i] = i
 	}
 	sort.SliceStable(idx, func(a, b int) bool { return sc[idx[a]] > sc[idx[b]] })
-	if len(idx) > n {
-		idx = idx[:n]
-	}
-	return idx
-}
-
-func toucheRayon(s Echantillon, sc []float64, n int) float64 {
-	for _, i := range premiers(sc, n) {
-		if s.Pos[i].Distance(s.Au) <= RayonEvaluationM {
+	retenus := 0
+	for debut := 0; debut < len(idx) && retenus < n; {
+		fin, dedans := debut, 0
+		for fin < len(idx) && sc[idx[fin]] == sc[idx[debut]] {
+			if s.Pos[idx[fin]].Distance(s.Au) <= RayonEvaluationM {
+				dedans++
+			}
+			fin++
+		}
+		groupe := fin - debut
+		if retenus+groupe > n {
+			return partTouchee(groupe, dedans, n-retenus)
+		}
+		if dedans > 0 {
 			return 1
 		}
+		retenus += groupe
+		debut = fin
 	}
 	return 0
 }

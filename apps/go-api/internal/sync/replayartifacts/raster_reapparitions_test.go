@@ -5,11 +5,17 @@ package replayartifacts
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
 )
 
 // artefactReapparition : 100 ms par frame.
@@ -38,7 +44,7 @@ const artefactReapparition = `{
 }`
 
 func TestSidecarV7_ReapparitionEtInstantane(t *testing.T) {
-	s, err := ProjeterRasterTactique(ecrireFichier(t, "artefact.json", artefactReapparition))
+	s, err := ProjeterRasterTactique(ecrireFichier(t, "artefact.json", artefactReapparition), true)
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}
@@ -85,7 +91,7 @@ func TestSidecarV7_OctetsStables(t *testing.T) {
 	chemin := ecrireFichier(t, "artefact.json", artefactReapparition)
 	var avant []byte
 	for i := 0; i < 5; i++ {
-		s, err := ProjeterRasterTactique(chemin)
+		s, err := ProjeterRasterTactique(chemin, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -109,5 +115,103 @@ func TestSourcesDesReapparitions(t *testing.T) {
 	}}})
 	if c.Film != 1 || c.RepliEcart != 1 || c.DebutsDeManche != 1 {
 		t.Errorf("sources = %+v", c)
+	}
+}
+
+// Sans `film.spawn_forecast`, le sidecar ne porte aucune matiere de prevision : ni reapparition,
+// ni source, ni debut de manche, ni mort, ni instantane, ni couverture. Le reste (cellules,
+// positions du spawn, premiere vie, equipe) est celui du sidecar d'un titre qui la declare.
+func TestSidecar_SansPrevisionNePorteAucuneMatiereDeReapparition(t *testing.T) {
+	chemin := ecrireFichier(t, "artefact.json", artefactReapparition)
+	avec, err := ProjeterRasterTactique(chemin, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sans, err := ProjeterRasterTactique(chemin, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sans.Reapparitions != (domain.TacticalRasterSources{}) {
+		t.Errorf("couverture sans prevision : %+v", sans.Reapparitions)
+	}
+	if avec.Reapparitions == (domain.TacticalRasterSources{}) {
+		t.Fatal("le jeu d'essai doit porter une reapparition avec la prevision")
+	}
+	for i, j := range sans.Joueurs {
+		if j.Equipe != avec.Joueurs[i].Equipe || len(j.Cellules) != len(avec.Joueurs[i].Cellules) ||
+			len(j.Spawns) != len(avec.Joueurs[i].Spawns) {
+			t.Fatalf("joueur %s : le reste du sidecar doit etre inchange", j.XUID)
+		}
+		for k, sp := range j.Spawns {
+			ref := avec.Joueurs[i].Spawns[k]
+			if sp.Reapparition || sp.Source != "" || sp.DebutDeManche || sp.Mort != nil || sp.Instantane != nil {
+				t.Errorf("joueur %s, spawn %d : matiere de prevision sans capability : %+v", j.XUID, k, sp)
+			}
+			if sp.Frame != ref.Frame || sp.X != ref.X || sp.Y != ref.Y || sp.Z != ref.Z || sp.PremiereVie != ref.PremiereVie {
+				t.Errorf("joueur %s, spawn %d : position ou premiere vie changees : %+v contre %+v", j.XUID, k, sp, ref)
+			}
+		}
+	}
+}
+
+// La porte du fil de l'eau : le titre qui declare la capability recoit la matiere de prevision, le
+// titre qui declare le rejeu sans la prevision ne la recoit pas.
+func TestProjeterRastersTactiques_PorteDeLaPrevision(t *testing.T) {
+	for _, c := range []struct {
+		nom      string
+		sansCle  bool
+		attendue bool
+	}{{"avec la capability", false, true}, {"sans la capability", true, false}} {
+		t.Run(c.nom, func(t *testing.T) {
+			racine := racineAvecTitres(t, titlePkg.DefaultSlug)
+			if c.sansCle {
+				retirerCapability(t, racine, string(games.CapFilmSpawnForecast))
+			}
+			chemin := ecrireFichier(t, "artefact.json", artefactReapparition)
+			doc, octets, err := lireDocumentRange(chemin)
+			if err != nil {
+				t.Fatal(err)
+			}
+			d := Deps{RepoRoot: racine, TitleSlug: titlePkg.DefaultSlug, Gamertag: "TestGT"}
+			projeterRastersTactiques(context.Background(), d, []artefactLu{
+				{matchID: doc.MatchID, path: chemin, doc: doc, octets: octets},
+			})
+			raw, err := os.ReadFile(titlePkg.NewPathResolver(racine).TacticalRasterPath(titlePkg.DefaultSlug, titlePkg.FilmShortMatchID(doc.MatchID)))
+			if err != nil {
+				t.Fatalf("sidecar absent : %v", err)
+			}
+			var s domain.TacticalRasterSidecar
+			if err := json.Unmarshal(raw, &s); err != nil {
+				t.Fatal(err)
+			}
+			if porte := s.Reapparitions != (domain.TacticalRasterSources{}); porte != c.attendue {
+				t.Errorf("matiere de prevision presente = %v, attendue %v", porte, c.attendue)
+			}
+		})
+	}
+}
+
+// retirerCapability supprime une cle de capability du capabilities.toml d'une racine de test.
+func retirerCapability(t *testing.T, racine, cle string) {
+	t.Helper()
+	chemin := filepath.Join(racine, "config", "titles", titlePkg.DefaultSlug, "mappings", "capabilities.toml")
+	raw, err := os.ReadFile(chemin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gardees []string
+	retirees := 0
+	for _, ligne := range strings.Split(string(raw), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(ligne), `"`+cle+`"`) {
+			retirees++
+			continue
+		}
+		gardees = append(gardees, ligne)
+	}
+	if retirees != 1 {
+		t.Fatalf("la cle %s doit apparaitre une fois, trouvee %d fois", cle, retirees)
+	}
+	if err := os.WriteFile(chemin, []byte(strings.Join(gardees, "\n")), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }

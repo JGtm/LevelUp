@@ -351,9 +351,16 @@ go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--titl
 # 6. Modèle de prévision de réapparition (capability film.spawn_forecast). Lit les ARTEFACTS de rejeu
 #    un à un et le registre des matchs en lecture seule (OpenReadForQuery ; si un autre processus tient
 #    la base en écriture, la commande le dit et s'arrête). Rien n'est écrit, sauf, pour `fit`, le fichier
-#    de poids versionné data/titles/{slug}/reference/spawn_model.json.
+#    de poids versionné data/titles/{slug}/reference/spawn_model.json. Les familles de modes viennent de
+#    config/titles/{slug}/mappings/spawn_families.toml (un titre sans ce fichier n'a pas de mesure).
+#    --matchs-min-carte vaut 8 par défaut pour `evaluate` (la mesure de départ) et 3 pour `fit`.
+#    `fit` ne réécrit le fichier de référence que sur le parc entier et toutes les familles : avec
+#    --famille ou --limit il refuse, sauf si --sortie <fichier> écrit ailleurs.
+#    La commande qui reproduit le fichier de poids livré (depuis la racine du dépôt, LEVELUP_DATA_DIR
+#    sur le dossier de données qui porte les artefacts de rejeu) :
+#      levelup spawn-model fit --matchs-min-carte 3
 go run ./cmd/levelup spawn-model evaluate [--sections m1,m2,m3,m4|poids] [--famille F] [--matchs-min-carte N] [--par-carte] [--variantes] [--limit N] [--title S]
-go run ./cmd/levelup spawn-model fit [--ligne-de-vue] [--famille F] [--matchs-min-carte N] [--title S]
+go run ./cmd/levelup spawn-model fit [--ligne-de-vue] [--matchs-min-carte N] [--famille F --sortie FICHIER] [--limit N --sortie FICHIER] [--title S]
 ```
 
 `backfill-replay` ne cuit jamais un match d'un mode que le rejeu ne gère pas (Firefight PvE —

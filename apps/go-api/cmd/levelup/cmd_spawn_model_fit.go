@@ -6,7 +6,10 @@ package main
 // Le fichier porte, avec chaque jeu de poids, l'effectif et les scores de la validation croisee
 // par match : ce qui permet de relire, sans relancer la mesure, ce que vaut la prevision d'un
 // mode. Une famille sous effectifMinFamille reapparitions n'a pas de poids propres (journalise) :
-// le service retombe sur la famille « tous ».
+// le choix des poids d'un match retombe alors sur la famille « tous » (tactical.PoidsPourFamille).
+//
+// Le fichier de reference ne s'ecrit que sur le parc entier et toutes les familles (voir
+// verifierAjustementComplet). La commande exacte qui le reproduit est dans docs/COMMANDS.md.
 
 import (
 	"context"
@@ -24,13 +27,42 @@ import (
 	"levelup/go-api/internal/platform/atomicfile"
 )
 
-// effectifMinFamille : sous ce nombre de reapparitions mesurees, les poids d'une famille ne
+// effectifMinFamille : sous ce nombre de reapparitions retenues, les poids d'une famille ne
 // seraient que du bruit.
 const effectifMinFamille = 500
 
 const permFichierPoids = 0o644
 
+// verifierAjustementComplet refuse un ajustement partiel qui ecraserait le fichier de reference :
+// avec `--famille` ou `--limit`, les autres familles seraient perdues et « tous » serait calcule sur
+// une seule famille ou sur un extrait du parc. Un ajustement partiel s'ecrit ailleurs (`--sortie`).
+func verifierAjustementComplet(o spawnModelOptions) error {
+	if o.sortie != "" || (o.famille == "" && o.limite == 0) {
+		return nil
+	}
+	return fmt.Errorf("ajustement partiel (--famille %q, --limit %d) : le fichier de reference ne se reecrit "+
+		"que sur le parc entier et toutes les familles ; passer --sortie <fichier> pour ecrire ailleurs",
+		o.famille, o.limite)
+}
+
+// definitionDesPoids dit ce que le fichier mesure (voir domain.PoidsReapparition.Definition).
+func definitionDesPoids(jeu *jeuReapparitions, o spawnModelOptions) string {
+	portee := "toutes les familles de modes du titre"
+	if o.famille != "" || o.limite > 0 {
+		portee = fmt.Sprintf("AJUSTEMENT PARTIEL (famille %q, %d artefacts au plus)", o.famille, o.limite)
+	}
+	return fmt.Sprintf("reapparitions apres mort lues dans les artefacts de rejeu, %s. Lues avant filtres : %d par la lecture "+
+		"du film, %d par le repli sur l'ecart de 4 a 15 s. Retenue : une reapparition dont la carte est vue dans au moins %d matchs "+
+		"de la famille, qui a au moins un adversaire vivant, et qui a au moins deux points candidats vus dans au moins %d AUTRES matchs "+
+		"que le sien. Chaque famille est ajustee sur ses propres matchs, « tous » sur toutes. Les effectifs (reapparitions, cartes, "+
+		"matchs) comptent les reapparitions retenues ; les scores sont ceux de la validation croisee a %d plis par match",
+		portee, jeu.bilan.reapFilm, jeu.bilan.reapRepli, o.matchsMinCarte, tactical.MatchsMinCandidat, tactical.PlisValidation)
+}
+
 func ajusterEtEcrire(ctx context.Context, cfg *config.AppConfig, o spawnModelOptions) error {
+	if err := verifierAjustementComplet(o); err != nil {
+		return err
+	}
 	familles, err := famillesDemandees(o)
 	if err != nil {
 		return err
@@ -46,9 +78,7 @@ func ajusterEtEcrire(ctx context.Context, cfg *config.AppConfig, o spawnModelOpt
 	}
 	fichier := domain.PoidsReapparition{
 		Revision: domain.SpawnModelRevision, Date: time.Now().Format("2006-01-02"),
-		Definition: fmt.Sprintf("reapparitions apres mort lues dans les artefacts : %d par la lecture du film, %d par le repli sur l'ecart de 4 a 15 s",
-			jeu.bilan.reapFilm, jeu.bilan.reapRepli),
-		Familles: map[string]domain.PoidsFamille{},
+		Definition: definitionDesPoids(jeu, o), Familles: map[string]domain.PoidsFamille{},
 	}
 	groupes := map[string]map[string]bool{domain.FamilleToutesModes: familles}
 	for f := range familles {
@@ -59,10 +89,15 @@ func ajusterEtEcrire(ctx context.Context, cfg *config.AppConfig, o spawnModelOpt
 			fichier.Familles[nom] = p
 		}
 	}
-	return ecrirePoids(ctx, cfg.PathResolver().SpawnModelPath(o.titleSlug), fichier)
+	chemin := o.sortie
+	if chemin == "" {
+		chemin = cfg.PathResolver().SpawnModelPath(o.titleSlug)
+	}
+	return ecrirePoids(ctx, chemin, fichier)
 }
 
-// poidsDeGroupe ajuste un groupe de familles et mesure ce qu'il vaut en validation croisee.
+// poidsDeGroupe ajuste un groupe de familles et mesure ce qu'il vaut en validation croisee. Les
+// effectifs rendus sont ceux des echantillons retenus.
 func poidsDeGroupe(ctx context.Context, jeu *jeuReapparitions, nom string, fams map[string]bool,
 	masque [tactical.NbVariables]bool, o spawnModelOptions) (domain.PoidsFamille, bool) {
 	evts := jeu.evenementsDeFamilles(fams)
@@ -80,14 +115,15 @@ func poidsDeGroupe(ctx context.Context, jeu *jeuReapparitions, nom string, fams 
 	m := tactical.Evaluer(echs, tactical.ScoresValides(echs, masque))
 	f := tactical.Evaluer(echs, tactical.ScoresValides(echs, tactical.FrequenceSeule))
 	cartes, matchs := map[string]bool{}, map[string]bool{}
-	for _, e := range evts {
-		cartes[e.CarteID], matchs[e.MatchID] = true, true
+	for _, s := range echs {
+		cartes[s.Carte], matchs[s.Match] = true, true
 	}
 	return domain.PoidsFamille{
 		Poids: poidsArrondis(tactical.PoidsNommes(w)), Reapparitions: len(echs), Cartes: len(cartes), Matchs: len(matchs),
 		Scores: domain.ScoresReapparition{
 			Top1Hasard: arrondi1(m.Hasard1), Top1Frequence: arrondi1(f.Top1), Top1: arrondi1(m.Top1),
-			Top3: arrondi1(m.Top3), Rayon3Hasard: arrondi1(m.HasardRayon), Rayon3: arrondi1(m.Rayon3),
+			Top3: arrondi1(m.Top3), Rayon1Hasard: arrondi1(m.HasardRayon1), Rayon3Hasard: arrondi1(m.HasardRayon3),
+			Rayon3: arrondi1(m.Rayon3),
 		},
 	}, true
 }

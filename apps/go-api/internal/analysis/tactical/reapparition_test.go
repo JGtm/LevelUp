@@ -173,16 +173,6 @@ func TestPliDuMatch_StableEtBorne(t *testing.T) {
 	}
 }
 
-func TestScoresValides_ChaqueEchantillonEstNoteSansSonPli(t *testing.T) {
-	echs := echantillonsSynthetiques()
-	pred := ScoresValides(echs, ToutesLesVariables)
-	for i := range echs {
-		if pred[i] == nil || len(pred[i]) != len(echs[i].Feats) {
-			t.Fatalf("echantillon %d non note", i)
-		}
-	}
-}
-
 func TestObstacles_Voit(t *testing.T) {
 	mur := Boite{X0: 9, Y0: -5, X1: 11, Y1: 5, ZBas: 0, ZHaut: 4}
 	o := NouveauxObstacles([]Boite{mur})
@@ -224,5 +214,39 @@ func TestPoidsNommesEtPoidsDeFamille_AllerRetour(t *testing.T) {
 	got := PoidsDeFamille(f)
 	if got[VarFrequence] != 0 || got[VarEnnemiProche] != 1 {
 		t.Errorf("poids = %v", got)
+	}
+}
+
+func TestPoidsPourFamille_ChoixEtRepliSurTous(t *testing.T) {
+	propre := [NbVariables]float64{VarEnnemiProche: 2}
+	general := [NbVariables]float64{VarEnnemiProche: 1}
+	fichier := domain.PoidsReapparition{Familles: map[string]domain.PoidsFamille{
+		"assassin":                {Poids: PoidsNommes(propre)},
+		"vide":                    {}, // famille sans poids propres
+		domain.FamilleToutesModes: {Poids: PoidsNommes(general)},
+	}}
+	cas := []struct {
+		nom, famille, attendu string
+		w                     [NbVariables]float64
+	}{
+		{"famille ajustee", "assassin", "assassin", propre},
+		{"famille inconnue du fichier", "drapeau", domain.FamilleToutesModes, general},
+		{"famille sans poids propres", "vide", domain.FamilleToutesModes, general},
+		{"match sans famille", "", domain.FamilleToutesModes, general},
+	}
+	for _, c := range cas {
+		nom, w, ok := PoidsPourFamille(fichier, c.famille)
+		if !ok || nom != c.attendu || w != c.w {
+			t.Errorf("%s : (%q, %v, %v), attendu (%q, %v, true)", c.nom, nom, w, ok, c.attendu, c.w)
+		}
+	}
+	// Fichier sans « tous » : une famille inconnue n'a pas de modele.
+	sansTous := domain.PoidsReapparition{Familles: map[string]domain.PoidsFamille{"assassin": {Poids: PoidsNommes(propre)}}}
+	if _, _, ok := PoidsPourFamille(sansTous, "drapeau"); ok {
+		t.Error("ni la famille ni « tous » : pas de modele")
+	}
+	// Fichier absent (valeur zero) : pas de modele, jamais de panique.
+	if _, _, ok := PoidsPourFamille(domain.PoidsReapparition{}, "assassin"); ok {
+		t.Error("fichier vide : pas de modele")
 	}
 }

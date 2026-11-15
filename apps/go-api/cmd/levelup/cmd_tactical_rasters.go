@@ -61,6 +61,9 @@ type tacticalRastersOptions struct {
 	backfill  bool
 	dryRun    bool
 	limit     int
+	// prevision : le titre declare film.spawn_forecast ; les sidecars portent alors la matiere de la
+	// prevision de reapparition (lue dans les capabilities, jamais devinee d'apres le slug).
+	prevision bool
 }
 
 // bilanTacticalRasters : ce que la passe a fait, et pourquoi elle a saute ce qu'elle a
@@ -100,6 +103,7 @@ func runTacticalRasters(cfg *config.AppConfig, args []string) error {
 		return nil
 	}
 
+	o.prevision = caps.Has(games.CapFilmSpawnForecast)
 	ctx := context.Background()
 	shorts, err := artefactsDuTitre(ctx, cfg, o.titleSlug)
 	if err != nil {
@@ -169,7 +173,7 @@ func projeterCorpusRasters(ctx context.Context, cfg *config.AppConfig,
 			b.sautes++
 			continue
 		}
-		s, err := replayartifacts.ProjeterRasterTactique(pr.ReplayArtifactPath(o.titleSlug, short))
+		s, err := replayartifacts.ProjeterRasterTactique(pr.ReplayArtifactPath(o.titleSlug, short), o.prevision)
 		if err != nil {
 			// Jamais avale : l'echec d'UN artefact n'arrete pas la passe, mais il se voit.
 			slog.ErrorContext(ctx, "rasters tactiques : artefact non projete",

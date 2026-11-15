@@ -26,6 +26,13 @@ et ce choix se prévoit.
 | Fréquence seule | 15,6 % | 38,4 % |
 | Modèle (6 variables, logit conditionnel) | **44,9 %** | **62,5 %** |
 
+**Corrigé le 2026-11-15 (revue du lot A)** : l'outil jetable comptait comme candidats les points vus dans le match
+testé, départageait les égalités en faveur du point réel et publiait pour « hasard » la chance d'UN seul tirage.
+Chiffres corrigés, même jeu (annexe `mesures_lot_A.md`) : hasard à trois tirages **36,2 %** (pas 14,1 %), fréquence seule
+38,3 % aux trois premiers, modèle **44,9 %** au premier choix et **62,8 %** aux trois premiers. Le modèle est inchangé à
+0,3 point près ; c'est le hasard de référence qui était faux (le gain du modèle sur le hasard à trois tirages est de
+26 points, pas de 48). Au premier choix, le hasard de 14,1 % tient.
+
 Poids : distance à l'ennemi le plus proche +1,98 (dominant), ennemis à moins de 20 m -0,65, distance au
 coéquipier le plus proche -1,08 (la proximité favorise), distance au barycentre ennemi -0,93, fréquence
 +0,45, lieu de la mort +0,15. Pas de ligne de vue.
@@ -121,14 +128,22 @@ Périmètre fermé :
       pas sur la base de ce lot (décodeur v1.3.7) : `EntreeOccupationDeLArtefact` ne câble que la voie de
       repli, et les trois autres voies sont prêtes et testées côté pur.
 - [x] A.2 `analysis/tactical/reapparition.go` (pur, sans I/O) : points candidats d'une carte (points
-      observés dans au moins 2 matchs, clé à 0,5 m et 1 m de hauteur), les six variables de la mesure,
+      observés dans au moins 2 AUTRES matchs que celui de l'événement évalué, clé à 0,5 m et 1 m de hauteur), les six variables de la mesure,
       score, probabilités (softmax), ajustement (montée de gradient), évaluation (point exact, rayon 8 m,
       zone nommée ; 1er choix et 3 premiers). Tests : cas construits à la main, déterminisme, plancher.
+      Revue du 2026-11-15 : candidats hors du match évalué (`Candidat.CandidatPour`), hasard exact du top 3 au rayon
+      (`partTouchee`), égalités du rayon partagées sans favoriser le réel (`toucheRayon`), tests d'exclusion du pli, de signe
+      du gradient et de repli d'équipe.
       Fait : `reapparition.go` (candidats, sept variables, softmax), `reapparition_ajustement.go` (echantillons, montee de gradient, validation croisee a 5 plis par match, plis ajustes en parallele), `reapparition_evaluation.go` (point exact, rayon de 8 m, zone nommee), `ligne_de_vue.go` (septieme variable, mesure M-2) ; tests construits a la main, determinisme.
 - [x] A.3 CLI `levelup spawn-model` : `evaluate` (imprime le tableau de la mesure, par mode et par
       carte, validation croisée par match) et `fit` (écrit le fichier de poids). Lecture des sidecars un
       match à la fois (pas de chargement du parc en mémoire). Logs `slog` structurés.
       Fait : `cmd_spawn_model*.go`. La commande lit les artefacts un a un et le registre par `OpenReadForQuery` (une base tenue en ecriture ailleurs fait echouer l'ouverture avec un message qui le dit). Sections `m1` a `m4`, `poids`, `--famille`, `--matchs-min-carte`, `--par-carte`, `--variantes`. Gate de capacite : `film.spawn_forecast`.
+      Revue du 2026-11-15 : les familles de modes viennent de `config/titles/halo_infinite/mappings/spawn_families.toml`
+      (`mappings.SpawnFamilySet`, plus aucun nom de mode dans la CLI) ; `fit` refuse d'ecraser le fichier de reference
+      avec `--famille` ou `--limit` (`--sortie` ecrit ailleurs) ; seuil de cartes par defaut 8 pour `evaluate`, 3 pour `fit`
+      (commande exacte dans `docs/COMMANDS.md`) ; `--variantes` sort sans erreur pour `fit` ; effectifs comptes sur les
+      reapparitions retenues.
 - [x] A.4 Fichier de poids versionné : chemin par `PathResolver` (nouvelle méthode, sous
       `data/titles/{slug}/reference/`), contenu = révision, date, poids par famille de modes, effectifs et
       scores de l'évaluation. Lecture par le service, avec repli journalisé et compté si le fichier manque.
@@ -146,10 +161,13 @@ Périmètre fermé :
       M-3 par mode (Assassin, Fiesta, Drapeau, Bases, Roi de la colline, Oddball ; alimente D-2) ;
       M-4 prévision à l'instant de la MORT contre l'instant de la réapparition (le rejeu affiche la
       prévision pendant le compte à rebours : il faut savoir ce qu'elle vaut 5 s avant).
-      Fait : M-1 a 0,1 point du temoin ; M-2 (+0,2 a +0,6 point, mesurable sur 3 cartes seulement) ; M-3 ; M-4 (la prevision perd 9 a 30 points a l'instant de la mort). Voie de decision : le repli (parc au schema 116). Conclusions de la regle : D-2 couvre Assassin, Fiesta, Drapeau, Bases et Roi de la colline (Oddball non mesurable) ; D-4 ecarte la ligne de vue. Le user tranche.
+      Fait : M-1 a 0,1 point du temoin ; M-2 (+0,2 a +0,6 point, mesurable sur 3 cartes seulement) ; M-3 ; M-4 (la prevision perd 9 a 30 points a l'instant de la mort). Voie de decision : le repli (parc au schema 116). Rejouees le 2026-11-15 avec la methode corrigee (annexe, tableaux AVANT / APRES) : D-2 et D-4 tiennent ; a l'instant de la MORT, Bases (49,7 %) et Roi de la colline (48,3 %) passent sous 50 % en zone nommee. Conclusions de la regle : D-2 couvre Assassin, Fiesta, Drapeau, Bases et Roi de la colline (Oddball non mesurable) ; D-4 ecarte la ligne de vue. Le user tranche.
 - [x] A.7 Capacité fine `film.spawn_forecast` dans `config/titles/*/mappings/capabilities.toml`
       (vraie pour `halo_infinite`, fausse pour `halo_5`) ; `ErrCapabilityNotSupported` sinon.
       Fait : constante `games.CapFilmSpawnForecast`, `AllCapabilityKeys`, `supported` pour `halo_infinite` (TOML et adaptateur), absente pour `halo_5`, `not_exposed` pour le titre synthetique de test ; la CLI `spawn-model` s'arrete proprement sur un titre qui ne la declare pas. Le 503 `ErrCapabilityNotSupported` des lectures servies arrive avec la route du lot D (aucun service ne la consomme avant).
+      Revue du 2026-11-15 : la production du sidecar consulte aussi la capacite (`capabilityPrevisionArmee`) : sans
+      `film.spawn_forecast`, le sidecar ne porte ni reapparition, ni source, ni debut de manche, ni mort, ni instantane, ni
+      couverture ; le sidecar de `halo_infinite` est identique octet pour octet (20 rejeux, avant / apres).
 - [ ] A.8 Mesure d'accord entre les deux definitions d'une reapparition (lecture du film contre repli
       sur l'ecart de 4 a 15 s), sur le parc regenere a la v1.3.9 : meme `spawn-model evaluate`, compteurs
       de source `film` et `repli_ecart`, part des reapparitions sur lesquelles les deux definitions
@@ -216,6 +234,13 @@ Gate D : tests verts, garde-rails du rejeu verts, contrôle à l'écran du user 
 - Reprise de session : cocher les cases ici, une entrée au `thought_log.md` à chaque lot clos.
 - Notes de version et changelog FR/EN dans le même envoi que chaque lot visible (B, C, D).
 
+- Dépendances datées du 2026-11-15, acceptées par la revue du lot A (aucune n'est un report) :
+  (a) `JoindreDebutsDeCompte`, `CompteBrut`, `Piste.Fin` et `DebutsDeCompte` n'ont aucun appelant de production
+  sur la base de ce lot : ils sont câblés dans la 8.2.0 avec la montée du décodeur v1.3.9 (A.1, A.8) ;
+  (b) `PoidsDeFamille` et `ChargerPoidsReapparition` n'ont aucun appelant serveur : ils sont branchés au lot C
+  (service de lecture). Le choix de la famille d'un match (`spawn_families.toml`, `mappings.SpawnFamilySet`) et le
+  repli sur « tous » (`tactical.PoidsPourFamille`) sont codés et testés ; la CLI `spawn-model` s'en sert.
+
 - Lot A envoyé sur `release/v8.2.0` le 2026-11-15 AVANT la montée du décodeur v1.3.9, à la demande du
   user (« tu peux continuer ? ») : la voie de repli suffit à ouvrir le lot B ; le câblage de la lecture du
   film (A.1, A.8) se fait dans un envoi à part dès la montée poussée. Le rattrapage v7 de la prod ne se lance
@@ -223,6 +248,11 @@ Gate D : tests verts, garde-rails du rejeu verts, contrôle à l'écran du user 
 
 ## 8. Découvertes (hors périmètre, consignées sans être traitées)
 
+- Échelle du point exact (`rangsExacts`) : pour trois ex aequo ou plus, elle ne donne pas l'espérance
+  exacte d'un départage au hasard (4 ex aequo : 0 % au lieu de 25 % au premier choix) ; exacte pour deux.
+  Négligeable avec des variables continues ; à reprendre si le service classe des candidats ex aequo.
+- Le fit écrit sous la racine de ressources du dépôt (`data/titles/.../reference`) : `LEVELUP_DATA_DIR`
+  ne la détourne pas.
 - Retirer la jointure Go `JoindreDebutsDeCompte` (index film -> xuid par `identity.players[].filmIndex`)
   quand le xuid sera toujours publie par le decodeur sur le compte a rebours (version apres la v1.3.9) ;
   c'est la deuxieme copie de cette jointure (la premiere est la preuve de fin de vie du rejeu web) : une

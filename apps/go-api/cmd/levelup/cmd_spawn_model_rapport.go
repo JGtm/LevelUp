@@ -26,6 +26,10 @@ const (
 	ecartTemoinMax = 1.0
 )
 
+// familleTemoin est la famille de la mesure de depart : Assassin 4c4 hors Fiesta et BTB. C'est un
+// identifiant de la table des familles du titre ; un titre qui ne le declare pas n'a pas de temoin.
+const familleTemoin = "assassin"
+
 // rapporteur porte ce que les sections partagent.
 type rapporteur struct {
 	ctx      context.Context
@@ -88,17 +92,22 @@ func evaluerEchantillons(echs []tactical.Echantillon, avecVue bool) resultat {
 
 // temoin : M-1, la mesure de depart rejouee sur le depot.
 func (r *rapporteur) temoin() {
-	fam := map[string]bool{familleAssassin: true}
+	if !r.familles[familleTemoin] {
+		fmt.Printf("## M-1 temoin : la famille %q n'est pas lue (table des familles ou --famille), pas de temoin\n", familleTemoin)
+		return
+	}
+	fam := map[string]bool{familleTemoin: true}
 	evts := r.jeu.evenementsDeFamilles(fam)
 	echs := tactical.ConstruireEchantillons(evts, tactical.CandidatsParCarte(evts),
-		tactical.ReglagesEchantillons{MatchsMinCarte: matchsMinCarteDefaut})
+		tactical.ReglagesEchantillons{MatchsMinCarte: matchsMinCarteMesure})
 	res := evaluerEchantillons(echs, false)
 	w := tactical.Ajuster(echs, func(tactical.Echantillon) bool { return true }, tactical.ToutesLesVariables)
 	fmt.Println("## M-1 temoin : Assassin hors Fiesta et BTB")
 	fmt.Printf("\n%d reapparitions sur %d cartes (annexe : %d sur %d), hors candidats : %d\n\n",
 		res.n, res.cartes, refReapparitions, refCartes, res.modele.HorsCandidats)
 	fmt.Println("| mesure | depot | annexe | ecart |\n|---|---|---|---|")
-	ligneTemoin("hasard, a moins de 8 m", res.modele.HasardRayon, refRayon1Hasard)
+	ligneTemoin("hasard, 1er tirage, a moins de 8 m", res.modele.HasardRayon1, refRayon1Hasard)
+	fmt.Printf("| hasard, 3 tirages, a moins de 8 m (esperance exacte) | %.1f %% | | |\n", res.modele.HasardRayon3)
 	ligneTemoin("frequence seule, 1er, a moins de 8 m", res.freq.Rayon1, refRayon1Freq)
 	ligneTemoin("frequence seule, 3 premiers, a moins de 8 m", res.freq.Rayon3, refRayon3Freq)
 	ligneTemoin("modele, 1er, a moins de 8 m", res.modele.Rayon1, refRayon1Modele)
@@ -175,7 +184,7 @@ func (r *rapporteur) chargerZones() {
 // lignesParFamille ordonne les familles lues.
 func (r *rapporteur) lignesParFamille() []string {
 	var out []string
-	for _, f := range famillesMesurees {
+	for _, f := range r.o.table.Families() {
 		if r.familles[f] {
 			out = append(out, f)
 		}
@@ -187,7 +196,7 @@ func (r *rapporteur) lignesParFamille() []string {
 func (r *rapporteur) parMode() {
 	r.chargerZones()
 	reglages := tactical.ReglagesEchantillons{MatchsMinCarte: r.o.matchsMinCarte, Zone: fonctionZone(r.zones)}
-	tous := make([]ligneFamille, 0, len(famillesMesurees))
+	tous := make([]ligneFamille, 0, len(r.o.table.Families()))
 	for _, f := range r.lignesParFamille() {
 		evts := r.jeu.evenementsDeFamilles(map[string]bool{f: true})
 		echs := tactical.ConstruireEchantillons(evts, tactical.CandidatsParCarte(evts), reglages)
@@ -206,7 +215,7 @@ func (r *rapporteur) ligneDeVue() {
 		MatchsMinCarte: r.o.matchsMinCarte, Zone: fonctionZone(r.zones), Vue: fonctionVue(r.jeu.obstacles),
 	}
 	cartes := map[string]bool{}
-	tous := make([]ligneFamille, 0, len(famillesMesurees))
+	tous := make([]ligneFamille, 0, len(r.o.table.Families()))
 	for _, f := range r.lignesParFamille() {
 		var evts []tactical.EvenementReapparition
 		for _, e := range r.jeu.evenementsDeFamilles(map[string]bool{f: true}) {
@@ -248,7 +257,7 @@ func imprimerParMode(lignes []ligneFamille) {
 			cov = 100 * float64(m.ZonesMesurees) / float64(m.N)
 		}
 		fmt.Printf("| %s | %d | %d | %d | %.0f | %.1f | %.1f | %.1f | %.1f | %.1f | %.1f | %.1f | %.1f | %.0f %% | %.1f | %.1f |\n",
-			l.nom, l.matchs, l.res.n, l.res.cartes, l.res.kMoyen, m.HasardRayon, f.Rayon3, m.Rayon3,
+			l.nom, l.matchs, l.res.n, l.res.cartes, l.res.kMoyen, m.HasardRayon3, f.Rayon3, m.Rayon3,
 			f.Rayon1, m.Rayon1, m.HasardZone3, f.Zone3, m.Zone3, cov, m.Top1, m.Top3)
 	}
 	fmt.Println()

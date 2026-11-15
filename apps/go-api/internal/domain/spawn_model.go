@@ -11,7 +11,8 @@ package domain
 const SpawnModelRevision = 1
 
 // FamilleToutesModes est la famille qui regroupe tous les modes mesures ; elle sert de repli
-// quand un mode n'a pas ses propres poids.
+// quand un mode n'a pas ses propres poids (analysis/tactical.PoidsPourFamille). Les familles
+// elles-memes sont celles de la table du titre (config/titles/{slug}/mappings/spawn_families.toml).
 const FamilleToutesModes = "tous"
 
 // PoidsReapparition est le contenu du fichier.
@@ -19,7 +20,8 @@ type PoidsReapparition struct {
 	Revision int `json:"revision"`
 	// Date : le jour de l'ajustement (AAAA-MM-JJ).
 	Date string `json:"date"`
-	// Definition decrit la regle de decision « reapparition » des donnees d'apprentissage.
+	// Definition dit ce que le fichier mesure : d'ou viennent les reapparitions, quels filtres les
+	// retiennent, et ce que comptent les effectifs de chaque famille.
 	Definition string `json:"definition"`
 	// Familles : les poids par famille de modes, cle = nom de la famille.
 	Familles map[string]PoidsFamille `json:"familles"`
@@ -30,7 +32,8 @@ type PoidsReapparition struct {
 type PoidsFamille struct {
 	// Poids : variable -> poids. Une variable absente a un poids nul.
 	Poids map[string]float64 `json:"poids"`
-	// Reapparitions, Cartes, Matchs : l'effectif de l'ajustement.
+	// Reapparitions, Cartes, Matchs : l'effectif de l'ajustement, compte sur les memes
+	// reapparitions retenues (apres filtres) : celles qui ont servi a ajuster et a evaluer.
 	Reapparitions int `json:"reapparitions"`
 	Cartes        int `json:"cartes"`
 	Matchs        int `json:"matchs"`
@@ -45,6 +48,9 @@ type ScoresReapparition struct {
 	Top1Frequence float64 `json:"top1_frequence"`
 	Top1          float64 `json:"top1"`
 	Top3          float64 `json:"top3"`
-	Rayon3Hasard  float64 `json:"rayon8m_top3_hasard"`
-	Rayon3        float64 `json:"rayon8m_top3"`
+	// Rayon1Hasard et Rayon3Hasard : la chance qu'un premier tirage, ou qu'au moins un des trois
+	// tirages sans remise, tombe a moins de 8 m du point reel (esperance exacte par evenement).
+	Rayon1Hasard float64 `json:"rayon8m_top1_hasard"`
+	Rayon3Hasard float64 `json:"rayon8m_top3_hasard"`
+	Rayon3       float64 `json:"rayon8m_top3"`
 }

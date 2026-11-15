@@ -21,3 +21,20 @@ func PoidsNommes(w [NbVariables]float64) map[string]float64 {
 	}
 	return out
 }
+
+// PoidsPourFamille choisit le jeu de poids d'un match dans un fichier de poids : celui de sa
+// famille s'il en a un, sinon celui de la famille « tous ». Rend le nom du jeu retenu, ses poids
+// et vrai ; faux quand le fichier n'a ni l'un ni l'autre (fichier vide ou absent : l'appelant sert
+// alors la prevision sans modele).
+//
+// Une famille vide (match sans famille), inconnue du fichier, ou sans poids propres (effectif
+// trop faible pour avoir ete ajustee) se replie sur « tous ».
+func PoidsPourFamille(f domain.PoidsReapparition, famille string) (string, [NbVariables]float64, bool) {
+	if p, ok := f.Familles[famille]; ok && famille != "" && len(p.Poids) > 0 {
+		return famille, PoidsDeFamille(p), true
+	}
+	if p, ok := f.Familles[domain.FamilleToutesModes]; ok && len(p.Poids) > 0 {
+		return domain.FamilleToutesModes, PoidsDeFamille(p), true
+	}
+	return "", [NbVariables]float64{}, false
+}

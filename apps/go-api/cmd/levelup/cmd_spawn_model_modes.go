@@ -3,67 +3,41 @@ package main
 // cmd_spawn_model_modes.go — LES FAMILLES DE MODES DE LA MESURE DE REAPPARITION, et le registre
 // des matchs qui les porte.
 //
-// Une famille se decide sur le nom de la variante de jeu et la categorie du registre. Les
-// mots-cles couvrent les noms anglais du jeu et leurs equivalents francais ; une variante qui ne
-// ressemble a rien n'a pas de famille et n'est pas mesuree. Le BTB et les rotations Husky Raid sont ecartes
-// d'emblee : leurs cartes et leurs effectifs ne sont pas ceux de l'Arene.
+// La table qui range une variante de jeu dans une famille est une donnee du titre
+// (config/titles/{slug}/mappings/spawn_families.toml, `mappings.SpawnFamilySet`) : cette commande
+// ne connait aucun nom de mode. Un match sans famille (BTB, rotation Husky Raid, variante qui ne
+// ressemble a rien) n'est pas mesure.
 
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"io/fs"
+	"path/filepath"
 	"sort"
-	"strings"
 
+	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/mappings"
 )
 
-// Familles de modes mesurees.
-const (
-	familleAssassin = "assassin"
-	familleFiesta   = "fiesta"
-	familleDrapeau  = "drapeau"
-	familleBases    = "bases"
-	familleColline  = "colline"
-	familleOddball  = "oddball"
-)
+// fichierFamilles est le nom du fichier de familles dans le dossier des mappings d'un titre.
+const fichierFamilles = "spawn_families.toml"
 
-// famillesMesurees : l'ordre des rapports.
-var famillesMesurees = []string{
-	familleAssassin, familleFiesta, familleDrapeau, familleBases, familleColline, familleOddball,
-}
-
-// motsCles : mots d'une variante (en minuscules) -> famille, dans l'ordre d'essai.
-var motsCles = []struct {
-	famille string
-	mots    []string
-}{
-	{familleDrapeau, []string{"ctf", "flag", "drapeau"}},
-	{familleBases, []string{"stronghold", "bases"}},
-	{familleColline, []string{"king of the hill", "koth", "colline"}},
-	{familleOddball, []string{"oddball", "balle"}},
-	{familleAssassin, []string{"slayer", "assassin"}},
-}
-
-// familleDeMode rend la famille d'une variante, ou "" si elle n'est pas mesuree (BTB, PvE,
-// rotation Husky Raid, variante inconnue). Fiesta passe avant les modes d'objectif : une variante Fiesta reste
-// Fiesta, ses armes et ses reapparitions ne sont pas celles de l'Arene.
-func familleDeMode(variante, categorie string) string {
-	v, c := strings.ToLower(strings.TrimSpace(variante)), strings.ToLower(strings.TrimSpace(categorie))
-	if strings.HasPrefix(v, "btb") || c == "btb" || strings.Contains(c, "husky") {
-		return ""
+// famillesDuTitre charge la table des familles de modes du titre. Un titre qui declare la
+// prevision sans declarer de famille est une erreur de configuration : la commande s'arrete en le
+// disant, elle ne mesure pas un jeu de modes qu'elle ne sait pas nommer.
+func famillesDuTitre(cfg *config.AppConfig, slug string) (*mappings.SpawnFamilySet, error) {
+	path := filepath.Join(cfg.PathResolver().TitleMappingsDir(slug), fichierFamilles)
+	set, err := mappings.LoadSpawnFamiliesFromFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, fmt.Errorf("le titre %s n'a pas de familles de modes (%s absent) : aucune mesure possible", slug, fichierFamilles)
 	}
-	if strings.Contains(v, "fiesta") || strings.Contains(c, "fiesta") {
-		return familleFiesta
+	if err != nil {
+		return nil, fmt.Errorf("familles de modes de %s : %w", slug, err)
 	}
-	for _, k := range motsCles {
-		for _, m := range k.mots {
-			if strings.Contains(v, m) {
-				return k.famille
-			}
-		}
-	}
-	return ""
+	return set, nil
 }
 
 // infoMatch est ce que le registre sait d'un match.
@@ -73,7 +47,7 @@ type infoMatch struct {
 
 // registreDesMatchs lit le registre des matchs JcJ, indexe par la forme COURTE du match_id (la
 // cle des artefacts).
-func registreDesMatchs(ctx context.Context, db *sql.DB) (map[string]infoMatch, error) {
+func registreDesMatchs(ctx context.Context, db *sql.DB, familles *mappings.SpawnFamilySet) (map[string]infoMatch, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT match_id, COALESCE(map_id, ''), COALESCE(map_name, ''),
 		       COALESCE(game_variant_name, ''), COALESCE(mode_category, '')
@@ -89,7 +63,7 @@ func registreDesMatchs(ctx context.Context, db *sql.DB) (map[string]infoMatch, e
 		if err := rows.Scan(&m.matchID, &m.carteID, &m.carteNom, &m.variante, &m.categorie); err != nil {
 			return nil, fmt.Errorf("registre des matchs (scan): %w", err)
 		}
-		m.famille = familleDeMode(m.variante, m.categorie)
+		m.famille = familles.FamilyOf(m.variante, m.categorie)
 		out[titlePkg.FilmShortMatchID(m.matchID)] = m
 	}
 	return out, rows.Err()

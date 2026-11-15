@@ -28,16 +28,30 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sort"
 	"strings"
 
+	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/service"
 )
 
-// matchsMinCarteDefaut : le seuil de la mesure de depart.
-const matchsMinCarteDefaut = 8
+// Sous-commandes de `spawn-model`.
+const (
+	sousCommandeEvaluate = "evaluate"
+	sousCommandeFit      = "fit"
+)
+
+// Seuils de matchs par carte, selon ce que la sous-commande fait de la carte. `evaluate` mesure
+// avec celui de la mesure de depart ; `fit` en prend un plus bas pour que les familles clairsemees
+// (Bases, Roi de la colline) aient des cartes. `--matchs-min-carte` le remplace.
+const (
+	matchsMinCarteMesure     = 8
+	matchsMinCarteAjustement = 3
+)
 
 // Sections de `evaluate`.
 const (
@@ -58,25 +72,48 @@ type spawnModelOptions struct {
 	parCarte  bool
 	variantes bool
 	vue       bool
-	// matchsMinCarte : une carte vue dans moins de matchs n'est pas mesuree.
+	// matchsMinCarte : une carte vue dans moins de matchs n'est pas mesuree ; 0 = le seuil de la
+	// sous-commande (matchsMinCarteMesure ou matchsMinCarteAjustement).
 	matchsMinCarte int
+	// sortie : fit ecrit ici au lieu du fichier de reference ; obligatoire pour un ajustement partiel.
+	sortie string
+	// table range les variantes du titre dans leurs familles de modes.
+	table *mappings.SpawnFamilySet
 }
 
-func runSpawnModel(cfg *config.AppConfig, args []string) error {
-	if len(args) == 0 || (args[0] != "evaluate" && args[0] != "fit") {
-		return fmt.Errorf("sous-commande attendue : evaluate | fit (voir `levelup help`)")
-	}
-	fs := flag.NewFlagSet("spawn-model "+args[0], flag.ExitOnError)
+// lireOptionsSpawnModel lit les options d'une sous-commande (evaluate | fit).
+func lireOptionsSpawnModel(sous string, args []string) (spawnModelOptions, error) {
+	fs := flag.NewFlagSet("spawn-model "+sous, flag.ExitOnError)
 	o := spawnModelOptions{}
 	fs.StringVar(&o.titleSlug, "title", "halo_infinite", "slug du titre")
 	fs.StringVar(&o.sections, "sections", "m1,m2,m3,m4", "evaluate : sections a produire (m1 temoin, m2 ligne de vue, m3 par mode, m4 mort contre reapparition)")
-	fs.StringVar(&o.famille, "famille", "", "restreint a une famille de modes ("+strings.Join(famillesMesurees, ", ")+")")
+	fs.StringVar(&o.famille, "famille", "", "restreint a une famille de modes (celles de spawn_families.toml)")
 	fs.IntVar(&o.limite, "limit", 0, "borne le nombre d'artefacts lus (0 = tous)")
 	fs.BoolVar(&o.parCarte, "par-carte", false, "evaluate : ajoute le tableau par carte du temoin")
 	fs.BoolVar(&o.variantes, "variantes", false, "liste les variantes du parc par famille puis s'arrete")
-	fs.IntVar(&o.matchsMinCarte, "matchs-min-carte", matchsMinCarteDefaut, "matchs minimum par carte pour qu'elle soit mesuree")
+	fs.IntVar(&o.matchsMinCarte, "matchs-min-carte", 0,
+		fmt.Sprintf("matchs minimum par carte pour qu'elle soit retenue (defaut : %d pour evaluate, %d pour fit)",
+			matchsMinCarteMesure, matchsMinCarteAjustement))
+	fs.StringVar(&o.sortie, "sortie", "", "fit : fichier de poids a ecrire (obligatoire avec --famille ou --limit)")
 	fs.BoolVar(&o.vue, "ligne-de-vue", false, "fit : ajuste la septieme variable (ligne de vue)")
-	if err := fs.Parse(args[1:]); err != nil {
+	if err := fs.Parse(args); err != nil {
+		return o, err
+	}
+	if o.matchsMinCarte == 0 {
+		o.matchsMinCarte = matchsMinCarteMesure
+		if sous == sousCommandeFit {
+			o.matchsMinCarte = matchsMinCarteAjustement
+		}
+	}
+	return o, nil
+}
+
+func runSpawnModel(cfg *config.AppConfig, args []string) error {
+	if len(args) == 0 || (args[0] != sousCommandeEvaluate && args[0] != sousCommandeFit) {
+		return fmt.Errorf("sous-commande attendue : evaluate | fit (voir `levelup help`)")
+	}
+	o, err := lireOptionsSpawnModel(args[0], args[1:])
+	if err != nil {
 		return err
 	}
 	caps, err := capabilitesDuTitre(cfg, o.titleSlug)
@@ -88,14 +125,23 @@ func runSpawnModel(cfg *config.AppConfig, args []string) error {
 			o.titleSlug, string(games.CapFilmSpawnForecast))
 		return nil
 	}
+	if o.table, err = famillesDuTitre(cfg, o.titleSlug); err != nil {
+		return err
+	}
 	ctx := context.Background()
-	if args[0] == "evaluate" && o.sections == sectionPoids {
+	switch {
+	case args[0] == sousCommandeEvaluate && o.sections == sectionPoids:
 		return imprimerPoidsEcrits(ctx, cfg, o)
+	case args[0] == sousCommandeFit:
+		err = ajusterEtEcrire(ctx, cfg, o)
+	default:
+		err = evaluerLeParc(ctx, cfg, o)
 	}
-	if args[0] == "fit" {
-		return ajusterEtEcrire(ctx, cfg, o)
+	// `--variantes` liste les variantes puis s'arrete : une sortie normale pour les deux sous-commandes.
+	if errors.Is(err, errArretVariantes) {
+		return nil
 	}
-	return evaluerLeParc(ctx, cfg, o)
+	return err
 }
 
 // donneesDuParc ouvre le registre en lecture, liste les artefacts et lit le parc. La poignee de
@@ -108,7 +154,7 @@ func donneesDuParc(ctx context.Context, cfg *config.AppConfig, o spawnModelOptio
 		return nil, nil, nil, fmt.Errorf("ouverture en lecture de la base partagee (tenue en ecriture par "+
 			"un autre processus ? arreter le serveur) : %w", err)
 	}
-	registre, err := registreDesMatchs(ctx, db)
+	registre, err := registreDesMatchs(ctx, db, o.table)
 	if err != nil {
 		release()
 		return nil, nil, nil, err
@@ -138,13 +184,13 @@ var errArretVariantes = errors.New("arret apres la liste des variantes")
 // famillesDemandees rend l'ensemble des familles a lire.
 func famillesDemandees(o spawnModelOptions) (map[string]bool, error) {
 	out := map[string]bool{}
-	for _, f := range famillesMesurees {
+	for _, f := range o.table.Families() {
 		if o.famille == "" || o.famille == f {
 			out[f] = true
 		}
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("famille inconnue %q (attendu : %s)", o.famille, strings.Join(famillesMesurees, ", "))
+		return nil, fmt.Errorf("famille inconnue %q (attendu : %s)", o.famille, strings.Join(o.table.Families(), ", "))
 	}
 	return out, nil
 }
@@ -165,9 +211,6 @@ func evaluerLeParc(ctx context.Context, cfg *config.AppConfig, o spawnModelOptio
 		return err
 	}
 	jeu, db, release, err := donneesDuParc(ctx, cfg, o, familles, sectionActive(o, sectionLigneDeVue))
-	if errors.Is(err, errArretVariantes) {
-		return nil
-	}
 	if err != nil {
 		return err
 	}
@@ -190,7 +233,8 @@ func evaluerLeParc(ctx context.Context, cfg *config.AppConfig, o spawnModelOptio
 }
 
 // imprimerPoidsEcrits relit le fichier de poids par la lecture du service (repli journalise et
-// compte quand il manque) et l'imprime.
+// compte quand il manque) et l'imprime, puis dit quel jeu de poids le service retiendrait pour
+// chaque famille du titre et pour un match sans famille.
 func imprimerPoidsEcrits(ctx context.Context, cfg *config.AppConfig, o spawnModelOptions) error {
 	p, ok := service.ChargerPoidsReapparition(ctx, o.titleSlug, cfg.PathResolver().SpawnModelPath(o.titleSlug))
 	if !ok {
@@ -199,9 +243,26 @@ func imprimerPoidsEcrits(ctx context.Context, cfg *config.AppConfig, o spawnMode
 	fmt.Printf("poids du %s : %s\n\n", p.Date, p.Definition)
 	fmt.Println("| famille | reapparitions | matchs | a 8 m, 3 premiers : hasard | modele | exact 3 premiers |")
 	fmt.Println("|---|---|---|---|---|---|")
-	for nom, f := range p.Familles {
+	noms := make([]string, 0, len(p.Familles))
+	for nom := range p.Familles {
+		noms = append(noms, nom)
+	}
+	sort.Strings(noms)
+	for _, nom := range noms {
+		f := p.Familles[nom]
 		fmt.Printf("| %s | %d | %d | %.1f | %.1f | %.1f |\n", nom, f.Reapparitions, f.Matchs,
 			f.Scores.Rayon3Hasard, f.Scores.Rayon3, f.Scores.Top3)
+	}
+	fmt.Println("\n| famille du match | jeu de poids retenu |\n|---|---|")
+	for _, fam := range append(o.table.Families(), "") {
+		retenu, _, ok := tactical.PoidsPourFamille(p, fam)
+		if !ok {
+			retenu = "(aucun : pas de prevision)"
+		}
+		if fam == "" {
+			fam = "(sans famille)"
+		}
+		fmt.Printf("| %s | %s |\n", fam, retenu)
 	}
 	return nil
 }

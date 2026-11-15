@@ -45,6 +45,10 @@ package replayartifacts
 // question, plus une lecture de TOML par cycle. Les gates jumeaux d'usage.go et de
 // bombstats.go existent, eux, parce qu'ils portent des cles DIFFERENTES de celle de
 // l'etape (`film.usage_summary`, `film.bomb_stats`).
+//
+// LA MATIERE DE LA PREVISION DE REAPPARITION a, elle, sa propre cle : `film.spawn_forecast`
+// (capabilityPrevisionArmee, lue une fois par lot). Sans elle, le sidecar d'un titre qui
+// declare le rejeu ne porte ni reapparition, ni mort, ni instantane ; le reste est inchange.
 
 import (
 	"encoding/json"
@@ -83,12 +87,16 @@ const permSidecarRaster = 0o644
 // DEJA le document lu par le cycle (`artefactLu.doc`) et appelle directement
 // [projeterRasterDepuisDocument] : les deux DOIVENT projeter a l'identique (meme fonction
 // pure), mais un seul des deux chemins a besoin de relire le fichier.
-func ProjeterRasterTactique(path string) (domain.TacticalRasterSidecar, error) {
+//
+// `previsionArmee` dit si le titre declare `film.spawn_forecast` : seulement alors le sidecar porte
+// la matiere de la prevision de reapparition (voir spawnsDeLOccupation). L'appelant la lit dans les
+// capabilities du titre ; ce paquet-ci ne devine rien.
+func ProjeterRasterTactique(path string, previsionArmee bool) (domain.TacticalRasterSidecar, error) {
 	doc, _, err := lireDocumentRange(path)
 	if err != nil {
 		return domain.TacticalRasterSidecar{}, err
 	}
-	return projeterRasterDepuisDocument(doc)
+	return projeterRasterDepuisDocument(doc, previsionArmee)
 }
 
 // projeterRasterDepuisDocument est le calcul pur du sidecar, a partir d'un document DEJA
@@ -99,7 +107,7 @@ func ProjeterRasterTactique(path string) (domain.TacticalRasterSidecar, error) {
 // `frameIntervalMs` absent (artefacts anciens) : la cadence historique ([cadenceHistoriqueMS]) est
 // appliquee ICI, chez l'appelant du calcul pur — `analysis/tactical` ne devine aucune cadence.
 // Ce n'est pas la cadence de cuisson du decodeur : un artefact sans champ date de la grille a 100 ms.
-func projeterRasterDepuisDocument(doc *replay.ReplayDocument) (domain.TacticalRasterSidecar, error) {
+func projeterRasterDepuisDocument(doc *replay.ReplayDocument, previsionArmee bool) (domain.TacticalRasterSidecar, error) {
 	if doc == nil {
 		// Ne devrait jamais arriver : `lireArtefacts` ne pose `artefactLu` qu'apres une
 		// lecture reussie, et `ProjeterRasterTactique` ne l'appelle qu'avec un document
@@ -115,11 +123,11 @@ func projeterRasterDepuisDocument(doc *replay.ReplayDocument) (domain.TacticalRa
 	g := tactical.GrilleParDefaut()
 	entree := EntreeOccupationDeLArtefact(doc)
 	intervalle := entree.IntervalleFrameMs
-	joueurs, ignores, err := rasteriserParJoueur(g, entree)
+	joueurs, ignores, err := rasteriserParJoueur(g, entree, previsionArmee)
 	if err != nil {
 		return domain.TacticalRasterSidecar{}, err
 	}
-	return domain.TacticalRasterSidecar{
+	sidecar := domain.TacticalRasterSidecar{
 		SchemaVersion:         domain.TacticalRasterSchemaVersion,
 		MatchID:               doc.MatchID,
 		ShortID:               titlePkg.FilmShortMatchID(doc.MatchID),
@@ -129,8 +137,11 @@ func projeterRasterDepuisDocument(doc *replay.ReplayDocument) (domain.TacticalRa
 		PasEchantillonMs:      tactical.PasOccupationMs,
 		PointsIgnores:         ignores,
 		Joueurs:               joueurs,
-		Reapparitions:         sourcesDesReapparitions(joueurs),
-	}, nil
+	}
+	if previsionArmee {
+		sidecar.Reapparitions = sourcesDesReapparitions(joueurs)
+	}
+	return sidecar, nil
 }
 
 // pistesDeLArtefact projette les pistes du document vers les types PURS du rasterisage.
@@ -215,7 +226,7 @@ func pointsDuVehicule(samples []replay.VehicleSample) []tactical.PointPiste {
 // celui-la meme qui la publiera a la lecture. Les comptes sont lus par `CellulesBrutes` —
 // SANS plancher de rarete : le plancher appartient a l'agregat, jamais au match (cf. sa
 // doc).
-func rasteriserParJoueur(g tactical.Grille, e tactical.EntreeOccupation) ([]domain.TacticalRasterJoueur, int, error) {
+func rasteriserParJoueur(g tactical.Grille, e tactical.EntreeOccupation, previsionArmee bool) ([]domain.TacticalRasterJoueur, int, error) {
 	occ := tactical.Occupation(g, e, tactical.PasOccupationMs)
 	// VIDE MAIS PRESENT : un artefact sans piste nommee rend une liste vide, pas `null`.
 	// Le fichier existe donc, et « mesure a zero » ne se confond pas avec « non mesure ».
@@ -237,7 +248,7 @@ func rasteriserParJoueur(g tactical.Grille, e tactical.EntreeOccupation) ([]doma
 			XUID:             j.XUID,
 			Equipe:           j.Equipe,
 			Cellules:         cellulesDuRaster(raster),
-			Spawns:           spawnsDeLOccupation(j.Spawns),
+			Spawns:           spawnsDeLOccupation(j.Spawns, previsionArmee),
 			PremieresEntrees: entreesDeLOccupation(j.PremieresEntrees),
 			Routes:           routesDeLOccupation(j.Routes),
 		})
@@ -311,8 +322,14 @@ func projeterRastersTactiques(ctx context.Context, d Deps, rapports []artefactLu
 	titre := ctxkeys.TitleSlug(ctx)
 	pr := titlePkg.NewPathResolver(d.RepoRoot)
 	ecrits, echecs := 0, 0
+	prevision, incident := capabilityPrevisionArmee(ctx, d)
+	if incident {
+		// Capabilities illisibles : les sidecars se projettent sans la matiere de prevision, et le lot
+		// compte une defaillance (meme contrat que les portes jumelles).
+		echecs++
+	}
 	for _, r := range rapports {
-		s, err := projeterRasterDepuisDocument(r.doc)
+		s, err := projeterRasterDepuisDocument(r.doc, prevision)
 		if err != nil {
 			slog.ErrorContext(ctx, "post-sync: artefact range mais raster tactique impossible",
 				"gamertag", d.Gamertag, "match_id", r.matchID, "err", err)

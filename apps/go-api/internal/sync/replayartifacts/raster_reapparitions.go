@@ -4,10 +4,12 @@ package replayartifacts
 // l'occupation vers le format du sidecar, et le compte des decisions par source.
 
 import (
+	"context"
 	"math"
 
 	"levelup/go-api/internal/analysis/tactical"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 
 	"github.com/JGtm/halo-infinite-film-decoder/replay"
 )
@@ -17,16 +19,30 @@ import (
 // reapparition en porte plusieurs dizaines.
 func arrondiCm(v float64) float64 { return math.Round(v*100) / 100 }
 
+// capabilityPrevisionArmee dit si le titre declare `film.spawn_forecast` (meme contrat que les portes
+// jumelles : TOML illisible = incident, cle absente = configuration de titre).
+func capabilityPrevisionArmee(ctx context.Context, d Deps) (armee, incident bool) {
+	return porteCapability(ctx, d, games.CapFilmSpawnForecast, "prévision de réapparition", nil)
+}
+
 // spawnsDeLOccupation traduit les spawns d'un joueur vers le format du sidecar. X et Y du spawn
 // restent a leur precision d'origine (les grappes les lisent telles quelles) ; tout ce que le
 // schema 7 ajoute est arrondi au centimetre.
-func spawnsDeLOccupation(spawns []tactical.SpawnPiste) []domain.TacticalRasterSpawn {
+//
+// La matiere de la prevision de reapparition (reapparition, source, debut de manche, mort,
+// instantane) n'est portee que si `previsionArmee` : un titre qui n'a pas `film.spawn_forecast` n'en
+// recoit aucune, le reste du spawn (frame, position, premiere vie) est le meme.
+func spawnsDeLOccupation(spawns []tactical.SpawnPiste, previsionArmee bool) []domain.TacticalRasterSpawn {
 	out := make([]domain.TacticalRasterSpawn, 0, len(spawns))
 	for _, s := range spawns {
 		sp := domain.TacticalRasterSpawn{
 			Frame: s.Frame, X: s.X, Y: s.Y, Z: arrondiCm(s.Z), PremiereVie: s.PremiereVie,
-			Reapparition: s.Reapparition, Source: s.Source, DebutDeManche: s.DebutDeManche,
 		}
+		if !previsionArmee {
+			out = append(out, sp)
+			continue
+		}
+		sp.Reapparition, sp.Source, sp.DebutDeManche = s.Reapparition, s.Source, s.DebutDeManche
 		if s.Mort != nil {
 			sp.Mort = &domain.TacticalRasterMort{
 				Frame: s.Mort.Frame, X: arrondiCm(s.Mort.X), Y: arrondiCm(s.Mort.Y), Z: arrondiCm(s.Mort.Z),

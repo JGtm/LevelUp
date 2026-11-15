@@ -133,7 +133,7 @@ type TacticalRasterSidecar struct {
 
 	// Reapparitions compte les spawns du match par SOURCE de la decision « reapparition »
 	// (cf. TacticalRasterSources) : c'est ce qui dit, par match, si la mesure repose sur le film ou
-	// sur le repli.
+	// sur le repli. Nul quand le titre ne declare pas `film.spawn_forecast`.
 	Reapparitions TacticalRasterSources `json:"reapparitions"`
 }
 
@@ -191,7 +191,8 @@ type TacticalRasterSpawn struct {
 
 	// Reapparition : la vie commence apres une MORT du joueur ; Source dit comment on l'a decide
 	// (`film` ou `repli_ecart`). DebutDeManche : la vie precedente a ete close par une fin de
-	// manche, ce n'est pas une reapparition.
+	// manche, ce n'est pas une reapparition. Ces champs, Mort et Instantane ne sont portes que si le
+	// titre declare `film.spawn_forecast`.
 	Reapparition  bool   `json:"reapparition,omitempty"`
 	Source        string `json:"source,omitempty"`
 	DebutDeManche bool   `json:"debut_de_manche,omitempty"`

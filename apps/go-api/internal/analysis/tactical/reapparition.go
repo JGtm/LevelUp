@@ -14,9 +14,10 @@ package tactical
 // # LES POINTS CANDIDATS SE DEDUISENT DU JEU OBSERVE
 //
 // Aucun catalogue : un point est candidat s'il a ete observe dans au moins MatchsMinCandidat
-// matchs distincts, a la maille de 0,5 m en plan et d'un metre en hauteur. Une reapparition
-// qui tombe hors des candidats ne peut pas etre predite exactement : elle se compte (hors
-// candidats) plutot que de se perdre.
+// matchs distincts, a la maille de 0,5 m en plan et d'un metre en hauteur. Pour prevoir (ou
+// evaluer) un match, ces matchs sont d'AUTRES matchs : le point reel du match prevu ne devient
+// pas candidat parce que ce match l'a vu. Une reapparition qui tombe hors des candidats ne peut
+// pas etre predite exactement : elle se compte (hors candidats) plutot que de se perdre.
 //
 // # LES VARIABLES
 //
@@ -113,9 +114,26 @@ type Candidat struct {
 	ParMatch map[string]int
 }
 
+// MatchsHors rend le nombre de matchs distincts qui ont vu le point, sans compter `match`.
+func (c Candidat) MatchsHors(match string) int {
+	n := len(c.ParMatch)
+	if _, vu := c.ParMatch[match]; vu {
+		n--
+	}
+	return n
+}
+
+// CandidatPour dit si le point est candidat pour une reapparition du match `match` : vu dans
+// au moins MatchsMinCandidat AUTRES matchs. Un point que ce match est seul a completer n'est
+// pas candidat : une prevision ne voit jamais le match qu'elle prevoit.
+func (c Candidat) CandidatPour(match string) bool {
+	return c.MatchsHors(match) >= MatchsMinCandidat
+}
+
 // PointsCandidats deduit les candidats d'une carte : les points vus dans au moins
 // MatchsMinCandidat matchs distincts, du plus frequent au moins frequent (a egalite, ordre des
-// cles : le resultat est deterministe).
+// cles : le resultat est deterministe). C'est l'ENSEMBLE MAXIMAL : celui d'un match precis se
+// restreint par CandidatPour.
 func PointsCandidats(evts []EvenementReapparition) []Candidat {
 	par := map[CleCandidat]*Candidat{}
 	for _, e := range evts {

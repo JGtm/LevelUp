@@ -1,138 +1,144 @@
 {
   "revision": 1,
   "date": "2026-11-15",
-  "definition": "reapparitions apres mort lues dans les artefacts : 0 par la lecture du film, 111088 par le repli sur l'ecart de 4 a 15 s",
+  "definition": "reapparitions apres mort lues dans les artefacts de rejeu, toutes les familles de modes du titre. Lues avant filtres : 0 par la lecture du film, 111088 par le repli sur l'ecart de 4 a 15 s. Retenue : une reapparition dont la carte est vue dans au moins 3 matchs de la famille, qui a au moins un adversaire vivant, et qui a au moins deux points candidats vus dans au moins 2 AUTRES matchs que le sien. Chaque famille est ajustee sur ses propres matchs, « tous » sur toutes. Les effectifs (reapparitions, cartes, matchs) comptent les reapparitions retenues ; les scores sont ceux de la validation croisee a 5 plis par match",
   "familles": {
     "assassin": {
       "poids": {
-        "distance_au_barycentre_ennemi_10m": -0.9353,
-        "distance_au_lieu_de_la_mort_10m": 0.1544,
-        "ennemi_le_plus_proche_10m": 2.0013,
-        "ennemis_a_moins_de_20m": -0.6532,
+        "distance_au_barycentre_ennemi_10m": -0.9298,
+        "distance_au_lieu_de_la_mort_10m": 0.1545,
+        "ennemi_le_plus_proche_10m": 1.9979,
+        "ennemis_a_moins_de_20m": -0.6479,
         "ennemis_a_vue_40m": 0,
-        "equipier_le_plus_proche_10m": -1.0789,
-        "frequence_log": 0.4437
+        "equipier_le_plus_proche_10m": -1.0799,
+        "frequence_log": 0.4839
       },
       "reapparitions": 46007,
-      "cartes": 55,
-      "matchs": 547,
+      "cartes": 50,
+      "matchs": 542,
       "scores": {
         "top1_hasard": 1.9,
         "top1_frequence": 4.4,
         "top1": 10.8,
-        "top3": 27.5,
-        "rayon8m_top3_hasard": 14.3,
-        "rayon8m_top3": 62.8
+        "top3": 27.6,
+        "rayon8m_top1_hasard": 14.3,
+        "rayon8m_top3_hasard": 36.5,
+        "rayon8m_top3": 63
       }
     },
     "bases": {
       "poids": {
-        "distance_au_barycentre_ennemi_10m": -0.6866,
-        "distance_au_lieu_de_la_mort_10m": 0.236,
-        "ennemi_le_plus_proche_10m": 2.3597,
-        "ennemis_a_moins_de_20m": -0.4002,
+        "distance_au_barycentre_ennemi_10m": -0.6071,
+        "distance_au_lieu_de_la_mort_10m": 0.2356,
+        "ennemi_le_plus_proche_10m": 2.3887,
+        "ennemis_a_moins_de_20m": -0.3594,
         "ennemis_a_vue_40m": 0,
-        "equipier_le_plus_proche_10m": -0.93,
-        "frequence_log": 0.1608
+        "equipier_le_plus_proche_10m": -0.9111,
+        "frequence_log": 0.3664
       },
       "reapparitions": 4058,
-      "cartes": 30,
-      "matchs": 77,
+      "cartes": 15,
+      "matchs": 55,
       "scores": {
-        "top1_hasard": 2.9,
-        "top1_frequence": 5,
-        "top1": 12.8,
-        "top3": 31.3,
-        "rayon8m_top3_hasard": 16.2,
-        "rayon8m_top3": 64.9
+        "top1_hasard": 4.2,
+        "top1_frequence": 5.2,
+        "top1": 12.5,
+        "top3": 30,
+        "rayon8m_top1_hasard": 16.4,
+        "rayon8m_top3_hasard": 41.3,
+        "rayon8m_top3": 67.6
       }
     },
     "colline": {
       "poids": {
-        "distance_au_barycentre_ennemi_10m": -0.6675,
-        "distance_au_lieu_de_la_mort_10m": 0.2176,
-        "ennemi_le_plus_proche_10m": 1.9303,
-        "ennemis_a_moins_de_20m": -0.7615,
+        "distance_au_barycentre_ennemi_10m": -0.6511,
+        "distance_au_lieu_de_la_mort_10m": 0.2232,
+        "ennemi_le_plus_proche_10m": 1.9296,
+        "ennemis_a_moins_de_20m": -0.7524,
         "ennemis_a_vue_40m": 0,
-        "equipier_le_plus_proche_10m": -1.483,
-        "frequence_log": -0.2401
+        "equipier_le_plus_proche_10m": -1.4872,
+        "frequence_log": -0.0313
       },
       "reapparitions": 1307,
-      "cartes": 28,
-      "matchs": 48,
+      "cartes": 5,
+      "matchs": 18,
       "scores": {
-        "top1_hasard": 2.3,
+        "top1_hasard": 3.2,
         "top1_frequence": 3.1,
-        "top1": 9,
-        "top3": 25.2,
-        "rayon8m_top3_hasard": 14.9,
-        "rayon8m_top3": 66.6
+        "top1": 7.6,
+        "top3": 20.7,
+        "rayon8m_top1_hasard": 14.7,
+        "rayon8m_top3_hasard": 37.7,
+        "rayon8m_top3": 64.8
       }
     },
     "drapeau": {
       "poids": {
-        "distance_au_barycentre_ennemi_10m": -0.6225,
-        "distance_au_lieu_de_la_mort_10m": -0.0373,
-        "ennemi_le_plus_proche_10m": 1.6774,
-        "ennemis_a_moins_de_20m": -0.3173,
+        "distance_au_barycentre_ennemi_10m": -0.5826,
+        "distance_au_lieu_de_la_mort_10m": -0.0483,
+        "ennemi_le_plus_proche_10m": 1.6606,
+        "ennemis_a_moins_de_20m": -0.2901,
         "ennemis_a_vue_40m": 0,
-        "equipier_le_plus_proche_10m": -0.9356,
-        "frequence_log": 0.6807
+        "equipier_le_plus_proche_10m": -0.9327,
+        "frequence_log": 0.8247
       },
       "reapparitions": 12948,
-      "cartes": 35,
-      "matchs": 161,
+      "cartes": 27,
+      "matchs": 150,
       "scores": {
-        "top1_hasard": 1.9,
+        "top1_hasard": 2.2,
         "top1_frequence": 5.2,
-        "top1": 8.5,
-        "top3": 23.1,
-        "rayon8m_top3_hasard": 14.4,
-        "rayon8m_top3": 56.9
+        "top1": 8.7,
+        "top3": 22.9,
+        "rayon8m_top1_hasard": 14.6,
+        "rayon8m_top3_hasard": 37.5,
+        "rayon8m_top3": 57.7
       }
     },
     "fiesta": {
       "poids": {
-        "distance_au_barycentre_ennemi_10m": -0.7252,
+        "distance_au_barycentre_ennemi_10m": -0.7248,
         "distance_au_lieu_de_la_mort_10m": 0.1486,
-        "ennemi_le_plus_proche_10m": 1.5038,
-        "ennemis_a_moins_de_20m": -0.7895,
+        "ennemi_le_plus_proche_10m": 1.5032,
+        "ennemis_a_moins_de_20m": -0.7892,
         "ennemis_a_vue_40m": 0,
-        "equipier_le_plus_proche_10m": -1.1666,
-        "frequence_log": 0.5581
+        "equipier_le_plus_proche_10m": -1.1667,
+        "frequence_log": 0.5616
       },
       "reapparitions": 39178,
-      "cartes": 24,
-      "matchs": 463,
+      "cartes": 14,
+      "matchs": 452,
       "scores": {
         "top1_hasard": 1.4,
         "top1_frequence": 2.9,
         "top1": 7.8,
         "top3": 21.5,
-        "rayon8m_top3_hasard": 11.8,
+        "rayon8m_top1_hasard": 11.8,
+        "rayon8m_top3_hasard": 31.1,
         "rayon8m_top3": 56.3
       }
     },
     "tous": {
       "poids": {
-        "distance_au_barycentre_ennemi_10m": -0.8066,
-        "distance_au_lieu_de_la_mort_10m": 0.1176,
-        "ennemi_le_plus_proche_10m": 1.7569,
-        "ennemis_a_moins_de_20m": -0.6391,
+        "distance_au_barycentre_ennemi_10m": -0.8056,
+        "distance_au_lieu_de_la_mort_10m": 0.117,
+        "ennemi_le_plus_proche_10m": 1.7539,
+        "ennemis_a_moins_de_20m": -0.6392,
         "ennemis_a_vue_40m": 0,
-        "equipier_le_plus_proche_10m": -1.0919,
-        "frequence_log": 0.5931
+        "equipier_le_plus_proche_10m": -1.0921,
+        "frequence_log": 0.6097
       },
       "reapparitions": 109454,
-      "cartes": 60,
-      "matchs": 1303,
+      "cartes": 51,
+      "matchs": 1293,
       "scores": {
         "top1_hasard": 1.6,
         "top1_frequence": 4,
         "top1": 9.4,
         "top3": 24.4,
-        "rayon8m_top3_hasard": 13.1,
-        "rayon8m_top3": 58.5
+        "rayon8m_top1_hasard": 13.1,
+        "rayon8m_top3_hasard": 34,
+        "rayon8m_top3": 58.6
       }
     }
   }

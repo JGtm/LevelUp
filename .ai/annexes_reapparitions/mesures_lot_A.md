@@ -3,7 +3,324 @@
 Plan : `PLAN_REAPPARITIONS_2026-11-15.md`, lot A (A.6). Les tableaux ci-dessous sont les sorties de
 `levelup spawn-model evaluate`, recopiees sans retouche.
 
-## Conditions
+## Correction du 2026-11-15 (revue du lot A) : ce qui a changé, AVANT / APRÈS
+
+La revue du lot A a relevé trois défauts de méthode, hérités de l'outil jetable de la mesure de départ
+(`outil_mesure_2026-11-15.go.txt`) et reportés tels quels dans la CLI. Les mesures ont été rejouées avec le code
+corrigé, avec les mêmes commandes, sur le même parc (1 306 artefacts lus, schéma 116, repli sur l'écart de 4 à 15 s).
+
+| Défaut | Avant | Après |
+|---|---|---|
+| Hasard de l'échelle « à 8 m, 3 premiers » | la chance d'UN tirage (part des candidats à moins de 8 m), publiée comme hasard du top 3 | l'espérance exacte de trois tirages sans remise : `1 - C(n-k, 3) / C(n, 3)` par événement (k candidats à moins de 8 m, n candidats), moyennée ; le hasard d'un tirage reste publié, sous le nom « 1er tirage » |
+| Candidats | les points vus dans au moins 2 matchs, le match évalué compris : son point réel devenait candidat dès qu'UN autre match le voyait | les points vus dans au moins 2 AUTRES matchs que celui de l'événement (comme le fera le service, qui ne voit jamais le match à prévoir) ; la fréquence (`frequence_log`) était déjà comptée hors du match évalué (test ajouté) |
+| Égalités de score au rayon de 8 m | départagées par l'ordre des candidats (le total des réapparitions, match évalué compris) : favorisaient le point réel | les ex aequo se partagent à parts égales (espérance d'un départ au hasard entre eux) |
+
+L'outil jetable avait les trois mêmes biais (candidats tirés de tous les événements, match testé compris ; départage
+par `sort.SliceStable` sur une liste triée par total ; hasard = `in / len(pos)`, un seul tirage). Seule la fréquence
+y était déjà hors du match testé (`c.total - c.byMatch[e.match]`). Le chiffre corrigé de la mesure de départ est donc
+la colonne « APRÈS » du M-1 ci-dessous.
+
+### M-1 témoin, Assassin 4c4 hors Fiesta et BTB, 45 cartes, seuil de 8 matchs par carte
+
+| mesure | départ (outil jetable) | AVANT (CLI du lot A) | APRÈS (corrigé) |
+|---|---|---|---|
+| réapparitions retenues | 43 966 | 43 920 | 43 920 |
+| hors candidats | 149 | 151 | 512 |
+| hasard, à moins de 8 m, 1er tirage | 14,1 % | 14,1 % | 14,1 % |
+| hasard, à moins de 8 m, 3 tirages | (jamais mesuré) | 14,1 % (le hasard d'UN tirage, publié à tort) | **36,2 %** |
+| fréquence seule, 1er, à moins de 8 m | 15,6 % | 15,5 % | 15,4 % |
+| fréquence seule, 3 premiers, à moins de 8 m | 38,4 % | 38,4 % | 38,3 % |
+| modèle, 1er, à moins de 8 m | **44,9 %** | 45,0 % | 44,9 % |
+| modèle, 3 premiers, à moins de 8 m | **62,5 %** | 62,6 % | 62,8 % |
+| fréquence seule, point exact, 1er / 3 premiers | 4,5 / 12,8 % | 4,4 / 12,8 % | 4,4 / 12,8 % |
+| modèle, point exact, 1er / 3 premiers | 11,0 / 27,7 % | 10,9 / 27,7 % | 10,9 / 27,8 % |
+
+Poids (tout le jeu), départ / AVANT / APRÈS : ennemi le plus proche +1,98 / +1,99 / +1,99 ; ennemis à moins de 20 m
+-0,65 / -0,66 / -0,65 ; équipier le plus proche -1,08 / -1,08 / -1,08 ; distance à la mort +0,15 / +0,15 / +0,15 ;
+fréquence +0,45 / +0,45 / +0,49 ; barycentre ennemi -0,93 / -0,94 / -0,93.
+
+**Ce que les chiffres corrigés disent.** Le modèle ne bouge presque pas : les candidats hors du match évalué et les
+égalités n'avaient presque aucun effet sur lui (+0,3 point au plus). Ce qui change est la lecture du « 62 % » :
+le hasard à 8 m sur trois tirages est de 36 %, pas de 14 %, et la fréquence seule (38 %) ne le dépasse que de 2 points.
+Le gain du modèle est de 26 points sur le hasard à trois tirages (62,8 contre 36,2), et non de 48. Au premier choix
+(14 % de hasard, 45 % pour le modèle), la lecture d'origine tenait.
+
+### Les mêmes tableaux, AVANT / APRÈS (M-3, zone à 8 m puis zone nommée, 3 premiers)
+
+Seuil de 8 matchs par carte :
+
+| mode | hasard 8 m, 3 tirages | fréquence | modèle | zone nommée, modèle |
+|---|---|---|---|---|
+| assassin | 14,1 -> **36,2** | 38,4 -> 38,3 | 62,6 -> 62,8 | 75,1 -> 75,0 |
+| fiesta | 11,8 -> **31,1** | 24,2 -> 24,1 | 56,3 -> 56,3 | 76,4 -> 76,4 |
+| drapeau | 13,2 -> **34,7** | 39,5 -> 38,8 | 54,6 -> 55,1 | 72,3 -> 72,1 |
+
+Seuil de 3 matchs par carte :
+
+| mode | hasard 8 m, 3 tirages | fréquence | modèle | zone nommée, modèle |
+|---|---|---|---|---|
+| assassin | 14,3 -> **36,5** | 38,8 -> 38,7 | 62,8 -> 63,0 | 75,0 -> 74,9 |
+| fiesta | 11,8 -> **31,1** | 24,2 -> 24,1 | 56,3 -> 56,3 | 76,4 -> 76,4 |
+| drapeau | 14,4 -> **37,5** | 42,6 -> 41,5 | 56,9 -> 57,7 | 71,5 -> 71,2 |
+| bases | 16,2 -> **41,3** | 44,3 -> 44,3 | 64,9 -> 67,6 | 71,4 -> 69,5 |
+| colline | 14,9 -> **37,7** | 40,4 -> 38,1 | 66,6 -> 64,8 | 69,5 -> 67,1 |
+
+Sur Bases, la fréquence seule (44,3) dépasse à peine le hasard à trois tirages (41,3) : la prévision y vient du modèle.
+La règle D-2 (au moins 50 % des 3 premières zones nommées) tient encore sur les cinq familles à l'instant de la
+réapparition. Oddball reste non mesurable (7 matchs).
+
+### M-2, M-4 : écarts AVANT / APRÈS
+
+| mesure | AVANT | APRÈS |
+|---|---|---|
+| M-2, gain de la 7e variable, 3 premiers à 8 m (Assassin / Fiesta / moyenne pondérée) | +0,2 / +0,6 / +0,5 | +0,3 / +0,6 / +0,5 |
+| M-2, gain, zone nommée (Assassin / Fiesta / moyenne) | +0,5 / 0,0 / +0,2 | +0,5 / 0,0 / +0,2 |
+| M-2, gain, 1er à 8 m (Assassin / Fiesta / moyenne) | +0,3 / +0,4 / +0,4 | +0,5 / +0,4 / +0,5 |
+| M-4, écart mort - réapparition, 3 premiers à 8 m, seuil 8 : Assassin / Fiesta / Drapeau | -16,6 / -18,5 / -9,2 | -16,6 / -18,5 / -9,3 |
+| M-4, même écart, seuil 3 : Drapeau / Bases / Colline | -10,0 / -21,2 / -30,0 | -9,5 / -20,9 / -26,4 |
+| M-4, zone nommée à l'instant de la mort, seuil 3 : Drapeau / Bases / Colline | 61,9 / 51,3 / 49,7 | 61,6 / 49,7 / 48,3 |
+
+D-4 (ligne de vue écartée : gain sous 3 points) : inchangé. **À l'instant de la mort, Bases (49,7 %) et Roi de la colline
+(48,3 %) passent sous le seuil de 50 % de D-2** (ils le tenaient de peu : 51,3 et 49,7). La prévision affichée pendant le
+compte à rebours ne les couvrirait donc pas sur ce parc ; Assassin, Fiesta et Drapeau restent à 59 à 62 %.
+
+### Le fichier de poids (`levelup spawn-model fit --matchs-min-carte 3`), AVANT / APRÈS
+
+Les mêmes réapparitions retenues qu'avant (le seuil de 3 matchs par carte du fichier livré est maintenant celui de `fit`
+par défaut, et la commande est écrite dans `docs/COMMANDS.md`). Les effectifs `cartes` et `matchs` comptent désormais les
+réapparitions retenues, comme `reapparitions` : avant, ils comptaient le jeu lu avant tout filtre.
+
+| famille | réapparitions | cartes AVANT -> APRÈS | matchs AVANT -> APRÈS | hasard 8 m, 3 tirages | modèle à 8 m, 3 premiers | exact, 3 premiers |
+|---|---|---|---|---|---|---|
+| assassin | 46 007 | 55 -> 50 | 547 -> 542 | 14,3 -> **36,5** | 62,8 -> 63,0 | 27,5 -> 27,6 |
+| fiesta | 39 178 | 24 -> 14 | 463 -> 452 | 11,8 -> **31,1** | 56,3 -> 56,3 | 21,5 -> 21,5 |
+| drapeau | 12 948 | 35 -> 27 | 161 -> 150 | 14,4 -> **37,5** | 56,9 -> 57,7 | 23,1 -> 22,9 |
+| bases | 4 058 | 30 -> 15 | 77 -> 55 | 16,2 -> **41,3** | 64,9 -> 67,6 | 31,3 -> 30,0 |
+| colline | 1 307 | 28 -> 5 | 48 -> 18 | 14,9 -> **37,7** | 66,6 -> 64,8 | 25,2 -> 20,7 |
+| tous | 109 454 | 60 -> 51 | 1 303 -> 1 293 | 13,1 -> **34,0** | 58,5 -> 58,6 | 24,4 -> 24,4 |
+
+Le champ `definition` du fichier dit maintenant ce que comptent les effectifs, le seuil de cartes et la règle de
+candidats ; le fichier porte aussi `rayon8m_top1_hasard` (le hasard d'un tirage), à côté de `rayon8m_top3_hasard`.
+Oddball (720 réapparitions, aucune carte mesurable) n'a pas de poids propres : une réapparition d'Oddball retombe sur
+la famille « tous » (`tactical.PoidsPourFamille`).
+
+Les tableaux complets APRÈS (sorties de `levelup spawn-model evaluate`, recopiées) suivent ; les tableaux
+d'origine (AVANT) sont conservés plus bas, tels que le lot A les avait écrits.
+
+### Commandes de la passe corrigée
+
+```
+export LEVELUP_DATA_DIR=C:/Users/Guillaume/Downloads/Scripts/LevelUp/data
+levelup.exe spawn-model evaluate --sections m1,m2,m3,m4 --par-carte               # seuil de 8 matchs par carte
+levelup.exe spawn-model evaluate --sections m2,m3,m4 --matchs-min-carte 3         # familles clairsemees
+levelup.exe spawn-model fit --matchs-min-carte 3                                  # ecrit reference/spawn_model.json
+```
+
+Les familles de modes viennent désormais de `config/titles/halo_infinite/mappings/spawn_families.toml` (ordre d'essai :
+Fiesta, Drapeau, Bases, Colline, Oddball, Assassin) ; aucune affectation ne change : le test du fichier reprend la table
+de cas de l'ancien test. Les tableaux suivent dans l'ordre du fichier (Fiesta d'abord), non plus celui du lot A.
+
+### APRÈS, sorties complètes
+
+#### Seuil de 8 matchs par carte (`--sections m1,m2,m3,m4 --par-carte`)
+
+##### Bilan de lecture
+
+| artefacts | lus | sans registre | hors familles | illisibles |
+|---|---|---|---|---|
+| 1456 | 1306 | 0 | 150 | 0 |
+
+| reapparitions (source film) | reapparitions (repli ecart 4-15 s) | debuts de manche | sans equipe | non finies |
+|---|---|---|---|---|
+| 0 | 111088 | 0 | 211 | 0 |
+
+- assassin : 550 matchs lus
+- bases : 77 matchs lus
+- colline : 48 matchs lus
+- drapeau : 161 matchs lus
+- fiesta : 463 matchs lus
+- oddball : 7 matchs lus
+
+##### M-1 temoin : Assassin hors Fiesta et BTB
+
+43920 reapparitions sur 45 cartes (annexe : 43966 sur 45), hors candidats : 512
+
+| mesure | depot | annexe | ecart |
+|---|---|---|---|
+| hasard, 1er tirage, a moins de 8 m | 14.1 % | 14.1 % | +0.0 |
+| hasard, 3 tirages, a moins de 8 m (esperance exacte) | 36.2 % | | |
+| frequence seule, 1er, a moins de 8 m | 15.4 % | 15.6 % | -0.2 |
+| frequence seule, 3 premiers, a moins de 8 m | 38.3 % | 38.4 % | -0.1 |
+| modele, 1er, a moins de 8 m | 44.9 % | 44.9 % | -0.0 |
+| modele, 3 premiers, a moins de 8 m | 62.8 % | 62.5 % | +0.3 |
+| frequence seule, point exact, 1er | 4.4 % | 4.5 % | -0.1 |
+| frequence seule, point exact, 3 premiers | 12.8 % | 12.8 % | -0.0 |
+| modele, point exact, 1er | 10.9 % | 11.0 % | -0.1 |
+| modele, point exact, 3 premiers | 27.8 % | 27.7 % | +0.1 |
+
+| variable | poids |
+|---|---|
+| ennemi_le_plus_proche_10m | +1.99 |
+| ennemis_a_moins_de_20m | -0.65 |
+| equipier_le_plus_proche_10m | -1.08 |
+| distance_au_lieu_de_la_mort_10m | +0.15 |
+| frequence_log | +0.49 |
+| distance_au_barycentre_ennemi_10m | -0.93 |
+
+| carte | n | top1 freq | top1 modele | top3 freq | top3 modele | candidats |
+|---|---|---|---|---|---|---|
+| Kaiketsu | 886 | 13.7 | 33.6 | 39.2 | 68.2 | 17 |
+| Solution | 809 | 14.8 | 31.3 | 39.3 | 65.1 | 19 |
+| Dredge | 1097 | 11.4 | 26.7 | 30.7 | 56.5 | 35 |
+| Houseki | 972 | 9.7 | 19.5 | 22.5 | 47.9 | 29 |
+| Perilous | 711 | 12.1 | 23.3 | 29.4 | 53.7 | 33 |
+| Vagabond | 852 | 2.9 | 13.5 | 12.6 | 35.8 | 53 |
+| Chasm | 776 | 3.1 | 10.7 | 12.8 | 35.6 | 45 |
+| Solitude | 719 | 2.0 | 11.4 | 11.0 | 32.7 | 56 |
+| Sylvanus | 921 | 6.4 | 16.5 | 23.3 | 45.0 | 32 |
+| Nemesis | 1030 | 2.3 | 12.4 | 10.8 | 30.8 | 51 |
+| Dynasty | 1320 | 2.7 | 13.8 | 11.6 | 31.5 | 55 |
+| Kiken'na | 1074 | 14.0 | 22.2 | 28.7 | 47.9 | 35 |
+| Prism | 755 | 3.1 | 10.7 | 9.5 | 28.5 | 40 |
+| Curfew | 1174 | 4.6 | 12.8 | 15.4 | 33.7 | 52 |
+| Argyle | 1114 | 3.9 | 14.3 | 18.8 | 36.4 | 35 |
+| Goliath | 1034 | 8.3 | 15.2 | 19.3 | 36.4 | 51 |
+| Absolution | 1220 | 3.4 | 8.1 | 8.4 | 25.2 | 63 |
+| Recharge | 1009 | 3.8 | 10.7 | 12.9 | 29.3 | 57 |
+| Detachment | 1321 | 2.3 | 8.3 | 10.4 | 26.3 | 59 |
+| The Pit | 1661 | 2.2 | 6.9 | 5.4 | 20.7 | 81 |
+| Cliffside | 1002 | 4.2 | 8.8 | 11.4 | 26.4 | 89 |
+| Starboard | 1348 | 5.1 | 10.3 | 10.6 | 25.6 | 52 |
+| Live Fire | 768 | 5.6 | 9.5 | 13.4 | 28.1 | 46 |
+| Salvation | 778 | 4.0 | 11.4 | 18.9 | 32.4 | 41 |
+| Catalyst | 1092 | 3.9 | 7.6 | 9.9 | 23.3 | 95 |
+| Illusion | 933 | 3.6 | 9.0 | 6.8 | 19.9 | 77 |
+| Cliffhanger | 1126 | 2.9 | 7.2 | 5.3 | 17.9 | 86 |
+| Shogun | 678 | 7.7 | 11.8 | 21.5 | 33.5 | 41 |
+| Empyrean | 945 | 1.3 | 7.3 | 6.7 | 18.6 | 67 |
+| Origin | 1117 | 2.5 | 4.7 | 3.8 | 15.3 | 100 |
+| Takamanohara | 884 | 2.4 | 7.9 | 9.3 | 20.7 | 68 |
+| Elevation | 778 | 3.3 | 6.9 | 10.7 | 21.9 | 65 |
+| Streets | 1134 | 1.9 | 5.9 | 7.5 | 18.3 | 76 |
+| High Ground | 924 | 2.7 | 7.6 | 7.4 | 18.1 | 71 |
+| Domicile | 937 | 4.3 | 6.5 | 7.6 | 17.6 | 80 |
+| Bazaar | 1114 | 3.1 | 6.6 | 6.7 | 15.7 | 96 |
+| Shiro | 1088 | 1.9 | 7.1 | 8.8 | 17.6 | 58 |
+| Isolation | 748 | 4.3 | 8.2 | 10.4 | 18.7 | 63 |
+| Snowbound | 1020 | 2.3 | 5.4 | 6.2 | 14.3 | 90 |
+| Behemoth | 859 | 0.7 | 4.2 | 3.4 | 11.2 | 129 |
+| Fortress | 786 | 2.4 | 5.2 | 7.9 | 15.6 | 85 |
+| Forbidden | 1028 | 0.4 | 3.0 | 1.1 | 7.9 | 135 |
+| Banished Narrows | 837 | 3.5 | 6.7 | 13.1 | 19.2 | 67 |
+| Aquarius | 774 | 1.3 | 3.1 | 3.5 | 8.7 | 91 |
+| Smallhalla | 767 | 2.6 | 4.0 | 7.4 | 11.6 | 101 |
+
+##### M-3 par mode (validation croisee par match, 5 plis, cartes vues dans au moins 8 matchs)
+
+Zone a 8 m : un des candidats retenus est a moins de 8 m du point reel. Zone nommee : la zone du catalogue (une zone recoit la somme des probabilites de ses candidats). Couverture : part des reapparitions dont le point reel a une zone.
+
+| mode | matchs | reapparitions | cartes | candidats/carte | a 8 m, 3 premiers : hasard | freq | modele | a 8 m, 1er : freq | modele | zone nommee, 3 premiers : hasard | freq | modele | couverture des zones | exact 1er : modele | exact 3 : modele |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| fiesta | 463 | 39178 | 14 | 82 | 31.1 | 24.1 | 56.3 | 12.6 | 41.7 | 23.0 | 48.0 | 76.4 | 98 % | 7.8 | 21.5 |
+| drapeau | 161 | 4359 | 5 | 65 | 34.7 | 38.8 | 55.1 | 19.7 | 38.6 | 25.7 | 47.5 | 72.1 | 96 % | 8.4 | 23.3 |
+| bases | 77 | 0 | 0 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0 % | 0.0 | 0.0 |
+| colline | 48 | 0 | 0 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0 % | 0.0 | 0.0 |
+| oddball | 7 | 0 | 0 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0 % | 0.0 | 0.0 |
+| assassin | 550 | 43920 | 45 | 64 | 36.2 | 38.3 | 62.8 | 15.4 | 44.9 | 23.2 | 48.6 | 75.0 | 97 % | 10.9 | 27.8 |
+
+##### M-2 gain de la ligne de vue (7e variable) sur les 6 variables
+
+Cartes dont les artefacts portent la structure : 3 sur 60 lues.
+- Streets - Ranked (10323 boites)
+- Cliffhanger (10067 boites)
+- Streets (10323 boites)
+
+
+| mode | reapparitions | a 8 m, 3 premiers : 6 variables | 7 variables | gain | zone nommee, 3 premiers : 6 variables | 7 variables | gain | a 8 m, 1er : gain |
+|---|---|---|---|---|---|---|---|---|
+| fiesta | 6476 | 58.6 | 59.2 | +0.6 | 76.9 | 76.9 | +0.0 | +0.4 |
+| assassin | 2260 | 60.4 | 60.7 | +0.2 | 75.7 | 76.2 | +0.5 | +0.5 |
+| toutes familles (moyenne ponderee) | 8736 | | | +0.5 | | | +0.2 | +0.5 |
+
+##### M-4 prevision a l'instant de la mort, contre l'instant de la reapparition
+
+Memes evenements (les deux instantanes ont au moins un adversaire), memes candidats ; chaque modele est ajuste sur son propre instant.
+
+| mode | reapparitions | a 8 m, 3 premiers : reapparition | mort | ecart | a 8 m, 1er : reapparition | mort | ecart | zone nommee, 3 premiers : reapparition | mort | ecart |
+|---|---|---|---|---|---|---|---|---|---|---|
+| fiesta | 39149 | 56.3 | 37.7 | -18.5 | 41.7 | 24.7 | -17.0 | 76.4 | 59.2 | -17.2 |
+| drapeau | 4356 | 55.0 | 45.7 | -9.3 | 38.5 | 29.8 | -8.7 | 72.1 | 61.0 | -11.1 |
+| bases | 6024 | (populations non comparables : 0 / 0) | | | | | | | | |
+| colline | 3404 | (populations non comparables : 0 / 0) | | | | | | | | |
+| oddball | 720 | (populations non comparables : 0 / 0) | | | | | | | | |
+| assassin | 43901 | 62.7 | 46.2 | -16.6 | 44.9 | 29.1 | -15.7 | 75.0 | 59.8 | -15.2 |
+
+
+#### Seuil de 3 matchs par carte (`--sections m2,m3,m4 --matchs-min-carte 3`)
+
+##### Bilan de lecture
+
+| artefacts | lus | sans registre | hors familles | illisibles |
+|---|---|---|---|---|
+| 1456 | 1306 | 0 | 150 | 0 |
+
+| reapparitions (source film) | reapparitions (repli ecart 4-15 s) | debuts de manche | sans equipe | non finies |
+|---|---|---|---|---|
+| 0 | 111088 | 0 | 211 | 0 |
+
+- assassin : 550 matchs lus
+- bases : 77 matchs lus
+- colline : 48 matchs lus
+- drapeau : 161 matchs lus
+- fiesta : 463 matchs lus
+- oddball : 7 matchs lus
+
+##### M-3 par mode (validation croisee par match, 5 plis, cartes vues dans au moins 3 matchs)
+
+Zone a 8 m : un des candidats retenus est a moins de 8 m du point reel. Zone nommee : la zone du catalogue (une zone recoit la somme des probabilites de ses candidats). Couverture : part des reapparitions dont le point reel a une zone.
+
+| mode | matchs | reapparitions | cartes | candidats/carte | a 8 m, 3 premiers : hasard | freq | modele | a 8 m, 1er : freq | modele | zone nommee, 3 premiers : hasard | freq | modele | couverture des zones | exact 1er : modele | exact 3 : modele |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| fiesta | 463 | 39178 | 14 | 82 | 31.1 | 24.1 | 56.3 | 12.6 | 41.7 | 23.0 | 48.0 | 76.4 | 98 % | 7.8 | 21.5 |
+| drapeau | 161 | 12948 | 27 | 53 | 37.5 | 41.5 | 57.7 | 18.7 | 39.4 | 28.8 | 48.9 | 71.2 | 98 % | 8.7 | 22.9 |
+| bases | 77 | 4058 | 15 | 34 | 41.3 | 44.3 | 67.6 | 19.1 | 48.3 | 26.8 | 41.9 | 69.5 | 99 % | 12.5 | 30.0 |
+| colline | 48 | 1307 | 5 | 37 | 37.7 | 38.1 | 64.8 | 16.8 | 46.4 | 21.8 | 39.7 | 67.1 | 100 % | 7.6 | 20.7 |
+| oddball | 7 | 0 | 0 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0 % | 0.0 | 0.0 |
+| assassin | 550 | 46007 | 50 | 64 | 36.5 | 38.7 | 63.0 | 15.7 | 45.3 | 23.2 | 48.3 | 74.9 | 97 % | 10.8 | 27.6 |
+
+##### M-2 gain de la ligne de vue (7e variable) sur les 6 variables
+
+Cartes dont les artefacts portent la structure : 3 sur 60 lues.
+- Cliffhanger (10067 boites)
+- Streets (10323 boites)
+- Streets - Ranked (10323 boites)
+
+
+| mode | reapparitions | a 8 m, 3 premiers : 6 variables | 7 variables | gain | zone nommee, 3 premiers : 6 variables | 7 variables | gain | a 8 m, 1er : gain |
+|---|---|---|---|---|---|---|---|---|
+| fiesta | 6476 | 58.6 | 59.2 | +0.6 | 76.9 | 76.9 | +0.0 | +0.4 |
+| assassin | 2260 | 60.4 | 60.7 | +0.2 | 75.7 | 76.2 | +0.5 | +0.5 |
+| toutes familles (moyenne ponderee) | 8736 | | | +0.5 | | | +0.2 | +0.5 |
+
+##### M-4 prevision a l'instant de la mort, contre l'instant de la reapparition
+
+Memes evenements (les deux instantanes ont au moins un adversaire), memes candidats ; chaque modele est ajuste sur son propre instant.
+
+| mode | reapparitions | a 8 m, 3 premiers : reapparition | mort | ecart | a 8 m, 1er : reapparition | mort | ecart | zone nommee, 3 premiers : reapparition | mort | ecart |
+|---|---|---|---|---|---|---|---|---|---|---|
+| fiesta | 39149 | 56.3 | 37.7 | -18.5 | 41.7 | 24.7 | -17.0 | 76.4 | 59.2 | -17.2 |
+| drapeau | 12942 | 57.7 | 48.2 | -9.5 | 39.4 | 30.3 | -9.1 | 71.2 | 61.6 | -9.6 |
+| bases | 4055 | 67.5 | 46.6 | -20.9 | 48.3 | 27.9 | -20.4 | 69.4 | 49.7 | -19.7 |
+| colline | 1305 | 64.4 | 38.0 | -26.4 | 46.1 | 23.2 | -22.9 | 67.0 | 48.3 | -18.8 |
+| oddball | 720 | (populations non comparables : 0 / 0) | | | | | | | | |
+| assassin | 45987 | 63.0 | 46.4 | -16.6 | 45.3 | 29.5 | -15.9 | 74.9 | 59.7 | -15.2 |
+
+
+---
+
+# Mesures d'origine du lot A (AVANT correction, conservées pour comparaison)
+
+## Conditions (mesures d'origine)
 
 - Branche `feat/reapp-a` (partie de `origin/release/v8.2.0`), binaire compile depuis cette branche.
 - Parc : dossier de donnees du dossier principal, passe par `LEVELUP_DATA_DIR` ; aucune ecriture dans ce dossier,
