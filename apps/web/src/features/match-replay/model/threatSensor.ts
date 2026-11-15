@@ -67,6 +67,7 @@
  * calque appelant, qui la tient des tokens du thème).
  */
 import type { ReplayEquipmentPlacement } from '@/lib/api/types'
+import type { FocusFilter } from './focusFilter'
 
 import { isAliveAt, positionAt } from '../../../lib/replay/replayLogic'
 import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
@@ -162,6 +163,11 @@ export interface SensorScene {
    * entre manches : le poseur se lit à l'instant de sa POSE, la cible à l'instant du PING.
    */
   campOfSlot: (slot: number, frame: number) => number | null
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : le filtre des marques, appliqué AVANT le choix de la marque la plus
+   * fraîche par vie révélée — une marque écartée ne cache pas celle d'un autre capteur. Absent = toutes.
+   */
+  shown?: Pick<FocusFilter, 'reveal'>
 }
 
 /** L'onde du ping courant : où elle en est de sa course, et ce qu'il lui reste d'opacité. */
@@ -275,11 +281,15 @@ export function sensorReveals(
       if (dx * dx + dy * dy > r2) continue
       const now = positionAt(life.points, time.frame)
       if (!now) continue
+      const reveal: SensorReveal = { slot: life.slot, x: now.x, y: now.y, owner: s.owner, ownerFrame: s.t0, sinceMs }
+      // LE FILTRE PASSE AVANT LE DÉDOUBLONNAGE : sinon la marque la plus fraîche, écartée ensuite, ferait
+      // disparaître celle d'un autre capteur qui, elle, se dessine.
+      if (scene.shown && !scene.shown.reveal(reveal, time.frame)) continue
       // DEUX CAPTEURS PEUVENT VOIR LA MÊME VIE : une seule marque, la PLUS FRAÎCHE. Deux
       // halos superposés doubleraient l'opacité sans rien dire de plus.
       const held = bySlot.get(life.slot)
       if (held && held.sinceMs <= sinceMs) continue
-      bySlot.set(life.slot, { slot: life.slot, x: now.x, y: now.y, owner: s.owner, ownerFrame: s.t0, sinceMs })
+      bySlot.set(life.slot, reveal)
     }
   }
   return [...bySlot.values()]

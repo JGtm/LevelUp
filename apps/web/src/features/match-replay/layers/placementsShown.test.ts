@@ -50,3 +50,41 @@ describe('drawEquipmentPlacementsLayer — Seul et Masquer', () => {
     expect(seen).toEqual([[3, 50, 7, TIME.frame]])
   })
 })
+
+describe('révélation — le filtre passe avant le choix de la marque la plus fraîche', () => {
+  // Deux capteurs du même camp 0 : A (slot 3) pose à l'image 45, B (slot 4) à l'image 50, donc B est le plus
+  // frais. Les deux révèlent la même vie adverse C (slot 7). Les capteurs eux-mêmes ne se dessinent pas.
+  const capteurA = pose({ family: 'sensor', id: SENSOR_ID, t0: 45, owner: 3, x: 5, y: 5 })
+  const capteurB = pose({ family: 'sensor', id: SENSOR_ID, t0: 50, owner: 4, x: 5, y: 5 })
+  const camps: Record<number, number | null> = { 3: 0, 4: 0, 7: 1 }
+  const encres = {
+    colorOfSlot: (slot: number) => `slot${slot}`,
+    neutral: 'neutre', wall: 'mur',
+    rift: { rim: 'r', core: 'c' }, shroud: { core: 'e', glow: 'g' },
+  }
+
+  function proprietaires(reveal: (r: { owner: number }) => boolean): string[] {
+    const ops = draw([capteurA, capteurB], TIME, {
+      lives: [life(7, 6, 5)],
+      campOfSlot: (slot) => camps[slot] ?? null,
+      shown: { placement: () => false, reveal },
+    }, encres)
+    return [...new Set(ops.filter((o) => o.op === 'set strokeStyle').map((o) => String(o.args[0])))]
+  }
+
+  it('sans filtre : la marque la plus fraîche l’emporte (celle de B)', () => {
+    expect(proprietaires(() => true)).toEqual(['slot4'])
+  })
+
+  it('Seul A : la marque de A reste même si celle de B est plus fraîche', () => {
+    expect(proprietaires((r) => r.owner === 3)).toEqual(['slot3'])
+  })
+
+  it('Masquer B, plus frais : la marque de A reste', () => {
+    expect(proprietaires((r) => r.owner !== 4)).toEqual(['slot3'])
+  })
+
+  it('Masquer A, plus ancien : la marque de B reste', () => {
+    expect(proprietaires((r) => r.owner !== 3)).toEqual(['slot4'])
+  })
+})
