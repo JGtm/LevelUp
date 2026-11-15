@@ -175,10 +175,12 @@ describe('Seul et Masquer, vus du dessin', () => {
     }
   })
 
-  it('un filtre actif écarte la marque dont on ne retrouve aucune vie', () => {
-    const { ctx, ops } = recordingContext()
-    drawDeathMarks(ctx, [death({ slot: null })], VIEW, paint({ shownAtSlot: () => true }))
-    expect(count(ops, 'stroke')).toBe(0)
+  it('une marque dont on ne retrouve aucune vie n’est à personne : elle se dessine sous tout filtre', () => {
+    for (const shownAtSlot of [() => true, () => false]) {
+      const { ctx, ops } = recordingContext()
+      drawDeathMarks(ctx, [death({ slot: null })], VIEW, paint({ shownAtSlot }))
+      expect(count(ops, 'stroke')).toBeGreaterThan(0)
+    }
   })
 
   it('le filtre lit l’image DANS la vie de la marque', () => {

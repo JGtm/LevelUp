@@ -238,13 +238,14 @@ describe('Seul et Masquer : la vie de chaque marque', () => {
     expect(lifeSlotAt(undefined, 21, 15)).toBeNull()
   })
 
-  it('passesShown : sans filtre tout passe ; avec filtre, une marque sans vie se tait', () => {
+  it('passesShown : sans filtre tout passe ; une marque sans vie retrouvée reste, sous tout filtre', () => {
     const shown = (slot: number) => slot === 2
     expect(passesShown({ slot: 1, slotFrame: 0 }, undefined)).toBe(true)
     expect(passesShown({ slot: null, slotFrame: 0 }, undefined)).toBe(true)
     expect(passesShown({ slot: 2, slotFrame: 0 }, shown)).toBe(true)
     expect(passesShown({ slot: 1, slotFrame: 0 }, shown)).toBe(false)
-    expect(passesShown({ slot: null, slotFrame: 0 }, shown)).toBe(false)
+    expect(passesShown({ slot: null, slotFrame: 0 }, shown)).toBe(true)
+    expect(passesShown({ slot: null, slotFrame: 0 }, (slot) => slot !== 2)).toBe(true)
   })
 })
 

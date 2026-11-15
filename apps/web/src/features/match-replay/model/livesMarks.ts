@@ -52,7 +52,7 @@ export interface LivesActor {
   /**
    * La vie de celui qui a fait la marque, pour « Seul » et « Masquer » du panneau de joueur : son slot
    * et une image DANS cette vie (`shownAtSlot` ne lit que des vies). `null` = aucune vie retrouvée :
-   * la marque ne peut pas être prouvée affichée, elle se tait tant qu'un filtre est actif.
+   * la marque n'est à personne et se dessine, sous Seul comme sous Masquer.
    */
   slot: number | null
   slotFrame: number
@@ -139,13 +139,13 @@ export function lifeSlotAt(
   return best
 }
 
-/** Le filtre « Seul / Masquer » : la marque est-elle de ce que la carte montre ? Sans filtre, tout. */
+/** Le filtre « Seul / Masquer » : la marque est-elle de ce que la carte montre ? Sans filtre, tout ; sans vie retrouvée, elle reste. */
 export function passesShown(
   mark: Pick<LivesActor, 'slot' | 'slotFrame'>,
   shownAtSlot: ((slot: number, frame: number) => boolean) | undefined,
 ): boolean {
   if (!shownAtSlot) return true
-  return mark.slot !== null && shownAtSlot(mark.slot, mark.slotFrame)
+  return mark.slot === null || shownAtSlot(mark.slot, mark.slotFrame)
 }
 
 /**

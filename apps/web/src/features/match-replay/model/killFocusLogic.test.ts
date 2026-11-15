@@ -243,14 +243,13 @@ describe('resolveKillFocus — jamais de position inventée', () => {
       expect(new Set(images)).toEqual(new Set([120]))
     })
 
-    it('un acteur sans slot ne peut pas être prouvé affiché : écarté tant qu’un filtre est actif', () => {
-      const r = resolveKillFocus(request, {
-        ...base,
-        slotOf: (x) => (x === 'killer' ? null : SLOT_VICTIME),
-        shownAtSlot: () => true,
-      })
-      expect(r?.killer).toBeNull()
-      expect(r?.victim).not.toBeNull()
+    it('un acteur sans slot n’est à personne : il reste, sous Seul comme sous Masquer', () => {
+      const slotOf = (x: string) => (x === 'killer' ? null : SLOT_VICTIME)
+      for (const shownAtSlot of [() => true, () => false]) {
+        const r = resolveKillFocus(request, { ...base, slotOf, shownAtSlot })
+        expect(r?.killer).not.toBeNull()
+      }
+      expect(resolveKillFocus(request, { ...base, slotOf, shownAtSlot: () => false })?.victim).toBeNull()
     })
 
     it('les noms masqués ne comptent que les acteurs affichés', () => {

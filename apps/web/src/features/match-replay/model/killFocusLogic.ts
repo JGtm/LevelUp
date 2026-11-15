@@ -115,7 +115,7 @@ export interface KillFocusResolvers {
   /**
    * Seul et Masquer : ce que porte un slot à une image se dessine-t-il ? Absent = aucun filtre. Un
    * acteur que le filtre écarte n'a ni équerre, ni trou au voile, ni étiquette ; un acteur sans
-   * slot ne peut être prouvé affiché, il est écarté tant qu'un filtre est actif.
+   * slot n'est à personne et reste, sous Seul comme sous Masquer.
    */
   shownAtSlot?: (slot: number, frame: number) => boolean
 }
@@ -148,7 +148,7 @@ function resolveActor(xuid: string, frame: number, r: KillFocusResolvers): Focus
   const color = r.colorOf(xuid)
   if (!pos || !color) return null
   const slot = r.slotOf(xuid, frame)
-  if (r.shownAtSlot && (slot === null || !r.shownAtSlot(slot, frame))) return null
+  if (r.shownAtSlot && slot !== null && !r.shownAtSlot(slot, frame)) return null
   return { xuid, pos, color, name: r.nameOf(xuid), slot }
 }
 

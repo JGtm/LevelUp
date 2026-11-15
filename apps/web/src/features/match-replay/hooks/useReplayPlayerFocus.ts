@@ -40,9 +40,8 @@ export interface ReplayPlayerFocusLayers {
   shownAtSlot: ((slot: number, frame: number) => boolean) | undefined
   /**
    * Faux = le projectile d'index `i` de `doc.projectiles` (vol de grenade ou de tir) est retiré :
-   * son auteur est écarté. Seul ne garde que ce qui est PROUVÉ au joueur (un projectile sans auteur
-   * connu est retiré) ; Masquer ne retire que ce qui est PROUVÉ à lui (sans auteur connu, il reste).
-   * `undefined` = rien n'est filtré.
+   * son auteur est écarté. Un projectile dont l'auteur ne se lit pas n'est à personne : il reste, sous Seul
+   * comme sous Masquer. `undefined` = rien n'est filtré.
    */
   shownProjectile: ((index: number) => boolean) | undefined
   /**
@@ -57,14 +56,13 @@ export function useReplayPlayerFocus({ doc, focus, frameRef, zoom, turns }: Repl
   const shownAtSlot = useMemo(() => shownSlotPredicate(focus) ?? undefined, [focus])
   useReplayFollow({ doc, player: focus?.player ?? null, enabled: focus?.follow ?? false, frameRef, zoom, turns })
   const owners = useMemo(() => (shownAtSlot ? projectileOwners(doc) : []), [doc, shownAtSlot])
-  const solo = focus?.solo ?? false
   const shownProjectile = useMemo(() => {
     if (!shownAtSlot) return undefined
     return (index: number) => {
       const owner = owners[index]
-      return owner ? shownAtSlot(owner.slot, owner.frame) : !solo
+      return owner ? shownAtSlot(owner.slot, owner.frame) : true
     }
-  }, [shownAtSlot, owners, solo])
+  }, [shownAtSlot, owners])
   const shown = useMemo(() => buildFocusFilter(doc, focus) ?? undefined, [doc, focus])
   return { shownAtSlot, shownProjectile, shown }
 }

@@ -95,11 +95,11 @@ describe('useReplayPlayerFocus', () => {
       expect(s?.(2)).toBe(true)
     })
 
-    it('Seul ne garde que les projectiles du joueur : un auteur inconnu n’est pas prouvé le sien, il est retiré', () => {
+    it('Seul garde les projectiles du joueur et ceux sans auteur lu ; il retire ceux des autres', () => {
       const s = shown(focus({ solo: true }))
       expect(s?.(0)).toBe(true)
       expect(s?.(1)).toBe(false)
-      expect(s?.(2)).toBe(false)
+      expect(s?.(2)).toBe(true)
     })
   })
 
