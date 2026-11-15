@@ -183,17 +183,59 @@ décisions D-2 et D-4 confirmées par le user sur ces chiffres.
 
 ## 4. Lot B — Tactique : toutes les réapparitions du joueur (Go + web, effort S-M)
 
-- [ ] B.1 Helper unique `reapparitionsDuJoueur` à côté de `spawnsDeDepart` (même garde-rail étendu).
-- [ ] B.2 Grappes : paramètre `vies` (`depart` par défaut, `toutes`) sur les routes `raster` et
+- [x] B.1 Helper unique `reapparitionsDuJoueur` à côté de `spawnsDeDepart` (même garde-rail étendu).
+      Fait : `service/tactical_service_lectures.go`. Une seule boucle de lecture (`spawnsDuJoueur`), deux
+      prédicats (`spawnsDeDepart` : `PremiereVie` ; `reapparitionsDuJoueur` : `PremiereVie || Reapparition ||
+      DebutDeManche`) et le choix `spawnsSelonVies`. Le garde-rail `archlint/no_local_spawn_depart_test.go`
+      tient les trois drapeaux (self-check positif sur chacun). **Décision écrite : « toutes les vies » =
+      toutes les apparitions du joueur** : première vie, réapparitions après mort, débuts de manche (un début
+      de manche n'est pas une réapparition mais c'est une apparition). Une piste sans drapeau (vie coupée par
+      un trou de réplication, repli hors des 4 à 15 s) n'est pas une apparition et n'entre dans aucune grappe.
+      `tactical.PointSpawn` gagne `Frame` (clé de jointure B.3 ; les grappes l'ignorent).
+- [x] B.2 Grappes : paramètre `vies` (`depart` par défaut, `toutes`) sur les routes `raster` et
       `cellule` ; identifiant de grappe inchangé dans sa forme.
-- [ ] B.3 Routes : sous un filtre de grappe avec `vies=toutes`, seules comptent les routes dont la vie part
+      Fait : `vies` est un CHAMP DU CORPS des deux POST (comme `spawn` : ces routes n'ont pas de query string),
+      `domain.TacticalScope.Vies`, constantes et `NormaliserVies` dans `domain/tactical_vies.go`, valeur
+      inconnue = `ErrTacticalViesInconnue` -> 400 `tactical_lives_unknown` (handler sans logique, refus du
+      service). Les grappes de la lecture d'artefact suivent `vies` ; l'identifiant garde sa forme (barycentre
+      + nombre de cellules) : un identifiant n'existe que sous sa valeur de `vies`, le web remet donc le filtre
+      de grappe à « Toutes » quand la valeur change. Sidecar v6 : refusé à la lecture par
+      `domain.SidecarRasterCourant` (match « non mesuré », WARN avec le remède `levelup tactical-rasters
+      --backfill`), jamais relu ni recalculé à la volée : sur le parc local (v6) la page ne montre rien tant
+      que le rattrapage v7 (geste G7) n'est pas passé.
+- [x] B.3 Routes : sous un filtre de grappe avec `vies=toutes`, seules comptent les routes dont la vie part
       de la grappe (jointure `Route.DebutFrame` = `Spawn.Frame`, à vérifier sur pièces) ; avec `depart`,
       comportement actuel inchangé (témoin avant/après sur trois cartes).
-- [ ] B.4 Web : bascule « Départ / Toutes les vies » dans la barre de la lecture des grappes ; query keys
+      Jointure VÉRIFIÉE sur pièces : spawn (`NouvelIndexVies`, `Spawns()`) et route (`enrichirVies`) sont le
+      premier point retenu de la MÊME piste par `pointsDansLaFenetre` ; test `analysis/tactical`
+      `TestOccupation_LaRouteDUneVieSeJointAuSpawnParSonInstant` (points hors fenêtre et désordonnés). Sous
+      `toutes` et un filtre de grappe, `perimetreDuSpawn` rend des COPIES des sidecars dont les routes du
+      joueur sont réduites aux vies de la grappe (`sidecarsAuxVies`) ; les lectures SQL et « temps » gardent
+      la règle d'univers (matchs ayant au moins une vie partie de la grappe). Le détail d'une cellule (`Cellule`)
+      applique le même filtre sous `toutes` (`tactical_service_vies.go`). Témoin avant/après : voir le journal
+      du lot (annexe `annexes_reapparitions/temoin_lot_B.md`).
+- [x] B.4 Web : bascule « Départ / Toutes les vies » dans la barre de la lecture des grappes ; query keys
       dans `lib/query/keys.ts` ; textes FR et EN ; `make generate-types`.
+      Fait : pilule « Vies » (`TacticalPlanVies.tsx`, `vies.logic.ts`, `pilules.ts`), proposée dès qu'une lecture
+      peut servir des grappes ; `vies` entre dans les paramètres de lecture (non posté sous « Départ » : corps et
+      clé de cache d'avant inchangés). Query keys : aucune clé neuve, `tacticalRaster` / `tacticalCellule`
+      portent déjà l'empreinte du corps (`hashFiltre`), où `vies` entre. Textes FR et EN dans
+      `manifests/tactical.toml`. `make openapi-gen` puis `generate-types` : `vies` ajouté aux deux corps.
 
 Gate B : tests Go du service et des handlers verts, témoin avant/après égal en mode `depart`,
 `make check-types`, `make test-web`, contrôle à l'écran ajouté à l'artefact des vérifications.
+
+Gate B passé le 2026-11-15 (lot B CLOS ; le contrôle à l'écran reste au user) :
+- `go test ./internal/service/... ./internal/api/handlers/... ./internal/analysis/tactical/...` vert ;
+  `go test ./internal/archlint/...` vert (2 661 s sous la charge de la machine, `-timeout 60m` : le délai par défaut de
+  10 minutes ne suffit pas quand d'autres sessions compilent) ;
+- `golangci-lint run --new-from-merge-base=origin/main` : 0 issue (une première passe avait relevé 2 `lll` sur la doc
+  du champ `vies`, corrigés et regénérés ; `--allow-parallel-runners` quand une autre session lint) ;
+- `tsc -b` (`make check-types`) propre, `eslint src/features/tactical` propre, `node tools/knip-ratchet.mjs` 0 / 0 / 0,
+  `check-generated-types-fresh` OK ; vitest : une passe complète sous charge a rendu 44 fichiers en échec, tous par
+  délai de 5 s des gardes qui balaient l'arbre (aucun du lot) ; les 44 relancés avec `--testTimeout=240000` : 44 / 44 et
+  104 / 104 tests verts ; les tests du lot (`vies.logic.test.ts`, `TacticalAnalysisView.vies.test.tsx`) verts ;
+- témoin avant/après en mode `depart` sur trois cartes : identique octet pour octet (annexe `temoin_lot_B.md`).
 
 ## 5. Lot C — Tactique : réapparitions adverses selon la zone tenue (Go + web, effort M)
 
@@ -268,3 +310,12 @@ Gate D : tests verts, garde-rails du rejeu verts, contrôle à l'écran du user 
   `cmd_spawn_model_zones.go`) ; une troisieme impose de la centraliser.
 - `golangci-lint run --new-from-merge-base=origin/main` demande plus de 20 minutes sur ce poste (4 Go de
   memoire) : le delai par defaut du Makefile (5 min) ne suffit pas ; a lancer avec un delai large.
+- (Lot B) Le détail d'une cellule (`Cellule`) IGNORE le filtre `spawn` sous `depart` : la liste des contributions
+  n'est restreinte ni aux matchs de la grappe ni à rien, alors que la cellule agrégée l'est. Constat sur pièces
+  (`tactical_service_cellule.go` copie `Spawn` sans le lire) ; non traité pour garder `depart` inchangé octet pour
+  octet. Sous `toutes`, le détail applique le filtre (nouveau comportement, sans régression possible). À trancher :
+  l'appliquer aussi sous `depart`.
+- (Lot B) Les sidecars du parc local sont en schéma 6 : refusés à la lecture, la page Tactique n'y montre aucune
+  lecture d'artefact ni grappe tant que le rattrapage v7 (geste G7) n'est pas passé.
+- (Lot B) `domain/tactical.go` est à 500 lignes (limite) : toute nouvelle déclaration du périmètre Tactique va dans
+  un fichier voisin (`tactical_vies.go`).
