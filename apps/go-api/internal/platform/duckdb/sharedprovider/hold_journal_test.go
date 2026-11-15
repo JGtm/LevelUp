@@ -62,3 +62,27 @@ func TestJournalDepassements_ViderRendLesTus(t *testing.T) {
 		t.Error("après vider, le dépassement suivant doit ouvrir un épisode")
 	}
 }
+
+// TestJournalDepassements_RendreTu : un dépassement tu puis journalisé par le second seuil ne
+// compte plus parmi les tus de l'épisode (ni à l'épisode suivant, ni à la fermeture).
+func TestJournalDepassements_RendreTu(t *testing.T) {
+	t0 := time.Date(2026, 11, 15, 10, 0, 0, 0, time.UTC)
+	horloge := t0
+	j := &journalDepassements{now: func() time.Time { return horloge }}
+	if ok, _ := j.signaler("a"); !ok {
+		t.Fatal("premier dépassement : journalisé attendu")
+	}
+	horloge = t0.Add(time.Minute)
+	if ok, _ := j.signaler("a"); ok {
+		t.Fatal("second dépassement dans l'épisode : tu attendu")
+	}
+	j.rendreTu("a") // le second dépassement a été journalisé par l'alarme
+	horloge = t0.Add(2 * time.Minute)
+	if ok, _ := j.signaler("a"); ok {
+		t.Fatal("troisième dépassement dans l'épisode : tu attendu")
+	}
+	horloge = t0.Add(10 * time.Minute)
+	if ok, tus := j.signaler("a"); !ok || tus != 1 {
+		t.Fatalf("épisode suivant : journalisé avec 1 tu attendu, obtenu ok=%v tus=%d", ok, tus)
+	}
+}

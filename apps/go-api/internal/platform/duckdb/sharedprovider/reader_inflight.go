@@ -102,8 +102,12 @@ func (p *providerImpl) releaseReader(id uint64) {
 		appelant := l.appelant()
 		journaliser, tus := p.readerJournal.signaler(appelant)
 		// Une lecture au-delà du second seuil est journalisée quel que soit l'épisode en cours.
-		if !journaliser && (alarme <= 0 || tenu < alarme) {
-			return
+		if !journaliser {
+			if alarme <= 0 || tenu < alarme {
+				return
+			}
+			// Journalisée par le second seuil : elle ne compte plus parmi les dépassements tus.
+			p.readerJournal.rendreTu(appelant)
 		}
 		slog.Warn("sharedprovider: lecture tenue longtemps — toute écriture de la base attend sa fin",
 			"path", p.path, "appelant", appelant,

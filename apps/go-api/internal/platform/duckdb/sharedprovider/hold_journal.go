@@ -60,6 +60,16 @@ func (j *journalDepassements) signaler(cle string) (journaliser bool, tusAvant i
 	return true, tusAvant
 }
 
+// rendreTu retire du décompte de l'épisode en cours un dépassement que signaler venait de taire,
+// quand l'appelant le journalise malgré tout (second seuil) : un dépassement écrit n'est pas tu.
+func (j *journalDepassements) rendreTu(cle string) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if ep, ok := j.episodes[cle]; ok && ep.tus > 0 {
+		ep.tus--
+	}
+}
+
 // rwHoldRecord suit UNE acquisition RW : le watchdog (timer, sans verrou) y pose « annoncé » s'il
 // a écrit la ligne de dépassement, Get y compte les lectures qui ont dû attendre la fin du swap.
 // Un timer d'une acquisition précédente ne touche que son propre enregistrement.
