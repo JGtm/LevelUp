@@ -107,6 +107,9 @@ la famille « tous » (`tactical.PoidsPourFamille`).
 Les tableaux complets APRÈS (sorties de `levelup spawn-model evaluate`, recopiées) suivent ; les tableaux
 d'origine (AVANT) sont conservés plus bas, tels que le lot A les avait écrits.
 
+La colonne « matchs » des tableaux M-3 APRÈS est recomptée le 2026-11-15 sur les échantillons retenus
+(reliquat de la seconde revue) ; avant, elle comptait les matchs lus avant filtrage. Aucune autre valeur ne change.
+
 ### Commandes de la passe corrigée
 
 ```
@@ -221,12 +224,12 @@ Zone a 8 m : un des candidats retenus est a moins de 8 m du point reel. Zone nom
 
 | mode | matchs | reapparitions | cartes | candidats/carte | a 8 m, 3 premiers : hasard | freq | modele | a 8 m, 1er : freq | modele | zone nommee, 3 premiers : hasard | freq | modele | couverture des zones | exact 1er : modele | exact 3 : modele |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| fiesta | 463 | 39178 | 14 | 82 | 31.1 | 24.1 | 56.3 | 12.6 | 41.7 | 23.0 | 48.0 | 76.4 | 98 % | 7.8 | 21.5 |
-| drapeau | 161 | 4359 | 5 | 65 | 34.7 | 38.8 | 55.1 | 19.7 | 38.6 | 25.7 | 47.5 | 72.1 | 96 % | 8.4 | 23.3 |
-| bases | 77 | 0 | 0 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0 % | 0.0 | 0.0 |
-| colline | 48 | 0 | 0 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0 % | 0.0 | 0.0 |
-| oddball | 7 | 0 | 0 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0 % | 0.0 | 0.0 |
-| assassin | 550 | 43920 | 45 | 64 | 36.2 | 38.3 | 62.8 | 15.4 | 44.9 | 23.2 | 48.6 | 75.0 | 97 % | 10.9 | 27.8 |
+| fiesta | 452 | 39178 | 14 | 82 | 31.1 | 24.1 | 56.3 | 12.6 | 41.7 | 23.0 | 48.0 | 76.4 | 98 % | 7.8 | 21.5 |
+| drapeau | 46 | 4359 | 5 | 65 | 34.7 | 38.8 | 55.1 | 19.7 | 38.6 | 25.7 | 47.5 | 72.1 | 96 % | 8.4 | 23.3 |
+| bases | 0 | 0 | 0 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0 % | 0.0 | 0.0 |
+| colline | 0 | 0 | 0 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0 % | 0.0 | 0.0 |
+| oddball | 0 | 0 | 0 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0 % | 0.0 | 0.0 |
+| assassin | 517 | 43920 | 45 | 64 | 36.2 | 38.3 | 62.8 | 15.4 | 44.9 | 23.2 | 48.6 | 75.0 | 97 % | 10.9 | 27.8 |
 
 ##### M-2 gain de la ligne de vue (7e variable) sur les 6 variables
 
@@ -281,12 +284,12 @@ Zone a 8 m : un des candidats retenus est a moins de 8 m du point reel. Zone nom
 
 | mode | matchs | reapparitions | cartes | candidats/carte | a 8 m, 3 premiers : hasard | freq | modele | a 8 m, 1er : freq | modele | zone nommee, 3 premiers : hasard | freq | modele | couverture des zones | exact 1er : modele | exact 3 : modele |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| fiesta | 463 | 39178 | 14 | 82 | 31.1 | 24.1 | 56.3 | 12.6 | 41.7 | 23.0 | 48.0 | 76.4 | 98 % | 7.8 | 21.5 |
-| drapeau | 161 | 12948 | 27 | 53 | 37.5 | 41.5 | 57.7 | 18.7 | 39.4 | 28.8 | 48.9 | 71.2 | 98 % | 8.7 | 22.9 |
-| bases | 77 | 4058 | 15 | 34 | 41.3 | 44.3 | 67.6 | 19.1 | 48.3 | 26.8 | 41.9 | 69.5 | 99 % | 12.5 | 30.0 |
-| colline | 48 | 1307 | 5 | 37 | 37.7 | 38.1 | 64.8 | 16.8 | 46.4 | 21.8 | 39.7 | 67.1 | 100 % | 7.6 | 20.7 |
-| oddball | 7 | 0 | 0 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0 % | 0.0 | 0.0 |
-| assassin | 550 | 46007 | 50 | 64 | 36.5 | 38.7 | 63.0 | 15.7 | 45.3 | 23.2 | 48.3 | 74.9 | 97 % | 10.8 | 27.6 |
+| fiesta | 452 | 39178 | 14 | 82 | 31.1 | 24.1 | 56.3 | 12.6 | 41.7 | 23.0 | 48.0 | 76.4 | 98 % | 7.8 | 21.5 |
+| drapeau | 150 | 12948 | 27 | 53 | 37.5 | 41.5 | 57.7 | 18.7 | 39.4 | 28.8 | 48.9 | 71.2 | 98 % | 8.7 | 22.9 |
+| bases | 55 | 4058 | 15 | 34 | 41.3 | 44.3 | 67.6 | 19.1 | 48.3 | 26.8 | 41.9 | 69.5 | 99 % | 12.5 | 30.0 |
+| colline | 18 | 1307 | 5 | 37 | 37.7 | 38.1 | 64.8 | 16.8 | 46.4 | 21.8 | 39.7 | 67.1 | 100 % | 7.6 | 20.7 |
+| oddball | 0 | 0 | 0 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0 % | 0.0 | 0.0 |
+| assassin | 542 | 46007 | 50 | 64 | 36.5 | 38.7 | 63.0 | 15.7 | 45.3 | 23.2 | 48.3 | 74.9 | 97 % | 10.8 | 27.6 |
 
 ##### M-2 gain de la ligne de vue (7e variable) sur les 6 variables
 

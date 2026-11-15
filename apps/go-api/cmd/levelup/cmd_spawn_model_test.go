@@ -202,3 +202,25 @@ func TestPoidsDeGroupe_EffectifsSurLeJeuAjuste(t *testing.T) {
 		t.Errorf("le hasard sur trois tirages (%v) depasse celui d'un tirage (%v)", p.Scores.Rayon3Hasard, p.Scores.Rayon1Hasard)
 	}
 }
+
+// Le rapport M-2 / M-3 compte les matchs sur les echantillons RETENUS, comme poidsDeGroupe : une
+// carte sous le seuil n'apporte ni carte, ni reapparition, ni match.
+func TestEvaluerEchantillons_MatchsSurLeJeuRetenu(t *testing.T) {
+	var evts []tactical.EvenementReapparition
+	pts := []tactical.Point3{{X: 0}, {X: 20}, {X: 40}, {X: 60}}
+	ajoute := func(carte string, matchs int) {
+		for m := 0; m < matchs; m++ {
+			for i, p := range pts {
+				evts = append(evts, tactical.EvenementReapparition{MatchID: fmt.Sprintf("%s-m%d", carte, m),
+					CarteID: carte, Reel: p, Mort: p, Ennemis: []tactical.Point3{{X: float64(-10 - i)}}})
+			}
+		}
+	}
+	ajoute("grande", 6)
+	ajoute("petite", 2) // sous le seuil de 3 matchs : ecartee
+	reglages := tactical.ReglagesEchantillons{MatchsMinCarte: 3}
+	r := evaluerEchantillons(tactical.ConstruireEchantillons(evts, tactical.CandidatsParCarte(evts), reglages), false)
+	if r.matchs != 6 || r.cartes != 1 || r.n != 24 {
+		t.Errorf("effectifs = %d matchs, %d cartes, %d reapparitions ; attendu 6, 1, 24", r.matchs, r.cartes, r.n)
+	}
+}

@@ -203,7 +203,7 @@ func TestEcrireSidecarRaster_CreeLeDossierEtRelit(t *testing.T) {
 // que `projeterRasterDepuisDocument` peut encore lever sur un document VALIDE : un
 // matchId absent (meme cas que TestProjeterRasterTactique_Refus).
 func TestProjeterRastersTactiques_LotDuCycle(t *testing.T) {
-	root := t.TempDir()
+	root := racineAvecTitres(t, titlePkg.DefaultSlug) // capabilities lisibles : le lot se projette
 	pr := titlePkg.NewPathResolver(root)
 	bon := ecrireFichier(t, "bon.json", artefactImmobile)
 	bonDoc, _, err := lireDocumentRange(bon)

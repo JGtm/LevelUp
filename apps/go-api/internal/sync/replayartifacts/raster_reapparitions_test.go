@@ -215,3 +215,26 @@ func retirerCapability(t *testing.T, racine, cle string) {
 		t.Fatal(err)
 	}
 }
+
+// Des capabilities illisibles ne produisent AUCUN sidecar : un sidecar ecrit sans la matiere de
+// prevision porterait le schema courant et ne serait jamais reecrit par le rattrapage.
+func TestProjeterRastersTactiques_CapabilitiesIllisiblesNEcriventRien(t *testing.T) {
+	racine := racineAvecTitres(t, titlePkg.DefaultSlug)
+	chemin := filepath.Join(racine, "config", "titles", titlePkg.DefaultSlug, "mappings", "capabilities.toml")
+	if err := os.WriteFile(chemin, []byte("[[ce n'est pas du toml"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	artefact := ecrireFichier(t, "artefact.json", artefactReapparition)
+	doc, octets, err := lireDocumentRange(artefact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := Deps{RepoRoot: racine, TitleSlug: titlePkg.DefaultSlug, Gamertag: "TestGT"}
+	projeterRastersTactiques(context.Background(), d, []artefactLu{
+		{matchID: doc.MatchID, path: artefact, doc: doc, octets: octets},
+	})
+	sidecar := titlePkg.NewPathResolver(racine).TacticalRasterPath(titlePkg.DefaultSlug, titlePkg.FilmShortMatchID(doc.MatchID))
+	if _, err := os.Stat(sidecar); !os.IsNotExist(err) {
+		t.Fatalf("aucun sidecar attendu quand les capabilities sont illisibles, stat = %v", err)
+	}
+}

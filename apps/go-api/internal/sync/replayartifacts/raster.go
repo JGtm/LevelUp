@@ -324,9 +324,14 @@ func projeterRastersTactiques(ctx context.Context, d Deps, rapports []artefactLu
 	ecrits, echecs := 0, 0
 	prevision, incident := capabilityPrevisionArmee(ctx, d)
 	if incident {
-		// Capabilities illisibles : les sidecars se projettent sans la matiere de prevision, et le lot
-		// compte une defaillance (meme contrat que les portes jumelles).
-		echecs++
+		// Capabilities illisibles : AUCUN sidecar n'est ecrit. Projete sans la matiere de prevision,
+		// un sidecar porterait le schema courant et ne serait jamais reecrit (sidecarAJour ne lit que
+		// le schema et la cadence). Le lot entier est saute et compte en echec ; un sidecar absent se
+		// refait par le rattrapage `levelup tactical-rasters --backfill`.
+		slog.ErrorContext(ctx, "post-sync: rasters tactiques sautes, capabilities illisibles",
+			"gamertag", d.Gamertag, "matchs", len(rapports))
+		observability.AddIntT(titre, CompteurRastersEchecs, int64(len(rapports)))
+		return
 	}
 	for _, r := range rapports {
 		s, err := projeterRasterDepuisDocument(r.doc, prevision)

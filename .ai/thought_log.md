@@ -121256,3 +121256,9 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Décision technique principale** : règle du user : tout ce qui appartient au joueur suit la fiche (Seul / Masquer), le décor reste ; un prédicat unique pour quatorze calques ou éléments. Morts sans type : la méthode de Den (lâcher de commande) OU le compte à rebours de réapparition, livrée dans la 8.2.0 par une publication du décodeur (schéma 123) avant le tag v1.3.9.
 **Résultats observés** : lot 4 : 4 388 tests du rejeu verts. Mesure 3.1 : 0 fin de manche prise pour une mort sur 99 films ; accord avec la feuille de 89 à 99,8 % (plusieurs manches), de 88 à 99,3 % (BTB).
 **Conclusion / prochaine étape** : publication décodeur (agent Sonnet, relue par la session de la phase C), montée par la session dédiée, puis part web du lot 3 et régénération unique.
+
+## [2026-11-15] Réapparitions, reliquats P2 de la seconde revue du lot A
+**Statut** : Complété
+**Décision** : (1) le rapport M-2 / M-3 de `spawn-model` compte les matchs sur les échantillons retenus, comme le fichier de poids ; (2) des capabilities illisibles au post-sync ne produisent AUCUN sidecar tactique (lot sauté, compté en échec, log d'erreur) : un sidecar v7 sans matière de prévision ne serait jamais réécrit.
+**Résultats** : M-3 rejoué aux seuils 8 et 3, seule la colonne « matchs » change (colline 48 -> 18, bases 77 -> 55 au seuil 3) ; tests `TestEvaluerEchantillons_MatchsSurLeJeuRetenu` et `TestProjeterRastersTactiques_CapabilitiesIllisiblesNEcriventRien` ; le test de lot existant reçoit une racine à capabilities lisibles.
+**Suite** : pousser, puis le lot B recalé.

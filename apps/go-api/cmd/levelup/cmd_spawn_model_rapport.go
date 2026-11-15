@@ -60,8 +60,11 @@ func imprimerBilan(w io.Writer, b bilanLecture) {
 
 // resultat est ce que mesure une famille : le hasard, la frequence seule et le modele, en
 // validation croisee par match.
+// n, cartes et matchs se comptent sur les echantillons RETENUS (meme regle que poidsDeGroupe) :
+// jamais sur les matchs lus avant filtrage.
 type resultat struct {
 	n, cartes    int
+	matchs       int
 	kMoyen       float64
 	freq, modele tactical.Metriques
 	modeleVue    *tactical.Metriques
@@ -71,12 +74,12 @@ type resultat struct {
 // si `avecVue`, modele a sept.
 func evaluerEchantillons(echs []tactical.Echantillon, avecVue bool) resultat {
 	r := resultat{n: len(echs)}
-	cartes, k := map[string]bool{}, 0.0
+	cartes, matchs, k := map[string]bool{}, map[string]bool{}, 0.0
 	for _, s := range echs {
-		cartes[s.Carte] = true
+		cartes[s.Carte], matchs[s.Match] = true, true
 		k += float64(len(s.Feats))
 	}
-	r.cartes = len(cartes)
+	r.cartes, r.matchs = len(cartes), len(matchs)
 	if len(echs) == 0 {
 		return r
 	}
@@ -200,7 +203,7 @@ func (r *rapporteur) parMode() {
 	for _, f := range r.lignesParFamille() {
 		evts := r.jeu.evenementsDeFamilles(map[string]bool{f: true})
 		echs := tactical.ConstruireEchantillons(evts, tactical.CandidatsParCarte(evts), reglages)
-		tous = append(tous, ligneFamille{f, evaluerEchantillons(echs, false), r.jeu.bilan.parFamille[f]})
+		tous = append(tous, ligneFamille{f, evaluerEchantillons(echs, false)})
 	}
 	fmt.Println("## M-3 par mode (validation croisee par match, 5 plis, cartes vues dans au moins",
 		r.o.matchsMinCarte, "matchs)")
@@ -224,7 +227,7 @@ func (r *rapporteur) ligneDeVue() {
 			}
 		}
 		echs := tactical.ConstruireEchantillons(evts, tactical.CandidatsParCarte(evts), reglages)
-		tous = append(tous, ligneFamille{f, evaluerEchantillons(echs, true), r.jeu.bilan.parFamille[f]})
+		tous = append(tous, ligneFamille{f, evaluerEchantillons(echs, true)})
 	}
 	fmt.Println("## M-2 gain de la ligne de vue (7e variable) sur les 6 variables")
 	fmt.Println()
@@ -238,9 +241,8 @@ func (r *rapporteur) ligneDeVue() {
 
 // ligneFamille est une famille mesuree, prete a etre imprimee.
 type ligneFamille struct {
-	nom    string
-	res    resultat
-	matchs int
+	nom string
+	res resultat
 }
 
 func imprimerParMode(lignes []ligneFamille) {
@@ -257,7 +259,7 @@ func imprimerParMode(lignes []ligneFamille) {
 			cov = 100 * float64(m.ZonesMesurees) / float64(m.N)
 		}
 		fmt.Printf("| %s | %d | %d | %d | %.0f | %.1f | %.1f | %.1f | %.1f | %.1f | %.1f | %.1f | %.1f | %.0f %% | %.1f | %.1f |\n",
-			l.nom, l.matchs, l.res.n, l.res.cartes, l.res.kMoyen, m.HasardRayon3, f.Rayon3, m.Rayon3,
+			l.nom, l.res.matchs, l.res.n, l.res.cartes, l.res.kMoyen, m.HasardRayon3, f.Rayon3, m.Rayon3,
 			f.Rayon1, m.Rayon1, m.HasardZone3, f.Zone3, m.Zone3, cov, m.Top1, m.Top3)
 	}
 	fmt.Println()
