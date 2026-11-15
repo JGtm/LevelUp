@@ -57,6 +57,11 @@ export interface BombCarrierInput {
   style: BombCarrierStyle
   /** Position monde du joueur à une image, ou `null` s'il n'est pas localisable. */
   posOf: (xuid: string, frame: number) => XY | null
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : faux quand la bombe PORTÉE est retirée de la carte — elle est à son
+   * porteur. Une bombe libre (au sol) n'est à personne : elle se dessine toujours. Absent = tout se dessine.
+   */
+  shownCarrier?: (xuid: string) => boolean
 }
 
 /** Décalage vertical au-dessus du point du porteur (le marqueur occupe le point lui-même). */
@@ -150,6 +155,7 @@ export function drawBombCarrier(
       ctx.globalAlpha = 1
       return // une seule bombe : un seul glyphe à cette image
     }
+    if (layer.shownCarrier && !layer.shownCarrier(c.xuid)) continue
     // ÉCHELLE 1 : ce calque ne met encore rien à l'échelle de l'écran (`k`), même convention
     // que `flagCarriesLayer`/`skullCarrierLayer` (cf. leur en-tête).
     const mark = edgeMarkFor(place.at, view, OFFSCREEN_MARGIN_PX, 1)

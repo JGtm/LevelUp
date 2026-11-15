@@ -56,6 +56,11 @@ export interface VipCrownInput {
   style: VipCrownStyle
   /** Position monde du joueur à une image, ou `null` s'il n'est pas localisable. */
   posOf: (xuid: string, frame: number) => XY | null
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : faux quand la couronne est retiré de la carte — il est à son porteur.
+   * Absent = tout se dessine.
+   */
+  shownCarrier?: (xuid: string) => boolean
 }
 
 /** Côté du glyphe, en pixels canvas : la largeur du crâne porté (r=7 + liseré). */
@@ -98,6 +103,7 @@ export function drawVipCrown(
   frame: number,
 ): void {
   for (const p of vipActiveAt(periods, frame)) {
+    if (layer.shownCarrier && !layer.shownCarrier(p.xuid)) continue
     const w = layer.posOf(p.xuid, frame)
     if (!w) continue
     drawCrownGlyph(ctx, projectTo(view, w), {

@@ -343,6 +343,8 @@ export interface ObjectivePulse {
   x: number
   y: number
   team: number
+  /** L'auteur de l'action (capture, retour, prise de zone) : le pulse est à lui. */
+  xuid: string
 }
 
 /**
@@ -412,7 +414,7 @@ export function buildObjectivePulses(
       }
     }
     if (!best) continue
-    out.push({ frame, x: best.x, y: best.y, team: best.team })
+    out.push({ frame, x: best.x, y: best.y, team: best.team, xuid: a.xuid })
   }
   return out
 }
@@ -433,12 +435,16 @@ export function drawObjectivePulses(
   pulses: ObjectivePulse[],
   view: CanvasView,
   win: PulseWindow,
-  style: Pick<ObjectivesStyle, 'colorOfTeam'>,
+  style: Pick<ObjectivesStyle, 'colorOfTeam'> & {
+    /** SEUL ET MASQUER (panneau de joueur) : faux quand le pulse de cet auteur est retiré. Absent = tout se dessine. */
+    shownAuthor?: (xuid: string) => boolean
+  },
   reducedMotion: boolean,
 ): void {
   for (const p of pulses) {
     const age = win.frame - p.frame
     if (age < 0 || age > win.hold) continue
+    if (style.shownAuthor && !style.shownAuthor(p.xuid)) continue
     const k = age / Math.max(win.hold, 1)
     const c = projectTo(view, p)
     ctx.strokeStyle = style.colorOfTeam(p.team)

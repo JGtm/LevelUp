@@ -32,6 +32,8 @@ interface UseReplaySkullCarrierArgs {
   /** L'encre du FOND : le liseré du crâne, comme celui du drapeau (déjà résolue par l'appelant). */
   outline: string
   reducedMotion: boolean
+  /** SEUL ET MASQUER (panneau de joueur) : faux quand le crâne est retiré de la carte. Absent = tout se dessine. */
+  shownCarrier?: (xuid: string) => boolean
 }
 
 export interface ReplaySkullCarrier {
@@ -54,6 +56,7 @@ export function useReplaySkullCarrier({
   ink,
   outline,
   reducedMotion,
+  shownCarrier,
 }: UseReplaySkullCarrierArgs): ReplaySkullCarrier {
   const carries = doc.skullCarries
 
@@ -62,8 +65,8 @@ export function useReplaySkullCarrier({
   const posOf = useCarrierPosAt(doc)
 
   const layer = useMemo<SkullCarrierInput>(
-    () => ({ style: { ink, outline, reducedMotion, frameMs: durationFrameMs(doc) }, posOf }),
-    [ink, outline, reducedMotion, posOf, doc],
+    () => ({ style: { ink, outline, reducedMotion, frameMs: durationFrameMs(doc) }, posOf, shownCarrier }),
+    [ink, outline, reducedMotion, posOf, doc, shownCarrier],
   )
 
   const paint = useCallback(

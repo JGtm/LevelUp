@@ -200,12 +200,12 @@ describe('buildObjectivePulses', () => {
     const pulses = buildObjectivePulses(docEmbarque, normalizeMapObjectives(MO))
     const p = pulses.find((x) => x.frame === 10)
     // Véhicule en (8,2) -> zone flag_delivery de l'équipe 1, et non le spawn (1,9) de l'équipe 0.
-    expect(p).toEqual({ frame: 10, x: 8, y: 2, team: 1 })
+    expect(p).toEqual({ frame: 10, x: 8, y: 2, team: 1, xuid: 'A' })
   })
 
   it('APRÈS LA DESCENTE, le même auteur s’apparie de nouveau depuis son bipède', () => {
     const pulses = buildObjectivePulses(docEmbarque, normalizeMapObjectives(MO))
-    expect(pulses.find((x) => x.frame === 60)).toEqual({ frame: 60, x: 1, y: 9, team: 0 })
+    expect(pulses.find((x) => x.frame === 60)).toEqual({ frame: 60, x: 1, y: 9, team: 0, xuid: 'A' })
   })
 
   it("pose le pulse sur l'élément le plus proche de l'AUTEUR à l'instant de l'action", () => {
@@ -395,7 +395,7 @@ describe('buildObjectivePulses — les frags et les assistances ne font AUCUN pu
 })
 
 describe('drawObjectivePulses', () => {
-  const pulses = [{ frame: 10, x: 5, y: 5, team: 1 }]
+  const pulses = [{ frame: 10, x: 5, y: 5, team: 1, xuid: 'A' }]
 
   it("dessine dans la fenêtre, s'ouvre avec l'âge, rien hors fenêtre", () => {
     const { ctx, calls } = mockCtx()

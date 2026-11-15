@@ -41,6 +41,8 @@ interface UseReplayBombCarrierArgs {
   /** L'encre du FOND : le liseré, comme celui du crâne (déjà résolue par l'appelant). */
   outline: string
   reducedMotion: boolean
+  /** SEUL ET MASQUER (panneau de joueur) : faux quand la bombe portée (une bombe libre reste) est retiré de la carte. Absent = tout se dessine. */
+  shownCarrier?: (xuid: string) => boolean
 }
 
 export interface ReplayBombCarrier {
@@ -63,6 +65,7 @@ export function useReplayBombCarrier({
   ink,
   outline,
   reducedMotion,
+  shownCarrier,
 }: UseReplayBombCarrierArgs): ReplayBombCarrier {
   const carries = doc.bombCarries
 
@@ -84,8 +87,8 @@ export function useReplayBombCarrier({
   }, [doc])
 
   const layer = useMemo<BombCarrierInput>(
-    () => ({ style: { ink, outline, reducedMotion, frameMs: durationFrameMs(doc) }, posOf }),
-    [ink, outline, reducedMotion, posOf, doc],
+    () => ({ style: { ink, outline, reducedMotion, frameMs: durationFrameMs(doc) }, posOf, shownCarrier }),
+    [ink, outline, reducedMotion, posOf, doc, shownCarrier],
   )
 
   const paint = useCallback(

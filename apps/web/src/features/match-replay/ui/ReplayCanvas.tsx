@@ -433,21 +433,22 @@ export function ReplayCanvas({
   const flags = useReplayFlagCarries({
     doc, view: canvasView, frameRef, enabled: showFlagCarries,
     scoreboard, allegiance, teamColorOf, neutral: floorStyle.edge, outline: markInk.outline, reducedMotion,
+    shownAuthor: focusShown?.author,
   })
 
   const objectiveObjects = useReplayObjectiveObjects({
     doc, view: canvasView, ink: neutralInk, outline: markInk.outline,
   })
   // LA COURONNE VIP (schéma 22) : marqueur sur le VIP courant, relu image par image (useReplayVipCrown).
-  const vipCrown = useReplayVipCrown({ doc, view: canvasView, enabled: showVipCrown, allegiance, teamColorOf, neutral: floorStyle.edge, outline: markInk.outline, reducedMotion })
+  const vipCrown = useReplayVipCrown({ doc, view: canvasView, enabled: showVipCrown, allegiance, teamColorOf, neutral: floorStyle.edge, outline: markInk.outline, reducedMotion, shownCarrier: focusShown?.author })
   // LE PORTEUR DU CRÂNE d'Oddball (schéma 23) : crâne sur le porteur courant, relu image par image.
-  const skullCarrier = useReplaySkullCarrier({ doc, view: canvasView, enabled: showSkullCarrier, ink: neutralInk, outline: markInk.outline, reducedMotion })
+  const skullCarrier = useReplaySkullCarrier({ doc, view: canvasView, enabled: showSkullCarrier, ink: neutralInk, outline: markInk.outline, reducedMotion, shownCarrier: focusShown?.author })
   // LA BOMBE d'Assaut (schéma 30) : portée sur son porteur, au sol au dernier point du lâcheur.
-  const bombCarrier = useReplayBombCarrier({ doc, view: canvasView, enabled: showBombCarrier, ink: neutralInk, outline: markInk.outline, reducedMotion })
+  const bombCarrier = useReplayBombCarrier({ doc, view: canvasView, enabled: showBombCarrier, ink: neutralInk, outline: markInk.outline, reducedMotion, shownCarrier: focusShown?.author })
   // LA FIN DE VOL des grenades (dix-septième extraction — elle paie la déflagration ci-dessous).
   const grenadeRest = useReplayGrenadeRest({ doc, view: canvasView, fx: grenadeRestFx, window: restWindow, ink: fxInk, smoke: floorStyle.edge, halo: grenadeColor, reducedMotion, shownAtSlot })
   // LA DÉFLAGRATION D'ASSAUT, où et quand elle a eu lieu — seul un match d'Assaut publie la stat.
-  const bombBlast = useReplayBombBlast({ doc, view: canvasView, allegiance, teamColorOf, neutral: floorStyle.edge, reducedMotion })
+  const bombBlast = useReplayBombBlast({ doc, view: canvasView, allegiance, teamColorOf, neutral: floorStyle.edge, reducedMotion, shownAuthor: focusShown?.author })
 
   /**
    * buildScene LIE chaque calque a l'etat courant du canvas.
@@ -591,7 +592,7 @@ export function ReplayCanvas({
             }),
           'etat-zones': (_c, fr) => drawZoneStates(ctx, zones, doc.zoneStates, view, fr),
           'pulses-objectif': () =>
-            drawObjectivePulses(ctx, objectivePulses, view, win, { colorOfTeam: zones.colorOfTeam }, reducedMotion),
+            drawObjectivePulses(ctx, objectivePulses, view, win, { colorOfTeam: zones.colorOfTeam, shownAuthor: focusShown?.author }, reducedMotion),
           morts: (_c, _fr, k) =>
             drawKillFxLayer(ctx, killFx, view, win, {
               colorOfSlot: colorOfSlotOrLast, // FRONTIERE : kill posthume/echange apres la fin de vie.

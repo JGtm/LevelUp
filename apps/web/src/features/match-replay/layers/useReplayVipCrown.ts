@@ -39,6 +39,8 @@ interface UseReplayVipCrownArgs {
   /** Encre du FOND, pour le liseré (la même que le drapeau et le crâne). */
   outline: string
   reducedMotion: boolean
+  /** SEUL ET MASQUER (panneau de joueur) : faux quand la couronne est retiré de la carte. Absent = tout se dessine. */
+  shownCarrier?: (xuid: string) => boolean
 }
 
 export interface ReplayVipCrown {
@@ -63,6 +65,7 @@ export function useReplayVipCrown({
   neutral,
   outline,
   reducedMotion,
+  shownCarrier,
 }: UseReplayVipCrownArgs): ReplayVipCrown {
   const periods = doc.vipCrown
 
@@ -79,8 +82,8 @@ export function useReplayVipCrown({
   )
 
   const layer = useMemo<VipCrownInput>(
-    () => ({ style: { inkOf, outline, reducedMotion, frameMs: durationFrameMs(doc) }, posOf }),
-    [inkOf, outline, reducedMotion, posOf, doc],
+    () => ({ style: { inkOf, outline, reducedMotion, frameMs: durationFrameMs(doc) }, posOf, shownCarrier }),
+    [inkOf, outline, reducedMotion, posOf, doc, shownCarrier],
   )
 
   const paint = useCallback(

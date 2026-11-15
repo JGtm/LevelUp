@@ -42,6 +42,8 @@ export interface BombBlastHookInput {
   /** Encre servie quand le camp est inconnu : ni équipe inventée, ni explosion invisible. */
   neutral: string
   reducedMotion: boolean
+  /** SEUL ET MASQUER (panneau de joueur) : faux quand l'explosion de cet auteur est retirée. Absent = tout se dessine. */
+  shownAuthor?: (xuid: string) => boolean
 }
 
 export interface ReplayBombBlast {
@@ -64,6 +66,7 @@ export function useReplayBombBlast({
   teamColorOf,
   neutral,
   reducedMotion,
+  shownAuthor,
 }: BombBlastHookInput): ReplayBombBlast {
   // La relecture de position partagée (carrierPosition.ts : embarqué -> position du véhicule,
   // sinon celle du bipède) — la fenêtre après-mort du repli compte PLUS ici qu'ailleurs : le
@@ -82,8 +85,9 @@ export function useReplayBombBlast({
         return ally === null ? neutral : teamColorOf(ally)
       },
       reducedMotion,
+      shownAuthor,
     }),
-    [allegiance, teamColorOf, neutral, reducedMotion],
+    [allegiance, teamColorOf, neutral, reducedMotion, shownAuthor],
   )
 
   const hold = useMemo(() => bombBlastHoldFrames(doc), [doc])

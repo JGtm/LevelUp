@@ -55,6 +55,11 @@ export interface SkullCarrierInput {
   style: SkullCarrierStyle
   /** Position monde du joueur à une image, ou `null` s'il n'est pas localisable. */
   posOf: (xuid: string, frame: number) => XY | null
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : faux quand le crâne est retiré de la carte — il est à son porteur.
+   * Absent = tout se dessine.
+   */
+  shownCarrier?: (xuid: string) => boolean
 }
 
 /** Décalage vertical au-dessus du point du joueur (le marqueur occupe le point lui-même). */
@@ -99,6 +104,7 @@ export function drawSkullCarrier(
   frame: number,
 ): void {
   for (const c of skullCarrierActiveAt(carries, frame)) {
+    if (layer.shownCarrier && !layer.shownCarrier(c.xuid)) continue
     const w = layer.posOf(c.xuid, frame)
     if (!w) continue
     // ÉCHELLE 1 : ce calque ne met encore rien à l'échelle de l'écran (`k`), même convention

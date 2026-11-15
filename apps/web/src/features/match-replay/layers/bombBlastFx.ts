@@ -112,6 +112,8 @@ export interface BombBlastStyle {
   inkOf: (xuid: string) => string
   /** Mouvement réduit : rien ne s'ouvre, l'empreinte ne fait que s'éteindre. */
   reducedMotion: boolean
+  /** SEUL ET MASQUER (panneau de joueur) : faux quand l'explosion de cet auteur est retirée. Absent = tout se dessine. */
+  shownAuthor?: (xuid: string) => boolean
 }
 
 // Géométrie, en pixels d'écran.
@@ -154,6 +156,7 @@ export function drawBombBlastFx(
   for (const f of fx) {
     const age = win.frame - f.frame
     if (age < 0 || age > win.hold) continue
+    if (style.shownAuthor && !style.shownAuthor(f.xuid)) continue
     const k = age / Math.max(win.hold, 1)
     const c = projectTo(view, f)
     const ink = style.inkOf(f.xuid)

@@ -34,6 +34,8 @@ export interface FocusFilter {
   placement: (p: Pick<ReplayEquipmentPlacement, 'owner' | 't0'>) => boolean
   /** Un élément d'UN joueur daté à un instant (faille et aller-retour du translocateur) : son slot à cette image. */
   slotAt: (slot: number, frame: number) => boolean
+  /** Un élément attribué par le xuid du document : porteur d'objectif, VIP, auteur d'une capture ou d'une explosion. */
+  author: (xuid: string) => boolean
   /**
    * La marque d'un capteur sur une vie révélée : elle est au poseur ET au joueur révélé. `slot` est la vie
    * révélée, lue à `frame` ; `owner` le poseur, lu à l'image de sa pose (`ownerFrame`).
@@ -78,6 +80,7 @@ export function buildFocusFilter(
     groundWeapon: (w) => shown(present(slotParty(bySlot, w.dropper, w.t0), slotParty(bySlot, w.picker, w.t1))),
     placement: (p) => shown(present(slotParty(bySlot, p.owner, p.t0))),
     slotAt: (slot, frame) => shown(present(slotParty(bySlot, slot, frame))),
+    author: (xuid) => shown([{ xuid }]),
     reveal: (r, frame) =>
       shown(present(slotParty(bySlot, r.owner, r.ownerFrame), slotParty(bySlot, r.slot, frame))),
   }

@@ -268,6 +268,21 @@ export interface FlagCarriesInput {
   style: FlagCarriesStyle
   /** Position monde d'un joueur à une image, ou `null` s'il n'est pas localisable. */
   posOf: (xuid: string, frame: number) => XY | null
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : faux quand le drapeau PORTÉ par ce joueur est retiré de la carte.
+   * Seul le glyphe porté est à son porteur : la base, le drapeau tombé et la zone de retour sont à personne et
+   * se dessinent toujours. Absent = tout se dessine.
+   */
+  shownCarrier?: (xuid: string) => boolean
+}
+
+/**
+ * flagGlyphShown dit si le glyphe vivant d'un drapeau se dessine (et se survole) : faux seulement quand il est
+ * porté par un joueur que Seul ou Masquer écarte. Le drapeau d'un porteur qu'aucun xuid ne nomme reste.
+ */
+export function flagGlyphShown(layer: Pick<FlagCarriesInput, 'shownCarrier'>, now: FlagNow): boolean {
+  const porte = now.state === 'carried' || now.state === 'carried_open'
+  return !(porte && now.xuid !== null && layer.shownCarrier && !layer.shownCarrier(now.xuid))
 }
 
 /** Où le drapeau se dessine à cette image, et AVEC QUEL HABILLAGE (porté / lieu). */
@@ -366,6 +381,7 @@ export function drawFlagCarries(
       // LA BASE N'EST JAMAIS DÉCALÉE : c'est un lieu fixe, aucun pion ne s'y tient.
       drawFlagGlyph(ctx, px(anchor), { ink, outline, alpha: ALPHA_FAINT, hollow: true, offset: false })
     }
+    if (!flagGlyphShown(layer, now)) continue
     const place = flagPlaceAt(now, frame, layer.posOf)
     const worldPoint = place.at
     // PORTÉ AU SENS DU RENDU : un portage dont le porteur n'est pas à l'écran ne l'est plus —
@@ -559,7 +575,7 @@ export function flagAt(
   let bestD = FLAG_HIT_RADIUS * FLAG_HIT_RADIUS
   for (const carry of carries) {
     const now = flagSpanAt(carry, frame)
-    if (!now) continue
+    if (!now || !flagGlyphShown(layer, now)) continue
     const place = flagPlaceAt(now, frame, layer.posOf)
     const c = projectTo(view, place.at)
     // MÊME RÈGLE DE DÉCALAGE QUE LE TRACÉ (2026-09-08) : elle dépend de l'ÉTAT, et depuis le lot

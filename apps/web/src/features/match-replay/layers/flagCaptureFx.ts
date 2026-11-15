@@ -101,6 +101,8 @@ export interface FlagCaptureStyle {
   inkOf: (xuid: string) => string
   /** Mouvement réduit : l'onde ne s'ouvre plus, elle ne fait que s'éteindre. */
   reducedMotion: boolean
+  /** SEUL ET MASQUER (panneau de joueur) : faux quand la capture de cet auteur est retirée. Absent = tout se dessine. */
+  shownAuthor?: (xuid: string) => boolean
 }
 
 // Géométrie de l'onde, en pixels d'écran. DEUX anneaux et non un seul : un anneau unique qui
@@ -135,6 +137,7 @@ export function drawFlagCaptureFx(
   for (const f of fx) {
     const age = win.frame - f.frame
     if (age < 0 || age > win.hold) continue
+    if (style.shownAuthor && !style.shownAuthor(f.xuid)) continue
     const k = age / Math.max(win.hold, 1)
     const c = projectTo(view, f)
     ctx.strokeStyle = style.inkOf(f.xuid)

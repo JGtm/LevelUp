@@ -129,3 +129,21 @@ describe('marque de révélation d’un capteur — le poseur ET le joueur rév�
     expect(filter('hide').reveal({ owner: 2, ownerFrame: 20, slot: 2 }, 30)).toBe(true)
   })
 })
+
+describe('porteur, VIP, auteur d’une action — le xuid du document', () => {
+  it('Seul garde ce que le joueur porte ou accomplit, Masquer le retire', () => {
+    const { filter } = harness()
+    expect(filter('solo').author('A')).toBe(true)
+    expect(filter('hide').author('A')).toBe(false)
+    expect(filter('solo').author('B')).toBe(false)
+    expect(filter('hide').author('B')).toBe(true)
+  })
+
+  it('un bot est reconnu par le xuid du fil de sa ligne de feuille', () => {
+    const { doc } = harness()
+    const marc = { xuid: 'bot:Marc', lives: [], board: { xuid: 'bid(1.0)' } } as never
+    const f = buildFocusFilter(doc, { player: marc, follow: false, solo: true, hide: false })!
+    expect(f.author('bid(1.0)')).toBe(true)
+    expect(f.author('A')).toBe(false)
+  })
+})
