@@ -1,6 +1,7 @@
 package temporal
 
 import (
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -60,7 +61,7 @@ func buildEngagementCurve(p buildCurveParams) []domain.EngagementPoint {
 	teamPts := extractWeightedPoints(p.TeamEvents, p.Weights)
 	lobbyPts := extractWeightedPoints(p.LobbyEvents, p.Weights)
 
-	windowMin := float64(p.WindowMS) / 60_000.0
+	windowMin := analysis.MillisecondsToMinutes(float64(p.WindowMS))
 
 	for i := 0; i < nPoints; i++ {
 		t := p.MatchStartMS + int64(i)*p.SamplingMS

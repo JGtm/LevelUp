@@ -1,19 +1,21 @@
-// Package archlint — no_inline_per_minute_test.go : garde-rail « une cadence par minute se calcule par
-// analysis.PerMinute, jamais par une division en ligne ».
+// Package archlint — no_inline_per_minute_test.go : garde-rail « une cadence par minute se calcule par les
+// helpers canoniques de analysis/indicators.go, jamais par une division en ligne ».
 //
 // POURQUOI. Deux écritures d'une même cadence (`x / (s / 60)` et `x * 60 / s`) ne rendent pas la même valeur au
-// dernier bit, et une durée nulle y est gardée à la main, différemment d'un site à l'autre : analysis.PerMinute
-// est la seule définition (valeur, durée nulle -> 0). La note de performance en dépend (ADR 0047).
+// dernier bit, et une durée nulle y est gardée à la main, différemment d'un site à l'autre : les helpers de
+// analysis/indicators.go (PerMinute, PerMinuteOfCount, SecondsToMinutes, MillisecondsToMinutes) sont les seules
+// définitions. La note de performance en dépend (ADR 0047).
 //
-// INTERDIT (hors tests), dans internal/analysis, internal/service et internal/sync (récursif) :
-//   - une division par le littéral 60 (`s / 60`, `s / 60.0`) : le passage des secondes aux minutes ;
-//   - une division dont le numérateur est un produit par 60 (`x * 60 / s`) ;
-//   - un produit par 60 dont l'autre facteur est un quotient (`x / s * 60`).
+// INTERDIT (hors tests), dans internal/analysis, internal/service et internal/sync (récursif), avec le littéral
+// 60 (secondes) ou 60000 / 60_000 (millisecondes), toute graphie (`60`, `60.0`, `60_000.0`) :
+//   - une division par ce littéral (`s / 60`, `ms / 60_000.0`) : le passage à la minute ;
+//   - une division dont le numérateur est un produit par ce littéral (`x * 60 / s`) ;
+//   - un produit par ce littéral dont l'autre facteur est un quotient (`x / s * 60`).
 //
-// Hors règle : un produit par 60 seul (conversion de minutes en secondes, `60 * time.Second`), et le couple
-// `n / 60` + `n % 60` d'une même déclaration (découpe mm:ss d'un entier, jamais une cadence).
-// Exempt : internal/analysis/indicators.go (définition de PerMinute). L'allowlist est vide ; une entrée exige
-// une date et une justification.
+// Hors règle : un produit par ce littéral seul (conversion de minutes en secondes, `60 * time.Second`), et le
+// couple `n / 60` + `n % 60` d'une même déclaration (découpe mm:ss d'un entier, jamais une cadence).
+// Exempt : internal/analysis/indicators.go (définition des helpers). L'allowlist est vide ; une entrée exige une
+// date et une justification (un site qui n'est pas une cadence).
 package archlint
 
 import (
@@ -27,26 +29,27 @@ import (
 
 var perMinuteRoots = []string{"internal/analysis", "internal/service", "internal/sync"}
 
-// perMinuteDefinitionFile : le seul fichier qui peut diviser par 60 (PerMinute).
+// perMinuteDefinitionFile : le seul fichier qui peut diviser par 60 (les helpers de cadence).
 const perMinuteDefinitionFile = "internal/analysis/indicators.go"
 
 // perMinuteAllowlist : fichier -> raison datée de la présence d'une division par 60 qui n'est pas une cadence.
 var perMinuteAllowlist = map[string]string{}
 
-// isLiteral60 dit si e est le littéral 60 ou 60.0 (toute graphie), parenthèses ôtées.
-func isLiteral60(e ast.Expr) bool {
+// isMinuteLiteral dit si e est le littéral d'une minute, en secondes (60) ou en millisecondes (60000), sous
+// toute graphie (`60.0`, `60_000`, `60_000.0`), parenthèses ôtées.
+func isMinuteLiteral(e ast.Expr) bool {
 	lit, ok := ast.Unparen(e).(*ast.BasicLit)
 	if !ok || (lit.Kind != token.INT && lit.Kind != token.FLOAT) {
 		return false
 	}
-	v, err := strconv.ParseFloat(lit.Value, 64)
-	return err == nil && v == 60
+	v, err := strconv.ParseFloat(strings.ReplaceAll(lit.Value, "_", ""), 64)
+	return err == nil && (v == 60 || v == 60000)
 }
 
-// isProductBy60 dit si e est un produit dont un facteur est le littéral 60.
+// isProductBy60 dit si e est un produit dont un facteur est le littéral d'une minute.
 func isProductBy60(e ast.Expr) bool {
 	b, ok := ast.Unparen(e).(*ast.BinaryExpr)
-	return ok && b.Op == token.MUL && (isLiteral60(b.X) || isLiteral60(b.Y))
+	return ok && b.Op == token.MUL && (isMinuteLiteral(b.X) || isMinuteLiteral(b.Y))
 }
 
 // isQuotient dit si e est une division.
@@ -59,7 +62,7 @@ func isQuotient(e ast.Expr) bool {
 func remainderBy60Operands(decl ast.Node) map[string]bool {
 	out := map[string]bool{}
 	ast.Inspect(decl, func(n ast.Node) bool {
-		if b, ok := n.(*ast.BinaryExpr); ok && b.Op == token.REM && isLiteral60(b.Y) {
+		if b, ok := n.(*ast.BinaryExpr); ok && b.Op == token.REM && isMinuteLiteral(b.Y) {
 			out[operandText(b.X)] = true
 		}
 		return true
@@ -96,11 +99,11 @@ func perMinuteSites(src goSource) []string {
 				return true
 			}
 			switch {
-			case b.Op == token.QUO && isLiteral60(b.Y) && !splits[operandText(b.X)]:
+			case b.Op == token.QUO && isMinuteLiteral(b.Y) && !splits[operandText(b.X)]:
 				report(b)
 			case b.Op == token.QUO && isProductBy60(b.X):
 				report(b)
-			case b.Op == token.MUL && ((isLiteral60(b.Y) && isQuotient(b.X)) || (isLiteral60(b.X) && isQuotient(b.Y))):
+			case b.Op == token.MUL && ((isMinuteLiteral(b.Y) && isQuotient(b.X)) || (isMinuteLiteral(b.X) && isQuotient(b.Y))):
 				report(b)
 			}
 			return true
@@ -138,7 +141,7 @@ func perMinuteProblems(sources []goSource, allowlist map[string]string) []string
 func TestCadenceParMinuteSansDivisionEnLigne(t *testing.T) {
 	problems := perMinuteProblems(goSourcesUnder(t, perMinuteRoots...), perMinuteAllowlist)
 	if len(problems) > 0 {
-		t.Errorf("cadence par minute calculée en ligne : utiliser analysis.PerMinute(total, secondes) :\n  %s",
+		t.Errorf("cadence par minute calculée en ligne : utiliser les helpers de analysis/indicators.go (PerMinute, PerMinuteOfCount, SecondsToMinutes, MillisecondsToMinutes) :\n  %s",
 			strings.Join(problems, "\n  "))
 	}
 }
@@ -161,6 +164,9 @@ func TestCadenceParMinuteGardeDetecteLesDefauts(t *testing.T) {
 		{"minutes := s / 60", "package a\nfunc f(x, s float64) float64 { m := s / 60; return x / m }", 1},
 		{"x * 60 / s", "package a\nfunc f(x, s float64) float64 { return x * 60 / s }", 1},
 		{"60 * x / s", "package a\nfunc f(x, s float64) float64 { return 60.0 * x / s }", 1},
+		{"ms / 60_000.0", "package a\nfunc f(ms int64) float64 { return float64(ms) / 60_000.0 }", 1},
+		{"x / (ms / 60000)", "package a\nfunc f(x, ms float64) float64 { return x / (ms / 60000) }", 1},
+		{"x * 60_000 / ms", "package a\nfunc f(x, ms float64) float64 { return x * 60_000 / ms }", 1},
 		{"x / s * 60", "package a\nfunc f(x, s float64) float64 { return x / s * 60 }", 1},
 		{"dans une closure", "package a\nfunc f(s float64) {\n\tg := func(x float64) float64 { return x / (s / 60.0) }\n\t_ = g\n}", 1},
 		{"minutes en secondes : rien", "package a\nfunc f(m int) int { return m * 60 }", 0},

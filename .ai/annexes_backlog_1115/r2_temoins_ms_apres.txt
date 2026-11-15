@@ -1,0 +1,40 @@
+=== RUN   TestTemoinMinute_FragsParMinuteDEffet
+    effet.11sur937000 = 0.7043756670224119
+    effet.23sur736123 = 1.8746867031732468
+    effet.5sur59999 = 5.0000833347222455
+    effet.zero = nil
+    effet.negatif = nil
+--- PASS: TestTemoinMinute_FragsParMinuteDEffet
+PASS
+ok levelup/go-api/internal/analysis/squademprise
+=== RUN   TestTemoinMinute_IntensiteDuMatch
+    intensite.937123 = 0.33842180497422125
+    intensite.1800000 = 0.15416666666666667
+    intensite.zero = 0
+    intensite.negatif = 0
+--- PASS: TestTemoinMinute_IntensiteDuMatch
+=== RUN   TestTemoinMinute_CourbeDEngagement
+    courbe.0.joueur = 1.616248686797942
+    courbe.0.team = 0.808124343398971
+    courbe.0.lobby = 0.6060932575492283
+    courbe.1.joueur = 3.232497373595884
+    courbe.1.team = 1.2121865150984565
+    courbe.1.lobby = 1.0101554292487136
+    courbe.2.joueur = 3.232497373595884
+    courbe.2.team = 1.2121865150984565
+    courbe.2.lobby = 0.808124343398971
+    courbe.3.joueur = 1.616248686797942
+    courbe.3.team = 0.808124343398971
+    courbe.3.lobby = 0.4040621716994855
+    courbe.4.joueur = 3.232497373595884
+    courbe.4.team = 1.2121865150984565
+    courbe.4.lobby = 0.6060932575492283
+    courbe.5.joueur = 1.616248686797942
+    courbe.5.team = 0.4040621716994855
+    courbe.5.lobby = 0.4040621716994855
+    courbe.6.joueur = 0
+    courbe.6.team = 0
+    courbe.6.lobby = 0.20203108584974275
+--- PASS: TestTemoinMinute_CourbeDEngagement
+PASS
+ok levelup/go-api/internal/analysis/temporal

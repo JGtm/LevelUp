@@ -8,6 +8,7 @@ import (
 	"math"
 	"sort"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -312,7 +313,7 @@ func computeMatchIntensity(lobbyEvents []canonical.HighlightEvent, matchDuration
 	if len(lobbyEvents) == 0 || nHumans <= 0 || matchDurationMS <= 0 {
 		return 0
 	}
-	durationMin := float64(matchDurationMS) / 60_000.0
+	durationMin := analysis.MillisecondsToMinutes(float64(matchDurationMS))
 	return float64(len(lobbyEvents)) / float64(nHumans) / durationMin
 }
 
