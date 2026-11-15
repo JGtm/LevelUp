@@ -189,6 +189,26 @@ func percentileRank(value float64, series []float64) float64 {
 	return clampF(float64(count)/float64(len(series))*100.0, 0, 100)
 }
 
+// percentileRankMid calcule le percentile d'une valeur à MI-RANG : les valeurs strictement
+// inférieures comptent pour 1, les égales pour 1/2. Sur des égalités (indice d'objectif
+// identique), percentileRank (<=) rendrait le rang le plus haut à tous ; ici elles se
+// partagent le milieu de leur plage. Moins de deux valeurs : 50.
+func percentileRankMid(value float64, series []float64) float64 {
+	if len(series) < 2 {
+		return 50.0
+	}
+	var below, equal float64
+	for _, v := range series {
+		switch {
+		case v < value:
+			below++
+		case v == value:
+			equal++
+		}
+	}
+	return clampF((below+equal/2)/float64(len(series))*100.0, 0, 100)
+}
+
 // percentileRankInverse calcule le percentile inversé (moins = mieux).
 func percentileRankInverse(value float64, series []float64) float64 {
 	if len(series) < 2 {

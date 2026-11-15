@@ -1,11 +1,11 @@
 package sync
 
 // performance_objective_blend.go — VARIANTE de la note de performance des matchs à objectif
-// (décision D-7 du plan des compléments 8.2.0), À L'ÉTUDE : aucun chargeur de production ne
-// pose historyRow.ObjectiveBlend, batchComputePerformanceScores ne l'appelle pas et
-// skill.PerformanceScoreRev n'a pas bougé. La simulation sur le parc
-// (performance_objective_simulation_research_test.go) la compare à la note actuelle avant
-// que les poids ne soient figés avec l'utilisateur.
+// (décision D-7 du plan des compléments 8.2.0, corrigée par les décisions du user du
+// 2026-11-15), À L'ÉTUDE : aucun chargeur de production ne pose historyRow.ObjectiveBlend,
+// batchComputePerformanceScores ne l'appelle pas et skill.PerformanceScoreRev n'a pas bougé. La
+// simulation sur le parc (performance_objective_simulation_research_test.go) la compare à la
+// note actuelle avant que les poids ne soient figés.
 //
 // # Ce qui change par rapport à la note actuelle
 //
@@ -13,24 +13,29 @@ package sync
 // 0,12 sur 1,04 et vaut les points d'awards `objective` par minute : un porteur de drapeau
 // sans frag sort avec une note faible, parce que le reste du profil est du combat. Ici :
 //
-//	note = (1 − α) × combat + α × percentile_objectif
+//	note = C + α × max(0, O − C)
 //	α    = AlphaMin + (AlphaMax − AlphaMin) × part
 //
-//   - combat : le profil de poids de la chaîne SANS la métrique d'objectif, renormalisé par la
-//     somme des poids restants (weightedPercentileMean) ;
+//   - C : le combat — le profil de poids de la chaîne SANS la métrique d'objectif, renormalisé
+//     par la somme des poids restants (weightedPercentileMean) ;
+//   - O : le percentile objectif — le rang de l'indice r_f BRUT du joueur (narrative.RawIndex,
+//     sans l'écrêtage de 1,25 que les radars gardent pour l'affichage) parmi les matchs de la
+//     MÊME famille de mode de la fenêtre de la chaîne, les égalités classées à mi-rang
+//     (percentileRankMid) ; sous MinFamilyMatches matchs de famille, repli sur les matchs à
+//     objectif de la fenêtre (r_f est normalisé par les repères P80 de sa famille, donc
+//     comparable d'une famille à l'autre) ; sous MinFamilyMatches même là, la métrique est
+//     ABSENTE ;
 //   - part : la part du joueur dans l'objectif de son équipe pour CE match
-//     (narrative.ComputeObjectiveTeamShare : actions pondérées par
-//     ObjectiveFamilyActionWeights, toutes les lignes de son équipe) ;
-//   - percentile_objectif : le rang de l'indice r_f du joueur (narrative.objectiveFamilySubScore,
-//     le même indice que l'axe Objectif des profils) parmi les matchs de la MÊME famille de
-//     mode de la fenêtre de la chaîne ; sous MinFamilyMatches matchs de famille, repli sur les
-//     matchs à objectif de la fenêtre (r_f est normalisé par les repères P80 de sa famille,
-//     donc comparable d'une famille à l'autre) ; sous MinFamilyMatches même là, la métrique
-//     est ABSENTE.
+//     (narrative.ComputeObjectiveTeamShareWith). Avec UseSupportShare, max(part de l'objectif,
+//     part du soutien), la part du soutien étant calculée sur les seules actions de soutien
+//     de l'équipe (narrative.ObjectiveSupportColumns).
+//
+// L'objectif n'enlève jamais rien : note >= C. Une part nulle rend C + AlphaMin × max(0, O − C),
+// soit la note du combat seul dès que O <= C.
 //
 // Métrique absente (titre sans match_objective_stats, match sans bloc d'objectif, référence
-// trop courte) : la note est le combat renormalisé, jamais une note à zéro d'objectif. Pas de
-// « points requis pour gagner » : le résultat est déjà dans rank_perf.
+// trop courte) : la note est C, jamais une note à zéro d'objectif. Pas de « points requis pour
+// gagner » : le résultat est déjà dans rank_perf.
 
 import (
 	"levelup/go-api/internal/analysis/narrative"
@@ -39,24 +44,26 @@ import (
 // objectiveBlendFacts : ce qu'un match porte pour la variante, posé par le chargeur.
 type objectiveBlendFacts struct {
 	Family narrative.ObjectiveFamily
-	// Index : indice r_f du joueur pour ce match, dans [0, narrative.ObjectiveIndexClip].
+	// Index : indice r_f BRUT du joueur pour ce match (>= 0, sans écrêtage).
 	Index float64
 	// Share : part du joueur dans l'objectif de son équipe, dans [0, 1].
 	Share float64
+	// SupportShare : sa part dans les seules actions de soutien de l'équipe, dans [0, 1].
+	SupportShare float64
 }
 
-// objectiveBlendParams : les trois réglages de la variante. Valeurs de la simulation,
-// NON figées (cf. defaultObjectiveBlendParams).
+// objectiveBlendParams : les réglages de la variante.
 type objectiveBlendParams struct {
 	AlphaMin, AlphaMax float64
 	// MinFamilyMatches : matchs de référence minimum, par famille puis en repli sur la
 	// fenêtre de la chaîne.
 	MinFamilyMatches int
+	// UseSupportShare : α suit max(part de l'objectif, part du soutien) (variante d'escorte).
+	UseSupportShare bool
 }
 
-// defaultObjectiveBlendParams : α de 0,12 (le poids actuel d'ospm) à 0,50 (décision D-7).
-// À l'étude : les variantes de sensibilité de la simulation font varier AlphaMax (0,35 et
-// 0,65) ; rien n'est figé tant que l'utilisateur n'a pas validé le tableau.
+// defaultObjectiveBlendParams : α de 0,12 (le poids actuel d'ospm) à 0,50 (D1 du user, le
+// 2026-11-15), parts de l'objectif seules.
 func defaultObjectiveBlendParams() objectiveBlendParams {
 	return objectiveBlendParams{AlphaMin: 0.12, AlphaMax: 0.50, MinFamilyMatches: MinMatchesForRelative}
 }
@@ -64,12 +71,14 @@ func defaultObjectiveBlendParams() objectiveBlendParams {
 // objectiveBlendResult détaille une note de la variante (la simulation les rapporte).
 type objectiveBlendResult struct {
 	Score float64 // arrondi au dixième
-	// Combat : note de combat renormalisée sans l'objectif, non arrondie.
+	// Combat : C, non arrondi.
 	Combat float64
 	// HasObjective : false quand la métrique est absente (Score == Combat arrondi).
 	HasObjective bool
-	// Percentile : rang de l'indice d'objectif, 0-100 ; Alpha : son poids.
-	Percentile, Alpha float64
+	// Percentile : O, 0-100 ; Alpha : son poids ; Part : la part qui a réglé Alpha.
+	Percentile, Alpha, Part float64
+	// Floored : vrai quand O <= C, l'objectif n'ajoute alors rien.
+	Floored bool
 	// FamilyScope : vrai si la référence est la famille du match, faux en repli sur la chaîne.
 	FamilyScope bool
 }
@@ -129,14 +138,20 @@ func computeObjectiveBlend(current *historyRow, history []historyRow, weights ma
 	if !hasRef {
 		return res, true
 	}
-	share := clampF(current.ObjectiveBlend.Share, 0, 1)
-	alpha := p.AlphaMin + (p.AlphaMax-p.AlphaMin)*share
-	pct := percentileRank(current.ObjectiveBlend.Index, series)
+	part := current.ObjectiveBlend.Share
+	if p.UseSupportShare {
+		part = max(part, current.ObjectiveBlend.SupportShare)
+	}
+	part = clampF(part, 0, 1)
+	alpha := p.AlphaMin + (p.AlphaMax-p.AlphaMin)*part
+	pct := percentileRankMid(current.ObjectiveBlend.Index, series)
 	res.HasObjective = true
 	res.FamilyScope = familyScope
 	res.Percentile = pct
 	res.Alpha = alpha
-	res.Score = roundPerfScore((1-alpha)*combat + alpha*pct)
+	res.Part = part
+	res.Floored = pct <= combat
+	res.Score = roundPerfScore(combat + alpha*max(0, pct-combat))
 	return res, true
 }
 
