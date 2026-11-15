@@ -164,9 +164,9 @@ func TestObjectiveSupportColumns_SousEnsembleDesPoids(t *testing.T) {
 	}
 }
 
-// L'indice brut dépasse le plafond que garde l'indice des radars ; le relèvement du soutien
-// ne touche que les colonnes de soutien et jamais la table de poids.
-func TestComputeObjectiveTeamShareWith_BrutRelevementEtPartDuSoutien(t *testing.T) {
+// L'indice brut dépasse le plafond que garde l'indice des radars ; la part du soutien ne compte
+// que les colonnes de soutien et la table de poids n'est jamais modifiée.
+func TestComputeObjectiveTeamShare_BrutEtPartDuSoutien(t *testing.T) {
 	rows := []ObjectiveTeamRow{
 		{XUID: "porteur", TeamID: 0, Family: FamilyCTF, TimePlayedSeconds: 600, Values: map[string]float64{
 			"flag_captures": 6, "flag_steals": 4, "time_as_flag_carrier_seconds": 60,
@@ -176,31 +176,22 @@ func TestComputeObjectiveTeamShareWith_BrutRelevementEtPartDuSoutien(t *testing.
 		}},
 	}
 	before := ObjectiveFamilyActionWeights[FamilyCTF]["flag_returns"]
-	p1, _ := ComputeObjectiveTeamShare(rows, "porteur")
-	if p1.RawIndex <= ObjectiveIndexClip || p1.Index != ObjectiveIndexClip {
-		t.Fatalf("porteur : RawIndex %v Index %v, want brut > plafond et Index écrêté", p1.RawIndex, p1.Index)
+	p, _ := ComputeObjectiveTeamShare(rows, "porteur")
+	if p.RawIndex <= ObjectiveIndexClip || p.Index != ObjectiveIndexClip {
+		t.Fatalf("porteur : RawIndex %v Index %v, want brut > plafond et Index écrêté", p.RawIndex, p.Index)
 	}
-	e1, _ := ComputeObjectiveTeamShare(rows, "escorte")
-	e2, _ := ComputeObjectiveTeamShareWith(rows, "escorte", ObjectiveWeighting{SupportMult: 2})
-	// escorte : 1,5x4 + 1,5x4 + 2x2 = 16 ; relevé x2 = 32.
-	if !almostEqual(e1.Points, 16) || !almostEqual(e2.Points, 32) {
-		t.Errorf("points d'escorte %v / %v, want 16 / 32", e1.Points, e2.Points)
+	e, _ := ComputeObjectiveTeamShare(rows, "escorte")
+	// escorte : 1,5x4 + 1,5x4 + 2x2 = 16, tout en soutien ; porteur : 5x6 + 2x4 = 38, aucun soutien.
+	if !almostEqual(e.Points, 16) || !almostEqual(e.SupportPoints, 16) || !almostEqual(e.SupportShare, 1) {
+		t.Errorf("escorte : %v points, %v de soutien, part du soutien %v, want 16, 16, 1", e.Points, e.SupportPoints, e.SupportShare)
 	}
-	if e2.Share <= e1.Share || e2.RawIndex <= e1.RawIndex {
-		t.Errorf("le relèvement doit monter la part (%v -> %v) et l'indice (%v -> %v)", e1.Share, e2.Share, e1.RawIndex, e2.RawIndex)
+	if p.SupportShare != 0 || p.SupportPoints != 0 {
+		t.Errorf("le porteur n'a aucune action de soutien : %v / %v", p.SupportShare, p.SupportPoints)
 	}
-	if !almostEqual(e1.SupportShare, 1) || !almostEqual(e1.SupportPoints, 16) {
-		t.Errorf("part du soutien de l'escorte = %v (%v points), want 1 (16)", e1.SupportShare, e1.SupportPoints)
-	}
-	if p1.SupportShare != 0 {
-		t.Errorf("le porteur n'a aucune action de soutien : %v", p1.SupportShare)
+	if !almostEqual(e.Share, 16.0/54.0) || !almostEqual(e.TeamSupportPoints, 16) {
+		t.Errorf("part de l'escorte %v, soutien de l'équipe %v", e.Share, e.TeamSupportPoints)
 	}
 	if ObjectiveFamilyActionWeights[FamilyCTF]["flag_returns"] != before {
-		t.Error("la table de poids a été modifiée par le relèvement")
-	}
-	// SupportMult nul = poids de la table.
-	z, _ := ComputeObjectiveTeamShareWith(rows, "escorte", ObjectiveWeighting{})
-	if !almostEqual(z.Points, e1.Points) {
-		t.Errorf("SupportMult 0 : %v, want %v", z.Points, e1.Points)
+		t.Error("la table de poids a été modifiée")
 	}
 }

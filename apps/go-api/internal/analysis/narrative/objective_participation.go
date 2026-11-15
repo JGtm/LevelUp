@@ -284,28 +284,15 @@ func ComputeObjectiveIndex(in ObjectiveIndexInput) (float64, int) {
 // ou Matches <= 0 rend 0. Source unique du terme « actions » de r_f ET de la part de
 // l'équipe (ComputeObjectiveTeamShare).
 func ObjectiveActionPoints(fam ObjectiveFamily, st ObjectiveFamilyStats) float64 {
-	return ObjectiveActionPointsBoosted(fam, st, 1)
-}
-
-// ObjectiveActionPointsBoosted est ObjectiveActionPoints avec les poids des colonnes de
-// SOUTIEN (ObjectiveSupportColumns) multipliés par supportMult. supportMult == 1 rend les
-// poids de ObjectiveFamilyActionWeights, tels que les radars les lisent : la table n'est
-// jamais modifiée, le relèvement ne vaut que pour l'appelant qui le demande (la note de
-// performance à objectif).
-func ObjectiveActionPointsBoosted(fam ObjectiveFamily, st ObjectiveFamilyStats, supportMult float64) float64 {
 	if st.Matches <= 0 {
 		return 0
 	}
 	n := float64(st.Matches)
-	support := objectiveSupportSet(fam)
 	var actions float64
 	for col, w := range ObjectiveFamilyActionWeights[fam] {
 		v := st.ColumnSums[col]
 		if v <= 0 {
 			continue
-		}
-		if support[col] {
-			w *= supportMult
 		}
 		if col == ObjectiveColKillsAsVIP {
 			actions += w * v / max(1, st.TimesSelectedAsVIP)
@@ -319,19 +306,18 @@ func ObjectiveActionPointsBoosted(fam ObjectiveFamily, st ObjectiveFamilyStats, 
 // objectiveFamilySubScore calcule r_f ∈ [0, ObjectiveIndexClip] pour une famille : l'indice
 // brut, écrêté. C'est la valeur des radars et des profils (le plafond y sert l'affichage).
 func objectiveFamilySubScore(fam ObjectiveFamily, st ObjectiveFamilyStats) float64 {
-	return min(objectiveFamilyRawScore(fam, st, 1), ObjectiveIndexClip)
+	return min(objectiveFamilyRawScore(fam, st), ObjectiveIndexClip)
 }
 
 // objectiveFamilyRawScore calcule r_f SANS écrêtage (>= 0) : l'indice qui sert à CLASSER
 // des matchs entre eux, où le plafond de l'affichage mettrait à égalité tous les bons
-// matchs. supportMult relève les poids des colonnes de soutien (cf.
-// ObjectiveActionPointsBoosted).
-func objectiveFamilyRawScore(fam ObjectiveFamily, st ObjectiveFamilyStats, supportMult float64) float64 {
+// matchs.
+func objectiveFamilyRawScore(fam ObjectiveFamily, st ObjectiveFamilyStats) float64 {
 	cal := objectiveCalibrations[fam]
 	if cal.actionsP80 <= 0 {
 		return 0
 	}
-	actions := ObjectiveActionPointsBoosted(fam, st, supportMult)
+	actions := ObjectiveActionPoints(fam, st)
 
 	r := actions / cal.actionsP80
 	if cal.holdP80 > 0 {

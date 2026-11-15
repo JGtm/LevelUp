@@ -1,7 +1,7 @@
 package sync
 
 // performance_objective_blend.go — VARIANTE de la note de performance des matchs à objectif
-// (décision D-7 du plan des compléments 8.2.0, corrigée par les décisions du user du
+// (décision D-7 du plan des compléments 8.2.0, corrigée par les décisions du user des
 // 2026-11-15), À L'ÉTUDE : aucun chargeur de production ne pose historyRow.ObjectiveBlend,
 // batchComputePerformanceScores ne l'appelle pas et skill.PerformanceScoreRev n'a pas bougé. La
 // simulation sur le parc (performance_objective_simulation_research_test.go) la compare à la
@@ -11,9 +11,10 @@ package sync
 //
 // Aujourd'hui, sur les chaînes à objectif, la métrique `objective_participation` (ospm) pèse
 // 0,12 sur 1,04 et vaut les points d'awards `objective` par minute : un porteur de drapeau
-// sans frag sort avec une note faible, parce que le reste du profil est du combat. Ici :
+// sans frag sort avec une note faible, parce que le reste du profil est du combat. Ici, une
+// moyenne SYMÉTRIQUE — l'objectif peut monter ou baisser la note :
 //
-//	note = C + α × max(0, O − C)
+//	note = (1 − α) × C + α × O
 //	α    = AlphaMin + (AlphaMax − AlphaMin) × part
 //
 //   - C : le combat — le profil de poids de la chaîne SANS la métrique d'objectif, renormalisé
@@ -25,13 +26,10 @@ package sync
 //     objectif de la fenêtre (r_f est normalisé par les repères P80 de sa famille, donc
 //     comparable d'une famille à l'autre) ; sous MinFamilyMatches même là, la métrique est
 //     ABSENTE ;
-//   - part : la part du joueur dans l'objectif de son équipe pour CE match
-//     (narrative.ComputeObjectiveTeamShareWith). Avec UseSupportShare, max(part de l'objectif,
-//     part du soutien), la part du soutien étant calculée sur les seules actions de soutien
-//     de l'équipe (narrative.ObjectiveSupportColumns).
-//
-// L'objectif n'enlève jamais rien : note >= C. Une part nulle rend C + AlphaMin × max(0, O − C),
-// soit la note du combat seul dès que O <= C.
+//   - part : max(part du joueur dans l'objectif de son équipe, part du joueur dans le soutien
+//     de son équipe) pour CE match (narrative.ComputeObjectiveTeamShare ; le soutien est
+//     narrative.ObjectiveSupportColumns) : un joueur qui escorte pèse autant qu'un joueur qui
+//     prend.
 //
 // Métrique absente (titre sans match_objective_stats, match sans bloc d'objectif, référence
 // trop courte) : la note est C, jamais une note à zéro d'objectif. Pas de « points requis pour
@@ -58,12 +56,10 @@ type objectiveBlendParams struct {
 	// MinFamilyMatches : matchs de référence minimum, par famille puis en repli sur la
 	// fenêtre de la chaîne.
 	MinFamilyMatches int
-	// UseSupportShare : α suit max(part de l'objectif, part du soutien) (variante d'escorte).
-	UseSupportShare bool
 }
 
-// defaultObjectiveBlendParams : α de 0,12 (le poids actuel d'ospm) à 0,50 (D1 du user, le
-// 2026-11-15), parts de l'objectif seules.
+// defaultObjectiveBlendParams : α de 0,12 (le poids actuel d'ospm) à 0,50 (décision du user,
+// 2026-11-15).
 func defaultObjectiveBlendParams() objectiveBlendParams {
 	return objectiveBlendParams{AlphaMin: 0.12, AlphaMax: 0.50, MinFamilyMatches: MinMatchesForRelative}
 }
@@ -77,8 +73,6 @@ type objectiveBlendResult struct {
 	HasObjective bool
 	// Percentile : O, 0-100 ; Alpha : son poids ; Part : la part qui a réglé Alpha.
 	Percentile, Alpha, Part float64
-	// Floored : vrai quand O <= C, l'objectif n'ajoute alors rien.
-	Floored bool
 	// FamilyScope : vrai si la référence est la famille du match, faux en repli sur la chaîne.
 	FamilyScope bool
 }
@@ -138,11 +132,7 @@ func computeObjectiveBlend(current *historyRow, history []historyRow, weights ma
 	if !hasRef {
 		return res, true
 	}
-	part := current.ObjectiveBlend.Share
-	if p.UseSupportShare {
-		part = max(part, current.ObjectiveBlend.SupportShare)
-	}
-	part = clampF(part, 0, 1)
+	part := clampF(max(current.ObjectiveBlend.Share, current.ObjectiveBlend.SupportShare), 0, 1)
 	alpha := p.AlphaMin + (p.AlphaMax-p.AlphaMin)*part
 	pct := percentileRankMid(current.ObjectiveBlend.Index, series)
 	res.HasObjective = true
@@ -150,17 +140,6 @@ func computeObjectiveBlend(current *historyRow, history []historyRow, weights ma
 	res.Percentile = pct
 	res.Alpha = alpha
 	res.Part = part
-	res.Floored = pct <= combat
-	res.Score = roundPerfScore(combat + alpha*max(0, pct-combat))
+	res.Score = roundPerfScore((1-alpha)*combat + alpha*pct)
 	return res, true
-}
-
-// computeObjectiveBlendedScore est la note de la variante, sous la forme de
-// computeRelativePerformanceScore : nil quand elle n'est pas calculable.
-func computeObjectiveBlendedScore(current *historyRow, history []historyRow, weights map[string]float64, p objectiveBlendParams) *float64 {
-	res, ok := computeObjectiveBlend(current, history, weights, p)
-	if !ok {
-		return nil
-	}
-	return &res.Score
 }

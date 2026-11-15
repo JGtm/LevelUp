@@ -61,12 +61,6 @@ type ObjectiveTeamShare struct {
 	SupportPoints, TeamSupportPoints, SupportShare float64
 }
 
-// ObjectiveWeighting règle le calcul de la part et de l'indice d'un match : SupportMult relève
-// les poids des colonnes de soutien (1 = les poids de ObjectiveFamilyActionWeights).
-type ObjectiveWeighting struct {
-	SupportMult float64
-}
-
 // MatchObjectiveFamily rend la famille d'un MATCH depuis les familles de ses lignes : la
 // plus fréquente, KOTH l'emportant sur Strongholds dès qu'une ligne y compte des ticks (le
 // discriminant de ligne classe en Strongholds un joueur de KOTH sans tick). "" si aucune
@@ -112,21 +106,15 @@ func objectiveStatsOfRow(fam ObjectiveFamily, r *ObjectiveTeamRow) ObjectiveFami
 }
 
 // ComputeObjectiveTeamShare calcule la part de `xuid` dans l'objectif de son camp pour un
-// match, avec les poids de ObjectiveFamilyActionWeights (ObjectiveWeighting{SupportMult: 1}).
-func ComputeObjectiveTeamShare(rows []ObjectiveTeamRow, xuid string) (ObjectiveTeamShare, bool) {
-	return ComputeObjectiveTeamShareWith(rows, xuid, ObjectiveWeighting{SupportMult: 1})
-}
-
-// ComputeObjectiveTeamShareWith calcule la part de `xuid` dans l'objectif de son camp pour un
 // match, depuis les lignes de TOUS les joueurs du match (les deux camps : seules celles du
-// camp de `xuid` entrent dans TeamPoints), avec les poids de soutien réglés par w.
+// camp de `xuid` entrent dans TeamPoints).
 //
 // ok == false — la métrique est alors ABSENTE, jamais zéro — quand : aucune ligne, pas de
 // ligne pour `xuid`, famille du match inconnue (titre sans match_objective_stats,
 // match sans bloc d'objectif) ou camp de `xuid` inconnu. Un camp sans aucune action
 // (TeamPoints == 0) n'est PAS une absence : la part vaut 0, et l'indice du joueur
 // (tenue comprise) reste mesuré.
-func ComputeObjectiveTeamShareWith(rows []ObjectiveTeamRow, xuid string, w ObjectiveWeighting) (ObjectiveTeamShare, bool) {
+func ComputeObjectiveTeamShare(rows []ObjectiveTeamRow, xuid string) (ObjectiveTeamShare, bool) {
 	fam := MatchObjectiveFamily(rows)
 	if fam == "" {
 		return ObjectiveTeamShare{}, false
@@ -141,10 +129,6 @@ func ComputeObjectiveTeamShareWith(rows []ObjectiveTeamRow, xuid string, w Objec
 	if me == nil || me.TeamID == NoObjectiveTeam {
 		return ObjectiveTeamShare{}, false
 	}
-	mult := w.SupportMult
-	if mult <= 0 {
-		mult = 1
-	}
 	var teamPoints, teamSupport float64
 	for i := range rows {
 		r := &rows[i]
@@ -152,16 +136,16 @@ func ComputeObjectiveTeamShareWith(rows []ObjectiveTeamRow, xuid string, w Objec
 			continue
 		}
 		st := objectiveStatsOfRow(fam, r)
-		teamPoints += ObjectiveActionPointsBoosted(fam, st, mult)
+		teamPoints += ObjectiveActionPoints(fam, st)
 		teamSupport += ObjectiveSupportPoints(fam, st)
 	}
 	mine := objectiveStatsOfRow(fam, me)
 	out := ObjectiveTeamShare{
 		Family:            fam,
-		Points:            ObjectiveActionPointsBoosted(fam, mine, mult),
+		Points:            ObjectiveActionPoints(fam, mine),
 		TeamPoints:        teamPoints,
-		Index:             min(objectiveFamilyRawScore(fam, mine, mult), ObjectiveIndexClip),
-		RawIndex:          objectiveFamilyRawScore(fam, mine, mult),
+		Index:             min(objectiveFamilyRawScore(fam, mine), ObjectiveIndexClip),
+		RawIndex:          objectiveFamilyRawScore(fam, mine),
 		SupportPoints:     ObjectiveSupportPoints(fam, mine),
 		TeamSupportPoints: teamSupport,
 	}

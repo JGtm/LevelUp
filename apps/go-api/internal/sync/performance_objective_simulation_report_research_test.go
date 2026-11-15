@@ -2,9 +2,10 @@
 
 package sync
 
-// performance_objective_simulation_report_research_test.go — le RAPPORT de la simulation : les
-// agrégations (écarts par famille, paliers, distributions par chaîne, vérifications, témoins)
-// en tableaux Markdown. Voir performance_objective_simulation_research_test.go.
+// performance_objective_simulation_report_research_test.go — le RAPPORT de la simulation : un
+// tableau des témoins (une ligne par joueur suivi), puis le résumé de V4 par famille, la
+// distribution par chaîne, la note moyenne par rôle et la queue négative. Voir
+// performance_objective_simulation_research_test.go.
 
 import (
 	"database/sql"
@@ -62,26 +63,6 @@ func simStd(xs []float64) float64 {
 	return math.Sqrt(s / float64(len(xs)))
 }
 
-// simStat résume les écarts d'un réglage contre la note actuelle sur un groupe de matchs.
-func simStat(recs []simRecord, variant string) string {
-	var d, ad []float64
-	changed := 0
-	for i := range recs {
-		v := recs[i].By[variant].Score
-		delta := v - recs[i].Old.Score
-		d = append(d, delta)
-		ad = append(ad, math.Abs(delta))
-		if simTier(v) != simTier(recs[i].Old.Score) {
-			changed++
-		}
-	}
-	if len(d) == 0 {
-		return "-"
-	}
-	return fmt.Sprintf("méd. %+.1f ; |écart| méd. %.1f, p90 %.1f ; paliers %.0f %%",
-		simQuantile(d, .5), simQuantile(ad, .5), simQuantile(ad, .9), 100*float64(changed)/float64(len(d)))
-}
-
 func simFamilyOf(r *simRecord) string {
 	if r.Share.Family == "" {
 		return "(sans donnée d'objectif)"
@@ -107,25 +88,24 @@ func simGroupBy(recs []simRecord, key func(*simRecord) string) ([]string, map[st
 	return keys, g
 }
 
+func simScores(recs []simRecord, variant string) []float64 {
+	xs := make([]float64, 0, len(recs))
+	for i := range recs {
+		if variant == "" {
+			xs = append(xs, recs[i].Old.Score)
+		} else {
+			xs = append(xs, recs[i].By[variant].Score)
+		}
+	}
+	return xs
+}
+
 // simWriteReport assemble le rapport complet.
 func simWriteReport(t *testing.T, env *simEnv, recs []simRecord) string {
 	t.Helper()
 	var b strings.Builder
-	names := []string{"base", "soutien x1,5", "soutien x2", "part du soutien"}
 	fmt.Fprintf(&b, "# Simulation de la note à objectif (%d matchs)\n\n", len(recs))
-	simReportControl(&b, recs)
-	simReportFamilies(&b, recs, names)
-	simReportChains(&b, recs, append([]string{"base à 229"}, names...))
-	simReportChecks(&b, recs)
-	simReportRoles(&b, recs, names)
-	simReportHP(&b, recs)
-	simReportWitnesses(t, &b, env, recs, names)
-	return b.String()
-}
-
-func simReportControl(b *strings.Builder, recs []simRecord) {
-	same := 0
-	n := 0
+	same, n := 0, 0
 	for i := range recs {
 		if recs[i].HasStored {
 			n++
@@ -134,57 +114,50 @@ func simReportControl(b *strings.Builder, recs []simRecord) {
 			}
 		}
 	}
-	fmt.Fprintf(b, "## Contrôle\n\nNote actuelle recalculée = note stockée (à 0,1 près) : %d matchs sur %d.\n\n", same, n)
+	fmt.Fprintf(&b, "Contrôle : note actuelle recalculée = note stockée (à 0,1 près) sur %d matchs sur %d.\n\n", same, n)
+	simReportWitnesses(&b, env, recs)
+	simReportFamilies(&b, recs)
+	simReportChains(&b, recs)
+	simReportRoles(&b, recs)
+	simReportTail(&b, recs)
+	return b.String()
 }
 
-func simReportFamilies(b *strings.Builder, recs []simRecord, names []string) {
+// simReportFamilies : V4 contre la note actuelle, par famille.
+func simReportFamilies(b *strings.Builder, recs []simRecord) {
 	keys, g := simGroupBy(recs, func(r *simRecord) string { return simFamilyOf(r) })
-	fmt.Fprintf(b, "## Écart par famille de mode (réglage moins note actuelle)\n\n| Famille | Matchs |")
-	for _, n := range names {
-		fmt.Fprintf(b, " %s |", n)
-	}
-	b.WriteString("\n|---|---|")
-	for range names {
-		b.WriteString("---|")
-	}
-	b.WriteString("\n")
+	b.WriteString("## V4 par famille de mode (V4 moins note actuelle)\n\n| Famille | Matchs | Écart médian | Écart absolu médian | 90e centile de l'écart absolu | Paliers qui changent |\n|---|---|---|---|---|---|\n")
 	for _, k := range append(keys, "Toutes") {
 		rs := g[k]
 		if k == "Toutes" {
 			rs = recs
 		}
-		fmt.Fprintf(b, "| %s | %d |", k, len(rs))
-		for _, n := range names {
-			fmt.Fprintf(b, " %s |", simStat(rs, n))
+		var d, ad []float64
+		changed := 0
+		for i := range rs {
+			v := rs[i].By["V4"].Score
+			delta := v - rs[i].Old.Score
+			d = append(d, delta)
+			ad = append(ad, math.Abs(delta))
+			if simTier(v) != simTier(rs[i].Old.Score) {
+				changed++
+			}
 		}
-		b.WriteString("\n")
+		fmt.Fprintf(b, "| %s | %d | %+.1f | %.1f | %.1f | %.0f %% |\n", k, len(rs), simQuantile(d, .5), simQuantile(ad, .5),
+			simQuantile(ad, .9), 100*float64(changed)/float64(len(rs)))
 	}
 	b.WriteString("\n")
 }
 
-func simReportChains(b *strings.Builder, recs []simRecord, names []string) {
+func simReportChains(b *strings.Builder, recs []simRecord) {
 	keys, g := simGroupBy(recs, func(r *simRecord) string { return r.Chain })
-	b.WriteString("## Distribution par chaîne (moyenne / écart-type)\n\n| Chaîne | Matchs | Actuelle |")
-	for _, n := range names {
-		fmt.Fprintf(b, " %s |", n)
-	}
-	b.WriteString("\n|---|---|---|")
-	for range names {
-		b.WriteString("---|")
-	}
-	b.WriteString("\n")
+	b.WriteString("## Distribution par chaîne (moyenne / écart-type)\n\n| Chaîne | Matchs | Actuelle | V1 | V2 | V3 | V4 |\n|---|---|---|---|---|---|---|\n")
 	for _, k := range keys {
 		rs := g[k]
-		var old []float64
-		for i := range rs {
-			old = append(old, rs[i].Old.Score)
-		}
+		old := simScores(rs, "")
 		fmt.Fprintf(b, "| %s | %d | %.1f / %.1f |", k, len(rs), simMean(old), simStd(old))
-		for _, n := range names {
-			var xs []float64
-			for i := range rs {
-				xs = append(xs, rs[i].By[n].Score)
-			}
+		for _, v := range []string{"V1", "V2", "V3", "V4"} {
+			xs := simScores(rs, v)
 			fmt.Fprintf(b, " %.1f / %.1f |", simMean(xs), simStd(xs))
 		}
 		b.WriteString("\n")
@@ -192,57 +165,20 @@ func simReportChains(b *strings.Builder, recs []simRecord, names []string) {
 	b.WriteString("\n")
 }
 
-func simReportChecks(b *strings.Builder, recs []simRecord) {
-	b.WriteString("## Vérifications\n\n")
-	for _, n := range []string{"base", "soutien x1,5", "soutien x2", "part du soutien"} {
-		under, zero, zeroFloor, withObj := 0, 0, 0, 0
-		var maxGap float64
-		for i := range recs {
-			o := recs[i].By[n]
-			if o.Score < roundPerfScore(o.Combat)-1e-9 {
-				under++
-			}
-			if !o.Has {
-				continue
-			}
-			withObj++
-			if o.Part == 0 {
-				zero++
-				if math.Abs(o.Score-roundPerfScore(o.Combat)) < 1e-9 {
-					zeroFloor++
-				} else {
-					maxGap = math.Max(maxGap, o.Score-roundPerfScore(o.Combat))
-				}
-			}
-		}
-		fmt.Fprintf(b, "- **%s** : note sous le combat seul : %d matchs sur %d ; part nulle : %d matchs, dont %d à la note du combat seul (le reste dépasse le combat de %.1f point au plus).\n",
-			n, under, withObj, zero, zeroFloor, maxGap)
-	}
-	b.WriteString("\n")
-}
-
-// simReportRoles : porteurs, escortes et tueurs, notes moyennes par réglage.
-func simReportRoles(b *strings.Builder, recs []simRecord, names []string) {
+// simReportRoles : porteurs, escortes et tueurs, note moyenne par variante.
+func simReportRoles(b *strings.Builder, recs []simRecord) {
 	type role struct {
 		label string
 		pick  func(*simRecord) bool
 	}
 	roles := []role{
-		{"porteurs (part >= 35 % et <= 8 frags)", func(r *simRecord) bool { return r.Share.Share >= .35 && r.Kills <= 8 }},
-		{"escortes (>= 60 % des points en soutien, >= 4 points)", func(r *simRecord) bool {
+		{"Porteurs (part >= 35 % et <= 8 frags)", func(r *simRecord) bool { return r.Share.Share >= .35 && r.Kills <= 8 }},
+		{"Escortes (>= 60 % des points en soutien, >= 4 points)", func(r *simRecord) bool {
 			return r.Share.Points >= 4 && r.Share.SupportPoints/r.Share.Points >= .6
 		}},
-		{"tueurs (part <= 10 % et >= 15 frags)", func(r *simRecord) bool { return r.Share.Share <= .10 && r.Kills >= 15 }},
+		{"Tueurs (part <= 10 % et >= 15 frags)", func(r *simRecord) bool { return r.Share.Share <= .10 && r.Kills >= 15 }},
 	}
-	b.WriteString("## Rôles : note moyenne avant / après\n\n| Rôle | Matchs | Actuelle |")
-	for _, n := range names {
-		fmt.Fprintf(b, " %s |", n)
-	}
-	b.WriteString("\n|---|---|---|")
-	for range names {
-		b.WriteString("---|")
-	}
-	b.WriteString("\n")
+	b.WriteString("## Note moyenne par rôle\n\n| Rôle | Matchs | Actuelle | V1 | V2 | V3 | V4 |\n|---|---|---|---|---|---|---|\n")
 	for _, ro := range roles {
 		var rs []simRecord
 		for i := range recs {
@@ -250,68 +186,46 @@ func simReportRoles(b *strings.Builder, recs []simRecord, names []string) {
 				rs = append(rs, recs[i])
 			}
 		}
-		var old []float64
-		for i := range rs {
-			old = append(old, rs[i].Old.Score)
-		}
-		fmt.Fprintf(b, "| %s | %d | %.1f |", ro.label, len(rs), simMean(old))
-		for _, n := range names {
-			var xs []float64
-			for i := range rs {
-				xs = append(xs, rs[i].By[n].Score)
-			}
-			fmt.Fprintf(b, " %.1f |", simMean(xs))
+		fmt.Fprintf(b, "| %s | %d | %.1f |", ro.label, len(rs), simMean(simScores(rs, "")))
+		for _, v := range []string{"V1", "V2", "V3", "V4"} {
+			fmt.Fprintf(b, " %.1f |", simMean(simScores(rs, v)))
 		}
 		b.WriteString("\n")
 	}
 	b.WriteString("\n")
 }
 
-// simReportHP : l'effet de 229 points de vie au lieu de 225 sur la note relative.
-func simReportHP(b *strings.Builder, recs []simRecord) {
-	diffOld, diffBase := 0, 0
-	var maxOld, maxBase float64
-	for i := range recs {
-		d := math.Abs(recs[i].Old229.Score - recs[i].Old.Score)
-		if d > 1e-9 {
-			diffOld++
+// simReportTail chiffre la queue négative de V4 (écart V4 moins actuelle), par famille.
+func simReportTail(b *strings.Builder, recs []simRecord) {
+	keys, g := simGroupBy(recs, func(r *simRecord) string { return simFamilyOf(r) })
+	b.WriteString("## Queue négative de V4 (V4 moins note actuelle)\n\n| Famille | Pire écart | Matchs sous -8 | Matchs sous -5 |\n|---|---|---|---|\n")
+	for _, k := range keys {
+		worst, u8, u5 := 0.0, 0, 0
+		for i := range g[k] {
+			d := g[k][i].By["V4"].Score - g[k][i].Old.Score
+			worst = math.Min(worst, d)
+			if d < -8 {
+				u8++
+			}
+			if d < -5 {
+				u5++
+			}
 		}
-		maxOld = math.Max(maxOld, d)
-		db := math.Abs(recs[i].By["base à 229"].Score - recs[i].By["base"].Score)
-		if db > 1e-9 {
-			diffBase++
-		}
-		maxBase = math.Max(maxBase, db)
+		fmt.Fprintf(b, "| %s | %.1f | %d sur %d | %d |\n", k, worst, u8, len(g[k]), u5)
 	}
-	fmt.Fprintf(b, "## 229 points de vie au lieu de 225\n\nNote actuelle : %d matchs changent sur %d (écart max %.2f). Note à objectif (base) : %d matchs changent sur %d (écart max %.2f).\n\n",
-		diffOld, len(recs), maxOld, diffBase, len(recs), maxBase)
+	b.WriteString("\n")
 }
 
 // simWitnessIDs : les témoins, par préfixe d'identifiant de match (l'identifiant ne sort pas du
 // rapport : date, carte et mode).
 var simWitnessIDs = []string{"c349da69", "3fa60771", "2acc306f", "b8c1b220", "4a93f0e2", "d4230304", "b5d130ad", "cae8471d", "7665e832", "51ebbc0f"}
 
-// simActionLabels : colonnes d'action montrées dans la table des témoins.
-var simActionLabels = map[narrative.ObjectiveFamily][][2]string{
-	narrative.FamilyCTF: {{"flag_captures", "captures"}, {"flag_steals", "vols"}, {"flag_capture_assists", "passes de capture"},
-		{"flag_returns", "retours"}, {"flag_carriers_killed", "porteurs abattus"}, {"flag_returners_killed", "retourneurs abattus"}, {"flag_secures", "sécurisations"}},
-	narrative.FamilyZonesKOTH:        {{"zone_captures", "captures de zone"}, {"zone_secures", "sécurisations"}, {"zone_offensive_kills", "frags offensifs"}, {"zone_defensive_kills", "frags défensifs"}},
-	narrative.FamilyZonesStrongholds: {{"zone_captures", "captures de base"}, {"zone_secures", "sécurisations"}, {"zone_offensive_kills", "frags offensifs"}, {"zone_defensive_kills", "frags défensifs"}},
-	narrative.FamilyOddball:          {{"skull_grabs", "prises du crâne"}, {"skull_carriers_killed", "porteurs abattus"}, {"skull_scoring_ticks", "points de tenue"}},
-}
-
-func simReportWitnesses(t *testing.T, b *strings.Builder, env *simEnv, recs []simRecord, names []string) {
-	b.WriteString("## Témoins (note actuelle puis réglages)\n\n")
-	byID := map[string]map[string]*simRecord{}
+// simReportWitnesses : UN tableau, une ligne par joueur suivi de chaque témoin.
+func simReportWitnesses(b *strings.Builder, env *simEnv, recs []simRecord) {
+	b.WriteString("## Témoins\n\n| Match | Joueur (frags, part de l'objectif, part du soutien) | Actuelle | V1 | V2 | V3 | V4 |\n|---|---|---|---|---|---|---|\n")
+	byID := map[string][]*simRecord{}
 	for i := range recs {
-		if byID[recs[i].MatchID] == nil {
-			byID[recs[i].MatchID] = map[string]*simRecord{}
-		}
-		byID[recs[i].MatchID][recs[i].Player] = &recs[i]
-	}
-	tracked := map[string]string{}
-	for gt, x := range env.xuids {
-		tracked[x] = gt
+		byID[recs[i].MatchID] = append(byID[recs[i].MatchID], &recs[i])
 	}
 	for _, short := range simWitnessIDs {
 		var mid string
@@ -323,97 +237,27 @@ func simReportWitnesses(t *testing.T, b *strings.Builder, env *simEnv, recs []si
 		if mid == "" {
 			continue
 		}
-		simWriteWitness(t, b, env, mid, byID[mid], tracked, names)
+		mine := byID[mid]
+		sort.Slice(mine, func(i, j int) bool { return mine[i].Share.Share > mine[j].Share.Share })
+		label := simMatchLabel(env, mine[0])
+		for _, r := range mine {
+			fmt.Fprintf(b, "| %s | %s (%.0f, %.0f %%, %.0f %%) | %.1f | %.1f | %.1f | %.1f | %.1f |\n", label, r.Player, r.Kills,
+				100*r.Share.Share, 100*r.Share.SupportShare, r.Old.Score, r.By["V1"].Score, r.By["V2"].Score, r.By["V3"].Score, r.By["V4"].Score)
+		}
 	}
+	b.WriteString("\n")
 }
 
-func simWriteWitness(t *testing.T, b *strings.Builder, env *simEnv, mid string, mine map[string]*simRecord, tracked map[string]string, names []string) {
-	var any *simRecord
-	for _, r := range mine {
-		any = r
-		break
-	}
-	fam := any.Share.Family
-	var rowsAll []narrative.ObjectiveTeamRow
-	for gt := range mine {
-		rowsAll = env.objRows[gt][mid]
-		break
-	}
-	kills := map[string]int{}
-	if rs, err := env.shared.Query(`SELECT xuid, COALESCE(kills, 0) FROM match_participants WHERE match_id = ?`, mid); err == nil {
-		for rs.Next() {
-			var x string
-			var k int
-			if rs.Scan(&x, &k) == nil {
-				kills[x] = k
-			}
-		}
-		_ = rs.Close()
-	}
+// simMatchLabel : date, carte, mode et score (du point de vue du camp du joueur).
+func simMatchLabel(env *simEnv, r *simRecord) string {
 	score := ""
 	var t0, t1 sql.NullInt64
-	if err := env.shared.QueryRow(`SELECT team_0_score, team_1_score FROM match_registry WHERE match_id = ?`, mid).Scan(&t0, &t1); err == nil {
+	if err := env.shared.QueryRow(`SELECT team_0_score, team_1_score FROM match_registry WHERE match_id = ?`, r.MatchID).Scan(&t0, &t1); err == nil {
 		a, c := t0.Int64, t1.Int64
-		if any.Team == 1 {
+		if r.Team == 1 {
 			a, c = c, a
 		}
-		score = fmt.Sprintf("score %d-%d pour l'équipe, ", a, c)
+		score = fmt.Sprintf(", %d-%d", a, c)
 	}
-	fmt.Fprintf(b, "#### %s, %s, %s (%s%.1f min)\n\n| Joueur | Frags | Actions d'objectif | Part | Part du soutien | Actuelle |", any.Start[:10], any.Map, any.Pair, score, any.Minutes)
-	for _, n := range names {
-		fmt.Fprintf(b, " %s |", n)
-	}
-	b.WriteString("\n|---|---|---|---|---|---|")
-	for range names {
-		b.WriteString("---|")
-	}
-	b.WriteString("\n")
-	anon := 0
-	type line struct {
-		share float64
-		text  string
-	}
-	var lines []line
-	for i := range rowsAll {
-		r := &rowsAll[i]
-		if r.TeamID != any.Team {
-			continue
-		}
-		sh, ok := narrative.ComputeObjectiveTeamShare(rowsAll, r.XUID)
-		if !ok {
-			continue
-		}
-		name, rec := tracked[r.XUID], mine[tracked[r.XUID]]
-		if name == "" {
-			anon++
-			name = fmt.Sprintf("coéquipier non suivi %d", anon)
-		}
-		var acts []string
-		for _, c := range simActionLabels[fam] {
-			if v := r.Values[c[0]]; v > 0 {
-				acts = append(acts, fmt.Sprintf("%.0f %s", v, c[1]))
-			}
-		}
-		if len(acts) == 0 {
-			acts = []string{"aucune"}
-		}
-		text := fmt.Sprintf("| %s | %d | %s | %.0f %% | %.0f %% |", name, kills[r.XUID], strings.Join(acts, ", "), 100*sh.Share, 100*sh.SupportShare)
-		if rec != nil {
-			text += fmt.Sprintf(" %.1f |", rec.Old.Score)
-			for _, n := range names {
-				text += fmt.Sprintf(" %.1f |", rec.By[n].Score)
-			}
-		} else {
-			text += " pas de note |"
-			for range names {
-				text += " |"
-			}
-		}
-		lines = append(lines, line{sh.Share, text})
-	}
-	sort.SliceStable(lines, func(i, j int) bool { return lines[i].share > lines[j].share })
-	for _, l := range lines {
-		b.WriteString(l.text + "\n")
-	}
-	b.WriteString("\n")
+	return fmt.Sprintf("%s, %s, %s%s", r.Start[:10], r.Map, r.Pair, score)
 }

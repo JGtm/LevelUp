@@ -9,10 +9,11 @@ package sync
 //
 // Il rejoue la boucle de batchComputePerformanceScores (mêmes chargements, mêmes fenêtres de 50
 // matchs par chaîne, même seuil de 10 matchs) et, pour chaque match d'une chaîne à objectif,
-// compare la note actuelle (recalculée par le code) aux variantes de simVariants : la base
-// (indice brut, mi-rang, plancher du combat), deux relèvements du soutien, la part du soutien,
-// et la même base avec 229 points de vie au lieu de 225. Le rapport (tableaux Markdown) est
-// écrit par simWriteReport (performance_objective_simulation_report_research_test.go).
+// compare la note actuelle (recalculée par le code) aux quatre variantes de simVariants, toutes
+// SYMÉTRIQUES ((1 - alpha) C + alpha O) : V1 (indice écrêté, rang <=, part de l'objectif), V2 (V1
+// avec l'indice brut et le mi-rang), V3 (V2 avec la part d'escorte), V4 (V3 avec 229 points de vie
+// au lieu de 225). Le rapport (tableaux Markdown) est écrit par simWriteReport
+// (performance_objective_simulation_report_research_test.go).
 //
 // Lancement (depuis apps/go-api) :
 //
@@ -41,40 +42,38 @@ import (
 
 // simVariant : un réglage de la variante de note.
 type simVariant struct {
-	Name      string
-	Weighting narrative.ObjectiveWeighting
-	Params    objectiveBlendParams
+	Name string
+	// V1 : indice écrêté et rang <= (la première simulation) ; sinon indice brut et mi-rang.
+	V1 bool
+	// Escort : la part qui règle alpha est max(part de l'objectif, part du soutien).
+	Escort bool
 	// HP : points de vie effective du Rendement et de la Résistance (225 aujourd'hui).
 	HP float64
 }
 
 func simVariants() []simVariant {
-	base := defaultObjectiveBlendParams()
-	support := base
-	support.UseSupportShare = true
 	return []simVariant{
-		{"base", narrative.ObjectiveWeighting{SupportMult: 1}, base, 225},
-		{"soutien x1,5", narrative.ObjectiveWeighting{SupportMult: 1.5}, base, 225},
-		{"soutien x2", narrative.ObjectiveWeighting{SupportMult: 2}, base, 225},
-		{"part du soutien", narrative.ObjectiveWeighting{SupportMult: 1}, support, 225},
-		{"base à 229", narrative.ObjectiveWeighting{SupportMult: 1}, base, 229},
+		{Name: "V1", V1: true, HP: 225},
+		{Name: "V2", HP: 225},
+		{Name: "V3", Escort: true, HP: 225},
+		{Name: "V4", Escort: true, HP: 229},
 	}
 }
 
 // simOut : la note d'un match sous un réglage, avec son détail.
 type simOut struct {
 	Score, Combat, Alpha, Pct, Part float64
-	Has, Floored, FamilyScope       bool
+	Has, FamilyScope                bool
 }
 
 // simRecord : un match à objectif d'un joueur suivi, sous tous les réglages.
 type simRecord struct {
 	Player, MatchID, Start, Map, Pair, Chain string
-	Kills, Deaths, Assists, Minutes          float64
+	Kills, Deaths, Assists                   float64
 	Team                                     int
 	Stored                                   float64
 	HasStored                                bool
-	Old, Old229                              simOut
+	Old                                      simOut
 	Share                                    narrative.ObjectiveTeamShare // poids de la table, sans relèvement
 	By                                       map[string]simOut
 }
@@ -166,18 +165,25 @@ func simClone(all []historyRow) []historyRow {
 }
 
 // simFacts pose sur chaque match les faits de la variante ; rend, par match, la part calculée.
-func simFacts(matches []historyRow, rows map[string][]narrative.ObjectiveTeamRow, xuid string, w narrative.ObjectiveWeighting) map[string]narrative.ObjectiveTeamShare {
+// V1 pose l'indice écrêté, les autres l'indice brut ; sans escorte la part du soutien est nulle,
+// donc la part qui règle alpha est celle de l'objectif seule.
+func simFacts(matches []historyRow, rows map[string][]narrative.ObjectiveTeamRow, xuid string, v simVariant) map[string]narrative.ObjectiveTeamShare {
 	shares := map[string]narrative.ObjectiveTeamShare{}
 	for i := range matches {
 		matches[i].ObjectiveBlend = nil
-		share, ok := narrative.ComputeObjectiveTeamShareWith(rows[matches[i].MatchID], xuid, w)
+		share, ok := narrative.ComputeObjectiveTeamShare(rows[matches[i].MatchID], xuid)
 		if !ok {
 			continue
 		}
 		shares[matches[i].MatchID] = share
-		matches[i].ObjectiveBlend = &objectiveBlendFacts{
-			Family: share.Family, Index: share.RawIndex, Share: share.Share, SupportShare: share.SupportShare,
+		facts := &objectiveBlendFacts{Family: share.Family, Index: share.RawIndex, Share: share.Share}
+		if v.V1 {
+			facts.Index = share.Index
 		}
+		if v.Escort {
+			facts.SupportShare = share.SupportShare
+		}
+		matches[i].ObjectiveBlend = facts
 	}
 	return shares
 }
@@ -229,6 +235,32 @@ func simOld(m *historyRow, window []historyRow, weights map[string]float64) (sim
 	return simOut{Score: *s}, true
 }
 
+// simBlendV1 est la première simulation, à l'identique : moyenne symétrique, indice écrêté, rang
+// <= (percentileRank) et part de l'objectif seule. Le code de la variante ne garde que le rang
+// à mi-rang ; V1 ne sert qu'à mesurer ce que D2 et l'escorte changent.
+func simBlendV1(p objectiveBlendParams) func(*historyRow, []historyRow, map[string]float64) (simOut, bool) {
+	return func(m *historyRow, window []historyRow, weights map[string]float64) (simOut, bool) {
+		combat, ok := weightedPercentileMean(m, window, profileWithoutObjective(weights))
+		if !ok {
+			return simOut{}, false
+		}
+		out := simOut{Score: roundPerfScore(combat), Combat: combat}
+		if m.ObjectiveBlend == nil {
+			return out, true
+		}
+		series, _, hasRef := objectiveReferenceSeries(m.ObjectiveBlend, window, p.MinFamilyMatches)
+		if !hasRef {
+			return out, true
+		}
+		part := clampF(m.ObjectiveBlend.Share, 0, 1)
+		alpha := p.AlphaMin + (p.AlphaMax-p.AlphaMin)*part
+		pct := percentileRank(m.ObjectiveBlend.Index, series)
+		out.Has, out.Alpha, out.Part, out.Pct = true, alpha, part, pct
+		out.Score = roundPerfScore((1-alpha)*combat + alpha*pct)
+		return out, true
+	}
+}
+
 func simBlend(p objectiveBlendParams) func(*historyRow, []historyRow, map[string]float64) (simOut, bool) {
 	return func(m *historyRow, window []historyRow, weights map[string]float64) (simOut, bool) {
 		r, ok := computeObjectiveBlend(m, window, weights, p)
@@ -236,7 +268,7 @@ func simBlend(p objectiveBlendParams) func(*historyRow, []historyRow, map[string
 			return simOut{}, false
 		}
 		return simOut{Score: r.Score, Combat: r.Combat, Alpha: r.Alpha, Pct: r.Percentile, Part: r.Part,
-			Has: r.HasObjective, Floored: r.Floored, FamilyScope: r.FamilyScope}, true
+			Has: r.HasObjective, FamilyScope: r.FamilyScope}, true
 	}
 }
 
@@ -318,27 +350,28 @@ func simPlayer(t *testing.T, env *simEnv, gt, xuid string, player *sql.DB) []sim
 	env.objRows[gt] = rows
 
 	old := simChain(all, simOld)
-	old229Rows := simClone(all)
-	simYield(old229Rows, 229)
-	old229 := simChain(old229Rows, simOld)
 
 	variants := map[string]map[string]simOut{}
 	var baseShares map[string]narrative.ObjectiveTeamShare
 	for _, v := range simVariants() {
 		rowsV := simClone(all)
 		simYield(rowsV, v.HP)
-		shares := simFacts(rowsV, rows, xuid, v.Weighting)
-		if v.Name == "base" {
+		shares := simFacts(rowsV, rows, xuid, v)
+		if v.Name == "V1" {
 			baseShares = shares
 		}
-		variants[v.Name] = simChain(rowsV, simBlend(v.Params))
+		if v.V1 {
+			variants[v.Name] = simChain(rowsV, simBlendV1(defaultObjectiveBlendParams()))
+		} else {
+			variants[v.Name] = simChain(rowsV, simBlend(defaultObjectiveBlendParams()))
+		}
 	}
 
 	stored := simStoredNotes(player)
 	var recs []simRecord
 	for id, o := range old {
 		inf := env.info[id]
-		rec := simRecord{Player: gt, MatchID: id, Start: inf[0], Map: inf[1], Pair: inf[2], Old: o, Old229: old229[id],
+		rec := simRecord{Player: gt, MatchID: id, Start: inf[0], Map: inf[1], Pair: inf[2], Old: o,
 			Share: baseShares[id], By: map[string]simOut{}, Team: narrative.NoObjectiveTeam}
 		for name, m := range variants {
 			rec.By[name] = m[id]
@@ -348,7 +381,7 @@ func simPlayer(t *testing.T, env *simEnv, gt, xuid string, player *sql.DB) []sim
 		}
 		for _, h := range all {
 			if h.MatchID == id {
-				rec.Chain, rec.Kills, rec.Deaths, rec.Assists, rec.Minutes = h.Chain, h.Kills, h.Deaths, h.Assists, h.TimePlayedSeconds/60
+				rec.Chain, rec.Kills, rec.Deaths, rec.Assists = h.Chain, h.Kills, h.Deaths, h.Assists
 				break
 			}
 		}

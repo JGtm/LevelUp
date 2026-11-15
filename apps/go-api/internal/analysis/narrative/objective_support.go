@@ -1,10 +1,10 @@
 package narrative
 
 // objective_support.go — LES ACTIONS DE SOUTIEN d'un mode à objectif : celles d'un joueur qui
-// escorte, retourne et abat les porteurs sans prendre lui-même l'objectif. Elles servent la
-// note de performance à objectif de deux façons (cf. ObjectiveActionPointsBoosted et la part
-// de soutien de ObjectiveTeamShare) ; les radars et profils continuent de lire
-// ObjectiveFamilyActionWeights tels quels.
+// escorte, retourne et abat les porteurs sans prendre lui-même l'objectif. Elles donnent la
+// part du soutien (ObjectiveTeamShare.SupportShare), qui règle le poids de l'objectif dans la
+// note de performance à objectif. Les poids restent ceux de ObjectiveFamilyActionWeights,
+// tels que les radars les lisent.
 //
 // La table ne porte QUE des noms de colonnes de ObjectiveFamilyActionWeights (garde-rail :
 // objective_share_test.go) : aucune colonne neuve, aucun poids de plus.
@@ -30,16 +30,6 @@ var ObjectiveSupportColumns = map[ObjectiveFamily][]string{
 	FamilyStockpile:        {objectiveColPowerSeedCarriersKilled},
 	FamilyExtraction:       {objectiveColExtractionConversionsDenied},
 	FamilyVIP:              {objectiveColVipAssists},
-}
-
-// objectiveSupportSet rend les colonnes de soutien d'une famille en ensemble.
-func objectiveSupportSet(fam ObjectiveFamily) map[string]bool {
-	cols := ObjectiveSupportColumns[fam]
-	set := make(map[string]bool, len(cols))
-	for _, c := range cols {
-		set[c] = true
-	}
-	return set
 }
 
 // ObjectiveSupportPoints : actions de SOUTIEN pondérées (poids de ObjectiveFamilyActionWeights,
