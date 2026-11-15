@@ -106,6 +106,10 @@ export function getTacticalText(locale: Locale) {
     planSquadPending: m('tactical.plan.squad_pending'),
     pillRespawn: m('tactical.plan.pill_respawn'),
     pillRespawnAll: m('tactical.plan.pill_respawn_all'),
+    pillLives: m('tactical.plan.pill_lives'),
+    livesStart: m('tactical.plan.lives_start'),
+    livesAll: m('tactical.plan.lives_all'),
+    livesHint: m('tactical.plan.lives_hint'),
     pillZones: m('tactical.plan.pill_zones'),
 
     // ── Carte du plan : états posés sur le fond, légende, bandeau d'état ────

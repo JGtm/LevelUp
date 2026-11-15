@@ -261,6 +261,22 @@ en = "Respawn"
 fr = "Toutes"
 en = "All"
 
+[tactical.plan.pill_lives]
+fr = "Vies"
+en = "Lives"
+
+[tactical.plan.lives_start]
+fr = "Départ"
+en = "Start"
+
+[tactical.plan.lives_all]
+fr = "Toutes les vies"
+en = "All lives"
+
+[tactical.plan.lives_hint]
+fr = "Départ : première vie seule. Toutes les vies : première vie, réapparitions et débuts de manche ; avec une réapparition choisie, les trajets ne comptent que les vies parties de cet endroit."
+en = "Start: first life only. All lives: first life, respawns and round starts; with a respawn chosen, routes only count the lives that left from that spot."
+
 [tactical.plan.pill_zones]
 fr = "Zones nommées"
 en = "Named zones"

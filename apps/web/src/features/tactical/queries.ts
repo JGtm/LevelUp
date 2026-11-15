@@ -52,6 +52,7 @@ import { normalizeWallPlan, type WallPlanReady } from '@/lib/replay/wallPlan'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { causeDeLErreur } from './sequenceCause.logic'
+import type { TacticalVies } from './vies.logic'
 
 /** FNV-1a 32 bits — même algorithme que `useFiltersPreview` et `computeHash`. */
 export function hashFiltre(valeur: unknown): string {
@@ -298,6 +299,8 @@ export interface ParamsDuRaster {
   question?: string
   qui?: string
   spawn?: string
+  /** Les apparitions qui forment les grappes ; absent = `depart` (cf. `viesPostees`). */
+  vies?: TacticalVies
 }
 
 /** Le corps posté : la liste blanche résolue (vide tant qu'elle ne l'est pas — la requête ne part pas). */
@@ -443,13 +446,7 @@ export function useTacticalCellule(
   playerSlug: string,
   mapId: string,
   cellule: { col: number; lig: number; pas_m: number } | null,
-  params: {
-    match_ids: string[] | null
-    coequipiers?: string[]
-    question?: string
-    qui?: string
-    spawn?: string
-  },
+  params: ParamsDuRaster,
 ) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const locale = useAppShellStore((s) => s.locale)

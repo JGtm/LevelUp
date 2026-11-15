@@ -19,7 +19,7 @@
  * LA ZONE LA PLUS CHAUDE EST PRÉSÉLECTIONNÉE (`useZone`) tant que l'utilisateur n'a rien choisi ; son
  * détail (`useTacticalCellule`) part quand la lecture est prête, et nomme la zone sur le plan. Elle
  * s'ÉCARTE par un re-clic sur elle, un clic loin de toute cellule, ou Échap (sans mort choisie) ; elle
- * ne revient alors qu'au changement de carte, de lecture, de joueurs ou de réapparition.
+ * ne revient alors qu'au changement de carte, de lecture, de joueurs, de réapparition ou de vies.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
@@ -35,6 +35,7 @@ import { classeRelecture, etatLecture, questionServie } from './tacticalLecture.
 import { TacticalPlanCard, type ReglagesDuPlan } from './TacticalPlanCard'
 import { basculerChoix } from './tueurs.logic'
 import { trouveCellule, type TacticalQuestion, type TacticalQui } from './tacticalView.logic'
+import { VIES_PAR_DEFAUT, viesPostees, type TacticalVies } from './vies.logic'
 import { useVueDeMort } from './useVueDeMort'
 import {
   choixApresClic,
@@ -85,7 +86,7 @@ export function TacticalAnalysisView({
   onDemandeComposition,
 }: TacticalAnalysisViewProps) {
   const reglages = useReglages(coequipiers, onDemandeComposition)
-  const { question, qui, spawn } = reglages
+  const { question, qui, spawn, vies } = reglages
 
   const params = useMemo(
     () => ({
@@ -94,8 +95,9 @@ export function TacticalAnalysisView({
       question,
       qui,
       spawn: spawn || undefined,
+      vies: viesPostees(vies),
     }),
-    [carte, matchIds, coequipiers, question, qui, spawn],
+    [carte, matchIds, coequipiers, question, qui, spawn, vies],
   )
   const { etat, lecture, questionLue } = useLecturePlan(playerSlug, carte.mapId, params, question, {
     enRelecture: perimetreEnRelecture,
@@ -114,7 +116,7 @@ export function TacticalAnalysisView({
   const zone = useZone({
     playerSlug,
     mapId: carte.mapId,
-    cle: `${carte.mapId}:${question}:${qui}:${spawn}`,
+    cle: `${carte.mapId}:${question}:${qui}:${spawn}:${vies}`,
     lecture: lectureAffichee,
     pret: etatPlan === 'pret',
     params,
@@ -196,6 +198,7 @@ function useReglages(
   const [question, setQuestion] = useState<TacticalQuestion>('morts')
   const [qui, setQui] = useState<TacticalQui>('moi')
   const [spawn, setSpawn] = useState('')
+  const [vies, setVies] = useState<TacticalVies>(VIES_PAR_DEFAUT)
   const [zonesVisibles, setZonesVisibles] = useState(true)
   const escouadeDisponible = coequipiers.length > 0
   const escouadeEnAttente = qui === 'escouade' && !escouadeDisponible
@@ -211,6 +214,14 @@ function useReglages(
     escouadeEnAttente,
     spawn,
     onSpawnChange: setSpawn,
+    vies,
+    // L'identifiant d'une grappe se calcule sur les apparitions retenues : celui d'une valeur de `vies`
+    // n'existe pas dans l'autre, le filtre revient donc à « Toutes ».
+    onViesChange: (valeur) => {
+      if (valeur === vies) return
+      setVies(valeur)
+      setSpawn('')
+    },
     zonesVisibles,
     onZonesVisiblesChange: setZonesVisibles,
   }

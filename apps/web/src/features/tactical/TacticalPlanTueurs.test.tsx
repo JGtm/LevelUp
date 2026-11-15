@@ -51,6 +51,8 @@ const REGLAGES: ReglagesDuPlan = {
   escouadeEnAttente: false,
   spawn: '',
   onSpawnChange: () => {},
+  vies: 'depart',
+  onViesChange: () => {},
   zonesVisibles: true,
   onZonesVisiblesChange: () => {},
   grappes: [],

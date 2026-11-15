@@ -84,6 +84,9 @@ import { useCadrageDuPlan } from './useCadrageDuPlan'
 import { useHauteurDuPlan } from './useHauteurDuPlan'
 import { useTacticalFondVariante } from './useTacticalFondVariante'
 import { SCENE_VIDE } from './mort.logic'
+import { ETIQUETTE, PILULE } from './pilules'
+import { ViesEnPilule } from './TacticalPlanVies'
+import { viesProposees, type TacticalVies } from './vies.logic'
 import { sceneDeLaVue, type VueDeMort } from './vueDeMort'
 
 /** Les trois réglages du bandeau (état local de la vue). */
@@ -99,6 +102,9 @@ export interface ReglagesDuPlan {
   escouadeEnAttente: boolean
   spawn: string
   onSpawnChange: (spawn: string) => void
+  /** Les apparitions qui forment les grappes ; changer de valeur remet le filtre de grappe à « Toutes ». */
+  vies: TacticalVies
+  onViesChange: (vies: TacticalVies) => void
   grappes: readonly TacticalGrappe[]
   /** Les contours et noms des zones nommées sont peints sur le plan. */
   zonesVisibles: boolean
@@ -294,14 +300,11 @@ export function TacticalPlanCard({
 
 const AUCUNE_ZONE: readonly CalloutZoneReady[] = []
 
-const PILULE =
-  'inline-flex h-7 items-stretch overflow-hidden rounded-md border border-input bg-background text-[11.5px] font-normal'
-const ETIQUETTE = 'flex items-center whitespace-nowrap border-r border-input bg-muted px-1.5 text-muted-foreground'
 const QUI_VALEURS: readonly TacticalQui[] = ['moi', 'escouade', 'adv']
 
 /**
- * ReglagesEnPilules — « Lecture », « Joueurs » et « Réapparition » (celle-ci seulement s'il y a des
- * amas ou un filtre posé), chacun en pilule (étiquette atténuée + valeur). « Escouade » reste CLIQUABLE sans composition : le clic ouvre le sélecteur de
+ * ReglagesEnPilules — « Lecture », « Joueurs », « Réapparition » (celle-ci seulement s'il y a des
+ * amas ou un filtre posé) et « Vies » (`viesProposees`), chacun en pilule (étiquette atténuée + valeur). « Escouade » reste CLIQUABLE sans composition : le clic ouvre le sélecteur de
  * composition de la barre (`onQuiChange`, cf. `useReglages`), la valeur reste atténuée et un texte
  * visible dit qu'aucune composition n'est choisie — la lecture, elle, reste sur « Moi ».
  */
@@ -316,6 +319,8 @@ function ReglagesEnPilules({
   escouadeEnAttente,
   spawn,
   onSpawnChange,
+  vies,
+  onViesChange,
   grappes,
   zonesVisibles,
   onZonesVisiblesChange,
@@ -380,6 +385,9 @@ function ReglagesEnPilules({
             ))}
           </select>
         </label>
+      )}
+      {viesProposees({ question, nbGrappes: grappes.length, spawn, vies }) && (
+        <ViesEnPilule t={t} vies={vies} onViesChange={onViesChange} />
       )}
       {zonesDisponibles && (
         <button
