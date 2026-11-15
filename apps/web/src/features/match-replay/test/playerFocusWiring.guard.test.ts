@@ -44,7 +44,7 @@ describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque él
   })
 
   it('la scène se relie quand le prédicat change (dépendance de buildScene)', () => {
-    expect(canvas()).toMatch(/campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile,/)
+    expect(canvas()).toMatch(/campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown,/)
   })
 })
 

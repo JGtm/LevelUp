@@ -1,6 +1,6 @@
 # Inventaire des calques du rejeu sous « Seul » et « Masquer » (lot 4, item 4.0)
 
-Source : `apps/web/src/features/match-replay/layers/replayCompose.ts` (`LAYER_ORDER`, 32 calques),
+Source : `apps/web/src/features/match-replay/layers/replayCompose.ts` (`LAYER_ORDER`, 31 calques),
 relu sur la tete de `release/v8.2.0` le 2026-11-15.
 
 Regle (user, 2026-11-15, D-4) : « Seul » n'affiche, sur tous les calques, que ce qui appartient au
@@ -47,10 +47,11 @@ Colonnes : `Avant` = le calque suivait deja `shownAtSlot` / `shownProjectile` (o
 
 ## Comptes
 
-- 32 calques ; 14 suivaient deja le filtre (projectiles, vies x3, trajectoires, marques de tir, gestes
-  de capacite, tirs, fin de vol, mise en valeur x2) ; 11 portent un element attribuable et ne le suivaient
-  pas (chaleur, armes au sol, poses, vehicules, failles, drapeaux, couronne, crane, bombe portee,
-  deflagration, pulses) plus `morts` = 12 cases ; 8 sans objet ou sans attribution.
+- 31 calques : 11 suivaient deja le filtre (projectiles, vies x3, trajectoires, marques de tir, gestes de
+  capacite, tirs, fin de vol, mise en valeur x2) ; 12 portent un element attribuable et ne le suivaient pas
+  (morts, chaleur, armes au sol, poses, vehicules, failles, drapeaux, couronne, crane, bombe portee,
+  deflagration, pulses) ; 8 sans objet ou sans attribution lisible (fond, sol, plan des murs, zones
+  nommees, objectifs cuits, socles d'armes, etat des zones, objets d'objectif).
 - Elements sans attribution lisible, laisses affiches (jamais devines) :
   - `objets-objectif` : le crane libre ne porte aucun champ de propriete ; libre = a personne.
   - `etat-zones` et `objectifs-cuits` : la propriete d'une zone est une EQUIPE (`zoneStates[].spans[].team`),

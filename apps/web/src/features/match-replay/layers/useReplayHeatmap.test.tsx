@@ -15,6 +15,7 @@ vi.mock('@/lib/accessibility/resolveToken', () => ({
 }))
 
 import type { KillFxEntry } from '../model/killFx'
+import { killFxEntry } from '../test/killFxEntry'
 import { testReplayDoc } from '../test/testDoc'
 import { useReplayHeatmap } from './useReplayHeatmap'
 
@@ -32,11 +33,10 @@ function doc() {
 
 /** Une mort du calque d'effets : `deathX` porte le lieu, `vx` l'orientation. */
 function killAt(x: number | null): KillFxEntry {
-  return {
-    frame: 10, x: 0, y: 0, vx: null, vy: null, dist: null,
-    fam: 'plain', slot: 0, seed: 1,
+  return killFxEntry({
+    frame: 10, x: 0, y: 0, slot: 0, seed: 1,
     deathX: x, deathY: x === null ? null : 12,
-  }
+  })
 }
 
 /**

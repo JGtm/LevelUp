@@ -15,6 +15,7 @@
  */
 import { useMemo } from 'react'
 
+import { buildFocusFilter, type FocusFilter } from '../model/focusFilter'
 import { shownSlotPredicate, type PlayerFocus } from '../model/playerPanelLogic'
 import { projectileOwners } from '../model/projectileOwners'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -44,6 +45,12 @@ export interface ReplayPlayerFocusLayers {
    * n'est filtré.
    */
   shownProjectile: ((index: number) => boolean) | undefined
+  /**
+   * Seul et Masquer pour tout ce qui n'est PAS un pion : un prédicat par genre d'élément (effets de mort,
+   * poses, véhicules, objets portés…), tous issus de la même règle (`ownershipShown`). `undefined` = rien
+   * n'est filtré.
+   */
+  shown: FocusFilter | undefined
 }
 
 export function useReplayPlayerFocus({ doc, focus, frameRef, zoom, turns }: ReplayPlayerFocusOptions): ReplayPlayerFocusLayers {
@@ -58,5 +65,6 @@ export function useReplayPlayerFocus({ doc, focus, frameRef, zoom, turns }: Repl
       return owner ? shownAtSlot(owner.slot, owner.frame) : !solo
     }
   }, [shownAtSlot, owners, solo])
-  return { shownAtSlot, shownProjectile }
+  const shown = useMemo(() => buildFocusFilter(doc, focus) ?? undefined, [doc, focus])
+  return { shownAtSlot, shownProjectile, shown }
 }

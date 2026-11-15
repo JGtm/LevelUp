@@ -310,7 +310,7 @@ export function ReplayCanvas({
   // Les murs sont DÉJÀ dans l'image plan : posé le fond plan, le calque des murs se retire (et n'est pas cuit).
   const wallPlanOn = isWallPlanDrawn(showWallPlan, mapImage?.variante ?? 'rendu')
   // LE PANNEAU DE JOUEUR : Suivre cadre la carte (la main l'arrête), Seul et Masquer filtrent le dessin.
-  const { shownAtSlot, shownProjectile } = useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom, turns: orientation.turns })
+  const { shownAtSlot, shownProjectile, shown: focusShown } = useReplayPlayerFocus({ doc, focus: playerFocus, frameRef, zoom, turns: orientation.turns })
 
   // Une couleur de série PAR grande zone : la rotation de teinte du POC, en tokens.
   const calloutZones = callouts ?? EMPTY_ZONES
@@ -594,7 +594,7 @@ export function ReplayCanvas({
           morts: (_c, _fr, k) =>
             drawKillFxLayer(ctx, killFx, view, win, {
               colorOfSlot: colorOfSlotOrLast, // FRONTIERE : kill posthume/echange apres la fin de vie.
-              fallback: shotColor, reducedMotion, k,
+              fallback: shotColor, reducedMotion, k, shown: focusShown?.killFx,
             }),
         },
       }
@@ -635,7 +635,7 @@ export function ReplayCanvas({
     floorStyle.edge,
     colorOfSlot,
     colorOfSlotOrLast,
-    campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile,
+    campOfSlot, seatedAtSlot, shownAtSlot, shownProjectile, focusShown,
     markOfSlot,
     nameOfSlot,
     showTrail,

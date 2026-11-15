@@ -191,6 +191,11 @@ export interface KillFxStyle {
   reducedMotion: boolean
   /** Densité du canevas : l'étoile de mêlée est déclarée en pixels d'ÉCRAN. */
   k: number
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : faux quand l'effet est retiré de la carte. Un effet de mort
+   * appartient au tueur ET à la victime (`killFxShown`). Absent = tout se dessine.
+   */
+  shown?: (e: KillFxEntry) => boolean
 }
 
 /**
@@ -218,6 +223,7 @@ export function drawKillFxLayer(
   for (const e of fx) {
     const age = win.frame - e.frame
     if (age < 0 || age > win.hold) continue
+    if (style.shown && !style.shown(e)) continue
     const fade = 1 - age / (win.hold + 1)
     const c = projectTo(view, e)
     const color = (e.slot !== null ? style.colorOfSlot(e.slot, e.frame) : null) ?? style.fallback

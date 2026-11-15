@@ -23,6 +23,7 @@
  */
 import type { MatchScoreboardRow, PlayerWeaponKillRow } from '@/lib/api/types'
 import { isAliveAt } from '@/lib/replay/replayLogic'
+import type { KillFxEntry } from './killFx'
 import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 /** Les trois actions du panneau sur la carte. */
@@ -100,28 +101,109 @@ export function panelFocusOf(
 }
 
 /**
+ * ownsLifeAt dit si le joueur occupe CE slot à CETTE image : une de ses vies porte le slot et couvre
+ * l'image. UN SLOT N'EST PAS UN JOUEUR : le slot de bipède est réattribué à chaque réapparition, et un
+ * même slot appartient à des joueurs différents au fil du match — d'où la vie, jamais le seul slot, et
+ * c'est ce qui rend la lecture juste pour un bot, qui n'a pas de xuid mais a des vies.
+ */
+function ownsLifeAt(player: ReplayPlayer): (slot: number, frame: number) => boolean {
+  const lives = player.lives
+  return (slot, frame) => lives.some((l) => l.slot === slot && isAliveAt(l, frame))
+}
+
+/**
  * shownSlotPredicate dit si ce que porte un slot à une image se dessine, pour Seul et Masquer.
  * `null` quand rien n'est filtré (ni Seul ni Masquer) : les calques n'ont alors rien à brancher.
  *
- * UN SLOT N'EST PAS UN JOUEUR : le slot de bipède est réattribué à chaque réapparition, et un même
- * slot appartient à des joueurs différents au fil du match. Le prédicat désigne donc les VIES du
- * joueur choisi — son slot ET l'image qu'elle couvre — et c'est ce qui le rend juste pour un bot,
- * qui n'a pas de xuid mais a des vies.
- *
- * IL NE SERT QU'AUX ÉLÉMENTS PROPRES AU JOUEUR : pion, nom, cône de visée, traînée, tirs, marques de
- * tir, poussée du propulseur, projectiles et grenades, et les TRACES DES VIES (apparitions, croix des
- * morts, triangles des tueurs : chaque marque porte le slot et une image de la vie de son auteur, et se
- * tait quand un filtre est actif et ne peut la prouver affichée). Les objectifs, les véhicules, les objets
- * posés et les EFFETS de mort (calque `morts`, tueur -> victime) sont des événements du match : ni Seul ni
- * Masquer ne les retirent.
+ * Il désigne les VIES du joueur choisi (cf. `ownsLifeAt`). Il sert aux éléments qui portent un slot et
+ * une image DANS la vie de leur auteur : pion, nom, cône de visée, traînée, tirs, marques de tir, poussée
+ * du propulseur, projectiles et grenades, traces des vies, mise en valeur. Tout le reste — effets de mort,
+ * poses, véhicules, objets portés, armes au sol, chaleur — passe par `ownershipShown`, qui lit les mêmes vies.
  */
 export function shownSlotPredicate(
   focus: PlayerFocus | null,
 ): ((slot: number, frame: number) => boolean) | null {
   if (!focus || (!focus.solo && !focus.hide)) return null
-  const lives = focus.player.lives
-  const owns = (slot: number, frame: number) => lives.some((l) => l.slot === slot && isAliveAt(l, frame))
+  const owns = ownsLifeAt(focus.player)
   return focus.hide ? (slot, frame) => !owns(slot, frame) : owns
+}
+
+/**
+ * Une PARTIE d'un élément du rejeu : ce qui le rattache à un joueur. `life` est un slot et une image
+ * DANS la vie du joueur (celle que `ownsLifeAt` lit) ; `xuid` est la clé du document (porteur, auteur
+ * d'une action, occupant). Une partie qui porte les deux est prouvée par l'un OU l'autre : le pont
+ * slot -> joueur peut manquer quand le document nomme pourtant l'occupant.
+ */
+export interface ElementParty {
+  life?: { slot: number; frame: number }
+  xuid?: string
+}
+
+/**
+ * Seul et Masquer pour un élément à parties. `parties` vide = l'élément n'appartient à personne, ou son
+ * attribution ne se lit pas : il se dessine toujours (jamais d'attribution devinée). `shared` : les parties
+ * se partagent l'élément (les occupants d'un véhicule) ; Masquer ne le retire alors que si TOUTES sont le
+ * joueur masqué — sinon il emporterait avec lui un occupant que l'utilisateur n'a pas masqué.
+ */
+export type OwnershipShown = (parties: readonly ElementParty[], shared?: boolean) => boolean
+
+/**
+ * ownershipShown est LE prédicat de Seul et Masquer pour tout élément qui appartient à un ou plusieurs
+ * joueurs, sur tous les calques : Seul garde l'élément dont une partie est le joueur de la fiche,
+ * Masquer retire celui dont une partie l'est. `null` quand rien n'est filtré. Chaque calque ne fait
+ * que dire QUELLES sont ses parties (`model/focusFilter.ts`) : la règle n'est écrite qu'ici.
+ */
+export function ownershipShown(focus: PlayerFocus | null): OwnershipShown | null {
+  if (!focus || (!focus.solo && !focus.hide)) return null
+  const { player } = focus
+  const owns = ownsLifeAt(player)
+  // Le xuid du FIL d'un bot est celui de sa ligne de feuille (sa clé de film est `bot:<nom>`).
+  const boardXuid = player.board?.xuid
+  const isPlayer = (p: ElementParty): boolean =>
+    (p.life !== undefined && owns(p.life.slot, p.life.frame)) ||
+    (p.xuid !== undefined && (p.xuid === player.xuid || (!!boardXuid && p.xuid === boardXuid)))
+  return (parties, shared = false) => {
+    if (parties.length === 0) return true
+    if (focus.solo) return parties.some(isPlayer)
+    return shared ? !parties.every(isPlayer) : !parties.some(isPlayer)
+  }
+}
+
+/**
+ * Les parties d'un effet de mort : le TUEUR et la VICTIME (un effet appartient aux deux). Une partie
+ * sans vie retrouvée ni clé de fil ne prouve rien : l'autre partie décide, et sans aucune partie lue
+ * l'effet se dessine.
+ */
+export function killFxParties(
+  e: Pick<KillFxEntry, 'slot' | 'slotFrame' | 'killerXuid' | 'victimSlot' | 'victimFrame' | 'victimXuid'>,
+): ElementParty[] {
+  const out: ElementParty[] = []
+  const killer = partyOf(e.slot === null ? undefined : { slot: e.slot, frame: e.slotFrame }, e.killerXuid)
+  if (killer) out.push(killer)
+  const victim = partyOf(
+    e.victimSlot === null ? undefined : { slot: e.victimSlot, frame: e.victimFrame },
+    e.victimXuid ?? undefined,
+  )
+  if (victim) out.push(victim)
+  return out
+}
+
+/** Une partie, ou `null` quand ni la vie ni la clé ne se lisent. */
+export function partyOf(life: ElementParty['life'], xuid: string | undefined): ElementParty | null {
+  const key = xuid || undefined
+  if (!life && !key) return null
+  return { ...(life ? { life } : {}), ...(key ? { xuid: key } : {}) }
+}
+
+/**
+ * killFxShown rend, pour le calque des morts, le prédicat qui dit si un effet se dessine : `null` sans
+ * filtre. Seul : le joueur figure dans l'effet, tueur ou victime. Masquer : il n'y figure pas.
+ */
+export function killFxShown(
+  focus: PlayerFocus | null,
+): ((e: Parameters<typeof killFxParties>[0]) => boolean) | null {
+  const shown = ownershipShown(focus)
+  return shown ? (e) => shown(killFxParties(e)) : null
 }
 
 // ---------------------------------------------------------------------------------------------

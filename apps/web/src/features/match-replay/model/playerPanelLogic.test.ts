@@ -9,7 +9,8 @@
  *  3. CE QUE LA CARTE MONTRE : sans Seul ni Masquer, aucun filtre (`null`, rien à brancher) ;
  *     sinon le prédicat désigne les vies du joueur choisi, bot compris (par ses vies, jamais par
  *     un xuid qu'il n'a pas).
- *  4. CE QUE LE PANNEAU AFFICHE : les totaux de FIN DE MATCH lus sur la feuille, jamais un zéro
+ *  4. LES ÉLÉMENTS À PARTIES (effets de mort…) : une règle, `ownershipShown`, pour tous les calques.
+ *  5. CE QUE LE PANNEAU AFFICHE : les totaux de FIN DE MATCH lus sur la feuille, jamais un zéro
  *     inventé — une valeur non lue est une lacune, un joueur sans feuille n'a aucune section.
  */
 import { describe, expect, it } from 'vitest'
@@ -18,13 +19,16 @@ import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { ReplayPlayer } from '@/lib/replay/rosterLogic'
 
 import {
+  killFxShown,
   NO_PLAYER_PANEL,
+  ownershipShown,
   panelFocusOf,
   playerPanelSheet,
   reducePlayerPanel,
   shownSlotPredicate,
   type PlayerPanelState,
 } from './playerPanelLogic'
+import { killFxEntry } from '../test/killFxEntry'
 import { scoreboardRow } from '../test/scoreboardRow'
 
 const OPEN_A: PlayerPanelState = { open: true, xuid: 'A', follow: false, solo: false, hide: false }
@@ -145,6 +149,108 @@ describe('shownSlotPredicate — ce que la carte montre', () => {
     const shown = shownSlotPredicate({ player: BOT, follow: false, solo: false, hide: true })!
     expect(shown(7, 20)).toBe(false)
     expect(shown(1, 20)).toBe(true)
+  })
+})
+
+const solo = (p: ReplayPlayer) => ({ player: p, follow: false, solo: true, hide: false })
+const hide = (p: ReplayPlayer) => ({ player: p, follow: false, solo: false, hide: true })
+
+describe('killFxShown — un effet de mort appartient au tueur ET à la victime', () => {
+  // A (slot 1 puis 3), un autre joueur au slot 2 ; le tueur et la victime se lisent dans leur vie.
+  const aTue = killFxEntry({ slot: 1, slotFrame: 10, victimSlot: 2, victimFrame: 10 })
+  const aMeurt = killFxEntry({ slot: 2, slotFrame: 10, victimSlot: 1, victimFrame: 10 })
+  const sansA = killFxEntry({ slot: 2, slotFrame: 10, victimSlot: 5, victimFrame: 10 })
+
+  it('ni Seul ni Masquer : aucun filtre', () => {
+    expect(killFxShown(null)).toBeNull()
+    expect(killFxShown({ player: A, follow: true, solo: false, hide: false })).toBeNull()
+  })
+
+  it('Seul garde l’effet où le joueur TUE et celui où il MEURT, et rien d’autre', () => {
+    const shown = killFxShown(solo(A))!
+    expect(shown(aTue)).toBe(true)
+    expect(shown(aMeurt)).toBe(true)
+    expect(shown(sansA)).toBe(false)
+  })
+
+  it('Masquer retire l’effet où le joueur tue et celui où il meurt, et garde les autres', () => {
+    const shown = killFxShown(hide(A))!
+    expect(shown(aTue)).toBe(false)
+    expect(shown(aMeurt)).toBe(false)
+    expect(shown(sansA)).toBe(true)
+  })
+
+  it('le slot réattribué : l’effet d’un AUTRE joueur sur le slot 1 après la vie de A reste à lui', () => {
+    const autre = killFxEntry({ slot: 1, slotFrame: 80, victimSlot: 5, victimFrame: 80 })
+    expect(killFxShown(solo(A))!(autre)).toBe(false)
+    expect(killFxShown(hide(A))!(autre)).toBe(true)
+  })
+
+  it('tueur inconnu : la victime décide (Seul comme Masquer)', () => {
+    const tueurInconnu = (victimSlot: number) =>
+      killFxEntry({ slot: null, killerXuid: '', victimSlot, victimFrame: 10 })
+    expect(killFxShown(solo(A))!(tueurInconnu(1))).toBe(true)
+    expect(killFxShown(solo(A))!(tueurInconnu(2))).toBe(false)
+    expect(killFxShown(hide(A))!(tueurInconnu(1))).toBe(false)
+    expect(killFxShown(hide(A))!(tueurInconnu(2))).toBe(true)
+  })
+
+  it('victime inconnue : le tueur décide', () => {
+    const victimeInconnue = (slot: number) =>
+      killFxEntry({ slot, slotFrame: 10, victimSlot: null, victimXuid: null })
+    expect(killFxShown(solo(A))!(victimeInconnue(1))).toBe(true)
+    expect(killFxShown(solo(A))!(victimeInconnue(2))).toBe(false)
+    expect(killFxShown(hide(A))!(victimeInconnue(1))).toBe(false)
+    expect(killFxShown(hide(A))!(victimeInconnue(2))).toBe(true)
+  })
+
+  it('aucune partie lue : l’effet reste affiché, rien n’est deviné', () => {
+    const rien = killFxEntry({ slot: null, killerXuid: '', victimSlot: null, victimXuid: null })
+    expect(killFxShown(solo(A))!(rien)).toBe(true)
+    expect(killFxShown(hide(A))!(rien)).toBe(true)
+  })
+
+  it('un bot se reconnaît par la clé du fil de sa ligne de feuille quand sa vie n’est pas retrouvée', () => {
+    const marc = player('bot:Marc', [{ slot: 7, start: 0, end: 100 }], {
+      bot: true,
+      board: { xuid: 'bid(1.0)' } as never,
+    })
+    const parCle = killFxEntry({ slot: null, killerXuid: 'bid(1.0)', victimSlot: 2, victimFrame: 10 })
+    expect(killFxShown(solo(marc))!(parCle)).toBe(true)
+    expect(killFxShown(hide(marc))!(parCle)).toBe(false)
+  })
+})
+
+describe('ownershipShown — la règle unique des éléments à parties', () => {
+  it('un élément sans partie n’appartient à personne : il reste, Seul comme Masquer', () => {
+    expect(ownershipShown(solo(A))!([])).toBe(true)
+    expect(ownershipShown(hide(A))!([])).toBe(true)
+  })
+
+  it('une partie par xuid du document (porteur, auteur)', () => {
+    expect(ownershipShown(solo(A))!([{ xuid: 'A' }])).toBe(true)
+    expect(ownershipShown(solo(A))!([{ xuid: 'B' }])).toBe(false)
+    expect(ownershipShown(hide(A))!([{ xuid: 'A' }])).toBe(false)
+    expect(ownershipShown(hide(A))!([{ xuid: 'B' }])).toBe(true)
+  })
+
+  it('partagé (occupants d’un véhicule) : Masquer ne retire que si TOUS les occupants sont le joueur', () => {
+    const seul = [{ xuid: 'A' }]
+    const duo = [{ xuid: 'A' }, { xuid: 'B' }]
+    const hideA = ownershipShown(hide(A))!
+    expect(hideA(seul, true)).toBe(false)
+    expect(hideA(duo, true)).toBe(true)
+    expect(hideA(duo)).toBe(false)
+    // Seul garde un véhicule où le joueur est l'un des occupants.
+    expect(ownershipShown(solo(A))!(duo, true)).toBe(true)
+    expect(ownershipShown(solo(A))!([{ xuid: 'B' }], true)).toBe(false)
+  })
+
+  it('une partie prouvée par sa vie OU par son xuid', () => {
+    const shown = ownershipShown(solo(A))!
+    expect(shown([{ life: { slot: 3, frame: 70 } }])).toBe(true)
+    expect(shown([{ life: { slot: 9, frame: 70 }, xuid: 'A' }])).toBe(true)
+    expect(shown([{ life: { slot: 9, frame: 70 }, xuid: 'B' }])).toBe(false)
   })
 })
 
