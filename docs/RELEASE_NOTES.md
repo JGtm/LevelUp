@@ -27,6 +27,9 @@
 - **Vehicles and on-board aim read more accurately** — vehicle tracks are denser, and the on-board aim no longer has outlier readings
 - **Faster regeneration** — regenerating replays is faster on big matches (about 15 to 25% less time), with no change to what is displayed
 
+**Tactics**
+- **Respawns: "Start" or "All lives"** — a new switch next to the respawn filter. "Start" (the default) is what Tactics always showed: where you begin the match. "All lives" counts every time you appear, at the start and after each death, and groups those places into respawn spots. Choose one of those spots and the "Routes after respawn" reading only shows the way out of the lives that started from it
+
 **The match view and Lead share**
 - **Two charts in the Timeline tab** — "Score gap" and "Numerical advantage" (players alive, bots included), drawn as areas around zero in the team colours. With more than two teams the comparison is against the best opposing team; without a replay, the card says so
 - **Lead share** — the share of the match time spent alone in the lead of the score, with the number of lead changes. On the match view, in Sessions, Time series (by match, by month, by map) and Squad, for Halo Infinite. A dash replaces the figure when it cannot be worked out, for example in a mode where the score moves too rarely (flag, hill, bomb)
