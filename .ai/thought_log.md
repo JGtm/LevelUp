@@ -121177,3 +121177,9 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Décision technique principale** : plan `.ai/PLAN_BACKLOG_2026-11-15.md` (quatre entrées du backlog pour la 8.2.0, décisions du user du jour). Les quatorze divisions « par minute » écrites à la main (`analysis`, `service`, `sync`) passent par `analysis.PerMinute` ; garde-rail AST `archlint/no_inline_per_minute_test.go` restreint aux formes de cadence (allowlist vide).
 **Résultats observés** : témoins avant/après identiques au bit, devenus des assertions exactes ; garde-rail rouge sur l'état d'avant (14 sites) et sur une division réintroduite ; `go test` des packages touchés, `archlint`, `make go-api-lint` verts. Ordre convenu avec la note de performance (session paire) : ce lot part d'abord, elle se rebase dessus.
 **Conclusion / prochaine étape** : lots 2 (connexion par le navigateur) et 4 (Seul / Masquer sur tous les calques) en fin d'exécution ; mesure 3.1 (morts sans type, méthode de Den) en cours, montée du décodeur et régénération soumises à l'accord écrit du user.
+
+## [2026-11-15] Backlog du 15/11, lot 2 : connexion par le navigateur, panne des services Halo distincte d'un refus — Complété
+
+**Décision technique principale** : un helper unique choisit le code d'échec de l'échange Halo (`halo_unreachable` sur délai, réseau, 5xx, 429, 408 ; sinon le code de refus du chemin) pour le code d'appareil, le site hébergé et le bureau ; garde-rail AST ; textes du code d'appareil réutilisés (décision du user).
+**Résultats observés** : tests Go quatre causes par chemin, tests web FR et EN, portes vertes ; notes de version et changelog FR/EN.
+**Conclusion / prochaine étape** : relecture par la session pilote (deux relecteurs) avant `main` ; lot 4 (Seul / Masquer) à envoyer ; mesure des morts sans type en cours.

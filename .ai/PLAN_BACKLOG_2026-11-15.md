@@ -111,25 +111,25 @@ retour). Côté web, `features/auth/loginError.ts:111` et `:146` envoient ce cod
 `common.auth.oauth_exchange_failed` = « Microsoft ou Xbox n'a pas répondu. Réessaie dans un instant. » : un
 compte refusé reçoit le conseil de réessayer.
 
-- [ ] 2.1 Helper unique dans `handlers` : `haloExchangeFailureCode(err error, refused string) string` (rend
+- [x] 2.1 Helper unique dans `handlers` : `haloExchangeFailureCode(err error, refused string) string` (rend
       `errCodeHaloUnreachable` si `HaloServicesUnreachable(err)`, sinon `refused`). Trois appelants :
       `auth.go` (device flow, `refused` = `halo_exchange_error`), `auth_xbox_oauth.go:318` et
       `auth_browser_login.go:228` (`refused` = `halo_exchange_failed`). Les codes de refus existants ne changent
       pas (contrat déjà servi).
-- [ ] 2.2 Garde-rail (règle 6, troisième copie) : `HaloServicesUnreachable(` appelé seulement depuis le helper,
+- [x] 2.2 Garde-rail (règle 6, troisième copie) : `HaloServicesUnreachable(` appelé seulement depuis le helper,
       dans `internal/api` (test AST ou grep dans `archlint`).
-- [ ] 2.3 Journal : le `slog.ErrorContext` existant reste AVANT le choix du code ; ajouter le code choisi en
+- [x] 2.3 Journal : le `slog.ErrorContext` existant reste AVANT le choix du code ; ajouter le code choisi en
       attribut (`"error_code", code`).
-- [ ] 2.4 Web : `OAUTH_ERROR_KEYS` et `DEVICE_FLOW_FAILURE_KEYS` gagnent `halo_unreachable` ;
+- [x] 2.4 Web : `OAUTH_ERROR_KEYS` et `DEVICE_FLOW_FAILURE_KEYS` gagnent `halo_unreachable` ;
       `halo_exchange_failed` passe sur le texte de refus (D-2). Clés dans `lib/i18n/manifests/common.toml`, FR
       et EN (toutes les langues de `config/locales.toml`), puis génération des manifests. Aucune chaîne en dur.
-- [ ] 2.5 Page de retour du bureau (`renderBrowserLoginPage`) : inchangée (texte générique + code) ;
+- [x] 2.5 Page de retour du bureau (`renderBrowserLoginPage`) : inchangée (texte générique + code) ;
       l'application affiche le message par le sondage de la tentative. Le vérifier par un test, ne pas
       enrichir la page.
-- [ ] 2.6 Tests Go : `auth_browser_login_test.go` et `auth_xbox_oauth_refusal_test.go`, quatre causes chacun
+- [x] 2.6 Tests Go : `auth_browser_login_test.go` et `auth_xbox_oauth_refusal_test.go`, quatre causes chacun
       (délai dépassé, erreur réseau, 503 -> `halo_unreachable` ; 403 -> code de refus), sur le modèle de
       `TestPollDeviceFlow_ExchangeFailureCode`. Tests web : `loginError.test.ts`, `LoginPage.test.tsx` (FR et EN).
-- [ ] 2.7 Revue adversariale (lot auth) : UN relecteur Sonnet, une ronde, skill `adversarial-review`.
+- [~] 2.7 Revue adversariale (lot auth) : UN relecteur Sonnet, une ronde, skill `adversarial-review`. Couvert par la relecture de la session pilote de la release (deux relecteurs pour l'auth, avant `main`, règle du 2026-11-15).
 
 Porte 2 :
 ```
@@ -279,3 +279,5 @@ Reprise de session : lire ce fichier (cases), puis `git log --oneline -10` sur l
 
 - 2026-11-15 (lot 1, `feat/bl1115-minute`, agent Sonnet) : 1.1-1.5 `[x]`. Quatorze sites migrés ; `sync/performance.go` portait six divisions par `minutes` (forme déjà `x / (s/60)`), toutes migrées, valeurs identiques. Témoins avant/après identiques au bit (aucun écart, même pour `squad_profiles.go` et `squad_service_v2_contributions.go`), puis tests de caractérisation passés en assertions exactes (rougissent si `PerMinute` est faussé). Garde-rail `archlint/no_inline_per_minute_test.go` (`TestCadenceParMinute*`) restreint à trois formes de cadence (`/ 60`, `x*60 / s`, `(a/b) * 60`) : la règle littérale donnait 9 faux positifs (durées, `60*time.Second`, découpe mm:ss) ; couple `n / 60` + `n % 60` exempté structurellement ; allowlist vide ; rouge prouvé sur l'état d'avant (14 sites listés) et sur une division réintroduite. Seule différence théorique : `timeseries_service_buckets.go` garde `== 0`, une durée négative donnerait 0 (donnée impossible). Changelog FR/EN (« Modifié » de 8.2.0), notes de version non touchées (rien ne change à l'écran). 1.6 : entrée du backlog retirée. Portes : `go test` des packages touchés et `archlint` verts (timeout 40 min, machine chargée), `make go-api-lint` 0 issue.
 - Découvertes du lot 1 (non traitées) : `archlint` et `go-api-lint` dépassent leurs délais par défaut quand plusieurs sessions compilent ; directives `//nolint` mal formées signalées par golangci-lint (« unknown linters 2026-09-07), gosec… »).
+- 2026-11-15 (lot 2, `feat/bl1115-auth`, agent Sonnet) : 2.1-2.6 `[x]`, 2.7 `[~]`. Helper `haloExchangeFailureCode` (`handlers/auth_halo_exchange_code.go`), trois appelants (code d'appareil, site hébergé, bureau), codes de refus inchangés ; garde-rail AST `archlint/halo_exchange_failure_code_unique_test.go` (rouge prouvé) ; `error_code` au journal des trois chemins ; web : `halo_exchange_failed` sur le texte de refus du code d'appareil, `halo_unreachable` ajouté aux refus du site, clés existantes réutilisées (aucune clé neuve) ; page de retour du bureau inchangée, tenue par un test ; tests Go quatre causes par chemin, point d'injection `WithCodeExchange` (défaut inchangé) ; tests web FR et EN. Notes de version et changelog FR/EN (8.2.0, « Corrigé »). Portes vertes (`archlint` et lint relancés avec délai large, machine chargée).
+- Découverte du lot 2 (non traitée) : `TestXboxOAuth_Callback_StateMatches_AttemptsExchange` appelle encore le vrai échange Microsoft avec un code factice ; il pourrait passer par `WithCodeExchange`.
