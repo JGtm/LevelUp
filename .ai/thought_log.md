@@ -1,3 +1,9 @@
+## [2026-11-15] Compléments 8.2.0, étape 10, ronde 2 : accueil sans match, trois défauts de relecture — Complété (branche `feat/c820-backlog`, non poussée)
+
+- **Décision** : (P1) « en attente de connexion » ne dépend que de `reauth_required` et du droit d'écriture sur le joueur affiché, pas de `auth_state`. (P2-a) l'état du sync est lu auprès du serveur, pour le joueur affiché : nouvelle route `GET /players/{slug}/sync/status` plutôt que de remplir `active_sync_job_id` du bootstrap (ce champ ne dit ni la dernière erreur, ni le délai, ni la synchronisation automatique, et il est par session, pas par joueur affiché). (P2-b) aucune action pendant le délai de cinq minutes du sync manuel, délai restant dit, deux toasts précis.
+- **Résultats** : tests Go (service, store, handler) et web (34 tests de l'accueil et de sa logique, 2 de relecture) ; huit mutations rougissent chacune au moins un test ; les tests neufs échouent contre l'ancienne implémentation.
+- **Suite** : contrôle à l'écran du user (accueil d'un joueur sans match : session par mot de passe, rechargement pendant une synchronisation, deuxième clic pendant le délai, profil d'un ami).
+
 ## [2026-11-14] Compléments 8.2.0, étape 10 : backlog retenu, sept items — Complété (branche `feat/c820-backlog`, non poussée)
 
 - **Décision** : (10.1) un échec de l'échange Halo qui vient des services (délai, réseau, 5xx, 429, 408) porte `halo_unreachable`, distinct du refus du compte ; le texte reste côté web, le serveur ne rend qu'un code. (10.2) l'accueil sans match lit l'état réel (connexion, pause, job de la session) ; la synchronisation automatique n'étant pas servie au joueur, l'état « rien de lancé » dit « depuis cet écran », jamais « aucune en cours ». (10.6) le balayage de `apps/` ignore le serveur de la coquille que git ne suit pas, vide ou plein, plutôt qu'un nettoyage par `desktop-test`. (10.5) trois paquets lourds rejoués à part sous 40 minutes, les autres gardent 300 s.
