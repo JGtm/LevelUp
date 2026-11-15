@@ -281,6 +281,7 @@ const nePasDependreDeLaLangue: Record<string, string> = {
   feedVersion: 'compteur de version du flux média',
   // Identifiants, jobs, statuts.
   playerTitles: 'statut de synchronisation par titre',
+  playerSyncStatus: "état de la synchronisation d'un joueur (booléen, nombre de secondes, statut et code d'un job ; aucun libellé)",
   deviceFlow: "état d'un flux d'authentification",
   job: "état d'une tâche",
   playerFriends: 'gamertags des amis',

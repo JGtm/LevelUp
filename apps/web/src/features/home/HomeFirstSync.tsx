@@ -33,6 +33,7 @@ interface HomeFirstSyncProps {
 
 export function HomeFirstSync({ playerSlug, refetch }: HomeFirstSyncProps) {
   const locale = useAppShellStore((s) => s.locale)
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const reauthRequired = useAppShellStore((s) => s.reauthRequired)
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const setActiveSyncJobId = useAppShellStore((s) => s.setActiveSyncJobId)
@@ -70,7 +71,7 @@ export function HomeFirstSync({ playerSlug, refetch }: HomeFirstSyncProps) {
     startSync.mutate(playerSlug, {
       onSuccess: (started) => {
         setActiveSyncJobId(started.job_id)
-        void queryClient.invalidateQueries({ queryKey: queryKeys.playerSyncStatus(playerSlug) })
+        void queryClient.invalidateQueries({ queryKey: queryKeys.playerSyncStatus(playerSlug, titleSlug) })
       },
       onError: (err) => {
         const code = apiErrorCode(err)
@@ -78,7 +79,7 @@ export function HomeFirstSync({ playerSlug, refetch }: HomeFirstSyncProps) {
         else if (code === 'sync_already_active') toast.error(t('home.first_sync.start_already_active'))
         else toast.error(t('home.first_sync.start_failed'))
         // Le refus dit que l'état affiché est périmé : le relire montre l'état réel (délai, en cours).
-        void queryClient.invalidateQueries({ queryKey: queryKeys.playerSyncStatus(playerSlug) })
+        void queryClient.invalidateQueries({ queryKey: queryKeys.playerSyncStatus(playerSlug, titleSlug) })
       },
     })
   }

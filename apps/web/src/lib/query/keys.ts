@@ -41,7 +41,8 @@ export const queryKeys = {
   playerTitles: (playerSlug: string) => ['player-titles', playerSlug] as const,
 
   // État de la synchronisation d'un joueur (GET /players/{slug}/sync/status) : accueil sans match.
-  playerSyncStatus: (playerSlug: string) => ['player-sync-status', playerSlug] as const,
+  // Le titre scope la clé : « en vol » se lit par la porte de déduplication du titre courant.
+  playerSyncStatus: (playerSlug: string, titleSlug: string) => ['player-sync-status', playerSlug, titleSlug] as const,
 
   // Setup & auth (Slice 1)
   // setupStatus supprimé (sprint 29) : GET /setup/status n'existe ni en FastAPI ni en Go

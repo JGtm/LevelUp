@@ -7,13 +7,15 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import type { PlayerSyncStatus } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 const POLL_RUNNING_MS = 3_000
 const POLL_COOLDOWN_MS = 15_000
 
 export function usePlayerSyncStatus(playerSlug: string) {
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.playerSyncStatus(playerSlug),
+    queryKey: queryKeys.playerSyncStatus(playerSlug, titleSlug),
     queryFn: () => api.get<PlayerSyncStatus>(`/players/${playerSlug}/sync/status`),
     enabled: !!playerSlug,
     staleTime: 0,
