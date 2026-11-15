@@ -20,7 +20,7 @@ var cheminsDeRessources = map[string]bool{
 	"MapWeaponPadsPath": true, "MapCalloutsPath": true, "MapCalloutsLexiquePath": true,
 	"MapGeometryDir": true, "MapStructurePath": true,
 	"MapBackgroundDir": true, "MapBackgroundPath": true, "MapBackgroundImageFilePath": true,
-	"MapBackgroundMetaPath": true,
+	"MapBackgroundMetaPath": true, "SpawnModelPath": true,
 }
 
 // Les racines elles-mêmes et les méthodes qui ne rendent pas un chemin de fichier du programme.

@@ -343,7 +343,17 @@ go run ./cmd/levelup backfill-map-callouts [--hors-ligne] [--carte ID[,ID...]] [
 # 5. Rasters d'occupation tactique -> fichiers sidecar JSON sous
 #    data/cache/replays/{slug}/rasters/. AUCUNE base n'est ouverte, pas même en lecture :
 #    le sidecar est par match et anonyme, il n'y a rien à demander à DuckDB.
+#    Le schéma 7 ajoute l'équipe, la hauteur et, par réapparition, le lieu de la mort et l'instantané
+#    des autres joueurs vivants : les sidecars d'un schéma plus ancien sont réécrits depuis leur
+#    artefact (aucun film relu). Contrôle : grep -l '"schema_version":7' <data>/cache/replays/halo_infinite/rasters/*.json | wc -l
 go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
+
+# 6. Modèle de prévision de réapparition (capability film.spawn_forecast). Lit les ARTEFACTS de rejeu
+#    un à un et le registre des matchs en lecture seule (OpenReadForQuery ; si un autre processus tient
+#    la base en écriture, la commande le dit et s'arrête). Rien n'est écrit, sauf, pour `fit`, le fichier
+#    de poids versionné data/titles/{slug}/reference/spawn_model.json.
+go run ./cmd/levelup spawn-model evaluate [--sections m1,m2,m3,m4|poids] [--famille F] [--matchs-min-carte N] [--par-carte] [--variantes] [--limit N] [--title S]
+go run ./cmd/levelup spawn-model fit [--ligne-de-vue] [--famille F] [--matchs-min-carte N] [--title S]
 ```
 
 `backfill-replay` ne cuit jamais un match d'un mode que le rejeu ne gère pas (Firefight PvE —

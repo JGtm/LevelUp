@@ -331,7 +331,17 @@ go run ./cmd/levelup backfill-map-callouts [--hors-ligne] [--carte ID[,ID...]] [
 # 5. Tactical occupation rasters -> sidecar JSON files under
 #    data/cache/replays/{slug}/rasters/. NO database is opened, not even read-only: the
 #    sidecar is per-match and anonymous, so nothing has to be asked of DuckDB.
+#    Schema 7 adds the team, the height and, per respawn, the death point and the snapshot of the
+#    other living players: sidecars of an older schema are rewritten from their artifact (no film
+#    read). Check: grep -l '"schema_version":7' <data>/cache/replays/halo_infinite/rasters/*.json | wc -l
 go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
+
+# 6. Respawn forecast model (capability film.spawn_forecast). Reads the replay ARTIFACTS one at a
+#    time and the match registry read-only (OpenReadForQuery; if another process holds the base
+#    for writing, it says so and stops). Nothing is written except, for `fit`, the versioned
+#    weights file data/titles/{slug}/reference/spawn_model.json.
+go run ./cmd/levelup spawn-model evaluate [--sections m1,m2,m3,m4|poids] [--famille F] [--matchs-min-carte N] [--par-carte] [--variantes] [--limit N] [--title S]
+go run ./cmd/levelup spawn-model fit [--ligne-de-vue] [--famille F] [--matchs-min-carte N] [--title S]
 ```
 
 `backfill-replay` never cooks matches of a mode the replay does not handle (PvE Firefight —

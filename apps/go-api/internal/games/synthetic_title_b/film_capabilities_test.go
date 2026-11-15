@@ -44,6 +44,7 @@ var filmAttendu = map[games.CapabilityKey]games.CapabilityStatus{
 	games.CapFilmKillSource:     games.CapNotExposed,
 	games.CapFilmWeaponShots:    games.CapNotExposed,
 	games.CapFilmKillPositions:  games.CapNotExposed,
+	games.CapFilmSpawnForecast:  games.CapNotExposed,
 }
 
 // capabilitiesDeLaFixture charge le capabilities.toml LIVRE du titre synthetique.

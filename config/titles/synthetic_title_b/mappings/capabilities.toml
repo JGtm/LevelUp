@@ -50,3 +50,4 @@ schema_version = 1
 "film.kill_source"        = "not_exposed"
 "film.weapon_shots"       = "not_exposed"
 "film.kill_positions"     = "not_exposed"
+"film.spawn_forecast"      = "not_exposed"

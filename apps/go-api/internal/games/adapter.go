@@ -319,6 +319,17 @@ const (
 	// pas ce que tel ou tel dérivé en tire — chacun garde la sienne. Ne pas l'élargir.
 	CapFilmReplayArtifact CapabilityKey = "film.replay_artifact"
 
+	// CapFilmSpawnForecast — le titre sait PREVOIR OU UN JOUEUR REAPPARAIT : le modele de choix du
+	// point de reapparition (`analysis/tactical`, poids versionnes sous `reference/`) et les lectures
+	// qui s'en servent. Il se mesure sur les artefacts de rejeu (`film.replay_artifact`) mais
+	// s'arme a part : un titre peut avoir un artefact sans que la prevision soit mesuree pour lui.
+	//
+	// Halo Infinite : supported. Halo 5 : ABSENTE — aucun artefact, donc aucune mesure.
+	//
+	// Clé FINE, même doctrine que les `film.*` ci-dessus : elle gouverne le modèle et ses lectures,
+	// rien d'autre de l'artefact. Ne pas l'élargir.
+	CapFilmSpawnForecast CapabilityKey = "film.spawn_forecast"
+
 	// CapMapForgeCallouts — le titre sait lire les ZONES NOMMÉES (callouts) d'une carte Forge
 	// dans la variante de la carte (`.mvar` de l'asset UGC), et les range au catalogue GÉNÉRÉ
 	// des zones (`reference/generated/map_callouts.json`, PathResolver.MapCalloutsOverlayPath).

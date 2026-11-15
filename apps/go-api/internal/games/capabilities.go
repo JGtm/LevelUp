@@ -42,6 +42,7 @@ func AllCapabilityKeys() []CapabilityKey {
 		CapFilmVehicleUsage,
 		CapFilmLeadShare,
 		CapFilmReplayArtifact,
+		CapFilmSpawnForecast,
 		CapMapForgeCallouts,
 	}
 }

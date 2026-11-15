@@ -112,17 +112,9 @@ func projeterRasterDepuisDocument(doc *replay.ReplayDocument) (domain.TacticalRa
 		// compte en matchs DISTINCTS, et un raster anonyme ne pourrait jamais y entrer.
 		return domain.TacticalRasterSidecar{}, fmt.Errorf("artefact sans matchId")
 	}
-	intervalle := doc.FrameIntervalMS
-	if intervalle <= 0 {
-		intervalle = cadenceHistoriqueMS
-	}
 	g := tactical.GrilleParDefaut()
-	entree := tactical.EntreeOccupation{
-		MatchID:           doc.MatchID,
-		IntervalleFrameMs: intervalle,
-		Pistes:            pistesDeLArtefact(doc.Tracks),
-		Embarquements:     embarquementsDeLArtefact(doc.Vehicles),
-	}
+	entree := EntreeOccupationDeLArtefact(doc)
+	intervalle := entree.IntervalleFrameMs
 	joueurs, ignores, err := rasteriserParJoueur(g, entree)
 	if err != nil {
 		return domain.TacticalRasterSidecar{}, err
@@ -137,27 +129,26 @@ func projeterRasterDepuisDocument(doc *replay.ReplayDocument) (domain.TacticalRa
 		PasEchantillonMs:      tactical.PasOccupationMs,
 		PointsIgnores:         ignores,
 		Joueurs:               joueurs,
+		Reapparitions:         sourcesDesReapparitions(joueurs),
 	}, nil
 }
 
 // pistesDeLArtefact projette les pistes du document vers les types PURS du rasterisage.
 // C'est LA frontiere declaree par analysis/tactical/doc.go : ce paquet-la n'importe pas
 // `games/halo_infinite/film/replay`, c'est l'appelant qui traduit ce qu'il a.
+//
+// LES VIES SANS XUID SONT PORTEES AUSSI : `Occupation` les ecarte de l'occupation, mais elles sont
+// vivantes et comptent dans l'instantane d'une reapparition (bots, vies non nommees).
 func pistesDeLArtefact(tracks []replay.Track) []tactical.Piste {
 	out := make([]tactical.Piste, 0, len(tracks))
 	for _, t := range tracks {
-		if t.XUID == "" {
-			// Vie non nommee (le fil des morts ne l'a jamais citee, ou c'est un bot) :
-			// `Occupation` l'ecarterait de toute facon, mais la porter jusque-la
-			// copierait ses points pour rien.
-			continue
-		}
 		points := make([]tactical.PointPiste, 0, len(t.Points))
 		for _, p := range t.Points {
-			points = append(points, tactical.PointPiste{T: p.T, X: float64(p.X), Y: float64(p.Y)})
+			points = append(points, tactical.PointPiste{T: p.T, X: float64(p.X), Y: float64(p.Y), Z: float64(p.Z)})
 		}
 		out = append(out, tactical.Piste{
 			XUID: t.XUID, Points: points, StartFrame: t.StartFrame, EndFrame: t.EndFrame,
+			Equipe: t.Team,
 		})
 	}
 	return out
@@ -244,6 +235,7 @@ func rasteriserParJoueur(g tactical.Grille, e tactical.EntreeOccupation) ([]doma
 		ignores += raster.PointsIgnores()
 		out = append(out, domain.TacticalRasterJoueur{
 			XUID:             j.XUID,
+			Equipe:           j.Equipe,
 			Cellules:         cellulesDuRaster(raster),
 			Spawns:           spawnsDeLOccupation(j.Spawns),
 			PremieresEntrees: entreesDeLOccupation(j.PremieresEntrees),
@@ -258,16 +250,6 @@ func cellulesDuRaster(r *tactical.Raster) []domain.TacticalRasterCellule {
 	out := make([]domain.TacticalRasterCellule, 0, len(brutes))
 	for _, c := range brutes {
 		out = append(out, domain.TacticalRasterCellule{Col: c.Col, Lig: c.Lig, Echantillons: c.Occurrences})
-	}
-	return out
-}
-
-func spawnsDeLOccupation(spawns []tactical.SpawnPiste) []domain.TacticalRasterSpawn {
-	out := make([]domain.TacticalRasterSpawn, 0, len(spawns))
-	for _, s := range spawns {
-		out = append(out, domain.TacticalRasterSpawn{
-			Frame: s.Frame, X: s.X, Y: s.Y, PremiereVie: s.PremiereVie,
-		})
 	}
 	return out
 }

@@ -257,6 +257,9 @@ func fallbackCapabilities() games.CapabilityMap {
 		// d un 200 [] trompeur. La porte d AFFICHAGE de la page de rejeu est la
 		// capability title-level `replay` (cf. capabilities.toml).
 		games.CapFilmReplayArtifact: games.CapSupported,
+		// La PREVISION DE REAPPARITION (modele de choix du point, poids sous reference/) : se mesure sur
+		// les artefacts mais s arme a part (cf. capabilities.toml).
+		games.CapFilmSpawnForecast: games.CapSupported,
 		// Les ZONES NOMMEES des cartes Forge, lues dans la variante .mvar de la carte et rangees
 		// au catalogue genere des zones. Gouverne le rattrapage au fetch de film et la commande
 		// backfill-map-callouts (cf. capabilities.toml).
