@@ -51,6 +51,7 @@ function setStore(patch: Partial<ReturnType<typeof useAppShellStore.getState>>) 
       locale: 'fr',
       authState: 'missing', // session ouverte par mot de passe : jamais AuthReady, et pourtant synchronisable
       reauthRequired: false,
+      ownHaloXuid: PLAYER.xuid,
       currentPlayer: PLAYER,
       writablePlayerSlugs: null,
       activeSyncJobId: null,
@@ -94,6 +95,7 @@ describe('HomePage — joueur sans match', () => {
       useAppShellStore.setState({
         authState: 'missing',
         reauthRequired: false,
+        ownHaloXuid: '',
         currentPlayer: null,
         writablePlayerSlugs: null,
         activeSyncJobId: null,
@@ -182,6 +184,59 @@ describe('HomePage — joueur sans match', () => {
     expect(useAppShellStore.getState().activeSyncJobId).toBe('job-9')
   })
 
+  it("jeton mort d'un administrateur sur l'accueil d'un AUTRE joueur : aucun « en attente de connexion », le vrai état", async () => {
+    // canWrite est vrai (administrateur, ou propriété non appliquée) mais le jeton mort n'est pas celui du joueur affiché.
+    setStore({ reauthRequired: true, ownHaloXuid: '999-un-autre-compte', writablePlayerSlugs: null })
+    serveStatus()
+    renderWithProviders(<HomePage />)
+    expect(await screen.findByText("Aucun match synchronisé pour l'instant")).toBeInTheDocument()
+    expect(screen.queryByText('En attente de connexion')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Lancer la synchronisation' })).toBeInTheDocument()
+  })
+
+  describe("lecture de l'état en échec", () => {
+    it('erreur du serveur : un bloc affiché avec « Réessayer », qui relance la lecture', async () => {
+      setStore({})
+      let reads = 0
+      server.use(
+        http.get('/api/v1/players/:playerSlug/sync/status', ({ params }) => {
+          reads += 1
+          if (reads === 1) return HttpResponse.json({ code: 'internal', message: 'x' }, { status: 500 })
+          return HttpResponse.json({ player_slug: params.playerSlug, syncing: false, cooldown_retry_after_s: 0 })
+        }),
+      )
+      renderWithProviders(<HomePage />)
+      expect(await screen.findByText('État de la synchronisation indisponible')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Réessayer' }))
+      expect(await screen.findByText("Aucun match synchronisé pour l'instant")).toBeInTheDocument()
+      expect(reads).toBe(2)
+    })
+
+    it("un état servi pour un AUTRE joueur n'est jamais affiché : l'écran dit que la lecture a échoué", async () => {
+      setStore({})
+      server.use(
+        http.get('/api/v1/players/:playerSlug/sync/status', () =>
+          HttpResponse.json({ player_slug: 'autre-joueur', syncing: true, cooldown_retry_after_s: 0 }),
+        ),
+      )
+      renderWithProviders(<HomePage />)
+      expect(await screen.findByText('État de la synchronisation indisponible')).toBeInTheDocument()
+      expect(screen.queryByText('Synchronisation en cours')).not.toBeInTheDocument()
+    })
+
+    it('en anglais', async () => {
+      setStore({ locale: 'en' })
+      server.use(
+        http.get('/api/v1/players/:playerSlug/sync/status', () =>
+          HttpResponse.json({ code: 'internal', message: 'x' }, { status: 500 }),
+        ),
+      )
+      renderWithProviders(<HomePage />)
+      expect(await screen.findByText('Sync status unavailable')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    })
+  })
+
   it('profil en lecture seule : aucune action impossible', async () => {
     setStore({ writablePlayerSlugs: ['autre-joueur'] })
     serveStatus()
@@ -258,6 +313,29 @@ describe('HomePage — joueur sans match', () => {
           "Une synchronisation vient d'être lancée : réessaie dans quelques minutes.",
         ),
       )
+    })
+
+    it.each([
+      ['429 sync_cooldown', 429, 'sync_cooldown'],
+      ['409 sync_already_active', 409, 'sync_already_active'],
+    ])('après un refus %s : l’état est relu auprès du serveur', async (_nom, status, code) => {
+      setStore({})
+      let reads = 0
+      server.use(
+        http.get('/api/v1/players/:playerSlug/sync/status', ({ params }) => {
+          reads += 1
+          return HttpResponse.json({
+            player_slug: params.playerSlug,
+            syncing: false,
+            cooldown_retry_after_s: 0,
+            job: { job_id: 'job-9', job_type: 'initial_sync', player_slug: params.playerSlug, ...echec },
+          })
+        }),
+        http.post('/api/v1/players/:playerSlug/sync', () => HttpResponse.json({ code, message: 'x' }, { status })),
+      )
+      renderWithProviders(<HomePage />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Réessayer' }))
+      await waitFor(() => expect(reads).toBeGreaterThanOrEqual(2))
     })
 
     it('un refus 409 sync_already_active du serveur : toast précis', async () => {

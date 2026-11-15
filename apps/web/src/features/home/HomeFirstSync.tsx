@@ -41,12 +41,16 @@ export function HomeFirstSync({ playerSlug, refetch }: HomeFirstSyncProps) {
   const reconnect = useReconnectXbox()
   const startSync = useStartDeltaSync()
   const queryClient = useQueryClient()
-  const { data: serverStatus } = usePlayerSyncStatus(playerSlug)
+  const { data: serverStatus, isError: statusFailed, refetch: refetchStatus } = usePlayerSyncStatus(playerSlug)
+  const ownHaloXuid = useAppShellStore((s) => s.ownHaloXuid)
   const t = (key: HomeManifestKey, values?: Record<string, string | number>) =>
     formatMessage(homeManifest, key, locale, values)
 
   // Le serveur ne sert que les jobs du joueur demandé ; le client ne lit pourtant jamais le job d'un autre.
   const status = serverStatus?.player_slug === playerSlug ? serverStatus : undefined
+  // Une panne, ou la réponse d'un autre joueur : l'écran le dit au lieu de rester vide.
+  const statusError = (statusFailed && !serverStatus) || (serverStatus !== undefined && status === undefined)
+  const displayed = currentPlayer?.player_slug === playerSlug ? currentPlayer : undefined
   const job = status?.job && (!status.job.player_slug || status.job.player_slug === playerSlug) ? status.job : undefined
   const cooldownSec = status?.cooldown_retry_after_s ?? 0
   const canStart = canWrite && cooldownSec <= 0
@@ -54,8 +58,10 @@ export function HomeFirstSync({ playerSlug, refetch }: HomeFirstSyncProps) {
   const { kind } = resolveFirstSyncState({
     reauthRequired,
     canWrite,
+    isOwnAccount: ownHaloXuid !== '' && displayed?.xuid === ownHaloXuid,
     syncEnabled: currentPlayer?.player_slug === playerSlug ? currentPlayer.sync_enabled : undefined,
     server: status ? { syncing: status.syncing, jobStatus: job?.status } : null,
+    statusError,
   })
 
   // Un job qui vient de se terminer a pu écrire des matchs : l'accueil se relit une fois par job.
@@ -93,6 +99,13 @@ export function HomeFirstSync({ playerSlug, refetch }: HomeFirstSyncProps) {
     switch (kind) {
       case 'loading':
         return null
+      case 'status_error':
+        return {
+          title: t('home.first_sync.status_error_title'),
+          description: t('home.first_sync.status_error_description'),
+          actionLabel: t('home.first_sync.retry_action'),
+          onAction: () => void refetchStatus(),
+        }
       case 'waiting_connection':
         return {
           title: t('home.first_sync.waiting_title'),

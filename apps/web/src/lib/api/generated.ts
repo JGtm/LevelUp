@@ -5290,6 +5290,8 @@ export interface components {
             /** @description Aucun encodeur H.264 utilisable : le transcodage vidéo des clips est refusé. */
             media_h264_missing?: boolean;
             oauth_code_flow_enabled: boolean;
+            /** @description xuid du compte connecté, celui que reauth_required concerne. */
+            own_halo_xuid?: string;
             /** @enum {string} */
             pool_sharing: "granted" | "declined" | "undecided" | "unavailable";
             /** @description Sprint 54-B : informations de confidentialité des matchs du joueur actif. */

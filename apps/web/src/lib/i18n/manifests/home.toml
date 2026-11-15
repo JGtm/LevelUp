@@ -107,6 +107,14 @@ en = "A sync was just started: try again in a few minutes."
 fr = "Une synchronisation de ce joueur est déjà en cours."
 en = "A sync of this player is already running."
 
+[home.first_sync.status_error_title]
+fr = "État de la synchronisation indisponible"
+en = "Sync status unavailable"
+
+[home.first_sync.status_error_description]
+fr = "Le serveur n'a pas pu dire où en est la synchronisation de ce joueur. Réessaie dans un instant."
+en = "The server could not say where the sync of this player stands. Try again in a moment."
+
 [home.first_sync.start_failed]
 fr = "La synchronisation n'a pas pu démarrer."
 en = "The sync could not be started."

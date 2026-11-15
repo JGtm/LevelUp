@@ -51,6 +51,8 @@ export const homeManifest = {
   "home.first_sync.start_already_active": { fr: "Une synchronisation de ce joueur est déjà en cours.", en: "A sync of this player is already running." },
   "home.first_sync.start_cooldown": { fr: "Une synchronisation vient d'être lancée : réessaie dans quelques minutes.", en: "A sync was just started: try again in a few minutes." },
   "home.first_sync.start_failed": { fr: "La synchronisation n'a pas pu démarrer.", en: "The sync could not be started." },
+  "home.first_sync.status_error_description": { fr: "Le serveur n'a pas pu dire où en est la synchronisation de ce joueur. Réessaie dans un instant.", en: "The server could not say where the sync of this player stands. Try again in a moment." },
+  "home.first_sync.status_error_title": { fr: "État de la synchronisation indisponible", en: "Sync status unavailable" },
   "home.first_sync.title": { fr: "Synchronisation en cours", en: "Sync in progress" },
   "home.first_sync.waiting_action": { fr: "Se reconnecter", en: "Sign in again" },
   "home.first_sync.waiting_description": { fr: "La connexion au compte Xbox a expiré : la synchronisation reste arrêtée tant qu'il n'est pas reconnecté. Reconnecte-le pour récupérer tes matchs.", en: "The Xbox account sign-in has expired: sync stays stopped until it is signed in again. Sign in again to retrieve your matches." },

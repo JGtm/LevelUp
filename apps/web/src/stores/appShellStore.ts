@@ -62,6 +62,8 @@ interface AppShellState {
   instanceLocked: boolean
   /** Joueur courant : refresh_token Microsoft mort → reconnexion Xbox requise. */
   reauthRequired: boolean
+  /** xuid du compte connecté, celui que `reauthRequired` concerne ('' = aucune identité propre). */
+  ownHaloXuid: string
   /** Mise en commun du jeton du user connecté avec le pool de synchro (undecided = question à poser). */
   poolSharing: BootstrapResponse['pool_sharing']
   /** Utilisateur connecté : a défini un mot de passe (opt-in re-login rapide). */
@@ -126,6 +128,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
   registrationMode: 'invite',
   instanceLocked: false,
   reauthRequired: false,
+  ownHaloXuid: '',
   poolSharing: 'unavailable',
   hasPassword: false,
   isAdmin: false,
@@ -163,6 +166,7 @@ export const useAppShellStore = create<AppShellState>((set) => ({
       registrationMode: data.registration_mode ?? 'invite',
       instanceLocked: data.instance_locked ?? false,
       reauthRequired: data.reauth_required ?? false,
+      ownHaloXuid: data.own_halo_xuid ?? '',
       poolSharing: data.pool_sharing ?? 'unavailable',
       hasPassword: data.has_password ?? false,
       isAdmin: data.is_admin ?? false,
