@@ -9,8 +9,8 @@ import (
 )
 
 // drainCoalescedRecomputes, à l'arrêt, refuse toute nouvelle demande de recalcul coalescé
-// (exclusion de match, liste d'amis : coalesce.Runs), annule les recalculs en vol et attend
-// leur fin au plus coalesce.DrainWait, ou moins si ctx échoit avant : la suite de la séquence
+// (exclusion de match, liste d'amis, écriture de l'instantané de carrière : coalesce.Runs),
+// annule les recalculs en vol et attend leur fin au plus coalesce.DrainWait, ou moins si ctx échoit avant : la suite de la séquence
 // d'arrêt n'est jamais retardée au-delà. Rend vrai quand plus aucun recalcul n'est en vol.
 // Un recalcul annulé est relancé par la prochaine demande, après le redémarrage. À appeler
 // après l'arrêt du serveur HTTP et avant duckdb.CloseAll : un recalcul lit la base partagée

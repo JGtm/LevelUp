@@ -5,12 +5,11 @@
 // rend la note ; le calcul de C (profil de la chaîne, sans métrique d'objectif) et le chargement
 // des faits restent dans internal/sync.
 //
-// # Ce qui change par rapport à l'ancienne note
+// # La note
 //
-// L'ancienne note comptait la métrique `objective_participation` (ospm : points d'awards
-// `objective` par minute) pour 0,12 sur 1,04 : un porteur de drapeau sans frag sortait avec une
-// note faible, parce que le reste du profil est du combat. Ici, une moyenne SYMÉTRIQUE — l'objectif
-// et le soutien peuvent monter ou baisser la note, aucune règle à sens unique, aucun plancher :
+// Le profil de la chaîne ne porte que du combat : l'objectif et le soutien de l'équipe se greffent
+// dessus par une moyenne SYMÉTRIQUE — ils peuvent monter ou baisser la note, aucune règle à sens
+// unique, aucun plancher. Un porteur de drapeau sans frag n'est ainsi pas jugé sur le seul combat :
 //
 //		note = (1 − α_obj − α_sout) × C + α_obj × O_obj + α_sout × O_sout
 //

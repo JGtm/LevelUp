@@ -2,9 +2,7 @@
 // § 6.1.3 pour brancher les fondations `analysis/narrative` sur le service
 // MatchView (chunk MV2).
 //
-// Couvre :
-//   - Cadence intra-match (kills par phase de 60s) via narrative.ComputeCadenceProfiles
-//   - Impact 8 rôles via narrative.IdentifyImpactRoles
+// Couvre la cadence intra-match (kills par phase de 30s) via narrative.ComputeCadenceProfiles.
 //
 // Les helpers consomment les `domain.EventRaw` chargés par le repo
 // existant (Q21) en les convertissant à la volée vers `canonical.HighlightEvent`.
@@ -78,31 +76,6 @@ func extractMatchSquadXUIDs(scoreboard []domain.ScoreboardRaw) []string {
 		}
 		seen[row.XUID] = true
 		out = append(out, row.XUID)
-	}
-	return out
-}
-
-// extractTeamOutcomesFromScoreboard mappe xuid -> Outcome depuis le scoreboard.
-// Utilisé par narrative.IdentifyImpactRoles pour déterminer les rôles "win-only"
-// (clutch_finisher, silent_hero) et "loss-only" (false_brother).
-//
-// OutcomeCode == 0 est traité comme indéfini (xuid omis du résultat).
-func extractTeamOutcomesFromScoreboard(scoreboard []domain.ScoreboardRaw) map[string]canonical.Outcome {
-	out := make(map[string]canonical.Outcome, len(scoreboard))
-	for _, row := range scoreboard {
-		if row.XUID == "" || row.OutcomeCode == 0 {
-			continue
-		}
-		switch row.OutcomeCode {
-		case 2:
-			out[row.XUID] = canonical.OutcomeWin
-		case 3:
-			out[row.XUID] = canonical.OutcomeLoss
-		case 1:
-			out[row.XUID] = canonical.OutcomeTie
-		case 4:
-			out[row.XUID] = canonical.OutcomeDNF
-		}
 	}
 	return out
 }
@@ -210,55 +183,4 @@ func matchPhaseCategoryLabel(idx int) string {
 	}
 	// idx >= 100 (très rare, match >100 phases = 100 minutes)
 	return "phase_99+"
-}
-
-// BuildMatchImpactRoles8 construit la liste des 8 rôles narratifs attribués
-// sur ce match via narrative.IdentifyImpactRoles. Renvoie 1 entrée par
-// (joueur × rôle) attribué.
-//
-// Le squad ici est l'ensemble des xuids du scoreboard (vue MatchView = tous
-// les joueurs du match, pas seulement le squad utilisateur).
-//
-// Variant principal pour les callers ayant des EventRaw (chunk MV2 legacy).
-// Pour les callers ayant déjà des canonical.HighlightEvent, utiliser
-// BuildMatchImpactRoles8FromCanonical.
-func BuildMatchImpactRoles8(
-	events []domain.EventRaw,
-	scoreboard []domain.ScoreboardRaw,
-	matchID string,
-) []domain.MatchViewImpactRole {
-	if len(events) == 0 || len(scoreboard) == 0 {
-		return nil
-	}
-	canonicalEvents := convertEventsRawToCanonical(events, matchID)
-	return BuildMatchImpactRoles8FromCanonical(canonicalEvents, scoreboard)
-}
-
-// BuildMatchImpactRoles8FromCanonical : variante consommant directement des
-// canonical.HighlightEvent (chunk MV4.A — loader unifié).
-func BuildMatchImpactRoles8FromCanonical(
-	canonicalEvents []canonical.HighlightEvent,
-	scoreboard []domain.ScoreboardRaw,
-) []domain.MatchViewImpactRole {
-	if len(canonicalEvents) == 0 || len(scoreboard) == 0 {
-		return nil
-	}
-	teamOutcomes := extractTeamOutcomesFromScoreboard(scoreboard)
-	squadXUIDs := extractMatchSquadXUIDs(scoreboard)
-
-	assignments := narrative.IdentifyImpactRoles(canonicalEvents, teamOutcomes, squadXUIDs)
-	if len(assignments) == 0 {
-		return nil
-	}
-	out := make([]domain.MatchViewImpactRole, 0, len(assignments))
-	for _, a := range assignments {
-		out = append(out, domain.MatchViewImpactRole{
-			XUID:       a.XUID,
-			RoleKey:    string(a.Role),
-			LabelKey:   a.LabelKey,
-			ColorToken: a.ColorToken,
-			Inverted:   a.Inverted,
-		})
-	}
-	return out
 }

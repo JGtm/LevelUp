@@ -18971,12 +18971,6 @@ components:
           type:
             - array
             - "null"
-        impact_roles:
-          items:
-            $ref: '#/components/schemas/MatchViewImpactRole'
-          type:
-            - array
-            - "null"
         kd_timeline:
           items:
             $ref: '#/components/schemas/MatchKDTimelinePoint'
@@ -21149,25 +21143,6 @@ components:
         - is_ranked
         - is_favorite
         - replay_available
-      type: object
-    MatchViewImpactRole:
-      additionalProperties: false
-      properties:
-        color_token:
-          type: string
-        inverted:
-          type: boolean
-        label_key:
-          type: string
-        role_key:
-          type: string
-        xuid:
-          type: string
-      required:
-        - xuid
-        - role_key
-        - label_key
-        - color_token
       type: object
     MatchViewRank:
       additionalProperties: false

@@ -91,33 +91,6 @@ func TestExtractMatchSquadXUIDs_DeduplicatedAndOrdered(t *testing.T) {
 	}
 }
 
-func TestExtractTeamOutcomes_MapsAllCodes(t *testing.T) {
-	t.Parallel()
-	scoreboard := []domain.ScoreboardRaw{
-		scoreboardRow("x_win", 2),
-		scoreboardRow("x_loss", 3),
-		scoreboardRow("x_tie", 1),
-		scoreboardRow("x_dnf", 4),
-		scoreboardRow("x_unknown", 0), // outcome 0 -> ignoré
-	}
-	got := extractTeamOutcomesFromScoreboard(scoreboard)
-	if got["x_win"] != canonical.OutcomeWin {
-		t.Errorf("x_win want OutcomeWin, got %s", got["x_win"])
-	}
-	if got["x_loss"] != canonical.OutcomeLoss {
-		t.Errorf("x_loss want OutcomeLoss, got %s", got["x_loss"])
-	}
-	if got["x_tie"] != canonical.OutcomeTie {
-		t.Errorf("x_tie want OutcomeTie, got %s", got["x_tie"])
-	}
-	if got["x_dnf"] != canonical.OutcomeDNF {
-		t.Errorf("x_dnf want OutcomeDNF, got %s", got["x_dnf"])
-	}
-	if _, present := got["x_unknown"]; present {
-		t.Error("x_unknown (outcome=0) ne devrait pas être dans la map")
-	}
-}
-
 func TestBuildMatchCadenceChart_AggregatesKillsByPhase(t *testing.T) {
 	t.Parallel()
 	// Match 180s, phase 30s -> 6 buckets. p1 fait 3 kills (5s, 65s, 175s).
@@ -165,42 +138,6 @@ func TestBuildMatchCadenceChart_EmptyInputs(t *testing.T) {
 	}
 }
 
-func TestBuildMatchImpactRoles8_AttributesFirstBlood(t *testing.T) {
-	t.Parallel()
-	// Premier kill = p1 -> role first_blood
-	events := []domain.EventRaw{
-		eventRawKill(1_000, "x_p1"),
-		eventRawKill(5_000, "x_p2"),
-	}
-	scoreboard := []domain.ScoreboardRaw{
-		scoreboardRow("x_p1", 2),
-		scoreboardRow("x_p2", 3),
-	}
-	roles := BuildMatchImpactRoles8(events, scoreboard, "m1")
-	hasFirstBlood := false
-	for _, r := range roles {
-		if r.RoleKey == "first_blood" && r.XUID == "x_p1" {
-			hasFirstBlood = true
-			if r.LabelKey != "narrative.role.first_blood" {
-				t.Errorf("LabelKey want narrative.role.first_blood, got %s", r.LabelKey)
-			}
-			if r.ColorToken != "narrative.role.first_blood" {
-				t.Errorf("ColorToken want narrative.role.first_blood, got %s", r.ColorToken)
-			}
-		}
-	}
-	if !hasFirstBlood {
-		t.Errorf("first_blood not attributed to x_p1, got roles %+v", roles)
-	}
-}
-
-func TestBuildMatchImpactRoles8_EmptyInputs(t *testing.T) {
-	t.Parallel()
-	if got := BuildMatchImpactRoles8(nil, nil, "m1"); got != nil {
-		t.Errorf("nil events: want nil, got %v", got)
-	}
-}
-
 func TestMatchPhaseCategoryLabel_ZeroPadded(t *testing.T) {
 	t.Parallel()
 	cases := map[int]string{
@@ -236,33 +173,6 @@ func TestBuildMatchCadenceChartFromCanonical_NoConversion(t *testing.T) {
 	}
 	if chart.Datapoints[0].Components["x_p1"] != 1 {
 		t.Errorf("phase_00 x_p1 want 1, got %f", chart.Datapoints[0].Components["x_p1"])
-	}
-}
-
-// TestBuildMatchImpactRoles8FromCanonical_NoConversion verifie que la
-// variante MV4.A consomme directement des canonical.HighlightEvent.
-func TestBuildMatchImpactRoles8FromCanonical_NoConversion(t *testing.T) {
-	t.Parallel()
-	x1 := "x_p1"
-	canonicalEvents := []canonical.HighlightEvent{
-		{
-			MatchID: "m1", EventType: string(canonical.EventKill),
-			TimeMS: 1_000, KillerXUID: &x1,
-		},
-	}
-	scoreboard := []domain.ScoreboardRaw{
-		scoreboardRow("x_p1", 2),
-		scoreboardRow("x_p2", 3),
-	}
-	roles := BuildMatchImpactRoles8FromCanonical(canonicalEvents, scoreboard)
-	hasFirstBlood := false
-	for _, r := range roles {
-		if r.RoleKey == "first_blood" && r.XUID == "x_p1" {
-			hasFirstBlood = true
-		}
-	}
-	if !hasFirstBlood {
-		t.Errorf("first_blood not attributed to x_p1, got %+v", roles)
 	}
 }
 

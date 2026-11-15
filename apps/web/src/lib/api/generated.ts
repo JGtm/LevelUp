@@ -9064,7 +9064,6 @@ export interface components {
             frag_distribution?: components["schemas"]["FragDistribution"];
             highlight_events: components["schemas"]["MatchHighlightEvent"][] | null;
             impact_badges: components["schemas"]["MatchImpactBadge"][] | null;
-            impact_roles?: components["schemas"]["MatchViewImpactRole"][] | null;
             kd_timeline: components["schemas"]["MatchKDTimelinePoint"][] | null;
             kill_distance_by_weapon?: components["schemas"]["MatchKillDistancePlayer"][] | null;
             killer_victim?: components["schemas"]["MatchKillerVictimPair"][] | null;
@@ -9975,13 +9974,6 @@ export interface components {
             /** Format: int64 */
             t0_ms?: number;
             waypoint_url?: string;
-        };
-        MatchViewImpactRole: {
-            color_token: string;
-            inverted?: boolean;
-            label_key: string;
-            role_key: string;
-            xuid: string;
         };
         MatchViewRank: {
             /** Format: double */

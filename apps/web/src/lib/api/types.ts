@@ -1493,9 +1493,6 @@ export type MatchKillDistancePlayer = components['schemas']['MatchKillDistancePl
 
 export type MatchCombatTab = components['schemas']['MatchCombatTab']
 
-/** MV2 : rôle narratif attribué (1 entrée par joueur × rôle). */
-export type MatchViewImpactRole = components['schemas']['MatchViewImpactRole']
-
 /** MV2 : cadence chart (mirror domain.ChartSeries<ChartPointStacked>). */
 export type MatchViewCadence = components['schemas']['ChartSeriesChartPointStacked']
 

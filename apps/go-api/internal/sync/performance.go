@@ -50,7 +50,7 @@ type historyRow struct {
 	DefensiveResistance float64
 	MedalExploitScore   float64
 	// ObjectiveBlend : faits d'objectif et de soutien du match (paquet objectiveblend), posés
-	// après chargement SQL par applyObjectiveFacts. nil = absent : titre sans
+	// après chargement SQL par applyPerfEnrichments. nil = absent : titre sans
 	// match_objective_stats (Halo 5), match sans bloc d'objectif.
 	ObjectiveBlend *objectiveblend.Facts
 	// Chain est la chaîne de score de performance dérivée via GetPerformanceChain

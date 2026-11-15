@@ -61,8 +61,10 @@ func appendToHistory(hist *[]float64, v float64) {
 
 // ComputeCombatYield calcule offensive_conversion et defensive_resistance depuis un match.
 //
-// La vie effective est celle du titre du LUSR (games.EffectiveHpToKill, config du titre) : le LUSR est
-// propre à ce titre et la fonction n'a pas son slug sur ce chemin chaud. Les deux grandeurs sont ensuite
+// La vie effective est celle du titre par défaut (games.EffectiveHpToKill(title.DefaultSlug)), quel que
+// soit le titre du match : la fonction n'a pas son slug sur ce chemin chaud. Halo 5 déclare pourtant la
+// capacité `lusr` avec sa propre vie (config/titles/halo_5/constants.toml) : un match de ce titre qui
+// passerait ici serait calculé avec la vie du titre par défaut. Les deux grandeurs sont ensuite
 // comparées à la moyenne glissante du MÊME joueur, calculée avec la même vie : le facteur s'annule dans le
 // ratio, et ne pèse que sur la référence absolue des premiers matchs.
 func ComputeCombatYield(m LusrMatchData) (offConv, defRes float64) {
