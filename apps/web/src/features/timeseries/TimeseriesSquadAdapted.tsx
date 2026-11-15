@@ -563,5 +563,7 @@ export function TimeseriesEfficiency({
     hp,
     providesDamageTaken,
   ])
+  // Barème inconnu (bootstrap non chargé) : rien à tracer, pas le message « aucune donnée ».
+  if (hp === undefined) return null
   return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }

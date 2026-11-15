@@ -474,7 +474,7 @@ group         = "derived"
 
 [fields.offensive_conversion]
 labels        = { en = "Efficiency", fr = "Rendement" }
-description   = { en = "229 × (kills + assists/3) / damage dealt — offensive combat yield.", fr = "229 × (frags + assists/3) / dégâts infligés — rendement offensif." }
+description   = { en = "{{HP}} × (kills + assists/3) / damage dealt — offensive combat yield.", fr = "{{HP}} × (frags + assists/3) / dégâts infligés — rendement offensif." }
 storage_unit  = ""
 display_unit  = ""
 format        = "kdr_2"
@@ -483,7 +483,7 @@ group         = "derived"
 
 [fields.defensive_resistance]
 labels        = { en = "Resistance", fr = "Résistance" }
-description   = { en = "damage taken / (229 × deaths) — defensive combat yield.", fr = "dégâts subis / (229 × morts) — résistance défensive." }
+description   = { en = "damage taken / ({{HP}} × deaths) — defensive combat yield.", fr = "dégâts subis / ({{HP}} × morts) — résistance défensive." }
 storage_unit  = ""
 display_unit  = ""
 format        = "kdr_2"

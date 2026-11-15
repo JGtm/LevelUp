@@ -18,6 +18,7 @@ import { Link } from '@tanstack/react-router'
 import { SectionTitle } from '@/components/ui/detail-section'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { substituteHpToken, useEffectiveHpToKill } from '@/lib/damage/effectiveHp'
 import type { MedalDigestEntry, TeammatesPageResponse } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import { useSquadContext } from './SquadContext'
@@ -166,15 +167,16 @@ export function SquadContributionsPage() {
 
 /** Le titre du radar synergie, avec l'aide de ses six axes et le lien vers le glossaire. */
 function SynergyRadarTitle({ t }: { t: SquadText }) {
+  const hp = useEffectiveHpToKill()
   return (
     <span className="flex items-center gap-1.5">
       {t.synergyRadar.title}
       <InfoTooltip
         content={
           <div className="space-y-1">
-            <p><span className="font-medium">{t.synergyRadar.axes.impact}</span> — {t.synergyRadar.tooltip.impact}</p>
+            <p><span className="font-medium">{t.synergyRadar.axes.impact}</span> — {substituteHpToken(t.synergyRadar.tooltip.impact, hp)}</p>
             <p><span className="font-medium">{t.synergyRadar.axes.combat}</span> — {t.synergyRadar.tooltip.combat}</p>
-            <p><span className="font-medium">{t.synergyRadar.axes.survival}</span> — {t.synergyRadar.tooltip.survival}</p>
+            <p><span className="font-medium">{t.synergyRadar.axes.survival}</span> — {substituteHpToken(t.synergyRadar.tooltip.survival, hp)}</p>
             <p><span className="font-medium">{t.synergyRadar.axes.support}</span> — {t.synergyRadar.tooltip.support}</p>
             <p><span className="font-medium">{t.synergyRadar.axes.score}</span> — {t.synergyRadar.tooltip.score}</p>
             <p><span className="font-medium">{t.synergyRadar.axes.objective}</span> — {t.synergyRadar.tooltip.objective}</p>

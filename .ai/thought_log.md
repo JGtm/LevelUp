@@ -2,6 +2,11 @@
 - Décision : correctif à part, sans attendre la ronde 1 des radars. `objective_team_rows_repo.go` préalloue les pointeurs de scan (golangci-lint prealloc, ratchet). Baseline de présence : retrait des 11 tests de `internal/service` dont le code a été supprimé comme code mort par 9765aed2e2 (TestBuildMatchRadar_* et TestBuildRadarSeries_*), 88 lignes JSONL, documenté dans l'en-tête de `scripts/check_test_baseline.sh` selon sa recette (retrait partiel, jamais une re-capture).
 - Résultats : build OK, tests des lignes d'équipe verts, golangci-lint sur `platform/duckdb` sans constat sur le fichier.
 - Suite : vérifier la CI sur ce commit.
+## [2026-11-15] Reliquats de la ronde 2 de l'étape 7 : textes affichés sans la vie écrite, graphe avant bootstrap, commentaire et littéral de durée — Complété (branche `feat/c820-note-r3`, non poussée)
+
+- **Décision** : la vie effective n'est écrite nulle part en nombre, ni dans le code ni dans les textes affichés : infobulles des radars Rendement et Résistance (Match, Escouade) et aide des réglages portent le jeton `{{HP}}` rendu par `substituteHpToken` (`—` avant le bootstrap) ; les descriptions de `fields.toml` des deux titres portent le jeton, substitué côté serveur par `games.SubstituteHPToken` dans `GET /titles/{slug}/field-mappings` (aucun composant web ne les affiche à ce jour) ; la valeur fausse de Halo 5 (225 au lieu de 115) disparaît avec elle. `TimeseriesEfficiency` rend `null` avant le bootstrap, comme les trois autres composants. Le commentaire orphelin de `batchComputePerformanceScores` est revenu sur la fonction, le 600 du SQL de `loadHistoryForPerf` est devenu un paramètre `perfFallbackDurationSeconds`.
+- **Résultats** : garde-rail archlint étendu aux textes affichés (`TestEffectiveHpToKill_AucunNombreDeVieDansLesTextesAffiches`, exception : mentions qualifiées « Halo Infinite ») ; tests : jeton dans chaque langue (`hpTokenTexts.test.ts`), rendu des réglages avec et sans bootstrap, descriptions de la config réelle rendues à 229 et 115, DTO du handler, durée absente ou nulle égale à la durée de repli en base.
+- **Suite** : revue et fusion par `levelup-dd`.
 
 ## [2026-11-15] Relecture de l'étape 7 : durée de repli unique, aide, garde-rail sur 229, tests des seuils — Complété (branche `feat/c820-note-r2`, non poussée)
 

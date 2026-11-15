@@ -238,7 +238,7 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 			COALESCE(mp.kills, 0), COALESCE(mp.deaths, 0),
 			COALESCE(mp.assists, 0), COALESCE(mp.kda, 0),
 			COALESCE(mp.accuracy, 0),
-			COALESCE(mp.time_played_seconds, 600),
+			COALESCE(mp.time_played_seconds, ?),
 			COALESCE(mp.personal_score, 0), COALESCE(mp.damage_dealt, 0),
 			COALESCE(mp.damage_taken, 0),
 			COALESCE(mp.rank, 0),
@@ -251,7 +251,7 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 		  AND mr.start_time IS NOT NULL
 		  AND COALESCE(mp.outcome, 0) != 4`+
 		sqlfrag.SQLExcludeCampaignByMatchIDCtx(ctx, "mr.match_id")+`
-		ORDER BY mr.start_time ASC`, xuid)
+		ORDER BY mr.start_time ASC`, perfFallbackDurationSeconds, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("loadHistoryForPerf: %w", err)
 	}
@@ -298,15 +298,6 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 	}
 	return history, rows.Err()
 }
-
-// batchComputePerformanceScores calcule les performance_score manquants ou tous si force=true.
-// medalExploitByMatch : match_id → score médailles (nil = pas de données médailles).
-// force : recalcule même si performance_score est déjà présent dans la même chaîne. Rend le nombre de matchs mis à jour.
-// Sémantique : chaque match est rattaché à une chaîne via GetPerformanceChain
-// (7 chaînes possibles). Le percentile pondéré est calculé sur les 50 derniers
-// matchs de la **même chaîne** uniquement. Un score n'est calculé qu'à partir
-// du MinMatchesPerChainForRelative-ième match de la chaîne (pas de fallback
-// global, préservation de la sémantique "relatif à ta chaîne").
 
 // ── Hygiène des notes orphelines (lot 2 — décisions D-D / D-E) ──────────────
 //

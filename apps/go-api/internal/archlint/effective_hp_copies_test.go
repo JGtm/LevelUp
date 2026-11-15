@@ -156,3 +156,88 @@ func TestEffectiveHpToKill_AllowlistJustifieeEtVivante(t *testing.T) {
 		}
 	}
 }
+
+// effectiveHpTextRoots : les textes AFFICHÉS (dictionnaires de feature, manifestes i18n, descriptions de
+// champs, catalogue de messages du serveur), balayés par le garde-rail des textes.
+var effectiveHpTextRoots = []struct {
+	dir string
+	ok  func(rel string) bool
+}{
+	{"apps/web/src", func(rel string) bool {
+		isDict := strings.Contains(rel, "/i18n/") || strings.HasSuffix(rel, "/i18n.ts")
+		return isDict && strings.HasSuffix(rel, ".ts") && !strings.Contains(rel, "/generated/") && !strings.Contains(rel, ".test.")
+	}},
+	{"apps/web/src/lib/i18n/manifests", func(rel string) bool { return strings.HasSuffix(rel, ".toml") }},
+	{"config/titles", func(rel string) bool { return strings.Contains(rel, "/mappings/") && strings.HasSuffix(rel, ".toml") }},
+	{"apps/go-api/internal/i18n/messages", func(rel string) bool { return strings.HasSuffix(rel, ".toml") }},
+}
+
+// effectiveHpQualifiedLine : une mention qualifiée « Halo Infinite » (aide, exemple chiffré) reste exacte
+// quel que soit le titre courant : la valeur du titre nommé n'est pas celle du titre courant.
+func effectiveHpQualifiedLine(line string) bool { return strings.Contains(line, "Halo Infinite") }
+
+// effectiveHpTextLines rend les lignes d'un texte qui écrivent la vie en nombre sans qualifier le titre.
+func effectiveHpTextLines(src string) []int {
+	var out []int
+	for i, line := range strings.Split(src, "\n") {
+		if effectiveHpTSLiteral.MatchString(line) && !effectiveHpQualifiedLine(line) {
+			out = append(out, i+1)
+		}
+	}
+	return out
+}
+
+func TestEffectiveHpToKill_AucunNombreDeVieDansLesTextesAffiches(t *testing.T) {
+	root := filepath.Join(apiModuleRoot(t), "..", "..")
+	seen := map[string]bool{}
+	for _, r := range effectiveHpTextRoots {
+		dir := filepath.Join(root, filepath.FromSlash(r.dir))
+		if err := exigerDossier(dir); err != nil {
+			t.Fatalf("racine déclarée %s : %v", r.dir, err)
+		}
+		err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if d.IsDir() {
+				if d.Name() == "node_modules" {
+					return fs.SkipDir
+				}
+				return nil
+			}
+			rel, _ := filepath.Rel(root, path)
+			rel = "/" + filepath.ToSlash(rel)
+			if seen[rel] || !r.ok(rel) {
+				return nil
+			}
+			seen[rel] = true
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			for _, line := range effectiveHpTextLines(string(raw)) {
+				t.Errorf("%s:%d : la vie effective (225/229) est écrite dans un texte affiché : utiliser le jeton {{HP}} (substituteHpToken côté web, games.SubstituteHPToken côté Go) ou qualifier « Halo Infinite »", strings.TrimPrefix(rel, "/"), line)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("parcours de %s : %v", r.dir, err)
+		}
+	}
+	if len(seen) == 0 {
+		t.Fatal("aucun texte balayé : le garde-rail ne couvre rien")
+	}
+}
+
+func TestEffectiveHpToKill_LeGardeDesTextesDistingueLesCas(t *testing.T) {
+	src := strings.Join([]string{
+		"a: '{{HP}} × frags'",
+		"b: 'Rendement — 229 × frags'",
+		"c: 'Exemple (Halo Infinite, 229 PV)'",
+		"d: 'catégorie 2290'",
+		"e = \"225 × (frags + assists/3)\"",
+	}, "\n")
+	if got := effectiveHpTextLines(src); len(got) != 2 || got[0] != 2 || got[1] != 5 {
+		t.Errorf("lignes détectées %v, attendu [2 5]", got)
+	}
+}

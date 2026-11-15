@@ -16,6 +16,7 @@ import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { buildRadarOption } from '@/components/charts/RadarChart'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
+import { substituteHpToken, useEffectiveHpToKill } from '@/lib/damage/effectiveHp'
 import {
   getEChartsThemeColors,
   getAxisBase,
@@ -310,6 +311,7 @@ interface MatchSummaryRadarChartProps {
 }
 
 export function MatchSummaryRadarChart({ radar, meXUID, t }: MatchSummaryRadarChartProps) {
+  const hp = useEffectiveHpToKill()
   const mySeries = radar?.find((s) => s.xuid === meXUID)
 
   const axisLabels: Record<string, string> = {
@@ -348,9 +350,9 @@ export function MatchSummaryRadarChart({ radar, meXUID, t }: MatchSummaryRadarCh
       <InfoTooltip
         content={
           <div className="space-y-1">
-            <p><span className="font-medium">{t.radarAxisImpact}</span> — {t.radarTooltipImpact}</p>
+            <p><span className="font-medium">{t.radarAxisImpact}</span> — {substituteHpToken(t.radarTooltipImpact, hp)}</p>
             <p><span className="font-medium">{t.radarAxisCombat}</span> — {t.radarTooltipCombat}</p>
-            <p><span className="font-medium">{t.radarAxisSurvival}</span> — {t.radarTooltipSurvival}</p>
+            <p><span className="font-medium">{t.radarAxisSurvival}</span> — {substituteHpToken(t.radarTooltipSurvival, hp)}</p>
             <p><span className="font-medium">{t.radarAxisSupport}</span> — {t.radarTooltipSupport}</p>
             <p><span className="font-medium">{t.radarAxisScore}</span> — {t.radarTooltipScore}</p>
             <p><span className="font-medium">{t.radarAxisObjective}</span> — {t.radarTooltipObjective}</p>

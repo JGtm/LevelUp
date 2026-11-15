@@ -211,3 +211,23 @@ func TestBatchPerformance_MatchNonTermineDuJoueurJamaisNote(t *testing.T) {
 		}
 	}
 }
+
+// Une durée absente (NULL) ou nulle vaut perfFallbackDurationSeconds PARTOUT : le chargement SQL de
+// l'historique et les calculs par minute lisent la même constante, la note est celle d'une durée égale.
+func TestBatchPerformance_DureeAbsenteOuNulleVautLaDureeDeRepli(t *testing.T) {
+	withDuration := func(duration string) finalMatchRun {
+		return runFinalMatch(t, 8, true, func(db *sql.DB, final string) {
+			mustExec(t, db, "UPDATE match_participants SET time_played_seconds = "+duration+" WHERE match_id = ? AND xuid = 'xuid1'", final)
+		})
+	}
+	want := withDuration(fmt.Sprintf("%g", perfFallbackDurationSeconds))
+	for name, duration := range map[string]string{"NULL": "NULL", "0": "0"} {
+		got := withDuration(duration)
+		if !got.present || !want.present {
+			t.Fatalf("durée %s : note absente (%+v / %+v)", name, got, want)
+		}
+		if got.score != want.score {
+			t.Errorf("durée %s : note %v, durée de repli %v : le repli doit être le même partout", name, got.score, want.score)
+		}
+	}
+}

@@ -16,9 +16,12 @@ export function useEffectiveHpToKill(): number | undefined {
   )
 }
 
-/** Remplace le jeton `{{HP}}` d'un libellé i18n par le barème PV du titre. */
-export function substituteHpToken(text: string, hp: number): string {
-  return text.replace(/\{\{HP\}\}/g, String(hp))
+/** Affiché à la place du barème tant que le bootstrap n'est pas chargé : aucune valeur de repli. */
+export const HP_PENDING = '—'
+
+/** Remplace le jeton `{{HP}}` d'un libellé i18n par le barème PV du titre (`HP_PENDING` s'il est inconnu). */
+export function substituteHpToken(text: string, hp: number | undefined): string {
+  return text.replace(/\{\{HP\}\}/g, hp === undefined ? HP_PENDING : String(Math.round(hp)))
 }
 
 /** Frontière élite OC (80e percentile) par défaut — Halo Infinite. Miroir de

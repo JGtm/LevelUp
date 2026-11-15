@@ -4,8 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
 )
 
@@ -382,5 +384,39 @@ func TestH5ProvidesTeamMMRAndMaxKillingSpree(t *testing.T) {
 	}
 	if !ProvidesMaxKillingSpreeFromResolver(res, "halo_infinite") {
 		t.Error("halo_infinite : ProvidesMaxKillingSpree doit être true (events-timeline degraded)")
+	}
+}
+
+// TestFieldsTOML_LaVieEstLeJetonRendueParLeTitre — les descriptions des champs Rendement et Résistance de
+// la config RÉELLE portent le jeton, jamais un nombre : rendues avec la vie du titre, elles disent 229
+// pour Halo Infinite et 115 pour Halo 5 (le TOML de Halo 5 écrivait 225, faux).
+func TestFieldsTOML_LaVieEstLeJetonRendueParLeTitre(t *testing.T) {
+	t.Parallel()
+	reg := mappings.NewRegistry()
+	if errs := reg.LoadFromConfigDir(repoConfigRoot(t), []string{"halo_5", "halo_infinite"}, nil); len(errs) != 0 {
+		t.Fatalf("LoadFromConfigDir errs: %v", errs)
+	}
+	res := NewMappingsEndpointResolver(reg, "halo_infinite")
+	for slug, want := range map[string]string{"halo_infinite": "229", "halo_5": "115"} {
+		set, ok := reg.Get(slug)
+		if !ok {
+			t.Fatalf("champs de %s absents", slug)
+		}
+		hp := EffectiveHpToKillFromResolver(res, slug)
+		for _, key := range []string{"offensive_conversion", "defensive_resistance"} {
+			m, ok := set.Get(canonical.FieldKey(key))
+			if !ok {
+				t.Fatalf("%s : champ %s absent", slug, key)
+			}
+			for _, loc := range []string{"fr", "en"} {
+				raw, _ := m.Description(loc)
+				if !strings.Contains(raw, HPToken) {
+					t.Errorf("%s.%s (%s) : la description doit porter %s, reçu %q", slug, key, loc, HPToken, raw)
+				}
+				if got := SubstituteHPToken(raw, hp); !strings.Contains(got, want+" ×") && !strings.Contains(got, "("+want+" ×") {
+					t.Errorf("%s.%s (%s) : rendu %q, attendu la vie %s", slug, key, loc, got, want)
+				}
+			}
+		}
 	}
 }

@@ -278,7 +278,7 @@ export const EN_TEXT = {
   rendementExcludeAssistsLabel: 'Compute yield without assists',
   rendementExcludeAssistsHint:
     'By default, yield (offensive conversion) counts each assist as 1/3 of a kill (Halo ' +
-    'convention). Enable this to ignore assists entirely: yield becomes 229 × kills / ' +
+    'convention). Enable this to ignore assists entirely: yield becomes {{HP}} × kills / ' +
     'damage. Applies everywhere (Home, Timeseries, Sessions, Explorer, Squad, Match view). ' +
     'Off by default.',
 

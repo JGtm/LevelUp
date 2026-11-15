@@ -3,21 +3,12 @@
  * type déclaré une fois (`contract.ts`). Ajouter une langue : un fichier, une ligne ici.
  */
 import type { Locale } from '@/lib/i18n/locale'
+import { substituteHpToken } from '@/lib/damage/effectiveHp'
 import type { HelpText } from './contract'
 import { EN_TEXT } from './en'
 import { FR_TEXT } from './fr'
 
 export type { GlossaryEntry, GlossarySection, HelpTab, HelpText } from './contract'
-
-/**
- * Jeton remplacé par le barème PV-pour-tuer du titre courant dans le copy combat
- * (rendement / résistance). Toutes les valeurs réelles sont à 3 chiffres,
- * ce qui préserve l'alignement des tableaux ASCII après substitution.
- */
-const HP_TOKEN = '{{HP}}'
-
-/** Affiché à la place du barème tant que le bootstrap n'est pas chargé : aucune valeur de repli. */
-const HP_PENDING = '—'
 
 const TEXT: Record<Locale, HelpText> = { fr: FR_TEXT, en: EN_TEXT }
 
@@ -30,8 +21,7 @@ const TEXT: Record<Locale, HelpText> = { fr: FR_TEXT, en: EN_TEXT }
  * ne sont pas tokenisés.
  */
 function withDamageBaseline(text: HelpText, effectiveHpToKill: number | undefined): HelpText {
-  const hp = effectiveHpToKill === undefined ? HP_PENDING : String(Math.round(effectiveHpToKill))
-  const sub = (s: string): string => s.split(HP_TOKEN).join(hp)
+  const sub = (s: string): string => substituteHpToken(s, effectiveHpToKill)
   return {
     ...text,
     glossary: {

@@ -108,12 +108,16 @@ async function optionFor(rows: TimeseriesMatchRow[]) {
 }
 
 describe('TimeseriesEfficiency — taux « une vie » (%)', () => {
-  it("avant le bootstrap, aucune courbe n'est tracée (pas de barème de repli)", async () => {
+  it("avant le bootstrap, rien n'est rendu : ni courbe, ni message « aucune donnée »", async () => {
     setBootstrap(null)
     cleanup()
     captured = null
-    render(<TimeseriesEfficiency rows={[row(0, 916, 4)]} title="Rendement" emptyMessage="vide" {...LABELS} />)
+    const { container } = render(
+      <TimeseriesEfficiency rows={[row(0, 916, 4)]} title="Rendement" emptyMessage="vide" {...LABELS} />,
+    )
     expect(screen.queryByTestId('echarts-mock')).toBeNull()
+    expect(screen.queryByText('vide')).toBeNull() // pas le message « aucune donnée »
+    expect(container).toBeEmptyDOMElement()
     expect(captured).toBeNull()
   })
 

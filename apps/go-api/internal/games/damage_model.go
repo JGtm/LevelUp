@@ -1,6 +1,11 @@
 package games
 
-import "levelup/go-api/internal/games/mappings"
+import (
+	"strconv"
+	"strings"
+
+	"levelup/go-api/internal/games/mappings"
+)
 
 // damage_model.go — résolution title-aware du modèle de dégâts (PV effectifs pour
 // tuer un joueur), baseline des KPI rendement/résistance (offensive_conversion =
@@ -17,6 +22,16 @@ import "levelup/go-api/internal/games/mappings"
 // (TestDefaultEffectiveHpToKill_EgaleLeTOMLDInfinite). La note de performance et le LUSR lisent la valeur
 // CHARGÉE du TOML : l'empreinte de révision (scoring_revision_test.go) la hache, pas cette constante.
 const DefaultEffectiveHpToKill = 229.0
+
+// HPToken est le jeton qui tient la place de la vie effective dans un texte affiché (descriptions de
+// fields.toml, formules des infobulles) : le texte ne porte jamais le nombre, il est substitué à la
+// lecture par la valeur du titre.
+const HPToken = "{{HP}}"
+
+// SubstituteHPToken remplace HPToken par la vie effective hp dans text.
+func SubstituteHPToken(text string, hp float64) string {
+	return strings.ReplaceAll(text, HPToken, strconv.FormatFloat(hp, 'f', -1, 64))
+}
 
 // DamageModelResolver est l'extension OPTIONNELLE d'EndpointResolver qui résout les
 // constantes de modèle de dégâts d'un titre (constants.toml [damage_model]).

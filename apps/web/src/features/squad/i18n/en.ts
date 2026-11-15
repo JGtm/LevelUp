@@ -246,9 +246,9 @@ export const EN_TEXT = {
       impact: 'Impact',
     },
     tooltip: {
-      impact: 'Offensive conversion — 229 × (kills + ass/3) / damage. P80 = 0.83.',
+      impact: 'Offensive conversion — {{HP}} × (kills + ass/3) / damage. P80 = 0.83.',
       combat: 'Kills + headshots + perfect kills, weighted by accuracy.',
-      survival: 'Defensive resistance — damage / (229 × deaths). P80 = 1.59.',
+      survival: 'Defensive resistance — damage / ({{HP}} × deaths). P80 = 1.59.',
       support: 'Assists × 50.',
       score: 'Personal score per minute played. P80 ≈ 195/min.',
       objective: 'Objective participation — the share taken of the team\'s objective in each match (captures, grabs, returns, secures, support kills counted at half…), averaged over objective matches only, from 0 to 100: 50 for a fair share, 100 for double or more. Axis hidden when no objective match.',

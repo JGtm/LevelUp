@@ -9,12 +9,14 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { substituteHpToken, useEffectiveHpToKill } from '@/lib/damage/effectiveHp'
 import { useRecalculateSessions } from '@/features/settings/queries'
 import { ToggleRow, BulletHint, type TabProps } from './_settingsShared'
 
 export function AnalyseTab({ merged, handleChange, t, frozen }: TabProps) {
   const activeSyncJobId = useAppShellStore((s) => s.activeSyncJobId)
   const syncRunning = !!activeSyncJobId
+  const hp = useEffectiveHpToKill()
   const recalculate = useRecalculateSessions()
   const [showRecalcConfirm, setShowRecalcConfirm] = useState(false)
 
@@ -245,7 +247,7 @@ export function AnalyseTab({ merged, handleChange, t, frozen }: TabProps) {
             value={merged.rendement_exclude_assists ?? false}
             onChange={(v) => handleChange('rendement_exclude_assists', v)}
           />
-          <p className="text-xs text-muted-foreground">{t.rendementExcludeAssistsHint}</p>
+          <p className="text-xs text-muted-foreground">{substituteHpToken(t.rendementExcludeAssistsHint, hp)}</p>
         </CardContent>
       </Card>
 

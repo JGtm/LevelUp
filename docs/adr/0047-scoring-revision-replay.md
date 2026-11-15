@@ -90,7 +90,9 @@ once more, not twice).
   loads), Go through `games.EffectiveHpToKill(slug)`, the LUSR and the diagnostic tool through the same resolver. The Go
   constant `games.DefaultEffectiveHpToKill` survives only as the fallback of an unwired resolver (commands outside the
   server, tests of other packages) and a test equals it to the TOML; an archlint guard forbids any other numeric literal
-  225 or 229 in untested Go and TypeScript code.
+  225 or 229 in untested Go and TypeScript code, and in any displayed text (feature dictionaries, i18n manifests, `fields.toml`,
+  server messages): those carry the `{{HP}}` token, substituted from the title value (web `substituteHpToken`, Go
+  `games.SubstituteHPToken`), except mentions qualified "Halo Infinite".
 
 **Hashed parameters.** The fingerprints hash the value LOADED from the title TOML (`TestScoringParameters_LEmpreinteSuitLaValeurDuTOML`), not the Go constant. The performance fingerprint now covers the objective blend settings (`AlphaMin`, `AlphaMax`,
 `SupportSlope`, `MinFamilyMatches`) and `narrative.ObjectiveSupportFragWeight`. The fingerprint does not see a change of logic

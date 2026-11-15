@@ -320,6 +320,9 @@ func RecomputePerformanceScoresWithMedals(ctx context.Context, playerDB, sharedD
 	return batchComputePerformanceScores(ctx, playerDB, sharedDB, xuid, medalMap, force)
 }
 
+// batchComputePerformanceScores calcule les performance_score manquants, ou tous si force=true, et rend le
+// nombre de matchs mis à jour. Chaque match est rattaché à une chaîne (GetPerformanceChain, 7 possibles) et son
+// percentile pondéré se calcule sur les 50 derniers matchs de la MÊME chaîne, dès le MinMatchesPerChainForRelative-ième.
 func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string, medalExploitByMatch map[string]float64, force bool) (int, error) {
 	allMatches, err := loadHistoryForPerf(ctx, sharedDB, xuid)
 	if err != nil {

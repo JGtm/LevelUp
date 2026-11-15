@@ -34,6 +34,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/i18n"
 	"levelup/go-api/internal/observability/timing"
@@ -305,6 +306,8 @@ func (h *FieldMappingsHandler) buildFieldsDTO(set *mappings.FieldMappingSet, loc
 			)
 		}
 		desc, _ := m.Description(locale)
+		// La vie effective d'un texte est le jeton games.HPToken : la valeur du titre, jamais un nombre écrit.
+		desc = games.SubstituteHPToken(desc, games.EffectiveHpToKill(set.TitleSlug()))
 		out[string(m.Key)] = fieldMappingDTO{
 			Label:        label,
 			Description:  desc,

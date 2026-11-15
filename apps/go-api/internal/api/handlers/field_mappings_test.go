@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/i18n"
 )
@@ -436,5 +437,47 @@ func TestFieldMappingsHandler_SeasonsCatalog_LocaleAware(t *testing.T) {
 	// DB-only : identique dans les deux locales.
 	if fr["season14"].Label != "Skyfall" || en["season14"].Label != "Skyfall" {
 		t.Errorf("season14 DB-only label FR=%q EN=%q, want Skyfall/Skyfall", fr["season14"].Label, en["season14"].Label)
+	}
+}
+
+// Une description qui porte le jeton de la vie effective est servie avec la valeur du titre, jamais le
+// jeton brut.
+func TestFieldMappingsHandler_DescriptionRendLaVieDuTitre(t *testing.T) {
+	t.Parallel()
+	const toml = `
+[meta]
+title_slug     = "test_title"
+schema_version = 1
+
+[fields.offensive_conversion]
+labels        = { en = "Efficiency", fr = "Rendement" }
+description   = { en = "{{HP}} × (kills + assists/3) / damage dealt.", fr = "{{HP}} × (frags + assists/3) / dégâts infligés." }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 71
+group         = "derived"
+`
+	set, err := mappings.LoadFieldsFromBytes("test.toml", []byte(toml))
+	if err != nil {
+		t.Fatalf("LoadFieldsFromBytes: %v", err)
+	}
+	h := newHandler(&stubRegistry{set: map[string]*mappings.FieldMappingSet{"test_title": set}})
+	r := chi.NewRouter()
+	r.Route("/api/v1", func(sub chi.Router) { h.Mount(sub) })
+	req := httptest.NewRequest("GET", "/api/v1/titles/test_title/field-mappings?locale=fr", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", w.Code, w.Body.String())
+	}
+	var body fieldMappingsResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	want := games.SubstituteHPToken("{{HP}} × (frags + assists/3) / dégâts infligés.", games.EffectiveHpToKill("test_title"))
+	got := body.Fields["offensive_conversion"].Description
+	if got != want || strings.Contains(got, games.HPToken) {
+		t.Errorf("description = %q, want %q (sans jeton brut)", got, want)
 	}
 }
