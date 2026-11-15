@@ -212,7 +212,13 @@ décisions D-2 et D-4 confirmées par le user sur ces chiffres.
       `toutes` et un filtre de grappe, `perimetreDuSpawn` rend des COPIES des sidecars dont les routes du
       joueur sont réduites aux vies de la grappe (`sidecarsAuxVies`) ; les lectures SQL et « temps » gardent
       la règle d'univers (matchs ayant au moins une vie partie de la grappe). Le détail d'une cellule (`Cellule`)
-      applique le même filtre sous `toutes` (`tactical_service_vies.go`). Témoin avant/après : voir le journal
+      applique le même filtre de grappe, sous `toutes` comme sous `depart` (`tactical_service_vies.go`,
+      `appliquerLeFiltreDeGrappe`).
+      **Décision du user, 2026-11-15 (« ok avec ta reco »)** : le détail d'une cellule applique AUSSI le filtre `spawn`
+      sous `vies=depart` ; il le copiait sans le lire (défaut d'avant le lot), la liste d'une zone cliquée ne suivait donc
+      pas la grappe choisie. Sous `depart` le détail se réduit aux matchs dont la première vie part de la grappe (comme
+      la cellule agrégée, qui compte toutes les routes de ces matchs) ; sous `toutes`, aux routes des vies parties de
+      la grappe. Test : `TestVies_CelluleDepartSousFiltre` (6 contributions sans le correctif, 3 avec). Témoin avant/après : voir le journal
       du lot (annexe `annexes_reapparitions/temoin_lot_B.md`).
 - [x] B.4 Web : bascule « Départ / Toutes les vies » dans la barre de la lecture des grappes ; query keys
       dans `lib/query/keys.ts` ; textes FR et EN ; `make generate-types`.
@@ -310,11 +316,6 @@ Gate D : tests verts, garde-rails du rejeu verts, contrôle à l'écran du user 
   `cmd_spawn_model_zones.go`) ; une troisieme impose de la centraliser.
 - `golangci-lint run --new-from-merge-base=origin/main` demande plus de 20 minutes sur ce poste (4 Go de
   memoire) : le delai par defaut du Makefile (5 min) ne suffit pas ; a lancer avec un delai large.
-- (Lot B) Le détail d'une cellule (`Cellule`) IGNORE le filtre `spawn` sous `depart` : la liste des contributions
-  n'est restreinte ni aux matchs de la grappe ni à rien, alors que la cellule agrégée l'est. Constat sur pièces
-  (`tactical_service_cellule.go` copie `Spawn` sans le lire) ; non traité pour garder `depart` inchangé octet pour
-  octet. Sous `toutes`, le détail applique le filtre (nouveau comportement, sans régression possible). À trancher :
-  l'appliquer aussi sous `depart`.
 - (Lot B) Les sidecars du parc local sont en schéma 6 : refusés à la lecture, la page Tactique n'y montre aucune
   lecture d'artefact ni grappe tant que le rattrapage v7 (geste G7) n'est pas passé.
 - (Lot B) `domain/tactical.go` est à 500 lignes (limite) : toute nouvelle déclaration du périmètre Tactique va dans

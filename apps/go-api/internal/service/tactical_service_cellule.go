@@ -66,7 +66,7 @@ func (s *TacticalService) Cellule(ctx context.Context, req domain.TacticalCellul
 	if s.repo == nil {
 		return out, games.ErrCapabilityNotSupported
 	}
-	dejaLus, err := s.restreindreAuxVies(ctx, req.MapID, &scope)
+	dejaLus, err := s.appliquerLeFiltreDeGrappe(ctx, req.MapID, &scope)
 	if err != nil {
 		return out, err
 	}

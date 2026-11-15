@@ -28,7 +28,7 @@
 - **Une régénération plus rapide** — la régénération des rejeux est plus rapide sur les gros matchs (environ 15 à 25 % de moins), sans changement de ce qui s'affiche
 
 **La Tactique**
-- **Réapparitions : « Départ » ou « Toutes les vies »** — une nouvelle bascule à côté du filtre de réapparition. « Départ » (par défaut) est ce que la Tactique a toujours montré : l'endroit où le match commence. « Toutes les vies » compte chaque apparition, au début et après chaque mort, et regroupe ces endroits en points de réapparition. Avec l'un de ces points choisi, la lecture « Trajets après réapparition » ne montre que la sortie des vies parties de là
+- **Réapparitions : « Départ » ou « Toutes les vies »** — une nouvelle bascule à côté du filtre de réapparition. « Départ » (par défaut) est ce que la Tactique a toujours montré : l'endroit où le match commence. « Toutes les vies » compte chaque apparition, au début et après chaque mort, et regroupe ces endroits en points de réapparition. Avec l'un de ces points choisi, la lecture « Trajets après réapparition » ne montre que la sortie des vies parties de là ; la liste d'une zone cliquée suit aussi le point de réapparition choisi en Départ
 
 **La vue du match et la Mainmise**
 - **Deux graphiques dans l'onglet Chronologie** — « Écart de score » et « Supériorité numérique » (joueurs en vie, bots compris), en aires autour de zéro et aux couleurs des équipes. Avec plus de deux équipes, la comparaison se fait contre la meilleure équipe adverse ; sans rejeu, la carte le dit

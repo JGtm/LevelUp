@@ -1,12 +1,13 @@
 package service
 
-// tactical_service_vies.go — LE PARAMETRE `vies` DANS LE DETAIL D'UNE CELLULE.
+// tactical_service_vies.go — LE FILTRE DE GRAPPE DANS LE DETAIL D'UNE CELLULE.
 //
 // La lecture agregee (`Raster`) applique le filtre de grappe par `perimetreDuSpawn`, avant son
-// dispatch. Le detail d'une cellule d'artefact n'a pas ce passage : il relit ses sidecars
-// match par match. Sous « toutes les vies », il doit pourtant ne lister que les routes des vies
-// qui partent de la grappe, comme la cellule agregee qu'il detaille — sans quoi un clic sur une
-// cellule listerait des vies que la carte ne compte pas.
+// dispatch. Le detail d'une cellule d'artefact n'a pas ce passage de lui-meme : il relit ses
+// sidecars match par match. Il doit pourtant ne lister que ce que la cellule agregee compte —
+// sous `depart`, les matchs dont la premiere vie part de la grappe ; sous `toutes`, ceux qui ont
+// une vie partie de la grappe, et pour « routes » les seules routes de ces vies. Sans quoi un clic
+// sur une cellule listerait des vies que la carte ne compte pas.
 
 import (
 	"context"
@@ -14,13 +15,13 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// restreindreAuxVies resout le filtre de grappe d'un detail de cellule SOUS `toutes` : la liste
-// de matchs du scope est reduite a ceux qui ont une vie partie de la grappe, et les sidecars lus
-// (routes reduites aux vies de la grappe) sont rendus. Sans filtre de grappe, ou sous `depart`,
-// elle ne touche a rien et rend `nil`.
-func (s *TacticalService) restreindreAuxVies(ctx context.Context, carte string,
+// appliquerLeFiltreDeGrappe resout le filtre de grappe d'un detail de cellule, sous les deux
+// valeurs de `vies` : la liste de matchs du scope est reduite a ceux que la grappe retient, et les
+// sidecars lus (routes reduites aux vies de la grappe sous `toutes`) sont rendus. Sans filtre de
+// grappe, elle ne touche a rien et rend `nil`.
+func (s *TacticalService) appliquerLeFiltreDeGrappe(ctx context.Context, carte string,
 	scope *domain.TacticalScope) (map[string]*domain.TacticalRasterSidecar, error) {
-	if scope.Vies != domain.TacticalViesToutes || scope.Spawn == "" {
+	if scope.Spawn == "" {
 		return nil, nil
 	}
 	per, err := s.perimetreDuSpawn(ctx, carte, *scope)

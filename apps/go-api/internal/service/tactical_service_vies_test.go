@@ -279,3 +279,34 @@ func TestVies_CelluleToutes(t *testing.T) {
 		t.Fatalf("sans filtre de grappe : %d contributions, attendu 4 (la route de la premiere vie, dans les 4 matchs)", n)
 	}
 }
+
+// TestVies_CelluleDepartSousFiltre — sous `depart`, le detail d'une cellule applique le filtre de
+// grappe comme la lecture agregee : seuls les matchs dont la premiere vie part de la grappe
+// contribuent. Six matchs, trois partis de chaque base, tous avec une route par la meme cellule :
+// sans le filtre dans le detail, la liste en donnerait six.
+func TestVies_CelluleDepartSousFiltre(t *testing.T) {
+	store, univ, ids := grappesFixture()
+	for _, sc := range store.sidecars {
+		sc.Joueurs[0].Routes = []domain.TacticalRasterRoute{{
+			DebutFrame: 0, Cases: []domain.TacticalRasterCase{{Col: 10, Lig: 10}},
+		}}
+	}
+	svc := svcArtefact(univ, store)
+	grappes := lireEnVies(t, svc, domain.TacticalQuestionRoutes, "", "", ids).Grappes
+	if len(grappes) != 2 {
+		t.Fatalf("grappes = %+v, attendu 2", grappes)
+	}
+	if n := len(celluleEnVies(t, svc, "", "", ids, 10).Contributions); n != 6 {
+		t.Fatalf("sans filtre : %d contributions, attendu 6", n)
+	}
+	got := celluleEnVies(t, svc, domain.TacticalViesDepart, grappes[0].ID, ids, 10)
+	if len(got.Contributions) != 3 {
+		t.Fatalf("sous filtre de grappe : %d contributions, attendu 3 (les matchs partis de la grappe)", len(got.Contributions))
+	}
+	premiere := got.Contributions[0].MatchID[:1]
+	for _, c := range got.Contributions {
+		if c.MatchID[:1] != premiere {
+			t.Fatalf("contributions de deux bases sous le filtre : %+v", got.Contributions)
+		}
+	}
+}

@@ -42,3 +42,19 @@ Ce que le test d'égalité ne couvre pas, `depart` explicite contre vide, est te
 Carte `9e821f5e` (58 matchs), lecture `routes` : 3 grappes sous `depart`, 56 sous `toutes`. Sous `toutes` et le
 filtre d'une grappe, les routes comptées passent de 2 786 cellules (sans filtre) à 73 à 105 cellules selon la grappe
 (matchs retenus : 16 à 18), c'est-à-dire seulement les routes des vies parties de la grappe.
+
+## Second témoin : le détail de cellule suit aussi le filtre de grappe sous `depart` (2026-11-15)
+
+Décision du user (« ok avec ta reco ») : le détail d'une cellule applique le filtre `spawn` sous `depart` comme sous
+`toutes`. Même méthode (mêmes trois cartes, sidecars régénérés sur une copie, même test jetable, sans paramètre `vies`),
+AVANT = la sortie du lot B (`avant.json`, 92e8efb2...), APRÈS = l'arbre avec le correctif (`apres_fix.json`).
+
+| Partie de la sortie | Empreinte avant | Empreinte après | Verdict |
+|---|---|---|---|
+| tout sauf le détail de cellule sous un filtre de grappe (rasters `temps` et `routes` avec ou sans grappe, détail de cellule SANS filtre de grappe) | `cc33577ffd08f114` | `cc33577ffd08f114` | identique |
+| détail de cellule sous un filtre de grappe (10 détails : 4 + 3 + 3 grappes) | `3f6b00868b6368e2` | `ce1ce1b691806c7c` | différent, voulu |
+
+Le détail sous filtre listait avant TOUS les matchs de la carte quelle que soit la grappe (45 contributions sur la
+cellule la plus chaude de la première carte, pour chacune de ses quatre grappes) ; il se réduit après aux matchs de la
+grappe : 9, 12, 6 et 18 (soit 45 au total), 7 et 5 sur deux grappes de la deuxième carte (28 avant). Les 10 détails
+changent, aucun autre octet.
