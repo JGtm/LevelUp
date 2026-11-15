@@ -44,6 +44,14 @@ type ManualSyncService interface {
 	StartSyncAll(ctx context.Context, caller SyncCaller) (*domain.AsyncJobStatus, error)
 }
 
+// SyncStatusService dit où en est la synchronisation d'un joueur.
+type SyncStatusService interface {
+	// PlayerSyncStatus rend l'état de la synchronisation du joueur : en vol (toutes sources), job actif
+	// ou dernier job conservé, délai restant du sync manuel. SyncErrPlayerNotFound si le joueur n'est
+	// pas suivi.
+	PlayerSyncStatus(ctx context.Context, playerSlug string) (*domain.PlayerSyncStatus, error)
+}
+
 // BackfillService lance le rattrapage des données manquantes d'un joueur.
 type BackfillService interface {
 	// StartBackfill valide le joueur (suivi dans le titre demandé), crée le job de rattrapage et le
@@ -62,6 +70,7 @@ type SessionsRecalcService interface {
 type SyncService interface {
 	InitialSyncService
 	ManualSyncService
+	SyncStatusService
 }
 
 // SyncJobService regroupe les quatre services : une seule implémentation les porte.

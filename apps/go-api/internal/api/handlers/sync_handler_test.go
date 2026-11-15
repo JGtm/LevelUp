@@ -29,6 +29,8 @@ import (
 type fakeJobService struct {
 	job *domain.AsyncJobStatus
 	err error
+	// status : état rendu par PlayerSyncStatus.
+	status *domain.PlayerSyncStatus
 	// enabledErr : refus de CheckInitialSyncEnabled.
 	enabledErr error
 
@@ -84,6 +86,15 @@ func (f *fakeJobService) StartBackfill(_ context.Context, c port.SyncCaller, req
 func (f *fakeJobService) StartSessionsRecalc(context.Context) (*domain.AsyncJobStatus, error) {
 	f.record("recalc", port.SyncCaller{})
 	return f.job, f.err
+}
+
+func (f *fakeJobService) PlayerSyncStatus(_ context.Context, slug string) (*domain.PlayerSyncStatus, error) {
+	f.record("status", port.SyncCaller{})
+	f.slug = slug
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.status, nil
 }
 
 func (f *fakeJobService) called() []string {
@@ -392,5 +403,46 @@ func TestBackfillHandler_RefusDuService(t *testing.T) {
 				t.Errorf("(code, message) = (%q, %q), attendu (%q, %q)", code, message, c.code, c.message)
 			}
 		})
+	}
+}
+
+// GET /players/{slug}/sync/status rend l'état du service tel quel (job du joueur, délai restant).
+func TestSyncHandler_StatusDuJoueur(t *testing.T) {
+	svc := newFakeJobService()
+	svc.status = &domain.PlayerSyncStatus{
+		PlayerSlug: "jgtm", Syncing: true, CooldownRetryAfterSec: 42,
+		Job: &domain.AsyncJobStatus{JobID: "job-7", JobType: string(domain.JobTypeInitialSync), Status: domain.JobStatusRunning, PlayerSlug: "jgtm"},
+	}
+	r := syncRouter(svc, nil)
+	req := httptest.NewRequest(http.MethodGet, "/players/jgtm/sync/status", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("statut %d : %s", w.Code, w.Body.String())
+	}
+	var got struct {
+		PlayerSlug string `json:"player_slug"`
+		Syncing    bool   `json:"syncing"`
+		Cooldown   int    `json:"cooldown_retry_after_s"`
+		Job        struct {
+			JobID string `json:"job_id"`
+		} `json:"job"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.PlayerSlug != "jgtm" || !got.Syncing || got.Cooldown != 42 || got.Job.JobID != "job-7" || svc.slug != "jgtm" {
+		t.Errorf("réponse inattendue : %s", w.Body.String())
+	}
+}
+
+// Un joueur non suivi : 404 player_not_found.
+func TestSyncHandler_StatusJoueurInconnu(t *testing.T) {
+	svc := newFakeJobService()
+	svc.err = &port.SyncJobError{Kind: port.SyncErrPlayerNotFound, PlayerSlug: "x"}
+	w := httptest.NewRecorder()
+	syncRouter(svc, nil).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/players/x/sync/status", nil))
+	if code, _ := errorBody(t, w); w.Code != http.StatusNotFound || code != "player_not_found" {
+		t.Fatalf("404 player_not_found attendu, obtenu %d %s", w.Code, w.Body.String())
 	}
 }

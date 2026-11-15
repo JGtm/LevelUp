@@ -172,3 +172,29 @@ func TestStore_TTL_ExpiredJobReturnsNil(t *testing.T) {
 		t.Fatal("expired job should return nil")
 	}
 }
+
+// LatestSyncJob : l'actif d'abord, sinon le terminé le plus récent ; les jobs des autres joueurs et des
+// autres types ne comptent pas.
+func TestStore_LatestSyncJob(t *testing.T) {
+	store := newTestStore(t)
+	if store.LatestSyncJob("p1") != nil {
+		t.Fatal("aucun job : nil attendu")
+	}
+	old := store.Create(domain.JobTypeInitialSync, "p1")
+	store.SetStatus(old.JobID, domain.JobStatusFailed, nil)
+	time.Sleep(5 * time.Millisecond)
+	recent := store.Create(domain.JobTypeInitialSync, "p1")
+	store.SetStatus(recent.JobID, domain.JobStatusSucceeded, nil)
+	store.Create(domain.JobTypeBackfill, "p1") // autre type : ignoré
+	autre := store.Create(domain.JobTypeInitialSync, "p2")
+	store.SetStatus(autre.JobID, domain.JobStatusRunning, nil) // autre joueur : ignoré
+
+	got := store.LatestSyncJob("p1")
+	if got == nil || got.JobID != recent.JobID {
+		t.Fatalf("le terminé le plus récent de p1 attendu (%s), obtenu %+v", recent.JobID, got)
+	}
+	active := store.Create(domain.JobTypeInitialSync, "p1")
+	if got := store.LatestSyncJob("p1"); got == nil || got.JobID != active.JobID {
+		t.Fatalf("l'actif prime sur un terminé : %s attendu, obtenu %+v", active.JobID, got)
+	}
+}

@@ -52,6 +52,30 @@ func (f *fakeSyncJobStore) FindActiveInitialSync(playerSlug string) *domain.Asyn
 	return f.FindActiveJob(domain.JobTypeInitialSync, playerSlug)
 }
 
+// LatestSyncJob : l'actif, sinon le terminé dont le slug de job est le plus grand (ordre de création).
+func (f *fakeSyncJobStore) LatestSyncJob(playerSlug string) *domain.AsyncJobStatus {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var best *domain.AsyncJobStatus
+	for id, j := range f.jobs {
+		if j.JobType != string(domain.JobTypeInitialSync) || j.PlayerSlug != playerSlug {
+			continue
+		}
+		if !j.IsTerminal() {
+			cp := *j
+			return &cp
+		}
+		if best == nil || id > best.JobID {
+			best = j
+		}
+	}
+	if best == nil {
+		return nil
+	}
+	cp := *best
+	return &cp
+}
+
 func (f *fakeSyncJobStore) Update(jobID string, fn func(*domain.AsyncJobStatus)) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()

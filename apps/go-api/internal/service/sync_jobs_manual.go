@@ -18,7 +18,7 @@ import (
 // StartDeltaSync lance la sync delta d'un joueur. Contrairement à la sync initiale, elle n'est pas
 // soumise à can_start_initial_sync.
 func (s *SyncJobService) StartDeltaSync(ctx context.Context, caller port.SyncCaller, playerSlug string) (*domain.AsyncJobStatus, error) {
-	if err := s.guardManualDeltaSync(ctx, caller, "delta:"+playerSlug); err != nil {
+	if err := s.guardManualDeltaSync(ctx, caller, manualDeltaKey(playerSlug)); err != nil {
 		return nil, err
 	}
 	if s.jobs.FindActiveInitialSync(playerSlug) != nil {
@@ -147,6 +147,25 @@ func (s *SyncJobService) guardManualDeltaSync(ctx context.Context, caller port.S
 		return &port.SyncJobError{Kind: port.SyncErrCooldown, RetryAfter: retry}
 	}
 	return nil
+}
+
+// manualDeltaKey est la clé du délai du sync manuel delta d'un joueur.
+func manualDeltaKey(playerSlug string) string { return "delta:" + playerSlug }
+
+// manualSyncCooldownLeft rend le délai restant du sync manuel pour key, sans rien enregistrer ; 0 si
+// le délai est désactivé, écoulé ou jamais déclenché.
+func (s *SyncJobService) manualSyncCooldownLeft(key string) time.Duration {
+	if s.cooldown <= 0 {
+		return 0
+	}
+	s.cooldownMu.Lock()
+	defer s.cooldownMu.Unlock()
+	if last, ok := s.lastManualAt[key]; ok {
+		if elapsed := time.Since(last); elapsed < s.cooldown {
+			return s.cooldown - elapsed
+		}
+	}
+	return 0
 }
 
 // tryManualSyncCooldown vérifie ET enregistre, atomiquement, le cooldown du sync manuel pour key : un

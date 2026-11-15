@@ -63,12 +63,33 @@ func (h *SyncHandler) MountInitialAndAll(r chi.Router, opts ...humacore.MountOpt
 		humacore.DefaultStatus(http.StatusAccepted))
 }
 
-// MountDelta enregistre la route /sync via Huma sur le sous-routeur chi (préfixe /players/{player_slug}
-// + middleware hérités — lit {player_slug} parent).
+// MountDelta enregistre les routes /sync (lancer) et /sync/status (état) via Huma sur le sous-routeur
+// chi (préfixe /players/{player_slug} + middleware hérités — lit {player_slug} parent).
 func (h *SyncHandler) MountDelta(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
 	huma.Post(api, "/sync", h.StartDeltaSync, humacore.Op("postPlayerSync", "Sync delta par joueur", "sync"),
 		humacore.DefaultStatus(http.StatusAccepted))
+	huma.Get(api, "/sync/status", h.GetPlayerSyncStatus,
+		humacore.Op("getPlayerSyncStatus", "Statut de la synchronisation d'un joueur", "sync"))
+}
+
+// syncStatusOutput : corps = état de la synchronisation du joueur.
+type syncStatusOutput struct {
+	Body *domain.PlayerSyncStatus
+}
+
+// GetPlayerSyncStatus rend l'état de la synchronisation du joueur : en vol (toutes sources), job actif
+// ou dernier job conservé, délai restant du sync manuel.
+// GET /api/v1/players/{player_slug}/sync/status -> 200 PlayerSyncStatus.
+func (h *SyncHandler) GetPlayerSyncStatus(ctx context.Context, in *syncDeltaInput) (*syncStatusOutput, error) {
+	if in.PlayerSlug == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_player_slug", "player_slug manquant.")
+	}
+	status, err := h.svc.PlayerSyncStatus(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, syncJobHTTPError(ctx, err)
+	}
+	return &syncStatusOutput{Body: status}, nil
 }
 
 // StartInitialSync lance la sync initiale d'un joueur.

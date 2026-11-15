@@ -6757,6 +6757,31 @@ paths:
       summary: Sync delta par joueur
       tags:
         - sync
+  /players/{player_slug}/sync/status:
+    get:
+      operationId: getPlayerSyncStatus
+      parameters:
+        - in: path
+          name: player_slug
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerSyncStatus'
+          description: OK
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: Error
+      summary: Statut de la synchronisation d'un joueur
+      tags:
+        - sync
   /players/{player_slug}/tactical/{map_id}/background:
     get:
       operationId: getTacticalMapBackground
@@ -23891,6 +23916,26 @@ components:
         - waypoint_player
         - is_demo
         - sync_enabled
+      type: object
+    PlayerSyncStatus:
+      additionalProperties: false
+      properties:
+        cooldown_retry_after_s:
+          description: Secondes avant qu'un sync manuel soit de nouveau accepté ; 0 = accepté.
+          format: int64
+          type: integer
+        job:
+          $ref: '#/components/schemas/AsyncJobStatus'
+          description: Job de sync actif du joueur, sinon le plus récent encore conservé.
+        player_slug:
+          type: string
+        syncing:
+          description: Une synchronisation de ce joueur est en vol, quelle qu'en soit la source.
+          type: boolean
+      required:
+        - player_slug
+        - syncing
+        - cooldown_retry_after_s
       type: object
     PlayerTokenHealth:
       additionalProperties: false
