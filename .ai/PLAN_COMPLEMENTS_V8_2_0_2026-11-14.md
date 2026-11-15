@@ -153,13 +153,13 @@ avant/après capturé) ; relecture indépendante sans P0/P1 ; notes de version e
 - [x] 9.1 `SquadAppuiCard.tsx` en flux assistant → finisseur (D-10), même forme sur la page Match (`MatchAssistChart`) ; textes FR/EN à la voix active ; garde-rail `vocabulaireCoordination.guard.test.ts` ajusté ; infobulles de ruban et de joueur. Fait (voie escouade, dernier commit de la voie) : `features/_shared/assists/` (logique, option `sankey`, composant, textes FR/EN UNIQUES des deux pages), `matchAssistFlow.logic.ts`, garde-rail étendu à `match-view` et aux textes partagés (larbin, patron, minion, lackey, boss, « a été assisté »), props devenues sans appelant retirées de `components/charts/BarStackedChart.tsx` avec leurs tests.
 
 ### Étape 10 — Backlog retenu
-- [x] 10.1 Code d'appareil : distinguer services Halo injoignables d'un refus de compte (`handlers/auth.go`, `pollDeviceFlow`). Fait (257c065693) : code `halo_unreachable`, texte propre dans chaque langue.
-- [x] 10.2 Accueil : état réel du sync au lieu de `total_matches == 0` (`features/home/HomePage.tsx`). Fait (f29db130b1, textes précisés au commit final) : six états, `HomeFirstSync`.
-- [x] 10.3 Signalements : version de l'application depuis `/bootstrap`. Fait (1e66a1471b) : `app_info.version`, absente sur le site (reste « unknown »).
-- [x] 10.4 ADR 0020 (`PatternReport`) et 0006 (quotient) corrigés. Fait (a29ed95528) : amendements datés du 2026-11-14, historique conservé.
-- [x] 10.5 `gate-push` : budget des trois paquets lourds. Fait (00c94934b6) : `archlint`, `ops`, `sync` rejoués à part sous `GATE_PUSH_HEAVY_TIMEOUT` (40m), 300 s pour les autres.
-- [x] 10.6 `desktop-test` : binaire vide nettoyé ou ignoré par `TestLesBinairesDeAppsSontCouverts`. Fait (11596dd790) : le balayage ignore le sidecar que git ne suit pas (vide ou plein), garde-rail sur le `.gitignore`.
-- [x] 10.7 Badge du rejeu testé au niveau de la page. Fait (2e629ab96e) : `ReplayPage.cadenceBadge.test.tsx`, vérifié par mutation (retirer la prop fait rougir).
+- [x] 10.1 Code d'appareil : distinguer services Halo injoignables d'un refus de compte (`handlers/auth.go`, `pollDeviceFlow`). Fait (5888730f07) : code `halo_unreachable`, texte propre dans chaque langue.
+- [x] 10.2 Accueil : état réel du sync au lieu de `total_matches == 0` (`features/home/HomePage.tsx`). Fait (f6c83a1635, textes précisés au commit final) : six états, `HomeFirstSync`.
+- [x] 10.3 Signalements : version de l'application depuis `/bootstrap`. Fait (832d9b0768) : `app_info.version`, absente sur le site (reste « unknown »).
+- [x] 10.4 ADR 0020 (`PatternReport`) et 0006 (quotient) corrigés. Fait (996515e0af) : amendements datés du 2026-11-14, historique conservé.
+- [x] 10.5 `gate-push` : budget des trois paquets lourds. Fait (6a0ae952af) : `archlint`, `ops`, `sync` rejoués à part sous `GATE_PUSH_HEAVY_TIMEOUT` (40m), 300 s pour les autres.
+- [x] 10.6 `desktop-test` : binaire vide nettoyé ou ignoré par `TestLesBinairesDeAppsSontCouverts`. Fait (58838ed574) : le balayage ignore le sidecar que git ne suit pas (vide ou plein), garde-rail sur le `.gitignore`.
+- [x] 10.7 Badge du rejeu testé au niveau de la page. Fait (efe5c29da8) : `ReplayPage.cadenceBadge.test.tsx`, vérifié par mutation (retirer la prop fait rougir).
 
 ### Étape 11 — Clôture
 - [ ] 11.1 Relecture indépendante (contexte frais, `adversarial-review`) du diff complet ; annonce du SHA à `levelup-dd`.
@@ -256,4 +256,4 @@ Entrées film (`levelup-1f`), pseudos réels, alerte glib, toute recuisson.
   - 10.5 [x] `check_test_baseline.sh` : `run_duckdb_lane` joue les paquets légers à 300 s puis `archlint`, `ops`, `sync` à part sous `GATE_PUSH_HEAVY_TIMEOUT` (40m par défaut), un seul JSONL, chemins relatifs au module (ligne de commande de 7,6 Ko). Sonde avec `go` simulé : partition exacte (298 paquets, trois lourds). La CI n'est pas touchée (lots de `.github/ci/go-shards.txt` et timeouts propres). Aucun autre budget relâché.
   - 10.6 [x] `serveurDeLaCoquilleNonSuivi` (motif `desktop/src-tauri/binaries/*.exe`) dans le balayage de `apps/` : choix plus sûr que le nettoyage par `desktop-test`, qui ne couvrirait pas le vrai serveur de `desktop-dev` ; un fichier vide ne peut rien cacher et git ne suit pas ces fichiers. `TestLeMotifDuServeurSuitLeGitignore` rougit si la ligne du `.gitignore` disparaît. Vérifié avec un serveur vide réel posé sous `binaries/` : `TestLesBinairesDeAppsSontCouverts` vert (131 s pour le paquet). `apps/desktop` non touché : pas de `make desktop-test`.
   - 10.7 [x] test de page monté sur le vrai `ReplayPage`, la vraie requête et le vrai badge (routeur simulé, document Go réel sans piste) ; mutation : sans la prop `cadenceStale`, le cas « pas périmé » reste vert et le cas « périmé » rougit.
-  - Gates : Go `go vet` et `go test` sur `platform/auth`, `api/handlers`, `util`, `service` (dont `TestReleaseNotesDocs`), `archlint`, `cmd/anonymise-gamertags` ; web `tsc`, `vitest` complet, `eslint` (0 erreur), les quatre outils racine ; notes de version et changelog FR/EN (ba99c54376).
+  - Gates : Go `go vet` et `go test` sur `platform/auth`, `api/handlers`, `util`, `service` (dont `TestReleaseNotesDocs`), `archlint`, `cmd/anonymise-gamertags` ; web `tsc`, `vitest` complet, `eslint` (0 erreur), les quatre outils racine ; notes de version et changelog FR/EN (e87da95a52).
