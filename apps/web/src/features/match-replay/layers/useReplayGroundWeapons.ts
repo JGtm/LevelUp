@@ -126,6 +126,12 @@ export interface GroundWeaponsInput {
    */
   nameOfSlot: (slot: number, frame: number) => string | null
   locale: ReplayLocale
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : faux quand l'arme est retirée de la carte — elle appartient à
+   * celui qui l'a lâchée et à celui qui l'a reprise. Une arme sans lâcheur ni ramasseur lu reste. Absent
+   * = tout se dessine. Le filtre n'agit que sur le TRACÉ et le SURVOL, jamais sur la disponibilité.
+   */
+  shown?: (w: ReplayGroundWeapon) => boolean
 }
 
 export interface GroundWeapons {
@@ -198,6 +204,7 @@ export function useReplayGroundWeapons({
   frameRef,
   nameOfSlot,
   locale,
+  shown,
 }: GroundWeaponsInput): GroundWeapons {
   const labels = doc.weaponLabels
   const titleSlug = useTitleSlug()
@@ -225,6 +232,10 @@ export function useReplayGroundWeapons({
     () => visibleGroundWeapons(candidates, doc.loadouts, includeStarting),
     [candidates, doc.loadouts, includeStarting],
   )
+
+  // CE QUI SE DESSINE ET SE SURVOLE : les vignettes se chargent pour tout `items`, un filtre qui bascule ne
+  // les recharge pas.
+  const drawn = useMemo(() => (shown ? items.filter(shown) : items), [items, shown])
 
   // UNE TABLE PAR RÉFÉRENCE, pas un état : la remplir ne doit pas re-rendre la page (la boucle
   // de dessin la lit pendant qu'elle peint). Même règle que les vignettes de socle et de
@@ -260,19 +271,19 @@ export function useReplayGroundWeapons({
 
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D, frame: number, k: number) => {
-      if (!enabled || items.length === 0) return
-      drawGroundWeaponsLayer(ctx, items, view, { frame, k }, {
+      if (!enabled || drawn.length === 0) return
+      drawGroundWeaponsLayer(ctx, drawn, view, { frame, k }, {
         iconOf: (weapon) => iconsRef.current.get(weapon) ?? null,
       })
     },
-    [enabled, items, view],
+    [enabled, drawn, view],
   )
 
   const [hover, setHover] = useState<GroundWeaponHover | null>(null)
 
   const onPointerMove = useCallback(
     (event: PointerEvent<HTMLCanvasElement>) => {
-      if (!enabled || items.length === 0 || view.width === 0) {
+      if (!enabled || drawn.length === 0 || view.width === 0) {
         setHover((prev) => (prev === null ? prev : null))
         return
       }
@@ -283,7 +294,7 @@ export function useReplayGroundWeapons({
       const kx = rect.width > 0 ? view.width / rect.width : 1
       const ky = rect.height > 0 ? view.height / rect.height : 1
       const at = { x: (event.clientX - rect.left) * kx, y: (event.clientY - rect.top) * ky }
-      const found = groundWeaponAt(items, view, frameRef.current, window.devicePixelRatio || 1, at)
+      const found = groundWeaponAt(drawn, view, frameRef.current, window.devicePixelRatio || 1, at)
       setHover((prev) => {
         if (!found) return prev === null ? prev : null
         const next: GroundWeaponHover = {
@@ -308,7 +319,7 @@ export function useReplayGroundWeapons({
         return next
       })
     },
-    [enabled, items, view, frameRef, labels, t, locale, nameOfSlot, doc],
+    [enabled, drawn, view, frameRef, labels, t, locale, nameOfSlot, doc],
   )
 
   const onPointerLeave = useCallback(() => {

@@ -11,14 +11,45 @@
  * prédicat par genre d'élément et n'embarque aucune règle. Les calques de pions (pistes, tirs, traces des
  * vies, projectiles) gardent `shownAtSlot` : ils portent déjà un slot et une image dans la vie de leur auteur.
  */
-import { killFxShown, type PlayerFocus } from './playerPanelLogic'
+import type { ReplayGroundWeapon } from '@/lib/api/types'
+
 import type { KillFxEntry } from './killFx'
+import { lifeSlotAt } from './livesMarks'
+import { buildLivesBySlot } from './livesPosition'
+import {
+  killFxShown,
+  ownershipShown,
+  type ElementParty,
+  type PlayerFocus,
+} from './playerPanelLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /** Un prédicat par genre d'élément : vrai = l'élément se dessine. */
 export interface FocusFilter {
   /** Un effet de mort : tueur et victime. */
   killFx: (e: KillFxEntry) => boolean
+  /** Une arme au sol : celui qui l'a lâchée et celui qui l'a reprise. */
+  groundWeapon: (w: Pick<ReplayGroundWeapon, 'dropper' | 'picker' | 't0' | 't1'>) => boolean
+}
+
+/**
+ * Le slot d'un élément daté À UN INSTANT, ramené à une partie DANS la vie de son auteur. Les éléments
+ * lâchés à la mort sont datés une image APRÈS la fin de la vie (`t0 = finVie + 1`) : le slot est alors
+ * lu dans la vie qui vient de finir — la même frontière que `ownerAtFrameOrLast`. Un slot négatif (aucun
+ * auteur mesuré) ou sans vie avant l'image n'a pas de partie : rien n'est deviné.
+ */
+function slotParty(
+  bySlot: ReturnType<typeof buildLivesBySlot>,
+  slot: number,
+  frame: number,
+): ElementParty | null {
+  if (slot < 0) return null
+  const life = lifeSlotAt(bySlot.get(slot), frame, Number.POSITIVE_INFINITY)
+  return life ? { life } : null
+}
+
+function present(...parties: Array<ElementParty | null>): ElementParty[] {
+  return parties.filter((p): p is ElementParty => p !== null)
 }
 
 /**
@@ -26,9 +57,15 @@ export interface FocusFilter {
  * ni Masquer) : les calques gardent alors exactement leur dessin d'avant.
  */
 export function buildFocusFilter(
-  _doc: ReplayDocumentReady,
+  doc: ReplayDocumentReady,
   focus: PlayerFocus | null,
 ): FocusFilter | null {
   const killFx = killFxShown(focus)
-  return killFx ? { killFx } : null
+  const shown = ownershipShown(focus)
+  if (!killFx || !shown) return null
+  const bySlot = buildLivesBySlot(doc.tracks)
+  return {
+    killFx,
+    groundWeapon: (w) => shown(present(slotParty(bySlot, w.dropper, w.t0), slotParty(bySlot, w.picker, w.t1))),
+  }
 }

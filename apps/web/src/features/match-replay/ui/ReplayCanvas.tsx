@@ -400,7 +400,7 @@ export function ReplayCanvas({
     doc, view: canvasView, enabled: showGroundWeapons, specialOnly: showGroundWeaponsSpecialOnly,
     includeStarting: showGroundWeaponsStarting,
     ink: { fill: markInk.fill, outline: neutralInk }, redraw,
-    frameRef, nameOfSlot, locale,
+    frameRef, nameOfSlot, locale, shown: focusShown?.groundWeapon,
   })
   // `showNames: true` : le calque des noms a quitte les réglages le 2026-09-02 (toujours allume).
   // BORNAGE HORS CADRE (lot 4.4, 2026-09-10) : `offscreenLabelOf`/`offscreenGroupLabelOf`
