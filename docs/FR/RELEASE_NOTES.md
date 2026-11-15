@@ -1,5 +1,12 @@
 ## Dernières nouveautés
 
+**v8.2.1 — Le film lu plus complètement : médailles, tableau des scores, présence et bots**
+
+- **Toutes les médailles nommées** — les 157 médailles du jeu sont lues dans le film avec leur vrai nom. Le rejeu ne les affiche pas encore
+- **Un tableau des scores juste pour tous les joueurs** — chaque ligne du tableau des scores de fin de match est rattachée au bon joueur, y compris sur les matchs à plusieurs manches, et les compteurs de tous les sièges sont lus (au-delà de huit joueurs). Le rejeu n'affiche pas encore ces compteurs
+- **La présence exacte des joueurs** — qui était dans le match, et quand chacun est arrivé et parti, se lit dans les listes du jeu : un joueur arrivé en cours de match n'est plus montré avant son arrivée
+- **La bonne place des arrivants, et les bots nommés** — quand des bots complètent un match, un joueur qui arrive prend la place qu'il avait vraiment, et les bots gardent leur nom
+
 **v8.2 — Un rejeu plus complet, des fonds de carte plus justes, la Mainmise, de nouveaux graphiques de match et des rejeux compressés**
 
 **Le rejeu**

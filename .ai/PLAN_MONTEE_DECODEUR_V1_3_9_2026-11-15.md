@@ -54,13 +54,15 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
 
 ## E3 — LevelUp sur v1.3.9 publiée
 
-- [ ] `go.mod` / `go.sum` sur `v1.3.9` (jamais une pseudo-version), GOWORK retiré.
-- [ ] Gates SANS GOWORK : suite Go, `replay-equiv` (20/20), intégration du rejeu, vitest du rejeu, `make gate-push`.
-- [ ] Notes de version et changelog FR/EN (ligne « Briques publiées »), `.ai/thought_log.md`.
-- [ ] Rebase sur la tête de `release/v8.2.0`, poussée sur CI verte ; SHA à levelup-dd.
+- [x] `go.mod` / `go.sum` sur `v1.3.9` (`go get`, pas de `go mod tidy`, ni pseudo-version ni replace), GOWORK retiré (GOWORK=off partout).
+- [!] Gates SANS GOWORK : suite Go (227 paquets ok), `replay-equiv` 20/20 contre le module publié, intégration du rejeu, vitest (366 fichiers, 4 947 tests),
+      `tsc`, `eslint`, `golangci-lint` (0 issue) verts ; `make gate-push` décomposé (jonction node_modules vs go test sur apps/web) : seule la
+      baseline de présence échoue, `internal/platform/duckdb` dépasse `-timeout=300s` sous `-tags=integration` (177 tests absents du run) ; voir Journal.
+- [x] Notes de version et changelog FR/EN (ligne « Briques publiées ») rangés sous 8.2.1, `.ai/thought_log.md`.
+- [~] Rebase sur la tête de `origin/release/v8.2.0` fait (sans conflit) ; rebase sur `release/v8.2.1` et poussée : geste du pilote.
 - [ ] Prévenir levelup-d0 (croix des morts sans type) ; artefact des vérifications (lignes du rejeu + médailles).
 
-## E4 — Parc (gestes à accord du user)
+## E4 — Parc (gestes à accord du user) — REPORTÉ À LA 8.2.1 (décision du user, 2026-11-15 soir)
 
 - [ ] (ACCORD DU USER 2026-11-15 : « tu as mon accord pour regen les rejeux » ; à lancer après E3, binaire sur
       v1.3.9, sessions paires prévenues) Régénération du parc, UNE fois, sur accord explicite du user ; serveur local arrêté ; compte de films
@@ -69,6 +71,10 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
       geste du user, rien vers le VPS sans lui).
 
 ## Découvertes
+
+- La baseline de présence du filet local (`check_test_baseline.sh tests`, `-tags=integration -timeout=300s -p 1`) échoue sur `internal/platform/duckdb` (177 tests
+  absents du run) : le paquet dépasse 300 s sous `-tags=integration`, à l'identique sur l'archive de `origin/release/v8.2.0` sans ma branche (v1.3.7, même panique de
+  délai) ; sans le tag il passe en 132 s. Antérieur à la montée, hors périmètre.
 
 - `f75e7053` ne peut plus entrer au gate du corpus : absent du registre depuis la purge du 2026-10-26 (et aucun artefact de parc). Son remplacement
   ou son retrait du manifeste est hors de cette montée, à porter au backlog.
@@ -197,3 +203,16 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
   0 PERTE, 0 décision « sans effet » ; 11 constats « accepté » au banc. Témoins ok : `bcb6d393`, `fb1a1a72`, `d9781168`, `c75f33b8`, `bf15f7ab`, `51ebbc0f`,
   `084a804d`, `0797ce72`, `111fa685`, `e5adf7b2`, `60ae07c4`, `a349fea8`, `a521164d`, `11de8353`, `50247b26`, `bfecd02b`, `4f77afc1`, `396cfc92`
   (schéma 116 vers 124 pour tous).
+- 2026-11-15 (soir), DÉCISION DU USER relayée par levelup-dd : la 8.2.0 sort SANS la montée et reste sur v1.3.7 ; la montée v1.3.9 part en 8.2.1.
+  Conséquences : la branche `feat/monte-decodeur-v139` garde pour base la tête de `origin/release/v8.2.0` (rebasée le 2026-11-15, sans conflit,
+  5 commits) ; une `release/v8.2.1` partira de `main` après le squash de la 8.2.0 et la branche sera rebasée dessus ; notes de version et
+  changelog rangés sous 8.2.1 (sections créées seulement, aucun numéro de version de l'application touché) ; E4 (régénération du parc) REPORTÉ
+  à la 8.2.1 : on ne régénère RIEN tant que le serveur de la 8.2.0 lit du 116.
+- 2026-11-15/16, E3 (sans GOWORK, v1.3.9 publiée) : rebase sur `origin/release/v8.2.0` (79de94b977) sans conflit ; `go get` v1.3.9 (go.mod : une ligne, go.sum : deux lignes).
+  `go build`, `go vet`, `go test ./...` : 227 paquets ok, 71 sans test, 0 échec ; intégration (`-tags=integration`) de `replaybuild`, `sync/filmfetch`,
+  `sync/killcollector`, `sync/replayartifacts` : ok ; `replay-equiv` contre le module publié : 20 identiques sur 20 (fin 23:41:35, verrou de décodage rendu) et de
+  nouveau 20 sur 20 par `make replay-equiv` (fin 23:58:37) ; `tsc` vert ; `eslint` 0 erreur (26 avertissements existants) ; vitest du rejeu 362 fichiers
+  passés (4 skip) et 4 947 tests ; `golangci-lint --new-from-merge-base=origin/main` : 0 issue ; baseline de présence : en échec sur `platform/duckdb`
+  uniquement (voir Découvertes), tous les autres paquets présents et verts. `make gate-push` décomposé en ses étapes (lint Go, `replay-equiv`, typecheck, lint web,
+  baseline) parce que la jonction `node_modules` fait échouer un test Go qui parcourt `apps/web`. Notes de version et changelog FR/EN sous 8.2.1 (sections créées ;
+  aucun numéro de version de l'application touché ; date de section 2026-11-15 à ajuster à la sortie).

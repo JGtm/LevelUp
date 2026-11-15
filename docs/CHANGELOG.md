@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [8.2.1] - 2026-11-15
+
+> The film decoder moves to v1.3.9 (`SchemaVersion` 124): medals, scoreboard, presence, clocks and ends of life are read; the web side types and normalises them, nothing new is displayed yet.
+
+### Changed
+- **Published bricks** — `halo-infinite-film-decoder` v1.3.9 (v1.3.7 in 8.2.0); the other bricks are unchanged.
+- **Film decoder v1.3.9 (`SchemaVersion` 124)** — mirrored into the served document, the OpenAPI contract and the web types: `medals[]` (157 medals of the game named, 117), the scoreboard of every seat with named counters (`scoreTimeline.players[].stats`, 118, withheld on multi-round films), exact presence from the session lists (`coverage.seats.presencesListees`, 119), `roundClock[]`, `respawnCountdowns[]` and `rules` (120), `scoreActions[]` (121), `coverage.score.roundsUnplayed` (122), the end of each life (`tracks[].endReason`, `releaseFrame`, `coverage.tracks.lifeEnds`, 123); a scoreboard is named by its entries only when the film proves its layout (124). Named bots whose seat falls among the humans' are handed to the identity registry, which decides from the session lists (`killsource_bots_non_epingles_passes` and `_refuses` counters); the arrivals' seats are corrected. `replay-equiv` references and corpus gate re-frozen, 25 `[[decision]]` entries (prefix patterns `/*` for the leaf measures).
+
 ## [8.2.0] - 2026-11-14
 
 > The replay, the map backgrounds and Lead share on the player side; on the code side, LevelUp consumes the four published bricks from their repositories, `libs/` leaves the repository and the HTTP, storage, multi-title and web layers are separated by guard rails at ceiling 0.

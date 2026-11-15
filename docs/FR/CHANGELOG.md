@@ -8,6 +8,14 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ## [Unreleased]
 
+## [8.2.1] - 2026-11-15
+
+> Le décodeur de film passe à la v1.3.9 (`SchemaVersion` 124) : médailles, tableau des scores, présence, horloges et fins de vie sont lus ; le web les type et les normalise, rien de neuf n'est affiché.
+
+### Modifié
+- **Briques publiées** — `halo-infinite-film-decoder` v1.3.9 (v1.3.7 en 8.2.0) ; les autres briques ne changent pas.
+- **Décodeur de film v1.3.9 (`SchemaVersion` 124)** — recopiés dans le document servi, le contrat OpenAPI et les types web : `medals[]` (157 médailles du jeu nommées, 117), le tableau des scores de tous les sièges avec ses compteurs nommés (`scoreTimeline.players[].stats`, 118, retenus sur les films à plusieurs manches), la présence exacte lue dans les listes de session (`coverage.seats.presencesListees`, 119), `roundClock[]`, `respawnCountdowns[]` et `rules` (120), `scoreActions[]` (121), `coverage.score.roundsUnplayed` (122), la fin de chaque vie (`tracks[].endReason`, `releaseFrame`, `coverage.tracks.lifeEnds`, 123) ; un tableau des scores ne se nomme par ses entrées que quand le film en prouve la disposition (124). Les bots nommés dont le siège tombe parmi ceux des humains sont passés au registre d'identité, qui tranche par les listes de session (compteurs `killsource_bots_non_epingles_passes` et `_refuses`) ; les places des arrivants sont corrigées. Références de `replay-equiv` et gate du corpus refigées, 25 entrées `[[decision]]` (motifs de préfixe `/*` pour les mesures de feuilles).
+
 ## [8.2.0] - 2026-11-14
 
 > Le rejeu, les fonds de carte et la Mainmise côté joueur ; côté code, LevelUp consomme les quatre briques publiées depuis leurs dépôts, `libs/` disparaît du dépôt et les couches HTTP, stockage, multi-titre et web sont séparées par des garde-rails à plafond 0.
