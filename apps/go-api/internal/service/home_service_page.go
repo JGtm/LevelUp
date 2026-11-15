@@ -117,7 +117,7 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	s.translateAssets(ctx, d.canonicalRows)
 
 	stop := timing.FromContext(ctx).Section("home_build_cards")
-	// Baseline modèle de dégâts du titre courant (PV pour tuer) — 225 Infinite (byte-identique).
+	// Baseline modèle de dégâts du titre courant (PV pour tuer) — 229 Infinite (byte-identique).
 	hp := games.EffectiveHpToKill(ctxkeys.TitleSlug(ctx))
 	hasRankedHistory, hasUnrankedHistory := analysis.InferHomeSkillHistoryFromCanonical(d.canonicalRows)
 	hero := analysis.BuildHeroCardFromCanonical(d.canonicalRows, gamertag, d.totalMatches, locale, hp)

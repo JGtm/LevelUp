@@ -49,20 +49,20 @@ export const EN_TEXT = {
           {
             term: 'Offensive Conversion',
             definition:
-              'Offensive efficiency: measures how much damage is needed to convert a kill. The {{HP}} coefficient is the total health needed to down a Spartan in the current title and adjusts automatically to the selected game (on Halo Infinite: 90 base HP + 135 shields = 225). Above 1.0 = kills are finished with less damage than a full Spartan\'s health (accuracy, headshots that skip the shield). Below = damage is wasted (unconverted assists, poor follow-up).',
+              'Offensive efficiency: measures how much damage is needed to convert a kill. The {{HP}} coefficient is the total health needed to down a Spartan in the current title and adjusts automatically to the selected game (on Halo Infinite: 229 points, the life read on the damage counter of the game). Above 1.0 = kills are finished with less damage than a full Spartan\'s health (accuracy, headshots that skip the shield). Below = damage is wasted (unconverted assists, poor follow-up).',
             formula:
               'Offensive conversion = {{HP}} × (kills + assists/3) / damage_dealt\n\nElite reference (gauge): 0.90',
             example:
-              'With the {{HP}} HP baseline: many kills for little damage gives a high conversion (> 1.0); lots of damage for few kills, a low one (< 1.0).\n\nWorked example (Halo Infinite, 225 HP): 10 kills, 6 assists, 2 800 damage → 225 × (10 + 2) / 2 800 ≈ 0.96, above the elite reference (0.90).',
+              'With the {{HP}} HP baseline: many kills for little damage gives a high conversion (> 1.0); lots of damage for few kills, a low one (< 1.0).\n\nWorked example (Halo Infinite, 229 HP): 10 kills, 6 assists, 2 800 damage → 229 × (10 + 2) / 2 800 ≈ 0.98, above the elite reference (0.90).',
           },
           {
             term: 'Defensive Resistance',
             definition:
-              'Measures how much damage is absorbed per death. Uses the same baseline: {{HP}} total health to down a Spartan in the current title (on Halo Infinite: 90 base HP + 135 shields = 225). Above 1.0 = death occurs after absorbing more than a full Spartan\'s health (good resilience, forces enemies to commit a full magazine). Below = death occurs early in engagements, often from surprise or poor positioning.',
+              'Measures how much damage is absorbed per death. Uses the same baseline: {{HP}} total health to down a Spartan in the current title (on Halo Infinite: 229 points, the life read on the damage counter of the game). Above 1.0 = death occurs after absorbing more than a full Spartan\'s health (good resilience, forces enemies to commit a full magazine). Below = death occurs early in engagements, often from surprise or poor positioning.',
             formula:
               'Defensive resistance = damage_taken / ({{HP}} × deaths)\n\nElite reference (gauge): 1.65',
             example:
-              'With the {{HP}} HP baseline: absorbing more than one Spartan\'s health before dying gives a resistance > 1.0; dying early, a resistance < 1.0.\n\nWorked example (Halo Infinite, 225 HP): 5 deaths, 1 400 damage taken → 1 400 / (225 × 5) ≈ 1.24, i.e. 1.24× a Spartan\'s health absorbed per death.',
+              'With the {{HP}} HP baseline: absorbing more than one Spartan\'s health before dying gives a resistance > 1.0; dying early, a resistance < 1.0.\n\nWorked example (Halo Infinite, 229 HP): 5 deaths, 1 400 damage taken → 1 400 / (229 × 5) ≈ 1.22, i.e. 1.22× a Spartan\'s health absorbed per death.',
           },
           {
             term: 'Combat profile',
@@ -99,9 +99,9 @@ export const EN_TEXT = {
           {
             term: 'Impact',
             definition:
-              'Normalised offensive conversion on shared squad matches. Measures offensive efficiency: how much damage is needed to convert a kill. The {{HP}} coefficient represents total Spartan health in the current title (on Halo Infinite: 90 base HP + 135 shields = 225). Above 0.90 (elite reference): efficient conversion. Below: wasted damage or unconverted assists.',
+              'Normalised offensive conversion on shared squad matches. Measures offensive efficiency: how much damage is needed to convert a kill. The {{HP}} coefficient represents total Spartan health in the current title (on Halo Infinite: 229 points, the life read on the damage counter of the game). Above 0.90 (elite reference): efficient conversion. Below: wasted damage or unconverted assists.',
             formula: 'Impact = {{HP}} × (kills + assists/3) / damage dealt\nElite reference: 0.90',
-            example: 'Worked example (Halo Infinite, 225 HP): 10 kills, 6 assists, 2 800 damage → 225 × 12 / 2 800 ≈ 0.96, above the elite reference.',
+            example: 'Worked example (Halo Infinite, 229 HP): 10 kills, 6 assists, 2 800 damage → 229 × 12 / 2 800 ≈ 0.98, above the elite reference.',
           },
           {
             term: 'Combat',
@@ -113,7 +113,7 @@ export const EN_TEXT = {
           {
             term: 'Survival',
             definition:
-              'Normalised defensive resistance on shared matches. Measures ability to absorb damage before dying. Uses the same baseline as Impact: {{HP}} total health to down a Spartan in the current title (225 on Halo Infinite). Above 1.65 (elite reference): engagements are survived well beyond a full life. Below 1.0: death occurs early in most exchanges.',
+              'Normalised defensive resistance on shared matches. Measures ability to absorb damage before dying. Uses the same baseline as Impact: {{HP}} total health to down a Spartan in the current title (229 on Halo Infinite). Above 1.65 (elite reference): engagements are survived well beyond a full life. Below 1.0: death occurs early in most exchanges.',
             formula: 'Survival = damage taken / ({{HP}} × deaths)\nElite reference: 1.65',
             example: '5 deaths, 1 800 damage taken → 1 800 / 1 125 ≈ 1.60: close to the elite reference (1.65).',
           },

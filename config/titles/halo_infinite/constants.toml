@@ -49,11 +49,12 @@ perfect_kill = 1512363953  # médaille "Perfect" → exposée en "frags parfaits
 # effective_hp_to_kill = PV effectifs pour tuer un Spartan (bouclier + armure),
 # sur l'échelle de dégâts de l'API. Baseline de offensive_conversion (= PV ×
 # (frags + assists/3) / dégâts_infligés) et defensive_resistance (= dégâts_subis /
-# (PV × morts)). Infinite = 225 (90 vie + 135 bouclier, convention officielle).
-# Externalise le littéral `225` câblé en dur (combat_yield.go, squad_breakdown_canonical.go,
+# (PV × morts)). Infinite = 229 : la vie mesurée par le compteur de dégâts du jeu sur 1 614 films
+# (229 dans 99,6 % des vies sans recharge de bouclier) ; les fichiers du jeu donnent 90 + 140 = 230.
+# Externalise le littéral câblé en dur (combat_yield.go, squad_breakdown_canonical.go,
 # SQL post_sync_progression_queries.go) — cf. PLAN_DAMAGE_MODEL_PER_TITLE.md.
 [damage_model]
-effective_hp_to_kill = 225
+effective_hp_to_kill = 229
 # offensive_conversion_p80 = 0.90 : frontière élite OC (80e percentile) Infinite, repère
 # de normalisation des barres/radars de rendement. = la constante historique
 # analysis.OffensiveConversionP80, externalisée par titre (h5 = 1.264, calibré data).

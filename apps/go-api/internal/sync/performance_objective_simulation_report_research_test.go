@@ -105,24 +105,13 @@ func simWriteReport(t *testing.T, env *simEnv, recs []simRecord) string {
 	t.Helper()
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Simulation de la note à objectif (%d matchs)\n\n", len(recs))
-	same, n := 0, 0
-	for i := range recs {
-		if recs[i].HasStored {
-			n++
-			if math.Abs(recs[i].Stored-recs[i].Old.Score) <= 0.1001 {
-				same++
-			}
-		}
-	}
-	fmt.Fprintf(&b, "Contrôle : note actuelle recalculée = note stockée (à 0,1 près) sur %d matchs sur %d.\n\n", same, n)
 	simReportWitnesses(&b, env, recs)
-	simReportDecomposition(&b, env, recs)
-	for _, v := range []string{"V6", "V7"} {
+	for _, v := range []string{"V7"} {
 		simReportFamilies(&b, recs, v)
 	}
 	simReportChains(&b, recs)
 	simReportRoles(&b, recs)
-	for _, v := range []string{"V6", "V7"} {
+	for _, v := range []string{"V7"} {
 		simReportTail(&b, recs, v)
 	}
 	return b.String()
@@ -157,12 +146,12 @@ func simReportFamilies(b *strings.Builder, recs []simRecord, variant string) {
 
 func simReportChains(b *strings.Builder, recs []simRecord) {
 	keys, g := simGroupBy(recs, func(r *simRecord) string { return r.Chain })
-	b.WriteString("## Distribution par chaîne (moyenne / écart-type)\n\n| Chaîne | Matchs | Actuelle | V2 | V6 | V7 |\n|---|---|---|---|---|---|\n")
+	b.WriteString("## Distribution par chaîne (moyenne / écart-type)\n\n| Chaîne | Matchs | Actuelle | V7 |\n|---|---|---|---|\n")
 	for _, k := range keys {
 		rs := g[k]
 		old := simScores(rs, "")
 		fmt.Fprintf(b, "| %s | %d | %.1f / %.1f |", k, len(rs), simMean(old), simStd(old))
-		for _, v := range []string{"V2", "V6", "V7"} {
+		for _, v := range []string{"V7"} {
 			xs := simScores(rs, v)
 			fmt.Fprintf(b, " %.1f / %.1f |", simMean(xs), simStd(xs))
 		}
@@ -184,7 +173,7 @@ func simReportRoles(b *strings.Builder, recs []simRecord) {
 		}},
 		{"Tueurs (part <= 10 % et >= 15 frags)", func(r *simRecord) bool { return r.Share.Share <= .10 && r.Kills >= 15 }},
 	}
-	b.WriteString("## Note moyenne par rôle\n\n| Rôle | Matchs | Actuelle | V2 | V6 | V7 |\n|---|---|---|---|---|---|\n")
+	b.WriteString("## Note moyenne par rôle\n\n| Rôle | Matchs | Actuelle | V7 |\n|---|---|---|---|\n")
 	for _, ro := range roles {
 		var rs []simRecord
 		for i := range recs {
@@ -193,7 +182,7 @@ func simReportRoles(b *strings.Builder, recs []simRecord) {
 			}
 		}
 		fmt.Fprintf(b, "| %s | %d | %.1f |", ro.label, len(rs), simMean(simScores(rs, "")))
-		for _, v := range []string{"V2", "V6", "V7"} {
+		for _, v := range []string{"V7"} {
 			fmt.Fprintf(b, " %.1f |", simMean(simScores(rs, v)))
 		}
 		b.WriteString("\n")
@@ -229,7 +218,7 @@ var simWitnessIDs = []string{"c349da69", "3fa60771", "2acc306f", "b8c1b220", "4a
 
 // simReportWitnesses : UN tableau, une ligne par joueur suivi de chaque témoin.
 func simReportWitnesses(b *strings.Builder, env *simEnv, recs []simRecord) {
-	b.WriteString("## Témoins\n\n| Match | Joueur (frags, part de l'objectif, part du soutien) | Actuelle | V2 | V6 | V7 |\n|---|---|---|---|---|---|\n")
+	b.WriteString("## Témoins\n\n| Match | Joueur (frags, part de l'objectif, part du soutien) | Actuelle | V7 |\n|---|---|---|---|\n")
 	byID := map[string][]*simRecord{}
 	for i := range recs {
 		byID[recs[i].MatchID] = append(byID[recs[i].MatchID], &recs[i])
@@ -248,8 +237,8 @@ func simReportWitnesses(b *strings.Builder, env *simEnv, recs []simRecord) {
 		sort.Slice(mine, func(i, j int) bool { return mine[i].Share.Share > mine[j].Share.Share })
 		label := simMatchLabel(env, mine[0])
 		for _, r := range mine {
-			fmt.Fprintf(b, "| %s | %s (%.0f, %.0f %%, %.0f %%) | %.1f | %.1f | %.1f | %.1f |\n", label, r.Player, r.Kills,
-				100*r.Share.Share, 100*r.Share.SupportShare, r.Old.Score, r.By["V2"].Score, r.By["V6"].Score, r.By["V7"].Score)
+			fmt.Fprintf(b, "| %s | %s (%.0f, %.0f %%, %.0f %%) | %.1f | %.1f |\n", label, r.Player, r.Kills,
+				100*r.Share.Share, 100*r.Share.SupportShare, r.Old.Score, r.By["V7"].Score)
 		}
 	}
 	b.WriteString("\n")
@@ -267,55 +256,4 @@ func simMatchLabel(env *simEnv, r *simRecord) string {
 		score = fmt.Sprintf(", %d-%d", a, c)
 	}
 	return fmt.Sprintf("%s, %s, %s%s", r.Start[:10], r.Map, r.Pair, score)
-}
-
-// simReportDecomposition décompose les cas gênants : d'où vient l'écart ? Frags, morts,
-// assistances et FDA du match, le combat seul C, les rangs O_obj et O_sout, les poids, et les
-// notes de la base (V2), de V6 et de V7. Les cas : trois témoins nommés et le pire écart de V7
-// (contre la note actuelle) en Drapeau.
-func simReportDecomposition(b *strings.Builder, env *simEnv, recs []simRecord) {
-	type cas struct {
-		label string
-		rec   *simRecord
-	}
-	find := func(prefix, player string) *simRecord {
-		for i := range recs {
-			if strings.HasPrefix(recs[i].MatchID, prefix) && recs[i].Player == player {
-				return &recs[i]
-			}
-		}
-		return nil
-	}
-	var worst *simRecord
-	for i := range recs {
-		r := &recs[i]
-		if simFamilyOf(r) != "Drapeau" {
-			continue
-		}
-		if worst == nil || r.By["V7"].Score-r.Old.Score < worst.By["V7"].Score-worst.Old.Score {
-			worst = r
-		}
-	}
-	cases := []cas{
-		{"JGtm à Shiro", find("b8c1b220", "JGtm")},
-		{"Madina97294 à Illusion", find("2acc306f", "Madina97294")},
-		{"Chocoboflor à Banished Narrows", find("51ebbc0f", "Chocoboflor")},
-		{"Pire écart en Drapeau (V7)", worst},
-	}
-	b.WriteString("## Décomposition des cas gênants\n\n| Cas | Frags | Morts | Assist. | FDA | C (combat seul) | O_obj V2 | O_obj V6/V7 | O_sout V6 | O_sout V7 | α_obj V6 | α_sout V6 | α_obj V7 | α_sout V7 | Actuelle | V2 | V6 | V7 |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n")
-	for _, c := range cases {
-		r := c.rec
-		if r == nil {
-			continue
-		}
-		v2, v6, v7 := r.By["V2"], r.By["V6"], r.By["V7"]
-		label := c.label
-		if c.rec == worst {
-			label += " : " + simMatchLabel(env, r) + ", " + r.Player
-		}
-		fmt.Fprintf(b, "| %s | %.0f | %.0f | %.0f | %.1f | %.1f | %.1f | %.1f | %.1f | %.1f | %.2f | %.2f | %.2f | %.2f | %.1f | %.1f | %.1f | %.1f |\n",
-			label, r.Kills, r.Deaths, r.Assists, r.KDA, v7.Combat, v2.Pct, v7.Pct, v6.PctSup, v7.PctSup,
-			v6.Alpha, v6.AlphaSup, v7.Alpha, v7.AlphaSup, r.Old.Score, v2.Score, v6.Score, v7.Score)
-	}
-	b.WriteString("\n")
 }

@@ -44,7 +44,7 @@ export interface CombatYieldDisplayProps {
   defensiveResistance?: number | null
   /** Dégâts moyens par frag-équivalent : Σ damage_dealt / (Σ kills + Σ assists/3).
    *  Inverse exact du rendement : offensiveConversion = effective_hp_to_kill / dmgPerKill
-   *  (baseline PV-pour-tuer title-aware côté back : 225 Infinite, 115 Halo 5). */
+   *  (baseline PV-pour-tuer title-aware côté back : 229 Infinite, 115 Halo 5). */
   dmgPerKill?: number | null
   /** Dégâts moyens par mort (Σ damage_taken / Σ deaths, sans assists). */
   dmgPerDeath?: number | null

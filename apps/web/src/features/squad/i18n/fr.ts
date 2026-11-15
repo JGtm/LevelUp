@@ -247,9 +247,9 @@ export const FR_TEXT = {
       impact: 'Impact',
     },
     tooltip: {
-      impact: 'Rendement offensif — 225 × (frags + ass/3) / dégâts. P80 = 0,83.',
+      impact: 'Rendement offensif — 229 × (frags + ass/3) / dégâts. P80 = 0,83.',
       combat: 'Frags + tirs à la tête + frags parfaits, pondérés par la précision.',
-      survival: 'Résistance défensive — dégâts / (225 × morts). P80 = 1,59.',
+      survival: 'Résistance défensive — dégâts / (229 × morts). P80 = 1,59.',
       support: 'Assistances × 50.',
       score: 'Score personnel par minute jouée. P80 ≈ 195/min.',
       objective: 'Participation aux objectifs par opportunité — actions pondérées (captures, prises, retours…) + temps sur l\'objectif, calculées sur les seuls matchs à objectif et calibrées par mode (un joueur au P80 de son mode marque 80). Axe absent si aucun match à objectif.',

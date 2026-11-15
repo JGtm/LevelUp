@@ -246,9 +246,9 @@ export const EN_TEXT = {
       impact: 'Impact',
     },
     tooltip: {
-      impact: 'Offensive conversion — 225 × (kills + ass/3) / damage. P80 = 0.83.',
+      impact: 'Offensive conversion — 229 × (kills + ass/3) / damage. P80 = 0.83.',
       combat: 'Kills + headshots + perfect kills, weighted by accuracy.',
-      survival: 'Defensive resistance — damage / (225 × deaths). P80 = 1.59.',
+      survival: 'Defensive resistance — damage / (229 × deaths). P80 = 1.59.',
       support: 'Assists × 50.',
       score: 'Personal score per minute played. P80 ≈ 195/min.',
       objective: 'Objective participation per opportunity — weighted actions (captures, grabs, returns…) plus time on the objective, computed on objective matches only and calibrated per mode (a P80 player in their mode scores 80). Axis hidden when no objective match.',

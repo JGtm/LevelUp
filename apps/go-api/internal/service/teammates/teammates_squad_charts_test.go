@@ -350,8 +350,8 @@ func TestBuildSquadPerformanceSeries_ExpectedFDA(t *testing.T) {
 func TestBuildSquadPerformanceSeries_PopulatesEfficiencyFields(t *testing.T) {
 	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
 	// 10 kills, 5 deaths, 3 assists, damageDealt=2300, damageTaken=1200
-	// rendement = 225 × (10 + 3/3) / 2300 = 225×11/2300 ≈ 1.076 → round2 = 1.08
-	// résistance = 1200 / (225×5) = 1200/1125 ≈ 1.067 → round2 = 1.07
+	// rendement = 229 × (10 + 3/3) / 2300 = 229×11/2300 ≈ 1.095 → round2 = 1.10
+	// résistance = 1200 / (229×5) = 1200/1145 ≈ 1.048 → round2 = 1.05
 	loader := &fakeSquadLoader{
 		rowsByGT: map[string][]canonical.PlayerMatchRow{
 			"main":    {rowWithDamage("m1", t0, 10, 5, 3, 600, 0, 2300, 1200)},
@@ -373,12 +373,12 @@ func TestBuildSquadPerformanceSeries_PopulatesEfficiencyFields(t *testing.T) {
 	pt := pts[0]
 	if pt.RendementOffensif == nil {
 		t.Error("RendementOffensif nil alors que DamageDealt disponible")
-	} else if got, want := *pt.RendementOffensif, 1.08; got != want {
+	} else if got, want := *pt.RendementOffensif, 1.10; got != want {
 		t.Errorf("RendementOffensif = %.2f, want %.2f", got, want)
 	}
 	if pt.ResistanceDefensive == nil {
 		t.Error("ResistanceDefensive nil alors que DamageTaken disponible")
-	} else if got, want := *pt.ResistanceDefensive, 1.07; got != want {
+	} else if got, want := *pt.ResistanceDefensive, 1.05; got != want {
 		t.Errorf("ResistanceDefensive = %.2f, want %.2f", got, want)
 	}
 }

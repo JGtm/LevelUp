@@ -5,17 +5,19 @@ import "levelup/go-api/internal/games/mappings"
 // damage_model.go — résolution title-aware du modèle de dégâts (PV effectifs pour
 // tuer un joueur), baseline des KPI rendement/résistance (offensive_conversion =
 // effective_hp × frag-équivalents / dégâts ; defensive_resistance = dégâts_subis /
-// (effective_hp × morts)). Externalise le littéral `225` câblé Infinite (cf.
+// (effective_hp × morts)). Externalise le littéral câblé Infinite (cf.
 // PLAN_DAMAGE_MODEL_PER_TITLE.md) : un titre déclare SA valeur dans
-// constants.toml [damage_model] ; le défaut reste Halo Infinite, byte-identique.
+// constants.toml [damage_model] ; le défaut reste Halo Infinite.
 
-// DefaultEffectiveHpToKill — PV effectifs pour tuer un Spartan Halo Infinite
-// (90 vie + 135 bouclier, échelle de dégâts de l'API). Défaut byte-identique
-// quand le resolver n'est pas câblé ou que le titre ne déclare pas son
-// [damage_model] (ex. mono-titre, tests). Halo 5 = 115 (design : bouclier 70 +
-// armure 45 ; PV-pour-tuer réels, PAS la moyenne empirique dégâts/kill —
-// cf. config/titles/halo_5/constants.toml).
-const DefaultEffectiveHpToKill = 225.0
+// DefaultEffectiveHpToKill — PV effectifs pour tuer un Spartan Halo Infinite : 229, la vie que
+// mesure le compteur « dégâts subis » du film (229 dans 99,6 % des vies sans recharge de
+// bouclier, sur 1 614 films d'octobre 2024 à novembre 2026 ; les fichiers du jeu donnent
+// 90 vie + 140 bouclier = 230, capacité nominale). Défaut quand le resolver n'est pas câblé ou
+// que le titre ne déclare pas son [damage_model] (ex. mono-titre, tests). Halo 5 = 115 (design :
+// bouclier 70 + armure 45 ; PV-pour-tuer réels, PAS la moyenne empirique dégâts/kill — cf.
+// config/titles/halo_5/constants.toml). Cette constante fait partie des paramètres hachés par
+// scoring_revision_test.go : la changer impose de changer les révisions de notation.
+const DefaultEffectiveHpToKill = 229.0
 
 // DamageModelResolver est l'extension OPTIONNELLE d'EndpointResolver qui résout les
 // constantes de modèle de dégâts d'un titre (constants.toml [damage_model]).

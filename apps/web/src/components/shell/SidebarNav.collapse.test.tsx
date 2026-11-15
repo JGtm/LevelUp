@@ -465,7 +465,7 @@ describe('SidebarNav — repliement en icônes', () => {
     it('plusieurs jeux : le sigle du jeu courant ouvre le menu des jeux', () => {
       useAppShellStore.setState({
         availableTitles: [
-          { slug: 'halo_infinite', name: 'Halo Infinite', status: 'active', capabilities: [], is_default: true, effective_hp_to_kill: 225 },
+          { slug: 'halo_infinite', name: 'Halo Infinite', status: 'active', capabilities: [], is_default: true, effective_hp_to_kill: 229 },
           { slug: 'halo_5', name: 'Halo 5', status: 'active', capabilities: [], is_default: false, effective_hp_to_kill: 225 },
         ] as unknown as State['availableTitles'],
       })

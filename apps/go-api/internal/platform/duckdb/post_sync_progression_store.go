@@ -181,7 +181,7 @@ func (st *PostSyncProgressionStore) Aggregates(ctx context.Context, p port.Progr
 		return out, fmt.Errorf("aggregate accuracy days: %w", err)
 	}
 
-	// effectiveHpToKill = baseline PV-pour-tuer du titre (225 Infinite ; 115 Halo 5).
+	// effectiveHpToKill = baseline PV-pour-tuer du titre (229 Infinite ; 115 Halo 5).
 	// Float de confiance issu de la config → injecté via Sprintf (%g), pas une
 	// entrée utilisateur. Les seuils de milestone restent en bind params (?).
 	combatMetricsQuery := fmt.Sprintf(`

@@ -33,11 +33,11 @@ import { resolveToken } from '@/lib/accessibility'
 
 /**
  * Dégâts d'une vie complète de Spartan — barème de conversion brut → taux.
- * DÉFAUT = Halo Infinite (90 vie + 135 bouclier). Les fonctions ci-dessous
+ * DÉFAUT = Halo Infinite (229, la vie mesurée par le compteur de dégâts du jeu). Les fonctions ci-dessous
  * acceptent un `oneLife` par titre (115 Halo 5…) ; sans argument elles gardent
  * ce barème Infinite.
  */
-export const ONE_LIFE_DAMAGE = 225
+export const ONE_LIFE_DAMAGE = 229
 
 /** Taux d'UNE VIE, en % — pivot commun de toutes les surfaces. */
 export const ONE_LIFE_RATE_PCT = 100

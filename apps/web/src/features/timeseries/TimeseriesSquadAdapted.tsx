@@ -457,7 +457,7 @@ export function TimeseriesEfficiency({
   perDeathLabel,
 }: TimeseriesEfficiencyProps) {
   const themeVersion = useThemeVersion()
-  const hp = useEffectiveHpToKill() // barème PV-pour-tuer du titre courant (225 Infinite, 115 h5)
+  const hp = useEffectiveHpToKill() // barème PV-pour-tuer du titre courant (229 Infinite, 115 h5)
   // false (Halo 5 : API sans damage_taken) → la résistance n'est pas calculable :
   // on retire entièrement la courbe + son entrée de légende (pas de ligne vide).
   const providesDamageTaken = useProvidesDamageTaken()

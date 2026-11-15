@@ -183,7 +183,7 @@ func buildCompareEntryWithObjectives(
 
 	// Rendement / résistance : AGRÉGAT volume-pondéré sur les totaux de la session
 	// (pas une moyenne des OC par match). OC garde les assists (frag-équivalent),
-	// calculé sur les mêmes totaux que dmgPerKill → % = 225 / dmgPerKill.
+	// calculé sur les mêmes totaux que dmgPerKill → % = 229 / dmgPerKill.
 	var avgOC, avgDR *float64
 	cy := analysis.ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths), effectiveHpToKill)
 	if cy.OffensiveConversion > 0 {

@@ -49,20 +49,20 @@ export const FR_TEXT = {
           {
             term: 'Rendement offensif',
             definition:
-              "Efficacité offensive : mesure la quantité de dégâts nécessaire pour convertir une élimination. Le coefficient {{HP}} correspond aux points de vie totaux d'un Spartan dans le titre courant et s'ajuste automatiquement selon le jeu sélectionné (sur Halo Infinite : 90 de vie de base + 135 de bouclier = 225).\n\nAu-dessus de 1,0 : les éliminations coûtent moins de dégâts qu'attendu (précision, tirs à la tête qui ignorent le bouclier).\nEn dessous de 1,0 : des dégâts sont gaspillés (assistances non converties, suivi insuffisant).",
+              "Efficacité offensive : mesure la quantité de dégâts nécessaire pour convertir une élimination. Le coefficient {{HP}} correspond aux points de vie totaux d'un Spartan dans le titre courant et s'ajuste automatiquement selon le jeu sélectionné (sur Halo Infinite : 229 points, la vie relevée sur le compteur de dégâts du jeu).\n\nAu-dessus de 1,0 : les éliminations coûtent moins de dégâts qu'attendu (précision, tirs à la tête qui ignorent le bouclier).\nEn dessous de 1,0 : des dégâts sont gaspillés (assistances non converties, suivi insuffisant).",
             formula:
               'Rendement offensif = {{HP}} × (éliminations + assistances/3) / dégâts infligés\n\nRepère élite mondiale (jauge) : 0,90',
             example:
-              "Avec le barème {{HP}} PV : beaucoup d'éliminations pour peu de dégâts donne un rendement élevé (> 1,0) ; beaucoup de dégâts pour peu d'éliminations, un rendement faible (< 1,0).\n\nExemple chiffré (Halo Infinite, 225 PV) : 10 éliminations, 6 assistances, 2 800 dégâts → 225 × (10 + 2) / 2 800 ≈ 0,96, au-dessus du repère élite (0,90).",
+              "Avec le barème {{HP}} PV : beaucoup d'éliminations pour peu de dégâts donne un rendement élevé (> 1,0) ; beaucoup de dégâts pour peu d'éliminations, un rendement faible (< 1,0).\n\nExemple chiffré (Halo Infinite, 229 PV) : 10 éliminations, 6 assistances, 2 800 dégâts → 229 × (10 + 2) / 2 800 ≈ 0,98, au-dessus du repère élite (0,90).",
           },
           {
             term: 'Résistance défensive',
             definition:
-              "Mesure la quantité de dégâts absorbés par mort. Repose sur le même barème : {{HP}} points de vie pour abattre un Spartan dans le titre courant (sur Halo Infinite : 90 de base + 135 de bouclier = 225).\n\nAu-dessus de 1,0 : la mort survient après avoir encaissé plus qu'une vie de Spartan (bonne résistance, l'adversaire est obligé de vider son chargeur).\nEn dessous de 1,0 : la mort survient rapidement, souvent par surprise ou mauvais positionnement.",
+              "Mesure la quantité de dégâts absorbés par mort. Repose sur le même barème : {{HP}} points de vie pour abattre un Spartan dans le titre courant (sur Halo Infinite : 229 points, la vie relevée sur le compteur de dégâts du jeu).\n\nAu-dessus de 1,0 : la mort survient après avoir encaissé plus qu'une vie de Spartan (bonne résistance, l'adversaire est obligé de vider son chargeur).\nEn dessous de 1,0 : la mort survient rapidement, souvent par surprise ou mauvais positionnement.",
             formula:
               'Résistance défensive = dégâts reçus / ({{HP}} × morts)\n\nRepère élite mondiale (jauge) : 1,65',
             example:
-              "Avec le barème {{HP}} PV : encaisser plus d'une vie de Spartan avant de mourir donne une résistance > 1,0 ; mourir tôt dans les échanges, une résistance < 1,0.\n\nExemple chiffré (Halo Infinite, 225 PV) : 5 morts, 1 400 dégâts reçus → 1 400 / (225 × 5) ≈ 1,24, soit 1,24 fois la vie d'un Spartan absorbée par mort.",
+              "Avec le barème {{HP}} PV : encaisser plus d'une vie de Spartan avant de mourir donne une résistance > 1,0 ; mourir tôt dans les échanges, une résistance < 1,0.\n\nExemple chiffré (Halo Infinite, 229 PV) : 5 morts, 1 400 dégâts reçus → 1 400 / (229 × 5) ≈ 1,22, soit 1,22 fois la vie d'un Spartan absorbée par mort.",
           },
           {
             term: 'Profil de combat',
@@ -126,9 +126,9 @@ export const FR_TEXT = {
           {
             term: 'Impact',
             definition:
-              'Rendement offensif normalisé sur les matchs partagés avec l\'escouade. Mesure l\'efficacité offensive : combien de dégâts sont nécessaires pour convertir une élimination. Le coefficient {{HP}} correspond aux points de vie totaux d\'un Spartan dans le titre courant (sur Halo Infinite : 90 base + 135 bouclier = 225). Au-dessus de 0,90 (repère élite) : conversion efficace. En dessous : dégâts gaspillés ou assistances non conclues.',
+              'Rendement offensif normalisé sur les matchs partagés avec l\'escouade. Mesure l\'efficacité offensive : combien de dégâts sont nécessaires pour convertir une élimination. Le coefficient {{HP}} correspond aux points de vie totaux d\'un Spartan dans le titre courant (sur Halo Infinite : 229 points, la vie relevée sur le compteur de dégâts du jeu). Au-dessus de 0,90 (repère élite) : conversion efficace. En dessous : dégâts gaspillés ou assistances non conclues.',
             formula: 'Impact = {{HP}} × (frags + assists/3) / dégâts infligés\nRepère élite mondiale : 0,90',
-            example: 'Exemple chiffré (Halo Infinite, 225 PV) : 10 frags, 6 assists, 2 800 dégâts → 225 × 12 / 2 800 ≈ 0,96, au-dessus du repère.',
+            example: 'Exemple chiffré (Halo Infinite, 229 PV) : 10 frags, 6 assists, 2 800 dégâts → 229 × 12 / 2 800 ≈ 0,98, au-dessus du repère.',
           },
           {
             term: 'Combat',
@@ -140,7 +140,7 @@ export const FR_TEXT = {
           {
             term: 'Survie',
             definition:
-              'Résistance défensive normalisée sur les matchs partagés. Mesure la capacité à encaisser des dégâts avant de mourir. Repose sur le même barème que l\'Impact : {{HP}} points de vie pour abattre un Spartan dans le titre courant (225 sur Halo Infinite). Au-dessus de 1,65 (repère élite) : plus d\'une vie complète est encaissée. En dessous de 1,0 : la mort survient tôt dans les engagements.',
+              'Résistance défensive normalisée sur les matchs partagés. Mesure la capacité à encaisser des dégâts avant de mourir. Repose sur le même barème que l\'Impact : {{HP}} points de vie pour abattre un Spartan dans le titre courant (229 sur Halo Infinite). Au-dessus de 1,65 (repère élite) : plus d\'une vie complète est encaissée. En dessous de 1,0 : la mort survient tôt dans les engagements.',
             formula: 'Survie = dégâts reçus / ({{HP}} × morts)\nRepère élite mondiale : 1,65',
             example: '5 morts, 1 800 dégâts reçus → 1 800 / 1 125 ≈ 1,60 : proche du repère élite (1,65).',
           },

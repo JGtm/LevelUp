@@ -139,7 +139,7 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 		AccuracyThreshold: AccuracyThresholdForDays,
 		OCThreshold:       analysis.CombatOCReferenceThreshold,
 		DRThreshold:       analysis.CombatDRReferenceThreshold,
-		// effectiveHpToKill = baseline PV-pour-tuer du titre (225 Infinite ; 115 Halo 5).
+		// effectiveHpToKill = baseline PV-pour-tuer du titre (229 Infinite ; 115 Halo 5).
 		HPToKill: games.EffectiveHpToKill(pdb.TitleSlug),
 	})
 	if err != nil {

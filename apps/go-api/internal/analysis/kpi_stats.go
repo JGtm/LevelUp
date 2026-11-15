@@ -137,7 +137,7 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow, effectiveHpToKill float64)
 	}
 	// Rendement / résistance : AGRÉGAT volume-pondéré sur les totaux (pas une moyenne
 	// des ratios par match). OC garde les assists (frag-équivalent). Calculé sur les
-	// MÊMES totaux que DmgPerKill ci-dessous → % = 225 / DmgPerKill exactement.
+	// MÊMES totaux que DmgPerKill ci-dessous → % = 229 / DmgPerKill exactement.
 	avgOC := 0.0
 	avgDR := 0.0
 	cy := ComputeCombatYieldFloat(float64(totalKills), float64(totalAssists), totalDmgDealt, totalDmgTaken, float64(totalDeaths), effectiveHpToKill)

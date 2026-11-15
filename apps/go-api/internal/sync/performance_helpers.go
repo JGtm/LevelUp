@@ -9,9 +9,12 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/persist"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sqlfrag"
+	"levelup/go-api/internal/sync/objectiveblend"
 )
 
 func computeRankPerformance(rank, teamMMR, enemyMMR float64, histMetrics map[string][]float64) *float64 {
@@ -26,21 +29,27 @@ func computeRankPerformance(rank, teamMMR, enemyMMR float64, histMetrics map[str
 	return &p
 }
 
-// applyPerfEnrichments complète les rows chargées depuis la shared DB avec ce
-// qu'elle ne porte pas : le score d'exploitation des médailles (calculé en amont
-// par l'appelant du batch) et les points d'objectif (lus ici sur la DB joueur, sans
-// changement de signature du batch — ses 5 call-sites en héritent).
+// applyPerfEnrichments complète les rows chargées depuis la shared DB avec ce qu'elle ne porte pas
+// dans la requête de l'historique : le score d'exploitation des médailles (calculé en amont par
+// l'appelant du batch) et les faits d'objectif et de soutien de l'équipe (note à objectif, paquet
+// objectiveblend), lus en UNE requête pour tous les matchs du joueur (rejeu complet compris).
 //
-// Une clé absente rend la zéro-value, et c'est VOULU dans les deux cas : 0 pour le
-// score médailles (métrique dont 0 est le neutre), nil pour ObjectiveScore — nil
-// signifiant « match sans couverture personal_score_awards », ce qui fait
-// redistribuer le poids d'ospm au lieu de noter le match 0 à l'objectif (D-J).
-func applyPerfEnrichments(ctx context.Context, playerDB *sql.DB, xuid string, matches []historyRow, medalExploitByMatch map[string]float64) {
-	objectiveByMatch := loadObjectiveParticipation(ctx, playerDB, xuid)
+// Une clé absente rend la zéro-value (0 pour le score médailles, neutre) ; un match sans ligne
+// d'objectif, ou un titre sans match_objective_stats (Halo 5), n'a pas de faits : la métrique est
+// absente et la note est le combat renormalisé. Une panne de lecture est une ERREUR : stocker des
+// notes sans objectif sur un jeu de données qui en a fausserait toutes les notes à objectif.
+func applyPerfEnrichments(ctx context.Context, sharedDB *sql.DB, xuid string, matches []historyRow, medalExploitByMatch map[string]float64) error {
+	rows, err := duckdbpkg.LoadObjectiveTeamRowsForPlayer(ctx, sharedDB, xuid)
+	if err != nil {
+		return fmt.Errorf("applyPerfEnrichments: lignes d'objectif: %w", err)
+	}
 	for i := range matches {
 		matches[i].MedalExploitScore = medalExploitByMatch[matches[i].MatchID]
-		matches[i].ObjectiveScore = objectiveByMatch[matches[i].MatchID]
+		if share, ok := narrative.ComputeObjectiveTeamShare(rows[matches[i].MatchID], xuid); ok {
+			matches[i].ObjectiveBlend = objectiveblend.FactsOf(share, matches[i].TimePlayedSeconds)
+		}
 	}
+	return nil
 }
 
 // addStandardPercentile classe une métrique « plus = mieux » (percentile direct)
@@ -124,11 +133,6 @@ func getMetricValue(m *matchMetrics, key string) (float64, bool) {
 			return *m.MedalExploit, true
 		}
 		return 0, false
-	case MetricKeyObjectiveParticipation:
-		if m.OSPM != nil {
-			return *m.OSPM, true
-		}
-		return 0, false
 	}
 	return 0, false
 }
@@ -150,10 +154,6 @@ func prepareHistoryMetrics(history []historyRow) map[string][]float64 {
 		MetricKeyOffensiveConv:    make([]float64, 0, n),
 		MetricKeyDefensiveResist:  make([]float64, 0, n),
 		MetricKeyMedalExploit:     make([]float64, 0, n),
-		// ospm : la série ne reçoit QUE les matchs à couverture PSA. Un match non
-		// couvert n'y entre pas (il ne vaut pas 0), la population de référence de la
-		// métrique est donc celle des matchs réellement mesurés.
-		MetricKeyObjectiveParticipation: make([]float64, 0, n),
 	}
 
 	for _, row := range history {
@@ -193,9 +193,6 @@ func prepareHistoryMetrics(history []historyRow) map[string][]float64 {
 		}
 		if m.MedalExploit != nil {
 			result[MetricKeyMedalExploit] = append(result[MetricKeyMedalExploit], *m.MedalExploit)
-		}
-		if m.OSPM != nil {
-			result[MetricKeyObjectiveParticipation] = append(result[MetricKeyObjectiveParticipation], *m.OSPM)
 		}
 	}
 

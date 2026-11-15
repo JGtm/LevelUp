@@ -19,7 +19,7 @@ const ASSIST_FRAG_WEIGHT = 3
 
 /**
  * Dégâts par frag-équivalent = damage / (kills + assists/3). C'est l'inverse exact
- * du rendement offensif normalisé : offensive_conversion = 225 / effectiveDmgPerFrag.
+ * du rendement offensif normalisé : offensive_conversion = 229 / effectiveDmgPerFrag.
  * Compte les assists au dénominateur pour rester aligné avec le % affiché.
  * Renvoie null si les dégâts sont absents ou si le dénominateur ≤ 0.
  */

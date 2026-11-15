@@ -43,32 +43,58 @@ func TestCompute_MetriqueAbsente(t *testing.T) {
 	}
 }
 
-// Moyenne symétrique V2 : alpha suit la part, la note est (1 - alpha) C + alpha O.
-func TestCompute_V2Symetrique(t *testing.T) {
+// Référence de famille, puis repli sur la fenêtre sous le minimum.
+func TestCompute_ReferenceFamillePuisRepli(t *testing.T) {
 	p := DefaultParams(10)
-	hist := history(30)
-	for _, c := range []struct{ share, alpha float64 }{{0, 0.12}, {0.5, 0.31}, {1, 0.50}, {7, 0.50}, {-1, 0.12}} {
-		cur := &Facts{Family: narrative.FamilyCTF, Index: 0.4, Share: c.share}
-		r := Compute(60, cur, hist, p)
-		if !r.HasObjective || math.Abs(r.Alpha-c.alpha) > 1e-9 || r.SupportAlpha != 0 {
-			t.Fatalf("part %v : %+v, want alpha %v", c.share, r, c.alpha)
-		}
-		if want := (1-r.Alpha)*60 + r.Alpha*r.Percentile; math.Abs(r.Score-want) > 1e-9 {
-			t.Errorf("note %v, want %v", r.Score, want)
-		}
+	hist := history(30) // 30 Drapeau
+	if r := Compute(60, &Facts{Family: narrative.FamilyCTF, Index: 1, Share: 0.5}, hist, p); !r.HasObjective || !r.FamilyScope {
+		t.Errorf("famille : %+v", r)
 	}
-	// L'objectif peut monter OU baisser la note.
-	hi := Compute(30, &Facts{Family: narrative.FamilyCTF, Index: 9, Share: 1}, hist, p)
-	lo := Compute(90, &Facts{Family: narrative.FamilyCTF, Index: 0, Share: 1}, hist, p)
-	if !(hi.Score > 30) || !(lo.Score < 90) {
-		t.Errorf("hausse %v, baisse %v", hi.Score, lo.Score)
+	if r := Compute(60, &Facts{Family: narrative.FamilyOddball, Index: 1, Share: 0.5}, hist, p); !r.HasObjective || r.FamilyScope {
+		t.Errorf("repli sur la fenêtre : %+v", r)
 	}
 }
 
-// V5 : alpha_obj + alpha_sout plafonné à AlphaMax, les deux réduits en proportion.
-func TestCompute_V5PlafonneLaSomme(t *testing.T) {
+// La note est la moyenne symétrique ; alpha_obj suit la part ; O_obj et O_sout sont les moyennes de
+// deux rangs ; l'objectif peut monter OU baisser la note.
+func TestCompute_Formule(t *testing.T) {
 	p := DefaultParams(10)
-	p.UseSupport = true
+	hist := history(40)
+	cur := &Facts{Family: narrative.FamilyCTF, Index: 0.1, Share: 0.2, SupportShare: 0.4, SupportPerMin: 1.5}
+	r := Compute(60, cur, hist, p)
+	idx := rank(0.1, hist, func(f *Facts) float64 { return f.Index })
+	share := rank(0.2, hist, func(f *Facts) float64 { return f.Share })
+	perMin := rank(1.5, hist, func(f *Facts) float64 { return f.SupportPerMin })
+	supShare := rank(0.4, hist, func(f *Facts) float64 { return f.SupportShare })
+	if math.Abs(r.Percentile-(idx+share)/2) > 1e-9 || math.Abs(r.SupportPercentile-(perMin+supShare)/2) > 1e-9 {
+		t.Fatalf("O_obj %v O_sout %v ; rangs %v %v %v %v", r.Percentile, r.SupportPercentile, idx, share, perMin, supShare)
+	}
+	if math.Abs(r.Alpha-(0.12+0.38*0.2)) > 1e-9 || math.Abs(r.SupportAlpha-0.38*0.4) > 1e-9 {
+		t.Fatalf("alphas %v / %v", r.Alpha, r.SupportAlpha)
+	}
+	want := (1-r.Alpha-r.SupportAlpha)*60 + r.Alpha*r.Percentile + r.SupportAlpha*r.SupportPercentile
+	if math.Abs(r.Score-want) > 1e-9 {
+		t.Errorf("note %v, want %v", r.Score, want)
+	}
+	hi := Compute(30, &Facts{Family: narrative.FamilyCTF, Index: 9, Share: 1, SupportShare: 1, SupportPerMin: 9}, hist, p)
+	lo := Compute(90, &Facts{Family: narrative.FamilyCTF, Index: 0, Share: 0, SupportShare: 0, SupportPerMin: 0}, hist, p)
+	if !(hi.Score > 30) || !(lo.Score < 90) {
+		t.Errorf("hausse %v, baisse %v : attendu les deux sens", hi.Score, lo.Score)
+	}
+}
+
+// Sans action de soutien dans l'équipe, alpha_sout est nul : la note ne dépend que de l'objectif.
+func TestCompute_SansSoutienPasDePoidsDuSoutien(t *testing.T) {
+	r := Compute(60, &Facts{Family: narrative.FamilyCTF, Index: 0.6, Share: 0.3, SupportShare: 0, SupportPerMin: 0}, history(40), DefaultParams(10))
+	if r.SupportAlpha != 0 {
+		t.Errorf("alpha soutien = %v, want 0", r.SupportAlpha)
+	}
+}
+
+// alpha_obj + alpha_sout est plafonné à AlphaMax, les deux réduits en proportion : le combat garde
+// au moins la moitié du poids.
+func TestCompute_PlafonneLaSomme(t *testing.T) {
+	p := DefaultParams(10)
 	r := Compute(60, &Facts{Family: narrative.FamilyCTF, Index: 0.6, Share: 1, SupportShare: 1, SupportPerMin: 1.5}, history(40), p)
 	if math.Abs(r.Alpha+r.SupportAlpha-p.AlphaMax) > 1e-9 || math.Abs(r.Alpha/r.SupportAlpha-0.50/0.38) > 1e-9 {
 		t.Fatalf("alphas %v / %v", r.Alpha, r.SupportAlpha)
@@ -78,28 +104,6 @@ func TestCompute_V5PlafonneLaSomme(t *testing.T) {
 		if r := Compute(60, c, history(40), p); r.Alpha+r.SupportAlpha > p.AlphaMax+1e-9 {
 			t.Errorf("i=%d : somme %v au-dessus du plafond", i, r.Alpha+r.SupportAlpha)
 		}
-	}
-}
-
-// V6 puis V7 : les deux rangs, moyennés.
-func TestCompute_V6V7MoyennesDeRangs(t *testing.T) {
-	hist := history(40)
-	cur := &Facts{Family: narrative.FamilyCTF, Index: 0.1, Share: 0.9, SupportShare: 0.9, SupportPerMin: 0}
-	v5 := DefaultParams(10)
-	v5.UseSupport = true
-	v6, v7 := v5, v5
-	v6.ShareRank = true
-	v7.ShareRank, v7.SupportShareRank = true, true
-	idx := rank(0.1, hist, func(f *Facts) float64 { return f.Index })
-	share := rank(0.9, hist, func(f *Facts) float64 { return f.Share })
-	perMin := rank(0, hist, func(f *Facts) float64 { return f.SupportPerMin })
-	supShare := rank(0.9, hist, func(f *Facts) float64 { return f.SupportShare })
-	r5, r6, r7 := Compute(60, cur, hist, v5), Compute(60, cur, hist, v6), Compute(60, cur, hist, v7)
-	if math.Abs(r5.Percentile-idx) > 1e-9 || math.Abs(r6.Percentile-(idx+share)/2) > 1e-9 {
-		t.Errorf("O_obj V5 %v V6 %v ; rangs %v et %v", r5.Percentile, r6.Percentile, idx, share)
-	}
-	if math.Abs(r6.SupportPercentile-perMin) > 1e-9 || math.Abs(r7.SupportPercentile-(perMin+supShare)/2) > 1e-9 {
-		t.Errorf("O_sout V6 %v V7 %v ; rangs %v et %v", r6.SupportPercentile, r7.SupportPercentile, perMin, supShare)
 	}
 }
 

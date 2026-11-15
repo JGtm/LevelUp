@@ -325,3 +325,40 @@ func TestMatchRecomputer_RecomputeAfterExclusion_MatchEnEchecNEchouePasEtResteEn
 		t.Error("RecomputePending = true après un recalcul réussi")
 	}
 }
+
+// D-14 du plan des compléments 8.2.0 : monter DEUX révisions à la fois (note de performance et LUSR)
+// donne UN SEUL recalcul. La révision stockée par joueur est la valeur composée par
+// skill.ScoringRevision() : une seule comparaison, un seul recompute, qui rejoue la note de
+// performance ET le LUSR. Preuve : le recalcul d'une révision composée entièrement neuve écrit
+// exactement autant de lignes de notes qu'un recalcul seul (deux passes en écriraient le double).
+func TestMatchRecomputer_ApplyScoringRevision_DeuxMonteesUnSeulRecalcul(t *testing.T) {
+	f := newScoringRevisionFixture(t, identity)
+	ctx := context.Background()
+	const anciennes = "perf=perf-2026-11-08;lusr=lusr-2026-11-09"
+	nouvelles := skill.ScoringRevision()
+	if nouvelles == anciennes {
+		t.Fatal("les révisions courantes sont celles du jeu d'essai : le test ne prouve rien")
+	}
+
+	if applied, err := f.rec.ApplyScoringRevision(ctx, anciennes); err != nil || !applied {
+		t.Fatalf("premier recalcul : applied=%v err=%v", applied, err)
+	}
+	unRecalcul := f.count(t, lusrWritesQuery)
+	if unRecalcul == 0 {
+		t.Fatal("aucune ligne écrite par un recalcul : la fixture ne prouve rien")
+	}
+
+	applied, err := f.rec.ApplyScoringRevision(ctx, nouvelles)
+	if err != nil || !applied {
+		t.Fatalf("deux révisions montées : applied=%v err=%v, attendu true, nil", applied, err)
+	}
+	if got := f.count(t, lusrWritesQuery); got != 2*unRecalcul {
+		t.Fatalf("lignes de notes après deux montées = %d, attendu %d : UN recalcul de plus (%d lignes), pas deux", got, 2*unRecalcul, unRecalcul)
+	}
+	if got := f.storedRevision(t); got != nouvelles {
+		t.Fatalf("révision rangée = %q, attendu %q", got, nouvelles)
+	}
+	if applied, err := f.rec.ApplyScoringRevision(ctx, nouvelles); err != nil || applied {
+		t.Fatalf("révision à jour : applied=%v err=%v, attendu false, nil", applied, err)
+	}
+}

@@ -1,9 +1,9 @@
 /**
  * effectiveHp — barème PV-pour-tuer du titre COURANT (title-aware).
  *
- * 225 Halo Infinite (90 vie + 135 bouclier) · 115 Halo 5 (bouclier 70 + armure 45).
+ * 229 Halo Infinite (compteur de dégâts du jeu ; 90 vie + 140 bouclier nominal) · 115 Halo 5 (bouclier 70 + armure 45).
  * Source unique côté front pour les surfaces combat (rendement / résistance) qui
- * doivent afficher le barème du titre sélectionné au lieu du 225 câblé. Le défaut
+ * doivent afficher le barème du titre sélectionné au lieu du barème câblé. Le défaut
  * est `ONE_LIFE_DAMAGE` (Infinite), aligné sur le fallback backend
  * (games.DefaultEffectiveHpToKill).
  */

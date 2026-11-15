@@ -121,8 +121,8 @@ describe('conversion brut → taux « une vie » (%)', () => {
     expect(oneLifeDefensiveRatePct(300, 0)).toBeNull()
   })
   it('défaut = barème Infinite pour les deux conversions', () => {
-    expect(oneLifeOffensiveRatePct(225)).toBe(oneLifeOffensiveRatePct(225, ONE_LIFE_DAMAGE))
-    expect(oneLifeDefensiveRatePct(225)).toBe(oneLifeDefensiveRatePct(225, ONE_LIFE_DAMAGE))
+    expect(oneLifeOffensiveRatePct(229)).toBe(oneLifeOffensiveRatePct(229, ONE_LIFE_DAMAGE))
+    expect(oneLifeDefensiveRatePct(229)).toBe(oneLifeDefensiveRatePct(229, ONE_LIFE_DAMAGE))
   })
 })
 

@@ -1,6 +1,6 @@
 # ADR 0006 — Canonical indicators and units (KDA, KDR, WinRate, Accuracy, PerfTier)
 
-**Status** — Proposed (2026-04-29). Triggered by code review axe 1 (BLOQUANT 1, 2) + axe 6 (BLOQUANT seuils PerfTier). Amended 2026-11-09 and 2026-11-14: **the KDA quotient written in the body below is superseded** (KDA is the net, never the quotient); the body is kept as the record of the original decision and the amendments at the end are the current rule.
+**Status** — Proposed (2026-04-29). Triggered by code review axe 1 (BLOQUANT 1, 2) + axe 6 (BLOQUANT seuils PerfTier). Amended 2026-11-09, 2026-11-14 and 2026-11-15 (Spartan life at 229): **the KDA quotient written in the body below is superseded** (KDA is the net, never the quotient); the body is kept as the record of the original decision and the amendments at the end are the current rule.
 
 **Deciders** — Guillaume (GS).
 
@@ -127,3 +127,15 @@ judged too frequent. The fatigue detector (negative slope of the per-match value
 **Relates to** — the Amendment 2026-11-09 above.
 
 The Decision section still shows the KDA quotient `(K+A)/max(1,D)` and a `KDA(k, a, d)` helper built on it. Readers who stopped at the body took it for the rule. It is not: the Amendment 2026-11-09 is the current rule (per match, the native API net; aggregated, `((kills + assists/3) - deaths) / matches`; the KDR is the distinct ratio `kills / max(1, deaths)`). The Status line, the Context bullet and the code block of the body now carry a pointer to that amendment; the original text is otherwise left unchanged as the record of the 2026-04-29 decision. The units convention (ratios `0..1` on the API, percent only at display) and the PerfTier thresholds are not affected.
+
+## Amendment 2026-11-15 — Spartan life at 229, performance score of the objective chains
+
+**Relates to** — the Rendement / Resistance baseline and the PerfTier thresholds.
+
+- The Efficiency (offensive conversion) and Resistance (defensive resistance) indicators divide by the effective life of a
+  Spartan, `games.DefaultEffectiveHpToKill`, now **229** (it was 225): the value measured on the "damage taken" counter of
+  1 614 films (229 in 99.6 % of the lives without shield recharge). The game files give 90 + 140 = 230, the nominal capacity.
+  Halo 5 keeps its own 115. The elite references (P80) are not re-measured by this change.
+- The PerfTier thresholds `[80, 65, 50, 35]` are unchanged. The performance score of the `arena_objectif` and
+  `ranked_objectif` chains is now a symmetric blend of the combat score and of the player's objective and support (ADR 0047,
+  amendment 2026-11-15); 31 % of the objective matches of the measured parc change tier because of it.

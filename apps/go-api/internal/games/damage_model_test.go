@@ -27,8 +27,8 @@ func repoConfigRoot(t *testing.T) string {
 
 // TestEffectiveHpToKill_TitleAwareAndFallback — oracle damage-model Phase 0 : un
 // titre déclare son effective_hp_to_kill dans constants.toml [damage_model] et la
-// valeur route VRAIMENT (pas le 225 par défaut) ; un titre sans section / inconnu /
-// resolver legacy / resolver nil retombe sur DefaultEffectiveHpToKill (225,
+// valeur route VRAIMENT (pas le 229 par défaut) ; un titre sans section / inconnu /
+// resolver legacy / resolver nil retombe sur DefaultEffectiveHpToKill (229,
 // byte-identique Halo Infinite).
 func TestEffectiveHpToKill_TitleAwareAndFallback(t *testing.T) {
 	t.Parallel()
@@ -54,7 +54,7 @@ effective_hp_to_kill = 115
 	}
 	res := NewMappingsEndpointResolver(reg, "halo_infinite")
 
-	// (1) La valeur déclarée (115) route réellement, pas le défaut 225.
+	// (1) La valeur déclarée (115) route réellement, pas le défaut 229.
 	if dm, ok := res.DamageModelFor(slug); !ok || dm.EffectiveHpToKill != 115 {
 		t.Errorf("DamageModelFor(%q) = %+v ok=%v, want EffectiveHpToKill=115 true", slug, dm, ok)
 	}
@@ -62,17 +62,17 @@ effective_hp_to_kill = 115
 		t.Errorf("EffectiveHpToKillFromResolver(%q) = %v, want 115", slug, got)
 	}
 
-	// (2) Titre inconnu du registre → défaut 225.
+	// (2) Titre inconnu du registre → défaut 229.
 	if got := EffectiveHpToKillFromResolver(res, "never_loaded"); got != DefaultEffectiveHpToKill {
 		t.Errorf("inconnu = %v, want %v (défaut)", got, DefaultEffectiveHpToKill)
 	}
 
-	// (3) Resolver legacy (sans DamageModelResolver) → défaut 225.
+	// (3) Resolver legacy (sans DamageModelResolver) → défaut 229.
 	if got := EffectiveHpToKillFromResolver(hostOnlyResolver{}, slug); got != DefaultEffectiveHpToKill {
 		t.Errorf("resolver legacy = %v, want %v (défaut)", got, DefaultEffectiveHpToKill)
 	}
 
-	// (4) Resolver nil → défaut 225.
+	// (4) Resolver nil → défaut 229.
 	if got := EffectiveHpToKillFromResolver(nil, slug); got != DefaultEffectiveHpToKill {
 		t.Errorf("resolver nil = %v, want %v (défaut)", got, DefaultEffectiveHpToKill)
 	}

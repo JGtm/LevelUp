@@ -47,7 +47,7 @@ function row(i: number, dealt: number, kills: number): TimeseriesMatchRow {
   return {
     match_id: `m${i}`,
     damage_dealt: dealt,
-    damage_taken: 900,
+    damage_taken: 916,
     kills,
     assists: 0,
     deaths: 4,
@@ -80,9 +80,9 @@ async function optionFor(rows: TimeseriesMatchRow[]) {
 
 describe('TimeseriesEfficiency — taux « une vie » (%)', () => {
   it('les deux courbes sont des TAUX en % : une vie par frag / par mort = 100 %', async () => {
-    // 4 frags pour 900 dégâts = 225 / frag effectif = une vie exactement.
-    // 4 morts pour 900 dégâts subis = 225 / mort = une vie exactement.
-    const opt = await optionFor([row(0, 900, 4)])
+    // 4 frags pour 916 dégâts = 229 / frag effectif = une vie exactement.
+    // 4 morts pour 916 dégâts subis = 229 / mort = une vie exactement.
+    const opt = await optionFor([row(0, 916, 4)])
     expect(opt.series[0].data[0]?.value).toBeCloseTo(ONE_LIFE_RATE_PCT, 6)
     expect(opt.series[0].data[0]?.perEvent).toBeCloseTo(ONE_LIFE_DAMAGE, 6)
     expect(opt.series[1].data[0]?.value).toBeCloseTo(ONE_LIFE_RATE_PCT, 6)
@@ -157,14 +157,14 @@ describe('TimeseriesEfficiency — taux « une vie » (%)', () => {
   })
 
   it('survol : taux %, valeur brute avec son unité, et rappel du pivot', async () => {
-    const opt = await optionFor([row(0, 900, 4)])
+    const opt = await optionFor([row(0, 916, 4)])
     const html = opt.tooltip.formatter([
       { seriesName: LABELS.rendementLabel, marker: '', data: opt.series[0].data[0] },
       { seriesName: LABELS.resistanceLabel, marker: '', data: opt.series[1].data[0] },
     ])
     expect(html).toContain('Rendement (%) : <b>100 %</b>')
-    expect(html).toContain('225 / frag effectif')
-    expect(html).toContain('225 / mort')
+    expect(html).toContain('229 / frag effectif')
+    expect(html).toContain('229 / mort')
     expect(html).toContain('100 % = 1 vie')
   })
 

@@ -15,7 +15,7 @@ export function HelpPage() {
   const routerState = useRouterState()
   const locale = useAppShellStore((s) => s.locale)
   // Barème PV-pour-tuer du titre courant : rend le copy combat (rendement /
-  // résistance) title-aware (225 Infinite, 115 Halo 5). Repli sur le défaut Infinite.
+  // résistance) title-aware (229 Infinite, 115 Halo 5). Repli sur le défaut Infinite.
   const effectiveHpToKill = useAppShellStore(
     (s) =>
       s.availableTitles.find((t) => t.slug === s.currentTitleSlug)

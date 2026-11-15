@@ -28,11 +28,11 @@ describe('getHelpText — copy combat title-aware', () => {
     expect(flatten('en', 115)).not.toContain('{{HP}}')
   })
 
-  it('par défaut, applique le barème Halo Infinite (225)', () => {
-    expect(DEFAULT_EFFECTIVE_HP_TO_KILL).toBe(225)
+  it('par défaut, applique le barème Halo Infinite (229)', () => {
+    expect(DEFAULT_EFFECTIVE_HP_TO_KILL).toBe(229)
     const fr = flatten('fr')
-    expect(fr).toContain('225 × (éliminations + assistances/3) / dégâts infligés')
-    expect(fr).toContain('dégâts reçus / (225 × morts)')
+    expect(fr).toContain('229 × (éliminations + assistances/3) / dégâts infligés')
+    expect(fr).toContain('dégâts reçus / (229 × morts)')
   })
 
   it('injecte le barème du titre courant dans le rendement et la résistance (115)', () => {

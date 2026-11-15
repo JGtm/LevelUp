@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/analysis/narrative"
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/analysis/skill_v2/ep"
 	"levelup/go-api/internal/games"
@@ -21,11 +22,16 @@ import (
 var (
 	performanceParametersByRevision = map[string]string{
 		"perf-2026-11-08": "858ec5dd81c1ce3e36adb02fe0578f388abc983152eb67e56e60547b19fae43a",
+		// Note à objectif (V7, objectiveblend) : profil de combat des chaînes objectif sans ospm, réglages
+		// de la note à objectif, poids des frags de soutien, vie effective 229.
+		"perf-2026-11-15": "f361041a0e31392d3d269dd2d5ec0ab23a5aa3ef046c5950b555ba897be22c35",
 	}
 	lusrParametersByRevision = map[string]string{
 		"lusr-2026-11-08": "ef84e6e155f63198d9a7387d11af1f1dfd77473d4e12bad220e667ef5fd3443a",
 		// Le repli du solveur sans comptes (solveWithCountFallback) est de la logique : aucun paramètre haché ne change.
 		"lusr-2026-11-09": "ef84e6e155f63198d9a7387d11af1f1dfd77473d4e12bad220e667ef5fd3443a",
+		// Vie effective 229 (games.DefaultEffectiveHpToKill) : Conversion offensive et Résistance défensive du composite.
+		"lusr-2026-11-15": "f5c143ce41819332a9a06a5943c9b09017dba175cbe19b966dfd58801d3bc047",
 	}
 )
 
@@ -62,6 +68,12 @@ func performanceParameters() (digest, body string) {
 	b.integer("MinMatchesForRelative", skill.MinMatchesForRelative)
 	b.integer("MinMatchesPerChainForRelative", skill.MinMatchesPerChainForRelative)
 	b.float("games.DefaultEffectiveHpToKill", games.DefaultEffectiveHpToKill)
+	blend := objectiveBlendParams()
+	b.float("objectiveblend.AlphaMin", blend.AlphaMin)
+	b.float("objectiveblend.AlphaMax", blend.AlphaMax)
+	b.float("objectiveblend.SupportSlope", blend.SupportSlope)
+	b.integer("objectiveblend.MinFamilyMatches", blend.MinFamilyMatches)
+	b.float("narrative.ObjectiveSupportFragWeight", narrative.ObjectiveSupportFragWeight)
 	b.weights("RelativeWeights", skill.RelativeWeights)
 	for _, chain := range knownPerformanceChains() {
 		b.weights("WeightsForChain."+chain, skill.WeightsForChain(chain))

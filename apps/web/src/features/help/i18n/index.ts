@@ -14,11 +14,11 @@ export type { GlossaryEntry, GlossarySection, HelpTab, HelpText } from './contra
  * Utilisé comme repli quand le titre courant n'expose pas son barème. Doit rester
  * aligné avec `games.DefaultEffectiveHpToKill` côté backend.
  */
-export const DEFAULT_EFFECTIVE_HP_TO_KILL = 225
+export const DEFAULT_EFFECTIVE_HP_TO_KILL = 229
 
 /**
  * Jeton remplacé par le barème PV-pour-tuer du titre courant dans le copy combat
- * (rendement / résistance). Toutes les valeurs réelles sont à 3 chiffres (115–225),
+ * (rendement / résistance). Toutes les valeurs réelles sont à 3 chiffres (115–229),
  * ce qui préserve l'alignement des tableaux ASCII après substitution.
  */
 const HP_TOKEN = '{{HP}}'
