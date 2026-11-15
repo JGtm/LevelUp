@@ -72,10 +72,16 @@ func (s *Service) ApplyObjectiveAxisRev(
 
 // recalibrateObjectiveStarts recale chaque campagne en cours (active ou paused) du joueur sur l'axe radar
 // Objectif ; les campagnes closes et celles des autres axes ne bougent pas. Un échec est journalisé et
-// n'arrête pas les autres campagnes ; l'erreur rendue les rassemble.
+// n'arrête pas les autres campagnes ; l'erreur rendue les rassemble. Un titre sans statistiques
+// d'objectif (WithObjectiveMeasure(false)) n'a rien à recaler : ses campagnes ne sont pas réécrites.
 func (s *Service) recalibrateObjectiveStarts(
 	ctx context.Context, userID, titleSlug string, now time.Time,
 ) (int, error) {
+	if s.objectiveUnmeasured {
+		slog.InfoContext(ctx, "campaign: titre sans statistiques d'objectif, campagnes de l'axe Objectif laissées telles quelles",
+			"user_id", userID, "title_slug", titleSlug)
+		return 0, nil
+	}
 	open, err := s.repo.ListOpen(ctx, userID, titleSlug)
 	if err != nil {
 		return 0, fmt.Errorf("campaign: liste des campagnes en cours: %w", err)
@@ -100,7 +106,8 @@ func (s *Service) recalibrateObjectiveStarts(
 // recalibrateStart recalcule le départ de `c` sur la fenêtre de son démarrage (loadStartSamples, comme
 // StartCampaign), recompte les matchs depuis le départ comme l'évaluation et remet l'évaluation à vide :
 // la valeur courante, le test de progression et la suggestion de clôture se recalculent à la prochaine
-// évaluation, sur la mesure courante.
+// évaluation, sur la mesure courante. Une fenêtre sans aucun match mesuré donne un départ non mesuré
+// (SnapshotSample = 0, cf. ImprovementCampaign.StartMeasured) : écrit tel quel, jamais présenté comme un 0.
 func (s *Service) recalibrateStart(ctx context.Context, c ImprovementCampaign, now time.Time) error {
 	samples, err := s.loadStartSamples(ctx, c.startParams(), c.StartedAt)
 	if err != nil {

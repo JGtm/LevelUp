@@ -113,11 +113,16 @@ func (c *ImprovementCampaign) FinalValue() *float64 {
 	return nil
 }
 
+// StartMeasured dit si le point de départ repose sur au moins un échantillon. SnapshotSample = 0 est un
+// départ NON MESURÉ (aucun match mesuré sur l'axe avant le démarrage) : SnapshotValue, alors 0, n'est pas
+// une mesure et ne sert à aucune progression chiffrée.
+func (c *ImprovementCampaign) StartMeasured() bool { return c.SnapshotSample > 0 }
+
 // Delta retourne l'écart valeur finale − snapshot de départ (progression sur
-// l'axe). nil si la valeur finale est inconnue (campagne non évaluée).
+// l'axe). nil si la valeur finale est inconnue (campagne non évaluée) ou si le départ n'est pas mesuré.
 func (c *ImprovementCampaign) Delta() *float64 {
 	final := c.FinalValue()
-	if final == nil {
+	if final == nil || !c.StartMeasured() {
 		return nil
 	}
 	d := *final - c.SnapshotValue

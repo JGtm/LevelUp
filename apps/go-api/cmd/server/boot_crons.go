@@ -68,8 +68,10 @@ func launchMonitoring(st *bootState) {
 	// Alignement des médias sur le dossier des captures : une passe, joueur par joueur, pour ce que
 	// l'explorateur a changé pendant que l'application était éteinte.
 	boot.launch(mediaReconcileTask(schedulerCtx, cfg, st.settingsStore))
-	// Rejeu des KPI quand une formule a changé depuis le dernier démarrage : une passe, joueur par
-	// joueur, sans effet quand la révision rangée est celle du binaire.
+	// Révisions de mesure changées depuis le dernier démarrage : une passe, joueur par joueur, de deux
+	// étapes indépendantes (rejeu des KPI après un changement de formule ; recalage du départ des
+	// campagnes de l'axe Objectif après un changement de sa mesure), sans effet quand la révision
+	// rangée d'une étape est celle du binaire.
 	boot.launch(scoringRevisionTask(schedulerCtx, reg.NewScoringRevision()))
 }
 

@@ -4,9 +4,10 @@
 // (campaign.ObjectiveAxisRev) ; le port décide de ce que fait un passage par joueur.
 //
 // Une mise à jour qui change une formule n'a besoin d'aucun outil manuel : le premier démarrage
-// qui suit recalcule l'historique de chaque joueur, une fois. Un joueur dont le recalcul échoue
-// garde son ancienne révision et reste à rejouer au démarrage suivant ; son échec ne retient pas
-// les autres.
+// qui suit recalcule l'historique de chaque joueur, une fois. Une étape qui échoue garde son
+// ancienne révision et reste à rejouer au démarrage suivant (les étapes réussies du même joueur ne le
+// sont pas) ; son échec ne retient ni les autres étapes ni les autres joueurs. Les compteurs et le
+// journal sont par étape.
 package scoringrevision
 
 import (
@@ -19,7 +20,7 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// Compteurs expvar (ADR 0009), par titre.
+// Compteurs expvar (ADR 0009), par titre ; une issue par étape et par joueur.
 const (
 	CompteurAppliquee = "scoring_revision_appliquee_total"
 	CompteurAJour     = "scoring_revision_a_jour_total"
@@ -80,19 +81,22 @@ func (s *Service) Run(ctx context.Context) {
 	}
 }
 
-// appliquer rejoue pour un joueur et compte l'issue.
+// appliquer applique les étapes d'un joueur et compte l'issue de CHACUNE : une étape réussie compte
+// comme appliquée même si une autre du même joueur échoue (elle a rangé sa révision et ne sera pas
+// rejouée), et un échec nomme son étape dans le journal, puisque seule celle-là est retentée.
 func (s *Service) appliquer(ctx context.Context, slug string, p domain.PlayerSummary) {
-	applied, err := s.a.ApplyForPlayer(ctx, slug, p)
-	switch {
-	case err != nil:
-		observability.IncCounterT(slug, CompteurErreurs)
-		slog.WarnContext(ctx, "scoring revision: recalcul échoué, retenté au prochain démarrage",
-			"err", err, "player", p.Gamertag, "titleSlug", slug)
-	case applied:
-		observability.IncCounterT(slug, CompteurAppliquee)
-		slog.InfoContext(ctx, "scoring revision: recalcul appliqué après changement de formule ou de mesure",
-			"player", p.Gamertag, "titleSlug", slug)
-	default:
-		observability.IncCounterT(slug, CompteurAJour)
+	for _, o := range s.a.ApplyForPlayer(ctx, slug, p) {
+		switch {
+		case o.Err != nil:
+			observability.IncCounterT(slug, CompteurErreurs)
+			slog.WarnContext(ctx, "scoring revision: étape échouée, retentée au prochain démarrage",
+				"step", string(o.Step), "err", o.Err, "player", p.Gamertag, "titleSlug", slug)
+		case o.Applied:
+			observability.IncCounterT(slug, CompteurAppliquee)
+			slog.InfoContext(ctx, "scoring revision: étape appliquée après changement de formule ou de mesure",
+				"step", string(o.Step), "player", p.Gamertag, "titleSlug", slug)
+		default:
+			observability.IncCounterT(slug, CompteurAJour)
+		}
 	}
 }

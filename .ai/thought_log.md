@@ -17,6 +17,11 @@
 - **Décision** : sur décision du user du 15/11, la 8.2.0 sort sur le décodeur v1.3.7 (schéma 116) avec les rejeux déjà en attente sur le VPS, sans nouvelle génération.
 - **Résultat** : la montée v1.3.9, le câblage de la lecture du film et les croix des morts passent en 8.2.1, comme les correctifs restants.
 - **Suite** : 8.2.1.
+## [2026-11-15] Recalage des campagnes de l'axe Objectif : ronde 1 de relecture, six P2 — Complété (branche `feat/c820-campagne`, non poussée)
+
+- **Décision** : un départ sans échantillon (`snapshot_sample` = 0) est NON MESURÉ, jamais un 0 : écart et plateau ne s'y mesurent pas, l'interface met un tiret, sans phrase (le garde-rail « aucun inconnu à l'écran » interdit de dire « non mesuré »). Le passage de démarrage rend désormais une issue par étape (port `RevisionOutcome`) pour que compteurs et journal nomment l'étape réussie ou en échec ; les étapes du câblage sont injectables. Un titre sans `match.objective.stats` voit son recalage sauté (capacité de l'adapter, jamais le slug).
+- **Résultats** : fenêtre de départ testée sur des dates en dur (démarrage, évaluation, recalage) et plafond de 100 ; tests d'indépendance des deux étapes dans les deux sens ; échec partiel compté et journalisé par étape ; commentaires du port et du lancement corrigés. Compteurs `scoring_revision_*` : une issue par étape et par joueur (le nombre « à jour » double, deux étapes).
+- **Suite** : revue et fusion par `levelup-dd`. Aucun changement du contrat OpenAPI.
 
 ## [2026-11-15] CI de la release rouge après l'axe Objectif des radars : prealloc et baseline de présence — Complété (branche `fix/c820-ci-radars`)
 - Décision : correctif à part, sans attendre la ronde 1 des radars. `objective_team_rows_repo.go` préalloue les pointeurs de scan (golangci-lint prealloc, ratchet). Baseline de présence : retrait des 11 tests de `internal/service` dont le code a été supprimé comme code mort par 9765aed2e2 (TestBuildMatchRadar_* et TestBuildRadarSeries_*), 88 lignes JSONL, documenté dans l'en-tête de `scripts/check_test_baseline.sh` selon sa recette (retrait partiel, jamais une re-capture).

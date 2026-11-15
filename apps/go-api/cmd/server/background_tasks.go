@@ -243,7 +243,8 @@ func citationsRelanceTask(ctx context.Context, relance *citationsrelance.Service
 }
 
 // scoringRevisionTask : le rejeu des KPI de chaque joueur dont la révision de formule rangée diffère
-// de celle du binaire, un passage unique au démarrage. Suivie : elle écrit les bases joueurs et
+// de celle du binaire et le recalage du départ de ses campagnes de l'axe Objectif quand la révision de
+// leur mesure diffère, un passage unique au démarrage. Suivie : elle écrit les bases joueurs et
 // partagée, le scheduler l'attend avant de les fermer. Coupée en démo : elle écrit les bases joueurs.
 func scoringRevisionTask(ctx context.Context, rejeu *scoringrevision.Service) backgroundTask {
 	return backgroundTask{name: taskScoringRevision, tracked: true, run: func() { rejeu.Run(ctx) }}

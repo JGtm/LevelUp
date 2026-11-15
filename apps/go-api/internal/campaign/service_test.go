@@ -17,6 +17,7 @@ type fakeRepo struct {
 	active  map[string]ImprovementCampaign // key = userID|titleSlug
 	linked  map[string][]string
 	updates int
+	evals   []Evaluation // évaluations persistées, dans l'ordre
 	// recalage (recalibrate_test.go)
 	listErr    error
 	restartErr map[string]error
@@ -74,11 +75,12 @@ func (r *fakeRepo) UpdateStatus(_ context.Context, id string, status CampaignSta
 	}
 	return nil
 }
-func (r *fakeRepo) UpdateEvaluation(_ context.Context, id string, _ Evaluation) error {
+func (r *fakeRepo) UpdateEvaluation(_ context.Context, id string, eval Evaluation) error {
 	if _, ok := r.byID[id]; !ok {
 		return ErrNotFound
 	}
 	r.updates++
+	r.evals = append(r.evals, eval)
 	return nil
 }
 func (r *fakeRepo) LinkedChallengeIDs(_ context.Context, campaignID string) ([]string, error) {
@@ -306,7 +308,7 @@ func TestImprovementCampaign_FinalValueAndDelta(t *testing.T) {
 	raw := 1.2
 	lowess := 1.5
 	// LOWESS prioritaire sur raw.
-	c := ImprovementCampaign{SnapshotValue: 1.0, CurrentValueRaw: &raw, CurrentValueLOWESS: &lowess}
+	c := ImprovementCampaign{SnapshotValue: 1.0, SnapshotSample: 10, CurrentValueRaw: &raw, CurrentValueLOWESS: &lowess}
 	if fv := c.FinalValue(); fv == nil || *fv != 1.5 {
 		t.Errorf("FinalValue (lowess prioritaire): got %v, want 1.5", fv)
 	}
@@ -314,7 +316,7 @@ func TestImprovementCampaign_FinalValueAndDelta(t *testing.T) {
 		t.Errorf("Delta: got %v, want 0.5", d)
 	}
 	// Sans LOWESS → repli sur raw.
-	c2 := ImprovementCampaign{SnapshotValue: 2.0, CurrentValueRaw: &raw}
+	c2 := ImprovementCampaign{SnapshotValue: 2.0, SnapshotSample: 10, CurrentValueRaw: &raw}
 	if fv := c2.FinalValue(); fv == nil || *fv != 1.2 {
 		t.Errorf("FinalValue (repli raw): got %v, want 1.2", fv)
 	}
@@ -322,7 +324,7 @@ func TestImprovementCampaign_FinalValueAndDelta(t *testing.T) {
 		t.Errorf("Delta (repli raw): got %v, want -0.8", d)
 	}
 	// Jamais évaluée → nil.
-	c3 := ImprovementCampaign{SnapshotValue: 1.0}
+	c3 := ImprovementCampaign{SnapshotValue: 1.0, SnapshotSample: 10}
 	if c3.FinalValue() != nil {
 		t.Errorf("FinalValue (non évaluée): want nil, got %v", c3.FinalValue())
 	}

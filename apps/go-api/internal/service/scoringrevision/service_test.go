@@ -1,21 +1,27 @@
 package scoringrevision
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/port"
 )
 
-// fauxApplier : le port du rejeu, sans base.
+// fauxApplier : le port du rejeu, sans base. Par défaut une seule étape (kpi) par joueur, dont l'issue
+// vient de appliquee / errs ; `etapes` impose les issues d'un joueur (deux étapes).
 type fauxApplier struct {
 	joueurs    map[string][]domain.PlayerSummary // par titre
 	listeErr   map[string]error                  // par titre
 	appliquee  map[string]bool                   // par xuid
 	errs       map[string]error                  // par xuid
+	etapes     map[string][]port.RevisionOutcome // par xuid
 	appels     []string                          // "titre/xuid"
 	apresAppel func()
 }
@@ -24,12 +30,15 @@ func (f *fauxApplier) FollowedPlayers(slug string) ([]domain.PlayerSummary, erro
 	return f.joueurs[slug], f.listeErr[slug]
 }
 
-func (f *fauxApplier) ApplyForPlayer(_ context.Context, slug string, p domain.PlayerSummary) (bool, error) {
+func (f *fauxApplier) ApplyForPlayer(_ context.Context, slug string, p domain.PlayerSummary) []port.RevisionOutcome {
 	f.appels = append(f.appels, slug+"/"+p.XUID)
 	if f.apresAppel != nil {
 		f.apresAppel()
 	}
-	return f.appliquee[p.XUID], f.errs[p.XUID]
+	if o, ok := f.etapes[p.XUID]; ok {
+		return o
+	}
+	return []port.RevisionOutcome{{Step: port.RevisionStepKPI, Applied: f.appliquee[p.XUID], Err: f.errs[p.XUID]}}
 }
 
 func joueur(xuid string) domain.PlayerSummary {
@@ -160,5 +169,47 @@ func TestRun_AnnulationArreteEntreDeuxJoueurs(t *testing.T) {
 	nouveau(f, "sr-f", "sr-g").Run(ctx)
 	if len(f.appels) != 1 || f.appels[0] != "sr-f/x1" {
 		t.Fatalf("appels = %v, attendu un seul appel avant l'arrêt", f.appels)
+	}
+}
+
+// capteurJournal remplace le journal par défaut le temps d'un test et rend ce qui y a été écrit.
+func capteurJournal(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return &buf
+}
+
+// Échec partiel : les notes réussissent (révision rangée), les campagnes échouent. L'étape réussie compte
+// comme appliquée, l'échec compte en erreur et le journal nomme l'étape qui sera retentée : les notes ne
+// seront pas rejouées, seules les campagnes le seront.
+func TestRun_EchecPartielNommeLEtapeEnEchec(t *testing.T) {
+	f := &fauxApplier{
+		joueurs: map[string][]domain.PlayerSummary{"sr-h": {joueur("x1")}},
+		etapes: map[string][]port.RevisionOutcome{"x1": {
+			{Step: port.RevisionStepKPI, Applied: true},
+			{Step: port.RevisionStepCampaigns, Err: errors.New("lease refusé")},
+		}},
+	}
+	journal := capteurJournal(t)
+	appliqueeAvant := observability.LoadCounterT("sr-h", CompteurAppliquee)
+	erreursAvant := observability.LoadCounterT("sr-h", CompteurErreurs)
+
+	nouveau(f, "sr-h").Run(context.Background())
+
+	if got := observability.LoadCounterT("sr-h", CompteurAppliquee) - appliqueeAvant; got != 1 {
+		t.Errorf("appliquées : +%d, attendu +1 (l'étape des notes a réussi)", got)
+	}
+	if got := observability.LoadCounterT("sr-h", CompteurErreurs) - erreursAvant; got != 1 {
+		t.Errorf("erreurs : +%d, attendu +1 (l'étape des campagnes a échoué)", got)
+	}
+	logs := journal.String()
+	if !strings.Contains(logs, "step=campagnes") || !strings.Contains(logs, "étape échouée") {
+		t.Errorf("le journal ne nomme pas l'étape en échec :\n%s", logs)
+	}
+	if !strings.Contains(logs, "step=kpi") || !strings.Contains(logs, "étape appliquée") {
+		t.Errorf("le journal ne nomme pas l'étape réussie :\n%s", logs)
 	}
 }
