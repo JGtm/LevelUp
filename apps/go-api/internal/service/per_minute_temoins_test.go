@@ -114,3 +114,35 @@ func TestTemoinMinute_ContributionsParMinute(t *testing.T) {
 		}
 	}
 }
+
+// Somme des minutes par match puis une division : 25 frags en 300 s + 344 s font 2,3291925465838506 par
+// minute ; une somme des secondes divisée par 60 rendrait ...851 au dernier bit.
+func TestTemoinMinute_ContributionsSommeDesMinutes(t *testing.T) {
+	ip := func(v int) *int { return &v }
+	mk := func(secs, k, d, a int) canonical.PlayerMatchRow {
+		var r canonical.PlayerMatchRow
+		r.Summary.DurationSeconds = ip(secs)
+		r.Self.Kills, r.Self.Deaths, r.Self.Assists = ip(k), ip(d), ip(a)
+		return r
+	}
+	got := BuildPerMinuteStats(map[string][]canonical.PlayerMatchRow{
+		"alpha": {mk(300, 20, 6, 4), mk(344, 5, 4, 3)},
+	})
+	temoinN(t, "contrib2.len", len(got.Datapoints), 1)
+	if len(got.Datapoints) == 1 {
+		c := got.Datapoints[0].Components
+		temoinF(t, "contrib2.kills_per_min", c["kills_per_min"], "2.3291925465838506")
+		temoinF(t, "contrib2.deaths_per_min", c["deaths_per_min"], "0.9316770186335402")
+		temoinF(t, "contrib2.assists_per_min", c["assists_per_min"], "0.6521739130434782")
+	}
+}
+
+// Une durée négative est exclue des tranches de score par minute, comme une durée nulle ou absente.
+func TestTemoinMinute_BucketsDureeNegativeExclue(t *testing.T) {
+	ip := func(v int) *int { return &v }
+	got := buildScorePerMinBuckets([]legacymatch.StatsMatchRow{
+		{PersonalScore: ip(500), TimePlayedSeconds: ip(-60)},
+		{PersonalScore: ip(500), TimePlayedSeconds: ip(0)},
+	})
+	temoinN(t, "buckets.negatif.len", len(got), 0)
+}

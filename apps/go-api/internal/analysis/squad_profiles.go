@@ -49,7 +49,7 @@ func ComputeParticipationProfile(rows []domain.SquadMatchRow, name, color string
 			nAccuracy++
 		}
 		if r.TimePlayedSecs > 0 {
-			sumKPM += PerMinute(float64(r.Kills), float64(r.TimePlayedSecs))
+			sumKPM += PerMinuteOfCount(float64(r.Kills), float64(r.TimePlayedSecs))
 			nKPM++
 		}
 		if r.KDA != nil {
@@ -101,7 +101,7 @@ func ComputeTeammateProfile(rows []domain.TeammateMatchRow, name, color string) 
 			nAccuracy++
 		}
 		if r.TimePlayedSecs > 0 {
-			sumKPM += PerMinute(float64(r.Kills), float64(r.TimePlayedSecs))
+			sumKPM += PerMinuteOfCount(float64(r.Kills), float64(r.TimePlayedSecs))
 			nKPM++
 		}
 		if r.Ratio != nil {

@@ -52,7 +52,7 @@ func buildScorePerMinBuckets(matches []legacymatch.StatsMatchRow) []domain.Distr
 	counts := make(map[int]int)
 
 	for _, m := range matches {
-		if m.PersonalScore == nil || m.TimePlayedSeconds == nil || *m.TimePlayedSeconds == 0 {
+		if m.PersonalScore == nil || m.TimePlayedSeconds == nil || *m.TimePlayedSeconds <= 0 {
 			continue
 		}
 		spm := analysis.PerMinute(float64(*m.PersonalScore), float64(*m.TimePlayedSeconds))

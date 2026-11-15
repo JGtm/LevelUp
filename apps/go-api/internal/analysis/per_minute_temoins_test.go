@@ -158,3 +158,23 @@ func TestTemoinMinute_Profils(t *testing.T) {
 	temoinF(t, "profil.mate.kpm", ComputeTeammateProfile(mates, "n", "c").Values[StatLabelKillsPerMin], "3.05")
 	temoinF(t, "profil.mate.zero.kpm", ComputeTeammateProfile(mates[3:], "n", "c").Values[StatLabelKillsPerMin], "0")
 }
+
+// Les profils moyennent des cadences par match écrites comptage * 60 / secondes (un seul arrondi) : 3 frags en
+// 800 s font 0,225 exactement, donc 0,23 affiché ; la forme à deux arrondis rendrait 0,22.
+func TestTemoinMinute_ProfilsUnSeulArrondi(t *testing.T) {
+	cas := []struct {
+		label string
+		kills int
+		secs  int
+		want  string
+	}{
+		{"profil.3sur800", 3, 800, "0.23"},
+		{"profil.23sur736", 23, 736, "1.88"},
+	}
+	for _, c := range cas {
+		squad := []domain.SquadMatchRow{{Kills: c.kills, TimePlayedSecs: c.secs}}
+		temoinF(t, c.label+".squad", ComputeParticipationProfile(squad, "n", "c").Values[StatLabelKillsPerMin], c.want)
+		mates := []domain.TeammateMatchRow{{Kills: c.kills, TimePlayedSecs: c.secs}}
+		temoinF(t, c.label+".mate", ComputeTeammateProfile(mates, "n", "c").Values[StatLabelKillsPerMin], c.want)
+	}
+}

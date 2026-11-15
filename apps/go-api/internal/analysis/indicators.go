@@ -141,12 +141,38 @@ func PerfTier(score float64) Tier {
 
 // PerMinute retourne total rapporté à la minute de jeu : total / (seconds / 60). Renvoie 0 si seconds <= 0
 // (durée inconnue). Le calcul est celui, valeur pour valeur, des cadences par minute d'un match (frags et
-// score personnel) du pipeline de progression : la division se fait par les minutes, jamais par
-// total * 60 / seconds, dont l'arrondi diffère.
+// score personnel) du pipeline de progression : la division se fait par les minutes (deux arrondis), pas par
+// total * 60 / seconds (un arrondi), forme que porte [PerMinuteOfCount].
 func PerMinute(total, seconds float64) float64 {
 	if seconds <= 0 {
 		return 0
 	}
-	minutes := seconds / 60
-	return total / minutes
+	return total / SecondsToMinutes(seconds)
+}
+
+// PerMinuteOfCount retourne count rapporté à la minute de jeu sous la forme count * 60 / seconds : le produit
+// se fait avant la division, un seul arrondi. Renvoie 0 si seconds <= 0 (durée inconnue).
+//
+// Elle existe à côté de [PerMinute] parce que les deux formes ne rendent pas le même dernier bit : 3 frags en
+// 800 s font exactement 0,225 ici (0,23 une fois arrondi à deux décimales) et 0,22499999999999998 par
+// [PerMinute] (0,22). Les profils d'escouade moyennent des cadences écrites sous cette forme : y passer par
+// [PerMinute] décalerait des valeurs affichées.
+func PerMinuteOfCount(count, seconds float64) float64 {
+	if seconds <= 0 {
+		return 0
+	}
+	return count * 60 / seconds
+}
+
+// SecondsToMinutes convertit une durée en secondes en minutes : seconds / 60. Pour cumuler des minutes match
+// par match (somme des conversions, jamais conversion de la somme : l'arrondi diffère) ou réutiliser une durée
+// convertie dans plusieurs divisions. Sans garde : la durée nulle ou négative reste celle de l'appelant.
+func SecondsToMinutes(seconds float64) float64 {
+	return seconds / 60
+}
+
+// MillisecondsToMinutes convertit une durée en millisecondes en minutes : ms / 60000. Même contrat que
+// [SecondsToMinutes], pour les durées que le film et les événements portent en millisecondes.
+func MillisecondsToMinutes(ms float64) float64 {
+	return ms / 60_000
 }
