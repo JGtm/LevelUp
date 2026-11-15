@@ -23,6 +23,12 @@
 
 ---
 
+### [progression] Jalon « jours avec une précision d'au moins 50 % » atteint trop facilement
+
+Relevé le 2026-11-14 (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 1.5). `match_participants.accuracy` porte la précision native de l'API en POURCENTAGE, mais le jalon `accuracy_threshold_days` la compare au seuil 0,50 (`internal/platform/duckdb/post_sync_progression_store.go`, agrégat `Aggregates` autour de la ligne 179, et `internal/ops/milestone_dates.go`) : tout match à plus de 0,5 % de précision compte comme un jour réussi. Le test `post_sync_stores_test.go` fige ce comportement en le signalant comme « unité en question ». Corriger (diviser par 100 ou comparer à 50) change des jalons déjà affichés et datés. **Décision du user du 2026-11-15 : ne pas y toucher à ce stade, noté au backlog.** **Effort : S, plus la décision sur les jalons déjà posés.**
+
+---
+
 ### [analysis] Six divisions « par minute » écrites à la main au lieu de `analysis.PerMinute`
 
 Relevé le 2026-11-14 par la relecture du groupe « Rythme » de Tendances (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 2). Le helper canonique `analysis.PerMinute(total, seconds)` (`internal/analysis/indicators.go:146`) existe, mais six sites refont la division : `kpi_stats.go:115`, `explorer_target_stats.go:122`, `home_canonical_highlights_tiles.go:86`, `squad_breakdown.go:373`, `squad_breakdown_canonical.go:59` et `:160`. Règle 6 : migrer les six sites vers le helper (valeurs identiques à vérifier par témoins avant/après, l'arrondi de `total * 60 / seconds` diffère) et poser un garde-rail grep qui interdit la division en ligne dans `internal/analysis`. Dette antérieure, hors du plan. **Effort : S.**
