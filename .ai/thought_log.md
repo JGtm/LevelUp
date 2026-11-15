@@ -121358,3 +121358,97 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 - **Décision technique** : une seule régénération locale (accord du user du 2026-11-16, relayé par la session pilote), binaire de `release/v8.2.1` à `e657d05bc8`, serveur arrêté, un film à la fois ; dérivés locaux dans l'ordre du G7 ; copie des rejeux SEULS (`.json.gz` + `.meta`) dans `data/replays-staging-v8.2.1/` du VPS, avec un `BASCULE.sh` qui remplace par temporaire + renommage.
 - **Résultats** : 1 455 rejeux au 124, 0 erreur, archive des films intacte (1 614) ; dérivés 0 échec (1 456 calques tactiques v7) ; simulation de la bascule : 1 455 remplacements, 0 erreur ; octets identiques entre local et VPS.
 - **Conclusion / prochaine étape** : à la sortie de la 8.2.1, `BASCULE.sh --apply` puis les dérivés serveur (`.ai/annexes_v8_1_2/gestes_prod_8_2_1.md`) ; vérification à l'écran ligne 931 de l'artefact des vérifications.
+## [2026-11-15] Plan du rejeu en 3D dans l'application de bureau — Complété (plan écrit, attend les décisions D-1 à D-8 puis le go)
+
+**Décision technique principale** : plan `.ai/PLAN_REJEU_3D_2026-11-15.md`, quatre lots après un lot 0 de préalables. A : question « où est installé Halo Infinite » (Steam / Xbox / Parcourir / Pas maintenant), aucune lecture de disque avant la réponse, réglage `game_install` à trois états, jamais par l'env (la coquille retire `LEVELUP_*`). B : carte 3D construite depuis le jeu sous `<Data>/cache/maps3d`, file à la manière de `replayregen`. C : lecteur three.js chargé en différé, commutateur 2D / 3D dans le menu « Vue ». D : mini-carte en vue Plan après extraction du moteur 2D, maquette d'abord. D-1 propose de demander au contributeur llampwall le source de son lecteur 3D (AGPL, non public) et sa contribution, avec un repli sur la lecture de géométrie de notre brique.
+**Résultats observés** : binaire du contributeur lu sans être lancé. Briques recopiées : décodeur 1.3.6, cartes et fichiers 1.0.1. Sa copie de la brique cartes lit animations, lumières et textures, ce que la nôtre ne fait pas. Pas de signature, son propre identifiant d'application Microsoft, aucun vrai xuid, 183 sons de LevelUp embarqués. Sur la 8.2.0 : `DeployRoot` n'a que trois chemins fixes et des appelants hors ligne ; il n'existe ni capacité 3D, ni mini-carte, ni dépendance 3D ; projectiles et tirs n'ont pas de `z` dans le document.
+**Conclusion / prochaine étape** : le user teste l'application du contributeur, tranche D-1 à D-8, puis donne le go ; worktree de lecture `C:/t/plan3d-ro` retiré (aucune jonction).
+
+## [2026-11-15] Plan du rejeu 3D : décisions du user intégrées — Complété (attend la confirmation de D-1 et D-3 puis le go)
+
+**Décision technique principale** : base `release/v8.2.0` (la sortie attend ce plan). Qualité du contributeur par défaut, pour la carte comme pour les Spartans (armures, peintures, corps animé, armes, bras en 1re personne), donc reprise de son code avec crédit. Réglage « Rejeu 3D » dans l'onglet Jeux (`TitlesTab`) : son activation pose la question de l'installation, « Pas maintenant » laisse l'interrupteur éteint. Mini-carte écartée des bords. Option légère proposée comme réglage et non à la volée (un autre fichier sur le disque). Place occupée et « Libérer l'espace » ajoutés.
+**Résultats observés** : l'onglet Jeux existe (`id: 'titles'`, `SettingsPage.tsx:107`).
+**Conclusion / prochaine étape** : le user confirme D-1 (demander le source au contributeur) et D-3 (léger dans les réglages), puis donne le go ; prévenir le pilote de la 8.2.0.
+
+## [2026-11-15] Plan du rejeu 3D : D-1 tranché, version légère revue — Complété (attend le source du contributeur, la validation de D-3 et le go)
+
+**Décision technique principale** : D-1 tranché par le user (« il m'a donné son code exprès pour que je travaille l'intégration, j'ai sa validation »). D-3 revu : pas de version légère construite en V1. À la place, des réglages de rendu à la volée dans le menu « Vue » (ombres, définition, distance) et un plafond du cache 3D dans l'onglet Jeux. Une version légère ne revient que si M-3 donne moins de 60 i/s avec ces réglages au plus bas.
+**Résultats observés** : les paquets test.8 et test.9 (`Downloads`) ne contiennent que l'exécutable : aucun fichier `.go`, et pas de `web/`.
+**Conclusion / prochaine étape** : recevoir le source (dépôt privé partagé ou archive), le user valide D-3, puis le go.
+
+## [2026-11-15] Plan du rejeu 3D : contours à travers les murs, mini-carte au nord, HUD — Complété (plan ; attend le source, D-3 et le go)
+
+**Décision technique principale** : D-9, un joueur caché par un mur reste visible par son contour à la couleur d'équipe, sous Seul / Masquer. D-7, la mini-carte est verrouillée au nord et seul le cône de la caméra tourne. D-10, le HUD de la 3D se décide sur maquette (proposition : HUD réduit au joueur suivi, ni fil ni score puisque la page les montre). Nouvelle étape C.0 : une seule page de maquettes (HUD, mini-carte, contours) avant tout code web.
+**Résultats observés** : le user a transmis les deux premiers points au contributeur ; l'item 0.7 vérifie dans le source reçu s'ils sont déjà traités.
+**Conclusion / prochaine étape** : recevoir le source, valider D-3, puis le go.
+
+## [2026-11-15] Plan du rejeu 3D : pas de version légère, stratégie anti-saturation proposée — Complété (plan ; attend le source, la validation de D-11 et le go)
+
+**Décision technique principale** : D-3 tranché par le user (« pas de version légère »). D-11 proposé, sachant que la place se compte par carte et non par match :
+- construction à la demande seulement ;
+- plafond du cache 3D réglable (20 Go par défaut), les cartes ouvertes il y a le plus longtemps étant supprimées en premier, jamais la carte ouverte ni les bibliothèques ;
+- garde de 10 Go libres avant toute construction ;
+- dossier au choix, déplaçable comme l'archive des films ;
+- textures communes rangées une fois si M-1 le justifie ;
+- ménage des temporaires, et suppression proposée à la désactivation.
+
+Règles pures dans `analysis/replay3dcache`.
+**Résultats observés** : ordre de grandeur de 12 à 36 Go pour 20 à 40 cartes jouées, à 600-900 Mo par carte (chiffre du contributeur, mesuré en M-1).
+**Conclusion / prochaine étape** : le user valide D-11 ; source du contributeur à recevoir ; go.
+
+## [2026-11-15] Plan du rejeu 3D : D-11 retenu, audit d'optimisation par Fable en phase 0 — Complété (plan ; attend le source et le go)
+
+**Décision technique principale** : D-11 (anti-saturation) tranché par le user (« ouais ok »). Nouvel item 0.8 à sa demande : un agent Fable audite en lecture seule le code du contributeur, après réception du source et les mesures M-1. Trois axes : traitement, mise en commun (textures, modèles, matériaux) et parallélisation bornée en mémoire, plus le stockage. Chaque proposition est chiffrée sur M-1 ; le user retient ou écarte chacune avant le lot B.
+**Résultats observés** : aucune ; aucun code reçu à ce jour.
+**Conclusion / prochaine étape** : recevoir le source, puis le go.
+
+## [2026-11-15] Plan du rejeu 3D : emplacement du code (D-12) proposé — Complété (plan ; attend la validation de D-12, le source et le go)
+
+**Décision technique principale** : la proposition répartit le code en trois parts.
+- Une cinquième brique Go, `JGtm/halo-infinite-3d-assets`, pour l'export 3D depuis le jeu, en AGPL. Les fichiers d'Ekur gardent leur en-tête GPL et la clause 7(b) du contributeur s'applique. Motif : contributeur externe, critère de l'ADR 0043. La brique importe `map-images` et `files-reader`. Les lecteurs génériques sont rangés dans la brique la plus basse qui en a besoin, ce qui se décide en 0.2 et 0.8. La détection de l'installation reste dans `map-images`.
+- Le lecteur 3D reste dans LevelUp. Un paquet npm partagé ne se fera que si le contributeur le demande.
+- L'exploitation reste dans LevelUp (découpage de l'ADR 0042).
+
+La création du dépôt et l'accès du contributeur reviennent au user. L'ADR 0043 est à amender.
+**Résultats observés** : aucune.
+**Conclusion / prochaine étape** : le user valide D-12 ; source à recevoir ; go.
+
+## [2026-11-15] Plan du rejeu 3D : D-12 retenu — Complété (plan ; attend le source et le go)
+
+**Décision technique principale** : D-12 tranché par le user (« ok parfait, à voir comment le contributeur a pensé les choses ») : cinquième brique pour l'export 3D, lecteur et exploitation dans LevelUp. En 0.2, le découpage du source du contributeur est comparé à D-12, et tout écart est rapporté au user avant le lot B.
+**Résultats observés** : toutes les décisions sont tranchées, sauf D-10 (HUD), qui se décide sur maquette en C.0.
+**Conclusion / prochaine étape** : recevoir le source (dépôt privé ou archive), puis le go du user ; création du dépôt de la brique par le user.
+
+## [2026-11-15] Plan du rejeu 3D : repère et filtre « rejeu 3D » dans les listes (lot E) — Complété (plan ; attend la validation de D-13, le source et le go)
+
+**Décision technique principale** : D-13 proposé. Un match a un rejeu 3D quand son rejeu 2D existe ET que l'export sait construire sa carte, ce que `PrendEnCharge` de la brique 3D décide sans rien construire. Le repère ne dépend pas du cache. La règle est unique dans `internal/analysis/`, avec un garde-rail. Le port `Replay3DAvailability` est calqué sur `ReplayAvailability`. Le champ `has_replay_3d` s'ajoute aux six producteurs de `has_replay`. `ReplayScope` gagne `with_3d`, offert seulement si la 3D est active au bureau. `MatchReplayLink` reste le point unique de l'icône, avec une présentation « 3D ». Le dessin du repère est ajouté à la maquette C.0.
+**Résultats observés** : six producteurs relus sur la 8.2.0 (`home`, `match_history`, `explorer`, `teammates`, `match_view`, `tactical_cellule`) ; filtre Explorer `'' | 'with' | 'without'`, côté Go dans `match_history_filter_replay.go`.
+**Conclusion / prochaine étape** : le user valide D-13 ; source à recevoir ; go.
+
+## [2026-11-15] Plan « temps forts » : détection, puis clips vidéo rendus en 3D — Complété (plan écrit ; s'exécute après le plan 3D ; attend D-1 à D-7)
+
+**Décision technique principale** : plan `.ai/PLAN_TEMPS_FORTS_2026-11-15.md`, inspiré de la démarche de csstat (projet CS2 d'un ami du user), sans reprise de code. Les signaux vont au-delà des médailles, à la demande du user :
+- vie et bouclier à l'instant de l'élimination, rapport de force, séries proches du seuil, distance et arme ;
+- objectifs, moment du match, équipement et véhicules, pic d'intensité.
+
+Chaque signal n'entre au modèle que s'il améliore le résultat sur une vérité terrain votée par le user (lot 0, 12 matchs). Visible au bureau avec la 3D seulement (le user : « sans 3D pas fou à regarder »). Clips rendus à la demande par le lecteur 3D et encodés par le ffmpeg livré, puis rangés dans Médias. Temps forts détectés rangés en un fichier par match à côté de l'artefact de rejeu, sans écriture en base partagée.
+**Résultats observés** : le document de rejeu porte déjà vie et bouclier, objectifs, score dans le temps, véhicules et équipement. `analysis/narrative/intensity.go`, `comeback.go` et `max_killing_spree.go` sont réutilisables. Les médailles du film ne sont pas encore montées dans LevelUp.
+**Conclusion / prochaine étape** : décisions D-1 à D-7 à trancher par le user ; exécution après la clôture du plan 3D.
+
+## [2026-11-15] Plan « temps forts » : D-1 à D-6 tranchés — Complété (plan ; exécution après le plan 3D)
+
+**Décision technique principale** : le user accepte les propositions (« ok bien ») : signaux validés sur vérité terrain, seuil 70 % / 80 %, page de vote sur 12 matchs, visible avec la 3D seulement, clips à la demande un par un avec caméra au choix, clips dans Médias hors du plafond 3D. D-7 (fichier par match à côté de l artefact de rejeu) à confirmer au go.
+**Résultats observés** : aucune.
+**Conclusion / prochaine étape** : exécution après la clôture du plan 3D.
+
+## [2026-11-15] Plans rejeu 3D et temps forts : orchestration en pistes parallèles
+**Statut :** Complété (plans) ; exécution en attente du go.
+**Décision :** demande du user : les plans sont pensés pour la parallélisation. Sonnet par défaut, Haiku dès que possible, Opus si nécessaire, Fable pour l'étape 0 et la revue finale. Les deux plans reçoivent une section 1 bis. Elle contient une table piste / item / modèle / attend, les vagues et les bornes : 4 agents Sonnet ou Opus à la fois, une seule tâche lourde en RAM, un seul gate-push, un écrivain par fichier partagé, agents sans commit ni push. Chaque plan ajoute aussi une revue finale Fable (R.1), suivie d'une ronde de corrections (R.2).
+**Résultats :** plan 3D : une première vague part dès le go, sans le source du contributeur. Elle couvre les maquettes, la recherche de l'installation, l'extraction du moteur 2D, les règles du cache et la dépendance three. Opus est réservé à C.7 (contours) et à C.2/C.4 si M-4 relève un écart de structure. Plan temps forts : Fable pour la conception (0.0) et la mesure M-1 (0.3). La règle est rangée en mémoire (feedback_workflows_et_sous_agents_opus).
+**Suite :** 3D : source du contributeur, validation de D-13, puis go. Temps forts : après la clôture de la 3D.
+
+
+## [2026-11-15] Plans rejeu 3D et temps forts : base déplacée vers la 8.3.0
+**Statut :** Complété (plans) ; exécution en attente du source du contributeur et du go.
+**Décision :** le user a sorti la 3D et les temps forts de la 8.2.0 pour la 8.3.0 ; le pilote levelup-dd a relayé la décision et a créé `release/v8.3.0` depuis `origin/main` (`5ecbcfe934`). D-2 du plan 3D vise désormais `release/v8.3.0`. Les plans et ce journal sont rangés dans un worktree dédié, sans jonction, sur la branche `docs/plans-3d-temps-forts` issue de `release/v8.3.0`, car `release/v8.3.0` est déjà prise par le worktree du plan de refonte de l'interface du rejeu.
+**Suite :** 3D : source de llampwall, validation de D-13, go du user ; temps forts : après la clôture de la 3D, D-7 à confirmer au go.
