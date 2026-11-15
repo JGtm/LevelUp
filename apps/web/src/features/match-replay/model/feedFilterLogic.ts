@@ -8,10 +8,12 @@
  * SÉMANTIQUE (celle de la maquette, `matchFilter`) :
  *  - Tout : chaque forme de ligne ;
  *  - Éliminations : les frags ;
- *  - Objectifs, Armes et bonus, Véhicules : les lignes d'événement de leur famille ;
+ *  - Objectifs, Armes et bonus, Véhicules : les lignes d'événement de leur famille ; Objectifs
+ *    retient aussi les frags qui portent le badge « porteur » (une victime qui portait le drapeau :
+ *    la ligne d'objectif s'y est repliée, elle ne disparaît pas du filtre) ;
  *  - Médailles : les médailles seules ET les frags qui en portent ;
  *  - Assistances : les frags dont l'assistance est NOMMÉE.
- * Assistances et médailles restent sur la ligne de leur élimination dans « Tout » : leurs
+ * Assistances, médailles et badge « porteur » restent sur la ligne de leur élimination dans « Tout » : leurs
  * entrées de menu servent à les isoler, pas à les dédoubler.
  *
  * LE MENU. Toutes les entrées sont proposées, sauf Objectifs : un match sans aucune ligne
@@ -53,6 +55,7 @@ export function matchesFeedFilter(entry: ReplayFeedEntry, filter: FeedFilterId):
     case 'kills':
       return entry.kill !== null
     case 'objectives':
+      return entry.event?.family === 'objectives' || entry.flagCarrierKill === true
     case 'pickups':
     case 'vehicles':
       return entry.event?.family === filter

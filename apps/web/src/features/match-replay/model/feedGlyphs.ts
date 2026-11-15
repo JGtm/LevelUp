@@ -31,6 +31,7 @@ export type FeedGlyphKey =
   | 'vehicle'
   | 'medal'
   | 'assist'
+  | 'round'
 
 /** Le tracé (attribut `d`) de chaque pictogramme. */
 export const FEED_GLYPH_PATH: Readonly<Record<FeedGlyphKey, string>> = {
@@ -48,6 +49,7 @@ export const FEED_GLYPH_PATH: Readonly<Record<FeedGlyphKey, string>> = {
   vehicle: 'M4 15l2-6h12l2 6v3H4ZM7 18v2M17 18v2',
   medal: 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12ZM8.5 14 7 21l5-3 5 3-1.5-7',
   assist: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM5 21a7 7 0 0 1 14 0',
+  round: 'M4 4h16v16H4ZM4 12h16M12 4v16',
 }
 
 /** Le pictogramme de la ligne d'une action d'objectif : celui de sa famille. */

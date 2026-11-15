@@ -17,12 +17,14 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { FEED_ROW, FEED_ROW_BUTTON, FEED_ROW_ITEM } from '../model/feedRow'
 import type { ReplayDeath, ReplayFeedEntry, ReplayKill } from '../model/killFeedLogic'
 import type { KillerZoneOf } from '../hooks/useKillerZones'
+import type { ReplayTeamCascades } from '../hooks/useTeamCascades'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { MedalBadges } from './MedalBadges'
-import type { FeedEventLine } from '../model/feedEventLines'
+import { isObjectiveStateLine, type FeedEventLine } from '../model/feedEventLines'
 import { ReplayEventLine } from './ReplayEventLine'
-import { ReplayObjectiveLine } from './ReplayObjectiveLine'
-import { KillAssist, KillWeapon, KillZone, DOT_PX } from './ReplayKillLineParts'
+import { ReplayObjectiveLine, type CaptureAssister } from './ReplayObjectiveLine'
+import { ReplayObjectiveStateLine } from './ReplayObjectiveStateLine'
+import { KillAssist, KillCarrierBadge, KillWeapon, KillZone, DOT_PX } from './ReplayKillLineParts'
 import { FeedClock } from './ReplayFeedClock'
 import { PRESS_GUARDS } from './replayPressGuards'
 import { FeedName } from './ReplayFeedName'
@@ -60,6 +62,21 @@ function deathKindLabel(kind: string, t: (typeof REPLAY_TEXT)['fr']): string {
   return kind === 'environment' || kind === 'suicide' ? t.killFeedDeathKind[kind] : ''
 }
 
+/** Ce que reçoit une ligne du fil : l'entrée, l'encre et les noms, et ce qui rend un frag cliquable. */
+interface FeedLineProps {
+  entry: ReplayFeedEntry
+  inkOf: InkOf
+  xuidMeta: GamertagIndex
+  marks: ReadonlyMap<string, PlayerMarkKind>
+  marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
+  locale: ReplayLocale
+  zoneOf?: KillerZoneOf
+  /** Le nom et l'encre d'un camp du film : les lignes de manche et de colline écrivent des camps, pas des joueurs. */
+  teams: ReplayTeamCascades
+  /** Seule la ligne de FRAG s'en sert : les autres formes de ligne ne sont pas cliquables. */
+  focus?: FeedLineFocus
+}
+
 /**
  * FeedLine — UNE ligne du fil, au format du POC : tueur, arme, victime, horodatage,
  * médailles puis assistance en dessous.
@@ -78,18 +95,9 @@ export function FeedLine({
   marksByGamertag,
   locale,
   zoneOf,
+  teams,
   focus,
-}: {
-  entry: ReplayFeedEntry
-  inkOf: InkOf
-  xuidMeta: GamertagIndex
-  marks: ReadonlyMap<string, PlayerMarkKind>
-  marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
-  locale: ReplayLocale
-  zoneOf?: KillerZoneOf
-  /** Seule la ligne de FRAG s'en sert : les autres formes de ligne ne sont pas cliquables. */
-  focus?: FeedLineFocus
-}) {
+}: FeedLineProps) {
   if (entry.event) {
     return (
       <EventFeedLine
@@ -98,6 +106,7 @@ export function FeedLine({
         inkOf={inkOf}
         xuidMeta={xuidMeta}
         marks={marks}
+        teams={teams}
         locale={locale}
       />
     )
@@ -153,6 +162,7 @@ export function FeedLine({
       marksByGamertag={marksByGamertag}
       locale={locale}
       zone={zoneOf?.(entry.key)}
+      carrier={entry.flagCarrierKill === true}
       focus={focus}
     />
   )
@@ -229,10 +239,26 @@ function DeathLine({
   )
 }
 
+/** Ce que reçoit une ligne de frag : `zone` est vide quand elle n'est pas établie, absente quand la carte n'en a aucune. */
+interface KillLineProps {
+  kill: ReplayKill
+  replayMs: number
+  inkOf: InkOf
+  xuidMeta: GamertagIndex
+  marks: ReadonlyMap<string, PlayerMarkKind>
+  marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
+  locale: ReplayLocale
+  zone?: string
+  /** Vrai quand la victime portait le drapeau : la ligne d'objectif s'est repliée en badge. */
+  carrier?: boolean
+  focus?: FeedLineFocus
+}
+
 /**
  * KillLine — une mort : zone du tueur (si la carte en a), tueur (son encre), arme, victime (SON
- * encre), médailles, assistance. `zone` : le nom de la zone du tueur, vide quand elle n'est pas
- * établie, `undefined` quand la carte n'a aucune zone (pas de gouttière).
+ * encre), badge « porteur » (la victime portait le drapeau), médailles, assistance. `zone` : le nom
+ * de la zone du tueur, vide quand elle n'est pas établie, `undefined` quand la carte n'a aucune
+ * zone (pas de gouttière).
  *
  * AVEC `focus`, LA LIGNE EST UN BOUTON (plan « maquettes du rejeu », lot 2) : le clic pose la
  * lecture à l'instant du frag et met le tueur et la victime en valeur sur la carte. La ligne choisie
@@ -250,18 +276,9 @@ function KillLine({
   marksByGamertag,
   locale,
   zone,
+  carrier,
   focus,
-}: {
-  kill: ReplayKill
-  replayMs: number
-  inkOf: InkOf
-  xuidMeta: GamertagIndex
-  marks: ReadonlyMap<string, PlayerMarkKind>
-  marksByGamertag: ReadonlyMap<string, PlayerMarkKind>
-  locale: ReplayLocale
-  zone?: string
-  focus?: FeedLineFocus
-}) {
+}: KillLineProps) {
   const t = REPLAY_TEXT[locale]
   const assisted = k.assistState === 'named'
   const killerColor = inkOf(k.xuid)
@@ -283,6 +300,7 @@ function KillLine({
         <FeedName kind={marks.get(k.victimXuid)} name={displayPlayerName(k.victimGamertag, k.victimXuid)} locale={locale}
           color={inkOf(k.victimXuid)} />
       )}
+      {carrier && <KillCarrierBadge locale={locale} />}
       {/* LES MÉDAILLES DANS LA RANGÉE, plus en dessous : `shrink-0` parce qu'un badge rogné
           ne se reconnaît plus, alors qu'un nom tronqué se lit encore. */}
       {k.medals.length > 0 && (
@@ -336,6 +354,7 @@ function EventFeedLine({
   inkOf,
   xuidMeta,
   marks,
+  teams,
   locale,
 }: {
   event: FeedEventLine
@@ -343,8 +362,23 @@ function EventFeedLine({
   inkOf: InkOf
   xuidMeta: GamertagIndex
   marks: ReadonlyMap<string, PlayerMarkKind>
+  teams: ReplayTeamCascades
   locale: ReplayLocale
 }) {
+  // MANCHE, CRÂNE, COLLINE : des lignes d'objectif sans acteur nommé par `xuid` (un camp, ou le porteur).
+  if (isObjectiveStateLine(event)) {
+    return (
+      <ReplayObjectiveStateLine
+        line={event}
+        replayMs={replayMs}
+        inkOf={inkOf}
+        xuidMeta={xuidMeta}
+        marks={marks}
+        teams={teams}
+        locale={locale}
+      />
+    )
+  }
   // UNE DESTRUCTION SANS AUTEUR n'a pas d'acteur : ni nom ni encre de camp (neutre), la phrase seule.
   // Un destructeur BOT n'a pas de xuid : son nom est celui du roster, à l'encre neutre.
   const actor = event.xuid
@@ -356,7 +390,14 @@ function EventFeedLine({
     name: actor ? displayPlayerName(xuidMeta.get(actor)?.gamertag, actor) : botName ? displayPlayerName(botName) : '',
     locale,
   }
-  if (event.family === 'objectives') return <ReplayObjectiveLine line={event} {...shared} />
+  if (event.family === 'objectives') {
+    const assisters: CaptureAssister[] = (event.assistXuids ?? []).map((xuid) => ({
+      key: xuid,
+      name: displayPlayerName(xuidMeta.get(xuid)?.gamertag, xuid),
+      mark: marks.get(xuid),
+    }))
+    return <ReplayObjectiveLine line={event} {...shared} assisters={assisters} />
+  }
   const killed = 'destroyed' in event ? event.killedXuids : []
   return (
     <ReplayEventLine

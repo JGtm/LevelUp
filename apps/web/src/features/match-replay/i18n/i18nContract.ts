@@ -12,6 +12,7 @@
  */
 import type { FeedFilterId } from '../model/feedFilterLogic'
 import type { ObjectiveFeedStat } from '../model/objectiveFeedLogic'
+import type { FeedLinesText } from './feedLines.i18n'
 import type { LivesText } from './lives.i18n'
 import type { PlayerPanelText } from './playerPanel.i18n'
 import type { PadEquipmentFamilyKey } from '../model/weaponPadFamilies'
@@ -238,6 +239,8 @@ export interface ReplayText {
   playerPanel: PlayerPanelText
   /** Le groupe « Vies » du panneau de la vue : ses textes vivent dans `lives.i18n.ts`. */
   lives: LivesText
+  /** Les lignes d'objectif du fil hors action nommée (badge, assistances, manche, crâne, colline) : `feedLines.i18n.ts`. */
+  feedLines: FeedLinesText
   killFeedNoAssistHint: string
   killFeedAssistHint: string
   killFeedKillerShare: (pct: number) => string

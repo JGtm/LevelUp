@@ -14,6 +14,12 @@
  * inventé. Les frags et les assistances, publiés dans le même calque, ne sont pas des
  * objectifs : ils ne sont ni affichés ni comptés comme manque.
  *
+ * DEUX ACTIONS NE FONT PLUS DE LIGNE QUAND LE FIL A DÉJÀ LEUR CONTENU. `flag_capture_assists` se replie
+ * sur la ligne de la capture de la MÊME équipe, la plus proche à `CAPTURE_ASSIST_TOL_MS` près (les
+ * joueurs crédités rejoignent la capture : `assistXuids`) ; `flag_carriers_killed` se replie sur la
+ * ligne de frag du même tueur, hors de ce fichier (`carrierKillFold`), parce qu'elle exige le fil. Une
+ * assistance dont l'équipe est inconnue ou sans capture appariée GARDE sa ligne : rien ne se perd.
+ *
  * LA GARDE D'HORLOGE EST CELLE DE TOUT LE REJEU : sans `filmClockTrusted`, les instants des
  * objectifs sont décalés d'un écart inconnu (3,6 à 50,8 s mesurés) — pas de ligne, donc pas
  * d'entrée de menu. Muet vaut mieux que faux.
@@ -22,7 +28,7 @@ import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { frameToMs } from '../../../lib/replay/replayLogic'
 import { filmClockTrusted } from '../../../lib/replay/scoreTimeline'
 
-import { eventFeedEntry } from './feedEventLines'
+import { eventFeedEntry, type ObjectiveEventLine } from './feedEventLines'
 import type { ReplayFeedEntry } from './killFeedLogic'
 import { objectiveFamilyOf, type ObjectiveFamily } from './objectiveFamilies'
 
@@ -47,6 +53,14 @@ export const OBJECTIVE_FEED_STATS = [
 export type ObjectiveFeedStat = (typeof OBJECTIVE_FEED_STATS)[number]
 
 const KNOWN_STATS: ReadonlySet<string> = new Set(OBJECTIVE_FEED_STATS)
+
+/**
+ * Tolérance de rattachement d'une assistance de capture à la capture de son équipe, en ms. Le film
+ * date les deux sur la même image : la tolérance absorbe l'arrondi d'une image, et reste très en
+ * deçà de l'écart qui sépare deux captures d'une même équipe. Entre ces deux ordres de grandeur la
+ * distribution mesurée est vide : le seuil est sur un plateau, pas sur une pente.
+ */
+export const CAPTURE_ASSIST_TOL_MS = 500
 
 /** La famille d'une action de la liste fermée : le préfixe du nom la dit (`flag_`, `zone_`...). */
 export function objectiveFamilyOfFeedStat(stat: ObjectiveFeedStat): ObjectiveFamily {
@@ -85,5 +99,67 @@ export function objectiveFeedEntries(doc: ReplayDocumentReady): ObjectiveFeedRes
     )
   })
   entries.sort((x, y) => x.replayMs - y.replayMs)
-  return { entries, unlabelled }
+  return { entries: foldCaptureAssists(entries, rosterTeamOf(doc)), unlabelled }
+}
+
+/** Le camp du FILM d'un joueur (désignateur du roster, `>= 0`), ou `null` quand le film le tait. */
+function rosterTeamOf(doc: ReplayDocumentReady): (xuid: string) => number | null {
+  const teams = new Map<string, number>()
+  for (const r of doc.roster) if (r.xuid && r.team != null && r.team >= 0) teams.set(r.xuid, r.team)
+  return (xuid) => teams.get(xuid) ?? null
+}
+
+/** L'action nommée d'une ligne d'objectif, ou `null` pour toute autre ligne. */
+function statLineOf(entry: ReplayFeedEntry): ObjectiveEventLine | null {
+  const event = entry.event
+  return event && event.family === 'objectives' && 'stat' in event ? event : null
+}
+
+/** L'index de la capture de camp `team` la plus proche de `ms` dans `entries`, parmi `captures`, ou `null`. */
+function nearestCapture(
+  entries: readonly ReplayFeedEntry[],
+  captures: readonly number[],
+  teamOf: (xuid: string) => number | null,
+  team: number,
+  ms: number,
+): { index: number; gap: number } | null {
+  let best: { index: number; gap: number } | null = null
+  for (const index of captures) {
+    const capturer = statLineOf(entries[index])
+    const gap = Math.abs(entries[index].replayMs - ms)
+    if (capturer && teamOf(capturer.xuid) === team && (best === null || gap < best.gap)) best = { index, gap }
+  }
+  return best
+}
+
+/**
+ * foldCaptureAssists replie chaque assistance de capture sur la capture de la MÊME équipe la plus
+ * proche dans le temps, à `CAPTURE_ASSIST_TOL_MS` près : la ligne d'assistance disparaît et la
+ * capture porte les joueurs crédités. Sans équipe connue ou sans capture appariée, la ligne reste.
+ * Liste triée en entrée, liste neuve en sortie.
+ */
+export function foldCaptureAssists(
+  entries: readonly ReplayFeedEntry[],
+  teamOf: (xuid: string) => number | null,
+): ReplayFeedEntry[] {
+  const captures = entries.flatMap((e, i) => (statLineOf(e)?.stat === 'flag_captures' ? [i] : []))
+  const credited = new Map<number, string[]>()
+  const absorbed = new Set<number>()
+  entries.forEach((entry, i) => {
+    const line = statLineOf(entry)
+    const team = line?.stat === 'flag_capture_assists' ? teamOf(line.xuid) : null
+    if (!line || team === null) return
+    const capture = nearestCapture(entries, captures, teamOf, team, entry.replayMs)
+    if (!capture || capture.gap > CAPTURE_ASSIST_TOL_MS) return
+    absorbed.add(i)
+    const names = credited.get(capture.index) ?? []
+    if (!names.includes(line.xuid)) names.push(line.xuid)
+    credited.set(capture.index, names)
+  })
+  return entries.flatMap((entry, i) => {
+    const line = statLineOf(entry)
+    const assistXuids = credited.get(i)
+    if (absorbed.has(i)) return []
+    return line && assistXuids ? [{ ...entry, event: { ...line, assistXuids } }] : [entry]
+  })
 }

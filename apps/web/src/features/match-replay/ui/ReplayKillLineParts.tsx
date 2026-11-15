@@ -12,6 +12,7 @@ import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { ReplayKill } from '../model/killFeedLogic'
 import type { PlayerMarkKind } from '../../../lib/replay/playerMarks'
 import { AssistMark } from './ReplayAssistMark'
+import { EventGlyph } from './ReplayEventGlyph'
 import { FeedName } from './ReplayFeedName'
 
 /** Gabarit d'une icône d'arme : le format bandeau de l'atlas kill feed (option 2a : 22×10). */
@@ -80,6 +81,21 @@ export function KillWeapon({ kill: k, color, locale }: { kill: ReplayKill; color
       className="rounded-full"
       style={{ width: DOT_PX, height: DOT_PX, backgroundColor: color, opacity: 0.7, flex: 'none' }}
     />
+  )
+}
+
+/**
+ * KillCarrierBadge — LE BADGE « PORTEUR » d'une ligne de frag dont la victime portait le drapeau : le
+ * pictogramme du drapeau (celui des lignes d'objectif) et le mot, à l'encre atténuée de la rangée.
+ * `shrink-0` comme les médailles : un badge rogné ne se reconnaît plus, un nom tronqué se lit encore.
+ */
+export function KillCarrierBadge({ locale }: { locale: ReplayLocale }) {
+  const t = REPLAY_TEXT[locale].feedLines
+  return (
+    <span className="flex shrink-0 items-center gap-0.5 text-3xs text-muted-foreground" title={t.carrierBadgeHint}>
+      <EventGlyph glyph="flag" size={11} />
+      {t.carrierBadge}
+    </span>
   )
 }
 

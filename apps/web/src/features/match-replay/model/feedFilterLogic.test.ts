@@ -79,6 +79,28 @@ describe('matchesFeedFilter — sémantique des filtres', () => {
     expect(ALL.filter((e) => matchesFeedFilter(e, 'pickups')).map((e) => e.key)).toEqual(['p'])
     expect(ALL.filter((e) => matchesFeedFilter(e, 'vehicles')).map((e) => e.key)).toEqual(['v'])
   })
+
+  it('Objectifs retient aussi le frag qui porte le badge « porteur » : la ligne repliée ne disparaît pas du filtre', () => {
+    const carrier = entry('kc', { kill: kill(), flagCarrierKill: true })
+    expect(matchesFeedFilter(carrier, 'objectives')).toBe(true)
+    expect(matchesFeedFilter(carrier, 'kills')).toBe(true)
+    expect(matchesFeedFilter(KILL, 'objectives')).toBe(false)
+  })
+
+  it('les lignes de manche, de crâne et de colline sont de la famille Objectifs', () => {
+    const round = entry('r', { event: { family: 'objectives', kind: 'roundEnd', index: 1, scores: [] } })
+    const skull = entry('s', { event: { family: 'objectives', kind: 'skull', xuid: 'a', change: 'taken' } })
+    const hill = entry('h', { event: { family: 'objectives', kind: 'hill', teamId: 0 } })
+    for (const e of [round, skull, hill]) {
+      expect(matchesFeedFilter(e, 'objectives')).toBe(true)
+      expect(matchesFeedFilter(e, 'kills')).toBe(false)
+    }
+  })
+
+  it('un match dont le seul objectif est un badge « porteur » propose quand même Objectifs', () => {
+    const carrier = entry('kc', { kill: kill(), flagCarrierKill: true })
+    expect(availableFeedFilters([carrier]).map((f) => f.id)).toContain('objectives')
+  })
 })
 
 describe('availableFeedFilters — entrées proposées au menu', () => {

@@ -146,6 +146,12 @@ export interface ReplayFeedEntry {
    * n'en porte aucune, la frise et les effets de mort ne les voient donc pas.
    */
   event?: import('./feedEventLines').FeedEventLine | null
+  /**
+   * Posé par `withEventLines` sur la copie d'une ligne de FRAG dont le film dit que la victime
+   * portait le drapeau : la ligne d'objectif « éliminé un porteur » s'y replie en badge. Ce fichier
+   * ne le pose jamais, et `model.feed` n'en porte aucun.
+   */
+  flagCarrierKill?: true
 }
 
 /**

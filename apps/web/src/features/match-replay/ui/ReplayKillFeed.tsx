@@ -38,6 +38,7 @@ import { normalizeGamertagKey } from '@/lib/players/displayName'
 
 import type { KillerZoneOf } from '../hooks/useKillerZones'
 import { useFeedEventEntries } from '../hooks/useFeedEventEntries'
+import { useTeamCascades } from '../hooks/useTeamCascades'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { withEventLines } from '../model/feedEventLines'
 import {
@@ -131,7 +132,9 @@ export function ReplayKillFeed({
 
   // LA LISTE AFFICHÉE : le fil complet plus les lignes d'événement, puis le filtre. `entries`
   // (le fil de la page) n'est jamais modifié.
-  const events = useFeedEventEntries(doc, locale, weaponIcons)
+  const campIds = useMemo(() => allegiance.camps.map((c) => c.team), [allegiance])
+  const events = useFeedEventEntries(doc, locale, weaponIcons, campIds)
+  const teams = useTeamCascades(scoreboard ?? undefined, allegiance, locale)
   const fullFeed = useMemo(() => withEventLines(entries, events), [entries, events])
   const options = useMemo(() => availableFeedFilters(fullFeed), [fullFeed])
   const [storedFilter, chooseFilter] = useFeedFilter()
@@ -192,6 +195,7 @@ export function ReplayKillFeed({
             marksByGamertag={marksByGamertag}
             locale={locale}
             zoneOf={zoneOf}
+            teams={teams}
             focus={
               playbackStore && doc
                 ? { selected: selectedKey === entry.key, onSelect: () => selectKill(entry) }
