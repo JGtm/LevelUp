@@ -56,7 +56,7 @@ type ObjectiveTeamShare struct {
 	// entre eux.
 	RawIndex float64
 	// SupportPoints / TeamSupportPoints / SupportShare : mêmes grandeurs sur les seules actions de
-	// SOUTIEN (ObjectiveSupportColumns, poids non relevés). SupportShare vaut 0 quand le camp n'a
+	// SOUTIEN (ObjectiveSupportPoints : frags à poids réduit). SupportShare vaut 0 quand le camp n'a
 	// aucune action de soutien.
 	SupportPoints, TeamSupportPoints, SupportShare float64
 }

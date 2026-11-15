@@ -1,6 +1,9 @@
 package narrative
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // ctfRows : une équipe 0 (porteur, escorte, tueur) et un adversaire 1 qui a aussi capturé
 // (ses actions ne doivent JAMAIS entrer dans la part de l'équipe 0).
@@ -147,13 +150,26 @@ func TestObjectiveActionPoints_VIPDenominateurSelections(t *testing.T) {
 	}
 }
 
-// Les colonnes de soutien sont des colonnes de la table de poids : aucune colonne neuve.
-func TestObjectiveSupportColumns_SousEnsembleDesPoids(t *testing.T) {
+// Garde-rail : les colonnes de soutien sont des colonnes de la table de poids (aucune colonne
+// neuve), les frags sont un sous-ensemble du soutien, et la distinction suit le nom de la
+// colonne : « tués » / « kills » pour les frags, rien de tel pour les actions sans frag.
+func TestObjectiveSupportColumns_SousEnsembleEtDistinctionFrag(t *testing.T) {
+	inSupport := map[string]bool{}
 	for fam, cols := range ObjectiveSupportColumns {
 		for _, c := range cols {
+			inSupport[c] = true
 			if _, ok := ObjectiveFamilyActionWeights[fam][c]; !ok {
 				t.Errorf("famille %s : colonne de soutien %q absente de ObjectiveFamilyActionWeights", fam, c)
 			}
+			isFragName := strings.Contains(c, "killed") || strings.Contains(c, "_kills")
+			if objectiveSupportFragColumns[c] != isFragName {
+				t.Errorf("colonne %q : frag = %v, mais son nom dit %v", c, objectiveSupportFragColumns[c], isFragName)
+			}
+		}
+	}
+	for c := range objectiveSupportFragColumns {
+		if !inSupport[c] {
+			t.Errorf("la colonne de frag %q n'est pas une colonne de soutien", c)
 		}
 	}
 	// Ni capture ni vol : le soutien ne reprend pas ce qui prend l'objectif.
@@ -161,6 +177,26 @@ func TestObjectiveSupportColumns_SousEnsembleDesPoids(t *testing.T) {
 		if c == objectiveColFlagCaptures || c == objectiveColFlagSteals {
 			t.Errorf("%q n'est pas du soutien", c)
 		}
+	}
+}
+
+// Points de soutien : poids plein sans frag, poids réduit pour les frags, poids de la table.
+func TestObjectiveSupportPoints_FragsAPoidsReduit(t *testing.T) {
+	st := ObjectiveFamilyStats{Matches: 1, ColumnSums: map[string]float64{
+		"flag_returns": 4, "flag_secures": 2, "flag_capture_assists": 2, // 1,5x4 + 1x2 + 2x2 = 12
+		"flag_carriers_killed": 4, "flag_returners_killed": 2, // (1,5x4 + 1,5x2) x 0,5 = 4,5
+		"flag_captures": 9, // pas du soutien
+	}}
+	if got := ObjectiveSupportPoints(FamilyCTF, st); !almostEqual(got, 12+4.5) {
+		t.Fatalf("points de soutien = %v, want 16,5", got)
+	}
+	if got := ObjectiveSupportPoints(FamilyCTF, ObjectiveFamilyStats{}); got != 0 {
+		t.Fatalf("Matches = 0 : %v", got)
+	}
+	zone := ObjectiveFamilyStats{Matches: 1, ColumnSums: map[string]float64{"zone_secures": 3, "zone_defensive_kills": 4, "zone_offensive_kills": 2, "zone_captures": 5}}
+	// 2x3 + (1x4 + 1x2) x 0,5 = 9
+	if got := ObjectiveSupportPoints(FamilyZonesStrongholds, zone); !almostEqual(got, 9) {
+		t.Fatalf("points de soutien (zones) = %v, want 9", got)
 	}
 }
 
@@ -181,14 +217,14 @@ func TestComputeObjectiveTeamShare_BrutEtPartDuSoutien(t *testing.T) {
 		t.Fatalf("porteur : RawIndex %v Index %v, want brut > plafond et Index écrêté", p.RawIndex, p.Index)
 	}
 	e, _ := ComputeObjectiveTeamShare(rows, "escorte")
-	// escorte : 1,5x4 + 1,5x4 + 2x2 = 16, tout en soutien ; porteur : 5x6 + 2x4 = 38, aucun soutien.
-	if !almostEqual(e.Points, 16) || !almostEqual(e.SupportPoints, 16) || !almostEqual(e.SupportShare, 1) {
-		t.Errorf("escorte : %v points, %v de soutien, part du soutien %v, want 16, 16, 1", e.Points, e.SupportPoints, e.SupportShare)
+	// escorte : points d'objectif 1,5x4 + 1,5x4 + 2x2 = 16 ; soutien 1,5x4 + 2x2 + 1,5x4x0,5 = 13.
+	if !almostEqual(e.Points, 16) || !almostEqual(e.SupportPoints, 13) || !almostEqual(e.SupportShare, 1) {
+		t.Errorf("escorte : %v points, %v de soutien, part du soutien %v, want 16, 13, 1", e.Points, e.SupportPoints, e.SupportShare)
 	}
 	if p.SupportShare != 0 || p.SupportPoints != 0 {
 		t.Errorf("le porteur n'a aucune action de soutien : %v / %v", p.SupportShare, p.SupportPoints)
 	}
-	if !almostEqual(e.Share, 16.0/54.0) || !almostEqual(e.TeamSupportPoints, 16) {
+	if !almostEqual(e.Share, 16.0/54.0) || !almostEqual(e.TeamSupportPoints, 13) {
 		t.Errorf("part de l'escorte %v, soutien de l'équipe %v", e.Share, e.TeamSupportPoints)
 	}
 	if ObjectiveFamilyActionWeights[FamilyCTF]["flag_returns"] != before {

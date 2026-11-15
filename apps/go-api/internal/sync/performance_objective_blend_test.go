@@ -239,17 +239,144 @@ func TestObjectiveBlend_IndiceBrutEtMiRang(t *testing.T) {
 	}
 }
 
-// Escorte : alpha suit max(part de l'objectif, part du soutien), dans les deux sens.
-func TestObjectiveBlend_PartEstLeMaxDuSoutien(t *testing.T) {
-	hist := blendHistory(30)
+func supportParams() objectiveBlendParams {
 	p := defaultObjectiveBlendParams()
-	for _, c := range []struct{ share, support, part float64 }{{0.1, 0.5, 0.5}, {0.6, 0.2, 0.6}, {0, 0, 0}} {
-		cur := historyRow{Kills: 8, Deaths: 6, TimePlayedSeconds: 600, PersonalScore: 1600, DamageDealt: 3300,
-			ObjectiveBlend: &objectiveBlendFacts{Family: narrative.FamilyCTF, Index: 0.6, Share: c.share, SupportShare: c.support}}
-		fullCoverage(&cur, 3)
-		res, _ := computeObjectiveBlend(&cur, hist, objectiveWeights(), p)
-		if math.Abs(res.Part-c.part) > 1e-9 || math.Abs(res.Alpha-(0.12+0.38*c.part)) > 1e-9 {
-			t.Errorf("part %v / soutien %v : part %v alpha %v, want part %v", c.share, c.support, res.Part, res.Alpha, c.part)
+	p.UseSupport = true
+	return p
+}
+
+// withSupport fait porter à l'historique des points de soutien par minute qui montent avec i.
+func withSupport(hist []historyRow) []historyRow {
+	for i := range hist {
+		hist[i].ObjectiveBlend.SupportPerMin = 0.1 * float64(i%20)
+		hist[i].ObjectiveBlend.SupportShare = 0.3
+	}
+	return hist
+}
+
+// Les faits d'un match viennent de la part de narrative et de la durée, via analysis.PerMinute.
+func TestObjectiveBlendFactsOf_SoutienParMinute(t *testing.T) {
+	share := narrative.ObjectiveTeamShare{Family: narrative.FamilyCTF, RawIndex: 1.4, Share: 0.3, SupportShare: 0.5, SupportPoints: 12}
+	f := objectiveBlendFactsOf(share, 360)
+	if f.Family != narrative.FamilyCTF || f.Index != 1.4 || f.Share != 0.3 || f.SupportShare != 0.5 || math.Abs(f.SupportPerMin-2) > 1e-9 {
+		t.Fatalf("faits = %+v, want 12 points sur 6 minutes = 2 par minute", f)
+	}
+	if got := objectiveBlendFactsOf(share, 0).SupportPerMin; got != 0 {
+		t.Fatalf("durée inconnue : %v par minute, want 0", got)
+	}
+}
+
+// V5 : la note est la moyenne (1 - a_obj - a_sout) C + a_obj O + a_sout O_sout, ni plus ni moins.
+func TestObjectiveBlend_V5Formule(t *testing.T) {
+	hist := withSupport(blendHistory(40))
+	cur := historyRow{Kills: 8, Deaths: 6, TimePlayedSeconds: 600, PersonalScore: 1600, DamageDealt: 3300,
+		ObjectiveBlend: &objectiveBlendFacts{Family: narrative.FamilyCTF, Index: 0.6, Share: 0.2, SupportShare: 0.4, SupportPerMin: 1.5}}
+	fullCoverage(&cur, 3)
+	res, ok := computeObjectiveBlend(&cur, hist, objectiveWeights(), supportParams())
+	if !ok || !res.HasObjective {
+		t.Fatalf("res = %+v ok = %v", res, ok)
+	}
+	if math.Abs(res.Alpha-(0.12+0.38*0.2)) > 1e-9 || math.Abs(res.SupportAlpha-0.38*0.4) > 1e-9 {
+		t.Fatalf("alphas %v / %v", res.Alpha, res.SupportAlpha)
+	}
+	want := roundPerfScore((1-res.Alpha-res.SupportAlpha)*res.Combat + res.Alpha*res.Percentile + res.SupportAlpha*res.SupportPercentile)
+	if res.Score != want {
+		t.Errorf("note %v, want %v", res.Score, want)
+	}
+	if res.SupportPercentile <= 0 || res.SupportPercentile >= 100 {
+		t.Errorf("rang de soutien = %v, want un rang intermédiaire", res.SupportPercentile)
+	}
+}
+
+// Le combat garde au moins la moitié du poids : alpha_obj + alpha_sout est plafonné à AlphaMax,
+// les deux réduits en proportion.
+func TestObjectiveBlend_V5PlafonneLaSommeDesAlphas(t *testing.T) {
+	hist := withSupport(blendHistory(40))
+	p := supportParams()
+	cur := historyRow{Kills: 8, Deaths: 6, TimePlayedSeconds: 600, PersonalScore: 1600, DamageDealt: 3300,
+		ObjectiveBlend: &objectiveBlendFacts{Family: narrative.FamilyCTF, Index: 0.6, Share: 1, SupportShare: 1, SupportPerMin: 1.5}}
+	fullCoverage(&cur, 3)
+	res, _ := computeObjectiveBlend(&cur, hist, objectiveWeights(), p)
+	if math.Abs(res.Alpha+res.SupportAlpha-p.AlphaMax) > 1e-9 {
+		t.Fatalf("somme des alphas = %v, want %v", res.Alpha+res.SupportAlpha, p.AlphaMax)
+	}
+	// Réduits en proportion : le rapport 0,50 / 0,38 est conservé.
+	if math.Abs(res.Alpha/res.SupportAlpha-0.50/0.38) > 1e-9 {
+		t.Errorf("rapport %v, want %v", res.Alpha/res.SupportAlpha, 0.50/0.38)
+	}
+	for i := 0; i < 50; i++ {
+		c := cur
+		c.ObjectiveBlend = &objectiveBlendFacts{Family: narrative.FamilyCTF, Index: 0.05 * float64(i%30), Share: float64(i%11) / 10,
+			SupportShare: float64(i%7) / 6, SupportPerMin: 0.1 * float64(i%25)}
+		r, _ := computeObjectiveBlend(&c, hist, objectiveWeights(), p)
+		if r.Alpha+r.SupportAlpha > p.AlphaMax+1e-9 {
+			t.Errorf("i=%d : somme des alphas %v au-dessus du plafond", i, r.Alpha+r.SupportAlpha)
 		}
 	}
+}
+
+// Sans action de soutien dans l'équipe (part du soutien nulle) ou sans V5, la note est celle de V2.
+func TestObjectiveBlend_V5SansSoutienEgaleV2(t *testing.T) {
+	hist := withSupport(blendHistory(40))
+	cur := historyRow{Kills: 8, Deaths: 6, TimePlayedSeconds: 600, PersonalScore: 1600, DamageDealt: 3300,
+		ObjectiveBlend: &objectiveBlendFacts{Family: narrative.FamilyCTF, Index: 0.6, Share: 0.3, SupportShare: 0, SupportPerMin: 0}}
+	fullCoverage(&cur, 3)
+	v2, _ := computeObjectiveBlend(&cur, hist, objectiveWeights(), defaultObjectiveBlendParams())
+	v5, _ := computeObjectiveBlend(&cur, hist, objectiveWeights(), supportParams())
+	if v2.Score != v5.Score || v5.SupportAlpha != 0 {
+		t.Errorf("V2 %v, V5 %v (alpha soutien %v)", v2.Score, v5.Score, v5.SupportAlpha)
+	}
+}
+
+// L'escorte est jugée sur le soutien : à part de soutien égale, un soutien par minute au-dessus
+// de son historique monte la note, un soutien en dessous la baisse (symétrique).
+func TestObjectiveBlend_V5Symetrique(t *testing.T) {
+	hist := withSupport(blendHistory(40))
+	mk := func(perMin float64) objectiveBlendResult {
+		cur := historyRow{Kills: 8, Deaths: 6, TimePlayedSeconds: 600, PersonalScore: 1600, DamageDealt: 3300,
+			ObjectiveBlend: &objectiveBlendFacts{Family: narrative.FamilyCTF, Index: 0.6, Share: 0.1, SupportShare: 0.6, SupportPerMin: perMin}}
+		fullCoverage(&cur, 3)
+		r, _ := computeObjectiveBlend(&cur, hist, objectiveWeights(), supportParams())
+		return r
+	}
+	hi, lo := mk(5), mk(0)
+	if !(hi.Score > lo.Score) {
+		t.Fatalf("soutien fort %v, soutien nul %v : attendu fort > nul", hi.Score, lo.Score)
+	}
+	if !(hi.SupportPercentile > hi.Combat) || !(lo.SupportPercentile < lo.Combat) || !(lo.Score < roundPerfScore(lo.Combat)) {
+		t.Errorf("hi %+v lo %+v : attendu une hausse puis une baisse sous le combat", hi, lo)
+	}
+}
+
+// V6 : O_obj est la moyenne du rang de l'indice et du rang de la part. Celui qui porte seul une
+// équipe peu active (part très haute, indice bas contre une histoire plus active) monte.
+func TestObjectiveBlend_V6MoyenneDesDeuxRangs(t *testing.T) {
+	hist := withSupport(blendHistory(40)) // parts de 0,3 partout : une part de 0,9 est au sommet
+	cur := historyRow{Kills: 8, Deaths: 6, TimePlayedSeconds: 600, PersonalScore: 1600, DamageDealt: 3300,
+		ObjectiveBlend: &objectiveBlendFacts{Family: narrative.FamilyCTF, Index: 0.1, Share: 0.9, SupportShare: 0, SupportPerMin: 0}}
+	fullCoverage(&cur, 3)
+	v5 := supportParams()
+	v6 := v5
+	v6.ShareRank = true
+	r5, _ := computeObjectiveBlend(&cur, hist, objectiveWeights(), v5)
+	r6, _ := computeObjectiveBlend(&cur, hist, objectiveWeights(), v6)
+	idxRank := objectiveRank(0.1, mustFacts(hist), func(f *objectiveBlendFacts) float64 { return f.Index })
+	shareRank := objectiveRank(0.9, mustFacts(hist), func(f *objectiveBlendFacts) float64 { return f.Share })
+	if math.Abs(r5.Percentile-idxRank) > 1e-9 || math.Abs(r6.Percentile-(idxRank+shareRank)/2) > 1e-9 {
+		t.Fatalf("V5 %v, V6 %v ; rangs %v et %v", r5.Percentile, r6.Percentile, idxRank, shareRank)
+	}
+	if !(r6.Score > r5.Score) {
+		t.Errorf("le porteur d'une équipe peu active doit monter : V5 %v, V6 %v", r5.Score, r6.Score)
+	}
+}
+
+// mustFacts rend les faits de la famille Drapeau de l'historique : la référence de famille.
+func mustFacts(hist []historyRow) []*objectiveBlendFacts {
+	out := make([]*objectiveBlendFacts, 0, len(hist))
+	for i := range hist {
+		if hist[i].ObjectiveBlend.Family == narrative.FamilyCTF {
+			out = append(out, hist[i].ObjectiveBlend)
+		}
+	}
+	return out
 }

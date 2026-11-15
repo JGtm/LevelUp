@@ -9,11 +9,11 @@ package sync
 //
 // Il rejoue la boucle de batchComputePerformanceScores (mêmes chargements, mêmes fenêtres de 50
 // matchs par chaîne, même seuil de 10 matchs) et, pour chaque match d'une chaîne à objectif,
-// compare la note actuelle (recalculée par le code) aux quatre variantes de simVariants, toutes
-// SYMÉTRIQUES ((1 - alpha) C + alpha O) : V1 (indice écrêté, rang <=, part de l'objectif), V2 (V1
-// avec l'indice brut et le mi-rang), V3 (V2 avec la part d'escorte), V4 (V3 avec 229 points de vie
-// au lieu de 225). Le rapport (tableaux Markdown) est écrit par simWriteReport
-// (performance_objective_simulation_report_research_test.go).
+// compare la note actuelle (recalculée par le code) aux variantes de simVariants, toutes
+// SYMÉTRIQUES, sur la base retenue V2 ((1 - alpha) C + alpha O, indice brut, mi-rang, 229 points
+// de vie) : V5 (V2 + le soutien, mesuré à part du temps de port), V6 (V5 + O_obj moyenne du rang
+// de l'indice et du rang de la part). Le rapport (tableaux Markdown) est écrit par
+// simWriteReport (performance_objective_simulation_report_research_test.go).
 //
 // Lancement (depuis apps/go-api) :
 //
@@ -40,24 +40,23 @@ import (
 	"levelup/go-api/internal/sync/skill"
 )
 
+// simHP : points de vie effective du Rendement et de la Résistance, pour toutes les variantes
+// (la base retenue : 229 au lieu de 225).
+const simHP = 229
+
 // simVariant : un réglage de la variante de note.
 type simVariant struct {
-	Name string
-	// V1 : indice écrêté et rang <= (la première simulation) ; sinon indice brut et mi-rang.
-	V1 bool
-	// Escort : la part qui règle alpha est max(part de l'objectif, part du soutien).
-	Escort bool
-	// HP : points de vie effective du Rendement et de la Résistance (225 aujourd'hui).
-	HP float64
+	Name   string
+	Params objectiveBlendParams
 }
 
 func simVariants() []simVariant {
-	return []simVariant{
-		{Name: "V1", V1: true, HP: 225},
-		{Name: "V2", HP: 225},
-		{Name: "V3", Escort: true, HP: 225},
-		{Name: "V4", Escort: true, HP: 229},
-	}
+	v2 := defaultObjectiveBlendParams()
+	v5 := v2
+	v5.UseSupport = true
+	v6 := v5
+	v6.ShareRank = true
+	return []simVariant{{"V2", v2}, {"V5", v5}, {"V6", v6}}
 }
 
 // simOut : la note d'un match sous un réglage, avec son détail.
@@ -164,10 +163,8 @@ func simClone(all []historyRow) []historyRow {
 	return out
 }
 
-// simFacts pose sur chaque match les faits de la variante ; rend, par match, la part calculée.
-// V1 pose l'indice écrêté, les autres l'indice brut ; sans escorte la part du soutien est nulle,
-// donc la part qui règle alpha est celle de l'objectif seule.
-func simFacts(matches []historyRow, rows map[string][]narrative.ObjectiveTeamRow, xuid string, v simVariant) map[string]narrative.ObjectiveTeamShare {
+// simFacts pose sur chaque match les faits des variantes ; rend, par match, la part calculée.
+func simFacts(matches []historyRow, rows map[string][]narrative.ObjectiveTeamRow, xuid string) map[string]narrative.ObjectiveTeamShare {
 	shares := map[string]narrative.ObjectiveTeamShare{}
 	for i := range matches {
 		matches[i].ObjectiveBlend = nil
@@ -176,14 +173,7 @@ func simFacts(matches []historyRow, rows map[string][]narrative.ObjectiveTeamRow
 			continue
 		}
 		shares[matches[i].MatchID] = share
-		facts := &objectiveBlendFacts{Family: share.Family, Index: share.RawIndex, Share: share.Share}
-		if v.V1 {
-			facts.Index = share.Index
-		}
-		if v.Escort {
-			facts.SupportShare = share.SupportShare
-		}
-		matches[i].ObjectiveBlend = facts
+		matches[i].ObjectiveBlend = objectiveBlendFactsOf(share, matches[i].TimePlayedSeconds)
 	}
 	return shares
 }
@@ -233,32 +223,6 @@ func simOld(m *historyRow, window []historyRow, weights map[string]float64) (sim
 		return simOut{}, false
 	}
 	return simOut{Score: *s}, true
-}
-
-// simBlendV1 est la première simulation, à l'identique : moyenne symétrique, indice écrêté, rang
-// <= (percentileRank) et part de l'objectif seule. Le code de la variante ne garde que le rang
-// à mi-rang ; V1 ne sert qu'à mesurer ce que D2 et l'escorte changent.
-func simBlendV1(p objectiveBlendParams) func(*historyRow, []historyRow, map[string]float64) (simOut, bool) {
-	return func(m *historyRow, window []historyRow, weights map[string]float64) (simOut, bool) {
-		combat, ok := weightedPercentileMean(m, window, profileWithoutObjective(weights))
-		if !ok {
-			return simOut{}, false
-		}
-		out := simOut{Score: roundPerfScore(combat), Combat: combat}
-		if m.ObjectiveBlend == nil {
-			return out, true
-		}
-		series, _, hasRef := objectiveReferenceSeries(m.ObjectiveBlend, window, p.MinFamilyMatches)
-		if !hasRef {
-			return out, true
-		}
-		part := clampF(m.ObjectiveBlend.Share, 0, 1)
-		alpha := p.AlphaMin + (p.AlphaMax-p.AlphaMin)*part
-		pct := percentileRank(m.ObjectiveBlend.Index, series)
-		out.Has, out.Alpha, out.Part, out.Pct = true, alpha, part, pct
-		out.Score = roundPerfScore((1-alpha)*combat + alpha*pct)
-		return out, true
-	}
 }
 
 func simBlend(p objectiveBlendParams) func(*historyRow, []historyRow, map[string]float64) (simOut, bool) {
@@ -352,19 +316,11 @@ func simPlayer(t *testing.T, env *simEnv, gt, xuid string, player *sql.DB) []sim
 	old := simChain(all, simOld)
 
 	variants := map[string]map[string]simOut{}
-	var baseShares map[string]narrative.ObjectiveTeamShare
+	rowsHP := simClone(all)
+	simYield(rowsHP, simHP)
+	baseShares := simFacts(rowsHP, rows, xuid)
 	for _, v := range simVariants() {
-		rowsV := simClone(all)
-		simYield(rowsV, v.HP)
-		shares := simFacts(rowsV, rows, xuid, v)
-		if v.Name == "V1" {
-			baseShares = shares
-		}
-		if v.V1 {
-			variants[v.Name] = simChain(rowsV, simBlendV1(defaultObjectiveBlendParams()))
-		} else {
-			variants[v.Name] = simChain(rowsV, simBlend(defaultObjectiveBlendParams()))
-		}
+		variants[v.Name] = simChain(rowsHP, simBlend(v.Params))
 	}
 
 	stored := simStoredNotes(player)
