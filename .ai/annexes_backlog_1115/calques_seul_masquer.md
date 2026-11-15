@@ -38,7 +38,7 @@ Colonnes : `Avant` = le calque suivait deja `shownAtSlot` / `shownProjectile` (o
 | `objets-objectif` | sans objet | crane LIBRE : personne (le porte est le calque `crane-porte`) | `objectiveObjects[]` ne porte aucun champ de propriete (`en`, `fr`, `family`, `pts`) | reste |
 | `couronne-vip` | non | le VIP | `vipCrown[].xuid` | 4.3 bis (couronne) |
 | `crane-porte` | non | le porteur | `skullCarries[].xuid` | 4.3 bis (crane) |
-| `bombe-portee` | non | le porteur ; bombe LIBRE (au sol) : personne | `bombCarries[].xuid` | 4.3 bis (bombe portee) |
+| `bombe-portee` | non | le porteur, y compris quand la bombe se dessine libre faute de position du porteur (meme regle que le drapeau) | `bombCarries[].xuid` | 4.3 bis (bombe portee) |
 | `deflagration` | non | l'auteur credite de l'explosion | `objectives[].xuid` (stat `bomb_detonations`) | 4.3 bis (deflagration) |
 | `pulses-objectif` | non | l'auteur de l'action (capture, retour, prise de zone) | `objectives[].xuid` | 4.3 bis (pulses) |
 | `morts` | non | tueur ET victime | feed : `killer xuid`, `victimXuid` ; vies de `tracks[]` | 4.1 a 4.3 |
@@ -66,7 +66,7 @@ Colonnes : `Avant` = le calque suivait deja `shownAtSlot` / `shownProjectile` (o
   - `etat-zones` et `objectifs-cuits` : la propriete d'une zone est une EQUIPE (`zoneStates[].spans[].team`),
     pas un joueur.
   - `socles-armes` : `padPickups[].xuid` dit qui a pris un socle, pas a qui il est ; un socle est un lieu.
-  - drapeau a la base ou tombe, zone de retour, bombe libre, arme au sol sans lacheur ni ramasseur
+  - drapeau a la base ou tombe, zone de retour, arme au sol sans lacheur ni ramasseur
     lisibles (`dropper` et `picker` < 0), pose sans poseur mesure (`owner` < 0), vehicule vide : personne.
   - emplacements de naissance des vehicules (`vehicleCycles`) : un lieu.
 - Elements dont une PARTIE seulement se lit : un effet de mort dont le tueur ou la victime n'a pas de vie
