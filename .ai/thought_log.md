@@ -121183,3 +121183,9 @@ version restent après chaque mise à jour NSIS (antérieur à L24).
 **Décision technique principale** : un helper unique choisit le code d'échec de l'échange Halo (`halo_unreachable` sur délai, réseau, 5xx, 429, 408 ; sinon le code de refus du chemin) pour le code d'appareil, le site hébergé et le bureau ; garde-rail AST ; textes du code d'appareil réutilisés (décision du user).
 **Résultats observés** : tests Go quatre causes par chemin, tests web FR et EN, portes vertes ; notes de version et changelog FR/EN.
 **Conclusion / prochaine étape** : relecture par la session pilote (deux relecteurs) avant `main` ; lot 4 (Seul / Masquer) à envoyer ; mesure des morts sans type en cours.
+
+## [2026-11-15] Backlog du 15/11, lot 4 : « Seul » et « Masquer » sur tous les calques du rejeu ; mesure des morts sans type — Complété (lot 4), En cours (lot 3)
+
+**Décision technique principale** : règle du user : tout ce qui appartient au joueur suit la fiche (Seul / Masquer), le décor reste ; un prédicat unique pour quatorze calques ou éléments. Morts sans type : la méthode de Den (lâcher de commande) OU le compte à rebours de réapparition, livrée dans la 8.2.0 par une publication du décodeur (schéma 123) avant le tag v1.3.9.
+**Résultats observés** : lot 4 : 4 388 tests du rejeu verts. Mesure 3.1 : 0 fin de manche prise pour une mort sur 99 films ; accord avec la feuille de 89 à 99,8 % (plusieurs manches), de 88 à 99,3 % (BTB).
+**Conclusion / prochaine étape** : publication décodeur (agent Sonnet, relue par la session de la phase C), montée par la session dédiée, puis part web du lot 3 et régénération unique.

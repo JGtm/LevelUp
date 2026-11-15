@@ -168,7 +168,7 @@ Constat :
   qu'une conséquence (et la mort de fin de match n'écrit que le début de son compte). S2 sert de contre-épreuve
   dans 3.1. Si la mesure contredit S1, arrêt et retour au user ; aucune fenêtre de temps sur le score.
 
-- [ ] 3.1 (Opus) Mesure, lecture seule, après le go D-3(a), film par film avec le harnais de recherche du
+- [x] 3.1 (Opus) Mesure, lecture seule, après le go D-3(a), film par film avec le harnais de recherche du
       décodeur (jamais un lot en mémoire) sur les documents produits par la tête du décodeur :
       (a) les films à plusieurs manches du parc (51 selon la phase C) ; (b) 30 films d'une manche dont les
       films BTB à attribution refusée. Pour chaque vie close sans frag : (S1) la commande du corps est-elle
@@ -214,25 +214,25 @@ Constat : `drawKillFxLayer` (`layers/replayDraw.ts:211`) ne reçoit pas de filtr
 `ui/ReplayCanvas.tsx:594` ne passe pas `shownAtSlot` ; `KillFxEntry` (`model/killFx.ts:46-71`) porte le slot
 du tueur (`slot`) mais ni le slot ni l'image de la vie de la victime.
 
-- [ ] 4.0 Inventaire fermé des calques de `layers/replayCompose.ts` : pour chacun, branché ou non sur
+- [x] 4.0 Inventaire fermé des calques de `layers/replayCompose.ts` : pour chacun, branché ou non sur
       `shownAtSlot`, et ce qui y appartient à un joueur (champ du document qui le prouve : slot, xuid, poseur,
       occupant, porteur). Tableau dans `.ai/annexes_backlog_1115/calques_seul_masquer.md`. Chaque calque qui
       porte un élément attribuable et n'est pas branché devient une case 4.x ci-dessous ; un élément sans
       attribution lisible reste affiché (pas d'attribution devinée), compté dans le tableau.
-- [ ] 4.1 `buildKillFx` : ajouter `victimSlot` et `victimFrame` (dernière image de la vie de la victime,
+- [x] 4.1 `buildKillFx` : ajouter `victimSlot` et `victimFrame` (dernière image de la vie de la victime,
       celle que les croix des traces utilisent déjà), `null` si introuvable.
-- [ ] 4.2 `playerPanelLogic.ts` : fonction pure `killFxShown(focus)` qui rend `null` sans filtre, sinon un
+- [x] 4.2 `playerPanelLogic.ts` : fonction pure `killFxShown(focus)` qui rend `null` sans filtre, sinon un
       prédicat sur l'effet. Règle D-4 : Seul = le joueur de la fiche figure dans l'effet (tueur ou victime) ;
       Masquer = il n'y figure pas ; partie inconnue (`null`) : ne prouve rien (Seul : l'autre partie décide ;
       Masquer : l'effet reste si la partie connue n'est pas le joueur masqué).
-- [ ] 4.3 `drawKillFxLayer` reçoit le prédicat dans son style ; `ReplayCanvas` le passe. Aucune logique dans le
+- [x] 4.3 `drawKillFxLayer` reçoit le prédicat dans son style ; `ReplayCanvas` le passe. Aucune logique dans le
       composant.
-- [ ] 4.3 bis Les autres calques relevés en 4.0 (objets posés par leur poseur, véhicules par leurs occupants,
+- [x] 4.3 bis Les autres calques relevés en 4.0 (objets posés par leur poseur, véhicules par leurs occupants,
       objectifs par leur porteur), une case par calque ajoutée à l'issue de 4.0, même prédicat.
-- [ ] 4.4 Commentaire de `shownSlotPredicate` (`playerPanelLogic.ts:111-116`) réécrit sur la règle générale.
-- [ ] 4.5 Tests vitest : prédicat (Seul tueur, Seul victime, Masquer tueur, Masquer victime, parties
+- [x] 4.4 Commentaire de `shownSlotPredicate` (`playerPanelLogic.ts:111-116`) réécrit sur la règle générale.
+- [x] 4.5 Tests vitest : prédicat (Seul tueur, Seul victime, Masquer tueur, Masquer victime, parties
       inconnues), couche (un effet filtré n'est pas dessiné).
-- [ ] 4.6 Vérification à l'écran ajoutée à l'artefact des vérifications du user (en lecture, pas à l'arrêt).
+- [x] 4.6 Vérification à l'écran ajoutée à l'artefact des vérifications du user (en lecture, pas à l'arrêt).
 
 Porte 4 :
 ```
@@ -281,3 +281,6 @@ Reprise de session : lire ce fichier (cases), puis `git log --oneline -10` sur l
 - Découvertes du lot 1 (non traitées) : `archlint` et `go-api-lint` dépassent leurs délais par défaut quand plusieurs sessions compilent ; directives `//nolint` mal formées signalées par golangci-lint (« unknown linters 2026-09-07), gosec… »).
 - 2026-11-15 (lot 2, `feat/bl1115-auth`, agent Sonnet) : 2.1-2.6 `[x]`, 2.7 `[~]`. Helper `haloExchangeFailureCode` (`handlers/auth_halo_exchange_code.go`), trois appelants (code d'appareil, site hébergé, bureau), codes de refus inchangés ; garde-rail AST `archlint/halo_exchange_failure_code_unique_test.go` (rouge prouvé) ; `error_code` au journal des trois chemins ; web : `halo_exchange_failed` sur le texte de refus du code d'appareil, `halo_unreachable` ajouté aux refus du site, clés existantes réutilisées (aucune clé neuve) ; page de retour du bureau inchangée, tenue par un test ; tests Go quatre causes par chemin, point d'injection `WithCodeExchange` (défaut inchangé) ; tests web FR et EN. Notes de version et changelog FR/EN (8.2.0, « Corrigé »). Portes vertes (`archlint` et lint relancés avec délai large, machine chargée).
 - Découverte du lot 2 (non traitée) : `TestXboxOAuth_Callback_StateMatches_AttemptsExchange` appelle encore le vrai échange Microsoft avec un code factice ; il pourrait passer par `WithCodeExchange`.
+- 2026-11-15 (lot 4, `feat/bl1115-killfx`, agent Sonnet) : 4.0-4.6 `[x]`. Inventaire des 31 calques : 9 suivaient le filtre, 14 portaient un élément attribuable non filtré (morts, chaleur, armes au sol, poses, véhicules, failles, drapeaux, couronne, crâne, bombe portée, déflagration, pulses, croix de mort de la piste, câble du grappin et poussée du répulseur), 8 sans attribution lisible restent affichés. Prédicat unique `ownershipShown` (`playerPanelLogic.ts`), adaptateurs par genre (`model/focusFilter.ts`), garde-rail de câblage de `ReplayCanvas`. Effet de mort : tueur ET victime (`victimSlot`, `victimFrame`, plus `slotFrame`, `killerXuid`, `victimXuid` pour le repli des bots) ; poussée : auteur ET poussé ; Masquer ne retire un véhicule partagé que si le joueur masqué est seul à bord. Test qui figeait « une mort est un événement du match » réécrit (D-4). Notes de version et changelog FR/EN. Porte : 4 388 tests `match-replay` verts, `check-types` vert, lint 0 erreur. Vérification à l'écran : ligne `bl1115-01-seul-masquer` de l'artefact des vérifications.
+- Découvertes du lot 4 (non traitées) : un effet de mort sans aucune partie lue reste affiché sous Seul comme sous Masquer (règle « attribution illisible reste ») ; la croix de mort de la piste ne suit que sa victime ; xuid du document comparé à la clé d'un bot porteur d'objectif non vérifié sur un vrai film ; `ReplayCanvas.tsx` à 806 lignes (dette existante).
+- 2026-11-15 (3.1, agent Opus, lecture seule) : `[x]`. 99 films décodés un par un (54 à plusieurs manches, 16 d'une manche, 29 BTB dont 5 à attribution refusée), pic mémoire 2,26 Go. S1 (lâcher de commande, tolérance [-2, 6] frames = écart maximal observé sur 14 671 morts revendiquées) : 0 des 653 fins de manche classée mort, 0 des 21 lâchers de fin de match. Accord avec la feuille (morts non comptées retirées) : morts typées 89,1 / 98,5 / 88,1 / 57,0 % (plusieurs manches / une manche / BTB / BTB refusés), S1 99,6 / 100 / 97,9 / 91,6 %, S1 ou S2 99,8 / 100 / 99,3 %. Contre-épreuve libfilmshell sur 68 films. Livrable hors dépôt `C:\t\bl1115-mesure\mesure_morts_sans_type.md` (copie sans xuid à verser en annexe). Décision du user (2026-11-15) : livraison dans la 8.2.0, règle « S1 ou S2 ». Coordination : publication par piste (`endReason`, `releaseFrame`, schéma 123) relue et fusionnée par la session de la phase C du décodeur avant le tag v1.3.9, montée et miroir par la session de la montée, une seule régénération après la montée ; la part web de ce plan (3.4) se pousse après la montée.
