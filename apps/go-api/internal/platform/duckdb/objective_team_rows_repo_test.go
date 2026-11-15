@@ -7,9 +7,11 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/domain"
 )
 
 func insertParticipantTeam(t *testing.T, db *sql.DB, matchID, xuid string, team, tp int) {
@@ -93,11 +95,15 @@ func TestLoadObjectiveTeamRowsForPlayer_SansTableAbsentSansErreur(t *testing.T) 
 }
 
 // ForMatches : les lignes des DEUX camps des seuls matchs demandés, famille par ligne (dont le split
-// KOTH / Bases par zone_scoring_ticks), camp et durée joints, pour plus d'un lot de requête.
+// KOTH / Bases par zone_scoring_ticks), camp, durée et résultat joints, sur DEUX lots de requête : m1 est
+// dans le premier lot, m2 et m3 dans le second.
 func TestLoadObjectiveTeamRowsForMatches_FamillesDeuxCampsEtLots(t *testing.T) {
 	repo, db := newObjectiveStatsRepoOnMem(t, true)
 	insertParticipantTeam(t, db, "m1", "x1", 0, 600)
 	insertParticipantTeam(t, db, "m1", "x2", 1, 600)
+	if _, err := db.Exec(`UPDATE match_participants SET outcome = 4 WHERE match_id = 'm1' AND xuid = 'x2'`); err != nil {
+		t.Fatalf("outcome: %v", err)
+	}
 	insertObjectiveRow(t, db, "m1", "x1", map[string]any{"flag_captures": 2, "time_as_flag_carrier_seconds": 30.0})
 	insertObjectiveRow(t, db, "m1", "x2", map[string]any{"flag_captures": 1})
 	insertParticipantTeam(t, db, "m2", "x1", 0, 600)
@@ -107,11 +113,13 @@ func TestLoadObjectiveTeamRowsForMatches_FamillesDeuxCampsEtLots(t *testing.T) {
 	insertParticipantTeam(t, db, "hors", "x1", 0, 600)
 	insertObjectiveRow(t, db, "hors", "x1", map[string]any{"flag_captures": 50})
 
-	// Plus d'un lot : des identifiants sans ligne ne changent rien et ne cassent pas la requête.
-	ids := []string{"m1", "m2", "m3"}
-	for i := 0; i < objectiveTeamRowsChunk+10; i++ {
-		ids = append(ids, "vide_"+string(rune('a'+i%26))+string(rune('a'+i/26%26))+string(rune('a'+i/676)))
+	// Un identifiant sans ligne ne change rien. m1 ouvre la liste, objectiveTeamRowsChunk identifiants
+	// vides la remplissent, m2 et m3 ne tombent donc que dans le second lot.
+	ids := []string{"m1"}
+	for i := 0; i < objectiveTeamRowsChunk; i++ {
+		ids = append(ids, fmt.Sprintf("vide_%04d", i))
 	}
+	ids = append(ids, "m2", "m3")
 	got, err := repo.LoadObjectiveTeamRows(context.Background(), ids)
 	if err != nil {
 		t.Fatalf("LoadObjectiveTeamRows: %v", err)
@@ -124,7 +132,8 @@ func TestLoadObjectiveTeamRowsForMatches_FamillesDeuxCampsEtLots(t *testing.T) {
 		byXUID[r.XUID] = r
 	}
 	if byXUID["x1"].TeamID != 0 || byXUID["x2"].TeamID != 1 || byXUID["x1"].Family != narrative.FamilyCTF ||
-		byXUID["x1"].Values["time_as_flag_carrier_seconds"] != 30 || byXUID["x1"].TimePlayedSeconds != 600 {
+		byXUID["x1"].Values["time_as_flag_carrier_seconds"] != 30 || byXUID["x1"].TimePlayedSeconds != 600 ||
+		byXUID["x1"].Outcome != domain.OutcomeUnknown || byXUID["x2"].Outcome != domain.OutcomeDNF {
 		t.Errorf("ligne x1 = %+v", byXUID["x1"])
 	}
 	if got["m2"][0].Family != narrative.FamilyZonesStrongholds || got["m3"][0].Family != narrative.FamilyZonesKOTH {

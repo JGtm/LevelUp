@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -60,5 +61,26 @@ func TestSessionPageService_ObjectiveForNoteMoyenneEnUneLecture(t *testing.T) {
 		if got := s.objectiveFor(context.Background(), matches); got.Matches != 0 {
 			t.Errorf("%s : %+v, want aucun match mesuré (axe retiré)", name, got)
 		}
+	}
+}
+
+// Un match de la session que le joueur n'a pas terminé n'entre pas dans la note moyenne.
+func TestSessionPageService_ObjectiveForIgnoreLesMatchsNonTermines(t *testing.T) {
+	team := func(meOutcome int) []narrative.ObjectiveTeamRow {
+		return []narrative.ObjectiveTeamRow{
+			{XUID: "me", TeamID: 0, Family: narrative.FamilyCTF, TimePlayedSeconds: 600, Outcome: meOutcome,
+				Values: map[string]float64{colFlagCaptures: 3}},
+			{XUID: "mate", TeamID: 0, Family: narrative.FamilyCTF, TimePlayedSeconds: 600,
+				Values: map[string]float64{colFlagCaptures: 3}},
+		}
+	}
+	repo := &fakeSessionObjectiveRepo{rows: map[string][]narrative.ObjectiveTeamRow{
+		"m1": team(domain.OutcomeWin),
+		"m2": team(domain.OutcomeDNF),
+	}}
+	svc := &SessionPageService{objectiveTeam: repo, objectiveXUID: "me"}
+	got := svc.objectiveFor(context.Background(), []legacymatch.StatsMatchRow{{MatchID: "m1"}, {MatchID: "m2"}})
+	if got.Matches != 1 || got.Score != 50 {
+		t.Fatalf("(%v, %d matchs), want (50, 1) : l'abandon n'entre pas dans la moyenne", got.Score, got.Matches)
 	}
 }

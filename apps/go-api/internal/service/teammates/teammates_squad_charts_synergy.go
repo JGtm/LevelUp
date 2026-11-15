@@ -168,8 +168,9 @@ func (s *TeammatesService) loadSynergyMateAxes(
 // joueur dans l'objectif de son équipe, 0-100) de chaque joueur sur les matchs partagés. Source SHARED
 // match_objective_stats_latest, donc disponible aussi pour les coéquipiers NON suivis : les lignes des
 // DEUX camps de tous les matchs partagés se lisent en UNE requête, les gamertags se résolvent en xuids
-// en UNE autre. Ne rend que les joueurs mesurés ; une carte vide (repo absent, lecture en échec
-// journalisée, aucun match à objectif) fait retirer l'axe de toutes les séries.
+// en UNE autre. Ne rend que les joueurs mesurés ; un joueur absent de la carte (repo absent, lecture en
+// échec journalisée, alias inconnu, aucun match à objectif mesuré) fait retirer l'axe de toutes les séries
+// (allPlayersMeasured).
 func (s *TeammatesService) loadSynergyObjective(
 	ctx context.Context,
 	players []string,
@@ -195,6 +196,16 @@ func (s *TeammatesService) loadSynergyObjective(
 		}
 	}
 	return out
+}
+
+// allPlayersMeasured : chaque joueur a une note d'objectif mesurée.
+func allPlayersMeasured(players []string, measured map[string]float64) bool {
+	for _, gt := range players {
+		if _, ok := measured[gt]; !ok {
+			return false
+		}
+	}
+	return len(players) > 0
 }
 
 // buildSquadSynergyRadar calcule un profil de participation 6 axes par joueur
@@ -237,9 +248,10 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 	}
 
 	// Axe Objectif : note d'objectif du match, moyenne (source SHARED — couvre aussi les
-	// coéquipiers non suivis). Posé par joueur ; si AUCUN joueur n'a de match à
-	// objectif dans le scope (ou repo absent : capability, Halo 5), l'axe est
-	// retiré de TOUTES les séries (le front aligne indicateurs sur series[0]).
+	// coéquipiers non suivis). Un radar ECharts a UN jeu d'indicateurs pour toutes ses séries et rend
+	// une valeur manquante par un sommet au CENTRE (comme un zéro) : l'axe n'est donc gardé que si TOUS
+	// les joueurs sont mesurés ; dès qu'un seul ne l'est pas (alias absent, moins de 30 s, aucun match à
+	// objectif, repo absent : capability, Halo 5), il est retiré de TOUTES les séries, jamais un zéro.
 	players := append([]string{mainGamertag}, selectedGamertags...)
 	rawByPlayer := map[string]map[narrative.ParticipationAxis]float64{mainGamertag: mainRaw}
 	for _, gt := range selectedGamertags {
@@ -249,7 +261,7 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 	for gt, score := range objectiveByPlayer {
 		rawByPlayer[gt][narrative.AxisObjective] = score
 	}
-	skipObjectiveAxis := len(objectiveByPlayer) == 0
+	skipObjectiveAxis := !allPlayersMeasured(players, objectiveByPlayer)
 
 	// Titre sans damage_taken (Halo 5) → l'axe Survie (résistance défensive) est
 	// figé à 0 et trompeur : on le retire de TOUS les joueurs (radar cohérent ;

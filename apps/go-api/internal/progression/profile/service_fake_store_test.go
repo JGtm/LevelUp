@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/prestige"
@@ -39,6 +40,7 @@ type fakeStore struct {
 	tplCalls   int
 	objective  map[string][]narrative.ObjectiveTeamRow
 	objCalls   int
+	objErr     error
 }
 
 func (f *fakeStore) TitleSlug() string { return f.title }
@@ -77,7 +79,7 @@ func (f *fakeStore) MatchDays(context.Context, string, time.Time, time.Time) ([]
 }
 func (f *fakeStore) ObjectiveTeamRows(context.Context, []string) (map[string][]narrative.ObjectiveTeamRow, error) {
 	f.objCalls++
-	return f.objective, nil
+	return f.objective, f.objErr
 }
 func (f *fakeStore) KillDeathEvents(context.Context, []string) ([]canonical.HighlightEvent, error) {
 	return nil, nil
@@ -262,5 +264,38 @@ func TestService_AxeObjectifNoteMoyenneDesMatchs(t *testing.T) {
 	st.windowIDs = nil
 	if _, n := svc.computeObjectiveAxis(context.Background(), "u", fakeNow.AddDate(0, 0, -30), fakeNow); n != 0 {
 		t.Errorf("fenêtre sans match : n = %d, want 0 (axe retiré)", n)
+	}
+
+	// Un match que le joueur n'a pas terminé n'entre pas dans la moyenne.
+	dnf := team(0, 4)
+	dnf[0].Outcome = domain.OutcomeDNF
+	st.windowIDs = []string{"m1", "m2", "m3"}
+	st.objective["m3"] = dnf
+	if got, n := svc.computeObjectiveAxis(context.Background(), "u", fakeNow.AddDate(0, 0, -30), fakeNow); n != 2 || math.Abs(got-75) > 1e-9 {
+		t.Errorf("avec un abandon : (%v, %d), want (75, 2)", got, n)
+	}
+}
+
+// Une lecture en échec (matchs du joueur, puis lignes d'objectif) RETIRE l'axe : (0, 0), jamais un 0 mesuré,
+// et la seconde lecture n'est pas tentée quand la première échoue.
+func TestService_AxeObjectifLectureEnEchecRetireLAxe(t *testing.T) {
+	base := func() *fakeStore {
+		return &fakeStore{
+			title:     "halo_infinite",
+			windowIDs: []string{"m1"},
+			objective: map[string][]narrative.ObjectiveTeamRow{"m1": {
+				{XUID: "u", TeamID: 0, Family: narrative.FamilyCTF, TimePlayedSeconds: 600, Values: map[string]float64{"flag_captures": 2}},
+			}},
+		}
+	}
+	windowFails := base()
+	windowFails.windowErr = errors.New("panne des matchs")
+	if got, n := NewService(windowFails).computeObjectiveAxis(context.Background(), "u", fakeNow.AddDate(0, 0, -30), fakeNow); got != 0 || n != 0 || windowFails.objCalls != 0 {
+		t.Errorf("matchs illisibles : (%v, %d), lignes lues %d, want (0, 0) sans lecture des lignes", got, n, windowFails.objCalls)
+	}
+	rowsFail := base()
+	rowsFail.objErr = errors.New("panne des lignes")
+	if got, n := NewService(rowsFail).computeObjectiveAxis(context.Background(), "u", fakeNow.AddDate(0, 0, -30), fakeNow); got != 0 || n != 0 || rowsFail.objCalls != 1 {
+		t.Errorf("lignes illisibles : (%v, %d) en %d lecture(s), want (0, 0) en 1 lecture", got, n, rowsFail.objCalls)
 	}
 }

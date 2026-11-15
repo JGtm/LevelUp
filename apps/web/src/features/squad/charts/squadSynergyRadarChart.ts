@@ -17,6 +17,7 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { axesByKeys, commonAxisKeys } from '@/components/charts/radarAxes'
 import { tipNumber } from '@/components/charts/tipNumber'
 import type { SquadSynergyRadarSeries } from '@/lib/api/types'
 
@@ -53,23 +54,25 @@ export function buildSquadSynergyRadarOption(
 
   const tc = getEChartsThemeColors()
 
-  // Tous les profils ont la même structure d'axes ; on prend le premier.
-  const axes = (series[0].axes ?? []).map((a) => ({
-    name: opts.axisLabels[a.axis] ?? a.axis,
+  // Un radar n'a qu'un jeu d'indicateurs : les axes présents dans TOUS les profils (un joueur non
+  // mesuré sur un axe le retire pour tous, jamais un point à 0), valeurs lues par clé d'axe.
+  const axisKeys = commonAxisKeys(series.map((s) => s.axes))
+  const axes = axisKeys.map((key) => ({
+    name: opts.axisLabels[key] ?? key,
     max: 100,
   }))
 
   // Valeurs BRUTES par joueur, dans l'ordre des axes : le tooltip les affiche à
   // côté du normalisé (B3(3)). Le DTO les porte déjà (SquadSynergyRadarAxis.raw).
   const rawByPlayer = new Map<string, number[]>(
-    series.map((s) => [s.player, (s.axes ?? []).map((a) => a.raw)]),
+    series.map((s) => [s.player, axesByKeys(s.axes, axisKeys).map((a) => a.raw)]),
   )
 
   const data = series.map((s) => {
     const color = opts.colorByPlayer[s.player] ?? '#888' // color-allow(hex): gris structurel pour joueur sans couleur attribuée
     return {
       name: s.player,
-      value: (s.axes ?? []).map((a) => a.value),
+      value: axesByKeys(s.axes, axisKeys).map((a) => a.value),
       itemStyle: { color },
       lineStyle: { color, width: 2 },
       // Pas d'areaStyle → ligne seule (spec : show_fill=false).

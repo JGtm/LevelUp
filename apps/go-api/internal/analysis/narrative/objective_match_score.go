@@ -22,11 +22,16 @@ package narrative
 // Sur plusieurs matchs, la valeur est la MOYENNE des notes des matchs mesurés : la même échelle sur
 // toutes les surfaces, aucun écrêtage d'un indice par famille. Un match sans donnée d'objectif
 // (Halo 5, mode sans objectif, joueur absent de la table) n'est pas mesuré : il n'entre pas dans la
-// moyenne, et l'axe est ABSENT, jamais zéro, quand aucun match n'est mesuré.
+// moyenne, et l'axe est ABSENT, jamais zéro, quand aucun match n'est mesuré. Un match que le joueur n'a pas
+// terminé (abandon) n'entre pas non plus dans la moyenne, comme dans la note de performance.
 //
 // AUCUN I/O : les lignes viennent du chargeur (platform/duckdb) ou de la feuille de match.
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/domain"
+)
 
 // ObjectiveScoreMax est la borne haute de la note, et le seuil à passer à
 // ParticipationThresholds.Objective : la valeur brute de l'axe EST la note 0-100.
@@ -61,13 +66,15 @@ func ObjectiveMatchScore(rows []ObjectiveTeamRow, xuid string) (float64, bool) {
 
 // ObjectiveScoresByMatch rend la note de chaque match MESURÉ du joueur, par identifiant de match.
 // `xuids` : les identités du joueur (un gamertag peut en porter plusieurs) ; la première présente
-// dans un match est retenue. Les matchs où le joueur a joué moins de ObjectiveScoreMinPlayedSeconds
-// sont écartés.
+// dans un match est retenue. Sont écartés les matchs où le joueur a joué moins de
+// ObjectiveScoreMinPlayedSeconds et ceux qu'il n'a pas terminés (domain.OutcomeDNF), comme la note de
+// performance : l'abandon n'entre pas dans la moyenne, mais ses lignes comptent dans l'équipe des
+// autres joueurs. C'est l'UNIQUE endroit qui décide, pour toutes les surfaces de moyenne.
 func ObjectiveScoresByMatch(rowsByMatch map[string][]ObjectiveTeamRow, xuids ...string) map[string]float64 {
 	out := make(map[string]float64, len(rowsByMatch))
 	for matchID, rows := range rowsByMatch {
 		for _, xuid := range xuids {
-			if !playedLongEnough(rows, xuid) {
+			if !countsInAverage(rows, xuid) {
 				continue
 			}
 			if score, ok := ObjectiveMatchScore(rows, xuid); ok {
@@ -79,11 +86,13 @@ func ObjectiveScoresByMatch(rowsByMatch map[string][]ObjectiveTeamRow, xuids ...
 	return out
 }
 
-// playedLongEnough : la ligne de `xuid` existe et dépasse ObjectiveScoreMinPlayedSeconds.
-func playedLongEnough(rows []ObjectiveTeamRow, xuid string) bool {
+// countsInAverage : la ligne de `xuid` existe, dépasse ObjectiveScoreMinPlayedSeconds et n'est pas
+// un match non terminé du joueur.
+func countsInAverage(rows []ObjectiveTeamRow, xuid string) bool {
 	for i := range rows {
 		if rows[i].XUID == xuid {
-			return rows[i].TimePlayedSeconds > ObjectiveScoreMinPlayedSeconds
+			return rows[i].TimePlayedSeconds > ObjectiveScoreMinPlayedSeconds &&
+				rows[i].Outcome != domain.OutcomeDNF
 		}
 	}
 	return false

@@ -426,7 +426,7 @@ type lobbySizeProvider interface {
 // narrative.ObjectiveParticipation. Matches == 0 si le repo n'est pas câblé (titre sans capability
 // match.objective.stats), si le xuid est inconnu, ou en cas d'erreur (journalisée) → l'axe est retiré.
 func (s *SessionPageService) objectiveFor(ctx context.Context, matches []legacymatch.StatsMatchRow) sessionObjective {
-	defer timing.FromContext(ctx).Section("objective_index")()
+	defer timing.FromContext(ctx).Section("objective_score")()
 	if s.objectiveTeam == nil || s.objectiveXUID == "" || len(matches) == 0 {
 		return sessionObjective{}
 	}

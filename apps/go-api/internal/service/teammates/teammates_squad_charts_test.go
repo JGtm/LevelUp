@@ -1051,8 +1051,8 @@ func TestBuildSquadSynergyRadar_SurvivalIsDefensiveResistance(t *testing.T) {
 
 // TestBuildSquadSynergyRadar_ObjectiveFromTeamShare vérifie que l'axe objective est la note d'objectif
 // moyenne des matchs partagés (part du joueur dans l'objectif de son équipe, 0-100, source shared) :
-// les lignes des deux camps se lisent en UNE requête et les gamertags en UNE autre. Un joueur sans ligne
-// d'objectif garde l'axe (aligné sur series[0]) à 0.
+// les lignes des deux camps se lisent en UNE requête et les gamertags en UNE autre. Les deux joueurs sont
+// mesurés : l'axe est présent sur les deux séries.
 func TestBuildSquadSynergyRadar_ObjectiveFromTeamShare(t *testing.T) {
 	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
 	loader := &fakeSquadLoader{
@@ -1067,14 +1067,14 @@ func TestBuildSquadSynergyRadar_ObjectiveFromTeamShare(t *testing.T) {
 			Values: map[string]float64{"flag_captures": captures},
 		}
 	}
-	// m1 : main prend tout l'objectif de son équipe de 2 (100) ; m2 : parts égales (50) ; friend1 est
-	// dans l'équipe adverse et n'a jamais de ligne d'objectif de son camp.
+	// main et friend1 sont dans la même équipe de 2. m1 : main prend tout l'objectif (main 100, friend1 0) ;
+	// m2 : parts égales (50 chacun).
 	repo := &fakeObjectiveTeamRepo{
 		rows: map[string][]narrative.ObjectiveTeamRow{
-			"m1": {ctf("xm", 0, 3), ctf("xa", 0, 0), ctf("foe", 1, 9)},
-			"m2": {ctf("xm", 0, 2), ctf("xa", 0, 2), ctf("foe", 1, 9)},
+			"m1": {ctf("xm", 0, 3), ctf("xf", 0, 0), ctf("foe", 1, 9)},
+			"m2": {ctf("xm", 0, 2), ctf("xf", 0, 2), ctf("foe", 1, 9)},
 		},
-		xuids: map[string][]string{"main": {"xm"}},
+		xuids: map[string][]string{"main": {"xm"}, "friend1": {"xf"}},
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader, objectiveTeam: repo}
 	allRows := []domain.SquadMatchRow{
@@ -1106,9 +1106,54 @@ func TestBuildSquadSynergyRadar_ObjectiveFromTeamShare(t *testing.T) {
 	if mainObj.Raw != 75 || mainObj.Value != 75 {
 		t.Errorf("main objective: want raw 75 / value 75, got %v / %v", mainObj.Raw, mainObj.Value)
 	}
-	// friend1 sans identité ni ligne : l'axe reste présent (alignement series[0]) à 0.
-	if f1Obj := axis(byPlayer["friend1"], "objective"); f1Obj.Raw != 0 || f1Obj.Value != 0 {
-		t.Errorf("friend1 objective: want 0, got %+v", f1Obj)
+	// friend1 : (0 + 50) / 2 = 25.
+	if f1Obj := axis(byPlayer["friend1"], "objective"); f1Obj.Raw != 25 || f1Obj.Value != 25 {
+		t.Errorf("friend1 objective: want 25, got %+v", f1Obj)
+	}
+}
+
+// TestBuildSquadSynergyRadar_ObjectiveAxisDroppedWhenOnePlayerUnmeasured : un radar a un jeu
+// d'indicateurs pour toutes ses séries et ECharts rend une valeur manquante au centre (comme un zéro) :
+// dès qu'un joueur n'est pas mesuré (alias absent ici), l'axe est retiré de TOUTES les séries, y compris
+// celle du joueur mesuré, et aucune n'en porte un 0.
+func TestBuildSquadSynergyRadar_ObjectiveAxisDroppedWhenOnePlayerUnmeasured(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main":    {rowWithPersonalScore("m1", t0, 5, 3, 2, 600, 2000)},
+			"friend1": {rowWithPersonalScore("m1", t0, 3, 4, 8, 600, 1500)},
+		},
+	}
+	ctf := func(xuid string, captures float64) narrative.ObjectiveTeamRow {
+		return narrative.ObjectiveTeamRow{
+			XUID: xuid, TeamID: 0, Family: narrative.FamilyCTF, TimePlayedSeconds: 600,
+			Values: map[string]float64{"flag_captures": captures},
+		}
+	}
+	repo := &fakeObjectiveTeamRepo{
+		rows:  map[string][]narrative.ObjectiveTeamRow{"m1": {ctf("xm", 3), ctf("xf", 1)}},
+		xuids: map[string][]string{"main": {"xm"}}, // friend1 : alias inconnu
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader, objectiveTeam: repo}
+	allRows := []domain.SquadMatchRow{{MatchID: "m1", StartTime: t0, Kills: 5, Deaths: 3}}
+
+	got := svc.buildSquadSynergyRadar(context.Background(), allRows, "main", []string{"friend1"})
+	if len(got) != 2 {
+		t.Fatalf("want 2 series, got %d", len(got))
+	}
+	for _, s := range got {
+		if len(s.Axes) == 0 {
+			t.Fatalf("%s : aucun axe", s.Player)
+		}
+		for _, a := range s.Axes {
+			if a.Axis == "objective" {
+				t.Errorf("axe objective présent sur %s (%+v), want retiré de toutes les séries", s.Player, a)
+			}
+		}
+	}
+	// Les autres axes restent identiques d'une série à l'autre (mêmes indicateurs).
+	if len(got[0].Axes) != len(got[1].Axes) {
+		t.Errorf("axes : %d contre %d, want le même nombre", len(got[0].Axes), len(got[1].Axes))
 	}
 }
 

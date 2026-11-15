@@ -358,10 +358,10 @@ func (s *MatchViewService) buildMatchViewFromData(
 
 	// MV4.B' : radar calculé depuis le scoreboard (kills/HS/PK/assists/accuracy/
 	// deaths/damage/score + bloc objectif Q12). Mêmes formules que le radar squad
-	// (loadSynergyMateAxes), appliquées à un seul match. L'axe Objectif = index
-	// par opportunité sur row.Obj (retiré si match sans bloc objectif) ; le PSA
-	// d.objectiveScore ne sert plus qu'au résiduel de l'axe Score (décision 1,
-	// plan PLAN_AXE_OBJECTIFS_INDEX).
+	// (loadSynergyMateAxes), appliquées à un seul match. L'axe Objectif = note d'objectif de CE match
+	// (matchObjectiveScore : part du joueur dans l'objectif de son équipe, lue sur les blocs objectif de la
+	// feuille ; retiré si match sans bloc objectif) ; le PSA d.objectiveScore ne sert plus qu'au résiduel
+	// de l'axe Score.
 	modeFamily := matchModeFamilyFromMeta(meta)
 	radarSeries := BuildMatchRadarFromScoreboard(d.scoreboard, s.xuid, d.objectiveScore, modeFamily, games.EffectiveHpToKill(s.titleSlug), games.OffensiveConversionP80(s.titleSlug))
 	radar := make([]any, 0, len(radarSeries))

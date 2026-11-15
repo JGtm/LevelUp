@@ -34,6 +34,11 @@ type ObjectiveTeamRow struct {
 	Values map[string]float64
 	// TimePlayedSeconds : durée jouée par le joueur dans le match (terme de tenue).
 	TimePlayedSeconds float64
+	// Outcome : résultat du joueur dans le match (codes domain.Outcome*) ; domain.OutcomeUnknown si
+	// inconnu. Un match non terminé (domain.OutcomeDNF) du joueur mesuré n'entre pas dans la moyenne de
+	// plusieurs matchs (ObjectiveScoresByMatch), comme dans la note de performance ; ses lignes restent
+	// dans l'équipe des autres joueurs.
+	Outcome int
 }
 
 // NoObjectiveTeam marque un camp inconnu (un camp réel est >= 0).

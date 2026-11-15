@@ -285,7 +285,7 @@ func TestBuildCompareEntry_AvgLifeSeconds(t *testing.T) {
 }
 
 // TestBuildSessionParticipationProfile_ObjectiveAndScore couvre les axes Objective
-// (index par opportunité — agrégats match_objective_stats) et Score (score
+// (note d'objectif moyenne des matchs mesurés, 0-100, reprise telle quelle) et Score (score
 // personnel par minute jouée) du profil de participation. Sans match à objectif,
 // l'axe Objectif est RETIRÉ (pas de 0 trompeur) ; Score = ΣPS / (Σtime_played/60).
 func TestBuildSessionParticipationProfile_ObjectiveAndScore(t *testing.T) {

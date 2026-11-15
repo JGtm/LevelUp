@@ -75,3 +75,53 @@ describe('buildRadarOption', () => {
     expect(buildRadarOption([])).toEqual({ backgroundColor: 'transparent' })
   })
 })
+
+describe('buildRadarOption : axe Objectif absent', () => {
+  const FIVE = ['combat', 'survival', 'support', 'score', 'impact']
+  const noObjective = (key: string, values: number[]): RadarSeriesPayload => ({
+    key,
+    meta: { gamertag: key },
+    axes: FIVE.map((axis, i) => ({ axis, value: values[i], raw: values[i] })),
+  })
+  type Opt = {
+    radar: { indicator: { name: string }[] }
+    series: { data: { value: number[] }[] }[]
+  }
+
+  it('5 axes : aucun indicateur ni étiquette Objectif, aucune valeur à 0 ajoutée', () => {
+    const opt = buildRadarOption([noObjective('a', [80, 50, 30, 60, 75]), noObjective('b', [50, 40, 70, 30, 60])], {
+      axisLabels: { combat: 'Combat', objective: 'Objectif' },
+    }) as Opt
+    expect(opt.radar.indicator.map((i) => i.name)).toEqual(['Combat', 'survival', 'support', 'score', 'impact'])
+    expect(opt.radar.indicator.some((i) => i.name === 'Objectif' || i.name === 'objective')).toBe(false)
+    for (const d of opt.series[0].data) {
+      expect(d.value).toHaveLength(5)
+      expect(d.value).not.toContain(0)
+    }
+  })
+
+  it('un joueur sans l\'axe Objectif le retire pour tous les joueurs (jamais un sommet à 0)', () => {
+    const withObjective = (key: string): RadarSeriesPayload => ({
+      key,
+      meta: { gamertag: key },
+      axes: [
+        { axis: 'combat', value: 80, raw: 1 },
+        { axis: 'objective', value: 70, raw: 70 },
+        { axis: 'impact', value: 60, raw: 1 },
+      ],
+    })
+    const partial: RadarSeriesPayload = {
+      key: 'b',
+      meta: { gamertag: 'b' },
+      axes: [
+        { axis: 'combat', value: 50, raw: 1 },
+        { axis: 'impact', value: 40, raw: 1 },
+      ],
+    }
+    for (const order of [[withObjective('a'), partial], [partial, withObjective('a')]]) {
+      const opt = buildRadarOption(order) as Opt
+      expect(opt.radar.indicator.map((i) => i.name)).toEqual(['combat', 'impact'])
+      for (const d of opt.series[0].data) expect(d.value).toHaveLength(2)
+    }
+  })
+})

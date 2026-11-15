@@ -227,6 +227,10 @@ type SquadSynergyRadarAxis struct {
 // SquadSynergyRadarSeries est un profil radar pour un joueur de l'escouade
 // sur les matchs PARTAGÉS (intersection des match_ids de tous les membres
 // sélectionnés). Cf. teammates.06.
+//
+// Toutes les séries d'une réponse portent les MÊMES axes : un axe qu'un joueur ne peut pas porter (Survie
+// sans damage_taken, Objectif sans note mesurée) est retiré de toutes les séries, jamais rendu à 0 ni
+// absent d'une seule (un radar a un jeu d'indicateurs unique et rend une valeur manquante au centre).
 type SquadSynergyRadarSeries struct {
 	Player     string                  `json:"player"`
 	Axes       []SquadSynergyRadarAxis `json:"axes"`

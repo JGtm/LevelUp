@@ -6,7 +6,8 @@
 // Une ligne porte les valeurs BRUTES de toutes les colonnes d'action et de durée : c'est la
 // famille du MATCH, décidée côté analysis, qui choisit lesquelles comptent. Les listes de
 // colonnes sont générées depuis les tables narrative (objectiveIndexSelectColumns — source
-// unique, aucune liste parallèle). Le camp vient de match_participants. TOUS les joueurs des
+// unique, aucune liste parallèle). Le camp, la durée jouée et le résultat du joueur (Outcome, que
+// ObjectiveScoresByMatch lit pour écarter un match non terminé) viennent de match_participants. TOUS les joueurs des
 // matchs demandés sont chargés (les deux camps) : l'équipe se reconstitue côté analysis. Un
 // chargement = UNE requête par lot de matchs, jamais une requête par match.
 package duckdb
@@ -36,7 +37,7 @@ func objectiveTeamRowsSelect() (string, []string) {
 
 	var sb strings.Builder
 	sb.WriteString("SELECT o.match_id, o.xuid, " + objectiveFamilyCaseSQL() + " AS family, mp.team_id, " +
-		"COALESCE(mp.time_played_seconds, 0)::DOUBLE")
+		"COALESCE(mp.time_played_seconds, 0)::DOUBLE, COALESCE(mp.outcome, 0)")
 	for _, c := range cols {
 		sb.WriteString(",\n\t\tCOALESCE(o." + c + ", 0)::DOUBLE")
 	}
@@ -66,10 +67,11 @@ func scanObjectiveTeamRows(rows *sql.Rows, cols []string, who string, out map[st
 			family           *string
 			team             sql.NullInt64
 			timePlayed       float64
+			outcome          int
 		)
 		vals := make([]float64, len(cols))
-		ptrs := make([]any, 0, 5+len(vals))
-		ptrs = append(ptrs, &matchID, &rowXUID, &family, &team, &timePlayed)
+		ptrs := make([]any, 0, 6+len(vals))
+		ptrs = append(ptrs, &matchID, &rowXUID, &family, &team, &timePlayed, &outcome)
 		for i := range vals {
 			ptrs = append(ptrs, &vals[i])
 		}
@@ -77,7 +79,7 @@ func scanObjectiveTeamRows(rows *sql.Rows, cols []string, who string, out map[st
 			return fmt.Errorf("%s: scan: %w", who, err)
 		}
 		r := narrative.ObjectiveTeamRow{
-			XUID: rowXUID, TeamID: narrative.NoObjectiveTeam, TimePlayedSeconds: timePlayed,
+			XUID: rowXUID, TeamID: narrative.NoObjectiveTeam, TimePlayedSeconds: timePlayed, Outcome: outcome,
 			Values: make(map[string]float64, len(cols)),
 		}
 		if team.Valid {

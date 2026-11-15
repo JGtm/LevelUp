@@ -3,7 +3,7 @@
  *
  * Ne consomme PAS `ChartSeries<T>` standard car le payload backend est
  * spécifique (cf. service.MatchViewRadarSeries Go). Chaque trace = 1 joueur,
- * 6 axes alignés avec valeurs 0..100 normalisées.
+ * axes alignés par clé (ceux présents dans toutes les séries) avec valeurs 0..100 normalisées.
  *
  * Cas d'usage : radar de la vue Match (MatchSummaryCharts) :
  *   - Radar de participation (Combat/Survival/Support/Score/Objective/Impact)
@@ -17,6 +17,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard } from './ChartCard'
 import { CHART_BG, escapeHtml, getEChartsThemeColors, getLegendBase, getTooltipBase, seriesColor } from './_utils'
+import { axesByKeys, commonAxisKeys } from './radarAxes'
 import { tipNumber } from './tipNumber'
 
 /** 1 axe radar : libellé + valeur 0..100 + raw debug. */
@@ -116,12 +117,12 @@ export function buildRadarOption(
 
   const tc = getEChartsThemeColors()
 
-  // Axes : du premier joueur (tous alignés côté backend). On conserve la clé
-  // d'axe (`key`) en plus du libellé pour retrouver la valeur brute par axe.
-  const axisKeys = series[0].axes.map((a) => a.axis)
-  const axes = series[0].axes.map((a) => ({
-    key: a.axis,
-    name: axisLabels?.[a.axis] ?? a.axis,
+  // Axes : ceux présents dans TOUTES les séries (un radar n'a qu'un jeu d'indicateurs, cf. radarAxes).
+  // On conserve la clé d'axe (`key`) en plus du libellé pour retrouver la valeur brute par axe.
+  const axisKeys = commonAxisKeys(series.map((s) => s.axes))
+  const axes = axisKeys.map((key) => ({
+    key,
+    name: axisLabels?.[key] ?? key,
     max: 100,
   }))
 
@@ -130,7 +131,7 @@ export function buildRadarOption(
       seriesNameResolver?.(s) ?? (s.meta?.gamertag ?? s.key)
     return {
       name,
-      value: s.axes.map((a) => a.value),
+      value: axesByKeys(s.axes, axisKeys).map((a) => a.value),
       itemStyle: { color: seriesColor(idx) },
       lineStyle: { color: seriesColor(idx), width: 2 },
       areaStyle: { color: seriesColor(idx), opacity: 0.15 },
