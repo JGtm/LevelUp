@@ -294,6 +294,10 @@ Gate D : tests verts, garde-rails du rejeu verts, contrôle à l'écran du user 
   film (A.1, A.8) se fait dans un envoi à part dès la montée poussée. Le rattrapage v7 de la prod ne se lance
   qu'après ce câblage et la régénération (geste G7).
 
+- Décision du user transmise par le pilote de la release (2026-11-15) : la 8.2.0 porte les lots A et B ; les lots C
+  et D passent dans la version suivante (leur branche release, recalés sur elle). Le câblage de la lecture du
+  film (A.1, A.8) reste dans la 8.2.0, au SHA de la montée du décodeur v1.3.9.
+
 ## 8. Découvertes (hors périmètre, consignées sans être traitées)
 
 - Échelle du point exact (`rangsExacts`) : pour trois ex aequo ou plus, elle ne donne pas l'espérance
