@@ -29,15 +29,12 @@ func computeRankPerformance(rank, teamMMR, enemyMMR float64, histMetrics map[str
 	return &p
 }
 
-// applyPerfEnrichments complète les rows chargées depuis la shared DB avec ce qu'elle ne porte pas
-// dans la requête de l'historique : le score d'exploitation des médailles (calculé en amont par
-// l'appelant du batch) et les faits d'objectif et de soutien de l'équipe (note à objectif, paquet
-// objectiveblend), lus en UNE requête pour tous les matchs du joueur (rejeu complet compris).
-//
-// Une clé absente rend la zéro-value (0 pour le score médailles, neutre) ; un match sans ligne
-// d'objectif, ou un titre sans match_objective_stats (Halo 5), n'a pas de faits : la métrique est
-// absente et la note est le combat renormalisé. Une panne de lecture est une ERREUR : stocker des
-// notes sans objectif sur un jeu de données qui en a fausserait toutes les notes à objectif.
+// applyPerfEnrichments complète les rows de l'historique : score d'exploitation des médailles (calculé
+// en amont) et faits d'objectif et de soutien de l'équipe (paquet objectiveblend), lus en UNE requête
+// pour tous les matchs du joueur, rejeu complet compris. Un match sans ligne d'objectif, ou un titre
+// sans match_objective_stats (Halo 5), n'a pas de faits : la métrique est absente et la note est le
+// combat. Une panne de lecture est une ERREUR : des notes stockées sans objectif fausseraient toutes
+// les notes à objectif.
 func applyPerfEnrichments(ctx context.Context, sharedDB *sql.DB, xuid string, matches []historyRow, medalExploitByMatch map[string]float64) error {
 	rows, err := duckdbpkg.LoadObjectiveTeamRowsForPlayer(ctx, sharedDB, xuid)
 	if err != nil {
@@ -45,11 +42,36 @@ func applyPerfEnrichments(ctx context.Context, sharedDB *sql.DB, xuid string, ma
 	}
 	for i := range matches {
 		matches[i].MedalExploitScore = medalExploitByMatch[matches[i].MatchID]
-		if share, ok := narrative.ComputeObjectiveTeamShare(rows[matches[i].MatchID], xuid); ok {
-			matches[i].ObjectiveBlend = objectiveblend.FactsOf(share, matches[i].TimePlayedSeconds)
-		}
+		matches[i].ObjectiveBlend = objectiveFactsOf(rows[matches[i].MatchID], xuid, matches[i].TimePlayedSeconds)
 	}
 	return nil
+}
+
+// effectivePlayedSeconds : la durée jouée de TOUS les calculs par minute d'un match, ou
+// perfFallbackDurationSeconds quand elle est inconnue ou nulle (jamais 600 s ici et 0 là).
+func effectivePlayedSeconds(seconds float64) float64 {
+	if seconds <= 0 {
+		return perfFallbackDurationSeconds
+	}
+	return seconds
+}
+
+// objectiveFactsOf rend les faits d'un match pour xuid depuis les lignes de tous les joueurs ; nil
+// sans faits. La durée du joueur (tenue de l'indice, soutien par minute) suit effectivePlayedSeconds.
+func objectiveFactsOf(rows []narrative.ObjectiveTeamRow, xuid string, playedSeconds float64) *objectiveblend.Facts {
+	seconds := effectivePlayedSeconds(playedSeconds)
+	own := make([]narrative.ObjectiveTeamRow, len(rows))
+	copy(own, rows)
+	for i := range own {
+		if own[i].XUID == xuid {
+			own[i].TimePlayedSeconds = seconds
+		}
+	}
+	share, ok := narrative.ComputeObjectiveTeamShare(own, xuid)
+	if !ok {
+		return nil
+	}
+	return objectiveblend.FactsOf(share, seconds)
 }
 
 // addStandardPercentile classe une métrique « plus = mieux » (percentile direct)
@@ -279,21 +301,12 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 
 // batchComputePerformanceScores calcule les performance_score manquants ou tous si force=true.
 // medalExploitByMatch : match_id → score médailles (nil = pas de données médailles).
-// force : recalcule même si performance_score est déjà présent dans la même chaîne.
-// Retourne le nombre de matchs mis à jour.
-//
+// force : recalcule même si performance_score est déjà présent dans la même chaîne. Rend le nombre de matchs mis à jour.
 // Sémantique : chaque match est rattaché à une chaîne via GetPerformanceChain
 // (7 chaînes possibles). Le percentile pondéré est calculé sur les 50 derniers
 // matchs de la **même chaîne** uniquement. Un score n'est calculé qu'à partir
 // du MinMatchesPerChainForRelative-ième match de la chaîne (pas de fallback
 // global, préservation de la sémantique "relatif à ta chaîne").
-// BatchComputePerformanceScores is the public entry point that recomputes
-// the relative performance score for every match of a player. Exposed so
-// that external callers (e.g. the OpenSpartan post-import service) can run
-// the same recompute pass as the sync engine after a bulk import.
-//
-// medalExploit override is set to nil — callers that need the exploit-aware
-// variant (sync engine) still use the unexported helper.
 
 // ── Hygiène des notes orphelines (lot 2 — décisions D-D / D-E) ──────────────
 //

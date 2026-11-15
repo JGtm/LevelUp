@@ -155,7 +155,7 @@ export function SessionNetLivesCumulative({ title, matches, height = 280, yDomai
   const t = useSessionT()
 
   const points = useMemo(
-    () => (matches.length === 0 ? [] : computeCumulativeNetLives(matches, hp)),
+    () => (matches.length === 0 || hp === undefined ? [] : computeCumulativeNetLives(matches, hp)),
     [matches, hp],
   )
   const series = useMemo<ChartSeries<NetLivesPoint>[]>(
@@ -165,7 +165,7 @@ export function SessionNetLivesCumulative({ title, matches, height = 280, yDomai
   const mean = useMemo(() => meanOfValid(points.map((p) => p.value)), [points])
 
   // Titre sans dégâts subis (ex. Halo 5) → masquage silencieux (pas de carte vide).
-  if (!providesDamageTaken) return null
+  if (!providesDamageTaken || hp === undefined) return null
 
   const nf = new Intl.NumberFormat(intlLocale(locale), {
     minimumFractionDigits: 1,

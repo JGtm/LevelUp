@@ -124,3 +124,65 @@ func TestObjectiveBlendParams_ValeursRetenues(t *testing.T) {
 		t.Fatalf("réglages = %+v", p)
 	}
 }
+
+// Une seule durée de repli pour tous les calculs par minute : le même match ne compte jamais 600 s dans
+// l'historique et 0 dans les faits d'objectif (tenue de l'indice, soutien par minute).
+func TestEffectivePlayedSeconds(t *testing.T) {
+	for _, c := range []struct{ in, want float64 }{{0, perfFallbackDurationSeconds}, {-3, perfFallbackDurationSeconds}, {937, 937}} {
+		if got := effectivePlayedSeconds(c.in); got != c.want {
+			t.Errorf("effectivePlayedSeconds(%v) = %v, want %v", c.in, got, c.want)
+		}
+	}
+}
+
+func TestObjectiveFactsOf_DureeNulleSuitLeRepliDesCadences(t *testing.T) {
+	// Drapeau : le joueur porte le drapeau 26 s et soutient (retours, porteurs abattus) ; son camp aussi.
+	rows := []narrative.ObjectiveTeamRow{
+		{XUID: "me", TeamID: 0, Family: narrative.FamilyCTF, TimePlayedSeconds: 0, Values: map[string]float64{
+			"flag_captures": 2, "time_as_flag_carrier_seconds": 26, "flag_returns": 3, "flag_carriers_killed": 2,
+		}},
+		{XUID: "mate", TeamID: 0, Family: narrative.FamilyCTF, TimePlayedSeconds: 0, Values: map[string]float64{"flag_returns": 1}},
+	}
+	repli := objectiveFactsOf(rows, "me", 0)
+	explicite := objectiveFactsOf(rows, "me", perfFallbackDurationSeconds)
+	negative := objectiveFactsOf(rows, "me", -1)
+	if repli == nil || explicite == nil || negative == nil {
+		t.Fatal("faits absents")
+	}
+	if *repli != *explicite || *negative != *explicite {
+		t.Fatalf("durée nulle %+v, négative %+v, repli explicite %+v : le même repli attendu", *repli, *negative, *explicite)
+	}
+	if repli.SupportPerMin <= 0 {
+		t.Errorf("soutien par minute = %v avec une durée nulle : 0 serait compté au lieu de 600 s", repli.SupportPerMin)
+	}
+	// La tenue de l'indice (26 s sur la durée de repli) compte : sans elle l'indice serait celui des actions seules.
+	sansTenue := rows
+	sansTenue[0].Values = map[string]float64{"flag_captures": 2, "flag_returns": 3, "flag_carriers_killed": 2}
+	if hors := objectiveFactsOf(sansTenue, "me", 0); hors.Index >= repli.Index {
+		t.Errorf("indice sans tenue %v >= indice avec tenue %v : la tenue lue sur la durée de repli doit compter", hors.Index, repli.Index)
+	}
+	// Les lignes d'origine ne sont pas modifiées.
+	if rows[0].TimePlayedSeconds != 0 {
+		t.Errorf("durée de la ligne modifiée : %v", rows[0].TimePlayedSeconds)
+	}
+}
+
+// Le seuil est EXACT : avec 10 matchs d'historique la note existe et le mélange s'applique ; avec 9,
+// il n'y a pas de note.
+func TestComputeChainPerformanceScore_SeuilExactDeDixMatchs(t *testing.T) {
+	chain := skill.LUSRChainArenaObjectif
+	facts := &objectiveblend.Facts{Family: narrative.FamilyCTF, Index: 5, Share: 1, SupportShare: 1, SupportPerMin: 9}
+	cur := matchOf(12, 6, facts)
+	if got := computeChainPerformanceScore(chain, &cur, blendHistory(MinMatchesForRelative-1)); got != nil {
+		t.Fatalf("9 matchs : note %v, want nil", *got)
+	}
+	hist := blendHistory(MinMatchesForRelative)
+	got := computeChainPerformanceScore(chain, &cur, hist)
+	if got == nil {
+		t.Fatal("10 matchs : pas de note")
+	}
+	combat, _ := weightedPercentileMean(&cur, hist, skill.WeightsForChain(chain))
+	if *got == roundPerfScore(combat) {
+		t.Errorf("10 matchs : la note %v est le combat seul, le mélange doit s'appliquer", *got)
+	}
+}

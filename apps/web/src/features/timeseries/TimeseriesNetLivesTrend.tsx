@@ -209,7 +209,7 @@ export function TimeseriesNetLivesTrend({
   const themeVersion = useThemeVersion()
 
   const points = useMemo(
-    () => computeTimeseriesNetLives(rows, hp, locale),
+    () => (hp === undefined ? [] : computeTimeseriesNetLives(rows, hp, locale)),
     [rows, hp, locale],
   )
   const option = useMemo<ChartOption | null>(
@@ -220,7 +220,7 @@ export function TimeseriesNetLivesTrend({
   const mean = useMemo(() => meanOfValid(points.map((p) => p.value)), [points])
 
   // Titre sans dégâts subis (ex. Halo 5) → masquage silencieux (pas de carte vide).
-  if (!providesDamageTaken) return null
+  if (!providesDamageTaken || hp === undefined) return null
 
   const nf = new Intl.NumberFormat(intlLocale(locale), {
     minimumFractionDigits: 1,

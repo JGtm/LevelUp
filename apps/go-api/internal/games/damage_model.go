@@ -9,14 +9,13 @@ import "levelup/go-api/internal/games/mappings"
 // PLAN_DAMAGE_MODEL_PER_TITLE.md) : un titre déclare SA valeur dans
 // constants.toml [damage_model] ; le défaut reste Halo Infinite.
 
-// DefaultEffectiveHpToKill — PV effectifs pour tuer un Spartan Halo Infinite : 229, la vie que
-// mesure le compteur « dégâts subis » du film (229 dans 99,6 % des vies sans recharge de
-// bouclier, sur 1 614 films d'octobre 2024 à novembre 2026 ; les fichiers du jeu donnent
-// 90 vie + 140 bouclier = 230, capacité nominale). Défaut quand le resolver n'est pas câblé ou
-// que le titre ne déclare pas son [damage_model] (ex. mono-titre, tests). Halo 5 = 115 (design :
-// bouclier 70 + armure 45 ; PV-pour-tuer réels, PAS la moyenne empirique dégâts/kill — cf.
-// config/titles/halo_5/constants.toml). Cette constante fait partie des paramètres hachés par
-// scoring_revision_test.go : la changer impose de changer les révisions de notation.
+// DefaultEffectiveHpToKill — repli du resolver quand il n'est pas câblé (commandes hors serveur, tests des
+// autres paquets) ou que le titre ne déclare pas son [damage_model]. La SOURCE de la vie effective est
+// `effective_hp_to_kill` de config/titles/{slug}/constants.toml (Halo Infinite : la vie que mesure le
+// compteur « dégâts subis » du film, mesure et historique dans l'ADR 0047 ; Halo 5 : design, bouclier 70 +
+// armure 45) ; la valeur ci-dessous n'existe que pour ce repli et un test l'égale au TOML d'Infinite
+// (TestDefaultEffectiveHpToKill_EgaleLeTOMLDInfinite). La note de performance et le LUSR lisent la valeur
+// CHARGÉE du TOML : l'empreinte de révision (scoring_revision_test.go) la hache, pas cette constante.
 const DefaultEffectiveHpToKill = 229.0
 
 // DamageModelResolver est l'extension OPTIONNELLE d'EndpointResolver qui résout les

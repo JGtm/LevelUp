@@ -9,6 +9,7 @@ package skill
 import (
 	"time"
 
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 )
 
@@ -60,17 +61,12 @@ func appendToHistory(hist *[]float64, v float64) {
 
 // ComputeCombatYield calcule offensive_conversion et defensive_resistance depuis un match.
 //
-// Le baseline PV-pour-tuer est SCALE-INVARIANT ici : offConv/defRes sont ensuite
-// comparés à la moyenne glissante DU MÊME joueur (avgOffConv/avgDefRes dans
-// computeCompositeScoreWithBreakdown), tous calculés avec la même constante → le
-// facteur s'annule dans le ratio et n'affecte PAS le classement LUSR. On utilise
-// donc le baseline Infinite par défaut (games.DefaultEffectiveHpToKill) comme
-// simple constante d'échelle nommée — title-agnostic par construction, sans avoir
-// à threader le slug sur ce hot path. Le baseline title-aware (225 Infinite / 115
-// Halo 5) ne concerne que le KPI Rendement/Résistance AFFICHÉ (match-view), résolu
-// séparément via games.EffectiveHpToKill(slug).
+// La vie effective est celle du titre du LUSR (games.EffectiveHpToKill, config du titre) : le LUSR est
+// propre à ce titre et la fonction n'a pas son slug sur ce chemin chaud. Les deux grandeurs sont ensuite
+// comparées à la moyenne glissante du MÊME joueur, calculée avec la même vie : le facteur s'annule dans le
+// ratio, et ne pèse que sur la référence absolue des premiers matchs.
 func ComputeCombatYield(m LusrMatchData) (offConv, defRes float64) {
-	const hpToKill = games.DefaultEffectiveHpToKill
+	hpToKill := games.EffectiveHpToKill(title.DefaultSlug)
 	if m.DamageDealt > 0 {
 		offConv = hpToKill * (m.Kills + m.Assists/3.0) / m.DamageDealt
 	}

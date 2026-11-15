@@ -326,7 +326,7 @@ func buildCombatProfileFromCanonical(rows []canonical.PlayerMatchRow, effectiveH
 	var paceRatioSum float64
 	var paceRatioCount int
 	// Agrégats volume-pondérés (Σ sur tous les matchs) : base commune au rendement
-	// (OC = 225·(Σkills+Σassists/3)/Σdégâts) et au dégâts/frag affiché. Pas de
+	// (OC = vie·(Σkills+Σassists/3)/Σdégâts) et au dégâts/frag affiché. Pas de
 	// moyenne des ratios par match (décrochait du chiffre affiché).
 	var totalDmgDealt, totalDmgTaken float64
 	var totalKills, totalAssists, totalDeaths int

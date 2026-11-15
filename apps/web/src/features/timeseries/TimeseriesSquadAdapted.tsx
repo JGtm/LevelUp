@@ -457,13 +457,13 @@ export function TimeseriesEfficiency({
   perDeathLabel,
 }: TimeseriesEfficiencyProps) {
   const themeVersion = useThemeVersion()
-  const hp = useEffectiveHpToKill() // barème PV-pour-tuer du titre courant (229 Infinite, 115 h5)
+  const hp = useEffectiveHpToKill() // barème PV-pour-tuer du titre courant (bootstrap)
   // false (Halo 5 : API sans damage_taken) → la résistance n'est pas calculable :
   // on retire entièrement la courbe + son entrée de légende (pas de ligne vide).
   const providesDamageTaken = useProvidesDamageTaken()
 
   const option = useMemo<ChartOption | null>(() => {
-    if (rows.length === 0) return null
+    if (rows.length === 0 || hp === undefined) return null
     const tc = getEChartsThemeColors()
     const colRef = resolveToken('divergent-neutral')
     const colOffensive = resolveToken('chart-series-1')

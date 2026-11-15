@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { DEFAULT_EFFECTIVE_HP_TO_KILL, getHelpText } from './i18n'
+import { getHelpText } from './i18n'
 
 /** Concatène tout le texte combat d'un glossaire pour des assertions globales. */
 function flatten(locale: 'fr' | 'en', hp?: number): string {
@@ -21,18 +21,24 @@ function glossaryEntryText(locale: 'fr' | 'en', term: string): string {
 }
 
 describe('getHelpText — copy combat title-aware', () => {
-  it('ne laisse jamais fuiter le jeton {{HP}} (fr/en, défaut et 115)', () => {
+  it('ne laisse jamais fuiter le jeton {{HP}} (fr/en, avant bootstrap et 115)', () => {
     expect(flatten('fr')).not.toContain('{{HP}}')
     expect(flatten('en')).not.toContain('{{HP}}')
     expect(flatten('fr', 115)).not.toContain('{{HP}}')
     expect(flatten('en', 115)).not.toContain('{{HP}}')
   })
 
-  it('par défaut, applique le barème Halo Infinite (229)', () => {
-    expect(DEFAULT_EFFECTIVE_HP_TO_KILL).toBe(229)
-    const fr = flatten('fr')
+  it("avec le barème du bootstrap, l'applique tel quel", () => {
+    const fr = flatten('fr', 229)
     expect(fr).toContain('229 × (éliminations + assistances/3) / dégâts infligés')
     expect(fr).toContain('dégâts reçus / (229 × morts)')
+  })
+
+  it("avant le bootstrap, n'affiche aucune valeur de repli", () => {
+    const fr = flatten('fr')
+    expect(fr).toContain('— × (éliminations + assistances/3) / dégâts infligés')
+    expect(fr).toContain('dégâts reçus / (— × morts)')
+    expect(flatten('en')).toContain('Defensive resistance = damage_taken / (— × deaths)')
   })
 
   it('injecte le barème du titre courant dans le rendement et la résistance (115)', () => {

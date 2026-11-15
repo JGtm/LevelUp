@@ -3,7 +3,7 @@
 package sync
 
 // performance_objective_simulation_report_research_test.go — le RAPPORT de la simulation : un
-// tableau des témoins (une ligne par joueur suivi), puis le résumé de V6 et V7 par famille, la
+// tableau des témoins (une ligne par joueur suivi), puis le résumé de V7 par famille, la
 // distribution par chaîne, la note moyenne par rôle et la queue négative. Voir
 // performance_objective_simulation_research_test.go.
 
@@ -11,7 +11,9 @@ import (
 	"database/sql"
 	"fmt"
 	"math"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -106,13 +108,15 @@ func simWriteReport(t *testing.T, env *simEnv, recs []simRecord) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Simulation de la note à objectif (%d matchs)\n\n", len(recs))
 	simReportWitnesses(&b, env, recs)
-	for _, v := range []string{"V7"} {
-		simReportFamilies(&b, recs, v)
-	}
+	simReportFamilies(&b, recs, "V7")
 	simReportChains(&b, recs)
 	simReportRoles(&b, recs)
-	for _, v := range []string{"V7"} {
-		simReportTail(&b, recs, v)
+	simReportTail(&b, recs, "V7")
+	if prev := os.Getenv("LEVELUP_PERFSIM_PREV"); prev != "" {
+		simReportEffect(t, &b, env, recs, prev)
+	}
+	if path := os.Getenv("LEVELUP_PERFSIM_TSV"); path != "" {
+		simDumpV7(t, path, recs)
 	}
 	return b.String()
 }
@@ -151,10 +155,8 @@ func simReportChains(b *strings.Builder, recs []simRecord) {
 		rs := g[k]
 		old := simScores(rs, "")
 		fmt.Fprintf(b, "| %s | %d | %.1f / %.1f |", k, len(rs), simMean(old), simStd(old))
-		for _, v := range []string{"V7"} {
-			xs := simScores(rs, v)
-			fmt.Fprintf(b, " %.1f / %.1f |", simMean(xs), simStd(xs))
-		}
+		xs := simScores(rs, "V7")
+		fmt.Fprintf(b, " %.1f / %.1f |", simMean(xs), simStd(xs))
 		b.WriteString("\n")
 	}
 	b.WriteString("\n")
@@ -182,9 +184,7 @@ func simReportRoles(b *strings.Builder, recs []simRecord) {
 			}
 		}
 		fmt.Fprintf(b, "| %s | %d | %.1f |", ro.label, len(rs), simMean(simScores(rs, "")))
-		for _, v := range []string{"V7"} {
-			fmt.Fprintf(b, " %.1f |", simMean(simScores(rs, v)))
-		}
+		fmt.Fprintf(b, " %.1f |", simMean(simScores(rs, "V7")))
 		b.WriteString("\n")
 	}
 	b.WriteString("\n")
@@ -256,4 +256,73 @@ func simMatchLabel(env *simEnv, r *simRecord) string {
 		score = fmt.Sprintf(", %d-%d", a, c)
 	}
 	return fmt.Sprintf("%s, %s, %s%s", r.Start[:10], r.Map, r.Pair, score)
+}
+
+// simDumpV7 écrit la note V7 de chaque match (`joueur<TAB>match<TAB>note`) : la base de comparaison
+// d'un changement de formule (LEVELUP_PERFSIM_TSV), relue par simReportEffect (LEVELUP_PERFSIM_PREV).
+func simDumpV7(t *testing.T, path string, recs []simRecord) {
+	t.Helper()
+	var b strings.Builder
+	for i := range recs {
+		fmt.Fprintf(&b, "%s\t%s\t%.1f\n", recs[i].Player, recs[i].MatchID, recs[i].By["V7"].Score)
+	}
+	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
+		t.Fatalf("écriture %s : %v", path, err)
+	}
+}
+
+// simReportEffect compare la note V7 de chaque match à celle d'un relevé précédent : nombre de matchs
+// qui bougent, par seuil d'écart, et pire écart (match nommé par sa date, sa carte et son mode).
+func simReportEffect(t *testing.T, b *strings.Builder, env *simEnv, recs []simRecord, prevPath string) {
+	t.Helper()
+	raw, err := os.ReadFile(prevPath)
+	if err != nil {
+		t.Fatalf("lecture du relevé précédent %s : %v", prevPath, err)
+	}
+	prev := map[string]float64{}
+	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+		f := strings.Split(line, "\t")
+		if len(f) != 3 {
+			t.Fatalf("ligne illisible dans %s : %q", prevPath, line)
+		}
+		v, err := strconv.ParseFloat(f[2], 64)
+		if err != nil {
+			t.Fatalf("note illisible dans %s : %q", prevPath, line)
+		}
+		prev[f[0]+"\t"+f[1]] = v
+	}
+	var moved, ge1, ge5, ge10, compared int
+	var worst float64
+	var worstRec *simRecord
+	for i := range recs {
+		old, ok := prev[recs[i].Player+"\t"+recs[i].MatchID]
+		if !ok {
+			continue
+		}
+		compared++
+		d := recs[i].By["V7"].Score - old
+		switch a := math.Abs(d); {
+		case a == 0:
+		case a >= 10:
+			ge10++
+			fallthrough
+		case a >= 5:
+			ge5++
+			fallthrough
+		case a >= 1:
+			ge1++
+			fallthrough
+		default:
+			moved++
+		}
+		if math.Abs(d) > math.Abs(worst) {
+			worst, worstRec = d, &recs[i]
+		}
+	}
+	fmt.Fprintf(b, "## Effet du changement de formule (note V7 contre le relevé précédent)\n\n%d matchs comparés : %d bougent, dont %d d'au moins 1 point, %d d'au moins 5 et %d d'au moins 10.\n",
+		compared, moved, ge1, ge5, ge10)
+	if worstRec != nil {
+		fmt.Fprintf(b, "Pire écart : %+.1f (%s, %s).\n", worst, worstRec.Player, simMatchLabel(env, worstRec))
+	}
+	b.WriteString("\n")
 }

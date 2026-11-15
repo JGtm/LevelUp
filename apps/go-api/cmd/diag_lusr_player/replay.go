@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
 	lusync "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/sync/skill"
 )
@@ -160,13 +162,13 @@ func updateHistories(st *playerState, m matchData) {
 		appendHist(&st.damageEffHistory, clampF(m.damageDealt/total, 0, 1))
 	}
 	if m.damageDealt > 0 {
-		offConv := 225.0 * (m.kills + m.assists/3.0) / m.damageDealt
+		offConv := diagHpToKill() * (m.kills + m.assists/3.0) / m.damageDealt
 		if offConv > 0 {
 			appendHist(&st.offConvHistory, offConv)
 		}
 	}
 	if m.damageTaken > 0 && m.deaths > 0 {
-		defRes := m.damageTaken / (225.0 * m.deaths)
+		defRes := m.damageTaken / (diagHpToKill() * m.deaths)
 		if defRes > 0 {
 			appendHist(&st.defResHistory, defRes)
 		}
@@ -232,7 +234,7 @@ func computeCompositeFull(m matchData, st *playerState, teammateAvgKE *float64, 
 		valid = append(valid, entry{lusync.MetricKeyAccuracyDelta, s, w[lusync.MetricKeyAccuracyDelta]})
 	}
 	if m.damageDealt > 0 {
-		offConv := 225.0 * (m.kills + m.assists/3.0) / m.damageDealt
+		offConv := diagHpToKill() * (m.kills + m.assists/3.0) / m.damageDealt
 		if offConv > 0 {
 			ref := analysis.OffensiveConversionP80
 			if avgOffConv != nil && *avgOffConv > 1e-9 {
@@ -242,7 +244,7 @@ func computeCompositeFull(m matchData, st *playerState, teammateAvgKE *float64, 
 		}
 	}
 	if m.damageTaken > 0 && m.deaths > 0 {
-		defRes := m.damageTaken / (225.0 * m.deaths)
+		defRes := m.damageTaken / (diagHpToKill() * m.deaths)
 		if defRes > 0 {
 			ref := analysis.DefensiveResistanceP80
 			if avgDefRes != nil && *avgDefRes > 1e-9 {
@@ -429,3 +431,7 @@ func clampF(v, lo, hi float64) float64 {
 	}
 	return v
 }
+
+// diagHpToKill rend la vie effective du titre du LUSR (config du titre, par games.EffectiveHpToKill),
+// celle que le calcul de production applique.
+func diagHpToKill() float64 { return games.EffectiveHpToKill(title.DefaultSlug) }

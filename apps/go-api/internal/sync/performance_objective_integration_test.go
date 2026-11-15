@@ -91,9 +91,18 @@ func seedObjectiveMatch(t *testing.T, db *sql.DB, idx int, kills, deaths, damage
 	return mid
 }
 
-// scoreFinalMatch rejoue un batch complet sur une fixture neuve : 10 matchs de référence (captures
-// croissantes) puis LE match final, au combat faible ; rend sa note et sa chaîne STOCKÉES.
-func scoreFinalMatch(t *testing.T, captures float64, withStats bool) (float64, string) {
+// finalMatchRun : le match final d'une fixture rejouée et ce que le batch en a stocké.
+type finalMatchRun struct {
+	id      string
+	score   float64
+	chain   string
+	present bool
+}
+
+// runFinalMatch rejoue un batch complet sur une fixture neuve : 10 matchs de référence (captures
+// croissantes) puis LE match final, au combat faible. tweak (peut être nil) modifie la fixture du match
+// final avant le batch.
+func runFinalMatch(t *testing.T, captures float64, withStats bool, tweak func(db *sql.DB, final string)) finalMatchRun {
 	t.Helper()
 	db := openPerfDB(t)
 	enableObjectiveFixture(t, db, withStats)
@@ -102,14 +111,24 @@ func scoreFinalMatch(t *testing.T, captures float64, withStats bool) (float64, s
 		seedObjectiveMatch(t, db, i, 3+i, 20-i, 1000+300*i, float64(i), withStats)
 	}
 	final := seedObjectiveMatch(t, db, population, 4, 15, 1500, captures, withStats)
+	if tweak != nil {
+		tweak(db, final)
+	}
 	if _, err := batchComputePerformanceScores(t.Context(), db, db, "xuid1", nil, false); err != nil {
 		t.Fatalf("batch: %v", err)
 	}
 	score, chain, present := storedPerfScore(t, db, final)
-	if !present {
-		t.Fatalf("le match final %s n'a reçu aucune note (chaîne stockée %q)", final, chain)
+	return finalMatchRun{id: final, score: score, chain: chain, present: present}
+}
+
+// scoreFinalMatch rend la note et la chaîne STOCKÉES du match final ; échoue s'il n'a reçu aucune note.
+func scoreFinalMatch(t *testing.T, captures float64, withStats bool) (float64, string) {
+	t.Helper()
+	r := runFinalMatch(t, captures, withStats, nil)
+	if !r.present {
+		t.Fatalf("le match final %s n'a reçu aucune note (chaîne stockée %q)", r.id, r.chain)
 	}
-	return score, chain
+	return r.score, r.chain
 }
 
 // Le match classé de famille objectif est rattaché à `ranked_objectif`, noté sans intervention, et
@@ -140,5 +159,55 @@ func TestBatchPerformance_SansLignesDObjectifLaMetriqueEstAbsente(t *testing.T) 
 	inactive, _ := scoreFinalMatch(t, 0, true)
 	if uncovered >= active || uncovered <= inactive {
 		t.Errorf("sans lignes d'objectif %v : attendu entre le jumeau inactif (%v) et le jumeau actif (%v)", uncovered, inactive, active)
+	}
+}
+
+// setOutcome fixe l'issue d'un participant du match final (4 = non terminé).
+func setOutcome(t *testing.T, db *sql.DB, matchID, xuid string, outcome int) {
+	t.Helper()
+	mustExec(t, db, "UPDATE match_participants SET outcome = ? WHERE match_id = ? AND xuid = ?", outcome, matchID, xuid)
+}
+
+// setCaptures fixe les captures de zone d'un participant du match final.
+func setCaptures(t *testing.T, db *sql.DB, matchID, xuid string, captures float64) {
+	t.Helper()
+	mustExec(t, db, "UPDATE match_objective_stats_latest SET zone_captures = ? WHERE match_id = ? AND xuid = ?", captures, matchID, xuid)
+}
+
+// Un coéquipier parti (match non terminé) reste dans le total de l'équipe : sa part de l'objectif pèse
+// sur celle du joueur exactement comme s'il avait fini, et plus il en a pris, plus la part du joueur baisse.
+func TestBatchPerformance_CoequipierNonTermineCompteDansLeTotalDEquipe(t *testing.T) {
+	mate := func(outcome int, captures float64) func(*sql.DB, string) {
+		return func(db *sql.DB, final string) {
+			setOutcome(t, db, final, "mate", outcome)
+			setCaptures(t, db, final, "mate", captures)
+		}
+	}
+	gone := runFinalMatch(t, 6, true, mate(4, 40))
+	finished := runFinalMatch(t, 6, true, mate(2, 40))
+	goneIdle := runFinalMatch(t, 6, true, mate(4, 0))
+	for _, r := range []finalMatchRun{gone, finished, goneIdle} {
+		if !r.present {
+			t.Fatalf("le match final %s n'a reçu aucune note", r.id)
+		}
+	}
+	if gone.score != finished.score {
+		t.Errorf("coéquipier parti = %v, coéquipier arrivé au bout = %v : la présence à la fin ne change pas le total d'équipe", gone.score, finished.score)
+	}
+	if gone.score >= goneIdle.score {
+		t.Errorf("coéquipier parti qui a tout pris = %v, inactif = %v : ses points doivent baisser la part du joueur", gone.score, goneIdle.score)
+	}
+}
+
+// Le match non terminé DU JOUEUR n'est jamais noté, quelle que soit sa durée (nulle ou non).
+func TestBatchPerformance_MatchNonTermineDuJoueurJamaisNote(t *testing.T) {
+	for name, duration := range map[string]string{"durée connue": "600", "durée nulle": "0", "durée absente": "NULL"} {
+		r := runFinalMatch(t, 12, true, func(db *sql.DB, final string) {
+			setOutcome(t, db, final, "xuid1", 4)
+			mustExec(t, db, "UPDATE match_participants SET time_played_seconds = "+duration+" WHERE match_id = ? AND xuid = 'xuid1'", final)
+		})
+		if r.present {
+			t.Errorf("%s : le match non terminé du joueur a reçu une note (%v)", name, r.score)
+		}
 	}
 }

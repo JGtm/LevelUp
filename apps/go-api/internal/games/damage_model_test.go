@@ -200,6 +200,28 @@ func TestDefensiveResistanceP80_RealConfig(t *testing.T) {
 	}
 }
 
+// TestDefaultEffectiveHpToKill_EgaleLeTOMLDInfinite — la constante de repli n'est pas une seconde
+// source : elle égale la valeur de config/titles/halo_infinite/constants.toml, que le resolver
+// du titre sert et que /bootstrap transmet au web.
+func TestDefaultEffectiveHpToKill_EgaleLeTOMLDInfinite(t *testing.T) {
+	t.Parallel()
+	reg := mappings.NewRegistry()
+	if errs := reg.LoadFromConfigDir(repoConfigRoot(t), []string{"halo_infinite"}, nil); len(errs) != 0 {
+		t.Fatalf("LoadFromConfigDir(halo_infinite) errs: %v", errs)
+	}
+	res := NewMappingsEndpointResolver(reg, "halo_infinite")
+	dm, ok := res.DamageModelFor("halo_infinite")
+	if !ok || dm.EffectiveHpToKill <= 0 {
+		t.Fatalf("halo_infinite doit déclarer effective_hp_to_kill (reçu %+v ok=%v)", dm, ok)
+	}
+	if dm.EffectiveHpToKill != DefaultEffectiveHpToKill {
+		t.Errorf("TOML d'Infinite = %v, repli Go = %v : une seule valeur, celle du TOML", dm.EffectiveHpToKill, DefaultEffectiveHpToKill)
+	}
+	if got := EffectiveHpToKillFromResolver(res, "halo_infinite"); got != dm.EffectiveHpToKill {
+		t.Errorf("EffectiveHpToKillFromResolver = %v, want %v (TOML)", got, dm.EffectiveHpToKill)
+	}
+}
+
 // TestProvidesDamageTaken — un titre déclarant no_damage_taken=true (Halo 5) route
 // false (résistance défensive non calculable → surfaces DR neutralisées) ; sans le
 // flag / inconnu / resolver nil → true (défaut Infinite).

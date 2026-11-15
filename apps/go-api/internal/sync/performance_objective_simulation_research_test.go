@@ -98,35 +98,45 @@ func simXUIDs(t *testing.T, shared *sql.DB, players []string) map[string]string 
 }
 
 // simMatchInfo : date, carte, mode des matchs, pour la lecture humaine du rapport.
-func simMatchInfo(shared *sql.DB) map[string][3]string {
+func simMatchInfo(t *testing.T, shared *sql.DB) map[string][3]string {
+	t.Helper()
 	out := map[string][3]string{}
 	rows, err := shared.Query(`SELECT match_id, CAST(start_time AS VARCHAR), COALESCE(map_name, ''), COALESCE(pair_name, '') FROM match_registry`)
 	if err != nil {
-		return out
+		t.Fatalf("lecture du registre des matchs : %v", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var id, st, mp, pn string
-		if rows.Scan(&id, &st, &mp, &pn) == nil {
-			out[id] = [3]string{st, mp, pn}
+		if err := rows.Scan(&id, &st, &mp, &pn); err != nil {
+			t.Fatalf("lecture du registre des matchs : %v", err)
 		}
+		out[id] = [3]string{st, mp, pn}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("lecture du registre des matchs : %v", err)
 	}
 	return out
 }
 
-func simStoredNotes(player *sql.DB) map[string]float64 {
+func simStoredNotes(t *testing.T, player *sql.DB) map[string]float64 {
+	t.Helper()
 	out := map[string]float64{}
 	rows, err := player.Query(`SELECT match_id, performance_score FROM player_match_enrichment_latest WHERE performance_score IS NOT NULL`)
 	if err != nil {
-		return out
+		t.Fatalf("lecture des notes stockées : %v", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var id string
 		var s float64
-		if rows.Scan(&id, &s) == nil {
-			out[id] = s
+		if err := rows.Scan(&id, &s); err != nil {
+			t.Fatalf("lecture des notes stockées : %v", err)
 		}
+		out[id] = s
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("lecture des notes stockées : %v", err)
 	}
 	return out
 }
@@ -154,7 +164,7 @@ func TestResearchPerformanceObjectiveSimulation(t *testing.T) {
 	sort.Strings(players)
 	xuids := simXUIDs(t, shared, players)
 
-	env := &simEnv{ctx: ctx, shared: shared, metaPath: metaPath, info: simMatchInfo(shared), xuids: xuids,
+	env := &simEnv{ctx: ctx, shared: shared, metaPath: metaPath, info: simMatchInfo(t, shared), xuids: xuids,
 		objRows: map[string]map[string][]narrative.ObjectiveTeamRow{}}
 	var records []simRecord
 	for _, gt := range players {
@@ -207,7 +217,7 @@ func simPlayer(t *testing.T, env *simEnv, gt, xuid string, player *sql.DB) []sim
 		t.Fatalf("%s : lignes d'objectif : %v", gt, err)
 	}
 	env.objRows[gt] = rows
-	stored := simStoredNotes(player)
+	stored := simStoredNotes(t, player)
 
 	var recs []simRecord
 	chainHistory := map[string][]historyRow{}

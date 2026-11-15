@@ -1,22 +1,18 @@
 /**
  * effectiveHp — barème PV-pour-tuer du titre COURANT (title-aware).
  *
- * 229 Halo Infinite (compteur de dégâts du jeu ; 90 vie + 140 bouclier nominal) · 115 Halo 5 (bouclier 70 + armure 45).
- * Source unique côté front pour les surfaces combat (rendement / résistance) qui
- * doivent afficher le barème du titre sélectionné au lieu du barème câblé. Le défaut
- * est `ONE_LIFE_DAMAGE` (Infinite), aligné sur le fallback backend
- * (games.DefaultEffectiveHpToKill).
+ * Source unique côté front pour les surfaces combat (rendement / résistance) : la valeur
+ * vient de `/bootstrap` (`TitleSummary.effective_hp_to_kill`), elle-même lue dans
+ * `config/titles/{slug}/constants.toml` [damage_model]. Aucun nombre en dur ici : tant que
+ * le bootstrap n'est pas chargé, le hook rend `undefined` et les surfaces n'affichent rien.
  */
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
-import { ONE_LIFE_DAMAGE } from '@/lib/charts/oneLifeWindow'
 
-/** PV-pour-tuer du titre courant, défaut Infinite (ONE_LIFE_DAMAGE). */
-export function useEffectiveHpToKill(): number {
+/** PV-pour-tuer du titre courant ; `undefined` tant que le bootstrap n'est pas chargé. */
+export function useEffectiveHpToKill(): number | undefined {
   return useAppShellStore(
-    (s) =>
-      s.availableTitles.find((t) => t.slug === s.currentTitleSlug)?.effective_hp_to_kill ??
-      ONE_LIFE_DAMAGE,
+    (s) => s.availableTitles.find((t) => t.slug === s.currentTitleSlug)?.effective_hp_to_kill,
   )
 }
 

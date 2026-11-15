@@ -84,10 +84,7 @@ type matchMetrics struct {
 }
 
 func extractMatchMetrics(row *historyRow) *matchMetrics {
-	duration := row.TimePlayedSeconds
-	if duration <= 0 {
-		duration = perfFallbackDurationSeconds
-	}
+	duration := effectivePlayedSeconds(row.TimePlayedSeconds)
 
 	kills := row.Kills
 	deaths := row.Deaths
@@ -203,8 +200,8 @@ func computeRelativePerformanceScore(current *historyRow, history []historyRow, 
 	return &score
 }
 
-// objectiveBlendParams : les réglages de la note à objectif (paquet objectiveblend), fixés avec
-// l'utilisateur le 2026-11-15 ; toute modification impose de changer skill.PerformanceScoreRev.
+// objectiveBlendParams : les réglages de la note à objectif (paquet objectiveblend) ; toute
+// modification impose de changer skill.PerformanceScoreRev.
 func objectiveBlendParams() objectiveblend.Params {
 	return objectiveblend.DefaultParams(MinMatchesForRelative)
 }
@@ -292,7 +289,8 @@ func collectWeightedPercentiles(m *matchMetrics, hist map[string][]float64, weig
 }
 
 // profileWeight rend le poids d'une métrique dans le profil de la chaîne courante.
-// inProfile=false quand la métrique n'y figure pas ou qu'elle y porte un poids nul : elle n'est// alors ni calculée ni comptée dans la renormalisation.
+// inProfile=false quand la métrique n'y figure pas ou qu'elle y porte un poids nul : elle n'est
+// alors ni calculée ni comptée dans la renormalisation.
 func profileWeight(weights map[string]float64, key string) (float64, bool) {
 	w, inProfile := weights[key]
 	return w, inProfile && w != 0

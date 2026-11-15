@@ -1,6 +1,6 @@
 // Package duckdb — objective_team_rows_repo.go : lignes (match, joueur) de
 // `match_objective_stats_latest` pour la part d'un joueur dans l'objectif de son équipe
-// (narrative.ComputeObjectiveTeamShare, variante de la note de performance à l'étude).
+// (narrative.ComputeObjectiveTeamShare, note de performance des chaînes à objectif).
 //
 // Une ligne porte les valeurs BRUTES de toutes les colonnes d'action et de durée : c'est la
 // famille du MATCH, décidée côté analysis, qui choisit lesquelles comptent. Les listes de

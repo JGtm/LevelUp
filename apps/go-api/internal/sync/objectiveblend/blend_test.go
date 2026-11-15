@@ -117,3 +117,57 @@ func TestFactsOf_SoutienParMinute(t *testing.T) {
 		t.Fatalf("durée inconnue : %v par minute, want 0", got)
 	}
 }
+
+// Les seuils sont EXACTS (>=) : au minimum de matchs de la famille, la référence est la famille ; un
+// de moins, repli sur la fenêtre, qui exige le même minimum ; un de moins encore, métrique absente.
+func TestCompute_SeuilsExactsDeLaReference(t *testing.T) {
+	p := DefaultParams(10)
+	cur := &Facts{Family: narrative.FamilyCTF, Index: 1, Share: 0.5, SupportShare: 0.5, SupportPerMin: 1}
+	other := func(n int) []*Facts {
+		out := history(n)
+		for _, f := range out {
+			f.Family = narrative.FamilyZonesKOTH
+		}
+		return out
+	}
+	if r := Compute(60, cur, history(10), p); !r.HasObjective || !r.FamilyScope {
+		t.Errorf("10 matchs de la famille : %+v, want la référence de famille", r)
+	}
+	repli := append(history(9), other(1)...)
+	if r := Compute(60, cur, repli, p); !r.HasObjective || r.FamilyScope {
+		t.Errorf("9 de la famille + 1 autre : %+v, want le repli sur la fenêtre (10 matchs)", r)
+	}
+	if r := Compute(60, cur, history(9), p); r.HasObjective {
+		t.Errorf("9 matchs au total : %+v, want la métrique absente", r)
+	}
+}
+
+// En repli sur les autres familles, le débit de soutien par minute n'est pas classé : O_sout ne
+// garde que le rang de la part du soutien. Dans la famille, le débit compte.
+func TestCompute_RepliSoutienIgnoreLeDebitParMinute(t *testing.T) {
+	p := DefaultParams(10)
+	hist := history(40) // 40 Drapeau
+	supShare := rank(0.4, hist, func(f *Facts) float64 { return f.SupportShare })
+	rate := func(v float64) *Facts {
+		return &Facts{Family: narrative.FamilyCTF, Index: 0.3, Share: 0.3, SupportShare: 0.4, SupportPerMin: v}
+	}
+	famLo, famHi := Compute(60, rate(0), hist, p), Compute(60, rate(9), hist, p)
+	if !famLo.FamilyScope || famLo.SupportPercentile == famHi.SupportPercentile {
+		t.Errorf("dans la famille le débit doit compter : %+v / %+v", famLo, famHi)
+	}
+	other := func(v float64) *Facts {
+		f := rate(v)
+		f.Family = narrative.FamilyOddball
+		return f
+	}
+	repLo, repHi := Compute(60, other(0), hist, p), Compute(60, other(9), hist, p)
+	if repLo.FamilyScope || repHi.FamilyScope {
+		t.Fatalf("le repli était attendu : %+v / %+v", repLo, repHi)
+	}
+	if repLo.SupportPercentile != repHi.SupportPercentile || math.Abs(repLo.SupportPercentile-supShare) > 1e-9 {
+		t.Errorf("en repli O_sout = rang de la part seul : %v / %v, want %v", repLo.SupportPercentile, repHi.SupportPercentile, supShare)
+	}
+	if repLo.Score != repHi.Score {
+		t.Errorf("le débit ne doit pas bouger la note en repli : %v / %v", repLo.Score, repHi.Score)
+	}
+}

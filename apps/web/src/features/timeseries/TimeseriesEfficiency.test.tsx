@@ -8,12 +8,12 @@
  * fenêtre d'axe FIXE 50…200 % jamais dérivée de la session, absence de dégradé
  * de trait, et contenu du survol (taux + valeur brute + rappel du pivot).
  */
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 
 import type { TimeseriesMatchRow } from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
 import {
-  ONE_LIFE_DAMAGE,
   ONE_LIFE_RATE_BOUNDS,
   ONE_LIFE_RATE_PCT,
   ONE_LIFE_ZONE_OPACITY,
@@ -21,6 +21,35 @@ import {
 import { TimeseriesEfficiency } from './TimeseriesSquadAdapted'
 
 let captured: Record<string, unknown> | null = null
+
+/** Barème de la vie servi par le bootstrap dans ces tests (la valeur n'est écrite nulle part ailleurs). */
+const BOOTSTRAP_HP = 229
+
+function setBootstrap(hp: number | null) {
+  useAppShellStore.setState({
+    currentTitleSlug: 'test_title',
+    availableTitles:
+      hp === null
+        ? []
+        : [
+            {
+              slug: 'test_title',
+              name: 'Test',
+              status: 'active',
+              capabilities: ['damage_taken'],
+              is_default: true,
+              effective_hp_to_kill: hp,
+              provides_damage_taken: true,
+              provides_team_mmr: true,
+              provides_max_killing_spree: true,
+              offensive_conversion_p80: 0.9,
+              defensive_resistance_p80: 1.65,
+            },
+          ],
+  })
+}
+beforeEach(() => setBootstrap(BOOTSTRAP_HP))
+afterEach(() => useAppShellStore.setState({ availableTitles: [], currentTitleSlug: 'halo_infinite' }))
 vi.mock('echarts-for-react', () => ({
   default: ({ option }: { option: Record<string, unknown> }) => {
     captured = option
@@ -79,14 +108,23 @@ async function optionFor(rows: TimeseriesMatchRow[]) {
 }
 
 describe('TimeseriesEfficiency — taux « une vie » (%)', () => {
+  it("avant le bootstrap, aucune courbe n'est tracée (pas de barème de repli)", async () => {
+    setBootstrap(null)
+    cleanup()
+    captured = null
+    render(<TimeseriesEfficiency rows={[row(0, 916, 4)]} title="Rendement" emptyMessage="vide" {...LABELS} />)
+    expect(screen.queryByTestId('echarts-mock')).toBeNull()
+    expect(captured).toBeNull()
+  })
+
   it('les deux courbes sont des TAUX en % : une vie par frag / par mort = 100 %', async () => {
     // 4 frags pour 916 dégâts = 229 / frag effectif = une vie exactement.
     // 4 morts pour 916 dégâts subis = 229 / mort = une vie exactement.
     const opt = await optionFor([row(0, 916, 4)])
     expect(opt.series[0].data[0]?.value).toBeCloseTo(ONE_LIFE_RATE_PCT, 6)
-    expect(opt.series[0].data[0]?.perEvent).toBeCloseTo(ONE_LIFE_DAMAGE, 6)
+    expect(opt.series[0].data[0]?.perEvent).toBeCloseTo(BOOTSTRAP_HP, 6)
     expect(opt.series[1].data[0]?.value).toBeCloseTo(ONE_LIFE_RATE_PCT, 6)
-    expect(opt.series[1].data[0]?.perEvent).toBe(ONE_LIFE_DAMAGE)
+    expect(opt.series[1].data[0]?.perEvent).toBe(BOOTSTRAP_HP)
     expect(opt.yAxis.axisLabel.formatter(100)).toBe('100 %')
   })
 

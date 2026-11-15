@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 
-import { substituteHpToken, useProvidesDamageTaken } from './effectiveHp'
+import { substituteHpToken, useEffectiveHpToKill, useProvidesDamageTaken } from './effectiveHp'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { components } from '@/lib/api/generated'
 
@@ -69,5 +69,39 @@ describe('useProvidesDamageTaken', () => {
     })
     const { result } = renderHook(() => useProvidesDamageTaken())
     expect(result.current).toBe(true)
+  })
+})
+
+// Source unique : la vie vient du bootstrap (constants.toml du titre), jamais d'un nombre en dur.
+describe('useEffectiveHpToKill', () => {
+  afterEach(() => {
+    useAppShellStore.setState({ availableTitles: [], currentTitleSlug: 'halo_infinite' })
+  })
+
+  it("rend la valeur du bootstrap pour le titre courant", () => {
+    const title = (slug: string, hp: number) =>
+      ({
+        slug,
+        name: '',
+        status: 'active',
+        is_default: false,
+        capabilities: [],
+        effective_hp_to_kill: hp,
+        provides_damage_taken: true,
+        provides_team_mmr: true,
+        provides_max_killing_spree: true,
+        offensive_conversion_p80: 0.9,
+        defensive_resistance_p80: 1.65,
+      }) as TitleSummary
+    useAppShellStore.setState({
+      availableTitles: [title('un_titre', 300), title('autre', 115)],
+      currentTitleSlug: 'autre',
+    })
+    expect(renderHook(() => useEffectiveHpToKill()).result.current).toBe(115)
+  })
+
+  it("rend undefined avant le bootstrap : aucune valeur de repli", () => {
+    useAppShellStore.setState({ availableTitles: [], currentTitleSlug: 'halo_infinite' })
+    expect(renderHook(() => useEffectiveHpToKill()).result.current).toBeUndefined()
   })
 })

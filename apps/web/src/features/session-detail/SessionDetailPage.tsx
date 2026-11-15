@@ -131,12 +131,12 @@ export function SessionDetailPage() {
   // Échelle PARTAGÉE A/B (mode comparaison) : bornes communes calculées une fois depuis les
   // deux sessions, passées aux DEUX colonnes → graphes directement comparables. Drawer fermé
   // (ou compare pas encore chargé) → undefined = auto-scale comme avant.
-  // Barème PV-pour-tuer du titre courant (229 Infinite, 115 H5) → conversion des
+  // Barème PV-pour-tuer du titre courant (bootstrap) → conversion des
   // dégâts en vies pour le domaine partagé de la balance des dégâts cumulée.
   const hp = useEffectiveHpToKill()
   const withDamageTaken = useProvidesDamageTaken()
   const compareScale = useMemo<CompareScale | undefined>(() => {
-    if (!enableCompare || !data?.compare_session) return undefined
+    if (!enableCompare || !data?.compare_session || hp === undefined) return undefined
     return {
       ...computeCompareScale(
         data.matches ?? [],

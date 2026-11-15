@@ -138,4 +138,4 @@ The Decision section still shows the KDA quotient `(K+A)/max(1,D)` and a `KDA(k,
   Halo 5 keeps its own 115. The elite references (P80) are not re-measured by this change.
 - The PerfTier thresholds `[80, 65, 50, 35]` are unchanged. The performance score of the `arena_objectif` and
   `ranked_objectif` chains is now a symmetric blend of the combat score and of the player's objective and support (ADR 0047,
-  amendment 2026-11-15); 31 % of the objective matches of the measured parc change tier because of it.
+  amendment 2026-11-15); 32 % of the objective matches of the measured parc change tier because of it.

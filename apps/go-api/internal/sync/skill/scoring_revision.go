@@ -8,7 +8,7 @@ package skill
 const (
 	// PerformanceScoreRev est la révision de la note de performance relative (poids par
 	// chaîne, fenêtre glissante, seuils de matchs, durée de repli).
-	PerformanceScoreRev = "perf-2026-11-15"
+	PerformanceScoreRev = "perf-2026-11-15b"
 	// LUSRRev est la révision du LUSR (paramètres TrueSkill, poids du score composite,
 	// pénalités d'abandon, couplage entre modes, décalage d'escouade, grille des paliers, repli du
 	// solveur sans les comptes de frags et de morts quand il ne converge pas).

@@ -1,6 +1,5 @@
-// Package objectiveblend — la note de performance des matchs à objectif (décision D-7 du plan des
-// compléments 8.2.0, corrigée par les décisions du user des 2026-11-15) : V7, retenue après
-// simulation sur le parc.
+// Package objectiveblend — la note de performance des matchs à objectif, retenue après simulation sur
+// le parc (ADR 0047).
 //
 // Le paquet est PUR : il reçoit la note de combat C déjà calculée et les faits des matchs, et
 // rend la note ; le calcul de C (profil de la chaîne, sans métrique d'objectif) et le chargement
@@ -25,7 +24,8 @@
 //	  - O_sout : de même, la moyenne du rang des points de soutien par minute
 //	    (narrative.ObjectiveSupportPoints, analysis.PerMinute) et du rang de la part du joueur dans
 //	    les points de soutien de son équipe. Une mesure propre au soutien, indépendante du temps de
-//	    port ;
+//	    port. Le débit par minute n'est classé que contre les matchs de la MÊME famille : en repli
+//	    sur les autres familles (ci-dessous), O_sout ne garde que le rang de la part ;
 //	  - α_obj = AlphaMin + (AlphaMax − AlphaMin) × part de l'objectif ; α_sout = SupportSlope × part
 //	    du soutien ; leur somme est plafonnée à AlphaMax en réduisant les deux en proportion : le
 //	    combat garde toujours au moins 1 − AlphaMax du poids.
@@ -77,8 +77,8 @@ type Params struct {
 	MinFamilyMatches int
 }
 
-// DefaultParams : alpha de 0,12 (l'ancien poids d'ospm) à 0,50, soutien jusqu'à 0,38 (décisions
-// du user, 2026-11-15) ; minFamilyMatches est le seuil de matchs de référence de la note relative.
+// DefaultParams : alpha de 0,12 (l'ancien poids d'ospm) à 0,50, soutien jusqu'à 0,38 ; minFamilyMatches
+// est le seuil de matchs de référence de la note relative.
 func DefaultParams(minFamilyMatches int) Params {
 	return Params{AlphaMin: 0.12, AlphaMax: 0.50, SupportSlope: 0.38, MinFamilyMatches: minFamilyMatches}
 }
@@ -162,8 +162,12 @@ func Compute(combat float64, cur *Facts, history []*Facts, p Params) Result {
 	}
 	oObj := (rank(cur.Index, ref, func(f *Facts) float64 { return f.Index }) +
 		rank(cur.Share, ref, func(f *Facts) float64 { return f.Share })) / 2
-	oSup := (rank(cur.SupportPerMin, ref, func(f *Facts) float64 { return f.SupportPerMin }) +
-		rank(cur.SupportShare, ref, func(f *Facts) float64 { return f.SupportShare })) / 2
+	// Le débit de soutien (points par minute) n'est comparable qu'entre matchs de la MÊME famille :
+	// en repli sur les autres familles, O_sout ne garde que le rang de la part du soutien.
+	oSup := rank(cur.SupportShare, ref, func(f *Facts) float64 { return f.SupportShare })
+	if familyScope {
+		oSup = (oSup + rank(cur.SupportPerMin, ref, func(f *Facts) float64 { return f.SupportPerMin })) / 2
+	}
 	part := min(max(cur.Share, 0), 1)
 	alphaObj := p.AlphaMin + (p.AlphaMax-p.AlphaMin)*part
 	alphaSup := p.SupportSlope * min(max(cur.SupportShare, 0), 1)
