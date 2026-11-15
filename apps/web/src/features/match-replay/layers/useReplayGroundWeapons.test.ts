@@ -49,6 +49,7 @@ function monter(
     labels?: ReplayDocumentReady['weaponLabels']
     /** Le reste du document — l'inventaire et les loadouts du fragment de munitions. */
     doc?: Partial<ReplayDocument>
+    shown?: (w: ReplayGroundWeapon) => boolean
   } = {},
 ) {
   const frameRef = createRef<number>() as RefObject<number>
@@ -70,6 +71,7 @@ function monter(
       frameRef,
       nameOfSlot: opts.nameOfSlot ?? (() => null),
       locale: 'fr',
+      shown: opts.shown,
     }),
   )
 }
@@ -290,5 +292,41 @@ describe('useReplayGroundWeapons — disponibilité avant le filtre des armes de
     expect(result.current.available).toBe(true)
     act(() => result.current.onPointerMove(pointeurSur({ x: 100, y: 100 })))
     expect(result.current.hover).toBeNull()
+  })
+})
+
+describe('useReplayGroundWeapons — Seul et Masquer', () => {
+  const aMoi = item({ dropper: 7, x: 0, y: 0 })
+  const aUnAutre = item({ dropper: 8, x: 10, y: 0 })
+  // (10, 0) projeté sur 200 px pour une emprise de 40 m : x = 150.
+  const sur = { moi: { x: 100, y: 100 }, autre: { x: 150, y: 100 } }
+
+  it('sans prédicat, les deux armes se survolent', () => {
+    const { result } = monter([aMoi, aUnAutre])
+    survoler(result, sur.moi)
+    expect(result.current.hover?.item).toBe(aMoi)
+    survoler(result, sur.autre)
+    expect(result.current.hover?.item).toBe(aUnAutre)
+  })
+
+  it('une arme retirée par le prédicat ne se survole plus, l’autre si', () => {
+    const { result } = monter([aMoi, aUnAutre], { shown: (w) => w.dropper !== 7 })
+    survoler(result, sur.moi)
+    expect(result.current.hover).toBeNull()
+    survoler(result, sur.autre)
+    expect(result.current.hover?.item).toBe(aUnAutre)
+  })
+
+  it('le prédicat inversé retire l’autre arme : le filtre n’est ni ignoré ni inversé', () => {
+    const { result } = monter([aMoi, aUnAutre], { shown: (w) => w.dropper === 7 })
+    survoler(result, sur.autre)
+    expect(result.current.hover).toBeNull()
+    survoler(result, sur.moi)
+    expect(result.current.hover?.item).toBe(aMoi)
+  })
+
+  it('le prédicat ne change pas la disponibilité du calque : tout retirer ne le fait pas disparaître', () => {
+    const { result } = monter([aMoi], { shown: () => false })
+    expect(result.current.available).toBe(true)
   })
 })
