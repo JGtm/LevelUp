@@ -177,7 +177,7 @@ func TestStore_TTL_ExpiredJobReturnsNil(t *testing.T) {
 // autres types ne comptent pas.
 func TestStore_LatestSyncJob(t *testing.T) {
 	store := newTestStore(t)
-	if store.LatestSyncJob("p1") != nil {
+	if store.LatestSyncJob("p1", "halo_infinite") != nil {
 		t.Fatal("aucun job : nil attendu")
 	}
 	old := store.Create(domain.JobTypeInitialSync, "p1")
@@ -189,12 +189,36 @@ func TestStore_LatestSyncJob(t *testing.T) {
 	autre := store.Create(domain.JobTypeInitialSync, "p2")
 	store.SetStatus(autre.JobID, domain.JobStatusRunning, nil) // autre joueur : ignoré
 
-	got := store.LatestSyncJob("p1")
+	got := store.LatestSyncJob("p1", "halo_infinite")
 	if got == nil || got.JobID != recent.JobID {
 		t.Fatalf("le terminé le plus récent de p1 attendu (%s), obtenu %+v", recent.JobID, got)
 	}
 	active := store.Create(domain.JobTypeInitialSync, "p1")
-	if got := store.LatestSyncJob("p1"); got == nil || got.JobID != active.JobID {
+	if got := store.LatestSyncJob("p1", "halo_infinite"); got == nil || got.JobID != active.JobID {
 		t.Fatalf("l'actif prime sur un terminé : %s attendu, obtenu %+v", active.JobID, got)
+	}
+}
+
+// LatestSyncJob lit par titre : le job d'un titre ne s'affiche jamais sur l'autre ; un job sans titre écrit
+// compte pour le titre par défaut.
+func TestStore_LatestSyncJob_ParTitre(t *testing.T) {
+	store := newTestStore(t)
+	h5 := store.Create(domain.JobTypeInitialSync, "p1")
+	store.Update(h5.JobID, func(j *domain.AsyncJobStatus) {
+		j.Metadata.TitleSlug = "halo_5"
+		j.Status = domain.JobStatusFailed
+	})
+	if got := store.LatestSyncJob("p1", "halo_infinite"); got != nil {
+		t.Fatalf("le job de halo_5 ne doit pas paraître sur halo_infinite : %+v", got)
+	}
+	if got := store.LatestSyncJob("p1", "halo_5"); got == nil || got.JobID != h5.JobID {
+		t.Fatalf("le job de halo_5 attendu sur halo_5, obtenu %+v", got)
+	}
+	sansTitre := store.Create(domain.JobTypeInitialSync, "p2") // créé sans titre : titre par défaut
+	if got := store.LatestSyncJob("p2", "halo_infinite"); got == nil || got.JobID != sansTitre.JobID {
+		t.Fatalf("un job sans titre compte pour le titre par défaut, obtenu %+v", got)
+	}
+	if got := store.LatestSyncJob("p2", "halo_5"); got != nil {
+		t.Fatalf("un job sans titre ne paraît pas sur halo_5 : %+v", got)
 	}
 }

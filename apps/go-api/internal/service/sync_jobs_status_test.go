@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -99,4 +100,44 @@ func TestPlayerSyncStatus_JoueurInconnu(t *testing.T) {
 	f := newSyncJobsFixture(t)
 	_, err := f.svc.PlayerSyncStatus(context.Background(), "inconnu")
 	requireSyncJobError(t, err, port.SyncErrPlayerNotFound)
+}
+
+// Le job d'un titre ne s'affiche pas sur l'accueil de l'autre titre.
+func TestPlayerSyncStatus_JobDUnAutreTitreIgnore(t *testing.T) {
+	f := newSyncJobsFixture(t)
+	job := f.jobs.Create(domain.JobTypeInitialSync, "jgtm")
+	f.jobs.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+		j.Status = domain.JobStatusSucceeded
+		j.Metadata.TitleSlug = "halo_5"
+	})
+	infinite := ctxkeys.WithTitleSlug(context.Background(), "halo_infinite")
+	st, err := f.svc.PlayerSyncStatus(infinite, "jgtm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Job != nil {
+		t.Fatalf("le job de halo_5 ne doit pas paraître sur halo_infinite : %+v", st.Job)
+	}
+	halo5 := ctxkeys.WithTitleSlug(context.Background(), "halo_5")
+	if st, err = f.svc.PlayerSyncStatus(halo5, "jgtm"); err != nil || st.Job == nil || st.Job.JobID != job.JobID {
+		t.Fatalf("le job de halo_5 attendu sur halo_5, obtenu %+v (%v)", st, err)
+	}
+}
+
+// Un sync manuel écrit le titre du contexte dans son job : c'est ce qui permet la lecture par titre.
+func TestStartDeltaSync_EcritLeTitreDuJob(t *testing.T) {
+	f := newSyncJobsFixture(t)
+	ctx := ctxkeys.WithTitleSlug(context.Background(), "halo_5")
+	job, err := f.svc.StartDeltaSync(ctx, sessionCaller(), "jgtm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if job.Metadata.TitleSlug != "halo_5" {
+		t.Errorf("titre de l'instantané %q, attendu halo_5", job.Metadata.TitleSlug)
+	}
+	f.jobs.waitTerminal(t, job.JobID)
+	st, err := f.svc.PlayerSyncStatus(ctx, "jgtm")
+	if err != nil || st.Job == nil || st.Job.JobID != job.JobID {
+		t.Fatalf("le job lancé sur halo_5 attendu sur halo_5, obtenu %+v (%v)", st, err)
+	}
 }

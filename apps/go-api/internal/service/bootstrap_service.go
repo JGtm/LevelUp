@@ -257,6 +257,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		RegistrationMode:     s.cfg.RegistrationMode,
 		InstanceLocked:       s.instanceLocked != nil && s.instanceLocked(),
 		ReauthRequired:       s.resolveReauthRequired(ctx, sess),
+		OwnHaloXUID:          s.ownXUID(sess),
 		PoolSharing:          s.resolvePoolSharing(sess),
 		HasPassword:          s.currentUserHasPassword(sess),
 		IsAdmin:              sess != nil && sess.Role != nil && *sess.Role == "admin",

@@ -10152,6 +10152,9 @@ components:
           type: boolean
         oauth_code_flow_enabled:
           type: boolean
+        own_halo_xuid:
+          description: xuid du compte connecté, celui que reauth_required concerne.
+          type: string
         pool_sharing:
           enum:
             - granted

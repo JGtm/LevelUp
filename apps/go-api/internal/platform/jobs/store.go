@@ -151,15 +151,17 @@ func (s *Store) FindActiveInitialSync(playerSlug string) *domain.AsyncJobStatus 
 }
 
 // LatestSyncJob retourne le job de sync (type initial_sync, qui porte aussi les syncs delta lancés
-// depuis l'API) du joueur : l'actif s'il existe, sinon le terminé le plus récent encore conservé ;
-// nil si aucun.
-func (s *Store) LatestSyncJob(playerSlug string) *domain.AsyncJobStatus {
+// depuis l'API) du joueur POUR le titre : l'actif s'il existe, sinon le terminé le plus récent encore
+// conservé ; nil si aucun. Un job sans titre écrit (créé avant que les jobs le portent) compte pour le
+// titre par défaut (JobMeta.GetTitleSlug).
+func (s *Store) LatestSyncJob(playerSlug, titleSlug string) *domain.AsyncJobStatus {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	var best *domain.AsyncJobStatus
 	for _, job := range s.jobs {
-		if job.JobType != string(domain.JobTypeInitialSync) || job.PlayerSlug != playerSlug {
+		if job.JobType != string(domain.JobTypeInitialSync) || job.PlayerSlug != playerSlug ||
+			job.Metadata.GetTitleSlug() != titleSlug {
 			continue
 		}
 		if job.IsTerminal() && job.FinishedAt != nil && time.Since(*job.FinishedAt) > jobRetention {

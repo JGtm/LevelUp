@@ -41,7 +41,7 @@ func (s *SyncJobService) StartDeltaSync(ctx context.Context, caller port.SyncCal
 		return nil, &port.SyncJobError{Kind: port.SyncErrAlreadyRunning}
 	}
 
-	job := s.jobs.Create(domain.JobTypeInitialSync, playerSlug)
+	job := s.createSyncJob(playerSlug, ctxkeys.TitleSlug(ctx))
 	snapshot := *job
 	s.launchSyncJob(job.JobID, playerSlug, release, func(runCtx context.Context) (domain.SyncResult, error) {
 		return s.pooledRunnerFor(runCtx, prof.Gamertag, prof.XUID).RunDelta(runCtx, domain.DefaultSyncOptions())

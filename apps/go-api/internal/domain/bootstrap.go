@@ -193,6 +193,10 @@ type BootstrapResponse struct {
 	// (refresh silencieux définitivement KO). Le front affiche une bannière
 	// « reconnecte ton compte Xbox ». Remis à false après une ré-auth réussie.
 	ReauthRequired bool `json:"reauth_required"`
+	// OwnHaloXUID : le xuid du compte CONNECTÉ (celui que `reauth_required` concerne), vide sans identité
+	// propre. Le front s'en sert pour ne dire « reconnecte-toi » que sur le profil de ce compte : le jeton
+	// mort d'un admin ne dit rien de la synchronisation du joueur qu'il consulte.
+	OwnHaloXUID string `json:"own_halo_xuid,omitempty" doc:"xuid du compte connecté, celui que reauth_required concerne."`
 	// PoolSharing : où en est le user connecté sur la mise en commun de son jeton avec le
 	// pool qui sert la synchro des autres joueurs. « undecided » déclenche la question au
 	// front ; « unavailable » = pas de jeton (compte password sans Xbox) ou pas de résolveur.

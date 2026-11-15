@@ -79,7 +79,7 @@ func (s *SyncJobService) StartInitialSync(ctx context.Context, caller port.SyncC
 		return nil, &port.SyncJobError{Kind: port.SyncErrAlreadyRunning}
 	}
 
-	job := s.jobs.Create(domain.JobTypeInitialSync, req.PlayerSlug)
+	job := s.createSyncJob(req.PlayerSlug, titleSlug)
 	// Instantané avant le lancement : le job du registre est modifié en place par la goroutine.
 	snapshot := *job
 	s.launchSyncJob(job.JobID, req.PlayerSlug, release, func(runCtx context.Context) (domain.SyncResult, error) {

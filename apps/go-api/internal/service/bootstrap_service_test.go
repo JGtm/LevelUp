@@ -564,3 +564,30 @@ func TestBuildAvailableTitles_ExcludesInternal(t *testing.T) {
 		t.Error("un coming_soon NON interne doit rester visible dans le switcher")
 	}
 }
+
+// own_halo_xuid dit à QUEL compte reauth_required se rapporte : le xuid du compte connecté, vide sans identité propre.
+func TestBuild_OwnHaloXUID(t *testing.T) {
+	const ownXUID = "2547408409520575"
+	user := &domain.User{Username: "joueur90001", XUID: ownXUID, Role: domain.RoleUser}
+	lookup := fakeBootstrapLookup{
+		byName: map[string]*domain.User{"joueur90001": user},
+		byXUID: map[string]*domain.User{ownXUID: user},
+	}
+	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{}).WithUserLookup(lookup)
+
+	username := "joueur90001"
+	resp, err := svc.Build(context.Background(), &domain.SessionData{Username: &username})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if resp.OwnHaloXUID != ownXUID {
+		t.Errorf("OwnHaloXUID = %q, attendu %q", resp.OwnHaloXUID, ownXUID)
+	}
+	anon, err := svc.Build(context.Background(), &domain.SessionData{})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if anon.OwnHaloXUID != "" {
+		t.Errorf("sans identité propre, OwnHaloXUID doit être vide, obtenu %q", anon.OwnHaloXUID)
+	}
+}

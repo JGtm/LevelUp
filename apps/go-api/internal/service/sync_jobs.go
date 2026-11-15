@@ -39,7 +39,7 @@ type SyncJobStore interface {
 	Create(jobType domain.JobType, playerSlug string) *domain.AsyncJobStatus
 	FindActiveJob(jobType domain.JobType, playerSlug string) *domain.AsyncJobStatus
 	FindActiveInitialSync(playerSlug string) *domain.AsyncJobStatus
-	LatestSyncJob(playerSlug string) *domain.AsyncJobStatus
+	LatestSyncJob(playerSlug, titleSlug string) *domain.AsyncJobStatus
 	Update(jobID string, fn func(*domain.AsyncJobStatus)) bool
 	SetStatus(jobID string, status domain.JobStatus, step *string) bool
 }
