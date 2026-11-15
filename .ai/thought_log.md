@@ -1,3 +1,9 @@
+## [2026-11-15] Compléments 8.2.0, étape 10, ronde 2 bis : accueil sans match, compte propre, titre du job, lecture en échec — Complété (branche `feat/c820-backlog`, non poussée)
+
+- **Décision** : (1) le jeton mort ne se dit que sur le profil du compte qui le porte : champ `own_halo_xuid` au bootstrap, plutôt que `linked_halo_identity` qui ne vaut que pour une session ouverte par Xbox. (2) les jobs de sync portent leur titre à la création ; la lecture est par titre. (3) l'échec de lecture de l'état est un état de l'écran, avec une action.
+- **Résultats** : quatre mutations web et deux Go rougissent chacune au moins un test.
+- **Suite** : contrôle à l'écran du user (accueil d'un joueur sans match consulté par un administrateur dont le jeton est mort ; coupure du serveur pendant la lecture).
+
 ## [2026-11-15] Compléments 8.2.0, étape 10, ronde 2 : accueil sans match, trois défauts de relecture — Complété (branche `feat/c820-backlog`, non poussée)
 
 - **Décision** : (P1) « en attente de connexion » ne dépend que de `reauth_required` et du droit d'écriture sur le joueur affiché, pas de `auth_state`. (P2-a) l'état du sync est lu auprès du serveur, pour le joueur affiché : nouvelle route `GET /players/{slug}/sync/status` plutôt que de remplir `active_sync_job_id` du bootstrap (ce champ ne dit ni la dernière erreur, ni le délai, ni la synchronisation automatique, et il est par session, pas par joueur affiché). (P2-b) aucune action pendant le délai de cinq minutes du sync manuel, délai restant dit, deux toasts précis.
