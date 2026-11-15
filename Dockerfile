@@ -62,7 +62,7 @@ RUN mkdir -p /build/engine-web \
 # l'installeur Windows) ; le stage ne dépend QUE du paquet et de ce générateur : changer le moteur ne le
 # recompile ni ne le recalcule. Son empreinte entre dans le binaire serveur (stage go-builder) et le démarrage
 # la compare au manifeste de l'image : une image mal assemblée refuse de démarrer.
-FROM golang:1.26.11-bookworm AS pack-builder
+FROM golang:1.27.0-bookworm AS pack-builder
 
 WORKDIR /build/apps/go-api
 COPY apps/go-api/go.mod apps/go-api/go.sum ./
@@ -86,7 +86,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # `scripts/deploy.sh` construit sans `--pull`, donc un tag flottant resterait sur la
 # version déjà présente sur l'hôte. Même version que la ligne `go` de
 # apps/go-api/go.mod ; les monter ensemble (garde-rail : internal/archlint/dockerfile_go_version_test.go).
-FROM golang:1.26.11-bookworm AS go-builder
+FROM golang:1.27.0-bookworm AS go-builder
 
 # Le serveur est le module apps/go-api ; les briques sont des dépendances publiées, tirées du proxy
 # de modules par `go mod download` comme les autres (ooz y apporte ses sources C++).
