@@ -13,6 +13,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -106,6 +107,7 @@ type browserRig struct {
 	store    *auth_platform.MultiUserTokenStore
 	attempts *auth_platform.AttemptStore
 	strategy *countingStrategy
+	provider *stubTokenProvider
 	shell    *http.Client
 	external *http.Client
 }
@@ -148,7 +150,7 @@ func newBrowserRig(t *testing.T) *browserRig {
 
 	jar, _ := cookiejar.New(nil)
 	rig := &browserRig{
-		srv: srv, port: portNum, azure: azure, store: store, attempts: attempts, strategy: strategy,
+		srv: srv, port: portNum, azure: azure, store: store, attempts: attempts, strategy: strategy, provider: provider,
 		shell:    &http.Client{Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
 		external: &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
 	}
@@ -341,5 +343,43 @@ func TestBrowserLogin_UnSecondClicRemplaceLaTentative(t *testing.T) {
 	}
 	if code, _ := rig.browserCallback(t, url.Values{"code": {"code-ok"}, "state": {secondState}}); code != http.StatusOK {
 		t.Errorf("le state neuf aboutit : %d", code)
+	}
+}
+
+// Une panne des services Halo (délai, réseau, 503) pose halo_unreachable sur la tentative et dans la
+// page de retour ; un refus du compte (403) garde halo_exchange_failed. La page reste générique (le
+// code seul) : l'application affiche le message par le sondage de la tentative.
+func TestBrowserLogin_EchecDeLEchangeHalo_CodeSelonLaCause(t *testing.T) {
+	for _, tc := range []struct {
+		nom  string
+		err  error
+		want string
+	}{
+		{"délai dépassé", fmt.Errorf("sisu_provider: échange XBL: %w", context.DeadlineExceeded), "halo_unreachable"},
+		{"erreur réseau", fmt.Errorf("sisu_provider: échange XSTS: %w", &net.OpError{Op: "dial", Err: errors.New("connection refused")}), "halo_unreachable"},
+		{"panne 503 des services", errors.New("XSTS token: HTTP 503 depuis https://xsts/x: indisponible"), "halo_unreachable"},
+		{"compte refusé 403", errors.New("XSTS token: HTTP 403 depuis https://xsts/x: XErr 2148916233"), "halo_exchange_failed"},
+	} {
+		t.Run(tc.nom, func(t *testing.T) {
+			rig := newBrowserRig(t)
+			rig.provider.exchangeErr = tc.err
+			attemptID, state := rig.start(t, "")
+			code, page := rig.browserCallback(t, url.Values{"code": {"code-ok"}, "state": {state}})
+			if code != http.StatusBadRequest || !strings.Contains(page, tc.want) {
+				t.Errorf("page de retour : %d %q, attendu 400 avec le code %s", code, page, tc.want)
+			}
+			if tc.want == "halo_unreachable" && strings.Contains(page, "halo_exchange_failed") {
+				t.Errorf("une panne des services ne porte pas le code de refus : %q", page)
+			}
+			if strings.Contains(page, "HTTP 5") || strings.Contains(page, "XErr") {
+				t.Errorf("le détail de la cause ne doit pas fuiter dans la page : %q", page)
+			}
+			if status, errCode := rig.poll(t, attemptID); status != "failed" || errCode != tc.want {
+				t.Errorf("sondage = %q/%q, attendu failed/%s", status, errCode, tc.want)
+			}
+			if rig.strategy.calls != 0 {
+				t.Errorf("un échec n'atteint jamais le point d'arrivée (%d appels)", rig.strategy.calls)
+			}
+		})
 	}
 }
