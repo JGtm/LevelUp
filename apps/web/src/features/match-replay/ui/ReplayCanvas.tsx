@@ -341,7 +341,7 @@ export function ReplayCanvas({
     useReplayFx(doc, feedKills, timing.aimHold, mapObjectives, { seatedAtSlot, seatedOfXuid })
   // LES GESTES DE CAPACITÉ SUR LEUR PORTEUR (grappin, propulseur) : bâtis et peints par un
   // seul hook — ils ne posent rien au sol, ils se lisent sur le pion (cf. useReplayAbilityFx).
-  const abilityFx = useReplayAbilityFx({ doc, view: canvasView, grappleInk, colorOfSlot, shownAtSlot, reducedMotion })
+  const abilityFx = useReplayAbilityFx({ doc, view: canvasView, grappleInk, colorOfSlot, shownAtSlot, focusFilter: focusShown, reducedMotion })
   // La CARTE DE CHALEUR : grille cuite, rampe du thème et lecture réellement servie —
   // toute la logique vit dans le hook, le canvas ne fait que poser le calque.
   useReplayWheelZoom(canvasRef, zoom, canvasView) // molette : memes paliers que les boutons

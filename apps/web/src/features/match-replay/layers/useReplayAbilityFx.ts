@@ -33,6 +33,7 @@ import {
   THRUSTER_DASH_HEADING_MS,
 } from './thrusterDashFx'
 import { type CanvasView } from '../model/replayView'
+import type { FocusFilter } from '../model/focusFilter'
 import { buildKnockbackFx, drawKnockbackLayer } from './knockbackFx'
 
 export interface AbilityFxHookInput {
@@ -44,6 +45,11 @@ export interface AbilityFxHookInput {
   colorOfSlot: (slot: number, frame: number) => string | null
   /** Seul et Masquer (panneau de joueur) : le sillage du propulseur part avec son porteur. Absent = tout. */
   shownAtSlot?: (slot: number, frame: number) => boolean
+  /**
+   * Seul et Masquer pour ce que le sillage ne couvre pas : le câble du grappin est à son porteur, la poussée du
+   * répulseur à la personne poussée ET à son auteur. Absent = tout se dessine.
+   */
+  focusFilter?: Pick<FocusFilter, 'slotAt' | 'knockback'>
   reducedMotion: boolean
 }
 
@@ -72,10 +78,15 @@ export function useReplayAbilityFx({
   grappleInk,
   colorOfSlot,
   shownAtSlot,
+  focusFilter,
   reducedMotion,
 }: AbilityFxHookInput): ReplayAbilityFx {
   // Les tractions de grappin, jointes une fois aux points de leur vie (schéma 8).
-  const grappleFx = useMemo(() => buildGrappleFx(doc), [doc])
+  const grappleAll = useMemo(() => buildGrappleFx(doc), [doc])
+  const grappleFx = useMemo(
+    () => (focusFilter ? grappleAll.filter((e) => focusFilter.slotAt(e.slot, e.t0)) : grappleAll),
+    [grappleAll, focusFilter],
+  )
   // Les poussées de propulseur : la fenêtre de lecture de direction est déclarée en TEMPS RÉEL
   // et convertie ici, parce que la durée d'une image dépend du document.
   const dashFx = useMemo(
@@ -83,7 +94,11 @@ export function useReplayAbilityFx({
     [doc],
   )
   // Les poussées du répulseur (schéma 94) : l'onde de l'auteur et le sillage du poussé.
-  const knockbackFx = useMemo(() => buildKnockbackFx(doc), [doc])
+  const knockbackAll = useMemo(() => buildKnockbackFx(doc), [doc])
+  const knockbackFx = useMemo(
+    () => (focusFilter ? knockbackAll.filter((f) => focusFilter.knockback(f)) : knockbackAll),
+    [knockbackAll, focusFilter],
+  )
   const frameMs = useMemo(() => frameToMs(1, doc), [doc])
 
   const paint = useCallback(

@@ -200,3 +200,29 @@ describe('véhicules — leurs occupants', () => {
     expect(filter('hide').vehicleDestruction({ slot: 700, rides: rides(1) } as never, 20)).toBe(false)
   })
 })
+
+describe('poussée du répulseur — la personne poussée ET son auteur', () => {
+  const poussee = (slot: number, by: number | null) => ({ slot, by, frame: 30 })
+
+  it('Seul la garde si le joueur est l’auteur, et si le joueur est le poussé', () => {
+    const { filter } = harness()
+    expect(filter('solo').knockback(poussee(2, 1))).toBe(true) // A pousse B
+    expect(filter('solo').knockback(poussee(1, 2))).toBe(true) // B pousse A
+    expect(filter('solo').knockback(poussee(2, 9))).toBe(false) // ni l'un ni l'autre
+  })
+
+  it('Masquer la retire côté auteur comme côté poussé, et garde celle qui ne le concerne pas', () => {
+    const { filter } = harness()
+    expect(filter('hide').knockback(poussee(2, 1))).toBe(false)
+    expect(filter('hide').knockback(poussee(1, 2))).toBe(false)
+    expect(filter('hide').knockback(poussee(2, 9))).toBe(true)
+  })
+
+  it('sans auteur publié : le poussé décide', () => {
+    const { filter } = harness()
+    expect(filter('solo').knockback(poussee(1, null))).toBe(true)
+    expect(filter('solo').knockback(poussee(2, null))).toBe(false)
+    expect(filter('hide').knockback(poussee(1, null))).toBe(false)
+    expect(filter('hide').knockback(poussee(2, null))).toBe(true)
+  })
+})

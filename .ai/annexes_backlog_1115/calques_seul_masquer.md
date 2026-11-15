@@ -30,7 +30,7 @@ Colonnes : `Avant` = le calque suivait deja `shownAtSlot` / `shownProjectile` (o
 | `trajectoires` | pion, nom, cone, trainee : oui ; CROIX DE MORT : non | la croix est a la vie qu'elle termine (sa victime) | `tracks[].slot`, derniere image de la vie | 4.3 bis (croix de mort) |
 | `failles` | non | faille / aller-retour du translocateur : son porteur | `translocations[].slot`, `.t` ; stations derivees (`slot`, `t0`) | 4.3 bis (failles) |
 | `marques-de-tir` | oui | tireur | `shots[].slot` | deja fait |
-| `gestes-capacite` | oui | porteur (grappin, propulseur, repulseur) | `grappleLines[].slot`, `abilityImpulses[].slot`, `knockbacks[].slot` | deja fait |
+| `gestes-capacite` | sillage du propulseur : oui ; CABLE DU GRAPPIN et POUSSEE DU REPULSEUR : non | grappin : son porteur ; poussee : la personne poussee ET son auteur | `grappleLines[].slot`, `.t0` ; `knockbacks[].slot`, `.by`, `.t` | 4.3 bis (grappin, repulseur) |
 | `tirs` | oui | tireur | `shots[].slot` | deja fait |
 | `fin-de-vol` | oui | lanceur | `projectileOwners` | deja fait |
 | `etat-zones` | sans objet | aucun : proprietaire = une equipe, jamais un joueur | `zoneStates[].spans[]` (equipe, jauge) | reste |
@@ -47,16 +47,20 @@ Colonnes : `Avant` = le calque suivait deja `shownAtSlot` / `shownProjectile` (o
 
 ## Comptes
 
-- 31 calques : 10 suivaient deja le filtre sur tout leur contenu (projectiles, vies x3, marques de tir, gestes de
-  capacite, tirs, fin de vol, mise en valeur x2) ; 13 portent un element attribuable que le filtre ne lisait
+- 31 calques : 9 suivaient deja le filtre sur tout leur contenu (projectiles, vies x3, marques de tir, tirs,
+  fin de vol, mise en valeur x2) ; 14 portent un element attribuable que le filtre ne lisait
   pas (morts, chaleur, armes au sol, poses, vehicules, failles, drapeaux, couronne, crane, bombe portee,
-  deflagration, pulses, et la croix de mort du calque `trajectoires`, dont le pion suivait deja) ; 8 sans objet
+  deflagration, pulses, la croix de mort du calque `trajectoires`, dont le pion suivait deja, et le cable du
+  grappin et la poussee du repulseur du calque `gestes-capacite`, dont le sillage du propulseur suivait deja) ; 8 sans objet
   ou sans attribution lisible (fond, sol, plan des murs, zones nommees, objectifs cuits, socles d'armes, etat
   des zones, objets d'objectif).
 - Rectification a la relecture du code : la croix de mort de `trajectoires` (`drawDeathMark`) ne suivait PAS
   `shownAtSlot` (un test le figeait : « une mort est un evenement du match »). Elle suit desormais sa victime.
   Le tueur n'est pas dans la piste : un joueur isole ne garde pas la croix de sa victime ; l'effet tueur ->
   victime est le calque `morts`.
+- Meme rectification pour `gestes-capacite` : seul le sillage du propulseur suivait `shownAtSlot`. Le cable du
+  grappin est a son porteur ; la poussee du repulseur est a la personne poussee ET a son auteur (`by`, lu a
+  l'image de la poussee ; sans auteur publie, le pousse decide).
 - Elements sans attribution lisible, laisses affiches (jamais devines) :
   - `objets-objectif` : le crane libre ne porte aucun champ de propriete ; libre = a personne.
   - `etat-zones` et `objectifs-cuits` : la propriete d'une zone est une EQUIPE (`zoneStates[].spans[].team`),

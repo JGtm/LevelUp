@@ -27,6 +27,8 @@ import { buildLivesBySlot, lifeOfSlotAt } from '../model/livesPosition'
 
 /** Une traction prête à dessiner : la fenêtre, l'ancre, et les points de SA vie. */
 export interface GrappleFxEntry {
+  /** Le slot du porteur : la traction est à lui (Seul, Masquer), lue à `t0`. */
+  slot: number
   t0: number
   t1: number
   anchor: XY
@@ -60,7 +62,7 @@ export function buildGrappleFx(doc: ReplayDocumentReady): GrappleFxEntry[] {
     if (l.t1 <= l.t0) continue
     const track = lifeOfSlotAt(bySlot, l.slot, l.t0)
     if (!track || track.points.length === 0) continue
-    out.push({ t0: l.t0, t1: l.t1, anchor: { x: l.ax, y: l.ay }, points: track.points })
+    out.push({ slot: l.slot, t0: l.t0, t1: l.t1, anchor: { x: l.ax, y: l.ay }, points: track.points })
   }
   return out
 }

@@ -38,8 +38,13 @@ export interface FocusFilter {
   groundWeapon: (w: Pick<ReplayGroundWeapon, 'dropper' | 'picker' | 't0' | 't1'>) => boolean
   /** Une pose d'équipement : son poseur (celui qui l'a posée ou lâchée), lu à l'image de la pose. */
   placement: (p: Pick<ReplayEquipmentPlacement, 'owner' | 't0'>) => boolean
-  /** Un élément d'UN joueur daté à un instant (faille et aller-retour du translocateur) : son slot à cette image. */
+  /** Un élément d'UN joueur daté à un instant (faille et aller-retour du translocateur, câble de grappin) : son slot à cette image. */
   slotAt: (slot: number, frame: number) => boolean
+  /**
+   * Une poussée du répulseur : elle est à la personne POUSSÉE et à son AUTEUR (`by`, absent quand le film ne le
+   * publie pas), lus à l'image de la poussée — comme un effet de mort est au tueur et à la victime.
+   */
+  knockback: (k: { slot: number; by: number | null; frame: number }) => boolean
   /** Un élément attribué par le xuid du document : porteur d'objectif, VIP, auteur d'une capture ou d'une explosion. */
   author: (xuid: string) => boolean
   /**
@@ -109,6 +114,8 @@ export function buildFocusFilter(
     placement: (p) => shown(present(slotParty(bySlot, p.owner, p.t0))),
     slotAt: (slot, frame) => shown(present(slotParty(bySlot, slot, frame))),
     author: (xuid) => shown([{ xuid }]),
+    knockback: (k) =>
+      shown(present(slotParty(bySlot, k.slot, k.frame), k.by === null ? null : slotParty(bySlot, k.by, k.frame))),
     vehicleAt: (track, frame) =>
       shown(present(...vehicleActiveRides(track, frame).map((r) => occupantParty(bySlot, r, frame))), true),
     occupant: (ride, frame) => shown(present(occupantParty(bySlot, ride, frame))),

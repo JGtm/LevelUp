@@ -35,6 +35,7 @@ describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque él
     ['vols de projectile (grenades, tirs)', /drawProjectilesLayer\([^;]*?shownProjectile,?\s*\)/],
     ['fins de vol des grenades', /useReplayGrenadeRest\(\{[^}]*shownAtSlot[^}]*\}\)/],
     ['mise en valeur d’une élimination', /useReplayKillFocus\(\{[^}]*shownAtSlot[^}]*\}\)/],
+    ['câble du grappin et poussée du répulseur', /useReplayAbilityFx\(\{[^}]*focusFilter: focusShown[^}]*\}\)/],
     ['effets de mort', /drawKillFxLayer\([^;]*?shown: focusShown\?\.killFx/],
     ['carte de chaleur', /useReplayHeatmap\(doc, bounds, killFx, \{[^]*?shown: focusShown/],
     ['armes au sol', /useReplayGroundWeapons\(\{[^]*?shown: focusShown\?\.groundWeapon/],
