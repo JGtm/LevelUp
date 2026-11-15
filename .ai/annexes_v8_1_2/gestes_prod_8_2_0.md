@@ -205,12 +205,22 @@ LU backfill-usage-summary                 # sans --force : le schéma 116 des re
 LU backfill-pad-tiers --force             # niveaux d'armes de socle, relus au schéma 116
 LU backfill-vehicle-takes --force         # prises de véhicule, obligatoire après une recuisson
 LU backfill-flag-grabs-net --force        # prises de drapeau nettes, relues au schéma 116
-LU tactical-rasters --backfill            # calques de la Tactique (fichiers sous rasters/, idempotent)
+LU tactical-rasters --backfill            # calques de la Tactique, format v7 (fichiers sous rasters/, idempotent)
 LU backfill-lead-share --dry-run          # lecture seule, aucune migration, une ligne par match et un bilan
 LU backfill-lead-share                    # la table est neuve (G2) : pas de --force
 ```
 
 - `backfill-killsource` : SANS OBJET en prod (aucun film ; il décode les films). Fait en local le 2026-11-14.
+- `tactical-rasters --backfill`, format **v7** (chantier des réapparitions, `.ai/PLAN_REAPPARITIONS_2026-11-15.md`) :
+  le fichier tactique par match porte en plus la hauteur, l'équipe et la position de chaque joueur vivant à chaque
+  réapparition. Les v6 deviennent non courants et sont réécrits sans `--force`. UNE SEULE passe, APRÈS la
+  régénération du décodeur v1.3.9 (G5) et la mise en place des rejeux (G6), jamais avant : passée plus tôt, elle
+  calculerait le v7 sur des rejeux que la régénération remplace. Même ordre en LOCAL (après la régénération unique,
+  serveur local arrêté). Durée : le v7 coûte 10 % de plus que le v6 (167 ms contre 151 ms
+  par rejeu, mesuré au lot A sur 20 rejeux), soit environ 9 min 40 en local contre 8 min 45, fichiers 7 % plus
+  lourds. Contrôle après la passe : le nombre de fichiers en v7 égale le nombre de rejeux servis,
+  `grep -l '"schema_version":7' /opt/levelup/data/cache/replays/halo_infinite/rasters/*.json | wc -l` contre le
+  compte du contrôle (1) ci-dessous ; un écart = des rejeux sans calque tactique, à lister avant de rouvrir.
 - Mesures locales du 2026-11-14 (1 455 rejeux, poste chargé) : `usage-summary` 3 min 33, `pad-tiers --force`
   4 min 05, `vehicle-takes --force` 6 min 52, `flag-grabs-net --force` 7 min, `tactical-rasters --backfill`
   8 min 45, `backfill-lead-share` 7 min 20 en simulation ; tous à 0 échec. La prod compte environ 3 500 rejeux
