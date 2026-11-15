@@ -60,6 +60,8 @@ type ReplayDocument struct {
 	WeaponLabels        map[string]WeaponLabel   `json:"weaponLabels,omitempty"`
 	KillEffects         map[string]string        `json:"killEffects,omitempty"`
 	NeutralDeaths       []NeutralDeath           `json:"neutralDeaths,omitempty"`
+	Medals              []Medal                  `json:"medals,omitempty"`
+	ScoreActions        []ScoreAction            `json:"scoreActions,omitempty"`
 	Roster              []RosterEntry            `json:"roster,omitempty"`
 	MapObjectives       *MapObjectives           `json:"mapObjectives,omitempty"`
 	MapWeaponPads       *MapWeaponPads           `json:"mapWeaponPads,omitempty"`
@@ -77,6 +79,9 @@ type ReplayDocument struct {
 	BombStats           *BombMatchStats          `json:"bombStats,omitempty"`
 	BombEvents          []BombEvent              `json:"bombEvents,omitempty"`
 	Coverage            *Coverage                `json:"coverage,omitempty"`
+	RoundClock          []ClockSample            `json:"roundClock,omitempty"`
+	RespawnCountdowns   []RespawnCountdown       `json:"respawnCountdowns,omitempty"`
+	Rules               *MatchRules              `json:"rules,omitempty"`
 	Identity            *IdentitySection         `json:"identity,omitempty"`
 	// Layers dit, CALQUE PAR CALQUE, SOUS QUELLE REVISION DE COUCHE il a ete produit (schema 62).
 	// La cle est la balise JSON du calque a cette racine ; la valeur est `source-...`,

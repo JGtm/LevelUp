@@ -119,3 +119,8 @@
 // v114 (2026-11-13, faits independants du pas). Aucun champ neuf, aucune forme qui change : c est le CONTENU CUIT qui change. Un
 // v115 (2026-11-13, passes derriere la marche). Aucun champ neuf, aucune forme qui change : c est le CONTENU CUIT qui change, pour
 // v116 (2026-11-13, directions de tir). `shots[].h` venait du champ de visee du record de tir 36, lu sous
+// v117 (2026-11-14, medailles). Le morceau des temps forts du film porte, avec les kills et les morts, une ligne par medaille gagnee ;
+// v118 (2026-11-14, tableau des scores de tous les sieges). Le statborg se lisait pour les huit premiers joueurs seulement : le
+// v119 (2026-11-14, la presence d un humain est celle que le film liste). `roster[].presence[]` d un humain etait lue aux
+// v120 (2026-11-15, horloge de manche, comptes a rebours de reapparition, regles de la variante). Trois champs neufs, tous lus dans le
+// v121 (2026-11-15, score par action). Le jeu envoie a chaque joueur une reponse de score personnel quand il agit (kill, assistance,

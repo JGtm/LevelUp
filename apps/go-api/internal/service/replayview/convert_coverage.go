@@ -33,6 +33,8 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		Keyframes:         ptrOf(v.Keyframes, toKeyframeCoverage),
 		BirthLoadouts:     ptrOf(v.BirthLoadouts, toBirthLoadoutCoverage),
 		Pickups:           ptrOf(v.Pickups, toPickupCoverage),
+		Medals:            ptrOf(v.Medals, toMedalCoverage),
+		ScoreActions:      ptrOf(v.ScoreActions, toScoreActionCoverage),
 		PadDating:         ptrOf(v.PadDating, toPadDatingStats),
 		EquipmentChanges:  ptrOf(v.EquipmentChanges, toEquipmentChangeCoverage),
 		Translocations:    ptrOf(v.Translocations, toTranslocationCoverage),
@@ -43,6 +45,7 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		GroundWeaponItems: ptrOf(v.GroundWeaponItems, toGroundWeaponItemsCoverage),
 		Vehicles:          ptrOf(v.Vehicles, toVehicleCoverage),
 		ContinuousFire:    ptrOf(v.ContinuousFire, toContinuousFireCoverage),
+		Clocks:            ptrOf(v.Clocks, toClocksCoverage),
 		ObjectiveObjects:  ptrOf(v.ObjectiveObjects, toObjectiveObjectsCoverage),
 		Inventory:         ptrOf(v.Inventory, toInventoryCoverage),
 		FilmMajorVersion:  v.FilmMajorVersion,
@@ -157,6 +160,7 @@ func toSeatCoverage(v replay.SeatCoverage) replaydoc.SeatCoverage {
 		IdentitesHorsRoster: v.IdentitesHorsRoster,
 		BotsSuccesseurs:     v.BotsSuccesseurs,
 		PresencesParLesVies: v.PresencesParLesVies,
+		PresencesListees:    v.PresencesListees,
 
 		RelaisBornes:        v.RelaisBornes,
 		Chevauchements:      v.Chevauchements,
@@ -339,6 +343,7 @@ func toScoreCoverage(v replay.ScoreCoverage) replaydoc.ScoreCoverage {
 		RoundsContradicted:        v.RoundsContradicted,
 		RoundsContradictedRecords: v.RoundsContradictedRecords,
 		RoundsDecreed:             v.RoundsDecreed,
+		StatsWithheld:             v.StatsWithheld,
 	}
 }
 

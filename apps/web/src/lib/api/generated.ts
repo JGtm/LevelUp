@@ -6158,6 +6158,50 @@ export interface components {
             /** Format: int64 */
             total_count: number;
         };
+        ClockSample: {
+            /** Format: double */
+            left: number;
+            /** Format: double */
+            limit: number;
+            /** Format: int64 */
+            state: number;
+            /** Format: int64 */
+            t: number;
+        };
+        ClocksCoverage: {
+            /** Format: int64 */
+            clockImpossible: number;
+            /** Format: int64 */
+            clockPublished: number;
+            /** Format: int64 */
+            clockReads: number;
+            /** Format: int64 */
+            clockUnmeasuredState: number;
+            /** Format: int64 */
+            countdownImpossible: number;
+            /** Format: int64 */
+            countdownIsolated: number;
+            /** Format: int64 */
+            countdownNoPlayer: number;
+            /** Format: int64 */
+            countdownReads: number;
+            /** Format: int64 */
+            countdowns: number;
+            /** Format: int64 */
+            endDeduced: number;
+            /** Format: int64 */
+            frames: number;
+            /** Format: int64 */
+            framesUnread: number;
+            /** Format: int64 */
+            startDeduced: number;
+            /** Format: int64 */
+            withheldOutsidePresence: number;
+            /** Format: int64 */
+            withheldReusedIndex: number;
+            /** Format: int64 */
+            withheldUnknownIndex: number;
+        };
         CombatProfileBlock: {
             /** Format: double */
             avg_dr: number;
@@ -6485,6 +6529,7 @@ export interface components {
             bombCarries?: components["schemas"]["BombCarriesCoverage"];
             bridge: components["schemas"]["BridgeHealth"];
             carriedEquipment?: components["schemas"]["CarriedEquipmentCoverage"];
+            clocks?: components["schemas"]["ClocksCoverage"];
             continuousFire?: components["schemas"]["ContinuousFireCoverage"];
             deathsPaths?: components["schemas"]["DeathsPathsCoverage"];
             decoder?: components["schemas"]["DecoderCoverage"];
@@ -6502,6 +6547,7 @@ export interface components {
             inventory?: components["schemas"]["InventoryCoverage"];
             keyframes?: components["schemas"]["KeyframeCoverage"];
             knockbacks?: components["schemas"]["KnockbackCoverage"];
+            medals?: components["schemas"]["MedalCoverage"];
             objectiveObjects?: components["schemas"]["ObjectiveObjectsCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
             originResolved: boolean;
@@ -6510,6 +6556,7 @@ export interface components {
             placements?: components["schemas"]["EquipmentPlacementCoverage"];
             projectiles?: components["schemas"]["ProjectileCoverage"];
             score?: components["schemas"]["ScoreCoverage"];
+            scoreActions?: components["schemas"]["ScoreActionCoverage"];
             seats?: components["schemas"]["SeatCoverage"];
             shots: components["schemas"]["LayerCoverage"];
             skullCarries?: components["schemas"]["SkullCarriesCoverage"];
@@ -9652,6 +9699,15 @@ export interface components {
             team_side?: string;
             xuid: string;
         };
+        MatchRules: {
+            /** Format: int64 */
+            betrayalPenaltyS?: number;
+            friendlyFire?: boolean;
+            /** Format: int64 */
+            minRespawnS?: number;
+            /** Format: int64 */
+            suicidePenaltyS?: number;
+        };
         /** @description Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP/Assaut) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés. */
         MatchScoreboardObjective: {
             /** Format: int64 */
@@ -10002,6 +10058,16 @@ export interface components {
             summary_tab: components["schemas"]["MatchSummaryTab"];
             team_tab: components["schemas"]["MatchTeamTab"];
         };
+        Medal: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            ms: number;
+            name?: string;
+            /** Format: int64 */
+            t: number;
+            xuid: string;
+        };
         MedalCategoryGroup: {
             category: string;
             /** Format: int64 */
@@ -10012,6 +10078,20 @@ export interface components {
             total: number;
             /** Format: int64 */
             total_count: number;
+        };
+        MedalCoverage: {
+            /** Format: int64 */
+            afterEnd: number;
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            decoded: number;
+            /** Format: int64 */
+            noOrigin: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            unknownName: number;
         };
         MedalDigestEntry: {
             all_medals: components["schemas"]["MedalDigestItem"][] | null;
@@ -11101,6 +11181,9 @@ export interface components {
             deaths: components["schemas"]["ScoreSeries"];
             kills: components["schemas"]["ScoreSeries"];
             score: components["schemas"]["ScoreSeries"];
+            stats?: {
+                [key: string]: components["schemas"]["ScoreSeries"];
+            };
             xuid: string;
         };
         PlayerScoreCard: {
@@ -11640,6 +11723,7 @@ export interface components {
             mapObjectives?: components["schemas"]["MapObjectives"];
             mapWeaponPads?: components["schemas"]["MapWeaponPads"];
             matchId: string;
+            medals?: components["schemas"]["Medal"][] | null;
             neutralDeaths?: components["schemas"]["NeutralDeath"][] | null;
             objectiveObjects?: components["schemas"]["ObjectiveObjectLife"][] | null;
             objectives?: components["schemas"]["ObjectiveAction"][] | null;
@@ -11648,10 +11732,14 @@ export interface components {
             padPickups?: components["schemas"]["PadPickup"][] | null;
             pickups?: components["schemas"]["Pickup"][] | null;
             projectiles?: components["schemas"]["Projectile"][] | null;
+            respawnCountdowns?: components["schemas"]["RespawnCountdown"][] | null;
             riftPoses?: components["schemas"]["RiftPose"][] | null;
             roster?: components["schemas"]["RosterEntry"][] | null;
+            roundClock?: components["schemas"]["ClockSample"][] | null;
+            rules?: components["schemas"]["MatchRules"];
             /** Format: int64 */
             schemaVersion: number;
+            scoreActions?: components["schemas"]["ScoreAction"][] | null;
             scoreTimeline?: components["schemas"]["ScoreTimeline"];
             shots?: components["schemas"]["Shot"][] | null;
             skullCarries?: components["schemas"]["SkullCarry"][] | null;
@@ -11725,6 +11813,18 @@ export interface components {
             /** Format: int64 */
             sys_bytes: number;
         };
+        RespawnCountdown: {
+            endRead: boolean;
+            /** Format: int64 */
+            filmIndex: number;
+            /** Format: int64 */
+            from: number;
+            /** Format: int64 */
+            seconds: number;
+            startRead: boolean;
+            /** Format: int64 */
+            to: number;
+        };
         RiftPose: {
             /** Format: int64 */
             a?: number;
@@ -11789,6 +11889,57 @@ export interface components {
             pool_size: number;
             since_boot: boolean;
         };
+        ScoreAction: {
+            name: string;
+            /** Format: int64 */
+            points: number;
+            /** Format: int64 */
+            t: number;
+            target?: string;
+            xuid: string;
+        };
+        ScoreActionCoverage: {
+            /** Format: int64 */
+            afterEnd: number;
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            closedFrames: number;
+            complete: boolean;
+            /** Format: int64 */
+            copies: number;
+            /** Format: int64 */
+            frames: number;
+            group?: string;
+            groupMissing: boolean;
+            /** Format: int64 */
+            messages: number;
+            /** Format: int64 */
+            namedWithoutPoints: number;
+            /** Format: int64 */
+            noOrigin: number;
+            /** Format: int64 */
+            noRecipient: number;
+            /** Format: int64 */
+            noTarget: number;
+            /** Format: int64 */
+            notPresent: number;
+            /** Format: int64 */
+            outsideTree: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            scoreMessages: number;
+            /** Format: int64 */
+            scored: number;
+            /** Format: int64 */
+            stoppedFrames: number;
+            /** Format: int64 */
+            unconfirmedRank: number;
+            /** Format: int64 */
+            unrelated: number;
+            viewAUnreadable: boolean;
+        };
         ScoreCoverage: {
             modeSupported: boolean;
             oracle: string;
@@ -11801,6 +11952,8 @@ export interface components {
             roundsContradictedRecords?: number;
             roundsDecreed?: boolean;
             roundsWritten?: number[] | null;
+            /** Format: int64 */
+            statsWithheld?: number;
             teamIdentity: string;
             truncated: boolean;
         };
@@ -11989,6 +12142,8 @@ export interface components {
             presences: string;
             /** Format: int64 */
             presencesCloses: number;
+            /** Format: int64 */
+            presencesListees: number;
             /** Format: int64 */
             presencesParLesVies: number;
             /** Format: int64 */

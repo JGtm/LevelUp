@@ -37,6 +37,16 @@ var binairesCouverts = []binaireCouvert{
 	{regexp.MustCompile(`^replay/testdata/equipement_origines_[0-9a-f]{8}.bin.gz$`),
 		"encodeFaitsDeGarde sans champ xuid (slots, rangs, lectures de l equipement porte, projectiles) ; " +
 			"inventaire cmd/anonymise-gamertags du 2026-11-09, 0 des 420 originaux"},
+	{regexp.MustCompile(`^replay/testdata/medailles_[0-9a-f]{8}\.bin\.gz$`),
+		"libs/film/replay TestGoldenMedaillesReecrireIdentites (xuids remplaces par la table fictive) et " +
+			"TestGoldensDAssemblagePortentDesXuidsFictifs (les goldens qui publient les medailles sont juges au registre)"},
+	{regexp.MustCompile(`^replay/testdata/presences_[0-9a-f]{8}\.bin\.gz$`),
+		"libs/film/replay TestGoldenPresencesPorteDesXuidsFictifs (decodage par le codec, chaque xuid au registre fictif)"},
+	{regexp.MustCompile(`^replay/testdata/jeu_[0-9a-f]{8}\.bin\.gz$`),
+		"messages de jeu et noms de script : index de joueur du film, aucun champ xuid (golden_jeu_test.go) ; " +
+			"codec encodeJeu"},
+	{regexp.MustCompile(`^(medalname|reponsesdejeu)/data/LICENSE-libfilmshell$`),
+		"texte de la licence MIT de libfilmshell, livre avec les tables reprises : aucun identifiant de joueur"},
 	{regexp.MustCompile(`^internal/grammar/testdata/fuzz/FuzzFilmRecordReaders/seed_[0-9]+$`),
 		"payloads de records de la mini-bobine fictive, sans table d identite ; mesure du 2026-11-08, " +
 			"0 des 420 originaux apres decodage des graines"},

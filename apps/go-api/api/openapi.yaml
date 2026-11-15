@@ -12297,6 +12297,96 @@ components:
         - categories
         - total_count
       type: object
+    ClockSample:
+      additionalProperties: false
+      properties:
+        left:
+          format: double
+          type: number
+        limit:
+          format: double
+          type: number
+        state:
+          format: int64
+          type: integer
+        t:
+          format: int64
+          type: integer
+      required:
+        - t
+        - left
+        - limit
+        - state
+      type: object
+    ClocksCoverage:
+      additionalProperties: false
+      properties:
+        clockImpossible:
+          format: int64
+          type: integer
+        clockPublished:
+          format: int64
+          type: integer
+        clockReads:
+          format: int64
+          type: integer
+        clockUnmeasuredState:
+          format: int64
+          type: integer
+        countdownImpossible:
+          format: int64
+          type: integer
+        countdownIsolated:
+          format: int64
+          type: integer
+        countdownNoPlayer:
+          format: int64
+          type: integer
+        countdownReads:
+          format: int64
+          type: integer
+        countdowns:
+          format: int64
+          type: integer
+        endDeduced:
+          format: int64
+          type: integer
+        frames:
+          format: int64
+          type: integer
+        framesUnread:
+          format: int64
+          type: integer
+        startDeduced:
+          format: int64
+          type: integer
+        withheldOutsidePresence:
+          format: int64
+          type: integer
+        withheldReusedIndex:
+          format: int64
+          type: integer
+        withheldUnknownIndex:
+          format: int64
+          type: integer
+      required:
+        - frames
+        - framesUnread
+        - clockReads
+        - clockPublished
+        - clockImpossible
+        - clockUnmeasuredState
+        - countdownReads
+        - countdownImpossible
+        - countdownNoPlayer
+        - countdownIsolated
+        - withheldUnknownIndex
+        - withheldReusedIndex
+        - withheldOutsidePresence
+        - countdowns
+        - startDeduced
+        - endDeduced
+      type: object
     CombatProfileBlock:
       additionalProperties: false
       properties:
@@ -13066,6 +13156,8 @@ components:
           $ref: '#/components/schemas/BridgeHealth'
         carriedEquipment:
           $ref: '#/components/schemas/CarriedEquipmentCoverage'
+        clocks:
+          $ref: '#/components/schemas/ClocksCoverage'
         continuousFire:
           $ref: '#/components/schemas/ContinuousFireCoverage'
         deathsPaths:
@@ -13103,6 +13195,8 @@ components:
           $ref: '#/components/schemas/KeyframeCoverage'
         knockbacks:
           $ref: '#/components/schemas/KnockbackCoverage'
+        medals:
+          $ref: '#/components/schemas/MedalCoverage'
         objectiveObjects:
           $ref: '#/components/schemas/ObjectiveObjectsCoverage'
         objectives:
@@ -13119,6 +13213,8 @@ components:
           $ref: '#/components/schemas/ProjectileCoverage'
         score:
           $ref: '#/components/schemas/ScoreCoverage'
+        scoreActions:
+          $ref: '#/components/schemas/ScoreActionCoverage'
         seats:
           $ref: '#/components/schemas/SeatCoverage'
         shots:
@@ -20499,6 +20595,21 @@ components:
         - is_me
         - is_bot
       type: object
+    MatchRules:
+      additionalProperties: false
+      properties:
+        betrayalPenaltyS:
+          format: int64
+          type: integer
+        friendlyFire:
+          type: boolean
+        minRespawnS:
+          format: int64
+          type: integer
+        suicidePenaltyS:
+          format: int64
+          type: integer
+      type: object
     MatchScoreboardObjective:
       additionalProperties: false
       description: Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP/Assaut) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
@@ -21211,6 +21322,28 @@ components:
         - media_tab
         - citations_tab
       type: object
+    Medal:
+      additionalProperties: false
+      properties:
+        id:
+          format: int64
+          type: integer
+        ms:
+          format: int64
+          type: integer
+        name:
+          type: string
+        t:
+          format: int64
+          type: integer
+        xuid:
+          type: string
+      required:
+        - t
+        - ms
+        - xuid
+        - id
+      type: object
     MedalCategoryGroup:
       additionalProperties: false
       properties:
@@ -21240,6 +21373,35 @@ components:
         - earned
         - total
         - total_count
+      type: object
+    MedalCoverage:
+      additionalProperties: false
+      properties:
+        afterEnd:
+          format: int64
+          type: integer
+        beforeOrigin:
+          format: int64
+          type: integer
+        decoded:
+          format: int64
+          type: integer
+        noOrigin:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        unknownName:
+          format: int64
+          type: integer
+      required:
+        - decoded
+        - published
+        - noOrigin
+        - beforeOrigin
+        - afterEnd
+        - unknownName
       type: object
     MedalDigestEntry:
       additionalProperties: false
@@ -23817,6 +23979,10 @@ components:
           $ref: '#/components/schemas/ScoreSeries'
         score:
           $ref: '#/components/schemas/ScoreSeries'
+        stats:
+          additionalProperties:
+            $ref: '#/components/schemas/ScoreSeries'
+          type: object
         xuid:
           type: string
       required:
@@ -25222,6 +25388,12 @@ components:
           $ref: '#/components/schemas/MapWeaponPads'
         matchId:
           type: string
+        medals:
+          items:
+            $ref: '#/components/schemas/Medal'
+          type:
+            - array
+            - "null"
         neutralDeaths:
           items:
             $ref: '#/components/schemas/NeutralDeath'
@@ -25261,6 +25433,12 @@ components:
           type:
             - array
             - "null"
+        respawnCountdowns:
+          items:
+            $ref: '#/components/schemas/RespawnCountdown'
+          type:
+            - array
+            - "null"
         riftPoses:
           items:
             $ref: '#/components/schemas/RiftPose'
@@ -25273,9 +25451,23 @@ components:
           type:
             - array
             - "null"
+        roundClock:
+          items:
+            $ref: '#/components/schemas/ClockSample'
+          type:
+            - array
+            - "null"
+        rules:
+          $ref: '#/components/schemas/MatchRules'
         schemaVersion:
           format: int64
           type: integer
+        scoreActions:
+          items:
+            $ref: '#/components/schemas/ScoreAction'
+          type:
+            - array
+            - "null"
         scoreTimeline:
           $ref: '#/components/schemas/ScoreTimeline'
         shots:
@@ -25490,6 +25682,33 @@ components:
         - sys_bytes
         - num_gc
       type: object
+    RespawnCountdown:
+      additionalProperties: false
+      properties:
+        endRead:
+          type: boolean
+        filmIndex:
+          format: int64
+          type: integer
+        from:
+          format: int64
+          type: integer
+        seconds:
+          format: int64
+          type: integer
+        startRead:
+          type: boolean
+        to:
+          format: int64
+          type: integer
+      required:
+        - filmIndex
+        - from
+        - to
+        - seconds
+        - startRead
+        - endRead
+      type: object
     RiftPose:
       additionalProperties: false
       properties:
@@ -25628,6 +25847,115 @@ components:
         - gate
         - since_boot
       type: object
+    ScoreAction:
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        points:
+          format: int64
+          type: integer
+        t:
+          format: int64
+          type: integer
+        target:
+          type: string
+        xuid:
+          type: string
+      required:
+        - t
+        - xuid
+        - name
+        - points
+      type: object
+    ScoreActionCoverage:
+      additionalProperties: false
+      properties:
+        afterEnd:
+          format: int64
+          type: integer
+        beforeOrigin:
+          format: int64
+          type: integer
+        closedFrames:
+          format: int64
+          type: integer
+        complete:
+          type: boolean
+        copies:
+          format: int64
+          type: integer
+        frames:
+          format: int64
+          type: integer
+        group:
+          type: string
+        groupMissing:
+          type: boolean
+        messages:
+          format: int64
+          type: integer
+        namedWithoutPoints:
+          format: int64
+          type: integer
+        noOrigin:
+          format: int64
+          type: integer
+        noRecipient:
+          format: int64
+          type: integer
+        noTarget:
+          format: int64
+          type: integer
+        notPresent:
+          format: int64
+          type: integer
+        outsideTree:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        scoreMessages:
+          format: int64
+          type: integer
+        scored:
+          format: int64
+          type: integer
+        stoppedFrames:
+          format: int64
+          type: integer
+        unconfirmedRank:
+          format: int64
+          type: integer
+        unrelated:
+          format: int64
+          type: integer
+        viewAUnreadable:
+          type: boolean
+      required:
+        - complete
+        - groupMissing
+        - frames
+        - closedFrames
+        - stoppedFrames
+        - viewAUnreadable
+        - messages
+        - copies
+        - scoreMessages
+        - unrelated
+        - namedWithoutPoints
+        - outsideTree
+        - unconfirmedRank
+        - scored
+        - published
+        - noRecipient
+        - notPresent
+        - noOrigin
+        - beforeOrigin
+        - afterEnd
+        - noTarget
+      type: object
     ScoreCoverage:
       additionalProperties: false
       properties:
@@ -25660,6 +25988,9 @@ components:
           type:
             - array
             - "null"
+        statsWithheld:
+          format: int64
+          type: integer
         teamIdentity:
           type: string
         truncated:
@@ -26081,6 +26412,9 @@ components:
         presencesCloses:
           format: int64
           type: integer
+        presencesListees:
+          format: int64
+          type: integer
         presencesParLesVies:
           format: int64
           type: integer
@@ -26140,6 +26474,7 @@ components:
         - identitesHorsRoster
         - botsSuccesseurs
         - presencesParLesVies
+        - presencesListees
         - relaisBornes
         - chevauchements
         - tirsContestes

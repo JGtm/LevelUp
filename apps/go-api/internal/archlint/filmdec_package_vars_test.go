@@ -225,7 +225,11 @@ import (
 // (`deaths_source.go`) avec ses deux sentinelles, `ErrFilSansTempsForts` et
 // `ErrFilDesMortsSansMort` — Go n a pas de `const` d erreur, et personne ne les ecrit. Le compte
 // reel d avant etait 20 (une place libre depuis le 2026-09-17) ; le gel suit desormais la mesure.
-const filmdecVarsGeles = 22
+//
+// RESSERRE A 21 LE 2026-11-15 (montee du decodeur, base `010e65bbc4` re-mesuree : 22 avant, 21 apres) : le bloc
+// de datums quitte `grammar` pour son sous-paquet `grammar/datums` et emporte sa sentinelle `ErrBlocDeDatums` ;
+// aucune variable n est supprimee, une est deplacee.
+const filmdecVarsGeles = 21
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

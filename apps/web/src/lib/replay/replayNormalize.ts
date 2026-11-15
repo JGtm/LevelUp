@@ -229,6 +229,12 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // le fil déduit ces lignes de ses pistes, cette table dit seulement DE QUOI le joueur
     // est mort. Absente = aucune n'est établie, le fil garde son repère neutre.
     neutralDeaths: raw.neutralDeaths ?? [],
+    // Les médailles (schéma 117), le score par action (schéma 121), l'horloge de manche et les comptes à
+    // rebours de réapparition (schéma 120) : des tableaux plats, absents = rien de posé sur ce film.
+    medals: raw.medals ?? [],
+    scoreActions: raw.scoreActions ?? [],
+    roundClock: raw.roundClock ?? [],
+    respawnCountdowns: raw.respawnCountdowns ?? [],
     // Le calque d'actions d'objectif traverse la frontière comme les autres tableaux ;
     // il nourrit les PULSES du canvas (objectivesLayer.buildObjectivePulses, lot 4.4).
     objectives: raw.objectives ?? [],

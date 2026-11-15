@@ -28,6 +28,8 @@ type Coverage struct {
 	Keyframes         *KeyframeCoverage           `json:"keyframes,omitempty"`
 	BirthLoadouts     *BirthLoadoutCoverage       `json:"birthLoadouts,omitempty"`
 	Pickups           *PickupCoverage             `json:"pickups,omitempty"`
+	Medals            *MedalCoverage              `json:"medals,omitempty"`
+	ScoreActions      *ScoreActionCoverage        `json:"scoreActions,omitempty"`
 	PadDating         *PadDatingStats             `json:"padDating,omitempty"`
 	EquipmentChanges  *EquipmentChangeCoverage    `json:"equipmentChanges,omitempty"`
 	Translocations    *TranslocationCoverage      `json:"translocations,omitempty"`
@@ -38,6 +40,7 @@ type Coverage struct {
 	GroundWeaponItems *GroundWeaponItemsCoverage  `json:"groundWeaponItems,omitempty"`
 	Vehicles          *VehicleCoverage            `json:"vehicles,omitempty"`
 	ContinuousFire    *ContinuousFireCoverage     `json:"continuousFire,omitempty"`
+	Clocks            *ClocksCoverage             `json:"clocks,omitempty"`
 	ObjectiveObjects  *ObjectiveObjectsCoverage   `json:"objectiveObjects,omitempty"`
 	Inventory         *InventoryCoverage          `json:"inventory,omitempty"`
 	FilmMajorVersion  *int                        `json:"filmMajorVersion,omitempty"`
@@ -344,6 +347,8 @@ type ScoreCoverage struct {
 	// RoundsDecreed : aucune manche n'a été admise et la manche 0 a été DÉCRÉTÉE pour que le
 	// film reste lisible (repli `repli_manche_zero_decretee`).
 	RoundsDecreed bool `json:"roundsDecreed,omitempty"`
+	// StatsWithheld : les joueurs prives de `players[].stats` parce que le film a plusieurs manches.
+	StatsWithheld int `json:"statsWithheld,omitempty"`
 }
 
 // WeaponChangeCoverage dit ce que le calque a vu et ce qu'il a écarté, pour qu'un lecteur

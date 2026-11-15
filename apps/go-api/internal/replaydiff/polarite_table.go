@@ -164,15 +164,29 @@ var tablePolarites = []blocPolarites{
 	{Blocs: []string{"coverage.projectiles."},
 		Echecs: "shotAmbiguous truncated",
 		Succes: "published shotLinked tracks"},
+	{Blocs: []string{"coverage.clocks."},
+		Echecs: "framesUnread clockImpossible clockUnmeasuredState countdownImpossible countdownNoPlayer " +
+			"countdownIsolated withheldUnknownIndex withheldReusedIndex withheldOutsidePresence startDeduced endDeduced",
+		Succes:  "clockPublished countdowns",
+		Neutres: "frames clockReads countdownReads"},
+	{Blocs: []string{"coverage.medals."},
+		Echecs:  "noOrigin beforeOrigin afterEnd unknownName",
+		Succes:  "published",
+		Neutres: "decoded"},
+	{Blocs: []string{"coverage.scoreActions."},
+		Echecs: "stoppedFrames unconfirmedRank noRecipient notPresent noOrigin beforeOrigin afterEnd noTarget",
+		Succes: "published closedFrames",
+		Neutres: "frames messages copies scoreMessages unrelated namedWithoutPoints outsideTree " +
+			"scored"},
 	{Blocs: []string{"coverage.score."},
-		Echecs:  "roundsContradicted/n roundsContradictedRecords",
+		Echecs:  "roundsContradicted/n roundsContradictedRecords statsWithheld",
 		Succes:  "points",
 		Neutres: "rounds roundsWritten/n"},
 	{Blocs: []string{"coverage.seats."},
 		Echecs: "bornesDifferees botsRelevesEnJeu chevauchements depassements entitesContestees entitesNonLiees " +
 			"identitesHorsRoster imagesClesDouteuses placesEnTrop placesOuvertes " +
 			"presencesParLesVies rameneesALaTaille sansEquipe sansPlace sansPresence tirsContestes trousDEntite",
-		Succes: "botsSuccesseurs lus placesTirs relaisBornes tirsParPlace",
+		Succes: "botsSuccesseurs lus placesTirs presencesListees relaisBornes tirsParPlace",
 		Neutres: "absencesTenuesParUnBot apparies arrivants botsRelevesALaTaille capacite entrees occupantsMax presencesCloses " +
 			"reprisesEcrites sieges"},
 	{Blocs: []string{"coverage.skullCarries."},

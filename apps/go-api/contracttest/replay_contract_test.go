@@ -173,6 +173,15 @@ var replaySchemas = []struct {
 	{"BipedLinkCounts", replaydoc.BipedLinkCounts{}},
 	{"UnresolvedCauses", replaydoc.UnresolvedCauses{}},
 	{"Link", replaydoc.Link{}},
+	// AJOUTES A LA MONTEE DU DECODEUR (schemas 117 a 121) : medailles, score par action, horloges.
+	{"Medal", replaydoc.Medal{}},
+	{"MedalCoverage", replaydoc.MedalCoverage{}},
+	{"ScoreAction", replaydoc.ScoreAction{}},
+	{"ScoreActionCoverage", replaydoc.ScoreActionCoverage{}},
+	{"ClockSample", replaydoc.ClockSample{}},
+	{"RespawnCountdown", replaydoc.RespawnCountdown{}},
+	{"MatchRules", replaydoc.MatchRules{}},
+	{"ClocksCoverage", replaydoc.ClocksCoverage{}},
 }
 
 // wantReplayDocumentFields : le nombre de champs que l artefact publie. Ecrit ici pour que le
@@ -745,9 +754,17 @@ var replaySchemas = []struct {
 //	                      la paire de messages 105 -> 104 de la vue A, joueur pousse, auteur et
 //	                      vitesse imposee ; `coverage.knockbacks` nait au meme commit.
 //
+//	72 (2026-11-15) : `medals` (schema 117, medailles datees), `scoreActions` (schema 121, score
+//	                      personnel par action), `roundClock` et `respawnCountdowns` (schema 120,
+//	                      horloge de manche et comptes a rebours de reapparition) et `rules` (schema
+//	                      120, regles de la variante) : cinq champs de tete, montee du decodeur de film.
+//	                      `coverage.{medals,scoreActions,clocks}`, `coverage.seats.presencesListees`,
+//	                      `coverage.score.statsWithheld` et `scoreTimeline.players[].stats` naissent au
+//	                      meme commit SANS faire monter ce compte (types imbriques).
+//
 // Les vingt-neuf fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 67
+const wantReplayDocumentFields = 72
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

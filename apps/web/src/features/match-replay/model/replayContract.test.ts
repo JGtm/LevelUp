@@ -98,6 +98,10 @@ const NULLABLE_ARRAYS = [
   'grenades',
   'inventory',
   'loadouts',
+  // `medals` (schéma 117), `scoreActions` (schéma 121), `roundClock` et `respawnCountdowns` (schéma 120) :
+  // les calques datés des médailles, du score par action, de l'horloge de manche et des comptes à rebours
+  // de réapparition. Comblés à vide par la frontière ; aucun tableau imbriqué.
+  'medals',
   'neutralDeaths',
   // `objectiveObjects` : les vies LIBRES du crane d'Oddball (schema 21) — ou l'objet se trouve
   // quand PERSONNE ne le porte. Nullable au contrat comme les autres tableaux de tete ; son
@@ -111,7 +115,10 @@ const NULLABLE_ARRAYS = [
   // l'événement natif `biped_pickup` date l'occupation, `null` sinon.
   'padPickups',
   'projectiles',
+  'respawnCountdowns',
   'roster',
+  'roundClock',
+  'scoreActions',
   'shots',
   // `bursts` : LES RAFALES DE TIR CONTINU (schéma 71, lot M4b) — comblées à vide, leurs passages
   // muets aussi (`holes`).
@@ -277,12 +284,16 @@ const NULLABLE_ARRAY_PATHS = [
   'grenades',
   'inventory',
   'loadouts',
+  'medals',
   'neutralDeaths',
   'objectiveObjects',
   'objectives',
   'padPickups',
   'projectiles',
+  'respawnCountdowns',
   'roster',
+  'roundClock',
+  'scoreActions',
   'shots',
   'bursts',
   'bursts[].holes',

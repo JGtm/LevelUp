@@ -31,13 +31,15 @@ type SeatCoverage struct {
 	SansEquipe      int `json:"sansEquipe"`
 	// IdentitesHorsRoster / BotsSuccesseurs / PresencesParLesVies : revue du lot M2 (2026-09-24),
 	// cf. `replay.SeatCoverage`.
-	IdentitesHorsRoster int  `json:"identitesHorsRoster"`
-	BotsSuccesseurs     int  `json:"botsSuccesseurs"`
-	PresencesParLesVies int  `json:"presencesParLesVies"`
-	RelaisBornes        int  `json:"relaisBornes"`
-	Chevauchements      int  `json:"chevauchements"`
-	TirsContestes       int  `json:"tirsContestes"`
-	TirsIndexTronque    bool `json:"tirsIndexTronque,omitempty"`
+	IdentitesHorsRoster int `json:"identitesHorsRoster"`
+	BotsSuccesseurs     int `json:"botsSuccesseurs"`
+	PresencesParLesVies int `json:"presencesParLesVies"`
+	// PresencesListees : les entrees humaines dont la presence est datee par un listage de session.
+	PresencesListees int  `json:"presencesListees"`
+	RelaisBornes     int  `json:"relaisBornes"`
+	Chevauchements   int  `json:"chevauchements"`
+	TirsContestes    int  `json:"tirsContestes"`
+	TirsIndexTronque bool `json:"tirsIndexTronque,omitempty"`
 	// TirsParPlace : les tirs rendus a l occupant de leur place (lot M4b.4, cf.
 	// `replay.SeatCoverage`).
 	TirsParPlace int `json:"tirsParPlace"`
