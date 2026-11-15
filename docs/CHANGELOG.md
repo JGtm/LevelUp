@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Per-minute rates, one definition** — the fourteen remaining inline per-minute computations (`analysis` kpi stats, explorer cadence, home highlight tile, squad synthesis KPIs and profiles; `service` accuracy tab, score-per-minute distribution and intensity tab, squad synergy and per-minute contributions; `sync` performance metrics) go through `analysis.PerMinute`; values unchanged (characterization tests before and after, identical output), zero-duration behaviour of each site kept. AST guard rail `internal/archlint/no_inline_per_minute_test.go` (packages `analysis`, `service`, `sync`; allowlist empty) refuses a new inline division by 60.
+
 ## [8.2.0] - 2026-11-14
 
 > The replay, the map backgrounds and Lead share on the player side; on the code side, LevelUp consumes the four published bricks from their repositories, `libs/` leaves the repository and the HTTP, storage, multi-title and web layers are separated by guard rails at ceiling 0.

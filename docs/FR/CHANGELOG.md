@@ -8,6 +8,9 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.fr/fr/1.1.0/).
 
 ## [Unreleased]
 
+### Modifié
+- **Cadences par minute, une seule définition** — les quatorze calculs par minute encore écrits en ligne (`analysis` : statistiques KPI, cadence de l’Explorateur, tuile d’accueil, KPI et profils de synthèse d’escouade ; `service` : onglet Précision, distribution du score par minute et onglet Intensité, synergie et contributions par minute d’escouade ; `sync` : métriques de la note de performance) passent par `analysis.PerMinute` ; valeurs inchangées (tests de caractérisation avant et après, sortie identique), comportement de chaque site sur durée nulle conservé. Garde-rail AST `internal/archlint/no_inline_per_minute_test.go` (paquets `analysis`, `service`, `sync` ; allowlist vide) : une nouvelle division en ligne par 60 est refusée.
+
 ## [8.2.0] - 2026-11-14
 
 > Le rejeu, les fonds de carte et la Mainmise côté joueur ; côté code, LevelUp consomme les quatre briques publiées depuis leurs dépôts, `libs/` disparaît du dépôt et les couches HTTP, stockage, multi-titre et web sont séparées par des garde-rails à plafond 0.
