@@ -7,6 +7,7 @@
 - **La présence exacte des joueurs** — qui était dans le match, et quand chacun est arrivé et parti, se lit dans les listes du jeu : un joueur arrivé en cours de match n'est plus montré avant son arrivée
 - **La bonne place des arrivants, et les bots nommés** — quand des bots complètent un match, un joueur qui arrive prend la place qu'il avait vraiment, et les bots gardent leur nom
 - **Une mort sans cause connue est maintenant marquée** — sur la carte du rejeu, le calque « Morts » pose désormais une croix partout où le film montre un joueur mourir, même s’il ne dit pas de quoi : le joueur lâche son corps, ou son compte à rebours de réapparition démarre. Une fin de manche, qui ferme toutes les vies sans mort, n’est toujours pas marquée. Un rejeu généré avant cette version garde ses croix telles qu’elles étaient.
+- **Les réapparitions lues dans le film** — la vue Tactique reconnaît désormais une réapparition à ce que dit le film (le joueur lâche son corps, ou son compte à rebours de réapparition démarre), et non plus à l’écart entre deux vies. Un début de manche n’est plus compté comme une réapparition. Un rejeu généré avant cette version garde l’estimation par l’écart.
 
 **v8.2 — Un rejeu plus complet, des fonds de carte plus justes, la Mainmise, de nouveaux graphiques de match et des rejeux compressés**
 

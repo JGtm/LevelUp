@@ -451,7 +451,11 @@ const plafondSurfaceFacade = 182 // 2026-11-10 — item 4.3 : 181 + 1 (ResultatD
 //	329  fins de vie du schema 123 (2026-11-15)  base `ee35b45882` re-mesuree a 328. +1 :
 //	                                           `replay.LifeEndCoverage`, la couverture `coverage.tracks.lifeEnds`
 //	                                           que le document servi projette (`service/replayview`). Aucun retrait.
-const plafondSurfaceReplay = 329 // 2026-11-15 — base ee35b45882 re-mesuree a 328 + 1 (LifeEndCoverage) ; cf. l historique ci-dessus
+//	331  reapparitions lues au film (2026-11-15)  base `82e6969d12` re-mesuree a 329. +2 :
+//	                                           `replay.EndReasonReleased` et `replay.EndReasonDeleted`, les deux
+//	                                           fins de vie que l'entree de l'occupation traduit
+//	                                           (`sync/replayartifacts`, `finDeLaPiste`). Aucun retrait.
+const plafondSurfaceReplay = 331 // 2026-11-15 — base 82e6969d12 re-mesuree a 329 + 2 (EndReasonReleased, EndReasonDeleted) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //
