@@ -30544,7 +30544,7 @@ components:
           description: 'Identifiant d''une grappe de reapparition : restreint l''univers aux matchs dont MA premiere vie en part.'
           type: string
         vies:
-          description: 'Apparitions qui forment les grappes de reapparition : depart (defaut, premiere vie seule) | toutes (premiere vie, reapparitions et debuts de manche). Sous toutes et un filtre de grappe, « routes » ne compte que les routes des vies parties de la grappe.'
+          description: 'Apparitions : depart (defaut, premiere vie) | toutes (avec reapparitions et debuts de manche ; « routes » ne compte que les vies de la grappe).'
           type: string
       required:
         - cellule
@@ -30900,7 +30900,7 @@ components:
           description: 'Identifiant d''une grappe de reapparition (champ grappes[].id) : restreint l''univers aux matchs dont MA premiere vie en part. Vide = aucune restriction.'
           type: string
         vies:
-          description: 'Apparitions qui forment les grappes de reapparition : depart (defaut, premiere vie seule) | toutes (premiere vie, reapparitions et debuts de manche). Sous toutes et un filtre de grappe, « routes » ne compte que les routes des vies parties de la grappe.'
+          description: 'Apparitions : depart (defaut, premiere vie) | toutes (avec reapparitions et debuts de manche ; « routes » ne compte que les vies de la grappe).'
           type: string
       type: object
     TacticalSequence:

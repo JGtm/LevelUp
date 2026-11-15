@@ -114,7 +114,7 @@ type tacticalRasterBody struct {
 	Question    string   `json:"question,omitempty" doc:"Lecture : morts | kills | solde | gagne | temps | routes | isole. Defaut : morts. « temps »/« routes » exigent film.replay_artifact, « isole » film.kill_positions."`
 	Qui         string   `json:"qui,omitempty" doc:"Axe : moi | escouade | adv. Defaut : moi. « escouade » exige des coequipiers."`
 	Spawn       string   `json:"spawn,omitempty" doc:"Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction."`
-	Vies        string   `json:"vies,omitempty" doc:"Apparitions qui forment les grappes de reapparition : depart (defaut, premiere vie seule) | toutes (premiere vie, reapparitions et debuts de manche). Sous toutes et un filtre de grappe, « routes » ne compte que les routes des vies parties de la grappe."`
+	Vies        string   `json:"vies,omitempty" doc:"Apparitions : depart (defaut, premiere vie) | toutes (avec reapparitions et debuts de manche ; « routes » ne compte que les vies de la grappe)."`
 }
 
 // scopeDepuis : LA traduction du corps vers le perimetre de service, pour les deux
@@ -213,7 +213,7 @@ type tacticalCelluleBody struct {
 	Question    string                 `json:"question,omitempty" doc:"Lecture : morts | kills | solde | gagne | temps | routes | isole. Defaut : morts."`
 	Qui         string                 `json:"qui,omitempty" doc:"Axe : moi | escouade | adv. Defaut : moi."`
 	Spawn       string                 `json:"spawn,omitempty" doc:"Identifiant d'une grappe de reapparition : restreint l'univers aux matchs dont MA premiere vie en part."`
-	Vies        string                 `json:"vies,omitempty" doc:"Apparitions qui forment les grappes de reapparition : depart (defaut, premiere vie seule) | toutes (premiere vie, reapparitions et debuts de manche). Sous toutes et un filtre de grappe, « routes » ne compte que les routes des vies parties de la grappe."`
+	Vies        string                 `json:"vies,omitempty" doc:"Apparitions : depart (defaut, premiere vie) | toutes (avec reapparitions et debuts de manche ; « routes » ne compte que les vies de la grappe)."`
 	Cellule     tacticalCelluleAdresse `json:"cellule" doc:"La cellule dont on demande le detail (col, lig)."`
 }
 

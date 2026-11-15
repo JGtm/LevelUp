@@ -13773,7 +13773,7 @@ export interface components {
             qui?: string;
             /** @description Identifiant d'une grappe de reapparition : restreint l'univers aux matchs dont MA premiere vie en part. */
             spawn?: string;
-            /** @description Apparitions qui forment les grappes de reapparition : depart (defaut, premiere vie seule) | toutes (premiere vie, reapparitions et debuts de manche). Sous toutes et un filtre de grappe, « routes » ne compte que les routes des vies parties de la grappe. */
+            /** @description Apparitions : depart (defaut, premiere vie) | toutes (avec reapparitions et debuts de manche ; « routes » ne compte que les vies de la grappe). */
             vies?: string;
         };
         TacticalCelluleReponse: {
@@ -13915,7 +13915,7 @@ export interface components {
             qui?: string;
             /** @description Identifiant d'une grappe de reapparition (champ grappes[].id) : restreint l'univers aux matchs dont MA premiere vie en part. Vide = aucune restriction. */
             spawn?: string;
-            /** @description Apparitions qui forment les grappes de reapparition : depart (defaut, premiere vie seule) | toutes (premiere vie, reapparitions et debuts de manche). Sous toutes et un filtre de grappe, « routes » ne compte que les routes des vies parties de la grappe. */
+            /** @description Apparitions : depart (defaut, premiere vie) | toutes (avec reapparitions et debuts de manche ; « routes » ne compte que les vies de la grappe). */
             vies?: string;
         };
         TacticalSequence: {
