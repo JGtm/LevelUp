@@ -121,7 +121,7 @@ func buildIntensityTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesInt
 		// Score per minute.
 		spm := 0.0
 		if m.PersonalScore != nil && m.TimePlayedSeconds != nil && *m.TimePlayedSeconds > 0 {
-			spm = float64(*m.PersonalScore) / (float64(*m.TimePlayedSeconds) / 60.0)
+			spm = analysis.PerMinute(float64(*m.PersonalScore), float64(*m.TimePlayedSeconds))
 		}
 		scorePerMin = append(scorePerMin, domain.CumulativePoint{
 			Index: i, StartTime: m.StartTime,

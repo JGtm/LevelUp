@@ -119,10 +119,10 @@ func setPerMinuteCadence(stats *domain.ExplorerTargetSampleStats, agg *domain.Pa
 	if agg.TimePlayedSeconds <= 0 {
 		return
 	}
-	minutes := float64(agg.TimePlayedSeconds) / 60.0
-	kpm := float64(agg.Kills) / minutes
-	dpm := float64(agg.Deaths) / minutes
-	apm := float64(agg.Assists) / minutes
+	seconds := float64(agg.TimePlayedSeconds)
+	kpm := PerMinute(float64(agg.Kills), seconds)
+	dpm := PerMinute(float64(agg.Deaths), seconds)
+	apm := PerMinute(float64(agg.Assists), seconds)
 	stats.KillsPerMin = &kpm
 	stats.DeathsPerMin = &dpm
 	stats.AssistsPerMin = &apm

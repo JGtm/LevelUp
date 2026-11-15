@@ -112,10 +112,10 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow, effectiveHpToKill float64)
 	stats.AvgMatchSeconds = float64(stats.TotalPlaySeconds) / n
 
 	if stats.TotalPlaySeconds > 0 {
-		minutes := float64(stats.TotalPlaySeconds) / 60.0
-		stats.KillsPerMinute = float64(totalKills) / minutes
-		stats.DeathsPerMinute = float64(totalDeaths) / minutes
-		stats.AssistsPerMinute = float64(totalAssists) / minutes
+		seconds := float64(stats.TotalPlaySeconds)
+		stats.KillsPerMinute = PerMinute(float64(totalKills), seconds)
+		stats.DeathsPerMinute = PerMinute(float64(totalDeaths), seconds)
+		stats.AssistsPerMinute = PerMinute(float64(totalAssists), seconds)
 	}
 	if accuracySamples > 0 {
 		stats.AvgAccuracy = totalAccuracy / float64(accuracySamples)

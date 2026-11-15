@@ -66,10 +66,7 @@ func SynergyDefensiveResistance(totalDamageTkn float64, totalDeaths int, effecti
 // 0 si aucun temps joué n'est renseigné. Partagé par le radar escouade et le
 // radar session-compare (règle ≤2 copies : une seule définition).
 func SynergyScorePerMinute(totalPersonalScore, totalTimePlayedSeconds float64) float64 {
-	if totalTimePlayedSeconds <= 0 {
-		return 0
-	}
-	return totalPersonalScore / (totalTimePlayedSeconds / 60.0)
+	return analysis.PerMinute(totalPersonalScore, totalTimePlayedSeconds)
 }
 
 // synergyMainFallbackAxes calcule combat et support depuis SquadMatchRow

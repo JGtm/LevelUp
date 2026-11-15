@@ -95,7 +95,6 @@ func extractMatchMetrics(row *historyRow) *matchMetrics {
 	if duration <= 0 {
 		duration = perfFallbackDurationSeconds
 	}
-	minutes := duration / 60.0
 
 	kills := row.Kills
 	deaths := row.Deaths
@@ -109,9 +108,9 @@ func extractMatchMetrics(row *historyRow) *matchMetrics {
 	kda := analysis.CombatEfficiency(int(kills), int(assists), int(deaths))
 
 	m := &matchMetrics{
-		KPM:       kills / minutes,
-		DPMDeaths: deaths / minutes,
-		APM:       assists / minutes,
+		KPM:       analysis.PerMinute(kills, duration),
+		DPMDeaths: analysis.PerMinute(deaths, duration),
+		APM:       analysis.PerMinute(assists, duration),
 		KDA:       kda,
 	}
 	if row.Accuracy > 0 {
@@ -119,11 +118,11 @@ func extractMatchMetrics(row *historyRow) *matchMetrics {
 		m.Accuracy = &v
 	}
 	if row.PersonalScore > 0 {
-		v := row.PersonalScore / minutes
+		v := analysis.PerMinute(row.PersonalScore, duration)
 		m.PSPM = &v
 	}
 	if row.DamageDealt > 0 {
-		v := row.DamageDealt / minutes
+		v := analysis.PerMinute(row.DamageDealt, duration)
 		m.DPMDamage = &v
 	}
 	if row.Rank > 0 {
@@ -163,7 +162,7 @@ func extractMatchMetrics(row *historyRow) *matchMetrics {
 	// porte sur le POINTEUR, pas sur `> 0` comme les métriques ci-dessus : un match
 	// couvert à 0 point d'objectif est une valeur à classer, pas une absence (D-J).
 	if row.ObjectiveScore != nil {
-		v := *row.ObjectiveScore / minutes
+		v := analysis.PerMinute(*row.ObjectiveScore, duration)
 		m.OSPM = &v
 	}
 	return m

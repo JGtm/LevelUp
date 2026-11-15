@@ -55,7 +55,7 @@ func buildScorePerMinBuckets(matches []legacymatch.StatsMatchRow) []domain.Distr
 		if m.PersonalScore == nil || m.TimePlayedSeconds == nil || *m.TimePlayedSeconds == 0 {
 			continue
 		}
-		spm := float64(*m.PersonalScore) / (float64(*m.TimePlayedSeconds) / 60.0)
+		spm := analysis.PerMinute(float64(*m.PersonalScore), float64(*m.TimePlayedSeconds))
 		idx := int(spm / binWidth)
 		counts[idx]++
 	}

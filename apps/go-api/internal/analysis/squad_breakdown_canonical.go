@@ -56,10 +56,10 @@ func (a *extKPIAcc) applyTo(kpis *domain.SynthesisKPIs, nMatches int, sumTimeSec
 	kpis.HeadshotsPerMatch = &hpm
 	pkpm := math.Round(a.sumPerfectKills/float64(nMatches)*100) / 100
 	kpis.PerfectKillsPerMatch = &pkpm
-	if tot := sumTimeSecs / 60.0; tot > 0 {
-		dpm := math.Round(a.sumDeaths/tot*100) / 100
+	if sumTimeSecs > 0 {
+		dpm := math.Round(PerMinute(a.sumDeaths, sumTimeSecs)*100) / 100
 		kpis.DeathsPerMin = &dpm
-		apm := math.Round(a.sumAssists/tot*100) / 100
+		apm := math.Round(PerMinute(a.sumAssists, sumTimeSecs)*100) / 100
 		kpis.AssistsPerMin = &apm
 	}
 	if a.nSpree > 0 {
@@ -157,8 +157,8 @@ func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad 
 		kpis.AvgLifeSeconds = &avgLife
 	}
 	if nTime > 0 {
-		if tot := sumTimePlayed / 60.0; tot > 0 {
-			kpm := math.Round(sumKills/tot*100) / 100
+		if sumTimePlayed > 0 {
+			kpm := math.Round(PerMinute(sumKills, sumTimePlayed)*100) / 100
 			kpis.KillsPerMin = &kpm
 		}
 	}

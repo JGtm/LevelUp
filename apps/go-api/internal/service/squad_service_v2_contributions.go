@@ -54,26 +54,26 @@ func BuildPerMinuteStats(rowsByPlayer map[string][]canonical.PlayerMatchRow) dom
 
 	dps := make([]domain.ChartPointStacked, 0, len(gts))
 	for _, gt := range gts {
-		var totalMin float64
+		var totalSecs float64
 		var kills, deaths, assists int
 		for _, r := range rowsByPlayer[gt] {
 			if r.Summary.DurationSeconds == nil || *r.Summary.DurationSeconds <= 0 {
 				continue
 			}
-			totalMin += float64(*r.Summary.DurationSeconds) / 60.0
+			totalSecs += float64(*r.Summary.DurationSeconds)
 			kills += derefInt(r.Self.Kills)
 			deaths += derefInt(r.Self.Deaths)
 			assists += derefInt(r.Self.Assists)
 		}
-		if totalMin <= 0 {
+		if totalSecs <= 0 {
 			continue
 		}
 		dps = append(dps, domain.ChartPointStacked{
 			Category: gt,
 			Components: map[string]float64{
-				"kills_per_min":   float64(kills) / totalMin,
-				"deaths_per_min":  float64(deaths) / totalMin,
-				"assists_per_min": float64(assists) / totalMin,
+				"kills_per_min":   analysis.PerMinute(float64(kills), totalSecs),
+				"deaths_per_min":  analysis.PerMinute(float64(deaths), totalSecs),
+				"assists_per_min": analysis.PerMinute(float64(assists), totalSecs),
 			},
 		})
 	}
