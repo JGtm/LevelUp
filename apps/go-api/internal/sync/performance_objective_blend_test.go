@@ -1,12 +1,76 @@
 package sync
 
+// performance_objective_blend_test.go — la COLLE entre la note de combat de ce paquet et les
+// variantes du paquet objectiveblend, et ses tests. Les variantes sont À L'ÉTUDE : aucun chargeur
+// de production ne pose historyRow.ObjectiveBlend et le batch de notes ne les appelle pas ; la
+// colle ne vit donc que dans les tests (la simulation `research` s'en sert) et sera posée dans le
+// flux de notes à l'étape 7.5. Les variantes elles-mêmes sont dans objectiveblend (le paquet
+// racine sync est gelé par archlint).
+
 import (
 	"math"
 	"testing"
 
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/sync/objectiveblend"
 	"levelup/go-api/internal/sync/skill"
 )
+
+type (
+	objectiveBlendFacts  = objectiveblend.Facts
+	objectiveBlendParams = objectiveblend.Params
+)
+
+// objectiveBlendResult : le résultat des variantes, avec le combat et la note arrondie.
+type objectiveBlendResult struct {
+	objectiveblend.Result
+	// Combat : C, non arrondi.
+	Combat float64
+}
+
+func defaultObjectiveBlendParams() objectiveBlendParams {
+	return objectiveblend.DefaultParams(MinMatchesForRelative)
+}
+
+// profileWithoutObjective rend une copie du profil sans la métrique d'objectif.
+func profileWithoutObjective(weights map[string]float64) map[string]float64 {
+	out := make(map[string]float64, len(weights))
+	for k, w := range weights {
+		if k != MetricKeyObjectiveParticipation {
+			out[k] = w
+		}
+	}
+	return out
+}
+
+// computeObjectiveBlend calcule la note des variantes pour un match : C est le profil de la
+// chaîne SANS la métrique d'objectif, renormalisé ; ok == false hors d'un profil qui porte
+// l'objectif, sous MinMatchesForRelative matchs d'historique ou sans métrique de combat.
+func computeObjectiveBlend(current *historyRow, history []historyRow, weights map[string]float64, p objectiveBlendParams) (objectiveBlendResult, bool) {
+	if _, inProfile := profileWeight(weights, MetricKeyObjectiveParticipation); !inProfile {
+		return objectiveBlendResult{}, false
+	}
+	combat, ok := weightedPercentileMean(current, history, profileWithoutObjective(weights))
+	if !ok {
+		return objectiveBlendResult{}, false
+	}
+	facts := make([]*objectiveblend.Facts, len(history))
+	for i := range history {
+		facts[i] = history[i].ObjectiveBlend
+	}
+	res := objectiveBlendResult{Result: objectiveblend.Compute(combat, current.ObjectiveBlend, facts, p), Combat: combat}
+	res.Score = roundPerfScore(res.Score)
+	return res, true
+}
+
+// objectiveRank classe une valeur à mi-rang parmi un champ des faits de référence.
+func objectiveRank(value float64, facts []*objectiveBlendFacts, field func(*objectiveBlendFacts) float64) float64 {
+	series := make([]float64, len(facts))
+	for i, f := range facts {
+		series[i] = field(f)
+	}
+	return objectiveblend.RankMid(value, series)
+}
 
 // blendHistory fabrique n matchs d'historique à objectif : le combat varie de façon
 // déterministe, l'indice d'objectif et les points d'awards montent ensemble (même ordre
@@ -221,16 +285,16 @@ func TestObjectiveBlend_PartNulleEstLaMoyenneSymetrique(t *testing.T) {
 // partagent le milieu de leur plage (mi-rang).
 func TestObjectiveBlend_IndiceBrutEtMiRang(t *testing.T) {
 	series := []float64{1, 1.25, 1.25, 1.5, 2, 2}
-	if got := percentileRankMid(1.25, series); math.Abs(got-(1+0.5*2)/6*100) > 1e-9 {
+	if got := objectiveblend.RankMid(1.25, series); math.Abs(got-(1+0.5*2)/6*100) > 1e-9 {
 		t.Errorf("mi-rang de 1,25 = %v", got)
 	}
-	if lo, hi := percentileRankMid(1.5, series), percentileRankMid(2, series); !(lo < hi) {
+	if lo, hi := objectiveblend.RankMid(1.5, series), objectiveblend.RankMid(2, series); !(lo < hi) {
 		t.Errorf("1,5 doit se classer sous 2 (%v, %v) : plus d'égalité au plafond", lo, hi)
 	}
-	if got := percentileRankMid(2, series); got >= 100 {
+	if got := objectiveblend.RankMid(2, series); got >= 100 {
 		t.Errorf("deux égalités au sommet ne valent pas 100 : %v", got)
 	}
-	if got := percentileRankMid(3, []float64{1}); got != 50 {
+	if got := objectiveblend.RankMid(3, []float64{1}); got != 50 {
 		t.Errorf("référence d'une valeur : %v, want 50", got)
 	}
 	// Les autres métriques gardent le rang <= : il donnait 100 à toutes les égalités du sommet.
@@ -257,11 +321,11 @@ func withSupport(hist []historyRow) []historyRow {
 // Les faits d'un match viennent de la part de narrative et de la durée, via analysis.PerMinute.
 func TestObjectiveBlendFactsOf_SoutienParMinute(t *testing.T) {
 	share := narrative.ObjectiveTeamShare{Family: narrative.FamilyCTF, RawIndex: 1.4, Share: 0.3, SupportShare: 0.5, SupportPoints: 12}
-	f := objectiveBlendFactsOf(share, 360)
+	f := objectiveblend.FactsOf(share, 360)
 	if f.Family != narrative.FamilyCTF || f.Index != 1.4 || f.Share != 0.3 || f.SupportShare != 0.5 || math.Abs(f.SupportPerMin-2) > 1e-9 {
 		t.Fatalf("faits = %+v, want 12 points sur 6 minutes = 2 par minute", f)
 	}
-	if got := objectiveBlendFactsOf(share, 0).SupportPerMin; got != 0 {
+	if got := objectiveblend.FactsOf(share, 0).SupportPerMin; got != 0 {
 		t.Fatalf("durée inconnue : %v par minute, want 0", got)
 	}
 }
@@ -379,4 +443,30 @@ func mustFacts(hist []historyRow) []*objectiveBlendFacts {
 		}
 	}
 	return out
+}
+
+// V7 : O_sout est la moyenne du rang des points de soutien par minute et du rang de la part de
+// soutien de l'équipe, chacun contre l'historique de la famille.
+func TestObjectiveBlend_V7MoyenneDesDeuxRangsDuSoutien(t *testing.T) {
+	hist := withSupport(blendHistory(40)) // part de soutien de 0,3 partout : 0,9 est au sommet
+	cur := historyRow{Kills: 8, Deaths: 6, TimePlayedSeconds: 600, PersonalScore: 1600, DamageDealt: 3300,
+		ObjectiveBlend: &objectiveBlendFacts{Family: narrative.FamilyCTF, Index: 0.6, Share: 0.1, SupportShare: 0.9, SupportPerMin: 0}}
+	fullCoverage(&cur, 3)
+	v6 := supportParams()
+	v6.ShareRank = true
+	v7 := v6
+	v7.SupportShareRank = true
+	r6, _ := computeObjectiveBlend(&cur, hist, objectiveWeights(), v6)
+	r7, _ := computeObjectiveBlend(&cur, hist, objectiveWeights(), v7)
+	perMin := objectiveRank(0, mustFacts(hist), func(f *objectiveBlendFacts) float64 { return f.SupportPerMin })
+	shareRank := objectiveRank(0.9, mustFacts(hist), func(f *objectiveBlendFacts) float64 { return f.SupportShare })
+	if math.Abs(r6.SupportPercentile-perMin) > 1e-9 || math.Abs(r7.SupportPercentile-(perMin+shareRank)/2) > 1e-9 {
+		t.Fatalf("V6 %v, V7 %v ; rangs %v et %v", r6.SupportPercentile, r7.SupportPercentile, perMin, shareRank)
+	}
+	if r7.Alpha != r6.Alpha || r7.SupportAlpha != r6.SupportAlpha || r7.Percentile != r6.Percentile {
+		t.Errorf("V7 ne change que O_sout : V6 %+v, V7 %+v", r6, r7)
+	}
+	if !(r7.Score > r6.Score) {
+		t.Errorf("une part de soutien au sommet doit monter la note : V6 %v, V7 %v", r6.Score, r7.Score)
+	}
 }

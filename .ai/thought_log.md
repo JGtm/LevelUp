@@ -3,6 +3,18 @@
 - **Décision** : « porteur éliminé » devient un badge sur le frag du même tueur (tolérance 500 ms, un frag ne sert qu'une fois) ; l'assistance de capture nomme ses crédités sur la capture de la même équipe (500 ms) ; `zone_secures` et `zone_captures` ne se confondent pas (mesure), rien de changé. Lignes neuves, famille Objectifs : fin de manche (score de manche de chaque camp, plusieurs manches, horloge sûre), prise et perte du crâne (perte d'un portage fermé seulement), prise de la colline (changement de tenant lu dans les intervalles de `zoneStates` des collines, 2026-11-15 : plus les tics de garde, dont un tiers de lignes étaient des reprises après dispute ; un neutre ou le même camp qui reprend ne fait pas de ligne). Le filtre Objectifs retient aussi le frag badgé.
 - **Résultats** : mesure sur 313 artefacts (CTF 175, Bases 77, colline 48, Oddball 7, autres manches 6) : porteur 1176/1180 à moins d'une image du frag du même tueur ; assistances 514/659 à moins d'une image d'une capture de la même équipe, 123 au même instant qu'une capture de l'équipe adverse ; secures/captures de zone : 3 coïncidences sur 891.
 - **Conclusion** : à relire à l'écran par le user (CTF, Oddball à manches, colline). Découvertes hors périmètre dans le compte rendu de la session.
+## [2026-11-15] Note de performance à objectif : archlint complet, variantes dans un sous-paquet — En cours (branche `feat/c820-note`, non poussée)
+
+- **Décision** : l'archlint complet (rebase sur la release fait) rougissait deux gardes à cause de ce lot : le gel du paquet racine `sync` (80 fichiers pour 78) et l'exclusion de la Campagne du chargeur des lignes d'objectif. Les variantes de note vont dans `internal/sync/objectiveblend` (pur : faits, réglages, rangs à mi-rang, calcul) ; la note relative revient dans `performance.go` ; la colle est dans les tests (rien n'est branché) ; le chargeur exclut la Campagne.
+- **Résultats** : rapport de simulation inchangé (une médiane à 1,25 bascule entre +1,2 et +1,3 : l'ordre de sommation d'une map) ; racine `sync` à 78 fichiers.
+- **Suite** : le user choisit V6 ou V7 ; retrait du code des variantes non retenues ; puis 7.5.
+
+## [2026-11-15] Note de performance à objectif : V7 (O_sout à deux rangs), décomposition des cas gênants — En cours (branche `feat/c820-note`, non poussée)
+
+- **Décision** : le user valide V7 = V6 + O_sout moyenne du rang des points de soutien par minute et du rang de la part de soutien de l'équipe ; symétrique, alpha max 0,50, combat au moins à 50 %, 229. Les variantes non retenues restent en code jusqu'au choix entre V6 et V7.
+- **Résultats** : V7 sur 684 matchs : Arena objectif 51,9 / 16,4 (V6 51,6 / 16,5) ; pire écart en Drapeau -29,0 (V6) -> -16,0 (V7), 24 matchs sous -8 (V6 : 25) ; décomposition : la baisse vient du rang d'objectif bas contre la propre histoire du joueur, pas des morts (JGtm à Shiro : 20 frags, 10 morts, FDA 10,3, C 77,4, O_obj 1,9).
+- **Suite** : le user choisit V6 ou V7, puis retrait du code des variantes non retenues et 7.5.
+
 ## [2026-11-15] Note de performance à objectif : V3 rejetée, base V2, variantes V5 (soutien) et V6 (V5 + part) simulées — En cours (branche `feat/c820-note`, non poussée)
 
 - **Décision** : le user rejette V3 (elle abaisse les escortes) et retient V2 (symétrique, alpha max 0,50, indice brut, mi-rang, 229). V5 : mesure d'objectif propre au soutien (points de soutien par minute, frags à poids 0,5, rang à mi-rang dans la famille), alpha_sout = 0,38 x part du soutien, somme des alphas plafonnée à 0,50 ; V6 : V5 avec O_obj = moyenne du rang de l'indice et du rang de la part. Aucune règle à sens unique. Variantes non branchées, révisions intactes.

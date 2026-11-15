@@ -11,8 +11,9 @@ package sync
 // matchs par chaîne, même seuil de 10 matchs) et, pour chaque match d'une chaîne à objectif,
 // compare la note actuelle (recalculée par le code) aux variantes de simVariants, toutes
 // SYMÉTRIQUES, sur la base retenue V2 ((1 - alpha) C + alpha O, indice brut, mi-rang, 229 points
-// de vie) : V5 (V2 + le soutien, mesuré à part du temps de port), V6 (V5 + O_obj moyenne du rang
-// de l'indice et du rang de la part). Le rapport (tableaux Markdown) est écrit par
+// de vie) : V6 (V2 + le soutien propre, mesuré à part du temps de port, et O_obj moyenne du rang
+// de l'indice et du rang de la part), V7 (V6 + O_sout moyenne du rang des points de soutien par
+// minute et du rang de la part de soutien). Le rapport (tableaux Markdown) est écrit par
 // simWriteReport (performance_objective_simulation_report_research_test.go).
 //
 // Lancement (depuis apps/go-api) :
@@ -37,6 +38,7 @@ import (
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/ctxkeys"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/objectiveblend"
 	"levelup/go-api/internal/sync/skill"
 )
 
@@ -52,23 +54,25 @@ type simVariant struct {
 
 func simVariants() []simVariant {
 	v2 := defaultObjectiveBlendParams()
-	v5 := v2
-	v5.UseSupport = true
-	v6 := v5
-	v6.ShareRank = true
-	return []simVariant{{"V2", v2}, {"V5", v5}, {"V6", v6}}
+	v6 := v2
+	v6.UseSupport, v6.ShareRank = true, true
+	v7 := v6
+	v7.SupportShareRank = true
+	return []simVariant{{"V2", v2}, {"V6", v6}, {"V7", v7}}
 }
 
 // simOut : la note d'un match sous un réglage, avec son détail.
 type simOut struct {
 	Score, Combat, Alpha, Pct, Part float64
-	Has, FamilyScope                bool
+	// AlphaSup, PctSup : le poids et le rang du soutien (V6 et V7).
+	AlphaSup, PctSup float64
+	Has, FamilyScope bool
 }
 
 // simRecord : un match à objectif d'un joueur suivi, sous tous les réglages.
 type simRecord struct {
 	Player, MatchID, Start, Map, Pair, Chain string
-	Kills, Deaths, Assists                   float64
+	Kills, Deaths, Assists, KDA              float64
 	Team                                     int
 	Stored                                   float64
 	HasStored                                bool
@@ -173,7 +177,7 @@ func simFacts(matches []historyRow, rows map[string][]narrative.ObjectiveTeamRow
 			continue
 		}
 		shares[matches[i].MatchID] = share
-		matches[i].ObjectiveBlend = objectiveBlendFactsOf(share, matches[i].TimePlayedSeconds)
+		matches[i].ObjectiveBlend = objectiveblend.FactsOf(share, matches[i].TimePlayedSeconds)
 	}
 	return shares
 }
@@ -231,7 +235,7 @@ func simBlend(p objectiveBlendParams) func(*historyRow, []historyRow, map[string
 		if !ok {
 			return simOut{}, false
 		}
-		return simOut{Score: r.Score, Combat: r.Combat, Alpha: r.Alpha, Pct: r.Percentile, Part: r.Part,
+		return simOut{Score: r.Score, Combat: r.Combat, Alpha: r.Alpha, Pct: r.Percentile, Part: r.Part, AlphaSup: r.SupportAlpha, PctSup: r.SupportPercentile,
 			Has: r.HasObjective, FamilyScope: r.FamilyScope}, true
 	}
 }
@@ -337,7 +341,7 @@ func simPlayer(t *testing.T, env *simEnv, gt, xuid string, player *sql.DB) []sim
 		}
 		for _, h := range all {
 			if h.MatchID == id {
-				rec.Chain, rec.Kills, rec.Deaths, rec.Assists = h.Chain, h.Kills, h.Deaths, h.Assists
+				rec.Chain, rec.Kills, rec.Deaths, rec.Assists, rec.KDA = h.Chain, h.Kills, h.Deaths, h.Assists, h.KDA
 				break
 			}
 		}

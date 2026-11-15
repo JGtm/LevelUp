@@ -16,12 +16,14 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/platform/duckdb/sqlfrag"
 )
 
 // LoadObjectiveTeamRowsForPlayer retourne, par match, les lignes d'objectif de tous les
 // participants des matchs où `xuid` a joué. Lecture par la vue `_latest` UNIQUEMENT (ADR
 // 0026). Une base sans la vue (titre sans match_objective_stats, Halo 5) rend une map vide et
-// aucune erreur : la métrique est alors absente de la note, jamais un échec.
+// aucune erreur : la métrique est alors absente de la note, jamais un échec. Les matchs de la
+// Campagne sont exclus, comme dans le chargement des notes (loadHistoryForPerf).
 func LoadObjectiveTeamRowsForPlayer(ctx context.Context, sharedDB *sql.DB, xuid string) (map[string][]narrative.ObjectiveTeamRow, error) {
 	out := map[string][]narrative.ObjectiveTeamRow{}
 	if xuid == "" {
@@ -51,6 +53,7 @@ func LoadObjectiveTeamRowsForPlayer(ctx context.Context, sharedDB *sql.DB, xuid 
 		FROM match_objective_stats_latest o
 		JOIN match_participants mp ON mp.match_id = o.match_id AND mp.xuid = o.xuid
 		WHERE o.match_id IN (SELECT match_id FROM match_participants WHERE xuid = ?)`)
+	sb.WriteString(sqlfrag.SQLExcludeCampaignByMatchIDCtx(ctx, "o.match_id"))
 
 	rows, err := sharedDB.QueryContext(ctx, sb.String(), xuid)
 	if err != nil {

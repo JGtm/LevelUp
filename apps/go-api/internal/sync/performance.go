@@ -16,6 +16,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/sync/objectiveblend"
 )
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -56,11 +57,9 @@ type historyRow struct {
 	// redistribué) ; 0 = match couvert dont le joueur n'a fait aucune action
 	// d'objectif (valeur légitime, qui doit être classée par percentile).
 	ObjectiveScore *float64
-	// ObjectiveBlend : indice d'objectif par famille de mode et part de l'équipe du
-	// match (variante de note à l'étude, performance_objective_blend.go — aucun
-	// chargeur de production ne le pose). nil = absent (titre sans
-	// match_objective_stats, match sans bloc d'objectif).
-	ObjectiveBlend *objectiveBlendFacts
+	// ObjectiveBlend : faits d'objectif du match pour les variantes de note à l'étude (paquet
+	// objectiveblend ; aucun chargeur de production ne le pose). nil = absent.
+	ObjectiveBlend *objectiveblend.Facts
 	// Chain est la chaîne de score de performance dérivée via GetPerformanceChain
 	// (pair_name + flags is_ranked/is_firefight). Toujours non vide.
 	Chain string
@@ -189,26 +188,6 @@ func percentileRank(value float64, series []float64) float64 {
 	return clampF(float64(count)/float64(len(series))*100.0, 0, 100)
 }
 
-// percentileRankMid calcule le percentile d'une valeur à MI-RANG : les valeurs strictement
-// inférieures comptent pour 1, les égales pour 1/2. Sur des égalités (indice d'objectif
-// identique), percentileRank (<=) rendrait le rang le plus haut à tous ; ici elles se
-// partagent le milieu de leur plage. Moins de deux valeurs : 50.
-func percentileRankMid(value float64, series []float64) float64 {
-	if len(series) < 2 {
-		return 50.0
-	}
-	var below, equal float64
-	for _, v := range series {
-		switch {
-		case v < value:
-			below++
-		case v == value:
-			equal++
-		}
-	}
-	return clampF((below+equal/2)/float64(len(series))*100.0, 0, 100)
-}
-
 // percentileRankInverse calcule le percentile inversé (moins = mieux).
 func percentileRankInverse(value float64, series []float64) float64 {
 	if len(series) < 2 {
@@ -221,6 +200,100 @@ func percentileRankInverse(value float64, series []float64) float64 {
 		}
 	}
 	return clampF(float64(count)/float64(len(series))*100.0, 0, 100)
+}
+
+// standardPerfMetrics : métriques « plus = mieux », classées par percentile direct (dpm_deaths et
+// rank_perf ont leur traitement). SUPERSET des chaînes : le profil de poids de la chaîne
+// (WeightsForChain) décide lesquelles comptent — ospm n'est qu'aux chaînes de famille objectif.
+var standardPerfMetrics = []string{
+	MetricKeyKPM, MetricKeyAPM, MetricKeyKDA, MetricKeyAccuracy, MetricKeyPSPM, MetricKeyDPMDamage,
+	MetricKeyKillsVsExpected, MetricKeyDeathsVsExpected,
+	MetricKeyOffensiveConv, MetricKeyDefensiveResist, MetricKeyMedalExploit,
+	MetricKeyObjectiveParticipation,
+}
+
+// computeRelativePerformanceScore calcule le score 0-100 d'un match contre l'historique du
+// joueur. `weights` est le profil de poids de la CHAÎNE (WeightsForChain) : une métrique hors
+// profil n'est ni calculée ni comptée dans la renormalisation (c'est ce qui réserve ospm aux
+// chaînes de famille objectif).
+func computeRelativePerformanceScore(current *historyRow, history []historyRow, weights map[string]float64) *float64 {
+	score, ok := weightedPercentileMean(current, history, weights)
+	if !ok {
+		return nil
+	}
+	score = roundPerfScore(score)
+	return &score
+}
+
+// roundPerfScore arrondit une note au dixième : l'arrondi unique de la note stockée.
+func roundPerfScore(score float64) float64 { return math.Round(score*10) / 10 }
+
+// weightedPercentileMean est la note NON ARRONDIE : la moyenne des percentiles des
+// métriques du profil `weights`, pondérée par leurs poids et renormalisée par la somme
+// des poids RETENUS. ok == false sous MinMatchesForRelative matchs d'historique, ou si
+// aucune métrique du profil n'est calculable.
+func weightedPercentileMean(current *historyRow, history []historyRow, weights map[string]float64) (float64, bool) {
+	if len(history) < MinMatchesForRelative {
+		return 0, false
+	}
+	metrics := extractMatchMetrics(current)
+	if metrics == nil {
+		return 0, false
+	}
+	histMetrics := prepareHistoryMetrics(history)
+	percentiles, weightsUsed := collectWeightedPercentiles(metrics, histMetrics, weights)
+	if len(percentiles) == 0 {
+		return 0, false
+	}
+	totalWeight := 0.0
+	for _, w := range weightsUsed {
+		totalWeight += w
+	}
+	if totalWeight <= 0 {
+		return 0, false
+	}
+	score := 0.0
+	for k, p := range percentiles {
+		score += p * weightsUsed[k]
+	}
+	return score / totalWeight, true
+}
+
+// collectWeightedPercentiles classe le match dans son historique, métrique par métrique (celles
+// du profil de sa chaîne) ; rend les percentiles et poids retenus, l'appelant renormalise.
+func collectWeightedPercentiles(m *matchMetrics, hist map[string][]float64, weights map[string]float64) (map[string]float64, map[string]float64) {
+	percentiles := make(map[string]float64, len(weights))
+	weightsUsed := make(map[string]float64, len(weights))
+
+	// Métriques standard (plus = mieux).
+	for _, key := range standardPerfMetrics {
+		if w, inProfile := profileWeight(weights, key); inProfile {
+			addStandardPercentile(m, hist, key, w, percentiles, weightsUsed)
+		}
+	}
+
+	// Métrique inversée : dpm_deaths (moins = mieux).
+	if w, inProfile := profileWeight(weights, MetricKeyDPMDeaths); inProfile {
+		if series := hist[MetricKeyDPMDeaths]; len(series) > 0 {
+			percentiles[MetricKeyDPMDeaths] = percentileRankInverse(m.DPMDeaths, series)
+			weightsUsed[MetricKeyDPMDeaths] = w
+		}
+	}
+
+	// Rank performance (optionnel).
+	if w, inProfile := profileWeight(weights, MetricKeyRankPerf); inProfile {
+		addRankPercentile(m, hist, w, percentiles, weightsUsed)
+	}
+	return percentiles, weightsUsed
+}
+
+// profileWeight rend le poids d'une métrique dans le profil de la chaîne courante.
+// inProfile=false quand la métrique n'y figure pas (cas d'ospm hors famille
+// objectif) ou qu'elle y porte un poids nul : elle n'est alors ni calculée ni
+// comptée dans la renormalisation.
+func profileWeight(weights map[string]float64, key string) (float64, bool) {
+	w, inProfile := weights[key]
+	return w, inProfile && w != 0
 }
 
 // computeRankPerformance calcule le percentile de rank_perf_diff.
