@@ -16,6 +16,7 @@
 import type { ReplayVehicleRide } from '@/lib/api/types'
 
 import { drawExplosion, EXPLOSION_MS } from './explosionFx'
+import type { FocusFilter } from '../model/focusFilter'
 import type { FxInk } from './fxInk'
 import { drawOffscreenChevron, drawOffscreenLabel } from './offscreenChevron'
 import { project, viewScale, type PlacementView } from './placementShapes'
@@ -190,6 +191,11 @@ export interface VehicleStyle {
   /** Sous « mouvement réduit », l'explosion de destruction ne se joue pas (même contrat que
    *  `explosionFx.ExplosionShape.reduced` et `GrenadeRestStyle.reducedMotion`). */
   reducedMotion: boolean
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : le véhicule, ses occupants nommés et son explosion de destruction.
+   * Un véhicule vide n'est à personne et se dessine toujours. Absent = tout se dessine.
+   */
+  shown?: Pick<FocusFilter, 'vehicleAt' | 'occupant' | 'vehicleDestruction'>
 }
 
 /** Écart entre deux noms empilés, en pixels d'écran (police partagée avec `replayLabels.ts`). */
@@ -534,7 +540,7 @@ export function drawVehiclesLayer(
     // échappe. LE DÉCOR DE CARTE (véhicule posé, jamais simulé) est masqué de même
     // (décision utilisateur du 2026-09-23, Q13) : `vehicleIsHidden` réunit les deux refus.
     if (vehicleIsHidden(track)) continue
-    if (vehicleVisibleAt(track, time.frame)) {
+    if (vehicleVisibleAt(track, time.frame) && (!style.shown || style.shown.vehicleAt(track, time.frame))) {
       const world = vehiclePositionAt(track, time.frame)
       if (world) {
         // BORNAGE HORS CADRE (plan escouade hors cadre, lot 4.4, 2026-09-10 — découverte du
@@ -552,7 +558,9 @@ export function drawVehiclesLayer(
         // LES OCCUPANTS SONT LUS UNE FOIS pour les deux calques qui les consomment (cônes puis
         // noms) : `vehicleActiveRides` trie, filtre et alloue — l'appeler deux fois par véhicule
         // et par image serait un doublon de travail autant qu'un doublon de source.
-        const rides = vehicleActiveRides(track, time.frame)
+        const rides = vehicleActiveRides(track, time.frame).filter(
+          (r) => !style.shown || style.shown.occupant(r, time.frame),
+        )
         drawVehicleAimCones(ctx, track, rides, time, style, c)
         // ÉDGE PAR DÉFAUT (chassis non résolu, ou vignette pas encore chargée) : le plancher de
         // lisibilité, seule mesure disponible avant qu'une taille réelle ne soit connue. TOUJOURS
@@ -617,7 +625,7 @@ export function drawVehiclesLayer(
     // `end: "unknown"` — aujourd'hui, systématiquement. Voir l'en-tête de fonction pour l'ordre
     // peintre et l'indépendance vis-à-vis de la visibilité ci-dessus.
     const destroyedFrame = vehicleDestructionFrame(track)
-    if (destroyedFrame !== null) {
+    if (destroyedFrame !== null && (!style.shown || style.shown.vehicleDestruction(track, destroyedFrame))) {
       drawVehicleDestructionFx(ctx, track, destroyedFrame, time, view, style)
     }
   }

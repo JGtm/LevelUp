@@ -147,3 +147,56 @@ describe('porteur, VIP, auteur d’une action — le xuid du document', () => {
     expect(f.author('A')).toBe(false)
   })
 })
+
+describe('véhicules — leurs occupants', () => {
+  const rides = (...slots: number[]) =>
+    slots.map((slot, i) => ({ t0: 0, t1: 100, slot, seat: i, src: 'event', aim: [] }))
+  const vehicule = (...slots: number[]) => ({ slot: 700, rides: rides(...slots) }) as never
+
+  it('un véhicule où le joueur est monté : Seul le garde, Masquer le retire quand il est seul à bord', () => {
+    const { filter } = harness()
+    expect(filter('solo').vehicleAt(vehicule(1), 20)).toBe(true)
+    expect(filter('hide').vehicleAt(vehicule(1), 20)).toBe(false)
+  })
+
+  it('un véhicule d’un autre : Seul le retire, Masquer le garde', () => {
+    const { filter } = harness()
+    expect(filter('solo').vehicleAt(vehicule(2), 20)).toBe(false)
+    expect(filter('hide').vehicleAt(vehicule(2), 20)).toBe(true)
+  })
+
+  it('PARTAGÉ : Seul le garde dès que le joueur est à bord ; Masquer ne l’emporte pas avec son co-occupant', () => {
+    const { filter } = harness()
+    expect(filter('solo').vehicleAt(vehicule(2, 1), 20)).toBe(true)
+    expect(filter('hide').vehicleAt(vehicule(2, 1), 20)).toBe(true)
+  })
+
+  it('un véhicule VIDE n’est à personne : il reste', () => {
+    const { filter } = harness()
+    expect(filter('solo').vehicleAt(vehicule(), 20)).toBe(true)
+    expect(filter('hide').vehicleAt(vehicule(), 20)).toBe(true)
+  })
+
+  it('l’occupant nommé : à lui seul, y compris dans un véhicule partagé', () => {
+    const { filter } = harness()
+    expect(filter('hide').occupant({ slot: 1 }, 20)).toBe(false)
+    expect(filter('hide').occupant({ slot: 2 }, 20)).toBe(true)
+    expect(filter('solo').occupant({ slot: 2 }, 20)).toBe(false)
+  })
+
+  it('l’occupant se reconnaît aussi par le xuid que le document lui donne', () => {
+    const { filter } = harness()
+    expect(filter('hide').occupant({ slot: 99, xuid: 'A' }, 20)).toBe(false)
+  })
+
+  it('l’explosion est à ceux qui étaient à bord ET à celui qui a détruit', () => {
+    const { filter } = harness()
+    const detruit = (by?: string) =>
+      ({ slot: 700, rides: rides(2), destruction: by ? { by: { i: 0, xuid: by }, killed: [] } : { killed: [] } }) as never
+    expect(filter('hide').vehicleDestruction(detruit(), 20)).toBe(true)
+    expect(filter('hide').vehicleDestruction(detruit('A'), 20)).toBe(false)
+    expect(filter('solo').vehicleDestruction(detruit('A'), 20)).toBe(true)
+    expect(filter('solo').vehicleDestruction(detruit(), 20)).toBe(false)
+    expect(filter('hide').vehicleDestruction({ slot: 700, rides: rides(1) } as never, 20)).toBe(false)
+  })
+})

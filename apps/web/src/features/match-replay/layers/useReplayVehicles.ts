@@ -55,7 +55,7 @@ import {
 } from '../model/vehicleSpriteManifest'
 import { buildEmbarkedPredicate, vehicleIsDecor, vehicleIsHidden } from '../model/vehiclesLayer'
 import { drawVehicleCyclesLayer, vehicleCycleIndexAt } from './vehicleCyclesLayer'
-import { drawVehiclesLayer, type VehicleSpriteSize } from './vehiclesPaint'
+import { drawVehiclesLayer, type VehicleSpriteSize, type VehicleStyle } from './vehiclesPaint'
 
 export interface VehiclesInput {
   doc: ReplayDocumentReady
@@ -125,6 +125,11 @@ export interface VehiclesInput {
   reducedMotion: boolean
   /** Repeindre la scène : les vignettes et le manifeste arrivent après coup (chargement async). */
   redraw: () => void
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : retire du TRACÉ les véhicules de ceux qu'on masque (ou qui ne sont
+   * pas celui qu'on isole). Le prédicat embarqué et les emplacements de naissance n'en dépendent pas.
+   */
+  shown?: VehicleStyle['shown']
 }
 
 /**
@@ -200,6 +205,7 @@ export function useReplayVehicles({
   markInk,
   explosionInk,
   reducedMotion,
+  shown,
   redraw,
 }: VehiclesInput): Vehicles {
   const titleSlug = useTitleSlug()
@@ -407,7 +413,7 @@ export function useReplayVehicles({
         {
           neutralInk, mapElementInk, labelStroke, showNames, showAim, spriteOf, sizeOf, kindOf,
           labelOfFamily, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf,
-          explosionInk, reducedMotion,
+          explosionInk, reducedMotion, shown,
         },
       )
       // LES EMPLACEMENTS DE NAISSANCE APRÈS LES VÉHICULES, et dans le même geste : ils suivent la
@@ -431,7 +437,7 @@ export function useReplayVehicles({
     [
       enabled, tracks, view, neutralInk, mapElementInk, labelStroke, showNames, showAim, spriteOf, sizeOf, kindOf,
       labelOfFamily, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf,
-      frameMs, explosionInk, reducedMotion,
+      frameMs, explosionInk, reducedMotion, shown,
       cycles, livesOf, markInk.fill, markInk.outline, t.padCountdownFmt,
     ],
   )

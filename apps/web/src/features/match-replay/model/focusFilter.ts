@@ -11,7 +11,11 @@
  * prédicat par genre d'élément et n'embarque aucune règle. Les calques de pions (pistes, tirs, traces des
  * vies, projectiles) gardent `shownAtSlot` : ils portent déjà un slot et une image dans la vie de leur auteur.
  */
-import type { ReplayEquipmentPlacement, ReplayGroundWeapon } from '@/lib/api/types'
+import type {
+  ReplayEquipmentPlacement,
+  ReplayGroundWeapon,
+  ReplayVehicleRide,
+} from '@/lib/api/types'
 
 import type { KillFxEntry } from './killFx'
 import { lifeSlotAt } from './livesMarks'
@@ -19,10 +23,12 @@ import { buildLivesBySlot } from './livesPosition'
 import {
   killFxShown,
   ownershipShown,
+  partyOf,
   type ElementParty,
   type PlayerFocus,
 } from './playerPanelLogic'
-import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import { vehicleActiveRides } from './vehiclesLayer'
+import type { ReplayDocumentReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 
 /** Un prédicat par genre d'élément : vrai = l'élément se dessine. */
 export interface FocusFilter {
@@ -41,6 +47,19 @@ export interface FocusFilter {
    * révélée, lue à `frame` ; `owner` le poseur, lu à l'image de sa pose (`ownerFrame`).
    */
   reveal: (r: { owner: number; ownerFrame: number; slot: number }, frame: number) => boolean
+  /**
+   * Un véhicule à une image : il est à ses OCCUPANTS, partagé entre eux. Seul le garde dès que le joueur y est
+   * monté ; Masquer ne le retire que si le joueur en est l'unique occupant (sinon il emporterait un co-occupant
+   * que l'utilisateur n'a pas masqué). Un véhicule vide n'est à personne : il reste.
+   */
+  vehicleAt: (track: ReplayVehicleTrackReady, frame: number) => boolean
+  /** Un occupant à une image (son nom, son cône de visée) : à lui seul. */
+  occupant: (ride: Pick<ReplayVehicleRide, 'slot' | 'xuid'>, frame: number) => boolean
+  /**
+   * L'explosion d'un véhicule détruit : un effet, comme une mort. Elle est à ceux qui étaient à bord à cet
+   * instant ET au joueur qui l'a détruit.
+   */
+  vehicleDestruction: (track: ReplayVehicleTrackReady, frame: number) => boolean
 }
 
 /**
@@ -57,6 +76,15 @@ function slotParty(
   if (slot < 0) return null
   const life = lifeSlotAt(bySlot.get(slot), frame, Number.POSITIVE_INFINITY)
   return life ? { life } : null
+}
+
+/** La partie d'un occupant : sa vie (slot lu à l'image) et le xuid que le document lui donne. */
+function occupantParty(
+  bySlot: ReturnType<typeof buildLivesBySlot>,
+  ride: Pick<ReplayVehicleRide, 'slot' | 'xuid'>,
+  frame: number,
+): ElementParty | null {
+  return partyOf(slotParty(bySlot, ride.slot, frame)?.life, ride.xuid)
 }
 
 function present(...parties: Array<ElementParty | null>): ElementParty[] {
@@ -81,6 +109,17 @@ export function buildFocusFilter(
     placement: (p) => shown(present(slotParty(bySlot, p.owner, p.t0))),
     slotAt: (slot, frame) => shown(present(slotParty(bySlot, slot, frame))),
     author: (xuid) => shown([{ xuid }]),
+    vehicleAt: (track, frame) =>
+      shown(present(...vehicleActiveRides(track, frame).map((r) => occupantParty(bySlot, r, frame))), true),
+    occupant: (ride, frame) => shown(present(occupantParty(bySlot, ride, frame))),
+    vehicleDestruction: (track, frame) =>
+      shown(
+        present(
+          ...vehicleActiveRides(track, frame).map((r) => occupantParty(bySlot, r, frame)),
+          partyOf(undefined, track.destruction?.by?.xuid),
+          partyOf(undefined, track.destruction?.occupant),
+        ),
+      ),
     reveal: (r, frame) =>
       shown(present(slotParty(bySlot, r.owner, r.ownerFrame), slotParty(bySlot, r.slot, frame))),
   }

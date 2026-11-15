@@ -411,7 +411,7 @@ export function ReplayCanvas({
     colorOfXuid, nameOfSlot, nameOfXuid,
     offscreenLabelOf: (name, meters) => REPLAY_TEXT[locale].offscreenMarkerFmt(name, meters),
     offscreenGroupLabelOf: (n, meters) => REPLAY_TEXT[locale].offscreenGroupMarkerFmt(n, meters),
-    neutralInk, mapElementInk: zoneInk.fill, labelStroke, markInk, explosionInk: fxInk, reducedMotion, redraw, frameRef,
+    neutralInk, mapElementInk: zoneInk.fill, labelStroke, markInk, explosionInk: fxInk, reducedMotion, redraw, frameRef, shown: focusShown,
   }) // schéma 39 ; prédicat embarqué C7 ; cône du conducteur + nom ET couleur par xuid (2026-09-02) ; explosion de destruction (2026-09-03, en avance de phase).
   // LES TRACES DES VIES (apparitions, morts, tueurs) : marques bâties une fois, filtre qui / quand des réglages.
   const lives = useReplayLives({
