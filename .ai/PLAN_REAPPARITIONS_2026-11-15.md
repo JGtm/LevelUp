@@ -216,6 +216,11 @@ Gate D : tests verts, garde-rails du rejeu verts, contrôle à l'écran du user 
 - Reprise de session : cocher les cases ici, une entrée au `thought_log.md` à chaque lot clos.
 - Notes de version et changelog FR/EN dans le même envoi que chaque lot visible (B, C, D).
 
+- Lot A envoyé sur `release/v8.2.0` le 2026-11-15 AVANT la montée du décodeur v1.3.9, à la demande du
+  user (« tu peux continuer ? ») : la voie de repli suffit à ouvrir le lot B ; le câblage de la lecture du
+  film (A.1, A.8) se fait dans un envoi à part dès la montée poussée. Le rattrapage v7 de la prod ne se lance
+  qu'après ce câblage et la régénération (geste G7).
+
 ## 8. Découvertes (hors périmètre, consignées sans être traitées)
 
 - Retirer la jointure Go `JoindreDebutsDeCompte` (index film -> xuid par `identity.players[].filmIndex`)
