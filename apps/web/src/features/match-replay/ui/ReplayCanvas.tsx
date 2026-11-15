@@ -351,6 +351,7 @@ export function ReplayCanvas({
     mode: heatmapMode,
     span: heatmapSpan,
     frameRef,
+    shown: focusShown,
   })
 
   // LE REDESSIN, PAR RÉFÉRENCE : les calques statiques doivent pouvoir repeindre la scène

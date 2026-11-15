@@ -8,8 +8,9 @@
  * Ce qu'ils protègent :
  *  1. SANS PRÉDICAT, RIEN NE CHANGE : le dessin est celui d'avant.
  *  2. UN SLOT FILTRÉ N'ÉCRIT PLUS RIEN, un autre slot dessine comme avant.
- *  3. LA CROIX DE MORT N'EST PAS FILTRÉE : une mort est un événement du match, elle reste
- *     visible même quand le joueur est masqué — et celles des autres quand on est en Seul.
+ *  3. LA CROIX DE MORT SUIT SA VICTIME : masquée avec le joueur qui meurt, absente de la carte d'un
+ *     autre joueur isolé, présente pour les autres vies — une mort n'est plus un événement du match
+ *     que Seul et Masquer épargnent (règle du 2026-11-15).
  */
 import { describe, expect, it } from 'vitest'
 
@@ -71,13 +72,25 @@ describe('pistes — drawTracksLayer', () => {
     expect(seen).toEqual([[512, 50]])
   })
 
-  it('la CROIX DE MORT reste dessinée : une mort est un événement, jamais filtrée', () => {
+  describe('la CROIX DE MORT suit sa victime', () => {
     // Vie close à l'image 40 ; à l'image 50 la croix survit (fenêtre de 20 images).
     const morte = vie({ endFrame: 40, points: [{ t: 30, x: 5, y: 5, z: 0, h: 90 }, { t: 40, x: 5, y: 5, z: 0, h: 90 }] })
-    const sans = pistes([morte], {})
-    const filtre = pistes([morte], { shownAtSlot: () => false })
-    expect(sans.length).toBeGreaterThan(0)
-    expect(filtre.length).toBe(sans.length)
+
+    it('sans prédicat elle se dessine ; filtrée elle ne laisse aucun tracé', () => {
+      expect(pistes([morte], {}).filter((o) => o.op === 'stroke').length).toBeGreaterThan(0)
+      expect(pistes([morte], { shownAtSlot: HIDE_512 }).filter((o) => o.op === 'stroke')).toEqual([])
+    })
+
+    it('la croix d’un autre slot se dessine comme avant', () => {
+      const normal = pistes([{ ...morte, slot: 7 }], {})
+      expect(pistes([{ ...morte, slot: 7 }], { shownAtSlot: HIDE_512 }).length).toBe(normal.length)
+    })
+
+    it('le prédicat est lu à la dernière image de la vie qu’elle termine, pas à l’image courante', () => {
+      const vus: Array<[number, number]> = []
+      pistes([morte], { shownAtSlot: (slot, frame) => { vus.push([slot, frame]); return true } })
+      expect(vus).toEqual([[512, 40]])
+    })
   })
 })
 

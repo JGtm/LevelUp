@@ -2,12 +2,13 @@
  * useReplayPlayerFocus — CE QUE LE PANNEAU DE JOUEUR FAIT À LA CARTE, câblé au canvas en un point
  * (lot 4 du plan « maquettes du rejeu »).
  *
- * Trois actions, deux effets. SEUL et MASQUER filtrent le dessin : le hook rend le prédicat
- * `shownAtSlot` que le canvas passe aux calques des éléments propres au joueur (pistes, marques de
- * tir, éclairs de bouche, sillage du propulseur, fins de vol de grenade) et `shownProjectile` pour
- * les vols de projectile ; `undefined` quand rien n'est filtré, pour que les calques gardent
- * exactement leur dessin d'avant. SUIVRE cadre la carte sur le joueur à chaque
- * image (`useReplayFollow`).
+ * Trois actions, deux effets. SEUL et MASQUER valent pour TOUS les calques : ce qui appartient à un joueur
+ * (pion, tirs, croix et effets de mort, poses, véhicules occupés, objets portés…) suit ; ce qui n'est à
+ * personne reste. Le hook rend le prédicat `shownAtSlot` que le canvas passe aux calques de pions (pistes,
+ * marques de tir, éclairs de bouche, sillage du propulseur, fins de vol de grenade), `shownProjectile` pour
+ * les vols de projectile et `shown` (un prédicat par genre d'élément) pour le reste ; `undefined` quand rien
+ * n'est filtré, pour que les calques gardent exactement leur dessin d'avant. SUIVRE cadre la carte sur le
+ * joueur à chaque image (`useReplayFollow`).
  *
  * LE POINT DE VUE N'EST PAS TOUCHÉ (`useReplayViewpoint`) : ces actions ne décident ni de l'encre
  * de camp, ni du roster, ni de la frise — elles ne changent que ce que la carte dessine et où elle
@@ -41,8 +42,7 @@ export interface ReplayPlayerFocusLayers {
    * Faux = le projectile d'index `i` de `doc.projectiles` (vol de grenade ou de tir) est retiré :
    * son auteur est écarté. Seul ne garde que ce qui est PROUVÉ au joueur (un projectile sans auteur
    * connu est retiré) ; Masquer ne retire que ce qui est PROUVÉ à lui (sans auteur connu, il reste).
-   * Les véhicules ne passent pas par là : ils peuvent porter d'autres joueurs. `undefined` = rien
-   * n'est filtré.
+   * `undefined` = rien n'est filtré.
    */
   shownProjectile: ((index: number) => boolean) | undefined
   /**

@@ -22,8 +22,9 @@ import {
   type HeatmapMode,
   type HeatmapSpan,
 } from '../../../lib/replay/heatPaint'
+import type { FocusFilter } from '../model/focusFilter'
 import type { KillFxEntry } from '../model/killFx'
-import { msToFrames } from '../../../lib/replay/replayLogic'
+import { msToFrames, trackWindow } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 
 /**
@@ -68,6 +69,13 @@ export interface ReplayHeatmapSettings {
    * vient donc la LIRE, et seulement quand la portée `live` est demandée.
    */
   frameRef: RefObject<number>
+  /**
+   * SEUL ET MASQUER (panneau de joueur) : la chaleur est refaite sur ce qui reste. La PRÉSENCE ne compte que les
+   * vies affichées (chaque vie est à son joueur), les ÉLIMINATIONS que les morts affichées (tueur et victime).
+   * La disponibilité de la lecture « éliminations » reste celle du match entier : l'option ne disparaît pas
+   * parce que le joueur isolé n'a pas de mort. Absent = tout le match.
+   */
+  shown?: Pick<FocusFilter, 'killFx' | 'slotAt'>
 }
 
 /**
@@ -132,13 +140,28 @@ export function useReplayHeatmap(
   const killsAvailable = deaths.length > 0
   const mode: HeatmapMode = killsAvailable ? settings.mode : 'presence'
 
+  // CE QUI SE DÉPOSE SUR LA GRILLE : les lieux de mort et les vies que le filtre garde.
+  const { shown } = settings
+  const shownDeaths = useMemo(() => {
+    if (!shown) return deaths
+    const out: HeatDeath[] = []
+    for (const e of killFx) {
+      if (e.deathX !== null && e.deathY !== null && shown.killFx(e)) out.push({ x: e.deathX, y: e.deathY, frame: e.frame })
+    }
+    return out
+  }, [shown, deaths, killFx])
+  const shownDoc = useMemo(
+    () => (shown ? { ...doc, tracks: doc.tracks.filter((t) => shown.slotAt(t.slot, trackWindow(t).start)) } : doc),
+    [shown, doc],
+  )
+
   // Cuite UNE fois par document et par lecture (patron `buildShotFx`), et seulement quand
   // le calque est allumé : c'est le calcul le plus lourd de la page (mesuré à 7 ms sur une
   // arène, 19 ms sur une carte BTB, pour 72 000 positions).
   const until = useLiveFrameBucket(doc, settings)
   const grid = useMemo(
-    () => (settings.show ? buildHeatmap(doc, bounds, mode, deaths, until ?? undefined) : null),
-    [settings.show, doc, bounds, mode, deaths, until],
+    () => (settings.show ? buildHeatmap(shownDoc, bounds, mode, shownDeaths, until ?? undefined) : null),
+    [settings.show, shownDoc, bounds, mode, shownDeaths, until],
   )
 
   // La rampe est précalculée PAR THÈME, jamais par cellule : 64 paliers indexés au dessin.

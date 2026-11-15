@@ -35,6 +35,18 @@ describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque él
     ['vols de projectile (grenades, tirs)', /drawProjectilesLayer\([^;]*?shownProjectile,?\s*\)/],
     ['fins de vol des grenades', /useReplayGrenadeRest\(\{[^}]*shownAtSlot[^}]*\}\)/],
     ['mise en valeur d’une élimination', /useReplayKillFocus\(\{[^}]*shownAtSlot[^}]*\}\)/],
+    ['effets de mort', /drawKillFxLayer\([^;]*?shown: focusShown\?\.killFx/],
+    ['carte de chaleur', /useReplayHeatmap\(doc, bounds, killFx, \{[^]*?shown: focusShown/],
+    ['armes au sol', /useReplayGroundWeapons\(\{[^]*?shown: focusShown\?\.groundWeapon/],
+    ['poses d’équipement et failles', /useReplayPlacements\(\{[^]*?focusFilter: focusShown/],
+    ['marques de révélation du capteur', /campOfSlot, shown: focusShown \}/],
+    ['véhicules', /useReplayVehicles\(\{[^]*?shown: focusShown/],
+    ['drapeaux et ondes de capture', /useReplayFlagCarries\(\{[^]*?shownAuthor: focusShown\?\.author/],
+    ['couronne du VIP', /useReplayVipCrown\(\{[^\n]*shownCarrier: focusShown\?\.author/],
+    ['crâne porté', /useReplaySkullCarrier\(\{[^\n]*shownCarrier: focusShown\?\.author/],
+    ['bombe portée', /useReplayBombCarrier\(\{[^\n]*shownCarrier: focusShown\?\.author/],
+    ['déflagration', /useReplayBombBlast\(\{[^\n]*shownAuthor: focusShown\?\.author/],
+    ['pulses d’objectif', /drawObjectivePulses\([^\n]*shownAuthor: focusShown\?\.author/],
   ])('%s', (_nom, motif) => {
     expect(canvas()).toMatch(motif)
   })

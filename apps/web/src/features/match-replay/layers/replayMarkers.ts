@@ -220,10 +220,10 @@ export interface MarkerStyle {
    */
   nameHiddenAtSlot?: (slot: number) => boolean
   /**
-   * SEUL ET MASQUER (panneau de joueur, lot 4) : faux quand la vie VIVANTE d'un slot à cette image est
-   * retirée de la carte — pion, nom, cône de visée et traînée d'un seul geste. La croix de mort n'y
-   * passe pas : une mort est un événement du match, ni Seul ni Masquer ne l'efface. Absent = tout se
-   * dessine.
+   * SEUL ET MASQUER (panneau de joueur) : faux quand la vie d'un slot est retirée de la carte — pion, nom,
+   * cône de visée, traînée ET croix de mort d'un seul geste. La croix est lue à la DERNIÈRE image de la vie
+   * qu'elle termine : elle est à sa victime (le tueur n'est pas dans la piste ; l'effet de mort tueur ->
+   * victime est le calque des morts). Absent = tout se dessine.
    */
   shownAtSlot?: (slot: number, frame: number) => boolean
   /**
@@ -287,7 +287,8 @@ export function drawTracksLayer(
     if (style.seatedAtSlot && !style.seatedAtSlot(track.slot, at, style.frame)) return
     if (!isAliveAt(track, style.frame)) {
       // La couleur du slot reste la PORTE (une vie sans couleur ne se dessine pas), mais la
-      // croix ne la porte plus : elle est rouge (cf. `deathInk`).
+      // croix ne la porte plus : elle est rouge (cf. `deathInk`). Elle est à la vie qu'elle termine.
+      if (style.shownAtSlot && !style.shownAtSlot(track.slot, w.end)) return
       drawDeathMark(ctx, track, view, style)
       return
     }
