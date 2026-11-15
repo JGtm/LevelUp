@@ -1,0 +1,524 @@
+// Mesure exploratoire : les reapparitions sont-elles previsibles d'apres la position des joueurs ?
+// Lecture seule des artefacts de rejeu ; aucune ecriture hors du dossier de travail.
+package main
+
+import (
+	"compress/gzip"
+	"encoding/csv"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"hash/fnv"
+	"math"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+type pt struct {
+	T       int     `json:"t"`
+	X, Y, Z float64 `json:"-"`
+}
+
+func (p *pt) UnmarshalJSON(b []byte) error {
+	var r struct {
+		T       int     `json:"t"`
+		X, Y, Z float64 `json:"x"`
+	}
+	var m map[string]float64
+	if err := json.Unmarshal(b, &m); err != nil {
+		return err
+	}
+	_ = r
+	p.T, p.X, p.Y, p.Z = int(m["t"]), m["x"], m["y"], m["z"]
+	return nil
+}
+
+type track struct {
+	XUID     string `json:"xuid"`
+	Team     int    `json:"team"`
+	EndFrame int    `json:"endFrame"`
+	Points   []pt   `json:"points"`
+}
+
+type doc struct {
+	Tracks []track `json:"tracks"`
+}
+
+type key struct{ X, Y, Z int }
+
+func keyOf(x, y, z float64) key {
+	return key{int(math.Round(x * 2)), int(math.Round(y * 2)), int(math.Round(z))}
+}
+
+type event struct {
+	match, mapID string
+	k            key
+	x, y, z      float64
+	enemies      [][3]float64
+	mates        [][3]float64
+	death        [3]float64
+	t            int
+}
+
+func posAt(tr track, t int) ([3]float64, bool) {
+	if len(tr.Points) == 0 || tr.Points[0].T > t || tr.EndFrame < t {
+		return [3]float64{}, false
+	}
+	i := sort.Search(len(tr.Points), func(i int) bool { return tr.Points[i].T > t }) - 1
+	p := tr.Points[i]
+	return [3]float64{p.X, p.Y, p.Z}, true
+}
+
+func dist(a, b [3]float64) float64 {
+	return math.Sqrt((a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1]) + (a[2]-b[2])*(a[2]-b[2]))
+}
+
+func load(path string) (doc, error) {
+	var d doc
+	f, err := os.Open(path)
+	if err != nil {
+		return d, err
+	}
+	defer f.Close()
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return d, err
+	}
+	err = json.NewDecoder(gz).Decode(&d)
+	return d, err
+}
+
+func eventsOf(matchID, mapID string, d doc) []event {
+	by := map[string][]track{}
+	for _, tr := range d.Tracks {
+		if tr.XUID == "" || len(tr.Points) == 0 {
+			continue
+		}
+		by[tr.XUID] = append(by[tr.XUID], tr)
+	}
+	var out []event
+	for _, ts := range by {
+		sort.Slice(ts, func(i, j int) bool { return ts[i].Points[0].T < ts[j].Points[0].T })
+		for k := 1; k < len(ts); k++ {
+			prev, cur := ts[k-1], ts[k]
+			t := cur.Points[0].T
+			gap := t - prev.EndFrame
+			if gap < 120 || gap > 450 { // 4 a 15 s : une vraie reapparition, pas un trou de piste
+				continue
+			}
+			lp := prev.Points[len(prev.Points)-1]
+			sp := cur.Points[0]
+			e := event{match: matchID, mapID: mapID, k: keyOf(sp.X, sp.Y, sp.Z), x: sp.X, y: sp.Y, z: sp.Z,
+				death: [3]float64{lp.X, lp.Y, lp.Z}, t: t}
+			for _, o := range d.Tracks {
+				if o.XUID == cur.XUID || len(o.Points) == 0 {
+					continue
+				}
+				if s := o.Points[0].T; s > t-15 && s < t+15 && s > 30 { // apparu en meme temps : exclu
+					continue
+				}
+				p, ok := posAt(o, t)
+				if !ok {
+					continue
+				}
+				if o.Team == cur.Team {
+					e.mates = append(e.mates, p)
+				} else {
+					e.enemies = append(e.enemies, p)
+				}
+			}
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+const nf = 6
+
+func features(e event, c [3]float64, logFreq float64) [nf]float64 {
+	minE, minM, near := 40.0, 40.0, 0.0
+	var cx, cy, cz float64
+	for _, p := range e.enemies {
+		d := dist(p, c)
+		minE = math.Min(minE, d)
+		if d < 20 {
+			near++
+		}
+		cx, cy, cz = cx+p[0], cy+p[1], cz+p[2]
+	}
+	cent := 0.0
+	if n := float64(len(e.enemies)); n > 0 {
+		cent = math.Min(dist([3]float64{cx / n, cy / n, cz / n}, c), 60) / 10
+	}
+	for _, p := range e.mates {
+		minM = math.Min(minM, dist(p, c))
+	}
+	return [nf]float64{minE / 10, near, minM / 10, math.Min(dist(e.death, c), 60) / 10, logFreq, cent}
+}
+
+var featNames = [nf]string{"ennemi le plus proche (/10 m)", "ennemis a moins de 20 m", "coequipier le plus proche (/10 m)", "distance au lieu de la mort (/10 m)", "frequence (log)", "distance au barycentre ennemi (/10 m)"}
+
+type cand struct {
+	k   key
+	pos [3]float64
+	// matches : nombre de reapparitions par match
+	byMatch map[string]int
+	total   int
+}
+
+type sample struct {
+	fold   int
+	feats  [][nf]float64
+	actual int // -1 : point absent des candidats
+	pos    [][3]float64
+	at     [3]float64
+	mapID  string
+}
+
+func foldOf(m string) int {
+	h := fnv.New32a()
+	h.Write([]byte(m))
+	return int(h.Sum32() % 5)
+}
+
+func main() {
+	dir := flag.String("dir", "", "dossier des artefacts")
+	reg := flag.String("reg", "", "reg.csv")
+	variant := flag.String("variant", "slayer", "slayer | fiesta")
+	minMatches := flag.Int("min", 8, "matchs minimum par carte")
+	flag.Parse()
+
+	f, err := os.Open(*reg)
+	if err != nil {
+		panic(err)
+	}
+	rows, err := csv.NewReader(f).ReadAll()
+	if err != nil {
+		panic(err)
+	}
+	type info struct{ id, mapID, mapName, variant string }
+	keep := map[string]info{}
+	for _, r := range rows[1:] {
+		v := strings.ToLower(r[4])
+		if !strings.Contains(v, "slayer") || strings.HasPrefix(v, "btb") {
+			continue
+		}
+		fi := strings.Contains(v, "fiesta")
+		if (*variant == "fiesta") != fi {
+			continue
+		}
+		keep[r[0]] = info{r[1], r[3], r[2], r[4]}
+	}
+	mapName := map[string]string{}
+	var events []event
+	matchesPerMap := map[string]map[string]bool{}
+	files, _ := filepath.Glob(filepath.Join(*dir, "*.json.gz"))
+	for _, p := range files {
+		short := strings.TrimSuffix(filepath.Base(p), ".json.gz")
+		in, ok := keep[short]
+		if !ok {
+			continue
+		}
+		d, err := load(p)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "lecture", short, err)
+			continue
+		}
+		mapName[in.mapID] = in.mapName
+		ev := eventsOf(in.id, in.mapID, d)
+		if len(ev) == 0 {
+			continue
+		}
+		if matchesPerMap[in.mapID] == nil {
+			matchesPerMap[in.mapID] = map[string]bool{}
+		}
+		matchesPerMap[in.mapID][in.id] = true
+		events = append(events, ev...)
+	}
+
+	// Candidats par carte : points de reapparition vus dans au moins 2 matchs.
+	cands := map[string]map[key]*cand{}
+	for _, e := range events {
+		if cands[e.mapID] == nil {
+			cands[e.mapID] = map[key]*cand{}
+		}
+		c := cands[e.mapID][e.k]
+		if c == nil {
+			c = &cand{k: e.k, pos: [3]float64{e.x, e.y, e.z}, byMatch: map[string]int{}}
+			cands[e.mapID][e.k] = c
+		}
+		c.byMatch[e.match]++
+		c.total++
+	}
+	list := map[string][]*cand{}
+	for m, cs := range cands {
+		for _, c := range cs {
+			if len(c.byMatch) >= 2 {
+				list[m] = append(list[m], c)
+			}
+		}
+		sort.Slice(list[m], func(i, j int) bool { return list[m][i].total > list[m][j].total })
+	}
+
+	var samples []sample
+	for _, e := range events {
+		if len(matchesPerMap[e.mapID]) < *minMatches || len(e.enemies) == 0 {
+			continue
+		}
+		cs := list[e.mapID]
+		s := sample{fold: foldOf(e.match), actual: -1, mapID: e.mapID, at: [3]float64{e.x, e.y, e.z}}
+		for i, c := range cs {
+			fr := float64(c.total - c.byMatch[e.match]) // frequence hors du match teste
+			s.feats = append(s.feats, features(e, c.pos, math.Log1p(fr)))
+			s.pos = append(s.pos, c.pos)
+			if c.k == e.k {
+				s.actual = i
+			}
+		}
+		if len(s.feats) > 1 {
+			samples = append(samples, s)
+		}
+	}
+
+	fmt.Printf("variante=%s  cartes retenues=%d  reapparitions=%d\n", *variant, countMaps(samples), len(samples))
+	miss := 0
+	sumK := 0.0
+	for _, s := range samples {
+		if s.actual < 0 {
+			miss++
+		}
+		sumK += float64(len(s.feats))
+	}
+	fmt.Printf("points candidats par carte (moyenne) : %.1f ; reapparitions hors candidats : %d\n\n", sumK/float64(len(samples)), miss)
+
+	report := func(name string, score func(s sample, f [nf]float64) float64) {
+		t1, t3, near := evalScore(samples, score)
+		fmt.Printf("%-48s top1 %5.1f %%   top3 %5.1f %%   rang moyen %4.1f\n", name, t1, t3, near)
+	}
+	// Hasard : esperance exacte.
+	u1, u3 := 0.0, 0.0
+	for _, s := range samples {
+		k := float64(len(s.feats))
+		u1 += 1 / k
+		u3 += math.Min(3, k) / k
+	}
+	fmt.Printf("%-48s top1 %5.1f %%   top3 %5.1f %%\n", "hasard", 100*u1/float64(len(samples)), 100*u3/float64(len(samples)))
+	report("frequence seule (hors match teste)", func(_ sample, f [nf]float64) float64 { return f[4] })
+	report("le plus loin de l'ennemi le plus proche", func(_ sample, f [nf]float64) float64 { return f[0] })
+	report("le plus loin du barycentre ennemi", func(_ sample, f [nf]float64) float64 { return f[5] })
+	report("le plus pres d'un coequipier", func(_ sample, f [nf]float64) float64 { return -f[2] })
+
+	// Modele de choix (logit conditionnel), validation croisee 5 plis par match.
+	var all [][nf]float64
+	pred := make([][]float64, len(samples))
+	for fold := 0; fold < 5; fold++ {
+		w := fit(samples, func(s sample) bool { return s.fold != fold })
+		for i, s := range samples {
+			if s.fold == fold {
+				pred[i] = scores(s, w)
+			}
+		}
+		if fold == 0 {
+			_ = all
+		}
+	}
+	t1, t3, rk := evalPred(samples, pred)
+	fmt.Printf("%-48s top1 %5.1f %%   top3 %5.1f %%   rang moyen %4.1f\n", "modele combine (validation croisee)", t1, t3, rk)
+	predF := make([][]float64, len(samples))
+	for fold := 0; fold < 5; fold++ {
+		w := fitMask(samples, func(s sample) bool { return s.fold != fold }, [nf]bool{4: true})
+		for i, s := range samples {
+			if s.fold == fold {
+				predF[i] = scores(s, w)
+			}
+		}
+	}
+	zoneReport(samples, pred, predF)
+	w := fit(samples, func(sample) bool { return true })
+	fmt.Println("\npoids du modele (tout le jeu) :")
+	for i := range w {
+		fmt.Printf("  %-40s %+.2f\n", featNames[i], w[i])
+	}
+
+	// Par carte.
+	fmt.Println("\npar carte (top1 frequence -> top1 modele ; top3 frequence -> top3 modele ; candidats) :")
+	type row struct {
+		name               string
+		n                  int
+		f1, m1, f3, m3, kk float64
+	}
+	var rs []row
+	for m := range matchesPerMap {
+		var idx []int
+		for i, s := range samples {
+			if s.mapID == m {
+				idx = append(idx, i)
+			}
+		}
+		if len(idx) == 0 {
+			continue
+		}
+		var ss []sample
+		var pp, pf [][]float64
+		k := 0.0
+		for _, i := range idx {
+			ss = append(ss, samples[i])
+			pp = append(pp, pred[i])
+			pf = append(pf, predF[i])
+			k += float64(len(samples[i].feats))
+		}
+		a1, a3, _ := evalPred(ss, pf)
+		b1, b3, _ := evalPred(ss, pp)
+		rs = append(rs, row{mapName[m], len(idx), a1, b1, a3, b3, k / float64(len(idx))})
+	}
+	sort.Slice(rs, func(i, j int) bool { return rs[i].m3-rs[i].f3 > rs[j].m3-rs[j].f3 })
+	for _, r := range rs {
+		fmt.Printf("  %-20s n=%4d  top1 %4.1f -> %4.1f   top3 %4.1f -> %4.1f   K=%.0f\n", r.name, r.n, r.f1, r.m1, r.f3, r.m3, r.kk)
+	}
+}
+
+func countMaps(s []sample) int {
+	m := map[string]bool{}
+	for _, x := range s {
+		m[x.mapID] = true
+	}
+	return len(m)
+}
+
+func scores(s sample, w [nf]float64) []float64 {
+	out := make([]float64, len(s.feats))
+	for i, f := range s.feats {
+		for j := range f {
+			out[i] += w[j] * f[j]
+		}
+	}
+	return out
+}
+
+func evalScore(samples []sample, score func(sample, [nf]float64) float64) (float64, float64, float64) {
+	pred := make([][]float64, len(samples))
+	for i, s := range samples {
+		for _, f := range s.feats {
+			pred[i] = append(pred[i], score(s, f))
+		}
+	}
+	return evalPred(samples, pred)
+}
+
+func evalPred(samples []sample, pred [][]float64) (float64, float64, float64) {
+	t1, t3, rk, n := 0.0, 0.0, 0.0, 0.0
+	for i, s := range samples {
+		n++
+		if s.actual < 0 {
+			rk += float64(len(s.feats))
+			continue
+		}
+		a := pred[i][s.actual]
+		above, ties := 0.0, 0.0
+		for j, v := range pred[i] {
+			if j == s.actual {
+				continue
+			}
+			if v > a {
+				above++
+			} else if v == a {
+				ties++
+			}
+		}
+		r := above + ties/2 // rang 0 = premier
+		if r < 1 {
+			t1 += 1 - r
+		}
+		if r < 3 {
+			t3 += math.Min(1, 3-r)
+		}
+		rk += r + 1
+	}
+	return 100 * t1 / n, 100 * t3 / n, rk / n
+}
+
+func fit(samples []sample, use func(sample) bool) [nf]float64 {
+	return fitMask(samples, use, [nf]bool{true, true, true, true, true, true})
+}
+
+// fitMask : maximum de vraisemblance du logit conditionnel par montee de gradient.
+func fitMask(samples []sample, use func(sample) bool, mask [nf]bool) [nf]float64 {
+	var w [nf]float64
+	lr := 0.5
+	for it := 0; it < 300; it++ {
+		var g [nf]float64
+		n := 0.0
+		for _, s := range samples {
+			if !use(s) || s.actual < 0 {
+				continue
+			}
+			n++
+			sc := scores(s, w)
+			mx := sc[0]
+			for _, v := range sc {
+				mx = math.Max(mx, v)
+			}
+			z := 0.0
+			for i := range sc {
+				sc[i] = math.Exp(sc[i] - mx)
+				z += sc[i]
+			}
+			for j := 0; j < nf; j++ {
+				exp := 0.0
+				for i, f := range s.feats {
+					exp += sc[i] / z * f[j]
+				}
+				g[j] += s.feats[s.actual][j] - exp
+			}
+		}
+		for j := range w {
+			if mask[j] {
+				w[j] += lr * g[j] / n
+			}
+		}
+	}
+	return w
+}
+
+// zoneReport : la prediction a l'echelle d'une ZONE (rayon de 8 m) plutot que du point exact.
+func zoneReport(samples []sample, pred, predF [][]float64) {
+	const r = 8.0
+	var rnd, f1, m1, f3, m3 float64
+	top := func(p []float64, n int) []int {
+		idx := make([]int, len(p))
+		for i := range idx {
+			idx[i] = i
+		}
+		sort.SliceStable(idx, func(a, b int) bool { return p[idx[a]] > p[idx[b]] })
+		if len(idx) > n {
+			idx = idx[:n]
+		}
+		return idx
+	}
+	hit := func(s sample, ids []int) float64 {
+		for _, i := range ids {
+			if dist(s.pos[i], s.at) <= r {
+				return 1
+			}
+		}
+		return 0
+	}
+	for i, s := range samples {
+		in := 0.0
+		for _, p := range s.pos {
+			if dist(p, s.at) <= r {
+				in++
+			}
+		}
+		rnd += in / float64(len(s.pos))
+		f1 += hit(s, top(predF[i], 1))
+		m1 += hit(s, top(pred[i], 1))
+		f3 += hit(s, top(predF[i], 3))
+		m3 += hit(s, top(pred[i], 3))
+	}
+	n := float64(len(samples))
+	fmt.Printf("\na moins de 8 m du point reel : hasard %.1f %% | frequence top1 %.1f %%, top3 %.1f %% | modele top1 %.1f %%, top3 %.1f %%\n",
+		100*rnd/n, 100*f1/n, 100*f3/n, 100*m1/n, 100*m3/n)
+}
