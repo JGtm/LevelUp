@@ -174,6 +174,12 @@ user. **Effort : S.**
 
 ---
 
+### [tests/local] `internal/platform/duckdb` dépasse 300 s sous `-tags=integration` en local
+
+Relevé le 2026-11-15 par la baseline de `make gate-push` (177 tests absents du run), déjà présent sur `release/v8.2.0` en v1.3.7, 132 s sans le tag, CI verte : à mesurer (test le plus lent) puis découper ou relever le délai du paquet. **Effort : S.**
+
+---
+
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
