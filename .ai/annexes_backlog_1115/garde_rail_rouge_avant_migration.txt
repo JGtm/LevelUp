@@ -1,0 +1,17 @@
+--- FAIL: TestCadenceParMinuteSansDivisionEnLigne (0.49s)
+    no_inline_per_minute_test.go:141: cadence par minute calculée en ligne : utiliser analysis.PerMinute(total, secondes) :
+          internal/analysis/explorer_target_stats.go:122
+          internal/analysis/home_canonical_highlights_tiles.go:86
+          internal/analysis/kpi_stats.go:115
+          internal/analysis/squad_breakdown.go:373
+          internal/analysis/squad_breakdown_canonical.go:59, internal/analysis/squad_breakdown_canonical.go:160
+          internal/analysis/squad_profiles.go:52, internal/analysis/squad_profiles.go:105
+          internal/service/squad_service_v2_contributions.go:63
+          internal/service/stats_service.go:230
+          internal/service/teammates/teammates_squad_charts_synergy.go:72
+          internal/service/timeseries_service_buckets.go:58
+          internal/service/timeseries_service_tabs.go:124
+          internal/sync/performance.go:98
+FAIL
+FAIL	levelup/go-api/internal/archlint	0.651s
+FAIL
