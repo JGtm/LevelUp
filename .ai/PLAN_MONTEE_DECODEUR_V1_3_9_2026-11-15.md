@@ -47,8 +47,10 @@ GOWORK local par `scripts/briques-workspace.sh` uniquement (jamais de `go.work`,
 - [x] Gate du corpus sur fdd6f24 (parc et verrou jetables, `-modfile` vers le clone, 25 `[[decision]]`, motif de préfixe `/*` pour les filets) :
       18 témoins ok sur 18, 0 FAUX, 0 PERTE, 0 décision sans effet, code de sortie 0. Tableau final dans le Journal ;
       `f75e7053` hors gate (voir Découvertes).
-- [ ] Tag `v1.3.9` + release GitHub (`--generate-notes --verify-tag`, latest), corps qui dit chaque
-      changement de sortie depuis v1.3.8 (117 à 122, médailles).
+- [x] Tag `v1.3.9` sur fdd6f24 (main du décodeur après #30 ; arbre identique à ed09770, sur lequel ont tourné
+      go test avec la racine de l'hôte et replay-equiv 20/20) + release GitHub latest, `--verify-tag`, corps
+      écrit à la main (chaque changement de sortie de 117 à 124, les médailles, aucune API retirée) :
+      https://github.com/JGtm/halo-infinite-film-decoder/releases/tag/v1.3.9
 
 ## E3 — LevelUp sur v1.3.9 publiée
 
