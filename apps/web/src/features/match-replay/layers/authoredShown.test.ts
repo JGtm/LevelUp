@@ -50,7 +50,7 @@ describe('couronne, crâne, bombe portés', () => {
     expect(run(NOT_A)).toBe(0)
   })
 
-  it('la bombe portée est à son porteur ; la bombe LIBRE n’est à personne et reste', () => {
+  it('la bombe est à son porteur, portée comme libre faute de position (même règle que le drapeau)', () => {
     const porte = (shownCarrier?: (x: string) => boolean) =>
       ink((ctx) => drawBombCarrier(ctx, { style, posOf, shownCarrier }, [bomb], [], VIEW, 10))
     expect(porte()).toBeGreaterThan(0)
@@ -60,7 +60,8 @@ describe('couronne, crâne, bombe portés', () => {
       ink((ctx) =>
         drawBombCarrier(ctx, { style, posOf: (_x, f) => (f <= 5 ? { x: 50, y: 50 } : null), shownCarrier }, [bomb], [], VIEW, 10))
     expect(libre()).toBeGreaterThan(0)
-    expect(libre(NOT_A)).toBe(libre())
+    expect(libre(ONLY_A)).toBe(libre())
+    expect(libre(NOT_A)).toBe(0)
   })
 })
 

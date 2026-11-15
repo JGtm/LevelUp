@@ -41,7 +41,7 @@ interface UseReplayBombCarrierArgs {
   /** L'encre du FOND : le liseré, comme celui du crâne (déjà résolue par l'appelant). */
   outline: string
   reducedMotion: boolean
-  /** SEUL ET MASQUER (panneau de joueur) : faux quand la bombe portée (une bombe libre reste) est retiré de la carte. Absent = tout se dessine. */
+  /** SEUL ET MASQUER (panneau de joueur) : faux quand la bombe de ce porteur est retirée de la carte, portée ou libre faute de position. Absent = tout se dessine. */
   shownCarrier?: (xuid: string) => boolean
 }
 
