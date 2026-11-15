@@ -3,6 +3,21 @@
 - **Décision** : (A) l'écriture de l'instantané de carrière (goroutine de fond détachée, attente de l'écrivain jusqu'à 5 min) passe par `coalesce.Runs` (`persistTracked`), le suivi que la phase « recomputes » de l'arrêt draine avant `duckdb.CloseAll` : annulée et attendue (2 s) à l'arrêt, refusée (`ErrDraining`) si elle n'a pas commencé ; `coalesce.IsolateTracking` isole le suivi pour les tests. (B) chiffres par famille recalés sur la révision finale en rejouant le rapport de simulation (copie à froid du parc). (C) `impact_roles` de la vue Match retiré faute de lecteur (web, Go, contrat), contrat et types régénérés. (D) trois commentaires faux corrigés.
 - **Résultats observés** : le rapport rejoué donne 684 matchs, médiane +0,6, 90e centile 11,8, 32 % de paliers, Drapeau 36 %, Bases 32 %, Colline 23 % ; les notes de version FR/EN portaient 35 % et 18 % (premier passage) ; le changelog n'avait pas de chiffre par famille. Deux tests : l'arrêt pendant l'attente n'écrit rien, l'arrêt avant l'écriture ne lance rien.
 - **Suite** : revue et fusion par `levelup-dd`. Constat non traité : `ComputeCombatYield` du LUSR lit la vie du titre par défaut, alors que Halo 5 déclare `lusr` avec sa propre vie (115).
+## [2026-11-15] Compléments de la 8.2.0 : clôture du plan — Complété (branche `fix/c820-cloture`)
+- **Décision** : relecture finale indépendante des 75 commits du chantier, centrée sur les interactions entre étapes (note à objectif, axe Objectif des radars, recalage des campagnes, migrations, démarrage du bureau). Aucun P0, aucun P1 introduit ; reliquats corrigés en 91a6aa8dad ; ce qui est reporté va au registre avec sa condition de reprise, la dette au backlog. Baseline de présence : 4 tests retirés avec `impact_roles` (32 lignes), documenté dans `scripts/check_test_baseline.sh`.
+- **Résultat** : toutes les cases du plan statuées (5.3 couverte par l'artefact des vérifications, 1.6 et 6.2 en `[!]` justifiés) ; huit contrôles à l'écran c820-01 à c820-08 dans l'artefact ; `TestReleaseNotesDocs_*` vert.
+- **Suite** : les contrôles à l'écran par le user ; consigne du user du 15/11 au soir, les correctifs suivants passent en 8.2.1.
+
+## [2026-11-14] Rejeux régénérés copiés sur le VPS dans un dossier d'attente — Complété (aucune base copiée)
+- **Décision** : les 1 455 rejeux régénérés (.json.gz, schéma 116, 33 ms) et leurs .meta sont copiés, avec l'accord du user du 2026-11-14, dans /opt/levelup/data/replays-staging-v8.2.0/halo_infinite/ (2 910 fichiers, deploy:deploy), sous data/ pour échapper au git clean du déploiement. Rien n'est écrit dans le dossier servi, car la 8.1.3 ne lit pas les .json.gz. Les marques .derived.json et rasters/ ne sont pas copiées : les dérivés se refont sur le serveur.
+- **Résultat** : la simulation de BASCULE.sh annonce « 1455 rejeux copiés, 1455 anciens .json bruts retirés, 0 erreurs ». Pendant l'écriture du script, un compte faux est apparu : le motif retenait aussi les .derived.json. Il est corrigé en ^[0-9a-f]{8}\.json$.
+- **Suite** : les gestes G6 à G9 de .ai/annexes_v8_1_2/gestes_prod_8_2_0.md, après le déploiement de la 8.2.0. Le dossier d'attente se supprime seulement après le contrôle écrit.
+
+## [2026-11-15] Périmètre 8.2.0 resserré — Complété
+- **Décision** : sur décision du user du 15/11, la 8.2.0 sort sur le décodeur v1.3.7 (schéma 116) avec les rejeux déjà en attente sur le VPS, sans nouvelle génération.
+- **Résultat** : la montée v1.3.9, le câblage de la lecture du film et les croix des morts passent en 8.2.1, comme les correctifs restants.
+- **Suite** : 8.2.1.
+
 ## [2026-11-15] CI de la release rouge après l'axe Objectif des radars : prealloc et baseline de présence — Complété (branche `fix/c820-ci-radars`)
 - Décision : correctif à part, sans attendre la ronde 1 des radars. `objective_team_rows_repo.go` préalloue les pointeurs de scan (golangci-lint prealloc, ratchet). Baseline de présence : retrait des 11 tests de `internal/service` dont le code a été supprimé comme code mort par 9765aed2e2 (TestBuildMatchRadar_* et TestBuildRadarSeries_*), 88 lignes JSONL, documenté dans l'en-tête de `scripts/check_test_baseline.sh` selon sa recette (retrait partiel, jamais une re-capture).
 - Résultats : build OK, tests des lignes d'équipe verts, golangci-lint sur `platform/duckdb` sans constat sur le fichier.

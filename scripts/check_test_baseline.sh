@@ -75,6 +75,13 @@
 # contrôle de présence ne les voyait pas, leur retrait ne relâche donc rien — il
 # garde seulement la baseline en phase avec l'arbre.
 #
+# RETRAIT DU 2026-11-15 (relecture finale des compléments 8.2.0, commit 91a6aa8dad) : 4 tests de `internal/service`
+# retirés, TestExtractTeamOutcomes_MapsAllCodes, TestBuildMatchImpactRoles8_AttributesFirstBlood,
+# TestBuildMatchImpactRoles8_EmptyInputs et TestBuildMatchImpactRoles8FromCanonical_NoConversion. Le champ `impact_roles`
+# de la vue Match n'avait plus de lecteur : il a été supprimé comme code mort avec ses constructeurs et ses tests
+# (`narrative.IdentifyImpactRoles` reste couvert, il sert la matrice d'impact de l'Escouade). 32 lignes JSONL, exactement
+# 4 paires (Package, Test), vérifié par différence avant/après. Compte PARTIEL d absences volontaires → remède prescrit ici même.
+#
 # RETRAIT DU 2026-11-15 (axe Objectif des radars sur le noyau de la note, commit 9765aed2e2) : 11 tests de
 # `internal/service` retirés, TestBuildMatchRadar_{AggregatesByAxis,EmptyInputs,MultiplePlayersStableOrder,
 # PlayerWithoutMappedAwardSkipped,UnknownAwardsIgnored} et TestBuildRadarSeries_{DefaultModeFamily,EmptyInput,

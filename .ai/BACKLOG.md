@@ -23,6 +23,18 @@
 
 ---
 
+### [campagnes] Défis de l'axe Objectif : départ « 0.00 » sans mesure, Halo 5 remis à zéro au recalage
+
+Relevé le 2026-11-15 par la relecture du recalage des campagnes (commit 79de94b977) ; correctifs prêts sur la branche `feat/c820-campagne`, non poussés (consigne du user : la 8.2.0 sort, les correctifs passent en 8.2.1). (1) Quand la fenêtre de départ de 180 jours n'a aucun match mesuré, `mean(nil)` vaut 0 (`internal/campaign/recalibrate.go:113`, même cas dans `StartCampaign`) : `CampaignTracker.tsx:55` affiche « 0.00 » au départ et toute la valeur courante comme progression ; `snapshot_sample = 0` doit se lire « départ non mesuré » (tiret, pas de progression chiffrée). (2) Un titre sans `match.objective.stats` (Halo 5) qui porte une campagne sur l'axe `objective` est réécrit à 0/0 par le recalage : le sauter par capability (`HasCapability`, jamais le slug). (3) Si les notes réussissent et que le recalage des campagnes échoue, le log dit « retenté au prochain démarrage » alors que les notes ne seront pas rejouées, et `appliquee_total` ne compte pas l'étape réussie (`api/wire/registry_scoring_revision.go:65`, `service/scoringrevision/service.go` vers la ligne 88) ; l'erreur de lecture des échantillons est avalée (`internal/campaign/service.go:281`, `post, _ :=`). **Condition de reprise :** 8.2.1, en partant de la branche. **Effort : S.**
+
+---
+
+### [web/couleurs] Reliquats du garde-rail des couleurs
+
+Relevé le 2026-11-14 (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 5). Le garde-rail couvre désormais `ring-offset`, `outline`, `decoration`, `accent`, `caret` et la portée de `color-allow`. Restent : 23 marqueurs `color-allow` nus qui n'excusent plus rien (marqueur sur une autre ligne que la couleur, ou ligne sans couleur), à retirer ; les préfixes `shadow`, `from`, `via`, `to` suivis d'une couleur nommée ne sont pas balayés (seuls le noir et le blanc absolus le sont). **Condition de reprise :** une passe de nettoyage web. **Effort : S.**
+
+---
+
 ### [progression] Jalon « jours avec une précision d'au moins 50 % » atteint trop facilement
 
 Relevé le 2026-11-14 (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 1.5). `match_participants.accuracy` porte la précision native de l'API en POURCENTAGE, mais le jalon `accuracy_threshold_days` la compare au seuil 0,50 (`internal/platform/duckdb/post_sync_progression_store.go`, agrégat `Aggregates` autour de la ligne 179, et `internal/ops/milestone_dates.go`) : tout match à plus de 0,5 % de précision compte comme un jour réussi. Le test `post_sync_stores_test.go` fige ce comportement en le signalant comme « unité en question ». Corriger (diviser par 100 ou comparer à 50) change des jalons déjà affichés et datés. **Décision du user du 2026-11-15 : ne pas y toucher à ce stade, noté au backlog.** **Effort : S, plus la décision sur les jalons déjà posés.**
@@ -135,12 +147,6 @@ Relevé le 2026-11-14 par la ronde 2 bis du calque « Vies ». Les vies des surv
 
 ---
 
-### [web/couleurs] Infobulle `info-tooltip` ouverte au focus sans filtre clavier ; garde-rail de couleurs incomplet
-
-Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. `components/ui/info-tooltip.tsx` ouvre aussi au focus sans filtre clavier. Le garde-rail de couleurs ne couvre pas `ring-offset`, `outline`, `decoration`, `accent` ni `caret`, et un `color-allow` masque toute couleur de sa ligne. **Condition de reprise :** à planifier après la 8.1.2. **Effort : S.**
-
----
-
 ### [licences/tests] Surnoms dérivés de pseudos réels dans des identifiants de tests
 
 Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Après la pseudonymisation des fixtures sous `apps/` (v8.1.2, item 5.4), des surnoms tirés de gamertags réels restent dans des noms de tests et des libellés (plusieurs centaines d'occurrences, liste dans les tables hors dépôt de la pseudonymisation). La table de remplacement ne remplace que des gamertags entiers. Décision du user du 2026-11-10 : noté au backlog. **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
@@ -150,12 +156,6 @@ Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. Après la pse
 ### [licences] Pseudos réels hors de `apps/`
 
 Relevé le 2026-11-10. Noté pendant la v8.1.2, périmètre figé. `.claude/skills/db-schema/SKILL.md`, `.gitignore`, `config/titles/halo_infinite/constants.toml`, `docs/` et `.ai/` portent encore des gamertags réels. Un chemin Windows personnel reste dans `apps/go-api/cmd/restore_one_player/main.go`. Le pseudo du mainteneur (`JGtm`) est conservé par décision du même jour. Décision du user du 2026-11-10 : noté au backlog. **Condition de reprise :** à planifier après la 8.1.2. **Effort : M.**
-
----
-
-### [logs] Avertissements répétés pendant un long recalcul
-
-Relevé le 2026-11-10 au premier démarrage de la 8.1.2 : pendant le rejeu des notes LUSR, `sharedprovider` écrit environ 200 fois « writer RW tenu au-delà du seuil — lectures gatées » pour le même écrivain (`match_recompute/lusr`), et le repli du solveur une ligne WARN par match (36). Une ligne au début et une à la fin de la tenue, avec la durée et le nombre de lectures retenues, suffiraient ; le repli peut être compté et résumé en fin de rejeu. Le user trouve ce bruit gênant (10/11) ; noté pendant la v8.1.2, périmètre figé. **Condition de reprise :** à planifier après la 8.1.2. **Effort : S.**
 
 ---
 
@@ -192,7 +192,9 @@ Réglages Discord sans interrupteur web : relais du coach, rejeu prêt, reconnex
 
 | Date | Item |
 |------|------|
-| 2026-11-15 | **[kpi/notes] Vie d'un Spartan à 229 points, note de performance des modes à objectif** (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 7, branche `feat/c820-note`) : mesure sur 1 614 films (compteur « dégâts subis », 229 dans 99,6 % des vies sans recharge de bouclier, 230 dans 0,4 %), `games.DefaultEffectiveHpToKill` et `effective_hp_to_kill` à 229, aide FR/EN ; note à objectif (paquet `internal/sync/objectiveblend` : moyenne symétrique du combat, de l'objectif et du soutien de l'équipe, rangs à mi-rang contre l'historique du joueur dans la famille de mode), métrique `objective_participation` retirée ; `PerformanceScoreRev` et `LUSRRev` montées ensemble (un seul recalcul, test D-14), ADR 0047 et 0006 amendées, notes de version et changelog FR/EN avec les écarts mesurés (médiane +0,5, 90e centile 11,8, 31 % de paliers changés). |
+| 2026-11-15 | **[logs] Avertissements répétés pendant un long recalcul** (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 1) : un dépassement de seuil du writer ou d'une lecture se dit une fois par épisode (franchissement, second seuil de 30 s, libération avec durée et lectures retenues), repli du solveur LUSR résumé en une ligne par rejeu avec sa cause, pannes 5xx des services Halo en une ligne par passe, 429 absorbés en INFO. |
+| 2026-11-15 | **[web/couleurs] Infobulle `info-tooltip` au focus clavier seulement, garde-rail de couleurs étendu** (même plan, étape 5) : couche globale des infobulles (survol et focus clavier, visibles en partage d'écran), `ring-offset`, `outline`, `decoration`, `accent`, `caret` et portée de `color-allow` ; reliquats au backlog. |
+| 2026-11-15 | **[kpi/notes] Vie d'un Spartan à 229 points, note de performance des modes à objectif** (plan `.ai/PLAN_COMPLEMENTS_V8_2_0_2026-11-14.md`, étape 7, branche `feat/c820-note`) : mesure sur 1 614 films (compteur « dégâts subis », 229 dans 99,6 % des vies sans recharge de bouclier, 230 dans 0,4 %), `games.DefaultEffectiveHpToKill` et `effective_hp_to_kill` à 229, aide FR/EN ; note à objectif (paquet `internal/sync/objectiveblend` : moyenne symétrique du combat, de l'objectif et du soutien de l'équipe, rangs à mi-rang contre l'historique du joueur dans la famille de mode), métrique `objective_participation` retirée ; `PerformanceScoreRev` et `LUSRRev` montées ensemble (un seul recalcul, test D-14), ADR 0047 et 0006 amendées, notes de version et changelog FR/EN avec les écarts mesurés (médiane +0,6, 90e centile 11,8, 32 % de paliers changés, après le repli de famille du soutien). |
 | 2026-11-15 | **[rejeu] « Seul » et « Masquer » sur tous les calques** (plan `.ai/PLAN_BACKLOG_2026-11-15.md`, lot 4, branche `feat/bl1115-killfx`) : règle du user (tout ce qui appartient au joueur suit la fiche, le décor reste) ; quatorze calques ou éléments branchés sur un prédicat unique (`ownershipShown`), dont les effets de mort par tueur ET victime ; inventaire `.ai/annexes_backlog_1115/calques_seul_masquer.md`. |
 | 2026-11-15 | **[analysis] Cadences par minute par `analysis.PerMinute`** (plan `.ai/PLAN_BACKLOG_2026-11-15.md`, lot 1, branche `feat/bl1115-minute`) : quatorze sites (et non six) migrés dans `analysis`, `service` et `sync`, valeurs identiques au bit (témoins avant/après en assertions), garde-rail AST `archlint/no_inline_per_minute_test.go` à allowlist vide. |
 | 2026-11-14 | **[release] LevelUp 8.2.0** (plan `.ai/PLAN_V8_1_2_2026-11-09.md`, branche `release/v8.2.0`) : plan 8.1.2 exécuté (tous les points du backlog du 2026-11-09 sauf 17, 18, 24 et 25 : barre latérale, volet des référentiels, sélecteur de dossier, zone du tueur au killfeed, FDA nette, alertes localisées, notes des matchs non convergents, icônes du jeu, nettoyage de l'installeur, licences et identités fictives ; PR #181, #183, #184, #185, #186, #187, #189, #190), correctif 8.1.2 de synchronisation intégré (#193) ; plan d'architecture en 8 étapes (suppressions, interrupteurs, écritures, couche HTTP, stockage, multi-titre, front, clôture ; PR #191, poussé sur la release pour le reste) ; briques consommées comme modules publiés (`github.com/JGtm/...` en v1.0.1, `libs/` et `go.work` supprimés, paquet `internal/briques` ; PR #194, #201, #202, puis montées en v1.1.0 par la #205 et au décodeur v1.3.6 par la #207) ; rejeu à 30 images par seconde (#190, #207), rejeux compressés (#199), lecture complète des paquets du film (#198), fil filtrable, fiche en panneau et Mainmise (#200), destructions de véhicule et occupants tués (#203), fonds de carte tenus par le maillage de navigation (#205), alertes de sécurité des dépendances (#206). Relecture finale par trois relecteurs sans le plan : 0 P0, 0 P1, 3 P2 corrigés. Restent les gestes du user : contrôles à l'écran, fusion vers `main`, gestes de production. |
