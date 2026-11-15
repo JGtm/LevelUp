@@ -75,6 +75,14 @@
 # contrôle de présence ne les voyait pas, leur retrait ne relâche donc rien — il
 # garde seulement la baseline en phase avec l'arbre.
 #
+# RETRAIT DU 2026-11-15 (axe Objectif des radars sur le noyau de la note, commit 9765aed2e2) : 11 tests de
+# `internal/service` retirés, TestBuildMatchRadar_{AggregatesByAxis,EmptyInputs,MultiplePlayersStableOrder,
+# PlayerWithoutMappedAwardSkipped,UnknownAwardsIgnored} et TestBuildRadarSeries_{DefaultModeFamily,EmptyInput,
+# NormalizesAxes,ObjectiveDeferredToZero,OneSeriesPerPlayer,SkipsRowsWithoutOptional}. Leur code (BuildMatchRadar,
+# radar Squad V2) a été supprimé comme code mort ; le radar de la vue Match est couvert par
+# TestBuildMatchRadarFromScoreboard_*, présents dans le run courant. 88 lignes JSONL, exactement 11 paires
+# (Package, Test), vérifié par différence avant/après. Compte PARTIEL d absences volontaires → remède prescrit ici même.
+#
 # RETRAIT DU 2026-09-16 (lot annuaire des joueurs, ADR 0035, commit 53d19824c) : 3 tests de
 # `internal/api/handlers` retirés — TestFileExists_Exists, TestFileExists_NotExists et
 # TestSetupHandler_CreatePlayer_ProfileServiceError. Le lot a fait d Onboard le SEUL chemin de

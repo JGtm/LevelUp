@@ -68,7 +68,8 @@ func scanObjectiveTeamRows(rows *sql.Rows, cols []string, who string, out map[st
 			timePlayed       float64
 		)
 		vals := make([]float64, len(cols))
-		ptrs := []any{&matchID, &rowXUID, &family, &team, &timePlayed}
+		ptrs := make([]any, 0, 5+len(vals))
+		ptrs = append(ptrs, &matchID, &rowXUID, &family, &team, &timePlayed)
 		for i := range vals {
 			ptrs = append(ptrs, &vals[i])
 		}
