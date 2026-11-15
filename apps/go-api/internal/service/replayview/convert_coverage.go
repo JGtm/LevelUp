@@ -114,6 +114,19 @@ func toTrackCoverage(v replay.TrackCoverage) replaydoc.TrackCoverage {
 		HorsEmprise:               v.HorsEmprise,
 		SlotsArmes:                v.SlotsArmes,
 		SlotsDesarmes:             v.SlotsDesarmes,
+		LifeEnds:                  ptrOf(v.LifeEnds, toLifeEndCoverage),
+	}
+}
+
+func toLifeEndCoverage(v replay.LifeEndCoverage) replaydoc.LifeEndCoverage {
+	return replaydoc.LifeEndCoverage{
+		Released:          v.Released,
+		Deleted:           v.Deleted,
+		Retaken:           v.Retaken,
+		Unread:            v.Unread,
+		Open:              v.Open,
+		FilmEnd:           v.FilmEnd,
+		DeletionsUnproven: v.DeletionsUnproven,
 	}
 }
 
@@ -344,6 +357,7 @@ func toScoreCoverage(v replay.ScoreCoverage) replaydoc.ScoreCoverage {
 		RoundsContradictedRecords: v.RoundsContradictedRecords,
 		RoundsDecreed:             v.RoundsDecreed,
 		StatsWithheld:             v.StatsWithheld,
+		RoundsUnplayed:            v.RoundsUnplayed,
 	}
 }
 

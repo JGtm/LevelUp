@@ -18394,6 +18394,39 @@ components:
         - horizon
         - impact
       type: object
+    LifeEndCoverage:
+      additionalProperties: false
+      properties:
+        deleted:
+          format: int64
+          type: integer
+        deletionsUnproven:
+          format: int64
+          type: integer
+        filmEnd:
+          format: int64
+          type: integer
+        open:
+          format: int64
+          type: integer
+        released:
+          format: int64
+          type: integer
+        retaken:
+          format: int64
+          type: integer
+        unread:
+          format: int64
+          type: integer
+      required:
+        - released
+        - deleted
+        - retaken
+        - unread
+        - open
+        - filmEnd
+        - deletionsUnproven
+      type: object
     Link:
       additionalProperties: false
       properties:
@@ -25981,6 +26014,13 @@ components:
           type: integer
         roundsDecreed:
           type: boolean
+        roundsUnplayed:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
         roundsWritten:
           items:
             format: int64
@@ -32627,6 +32667,8 @@ components:
         endFrame:
           format: int64
           type: integer
+        endReason:
+          type: string
         name:
           type: string
         points:
@@ -32635,6 +32677,9 @@ components:
           type:
             - array
             - "null"
+        releaseFrame:
+          format: int64
+          type: integer
         slot:
           format: int32
           minimum: 0
@@ -32667,6 +32712,8 @@ components:
         horsEmprise:
           format: int64
           type: integer
+        lifeEnds:
+          $ref: '#/components/schemas/LifeEndCoverage'
         minPoints:
           format: int64
           type: integer

@@ -448,7 +448,10 @@ const plafondSurfaceFacade = 182 // 2026-11-10 — item 4.3 : 181 + 1 (ResultatD
 //	                                           `replay.ClocksCoverage`, les types des calques des schemas
 //	                                           117 a 121 que le document servi projette (`service/replayview`) ;
 //	                                           la parite exige une decision par champ. Aucun retrait.
-const plafondSurfaceReplay = 328 // 2026-11-15 — base 010e65bbc4 re-mesuree a 320 + 8 (types des schemas 117 a 121) ; cf. l historique ci-dessus
+//	329  fins de vie du schema 123 (2026-11-15)  base `ee35b45882` re-mesuree a 328. +1 :
+//	                                           `replay.LifeEndCoverage`, la couverture `coverage.tracks.lifeEnds`
+//	                                           que le document servi projette (`service/replayview`). Aucun retrait.
+const plafondSurfaceReplay = 329 // 2026-11-15 — base ee35b45882 re-mesuree a 328 + 1 (LifeEndCoverage) ; cf. l historique ci-dessus
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

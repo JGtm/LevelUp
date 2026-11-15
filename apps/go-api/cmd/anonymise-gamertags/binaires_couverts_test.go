@@ -42,6 +42,9 @@ var binairesCouverts = []binaireCouvert{
 			"TestGoldensDAssemblagePortentDesXuidsFictifs (les goldens qui publient les medailles sont juges au registre)"},
 	{regexp.MustCompile(`^replay/testdata/presences_[0-9a-f]{8}\.bin\.gz$`),
 		"libs/film/replay TestGoldenPresencesPorteDesXuidsFictifs (decodage par le codec, chaque xuid au registre fictif)"},
+	{regexp.MustCompile(`^replay/testdata/commande_[0-9a-f]{8}\.bin\.gz$`),
+		"lectures d unit-control et suppressions de bipede : index de joueur du film, slot et instant, aucun champ xuid " +
+			"(golden_commande_test.go) ; codec encodeCommandeDesBipedes"},
 	{regexp.MustCompile(`^replay/testdata/jeu_[0-9a-f]{8}\.bin\.gz$`),
 		"messages de jeu et noms de script : index de joueur du film, aucun champ xuid (golden_jeu_test.go) ; " +
 			"codec encodeJeu"},

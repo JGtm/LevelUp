@@ -105,14 +105,16 @@ func toBounds(v replay.Bounds) replaydoc.Bounds {
 
 func toTrack(v replay.Track) replaydoc.Track {
 	return replaydoc.Track{
-		Slot:       v.Slot,
-		Team:       v.Team,
-		Name:       v.Name,
-		XUID:       v.XUID,
-		Bot:        v.Bot,
-		Points:     sliceOf(v.Points, toPoint),
-		StartFrame: v.StartFrame,
-		EndFrame:   v.EndFrame,
+		Slot:         v.Slot,
+		Team:         v.Team,
+		Name:         v.Name,
+		XUID:         v.XUID,
+		Bot:          v.Bot,
+		Points:       sliceOf(v.Points, toPoint),
+		StartFrame:   v.StartFrame,
+		EndFrame:     v.EndFrame,
+		EndReason:    v.EndReason,
+		ReleaseFrame: v.ReleaseFrame,
 	}
 }
 

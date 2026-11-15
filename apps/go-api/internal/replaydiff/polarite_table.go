@@ -181,7 +181,7 @@ var tablePolarites = []blocPolarites{
 	{Blocs: []string{"coverage.score."},
 		Echecs:  "roundsContradicted/n roundsContradictedRecords statsWithheld",
 		Succes:  "points",
-		Neutres: "rounds roundsWritten/n"},
+		Neutres: "rounds roundsWritten/n roundsUnplayed/n"},
 	{Blocs: []string{"coverage.seats."},
 		Echecs: "bornesDifferees botsRelevesEnJeu chevauchements depassements entitesContestees entitesNonLiees " +
 			"identitesHorsRoster imagesClesDouteuses placesEnTrop placesOuvertes " +
@@ -206,9 +206,10 @@ var tablePolarites = []blocPolarites{
 		Succes:  "accord film tracksNamed",
 		Neutres: "noTeam records silence tracks"},
 	{Blocs: []string{"coverage.tracks."},
-		Echecs:     "gapMs gaps horsEmprise refusedMinPoints refusedPoints slotsDesarmes",
-		Succes:     "published publishedPoints",
-		Neutres:    "avantCreation slotsArmes viesAvantPremiereCreation",
+		Echecs: "gapMs gaps horsEmprise refusedMinPoints refusedPoints slotsDesarmes " +
+			"lifeEnds.unread lifeEnds.open lifeEnds.deletionsUnproven",
+		Succes:     "published publishedPoints lifeEnds.released lifeEnds.deleted",
+		Neutres:    "avantCreation slotsArmes viesAvantPremiereCreation lifeEnds.retaken lifeEnds.filmEnd",
 		Telemetrie: "minPoints"},
 	{Blocs: []string{"coverage.carriedEquipment."},
 		Echecs:  "ambiguousCost conflicting noCatalog noGlobalId noIdentity riftEndsUnread teleportsWithoutPose trackedEffectsAmbiguous trackedEffectsUnlinked trackedUnpositioned unpositioned unresolved",

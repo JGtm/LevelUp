@@ -182,6 +182,7 @@ var replaySchemas = []struct {
 	{"RespawnCountdown", replaydoc.RespawnCountdown{}},
 	{"MatchRules", replaydoc.MatchRules{}},
 	{"ClocksCoverage", replaydoc.ClocksCoverage{}},
+	{"LifeEndCoverage", replaydoc.LifeEndCoverage{}},
 }
 
 // wantReplayDocumentFields : le nombre de champs que l artefact publie. Ecrit ici pour que le

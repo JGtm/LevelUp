@@ -117,6 +117,11 @@ type Track struct {
 	Points     []Point `json:"points"`
 	StartFrame int     `json:"startFrame,omitempty"`
 	EndFrame   int     `json:"endFrame,omitempty"`
+	// EndReason dit comment le corps de la vie a fini, tel que le film l'ecrit : `released` (le joueur lache la
+	// commande) ou `deleted` (le corps est supprime). Absent quand le film ne le dit pas.
+	EndReason string `json:"endReason,omitempty"`
+	// ReleaseFrame est la frame du lacher de commande, sur l'axe de `startFrame` et `endFrame`.
+	ReleaseFrame *int `json:"releaseFrame,omitempty"`
 }
 
 // Point est une position echantillonnee au pas de temps T. X/Y = plan horizontal de la

@@ -371,6 +371,7 @@ const NULLABLE_ARRAY_PATHS = [
   // figurent donc dans l'allowlist hors frontière ci-dessous, pas dans la normalisation.
   'coverage.score.roundsWritten',
   'coverage.score.roundsContradicted',
+  'coverage.score.roundsUnplayed',
   // La trajectoire d'une vie libre d'objet d'objectif (schema 21) : comblee par la
   // frontiere, comme `flagCarries[].spans` — une vie qui arriverait avec `pts: null` ferait
   // tomber le calque a l'execution, pas a la compilation.
@@ -465,6 +466,7 @@ const PATHS_HORS_FRONTIERE = [
   // nullables du schéma 60 restent tels quels — les combler ici en ferait une seconde vérité.
   'coverage.score.roundsWritten',
   'coverage.score.roundsContradicted',
+  'coverage.score.roundsUnplayed',
   // `coverage.stances.mapWidths` (schema 65) : le TRIPLET de largeurs d'axe employe par la
   // marche, publie parce que c'est le pre-requis le plus facile a oublier. Il vit dans
   // `coverage`, donc hors frontiere pour la meme raison que les deux ci-dessus.

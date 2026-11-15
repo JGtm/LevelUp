@@ -8827,6 +8827,22 @@ export interface components {
             /** Format: double */
             target_val: number;
         };
+        LifeEndCoverage: {
+            /** Format: int64 */
+            deleted: number;
+            /** Format: int64 */
+            deletionsUnproven: number;
+            /** Format: int64 */
+            filmEnd: number;
+            /** Format: int64 */
+            open: number;
+            /** Format: int64 */
+            released: number;
+            /** Format: int64 */
+            retaken: number;
+            /** Format: int64 */
+            unread: number;
+        };
         Link: {
             /** Format: int64 */
             from: number;
@@ -11951,6 +11967,7 @@ export interface components {
             /** Format: int64 */
             roundsContradictedRecords?: number;
             roundsDecreed?: boolean;
+            roundsUnplayed?: number[] | null;
             roundsWritten?: number[] | null;
             /** Format: int64 */
             statsWithheld?: number;
@@ -14595,8 +14612,11 @@ export interface components {
             bot?: string;
             /** Format: int64 */
             endFrame?: number;
+            endReason?: string;
             name?: string;
             points: components["schemas"]["Point"][] | null;
+            /** Format: int64 */
+            releaseFrame?: number;
             /** Format: int32 */
             slot: number;
             /** Format: int64 */
@@ -14614,6 +14634,7 @@ export interface components {
             gaps: number;
             /** Format: int64 */
             horsEmprise: number;
+            lifeEnds?: components["schemas"]["LifeEndCoverage"];
             /** Format: int64 */
             minPoints: number;
             /** Format: int64 */
