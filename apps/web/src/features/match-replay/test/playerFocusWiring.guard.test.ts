@@ -20,6 +20,22 @@ import { fichierNomme, lire } from './featureFiles'
 
 const canvas = () => lire(fichierNomme('ReplayCanvas.tsx'))
 
+/**
+ * appelDe rend le texte de l'appel `nom(...)` jusqu'à sa parenthèse fermante, commentaires retirés.
+ * Elle lève quand l'appel n'existe pas : un calque retiré du canvas ne laisse pas le test vert.
+ */
+function appelDe(source: string, nom: string): string {
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1')
+  const debut = code.search(new RegExp(`\\b${nom}\\(`))
+  if (debut < 0) throw new Error(`appel introuvable : ${nom}`)
+  let profondeur = 0
+  for (let i = code.indexOf('(', debut); i < code.length; i++) {
+    if (code[i] === '(') profondeur++
+    else if (code[i] === ')' && --profondeur === 0) return code.slice(debut, i + 1)
+  }
+  throw new Error(`appel non fermé : ${nom}`)
+}
+
 describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque élément propre au joueur', () => {
   it('le panneau de joueur est branché, et la main reprend le cadrage', () => {
     const src = canvas()
@@ -31,25 +47,40 @@ describe('garde-rail : le canvas donne le prédicat Seul / Masquer à chaque él
     ['pistes (pion, nom, cône, traînée)', /embarkedAtSlot: vehicles\.isEmbarkedAt, seatedAtSlot, shownAtSlot,/],
     ['marques de tir', /k, embarkedAtSlot: vehicles\.isEmbarkedAt, shownAtSlot,/],
     ['éclairs de bouche', /vehicleSizeOf: vehicles\.sizeOf, shownAtSlot,/],
-    ['sillage du propulseur', /useReplayAbilityFx\(\{[^}]*shownAtSlot[^}]*\}\)/],
     ['vols de projectile (grenades, tirs)', /drawProjectilesLayer\([^;]*?shownProjectile,?\s*\)/],
-    ['fins de vol des grenades', /useReplayGrenadeRest\(\{[^}]*shownAtSlot[^}]*\}\)/],
-    ['mise en valeur d’une élimination', /useReplayKillFocus\(\{[^}]*shownAtSlot[^}]*\}\)/],
-    ['câble du grappin et poussée du répulseur', /useReplayAbilityFx\(\{[^}]*focusFilter: focusShown[^}]*\}\)/],
-    ['effets de mort', /drawKillFxLayer\([^;]*?shown: focusShown\?\.killFx/],
-    ['carte de chaleur', /useReplayHeatmap\(doc, bounds, killFx, \{[^]*?shown: focusShown/],
-    ['armes au sol', /useReplayGroundWeapons\(\{[^]*?shown: focusShown\?\.groundWeapon/],
-    ['poses d’équipement et failles', /useReplayPlacements\(\{[^]*?focusFilter: focusShown/],
-    ['marques de révélation du capteur', /campOfSlot, shown: focusShown \}/],
-    ['véhicules', /useReplayVehicles\(\{[^]*?shown: focusShown/],
-    ['drapeaux et ondes de capture', /useReplayFlagCarries\(\{[^]*?shownAuthor: focusShown\?\.author/],
-    ['couronne du VIP', /useReplayVipCrown\(\{[^\n]*shownCarrier: focusShown\?\.author/],
-    ['crâne porté', /useReplaySkullCarrier\(\{[^\n]*shownCarrier: focusShown\?\.author/],
-    ['bombe portée', /useReplayBombCarrier\(\{[^\n]*shownCarrier: focusShown\?\.author/],
-    ['déflagration', /useReplayBombBlast\(\{[^\n]*shownAuthor: focusShown\?\.author/],
-    ['pulses d’objectif', /drawObjectivePulses\([^\n]*shownAuthor: focusShown\?\.author/],
   ])('%s', (_nom, motif) => {
     expect(canvas()).toMatch(motif)
+  })
+
+  // CHAQUE LIAISON EST LUE DANS LES BORNES DE SON APPEL (parenthèses appariées, commentaires retirés) : un motif
+  // lâche trouverait le même texte dans l'appel d'un AUTRE calque, et retirer la liaison laisserait le test vert.
+  it.each([
+    ['sillage du propulseur', 'useReplayAbilityFx', /\bshownAtSlot\b/],
+    ['câble du grappin et poussée du répulseur', 'useReplayAbilityFx', /\bfocusFilter: focusShown\b/],
+    ['fins de vol des grenades', 'useReplayGrenadeRest', /\bshownAtSlot\b/],
+    ['mise en valeur d’une élimination', 'useReplayKillFocus', /\bshownAtSlot\b/],
+    ['effets de mort', 'drawKillFxLayer', /\bshown: focusShown\?\.killFx\b/],
+    ['carte de chaleur', 'useReplayHeatmap', /\bshown: focusShown\b/],
+    ['armes au sol', 'useReplayGroundWeapons', /\bshown: focusShown\?\.groundWeapon\b/],
+    ['poses d’équipement et failles', 'useReplayPlacements', /\bfocusFilter: focusShown\b/],
+    ['marques de révélation du capteur', 'drawEquipmentPlacementsLayer', /\bshown: focusShown\b/],
+    ['véhicules', 'useReplayVehicles', /\bshown: focusShown\b/],
+    ['drapeaux et ondes de capture', 'useReplayFlagCarries', /\bshownAuthor: focusShown\?\.author\b/],
+    ['couronne du VIP', 'useReplayVipCrown', /\bshownCarrier: focusShown\?\.author\b/],
+    ['crâne porté', 'useReplaySkullCarrier', /\bshownCarrier: focusShown\?\.author\b/],
+    ['bombe portée', 'useReplayBombCarrier', /\bshownCarrier: focusShown\?\.author\b/],
+    ['déflagration', 'useReplayBombBlast', /\bshownAuthor: focusShown\?\.author\b/],
+    ['pulses d’objectif', 'drawObjectivePulses', /\bshownAuthor: focusShown\?\.author\b/],
+  ])('%s', (_nom, fonction, motif) => {
+    expect(appelDe(canvas(), fonction)).toMatch(motif)
+  })
+
+  it('appelDe ne rend que l’appel nommé : un texte voisin ne le satisfait pas', () => {
+    const src = 'a({ x: 1 })\nb({ shown: focusShown, f: g(1) })\nc({ y: 2 }) // shown: focusShown'
+    expect(appelDe(src, 'b')).toContain('shown: focusShown')
+    expect(appelDe(src, 'a')).not.toContain('shown: focusShown')
+    expect(appelDe(src, 'c')).not.toContain('shown: focusShown')
+    expect(() => appelDe(src, 'absent')).toThrow()
   })
 
   it('Suivre gèle la cuisson des calques statiques comme le glisser (pas de recuisson par image)', () => {
