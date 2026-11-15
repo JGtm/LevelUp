@@ -2,6 +2,12 @@
 
 ---
 
+### [boot/auth] Le démarrage attend la résolution du pool de jetons avant d'ouvrir le port
+
+**Constaté le 2026-11-11** (déploiement de la 8.1.2 pendant l'indisponibilité du service de jetons Halo). `initAccountsPool` résout tous les comptes découverts (`resolveBootSources`, délai de 20 s par échange) avant `démarrage : serveur prêt` : 122 s de démarrage avec douze comptes, le déploiement déclaré en échec à 90 s (attente portée à 240 s depuis), les jobs regen démo et ouvrier sautés. Le pool se remplissant désormais à chaud (`AllowEmpty`, re-scan, connexion), le démarrage pourrait créer le pool vide et résoudre les comptes en tâche de fond : port ouvert en quelques secondes, auto-sync dès la première résolution.
+
+---
+
 ## 🔄 En cours
 
 - **Version 8.2.0 (branche `release/v8.2.0`, plan `.ai/PLAN_V8_1_2_2026-11-09.md`)** : plan exécuté et relu (relecture

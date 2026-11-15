@@ -10,6 +10,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { CopyCodeButton } from '@/features/auth/CopyCodeButton'
 import { useSetupFlowStore } from '@/stores/setupFlowStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
@@ -220,11 +221,17 @@ function DeviceCodePanel() {
         </a>{' '}
         {t('common.setup.enter_this_code')}
       </p>
-      <div className="rounded-lg bg-card px-6 py-4 text-center">
+      {/* Même bloc que l'écran de connexion Xbox (XboxLoginPage) : libellé, code sélectionnable et
+          bouton « Copier le code ». */}
+      <div className="rounded-lg bg-card border px-6 py-4 text-center">
+        <p className="mb-2 text-xs text-muted-foreground">{t('common.auth.xbox_code_to_enter')}</p>
         {deviceFlowUserCode ? (
-          <span className="text-3xl font-mono font-bold tracking-widest text-foreground select-all">
-            {deviceFlowUserCode}
-          </span>
+          <div className="flex items-center justify-center gap-3">
+            <span className="text-3xl font-mono font-bold tracking-widest text-foreground select-all">
+              {deviceFlowUserCode}
+            </span>
+            <CopyCodeButton code={deviceFlowUserCode} />
+          </div>
         ) : (
           <Spinner size="sm" />
         )}

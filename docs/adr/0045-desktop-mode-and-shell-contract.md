@@ -94,8 +94,10 @@ the session. What survives in the history is a dead secret of a previous launch.
 Two exceptions and one extension, found by the wave 4 review: `POST /api/v1/internal/shutdown` is exempt from the
 cookie (the shell cannot forge a signed `HttpOnly` cookie; the route keeps `LoopbackOnly`, the constant-time header
 secret and the strict `Host`), and the startup gate, which answers before the router and its guard exist, is wrapped by
-the same strict `Host` check (`middleware.StrictHost`, 421) without any cookie, since the shell loads the startup or
-failure page before it has one. Cooking children (`internal/replaychild`) relay their output on stderr, never on the
+the same strict `Host` check (`DesktopGate.StrictHost`, 421) without any cookie, since the shell loads the startup or
+failure page before it has one; that gate stays in front of the router for the life of the process, so it opens exactly
+what the router guard opens (the browser sign-in return, D-22) and nothing else (amendment of 2026-11-11: until then it
+refused that return with 421 before the guard, and browser sign-in never completed on the installed application). Cooking children (`internal/replaychild`) relay their output on stderr, never on the
 server's stdout, which carries the D-2 events only (`internal/archlint/server_stdout_internal_test.go`).
 The bare-route allowlist gets no entry: `/health` is already listed, and `/desktop/enter` is guarded by a recognised
 guard (an entry would be flagged useless by the ratchet's own self-check); `TestBareRoutesRatchet_DesktopEntryRoutes`
@@ -328,7 +330,8 @@ The attempt lives in the same registry as the device code (`AttemptStore.StartBr
 a 256-bit `state`, the PKCE verifier and the language of the page. The return reaches the server **without the shell
 cookie** (it is in the user's browser), so `DesktopGate.AllowBrowserCallback` lets exactly one request through without it:
 `GET /auth/xbox/callback`, exact path (never an ambiguous one, D-3), `Host` equal to `localhost:<port>` or `127.0.0.1:<port>`
-of the bound port; any other method, path, port or name keeps the Host and cookie checks (421, 401). The route is mounted
+of the bound port; any other method, path, port or name keeps the Host and cookie checks (421, 401). The startup gate
+(`DesktopGate.StrictHost`, D-3) applies the same exemption, since it stays in front of the router (2026-11-11). The route is mounted
 behind `LoopbackOnly` (the TCP peer, not a header) and protected by the `state`: single use (`ClaimBrowserState` removes it
 and the verifier at the first presentation), valid 10 minutes (`BrowserStateTTL`), unknown, replayed or expired states render
 the failure page without any outbound call. The code is exchanged with the verifier, the chain runs through

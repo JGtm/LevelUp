@@ -224,6 +224,10 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // nommés, dépendance durable (2026-11-14, plan compléments 8.2.0, étape 10.2).
   'home=>setup/queries',
   'home=>setup/syncJobError',
+  // Même raison pour le bloc du code à recopier : l'assistant affiche le code comme l'écran de
+  // connexion (libellé, code sélectionnable, bouton « Copier le code », CopyCodeButton) ; une copie
+  // locale avait divergé (pas de bouton, 2026-11-11). Module nommé seulement, dépendance durable.
+  'setup=>auth/CopyCodeButton',
   // Home dashboard agrège aussi le widget Ascension (HomeAscensionWidget).
   'home=>ascension',
   // Explorer réutilise la bannière d'identité joueur de Home

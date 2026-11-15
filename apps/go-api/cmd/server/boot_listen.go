@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"os"
 
-	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/api"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/platform/instancelock"
 )
@@ -50,11 +50,13 @@ func openBootGate(st *bootState) {
 
 // bootHandler rend le handler du serveur HTTP de démarrage. Sous l'entrée de la coquille desktop,
 // la porte répond avant le routeur et son garde : le même contrôle de Host (421) l'enveloppe, sans
-// cookie (la coquille charge la page de démarrage ou d'échec avant de l'avoir, ADR 0045 D-3). Ailleurs,
-// la porte seule.
+// cookie (la coquille charge la page de démarrage ou d'échec avant de l'avoir, ADR 0045 D-3), avec la
+// même exemption que le garde du routeur (le retour de la connexion par le navigateur, Host
+// « localhost:<port> »), car la porte reste devant le routeur une fois celui-ci ouvert. Ailleurs, la
+// porte seule.
 func bootHandler(cfg *config.AppConfig, gate *bootGate) http.Handler {
 	if cfg.Capabilities.ShellEntryGate {
-		return middleware.StrictHost(cfg.DesktopAuthority())(gate)
+		return api.DesktopGateFor(cfg).StrictHost(gate)
 	}
 	return gate
 }
