@@ -3,21 +3,27 @@
  *
  * Dit l'état réel de la synchronisation (en cours, en attente de connexion, en pause, échec,
  * terminée sans match, rien de lancé) au lieu d'annoncer « en cours » par défaut. L'état se lit
- * dans `firstSyncState.ts` ; chaque bloc ne propose que des actions possibles (reconnecter, lancer,
- * réessayer, actualiser), jamais un bouton que le serveur refuserait.
+ * dans `firstSyncState.ts` à partir de ce que le SERVEUR dit du joueur affiché
+ * (`GET /players/{slug}/sync/status`) ; chaque bloc ne propose que des actions possibles
+ * (reconnecter, lancer, réessayer, actualiser), jamais un bouton que le serveur refuserait : pendant
+ * le délai du sync manuel, ni « Lancer » ni « Réessayer », et le délai restant est dit.
  */
 import { useEffect, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { EmptyStateCard } from '@/components/ui/empty-state'
+import { apiErrorCode } from '@/lib/api/client'
 import { useReconnectXbox } from '@/lib/auth/useReconnectXbox'
 import { useCanWritePlayer } from '@/lib/players/playerWriteAccess'
 import { formatMessage } from '@/lib/i18n/format'
 import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 import { commonManifest } from '@/lib/i18n/generated/common'
+import { queryKeys } from '@/lib/query/keys'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useJobStatus, useStartDeltaSync } from '@/features/setup/queries'
+import { useStartDeltaSync } from '@/features/setup/queries'
 import { syncJobErrorKey } from '@/features/setup/syncJobError'
 import { resolveFirstSyncState } from './firstSyncState'
+import { usePlayerSyncStatus } from './syncStatusQueries'
 
 interface HomeFirstSyncProps {
   playerSlug: string
@@ -28,42 +34,64 @@ interface HomeFirstSyncProps {
 export function HomeFirstSync({ playerSlug, refetch }: HomeFirstSyncProps) {
   const locale = useAppShellStore((s) => s.locale)
   const reauthRequired = useAppShellStore((s) => s.reauthRequired)
-  const authState = useAppShellStore((s) => s.authState)
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
-  const activeSyncJobId = useAppShellStore((s) => s.activeSyncJobId)
   const setActiveSyncJobId = useAppShellStore((s) => s.setActiveSyncJobId)
   const canWrite = useCanWritePlayer(playerSlug)
   const reconnect = useReconnectXbox()
   const startSync = useStartDeltaSync()
-  const { data: job } = useJobStatus(activeSyncJobId ?? '', !!activeSyncJobId)
-  const t = (key: HomeManifestKey) => formatMessage(homeManifest, key, locale)
+  const queryClient = useQueryClient()
+  const { data: serverStatus } = usePlayerSyncStatus(playerSlug)
+  const t = (key: HomeManifestKey, values?: Record<string, string | number>) =>
+    formatMessage(homeManifest, key, locale, values)
+
+  // Le serveur ne sert que les jobs du joueur demandé ; le client ne lit pourtant jamais le job d'un autre.
+  const status = serverStatus?.player_slug === playerSlug ? serverStatus : undefined
+  const job = status?.job && (!status.job.player_slug || status.job.player_slug === playerSlug) ? status.job : undefined
+  const cooldownSec = status?.cooldown_retry_after_s ?? 0
+  const canStart = canWrite && cooldownSec <= 0
 
   const { kind } = resolveFirstSyncState({
     reauthRequired,
-    authState,
+    canWrite,
     syncEnabled: currentPlayer?.player_slug === playerSlug ? currentPlayer.sync_enabled : undefined,
-    activeJobId: activeSyncJobId,
-    jobStatus: job?.status,
+    server: status ? { syncing: status.syncing, jobStatus: job?.status } : null,
   })
 
   // Un job qui vient de se terminer a pu écrire des matchs : l'accueil se relit une fois par job.
   const refetchedFor = useRef<string | null>(null)
   useEffect(() => {
-    if (job?.status === 'succeeded' && activeSyncJobId && refetchedFor.current !== activeSyncJobId) {
-      refetchedFor.current = activeSyncJobId
+    if (job?.status === 'succeeded' && refetchedFor.current !== job.job_id) {
+      refetchedFor.current = job.job_id
       refetch()
     }
-  }, [job?.status, activeSyncJobId, refetch])
+  }, [job?.status, job?.job_id, refetch])
 
   function startNow() {
     startSync.mutate(playerSlug, {
-      onSuccess: (started) => setActiveSyncJobId(started.job_id),
-      onError: () => toast.error(t('home.first_sync.start_failed')),
+      onSuccess: (started) => {
+        setActiveSyncJobId(started.job_id)
+        void queryClient.invalidateQueries({ queryKey: queryKeys.playerSyncStatus(playerSlug) })
+      },
+      onError: (err) => {
+        const code = apiErrorCode(err)
+        if (code === 'sync_cooldown') toast.error(t('home.first_sync.start_cooldown'))
+        else if (code === 'sync_already_active') toast.error(t('home.first_sync.start_already_active'))
+        else toast.error(t('home.first_sync.start_failed'))
+        // Le refus dit que l'état affiché est périmé : le relire montre l'état réel (délai, en cours).
+        void queryClient.invalidateQueries({ queryKey: queryKeys.playerSyncStatus(playerSlug) })
+      },
     })
   }
 
+  const cooldownNote =
+    canWrite && cooldownSec > 0
+      ? ` ${t('home.first_sync.cooldown_note', { minutes: Math.ceil(cooldownSec / 60) })}`
+      : ''
+
   const block = (() => {
     switch (kind) {
+      case 'loading':
+        return null
       case 'waiting_connection':
         return {
           title: t('home.first_sync.waiting_title'),
@@ -89,10 +117,10 @@ export function HomeFirstSync({ playerSlug, refetch }: HomeFirstSyncProps) {
           syncJobErrorKey(job?.error?.code ?? 'sync_aborted') ?? 'common.initial_sync.err_internal',
           locale,
         )
-        const retry = canWrite && job?.error?.retryable !== false
+        const retry = canStart && job?.error?.retryable !== false
         return {
           title: t('home.first_sync.failed_title'),
-          description: cause,
+          description: `${cause}${cooldownNote}`,
           actionLabel: retry ? t('home.first_sync.retry_action') : undefined,
           onAction: retry ? startNow : undefined,
         }
@@ -108,13 +136,15 @@ export function HomeFirstSync({ playerSlug, refetch }: HomeFirstSyncProps) {
         return {
           title: t('home.first_sync.idle_title'),
           description: canWrite
-            ? t('home.first_sync.idle_description')
+            ? `${t('home.first_sync.idle_description')}${cooldownNote}`
             : t('home.first_sync.idle_description_readonly'),
-          actionLabel: canWrite ? t('home.first_sync.start_action') : undefined,
-          onAction: canWrite ? startNow : undefined,
+          actionLabel: canStart ? t('home.first_sync.start_action') : undefined,
+          onAction: canStart ? startNow : undefined,
         }
     }
   })()
+
+  if (block === null) return null
 
   return (
     <div className="flex min-h-[55vh] items-center justify-center px-6 py-10">

@@ -2,52 +2,54 @@
  * État réel de la synchronisation d'un joueur dont l'accueil n'a aucun match.
  *
  * Avant : « Synchronisation en cours » s'affichait dès que le total de matchs était nul, qu'une
- * synchronisation tourne ou non (un joueur dont rien ne partait la lisait pendant une heure).
- * Les sources sont celles que l'API sert déjà : connexion du compte (bootstrap), titre en pause
- * (profil), job de synchronisation connu de la session (`GET /jobs/{id}`).
+ * synchronisation tourne ou non. Les sources sont celles du serveur : la connexion du compte
+ * (`reauth_required` du bootstrap, seul signal d'un jeton mort), le titre en pause (profil) et
+ * `GET /players/{slug}/sync/status` (en vol toutes sources, job du JOUEUR, délai du sync manuel).
  */
 export type FirstSyncKind =
-  /** Le compte Xbox n'est pas (ou plus) connecté : aucune synchronisation ne peut partir. */
+  /** L'état du serveur n'est pas encore arrivé : rien à dire. */
+  | 'loading'
+  /** Le jeton du compte est mort : aucune synchronisation ne peut partir (compte du visiteur, qui peut reconnecter). */
   | 'waiting_connection'
   /** La synchronisation de ce titre est en pause pour ce joueur. */
   | 'paused'
-  /** Un job de synchronisation est en cours. */
+  /** Une synchronisation de ce joueur tourne (job de l'API, synchronisation automatique ou suivi en direct). */
   | 'running'
   /** Le dernier job connu a échoué, a été interrompu ou annulé. */
   | 'failed'
   /** Le dernier job connu est terminé et il n'y a toujours aucun match. */
   | 'empty'
-  /** Aucun job connu : rien n'a été lancé depuis cette session. */
+  /** Rien ne tourne et aucun job récent n'est connu. */
   | 'idle'
 
 export interface FirstSyncInput {
+  /** `reauth_required` du bootstrap : le jeton du compte connecté est mort. */
   reauthRequired: boolean
-  authState: string
-  /** `sync_enabled` du profil courant ; `undefined` = profil inconnu (pas de pause déclarée). */
+  /** La session peut écrire sur le joueur affiché (son profil) : seul cas où reconnecter a un sens. */
+  canWrite: boolean
+  /** `sync_enabled` du profil affiché ; `undefined` = profil inconnu (pas de pause déclarée). */
   syncEnabled: boolean | undefined
-  /** Identifiant du job de synchronisation connu de la session ; `null` = aucun. */
-  activeJobId: string | null
-  /** Statut du job lu par `GET /jobs/{id}` ; `undefined` tant qu'il n'est pas arrivé. */
-  jobStatus: string | undefined
-}
-
-export interface FirstSyncState {
-  kind: FirstSyncKind
+  /** État servi pour le JOUEUR affiché ; `null` tant qu'il n'est pas arrivé. */
+  server: { syncing: boolean; jobStatus: string | undefined } | null
 }
 
 const FAILED_STATUSES: ReadonlySet<string> = new Set(['failed', 'cancelled', 'interrupted'])
 
 /**
- * Ordre de priorité : une connexion manquante et une pause expliquent à elles seules l'absence de
- * synchronisation, elles priment sur un job ancien ; viennent ensuite le job de la session, puis
- * « rien lancé ».
+ * Ordre de priorité : un jeton mort et une pause expliquent à eux seuls l'absence de synchronisation,
+ * ils priment sur un job ancien ; viennent ensuite ce qui tourne, puis le dernier job, puis « rien ».
+ * Un visiteur en lecture seule ne voit jamais « en attente de connexion » : le jeton mort est le sien,
+ * pas celui du joueur qu'il regarde.
  */
-export function resolveFirstSyncState(input: FirstSyncInput): FirstSyncState {
-  if (input.reauthRequired || input.authState !== 'ready') return { kind: 'waiting_connection' }
+export function resolveFirstSyncState(input: FirstSyncInput): { kind: FirstSyncKind } {
+  if (input.reauthRequired && input.canWrite) return { kind: 'waiting_connection' }
   if (input.syncEnabled === false) return { kind: 'paused' }
-  if (!input.activeJobId) return { kind: 'idle' }
-  if (input.jobStatus === undefined) return { kind: 'running' }
-  if (input.jobStatus === 'succeeded') return { kind: 'empty' }
-  if (FAILED_STATUSES.has(input.jobStatus)) return { kind: 'failed' }
-  return { kind: 'running' }
+  const server = input.server
+  if (server === null) return { kind: 'loading' }
+  const status = server.jobStatus
+  const jobActive = status !== undefined && status !== 'succeeded' && !FAILED_STATUSES.has(status)
+  if (server.syncing || jobActive) return { kind: 'running' }
+  if (status === 'succeeded') return { kind: 'empty' }
+  if (status !== undefined) return { kind: 'failed' }
+  return { kind: 'idle' }
 }

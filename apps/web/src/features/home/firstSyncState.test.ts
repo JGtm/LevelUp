@@ -3,40 +3,33 @@ import { resolveFirstSyncState, type FirstSyncInput } from './firstSyncState'
 
 const base: FirstSyncInput = {
   reauthRequired: false,
-  authState: 'ready',
+  canWrite: true,
   syncEnabled: true,
-  activeJobId: null,
-  jobStatus: undefined,
+  server: { syncing: false, jobStatus: undefined },
 }
 
 describe('resolveFirstSyncState', () => {
-  it('rien de lancé : « idle », jamais « en cours »', () => {
+  it('état du serveur pas encore arrivé : « loading », rien à dire', () => {
+    expect(resolveFirstSyncState({ ...base, server: null }).kind).toBe('loading')
+  })
+
+  it('rien en vol, aucun job : « idle », jamais « en cours »', () => {
     expect(resolveFirstSyncState(base).kind).toBe('idle')
   })
 
-  it.each([
-    ['reconnexion exigée', { reauthRequired: true }],
-    ['compte non connecté', { authState: 'missing' }],
-    ['identité partielle', { authState: 'partial' }],
-  ] as const)('%s : en attente de connexion, même avec un job connu', (_nom, patch) => {
+  it('jeton mort sur son propre profil : en attente de connexion, même avec un job connu', () => {
     expect(
-      resolveFirstSyncState({
-        ...base,
-        ...patch,
-        activeJobId: 'j1',
-        jobStatus: 'running',
-      }).kind,
+      resolveFirstSyncState({ ...base, reauthRequired: true, server: { syncing: true, jobStatus: 'running' } }).kind,
     ).toBe('waiting_connection')
+  })
+
+  it("jeton mort du visiteur sur le profil d'un autre : aucun « en attente de connexion »", () => {
+    expect(resolveFirstSyncState({ ...base, reauthRequired: true, canWrite: false }).kind).toBe('idle')
   })
 
   it('titre en pause : « paused » avant le job', () => {
     expect(
-      resolveFirstSyncState({
-        ...base,
-        syncEnabled: false,
-        activeJobId: 'j1',
-        jobStatus: 'failed',
-      }).kind,
+      resolveFirstSyncState({ ...base, syncEnabled: false, server: { syncing: false, jobStatus: 'failed' } }).kind,
     ).toBe('paused')
   })
 
@@ -44,8 +37,11 @@ describe('resolveFirstSyncState', () => {
     expect(resolveFirstSyncState({ ...base, syncEnabled: undefined }).kind).toBe('idle')
   })
 
+  it("une synchronisation en vol d'une autre source (sans job) : « running »", () => {
+    expect(resolveFirstSyncState({ ...base, server: { syncing: true, jobStatus: undefined } }).kind).toBe('running')
+  })
+
   it.each([
-    ['job pas encore lu', undefined, 'running'],
     ['en file', 'queued', 'running'],
     ['en cours', 'running', 'running'],
     ['terminé', 'succeeded', 'empty'],
@@ -53,6 +49,10 @@ describe('resolveFirstSyncState', () => {
     ['annulé', 'cancelled', 'failed'],
     ['interrompu', 'interrupted', 'failed'],
   ] as const)('job %s', (_nom, jobStatus, kind) => {
-    expect(resolveFirstSyncState({ ...base, activeJobId: 'j1', jobStatus }).kind).toBe(kind)
+    expect(resolveFirstSyncState({ ...base, server: { syncing: false, jobStatus } }).kind).toBe(kind)
+  })
+
+  it('un job terminé alors qu’une autre source synchronise : « running »', () => {
+    expect(resolveFirstSyncState({ ...base, server: { syncing: true, jobStatus: 'failed' } }).kind).toBe('running')
   })
 })

@@ -3732,6 +3732,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/sync/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Statut de la synchronisation d'un joueur */
+        get: operations["getPlayerSyncStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/players/{player_slug}/tactical/{map_id}/background": {
         parameters: {
             query?: never;
@@ -11120,6 +11137,18 @@ export interface components {
             title_slug?: string;
             waypoint_player: string;
             xuid: string;
+        };
+        PlayerSyncStatus: {
+            /**
+             * Format: int64
+             * @description Secondes avant qu'un sync manuel soit de nouveau accepté ; 0 = accepté.
+             */
+            cooldown_retry_after_s: number;
+            /** @description Job de sync actif du joueur, sinon le plus récent encore conservé. */
+            job?: components["schemas"]["AsyncJobStatus"];
+            player_slug: string;
+            /** @description Une synchronisation de ce joueur est en vol, quelle qu'en soit la source. */
+            syncing: boolean;
         };
         PlayerTokenHealth: {
             access: string;
@@ -22974,6 +23003,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AsyncJobStatus"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPlayerSyncStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerSyncStatus"];
                 };
             };
             /** @description Error */

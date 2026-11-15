@@ -160,6 +160,7 @@ export interface SmokeTestStartRequest {
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'interrupted' | 'cancelled'
 
 export type AsyncJobStatus = components['schemas']['AsyncJobStatus']
+export type PlayerSyncStatus = components['schemas']['PlayerSyncStatus']
 
 // ---------------------------------------------------------------------------
 // Sync initiale (Sprint 3)
