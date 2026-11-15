@@ -149,9 +149,15 @@ export type OwnershipShown = (parties: readonly ElementParty[], shared?: boolean
 
 /**
  * ownershipShown est LE prédicat de Seul et Masquer pour tout élément qui appartient à un ou plusieurs
- * joueurs, sur tous les calques : Seul garde l'élément dont une partie est le joueur de la fiche,
- * Masquer retire celui dont une partie l'est. `null` quand rien n'est filtré. Chaque calque ne fait
- * que dire QUELLES sont ses parties (`model/focusFilter.ts`) : la règle n'est écrite qu'ici.
+ * joueurs, sur tous les calques. `null` quand rien n'est filtré.
+ *
+ * LA RÈGLE. Un élément appartient à CHAQUE joueur qui y figure. Un frag (effet de mort, mort comptée par la
+ * chaleur des éliminations), une poussée, une révélation de capteur et une destruction de véhicule appartiennent
+ * à leur auteur OU à leur victime : Seul les garde dès que le joueur de la fiche est l'une des parties, Masquer
+ * les retire dès qu'il l'est. Seule exception, la croix de mort de la piste : elle ne suit que la victime, la
+ * piste ne portant pas le tueur. Ce qui n'appartient à personne, ou dont aucune partie ne se lit, reste affiché.
+ *
+ * Chaque calque ne fait que dire QUELLES sont ses parties (`model/focusFilter.ts`) : la règle n'est écrite qu'ici.
  */
 export function ownershipShown(focus: PlayerFocus | null): OwnershipShown | null {
   if (!focus || (!focus.solo && !focus.hide)) return null
