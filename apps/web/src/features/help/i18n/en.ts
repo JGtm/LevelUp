@@ -134,11 +134,11 @@ export const EN_TEXT = {
           {
             term: 'Objective',
             definition:
-              'Objective participation measured PER OPPORTUNITY: only objective matches (Flag, Zones, King of the Hill, Oddball, Stockpile, Extraction, VIP) count — Slayer matches no longer dilute the value, and the axis disappears when no objective match is in scope. Each mode combines its weighted actions (captures, grabs, returns, secures…) and the time spent on the objective (flag carrying, zone occupation…), normalized by the number of matches of that mode and calibrated against real benchmarks: a player at their mode\'s P80 level scores 80/100.',
+              'Objective participation OF EACH MATCH: the share the player takes of their team\'s objective, taking and supporting included (captures, grabs, returns, secures, capture assists, carrier kills counted at half…). Only objective matches count (Flag, Zones, King of the Hill, Oddball, Stockpile, Extraction, VIP): Slayer matches do not dilute the value, and the axis disappears when no objective match is in scope. The score is not compared with any history and does not depend on carry time: a player who escorts, returns or kills carriers is measured on their support. Over several matches, it is the average of the match scores.',
             formula:
-              'Per mode: r = min(1.25; 0.65 × actions/P80 + 0.35 × objective time/P80)\nIndex = average of r weighted by each mode\'s match count',
+              'Match score = 100 × min(1; share × N / 2), share = the higher of the player\'s objective share and support share in their team, N = players in the team\nAxis value = average of the objective-match scores',
             example:
-              '3 Flag matches at P80 (r = 1.0) + 1 average Zones match (r = 0.5) → (3 × 1.0 + 0.5) / 4 ≈ 0.88 → 70/100.',
+              'Team of 4: a fair share (25%) is worth 50/100, double (50%) or more is worth 100/100. With no objective action at all in the team, the score is 0.',
           },
         ],
       },

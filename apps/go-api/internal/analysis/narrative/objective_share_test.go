@@ -50,25 +50,23 @@ func TestComputeObjectiveTeamShare_CTFPorteurEscorteTueur(t *testing.T) {
 	}
 }
 
-// L'indice du joueur est celui de ComputeObjectiveIndex sur le même agrégat d'un match :
-// une seule définition de r_f.
+// L'indice brut du joueur est le r_f du package sur l'agrégat de son match : une seule définition.
 func TestComputeObjectiveTeamShare_IndexEgalIndiceDuPackage(t *testing.T) {
 	rows := ctfRows()
 	got, _ := ComputeObjectiveTeamShare(rows, "porteur")
-	st := objectiveStatsOfRow(FamilyCTF, &rows[0])
-	want, n := ComputeObjectiveIndex(ObjectiveIndexInput{FamilyCTF: st})
-	if n != 1 || !almostEqual(got.Index, want) {
-		t.Fatalf("Index = %v, want %v (n=%d)", got.Index, want, n)
+	want := objectiveFamilyRawScore(FamilyCTF, objectiveStatsOfRow(FamilyCTF, &rows[0]))
+	if got.RawIndex <= 0 || !almostEqual(got.RawIndex, want) {
+		t.Fatalf("RawIndex = %v, want %v", got.RawIndex, want)
 	}
-	if got.Index <= 0 || got.Index > ObjectiveIndexClip {
-		t.Fatalf("Index hors [0, %v] : %v", ObjectiveIndexClip, got.Index)
+	if got.TeamSize != 3 {
+		t.Fatalf("TeamSize = %d, want 3 (les trois joueurs du camp 0, pas l'adversaire)", got.TeamSize)
 	}
 }
 
 // Un joueur sans action garde une part nulle ; son indice ne compte que sa tenue.
 func TestComputeObjectiveTeamShare_PartNulle(t *testing.T) {
 	got, ok := ComputeObjectiveTeamShare(ctfRows(), "tueur")
-	if !ok || got.Share != 0 || got.Points != 0 || got.Index != 0 {
+	if !ok || got.Share != 0 || got.Points != 0 || got.RawIndex != 0 {
 		t.Fatalf("tueur = %+v ok=%v, want part nulle et indice nul", got, ok)
 	}
 }
@@ -200,7 +198,7 @@ func TestObjectiveSupportPoints_FragsAPoidsReduit(t *testing.T) {
 	}
 }
 
-// L'indice brut dépasse le plafond que garde l'indice des radars ; la part du soutien ne compte
+// L indice brut n est pas écrêté ; la part du soutien ne compte
 // que les colonnes de soutien et la table de poids n'est jamais modifiée.
 func TestComputeObjectiveTeamShare_BrutEtPartDuSoutien(t *testing.T) {
 	rows := []ObjectiveTeamRow{
@@ -213,8 +211,8 @@ func TestComputeObjectiveTeamShare_BrutEtPartDuSoutien(t *testing.T) {
 	}
 	before := ObjectiveFamilyActionWeights[FamilyCTF]["flag_returns"]
 	p, _ := ComputeObjectiveTeamShare(rows, "porteur")
-	if p.RawIndex <= ObjectiveIndexClip || p.Index != ObjectiveIndexClip {
-		t.Fatalf("porteur : RawIndex %v Index %v, want brut > plafond et Index écrêté", p.RawIndex, p.Index)
+	if p.RawIndex <= 1.25 {
+		t.Fatalf("porteur : RawIndex %v, want brut non écrêté (> 1,25)", p.RawIndex)
 	}
 	e, _ := ComputeObjectiveTeamShare(rows, "escorte")
 	// escorte : points d'objectif 1,5x4 + 1,5x4 + 2x2 = 16 ; soutien 1,5x4 + 2x2 + 1,5x4x0,5 = 13.

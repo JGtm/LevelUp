@@ -5,6 +5,7 @@ package profile
 import (
 	"context"
 	"errors"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -36,7 +37,7 @@ type fakeStore struct {
 	templates  []prestige.Template
 	tplAvail   bool
 	tplCalls   int
-	objective  map[string]narrative.ObjectiveIndexInput
+	objective  map[string][]narrative.ObjectiveTeamRow
 	objCalls   int
 }
 
@@ -74,7 +75,7 @@ func (f *fakeStore) MatchStartTimes(context.Context, string, time.Time, time.Tim
 func (f *fakeStore) MatchDays(context.Context, string, time.Time, time.Time) ([]port.ProfileMatchTime, error) {
 	return f.days, nil
 }
-func (f *fakeStore) ObjectiveIndexInputs(context.Context, []string, []string) (map[string]narrative.ObjectiveIndexInput, error) {
+func (f *fakeStore) ObjectiveTeamRows(context.Context, []string) (map[string][]narrative.ObjectiveTeamRow, error) {
 	f.objCalls++
 	return f.objective, nil
 }
@@ -120,7 +121,7 @@ func TestService_BuildProfileSansMagasin(t *testing.T) {
 
 func TestService_RadarEtEngagementDepuisLeMagasin(t *testing.T) {
 	st := &fakeStore{
-		title: "halo_5", // sans capacité objectifs : aucune lecture d'index
+		title: "halo_5", // sans capacité objectifs : aucune lecture d'objectif
 		count: MinMatchesForProfile,
 		radar: port.ProfileRadarBase{AvgKills: ptr(12), AvgDeaths: ptr(8), AvgAssists: ptr(4), AvgScore: ptr(1500), AvgKillingSpree: ptr(5), MatchCount: 20},
 		starts: []time.Time{
@@ -135,8 +136,8 @@ func TestService_RadarEtEngagementDepuisLeMagasin(t *testing.T) {
 	if axes[narrative.AxisCombat] != 12 || axes[narrative.AxisSurvival] != 4 || axes[narrative.AxisImpact] != 50 {
 		t.Errorf("axes = %v", axes)
 	}
-	if _, objN := svc.computeObjectiveIndexAxis(context.Background(), "u", fakeNow.AddDate(0, 0, -30), fakeNow); objN != 0 || st.objCalls != 0 {
-		t.Errorf("sans capacité objectifs : n=%d, lectures d'index=%d, attendu 0 et 0", objN, st.objCalls)
+	if _, objN := svc.computeObjectiveAxis(context.Background(), "u", fakeNow.AddDate(0, 0, -30), fakeNow); objN != 0 || st.objCalls != 0 {
+		t.Errorf("sans capacité objectifs : n=%d, lectures des lignes d'objectif=%d, attendu 0 et 0", objN, st.objCalls)
 	}
 
 	snap, err := svc.computeEngagementSimple(context.Background(), "u", fakeNow.AddDate(0, 0, -30), fakeNow)
@@ -234,5 +235,32 @@ func TestService_CalendrierDActiviteDedoublonneParJour(t *testing.T) {
 	}
 	if _, err := NewService(nil).LoadActivityCalendar(context.Background(), "u", d1, d1); err == nil {
 		t.Error("sans magasin : erreur attendue")
+	}
+}
+
+// L'axe Objectif d'un profil est la note d'objectif MOYENNE des matchs du joueur (part de son équipe,
+// 0-100) : lignes des deux camps lues en UNE requête, et une lecture en échec RETIRE l'axe (jamais 0).
+func TestService_AxeObjectifNoteMoyenneDesMatchs(t *testing.T) {
+	team := func(me, mate float64) []narrative.ObjectiveTeamRow {
+		return []narrative.ObjectiveTeamRow{
+			{XUID: "u", TeamID: 0, Family: narrative.FamilyCTF, TimePlayedSeconds: 600, Values: map[string]float64{"flag_captures": me}},
+			{XUID: "mate", TeamID: 0, Family: narrative.FamilyCTF, TimePlayedSeconds: 600, Values: map[string]float64{"flag_captures": mate}},
+			{XUID: "foe", TeamID: 1, Family: narrative.FamilyCTF, TimePlayedSeconds: 600, Values: map[string]float64{"flag_captures": 9}},
+		}
+	}
+	st := &fakeStore{
+		title:     "halo_infinite",
+		windowIDs: []string{"m1", "m2"},
+		// m1 : part équitable (50) ; m2 : tout l'objectif de l'équipe (100).
+		objective: map[string][]narrative.ObjectiveTeamRow{"m1": team(2, 2), "m2": team(3, 0)},
+	}
+	svc := NewService(st)
+	got, n := svc.computeObjectiveAxis(context.Background(), "u", fakeNow.AddDate(0, 0, -30), fakeNow)
+	if n != 2 || math.Abs(got-75) > 1e-9 || st.objCalls != 1 {
+		t.Fatalf("(%v, %d) en %d lecture(s), want (75, 2) en 1 lecture", got, n, st.objCalls)
+	}
+	st.windowIDs = nil
+	if _, n := svc.computeObjectiveAxis(context.Background(), "u", fakeNow.AddDate(0, 0, -30), fakeNow); n != 0 {
+		t.Errorf("fenêtre sans match : n = %d, want 0 (axe retiré)", n)
 	}
 }

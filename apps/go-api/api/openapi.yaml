@@ -27771,11 +27771,6 @@ components:
           type:
             - array
             - "null"
-        radar:
-          items: {}
-          type:
-            - array
-            - "null"
         timeline_multi_player:
           items:
             $ref: '#/components/schemas/ChartSeriesChartPoint2D'

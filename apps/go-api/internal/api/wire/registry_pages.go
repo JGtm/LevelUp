@@ -282,11 +282,11 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 		// « Analyse du film en cours » de l'Emprise : MÊME règle et MÊME porte de titre que l'accueil, la
 		// vue match et l'Escouade (film.kill_source) ; nil pour un titre sans elle.
 		WithAnalysisPending(r.analysisPendingFor(pdb))
-	// Axe « Objectifs » par opportunité (profil de participation Session) : gated par
+	// Axe « Objectif » (profil de participation Session : note d'objectif du match) : gated par
 	// la capability match.objective.stats (Infinite ; absente pour Halo 5 → axe
 	// retiré). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
-		svc = svc.WithObjectiveIndexRepo(duckdb.NewObjectiveStatsRepo(pdb), pdb.XUID)
+		svc = svc.WithObjectiveTeamRepo(duckdb.NewObjectiveStatsRepo(pdb), pdb.XUID)
 	}
 	svc = r.cablerBlocsSessions(svc, pdb) // blocs du film : registry_pages_sessions.go
 	// Bloc « Coordination » (appui reçu) de la session, lot N1 : gated par la

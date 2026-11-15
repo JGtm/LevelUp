@@ -251,7 +251,7 @@ export const EN_TEXT = {
       survival: 'Defensive resistance — damage / (229 × deaths). P80 = 1.59.',
       support: 'Assists × 50.',
       score: 'Personal score per minute played. P80 ≈ 195/min.',
-      objective: 'Objective participation per opportunity — weighted actions (captures, grabs, returns…) plus time on the objective, computed on objective matches only and calibrated per mode (a P80 player in their mode scores 80). Axis hidden when no objective match.',
+      objective: 'Objective participation — the share taken of the team\'s objective in each match (captures, grabs, returns, secures, support kills counted at half…), averaged over objective matches only, from 0 to 100: 50 for a fair share, 100 for double or more. Axis hidden when no objective match.',
       glossaryLink: '→ Glossary',
     },
     rawLabel: 'raw',

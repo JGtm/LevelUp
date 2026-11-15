@@ -73,11 +73,6 @@ type SquadCharts struct {
 	AccuracyTimeseries    []ChartSeries[ChartPoint2D]     `json:"accuracy_timeseries,omitempty"`
 	AvgLifeTimeseries     []ChartSeries[ChartPoint2D]     `json:"avg_life_timeseries,omitempty"`
 	PerformanceTimeseries []ChartSeries[ChartPoint2D]     `json:"performance_timeseries,omitempty"`
-
-	// Onglet Contributions suite (chunk S8 — Radar 6 axes).
-	// Type opaque (any) car le payload Radar est defini cote service
-	// (RadarChartSeries) — laisse le service amont serializer.
-	Radar []any `json:"radar,omitempty"`
 }
 
 // SquadTables regroupe les tableaux + galerie de la page Squad V2 (chunk S9).

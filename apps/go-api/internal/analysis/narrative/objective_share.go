@@ -49,11 +49,11 @@ type ObjectiveTeamShare struct {
 	TeamPoints float64
 	// Share = Points / TeamPoints dans [0, 1] ; 0 quand le camp n'a aucune action.
 	Share float64
-	// Index : indice r_f du joueur pour ce match, écrêté à [0, ObjectiveIndexClip] (la valeur
-	// des radars et des profils).
-	Index float64
-	// RawIndex : le même indice SANS écrêtage (>= 0) : la valeur qui sert à classer les matchs
-	// entre eux.
+	// TeamSize : nombre de joueurs de son camp qui portent une ligne dans le match, lui compris
+	// (la part équitable vaut 1/TeamSize : ObjectiveScoreOf).
+	TeamSize int
+	// RawIndex : indice r_f du joueur pour ce match, SANS écrêtage (>= 0) : la valeur qui sert à
+	// classer les matchs entre eux.
 	RawIndex float64
 	// SupportPoints / TeamSupportPoints / SupportShare : mêmes grandeurs sur les seules actions de
 	// SOUTIEN (ObjectiveSupportPoints : frags à poids réduit). SupportShare vaut 0 quand le camp n'a
@@ -85,7 +85,7 @@ func MatchObjectiveFamily(rows []ObjectiveTeamRow) ObjectiveFamily {
 }
 
 // objectiveStatsOfRow ramène une ligne au vocabulaire d'UNE famille : un agrégat d'un match
-// que ObjectiveActionPoints et objectiveFamilySubScore savent lire.
+// que ObjectiveActionPoints et objectiveFamilyRawScore savent lire.
 func objectiveStatsOfRow(fam ObjectiveFamily, r *ObjectiveTeamRow) ObjectiveFamilyStats {
 	weights := ObjectiveFamilyActionWeights[fam]
 	st := ObjectiveFamilyStats{
@@ -130,11 +130,13 @@ func ComputeObjectiveTeamShare(rows []ObjectiveTeamRow, xuid string) (ObjectiveT
 		return ObjectiveTeamShare{}, false
 	}
 	var teamPoints, teamSupport float64
+	teamSize := 0
 	for i := range rows {
 		r := &rows[i]
 		if r.TeamID != me.TeamID {
 			continue
 		}
+		teamSize++
 		st := objectiveStatsOfRow(fam, r)
 		teamPoints += ObjectiveActionPoints(fam, st)
 		teamSupport += ObjectiveSupportPoints(fam, st)
@@ -144,7 +146,7 @@ func ComputeObjectiveTeamShare(rows []ObjectiveTeamRow, xuid string) (ObjectiveT
 		Family:            fam,
 		Points:            ObjectiveActionPoints(fam, mine),
 		TeamPoints:        teamPoints,
-		Index:             min(objectiveFamilyRawScore(fam, mine), ObjectiveIndexClip),
+		TeamSize:          teamSize,
 		RawIndex:          objectiveFamilyRawScore(fam, mine),
 		SupportPoints:     ObjectiveSupportPoints(fam, mine),
 		TeamSupportPoints: teamSupport,

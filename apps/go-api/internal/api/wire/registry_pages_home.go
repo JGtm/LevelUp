@@ -247,11 +247,11 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 		WithAnalysisPending(r.analysisPendingFor(pdb)).
 		// Une variante de carte compte sous sa carte de base : filtre de cartes de l'Escouade.
 		WithMapGroups(r.mapGroupsFor(pdb))
-	// Axe « Objectifs » par opportunité du radar synergie : gated par la capability
+	// Axe « Objectif » (note d'objectif du match) du radar synergie : gated par la capability
 	// match.objective.stats (Infinite ; absente pour Halo 5 → axe retiré de toutes
 	// les séries). Source SHARED → couvre aussi les coéquipiers non suivis.
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
-		svc = svc.WithObjectiveIndexRepo(duckdb.NewObjectiveStatsRepo(pdb))
+		svc = svc.WithObjectiveTeamRepo(duckdb.NewObjectiveStatsRepo(pdb))
 	}
 	// Résumé d'usage (lectures communes des blocs d'usage et de l'Emprise) : MÊME repo que les
 	// pages Sessions et Synthèse, sur le périmètre D2 de cette page (cf.

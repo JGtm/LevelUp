@@ -254,9 +254,9 @@ func (r *Repo) MatchDays(ctx context.Context, userID string, since, until time.T
 	return out, nil
 }
 
-// ObjectiveIndexInputs charge les agrégats de l'index des objectifs (vue match_objective_stats_latest).
-func (r *Repo) ObjectiveIndexInputs(ctx context.Context, matchIDs, xuids []string) (map[string]narrative.ObjectiveIndexInput, error) {
-	return duckdb.NewObjectiveStatsRepo(r.pdb).LoadObjectiveIndexInputs(ctx, matchIDs, xuids)
+// ObjectiveTeamRows charge les lignes d'objectif des deux camps des matchs donnés (vue match_objective_stats_latest).
+func (r *Repo) ObjectiveTeamRows(ctx context.Context, matchIDs []string) (map[string][]narrative.ObjectiveTeamRow, error) {
+	return duckdb.NewObjectiveStatsRepo(r.pdb).LoadObjectiveTeamRows(ctx, matchIDs)
 }
 
 // KillDeathEvents charge les événements de frag et de mort par le chargeur unifié (highlight_events pour

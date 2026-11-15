@@ -94,8 +94,7 @@ func (s *Service) computeRadarAxesBase(
 }
 
 // windowMatchIDs retourne les match_id du registre partagé dans la fenêtre
-// (Campagne exclue). Source commune de applyAwardsRadarAxes (Phase A) et de
-// computeObjectiveIndexAxis — règle ≤ 2 copies. Best-effort : erreur → nil.
+// (Campagne exclue), tous joueurs confondus, pour applyAwardsRadarAxes. Best-effort : erreur → nil.
 func (s *Service) windowMatchIDs(ctx context.Context, since, until time.Time) []string {
 	ids, err := s.store.WindowMatchIDs(ctx, since, until)
 	if err != nil {
@@ -108,7 +107,7 @@ func (s *Service) windowMatchIDs(ctx context.Context, since, until time.Time) []
 // applyAwardsRadarAxes lit les awards du joueur dans la fenêtre, somme par
 // award_name, applique le mapping (axes + weight) et accumule par axe en
 // moyenne par match. Mutates out in place. L'axe OBJECTIVE est ignoré ici :
-// il est alimenté par l'index par opportunité (computeObjectiveIndexAxis) —
+// il est alimenté par la note d'objectif du match (computeObjectiveAxis) —
 // awards.toml reste la source des AUTRES axes (support/impact/…), décision 1
 // du plan PLAN_AXE_OBJECTIFS_INDEX.
 //
@@ -141,19 +140,19 @@ func (s *Service) applyAwardsRadarAxes(
 		contribution := float64(t.Total) * mapping.Weight / float64(matchCount)
 		for _, axis := range mapping.Axes {
 			if narrative.ParticipationAxis(axis) == narrative.AxisObjective {
-				continue // remplacé par l'index par opportunité
+				continue // remplacé par la note d'objectif du match
 			}
 			out[narrative.ParticipationAxis(axis)] += contribution
 		}
 	}
 }
 
-// computeObjectiveIndexAxis calcule l'axe « Objectifs » par opportunité sur la
-// fenêtre : agrégats par famille (match_objective_stats_latest) →
-// narrative.ComputeObjectiveIndex. Retourne (raw, n_obj) ; n_obj == 0 (titre
-// sans capability match.objective.stats, fenêtre sans match à objectif, erreur
-// best-effort) → l'axe est RETIRÉ du radar par le caller (aggregateNarrative).
-func (s *Service) computeObjectiveIndexAxis(
+// computeObjectiveAxis calcule l'axe « Objectif » sur la fenêtre : la note d'objectif moyenne des
+// matchs du joueur (narrative.ObjectiveParticipation : sa part de l'objectif de son équipe, prise et
+// soutien compris, 0-100). Les lignes des DEUX camps de tous ses matchs se chargent en une lecture.
+// Retourne (note, n_obj) ; n_obj == 0 (titre sans capability match.objective.stats, fenêtre sans match
+// à objectif, lecture en échec journalisée) → l'axe est RETIRÉ du radar par le caller (aggregateNarrative).
+func (s *Service) computeObjectiveAxis(
 	ctx context.Context, userID string, since, until time.Time,
 ) (float64, int) {
 	if s.store == nil || userID == "" {
@@ -165,16 +164,20 @@ func (s *Service) computeObjectiveIndexAxis(
 	}
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
-	matchIDs := s.windowMatchIDs(ctx, since, until)
+	matchIDs, err := s.store.PlayerWindowMatchIDs(ctx, userID, since, until)
+	if err != nil {
+		slog.WarnContext(ctx, "profile: matchs du joueur illisibles, axe Objectif retiré", "err", err)
+		return 0, 0
+	}
 	if len(matchIDs) == 0 {
 		return 0, 0
 	}
-	inputs, err := s.store.ObjectiveIndexInputs(ctx, matchIDs, []string{userID})
+	rows, err := s.store.ObjectiveTeamRows(ctx, matchIDs)
 	if err != nil {
-		slog.WarnContext(ctx, "profile: index des objectifs illisible, axe retiré", "err", err)
+		slog.WarnContext(ctx, "profile: lignes d'objectif illisibles, axe Objectif retiré", "err", err)
 		return 0, 0
 	}
-	return narrative.ComputeObjectiveIndex(inputs[userID])
+	return narrative.ObjectiveParticipation(rows, userID)
 }
 
 // computeEngagementSimple calcule un EngagementSnapshot heuristique :

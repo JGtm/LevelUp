@@ -91,3 +91,70 @@ func TestLoadObjectiveTeamRowsForPlayer_SansTableAbsentSansErreur(t *testing.T) 
 		t.Fatalf("xuid vide : %+v %v", got, err)
 	}
 }
+
+// ForMatches : les lignes des DEUX camps des seuls matchs demandés, famille par ligne (dont le split
+// KOTH / Bases par zone_scoring_ticks), camp et durée joints, pour plus d'un lot de requête.
+func TestLoadObjectiveTeamRowsForMatches_FamillesDeuxCampsEtLots(t *testing.T) {
+	repo, db := newObjectiveStatsRepoOnMem(t, true)
+	insertParticipantTeam(t, db, "m1", "x1", 0, 600)
+	insertParticipantTeam(t, db, "m1", "x2", 1, 600)
+	insertObjectiveRow(t, db, "m1", "x1", map[string]any{"flag_captures": 2, "time_as_flag_carrier_seconds": 30.0})
+	insertObjectiveRow(t, db, "m1", "x2", map[string]any{"flag_captures": 1})
+	insertParticipantTeam(t, db, "m2", "x1", 0, 600)
+	insertObjectiveRow(t, db, "m2", "x1", map[string]any{"zone_captures": 4, "zone_scoring_ticks": 0})
+	insertParticipantTeam(t, db, "m3", "x1", 0, 600)
+	insertObjectiveRow(t, db, "m3", "x1", map[string]any{"zone_captures": 2, "zone_scoring_ticks": 12})
+	insertParticipantTeam(t, db, "hors", "x1", 0, 600)
+	insertObjectiveRow(t, db, "hors", "x1", map[string]any{"flag_captures": 50})
+
+	// Plus d'un lot : des identifiants sans ligne ne changent rien et ne cassent pas la requête.
+	ids := []string{"m1", "m2", "m3"}
+	for i := 0; i < objectiveTeamRowsChunk+10; i++ {
+		ids = append(ids, "vide_"+string(rune('a'+i%26))+string(rune('a'+i/26%26))+string(rune('a'+i/676)))
+	}
+	got, err := repo.LoadObjectiveTeamRows(context.Background(), ids)
+	if err != nil {
+		t.Fatalf("LoadObjectiveTeamRows: %v", err)
+	}
+	if len(got) != 3 || len(got["m1"]) != 2 || len(got["hors"]) != 0 {
+		t.Fatalf("matchs = %d, lignes de m1 = %d, want 3 matchs, 2 lignes (les deux camps), match hors lot absent", len(got), len(got["m1"]))
+	}
+	byXUID := map[string]narrative.ObjectiveTeamRow{}
+	for _, r := range got["m1"] {
+		byXUID[r.XUID] = r
+	}
+	if byXUID["x1"].TeamID != 0 || byXUID["x2"].TeamID != 1 || byXUID["x1"].Family != narrative.FamilyCTF ||
+		byXUID["x1"].Values["time_as_flag_carrier_seconds"] != 30 || byXUID["x1"].TimePlayedSeconds != 600 {
+		t.Errorf("ligne x1 = %+v", byXUID["x1"])
+	}
+	if got["m2"][0].Family != narrative.FamilyZonesStrongholds || got["m3"][0].Family != narrative.FamilyZonesKOTH {
+		t.Errorf("familles m2/m3 = %s / %s, want Bases / Colline", got["m2"][0].Family, got["m3"][0].Family)
+	}
+	if empty, err := repo.LoadObjectiveTeamRows(context.Background(), nil); err != nil || len(empty) != 0 {
+		t.Errorf("aucun match : (%v, %v), want (vide, nil)", empty, err)
+	}
+}
+
+// Vue absente (titre sans match.objective.stats) : map vide, aucune erreur.
+func TestLoadObjectiveTeamRowsForMatches_VueAbsenteSansErreur(t *testing.T) {
+	repo, _ := newObjectiveStatsRepoOnMem(t, false)
+	got, err := repo.LoadObjectiveTeamRows(context.Background(), []string{"m1"})
+	if err != nil || len(got) != 0 {
+		t.Fatalf("(%v, %v), want (vide, nil)", got, err)
+	}
+}
+
+// Les coéquipiers non suivis se résolvent par shared.xuid_aliases ; un gamertag inconnu est absent.
+func TestObjectiveStatsRepo_XUIDsByGamertag(t *testing.T) {
+	repo, db := newObjectiveStatsRepoOnMem(t, true)
+	if _, err := db.Exec(`INSERT INTO xuid_aliases (xuid, gamertag) VALUES ('x9', 'MateGT'), ('x10', 'MateGT')`); err != nil {
+		t.Fatalf("seed alias: %v", err)
+	}
+	got, err := repo.XUIDsByGamertag(context.Background(), []string{"MateGT", "Inconnu"})
+	if err != nil {
+		t.Fatalf("XUIDsByGamertag: %v", err)
+	}
+	if len(got["MateGT"]) != 2 || len(got["Inconnu"]) != 0 {
+		t.Errorf("got = %v, want deux xuids pour MateGT et rien pour Inconnu", got)
+	}
+}

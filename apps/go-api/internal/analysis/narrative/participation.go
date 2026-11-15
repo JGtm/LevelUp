@@ -49,7 +49,7 @@ type ParticipationThresholds struct {
 //
 // NOTE (2026-07-26, plan PLAN_AXE_OBJECTIFS_INDEX) : le champ Objective de ces
 // seuils n'est PLUS consomme par les surfaces vivantes — elles alimentent l'axe
-// via ComputeObjectiveIndex et ecrasent le seuil par ObjectiveIndexThreshold
+// via ObjectiveParticipation et ecrasent le seuil par ObjectiveScoreMax
 // (cf. profile.aggregateNarrative, qui surcharge DefaultThresholds("custom")).
 // Les autres champs restent les defauts des heuristiques V1.
 func DefaultThresholds(modeFamily string) ParticipationThresholds {

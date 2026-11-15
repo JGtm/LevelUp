@@ -252,7 +252,7 @@ export const FR_TEXT = {
       survival: 'Résistance défensive — dégâts / (229 × morts). P80 = 1,59.',
       support: 'Assistances × 50.',
       score: 'Score personnel par minute jouée. P80 ≈ 195/min.',
-      objective: 'Participation aux objectifs par opportunité — actions pondérées (captures, prises, retours…) + temps sur l\'objectif, calculées sur les seuls matchs à objectif et calibrées par mode (un joueur au P80 de son mode marque 80). Axe absent si aucun match à objectif.',
+      objective: 'Participation à l\'objectif — la part prise de l\'objectif de son équipe à chaque match (captures, prises, retours, sécurisations, frags de soutien comptés pour moitié…), moyenne des seuls matchs à objectif, de 0 à 100 : 50 pour une part équitable, 100 pour le double ou plus. Axe absent si aucun match à objectif.',
       glossaryLink: '→ Glossaire',
     },
     rawLabel: 'brut',

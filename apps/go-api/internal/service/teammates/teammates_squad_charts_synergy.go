@@ -33,13 +33,14 @@ func synergyRadarThresholds(nShared int, ocP80 float64) narrative.ParticipationT
 		Survival:  analysis.DefensiveResistanceP80 * 1.25, // ~1.99 ; étire le haut au-dessus du P80
 		Support:   300.0 * n,                              // assists × 50, ~6 assists/match
 		Score:     ScorePerMinuteP80 * 1.25,               // score personnel/min, seuil constant (repère P80 ≈ 195/min)
-		Objective: narrative.ObjectiveIndexThreshold,      // index par opportunité (raw ∈ [0,1.25], P80 famille = 80/100)
+		Objective: narrative.ObjectiveScoreMax,            // note d'objectif du match moyenne, déjà sur 0-100 (part de l'équipe)
 		Impact:    ocP80 * 1.25,                           // P80 title-aware (0.90 Infinite / 1.264 h5)
 	}
 }
 
 // SynergyOffensiveConversion calcule le rendement offensif agrégé sur l'ensemble
-// des matchs : 225 × (ΣK + ΣA/3) / ΣDD. Retourne 0 si aucun dégât infligé.
+// des matchs : HP × (ΣK + ΣA/3) / ΣDD, où HP = effectiveHpToKill, la vie du titre
+// (damage_model). Retourne 0 si aucun dégât infligé.
 func SynergyOffensiveConversion(totalKills, totalAssists int, totalDamageDlt float64, effectiveHpToKill float64) float64 {
 	if totalDamageDlt <= 0 {
 		return 0
@@ -48,7 +49,8 @@ func SynergyOffensiveConversion(totalKills, totalAssists int, totalDamageDlt flo
 }
 
 // SynergyDefensiveResistance calcule la résistance défensive agrégée :
-// ΣDT / (225 × ΣD). Zéro mort avec damage positif → score parfait (au-delà du P80).
+// ΣDT / (HP × ΣD), où HP = effectiveHpToKill, la vie du titre (damage_model).
+// Zéro mort avec damage positif → score parfait (au-delà du P80).
 func SynergyDefensiveResistance(totalDamageTkn float64, totalDeaths int, effectiveHpToKill float64) float64 {
 	if totalDeaths == 0 {
 		if totalDamageTkn > 0 {
@@ -101,13 +103,13 @@ func synergyMainFallbackAxes(
 // loadSynergyMateAxes charge les axes radar depuis canonical.PlayerMatchRow pour
 // un gamertag, restreint aux matchs partagés. Formules :
 //   - Combat  : (kills + HS/2 + PK/2) × (1 + accuracy × 0.4), somme sur les matchs
-//   - Survival : résistance défensive agrégée ΣDT / (225 × ΣD)
+//   - Survival : résistance défensive agrégée ΣDT / (HP × ΣD), HP = la vie du titre (damage_model)
 //   - Support  : assists × 50, somme sur les matchs
 //   - Score    : score personnel par minute jouée ΣPS / (Σtime_played / 60)
-//   - Impact   : rendement offensif agrégé 225×(ΣK+ΣA/3)/ΣDD
+//   - Impact   : rendement offensif agrégé HP×(ΣK+ΣA/3)/ΣDD, HP = la vie du titre (damage_model)
 //
-// L'axe Objectif n'est PAS posé ici : il vient de l'index par opportunité
-// (loadSynergyObjectiveRaw, source shared) — cf. buildSquadSynergyRadar.
+// L'axe Objectif n'est PAS posé ici : il vient de la note d'objectif du match
+// (loadSynergyObjective, source shared) — cf. buildSquadSynergyRadar.
 func (s *TeammatesService) loadSynergyMateAxes(
 	ctx context.Context,
 	gt string,
@@ -162,25 +164,37 @@ func (s *TeammatesService) loadSynergyMateAxes(
 	return raw
 }
 
-// loadSynergyObjectiveRaw calcule l'index de participation aux objectifs d'un
-// joueur (par gamertag — source SHARED match_objective_stats_latest, donc
-// disponible aussi pour les coéquipiers NON suivis) sur les matchs partagés.
-// Retourne (raw, n_obj) ; n_obj == 0 (aucun match à objectif, repo absent ou
-// erreur best-effort) → l'axe est retiré du radar.
-func (s *TeammatesService) loadSynergyObjectiveRaw(
+// loadSynergyObjective calcule la note d'objectif moyenne (narrative.ObjectiveParticipation : part du
+// joueur dans l'objectif de son équipe, 0-100) de chaque joueur sur les matchs partagés. Source SHARED
+// match_objective_stats_latest, donc disponible aussi pour les coéquipiers NON suivis : les lignes des
+// DEUX camps de tous les matchs partagés se lisent en UNE requête, les gamertags se résolvent en xuids
+// en UNE autre. Ne rend que les joueurs mesurés ; une carte vide (repo absent, lecture en échec
+// journalisée, aucun match à objectif) fait retirer l'axe de toutes les séries.
+func (s *TeammatesService) loadSynergyObjective(
 	ctx context.Context,
-	gt string,
+	players []string,
 	sharedMatchIDs []string,
-) (float64, int) {
-	if s.objectiveIndex == nil || len(sharedMatchIDs) == 0 {
-		return 0, 0
+) map[string]float64 {
+	out := map[string]float64{}
+	if s.objectiveTeam == nil || len(sharedMatchIDs) == 0 {
+		return out
 	}
-	input, err := s.objectiveIndex.LoadObjectiveIndexInputsByGamertag(ctx, sharedMatchIDs, gt)
+	rows, err := s.objectiveTeam.LoadObjectiveTeamRows(ctx, sharedMatchIDs)
 	if err != nil {
-		slog.WarnContext(ctx, "teammates_radar_objective_index_failed", "gamertag", gt, "err", err)
-		return 0, 0
+		slog.WarnContext(ctx, "teammates_radar_objective_rows_failed", "err", err)
+		return out
 	}
-	return narrative.ComputeObjectiveIndex(input)
+	xuids, err := s.objectiveTeam.XUIDsByGamertag(ctx, players)
+	if err != nil {
+		slog.WarnContext(ctx, "teammates_radar_objective_aliases_failed", "err", err)
+		return out
+	}
+	for _, gt := range players {
+		if score, n := narrative.ObjectiveParticipation(rows, xuids[gt]...); n > 0 {
+			out[gt] = score
+		}
+	}
+	return out
 }
 
 // buildSquadSynergyRadar calcule un profil de participation 6 axes par joueur
@@ -222,7 +236,7 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 		mainRaw = synergyMainFallbackAxes(allSquadRows, sharedMatches)
 	}
 
-	// Axe Objectif : index par opportunité (source SHARED — couvre aussi les
+	// Axe Objectif : note d'objectif du match, moyenne (source SHARED — couvre aussi les
 	// coéquipiers non suivis). Posé par joueur ; si AUCUN joueur n'a de match à
 	// objectif dans le scope (ou repo absent : capability, Halo 5), l'axe est
 	// retiré de TOUTES les séries (le front aligne indicateurs sur series[0]).
@@ -231,14 +245,11 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 	for _, gt := range selectedGamertags {
 		rawByPlayer[gt] = s.loadSynergyMateAxes(ctx, gt, sharedMatches)
 	}
-	skipObjectiveAxis := true
-	for _, gt := range players {
-		objRaw, objN := s.loadSynergyObjectiveRaw(ctx, gt, sharedMatchIDs)
-		if objN > 0 {
-			rawByPlayer[gt][narrative.AxisObjective] = objRaw
-			skipObjectiveAxis = false
-		}
+	objectiveByPlayer := s.loadSynergyObjective(ctx, players, sharedMatchIDs)
+	for gt, score := range objectiveByPlayer {
+		rawByPlayer[gt][narrative.AxisObjective] = score
 	}
+	skipObjectiveAxis := len(objectiveByPlayer) == 0
 
 	// Titre sans damage_taken (Halo 5) → l'axe Survie (résistance défensive) est
 	// figé à 0 et trompeur : on le retire de TOUS les joueurs (radar cohérent ;

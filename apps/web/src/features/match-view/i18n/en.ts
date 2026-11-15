@@ -90,7 +90,7 @@ export const EN_TEXT = {
   radarTooltipSurvival: 'Defensive resistance — damage / (229 × deaths). P80 = 1.59.',
   radarTooltipSupport: 'Assists × 50.',
   radarTooltipScore: 'Residual score after kills (×100) and assists (×50): medals and streaks.',
-  radarTooltipObjective: 'Objective participation in this match — weighted actions (captures, grabs, returns…) plus time on the objective, calibrated per mode (mode P80 = 80). Hidden on non-objective matches.',
+  radarTooltipObjective: 'Objective participation in this match — the share taken of the team\'s objective (captures, grabs, returns, secures, support kills counted at half…), from 0 to 100: 50 for a fair share, 100 for double or more. Not compared with the player\'s history. Hidden on non-objective matches.',
   radarTooltipGlossaryLink: '→ Glossary',
   labelGrenade: 'Grenade',
   labelAssassination: 'Assassination',

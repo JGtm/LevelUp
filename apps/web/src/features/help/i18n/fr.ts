@@ -161,11 +161,11 @@ export const FR_TEXT = {
           {
             term: 'Objectif',
             definition:
-              'Participation aux objectifs mesurée PAR OPPORTUNITÉ : seuls les matchs à objectif (Drapeau, Zones, Roi de la colline, Oddball, Stockage, Extraction, VIP) comptent — les matchs Assassin ne diluent plus la valeur, et l\'axe disparaît si aucun match à objectif n\'est dans le champ. Chaque mode combine ses actions pondérées (captures, prises, retours, sécurisations…) et le temps passé sur l\'objectif (port du drapeau, occupation de zone…), rapportés au nombre de matchs du mode et calibrés sur des repères réels : un joueur au niveau P80 de son mode marque 80/100.',
+              'Participation à l\'objectif DE CHAQUE MATCH : la part que le joueur prend de l\'objectif de son équipe, prise et soutien compris (captures, prises, retours, sécurisations, passes de capture, frags de porteurs comptés pour moitié…). Seuls les matchs à objectif comptent (Drapeau, Zones, Roi de la colline, Oddball, Stockage, Extraction, VIP) : les matchs Assassin ne diluent pas la valeur, et l\'axe disparaît si aucun match à objectif n\'est dans le champ. La note ne compare à aucun historique et ne dépend pas du temps de port : un joueur qui escorte, retourne ou abat les porteurs est mesuré sur son soutien. Sur plusieurs matchs, c\'est la moyenne des notes des matchs.',
             formula:
-              'Par mode : r = min(1,25 ; 0,65 × actions/P80 + 0,35 × temps objectif/P80)\nIndex = moyenne des r pondérée par le nombre de matchs de chaque mode',
+              'Note du match = 100 × min(1 ; part × N / 2), part = la plus haute de sa part de l\'objectif et de sa part du soutien dans son équipe, N = joueurs de l\'équipe\nValeur de l\'axe = moyenne des notes des matchs à objectif',
             example:
-              '3 matchs Drapeau au P80 (r = 1,0) + 1 match Zones moyen (r = 0,5) → (3 × 1,0 + 0,5) / 4 ≈ 0,88 → 70/100.',
+              'Équipe de 4 : une part équitable (25 %) vaut 50/100, le double (50 %) ou plus vaut 100/100. Sans aucune action d\'objectif dans l\'équipe, la note est de 0.',
           },
         ],
       },

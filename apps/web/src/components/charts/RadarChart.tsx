@@ -2,11 +2,11 @@
  * RadarChart — wrapper ECharts pour le radar 6 axes.
  *
  * Ne consomme PAS `ChartSeries<T>` standard car le payload backend est
- * spécifique (cf. service.RadarChartSeries Go). Chaque trace = 1 joueur,
+ * spécifique (cf. service.MatchViewRadarSeries Go). Chaque trace = 1 joueur,
  * 6 axes alignés avec valeurs 0..100 normalisées.
  *
- * Cas d'usage Squad V2 :
- *   - S8 Radar Participation 6 axes (Combat/Survival/Support/Score/Objective/Impact)
+ * Cas d'usage : radar de la vue Match (MatchSummaryCharts) :
+ *   - Radar de participation (Combat/Survival/Support/Score/Objective/Impact)
  *
  * Les axes sont passés par le caller (le service amont fournit la liste
  * dans l'ordre canonique). Les valeurs raw sont disponibles dans
@@ -26,7 +26,7 @@ export interface RadarAxis {
   raw: number
 }
 
-/** 1 série radar (1 joueur). Mirror service.RadarChartSeries Go. */
+/** 1 série radar (1 joueur). Mirror service.MatchViewRadarSeries Go. */
 export interface RadarSeriesPayload {
   key: string
   labelKey?: string

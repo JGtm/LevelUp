@@ -85,7 +85,7 @@ export const FR_TEXT = {
   radarTooltipSurvival: 'Résistance défensive — dégâts / (229 × morts). P80 = 1,59.',
   radarTooltipSupport: 'Assistances × 50.',
   radarTooltipScore: 'Score résiduel après frags (×100) et assistances (×50) : médailles et séries.',
-  radarTooltipObjective: 'Participation aux objectifs du match — actions pondérées (captures, prises, retours…) + temps sur l\'objectif, calibrées par mode (P80 du mode = 80). Absent sur un match sans objectif.',
+  radarTooltipObjective: 'Participation à l\'objectif dans ce match — la part prise de l\'objectif de son équipe (captures, prises, retours, sécurisations, frags de soutien comptés pour moitié…), de 0 à 100 : 50 pour une part équitable, 100 pour le double ou plus. Sans comparaison à l\'historique du joueur. Absent sur un match sans objectif.',
   radarTooltipGlossaryLink: '→ Glossaire',
   labelGrenade: 'Grenade',
   labelAssassination: 'Assassinat',

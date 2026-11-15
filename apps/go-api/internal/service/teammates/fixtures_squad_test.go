@@ -100,26 +100,31 @@ func (f *fakeSquadLoader) LoadMapStatsForSquad(
 	return nil, nil
 }
 
-// fakeObjectiveIndexRepo mock de port.ObjectiveIndexRepository (axe Objectif par
-// opportunité du radar synergie). inputsByGT : agrégats par gamertag.
-type fakeObjectiveIndexRepo struct {
-	inputsByGT map[string]narrative.ObjectiveIndexInput
-	err        error
+// fakeObjectiveTeamRepo mock de port.ObjectiveTeamRepository (axe Objectif du radar synergie).
+// rows : lignes des deux camps par match ; xuids : identités par gamertag ; les compteurs de
+// requêtes prouvent qu'il n'y a pas de lecture par joueur ni par match.
+type fakeObjectiveTeamRepo struct {
+	rows         map[string][]narrative.ObjectiveTeamRow
+	xuids        map[string][]string
+	err          error
+	rowsCalls    int
+	aliasCalls   int
+	askedMatches []string
 }
 
-func (f *fakeObjectiveIndexRepo) LoadObjectiveIndexInputs(
-	_ context.Context, _ []string, _ []string,
-) (map[string]narrative.ObjectiveIndexInput, error) {
-	return nil, f.err
+func (f *fakeObjectiveTeamRepo) LoadObjectiveTeamRows(
+	_ context.Context, matchIDs []string,
+) (map[string][]narrative.ObjectiveTeamRow, error) {
+	f.rowsCalls++
+	f.askedMatches = matchIDs
+	return f.rows, f.err
 }
 
-func (f *fakeObjectiveIndexRepo) LoadObjectiveIndexInputsByGamertag(
-	_ context.Context, _ []string, gamertag string,
-) (narrative.ObjectiveIndexInput, error) {
-	if f.err != nil {
-		return nil, f.err
-	}
-	return f.inputsByGT[gamertag], nil
+func (f *fakeObjectiveTeamRepo) XUIDsByGamertag(
+	_ context.Context, _ []string,
+) (map[string][]string, error) {
+	f.aliasCalls++
+	return f.xuids, f.err
 }
 
 // rowWithStats construit une PlayerMatchRow avec les stats Self renseignées.

@@ -95,8 +95,8 @@ type ProfileStore interface {
 	// MatchDays rend (match, début) des matchs du joueur dans la fenêtre, pour le calendrier d'activité.
 	MatchDays(ctx context.Context, xuid string, since, until time.Time) ([]ProfileMatchTime, error)
 
-	// ObjectiveIndexInputs rend, par joueur, les agrégats de l'index des objectifs sur les matchs donnés.
-	ObjectiveIndexInputs(ctx context.Context, matchIDs, xuids []string) (map[string]narrative.ObjectiveIndexInput, error)
+	// ObjectiveTeamRows rend, par match, les lignes d'objectif de tous les participants (les deux camps).
+	ObjectiveTeamRows(ctx context.Context, matchIDs []string) (map[string][]narrative.ObjectiveTeamRow, error)
 	// KillDeathEvents rend les événements de frag et de mort des matchs donnés.
 	KillDeathEvents(ctx context.Context, matchIDs []string) ([]canonical.HighlightEvent, error)
 

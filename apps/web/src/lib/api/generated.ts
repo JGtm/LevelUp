@@ -12657,7 +12657,6 @@ export interface components {
             per_minute_stats?: components["schemas"]["ChartSeriesChartPointStacked"];
             perf_vs_historical?: components["schemas"]["ChartSeriesChartPoint2D"];
             performance_timeseries?: components["schemas"]["ChartSeriesChartPoint2D"][] | null;
-            radar?: unknown[] | null;
             timeline_multi_player?: components["schemas"]["ChartSeriesChartPoint2D"][] | null;
         };
         SquadEmpriseBlock: {

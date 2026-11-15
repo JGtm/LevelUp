@@ -37,7 +37,7 @@ func objectiveRoleSumSQL(role narrative.ObjectiveRole) string {
 // vue `_latest` UNIQUEMENT (ADR 0026). Best-effort : une erreur de requête (vue
 // absente sur une DB non migrée) dégrade en nil + warn — le bloc objectifs de la
 // page est alors omis, jamais un échec dur (même politique que
-// LoadObjectiveIndexInputs).
+// LoadObjectiveTeamRows).
 func (r *ObjectiveStatsRepo) LoadObjectiveRoleRows(
 	ctx context.Context, matchIDs []string,
 ) ([]sessionusage.ObjectiveRow, error) {

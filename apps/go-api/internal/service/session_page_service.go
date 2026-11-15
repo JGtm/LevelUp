@@ -57,11 +57,11 @@ type SessionPageService struct {
 	// Timeseries. nil / xuid vide → IntensityRows reste nil (dégradation gracieuse).
 	highlightEventsRepo highlightEventsLoader
 	playerXUID          string
-	// objectiveIndex / objectiveXUID (optionnels) : agrégats objectifs par famille de
-	// mode pour l'axe « Objectifs » par opportunité du profil de participation. Câblé
-	// gated par la capability match.objective.stats (jamais slug==) ; nil → axe retiré.
-	objectiveIndex port.ObjectiveIndexRepository
-	objectiveXUID  string
+	// objectiveTeam / objectiveXUID (optionnels) : lignes d'objectif des deux camps des matchs pour
+	// l'axe « Objectif » du profil de participation (note d'objectif moyenne). Câblé gated par la
+	// capability match.objective.stats (jamais slug==) ; nil → axe retiré.
+	objectiveTeam port.ObjectiveTeamRepository
+	objectiveXUID string
 	// sessionBlocksDeps : les sources des blocs du film de la colonne (résumé d'usage, Emprise,
 	// vies, objectif, emblème, véhicules, scores) — session_page_blocks.go.
 	sessionBlocksDeps
@@ -133,13 +133,12 @@ func (s *SessionPageService) WithHighlightEventsRepo(repo highlightEventsLoader,
 	return s
 }
 
-// WithObjectiveIndexRepo injecte le repo des agrégats objectifs par famille
-// (match_objective_stats_latest) + le xuid du joueur suivi, pour l'axe
-// « Objectifs » par opportunité du profil de participation. Optionnel —
-// capability-gated au wiring ; nil → l'axe Objectif est retiré du profil
-// (pas de 0 trompeur).
-func (s *SessionPageService) WithObjectiveIndexRepo(repo port.ObjectiveIndexRepository, xuid string) *SessionPageService {
-	s.objectiveIndex = repo
+// WithObjectiveTeamRepo injecte le repo des lignes d'objectif des deux camps
+// (match_objective_stats_latest) + le xuid du joueur suivi, pour l'axe « Objectif » du profil de
+// participation. Optionnel — capability-gated au wiring ; nil → l'axe Objectif est retiré du
+// profil (pas de 0 trompeur).
+func (s *SessionPageService) WithObjectiveTeamRepo(repo port.ObjectiveTeamRepository, xuid string) *SessionPageService {
+	s.objectiveTeam = repo
 	s.objectiveXUID = xuid
 	return s
 }
@@ -211,7 +210,7 @@ func (s *SessionPageService) GetPage(
 	}
 	currentLabel := lastOrNil(labels, req.SessionLabel)
 	currentMatches := filterBySession(filtered, currentLabel)
-	currentEntry := buildCompareEntryWithObjectives(currentMatches, currentLabel, s.objectiveIndexFor(ctx, currentMatches), hp, provideSpree)
+	currentEntry := buildCompareEntryWithObjectives(currentMatches, currentLabel, s.objectiveFor(ctx, currentMatches), hp, provideSpree)
 	if currentEntry == nil {
 		slog.WarnContext(ctx, "session page: current session not found after filtering",
 			"requested_session", derefString(req.SessionLabel),
@@ -263,7 +262,7 @@ func (s *SessionPageService) GetPage(
 		// hors du filtre resserré ait bien ses matchs (sinon filterBySession sur le
 		// périmètre resserré renverrait vide).
 		compareMatches := filterBySession(compareScope, compareLabel)
-		resp.CompareSession = buildCompareEntryWithObjectives(compareMatches, compareLabel, s.objectiveIndexFor(ctx, compareMatches), hp, provideSpree)
+		resp.CompareSession = buildCompareEntryWithObjectives(compareMatches, compareLabel, s.objectiveFor(ctx, compareMatches), hp, provideSpree)
 		if resp.CompareSession != nil {
 			resp.CompareMetrics = buildCompareMetrics(currentMatches, compareMatches)
 			resp.CompareMatches = buildSessionDetailRows(compareMatches, resp.CompareSession.DominantCategory, req.Locale,
@@ -422,25 +421,26 @@ type lobbySizeProvider interface {
 	LobbySizesAtCompletion(ctx context.Context, slug string, matchIDs []string) (map[string]int, error)
 }
 
-// objectiveIndexFor récupère les agrégats objectifs par famille du joueur suivi
-// sur les matchs fournis (axe « Objectifs » par opportunité). nil si le repo
-// n'est pas câblé (titre sans capability match.objective.stats), si le xuid est
-// inconnu, ou en cas d'erreur (best-effort) → l'axe est retiré du profil.
-func (s *SessionPageService) objectiveIndexFor(ctx context.Context, matches []legacymatch.StatsMatchRow) narrative.ObjectiveIndexInput {
+// objectiveFor calcule l'axe « Objectif » des matchs fournis pour le joueur suivi : les lignes des DEUX
+// camps de tous les matchs se lisent en UNE requête, la note moyenne vient de
+// narrative.ObjectiveParticipation. Matches == 0 si le repo n'est pas câblé (titre sans capability
+// match.objective.stats), si le xuid est inconnu, ou en cas d'erreur (journalisée) → l'axe est retiré.
+func (s *SessionPageService) objectiveFor(ctx context.Context, matches []legacymatch.StatsMatchRow) sessionObjective {
 	defer timing.FromContext(ctx).Section("objective_index")()
-	if s.objectiveIndex == nil || s.objectiveXUID == "" || len(matches) == 0 {
-		return nil
+	if s.objectiveTeam == nil || s.objectiveXUID == "" || len(matches) == 0 {
+		return sessionObjective{}
 	}
 	ids := make([]string, 0, len(matches))
 	for i := range matches {
 		ids = append(ids, matches[i].MatchID)
 	}
-	inputs, err := s.objectiveIndex.LoadObjectiveIndexInputs(ctx, ids, []string{s.objectiveXUID})
+	rows, err := s.objectiveTeam.LoadObjectiveTeamRows(ctx, ids)
 	if err != nil {
-		slog.WarnContext(ctx, "session page: objective index unavailable", "err", err)
-		return nil
+		slog.WarnContext(ctx, "session page: lignes d'objectif indisponibles, axe Objectif retiré", "err", err)
+		return sessionObjective{}
 	}
-	return inputs[s.objectiveXUID]
+	score, n := narrative.ObjectiveParticipation(rows, s.objectiveXUID)
+	return sessionObjective{Score: score, Matches: n}
 }
 
 // attachLobbySizes renseigne LobbySize sur chaque row à partir du provider optionnel.

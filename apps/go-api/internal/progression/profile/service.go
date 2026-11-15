@@ -170,11 +170,10 @@ func (s *Service) fillSectionB(ctx context.Context, profile *PlayerProfile, lowe
 
 // aggregateNarrative calcule les axes radar via narrative.ComputeParticipationProfile.
 // Axes combat/survival/support/score/impact : heuristiques match_participants (V1)
-// + enrichissement awards.toml (V2 §2). Axe objective : index par opportunité
-// (computeObjectiveIndexAxis, match_objective_stats_latest) avec seuil spécifique
-// ObjectiveIndexThreshold — RETIRÉ si la fenêtre n'a aucun match à objectif ou si
-// le titre ne porte pas la capability match.objective.stats (plan
-// PLAN_AXE_OBJECTIFS_INDEX).
+// + enrichissement awards.toml (V2 §2). Axe objective : note d'objectif moyenne des matchs
+// (computeObjectiveAxis : part du joueur dans l'objectif de son équipe, 0-100, seuil
+// ObjectiveScoreMax) — RETIRÉ si la fenêtre n'a aucun match à objectif ou si
+// le titre ne porte pas la capability match.objective.stats.
 func (s *Service) aggregateNarrative(ctx context.Context, profile *PlayerProfile, userID string, since, until time.Time) error {
 	rawByAxis, err := s.computeRadarAxes(ctx, userID, since, until)
 	if err != nil {
@@ -183,14 +182,14 @@ func (s *Service) aggregateNarrative(ctx context.Context, profile *PlayerProfile
 	if len(rawByAxis) == 0 {
 		return nil
 	}
-	objRaw, objN := s.computeObjectiveIndexAxis(ctx, userID, since, until)
+	objRaw, objN := s.computeObjectiveAxis(ctx, userID, since, until)
 	if objN > 0 {
 		rawByAxis[narrative.AxisObjective] = objRaw
 	} else {
 		delete(rawByAxis, narrative.AxisObjective)
 	}
 	thresholds := narrative.DefaultThresholds("custom")
-	thresholds.Objective = narrative.ObjectiveIndexThreshold
+	thresholds.Objective = narrative.ObjectiveScoreMax
 	scores := narrative.ComputeParticipationProfile(rawByAxis, thresholds)
 	profile.RadarAxes = make([]ParticipationAxisValue, 0, len(scores))
 	for _, sc := range scores {
