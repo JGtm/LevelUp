@@ -153,7 +153,7 @@ describe('buildLivesMarks — les morts et les tueurs', () => {
   it('une mort sans tueur dont le film établit la cause donne une croix, jamais un triangle', () => {
     const d = doc()
     for (const kind of ['environment', 'suicide']) {
-      const death = { replayMs: 9_000, xuid: 'V', kind, img: '', tinted: false }
+      const death = { replayMs: 9_000, xuid: 'V', kind, img: '', tinted: false, proven: false }
       const m = buildLivesMarks(d, [entry({ death })], resolvers(d))
       expect(m.deaths).toHaveLength(1)
       expect(m.deaths[0]).toMatchObject({ frame: 90, x: 8, y: 6 })
@@ -166,13 +166,42 @@ describe('buildLivesMarks — les morts et les tueurs', () => {
     // lignes neutres (`kind` vide : le film n'établit aucune cause). Aucune croix à leur place.
     const d = doc()
     const finDeManche = [
-      entry({ death: { replayMs: 2_000, xuid: 'V', kind: '', img: '', tinted: false } }),
-      entry({ death: { replayMs: 10_000, xuid: 'K', kind: '', img: '', tinted: false } }),
+      entry({ death: { replayMs: 2_000, xuid: 'V', kind: '', img: '', tinted: false, proven: false } }),
+      entry({ death: { replayMs: 10_000, xuid: 'K', kind: '', img: '', tinted: false, proven: false } }),
     ]
     const m = buildLivesMarks(d, finDeManche, resolvers(d))
     expect(m.deaths).toEqual([])
     expect(m.killers).toEqual([])
     expect(m.skipped.deaths).toBe(2)
+  })
+
+  it('UNE MORT SANS TYPE PROUVÉE PAR LE FILM DONNE UNE CROIX : lâcher de commande ou compte à rebours, sans type', () => {
+    const d = doc()
+    const prouvée = entry({ death: { replayMs: 9_000, xuid: 'V', kind: '', img: '', tinted: false, proven: true } })
+    const m = buildLivesMarks(d, [prouvée], resolvers(d))
+    expect(m.deaths).toHaveLength(1)
+    expect(m.deaths[0]).toMatchObject({ frame: 90, x: 8, y: 6 })
+    expect(m.killers).toEqual([])
+    expect(m.skipped.deaths).toBe(0)
+  })
+
+  it('une fin de vie ni typée ni prouvée reste comptée sans croix, à côté d’une prouvée qui en a une', () => {
+    const d = doc()
+    const entries = [
+      entry({ key: 'a', death: { replayMs: 2_000, xuid: 'V', kind: '', img: '', tinted: false, proven: false } }),
+      entry({ key: 'b', death: { replayMs: 9_000, xuid: 'V', kind: '', img: '', tinted: false, proven: true } }),
+    ]
+    const m = buildLivesMarks(d, entries, resolvers(d))
+    expect(m.deaths).toHaveLength(1)
+    expect(m.skipped.deaths).toBe(1)
+  })
+
+  it('une mort typée garde sa croix, prouvée ou non', () => {
+    const d = doc()
+    for (const proven of [true, false]) {
+      const death = { replayMs: 9_000, xuid: 'V', kind: 'suicide', img: '', tinted: false, proven }
+      expect(buildLivesMarks(d, [entry({ death })], resolvers(d)).deaths).toHaveLength(1)
+    }
   })
 
   it('un frag sans victime nommée donne le tueur, sans trait, et compte une croix manquante', () => {

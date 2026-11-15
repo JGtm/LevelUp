@@ -212,15 +212,12 @@ interface DeathFact {
  *
  * UNE FIN DE VIE N'EST PAS UNE MORT. Dans un match à manches, les vies des survivants se ferment SANS
  * mort à chaque fin de manche (tous les joueurs repartent au point de départ de leur équipe), et le
- * fil en fait des lignes neutres : une fin de vie qu'aucun frag ne revendique. Seule une mort neutre
- * dont le film ÉTABLIT la cause (`kind` : chute, hors-limites, suicide — lue dans le composant
- * dead-state, `doc.neutralDeaths`) est une vraie mort ; sans cause établie (`kind` vide) la ligne peut
- * être une fin de manche, et on ne pose pas de croix. Elle est comptée dans les morts non posées.
- *
- * LA LIMITE, NOMMÉE : une vraie mort sans type (source de dégât sans pictogramme, refus d'attribution
- * ligne par ligne) n'a pas non plus de croix. Le document ne porte aucune fin de manche lue vie par vie : sa
- * `scoreTimeline` date le dernier palier de chaque manche, les vies se ferment plus tard, et une fenêtre
- * entre les deux serait une heuristique. Distinguer les deux demande un champ publié par le décodeur.
+ * fil en fait des lignes neutres : une fin de vie qu'aucun frag ne revendique. Une mort neutre est une
+ * vraie mort, donc une croix, quand le film l'ÉTABLIT : sa cause est lue (`kind` : chute, hors-limites,
+ * suicide, `doc.neutralDeaths`), ou la fin de vie est prouvée par le lâcher de commande du corps ou le
+ * début du compte à rebours de réapparition (`proven`, `model/lifeEndProof`). Une fin de manche supprime
+ * le corps sans l'un ni l'autre : ni cause ni preuve, pas de croix, et la ligne est comptée dans les
+ * morts non posées. Un document qui ne publie aucun signal de preuve ne prouve rien.
  */
 function deathFacts(
   entries: readonly ReplayFeedEntry[],
@@ -238,7 +235,7 @@ function deathFacts(
         facts.push({ victimXuid: '', killerXuid: e.kill.xuid, frame })
       }
     } else if (e.death) {
-      if (e.death.kind === '') {
+      if (e.death.kind === '' && !e.death.proven) {
         unplacedDeaths++
         continue
       }

@@ -32,11 +32,12 @@
  * depuis le début du match, le plus récent en tête, et défile pour remonter aux frags
  * anciens. Aucune fenêtre, aucune rémanence — l'éphémère précédent faisait perdre le fil.
  *
- * LES MORTS SANS TUEUR (suicides, chutes, sorties) font leur propre ligne NEUTRE
- * (décision produit 2026-08-13) : une fin de vie close qu'aucun kill ne revendique est
- * une mort que le fil doit dire — mesure témoin 64e8adfa : 123 morts au scoreboard pour
- * 121 kills, et exactement 2 fins de vie orphelines. L'appariement par victime garantit
- * qu'une mort déjà servie par une ligne de kill n'est JAMAIS doublée.
+ * LES FINS DE VIE SANS TUEUR (suicides, chutes, sorties, mais aussi fins de manche) font leur
+ * propre ligne NEUTRE : une fin de vie close qu'aucun kill ne revendique. L'appariement par
+ * victime garantit qu'une mort déjà servie par une ligne de kill n'est JAMAIS doublée.
+ * La ligne dit seulement qu'une vie s'est fermée ; que ce soit une MORT, le film le prouve
+ * (`ReplayDeath.proven`, cf. `model/lifeEndProof`) : une fin de manche supprime le corps sans
+ * mort et la ligne neutre n'en est pas une.
  *
  * CE QUE LE CLIENT NE PEUT PAS DÉDUIRE DE CES MORTS, c'est DE QUOI le joueur est mort :
  * cela se lit dans le film, hors ligne. Le document le publie (`doc.neutralDeaths`, schéma
@@ -55,6 +56,7 @@
 import type { KillEvent } from '@/features/match-view/_momentum'
 import type { MatchHighlightEvent } from '@/lib/api/types'
 
+import { countdownStartsByXuid, lifeEndProof } from './lifeEndProof'
 import { replayClock, type ReplayClock } from './replayClock'
 import { frameToMs, msToFrames, trackWindow } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -210,6 +212,12 @@ export interface ReplayDeath {
   /** Pictogramme du type et masque à teindre. Vides en même temps que `kind`. */
   img: string
   tinted: boolean
+  /**
+   * Le film PROUVE que cette fin de vie est une mort (lâcher de commande du corps, ou début du compte à
+   * rebours de réapparition du joueur : `model/lifeEndProof`). Faux sur une fin de manche, qui supprime le
+   * corps encore commandé sans l'un ni l'autre, et sur un document qui ne publie aucun des deux signaux.
+   */
+  proven: boolean
 }
 
 /** Le fil recalé : kills alignés, morts neutres, décalage appliqué. */
@@ -234,6 +242,8 @@ interface LifeEnd {
   endMs: number
   /** Close AVANT l'horizon du document : une vraie mort, pas un survivant. */
   closed: boolean
+  /** Le film prouve que cette fin de vie est une mort (`lifeEndProof` non nul). */
+  proven: boolean
   used: boolean
 }
 
@@ -315,19 +325,19 @@ export function alignFeedByOrigin(
   for (const e of ends) {
     if (!e.closed || e.used) continue
     if (unattributed.some((k) => Math.abs(k.replayMs - e.endMs) <= NEUTRAL_DEATH_VETO_MS)) continue
-    deaths.push(neutralDeath(e.endMs, e.xuid))
+    deaths.push(neutralDeath(e))
   }
   deaths.sort((a, b) => a.replayMs - b.replayMs)
   return { kills: aligned, deaths, offsetMs: clock.originMs }
 }
 
 /**
- * neutralDeath fabrique une ligne de mort neutre SANS type. Le type est posé après coup par
+ * neutralDeath fabrique une ligne de mort neutre SANS type, qui porte la preuve de mort de sa fin de vie. Le type est posé après coup par
  * `attachDeathKinds`, une fois le décalage du fil connu — lui seul permet de rapprocher
  * l'horloge du document (où le type est daté) de l'axe du rejeu (où la ligne vit).
  */
-function neutralDeath(replayMs: number, xuid: string): ReplayDeath {
-  return { replayMs, xuid, kind: '', img: '', tinted: false }
+function neutralDeath(e: LifeEnd): ReplayDeath {
+  return { replayMs: e.endMs, xuid: e.xuid, kind: '', img: '', tinted: false, proven: e.proven }
 }
 
 /**
@@ -380,17 +390,20 @@ export function attachDeathKinds(
 /**
  * lifeEndsOf relit les fins de vie des pistes et dit lesquelles sont CLOSES avant
  * l'horizon du document (une vie qui se ferme dans les dernières secondes est un survivant
- * de fin de partie, pas une mort). Partagé par les deux recalages : la définition d'une
+ * de fin de partie, pas une mort) et lesquelles le film PROUVE comme des morts (`lifeEndProof`).
+ * Partagé par les deux recalages : la définition d'une
  * fin de vie ne doit pas dépendre du chemin qui la lit.
  */
 function lifeEndsOf(doc: ReplayDocumentReady): LifeEnd[] {
   const ends: LifeEnd[] = []
+  const { starts } = countdownStartsByXuid(doc)
   let maxEndFrame = 0
   for (const tr of doc.tracks) {
     if (!tr.xuid || tr.points.length === 0) continue
     const endFrame = trackWindow(tr).end
     if (endFrame > maxEndFrame) maxEndFrame = endFrame
-    ends.push({ xuid: tr.xuid, endMs: frameToMs(endFrame, doc), closed: false, used: false })
+    const proven = lifeEndProof(tr, doc, starts) !== null
+    ends.push({ xuid: tr.xuid, endMs: frameToMs(endFrame, doc), closed: false, proven, used: false })
   }
   const horizonFrame = (doc.frameCount ?? 0) > 1 ? (doc.frameCount ?? 0) - 1 : maxEndFrame
   const graceMs = frameToMs(Math.max(0, horizonFrame - msToFrames(SURVIVOR_GRACE_MS, doc)), doc)
@@ -481,7 +494,7 @@ export function alignFeedToTracks(
     for (const e of ends) {
       if (!e.closed || e.used) continue
       const vetoed = unattributed.some((k) => Math.abs(k.replayMs - e.endMs) <= NEUTRAL_DEATH_VETO_MS)
-      if (!vetoed) deaths.push(neutralDeath(e.endMs, e.xuid))
+      if (!vetoed) deaths.push(neutralDeath(e))
     }
     deaths.sort((a, b) => a.replayMs - b.replayMs)
   }
