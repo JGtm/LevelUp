@@ -71,5 +71,10 @@ Colonnes : `Avant` = le calque suivait deja `shownAtSlot` / `shownProjectile` (o
   - emplacements de naissance des vehicules (`vehicleCycles`) : un lieu.
 - Elements dont une PARTIE seulement se lit : un effet de mort dont le tueur ou la victime n'a pas de vie
   retrouvee ne prouve rien pour cette partie ; l'autre partie decide ; sans aucune partie lue, l'effet reste.
+- REGLE UNIQUE du proprietaire inconnu : il reste TOUJOURS affiche, sous Seul comme sous Masquer, comme le
+  decor. Trois lectures divergentes sont alignees : projectiles sans auteur (retires sous Seul avant), marques
+  des Vies sans slot (retirees sous les deux avant), acteur sans slot de la mise en valeur d'une elimination
+  (ecarte sous tout filtre avant). Les lignes `projectiles`, `vies-*` et `mise-en-valeur` restent « deja fait »
+  pour leur contenu attribuable ; seul le cas « inconnu » change.
 - Aucun champ manquant au document : toutes les cases ci-dessus se traitent cote web, sans changement Go
   ni regeneration.
